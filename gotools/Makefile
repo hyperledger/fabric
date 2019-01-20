@@ -43,6 +43,16 @@ gotool.protoc-gen-go:
 	@cp -R $(GOPATH)/src/github.com/hyperledger/fabric/vendor/github.com/golang/protobuf/* $(TMP_GOPATH)/src/github.com/golang/protobuf
 	@GOPATH=$(abspath $(TMP_GOPATH)) go install github.com/golang/protobuf/protoc-gen-go
 
+gotool.manifest-tool:
+	@echo "Building github.com/estesp/manifest-tool -> manifest-tool"
+	@mkdir -p $(TMP_GOPATH)/src/github.com/estesp/
+	cd $(TMP_GOPATH)/src/github.com/estesp \
+		&& git clone https://github.com/estesp/manifest-tool \
+		&& cd manifest-tool \
+		&& git checkout v0.9.0
+	@GOPATH=$(abspath $(TMP_GOPATH)) go install github.com/estesp/manifest-tool
+
+
 # Default rule for gotools uses the name->path map for a generic 'go get' style build
 gotool.%:
 	$(eval TOOL = ${subst gotool.,,${@}})
