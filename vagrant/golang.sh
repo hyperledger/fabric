@@ -1,24 +1,23 @@
-#!/bin/bash
+#!/bin/bash -eu
 #
 # Copyright IBM Corp. All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
-#
 
-
-set -e
-set -x
+GOROOT='/opt/go'
+GO_VERSION=1.11.4
 
 # ----------------------------------------------------------------
-# Install nvm to manage multiple NodeJS versions
+# Install Golang
 # ----------------------------------------------------------------
-curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.4/install.sh | bash
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" # This loads nvm
+GO_URL=https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz
+mkdir -p $GOROOT
+curl -sL "$GO_URL" | (cd $GOROOT && tar --strip-components 1 -xz)
 
 # ----------------------------------------------------------------
-# Install NodeJS
+# Setup environment
 # ----------------------------------------------------------------
-nvm install v6.9.5
-nvm install v8.4
-nvm alias default v8.4 #set default to v8.4
+cat <<EOF >/etc/profile.d/goroot.sh
+export GOROOT=$GOROOT
+export PATH=\$PATH:$GOROOT/bin
+EOF
