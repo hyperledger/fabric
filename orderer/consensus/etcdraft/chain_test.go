@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft_test
 
 import (
-	"bytes"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -1862,30 +1861,12 @@ var _ = Describe("Chain", func() {
 					Expect(err).NotTo(HaveOccurred())
 				}
 
-				Eventually(c1.BlockCreator.CreatedBlocks).Should(HaveLen(10))
-			})
-
-			It("calls BlockCreator.commitBlock on all the nodes' chains once a block is written", func() {
-				normalBlock := &common.Block{
-					Header:   &common.BlockHeader{},
-					Data:     &common.BlockData{Data: [][]byte{[]byte("foo")}},
-					Metadata: &common.BlockMetadata{Metadata: make([][]byte, 4)},
-				}
-				// to test that commitBlock is called on c2(follower) as well; this block should be discarded
-				// after the calling of commitBlock since it is a diverging block
-				c2.BlockCreator.CreatedBlocks <- normalBlock
-
-				c1.cutter.CutNext = true
-				err := c1.Order(env, 0)
-				Expect(err).ToNot(HaveOccurred())
+				network.connect(1)
+				c1.clock.Increment(interval)
 
 				network.exec(
 					func(c *chain) {
-						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
-						b, _ := c.support.WriteBlockArgsForCall(0)
-						Eventually(c.BlockCreator.CreatedBlocks, LongEventualTimeout).Should(HaveLen(0)) // implies that BlockCreator.commitBlock was called
-						// check that it updates the LastCreatedBlock correctly as well
-						Eventually(bytes.Equal(b.Header.Bytes(), c.BlockCreator.LastCreatedBlock.Header.Bytes()), LongEventualTimeout).Should(BeTrue())
+						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(10))
 					})
 			})
 
@@ -1914,22 +1895,38 @@ var _ = Describe("Chain", func() {
 					// config block
 					err := c1.Order(configEnv, 0)
 					Expect(err).NotTo(HaveOccurred())
-					Eventually(c1.BlockCreator.CreatedBlocks).Should(HaveLen(1))
 
 					// to avoid data races since we are accessing these within a goroutine
 					tempEnv := env
 					tempC1 := c1
 
-					// normal blocks
+					done := make(chan struct{})
+
+					// normal block
 					go func() {
 						defer GinkgoRecover()
+
+						// This should be blocked if config block is not committed
 						err := tempC1.Order(tempEnv, 0)
-						// since the chain is stopped after the Consistently test below passes
-						Expect(err).To(MatchError("chain is stopped"))
+						Expect(err).NotTo(HaveOccurred())
+
+						close(done)
 					}()
 
-					// ensure that only one block is created since the config block is never written out
-					Consistently(c1.BlockCreator.CreatedBlocks).Should(HaveLen(1))
+					Consistently(done).ShouldNot(BeClosed())
+
+					network.connect(1)
+					c1.clock.Increment(interval)
+
+					network.exec(
+						func(c *chain) {
+							Eventually(func() int { return c.support.WriteConfigBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
+						})
+
+					network.exec(
+						func(c *chain) {
+							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
+						})
 				})
 
 				It("continues creating blocks on leader after a config block has been successfully written out", func() {
@@ -2138,13 +2135,6 @@ var _ = Describe("Chain", func() {
 				It("purges blockcutter, stops timer and discards created blocks if leadership is lost", func() {
 					// create one block on chain 1 to test for reset of the created blocks
 					network.disconnect(1)
-					normalBlock := &common.Block{
-						Header:   &common.BlockHeader{},
-						Data:     &common.BlockData{Data: [][]byte{[]byte("foo")}},
-						Metadata: &common.BlockMetadata{Metadata: make([][]byte, 4)},
-					}
-					c1.BlockCreator.CreatedBlocks <- normalBlock
-					Expect(len(c1.BlockCreator.CreatedBlocks)).To(Equal(1))
 
 					// enqueue one transaction into 1's blockcutter to test for purging of block cutter
 					c1.cutter.CutNext = false
@@ -2162,7 +2152,6 @@ var _ = Describe("Chain", func() {
 					Eventually(c1.clock.WatcherCount, LongEventualTimeout).Should(Equal(1)) // blockcutter time is stopped
 					Eventually(c1.cutter.CurBatch, LongEventualTimeout).Should(HaveLen(0))
 					// the created block should be discarded since there is a leadership change
-					Eventually(c1.BlockCreator.CreatedBlocks).Should(HaveLen(0))
 					Consistently(c1.support.WriteBlockCallCount).Should(Equal(0))
 
 					network.disconnect(2)
