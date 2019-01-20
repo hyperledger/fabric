@@ -232,7 +232,7 @@ changelog:
 $(BUILD_DIR)/bin:
 	@mkdir -p $@
 
-$(BUILD_DIR)/bin/%:
+$(BUILD_DIR)/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
 	@echo "$@"
 	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
