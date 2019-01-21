@@ -34,6 +34,7 @@ func init() {
 }
 
 type configurableCryptoService struct {
+	sync.RWMutex
 	m map[string]api.OrgIdentityType
 }
 
@@ -43,13 +44,17 @@ func (c *configurableCryptoService) Expiration(peerIdentity api.PeerIdentityType
 
 func (c *configurableCryptoService) putInOrg(port int, org string) {
 	identity := fmt.Sprintf("localhost:%d", port)
+	c.Lock()
 	c.m[identity] = api.OrgIdentityType(org)
+	c.Unlock()
 }
 
 // OrgByPeerIdentity returns the OrgIdentityType
 // of a given peer identity
 func (c *configurableCryptoService) OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType {
+	c.RLock()
 	org := c.m[string(identity)]
+	c.RUnlock()
 	return org
 }
 
