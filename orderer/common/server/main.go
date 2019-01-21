@@ -103,8 +103,6 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	clusterClientConfig := initializeClusterClientConfig(conf)
 	clusterDialer.SetConfig(clusterClientConfig)
 
-	logger := flogging.MustGetLogger("orderer.common.cluster")
-
 	r := createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer)
 	// Only clusters that are equipped with a recent config block can replicate.
 	if clusterType && conf.General.GenesisMethod == "file" {
