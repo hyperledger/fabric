@@ -67,6 +67,17 @@ var _ = Describe("Lifecycle", func() {
 			err := l.Serializer.Serialize(lifecycle.NamespacesName, "cc-name", &lifecycle.DefinedChaincode{
 				Version: "version",
 				Hash:    []byte("hash"),
+				Collections: &cb.CollectionConfigPackage{
+					Config: []*cb.CollectionConfig{
+						{
+							Payload: &cb.CollectionConfig_StaticCollectionConfig{
+								StaticCollectionConfig: &cb.StaticCollectionConfig{
+									Name: "collection-name",
+								},
+							},
+						},
+					},
+				},
 			}, fakePublicState)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -185,7 +196,7 @@ var _ = Describe("Lifecycle", func() {
 				Expect(res.Name).To(Equal("cc-name"))
 				Expect(res.Version).To(Equal("version"))
 				Expect(res.Hash).To(Equal([]byte("hash")))
-				Expect(proto.Equal(res.ExplicitCollectionConfigPkg, &cb.CollectionConfigPackage{})).To(BeTrue())
+				Expect(len(res.ExplicitCollectionConfigPkg.Config)).To(Equal(1))
 				Expect(len(res.ImplicitCollections)).To(Equal(2))
 			})
 
@@ -259,25 +270,73 @@ var _ = Describe("Lifecycle", func() {
 		})
 
 		Describe("CollectionInfo", func() {
-			var (
-				collInfo *cb.StaticCollectionConfig
-			)
-
-			BeforeEach(func() {
-				collInfo = &cb.StaticCollectionConfig{}
-				fakeLegacyProvider.CollectionInfoReturns(collInfo, fmt.Errorf("collection-info-error"))
+			It("returns the collection info as defined in the new lifecycle", func() {
+				res, err := l.CollectionInfo("channel-name", "cc-name", "collection-name", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proto.Equal(res, &cb.StaticCollectionConfig{
+					Name: "collection-name",
+				})).To(BeTrue())
 			})
 
-			It("passes through to the legacy impl", func() {
-				res, err := l.CollectionInfo("channel-name", "legacy-name", "collection-name", fakeQueryExecutor)
-				Expect(res).To(Equal(collInfo))
-				Expect(err).To(MatchError("collection-info-error"))
-				Expect(fakeLegacyProvider.CollectionInfoCallCount()).To(Equal(1))
-				channelID, ccName, collName, qe := fakeLegacyProvider.CollectionInfoArgsForCall(0)
-				Expect(channelID).To(Equal("channel-name"))
-				Expect(ccName).To(Equal("legacy-name"))
-				Expect(collName).To(Equal("collection-name"))
-				Expect(qe).To(Equal(fakeQueryExecutor))
+			Context("when no matching collection is found", func() {
+				It("returns nil", func() {
+					res, err := l.CollectionInfo("channel-name", "cc-name", "non-extant-name", fakeQueryExecutor)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(res).To(BeNil())
+				})
+			})
+
+			Context("when the chaincode in question is +lifecycle", func() {
+				It("skips the existence checks and checks the implicit collections", func() {
+					res, err := l.CollectionInfo("channel-name", "+lifecycle", "_implicit_org_first-mspid", fakeQueryExecutor)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(res).NotTo(BeNil())
+				})
+			})
+
+			Context("when the ledger returns an error", func() {
+				BeforeEach(func() {
+					fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := l.CollectionInfo("channel-name", "cc-name", "collection-name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not get chaincode: could not deserialize metadata for chaincode cc-name: could not query metadata for namespace namespaces/cc-name: state-error"))
+				})
+			})
+
+			Context("when the chaincode is not in the new lifecycle", func() {
+				var (
+					collInfo *cb.StaticCollectionConfig
+				)
+
+				BeforeEach(func() {
+					collInfo = &cb.StaticCollectionConfig{}
+					fakeLegacyProvider.CollectionInfoReturns(collInfo, fmt.Errorf("collection-info-error"))
+				})
+
+				It("passes through to the legacy impl", func() {
+					res, err := l.CollectionInfo("channel-name", "legacy-name", "collection-name", fakeQueryExecutor)
+					Expect(res).To(Equal(collInfo))
+					Expect(err).To(MatchError("collection-info-error"))
+					Expect(fakeLegacyProvider.CollectionInfoCallCount()).To(Equal(1))
+					channelID, ccName, collName, qe := fakeLegacyProvider.CollectionInfoArgsForCall(0)
+					Expect(channelID).To(Equal("channel-name"))
+					Expect(ccName).To(Equal("legacy-name"))
+					Expect(collName).To(Equal("collection-name"))
+					Expect(qe).To(Equal(fakeQueryExecutor))
+				})
+			})
+
+			Context("when the data is corrupt", func() {
+				BeforeEach(func() {
+					fakePublicState["namespaces/fields/cc-name/Version"] = []byte("garbage")
+				})
+
+				It("wraps and returns that error", func() {
+					_, err := l.CollectionInfo("channel-name", "cc-name", "collection-name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
+				})
 			})
 		})
 
