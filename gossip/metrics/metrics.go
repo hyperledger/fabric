@@ -10,16 +10,18 @@ import "github.com/hyperledger/fabric/common/metrics"
 
 // GossipMetrics encapsulates all of gossip metrics
 type GossipMetrics struct {
-	StateMetrics    *StateMetrics
-	ElectionMetrics *ElectionMetrics
-	CommMetrics     *CommMetrics
+	StateMetrics      *StateMetrics
+	ElectionMetrics   *ElectionMetrics
+	CommMetrics       *CommMetrics
+	MembershipMetrics *MembershipMetrics
 }
 
 func NewGossipMetrics(p metrics.Provider) *GossipMetrics {
 	return &GossipMetrics{
-		StateMetrics:    newStateMetrics(p),
-		ElectionMetrics: newElectionMetrics(p),
-		CommMetrics:     newCommMetrics(p),
+		StateMetrics:      newStateMetrics(p),
+		ElectionMetrics:   newElectionMetrics(p),
+		CommMetrics:       newCommMetrics(p),
+		MembershipMetrics: newMembershipMetrics(p),
 	}
 }
 
@@ -127,5 +129,27 @@ var (
 		Name:         "messages_received",
 		Help:         "Number of messages received",
 		StatsdFormat: "%{#fqname}",
+	}
+)
+
+// MembershipMetrics encapsulates gossip channel membership related metrics
+type MembershipMetrics struct {
+	Total metrics.Gauge
+}
+
+func newMembershipMetrics(p metrics.Provider) *MembershipMetrics {
+	return &MembershipMetrics{
+		Total: p.NewGauge(TotalOpts),
+	}
+}
+
+var (
+	TotalOpts = metrics.GaugeOpts{
+		Namespace:    "gossip",
+		Subsystem:    "membership",
+		Name:         "total_peers_known",
+		Help:         "Total known peers",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
 	}
 )

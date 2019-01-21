@@ -43,4 +43,7 @@ func TestMetrics(t *testing.T) {
 	assert.NotNil(t, gossipMetrics.CommMetrics.ReceivedMessages)
 	assert.NotNil(t, gossipMetrics.CommMetrics.BufferOverflow)
 
+	assert.NotNil(t, gossipMetrics.MembershipMetrics)
+	assert.NotNil(t, gossipMetrics.MembershipMetrics.Total)
+
 }
