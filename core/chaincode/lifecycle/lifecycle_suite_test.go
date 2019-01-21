@@ -35,6 +35,12 @@ type sccFunctions interface {
 	lifecycle.SCCFunctions
 }
 
+//go:generate counterfeiter -o mock/rw_state.go --fake-name ReadWritableState . readWritableState
+type readWritableState interface {
+	lifecycle.ReadWritableState
+	lifecycle.OpaqueState
+}
+
 func TestLifecycle(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Lifecycle Suite")

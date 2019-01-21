@@ -3,8 +3,6 @@ package mock
 
 import (
 	"sync"
-
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 )
 
 type ReadWritableState struct {
@@ -43,6 +41,19 @@ type ReadWritableState struct {
 	}
 	delStateReturnsOnCall map[int]struct {
 		result1 error
+	}
+	GetStateHashStub        func(key string) (value []byte, err error)
+	getStateHashMutex       sync.RWMutex
+	getStateHashArgsForCall []struct {
+		key string
+	}
+	getStateHashReturns struct {
+		result1 []byte
+		result2 error
+	}
+	getStateHashReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -201,6 +212,57 @@ func (fake *ReadWritableState) DelStateReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *ReadWritableState) GetStateHash(key string) (value []byte, err error) {
+	fake.getStateHashMutex.Lock()
+	ret, specificReturn := fake.getStateHashReturnsOnCall[len(fake.getStateHashArgsForCall)]
+	fake.getStateHashArgsForCall = append(fake.getStateHashArgsForCall, struct {
+		key string
+	}{key})
+	fake.recordInvocation("GetStateHash", []interface{}{key})
+	fake.getStateHashMutex.Unlock()
+	if fake.GetStateHashStub != nil {
+		return fake.GetStateHashStub(key)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.getStateHashReturns.result1, fake.getStateHashReturns.result2
+}
+
+func (fake *ReadWritableState) GetStateHashCallCount() int {
+	fake.getStateHashMutex.RLock()
+	defer fake.getStateHashMutex.RUnlock()
+	return len(fake.getStateHashArgsForCall)
+}
+
+func (fake *ReadWritableState) GetStateHashArgsForCall(i int) string {
+	fake.getStateHashMutex.RLock()
+	defer fake.getStateHashMutex.RUnlock()
+	return fake.getStateHashArgsForCall[i].key
+}
+
+func (fake *ReadWritableState) GetStateHashReturns(result1 []byte, result2 error) {
+	fake.GetStateHashStub = nil
+	fake.getStateHashReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ReadWritableState) GetStateHashReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.GetStateHashStub = nil
+	if fake.getStateHashReturnsOnCall == nil {
+		fake.getStateHashReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.getStateHashReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *ReadWritableState) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -210,6 +272,8 @@ func (fake *ReadWritableState) Invocations() map[string][][]interface{} {
 	defer fake.putStateMutex.RUnlock()
 	fake.delStateMutex.RLock()
 	defer fake.delStateMutex.RUnlock()
+	fake.getStateHashMutex.RLock()
+	defer fake.getStateHashMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
@@ -228,5 +292,3 @@ func (fake *ReadWritableState) recordInvocation(key string, args []interface{}) 
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ lifecycle.ReadWritableState = new(ReadWritableState)
