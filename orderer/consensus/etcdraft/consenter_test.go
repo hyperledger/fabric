@@ -77,7 +77,7 @@ var _ = Describe("Consenter", func() {
 	When("the consenter is extracting the channel", func() {
 		It("extracts successfully from step requests", func() {
 			consenter := newConsenter(chainGetter)
-			ch := consenter.TargetChannel(&orderer.StepRequest{Channel: "mychannel"})
+			ch := consenter.TargetChannel(&orderer.ConsensusRequest{Channel: "mychannel"})
 			Expect(ch).To(BeIdenticalTo("mychannel"))
 		})
 		It("extracts successfully from submit requests", func() {

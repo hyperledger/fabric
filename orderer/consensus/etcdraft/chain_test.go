@@ -1514,12 +1514,12 @@ var _ = Describe("Chain", func() {
 					c1.cutter.CutNext = true
 
 					step1 := c1.getStepFunc()
-					count := c1.rpc.StepCallCount() // record current step call count
-					c1.setStepFunc(func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+					count := c1.rpc.SendConsensusCallCount() // record current step call count
+					c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 						// disconnect network after 4 MsgApp are sent by c1:
 						// - 2 MsgApp to c2 & c3 that replicate data to raft followers
 						// - 2 MsgApp to c2 & c3 that instructs followers to commit data
-						if c1.rpc.StepCallCount() == count+4 {
+						if c1.rpc.SendConsensusCallCount() == count+4 {
 							defer network.disconnect(1)
 						}
 
@@ -1590,12 +1590,12 @@ var _ = Describe("Chain", func() {
 					c1.cutter.CutNext = true
 
 					step1 := c1.getStepFunc()
-					count := c1.rpc.StepCallCount() // record current step call count
-					c1.setStepFunc(func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+					count := c1.rpc.SendConsensusCallCount() // record current step call count
+					c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 						// disconnect network after 4 MsgApp are sent by c1:
 						// - 2 MsgApp to c2 & c3 that replicate data to raft followers
 						// - 2 MsgApp to c2 & c3 that instructs followers to commit data
-						if c1.rpc.StepCallCount() == count+4 {
+						if c1.rpc.SendConsensusCallCount() == count+4 {
 							defer func() {
 								network.disconnect(1)
 								network.disconnect(2)
@@ -1672,12 +1672,12 @@ var _ = Describe("Chain", func() {
 					c1.cutter.CutNext = true
 
 					step1 := c1.getStepFunc()
-					count := c1.rpc.StepCallCount() // record current step call count
-					c1.setStepFunc(func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+					count := c1.rpc.SendConsensusCallCount() // record current step call count
+					c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 						// disconnect network after 4 MsgApp are sent by c1:
 						// - 2 MsgApp to c2 & c3 that replicate data to raft followers
 						// - 2 MsgApp to c2 & c3 that instructs followers to commit data
-						if c1.rpc.StepCallCount() == count+4 {
+						if c1.rpc.SendConsensusCallCount() == count+4 {
 							defer network.disconnect(1)
 						}
 
@@ -2011,16 +2011,16 @@ var _ = Describe("Chain", func() {
 				c2.cutter.CutNext = true
 
 				step1 := c1.getStepFunc()
-				c1.setStepFunc(func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+				c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 					stepMsg := &raftpb.Message{}
 					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
 
 					if dest == 3 {
-						return nil, nil
+						return nil
 					}
 
 					if stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) == 0 {
-						return nil, nil
+						return nil
 					}
 
 					return step1(dest, msg)
@@ -2035,14 +2035,14 @@ var _ = Describe("Chain", func() {
 				network.disconnect(1)
 
 				step2 := c2.getStepFunc()
-				c2.setStepFunc(func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+				c2.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 					stepMsg := &raftpb.Message{}
 					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
 
 					if stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) != 0 && dest == 3 {
 						for _, ent := range stepMsg.Entries {
 							if len(ent.Data) != 0 {
-								return nil, nil
+								return nil
 							}
 						}
 					}
@@ -2490,7 +2490,7 @@ func marshalOrPanic(pb proto.Message) []byte {
 }
 
 // helpers to facilitate tests
-type stepFunc func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error)
+type stepFunc func(dest uint64, msg *orderer.ConsensusRequest) error
 
 type chain struct {
 	id uint64
@@ -2673,7 +2673,7 @@ func (n *network) addConnection(id uint64) {
 func (n *network) addChain(c *chain) {
 	n.addConnection(c.id)
 
-	c.step = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+	c.step = func(dest uint64, msg *orderer.ConsensusRequest) error {
 		n.connLock.RLock()
 		defer n.connLock.RUnlock()
 
@@ -2686,14 +2686,14 @@ func (n *network) addChain(c *chain) {
 			target := n.chains[dest]
 			go func() {
 				defer GinkgoRecover()
-				target.Step(msg, c.id)
+				target.Consensus(msg, c.id)
 			}()
 		}
 
-		return nil, nil
+		return nil
 	}
 
-	c.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+	c.rpc.SendConsensusStub = func(dest uint64, msg *orderer.ConsensusRequest) error {
 		c.stepLock.RLock()
 		defer c.stepLock.RUnlock()
 		return c.step(dest, msg)
@@ -2834,7 +2834,7 @@ func (n *network) join(id uint64, expectLeaderChange bool) {
 	leader, follower := n.chains[n.leader], n.chains[id]
 	step := leader.getStepFunc()
 	signal := make(chan struct{})
-	leader.setStepFunc(func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+	leader.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 		if dest == id {
 			// close signal channel when a message targeting newly
 			// joined node is observed on wire.
@@ -2870,7 +2870,7 @@ func (n *network) elect(id uint64) {
 	n.connLock.RUnlock()
 
 	// Send node an artificial MsgTimeoutNow to emulate leadership transfer.
-	c.Step(&orderer.StepRequest{Payload: utils.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow})}, 0)
+	c.Consensus(&orderer.ConsensusRequest{Payload: utils.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow})}, 0)
 	Eventually(c.observe, LongEventualTimeout).Should(Receive(StateEqual(id, raft.StateLeader)))
 
 	// now observe leader change on other nodes

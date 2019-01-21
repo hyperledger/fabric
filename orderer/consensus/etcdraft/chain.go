@@ -47,7 +47,7 @@ type Configurator interface {
 
 // RPC is used to mock the transport layer in tests.
 type RPC interface {
-	Step(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error)
+	SendConsensus(dest uint64, msg *orderer.ConsensusRequest) error
 	SendSubmit(dest uint64, request *orderer.SubmitRequest) error
 }
 
@@ -253,7 +253,7 @@ func (c *Chain) Start() {
 
 // Order submits normal type transactions for ordering.
 func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
-	return c.Submit(&orderer.SubmitRequest{LastValidationSeq: configSeq, Content: env, Channel: c.channelID}, 0)
+	return c.Submit(&orderer.SubmitRequest{LastValidationSeq: configSeq, Payload: env, Channel: c.channelID}, 0)
 }
 
 // Configure submits config type transactions for ordering.
@@ -261,7 +261,7 @@ func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 	if err := c.checkConfigUpdateValidity(env); err != nil {
 		return err
 	}
-	return c.Submit(&orderer.SubmitRequest{LastValidationSeq: configSeq, Content: env, Channel: c.channelID}, 0)
+	return c.Submit(&orderer.SubmitRequest{LastValidationSeq: configSeq, Payload: env, Channel: c.channelID}, 0)
 }
 
 // Validate the config update for being of Type A or Type B as described in the design doc.
@@ -356,8 +356,8 @@ func (c *Chain) isRunning() error {
 	return nil
 }
 
-// Step passes the given StepRequest message to the raft.Node instance
-func (c *Chain) Step(req *orderer.StepRequest, sender uint64) error {
+// Consensus passes the given ConsensusRequest message to the raft.Node instance
+func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	if err := c.isRunning(); err != nil {
 		return err
 	}
@@ -632,10 +632,10 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelope, pending bool, err error) {
 	seq := c.support.Sequence()
 
-	if c.isConfig(msg.Content) {
+	if c.isConfig(msg.Payload) {
 		// ConfigMsg
 		if msg.LastValidationSeq < seq {
-			msg.Content, _, err = c.support.ProcessConfigMsg(msg.Content)
+			msg.Payload, _, err = c.support.ProcessConfigMsg(msg.Payload)
 			if err != nil {
 				return nil, true, errors.Errorf("bad config message: %s", err)
 			}
@@ -645,16 +645,16 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 		if len(batch) != 0 {
 			batches = append(batches, batch)
 		}
-		batches = append(batches, []*common.Envelope{msg.Content})
+		batches = append(batches, []*common.Envelope{msg.Payload})
 		return batches, false, nil
 	}
 	// it is a normal message
 	if msg.LastValidationSeq < seq {
-		if _, err := c.support.ProcessNormalMsg(msg.Content); err != nil {
+		if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
 			return nil, true, errors.Errorf("bad normal message: %s", err)
 		}
 	}
-	batches, pending = c.support.BlockCutter().Ordered(msg.Content)
+	batches, pending = c.support.BlockCutter().Ordered(msg.Payload)
 	return batches, pending, nil
 
 }
