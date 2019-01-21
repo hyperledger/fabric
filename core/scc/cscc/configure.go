@@ -39,7 +39,7 @@ import (
 // Typically, only one will be created per peer instance.
 func New(ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider,
 	aclProvider aclmgmt.ACLProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-	lifecycle plugindispatcher.LifecycleResources) *PeerConfiger {
+	lr, nr plugindispatcher.LifecycleResources) *PeerConfiger {
 	return &PeerConfiger{
 		policyChecker: policy.NewPolicyChecker(
 			peer.NewChannelPolicyManagerGetter(),
@@ -51,7 +51,8 @@ func New(ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodePro
 		sccp:                   sccp,
 		aclProvider:            aclProvider,
 		deployedCCInfoProvider: deployedCCInfoProvider,
-		lifecycle:              lifecycle,
+		legacyLifecycle:        lr,
+		newLifecycle:           nr,
 	}
 }
 
@@ -73,7 +74,8 @@ type PeerConfiger struct {
 	sccp                   sysccprovider.SystemChaincodeProvider
 	aclProvider            aclmgmt.ACLProvider
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
-	lifecycle              plugindispatcher.LifecycleResources
+	legacyLifecycle        plugindispatcher.LifecycleResources
+	newLifecycle           plugindispatcher.LifecycleResources
 }
 
 var cnflogger = flogging.MustGetLogger("cscc")
@@ -169,7 +171,7 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 		}
 
-		return joinChain(cid, block, e.ccp, e.sccp, e.deployedCCInfoProvider, e.lifecycle)
+		return joinChain(cid, block, e.ccp, e.sccp, e.deployedCCInfoProvider, e.legacyLifecycle, e.newLifecycle)
 	case GetConfigBlock:
 		// 2. check policy
 		if err = e.aclProvider.CheckACL(resources.Cscc_GetConfigBlock, string(args[1]), sp); err != nil {
@@ -244,8 +246,8 @@ func validateConfigBlock(block *common.Block) error {
 // joinChain will join the specified chain in the configuration block.
 // Since it is the first block, it is the genesis block containing configuration
 // for this chain, so we want to update the Chain object with this info
-func joinChain(chainID string, block *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lifecycle plugindispatcher.LifecycleResources) pb.Response {
-	if err := peer.CreateChainFromBlock(block, ccp, sccp, deployedCCInfoProvider, lifecycle); err != nil {
+func joinChain(chainID string, block *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr, nr plugindispatcher.LifecycleResources) pb.Response {
+	if err := peer.CreateChainFromBlock(block, ccp, sccp, deployedCCInfoProvider, lr, nr); err != nil {
 		return shim.Error(err.Error())
 	}
 

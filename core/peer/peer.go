@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
+	vir "github.com/hyperledger/fabric/core/committer/txvalidator/v20/valinforetriever"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -208,7 +209,8 @@ var validationWorkersSemaphore semaphore.Semaphore
 // ready
 func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider,
 	pm plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-	membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider, chaincodeSupport plugindispatcher.LifecycleResources) {
+	membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider,
+	legacyLifecycleValidation, newLifecycleValidation plugindispatcher.LifecycleResources) {
 	nWorkers := viper.GetInt("peer.validatorPoolSize")
 	if nWorkers <= 0 {
 		nWorkers = runtime.NumCPU()
@@ -244,7 +246,7 @@ func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccp
 			continue
 		}
 		// Create a chain if we get a valid ledger with config block
-		if err = createChain(cid, ledger, cb, ccp, sccp, pm, deployedCCInfoProvider, chaincodeSupport); err != nil {
+		if err = createChain(cid, ledger, cb, ccp, sccp, pm, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation); err != nil {
 			peerLogger.Warningf("Failed to load chain %s(%s)", cid, err)
 			peerLogger.Debugf("Error reloading chain %s with message %s. We continue to the next chain rather than abort.", cid, err)
 			continue
@@ -296,7 +298,8 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccprovider.ChaincodeProvider,
 	sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-	chaincodeSupport plugindispatcher.LifecycleResources,
+	legacyLifecycleValidation plugindispatcher.LifecycleResources,
+	newLifecycleValidation plugindispatcher.LifecycleResources,
 ) error {
 	chanConf, err := retrievePersistedChannelConfig(ledger)
 	if err != nil {
@@ -386,7 +389,11 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 		peerSingletonCallback,
 	)
 
-	validator := txvalidator.NewTxValidator(cid, validationWorkersSemaphore, cs, chaincodeSupport, sccp, pm, NewChannelPolicyManagerGetter())
+	vInfoShim := &vir.ValidationInfoRetrieveShim{
+		New:    newLifecycleValidation,
+		Legacy: legacyLifecycleValidation,
+	}
+	validator := txvalidator.NewTxValidator(cid, validationWorkersSemaphore, cs, vInfoShim, sccp, pm, NewChannelPolicyManagerGetter())
 	c := committer.NewLedgerCommitterReactive(ledger, func(block *common.Block) error {
 		chainID, err := utils.GetChainIDFromBlock(block)
 		if err != nil {
@@ -431,7 +438,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 }
 
 // CreateChainFromBlock creates a new chain from config block
-func CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources) error {
+func CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, legacyLifecycleValidation, newLifecycleValidation plugindispatcher.LifecycleResources) error {
 	cid, err := utils.GetChainIDFromBlock(cb)
 	if err != nil {
 		return err
@@ -442,7 +449,7 @@ func CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sc
 		return errors.WithMessage(err, "cannot create ledger from genesis block")
 	}
 
-	return createChain(cid, l, cb, ccp, sccp, pluginMapper, deployedCCInfoProvider, lr)
+	return createChain(cid, l, cb, ccp, sccp, pluginMapper, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
 }
 
 // GetLedger returns the ledger of the chain with chain ID. Note that this

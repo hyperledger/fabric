@@ -23,7 +23,7 @@ type ValidationInfoRetrieveShim struct {
 	New    plugindispatcher.LifecycleResources
 }
 
-func (v *ValidationInfoRetrieveShim) ValidationInfo(channelID, chaincodeName string, qe ledger.QueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error) {
+func (v *ValidationInfoRetrieveShim) ValidationInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error) {
 	plugin, args, unexpectedErr, validationErr = v.New.ValidationInfo(channelID, chaincodeName, qe)
 	if unexpectedErr != nil || validationErr != nil || plugin != "" || args != nil {
 		return

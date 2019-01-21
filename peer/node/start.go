@@ -370,7 +370,7 @@ func serve(args []string) error {
 		ccSupSrv = authenticator.Wrap(ccSupSrv)
 	}
 
-	csccInst := cscc.New(ccp, sccp, aclProvider, lifecycleImpl, lsccInst)
+	csccInst := cscc.New(ccp, sccp, aclProvider, lifecycleImpl, lsccInst, lifecycleImpl)
 	qsccInst := qscc.New(aclProvider)
 
 	//Now that chaincode is initialized, register all system chaincodes.
@@ -495,7 +495,7 @@ func serve(args []string) error {
 		}
 		cceventmgmt.GetMgr().Register(cid, sub)
 	}, ccp, sccp, plugin.MapBasedMapper(validationPluginsByName),
-		pr, lifecycleImpl, membershipInfoProvider, metricsProvider, lsccInst)
+		pr, lifecycleImpl, membershipInfoProvider, metricsProvider, lsccInst, lifecycleImpl)
 
 	if viper.GetBool("peer.discovery.enabled") {
 		registerDiscoveryService(peerServer, policyMgr, lifecycle)
