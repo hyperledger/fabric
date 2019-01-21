@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/filter"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
+	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
@@ -176,7 +177,8 @@ func (mf *membershipFilter) GetMembership() []discovery.NetworkMember {
 
 // NewGossipChannel creates a new GossipChannel
 func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.MessageCryptoService,
-	chainID common.ChainID, adapter Adapter, joinMsg api.JoinChannelMessage) GossipChannel {
+	chainID common.ChainID, adapter Adapter, joinMsg api.JoinChannelMessage,
+	metrics *metrics.MembershipMetrics) GossipChannel {
 	gc := &gossipChannel{
 		incTime:                   uint64(time.Now().UnixNano()),
 		selfOrg:                   org,
@@ -275,6 +277,8 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 		report:          gc.reportMembershipChanges,
 		stopChan:        make(chan struct{}, 1),
 		tickerChannel:   ticker.C,
+		metrics:         metrics,
+		chainID:         chainID,
 	}
 
 	go gc.membershipTracker.trackMembershipChanges()
@@ -1006,6 +1010,8 @@ type membershipTracker struct {
 	report          func(...interface{})
 	stopChan        chan struct{}
 	tickerChannel   <-chan time.Time
+	metrics         *metrics.MembershipMetrics
+	chainID         common.ChainID
 }
 
 //endpoints return all peers by their endpoints
@@ -1073,6 +1079,7 @@ func (mt *membershipTracker) trackMembershipChanges() {
 		case <-mt.tickerChannel:
 			//get current peers
 			currPeers := mt.getPeersToTrack()
+			mt.metrics.Total.With("channel", string(mt.chainID)).Set(float64(len(currPeers)))
 			currSetPeers = mt.createSetOfPeers(currPeers)
 			mt.checkIfPeersChanged(prev, currPeers, prevSetPeers, currSetPeers)
 			prev = currPeers

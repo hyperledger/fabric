@@ -189,7 +189,7 @@ func (g *gossipServiceImpl) toDie() bool {
 
 func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID) {
 	// joinMsg is supposed to have been already verified
-	g.chanState.joinChannel(joinMsg, chainID)
+	g.chanState.joinChannel(joinMsg, chainID, g.gossipMetrics.MembershipMetrics)
 
 	g.logger.Info("Joining gossip network of channel", string(chainID), "with", len(joinMsg.Members()), "organizations")
 	for _, org := range joinMsg.Members() {

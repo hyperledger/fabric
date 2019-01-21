@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
+	"github.com/hyperledger/fabric/gossip/metrics"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
@@ -93,7 +94,8 @@ func (cs *channelState) getGossipChannelByChainID(chainID common.ChainID) channe
 	return cs.channels[string(chainID)]
 }
 
-func (cs *channelState) joinChannel(joinMsg api.JoinChannelMessage, chainID common.ChainID) {
+func (cs *channelState) joinChannel(joinMsg api.JoinChannelMessage, chainID common.ChainID,
+	metrics *metrics.MembershipMetrics) {
 	if cs.isStopping() {
 		return
 	}
@@ -102,7 +104,7 @@ func (cs *channelState) joinChannel(joinMsg api.JoinChannelMessage, chainID comm
 	if gc, exists := cs.channels[string(chainID)]; !exists {
 		pkiID := cs.g.comm.GetPKIid()
 		ga := &gossipAdapterImpl{gossipServiceImpl: cs.g, Discovery: cs.g.disc}
-		gc := channel.NewGossipChannel(pkiID, cs.g.selfOrg, cs.g.mcs, chainID, ga, joinMsg)
+		gc := channel.NewGossipChannel(pkiID, cs.g.selfOrg, cs.g.mcs, chainID, ga, joinMsg, metrics)
 		cs.channels[string(chainID)] = gc
 	} else {
 		gc.ConfigureChannel(joinMsg)
