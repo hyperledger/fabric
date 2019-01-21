@@ -19,6 +19,7 @@ import (
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v12"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v13"
+	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v20"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
@@ -36,6 +37,7 @@ type DefaultValidation struct {
 	Capabilities    Capabilities
 	TxValidatorV1_2 TransactionValidator
 	TxValidatorV1_3 TransactionValidator
+	TxValidatorV2_0 TransactionValidator
 }
 
 //go:generate mockery -dir . -name TransactionValidator -case underscore -output mocks/
@@ -65,7 +67,8 @@ func (v *DefaultValidation) Validate(block *common.Block, namespace string, txPo
 	var err error
 	switch {
 	case v.Capabilities.V2_0Validation():
-		fallthrough
+		err = v.TxValidatorV2_0.Validate(block, namespace, txPosition, actionPosition, serializedPolicy.Bytes())
+
 	case v.Capabilities.V1_3Validation():
 		err = v.TxValidatorV1_3.Validate(block, namespace, txPosition, actionPosition, serializedPolicy.Bytes())
 
@@ -133,6 +136,7 @@ func (v *DefaultValidation) Init(dependencies ...validation.Dependency) error {
 	v.Capabilities = c
 	v.TxValidatorV1_2 = v12.New(c, sf, d, pe)
 	v.TxValidatorV1_3 = v13.New(c, sf, d, pe)
+	v.TxValidatorV2_0 = v20.New(c, sf, d, pe)
 
 	return nil
 }
