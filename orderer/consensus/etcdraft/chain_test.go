@@ -868,8 +868,8 @@ var _ = Describe("Chain", func() {
 						}()
 
 						Consistently(done).ShouldNot(Receive())
-						close(signal) // unblock block puller
-
+						close(signal)                         // unblock block puller
+						Eventually(done).Should(Receive(nil)) // WaitReady should be unblocked
 						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					})
 
@@ -2746,35 +2746,27 @@ func (n *network) start(ids ...uint64) {
 		}
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(len(nodes))
-	for _, i := range nodes {
-		go func(id uint64) {
-			defer GinkgoRecover()
-			n.chains[id].Start()
-			n.chains[id].unstarted = nil
+	for _, id := range nodes {
+		n.chains[id].start()
 
-			// When the Raft node bootstraps, it produces a ConfChange
-			// to add itself, which needs to be consumed with Ready().
-			// If there are pending configuration changes in raft,
-			// it refused to campaign, no matter how many ticks supplied.
-			// This is not a problem in production code because eventually
-			// raft.Ready will be consumed as real time goes by.
-			//
-			// However, this is problematic when using fake clock and artificial
-			// ticks. Instead of ticking raft indefinitely until raft.Ready is
-			// consumed, this check is added to indirectly guarantee
-			// that first ConfChange is actually consumed and we can safely
-			// proceed to tick raft.
-			Eventually(func() error {
-				_, err := n.chains[id].storage.Entries(1, 1, 1)
-				return err
-			}).ShouldNot(HaveOccurred())
-			Eventually(n.chains[id].WaitReady).ShouldNot(HaveOccurred())
-			wg.Done()
-		}(i)
+		// When the Raft node bootstraps, it produces a ConfChange
+		// to add itself, which needs to be consumed with Ready().
+		// If there are pending configuration changes in raft,
+		// it refused to campaign, no matter how many ticks supplied.
+		// This is not a problem in production code because eventually
+		// raft.Ready will be consumed as real time goes by.
+		//
+		// However, this is problematic when using fake clock and artificial
+		// ticks. Instead of ticking raft indefinitely until raft.Ready is
+		// consumed, this check is added to indirectly guarantee
+		// that first ConfChange is actually consumed and we can safely
+		// proceed to tick raft.
+		Eventually(func() error {
+			_, err := n.chains[id].storage.Entries(1, 1, 1)
+			return err
+		}).ShouldNot(HaveOccurred())
+		Eventually(n.chains[id].WaitReady).ShouldNot(HaveOccurred())
 	}
-	wg.Wait()
 }
 
 func (n *network) stop(ids ...uint64) {
