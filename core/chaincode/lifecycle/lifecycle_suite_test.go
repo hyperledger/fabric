@@ -20,6 +20,11 @@ type chaincodeStub interface {
 	shim.ChaincodeStubInterface
 }
 
+//go:generate counterfeiter -o mock/state_iterator.go --fake-name StateIterator . stateIterator
+type stateIterator interface {
+	shim.StateQueryIteratorInterface
+}
+
 //go:generate counterfeiter -o mock/chaincode_store.go --fake-name ChaincodeStore . chaincodeStore
 type chaincodeStore interface {
 	lifecycle.ChaincodeStore
