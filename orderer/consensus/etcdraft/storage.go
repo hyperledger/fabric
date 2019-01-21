@@ -200,9 +200,9 @@ func (rs *RaftStorage) saveSnap(snap raftpb.Snapshot) error {
 }
 
 // TakeSnapshot takes a snapshot at index i from MemoryStorage, and persists it to wal and disk.
-func (rs *RaftStorage) TakeSnapshot(i uint64, cs *raftpb.ConfState, data []byte) error {
+func (rs *RaftStorage) TakeSnapshot(i uint64, cs raftpb.ConfState, data []byte) error {
 	rs.lg.Debugf("Creating snapshot at index %d from MemoryStorage", i)
-	snap, err := rs.ram.CreateSnapshot(i, cs, data)
+	snap, err := rs.ram.CreateSnapshot(i, &cs, data)
 	if err != nil {
 		return errors.Errorf("failed to create snapshot from MemoryStorage: %s", err)
 	}
@@ -219,7 +219,7 @@ func (rs *RaftStorage) TakeSnapshot(i uint64, cs *raftpb.ConfState, data []byte)
 			if err == raft.ErrCompacted {
 				rs.lg.Warnf("Raft entries prior to %d are already purged", compacti)
 			} else {
-				rs.lg.Fatalf("Failed to purg raft entries: %s", err)
+				rs.lg.Fatalf("Failed to purge raft entries: %s", err)
 			}
 		}
 	}

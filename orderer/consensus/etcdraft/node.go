@@ -118,9 +118,9 @@ func (n *node) send(msgs []raftpb.Message) {
 	}
 }
 
-func (n *node) takeSnapshot(index uint64, cs *raftpb.ConfState, data []byte) {
+func (n *node) takeSnapshot(index uint64, cs raftpb.ConfState, data []byte) {
 	if err := n.storage.TakeSnapshot(index, cs, data); err != nil {
-		n.logger.Panicf("Failed to create snapshot at index %d: %s", index, err)
+		n.logger.Errorf("Failed to create snapshot at index %d: %s", index, err)
 	}
 }
 
