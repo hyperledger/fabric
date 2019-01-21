@@ -34,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
+	"github.com/hyperledger/fabric/core/scc/lscc"
 	mocks2 "github.com/hyperledger/fabric/discovery/support/mocks"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -241,6 +242,7 @@ func setupValidatorWithMspMgr(mspmgr msp.MSPManager, mockID *mocks2.Identity) (*
 		semaphore.New(10),
 		&mocktxvalidator.Support{ACVal: v20Capabilities(), MSPManagerVal: mspmgr},
 		mockLedger,
+		&lscc.LifeCycleSysCC{},
 		mp,
 		pm,
 	)
@@ -855,29 +857,6 @@ func TestInvokeNOKInvokesEmptyCCName(t *testing.T) {
 	assertInvalid(b, t, peer.TxValidationCode_INVALID_OTHER_REASON)
 }
 
-func TestInvokeNOKExpiredCC(t *testing.T) {
-	ccID := "mycc"
-
-	v, mockQE, _ := setupValidator()
-
-	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
-		Name:    ccID,
-		Version: "badversion",
-		Vscc:    "vscc",
-		Policy:  signedByAnyMember([]string{"SampleOrg"}),
-	}), nil)
-
-	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
-		Header: &common.BlockHeader{},
-	}
-
-	err := v.Validate(b)
-	assert.NoError(t, err)
-	assertInvalid(b, t, peer.TxValidationCode_EXPIRED_CHAINCODE)
-}
-
 func TestInvokeNOKBogusActions(t *testing.T) {
 	ccID := "ccid"
 
@@ -1168,6 +1147,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 		semaphore.New(10),
 		&mocktxvalidator.Support{ACVal: v20Capabilities(), MSPManagerVal: mspmgr},
 		mockLedger,
+		&lscc.LifeCycleSysCC{},
 		mp,
 		pm,
 	)
@@ -1235,6 +1215,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 		semaphore.New(10),
 		&mocktxvalidator.Support{ACVal: v20Capabilities(), MSPManagerVal: mspmgr},
 		mockLedger,
+		&lscc.LifeCycleSysCC{},
 		mp,
 		pm,
 	)
@@ -1281,6 +1262,7 @@ func TestValidationPluginNotFound(t *testing.T) {
 		semaphore.New(10),
 		&mocktxvalidator.Support{ACVal: v20Capabilities(), MSPManagerVal: mspmgr},
 		mockLedger,
+		&lscc.LifeCycleSysCC{},
 		mp,
 		pm,
 	)

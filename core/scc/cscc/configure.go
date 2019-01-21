@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -37,7 +38,8 @@ import (
 // New creates a new instance of the CSCC.
 // Typically, only one will be created per peer instance.
 func New(ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider,
-	aclProvider aclmgmt.ACLProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) *PeerConfiger {
+	aclProvider aclmgmt.ACLProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	lifecycle plugindispatcher.LifecycleResources) *PeerConfiger {
 	return &PeerConfiger{
 		policyChecker: policy.NewPolicyChecker(
 			peer.NewChannelPolicyManagerGetter(),
@@ -49,6 +51,7 @@ func New(ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodePro
 		sccp:                   sccp,
 		aclProvider:            aclProvider,
 		deployedCCInfoProvider: deployedCCInfoProvider,
+		lifecycle:              lifecycle,
 	}
 }
 
@@ -70,6 +73,7 @@ type PeerConfiger struct {
 	sccp                   sysccprovider.SystemChaincodeProvider
 	aclProvider            aclmgmt.ACLProvider
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
+	lifecycle              plugindispatcher.LifecycleResources
 }
 
 var cnflogger = flogging.MustGetLogger("cscc")
@@ -165,7 +169,7 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 		}
 
-		return joinChain(cid, block, e.ccp, e.sccp, e.deployedCCInfoProvider)
+		return joinChain(cid, block, e.ccp, e.sccp, e.deployedCCInfoProvider, e.lifecycle)
 	case GetConfigBlock:
 		// 2. check policy
 		if err = e.aclProvider.CheckACL(resources.Cscc_GetConfigBlock, string(args[1]), sp); err != nil {
@@ -236,8 +240,8 @@ func validateConfigBlock(block *common.Block) error {
 // joinChain will join the specified chain in the configuration block.
 // Since it is the first block, it is the genesis block containing configuration
 // for this chain, so we want to update the Chain object with this info
-func joinChain(chainID string, block *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) pb.Response {
-	if err := peer.CreateChainFromBlock(block, ccp, sccp, deployedCCInfoProvider); err != nil {
+func joinChain(chainID string, block *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lifecycle plugindispatcher.LifecycleResources) pb.Response {
+	if err := peer.CreateChainFromBlock(block, ccp, sccp, deployedCCInfoProvider, lifecycle); err != nil {
 		return shim.Error(err.Error())
 	}
 

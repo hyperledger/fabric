@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -23,7 +24,7 @@ import (
 // on singletons in the package. This is a step towards moving from package
 // level data for the peer to instance level data.
 type Operations interface {
-	CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) error
+	CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources) error
 	GetChannelConfig(cid string) channelconfig.Resources
 	GetChannelsInfo() []*pb.ChannelInfo
 	GetCurrConfigBlock(cid string) *common.Block
@@ -31,11 +32,11 @@ type Operations interface {
 	GetMSPIDs(cid string) []string
 	GetPolicyManager(cid string) policies.Manager
 	InitChain(cid string)
-	Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider)
+	Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider, lr plugindispatcher.LifecycleResources)
 }
 
 type peerImpl struct {
-	createChainFromBlock func(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) error
+	createChainFromBlock func(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources) error
 	getChannelConfig     func(cid string) channelconfig.Resources
 	getChannelsInfo      func() []*pb.ChannelInfo
 	getCurrConfigBlock   func(cid string) *common.Block
@@ -43,7 +44,7 @@ type peerImpl struct {
 	getMSPIDs            func(cid string) []string
 	getPolicyManager     func(cid string) policies.Manager
 	initChain            func(cid string)
-	initialize           func(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, mapper plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider)
+	initialize           func(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, mapper plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider, pd plugindispatcher.LifecycleResources)
 }
 
 // Default provides in implementation of the Peer interface that provides
@@ -62,8 +63,8 @@ var Default Operations = &peerImpl{
 
 var DefaultSupport Support = &supportImpl{operations: Default}
 
-func (p *peerImpl) CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) error {
-	return p.createChainFromBlock(cb, ccp, sccp, deployedCCInfoProvider)
+func (p *peerImpl) CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources) error {
+	return p.createChainFromBlock(cb, ccp, sccp, deployedCCInfoProvider, lr)
 }
 func (p *peerImpl) GetChannelConfig(cid string) channelconfig.Resources {
 	return p.getChannelConfig(cid)
@@ -74,6 +75,6 @@ func (p *peerImpl) GetLedger(cid string) ledger.PeerLedger       { return p.getL
 func (p *peerImpl) GetMSPIDs(cid string) []string                { return p.getMSPIDs(cid) }
 func (p *peerImpl) GetPolicyManager(cid string) policies.Manager { return p.getPolicyManager(cid) }
 func (p *peerImpl) InitChain(cid string)                         { p.initChain(cid) }
-func (p *peerImpl) Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, mapper plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider) {
-	p.initialize(init, ccp, sccp, mapper, pr, deployedCCInfoProvider, membershipProvider, metricsProvider)
+func (p *peerImpl) Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, mapper plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider, pd plugindispatcher.LifecycleResources) {
+	p.initialize(init, ccp, sccp, mapper, pr, deployedCCInfoProvider, membershipProvider, metricsProvider, pd)
 }
