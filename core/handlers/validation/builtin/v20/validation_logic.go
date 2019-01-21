@@ -27,10 +27,7 @@ var logger = flogging.MustGetLogger("vscc")
 
 var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollectionName)
 
-//go:generate mockery -dir ../../api/capabilities/ -name Capabilities -case underscore -output mocks/
-//go:generate mockery -dir ../../api/state/ -name StateFetcher -case underscore -output mocks/
 //go:generate mockery -dir ../../api/identities/ -name IdentityDeserializer -case underscore -output mocks/
-//go:generate mockery -dir ../../api/policies/ -name PolicyEvaluator -case underscore -output mocks/
 //go:generate mockery -dir . -name StateBasedValidator -case underscore -output mocks/
 
 // New creates a new instance of the default VSCC
@@ -174,17 +171,6 @@ func (vscc *Validator) Validate(
 		logger.Errorf("VSCC error: stateBasedValidator.Validate failed, err %s", txverr)
 		vscc.stateBasedValidator.PostValidate(namespace, block.Header.Number, uint64(txPosition), txverr)
 		return txverr
-	}
-
-	// do some extra validation that is specific to lscc
-	if namespace == "lscc" {
-		logger.Debugf("VSCC info: doing special validation for LSCC")
-		err := vscc.ValidateLSCCInvocation(va.chdr.ChannelId, va.env, va.cap, va.payl, vscc.capabilities)
-		if err != nil {
-			logger.Errorf("VSCC error: ValidateLSCCInvocation failed, err %s", err)
-			vscc.stateBasedValidator.PostValidate(namespace, block.Header.Number, uint64(txPosition), err)
-			return err
-		}
 	}
 
 	vscc.stateBasedValidator.PostValidate(namespace, block.Header.Number, uint64(txPosition), nil)
