@@ -22,12 +22,34 @@ import (
 )
 
 var (
-	submitRequest1  = &orderer.SubmitRequest{}
-	submitRequest2  = &orderer.SubmitRequest{}
-	submitResponse1 = &orderer.SubmitResponse{}
-	submitResponse2 = &orderer.SubmitResponse{}
-	stepRequest     = &orderer.StepRequest{}
-	stepResponse    = &orderer.StepResponse{}
+	submitRequest1 = &orderer.StepRequest{
+		Payload: &orderer.StepRequest_SubmitRequest{
+			SubmitRequest: &orderer.SubmitRequest{},
+		},
+	}
+	submitRequest2 = &orderer.StepRequest{
+		Payload: &orderer.StepRequest_SubmitRequest{
+			SubmitRequest: &orderer.SubmitRequest{},
+		},
+	}
+	submitResponse1 = &orderer.StepResponse{
+		Payload: &orderer.StepResponse_SubmitRes{
+			SubmitRes: &orderer.SubmitResponse{},
+		},
+	}
+	submitResponse2 = &orderer.StepResponse{
+		Payload: &orderer.StepResponse_SubmitRes{
+			SubmitRes: &orderer.SubmitResponse{},
+		},
+	}
+	consensusRequest = &orderer.StepRequest{
+		Payload: &orderer.StepRequest_ConsensusRequest{
+			ConsensusRequest: &orderer.ConsensusRequest{
+				Payload: []byte{1, 2, 3},
+				Channel: "mychannel",
+			},
+		},
+	}
 )
 
 func TestStep(t *testing.T) {
@@ -41,15 +63,22 @@ func TestStep(t *testing.T) {
 	}
 
 	t.Run("Success", func(t *testing.T) {
-		dispatcher.On("DispatchStep", mock.Anything, stepRequest).Return(stepResponse, nil).Once()
-		res, err := svc.Step(context.Background(), stepRequest)
+		stream := &mocks.StepStream{}
+		stream.On("Context").Return(context.Background())
+		stream.On("Recv").Return(consensusRequest, nil).Once()
+		stream.On("Recv").Return(consensusRequest, nil).Once()
+		dispatcher.On("DispatchConsensus", mock.Anything, consensusRequest.GetConsensusRequest()).Return(nil).Once()
+		dispatcher.On("DispatchConsensus", mock.Anything, consensusRequest.GetConsensusRequest()).Return(io.EOF).Once()
+		err := svc.Step(stream)
 		assert.NoError(t, err)
-		assert.Equal(t, stepResponse, res)
 	})
 
 	t.Run("Failure", func(t *testing.T) {
-		dispatcher.On("DispatchStep", mock.Anything, stepRequest).Return(nil, errors.New("oops")).Once()
-		_, err := svc.Step(context.Background(), stepRequest)
+		stream := &mocks.StepStream{}
+		stream.On("Context").Return(context.Background())
+		stream.On("Recv").Return(consensusRequest, nil).Once()
+		dispatcher.On("DispatchConsensus", mock.Anything, consensusRequest.GetConsensusRequest()).Return(errors.New("oops")).Once()
+		err := svc.Step(stream)
 		assert.EqualError(t, err, "oops")
 	})
 }
@@ -58,7 +87,7 @@ func TestSubmitSuccess(t *testing.T) {
 	t.Parallel()
 	dispatcher := &mocks.Dispatcher{}
 
-	stream := &mocks.SubmitStream{}
+	stream := &mocks.StepStream{}
 	stream.On("Context").Return(context.Background())
 	// Send to the stream 2 messages, and afterwards close the stream
 	stream.On("Recv").Return(submitRequest1, nil).Once()
@@ -67,16 +96,16 @@ func TestSubmitSuccess(t *testing.T) {
 	// Send should be called for each corresponding receive
 	stream.On("Send", submitResponse1).Return(nil).Twice()
 
-	responses := make(chan *orderer.SubmitRequest, 2)
+	responses := make(chan *orderer.StepRequest, 2)
 	responses <- submitRequest1
 	responses <- submitRequest2
 
-	dispatcher.On("DispatchSubmit", mock.Anything, mock.Anything).Return(submitResponse1, nil).Once()
-	dispatcher.On("DispatchSubmit", mock.Anything, mock.Anything).Return(submitResponse2, nil).Once()
+	dispatcher.On("DispatchSubmit", mock.Anything, mock.Anything).Return(nil).Once()
+	dispatcher.On("DispatchSubmit", mock.Anything, mock.Anything).Return(nil).Once()
 	// Ensure we pass requests to DispatchSubmit in-order
 	dispatcher.On("DispatchSubmit", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		expectedRequest := <-responses
-		actualRequest := args.Get(1).(*orderer.SubmitRequest)
+		actualRequest := args.Get(1).(*orderer.StepRequest)
 		assert.True(t, expectedRequest == actualRequest)
 	})
 
@@ -86,7 +115,7 @@ func TestSubmitSuccess(t *testing.T) {
 		Dispatcher: dispatcher,
 	}
 
-	err := svc.Submit(stream)
+	err := svc.Step(stream)
 	assert.NoError(t, err)
 	dispatcher.AssertNumberOfCalls(t, "DispatchSubmit", 2)
 }
@@ -107,7 +136,7 @@ func TestSubmitFailure(t *testing.T) {
 		name               string
 		receiveReturns     []tuple
 		sendReturns        []error
-		dispatchReturns    []interface{}
+		dispatchReturns    error
 		expectedDispatches int
 	}{
 		{
@@ -117,31 +146,12 @@ func TestSubmitFailure(t *testing.T) {
 			},
 		},
 		{
-			name: "Send() fails",
-			receiveReturns: []tuple{
-				{msg: submitRequest1},
-			},
-			expectedDispatches: 1,
-			dispatchReturns:    []interface{}{submitResponse1, nil},
-			sendReturns:        []error{oops},
-		},
-		{
 			name: "DispatchSubmit() fails",
 			receiveReturns: []tuple{
 				{msg: submitRequest1},
 			},
 			expectedDispatches: 1,
-			dispatchReturns:    []interface{}{nil, oops},
-		},
-		{
-			name: "Recv() and Send() succeed, and then Recv() fails",
-			receiveReturns: []tuple{
-				{msg: submitRequest1},
-				{msg: nil, err: oops},
-			},
-			expectedDispatches: 1,
-			dispatchReturns:    []interface{}{submitResponse1, nil},
-			sendReturns:        []error{nil, nil},
+			dispatchReturns:    oops,
 		},
 	}
 
@@ -149,7 +159,7 @@ func TestSubmitFailure(t *testing.T) {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			dispatcher := &mocks.Dispatcher{}
-			stream := &mocks.SubmitStream{}
+			stream := &mocks.StepStream{}
 			stream.On("Context").Return(context.Background())
 			for _, recv := range testCase.receiveReturns {
 				stream.On("Recv").Return(recv.asArray()...).Once()
@@ -158,13 +168,13 @@ func TestSubmitFailure(t *testing.T) {
 				stream.On("Send", mock.Anything).Return(send).Once()
 			}
 			defer dispatcher.AssertNumberOfCalls(t, "DispatchSubmit", testCase.expectedDispatches)
-			dispatcher.On("DispatchSubmit", mock.Anything, mock.Anything).Return(testCase.dispatchReturns...)
+			dispatcher.On("DispatchSubmit", mock.Anything, mock.Anything).Return(testCase.dispatchReturns)
 			svc := &cluster.Service{
 				Logger:     flogging.MustGetLogger("test"),
 				StepLogger: flogging.MustGetLogger("test"),
 				Dispatcher: dispatcher,
 			}
-			err := svc.Submit(stream)
+			err := svc.Step(stream)
 			assert.EqualError(t, err, oops.Error())
 		})
 	}

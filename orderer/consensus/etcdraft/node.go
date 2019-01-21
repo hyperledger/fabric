@@ -111,7 +111,7 @@ func (n *node) send(msgs []raftpb.Message) {
 		status := raft.SnapshotFinish
 
 		msgBytes := utils.MarshalOrPanic(&msg)
-		_, err := n.rpc.Step(msg.To, &orderer.StepRequest{Channel: n.chainID, Payload: msgBytes})
+		err := n.rpc.SendConsensus(msg.To, &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
 		if err != nil {
 			// TODO We should call ReportUnreachable if message delivery fails
 			n.logSendFailure(msg.To, err)

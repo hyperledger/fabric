@@ -9,19 +9,17 @@ import (
 )
 
 type FakeRPC struct {
-	StepStub        func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error)
-	stepMutex       sync.RWMutex
-	stepArgsForCall []struct {
+	SendConsensusStub        func(dest uint64, msg *orderer.ConsensusRequest) error
+	sendConsensusMutex       sync.RWMutex
+	sendConsensusArgsForCall []struct {
 		dest uint64
-		msg  *orderer.StepRequest
+		msg  *orderer.ConsensusRequest
 	}
-	stepReturns struct {
-		result1 *orderer.StepResponse
-		result2 error
+	sendConsensusReturns struct {
+		result1 error
 	}
-	stepReturnsOnCall map[int]struct {
-		result1 *orderer.StepResponse
-		result2 error
+	sendConsensusReturnsOnCall map[int]struct {
+		result1 error
 	}
 	SendSubmitStub        func(dest uint64, request *orderer.SubmitRequest) error
 	sendSubmitMutex       sync.RWMutex
@@ -39,56 +37,53 @@ type FakeRPC struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeRPC) Step(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
-	fake.stepMutex.Lock()
-	ret, specificReturn := fake.stepReturnsOnCall[len(fake.stepArgsForCall)]
-	fake.stepArgsForCall = append(fake.stepArgsForCall, struct {
+func (fake *FakeRPC) SendConsensus(dest uint64, msg *orderer.ConsensusRequest) error {
+	fake.sendConsensusMutex.Lock()
+	ret, specificReturn := fake.sendConsensusReturnsOnCall[len(fake.sendConsensusArgsForCall)]
+	fake.sendConsensusArgsForCall = append(fake.sendConsensusArgsForCall, struct {
 		dest uint64
-		msg  *orderer.StepRequest
+		msg  *orderer.ConsensusRequest
 	}{dest, msg})
-	fake.recordInvocation("Step", []interface{}{dest, msg})
-	fake.stepMutex.Unlock()
-	if fake.StepStub != nil {
-		return fake.StepStub(dest, msg)
+	fake.recordInvocation("SendConsensus", []interface{}{dest, msg})
+	fake.sendConsensusMutex.Unlock()
+	if fake.SendConsensusStub != nil {
+		return fake.SendConsensusStub(dest, msg)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1
 	}
-	return fake.stepReturns.result1, fake.stepReturns.result2
+	return fake.sendConsensusReturns.result1
 }
 
-func (fake *FakeRPC) StepCallCount() int {
-	fake.stepMutex.RLock()
-	defer fake.stepMutex.RUnlock()
-	return len(fake.stepArgsForCall)
+func (fake *FakeRPC) SendConsensusCallCount() int {
+	fake.sendConsensusMutex.RLock()
+	defer fake.sendConsensusMutex.RUnlock()
+	return len(fake.sendConsensusArgsForCall)
 }
 
-func (fake *FakeRPC) StepArgsForCall(i int) (uint64, *orderer.StepRequest) {
-	fake.stepMutex.RLock()
-	defer fake.stepMutex.RUnlock()
-	return fake.stepArgsForCall[i].dest, fake.stepArgsForCall[i].msg
+func (fake *FakeRPC) SendConsensusArgsForCall(i int) (uint64, *orderer.ConsensusRequest) {
+	fake.sendConsensusMutex.RLock()
+	defer fake.sendConsensusMutex.RUnlock()
+	return fake.sendConsensusArgsForCall[i].dest, fake.sendConsensusArgsForCall[i].msg
 }
 
-func (fake *FakeRPC) StepReturns(result1 *orderer.StepResponse, result2 error) {
-	fake.StepStub = nil
-	fake.stepReturns = struct {
-		result1 *orderer.StepResponse
-		result2 error
-	}{result1, result2}
+func (fake *FakeRPC) SendConsensusReturns(result1 error) {
+	fake.SendConsensusStub = nil
+	fake.sendConsensusReturns = struct {
+		result1 error
+	}{result1}
 }
 
-func (fake *FakeRPC) StepReturnsOnCall(i int, result1 *orderer.StepResponse, result2 error) {
-	fake.StepStub = nil
-	if fake.stepReturnsOnCall == nil {
-		fake.stepReturnsOnCall = make(map[int]struct {
-			result1 *orderer.StepResponse
-			result2 error
+func (fake *FakeRPC) SendConsensusReturnsOnCall(i int, result1 error) {
+	fake.SendConsensusStub = nil
+	if fake.sendConsensusReturnsOnCall == nil {
+		fake.sendConsensusReturnsOnCall = make(map[int]struct {
+			result1 error
 		})
 	}
-	fake.stepReturnsOnCall[i] = struct {
-		result1 *orderer.StepResponse
-		result2 error
-	}{result1, result2}
+	fake.sendConsensusReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *FakeRPC) SendSubmit(dest uint64, request *orderer.SubmitRequest) error {
@@ -143,8 +138,8 @@ func (fake *FakeRPC) SendSubmitReturnsOnCall(i int, result1 error) {
 func (fake *FakeRPC) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.stepMutex.RLock()
-	defer fake.stepMutex.RUnlock()
+	fake.sendConsensusMutex.RLock()
+	defer fake.sendConsensusMutex.RUnlock()
 	fake.sendSubmitMutex.RLock()
 	defer fake.sendSubmitMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
