@@ -37,8 +37,6 @@
 #   - dist-clean - clean release packages for all target platforms
 #   - unit-test-clean - cleans unit test state (particularly from docker)
 #   - basic-checks - performs basic checks like license, spelling and linter
-#   - enable_ci_only_tests - triggers unit-tests in downstream jobs. Applicable only for CI not to
-#     use in the local machine.
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
 #   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
 #   - help-docs - generate the command reference docs
@@ -186,18 +184,15 @@ ccenv: $(BUILD_DIR)/image/ccenv/$(DUMMY)
 integration-test: gotool.ginkgo ccenv docker-thirdparty
 	./scripts/run-integration-tests.sh
 
-unit-test: unit-test-clean peer-docker testenv ccenv
+unit-test: unit-test-clean docker-thirdparty peer-docker testenv ccenv
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
 
-enable_ci_only_tests: testenv
-	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
-
 verify: unit-test-clean peer-docker testenv
 	cd unit-test && JOB_TYPE=VERIFY docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
-profile: unit-test-clean peer-docker testenv
+profile: unit-test-clean docker-thirdparty peer-docker testenv
 	cd unit-test && JOB_TYPE=PROFILE docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 # Generates a string to the terminal suitable for manual augmentation / re-issue, useful for running tests by hand
@@ -206,7 +201,7 @@ test-cmd:
 
 docker: $(patsubst %,$(BUILD_DIR)/image/%/$(DUMMY), $(IMAGES))
 
-native: peer orderer configtxgen cryptogen idemixgen configtxlator discover
+native: $(RELEASE_PKGS)
 
 linter: check-deps buildenv
 	@echo "LINT: Running code checks.."
