@@ -144,11 +144,6 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChainID())}, nil
 	}
 
-	bp, err := newBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
 	opts := Options{
 		RaftID:        id,
 		Clock:         clock.NewClock(),
@@ -173,7 +168,14 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		Comm:                c.Communication,
 		DestinationToStream: make(map[uint64]orderer.Cluster_SubmitClient),
 	}
-	return NewChain(support, opts, c.Communication, rpc, bp, nil)
+	return NewChain(
+		support,
+		opts,
+		c.Communication,
+		rpc,
+		func() (BlockPuller, error) { return newBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster) },
+		nil,
+	)
 }
 
 // ReadRaftMetadata attempts to read raft metadata from block metadata, if available.
