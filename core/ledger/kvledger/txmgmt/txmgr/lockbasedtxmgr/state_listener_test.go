@@ -52,17 +52,33 @@ func TestStateListener(t *testing.T) {
 	expectedLedgerid, expectedStateUpdate, expectedHt :=
 		testLedgerid,
 		ledger.StateUpdates{
-			"ns1": []*kvrwset.KVWrite{
-				{Key: "key1_1", Value: []byte("value1_1")}, {Key: "key1_2", Value: []byte("value1_2")}},
-			"ns2": []*kvrwset.KVWrite{{Key: "key2_1", Value: []byte("value2_1")}},
+			"ns1": &ledger.KVStateUpdates{
+				PublicUpdates: []*kvrwset.KVWrite{
+					{Key: "key1_1", Value: []byte("value1_1")},
+					{Key: "key1_2", Value: []byte("value1_2")},
+				},
+			},
+			"ns2": &ledger.KVStateUpdates{
+				PublicUpdates: []*kvrwset.KVWrite{
+					{Key: "key2_1", Value: []byte("value2_1")},
+				},
+			},
 		},
 		uint64(1)
 	checkHandleStateUpdatesCallback(t, ml1, 0, expectedLedgerid, expectedStateUpdate, expectedHt)
 	expectedLedgerid, expectedStateUpdate, expectedHt =
 		testLedgerid,
 		ledger.StateUpdates{
-			"ns2": []*kvrwset.KVWrite{{Key: "key2_1", Value: []byte("value2_1")}},
-			"ns3": []*kvrwset.KVWrite{{Key: "key3_1", Value: []byte("value3_1")}},
+			"ns2": &ledger.KVStateUpdates{
+				PublicUpdates: []*kvrwset.KVWrite{
+					{Key: "key2_1", Value: []byte("value2_1")},
+				},
+			},
+			"ns3": &ledger.KVStateUpdates{
+				PublicUpdates: []*kvrwset.KVWrite{
+					{Key: "key3_1", Value: []byte("value3_1")},
+				},
+			},
 		},
 		uint64(1)
 	checkHandleStateUpdatesCallback(t, ml2, 0, expectedLedgerid, expectedStateUpdate, expectedHt)
@@ -75,6 +91,11 @@ func TestStateListener(t *testing.T) {
 	// This should cause callback only to ml3
 	sampleBatch = privacyenabledstate.NewUpdateBatch()
 	sampleBatch.PubUpdates.Put("ns4", "key4_1", []byte("value4_1"), version.NewHeight(2, 1))
+	sampleBatch.HashUpdates.Put("ns4", "coll1", []byte("key-hash-1"), []byte("value-hash-1"), version.NewHeight(2, 2))
+	sampleBatch.HashUpdates.Put("ns4", "coll1", []byte("key-hash-2"), []byte("value-hash-2"), version.NewHeight(2, 2))
+	sampleBatch.HashUpdates.Put("ns4", "coll2", []byte("key-hash-3"), []byte("value-hash-3"), version.NewHeight(2, 3))
+	sampleBatch.HashUpdates.Delete("ns4", "coll2", []byte("key-hash-4"), version.NewHeight(2, 4))
+
 	txmgr.current = &current{block: common.NewBlock(2, []byte("anotherDummyHash")), batch: sampleBatch}
 	txmgr.invokeNamespaceListeners()
 	assert.Equal(t, 1, ml1.HandleStateUpdatesCallCount())
@@ -84,7 +105,21 @@ func TestStateListener(t *testing.T) {
 	expectedLedgerid, expectedStateUpdate, expectedHt =
 		testLedgerid,
 		ledger.StateUpdates{
-			"ns4": []*kvrwset.KVWrite{{Key: "key4_1", Value: []byte("value4_1")}},
+			"ns4": &ledger.KVStateUpdates{
+				PublicUpdates: []*kvrwset.KVWrite{
+					{Key: "key4_1", Value: []byte("value4_1")},
+				},
+				CollHashUpdates: map[string][]*kvrwset.KVWriteHash{
+					"coll1": {
+						{KeyHash: []byte("key-hash-1"), ValueHash: []byte("value-hash-1")},
+						{KeyHash: []byte("key-hash-2"), ValueHash: []byte("value-hash-2")},
+					},
+					"coll2": {
+						{KeyHash: []byte("key-hash-3"), ValueHash: []byte("value-hash-3")},
+						{KeyHash: []byte("key-hash-4"), IsDelete: true},
+					},
+				},
+			},
 		},
 		uint64(2)
 
@@ -157,8 +192,16 @@ func checkHandleStateUpdatesCallback(t *testing.T, ml *mock.StateListener, callN
 
 func checkEqualUpdates(t *testing.T, expected, actual ledger.StateUpdates) {
 	assert.Equal(t, len(expected), len(actual))
-	for ns, expectedUpdates := range expected {
-		assert.ElementsMatch(t, expectedUpdates, actual[ns])
+	for ns, e := range expected {
+		assert.ElementsMatch(t, e.PublicUpdates, actual[ns].PublicUpdates)
+		checkEqualCollsUpdates(t, e.CollHashUpdates, actual[ns].CollHashUpdates)
+	}
+}
+
+func checkEqualCollsUpdates(t *testing.T, expected, actual map[string][]*kvrwset.KVWriteHash) {
+	assert.Equal(t, len(expected), len(actual))
+	for coll, e := range expected {
+		assert.ElementsMatch(t, e, actual[coll])
 	}
 }
 

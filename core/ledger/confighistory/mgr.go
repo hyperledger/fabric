@@ -60,7 +60,7 @@ func (m *mgr) StateCommitDone(ledgerID string) {
 // ledger.DeployedChaincodeInfoProvider and is persisted as a separate entry in a separate db.
 // The composite key for the entry is a tuple of <blockNum, namespace, key>
 func (m *mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
-	updatedCCs, err := m.ccInfoProvider.UpdatedChaincodes(convertToKVWrites(trigger.StateUpdates))
+	updatedCCs, err := m.ccInfoProvider.UpdatedChaincodes(extractPublicUpdates(trigger.StateUpdates))
 	if err != nil {
 		return err
 	}
@@ -171,10 +171,10 @@ func dbPath() string {
 	return ledgerconfig.GetConfigHistoryPath()
 }
 
-func convertToKVWrites(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.KVWrite {
+func extractPublicUpdates(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.KVWrite {
 	m := map[string][]*kvrwset.KVWrite{}
 	for ns, updates := range stateUpdates {
-		m[ns] = updates.([]*kvrwset.KVWrite)
+		m[ns] = updates.PublicUpdates
 	}
 	return m
 }

@@ -51,11 +51,13 @@ func TestCollElgNotifier(t *testing.T) {
 	collElgNotifier.HandleStateUpdates(&ledger.StateUpdateTrigger{
 		LedgerID:           "testLedger",
 		CommittingBlockNum: uint64(500),
-		StateUpdates: map[string]interface{}{
-			"doesNotMatterNS": []*kvrwset.KVWrite{
-				{
-					Key:   "doesNotMatterKey",
-					Value: []byte("doesNotMatterVal"),
+		StateUpdates: map[string]*ledger.KVStateUpdates{
+			"doesNotMatterNS": {
+				PublicUpdates: []*kvrwset.KVWrite{
+					{
+						Key:   "doesNotMatterKey",
+						Value: []byte("doesNotMatterVal"),
+					},
 				},
 			},
 		},
