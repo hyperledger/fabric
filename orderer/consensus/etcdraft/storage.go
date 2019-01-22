@@ -7,8 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
@@ -17,6 +22,13 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/pkg/errors"
 )
+
+// MaxSnapshotFiles defines max number of etcd/raft snapshot files to retain
+// on filesystem. Snapshot files are read from newest to oldest, until first
+// intact file is found. The more snapshot files we keep around, the more we
+// mitigate the impact of a corrupted snapshots. This is exported for testing
+// purpose. This MUST be greater equal than 1.
+var MaxSnapshotFiles = 5
 
 // MemoryStorage is currently backed by etcd/raft.MemoryStorage. This interface is
 // defined to expose dependencies of fsm so that it may be swapped in the
@@ -35,11 +47,17 @@ type MemoryStorage interface {
 type RaftStorage struct {
 	SnapshotCatchUpEntries uint64
 
+	walDir  string
+	snapDir string
+
 	lg *flogging.FabricLogger
 
 	ram  MemoryStorage
 	wal  *wal.WAL
 	snap *snap.Snapshotter
+
+	// a queue that keeps track of indices of snapshots on disk
+	snapshotIndex []uint64
 }
 
 // CreateStorage attempts to create a storage to persist etcd/raft data.
@@ -91,7 +109,62 @@ func CreateStorage(
 	lg.Debugf("Appending %d entries to memory storage", len(ents))
 	ram.Append(ents) // MemoryStorage.Append always return nil
 
-	return &RaftStorage{lg: lg, ram: ram, wal: w, snap: sn}, nil
+	return &RaftStorage{
+		lg:            lg,
+		ram:           ram,
+		wal:           w,
+		snap:          sn,
+		walDir:        walDir,
+		snapDir:       snapDir,
+		snapshotIndex: ListSnapshots(lg, snapDir),
+	}, nil
+}
+
+// ListSnapshots returns a list of RaftIndex of snapshots stored on disk.
+// If a file is corrupted, rename the file.
+func ListSnapshots(logger *flogging.FabricLogger, snapDir string) []uint64 {
+	dir, err := os.Open(snapDir)
+	if err != nil {
+		logger.Errorf("Failed to open snapshot directory %s: %s", snapDir, err)
+		return nil
+	}
+	defer dir.Close()
+
+	filenames, err := dir.Readdirnames(-1)
+	if err != nil {
+		logger.Errorf("Failed to read snapshot files: %s", err)
+		return nil
+	}
+
+	snapfiles := []string{}
+	for i := range filenames {
+		if strings.HasSuffix(filenames[i], ".snap") {
+			snapfiles = append(snapfiles, filenames[i])
+		}
+	}
+	sort.Sort(sort.StringSlice(snapfiles))
+
+	var snapshots []uint64
+	for _, snapfile := range snapfiles {
+		fpath := filepath.Join(snapDir, snapfile)
+		s, err := snap.Read(fpath)
+		if err != nil {
+			logger.Errorf("Snapshot file %s is corrupted: %s", fpath, err)
+
+			broken := fpath + ".broken"
+			if err = os.Rename(fpath, broken); err != nil {
+				logger.Errorf("Failed to rename corrupted snapshot file %s to %s: %s", fpath, broken, err)
+			} else {
+				logger.Debugf("Renaming corrupted snapshot file %s to %s", fpath, broken)
+			}
+
+			continue
+		}
+
+		snapshots = append(snapshots, s.Metadata.Index)
+	}
+
+	return snapshots
 }
 
 func createSnapshotter(snapDir string) (*snap.Snapshotter, error) {
@@ -100,7 +173,6 @@ func createSnapshotter(snapDir string) (*snap.Snapshotter, error) {
 	}
 
 	return snap.New(snapDir), nil
-
 }
 
 func createWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.Snapshot) (*wal.WAL, error) {
@@ -211,6 +283,8 @@ func (rs *RaftStorage) TakeSnapshot(i uint64, cs raftpb.ConfState, data []byte) 
 		return err
 	}
 
+	rs.snapshotIndex = append(rs.snapshotIndex, snap.Metadata.Index)
+
 	// Keep some entries in memory for slow followers to catchup
 	if i > rs.SnapshotCatchUpEntries {
 		compacti := i - rs.SnapshotCatchUpEntries
@@ -225,7 +299,102 @@ func (rs *RaftStorage) TakeSnapshot(i uint64, cs raftpb.ConfState, data []byte) 
 	}
 
 	rs.lg.Infof("Snapshot is taken at index %d", i)
+
+	rs.gc()
 	return nil
+}
+
+// gc collects etcd/raft garbage files, namely wal and snapshot files
+func (rs *RaftStorage) gc() {
+	if len(rs.snapshotIndex) < MaxSnapshotFiles {
+		rs.lg.Debugf("Snapshots on disk (%d) < limit (%d), no need to purge wal/snapshot",
+			len(rs.snapshotIndex), MaxSnapshotFiles)
+		return
+	}
+
+	rs.snapshotIndex = rs.snapshotIndex[len(rs.snapshotIndex)-MaxSnapshotFiles:]
+
+	rs.purgeWAL()
+	rs.purgeSnap()
+}
+
+func (rs *RaftStorage) purgeWAL() {
+	retain := rs.snapshotIndex[0]
+
+	walFiles, err := fileutil.ReadDir(rs.walDir)
+	if err != nil {
+		rs.lg.Errorf("Failed to read WAL directory %s: %s", rs.walDir, err)
+	}
+
+	var files []string
+	for _, f := range walFiles {
+		if !strings.HasSuffix(f, ".wal") {
+			continue
+		}
+
+		var seq, index uint64
+		fmt.Sscanf(f, "%016x-%016x.wal", &seq, &index)
+		if index >= retain {
+			break
+		}
+
+		files = append(files, filepath.Join(rs.walDir, f))
+	}
+
+	if len(files) <= 1 {
+		// we need to keep one wal segment with index smaller than snapshot.
+		// see comment on wal.ReleaseLockTo for the more details.
+		return
+	}
+
+	rs.purge(files[:len(files)-1])
+}
+
+func (rs *RaftStorage) purgeSnap() {
+	snapFiles, err := fileutil.ReadDir(rs.snapDir)
+	if err != nil {
+		rs.lg.Errorf("Failed to read Snapshot directory %s: %s", rs.snapDir, err)
+	}
+
+	var files []string
+	for _, f := range snapFiles {
+		if !strings.HasSuffix(f, ".snap") {
+			if strings.HasPrefix(f, ".broken") {
+				rs.lg.Warnf("Found broken snapshot file %s, it can be removed manually", f)
+			}
+
+			continue
+		}
+
+		files = append(files, filepath.Join(rs.snapDir, f))
+	}
+
+	l := len(files)
+	if l <= MaxSnapshotFiles {
+		return
+	}
+
+	rs.purge(files[:l-MaxSnapshotFiles]) // retain last MaxSnapshotFiles snapshot files
+}
+
+func (rs *RaftStorage) purge(files []string) {
+	for _, file := range files {
+		l, err := fileutil.TryLockFile(file, os.O_WRONLY, fileutil.PrivateFileMode)
+		if err != nil {
+			rs.lg.Debugf("Failed to lock %s, abort purging", file)
+			break
+		}
+
+		if err = os.Remove(file); err != nil {
+			rs.lg.Errorf("Failed to remove %s: %s", file, err)
+		} else {
+			rs.lg.Debugf("Purged file %s", file)
+		}
+
+		if err = l.Close(); err != nil {
+			rs.lg.Errorf("Failed to close file lock %s: %s", l.Name(), err)
+		}
+	}
 }
 
 // ApplySnapshot applies snapshot to local memory storage

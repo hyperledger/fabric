@@ -1038,6 +1038,7 @@ var _ = Describe("Chain", func() {
 
 							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 							Expect(c.puller.PullBlockCallCount()).Should(BeZero())
+							// old snapshot file is retained
 							Eventually(countFiles, LongEventualTimeout).Should(Equal(2))
 						})
 					})
@@ -2206,19 +2207,33 @@ var _ = Describe("Chain", func() {
 
 					c1.cutter.CutNext = true
 
-					for i := 1; i <= 10; i++ {
+					var lasti uint64
+					var indices []uint64
+					// Only produce 4 blocks here, so that snapshot pruning does not occur.
+					// Otherwise, a slow garbage collection may prevent snapshotting from
+					// being triggered on next block, and assertion on number of snapshots
+					// would fail nondeterministically.
+					for i := 1; i <= 4; i++ {
 						err := c1.Order(env, 0)
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(i))
 						Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(i))
+						Eventually(func() uint64 {
+							indices = etcdraft.ListSnapshots(logger, c1.opts.SnapDir)
+							if len(indices) == 0 {
+								return 0
+							}
+							return indices[len(indices)-1]
+						}, LongEventualTimeout).Should(BeNumerically(">", lasti))
+						lasti = indices[len(indices)-1]
 					}
 
 					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
 
 					network.join(2, false)
 
-					Eventually(c2.puller.PullBlockCallCount, LongEventualTimeout).Should(Equal(10))
-					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(10))
+					Eventually(c2.puller.PullBlockCallCount, LongEventualTimeout).Should(Equal(4))
+					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(4))
 
 					files, err := ioutil.ReadDir(c2.opts.SnapDir)
 					Expect(err).NotTo(HaveOccurred())
@@ -2230,7 +2245,7 @@ var _ = Describe("Chain", func() {
 
 					network.exec(
 						func(c *chain) {
-							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(11))
+							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(5))
 						})
 				})
 			})
