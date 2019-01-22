@@ -5,9 +5,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # ----------------------------------------------------------------
-# Update the entire system to the latest releases
+# Update the entire system to the latest versions
 # ----------------------------------------------------------------
-apt-get update
+apt-get -qq update && apt-get upgrade -y
 
 # ----------------------------------------------------------------
 # Install some basic utilities
