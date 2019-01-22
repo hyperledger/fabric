@@ -80,7 +80,40 @@ func (l *Lifecycle) ChaincodeInNewLifecycle(chaincodeName string, qe ledger.Simp
 }
 
 func (l *Lifecycle) ChaincodeInfo(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
-	return l.LegacyDeployedCCInfoProvider.ChaincodeInfo(channelName, chaincodeName, qe)
+	exists, state, err := l.ChaincodeInNewLifecycle(chaincodeName, qe)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not get info about chaincode")
+	}
+
+	if !exists {
+		return l.LegacyDeployedCCInfoProvider.ChaincodeInfo(channelName, chaincodeName, qe)
+	}
+
+	ic, err := l.ChaincodeImplicitCollections(channelName)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not create implicit collections for channel")
+	}
+
+	if chaincodeName == LifecycleNamespace {
+		return &ledger.DeployedChaincodeInfo{
+			Name:                chaincodeName,
+			ImplicitCollections: ic,
+		}, nil
+	}
+
+	definedChaincode := &DefinedChaincode{}
+	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, definedChaincode, state)
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))
+	}
+
+	return &ledger.DeployedChaincodeInfo{
+		Name:                        chaincodeName,
+		Version:                     definedChaincode.Version,
+		Hash:                        definedChaincode.Hash,
+		ExplicitCollectionConfigPkg: definedChaincode.Collections,
+		ImplicitCollections:         ic,
+	}, nil
 }
 
 // CollectionInfo implements function in interface ledger.DeployedChaincodeInfoProvider, it returns config for
@@ -102,6 +135,11 @@ func (l *Lifecycle) ImplicitCollections(channelName, chaincodeName string, qe le
 		return nil, nil
 	}
 
+	return l.ChaincodeImplicitCollections(channelName)
+}
+
+// ChaincodeImplicitCollections assumes the chaincode exists in the new lifecycle and returns the implicit collections
+func (l *Lifecycle) ChaincodeImplicitCollections(channelName string) ([]*cb.StaticCollectionConfig, error) {
 	channelConfig := l.ChannelConfigSource.GetStableChannelConfig(channelName)
 	if channelConfig == nil {
 		return nil, errors.Errorf("could not get channelconfig for channel %s", channelName)
