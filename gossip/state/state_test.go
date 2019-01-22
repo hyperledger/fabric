@@ -1664,6 +1664,29 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 	}
 }
 
+func TestStateRequestValidator(t *testing.T) {
+	validator := &stateRequestValidator{}
+	err := validator.validate(&proto.RemoteStateRequest{
+		StartSeqNum: 10,
+		EndSeqNum:   5,
+	})
+	assert.Contains(t, err.Error(), "Invalid sequence interval [10...5).")
+	assert.Error(t, err)
+
+	err = validator.validate(&proto.RemoteStateRequest{
+		StartSeqNum: 10,
+		EndSeqNum:   30,
+	})
+	assert.Contains(t, err.Error(), "Requesting blocks range [10-30) greater than configured")
+	assert.Error(t, err)
+
+	err = validator.validate(&proto.RemoteStateRequest{
+		StartSeqNum: 10,
+		EndSeqNum:   20,
+	})
+	assert.NoError(t, err)
+}
+
 func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Duration) {
 	ch := make(chan struct{})
 	go func() {
