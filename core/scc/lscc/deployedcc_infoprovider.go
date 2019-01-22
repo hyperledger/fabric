@@ -57,7 +57,7 @@ func (p *DeployedCCInfoProvider) UpdatedChaincodes(stateUpdates map[string][]*kv
 	return lifecycleInfo, nil
 }
 
-func (p *DeployedCCInfoProvider) ImplicitCollections(channelName string) ([]*common.StaticCollectionConfig, error) {
+func (p *DeployedCCInfoProvider) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error) {
 	return nil, nil
 }
 

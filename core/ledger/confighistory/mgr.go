@@ -119,7 +119,12 @@ func (r *retriever) MostRecentCollectionConfigBelow(blockNum uint64, chaincodeNa
 	if err != nil {
 		return nil, err
 	}
-	return addImplicitCollections(compositeKV, r.ledgerID, r.deployedCCInfoProvider)
+	qe, err := r.ledgerInfoRetriever.NewQueryExecutor()
+	if err != nil {
+		return nil, err
+	}
+	defer qe.Done()
+	return addImplicitCollections(compositeKV, r.ledgerID, chaincodeName, qe, r.deployedCCInfoProvider)
 }
 
 // CollectionConfigAt implements function from the interface ledger.ConfigHistoryRetriever
@@ -138,7 +143,12 @@ func (r *retriever) CollectionConfigAt(blockNum uint64, chaincodeName string) (*
 	if err != nil {
 		return nil, err
 	}
-	return addImplicitCollections(compositeKV, r.ledgerID, r.deployedCCInfoProvider)
+	qe, err := r.ledgerInfoRetriever.NewQueryExecutor()
+	if err != nil {
+		return nil, err
+	}
+	defer qe.Done()
+	return addImplicitCollections(compositeKV, r.ledgerID, chaincodeName, qe, r.deployedCCInfoProvider)
 }
 
 func prepareDBBatch(chaincodeCollConfigs map[string]*common.CollectionConfigPackage, committingBlockNum uint64) (*batch, error) {
@@ -181,13 +191,13 @@ func convertToKVWrites(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.K
 
 func addImplicitCollections(
 	compositeKV *compositeKV,
-	lgrID string, p ledger.DeployedChaincodeInfoProvider) (
-	*ledger.CollectionConfigInfo, error,
-) {
+	lgrID, ccName string, qe ledger.SimpleQueryExecutor,
+	p ledger.DeployedChaincodeInfoProvider,
+) (*ledger.CollectionConfigInfo, error) {
 	var collConf *ledger.CollectionConfigInfo
 	var err error
 	var implicitColls []*common.StaticCollectionConfig
-	if implicitColls, err = p.ImplicitCollections(lgrID); err != nil {
+	if implicitColls, err = p.ImplicitCollections(lgrID, ccName, qe); err != nil {
 		return nil, err
 	}
 	if compositeKV == nil && len(implicitColls) == 0 {
@@ -217,4 +227,5 @@ func addImplicitCollections(
 // LedgerInfoRetriever retrieves the relevant info from ledger
 type LedgerInfoRetriever interface {
 	GetBlockchainInfo() (*common.BlockchainInfo, error)
+	NewQueryExecutor() (ledger.QueryExecutor, error)
 }

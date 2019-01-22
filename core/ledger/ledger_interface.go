@@ -339,8 +339,6 @@ func (txSim *TxSimulationResults) ContainsPvtWrites() bool {
 	return txSim.PvtSimulationResults != nil
 }
 
-//go:generate counterfeiter -o mock/state_listener.go -fake-name StateListener . StateListener
-
 // StateListener allows a custom code for performing additional stuff upon state change
 // for a perticular namespace against which the listener is registered.
 // This helps to perform custom tasks other than the state updates.
@@ -476,7 +474,7 @@ type DeployedChaincodeInfoProvider interface {
 	// CollectionInfo returns the proto msg that defines the named collection. This function can be called for both explicit and implicit collections
 	CollectionInfo(channelName, chaincodeName, collectionName string, qe SimpleQueryExecutor) (*common.StaticCollectionConfig, error)
 	// ImplicitCollections returns a slice that contains one proto msg for each of the implicit collections
-	ImplicitCollections(channelName string) ([]*common.StaticCollectionConfig, error)
+	ImplicitCollections(channelName, chaincodeName string, qe SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error)
 }
 
 // DeployedChaincodeInfo encapsulates chaincode information from the deployed chaincodes
@@ -532,11 +530,12 @@ type MembershipInfoProvider interface {
 	AmMemberOf(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (bool, error)
 }
 
-//go:generate counterfeiter -o mock/deployed_ccinfo_provider.go -fake-name DeployedChaincodeInfoProvider . DeployedChaincodeInfoProvider
-//go:generate counterfeiter -o mock/membership_info_provider.go -fake-name MembershipInfoProvider . MembershipInfoProvider
-
-//go:generate counterfeiter -o mock/health_check_registry.go -fake-name HealthCheckRegistry . HealthCheckRegistry
-
 type HealthCheckRegistry interface {
 	RegisterChecker(string, healthz.HealthChecker) error
 }
+
+//go:generate counterfeiter -o mock/state_listener.go -fake-name StateListener . StateListener
+//go:generate counterfeiter -o mock/query_executor.go -fake-name QueryExecutor . QueryExecutor
+//go:generate counterfeiter -o mock/deployed_ccinfo_provider.go -fake-name DeployedChaincodeInfoProvider . DeployedChaincodeInfoProvider
+//go:generate counterfeiter -o mock/membership_info_provider.go -fake-name MembershipInfoProvider . MembershipInfoProvider
+//go:generate counterfeiter -o mock/health_check_registry.go -fake-name HealthCheckRegistry . HealthCheckRegistry
