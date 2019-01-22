@@ -37,7 +37,10 @@ func TestWithNoCollectionConfig(t *testing.T) {
 		CommittingBlockNum: 50},
 	)
 	assert.NoError(t, err)
-	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{info: &common.BlockchainInfo{Height: 100}}
+	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{
+		info: &common.BlockchainInfo{Height: 100},
+		qe:   &mock.QueryExecutor{},
+	}
 	retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
 	collConfig, err := retriever.MostRecentCollectionConfigBelow(90, "chaincode1")
 	assert.NoError(t, err)
@@ -52,7 +55,10 @@ func TestMgr(t *testing.T) {
 	defer env.cleanup()
 	chaincodeName := "chaincode1"
 	maxBlockNumberInLedger := uint64(2000)
-	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{info: &common.BlockchainInfo{Height: maxBlockNumberInLedger + 1}}
+	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{
+		info: &common.BlockchainInfo{Height: maxBlockNumberInLedger + 1},
+		qe:   &mock.QueryExecutor{},
+	}
 	configCommittingBlockNums := []uint64{5, 10, 15, 100}
 	ledgerIds := []string{"ledgerid1", "ledger2"}
 
@@ -154,7 +160,23 @@ func TestWithImplicitColls(t *testing.T) {
 		[]string{"Explicit-coll-1", "Explicit-coll-2", "Implicit-coll-1", "Implicit-coll-2"},
 	)
 
-	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{info: &common.BlockchainInfo{Height: 1000}}
+	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{
+		info: &common.BlockchainInfo{Height: 1000},
+		qe:   &mock.QueryExecutor{},
+	}
+
+	t.Run("CheckQueryExecutorCalls", func(t *testing.T) {
+		retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+		// function MostRecentCollectionConfigBelow calls Done on query executor
+		_, err := retriever.MostRecentCollectionConfigBelow(50, "chaincode1")
+		assert.NoError(t, err)
+		assert.Equal(t, 1, dummyLedgerInfoRetriever.qe.DoneCallCount())
+		// function CollectionConfigAt calls Done on query executor
+		_, err = retriever.CollectionConfigAt(50, "chaincode1")
+		assert.NoError(t, err)
+		assert.Equal(t, 2, dummyLedgerInfoRetriever.qe.DoneCallCount())
+	})
+
 	t.Run("MostRecentCollectionConfigBelow50", func(t *testing.T) {
 		// explicit collections added at height 20 should be merged with the implicit collections
 		retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
@@ -248,8 +270,13 @@ func testutilCreateCollConfigPkg(collNames []string) *common.CollectionConfigPac
 
 type dummyLedgerInfoRetriever struct {
 	info *common.BlockchainInfo
+	qe   *mock.QueryExecutor
 }
 
 func (d *dummyLedgerInfoRetriever) GetBlockchainInfo() (*common.BlockchainInfo, error) {
 	return d.info, nil
+}
+
+func (d *dummyLedgerInfoRetriever) NewQueryExecutor() (ledger.QueryExecutor, error) {
+	return d.qe, nil
 }

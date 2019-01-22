@@ -41,10 +41,12 @@ type DeployedChaincodeInfoProvider struct {
 		result1 *common.StaticCollectionConfig
 		result2 error
 	}
-	ImplicitCollectionsStub        func(string) ([]*common.StaticCollectionConfig, error)
+	ImplicitCollectionsStub        func(string, string, ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error)
 	implicitCollectionsMutex       sync.RWMutex
 	implicitCollectionsArgsForCall []struct {
 		arg1 string
+		arg2 string
+		arg3 ledger.SimpleQueryExecutor
 	}
 	implicitCollectionsReturns struct {
 		result1 []*common.StaticCollectionConfig
@@ -212,16 +214,18 @@ func (fake *DeployedChaincodeInfoProvider) CollectionInfoReturnsOnCall(i int, re
 	}{result1, result2}
 }
 
-func (fake *DeployedChaincodeInfoProvider) ImplicitCollections(arg1 string) ([]*common.StaticCollectionConfig, error) {
+func (fake *DeployedChaincodeInfoProvider) ImplicitCollections(arg1 string, arg2 string, arg3 ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error) {
 	fake.implicitCollectionsMutex.Lock()
 	ret, specificReturn := fake.implicitCollectionsReturnsOnCall[len(fake.implicitCollectionsArgsForCall)]
 	fake.implicitCollectionsArgsForCall = append(fake.implicitCollectionsArgsForCall, struct {
 		arg1 string
-	}{arg1})
-	fake.recordInvocation("ImplicitCollections", []interface{}{arg1})
+		arg2 string
+		arg3 ledger.SimpleQueryExecutor
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("ImplicitCollections", []interface{}{arg1, arg2, arg3})
 	fake.implicitCollectionsMutex.Unlock()
 	if fake.ImplicitCollectionsStub != nil {
-		return fake.ImplicitCollectionsStub(arg1)
+		return fake.ImplicitCollectionsStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -236,17 +240,17 @@ func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsCallCount() int {
 	return len(fake.implicitCollectionsArgsForCall)
 }
 
-func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsCalls(stub func(string) ([]*common.StaticCollectionConfig, error)) {
+func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsCalls(stub func(string, string, ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error)) {
 	fake.implicitCollectionsMutex.Lock()
 	defer fake.implicitCollectionsMutex.Unlock()
 	fake.ImplicitCollectionsStub = stub
 }
 
-func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsArgsForCall(i int) string {
+func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsArgsForCall(i int) (string, string, ledger.SimpleQueryExecutor) {
 	fake.implicitCollectionsMutex.RLock()
 	defer fake.implicitCollectionsMutex.RUnlock()
 	argsForCall := fake.implicitCollectionsArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsReturns(result1 []*common.StaticCollectionConfig, result2 error) {
