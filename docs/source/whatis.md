@@ -224,8 +224,8 @@ as inconsistent results can be filtered out before ordering.
 
 Because we have eliminated non-determinism, Fabric is the first blockchain
 technology that **enables use of standard programming languages**. In the 1.1.0
-release, smart contracts can be written in either Go or Node.js, while there are
-plans to support other popular languages including Java in subsequent releases.
+release, smart contracts can be written in either Go or Node.js. Since the 1.3.0 release, smart contracts can be written in Java.
+There are plans to support other popular languages in subsequent releases.
 
 ## Privacy and Confidentiality
 
