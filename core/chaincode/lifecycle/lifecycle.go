@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	corechaincode "github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/core/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
@@ -117,13 +118,20 @@ type LegacyLifecycle interface {
 	corechaincode.Lifecycle
 }
 
+//go:generate counterfeiter -o mock/legacy_ccinfo.go --fake-name LegacyDeployedCCInfoProvider . LegacyDeployedCCInfoProvider
+type LegacyDeployedCCInfoProvider interface {
+	ledger.DeployedChaincodeInfoProvider
+}
+
 // Lifecycle implements the lifecycle operations which are invoked
 // by the SCC as well as internally
 type Lifecycle struct {
-	ChaincodeStore ChaincodeStore
-	PackageParser  PackageParser
-	Serializer     *Serializer
-	LegacyImpl     LegacyLifecycle
+	ChannelConfigSource          ChannelConfigSource
+	ChaincodeStore               ChaincodeStore
+	PackageParser                PackageParser
+	Serializer                   *Serializer
+	LegacyImpl                   LegacyLifecycle
+	LegacyDeployedCCInfoProvider LegacyDeployedCCInfoProvider
 }
 
 // DefineChaincode takes a chaincode definition, checks that its sequence number is the next allowable sequence number,
