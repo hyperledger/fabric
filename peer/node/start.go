@@ -183,6 +183,7 @@ func serve(args []string) error {
 	lifecycleImpl := &lifecycle.Lifecycle{
 		LegacyDeployedCCInfoProvider: &lscc.DeployedCCInfoProvider{},
 		Serializer:                   &lifecycle.Serializer{},
+		ChannelConfigSource:          peer.Default,
 	}
 
 	//initialize resource management exit

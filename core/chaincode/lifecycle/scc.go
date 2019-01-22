@@ -226,7 +226,7 @@ func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodes
 // DefineChaincodeForMyOrg is a SCC function that may be dispatched to which routes to the underlying
 // lifecycle implementation
 func (i *Invocation) DefineChaincodeForMyOrg(input *lb.DefineChaincodeForMyOrgArgs) (proto.Message, error) {
-	collectionName := fmt.Sprintf("_implicit_org_%s", i.SCC.OrgMSPID)
+	collectionName := ImplicitCollectionNameForOrg(i.SCC.OrgMSPID)
 	if err := i.SCC.Functions.DefineChaincodeForOrg(
 		&ChaincodeDefinition{
 			Name:     input.Name,
@@ -266,7 +266,7 @@ func (i *Invocation) DefineChaincode(input *lb.DefineChaincodeArgs) (proto.Messa
 	myOrgIndex := -1
 	for _, org := range orgs {
 		opaqueStates = append(opaqueStates, &ChaincodePrivateLedgerShim{
-			Collection: fmt.Sprintf("_implicit_org_%s", org.MSPID()),
+			Collection: ImplicitCollectionNameForOrg(org.MSPID()),
 			Stub:       i.Stub,
 		})
 		if org.MSPID() == i.SCC.OrgMSPID {
