@@ -56,24 +56,42 @@ var _ = Describe("Lifecycle", func() {
 
 			BeforeEach(func() {
 				updates = map[string][]*kvrwset.KVWrite{
-					"key1": nil,
-					"key2": nil,
+					"+lifecycle": {
+						{Key: "some/random/value"},
+						{Key: "namespaces/fields/cc-name/Sequence"},
+						{Key: "prefix/namespaces/fields/cc-name/Sequence"},
+						{Key: "namespaces/fields/Sequence/infix"},
+						{Key: "namespaces/fields/cc-name/Sequence/Postfix"},
+					},
+					"other-namespace": nil,
 				}
 				fakeLegacyProvider.UpdatedChaincodesReturns([]*ledger.ChaincodeLifecycleInfo{
 					{Name: "foo"},
 					{Name: "bar"},
-				}, fmt.Errorf("updated-chaincodes-error"))
+				}, nil)
 			})
 
-			It("passes through to the legacy impl", func() {
+			It("checks its own namespace, then passes through to the legacy impl", func() {
 				res, err := l.UpdatedChaincodes(updates)
 				Expect(res).To(Equal([]*ledger.ChaincodeLifecycleInfo{
+					{Name: "cc-name"},
 					{Name: "foo"},
 					{Name: "bar"},
 				}))
-				Expect(err).To(MatchError("updated-chaincodes-error"))
+				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeLegacyProvider.UpdatedChaincodesCallCount()).To(Equal(1))
 				Expect(fakeLegacyProvider.UpdatedChaincodesArgsForCall(0)).To(Equal(updates))
+			})
+
+			Context("when the legacy provider returns an error", func() {
+				BeforeEach(func() {
+					fakeLegacyProvider.UpdatedChaincodesReturns(nil, fmt.Errorf("legacy-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := l.UpdatedChaincodes(updates)
+					Expect(err).To(MatchError("error invoking legacy deployed cc info provider: legacy-error"))
+				})
 			})
 		})
 
