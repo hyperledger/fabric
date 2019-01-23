@@ -119,8 +119,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 		return dialOpts
 	}
 	err = service.InitGossipServiceCustomDeliveryFactory(
-		identity, socket.Addr().String(), grpcServer, nil,
-		&mockDeliveryClientFactory{},
+		identity, &disabled.Provider{}, socket.Addr().String(), grpcServer, nil, &mockDeliveryClientFactory{},
 		messageCryptoService, secAdv, defaultSecureDialOpts)
 
 	assert.NoError(t, err)
