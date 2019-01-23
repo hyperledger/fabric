@@ -176,7 +176,9 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			for i := 1; i <= 6; i++ {
 				RunInvoke(network, o2, peer, "testchannel")
-				RunQuery(network, o2, peer, "testchannel", 100-i*10)
+				Eventually(func() int {
+					return RunQuery(network, o2, peer, "testchannel")
+				}, network.EventuallyTimeout).Should(Equal(100 - i*10))
 			}
 
 			o2SnapDir := path.Join(network.RootDir, "orderers", o2.ID(), "etcdraft", "snapshot")
@@ -214,7 +216,9 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			}, network.EventuallyTimeout).Should(Equal(1))
 
 			RunInvoke(network, o1, peer, "testchannel")
-			RunQuery(network, o1, peer, "testchannel", 30)
+			Eventually(func() int {
+				return RunQuery(network, o1, peer, "testchannel")
+			}, network.EventuallyTimeout).Should(Equal(30))
 
 			fetchLatestBlock(o1, blockFile1)
 			fetchLatestBlock(o2, blockFile2)
@@ -284,7 +288,7 @@ func RunInvoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel str
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 }
 
-func RunQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string, expect int) {
+func RunQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) int {
 	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: channel,
 		Name:      "mycc",
@@ -292,7 +296,13 @@ func RunQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel stri
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess).To(gbytes.Say(strconv.Itoa(expect)))
+
+	buf := sess.Out.Contents()
+	buf = buf[:len(buf)-1] // remove last /n
+
+	result, err := strconv.ParseInt(string(buf), 10, 32)
+	Expect(err).NotTo(HaveOccurred())
+	return int(result)
 }
 
 func findLeader(ordererRunners []*ginkgomon.Runner) int {
