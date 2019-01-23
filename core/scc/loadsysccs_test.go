@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	examplePluginPackage = "github.com/hyperledger/fabric/examples/plugins/scc"
-	pluginName           = "testscc"
+	testPluginPackage = "github.com/hyperledger/fabric/core/scc/test-plugin"
+	pluginName        = "testscc"
 )
 
 func TestLoadSCCPlugin(t *testing.T) {
@@ -34,7 +34,7 @@ func TestLoadSCCPlugin(t *testing.T) {
 	require.NoError(t, err)
 
 	pluginPath := filepath.Join(tmpdir, "scc-plugin.so")
-	buildExamplePlugin(t, pluginPath, examplePluginPackage)
+	buildTestPlugin(t, pluginPath, testPluginPackage)
 	defer os.RemoveAll(tmpdir)
 
 	testConfig := fmt.Sprintf(`
@@ -63,7 +63,7 @@ func TestLoadSCCPluginInvalid(t *testing.T) {
 // see race_test.go
 var raceEnabled bool
 
-func buildExamplePlugin(t *testing.T, path, pluginPackage string) {
+func buildTestPlugin(t *testing.T, path, pluginPackage string) {
 	cmd := exec.Command("go", "build", "-o", path, "-buildmode=plugin")
 	if raceEnabled {
 		cmd.Args = append(cmd.Args, "-race")

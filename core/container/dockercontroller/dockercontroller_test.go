@@ -123,7 +123,7 @@ func Test_Start(t *testing.T) {
 	gt.Expect(err).To(HaveOccurred())
 	buildErr = false
 
-	chaincodePath := "github.com/hyperledger/fabric/examples/chaincode/go/example01/cmd"
+	chaincodePath := "github.com/hyperledger/fabric/core/container/dockercontroller/testdata/src/chaincodes/noop"
 	spec := &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_GOLANG,
 		ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: chaincodePath},

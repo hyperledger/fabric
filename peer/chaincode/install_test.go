@@ -66,7 +66,7 @@ func TestInstallLegacyBadVersion(t *testing.T) {
 	cmd, _ := initInstallTest(t, fsPath, nil, nil)
 	defer cleanupInstallTest(fsPath)
 
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"}
+	args := []string{"-n", "mychaincode", "-p", "github.com/hyperledger/fabric/peer/chaincode/testdata/src/chaincodes/noop"}
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err == nil {
@@ -81,15 +81,15 @@ func TestInstallLegacyNonExistentCC(t *testing.T) {
 	cmd, _ := initInstallTest(t, fsPath, nil, nil)
 	defer cleanupInstallTest(fsPath)
 
-	args := []string{"-n", "badexample02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/bad_example02", "-v", "testversion"}
+	args := []string{"-n", "badmychaincode", "-p", "github.com/hyperledger/fabric/peer/chaincode/testdata/src/chaincodes/bad_mychaincode", "-v", "testversion"}
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err == nil {
 		t.Fatal("Expected error executing install command for bad chaincode")
 	}
 
-	if _, err := os.Stat(fsPath + "/chaincodes/badexample02.testversion"); err == nil {
-		t.Fatal("chaincode example02.testversion should not exist")
+	if _, err := os.Stat(fsPath + "/chaincodes/badmychaincode.testversion"); err == nil {
+		t.Fatal("chaincode mychaincode.testversion should not exist")
 	}
 }
 
@@ -146,16 +146,15 @@ func TestInstallLegacyFromBadPackage(t *testing.T) {
 	}
 }
 
-func installLegacyEx02(t *testing.T) error {
+func installLegacyCC(t *testing.T) error {
 	defer viper.Reset()
-	viper.Set("chaincode.mode", "dev")
 
 	fsPath, err := ioutil.TempDir("", "installLegacyEx02")
 	assert.NoError(t, err)
 	cmd, _ := initInstallTest(t, fsPath, nil, nil)
 	defer cleanupInstallTest(fsPath)
 
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd", "-v", "anotherversion"}
+	args := []string{"-n", "mychaincode", "-p", "github.com/hyperledger/fabric/peer/chaincode/testdata/src/chaincodes/noop", "-v", "anotherversion"}
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err != nil {
@@ -166,7 +165,7 @@ func installLegacyEx02(t *testing.T) error {
 }
 
 func TestInstallLegacy(t *testing.T) {
-	if err := installLegacyEx02(t); err != nil {
+	if err := installLegacyCC(t); err != nil {
 		t.Fatalf("Install failed with error: %v", err)
 	}
 }
