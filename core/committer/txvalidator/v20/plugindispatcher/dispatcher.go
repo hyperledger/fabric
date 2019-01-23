@@ -53,7 +53,7 @@ type LifecycleResources interface {
 	// which needs to differentiate the two types of error to halt processing on the channel
 	// if the unexpected error is not nil and mark the transaction as invalid if the validation
 	// error is not nil.
-	ValidationInfo(chaincodeName string, qe ledger.QueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error)
+	ValidationInfo(chaincodeName string, qe ledger.SimpleQueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error)
 }
 
 //go:generate mockery -dir . -name LifecycleResources -case underscore -output mocks/
