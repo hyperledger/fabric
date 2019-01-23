@@ -144,7 +144,7 @@ var _ = Describe("Consenter", func() {
 				{ServerTlsCert: certBytes},
 			},
 			Options: &etcdraftproto.Options{
-				TickInterval:    100,
+				TickInterval:    500,
 				ElectionTick:    10,
 				HeartbeatTick:   1,
 				MaxInflightMsgs: 256,
@@ -171,7 +171,7 @@ var _ = Describe("Consenter", func() {
 				{ServerTlsCert: []byte("cert.orderer1.org1")},
 			},
 			Options: &etcdraftproto.Options{
-				TickInterval:    100,
+				TickInterval:    500,
 				ElectionTick:    10,
 				HeartbeatTick:   1,
 				MaxInflightMsgs: 256,
