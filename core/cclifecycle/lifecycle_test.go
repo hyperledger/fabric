@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
@@ -267,6 +268,9 @@ func TestHandleChaincodeDeployFailures(t *testing.T) {
 }
 
 func TestMultipleUpdates(t *testing.T) {
+	recorder, restoreLogger := newLogRecorder(t)
+	defer restoreLogger()
+
 	cc1Bytes := utils.MarshalOrPanic(&ccprovider.ChaincodeData{
 		Name:    "cc1",
 		Version: "1.1",
@@ -338,6 +342,12 @@ func TestMultipleUpdates(t *testing.T) {
 	// metadata set.
 	expectedMetadata := sortedMetadataSet(lsnr.Calls[2].Arguments.Get(1).(chaincode.MetadataSet)).sort()
 	assert.Equal(t, metadataSetWithBothChaincodes, expectedMetadata)
+
+	// Wait for all listeners to fire
+	g := NewGomegaWithT(t)
+	g.Eventually(func() []string {
+		return recorder.EntriesMatching("Listeners for channel mychannel invoked")
+	}, time.Second*10).Should(HaveLen(3))
 }
 
 func TestMetadata(t *testing.T) {
