@@ -31,8 +31,8 @@ type Chaincode struct {
 // DeployChaincodePlusLifecycle is a helper that will install chaincode to all
 // peers that are connected to the specified channel, instantiate the chaincode
 // on one of the peers, and wait for the instantiation to complete on all of
-// the peers. It uses the +lifecycle implementation.
-// TODO: add +lifecycle DefineChaincode functionality once it has been
+// the peers. It uses the _lifecycle implementation.
+// TODO: add _lifecycle DefineChaincode functionality once it has been
 // be implemented server-side
 func DeployChaincodePlusLifecycle(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
 	if len(peers) == 0 {

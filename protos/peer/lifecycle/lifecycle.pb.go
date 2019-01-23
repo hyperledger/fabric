@@ -20,7 +20,7 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // InstallChaincodeArgs is the message used as the argument to
-// '+lifecycle.InstallChaincode'
+// '_lifecycle.InstallChaincode'
 type InstallChaincodeArgs struct {
 	Name                    string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Version                 string   `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
@@ -34,7 +34,7 @@ func (m *InstallChaincodeArgs) Reset()         { *m = InstallChaincodeArgs{} }
 func (m *InstallChaincodeArgs) String() string { return proto.CompactTextString(m) }
 func (*InstallChaincodeArgs) ProtoMessage()    {}
 func (*InstallChaincodeArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{0}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{0}
 }
 func (m *InstallChaincodeArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InstallChaincodeArgs.Unmarshal(m, b)
@@ -76,7 +76,7 @@ func (m *InstallChaincodeArgs) GetChaincodeInstallPackage() []byte {
 }
 
 // InstallChaincodeArgs is the message returned by
-// '+lifecycle.InstallChaincode'
+// '_lifecycle.InstallChaincode'
 type InstallChaincodeResult struct {
 	Hash                 []byte   `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -88,7 +88,7 @@ func (m *InstallChaincodeResult) Reset()         { *m = InstallChaincodeResult{}
 func (m *InstallChaincodeResult) String() string { return proto.CompactTextString(m) }
 func (*InstallChaincodeResult) ProtoMessage()    {}
 func (*InstallChaincodeResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{1}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{1}
 }
 func (m *InstallChaincodeResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InstallChaincodeResult.Unmarshal(m, b)
@@ -115,8 +115,8 @@ func (m *InstallChaincodeResult) GetHash() []byte {
 	return nil
 }
 
-// QueryInstalledChaincodeArgs is the message used as arguemtns
-// '+lifecycle.QueryInstalledChaincode'
+// QueryInstalledChaincodeArgs is the message used as arguments
+// '_lifecycle.QueryInstalledChaincode'
 type QueryInstalledChaincodeArgs struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Version              string   `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
@@ -129,7 +129,7 @@ func (m *QueryInstalledChaincodeArgs) Reset()         { *m = QueryInstalledChain
 func (m *QueryInstalledChaincodeArgs) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodeArgs) ProtoMessage()    {}
 func (*QueryInstalledChaincodeArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{2}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{2}
 }
 func (m *QueryInstalledChaincodeArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodeArgs.Unmarshal(m, b)
@@ -164,7 +164,7 @@ func (m *QueryInstalledChaincodeArgs) GetVersion() string {
 }
 
 // QueryInstalledChaincodeResult is the message returned by
-// '+lifecycle.QueryInstalledChaincode'
+// '_lifecycle.QueryInstalledChaincode'
 type QueryInstalledChaincodeResult struct {
 	Hash                 []byte   `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -176,7 +176,7 @@ func (m *QueryInstalledChaincodeResult) Reset()         { *m = QueryInstalledCha
 func (m *QueryInstalledChaincodeResult) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodeResult) ProtoMessage()    {}
 func (*QueryInstalledChaincodeResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{3}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{3}
 }
 func (m *QueryInstalledChaincodeResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodeResult.Unmarshal(m, b)
@@ -204,7 +204,7 @@ func (m *QueryInstalledChaincodeResult) GetHash() []byte {
 }
 
 // QueryInstalledChaincodesArgs currently is an empty argument to
-// '+lifecycle.QueryInstalledChaincodes'.   In the future, it may be
+// '_lifecycle.QueryInstalledChaincodes'.   In the future, it may be
 // extended to have parameters.
 type QueryInstalledChaincodesArgs struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -216,7 +216,7 @@ func (m *QueryInstalledChaincodesArgs) Reset()         { *m = QueryInstalledChai
 func (m *QueryInstalledChaincodesArgs) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodesArgs) ProtoMessage()    {}
 func (*QueryInstalledChaincodesArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{4}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{4}
 }
 func (m *QueryInstalledChaincodesArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodesArgs.Unmarshal(m, b)
@@ -237,7 +237,7 @@ func (m *QueryInstalledChaincodesArgs) XXX_DiscardUnknown() {
 var xxx_messageInfo_QueryInstalledChaincodesArgs proto.InternalMessageInfo
 
 // QueryInstalledChaincodesResult is the message returned by
-// '+lifecycle.QueryInstalledChaincodes'.  It returns a list of
+// '_lifecycle.QueryInstalledChaincodes'.  It returns a list of
 // installed chaincodes.
 type QueryInstalledChaincodesResult struct {
 	InstalledChaincodes  []*QueryInstalledChaincodesResult_InstalledChaincode `protobuf:"bytes,1,rep,name=installed_chaincodes,json=installedChaincodes,proto3" json:"installed_chaincodes,omitempty"`
@@ -250,7 +250,7 @@ func (m *QueryInstalledChaincodesResult) Reset()         { *m = QueryInstalledCh
 func (m *QueryInstalledChaincodesResult) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodesResult) ProtoMessage()    {}
 func (*QueryInstalledChaincodesResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{5}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{5}
 }
 func (m *QueryInstalledChaincodesResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodesResult.Unmarshal(m, b)
@@ -294,7 +294,7 @@ func (m *QueryInstalledChaincodesResult_InstalledChaincode) String() string {
 }
 func (*QueryInstalledChaincodesResult_InstalledChaincode) ProtoMessage() {}
 func (*QueryInstalledChaincodesResult_InstalledChaincode) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{5, 0}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{5, 0}
 }
 func (m *QueryInstalledChaincodesResult_InstalledChaincode) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodesResult_InstalledChaincode.Unmarshal(m, b)
@@ -336,7 +336,7 @@ func (m *QueryInstalledChaincodesResult_InstalledChaincode) GetHash() []byte {
 }
 
 // DefineChaincodeForMyOrgArgs is the message used as arguments to
-// `+lifecycle.DefineChaincodeForMyOrg`.
+// `_lifecycle.DefineChaincodeForMyOrg`.
 type DefineChaincodeForMyOrgArgs struct {
 	Sequence             int64                           `protobuf:"varint,1,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	Name                 string                          `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
@@ -355,7 +355,7 @@ func (m *DefineChaincodeForMyOrgArgs) Reset()         { *m = DefineChaincodeForM
 func (m *DefineChaincodeForMyOrgArgs) String() string { return proto.CompactTextString(m) }
 func (*DefineChaincodeForMyOrgArgs) ProtoMessage()    {}
 func (*DefineChaincodeForMyOrgArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{6}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{6}
 }
 func (m *DefineChaincodeForMyOrgArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DefineChaincodeForMyOrgArgs.Unmarshal(m, b)
@@ -432,7 +432,7 @@ func (m *DefineChaincodeForMyOrgArgs) GetCollections() *common.CollectionConfigP
 }
 
 // DefineChaincodeForMyOrgResult is the message returned by
-// `+lifecycle.DefineChaincodeForMyOrg`. Currently it returns
+// `_lifecycle.DefineChaincodeForMyOrg`. Currently it returns
 // nothing, but may be extended in the future.
 type DefineChaincodeForMyOrgResult struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -444,7 +444,7 @@ func (m *DefineChaincodeForMyOrgResult) Reset()         { *m = DefineChaincodeFo
 func (m *DefineChaincodeForMyOrgResult) String() string { return proto.CompactTextString(m) }
 func (*DefineChaincodeForMyOrgResult) ProtoMessage()    {}
 func (*DefineChaincodeForMyOrgResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{7}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{7}
 }
 func (m *DefineChaincodeForMyOrgResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DefineChaincodeForMyOrgResult.Unmarshal(m, b)
@@ -465,7 +465,7 @@ func (m *DefineChaincodeForMyOrgResult) XXX_DiscardUnknown() {
 var xxx_messageInfo_DefineChaincodeForMyOrgResult proto.InternalMessageInfo
 
 // DefineChaincodeArgs is the message used as arguments to
-// `+lifecycle.DefineChaincode`.
+// `_lifecycle.DefineChaincode`.
 type DefineChaincodeArgs struct {
 	Sequence             int64                           `protobuf:"varint,1,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	Name                 string                          `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
@@ -484,7 +484,7 @@ func (m *DefineChaincodeArgs) Reset()         { *m = DefineChaincodeArgs{} }
 func (m *DefineChaincodeArgs) String() string { return proto.CompactTextString(m) }
 func (*DefineChaincodeArgs) ProtoMessage()    {}
 func (*DefineChaincodeArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{8}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{8}
 }
 func (m *DefineChaincodeArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DefineChaincodeArgs.Unmarshal(m, b)
@@ -561,7 +561,7 @@ func (m *DefineChaincodeArgs) GetCollections() *common.CollectionConfigPackage {
 }
 
 // DefineChaincodeResult is the message returned by
-// `+lifecycle.DefineChaincode`. Currently it returns
+// `_lifecycle.DefineChaincode`. Currently it returns
 // nothing, but may be extended in the future.
 type DefineChaincodeResult struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -573,7 +573,7 @@ func (m *DefineChaincodeResult) Reset()         { *m = DefineChaincodeResult{} }
 func (m *DefineChaincodeResult) String() string { return proto.CompactTextString(m) }
 func (*DefineChaincodeResult) ProtoMessage()    {}
 func (*DefineChaincodeResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{9}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{9}
 }
 func (m *DefineChaincodeResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DefineChaincodeResult.Unmarshal(m, b)
@@ -594,7 +594,7 @@ func (m *DefineChaincodeResult) XXX_DiscardUnknown() {
 var xxx_messageInfo_DefineChaincodeResult proto.InternalMessageInfo
 
 // QueryDefinedChaincode is the message used as arguments to
-// `+lifecycle.QueryDefinedChaincode`.
+// `_lifecycle.QueryDefinedChaincode`.
 type QueryDefinedChaincodeArgs struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -606,7 +606,7 @@ func (m *QueryDefinedChaincodeArgs) Reset()         { *m = QueryDefinedChaincode
 func (m *QueryDefinedChaincodeArgs) String() string { return proto.CompactTextString(m) }
 func (*QueryDefinedChaincodeArgs) ProtoMessage()    {}
 func (*QueryDefinedChaincodeArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{10}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{10}
 }
 func (m *QueryDefinedChaincodeArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryDefinedChaincodeArgs.Unmarshal(m, b)
@@ -634,7 +634,7 @@ func (m *QueryDefinedChaincodeArgs) GetName() string {
 }
 
 // DefineChaincodeResult is the message returned by
-// `+lifecycle.QueryDefinedChaincode`.
+// `_lifecycle.QueryDefinedChaincode`.
 type QueryDefinedChaincodeResult struct {
 	Sequence             int64                           `protobuf:"varint,1,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	Name                 string                          `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
@@ -653,7 +653,7 @@ func (m *QueryDefinedChaincodeResult) Reset()         { *m = QueryDefinedChainco
 func (m *QueryDefinedChaincodeResult) String() string { return proto.CompactTextString(m) }
 func (*QueryDefinedChaincodeResult) ProtoMessage()    {}
 func (*QueryDefinedChaincodeResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{11}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{11}
 }
 func (m *QueryDefinedChaincodeResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryDefinedChaincodeResult.Unmarshal(m, b)
@@ -730,7 +730,7 @@ func (m *QueryDefinedChaincodeResult) GetCollections() *common.CollectionConfigP
 }
 
 // QueryDefinedNamespaces is the message used as arguments to
-// `+lifecycle.QueryDefinedNamespaces`.
+// `_lifecycle.QueryDefinedNamespaces`.
 type QueryDefinedNamespacesArgs struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -741,7 +741,7 @@ func (m *QueryDefinedNamespacesArgs) Reset()         { *m = QueryDefinedNamespac
 func (m *QueryDefinedNamespacesArgs) String() string { return proto.CompactTextString(m) }
 func (*QueryDefinedNamespacesArgs) ProtoMessage()    {}
 func (*QueryDefinedNamespacesArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{12}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{12}
 }
 func (m *QueryDefinedNamespacesArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryDefinedNamespacesArgs.Unmarshal(m, b)
@@ -762,7 +762,7 @@ func (m *QueryDefinedNamespacesArgs) XXX_DiscardUnknown() {
 var xxx_messageInfo_QueryDefinedNamespacesArgs proto.InternalMessageInfo
 
 // QueryDefinedNamespaces is the message returned by
-// `+lifecycle.QueryDefinedNamespaces`.
+// `_lifecycle.QueryDefinedNamespaces`.
 type QueryDefinedNamespacesResult struct {
 	Namespaces           map[string]*QueryDefinedNamespacesResult_Namespace `protobuf:"bytes,1,rep,name=namespaces,proto3" json:"namespaces,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}                                           `json:"-"`
@@ -774,7 +774,7 @@ func (m *QueryDefinedNamespacesResult) Reset()         { *m = QueryDefinedNamesp
 func (m *QueryDefinedNamespacesResult) String() string { return proto.CompactTextString(m) }
 func (*QueryDefinedNamespacesResult) ProtoMessage()    {}
 func (*QueryDefinedNamespacesResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{13}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{13}
 }
 func (m *QueryDefinedNamespacesResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryDefinedNamespacesResult.Unmarshal(m, b)
@@ -814,7 +814,7 @@ func (m *QueryDefinedNamespacesResult_Namespace) Reset() {
 func (m *QueryDefinedNamespacesResult_Namespace) String() string { return proto.CompactTextString(m) }
 func (*QueryDefinedNamespacesResult_Namespace) ProtoMessage()    {}
 func (*QueryDefinedNamespacesResult_Namespace) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_548ba5a41b048411, []int{13, 0}
+	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{13, 0}
 }
 func (m *QueryDefinedNamespacesResult_Namespace) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryDefinedNamespacesResult_Namespace.Unmarshal(m, b)
@@ -862,10 +862,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("peer/lifecycle/lifecycle.proto", fileDescriptor_lifecycle_548ba5a41b048411)
+	proto.RegisterFile("peer/lifecycle/lifecycle.proto", fileDescriptor_lifecycle_e8e4813c97a28867)
 }
 
-var fileDescriptor_lifecycle_548ba5a41b048411 = []byte{
+var fileDescriptor_lifecycle_e8e4813c97a28867 = []byte{
 	// 619 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xec, 0x56, 0x4d, 0x6f, 0xd3, 0x4c,
 	0x10, 0x96, 0x93, 0x7e, 0x4e, 0x2a, 0xbd, 0xad, 0xdb, 0x97, 0xba, 0xe9, 0x57, 0xe4, 0x53, 0x24,

@@ -96,7 +96,7 @@ var _ = Describe("Lifecycle", func() {
 
 			It("appends its own namespaces the legacy impl", func() {
 				res := l.Namespaces()
-				Expect(res).To(Equal([]string{"+lifecycle", "a", "b", "c"}))
+				Expect(res).To(Equal([]string{"_lifecycle", "a", "b", "c"}))
 				Expect(fakeLegacyProvider.NamespacesCallCount()).To(Equal(1))
 			})
 		})
@@ -110,9 +110,9 @@ var _ = Describe("Lifecycle", func() {
 				Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(1))
 			})
 
-			Context("when the requested chaincode is +lifecycle", func() {
+			Context("when the requested chaincode is _lifecycle", func() {
 				It("it returns true", func() {
-					exists, state, err := l.ChaincodeInNewLifecycle("+lifecycle", fakeQueryExecutor)
+					exists, state, err := l.ChaincodeInNewLifecycle("_lifecycle", fakeQueryExecutor)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(exists).To(BeTrue())
 					Expect(state).NotTo(BeNil())
@@ -157,7 +157,7 @@ var _ = Describe("Lifecycle", func() {
 
 			BeforeEach(func() {
 				updates = map[string][]*kvrwset.KVWrite{
-					"+lifecycle": {
+					"_lifecycle": {
 						{Key: "some/random/value"},
 						{Key: "namespaces/fields/cc-name/Sequence"},
 						{Key: "prefix/namespaces/fields/cc-name/Sequence"},
@@ -207,11 +207,11 @@ var _ = Describe("Lifecycle", func() {
 				Expect(len(res.ImplicitCollections)).To(Equal(2))
 			})
 
-			Context("when the requested chaincode is +lifecycle", func() {
+			Context("when the requested chaincode is _lifecycle", func() {
 				It("returns the implicit collections only", func() {
-					res, err := l.ChaincodeInfo("channel-name", "+lifecycle", fakeQueryExecutor)
+					res, err := l.ChaincodeInfo("channel-name", "_lifecycle", fakeQueryExecutor)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(res.Name).To(Equal("+lifecycle"))
+					Expect(res.Name).To(Equal("_lifecycle"))
 					Expect(len(res.ImplicitCollections)).To(Equal(2))
 					Expect(res.ExplicitCollectionConfigPkg).To(BeNil())
 				})
@@ -293,9 +293,9 @@ var _ = Describe("Lifecycle", func() {
 				})
 			})
 
-			Context("when the chaincode in question is +lifecycle", func() {
+			Context("when the chaincode in question is _lifecycle", func() {
 				It("skips the existence checks and checks the implicit collections", func() {
-					res, err := l.CollectionInfo("channel-name", "+lifecycle", "_implicit_org_first-mspid", fakeQueryExecutor)
+					res, err := l.CollectionInfo("channel-name", "_lifecycle", "_implicit_org_first-mspid", fakeQueryExecutor)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(res).NotTo(BeNil())
 				})
@@ -465,9 +465,9 @@ var _ = Describe("Lifecycle", func() {
 				Expect(vParm).To(Equal([]byte("validation-parameter")))
 			})
 
-			Context("when the chaincode in question is +lifecycle", func() {
+			Context("when the chaincode in question is _lifecycle", func() {
 				It("returns the builtin plugin and (temporarily) a permissive endorsement policy", func() {
-					vPlugin, vParm, uerr, verr := l.ValidationInfo("channel-id", "+lifecycle", fakeQueryExecutor)
+					vPlugin, vParm, uerr, verr := l.ValidationInfo("channel-id", "_lifecycle", fakeQueryExecutor)
 					Expect(uerr).NotTo(HaveOccurred())
 					Expect(verr).NotTo(HaveOccurred())
 					Expect(vPlugin).To(Equal("builtin"))
@@ -480,7 +480,7 @@ var _ = Describe("Lifecycle", func() {
 					})
 
 					It("treats the error as non-deterministic", func() {
-						_, _, uerr, _ := l.ValidationInfo("channel-id", "+lifecycle", fakeQueryExecutor)
+						_, _, uerr, _ := l.ValidationInfo("channel-id", "_lifecycle", fakeQueryExecutor)
 						Expect(uerr).To(MatchError("unexpected failure to create lifecycle endorsement policy: could not get channel config for channel 'channel-id'"))
 					})
 				})

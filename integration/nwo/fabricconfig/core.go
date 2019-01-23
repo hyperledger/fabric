@@ -230,7 +230,7 @@ type Node struct {
 }
 
 type SystemFlags struct {
-	NEWLIFECYCLE string `yaml:"+lifecycle,omitempty"`
+	NEWLIFECYCLE string `yaml:"_lifecycle,omitempty"`
 	CSCC         string `yaml:"cscc,omitempty"`
 	LSCC         string `yaml:"lscc,omitempty"`
 	ESCC         string `yaml:"escc,omitempty"`

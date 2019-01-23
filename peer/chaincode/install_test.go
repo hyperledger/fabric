@@ -372,7 +372,7 @@ func TestValidateInput(t *testing.T) {
 		assert.Equal("chaincode version must be specified", err.Error())
 	})
 
-	t.Run("chaincode path specified but not supported by +lifecycle", func(t *testing.T) {
+	t.Run("chaincode path specified but not supported by _lifecycle", func(t *testing.T) {
 		i.Input = &InstallInput{
 			Name:        "testcc",
 			Version:     "test.0",
@@ -382,7 +382,7 @@ func TestValidateInput(t *testing.T) {
 
 		err := i.validateInput()
 		assert.Error(err)
-		assert.Equal("chaincode path parameter not supported by +lifecycle", err.Error())
+		assert.Equal("chaincode path parameter not supported by _lifecycle", err.Error())
 	})
 }
 

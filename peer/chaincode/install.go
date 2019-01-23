@@ -29,7 +29,7 @@ var chaincodeInstallCmd *cobra.Command
 
 const (
 	installCmdName   = "install"
-	newLifecycleName = "+lifecycle"
+	newLifecycleName = "_lifecycle"
 )
 
 // Reader defines the interface needed for reading a file
@@ -109,7 +109,7 @@ func (i *Installer) installChaincode(args []string) error {
 
 	i.setInput(args)
 
-	// +lifecycle install
+	// _lifecycle install
 	if i.Input.NewLifecycle {
 		return i.install()
 	}
@@ -131,7 +131,7 @@ func (i *Installer) setInput(args []string) {
 	}
 }
 
-// install installs a chaincode for use with +lifecycle
+// install installs a chaincode for use with _lifecycle
 func (i *Installer) install() error {
 	err := i.validateInput()
 	if err != nil {
@@ -228,7 +228,7 @@ func (i *Installer) validateInput() error {
 	}
 
 	if i.Input.Path != "" {
-		return errors.New("chaincode path parameter not supported by +lifecycle")
+		return errors.New("chaincode path parameter not supported by _lifecycle")
 	}
 
 	return nil

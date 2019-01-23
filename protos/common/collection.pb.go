@@ -32,7 +32,7 @@ func (m *CollectionConfigPackage) Reset()         { *m = CollectionConfigPackage
 func (m *CollectionConfigPackage) String() string { return proto.CompactTextString(m) }
 func (*CollectionConfigPackage) ProtoMessage()    {}
 func (*CollectionConfigPackage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_collection_89385bb0a973dd7b, []int{0}
+	return fileDescriptor_collection_04c007292d812113, []int{0}
 }
 func (m *CollectionConfigPackage) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CollectionConfigPackage.Unmarshal(m, b)
@@ -75,7 +75,7 @@ func (m *CollectionConfig) Reset()         { *m = CollectionConfig{} }
 func (m *CollectionConfig) String() string { return proto.CompactTextString(m) }
 func (*CollectionConfig) ProtoMessage()    {}
 func (*CollectionConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_collection_89385bb0a973dd7b, []int{1}
+	return fileDescriptor_collection_04c007292d812113, []int{1}
 }
 func (m *CollectionConfig) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CollectionConfig.Unmarshal(m, b)
@@ -214,7 +214,7 @@ func (m *StaticCollectionConfig) Reset()         { *m = StaticCollectionConfig{}
 func (m *StaticCollectionConfig) String() string { return proto.CompactTextString(m) }
 func (*StaticCollectionConfig) ProtoMessage()    {}
 func (*StaticCollectionConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_collection_89385bb0a973dd7b, []int{2}
+	return fileDescriptor_collection_04c007292d812113, []int{2}
 }
 func (m *StaticCollectionConfig) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StaticCollectionConfig.Unmarshal(m, b)
@@ -300,7 +300,7 @@ func (m *CollectionPolicyConfig) Reset()         { *m = CollectionPolicyConfig{}
 func (m *CollectionPolicyConfig) String() string { return proto.CompactTextString(m) }
 func (*CollectionPolicyConfig) ProtoMessage()    {}
 func (*CollectionPolicyConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_collection_89385bb0a973dd7b, []int{3}
+	return fileDescriptor_collection_04c007292d812113, []int{3}
 }
 func (m *CollectionPolicyConfig) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CollectionPolicyConfig.Unmarshal(m, b)
@@ -415,7 +415,7 @@ func (m *CollectionCriteria) Reset()         { *m = CollectionCriteria{} }
 func (m *CollectionCriteria) String() string { return proto.CompactTextString(m) }
 func (*CollectionCriteria) ProtoMessage()    {}
 func (*CollectionCriteria) Descriptor() ([]byte, []int) {
-	return fileDescriptor_collection_89385bb0a973dd7b, []int{4}
+	return fileDescriptor_collection_04c007292d812113, []int{4}
 }
 func (m *CollectionCriteria) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CollectionCriteria.Unmarshal(m, b)
@@ -471,9 +471,9 @@ func init() {
 	proto.RegisterType((*CollectionCriteria)(nil), "common.CollectionCriteria")
 }
 
-func init() { proto.RegisterFile("common/collection.proto", fileDescriptor_collection_89385bb0a973dd7b) }
+func init() { proto.RegisterFile("common/collection.proto", fileDescriptor_collection_04c007292d812113) }
 
-var fileDescriptor_collection_89385bb0a973dd7b = []byte{
+var fileDescriptor_collection_04c007292d812113 = []byte{
 	// 500 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x93, 0x5f, 0x6b, 0xdb, 0x3c,
 	0x14, 0xc6, 0xeb, 0x36, 0x7f, 0x5e, 0x9f, 0xf0, 0xae, 0xa9, 0xca, 0x52, 0x33, 0x46, 0x17, 0xc2,

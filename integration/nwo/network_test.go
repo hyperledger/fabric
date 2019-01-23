@@ -90,7 +90,7 @@ var _ = Describe("Network", func() {
 			RunQueryInvokeQuery(network, orderer, peer)
 		})
 
-		It("deploys and executes chaincode (simple) using the +lifecycle", func() {
+		It("deploys and executes chaincode (simple) using the _lifecycle", func() {
 			orderer := network.Orderer("orderer0")
 			// TODO: uncomment once needed below
 			// peer := network.Peer("org1", "peer2")
@@ -107,7 +107,7 @@ var _ = Describe("Network", func() {
 
 			network.CreateAndJoinChannels(orderer)
 			nwo.DeployChaincodePlusLifecycle(network, "testchannel", orderer, chaincode)
-			// TODO: uncomment once +lifecycle Define functionality is available
+			// TODO: uncomment once _lifecycle Define functionality is available
 			// server-side and has been added to nwo
 			// RunQueryInvokeQuery(network, orderer, peer)
 		})
@@ -200,7 +200,7 @@ var _ = Describe("Network", func() {
 			RunQueryInvokeQuery(network, orderer, testPeers[0])
 		})
 
-		It("packages and installs chaincode (the hard way) using the +lifecycle", func() {
+		It("packages and installs chaincode (the hard way) using the _lifecycle", func() {
 			// This demonstrates how to control the processes that make up a network.
 			// If you don't care about a collection of processes (like the brokers or
 			// the orderers) use the group runner to manage those processes.
