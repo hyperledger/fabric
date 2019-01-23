@@ -852,8 +852,8 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
 
-		// 2. check local MSP Admins policy
-		if err = lscc.PolicyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
+		// 2. check install policy
+		if err = lscc.ACLProvider.CheckACL(resources.Lscc_Install, "", sp); err != nil {
 			return shim.Error(fmt.Sprintf("access denied for [%s]: %s", function, err))
 		}
 
@@ -1006,8 +1006,8 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
 
-		// 2. check local MSP Admins policy
-		if err = lscc.PolicyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
+		// 2. check Lscc_GetInstalledChaincodes policy
+		if err = lscc.ACLProvider.CheckACL(resources.Lscc_GetInstalledChaincodes, "", sp); err != nil {
 			return shim.Error(fmt.Sprintf("access denied for [%s]: %s", function, err))
 		}
 
