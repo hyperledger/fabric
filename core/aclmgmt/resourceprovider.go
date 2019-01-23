@@ -148,26 +148,34 @@ type resourceProvider struct {
 	resGetter ResourceGetter
 
 	//default provider to be used for undefined resources
-	defaultProvider ACLProvider
+	defaultProvider defaultACLProvider
 }
 
 //create a new resourceProvider
-func newResourceProvider(rg ResourceGetter, defprov ACLProvider) *resourceProvider {
+func newResourceProvider(rg ResourceGetter, defprov defaultACLProvider) *resourceProvider {
 	return &resourceProvider{rg, defprov}
+}
+
+func (rp *resourceProvider) enforceDefaultBehavior(resName string, channelID string, idinfo interface{}) bool {
+	// we currently enforce using p types if defined.  In future we will allow p types
+	// to be overridden through peer configuration
+	return rp.defaultProvider.IsPtypePolicy(resName)
 }
 
 //CheckACL implements the ACL
 func (rp *resourceProvider) CheckACL(resName string, channelID string, idinfo interface{}) error {
-	resCfg := rp.resGetter(channelID)
+	if !rp.enforceDefaultBehavior(resName, channelID, idinfo) {
+		resCfg := rp.resGetter(channelID)
 
-	if resCfg != nil {
-		pp := &aclmgmtPolicyProviderImpl{&policyEvaluatorImpl{resCfg}}
-		policyName := pp.GetPolicyName(resName)
-		if policyName != "" {
-			aclLogger.Debugf("acl policy %s found in config for resource %s", policyName, resName)
-			return pp.CheckACL(policyName, idinfo)
+		if resCfg != nil {
+			pp := &aclmgmtPolicyProviderImpl{&policyEvaluatorImpl{resCfg}}
+			policyName := pp.GetPolicyName(resName)
+			if policyName != "" {
+				aclLogger.Debugf("acl policy %s found in config for resource %s", policyName, resName)
+				return pp.CheckACL(policyName, idinfo)
+			}
+			aclLogger.Debugf("acl policy not found in config for resource %s", resName)
 		}
-		aclLogger.Debugf("acl policy not found in config for resource %s", resName)
 	}
 
 	return rp.defaultProvider.CheckACL(resName, channelID, idinfo)
