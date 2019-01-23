@@ -7,8 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package pull
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -26,10 +28,10 @@ var timeoutInterval = 20 * time.Second
 
 func init() {
 	util.SetupTestLogging()
-	pullInterval = time.Duration(500) * time.Millisecond
-	algo.SetDigestWaitTime(pullInterval / 5)
-	algo.SetRequestWaitTime(pullInterval)
-	algo.SetResponseWaitTime(pullInterval)
+	pullInterval = 500 * time.Millisecond
+	algo.SetDigestWaitTime(100 * time.Millisecond)
+	algo.SetRequestWaitTime(200 * time.Millisecond)
+	algo.SetResponseWaitTime(300 * time.Millisecond)
 }
 
 type pullMsg struct {
@@ -88,6 +90,10 @@ func (p *pullInstance) Send(msg *proto.SignedGossipMessage, peers ...*comm.Remot
 func (p *pullInstance) GetMembership() []discovery.NetworkMember {
 	members := []discovery.NetworkMember{}
 	for _, peer := range p.peer2PullInst {
+		if bytes.Equal(peer.self.PKIid, p.self.PKIid) {
+			// peer instance itself should not be part of the membership
+			continue
+		}
 		members = append(members, peer.self)
 	}
 	return members
@@ -269,8 +275,41 @@ func TestAddAndRemove(t *testing.T) {
 	// Add a message to inst1
 	inst1.mediator.Add(dataMsg(10))
 
+	// Need to make sure that instance 2, will issue pull
+	// of missing data message with sequence number 10, i.e.
+	// 1. Instance 2 sending Hello to instance 1
+	// 2. Instance 1 answers with digest of current messages
+	// 3. Instance 2 will request missing message 10
+	// 4. Instance 1 provides missing item
+	// Eventually need to ensure message 10 persisted in the state
+	wg := sync.WaitGroup{}
+	wg.Add(4)
+
+	// Make sure there is a Hello message
+	inst1.mediator.RegisterMsgHook(HelloMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage) {
+		wg.Done()
+	})
+
+	// Instance 1 answering with digest
+	inst2.mediator.RegisterMsgHook(DigestMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage) {
+		wg.Done()
+	})
+
+	// Instance 2 requesting missing items
+	inst1.mediator.RegisterMsgHook(RequestMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage) {
+		wg.Done()
+	})
+
+	// Instance 1 sends missing item
+	inst2.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage) {
+		wg.Done()
+	})
+
+	// Waiting for pull engine message exchanges
+	wg.Wait()
+
 	// Ensure instance 2 got new message
-	waitUntilOrFail(t, func() bool { return inst2.items.Exists(uint64(10)) })
+	assert.True(t, inst2.items.Exists(uint64(10)), "Instance 2 should have receive message 10 but didn't")
 
 	// Ensure instance 2 doesn't have message 0
 	assert.False(t, inst2.items.Exists(uint64(0)), "Instance 2 has message 0 but shouldn't have")
@@ -317,6 +356,7 @@ func TestDigestsFilters(t *testing.T) {
 
 func TestHandleMessage(t *testing.T) {
 	t.Parallel()
+
 	inst1 := createPullInstance("localhost:5611", make(map[string]*pullInstance))
 	inst2 := createPullInstance("localhost:5612", make(map[string]*pullInstance))
 	inst1.start()
@@ -339,7 +379,7 @@ func TestHandleMessage(t *testing.T) {
 		assert.True(t, len(itemIds) == 3)
 	})
 
-	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage) {
 		if atomic.LoadInt32(&inst1ReceivedResponse) == int32(1) {
 			return
 		}
@@ -372,7 +412,7 @@ func waitUntilOrFail(t *testing.T, pred func() bool) {
 		if pred() {
 			return
 		}
-		time.Sleep(timeoutInterval / 60)
+		time.Sleep(timeoutInterval / 1000)
 	}
 	util.PrintStackTrace()
 	assert.Fail(t, "Timeout expired!")
