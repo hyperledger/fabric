@@ -234,7 +234,7 @@ func getMockChaincodeCmdFactory() (*ChaincodeCmdFactory, error) {
 	}
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockResponse, nil), common.GetMockEndorserClient(mockResponse, nil)}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-	mockDC := getMockDeliverClient()
+	mockDC := getMockDeliverClientResponseWithTxID("txid0")
 	mockDeliverClients := []api.PeerDeliverClient{mockDC, mockDC}
 	mockCF := &ChaincodeCmdFactory{
 		EndorserClients: mockEndorserClients,
@@ -256,7 +256,7 @@ func getMockChaincodeCmdFactoryWithErr() (*ChaincodeCmdFactory, error) {
 	errMsg := "invoke error"
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(nil, errors.New(errMsg))}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-	mockDeliverClients := []api.PeerDeliverClient{getMockDeliverClient()}
+	mockDeliverClients := []api.PeerDeliverClient{getMockDeliverClientResponseWithTxID("txid0")}
 	mockCF := &ChaincodeCmdFactory{
 		EndorserClients: mockEndorserClients,
 		Signer:          signer,
@@ -292,7 +292,7 @@ func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayl
 
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockRespFailure, nil)}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-	mockDeliverClients := []api.PeerDeliverClient{getMockDeliverClient()}
+	mockDeliverClients := []api.PeerDeliverClient{getMockDeliverClientResponseWithTxID("txid0")}
 	mockCF := &ChaincodeCmdFactory{
 		EndorserClients: mockEndorserClients,
 		Signer:          signer,
@@ -310,30 +310,25 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
 }
 
-// creates a mock deliver client with a response that contains txid0
-func getMockDeliverClient() *cmock.PeerDeliverClient {
-	return getMockDeliverClientResponseWithTxID("txid0")
+// non recording mock of deliver api
+type dummyDeliver struct {
+	resp *pb.DeliverResponse
+	err  error
 }
+
+func (d *dummyDeliver) Send(*cb.Envelope) error            { return nil }
+func (d *dummyDeliver) Recv() (*pb.DeliverResponse, error) { return d.resp, d.err }
+func (d *dummyDeliver) CloseSend() error                   { return nil }
 
 func getMockDeliverClientResponseWithTxID(txID string) *cmock.PeerDeliverClient {
 	mockDC := &cmock.PeerDeliverClient{}
 	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
-		return getMockDeliverConnectionResponseWithTxID(txID), nil
+		resp := &pb.DeliverResponse{
+			Type: &pb.DeliverResponse_FilteredBlock{FilteredBlock: createFilteredBlock(txID)},
+		}
+		return &dummyDeliver{resp: resp}, nil
 	}
-	// mockDC.DeliverReturns(nil, fmt.Errorf("not implemented!!"))
 	return mockDC
-}
-
-func getMockDeliverConnectionResponseWithTxID(txID string) *mock.Deliver {
-	mockDF := &mock.Deliver{}
-	resp := &pb.DeliverResponse{
-		Type: &pb.DeliverResponse_FilteredBlock{
-			FilteredBlock: createFilteredBlock(txID),
-		},
-	}
-	mockDF.RecvReturns(resp, nil)
-	mockDF.CloseSendReturns(nil)
-	return mockDF
 }
 
 func getMockDeliverClientRespondsWithFilteredBlocks(fb []*pb.FilteredBlock) *cmock.PeerDeliverClient {
