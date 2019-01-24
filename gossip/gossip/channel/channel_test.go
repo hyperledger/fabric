@@ -19,15 +19,14 @@ import (
 	gproto "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
-	gmetrics "github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/metrics/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -50,7 +49,7 @@ var conf = Config{
 	TimeForMembershipTracker:    time.Second * 5,
 }
 
-var disabledMetrics = gmetrics.NewGossipMetrics(&disabled.Provider{}).MembershipMetrics
+var disabledMetrics = metrics.NewGossipMetrics(&disabled.Provider{}).MembershipMetrics
 
 func init() {
 	util.SetupTestLogging()
@@ -1991,41 +1990,6 @@ func sequence(start uint64, end uint64) []uint64 {
 
 }
 
-type testMetricProvider struct {
-	fakeProvider   *metricsfakes.Provider
-	fakeTotalGauge *metricsfakes.Gauge
-}
-
-func testUtilConstructMetricProvider() *testMetricProvider {
-	fakeProvider := &metricsfakes.Provider{}
-	fakeTotalGauge := testUtilConstructGuage()
-
-	fakeProvider.NewCounterStub = func(opts metrics.CounterOpts) metrics.Counter {
-		return nil
-	}
-	fakeProvider.NewHistogramStub = func(opts metrics.HistogramOpts) metrics.Histogram {
-		return nil
-	}
-	fakeProvider.NewGaugeStub = func(opts metrics.GaugeOpts) metrics.Gauge {
-		switch opts.Name {
-		case gmetrics.TotalOpts.Name:
-			return fakeTotalGauge
-		}
-		return nil
-	}
-
-	return &testMetricProvider{
-		fakeProvider,
-		fakeTotalGauge,
-	}
-}
-
-func testUtilConstructGuage() *metricsfakes.Gauge {
-	fakeGauge := &metricsfakes.Gauge{}
-	fakeGauge.WithReturns(fakeGauge)
-	return fakeGauge
-}
-
 func TestChangesInPeers(t *testing.T) {
 	//TestChangesInPeers tracks after offline and online peers in channel
 	// Scenario1: no new peers - list of peers stays with no change
@@ -2162,8 +2126,8 @@ func TestChangesInPeers(t *testing.T) {
 				return members
 			}
 
-			testMetricProvider := testUtilConstructMetricProvider()
-			metrics := gmetrics.NewGossipMetrics(testMetricProvider.fakeProvider).MembershipMetrics
+			testMetricProvider := mocks.TestUtilConstructMetricProvider()
+			metrics := metrics.NewGossipMetrics(testMetricProvider.FakeProvider).MembershipMetrics
 
 			mt := &membershipTracker{
 				getPeersToTrack: getListOfPeers,
@@ -2191,8 +2155,8 @@ func TestChangesInPeers(t *testing.T) {
 				assert.Contains(t, test.expected, actual)
 				assert.Equal(t, test.expectedReportInvocation, invokedReport)
 			}
-			assert.Equal(t, []string{"channel", "test"}, testMetricProvider.fakeTotalGauge.WithArgsForCall(0))
-			assert.EqualValues(t, test.expectedTotal, testMetricProvider.fakeTotalGauge.SetArgsForCall(0))
+			assert.Equal(t, []string{"channel", "test"}, testMetricProvider.FakeTotalGauge.WithArgsForCall(0))
+			assert.EqualValues(t, test.expectedTotal, testMetricProvider.FakeTotalGauge.SetArgsForCall(0))
 		})
 	}
 }
