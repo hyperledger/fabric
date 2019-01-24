@@ -209,7 +209,6 @@ func (h *Handler) handleMessageReadyState(msg *pb.ChaincodeMessage) error {
 		go h.HandleTransaction(msg, h.HandleDelState)
 	case pb.ChaincodeMessage_INVOKE_CHAINCODE:
 		go h.HandleTransaction(msg, h.HandleInvokeChaincode)
-
 	case pb.ChaincodeMessage_GET_STATE:
 		go h.HandleTransaction(msg, h.HandleGetState)
 	case pb.ChaincodeMessage_GET_STATE_BY_RANGE:
@@ -222,7 +221,8 @@ func (h *Handler) handleMessageReadyState(msg *pb.ChaincodeMessage) error {
 		go h.HandleTransaction(msg, h.HandleQueryStateNext)
 	case pb.ChaincodeMessage_QUERY_STATE_CLOSE:
 		go h.HandleTransaction(msg, h.HandleQueryStateClose)
-
+	case pb.ChaincodeMessage_GET_PRIVATE_DATA_HASH:
+		go h.HandleTransaction(msg, h.HandleGetPrivateDataHash)
 	case pb.ChaincodeMessage_GET_STATE_METADATA:
 		go h.HandleTransaction(msg, h.HandleGetStateMetadata)
 	case pb.ChaincodeMessage_PUT_STATE_METADATA:
