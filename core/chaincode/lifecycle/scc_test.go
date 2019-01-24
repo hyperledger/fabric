@@ -34,6 +34,7 @@ var _ = Describe("SCC", func() {
 				Protobuf: &dispatcher.ProtobufImpl{},
 			},
 			Functions: fakeSCCFuncs,
+			OrgMSPID:  "fake-mspid",
 		}
 	})
 
@@ -116,7 +117,7 @@ var _ = Describe("SCC", func() {
 			})
 
 			It("returns an error", func() {
-				Expect(scc.Invoke(fakeStub)).To(Equal(shim.Error("failed to invoke backing implementation of 'bad-function': receiver *lifecycle.SCC.bad-function does not exist")))
+				Expect(scc.Invoke(fakeStub)).To(Equal(shim.Error("failed to invoke backing implementation of 'bad-function': receiver *lifecycle.Invocation.bad-function does not exist")))
 			})
 		})
 
@@ -276,6 +277,68 @@ var _ = Describe("SCC", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
 					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryInstalledChaincodes': underlying-error"))
+				})
+			})
+		})
+
+		Describe("DefineChaincodeForMyOrg", func() {
+			var (
+				err          error
+				arg          *lb.DefineChaincodeForMyOrgArgs
+				marshaledArg []byte
+			)
+
+			BeforeEach(func() {
+				arg = &lb.DefineChaincodeForMyOrgArgs{
+					Sequence:            7,
+					Name:                "name",
+					Version:             "version",
+					Hash:                []byte("hash"),
+					EndorsementPlugin:   "endorsement-plugin",
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				}
+
+				marshaledArg, err = proto.Marshal(arg)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeStub.GetArgsReturns([][]byte{[]byte("DefineChaincodeForMyOrg"), marshaledArg})
+			})
+
+			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
+				res := scc.Invoke(fakeStub)
+				Expect(res.Status).To(Equal(int32(200)))
+				payload := &lb.DefineChaincodeForMyOrgResult{}
+				err = proto.Unmarshal(res.Payload, payload)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeSCCFuncs.DefineChaincodeForOrgCallCount()).To(Equal(1))
+				cd, pubState, privState := fakeSCCFuncs.DefineChaincodeForOrgArgsForCall(0)
+				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
+					Sequence: 7,
+					Name:     "name",
+					Parameters: &lifecycle.ChaincodeParameters{
+						Version:             "version",
+						Hash:                []byte("hash"),
+						EndorsementPlugin:   "endorsement-plugin",
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+					},
+				}))
+				Expect(pubState).To(Equal(fakeStub))
+				Expect(privState).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
+				Expect(privState.(*lifecycle.ChaincodePrivateLedgerShim).Collection).To(Equal("_implicit_org_fake-mspid"))
+			})
+
+			Context("when the underlying function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.DefineChaincodeForOrgReturns(fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'DefineChaincodeForMyOrg': underlying-error"))
 				})
 			})
 		})

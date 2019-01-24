@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -26,6 +27,10 @@ const (
 
 	// QueryInstalledChaincodesFuncName is the chaincode function name used to query all installed chaincodes
 	QueryInstalledChaincodesFuncName = "QueryInstalledChaincodes"
+
+	// DefineForMyOrgFuncName is the chaincode function name used to approve a chaincode definition for
+	// execution by the user's own org
+	DefineChaincodeForMyOrgFuncName = "DefineChaincodeForMyOrg"
 )
 
 // SCCFunctions provides a backing implementation with concrete arguments
@@ -39,6 +44,18 @@ type SCCFunctions interface {
 
 	// QueryInstalledChaincodes returns the currently installed chaincodes
 	QueryInstalledChaincodes() (chaincodes []chaincode.InstalledChaincode, err error)
+
+	// DefineChaincodeForOrg records a chaincode definition into this org's implicit collection.
+	DefineChaincodeForOrg(cd *ChaincodeDefinition, publicState ReadableState, orgState ReadWritableState) error
+}
+
+// ChannelConfigSource provides a way to retrieve the channel config for a given
+// channel ID.
+type ChannelConfigSource interface {
+	// GetStableChannelConfig returns the channel config for a given channel id.
+	// Note, it is a stable bundle, which means it will not be updated, even if
+	// the channel is, so it should be discarded after use.
+	GetStableChannelConfig(channelID string) channelconfig.Resources
 }
 
 // InstalledChaincode is the information to be returned about a chaincode
@@ -51,6 +68,8 @@ type InstalledChaincode struct {
 // SCC implements the required methods to satisfy the chaincode interface.
 // It routes the invocation calls to the backing implementations.
 type SCC struct {
+	OrgMSPID string
+
 	// Functions provides the backing implementation of lifecycle.
 	Functions SCCFunctions
 
@@ -114,7 +133,14 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 	// TODO add ACLs
 
-	outputBytes, err := scc.Dispatcher.Dispatch(args[1], string(args[0]), scc)
+	outputBytes, err := scc.Dispatcher.Dispatch(
+		args[1],
+		string(args[0]),
+		&Invocation{
+			SCC:  scc,
+			Stub: stub,
+		},
+	)
 	if err != nil {
 		return shim.Error(fmt.Sprintf("failed to invoke backing implementation of '%s': %s", string(args[0]), err.Error()))
 	}
@@ -122,10 +148,15 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	return shim.Success(outputBytes)
 }
 
+type Invocation struct {
+	Stub shim.ChaincodeStubInterface
+	SCC  *SCC
+}
+
 // InstallChaincode is a SCC function that may be dispatched to which routes to the underlying
 // lifecycle implementation.
-func (scc *SCC) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Message, error) {
-	hash, err := scc.Functions.InstallChaincode(input.Name, input.Version, input.ChaincodeInstallPackage)
+func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Message, error) {
+	hash, err := i.SCC.Functions.InstallChaincode(input.Name, input.Version, input.ChaincodeInstallPackage)
 	if err != nil {
 		return nil, err
 	}
@@ -137,8 +168,8 @@ func (scc *SCC) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Message,
 
 // QueryInstalledChaincode is a SCC function that may be dispatched to which routes to the underlying
 // lifecycle implementation.
-func (scc *SCC) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeArgs) (proto.Message, error) {
-	hash, err := scc.Functions.QueryInstalledChaincode(input.Name, input.Version)
+func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeArgs) (proto.Message, error) {
+	hash, err := i.SCC.Functions.QueryInstalledChaincode(input.Name, input.Version)
 	if err != nil {
 		return nil, err
 	}
@@ -150,8 +181,8 @@ func (scc *SCC) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeArgs) (
 
 // QueryInstalledChaincodes is a SCC function that may be dispatch to which routes to the underlying
 // lifecycle implementation.
-func (scc *SCC) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodesArgs) (proto.Message, error) {
-	chaincodes, err := scc.Functions.QueryInstalledChaincodes()
+func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodesArgs) (proto.Message, error) {
+	chaincodes, err := i.SCC.Functions.QueryInstalledChaincodes()
 	if err != nil {
 		return nil, err
 	}
@@ -167,4 +198,29 @@ func (scc *SCC) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodesArgs)
 			})
 	}
 	return result, nil
+}
+
+func (i *Invocation) DefineChaincodeForMyOrg(input *lb.DefineChaincodeForMyOrgArgs) (proto.Message, error) {
+	collectionName := fmt.Sprintf("_implicit_org_%s", i.SCC.OrgMSPID)
+	if err := i.SCC.Functions.DefineChaincodeForOrg(
+		&ChaincodeDefinition{
+			Name:     input.Name,
+			Sequence: input.Sequence,
+			Parameters: &ChaincodeParameters{
+				Hash:                input.Hash,
+				Version:             input.Version,
+				EndorsementPlugin:   input.EndorsementPlugin,
+				ValidationPlugin:    input.ValidationPlugin,
+				ValidationParameter: input.ValidationParameter,
+			},
+		},
+		i.Stub,
+		&ChaincodePrivateLedgerShim{
+			Collection: collectionName,
+			Stub:       i.Stub,
+		},
+	); err != nil {
+		return nil, err
+	}
+	return &lb.DefineChaincodeForMyOrgResult{}, nil
 }

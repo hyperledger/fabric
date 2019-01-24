@@ -33,7 +33,7 @@ func (m *InstallChaincodeArgs) Reset()         { *m = InstallChaincodeArgs{} }
 func (m *InstallChaincodeArgs) String() string { return proto.CompactTextString(m) }
 func (*InstallChaincodeArgs) ProtoMessage()    {}
 func (*InstallChaincodeArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e9f4a4fdde6b4b81, []int{0}
+	return fileDescriptor_lifecycle_993a08fbd4ed32f2, []int{0}
 }
 func (m *InstallChaincodeArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InstallChaincodeArgs.Unmarshal(m, b)
@@ -87,7 +87,7 @@ func (m *InstallChaincodeResult) Reset()         { *m = InstallChaincodeResult{}
 func (m *InstallChaincodeResult) String() string { return proto.CompactTextString(m) }
 func (*InstallChaincodeResult) ProtoMessage()    {}
 func (*InstallChaincodeResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e9f4a4fdde6b4b81, []int{1}
+	return fileDescriptor_lifecycle_993a08fbd4ed32f2, []int{1}
 }
 func (m *InstallChaincodeResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InstallChaincodeResult.Unmarshal(m, b)
@@ -114,7 +114,7 @@ func (m *InstallChaincodeResult) GetHash() []byte {
 	return nil
 }
 
-// QueryInstalledChaincodeArgs is the message returned by
+// QueryInstalledChaincodeArgs is the message used as arguemtns
 // '+lifecycle.QueryInstalledChaincode'
 type QueryInstalledChaincodeArgs struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -128,7 +128,7 @@ func (m *QueryInstalledChaincodeArgs) Reset()         { *m = QueryInstalledChain
 func (m *QueryInstalledChaincodeArgs) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodeArgs) ProtoMessage()    {}
 func (*QueryInstalledChaincodeArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e9f4a4fdde6b4b81, []int{2}
+	return fileDescriptor_lifecycle_993a08fbd4ed32f2, []int{2}
 }
 func (m *QueryInstalledChaincodeArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodeArgs.Unmarshal(m, b)
@@ -175,7 +175,7 @@ func (m *QueryInstalledChaincodeResult) Reset()         { *m = QueryInstalledCha
 func (m *QueryInstalledChaincodeResult) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodeResult) ProtoMessage()    {}
 func (*QueryInstalledChaincodeResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e9f4a4fdde6b4b81, []int{3}
+	return fileDescriptor_lifecycle_993a08fbd4ed32f2, []int{3}
 }
 func (m *QueryInstalledChaincodeResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodeResult.Unmarshal(m, b)
@@ -215,7 +215,7 @@ func (m *QueryInstalledChaincodesArgs) Reset()         { *m = QueryInstalledChai
 func (m *QueryInstalledChaincodesArgs) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodesArgs) ProtoMessage()    {}
 func (*QueryInstalledChaincodesArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e9f4a4fdde6b4b81, []int{4}
+	return fileDescriptor_lifecycle_993a08fbd4ed32f2, []int{4}
 }
 func (m *QueryInstalledChaincodesArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodesArgs.Unmarshal(m, b)
@@ -249,7 +249,7 @@ func (m *QueryInstalledChaincodesResult) Reset()         { *m = QueryInstalledCh
 func (m *QueryInstalledChaincodesResult) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodesResult) ProtoMessage()    {}
 func (*QueryInstalledChaincodesResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e9f4a4fdde6b4b81, []int{5}
+	return fileDescriptor_lifecycle_993a08fbd4ed32f2, []int{5}
 }
 func (m *QueryInstalledChaincodesResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodesResult.Unmarshal(m, b)
@@ -293,7 +293,7 @@ func (m *QueryInstalledChaincodesResult_InstalledChaincode) String() string {
 }
 func (*QueryInstalledChaincodesResult_InstalledChaincode) ProtoMessage() {}
 func (*QueryInstalledChaincodesResult_InstalledChaincode) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e9f4a4fdde6b4b81, []int{5, 0}
+	return fileDescriptor_lifecycle_993a08fbd4ed32f2, []int{5, 0}
 }
 func (m *QueryInstalledChaincodesResult_InstalledChaincode) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodesResult_InstalledChaincode.Unmarshal(m, b)
@@ -334,6 +334,127 @@ func (m *QueryInstalledChaincodesResult_InstalledChaincode) GetHash() []byte {
 	return nil
 }
 
+// DefineChaincodeForMyOrgArgs is the message used as arguments to
+// `+lifecycle.DefineChaincodeForMyOrg`.
+type DefineChaincodeForMyOrgArgs struct {
+	Sequence             int64    `protobuf:"varint,1,opt,name=sequence,proto3" json:"sequence,omitempty"`
+	Name                 string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Version              string   `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
+	Hash                 []byte   `protobuf:"bytes,4,opt,name=hash,proto3" json:"hash,omitempty"`
+	EndorsementPlugin    string   `protobuf:"bytes,5,opt,name=endorsement_plugin,json=endorsementPlugin,proto3" json:"endorsement_plugin,omitempty"`
+	ValidationPlugin     string   `protobuf:"bytes,6,opt,name=validation_plugin,json=validationPlugin,proto3" json:"validation_plugin,omitempty"`
+	ValidationParameter  []byte   `protobuf:"bytes,7,opt,name=validation_parameter,json=validationParameter,proto3" json:"validation_parameter,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DefineChaincodeForMyOrgArgs) Reset()         { *m = DefineChaincodeForMyOrgArgs{} }
+func (m *DefineChaincodeForMyOrgArgs) String() string { return proto.CompactTextString(m) }
+func (*DefineChaincodeForMyOrgArgs) ProtoMessage()    {}
+func (*DefineChaincodeForMyOrgArgs) Descriptor() ([]byte, []int) {
+	return fileDescriptor_lifecycle_993a08fbd4ed32f2, []int{6}
+}
+func (m *DefineChaincodeForMyOrgArgs) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DefineChaincodeForMyOrgArgs.Unmarshal(m, b)
+}
+func (m *DefineChaincodeForMyOrgArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DefineChaincodeForMyOrgArgs.Marshal(b, m, deterministic)
+}
+func (dst *DefineChaincodeForMyOrgArgs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DefineChaincodeForMyOrgArgs.Merge(dst, src)
+}
+func (m *DefineChaincodeForMyOrgArgs) XXX_Size() int {
+	return xxx_messageInfo_DefineChaincodeForMyOrgArgs.Size(m)
+}
+func (m *DefineChaincodeForMyOrgArgs) XXX_DiscardUnknown() {
+	xxx_messageInfo_DefineChaincodeForMyOrgArgs.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DefineChaincodeForMyOrgArgs proto.InternalMessageInfo
+
+func (m *DefineChaincodeForMyOrgArgs) GetSequence() int64 {
+	if m != nil {
+		return m.Sequence
+	}
+	return 0
+}
+
+func (m *DefineChaincodeForMyOrgArgs) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *DefineChaincodeForMyOrgArgs) GetVersion() string {
+	if m != nil {
+		return m.Version
+	}
+	return ""
+}
+
+func (m *DefineChaincodeForMyOrgArgs) GetHash() []byte {
+	if m != nil {
+		return m.Hash
+	}
+	return nil
+}
+
+func (m *DefineChaincodeForMyOrgArgs) GetEndorsementPlugin() string {
+	if m != nil {
+		return m.EndorsementPlugin
+	}
+	return ""
+}
+
+func (m *DefineChaincodeForMyOrgArgs) GetValidationPlugin() string {
+	if m != nil {
+		return m.ValidationPlugin
+	}
+	return ""
+}
+
+func (m *DefineChaincodeForMyOrgArgs) GetValidationParameter() []byte {
+	if m != nil {
+		return m.ValidationParameter
+	}
+	return nil
+}
+
+// DefineChaincodeForMyOrgArgs is the message returned by
+// `+lifecycle.DefineChaincodeForMyOrg`. Currently it returns
+// nothing, but may be extended in the future.
+type DefineChaincodeForMyOrgResult struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DefineChaincodeForMyOrgResult) Reset()         { *m = DefineChaincodeForMyOrgResult{} }
+func (m *DefineChaincodeForMyOrgResult) String() string { return proto.CompactTextString(m) }
+func (*DefineChaincodeForMyOrgResult) ProtoMessage()    {}
+func (*DefineChaincodeForMyOrgResult) Descriptor() ([]byte, []int) {
+	return fileDescriptor_lifecycle_993a08fbd4ed32f2, []int{7}
+}
+func (m *DefineChaincodeForMyOrgResult) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DefineChaincodeForMyOrgResult.Unmarshal(m, b)
+}
+func (m *DefineChaincodeForMyOrgResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DefineChaincodeForMyOrgResult.Marshal(b, m, deterministic)
+}
+func (dst *DefineChaincodeForMyOrgResult) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DefineChaincodeForMyOrgResult.Merge(dst, src)
+}
+func (m *DefineChaincodeForMyOrgResult) XXX_Size() int {
+	return xxx_messageInfo_DefineChaincodeForMyOrgResult.Size(m)
+}
+func (m *DefineChaincodeForMyOrgResult) XXX_DiscardUnknown() {
+	xxx_messageInfo_DefineChaincodeForMyOrgResult.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DefineChaincodeForMyOrgResult proto.InternalMessageInfo
+
 func init() {
 	proto.RegisterType((*InstallChaincodeArgs)(nil), "lifecycle.InstallChaincodeArgs")
 	proto.RegisterType((*InstallChaincodeResult)(nil), "lifecycle.InstallChaincodeResult")
@@ -342,32 +463,42 @@ func init() {
 	proto.RegisterType((*QueryInstalledChaincodesArgs)(nil), "lifecycle.QueryInstalledChaincodesArgs")
 	proto.RegisterType((*QueryInstalledChaincodesResult)(nil), "lifecycle.QueryInstalledChaincodesResult")
 	proto.RegisterType((*QueryInstalledChaincodesResult_InstalledChaincode)(nil), "lifecycle.QueryInstalledChaincodesResult.InstalledChaincode")
+	proto.RegisterType((*DefineChaincodeForMyOrgArgs)(nil), "lifecycle.DefineChaincodeForMyOrgArgs")
+	proto.RegisterType((*DefineChaincodeForMyOrgResult)(nil), "lifecycle.DefineChaincodeForMyOrgResult")
 }
 
 func init() {
-	proto.RegisterFile("peer/lifecycle/lifecycle.proto", fileDescriptor_lifecycle_e9f4a4fdde6b4b81)
+	proto.RegisterFile("peer/lifecycle/lifecycle.proto", fileDescriptor_lifecycle_993a08fbd4ed32f2)
 }
 
-var fileDescriptor_lifecycle_e9f4a4fdde6b4b81 = []byte{
-	// 315 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x92, 0x3f, 0x4f, 0xc3, 0x30,
-	0x10, 0xc5, 0x65, 0x8a, 0x40, 0x3d, 0x3a, 0x99, 0x0a, 0xc2, 0xbf, 0xaa, 0xca, 0xd4, 0xa1, 0x72,
-	0x24, 0xba, 0x21, 0x16, 0x60, 0x42, 0x2c, 0x90, 0x81, 0x81, 0xa5, 0x72, 0xdd, 0x6b, 0x62, 0xe1,
-	0xc6, 0x91, 0x9d, 0x20, 0x65, 0xe3, 0xeb, 0xf2, 0x2d, 0x50, 0xfe, 0x03, 0x25, 0x95, 0x10, 0xdb,
-	0xe5, 0xfc, 0xde, 0xcb, 0xcf, 0xe7, 0x83, 0x51, 0x8c, 0x68, 0x3c, 0x25, 0x57, 0x28, 0x32, 0xa1,
-	0xb0, 0xad, 0x58, 0x6c, 0x74, 0xa2, 0x69, 0xbf, 0x69, 0xb8, 0xef, 0x04, 0x86, 0xf7, 0x91, 0x4d,
-	0xb8, 0x52, 0x77, 0x21, 0x97, 0x91, 0xd0, 0x4b, 0xbc, 0x31, 0x81, 0xa5, 0x14, 0x76, 0x23, 0xbe,
-	0x46, 0x87, 0x8c, 0xc9, 0xa4, 0xef, 0x17, 0x35, 0x75, 0x60, 0xff, 0x0d, 0x8d, 0x95, 0x3a, 0x72,
-	0x76, 0x8a, 0x76, 0xfd, 0x49, 0xaf, 0xe0, 0x44, 0xd4, 0xf6, 0xb9, 0x2c, 0xf3, 0xe6, 0x31, 0x17,
-	0xaf, 0x3c, 0x40, 0xa7, 0x37, 0x26, 0x93, 0x81, 0x7f, 0xdc, 0x08, 0xaa, 0xff, 0x3d, 0x96, 0xc7,
-	0xee, 0x14, 0x8e, 0x7e, 0x12, 0xf8, 0x68, 0x53, 0x95, 0xe4, 0x0c, 0x21, 0xb7, 0x61, 0xc1, 0x30,
-	0xf0, 0x8b, 0xda, 0x7d, 0x80, 0xb3, 0xa7, 0x14, 0x4d, 0x56, 0x59, 0x70, 0xf9, 0x0f, 0x6c, 0x77,
-	0x06, 0x17, 0x1d, 0x61, 0x5b, 0x08, 0x46, 0x70, 0xde, 0x61, 0xb2, 0x39, 0x82, 0xfb, 0x41, 0x60,
-	0xd4, 0x25, 0xa8, 0x62, 0x35, 0x0c, 0x65, 0x7d, 0x38, 0x6f, 0xe6, 0x62, 0x1d, 0x32, 0xee, 0x4d,
-	0x0e, 0x2e, 0xaf, 0x59, 0xfb, 0x60, 0xdb, 0x83, 0xd8, 0x2f, 0xe0, 0x87, 0x72, 0x53, 0x7d, 0xfa,
-	0x0c, 0x74, 0x53, 0xfa, 0xc7, 0x37, 0xae, 0x67, 0xd1, 0x6b, 0x67, 0x71, 0x2b, 0x60, 0xaa, 0x4d,
-	0xc0, 0xc2, 0x2c, 0x46, 0xa3, 0x70, 0x19, 0xa0, 0x61, 0x2b, 0xbe, 0x30, 0x52, 0x94, 0x9b, 0x66,
-	0x59, 0xbe, 0x89, 0xed, 0x75, 0x5e, 0x66, 0x81, 0x4c, 0xc2, 0x74, 0xc1, 0x84, 0x5e, 0x7b, 0x5f,
-	0x4c, 0x5e, 0x69, 0xf2, 0x4a, 0x93, 0xf7, 0x7d, 0x7d, 0x17, 0x7b, 0x45, 0x7b, 0xf6, 0x19, 0x00,
-	0x00, 0xff, 0xff, 0x42, 0x2f, 0xd7, 0xc2, 0xd7, 0x02, 0x00, 0x00,
+var fileDescriptor_lifecycle_993a08fbd4ed32f2 = []byte{
+	// 434 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x53, 0x4d, 0x6f, 0xd4, 0x30,
+	0x10, 0x55, 0x36, 0xa5, 0xa5, 0x43, 0x0f, 0xd4, 0x5d, 0x41, 0x68, 0xe9, 0xb2, 0xca, 0x69, 0x25,
+	0x4a, 0x22, 0xd8, 0x1b, 0xe2, 0xc2, 0x87, 0x90, 0x10, 0x42, 0x94, 0x1c, 0x38, 0x70, 0x59, 0x79,
+	0x9d, 0xd9, 0xc4, 0xc2, 0xb1, 0x83, 0x9d, 0x54, 0xca, 0x8d, 0x33, 0xff, 0x94, 0x7f, 0x81, 0xd6,
+	0xf9, 0x84, 0x6e, 0x2a, 0xa1, 0xde, 0xec, 0x79, 0xef, 0xcd, 0x7b, 0x9a, 0xd1, 0xc0, 0x2c, 0x47,
+	0xd4, 0xa1, 0xe0, 0x1b, 0x64, 0x15, 0x13, 0xd8, 0xbf, 0x82, 0x5c, 0xab, 0x42, 0x91, 0xc3, 0xae,
+	0xe0, 0xff, 0x74, 0x60, 0xfa, 0x41, 0x9a, 0x82, 0x0a, 0xf1, 0x36, 0xa5, 0x5c, 0x32, 0x15, 0xe3,
+	0x6b, 0x9d, 0x18, 0x42, 0x60, 0x4f, 0xd2, 0x0c, 0x3d, 0x67, 0xee, 0x2c, 0x0e, 0x23, 0xfb, 0x26,
+	0x1e, 0x1c, 0x5c, 0xa1, 0x36, 0x5c, 0x49, 0x6f, 0x62, 0xcb, 0xed, 0x97, 0xbc, 0x84, 0x47, 0xac,
+	0x95, 0xaf, 0x78, 0xdd, 0x6f, 0x95, 0x53, 0xf6, 0x9d, 0x26, 0xe8, 0xb9, 0x73, 0x67, 0x71, 0x14,
+	0x3d, 0xec, 0x08, 0x8d, 0xdf, 0x65, 0x0d, 0xfb, 0x17, 0xf0, 0xe0, 0xdf, 0x04, 0x11, 0x9a, 0x52,
+	0x14, 0xdb, 0x0c, 0x29, 0x35, 0xa9, 0xcd, 0x70, 0x14, 0xd9, 0xb7, 0xff, 0x11, 0xce, 0xbe, 0x94,
+	0xa8, 0xab, 0x46, 0x82, 0xf1, 0x2d, 0x62, 0xfb, 0x4b, 0x38, 0x1f, 0x69, 0x76, 0x43, 0x82, 0x19,
+	0x3c, 0x1e, 0x11, 0x99, 0x6d, 0x04, 0xff, 0xb7, 0x03, 0xb3, 0x31, 0x42, 0xd3, 0x56, 0xc1, 0x94,
+	0xb7, 0xe0, 0xaa, 0x9b, 0x8b, 0xf1, 0x9c, 0xb9, 0xbb, 0xb8, 0xf7, 0xe2, 0x55, 0xd0, 0x2f, 0xec,
+	0xe6, 0x46, 0xc1, 0x8e, 0xe0, 0x27, 0xfc, 0x3a, 0xfb, 0xf4, 0x2b, 0x90, 0xeb, 0xd4, 0xff, 0xdc,
+	0x71, 0x3b, 0x0b, 0x77, 0x30, 0x8b, 0x5f, 0x13, 0x38, 0x7b, 0x87, 0x1b, 0x2e, 0xb1, 0xeb, 0xfa,
+	0x5e, 0xe9, 0x4f, 0xd5, 0x67, 0x9d, 0xd8, 0x75, 0x9c, 0xc2, 0x5d, 0x83, 0x3f, 0x4a, 0x94, 0xac,
+	0x76, 0x71, 0xa3, 0xee, 0xdf, 0xb9, 0x4f, 0x76, 0xbb, 0xbb, 0xbb, 0xdd, 0xf7, 0x7a, 0x77, 0xf2,
+	0x0c, 0x08, 0xca, 0x58, 0x69, 0x83, 0x19, 0xca, 0x62, 0x95, 0x8b, 0x32, 0xe1, 0xd2, 0xbb, 0x63,
+	0x85, 0xc7, 0x03, 0xe4, 0xd2, 0x02, 0xe4, 0x29, 0x1c, 0x5f, 0x51, 0xc1, 0x63, 0x5a, 0x70, 0x25,
+	0x5b, 0xf6, 0xbe, 0x65, 0xdf, 0xef, 0x81, 0x86, 0xfc, 0x1c, 0xa6, 0x43, 0x32, 0xd5, 0x34, 0xc3,
+	0x02, 0xb5, 0x77, 0x60, 0xfd, 0x4f, 0x06, 0xfc, 0x16, 0xf2, 0x9f, 0xc0, 0xf9, 0xc8, 0x2c, 0xea,
+	0x6d, 0xbd, 0x61, 0x70, 0xa1, 0x74, 0x12, 0xa4, 0x55, 0x8e, 0x5a, 0x60, 0x9c, 0xa0, 0x0e, 0x36,
+	0x74, 0xad, 0x39, 0xab, 0xef, 0xd2, 0x04, 0xdb, 0xbb, 0xed, 0x97, 0xff, 0x6d, 0x99, 0xf0, 0x22,
+	0x2d, 0xd7, 0x01, 0x53, 0x59, 0x38, 0x10, 0x85, 0xb5, 0x28, 0xac, 0x45, 0xe1, 0xdf, 0xc7, 0xbe,
+	0xde, 0xb7, 0xe5, 0xe5, 0x9f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x59, 0xe8, 0x85, 0x14, 0x05, 0x04,
+	0x00, 0x00,
 }
