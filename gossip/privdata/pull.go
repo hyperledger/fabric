@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/filter"
+	"github.com/hyperledger/fabric/gossip/metrics"
 	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/util"
 	fcommon "github.com/hyperledger/fabric/protos/common"
@@ -67,6 +68,7 @@ type gossip interface {
 }
 
 type puller struct {
+	metrics       *metrics.PrivdataMetrics
 	pubSub        *util.PubSub
 	stopChan      chan struct{}
 	msgChan       <-chan proto.ReceivedMessage
@@ -79,8 +81,10 @@ type puller struct {
 }
 
 // NewPuller creates new private data puller
-func NewPuller(cs privdata.CollectionStore, g gossip, dataRetriever PrivateDataRetriever, factory CollectionAccessFactory, channel string) *puller {
+func NewPuller(metrics *metrics.PrivdataMetrics, cs privdata.CollectionStore, g gossip,
+	dataRetriever PrivateDataRetriever, factory CollectionAccessFactory, channel string) *puller {
 	p := &puller{
+		metrics:                 metrics,
 		pubSub:                  util.NewPubSub(),
 		stopChan:                make(chan struct{}),
 		channel:                 channel,
@@ -150,7 +154,9 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 	block2dig := groupDigestsByBlockNum(msg.GetPrivateReq().Digests)
 
 	for blockNum, digests := range block2dig {
+		start := time.Now()
 		dig2rwSets, wasFetchedFromLedger, err := p.CollectionRWSet(digests, blockNum)
+		p.metrics.RetrieveDuration.With("channel", p.channel).Observe(time.Since(start).Seconds())
 		if err != nil {
 			logger.Warningf("could not obtain private collection rwset for block %d, because of %s, continue...", blockNum, err)
 			continue
@@ -298,6 +304,7 @@ func (p *puller) gatherResponses(subscriptions []util.Subscription) []*proto.Pvt
 	privateElements := make(chan *proto.PvtDataElement, len(subscriptions))
 	var wg sync.WaitGroup
 	wg.Add(len(subscriptions))
+	start := time.Now()
 	// Listen for all subscriptions, and add then into a single channel
 	for _, sub := range subscriptions {
 		go func(sub util.Subscription) {
@@ -307,6 +314,7 @@ func (p *puller) gatherResponses(subscriptions []util.Subscription) []*proto.Pvt
 				return
 			}
 			privateElements <- el.(*proto.PvtDataElement)
+			p.metrics.PullDuration.With("channel", p.channel).Observe(time.Since(start).Seconds())
 		}(sub)
 	}
 	// Wait for all subscriptions to either return, or time out

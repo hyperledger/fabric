@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	proto2 "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -20,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/filter"
 	gossip2 "github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -66,6 +68,8 @@ type distributorImpl struct {
 	chainID string
 	gossipAdapter
 	CollectionAccessFactory
+	pushAckTimeout time.Duration
+	metrics        *metrics.PrivdataMetrics
 }
 
 // CollectionAccessFactory an interface to generate collection access policy
@@ -102,11 +106,14 @@ func NewCollectionAccessFactory(factory IdentityDeserializerFactory) CollectionA
 
 // NewDistributor a constructor for private data distributor capable to send
 // private read write sets for underlying collection
-func NewDistributor(chainID string, gossip gossipAdapter, factory CollectionAccessFactory) PvtDataDistributor {
+func NewDistributor(chainID string, gossip gossipAdapter, factory CollectionAccessFactory,
+	metrics *metrics.PrivdataMetrics) PvtDataDistributor {
 	return &distributorImpl{
 		chainID:                 chainID,
 		gossipAdapter:           gossip,
 		CollectionAccessFactory: factory,
+		pushAckTimeout:          viper.GetDuration("peer.gossip.pvtData.pushAckTimeout"),
+		metrics:                 metrics,
 	}
 }
 
@@ -298,9 +305,11 @@ func (d *distributorImpl) disseminate(disseminationPlan []*dissemination) error 
 	var failures uint32
 	var wg sync.WaitGroup
 	wg.Add(len(disseminationPlan))
+	start := time.Now()
 	for _, dis := range disseminationPlan {
 		go func(dis *dissemination) {
 			defer wg.Done()
+			defer d.reportSendDuration(start)
 			err := d.SendByCriteria(dis.msg, dis.criteria)
 			if err != nil {
 				atomic.AddUint32(&failures, 1)
@@ -315,6 +324,10 @@ func (d *distributorImpl) disseminate(disseminationPlan []*dissemination) error 
 		return errors.Errorf("Failed disseminating %d out of %d private dissemination plans", failureCount, len(disseminationPlan))
 	}
 	return nil
+}
+
+func (d *distributorImpl) reportSendDuration(startTime time.Time) {
+	d.metrics.SendDuration.With("channel", d.chainID).Observe(time.Since(startTime).Seconds())
 }
 
 func (d *distributorImpl) createPrivateDataMessage(txID, namespace string,

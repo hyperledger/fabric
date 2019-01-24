@@ -12,59 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/gossip/identity"
-	gmetrics "github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/metrics/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
-type testMetricProvider struct {
-	fakeProvider         *metricsfakes.Provider
-	fakeSentMessages     *metricsfakes.Counter
-	fakeBufferOverflow   *metricsfakes.Counter
-	fakeReceivedMessages *metricsfakes.Counter
-}
-
-func testUtilConstructMetricProvider() *testMetricProvider {
-	fakeProvider := &metricsfakes.Provider{}
-	fakeSentMessages := testUtilConstructCounter()
-	fakeBufferOverflow := testUtilConstructCounter()
-	fakeReceivedMessages := testUtilConstructCounter()
-
-	fakeProvider.NewCounterStub = func(opts metrics.CounterOpts) metrics.Counter {
-		switch opts.Name {
-		case gmetrics.BufferOverflowOpts.Name:
-			return fakeBufferOverflow
-		case gmetrics.SentMessagesOpts.Name:
-			return fakeSentMessages
-		case gmetrics.ReceivedMessagesOpts.Name:
-			return fakeReceivedMessages
-		}
-		return nil
-	}
-	fakeProvider.NewHistogramStub = func(opts metrics.HistogramOpts) metrics.Histogram {
-		return nil
-	}
-	fakeProvider.NewGaugeStub = func(opts metrics.GaugeOpts) metrics.Gauge {
-		return nil
-	}
-
-	return &testMetricProvider{
-		fakeProvider,
-		fakeSentMessages,
-		fakeBufferOverflow,
-		fakeReceivedMessages,
-	}
-}
-
-func testUtilConstructCounter() *metricsfakes.Counter {
-	fakeCounter := &metricsfakes.Counter{}
-	fakeCounter.WithReturns(fakeCounter)
-	return fakeCounter
-}
-
-func newCommInstanceMetrics(port int, sec *naiveSecProvider, commMetrics *gmetrics.CommMetrics) (Comm, error) {
+func newCommInstanceMetrics(port int, sec *naiveSecProvider, commMetrics *metrics.CommMetrics) (Comm, error) {
 	endpoint := fmt.Sprintf("localhost:%d", port)
 	id := []byte(endpoint)
 	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec, id, noopPurgeIdentity, sec),
@@ -75,14 +29,14 @@ func newCommInstanceMetrics(port int, sec *naiveSecProvider, commMetrics *gmetri
 func TestMetrics(t *testing.T) {
 	t.Parallel()
 
-	testMetricProvider := testUtilConstructMetricProvider()
+	testMetricProvider := mocks.TestUtilConstructMetricProvider()
 
 	var overflown uint32
-	testMetricProvider.fakeBufferOverflow.AddStub = func(delta float64) {
+	testMetricProvider.FakeBufferOverflow.AddStub = func(delta float64) {
 		atomic.StoreUint32(&overflown, uint32(1))
 	}
 
-	fakeCommMetrics := gmetrics.NewGossipMetrics(testMetricProvider.fakeProvider).CommMetrics
+	fakeCommMetrics := metrics.NewGossipMetrics(testMetricProvider.FakeProvider).CommMetrics
 
 	comm1, _ := newCommInstanceMetrics(6870, naiveSec, fakeCommMetrics)
 	comm2, _ := newCommInstanceMetrics(6871, naiveSec, fakeCommMetrics)
@@ -118,17 +72,17 @@ func TestMetrics(t *testing.T) {
 
 	assert.EqualValues(t,
 		1,
-		testMetricProvider.fakeSentMessages.AddArgsForCall(0),
+		testMetricProvider.FakeSentMessages.AddArgsForCall(0),
 	)
 
 	assert.EqualValues(t,
 		1,
-		testMetricProvider.fakeReceivedMessages.AddArgsForCall(0),
+		testMetricProvider.FakeReceivedMessages.AddArgsForCall(0),
 	)
 
 	assert.EqualValues(t,
 		1,
-		testMetricProvider.fakeBufferOverflow.AddArgsForCall(0),
+		testMetricProvider.FakeBufferOverflow.AddArgsForCall(0),
 	)
 
 	assert.Equal(t, uint32(1), atomic.LoadUint32(&overflown))
