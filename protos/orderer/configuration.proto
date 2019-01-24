@@ -29,6 +29,7 @@ package orderer;
 //   the encoded value is the proto message "ConsensusType"
 
 message ConsensusType {
+    // The consensus type: "solo", "kafka" or "etcdraft".
     string type = 1;
     // Opaque metadata, dependent on the consensus type.
     bytes metadata = 2;
@@ -43,14 +44,14 @@ message ConsensusType {
         MIG_STATE_CONTEXT = 4;
     }
     // The state of a consensus-type migration.
-    // On the system channel this could be START|COMMIT|ABORT.
-    // On a standard channel this is CONTEXT.
+    // On the system channel this could be NONE | START | COMMIT | ABORT.
+    // On a standard channel this could be NONE | CONTEXT.
     // When migration is not taking place it is set to NONE.
     MigrationState migration_state = 3;
-    // The context of a standard channel consensus-type migration.
-    // On a standard channel, this is the system channel block height of the config-update-tx that START migration.
-    // On a standard channel, this must be >0. On a system channel, this is =0.
-    // When migration is not taking place it is set =0.
+    // The context of a consensus-type migration.
+    // The migration context is the system channel block height of the config-update-tx that START migration.
+    // The context must be present in COMMIT, CONTEXT, and ABORT config-updates, and match the START block height.
+    // On NONE and START it is set =0.
     uint64 migration_context = 4;
 }
 
