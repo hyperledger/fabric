@@ -8,6 +8,44 @@ First things first, please review the Hyperledger `Code of
 Conduct <https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
 before participating. It is important that we keep things civil.
 
+Ways to contribute
+------------------
+There are many ways you can contribute to Hyperledger Fabric, both as a user and
+as a developer.
+
+As a user:
+
+- `Making Feature/Enhancement Proposals`_
+- `Reporting bugs`_
+- Help test an upcoming Epic on the
+  `release roadmap <https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104>`_.
+  Contact the Epic assignee via the Jira work item or on
+  `RocketChat <https://chat.hyperledger.org>`_.
+
+As a developer:
+
+- If you only have a little time, consider picking up a
+  `"help-wanted" <https://jira.hyperledger.org/issues/?filter=10147>`_ task,
+  see `Fixing issues and working stories`_.
+- If you can commit to full-time development, either propose a new feature
+  (see `Making Feature/Enhancement Proposals`_) and
+  bring a team to implement it, or join one of the teams working on an existing Epic.
+  If you see an Epic that interests you on the
+  `release roadmap <https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104>`_,
+  contact the Epic assignee via the Jira work item or on `RocketChat <https://chat.hyperledger.org/>`_.
+
+Getting a Linux Foundation account
+----------------------------------
+
+In order to participate in the development of the Hyperledger Fabric
+project, you will need a :doc:`Linux Foundation
+account <Gerrit/lf-account>`. You will need to use your LF ID to
+access to all the Hyperledger community tools, including
+`Gerrit <https://gerrit.hyperledger.org>`__,
+`Jira <https://jira.hyperledger.org>`__,
+`RocketChat <https://chat.hyperledger.org/>`__, and the
+`Wiki <https://wiki.hyperledger.org/start>`__ (for editing, only).
+
 Project Governance
 ------------------
 
@@ -118,17 +156,6 @@ Before we begin, if you haven't already done so, you may wish to check that
 you have all the :doc:`prerequisites <prereqs>` installed on the platform(s)
 on which you'll be developing blockchain applications and/or operating
 Hyperledger Fabric.
-
-Getting a Linux Foundation account
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In order to participate in the development of the Hyperledger Fabric
-project, you will need a :doc:`Linux Foundation
-account <Gerrit/lf-account>`. You will need to use your LF ID to
-access to all the Hyperledger community development tools, including
-`Gerrit <https://gerrit.hyperledger.org>`__,
-`Jira <https://jira.hyperledger.org>`__ and the
-`Wiki <https://wiki.hyperledger.org/start>`__ (for editing, only).
 
 Getting help
 ~~~~~~~~~~~~
