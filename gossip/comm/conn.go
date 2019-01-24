@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
@@ -161,7 +162,8 @@ func (cs *connectionStore) shutdown() {
 	wg.Wait()
 }
 
-func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamServer, connInfo *proto.ConnectionInfo) *connection {
+func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamServer,
+	connInfo *proto.ConnectionInfo, metrics *metrics.CommMetrics) *connection {
 	cs.Lock()
 	defer cs.Unlock()
 
@@ -169,11 +171,12 @@ func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamSer
 		c.close()
 	}
 
-	return cs.registerConn(connInfo, serverStream)
+	return cs.registerConn(connInfo, serverStream, metrics)
 }
 
-func (cs *connectionStore) registerConn(connInfo *proto.ConnectionInfo, serverStream proto.Gossip_GossipStreamServer) *connection {
-	conn := newConnection(nil, nil, nil, serverStream)
+func (cs *connectionStore) registerConn(connInfo *proto.ConnectionInfo,
+	serverStream proto.Gossip_GossipStreamServer, metrics *metrics.CommMetrics) *connection {
+	conn := newConnection(nil, nil, nil, serverStream, metrics)
 	conn.pkiID = connInfo.ID
 	conn.info = connInfo
 	conn.logger = cs.logger
@@ -190,8 +193,10 @@ func (cs *connectionStore) closeByPKIid(pkiID common.PKIidType) {
 	}
 }
 
-func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_GossipStreamClient, ss proto.Gossip_GossipStreamServer) *connection {
+func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_GossipStreamClient,
+	ss proto.Gossip_GossipStreamServer, metrics *metrics.CommMetrics) *connection {
 	connection := &connection{
+		metrics:      metrics,
 		outBuff:      make(chan *msgSending, util.GetIntOrDefault("peer.gossip.sendBuffSize", defSendBuffSize)),
 		cl:           cl,
 		conn:         c,
@@ -204,6 +209,7 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_Go
 }
 
 type connection struct {
+	metrics      *metrics.CommMetrics
 	cancel       context.CancelFunc
 	info         *proto.ConnectionInfo
 	outBuff      chan *msgSending
@@ -265,6 +271,7 @@ func (conn *connection) send(msg *proto.SignedGossipMessage, onErr func(error), 
 	if len(conn.outBuff) == cap(conn.outBuff) {
 		if conn.logger.IsEnabledFor(zapcore.DebugLevel) {
 			conn.logger.Debug("Buffer to", conn.info.Endpoint, "overflowed, dropping message", msg.String())
+			conn.metrics.BufferOverflow.Add(1)
 		}
 		if !shouldBlock {
 			return
@@ -316,6 +323,7 @@ func (conn *connection) writeToStream() {
 				go m.onErr(err)
 				return
 			}
+			conn.metrics.SentMessages.Add(1)
 		case stop := <-conn.stopChan:
 			conn.logger.Debug("Closing writing to stream")
 			conn.stopChan <- stop
@@ -349,6 +357,7 @@ func (conn *connection) readFromStream(errChan chan error, quit chan struct{}, m
 			conn.logger.Debugf("Got error, aborting: %v", err)
 			return
 		}
+		conn.metrics.ReceivedMessages.Add(1)
 		msg, err := envelope.ToGossipMessage()
 		if err != nil {
 			errChan <- err

@@ -409,9 +409,12 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	//Starting leader election services
 	services := make([]*electionService, n)
 
+	electionMetrics := gossipMetrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics
+
 	for i := 0; i < n; i++ {
 		services[i] = &electionService{nil, false, 0}
-		services[i].LeaderElectionService = gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(channelName, services[i].callback)
+		services[i].LeaderElectionService = gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(channelName,
+			services[i].callback, electionMetrics)
 	}
 
 	logger.Warning("Waiting for leader election")
@@ -437,7 +440,9 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	for idx, i := range secondChannelPeerIndexes {
 		secondChannelServices[idx] = &electionService{nil, false, 0}
-		secondChannelServices[idx].LeaderElectionService = gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(secondChannelName, secondChannelServices[idx].callback)
+		secondChannelServices[idx].LeaderElectionService =
+			gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(secondChannelName,
+				secondChannelServices[idx].callback, electionMetrics)
 	}
 
 	assert.True(t, waitForLeaderElection(t, secondChannelServices, time.Second*30, time.Second*2), "One leader should be selected for chanB")
@@ -672,7 +677,7 @@ func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) Gos
 	cryptoService := &naiveCryptoService{}
 
 	gossip := gossip.NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService,
-		selfID, nil)
+		selfID, nil, gossipMetrics.NewGossipMetrics(&disabled.Provider{}))
 
 	gossipService := &gossipServiceImpl{
 		mcs:             cryptoService,

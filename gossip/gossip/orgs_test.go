@@ -15,9 +15,11 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -120,7 +122,7 @@ func newGossipInstanceWithExternalEndpoint(portPrefix int, id int, mcs *configur
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	g := NewGossipServiceWithServer(conf, mcs, mcs, selfID,
-		nil)
+		nil, metrics.NewGossipMetrics(&disabled.Provider{}))
 
 	return g
 }

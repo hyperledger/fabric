@@ -29,9 +29,18 @@ func TestMetrics(t *testing.T) {
 
 	// make sure all metrics were created
 	assert.NotNil(t, gossipMetrics)
+
 	assert.NotNil(t, gossipMetrics.StateMetrics)
 	assert.NotNil(t, gossipMetrics.StateMetrics.Height)
 	assert.NotNil(t, gossipMetrics.StateMetrics.CommitDuration)
 	assert.NotNil(t, gossipMetrics.StateMetrics.PayloadBufferSize)
+
+	assert.NotNil(t, gossipMetrics.ElectionMetrics)
+	assert.NotNil(t, gossipMetrics.ElectionMetrics.Declaration)
+
+	assert.NotNil(t, gossipMetrics.CommMetrics)
+	assert.NotNil(t, gossipMetrics.CommMetrics.SentMessages)
+	assert.NotNil(t, gossipMetrics.CommMetrics.ReceivedMessages)
+	assert.NotNil(t, gossipMetrics.CommMetrics.BufferOverflow)
 
 }
