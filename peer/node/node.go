@@ -35,7 +35,7 @@ var logger = flogging.MustGetLogger("nodeCmd")
 func Cmd() *cobra.Command {
 	nodeCmd.AddCommand(startCmd())
 	nodeCmd.AddCommand(statusCmd())
-
+	nodeCmd.AddCommand(resetCmd())
 	return nodeCmd
 }
 
