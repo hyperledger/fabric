@@ -12,15 +12,15 @@ Vagrant.configure('2') do |config|
 
   config.vm.provider :virtualbox do |vb|
     vb.name = "hyperledger"
-    vb.customize ['modifyvm', :id, '--memory', '4096']
-    vb.customize ['modifyvm', :id, '--uartmode1', 'disconnected']
     vb.cpus = 2
+    vb.memory = 4096
   end
 
   config.vm.provision :shell, name: "essentials", path: "essentials.sh"
   config.vm.provision :shell, name: "srcdir", path: "srcdir.sh"
   config.vm.provision :shell, name: "docker", path: "docker.sh"
   config.vm.provision :shell, name: "golang", path: "golang.sh"
+  config.vm.provision :shell, name: "limits", path: "limits.sh"
   config.vm.provision :shell, name: "softhsm", path: "softhsm.sh"
   config.vm.provision :shell, name: "user", privileged: false, path: "user.sh"
 end
