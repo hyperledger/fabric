@@ -31,7 +31,7 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-var _ = Describe("Token EndToEnd", func() {
+var _ bool = Describe("Token EndToEnd", func() {
 	var (
 		testDir string
 		client  *docker.Client
@@ -134,7 +134,95 @@ var _ = Describe("Token EndToEnd", func() {
 		os.RemoveAll(testDir)
 	})
 
+	Describe("basic solo network for token transaction e2e using Token CLI", func() {
+		BeforeEach(func() {
+			var err error
+			network = nwo.New(nwo.BasicSolo(), testDir, client, 30000, components)
+			network.GenerateConfigTree()
+
+			// update configtx with fabtoken capability
+			err = updateConfigtx(network)
+			Expect(err).NotTo(HaveOccurred())
+
+			network.Bootstrap()
+
+			client, err = docker.NewClientFromEnv()
+			Expect(err).NotTo(HaveOccurred())
+
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready()).Should(BeClosed())
+
+			orderer := network.Orderer("orderer")
+			network.CreateAndJoinChannel(orderer, "testchannel")
+		})
+
+		It("executes a basic solo network and submits token transaction", func() {
+			By("issuing tokens to user2")
+
+			user1, err := getIdentity(network, network.Peer("Org1", "peer1"), "User1", "Org1MSP")
+			Expect(err).ToNot(HaveOccurred())
+			user2, err := getIdentity(network, network.Peer("Org1", "peer1"), "User2", "Org1MSP")
+			Expect(err).ToNot(HaveOccurred())
+
+			// User1 issues 100 ABC123 tokens to User2
+			IssueToken(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
+				"testchannel", "User1", "Org1MSP", "ABC123", "100", string(user2))
+
+			// User2 lists her tokens and verify
+			outputs := ListTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
+				"testchannel", "User2", "Org1MSP")
+			Expect(len(outputs)).To(BeEquivalentTo(1))
+			Expect(outputs[0].Quantity).To(BeEquivalentTo(100))
+			Expect(outputs[0].Type).To(BeEquivalentTo("ABC123"))
+
+			// User2 transfers back the tokens to User1
+			TransferTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
+				"testchannel", "User2", "Org1MSP",
+				[]*token.TokenId{outputs[0].Id},
+				[]*token.RecipientTransferShare{
+					{
+						Quantity:  50,
+						Recipient: &token.TokenOwner{Raw: user2},
+					},
+					{
+						Quantity:  50,
+						Recipient: &token.TokenOwner{Raw: user1},
+					},
+				},
+			)
+
+			// User2 lists her tokens and verify
+			outputs = ListTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
+				"testchannel", "User2", "Org1MSP")
+			Expect(len(outputs)).To(BeEquivalentTo(1))
+			Expect(outputs[0].Quantity).To(BeEquivalentTo(50))
+			Expect(outputs[0].Type).To(BeEquivalentTo("ABC123"))
+
+			// User1 lists her tokens and verify
+			outputs = ListTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
+				"testchannel", "User2", "Org1MSP")
+			Expect(len(outputs)).To(BeEquivalentTo(1))
+			Expect(outputs[0].Quantity).To(BeEquivalentTo(50))
+			Expect(outputs[0].Type).To(BeEquivalentTo("ABC123"))
+
+			// User1 redeems 25 of her tokens
+			RedeemTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
+				"testchannel", "User2", "Org1MSP",
+				[]*token.TokenId{outputs[0].Id}, 25)
+
+			// User1 lists her tokens and verify again
+			outputs = ListTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
+				"testchannel", "User2", "Org1MSP")
+			Expect(len(outputs)).To(BeEquivalentTo(1))
+			Expect(outputs[0].Quantity).To(BeEquivalentTo(25))
+			Expect(outputs[0].Type).To(BeEquivalentTo("ABC123"))
+		})
+
+	})
+
 	Describe("basic solo network for token transaction e2e", func() {
+
 		BeforeEach(func() {
 			var err error
 			network = nwo.New(nwo.BasicSolo(), testDir, client, 30000, components)
@@ -476,40 +564,6 @@ func SubmitTokenTx(c *tokenclient.Client, tokenTx *token.TokenTransaction) (stri
 
 	ordererStatus, committed, err := c.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 	return txid, ordererStatus, committed, err
-}
-
-func getClientConfig(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channelId, user, mspID string) *tokenclient.ClientConfig {
-	mspDir := n.PeerUserMSPDir(peer, user)
-	peerAddr := n.PeerAddress(peer, nwo.ListenPort)
-	peerTLSRootCertFile := filepath.Join(n.PeerLocalTLSDir(peer), "ca.crt")
-	ordererAddr := n.OrdererAddress(orderer, nwo.ListenPort)
-	ordererTLSRootCertFile := filepath.Join(n.OrdererLocalTLSDir(orderer), "ca.crt")
-
-	config := tokenclient.ClientConfig{
-		ChannelID: "testchannel",
-		MSPInfo: tokenclient.MSPInfo{
-			MSPConfigPath: mspDir,
-			MSPID:         mspID,
-			MSPType:       "bccsp",
-		},
-		Orderer: tokenclient.ConnectionConfig{
-			Address:         ordererAddr,
-			TLSEnabled:      true,
-			TLSRootCertFile: ordererTLSRootCertFile,
-		},
-		CommitterPeer: tokenclient.ConnectionConfig{
-			Address:         peerAddr,
-			TLSEnabled:      true,
-			TLSRootCertFile: peerTLSRootCertFile,
-		},
-		ProverPeer: tokenclient.ConnectionConfig{
-			Address:         peerAddr,
-			TLSEnabled:      true,
-			TLSRootCertFile: peerTLSRootCertFile,
-		},
-	}
-
-	return &config
 }
 
 func getIdentity(n *nwo.Network, peer *nwo.Peer, user, mspId string) ([]byte, error) {

@@ -142,9 +142,9 @@ type TokenOutputResponseParser struct {
 func (parser *TokenOutputResponseParser) ParseResponse(response StubResponse) error {
 	resp := response.(*TokenOutputResponse)
 
-	for key, token := range resp.Tokens {
-		out, _ := json.MarshalIndent(token, "", "    ")
-		fmt.Fprintf(parser.Writer, "Token[%d] = [%s]", key, out)
+	for _, token := range resp.Tokens {
+		out, _ := json.Marshal(token)
+		fmt.Fprintf(parser.Writer, "Token = %s", string(out))
 	}
 	return nil
 }
