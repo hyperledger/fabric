@@ -106,13 +106,12 @@ message QueryChaincodeDefinitionArgs {
 // `_lifecycle.QueryChaincodeDefinition`.
 message QueryChaincodeDefinitionResult {
     int64 sequence = 1;
-    string name = 2;
-    string version = 3;
-    bytes hash = 4;
-    string endorsement_plugin = 5;
-    string validation_plugin = 6;
-    bytes validation_parameter = 7;
-    common.CollectionConfigPackage collections = 8;
+    string version = 2;
+    bytes hash = 3;
+    string endorsement_plugin = 4;
+    string validation_plugin = 5;
+    bytes validation_parameter = 6;
+    common.CollectionConfigPackage collections = 7;
 }
 
 // QueryNamespaceDefinitions is the message used as arguments to
