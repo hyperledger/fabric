@@ -32,6 +32,12 @@ func newVerifier(lgr ledger.PeerLedger, t *testing.T) *verifier {
 	return &verifier{lgr, assert.New(t), t}
 }
 
+func (v *verifier) verifyLedgerHeight(expectedHt uint64) {
+	info, err := v.lgr.GetBlockchainInfo()
+	v.assert.NoError(err)
+	v.assert.Equal(expectedHt, info.Height)
+}
+
 func (v *verifier) verifyPubState(ns, key string, expectedVal string) {
 	qe, err := v.lgr.NewQueryExecutor()
 	v.assert.NoError(err)

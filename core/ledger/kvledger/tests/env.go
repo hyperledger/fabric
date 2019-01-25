@@ -97,6 +97,10 @@ func (e *env) initLedgerMgmt() {
 	e.ledgerMgr = ledgermgmt.NewLedgerMgr(e.initializer)
 }
 
+func (e *env) closeLedgerMgmt() {
+	e.ledgerMgr.Close()
+}
+
 func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Initializer) {
 	if initializer.CustomTxProcessors == nil {
 		initializer.CustomTxProcessors = map[common.HeaderType]ledger.CustomTxProcessor{}
