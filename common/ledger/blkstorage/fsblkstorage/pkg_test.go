@@ -26,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-
 	"github.com/hyperledger/fabric/protos/common"
 )
 
