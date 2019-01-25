@@ -439,7 +439,11 @@ func TestDeliverGroupWait(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	// success
-	mockConn := getMockDeliverConnectionResponseWithTxID("txid0")
+	mockConn := &mock.Deliver{}
+	filteredResp := &pb.DeliverResponse{
+		Type: &pb.DeliverResponse_FilteredBlock{FilteredBlock: createFilteredBlock("txid0")},
+	}
+	mockConn.RecvReturns(filteredResp, nil)
 	mockDeliverClients := []*deliverClient{
 		{
 			Connection: mockConn,
@@ -579,7 +583,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 
 	// failure - one of the deliver clients returns error
 	mockDCErr := getMockDeliverClientWithErr("moist")
-	mockDC = getMockDeliverClient()
+	mockDC = getMockDeliverClientResponseWithTxID("txid0")
 	mockDeliverClients = []api.PeerDeliverClient{mockDCErr, mockDC}
 
 	_, err = ChaincodeInvokeOrQuery(
