@@ -9,7 +9,7 @@ solutions.
 .. toctree::
    :maxdepth: 1
 
-   namespace.md
+   contractname.md
    chaincodenamespace.md
    transactioncontext.md
    transactionhandler.md
