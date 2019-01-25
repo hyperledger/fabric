@@ -68,8 +68,26 @@ message DefineChaincodeForMyOrgArgs {
     bytes validation_parameter = 7;
 }
 
-// DefineChaincodeForMyOrgArgs is the message returned by
+// DefineChaincodeForMyOrgResult is the message returned by
 // `+lifecycle.DefineChaincodeForMyOrg`. Currently it returns
 // nothing, but may be extended in the future.
 message DefineChaincodeForMyOrgResult {
+}
+
+// DefineChaincodeArgs is the message used as arguments to
+// `+lifecycle.DefineChaincode`.
+message DefineChaincodeArgs {
+    int64 sequence = 1;
+    string name = 2;
+    string version = 3;
+    bytes hash = 4;
+    string endorsement_plugin = 5;
+    string validation_plugin = 6;
+    bytes validation_parameter = 7;
+}
+
+// DefineChaincodeResult is the message returned by
+// `+lifecycle.DefineChaincode`. Currently it returns
+// nothing, but may be extended in the future.
+message DefineChaincodeResult {
 }

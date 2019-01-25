@@ -738,7 +738,8 @@ func startChaincodeServer(
 			PackageParser:  ccPackageParser,
 			ChaincodeStore: ccStore,
 		},
-		OrgMSPID: mspID,
+		OrgMSPID:            mspID,
+		ChannelConfigSource: peer.Default,
 	}
 
 	// Create a self-signed CA for chaincode service

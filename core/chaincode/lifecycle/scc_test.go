@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -23,18 +24,27 @@ import (
 
 var _ = Describe("SCC", func() {
 	var (
-		scc          *lifecycle.SCC
-		fakeSCCFuncs *mock.SCCFunctions
+		scc                     *lifecycle.SCC
+		fakeSCCFuncs            *mock.SCCFunctions
+		fakeChannelConfigSource *mock.ChannelConfigSource
+		fakeChannelConfig       *mock.ChannelConfig
+		fakeApplicationConfig   *mock.ApplicationConfig
 	)
 
 	BeforeEach(func() {
 		fakeSCCFuncs = &mock.SCCFunctions{}
+		fakeChannelConfigSource = &mock.ChannelConfigSource{}
+		fakeChannelConfig = &mock.ChannelConfig{}
+		fakeChannelConfigSource.GetStableChannelConfigReturns(fakeChannelConfig)
+		fakeApplicationConfig = &mock.ApplicationConfig{}
+		fakeChannelConfig.ApplicationConfigReturns(fakeApplicationConfig, true)
 		scc = &lifecycle.SCC{
 			Dispatcher: &dispatcher.Dispatcher{
 				Protobuf: &dispatcher.ProtobufImpl{},
 			},
-			Functions: fakeSCCFuncs,
-			OrgMSPID:  "fake-mspid",
+			Functions:           fakeSCCFuncs,
+			OrgMSPID:            "fake-mspid",
+			ChannelConfigSource: fakeChannelConfigSource,
 		}
 	})
 
@@ -339,6 +349,132 @@ var _ = Describe("SCC", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
 					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'DefineChaincodeForMyOrg': underlying-error"))
+				})
+			})
+		})
+
+		Describe("DefineChaincode", func() {
+			var (
+				err            error
+				arg            *lb.DefineChaincodeArgs
+				marshaledArg   []byte
+				fakeOrgConfigs []*mock.ApplicationOrgConfig
+			)
+
+			BeforeEach(func() {
+				arg = &lb.DefineChaincodeArgs{
+					Sequence:            7,
+					Name:                "name",
+					Version:             "version",
+					Hash:                []byte("hash"),
+					EndorsementPlugin:   "endorsement-plugin",
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				}
+
+				marshaledArg, err = proto.Marshal(arg)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeStub.GetArgsReturns([][]byte{[]byte("DefineChaincode"), marshaledArg})
+
+				fakeOrgConfigs = []*mock.ApplicationOrgConfig{{}, {}}
+				fakeOrgConfigs[0].MSPIDReturns("fake-mspid")
+				fakeOrgConfigs[1].MSPIDReturns("other-mspid")
+
+				fakeApplicationConfig.OrganizationsReturns(map[string]channelconfig.ApplicationOrg{
+					"org0": fakeOrgConfigs[0],
+					"org1": fakeOrgConfigs[1],
+				})
+
+				fakeSCCFuncs.DefineChaincodeReturns([]bool{true, true}, nil)
+			})
+
+			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
+				res := scc.Invoke(fakeStub)
+				Expect(res.Status).To(Equal(int32(200)))
+				payload := &lb.DefineChaincodeResult{}
+				err = proto.Unmarshal(res.Payload, payload)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeSCCFuncs.DefineChaincodeCallCount()).To(Equal(1))
+				cd, pubState, orgStates := fakeSCCFuncs.DefineChaincodeArgsForCall(0)
+				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
+					Sequence: 7,
+					Name:     "name",
+					Parameters: &lifecycle.ChaincodeParameters{
+						Version:             "version",
+						Hash:                []byte("hash"),
+						EndorsementPlugin:   "endorsement-plugin",
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+					},
+				}))
+				Expect(pubState).To(Equal(fakeStub))
+				Expect(len(orgStates)).To(Equal(2))
+				Expect(orgStates[0]).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
+				Expect(orgStates[1]).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
+				collection0 := orgStates[0].(*lifecycle.ChaincodePrivateLedgerShim).Collection
+				collection1 := orgStates[1].(*lifecycle.ChaincodePrivateLedgerShim).Collection
+				Expect([]string{collection0, collection1}).To(ConsistOf("_implicit_org_fake-mspid", "_implicit_org_other-mspid"))
+			})
+
+			Context("when there is no agreement from this peer's org", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.DefineChaincodeReturns([]bool{false, false}, nil)
+				})
+
+				It("returns an error indicating the lack of agreement", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'DefineChaincode': chaincode definition not agreed to by this org (fake-mspid)"))
+				})
+			})
+
+			Context("when there is no match for this peer's org's MSPID", func() {
+				BeforeEach(func() {
+					fakeOrgConfigs[0].MSPIDReturns("other-mspid")
+				})
+
+				It("returns an error indicating the lack of agreement", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'DefineChaincode': impossibly, this peer's org is processing requests for a channel it is not a member of"))
+				})
+			})
+
+			Context("when there is no channel config", func() {
+				BeforeEach(func() {
+					fakeChannelConfigSource.GetStableChannelConfigReturns(nil)
+				})
+
+				It("returns an error indicating the lack of agreement", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'DefineChaincode': could not get channelconfig for channel "))
+				})
+			})
+
+			Context("when there is no application config", func() {
+				BeforeEach(func() {
+					fakeChannelConfig.ApplicationConfigReturns(nil, false)
+				})
+
+				It("returns an error indicating the lack of agreement", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'DefineChaincode': could not get application config for channel "))
+				})
+			})
+
+			Context("when the underlying function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.DefineChaincodeReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'DefineChaincode': underlying-error"))
 				})
 			})
 		})

@@ -16,8 +16,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"github.com/golang/protobuf/proto"
 )
 
 var _ = Describe("Lifecycle", func() {
@@ -367,7 +365,6 @@ var _ = Describe("Lifecycle", func() {
 
 			publicKVS = map[string][]byte{}
 			fakePublicState = &mock.ReadWritableState{}
-			fakePublicState.GetStateReturns(proto.EncodeVarint(uint64(4)), nil)
 			fakePublicState.GetStateStub = func(key string) ([]byte, error) {
 				return publicKVS[key], nil
 			}
