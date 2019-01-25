@@ -69,7 +69,7 @@ var _ = Describe("Lifecycle", func() {
 				return fakePublicState.GetState(key)
 			}
 
-			err := l.Serializer.Serialize(lifecycle.NamespacesName, "cc-name", &lifecycle.DefinedChaincode{
+			err := l.Serializer.Serialize(lifecycle.NamespacesName, "cc-name", &lifecycle.ChaincodeDefinition{
 				Version:             "version",
 				Hash:                []byte("hash"),
 				ValidationPlugin:    "validation-plugin",

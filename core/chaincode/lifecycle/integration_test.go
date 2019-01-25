@@ -111,8 +111,8 @@ var _ = Describe("Integration", func() {
 		It("defines the chaincode for the org, defines it for the channel, queries all namespaces, and queries the chaincode", func() {
 			// Define for the org
 			fakeStub.GetArgsReturns([][]byte{
-				[]byte("DefineChaincodeForMyOrg"),
-				utils.MarshalOrPanic(&lb.DefineChaincodeForMyOrgArgs{
+				[]byte("ApproveChaincodeDefinitionForMyOrg"),
+				utils.MarshalOrPanic(&lb.ApproveChaincodeDefinitionForMyOrgArgs{
 					Name:                "cc-name",
 					Version:             "1.0",
 					Sequence:            1,
@@ -127,8 +127,8 @@ var _ = Describe("Integration", func() {
 
 			// Define for the channel
 			fakeStub.GetArgsReturns([][]byte{
-				[]byte("DefineChaincode"),
-				utils.MarshalOrPanic(&lb.DefineChaincodeArgs{
+				[]byte("CommitChaincodeDefinition"),
+				utils.MarshalOrPanic(&lb.CommitChaincodeDefinitionArgs{
 					Name:                "cc-name",
 					Version:             "1.0",
 					Sequence:            1,
@@ -143,12 +143,12 @@ var _ = Describe("Integration", func() {
 
 			// Get channel definitions
 			fakeStub.GetArgsReturns([][]byte{
-				[]byte("QueryDefinedNamespaces"),
-				utils.MarshalOrPanic(&lb.QueryDefinedNamespacesArgs{}),
+				[]byte("QueryNamespaceDefinitions"),
+				utils.MarshalOrPanic(&lb.QueryNamespaceDefinitionsArgs{}),
 			})
 			response = scc.Invoke(fakeStub)
 			Expect(response.Status).To(Equal(int32(200)))
-			namespaceResult := &lb.QueryDefinedNamespacesResult{}
+			namespaceResult := &lb.QueryNamespaceDefinitionsResult{}
 			err := proto.Unmarshal(response.Payload, namespaceResult)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(namespaceResult.Namespaces)).To(Equal(1))
@@ -158,17 +158,17 @@ var _ = Describe("Integration", func() {
 
 			// Get chaincode definition details
 			fakeStub.GetArgsReturns([][]byte{
-				[]byte("QueryDefinedChaincode"),
-				utils.MarshalOrPanic(&lb.QueryDefinedChaincodeArgs{
+				[]byte("QueryChaincodeDefinition"),
+				utils.MarshalOrPanic(&lb.QueryChaincodeDefinitionArgs{
 					Name: "cc-name",
 				}),
 			})
 			response = scc.Invoke(fakeStub)
 			Expect(response.Status).To(Equal(int32(200)))
-			chaincodeResult := &lb.QueryDefinedChaincodeResult{}
+			chaincodeResult := &lb.QueryChaincodeDefinitionResult{}
 			err = proto.Unmarshal(response.Payload, chaincodeResult)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(chaincodeResult, &lb.QueryDefinedChaincodeResult{
+			Expect(proto.Equal(chaincodeResult, &lb.QueryChaincodeDefinitionResult{
 				Sequence:            1,
 				Version:             "1.0",
 				EndorsementPlugin:   "builtin",

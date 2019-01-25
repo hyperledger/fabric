@@ -35,19 +35,19 @@ const (
 
 	// DefineForMyOrgFuncName is the chaincode function name used to approve a chaincode definition for
 	// execution by the user's own org
-	DefineChaincodeForMyOrgFuncName = "DefineChaincodeForMyOrg"
+	ApproveChaincodeDefinitionForMyOrgFuncName = "ApproveChaincodeDefinitionForMyOrg"
 
-	// DefineChaincodeFuncName is the chaincode function name used to 'define' (previously 'instantiate')
+	// CommitChaincodeDefinitionFuncName is the chaincode function name used to 'define' (previously 'instantiate')
 	// a chaincode in a channel.
-	DefineChaincodeFuncName = "DefineChaincode"
+	CommitChaincodeDefinitionFuncName = "CommitChaincodeDefinition"
 
-	// QueryDefinedChaincodeFuncName is the chaincode function name used to 'define' (previously 'instantiate')
+	// QueryChaincodeDefinitionFuncName is the chaincode function name used to 'define' (previously 'instantiate')
 	// a chaincode in a channel.
-	QueryDefinedChaincodeFuncName = "QueryDefinedChaincode"
+	QueryChaincodeDefinitionFuncName = "QueryChaincodeDefinition"
 
-	// QueryDefinedNamespaces is the chaincode function name used query which namespaces are currently defined
+	// QueryNamespaceDefinitions is the chaincode function name used query which namespaces are currently defined
 	// and what type those namespaces are.
-	QueryDefinedNamespacesFuncName = "QueryDefinedNamespaces"
+	QueryNamespaceDefinitionsFuncName = "QueryNamespaceDefinitions"
 )
 
 // SCCFunctions provides a backing implementation with concrete arguments
@@ -62,17 +62,17 @@ type SCCFunctions interface {
 	// QueryInstalledChaincodes returns the currently installed chaincodes
 	QueryInstalledChaincodes() (chaincodes []chaincode.InstalledChaincode, err error)
 
-	// DefineChaincodeForOrg records a chaincode definition into this org's implicit collection.
-	DefineChaincodeForOrg(cd *ChaincodeDefinition, publicState ReadableState, orgState ReadWritableState) error
+	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
+	ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, publicState ReadableState, orgState ReadWritableState) error
 
-	// DefineChaincode records a new chaincode definition into the public state and returns the orgs which agreed with that definition.
-	DefineChaincode(cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
+	// CommitChaincodeDefinition records a new chaincode definition into the public state and returns the orgs which agreed with that definition.
+	CommitChaincodeDefinition(name string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
 
-	// QueryDefinedChaincode reads a chaincode definition from the public state.
-	QueryDefinedChaincode(name string, publicState ReadableState) (*DefinedChaincode, error)
+	// QueryChaincodeDefinition reads a chaincode definition from the public state.
+	QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error)
 
-	// QueryDefinedNamespaces returns all defined namespaces
-	QueryDefinedNamespaces(publicState RangeableState) (map[string]string, error)
+	// QueryNamespaceDefinitions returns all defined namespaces
+	QueryNamespaceDefinitions(publicState RangeableState) (map[string]string, error)
 }
 
 //go:generate counterfeiter -o mock/channel_config_source.go --fake-name ChannelConfigSource . ChannelConfigSource
@@ -223,22 +223,20 @@ func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodes
 	return result, nil
 }
 
-// DefineChaincodeForMyOrg is a SCC function that may be dispatched to which routes to the underlying
+// ApproveChaincodeDefinitionForMyOrg is a SCC function that may be dispatched to which routes to the underlying
 // lifecycle implementation
-func (i *Invocation) DefineChaincodeForMyOrg(input *lb.DefineChaincodeForMyOrgArgs) (proto.Message, error) {
+func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChaincodeDefinitionForMyOrgArgs) (proto.Message, error) {
 	collectionName := ImplicitCollectionNameForOrg(i.SCC.OrgMSPID)
-	if err := i.SCC.Functions.DefineChaincodeForOrg(
+	if err := i.SCC.Functions.ApproveChaincodeDefinitionForOrg(
+		input.Name,
 		&ChaincodeDefinition{
-			Name:     input.Name,
-			Sequence: input.Sequence,
-			Parameters: &ChaincodeParameters{
-				Hash:                input.Hash,
-				Version:             input.Version,
-				EndorsementPlugin:   input.EndorsementPlugin,
-				ValidationPlugin:    input.ValidationPlugin,
-				ValidationParameter: input.ValidationParameter,
-				Collections:         input.Collections,
-			},
+			Sequence:            input.Sequence,
+			Hash:                input.Hash,
+			Version:             input.Version,
+			EndorsementPlugin:   input.EndorsementPlugin,
+			ValidationPlugin:    input.ValidationPlugin,
+			ValidationParameter: input.ValidationParameter,
+			Collections:         input.Collections,
 		},
 		i.Stub,
 		&ChaincodePrivateLedgerShim{
@@ -248,10 +246,10 @@ func (i *Invocation) DefineChaincodeForMyOrg(input *lb.DefineChaincodeForMyOrgAr
 	); err != nil {
 		return nil, err
 	}
-	return &lb.DefineChaincodeForMyOrgResult{}, nil
+	return &lb.ApproveChaincodeDefinitionForMyOrgResult{}, nil
 }
 
-func (i *Invocation) DefineChaincode(input *lb.DefineChaincodeArgs) (proto.Message, error) {
+func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefinitionArgs) (proto.Message, error) {
 	channelConfig := i.SCC.ChannelConfigSource.GetStableChannelConfig(i.Stub.GetChannelID())
 	if channelConfig == nil {
 		return nil, errors.Errorf("could not get channelconfig for channel %s", i.Stub.GetChannelID())
@@ -278,18 +276,16 @@ func (i *Invocation) DefineChaincode(input *lb.DefineChaincodeArgs) (proto.Messa
 		return nil, errors.Errorf("impossibly, this peer's org is processing requests for a channel it is not a member of")
 	}
 
-	agreement, err := i.SCC.Functions.DefineChaincode(
+	agreement, err := i.SCC.Functions.CommitChaincodeDefinition(
+		input.Name,
 		&ChaincodeDefinition{
-			Name:     input.Name,
-			Sequence: input.Sequence,
-			Parameters: &ChaincodeParameters{
-				Hash:                input.Hash,
-				Version:             input.Version,
-				EndorsementPlugin:   input.EndorsementPlugin,
-				ValidationPlugin:    input.ValidationPlugin,
-				ValidationParameter: input.ValidationParameter,
-				Collections:         input.Collections,
-			},
+			Sequence:            input.Sequence,
+			Hash:                input.Hash,
+			Version:             input.Version,
+			EndorsementPlugin:   input.EndorsementPlugin,
+			ValidationPlugin:    input.ValidationPlugin,
+			ValidationParameter: input.ValidationParameter,
+			Collections:         input.Collections,
 		},
 		i.Stub,
 		opaqueStates,
@@ -303,16 +299,16 @@ func (i *Invocation) DefineChaincode(input *lb.DefineChaincodeArgs) (proto.Messa
 		return nil, errors.Errorf("chaincode definition not agreed to by this org (%s)", i.SCC.OrgMSPID)
 	}
 
-	return &lb.DefineChaincodeResult{}, nil
+	return &lb.CommitChaincodeDefinitionResult{}, nil
 }
 
-func (i *Invocation) QueryDefinedChaincode(input *lb.QueryDefinedChaincodeArgs) (proto.Message, error) {
-	definedChaincode, err := i.SCC.Functions.QueryDefinedChaincode(input.Name, i.Stub)
+func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinitionArgs) (proto.Message, error) {
+	definedChaincode, err := i.SCC.Functions.QueryChaincodeDefinition(input.Name, i.Stub)
 	if err != nil {
 		return nil, err
 	}
 
-	return &lb.QueryDefinedChaincodeResult{
+	return &lb.QueryChaincodeDefinitionResult{
 		Sequence:            definedChaincode.Sequence,
 		Version:             definedChaincode.Version,
 		EndorsementPlugin:   definedChaincode.EndorsementPlugin,
@@ -323,18 +319,18 @@ func (i *Invocation) QueryDefinedChaincode(input *lb.QueryDefinedChaincodeArgs) 
 	}, nil
 }
 
-func (i *Invocation) QueryDefinedNamespaces(input *lb.QueryDefinedNamespacesArgs) (proto.Message, error) {
-	namespaces, err := i.SCC.Functions.QueryDefinedNamespaces(&ChaincodePublicLedgerShim{ChaincodeStubInterface: i.Stub})
+func (i *Invocation) QueryNamespaceDefinitions(input *lb.QueryNamespaceDefinitionsArgs) (proto.Message, error) {
+	namespaces, err := i.SCC.Functions.QueryNamespaceDefinitions(&ChaincodePublicLedgerShim{ChaincodeStubInterface: i.Stub})
 	if err != nil {
 		return nil, err
 	}
-	result := map[string]*lb.QueryDefinedNamespacesResult_Namespace{}
+	result := map[string]*lb.QueryNamespaceDefinitionsResult_Namespace{}
 	for namespace, nType := range namespaces {
-		result[namespace] = &lb.QueryDefinedNamespacesResult_Namespace{
+		result[namespace] = &lb.QueryNamespaceDefinitionsResult_Namespace{
 			Type: nType,
 		}
 	}
-	return &lb.QueryDefinedNamespacesResult{
+	return &lb.QueryNamespaceDefinitionsResult{
 		Namespaces: result,
 	}, nil
 }

@@ -58,9 +58,9 @@ message QueryInstalledChaincodesResult {
     repeated InstalledChaincode installed_chaincodes = 1;
 }
 
-// DefineChaincodeForMyOrgArgs is the message used as arguments to
-// `_lifecycle.DefineChaincodeForMyOrg`.
-message DefineChaincodeForMyOrgArgs {
+// ApproveChaincodeDefinitionForMyOrgArgs is the message used as arguments to
+// `_lifecycle.ApproveChaincodeDefinitionForMyOrg`.
+message ApproveChaincodeDefinitionForMyOrgArgs {
     int64 sequence = 1;
     string name = 2;
     string version = 3;
@@ -71,15 +71,15 @@ message DefineChaincodeForMyOrgArgs {
     common.CollectionConfigPackage collections = 8;
 }
 
-// DefineChaincodeForMyOrgResult is the message returned by
-// `_lifecycle.DefineChaincodeForMyOrg`. Currently it returns
+// ApproveChaincodeDefinitionForMyOrgResult is the message returned by
+// `_lifecycle.ApproveChaincodeDefinitionForMyOrg`. Currently it returns
 // nothing, but may be extended in the future.
-message DefineChaincodeForMyOrgResult {
+message ApproveChaincodeDefinitionForMyOrgResult {
 }
 
-// DefineChaincodeArgs is the message used as arguments to
-// `_lifecycle.DefineChaincode`.
-message DefineChaincodeArgs {
+// CommitChaincodeDefinitionArgs is the message used as arguments to
+// `_lifecycle.CommitChaincodeDefinition`.
+message CommitChaincodeDefinitionArgs {
     int64 sequence = 1;
     string name = 2;
     string version = 3;
@@ -90,21 +90,21 @@ message DefineChaincodeArgs {
     common.CollectionConfigPackage collections = 8;
 }
 
-// DefineChaincodeResult is the message returned by
-// `_lifecycle.DefineChaincode`. Currently it returns
+// CommitChaincodeDefinitionResult is the message returned by
+// `_lifecycle.CommitChaincodeDefinition`. Currently it returns
 // nothing, but may be extended in the future.
-message DefineChaincodeResult {
+message CommitChaincodeDefinitionResult {
 }
 
-// QueryDefinedChaincode is the message used as arguments to
-// `_lifecycle.QueryDefinedChaincode`.
-message QueryDefinedChaincodeArgs {
+// QueryChaincodeDefinition is the message used as arguments to
+// `_lifecycle.QueryChaincodeDefinition`.
+message QueryChaincodeDefinitionArgs {
     string name = 1;
 }
 
-// DefineChaincodeResult is the message returned by
-// `_lifecycle.QueryDefinedChaincode`.
-message QueryDefinedChaincodeResult {
+// CommitChaincodeDefinitionResult is the message returned by
+// `_lifecycle.QueryChaincodeDefinition`.
+message QueryChaincodeDefinitionResult {
     int64 sequence = 1;
     string name = 2;
     string version = 3;
@@ -115,14 +115,14 @@ message QueryDefinedChaincodeResult {
     common.CollectionConfigPackage collections = 8;
 }
 
-// QueryDefinedNamespaces is the message used as arguments to
-// `_lifecycle.QueryDefinedNamespaces`.
-message QueryDefinedNamespacesArgs {
+// QueryNamespaceDefinitions is the message used as arguments to
+// `_lifecycle.QueryNamespaceDefinitions`.
+message QueryNamespaceDefinitionsArgs {
 }
 
-// QueryDefinedNamespaces is the message returned by
-// `_lifecycle.QueryDefinedNamespaces`.
-message QueryDefinedNamespacesResult {
+// QueryNamespaceDefinitions is the message returned by
+// `_lifecycle.QueryNamespaceDefinitions`.
+message QueryNamespaceDefinitionsResult {
     message Namespace{
         string type = 1;
     }

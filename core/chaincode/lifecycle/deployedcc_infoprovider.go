@@ -88,7 +88,7 @@ func (l *Lifecycle) ChaincodeInNewLifecycle(chaincodeName string, qe ledger.Simp
 		return false, state, nil
 	}
 
-	if metadata.Datatype != DefinedChaincodeType {
+	if metadata.Datatype != ChaincodeDefinitionType {
 		return false, nil, errors.Errorf("not a chaincode type: %s", metadata.Datatype)
 	}
 
@@ -117,7 +117,7 @@ func (l *Lifecycle) ChaincodeInfo(channelName, chaincodeName string, qe ledger.S
 		}, nil
 	}
 
-	definedChaincode := &DefinedChaincode{}
+	definedChaincode := &ChaincodeDefinition{}
 	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, definedChaincode, state)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))
@@ -137,7 +137,7 @@ var ImplicitCollectionMatcher = regexp.MustCompile("^" + ImplicitCollectionNameF
 // CollectionInfo implements function in interface ledger.DeployedChaincodeInfoProvider, it returns config for
 // both static and implicit collections.
 func (l *Lifecycle) CollectionInfo(channelName, chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*cb.StaticCollectionConfig, error) {
-	definedChaincode := &DefinedChaincode{}
+	definedChaincode := &ChaincodeDefinition{}
 	if chaincodeName != LifecycleNamespace {
 		exists, state, err := l.ChaincodeInNewLifecycle(chaincodeName, qe)
 		if err != nil {
@@ -278,7 +278,7 @@ func (l *Lifecycle) ValidationInfo(channelID, chaincodeName string, qe ledger.Si
 		return "builtin", b, nil, nil
 	}
 
-	definedChaincode := &DefinedChaincode{}
+	definedChaincode := &ChaincodeDefinition{}
 	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, definedChaincode, state)
 	if err != nil {
 		return "", nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName)), nil

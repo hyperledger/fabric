@@ -34,7 +34,7 @@ func (m *InstallChaincodeArgs) Reset()         { *m = InstallChaincodeArgs{} }
 func (m *InstallChaincodeArgs) String() string { return proto.CompactTextString(m) }
 func (*InstallChaincodeArgs) ProtoMessage()    {}
 func (*InstallChaincodeArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{0}
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{0}
 }
 func (m *InstallChaincodeArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InstallChaincodeArgs.Unmarshal(m, b)
@@ -88,7 +88,7 @@ func (m *InstallChaincodeResult) Reset()         { *m = InstallChaincodeResult{}
 func (m *InstallChaincodeResult) String() string { return proto.CompactTextString(m) }
 func (*InstallChaincodeResult) ProtoMessage()    {}
 func (*InstallChaincodeResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{1}
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{1}
 }
 func (m *InstallChaincodeResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InstallChaincodeResult.Unmarshal(m, b)
@@ -129,7 +129,7 @@ func (m *QueryInstalledChaincodeArgs) Reset()         { *m = QueryInstalledChain
 func (m *QueryInstalledChaincodeArgs) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodeArgs) ProtoMessage()    {}
 func (*QueryInstalledChaincodeArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{2}
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{2}
 }
 func (m *QueryInstalledChaincodeArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodeArgs.Unmarshal(m, b)
@@ -176,7 +176,7 @@ func (m *QueryInstalledChaincodeResult) Reset()         { *m = QueryInstalledCha
 func (m *QueryInstalledChaincodeResult) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodeResult) ProtoMessage()    {}
 func (*QueryInstalledChaincodeResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{3}
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{3}
 }
 func (m *QueryInstalledChaincodeResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodeResult.Unmarshal(m, b)
@@ -216,7 +216,7 @@ func (m *QueryInstalledChaincodesArgs) Reset()         { *m = QueryInstalledChai
 func (m *QueryInstalledChaincodesArgs) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodesArgs) ProtoMessage()    {}
 func (*QueryInstalledChaincodesArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{4}
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{4}
 }
 func (m *QueryInstalledChaincodesArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodesArgs.Unmarshal(m, b)
@@ -250,7 +250,7 @@ func (m *QueryInstalledChaincodesResult) Reset()         { *m = QueryInstalledCh
 func (m *QueryInstalledChaincodesResult) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodesResult) ProtoMessage()    {}
 func (*QueryInstalledChaincodesResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{5}
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{5}
 }
 func (m *QueryInstalledChaincodesResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodesResult.Unmarshal(m, b)
@@ -294,7 +294,7 @@ func (m *QueryInstalledChaincodesResult_InstalledChaincode) String() string {
 }
 func (*QueryInstalledChaincodesResult_InstalledChaincode) ProtoMessage() {}
 func (*QueryInstalledChaincodesResult_InstalledChaincode) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{5, 0}
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{5, 0}
 }
 func (m *QueryInstalledChaincodesResult_InstalledChaincode) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodesResult_InstalledChaincode.Unmarshal(m, b)
@@ -335,9 +335,9 @@ func (m *QueryInstalledChaincodesResult_InstalledChaincode) GetHash() []byte {
 	return nil
 }
 
-// DefineChaincodeForMyOrgArgs is the message used as arguments to
-// `_lifecycle.DefineChaincodeForMyOrg`.
-type DefineChaincodeForMyOrgArgs struct {
+// ApproveChaincodeDefinitionForMyOrgArgs is the message used as arguments to
+// `_lifecycle.ApproveChaincodeDefinitionForMyOrg`.
+type ApproveChaincodeDefinitionForMyOrgArgs struct {
 	Sequence             int64                           `protobuf:"varint,1,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	Name                 string                          `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Version              string                          `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
@@ -351,122 +351,126 @@ type DefineChaincodeForMyOrgArgs struct {
 	XXX_sizecache        int32                           `json:"-"`
 }
 
-func (m *DefineChaincodeForMyOrgArgs) Reset()         { *m = DefineChaincodeForMyOrgArgs{} }
-func (m *DefineChaincodeForMyOrgArgs) String() string { return proto.CompactTextString(m) }
-func (*DefineChaincodeForMyOrgArgs) ProtoMessage()    {}
-func (*DefineChaincodeForMyOrgArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{6}
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) Reset() {
+	*m = ApproveChaincodeDefinitionForMyOrgArgs{}
 }
-func (m *DefineChaincodeForMyOrgArgs) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_DefineChaincodeForMyOrgArgs.Unmarshal(m, b)
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) String() string { return proto.CompactTextString(m) }
+func (*ApproveChaincodeDefinitionForMyOrgArgs) ProtoMessage()    {}
+func (*ApproveChaincodeDefinitionForMyOrgArgs) Descriptor() ([]byte, []int) {
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{6}
 }
-func (m *DefineChaincodeForMyOrgArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_DefineChaincodeForMyOrgArgs.Marshal(b, m, deterministic)
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgArgs.Unmarshal(m, b)
 }
-func (dst *DefineChaincodeForMyOrgArgs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DefineChaincodeForMyOrgArgs.Merge(dst, src)
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgArgs.Marshal(b, m, deterministic)
 }
-func (m *DefineChaincodeForMyOrgArgs) XXX_Size() int {
-	return xxx_messageInfo_DefineChaincodeForMyOrgArgs.Size(m)
+func (dst *ApproveChaincodeDefinitionForMyOrgArgs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgArgs.Merge(dst, src)
 }
-func (m *DefineChaincodeForMyOrgArgs) XXX_DiscardUnknown() {
-	xxx_messageInfo_DefineChaincodeForMyOrgArgs.DiscardUnknown(m)
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) XXX_Size() int {
+	return xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgArgs.Size(m)
+}
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) XXX_DiscardUnknown() {
+	xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgArgs.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_DefineChaincodeForMyOrgArgs proto.InternalMessageInfo
+var xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgArgs proto.InternalMessageInfo
 
-func (m *DefineChaincodeForMyOrgArgs) GetSequence() int64 {
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) GetSequence() int64 {
 	if m != nil {
 		return m.Sequence
 	}
 	return 0
 }
 
-func (m *DefineChaincodeForMyOrgArgs) GetName() string {
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *DefineChaincodeForMyOrgArgs) GetVersion() string {
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) GetVersion() string {
 	if m != nil {
 		return m.Version
 	}
 	return ""
 }
 
-func (m *DefineChaincodeForMyOrgArgs) GetHash() []byte {
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) GetHash() []byte {
 	if m != nil {
 		return m.Hash
 	}
 	return nil
 }
 
-func (m *DefineChaincodeForMyOrgArgs) GetEndorsementPlugin() string {
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) GetEndorsementPlugin() string {
 	if m != nil {
 		return m.EndorsementPlugin
 	}
 	return ""
 }
 
-func (m *DefineChaincodeForMyOrgArgs) GetValidationPlugin() string {
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) GetValidationPlugin() string {
 	if m != nil {
 		return m.ValidationPlugin
 	}
 	return ""
 }
 
-func (m *DefineChaincodeForMyOrgArgs) GetValidationParameter() []byte {
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) GetValidationParameter() []byte {
 	if m != nil {
 		return m.ValidationParameter
 	}
 	return nil
 }
 
-func (m *DefineChaincodeForMyOrgArgs) GetCollections() *common.CollectionConfigPackage {
+func (m *ApproveChaincodeDefinitionForMyOrgArgs) GetCollections() *common.CollectionConfigPackage {
 	if m != nil {
 		return m.Collections
 	}
 	return nil
 }
 
-// DefineChaincodeForMyOrgResult is the message returned by
-// `_lifecycle.DefineChaincodeForMyOrg`. Currently it returns
+// ApproveChaincodeDefinitionForMyOrgResult is the message returned by
+// `_lifecycle.ApproveChaincodeDefinitionForMyOrg`. Currently it returns
 // nothing, but may be extended in the future.
-type DefineChaincodeForMyOrgResult struct {
+type ApproveChaincodeDefinitionForMyOrgResult struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *DefineChaincodeForMyOrgResult) Reset()         { *m = DefineChaincodeForMyOrgResult{} }
-func (m *DefineChaincodeForMyOrgResult) String() string { return proto.CompactTextString(m) }
-func (*DefineChaincodeForMyOrgResult) ProtoMessage()    {}
-func (*DefineChaincodeForMyOrgResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{7}
+func (m *ApproveChaincodeDefinitionForMyOrgResult) Reset() {
+	*m = ApproveChaincodeDefinitionForMyOrgResult{}
 }
-func (m *DefineChaincodeForMyOrgResult) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_DefineChaincodeForMyOrgResult.Unmarshal(m, b)
+func (m *ApproveChaincodeDefinitionForMyOrgResult) String() string { return proto.CompactTextString(m) }
+func (*ApproveChaincodeDefinitionForMyOrgResult) ProtoMessage()    {}
+func (*ApproveChaincodeDefinitionForMyOrgResult) Descriptor() ([]byte, []int) {
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{7}
 }
-func (m *DefineChaincodeForMyOrgResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_DefineChaincodeForMyOrgResult.Marshal(b, m, deterministic)
+func (m *ApproveChaincodeDefinitionForMyOrgResult) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgResult.Unmarshal(m, b)
 }
-func (dst *DefineChaincodeForMyOrgResult) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DefineChaincodeForMyOrgResult.Merge(dst, src)
+func (m *ApproveChaincodeDefinitionForMyOrgResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgResult.Marshal(b, m, deterministic)
 }
-func (m *DefineChaincodeForMyOrgResult) XXX_Size() int {
-	return xxx_messageInfo_DefineChaincodeForMyOrgResult.Size(m)
+func (dst *ApproveChaincodeDefinitionForMyOrgResult) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgResult.Merge(dst, src)
 }
-func (m *DefineChaincodeForMyOrgResult) XXX_DiscardUnknown() {
-	xxx_messageInfo_DefineChaincodeForMyOrgResult.DiscardUnknown(m)
+func (m *ApproveChaincodeDefinitionForMyOrgResult) XXX_Size() int {
+	return xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgResult.Size(m)
+}
+func (m *ApproveChaincodeDefinitionForMyOrgResult) XXX_DiscardUnknown() {
+	xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgResult.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_DefineChaincodeForMyOrgResult proto.InternalMessageInfo
+var xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgResult proto.InternalMessageInfo
 
-// DefineChaincodeArgs is the message used as arguments to
-// `_lifecycle.DefineChaincode`.
-type DefineChaincodeArgs struct {
+// CommitChaincodeDefinitionArgs is the message used as arguments to
+// `_lifecycle.CommitChaincodeDefinition`.
+type CommitChaincodeDefinitionArgs struct {
 	Sequence             int64                           `protobuf:"varint,1,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	Name                 string                          `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Version              string                          `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
@@ -480,162 +484,162 @@ type DefineChaincodeArgs struct {
 	XXX_sizecache        int32                           `json:"-"`
 }
 
-func (m *DefineChaincodeArgs) Reset()         { *m = DefineChaincodeArgs{} }
-func (m *DefineChaincodeArgs) String() string { return proto.CompactTextString(m) }
-func (*DefineChaincodeArgs) ProtoMessage()    {}
-func (*DefineChaincodeArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{8}
+func (m *CommitChaincodeDefinitionArgs) Reset()         { *m = CommitChaincodeDefinitionArgs{} }
+func (m *CommitChaincodeDefinitionArgs) String() string { return proto.CompactTextString(m) }
+func (*CommitChaincodeDefinitionArgs) ProtoMessage()    {}
+func (*CommitChaincodeDefinitionArgs) Descriptor() ([]byte, []int) {
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{8}
 }
-func (m *DefineChaincodeArgs) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_DefineChaincodeArgs.Unmarshal(m, b)
+func (m *CommitChaincodeDefinitionArgs) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CommitChaincodeDefinitionArgs.Unmarshal(m, b)
 }
-func (m *DefineChaincodeArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_DefineChaincodeArgs.Marshal(b, m, deterministic)
+func (m *CommitChaincodeDefinitionArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CommitChaincodeDefinitionArgs.Marshal(b, m, deterministic)
 }
-func (dst *DefineChaincodeArgs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DefineChaincodeArgs.Merge(dst, src)
+func (dst *CommitChaincodeDefinitionArgs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CommitChaincodeDefinitionArgs.Merge(dst, src)
 }
-func (m *DefineChaincodeArgs) XXX_Size() int {
-	return xxx_messageInfo_DefineChaincodeArgs.Size(m)
+func (m *CommitChaincodeDefinitionArgs) XXX_Size() int {
+	return xxx_messageInfo_CommitChaincodeDefinitionArgs.Size(m)
 }
-func (m *DefineChaincodeArgs) XXX_DiscardUnknown() {
-	xxx_messageInfo_DefineChaincodeArgs.DiscardUnknown(m)
+func (m *CommitChaincodeDefinitionArgs) XXX_DiscardUnknown() {
+	xxx_messageInfo_CommitChaincodeDefinitionArgs.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_DefineChaincodeArgs proto.InternalMessageInfo
+var xxx_messageInfo_CommitChaincodeDefinitionArgs proto.InternalMessageInfo
 
-func (m *DefineChaincodeArgs) GetSequence() int64 {
+func (m *CommitChaincodeDefinitionArgs) GetSequence() int64 {
 	if m != nil {
 		return m.Sequence
 	}
 	return 0
 }
 
-func (m *DefineChaincodeArgs) GetName() string {
+func (m *CommitChaincodeDefinitionArgs) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *DefineChaincodeArgs) GetVersion() string {
+func (m *CommitChaincodeDefinitionArgs) GetVersion() string {
 	if m != nil {
 		return m.Version
 	}
 	return ""
 }
 
-func (m *DefineChaincodeArgs) GetHash() []byte {
+func (m *CommitChaincodeDefinitionArgs) GetHash() []byte {
 	if m != nil {
 		return m.Hash
 	}
 	return nil
 }
 
-func (m *DefineChaincodeArgs) GetEndorsementPlugin() string {
+func (m *CommitChaincodeDefinitionArgs) GetEndorsementPlugin() string {
 	if m != nil {
 		return m.EndorsementPlugin
 	}
 	return ""
 }
 
-func (m *DefineChaincodeArgs) GetValidationPlugin() string {
+func (m *CommitChaincodeDefinitionArgs) GetValidationPlugin() string {
 	if m != nil {
 		return m.ValidationPlugin
 	}
 	return ""
 }
 
-func (m *DefineChaincodeArgs) GetValidationParameter() []byte {
+func (m *CommitChaincodeDefinitionArgs) GetValidationParameter() []byte {
 	if m != nil {
 		return m.ValidationParameter
 	}
 	return nil
 }
 
-func (m *DefineChaincodeArgs) GetCollections() *common.CollectionConfigPackage {
+func (m *CommitChaincodeDefinitionArgs) GetCollections() *common.CollectionConfigPackage {
 	if m != nil {
 		return m.Collections
 	}
 	return nil
 }
 
-// DefineChaincodeResult is the message returned by
-// `_lifecycle.DefineChaincode`. Currently it returns
+// CommitChaincodeDefinitionResult is the message returned by
+// `_lifecycle.CommitChaincodeDefinition`. Currently it returns
 // nothing, but may be extended in the future.
-type DefineChaincodeResult struct {
+type CommitChaincodeDefinitionResult struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *DefineChaincodeResult) Reset()         { *m = DefineChaincodeResult{} }
-func (m *DefineChaincodeResult) String() string { return proto.CompactTextString(m) }
-func (*DefineChaincodeResult) ProtoMessage()    {}
-func (*DefineChaincodeResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{9}
+func (m *CommitChaincodeDefinitionResult) Reset()         { *m = CommitChaincodeDefinitionResult{} }
+func (m *CommitChaincodeDefinitionResult) String() string { return proto.CompactTextString(m) }
+func (*CommitChaincodeDefinitionResult) ProtoMessage()    {}
+func (*CommitChaincodeDefinitionResult) Descriptor() ([]byte, []int) {
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{9}
 }
-func (m *DefineChaincodeResult) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_DefineChaincodeResult.Unmarshal(m, b)
+func (m *CommitChaincodeDefinitionResult) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CommitChaincodeDefinitionResult.Unmarshal(m, b)
 }
-func (m *DefineChaincodeResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_DefineChaincodeResult.Marshal(b, m, deterministic)
+func (m *CommitChaincodeDefinitionResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CommitChaincodeDefinitionResult.Marshal(b, m, deterministic)
 }
-func (dst *DefineChaincodeResult) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DefineChaincodeResult.Merge(dst, src)
+func (dst *CommitChaincodeDefinitionResult) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CommitChaincodeDefinitionResult.Merge(dst, src)
 }
-func (m *DefineChaincodeResult) XXX_Size() int {
-	return xxx_messageInfo_DefineChaincodeResult.Size(m)
+func (m *CommitChaincodeDefinitionResult) XXX_Size() int {
+	return xxx_messageInfo_CommitChaincodeDefinitionResult.Size(m)
 }
-func (m *DefineChaincodeResult) XXX_DiscardUnknown() {
-	xxx_messageInfo_DefineChaincodeResult.DiscardUnknown(m)
+func (m *CommitChaincodeDefinitionResult) XXX_DiscardUnknown() {
+	xxx_messageInfo_CommitChaincodeDefinitionResult.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_DefineChaincodeResult proto.InternalMessageInfo
+var xxx_messageInfo_CommitChaincodeDefinitionResult proto.InternalMessageInfo
 
-// QueryDefinedChaincode is the message used as arguments to
-// `_lifecycle.QueryDefinedChaincode`.
-type QueryDefinedChaincodeArgs struct {
+// QueryChaincodeDefinition is the message used as arguments to
+// `_lifecycle.QueryChaincodeDefinition`.
+type QueryChaincodeDefinitionArgs struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *QueryDefinedChaincodeArgs) Reset()         { *m = QueryDefinedChaincodeArgs{} }
-func (m *QueryDefinedChaincodeArgs) String() string { return proto.CompactTextString(m) }
-func (*QueryDefinedChaincodeArgs) ProtoMessage()    {}
-func (*QueryDefinedChaincodeArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{10}
+func (m *QueryChaincodeDefinitionArgs) Reset()         { *m = QueryChaincodeDefinitionArgs{} }
+func (m *QueryChaincodeDefinitionArgs) String() string { return proto.CompactTextString(m) }
+func (*QueryChaincodeDefinitionArgs) ProtoMessage()    {}
+func (*QueryChaincodeDefinitionArgs) Descriptor() ([]byte, []int) {
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{10}
 }
-func (m *QueryDefinedChaincodeArgs) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_QueryDefinedChaincodeArgs.Unmarshal(m, b)
+func (m *QueryChaincodeDefinitionArgs) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_QueryChaincodeDefinitionArgs.Unmarshal(m, b)
 }
-func (m *QueryDefinedChaincodeArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_QueryDefinedChaincodeArgs.Marshal(b, m, deterministic)
+func (m *QueryChaincodeDefinitionArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_QueryChaincodeDefinitionArgs.Marshal(b, m, deterministic)
 }
-func (dst *QueryDefinedChaincodeArgs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryDefinedChaincodeArgs.Merge(dst, src)
+func (dst *QueryChaincodeDefinitionArgs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryChaincodeDefinitionArgs.Merge(dst, src)
 }
-func (m *QueryDefinedChaincodeArgs) XXX_Size() int {
-	return xxx_messageInfo_QueryDefinedChaincodeArgs.Size(m)
+func (m *QueryChaincodeDefinitionArgs) XXX_Size() int {
+	return xxx_messageInfo_QueryChaincodeDefinitionArgs.Size(m)
 }
-func (m *QueryDefinedChaincodeArgs) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryDefinedChaincodeArgs.DiscardUnknown(m)
+func (m *QueryChaincodeDefinitionArgs) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryChaincodeDefinitionArgs.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryDefinedChaincodeArgs proto.InternalMessageInfo
+var xxx_messageInfo_QueryChaincodeDefinitionArgs proto.InternalMessageInfo
 
-func (m *QueryDefinedChaincodeArgs) GetName() string {
+func (m *QueryChaincodeDefinitionArgs) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-// DefineChaincodeResult is the message returned by
-// `_lifecycle.QueryDefinedChaincode`.
-type QueryDefinedChaincodeResult struct {
+// CommitChaincodeDefinitionResult is the message returned by
+// `_lifecycle.QueryChaincodeDefinition`.
+type QueryChaincodeDefinitionResult struct {
 	Sequence             int64                           `protobuf:"varint,1,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	Name                 string                          `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Version              string                          `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
@@ -649,192 +653,192 @@ type QueryDefinedChaincodeResult struct {
 	XXX_sizecache        int32                           `json:"-"`
 }
 
-func (m *QueryDefinedChaincodeResult) Reset()         { *m = QueryDefinedChaincodeResult{} }
-func (m *QueryDefinedChaincodeResult) String() string { return proto.CompactTextString(m) }
-func (*QueryDefinedChaincodeResult) ProtoMessage()    {}
-func (*QueryDefinedChaincodeResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{11}
+func (m *QueryChaincodeDefinitionResult) Reset()         { *m = QueryChaincodeDefinitionResult{} }
+func (m *QueryChaincodeDefinitionResult) String() string { return proto.CompactTextString(m) }
+func (*QueryChaincodeDefinitionResult) ProtoMessage()    {}
+func (*QueryChaincodeDefinitionResult) Descriptor() ([]byte, []int) {
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{11}
 }
-func (m *QueryDefinedChaincodeResult) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_QueryDefinedChaincodeResult.Unmarshal(m, b)
+func (m *QueryChaincodeDefinitionResult) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_QueryChaincodeDefinitionResult.Unmarshal(m, b)
 }
-func (m *QueryDefinedChaincodeResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_QueryDefinedChaincodeResult.Marshal(b, m, deterministic)
+func (m *QueryChaincodeDefinitionResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_QueryChaincodeDefinitionResult.Marshal(b, m, deterministic)
 }
-func (dst *QueryDefinedChaincodeResult) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryDefinedChaincodeResult.Merge(dst, src)
+func (dst *QueryChaincodeDefinitionResult) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryChaincodeDefinitionResult.Merge(dst, src)
 }
-func (m *QueryDefinedChaincodeResult) XXX_Size() int {
-	return xxx_messageInfo_QueryDefinedChaincodeResult.Size(m)
+func (m *QueryChaincodeDefinitionResult) XXX_Size() int {
+	return xxx_messageInfo_QueryChaincodeDefinitionResult.Size(m)
 }
-func (m *QueryDefinedChaincodeResult) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryDefinedChaincodeResult.DiscardUnknown(m)
+func (m *QueryChaincodeDefinitionResult) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryChaincodeDefinitionResult.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryDefinedChaincodeResult proto.InternalMessageInfo
+var xxx_messageInfo_QueryChaincodeDefinitionResult proto.InternalMessageInfo
 
-func (m *QueryDefinedChaincodeResult) GetSequence() int64 {
+func (m *QueryChaincodeDefinitionResult) GetSequence() int64 {
 	if m != nil {
 		return m.Sequence
 	}
 	return 0
 }
 
-func (m *QueryDefinedChaincodeResult) GetName() string {
+func (m *QueryChaincodeDefinitionResult) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *QueryDefinedChaincodeResult) GetVersion() string {
+func (m *QueryChaincodeDefinitionResult) GetVersion() string {
 	if m != nil {
 		return m.Version
 	}
 	return ""
 }
 
-func (m *QueryDefinedChaincodeResult) GetHash() []byte {
+func (m *QueryChaincodeDefinitionResult) GetHash() []byte {
 	if m != nil {
 		return m.Hash
 	}
 	return nil
 }
 
-func (m *QueryDefinedChaincodeResult) GetEndorsementPlugin() string {
+func (m *QueryChaincodeDefinitionResult) GetEndorsementPlugin() string {
 	if m != nil {
 		return m.EndorsementPlugin
 	}
 	return ""
 }
 
-func (m *QueryDefinedChaincodeResult) GetValidationPlugin() string {
+func (m *QueryChaincodeDefinitionResult) GetValidationPlugin() string {
 	if m != nil {
 		return m.ValidationPlugin
 	}
 	return ""
 }
 
-func (m *QueryDefinedChaincodeResult) GetValidationParameter() []byte {
+func (m *QueryChaincodeDefinitionResult) GetValidationParameter() []byte {
 	if m != nil {
 		return m.ValidationParameter
 	}
 	return nil
 }
 
-func (m *QueryDefinedChaincodeResult) GetCollections() *common.CollectionConfigPackage {
+func (m *QueryChaincodeDefinitionResult) GetCollections() *common.CollectionConfigPackage {
 	if m != nil {
 		return m.Collections
 	}
 	return nil
 }
 
-// QueryDefinedNamespaces is the message used as arguments to
-// `_lifecycle.QueryDefinedNamespaces`.
-type QueryDefinedNamespacesArgs struct {
+// QueryNamespaceDefinitions is the message used as arguments to
+// `_lifecycle.QueryNamespaceDefinitions`.
+type QueryNamespaceDefinitionsArgs struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *QueryDefinedNamespacesArgs) Reset()         { *m = QueryDefinedNamespacesArgs{} }
-func (m *QueryDefinedNamespacesArgs) String() string { return proto.CompactTextString(m) }
-func (*QueryDefinedNamespacesArgs) ProtoMessage()    {}
-func (*QueryDefinedNamespacesArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{12}
+func (m *QueryNamespaceDefinitionsArgs) Reset()         { *m = QueryNamespaceDefinitionsArgs{} }
+func (m *QueryNamespaceDefinitionsArgs) String() string { return proto.CompactTextString(m) }
+func (*QueryNamespaceDefinitionsArgs) ProtoMessage()    {}
+func (*QueryNamespaceDefinitionsArgs) Descriptor() ([]byte, []int) {
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{12}
 }
-func (m *QueryDefinedNamespacesArgs) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_QueryDefinedNamespacesArgs.Unmarshal(m, b)
+func (m *QueryNamespaceDefinitionsArgs) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_QueryNamespaceDefinitionsArgs.Unmarshal(m, b)
 }
-func (m *QueryDefinedNamespacesArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_QueryDefinedNamespacesArgs.Marshal(b, m, deterministic)
+func (m *QueryNamespaceDefinitionsArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_QueryNamespaceDefinitionsArgs.Marshal(b, m, deterministic)
 }
-func (dst *QueryDefinedNamespacesArgs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryDefinedNamespacesArgs.Merge(dst, src)
+func (dst *QueryNamespaceDefinitionsArgs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNamespaceDefinitionsArgs.Merge(dst, src)
 }
-func (m *QueryDefinedNamespacesArgs) XXX_Size() int {
-	return xxx_messageInfo_QueryDefinedNamespacesArgs.Size(m)
+func (m *QueryNamespaceDefinitionsArgs) XXX_Size() int {
+	return xxx_messageInfo_QueryNamespaceDefinitionsArgs.Size(m)
 }
-func (m *QueryDefinedNamespacesArgs) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryDefinedNamespacesArgs.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_QueryDefinedNamespacesArgs proto.InternalMessageInfo
-
-// QueryDefinedNamespaces is the message returned by
-// `_lifecycle.QueryDefinedNamespaces`.
-type QueryDefinedNamespacesResult struct {
-	Namespaces           map[string]*QueryDefinedNamespacesResult_Namespace `protobuf:"bytes,1,rep,name=namespaces,proto3" json:"namespaces,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	XXX_NoUnkeyedLiteral struct{}                                           `json:"-"`
-	XXX_unrecognized     []byte                                             `json:"-"`
-	XXX_sizecache        int32                                              `json:"-"`
+func (m *QueryNamespaceDefinitionsArgs) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNamespaceDefinitionsArgs.DiscardUnknown(m)
 }
 
-func (m *QueryDefinedNamespacesResult) Reset()         { *m = QueryDefinedNamespacesResult{} }
-func (m *QueryDefinedNamespacesResult) String() string { return proto.CompactTextString(m) }
-func (*QueryDefinedNamespacesResult) ProtoMessage()    {}
-func (*QueryDefinedNamespacesResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{13}
-}
-func (m *QueryDefinedNamespacesResult) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_QueryDefinedNamespacesResult.Unmarshal(m, b)
-}
-func (m *QueryDefinedNamespacesResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_QueryDefinedNamespacesResult.Marshal(b, m, deterministic)
-}
-func (dst *QueryDefinedNamespacesResult) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryDefinedNamespacesResult.Merge(dst, src)
-}
-func (m *QueryDefinedNamespacesResult) XXX_Size() int {
-	return xxx_messageInfo_QueryDefinedNamespacesResult.Size(m)
-}
-func (m *QueryDefinedNamespacesResult) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryDefinedNamespacesResult.DiscardUnknown(m)
+var xxx_messageInfo_QueryNamespaceDefinitionsArgs proto.InternalMessageInfo
+
+// QueryNamespaceDefinitions is the message returned by
+// `_lifecycle.QueryNamespaceDefinitions`.
+type QueryNamespaceDefinitionsResult struct {
+	Namespaces           map[string]*QueryNamespaceDefinitionsResult_Namespace `protobuf:"bytes,1,rep,name=namespaces,proto3" json:"namespaces,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}                                              `json:"-"`
+	XXX_unrecognized     []byte                                                `json:"-"`
+	XXX_sizecache        int32                                                 `json:"-"`
 }
 
-var xxx_messageInfo_QueryDefinedNamespacesResult proto.InternalMessageInfo
+func (m *QueryNamespaceDefinitionsResult) Reset()         { *m = QueryNamespaceDefinitionsResult{} }
+func (m *QueryNamespaceDefinitionsResult) String() string { return proto.CompactTextString(m) }
+func (*QueryNamespaceDefinitionsResult) ProtoMessage()    {}
+func (*QueryNamespaceDefinitionsResult) Descriptor() ([]byte, []int) {
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{13}
+}
+func (m *QueryNamespaceDefinitionsResult) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_QueryNamespaceDefinitionsResult.Unmarshal(m, b)
+}
+func (m *QueryNamespaceDefinitionsResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_QueryNamespaceDefinitionsResult.Marshal(b, m, deterministic)
+}
+func (dst *QueryNamespaceDefinitionsResult) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNamespaceDefinitionsResult.Merge(dst, src)
+}
+func (m *QueryNamespaceDefinitionsResult) XXX_Size() int {
+	return xxx_messageInfo_QueryNamespaceDefinitionsResult.Size(m)
+}
+func (m *QueryNamespaceDefinitionsResult) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNamespaceDefinitionsResult.DiscardUnknown(m)
+}
 
-func (m *QueryDefinedNamespacesResult) GetNamespaces() map[string]*QueryDefinedNamespacesResult_Namespace {
+var xxx_messageInfo_QueryNamespaceDefinitionsResult proto.InternalMessageInfo
+
+func (m *QueryNamespaceDefinitionsResult) GetNamespaces() map[string]*QueryNamespaceDefinitionsResult_Namespace {
 	if m != nil {
 		return m.Namespaces
 	}
 	return nil
 }
 
-type QueryDefinedNamespacesResult_Namespace struct {
+type QueryNamespaceDefinitionsResult_Namespace struct {
 	Type                 string   `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *QueryDefinedNamespacesResult_Namespace) Reset() {
-	*m = QueryDefinedNamespacesResult_Namespace{}
+func (m *QueryNamespaceDefinitionsResult_Namespace) Reset() {
+	*m = QueryNamespaceDefinitionsResult_Namespace{}
 }
-func (m *QueryDefinedNamespacesResult_Namespace) String() string { return proto.CompactTextString(m) }
-func (*QueryDefinedNamespacesResult_Namespace) ProtoMessage()    {}
-func (*QueryDefinedNamespacesResult_Namespace) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_e8e4813c97a28867, []int{13, 0}
+func (m *QueryNamespaceDefinitionsResult_Namespace) String() string { return proto.CompactTextString(m) }
+func (*QueryNamespaceDefinitionsResult_Namespace) ProtoMessage()    {}
+func (*QueryNamespaceDefinitionsResult_Namespace) Descriptor() ([]byte, []int) {
+	return fileDescriptor_lifecycle_114db4c38337e1f4, []int{13, 0}
 }
-func (m *QueryDefinedNamespacesResult_Namespace) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_QueryDefinedNamespacesResult_Namespace.Unmarshal(m, b)
+func (m *QueryNamespaceDefinitionsResult_Namespace) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_QueryNamespaceDefinitionsResult_Namespace.Unmarshal(m, b)
 }
-func (m *QueryDefinedNamespacesResult_Namespace) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_QueryDefinedNamespacesResult_Namespace.Marshal(b, m, deterministic)
+func (m *QueryNamespaceDefinitionsResult_Namespace) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_QueryNamespaceDefinitionsResult_Namespace.Marshal(b, m, deterministic)
 }
-func (dst *QueryDefinedNamespacesResult_Namespace) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryDefinedNamespacesResult_Namespace.Merge(dst, src)
+func (dst *QueryNamespaceDefinitionsResult_Namespace) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNamespaceDefinitionsResult_Namespace.Merge(dst, src)
 }
-func (m *QueryDefinedNamespacesResult_Namespace) XXX_Size() int {
-	return xxx_messageInfo_QueryDefinedNamespacesResult_Namespace.Size(m)
+func (m *QueryNamespaceDefinitionsResult_Namespace) XXX_Size() int {
+	return xxx_messageInfo_QueryNamespaceDefinitionsResult_Namespace.Size(m)
 }
-func (m *QueryDefinedNamespacesResult_Namespace) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryDefinedNamespacesResult_Namespace.DiscardUnknown(m)
+func (m *QueryNamespaceDefinitionsResult_Namespace) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNamespaceDefinitionsResult_Namespace.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryDefinedNamespacesResult_Namespace proto.InternalMessageInfo
+var xxx_messageInfo_QueryNamespaceDefinitionsResult_Namespace proto.InternalMessageInfo
 
-func (m *QueryDefinedNamespacesResult_Namespace) GetType() string {
+func (m *QueryNamespaceDefinitionsResult_Namespace) GetType() string {
 	if m != nil {
 		return m.Type
 	}
@@ -849,61 +853,62 @@ func init() {
 	proto.RegisterType((*QueryInstalledChaincodesArgs)(nil), "lifecycle.QueryInstalledChaincodesArgs")
 	proto.RegisterType((*QueryInstalledChaincodesResult)(nil), "lifecycle.QueryInstalledChaincodesResult")
 	proto.RegisterType((*QueryInstalledChaincodesResult_InstalledChaincode)(nil), "lifecycle.QueryInstalledChaincodesResult.InstalledChaincode")
-	proto.RegisterType((*DefineChaincodeForMyOrgArgs)(nil), "lifecycle.DefineChaincodeForMyOrgArgs")
-	proto.RegisterType((*DefineChaincodeForMyOrgResult)(nil), "lifecycle.DefineChaincodeForMyOrgResult")
-	proto.RegisterType((*DefineChaincodeArgs)(nil), "lifecycle.DefineChaincodeArgs")
-	proto.RegisterType((*DefineChaincodeResult)(nil), "lifecycle.DefineChaincodeResult")
-	proto.RegisterType((*QueryDefinedChaincodeArgs)(nil), "lifecycle.QueryDefinedChaincodeArgs")
-	proto.RegisterType((*QueryDefinedChaincodeResult)(nil), "lifecycle.QueryDefinedChaincodeResult")
-	proto.RegisterType((*QueryDefinedNamespacesArgs)(nil), "lifecycle.QueryDefinedNamespacesArgs")
-	proto.RegisterType((*QueryDefinedNamespacesResult)(nil), "lifecycle.QueryDefinedNamespacesResult")
-	proto.RegisterMapType((map[string]*QueryDefinedNamespacesResult_Namespace)(nil), "lifecycle.QueryDefinedNamespacesResult.NamespacesEntry")
-	proto.RegisterType((*QueryDefinedNamespacesResult_Namespace)(nil), "lifecycle.QueryDefinedNamespacesResult.Namespace")
+	proto.RegisterType((*ApproveChaincodeDefinitionForMyOrgArgs)(nil), "lifecycle.ApproveChaincodeDefinitionForMyOrgArgs")
+	proto.RegisterType((*ApproveChaincodeDefinitionForMyOrgResult)(nil), "lifecycle.ApproveChaincodeDefinitionForMyOrgResult")
+	proto.RegisterType((*CommitChaincodeDefinitionArgs)(nil), "lifecycle.CommitChaincodeDefinitionArgs")
+	proto.RegisterType((*CommitChaincodeDefinitionResult)(nil), "lifecycle.CommitChaincodeDefinitionResult")
+	proto.RegisterType((*QueryChaincodeDefinitionArgs)(nil), "lifecycle.QueryChaincodeDefinitionArgs")
+	proto.RegisterType((*QueryChaincodeDefinitionResult)(nil), "lifecycle.QueryChaincodeDefinitionResult")
+	proto.RegisterType((*QueryNamespaceDefinitionsArgs)(nil), "lifecycle.QueryNamespaceDefinitionsArgs")
+	proto.RegisterType((*QueryNamespaceDefinitionsResult)(nil), "lifecycle.QueryNamespaceDefinitionsResult")
+	proto.RegisterMapType((map[string]*QueryNamespaceDefinitionsResult_Namespace)(nil), "lifecycle.QueryNamespaceDefinitionsResult.NamespacesEntry")
+	proto.RegisterType((*QueryNamespaceDefinitionsResult_Namespace)(nil), "lifecycle.QueryNamespaceDefinitionsResult.Namespace")
 }
 
 func init() {
-	proto.RegisterFile("peer/lifecycle/lifecycle.proto", fileDescriptor_lifecycle_e8e4813c97a28867)
+	proto.RegisterFile("peer/lifecycle/lifecycle.proto", fileDescriptor_lifecycle_114db4c38337e1f4)
 }
 
-var fileDescriptor_lifecycle_e8e4813c97a28867 = []byte{
-	// 619 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xec, 0x56, 0x4d, 0x6f, 0xd3, 0x4c,
-	0x10, 0x96, 0x93, 0x7e, 0x4e, 0x2a, 0xbd, 0xad, 0xdb, 0x97, 0xba, 0xe9, 0x57, 0xe4, 0x53, 0x24,
-	0x8a, 0xad, 0xb6, 0x07, 0x50, 0xc5, 0xa5, 0x94, 0x0f, 0x21, 0x04, 0x14, 0x1f, 0x40, 0xe2, 0x12,
-	0x6d, 0x9d, 0x89, 0xb3, 0xaa, 0xb3, 0x6b, 0x76, 0x9d, 0x4a, 0xbe, 0x71, 0xe6, 0x7f, 0x71, 0xe4,
-	0x87, 0xf0, 0x2f, 0x90, 0x77, 0xd7, 0x1f, 0xa4, 0x49, 0x51, 0xe0, 0xda, 0xdb, 0x66, 0x9f, 0xe7,
-	0x99, 0x19, 0x3d, 0xb3, 0x33, 0x31, 0x1c, 0x24, 0x88, 0xc2, 0x8f, 0xe9, 0x00, 0xc3, 0x2c, 0x8c,
-	0xb1, 0x3a, 0x79, 0x89, 0xe0, 0x29, 0xb7, 0x57, 0xcb, 0x8b, 0xf6, 0x76, 0xc8, 0x47, 0x23, 0xce,
-	0xfc, 0x90, 0xc7, 0x31, 0x86, 0x29, 0xe5, 0x4c, 0x73, 0xdc, 0xaf, 0x16, 0x6c, 0xbd, 0x66, 0x32,
-	0x25, 0x71, 0x7c, 0x31, 0x24, 0x94, 0x85, 0xbc, 0x8f, 0xe7, 0x22, 0x92, 0xb6, 0x0d, 0x0b, 0x8c,
-	0x8c, 0xd0, 0xb1, 0x3a, 0x56, 0x77, 0x35, 0x50, 0x67, 0xdb, 0x81, 0xe5, 0x1b, 0x14, 0x92, 0x72,
-	0xe6, 0x34, 0xd4, 0x75, 0xf1, 0xd3, 0x3e, 0x83, 0x9d, 0xb0, 0x90, 0xf7, 0xa8, 0x8e, 0xd7, 0x4b,
-	0x48, 0x78, 0x4d, 0x22, 0x74, 0x9a, 0x1d, 0xab, 0xbb, 0x16, 0x6c, 0x97, 0x04, 0x93, 0xef, 0x52,
-	0xc3, 0xee, 0x11, 0x3c, 0x98, 0xac, 0x20, 0x40, 0x39, 0x8e, 0xd3, 0xbc, 0x86, 0x21, 0x91, 0x43,
-	0x55, 0xc3, 0x5a, 0xa0, 0xce, 0xee, 0x1b, 0xd8, 0xfd, 0x30, 0x46, 0x91, 0x19, 0x09, 0xf6, 0xff,
-	0xa1, 0x6c, 0xf7, 0x14, 0xf6, 0x67, 0x04, 0xbb, 0xa3, 0x82, 0x03, 0xd8, 0x9b, 0x21, 0x92, 0x79,
-	0x09, 0xee, 0x4f, 0x0b, 0x0e, 0x66, 0x11, 0x4c, 0x58, 0x0e, 0x5b, 0xb4, 0x00, 0x7b, 0xa5, 0x2f,
-	0xd2, 0xb1, 0x3a, 0xcd, 0x6e, 0xeb, 0xe4, 0xa9, 0x57, 0x75, 0xf2, 0xee, 0x40, 0xde, 0x94, 0xc2,
-	0x37, 0xe9, 0x6d, 0x76, 0xfb, 0x23, 0xd8, 0xb7, 0xa9, 0x73, 0xf6, 0xb8, 0xf0, 0xa2, 0x59, 0xf3,
-	0xe2, 0x47, 0x03, 0x76, 0x9f, 0xe3, 0x80, 0x32, 0x2c, 0xa3, 0xbe, 0xe4, 0xe2, 0x6d, 0xf6, 0x5e,
-	0x44, 0xaa, 0x1d, 0x6d, 0x58, 0x91, 0xf8, 0x65, 0x8c, 0x2c, 0xd4, 0x59, 0x9a, 0x41, 0xf9, 0xbb,
-	0xcc, 0xde, 0x98, 0x9e, 0xbd, 0x39, 0x3d, 0xfb, 0x42, 0x95, 0xdd, 0x7e, 0x04, 0x36, 0xb2, 0x3e,
-	0x17, 0x12, 0x47, 0xc8, 0xd2, 0x5e, 0x12, 0x8f, 0x23, 0xca, 0x9c, 0x45, 0x25, 0xdc, 0xa8, 0x21,
-	0x97, 0x0a, 0xb0, 0x1f, 0xc2, 0xc6, 0x0d, 0x89, 0x69, 0x9f, 0xe4, 0xef, 0xbf, 0x60, 0x2f, 0x29,
-	0xf6, 0x7a, 0x05, 0x18, 0xf2, 0x31, 0x6c, 0xd5, 0xc9, 0x44, 0x90, 0x11, 0xa6, 0x28, 0x9c, 0x65,
-	0x95, 0x7f, 0xb3, 0xc6, 0x2f, 0x20, 0xfb, 0x1c, 0x5a, 0xd5, 0x7c, 0x49, 0x67, 0xa5, 0x63, 0x75,
-	0x5b, 0x27, 0x87, 0x9e, 0x1e, 0x3d, 0xef, 0xa2, 0x84, 0x2e, 0x38, 0x1b, 0xd0, 0xc8, 0x3c, 0xff,
-	0xa0, 0xae, 0x71, 0x0f, 0x61, 0x7f, 0x86, 0x9d, 0xba, 0xe1, 0xee, 0xf7, 0x06, 0x6c, 0x4e, 0x30,
-	0xee, 0x8d, 0xfe, 0x0b, 0xa3, 0xb7, 0xe1, 0xff, 0x09, 0x1b, 0x8d, 0xc1, 0x3e, 0xec, 0xa8, 0x99,
-	0xd3, 0xe8, 0x9f, 0xb7, 0x8b, 0x1a, 0x81, 0xa9, 0x0a, 0x33, 0xeb, 0xf7, 0x9d, 0x99, 0xaf, 0x33,
-	0x7b, 0xd0, 0xae, 0xdb, 0xf9, 0x8e, 0x8c, 0x50, 0x26, 0x24, 0x34, 0xcb, 0xf5, 0x5b, 0xc3, 0x6c,
-	0xdf, 0x5b, 0xb0, 0xb1, 0xfb, 0x13, 0x00, 0x2b, 0xef, 0xcc, 0x42, 0x7d, 0x3c, 0xb9, 0x50, 0x67,
-	0x88, 0xbd, 0xea, 0xe2, 0x05, 0x4b, 0x45, 0x16, 0xd4, 0x42, 0xb5, 0x0f, 0x61, 0xb5, 0x84, 0xf3,
-	0x56, 0xa4, 0x59, 0x52, 0x3e, 0x84, 0xfc, 0xdc, 0x4e, 0xe0, 0xbf, 0x09, 0xbd, 0xbd, 0x0e, 0xcd,
-	0x6b, 0xcc, 0x0c, 0x2b, 0x3f, 0xda, 0xaf, 0x60, 0xf1, 0x86, 0xc4, 0x63, 0xdd, 0xf2, 0xd6, 0xc9,
-	0xf1, 0xdc, 0x95, 0x05, 0x5a, 0x7f, 0xd6, 0x78, 0x62, 0x3d, 0x0b, 0xe1, 0x88, 0x8b, 0xc8, 0x1b,
-	0x66, 0x09, 0x8a, 0x18, 0xfb, 0x11, 0x0a, 0x6f, 0x40, 0xae, 0x04, 0x0d, 0xf5, 0x9f, 0xbb, 0xf4,
-	0xf2, 0x0f, 0x84, 0x2a, 0xc3, 0xe7, 0xd3, 0x88, 0xa6, 0xc3, 0xf1, 0x55, 0xde, 0x0e, 0xbf, 0x26,
-	0xf2, 0xb5, 0xc8, 0xd7, 0x22, 0xff, 0xf7, 0xaf, 0x8a, 0xab, 0x25, 0x75, 0x7d, 0xfa, 0x2b, 0x00,
-	0x00, 0xff, 0xff, 0x32, 0x68, 0x28, 0xc0, 0x6e, 0x08, 0x00, 0x00,
+var fileDescriptor_lifecycle_114db4c38337e1f4 = []byte{
+	// 633 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xec, 0x56, 0xcd, 0x6e, 0xd3, 0x4c,
+	0x14, 0x95, 0x9d, 0xfe, 0xde, 0x54, 0xfa, 0x5a, 0xb7, 0xfa, 0x6a, 0x02, 0x6d, 0x82, 0x17, 0x28,
+	0x82, 0xe2, 0x88, 0x94, 0x05, 0xaa, 0xd8, 0x94, 0x00, 0x12, 0x20, 0xa0, 0x78, 0xc1, 0xa2, 0x9b,
+	0x68, 0x3a, 0xb9, 0x71, 0x46, 0xb5, 0x67, 0xcc, 0x8c, 0x13, 0xc9, 0x3b, 0xde, 0x81, 0x07, 0x83,
+	0x25, 0xaf, 0xc0, 0x5b, 0x20, 0x7b, 0x6c, 0xc7, 0xb4, 0x71, 0x51, 0xcb, 0xb6, 0xbb, 0xb1, 0xcf,
+	0x39, 0x77, 0x8e, 0xce, 0x9d, 0xb9, 0x1a, 0xd8, 0x8f, 0x10, 0x65, 0x2f, 0x60, 0x63, 0xa4, 0x09,
+	0x0d, 0x70, 0xbe, 0x72, 0x23, 0x29, 0x62, 0x61, 0xad, 0x97, 0x3f, 0x5a, 0xbb, 0x54, 0x84, 0xa1,
+	0xe0, 0x3d, 0x2a, 0x82, 0x00, 0x69, 0xcc, 0x04, 0xd7, 0x1c, 0xe7, 0xab, 0x01, 0x3b, 0x6f, 0xb8,
+	0x8a, 0x49, 0x10, 0x0c, 0x26, 0x84, 0x71, 0x2a, 0x46, 0x78, 0x2c, 0x7d, 0x65, 0x59, 0xb0, 0xc4,
+	0x49, 0x88, 0xb6, 0xd1, 0x31, 0xba, 0xeb, 0x5e, 0xb6, 0xb6, 0x6c, 0x58, 0x9d, 0xa1, 0x54, 0x4c,
+	0x70, 0xdb, 0xcc, 0x7e, 0x17, 0x9f, 0xd6, 0x11, 0xdc, 0xa1, 0x85, 0x7c, 0xc8, 0x74, 0xbd, 0x61,
+	0x44, 0xe8, 0x39, 0xf1, 0xd1, 0x6e, 0x74, 0x8c, 0xee, 0x86, 0xb7, 0x5b, 0x12, 0xf2, 0xfd, 0x4e,
+	0x34, 0xec, 0x1c, 0xc0, 0xff, 0x17, 0x1d, 0x78, 0xa8, 0xa6, 0x41, 0x9c, 0x7a, 0x98, 0x10, 0x35,
+	0xc9, 0x3c, 0x6c, 0x78, 0xd9, 0xda, 0x79, 0x07, 0x77, 0x3f, 0x4d, 0x51, 0x26, 0xb9, 0x04, 0x47,
+	0xff, 0x60, 0xdb, 0x39, 0x84, 0xbd, 0x9a, 0x62, 0x57, 0x38, 0xd8, 0x87, 0x7b, 0x35, 0x22, 0x95,
+	0x5a, 0x70, 0x7e, 0x19, 0xb0, 0x5f, 0x47, 0xc8, 0xcb, 0x0a, 0xd8, 0x61, 0x05, 0x38, 0x2c, 0x73,
+	0x51, 0xb6, 0xd1, 0x69, 0x74, 0x9b, 0xfd, 0xe7, 0xee, 0xbc, 0x93, 0x57, 0x17, 0x72, 0x17, 0x18,
+	0xdf, 0x66, 0x97, 0xd9, 0xad, 0xcf, 0x60, 0x5d, 0xa6, 0x5e, 0xb3, 0xc7, 0x45, 0x16, 0x8d, 0x4a,
+	0x16, 0x3f, 0x4d, 0x78, 0x70, 0x1c, 0x45, 0x52, 0xcc, 0xb0, 0x2c, 0xfb, 0x12, 0xc7, 0x8c, 0xb3,
+	0xf4, 0x8c, 0xbd, 0x16, 0xf2, 0x7d, 0xf2, 0x51, 0xfa, 0x59, 0x67, 0x5a, 0xb0, 0xa6, 0xf0, 0xcb,
+	0x14, 0x39, 0xd5, 0x1b, 0x36, 0xbc, 0xf2, 0xbb, 0x34, 0x62, 0x2e, 0x36, 0xd2, 0x58, 0x6c, 0x64,
+	0x69, 0x6e, 0xc4, 0x7a, 0x0c, 0x16, 0xf2, 0x91, 0x90, 0x0a, 0x43, 0xe4, 0xf1, 0x30, 0x0a, 0xa6,
+	0x3e, 0xe3, 0xf6, 0x72, 0x26, 0xdc, 0xaa, 0x20, 0x27, 0x19, 0x60, 0x3d, 0x82, 0xad, 0x19, 0x09,
+	0xd8, 0x88, 0xa4, 0x36, 0x0b, 0xf6, 0x4a, 0xc6, 0xde, 0x9c, 0x03, 0x39, 0xf9, 0x09, 0xec, 0x54,
+	0xc9, 0x44, 0x92, 0x10, 0x63, 0x94, 0xf6, 0x6a, 0xb6, 0xff, 0x76, 0x85, 0x5f, 0x40, 0xd6, 0x31,
+	0x34, 0xe7, 0x57, 0x4d, 0xd9, 0x6b, 0x1d, 0xa3, 0xdb, 0xec, 0xb7, 0x5d, 0x7d, 0x0b, 0xdd, 0x41,
+	0x09, 0x0d, 0x04, 0x1f, 0x33, 0x3f, 0xbf, 0x09, 0x5e, 0x55, 0xe3, 0x3c, 0x84, 0xee, 0xdf, 0x93,
+	0xd5, 0xc7, 0xc0, 0xf9, 0x6e, 0xc2, 0xde, 0x40, 0x84, 0x21, 0x8b, 0x17, 0x70, 0x6f, 0xd3, 0xbf,
+	0x41, 0xfa, 0xf7, 0xa1, 0x5d, 0x1b, 0x68, 0x1e, 0x7a, 0x3f, 0x9f, 0x03, 0x75, 0x91, 0x2f, 0xb8,
+	0x5d, 0xce, 0x0f, 0x33, 0x9f, 0x0d, 0xb5, 0x65, 0x6f, 0x3b, 0x75, 0xcd, 0x4e, 0xb5, 0xf3, 0x19,
+	0xfe, 0x81, 0x84, 0xa8, 0x22, 0x42, 0x2b, 0x89, 0xea, 0x79, 0xfc, 0xcd, 0x84, 0x76, 0x2d, 0x23,
+	0x0f, 0xfd, 0x14, 0x80, 0x17, 0x68, 0x31, 0x86, 0x8f, 0x2e, 0x8e, 0xe1, 0x7a, 0xbd, 0x5b, 0x42,
+	0xea, 0x15, 0x8f, 0x65, 0xe2, 0x55, 0xaa, 0xb5, 0xda, 0xb0, 0x5e, 0xc2, 0x69, 0x4f, 0xe2, 0x24,
+	0x2a, 0x0f, 0x45, 0xba, 0x6e, 0x29, 0xf8, 0xef, 0x82, 0xde, 0xda, 0x84, 0xc6, 0x39, 0x26, 0x39,
+	0x2b, 0x5d, 0x5a, 0x6f, 0x61, 0x79, 0x46, 0x82, 0xa9, 0xee, 0x7d, 0xb3, 0xff, 0xf4, 0x26, 0xe6,
+	0x3c, 0x5d, 0xe2, 0xc8, 0x7c, 0x66, 0xbc, 0xa0, 0x70, 0x20, 0xa4, 0xef, 0x4e, 0x92, 0x08, 0x65,
+	0x80, 0x23, 0x1f, 0xa5, 0x3b, 0x26, 0x67, 0x92, 0x51, 0xfd, 0x30, 0x50, 0x6e, 0xfa, 0xb8, 0x98,
+	0x6f, 0x72, 0x7a, 0xe8, 0xb3, 0x78, 0x32, 0x3d, 0x4b, 0x5b, 0xd3, 0xab, 0x88, 0x7a, 0x5a, 0xd4,
+	0xd3, 0xa2, 0xde, 0x9f, 0x2f, 0x92, 0xb3, 0x95, 0xec, 0xf7, 0xe1, 0xef, 0x00, 0x00, 0x00, 0xff,
+	0xff, 0xa9, 0x8a, 0x99, 0x80, 0xaa, 0x08, 0x00, 0x00,
 }
