@@ -450,4 +450,56 @@ var _ = Describe("Lifecycle", func() {
 			})
 		})
 	})
+
+	Describe("QueryDefinedChaincode", func() {
+		var (
+			fakePublicState *mock.ReadWritableState
+
+			publicKVS map[string][]byte
+		)
+
+		BeforeEach(func() {
+			publicKVS = map[string][]byte{}
+			fakePublicState = &mock.ReadWritableState{}
+			fakePublicState.GetStateStub = func(key string) ([]byte, error) {
+				return publicKVS[key], nil
+			}
+			fakePublicState.PutStateStub = func(key string, value []byte) error {
+				publicKVS[key] = value
+				return nil
+			}
+			l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.DefinedChaincode{
+				Sequence:            4,
+				Version:             "version",
+				Hash:                []byte("hash"),
+				EndorsementPlugin:   "endorsement-plugin",
+				ValidationPlugin:    "validation-plugin",
+				ValidationParameter: []byte("validation-parameter"),
+			}, fakePublicState)
+		})
+
+		It("returns the defined chaincode", func() {
+			cc, err := l.QueryDefinedChaincode("cc-name", fakePublicState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cc).To(Equal(&lifecycle.DefinedChaincode{
+				Sequence:            4,
+				Version:             "version",
+				Hash:                []byte("hash"),
+				EndorsementPlugin:   "endorsement-plugin",
+				ValidationPlugin:    "validation-plugin",
+				ValidationParameter: []byte("validation-parameter"),
+			}))
+		})
+
+		Context("when the chaincode is not defined", func() {
+			BeforeEach(func() {
+				publicKVS = map[string][]byte{}
+			})
+
+			It("returns an error", func() {
+				_, err := l.QueryDefinedChaincode("cc-name", fakePublicState)
+				Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: could not unmarshal metadata for namespace namespaces/cc-name: no existing serialized message found"))
+			})
+		})
+	})
 })

@@ -63,6 +63,8 @@ type ChaincodeDefinition struct {
 
 // ChaincodeParameters are the parts of the chaincode definition which are serialized
 // as values in the statedb.
+// WARNING: This structure is serialized/deserialized from the DB, re-ordering or adding fields
+// will cause opaque checks to fail.
 type ChaincodeParameters struct {
 	Version             string
 	Hash                []byte
@@ -73,6 +75,8 @@ type ChaincodeParameters struct {
 
 // DefinedChaincode contains the chaincode parameters, as well as the sequence number of the definition.
 // Note, it does not embed ChaincodeParameters so as not to complicate the serialization.
+// WARNING: This structure is serialized/deserialized from the DB, re-ordering or adding fields
+// will cause opaque checks to fail.
 type DefinedChaincode struct {
 	Sequence            int64
 	Version             string
@@ -183,6 +187,17 @@ func (l *Lifecycle) DefineChaincodeForOrg(cd *ChaincodeDefinition, publicState R
 	}
 
 	return nil
+}
+
+// QueryDefinedChaincode returns the defined chaincode by the given name (if it is defined, and a chaincode)
+// or otherwise returns an error.
+func (l *Lifecycle) QueryDefinedChaincode(name string, publicState ReadableState) (*DefinedChaincode, error) {
+	definedChaincode := &DefinedChaincode{}
+	if err := l.Serializer.Deserialize(NamespacesName, name, definedChaincode, publicState); err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", name))
+	}
+
+	return definedChaincode, nil
 }
 
 // InstallChaincode installs a given chaincode to the peer's chaincode store.
