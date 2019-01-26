@@ -64,9 +64,9 @@ Start the chaincode
 
 ::
 
-    cd chaincode/chaincode_example02/go
-    go build -o chaincode_example02
-    CORE_CHAINCODE_LOGLEVEL=debug CORE_PEER_ADDRESS=127.0.0.1:7052 CORE_CHAINCODE_ID_NAME=mycc:0 ./chaincode_example02
+    cd fabric-samples/chaincode/abstore/go
+    go build -o abstore
+    CORE_CHAINCODE_LOGLEVEL=debug CORE_PEER_ADDRESS=127.0.0.1:7052 CORE_CHAINCODE_ID_NAME=mycc:0 ./abstore
 
 The chaincode is started with peer and chaincode logs indicating successful registration with the peer.
 Note that at this stage the chaincode is not associated with any channel. This is done in subsequent steps
@@ -81,7 +81,7 @@ mode.
 
 ::
 
-    peer chaincode install -n mycc -v 0 -p github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/go
+    peer chaincode install -n mycc -v 0 -p github.com/hyperledger/fabric-samples/chaincode/abstore/go
 
 Once installed, the chaincode is ready to be instantiated.
 
