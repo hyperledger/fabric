@@ -1378,6 +1378,7 @@ func TestIdentityExpiration(t *testing.T) {
 }
 
 func TestEndedGoroutines(t *testing.T) {
+	t.Skip("flaky test which need to be fixed with FAB-12067")
 	t.Parallel()
 	testWG.Wait()
 	ensureGoroutineExit(t)
