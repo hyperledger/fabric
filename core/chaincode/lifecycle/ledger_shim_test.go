@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 )
 
 var _ = Describe("LedgerShims", func() {
@@ -23,6 +24,67 @@ var _ = Describe("LedgerShims", func() {
 
 	BeforeEach(func() {
 		fakeStub = &mock.ChaincodeStub{}
+	})
+
+	Describe("ChaincodePublicLedgerShim", func() {
+		var (
+			cls          *lifecycle.ChaincodePublicLedgerShim
+			fakeIterator *mock.StateIterator
+		)
+
+		BeforeEach(func() {
+			fakeIterator = &mock.StateIterator{}
+			fakeIterator.HasNextReturnsOnCall(0, true)
+			fakeIterator.HasNextReturnsOnCall(1, false)
+			fakeIterator.NextReturns(&queryresult.KV{
+				Key:   "fake-prefix-key",
+				Value: []byte("fake-value"),
+			}, nil)
+
+			fakeStub.GetStateByRangeReturns(fakeIterator, nil)
+
+			cls = &lifecycle.ChaincodePublicLedgerShim{
+				ChaincodeStubInterface: fakeStub,
+			}
+		})
+
+		Describe("GetStateRange", func() {
+			It("passes through to the stub", func() {
+				res, err := cls.GetStateRange("fake-prefix")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res).To(Equal(map[string][]byte{
+					"fake-prefix-key": []byte("fake-value"),
+				}))
+				Expect(fakeStub.GetStateByRangeCallCount()).To(Equal(1))
+				start, end := fakeStub.GetStateByRangeArgsForCall(0)
+				Expect(start).To(Equal("fake-prefix"))
+				Expect(end).To(Equal("fake-prefix\x7f"))
+			})
+
+			Context("when the iterator cannot be retrieved", func() {
+				BeforeEach(func() {
+					fakeStub.GetStateByRangeReturns(nil, fmt.Errorf("error-by-range"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := cls.GetStateRange("fake-prefix")
+					Expect(err).To(MatchError("could not get state iterator: error-by-range"))
+
+				})
+			})
+
+			Context("when the iterator fails to iterate", func() {
+				BeforeEach(func() {
+					fakeIterator.NextReturns(nil, fmt.Errorf("fake-iterator-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := cls.GetStateRange("fake-prefix")
+					Expect(err).To(MatchError("could not iterate over range: fake-iterator-error"))
+
+				})
+			})
+		})
 	})
 
 	Describe("ChaincodePrivateLedgerShim", func() {
@@ -35,6 +97,35 @@ var _ = Describe("LedgerShims", func() {
 				Stub:       fakeStub,
 				Collection: "fake-collection",
 			}
+		})
+
+		Describe("GetStateRange", func() {
+			BeforeEach(func() {
+				fakeStub.GetPrivateDataByRangeReturns(&mock.StateIterator{}, nil)
+			})
+
+			It("passes through to the stub private function", func() {
+				res, err := cls.GetStateRange("fake-key")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res).To(BeEmpty())
+
+				Expect(fakeStub.GetPrivateDataByRangeCallCount()).To(Equal(1))
+				collection, start, end := fakeStub.GetPrivateDataByRangeArgsForCall(0)
+				Expect(collection).To(Equal("fake-collection"))
+				Expect(start).To(Equal("fake-key"))
+				Expect(end).To(Equal("fake-key\x7f"))
+			})
+
+			Context("when getting the state iterator fails", func() {
+				BeforeEach(func() {
+					fakeStub.GetPrivateDataByRangeReturns(nil, fmt.Errorf("fake-range-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := cls.GetStateRange("fake-key")
+					Expect(err).To(MatchError("could not get state iterator: fake-range-error"))
+				})
+			})
 		})
 
 		Describe("GetState", func() {

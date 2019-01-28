@@ -77,6 +77,20 @@ type SCCFunctions struct {
 		result1 []bool
 		result2 error
 	}
+	QueryDefinedChaincodeStub        func(name string, publicState lifecycle_test.ReadableState) (*lifecycle_test.DefinedChaincode, error)
+	queryDefinedChaincodeMutex       sync.RWMutex
+	queryDefinedChaincodeArgsForCall []struct {
+		name        string
+		publicState lifecycle_test.ReadableState
+	}
+	queryDefinedChaincodeReturns struct {
+		result1 *lifecycle_test.DefinedChaincode
+		result2 error
+	}
+	queryDefinedChaincodeReturnsOnCall map[int]struct {
+		result1 *lifecycle_test.DefinedChaincode
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -342,6 +356,58 @@ func (fake *SCCFunctions) DefineChaincodeReturnsOnCall(i int, result1 []bool, re
 	}{result1, result2}
 }
 
+func (fake *SCCFunctions) QueryDefinedChaincode(name string, publicState lifecycle_test.ReadableState) (*lifecycle_test.DefinedChaincode, error) {
+	fake.queryDefinedChaincodeMutex.Lock()
+	ret, specificReturn := fake.queryDefinedChaincodeReturnsOnCall[len(fake.queryDefinedChaincodeArgsForCall)]
+	fake.queryDefinedChaincodeArgsForCall = append(fake.queryDefinedChaincodeArgsForCall, struct {
+		name        string
+		publicState lifecycle_test.ReadableState
+	}{name, publicState})
+	fake.recordInvocation("QueryDefinedChaincode", []interface{}{name, publicState})
+	fake.queryDefinedChaincodeMutex.Unlock()
+	if fake.QueryDefinedChaincodeStub != nil {
+		return fake.QueryDefinedChaincodeStub(name, publicState)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.queryDefinedChaincodeReturns.result1, fake.queryDefinedChaincodeReturns.result2
+}
+
+func (fake *SCCFunctions) QueryDefinedChaincodeCallCount() int {
+	fake.queryDefinedChaincodeMutex.RLock()
+	defer fake.queryDefinedChaincodeMutex.RUnlock()
+	return len(fake.queryDefinedChaincodeArgsForCall)
+}
+
+func (fake *SCCFunctions) QueryDefinedChaincodeArgsForCall(i int) (string, lifecycle_test.ReadableState) {
+	fake.queryDefinedChaincodeMutex.RLock()
+	defer fake.queryDefinedChaincodeMutex.RUnlock()
+	return fake.queryDefinedChaincodeArgsForCall[i].name, fake.queryDefinedChaincodeArgsForCall[i].publicState
+}
+
+func (fake *SCCFunctions) QueryDefinedChaincodeReturns(result1 *lifecycle_test.DefinedChaincode, result2 error) {
+	fake.QueryDefinedChaincodeStub = nil
+	fake.queryDefinedChaincodeReturns = struct {
+		result1 *lifecycle_test.DefinedChaincode
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *SCCFunctions) QueryDefinedChaincodeReturnsOnCall(i int, result1 *lifecycle_test.DefinedChaincode, result2 error) {
+	fake.QueryDefinedChaincodeStub = nil
+	if fake.queryDefinedChaincodeReturnsOnCall == nil {
+		fake.queryDefinedChaincodeReturnsOnCall = make(map[int]struct {
+			result1 *lifecycle_test.DefinedChaincode
+			result2 error
+		})
+	}
+	fake.queryDefinedChaincodeReturnsOnCall[i] = struct {
+		result1 *lifecycle_test.DefinedChaincode
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *SCCFunctions) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -355,6 +421,8 @@ func (fake *SCCFunctions) Invocations() map[string][][]interface{} {
 	defer fake.defineChaincodeForOrgMutex.RUnlock()
 	fake.defineChaincodeMutex.RLock()
 	defer fake.defineChaincodeMutex.RUnlock()
+	fake.queryDefinedChaincodeMutex.RLock()
+	defer fake.queryDefinedChaincodeMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

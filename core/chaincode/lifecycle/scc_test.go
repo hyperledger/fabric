@@ -478,5 +478,58 @@ var _ = Describe("SCC", func() {
 				})
 			})
 		})
+
+		Describe("DefineChaincodeForMyOrg", func() {
+			var (
+				arg          *lb.QueryDefinedChaincodeArgs
+				marshaledArg []byte
+			)
+
+			BeforeEach(func() {
+				arg = &lb.QueryDefinedChaincodeArgs{
+					Name: "cc-name",
+				}
+
+				var err error
+				marshaledArg, err = proto.Marshal(arg)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeStub.GetArgsReturns([][]byte{[]byte("QueryDefinedChaincode"), marshaledArg})
+				fakeSCCFuncs.QueryDefinedChaincodeReturns(&lifecycle.DefinedChaincode{
+					Sequence:            2,
+					Version:             "version",
+					EndorsementPlugin:   "endorsement-plugin",
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+					Hash:                []byte("hash"),
+				}, nil)
+			})
+
+			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
+				res := scc.Invoke(fakeStub)
+				Expect(res.Status).To(Equal(int32(200)))
+				payload := &lb.QueryDefinedChaincodeResult{}
+				err := proto.Unmarshal(res.Payload, payload)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeSCCFuncs.QueryDefinedChaincodeCallCount()).To(Equal(1))
+				name, pubState := fakeSCCFuncs.QueryDefinedChaincodeArgsForCall(0)
+				Expect(name).To(Equal("cc-name"))
+				Expect(pubState).To(Equal(fakeStub))
+			})
+
+			Context("when the underlying function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryDefinedChaincodeReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryDefinedChaincode': underlying-error"))
+				})
+			})
+		})
 	})
+
 })
