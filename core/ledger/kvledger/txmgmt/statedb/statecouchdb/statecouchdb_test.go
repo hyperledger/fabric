@@ -1,17 +1,6 @@
 /*
-Copyright IBM Corp. 2016, 2017 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright IBM Corp. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package statecouchdb
@@ -31,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -200,9 +190,13 @@ func TestUtilityFunctions(t *testing.T) {
 	err = db.ValidateKeyValue("testKey", []byte("Some random bytes"))
 	testutil.AssertNil(t, err)
 
-	// ValidateKey should return an error for an invalid key
+	// ValidateKeyValue should return an error for a key that is not a utf-8 valid string
 	err = db.ValidateKeyValue(string([]byte{0xff, 0xfe, 0xfd}), []byte("Some random bytes"))
 	testutil.AssertError(t, err, "ValidateKey should have thrown an error for an invalid utf-8 string")
+
+	// ValidateKeyValue should return an error for a key that is an empty string
+	assert.EqualError(t, db.ValidateKeyValue("", []byte("validValue")),
+		"invalid key. Empty string is not supported as a key by couchdb")
 
 	reservedFields := []string{"~version", "_id", "_test"}
 	// ValidateKey should return an error for a json value that already contains one of the reserved fields
