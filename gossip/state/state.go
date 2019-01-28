@@ -150,9 +150,28 @@ type GossipStateProviderImpl struct {
 	stateTransferActive int32
 
 	stateMetrics *metrics.StateMetrics
+
+	requestValidator *stateRequestValidator
 }
 
 var logger = util.GetLogger(util.StateLogger, "")
+
+// stateRequestValidator facilitates validation of the state request messages
+type stateRequestValidator struct {
+}
+
+// validate checks for RemoteStateRequest message validity
+func (v *stateRequestValidator) validate(request *proto.RemoteStateRequest) error {
+	if request.StartSeqNum > request.EndSeqNum {
+		return errors.Errorf("Invalid sequence interval [%d...%d).", request.StartSeqNum, request.EndSeqNum)
+	}
+
+	if request.EndSeqNum > defAntiEntropyBatchSize+request.StartSeqNum {
+		return errors.Errorf("Requesting blocks range [%d-%d) greater than configured allowed"+
+			" (%d) batching size for anti-entropy.", request.StartSeqNum, request.EndSeqNum, defAntiEntropyBatchSize)
+	}
+	return nil
+}
 
 // NewGossipStateProvider creates state provider with coordinator instance
 // to orchestrate arrival of private rwsets and blocks before committing them into the ledger.
@@ -233,6 +252,8 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 		once: sync.Once{},
 
 		stateMetrics: stateMetrics,
+
+		requestValidator: &stateRequestValidator{},
 	}
 
 	logger.Infof("Updating metadata information, "+
@@ -391,21 +412,14 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 	}
 	request := msg.GetGossipMessage().GetStateRequest()
 
-	batchSize := request.EndSeqNum - request.StartSeqNum
-	if batchSize > defAntiEntropyBatchSize {
-		logger.Errorf("Requesting blocks batchSize size (%d) greater than configured allowed"+
-			" (%d) batching for anti-entropy. Ignoring request...", batchSize, defAntiEntropyBatchSize)
-		return
-	}
-
-	if request.StartSeqNum > request.EndSeqNum {
-		logger.Errorf("Invalid sequence interval [%d...%d], ignoring request...", request.StartSeqNum, request.EndSeqNum)
+	if err := s.requestValidator.validate(request); err != nil {
+		logger.Errorf("State request validation failed, %s. Ignoring request...", err)
 		return
 	}
 
 	currentHeight, err := s.ledger.LedgerHeight()
 	if err != nil {
-		logger.Errorf("Cannot access to current ledger height, due to %+v", errors.WithStack(err))
+		logger.Errorf("Cannot access to current ledger height, due to %+v", err)
 		return
 	}
 	if currentHeight < request.EndSeqNum {
