@@ -579,21 +579,23 @@ func TestParallelSend(t *testing.T) {
 	messages2Send := util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize)
 
 	wg := sync.WaitGroup{}
+	wg.Add(messages2Send)
 	go func() {
 		for i := 0; i < messages2Send; i++ {
-			wg.Add(1)
 			emptyMsg := createGossipMsg()
 			go func() {
 				defer wg.Done()
 				comm1.Send(emptyMsg, remotePeer(5412))
 			}()
 		}
-		wg.Wait()
 	}()
+
+	// Making sure all messages was indeed sent
+	wg.Wait()
 
 	c := 0
 	waiting := true
-	ticker := time.NewTicker(time.Duration(5) * time.Second)
+	ticker := time.NewTicker(30 * time.Second)
 	ch := comm2.Accept(acceptAll)
 	for waiting {
 		select {
