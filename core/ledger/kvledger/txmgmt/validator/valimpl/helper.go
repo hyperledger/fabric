@@ -88,7 +88,8 @@ func validatePvtdata(tx *valinternal.Transaction, pvtdata *ledger.TxPvtData) err
 
 // preprocessProtoBlock parses the proto instance of block into 'Block' structure.
 // The retuned 'Block' structure contains only transactions that are endorser transactions and are not alredy marked as invalid
-func preprocessProtoBlock(txmgr txmgr.TxMgr, block *common.Block, doMVCCValidation bool) (*valinternal.Block, error) {
+func preprocessProtoBlock(txmgr txmgr.TxMgr, validateKVFunc func(key string, value []byte) error,
+	block *common.Block, doMVCCValidation bool) (*valinternal.Block, error) {
 	b := &valinternal.Block{Num: block.Header.Number}
 	// Committer validator has already set validation flags based on well formed tran checks
 	txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
@@ -150,6 +151,14 @@ func preprocessProtoBlock(txmgr txmgr.TxMgr, block *common.Block, doMVCCValidati
 			}
 		}
 		if txRWSet != nil {
+			if err := validateWriteset(txRWSet, validateKVFunc); err != nil {
+				logger.Warningf("Channel [%s]: Block [%d] Transaction index [%d] TxId [%s]"+
+					" marked as invalid. Reason code [%s]. Message: [%s]",
+					chdr.GetChannelId(), block.Header.Number, txIndex, chdr.GetTxId(),
+					peer.TxValidationCode_INVALID_WRITESET, err.Error())
+				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_WRITESET)
+				continue
+			}
 			b.Txs = append(b.Txs, &valinternal.Transaction{IndexInBlock: txIndex, ID: chdr.TxId, RWSet: txRWSet})
 		}
 	}
@@ -178,6 +187,24 @@ func processNonEndorserTx(txEnv *common.Envelope, txid string, txType common.Hea
 		return nil, err
 	}
 	return simRes.PubSimulationResults, nil
+}
+
+func validateWriteset(txRWSet *rwsetutil.TxRwSet, validateKVFunc func(key string, value []byte) error) error {
+	for _, nsRwSet := range txRWSet.NsRwSets {
+		if nsRwSet == nil {
+			continue
+		}
+		pubWriteset := nsRwSet.KvRwSet
+		if pubWriteset == nil {
+			continue
+		}
+		for _, kvwrite := range pubWriteset.Writes {
+			if err := validateKVFunc(kvwrite.Key, kvwrite.Value); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // postprocessProtoBlock updates the proto block's validation flags (in metadata) by the results of validation process

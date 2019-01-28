@@ -24,13 +24,14 @@ var logger = flogging.MustGetLogger("valimpl")
 // valinternal.InternalValidator) such as statebased validator
 type DefaultImpl struct {
 	txmgr txmgr.TxMgr
+	db    privacyenabledstate.DB
 	valinternal.InternalValidator
 }
 
 // NewStatebasedValidator constructs a validator that internally manages statebased validator and in addition
 // handles the tasks that are agnostic to a particular validation scheme such as parsing the block and handling the pvt data
 func NewStatebasedValidator(txmgr txmgr.TxMgr, db privacyenabledstate.DB) validator.Validator {
-	return &DefaultImpl{txmgr, statebasedval.NewValidator(db)}
+	return &DefaultImpl{txmgr, db, statebasedval.NewValidator(db)}
 }
 
 // ValidateAndPrepareBatch implements the function in interface validator.Validator
@@ -44,7 +45,7 @@ func (impl *DefaultImpl) ValidateAndPrepareBatch(blockAndPvtdata *ledger.BlockAn
 	var err error
 
 	logger.Debug("preprocessing ProtoBlock...")
-	if internalBlock, err = preprocessProtoBlock(impl.txmgr, block, doMVCCValidation); err != nil {
+	if internalBlock, err = preprocessProtoBlock(impl.txmgr, impl.db.ValidateKeyValue, block, doMVCCValidation); err != nil {
 		return nil, err
 	}
 
