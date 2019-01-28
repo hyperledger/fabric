@@ -62,13 +62,12 @@ func (l *Lifecycle) ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQu
 		Namespace:           LifecycleNamespace,
 		SimpleQueryExecutor: qe,
 	}
-	metadata, err := l.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state, false)
+	metadata, ok, err := l.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize metadata for chaincode %s", chaincodeName))
 	}
 
-	if metadata.Datatype == "" {
-		// If the type is unset, then fallback to the legacy definition
+	if !ok {
 		return l.LegacyImpl.ChaincodeDefinition(chaincodeName, qe)
 	}
 
@@ -102,13 +101,12 @@ func (l *Lifecycle) ChaincodeContainerInfo(chaincodeName string, qe ledger.Simpl
 		Namespace:           LifecycleNamespace,
 		SimpleQueryExecutor: qe,
 	}
-	metadata, err := l.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state, false)
+	metadata, ok, err := l.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize metadata for chaincode %s", chaincodeName))
 	}
 
-	if metadata.Datatype == "" {
-		// If the type is unset, then fallback to the legacy definition
+	if !ok {
 		return l.LegacyImpl.ChaincodeContainerInfo(chaincodeName, qe)
 	}
 

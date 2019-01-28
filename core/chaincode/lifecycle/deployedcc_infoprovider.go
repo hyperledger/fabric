@@ -78,13 +78,12 @@ func (l *Lifecycle) ChaincodeInNewLifecycle(chaincodeName string, qe ledger.Simp
 		return true, state, nil
 	}
 
-	metadata, err := l.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state, false)
+	metadata, ok, err := l.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state)
 	if err != nil {
 		return false, nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize metadata for chaincode %s", chaincodeName))
 	}
 
-	if metadata.Datatype == "" {
-		// If the type is unset, then fallback to the legacy definition
+	if !ok {
 		return false, state, nil
 	}
 

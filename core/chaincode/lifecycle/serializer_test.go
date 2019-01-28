@@ -534,7 +534,7 @@ var _ = Describe("Serializer", func() {
 			It("fails", func() {
 				testStruct := &TestStruct{}
 				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
-				Expect(err).To(MatchError("could not unmarshal metadata for namespace namespaces/fake: no existing serialized message found"))
+				Expect(err).To(MatchError("metadata for namespace namespaces/fake does not exist"))
 			})
 		})
 
@@ -868,8 +868,9 @@ var _ = Describe("Serializer", func() {
 		})
 
 		It("deserializes the metadata", func() {
-			result, err := s.DeserializeMetadata("namespaces", "fake", fakeState, true)
+			result, ok, err := s.DeserializeMetadata("namespaces", "fake", fakeState)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(ok).To(BeTrue())
 			Expect(proto.Equal(result, &lb.StateMetadata{Datatype: "TestDatatype"})).To(BeTrue())
 
 			Expect(fakeState.GetStateCallCount()).To(Equal(1))
@@ -882,7 +883,7 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := s.DeserializeMetadata("namespaces", "fake", fakeState, true)
+				_, _, err := s.DeserializeMetadata("namespaces", "fake", fakeState)
 				Expect(err).To(MatchError("could not query metadata for namespace namespaces/fake: get-state-error"))
 			})
 		})
@@ -893,20 +894,9 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := s.DeserializeMetadata("namespaces", "fake", fakeState, true)
-				Expect(err).To(MatchError("no existing serialized message found"))
-			})
-		})
-
-		Context("when GetState returns nil and missing is allowed", func() {
-			BeforeEach(func() {
-				fakeState.GetStateReturns(nil, nil)
-			})
-
-			It("returns an empty metadata", func() {
-				metadata, err := s.DeserializeMetadata("namespaces", "fake", fakeState, false)
+				_, ok, err := s.DeserializeMetadata("namespaces", "fake", fakeState)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proto.Equal(metadata, &lb.StateMetadata{})).To(BeTrue())
+				Expect(ok).To(BeFalse())
 			})
 		})
 
@@ -916,7 +906,7 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := s.DeserializeMetadata("namespaces", "fake", fakeState, true)
+				_, _, err := s.DeserializeMetadata("namespaces", "fake", fakeState)
 				Expect(err).To(MatchError("could not unmarshal metadata for namespace namespaces/fake: unexpected EOF"))
 			})
 		})

@@ -494,7 +494,7 @@ var _ = Describe("Lifecycle", func() {
 
 			It("returns an error", func() {
 				_, err := l.QueryChaincodeDefinition("cc-name", fakePublicState)
-				Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: could not unmarshal metadata for namespace namespaces/cc-name: no existing serialized message found"))
+				Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: metadata for namespace namespaces/cc-name does not exist"))
 			})
 		})
 	})
