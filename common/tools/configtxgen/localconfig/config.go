@@ -194,7 +194,7 @@ var genesisDefaults = TopLevel{
 		},
 		EtcdRaft: &etcdraft.Metadata{
 			Options: &etcdraft.Options{
-				TickInterval:    100,
+				TickInterval:    500,
 				ElectionTick:    10,
 				HeartbeatTick:   1,
 				MaxInflightMsgs: 256,
