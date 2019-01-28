@@ -1,0 +1,30 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/protos/peer";
+option java_package = "org.hyperledger.fabric.protos.peer";
+
+package protos;
+
+import "common/policies.proto";
+
+// ApplicationPolicy captures the diffenrent policy types that
+// are set and evaluted at the application level.
+message ApplicationPolicy {
+    oneof Type {
+        // SignaturePolicy type is used if the policy is specified as
+        // a combination (using threshold gates) of signatures from MSP
+        // principals
+        common.SignaturePolicyEnvelope signature_policy = 1;
+
+        // ChannelConfigPolicyReference is used when the policy is
+        // specified as a string that references a policy defined in
+        // the configuration of the channel
+        string channel_config_policy_reference = 2;
+    }
+}
