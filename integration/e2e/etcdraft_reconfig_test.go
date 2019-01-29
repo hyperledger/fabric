@@ -540,7 +540,10 @@ func assertBlockReception(expectedHeightsPerChannel map[string]int, orderers []*
 		wg.Add(len(orderers))
 		for _, orderer := range orderers {
 			go func(orderer *nwo.Orderer) {
-				defer wg.Done()
+				defer func() {
+					GinkgoRecover()
+					wg.Done()
+				}()
 				waitForBlockReception(orderer, p, n, channelName, blockSeq)
 			}(orderer)
 		}
@@ -552,7 +555,10 @@ func assertBlockReception(expectedHeightsPerChannel map[string]int, orderers []*
 
 	for channelName, blockSeq := range expectedHeightsPerChannel {
 		go func(channelName string, blockSeq int) {
-			defer wg.Done()
+			defer func() {
+				GinkgoRecover()
+				wg.Done()
+			}()
 			assertReception(channelName, blockSeq)
 		}(channelName, blockSeq)
 	}
@@ -608,7 +614,10 @@ func assertNoErrorsAreLogged(ordererRunners []*ginkgomon.Runner) {
 
 	for _, runner := range ordererRunners {
 		go func(runner *ginkgomon.Runner) {
-			defer wg.Done()
+			defer func() {
+				GinkgoRecover()
+				wg.Done()
+			}()
 			assertNoErrors(runner)
 		}(runner)
 	}
@@ -624,7 +633,10 @@ func deployChaincodes(n *nwo.Network, p *nwo.Peer, o *nwo.Orderer, mycc nwo.Chai
 		"testchannel3": mycc3,
 	} {
 		go func(channel string, cc nwo.Chaincode) {
-			defer wg.Done()
+			defer func() {
+				GinkgoRecover()
+				wg.Done()
+			}()
 			nwo.DeployChaincode(n, channel, o, cc, p)
 		}(channel, chaincode)
 	}
