@@ -2606,7 +2606,14 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 }
 
 func (c *chain) init() {
-	ch, err := etcdraft.NewChain(c.support, c.opts, c.configurator, c.rpc, c.puller, c.observe)
+	ch, err := etcdraft.NewChain(
+		c.support,
+		c.opts,
+		c.configurator,
+		c.rpc,
+		func() (etcdraft.BlockPuller, error) { return c.puller, nil },
+		c.observe,
+	)
 	Expect(err).NotTo(HaveOccurred())
 	c.Chain = ch
 }

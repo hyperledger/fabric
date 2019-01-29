@@ -59,6 +59,10 @@ type BlockPuller interface {
 	Close()
 }
 
+// CreateBlockPuller is a function to create BlockPuller on demand.
+// It is passed into chain initializer so that tests could mock this.
+type CreateBlockPuller func() (BlockPuller, error)
+
 // Options contains all the configurations relevant to the chain.
 type Options struct {
 	RaftID uint64
@@ -132,7 +136,8 @@ type Chain struct {
 	// needed by snapshotting
 	lastSnapBlockNum uint64
 	confState        raftpb.ConfState // Etcdraft requires ConfState to be persisted within snapshot
-	puller           BlockPuller      // Deliver client to pull blocks from other OSNs
+
+	createPuller CreateBlockPuller // func used to create BlockPuller on demand
 
 	fresh bool // indicate if this is a fresh raft node
 
@@ -148,7 +153,7 @@ func NewChain(
 	opts Options,
 	conf Configurator,
 	rpc RPC,
-	puller BlockPuller,
+	f CreateBlockPuller,
 	observeC chan<- raft.SoftState) (*Chain, error) {
 
 	lg := opts.Logger.With("channel", support.ChainID(), "node", opts.RaftID)
@@ -190,7 +195,7 @@ func NewChain(
 		fresh:            fresh,
 		appliedIndex:     opts.RaftMetadata.RaftIndex,
 		lastSnapBlockNum: snapBlkNum,
-		puller:           puller,
+		createPuller:     f,
 		clock:            opts.Clock,
 		logger:           lg,
 		opts:             opts,
@@ -688,12 +693,14 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 		return nil
 	}
 
-	defer func() {
-		c.puller.Close()
-	}()
+	puller, err := c.createPuller()
+	if err != nil {
+		return errors.Errorf("failed to create block puller: %s", err)
+	}
+	defer puller.Close()
 
 	for next <= b.Header.Number {
-		block := c.puller.PullBlock(next)
+		block := puller.PullBlock(next)
 		if block == nil {
 			return errors.Errorf("failed to fetch block %d from cluster", next)
 		}
