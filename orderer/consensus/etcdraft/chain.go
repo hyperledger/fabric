@@ -90,6 +90,12 @@ type submit struct {
 	leader chan uint64
 }
 
+type gc struct {
+	index uint64
+	state raftpb.ConfState
+	data  []byte
+}
+
 // Chain implements consensus.Chain interface.
 type Chain struct {
 	configurator Configurator
@@ -106,6 +112,7 @@ type Chain struct {
 	doneC    chan struct{}         // Closes when the chain halts
 	startC   chan struct{}         // Closes when the node is started
 	snapC    chan *raftpb.Snapshot // Signal to catch up with snapshot
+	gcC      chan *gc              // Signal to take snapshot
 
 	errorCLock sync.RWMutex
 	errorC     chan struct{} // returned by Errored()
@@ -177,6 +184,7 @@ func NewChain(
 		startC:           make(chan struct{}),
 		snapC:            make(chan *raftpb.Snapshot),
 		errorC:           make(chan struct{}),
+		gcC:              make(chan *gc),
 		observeC:         observeC,
 		support:          support,
 		fresh:            fresh,
@@ -234,6 +242,7 @@ func (c *Chain) Start() {
 	close(c.startC)
 	close(c.errorC)
 
+	go c.gc()
 	go c.serveRequest()
 }
 
@@ -770,12 +779,28 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 	}
 
 	if appliedb-c.lastSnapBlockNum >= c.opts.SnapInterval {
-		c.logger.Infof("Taking snapshot at block %d, last snapshotted block number is %d", appliedb, c.lastSnapBlockNum)
-		c.node.takeSnapshot(c.appliedIndex, &c.confState, ents[position].Data)
-		c.lastSnapBlockNum = appliedb
+		select {
+		case c.gcC <- &gc{index: c.appliedIndex, state: c.confState, data: ents[position].Data}:
+			c.logger.Infof("Taking snapshot at block %d, last snapshotted block number is %d", appliedb, c.lastSnapBlockNum)
+			c.lastSnapBlockNum = appliedb
+		default:
+			c.logger.Warnf("Snapshotting is in progress, it is very likely that SnapInterval is too small")
+		}
 	}
 
 	return
+}
+
+func (c *Chain) gc() {
+	for {
+		select {
+		case g := <-c.gcC:
+			c.node.takeSnapshot(g.index, g.state, g.data)
+		case <-c.doneC:
+			c.logger.Infof("Stop garbage collecting")
+			return
+		}
+	}
 }
 
 func (c *Chain) isConfig(env *common.Envelope) bool {
