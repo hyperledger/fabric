@@ -62,7 +62,7 @@ contains the transaction definitions for commercial paper -- **issue**, **buy**
 and **redeem**. It's these transactions that bring commercial papers into
 existence and move them through their lifecycle. We'll examine these
 [transactions](#transaction-definition) soon, but for now notice how
-`CommericalPaperContract` extends the Hyperledger Fabric `Contract`
+`CommercialPaperContract` extends the Hyperledger Fabric `Contract`
 [class](https://fabric-shim.github.io/release-1.4/fabric-contract-api.Contract.html).
 This built-in class, and the `Context` class, were brought into scope earlier:
 

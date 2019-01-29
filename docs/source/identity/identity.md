@@ -222,7 +222,7 @@ it is inherently not capable of providing SSL certificates for general/automatic
 in browsers. However, because **some** CA must be used to manage identity
 (even in a test environment), Fabric CA can be used to provide and manage
 certificates. It is also possible --- and fully appropriate --- to use a
-public/commerical root or intermediate CA to provide identification.
+public/commercial root or intermediate CA to provide identification.
 
 If you're interested, you can read a lot more about Fabric CA
 [in the CA documentation section](http://hyperledger-fabric-ca.readthedocs.io/).
