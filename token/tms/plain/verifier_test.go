@@ -80,7 +80,7 @@ var _ = Describe("Verifier", func() {
 			err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(fakeLedger.SetStateCallCount()).To(Equal(3))
+			Expect(fakeLedger.SetStateCallCount()).To(Equal(2))
 
 			outputBytes, err := proto.Marshal(&token.PlainOutput{Owner: []byte("owner-1"), Type: "TOK1", Quantity: 111})
 			Expect(err).NotTo(HaveOccurred())
@@ -97,14 +97,6 @@ var _ = Describe("Verifier", func() {
 			expectedOutput = strings.Join([]string{"", "tokenOutput", "0", "1", ""}, "\x00")
 			Expect(k).To(Equal(expectedOutput))
 			Expect(td).To(Equal(outputBytes))
-
-			ttxBytes, err := proto.Marshal(importTransaction)
-			Expect(err).NotTo(HaveOccurred())
-			ns, k, td = fakeLedger.SetStateArgsForCall(2)
-			Expect(ns).To(Equal("tms"))
-			expectedOutput = strings.Join([]string{"", "tokenTx", "0", ""}, "\x00")
-			Expect(k).To(Equal(expectedOutput))
-			Expect(td).To(Equal(ttxBytes))
 		})
 
 		Context("when policy validation fails", func() {
@@ -330,38 +322,6 @@ var _ = Describe("Verifier", func() {
 				expectedOutput := strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00")
 				Expect(k).To(Equal(expectedOutput))
 				Expect(ns).To(Equal("tms"))
-			})
-		})
-
-		Context("when the ledger read of a transaction fails", func() {
-			BeforeEach(func() {
-				fakeLedger.GetStateReturnsOnCall(0, nil, nil)
-				fakeLedger.GetStateReturnsOnCall(1, nil, nil)
-				fakeLedger.GetStateReturnsOnCall(2, nil, errors.New("error reading transaction"))
-			})
-
-			It("returns an error", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
-				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError("error reading transaction"))
-
-				Expect(fakeLedger.GetStateCallCount()).To(Equal(3))
-				Expect(fakeLedger.SetStateCallCount()).To(Equal(0))
-				ns, k := fakeLedger.GetStateArgsForCall(2)
-				expectedTx := strings.Join([]string{"", "tokenTx", "0", ""}, "\x00")
-				Expect(k).To(Equal(expectedTx))
-				Expect(ns).To(Equal("tms"))
-			})
-		})
-
-		Context("when a tx with the same txID already exists", func() {
-			BeforeEach(func() {
-				fakeLedger.GetStateReturnsOnCall(2, []byte("fake-tx"), nil)
-			})
-
-			It("returns an error", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "transaction already exists: 0"}))
 			})
 		})
 	})
@@ -1225,15 +1185,6 @@ var _ = Describe("Verifier", func() {
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("output already exists: %s", existingOutputId)}))
 			})
 		})
-
-		Context("when a transaction already exists", func() {
-			It("returns an error", func() {
-				fakeLedger.GetStateReturnsOnCall(8, []byte("a tx is already here"), nil)
-				err := verifier.ProcessTx(approveTxID, fakePublicInfo, approveTransaction, fakeLedger)
-				Expect(err).To(HaveOccurred())
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "transaction already exists: 1"}))
-			})
-		})
 	})
 	Describe("Test PlainTransferFrom", func() {
 		var (
@@ -1517,13 +1468,5 @@ var _ = Describe("Verifier", func() {
 			})
 		})
 
-		Context("when a transaction already exists", func() {
-			It("returns an error", func() {
-				fakeLedger.GetStateReturnsOnCall(8, []byte("a tx is already here"), nil)
-				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
-				Expect(err).To(HaveOccurred())
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "transaction already exists: 1"}))
-			})
-		})
 	})
 })

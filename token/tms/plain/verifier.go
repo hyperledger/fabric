@@ -74,10 +74,6 @@ func (v *Verifier) checkProcess(txID string, creator identity.PublicInfo, ttx *t
 		return err
 	}
 
-	err = v.checkTxDoesNotExist(txID, simulator)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -350,23 +346,6 @@ func (v *Verifier) checkDelegatedInputs(creator identity.PublicInfo, inputIDs []
 	return tokenOwner, tokenType, inputSum, nil
 }
 
-func (v *Verifier) checkTxDoesNotExist(txID string, simulator ledger.LedgerReader) error {
-	txKey, err := createTxKey(txID)
-	if err != nil {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating txID: %s", err)}
-	}
-
-	existingTx, err := simulator.GetState(tokenNameSpace, txKey)
-	if err != nil {
-		return err
-	}
-
-	if existingTx != nil {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("transaction already exists: %s", txID)}
-	}
-	return nil
-}
-
 func (v *Verifier) checkImportPolicy(creator identity.PublicInfo, txID string, importData *token.PlainImport) error {
 	for _, output := range importData.Outputs {
 		err := v.IssuingValidator.Validate(creator, output.Type)
@@ -382,13 +361,6 @@ func (v *Verifier) commitProcess(txID string, creator identity.PublicInfo, ttx *
 	err := v.commitAction(ttx.GetPlainAction(), txID, simulator)
 	if err != nil {
 		verifierLogger.Errorf("error committing action with txID '%s': %s", txID, err)
-		return err
-	}
-
-	verifierLogger.Debugf("adding transaction with txID '%s'", txID)
-	err = v.addTransaction(txID, ttx, simulator)
-	if err != nil {
-		verifierLogger.Debugf("error adding transaction with txID '%s': %s", txID, err)
 		return err
 	}
 
@@ -577,17 +549,6 @@ func (v *Verifier) addDelegatedOutput(outputID string, delegatedOutput *token.Pl
 	return simulator.SetState(tokenNameSpace, outputID, outputBytes)
 }
 
-func (v *Verifier) addTransaction(txID string, ttx *token.TokenTransaction, simulator ledger.LedgerWriter) error {
-	ttxBytes := utils.MarshalOrPanic(ttx)
-
-	ttxID, err := createTxKey(txID)
-	if err != nil {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating txID: %s", err)}
-	}
-
-	return simulator.SetState(tokenNameSpace, ttxID, ttxBytes)
-}
-
 var TokenInputSpentMarker = []byte{1}
 
 func (v *Verifier) markInputsSpent(txID string, inputs []*token.InputId, simulator ledger.LedgerWriter) error {
@@ -678,11 +639,6 @@ func createOutputKey(txID string, index int) (string, error) {
 // the transaction ID, and the index of the output
 func createRedeemKey(txID string, index int) (string, error) {
 	return createCompositeKey(tokenRedeem, []string{txID, strconv.Itoa(index)})
-}
-
-// Create a ledger key for a token transaction, as a function of the transaction ID
-func createTxKey(txID string) (string, error) {
-	return createCompositeKey(tokenTx, []string{txID})
 }
 
 // Create a ledger key for a spent individual output in a token transaction, as a function of
