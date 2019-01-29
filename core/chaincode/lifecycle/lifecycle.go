@@ -191,8 +191,16 @@ func (l *Lifecycle) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeD
 	}
 
 	if requestedSequence == currentSequence {
+		metadata, ok, err := l.Serializer.DeserializeMetadata(NamespacesName, name, publicState)
+		if err != nil {
+			return errors.WithMessage(err, "could not fetch metadata for current definition")
+		}
+		if !ok {
+			return errors.Errorf("missing metadata for currently committed sequence number (%d)", currentSequence)
+		}
+
 		definedChaincode := &ChaincodeDefinition{}
-		if err := l.Serializer.Deserialize(NamespacesName, name, definedChaincode, publicState); err != nil {
+		if err := l.Serializer.Deserialize(NamespacesName, name, metadata, definedChaincode, publicState); err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", name))
 		}
 
@@ -227,8 +235,16 @@ func (l *Lifecycle) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeD
 // QueryChaincodeDefinition returns the defined chaincode by the given name (if it is defined, and a chaincode)
 // or otherwise returns an error.
 func (l *Lifecycle) QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error) {
+	metadata, ok, err := l.Serializer.DeserializeMetadata(NamespacesName, name, publicState)
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not fetch metadata for namespace %s", name))
+	}
+	if !ok {
+		return nil, errors.Errorf("namespace %s is not defined", name)
+	}
+
 	definedChaincode := &ChaincodeDefinition{}
-	if err := l.Serializer.Deserialize(NamespacesName, name, definedChaincode, publicState); err != nil {
+	if err := l.Serializer.Deserialize(NamespacesName, name, metadata, definedChaincode, publicState); err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", name))
 	}
 

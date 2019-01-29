@@ -101,18 +101,17 @@ var _ = Describe("Lifecycle", func() {
 			})
 		})
 
-		Describe("ChaincodeInNewLifecycle", func() {
-			It("returns whether the chaincode is part of the new lifecycle", func() {
-				exists, state, err := l.ChaincodeInNewLifecycle("cc-name", fakeQueryExecutor)
+		Describe("ChaincodeDefinitionIfDefined", func() {
+			It("returns that the chaincode is defined and the definition", func() {
+				exists, definition, err := l.ChaincodeDefinitionIfDefined("cc-name", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(exists).To(BeTrue())
-				Expect(state).NotTo(BeNil())
-				Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(1))
+				Expect(definition.Version).To(Equal("version"))
 			})
 
 			Context("when the requested chaincode is _lifecycle", func() {
 				It("it returns true", func() {
-					exists, state, err := l.ChaincodeInNewLifecycle("_lifecycle", fakeQueryExecutor)
+					exists, state, err := l.ChaincodeDefinitionIfDefined("_lifecycle", fakeQueryExecutor)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(exists).To(BeTrue())
 					Expect(state).NotTo(BeNil())
@@ -132,7 +131,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("returns an error", func() {
-					_, _, err := l.ChaincodeInNewLifecycle("cc-name", fakeQueryExecutor)
+					_, _, err := l.ChaincodeDefinitionIfDefined("cc-name", fakeQueryExecutor)
 					Expect(err).To(MatchError("not a chaincode type: badStruct"))
 				})
 			})
@@ -143,7 +142,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("wraps and returns the error", func() {
-					_, _, err := l.ChaincodeInNewLifecycle("cc-name", fakeQueryExecutor)
+					_, _, err := l.ChaincodeDefinitionIfDefined("cc-name", fakeQueryExecutor)
 					Expect(err).To(MatchError("could not deserialize metadata for chaincode cc-name: could not query metadata for namespace namespaces/cc-name: state-error"))
 				})
 			})
@@ -271,7 +270,7 @@ var _ = Describe("Lifecycle", func() {
 
 				It("wraps and returns that error", func() {
 					_, err := l.ChaincodeInfo("channel-name", "cc-name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
+					Expect(err).To(MatchError("could not get info about chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
 				})
 			})
 		})
@@ -342,7 +341,7 @@ var _ = Describe("Lifecycle", func() {
 
 				It("wraps and returns that error", func() {
 					_, err := l.CollectionInfo("channel-name", "cc-name", "collection-name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
+					Expect(err).To(MatchError("could not get chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
 				})
 			})
 		})
@@ -514,7 +513,7 @@ var _ = Describe("Lifecycle", func() {
 
 				It("wraps and returns that error", func() {
 					_, _, uerr, _ := l.ValidationInfo("channel-id", "cc-name", fakeQueryExecutor)
-					Expect(uerr).To(MatchError("could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
+					Expect(uerr).To(MatchError("could not get chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
 				})
 			})
 		})

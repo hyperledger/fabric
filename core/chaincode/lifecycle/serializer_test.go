@@ -370,10 +370,16 @@ var _ = Describe("Serializer", func() {
 
 	Describe("Deserialize", func() {
 		var (
-			kvs map[string][]byte
+			kvs      map[string][]byte
+			metadata *lb.StateMetadata
 		)
 
 		BeforeEach(func() {
+			metadata = &lb.StateMetadata{
+				Datatype: "TestStruct",
+				Fields:   []string{"Bytes", "String", "Uint", "Int", "Proto"},
+			}
+
 			kvs = map[string][]byte{
 				"namespaces/fields/fake/Bytes": utils.MarshalOrPanic(&lb.StateData{
 					Type: &lb.StateData_Bytes{Bytes: []byte("bytes")},
@@ -390,10 +396,6 @@ var _ = Describe("Serializer", func() {
 				"namespaces/fields/fake/Proto": utils.MarshalOrPanic(&lb.StateData{
 					Type: &lb.StateData_Bytes{Bytes: utils.MarshalOrPanic(testStruct.Proto)},
 				}),
-				"namespaces/metadata/fake": utils.MarshalOrPanic(&lb.StateMetadata{
-					Datatype: "TestStruct",
-					Fields:   []string{"Bytes", "String", "Uint", "Int", "Proto"},
-				}),
 			}
 
 			fakeState.GetStateStub = func(key string) ([]byte, error) {
@@ -404,29 +406,16 @@ var _ = Describe("Serializer", func() {
 
 		It("populates the given struct with values from the state", func() {
 			target := &TestStruct{}
-			err := s.Deserialize("namespaces", "fake", target, fakeState)
+			err := s.Deserialize("namespaces", "fake", metadata, target, fakeState)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(fakeState.GetStateCallCount()).To(Equal(6))
-			Expect(fakeState.GetStateArgsForCall(0)).To(Equal("namespaces/metadata/fake"))
+			Expect(fakeState.GetStateCallCount()).To(Equal(5))
 
 			Expect(target.Int).To(Equal(int64(-3)))
 			Expect(target.Uint).To(Equal(uint64(93)))
 			Expect(target.String).To(Equal("string"))
 			Expect(target.Bytes).To(Equal([]byte("bytes")))
 			Expect(proto.Equal(target.Proto, testStruct.Proto)).To(BeTrue())
-		})
-
-		Context("when the metadata encoding is bad", func() {
-			BeforeEach(func() {
-				kvs["namespaces/metadata/fake"] = []byte("bad-data")
-			})
-
-			It("fails", func() {
-				testStruct := &TestStruct{}
-				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
-				Expect(err).To(MatchError("could not unmarshal metadata for namespace namespaces/fake: could not unmarshal metadata for namespace namespaces/fake: unexpected EOF"))
-			})
 		})
 
 		Context("when the field encoding is bad", func() {
@@ -436,7 +425,7 @@ var _ = Describe("Serializer", func() {
 
 			It("fails", func() {
 				testStruct := &TestStruct{}
-				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				err := s.Deserialize("namespaces", "fake", metadata, testStruct, fakeState)
 				Expect(err).To(MatchError("could not unmarshal state for key namespaces/fields/fake/Uint: unexpected EOF"))
 			})
 		})
@@ -448,7 +437,7 @@ var _ = Describe("Serializer", func() {
 
 			It("fails", func() {
 				testStruct := &TestStruct{}
-				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				err := s.Deserialize("namespaces", "fake", metadata, testStruct, fakeState)
 				Expect(err).To(MatchError("expected key namespaces/fields/fake/Uint to encode a value of type Uint64, but was *lifecycle.StateData_Bytes"))
 			})
 		})
@@ -460,7 +449,7 @@ var _ = Describe("Serializer", func() {
 
 			It("fails", func() {
 				testStruct := &TestStruct{}
-				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				err := s.Deserialize("namespaces", "fake", metadata, testStruct, fakeState)
 				Expect(err).To(MatchError("expected key namespaces/fields/fake/Int to encode a value of type Int64, but was *lifecycle.StateData_Bytes"))
 			})
 		})
@@ -472,7 +461,7 @@ var _ = Describe("Serializer", func() {
 
 			It("fails", func() {
 				testStruct := &TestStruct{}
-				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				err := s.Deserialize("namespaces", "fake", metadata, testStruct, fakeState)
 				Expect(err).To(MatchError("expected key namespaces/fields/fake/String to encode a value of type String, but was *lifecycle.StateData_Bytes"))
 			})
 		})
@@ -484,7 +473,7 @@ var _ = Describe("Serializer", func() {
 
 			It("fails", func() {
 				testStruct := &TestStruct{}
-				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				err := s.Deserialize("namespaces", "fake", metadata, testStruct, fakeState)
 				Expect(err).To(MatchError("expected key namespaces/fields/fake/Bytes to encode a value of type []byte, but was *lifecycle.StateData_String_"))
 			})
 		})
@@ -496,51 +485,26 @@ var _ = Describe("Serializer", func() {
 
 			It("fails", func() {
 				testStruct := &TestStruct{}
-				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				err := s.Deserialize("namespaces", "fake", metadata, testStruct, fakeState)
 				Expect(err).To(MatchError("expected key namespaces/fields/fake/Proto to encode a value of type []byte, but was *lifecycle.StateData_String_"))
 			})
 		})
 
-		Context("when the metadata cannot be queried", func() {
+		Context("when the state cannot be queried", func() {
 			BeforeEach(func() {
 				fakeState.GetStateReturns(nil, fmt.Errorf("state-error"))
 			})
 
 			It("fails", func() {
 				testStruct := &TestStruct{}
-				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
-				Expect(err).To(MatchError("could not unmarshal metadata for namespace namespaces/fake: could not query metadata for namespace namespaces/fake: state-error"))
-			})
-		})
-
-		Context("when the state cannot be queried", func() {
-			BeforeEach(func() {
-				fakeState.GetStateReturnsOnCall(0, kvs["namespaces/metadata/fake"], nil)
-				fakeState.GetStateReturnsOnCall(1, nil, fmt.Errorf("state-error"))
-			})
-
-			It("fails", func() {
-				testStruct := &TestStruct{}
-				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				err := s.Deserialize("namespaces", "fake", metadata, testStruct, fakeState)
 				Expect(err).To(MatchError("could not get state for key namespaces/fields/fake/Int: state-error"))
-			})
-		})
-
-		Context("when no data is stored for the message", func() {
-			BeforeEach(func() {
-				fakeState.GetStateReturns(nil, nil)
-			})
-
-			It("fails", func() {
-				testStruct := &TestStruct{}
-				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
-				Expect(err).To(MatchError("metadata for namespace namespaces/fake does not exist"))
 			})
 		})
 
 		Context("when the argument is not a pointer", func() {
 			It("fails", func() {
-				err := s.Deserialize("namespaces", "fake", 8, fakeState)
+				err := s.Deserialize("namespaces", "fake", metadata, 8, fakeState)
 				Expect(err).To(MatchError("could not deserialize namespace namespaces/fake to unserializable type int: must be pointer to struct, but got non-pointer int"))
 			})
 		})
@@ -548,7 +512,7 @@ var _ = Describe("Serializer", func() {
 		Context("when the argument is a pointer to not-a-struct", func() {
 			It("fails", func() {
 				value := 7
-				err := s.Deserialize("namespaces", "fake", &value, fakeState)
+				err := s.Deserialize("namespaces", "fake", metadata, &value, fakeState)
 				Expect(err).To(MatchError("could not deserialize namespace namespaces/fake to unserializable type *int: must be pointers to struct, but got pointer to int"))
 			})
 		})
@@ -556,7 +520,7 @@ var _ = Describe("Serializer", func() {
 		Context("when the argument does not match the stored type", func() {
 			It("it fails", func() {
 				type Other struct{}
-				err := s.Deserialize("namespaces", "fake", &Other{}, fakeState)
+				err := s.Deserialize("namespaces", "fake", metadata, &Other{}, fakeState)
 				Expect(err).To(MatchError("type name mismatch 'Other' != 'TestStruct'"))
 			})
 		})
@@ -573,7 +537,7 @@ var _ = Describe("Serializer", func() {
 					BadField int
 				}
 
-				err := s.Deserialize("namespaces", "fake", &BadStruct{}, fakeState)
+				err := s.Deserialize("namespaces", "fake", metadata, &BadStruct{}, fakeState)
 				Expect(err).To(MatchError("could not deserialize namespace namespaces/fake to unserializable type *lifecycle_test.BadStruct: unsupported structure field kind int for serialization for field BadField"))
 			})
 		})
@@ -590,7 +554,7 @@ var _ = Describe("Serializer", func() {
 					BadField []uint64
 				}
 
-				err := s.Deserialize("namespaces", "fake", &BadStruct{}, fakeState)
+				err := s.Deserialize("namespaces", "fake", metadata, &BadStruct{}, fakeState)
 				Expect(err).To(MatchError("could not deserialize namespace namespaces/fake to unserializable type *lifecycle_test.BadStruct: unsupported slice type uint64 for field BadField"))
 			})
 		})
@@ -622,8 +586,11 @@ var _ = Describe("Serializer", func() {
 			err := s.Serialize("namespace", "fake", testStruct, fakeState)
 			Expect(err).NotTo(HaveOccurred())
 
+			metadata, ok, err := s.DeserializeMetadata("namespace", "fake", fakeState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ok).To(BeTrue())
 			deserialized := &TestStruct{}
-			err = s.Deserialize("namespace", "fake", deserialized, fakeState)
+			err = s.Deserialize("namespace", "fake", metadata, deserialized, fakeState)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(testStruct.Int).To(Equal(deserialized.Int))

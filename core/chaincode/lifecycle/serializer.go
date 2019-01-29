@@ -271,19 +271,12 @@ func (s *Serializer) IsSerialized(namespace, name string, structure interface{},
 
 // Deserialize accepts a struct (of a type previously serialized) and populates it with the values from the db.
 // Note: The struct names for the serialization and deserialization must match exactly.  Unencoded fields are not
-// populated, and the extraneous keys are ignored.
-func (s *Serializer) Deserialize(namespace, name string, structure interface{}, state ReadableState) error {
+// populated, and the extraneous keys are ignored.  The metadata provided should have been returned by a DeserializeMetadata
+// call for the same namespace and name.
+func (s *Serializer) Deserialize(namespace, name string, metadata *lb.StateMetadata, structure interface{}, state ReadableState) error {
 	value, _, err := s.SerializableChecks(structure)
 	if err != nil {
 		return errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s/%s to unserializable type %T", namespace, name, structure))
-	}
-
-	metadata, ok, err := s.DeserializeMetadata(namespace, name, state)
-	if err != nil {
-		return errors.Wrapf(err, "could not unmarshal metadata for namespace %s/%s", namespace, name)
-	}
-	if !ok {
-		return errors.Errorf("metadata for namespace %s/%s does not exist", namespace, name)
 	}
 
 	typeName := value.Type().Name()

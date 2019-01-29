@@ -65,17 +65,17 @@ func (l *Lifecycle) UpdatedChaincodes(stateUpdates map[string][]*kvrwset.KVWrite
 	return append(lifecycleInfo, legacyUpdates...), nil
 }
 
-// ChaincodeInNewLifecycle returns whether the chaincode name is defined in the new lifecycle, a shim around
+// ChaincodeDefinitionIfDefined returns whether the chaincode name is defined in the new lifecycle, a shim around
 // the SimpleQueryExecutor to work with the serializer, or an error.  If the namespace is defined, but it is
 // not a chaincode, this is considered an error.
-func (l *Lifecycle) ChaincodeInNewLifecycle(chaincodeName string, qe ledger.SimpleQueryExecutor) (bool, *SimpleQueryExecutorShim, error) {
+func (l *Lifecycle) ChaincodeDefinitionIfDefined(chaincodeName string, qe ledger.SimpleQueryExecutor) (bool, *ChaincodeDefinition, error) {
 	state := &SimpleQueryExecutorShim{
 		Namespace:           LifecycleNamespace,
 		SimpleQueryExecutor: qe,
 	}
 
 	if chaincodeName == LifecycleNamespace {
-		return true, state, nil
+		return true, &ChaincodeDefinition{}, nil
 	}
 
 	metadata, ok, err := l.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state)
@@ -84,18 +84,24 @@ func (l *Lifecycle) ChaincodeInNewLifecycle(chaincodeName string, qe ledger.Simp
 	}
 
 	if !ok {
-		return false, state, nil
+		return false, nil, nil
 	}
 
 	if metadata.Datatype != ChaincodeDefinitionType {
 		return false, nil, errors.Errorf("not a chaincode type: %s", metadata.Datatype)
 	}
 
-	return true, state, nil
+	definedChaincode := &ChaincodeDefinition{}
+	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, metadata, definedChaincode, state)
+	if err != nil {
+		return false, nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))
+	}
+
+	return true, definedChaincode, nil
 }
 
 func (l *Lifecycle) ChaincodeInfo(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
-	exists, state, err := l.ChaincodeInNewLifecycle(chaincodeName, qe)
+	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, qe)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get info about chaincode")
 	}
@@ -107,19 +113,6 @@ func (l *Lifecycle) ChaincodeInfo(channelName, chaincodeName string, qe ledger.S
 	ic, err := l.ChaincodeImplicitCollections(channelName)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create implicit collections for channel")
-	}
-
-	if chaincodeName == LifecycleNamespace {
-		return &ledger.DeployedChaincodeInfo{
-			Name:                chaincodeName,
-			ImplicitCollections: ic,
-		}, nil
-	}
-
-	definedChaincode := &ChaincodeDefinition{}
-	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, definedChaincode, state)
-	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))
 	}
 
 	return &ledger.DeployedChaincodeInfo{
@@ -136,21 +129,13 @@ var ImplicitCollectionMatcher = regexp.MustCompile("^" + ImplicitCollectionNameF
 // CollectionInfo implements function in interface ledger.DeployedChaincodeInfoProvider, it returns config for
 // both static and implicit collections.
 func (l *Lifecycle) CollectionInfo(channelName, chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*cb.StaticCollectionConfig, error) {
-	definedChaincode := &ChaincodeDefinition{}
-	if chaincodeName != LifecycleNamespace {
-		exists, state, err := l.ChaincodeInNewLifecycle(chaincodeName, qe)
-		if err != nil {
-			return nil, errors.WithMessage(err, "could not get chaincode")
-		}
+	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, qe)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not get chaincode")
+	}
 
-		if !exists {
-			return l.LegacyDeployedCCInfoProvider.CollectionInfo(channelName, chaincodeName, collectionName, qe)
-		}
-
-		err = l.Serializer.Deserialize(NamespacesName, chaincodeName, definedChaincode, state)
-		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))
-		}
+	if !exists {
+		return l.LegacyDeployedCCInfoProvider.CollectionInfo(channelName, chaincodeName, collectionName, qe)
 	}
 
 	matches := ImplicitCollectionMatcher.FindStringSubmatch(collectionName)
@@ -172,7 +157,7 @@ func (l *Lifecycle) CollectionInfo(channelName, chaincodeName, collectionName st
 // ImplicitCollections implements function in interface ledger.DeployedChaincodeInfoProvider.  It returns
 //a slice that contains one proto msg for each of the implicit collections
 func (l *Lifecycle) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*cb.StaticCollectionConfig, error) {
-	exists, _, err := l.ChaincodeInNewLifecycle(chaincodeName, qe)
+	exists, _, err := l.ChaincodeDefinitionIfDefined(chaincodeName, qe)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get info about chaincode")
 	}
@@ -257,7 +242,7 @@ func (l *Lifecycle) LifecycleEndorsementPolicyAsBytes(channelID string) ([]byte,
 // error is not nil.
 func (l *Lifecycle) ValidationInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error) {
 	// TODO, this is a bit of an overkill check, and will need to be scaled back for non-chaincode type namespaces
-	exists, state, err := l.ChaincodeInNewLifecycle(chaincodeName, qe)
+	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, qe)
 	if err != nil {
 		return "", nil, errors.WithMessage(err, "could not get chaincode"), nil
 	}
@@ -275,12 +260,6 @@ func (l *Lifecycle) ValidationInfo(channelID, chaincodeName string, qe ledger.Si
 			return "", nil, errors.WithMessage(err, "unexpected failure to create lifecycle endorsement policy"), nil
 		}
 		return "builtin", b, nil, nil
-	}
-
-	definedChaincode := &ChaincodeDefinition{}
-	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, definedChaincode, state)
-	if err != nil {
-		return "", nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName)), nil
 	}
 
 	return definedChaincode.ValidationPlugin, definedChaincode.ValidationParameter, nil, nil

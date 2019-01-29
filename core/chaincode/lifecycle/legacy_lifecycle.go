@@ -80,7 +80,7 @@ func (l *Lifecycle) ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQu
 	// Note, this is generally overkill, there's no reason to read keys for the whole definition, but that's how
 	// the old lifecycle does it, so to avoid contention, we'll reproduce that logic.  This interface should really be broken
 	// into retrieving different bits of chaincode data, like the hash, the endorsement plugin, etc. and only called as needed.
-	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, definedChaincode, state)
+	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, metadata, definedChaincode, state)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))
 	}
@@ -116,7 +116,7 @@ func (l *Lifecycle) ChaincodeContainerInfo(chaincodeName string, qe ledger.Simpl
 	}
 
 	definedChaincode := &ChaincodeDefinition{}
-	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, definedChaincode, state)
+	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, metadata, definedChaincode, state)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))
 	}

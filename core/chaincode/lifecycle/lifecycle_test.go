@@ -175,8 +175,11 @@ var _ = Describe("Lifecycle", func() {
 			err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
 
+			metadata, ok, err := l.Serializer.DeserializeMetadata("namespaces", "cc-name#5", fakeOrgState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ok).To(BeTrue())
 			committedDefinition := &lifecycle.ChaincodeParameters{}
-			err = l.Serializer.Deserialize("namespaces", "cc-name#5", committedDefinition, fakeOrgState)
+			err = l.Serializer.Deserialize("namespaces", "cc-name#5", metadata, committedDefinition, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(committedDefinition.Version).To(Equal("version"))
 			Expect(committedDefinition.Hash).To(BeEmpty())
@@ -197,8 +200,6 @@ var _ = Describe("Lifecycle", func() {
 
 		Context("when the sequence number already has a definition", func() {
 			BeforeEach(func() {
-				fakePublicKVStore = map[string][]byte{}
-
 				err := l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
 					Sequence: 5,
 					Version:  "version",
@@ -209,6 +210,28 @@ var _ = Describe("Lifecycle", func() {
 			It("verifies that the definition matches before writing", func() {
 				err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
 				Expect(err).NotTo(HaveOccurred())
+			})
+
+			Context("when the current definition is not found", func() {
+				BeforeEach(func() {
+					delete(fakePublicKVStore, "namespaces/metadata/cc-name")
+				})
+
+				It("returns an error", func() {
+					err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+					Expect(err).To(MatchError("missing metadata for currently committed sequence number (5)"))
+				})
+			})
+
+			Context("when the current definition is corrupt", func() {
+				BeforeEach(func() {
+					fakePublicKVStore["namespaces/metadata/cc-name"] = []byte("garbage")
+				})
+
+				It("returns an error", func() {
+					err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+					Expect(err).To(MatchError("could not fetch metadata for current definition: could not unmarshal metadata for namespace namespaces/cc-name: proto: can't skip unknown wire type 7"))
+				})
 			})
 
 			Context("when the current definition is not a chaincode", func() {
@@ -494,7 +517,29 @@ var _ = Describe("Lifecycle", func() {
 
 			It("returns an error", func() {
 				_, err := l.QueryChaincodeDefinition("cc-name", fakePublicState)
-				Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: metadata for namespace namespaces/cc-name does not exist"))
+				Expect(err).To(MatchError("namespace cc-name is not defined"))
+			})
+		})
+
+		Context("when getting the metadata fails", func() {
+			BeforeEach(func() {
+				fakePublicState.GetStateReturns(nil, fmt.Errorf("metadata-error"))
+			})
+
+			It("returns an error", func() {
+				_, err := l.QueryChaincodeDefinition("cc-name", fakePublicState)
+				Expect(err).To(MatchError("could not fetch metadata for namespace cc-name: could not query metadata for namespace namespaces/cc-name: metadata-error"))
+			})
+		})
+
+		Context("when deserializing the definition fails", func() {
+			BeforeEach(func() {
+				publicKVS["namespaces/fields/cc-name/Version"] = []byte("garbage")
+			})
+
+			It("returns an error", func() {
+				_, err := l.QueryChaincodeDefinition("cc-name", fakePublicState)
+				Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
 			})
 		})
 	})
