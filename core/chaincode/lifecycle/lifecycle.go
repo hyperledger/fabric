@@ -15,11 +15,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-// NamespacesName is the prefix (or namespace) of the DB which will be used to store
-// the information about other namespaces (for things like chaincodes) in the DB.
-// We want a sub-namespaces within lifecycle in case other information needs to be stored here
-// in the future.
-const NamespacesName = "namespaces"
+const (
+	// NamespacesName is the prefix (or namespace) of the DB which will be used to store
+	// the information about other namespaces (for things like chaincodes) in the DB.
+	// We want a sub-namespaces within lifecycle in case other information needs to be stored here
+	// in the future.
+	NamespacesName = "namespaces"
+
+	// DefinedChaincodeType is the name of the type used to store defined chaincodes
+	DefinedChaincodeType = "DefinedChaincode"
+
+	// FriendlyDefinedChaincodeType is the name exposed to the outside world for the chaincode namespace
+	FriendlyDefinedChaincodeType = "Chaincode"
+)
 
 // Public/World DB layout looks like the following:
 // namespaces/metadata/<namespace> -> namespace metadata, including namespace type
@@ -215,6 +223,28 @@ func (l *Lifecycle) InstallChaincode(name, version string, chaincodeInstallPacka
 	}
 
 	return hash, nil
+}
+
+// QueryDefinedNamespaces lists the publicly defined namespaces in a channel.  Today it should only ever
+// find Datatype encodings of 'DefinedChaincode'.  In the future as we support encodings like 'TokenManagementSystem'
+// or similar, additional statements will be added to the switch.
+func (l *Lifecycle) QueryDefinedNamespaces(publicState RangeableState) (map[string]string, error) {
+	metadatas, err := l.Serializer.DeserializeAllMetadata(NamespacesName, publicState)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not query namespace metadata")
+	}
+
+	result := map[string]string{}
+	for key, value := range metadatas {
+		switch value.Datatype {
+		case DefinedChaincodeType:
+			result[key] = FriendlyDefinedChaincodeType
+		default:
+			// This should never execute, but seems preferable to returning an error
+			result[key] = value.Datatype
+		}
+	}
+	return result, nil
 }
 
 // QueryInstalledChaincode returns the hash of an installed chaincode of a given name and version.

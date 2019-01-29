@@ -8,6 +8,7 @@ package lifecycle_test
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/util"
@@ -499,6 +500,57 @@ var _ = Describe("Lifecycle", func() {
 			It("returns an error", func() {
 				_, err := l.QueryDefinedChaincode("cc-name", fakePublicState)
 				Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: could not unmarshal metadata for namespace namespaces/cc-name: no existing serialized message found"))
+			})
+		})
+	})
+
+	Describe("QueryDefinedNamespaces", func() {
+		var (
+			fakePublicState *mock.ReadWritableState
+
+			publicKVS map[string][]byte
+		)
+
+		BeforeEach(func() {
+			publicKVS = map[string][]byte{}
+			fakePublicState = &mock.ReadWritableState{}
+			fakePublicState.GetStateStub = func(key string) ([]byte, error) {
+				return publicKVS[key], nil
+			}
+			fakePublicState.PutStateStub = func(key string, value []byte) error {
+				publicKVS[key] = value
+				return nil
+			}
+			fakePublicState.GetStateRangeStub = func(prefix string) (map[string][]byte, error) {
+				result := map[string][]byte{}
+				for key, value := range publicKVS {
+					if strings.HasPrefix(key, prefix) {
+						result[key] = value
+					}
+				}
+				return result, nil
+			}
+			l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.DefinedChaincode{}, fakePublicState)
+			l.Serializer.Serialize("namespaces", "other-name", &lifecycle.ChaincodeParameters{}, fakePublicState)
+		})
+
+		It("returns the defined namespaces", func() {
+			result, err := l.QueryDefinedNamespaces(fakePublicState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(map[string]string{
+				"cc-name":    "Chaincode",
+				"other-name": "ChaincodeParameters",
+			}))
+		})
+
+		Context("when the range cannot be retrieved", func() {
+			BeforeEach(func() {
+				fakePublicState.GetStateRangeReturns(nil, fmt.Errorf("state-range-error"))
+			})
+
+			It("returns an error", func() {
+				_, err := l.QueryDefinedNamespaces(fakePublicState)
+				Expect(err).To(MatchError("could not query namespace metadata: could not get state range for namespace namespaces: state-range-error"))
 			})
 		})
 	})
