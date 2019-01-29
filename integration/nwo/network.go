@@ -20,7 +20,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -31,7 +31,7 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // Organization models information about an Organization. It includes
@@ -985,12 +985,12 @@ func (n *Network) PeerUserSession(p *Peer, user string, command Command) (*gexec
 	return n.StartSession(cmd, command.SessionName())
 }
 
-// OrdererAdminSession execute a gexec.Session as an orderer node admin user. This is used primarily
-// to generate orderer configuration updates
+// OrdererAdminSession starts a gexec.Session as an orderer admin user. This
+// is used primarily to generate orderer configuration updates.
 func (n *Network) OrdererAdminSession(o *Orderer, p *Peer, command Command) (*gexec.Session, error) {
 	cmd := n.peerCommand(
 		command,
-		"CORE_PEER_LOCALMSPID=OrdererMSP",
+		fmt.Sprintf("CORE_PEER_LOCALMSPID=%s", n.Organization(o.Organization).MSPID),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
 		fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", n.OrdererUserMSPDir(o, "Admin")),
 	)
