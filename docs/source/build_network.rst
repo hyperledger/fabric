@@ -695,7 +695,7 @@ code flavor onto our peer's filesystem.
 .. code:: bash
 
     # this installs the Go chaincode. For go chaincode -p takes the relative path from $GOPATH/src
-    peer chaincode install -n mycc -v 1.0 -p github.com/chaincode/chaincode_example02/go/
+    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/go/
 
 **Node.js**
 
@@ -704,7 +704,7 @@ code flavor onto our peer's filesystem.
     # this installs the Node.js chaincode
     # make note of the -l flag to indicate "node" chaincode
     # for node chaincode -p takes the absolute path to the node.js chaincode
-    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/chaincode/chaincode_example02/node/
+    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/node/
 
 **Java**
 
@@ -712,7 +712,7 @@ code flavor onto our peer's filesystem.
 
     # make note of the -l flag to indicate "java" chaincode
     # for java chaincode -p takes the absolute path to the java chaincode
-    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/chaincode/chaincode_example02/java/
+    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/java/
 
 When we instantiate the chaincode on the channel, the endorsement policy will be
 set to require endorsements from a peer in both Org1 and Org2. Therefore, we
@@ -739,7 +739,7 @@ code flavor onto our peer's filesystem.
 .. code:: bash
 
     # this installs the Go chaincode. For go chaincode -p takes the relative path from $GOPATH/src
-    peer chaincode install -n mycc -v 1.0 -p github.com/chaincode/chaincode_example02/go/
+    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/go/
 
 **Node.js**
 
@@ -748,7 +748,7 @@ code flavor onto our peer's filesystem.
     # this installs the Node.js chaincode
     # make note of the -l flag to indicate "node" chaincode
     # for node chaincode -p takes the absolute path to the node.js chaincode
-    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/chaincode/chaincode_example02/node/
+    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/node/
 
 **Java**
 
@@ -756,7 +756,7 @@ code flavor onto our peer's filesystem.
 
     # make note of the -l flag to indicate "java" chaincode
     # for java chaincode -p takes the absolute path to the java chaincode
-    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/chaincode/chaincode_example02/java/
+    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/java/
 
 
 Next, instantiate the chaincode on the channel. This will initialize the
@@ -888,7 +888,7 @@ code flavor onto our peer's filesystem.
 .. code:: bash
 
     # this installs the Go chaincode. For go chaincode -p takes the relative path from $GOPATH/src
-    peer chaincode install -n mycc -v 1.0 -p github.com/chaincode/chaincode_example02/go/
+    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/go/
 
 **Node.js**
 
@@ -897,7 +897,7 @@ code flavor onto our peer's filesystem.
     # this installs the Node.js chaincode
     # make note of the -l flag to indicate "node" chaincode
     # for node chaincode -p takes the absolute path to the node.js chaincode
-    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/chaincode/chaincode_example02/node/
+    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/node/
 
 **Java**
 
@@ -905,7 +905,7 @@ code flavor onto our peer's filesystem.
 
     # make note of the -l flag to indicate "java" chaincode
     # for java chaincode -p takes the absolute path to the java chaincode
-    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/chaincode/chaincode_example02/java/
+    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/java/
 
 Query
 ^^^^^
@@ -1158,7 +1158,7 @@ channel, use the following steps to interact with the **marbles02** chaincode:
 
        # be sure to modify the $CHANNEL_NAME variable accordingly for the instantiate command
 
-       peer chaincode install -n marbles -v 1.0 -p github.com/chaincode/marbles02/go
+       peer chaincode install -n marbles -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02/go
        peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -v 1.0 -c '{"Args":["init"]}' -P "OR ('Org0MSP.peer','Org1MSP.peer')"
 
 -  Create some marbles and move them around:

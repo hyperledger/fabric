@@ -325,7 +325,7 @@ Chaincode is installed onto a peer and then instantiated onto the channel using
 
  .. code:: bash
 
-      peer chaincode install -n marbles -v 1.0 -p github.com/chaincode/marbles02/go
+      peer chaincode install -n marbles -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02/go
 
 2. Issue the `peer chaincode instantiate <http://hyperledger-fabric.readthedocs.io/en/master/commands/peerchaincode.html?%20chaincode%20instantiate#peer-chaincode-instantiate>`__ command to instantiate the
 chaincode on a channel.
