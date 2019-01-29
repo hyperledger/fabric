@@ -219,7 +219,7 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 		return requester.RequestBlocks(ledgerInfoProvider)
 	}
 	backoffPolicy := func(attemptNum int, elapsedTime time.Duration) (time.Duration, bool) {
-		if elapsedTime > reconnectTotalTimeThreshold {
+		if elapsedTime >= reconnectTotalTimeThreshold {
 			return 0, false
 		}
 		sleepIncrement := float64(time.Millisecond * 500)
