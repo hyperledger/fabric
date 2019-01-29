@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,8 +22,8 @@ func TestBasicSanity(t *testing.T) {
 func TestForTransactionID(t *testing.T) {
 	impl := NewFactoryImpl(cb.NewConfigGroup())
 	block := impl.Block("testchainid")
-	configEnv, _ := utils.ExtractEnvelope(block, 0)
-	configEnvPayload, _ := utils.ExtractPayload(configEnv)
-	configEnvPayloadChannelHeader, _ := utils.UnmarshalChannelHeader(configEnvPayload.GetHeader().ChannelHeader)
+	configEnv, _ := protoutil.ExtractEnvelope(block, 0)
+	configEnvPayload, _ := protoutil.ExtractPayload(configEnv)
+	configEnvPayloadChannelHeader, _ := protoutil.UnmarshalChannelHeader(configEnvPayload.GetHeader().ChannelHeader)
 	assert.NotEmpty(t, configEnvPayloadChannelHeader.TxId, "tx_id of configuration transaction should not be empty")
 }

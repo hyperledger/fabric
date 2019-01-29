@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -116,7 +116,7 @@ func randomAlphaString(size int) string {
 }
 
 func TestUnmarshalConfig(t *testing.T) {
-	goodConfigBytes := utils.MarshalOrPanic(&cb.Config{})
+	goodConfigBytes := protoutil.MarshalOrPanic(&cb.Config{})
 	badConfigBytes := []byte("garbage")
 
 	t.Run("GoodUnmarshalNormal", func(t *testing.T) {
@@ -139,7 +139,7 @@ func TestUnmarshalConfig(t *testing.T) {
 }
 
 func TestUnmarshalConfigEnvelope(t *testing.T) {
-	goodConfigEnvelopeBytes := utils.MarshalOrPanic(&cb.ConfigEnvelope{})
+	goodConfigEnvelopeBytes := protoutil.MarshalOrPanic(&cb.ConfigEnvelope{})
 	badConfigEnvelopeBytes := []byte("garbage")
 
 	t.Run("GoodUnmarshalNormal", func(t *testing.T) {
@@ -162,7 +162,7 @@ func TestUnmarshalConfigEnvelope(t *testing.T) {
 }
 
 func TestUnmarshalConfigUpdate(t *testing.T) {
-	goodConfigUpdateBytes := utils.MarshalOrPanic(&cb.ConfigUpdate{})
+	goodConfigUpdateBytes := protoutil.MarshalOrPanic(&cb.ConfigUpdate{})
 	badConfigUpdateBytes := []byte("garbage")
 
 	t.Run("GoodUnmarshalNormal", func(t *testing.T) {
@@ -185,7 +185,7 @@ func TestUnmarshalConfigUpdate(t *testing.T) {
 }
 
 func TestUnmarshalConfigUpdateEnvelope(t *testing.T) {
-	goodConfigUpdateEnvelopeBytes := utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{})
+	goodConfigUpdateEnvelopeBytes := protoutil.MarshalOrPanic(&cb.ConfigUpdateEnvelope{})
 	badConfigUpdateEnvelopeBytes := []byte("garbage")
 
 	t.Run("GoodUnmarshalNormal", func(t *testing.T) {

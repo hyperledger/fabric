@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -35,7 +35,7 @@ func TestComponentIntegrationSignaturePolicyEnv(t *testing.T) {
 	}
 
 	spenv := cauthdsl.SignedByMspMember("msp")
-	mspenv := utils.MarshalOrPanic(&peer.ApplicationPolicy{
+	mspenv := protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
 		Type: &peer.ApplicationPolicy_SignaturePolicy{
 			SignaturePolicy: spenv,
 		},
@@ -82,7 +82,7 @@ func TestEvaluator(t *testing.T) {
 	// SCENARIO: signature policy supplied - good and bad path
 
 	spenv := &common.SignaturePolicyEnvelope{}
-	mspenv := utils.MarshalOrPanic(&peer.ApplicationPolicy{
+	mspenv := protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
 		Type: &peer.ApplicationPolicy_SignaturePolicy{
 			SignaturePolicy: spenv,
 		},
@@ -102,7 +102,7 @@ func TestEvaluator(t *testing.T) {
 	// SCENARIO: channel ref policy supplied - good and bad path
 
 	chrefstr := "Quo usque tandem abutere, Catilina, patientia nostra?"
-	chrefstrEnv := utils.MarshalOrPanic(&peer.ApplicationPolicy{
+	chrefstrEnv := protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
 		Type: &peer.ApplicationPolicy_ChannelConfigPolicyReference{
 			ChannelConfigPolicyReference: chrefstr,
 		},

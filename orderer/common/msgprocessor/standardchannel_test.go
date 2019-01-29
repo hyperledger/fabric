@@ -12,7 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/crypto"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -106,9 +106,9 @@ func TestProcessConfigMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
 		_, _, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
-			Payload: utils.MarshalOrPanic(&cb.Payload{
+			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
-					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
 						ChannelId: testChannelID,
 						Type:      int32(cb.HeaderType_ORDERER_TRANSACTION),
 					}),
@@ -124,9 +124,9 @@ func TestProcessConfigMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
 		config, cs, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
-			Payload: utils.MarshalOrPanic(&cb.Payload{
+			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
-					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
 						ChannelId: testChannelID,
 						Type:      int32(cb.HeaderType_CONFIG),
 					}),
@@ -136,7 +136,7 @@ func TestProcessConfigMsg(t *testing.T) {
 		assert.NotNil(t, config)
 		assert.Equal(t, cs, ms.SequenceVal)
 		assert.Nil(t, err)
-		hdr, err := utils.ChannelHeader(config)
+		hdr, err := protoutil.ChannelHeader(config)
 		assert.Equal(
 			t,
 			int32(cb.HeaderType_CONFIG),

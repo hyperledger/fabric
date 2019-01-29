@@ -29,7 +29,7 @@ import (
 	cmock "github.com/hyperledger/fabric/peer/common/mock"
 	common2 "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -147,7 +147,7 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 	genesisBlock := pgen.GenesisBlockForChannel(mockchain)
 
 	mockResponse := &pb.ProposalResponse{
-		Response:    &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(genesisBlock)},
+		Response:    &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(genesisBlock)},
 		Endorsement: &pb.Endorsement{},
 	}
 	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)

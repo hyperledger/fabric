@@ -14,7 +14,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -124,7 +124,7 @@ func seekHelper(channelID string, position *ab.SeekPosition, tlsCertHash []byte)
 		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
 	}
 
-	env, err := utils.CreateSignedEnvelopeWithTLSBinding(
+	env, err := protoutil.CreateSignedEnvelopeWithTLSBinding(
 		cb.HeaderType_DELIVER_SEEK_INFO,
 		channelID,
 		localmsp.NewSigner(),

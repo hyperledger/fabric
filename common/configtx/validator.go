@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -132,7 +132,7 @@ func (vi *ValidatorImpl) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 }
 
 func (vi *ValidatorImpl) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
-	configUpdateEnv, err := utils.EnvelopeToConfigUpdate(configtx)
+	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configtx)
 	if err != nil {
 		return nil, errors.Errorf("error converting envelope to config update: %s", err)
 	}
@@ -170,7 +170,7 @@ func (vi *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 		return errors.Errorf("config currently at sequence %d, cannot validate config at sequence %d", vi.sequence, configEnv.Config.Sequence)
 	}
 
-	configUpdateEnv, err := utils.EnvelopeToConfigUpdate(configEnv.LastUpdate)
+	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configEnv.LastUpdate)
 	if err != nil {
 		return err
 	}

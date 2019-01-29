@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -232,7 +232,7 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	}
 
 	// Initialize metadata structure
-	utils.InitBlockMetadata(block)
+	protoutil.InitBlockMetadata(block)
 
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr
 
@@ -285,7 +285,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		return
 	}
 
-	if env, err := utils.GetEnvelopeFromBlock(d); err != nil {
+	if env, err := protoutil.GetEnvelopeFromBlock(d); err != nil {
 		logger.Warningf("Error getting tx from block: %+v", err)
 		results <- &blockValidationResult{
 			tIdx:           tIdx,
@@ -313,7 +313,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 			return
 		}
 
-		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 		if err != nil {
 			logger.Warningf("Could not unmarshal channel header, err %s, skipping", err)
 			results <- &blockValidationResult{

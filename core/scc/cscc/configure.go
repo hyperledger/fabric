@@ -31,7 +31,7 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -140,12 +140,12 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 			return shim.Error("Cannot join the channel <nil> configuration block provided")
 		}
 
-		block, err := utils.GetBlockFromBlockBytes(args[1])
+		block, err := protoutil.GetBlockFromBlockBytes(args[1])
 		if err != nil {
 			return shim.Error(fmt.Sprintf("Failed to reconstruct the genesis block, %s", err))
 		}
 
-		cid, err := utils.GetChainIDFromBlock(block)
+		cid, err := protoutil.GetChainIDFromBlock(block)
 		if err != nil {
 			return shim.Error(fmt.Sprintf("\"JoinChain\" request failed to extract "+
 				"channel id from the block due to [%s]", err))
@@ -206,13 +206,13 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 
 // validateConfigBlock validate configuration block to see whenever it's contains valid config transaction
 func validateConfigBlock(block *common.Block) error {
-	envelopeConfig, err := utils.ExtractEnvelope(block, 0)
+	envelopeConfig, err := protoutil.ExtractEnvelope(block, 0)
 	if err != nil {
 		return errors.Errorf("Failed to %s", err)
 	}
 
 	configEnv := &common.ConfigEnvelope{}
-	_, err = utils.UnmarshalEnvelopeOfType(envelopeConfig, common.HeaderType_CONFIG, configEnv)
+	_, err = protoutil.UnmarshalEnvelopeOfType(envelopeConfig, common.HeaderType_CONFIG, configEnv)
 	if err != nil {
 		return errors.Errorf("Bad configuration envelope: %s", err)
 	}
@@ -266,7 +266,7 @@ func getConfigBlock(chainID []byte) pb.Response {
 	if block == nil {
 		return shim.Error(fmt.Sprintf("Unknown chain ID, %s", string(chainID)))
 	}
-	blockBytes, err := utils.Marshal(block)
+	blockBytes, err := protoutil.Marshal(block)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -285,7 +285,7 @@ func (e *PeerConfiger) getConfigTree(chainID []byte) pb.Response {
 		return shim.Error(fmt.Sprintf("Unknown chain ID, %s", string(chainID)))
 	}
 	agCfg := &pb.ConfigTree{ChannelConfig: channelCfg}
-	configBytes, err := utils.Marshal(agCfg)
+	configBytes, err := protoutil.Marshal(agCfg)
 	if err != nil {
 		return shim.Error(err.Error())
 	}

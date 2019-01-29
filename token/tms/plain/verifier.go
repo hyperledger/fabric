@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/token"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/token/identity"
 	"github.com/hyperledger/fabric/token/ledger"
 	"github.com/pkg/errors"
@@ -374,7 +374,7 @@ func (v *Verifier) commitTransferAction(transferAction *token.Transfer, txID str
 }
 
 func (v *Verifier) addOutput(outputID string, output *token.Token, simulator ledger.LedgerWriter) error {
-	outputBytes := utils.MarshalOrPanic(output)
+	outputBytes := protoutil.MarshalOrPanic(output)
 
 	return simulator.SetState(tokenNameSpace, outputID, outputBytes)
 }

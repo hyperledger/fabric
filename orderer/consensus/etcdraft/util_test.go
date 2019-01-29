@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -78,7 +78,7 @@ func TestIsConsenterOfChannel(t *testing.T) {
 				" error unmarshaling Payload: proto: common.Payload: illegal tag 0 (wire type 1)",
 			configBlock: &common.Block{
 				Data: &common.BlockData{
-					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+					Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
 						Payload: []byte{1, 2, 3},
 					})},
 				},
@@ -136,8 +136,8 @@ func TestEndpointconfigFromFromSupport(t *testing.T) {
 			name: "Last config block cannot be retrieved",
 			blockAtHeight: &common.Block{
 				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
-						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 42}),
+					Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
+						Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 42}),
 					})},
 				},
 			},
@@ -148,8 +148,8 @@ func TestEndpointconfigFromFromSupport(t *testing.T) {
 			name: "Last config block is retrieved but it is invalid",
 			blockAtHeight: &common.Block{
 				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
-						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 42}),
+					Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
+						Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 42}),
 					})},
 				},
 			},
@@ -161,8 +161,8 @@ func TestEndpointconfigFromFromSupport(t *testing.T) {
 			name: "Last config block is retrieved and is valid",
 			blockAtHeight: &common.Block{
 				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
-						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 42}),
+					Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
+						Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 42}),
 					})},
 				},
 			},
@@ -202,8 +202,8 @@ func TestNewBlockPuller(t *testing.T) {
 
 	lastBlock := &common.Block{
 		Metadata: &common.BlockMetadata{
-			Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
-				Value: utils.MarshalOrPanic(&common.LastConfig{Index: 42}),
+			Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
+				Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 42}),
 			})},
 		},
 	}
@@ -355,8 +355,8 @@ func TestEvictionSuspector(t *testing.T) {
 			Metadata: [][]byte{{}, {}, {}, {}},
 		},
 	}
-	configBlock.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&common.Metadata{
-		Value: utils.MarshalOrPanic(&common.LastConfig{Index: 9}),
+	configBlock.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.Metadata{
+		Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 9}),
 	})
 
 	puller := &mocks.ChainPuller{}

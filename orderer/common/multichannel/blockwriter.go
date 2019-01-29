@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 type blockWriterSupport interface {
@@ -52,7 +52,7 @@ func newBlockWriter(lastBlock *cb.Block, r *Registrar, support blockWriterSuppor
 	// so no need to initialize lastConfig
 	if lastBlock.Header.Number != 0 {
 		var err error
-		bw.lastConfigBlockNum, err = utils.GetLastConfigIndexFromBlock(lastBlock)
+		bw.lastConfigBlockNum, err = protoutil.GetLastConfigIndexFromBlock(lastBlock)
 		if err != nil {
 			logger.Panicf("[channel: %s] Error extracting last config block from block metadata: %s", support.ChainID(), err)
 		}
@@ -89,12 +89,12 @@ func (bw *BlockWriter) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
 // This call will block until the new config has taken effect, then will return
 // while the block is written asynchronously to disk.
 func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte) {
-	ctx, err := utils.ExtractEnvelope(block, 0)
+	ctx, err := protoutil.ExtractEnvelope(block, 0)
 	if err != nil {
 		logger.Panicf("Told to write a config block, but could not get configtx: %s", err)
 	}
 
-	payload, err := utils.UnmarshalPayload(ctx.Payload)
+	payload, err := protoutil.UnmarshalPayload(ctx.Payload)
 	if err != nil {
 		logger.Panicf("Told to write a config block, but configtx payload is invalid: %s", err)
 	}
@@ -103,14 +103,14 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 		logger.Panicf("Told to write a config block, but configtx payload header is missing")
 	}
 
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		logger.Panicf("Told to write a config block with an invalid channel header: %s", err)
 	}
 
 	switch chdr.Type {
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		newChannelConfig, err := utils.UnmarshalEnvelope(payload.Data)
+		newChannelConfig, err := protoutil.UnmarshalEnvelope(payload.Data)
 		if err != nil {
 			logger.Panicf("Told to write a config block with new channel, but did not have config update embedded: %s", err)
 		}
@@ -165,7 +165,7 @@ func (bw *BlockWriter) WriteBlock(block *cb.Block, encodedMetadataValue []byte) 
 func (bw *BlockWriter) commitBlock(encodedMetadataValue []byte) {
 	// Set the orderer-related metadata field
 	if encodedMetadataValue != nil {
-		bw.lastBlock.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
+		bw.lastBlock.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = protoutil.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
 	}
 	bw.addBlockSignature(bw.lastBlock)
 	bw.addLastConfigSignature(bw.lastBlock)
@@ -179,16 +179,16 @@ func (bw *BlockWriter) commitBlock(encodedMetadataValue []byte) {
 
 func (bw *BlockWriter) addBlockSignature(block *cb.Block) {
 	blockSignature := &cb.MetadataSignature{
-		SignatureHeader: utils.MarshalOrPanic(utils.NewSignatureHeaderOrPanic(bw.support)),
+		SignatureHeader: protoutil.MarshalOrPanic(protoutil.NewSignatureHeaderOrPanic(bw.support)),
 	}
 
 	// Note, this value is intentionally nil, as this metadata is only about the signature, there is no additional metadata
 	// information required beyond the fact that the metadata item is signed.
 	blockSignatureValue := []byte(nil)
 
-	blockSignature.Signature = utils.SignOrPanic(bw.support, util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, block.Header.Bytes()))
+	blockSignature.Signature = protoutil.SignOrPanic(bw.support, util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, block.Header.Bytes()))
 
-	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = utils.MarshalOrPanic(&cb.Metadata{
+	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&cb.Metadata{
 		Value: blockSignatureValue,
 		Signatures: []*cb.MetadataSignature{
 			blockSignature,
@@ -205,15 +205,15 @@ func (bw *BlockWriter) addLastConfigSignature(block *cb.Block) {
 	}
 
 	lastConfigSignature := &cb.MetadataSignature{
-		SignatureHeader: utils.MarshalOrPanic(utils.NewSignatureHeaderOrPanic(bw.support)),
+		SignatureHeader: protoutil.MarshalOrPanic(protoutil.NewSignatureHeaderOrPanic(bw.support)),
 	}
 
-	lastConfigValue := utils.MarshalOrPanic(&cb.LastConfig{Index: bw.lastConfigBlockNum})
+	lastConfigValue := protoutil.MarshalOrPanic(&cb.LastConfig{Index: bw.lastConfigBlockNum})
 	logger.Debugf("[channel: %s] About to write block, setting its LAST_CONFIG to %d", bw.support.ChainID(), bw.lastConfigBlockNum)
 
-	lastConfigSignature.Signature = utils.SignOrPanic(bw.support, util.ConcatenateBytes(lastConfigValue, lastConfigSignature.SignatureHeader, block.Header.Bytes()))
+	lastConfigSignature.Signature = protoutil.SignOrPanic(bw.support, util.ConcatenateBytes(lastConfigValue, lastConfigSignature.SignatureHeader, block.Header.Bytes()))
 
-	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&cb.Metadata{
+	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&cb.Metadata{
 		Value: lastConfigValue,
 		Signatures: []*cb.MetadataSignature{
 			lastConfigSignature,

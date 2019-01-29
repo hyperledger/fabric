@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
@@ -115,7 +115,7 @@ func testMsgTrace(handler func(dir string, msg *cb.Envelope) recvr, t *testing.T
 		}
 	}
 
-	assert.Equal(t, utils.MarshalOrPanic(msg), fileData)
+	assert.Equal(t, protoutil.MarshalOrPanic(msg), fileData)
 }
 
 func TestBroadcastMsgTrace(t *testing.T) {

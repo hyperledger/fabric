@@ -21,7 +21,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/peer"
-	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -97,11 +97,11 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 
 	// get the tran id from the 2nd block, then use it to test GetTransactionByID()
 	txEnvBytes2 := block1.Data.Data[0]
-	txEnv2, err := putils.GetEnvelopeFromBlock(txEnvBytes2)
+	txEnv2, err := protoutil.GetEnvelopeFromBlock(txEnvBytes2)
 	assert.NoError(t, err, "Error upon GetEnvelopeFromBlock")
-	payload2, err := putils.GetPayload(txEnv2)
+	payload2, err := protoutil.GetPayload(txEnv2)
 	assert.NoError(t, err, "Error upon GetPayload")
-	chdr, err := putils.UnmarshalChannelHeader(payload2.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload2.Header.ChannelHeader)
 	assert.NoError(t, err, "Error upon GetChannelHeaderFromBytes")
 	txID2 := chdr.TxId
 	processedTran2, err := ledger.GetTransactionByID(txID2)

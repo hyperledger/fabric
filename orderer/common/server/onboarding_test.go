@@ -33,7 +33,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -94,7 +94,7 @@ func readSeekEnvelope(stream orderer.AtomicBroadcast_DeliverServer) (*orderer.Se
 	if err != nil {
 		return nil, err
 	}
-	payload, err := utils.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
 	if err != nil {
 		return nil, err
 	}
@@ -134,18 +134,18 @@ func channelCreationBlock(systemChannel, applicationChannel string, prevBlock *c
 			Metadata: [][]byte{{}, {}, {}, {}},
 		},
 		Data: &common.BlockData{
-			Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
-				Payload: utils.MarshalOrPanic(&common.Payload{
+			Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
+				Payload: protoutil.MarshalOrPanic(&common.Payload{
 					Header: &common.Header{
-						ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+						ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
 							ChannelId: systemChannel,
 							Type:      int32(common.HeaderType_ORDERER_TRANSACTION),
 						}),
 					},
-					Data: utils.MarshalOrPanic(&common.Envelope{
-						Payload: utils.MarshalOrPanic(&common.Payload{
+					Data: protoutil.MarshalOrPanic(&common.Envelope{
+						Payload: protoutil.MarshalOrPanic(&common.Payload{
 							Header: &common.Header{
-								ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+								ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
 									Type:      int32(common.HeaderType_CONFIG),
 									ChannelId: applicationChannel,
 								}),
@@ -195,8 +195,8 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 		Metadata: &common.BlockMetadata{
 			Metadata: [][]byte{{}, {}, {}},
 		},
-		Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
-			Payload: utils.MarshalOrPanic(&common.Payload{
+		Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
+			Payload: protoutil.MarshalOrPanic(&common.Payload{
 				Header: &common.Header{},
 			}),
 		})}},
@@ -443,7 +443,7 @@ func TestReplicate(t *testing.T) {
 
 		copyBlock := func(block *common.Block, seq uint64) common.Block {
 			res := common.Block{}
-			proto.Unmarshal(utils.MarshalOrPanic(block), &res)
+			proto.Unmarshal(protoutil.MarshalOrPanic(block), &res)
 			res.Header.Number = seq
 			return res
 		}
@@ -855,16 +855,16 @@ func TestLedgerFactory(t *testing.T) {
 }
 
 func injectConsenterCertificate(t *testing.T, block *common.Block, tlsCert []byte) {
-	env, err := utils.ExtractEnvelope(block, 0)
+	env, err := protoutil.ExtractEnvelope(block, 0)
 	assert.NoError(t, err)
-	payload, err := utils.ExtractPayload(env)
+	payload, err := protoutil.ExtractPayload(env)
 	assert.NoError(t, err)
 	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 	assert.NoError(t, err)
 	consensus := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.ConsensusTypeKey]
-	consensus.Value = utils.MarshalOrPanic(&orderer.ConsensusType{
+	consensus.Value = protoutil.MarshalOrPanic(&orderer.ConsensusType{
 		Type: "etcdraft",
-		Metadata: utils.MarshalOrPanic(&etcdraft.Metadata{
+		Metadata: protoutil.MarshalOrPanic(&etcdraft.Metadata{
 			Consenters: []*etcdraft.Consenter{
 				{
 					ServerTlsCert: tlsCert,
@@ -874,27 +874,27 @@ func injectConsenterCertificate(t *testing.T, block *common.Block, tlsCert []byt
 		}),
 	})
 
-	payload.Data = utils.MarshalOrPanic(confEnv)
-	env.Payload = utils.MarshalOrPanic(payload)
-	block.Data.Data[0] = utils.MarshalOrPanic(env)
+	payload.Data = protoutil.MarshalOrPanic(confEnv)
+	env.Payload = protoutil.MarshalOrPanic(payload)
+	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
 	block.Header.DataHash = block.Data.Hash()
 }
 
 func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
 	ordererAddresses := channelconfig.OrdererAddressesValue([]string{endpoint})
 	// Unwrap the layers until we reach the orderer addresses
-	env, err := utils.ExtractEnvelope(block, 0)
+	env, err := protoutil.ExtractEnvelope(block, 0)
 	assert.NoError(t, err)
-	payload, err := utils.ExtractPayload(env)
+	payload, err := protoutil.ExtractPayload(env)
 	assert.NoError(t, err)
 	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 	assert.NoError(t, err)
 	// Replace the orderer addresses
-	confEnv.Config.ChannelGroup.Values[ordererAddresses.Key()].Value = utils.MarshalOrPanic(ordererAddresses.Value())
+	confEnv.Config.ChannelGroup.Values[ordererAddresses.Key()].Value = protoutil.MarshalOrPanic(ordererAddresses.Value())
 	// And put it back into the block
-	payload.Data = utils.MarshalOrPanic(confEnv)
-	env.Payload = utils.MarshalOrPanic(payload)
-	block.Data.Data[0] = utils.MarshalOrPanic(env)
+	payload.Data = protoutil.MarshalOrPanic(confEnv)
+	env.Payload = protoutil.MarshalOrPanic(payload)
+	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
 	block.Header.DataHash = block.Data.Hash()
 }
 
@@ -949,8 +949,8 @@ func TestVerifierLoader(t *testing.T) {
 			ledgerHeight: 100,
 			lastBlock: &common.Block{
 				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
-						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 21}),
+					Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
+						Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 21}),
 					}), {}, {}},
 				},
 			},
@@ -963,8 +963,8 @@ func TestVerifierLoader(t *testing.T) {
 			ledgerHeight: 100,
 			lastBlock: &common.Block{
 				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
-						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 21}),
+					Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
+						Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 21}),
 					}), {}, {}},
 				},
 			},
@@ -978,8 +978,8 @@ func TestVerifierLoader(t *testing.T) {
 			ledgerHeight: 100,
 			lastBlock: &common.Block{
 				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
-						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 21}),
+					Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
+						Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 21}),
 					}), {}, {}},
 				},
 			},

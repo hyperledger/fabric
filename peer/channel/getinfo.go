@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -50,13 +50,13 @@ func (cc *endorserClient) getBlockChainInfo() (*cb.BlockchainInfo, error) {
 
 	var prop *pb.Proposal
 	c, _ := cc.cf.Signer.Serialize()
-	prop, _, err = utils.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", invocation, c)
+	prop, _, err = protoutil.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", invocation, c)
 	if err != nil {
 		return nil, errors.WithMessage(err, "cannot create proposal")
 	}
 
 	var signedProp *pb.SignedProposal
-	signedProp, err = utils.GetSignedProposal(prop, cc.cf.Signer)
+	signedProp, err = protoutil.GetSignedProposal(prop, cc.cf.Signer)
 	if err != nil {
 		return nil, errors.WithMessage(err, "cannot create signed proposal")
 	}

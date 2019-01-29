@@ -31,7 +31,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	raftprotos "github.com/hyperledger/fabric/protos/orderer/etcdraft"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -165,7 +165,7 @@ var _ = Describe("Chain", func() {
 
 		campaign := func(c *etcdraft.Chain, observeC <-chan raft.SoftState) {
 			Eventually(func() <-chan raft.SoftState {
-				c.Consensus(&orderer.ConsensusRequest{Payload: utils.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow})}, 0)
+				c.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow})}, 0)
 				return observeC
 			}, LongEventualTimeout).Should(Receive(StateEqual(1, raft.StateLeader)))
 		}
@@ -868,7 +868,7 @@ var _ = Describe("Chain", func() {
 							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
 							Expect(fakeFields.fakeSnapshotBlockNumber.SetCallCount()).To(Equal(1))
 							s, _ := opts.MemoryStorage.Snapshot()
-							b := utils.UnmarshalBlockOrPanic(s.Data)
+							b := protoutil.UnmarshalBlockOrPanic(s.Data)
 							Expect(fakeFields.fakeSnapshotBlockNumber.SetArgsForCall(0)).To(Equal(float64(b.Header.Number)))
 
 							i, _ = opts.MemoryStorage.FirstIndex()
@@ -880,7 +880,7 @@ var _ = Describe("Chain", func() {
 							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
 							Expect(fakeFields.fakeSnapshotBlockNumber.SetCallCount()).To(Equal(2))
 							s, _ = opts.MemoryStorage.Snapshot()
-							b = utils.UnmarshalBlockOrPanic(s.Data)
+							b = protoutil.UnmarshalBlockOrPanic(s.Data)
 							Expect(fakeFields.fakeSnapshotBlockNumber.SetArgsForCall(1)).To(Equal(float64(b.Header.Number)))
 						})
 
@@ -3147,7 +3147,7 @@ func (n *network) elect(id uint64) {
 	n.connLock.RUnlock()
 
 	// Send node an artificial MsgTimeoutNow to emulate leadership transfer.
-	c.Consensus(&orderer.ConsensusRequest{Payload: utils.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow})}, 0)
+	c.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow})}, 0)
 	Eventually(c.observe, LongEventualTimeout).Should(Receive(StateEqual(id, raft.StateLeader)))
 
 	// now observe leader change on other nodes

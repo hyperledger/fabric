@@ -1,24 +1,14 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package genesis
 
 import (
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 const (
@@ -45,18 +35,18 @@ func NewFactoryImpl(channelGroup *cb.ConfigGroup) Factory {
 
 // Block constructs and returns a genesis block for a given channel ID.
 func (f *factory) Block(channelID string) *cb.Block {
-	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG, msgVersion, channelID, epoch)
-	payloadSignatureHeader := utils.MakeSignatureHeader(nil, utils.CreateNonceOrPanic())
-	utils.SetTxID(payloadChannelHeader, payloadSignatureHeader)
-	payloadHeader := utils.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
-	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{ChannelGroup: f.channelGroup}})}
-	envelope := &cb.Envelope{Payload: utils.MarshalOrPanic(payload), Signature: nil}
+	payloadChannelHeader := protoutil.MakeChannelHeader(cb.HeaderType_CONFIG, msgVersion, channelID, epoch)
+	payloadSignatureHeader := protoutil.MakeSignatureHeader(nil, protoutil.CreateNonceOrPanic())
+	protoutil.SetTxID(payloadChannelHeader, payloadSignatureHeader)
+	payloadHeader := protoutil.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
+	payload := &cb.Payload{Header: payloadHeader, Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{ChannelGroup: f.channelGroup}})}
+	envelope := &cb.Envelope{Payload: protoutil.MarshalOrPanic(payload), Signature: nil}
 
 	block := cb.NewBlock(0, nil)
-	block.Data = &cb.BlockData{Data: [][]byte{utils.MarshalOrPanic(envelope)}}
+	block.Data = &cb.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(envelope)}}
 	block.Header.DataHash = block.Data.Hash()
-	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&cb.Metadata{
-		Value: utils.MarshalOrPanic(&cb.LastConfig{Index: 0}),
+	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&cb.Metadata{
+		Value: protoutil.MarshalOrPanic(&cb.LastConfig{Index: 0}),
 	})
 	return block
 }

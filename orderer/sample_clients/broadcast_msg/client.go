@@ -16,9 +16,9 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc"
-	"gopkg.in/cheggaaa/pb.v1"
+	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 type broadcastClient struct {
@@ -33,7 +33,7 @@ func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient, channelID str
 }
 
 func (s *broadcastClient) broadcast(transaction []byte) error {
-	env, err := utils.CreateSignedEnvelope(cb.HeaderType_MESSAGE, s.channelID, s.signer, &cb.ConfigValue{Value: transaction}, 0, 0)
+	env, err := protoutil.CreateSignedEnvelope(cb.HeaderType_MESSAGE, s.channelID, s.signer, &cb.ConfigValue{Value: transaction}, 0, 0)
 	if err != nil {
 		panic(err)
 	}

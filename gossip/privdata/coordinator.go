@@ -29,7 +29,7 @@ import (
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -385,16 +385,16 @@ func computeOwnedRWsets(block *common.Block, blockPvtData util.PvtDataCollection
 			logger.Warningf("Claimed SeqInBlock %d but block has only %d transactions", txPvtData.SeqInBlock, len(block.Data.Data))
 			continue
 		}
-		env, err := utils.GetEnvelopeFromBlock(block.Data.Data[txPvtData.SeqInBlock])
+		env, err := protoutil.GetEnvelopeFromBlock(block.Data.Data[txPvtData.SeqInBlock])
 		if err != nil {
 			return nil, err
 		}
-		payload, err := utils.GetPayload(env)
+		payload, err := protoutil.GetPayload(env)
 		if err != nil {
 			return nil, err
 		}
 
-		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 		if err != nil {
 			return nil, err
 		}
@@ -555,19 +555,19 @@ type blockConsumer func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *
 func (data blockData) forEachTxn(txsFilter txValidationFlags, consumer blockConsumer) (txns, error) {
 	var txList []string
 	for seqInBlock, envBytes := range data {
-		env, err := utils.GetEnvelopeFromBlock(envBytes)
+		env, err := protoutil.GetEnvelopeFromBlock(envBytes)
 		if err != nil {
 			logger.Warning("Invalid envelope:", err)
 			continue
 		}
 
-		payload, err := utils.GetPayload(env)
+		payload, err := protoutil.GetPayload(env)
 		if err != nil {
 			logger.Warning("Invalid payload:", err)
 			continue
 		}
 
-		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 		if err != nil {
 			logger.Warning("Invalid channel header:", err)
 			continue
@@ -584,19 +584,19 @@ func (data blockData) forEachTxn(txsFilter txValidationFlags, consumer blockCons
 			continue
 		}
 
-		respPayload, err := utils.GetActionFromEnvelope(envBytes)
+		respPayload, err := protoutil.GetActionFromEnvelope(envBytes)
 		if err != nil {
 			logger.Warning("Failed obtaining action from envelope", err)
 			continue
 		}
 
-		tx, err := utils.GetTransaction(payload.Data)
+		tx, err := protoutil.GetTransaction(payload.Data)
 		if err != nil {
 			logger.Warning("Invalid transaction in payload data for tx ", chdr.TxId, ":", err)
 			continue
 		}
 
-		ccActionPayload, err := utils.GetChaincodeActionPayload(tx.Actions[0].Payload)
+		ccActionPayload, err := protoutil.GetChaincodeActionPayload(tx.Actions[0].Payload)
 		if err != nil {
 			logger.Warning("Invalid chaincode action in payload for tx", chdr.TxId, ":", err)
 			continue

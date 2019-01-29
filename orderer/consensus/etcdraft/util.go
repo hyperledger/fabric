@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
@@ -248,23 +248,23 @@ func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 		return nil, errors.New("nil block")
 	}
 
-	envelope, err := utils.ExtractEnvelope(block, 0)
+	envelope, err := protoutil.ExtractEnvelope(block, 0)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to extract envelope from the block")
 	}
 
-	channelHeader, err := utils.ChannelHeader(envelope)
+	channelHeader, err := protoutil.ChannelHeader(envelope)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot extract channel header")
 	}
 
 	switch channelHeader.Type {
 	case int32(common.HeaderType_ORDERER_TRANSACTION):
-		payload, err := utils.UnmarshalPayload(envelope.Payload)
+		payload, err := protoutil.UnmarshalPayload(envelope.Payload)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to unmarshal envelope to extract config payload for orderer transaction")
 		}
-		configEnvelop, err := utils.UnmarshalEnvelope(payload.Data)
+		configEnvelop, err := protoutil.UnmarshalEnvelope(payload.Data)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to unmarshal config envelope for orderer type transaction")
 		}
@@ -283,7 +283,7 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.Metadata, 
 		return nil, errors.New("nil block")
 	}
 
-	if !utils.IsConfigBlock(block) {
+	if !protoutil.IsConfigBlock(block) {
 		return nil, errors.New("not a config block")
 	}
 
@@ -292,7 +292,7 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.Metadata, 
 		return nil, errors.Wrap(err, "cannot read config update")
 	}
 
-	payload, err := utils.ExtractPayload(configEnvelope)
+	payload, err := protoutil.ExtractPayload(configEnvelope)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to extract payload from config envelope")
 	}
@@ -315,7 +315,7 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 	if configBlock == nil {
 		return errors.New("nil block")
 	}
-	envelopeConfig, err := utils.ExtractEnvelope(configBlock, 0)
+	envelopeConfig, err := protoutil.ExtractEnvelope(configBlock, 0)
 	if err != nil {
 		return err
 	}

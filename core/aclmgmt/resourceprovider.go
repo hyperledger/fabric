@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 //--------- errors ---------
@@ -100,17 +100,17 @@ func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}
 	case *pb.SignedProposal:
 		signedProp, _ := idinfo.(*pb.SignedProposal)
 		// Prepare SignedData
-		proposal, err := utils.GetProposal(signedProp.ProposalBytes)
+		proposal, err := protoutil.GetProposal(signedProp.ProposalBytes)
 		if err != nil {
 			return fmt.Errorf("Failing extracting proposal during check policy with policy [%s]: [%s]", polName, err)
 		}
 
-		header, err := utils.GetHeader(proposal.Header)
+		header, err := protoutil.GetHeader(proposal.Header)
 		if err != nil {
 			return fmt.Errorf("Failing extracting header during check policy [%s]: [%s]", polName, err)
 		}
 
-		shdr, err := utils.GetSignatureHeader(header.SignatureHeader)
+		shdr, err := protoutil.GetSignatureHeader(header.SignatureHeader)
 		if err != nil {
 			return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy [%s]: [%s]", polName, err)
 		}

@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/discovery"
 	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -59,7 +59,7 @@ func TestNewCollectionFilterInvalidInput(t *testing.T) {
 				Payload: nil,
 			},
 		}
-		filter, err := principalsFromCollectionConfig(utils.MarshalOrPanic(collections))
+		filter, err := principalsFromCollectionConfig(protoutil.MarshalOrPanic(collections))
 		assert.Nil(t, filter)
 		assert.Contains(t, err.Error(), "expected a static collection")
 	})
@@ -75,7 +75,7 @@ func TestNewCollectionFilterInvalidInput(t *testing.T) {
 				},
 			},
 		}
-		filter, err := principalsFromCollectionConfig(utils.MarshalOrPanic(collections))
+		filter, err := principalsFromCollectionConfig(protoutil.MarshalOrPanic(collections))
 		assert.Nil(t, filter)
 		assert.Contains(t, err.Error(), "MemberOrgsPolicy of foo is nil")
 	})
@@ -92,7 +92,7 @@ func TestNewCollectionFilterInvalidInput(t *testing.T) {
 				},
 			},
 		}
-		filter, err := principalsFromCollectionConfig(utils.MarshalOrPanic(collections))
+		filter, err := principalsFromCollectionConfig(protoutil.MarshalOrPanic(collections))
 		assert.Nil(t, filter)
 		assert.Contains(t, err.Error(), "policy of foo is nil")
 	})
@@ -117,11 +117,11 @@ func TestToIdentityFilter(t *testing.T) {
 			CollectionNames: []string{"foo"},
 		})
 		assert.NoError(t, err)
-		identity := utils.MarshalOrPanic(&msp.SerializedIdentity{
+		identity := protoutil.MarshalOrPanic(&msp.SerializedIdentity{
 			Mspid: "Org2MSP",
 		})
 		assert.True(t, filter(identity))
-		identity = utils.MarshalOrPanic(&msp.SerializedIdentity{
+		identity = protoutil.MarshalOrPanic(&msp.SerializedIdentity{
 			Mspid: "Org3MSP",
 		})
 		assert.False(t, filter(identity))
@@ -184,7 +184,7 @@ func TestToMemberFilter(t *testing.T) {
 func TestIsIdentityAuthorizedByPrincipalSet(t *testing.T) {
 	principals := []*msp.MSPPrincipal{orgPrincipal("Org1MSP"), orgPrincipal("Org2MSP")}
 	t.Run("Authorized", func(t *testing.T) {
-		identity := utils.MarshalOrPanic(&msp.SerializedIdentity{
+		identity := protoutil.MarshalOrPanic(&msp.SerializedIdentity{
 			Mspid: "Org1MSP",
 		})
 		authorized := isIdentityAuthorizedByPrincipalSet("mychannel", &principalEvaluatorMock{}, principals, identity)
@@ -192,7 +192,7 @@ func TestIsIdentityAuthorizedByPrincipalSet(t *testing.T) {
 	})
 
 	t.Run("Unauthorized", func(t *testing.T) {
-		identity := utils.MarshalOrPanic(&msp.SerializedIdentity{
+		identity := protoutil.MarshalOrPanic(&msp.SerializedIdentity{
 			Mspid: "Org3MSP",
 		})
 		authorized := isIdentityAuthorizedByPrincipalSet("mychannel", &principalEvaluatorMock{}, principals, identity)
@@ -205,7 +205,7 @@ func TestFilterForPrincipalSets(t *testing.T) {
 	org2AndOrg3 := []*msp.MSPPrincipal{orgPrincipal("Org2MSP"), orgPrincipal("Org3MSP")}
 	org3AndOrg4 := []*msp.MSPPrincipal{orgPrincipal("Org3MSP"), orgPrincipal("Org4MSP")}
 
-	identity := utils.MarshalOrPanic(&msp.SerializedIdentity{
+	identity := protoutil.MarshalOrPanic(&msp.SerializedIdentity{
 		Mspid: "Org2MSP",
 	})
 
@@ -238,13 +238,13 @@ func buildCollectionConfig(col2principals map[string][]*msp.MSPPrincipal) []byte
 			},
 		})
 	}
-	return utils.MarshalOrPanic(collections)
+	return protoutil.MarshalOrPanic(collections)
 }
 
 func orgPrincipal(mspID string) *msp.MSPPrincipal {
 	return &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal: utils.MarshalOrPanic(&msp.MSPRole{
+		Principal: protoutil.MarshalOrPanic(&msp.MSPRole{
 			MspIdentifier: mspID,
 			Role:          msp.MSPRole_PEER,
 		}),

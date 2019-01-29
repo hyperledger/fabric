@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/peer/common/mock"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -162,11 +162,11 @@ func getMockDeliverService(block *cb.Block) *mock.DeliverService {
 
 func createTestBlock() *cb.Block {
 	lc := &cb.LastConfig{Index: 0}
-	lcBytes := putils.MarshalOrPanic(lc)
+	lcBytes := protoutil.MarshalOrPanic(lc)
 	metadata := &cb.Metadata{
 		Value: lcBytes,
 	}
-	metadataBytes := putils.MarshalOrPanic(metadata)
+	metadataBytes := protoutil.MarshalOrPanic(metadata)
 	blockMetadata := make([][]byte, cb.BlockMetadataIndex_LAST_CONFIG+1)
 	blockMetadata[cb.BlockMetadataIndex_LAST_CONFIG] = metadataBytes
 	block := &cb.Block{

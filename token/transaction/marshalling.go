@@ -11,7 +11,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/token"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/token/identity"
 	"github.com/pkg/errors"
 )
@@ -25,13 +25,13 @@ func UnmarshalTokenTransaction(raw []byte) (*cb.ChannelHeader, *token.TokenTrans
 	}
 
 	// the creator from the signature header
-	sh, err := utils.GetSignatureHeader(payload.Header.SignatureHeader)
+	sh, err := protoutil.GetSignatureHeader(payload.Header.SignatureHeader)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	creatorInfo := &TxCreatorInfo{public: sh.Creator}
 
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return nil, nil, nil, err
 	}

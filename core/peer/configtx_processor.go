@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 const (
@@ -38,8 +38,8 @@ func newConfigTxProcessor() customtx.Processor {
 // or the ledger is synching the state with the blockchain, during start up), the full config is computed using
 // the most recent configs from statedb
 func (tp *configtxProcessor) GenerateSimulationResults(txEnv *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
-	payload := utils.UnmarshalPayloadOrPanic(txEnv.Payload)
-	channelHdr := utils.UnmarshalChannelHeaderOrPanic(payload.Header.ChannelHeader)
+	payload := protoutil.UnmarshalPayloadOrPanic(txEnv.Payload)
+	channelHdr := protoutil.UnmarshalChannelHeaderOrPanic(payload.Header.ChannelHeader)
 	txType := common.HeaderType(channelHdr.GetType())
 
 	switch txType {
@@ -54,7 +54,7 @@ func (tp *configtxProcessor) GenerateSimulationResults(txEnv *common.Envelope, s
 
 func processChannelConfigTx(txEnv *common.Envelope, simulator ledger.TxSimulator) error {
 	configEnvelope := &common.ConfigEnvelope{}
-	if _, err := utils.UnmarshalEnvelopeOfType(txEnv, common.HeaderType_CONFIG, configEnvelope); err != nil {
+	if _, err := protoutil.UnmarshalEnvelopeOfType(txEnv, common.HeaderType_CONFIG, configEnvelope); err != nil {
 		return err
 	}
 	channelConfig := configEnvelope.Config

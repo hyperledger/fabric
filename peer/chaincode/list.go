@@ -18,7 +18,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -84,7 +84,7 @@ func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 	}
 
 	if getInstantiatedChaincodes {
-		prop, _, err = utils.CreateGetChaincodesProposal(channelID, creator)
+		prop, _, err = protoutil.CreateGetChaincodesProposal(channelID, creator)
 	}
 
 	if err != nil {
@@ -92,7 +92,7 @@ func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 	}
 
 	var signedProp *pb.SignedProposal
-	signedProp, err = utils.GetSignedProposal(prop, cf.Signer)
+	signedProp, err = protoutil.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
 		return errors.WithMessage(err, "error creating signed proposal")
 	}
@@ -191,7 +191,7 @@ func getInstalledChaincodesProposal(newLifecycle bool, creator []byte) (*pb.Prop
 	if newLifecycle {
 		return createNewLifecycleQueryInstalledChaincodeProposal(creator)
 	}
-	proposal, _, err := utils.CreateGetInstalledChaincodesProposal(creator)
+	proposal, _, err := protoutil.CreateGetInstalledChaincodesProposal(creator)
 	return proposal, err
 }
 
@@ -211,7 +211,7 @@ func createNewLifecycleQueryInstalledChaincodeProposal(creatorBytes []byte) (*pb
 		},
 	}
 
-	proposal, _, err := utils.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, creatorBytes)
+	proposal, _, err := protoutil.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, creatorBytes)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error creating proposal for ChaincodeInvocationSpec")
 	}

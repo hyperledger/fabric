@@ -26,7 +26,7 @@ import (
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -158,17 +158,17 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	t.Log(err)
 	// bad payload
 	gb = testutil.ConstructTestBlock(t, 12, 1, 1)
-	envBytes, _ := putils.GetBytesEnvelope(&common.Envelope{Payload: []byte{123}})
+	envBytes, _ := protoutil.GetBytesEnvelope(&common.Envelope{Payload: []byte{123}})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.Error(t, err)
 	t.Log(err)
 	// bad channel header
 	gb = testutil.ConstructTestBlock(t, 13, 1, 1)
-	payloadBytes, _ := putils.GetBytesPayload(&common.Payload{
+	payloadBytes, _ := protoutil.GetBytesPayload(&common.Payload{
 		Header: &common.Header{ChannelHeader: []byte{123}},
 	})
-	envBytes, _ = putils.GetBytesEnvelope(&common.Envelope{Payload: payloadBytes})
+	envBytes, _ = protoutil.GetBytesEnvelope(&common.Envelope{Payload: payloadBytes})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.Error(t, err)
@@ -176,10 +176,10 @@ func TestPreprocessProtoBlock(t *testing.T) {
 
 	// bad channel header with invalid filter set
 	gb = testutil.ConstructTestBlock(t, 14, 1, 1)
-	payloadBytes, _ = putils.GetBytesPayload(&common.Payload{
+	payloadBytes, _ = protoutil.GetBytesPayload(&common.Payload{
 		Header: &common.Header{ChannelHeader: []byte{123}},
 	})
-	envBytes, _ = putils.GetBytesEnvelope(&common.Envelope{Payload: payloadBytes})
+	envBytes, _ = protoutil.GetBytesEnvelope(&common.Envelope{Payload: payloadBytes})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
 	flags := lutils.NewTxValidationFlags(len(gb.Data.Data))
 	flags.SetFlag(0, peer.TxValidationCode_BAD_CHANNEL_HEADER)

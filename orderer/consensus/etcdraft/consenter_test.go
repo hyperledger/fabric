@@ -26,7 +26,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	etcdraftproto "github.com/hyperledger/fabric/protos/orderer/etcdraft"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -64,8 +64,8 @@ var _ = Describe("Consenter", func() {
 			},
 			Data: goodConfigBlock.Data,
 			Metadata: &common.BlockMetadata{
-				Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
-					Value: utils.MarshalOrPanic(&common.LastConfig{Index: 0}),
+				Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
+					Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 0}),
 				})},
 			},
 		}
@@ -154,7 +154,7 @@ var _ = Describe("Consenter", func() {
 				MaxSizePerMsg:   1048576,
 			},
 		}
-		metadata := utils.MarshalOrPanic(m)
+		metadata := protoutil.MarshalOrPanic(m)
 		support.SharedConfigReturns(&mockconfig.Orderer{
 			ConsensusMetadataVal: metadata,
 			CapabilitiesVal: &mockconfig.OrdererCapabilities{
@@ -196,7 +196,7 @@ var _ = Describe("Consenter", func() {
 				MaxSizePerMsg:   1048576,
 			},
 		}
-		metadata := utils.MarshalOrPanic(m)
+		metadata := protoutil.MarshalOrPanic(m)
 		support := &consensusmocks.FakeConsenterSupport{}
 		support.SharedConfigReturns(&mockconfig.Orderer{
 			ConsensusMetadataVal: metadata,
@@ -221,7 +221,7 @@ var _ = Describe("Consenter", func() {
 				{ServerTlsCert: []byte("cert.orderer1.org1")},
 			},
 		}
-		metadata := utils.MarshalOrPanic(m)
+		metadata := protoutil.MarshalOrPanic(m)
 		support.SharedConfigReturns(&mockconfig.Orderer{
 			ConsensusMetadataVal: metadata,
 			CapabilitiesVal: &mockconfig.OrdererCapabilities{
@@ -250,7 +250,7 @@ var _ = Describe("Consenter", func() {
 				MaxSizePerMsg:   1048576,
 			},
 		}
-		metadata := utils.MarshalOrPanic(m)
+		metadata := protoutil.MarshalOrPanic(m)
 		support.SharedConfigReturns(&mockconfig.Orderer{
 			ConsensusMetadataVal: metadata,
 			CapabilitiesVal: &mockconfig.OrdererCapabilities{

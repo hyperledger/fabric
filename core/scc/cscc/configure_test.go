@@ -54,7 +54,7 @@ import (
 	"github.com/hyperledger/fabric/peer/gossip/mocks"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -63,16 +63,19 @@ import (
 )
 
 //go:generate counterfeiter -o mock/config_manager.go --fake-name ConfigManager . configManager
+
 type configManager interface {
 	config.Manager
 }
 
 //go:generate counterfeiter -o mock/acl_provider.go --fake-name ACLProvider . aclProvider
+
 type aclProvider interface {
 	aclmgmt.ACLProvider
 }
 
 //go:generate counterfeiter -o mock/configtx_validator.go --fake-name ConfigtxValidator . configtxValidator
+
 type configtxValidator interface {
 	configtx.Validator
 }
@@ -299,7 +302,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		t.Fatalf("cscc invoke JoinChain failed because invalid block")
 	}
 	args := [][]byte{[]byte("JoinChain"), blockBytes}
-	sProp, _ := utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	identityDeserializer.Msg = sProp.ProposalBytes
 	sProp.Signature = sProp.ProposalBytes
 
@@ -321,7 +324,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	}
 	mockAclProvider.Reset()
 	mockAclProvider.On("CheckACL", resources.Cscc_JoinChain, "", sProp).Return(nil)
-	badBlockBytes := utils.MarshalOrPanic(badBlock)
+	badBlockBytes := protoutil.MarshalOrPanic(badBlock)
 	res = stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), badBlockBytes}, sProp)
 	assert.Equal(t, res.Status, int32(shim.ERROR))
 
@@ -343,7 +346,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 
 	// Query the configuration block
 	//chainID := []byte{143, 222, 22, 192, 73, 145, 76, 110, 167, 154, 118, 66, 132, 204, 113, 168}
-	chainID, err := utils.GetChainIDFromBlockBytes(blockBytes)
+	chainID, err := protoutil.GetChainIDFromBlockBytes(blockBytes)
 	if err != nil {
 		t.Fatalf("cscc invoke JoinChain failed with: %v", err)
 	}
@@ -451,16 +454,16 @@ func TestSimulateConfigTreeUpdate(t *testing.T) {
 	}
 
 	testUpdate := &cb.Envelope{
-		Payload: utils.MarshalOrPanic(&cb.Payload{
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
 					Type: int32(cb.HeaderType_CONFIG_UPDATE),
 				}),
 			},
 		}),
 	}
 
-	args := [][]byte{[]byte("SimulateConfigTreeUpdate"), []byte("testchan"), utils.MarshalOrPanic(testUpdate)}
+	args := [][]byte{[]byte("SimulateConfigTreeUpdate"), []byte("testchan"), protoutil.MarshalOrPanic(testUpdate)}
 
 	t.Run("Success", func(t *testing.T) {
 		ctxv := &mock.ConfigtxValidator{}
@@ -482,10 +485,10 @@ func TestSimulateConfigTreeUpdate(t *testing.T) {
 		res := pc.InvokeNoShim([][]byte{
 			args[0],
 			args[1],
-			utils.MarshalOrPanic(&cb.Envelope{
-				Payload: utils.MarshalOrPanic(&cb.Payload{
+			protoutil.MarshalOrPanic(&cb.Envelope{
+				Payload: protoutil.MarshalOrPanic(&cb.Payload{
 					Header: &cb.Header{
-						ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+						ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
 							Type: int32(cb.HeaderType_ENDORSER_TRANSACTION),
 						}),
 					},
@@ -541,7 +544,7 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	cg, err := encoder.NewChannelGroup(conf)
 	assert.NoError(t, err)
 	block := genesis.NewFactoryImpl(cg).Block("mytestchainid")
-	blockBytes := utils.MarshalOrPanic(block)
+	blockBytes := protoutil.MarshalOrPanic(block)
 
 	// Failed path: wrong parameter type
 	mockAclProvider.Reset()
@@ -558,7 +561,7 @@ func mockConfigBlock() []byte {
 	var blockBytes []byte = nil
 	block, err := configtxtest.MakeGenesisBlock("mytestchainid")
 	if err == nil {
-		blockBytes = utils.MarshalOrPanic(block)
+		blockBytes = protoutil.MarshalOrPanic(block)
 	}
 	return blockBytes
 }

@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // validateAndPreparePvtBatch pulls out the private write-set for the transactions that are marked as valid
@@ -110,9 +110,9 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 		var err error
 		txStatInfo := &txmgr.TxStatInfo{TxType: -1}
 		txsStatInfo = append(txsStatInfo, txStatInfo)
-		if env, err = utils.GetEnvelopeFromBlock(envBytes); err == nil {
-			if payload, err = utils.GetPayload(env); err == nil {
-				chdr, err = utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		if env, err = protoutil.GetEnvelopeFromBlock(envBytes); err == nil {
+			if payload, err = protoutil.GetPayload(env); err == nil {
+				chdr, err = protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 			}
 		}
 		if txsFilter.IsInvalid(txIndex) {
@@ -133,7 +133,7 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 		txStatInfo.TxType = txType
 		if txType == common.HeaderType_ENDORSER_TRANSACTION {
 			// extract actions from the envelope message
-			respPayload, err := utils.GetActionFromEnvelope(envBytes)
+			respPayload, err := protoutil.GetActionFromEnvelope(envBytes)
 			if err != nil {
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_NIL_TXACTION)
 				continue

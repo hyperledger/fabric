@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -165,7 +165,7 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 // NewBundleFromEnvelope wraps the NewBundle function, extracting the needed
 // information from a full configtx
 func NewBundleFromEnvelope(env *cb.Envelope) (*Bundle, error) {
-	payload, err := utils.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal payload from envelope")
 	}
@@ -179,7 +179,7 @@ func NewBundleFromEnvelope(env *cb.Envelope) (*Bundle, error) {
 		return nil, errors.Errorf("envelope header cannot be nil")
 	}
 
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal channel header")
 	}

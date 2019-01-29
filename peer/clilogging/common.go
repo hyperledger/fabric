@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric/peer/common"
 	common2 "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +42,7 @@ func InitCmdFactory() (*LoggingCmdFactory, error) {
 
 	localSigner := crypto.NewSignatureHeaderCreator(signer)
 	wrapEnv := func(msg proto.Message) *common2.Envelope {
-		env, err := utils.CreateSignedEnvelope(common2.HeaderType_PEER_ADMIN_OPERATION, "", localSigner, msg, 0, 0)
+		env, err := protoutil.CreateSignedEnvelope(common2.HeaderType_PEER_ADMIN_OPERATION, "", localSigner, msg, 0, 0)
 		if err != nil {
 			logger.Panicf("Failed signing: %v", err)
 		}

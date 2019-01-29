@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package fsblkstorage
@@ -25,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	putil "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -196,7 +186,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 		if containsAttr(indexItems, blkstorage.IndexableAttrTxID) {
 			assert.NoError(t, err, "Error while retrieving tx by id")
 			txEnvelopeBytes := blocks[0].Data.Data[0]
-			txEnvelopeOrig, err := putil.GetEnvelopeFromBlock(txEnvelopeBytes)
+			txEnvelopeOrig, err := protoutil.GetEnvelopeFromBlock(txEnvelopeBytes)
 			assert.NoError(t, err)
 			assert.Equal(t, txEnvelopeOrig, txEnvelope)
 		} else {
@@ -208,7 +198,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 		if containsAttr(indexItems, blkstorage.IndexableAttrBlockNumTranNum) {
 			assert.NoError(t, err, "Error while retrieving tx by blockNum and tranNum")
 			txEnvelopeBytes2 := blocks[0].Data.Data[0]
-			txEnvelopeOrig2, err2 := putil.GetEnvelopeFromBlock(txEnvelopeBytes2)
+			txEnvelopeOrig2, err2 := protoutil.GetEnvelopeFromBlock(txEnvelopeBytes2)
 			assert.NoError(t, err2)
 			assert.Equal(t, txEnvelopeOrig2, txEnvelope2)
 		} else {

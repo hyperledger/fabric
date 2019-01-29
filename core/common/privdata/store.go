@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -207,12 +207,12 @@ func isCreatorOfProposalAMember(signedProposal *pb.SignedProposal, collection *S
 }
 
 func getSignedData(signedProposal *pb.SignedProposal) (common.SignedData, error) {
-	proposal, err := utils.GetProposal(signedProposal.ProposalBytes)
+	proposal, err := protoutil.GetProposal(signedProposal.ProposalBytes)
 	if err != nil {
 		return common.SignedData{}, err
 	}
 
-	creator, _, err := utils.GetChaincodeProposalContext(proposal)
+	creator, _, err := protoutil.GetChaincodeProposalContext(proposal)
 	if err != nil {
 		return common.SignedData{}, err
 	}

@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
-	protoutils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,11 +54,11 @@ func (c *client) addPostOrderTx(txid string, customTxType common.HeaderType) *tx
 	if txid == "" {
 		txid = util.GenerateUUID()
 	}
-	channelHeader := protoutils.MakeChannelHeader(customTxType, 0, c.lgrID, 0)
+	channelHeader := protoutil.MakeChannelHeader(customTxType, 0, c.lgrID, 0)
 	channelHeader.TxId = txid
-	paylBytes := protoutils.MarshalOrPanic(
+	paylBytes := protoutil.MarshalOrPanic(
 		&common.Payload{
-			Header: protoutils.MakePayloadHeader(channelHeader, &common.SignatureHeader{}),
+			Header: protoutil.MakePayloadHeader(channelHeader, &common.SignatureHeader{}),
 			Data:   nil,
 		},
 	)

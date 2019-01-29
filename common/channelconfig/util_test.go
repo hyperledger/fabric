@@ -14,7 +14,7 @@ import (
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -59,7 +59,7 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 	config.ChannelGroup.Version = 0
 	config.ChannelGroup.ModPolicy = AdminsPolicyKey
 	config.ChannelGroup.Values[BlockDataHashingStructureKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(&cb.BlockDataHashingStructure{
+		Value: protoutil.MarshalOrPanic(&cb.BlockDataHashingStructure{
 			Width: defaultBlockDataHashingStructureWidth,
 		}),
 		ModPolicy: AdminsPolicyKey,
@@ -67,23 +67,23 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 	topCapabilities := make(map[string]bool)
 	topCapabilities[capabilities.ChannelV1_1] = true
 	config.ChannelGroup.Values[CapabilitiesKey] = &cb.ConfigValue{
-		Value:     utils.MarshalOrPanic(CapabilitiesValue(topCapabilities).Value()),
+		Value:     protoutil.MarshalOrPanic(CapabilitiesValue(topCapabilities).Value()),
 		ModPolicy: AdminsPolicyKey,
 	}
 	config.ChannelGroup.Values[ConsortiumKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(&cb.Consortium{
+		Value: protoutil.MarshalOrPanic(&cb.Consortium{
 			Name: "testConsortium",
 		}),
 		ModPolicy: AdminsPolicyKey,
 	}
 	config.ChannelGroup.Values[HashingAlgorithmKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(&cb.HashingAlgorithm{
+		Value: protoutil.MarshalOrPanic(&cb.HashingAlgorithm{
 			Name: defaultHashingAlgorithm,
 		}),
 		ModPolicy: AdminsPolicyKey,
 	}
 	config.ChannelGroup.Values[OrdererAddressesKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(&cb.OrdererAddresses{
+		Value: protoutil.MarshalOrPanic(&cb.OrdererAddresses{
 			Addresses: []string{"orderer.example.com"},
 		}),
 		ModPolicy: AdminsPolicyKey,
@@ -99,7 +99,7 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 	appCapabilities := make(map[string]bool)
 	appCapabilities[capabilities.ApplicationV1_1] = true
 	config.ChannelGroup.Groups[ApplicationGroupKey].Values[CapabilitiesKey] = &cb.ConfigValue{
-		Value:     utils.MarshalOrPanic(CapabilitiesValue(appCapabilities).Value()),
+		Value:     protoutil.MarshalOrPanic(CapabilitiesValue(appCapabilities).Value()),
 		ModPolicy: AdminsPolicyKey,
 	}
 
@@ -111,7 +111,7 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 	config.ChannelGroup.Groups[OrdererGroupKey].Policies[WritersPolicyKey] = &cb.ConfigPolicy{}
 	config.ChannelGroup.Groups[OrdererGroupKey].Policies[AdminsPolicyKey] = &cb.ConfigPolicy{}
 	config.ChannelGroup.Groups[OrdererGroupKey].Values[BatchSizeKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(
+		Value: protoutil.MarshalOrPanic(
 			&ab.BatchSize{
 				MaxMessageCount:   65535,
 				AbsoluteMaxBytes:  1024000000,
@@ -120,7 +120,7 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 		ModPolicy: AdminsPolicyKey,
 	}
 	config.ChannelGroup.Groups[OrdererGroupKey].Values[BatchTimeoutKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(
+		Value: protoutil.MarshalOrPanic(
 			&ab.BatchTimeout{
 				Timeout: "2s",
 			}),
@@ -129,11 +129,11 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 	ordererCapabilities := make(map[string]bool)
 	ordererCapabilities[capabilities.OrdererV1_1] = true
 	config.ChannelGroup.Groups[OrdererGroupKey].Values[CapabilitiesKey] = &cb.ConfigValue{
-		Value:     utils.MarshalOrPanic(CapabilitiesValue(ordererCapabilities).Value()),
+		Value:     protoutil.MarshalOrPanic(CapabilitiesValue(ordererCapabilities).Value()),
 		ModPolicy: AdminsPolicyKey,
 	}
 	config.ChannelGroup.Groups[OrdererGroupKey].Values[ConsensusTypeKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(
+		Value: protoutil.MarshalOrPanic(
 			&ab.ConsensusType{
 				Type: "solo",
 			}),
@@ -141,21 +141,21 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 	}
 
 	env := &cb.Envelope{
-		Payload: utils.MarshalOrPanic(&cb.Payload{
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
 					ChannelId: "testChain",
 					Type:      int32(cb.HeaderType_CONFIG),
 				}),
 			},
-			Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
+			Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{
 				Config: config,
 			}),
 		}),
 	}
 	configBlock := &cb.Block{
 		Data: &cb.BlockData{
-			Data: [][]byte{[]byte(utils.MarshalOrPanic(env))},
+			Data: [][]byte{[]byte(protoutil.MarshalOrPanic(env))},
 		},
 	}
 	return configBlock
@@ -173,7 +173,7 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	config.ChannelGroup.Version = 0
 	config.ChannelGroup.ModPolicy = AdminsPolicyKey
 	config.ChannelGroup.Values[BlockDataHashingStructureKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(&cb.BlockDataHashingStructure{
+		Value: protoutil.MarshalOrPanic(&cb.BlockDataHashingStructure{
 			Width: defaultBlockDataHashingStructureWidth,
 		}),
 		ModPolicy: AdminsPolicyKey,
@@ -181,23 +181,23 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	topCapabilities := make(map[string]bool)
 	topCapabilities["INCOMPATIBLE_CAPABILITIES"] = true
 	config.ChannelGroup.Values[CapabilitiesKey] = &cb.ConfigValue{
-		Value:     utils.MarshalOrPanic(CapabilitiesValue(topCapabilities).Value()),
+		Value:     protoutil.MarshalOrPanic(CapabilitiesValue(topCapabilities).Value()),
 		ModPolicy: AdminsPolicyKey,
 	}
 	config.ChannelGroup.Values[ConsortiumKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(&cb.Consortium{
+		Value: protoutil.MarshalOrPanic(&cb.Consortium{
 			Name: "testConsortium",
 		}),
 		ModPolicy: AdminsPolicyKey,
 	}
 	config.ChannelGroup.Values[HashingAlgorithmKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(&cb.HashingAlgorithm{
+		Value: protoutil.MarshalOrPanic(&cb.HashingAlgorithm{
 			Name: defaultHashingAlgorithm,
 		}),
 		ModPolicy: AdminsPolicyKey,
 	}
 	config.ChannelGroup.Values[OrdererAddressesKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(&cb.OrdererAddresses{
+		Value: protoutil.MarshalOrPanic(&cb.OrdererAddresses{
 			Addresses: []string{"orderer.example.com"},
 		}),
 		ModPolicy: AdminsPolicyKey,
@@ -213,7 +213,7 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	appCapabilities := make(map[string]bool)
 	appCapabilities["INCOMPATIBLE_CAPABILITIES"] = true
 	config.ChannelGroup.Groups[ApplicationGroupKey].Values[CapabilitiesKey] = &cb.ConfigValue{
-		Value:     utils.MarshalOrPanic(CapabilitiesValue(appCapabilities).Value()),
+		Value:     protoutil.MarshalOrPanic(CapabilitiesValue(appCapabilities).Value()),
 		ModPolicy: AdminsPolicyKey,
 	}
 
@@ -225,7 +225,7 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	config.ChannelGroup.Groups[OrdererGroupKey].Policies[WritersPolicyKey] = &cb.ConfigPolicy{}
 	config.ChannelGroup.Groups[OrdererGroupKey].Policies[AdminsPolicyKey] = &cb.ConfigPolicy{}
 	config.ChannelGroup.Groups[OrdererGroupKey].Values[BatchSizeKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(
+		Value: protoutil.MarshalOrPanic(
 			&ab.BatchSize{
 				MaxMessageCount:   65535,
 				AbsoluteMaxBytes:  1024000000,
@@ -234,7 +234,7 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 		ModPolicy: AdminsPolicyKey,
 	}
 	config.ChannelGroup.Groups[OrdererGroupKey].Values[BatchTimeoutKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(
+		Value: protoutil.MarshalOrPanic(
 			&ab.BatchTimeout{
 				Timeout: "2s",
 			}),
@@ -243,11 +243,11 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	ordererCapabilities := make(map[string]bool)
 	ordererCapabilities["INCOMPATIBLE_CAPABILITIES"] = true
 	config.ChannelGroup.Groups[OrdererGroupKey].Values[CapabilitiesKey] = &cb.ConfigValue{
-		Value:     utils.MarshalOrPanic(CapabilitiesValue(ordererCapabilities).Value()),
+		Value:     protoutil.MarshalOrPanic(CapabilitiesValue(ordererCapabilities).Value()),
 		ModPolicy: AdminsPolicyKey,
 	}
 	config.ChannelGroup.Groups[OrdererGroupKey].Values[ConsensusTypeKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(
+		Value: protoutil.MarshalOrPanic(
 			&ab.ConsensusType{
 				Type: "solo",
 			}),
@@ -255,21 +255,21 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	}
 
 	env := &cb.Envelope{
-		Payload: utils.MarshalOrPanic(&cb.Payload{
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
 					ChannelId: "testChain",
 					Type:      int32(cb.HeaderType_CONFIG),
 				}),
 			},
-			Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
+			Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{
 				Config: config,
 			}),
 		}),
 	}
 	configBlock := &cb.Block{
 		Data: &cb.BlockData{
-			Data: [][]byte{[]byte(utils.MarshalOrPanic(env))},
+			Data: [][]byte{[]byte(protoutil.MarshalOrPanic(env))},
 		},
 	}
 	return configBlock

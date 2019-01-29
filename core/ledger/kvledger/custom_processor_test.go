@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,8 +25,8 @@ type customTxProcessor struct {
 }
 
 func (ctp *customTxProcessor) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
-	payload := utils.UnmarshalPayloadOrPanic(txEnvelop.Payload)
-	chHdr, _ := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	payload := protoutil.UnmarshalPayloadOrPanic(txEnvelop.Payload)
+	chHdr, _ := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	chainid := chHdr.ChannelId
 	kvw := &kvrwset.KVWrite{}
 	if err := proto.Unmarshal(payload.Data, kvw); err != nil {
@@ -96,7 +96,7 @@ func TestCustomProcessor(t *testing.T) {
 
 func createCustomTx(t *testing.T, txType common.HeaderType, chainid, key, val string) *common.Envelope {
 	kvWrite := &kvrwset.KVWrite{Key: key, Value: []byte(val)}
-	txEnv, err := utils.CreateSignedEnvelope(txType, chainid, nil, kvWrite, 0, 0)
+	txEnv, err := protoutil.CreateSignedEnvelope(txType, chainid, nil, kvWrite, 0, 0)
 	assert.NoError(t, err)
 	return txEnv
 }

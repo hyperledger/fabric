@@ -22,7 +22,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -254,7 +254,7 @@ func SetACLPolicy(network *nwo.Network, channel, policyName, policy string, orde
 	// set the policy
 	updatedConfig.ChannelGroup.Groups["Application"].Values["ACLs"] = &common.ConfigValue{
 		ModPolicy: "Admins",
-		Value: utils.MarshalOrPanic(&pb.ACLs{
+		Value: protoutil.MarshalOrPanic(&pb.ACLs{
 			Acls: map[string]*pb.APIResource{
 				policyName: {PolicyRef: policy},
 			},
@@ -269,13 +269,13 @@ func SetACLPolicy(network *nwo.Network, channel, policyName, policy string, orde
 func GetTxIDFromBlockFile(blockFile string) string {
 	block := nwo.UnmarshalBlockFromFile(blockFile)
 
-	envelope, err := utils.GetEnvelopeFromBlock(block.Data.Data[0])
+	envelope, err := protoutil.GetEnvelopeFromBlock(block.Data.Data[0])
 	Expect(err).NotTo(HaveOccurred())
 
-	payload, err := utils.GetPayload(envelope)
+	payload, err := protoutil.GetPayload(envelope)
 	Expect(err).NotTo(HaveOccurred())
 
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	Expect(err).NotTo(HaveOccurred())
 
 	return chdr.TxId

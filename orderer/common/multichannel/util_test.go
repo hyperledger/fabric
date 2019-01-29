@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 type mockConsenter struct {
@@ -74,7 +74,7 @@ func (mch *mockChain) Start() {
 				return
 			}
 
-			chdr, err := utils.ChannelHeader(msg)
+			chdr, err := protoutil.ChannelHeader(msg)
 			if err != nil {
 				logger.Panicf("If a message has arrived to this point, it should already have had header inspected once: %s", err)
 			}
@@ -121,14 +121,14 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 		Value: []byte(fmt.Sprintf("%d", i)),
 	}
 	return makeConfigTxFromConfigUpdateEnvelope(chainID, &cb.ConfigUpdateEnvelope{
-		ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
+		ConfigUpdate: protoutil.MarshalOrPanic(&cb.ConfigUpdate{
 			WriteSet: group,
 		}),
 	})
 }
 
 func wrapConfigTx(env *cb.Envelope) *cb.Envelope {
-	result, err := utils.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, genesisconfig.TestChainID, mockCrypto(), env, msgVersion, epoch)
+	result, err := protoutil.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, genesisconfig.TestChainID, mockCrypto(), env, msgVersion, epoch)
 	if err != nil {
 		panic(err)
 	}
@@ -136,11 +136,11 @@ func wrapConfigTx(env *cb.Envelope) *cb.Envelope {
 }
 
 func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
-	configUpdateTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, chainID, mockCrypto(), configUpdateEnv, msgVersion, epoch)
+	configUpdateTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, chainID, mockCrypto(), configUpdateEnv, msgVersion, epoch)
 	if err != nil {
 		panic(err)
 	}
-	configTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), &cb.ConfigEnvelope{
+	configTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), &cb.ConfigEnvelope{
 		Config:     &cb.Config{Sequence: 1, ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
 		LastUpdate: configUpdateTx},
 		msgVersion, epoch)
@@ -153,15 +153,15 @@ func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.Co
 func makeNormalTx(chainID string, i int) *cb.Envelope {
 	payload := &cb.Payload{
 		Header: &cb.Header{
-			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+			ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
 				Type:      int32(cb.HeaderType_ENDORSER_TRANSACTION),
 				ChannelId: chainID,
 			}),
-			SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
+			SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{}),
 		},
 		Data: []byte(fmt.Sprintf("%d", i)),
 	}
 	return &cb.Envelope{
-		Payload: utils.MarshalOrPanic(payload),
+		Payload: protoutil.MarshalOrPanic(payload),
 	}
 }

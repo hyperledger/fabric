@@ -16,7 +16,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -119,7 +119,7 @@ var _ = Describe("Integration", func() {
 			// Define for the org
 			fakeStub.GetArgsReturns([][]byte{
 				[]byte("ApproveChaincodeDefinitionForMyOrg"),
-				utils.MarshalOrPanic(&lb.ApproveChaincodeDefinitionForMyOrgArgs{
+				protoutil.MarshalOrPanic(&lb.ApproveChaincodeDefinitionForMyOrgArgs{
 					Name:                "cc-name",
 					Version:             "1.0",
 					Sequence:            1,
@@ -135,7 +135,7 @@ var _ = Describe("Integration", func() {
 			// Define for the channel
 			fakeStub.GetArgsReturns([][]byte{
 				[]byte("CommitChaincodeDefinition"),
-				utils.MarshalOrPanic(&lb.CommitChaincodeDefinitionArgs{
+				protoutil.MarshalOrPanic(&lb.CommitChaincodeDefinitionArgs{
 					Name:                "cc-name",
 					Version:             "1.0",
 					Sequence:            1,
@@ -152,7 +152,7 @@ var _ = Describe("Integration", func() {
 			// Get channel definitions
 			fakeStub.GetArgsReturns([][]byte{
 				[]byte("QueryNamespaceDefinitions"),
-				utils.MarshalOrPanic(&lb.QueryNamespaceDefinitionsArgs{}),
+				protoutil.MarshalOrPanic(&lb.QueryNamespaceDefinitionsArgs{}),
 			})
 			response = scc.Invoke(fakeStub)
 			Expect(response.Status).To(Equal(int32(200)))
@@ -167,7 +167,7 @@ var _ = Describe("Integration", func() {
 			// Get chaincode definition details
 			fakeStub.GetArgsReturns([][]byte{
 				[]byte("QueryChaincodeDefinition"),
-				utils.MarshalOrPanic(&lb.QueryChaincodeDefinitionArgs{
+				protoutil.MarshalOrPanic(&lb.QueryChaincodeDefinitionArgs{
 					Name: "cc-name",
 				}),
 			})

@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package gossip
@@ -38,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pmsp "github.com/hyperledger/fabric/protos/msp"
 	protospeer "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -249,8 +239,8 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner crypto.L
 	block := common.NewBlock(seqNum, nil)
 
 	// Add a fake transaction to the block referring channel "C"
-	sProp, _ := utils.MockSignedEndorserProposalOrPanic(channel, &protospeer.ChaincodeSpec{}, []byte("transactor"), []byte("transactor's signature"))
-	sPropRaw, err := utils.Marshal(sProp)
+	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(channel, &protospeer.ChaincodeSpec{}, []byte("transactor"), []byte("transactor's signature"))
+	sPropRaw, err := protoutil.Marshal(sProp)
 	assert.NoError(t, err, "Failed marshalling signed proposal")
 	block.Data.Data = [][]byte{sPropRaw}
 
@@ -266,7 +256,7 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner crypto.L
 	assert.NoError(t, err, "Failed generating signature header")
 
 	blockSignature := &common.MetadataSignature{
-		SignatureHeader: utils.MarshalOrPanic(shdr),
+		SignatureHeader: protoutil.MarshalOrPanic(shdr),
 	}
 
 	// Note, this value is intentionally nil, as this metadata is only about the signature, there is no additional metadata
@@ -277,7 +267,7 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner crypto.L
 	blockSignature.Signature, err = localSigner.Sign(msg)
 	assert.NoError(t, err, "Failed signing block")
 
-	block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = utils.MarshalOrPanic(&common.Metadata{
+	block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&common.Metadata{
 		Value: blockSignatureValue,
 		Signatures: []*common.MetadataSignature{
 			blockSignature,

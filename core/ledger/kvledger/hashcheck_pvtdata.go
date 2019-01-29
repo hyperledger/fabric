@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -13,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // ConstructValidAndInvalidPvtData computes the valid pvt data and hash mismatch list
@@ -77,7 +78,7 @@ func retrieveRwsetForTx(blkNum uint64, txNum uint64, blockStore *ledgerstorage.S
 		return nil, err
 	}
 	// retrieve pvtRWset hash from the txEnvelope
-	responsePayload, err := utils.GetActionFromEnvelopeMsg(txEnvelope)
+	responsePayload, err := protoutil.GetActionFromEnvelopeMsg(txEnvelope)
 	if err != nil {
 		return nil, err
 	}

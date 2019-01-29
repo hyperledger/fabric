@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package encoder
 
 import (
+	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -20,9 +21,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
-
-	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -56,7 +55,7 @@ const (
 
 func addValue(cg *cb.ConfigGroup, value channelconfig.ConfigValue, modPolicy string) {
 	cg.Values[value.Key()] = &cb.ConfigValue{
-		Value:     utils.MarshalOrPanic(value.Value()),
+		Value:     protoutil.MarshalOrPanic(value.Value()),
 		ModPolicy: modPolicy,
 	}
 }
@@ -91,7 +90,7 @@ func AddPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.Policy,
 				ModPolicy: modPolicy,
 				Policy: &cb.Policy{
 					Type:  int32(cb.Policy_IMPLICIT_META),
-					Value: utils.MarshalOrPanic(imp),
+					Value: protoutil.MarshalOrPanic(imp),
 				},
 			}
 		case SignaturePolicyType:
@@ -103,7 +102,7 @@ func AddPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.Policy,
 				ModPolicy: modPolicy,
 				Policy: &cb.Policy{
 					Type:  int32(cb.Policy_SIGNATURE),
-					Value: utils.MarshalOrPanic(sp),
+					Value: protoutil.MarshalOrPanic(sp),
 				},
 			}
 		default:
@@ -376,7 +375,7 @@ func NewChannelCreateConfigUpdate(channelID string, conf *genesisconfig.Profile,
 	updt.ReadSet.Values[channelconfig.ConsortiumKey] = &cb.ConfigValue{Version: 0}
 	updt.WriteSet.Values[channelconfig.ConsortiumKey] = &cb.ConfigValue{
 		Version: 0,
-		Value: utils.MarshalOrPanic(&cb.Consortium{
+		Value: protoutil.MarshalOrPanic(&cb.Consortium{
 			Name: conf.Consortium,
 		}),
 	}
@@ -485,7 +484,7 @@ func MakeChannelCreationTransactionFromTemplate(channelID string, signer crypto.
 	}
 
 	newConfigUpdateEnv := &cb.ConfigUpdateEnvelope{
-		ConfigUpdate: utils.MarshalOrPanic(newChannelConfigUpdate),
+		ConfigUpdate: protoutil.MarshalOrPanic(newChannelConfigUpdate),
 	}
 
 	if signer != nil {
@@ -495,7 +494,7 @@ func MakeChannelCreationTransactionFromTemplate(channelID string, signer crypto.
 		}
 
 		newConfigUpdateEnv.Signatures = []*cb.ConfigSignature{{
-			SignatureHeader: utils.MarshalOrPanic(sigHeader),
+			SignatureHeader: protoutil.MarshalOrPanic(sigHeader),
 		}}
 
 		newConfigUpdateEnv.Signatures[0].Signature, err = signer.Sign(util.ConcatenateBytes(newConfigUpdateEnv.Signatures[0].SignatureHeader, newConfigUpdateEnv.ConfigUpdate))
@@ -505,7 +504,7 @@ func MakeChannelCreationTransactionFromTemplate(channelID string, signer crypto.
 
 	}
 
-	return utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, newConfigUpdateEnv, msgVersion, epoch)
+	return protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, newConfigUpdateEnv, msgVersion, epoch)
 }
 
 // HasSkippedForeignOrgs is used to detect whether a configuration includes

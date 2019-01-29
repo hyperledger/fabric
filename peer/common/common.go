@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/peer/common/api"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -181,12 +181,12 @@ func GetOrdererEndpointOfChain(chainID string, signer msp.SigningIdentity, endor
 		return nil, errors.WithMessage(err, fmt.Sprintf("error serializing identity for %s", signer.GetIdentifier()))
 	}
 
-	prop, _, err := putils.CreateProposalFromCIS(pcommon.HeaderType_CONFIG, "", invocation, creator)
+	prop, _, err := protoutil.CreateProposalFromCIS(pcommon.HeaderType_CONFIG, "", invocation, creator)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error creating GetConfigBlock proposal")
 	}
 
-	signedProp, err := putils.GetSignedProposal(prop, signer)
+	signedProp, err := protoutil.GetSignedProposal(prop, signer)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error creating signed GetConfigBlock proposal")
 	}
@@ -205,12 +205,12 @@ func GetOrdererEndpointOfChain(chainID string, signer msp.SigningIdentity, endor
 	}
 
 	// parse config block
-	block, err := putils.GetBlockFromBlockBytes(proposalResp.Response.Payload)
+	block, err := protoutil.GetBlockFromBlockBytes(proposalResp.Response.Payload)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error unmarshaling config block")
 	}
 
-	envelopeConfig, err := putils.ExtractEnvelope(block, 0)
+	envelopeConfig, err := protoutil.ExtractEnvelope(block, 0)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error extracting config block envelope")
 	}

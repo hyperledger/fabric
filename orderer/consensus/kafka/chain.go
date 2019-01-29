@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -231,7 +231,7 @@ func (chain *chainImpl) order(env *cb.Envelope, configSeq uint64, originalOffset
 		return fmt.Errorf("[channel: %s] cannot enqueue, consensus-type migration pending", chain.ChainID())
 	}
 
-	marshaledEnv, err := utils.Marshal(env)
+	marshaledEnv, err := protoutil.Marshal(env)
 	if err != nil {
 		return fmt.Errorf("[channel: %s] cannot enqueue, unable to marshal envelope because = %s", chain.ChainID(), err)
 	}
@@ -262,7 +262,7 @@ func (chain *chainImpl) configure(config *cb.Envelope, configSeq uint64, origina
 		}
 	}
 
-	marshaledConfig, err := utils.Marshal(config)
+	marshaledConfig, err := protoutil.Marshal(config)
 	if err != nil {
 		return fmt.Errorf("cannot enqueue, unable to marshal config because %s", err)
 	}
@@ -282,7 +282,7 @@ func (chain *chainImpl) enqueue(kafkaMsg *ab.KafkaMessage) bool {
 			logger.Warningf("[channel: %s] consenter for this channel has been halted", chain.ChainID())
 			return false
 		default: // The post path
-			payload, err := utils.Marshal(kafkaMsg)
+			payload, err := protoutil.Marshal(kafkaMsg)
 			if err != nil {
 				logger.Errorf("[channel: %s] unable to marshal Kafka message because = %s", chain.ChainID(), err)
 				return false
@@ -304,7 +304,7 @@ func (chain *chainImpl) enqueue(kafkaMsg *ab.KafkaMessage) bool {
 func (chain *chainImpl) HealthCheck(ctx context.Context) error {
 	var err error
 
-	payload := utils.MarshalOrPanic(newConnectMessage())
+	payload := protoutil.MarshalOrPanic(newConnectMessage())
 	message := newProducerMessage(chain.channel, payload)
 
 	_, _, err = chain.producer.SendMessage(message)
@@ -687,7 +687,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 
 		// Commit the first block
 		block := chain.CreateNextBlock(batches[0])
-		metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+		metadata := protoutil.MarshalOrPanic(&ab.KafkaMetadata{
 			LastOffsetPersisted:         offset,
 			LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
 			LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
@@ -702,7 +702,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			offset++
 
 			block := chain.CreateNextBlock(batches[1])
-			metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+			metadata := protoutil.MarshalOrPanic(&ab.KafkaMetadata{
 				LastOffsetPersisted:         offset,
 				LastOriginalOffsetProcessed: newOffset,
 				LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
@@ -727,7 +727,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		if batch != nil {
 			logger.Debugf("[channel: %s] Cut pending messages into block", chain.ChainID())
 			block := chain.CreateNextBlock(batch)
-			metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+			metadata := protoutil.MarshalOrPanic(&ab.KafkaMetadata{
 				LastOffsetPersisted:         receivedOffset - 1,
 				LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
 				LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
@@ -739,7 +739,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		logger.Debugf("[channel: %s] Creating isolated block for config message", chain.ChainID())
 		chain.lastOriginalOffsetProcessed = newOffset
 		block := chain.CreateNextBlock([]*cb.Envelope{message})
-		metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+		metadata := protoutil.MarshalOrPanic(&ab.KafkaMetadata{
 			LastOffsetPersisted:         receivedOffset,
 			LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
 			LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
@@ -770,7 +770,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		// Received regular message of type UNKNOWN or resubmission if off, indicating an OSN network with v1.0.x orderer
 		logger.Warningf("[channel: %s] This orderer is running in compatibility mode", chain.ChainID())
 
-		chdr, err := utils.ChannelHeader(env)
+		chdr, err := protoutil.ChannelHeader(env)
 		if err != nil {
 			return fmt.Errorf("discarding bad config message because of channel header unmarshalling error = %s", err)
 		}
@@ -957,11 +957,11 @@ func (chain *chainImpl) processMigrationStep(configTx *cb.Envelope) (commitBlock
 		return true, nil
 	}
 
-	payload := utils.UnmarshalPayloadOrPanic(configTx.Payload)
+	payload := protoutil.UnmarshalPayloadOrPanic(configTx.Payload)
 	if payload.Header == nil {
 		logger.Panicf("Consensus-type migration: Told to process a config tx, but configtx payload header is missing")
 	}
-	chdr := utils.UnmarshalChannelHeaderOrPanic(payload.Header.ChannelHeader)
+	chdr := protoutil.UnmarshalChannelHeaderOrPanic(payload.Header.ChannelHeader)
 
 	logger.Debugf("[channel: %s] Consensus-type migration: Processing, header: %v", chain.ChainID(), chdr.String())
 
@@ -1047,7 +1047,7 @@ func (chain *chainImpl) processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, r
 				" no pending requests though; this might indicate a bug", chain.lastCutBlockNumber+1)
 		}
 		block := chain.CreateNextBlock(batch)
-		metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+		metadata := protoutil.MarshalOrPanic(&ab.KafkaMetadata{
 			LastOffsetPersisted:         receivedOffset,
 			LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
 		})
@@ -1069,7 +1069,7 @@ func (chain *chainImpl) processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, r
 func sendConnectMessage(retryOptions localconfig.Retry, exitChan chan struct{}, producer sarama.SyncProducer, channel channel) error {
 	logger.Infof("[channel: %s] About to post the CONNECT message...", channel.topic())
 
-	payload := utils.MarshalOrPanic(newConnectMessage())
+	payload := protoutil.MarshalOrPanic(newConnectMessage())
 	message := newProducerMessage(channel, payload)
 
 	retryMsg := "Attempting to post the CONNECT message..."
@@ -1090,7 +1090,7 @@ func sendConnectMessage(retryOptions localconfig.Retry, exitChan chan struct{}, 
 func sendTimeToCut(producer sarama.SyncProducer, channel channel, timeToCutBlockNumber uint64, timer *<-chan time.Time) error {
 	logger.Debugf("[channel: %s] Time-to-cut block %d timer expired", channel.topic(), timeToCutBlockNumber)
 	*timer = nil
-	payload := utils.MarshalOrPanic(newTimeToCutMessage(timeToCutBlockNumber))
+	payload := protoutil.MarshalOrPanic(newTimeToCutMessage(timeToCutBlockNumber))
 	message := newProducerMessage(channel, payload)
 	_, _, err := producer.SendMessage(message)
 	return err
@@ -1307,7 +1307,7 @@ func getHealthyClusterReplicaInfo(retryOptions localconfig.Retry, haltChan chan 
 // This is only called during consensus-type migration, so the extra work
 // (unmarshaling the envelope again) is not that important.
 func isOrdererTx(env *cb.Envelope) (bool, error) {
-	payload, err := utils.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
 	if err != nil {
 		return false, err
 	}
@@ -1320,7 +1320,7 @@ func isOrdererTx(env *cb.Envelope) (bool, error) {
 		return false, errors.Errorf("Abort processing config msg because no channel header was set")
 	}
 
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return false, errors.Errorf("Abort processing config msg because channel header unmarshalling error: %s", err)
 	}

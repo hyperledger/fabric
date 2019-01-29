@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,18 +45,18 @@ func buildBlockWithTxs(txs ...[]byte) *common.Block {
 }
 
 func buildTXWithRwset(rws []byte) []byte {
-	return utils.MarshalOrPanic(&common.Envelope{
-		Payload: utils.MarshalOrPanic(
+	return protoutil.MarshalOrPanic(&common.Envelope{
+		Payload: protoutil.MarshalOrPanic(
 			&common.Payload{
-				Data: utils.MarshalOrPanic(
+				Data: protoutil.MarshalOrPanic(
 					&pb.Transaction{
 						Actions: []*pb.TransactionAction{
 							{
-								Payload: utils.MarshalOrPanic(&pb.ChaincodeActionPayload{
+								Payload: protoutil.MarshalOrPanic(&pb.ChaincodeActionPayload{
 									Action: &pb.ChaincodeEndorsedAction{
-										ProposalResponsePayload: utils.MarshalOrPanic(
+										ProposalResponsePayload: protoutil.MarshalOrPanic(
 											&pb.ProposalResponsePayload{
-												Extension: utils.MarshalOrPanic(&pb.ChaincodeAction{Results: rws}),
+												Extension: protoutil.MarshalOrPanic(&pb.ChaincodeAction{Results: rws}),
 											},
 										),
 									},

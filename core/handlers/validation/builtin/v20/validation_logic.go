@@ -20,7 +20,7 @@ import (
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 var logger = flogging.MustGetLogger("vscc")
@@ -73,20 +73,20 @@ func (vscc *Validator) extractValidationArtifacts(
 	actionPosition int,
 ) (*validationArtifacts, error) {
 	// get the envelope...
-	env, err := utils.GetEnvelopeFromBlock(block.Data.Data[txPosition])
+	env, err := protoutil.GetEnvelopeFromBlock(block.Data.Data[txPosition])
 	if err != nil {
 		logger.Errorf("VSCC error: GetEnvelope failed, err %s", err)
 		return nil, err
 	}
 
 	// ...and the payload...
-	payl, err := utils.GetPayload(env)
+	payl, err := protoutil.GetPayload(env)
 	if err != nil {
 		logger.Errorf("VSCC error: GetPayload failed, err %s", err)
 		return nil, err
 	}
 
-	chdr, err := utils.UnmarshalChannelHeader(payl.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payl.Header.ChannelHeader)
 	if err != nil {
 		return nil, err
 	}
@@ -99,19 +99,19 @@ func (vscc *Validator) extractValidationArtifacts(
 	}
 
 	// ...and the transaction...
-	tx, err := utils.GetTransaction(payl.Data)
+	tx, err := protoutil.GetTransaction(payl.Data)
 	if err != nil {
 		logger.Errorf("VSCC error: GetTransaction failed, err %s", err)
 		return nil, err
 	}
 
-	cap, err := utils.GetChaincodeActionPayload(tx.Actions[actionPosition].Payload)
+	cap, err := protoutil.GetChaincodeActionPayload(tx.Actions[actionPosition].Payload)
 	if err != nil {
 		logger.Errorf("VSCC error: GetChaincodeActionPayload failed, err %s", err)
 		return nil, err
 	}
 
-	pRespPayload, err := utils.GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
+	pRespPayload, err := protoutil.GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
 	if err != nil {
 		err = fmt.Errorf("GetProposalResponsePayload error %s", err)
 		return nil, err
@@ -120,7 +120,7 @@ func (vscc *Validator) extractValidationArtifacts(
 		err = fmt.Errorf("nil pRespPayload.Extension")
 		return nil, err
 	}
-	respPayload, err := utils.GetChaincodeAction(pRespPayload.Extension)
+	respPayload, err := protoutil.GetChaincodeAction(pRespPayload.Extension)
 	if err != nil {
 		err = fmt.Errorf("GetChaincodeAction error %s", err)
 		return nil, err

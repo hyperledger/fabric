@@ -14,7 +14,7 @@ import (
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,9 +25,9 @@ func init() {
 
 func makeEnvelope() *cb.Envelope {
 	return &cb.Envelope{
-		Payload: utils.MarshalOrPanic(&cb.Payload{
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
+				SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{}),
 			},
 		}),
 	}

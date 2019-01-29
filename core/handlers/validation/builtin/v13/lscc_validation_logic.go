@@ -27,14 +27,14 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
 // checkInstantiationPolicy evaluates an instantiation policy against a signed proposal
 func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.Envelope, instantiationPolicy []byte, payl *common.Payload) commonerrors.TxValidationError {
 	// get the signature header
-	shdr, err := utils.GetSignatureHeader(payl.Header.SignatureHeader)
+	shdr, err := protoutil.GetSignatureHeader(payl.Header.SignatureHeader)
 	if err != nil {
 		return policyErr(err)
 	}
@@ -341,7 +341,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 	payl *common.Payload,
 	ac Capabilities,
 ) commonerrors.TxValidationError {
-	cpp, err := utils.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
+	cpp, err := protoutil.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
 	if err != nil {
 		logger.Errorf("VSCC error: GetChaincodeProposalPayload failed, err %s", err)
 		return policyErr(err)
@@ -379,7 +379,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			return policyErr(fmt.Errorf("Wrong number of arguments for invocation lscc(%s): received %d", lsccFunc, len(lsccArgs)))
 		}
 
-		cdsArgs, err := utils.GetChaincodeDeploymentSpec(lsccArgs[1], platforms.NewRegistry(
+		cdsArgs, err := protoutil.GetChaincodeDeploymentSpec(lsccArgs[1], platforms.NewRegistry(
 			// XXX We should definitely _not_ have this external dependency in VSCC
 			// as adding a platform could cause non-determinism.  This is yet another
 			// reason why all of this custom LSCC validation at commit time has no
@@ -400,14 +400,14 @@ func (vscc *Validator) ValidateLSCCInvocation(
 		}
 
 		// get the rwset
-		pRespPayload, err := utils.GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
+		pRespPayload, err := protoutil.GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
 		if err != nil {
 			return policyErr(fmt.Errorf("GetProposalResponsePayload error %s", err))
 		}
 		if pRespPayload.Extension == nil {
 			return policyErr(fmt.Errorf("nil pRespPayload.Extension"))
 		}
-		respPayload, err := utils.GetChaincodeAction(pRespPayload.Extension)
+		respPayload, err := protoutil.GetChaincodeAction(pRespPayload.Extension)
 		if err != nil {
 			return policyErr(fmt.Errorf("GetChaincodeAction error %s", err))
 		}
