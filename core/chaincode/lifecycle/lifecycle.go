@@ -34,6 +34,12 @@ const (
 	FriendlyChaincodeDefinitionType = "Chaincode"
 )
 
+// Sequences are the underpinning of the definition framework for lifecycle.  All definitions
+// must have a Sequence field in the public state.  This sequence is incremented by exactly 1 with
+// each redefinition of the namespace.  The private state org approvals also have a Sequence number
+// embedded into the key which matches them either to the vote for the commit, or registers agreement
+// with an already committed definition.
+//
 // Public/World DB layout looks like the following:
 // namespaces/metadata/<namespace> -> namespace metadata, including namespace type
 // namespaces/fields/<namespace>/Sequence -> sequence for this namespace

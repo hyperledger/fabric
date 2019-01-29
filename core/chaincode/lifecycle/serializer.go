@@ -18,6 +18,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	MetadataInfix = "metadata"
+	FieldsInfix   = "fields"
+)
+
 type ReadWritableState interface {
 	ReadableState
 	PutState(key string, value []byte) error
@@ -117,7 +122,7 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 
 	existingKeys := map[string][]byte{}
 	for _, existingField := range metadata.Fields {
-		fqKey := fmt.Sprintf("%s/fields/%s/%s", namespace, name, existingField)
+		fqKey := FieldKey(namespace, name, existingField)
 		value, err := state.GetState(fqKey)
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("could not get value for key %s", fqKey))
@@ -129,7 +134,7 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 		fieldName := value.Type().Field(i).Name
 		fieldValue := value.Field(i)
 
-		keyName := fmt.Sprintf("%s/fields/%s/%s", namespace, name, fieldName)
+		keyName := FieldKey(namespace, name, fieldName)
 
 		stateData := &lb.StateData{}
 		switch fieldValue.Kind() {
@@ -175,7 +180,7 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("could not marshal metadata for namespace %s/%s", namespace, name))
 		}
-		err = state.PutState(fmt.Sprintf("%s/metadata/%s", namespace, name), newMetadataBin)
+		err = state.PutState(MetadataKey(namespace, name), newMetadataBin)
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("could not store metadata for namespace %s/%s", namespace, name))
 		}
@@ -200,9 +205,9 @@ func (s *Serializer) IsSerialized(namespace, name string, structure interface{},
 	}
 
 	fqKeys := make([]string, 0, len(allFields)+1)
-	fqKeys = append(fqKeys, fmt.Sprintf("%s/metadata/%s", namespace, name))
+	fqKeys = append(fqKeys, MetadataKey(namespace, name))
 	for _, field := range allFields {
-		fqKeys = append(fqKeys, fmt.Sprintf("%s/fields/%s/%s", namespace, name, field))
+		fqKeys = append(fqKeys, FieldKey(namespace, name, field))
 	}
 
 	existingKeys := map[string][]byte{}
@@ -223,7 +228,7 @@ func (s *Serializer) IsSerialized(namespace, name string, structure interface{},
 		return false, errors.WithMessage(err, fmt.Sprintf("could not marshal metadata for namespace %s/%s", namespace, name))
 	}
 
-	metadataKeyName := fmt.Sprintf("%s/metadata/%s", namespace, name)
+	metadataKeyName := MetadataKey(namespace, name)
 	if !bytes.Equal(util.ComputeSHA256(metadataBin), existingKeys[metadataKeyName]) {
 		return false, nil
 	}
@@ -232,7 +237,7 @@ func (s *Serializer) IsSerialized(namespace, name string, structure interface{},
 		fieldName := value.Type().Field(i).Name
 		fieldValue := value.Field(i)
 
-		keyName := fmt.Sprintf("%s/fields/%s/%s", namespace, name, fieldName)
+		keyName := FieldKey(namespace, name, fieldName)
 
 		stateData := &lb.StateData{}
 		switch fieldValue.Kind() {
@@ -315,6 +320,7 @@ func (s *Serializer) Deserialize(namespace, name string, metadata *lb.StateMetad
 				fieldValue.SetBytes(oneOf)
 			}
 		case reflect.Ptr:
+			// Note, even non-existant keys will decode to an empty proto
 			msg := reflect.New(fieldValue.Type().Elem())
 			err := s.DeserializeFieldAsProto(namespace, name, fieldName, state, msg.Interface().(proto.Message))
 			if err != nil {
@@ -328,8 +334,16 @@ func (s *Serializer) Deserialize(namespace, name string, metadata *lb.StateMetad
 	return nil
 }
 
+func MetadataKey(namespace, name string) string {
+	return fmt.Sprintf("%s/%s/%s", namespace, MetadataInfix, name)
+}
+
+func FieldKey(namespace, name, field string) string {
+	return fmt.Sprintf("%s/%s/%s/%s", namespace, FieldsInfix, name, field)
+}
+
 func (s *Serializer) DeserializeMetadata(namespace, name string, state ReadableState) (*lb.StateMetadata, bool, error) {
-	metadataBin, err := state.GetState(fmt.Sprintf("%s/metadata/%s", namespace, name))
+	metadataBin, err := state.GetState(MetadataKey(namespace, name))
 	if err != nil {
 		return nil, false, errors.WithMessage(err, fmt.Sprintf("could not query metadata for namespace %s/%s", namespace, name))
 	}
@@ -347,7 +361,7 @@ func (s *Serializer) DeserializeMetadata(namespace, name string, state ReadableS
 }
 
 func (s *Serializer) DeserializeField(namespace, name, field string, state ReadableState) (*lb.StateData, error) {
-	keyName := fmt.Sprintf("%s/fields/%s/%s", namespace, name, field)
+	keyName := FieldKey(namespace, name, field)
 	value, err := state.GetState(keyName)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not get state for key %s", keyName))
@@ -372,7 +386,7 @@ func (s *Serializer) DeserializeFieldAsString(namespace, name, field string, sta
 	}
 	oneOf, ok := value.Type.(*lb.StateData_String_)
 	if !ok {
-		return "", errors.Errorf("expected key %s/fields/%s/%s to encode a value of type String, but was %T", namespace, name, field, value.Type)
+		return "", errors.Errorf("expected key %s to encode a value of type String, but was %T", FieldKey(namespace, name, field), value.Type)
 	}
 	return oneOf.String_, nil
 }
@@ -387,7 +401,7 @@ func (s *Serializer) DeserializeFieldAsBytes(namespace, name, field string, stat
 	}
 	oneOf, ok := value.Type.(*lb.StateData_Bytes)
 	if !ok {
-		return nil, errors.Errorf("expected key %s/fields/%s/%s to encode a value of type []byte, but was %T", namespace, name, field, value.Type)
+		return nil, errors.Errorf("expected key %s to encode a value of type []byte, but was %T", FieldKey(namespace, name, field), value.Type)
 	}
 	return oneOf.Bytes, nil
 }
@@ -399,7 +413,7 @@ func (s *Serializer) DeserializeFieldAsProto(namespace, name, field string, stat
 	}
 	err = proto.Unmarshal(bin, msg)
 	if err != nil {
-		return errors.Wrapf(err, "could not unmarshal key %s/fields/%s/%s to %T", namespace, name, field, msg)
+		return errors.Wrapf(err, "could not unmarshal key %s to %T", FieldKey(namespace, name, field), msg)
 	}
 	return nil
 }
@@ -414,7 +428,7 @@ func (s *Serializer) DeserializeFieldAsInt64(namespace, name, field string, stat
 	}
 	oneOf, ok := value.Type.(*lb.StateData_Int64)
 	if !ok {
-		return 0, errors.Errorf("expected key %s/fields/%s/%s to encode a value of type Int64, but was %T", namespace, name, field, value.Type)
+		return 0, errors.Errorf("expected key %s to encode a value of type Int64, but was %T", FieldKey(namespace, name, field), value.Type)
 	}
 	return oneOf.Int64, nil
 }
@@ -429,13 +443,13 @@ func (s *Serializer) DeserializeFieldAsUint64(namespace, name, field string, sta
 	}
 	oneOf, ok := value.Type.(*lb.StateData_Uint64)
 	if !ok {
-		return 0, errors.Errorf("expected key %s/fields/%s/%s to encode a value of type Uint64, but was %T", namespace, name, field, value.Type)
+		return 0, errors.Errorf("expected key %s to encode a value of type Uint64, but was %T", FieldKey(namespace, name, field), value.Type)
 	}
 	return oneOf.Uint64, nil
 }
 
 func (s *Serializer) DeserializeAllMetadata(namespace string, state RangeableState) (map[string]*lb.StateMetadata, error) {
-	prefix := fmt.Sprintf("%s/metadata/", namespace)
+	prefix := fmt.Sprintf("%s/%s/", namespace, MetadataInfix)
 	kvs, err := state.GetStateRange(prefix)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not get state range for namespace %s", namespace))

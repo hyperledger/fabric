@@ -265,7 +265,7 @@ var _ = Describe("Serializer", func() {
 			})
 		})
 
-		Context("when the argument contains a proto pointer", func() {
+		Context("when the argument contains a non-proto pointer", func() {
 			It("it fails", func() {
 				type BadStruct struct {
 					BadField *int

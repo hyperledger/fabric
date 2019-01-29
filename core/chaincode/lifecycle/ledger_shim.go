@@ -44,7 +44,7 @@ type ChaincodePublicLedgerShim struct {
 }
 
 // GetStateRange performs a range query for keys beginning with a particular prefix, and
-// returns it as a map. This function assumes that keys contains only ascii chars from \x00 to \x7e.
+// returns it as a map. This function assumes that keys contain only ascii chars from \x00 to \x7e.
 func (cls *ChaincodePublicLedgerShim) GetStateRange(prefix string) (map[string][]byte, error) {
 	itr, err := cls.GetStateByRange(prefix, prefix+"\x7f")
 	if err != nil {
@@ -76,7 +76,7 @@ type ChaincodePrivateLedgerShim struct {
 }
 
 // GetStateRange performs a range query in the configured collection for all keys beginning
-// with a particular prefix.  This function assumes that keys contains only ascii chars from \x00 to \x7e.
+// with a particular prefix.  This function assumes that keys contain only ascii chars from \x00 to \x7e.
 func (cls *ChaincodePrivateLedgerShim) GetStateRange(prefix string) (map[string][]byte, error) {
 	itr, err := cls.Stub.GetPrivateDataByRange(cls.Collection, prefix, prefix+"\x7f")
 	if err != nil {
