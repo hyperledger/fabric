@@ -149,6 +149,7 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 				"channel id from the block due to [%s]", err))
 		}
 
+		// 1. check config block's format and capabilities requirement.
 		if err := validateConfigBlock(block); err != nil {
 			return shim.Error(fmt.Sprintf("\"JoinChain\" for chainID = %s failed because of validation "+
 				"of configuration block, because of %s", cid, err))
@@ -230,6 +231,11 @@ func validateConfigBlock(block *common.Block) error {
 	if !exists {
 		return errors.Errorf("Invalid configuration block, missing %s "+
 			"configuration group", channelconfig.ApplicationGroupKey)
+	}
+
+	// Check the capabilities requirement
+	if err = channelconfig.ValidateCapabilities(block); err != nil {
+		return errors.Errorf("Failed capabilities check: [%s]", err)
 	}
 
 	return nil
