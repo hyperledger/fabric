@@ -269,6 +269,77 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By(fmt.Sprintf("Orderer %d took over as a leader", leader))
 		})
 	})
+
+	When("Leader cannot reach quorum", func() {
+		It("Steps down", func() {
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, 33000, components)
+
+			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+			orderers := []*nwo.Orderer{o1, o2, o3}
+			peer = network.Peer("Org1", "peer1")
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			By("Running the orderer nodes")
+			o1Runner := network.OrdererRunner(o1)
+			o2Runner := network.OrdererRunner(o2)
+			o3Runner := network.OrdererRunner(o3)
+			oRunners := []*ginkgomon.Runner{o1Runner, o2Runner, o3Runner}
+
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
+
+			Eventually(o1Proc.Ready()).Should(BeClosed())
+			Eventually(o2Proc.Ready()).Should(BeClosed())
+			Eventually(o3Proc.Ready()).Should(BeClosed())
+
+			peerGroup := network.PeerGroupRunner()
+			peerProc = ifrit.Invoke(peerGroup)
+			Eventually(peerProc.Ready()).Should(BeClosed())
+
+			By("Waiting for them to elect a leader")
+			ordererProcesses := []ifrit.Process{o1Proc, o2Proc, o3Proc}
+			remainingAliveRunners := []*ginkgomon.Runner{o1Runner, o2Runner, o3Runner}
+			leaderID := findLeader(remainingAliveRunners)
+			leaderIndex := leaderID - 1
+			leader := orderers[leaderIndex]
+
+			followerIndices := func() []int {
+				f := []int{}
+				for i := range ordererProcesses {
+					if leaderIndex != i {
+						f = append(f, i)
+					}
+				}
+
+				return f
+			}()
+
+			By(fmt.Sprintf("Killing two followers (%d and %d)", followerIndices[0]+1, followerIndices[1]+1))
+			ordererProcesses[followerIndices[0]].Signal(syscall.SIGTERM)
+			ordererProcesses[followerIndices[1]].Signal(syscall.SIGTERM)
+
+			By("Waiting for followers to die")
+			Eventually(ordererProcesses[followerIndices[0]].Wait(), network.EventuallyTimeout).Should(Receive())
+			Eventually(ordererProcesses[followerIndices[1]].Wait(), network.EventuallyTimeout).Should(Receive())
+
+			By("Waiting for leader to step down")
+			Eventually(oRunners[leaderIndex].Err(), time.Minute, time.Second).Should(gbytes.Say(fmt.Sprintf("%d stepped down to follower since quorum is not active", leaderID)))
+
+			By("Failing to perform operation on leader due to its resignation")
+			// This should fail because current leader steps down
+			// and there is no leader at this point of time
+			sess, err := network.PeerAdminSession(peer, commands.ChannelCreate{
+				ChannelID:   "testchannel",
+				Orderer:     network.OrdererAddress(leader, nwo.ListenPort),
+				File:        network.CreateChannelTxPath("testchannel"),
+				OutputBlock: "/dev/null",
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sess.Wait(network.EventuallyTimeout).ExitCode()).To(Equal(1))
+		})
+	})
 })
 
 func RunInvoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
