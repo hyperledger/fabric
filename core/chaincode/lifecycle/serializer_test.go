@@ -717,6 +717,68 @@ var _ = Describe("Serializer", func() {
 		})
 	})
 
+	Describe("DeserializeAllMetadata", func() {
+		BeforeEach(func() {
+			fakeState.GetStateRangeReturns(map[string][]byte{
+				"namespaces/metadata/thing0": utils.MarshalOrPanic(&lb.StateMetadata{
+					Datatype: "TestDatatype0",
+				}),
+				"namespaces/metadata/thing1": utils.MarshalOrPanic(&lb.StateMetadata{
+					Datatype: "TestDatatype1",
+				}),
+				"namespaces/metadata/thing2": utils.MarshalOrPanic(&lb.StateMetadata{
+					Datatype: "TestDatatype2",
+				}),
+			}, nil)
+		})
+
+		It("deserializes all the metadata", func() {
+			result, err := s.DeserializeAllMetadata("namespaces", fakeState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(result)).To(Equal(3))
+			Expect(proto.Equal(result["thing0"], &lb.StateMetadata{Datatype: "TestDatatype0"})).To(BeTrue())
+			Expect(proto.Equal(result["thing1"], &lb.StateMetadata{Datatype: "TestDatatype1"})).To(BeTrue())
+			Expect(proto.Equal(result["thing2"], &lb.StateMetadata{Datatype: "TestDatatype2"})).To(BeTrue())
+
+			Expect(fakeState.GetStateRangeCallCount()).To(Equal(1))
+			Expect(fakeState.GetStateRangeArgsForCall(0)).To(Equal("namespaces/metadata/"))
+		})
+
+		Context("when GetStateRange returns an error", func() {
+			BeforeEach(func() {
+				fakeState.GetStateRangeReturns(nil, fmt.Errorf("get-state-range-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := s.DeserializeAllMetadata("namespaces", fakeState)
+				Expect(err).To(MatchError("could not get state range for namespace namespaces: get-state-range-error"))
+			})
+		})
+
+		Context("when GetState returns nil", func() {
+			BeforeEach(func() {
+				fakeState.GetStateRangeReturns(nil, nil)
+			})
+
+			It("returns an empty map", func() {
+				result, err := s.DeserializeAllMetadata("namespaces", fakeState)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(BeEmpty())
+			})
+		})
+
+		Context("when the metadata is invalid", func() {
+			BeforeEach(func() {
+				fakeState.GetStateRangeReturns(map[string][]byte{"namespaces/metadata/bad": []byte("bad-data")}, nil)
+			})
+
+			It("returns an error", func() {
+				_, err := s.DeserializeAllMetadata("namespaces", fakeState)
+				Expect(err).To(MatchError("error unmarshaling metadata for key namespaces/metadata/bad: unexpected EOF"))
+			})
+		})
+	})
+
 	Describe("DeserializeMetadata", func() {
 		BeforeEach(func() {
 			fakeState.GetStateReturns(utils.MarshalOrPanic(&lb.StateMetadata{
