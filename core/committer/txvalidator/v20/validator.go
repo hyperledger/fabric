@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -79,6 +80,7 @@ type Dispatcher interface {
 //go:generate mockery -dir . -name LedgerResources -case underscore -output mocks/
 //go:generate mockery -dir . -name Dispatcher -case underscore -output mocks/
 //go:generate mockery -dir ../../../ledger/ -name QueryExecutor -case underscore -output mocks/
+//go:generate mockery -dir ../../../../common/policies/ -name ChannelPolicyManagerGetter -case underscore -output mocks/
 
 // implementation of Validator interface, keeps
 // reference to the ledger to enable tx simulation
@@ -115,9 +117,10 @@ func NewTxValidator(
 	lcr plugindispatcher.LifecycleResources,
 	sccp sysccprovider.SystemChaincodeProvider,
 	pm plugin.Mapper,
+	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter,
 ) *TxValidator {
 	// Encapsulates interface implementation
-	pluginValidator := plugindispatcher.NewPluginValidator(pm, ler, &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr})
+	pluginValidator := plugindispatcher.NewPluginValidator(pm, ler, &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr}, channelPolicyManagerGetter)
 	return &TxValidator{
 		ChainID:          chainID,
 		Semaphore:        sem,

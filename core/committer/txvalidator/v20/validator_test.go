@@ -51,7 +51,7 @@ import (
 
 func signedByAnyMember(ids []string) []byte {
 	p := cauthdsl.SignedByAnyMember(ids)
-	return utils.MarshalOrPanic(p)
+	return utils.MarshalOrPanic(&pb.ApplicationPolicy{Type: &pb.ApplicationPolicy_SignaturePolicy{SignaturePolicy: p}})
 }
 
 func v20Capabilities() *mockconfig.MockApplicationCapabilities {
@@ -237,6 +237,9 @@ func setupValidatorWithMspMgr(mspmgr msp.MSPManager, mockID *mocks2.Identity) (*
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
+	mockCpmg := &mocks.ChannelPolicyManagerGetter{}
+	mockCpmg.On("Manager", mock.Anything).Return(nil, true)
+
 	v := txvalidatorv20.NewTxValidator(
 		"",
 		semaphore.New(10),
@@ -245,6 +248,7 @@ func setupValidatorWithMspMgr(mspmgr msp.MSPManager, mockID *mocks2.Identity) (*
 		&lscc.LifeCycleSysCC{},
 		mp,
 		pm,
+		mockCpmg,
 	)
 
 	return v, mockQE, mockID
@@ -468,7 +472,7 @@ func TestParallelValidation(t *testing.T) {
 	v, mockQE, _ := setupValidatorWithMspMgr(mgr, nil)
 
 	policy := cauthdsl.SignedByMspPeer("Org1")
-	polBytes := utils.MarshalOrPanic(policy)
+	polBytes := utils.MarshalOrPanic(&pb.ApplicationPolicy{Type: &pb.ApplicationPolicy_SignaturePolicy{SignaturePolicy: policy}})
 	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
@@ -895,7 +899,7 @@ func TestValidateTxWithStateBasedEndorsement(t *testing.T) {
 		Vscc:    "vscc",
 		Policy:  signedByAnyMember([]string{"SampleOrg"}),
 	}), nil)
-	mockQE.On("GetStateMetadata", ccID, "key").Return(map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): cauthdsl.MarshaledRejectAllPolicy}, nil)
+	mockQE.On("GetStateMetadata", ccID, "key").Return(map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): utils.MarshalOrPanic(&pb.ApplicationPolicy{Type: &pb.ApplicationPolicy_SignaturePolicy{SignaturePolicy: cauthdsl.RejectAllPolicy}})}, nil)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 3}}
@@ -1104,6 +1108,9 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
+	mockCpmg := &mocks.ChannelPolicyManagerGetter{}
+	mockCpmg.On("Manager", mock.Anything).Return(nil, true)
+
 	v := txvalidatorv20.NewTxValidator(
 		"",
 		semaphore.New(10),
@@ -1112,6 +1119,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 		&lscc.LifeCycleSysCC{},
 		mp,
 		pm,
+		mockCpmg,
 	)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -1172,6 +1180,9 @@ func TestValidationPluginExecutionError(t *testing.T) {
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
+	mockCpmg := &mocks.ChannelPolicyManagerGetter{}
+	mockCpmg.On("Manager", mock.Anything).Return(nil, true)
+
 	v := txvalidatorv20.NewTxValidator(
 		"",
 		semaphore.New(10),
@@ -1180,6 +1191,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 		&lscc.LifeCycleSysCC{},
 		mp,
 		pm,
+		mockCpmg,
 	)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -1219,6 +1231,9 @@ func TestValidationPluginNotFound(t *testing.T) {
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
+	mockCpmg := &mocks.ChannelPolicyManagerGetter{}
+	mockCpmg.On("Manager", mock.Anything).Return(nil, true)
+
 	v := txvalidatorv20.NewTxValidator(
 		"",
 		semaphore.New(10),
@@ -1227,6 +1242,7 @@ func TestValidationPluginNotFound(t *testing.T) {
 		&lscc.LifeCycleSysCC{},
 		mp,
 		pm,
+		mockCpmg,
 	)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)

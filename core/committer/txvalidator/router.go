@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator
 
 import (
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	validatorv14 "github.com/hyperledger/fabric/core/committer/txvalidator/v14"
 	validatorv20 "github.com/hyperledger/fabric/core/committer/txvalidator/v20"
@@ -38,10 +39,18 @@ func (v *routingValidator) Validate(block *common.Block) error {
 	}
 }
 
-func NewTxValidator(chainID string, sem validatorv14.Semaphore, cr validatorv14.ChannelResources, lr plugindispatcher.LifecycleResources, sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper) *routingValidator {
+func NewTxValidator(
+	chainID string,
+	sem validatorv14.Semaphore,
+	cr validatorv14.ChannelResources,
+	lr plugindispatcher.LifecycleResources,
+	sccp sysccprovider.SystemChaincodeProvider,
+	pm plugin.Mapper,
+	cpmg policies.ChannelPolicyManagerGetter,
+) *routingValidator {
 	return &routingValidator{
 		ChannelResources: cr,
 		validator_v14:    validatorv14.NewTxValidator(chainID, sem, cr, sccp, pm),
-		validator_v20:    validatorv20.NewTxValidator(chainID, sem, cr, cr.Ledger(), lr, sccp, pm),
+		validator_v20:    validatorv20.NewTxValidator(chainID, sem, cr, cr.Ledger(), lr, sccp, pm, cpmg),
 	}
 }

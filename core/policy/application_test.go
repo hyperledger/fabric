@@ -119,3 +119,29 @@ func TestEvaluator(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "bad policy")
 }
+
+func TestChannelPolicyReference(t *testing.T) {
+	mcpmg := &mocks.ChannelPolicyManagerGetter{}
+	mcpmg.On("Manager", "channel").Return(nil, false).Once()
+	ape, err := New(nil, "channel", mcpmg)
+	assert.Error(t, err)
+	assert.Nil(t, ape)
+	assert.Contains(t, err.Error(), "failed to retrieve policy manager for channel")
+
+	mm := &mocks.Manager{}
+	mcpmg.On("Manager", "channel").Return(mm, true).Once()
+	ape, err = New(nil, "channel", mcpmg)
+	assert.NoError(t, err)
+	assert.NotNil(t, ape)
+
+	mp := &mocks.Policy{}
+	mp.On("Evaluate", mock.Anything).Return(nil)
+	mm.On("GetPolicy", "As the sun breaks above the ground").Return(mp, true)
+	err = ape.evaluateChannelConfigPolicyReference("As the sun breaks above the ground", nil)
+	assert.NoError(t, err)
+
+	mm.On("GetPolicy", "An old man stands on the hill").Return(nil, false)
+	err = ape.evaluateChannelConfigPolicyReference("An old man stands on the hill", nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to retrieve policy for reference")
+}
