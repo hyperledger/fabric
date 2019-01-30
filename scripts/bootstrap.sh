@@ -208,11 +208,11 @@ while getopts "h?dsb" opt; do
       printHelp
       exit 0
     ;;
-    d)  DOCKER=false
+    d)  DOCKER=true
     ;;
-    s)  SAMPLES=false
+    s)  SAMPLES=true
     ;;
-    b)  BINARIES=false
+    b)  BINARIES=true
     ;;
   esac
 done
