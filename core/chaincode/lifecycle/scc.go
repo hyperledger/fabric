@@ -154,14 +154,28 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return shim.Error(fmt.Sprintf("lifecycle scc operations require exactly two arguments but received %d", len(args)))
 	}
 
+	var ac channelconfig.Application
+	if channelID := stub.GetChannelID(); channelID != "" {
+		channelConfig := scc.ChannelConfigSource.GetStableChannelConfig(channelID)
+		if channelConfig == nil {
+			return shim.Error(fmt.Sprintf("could not get channelconfig for channel '%s'", channelID))
+		}
+		var ok bool
+		ac, ok = channelConfig.ApplicationConfig()
+		if !ok {
+			return shim.Error(fmt.Sprintf("could not get application config for channel '%s'", channelID))
+		}
+	}
+
 	// TODO add ACLs
 
 	outputBytes, err := scc.Dispatcher.Dispatch(
 		args[1],
 		string(args[0]),
 		&Invocation{
-			SCC:  scc,
-			Stub: stub,
+			ApplicationConfig: ac,
+			SCC:               scc,
+			Stub:              stub,
 		},
 	)
 	if err != nil {
@@ -172,8 +186,9 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 type Invocation struct {
-	Stub shim.ChaincodeStubInterface
-	SCC  *SCC
+	ApplicationConfig channelconfig.Application // Note this may be nil
+	Stub              shim.ChaincodeStubInterface
+	SCC               *SCC
 }
 
 // InstallChaincode is a SCC function that may be dispatched to which routes to the underlying
@@ -250,16 +265,11 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 }
 
 func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefinitionArgs) (proto.Message, error) {
-	channelConfig := i.SCC.ChannelConfigSource.GetStableChannelConfig(i.Stub.GetChannelID())
-	if channelConfig == nil {
-		return nil, errors.Errorf("could not get channelconfig for channel %s", i.Stub.GetChannelID())
-	}
-	ac, ok := channelConfig.ApplicationConfig()
-	if !ok {
-		return nil, errors.Errorf("could not get application config for channel %s", i.Stub.GetChannelID())
+	if i.ApplicationConfig == nil {
+		return nil, errors.Errorf("no application config for channel '%s'", i.Stub.GetChannelID())
 	}
 
-	orgs := ac.Organizations()
+	orgs := i.ApplicationConfig.Organizations()
 	opaqueStates := make([]OpaqueState, 0, len(orgs))
 	myOrgIndex := -1
 	for _, org := range orgs {
