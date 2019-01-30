@@ -211,6 +211,7 @@ func serve(args []string) error {
 	packageProvider := &persistence.PackageProvider{
 		LegacyPP: &ccprovider.CCInfoFSImpl{},
 		Store:    ccStore,
+		Parser:   ccPackageParser,
 	}
 
 	lifecycleImpl.ChaincodeStore = ccStore

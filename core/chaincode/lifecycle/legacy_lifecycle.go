@@ -8,6 +8,7 @@ package lifecycle
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -141,7 +142,7 @@ func (l *Lifecycle) ChaincodeContainerInfo(chaincodeName string, qe ledger.Simpl
 		Name:          chaincodeName,
 		Version:       definedChaincode.Version,
 		Path:          ccPackage.Metadata.Path,
-		Type:          ccPackage.Metadata.Type,
+		Type:          strings.ToUpper(ccPackage.Metadata.Type),
 		ContainerType: "DOCKER",
 	}, nil
 }

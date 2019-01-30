@@ -43,7 +43,6 @@ var _ = Describe("Lifecycle", func() {
 		})
 
 		Describe("ChaincodeDefinition", func() {
-
 			BeforeEach(func() {
 				err := l.Serializer.Serialize(lifecycle.NamespacesName,
 					"name",
@@ -187,7 +186,7 @@ var _ = Describe("Lifecycle", func() {
 					Name:          "name",
 					Version:       "version",
 					Path:          "fake-path",
-					Type:          "fake-type",
+					Type:          "FAKE-TYPE",
 					ContainerType: "DOCKER",
 				}))
 
