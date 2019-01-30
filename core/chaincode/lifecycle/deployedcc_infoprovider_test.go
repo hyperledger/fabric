@@ -16,6 +16,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	"github.com/golang/protobuf/proto"
 
@@ -70,10 +71,14 @@ var _ = Describe("Lifecycle", func() {
 			}
 
 			err := l.Serializer.Serialize(lifecycle.NamespacesName, "cc-name", &lifecycle.ChaincodeDefinition{
-				Version:             "version",
-				Hash:                []byte("hash"),
-				ValidationPlugin:    "validation-plugin",
-				ValidationParameter: []byte("validation-parameter"),
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Version: "version",
+					Id:      []byte("hash"),
+				},
+				ValidationInfo: &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				},
 				Collections: &cb.CollectionConfigPackage{
 					Config: []*cb.CollectionConfig{
 						{
@@ -106,7 +111,7 @@ var _ = Describe("Lifecycle", func() {
 				exists, definition, err := l.ChaincodeDefinitionIfDefined("cc-name", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(exists).To(BeTrue())
-				Expect(definition.Version).To(Equal("version"))
+				Expect(definition.EndorsementInfo.Version).To(Equal("version"))
 			})
 
 			Context("when the requested chaincode is _lifecycle", func() {
@@ -265,12 +270,12 @@ var _ = Describe("Lifecycle", func() {
 
 			Context("when the data is corrupt", func() {
 				BeforeEach(func() {
-					fakePublicState["namespaces/fields/cc-name/Version"] = []byte("garbage")
+					fakePublicState["namespaces/fields/cc-name/ValidationInfo"] = []byte("garbage")
 				})
 
 				It("wraps and returns that error", func() {
 					_, err := l.ChaincodeInfo("channel-name", "cc-name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not get info about chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
+					Expect(err).To(MatchError("could not get info about chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo: proto: can't skip unknown wire type 7"))
 				})
 			})
 		})
@@ -336,12 +341,12 @@ var _ = Describe("Lifecycle", func() {
 
 			Context("when the data is corrupt", func() {
 				BeforeEach(func() {
-					fakePublicState["namespaces/fields/cc-name/Version"] = []byte("garbage")
+					fakePublicState["namespaces/fields/cc-name/ValidationInfo"] = []byte("garbage")
 				})
 
 				It("wraps and returns that error", func() {
 					_, err := l.CollectionInfo("channel-name", "cc-name", "collection-name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not get chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
+					Expect(err).To(MatchError("could not get chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo: proto: can't skip unknown wire type 7"))
 				})
 			})
 		})
@@ -508,12 +513,12 @@ var _ = Describe("Lifecycle", func() {
 
 			Context("when the data is corrupt", func() {
 				BeforeEach(func() {
-					fakePublicState["namespaces/fields/cc-name/Version"] = []byte("garbage")
+					fakePublicState["namespaces/fields/cc-name/ValidationInfo"] = []byte("garbage")
 				})
 
 				It("wraps and returns that error", func() {
 					_, _, uerr, _ := l.ValidationInfo("channel-id", "cc-name", fakeQueryExecutor)
-					Expect(uerr).To(MatchError("could not get chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
+					Expect(uerr).To(MatchError("could not get chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo: proto: can't skip unknown wire type 7"))
 				})
 			})
 		})

@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -47,11 +48,15 @@ var _ = Describe("Lifecycle", func() {
 				err := l.Serializer.Serialize(lifecycle.NamespacesName,
 					"name",
 					&lifecycle.ChaincodeDefinition{
-						Version:             "version",
-						Hash:                []byte("hash"),
-						EndorsementPlugin:   "endorsement-plugin",
-						ValidationPlugin:    "validation-plugin",
-						ValidationParameter: []byte("validation-parameter"),
+						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+							Version:           "version",
+							Id:                []byte("hash"),
+							EndorsementPlugin: "endorsement-plugin",
+						},
+						ValidationInfo: &lb.ChaincodeValidationInfo{
+							ValidationPlugin:    "validation-plugin",
+							ValidationParameter: []byte("validation-parameter"),
+						},
 					},
 					fakePublicState,
 				)
@@ -101,12 +106,12 @@ var _ = Describe("Lifecycle", func() {
 
 			Context("when the data is corrupt", func() {
 				BeforeEach(func() {
-					fakePublicState["namespaces/fields/name/Version"] = []byte("garbage")
+					fakePublicState["namespaces/fields/name/ValidationInfo"] = []byte("garbage")
 				})
 
 				It("wraps and returns that error", func() {
 					_, err := l.ChaincodeDefinition("name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not deserialize chaincode definition for chaincode name: could not unmarshal state for key namespaces/fields/name/Version: proto: can't skip unknown wire type 7"))
+					Expect(err).To(MatchError("could not deserialize chaincode definition for chaincode name: could not unmarshal state for key namespaces/fields/name/ValidationInfo: proto: can't skip unknown wire type 7"))
 				})
 			})
 
@@ -161,11 +166,15 @@ var _ = Describe("Lifecycle", func() {
 				err := l.Serializer.Serialize(lifecycle.NamespacesName,
 					"name",
 					&lifecycle.ChaincodeDefinition{
-						Version:             "version",
-						Hash:                []byte("hash"),
-						EndorsementPlugin:   "endorsement-plugin",
-						ValidationPlugin:    "validation-plugin",
-						ValidationParameter: []byte("validation-parameter"),
+						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+							Version:           "version",
+							Id:                []byte("hash"),
+							EndorsementPlugin: "endorsement-plugin",
+						},
+						ValidationInfo: &lb.ChaincodeValidationInfo{
+							ValidationPlugin:    "validation-plugin",
+							ValidationParameter: []byte("validation-parameter"),
+						},
 					},
 					fakePublicState,
 				)
@@ -227,12 +236,12 @@ var _ = Describe("Lifecycle", func() {
 
 			Context("when the data is corrupt", func() {
 				BeforeEach(func() {
-					fakePublicState["namespaces/fields/name/Version"] = []byte("garbage")
+					fakePublicState["namespaces/fields/name/ValidationInfo"] = []byte("garbage")
 				})
 
 				It("wraps and returns that error", func() {
 					_, err := l.ChaincodeContainerInfo("name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not deserialize chaincode definition for chaincode name: could not unmarshal state for key namespaces/fields/name/Version: proto: can't skip unknown wire type 7"))
+					Expect(err).To(MatchError("could not deserialize chaincode definition for chaincode name: could not unmarshal state for key namespaces/fields/name/ValidationInfo: proto: can't skip unknown wire type 7"))
 				})
 			})
 

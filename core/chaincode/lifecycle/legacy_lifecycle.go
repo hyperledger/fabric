@@ -87,11 +87,11 @@ func (l *Lifecycle) ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQu
 
 	return &LegacyDefinition{
 		Name:                chaincodeName,
-		Version:             definedChaincode.Version,
-		HashField:           definedChaincode.Hash,
-		EndorsementPlugin:   definedChaincode.EndorsementPlugin,
-		ValidationPlugin:    definedChaincode.ValidationPlugin,
-		ValidationParameter: definedChaincode.ValidationParameter,
+		Version:             definedChaincode.EndorsementInfo.Version,
+		HashField:           definedChaincode.EndorsementInfo.Id,
+		EndorsementPlugin:   definedChaincode.EndorsementInfo.EndorsementPlugin,
+		ValidationPlugin:    definedChaincode.ValidationInfo.ValidationPlugin,
+		ValidationParameter: definedChaincode.ValidationInfo.ValidationParameter,
 	}, nil
 
 }
@@ -128,19 +128,19 @@ func (l *Lifecycle) ChaincodeContainerInfo(chaincodeName string, qe ledger.Simpl
 	// every time, which will be quite slow.  There is purposefully no optimization here
 	// as it is throwaway code.
 
-	ccPackageBytes, _, err := l.ChaincodeStore.Load(definedChaincode.Hash)
+	ccPackageBytes, _, err := l.ChaincodeStore.Load(definedChaincode.EndorsementInfo.Id)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not load chaincode from chaincode store for %s:%s (%x)", chaincodeName, definedChaincode.Version, definedChaincode.Hash))
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not load chaincode from chaincode store for %s:%s (%x)", chaincodeName, definedChaincode.EndorsementInfo.Version, definedChaincode.EndorsementInfo.Id))
 	}
 
 	ccPackage, err := l.PackageParser.Parse(ccPackageBytes)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not parse chaincode package for %s:%s (%x)", chaincodeName, definedChaincode.Version, definedChaincode.Hash))
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not parse chaincode package for %s:%s (%x)", chaincodeName, definedChaincode.EndorsementInfo.Version, definedChaincode.EndorsementInfo.Id))
 	}
 
 	return &ccprovider.ChaincodeContainerInfo{
 		Name:          chaincodeName,
-		Version:       definedChaincode.Version,
+		Version:       definedChaincode.EndorsementInfo.Version,
 		Path:          ccPackage.Metadata.Path,
 		Type:          strings.ToUpper(ccPackage.Metadata.Type),
 		ContainerType: "DOCKER",

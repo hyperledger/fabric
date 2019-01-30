@@ -248,13 +248,17 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 	if err := i.SCC.Functions.ApproveChaincodeDefinitionForOrg(
 		input.Name,
 		&ChaincodeDefinition{
-			Sequence:            input.Sequence,
-			Hash:                input.Hash,
-			Version:             input.Version,
-			EndorsementPlugin:   input.EndorsementPlugin,
-			ValidationPlugin:    input.ValidationPlugin,
-			ValidationParameter: input.ValidationParameter,
-			Collections:         input.Collections,
+			Sequence: input.Sequence,
+			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+				Version:           input.Version,
+				Id:                input.Hash,
+				EndorsementPlugin: input.EndorsementPlugin,
+			},
+			ValidationInfo: &lb.ChaincodeValidationInfo{
+				ValidationPlugin:    input.ValidationPlugin,
+				ValidationParameter: input.ValidationParameter,
+			},
+			Collections: input.Collections,
 		},
 		i.Stub,
 		&ChaincodePrivateLedgerShim{
@@ -292,13 +296,17 @@ func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefiniti
 	agreement, err := i.SCC.Functions.CommitChaincodeDefinition(
 		input.Name,
 		&ChaincodeDefinition{
-			Sequence:            input.Sequence,
-			Hash:                input.Hash,
-			Version:             input.Version,
-			EndorsementPlugin:   input.EndorsementPlugin,
-			ValidationPlugin:    input.ValidationPlugin,
-			ValidationParameter: input.ValidationParameter,
-			Collections:         input.Collections,
+			Sequence: input.Sequence,
+			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+				Id:                input.Hash,
+				Version:           input.Version,
+				EndorsementPlugin: input.EndorsementPlugin,
+			},
+			ValidationInfo: &lb.ChaincodeValidationInfo{
+				ValidationPlugin:    input.ValidationPlugin,
+				ValidationParameter: input.ValidationParameter,
+			},
+			Collections: input.Collections,
 		},
 		i.Stub,
 		opaqueStates,
@@ -323,11 +331,11 @@ func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinition
 
 	return &lb.QueryChaincodeDefinitionResult{
 		Sequence:            definedChaincode.Sequence,
-		Version:             definedChaincode.Version,
-		EndorsementPlugin:   definedChaincode.EndorsementPlugin,
-		ValidationPlugin:    definedChaincode.ValidationPlugin,
-		ValidationParameter: definedChaincode.ValidationParameter,
-		Hash:                definedChaincode.Hash,
+		Version:             definedChaincode.EndorsementInfo.Version,
+		EndorsementPlugin:   definedChaincode.EndorsementInfo.EndorsementPlugin,
+		ValidationPlugin:    definedChaincode.ValidationInfo.ValidationPlugin,
+		ValidationParameter: definedChaincode.ValidationInfo.ValidationParameter,
+		Hash:                definedChaincode.EndorsementInfo.Id,
 		Collections:         definedChaincode.Collections,
 	}, nil
 }

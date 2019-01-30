@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	cb "github.com/hyperledger/fabric/protos/common"
+	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -151,7 +152,10 @@ var _ = Describe("Lifecycle", func() {
 		BeforeEach(func() {
 			testDefinition = &lifecycle.ChaincodeDefinition{
 				Sequence: 5,
-				Version:  "version",
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Version: "version",
+				},
+				ValidationInfo: &lb.ChaincodeValidationInfo{},
 			}
 
 			fakePublicState = &mock.ReadWritableState{}
@@ -181,9 +185,9 @@ var _ = Describe("Lifecycle", func() {
 			committedDefinition := &lifecycle.ChaincodeParameters{}
 			err = l.Serializer.Deserialize("namespaces", "cc-name#5", metadata, committedDefinition, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(committedDefinition.Version).To(Equal("version"))
-			Expect(committedDefinition.Hash).To(BeEmpty())
-			Expect(committedDefinition.ValidationParameter).To(BeEmpty())
+			Expect(committedDefinition.EndorsementInfo.Version).To(Equal("version"))
+			Expect(committedDefinition.EndorsementInfo.Id).To(BeEmpty())
+			Expect(proto.Equal(committedDefinition.ValidationInfo, &lb.ChaincodeValidationInfo{})).To(BeTrue())
 			Expect(proto.Equal(committedDefinition.Collections, &cb.CollectionConfigPackage{})).To(BeTrue())
 		})
 
@@ -202,7 +206,9 @@ var _ = Describe("Lifecycle", func() {
 			BeforeEach(func() {
 				err := l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
 					Sequence: 5,
-					Version:  "version",
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Version: "version",
+					},
 				}, fakePublicState)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -258,7 +264,9 @@ var _ = Describe("Lifecycle", func() {
 
 					err := l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
 						Sequence: 5,
-						Version:  "other-version",
+						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+							Version: "other-version",
+						},
 					}, fakePublicState)
 					Expect(err).NotTo(HaveOccurred())
 				})
@@ -271,7 +279,7 @@ var _ = Describe("Lifecycle", func() {
 
 			Context("when the EndorsementPlugin differs from the current definition", func() {
 				BeforeEach(func() {
-					testDefinition.EndorsementPlugin = "different"
+					testDefinition.EndorsementInfo.EndorsementPlugin = "different"
 				})
 
 				It("returns an error", func() {
@@ -282,7 +290,7 @@ var _ = Describe("Lifecycle", func() {
 
 			Context("when the ValidationPlugin differs from the current definition", func() {
 				BeforeEach(func() {
-					testDefinition.ValidationPlugin = "different"
+					testDefinition.ValidationInfo.ValidationPlugin = "different"
 				})
 
 				It("returns an error", func() {
@@ -293,7 +301,7 @@ var _ = Describe("Lifecycle", func() {
 
 			Context("when the ValidationParameter differs from the current definition", func() {
 				BeforeEach(func() {
-					testDefinition.ValidationParameter = []byte("different")
+					testDefinition.ValidationInfo.ValidationParameter = []byte("different")
 				})
 
 				It("returns an error", func() {
@@ -304,7 +312,7 @@ var _ = Describe("Lifecycle", func() {
 
 			Context("when the Hash differs from the current definition", func() {
 				BeforeEach(func() {
-					testDefinition.Hash = []byte("different")
+					testDefinition.EndorsementInfo.Id = []byte("different")
 				})
 
 				It("returns an error", func() {
@@ -390,12 +398,16 @@ var _ = Describe("Lifecycle", func() {
 
 		BeforeEach(func() {
 			testDefinition = &lifecycle.ChaincodeDefinition{
-				Sequence:            5,
-				Version:             "version",
-				Hash:                []byte("hash"),
-				EndorsementPlugin:   "endorsement-plugin",
-				ValidationPlugin:    "validation-plugin",
-				ValidationParameter: []byte("validation-parameter"),
+				Sequence: 5,
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Version:           "version",
+					Id:                []byte("hash"),
+					EndorsementPlugin: "endorsement-plugin",
+				},
+				ValidationInfo: &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				},
 			}
 
 			publicKVS = MapLedgerShim(map[string][]byte{})
@@ -404,12 +416,16 @@ var _ = Describe("Lifecycle", func() {
 			fakePublicState.PutStateStub = publicKVS.PutState
 
 			l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
-				Sequence:            4,
-				Version:             "version",
-				Hash:                []byte("hash"),
-				EndorsementPlugin:   "endorsement-plugin",
-				ValidationPlugin:    "validation-plugin",
-				ValidationParameter: []byte("validation-parameter"),
+				Sequence: 4,
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Version:           "version",
+					Id:                []byte("hash"),
+					EndorsementPlugin: "endorsement-plugin",
+				},
+				ValidationInfo: &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				},
 			}, publicKVS)
 
 			org0KVS = MapLedgerShim(map[string][]byte{})
@@ -457,12 +473,16 @@ var _ = Describe("Lifecycle", func() {
 		Context("when the current sequence is not immediately prior to the new", func() {
 			BeforeEach(func() {
 				l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
-					Sequence:            3,
-					Version:             "version",
-					Hash:                []byte("hash"),
-					EndorsementPlugin:   "endorsement-plugin",
-					ValidationPlugin:    "validation-plugin",
-					ValidationParameter: []byte("validation-parameter"),
+					Sequence: 3,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Version:           "version",
+						Id:                []byte("hash"),
+						EndorsementPlugin: "endorsement-plugin",
+					},
+					ValidationInfo: &lb.ChaincodeValidationInfo{
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+					},
 				}, fakePublicState)
 			})
 
@@ -487,12 +507,16 @@ var _ = Describe("Lifecycle", func() {
 			fakePublicState.PutStateStub = publicKVS.PutState
 
 			l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
-				Sequence:            4,
-				Version:             "version",
-				Hash:                []byte("hash"),
-				EndorsementPlugin:   "endorsement-plugin",
-				ValidationPlugin:    "validation-plugin",
-				ValidationParameter: []byte("validation-parameter"),
+				Sequence: 4,
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Version:           "version",
+					Id:                []byte("hash"),
+					EndorsementPlugin: "endorsement-plugin",
+				},
+				ValidationInfo: &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				},
 			}, publicKVS)
 		})
 
@@ -500,13 +524,17 @@ var _ = Describe("Lifecycle", func() {
 			cc, err := l.QueryChaincodeDefinition("cc-name", fakePublicState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cc).To(Equal(&lifecycle.ChaincodeDefinition{
-				Sequence:            4,
-				Version:             "version",
-				Hash:                []byte("hash"),
-				EndorsementPlugin:   "endorsement-plugin",
-				ValidationPlugin:    "validation-plugin",
-				ValidationParameter: []byte("validation-parameter"),
-				Collections:         &cb.CollectionConfigPackage{},
+				Sequence: 4,
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Version:           "version",
+					Id:                []byte("hash"),
+					EndorsementPlugin: "endorsement-plugin",
+				},
+				ValidationInfo: &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				},
+				Collections: &cb.CollectionConfigPackage{},
 			}))
 		})
 
@@ -534,12 +562,12 @@ var _ = Describe("Lifecycle", func() {
 
 		Context("when deserializing the definition fails", func() {
 			BeforeEach(func() {
-				publicKVS["namespaces/fields/cc-name/Version"] = []byte("garbage")
+				publicKVS["namespaces/fields/cc-name/EndorsementInfo"] = []byte("garbage")
 			})
 
 			It("returns an error", func() {
 				_, err := l.QueryChaincodeDefinition("cc-name", fakePublicState)
-				Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
+				Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: could not unmarshal state for key namespaces/fields/cc-name/EndorsementInfo: proto: can't skip unknown wire type 7"))
 			})
 		})
 	})
