@@ -165,6 +165,9 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		if !ok {
 			return shim.Error(fmt.Sprintf("could not get application config for channel '%s'", channelID))
 		}
+		if !ac.Capabilities().LifecycleV20() {
+			return shim.Error(fmt.Sprintf("cannot use new lifecycle for channel '%s' as it does not have the required capabilities enabled", channelID))
+		}
 	}
 
 	// TODO add ACLs

@@ -30,6 +30,7 @@ var _ = Describe("SCC", func() {
 		fakeChannelConfigSource *mock.ChannelConfigSource
 		fakeChannelConfig       *mock.ChannelConfig
 		fakeApplicationConfig   *mock.ApplicationConfig
+		fakeCapabilities        *mock.ApplicationCapabilities
 	)
 
 	BeforeEach(func() {
@@ -39,6 +40,9 @@ var _ = Describe("SCC", func() {
 		fakeChannelConfigSource.GetStableChannelConfigReturns(fakeChannelConfig)
 		fakeApplicationConfig = &mock.ApplicationConfig{}
 		fakeChannelConfig.ApplicationConfigReturns(fakeApplicationConfig, true)
+		fakeCapabilities = &mock.ApplicationCapabilities{}
+		fakeCapabilities.LifecycleV20Returns(true)
+		fakeApplicationConfig.CapabilitiesReturns(fakeCapabilities)
 		scc = &lifecycle.SCC{
 			Dispatcher: &dispatcher.Dispatcher{
 				Protobuf: &dispatcher.ProtobufImpl{},
@@ -355,6 +359,16 @@ var _ = Describe("SCC", func() {
 					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': underlying-error"))
 				})
 			})
+
+			Context("when the lifecycle capability is not enabled", func() {
+				BeforeEach(func() {
+					fakeCapabilities.LifecycleV20Returns(false)
+				})
+
+				It("returns an error", func() {
+					Expect(scc.Invoke(fakeStub)).To(Equal(shim.Error("cannot use new lifecycle for channel 'test-channel' as it does not have the required capabilities enabled")))
+				})
+			})
 		})
 
 		Describe("CommitChaincodeDefinition", func() {
@@ -470,15 +484,15 @@ var _ = Describe("SCC", func() {
 					Expect(res.Message).To(Equal("could not get application config for channel 'test-channel'"))
 				})
 
-				Context("when there is no application config yet somehow the sentinal is wrong", func() {
+				Context("when there is no application config because there is no channel", func() {
 					BeforeEach(func() {
-						fakeChannelConfig.ApplicationConfigReturns(nil, true)
+						fakeStub.GetChannelIDReturns("")
 					})
 
 					It("returns an error indicating the lack of agreement", func() {
 						res := scc.Invoke(fakeStub)
 						Expect(res.Status).To(Equal(int32(500)))
-						Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': no application config for channel 'test-channel'"))
+						Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': no application config for channel ''"))
 					})
 				})
 			})

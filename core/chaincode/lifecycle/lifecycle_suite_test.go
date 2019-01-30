@@ -83,6 +83,11 @@ type policyManager interface {
 	policies.Manager
 }
 
+//go:generate counterfeiter -o mock/application_capabilities.go --fake-name ApplicationCapabilities . applicationCapabilities
+type applicationCapabilities interface {
+	channelconfig.ApplicationCapabilities
+}
+
 func TestLifecycle(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Lifecycle Suite")
