@@ -43,7 +43,7 @@ type MockApplicationCapabilities struct {
 	CollectionUpgradeRv          bool
 	V1_1ValidationRv             bool
 	V1_2ValidationRv             bool
-	MetadataLifecycleRv          bool
+	LifecycleV20Rv               bool
 	KeyLevelEndorsementRv        bool
 	V1_3ValidationRv             bool
 	V2_0ValidationRv             bool
@@ -78,8 +78,12 @@ func (mac *MockApplicationCapabilities) V1_2Validation() bool {
 	return mac.V1_2ValidationRv
 }
 
+func (mac *MockApplicationCapabilities) LifecycleV20() bool {
+	return mac.LifecycleV20Rv
+}
+
 func (mac *MockApplicationCapabilities) MetadataLifecycle() bool {
-	return mac.MetadataLifecycleRv
+	return false
 }
 
 func (mac *MockApplicationCapabilities) KeyLevelEndorsement() bool {

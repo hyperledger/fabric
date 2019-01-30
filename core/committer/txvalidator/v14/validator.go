@@ -658,7 +658,8 @@ func (ds *dynamicCapabilities) KeyLevelEndorsement() bool {
 }
 
 func (ds *dynamicCapabilities) MetadataLifecycle() bool {
-	return ds.cr.Capabilities().MetadataLifecycle()
+	// This capability no longer exists and should not be referenced in validation anyway
+	return false
 }
 
 func (ds *dynamicCapabilities) PrivateChannelData() bool {
