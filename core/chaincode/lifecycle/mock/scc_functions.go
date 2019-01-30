@@ -91,6 +91,19 @@ type SCCFunctions struct {
 		result1 *lifecycle_test.DefinedChaincode
 		result2 error
 	}
+	QueryDefinedNamespacesStub        func(publicState lifecycle_test.RangeableState) (map[string]string, error)
+	queryDefinedNamespacesMutex       sync.RWMutex
+	queryDefinedNamespacesArgsForCall []struct {
+		publicState lifecycle_test.RangeableState
+	}
+	queryDefinedNamespacesReturns struct {
+		result1 map[string]string
+		result2 error
+	}
+	queryDefinedNamespacesReturnsOnCall map[int]struct {
+		result1 map[string]string
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -408,6 +421,57 @@ func (fake *SCCFunctions) QueryDefinedChaincodeReturnsOnCall(i int, result1 *lif
 	}{result1, result2}
 }
 
+func (fake *SCCFunctions) QueryDefinedNamespaces(publicState lifecycle_test.RangeableState) (map[string]string, error) {
+	fake.queryDefinedNamespacesMutex.Lock()
+	ret, specificReturn := fake.queryDefinedNamespacesReturnsOnCall[len(fake.queryDefinedNamespacesArgsForCall)]
+	fake.queryDefinedNamespacesArgsForCall = append(fake.queryDefinedNamespacesArgsForCall, struct {
+		publicState lifecycle_test.RangeableState
+	}{publicState})
+	fake.recordInvocation("QueryDefinedNamespaces", []interface{}{publicState})
+	fake.queryDefinedNamespacesMutex.Unlock()
+	if fake.QueryDefinedNamespacesStub != nil {
+		return fake.QueryDefinedNamespacesStub(publicState)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.queryDefinedNamespacesReturns.result1, fake.queryDefinedNamespacesReturns.result2
+}
+
+func (fake *SCCFunctions) QueryDefinedNamespacesCallCount() int {
+	fake.queryDefinedNamespacesMutex.RLock()
+	defer fake.queryDefinedNamespacesMutex.RUnlock()
+	return len(fake.queryDefinedNamespacesArgsForCall)
+}
+
+func (fake *SCCFunctions) QueryDefinedNamespacesArgsForCall(i int) lifecycle_test.RangeableState {
+	fake.queryDefinedNamespacesMutex.RLock()
+	defer fake.queryDefinedNamespacesMutex.RUnlock()
+	return fake.queryDefinedNamespacesArgsForCall[i].publicState
+}
+
+func (fake *SCCFunctions) QueryDefinedNamespacesReturns(result1 map[string]string, result2 error) {
+	fake.QueryDefinedNamespacesStub = nil
+	fake.queryDefinedNamespacesReturns = struct {
+		result1 map[string]string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *SCCFunctions) QueryDefinedNamespacesReturnsOnCall(i int, result1 map[string]string, result2 error) {
+	fake.QueryDefinedNamespacesStub = nil
+	if fake.queryDefinedNamespacesReturnsOnCall == nil {
+		fake.queryDefinedNamespacesReturnsOnCall = make(map[int]struct {
+			result1 map[string]string
+			result2 error
+		})
+	}
+	fake.queryDefinedNamespacesReturnsOnCall[i] = struct {
+		result1 map[string]string
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *SCCFunctions) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -423,6 +487,8 @@ func (fake *SCCFunctions) Invocations() map[string][][]interface{} {
 	defer fake.defineChaincodeMutex.RUnlock()
 	fake.queryDefinedChaincodeMutex.RLock()
 	defer fake.queryDefinedChaincodeMutex.RUnlock()
+	fake.queryDefinedNamespacesMutex.RLock()
+	defer fake.queryDefinedNamespacesMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
