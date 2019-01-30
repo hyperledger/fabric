@@ -37,9 +37,13 @@ var _ = Describe("Token EndToEnd", func() {
 		network *nwo.Network
 		process ifrit.Process
 
-		tokensToIssue            []*token.TokenToIssue
-		expectedTokenTransaction *token.TokenTransaction
-		expectedUnspentTokens    *token.UnspentTokens
+		tokensToIssue               []*token.TokenToIssue
+		expectedTokenTransaction    *token.TokenTransaction
+		expectedUnspentTokens       *token.UnspentTokens
+		issuedTokens                []*token.TokenOutput
+		expectedTransferTransaction *token.TokenTransaction
+		recipientUser1              []byte
+		recipientUser2              []byte
 	)
 
 	BeforeEach(func() {
@@ -54,9 +58,22 @@ var _ = Describe("Token EndToEnd", func() {
 				PlainAction: &token.PlainTokenAction{
 					Data: &token.PlainTokenAction_PlainImport{
 						PlainImport: &token.PlainImport{
-							Outputs: []*token.PlainOutput{
-								{Owner: []byte("test-owner"), Type: "ABC123", Quantity: 119},
-							},
+							Outputs: []*token.PlainOutput{{
+								Owner:    []byte("test-owner"),
+								Type:     "ABC123",
+								Quantity: 119,
+							}}}}}}}
+		expectedTransferTransaction = &token.TokenTransaction{
+			Action: &token.TokenTransaction_PlainAction{
+				PlainAction: &token.PlainTokenAction{
+					Data: &token.PlainTokenAction_PlainTransfer{
+						PlainTransfer: &token.PlainTransfer{
+							Inputs: nil,
+							Outputs: []*token.PlainOutput{{
+								Owner:    nil,
+								Type:     "ABC123",
+								Quantity: 119,
+							}},
 						},
 					},
 				},
@@ -108,11 +125,14 @@ var _ = Describe("Token EndToEnd", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			peer := network.Peer("Org1", "peer1")
-			// Get recipient's identity
-			recipient, err := getIdentity(network, peer, "User2", "Org1MSP")
+			// Get recipients' identity
+			recipientUser2, err = getIdentity(network, peer, "User2", "Org1MSP")
 			Expect(err).NotTo(HaveOccurred())
-			tokensToIssue[0].Recipient = recipient
-			expectedTokenTransaction.GetPlainAction().GetPlainImport().Outputs[0].Owner = recipient
+			tokensToIssue[0].Recipient = recipientUser2
+			expectedTokenTransaction.GetPlainAction().GetPlainImport().Outputs[0].Owner = recipientUser2
+			recipientUser1, err = getIdentity(network, peer, "User1", "Org1MSP")
+			Expect(err).NotTo(HaveOccurred())
+			expectedTransferTransaction.GetPlainAction().GetPlainTransfer().Outputs[0].Owner = recipientUser1
 
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
@@ -137,7 +157,7 @@ var _ = Describe("Token EndToEnd", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("issuing tokens")
-			RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+			txID := RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
 
 			By("list tokens")
 			config = getClientConfig(network, peer, orderer, "testchannel", "User2", "Org1MSP")
@@ -145,12 +165,33 @@ var _ = Describe("Token EndToEnd", func() {
 			Expect(err).NotTo(HaveOccurred())
 			tClient, err = tokenclient.NewClient(*config, signingIdentity)
 			Expect(err).NotTo(HaveOccurred())
-			RunListTokens(tClient, expectedUnspentTokens)
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("transferring tokens")
+			inputIDs := []*token.InputId{{TxId: txID, Index: 0}}
+			expectedTransferTransaction.GetPlainAction().GetPlainTransfer().Inputs = inputIDs
+			RunTransferRequest(tClient, issuedTokens, recipientUser1, expectedTransferTransaction)
+
+			By("list tokens user 2")
+			config = getClientConfig(network, peer, orderer, "testchannel", "User2", "Org1MSP")
+			signingIdentity, err = getSigningIdentity(config.MSPInfo.MSPConfigPath, config.MSPInfo.MSPID, config.MSPInfo.MSPType)
+			tClient, err = tokenclient.NewClient(*config, signingIdentity)
+			Expect(err).NotTo(HaveOccurred())
+			issuedTokens = RunListTokens(tClient, nil)
+
+			By("list tokens user 1")
+			config = getClientConfig(network, peer, orderer, "testchannel", "User1", "Org1MSP")
+			signingIdentity, err = getSigningIdentity(config.MSPInfo.MSPConfigPath, config.MSPInfo.MSPID, config.MSPInfo.MSPType)
+			tClient, err = tokenclient.NewClient(*config, signingIdentity)
+			Expect(err).NotTo(HaveOccurred())
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
 		})
 	})
 })
 
-func RunIssueRequest(c *tokenclient.Client, tokens []*token.TokenToIssue, expectedTokenTx *token.TokenTransaction) {
+func RunIssueRequest(c *tokenclient.Client, tokens []*token.TokenToIssue, expectedTokenTx *token.TokenTransaction) string {
 	envelope, txid, ordererStatus, committed, err := c.Issue(tokens, 30*time.Second)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
@@ -166,6 +207,7 @@ func RunIssueRequest(c *tokenclient.Client, tokens []*token.TokenToIssue, expect
 	tokenTxid, err := tokenclient.GetTransactionID(envelope)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(tokenTxid).To(Equal(txid))
+	return txid
 }
 
 func RunListTokens(c *tokenclient.Client, expectedUnspentTokens *token.UnspentTokens) []*token.TokenOutput {
@@ -173,12 +215,47 @@ func RunListTokens(c *tokenclient.Client, expectedUnspentTokens *token.UnspentTo
 	Expect(err).NotTo(HaveOccurred())
 
 	// unmarshall CommandResponse and verify the result
-	Expect(len(tokenOutputs)).To(Equal(len(expectedUnspentTokens.Tokens)))
-	for i, token := range expectedUnspentTokens.Tokens {
-		Expect(tokenOutputs[i].Type).To(Equal(token.Type))
-		Expect(tokenOutputs[i].Quantity).To(Equal(token.Quantity))
+	if expectedUnspentTokens == nil {
+		Expect(len(tokenOutputs)).To(Equal(0))
+	} else {
+		Expect(len(tokenOutputs)).To(Equal(len(expectedUnspentTokens.Tokens)))
+		for i, token := range expectedUnspentTokens.Tokens {
+			Expect(tokenOutputs[i].Type).To(Equal(token.Type))
+			Expect(tokenOutputs[i].Quantity).To(Equal(token.Quantity))
+		}
 	}
 	return tokenOutputs
+}
+
+func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, recipient []byte, expectedTokenTx *token.TokenTransaction) {
+	inputTokenIDs := make([][]byte, len(inputTokens))
+	for i, token := range inputTokens {
+		inputTokenIDs[i] = token.GetId()
+	}
+	shares := []*token.RecipientTransferShare{
+		{Recipient: recipient, Quantity: 119},
+	}
+
+	envelope, txid, ordererStatus, committed, err := c.Transfer(inputTokenIDs, shares, 30*time.Second)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+	Expect(committed).To(Equal(true))
+
+	payload := common.Payload{}
+	err = proto.Unmarshal(envelope.Payload, &payload)
+
+	tokenTx := &token.TokenTransaction{}
+	err = proto.Unmarshal(payload.Data, tokenTx)
+	Expect(proto.Equal(tokenTx, expectedTokenTx)).To(BeTrue())
+
+	tokenTxid, err := tokenclient.GetTransactionID(envelope)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(tokenTxid).To(Equal(txid))
+
+	// Verify the result
+	Expect(tokenTx.GetPlainAction().GetPlainTransfer().GetInputs()).ToNot(BeNil())
+	Expect(len(tokenTx.GetPlainAction().GetPlainTransfer().GetInputs())).To(Equal(1))
+	Expect(tokenTx.GetPlainAction().GetPlainTransfer().GetOutputs()).ToNot(BeNil())
 }
 
 func getClientConfig(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channelId, user, mspID string) *tokenclient.ClientConfig {
