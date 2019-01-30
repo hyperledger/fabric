@@ -26,6 +26,7 @@ type LegacyDefinition struct {
 	EndorsementPlugin   string
 	ValidationPlugin    string
 	ValidationParameter []byte
+	RequiresInitField   bool
 }
 
 // CCName returns the chaincode name
@@ -57,32 +58,19 @@ func (ld *LegacyDefinition) Endorsement() string {
 	return ld.EndorsementPlugin
 }
 
+// RequiresInit returns whether this chaincode must have Init commit before invoking.
+func (ld *LegacyDefinition) RequiresInit() bool {
+	return ld.RequiresInitField
+}
+
 // ChaincodeDefinition returns the details for a chaincode by name
 func (l *Lifecycle) ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
-	state := &SimpleQueryExecutorShim{
-		Namespace:           LifecycleNamespace,
-		SimpleQueryExecutor: qe,
-	}
-	metadata, ok, err := l.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state)
+	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, qe)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize metadata for chaincode %s", chaincodeName))
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not get definition for chaincode %s", chaincodeName))
 	}
-
-	if !ok {
+	if !exists {
 		return l.LegacyImpl.ChaincodeDefinition(chaincodeName, qe)
-	}
-
-	if metadata.Datatype != ChaincodeDefinitionType {
-		return nil, errors.Errorf("not a chaincode type: %s", metadata.Datatype)
-	}
-
-	definedChaincode := &ChaincodeDefinition{}
-	// Note, this is generally overkill, there's no reason to read keys for the whole definition, but that's how
-	// the old lifecycle does it, so to avoid contention, we'll reproduce that logic.  This interface should really be broken
-	// into retrieving different bits of chaincode data, like the hash, the endorsement plugin, etc. and only called as needed.
-	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, metadata, definedChaincode, state)
-	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))
 	}
 
 	return &LegacyDefinition{
@@ -90,6 +78,7 @@ func (l *Lifecycle) ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQu
 		Version:             definedChaincode.EndorsementInfo.Version,
 		HashField:           definedChaincode.EndorsementInfo.Id,
 		EndorsementPlugin:   definedChaincode.EndorsementInfo.EndorsementPlugin,
+		RequiresInitField:   definedChaincode.EndorsementInfo.InitRequired,
 		ValidationPlugin:    definedChaincode.ValidationInfo.ValidationPlugin,
 		ValidationParameter: definedChaincode.ValidationInfo.ValidationParameter,
 	}, nil

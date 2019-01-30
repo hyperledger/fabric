@@ -414,6 +414,9 @@ type ChaincodeDefinition interface {
 	// Endorsement returns how to endorse proposals for this chaincode.
 	// The string returns is the name of the endorsement method (usually 'escc').
 	Endorsement() string
+
+	// RequiresInit indicates whether or not we must enforce Init exactly once semantics
+	RequiresInit() bool
 }
 
 //-------- ChaincodeData is stored on the LSCC -------
@@ -475,6 +478,11 @@ func (cd *ChaincodeData) Validation() (string, []byte) {
 // The string returns is the name of the endorsement method (usually 'escc').
 func (cd *ChaincodeData) Endorsement() string {
 	return cd.Escc
+}
+
+// RequiresInit always returns true as this is the legacy form of chaincode.
+func (cd *ChaincodeData) RequiresInit() bool {
+	return true
 }
 
 // implement functions needed from proto.Message for proto's mar/unmarshal functions

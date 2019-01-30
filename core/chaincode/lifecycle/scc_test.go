@@ -316,6 +316,7 @@ var _ = Describe("SCC", func() {
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
 					Collections:         &cb.CollectionConfigPackage{},
+					InitRequired:        true,
 				}
 
 				marshaledArg, err = proto.Marshal(arg)
@@ -340,6 +341,7 @@ var _ = Describe("SCC", func() {
 						Version:           "version",
 						Id:                []byte("hash"),
 						EndorsementPlugin: "endorsement-plugin",
+						InitRequired:      true,
 					},
 					ValidationInfo: &lb.ChaincodeValidationInfo{
 						ValidationPlugin:    "validation-plugin",
@@ -393,6 +395,7 @@ var _ = Describe("SCC", func() {
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
 					Collections:         &cb.CollectionConfigPackage{},
+					InitRequired:        true,
 				}
 
 				marshaledArg, err = proto.Marshal(arg)
@@ -429,6 +432,7 @@ var _ = Describe("SCC", func() {
 						Version:           "version",
 						Id:                []byte("hash"),
 						EndorsementPlugin: "endorsement-plugin",
+						InitRequired:      true,
 					},
 					ValidationInfo: &lb.ChaincodeValidationInfo{
 						ValidationPlugin:    "validation-plugin",

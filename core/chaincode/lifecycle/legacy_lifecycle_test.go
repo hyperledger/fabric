@@ -83,7 +83,7 @@ var _ = Describe("Lifecycle", func() {
 
 				It("wraps and returns that error", func() {
 					_, err := l.ChaincodeDefinition("name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not deserialize metadata for chaincode name: could not unmarshal metadata for namespace namespaces/name: proto: can't skip unknown wire type 7"))
+					Expect(err).To(MatchError("could not get definition for chaincode name: could not deserialize metadata for chaincode name: could not unmarshal metadata for namespace namespaces/name: proto: can't skip unknown wire type 7"))
 				})
 			})
 
@@ -100,7 +100,7 @@ var _ = Describe("Lifecycle", func() {
 
 				It("returns an error", func() {
 					_, err := l.ChaincodeDefinition("name", fakeQueryExecutor)
-					Expect(err).To(MatchError("not a chaincode type: badStruct"))
+					Expect(err).To(MatchError("could not get definition for chaincode name: not a chaincode type: badStruct"))
 				})
 			})
 
@@ -111,7 +111,7 @@ var _ = Describe("Lifecycle", func() {
 
 				It("wraps and returns that error", func() {
 					_, err := l.ChaincodeDefinition("name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not deserialize chaincode definition for chaincode name: could not unmarshal state for key namespaces/fields/name/ValidationInfo: proto: can't skip unknown wire type 7"))
+					Expect(err).To(MatchError("could not get definition for chaincode name: could not deserialize chaincode definition for chaincode name: could not unmarshal state for key namespaces/fields/name/ValidationInfo: proto: can't skip unknown wire type 7"))
 				})
 			})
 
@@ -294,6 +294,7 @@ var _ = Describe("Lifecycle", func() {
 				EndorsementPlugin:   "endorsement-plugin",
 				ValidationPlugin:    "validation-plugin",
 				ValidationParameter: []byte("validation-parameter"),
+				RequiresInitField:   true,
 			}
 		})
 
@@ -318,6 +319,12 @@ var _ = Describe("Lifecycle", func() {
 		Describe("Endorsement", func() {
 			It("returns the endorsment plugin name", func() {
 				Expect(ld.Endorsement()).To(Equal("endorsement-plugin"))
+			})
+		})
+
+		Describe("RequiresInit", func() {
+			It("returns the endorsment init required field", func() {
+				Expect(ld.RequiresInit()).To(BeTrue())
 			})
 		})
 

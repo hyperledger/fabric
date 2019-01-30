@@ -253,6 +253,7 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 				Version:           input.Version,
 				Id:                input.Hash,
 				EndorsementPlugin: input.EndorsementPlugin,
+				InitRequired:      input.InitRequired,
 			},
 			ValidationInfo: &lb.ChaincodeValidationInfo{
 				ValidationPlugin:    input.ValidationPlugin,
@@ -301,6 +302,7 @@ func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefiniti
 				Id:                input.Hash,
 				Version:           input.Version,
 				EndorsementPlugin: input.EndorsementPlugin,
+				InitRequired:      input.InitRequired,
 			},
 			ValidationInfo: &lb.ChaincodeValidationInfo{
 				ValidationPlugin:    input.ValidationPlugin,
@@ -336,6 +338,7 @@ func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinition
 		ValidationPlugin:    definedChaincode.ValidationInfo.ValidationPlugin,
 		ValidationParameter: definedChaincode.ValidationInfo.ValidationParameter,
 		Hash:                definedChaincode.EndorsementInfo.Id,
+		InitRequired:        definedChaincode.EndorsementInfo.InitRequired,
 		Collections:         definedChaincode.Collections,
 	}, nil
 }

@@ -69,6 +69,7 @@ message ApproveChaincodeDefinitionForMyOrgArgs {
     string validation_plugin = 6;
     bytes validation_parameter = 7;
     common.CollectionConfigPackage collections = 8;
+    bool init_required = 9;
 }
 
 // ApproveChaincodeDefinitionForMyOrgResult is the message returned by
@@ -88,6 +89,7 @@ message CommitChaincodeDefinitionArgs {
     string validation_plugin = 6;
     bytes validation_parameter = 7;
     common.CollectionConfigPackage collections = 8;
+    bool init_required = 9;
 }
 
 // CommitChaincodeDefinitionResult is the message returned by
@@ -112,6 +114,7 @@ message QueryChaincodeDefinitionResult {
     string validation_plugin = 5;
     bytes validation_parameter = 6;
     common.CollectionConfigPackage collections = 7;
+    bool init_required = 8;
 }
 
 // QueryNamespaceDefinitions is the message used as arguments to
