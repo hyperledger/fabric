@@ -43,7 +43,7 @@ import (
 
 const (
 	interval            = time.Second
-	LongEventualTimeout = 5 * time.Second
+	LongEventualTimeout = 10 * time.Second
 	ELECTION_TICK       = 2
 	HEARTBEAT_TICK      = 1
 )
@@ -190,6 +190,7 @@ var _ = Describe("Chain", func() {
 
 		AfterEach(func() {
 			chain.Halt()
+			Eventually(chain.Errored, LongEventualTimeout).Should(BeClosed())
 			os.RemoveAll(dataDir)
 		})
 
@@ -361,7 +362,7 @@ var _ = Describe("Chain", func() {
 				errorC := chain.Errored()
 				Expect(errorC).NotTo(BeClosed())
 				chain.Halt()
-				Eventually(errorC).Should(BeClosed())
+				Eventually(errorC, LongEventualTimeout).Should(BeClosed())
 			})
 
 			Describe("Config updates", func() {
@@ -479,7 +480,7 @@ var _ = Describe("Chain", func() {
 						It("should be able to create a channel", func() {
 							err := chain.Configure(configEnv, configSeq)
 							Expect(err).NotTo(HaveOccurred())
-							Eventually(support.WriteConfigBlockCallCount).Should(Equal(1))
+							Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 						})
 					})
 				}) // Context block for type A config
@@ -1780,7 +1781,7 @@ var _ = Describe("Chain", func() {
 
 				network.exec(
 					func(c *chain) {
-						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 					})
 
 				By("respect batch timeout")
@@ -1793,7 +1794,7 @@ var _ = Describe("Chain", func() {
 				c1.clock.WaitForNWatchersAndIncrement(timeout, 2)
 				network.exec(
 					func(c *chain) {
-						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(2))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					})
 			})
 
@@ -1818,7 +1819,7 @@ var _ = Describe("Chain", func() {
 				c1.clock.WaitForNWatchersAndIncrement(timeout, 2)
 				network.exec(
 					func(c *chain) {
-						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(2))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					})
 			})
 
@@ -1849,9 +1850,9 @@ var _ = Describe("Chain", func() {
 					network.connect(1)
 					c1.clock.Increment(interval)
 
-					Eventually(doneProp).Should(BeClosed())
+					Eventually(doneProp, LongEventualTimeout).Should(BeClosed())
 					network.exec(func(c *chain) {
-						Eventually(c.support.WriteBlockCallCount).Should(Equal(2))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					})
 				})
 
@@ -1878,16 +1879,16 @@ var _ = Describe("Chain", func() {
 
 					network.elect(2)
 					Expect(c3.Order(env, 0)).To(Succeed())
-					Eventually(c1.support.WriteBlockCallCount).Should(Equal(0))
-					Eventually(c2.support.WriteBlockCallCount).Should(Equal(1))
-					Eventually(c3.support.WriteBlockCallCount).Should(Equal(1))
+					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
+					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
 					network.connect(1)
 					c2.clock.Increment(interval)
 
-					Eventually(doneProp).Should(BeClosed())
+					Eventually(doneProp, LongEventualTimeout).Should(BeClosed())
 					network.exec(func(c *chain) {
-						Eventually(c.support.WriteBlockCallCount).Should(Equal(2))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					})
 				})
 			})
@@ -1968,18 +1969,26 @@ var _ = Describe("Chain", func() {
 				network.disconnect(1)
 
 				c1.cutter.CutNext = true
-				for i := 0; i < 10; i++ {
+				for i := 0; i < 3; i++ {
 					err := c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 				}
 
-				network.connect(1)
-				c1.clock.Increment(interval)
+				Consistently(c1.support.WriteBlockCallCount).Should(Equal(0))
 
-				network.exec(
-					func(c *chain) {
-						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(10))
-					})
+				network.connect(1)
+
+				// keep ticking leader until all the blocks are replicated and committed.
+				// Otherwise, if we only tick once, and leader was still preserving block
+				// data to disk due to long wal sync, this tick may be dropped and cannot
+				// trigger retransmission of messages upon reconnection.
+				Eventually(func() int {
+					c1.clock.Increment(interval)
+					return c1.support.WriteBlockCallCount()
+				}, LongEventualTimeout).Should(Equal(3))
+
+				Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
+				Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
 			})
 
 			It("new leader should wait for in-fight blocks to commit before accepting new env", func() {
@@ -2175,7 +2184,7 @@ var _ = Describe("Chain", func() {
 
 					network.exec(
 						func(c *chain) {
-							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(2))
+							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 						})
 
 					Eventually(c1.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
@@ -2187,10 +2196,10 @@ var _ = Describe("Chain", func() {
 
 					network.exec(
 						func(c *chain) {
-							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(3))
+							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
 						})
 
-					Eventually(c1.opts.MemoryStorage.FirstIndex).Should(BeNumerically(">", i))
+					Eventually(c1.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
 				})
 
 				It("lagged node can catch up using snapshot", func() {
@@ -2304,9 +2313,9 @@ var _ = Describe("Chain", func() {
 					err := c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 
-					Eventually(c1.support.WriteBlockCallCount).Should(Equal(1))
-					Eventually(c2.support.WriteBlockCallCount).Should(Equal(0))
-					Eventually(c3.support.WriteBlockCallCount).Should(Equal(1))
+					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
+					Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
 					network.connect(2)
 
@@ -2786,8 +2795,8 @@ func (n *network) start(ids ...uint64) {
 		Eventually(func() error {
 			_, err := n.chains[id].storage.Entries(1, 1, 1)
 			return err
-		}).ShouldNot(HaveOccurred())
-		Eventually(n.chains[id].WaitReady).ShouldNot(HaveOccurred())
+		}, LongEventualTimeout).ShouldNot(HaveOccurred())
+		Eventually(n.chains[id].WaitReady, LongEventualTimeout).ShouldNot(HaveOccurred())
 	}
 }
 
@@ -2802,7 +2811,7 @@ func (n *network) stop(ids ...uint64) {
 	for _, id := range nodes {
 		c := n.chains[id]
 		c.Halt()
-		<-c.Errored()
+		Eventually(c.Errored).Should(BeClosed())
 		select {
 		case <-c.stopped:
 		default:
