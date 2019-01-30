@@ -884,6 +884,10 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			logger.Panicf("programming error, non-existent appplication config for channel '%s'", channel)
 		}
 
+		if ac.Capabilities().LifecycleV20() {
+			return shim.Error(fmt.Sprintf("Channel '%s' has been migrated to the new lifecycle, LSCC is now read-only", channel))
+		}
+
 		// the maximum number of arguments depends on the capability of the channel
 		if !ac.Capabilities().PrivateChannelData() && len(args) > 6 {
 			return shim.Error(PrivateChannelDataNotAvailable("").Error())
