@@ -7,6 +7,7 @@ package transaction_test
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/transaction"
@@ -94,6 +95,29 @@ var _ = Describe("Processor", func() {
 			It("returns an error", func() {
 				err := txProcessor.GenerateSimulationResults(validEnvelope, nil, false)
 				Expect(err).To(MatchError("failed committing transaction for channel wild_channel: mock TMSTxProcessor error"))
+				Expect(fakeManager.GetTxProcessorCallCount()).To(Equal(1))
+				Expect(fakeManager.GetTxProcessorArgsForCall(0)).To(Equal("wild_channel"))
+				Expect(verifier.ProcessTxCallCount()).To(Equal(1))
+				txID, creatorInfo, ttx, simulator := verifier.ProcessTxArgsForCall(0)
+				Expect(txID).To(Equal("tx0"))
+				Expect(creatorInfo.Public()).To(BeNil())
+				Expect(proto.Equal(ttx, validTtx)).To(BeTrue())
+				Expect(simulator).To(BeNil())
+			})
+		})
+
+		Context("when a call to the channel TxProcessor return InvalidTxError", func() {
+			var (
+				verifier *mock.TMSTxProcessor
+			)
+			BeforeEach(func() {
+				verifier = &mock.TMSTxProcessor{}
+				verifier.ProcessTxReturns(&customtx.InvalidTxError{Msg: "invalid transaction"})
+				fakeManager.GetTxProcessorReturns(verifier, nil)
+			})
+			It("InvalidTxError must be propagated", func() {
+				err := txProcessor.GenerateSimulationResults(validEnvelope, nil, false)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "invalid transaction"}))
 				Expect(fakeManager.GetTxProcessorCallCount()).To(Equal(1))
 				Expect(fakeManager.GetTxProcessorArgsForCall(0)).To(Equal("wild_channel"))
 				Expect(verifier.ProcessTxCallCount()).To(Equal(1))

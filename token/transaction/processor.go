@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
@@ -36,6 +37,13 @@ func (p *Processor) GenerateSimulationResults(txEnv *common.Envelope, simulator 
 	// Extract the read dependencies and ledger updates associated to the transaction using simulator
 	err = txProcessor.ProcessTx(ch.TxId, ci, ttx, simulator)
 	if err != nil {
+		// If the processor returns an InvalidTxError error then
+		// the transaction should be marked as invalid, therefore this error
+		// should be propagated.
+		// Otherwise, the error can be wrapped with additional information
+		if _, ok := err.(*customtx.InvalidTxError); ok {
+			return err
+		}
 		return errors.WithMessage(err, fmt.Sprintf("failed committing transaction for channel %s", ch.ChannelId))
 	}
 
