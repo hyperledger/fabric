@@ -34,13 +34,13 @@ var _ = Describe("RequestListTokens", func() {
 		results = make([]*queryresult.KV, 5)
 
 		var err error
-		outputs[0], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "TOK1", Quantity: 100})
+		outputs[0], err = proto.Marshal(&token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: 100})
 		Expect(err).NotTo(HaveOccurred())
-		outputs[1], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Bob"), Type: "TOK2", Quantity: 200})
+		outputs[1], err = proto.Marshal(&token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("Bob")}, Type: "TOK2", Quantity: 200})
 		Expect(err).NotTo(HaveOccurred())
-		outputs[2], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "TOK3", Quantity: 300})
+		outputs[2], err = proto.Marshal(&token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK3", Quantity: 300})
 		Expect(err).NotTo(HaveOccurred())
-		outputs[3], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "TOK4", Quantity: 400})
+		outputs[3], err = proto.Marshal(&token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK4", Quantity: 400})
 		Expect(err).NotTo(HaveOccurred())
 
 		keys[0] = generateKey("1", "0", "tokenOutput")
@@ -126,9 +126,9 @@ var _ = Describe("Transactor", func() {
 
 	BeforeEach(func() {
 		recipientTransferShares = []*token.RecipientTransferShare{
-			{Recipient: []byte("R1"), Quantity: 1001},
-			{Recipient: []byte("R2"), Quantity: 1002},
-			{Recipient: []byte("R3"), Quantity: 1003},
+			{Recipient: &token.TokenOwner{Raw: []byte("R1")}, Quantity: 1001},
+			{Recipient: &token.TokenOwner{Raw: []byte("R2")}, Quantity: 1002},
+			{Recipient: &token.TokenOwner{Raw: []byte("R3")}, Quantity: 1003},
 		}
 		transactor = &plain.Transactor{PublicCredential: []byte("Alice")}
 	})
@@ -144,7 +144,6 @@ var _ = Describe("Transactor", func() {
 		Expect(tt).To(BeNil())
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("no token IDs in transfer request"))
-
 	})
 
 	Describe("when no recipient shares are provided", func() {
@@ -171,7 +170,7 @@ var _ = Describe("Transactor", func() {
 
 		BeforeEach(func() {
 			input := &token.PlainOutput{
-				Owner:    []byte("Alice"),
+				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK1",
 				Quantity: 99,
 			}
@@ -201,9 +200,9 @@ var _ = Describe("Transactor", func() {
 									{TxId: "george", Index: uint32(0)},
 								},
 								Outputs: []*token.PlainOutput{
-									{Owner: []byte("R1"), Type: "TOK1", Quantity: 1001},
-									{Owner: []byte("R2"), Type: "TOK1", Quantity: 1002},
-									{Owner: []byte("R3"), Type: "TOK1", Quantity: 1003},
+									{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: 1001},
+									{Owner: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK1", Quantity: 1002},
+									{Owner: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK1", Quantity: 1003},
 								},
 							},
 						},
@@ -252,12 +251,12 @@ var _ = Describe("Transactor", func() {
 
 		BeforeEach(func() {
 			input1 := &token.PlainOutput{
-				Owner:    []byte("Alice"),
+				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK1",
 				Quantity: 99,
 			}
 			input2 := &token.PlainOutput{
-				Owner:    []byte("Alice"),
+				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK2",
 				Quantity: 99,
 			}
@@ -298,7 +297,7 @@ var _ = Describe("Transactor", func() {
 		BeforeEach(func() {
 			inputQuantity = 99
 			input := &token.PlainOutput{
-				Owner:    []byte("Alice"),
+				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK1",
 				Quantity: inputQuantity,
 			}
@@ -358,7 +357,7 @@ var _ = Describe("Transactor", func() {
 								},
 								Outputs: []*token.PlainOutput{
 									{Type: "TOK1", Quantity: redeemQuantity},
-									{Owner: []byte("Alice"), Type: "TOK1", Quantity: unredeemedQuantity},
+									{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: unredeemedQuantity},
 								},
 							},
 						},
@@ -394,7 +393,7 @@ var _ = Describe("Transactor", func() {
 		BeforeEach(func() {
 			inputQuantity = 100
 			input := &token.PlainOutput{
-				Owner:    []byte("Alice"),
+				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK1",
 				Quantity: inputQuantity,
 			}
@@ -414,7 +413,7 @@ var _ = Describe("Transactor", func() {
 							Payload: &token.PlainExpectation_TransferExpectation{
 								TransferExpectation: &token.PlainTokenExpectation{
 									Outputs: []*token.PlainOutput{{
-										Owner:    []byte("owner-1"),
+										Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
 										Type:     "TOK1",
 										Quantity: inputQuantity,
 									}},
@@ -438,7 +437,7 @@ var _ = Describe("Transactor", func() {
 									{TxId: "robert", Index: uint32(0)},
 								},
 								Outputs: []*token.PlainOutput{{
-									Owner:    []byte("owner-1"),
+									Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
 									Type:     "TOK1",
 									Quantity: inputQuantity,
 								}},
@@ -463,8 +462,8 @@ var _ = Describe("Transactor", func() {
 									{TxId: "robert", Index: uint32(0)},
 								},
 								Outputs: []*token.PlainOutput{
-									{Owner: []byte("owner-1"), Type: "TOK1", Quantity: 40},
-									{Owner: []byte("Alice"), Type: "TOK1", Quantity: inputQuantity - 40},
+									{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 40},
+									{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: inputQuantity - 40},
 								},
 							},
 						},
@@ -544,8 +543,8 @@ var _ = Describe("Transactor Approve", func() {
 
 	BeforeEach(func() {
 		allowanceShares = []*token.AllowanceRecipientShare{
-			{Recipient: []byte("Alice"), Quantity: 100},
-			{Recipient: []byte("Bob"), Quantity: 200},
+			{Recipient: &token.TokenOwner{Raw: []byte("Alice")}, Quantity: 100},
+			{Recipient: &token.TokenOwner{Raw: []byte("Bob")}, Quantity: 200},
 		}
 		transactor = &plain.Transactor{}
 	})
@@ -559,7 +558,7 @@ var _ = Describe("Transactor Approve", func() {
 
 		BeforeEach(func() {
 			input := &token.PlainOutput{
-				Owner:    []byte("credential"),
+				Owner:    &token.TokenOwner{Raw: []byte("credential")},
 				Type:     "XYZ",
 				Quantity: 350,
 			}
@@ -592,10 +591,10 @@ var _ = Describe("Transactor Approve", func() {
 									{TxId: "lalaland", Index: uint32(0)},
 								},
 								DelegatedOutputs: []*token.PlainDelegatedOutput{
-									{Owner: []byte("credential"), Delegatees: [][]byte{[]byte("Alice")}, Type: "XYZ", Quantity: 100},
-									{Owner: []byte("credential"), Delegatees: [][]byte{[]byte("Bob")}, Type: "XYZ", Quantity: 200},
+									{Owner: &token.TokenOwner{Raw: []byte("credential")}, Delegatees: []*token.TokenOwner{{Raw: []byte("Alice")}}, Type: "XYZ", Quantity: 100},
+									{Owner: &token.TokenOwner{Raw: []byte("credential")}, Delegatees: []*token.TokenOwner{{Raw: []byte("Bob")}}, Type: "XYZ", Quantity: 200},
 								},
-								Output: &token.PlainOutput{Owner: []byte("credential"), Type: "XYZ", Quantity: 50},
+								Output: &token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("credential")}, Type: "XYZ", Quantity: 50},
 							},
 						},
 					},
@@ -605,7 +604,7 @@ var _ = Describe("Transactor Approve", func() {
 
 		It("creates a valid approve request without outputs", func() {
 			input := &token.PlainOutput{
-				Owner:    []byte("credential"),
+				Owner:    &token.TokenOwner{Raw: []byte("credential")},
 				Type:     "XYZ",
 				Quantity: 300,
 			}
@@ -630,8 +629,8 @@ var _ = Describe("Transactor Approve", func() {
 									{TxId: "lalaland", Index: uint32(0)},
 								},
 								DelegatedOutputs: []*token.PlainDelegatedOutput{
-									{Owner: []byte("credential"), Delegatees: [][]byte{[]byte("Alice")}, Type: "XYZ", Quantity: 100},
-									{Owner: []byte("credential"), Delegatees: [][]byte{[]byte("Bob")}, Type: "XYZ", Quantity: 200},
+									{Owner: &token.TokenOwner{Raw: []byte("credential")}, Delegatees: []*token.TokenOwner{{Raw: []byte("Alice")}}, Type: "XYZ", Quantity: 100},
+									{Owner: &token.TokenOwner{Raw: []byte("credential")}, Delegatees: []*token.TokenOwner{{Raw: []byte("Bob")}}, Type: "XYZ", Quantity: 200},
 								},
 							},
 						},
@@ -672,7 +671,7 @@ var _ = Describe("Transactor Approve", func() {
 			It("returns an error", func() {
 				approveRequest = &token.ApproveRequest{
 					TokenIds:        []*token.TokenId{{TxId: "1", Index: 0}},
-					AllowanceShares: []*token.AllowanceRecipientShare{{Recipient: []byte("Bob"), Quantity: 0}},
+					AllowanceShares: []*token.AllowanceRecipientShare{{Recipient: &token.TokenOwner{Raw: []byte("Bob")}, Quantity: 0}},
 				}
 
 				tt, err := transactor.RequestApprove(approveRequest)
@@ -698,7 +697,7 @@ var _ = Describe("Transactor Approve", func() {
 
 		When("inputs are not of the same type", func() {
 			input := &token.PlainOutput{
-				Owner:    []byte("credential"),
+				Owner:    &token.TokenOwner{Raw: []byte("credential")},
 				Type:     "ABC",
 				Quantity: 100,
 			}
@@ -723,7 +722,7 @@ var _ = Describe("Transactor Approve", func() {
 
 		When("inputs are not sufficient", func() {
 			input := &token.PlainOutput{
-				Owner:    []byte("credential"),
+				Owner:    &token.TokenOwner{Raw: []byte("credential")},
 				Type:     "XYZ",
 				Quantity: 100,
 			}
@@ -773,8 +772,8 @@ var _ = Describe("Transactor TransferFrom", func() {
 
 	BeforeEach(func() {
 		shares = []*token.RecipientTransferShare{
-			{Recipient: []byte("Alice"), Quantity: 100},
-			{Recipient: []byte("Bob"), Quantity: 200},
+			{Recipient: &token.TokenOwner{Raw: []byte("Alice")}, Quantity: 100},
+			{Recipient: &token.TokenOwner{Raw: []byte("Bob")}, Quantity: 200},
 		}
 		transactor = &plain.Transactor{PublicCredential: []byte("Charlie")}
 	})
@@ -788,8 +787,8 @@ var _ = Describe("Transactor TransferFrom", func() {
 
 		BeforeEach(func() {
 			input := &token.PlainDelegatedOutput{
-				Owner:      []byte("Owner"),
-				Delegatees: [][]byte{[]byte("Charlie")},
+				Owner:      &token.TokenOwner{Raw: []byte("Owner")},
+				Delegatees: []*token.TokenOwner{{Raw: []byte("Charlie")}},
 				Type:       "XYZ",
 				Quantity:   350,
 			}
@@ -818,10 +817,10 @@ var _ = Describe("Transactor TransferFrom", func() {
 									{TxId: "pot pourri", Index: uint32(0)},
 								},
 								Outputs: []*token.PlainOutput{
-									{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100},
-									{Owner: []byte("Bob"), Type: "XYZ", Quantity: 200},
+									{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: 100},
+									{Owner: &token.TokenOwner{Raw: []byte("Bob")}, Type: "XYZ", Quantity: 200},
 								},
-								DelegatedOutput: &token.PlainDelegatedOutput{Owner: []byte("Owner"), Delegatees: [][]byte{[]byte("Charlie")}, Type: "XYZ", Quantity: 50},
+								DelegatedOutput: &token.PlainDelegatedOutput{Owner: &token.TokenOwner{Raw: []byte("Owner")}, Delegatees: []*token.TokenOwner{{Raw: []byte("Charlie")}}, Type: "XYZ", Quantity: 50},
 							},
 						},
 					},
@@ -831,8 +830,8 @@ var _ = Describe("Transactor TransferFrom", func() {
 
 		It("creates a valid TransferFrom request without outputs", func() {
 			input := &token.PlainDelegatedOutput{
-				Owner:      []byte("Owner"),
-				Delegatees: [][]byte{[]byte("Charlie")},
+				Owner:      &token.TokenOwner{Raw: []byte("Owner")},
+				Delegatees: []*token.TokenOwner{{Raw: []byte("Charlie")}},
 				Type:       "XYZ",
 				Quantity:   300,
 			}
@@ -857,8 +856,8 @@ var _ = Describe("Transactor TransferFrom", func() {
 									{TxId: "pot pourri", Index: uint32(0)},
 								},
 								Outputs: []*token.PlainOutput{
-									{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100},
-									{Owner: []byte("Bob"), Type: "XYZ", Quantity: 200},
+									{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: 100},
+									{Owner: &token.TokenOwner{Raw: []byte("Bob")}, Type: "XYZ", Quantity: 200},
 								},
 							},
 						},
@@ -869,8 +868,8 @@ var _ = Describe("Transactor TransferFrom", func() {
 
 		It("when inputs are not of the same type", func() {
 			input := &token.PlainDelegatedOutput{
-				Owner:      []byte("Owner"),
-				Delegatees: [][]byte{[]byte("Charlie")},
+				Owner:      &token.TokenOwner{Raw: []byte("Owner")},
+				Delegatees: []*token.TokenOwner{{Raw: []byte("Charlie")}},
 				Type:       "ABC",
 				Quantity:   100,
 			}
@@ -893,8 +892,8 @@ var _ = Describe("Transactor TransferFrom", func() {
 
 		It("when inputs do not belong to the same owner", func() {
 			input := &token.PlainDelegatedOutput{
-				Owner:      []byte("Owner*"),
-				Delegatees: [][]byte{[]byte("Charlie")},
+				Owner:      &token.TokenOwner{Raw: []byte("Owner*")},
+				Delegatees: []*token.TokenOwner{{Raw: []byte("Charlie")}},
 				Type:       "XYZ",
 				Quantity:   100,
 			}
@@ -911,14 +910,15 @@ var _ = Describe("Transactor TransferFrom", func() {
 
 			tt, err := transactor.RequestTransferFrom(transferRequest)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("two or more token owners specified in input: 'Owner', 'Owner*'"))
+			Expect(err.Error()).To(Equal(
+				fmt.Sprintf("two or more token owners specified in input: '%s', '%s'", &token.TokenOwner{Raw: []byte("Owner")}, &token.TokenOwner{Raw: []byte("Owner*")})))
 			Expect(tt).To(BeNil())
 		})
 
 		It("when inputs are not sufficient", func() {
 			input := &token.PlainDelegatedOutput{
-				Owner:      []byte("Owner"),
-				Delegatees: [][]byte{[]byte("Charlie")},
+				Owner:      &token.TokenOwner{Raw: []byte("Owner")},
+				Delegatees: []*token.TokenOwner{{Raw: []byte("Charlie")}},
 				Type:       "XYZ",
 				Quantity:   100,
 			}

@@ -157,8 +157,8 @@ func getTokenTx(t *testing.T) *common.Envelope {
 				Data: &token.PlainTokenAction_PlainImport{
 					PlainImport: &token.PlainImport{
 						Outputs: []*token.PlainOutput{
-							{Owner: []byte("owner-1"), Type: "TOK1", Quantity: 111},
-							{Owner: []byte("owner-2"), Type: "TOK2", Quantity: 222},
+							{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 111},
+							{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: 222},
 						},
 					},
 				},

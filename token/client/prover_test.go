@@ -106,7 +106,7 @@ var _ = Describe("TokenClient", func() {
 			tokensToIssue = []*token.TokenToIssue{{
 				Type:      "type",
 				Quantity:  10,
-				Recipient: []byte("alice"),
+				Recipient: &token.TokenOwner{Raw: []byte("Alice")},
 			}}
 
 			command := &token.Command{
@@ -228,8 +228,8 @@ var _ = Describe("TokenClient", func() {
 				{TxId: "id2", Index: 0},
 			}
 			transferShares = []*token.RecipientTransferShare{
-				{Recipient: []byte("alice"), Quantity: 100},
-				{Recipient: []byte("Bob"), Quantity: 50},
+				{Recipient: &token.TokenOwner{Raw: []byte("alice")}, Quantity: 100},
+				{Recipient: &token.TokenOwner{Raw: []byte("bob")}, Quantity: 50},
 			}
 
 			command := &token.Command{
@@ -710,7 +710,7 @@ var _ = Describe("TokenClient", func() {
 			tokensToIssue := []*token.TokenToIssue{{
 				Type:      "type",
 				Quantity:  10,
-				Recipient: []byte("alice"),
+				Recipient: &token.TokenOwner{Raw: []byte("alice")},
 			}}
 			payload = &token.Command_ImportRequest{
 				ImportRequest: &token.ImportRequest{

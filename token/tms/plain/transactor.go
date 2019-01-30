@@ -95,7 +95,8 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 	// add another output if there is remaining quantity after redemption
 	if quantitySum > request.QuantityToRedeem {
 		outputs = append(outputs, &token.PlainOutput{
-			Owner:    t.PublicCredential, // PublicCredential is serialized identity for the creator
+			// note that tokenOwner type may change in the future depending on creator type
+			Owner:    &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}, // PublicCredential is serialized identity for the creator
 			Type:     tokenType,
 			Quantity: quantitySum - request.QuantityToRedeem,
 		})
@@ -149,7 +150,7 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, u
 		}
 
 		// check the owner of the token
-		if !bytes.Equal(t.PublicCredential, input.Owner) {
+		if !bytes.Equal(t.PublicCredential, input.Owner.Raw) {
 			return "", 0, errors.New(fmt.Sprintf("the requestor does not own inputs"))
 		}
 
@@ -202,7 +203,7 @@ func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 				if err != nil {
 					return nil, errors.New("failed to retrieve unspent tokens: casting error")
 				}
-				if string(output.Owner) == string(t.PublicCredential) {
+				if bytes.Equal(output.Owner.Raw, t.PublicCredential) {
 					spent, err := t.isSpent(result.Key)
 					if err != nil {
 						return nil, err
@@ -248,15 +249,15 @@ func (t *Transactor) RequestApprove(request *token.ApproveRequest) (*token.Token
 
 	delegatedQuantity := uint64(0)
 	for _, share := range request.GetAllowanceShares() {
-		if len(share.Recipient) == 0 {
+		if share.Recipient == nil {
 			return nil, errors.Errorf("the recipient in approve must be specified")
 		}
 		if share.Quantity <= 0 {
 			return nil, errors.Errorf("the quantity to approve [%d] must be greater than 0", share.GetQuantity())
 		}
 		delegatedOutputs = append(delegatedOutputs, &token.PlainDelegatedOutput{
-			Owner:      []byte(request.Credential),
-			Delegatees: [][]byte{share.Recipient},
+			Owner:      &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential},
+			Delegatees: []*token.TokenOwner{share.Recipient},
 			Type:       tokenType,
 			Quantity:   share.Quantity,
 		})
@@ -269,7 +270,7 @@ func (t *Transactor) RequestApprove(request *token.ApproveRequest) (*token.Token
 	var output *token.PlainOutput
 	if sumQuantity != delegatedQuantity {
 		output = &token.PlainOutput{
-			Owner:    request.Credential,
+			Owner:    &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: request.Credential},
 			Type:     tokenType,
 			Quantity: sumQuantity - delegatedQuantity,
 		}
@@ -316,8 +317,9 @@ func (t *Transactor) RequestTransferFrom(request *token.TransferRequest) (*token
 	var delegatedOutput *token.PlainDelegatedOutput
 	if sumQuantity != transferQuantity {
 		delegatedOutput = &token.PlainDelegatedOutput{
-			Owner:      owner,
-			Delegatees: [][]byte{t.PublicCredential},
+			Owner: owner,
+			// note that tokenOwner type may change in the future depending on creator type
+			Delegatees: []*token.TokenOwner{{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}},
 			Type:       tokenType,
 			Quantity:   sumQuantity - transferQuantity,
 		}
@@ -340,9 +342,9 @@ func (t *Transactor) RequestTransferFrom(request *token.TransferRequest) (*token
 	return transaction, nil
 }
 
-func (t *Transactor) getDelegateInputsFromTokenIds(tokenIds []*token.TokenId) ([]byte, string, uint64, error) {
+func (t *Transactor) getDelegateInputsFromTokenIds(tokenIds []*token.TokenId) (*token.TokenOwner, string, uint64, error) {
 	tokenType := ""
-	var tokenOwner []byte
+	var tokenOwner *token.TokenOwner
 	sumQuantity := uint64(0)
 
 	input := &token.PlainDelegatedOutput{}
@@ -379,12 +381,12 @@ func (t *Transactor) getDelegateInputsFromTokenIds(tokenIds []*token.TokenId) ([
 		// check the tokens actual owner
 		if tokenOwner == nil {
 			tokenOwner = input.Owner
-		} else if !bytes.Equal(tokenOwner, input.Owner) {
+		} else if !proto.Equal(tokenOwner, input.Owner) {
 			return nil, "", 0, errors.Errorf("two or more token owners specified in input: '%s', '%s'", tokenOwner, input.Owner)
 		}
 
 		// check that the requestor is allowed to transfer the tokens
-		if !bytes.Equal(input.Delegatees[0], t.PublicCredential) {
+		if !bytes.Equal(input.Delegatees[0].Raw, t.PublicCredential) {
 			return nil, "", 0, errors.Errorf("requestor is not allowed to transfer inputs")
 
 		}
@@ -399,7 +401,7 @@ func getOutputsForTx(shares []*token.RecipientTransferShare, tokenType string, i
 	// prepare outputs for tx
 	outputQuantity := uint64(0)
 	for _, share := range shares {
-		if len(share.Recipient) == 0 {
+		if len(share.Recipient.Raw) == 0 {
 			return nil, 0, errors.Errorf("the recipient in transferFrom must be specified")
 		}
 		if share.Quantity <= 0 {
@@ -455,7 +457,7 @@ func (t *Transactor) RequestExpectation(request *token.ExpectationRequest) (*tok
 	// inputs may have remaining tokens after outputs - add a new output in this case
 	if inputSum > outputSum {
 		outputs = append(outputs, &token.PlainOutput{
-			Owner:    t.PublicCredential, // PublicCredential is serialized identity for the creator
+			Owner:    &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}, // PublicCredential is serialized identity for the creator
 			Type:     outputType,
 			Quantity: inputSum - outputSum,
 		})
