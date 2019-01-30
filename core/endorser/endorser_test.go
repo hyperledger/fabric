@@ -93,7 +93,7 @@ type fakeEndorserMetrics struct {
 	duplicateTxsFailure      *metricsfakes.Counter
 }
 
-// initalize Endorser with fake metrics
+// initialize Endorser with fake metrics
 func initFakeMetrics(es *endorser.Endorser) *fakeEndorserMetrics {
 	fakeMetrics := &fakeEndorserMetrics{
 		proposalDuration:         &metricsfakes.Histogram{},

@@ -110,7 +110,7 @@ func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.E
 	// just constructed is not too large for our consenter.  It additionally reapplies the signature
 	// check, which although not strictly necessary, is a good sanity check, in case the orderer
 	// has not been configured with the right cert material.  The additional overhead of the signature
-	// check is negligable, as this is the reconfig path and not the normal path.
+	// check is negligible, as this is the reconfig path and not the normal path.
 	err = s.filters.Apply(config)
 	if err != nil {
 		return nil, 0, err

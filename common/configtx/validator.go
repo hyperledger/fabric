@@ -75,7 +75,7 @@ func validateConfigID(configID string) error {
 //
 // This is the intersection of the Kafka restrictions and CouchDB restrictions
 // with the following exception: '.' is converted to '_' in the CouchDB naming
-// This is to accomodate existing channel names with '.', especially in the
+// This is to accommodate existing channel names with '.', especially in the
 // behave tests which rely on the dot notation for their sluggification.
 func validateChannelID(channelID string) error {
 	re, _ := regexp.Compile(channelAllowedChars)
