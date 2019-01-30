@@ -183,4 +183,12 @@ var _ = Describe("Blockcutter", func() {
 			})
 		})
 	})
+
+	Describe("Cut", func() {
+		It("cuts an empty batch", func() {
+			batch := bc.Cut()
+			Expect(batch).To(BeNil())
+			Expect(fakeBlockFillDuration.ObserveCallCount()).To(Equal(0))
+		})
+	})
 })
