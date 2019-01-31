@@ -1701,13 +1701,13 @@ func TestMembershipMetrics(t *testing.T) {
 			return true
 		}
 	}
-	waitUntilOrFail(t, waitForMembership(1))
+	waitUntilOrFail(t, waitForMembership(1), "waiting for metrics membership of 1")
 
 	// assert channel membership metrics reported with 1 as value
 	wg1.Wait()
 
 	pI1.Stop()
-	waitUntilOrFail(t, waitForMembership(0))
+	waitUntilOrFail(t, waitForMembership(0), "waiting for metrics membership of 0")
 	pI0.Stop()
 
 }
