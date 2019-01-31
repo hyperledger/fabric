@@ -33,12 +33,6 @@ type SignedData struct {
 	Signature []byte
 }
 
-// Signable types are those which can map their contents to a set of SignedData
-type Signable interface {
-	// AsSignedData returns the set of signatures for a structure as SignedData or an error indicating why this was not possible
-	AsSignedData() ([]*SignedData, error)
-}
-
 // AsSignedData returns the set of signatures for the ConfigUpdateEnvelope as SignedData or an error indicating why this was not possible
 func (ce *ConfigUpdateEnvelope) AsSignedData() ([]*SignedData, error) {
 	if ce == nil {
