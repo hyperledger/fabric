@@ -59,7 +59,7 @@ peer:
       leaderAliveThreshold: 10s
       leaderElectionDuration: 5s
     pvtData:
-      pullRetryThreshold: 60s
+      pullRetryThreshold: 15s
       transientstoreMaxBlockRetention: 1000
       pushAckTimeout: 3s
       reconcileBatchSize: 10
