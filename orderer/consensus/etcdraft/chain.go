@@ -72,6 +72,7 @@ type RPC interface {
 // BlockPuller is used to pull blocks from other OSN
 type BlockPuller interface {
 	PullBlock(seq uint64) *common.Block
+	HeightsByEndpoints() (map[string]uint64, error)
 	Close()
 }
 
@@ -102,8 +103,10 @@ type Options struct {
 	MaxSizePerMsg   uint64
 	MaxInflightMsgs int
 
-	RaftMetadata *etcdraft.RaftMetadata
-	Metrics      *Metrics
+	RaftMetadata      *etcdraft.RaftMetadata
+	Metrics           *Metrics
+	Cert              []byte
+	EvictionSuspicion time.Duration
 }
 
 type submit struct {
@@ -125,6 +128,8 @@ type Chain struct {
 
 	raftID    uint64
 	channelID string
+
+	lastKnownLeader uint64
 
 	submitC  chan *submit
 	applyC   chan apply
@@ -309,6 +314,16 @@ func (c *Chain) Start() {
 
 	go c.gc()
 	go c.serveRequest()
+
+	es := c.newEvictionSuspector()
+
+	evictionFromChain := &PeriodicCheck{
+		Report:        es.confirmSuspicion,
+		CheckInterval: time.Second,
+		Condition:     c.suspectEviction,
+	}
+
+	evictionFromChain.Run()
 }
 
 // detectMigration detects if the orderer restarts right after consensus-type migration,
@@ -651,6 +666,8 @@ func (c *Chain) serveRequest() {
 					c.logger.Infof("Raft leader changed: %d -> %d", soft.Lead, newLeader)
 					c.Metrics.LeaderChanges.Add(1)
 
+					atomic.StoreUint64(&c.lastKnownLeader, newLeader)
+
 					if newLeader == c.raftID {
 						propC, cancelProp = becomeLeader()
 					}
@@ -670,6 +687,7 @@ func (c *Chain) serveRequest() {
 				}
 
 				if isCandidate(app.soft.RaftState) || newLeader == raft.None {
+					atomic.StoreUint64(&c.lastKnownLeader, raft.None)
 					select {
 					case <-c.errorC:
 					default:
@@ -1180,4 +1198,26 @@ func (c *Chain) newRaftMetadata(block *common.Block) (*etcdraft.Metadata, *etcdr
 		raftMetadata.Consenters = map[uint64]*etcdraft.Consenter{}
 	}
 	return metadata, raftMetadata
+}
+
+func (c *Chain) suspectEviction() bool {
+	if c.isRunning() != nil {
+		return false
+	}
+
+	return atomic.LoadUint64(&c.lastKnownLeader) == uint64(0)
+}
+
+func (c *Chain) newEvictionSuspector() *evictionSuspector {
+	return &evictionSuspector{
+		amIInChannel:               ConsenterCertificate(c.opts.Cert).IsConsenterOfChannel,
+		evictionSuspicionThreshold: c.opts.EvictionSuspicion,
+		writeBlock:                 c.support.WriteBlock,
+		createPuller:               c.createPuller,
+		height:                     c.support.Height,
+		logger:                     c.logger,
+		halt: func() {
+			c.Halt()
+		},
+	}
 }

@@ -31,6 +31,10 @@ import (
 	"go.etcd.io/etcd/raft"
 )
 
+const (
+	defaultEvictionSuspicion = time.Minute * 10
+)
+
 // CreateChainCallback creates a new chain
 type CreateChainCallback func()
 
@@ -55,8 +59,9 @@ type ChainGetter interface {
 
 // Config contains etcdraft configurations
 type Config struct {
-	WALDir  string // WAL data of <my-channel> is stored in WALDir/<my-channel>
-	SnapDir string // Snapshots of <my-channel> are stored in SnapDir/<my-channel>
+	WALDir            string // WAL data of <my-channel> is stored in WALDir/<my-channel>
+	SnapDir           string // Snapshots of <my-channel> are stored in SnapDir/<my-channel>
+	EvictionSuspicion string // Duration threshold that the node samples in order to suspect its eviction from the channel.
 }
 
 // Consenter implements etddraft consenter
@@ -163,6 +168,17 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChainID())}, nil
 	}
 
+	var evictionSuspicion time.Duration
+	if c.EtcdRaftConfig.EvictionSuspicion == "" {
+		c.Logger.Infof("EvictionSuspicion not set, defaulting to %v", defaultEvictionSuspicion)
+		evictionSuspicion = defaultEvictionSuspicion
+	} else {
+		evictionSuspicion, err = time.ParseDuration(c.EtcdRaftConfig.EvictionSuspicion)
+		if err != nil {
+			c.Logger.Panicf("Failed parsing Consensus.EvictionSuspicion: %s: %v", c.EtcdRaftConfig.EvictionSuspicion, err)
+		}
+	}
+
 	opts := Options{
 		RaftID:        id,
 		Clock:         clock.NewClock(),
@@ -178,10 +194,11 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 
 		RaftMetadata: raftMetadata,
 
-		WALDir:  path.Join(c.EtcdRaftConfig.WALDir, support.ChainID()),
-		SnapDir: path.Join(c.EtcdRaftConfig.SnapDir, support.ChainID()),
-
-		Metrics: c.Metrics,
+		WALDir:            path.Join(c.EtcdRaftConfig.WALDir, support.ChainID()),
+		SnapDir:           path.Join(c.EtcdRaftConfig.SnapDir, support.ChainID()),
+		EvictionSuspicion: evictionSuspicion,
+		Cert:              c.Cert,
+		Metrics:           c.Metrics,
 	}
 
 	rpc := &cluster.RPC{

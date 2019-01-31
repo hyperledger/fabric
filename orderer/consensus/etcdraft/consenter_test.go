@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
@@ -29,6 +30,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var _ = Describe("Consenter", func() {
@@ -162,13 +165,22 @@ var _ = Describe("Consenter", func() {
 		consenter := newConsenter(chainGetter)
 		consenter.EtcdRaftConfig.WALDir = walDir
 		consenter.EtcdRaftConfig.SnapDir = snapDir
+		// consenter.EtcdRaftConfig.EvictionSuspicion is missing
+		var defaultSuspicionFallback bool
 		consenter.Metrics = newFakeMetrics(newFakeMetricsFields())
+		consenter.Logger = consenter.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+			if strings.Contains(entry.Message, "EvictionSuspicion not set, defaulting to 10m0s") {
+				defaultSuspicionFallback = true
+			}
+			return nil
+		}))
 
 		chain, err := consenter.HandleChain(support, nil)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(chain).NotTo(BeNil())
 
 		Expect(chain.Start).NotTo(Panic())
+		Expect(defaultSuspicionFallback).To(BeTrue())
 	})
 
 	It("fails to handle chain if no matching cert found", func() {
@@ -223,7 +235,6 @@ var _ = Describe("Consenter", func() {
 		Expect(chain).To(BeNil())
 		Expect(err).To(MatchError("etcdraft options have not been provided"))
 	})
-
 })
 
 type consenter struct {

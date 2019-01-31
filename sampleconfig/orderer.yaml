@@ -395,3 +395,10 @@ Consensus:
     # SnapDir specifies the location at which snapshots for etcd/raft are
     # stored. Each channel will have its own subdir named after channel ID.
     SnapDir: /var/hyperledger/production/orderer/etcdraft/snapshot
+    # EvictionSuspicion is the cumulative period of time of channel eviction suspicion
+    # that triggers the node to pull blocks from other nodes and see if it has been
+    # evicted from the channel in order to confirm its suspicion.
+    # If the suspicion is confirmed (the inspected block doesn't contain the node's
+    # TLS certificate) - the node halts its operation for that channel.
+    # A node suspects its channel eviction when it doesn't know about any elected leader in the channel
+    EvictionSuspicion: 10m

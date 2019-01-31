@@ -170,7 +170,7 @@ var _ = Describe("Chain", func() {
 		}
 
 		JustBeforeEach(func() {
-			chain, err = etcdraft.NewChain(support, opts, configurator, nil, nil, observeC)
+			chain, err = etcdraft.NewChain(support, opts, configurator, nil, noOpBlockPuller, observeC)
 			Expect(err).NotTo(HaveOccurred())
 
 			chain.Start()
@@ -802,7 +802,7 @@ var _ = Describe("Chain", func() {
 								os.Chmod(path.Join(walDir, f.Name()), 0300)
 							}
 
-							c, err := etcdraft.NewChain(support, opts, configurator, nil, nil, observeC)
+							c, err := etcdraft.NewChain(support, opts, configurator, nil, noOpBlockPuller, observeC)
 							Expect(c).To(BeNil())
 							Expect(err).To(MatchError(ContainSubstring("failed to open existing WAL")))
 						})
@@ -1207,7 +1207,7 @@ var _ = Describe("Chain", func() {
 							},
 							nil,
 							nil,
-							nil,
+							noOpBlockPuller,
 							nil)
 						Expect(chain).NotTo(BeNil())
 						Expect(err).ToNot(HaveOccurred())
@@ -1235,7 +1235,7 @@ var _ = Describe("Chain", func() {
 							},
 							nil,
 							nil,
-							nil,
+							noOpBlockPuller,
 							nil)
 						Expect(chain).To(BeNil())
 						Expect(err).To(MatchError(ContainSubstring("failed to initialize WAL: mkdir")))
@@ -3216,6 +3216,11 @@ func getSeedBlock() *common.Block {
 
 func StateEqual(lead uint64, state raft.StateType) types.GomegaMatcher {
 	return Equal(raft.SoftState{Lead: lead, RaftState: state})
+}
+
+func noOpBlockPuller() (etcdraft.BlockPuller, error) {
+	bp := &mocks.FakeBlockPuller{}
+	return bp, nil
 }
 
 func newFakeMetrics(fakeFields *fakeMetricsFields) *etcdraft.Metrics {
