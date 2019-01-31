@@ -38,9 +38,9 @@ func (bc *blockCreator) createNextBlock(envs []*cb.Envelope) *cb.Block {
 	bc.number++
 
 	block := protoutil.NewBlock(bc.number, bc.hash)
-	block.Header.DataHash = data.Hash()
+	block.Header.DataHash = protoutil.BlockDataHash(data)
 	block.Data = data
 
-	bc.hash = block.Header.Hash()
+	bc.hash = protoutil.BlockHeaderHash(block.Header)
 	return block
 }

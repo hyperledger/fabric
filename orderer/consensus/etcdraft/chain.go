@@ -730,7 +730,7 @@ func (c *Chain) serveRequest() {
 
 				c.logger.Infof("Start accepting requests as Raft leader at block %d", c.lastBlock.Header.Number)
 				bc = &blockCreator{
-					hash:   c.lastBlock.Header.Hash(),
+					hash:   protoutil.BlockHeaderHash(c.lastBlock.Header),
 					number: c.lastBlock.Header.Number,
 					logger: c.logger,
 				}

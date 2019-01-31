@@ -328,7 +328,7 @@ func TestVerifyBlocks(t *testing.T) {
 				blockSequence[len(blockSequence)/2].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{})},
 				}
-				blockSequence[len(blockSequence)/2].Header.DataHash = blockSequence[len(blockSequence)/2].Data.Hash()
+				blockSequence[len(blockSequence)/2].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)/2].Data)
 				assignHashes(blockSequence)
 				return blockSequence
 			},
@@ -342,13 +342,13 @@ func TestVerifyBlocks(t *testing.T) {
 				blockSequence[len(blockSequence)/4].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope1))},
 				}
-				blockSequence[len(blockSequence)/4].Header.DataHash = blockSequence[len(blockSequence)/4].Data.Hash()
+				blockSequence[len(blockSequence)/4].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)/4].Data)
 
 				// Put a config transaction in block n / 2
 				blockSequence[len(blockSequence)/2].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope2))},
 				}
-				blockSequence[len(blockSequence)/2].Header.DataHash = blockSequence[len(blockSequence)/2].Data.Hash()
+				blockSequence[len(blockSequence)/2].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)/2].Data)
 
 				assignHashes(blockSequence)
 
@@ -378,7 +378,7 @@ func TestVerifyBlocks(t *testing.T) {
 				blockSequence[len(blockSequence)/4].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope1))},
 				}
-				blockSequence[len(blockSequence)/4].Header.DataHash = blockSequence[len(blockSequence)/4].Data.Hash()
+				blockSequence[len(blockSequence)/4].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)/4].Data)
 
 				assignHashes(blockSequence)
 
@@ -417,7 +417,7 @@ func TestVerifyBlocks(t *testing.T) {
 
 func assignHashes(blockchain []*common.Block) {
 	for i := 1; i < len(blockchain); i++ {
-		blockchain[i].Header.PreviousHash = blockchain[i-1].Header.Hash()
+		blockchain[i].Header.PreviousHash = protoutil.BlockHeaderHash(blockchain[i-1].Header)
 	}
 }
 
@@ -450,7 +450,7 @@ func createBlockChain(start, end uint64) []*common.Block {
 	for seq := uint64(start); seq <= uint64(end); seq++ {
 		block := newBlock(seq)
 		block.Data.Data = append(block.Data.Data, make([]byte, 100))
-		block.Header.DataHash = block.Data.Hash()
+		block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 		blockchain = append(blockchain, block)
 	}
 	assignHashes(blockchain)

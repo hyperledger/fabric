@@ -41,7 +41,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
-	gbHash := gb.Header.Hash()
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
 	ledger, _ := provider.Create(gb)
 	defer ledger.Close()
 
@@ -62,7 +62,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block1Hash := block1.Header.Hash()
+	block1Hash := protoutil.BlockHeaderHash(block1.Header)
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash,
 	}, bcInfo)
@@ -79,7 +79,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block2Hash := block2.Header.Hash()
+	block2Hash := protoutil.BlockHeaderHash(block2.Header)
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash}, bcInfo)
 
@@ -127,7 +127,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
-	gbHash := gb.Header.Hash()
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
 	ledger, _ := provider.Create(gb)
 	defer ledger.Close()
 
@@ -148,7 +148,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	assert.NoError(t, ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1}))
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block1Hash := block1.Header.Hash()
+	block1Hash := protoutil.BlockHeaderHash(block1.Header)
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash,
 	}, bcInfo)
@@ -165,7 +165,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block2Hash := block2.Header.Hash()
+	block2Hash := protoutil.BlockHeaderHash(block2.Header)
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash,
 	}, bcInfo)
@@ -201,7 +201,7 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 	bg, gb := testutil.NewBlockGenerator(t, testLedgerid, false)
 	ledger, _ := provider.Create(gb)
 	defer ledger.Close()
-	gbHash := gb.Header.Hash()
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil},
@@ -216,7 +216,7 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{Height: 2,
-				CurrentBlockHash:  blockAndPvtdata1.Block.Header.Hash(),
+				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header),
 				PreviousBlockHash: gbHash},
 		},
 	)
@@ -237,8 +237,8 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{Height: 3,
-				CurrentBlockHash:  blockAndPvtdata2.Block.Header.Hash(),
-				PreviousBlockHash: blockAndPvtdata1.Block.Header.Hash()},
+				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header),
+				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header)},
 
 			stateDBSavePoint: uint64(1),
 			stateDBKVs:       map[string]string{"key1": "value1.1", "key2": "value2.1", "key3": "value3.1"},
@@ -289,8 +289,8 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{Height: 4,
-				CurrentBlockHash:  blockAndPvtdata3.Block.Header.Hash(),
-				PreviousBlockHash: blockAndPvtdata2.Block.Header.Hash()},
+				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
+				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header)},
 
 			stateDBSavePoint: uint64(3),
 			stateDBKVs:       map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
@@ -340,8 +340,8 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{Height: 5,
-				CurrentBlockHash:  blockAndPvtdata4.Block.Header.Hash(),
-				PreviousBlockHash: blockAndPvtdata3.Block.Header.Hash()},
+				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata4.Block.Header),
+				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header)},
 
 			stateDBSavePoint: uint64(3),
 			stateDBKVs:       map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
@@ -448,7 +448,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	provider := testutilNewProvider(t)
 	defer provider.Close()
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
-	gbHash := gb.Header.Hash()
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
 	ledger, _ := provider.Create(gb)
 	defer ledger.Close()
 
@@ -470,7 +470,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block1Hash := block1.Header.Hash()
+	block1Hash := protoutil.BlockHeaderHash(block1.Header)
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash}, bcInfo)
 
@@ -501,7 +501,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block2Hash := block2.Header.Hash()
+	block2Hash := protoutil.BlockHeaderHash(block2.Header)
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash,
 	}, bcInfo)

@@ -248,7 +248,7 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner crypto.L
 	if len(dataHash) != 0 {
 		block.Header.DataHash = dataHash
 	} else {
-		block.Header.DataHash = block.Data.Hash()
+		block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 	}
 
 	// Add signer's signature to the block
@@ -263,7 +263,7 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner crypto.L
 	// information required beyond the fact that the metadata item is signed.
 	blockSignatureValue := []byte(nil)
 
-	msg := util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, block.Header.Bytes())
+	msg := util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header))
 	blockSignature.Signature, err = localSigner.Sign(msg)
 	assert.NoError(t, err, "Failed signing block")
 

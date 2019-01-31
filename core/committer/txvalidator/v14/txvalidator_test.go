@@ -105,7 +105,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	defer ledgermgmt.CleanupTestEnv()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
-	gbHash := gb.Header.Hash()
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
 	ledger, _ := ledgermgmt.CreateLedger(gb)
 	defer ledger.Close()
 
@@ -166,7 +166,7 @@ func TestBlockValidation(t *testing.T) {
 	defer ledgermgmt.CleanupTestEnv()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
-	gbHash := gb.Header.Hash()
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
 	ledger, _ := ledgermgmt.CreateLedger(gb)
 	defer ledger.Close()
 
@@ -180,7 +180,7 @@ func TestParallelBlockValidation(t *testing.T) {
 	defer ledgermgmt.CleanupTestEnv()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
-	gbHash := gb.Header.Hash()
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
 	ledger, _ := ledgermgmt.CreateLedger(gb)
 	defer ledger.Close()
 
@@ -194,7 +194,7 @@ func TestVeryLargeParallelBlockValidation(t *testing.T) {
 	defer ledgermgmt.CleanupTestEnv()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
-	gbHash := gb.Header.Hash()
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
 	ledger, _ := ledgermgmt.CreateLedger(gb)
 	defer ledger.Close()
 
@@ -270,7 +270,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 
 	block.Header = &common.BlockHeader{
 		Number:   0,
-		DataHash: block.Data.Hash(),
+		DataHash: protoutil.BlockDataHash(block.Data),
 	}
 
 	// Initialize metadata

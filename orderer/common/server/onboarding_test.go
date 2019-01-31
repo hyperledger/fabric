@@ -128,7 +128,7 @@ func channelCreationBlock(systemChannel, applicationChannel string, prevBlock *c
 	block := &common.Block{
 		Header: &common.BlockHeader{
 			Number:       prevBlock.Header.Number + 1,
-			PreviousHash: prevBlock.Header.Hash(),
+			PreviousHash: protoutil.BlockHeaderHash(prevBlock.Header),
 		},
 		Metadata: &common.BlockMetadata{
 			Metadata: [][]byte{{}, {}, {}, {}},
@@ -157,7 +157,7 @@ func channelCreationBlock(systemChannel, applicationChannel string, prevBlock *c
 		},
 	}
 
-	block.Header.DataHash = block.Data.Hash()
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 	return block
 }
 
@@ -201,14 +201,14 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 			}),
 		})}},
 	}
-	systemChannelGenesisBlock.Header.DataHash = systemChannelGenesisBlock.Data.Hash()
+	systemChannelGenesisBlock.Header.DataHash = protoutil.BlockDataHash(systemChannelGenesisBlock.Data)
 
 	channelCreationBlock := channelCreationBlock("system", "testchainid", systemChannelGenesisBlock)
 
 	bootBlock := &common.Block{}
 	assert.NoError(t, proto.Unmarshal(systemChannelBlockBytes, bootBlock))
 	bootBlock.Header.Number = 2
-	bootBlock.Header.PreviousHash = channelCreationBlock.Header.Hash()
+	bootBlock.Header.PreviousHash = protoutil.BlockHeaderHash(channelCreationBlock.Header)
 	injectOrdererEndpoint(t, bootBlock, deliverServer.srv.Address())
 	injectConsenterCertificate(t, testchainidGB, cert)
 
@@ -463,7 +463,7 @@ func TestReplicate(t *testing.T) {
 		for seq := uint64(0); seq <= uint64(10); seq++ {
 			block := copyBlock(&bootBlock, seq)
 			if seq > 0 {
-				block.Header.PreviousHash = blocks[seq-1].Header.Hash()
+				block.Header.PreviousHash = protoutil.BlockHeaderHash(blocks[seq-1].Header)
 			}
 			blocks[seq] = &block
 			deliverServer.blockResponses <- &orderer.DeliverResponse{
@@ -477,7 +477,7 @@ func TestReplicate(t *testing.T) {
 		// We need to ensure the hash chain is valid with respect to the bootstrap block.
 		// Validating the hash chain itself when we traverse channels will be taken care
 		// of in FAB-12926.
-		bootBlock.Header.PreviousHash = blocks[9].Header.Hash()
+		bootBlock.Header.PreviousHash = protoutil.BlockHeaderHash(blocks[9].Header)
 		return deliverServer
 	}
 
@@ -877,7 +877,7 @@ func injectConsenterCertificate(t *testing.T, block *common.Block, tlsCert []byt
 	payload.Data = protoutil.MarshalOrPanic(confEnv)
 	env.Payload = protoutil.MarshalOrPanic(payload)
 	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
-	block.Header.DataHash = block.Data.Hash()
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 }
 
 func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
@@ -895,7 +895,7 @@ func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
 	payload.Data = protoutil.MarshalOrPanic(confEnv)
 	env.Payload = protoutil.MarshalOrPanic(payload)
 	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
-	block.Header.DataHash = block.Data.Hash()
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 }
 
 func TestVerifierLoader(t *testing.T) {

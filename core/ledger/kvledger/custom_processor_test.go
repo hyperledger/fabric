@@ -61,7 +61,7 @@ func TestCustomProcessor(t *testing.T) {
 	tx1 := createCustomTx(t, 100, chainid, "custom_key1", "value1")
 	tx2 := createCustomTx(t, 101, chainid, "custom_key2", "value2")
 	tx3 := createCustomTx(t, 101, chainid, "", "")
-	blk1 := testutil.NewBlock([]*common.Envelope{tx1, tx2, tx3}, 1, gb.Header.Hash())
+	blk1 := testutil.NewBlock([]*common.Envelope{tx1, tx2, tx3}, 1, protoutil.BlockHeaderHash(gb.Header))
 	assert.NoError(t, lgr.CommitWithPvtData(&ledger.BlockAndPvtData{Block: blk1}))
 	// verify that the state changes caused by the custom processor took place during ledger creation
 	qe, err := lgr.NewQueryExecutor()
@@ -84,7 +84,7 @@ func TestCustomProcessor(t *testing.T) {
 	assert.Equal(t, peer.TxValidationCode_INVALID_OTHER_REASON, txFilter.Flag(2))
 
 	tx4 := createCustomTx(t, 100, chainid, "custom_key4", "value4")
-	blk2 := testutil.NewBlock([]*common.Envelope{tx4}, 2, blk1.Header.Hash())
+	blk2 := testutil.NewBlock([]*common.Envelope{tx4}, 2, protoutil.BlockHeaderHash(blk1.Header))
 	assert.NoError(t, lgr.CommitWithPvtData(&ledger.BlockAndPvtData{Block: blk2}))
 	qe, err = lgr.NewQueryExecutor()
 	assert.NoError(t, err)

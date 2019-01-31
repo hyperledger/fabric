@@ -88,9 +88,9 @@ func (g *blkGenerator) nextBlockAndPvtdata(trans ...*txAndPvtdata) *ledger.Block
 			blockPvtdata[seq] = &ledger.TxPvtData{SeqInBlock: seq, WriteSet: tran.Pvtws}
 		}
 	}
-	block.Header.DataHash = block.Data.Hash()
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 	g.lastNum++
-	g.lastHash = block.Header.Hash()
+	g.lastHash = protoutil.BlockHeaderHash(block.Header)
 	setBlockFlagsToValid(block)
 	return &ledger.BlockAndPvtData{Block: block, PvtData: blockPvtdata,
 		MissingPvtData: make(ledger.TxMissingPvtDataMap)}

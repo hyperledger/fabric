@@ -45,8 +45,8 @@ func TestCreateBlock(t *testing.T) {
 	})
 
 	assert.Equal(t, seedBlock.Header.Number+1, block.Header.Number)
-	assert.Equal(t, block.Data.Hash(), block.Header.DataHash)
-	assert.Equal(t, seedBlock.Header.Hash(), block.Header.PreviousHash)
+	assert.Equal(t, protoutil.BlockDataHash(block.Data), block.Header.DataHash)
+	assert.Equal(t, protoutil.BlockHeaderHash(seedBlock.Header), block.Header.PreviousHash)
 }
 
 func TestBlockSignature(t *testing.T) {
@@ -172,7 +172,7 @@ func TestGoodWriteConfig(t *testing.T) {
 	}
 
 	ctx := makeConfigTx(genesisconfig.TestChainID, 1)
-	block := protoutil.NewBlock(1, genesisBlockSys.Header.Hash())
+	block := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
 	block.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata := []byte("foo")
 	bw.WriteConfigBlock(block, consenterMetadata)

@@ -62,7 +62,7 @@ func TestInitialization(t *testing.T) {
 	block, found := fl.readBlock(0)
 	assert.NotNil(t, block, "Error retrieving genesis block")
 	assert.True(t, found, "Error retrieving genesis block")
-	assert.Equal(t, fl.lastHash, block.Header.Hash(), "Block hashes did no match")
+	assert.Equal(t, fl.lastHash, protoutil.BlockHeaderHash(block.Header), "Block hashes did no match")
 
 }
 
@@ -83,7 +83,7 @@ func TestReinitialization(t *testing.T) {
 	block, found := fl.readBlock(1)
 	assert.NotNil(t, block, "Error retrieving block")
 	assert.True(t, found, "Error retrieving block")
-	assert.Equal(t, fl.lastHash, block.Header.Hash(), "Block hashes did no match")
+	assert.Equal(t, fl.lastHash, protoutil.BlockHeaderHash(block.Header), "Block hashes did no match")
 }
 
 func TestMultiReinitialization(t *testing.T) {

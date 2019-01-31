@@ -48,7 +48,7 @@ func TestMultipleBlockStores(t *testing.T) {
 func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store blkstorage.BlockStore) {
 	bcInfo, _ := store.GetBlockchainInfo()
 	assert.Equal(t, uint64(len(expectedBlocks)), bcInfo.Height)
-	assert.Equal(t, expectedBlocks[len(expectedBlocks)-1].GetHeader().Hash(), bcInfo.CurrentBlockHash)
+	assert.Equal(t, protoutil.BlockHeaderHash(expectedBlocks[len(expectedBlocks)-1].GetHeader()), bcInfo.CurrentBlockHash)
 
 	itr, _ := store.RetrieveBlocks(0)
 	for i := 0; i < len(expectedBlocks); i++ {
@@ -62,7 +62,7 @@ func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store blkstorage.
 		retrievedBlock, _ := store.RetrieveBlockByNumber(uint64(blockNum))
 		assert.Equal(t, block, retrievedBlock)
 
-		retrievedBlock, _ = store.RetrieveBlockByHash(block.Header.Hash())
+		retrievedBlock, _ = store.RetrieveBlockByHash(protoutil.BlockHeaderHash(block.Header))
 		assert.Equal(t, block, retrievedBlock)
 
 		for txNum := 0; txNum < len(block.Data.Data); txNum++ {

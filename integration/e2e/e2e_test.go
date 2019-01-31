@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
-	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -27,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -240,8 +240,8 @@ var _ = Describe("EndToEnd", func() {
 			b1 := nwo.UnmarshalBlockFromFile(blockFile1)
 			b2 := nwo.UnmarshalBlockFromFile(blockFile2)
 			b3 := nwo.UnmarshalBlockFromFile(blockFile3)
-			Expect(bytes.Equal(b1.Header.Bytes(), b2.Header.Bytes())).To(BeTrue())
-			Expect(bytes.Equal(b2.Header.Bytes(), b3.Header.Bytes())).To(BeTrue())
+			Expect(protoutil.BlockHeaderBytes(b1.Header)).To(Equal(protoutil.BlockHeaderBytes(b2.Header)))
+			Expect(protoutil.BlockHeaderBytes(b2.Header)).To(Equal(protoutil.BlockHeaderBytes(b3.Header)))
 
 			By("updating ACL policies to test for type A configuration updates")
 			invokeChaincode := commands.ChaincodeInvoke{

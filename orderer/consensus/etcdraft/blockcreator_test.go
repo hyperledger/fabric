@@ -25,18 +25,18 @@ func getSeedBlock() *cb.Block {
 func TestCreateNextBlock(t *testing.T) {
 	first := protoutil.NewBlock(0, []byte("firsthash"))
 	bc := &blockCreator{
-		hash:   first.Header.Hash(),
+		hash:   protoutil.BlockHeaderHash(first.Header),
 		number: first.Header.Number,
 		logger: flogging.NewFabricLogger(zap.NewNop()),
 	}
 
 	second := bc.createNextBlock([]*cb.Envelope{{Payload: []byte("some other bytes")}})
 	assert.Equal(t, first.Header.Number+1, second.Header.Number)
-	assert.Equal(t, second.Data.Hash(), second.Header.DataHash)
-	assert.Equal(t, first.Header.Hash(), second.Header.PreviousHash)
+	assert.Equal(t, protoutil.BlockDataHash(second.Data), second.Header.DataHash)
+	assert.Equal(t, protoutil.BlockHeaderHash(first.Header), second.Header.PreviousHash)
 
 	third := bc.createNextBlock([]*cb.Envelope{{Payload: []byte("some other bytes")}})
 	assert.Equal(t, second.Header.Number+1, third.Header.Number)
-	assert.Equal(t, third.Data.Hash(), third.Header.DataHash)
-	assert.Equal(t, second.Header.Hash(), third.Header.PreviousHash)
+	assert.Equal(t, protoutil.BlockDataHash(third.Data), third.Header.DataHash)
+	assert.Equal(t, protoutil.BlockHeaderHash(second.Header), third.Header.PreviousHash)
 }

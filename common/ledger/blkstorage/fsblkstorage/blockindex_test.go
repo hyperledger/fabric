@@ -162,7 +162,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 
 		// if index has been configured for an indexItem then the item should be indexed else not
 		// test 'retrieveBlockByHash'
-		block, err := blockfileMgr.retrieveBlockByHash(blocks[0].Header.Hash())
+		block, err := blockfileMgr.retrieveBlockByHash(protoutil.BlockHeaderHash(blocks[0].Header))
 		if containsAttr(indexItems, blkstorage.IndexableAttrBlockHash) {
 			assert.NoError(t, err, "Error while retrieving block by hash")
 			assert.Equal(t, blocks[0], block)

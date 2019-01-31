@@ -7,7 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package protoutil
 
 import (
+	"encoding/asn1"
+	"fmt"
+	"math"
+
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
@@ -27,6 +32,39 @@ func NewBlock(seqNum uint64, previousHash []byte) *cb.Block {
 	block.Metadata = &cb.BlockMetadata{Metadata: metadataContents}
 
 	return block
+}
+
+type asn1Header struct {
+	Number       int64
+	PreviousHash []byte
+	DataHash     []byte
+}
+
+func BlockHeaderBytes(b *cb.BlockHeader) []byte {
+	if b.Number > uint64(math.MaxInt64) {
+		panic(fmt.Errorf("Golang does not currently support encoding uint64 to asn1"))
+	}
+	asn1Header := asn1Header{
+		PreviousHash: b.PreviousHash,
+		DataHash:     b.DataHash,
+		Number:       int64(b.Number),
+	}
+	result, err := asn1.Marshal(asn1Header)
+	if err != nil {
+		// Errors should only arise for types which cannot be encoded, since the
+		// BlockHeader type is known a-priori to contain only encodable types, an
+		// error here is fatal and should not be propogated
+		panic(err)
+	}
+	return result
+}
+
+func BlockHeaderHash(b *cb.BlockHeader) []byte {
+	return util.ComputeSHA256(BlockHeaderBytes(b))
+}
+
+func BlockDataHash(b *cb.BlockData) []byte {
+	return util.ComputeSHA256(util.ConcatenateBytes(b.Data...))
 }
 
 // GetChainIDFromBlockBytes returns chain ID given byte array which represents

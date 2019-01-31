@@ -15,6 +15,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -95,7 +96,7 @@ func (jl *jsonLedger) initializeBlockHeight() {
 	if block == nil {
 		logger.Panicf("Error reading block %d", jl.height-1)
 	}
-	jl.lastHash = block.Header.Hash()
+	jl.lastHash = protoutil.BlockHeaderHash(block.Header)
 }
 
 // ChainIDs returns the chain IDs the factory is aware of

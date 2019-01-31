@@ -132,7 +132,7 @@ func TestInitialization(t *testing.T) {
 
 	block := blockledger.GetBlock(fl, 0)
 	assert.NotNil(t, block, "Error retrieving genesis block")
-	assert.Equal(t, genesisBlock.Header.Hash(), block.Header.Hash(), "Block hashes did no match")
+	assert.Equal(t, protoutil.BlockHeaderHash(genesisBlock.Header), protoutil.BlockHeaderHash(block.Header), "Block hashes did no match")
 }
 
 func TestReinitialization(t *testing.T) {
@@ -170,7 +170,7 @@ func TestReinitialization(t *testing.T) {
 
 	block := blockledger.GetBlock(fl, 1)
 	assert.NotNil(t, block, "Error retrieving block 1")
-	assert.Equal(t, b1.Header.Hash(), block.Header.Hash(), "Block hashes did no match")
+	assert.Equal(t, protoutil.BlockHeaderHash(b1.Header), protoutil.BlockHeaderHash(block.Header), "Block hashes did no match")
 }
 
 func TestAddition(t *testing.T) {

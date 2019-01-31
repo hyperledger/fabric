@@ -210,7 +210,7 @@ func (r *Replicator) pullChannelBlocks(channel string, puller *BlockPuller, late
 		return ErrRetryCountExhausted
 	}
 	r.appendBlock(nextBlock, ledger, channel)
-	actualPrevHash := nextBlock.Header.Hash()
+	actualPrevHash := protoutil.BlockHeaderHash(nextBlock.Header)
 
 	for seq := uint64(nextBlockToPull + 1); seq < latestHeight; seq++ {
 		block := puller.PullBlock(seq)
@@ -222,7 +222,7 @@ func (r *Replicator) pullChannelBlocks(channel string, puller *BlockPuller, late
 			return errors.Errorf("block header mismatch on sequence %d, expected %x, got %x",
 				block.Header.Number, actualPrevHash, reportedPrevHash)
 		}
-		actualPrevHash = block.Header.Hash()
+		actualPrevHash = protoutil.BlockHeaderHash(block.Header)
 		if channel == r.SystemChannel && block.Header.Number == r.BootBlock.Header.Number {
 			r.compareBootBlockWithSystemChannelLastConfigBlock(block)
 			r.appendBlock(block, ledger, channel)
@@ -248,10 +248,10 @@ func (r *Replicator) appendBlock(block *common.Block, ledger LedgerWriter, chann
 
 func (r *Replicator) compareBootBlockWithSystemChannelLastConfigBlock(block *common.Block) {
 	// Overwrite the received block's data hash
-	block.Header.DataHash = block.Data.Hash()
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 
-	bootBlockHash := r.BootBlock.Header.Hash()
-	retrievedBlockHash := block.Header.Hash()
+	bootBlockHash := protoutil.BlockHeaderHash(r.BootBlock.Header)
+	retrievedBlockHash := protoutil.BlockHeaderHash(block.Header)
 	if bytes.Equal(bootBlockHash, retrievedBlockHash) {
 		return
 	}
@@ -549,7 +549,7 @@ func (ci *ChainInspector) Channels() []ChannelGenesisBlock {
 			continue
 		}
 		// Set the previous hash for the next iteration
-		prevHash = block.Header.Hash()
+		prevHash = protoutil.BlockHeaderHash(block.Header)
 		if channel == "" {
 			ci.Logger.Info("Block", seq, "doesn't contain a new channel")
 			continue
@@ -606,7 +606,7 @@ func ChannelCreationBlockToGenesisBlock(block *common.Block) (*common.Block, err
 		return nil, err
 	}
 	block.Data.Data = [][]byte{payload.Data}
-	block.Header.DataHash = block.Data.Hash()
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 	block.Header.Number = 0
 	block.Header.PreviousHash = nil
 	metadata := &common.BlockMetadata{

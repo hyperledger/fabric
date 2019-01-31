@@ -184,7 +184,7 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 				logger.Panicf("Error reading genesis block of system channel '%s'", chainID)
 			}
 			logger.Infof("Starting system channel '%s' with genesis block hash %x and orderer type %s",
-				chainID, genesisBlock.Header.Hash(), chain.SharedConfig().ConsensusType())
+				chainID, protoutil.BlockHeaderHash(genesisBlock.Header), chain.SharedConfig().ConsensusType())
 
 			r.chains[chainID] = chain
 			r.systemChannelID = chainID

@@ -306,7 +306,7 @@ func (mock *ramLedger) GetBlockchainInfo() (*pcomm.BlockchainInfo, error) {
 	currentBlock := mock.ledger[uint64(len(mock.ledger)-1)].Block
 	return &pcomm.BlockchainInfo{
 		Height:            currentBlock.Header.Number + 1,
-		CurrentBlockHash:  currentBlock.Header.Hash(),
+		CurrentBlockHash:  protoutil.BlockHeaderHash(currentBlock.Header),
 		PreviousBlockHash: currentBlock.Header.PreviousHash,
 	}, nil
 }

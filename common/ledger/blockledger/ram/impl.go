@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -151,9 +152,9 @@ func (rl *ramLedger) Append(block *cb.Block) error {
 	}
 
 	if rl.newest.block.Header.Number+1 != 0 { // Skip this check for genesis block insertion
-		if !bytes.Equal(block.Header.PreviousHash, rl.newest.block.Header.Hash()) {
+		if !bytes.Equal(block.Header.PreviousHash, protoutil.BlockHeaderHash(rl.newest.block.Header)) {
 			return errors.Errorf("block should have had previous hash of %x but was %x",
-				rl.newest.block.Header.Hash(), block.Header.PreviousHash)
+				protoutil.BlockHeaderHash(rl.newest.block.Header), block.Header.PreviousHash)
 		}
 	}
 

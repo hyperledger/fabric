@@ -56,7 +56,7 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 			panic("Error seeking to newest block for chain with non-zero height")
 		}
 		nextBlockNumber = block.Header.Number + 1
-		previousBlockHash = block.Header.Hash()
+		previousBlockHash = protoutil.BlockHeaderHash(block.Header)
 	}
 
 	data := &cb.BlockData{
@@ -72,7 +72,7 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 	}
 
 	block := protoutil.NewBlock(nextBlockNumber, previousBlockHash)
-	block.Header.DataHash = data.Hash()
+	block.Header.DataHash = protoutil.BlockDataHash(data)
 	block.Data = data
 
 	return block

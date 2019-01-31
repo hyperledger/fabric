@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -135,7 +136,7 @@ func (jl *jsonLedger) Append(block *cb.Block) error {
 	}
 
 	jl.writeBlock(block)
-	jl.lastHash = block.Header.Hash()
+	jl.lastHash = protoutil.BlockHeaderHash(block.Header)
 	jl.height++
 
 	// Manage the signal channel under lock to avoid race with read in Next

@@ -8,6 +8,7 @@ package protoutil_test
 
 import (
 	"encoding/asn1"
+	"math"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -34,7 +35,7 @@ func TestNewBlock(t *testing.T) {
 	assert.Equal(t, []byte("datahash"), block.Header.PreviousHash, "Incorrect previous hash")
 	assert.NotNil(t, block.GetData())
 	assert.NotNil(t, block.GetMetadata())
-	block.GetHeader().DataHash = data.Hash()
+	block.GetHeader().DataHash = protoutil.BlockDataHash(data)
 
 	asn1Bytes, err := asn1.Marshal(struct {
 		Number       int64
@@ -42,13 +43,39 @@ func TestNewBlock(t *testing.T) {
 		DataHash     []byte
 	}{
 		Number:       0,
-		DataHash:     data.Hash(),
+		DataHash:     protoutil.BlockDataHash(data),
 		PreviousHash: []byte("datahash"),
 	})
 	headerHash := util.ComputeSHA256(asn1Bytes)
 	assert.NoError(t, err)
-	assert.Equal(t, asn1Bytes, block.Header.Bytes(), "Incorrect marshaled blockheader bytes")
-	assert.Equal(t, headerHash, block.Header.Hash(), "Incorrect blockheader hash")
+	assert.Equal(t, asn1Bytes, protoutil.BlockHeaderBytes(block.Header), "Incorrect marshaled blockheader bytes")
+	assert.Equal(t, headerHash, protoutil.BlockHeaderHash(block.Header), "Incorrect blockheader hash")
+}
+
+func TestGoodBlockHeaderBytes(t *testing.T) {
+	goodBlockHeader := &common.BlockHeader{
+		Number:       1,
+		PreviousHash: []byte("foo"),
+		DataHash:     []byte("bar"),
+	}
+
+	_ = protoutil.BlockHeaderBytes(goodBlockHeader) // Should not panic
+}
+
+func TestBadBlockHeaderBytes(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("Should have panicked on block number too high to encode as int64")
+		}
+	}()
+
+	badBlockHeader := &common.BlockHeader{
+		Number:       math.MaxUint64,
+		PreviousHash: []byte("foo"),
+		DataHash:     []byte("bar"),
+	}
+
+	_ = protoutil.BlockHeaderBytes(badBlockHeader) // Should panic
 }
 
 func TestGetChainIDFromBlockBytes(t *testing.T) {

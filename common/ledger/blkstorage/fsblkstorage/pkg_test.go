@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -93,7 +94,7 @@ func (w *testBlockfileMgrWrapper) addBlocks(blocks []*common.Block) {
 
 func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*common.Block) {
 	for i, block := range blocks {
-		hash := block.Header.Hash()
+		hash := protoutil.BlockHeaderHash(block.Header)
 		b, err := w.blockfileMgr.retrieveBlockByHash(hash)
 		assert.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
 		assert.Equal(w.t, block, b)

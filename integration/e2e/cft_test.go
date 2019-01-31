@@ -20,6 +20,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -142,7 +143,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			fetchLatestBlock(o2, blockFile2)
 			b1 := nwo.UnmarshalBlockFromFile(blockFile1)
 			b2 := nwo.UnmarshalBlockFromFile(blockFile2)
-			Expect(b1.Header.Bytes()).To(Equal(b2.Header.Bytes()))
+			Expect(protoutil.BlockHeaderBytes(b1.Header)).To(Equal(protoutil.BlockHeaderBytes(b2.Header)))
 		})
 	})
 
@@ -224,7 +225,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			fetchLatestBlock(o2, blockFile2)
 			b1 := nwo.UnmarshalBlockFromFile(blockFile1)
 			b2 := nwo.UnmarshalBlockFromFile(blockFile2)
-			Expect(b1.Header.Bytes()).To(Equal(b2.Header.Bytes()))
+			Expect(protoutil.BlockHeaderBytes(b1.Header)).To(Equal(protoutil.BlockHeaderBytes(b2.Header)))
 		})
 	})
 

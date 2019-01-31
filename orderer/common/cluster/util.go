@@ -307,7 +307,7 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 		return errors.New("missing block header")
 	}
 	seq := block.Header.Number
-	dataHash := block.Data.Hash()
+	dataHash := protoutil.BlockDataHash(block.Data)
 	// Verify data hash matches the hash in the header
 	if !bytes.Equal(dataHash, block.Header.DataHash) {
 		computedHash := hex.EncodeToString(dataHash)
@@ -326,9 +326,9 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 		if prevSeq+1 != currSeq {
 			return errors.Errorf("sequences %d and %d were received consecutively", prevSeq, currSeq)
 		}
-		if !bytes.Equal(block.Header.PreviousHash, prevBlock.Header.Hash()) {
+		if !bytes.Equal(block.Header.PreviousHash, protoutil.BlockHeaderHash(prevBlock.Header)) {
 			claimedPrevHash := hex.EncodeToString(block.Header.PreviousHash)
-			actualPrevHash := hex.EncodeToString(prevBlock.Header.Hash())
+			actualPrevHash := hex.EncodeToString(protoutil.BlockHeaderHash(prevBlock.Header))
 			return errors.Errorf("block %d's hash (%s) mismatches %d's prev block hash (%s)",
 				prevSeq, actualPrevHash, currSeq, claimedPrevHash)
 		}
@@ -357,7 +357,7 @@ func SignatureSetFromBlock(block *common.Block) ([]*common.SignedData, error) {
 			&common.SignedData{
 				Identity: sigHdr.Creator,
 				Data: util.ConcatenateBytes(metadata.Value,
-					metadataSignature.SignatureHeader, block.Header.Bytes()),
+					metadataSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
 				Signature: metadataSignature.Signature,
 			},
 		)

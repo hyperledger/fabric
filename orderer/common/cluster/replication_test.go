@@ -948,7 +948,7 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 	// And inject into it a 127.0.0.1 orderer endpoint endpoint and a new TLS CA certificate.
 	injectTLSCACert(t, validBlock, caCert)
 	injectOrdererEndpoint(t, validBlock, osn.srv.Address())
-	validBlock.Header.DataHash = validBlock.Data.Hash()
+	validBlock.Header.DataHash = protoutil.BlockDataHash(validBlock.Data)
 
 	for attempt := 0; attempt < iterations; attempt++ {
 		blockMsg := &orderer.DeliverResponse_Block{
@@ -1513,7 +1513,7 @@ func TestChannels(t *testing.T) {
 			}
 
 			for i := 0; i < len(systemChain); i++ {
-				systemChain[i].Header.DataHash = systemChain[i].Data.Hash()
+				systemChain[i].Header.DataHash = protoutil.BlockDataHash(systemChain[i].Data)
 				systemChain[i].Header.Number = uint64(i)
 			}
 			testCase.prepareSystemChain(systemChain)

@@ -64,7 +64,7 @@ func newBlockWriter(lastBlock *cb.Block, r *Registrar, support blockWriterSuppor
 
 // CreateNextBlock creates a new block with the next block number, and the given contents.
 func (bw *BlockWriter) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
-	previousBlockHash := bw.lastBlock.Header.Hash()
+	previousBlockHash := protoutil.BlockHeaderHash(bw.lastBlock.Header)
 
 	data := &cb.BlockData{
 		Data: make([][]byte, len(messages)),
@@ -79,7 +79,7 @@ func (bw *BlockWriter) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
 	}
 
 	block := protoutil.NewBlock(bw.lastBlock.Header.Number+1, previousBlockHash)
-	block.Header.DataHash = data.Hash()
+	block.Header.DataHash = protoutil.BlockDataHash(data)
 	block.Data = data
 
 	return block
@@ -186,7 +186,10 @@ func (bw *BlockWriter) addBlockSignature(block *cb.Block) {
 	// information required beyond the fact that the metadata item is signed.
 	blockSignatureValue := []byte(nil)
 
-	blockSignature.Signature = protoutil.SignOrPanic(bw.support, util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, block.Header.Bytes()))
+	blockSignature.Signature = protoutil.SignOrPanic(
+		bw.support,
+		util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
+	)
 
 	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&cb.Metadata{
 		Value: blockSignatureValue,
@@ -211,7 +214,10 @@ func (bw *BlockWriter) addLastConfigSignature(block *cb.Block) {
 	lastConfigValue := protoutil.MarshalOrPanic(&cb.LastConfig{Index: bw.lastConfigBlockNum})
 	logger.Debugf("[channel: %s] About to write block, setting its LAST_CONFIG to %d", bw.support.ChainID(), bw.lastConfigBlockNum)
 
-	lastConfigSignature.Signature = protoutil.SignOrPanic(bw.support, util.ConcatenateBytes(lastConfigValue, lastConfigSignature.SignatureHeader, block.Header.Bytes()))
+	lastConfigSignature.Signature = protoutil.SignOrPanic(
+		bw.support,
+		util.ConcatenateBytes(lastConfigValue, lastConfigSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
+	)
 
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&cb.Metadata{
 		Value: lastConfigValue,

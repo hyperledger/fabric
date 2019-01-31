@@ -183,7 +183,7 @@ func TestLedgerBackup(t *testing.T) {
 	env := createTestEnv(t, originalPath)
 	provider := testutilNewProvider(t)
 	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
-	gbHash := gb.Header.Hash()
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
 	ledger, _ := provider.Create(gb)
 
 	txid := util.GenerateUUID()
@@ -232,8 +232,8 @@ func TestLedgerBackup(t *testing.T) {
 	ledger, _ = provider.Open(ledgerid)
 	defer ledger.Close()
 
-	block1Hash := block1.Header.Hash()
-	block2Hash := block2.Header.Hash()
+	block1Hash := protoutil.BlockHeaderHash(block1.Header)
+	block2Hash := protoutil.BlockHeaderHash(block2.Header)
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash,
