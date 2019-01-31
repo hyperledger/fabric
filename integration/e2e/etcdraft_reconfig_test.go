@@ -49,6 +49,10 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 	)
 
 	BeforeEach(func() {
+		ordererRunners = nil
+		ordererProcesses = nil
+		peerProcesses = nil
+
 		var err error
 		testDir, err = ioutil.TempDir("", "e2e-etcfraft_reconfig")
 		Expect(err).NotTo(HaveOccurred())
@@ -345,7 +349,80 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, orderers, peer, network)
 		})
 	})
+
+	When("an orderer node is evicted", func() {
+		It("it does not complain and does it obediently", func() {
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, 33000, components)
+
+			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+			orderers := []*nwo.Orderer{o1, o2, o3}
+
+			peer = network.Peer("Org1", "peer1")
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			By("Launching the orderers")
+			for _, o := range orderers {
+				runner := network.OrdererRunner(o)
+				ordererRunners = append(ordererRunners, runner)
+				process := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, process)
+			}
+
+			for _, ordererProc := range ordererProcesses {
+				Eventually(ordererProc.Ready()).Should(BeClosed())
+			}
+
+			By("Waiting for them to elect a leader")
+			findLeader(ordererRunners)
+
+			By("Creating a channel")
+			network.CreateChannel("testchannel", network.Orderers[0], peer)
+
+			By("Waiting for the channel to be serviced")
+			assertBlockReception(map[string]int{
+				"testchannel": 0,
+			}, orderers, peer, network)
+
+			By("Removing the first orderer from both system channel and application channel")
+			certificatesOfOrderers := refreshOrdererPEMs(network)
+			for _, channelName := range []string{"systemchannel", "testchannel"} {
+				nwo.RemoveConsenter(network, peer, network.Orderers[1], channelName, certificatesOfOrderers[0].oldCert)
+			}
+
+			By("Ensuring the other orderers disconnect from the evicted orderer")
+			Eventually(ordererRunners[1].Err(), time.Minute, time.Second).Should(gbytes.Say("Aborted connection to 1"))
+			Eventually(ordererRunners[2].Err(), time.Minute, time.Second).Should(gbytes.Say("Aborted connection to 1"))
+
+			By("Ensuring the evicted orderer stops rafting")
+			Eventually(ordererRunners[0].Err(), time.Minute, time.Second).Should(gbytes.Say("Raft node stopped channel=systemchannel"))
+			Eventually(ordererRunners[0].Err(), time.Minute, time.Second).Should(gbytes.Say("Raft node stopped channel=testchannel"))
+
+			By("Ensuring the evicted orderer now doesn't serve clients")
+			ensureEvicted(orderers[0], peer, network, "systemchannel")
+			ensureEvicted(orderers[0], peer, network, "testchannel")
+
+			By("Ensuring that all orderers don't log errors to the log")
+			assertNoErrorsAreLogged(ordererRunners)
+		})
+	})
 })
+
+func ensureEvicted(evictedOrderer *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channel string) {
+	c := commands.ChannelFetch{
+		ChannelID:  channel,
+		Block:      "newest",
+		OutputFile: "/dev/null",
+		Orderer:    network.OrdererAddress(evictedOrderer, nwo.ListenPort),
+	}
+
+	sess, err := network.OrdererAdminSession(evictedOrderer, submitter, c)
+	Expect(err).NotTo(HaveOccurred())
+
+	Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+	Expect(sess.Err).To(gbytes.Say("SERVICE_UNAVAILABLE"))
+}
 
 var extendedCryptoConfig = `---
 OrdererOrgs:
