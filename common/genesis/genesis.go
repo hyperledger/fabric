@@ -42,7 +42,7 @@ func (f *factory) Block(channelID string) *cb.Block {
 	payload := &cb.Payload{Header: payloadHeader, Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{ChannelGroup: f.channelGroup}})}
 	envelope := &cb.Envelope{Payload: protoutil.MarshalOrPanic(payload), Signature: nil}
 
-	block := cb.NewBlock(0, nil)
+	block := protoutil.NewBlock(0, nil)
 	block.Data = &cb.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(envelope)}}
 	block.Header.DataHash = block.Data.Hash()
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&cb.Metadata{

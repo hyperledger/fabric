@@ -24,23 +24,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 )
 
-// NewBlock construct a block with no data and no metadata.
-func NewBlock(seqNum uint64, previousHash []byte) *Block {
-	block := &Block{}
-	block.Header = &BlockHeader{}
-	block.Header.Number = seqNum
-	block.Header.PreviousHash = previousHash
-	block.Data = &BlockData{}
-
-	var metadataContents [][]byte
-	for i := 0; i < len(BlockMetadataIndex_name); i++ {
-		metadataContents = append(metadataContents, []byte{})
-	}
-	block.Metadata = &BlockMetadata{Metadata: metadataContents}
-
-	return block
-}
-
 type asn1Header struct {
 	Number       int64
 	PreviousHash []byte

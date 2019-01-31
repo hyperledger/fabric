@@ -205,7 +205,7 @@ func ConstructBytesProposalResponsePayload(version string, simulationResults []b
 }
 
 func NewBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *common.Block {
-	block := common.NewBlock(blockNum, previousHash)
+	block := protoutil.NewBlock(blockNum, previousHash)
 	for i := 0; i < len(env); i++ {
 		txEnvBytes, _ := proto.Marshal(env[i])
 		block.Data.Data = append(block.Data.Data, txEnvBytes)

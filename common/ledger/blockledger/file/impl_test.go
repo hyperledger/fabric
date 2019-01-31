@@ -20,11 +20,12 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-var genesisBlock = cb.NewBlock(0, nil)
+var genesisBlock = protoutil.NewBlock(0, nil)
 
 func init() {
 	flogging.ActivateSpec("common.ledger.blockledger.file=DEBUG")

@@ -14,9 +14,9 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,7 +44,7 @@ func TestStateListener(t *testing.T) {
 	sampleBatch.PubUpdates.Put("ns1", "key1_2", []byte("value1_2"), version.NewHeight(1, 2))
 	sampleBatch.PubUpdates.Put("ns2", "key2_1", []byte("value2_1"), version.NewHeight(1, 3))
 	sampleBatch.PubUpdates.Put("ns3", "key3_1", []byte("value3_1"), version.NewHeight(1, 4))
-	dummyBlock := common.NewBlock(1, []byte("dummyHash"))
+	dummyBlock := protoutil.NewBlock(1, []byte("dummyHash"))
 	txmgr.current = &current{block: dummyBlock, batch: sampleBatch}
 	txmgr.invokeNamespaceListeners()
 	assert.Equal(t, 1, ml1.HandleStateUpdatesCallCount())
@@ -97,7 +97,7 @@ func TestStateListener(t *testing.T) {
 	sampleBatch.HashUpdates.Put("ns4", "coll2", []byte("key-hash-3"), []byte("value-hash-3"), version.NewHeight(2, 3))
 	sampleBatch.HashUpdates.Delete("ns4", "coll2", []byte("key-hash-4"), version.NewHeight(2, 4))
 
-	txmgr.current = &current{block: common.NewBlock(2, []byte("anotherDummyHash")), batch: sampleBatch}
+	txmgr.current = &current{block: protoutil.NewBlock(2, []byte("anotherDummyHash")), batch: sampleBatch}
 	txmgr.invokeNamespaceListeners()
 	assert.Equal(t, 1, ml1.HandleStateUpdatesCallCount())
 	assert.Equal(t, 1, ml2.HandleStateUpdatesCallCount())

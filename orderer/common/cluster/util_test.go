@@ -427,7 +427,7 @@ func createBlockChain(start, end uint64) []*common.Block {
 			Creator: []byte{1, 2, 3},
 			Nonce:   []byte{9, 5, 42, 66},
 		}
-		block := common.NewBlock(seq, nil)
+		block := protoutil.NewBlock(seq, nil)
 		blockSignature := &common.MetadataSignature{
 			SignatureHeader: protoutil.MarshalOrPanic(sHdr),
 		}

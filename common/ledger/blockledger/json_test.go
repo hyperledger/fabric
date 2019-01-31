@@ -23,10 +23,10 @@ import (
 	. "github.com/hyperledger/fabric/common/ledger/blockledger"
 	jsonledger "github.com/hyperledger/fabric/common/ledger/blockledger/json"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
-var genesisBlock = cb.NewBlock(0, nil)
+var genesisBlock = protoutil.NewBlock(0, nil)
 
 func init() {
 	testables = append(testables, &jsonLedgerTestEnv{})

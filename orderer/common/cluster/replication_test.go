@@ -377,7 +377,7 @@ func TestReplicateChainsChannelClassificationFailure(t *testing.T) {
 	// Scenario: We are unable to classify whether we are part of the channel,
 	// so we crash, because this is a programming error.
 
-	block30WithConfigBlockOf21 := common.NewBlock(30, nil)
+	block30WithConfigBlockOf21 := protoutil.NewBlock(30, nil)
 	block30WithConfigBlockOf21.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.Metadata{
 		Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 21}),
 	})
@@ -451,7 +451,7 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 	// at that time.
 
 	systemChannelBlocks := createBlockChain(0, 21)
-	block30WithConfigBlockOf21 := common.NewBlock(30, nil)
+	block30WithConfigBlockOf21 := protoutil.NewBlock(30, nil)
 	block30WithConfigBlockOf21.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.Metadata{
 		Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 21}),
 	})
@@ -1554,7 +1554,7 @@ var fakeGB = &common.Block{
 }
 
 func simulateNonParticipantChannelPull(osn *deliverServer) {
-	lastBlock := common.NewBlock(1, nil)
+	lastBlock := protoutil.NewBlock(1, nil)
 	lastBlock.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.Metadata{
 		Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 0}),
 	})

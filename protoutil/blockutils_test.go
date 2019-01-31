@@ -7,10 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package protoutil_test
 
 import (
+	"encoding/asn1"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
@@ -18,6 +20,36 @@ import (
 )
 
 var testChainID = "myuniquetestchainid"
+
+func TestNewBlock(t *testing.T) {
+	var block *cb.Block
+	assert.Nil(t, block.GetHeader())
+	assert.Nil(t, block.GetData())
+	assert.Nil(t, block.GetMetadata())
+
+	data := &cb.BlockData{
+		Data: [][]byte{{0, 1, 2}},
+	}
+	block = protoutil.NewBlock(uint64(0), []byte("datahash"))
+	assert.Equal(t, []byte("datahash"), block.Header.PreviousHash, "Incorrect previous hash")
+	assert.NotNil(t, block.GetData())
+	assert.NotNil(t, block.GetMetadata())
+	block.GetHeader().DataHash = data.Hash()
+
+	asn1Bytes, err := asn1.Marshal(struct {
+		Number       int64
+		PreviousHash []byte
+		DataHash     []byte
+	}{
+		Number:       0,
+		DataHash:     data.Hash(),
+		PreviousHash: []byte("datahash"),
+	})
+	headerHash := util.ComputeSHA256(asn1Bytes)
+	assert.NoError(t, err)
+	assert.Equal(t, asn1Bytes, block.Header.Bytes(), "Incorrect marshaled blockheader bytes")
+	assert.Equal(t, headerHash, block.Header.Hash(), "Incorrect blockheader hash")
+}
 
 func TestGetChainIDFromBlockBytes(t *testing.T) {
 	gb, err := configtxtest.MakeGenesisBlock(testChainID)
@@ -121,7 +153,7 @@ func TestGetBlockFromBlockBytes(t *testing.T) {
 }
 
 func TestGetMetadataFromNewBlock(t *testing.T) {
-	block := common.NewBlock(0, nil)
+	block := protoutil.NewBlock(0, nil)
 	md, err := protoutil.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
 	assert.NoError(t, err, "Unexpected error extracting metadata from new block")
 	assert.Nil(t, md.Value, "Expected metadata field value to be nil")
@@ -156,7 +188,7 @@ func TestInitBlockMeta(t *testing.T) {
 }
 
 func TestCopyBlockMetadata(t *testing.T) {
-	srcBlock := common.NewBlock(0, nil)
+	srcBlock := protoutil.NewBlock(0, nil)
 	dstBlock := &cb.Block{}
 
 	metadata, _ := proto.Marshal(&cb.Metadata{
@@ -173,7 +205,7 @@ func TestCopyBlockMetadata(t *testing.T) {
 }
 
 func TestGetLastConfigIndexFromBlock(t *testing.T) {
-	block := common.NewBlock(0, nil)
+	block := protoutil.NewBlock(0, nil)
 	index := uint64(2)
 	lc, _ := proto.Marshal(&cb.LastConfig{
 		Index: index,

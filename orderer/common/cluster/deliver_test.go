@@ -241,7 +241,7 @@ func (ds *deliverServer) stop() {
 
 func (ds *deliverServer) enqueueResponse(seq uint64) {
 	ds.blocks() <- &orderer.DeliverResponse{
-		Type: &orderer.DeliverResponse_Block{Block: common.NewBlock(seq, nil)},
+		Type: &orderer.DeliverResponse_Block{Block: protoutil.NewBlock(seq, nil)},
 	}
 }
 
@@ -367,7 +367,7 @@ func TestBlockPullerHeavyBlocks(t *testing.T) {
 		for seq := start; seq <= end; seq++ {
 			resp := &orderer.DeliverResponse{
 				Type: &orderer.DeliverResponse_Block{
-					Block: common.NewBlock(seq, nil),
+					Block: protoutil.NewBlock(seq, nil),
 				},
 			}
 			data := resp.GetBlock().Data.Data

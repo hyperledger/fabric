@@ -313,7 +313,7 @@ func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimula
 			if err != nil {
 				return err
 			}
-			block := common.NewBlock(blockNumber, bcInfo.CurrentBlockHash)
+			block := protoutil.NewBlock(blockNumber, bcInfo.CurrentBlockHash)
 			block.Data.Data = [][]byte{envBytes}
 			txsFilter := cut.NewTxValidationFlagsSetValue(len(block.Data.Data), pb.TxValidationCode_VALID)
 			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter

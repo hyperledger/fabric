@@ -12,6 +12,23 @@ import (
 	"github.com/pkg/errors"
 )
 
+// NewBlock constructs a block with no data and no metadata.
+func NewBlock(seqNum uint64, previousHash []byte) *cb.Block {
+	block := &cb.Block{}
+	block.Header = &cb.BlockHeader{}
+	block.Header.Number = seqNum
+	block.Header.PreviousHash = previousHash
+	block.Data = &cb.BlockData{}
+
+	var metadataContents [][]byte
+	for i := 0; i < len(cb.BlockMetadataIndex_name); i++ {
+		metadataContents = append(metadataContents, []byte{})
+	}
+	block.Metadata = &cb.BlockMetadata{Metadata: metadataContents}
+
+	return block
+}
+
 // GetChainIDFromBlockBytes returns chain ID given byte array which represents
 // the block
 func GetChainIDFromBlockBytes(bytes []byte) (string, error) {

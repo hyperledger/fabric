@@ -78,7 +78,7 @@ func (bw *BlockWriter) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
 		}
 	}
 
-	block := cb.NewBlock(bw.lastBlock.Header.Number+1, previousBlockHash)
+	block := protoutil.NewBlock(bw.lastBlock.Header.Number+1, previousBlockHash)
 	block.Header.DataHash = data.Hash()
 	block.Data = data
 

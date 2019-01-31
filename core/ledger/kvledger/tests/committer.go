@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -77,7 +78,7 @@ func newBlockGenerator(lgr ledger.PeerLedger, t *testing.T) *blkGenerator {
 
 // nextBlockAndPvtdata cuts the next block
 func (g *blkGenerator) nextBlockAndPvtdata(trans ...*txAndPvtdata) *ledger.BlockAndPvtData {
-	block := common.NewBlock(g.lastNum+1, g.lastHash)
+	block := protoutil.NewBlock(g.lastNum+1, g.lastHash)
 	blockPvtdata := make(map[uint64]*ledger.TxPvtData)
 	for i, tran := range trans {
 		seq := uint64(i)

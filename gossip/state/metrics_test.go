@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/metrics"
 	gmetricsmocks "github.com/hyperledger/fabric/gossip/metrics/mocks"
 	"github.com/hyperledger/fabric/gossip/state/mocks"
-	pcomm "github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +53,7 @@ func TestMetrics(t *testing.T) {
 	// add a payload to the payload buffer
 	err := p.s.AddPayload(&proto.Payload{
 		SeqNum: 100,
-		Data:   protoutil.MarshalOrPanic(pcomm.NewBlock(100, []byte{})),
+		Data:   protoutil.MarshalOrPanic(protoutil.NewBlock(100, []byte{})),
 	})
 	assert.NoError(t, err)
 

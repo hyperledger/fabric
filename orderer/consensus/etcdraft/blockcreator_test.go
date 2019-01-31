@@ -11,18 +11,19 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
 
 func getSeedBlock() *cb.Block {
-	seedBlock := cb.NewBlock(0, []byte("firsthash"))
+	seedBlock := protoutil.NewBlock(0, []byte("firsthash"))
 	seedBlock.Data.Data = [][]byte{[]byte("somebytes")}
 	return seedBlock
 }
 
 func TestCreateNextBlock(t *testing.T) {
-	first := cb.NewBlock(0, []byte("firsthash"))
+	first := protoutil.NewBlock(0, []byte("firsthash"))
 	bc := &blockCreator{
 		hash:   first.Header.Hash(),
 		number: first.Header.Number,

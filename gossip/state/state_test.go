@@ -46,6 +46,7 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -500,7 +501,7 @@ func TestAddPayloadLedgerUnavailable(t *testing.T) {
 	mc.Mock = &failedLedger
 	mc.Unlock()
 
-	rawblock := pcomm.NewBlock(uint64(1), []byte{})
+	rawblock := protoutil.NewBlock(uint64(1), []byte{})
 	b, _ := pb.Marshal(rawblock)
 	err := p.s.AddPayload(&proto.Payload{
 		SeqNum: uint64(1),
@@ -550,7 +551,7 @@ func TestLargeBlockGap(t *testing.T) {
 		}
 		// Populate the response with payloads according to what the peer asked
 		for seq := req.StartSeqNum; seq <= req.EndSeqNum; seq++ {
-			rawblock := pcomm.NewBlock(seq, []byte{})
+			rawblock := protoutil.NewBlock(seq, []byte{})
 			b, _ := pb.Marshal(rawblock)
 			payload := &proto.Payload{
 				SeqNum: seq,
@@ -602,7 +603,7 @@ func TestOverPopulation(t *testing.T) {
 
 	// Add some blocks in a sequential manner and make sure it works
 	for i := 1; i <= 4; i++ {
-		rawblock := pcomm.NewBlock(uint64(i), []byte{})
+		rawblock := protoutil.NewBlock(uint64(i), []byte{})
 		b, _ := pb.Marshal(rawblock)
 		assert.NoError(t, p.s.addPayload(&proto.Payload{
 			SeqNum: uint64(i),
@@ -613,7 +614,7 @@ func TestOverPopulation(t *testing.T) {
 	// Add payloads from 10 to defMaxBlockDistance, while we're missing blocks [5,9]
 	// Should succeed
 	for i := 10; i <= defMaxBlockDistance; i++ {
-		rawblock := pcomm.NewBlock(uint64(i), []byte{})
+		rawblock := protoutil.NewBlock(uint64(i), []byte{})
 		b, _ := pb.Marshal(rawblock)
 		assert.NoError(t, p.s.addPayload(&proto.Payload{
 			SeqNum: uint64(i),
@@ -624,7 +625,7 @@ func TestOverPopulation(t *testing.T) {
 	// Add payloads from defMaxBlockDistance + 2 to defMaxBlockDistance * 10
 	// Should fail.
 	for i := defMaxBlockDistance + 1; i <= defMaxBlockDistance*10; i++ {
-		rawblock := pcomm.NewBlock(uint64(i), []byte{})
+		rawblock := protoutil.NewBlock(uint64(i), []byte{})
 		b, _ := pb.Marshal(rawblock)
 		assert.Error(t, p.s.addPayload(&proto.Payload{
 			SeqNum: uint64(i),
@@ -668,7 +669,7 @@ func TestBlockingEnqueue(t *testing.T) {
 	// Get a block from the orderer every 1ms
 	go func() {
 		for i := 1; i <= numBlocksReceived; i++ {
-			rawblock := pcomm.NewBlock(uint64(i), []byte{})
+			rawblock := protoutil.NewBlock(uint64(i), []byte{})
 			b, _ := pb.Marshal(rawblock)
 			block := &proto.Payload{
 				SeqNum: uint64(i),
@@ -684,7 +685,7 @@ func TestBlockingEnqueue(t *testing.T) {
 		rand.Seed(time.Now().UnixNano())
 		for i := 1; i <= numBlocksReceived/2; i++ {
 			blockSeq := rand.Intn(numBlocksReceived)
-			rawblock := pcomm.NewBlock(uint64(blockSeq), []byte{})
+			rawblock := protoutil.NewBlock(uint64(blockSeq), []byte{})
 			b, _ := pb.Marshal(rawblock)
 			block := &proto.Payload{
 				SeqNum: uint64(blockSeq),
@@ -996,7 +997,7 @@ func TestAccessControl(t *testing.T) {
 	msgCount := 5
 
 	for i := 1; i <= msgCount; i++ {
-		rawblock := pcomm.NewBlock(uint64(i), []byte{})
+		rawblock := protoutil.NewBlock(uint64(i), []byte{})
 		if b, err := pb.Marshal(rawblock); err == nil {
 			payload := &proto.Payload{
 				SeqNum: uint64(i),
@@ -1077,7 +1078,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	msgCount := 10
 
 	for i := 1; i <= msgCount; i++ {
-		rawblock := pcomm.NewBlock(uint64(i), []byte{})
+		rawblock := protoutil.NewBlock(uint64(i), []byte{})
 		if b, err := pb.Marshal(rawblock); err == nil {
 			payload := &proto.Payload{
 				SeqNum: uint64(i),
@@ -1197,7 +1198,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 	expectedMessagesCnt := 2
 
 	for i := 1; i <= msgCount; i++ {
-		rawblock := pcomm.NewBlock(uint64(i), []byte{})
+		rawblock := protoutil.NewBlock(uint64(i), []byte{})
 		if b, err := pb.Marshal(rawblock); err == nil {
 			payload := &proto.Payload{
 				SeqNum: uint64(i),

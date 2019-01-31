@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 var closedChan chan struct{}
@@ -70,7 +71,7 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 		}
 	}
 
-	block := cb.NewBlock(nextBlockNumber, previousBlockHash)
+	block := protoutil.NewBlock(nextBlockNumber, previousBlockHash)
 	block.Header.DataHash = data.Hash()
 	block.Data = data
 

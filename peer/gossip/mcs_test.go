@@ -236,7 +236,7 @@ func TestVerifyBlock(t *testing.T) {
 }
 
 func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner crypto.LocalSigner, dataHash []byte) ([]byte, []byte) {
-	block := common.NewBlock(seqNum, nil)
+	block := protoutil.NewBlock(seqNum, nil)
 
 	// Add a fake transaction to the block referring channel "C"
 	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(channel, &protospeer.ChaincodeSpec{}, []byte("transactor"), []byte("transactor's signature"))

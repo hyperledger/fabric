@@ -36,7 +36,7 @@ func (mbws mockBlockWriterSupport) CreateBundle(channelID string, config *cb.Con
 }
 
 func TestCreateBlock(t *testing.T) {
-	seedBlock := cb.NewBlock(7, []byte("lasthash"))
+	seedBlock := protoutil.NewBlock(7, []byte("lasthash"))
 	seedBlock.Data.Data = [][]byte{[]byte("somebytes")}
 
 	bw := &BlockWriter{lastBlock: seedBlock}
@@ -56,7 +56,7 @@ func TestBlockSignature(t *testing.T) {
 		},
 	}
 
-	block := cb.NewBlock(7, []byte("foo"))
+	block := protoutil.NewBlock(7, []byte("foo"))
 	bw.addBlockSignature(block)
 
 	md := protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_SIGNATURES)
@@ -79,7 +79,7 @@ func TestBlockLastConfig(t *testing.T) {
 		lastConfigSeq: lastConfigSeq,
 	}
 
-	block := cb.NewBlock(newBlockNum, []byte("foo"))
+	block := protoutil.NewBlock(newBlockNum, []byte("foo"))
 	bw.addLastConfigSignature(block)
 
 	assert.Equal(t, newBlockNum, bw.lastConfigBlockNum)
@@ -172,7 +172,7 @@ func TestGoodWriteConfig(t *testing.T) {
 	}
 
 	ctx := makeConfigTx(genesisconfig.TestChainID, 1)
-	block := cb.NewBlock(1, genesisBlockSys.Header.Hash())
+	block := protoutil.NewBlock(1, genesisBlockSys.Header.Hash())
 	block.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata := []byte("foo")
 	bw.WriteConfigBlock(block, consenterMetadata)

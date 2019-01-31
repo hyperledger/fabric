@@ -87,7 +87,7 @@ func (mcs *ConsenterSupport) SharedConfig() channelconfig.Orderer {
 
 // CreateNextBlock creates a simple block structure with the given data
 func (mcs *ConsenterSupport) CreateNextBlock(data []*cb.Envelope) *cb.Block {
-	block := cb.NewBlock(0, nil)
+	block := protoutil.NewBlock(0, nil)
 	mtxs := make([][]byte, len(data))
 	for i := range data {
 		mtxs[i] = protoutil.MarshalOrPanic(data[i])
