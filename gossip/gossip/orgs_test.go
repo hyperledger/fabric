@@ -253,7 +253,7 @@ func TestMultipleOrgEndpointLeakage(t *testing.T) {
 		return true
 	}
 
-	waitUntilOrFail(t, membershipCheck)
+	waitUntilOrFail(t, membershipCheck, "waiting for all instances to form membership view")
 
 	for _, peers := range orgs2Peers {
 		for _, p := range peers {
@@ -439,7 +439,7 @@ func TestConfidentiality(t *testing.T) {
 		return true
 	}
 
-	waitUntilOrFail(t, assertMembership)
+	waitUntilOrFail(t, assertMembership, "waiting for all instances to form unified membership view")
 	stopPeers(peers)
 	wg.Wait()
 	atomic.StoreInt32(&finished, int32(1))
