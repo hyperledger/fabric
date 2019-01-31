@@ -9,6 +9,9 @@ package etcdraft
 import (
 	"bytes"
 	"encoding/pem"
+	"fmt"
+	"sync"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -107,7 +110,7 @@ func lastConfigBlockFromSupport(support consensus.ConsenterSupport) (*common.Blo
 // newBlockPuller creates a new block puller
 func newBlockPuller(support consensus.ConsenterSupport,
 	baseDialer *cluster.PredicateDialer,
-	clusterConfig localconfig.Cluster) (*cluster.BlockPuller, error) {
+	clusterConfig localconfig.Cluster) (BlockPuller, error) {
 
 	verifyBlockSequence := func(blocks []*common.Block, _ string) error {
 		return cluster.VerifyBlocks(blocks, support)
@@ -137,7 +140,7 @@ func newBlockPuller(support consensus.ConsenterSupport,
 			string(secureConfig.SecOpts.Certificate))
 	}
 
-	return &cluster.BlockPuller{
+	bp := &cluster.BlockPuller{
 		VerifyBlockSequence: verifyBlockSequence,
 		Logger:              flogging.MustGetLogger("orderer.common.cluster.puller"),
 		RetryTimeout:        clusterConfig.ReplicationRetryTimeout,
@@ -148,6 +151,12 @@ func newBlockPuller(support consensus.ConsenterSupport,
 		TLSCert:             der.Bytes,
 		Channel:             support.ChainID(),
 		Dialer:              stdDialer,
+	}
+
+	return &LedgerBlockPuller{
+		Height:         support.Height,
+		BlockRetriever: support,
+		BlockPuller:    bp,
 	}, nil
 }
 
@@ -381,4 +390,121 @@ func ConfChange(raftMetadata *etcdraft.RaftMetadata, confState *raftpb.ConfState
 	}
 
 	return raftConfChange
+}
+
+// PeriodicCheck checks periodically a condition, and reports
+// the cumulative consecutive period the condition was fulfilled.
+type PeriodicCheck struct {
+	CheckInterval       time.Duration
+	Condition           func() bool
+	Report              func(cumulativePeriod time.Duration)
+	conditionHoldsSince time.Time
+	once                sync.Once // Used to prevent double initialization
+}
+
+// Run runs the PeriodicCheck
+func (pc *PeriodicCheck) Run() {
+	pc.once.Do(pc.check)
+}
+
+func (pc *PeriodicCheck) check() {
+	if pc.Condition() {
+		pc.conditionFulfilled()
+	} else {
+		pc.conditionNotFulfilled()
+	}
+
+	time.AfterFunc(pc.CheckInterval, pc.check)
+}
+
+func (pc *PeriodicCheck) conditionNotFulfilled() {
+	pc.conditionHoldsSince = time.Time{}
+}
+
+func (pc *PeriodicCheck) conditionFulfilled() {
+	if pc.conditionHoldsSince.IsZero() {
+		pc.conditionHoldsSince = time.Now()
+	}
+
+	pc.Report(time.Since(pc.conditionHoldsSince))
+}
+
+// LedgerBlockPuller pulls blocks upon demand, or fetches them
+// from the ledger.
+type LedgerBlockPuller struct {
+	BlockPuller
+	BlockRetriever cluster.BlockRetriever
+	Height         func() uint64
+}
+
+func (ledgerPuller *LedgerBlockPuller) PullBlock(seq uint64) *common.Block {
+	lastSeq := ledgerPuller.Height() - 1
+	if lastSeq >= seq {
+		return ledgerPuller.BlockRetriever.Block(seq)
+	}
+	return ledgerPuller.BlockPuller.PullBlock(seq)
+}
+
+type evictionSuspector struct {
+	evictionSuspicionThreshold time.Duration
+	logger                     *flogging.FabricLogger
+	createPuller               CreateBlockPuller
+	height                     func() uint64
+	amIInChannel               cluster.SelfMembershipPredicate
+	halt                       func()
+	writeBlock                 func(block *common.Block, metadata []byte)
+	halted                     bool
+}
+
+func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration) {
+	if es.evictionSuspicionThreshold > cumulativeSuspicion || es.halted {
+		return
+	}
+	es.logger.Infof("Suspecting our own eviction from the channel for %v", cumulativeSuspicion)
+	puller, err := es.createPuller()
+	if err != nil {
+		es.logger.Panicf("Failed creating a block puller")
+	}
+
+	lastConfigBlock, err := cluster.PullLastConfigBlock(puller)
+	if err != nil {
+		es.logger.Errorf("Failed pulling the last config block: %v", err)
+		return
+	}
+
+	es.logger.Infof("Last config block was found to be block %d", lastConfigBlock.Header.Number)
+
+	height := es.height()
+
+	if lastConfigBlock.Header.Number+1 <= height {
+		es.logger.Infof("Our height is higher or equal than the height of the orderer we pulled the last block from, aborting.")
+		return
+	}
+
+	err = es.amIInChannel(lastConfigBlock)
+	if err != cluster.ErrNotInChannel && err != cluster.ErrForbidden {
+		details := fmt.Sprintf(", our certificate was found in config block with sequence %d", lastConfigBlock.Header.Number)
+		if err != nil {
+			details = fmt.Sprintf(": %s", err.Error())
+		}
+		es.logger.Infof("Cannot confirm our own eviction from the channel%s", details)
+		return
+	}
+
+	es.logger.Warningf("Detected our own eviction from the chain in block %d", lastConfigBlock.Header.Number)
+
+	es.logger.Infof("Waiting for chain to halt")
+	es.halt()
+	es.halted = true
+	es.logger.Infof("Chain has been halted, pulling remaining blocks up to (and including) eviction block.")
+
+	nextBlock := height
+	es.logger.Infof("Will now pull blocks %d to %d", nextBlock, lastConfigBlock.Header.Number)
+	for seq := nextBlock; seq <= lastConfigBlock.Header.Number; seq++ {
+		es.logger.Infof("Pulling block %d", seq)
+		block := puller.PullBlock(seq)
+		es.writeBlock(block, nil)
+	}
+
+	es.logger.Infof("Pulled all blocks up to eviction block.")
 }
