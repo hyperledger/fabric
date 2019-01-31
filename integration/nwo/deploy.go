@@ -44,8 +44,6 @@ type Chaincode struct {
 // definition on the channel using one of the peers, and wait for the chaincode
 // commit to complete on all of the peers. It uses the _lifecycle implementation.
 // NOTE V2_0 capabilities must be enabled for this functionality to work.
-// TODO add _lifecycle CommitChaincode functionality once it has been
-// implemented server-side
 func DeployChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
 	if len(peers) == 0 {
 		peers = n.PeersWithChannel(channel)
@@ -74,8 +72,13 @@ func DeployChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 		ApproveChaincodeForMyOrgNewLifecycle(n, channel, orderer, chaincode, n.PeersInOrg(org.Name)...)
 	}
 
-	// commit using the first peer
-	// CommitChaincode(n, channel, orderer, chaincode, peers[0], peers...)
+	// commit definition
+	CommitChaincodeNewLifecycle(n, channel, orderer, chaincode, peers[0], peers...)
+
+	// init the chaincode, if required
+	if chaincode.InitRequired {
+		InitChaincodeNewLifecycle(n, channel, orderer, chaincode, peers...)
+	}
 }
 
 // DeployChaincode is a helper that will install chaincode to all peers
@@ -203,7 +206,76 @@ func ApproveChaincodeForMyOrgNewLifecycle(n *Network, channel string, orderer *O
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
+	for i := 0; i < len(peerAddresses); i++ {
+		Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
+	}
+}
+
+func CommitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peer *Peer, checkPeers ...*Peer) {
+	if chaincode.Hash == "" {
+		pkgBytes, err := ioutil.ReadFile(chaincode.PackageFile)
+		Expect(err).NotTo(HaveOccurred())
+		hash := util.ComputeSHA256(pkgBytes)
+		chaincode.Hash = hex.EncodeToString(hash)
+	}
+
+	// TODO don't hardcode this
+	// commit using one peer per org
+	peerAddresses := []string{
+		n.PeerAddress(n.Peer("org1", "peer1"), ListenPort),
+		n.PeerAddress(n.Peer("org2", "peer1"), ListenPort),
+	}
+
+	sess, err := n.PeerAdminSession(peer, commands.ChaincodeCommit{
+		ChannelID:         channel,
+		Orderer:           n.OrdererAddress(orderer, ListenPort),
+		Name:              chaincode.Name,
+		Version:           chaincode.Version,
+		Hash:              chaincode.Hash,
+		Sequence:          chaincode.Sequence,
+		EndorsementPlugin: chaincode.EndorsementPlugin,
+		ValidationPlugin:  chaincode.ValidationPlugin,
+		Policy:            chaincode.Policy,
+		InitRequired:      chaincode.InitRequired,
+		PeerAddresses:     peerAddresses,
+		WaitForEvent:      true,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	for i := 0; i < len(peerAddresses); i++ {
+		Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
+	}
+	EnsureCommitted(n, channel, chaincode.Name, chaincode.Version, checkPeers...)
+}
+
+func EnsureCommitted(n *Network, channel, name, version string, peers ...*Peer) {
+	for _, p := range peers {
+		Eventually(listCommitted(n, p, channel, name), n.EventuallyTimeout).Should(
+			gbytes.Say(fmt.Sprintf("Get committed chaincode definition for chaincode '%s' on channel '%s':", name, channel)),
+		)
+	}
+}
+
+func InitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
+	// TODO don't hardcode this
+	peerAddresses := []string{
+		n.PeerAddress(n.Peer("org1", "peer1"), ListenPort),
+		n.PeerAddress(n.Peer("org2", "peer1"), ListenPort),
+	}
+	sess, err := n.PeerUserSession(peers[0], "User1", commands.ChaincodeInvoke{
+		ChannelID:     channel,
+		Orderer:       n.OrdererAddress(orderer, ListenPort),
+		Name:          chaincode.Name,
+		Ctor:          chaincode.Ctor,
+		PeerAddresses: peerAddresses,
+		WaitForEvent:  true,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	for i := 0; i < len(peerAddresses); i++ {
+		Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
+	}
+	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 }
 
 func InstantiateChaincode(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peer *Peer, checkPeers ...*Peer) {
@@ -256,6 +328,18 @@ func UpgradeChaincode(n *Network, channel string, orderer *Orderer, chaincode Ch
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	EnsureInstantiated(n, channel, chaincode.Name, chaincode.Version, peers...)
+}
+
+func listCommitted(n *Network, peer *Peer, channel, name string) func() *gbytes.Buffer {
+	return func() *gbytes.Buffer {
+		sess, err := n.PeerAdminSession(peer, commands.ChaincodeListCommitted{
+			ChannelID: channel,
+			Name:      name,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		return sess.Buffer()
+	}
 }
 
 func listInstantiated(n *Network, peer *Peer, channel string) func() *gbytes.Buffer {

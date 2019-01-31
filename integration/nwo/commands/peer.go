@@ -249,6 +249,50 @@ func (c ChaincodeApproveForMyOrg) Args() []string {
 	return args
 }
 
+type ChaincodeCommit struct {
+	ChannelID         string
+	Orderer           string
+	Name              string
+	Version           string
+	Hash              string
+	Sequence          string
+	EndorsementPlugin string
+	ValidationPlugin  string
+	Policy            string
+	InitRequired      bool
+	PeerAddresses     []string
+	WaitForEvent      bool
+}
+
+func (c ChaincodeCommit) SessionName() string {
+	return "peer-chaincode-commit"
+}
+
+func (c ChaincodeCommit) Args() []string {
+	args := []string{
+		"chaincode", "commit",
+		"--channelID", c.ChannelID,
+		"--orderer", c.Orderer,
+		"--name", c.Name,
+		"--version", c.Version,
+		"--hash", c.Hash,
+		"--sequence", c.Sequence,
+		"--escc", c.EndorsementPlugin,
+		"--vscc", c.ValidationPlugin,
+		"--policy", c.Policy,
+	}
+	if c.InitRequired {
+		args = append(args, "--init-required")
+	}
+	for _, p := range c.PeerAddresses {
+		args = append(args, "--peerAddresses", p)
+	}
+	if c.WaitForEvent {
+		args = append(args, "--waitForEvent")
+	}
+	return args
+}
+
 type ChaincodeInstantiate struct {
 	ChannelID         string
 	Orderer           string
@@ -306,6 +350,23 @@ func (c ChaincodeListInstalled) SessionName() string {
 func (c ChaincodeListInstalled) Args() []string {
 	return []string{
 		"chaincode", "list", "--installed",
+	}
+}
+
+type ChaincodeListCommitted struct {
+	ChannelID string
+	Name      string
+}
+
+func (c ChaincodeListCommitted) SessionName() string {
+	return "peer-chaincode-list-committed"
+}
+
+func (c ChaincodeListCommitted) Args() []string {
+	return []string{
+		"chaincode", "list", "--committed",
+		"--channelID", c.ChannelID,
+		"--name", c.Name,
 	}
 }
 

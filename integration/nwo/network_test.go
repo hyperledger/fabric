@@ -93,8 +93,7 @@ var _ = Describe("Network", func() {
 
 		It("deploys and executes chaincode (simple) using the _lifecycle", func() {
 			orderer := network.Orderer("orderer0")
-			// TODO: uncomment once needed below
-			// peer := network.Peer("org1", "peer2")
+			peer := network.Peer("org1", "peer2")
 
 			chaincode := nwo.Chaincode{
 				Name:              "mycc",
@@ -113,9 +112,8 @@ var _ = Describe("Network", func() {
 			network.CreateAndJoinChannels(orderer)
 			nwo.EnableV2_0Capabilities(network, "testchannel", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
 			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
-			// TODO uncomment once _lifecycle Commit functionality is fully functional
-			// server-side and has been added to nwo
-			// RunQueryInvokeQuery(network, orderer, peer)
+
+			RunQueryInvokeQuery(network, orderer, peer)
 		})
 	})
 
@@ -265,6 +263,10 @@ var _ = Describe("Network", func() {
 			for _, org := range network.PeerOrgs() {
 				nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersInOrg(org.Name)...)
 			}
+			nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
+			nwo.InitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers...)
+
+			RunQueryInvokeQuery(network, orderer, testPeers[0])
 		})
 	})
 })
