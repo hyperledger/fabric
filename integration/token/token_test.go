@@ -8,17 +8,16 @@ package token
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
 	"time"
 
-	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/pkg/errors"
-
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -27,6 +26,7 @@ import (
 	tokenclient "github.com/hyperledger/fabric/token/client"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
 )
 
@@ -231,8 +231,89 @@ var _ = Describe("Token EndToEnd", func() {
 			}
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
 		})
+
 	})
+
+	Describe("basic solo network for token transaction bad path e2e ", func() {
+
+		BeforeEach(func() {
+			var err error
+			network = nwo.New(nwo.BasicSolo(), testDir, client, 30000, components)
+			network.GenerateConfigTree()
+
+			// update configtx with fabtoken capability
+			err = updateConfigtx(network)
+			Expect(err).NotTo(HaveOccurred())
+
+			network.Bootstrap()
+
+			client, err = docker.NewClientFromEnv()
+			Expect(err).NotTo(HaveOccurred())
+
+			peer := network.Peer("Org1", "peer1")
+
+			// Get recipients' identity
+			recipientUser2, err = getIdentity(network, peer, "User2", "Org1MSP")
+			Expect(err).NotTo(HaveOccurred())
+			tokensToIssue[0].Recipient = recipientUser2
+			expectedTokenTransaction.GetPlainAction().GetPlainImport().Outputs[0].Owner = recipientUser2
+			recipientUser1, err = getIdentity(network, peer, "User1", "Org1MSP")
+			Expect(err).NotTo(HaveOccurred())
+			expectedTransferTransaction.GetPlainAction().GetPlainTransfer().Outputs[0].Owner = recipientUser1
+
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready()).Should(BeClosed())
+		})
+
+		It("e2e token transfer double spending fails", func() {
+			By("getting the orderer by name")
+			orderer := network.Orderer("orderer")
+
+			By("setting up the channel")
+			network.CreateAndJoinChannel(orderer, "testchannel")
+
+			By("getting the client peer by name")
+			peer := network.Peer("Org1", "peer1")
+
+			By("creating a new client")
+			tClient := GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
+
+			By("User1 issuing tokens to User2")
+			txID := RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+
+			By("User2 lists tokens")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("User2 transfers his token to User1")
+			inputIDs := []*token.InputId{{TxId: txID, Index: 0}}
+			expectedTransferTransaction.GetPlainAction().GetPlainTransfer().Inputs = inputIDs
+			RunTransferRequest(tClient, issuedTokens, recipientUser1, expectedTransferTransaction)
+
+			By("User2 try to transfer again the same token already transferred before")
+			txid, ordererStatus, committed, err := RunTransferRequestWithFailure(tClient, issuedTokens, recipientUser1)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txid)))
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+			Expect(committed).To(BeFalse())
+		})
+
+	})
+
 })
+
+func GetTokenClient(network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, user, mspID string) *tokenclient.Client {
+	config := getClientConfig(network, peer, orderer, "testchannel", user, mspID)
+	signingIdentity, err := getSigningIdentity(config.MSPInfo.MSPConfigPath, config.MSPInfo.MSPID, config.MSPInfo.MSPType)
+	Expect(err).NotTo(HaveOccurred())
+	tClient, err := tokenclient.NewClient(*config, signingIdentity)
+	Expect(err).NotTo(HaveOccurred())
+
+	return tClient
+}
 
 func RunIssueRequest(c *tokenclient.Client, tokens []*token.TokenToIssue, expectedTokenTx *token.TokenTransaction) string {
 	envelope, txid, ordererStatus, committed, err := c.Issue(tokens, 30*time.Second)
@@ -324,6 +405,21 @@ func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, q
 	tokenTxid, err := tokenclient.GetTransactionID(envelope)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(tokenTxid).To(Equal(txid))
+}
+
+func RunTransferRequestWithFailure(c *tokenclient.Client, inputTokens []*token.TokenOutput, recipient []byte) (string, *common.Status, bool, error) {
+	inputTokenIDs := make([][]byte, len(inputTokens))
+	var sum uint64 = 0
+	for i, tk := range inputTokens {
+		inputTokenIDs[i] = tk.GetId()
+		sum += tk.GetQuantity()
+	}
+	shares := []*token.RecipientTransferShare{
+		{Recipient: recipient, Quantity: sum},
+	}
+
+	_, txid, ordererStatus, committed, err := c.Transfer(inputTokenIDs, shares, 30*time.Second)
+	return txid, ordererStatus, committed, err
 }
 
 func getClientConfig(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channelId, user, mspID string) *tokenclient.ClientConfig {
