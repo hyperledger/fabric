@@ -17,6 +17,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/filter"
 	gossip2 "github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/metrics/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/transientstore"
@@ -179,7 +181,10 @@ func TestDistributor(t *testing.T) {
 	accessFactoryMock.On("AccessPolicy", c1ColConfig, channelID).Return(policyMock, nil)
 	accessFactoryMock.On("AccessPolicy", c2ColConfig, channelID).Return(policyMock, nil)
 
-	d := NewDistributor(channelID, g, accessFactoryMock)
+	testMetricProvider := mocks.TestUtilConstructMetricProvider()
+	metrics := metrics.NewGossipMetrics(testMetricProvider.FakeProvider).PrivdataMetrics
+
+	d := NewDistributor(channelID, g, accessFactoryMock, metrics)
 	pdFactory := &pvtDataFactory{}
 	pvtData := pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").addRWSet().addNSRWSet("ns2", "c1", "c2").create()
 	err := d.Distribute("tx1", &transientstore.TxPvtReadWriteSetWithConfigInfo{
@@ -264,4 +269,10 @@ func TestDistributor(t *testing.T) {
 	}, 0)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed disseminating 4 out of 4 private dissemination plans")
+
+	assert.Equal(t,
+		[]string{"channel", channelID},
+		testMetricProvider.FakeSendDuration.WithArgsForCall(0),
+	)
+	assert.True(t, testMetricProvider.FakeSendDuration.ObserveArgsForCall(0) > 0)
 }

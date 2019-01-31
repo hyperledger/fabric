@@ -46,4 +46,14 @@ func TestMetrics(t *testing.T) {
 	assert.NotNil(t, gossipMetrics.MembershipMetrics)
 	assert.NotNil(t, gossipMetrics.MembershipMetrics.Total)
 
+	assert.NotNil(t, gossipMetrics.PrivdataMetrics)
+	assert.NotNil(t, gossipMetrics.PrivdataMetrics.CommitPrivateDataDuration)
+	assert.NotNil(t, gossipMetrics.PrivdataMetrics.FetchDuration)
+	assert.NotNil(t, gossipMetrics.PrivdataMetrics.ListMissingPrivateDataDuration)
+	assert.NotNil(t, gossipMetrics.PrivdataMetrics.PurgeDuration)
+	assert.NotNil(t, gossipMetrics.PrivdataMetrics.ValidationDuration)
+	assert.NotNil(t, gossipMetrics.PrivdataMetrics.SendDuration)
+	assert.NotNil(t, gossipMetrics.PrivdataMetrics.ReconciliationDuration)
+	assert.NotNil(t, gossipMetrics.PrivdataMetrics.PullDuration)
+	assert.NotNil(t, gossipMetrics.PrivdataMetrics.RetrieveDuration)
 }

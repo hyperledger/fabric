@@ -14,6 +14,7 @@ type GossipMetrics struct {
 	ElectionMetrics   *ElectionMetrics
 	CommMetrics       *CommMetrics
 	MembershipMetrics *MembershipMetrics
+	PrivdataMetrics   *PrivdataMetrics
 }
 
 func NewGossipMetrics(p metrics.Provider) *GossipMetrics {
@@ -22,6 +23,7 @@ func NewGossipMetrics(p metrics.Provider) *GossipMetrics {
 		ElectionMetrics:   newElectionMetrics(p),
 		CommMetrics:       newCommMetrics(p),
 		MembershipMetrics: newMembershipMetrics(p),
+		PrivdataMetrics:   newPrivdataMetrics(p),
 	}
 }
 
@@ -149,6 +151,116 @@ var (
 		Subsystem:    "membership",
 		Name:         "total_peers_known",
 		Help:         "Total known peers",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+)
+
+// PrivdataMetrics encapsulates gossip private data related metrics
+type PrivdataMetrics struct {
+	ValidationDuration             metrics.Histogram
+	ListMissingPrivateDataDuration metrics.Histogram
+	FetchDuration                  metrics.Histogram
+	CommitPrivateDataDuration      metrics.Histogram
+	PurgeDuration                  metrics.Histogram
+	SendDuration                   metrics.Histogram
+	ReconciliationDuration         metrics.Histogram
+	PullDuration                   metrics.Histogram
+	RetrieveDuration               metrics.Histogram
+}
+
+func newPrivdataMetrics(p metrics.Provider) *PrivdataMetrics {
+	return &PrivdataMetrics{
+		ValidationDuration:             p.NewHistogram(ValidationDurationOpts),
+		ListMissingPrivateDataDuration: p.NewHistogram(ListMissingPrivateDataDurationOpts),
+		FetchDuration:                  p.NewHistogram(FetchDurationOpts),
+		CommitPrivateDataDuration:      p.NewHistogram(CommitPrivateDataDurationOpts),
+		PurgeDuration:                  p.NewHistogram(PurgeDurationOpts),
+		SendDuration:                   p.NewHistogram(SendDurationOpts),
+		ReconciliationDuration:         p.NewHistogram(ReconciliationDurationOpts),
+		PullDuration:                   p.NewHistogram(PullDurationOpts),
+		RetrieveDuration:               p.NewHistogram(RetrieveDurationOpts),
+	}
+}
+
+var (
+	ValidationDurationOpts = metrics.HistogramOpts{
+		Namespace:    "gossip",
+		Subsystem:    "privdata",
+		Name:         "validation_duration",
+		Help:         "Time it takes to validate a block (in seconds)",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+
+	ListMissingPrivateDataDurationOpts = metrics.HistogramOpts{
+		Namespace:    "gossip",
+		Subsystem:    "privdata",
+		Name:         "list_missing_duration",
+		Help:         "Time it takes to list the missing private data (in seconds)",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+
+	FetchDurationOpts = metrics.HistogramOpts{
+		Namespace:    "gossip",
+		Subsystem:    "privdata",
+		Name:         "fetch_duration",
+		Help:         "Time it takes to fetch missing private data from peers (in seconds)",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+
+	CommitPrivateDataDurationOpts = metrics.HistogramOpts{
+		Namespace:    "gossip",
+		Subsystem:    "privdata",
+		Name:         "commit_block_duration",
+		Help:         "Time it takes to commit private data and the corresponding block (in seconds)",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+
+	PurgeDurationOpts = metrics.HistogramOpts{
+		Namespace:    "gossip",
+		Subsystem:    "privdata",
+		Name:         "purge_duration",
+		Help:         "Time it takes to purge private data (in seconds)",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+
+	SendDurationOpts = metrics.HistogramOpts{
+		Namespace:    "gossip",
+		Subsystem:    "privdata",
+		Name:         "send_duration",
+		Help:         "Time it takes to send a missing private data element (in seconds)",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+
+	ReconciliationDurationOpts = metrics.HistogramOpts{
+		Namespace:    "gossip",
+		Subsystem:    "privdata",
+		Name:         "reconciliation_duration",
+		Help:         "Time it takes for reconciliation to complete (in seconds)",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+
+	PullDurationOpts = metrics.HistogramOpts{
+		Namespace:    "gossip",
+		Subsystem:    "privdata",
+		Name:         "pull_duration",
+		Help:         "Time it takes to pull a missing private data element (in seconds)",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+
+	RetrieveDurationOpts = metrics.HistogramOpts{
+		Namespace:    "gossip",
+		Subsystem:    "privdata",
+		Name:         "retrieve_duration",
+		Help:         "Time it takes to retrieve missing private data elements from the ledger (in seconds)",
 		LabelNames:   []string{"channel"},
 		StatsdFormat: "%{#fqname}.%{channel}",
 	}

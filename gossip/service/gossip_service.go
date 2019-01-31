@@ -241,7 +241,8 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	// Initialize private data fetcher
 	dataRetriever := privdata2.NewDataRetriever(storeSupport)
 	collectionAccessFactory := privdata2.NewCollectionAccessFactory(support.IdDeserializeFactory)
-	fetcher := privdata2.NewPuller(support.Cs, g.gossipSvc, dataRetriever, collectionAccessFactory, chainID)
+	fetcher := privdata2.NewPuller(g.metrics.PrivdataMetrics, support.Cs, g.gossipSvc, dataRetriever,
+		collectionAccessFactory, chainID)
 
 	coordinator := privdata2.NewCoordinator(privdata2.Support{
 		ChainID:         chainID,
@@ -250,13 +251,14 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		TransientStore:  support.Store,
 		Committer:       support.Committer,
 		Fetcher:         fetcher,
-	}, g.createSelfSignedData())
+	}, g.createSelfSignedData(), g.metrics.PrivdataMetrics)
 
 	reconcilerConfig := privdata2.GetReconcilerConfig()
 	var reconciler privdata2.PvtDataReconciler
 
 	if reconcilerConfig.IsEnabled {
-		reconciler = privdata2.NewReconciler(support.Committer, fetcher, reconcilerConfig)
+		reconciler = privdata2.NewReconciler(chainID, g.metrics.PrivdataMetrics,
+			support.Committer, fetcher, reconcilerConfig)
 	} else {
 		reconciler = &privdata2.NoOpReconciler{}
 	}
@@ -264,7 +266,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
-		distributor: privdata2.NewDistributor(chainID, g, collectionAccessFactory),
+		distributor: privdata2.NewDistributor(chainID, g, collectionAccessFactory, g.metrics.PrivdataMetrics),
 		reconciler:  reconciler,
 	}
 	g.privateHandlers[chainID].reconciler.Start()
