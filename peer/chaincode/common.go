@@ -314,10 +314,12 @@ func validatePeerConnectionParameters(cmdName string) error {
 		}
 	}
 
-	// currently only support multiple peer addresses for invoke and approveformyorg
+	// currently only support multiple peer addresses for invoke,
+	// approveformyorg, and commit
 	multiplePeersAllowed := map[string]bool{
 		"invoke":          true,
 		"approveformyorg": true,
+		"commit":          true,
 	}
 	_, ok := multiplePeersAllowed[cmdName]
 	if !ok && len(peerAddresses) > 1 {

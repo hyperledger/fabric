@@ -19,7 +19,7 @@ import (
 
 const (
 	chainFuncName    = "chaincode"
-	chainCmdDes      = "Operate a chaincode: approveformyorg|install|instantiate|invoke|package|query|signpackage|upgrade|list."
+	chainCmdDes      = "Operate a chaincode: approveformyorg|commit|install|instantiate|invoke|package|query|signpackage|upgrade|list."
 	newLifecycleName = "_lifecycle"
 )
 
@@ -50,6 +50,7 @@ func Cmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeCmd.AddCommand(upgradeCmd(cf))
 	chaincodeCmd.AddCommand(listCmd(cf))
 	chaincodeCmd.AddCommand(approveForMyOrgCmd(cf, nil))
+	chaincodeCmd.AddCommand(commitCmd(cf, nil))
 
 	return chaincodeCmd
 }
