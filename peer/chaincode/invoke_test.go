@@ -361,7 +361,7 @@ func getMockDeliverClientRegisterAfterDelay(delayChan chan struct{}) *cmock.Peer
 	return mockDC
 }
 
-func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}) *cmock.PeerDeliverClient {
+func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}, txID string) *cmock.PeerDeliverClient {
 	mockDC := &cmock.PeerDeliverClient{}
 	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
 		mockDF := &mock.Deliver{}
@@ -369,7 +369,7 @@ func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}) *cmock.PeerD
 			<-delayChan
 			resp := &pb.DeliverResponse{
 				Type: &pb.DeliverResponse_FilteredBlock{
-					FilteredBlock: createFilteredBlock(),
+					FilteredBlock: createFilteredBlock(txID),
 				},
 			}
 			return resp, nil
