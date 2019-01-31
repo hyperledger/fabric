@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/common/api"
 	cmock "github.com/hyperledger/fabric/peer/common/mock"
-	common2 "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	. "github.com/onsi/gomega"
@@ -198,29 +197,29 @@ const sampleCollectionConfigBad = `[
 ]`
 
 func TestCollectionParsing(t *testing.T) {
-	cc, err := getCollectionConfigFromBytes([]byte(sampleCollectionConfigGood))
+	ccp, ccpBytes, err := getCollectionConfigFromBytes([]byte(sampleCollectionConfigGood))
 	assert.NoError(t, err)
-	assert.NotNil(t, cc)
-	ccp := &common2.CollectionConfigPackage{}
-	proto.Unmarshal(cc, ccp)
+	assert.NotNil(t, ccp)
+	assert.NotNil(t, ccpBytes)
 	conf := ccp.Config[0].GetStaticCollectionConfig()
 	pol, _ := cauthdsl.FromString("OR('A.member', 'B.member')")
 	assert.Equal(t, 3, int(conf.RequiredPeerCount))
 	assert.Equal(t, 483279847, int(conf.MaximumPeerCount))
 	assert.Equal(t, "foo", conf.Name)
-	assert.Equal(t, pol, conf.MemberOrgsPolicy.GetSignaturePolicy())
+	assert.True(t, proto.Equal(pol, conf.MemberOrgsPolicy.GetSignaturePolicy()))
 	assert.Equal(t, 10, int(conf.BlockToLive))
 	assert.Equal(t, true, conf.MemberOnlyRead)
-	assert.Equal(t, true, conf.MemberOnlyWrite)
 	t.Logf("conf=%s", conf)
 
-	cc, err = getCollectionConfigFromBytes([]byte(sampleCollectionConfigBad))
+	ccp, ccpBytes, err = getCollectionConfigFromBytes([]byte(sampleCollectionConfigBad))
 	assert.Error(t, err)
-	assert.Nil(t, cc)
+	assert.Nil(t, ccp)
+	assert.Nil(t, ccpBytes)
 
-	cc, err = getCollectionConfigFromBytes([]byte("barf"))
+	ccp, ccpBytes, err = getCollectionConfigFromBytes([]byte("barf"))
 	assert.Error(t, err)
-	assert.Nil(t, cc)
+	assert.Nil(t, ccp)
+	assert.Nil(t, ccpBytes)
 }
 
 func TestValidatePeerConnectionParams(t *testing.T) {
