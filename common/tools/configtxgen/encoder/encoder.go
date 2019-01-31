@@ -118,7 +118,7 @@ func AddPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.Policy,
 // configuration.  All mod_policy values are set to "Admins" for this group, with the exception of the OrdererAddresses
 // value which is set to "/Channel/Orderer/Admins".
 func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
-	channelGroup := cb.NewConfigGroup()
+	channelGroup := protoutil.NewConfigGroup()
 	if err := AddPolicies(channelGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
 		return nil, errors.Wrapf(err, "error adding policies to channel group")
 	}
@@ -169,7 +169,7 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 // about how large blocks should be, how frequently they should be emitted, etc. as well as the organizations of the ordering network.
 // It sets the mod_policy of all elements to "Admins".  This group is always present in any channel configuration.
 func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
-	ordererGroup := cb.NewConfigGroup()
+	ordererGroup := protoutil.NewConfigGroup()
 	if err := AddPolicies(ordererGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
 		return nil, errors.Wrapf(err, "error adding policies to orderer group")
 	}
@@ -221,7 +221,7 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 // NewOrdererOrgGroup returns an orderer org component of the channel configuration.  It defines the crypto material for the
 // organization (its MSP).  It sets the mod_policy of all elements to "Admins".
 func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, error) {
-	ordererOrgGroup := cb.NewConfigGroup()
+	ordererOrgGroup := protoutil.NewConfigGroup()
 	ordererOrgGroup.ModPolicy = channelconfig.AdminsPolicyKey
 
 	if conf.SkipAsForeign {
@@ -245,7 +245,7 @@ func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, erro
 // NewApplicationGroup returns the application component of the channel configuration.  It defines the organizations which are involved
 // in application logic like chaincodes, and how these members may interact with the orderer.  It sets the mod_policy of all elements to "Admins".
 func NewApplicationGroup(conf *genesisconfig.Application) (*cb.ConfigGroup, error) {
-	applicationGroup := cb.NewConfigGroup()
+	applicationGroup := protoutil.NewConfigGroup()
 	if err := AddPolicies(applicationGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
 		return nil, errors.Wrapf(err, "error adding policies to application group")
 	}
@@ -273,7 +273,7 @@ func NewApplicationGroup(conf *genesisconfig.Application) (*cb.ConfigGroup, erro
 // NewApplicationOrgGroup returns an application org component of the channel configuration.  It defines the crypto material for the organization
 // (its MSP) as well as its anchor peers for use by the gossip network.  It sets the mod_policy of all elements to "Admins".
 func NewApplicationOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, error) {
-	applicationOrgGroup := cb.NewConfigGroup()
+	applicationOrgGroup := protoutil.NewConfigGroup()
 	applicationOrgGroup.ModPolicy = channelconfig.AdminsPolicyKey
 
 	if conf.SkipAsForeign {
@@ -311,7 +311,7 @@ func NewApplicationOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, 
 // NewConsortiumsGroup returns the consortiums component of the channel configuration.  This element is only defined for the ordering system channel.
 // It sets the mod_policy for all elements to "/Channel/Orderer/Admins".
 func NewConsortiumsGroup(conf map[string]*genesisconfig.Consortium) (*cb.ConfigGroup, error) {
-	consortiumsGroup := cb.NewConfigGroup()
+	consortiumsGroup := protoutil.NewConfigGroup()
 	// This policy is not referenced anywhere, it is only used as part of the implicit meta policy rule at the channel level, so this setting
 	// effectively degrades control of the ordering system channel to the ordering admins
 	addPolicy(consortiumsGroup, policies.SignaturePolicy(channelconfig.AdminsPolicyKey, cauthdsl.AcceptAllPolicy), ordererAdminsPolicyName)
@@ -332,7 +332,7 @@ func NewConsortiumsGroup(conf map[string]*genesisconfig.Consortium) (*cb.ConfigG
 // creation, as well as the channel creation policy the orderer checks at channel creation time to authorize the action.  It sets the mod_policy of all
 // elements to "/Channel/Orderer/Admins".
 func NewConsortiumGroup(conf *genesisconfig.Consortium) (*cb.ConfigGroup, error) {
-	consortiumGroup := cb.NewConfigGroup()
+	consortiumGroup := protoutil.NewConfigGroup()
 
 	for _, org := range conf.Organizations {
 		var err error

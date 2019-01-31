@@ -203,12 +203,12 @@ func TestRaceWriteConfig(t *testing.T) {
 	}
 
 	ctx := makeConfigTx(genesisconfig.TestChainID, 1)
-	block1 := cb.NewBlock(1, genesisBlockSys.Header.Hash())
+	block1 := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
 	block1.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata1 := []byte("foo")
 
 	ctx = makeConfigTx(genesisconfig.TestChainID, 1)
-	block2 := cb.NewBlock(2, block1.Header.Hash())
+	block2 := protoutil.NewBlock(2, protoutil.BlockHeaderHash(block1.Header))
 	block2.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata2 := []byte("bar")
 

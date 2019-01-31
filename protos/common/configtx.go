@@ -22,14 +22,6 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func NewConfigGroup() *ConfigGroup {
-	return &ConfigGroup{
-		Groups:   make(map[string]*ConfigGroup),
-		Values:   make(map[string]*ConfigValue),
-		Policies: make(map[string]*ConfigPolicy),
-	}
-}
-
 func (cue *ConfigUpdateEnvelope) StaticallyOpaqueFields() []string {
 	return []string{"config_update"}
 }

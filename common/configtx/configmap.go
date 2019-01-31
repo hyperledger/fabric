@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 const (
@@ -119,7 +120,7 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 		return nil, fmt.Errorf("ConfigGroup not found at group path: %s", groupPath)
 	}
 
-	newConfigGroup := cb.NewConfigGroup()
+	newConfigGroup := protoutil.NewConfigGroup()
 	proto.Merge(newConfigGroup, group.ConfigGroup)
 
 	for key := range group.Groups {

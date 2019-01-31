@@ -36,8 +36,12 @@ func TestConfigGroup(t *testing.T) {
 	assert.NotNil(t, cg.GetValues())
 	assert.NotNil(t, cg.GetPolicies())
 
-	cg = NewConfigGroup()
-	cg.Groups["test"] = NewConfigGroup()
+	cg = &ConfigGroup{
+		Groups:   make(map[string]*ConfigGroup),
+		Values:   make(map[string]*ConfigValue),
+		Policies: make(map[string]*ConfigPolicy),
+	}
+	cg.Groups["test"] = &ConfigGroup{}
 	cg.Values["test"] = &ConfigValue{}
 	cg.Policies["test"] = &ConfigPolicy{}
 	_, ok := cg.GetGroups()["test"]

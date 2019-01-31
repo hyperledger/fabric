@@ -26,10 +26,10 @@ func ImplicitMetaPolicyWithSubPolicy(subPolicyName string, rule cb.ImplicitMetaP
 
 // TemplateImplicitMetaPolicy creates a policy at the specified path with the given policyName and subPolicyName
 func TemplateImplicitMetaPolicyWithSubPolicy(path []string, policyName string, subPolicyName string, rule cb.ImplicitMetaPolicy_Rule) *cb.ConfigGroup {
-	root := cb.NewConfigGroup()
+	root := protoutil.NewConfigGroup()
 	group := root
 	for _, element := range path {
-		group.Groups[element] = cb.NewConfigGroup()
+		group.Groups[element] = protoutil.NewConfigGroup()
 		group = group.Groups[element]
 	}
 

@@ -52,7 +52,7 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 	// Create a config
 	config := &cb.Config{
 		Sequence:     0,
-		ChannelGroup: cb.NewConfigGroup(),
+		ChannelGroup: protoutil.NewConfigGroup(),
 	}
 
 	// construct the config for top group
@@ -90,7 +90,7 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 	}
 
 	// construct the config for Application group
-	config.ChannelGroup.Groups[ApplicationGroupKey] = cb.NewConfigGroup()
+	config.ChannelGroup.Groups[ApplicationGroupKey] = protoutil.NewConfigGroup()
 	config.ChannelGroup.Groups[ApplicationGroupKey].Version = 0
 	config.ChannelGroup.Groups[ApplicationGroupKey].ModPolicy = AdminsPolicyKey
 	config.ChannelGroup.Groups[ApplicationGroupKey].Policies[ReadersPolicyKey] = &cb.ConfigPolicy{}
@@ -104,7 +104,7 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 	}
 
 	// construct the config for Orderer group
-	config.ChannelGroup.Groups[OrdererGroupKey] = cb.NewConfigGroup()
+	config.ChannelGroup.Groups[OrdererGroupKey] = protoutil.NewConfigGroup()
 	config.ChannelGroup.Groups[OrdererGroupKey].Version = 0
 	config.ChannelGroup.Groups[OrdererGroupKey].ModPolicy = AdminsPolicyKey
 	config.ChannelGroup.Groups[OrdererGroupKey].Policies[ReadersPolicyKey] = &cb.ConfigPolicy{}
@@ -166,7 +166,7 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	// Create a config
 	config := &cb.Config{
 		Sequence:     0,
-		ChannelGroup: cb.NewConfigGroup(),
+		ChannelGroup: protoutil.NewConfigGroup(),
 	}
 
 	// construct the config for top group
@@ -204,7 +204,7 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	}
 
 	// construct the config for Application group
-	config.ChannelGroup.Groups[ApplicationGroupKey] = cb.NewConfigGroup()
+	config.ChannelGroup.Groups[ApplicationGroupKey] = protoutil.NewConfigGroup()
 	config.ChannelGroup.Groups[ApplicationGroupKey].Version = 0
 	config.ChannelGroup.Groups[ApplicationGroupKey].ModPolicy = AdminsPolicyKey
 	config.ChannelGroup.Groups[ApplicationGroupKey].Policies[ReadersPolicyKey] = &cb.ConfigPolicy{}
@@ -218,7 +218,7 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	}
 
 	// construct the config for Orderer group
-	config.ChannelGroup.Groups[OrdererGroupKey] = cb.NewConfigGroup()
+	config.ChannelGroup.Groups[OrdererGroupKey] = protoutil.NewConfigGroup()
 	config.ChannelGroup.Groups[OrdererGroupKey].Version = 0
 	config.ChannelGroup.Groups[OrdererGroupKey].ModPolicy = AdminsPolicyKey
 	config.ChannelGroup.Groups[OrdererGroupKey].Policies[ReadersPolicyKey] = &cb.ConfigPolicy{}

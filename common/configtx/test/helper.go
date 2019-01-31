@@ -51,14 +51,14 @@ func MakeGenesisBlockFromMSPs(chainID string, appMSPConf, ordererMSPConf *msppro
 		logger.Panicf("Error creating channel config: %s", err)
 	}
 
-	ordererOrg := cb.NewConfigGroup()
+	ordererOrg := protoutil.NewConfigGroup()
 	ordererOrg.ModPolicy = channelconfig.AdminsPolicyKey
 	ordererOrg.Values[channelconfig.MSPKey] = &cb.ConfigValue{
 		Value:     protoutil.MarshalOrPanic(channelconfig.MSPValue(ordererMSPConf).Value()),
 		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 
-	applicationOrg := cb.NewConfigGroup()
+	applicationOrg := protoutil.NewConfigGroup()
 	applicationOrg.ModPolicy = channelconfig.AdminsPolicyKey
 	applicationOrg.Values[channelconfig.MSPKey] = &cb.ConfigValue{
 		Value:     protoutil.MarshalOrPanic(channelconfig.MSPValue(appMSPConf).Value()),

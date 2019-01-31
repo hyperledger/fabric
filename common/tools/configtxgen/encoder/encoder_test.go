@@ -48,7 +48,7 @@ var _ = Describe("Encoder", func() {
 		)
 
 		BeforeEach(func() {
-			cg = cb.NewConfigGroup()
+			cg = protoutil.NewConfigGroup()
 			policies = CreateStandardPolicies()
 		})
 

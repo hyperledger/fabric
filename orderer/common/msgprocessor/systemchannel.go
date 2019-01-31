@@ -259,7 +259,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 		return nil, fmt.Errorf("Error reading unmarshaling consortium name: %s", err)
 	}
 
-	applicationGroup := cb.NewConfigGroup()
+	applicationGroup := protoutil.NewConfigGroup()
 	consortiumsConfig, ok := dt.support.ConsortiumsConfig()
 	if !ok {
 		return nil, fmt.Errorf("The ordering system channel does not appear to support creating channels")
@@ -320,7 +320,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 		}
 	}
 
-	channelGroup := cb.NewConfigGroup()
+	channelGroup := protoutil.NewConfigGroup()
 
 	// Copy the system channel Channel level config to the new config
 	for key, value := range systemChannelGroup.Values {

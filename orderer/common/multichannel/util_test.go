@@ -115,8 +115,8 @@ func (mch *mockChain) Halt() {
 }
 
 func makeConfigTx(chainID string, i int) *cb.Envelope {
-	group := cb.NewConfigGroup()
-	group.Groups[channelconfig.OrdererGroupKey] = cb.NewConfigGroup()
+	group := protoutil.NewConfigGroup()
+	group.Groups[channelconfig.OrdererGroupKey] = protoutil.NewConfigGroup()
 	group.Groups[channelconfig.OrdererGroupKey].Values[fmt.Sprintf("%d", i)] = &cb.ConfigValue{
 		Value: []byte(fmt.Sprintf("%d", i)),
 	}

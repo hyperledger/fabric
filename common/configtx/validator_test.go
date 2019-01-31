@@ -42,7 +42,7 @@ func makeConfigPair(id, modificationPolicy string, lastModified uint64, data []b
 }
 
 func makeConfig(configPairs ...*configPair) *cb.Config {
-	channelGroup := cb.NewConfigGroup()
+	channelGroup := protoutil.NewConfigGroup()
 	for _, pair := range configPairs {
 		channelGroup.Values[pair.key] = pair.value
 	}
@@ -53,7 +53,7 @@ func makeConfig(configPairs ...*configPair) *cb.Config {
 }
 
 func makeConfigSet(configPairs ...*configPair) *cb.ConfigGroup {
-	result := cb.NewConfigGroup()
+	result := protoutil.NewConfigGroup()
 	for _, pair := range configPairs {
 		result.Values[pair.key] = pair.value
 	}

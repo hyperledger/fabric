@@ -9,18 +9,17 @@ package genesis
 import (
 	"testing"
 
-	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBasicSanity(t *testing.T) {
-	impl := NewFactoryImpl(cb.NewConfigGroup())
+	impl := NewFactoryImpl(protoutil.NewConfigGroup())
 	impl.Block("testchainid")
 }
 
 func TestForTransactionID(t *testing.T) {
-	impl := NewFactoryImpl(cb.NewConfigGroup())
+	impl := NewFactoryImpl(protoutil.NewConfigGroup())
 	block := impl.Block("testchainid")
 	configEnv, _ := protoutil.ExtractEnvelope(block, 0)
 	configEnvPayload, _ := protoutil.ExtractPayload(configEnv)
