@@ -15,43 +15,51 @@ package orderer;
 
 // Cluster defines communication between cluster members.
 service Cluster {
-    // Submit submits transactions to a cluster member
-    rpc Submit(stream SubmitRequest) returns (stream SubmitResponse);
     // Step passes an implementation-specific message to another cluster member.
-    rpc Step(StepRequest) returns (StepResponse);
+    rpc Step(stream StepRequest) returns (stream StepResponse);
 }
 
-// StepRequest wraps a consensus implementation
-// specific message that is sent to a cluster member
+// StepRequest wraps a message that is sent to a cluster member.
 message StepRequest {
-    string channel = 1;
-    bytes payload  = 2;
+    oneof payload {
+        // consensus_request is a consensus specific message.
+        ConsensusRequest consensus_request = 1;
+        // submit_request is a relay of a transaction.
+        SubmitRequest submit_request = 2;
+    }
 }
 
-// StepResponse wraps a consensus implementation
-// specific message that is received from
-// a cluster member as a response to a StepRequest
+// StepResponse is a message received from a cluster member.
 message StepResponse {
-    bytes payload  = 1;
+    oneof payload {
+        SubmitResponse submit_res = 1;
+    }
 }
 
-// SubmitRequest wraps a transaction to be sent for ordering
+// ConsensusRequest is a consensus specific message sent to a cluster member.
+message ConsensusRequest {
+    string channel = 1;
+    bytes payload = 2;
+}
+
+// SubmitRequest wraps a transaction to be sent for ordering.
 message SubmitRequest {
     string channel = 1;
     // last_validation_seq denotes the last
     // configuration sequence at which the
-    // sender validated this message
+    // sender validated this message.
     uint64 last_validation_seq = 2;
     // content is the fabric transaction
-    // that is forwarded to the cluster member
-    common.Envelope content = 3;
+    // that is forwarded to the cluster member.
+    common.Envelope payload = 3;
 }
 
 // SubmitResponse returns a success
-// or failure status to the sender
+// or failure status to the sender.
 message SubmitResponse {
-    // Status code, which may be used to programatically respond to success/failure
-    common.Status status = 1;
-    // Info string which may contain additional information about the status returned
-    string info = 2;
+    string channel = 1;
+    // Status code, which may be used to programatically respond to success/failure.
+    common.Status status = 2;
+    // Info string which may contain additional information about the returned status.
+    string info = 3;
 }

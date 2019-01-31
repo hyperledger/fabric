@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/orderer"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
@@ -20,17 +21,17 @@ import (
 
 // Dispatcher dispatches requests
 type Dispatcher interface {
-	DispatchSubmit(ctx context.Context, request *orderer.SubmitRequest) (*orderer.SubmitResponse, error)
-	DispatchStep(ctx context.Context, request *orderer.StepRequest) (*orderer.StepResponse, error)
+	DispatchSubmit(ctx context.Context, request *orderer.SubmitRequest) error
+	DispatchConsensus(ctx context.Context, request *orderer.ConsensusRequest) error
 }
 
-//go:generate mockery -dir . -name SubmitStream -case underscore -output ./mocks/
+//go:generate mockery -dir . -name StepStream -case underscore -output ./mocks/
 
-// SubmitStream defines the gRPC stream for sending
+// StepStream defines the gRPC stream for sending
 // transactions, and receiving corresponding responses
-type SubmitStream interface {
-	Send(response *orderer.SubmitResponse) error
-	Recv() (*orderer.SubmitRequest, error)
+type StepStream interface {
+	Send(response *orderer.StepResponse) error
+	Recv() (*orderer.StepRequest, error)
 	grpc.ServerStream
 }
 
@@ -41,27 +42,16 @@ type Service struct {
 	StepLogger *flogging.FabricLogger
 }
 
-// Step forwards a message to a raft FSM located in this server
-func (s *Service) Step(ctx context.Context, request *orderer.StepRequest) (*orderer.StepResponse, error) {
-	addr := util.ExtractRemoteAddress(ctx)
-	s.StepLogger.Debugf("Connection from %s", addr)
-	defer s.StepLogger.Debugf("Closing connection from %s", addr)
-	response, err := s.Dispatcher.DispatchStep(ctx, request)
-	if err != nil {
-		s.Logger.Warningf("Handling of Step() from %s failed: %v", addr, err)
-	}
-	return response, err
-}
-
-// Submit accepts transactions
-func (s *Service) Submit(stream orderer.Cluster_SubmitServer) error {
+// Step passes an implementation-specific message to another cluster member.
+func (s *Service) Step(stream orderer.Cluster_StepServer) error {
 	addr := util.ExtractRemoteAddress(stream.Context())
-	s.Logger.Debugf("Connection from %s", addr)
-	defer s.Logger.Debugf("Closing connection from %s", addr)
+	commonName := commonNameFromContext(stream.Context())
+	s.Logger.Debugf("Connection from %s(%s)", commonName, addr)
+	defer s.Logger.Debugf("Closing connection from %s(%s)", commonName, addr)
 	for {
-		err := s.handleSubmit(stream, addr)
+		err := s.handleMessage(stream, addr)
 		if err == io.EOF {
-			s.Logger.Debugf("%s disconnected", addr)
+			s.Logger.Debugf("%s(%s) disconnected", commonName, addr)
 			return nil
 		}
 		if err != nil {
@@ -71,7 +61,7 @@ func (s *Service) Submit(stream orderer.Cluster_SubmitServer) error {
 	}
 }
 
-func (s *Service) handleSubmit(stream SubmitStream, addr string) error {
+func (s *Service) handleMessage(stream StepStream, addr string) error {
 	request, err := stream.Recv()
 	if err == io.EOF {
 		return err
@@ -80,14 +70,27 @@ func (s *Service) handleSubmit(stream SubmitStream, addr string) error {
 		s.Logger.Warningf("Stream read from %s failed: %v", addr, err)
 		return err
 	}
-	response, err := s.Dispatcher.DispatchSubmit(stream.Context(), request)
-	if err != nil {
-		s.Logger.Warningf("Handling of Propose() from %s failed: %+v", addr, err)
-		return err
+
+	if s.StepLogger.IsEnabledFor(zap.DebugLevel) {
+		nodeName := commonNameFromContext(stream.Context())
+		s.StepLogger.Debugf("Received message from %s(%s): %v", nodeName, addr, requestAsString(request))
 	}
-	err = stream.Send(response)
+
+	if submitReq := request.GetSubmitRequest(); submitReq != nil {
+		nodeName := commonNameFromContext(stream.Context())
+		s.Logger.Debugf("Received message from %s(%s): %v", nodeName, addr, requestAsString(request))
+		return s.handleSubmit(submitReq, stream, addr)
+	}
+
+	// Else, it's a consensus message.
+	return s.Dispatcher.DispatchConsensus(stream.Context(), request.GetConsensusRequest())
+}
+
+func (s *Service) handleSubmit(request *orderer.SubmitRequest, stream StepStream, addr string) error {
+	err := s.Dispatcher.DispatchSubmit(stream.Context(), request)
 	if err != nil {
-		s.Logger.Warningf("Send() failed: %v", err)
+		s.Logger.Warningf("Handling of Submit() from %s failed: %v", addr, err)
+		return err
 	}
 	return err
 }

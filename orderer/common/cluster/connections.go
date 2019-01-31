@@ -25,8 +25,6 @@ type SecureDialer interface {
 	Dial(address string, verifyFunc RemoteVerifier) (*grpc.ClientConn, error)
 }
 
-//go:generate mockery -dir . -name ConnectionMapper -case underscore -output ./mocks/
-
 // ConnectionMapper maps certificates to connections
 type ConnectionMapper interface {
 	Lookup(cert []byte) (*grpc.ClientConn, bool)

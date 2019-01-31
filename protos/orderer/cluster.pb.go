@@ -24,21 +24,22 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-// StepRequest wraps a consensus implementation
-// specific message that is sent to a cluster member
+// StepRequest wraps a message that is sent to a cluster member.
 type StepRequest struct {
-	Channel              string   `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"`
-	Payload              []byte   `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	// Types that are valid to be assigned to Payload:
+	//	*StepRequest_ConsensusRequest
+	//	*StepRequest_SubmitRequest
+	Payload              isStepRequest_Payload `protobuf_oneof:"payload"`
+	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
+	XXX_unrecognized     []byte                `json:"-"`
+	XXX_sizecache        int32                 `json:"-"`
 }
 
 func (m *StepRequest) Reset()         { *m = StepRequest{} }
 func (m *StepRequest) String() string { return proto.CompactTextString(m) }
 func (*StepRequest) ProtoMessage()    {}
 func (*StepRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cluster_fa8fc28779c58bfb, []int{0}
+	return fileDescriptor_cluster_6a2263165ad66f88, []int{0}
 }
 func (m *StepRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StepRequest.Unmarshal(m, b)
@@ -58,35 +59,132 @@ func (m *StepRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_StepRequest proto.InternalMessageInfo
 
-func (m *StepRequest) GetChannel() string {
-	if m != nil {
-		return m.Channel
-	}
-	return ""
+type isStepRequest_Payload interface {
+	isStepRequest_Payload()
 }
 
-func (m *StepRequest) GetPayload() []byte {
+type StepRequest_ConsensusRequest struct {
+	ConsensusRequest *ConsensusRequest `protobuf:"bytes,1,opt,name=consensus_request,json=consensusRequest,proto3,oneof"`
+}
+
+type StepRequest_SubmitRequest struct {
+	SubmitRequest *SubmitRequest `protobuf:"bytes,2,opt,name=submit_request,json=submitRequest,proto3,oneof"`
+}
+
+func (*StepRequest_ConsensusRequest) isStepRequest_Payload() {}
+
+func (*StepRequest_SubmitRequest) isStepRequest_Payload() {}
+
+func (m *StepRequest) GetPayload() isStepRequest_Payload {
 	if m != nil {
 		return m.Payload
 	}
 	return nil
 }
 
-// StepResponse wraps a consensus implementation
-// specific message that is received from
-// a cluster member as a response to a StepRequest
+func (m *StepRequest) GetConsensusRequest() *ConsensusRequest {
+	if x, ok := m.GetPayload().(*StepRequest_ConsensusRequest); ok {
+		return x.ConsensusRequest
+	}
+	return nil
+}
+
+func (m *StepRequest) GetSubmitRequest() *SubmitRequest {
+	if x, ok := m.GetPayload().(*StepRequest_SubmitRequest); ok {
+		return x.SubmitRequest
+	}
+	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*StepRequest) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _StepRequest_OneofMarshaler, _StepRequest_OneofUnmarshaler, _StepRequest_OneofSizer, []interface{}{
+		(*StepRequest_ConsensusRequest)(nil),
+		(*StepRequest_SubmitRequest)(nil),
+	}
+}
+
+func _StepRequest_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*StepRequest)
+	// payload
+	switch x := m.Payload.(type) {
+	case *StepRequest_ConsensusRequest:
+		b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.ConsensusRequest); err != nil {
+			return err
+		}
+	case *StepRequest_SubmitRequest:
+		b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.SubmitRequest); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("StepRequest.Payload has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _StepRequest_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*StepRequest)
+	switch tag {
+	case 1: // payload.consensus_request
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(ConsensusRequest)
+		err := b.DecodeMessage(msg)
+		m.Payload = &StepRequest_ConsensusRequest{msg}
+		return true, err
+	case 2: // payload.submit_request
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(SubmitRequest)
+		err := b.DecodeMessage(msg)
+		m.Payload = &StepRequest_SubmitRequest{msg}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
+func _StepRequest_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*StepRequest)
+	// payload
+	switch x := m.Payload.(type) {
+	case *StepRequest_ConsensusRequest:
+		s := proto.Size(x.ConsensusRequest)
+		n += 1 // tag and wire
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *StepRequest_SubmitRequest:
+		s := proto.Size(x.SubmitRequest)
+		n += 1 // tag and wire
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
+// StepResponse is a message received from a cluster member.
 type StepResponse struct {
-	Payload              []byte   `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	// Types that are valid to be assigned to Payload:
+	//	*StepResponse_SubmitRes
+	Payload              isStepResponse_Payload `protobuf_oneof:"payload"`
+	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
+	XXX_unrecognized     []byte                 `json:"-"`
+	XXX_sizecache        int32                  `json:"-"`
 }
 
 func (m *StepResponse) Reset()         { *m = StepResponse{} }
 func (m *StepResponse) String() string { return proto.CompactTextString(m) }
 func (*StepResponse) ProtoMessage()    {}
 func (*StepResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cluster_fa8fc28779c58bfb, []int{1}
+	return fileDescriptor_cluster_6a2263165ad66f88, []int{1}
 }
 func (m *StepResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StepResponse.Unmarshal(m, b)
@@ -106,14 +204,133 @@ func (m *StepResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_StepResponse proto.InternalMessageInfo
 
-func (m *StepResponse) GetPayload() []byte {
+type isStepResponse_Payload interface {
+	isStepResponse_Payload()
+}
+
+type StepResponse_SubmitRes struct {
+	SubmitRes *SubmitResponse `protobuf:"bytes,1,opt,name=submit_res,json=submitRes,proto3,oneof"`
+}
+
+func (*StepResponse_SubmitRes) isStepResponse_Payload() {}
+
+func (m *StepResponse) GetPayload() isStepResponse_Payload {
 	if m != nil {
 		return m.Payload
 	}
 	return nil
 }
 
-// SubmitRequest wraps a transaction to be sent for ordering
+func (m *StepResponse) GetSubmitRes() *SubmitResponse {
+	if x, ok := m.GetPayload().(*StepResponse_SubmitRes); ok {
+		return x.SubmitRes
+	}
+	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*StepResponse) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _StepResponse_OneofMarshaler, _StepResponse_OneofUnmarshaler, _StepResponse_OneofSizer, []interface{}{
+		(*StepResponse_SubmitRes)(nil),
+	}
+}
+
+func _StepResponse_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*StepResponse)
+	// payload
+	switch x := m.Payload.(type) {
+	case *StepResponse_SubmitRes:
+		b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.SubmitRes); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("StepResponse.Payload has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _StepResponse_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*StepResponse)
+	switch tag {
+	case 1: // payload.submit_res
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(SubmitResponse)
+		err := b.DecodeMessage(msg)
+		m.Payload = &StepResponse_SubmitRes{msg}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
+func _StepResponse_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*StepResponse)
+	// payload
+	switch x := m.Payload.(type) {
+	case *StepResponse_SubmitRes:
+		s := proto.Size(x.SubmitRes)
+		n += 1 // tag and wire
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
+// ConsensusRequest is a consensus specific message sent to a cluster member.
+type ConsensusRequest struct {
+	Channel              string   `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"`
+	Payload              []byte   `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ConsensusRequest) Reset()         { *m = ConsensusRequest{} }
+func (m *ConsensusRequest) String() string { return proto.CompactTextString(m) }
+func (*ConsensusRequest) ProtoMessage()    {}
+func (*ConsensusRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_cluster_6a2263165ad66f88, []int{2}
+}
+func (m *ConsensusRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ConsensusRequest.Unmarshal(m, b)
+}
+func (m *ConsensusRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ConsensusRequest.Marshal(b, m, deterministic)
+}
+func (dst *ConsensusRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ConsensusRequest.Merge(dst, src)
+}
+func (m *ConsensusRequest) XXX_Size() int {
+	return xxx_messageInfo_ConsensusRequest.Size(m)
+}
+func (m *ConsensusRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ConsensusRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ConsensusRequest proto.InternalMessageInfo
+
+func (m *ConsensusRequest) GetChannel() string {
+	if m != nil {
+		return m.Channel
+	}
+	return ""
+}
+
+func (m *ConsensusRequest) GetPayload() []byte {
+	if m != nil {
+		return m.Payload
+	}
+	return nil
+}
+
+// SubmitRequest wraps a transaction to be sent for ordering.
 type SubmitRequest struct {
 	Channel string `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"`
 	// last_validation_seq denotes the last
@@ -122,7 +339,7 @@ type SubmitRequest struct {
 	LastValidationSeq uint64 `protobuf:"varint,2,opt,name=last_validation_seq,json=lastValidationSeq,proto3" json:"last_validation_seq,omitempty"`
 	// content is the fabric transaction
 	// that is forwarded to the cluster member
-	Content              *common.Envelope `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	Payload              *common.Envelope `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
 	XXX_unrecognized     []byte           `json:"-"`
 	XXX_sizecache        int32            `json:"-"`
@@ -132,7 +349,7 @@ func (m *SubmitRequest) Reset()         { *m = SubmitRequest{} }
 func (m *SubmitRequest) String() string { return proto.CompactTextString(m) }
 func (*SubmitRequest) ProtoMessage()    {}
 func (*SubmitRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cluster_fa8fc28779c58bfb, []int{2}
+	return fileDescriptor_cluster_6a2263165ad66f88, []int{3}
 }
 func (m *SubmitRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SubmitRequest.Unmarshal(m, b)
@@ -166,9 +383,9 @@ func (m *SubmitRequest) GetLastValidationSeq() uint64 {
 	return 0
 }
 
-func (m *SubmitRequest) GetContent() *common.Envelope {
+func (m *SubmitRequest) GetPayload() *common.Envelope {
 	if m != nil {
-		return m.Content
+		return m.Payload
 	}
 	return nil
 }
@@ -176,10 +393,11 @@ func (m *SubmitRequest) GetContent() *common.Envelope {
 // SubmitResponse returns a success
 // or failure status to the sender
 type SubmitResponse struct {
+	Channel string `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"`
 	// Status code, which may be used to programatically respond to success/failure
-	Status common.Status `protobuf:"varint,1,opt,name=status,proto3,enum=common.Status" json:"status,omitempty"`
+	Status common.Status `protobuf:"varint,2,opt,name=status,proto3,enum=common.Status" json:"status,omitempty"`
 	// Info string which may contain additional information about the status returned
-	Info                 string   `protobuf:"bytes,2,opt,name=info,proto3" json:"info,omitempty"`
+	Info                 string   `protobuf:"bytes,3,opt,name=info,proto3" json:"info,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -189,7 +407,7 @@ func (m *SubmitResponse) Reset()         { *m = SubmitResponse{} }
 func (m *SubmitResponse) String() string { return proto.CompactTextString(m) }
 func (*SubmitResponse) ProtoMessage()    {}
 func (*SubmitResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cluster_fa8fc28779c58bfb, []int{3}
+	return fileDescriptor_cluster_6a2263165ad66f88, []int{4}
 }
 func (m *SubmitResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SubmitResponse.Unmarshal(m, b)
@@ -209,6 +427,13 @@ func (m *SubmitResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_SubmitResponse proto.InternalMessageInfo
 
+func (m *SubmitResponse) GetChannel() string {
+	if m != nil {
+		return m.Channel
+	}
+	return ""
+}
+
 func (m *SubmitResponse) GetStatus() common.Status {
 	if m != nil {
 		return m.Status
@@ -226,6 +451,7 @@ func (m *SubmitResponse) GetInfo() string {
 func init() {
 	proto.RegisterType((*StepRequest)(nil), "orderer.StepRequest")
 	proto.RegisterType((*StepResponse)(nil), "orderer.StepResponse")
+	proto.RegisterType((*ConsensusRequest)(nil), "orderer.ConsensusRequest")
 	proto.RegisterType((*SubmitRequest)(nil), "orderer.SubmitRequest")
 	proto.RegisterType((*SubmitResponse)(nil), "orderer.SubmitResponse")
 }
@@ -242,10 +468,8 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ClusterClient interface {
-	// Submit submits transactions to a cluster member
-	Submit(ctx context.Context, opts ...grpc.CallOption) (Cluster_SubmitClient, error)
 	// Step passes an implementation-specific message to another cluster member.
-	Step(ctx context.Context, in *StepRequest, opts ...grpc.CallOption) (*StepResponse, error)
+	Step(ctx context.Context, opts ...grpc.CallOption) (Cluster_StepClient, error)
 }
 
 type clusterClient struct {
@@ -256,115 +480,81 @@ func NewClusterClient(cc *grpc.ClientConn) ClusterClient {
 	return &clusterClient{cc}
 }
 
-func (c *clusterClient) Submit(ctx context.Context, opts ...grpc.CallOption) (Cluster_SubmitClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Cluster_serviceDesc.Streams[0], "/orderer.Cluster/Submit", opts...)
+func (c *clusterClient) Step(ctx context.Context, opts ...grpc.CallOption) (Cluster_StepClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_Cluster_serviceDesc.Streams[0], "/orderer.Cluster/Step", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &clusterSubmitClient{stream}
+	x := &clusterStepClient{stream}
 	return x, nil
 }
 
-type Cluster_SubmitClient interface {
-	Send(*SubmitRequest) error
-	Recv() (*SubmitResponse, error)
+type Cluster_StepClient interface {
+	Send(*StepRequest) error
+	Recv() (*StepResponse, error)
 	grpc.ClientStream
 }
 
-type clusterSubmitClient struct {
+type clusterStepClient struct {
 	grpc.ClientStream
 }
 
-func (x *clusterSubmitClient) Send(m *SubmitRequest) error {
+func (x *clusterStepClient) Send(m *StepRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *clusterSubmitClient) Recv() (*SubmitResponse, error) {
-	m := new(SubmitResponse)
+func (x *clusterStepClient) Recv() (*StepResponse, error) {
+	m := new(StepResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *clusterClient) Step(ctx context.Context, in *StepRequest, opts ...grpc.CallOption) (*StepResponse, error) {
-	out := new(StepResponse)
-	err := c.cc.Invoke(ctx, "/orderer.Cluster/Step", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // ClusterServer is the server API for Cluster service.
 type ClusterServer interface {
-	// Submit submits transactions to a cluster member
-	Submit(Cluster_SubmitServer) error
 	// Step passes an implementation-specific message to another cluster member.
-	Step(context.Context, *StepRequest) (*StepResponse, error)
+	Step(Cluster_StepServer) error
 }
 
 func RegisterClusterServer(s *grpc.Server, srv ClusterServer) {
 	s.RegisterService(&_Cluster_serviceDesc, srv)
 }
 
-func _Cluster_Submit_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(ClusterServer).Submit(&clusterSubmitServer{stream})
+func _Cluster_Step_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ClusterServer).Step(&clusterStepServer{stream})
 }
 
-type Cluster_SubmitServer interface {
-	Send(*SubmitResponse) error
-	Recv() (*SubmitRequest, error)
+type Cluster_StepServer interface {
+	Send(*StepResponse) error
+	Recv() (*StepRequest, error)
 	grpc.ServerStream
 }
 
-type clusterSubmitServer struct {
+type clusterStepServer struct {
 	grpc.ServerStream
 }
 
-func (x *clusterSubmitServer) Send(m *SubmitResponse) error {
+func (x *clusterStepServer) Send(m *StepResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *clusterSubmitServer) Recv() (*SubmitRequest, error) {
-	m := new(SubmitRequest)
+func (x *clusterStepServer) Recv() (*StepRequest, error) {
+	m := new(StepRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func _Cluster_Step_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(StepRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClusterServer).Step(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/orderer.Cluster/Step",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClusterServer).Step(ctx, req.(*StepRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 var _Cluster_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "orderer.Cluster",
 	HandlerType: (*ClusterServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Step",
-			Handler:    _Cluster_Step_Handler,
-		},
-	},
+	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "Submit",
-			Handler:       _Cluster_Submit_Handler,
+			StreamName:    "Step",
+			Handler:       _Cluster_Step_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
@@ -372,30 +562,33 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 	Metadata: "orderer/cluster.proto",
 }
 
-func init() { proto.RegisterFile("orderer/cluster.proto", fileDescriptor_cluster_fa8fc28779c58bfb) }
+func init() { proto.RegisterFile("orderer/cluster.proto", fileDescriptor_cluster_6a2263165ad66f88) }
 
-var fileDescriptor_cluster_fa8fc28779c58bfb = []byte{
-	// 347 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x91, 0xc1, 0x4f, 0xf2, 0x40,
-	0x10, 0xc5, 0xb3, 0xdf, 0x47, 0x68, 0x18, 0x90, 0xe8, 0x22, 0xda, 0x70, 0x22, 0x24, 0x9a, 0xc6,
-	0x98, 0xd6, 0xc0, 0xd9, 0x83, 0x1a, 0x6f, 0x9e, 0xda, 0xe8, 0xc1, 0x0b, 0xd9, 0xb6, 0x03, 0x34,
-	0x59, 0x76, 0xcb, 0xee, 0x96, 0x84, 0x83, 0x47, 0xff, 0x6f, 0xd3, 0x6e, 0x2b, 0xa0, 0x07, 0x4f,
-	0xed, 0xbc, 0xf7, 0x9b, 0xdd, 0x37, 0xb3, 0x30, 0x94, 0x2a, 0x45, 0x85, 0x2a, 0x48, 0x78, 0xa1,
-	0x0d, 0x2a, 0x3f, 0x57, 0xd2, 0x48, 0xea, 0xd4, 0xf2, 0x68, 0x90, 0xc8, 0xf5, 0x5a, 0x8a, 0xc0,
-	0x7e, 0xac, 0x3b, 0x79, 0x80, 0x6e, 0x64, 0x30, 0x0f, 0x71, 0x53, 0xa0, 0x36, 0xd4, 0x05, 0x27,
-	0x59, 0x31, 0x21, 0x90, 0xbb, 0x64, 0x4c, 0xbc, 0x4e, 0xd8, 0x94, 0xa5, 0x93, 0xb3, 0x1d, 0x97,
-	0x2c, 0x75, 0xff, 0x8d, 0x89, 0xd7, 0x0b, 0x9b, 0x72, 0xe2, 0x41, 0xcf, 0x1e, 0xa1, 0x73, 0x29,
-	0x34, 0x1e, 0x92, 0xe4, 0x98, 0xfc, 0x24, 0x70, 0x12, 0x15, 0xf1, 0x3a, 0x33, 0x7f, 0xdf, 0xe7,
-	0xc3, 0x80, 0x33, 0x6d, 0xe6, 0x5b, 0xc6, 0xb3, 0x94, 0x99, 0x4c, 0x8a, 0xb9, 0xc6, 0x4d, 0x75,
-	0x77, 0x2b, 0x3c, 0x2b, 0xad, 0xb7, 0x6f, 0x27, 0xc2, 0x0d, 0xbd, 0x01, 0x27, 0x91, 0xc2, 0xa0,
-	0x30, 0xee, 0xff, 0x31, 0xf1, 0xba, 0xd3, 0x53, 0xbf, 0x1e, 0xf4, 0x59, 0x6c, 0x91, 0xcb, 0x1c,
-	0xc3, 0x06, 0x98, 0xbc, 0x40, 0xbf, 0x89, 0x51, 0x67, 0xbe, 0x86, 0xb6, 0x36, 0xcc, 0x14, 0xba,
-	0x8a, 0xd1, 0x9f, 0xf6, 0x9b, 0xe6, 0xa8, 0x52, 0xc3, 0xda, 0xa5, 0x14, 0x5a, 0x99, 0x58, 0xc8,
-	0x2a, 0x46, 0x27, 0xac, 0xfe, 0xa7, 0x1f, 0xe0, 0x3c, 0xd9, 0x8d, 0xd3, 0x7b, 0x68, 0xdb, 0x83,
-	0xe9, 0x85, 0x5f, 0xaf, 0xdd, 0x3f, 0x1a, 0x78, 0x74, 0xf9, 0x4b, 0xb7, 0x09, 0x3c, 0x72, 0x47,
-	0xe8, 0x0c, 0x5a, 0xe5, 0x26, 0xe9, 0xf9, 0x1e, 0xda, 0xbf, 0xcd, 0x68, 0xf8, 0x43, 0xb5, 0x8d,
-	0x8f, 0xaf, 0x70, 0x25, 0xd5, 0xd2, 0x5f, 0xed, 0x72, 0x54, 0x1c, 0xd3, 0x25, 0x2a, 0x7f, 0xc1,
-	0x62, 0x95, 0x25, 0xf6, 0x85, 0x75, 0xd3, 0xf5, 0x7e, 0xbb, 0xcc, 0xcc, 0xaa, 0x88, 0xcb, 0xc9,
-	0x82, 0x03, 0x3a, 0xb0, 0x74, 0x60, 0xe9, 0xa0, 0xa6, 0xe3, 0x76, 0x55, 0xcf, 0xbe, 0x02, 0x00,
-	0x00, 0xff, 0xff, 0xc7, 0xdf, 0xa0, 0x73, 0x56, 0x02, 0x00, 0x00,
+var fileDescriptor_cluster_6a2263165ad66f88 = []byte{
+	// 399 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x92, 0xd1, 0xee, 0xd2, 0x30,
+	0x14, 0xc6, 0xff, 0x53, 0xc2, 0xb2, 0x03, 0x2c, 0x50, 0x44, 0x91, 0x2b, 0x43, 0xa2, 0x21, 0xc6,
+	0x6c, 0x06, 0x2f, 0xf4, 0xce, 0x04, 0xa2, 0xe1, 0xba, 0x8b, 0x5e, 0x78, 0x43, 0xba, 0xad, 0xc0,
+	0x92, 0xd1, 0x8e, 0xb6, 0x23, 0xe1, 0x01, 0x7c, 0x12, 0x5f, 0xd4, 0xac, 0xed, 0x36, 0xe0, 0x9f,
+	0x70, 0x05, 0x3d, 0xdf, 0xd7, 0xdf, 0xf9, 0xce, 0x7a, 0x60, 0xc2, 0x45, 0x4a, 0x05, 0x15, 0x61,
+	0x92, 0x97, 0x52, 0x51, 0x11, 0x14, 0x82, 0x2b, 0x8e, 0x5c, 0x5b, 0x9e, 0x8d, 0x13, 0x7e, 0x3c,
+	0x72, 0x16, 0x9a, 0x1f, 0xa3, 0xce, 0xff, 0x39, 0xd0, 0x8b, 0x14, 0x2d, 0x30, 0x3d, 0x95, 0x54,
+	0x2a, 0xb4, 0x81, 0x51, 0xc2, 0x99, 0xa4, 0x4c, 0x96, 0x72, 0x2b, 0x4c, 0x71, 0xea, 0xbc, 0x73,
+	0x16, 0xbd, 0xe5, 0xdb, 0xc0, 0x92, 0x82, 0x75, 0xed, 0xb0, 0xb7, 0x36, 0x4f, 0x78, 0x98, 0xdc,
+	0xd5, 0xd0, 0x77, 0xf0, 0x65, 0x19, 0x1f, 0x33, 0xd5, 0x60, 0x5e, 0x68, 0xcc, 0xeb, 0x06, 0x13,
+	0x69, 0xb9, 0x65, 0x0c, 0xe4, 0x75, 0x61, 0xe5, 0x81, 0x5b, 0x90, 0x4b, 0xce, 0x49, 0x3a, 0x8f,
+	0xa0, 0x6f, 0x42, 0xca, 0xa2, 0x6a, 0x83, 0xbe, 0x01, 0x34, 0x6c, 0x69, 0xe3, 0xbd, 0x79, 0xc6,
+	0x35, 0xe6, 0xcd, 0x13, 0xf6, 0x6a, 0xb0, 0xbc, 0x86, 0xfe, 0x84, 0xe1, 0xfd, 0x20, 0x68, 0x0a,
+	0x6e, 0x72, 0x20, 0x8c, 0xd1, 0x5c, 0x53, 0x3d, 0x5c, 0x1f, 0x2b, 0xc5, 0x5e, 0xd4, 0x73, 0xf4,
+	0x71, 0xc3, 0xf9, 0xeb, 0xc0, 0xe0, 0x66, 0x94, 0x07, 0x94, 0x00, 0xc6, 0x39, 0x91, 0x6a, 0x7b,
+	0x26, 0x79, 0x96, 0x12, 0x95, 0x71, 0xb6, 0x95, 0xf4, 0xa4, 0x89, 0x1d, 0x3c, 0xaa, 0xa4, 0xdf,
+	0x8d, 0x12, 0xd1, 0x13, 0xfa, 0xd8, 0x76, 0x7d, 0xa9, 0xa7, 0x1c, 0x06, 0xf6, 0xf9, 0x7e, 0xb0,
+	0x33, 0xcd, 0x79, 0x41, 0xdb, 0x1c, 0x3b, 0xf0, 0x6f, 0x27, 0x7f, 0x90, 0xe3, 0x03, 0x74, 0xa5,
+	0x22, 0xaa, 0x94, 0xba, 0xb5, 0xbf, 0xf4, 0x6b, 0x6c, 0xa4, 0xab, 0xd8, 0xaa, 0x08, 0x41, 0x27,
+	0x63, 0x3b, 0xae, 0x9b, 0x7b, 0x58, 0xff, 0x5f, 0xae, 0xc0, 0x5d, 0x9b, 0x0d, 0x43, 0x5f, 0xa1,
+	0x53, 0xbd, 0x0b, 0x7a, 0xd5, 0x7e, 0xfb, 0x76, 0x97, 0x66, 0x93, 0xbb, 0xaa, 0x49, 0xb5, 0x70,
+	0x3e, 0x3b, 0xab, 0x5f, 0xf0, 0x9e, 0x8b, 0x7d, 0x70, 0xb8, 0x14, 0x54, 0xe4, 0x34, 0xdd, 0x53,
+	0x11, 0xec, 0x48, 0x2c, 0xb2, 0xc4, 0xac, 0xa5, 0xac, 0x6f, 0xfe, 0xf9, 0xb4, 0xcf, 0xd4, 0xa1,
+	0x8c, 0xab, 0x78, 0xe1, 0x95, 0x3b, 0x34, 0xee, 0xd0, 0xb8, 0x43, 0xeb, 0x8e, 0xbb, 0xfa, 0xfc,
+	0xe5, 0x7f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xcc, 0xe7, 0xa4, 0xe2, 0x0b, 0x03, 0x00, 0x00,
 }
