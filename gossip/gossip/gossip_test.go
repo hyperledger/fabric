@@ -46,7 +46,7 @@ var tests = []func(t *testing.T){
 	TestMembershipRequestSpoofing,
 	TestDataLeakage,
 	TestLeaveChannel,
-	//TestDisseminateAll2All: {},
+	// TestDisseminateAll2All: {},
 	TestIdentityExpiration,
 	TestSendByCriteria,
 	TestMultipleOrgEndpointLeakage,
@@ -313,17 +313,17 @@ func TestLeaveChannel(t *testing.T) {
 	}
 
 	// Wait until everyone sees each other in the channel
-	waitUntilOrFail(t, countMembership(p0, 2))
-	waitUntilOrFail(t, countMembership(p1, 2))
-	waitUntilOrFail(t, countMembership(p2, 2))
+	waitUntilOrFail(t, countMembership(p0, 2), "waiting for p0 to form membership")
+	waitUntilOrFail(t, countMembership(p1, 2), "waiting for p1 to form membership")
+	waitUntilOrFail(t, countMembership(p2, 2), "waiting for p2 to form membership")
 
 	// Now p2 leaves the channel
 	p2.LeaveChan(common.ChainID("A"))
 
 	// Ensure channel membership is adjusted accordingly
-	waitUntilOrFail(t, countMembership(p0, 1))
-	waitUntilOrFail(t, countMembership(p1, 1))
-	waitUntilOrFail(t, countMembership(p2, 0))
+	waitUntilOrFail(t, countMembership(p0, 1), "waiting for p0 to update membership view")
+	waitUntilOrFail(t, countMembership(p1, 1), "waiting for p1 to update membership view")
+	waitUntilOrFail(t, countMembership(p2, 0), "waiting for p2 to update membership view")
 
 }
 
@@ -403,8 +403,8 @@ func TestPull(t *testing.T) {
 		boot.Gossip(createDataMsg(uint64(i), []byte{}, common.ChainID("A")))
 	}
 
-	waitUntilOrFail(t, knowAll)
-	waitUntilOrFailBlocking(t, wg.Wait)
+	waitUntilOrFail(t, knowAll, "waiting to form membership among all peers")
+	waitUntilOrFailBlocking(t, wg.Wait, "waiting peers to register for gossip messages")
 
 	receivedAll := func() bool {
 		for i := 0; i < n; i++ {
@@ -414,13 +414,13 @@ func TestPull(t *testing.T) {
 		}
 		return true
 	}
-	waitUntilOrFail(t, receivedAll)
+	waitUntilOrFail(t, receivedAll, "waiting for all messages to be received by all peers")
 
 	stop := func() {
 		stopPeers(append(peers, boot))
 	}
 
-	waitUntilOrFailBlocking(t, stop)
+	waitUntilOrFailBlocking(t, stop, "waiting to stop all peers")
 
 	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
@@ -464,9 +464,7 @@ func TestConnectToAnchorPeers(t *testing.T) {
 		}(i)
 	}
 
-	waitUntilOrFailBlocking(t, wg.Wait)
-
-	time.Sleep(time.Second * 5)
+	waitUntilOrFailBlocking(t, wg.Wait, "waiting until all peers join the channel")
 
 	// Now start a random anchor peer
 	anchorPeer := newGossipInstance(portPrefix, rand.Intn(anchorPeercount), 100)
@@ -474,7 +472,7 @@ func TestConnectToAnchorPeers(t *testing.T) {
 	anchorPeer.UpdateLedgerHeight(1, common.ChainID("A"))
 
 	defer anchorPeer.Stop()
-	waitUntilOrFail(t, checkPeersMembership(t, peers, n))
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n), "waiting for peers to form membership view")
 
 	channelMembership := func() bool {
 		for _, peer := range peers {
@@ -484,12 +482,12 @@ func TestConnectToAnchorPeers(t *testing.T) {
 		}
 		return true
 	}
-	waitUntilOrFail(t, channelMembership)
+	waitUntilOrFail(t, channelMembership, "waiting for peers to form channel membership view")
 
 	stop := func() {
 		stopPeers(peers)
 	}
-	waitUntilOrFailBlocking(t, stop)
+	waitUntilOrFailBlocking(t, stop, "waiting for gossip instances to stop")
 
 	fmt.Println("<<<TestConnectToAnchorPeers>>>")
 	atomic.StoreInt32(&stopped, int32(1))
@@ -527,7 +525,7 @@ func TestMembership(t *testing.T) {
 		}(i)
 	}
 
-	waitUntilOrFailBlocking(t, wg.Wait)
+	waitUntilOrFailBlocking(t, wg.Wait, "waiting for all peers to join the channel")
 	t.Log("Peers started")
 
 	seeAllNeighbors := func() bool {
@@ -541,7 +539,7 @@ func TestMembership(t *testing.T) {
 	}
 
 	membershipEstablishTime := time.Now()
-	waitUntilOrFail(t, seeAllNeighbors)
+	waitUntilOrFail(t, seeAllNeighbors, "waiting for all peer to form the membership")
 	t.Log("membership established in", time.Since(membershipEstablishTime))
 
 	t.Log("Updating metadata...")
@@ -560,7 +558,7 @@ func TestMembership(t *testing.T) {
 		return true
 	}
 	metadataDisseminationTime := time.Now()
-	waitUntilOrFail(t, metaDataUpdated)
+	waitUntilOrFail(t, metaDataUpdated, "wait until metadata update is got propagated")
 	fmt.Println("Metadata updated")
 	t.Log("Metadata dissemination took", time.Since(metadataDisseminationTime))
 
@@ -569,7 +567,7 @@ func TestMembership(t *testing.T) {
 	}
 
 	stopTime := time.Now()
-	waitUntilOrFailBlocking(t, stop)
+	waitUntilOrFailBlocking(t, stop, "waiting for all instances to stop")
 	t.Log("Stop took", time.Since(stopTime))
 
 	t.Log("Took", time.Since(t1))
@@ -592,7 +590,7 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 	peer.UpdateLedgerHeight(1, common.ChainID("A"))
 
 	// Wait until both peers get connected
-	waitUntilOrFail(t, checkPeersMembership(t, []Gossip{peer}, 1))
+	waitUntilOrFail(t, checkPeersMembership(t, []Gossip{peer}, 1), "waiting for peers to form membership view")
 	_, commCh := boot.Accept(func(msg interface{}) bool {
 		return msg.(proto.ReceivedMessage).GetGossipMessage().IsDataMsg()
 	}, true)
@@ -631,13 +629,13 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 	}(peerCh)
 
 	boot.Gossip(createDataMsg(uint64(2), []byte{}, common.ChainID("A")))
-	waitUntilOrFailBlocking(t, wg.Wait)
+	waitUntilOrFailBlocking(t, wg.Wait, "waiting for everyone to get the message")
 
 	stop := func() {
 		stopPeers([]Gossip{peer, boot})
 	}
 
-	waitUntilOrFailBlocking(t, stop)
+	waitUntilOrFailBlocking(t, stop, "waiting for all instances to stop")
 }
 
 func TestDissemination(t *testing.T) {
@@ -705,7 +703,7 @@ func TestDissemination(t *testing.T) {
 	}
 
 	membershipTime := time.Now()
-	waitUntilOrFail(t, checkPeersMembership(t, peers, n))
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n), "waiting for all peers to form membership view")
 	t.Log("Membership establishment took", time.Since(membershipTime))
 
 	for i := 2; i <= msgsCount2Send+1; i++ {
@@ -713,17 +711,17 @@ func TestDissemination(t *testing.T) {
 	}
 
 	t2 := time.Now()
-	waitUntilOrFailBlocking(t, wg.Wait)
+	waitUntilOrFailBlocking(t, wg.Wait, "waiting to receive all messages")
 	t.Log("Block dissemination took", time.Since(t2))
 	t2 = time.Now()
-	waitUntilOrFail(t, metaDataUpdated)
+	waitUntilOrFail(t, metaDataUpdated, "wa")
 	t.Log("Metadata dissemination took", time.Since(t2))
 
 	for i := 0; i < n; i++ {
 		assert.Equal(t, msgsCount2Send, receivedMessages[i])
 	}
 
-	//Sending leadership messages
+	// Sending leadership messages
 	receivedLeadershipMessages := make([]int, n)
 	wgLeadership := sync.WaitGroup{}
 	wgLeadership.Add(n)
@@ -742,10 +740,10 @@ func TestDissemination(t *testing.T) {
 	incTime := uint64(time.Now().UnixNano())
 	t3 := time.Now()
 
-	leadershipMsg := createLeadershipMsg(true, common.ChainID("A"), incTime, uint64(seqNum), boot.(*gossipServiceImpl).conf.InternalEndpoint, boot.(*gossipServiceImpl).comm.GetPKIid())
+	leadershipMsg := createLeadershipMsg(true, common.ChainID("A"), incTime, uint64(seqNum), boot.(*gossipServiceImpl).comm.GetPKIid())
 	boot.Gossip(leadershipMsg)
 
-	waitUntilOrFailBlocking(t, wgLeadership.Wait)
+	waitUntilOrFailBlocking(t, wgLeadership.Wait, "waiting to get all leadership messages")
 	t.Log("Leadership message dissemination took", time.Since(t3))
 
 	for i := 0; i < n; i++ {
@@ -759,7 +757,7 @@ func TestDissemination(t *testing.T) {
 	}
 
 	stopTime := time.Now()
-	waitUntilOrFailBlocking(t, stop)
+	waitUntilOrFailBlocking(t, stop, "waiting for all instances to stop")
 	t.Log("Stop took", time.Since(stopTime))
 	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
@@ -797,7 +795,7 @@ func TestMembershipConvergence(t *testing.T) {
 		peers = append(peers, pI)
 	}
 
-	waitUntilOrFail(t, checkPeersMembership(t, peers, 4))
+	waitUntilOrFail(t, checkPeersMembership(t, peers, 4), "waiting for all instance to form membership")
 	t.Log("Sets of peers connected successfully")
 
 	connectorPeer := newGossipInstance(portPrefix, 15, 100, 0, 1, 2)
@@ -815,10 +813,10 @@ func TestMembershipConvergence(t *testing.T) {
 		return true
 	}
 
-	waitUntilOrFail(t, fullKnowledge)
+	waitUntilOrFail(t, fullKnowledge, "waiting for all instances to form membership view")
 
 	t.Log("Stopping connector...")
-	waitUntilOrFailBlocking(t, connectorPeer.Stop)
+	waitUntilOrFailBlocking(t, connectorPeer.Stop, "waiting for connector to stop")
 	t.Log("Stopped")
 	time.Sleep(time.Duration(15) * time.Second)
 
@@ -831,7 +829,7 @@ func TestMembershipConvergence(t *testing.T) {
 		return true
 	}
 
-	waitUntilOrFail(t, ensureForget)
+	waitUntilOrFail(t, ensureForget, "waiting to ensure we evicted stopped connector")
 
 	connectorPeer = newGossipInstance(portPrefix, 15, 100)
 	connectorPeer.UpdateMetadata([]byte("Connector2"))
@@ -849,16 +847,16 @@ func TestMembershipConvergence(t *testing.T) {
 		return true
 	}
 
-	waitUntilOrFail(t, ensureResync)
+	waitUntilOrFail(t, ensureResync, "waiting for connector 2 to become part of membership view")
 
-	waitUntilOrFailBlocking(t, connectorPeer.Stop)
+	waitUntilOrFailBlocking(t, connectorPeer.Stop, "waiting for connector 2 to stop")
 
 	t.Log("Stopping peers")
 	stop := func() {
 		stopPeers(peers)
 	}
 
-	waitUntilOrFailBlocking(t, stop)
+	waitUntilOrFailBlocking(t, stop, "waiting for instances to stop")
 	atomic.StoreInt32(&stopped, int32(1))
 	t.Log("Took", time.Since(t1))
 	fmt.Println("<<<TestMembershipConvergence>>>")
@@ -881,7 +879,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 	defer g3.Stop()
 
 	// Wait for g2 and g3 to know about each other
-	waitUntilOrFail(t, checkPeersMembership(t, []Gossip{g2, g3}, 1))
+	waitUntilOrFail(t, checkPeersMembership(t, []Gossip{g2, g3}, 1), "wait for g2 and g3 to know about each other")
 	// Obtain an alive message from p3
 	_, aliveMsgChan := g2.Accept(func(o interface{}) bool {
 		msg := o.(proto.ReceivedMessage).GetGossipMessage()
@@ -980,8 +978,8 @@ func TestDataLeakage(t *testing.T) {
 		}(i)
 	}
 
-	waitUntilOrFailBlocking(t, wg.Wait)
-	waitUntilOrFail(t, checkPeersMembership(t, peers, n-1))
+	waitUntilOrFailBlocking(t, wg.Wait, "waiting to create all instances")
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n-1), "waiting for all instance to form membership view")
 
 	channels := []common.ChainID{common.ChainID("A"), common.ChainID("B")}
 
@@ -1012,7 +1010,7 @@ func TestDataLeakage(t *testing.T) {
 		return true
 	}
 	t1 := time.Now()
-	waitUntilOrFail(t, seeChannelMetadata)
+	waitUntilOrFail(t, seeChannelMetadata, "waiting for all peers to build per channel view")
 
 	t.Log("Metadata sync took", time.Since(t1))
 	for i, channel := range channels {
@@ -1047,13 +1045,13 @@ func TestDataLeakage(t *testing.T) {
 	t1 = time.Now()
 	peers[0].Gossip(createDataMsg(2, []byte{}, channels[0]))
 	peers[n/2].Gossip(createDataMsg(3, []byte{}, channels[1]))
-	waitUntilOrFailBlocking(t, gotMessages)
+	waitUntilOrFailBlocking(t, gotMessages, "waiting to get messages")
 	t.Log("Dissemination took", time.Since(t1))
 	stop := func() {
 		stopPeers(peers)
 	}
 	stopTime := time.Now()
-	waitUntilOrFailBlocking(t, stop)
+	waitUntilOrFailBlocking(t, stop, "waiting for all instances to stop")
 	t.Log("Stop took", time.Since(stopTime))
 	atomic.StoreInt32(&stopped, int32(1))
 	fmt.Println("<<<TestDataLeakage>>>")
@@ -1088,7 +1086,7 @@ func TestDisseminateAll2All(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
-	waitUntilOrFail(t, checkPeersMembership(t, peers, n-1))
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n-1), "waiting for instances to form membership view")
 
 	bMutex := sync.WaitGroup{}
 	bMutex.Add(10 * n * (n - 1))
@@ -1119,12 +1117,12 @@ func TestDisseminateAll2All(t *testing.T) {
 			}
 		}(i)
 	}
-	waitUntilOrFailBlocking(t, bMutex.Wait)
+	waitUntilOrFailBlocking(t, bMutex.Wait, "waiting for all message been distributed among all instances")
 
 	stop := func() {
 		stopPeers(peers)
 	}
-	waitUntilOrFailBlocking(t, stop)
+	waitUntilOrFailBlocking(t, stop, "waiting for all instance to stop")
 	atomic.StoreInt32(&stopped, int32(1))
 	fmt.Println("<<<TestDisseminateAll2All>>>")
 	testWG.Done()
@@ -1192,7 +1190,7 @@ func TestSendByCriteria(t *testing.T) {
 	// Wait until g1 sees the rest of the peers in the channel
 	waitUntilOrFail(t, func() bool {
 		return len(g1.PeersOfChannel(common.ChainID("A"))) > 2
-	})
+	}, "waiting until g1 sees the rest of the peers in the channel")
 	criteria.MinAck = 3
 	err = g1.SendByCriteria(msg, criteria)
 	assert.Error(t, err)
@@ -1321,7 +1319,7 @@ func TestIdentityExpiration(t *testing.T) {
 		}
 		return true
 	}
-	waitUntilOrFail(t, seeAllNeighbors)
+	waitUntilOrFail(t, seeAllNeighbors, "waiting for all instances to form uniform membership view")
 	// Now revoke some peer
 	revokedPeerIndex := rand.Intn(4)
 	revokedPkiID := common.PKIidType(fmt.Sprintf("localhost:%d", portPrefix+int(revokedPeerIndex)))
@@ -1357,7 +1355,7 @@ func TestIdentityExpiration(t *testing.T) {
 		}
 		return true
 	}
-	waitUntilOrFail(t, ensureRevokedPeerIsIgnored)
+	waitUntilOrFail(t, ensureRevokedPeerIsIgnored, "waiting to make sure revoked peers are ignored")
 	stopPeers(peers)
 	g5.Stop()
 }
@@ -1385,7 +1383,7 @@ func createDataMsg(seqnum uint64, data []byte, channel common.ChainID) *proto.Go
 	}
 }
 
-func createLeadershipMsg(isDeclaration bool, channel common.ChainID, incTime uint64, seqNum uint64, endpoint string, pkiid []byte) *proto.GossipMessage {
+func createLeadershipMsg(isDeclaration bool, channel common.ChainID, incTime uint64, seqNum uint64, pkiid []byte) *proto.GossipMessage {
 
 	leadershipMsg := &proto.LeadershipMessage{
 		IsDeclaration: isDeclaration,
@@ -1544,7 +1542,6 @@ func stopPeers(peers []Gossip) {
 		}(i, pI)
 	}
 	stoppingWg.Wait()
-	time.Sleep(time.Second * time.Duration(2))
 }
 
 func getGoroutineRawText() string {
@@ -1581,7 +1578,7 @@ type goroutine struct {
 	stack []string
 }
 
-func waitUntilOrFail(t *testing.T, pred func() bool) {
+func waitUntilOrFail(t *testing.T, pred func() bool, context string) {
 	start := time.Now()
 	limit := start.UnixNano() + timeout.Nanoseconds()
 	for time.Now().UnixNano() < limit {
@@ -1591,10 +1588,10 @@ func waitUntilOrFail(t *testing.T, pred func() bool) {
 		time.Sleep(timeout / 60)
 	}
 	util.PrintStackTrace()
-	assert.Fail(t, "Timeout expired!")
+	assert.Failf(t, "Timeout expired, while %s", context)
 }
 
-func waitUntilOrFailBlocking(t *testing.T, f func()) {
+func waitUntilOrFailBlocking(t *testing.T, f func(), context string) {
 	successChan := make(chan struct{}, 1)
 	go func() {
 		f()
@@ -1607,7 +1604,7 @@ func waitUntilOrFailBlocking(t *testing.T, f func()) {
 		return
 	}
 	util.PrintStackTrace()
-	assert.Fail(t, "Timeout expired!")
+	assert.Failf(t, "Timeout expired, while %s", context)
 }
 
 func searchInStackTrace(searchTerm string, stack []string) bool {
