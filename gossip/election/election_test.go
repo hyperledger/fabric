@@ -160,17 +160,21 @@ func createPeers(spawnInterval time.Duration, ids ...int) []*peer {
 	return peers
 }
 
-func createPeer(id int, peerMap map[string]*peer, l *sync.RWMutex) *peer {
+func createPeerWithCostumeMetrics(id int, peerMap map[string]*peer, l *sync.RWMutex, f func(mock.Arguments)) *peer {
 	idStr := fmt.Sprintf("p%d", id)
 	c := make(chan Msg, 100)
 	p := &peer{id: idStr, peers: peerMap, sharedLock: l, msgChan: c, mockedMethods: make(map[string]struct{}), leaderFromCallback: false, callbackInvoked: false}
-	p.On("ReportMetrics", mock.Anything, mock.Anything)
+	p.On("ReportMetrics", mock.Anything).Run(f)
 	p.LeaderElectionService = NewLeaderElectionService(p, idStr, p.leaderCallback)
 	l.Lock()
 	peerMap[idStr] = p
 	l.Unlock()
 	return p
 
+}
+
+func createPeer(id int, peerMap map[string]*peer, l *sync.RWMutex) *peer {
+	return createPeerWithCostumeMetrics(id, peerMap, l, func(mock.Arguments) {})
 }
 
 func waitForMultipleLeadersElection(t *testing.T, peers []*peer, leadersNum int) []string {
@@ -199,15 +203,39 @@ func TestMetrics(t *testing.T) {
 	t.Parallel()
 	// Scenario: spawn a single peer and ensure it reports being a leader after some time.
 	// Then, make it relinquish its leadership and then ensure it reports not being a leader.
-	p := createPeer(0, make(map[string]*peer), &sync.RWMutex{})
+	var wgLeader sync.WaitGroup
+	var wgFollower sync.WaitGroup
+	wgLeader.Add(1)
+	wgFollower.Add(1)
+	var once sync.Once
+	var once2 sync.Once
+	f := func(args mock.Arguments) {
+		if args[0] == true {
+			once.Do(func() {
+				wgLeader.Done()
+			})
+		} else {
+			once2.Do(func() {
+				wgFollower.Done()
+			})
+		}
+	}
+
+	p := createPeerWithCostumeMetrics(0, make(map[string]*peer), &sync.RWMutex{}, f)
 	waitForLeaderElection(t, []*peer{p})
-	// Ensure we sent a leadership declaration during the time of leadership acquisition.
+
+	// Ensure we sent a leadership declaration during the time of leadership acquisition
+	wgLeader.Wait()
 	p.AssertCalled(t, "ReportMetrics", true)
+
 	p.Yield()
 	assert.False(t, p.IsLeader())
-	waitForLeaderElection(t, []*peer{p})
+
 	// Ensure declaration for not being a leader was sent
+	wgFollower.Wait()
 	p.AssertCalled(t, "ReportMetrics", false)
+
+	waitForLeaderElection(t, []*peer{p})
 }
 
 func TestInitPeersAtSameTime(t *testing.T) {
