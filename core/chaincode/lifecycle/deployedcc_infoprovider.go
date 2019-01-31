@@ -77,8 +77,10 @@ func (l *Lifecycle) ChaincodeDefinitionIfDefined(chaincodeName string, qe ledger
 
 	if chaincodeName == LifecycleNamespace {
 		return true, &ChaincodeDefinition{
-			EndorsementInfo: &lb.ChaincodeEndorsementInfo{},
-			ValidationInfo:  &lb.ChaincodeValidationInfo{},
+			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+				InitRequired: false,
+			},
+			ValidationInfo: &lb.ChaincodeValidationInfo{},
 		}, nil
 	}
 

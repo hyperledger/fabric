@@ -385,6 +385,13 @@ type CCContext struct {
 
 	// Version used to construct the chaincode image and register
 	Version string
+
+	// ID the identifier for this chaincode (for now, the hash of the package)
+	ID []byte
+
+	// InitRequired indicates whether the chaincode must have 'Init' invoked
+	// before other transactions can proceed.
+	InitRequired bool
 }
 
 // GetCanonicalName returns the canonical name associated with the proposal context
