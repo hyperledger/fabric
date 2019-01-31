@@ -124,10 +124,10 @@ func TestChaincodeListCmd(t *testing.T) {
 		resetFlags()
 		args := []string{"--installed", "--instantiated", "-C", "mychannel"}
 		cmd.SetArgs(args)
-		expectErr := fmt.Errorf("must explicitly specify \"--installed\" or \"--instantiated\"")
-		if err := cmd.Execute(); err == nil || err.Error() != expectErr.Error() {
-			t.Errorf("Expect error: %s", expectErr)
-		}
+		expectErr := fmt.Errorf("must explicitly specify \"--installed\", \"--committed\", or \"--instantiated\"")
+		err = cmd.Execute()
+		assert.Error(t, err)
+		assert.Equal(t, expectErr.Error(), err.Error())
 	})
 
 	t.Run("neither --installed nor --instantiated set", func(t *testing.T) {
@@ -135,10 +135,10 @@ func TestChaincodeListCmd(t *testing.T) {
 		args := []string{"-C", "mychannel"}
 		cmd.SetArgs(args)
 
-		expectErr := fmt.Errorf("must explicitly specify \"--installed\" or \"--instantiated\"")
-		if err := cmd.Execute(); err == nil || err.Error() != expectErr.Error() {
-			t.Errorf("Expect error: %s", expectErr)
-		}
+		expectErr := fmt.Errorf("must explicitly specify \"--installed\", \"--committed\", or \"--instantiated\"")
+		err = cmd.Execute()
+		assert.Error(t, err)
+		assert.Equal(t, expectErr.Error(), err.Error())
 	})
 }
 
