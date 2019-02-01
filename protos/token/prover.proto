@@ -39,7 +39,7 @@ message RecipientTransferShare {
 // TokenOutput is used to specify a token returned by ListRequest
 message TokenOutput {
     // ID is used to uniquely identify the token
-    bytes id = 1;
+    InputId id = 1;
 
     // Type is the type of the token
     string type = 2;

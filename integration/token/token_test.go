@@ -12,8 +12,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
@@ -109,7 +111,7 @@ var _ = Describe("Token EndToEnd", func() {
 				{
 					Quantity: 119,
 					Type:     "ABC123",
-					Id:       []byte("ledger-id"),
+					Id:       &token.InputId{TxId: "ledger-id", Index: 1},
 				},
 			},
 		}
@@ -225,7 +227,7 @@ var _ = Describe("Token EndToEnd", func() {
 					{
 						Quantity: 119 - 50,
 						Type:     "ABC123",
-						Id:       []byte("ledger-id"),
+						Id:       &token.InputId{TxId: "ledger-id", Index: 0},
 					},
 				},
 			}
@@ -354,7 +356,12 @@ func RunListTokens(c *tokenclient.Client, expectedUnspentTokens *token.UnspentTo
 func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, recipient []byte, expectedTokenTx *token.TokenTransaction) string {
 	inputTokenIDs := make([][]byte, len(inputTokens))
 	for i, token := range inputTokens {
-		inputTokenIDs[i] = token.GetId()
+		index := strconv.Itoa(int(token.GetId().Index))
+		txID := token.GetId().TxId
+
+		id, err := createCompositeKey("tokenOutput", []string{txID, index})
+		Expect(err).NotTo(HaveOccurred())
+		inputTokenIDs[i] = []byte(id)
 	}
 	shares := []*token.RecipientTransferShare{
 		{Recipient: recipient, Quantity: 119},
@@ -387,7 +394,12 @@ func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput,
 func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, quantity uint64, expectedTokenTx *token.TokenTransaction) {
 	inputTokenIDs := make([][]byte, len(inputTokens))
 	for i, token := range inputTokens {
-		inputTokenIDs[i] = token.GetId()
+		index := strconv.Itoa(int(token.GetId().Index))
+		txID := token.GetId().TxId
+
+		id, err := createCompositeKey("tokenOutput", []string{txID, index})
+		Expect(err).NotTo(HaveOccurred())
+		inputTokenIDs[i] = []byte(id)
 	}
 
 	envelope, txid, ordererStatus, committed, err := c.Redeem(inputTokenIDs, quantity, 30*time.Second)
@@ -410,9 +422,15 @@ func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, q
 func RunTransferRequestWithFailure(c *tokenclient.Client, inputTokens []*token.TokenOutput, recipient []byte) (string, *common.Status, bool, error) {
 	inputTokenIDs := make([][]byte, len(inputTokens))
 	var sum uint64 = 0
-	for i, tk := range inputTokens {
-		inputTokenIDs[i] = tk.GetId()
-		sum += tk.GetQuantity()
+	for i, token := range inputTokens {
+		index := strconv.Itoa(int(token.GetId().Index))
+		txID := token.GetId().TxId
+
+		id, err := createCompositeKey("tokenOutput", []string{txID, index})
+		Expect(err).NotTo(HaveOccurred())
+		inputTokenIDs[i] = []byte(id)
+
+		sum += token.GetQuantity()
 	}
 	shares := []*token.RecipientTransferShare{
 		{Recipient: recipient, Quantity: sum},
@@ -529,3 +547,37 @@ func LoadLocalMSPAt(dir, id, mspType string) (msp.MSP, error) {
 	}
 	return thisMSP, nil
 }
+
+// createCompositeKey and its related functions and consts copied from core/chaincode/shim/chaincode.go
+func createCompositeKey(objectType string, attributes []string) (string, error) {
+	if err := validateCompositeKeyAttribute(objectType); err != nil {
+		return "", err
+	}
+	ck := compositeKeyNamespace + objectType + string(minUnicodeRuneValue)
+	for _, att := range attributes {
+		if err := validateCompositeKeyAttribute(att); err != nil {
+			return "", err
+		}
+		ck += att + string(minUnicodeRuneValue)
+	}
+	return ck, nil
+}
+
+func validateCompositeKeyAttribute(str string) error {
+	if !utf8.ValidString(str) {
+		return errors.Errorf("not a valid utf8 string: [%x]", str)
+	}
+	for index, runeValue := range str {
+		if runeValue == minUnicodeRuneValue || runeValue == maxUnicodeRuneValue {
+			return errors.Errorf(`input contain unicode %#U starting at position [%d]. %#U and %#U are not allowed in the input attribute of a composite key`,
+				runeValue, index, minUnicodeRuneValue, maxUnicodeRuneValue)
+		}
+	}
+	return nil
+}
+
+const (
+	minUnicodeRuneValue   = 0            //U+0000
+	maxUnicodeRuneValue   = utf8.MaxRune //U+10FFFF - maximum (and unallocated) code point
+	compositeKeyNamespace = "\x00"
+)

@@ -12,13 +12,12 @@ import (
 	"strconv"
 	"strings"
 
-	"go.uber.org/zap/zapcore"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/ledger"
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zapcore"
 )
 
 // A Transactor that can transfer tokens.
@@ -180,6 +179,7 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds [][]byte) ([]*token.InputId,
 
 // ListTokens creates a TokenTransaction that lists the unspent tokens owned by owner.
 func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
+
 	iterator, err := t.Ledger.GetStateRangeScanIterator(tokenNameSpace, "", "")
 	if err != nil {
 		return nil, err
@@ -219,11 +219,15 @@ func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 					}
 					if !spent {
 						verifierLogger.Debugf("adding token with ID '%s' to list of unspent tokens", result.GetKey())
+						id, err := getInputIdFromKey(result.Key)
+						if err != nil {
+							return nil, err
+						}
 						tokens = append(tokens,
 							&token.TokenOutput{
 								Type:     output.Type,
 								Quantity: output.Quantity,
-								Id:       getCompositeKeyBytes(result.Key),
+								Id:       id,
 							})
 					} else {
 						verifierLogger.Debugf("token with ID '%s' has been spent, not adding to list of unspent tokens", result.GetKey())
@@ -548,11 +552,6 @@ func createPrefix(keyword string) (string, error) {
 	return createCompositeKey(keyword, nil)
 }
 
-// GenerateKeyForTest is here only for testing purposes, to be removed later.
-func GenerateKeyForTest(txID string, index int) (string, error) {
-	return createOutputKey(txID, index)
-}
-
 func splitCompositeKey(compositeKey string) (string, []string, error) {
 	componentIndex := 1
 	components := []string{}
@@ -586,4 +585,22 @@ func parseOutputs(outputs []*token.PlainOutput) (string, uint64, error) {
 	}
 
 	return outputType, outputSum, nil
+}
+
+func getInputIdFromKey(key string) (*token.InputId, error) {
+	_, components, err := splitCompositeKey(key)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error splitting input composite key: '%s'", err))
+	}
+
+	if len(components) != 2 {
+		return nil, errors.New(fmt.Sprintf("not enough components in output ID composite key; expected 2, received '%s'", components))
+	}
+
+	txID := components[0]
+	index, err := strconv.Atoi(components[1])
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error parsing output index '%s': '%s'", components[1], err))
+	}
+	return &token.InputId{TxId: txID, Index: uint32(index)}, nil
 }
