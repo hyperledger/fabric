@@ -100,9 +100,9 @@ var _ = Describe("Encoder", func() {
 					conf.Orderer = nil
 				})
 
-				It("returns an error", func() {
+				It("handles it gracefully", func() {
 					_, err := encoder.NewChannelGroup(conf)
-					Expect(err).To(MatchError("missing orderer config section"))
+					Expect(err).NotTo(HaveOccurred())
 				})
 			})
 		})
@@ -564,7 +564,8 @@ var _ = Describe("Encoder", func() {
 
 	Describe("ChannelCreationOperations", func() {
 		var (
-			conf *genesisconfig.Profile
+			conf     *genesisconfig.Profile
+			template *cb.ConfigGroup
 		)
 
 		BeforeEach(func() {
@@ -587,11 +588,15 @@ var _ = Describe("Encoder", func() {
 					},
 				},
 			}
+
+			var err error
+			template, err = encoder.DefaultConfigTemplate(conf)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Describe("NewChannelCreateConfigUpdate", func() {
 			It("translates the config into a config group", func() {
-				cg, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf)
+				cg, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf, template)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(proto.Equal(&cb.ConfigUpdate{
 					ChannelId: "channel-id",
@@ -640,6 +645,40 @@ var _ = Describe("Encoder", func() {
 				}, cg)).To(BeTrue())
 			})
 
+			Context("when the template configuration is not the default", func() {
+				BeforeEach(func() {
+					differentConf := &genesisconfig.Profile{
+						Consortium: "MyConsortium",
+						Application: &genesisconfig.Application{
+							Organizations: []*genesisconfig.Organization{
+								{
+									MSPDir:  "../../../../sampleconfig/msp",
+									ID:      "SampleMSP",
+									MSPType: "bccsp",
+									Name:    "SampleOrg",
+									AnchorPeers: []*genesisconfig.AnchorPeer{
+										{
+											Host: "hostname",
+											Port: 5555,
+										},
+									},
+								},
+							},
+						},
+					}
+
+					var err error
+					template, err = encoder.DefaultConfigTemplate(differentConf)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("reflects the additional modifications designated by the channel creation profile", func() {
+					cg, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf, template)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(cg.WriteSet.Groups["Application"].Groups["SampleOrg"].Values["AnchorPeers"].Version).To(Equal(uint64(1)))
+				})
+			})
+
 			Context("when the application config is bad", func() {
 				BeforeEach(func() {
 					conf.Application.Policies = map[string]*genesisconfig.Policy{
@@ -650,8 +689,8 @@ var _ = Describe("Encoder", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf)
-					Expect(err).To(MatchError("could not turn channel application profile into application group: error adding policies to application group: unknown policy type: bad-type"))
+					_, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf, template)
+					Expect(err).To(MatchError("could not turn parse profile into channel group: could not create application group: error adding policies to application group: unknown policy type: bad-type"))
 				})
 
 				Context("when the application config is missing", func() {
@@ -660,7 +699,7 @@ var _ = Describe("Encoder", func() {
 					})
 
 					It("returns an error", func() {
-						_, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf)
+						_, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf, template)
 						Expect(err).To(MatchError("cannot define a new channel with no Application section"))
 					})
 				})
@@ -672,7 +711,7 @@ var _ = Describe("Encoder", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf)
+					_, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf, template)
 					Expect(err).To(MatchError("cannot define a new channel with no Consortium value"))
 				})
 			})
@@ -703,6 +742,17 @@ var _ = Describe("Encoder", func() {
 				Expect(fakeSigner.NewSignatureHeaderCallCount()).To(Equal(2))
 				Expect(fakeSigner.SignCallCount()).To(Equal(2))
 				Expect(fakeSigner.SignArgsForCall(0)).To(Equal(util.ConcatenateBytes(configUpdateEnv.Signatures[0].SignatureHeader, configUpdateEnv.ConfigUpdate)))
+			})
+
+			Context("when a default config cannot be generated", func() {
+				BeforeEach(func() {
+					conf.Application = nil
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := encoder.MakeChannelCreationTransaction("channel-id", fakeSigner, conf)
+					Expect(err).To(MatchError("default template config generation failed: channel template configs must contain an application section"))
+				})
 			})
 
 			Context("when the signer cannot create the signature header", func() {
@@ -742,6 +792,75 @@ var _ = Describe("Encoder", func() {
 				It("wraps and returns the error", func() {
 					_, err := encoder.MakeChannelCreationTransaction("channel-id", nil, conf)
 					Expect(err).To(MatchError("config update generation failure: cannot define a new channel with no Consortium value"))
+				})
+			})
+		})
+
+		Describe("DefaultConfigTemplate", func() {
+			var (
+				conf *genesisconfig.Profile
+			)
+
+			BeforeEach(func() {
+				conf = &genesisconfig.Profile{
+					Orderer: &genesisconfig.Orderer{
+						OrdererType: "solo",
+					},
+					Application: &genesisconfig.Application{
+						Policies: map[string]*genesisconfig.Policy{
+							"IgnoredPolicy": {
+								Type: "ImplicitMeta",
+								Rule: "ANY Admins",
+							},
+						},
+						Organizations: []*genesisconfig.Organization{
+							{
+								MSPDir:  "../../../../sampleconfig/msp",
+								ID:      "Org1MSP",
+								MSPType: "bccsp",
+								Name:    "Org1",
+							},
+							{
+								MSPDir:  "../../../../sampleconfig/msp",
+								ID:      "Org2MSP",
+								MSPType: "bccsp",
+								Name:    "Org2",
+							},
+						},
+					},
+				}
+			})
+
+			It("returns the default config tempalte", func() {
+				cg, err := encoder.DefaultConfigTemplate(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(cg.Groups)).To(Equal(2))
+				Expect(cg.Groups["Orderer"]).NotTo(BeNil())
+				Expect(cg.Groups["Application"]).NotTo(BeNil())
+				Expect(cg.Groups["Application"].Policies).To(BeEmpty())
+				Expect(cg.Groups["Application"].Values).To(BeEmpty())
+				Expect(len(cg.Groups["Application"].Groups)).To(Equal(2))
+			})
+
+			Context("when the config cannot be turned into a channel group", func() {
+				BeforeEach(func() {
+					conf.Orderer.OrdererType = "garbage"
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := encoder.DefaultConfigTemplate(conf)
+					Expect(err).To(MatchError("error parsing configuration: could not create orderer group: unknown orderer type: garbage"))
+				})
+			})
+
+			Context("when the application config is nil", func() {
+				BeforeEach(func() {
+					conf.Application = nil
+				})
+
+				It("returns an error", func() {
+					_, err := encoder.DefaultConfigTemplate(conf)
+					Expect(err).To(MatchError("channel template configs must contain an application section"))
 				})
 			})
 		})
