@@ -236,6 +236,10 @@ var _ = Describe("Token EndToEnd", func() {
 	})
 
 	Describe("basic solo network for token transaction bad path e2e ", func() {
+		var (
+			orderer *nwo.Orderer
+			peer    *nwo.Peer
+		)
 
 		BeforeEach(func() {
 			var err error
@@ -251,7 +255,7 @@ var _ = Describe("Token EndToEnd", func() {
 			client, err = docker.NewClientFromEnv()
 			Expect(err).NotTo(HaveOccurred())
 
-			peer := network.Peer("Org1", "peer1")
+			peer = network.Peer("Org1", "peer1")
 
 			// Get recipients' identity
 			recipientUser2, err = getIdentity(network, peer, "User2", "Org1MSP")
@@ -265,25 +269,20 @@ var _ = Describe("Token EndToEnd", func() {
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
 			Eventually(process.Ready()).Should(BeClosed())
-		})
 
-		It("e2e token transfer double spending fails", func() {
 			By("getting the orderer by name")
-			orderer := network.Orderer("orderer")
+			orderer = network.Orderer("orderer")
 
 			By("setting up the channel")
 			network.CreateAndJoinChannel(orderer, "testchannel")
+		})
 
-			By("getting the client peer by name")
-			peer := network.Peer("Org1", "peer1")
-
-			By("creating a new client")
-			tClient := GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
-
+		It("e2e token transfer double spending fails", func() {
 			By("User1 issuing tokens to User2")
+			tClient := GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
 			txID := RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
 
-			By("User2 lists tokens")
+			By("User2 lists tokens as sanity check")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
 			Expect(issuedTokens).ToNot(BeNil())
@@ -302,6 +301,43 @@ var _ = Describe("Token EndToEnd", func() {
 			Expect(committed).To(BeFalse())
 		})
 
+		It("User1's spending User2's token", func() {
+			By("User1 issuing tokens to User2")
+			tClient := GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
+			txID := RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+
+			By("User2 lists tokens as sanity check")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("User1 attempts to spend User2's tokens using the prover peer")
+			tClient = GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
+			_, ordererStatus, committed, err := RunTransferRequestWithFailure(tClient, issuedTokens, recipientUser1)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("error from prover: the requestor does not own inputs"))
+			Expect(ordererStatus).To(BeNil())
+			Expect(committed).To(BeFalse())
+
+			By("User1 attempts to spend User2's tokens by submitting a token transaction directly")
+			expectedTokenTransaction = &token.TokenTransaction{
+				Action: &token.TokenTransaction_PlainAction{
+					PlainAction: &token.PlainTokenAction{
+						Data: &token.PlainTokenAction_PlainTransfer{
+							PlainTransfer: &token.PlainTransfer{
+								Inputs: []*token.InputId{{TxId: txID, Index: 0}},
+								Outputs: []*token.PlainOutput{{
+									Owner:    []byte("test-owner"),
+									Type:     "ABC123",
+									Quantity: 119,
+								}}}}}}}
+			tempTxID, ordererStatus, committed, err := SubmitTokenTx(tClient, expectedTokenTransaction)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", tempTxID)))
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+			Expect(committed).To(BeFalse())
+		})
 	})
 
 })
@@ -421,6 +457,17 @@ func RunTransferRequestWithFailure(c *tokenclient.Client, inputTokens []*token.T
 	}
 
 	_, txid, ordererStatus, committed, err := c.Transfer(inputTokenIDs, shares, 30*time.Second)
+	return txid, ordererStatus, committed, err
+}
+
+func SubmitTokenTx(c *tokenclient.Client, tokenTx *token.TokenTransaction) (string, *common.Status, bool, error) {
+	serializedTokenTx, err := proto.Marshal(tokenTx)
+	Expect(err).ToNot(HaveOccurred())
+
+	txEnvelope, txid, err := c.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+	Expect(err).ToNot(HaveOccurred())
+
+	ordererStatus, committed, err := c.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 	return txid, ordererStatus, committed, err
 }
 
