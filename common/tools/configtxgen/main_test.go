@@ -63,7 +63,7 @@ func TestMissingOrdererSection(t *testing.T) {
 	config := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	config.Orderer = nil
 
-	assert.Panics(t, func() { doOutputBlock(config, "foo", blockDest) }, "Missing orderer section")
+	assert.Error(t, doOutputBlock(config, "foo", blockDest), "Missing orderer section")
 }
 
 func TestMissingConsortiumSection(t *testing.T) {

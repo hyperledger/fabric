@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package encoder
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -128,10 +127,6 @@ func addSignaturePolicyDefaults(cg *cb.ConfigGroup, mspID string, devMode bool) 
 // configuration.  All mod_policy values are set to "Admins" for this group, with the exception of the OrdererAddresses
 // value which is set to "/Channel/Orderer/Admins".
 func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
-	if conf.Orderer == nil {
-		return nil, errors.New("missing orderer config section")
-	}
-
 	channelGroup := cb.NewConfigGroup()
 	if len(conf.Policies) == 0 {
 		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the channel group in configtx.yaml")
@@ -144,7 +139,11 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 
 	addValue(channelGroup, channelconfig.HashingAlgorithmValue(), channelconfig.AdminsPolicyKey)
 	addValue(channelGroup, channelconfig.BlockDataHashingStructureValue(), channelconfig.AdminsPolicyKey)
-	addValue(channelGroup, channelconfig.OrdererAddressesValue(conf.Orderer.Addresses), ordererAdminsPolicyName)
+	ordererAddresses := []string{}
+	if conf.Orderer != nil {
+		ordererAddresses = conf.Orderer.Addresses
+	}
+	addValue(channelGroup, channelconfig.OrdererAddressesValue(ordererAddresses), ordererAdminsPolicyName)
 
 	if conf.Consortium != "" {
 		addValue(channelGroup, channelconfig.ConsortiumValue(conf.Consortium), channelconfig.AdminsPolicyKey)
@@ -155,9 +154,11 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 	}
 
 	var err error
-	channelGroup.Groups[channelconfig.OrdererGroupKey], err = NewOrdererGroup(conf.Orderer)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create orderer group")
+	if conf.Orderer != nil {
+		channelGroup.Groups[channelconfig.OrdererGroupKey], err = NewOrdererGroup(conf.Orderer)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create orderer group")
+		}
 	}
 
 	if conf.Application != nil {
@@ -368,7 +369,7 @@ func NewConsortiumGroup(conf *genesisconfig.Consortium) (*cb.ConfigGroup, error)
 
 // NewChannelCreateConfigUpdate generates a ConfigUpdate which can be sent to the orderer to create a new channel.  Optionally, the channel group of the
 // ordering system channel may be passed in, and the resulting ConfigUpdate will extract the appropriate versions from this file.
-func NewChannelCreateConfigUpdate(channelID string, conf *genesisconfig.Profile) (*cb.ConfigUpdate, error) {
+func NewChannelCreateConfigUpdate(channelID string, conf *genesisconfig.Profile, templateConfig *cb.ConfigGroup) (*cb.ConfigUpdate, error) {
 	if conf.Application == nil {
 		return nil, errors.New("cannot define a new channel with no Application section")
 	}
@@ -377,26 +378,12 @@ func NewChannelCreateConfigUpdate(channelID string, conf *genesisconfig.Profile)
 		return nil, errors.New("cannot define a new channel with no Consortium value")
 	}
 
-	// Parse only the application section, and encapsulate it inside a channel group
-	ag, err := NewApplicationGroup(conf.Application)
+	newChannelGroup, err := NewChannelGroup(conf)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not turn channel application profile into application group")
+		return nil, errors.Wrapf(err, "could not turn parse profile into channel group")
 	}
 
-	var template, newChannelGroup *cb.ConfigGroup
-
-	newChannelGroup = &cb.ConfigGroup{
-		Groups: map[string]*cb.ConfigGroup{
-			channelconfig.ApplicationGroupKey: ag,
-		},
-	}
-
-	// Assume the orgs have not been modified
-	template = proto.Clone(newChannelGroup).(*cb.ConfigGroup)
-	template.Groups[channelconfig.ApplicationGroupKey].Values = nil
-	template.Groups[channelconfig.ApplicationGroupKey].Policies = nil
-
-	updt, err := update.Compute(&cb.Config{ChannelGroup: template}, &cb.Config{ChannelGroup: newChannelGroup})
+	updt, err := update.Compute(&cb.Config{ChannelGroup: templateConfig}, &cb.Config{ChannelGroup: newChannelGroup})
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not compute update")
 	}
@@ -414,9 +401,33 @@ func NewChannelCreateConfigUpdate(channelID string, conf *genesisconfig.Profile)
 	return updt, nil
 }
 
+// DefaultConfigTemplate generates a config template based on the assumption that
+// the input profile is a channel creation template and no system channel context
+// is available.
+func DefaultConfigTemplate(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
+	channelGroup, err := NewChannelGroup(conf)
+	if err != nil {
+		return nil, errors.WithMessage(err, "error parsing configuration")
+	}
+
+	if _, ok := channelGroup.Groups[channelconfig.ApplicationGroupKey]; !ok {
+		return nil, errors.New("channel template configs must contain an application section")
+	}
+
+	channelGroup.Groups[channelconfig.ApplicationGroupKey].Values = nil
+	channelGroup.Groups[channelconfig.ApplicationGroupKey].Policies = nil
+
+	return channelGroup, nil
+}
+
 // MakeChannelCreationTransaction is a handy utility function for creating transactions for channel creation
 func MakeChannelCreationTransaction(channelID string, signer crypto.LocalSigner, conf *genesisconfig.Profile) (*cb.Envelope, error) {
-	newChannelConfigUpdate, err := NewChannelCreateConfigUpdate(channelID, conf)
+	defaultTemplate, err := DefaultConfigTemplate(conf)
+	if err != nil {
+		return nil, errors.WithMessage(err, "default template config generation failed")
+	}
+
+	newChannelConfigUpdate, err := NewChannelCreateConfigUpdate(channelID, conf, defaultTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "config update generation failure")
 	}
