@@ -614,7 +614,7 @@ From the Org3 CLI:
 
 .. code:: bash
 
-  peer chaincode install -n mycc -v 2.0 -p github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/go/
+  peer chaincode install -n mycc -v 2.0 -p github.com/hyperledger/fabric-samples/chaincode/abstore/go/
 
 Modify the environment variables accordingly and reissue the command if you want to
 install the chaincode on the second peer of Org3. Note that a second installation is
@@ -629,7 +629,7 @@ identity, so the container is still acting on behalf of ``peer0.org2``:
 
 .. code:: bash
 
-  peer chaincode install -n mycc -v 2.0 -p github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/go/
+  peer chaincode install -n mycc -v 2.0 -p github.com/hyperledger/fabric-samples/chaincode/abstore/go/
 
 Flip to the ``peer0.org1`` identity:
 
@@ -647,7 +647,7 @@ And install again:
 
 .. code:: bash
 
-  peer chaincode install -n mycc -v 2.0 -p github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/go/
+  peer chaincode install -n mycc -v 2.0 -p github.com/hyperledger/fabric-samples/chaincode/abstore/go/
 
 Now we're ready to upgrade the chaincode. There have been no modifications to
 the underlying source code, we are simply adding Org3 to the endorsement policy for

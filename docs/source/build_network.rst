@@ -695,7 +695,7 @@ code flavor onto our peer's filesystem.
 .. code:: bash
 
     # this installs the Go chaincode. For go chaincode -p takes the relative path from $GOPATH/src
-    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/go/
+    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/abstore/go/
 
 **Node.js**
 
@@ -704,7 +704,7 @@ code flavor onto our peer's filesystem.
     # this installs the Node.js chaincode
     # make note of the -l flag to indicate "node" chaincode
     # for node chaincode -p takes the absolute path to the node.js chaincode
-    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/node/
+    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/node/
 
 **Java**
 
@@ -712,7 +712,7 @@ code flavor onto our peer's filesystem.
 
     # make note of the -l flag to indicate "java" chaincode
     # for java chaincode -p takes the absolute path to the java chaincode
-    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/java/
+    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/java/
 
 When we instantiate the chaincode on the channel, the endorsement policy will be
 set to require endorsements from a peer in both Org1 and Org2. Therefore, we
@@ -739,7 +739,7 @@ code flavor onto our peer's filesystem.
 .. code:: bash
 
     # this installs the Go chaincode. For go chaincode -p takes the relative path from $GOPATH/src
-    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/go/
+    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/abstore/go/
 
 **Node.js**
 
@@ -748,7 +748,7 @@ code flavor onto our peer's filesystem.
     # this installs the Node.js chaincode
     # make note of the -l flag to indicate "node" chaincode
     # for node chaincode -p takes the absolute path to the node.js chaincode
-    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/node/
+    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/node/
 
 **Java**
 
@@ -756,7 +756,7 @@ code flavor onto our peer's filesystem.
 
     # make note of the -l flag to indicate "java" chaincode
     # for java chaincode -p takes the absolute path to the java chaincode
-    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/java/
+    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/java/
 
 
 Next, instantiate the chaincode on the channel. This will initialize the
@@ -888,7 +888,7 @@ code flavor onto our peer's filesystem.
 .. code:: bash
 
     # this installs the Go chaincode. For go chaincode -p takes the relative path from $GOPATH/src
-    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/go/
+    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/abstore/go/
 
 **Node.js**
 
@@ -897,7 +897,7 @@ code flavor onto our peer's filesystem.
     # this installs the Node.js chaincode
     # make note of the -l flag to indicate "node" chaincode
     # for node chaincode -p takes the absolute path to the node.js chaincode
-    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/node/
+    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/node/
 
 **Java**
 
@@ -905,7 +905,7 @@ code flavor onto our peer's filesystem.
 
     # make note of the -l flag to indicate "java" chaincode
     # for java chaincode -p takes the absolute path to the java chaincode
-    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/chaincode_example02/java/
+    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/java/
 
 Query
 ^^^^^
@@ -977,7 +977,7 @@ What's happening behind the scenes?
    the ``Org1MSPanchors.tx`` and ``Org2MSPanchors.tx`` artifacts to the ordering
    service along with the name of our channel.
 
--  A chaincode - **chaincode_example02** - is installed on ``peer0.org1.example.com`` and
+-  A chaincode - **abstore** - is installed on ``peer0.org1.example.com`` and
    ``peer0.org2.example.com``
 
 -  The chaincode is then "instantiated" on ``mychannel``. Instantiation
@@ -1004,7 +1004,7 @@ What's happening behind the scenes?
    value of 90 is returned, correctly reflecting the previous
    transaction during which the value for key "a" was modified by 10.
 
--  The chaincode - **chaincode_example02** - is installed on ``peer1.org2.example.com``
+-  The chaincode - **abstore** - is installed on ``peer1.org2.example.com``
 
 -  A query is sent to ``peer1.org2.example.com`` for the value of "a". This starts a
    third chaincode container by the name of ``dev-peer1.org2.example.com-mycc-1.0``. A
@@ -1132,7 +1132,7 @@ the network pass ``docker-compose-couch.yaml`` as well:
 
     docker-compose -f docker-compose-cli.yaml -f docker-compose-couch.yaml up -d
 
-**chaincode_example02** should now work using CouchDB underneath.
+**abstore** should now work using CouchDB underneath.
 
 .. note::  If you choose to implement mapping of the fabric-couchdb container
            port to a host port, please make sure you are aware of the security
@@ -1142,7 +1142,7 @@ the network pass ``docker-compose-couch.yaml`` as well:
            Production environments would likely refrain from implementing port mapping in
            order to restrict outside access to the CouchDB containers.
 
-You can use **chaincode_example02** chaincode against the CouchDB state database
+You can use **abstore** chaincode against the CouchDB state database
 using the steps outlined above, however in order to exercise the CouchDB query
 capabilities you will need to use a chaincode that has data modeled as JSON,
 (e.g. **marbles02**). You can locate the **marbles02** chaincode in the
