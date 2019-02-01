@@ -1,291 +1,809 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
 
-package encoder
+package encoder_test
 
 import (
-	"testing"
+	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/localmsp"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder/mock"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+
+	"github.com/golang/protobuf/proto"
 )
 
-func init() {
-	flogging.ActivateSpec("common.tools.configtxgen.encoder=DEBUG")
-}
+var _ = Describe("Encoder", func() {
+	Describe("NewChannelGroup", func() {
+		var (
+			conf *genesisconfig.Profile
+		)
 
-func hasModPolicySet(t *testing.T, groupName string, cg *cb.ConfigGroup) {
-	assert.NotEmpty(t, cg.ModPolicy, "group %s has empty mod_policy", groupName)
-
-	for valueName, value := range cg.Values {
-		assert.NotEmpty(t, value.ModPolicy, "group %s has value %s with empty mod_policy", groupName, valueName)
-	}
-
-	for policyName, policy := range cg.Policies {
-		assert.NotEmpty(t, policy.ModPolicy, "group %s has policy %s with empty mod_policy", groupName, policyName)
-	}
-
-	for groupName, group := range cg.Groups {
-		hasModPolicySet(t, groupName, group)
-	}
-}
-
-func TestConfigParsing(t *testing.T) {
-	for _, profile := range []string{
-		genesisconfig.SampleInsecureSoloProfile,
-		genesisconfig.SampleSingleMSPSoloProfile,
-		genesisconfig.SampleDevModeSoloProfile,
-		genesisconfig.SampleInsecureKafkaProfile,
-		genesisconfig.SampleSingleMSPKafkaProfile,
-		genesisconfig.SampleDevModeKafkaProfile,
-	} {
-		t.Run(profile, func(t *testing.T) {
-			config := configtxgentest.Load(profile)
-			group, err := NewChannelGroup(config)
-			assert.NoError(t, err)
-			assert.NotNil(t, group)
-
-			_, err = channelconfig.NewBundle("test", &cb.Config{
-				ChannelGroup: group,
-			})
-			assert.NoError(t, err)
-
-			hasModPolicySet(t, "Channel", group)
+		BeforeEach(func() {
+			conf = &genesisconfig.Profile{
+				Consortium:  "MyConsortium",
+				Application: &genesisconfig.Application{},
+				Orderer: &genesisconfig.Orderer{
+					OrdererType: "solo",
+				},
+				Consortiums: map[string]*genesisconfig.Consortium{
+					"SampleConsortium": {},
+				},
+				Policies: map[string]*genesisconfig.Policy{
+					"SamplePolicy": {
+						Type: "ImplicitMeta",
+						Rule: "ANY Admins",
+					},
+				},
+				Capabilities: map[string]bool{
+					"FakeCapability": true,
+				},
+			}
 		})
-	}
-}
 
-func TestGoodChannelCreateConfigUpdate(t *testing.T) {
-	createConfig := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
+		It("translates the config into a config group", func() {
+			cg, err := encoder.NewChannelGroup(conf)
+			Expect(err).NotTo(HaveOccurred())
+			_ = cg
+		})
 
-	configUpdate, err := NewChannelCreateConfigUpdate("channel.id", createConfig)
-	assert.NoError(t, err)
-	assert.NotNil(t, configUpdate)
-}
+		Context("when the policies are ommitted", func() {
+			BeforeEach(func() {
+				conf.Policies = nil
+			})
 
-func TestGoodChannelCreateNoAnchorPeers(t *testing.T) {
-	createConfig := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
-	createConfig.Application.Organizations[0].AnchorPeers = nil
+			It("adds default policies", func() {
+				cg, err := encoder.NewChannelGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(cg.Policies)).To(Equal(3))
+				Expect(cg.Policies["Readers"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
+				Expect(cg.Policies["Writers"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
+				Expect(cg.Policies["Admins"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
+			})
+		})
 
-	configUpdate, err := NewChannelCreateConfigUpdate("channel.id", createConfig)
-	assert.NoError(t, err)
-	assert.NotNil(t, configUpdate)
+		Context("when the policy definition is bad", func() {
+			BeforeEach(func() {
+				conf.Policies["SamplePolicy"].Rule = "garbage"
+			})
 
-	// Anchor peers should not be set
-	assert.True(t, proto.Equal(
-		configUpdate.WriteSet.Groups["Application"].Groups["SampleOrg"],
-		&cb.ConfigGroup{},
-	))
-}
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewChannelGroup(conf)
+				Expect(err).To(MatchError("error adding policies to channel group: invalid implicit meta policy rule 'garbage': expected two space separated tokens, but got 1"))
+			})
+		})
 
-func TestChannelCreateWithResources(t *testing.T) {
-	t.Run("AtV1.0", func(t *testing.T) {
-		createConfig := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
-		createConfig.Application.Capabilities = nil
+		Context("when the orderer config is bad", func() {
+			BeforeEach(func() {
+				conf.Orderer.OrdererType = "bad-type"
+			})
 
-		configUpdate, err := NewChannelCreateConfigUpdate("channel.id", createConfig)
-		assert.NoError(t, err)
-		assert.NotNil(t, configUpdate)
-		assert.Nil(t, configUpdate.IsolatedData)
-	})
-}
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewChannelGroup(conf)
+				Expect(err).To(MatchError("could not create orderer group: unknown orderer type: bad-type"))
+			})
 
-func TestMakeChannelCreationTransactionWithSigner(t *testing.T) {
-	channelID := "foo"
+			Context("when the orderer config is missing", func() {
+				BeforeEach(func() {
+					conf.Orderer = nil
+				})
 
-	msptesttools.LoadDevMsp()
-	signer := localmsp.NewSigner()
+				It("returns an error", func() {
+					_, err := encoder.NewChannelGroup(conf)
+					Expect(err).To(MatchError("missing orderer config section"))
+				})
+			})
+		})
 
-	cct, err := MakeChannelCreationTransaction(channelID, signer, configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile))
-	assert.NoError(t, err, "Making chain creation tx")
+		Context("when the application config is bad", func() {
+			BeforeEach(func() {
+				conf.Application.Policies = map[string]*genesisconfig.Policy{
+					"garbage-policy": {
+						Type: "garbage",
+					},
+				}
+			})
 
-	assert.NotEmpty(t, cct.Signature, "Should have signature")
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewChannelGroup(conf)
+				Expect(err).To(MatchError("could not create application group: error adding policies to application group: unknown policy type: garbage"))
+			})
+		})
 
-	payload, err := utils.UnmarshalPayload(cct.Payload)
-	assert.NoError(t, err, "Unmarshaling payload")
+		Context("when the consortium config is bad", func() {
+			BeforeEach(func() {
+				conf.Consortiums["SampleConsortium"].Organizations = []*genesisconfig.Organization{
+					{
+						Policies: map[string]*genesisconfig.Policy{
+							"garbage-policy": {
+								Type: "garbage",
+							},
+						},
+					},
+				}
+			})
 
-	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(payload.Data)
-	assert.NoError(t, err, "Unmarshaling ConfigUpdateEnvelope")
-
-	assert.NotEmpty(t, configUpdateEnv.Signatures, "Should have config env sigs")
-
-	sigHeader, err := utils.GetSignatureHeader(payload.Header.SignatureHeader)
-	assert.NoError(t, err, "Unmarshaling SignatureHeader")
-	assert.NotEmpty(t, sigHeader.Creator, "Creator specified")
-}
-
-func TestMakeChannelCreationTransactionNoSigner(t *testing.T) {
-	channelID := "foo"
-	cct, err := MakeChannelCreationTransaction(channelID, nil, configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile))
-	assert.NoError(t, err, "Making chain creation tx")
-
-	assert.Empty(t, cct.Signature, "Should have empty signature")
-
-	payload, err := utils.UnmarshalPayload(cct.Payload)
-	assert.NoError(t, err, "Unmarshaling payload")
-
-	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(payload.Data)
-	assert.NoError(t, err, "Unmarshaling ConfigUpdateEnvelope")
-
-	assert.Empty(t, configUpdateEnv.Signatures, "Should have no config env sigs")
-
-	sigHeader, err := utils.GetSignatureHeader(payload.Header.SignatureHeader)
-	assert.NoError(t, err, "Unmarshaling SignatureHeader")
-	assert.Empty(t, sigHeader.Creator, "No creator specified")
-}
-
-func TestNewApplicationGroup(t *testing.T) {
-	t.Run("Application with capabilities", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
-		group, err := NewApplicationGroup(config.Application)
-		assert.NoError(t, err)
-		assert.NotNil(t, group)
-	})
-
-	t.Run("Application missing policies", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
-		config.Application.Policies = nil
-		for _, org := range config.Application.Organizations {
-			org.Policies = nil
-		}
-		group, err := NewApplicationGroup(config.Application)
-		assert.NoError(t, err)
-		assert.NotNil(t, group)
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewChannelGroup(conf)
+				Expect(err).To(MatchError("could not create consortiums group: failed to create consortium SampleConsortium: failed to create consortium org: 1 - Error loading MSP configuration for org: : unknown MSP type ''"))
+			})
+		})
 	})
 
-	t.Run("Application unknown MSP", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
-		config.Application.Organizations[0] = &genesisconfig.Organization{Name: "FakeOrg", ID: "FakeOrg"}
-		group, err := NewApplicationGroup(config.Application)
-		assert.Error(t, err)
-		assert.Nil(t, group)
-	})
-}
+	Describe("NewOrdererGroup", func() {
+		var (
+			conf *genesisconfig.Orderer
+		)
 
-func TestNewChannelGroup(t *testing.T) {
-	t.Run("Nil orderer", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
-		config.Orderer = nil
-		group, err := NewChannelGroup(config)
-		assert.Error(t, err)
-		assert.Nil(t, group)
+		BeforeEach(func() {
+			conf = &genesisconfig.Orderer{
+				OrdererType: "solo",
+				Organizations: []*genesisconfig.Organization{
+					{
+						MSPDir:  "../../../../sampleconfig/msp",
+						ID:      "SampleMSP",
+						MSPType: "bccsp",
+						Name:    "SampleOrg",
+					},
+				},
+				Policies: map[string]*genesisconfig.Policy{
+					"SamplePolicy": {
+						Type: "ImplicitMeta",
+						Rule: "ANY Admins",
+					},
+				},
+				Capabilities: map[string]bool{
+					"FakeCapability": true,
+				},
+			}
+		})
+
+		It("translates the config into a config group", func() {
+			cg, err := encoder.NewOrdererGroup(conf)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(cg.Policies)).To(Equal(2)) // BlockValidation automatically added
+			Expect(cg.Policies["SamplePolicy"]).NotTo(BeNil())
+			Expect(cg.Policies["BlockValidation"]).NotTo(BeNil())
+			Expect(len(cg.Groups)).To(Equal(1))
+			Expect(cg.Groups["SampleOrg"]).NotTo(BeNil())
+			Expect(len(cg.Values)).To(Equal(5))
+			Expect(cg.Values["BatchSize"]).NotTo(BeNil())
+			Expect(cg.Values["BatchTimeout"]).NotTo(BeNil())
+			Expect(cg.Values["ChannelRestrictions"]).NotTo(BeNil())
+			Expect(cg.Values["Capabilities"]).NotTo(BeNil())
+		})
+
+		Context("when the policies are ommitted", func() {
+			BeforeEach(func() {
+				conf.Policies = nil
+			})
+
+			It("adds default policies", func() {
+				cg, err := encoder.NewOrdererGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(cg.Policies)).To(Equal(4))
+				Expect(cg.Policies["BlockValidation"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
+				Expect(cg.Policies["Readers"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
+				Expect(cg.Policies["Writers"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
+				Expect(cg.Policies["Admins"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
+			})
+		})
+
+		Context("when the policy definition is bad", func() {
+			BeforeEach(func() {
+				conf.Policies["SamplePolicy"].Rule = "garbage"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewOrdererGroup(conf)
+				Expect(err).To(MatchError("error adding policies to orderer group: invalid implicit meta policy rule 'garbage': expected two space separated tokens, but got 1"))
+			})
+		})
+
+		Context("when the consensus type is Kafka", func() {
+			BeforeEach(func() {
+				conf.OrdererType = "kafka"
+			})
+
+			It("adds the kafka brokers key", func() {
+				cg, err := encoder.NewOrdererGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(cg.Values)).To(Equal(6))
+				Expect(cg.Values["KafkaBrokers"]).NotTo(BeNil())
+			})
+		})
+
+		Context("when the consensus type is etcd/raft", func() {
+			BeforeEach(func() {
+				conf.OrdererType = "etcdraft"
+				conf.EtcdRaft = &etcdraft.Metadata{
+					Options: &etcdraft.Options{
+						TickInterval: 5,
+					},
+				}
+			})
+
+			It("adds the raft metadata", func() {
+				cg, err := encoder.NewOrdererGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(cg.Values)).To(Equal(5))
+				consensusType := &ab.ConsensusType{}
+				err = proto.Unmarshal(cg.Values["ConsensusType"].Value, consensusType)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(consensusType.Type).To(Equal("etcdraft"))
+				metadata := &etcdraft.Metadata{}
+				err = proto.Unmarshal(consensusType.Metadata, metadata)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(metadata.Options.TickInterval).To(Equal(uint64(5)))
+			})
+
+			Context("when the raft configuration is bad", func() {
+				BeforeEach(func() {
+					conf.EtcdRaft = &etcdraft.Metadata{
+						Consenters: []*etcdraft.Consenter{
+							{},
+						},
+					}
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := encoder.NewOrdererGroup(conf)
+					Expect(err).To(MatchError("cannot marshal metadata for orderer type etcdraft: cannot load client cert for consenter :0: open : no such file or directory"))
+				})
+			})
+		})
+
+		Context("when the consensus type is unknown", func() {
+			BeforeEach(func() {
+				conf.OrdererType = "bad-type"
+			})
+
+			It("returns an error", func() {
+				_, err := encoder.NewOrdererGroup(conf)
+				Expect(err).To(MatchError("unknown orderer type: bad-type"))
+			})
+		})
+
+		Context("when the org definition is bad", func() {
+			BeforeEach(func() {
+				conf.Organizations[0].MSPType = "garbage"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewOrdererGroup(conf)
+				Expect(err).To(MatchError("failed to create orderer org: 1 - Error loading MSP configuration for org: SampleOrg: unknown MSP type 'garbage'"))
+			})
+		})
 	})
 
-	t.Run("Add test consortium", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
-		config.Consortium = "Test"
-		group, err := NewChannelGroup(config)
-		assert.NoError(t, err)
-		assert.NotNil(t, group)
+	Describe("NewApplicationGroup", func() {
+		var (
+			conf *genesisconfig.Application
+		)
+
+		BeforeEach(func() {
+			conf = &genesisconfig.Application{
+				Organizations: []*genesisconfig.Organization{
+					{
+						MSPDir:  "../../../../sampleconfig/msp",
+						ID:      "SampleMSP",
+						MSPType: "bccsp",
+						Name:    "SampleOrg",
+					},
+				},
+				ACLs: map[string]string{
+					"SomeACL": "SomePolicy",
+				},
+				Policies: map[string]*genesisconfig.Policy{
+					"SamplePolicy": {
+						Type: "ImplicitMeta",
+						Rule: "ANY Admins",
+					},
+				},
+				Capabilities: map[string]bool{
+					"FakeCapability": true,
+				},
+			}
+		})
+
+		It("translates the config into a config group", func() {
+			cg, err := encoder.NewApplicationGroup(conf)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(cg.Policies)).To(Equal(1)) // BlockValidation automatically added
+			Expect(cg.Policies["SamplePolicy"]).NotTo(BeNil())
+			Expect(len(cg.Groups)).To(Equal(1))
+			Expect(cg.Groups["SampleOrg"]).NotTo(BeNil())
+			Expect(len(cg.Values)).To(Equal(2))
+			Expect(cg.Values["ACLs"]).NotTo(BeNil())
+			Expect(cg.Values["Capabilities"]).NotTo(BeNil())
+		})
+
+		Context("when the policies are ommitted", func() {
+			BeforeEach(func() {
+				conf.Policies = nil
+			})
+
+			It("adds default policies", func() {
+				cg, err := encoder.NewApplicationGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(cg.Policies)).To(Equal(3))
+				Expect(cg.Policies["Readers"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
+				Expect(cg.Policies["Writers"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
+				Expect(cg.Policies["Admins"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
+			})
+		})
+
+		Context("when the policy definition is bad", func() {
+			BeforeEach(func() {
+				conf.Policies["SamplePolicy"].Rule = "garbage"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewApplicationGroup(conf)
+				Expect(err).To(MatchError("error adding policies to application group: invalid implicit meta policy rule 'garbage': expected two space separated tokens, but got 1"))
+			})
+		})
+
+		Context("when the org definition is bad", func() {
+			BeforeEach(func() {
+				conf.Organizations[0].MSPType = "garbage"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewApplicationGroup(conf)
+				Expect(err).To(MatchError("failed to create application org: 1 - Error loading MSP configuration for org SampleOrg: unknown MSP type 'garbage'"))
+			})
+		})
 	})
 
-	t.Run("Channel missing policies", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
-		config.Policies = nil
-		group, err := NewChannelGroup(config)
-		assert.NoError(t, err)
-		assert.NotNil(t, group)
+	Describe("NewOrdererOrgGroup", func() {
+		var (
+			conf *genesisconfig.Organization
+		)
+
+		BeforeEach(func() {
+			conf = &genesisconfig.Organization{
+				MSPDir:  "../../../../sampleconfig/msp",
+				ID:      "SampleMSP",
+				MSPType: "bccsp",
+				Name:    "SampleOrg",
+				Policies: map[string]*genesisconfig.Policy{
+					"SamplePolicy": {
+						Type: "Signature",
+						Rule: "OR('SampleMSP.member')",
+					},
+				},
+				AdminPrincipal: "Role.ADMIN",
+			}
+		})
+
+		It("translates the config into a config group", func() {
+			cg, err := encoder.NewOrdererOrgGroup(conf)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(cg.Values)).To(Equal(1))
+			Expect(cg.Values["MSP"]).NotTo(BeNil())
+			Expect(len(cg.Policies)).To(Equal(1))
+			Expect(cg.Policies["SamplePolicy"]).NotTo(BeNil())
+		})
+
+		Context("when the policies are ommitted", func() {
+			BeforeEach(func() {
+				conf.Policies = nil
+			})
+
+			It("adds default policies", func() {
+				cg, err := encoder.NewOrdererOrgGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(cg.Policies)).To(Equal(3))
+				Expect(cg.Policies["Readers"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
+				Expect(cg.Policies["Writers"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
+				Expect(cg.Policies["Admins"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
+			})
+
+			Context("when dev mode is enabled", func() {
+				BeforeEach(func() {
+					conf.AdminPrincipal = "Member"
+				})
+
+				It("encodes default policies", func() {
+					cg, err := encoder.NewOrdererOrgGroup(conf)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(len(cg.Policies)).To(Equal(3))
+					Expect(cg.Policies["Readers"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
+					Expect(cg.Policies["Writers"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
+					Expect(cg.Policies["Admins"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
+					signaturePolicy := &cb.SignaturePolicyEnvelope{}
+					err = proto.Unmarshal(cg.Policies["Admins"].Policy.Value, signaturePolicy)
+					Expect(err).NotTo(HaveOccurred())
+					role := &msp.MSPRole{}
+					err = proto.Unmarshal(signaturePolicy.Identities[0].Principal, role)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(role.Role).To(Equal(msp.MSPRole_MEMBER))
+				})
+			})
+		})
+
+		Context("when the policies definition is bad", func() {
+			BeforeEach(func() {
+				conf.Policies = nil
+			})
+
+			It("adds default policies", func() {
+				cg, err := encoder.NewOrdererOrgGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(cg.Policies)).To(Equal(3))
+				Expect(cg.Policies["Readers"]).NotTo(BeNil())
+				Expect(cg.Policies["Writers"]).NotTo(BeNil())
+				Expect(cg.Policies["Admins"]).NotTo(BeNil())
+			})
+		})
+
+		Context("when the policy definition is bad", func() {
+			BeforeEach(func() {
+				conf.Policies["SamplePolicy"].Rule = "garbage"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewOrdererOrgGroup(conf)
+				Expect(err).To(MatchError("error adding policies to orderer org group 'SampleOrg': invalid signature policy rule 'garbage': unrecognized token 'garbage' in policy string"))
+			})
+		})
+
+		Context("when the policy definition is bad", func() {
+			BeforeEach(func() {
+				conf.Policies["SamplePolicy"].Rule = "garbage"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewOrdererOrgGroup(conf)
+				Expect(err).To(MatchError("error adding policies to orderer org group 'SampleOrg': invalid signature policy rule 'garbage': unrecognized token 'garbage' in policy string"))
+			})
+		})
 	})
 
-	t.Run("Add application unknown MSP", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
-		config.Application = &genesisconfig.Application{Organizations: []*genesisconfig.Organization{{Name: "FakeOrg"}}}
-		group, err := NewChannelGroup(config)
-		assert.Error(t, err)
-		assert.Nil(t, group)
+	Describe("NewApplicationOrgGroup", func() {
+		var (
+			conf *genesisconfig.Organization
+		)
+
+		BeforeEach(func() {
+			conf = &genesisconfig.Organization{
+				MSPDir:  "../../../../sampleconfig/msp",
+				ID:      "SampleMSP",
+				MSPType: "bccsp",
+				Name:    "SampleOrg",
+				Policies: map[string]*genesisconfig.Policy{
+					"SamplePolicy": {
+						Type: "Signature",
+						Rule: "OR('SampleMSP.member')",
+					},
+				},
+				AdminPrincipal: "Role.ADMIN",
+				AnchorPeers: []*genesisconfig.AnchorPeer{
+					{
+						Host: "hostname",
+						Port: 5555,
+					},
+				},
+			}
+		})
+
+		It("translates the config into a config group", func() {
+			cg, err := encoder.NewApplicationOrgGroup(conf)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(cg.Values)).To(Equal(2))
+			Expect(cg.Values["MSP"]).NotTo(BeNil())
+			Expect(cg.Values["AnchorPeers"]).NotTo(BeNil())
+			Expect(len(cg.Policies)).To(Equal(1))
+			Expect(cg.Policies["SamplePolicy"]).NotTo(BeNil())
+			Expect(len(cg.Values)).To(Equal(2))
+			Expect(cg.Values["MSP"]).NotTo(BeNil())
+			Expect(cg.Values["AnchorPeers"]).NotTo(BeNil())
+		})
+
+		Context("when the policies are ommitted", func() {
+			BeforeEach(func() {
+				conf.Policies = nil
+			})
+
+			It("adds default policies", func() {
+				cg, err := encoder.NewApplicationOrgGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(cg.Policies)).To(Equal(3))
+				Expect(cg.Policies["Readers"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
+				Expect(cg.Policies["Writers"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
+				Expect(cg.Policies["Admins"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
+			})
+		})
+
+		Context("when the policy definition is bad", func() {
+			BeforeEach(func() {
+				conf.Policies["SamplePolicy"].Type = "garbage"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewApplicationOrgGroup(conf)
+				Expect(err).To(MatchError("error adding policies to application org group SampleOrg: unknown policy type: garbage"))
+			})
+		})
+
+		Context("when the MSP definition is bad", func() {
+			BeforeEach(func() {
+				conf.MSPDir = "garbage"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewApplicationOrgGroup(conf)
+				Expect(err).To(MatchError("1 - Error loading MSP configuration for org SampleOrg: could not load a valid ca certificate from directory garbage/cacerts: stat garbage/cacerts: no such file or directory"))
+			})
+		})
+
+		Context("when the policy definition is bad", func() {
+			BeforeEach(func() {
+				conf.Policies["SamplePolicy"].Rule = "garbage"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewApplicationOrgGroup(conf)
+				Expect(err).To(MatchError("error adding policies to application org group SampleOrg: invalid signature policy rule 'garbage': unrecognized token 'garbage' in policy string"))
+			})
+		})
 	})
 
-	t.Run("Add consortiums unknown MSP", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
-		config.Consortiums["fakeorg"] = &genesisconfig.Consortium{Organizations: []*genesisconfig.Organization{{Name: "FakeOrg"}}}
-		group, err := NewChannelGroup(config)
-		assert.Error(t, err)
-		assert.Nil(t, group)
+	Describe("ChannelCreationOperations", func() {
+		var (
+			conf *genesisconfig.Profile
+		)
+
+		BeforeEach(func() {
+			conf = &genesisconfig.Profile{
+				Consortium: "MyConsortium",
+				Application: &genesisconfig.Application{
+					Organizations: []*genesisconfig.Organization{
+						{
+							MSPDir:  "../../../../sampleconfig/msp",
+							ID:      "SampleMSP",
+							MSPType: "bccsp",
+							Name:    "SampleOrg",
+						},
+					},
+					Policies: map[string]*genesisconfig.Policy{
+						"SamplePolicy": {
+							Type: "ImplicitMeta",
+							Rule: "ANY Admins",
+						},
+					},
+				},
+			}
+		})
+
+		Describe("NewChannelCreateConfigUpdate", func() {
+			It("translates the config into a config group", func() {
+				cg, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proto.Equal(&cb.ConfigUpdate{
+					ChannelId: "channel-id",
+					ReadSet: &cb.ConfigGroup{
+						Groups: map[string]*cb.ConfigGroup{
+							"Application": {
+								Groups: map[string]*cb.ConfigGroup{
+									"SampleOrg": {},
+								},
+							},
+						},
+						Values: map[string]*cb.ConfigValue{
+							"Consortium": {},
+						},
+					},
+					WriteSet: &cb.ConfigGroup{
+						Groups: map[string]*cb.ConfigGroup{
+							"Application": {
+								Version:   1,
+								ModPolicy: "Admins",
+								Groups: map[string]*cb.ConfigGroup{
+									"SampleOrg": {},
+								},
+								Policies: map[string]*cb.ConfigPolicy{
+									"SamplePolicy": {
+										Policy: &cb.Policy{
+											Type: int32(cb.Policy_IMPLICIT_META),
+											Value: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+												SubPolicy: "Admins",
+												Rule:      cb.ImplicitMetaPolicy_ANY,
+											}),
+										},
+										ModPolicy: "Admins",
+									},
+								},
+							},
+						},
+						Values: map[string]*cb.ConfigValue{
+							"Consortium": {
+								Value: utils.MarshalOrPanic(&cb.Consortium{
+									Name: "MyConsortium",
+								}),
+							},
+						},
+					},
+				}, cg)).To(BeTrue())
+			})
+
+			Context("when the application config is bad", func() {
+				BeforeEach(func() {
+					conf.Application.Policies = map[string]*genesisconfig.Policy{
+						"BadPolicy": {
+							Type: "bad-type",
+						},
+					}
+				})
+
+				It("returns an error", func() {
+					_, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf)
+					Expect(err).To(MatchError("could not turn channel application profile into application group: error adding policies to application group: unknown policy type: bad-type"))
+				})
+
+				Context("when the application config is missing", func() {
+					BeforeEach(func() {
+						conf.Application = nil
+					})
+
+					It("returns an error", func() {
+						_, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf)
+						Expect(err).To(MatchError("cannot define a new channel with no Application section"))
+					})
+				})
+			})
+
+			Context("when the consortium is empty", func() {
+				BeforeEach(func() {
+					conf.Consortium = ""
+				})
+
+				It("returns an error", func() {
+					_, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf)
+					Expect(err).To(MatchError("cannot define a new channel with no Consortium value"))
+				})
+			})
+		})
+
+		Describe("MakeChannelCreationTransaction", func() {
+			var (
+				fakeSigner *mock.LocalSigner
+			)
+
+			BeforeEach(func() {
+				fakeSigner = &mock.LocalSigner{}
+				fakeSigner.NewSignatureHeaderReturns(&cb.SignatureHeader{
+					Creator: []byte("fake-creator"),
+				}, nil)
+			})
+
+			It("returns an encoded and signed tx", func() {
+				env, err := encoder.MakeChannelCreationTransaction("channel-id", fakeSigner, conf)
+				Expect(err).NotTo(HaveOccurred())
+				payload := &cb.Payload{}
+				err = proto.Unmarshal(env.Payload, payload)
+				Expect(err).NotTo(HaveOccurred())
+				configUpdateEnv := &cb.ConfigUpdateEnvelope{}
+				err = proto.Unmarshal(payload.Data, configUpdateEnv)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(configUpdateEnv.Signatures)).To(Equal(1))
+				Expect(fakeSigner.NewSignatureHeaderCallCount()).To(Equal(2))
+				Expect(fakeSigner.SignCallCount()).To(Equal(2))
+				Expect(fakeSigner.SignArgsForCall(0)).To(Equal(util.ConcatenateBytes(configUpdateEnv.Signatures[0].SignatureHeader, configUpdateEnv.ConfigUpdate)))
+			})
+
+			Context("when the signer cannot create the signature header", func() {
+				BeforeEach(func() {
+					fakeSigner.NewSignatureHeaderReturns(nil, fmt.Errorf("signature-header-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := encoder.MakeChannelCreationTransaction("channel-id", fakeSigner, conf)
+					Expect(err).To(MatchError("creating signature header failed: signature-header-error"))
+				})
+			})
+
+			Context("when the signer cannot sign", func() {
+				BeforeEach(func() {
+					fakeSigner.SignReturns(nil, fmt.Errorf("sign-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := encoder.MakeChannelCreationTransaction("channel-id", fakeSigner, conf)
+					Expect(err).To(MatchError("signature failure over config update: sign-error"))
+				})
+			})
+
+			Context("when no signer is provided", func() {
+				It("returns an encoded tx with no signature", func() {
+					_, err := encoder.MakeChannelCreationTransaction("channel-id", nil, conf)
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+
+			Context("when the config is bad", func() {
+				BeforeEach(func() {
+					conf.Consortium = ""
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := encoder.MakeChannelCreationTransaction("channel-id", nil, conf)
+					Expect(err).To(MatchError("config update generation failure: cannot define a new channel with no Consortium value"))
+				})
+			})
+		})
 	})
 
-	t.Run("Add orderer unknown MSP", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
-		config.Orderer = &genesisconfig.Orderer{Organizations: []*genesisconfig.Organization{{Name: "FakeOrg"}}}
-		group, err := NewChannelGroup(config)
-		assert.Error(t, err)
-		assert.Nil(t, group)
-	})
-}
+	Describe("Bootstrapper", func() {
+		Describe("New", func() {
+			var (
+				conf *genesisconfig.Profile
+			)
 
-func TestNewOrdererGroup(t *testing.T) {
-	t.Run("Unknown orderer type", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
-		config.Orderer.OrdererType = "TestOrderer"
-		group, err := NewOrdererGroup(config.Orderer)
-		assert.Error(t, err)
-		assert.Nil(t, group)
-	})
+			BeforeEach(func() {
+				conf = &genesisconfig.Profile{
+					Orderer: &genesisconfig.Orderer{
+						OrdererType: "solo",
+					},
+				}
+			})
 
-	t.Run("Orderer missing policies", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
-		config.Orderer.Policies = nil
-		for _, org := range config.Orderer.Organizations {
-			org.Policies = nil
-		}
-		group, err := NewOrdererGroup(config.Orderer)
-		assert.NoError(t, err)
-		assert.NotNil(t, group)
-	})
+			It("creates a new bootstrapper for the given config", func() {
+				bs := encoder.New(conf)
+				Expect(bs).NotTo(BeNil())
+			})
 
-	t.Run("Unknown MSP org", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
-		config.Orderer.Organizations[0] = &genesisconfig.Organization{Name: "FakeOrg", ID: "FakeOrg"}
-		group, err := NewOrdererGroup(config.Orderer)
-		assert.Error(t, err)
-		assert.Nil(t, group)
-	})
+			Context("when the channel config is bad", func() {
+				BeforeEach(func() {
+					conf.Orderer.OrdererType = "bad-type"
+				})
 
-	t.Run("etcd/raft-based Orderer", func(t *testing.T) {
-		config := configtxgentest.Load(genesisconfig.SampleDevModeEtcdRaftProfile)
-		group, _ := NewOrdererGroup(config.Orderer)
-		consensusType := group.GetValues()[channelconfig.ConsensusTypeKey]
-		packedType := consensusType.GetValue()
-		unpackedType := new(ab.ConsensusType)
-		err := proto.Unmarshal(packedType, unpackedType)
-		require.NoError(t, err, "cannot extract %s config value from orderer group", channelconfig.ConsensusTypeKey)
-		unpackedMetadata := new(etcdraft.Metadata)
-		err = proto.Unmarshal(unpackedType.GetMetadata(), unpackedMetadata)
-		require.NoError(t, err, "cannot extract metadata value from %s consenters", etcdraft.TypeKey)
-		for _, v := range unpackedMetadata.GetConsenters() {
-			// Checking one field for a non-nil value should be enough.
-			require.NotNil(t, v.GetClientTlsCert(), "cannot extract PEM-encoded client certificate of consenter")
-		}
-	})
-}
+				It("panics", func() {
+					Expect(func() { encoder.New(conf) }).To(Panic())
+				})
+			})
 
-func TestBootstrapper(t *testing.T) {
-	config := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
-	t.Run("New bootstrapper", func(t *testing.T) {
-		bootstrapper := New(config)
-		assert.NotNil(t, bootstrapper.GenesisBlock(), "genesis block should not be nil")
-		assert.NotNil(t, bootstrapper.GenesisBlockForChannel("channelID"), "genesis block for channel should not be nil")
-	})
+		})
 
-	t.Run("New bootstrapper nil orderer", func(t *testing.T) {
-		config.Orderer = nil
-		newBootstrapperNilOrderer := func() {
-			New(config)
-		}
-		assert.Panics(t, newBootstrapperNilOrderer)
+		Describe("Functions", func() {
+			var (
+				bs *encoder.Bootstrapper
+			)
+
+			BeforeEach(func() {
+				bs = encoder.New(&genesisconfig.Profile{
+					Orderer: &genesisconfig.Orderer{
+						OrdererType: "solo",
+					},
+				})
+			})
+
+			Describe("GenesisBlock", func() {
+				It("produces a new genesis block with a default channel ID", func() {
+					block := bs.GenesisBlock()
+					Expect(block).NotTo(BeNil())
+				})
+			})
+
+			Describe("GenesisBlockForChannel", func() {
+				It("produces a new genesis block with a default channel ID", func() {
+					block := bs.GenesisBlockForChannel("channel-id")
+					Expect(block).NotTo(BeNil())
+				})
+			})
+		})
 	})
-}
+})
