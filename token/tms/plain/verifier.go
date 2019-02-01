@@ -34,7 +34,7 @@ const (
 	tokenDelegatedOutput  = "tokenDelegatedOutput"
 	tokenInput            = "tokenInput"
 	tokenDelegatedInput   = "tokenDelegateInput"
-	tokenNameSpace        = "tms"
+	tokenNameSpace        = "_fabtoken"
 )
 
 var verifierLogger = flogging.MustGetLogger("token.tms.plain.verifier")
