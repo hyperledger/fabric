@@ -8,10 +8,14 @@ package server
 
 import (
 	"context"
+	"runtime/debug"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/pkg/errors"
 )
+
+var logger = flogging.MustGetLogger("token.server")
 
 //go:generate counterfeiter -o mock/access_control.go -fake-name PolicyChecker . PolicyChecker
 
@@ -36,7 +40,14 @@ type Prover struct {
 	TMSManager        TMSManager
 }
 
-func (s *Prover) ProcessCommand(ctx context.Context, sc *token.SignedCommand) (*token.SignedCommandResponse, error) {
+func (s *Prover) ProcessCommand(ctx context.Context, sc *token.SignedCommand) (cr *token.SignedCommandResponse, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Criticalf("ProcessCommand triggered panic: %s\n%s", r, debug.Stack())
+			err = errors.Errorf("ProcessCommand triggered panic: %s", r)
+		}
+	}()
+
 	command, err := UnmarshalCommand(sc.Command)
 	if err != nil {
 		return s.MarshalErrorResponse(sc.Command, err)
@@ -88,7 +99,9 @@ func (s *Prover) ProcessCommand(ctx context.Context, sc *token.SignedCommand) (*
 		}
 	}
 
-	return s.Marshaler.MarshalCommandResponse(sc.Command, payload)
+	cr, err = s.Marshaler.MarshalCommandResponse(sc.Command, payload)
+
+	return
 }
 
 func (s *Prover) RequestImport(ctx context.Context, header *token.Header, requestImport *token.ImportRequest) (*token.CommandResponse_TokenTransaction, error) {

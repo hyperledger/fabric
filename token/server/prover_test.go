@@ -415,6 +415,15 @@ var _ = Describe("Prover", func() {
 				}))
 			})
 		})
+
+		Context("when a panic is thrown", func() {
+
+			It("returns nil response and no error", func() {
+				resp, err := prover.ProcessCommand(context.Background(), nil)
+				Expect(err).To(MatchError("ProcessCommand triggered panic: runtime error: invalid memory address or nil pointer dereference"))
+				Expect(resp).To(BeNil())
+			})
+		})
 	})
 
 	Describe("ProcessCommand_RequestImport", func() {
