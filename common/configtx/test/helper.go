@@ -31,9 +31,9 @@ func MakeGenesisBlock(chainID string) (*cb.Block, error) {
 		logger.Panicf("Error creating channel config: %s", err)
 	}
 
-	gb, err := genesis.NewFactoryImpl(channelGroup).Block(chainID)
-	if err != nil || gb == nil {
-		return gb, err
+	gb := genesis.NewFactoryImpl(channelGroup).Block(chainID)
+	if gb == nil {
+		return gb, nil
 	}
 
 	txsFilter := util.NewTxValidationFlagsSetValue(len(gb.Data.Data), peer.TxValidationCode_VALID)
@@ -72,5 +72,5 @@ func MakeGenesisBlockFromMSPs(chainID string, appMSPConf, ordererMSPConf *msppro
 	channelGroup.Groups[channelconfig.OrdererGroupKey].Groups[ordererOrgID] = ordererOrg
 	channelGroup.Groups[channelconfig.ApplicationGroupKey].Groups[appOrgID] = applicationOrg
 
-	return genesis.NewFactoryImpl(channelGroup).Block(chainID)
+	return genesis.NewFactoryImpl(channelGroup).Block(chainID), nil
 }
