@@ -525,8 +525,7 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	conf.Application = nil
 	cg, err := encoder.NewChannelGroup(conf)
 	assert.NoError(t, err)
-	block, err := genesis.NewFactoryImpl(cg).Block("mytestchainid")
-	assert.NoError(t, err)
+	block := genesis.NewFactoryImpl(cg).Block("mytestchainid")
 	blockBytes := utils.MarshalOrPanic(block)
 
 	// Failed path: wrong parameter type
