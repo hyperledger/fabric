@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // Collection defines a common interface for collections
@@ -73,7 +74,7 @@ type CollectionPersistenceConfigs interface {
 // Signature on that Data.
 // Returns: True, if the policy holds for the given signed data.
 //          False otherwise
-type Filter func(common.SignedData) bool
+type Filter func(protoutil.SignedData) bool
 
 // CollectionStore provides various APIs to retrieves stored collections and perform
 // membership check & read permission check based on the collection's properties.

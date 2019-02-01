@@ -963,7 +963,7 @@ func (ms *mockSupport) PeersAuthorizedByCriteria(channel gossipcommon.ChainID, i
 	return ms.endorsementAnalyzer.PeersAuthorizedByCriteria(channel, interest)
 }
 
-func (*mockSupport) EligibleForService(channel string, data common.SignedData) error {
+func (*mockSupport) EligibleForService(channel string, data protoutil.SignedData) error {
 	return nil
 }
 

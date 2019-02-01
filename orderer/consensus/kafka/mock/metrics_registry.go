@@ -2,7 +2,7 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 )
 
 type MetricsRegistry struct {
@@ -24,8 +24,9 @@ type MetricsRegistry struct {
 	}
 	GetAllStub        func() map[string]map[string]interface{}
 	getAllMutex       sync.RWMutex
-	getAllArgsForCall []struct{}
-	getAllReturns     struct {
+	getAllArgsForCall []struct {
+	}
+	getAllReturns struct {
 		result1 map[string]map[string]interface{}
 	}
 	getAllReturnsOnCall map[int]struct {
@@ -57,17 +58,19 @@ type MetricsRegistry struct {
 	}
 	RunHealthchecksStub        func()
 	runHealthchecksMutex       sync.RWMutex
-	runHealthchecksArgsForCall []struct{}
-	UnregisterStub             func(string)
-	unregisterMutex            sync.RWMutex
-	unregisterArgsForCall      []struct {
+	runHealthchecksArgsForCall []struct {
+	}
+	UnregisterStub        func(string)
+	unregisterMutex       sync.RWMutex
+	unregisterArgsForCall []struct {
 		arg1 string
 	}
 	UnregisterAllStub        func()
 	unregisterAllMutex       sync.RWMutex
-	unregisterAllArgsForCall []struct{}
-	invocations              map[string][][]interface{}
-	invocationsMutex         sync.RWMutex
+	unregisterAllArgsForCall []struct {
+	}
+	invocations      map[string][][]interface{}
+	invocationsMutex sync.RWMutex
 }
 
 func (fake *MetricsRegistry) Each(arg1 func(string, interface{})) {
@@ -88,10 +91,17 @@ func (fake *MetricsRegistry) EachCallCount() int {
 	return len(fake.eachArgsForCall)
 }
 
+func (fake *MetricsRegistry) EachCalls(stub func(func(string, interface{}))) {
+	fake.eachMutex.Lock()
+	defer fake.eachMutex.Unlock()
+	fake.EachStub = stub
+}
+
 func (fake *MetricsRegistry) EachArgsForCall(i int) func(string, interface{}) {
 	fake.eachMutex.RLock()
 	defer fake.eachMutex.RUnlock()
-	return fake.eachArgsForCall[i].arg1
+	argsForCall := fake.eachArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *MetricsRegistry) Get(arg1 string) interface{} {
@@ -108,7 +118,8 @@ func (fake *MetricsRegistry) Get(arg1 string) interface{} {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getReturns.result1
+	fakeReturns := fake.getReturns
+	return fakeReturns.result1
 }
 
 func (fake *MetricsRegistry) GetCallCount() int {
@@ -117,13 +128,22 @@ func (fake *MetricsRegistry) GetCallCount() int {
 	return len(fake.getArgsForCall)
 }
 
+func (fake *MetricsRegistry) GetCalls(stub func(string) interface{}) {
+	fake.getMutex.Lock()
+	defer fake.getMutex.Unlock()
+	fake.GetStub = stub
+}
+
 func (fake *MetricsRegistry) GetArgsForCall(i int) string {
 	fake.getMutex.RLock()
 	defer fake.getMutex.RUnlock()
-	return fake.getArgsForCall[i].arg1
+	argsForCall := fake.getArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *MetricsRegistry) GetReturns(result1 interface{}) {
+	fake.getMutex.Lock()
+	defer fake.getMutex.Unlock()
 	fake.GetStub = nil
 	fake.getReturns = struct {
 		result1 interface{}
@@ -131,6 +151,8 @@ func (fake *MetricsRegistry) GetReturns(result1 interface{}) {
 }
 
 func (fake *MetricsRegistry) GetReturnsOnCall(i int, result1 interface{}) {
+	fake.getMutex.Lock()
+	defer fake.getMutex.Unlock()
 	fake.GetStub = nil
 	if fake.getReturnsOnCall == nil {
 		fake.getReturnsOnCall = make(map[int]struct {
@@ -145,7 +167,8 @@ func (fake *MetricsRegistry) GetReturnsOnCall(i int, result1 interface{}) {
 func (fake *MetricsRegistry) GetAll() map[string]map[string]interface{} {
 	fake.getAllMutex.Lock()
 	ret, specificReturn := fake.getAllReturnsOnCall[len(fake.getAllArgsForCall)]
-	fake.getAllArgsForCall = append(fake.getAllArgsForCall, struct{}{})
+	fake.getAllArgsForCall = append(fake.getAllArgsForCall, struct {
+	}{})
 	fake.recordInvocation("GetAll", []interface{}{})
 	fake.getAllMutex.Unlock()
 	if fake.GetAllStub != nil {
@@ -154,7 +177,8 @@ func (fake *MetricsRegistry) GetAll() map[string]map[string]interface{} {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getAllReturns.result1
+	fakeReturns := fake.getAllReturns
+	return fakeReturns.result1
 }
 
 func (fake *MetricsRegistry) GetAllCallCount() int {
@@ -163,7 +187,15 @@ func (fake *MetricsRegistry) GetAllCallCount() int {
 	return len(fake.getAllArgsForCall)
 }
 
+func (fake *MetricsRegistry) GetAllCalls(stub func() map[string]map[string]interface{}) {
+	fake.getAllMutex.Lock()
+	defer fake.getAllMutex.Unlock()
+	fake.GetAllStub = stub
+}
+
 func (fake *MetricsRegistry) GetAllReturns(result1 map[string]map[string]interface{}) {
+	fake.getAllMutex.Lock()
+	defer fake.getAllMutex.Unlock()
 	fake.GetAllStub = nil
 	fake.getAllReturns = struct {
 		result1 map[string]map[string]interface{}
@@ -171,6 +203,8 @@ func (fake *MetricsRegistry) GetAllReturns(result1 map[string]map[string]interfa
 }
 
 func (fake *MetricsRegistry) GetAllReturnsOnCall(i int, result1 map[string]map[string]interface{}) {
+	fake.getAllMutex.Lock()
+	defer fake.getAllMutex.Unlock()
 	fake.GetAllStub = nil
 	if fake.getAllReturnsOnCall == nil {
 		fake.getAllReturnsOnCall = make(map[int]struct {
@@ -197,7 +231,8 @@ func (fake *MetricsRegistry) GetOrRegister(arg1 string, arg2 interface{}) interf
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getOrRegisterReturns.result1
+	fakeReturns := fake.getOrRegisterReturns
+	return fakeReturns.result1
 }
 
 func (fake *MetricsRegistry) GetOrRegisterCallCount() int {
@@ -206,13 +241,22 @@ func (fake *MetricsRegistry) GetOrRegisterCallCount() int {
 	return len(fake.getOrRegisterArgsForCall)
 }
 
+func (fake *MetricsRegistry) GetOrRegisterCalls(stub func(string, interface{}) interface{}) {
+	fake.getOrRegisterMutex.Lock()
+	defer fake.getOrRegisterMutex.Unlock()
+	fake.GetOrRegisterStub = stub
+}
+
 func (fake *MetricsRegistry) GetOrRegisterArgsForCall(i int) (string, interface{}) {
 	fake.getOrRegisterMutex.RLock()
 	defer fake.getOrRegisterMutex.RUnlock()
-	return fake.getOrRegisterArgsForCall[i].arg1, fake.getOrRegisterArgsForCall[i].arg2
+	argsForCall := fake.getOrRegisterArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *MetricsRegistry) GetOrRegisterReturns(result1 interface{}) {
+	fake.getOrRegisterMutex.Lock()
+	defer fake.getOrRegisterMutex.Unlock()
 	fake.GetOrRegisterStub = nil
 	fake.getOrRegisterReturns = struct {
 		result1 interface{}
@@ -220,6 +264,8 @@ func (fake *MetricsRegistry) GetOrRegisterReturns(result1 interface{}) {
 }
 
 func (fake *MetricsRegistry) GetOrRegisterReturnsOnCall(i int, result1 interface{}) {
+	fake.getOrRegisterMutex.Lock()
+	defer fake.getOrRegisterMutex.Unlock()
 	fake.GetOrRegisterStub = nil
 	if fake.getOrRegisterReturnsOnCall == nil {
 		fake.getOrRegisterReturnsOnCall = make(map[int]struct {
@@ -246,7 +292,8 @@ func (fake *MetricsRegistry) Register(arg1 string, arg2 interface{}) error {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.registerReturns.result1
+	fakeReturns := fake.registerReturns
+	return fakeReturns.result1
 }
 
 func (fake *MetricsRegistry) RegisterCallCount() int {
@@ -255,13 +302,22 @@ func (fake *MetricsRegistry) RegisterCallCount() int {
 	return len(fake.registerArgsForCall)
 }
 
+func (fake *MetricsRegistry) RegisterCalls(stub func(string, interface{}) error) {
+	fake.registerMutex.Lock()
+	defer fake.registerMutex.Unlock()
+	fake.RegisterStub = stub
+}
+
 func (fake *MetricsRegistry) RegisterArgsForCall(i int) (string, interface{}) {
 	fake.registerMutex.RLock()
 	defer fake.registerMutex.RUnlock()
-	return fake.registerArgsForCall[i].arg1, fake.registerArgsForCall[i].arg2
+	argsForCall := fake.registerArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *MetricsRegistry) RegisterReturns(result1 error) {
+	fake.registerMutex.Lock()
+	defer fake.registerMutex.Unlock()
 	fake.RegisterStub = nil
 	fake.registerReturns = struct {
 		result1 error
@@ -269,6 +325,8 @@ func (fake *MetricsRegistry) RegisterReturns(result1 error) {
 }
 
 func (fake *MetricsRegistry) RegisterReturnsOnCall(i int, result1 error) {
+	fake.registerMutex.Lock()
+	defer fake.registerMutex.Unlock()
 	fake.RegisterStub = nil
 	if fake.registerReturnsOnCall == nil {
 		fake.registerReturnsOnCall = make(map[int]struct {
@@ -282,7 +340,8 @@ func (fake *MetricsRegistry) RegisterReturnsOnCall(i int, result1 error) {
 
 func (fake *MetricsRegistry) RunHealthchecks() {
 	fake.runHealthchecksMutex.Lock()
-	fake.runHealthchecksArgsForCall = append(fake.runHealthchecksArgsForCall, struct{}{})
+	fake.runHealthchecksArgsForCall = append(fake.runHealthchecksArgsForCall, struct {
+	}{})
 	fake.recordInvocation("RunHealthchecks", []interface{}{})
 	fake.runHealthchecksMutex.Unlock()
 	if fake.RunHealthchecksStub != nil {
@@ -294,6 +353,12 @@ func (fake *MetricsRegistry) RunHealthchecksCallCount() int {
 	fake.runHealthchecksMutex.RLock()
 	defer fake.runHealthchecksMutex.RUnlock()
 	return len(fake.runHealthchecksArgsForCall)
+}
+
+func (fake *MetricsRegistry) RunHealthchecksCalls(stub func()) {
+	fake.runHealthchecksMutex.Lock()
+	defer fake.runHealthchecksMutex.Unlock()
+	fake.RunHealthchecksStub = stub
 }
 
 func (fake *MetricsRegistry) Unregister(arg1 string) {
@@ -314,15 +379,23 @@ func (fake *MetricsRegistry) UnregisterCallCount() int {
 	return len(fake.unregisterArgsForCall)
 }
 
+func (fake *MetricsRegistry) UnregisterCalls(stub func(string)) {
+	fake.unregisterMutex.Lock()
+	defer fake.unregisterMutex.Unlock()
+	fake.UnregisterStub = stub
+}
+
 func (fake *MetricsRegistry) UnregisterArgsForCall(i int) string {
 	fake.unregisterMutex.RLock()
 	defer fake.unregisterMutex.RUnlock()
-	return fake.unregisterArgsForCall[i].arg1
+	argsForCall := fake.unregisterArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *MetricsRegistry) UnregisterAll() {
 	fake.unregisterAllMutex.Lock()
-	fake.unregisterAllArgsForCall = append(fake.unregisterAllArgsForCall, struct{}{})
+	fake.unregisterAllArgsForCall = append(fake.unregisterAllArgsForCall, struct {
+	}{})
 	fake.recordInvocation("UnregisterAll", []interface{}{})
 	fake.unregisterAllMutex.Unlock()
 	if fake.UnregisterAllStub != nil {
@@ -334,6 +407,12 @@ func (fake *MetricsRegistry) UnregisterAllCallCount() int {
 	fake.unregisterAllMutex.RLock()
 	defer fake.unregisterAllMutex.RUnlock()
 	return len(fake.unregisterAllArgsForCall)
+}
+
+func (fake *MetricsRegistry) UnregisterAllCalls(stub func()) {
+	fake.unregisterAllMutex.Lock()
+	defer fake.unregisterAllMutex.Unlock()
+	fake.UnregisterAllStub = stub
 }
 
 func (fake *MetricsRegistry) Invocations() map[string][][]interface{} {

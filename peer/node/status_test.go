@@ -28,8 +28,8 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	common2 "github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/mocks"
-	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -43,7 +43,7 @@ func (tss *testServiceServer) EmptyCall(context.Context, *testpb.Empty) (*testpb
 type mockEvaluator struct {
 }
 
-func (*mockEvaluator) Evaluate(signatureSet []*common.SignedData) error {
+func (*mockEvaluator) Evaluate(signatureSet []*protoutil.SignedData) error {
 	return nil
 }
 

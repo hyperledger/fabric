@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspp "github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 type Identity interface {
@@ -37,7 +38,7 @@ type IdentityAndSignature interface {
 }
 
 type deserializeAndVerify struct {
-	signedData           *cb.SignedData
+	signedData           *protoutil.SignedData
 	deserializer         msp.IdentityDeserializer
 	deserializedIdentity msp.Identity
 }
@@ -120,7 +121,7 @@ type policy struct {
 }
 
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (p *policy) Evaluate(signatureSet []*cb.SignedData) error {
+func (p *policy) Evaluate(signatureSet []*protoutil.SignedData) error {
 	if p == nil {
 		return fmt.Errorf("No such policy")
 	}

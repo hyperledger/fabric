@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -64,7 +65,7 @@ func TestAccept(t *testing.T) {
 
 	policy, ok := m.GetPolicy(policyID)
 	assert.True(t, ok, "Should have found policy which was just added, but did not")
-	err = policy.Evaluate([]*cb.SignedData{{Identity: []byte("identity"), Data: []byte("data"), Signature: []byte("sig")}})
+	err = policy.Evaluate([]*protoutil.SignedData{{Identity: []byte("identity"), Data: []byte("data"), Signature: []byte("sig")}})
 	assert.NoError(t, err, "Should not have errored evaluating an acceptAll policy")
 }
 
@@ -79,7 +80,7 @@ func TestReject(t *testing.T) {
 	assert.NotNil(t, m)
 	policy, ok := m.GetPolicy(policyID)
 	assert.True(t, ok, "Should have found policy which was just added, but did not")
-	err = policy.Evaluate([]*cb.SignedData{{Identity: []byte("identity"), Data: []byte("data"), Signature: []byte("sig")}})
+	err = policy.Evaluate([]*protoutil.SignedData{{Identity: []byte("identity"), Data: []byte("data"), Signature: []byte("sig")}})
 	assert.Error(t, err, "Should have errored evaluating an rejectAll policy")
 }
 
@@ -89,7 +90,7 @@ func TestRejectOnUnknown(t *testing.T) {
 	assert.NotNil(t, m)
 	policy, ok := m.GetPolicy("FakePolicyID")
 	assert.False(t, ok, "Should not have found policy which was never added, but did")
-	err = policy.Evaluate([]*cb.SignedData{{Identity: []byte("identity"), Data: []byte("data"), Signature: []byte("sig")}})
+	err = policy.Evaluate([]*protoutil.SignedData{{Identity: []byte("identity"), Data: []byte("data"), Signature: []byte("sig")}})
 	assert.Error(t, err, "Should have errored evaluating the default policy")
 }
 
@@ -114,7 +115,7 @@ func TestNewPolicyErrorCase(t *testing.T) {
 	assert.EqualError(t, err3, "Empty policy element")
 
 	var pol4 *policy = nil
-	err4 := pol4.Evaluate([]*cb.SignedData{})
+	err4 := pol4.Evaluate([]*protoutil.SignedData{})
 	assert.EqualError(t, err4, "No such policy")
 }
 

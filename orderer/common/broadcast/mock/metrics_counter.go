@@ -2,16 +2,21 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/common/metrics"
+	metrics "github.com/hyperledger/fabric/common/metrics"
 )
 
 type MetricsCounter struct {
-	WithStub        func(labelValues ...string) metrics.Counter
+	AddStub        func(float64)
+	addMutex       sync.RWMutex
+	addArgsForCall []struct {
+		arg1 float64
+	}
+	WithStub        func(...string) metrics.Counter
 	withMutex       sync.RWMutex
 	withArgsForCall []struct {
-		labelValues []string
+		arg1 []string
 	}
 	withReturns struct {
 		result1 metrics.Counter
@@ -19,30 +24,57 @@ type MetricsCounter struct {
 	withReturnsOnCall map[int]struct {
 		result1 metrics.Counter
 	}
-	AddStub        func(delta float64)
-	addMutex       sync.RWMutex
-	addArgsForCall []struct {
-		delta float64
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *MetricsCounter) With(labelValues ...string) metrics.Counter {
+func (fake *MetricsCounter) Add(arg1 float64) {
+	fake.addMutex.Lock()
+	fake.addArgsForCall = append(fake.addArgsForCall, struct {
+		arg1 float64
+	}{arg1})
+	fake.recordInvocation("Add", []interface{}{arg1})
+	fake.addMutex.Unlock()
+	if fake.AddStub != nil {
+		fake.AddStub(arg1)
+	}
+}
+
+func (fake *MetricsCounter) AddCallCount() int {
+	fake.addMutex.RLock()
+	defer fake.addMutex.RUnlock()
+	return len(fake.addArgsForCall)
+}
+
+func (fake *MetricsCounter) AddCalls(stub func(float64)) {
+	fake.addMutex.Lock()
+	defer fake.addMutex.Unlock()
+	fake.AddStub = stub
+}
+
+func (fake *MetricsCounter) AddArgsForCall(i int) float64 {
+	fake.addMutex.RLock()
+	defer fake.addMutex.RUnlock()
+	argsForCall := fake.addArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *MetricsCounter) With(arg1 ...string) metrics.Counter {
 	fake.withMutex.Lock()
 	ret, specificReturn := fake.withReturnsOnCall[len(fake.withArgsForCall)]
 	fake.withArgsForCall = append(fake.withArgsForCall, struct {
-		labelValues []string
-	}{labelValues})
-	fake.recordInvocation("With", []interface{}{labelValues})
+		arg1 []string
+	}{arg1})
+	fake.recordInvocation("With", []interface{}{arg1})
 	fake.withMutex.Unlock()
 	if fake.WithStub != nil {
-		return fake.WithStub(labelValues...)
+		return fake.WithStub(arg1...)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.withReturns.result1
+	fakeReturns := fake.withReturns
+	return fakeReturns.result1
 }
 
 func (fake *MetricsCounter) WithCallCount() int {
@@ -51,13 +83,22 @@ func (fake *MetricsCounter) WithCallCount() int {
 	return len(fake.withArgsForCall)
 }
 
+func (fake *MetricsCounter) WithCalls(stub func(...string) metrics.Counter) {
+	fake.withMutex.Lock()
+	defer fake.withMutex.Unlock()
+	fake.WithStub = stub
+}
+
 func (fake *MetricsCounter) WithArgsForCall(i int) []string {
 	fake.withMutex.RLock()
 	defer fake.withMutex.RUnlock()
-	return fake.withArgsForCall[i].labelValues
+	argsForCall := fake.withArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *MetricsCounter) WithReturns(result1 metrics.Counter) {
+	fake.withMutex.Lock()
+	defer fake.withMutex.Unlock()
 	fake.WithStub = nil
 	fake.withReturns = struct {
 		result1 metrics.Counter
@@ -65,6 +106,8 @@ func (fake *MetricsCounter) WithReturns(result1 metrics.Counter) {
 }
 
 func (fake *MetricsCounter) WithReturnsOnCall(i int, result1 metrics.Counter) {
+	fake.withMutex.Lock()
+	defer fake.withMutex.Unlock()
 	fake.WithStub = nil
 	if fake.withReturnsOnCall == nil {
 		fake.withReturnsOnCall = make(map[int]struct {
@@ -76,37 +119,13 @@ func (fake *MetricsCounter) WithReturnsOnCall(i int, result1 metrics.Counter) {
 	}{result1}
 }
 
-func (fake *MetricsCounter) Add(delta float64) {
-	fake.addMutex.Lock()
-	fake.addArgsForCall = append(fake.addArgsForCall, struct {
-		delta float64
-	}{delta})
-	fake.recordInvocation("Add", []interface{}{delta})
-	fake.addMutex.Unlock()
-	if fake.AddStub != nil {
-		fake.AddStub(delta)
-	}
-}
-
-func (fake *MetricsCounter) AddCallCount() int {
-	fake.addMutex.RLock()
-	defer fake.addMutex.RUnlock()
-	return len(fake.addArgsForCall)
-}
-
-func (fake *MetricsCounter) AddArgsForCall(i int) float64 {
-	fake.addMutex.RLock()
-	defer fake.addMutex.RUnlock()
-	return fake.addArgsForCall[i].delta
-}
-
 func (fake *MetricsCounter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.withMutex.RLock()
-	defer fake.withMutex.RUnlock()
 	fake.addMutex.RLock()
 	defer fake.addMutex.RUnlock()
+	fake.withMutex.RLock()
+	defer fake.withMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

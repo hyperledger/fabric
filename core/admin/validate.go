@@ -40,7 +40,7 @@ func (v *validator) validate(ctx context.Context, env *common.Envelope) (*peer.A
 	return op, nil
 }
 
-func validateStructure(ctx context.Context, env *common.Envelope) (*peer.AdminOperation, []*common.SignedData, error) {
+func validateStructure(ctx context.Context, env *common.Envelope) (*peer.AdminOperation, []*protoutil.SignedData, error) {
 	if ctx == nil {
 		return nil, nil, errors.New("nil context")
 	}
@@ -66,7 +66,7 @@ func validateStructure(ctx context.Context, env *common.Envelope) (*peer.AdminOp
 		logger.Warningf("Request from %s unauthorized due to incorrect time: %s", addr, reqTs.String())
 		return nil, nil, accessDenied
 	}
-	sd, err := env.AsSignedData()
+	sd, err := protoutil.EnvelopeAsSignedData(env)
 	if err != nil {
 		return nil, nil, errors.Errorf("bad request, cannot extract signed data: %v", err)
 	}

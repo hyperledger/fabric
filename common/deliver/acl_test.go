@@ -126,7 +126,7 @@ var _ = Describe("SessionAccessControl", func() {
 		})
 
 		It("returns an error", func() {
-			_, expectedError := envelope.AsSignedData()
+			_, expectedError := protoutil.EnvelopeAsSignedData(envelope)
 			Expect(expectedError).To(HaveOccurred())
 
 			_, err := deliver.NewSessionAC(fakeChain, envelope, fakePolicyChecker, "chain-id", expiresAt)

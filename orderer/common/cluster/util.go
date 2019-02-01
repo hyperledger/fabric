@@ -204,7 +204,7 @@ type BlockVerifier interface {
 	// based on the given configuration in the ConfigEnvelope.
 	// If the config envelope passed is nil, then the validation rules used
 	// are the ones that were applied at commit of previous blocks.
-	VerifyBlockSignature(sd []*common.SignedData, config *common.ConfigEnvelope) error
+	VerifyBlockSignature(sd []*protoutil.SignedData, config *common.ConfigEnvelope) error
 }
 
 // BlockSequenceVerifier verifies that the given consecutive sequence
@@ -337,7 +337,7 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 }
 
 // SignatureSetFromBlock creates a signature set out of a block.
-func SignatureSetFromBlock(block *common.Block) ([]*common.SignedData, error) {
+func SignatureSetFromBlock(block *common.Block) ([]*protoutil.SignedData, error) {
 	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_SIGNATURES) {
 		return nil, errors.New("no metadata in block")
 	}
@@ -346,7 +346,7 @@ func SignatureSetFromBlock(block *common.Block) ([]*common.SignedData, error) {
 		return nil, errors.Errorf("failed unmarshaling medatata for signatures: %v", err)
 	}
 
-	var signatureSet []*common.SignedData
+	var signatureSet []*protoutil.SignedData
 	for _, metadataSignature := range metadata.Signatures {
 		sigHdr, err := protoutil.GetSignatureHeader(metadataSignature.SignatureHeader)
 		if err != nil {
@@ -354,7 +354,7 @@ func SignatureSetFromBlock(block *common.Block) ([]*common.SignedData, error) {
 				block.Header.Number, err)
 		}
 		signatureSet = append(signatureSet,
-			&common.SignedData{
+			&protoutil.SignedData{
 				Identity: sigHdr.Creator,
 				Data: util.ConcatenateBytes(metadata.Value,
 					metadataSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
@@ -521,7 +521,7 @@ type BlockValidationPolicyVerifier struct {
 }
 
 // VerifyBlockSignature verifies the signed data associated to a block, optionally with the given config envelope.
-func (bv *BlockValidationPolicyVerifier) VerifyBlockSignature(sd []*common.SignedData, envelope *common.ConfigEnvelope) error {
+func (bv *BlockValidationPolicyVerifier) VerifyBlockSignature(sd []*protoutil.SignedData, envelope *common.ConfigEnvelope) error {
 	policyMgr := bv.PolicyMgr
 	// If the envelope passed isn't nil, we should use a different policy manager.
 	if envelope != nil {

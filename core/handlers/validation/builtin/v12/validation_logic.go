@@ -156,7 +156,7 @@ func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.En
 	}
 
 	// construct signed data we can evaluate the instantiation policy against
-	sd := []*common.SignedData{{
+	sd := []*protoutil.SignedData{{
 		Data:      env.Payload,
 		Identity:  shdr.Creator,
 		Signature: env.Signature,
@@ -733,12 +733,12 @@ func (vscc *Validator) getInstantiatedCC(chid, ccid string) (cd *ccprovider.Chai
 	return
 }
 
-func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*common.SignedData, error) {
+func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*protoutil.SignedData, error) {
 	// this is the first part of the signed message
 	prespBytes := cap.Action.ProposalResponsePayload
 
 	// build the signature set for the evaluation
-	signatureSet := []*common.SignedData{}
+	signatureSet := []*protoutil.SignedData{}
 	signatureMap := make(map[string]struct{})
 	// loop through each of the endorsements and build the signature set
 	for _, endorsement := range cap.Action.Endorsements {
@@ -757,7 +757,7 @@ func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*c
 		data := make([]byte, len(prespBytes)+len(endorsement.Endorser))
 		copy(data, prespBytes)
 		copy(data[len(prespBytes):], endorsement.Endorser)
-		signatureSet = append(signatureSet, &common.SignedData{
+		signatureSet = append(signatureSet, &protoutil.SignedData{
 			// set the data that is signed; concatenation of proposal response bytes and endorser ID
 			Data: data,
 			// set the identity that signs the message: it's the endorser

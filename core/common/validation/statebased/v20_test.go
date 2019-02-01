@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/validation/statebased/mocks"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -42,7 +42,7 @@ func Test0(t *testing.T) {
 	rwsb := rwsetutil.NewRWSetBuilder()
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
@@ -73,7 +73,7 @@ func Test1(t *testing.T) {
 	rwsb.AddToWriteSet(cc, key, []byte("value"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
@@ -105,7 +105,7 @@ func Test1Multiple(t *testing.T) {
 	rwsb.AddToWriteSet(cc, key+"1", []byte("value"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.NoError(t, err)
 }
 
@@ -135,7 +135,7 @@ func Test1NoErr(t *testing.T) {
 	rwsb.AddToWriteSet(cc, key, []byte("value"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
@@ -166,7 +166,7 @@ func Test1Err1(t *testing.T) {
 	rwsb.AddToWriteSet(cc, key, []byte("value"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
@@ -197,7 +197,7 @@ func Test1Err2(t *testing.T) {
 	rwsb.AddToWriteSet(cc, key, []byte("value"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCExecutionFailureError{})
 }
@@ -228,7 +228,7 @@ func Test1Meta(t *testing.T) {
 	rwsb.AddToMetadataWriteSet(cc, key, nil)
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
@@ -260,7 +260,7 @@ func Test1MetaMultiple(t *testing.T) {
 	rwsb.AddToMetadataWriteSet(cc, key+"1", nil)
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.NoError(t, err)
 }
 
@@ -291,7 +291,7 @@ func Test2(t *testing.T) {
 	rwsb.AddToWriteSet(cc, key, []byte("value"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
@@ -325,7 +325,7 @@ func Test3(t *testing.T) {
 	rwsb.AddToPvtAndHashedWriteSet(cc, coll, key, []byte("Well I guess you took my youth and gave it all away"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
@@ -359,7 +359,7 @@ func Test3Meta(t *testing.T) {
 	rwsb.AddToHashedMetadataWriteSet(cc, coll, key, nil)
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
@@ -394,7 +394,7 @@ func Test4(t *testing.T) {
 	rwsb.AddToPvtAndHashedWriteSet(cc, coll, key, []byte("Well I guess you took my youth"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
@@ -429,7 +429,7 @@ func Test4Multiple(t *testing.T) {
 	rwsb.AddToPvtAndHashedWriteSet(cc, coll, key+"1", []byte("The Cork and Kerry Mountains"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.NoError(t, err)
 }
 
@@ -461,7 +461,7 @@ func Test4Err(t *testing.T) {
 	rwsb.AddToPvtAndHashedWriteSet(cc, coll, key, []byte("Well I guess you took my youth"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCExecutionFailureError{})
 }
@@ -497,7 +497,7 @@ func Test5(t *testing.T) {
 	rwsb.AddToPvtAndHashedWriteSet(cc, coll, key, []byte("Well I guess you took my youth and gave it all away"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
@@ -531,7 +531,7 @@ func Test6(t *testing.T) {
 	rwsb.AddToPvtAndHashedWriteSet(cc, coll, key, []byte("Well I guess you took my youth and gave it all away"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCExecutionFailureError{})
 }
@@ -565,7 +565,7 @@ func Test7(t *testing.T) {
 	rwsb.AddToPvtAndHashedWriteSet(cc, coll, key, []byte("Well I guess you took my youth and gave it all away"))
 	rws := rwsb.GetTxReadWriteSet()
 
-	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	pb "github.com/hyperledger/fabric/protos/common"
 	mb "github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -151,7 +152,7 @@ func TestSimpleCollectionFilter(t *testing.T) {
 	accessFilter := cap.AccessFilter()
 
 	// check filter: not a member of the collection
-	notMember := pb.SignedData{
+	notMember := protoutil.SignedData{
 		Identity:  []byte{1, 2, 3},
 		Signature: []byte{},
 		Data:      []byte{},
@@ -159,7 +160,7 @@ func TestSimpleCollectionFilter(t *testing.T) {
 	assert.False(t, accessFilter(notMember))
 
 	// check filter: member of the collection
-	member := pb.SignedData{
+	member := protoutil.SignedData{
 		Identity:  signers[0],
 		Signature: []byte{},
 		Data:      []byte{},

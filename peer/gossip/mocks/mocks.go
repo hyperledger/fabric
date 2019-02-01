@@ -25,8 +25,8 @@ import (
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protos/common"
 	mspproto "github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -61,7 +61,7 @@ type Policy struct {
 }
 
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (m *Policy) Evaluate(signatureSet []*common.SignedData) error {
+func (m *Policy) Evaluate(signatureSet []*protoutil.SignedData) error {
 	fmt.Printf("Evaluate [%s], [% x], [% x]\n", string(signatureSet[0].Identity), string(signatureSet[0].Data), string(signatureSet[0].Signature))
 	identity, err := m.Deserializer.DeserializeIdentity(signatureSet[0].Identity)
 	if err != nil {

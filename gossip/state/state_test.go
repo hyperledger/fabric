@@ -407,7 +407,7 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 		Validator:      v,
 		TransientStore: &mockTransientStore{},
 		Committer:      committer,
-	}, pcomm.SignedData{}, gossipMetrics.PrivdataMetrics, coordConfig)
+	}, protoutil.SignedData{}, gossipMetrics.PrivdataMetrics, coordConfig)
 	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, coord, gossipMetrics.StateMetrics, blocking)
 	if sp == nil {
 		gRPCServer.Stop()
@@ -1266,7 +1266,7 @@ type coordinatorMock struct {
 	mock.Mock
 }
 
-func (mock *coordinatorMock) GetPvtDataAndBlockByNum(seqNum uint64, _ pcomm.SignedData) (*pcomm.Block, gutil.PvtDataCollections, error) {
+func (mock *coordinatorMock) GetPvtDataAndBlockByNum(seqNum uint64, _ protoutil.SignedData) (*pcomm.Block, gutil.PvtDataCollections, error) {
 	args := mock.Called(seqNum)
 	return args.Get(0).(*pcomm.Block), args.Get(1).(gutil.PvtDataCollections), args.Error(2)
 }

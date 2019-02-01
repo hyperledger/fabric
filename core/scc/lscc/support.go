@@ -11,7 +11,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -96,7 +95,7 @@ func (s *supportImpl) CheckInstantiationPolicy(signedProp *pb.SignedProposal, ch
 		return err
 	}
 	// construct signed data we can evaluate the instantiation policy against
-	sd := []*common.SignedData{{
+	sd := []*protoutil.SignedData{{
 		Data:      signedProp.ProposalBytes,
 		Identity:  shdr.Creator,
 		Signature: signedProp.Signature,

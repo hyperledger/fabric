@@ -10,15 +10,15 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	common2 "github.com/hyperledger/fabric/protos/common"
 	discprotos "github.com/hyperledger/fabric/protos/discovery"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // AccessControlSupport checks if clients are eligible of being serviced
 type AccessControlSupport interface {
 	// Eligible returns whether the given peer is eligible for receiving
 	// service from the discovery service for a given channel
-	EligibleForService(channel string, data common2.SignedData) error
+	EligibleForService(channel string, data protoutil.SignedData) error
 }
 
 // ConfigSequenceSupport returns the config sequence of the given channel

@@ -165,7 +165,7 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChainID, seqNum uin
 	mcsLogger.Debugf("Got block validation policy for channel [%s] with flag [%t]", channelID, ok)
 
 	// - Prepare SignedData
-	signatureSet := []*pcommon.SignedData{}
+	signatureSet := []*protoutil.SignedData{}
 	for _, metadataSignature := range metadata.Signatures {
 		shdr, err := protoutil.GetSignatureHeader(metadataSignature.SignatureHeader)
 		if err != nil {
@@ -173,7 +173,7 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChainID, seqNum uin
 		}
 		signatureSet = append(
 			signatureSet,
-			&pcommon.SignedData{
+			&protoutil.SignedData{
 				Identity:  shdr.Creator,
 				Data:      util.ConcatenateBytes(metadata.Value, metadataSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
 				Signature: metadataSignature.Signature,
@@ -238,7 +238,7 @@ func (s *MSPMessageCryptoService) VerifyByChannel(chainID common.ChainID, peerId
 	mcsLogger.Debugf("Got reader policy for channel [%s] with flag [%t]", string(chainID), flag)
 
 	return policy.Evaluate(
-		[]*pcommon.SignedData{{
+		[]*protoutil.SignedData{{
 			Data:      message,
 			Identity:  []byte(peerIdentity),
 			Signature: signature,

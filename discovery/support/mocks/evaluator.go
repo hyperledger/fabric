@@ -11,14 +11,14 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/discovery/support/acl"
-	common2 "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 type Evaluator struct {
-	EvaluateStub        func(signatureSet []*common2.SignedData) error
+	EvaluateStub        func(signatureSet []*protoutil.SignedData) error
 	evaluateMutex       sync.RWMutex
 	evaluateArgsForCall []struct {
-		signatureSet []*common2.SignedData
+		signatureSet []*protoutil.SignedData
 	}
 	evaluateReturns struct {
 		result1 error
@@ -30,16 +30,16 @@ type Evaluator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Evaluator) Evaluate(signatureSet []*common2.SignedData) error {
-	var signatureSetCopy []*common2.SignedData
+func (fake *Evaluator) Evaluate(signatureSet []*protoutil.SignedData) error {
+	var signatureSetCopy []*protoutil.SignedData
 	if signatureSet != nil {
-		signatureSetCopy = make([]*common2.SignedData, len(signatureSet))
+		signatureSetCopy = make([]*protoutil.SignedData, len(signatureSet))
 		copy(signatureSetCopy, signatureSet)
 	}
 	fake.evaluateMutex.Lock()
 	ret, specificReturn := fake.evaluateReturnsOnCall[len(fake.evaluateArgsForCall)]
 	fake.evaluateArgsForCall = append(fake.evaluateArgsForCall, struct {
-		signatureSet []*common2.SignedData
+		signatureSet []*protoutil.SignedData
 	}{signatureSetCopy})
 	fake.recordInvocation("Evaluate", []interface{}{signatureSetCopy})
 	fake.evaluateMutex.Unlock()
@@ -58,7 +58,7 @@ func (fake *Evaluator) EvaluateCallCount() int {
 	return len(fake.evaluateArgsForCall)
 }
 
-func (fake *Evaluator) EvaluateArgsForCall(i int) []*common2.SignedData {
+func (fake *Evaluator) EvaluateArgsForCall(i int) []*protoutil.SignedData {
 	fake.evaluateMutex.RLock()
 	defer fake.evaluateMutex.RUnlock()
 	return fake.evaluateArgsForCall[i].signatureSet

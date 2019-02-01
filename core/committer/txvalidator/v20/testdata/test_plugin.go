@@ -10,12 +10,13 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -88,14 +89,14 @@ func (p *SampleValidationPlugin) Validate(block *common.Block, namespace string,
 	assert.Equal(p.t, "SampleOrg", identifier.Mspid)
 	assert.Equal(p.t, "foo", identifier.Id)
 
-	sd := &common.SignedData{
+	sd := &protoutil.SignedData{
 		Signature: txn.Signature,
 		Data:      txn.Data,
 		Identity:  txn.Identity,
 	}
 	// Validate the policy
 	pol := contextData[0].(SerializedPolicy).Bytes()
-	err = p.pe.Evaluate(pol, []*common.SignedData{sd})
+	err = p.pe.Evaluate(pol, []*protoutil.SignedData{sd})
 	if err != nil {
 		return err
 	}

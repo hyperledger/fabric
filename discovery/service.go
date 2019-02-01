@@ -17,8 +17,8 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	common2 "github.com/hyperledger/fabric/gossip/common"
 	discovery2 "github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/discovery"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -107,7 +107,7 @@ func (s *service) processQuery(query *discovery.Query, request *discovery.Signed
 		logger.Warning("got query for channel", query.Channel, "from", addr, "but it doesn't exist")
 		return accessDenied
 	}
-	if err := s.auth.EligibleForService(query.Channel, common.SignedData{
+	if err := s.auth.EligibleForService(query.Channel, protoutil.SignedData{
 		Data:      request.Payload,
 		Signature: request.Signature,
 		Identity:  identity,

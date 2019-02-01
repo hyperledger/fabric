@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -289,7 +290,7 @@ func (f *fetcherMock) fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtData
 	return nil, args.Get(1).(error)
 }
 
-func createcollectionStore(expectedSignedData common.SignedData) *collectionStore {
+func createcollectionStore(expectedSignedData protoutil.SignedData) *collectionStore {
 	return &collectionStore{
 		expectedSignedData: expectedSignedData,
 		policies:           make(map[collectionAccessPolicy]CollectionCriteria),
@@ -298,7 +299,7 @@ func createcollectionStore(expectedSignedData common.SignedData) *collectionStor
 }
 
 type collectionStore struct {
-	expectedSignedData common.SignedData
+	expectedSignedData protoutil.SignedData
 	acceptsAll         bool
 	acceptsNone        bool
 	lenient            bool
@@ -397,7 +398,7 @@ func (cap *collectionAccessPolicy) IsMemberOnlyWrite() bool {
 }
 
 func (cap *collectionAccessPolicy) AccessFilter() privdata.Filter {
-	return func(sd common.SignedData) bool {
+	return func(sd protoutil.SignedData) bool {
 		that, _ := asn1.Marshal(sd)
 		this, _ := asn1.Marshal(cap.cs.expectedSignedData)
 		if hex.EncodeToString(that) != hex.EncodeToString(this) {
@@ -632,7 +633,7 @@ var expectedCommittedPrivateData3 = map[uint64]*ledger.TxPvtData{}
 func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 
-	peerSelfSignedData := common.SignedData{
+	peerSelfSignedData := protoutil.SignedData{
 		Identity:  []byte{0, 1, 2},
 		Signature: []byte{3, 4, 5},
 		Data:      []byte{6, 7, 8},
@@ -763,7 +764,7 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 		it has ns1:c1 in transient store, while it has wrong
 		hash, hence it will fetch ns1:c1 from other peers
 	*/
-	peerSelfSignedData := common.SignedData{
+	peerSelfSignedData := protoutil.SignedData{
 		Identity:  []byte{0, 1, 2},
 		Signature: []byte{3, 4, 5},
 		Data:      []byte{6, 7, 8},
@@ -856,7 +857,7 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 }
 
 func TestCoordinatorStoreBlock(t *testing.T) {
-	peerSelfSignedData := common.SignedData{
+	peerSelfSignedData := protoutil.SignedData{
 		Identity:  []byte{0, 1, 2},
 		Signature: []byte{3, 4, 5},
 		Data:      []byte{6, 7, 8},
@@ -1105,7 +1106,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 func TestProceedWithoutPrivateData(t *testing.T) {
 	// Scenario: we are missing private data (c2 in ns3) and it cannot be obtained from any peer.
 	// Block needs to be committed with missing private data.
-	peerSelfSignedData := common.SignedData{
+	peerSelfSignedData := protoutil.SignedData{
 		Identity:  []byte{0, 1, 2},
 		Signature: []byte{3, 4, 5},
 		Data:      []byte{6, 7, 8},
@@ -1191,7 +1192,7 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 func TestProceedWithInEligiblePrivateData(t *testing.T) {
 	// Scenario: we are missing private data (c2 in ns3) and it cannot be obtained from any peer.
 	// Block needs to be committed with missing private data.
-	peerSelfSignedData := common.SignedData{
+	peerSelfSignedData := protoutil.SignedData{
 		Identity:  []byte{0, 1, 2},
 		Signature: []byte{3, 4, 5},
 		Data:      []byte{6, 7, 8},
@@ -1240,7 +1241,7 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 
 func TestCoordinatorGetBlocks(t *testing.T) {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
-	sd := common.SignedData{
+	sd := protoutil.SignedData{
 		Identity:  []byte{0, 1, 2},
 		Signature: []byte{3, 4, 5},
 		Data:      []byte{6, 7, 8},
@@ -1301,7 +1302,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 func TestPurgeByHeight(t *testing.T) {
 	// Scenario: commit 3000 blocks and ensure that PurgeByHeight is called
 	// at commit of blocks 2000 and 3000 with values of max block to retain of 1000 and 2000
-	peerSelfSignedData := common.SignedData{}
+	peerSelfSignedData := protoutil.SignedData{}
 	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
 
 	var purgeHappened bool
@@ -1350,7 +1351,7 @@ func TestPurgeByHeight(t *testing.T) {
 
 func TestCoordinatorStorePvtData(t *testing.T) {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
-	cs := createcollectionStore(common.SignedData{}).thatAcceptsAll()
+	cs := createcollectionStore(protoutil.SignedData{}).thatAcceptsAll()
 	committer := &mocks.Committer{}
 	store := &mockTransientStore{t: t}
 	store.On("PersistWithConfig", mock.Anything, uint64(5), mock.Anything).
@@ -1362,7 +1363,7 @@ func TestCoordinatorStorePvtData(t *testing.T) {
 		Fetcher:         fetcher,
 		TransientStore:  store,
 		Validator:       &validatorMock{},
-	}, common.SignedData{}, metrics, testConfig)
+	}, protoutil.SignedData{}, metrics, testConfig)
 	pvtData := (&pvtDataFactory{}).addRWSet().addNSRWSet("ns1", "c1").create()
 	// Green path: ledger height can be retrieved from ledger/committer
 	err := coordinator.StorePvtData("tx1", &transientstore2.TxPvtReadWriteSetWithConfigInfo{
@@ -1397,7 +1398,7 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	// transient store or other peers, the test would fail.
 	// Also - we check that at commit time - the coordinator concluded that
 	// no missing private data was found.
-	peerSelfSignedData := common.SignedData{
+	peerSelfSignedData := protoutil.SignedData{
 		Identity:  []byte{0, 1, 2},
 		Signature: []byte{3, 4, 5},
 		Data:      []byte{6, 7, 8},
@@ -1442,7 +1443,7 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 }
 
 func TestCoordinatorMetrics(t *testing.T) {
-	peerSelfSignedData := common.SignedData{
+	peerSelfSignedData := protoutil.SignedData{
 		Identity:  []byte{0, 1, 2},
 		Signature: []byte{3, 4, 5},
 		Data:      []byte{6, 7, 8},

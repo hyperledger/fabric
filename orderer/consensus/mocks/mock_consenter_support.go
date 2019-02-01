@@ -9,6 +9,7 @@ import (
 	msgprocessor "github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	consensus "github.com/hyperledger/fabric/orderer/consensus"
 	common "github.com/hyperledger/fabric/protos/common"
+	protoutil "github.com/hyperledger/fabric/protoutil"
 )
 
 type FakeConsenterSupport struct {
@@ -173,10 +174,10 @@ type FakeConsenterSupport struct {
 		result1 []byte
 		result2 error
 	}
-	VerifyBlockSignatureStub        func([]*common.SignedData, *common.ConfigEnvelope) error
+	VerifyBlockSignatureStub        func([]*protoutil.SignedData, *common.ConfigEnvelope) error
 	verifyBlockSignatureMutex       sync.RWMutex
 	verifyBlockSignatureArgsForCall []struct {
-		arg1 []*common.SignedData
+		arg1 []*protoutil.SignedData
 		arg2 *common.ConfigEnvelope
 	}
 	verifyBlockSignatureReturns struct {
@@ -1016,16 +1017,16 @@ func (fake *FakeConsenterSupport) SignReturnsOnCall(i int, result1 []byte, resul
 	}{result1, result2}
 }
 
-func (fake *FakeConsenterSupport) VerifyBlockSignature(arg1 []*common.SignedData, arg2 *common.ConfigEnvelope) error {
-	var arg1Copy []*common.SignedData
+func (fake *FakeConsenterSupport) VerifyBlockSignature(arg1 []*protoutil.SignedData, arg2 *common.ConfigEnvelope) error {
+	var arg1Copy []*protoutil.SignedData
 	if arg1 != nil {
-		arg1Copy = make([]*common.SignedData, len(arg1))
+		arg1Copy = make([]*protoutil.SignedData, len(arg1))
 		copy(arg1Copy, arg1)
 	}
 	fake.verifyBlockSignatureMutex.Lock()
 	ret, specificReturn := fake.verifyBlockSignatureReturnsOnCall[len(fake.verifyBlockSignatureArgsForCall)]
 	fake.verifyBlockSignatureArgsForCall = append(fake.verifyBlockSignatureArgsForCall, struct {
-		arg1 []*common.SignedData
+		arg1 []*protoutil.SignedData
 		arg2 *common.ConfigEnvelope
 	}{arg1Copy, arg2})
 	fake.recordInvocation("VerifyBlockSignature", []interface{}{arg1Copy, arg2})
@@ -1046,13 +1047,13 @@ func (fake *FakeConsenterSupport) VerifyBlockSignatureCallCount() int {
 	return len(fake.verifyBlockSignatureArgsForCall)
 }
 
-func (fake *FakeConsenterSupport) VerifyBlockSignatureCalls(stub func([]*common.SignedData, *common.ConfigEnvelope) error) {
+func (fake *FakeConsenterSupport) VerifyBlockSignatureCalls(stub func([]*protoutil.SignedData, *common.ConfigEnvelope) error) {
 	fake.verifyBlockSignatureMutex.Lock()
 	defer fake.verifyBlockSignatureMutex.Unlock()
 	fake.VerifyBlockSignatureStub = stub
 }
 
-func (fake *FakeConsenterSupport) VerifyBlockSignatureArgsForCall(i int) ([]*common.SignedData, *common.ConfigEnvelope) {
+func (fake *FakeConsenterSupport) VerifyBlockSignatureArgsForCall(i int) ([]*protoutil.SignedData, *common.ConfigEnvelope) {
 	fake.verifyBlockSignatureMutex.RLock()
 	defer fake.verifyBlockSignatureMutex.RUnlock()
 	argsForCall := fake.verifyBlockSignatureArgsForCall[i]

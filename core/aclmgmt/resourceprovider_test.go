@@ -37,7 +37,7 @@ func (pe *mockPolicyEvaluatorImpl) PolicyRefForAPI(resName string) string {
 	return pe.pmap[resName]
 }
 
-func (pe *mockPolicyEvaluatorImpl) Evaluate(polName string, sd []*common.SignedData) error {
+func (pe *mockPolicyEvaluatorImpl) Evaluate(polName string, sd []*protoutil.SignedData) error {
 	err, ok := pe.peval[polName]
 	if !ok {
 		return PolicyNotFound(polName)

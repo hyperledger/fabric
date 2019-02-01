@@ -12,7 +12,6 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
@@ -85,11 +84,11 @@ func TestCheckPolicyBySignedDataInvalidArgs(t *testing.T) {
 	}
 	pc := &policyChecker{channelPolicyManagerGetter: policyManagerGetter}
 
-	err := pc.CheckPolicyBySignedData("", "admin", []*common.SignedData{{}})
+	err := pc.CheckPolicyBySignedData("", "admin", []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid channel ID name during check policy on signed data. Name must be different from nil.")
 
-	err = pc.CheckPolicyBySignedData("A", "", []*common.SignedData{{}})
+	err = pc.CheckPolicyBySignedData("A", "", []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid policy name during check policy on signed data on channel [A]. Name must be different from nil.")
 
@@ -97,11 +96,11 @@ func TestCheckPolicyBySignedDataInvalidArgs(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid signed data during check policy on channel [A] with policy [admin]")
 
-	err = pc.CheckPolicyBySignedData("B", "admin", []*common.SignedData{{}})
+	err = pc.CheckPolicyBySignedData("B", "admin", []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to get policy manager for channel [B]")
 
-	err = pc.CheckPolicyBySignedData("A", "admin", []*common.SignedData{{}})
+	err = pc.CheckPolicyBySignedData("A", "admin", []*protoutil.SignedData{{}})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed evaluating policy on signed data during check policy on channel [A] with policy [admin]")
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	m "github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -55,8 +56,8 @@ func (sc *SimpleCollection) MaximumPeerCount() int {
 // AccessFilter returns the member filter function that evaluates signed data
 // against the member access policy of this collection
 func (sc *SimpleCollection) AccessFilter() Filter {
-	return func(sd common.SignedData) bool {
-		if err := sc.accessPolicy.Evaluate([]*common.SignedData{&sd}); err != nil {
+	return func(sd protoutil.SignedData) bool {
+		if err := sc.accessPolicy.Evaluate([]*protoutil.SignedData{&sd}); err != nil {
 			return false
 		}
 		return true

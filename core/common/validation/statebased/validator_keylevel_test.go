@@ -25,7 +25,7 @@ type mockPolicyEvaluator struct {
 	EvaluateResByPolicy map[string]error
 }
 
-func (m *mockPolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*common.SignedData) error {
+func (m *mockPolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*protoutil.SignedData) error {
 	if res, ok := m.EvaluateResByPolicy[string(policyBytes)]; ok {
 		return res
 	}

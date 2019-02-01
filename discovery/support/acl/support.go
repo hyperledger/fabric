@@ -10,8 +10,8 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
-	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -39,14 +39,14 @@ type Verifier interface {
 	// under a peer's verification key, but also in the context of a specific channel.
 	// If the verification succeeded, Verify returns nil meaning no error occurred.
 	// If peerIdentity is nil, then the verification fails.
-	VerifyByChannel(channel string, sd *cb.SignedData) error
+	VerifyByChannel(channel string, sd *protoutil.SignedData) error
 }
 
 // Evaluator evaluates signatures.
 // It is used to evaluate signatures for the local MSP
 type Evaluator interface {
 	// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-	Evaluate(signatureSet []*cb.SignedData) error
+	Evaluate(signatureSet []*protoutil.SignedData) error
 }
 
 // DiscoverySupport implements support that is used for service discovery
@@ -64,9 +64,9 @@ func NewDiscoverySupport(v Verifier, e Evaluator, chanConf ChannelConfigGetter) 
 
 // Eligible returns whether the given peer is eligible for receiving
 // service from the discovery service for a given channel
-func (s *DiscoverySupport) EligibleForService(channel string, data cb.SignedData) error {
+func (s *DiscoverySupport) EligibleForService(channel string, data protoutil.SignedData) error {
 	if channel == "" {
-		return s.Evaluate([]*cb.SignedData{&data})
+		return s.Evaluate([]*protoutil.SignedData{&data})
 	}
 	return s.VerifyByChannel(channel, &data)
 }
@@ -132,7 +132,7 @@ type ChannelVerifier struct {
 // under a peer's verification key, but also in the context of a specific channel.
 // If the verification succeeded, Verify returns nil meaning no error occurred.
 // If peerIdentity is nil, then the verification fails.
-func (cv *ChannelVerifier) VerifyByChannel(channel string, sd *cb.SignedData) error {
+func (cv *ChannelVerifier) VerifyByChannel(channel string, sd *protoutil.SignedData) error {
 	mgr, _ := cv.Manager(channel)
 	if mgr == nil {
 		return errors.Errorf("policy manager for channel %s doesn't exist", channel)
@@ -141,5 +141,5 @@ func (cv *ChannelVerifier) VerifyByChannel(channel string, sd *cb.SignedData) er
 	if pol == nil {
 		return errors.New("failed obtaining channel application writers policy")
 	}
-	return pol.Evaluate([]*cb.SignedData{sd})
+	return pol.Evaluate([]*protoutil.SignedData{sd})
 }

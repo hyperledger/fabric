@@ -206,18 +206,18 @@ func isCreatorOfProposalAMember(signedProposal *pb.SignedProposal, collection *S
 	return accessFilter(signedData), nil
 }
 
-func getSignedData(signedProposal *pb.SignedProposal) (common.SignedData, error) {
+func getSignedData(signedProposal *pb.SignedProposal) (protoutil.SignedData, error) {
 	proposal, err := protoutil.GetProposal(signedProposal.ProposalBytes)
 	if err != nil {
-		return common.SignedData{}, err
+		return protoutil.SignedData{}, err
 	}
 
 	creator, _, err := protoutil.GetChaincodeProposalContext(proposal)
 	if err != nil {
-		return common.SignedData{}, err
+		return protoutil.SignedData{}, err
 	}
 
-	return common.SignedData{
+	return protoutil.SignedData{
 		Data:      signedProposal.ProposalBytes,
 		Identity:  creator,
 		Signature: signedProposal.Signature,

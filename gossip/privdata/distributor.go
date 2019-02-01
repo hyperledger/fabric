@@ -28,6 +28,7 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/transientstore"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -193,7 +194,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 	var disseminationPlan []*dissemination
 
 	routingFilter, err := d.gossipAdapter.PeerFilter(gossipCommon.ChainID(d.chainID), func(signature api.PeerSignature) bool {
-		return colFilter(common.SignedData{
+		return colFilter(protoutil.SignedData{
 			Data:      signature.Message,
 			Signature: signature.Signature,
 			Identity:  []byte(signature.PeerIdentity),

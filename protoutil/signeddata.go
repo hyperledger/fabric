@@ -1,47 +1,40 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
-package common
+package protoutil
 
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 // SignedData is used to represent the general triplet required to verify a signature
 // This is intended to be generic across crypto schemes, while most crypto schemes will
 // include the signing identity and a nonce within the Data, this is left to the crypto
-// implementation
+// implementation.
 type SignedData struct {
 	Data      []byte
 	Identity  []byte
 	Signature []byte
 }
 
-// AsSignedData returns the set of signatures for the ConfigUpdateEnvelope as SignedData or an error indicating why this was not possible
-func (ce *ConfigUpdateEnvelope) AsSignedData() ([]*SignedData, error) {
+// ConfigUpdateEnvelopeAsSignedData returns the set of signatures for the
+// ConfigUpdateEnvelope as SignedData or an error indicating why this was not
+// possible.
+func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*SignedData, error) {
 	if ce == nil {
 		return nil, fmt.Errorf("No signatures for nil SignedConfigItem")
 	}
 
 	result := make([]*SignedData, len(ce.Signatures))
 	for i, configSig := range ce.Signatures {
-		sigHeader := &SignatureHeader{}
+		sigHeader := &common.SignatureHeader{}
 		err := proto.Unmarshal(configSig.SignatureHeader, sigHeader)
 		if err != nil {
 			return nil, err
@@ -58,13 +51,14 @@ func (ce *ConfigUpdateEnvelope) AsSignedData() ([]*SignedData, error) {
 	return result, nil
 }
 
-// AsSignedData returns the signatures for the Envelope as SignedData slice of length 1 or an error indicating why this was not possible
-func (env *Envelope) AsSignedData() ([]*SignedData, error) {
+// EnvelopeAsSignedData returns the signatures for the Envelope as SignedData
+// slice of length 1 or an error indicating why this was not possible.
+func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
 	if env == nil {
 		return nil, fmt.Errorf("No signatures for nil Envelope")
 	}
 
-	payload := &Payload{}
+	payload := &common.Payload{}
 	err := proto.Unmarshal(env.Payload, payload)
 	if err != nil {
 		return nil, err
@@ -74,7 +68,7 @@ func (env *Envelope) AsSignedData() ([]*SignedData, error) {
 		return nil, fmt.Errorf("Missing Header")
 	}
 
-	shdr := &SignatureHeader{}
+	shdr := &common.SignatureHeader{}
 	err = proto.Unmarshal(payload.Header.SignatureHeader, shdr)
 	if err != nil {
 		return nil, fmt.Errorf("GetSignatureHeaderFromBytes failed, err %s", err)

@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 )
@@ -29,7 +28,7 @@ type PolicyChecker interface {
 	// CheckPolicyBySignedData checks that the passed signed data is valid with the respect to
 	// passed policy on the passed channel.
 	// If no channel is passed, the method will fail.
-	CheckPolicyBySignedData(channelID, policyName string, sd []*common.SignedData) error
+	CheckPolicyBySignedData(channelID, policyName string, sd []*protoutil.SignedData) error
 
 	// CheckPolicyNoChannel checks that the passed signed proposal is valid with the respect to
 	// passed policy on the local MSP.
@@ -84,7 +83,7 @@ func (p *policyChecker) CheckPolicy(channelID, policyName string, signedProp *pb
 		return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
 	}
 
-	sd := []*common.SignedData{{
+	sd := []*protoutil.SignedData{{
 		Data:      signedProp.ProposalBytes,
 		Identity:  shdr.Creator,
 		Signature: signedProp.Signature,
@@ -143,7 +142,7 @@ func (p *policyChecker) CheckPolicyNoChannel(policyName string, signedProp *pb.S
 
 // CheckPolicyBySignedData checks that the passed signed data is valid with the respect to
 // passed policy on the passed channel.
-func (p *policyChecker) CheckPolicyBySignedData(channelID, policyName string, sd []*common.SignedData) error {
+func (p *policyChecker) CheckPolicyBySignedData(channelID, policyName string, sd []*protoutil.SignedData) error {
 	if channelID == "" {
 		return errors.New("Invalid channel ID name during check policy on signed data. Name must be different from nil.")
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -65,7 +66,7 @@ func New(deserializer msp.IdentityDeserializer, channel string, channelPolicyMan
 	}, nil
 }
 
-func (a *ApplicationPolicyEvaluator) evaluateSignaturePolicy(signaturePolicy *common.SignaturePolicyEnvelope, signatureSet []*common.SignedData) error {
+func (a *ApplicationPolicyEvaluator) evaluateSignaturePolicy(signaturePolicy *common.SignaturePolicyEnvelope, signatureSet []*protoutil.SignedData) error {
 	p, err := a.signaturePolicyProvider.NewPolicy(signaturePolicy)
 	if err != nil {
 		return errors.WithMessage(err, "could not create evaluator for signature policy")
@@ -74,7 +75,7 @@ func (a *ApplicationPolicyEvaluator) evaluateSignaturePolicy(signaturePolicy *co
 	return p.Evaluate(signatureSet)
 }
 
-func (a *ApplicationPolicyEvaluator) evaluateChannelConfigPolicyReference(channelConfigPolicyReference string, signatureSet []*common.SignedData) error {
+func (a *ApplicationPolicyEvaluator) evaluateChannelConfigPolicyReference(channelConfigPolicyReference string, signatureSet []*protoutil.SignedData) error {
 	p, err := a.channelPolicyReferenceProvider.NewPolicy(channelConfigPolicyReference)
 	if err != nil {
 		return errors.WithMessage(err, "could not create evaluator for channel reference policy")
@@ -83,7 +84,7 @@ func (a *ApplicationPolicyEvaluator) evaluateChannelConfigPolicyReference(channe
 	return p.Evaluate(signatureSet)
 }
 
-func (a *ApplicationPolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*common.SignedData) error {
+func (a *ApplicationPolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*protoutil.SignedData) error {
 	p := &peer.ApplicationPolicy{}
 	err := proto.Unmarshal(policyBytes, p)
 	if err != nil {

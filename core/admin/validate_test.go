@@ -15,6 +15,7 @@ import (
 	google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,7 +24,7 @@ type mockEvaluator struct {
 	err error
 }
 
-func (e *mockEvaluator) Evaluate(signatureSet []*common.SignedData) error {
+func (e *mockEvaluator) Evaluate(signatureSet []*protoutil.SignedData) error {
 	return e.err
 }
 
@@ -133,12 +134,12 @@ func TestValidateStructureRequestGoodInput(t *testing.T) {
 	}
 
 	env := validRequest()
-	sd, _ := env.AsSignedData()
+	sd, _ := protoutil.EnvelopeAsSignedData(env)
 
 	op2, sd, err := validateStructure(context.Background(), env)
 	assert.NoError(t, err)
 	assert.Equal(t, op, op2)
-	assert.Equal(t, []*common.SignedData{{
+	assert.Equal(t, []*protoutil.SignedData{{
 		Data:      sd[0].Data,
 		Signature: sd[0].Signature,
 		Identity:  sd[0].Identity,

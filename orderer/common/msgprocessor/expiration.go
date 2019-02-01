@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -40,7 +41,7 @@ func (exp *expirationRejectRule) Apply(message *common.Envelope) error {
 	if !ordererConf.Capabilities().ExpirationCheck() {
 		return nil
 	}
-	signedData, err := message.AsSignedData()
+	signedData, err := protoutil.EnvelopeAsSignedData(message)
 
 	if err != nil {
 		return errors.Errorf("could not convert message to signedData: %s", err)

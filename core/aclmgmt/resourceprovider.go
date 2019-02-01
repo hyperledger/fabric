@@ -36,7 +36,7 @@ func (e InvalidIdInfo) Error() string {
 //policyEvalutor interface provides the interfaces for policy evaluation
 type policyEvaluator interface {
 	PolicyRefForAPI(resName string) string
-	Evaluate(polName string, id []*common.SignedData) error
+	Evaluate(polName string, id []*protoutil.SignedData) error
 }
 
 //policyEvaluatorImpl implements policyEvaluator
@@ -58,7 +58,7 @@ func (pe *policyEvaluatorImpl) PolicyRefForAPI(resName string) string {
 	return pm.PolicyRefForAPI(resName)
 }
 
-func (pe *policyEvaluatorImpl) Evaluate(polName string, sd []*common.SignedData) error {
+func (pe *policyEvaluatorImpl) Evaluate(polName string, sd []*protoutil.SignedData) error {
 	policy, ok := pe.bundle.PolicyManager().GetPolicy(polName)
 	if !ok {
 		return PolicyNotFound(polName)
@@ -94,7 +94,7 @@ func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}
 	aclLogger.Debugf("acl check(%s)", polName)
 
 	//we will implement other identifiers. In the end we just need a SignedData
-	var sd []*common.SignedData
+	var sd []*protoutil.SignedData
 	var err error
 	switch idinfo.(type) {
 	case *pb.SignedProposal:
@@ -115,13 +115,14 @@ func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}
 			return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy [%s]: [%s]", polName, err)
 		}
 
-		sd = []*common.SignedData{{
+		sd = []*protoutil.SignedData{{
 			Data:      signedProp.ProposalBytes,
 			Identity:  shdr.Creator,
 			Signature: signedProp.Signature,
 		}}
 	case *common.Envelope:
-		sd, err = idinfo.(*common.Envelope).AsSignedData()
+		env := idinfo.(*common.Envelope)
+		sd, err = protoutil.EnvelopeAsSignedData(env)
 		if err != nil {
 			return err
 		}

@@ -8,9 +8,9 @@ package statebased
 
 import (
 	commonerrors "github.com/hyperledger/fabric/common/errors"
-	"github.com/hyperledger/fabric/core/handlers/validation/api/policies"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	s "github.com/hyperledger/fabric/core/handlers/validation/api/state"
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -103,7 +103,7 @@ func (p *policyCheckerV20) fetchCollEP(cc, coll string) ([]byte, commonerrors.Tx
 	return collEP, nil
 }
 
-func (p *policyCheckerV20) CheckCCEPIfNotChecked(cc, coll string, blockNum, txNum uint64, sd []*common.SignedData) commonerrors.TxValidationError {
+func (p *policyCheckerV20) CheckCCEPIfNotChecked(cc, coll string, blockNum, txNum uint64, sd []*protoutil.SignedData) commonerrors.TxValidationError {
 	if coll != "" {
 		// at first we check whether we have already evaluated an endorsement
 		// policy for this collection
@@ -147,7 +147,7 @@ func (p *policyCheckerV20) CheckCCEPIfNotChecked(cc, coll string, blockNum, txNu
 	return nil
 }
 
-func (p *policyCheckerV20) CheckCCEPIfNoEPChecked(cc string, blockNum, txNum uint64, sd []*common.SignedData) commonerrors.TxValidationError {
+func (p *policyCheckerV20) CheckCCEPIfNoEPChecked(cc string, blockNum, txNum uint64, sd []*protoutil.SignedData) commonerrors.TxValidationError {
 	if p.someEPChecked {
 		return nil
 	}

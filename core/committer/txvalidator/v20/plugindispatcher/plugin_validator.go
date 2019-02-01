@@ -13,7 +13,7 @@ import (
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/policies"
 	vp "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
-	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
 	p "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -173,7 +174,7 @@ type PolicyEvaluatorWrapper struct {
 }
 
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (id *PolicyEvaluatorWrapper) Evaluate(policyBytes []byte, signatureSet []*common.SignedData) error {
+func (id *PolicyEvaluatorWrapper) Evaluate(policyBytes []byte, signatureSet []*protoutil.SignedData) error {
 	return id.PolicyEvaluator.Evaluate(policyBytes, signatureSet)
 }
 

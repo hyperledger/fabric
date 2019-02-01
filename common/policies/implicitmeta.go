@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -64,7 +65,7 @@ func newImplicitMetaPolicy(data []byte, managers map[string]*ManagerImpl) (*impl
 }
 
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (imp *implicitMetaPolicy) Evaluate(signatureSet []*cb.SignedData) error {
+func (imp *implicitMetaPolicy) Evaluate(signatureSet []*protoutil.SignedData) error {
 	logger.Debugf("This is an implicit meta policy, it will trigger other policy evaluations, whose failures may be benign")
 	remaining := imp.threshold
 

@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -69,7 +70,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 
 	// Scenario I: Policy manager isn't initialized
 	// and thus policy cannot be found
-	err := cs.VerifyBlockSignature([]*common.SignedData{}, nil)
+	err := cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil)
 	assert.EqualError(t, err, "policy /Channel/Orderer/BlockValidation wasn't found")
 
 	// Scenario II: Policy manager finds policy, but it evaluates
@@ -77,21 +78,21 @@ func TestVerifyBlockSignature(t *testing.T) {
 	policyMgr.PolicyMap["/Channel/Orderer/BlockValidation"] = &mockpolicies.Policy{
 		Err: errors.New("invalid signature"),
 	}
-	err = cs.VerifyBlockSignature([]*common.SignedData{}, nil)
+	err = cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil)
 	assert.EqualError(t, err, "block verification failed: invalid signature")
 
 	// Scenario III: Policy manager finds policy, and it evaluates to success
 	policyMgr.PolicyMap["/Channel/Orderer/BlockValidation"] = &mockpolicies.Policy{
 		Err: nil,
 	}
-	assert.NoError(t, cs.VerifyBlockSignature([]*common.SignedData{}, nil))
+	assert.NoError(t, cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil))
 
 	// Scenario IV: A bad config envelope is passed
-	err = cs.VerifyBlockSignature([]*common.SignedData{}, &common.ConfigEnvelope{})
+	err = cs.VerifyBlockSignature([]*protoutil.SignedData{}, &common.ConfigEnvelope{})
 	assert.EqualError(t, err, "channelconfig Config cannot be nil")
 
 	// Scenario V: A valid config envelope is passed
-	assert.NoError(t, cs.VerifyBlockSignature([]*common.SignedData{}, testConfigEnvelope(t)))
+	assert.NoError(t, cs.VerifyBlockSignature([]*protoutil.SignedData{}, testConfigEnvelope(t)))
 
 }
 

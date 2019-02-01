@@ -19,7 +19,7 @@ const TestPolicyName = "TestPolicyName"
 
 type acceptPolicy struct{}
 
-func (rp acceptPolicy) Evaluate(signedData []*cb.SignedData) error {
+func (rp acceptPolicy) Evaluate(signedData []*protoutil.SignedData) error {
 	return nil
 }
 

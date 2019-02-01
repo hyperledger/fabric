@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 const (
@@ -138,12 +139,12 @@ func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idin
 	case *pb.SignedProposal:
 		return d.policyChecker.CheckPolicy(channelID, policy, typedData)
 	case *common.Envelope:
-		sd, err := typedData.AsSignedData()
+		sd, err := protoutil.EnvelopeAsSignedData(typedData)
 		if err != nil {
 			return err
 		}
 		return d.policyChecker.CheckPolicyBySignedData(channelID, policy, sd)
-	case []*common.SignedData:
+	case []*protoutil.SignedData:
 		return d.policyChecker.CheckPolicyBySignedData(channelID, policy, typedData)
 	default:
 		aclLogger.Errorf("Unmapped id on checkACL %s", resName)

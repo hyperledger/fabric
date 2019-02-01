@@ -8,8 +8,8 @@ package statebased
 
 import (
 	commonerrors "github.com/hyperledger/fabric/common/errors"
-	"github.com/hyperledger/fabric/core/handlers/validation/api/policies"
-	"github.com/hyperledger/fabric/protos/common"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -50,7 +50,7 @@ type policyCheckerV13 struct {
 	ccEP          []byte
 }
 
-func (p *policyCheckerV13) checkCCEPIfCondition(cc string, blockNum, txNum uint64, condition bool, sd []*common.SignedData) commonerrors.TxValidationError {
+func (p *policyCheckerV13) checkCCEPIfCondition(cc string, blockNum, txNum uint64, condition bool, sd []*protoutil.SignedData) commonerrors.TxValidationError {
 	if condition {
 		return nil
 	}
@@ -66,11 +66,11 @@ func (p *policyCheckerV13) checkCCEPIfCondition(cc string, blockNum, txNum uint6
 	return nil
 }
 
-func (p *policyCheckerV13) CheckCCEPIfNotChecked(cc, coll string, blockNum, txNum uint64, sd []*common.SignedData) commonerrors.TxValidationError {
+func (p *policyCheckerV13) CheckCCEPIfNotChecked(cc, coll string, blockNum, txNum uint64, sd []*protoutil.SignedData) commonerrors.TxValidationError {
 	return p.checkCCEPIfCondition(cc, blockNum, txNum, p.ccEPChecked, sd)
 }
 
-func (p *policyCheckerV13) CheckCCEPIfNoEPChecked(cc string, blockNum, txNum uint64, sd []*common.SignedData) commonerrors.TxValidationError {
+func (p *policyCheckerV13) CheckCCEPIfNoEPChecked(cc string, blockNum, txNum uint64, sd []*protoutil.SignedData) commonerrors.TxValidationError {
 	return p.checkCCEPIfCondition(cc, blockNum, txNum, p.someEPChecked, sd)
 }
 

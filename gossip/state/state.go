@@ -24,6 +24,7 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/transientstore"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -101,7 +102,7 @@ type ledgerResources interface {
 	// the order of private data in slice of PvtDataCollections doesn't imply the order of
 	// transactions in the block related to these private data, to get the correct placement
 	// need to read TxPvtData.SeqInBlock field
-	GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common.SignedData) (*common.Block, util.PvtDataCollections, error)
+	GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protoutil.SignedData) (*common.Block, util.PvtDataCollections, error)
 
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)
@@ -437,7 +438,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 	for seqNum := request.StartSeqNum; seqNum <= endSeqNum; seqNum++ {
 		logger.Debug("Reading block ", seqNum, " with private data from the coordinator service")
 		connInfo := msg.GetConnectionInfo()
-		peerAuthInfo := common.SignedData{
+		peerAuthInfo := protoutil.SignedData{
 			Data:      connInfo.Auth.SignedData,
 			Signature: connInfo.Auth.Signature,
 			Identity:  connInfo.Identity,

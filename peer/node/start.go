@@ -74,7 +74,6 @@ import (
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	"github.com/hyperledger/fabric/peer/version"
 	cb "github.com/hyperledger/fabric/protos/common"
-	common2 "github.com/hyperledger/fabric/protos/common"
 	discprotos "github.com/hyperledger/fabric/protos/discovery"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/token"
@@ -542,7 +541,7 @@ func localPolicy(policyObject proto.Message) policies.Policy {
 	return policy
 }
 
-func createSelfSignedData() common2.SignedData {
+func createSelfSignedData() protoutil.SignedData {
 	sId := mgmt.GetLocalSigningIdentityOrPanic()
 	msg := make([]byte, 32)
 	sig, err := sId.Sign(msg)
@@ -553,7 +552,7 @@ func createSelfSignedData() common2.SignedData {
 	if err != nil {
 		logger.Panicf("Failed creating self signed data because peer identity couldn't be serialized: %v", err)
 	}
-	return common2.SignedData{
+	return protoutil.SignedData{
 		Data:      msg,
 		Signature: sig,
 		Identity:  peerIdentity,

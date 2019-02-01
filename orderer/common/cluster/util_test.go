@@ -262,8 +262,8 @@ func TestVerifyBlockHash(t *testing.T) {
 }
 
 func TestVerifyBlocks(t *testing.T) {
-	var sigSet1 []*common.SignedData
-	var sigSet2 []*common.SignedData
+	var sigSet1 []*protoutil.SignedData
+	var sigSet2 []*protoutil.SignedData
 
 	configEnvelope1 := &common.ConfigEnvelope{
 		Config: &common.Config{

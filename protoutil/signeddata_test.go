@@ -1,26 +1,18 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
-package common
+package protoutil_test
 
 import (
 	"bytes"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // More duplicate utility which should go away, but the utils are a bit of a mess right now with import cycles
@@ -33,8 +25,8 @@ func marshalOrPanic(msg proto.Message) []byte {
 }
 
 func TestNilConfigEnvelopeAsSignedData(t *testing.T) {
-	var ce *ConfigUpdateEnvelope
-	_, err := ce.AsSignedData()
+	var ce *common.ConfigUpdateEnvelope
+	_, err := protoutil.ConfigUpdateEnvelopeAsSignedData(ce)
 	if err == nil {
 		t.Fatalf("Should have errored trying to convert a nil signed config item to signed data")
 	}
@@ -45,22 +37,22 @@ func TestConfigEnvelopeAsSignedData(t *testing.T) {
 	signatures := [][]byte{[]byte("Signature1"), []byte("Signature2")}
 	identities := [][]byte{[]byte("Identity1"), []byte("Identity2")}
 
-	configSignatures := make([]*ConfigSignature, len(signatures))
+	configSignatures := make([]*common.ConfigSignature, len(signatures))
 	for i := range configSignatures {
-		configSignatures[i] = &ConfigSignature{
-			SignatureHeader: marshalOrPanic(&SignatureHeader{
+		configSignatures[i] = &common.ConfigSignature{
+			SignatureHeader: marshalOrPanic(&common.SignatureHeader{
 				Creator: identities[i],
 			}),
 			Signature: signatures[i],
 		}
 	}
 
-	ce := &ConfigUpdateEnvelope{
+	ce := &common.ConfigUpdateEnvelope{
 		ConfigUpdate: configBytes,
 		Signatures:   configSignatures,
 	}
 
-	signedData, err := ce.AsSignedData()
+	signedData, err := protoutil.ConfigUpdateEnvelopeAsSignedData(ce)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -79,8 +71,8 @@ func TestConfigEnvelopeAsSignedData(t *testing.T) {
 }
 
 func TestNilEnvelopeAsSignedData(t *testing.T) {
-	var env *Envelope
-	_, err := env.AsSignedData()
+	var env *common.Envelope
+	_, err := protoutil.EnvelopeAsSignedData(env)
 	if err == nil {
 		t.Fatalf("Should have errored trying to convert a nil envelope")
 	}
@@ -88,23 +80,23 @@ func TestNilEnvelopeAsSignedData(t *testing.T) {
 
 func TestEnvelopeAsSignedData(t *testing.T) {
 	identity := []byte("Foo")
-	signature := []byte("Bar")
+	sig := []byte("Bar")
 
-	shdrbytes, err := proto.Marshal(&SignatureHeader{Creator: identity})
+	shdrbytes, err := proto.Marshal(&common.SignatureHeader{Creator: identity})
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
 
-	env := &Envelope{
-		Payload: marshalOrPanic(&Payload{
-			Header: &Header{
+	env := &common.Envelope{
+		Payload: marshalOrPanic(&common.Payload{
+			Header: &common.Header{
 				SignatureHeader: shdrbytes,
 			},
 		}),
-		Signature: signature,
+		Signature: sig,
 	}
 
-	signedData, err := env.AsSignedData()
+	signedData, err := protoutil.EnvelopeAsSignedData(env)
 	if err != nil {
 		t.Fatalf("Unexpected error converting envelope to SignedData: %s", err)
 	}
@@ -119,7 +111,7 @@ func TestEnvelopeAsSignedData(t *testing.T) {
 	if !bytes.Equal(signedData[0].Data, env.Payload) {
 		t.Errorf("Wrong data bytes")
 	}
-	if !bytes.Equal(signedData[0].Signature, signature) {
+	if !bytes.Equal(signedData[0].Signature, sig) {
 		t.Errorf("Wrong data bytes")
 	}
 }

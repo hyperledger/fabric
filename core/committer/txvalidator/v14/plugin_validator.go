@@ -13,13 +13,14 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	vp "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
-	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -162,7 +163,7 @@ type PolicyEvaluator struct {
 }
 
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (id *PolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*common.SignedData) error {
+func (id *PolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*protoutil.SignedData) error {
 	pp := cauthdsl.NewPolicyProvider(id.IdentityDeserializer)
 	policy, _, err := pp.NewPolicy(policyBytes)
 	if err != nil {

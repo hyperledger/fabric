@@ -213,7 +213,7 @@ func (cs *ChainSupport) Sequence() uint64 {
 // based on the given configuration in the ConfigEnvelope.
 // If the config envelope passed is nil, then the validation rules used
 // are the ones that were applied at commit of previous blocks.
-func (cs *ChainSupport) VerifyBlockSignature(sd []*cb.SignedData, envelope *cb.ConfigEnvelope) error {
+func (cs *ChainSupport) VerifyBlockSignature(sd []*protoutil.SignedData, envelope *cb.ConfigEnvelope) error {
 	policyMgr := cs.PolicyManager()
 	// If the envelope passed isn't nil, we should use a different policy manager.
 	if envelope != nil {

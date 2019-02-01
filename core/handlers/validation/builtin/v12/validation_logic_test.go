@@ -1733,7 +1733,7 @@ func (c *mockPolicyChecker) CheckPolicy(channelID, policyName string, signedProp
 	return nil
 }
 
-func (c *mockPolicyChecker) CheckPolicyBySignedData(channelID, policyName string, sd []*common.SignedData) error {
+func (c *mockPolicyChecker) CheckPolicyBySignedData(channelID, policyName string, sd []*protoutil.SignedData) error {
 	return nil
 }
 

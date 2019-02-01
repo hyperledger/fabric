@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	fcommon "github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
 )
@@ -159,7 +160,7 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 			logger.Warningf("could not obtain private collection rwset for block %d, because of %s, continue...", blockNum, err)
 			continue
 		}
-		returned = append(returned, p.filterNotEligible(dig2rwSets, wasFetchedFromLedger, fcommon.SignedData{
+		returned = append(returned, p.filterNotEligible(dig2rwSets, wasFetchedFromLedger, protoutil.SignedData{
 			Identity:  message.GetConnectionInfo().Identity,
 			Data:      authInfo.SignedData,
 			Signature: authInfo.Signature,
@@ -535,7 +536,7 @@ func (p *puller) getLatestCollectionConfigRoutingFilter(chaincode string, collec
 
 func (p *puller) getMatchAllRoutingFilter(filt privdata.Filter) (filter.RoutingFilter, error) {
 	routingFilter, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature) bool {
-		return filt(fcommon.SignedData{
+		return filt(protoutil.SignedData{
 			Signature: peerSignature.Signature,
 			Identity:  peerSignature.PeerIdentity,
 			Data:      peerSignature.Message,
@@ -600,7 +601,7 @@ func (p *puller) purgedFilter(dig privdatacommon.DigKey) (filter.RoutingFilter, 
 	}, nil
 }
 
-func (p *puller) filterNotEligible(dig2rwSets Dig2PvtRWSetWithConfig, shouldCheckLatestConfig bool, signedData fcommon.SignedData, endpoint string) []*proto.PvtDataElement {
+func (p *puller) filterNotEligible(dig2rwSets Dig2PvtRWSetWithConfig, shouldCheckLatestConfig bool, signedData protoutil.SignedData, endpoint string) []*proto.PvtDataElement {
 	var returned []*proto.PvtDataElement
 	for d, rwSets := range dig2rwSets {
 		if rwSets == nil {
@@ -648,7 +649,7 @@ func (p *puller) filterNotEligible(dig2rwSets Dig2PvtRWSetWithConfig, shouldChec
 	return returned
 }
 
-func (p *puller) isEligibleByLatestConfig(channel string, collection string, chaincode string, signedData fcommon.SignedData) bool {
+func (p *puller) isEligibleByLatestConfig(channel string, collection string, chaincode string, signedData protoutil.SignedData) bool {
 	cc := fcommon.CollectionCriteria{
 		Channel:    channel,
 		Collection: collection,

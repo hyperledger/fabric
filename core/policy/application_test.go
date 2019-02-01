@@ -45,7 +45,7 @@ func TestComponentIntegrationSignaturePolicyEnv(t *testing.T) {
 	id.On("GetIdentifier").Return(&msp.IdentityIdentifier{Id: "id", Mspid: "msp"})
 	id.On("SatisfiesPrincipal", mock.Anything).Return(nil)
 	id.On("Verify", []byte("batti"), []byte("lei")).Return(nil)
-	err := ev.Evaluate(mspenv, []*common.SignedData{{
+	err := ev.Evaluate(mspenv, []*protoutil.SignedData{{
 		Identity:  []byte("guess who"),
 		Data:      []byte("batti"),
 		Signature: []byte("lei"),

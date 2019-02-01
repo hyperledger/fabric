@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/transientstore"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -174,7 +175,7 @@ func TestDistributor(t *testing.T) {
 	}
 
 	policyMock := &collectionAccessPolicyMock{}
-	policyMock.Setup(1, 2, func(_ common.SignedData) bool {
+	policyMock.Setup(1, 2, func(_ protoutil.SignedData) bool {
 		return true
 	}, []string{"org1", "org2"}, false)
 

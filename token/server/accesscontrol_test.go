@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package server_test
 
 import (
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/token"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/token/server"
 	"github.com/hyperledger/fabric/token/server/mock"
 	. "github.com/onsi/ginkgo"
@@ -60,7 +60,7 @@ var _ = Describe("AccessControl", func() {
 		resourceName, channelID, signedData := fakeACLProvider.CheckACLArgsForCall(0)
 		Expect(resourceName).To(Equal(aclResources.IssueTokens))
 		Expect(channelID).To(Equal("channel-id"))
-		Expect(signedData).To(ConsistOf(&common.SignedData{
+		Expect(signedData).To(ConsistOf(&protoutil.SignedData{
 			Data:      signedCommand.Command,
 			Identity:  []byte("creator"),
 			Signature: []byte("signature"),
@@ -85,7 +85,7 @@ var _ = Describe("AccessControl", func() {
 		resourceName, channelID, signedData := fakeACLProvider.CheckACLArgsForCall(0)
 		Expect(resourceName).To(Equal(aclResources.IssueTokens))
 		Expect(channelID).To(Equal("channel-id"))
-		Expect(signedData).To(ConsistOf(&common.SignedData{
+		Expect(signedData).To(ConsistOf(&protoutil.SignedData{
 			Data:      signedTransferCommand.Command,
 			Identity:  []byte("creator"),
 			Signature: []byte("signature"),
@@ -110,7 +110,7 @@ var _ = Describe("AccessControl", func() {
 		resourceName, channelID, signedData := fakeACLProvider.CheckACLArgsForCall(0)
 		Expect(resourceName).To(Equal(aclResources.IssueTokens))
 		Expect(channelID).To(Equal("channel-id"))
-		Expect(signedData).To(ConsistOf(&common.SignedData{
+		Expect(signedData).To(ConsistOf(&protoutil.SignedData{
 			Data:      signedRedeemCommand.Command,
 			Identity:  []byte("creator"),
 			Signature: []byte("signature"),
@@ -173,7 +173,7 @@ var _ = Describe("AccessControl", func() {
 		resourceName, channelID, signedData := fakeACLProvider.CheckACLArgsForCall(0)
 		Expect(resourceName).To(Equal(aclResources.IssueTokens))
 		Expect(channelID).To(Equal("channel-id"))
-		Expect(signedData).To(ConsistOf(&common.SignedData{
+		Expect(signedData).To(ConsistOf(&protoutil.SignedData{
 			Data:      signedExpectationCommand.Command,
 			Identity:  []byte("creator"),
 			Signature: []byte("signature"),
@@ -209,7 +209,7 @@ var _ = Describe("AccessControl", func() {
 		resourceName, channelID, signedData := fakeACLProvider.CheckACLArgsForCall(0)
 		Expect(resourceName).To(Equal(aclResources.IssueTokens))
 		Expect(channelID).To(Equal("channel-id"))
-		Expect(signedData).To(ConsistOf(&common.SignedData{
+		Expect(signedData).To(ConsistOf(&protoutil.SignedData{
 			Data:      signedExpectationCommand.Command,
 			Identity:  []byte("creator"),
 			Signature: []byte("signature"),

@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -31,7 +32,7 @@ type requestValidator interface {
 type AccessControlEvaluator interface {
 	// Evaluate evaluates the eligibility of the creator of the given SignedData
 	// for being serviced by the admin service
-	Evaluate(signatureSet []*common.SignedData) error
+	Evaluate(signatureSet []*protoutil.SignedData) error
 }
 
 // NewAdminServer creates and returns a Admin service instance.

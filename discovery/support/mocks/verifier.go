@@ -5,15 +5,15 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/discovery/support/acl"
-	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 type Verifier struct {
-	VerifyByChannelStub        func(channel string, sd *cb.SignedData) error
+	VerifyByChannelStub        func(channel string, sd *protoutil.SignedData) error
 	verifyByChannelMutex       sync.RWMutex
 	verifyByChannelArgsForCall []struct {
 		channel string
-		sd      *cb.SignedData
+		sd      *protoutil.SignedData
 	}
 	verifyByChannelReturns struct {
 		result1 error
@@ -25,12 +25,12 @@ type Verifier struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Verifier) VerifyByChannel(channel string, sd *cb.SignedData) error {
+func (fake *Verifier) VerifyByChannel(channel string, sd *protoutil.SignedData) error {
 	fake.verifyByChannelMutex.Lock()
 	ret, specificReturn := fake.verifyByChannelReturnsOnCall[len(fake.verifyByChannelArgsForCall)]
 	fake.verifyByChannelArgsForCall = append(fake.verifyByChannelArgsForCall, struct {
 		channel string
-		sd      *cb.SignedData
+		sd      *protoutil.SignedData
 	}{channel, sd})
 	fake.recordInvocation("VerifyByChannel", []interface{}{channel, sd})
 	fake.verifyByChannelMutex.Unlock()
@@ -49,7 +49,7 @@ func (fake *Verifier) VerifyByChannelCallCount() int {
 	return len(fake.verifyByChannelArgsForCall)
 }
 
-func (fake *Verifier) VerifyByChannelArgsForCall(i int) (string, *cb.SignedData) {
+func (fake *Verifier) VerifyByChannelArgsForCall(i int) (string, *protoutil.SignedData) {
 	fake.verifyByChannelMutex.RLock()
 	defer fake.verifyByChannelMutex.RUnlock()
 	return fake.verifyByChannelArgsForCall[i].channel, fake.verifyByChannelArgsForCall[i].sd

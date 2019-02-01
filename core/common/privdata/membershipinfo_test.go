@@ -12,11 +12,12 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMembershipInfoProvider(t *testing.T) {
-	peerSelfSignedData := common.SignedData{
+	peerSelfSignedData := protoutil.SignedData{
 		Identity:  []byte("peer0"),
 		Signature: []byte{1, 2, 3},
 		Data:      []byte{4, 5, 6},

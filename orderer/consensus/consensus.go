@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // Consenter defines the backing ordering mechanism.
@@ -80,7 +81,7 @@ type ConsenterSupport interface {
 
 	// VerifyBlockSignature verifies a signature of a block with a given optional
 	// configuration (can be nil).
-	VerifyBlockSignature([]*cb.SignedData, *cb.ConfigEnvelope) error
+	VerifyBlockSignature([]*protoutil.SignedData, *cb.ConfigEnvelope) error
 
 	// BlockCutter returns the block cutting helper for this channel.
 	BlockCutter() blockcutter.Receiver

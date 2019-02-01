@@ -18,7 +18,7 @@ package policies
 
 import (
 	"github.com/hyperledger/fabric/common/policies"
-	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // Policy is a mock implementation of the policies.Policy interface
@@ -28,7 +28,7 @@ type Policy struct {
 }
 
 // Evaluate returns the Err set in Policy
-func (p *Policy) Evaluate(signatureSet []*cb.SignedData) error {
+func (p *Policy) Evaluate(signatureSet []*protoutil.SignedData) error {
 	return p.Err
 }
 

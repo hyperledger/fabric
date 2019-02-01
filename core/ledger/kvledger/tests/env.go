@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
@@ -118,7 +118,7 @@ func initLedgerMgmt() {
 	)
 }
 
-func createSelfSignedData() common.SignedData {
+func createSelfSignedData() protoutil.SignedData {
 	sID := mgmt.GetLocalSigningIdentityOrPanic()
 	msg := make([]byte, 32)
 	sig, err := sID.Sign(msg)
@@ -129,7 +129,7 @@ func createSelfSignedData() common.SignedData {
 	if err != nil {
 		logger.Panicf("Failed creating self signed data because peer identity couldn't be serialized: %v", err)
 	}
-	return common.SignedData{
+	return protoutil.SignedData{
 		Data:      msg,
 		Signature: sig,
 		Identity:  peerIdentity,

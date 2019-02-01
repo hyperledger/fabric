@@ -80,7 +80,7 @@ type Coordinator interface {
 	// the order of private data in slice of PvtDataCollections doesn't implies the order of
 	// transactions in the block related to these private data, to get the correct placement
 	// need to read TxPvtData.SeqInBlock field
-	GetPvtDataAndBlockByNum(seqNum uint64, peerAuth common.SignedData) (*common.Block, util.PvtDataCollections, error)
+	GetPvtDataAndBlockByNum(seqNum uint64, peerAuth protoutil.SignedData) (*common.Block, util.PvtDataCollections, error)
 
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)
@@ -117,7 +117,7 @@ type Support struct {
 }
 
 type coordinator struct {
-	selfSignedData common.SignedData
+	selfSignedData protoutil.SignedData
 	Support
 	transientBlockRetention uint64
 	metrics                 *metrics.PrivdataMetrics
@@ -130,7 +130,7 @@ type CoordinatorConfig struct {
 }
 
 // NewCoordinator creates a new instance of coordinator
-func NewCoordinator(support Support, selfSignedData common.SignedData, metrics *metrics.PrivdataMetrics,
+func NewCoordinator(support Support, selfSignedData protoutil.SignedData, metrics *metrics.PrivdataMetrics,
 	config CoordinatorConfig) Coordinator {
 	return &coordinator{Support: support, selfSignedData: selfSignedData,
 		transientBlockRetention: config.TransientBlockRetention, metrics: metrics,
@@ -836,7 +836,7 @@ func (ac aggregatedCollections) asPrivateData() []*ledger.TxPvtData {
 // the order of private data in slice of PvtDataCollections doesn't implies the order of
 // transactions in the block related to these private data, to get the correct placement
 // need to read TxPvtData.SeqInBlock field
-func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common.SignedData) (*common.Block, util.PvtDataCollections, error) {
+func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protoutil.SignedData) (*common.Block, util.PvtDataCollections, error) {
 	blockAndPvtData, err := c.Committer.GetPvtDataAndBlockByNum(seqNum)
 	if err != nil {
 		return nil, nil, err

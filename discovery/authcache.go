@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -22,14 +22,14 @@ const (
 )
 
 var (
-	// asBytes is the function that is used to marshal common.SignedData to bytes
+	// asBytes is the function that is used to marshal protoutil.SignedData to bytes
 	asBytes = asn1.Marshal
 )
 
 type acSupport interface {
 	// Eligible returns whether the given peer is eligible for receiving
 	// service from the discovery service for a given channel
-	EligibleForService(channel string, data common.SignedData) error
+	EligibleForService(channel string, data protoutil.SignedData) error
 
 	// ConfigSequence returns the configuration sequence of the given channel
 	ConfigSequence(channel string) uint64
@@ -64,7 +64,7 @@ func newAuthCache(s acSupport, conf authCacheConfig) *authCache {
 
 // Eligible returns whether the given peer is eligible for receiving
 // service from the discovery service for a given channel
-func (ac *authCache) EligibleForService(channel string, data common.SignedData) error {
+func (ac *authCache) EligibleForService(channel string, data protoutil.SignedData) error {
 	if !ac.conf.enabled {
 		return ac.acSupport.EligibleForService(channel, data)
 	}
@@ -99,7 +99,7 @@ func (ac *authCache) newAccessCache(channel string) *accessCache {
 	}
 }
 
-func (cache *accessCache) EligibleForService(data common.SignedData) error {
+func (cache *accessCache) EligibleForService(data protoutil.SignedData) error {
 	key, err := signedDataToKey(data)
 	if err != nil {
 		logger.Warningf("Failed computing key of signed data: +%v", err)
@@ -187,7 +187,7 @@ func (cache *accessCache) lookup(key string) (cacheHit bool, lookupResult error)
 	return
 }
 
-func signedDataToKey(data common.SignedData) (string, error) {
+func signedDataToKey(data protoutil.SignedData) (string, error) {
 	b, err := asBytes(data)
 	if err != nil {
 		return "", errors.Wrap(err, "failed marshaling signed data")

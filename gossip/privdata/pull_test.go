@@ -30,6 +30,7 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -122,7 +123,7 @@ func (mc *mockCollectionAccess) BlockToLive() uint64 {
 func (mc *mockCollectionAccess) thatMapsTo(peers ...string) *mockCollectionStore {
 	policyLock.Lock()
 	defer policyLock.Unlock()
-	policy2Filter[mc] = func(sd fcommon.SignedData) bool {
+	policy2Filter[mc] = func(sd protoutil.SignedData) bool {
 		for _, peer := range peers {
 			if bytes.Equal(sd.Identity, []byte(peer)) {
 				return true
@@ -311,7 +312,7 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2")
 	factoryMock1 := &collectionAccessFactoryMock{}
 	policyMock1 := &collectionAccessPolicyMock{}
-	policyMock1.Setup(1, 2, func(data fcommon.SignedData) bool {
+	policyMock1.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p2"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock1.On("AccessPolicy", mock.Anything, mock.Anything).Return(policyMock1, nil)
@@ -330,7 +331,7 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p1")
 	factoryMock2 := &collectionAccessFactoryMock{}
 	policyMock2 := &collectionAccessPolicyMock{}
-	policyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
+	policyMock2.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p1"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock2.On("AccessPolicy", mock.Anything, mock.Anything).Return(policyMock2, nil)
@@ -354,7 +355,7 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 
 	factoryMock3 := &collectionAccessFactoryMock{}
 	policyMock3 := &collectionAccessPolicyMock{}
-	policyMock3.Setup(1, 2, func(data fcommon.SignedData) bool {
+	policyMock3.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return false
 	}, []string{"org1", "org2"}, false)
 	factoryMock3.On("AccessPolicy", mock.Anything, mock.Anything).Return(policyMock3, nil)
@@ -459,7 +460,7 @@ func TestPullerPeerNotEligible(t *testing.T) {
 	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2", "p3")
 	factoryMock1 := &collectionAccessFactoryMock{}
 	accessPolicyMock1 := &collectionAccessPolicyMock{}
-	accessPolicyMock1.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock1.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p2")) || bytes.Equal(data.Identity, []byte("p3"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock1.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock1, nil)
@@ -469,7 +470,7 @@ func TestPullerPeerNotEligible(t *testing.T) {
 	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2")
 	factoryMock2 := &collectionAccessFactoryMock{}
 	accessPolicyMock2 := &collectionAccessPolicyMock{}
-	accessPolicyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock2.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p2"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock2.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock2, nil)
@@ -504,7 +505,7 @@ func TestPullerPeerNotEligible(t *testing.T) {
 	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p3")
 	factoryMock3 := &collectionAccessFactoryMock{}
 	accessPolicyMock3 := &collectionAccessPolicyMock{}
-	accessPolicyMock3.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock3.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p3"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock3.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock1, nil)
@@ -525,7 +526,7 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 	gn := &gossipNetwork{}
 	factoryMock1 := &collectionAccessFactoryMock{}
 	accessPolicyMock1 := &collectionAccessPolicyMock{}
-	accessPolicyMock1.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock1.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p2")) || bytes.Equal(data.Identity, []byte("p3"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock1.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock1, nil)
@@ -547,7 +548,7 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 	policyStore = newCollectionStore().withPolicy("col2", uint64(100)).thatMapsTo("p1")
 	factoryMock2 := &collectionAccessFactoryMock{}
 	accessPolicyMock2 := &collectionAccessPolicyMock{}
-	accessPolicyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock2.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p1"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock2.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock2, nil)
@@ -590,7 +591,7 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 	policyStore = newCollectionStore().withPolicy("col3", uint64(100)).thatMapsTo("p1")
 	factoryMock3 := &collectionAccessFactoryMock{}
 	accessPolicyMock3 := &collectionAccessPolicyMock{}
-	accessPolicyMock3.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock3.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p1"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock3.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock3, nil)
@@ -626,7 +627,7 @@ func TestPullerRetries(t *testing.T) {
 	gn := &gossipNetwork{}
 	factoryMock1 := &collectionAccessFactoryMock{}
 	accessPolicyMock1 := &collectionAccessPolicyMock{}
-	accessPolicyMock1.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock1.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p2")) || bytes.Equal(data.Identity, []byte("p3")) ||
 			bytes.Equal(data.Identity, []byte("p4")) ||
 			bytes.Equal(data.Identity, []byte("p5"))
@@ -668,7 +669,7 @@ func TestPullerRetries(t *testing.T) {
 	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2")
 	factoryMock2 := &collectionAccessFactoryMock{}
 	accessPolicyMock2 := &collectionAccessPolicyMock{}
-	accessPolicyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock2.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p2"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock2.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock2, nil)
@@ -680,7 +681,7 @@ func TestPullerRetries(t *testing.T) {
 	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p1")
 	factoryMock3 := &collectionAccessFactoryMock{}
 	accessPolicyMock3 := &collectionAccessPolicyMock{}
-	accessPolicyMock3.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock3.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p1"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock3.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock3, nil)
@@ -692,7 +693,7 @@ func TestPullerRetries(t *testing.T) {
 	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p4")
 	factoryMock4 := &collectionAccessFactoryMock{}
 	accessPolicyMock4 := &collectionAccessPolicyMock{}
-	accessPolicyMock4.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock4.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p4"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock4.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock4, nil)
@@ -704,7 +705,7 @@ func TestPullerRetries(t *testing.T) {
 	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p5")
 	factoryMock5 := &collectionAccessFactoryMock{}
 	accessPolicyMock5 := &collectionAccessPolicyMock{}
-	accessPolicyMock5.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock5.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p5"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock5.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock5, nil)
@@ -732,7 +733,7 @@ func TestPullerPreferEndorsers(t *testing.T) {
 	gn := &gossipNetwork{}
 	factoryMock := &collectionAccessFactoryMock{}
 	accessPolicyMock2 := &collectionAccessPolicyMock{}
-	accessPolicyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock2.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p2")) || bytes.Equal(data.Identity, []byte("p1"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock2, nil)
@@ -830,7 +831,7 @@ func TestPullerFetchReconciledItemsPreferPeersFromOriginalConfig(t *testing.T) {
 	gn := &gossipNetwork{}
 	factoryMock := &collectionAccessFactoryMock{}
 	accessPolicyMock2 := &collectionAccessPolicyMock{}
-	accessPolicyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock2.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p2")) || bytes.Equal(data.Identity, []byte("p1"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock2, nil)
@@ -840,7 +841,7 @@ func TestPullerFetchReconciledItemsPreferPeersFromOriginalConfig(t *testing.T) {
 		thatMapsTo("p1", "p2", "p3", "p4", "p5").
 		withPolicy("col2", uint64(100)).
 		thatMapsTo("p1", "p2").
-		withAccessFilter(func(data fcommon.SignedData) bool {
+		withAccessFilter(func(data protoutil.SignedData) bool {
 			return bytes.Equal(data.Identity, []byte("p3"))
 		})
 
@@ -947,7 +948,7 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 	gn := &gossipNetwork{}
 	factoryMock := &collectionAccessFactoryMock{}
 	accessPolicyMock2 := &collectionAccessPolicyMock{}
-	accessPolicyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
+	accessPolicyMock2.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p1"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock2, nil)
@@ -1059,7 +1060,7 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 	col1, col2 := "testCollectionName1", "testCollectionName2"
 
 	ap := &collectionAccessPolicyMock{}
-	ap.Setup(1, 2, func(data fcommon.SignedData) bool {
+	ap.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p1"))
 	}, []string{"org1", "org2"}, false)
 
@@ -1149,7 +1150,7 @@ func TestPullerMetrics(t *testing.T) {
 	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2")
 	factoryMock1 := &collectionAccessFactoryMock{}
 	policyMock1 := &collectionAccessPolicyMock{}
-	policyMock1.Setup(1, 2, func(data fcommon.SignedData) bool {
+	policyMock1.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p2"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock1.On("AccessPolicy", mock.Anything, mock.Anything).Return(policyMock1, nil)
@@ -1172,7 +1173,7 @@ func TestPullerMetrics(t *testing.T) {
 	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p1")
 	factoryMock2 := &collectionAccessFactoryMock{}
 	policyMock2 := &collectionAccessPolicyMock{}
-	policyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
+	policyMock2.Setup(1, 2, func(data protoutil.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p1"))
 	}, []string{"org1", "org2"}, false)
 	factoryMock2.On("AccessPolicy", mock.Anything, mock.Anything).Return(policyMock2, nil)

@@ -1499,7 +1499,7 @@ type CreatorPolicy struct {
 }
 
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (c *CreatorPolicy) Evaluate(signatureSet []*common.SignedData) error {
+func (c *CreatorPolicy) Evaluate(signatureSet []*protoutil.SignedData) error {
 	for _, value := range c.Creators {
 		if bytes.Compare(signatureSet[0].Identity, value) == 0 {
 			return nil

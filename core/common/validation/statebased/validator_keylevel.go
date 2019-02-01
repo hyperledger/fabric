@@ -21,8 +21,8 @@ import (
 )
 
 type epEvaluator interface {
-	CheckCCEPIfNotChecked(cc, coll string, blockNum, txNum uint64, sd []*common.SignedData) commonerrors.TxValidationError
-	CheckCCEPIfNoEPChecked(cc string, blockNum, txNum uint64, sd []*common.SignedData) commonerrors.TxValidationError
+	CheckCCEPIfNotChecked(cc, coll string, blockNum, txNum uint64, sd []*protoutil.SignedData) commonerrors.TxValidationError
+	CheckCCEPIfNoEPChecked(cc string, blockNum, txNum uint64, sd []*protoutil.SignedData) commonerrors.TxValidationError
 	SBEPChecked()
 }
 
@@ -35,7 +35,7 @@ type baseEvaluator struct {
 	policySupport validation.PolicyEvaluator
 }
 
-func (p *baseEvaluator) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uint64, signatureSet []*common.SignedData) commonerrors.TxValidationError {
+func (p *baseEvaluator) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uint64, signatureSet []*protoutil.SignedData) commonerrors.TxValidationError {
 	// see if there is a key-level validation parameter for this key
 	vp, err := p.vpmgr.GetValidationParameterForKey(cc, coll, key, blockNum, txNum)
 	if err != nil {
@@ -85,7 +85,7 @@ func (p *baseEvaluator) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uin
 	return nil
 }
 
-func (p *baseEvaluator) Evaluate(blockNum, txNum uint64, NsRwSets []*rwsetutil.NsRwSet, ns string, sd []*common.SignedData) commonerrors.TxValidationError {
+func (p *baseEvaluator) Evaluate(blockNum, txNum uint64, NsRwSets []*rwsetutil.NsRwSet, ns string, sd []*protoutil.SignedData) commonerrors.TxValidationError {
 	// iterate over all writes in the rwset
 	for _, nsRWSet := range NsRwSets {
 		// skip other namespaces
@@ -151,7 +151,7 @@ type RWSetPolicyEvaluatorFactory interface {
 }
 
 type RWSetPolicyEvaluator interface {
-	Evaluate(blockNum, txNum uint64, NsRwSets []*rwsetutil.NsRwSet, ns string, sd []*common.SignedData) commonerrors.TxValidationError
+	Evaluate(blockNum, txNum uint64, NsRwSets []*rwsetutil.NsRwSet, ns string, sd []*protoutil.SignedData) commonerrors.TxValidationError
 }
 
 /**********************************************************************************************************/
@@ -245,13 +245,13 @@ func (klv *KeyLevelValidator) PreValidate(txNum uint64, block *common.Block) {
 // Validate implements the function of the StateBasedValidator interface
 func (klv *KeyLevelValidator) Validate(cc string, blockNum, txNum uint64, rwsetBytes, prp, ccEP []byte, endorsements []*peer.Endorsement) commonerrors.TxValidationError {
 	// construct signature set
-	signatureSet := []*common.SignedData{}
+	signatureSet := []*protoutil.SignedData{}
 	for _, endorsement := range endorsements {
 		data := make([]byte, len(prp)+len(endorsement.Endorser))
 		copy(data, prp)
 		copy(data[len(prp):], endorsement.Endorser)
 
-		signatureSet = append(signatureSet, &common.SignedData{
+		signatureSet = append(signatureSet, &protoutil.SignedData{
 			// set the data that is signed; concatenation of proposal response bytes and endorser ID
 			Data: data,
 			// set the identity that signs the message: it's the endorser

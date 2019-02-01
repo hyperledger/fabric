@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
-	"github.com/hyperledger/fabric/core/deliverservice"
+	deliverclient "github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
@@ -24,9 +24,9 @@ import (
 	privdata2 "github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/hyperledger/fabric/protos/common"
 	gproto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/transientstore"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -318,13 +318,13 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	}
 }
 
-func (g *gossipServiceImpl) createSelfSignedData() common.SignedData {
+func (g *gossipServiceImpl) createSelfSignedData() protoutil.SignedData {
 	msg := make([]byte, 32)
 	sig, err := g.mcs.Sign(msg)
 	if err != nil {
 		logger.Panicf("Failed creating self signed data because message signing failed: %v", err)
 	}
-	return common.SignedData{
+	return protoutil.SignedData{
 		Data:      msg,
 		Signature: sig,
 		Identity:  g.peerIdentity,

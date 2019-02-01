@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mb "github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -75,7 +76,7 @@ func toSignedData(data [][]byte, identities [][]byte, signatures [][]byte, deser
 	signedData := make([]IdentityAndSignature, len(data))
 	for i := range signedData {
 		signedData[i] = &deserializeAndVerify{
-			signedData: &cb.SignedData{
+			signedData: &protoutil.SignedData{
 				Data:      data[i],
 				Identity:  identities[i],
 				Signature: signatures[i],
@@ -196,19 +197,19 @@ func TestDeduplicate(t *testing.T) {
 		md := &mockDeserializer{}
 		ids := []IdentityAndSignature{
 			&deserializeAndVerify{
-				signedData: &cb.SignedData{
+				signedData: &protoutil.SignedData{
 					Identity: []byte("id1"),
 				},
 				deserializer: md,
 			},
 			&deserializeAndVerify{
-				signedData: &cb.SignedData{
+				signedData: &protoutil.SignedData{
 					Identity: []byte("id2"),
 				},
 				deserializer: md,
 			},
 			&deserializeAndVerify{
-				signedData: &cb.SignedData{
+				signedData: &protoutil.SignedData{
 					Identity: []byte("id3"),
 				},
 				deserializer: md,
@@ -222,7 +223,7 @@ func TestDeduplicate(t *testing.T) {
 		md := &mockDeserializer{}
 		ids := []IdentityAndSignature{
 			&deserializeAndVerify{
-				signedData: &cb.SignedData{
+				signedData: &protoutil.SignedData{
 					Identity: []byte("id1"),
 				},
 				deserializer: md,
@@ -236,13 +237,13 @@ func TestDeduplicate(t *testing.T) {
 		md := &mockDeserializer{}
 		ids := []IdentityAndSignature{
 			&deserializeAndVerify{
-				signedData: &cb.SignedData{
+				signedData: &protoutil.SignedData{
 					Identity: []byte("id1"),
 				},
 				deserializer: md,
 			},
 			&deserializeAndVerify{
-				signedData: &cb.SignedData{
+				signedData: &protoutil.SignedData{
 					Identity: []byte("id2"),
 				},
 				deserializer: md,
@@ -256,19 +257,19 @@ func TestDeduplicate(t *testing.T) {
 		md := &mockDeserializer{}
 		ids := []IdentityAndSignature{
 			&deserializeAndVerify{
-				signedData: &cb.SignedData{
+				signedData: &protoutil.SignedData{
 					Identity: []byte("id1"),
 				},
 				deserializer: md,
 			},
 			&deserializeAndVerify{
-				signedData: &cb.SignedData{
+				signedData: &protoutil.SignedData{
 					Identity: []byte("id2"),
 				},
 				deserializer: md,
 			},
 			&deserializeAndVerify{
-				signedData: &cb.SignedData{
+				signedData: &protoutil.SignedData{
 					Identity: []byte("id3"),
 				},
 				deserializer: md,
@@ -282,7 +283,7 @@ func TestDeduplicate(t *testing.T) {
 		md := &mockDeserializer{fail: errors.New("error")}
 		ids := []IdentityAndSignature{
 			&deserializeAndVerify{
-				signedData: &cb.SignedData{
+				signedData: &protoutil.SignedData{
 					Identity: []byte("id1"),
 				},
 				deserializer: md,
