@@ -36,22 +36,6 @@ type Prover struct {
 	TMSManager        TMSManager
 }
 
-// NewProver creates a Prover
-func NewProver(policyChecker PolicyChecker, signingIdentity SignerIdentity) (*Prover, error) {
-	responseMarshaler, err := NewResponseMarshaler(signingIdentity)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Prover{
-		Marshaler:     responseMarshaler,
-		PolicyChecker: policyChecker,
-		TMSManager: &Manager{
-			LedgerManager: &PeerLedgerManager{},
-		},
-	}, nil
-}
-
 func (s *Prover) ProcessCommand(ctx context.Context, sc *token.SignedCommand) (*token.SignedCommandResponse, error) {
 	command, err := UnmarshalCommand(sc.Command)
 	if err != nil {
