@@ -9,6 +9,7 @@ package cluster_test
 import (
 	"context"
 	"io"
+	"sync"
 	"testing"
 	"time"
 
@@ -56,20 +57,28 @@ func TestRPCChangeDestination(t *testing.T) {
 	client2.On("Step", mock.Anything).Return(streamToNode2, nil).Once()
 
 	rpc := &cluster.RPC{
+		Logger:        flogging.MustGetLogger("test"),
 		Timeout:       time.Hour,
 		StreamsByType: cluster.NewStreamsByType(),
 		Channel:       "mychannel",
 		Comm:          comm,
 	}
 
-	streamToNode1.On("Send", mock.Anything).Return(nil).Once()
-	streamToNode2.On("Send", mock.Anything).Return(nil).Once()
+	var sent sync.WaitGroup
+	sent.Add(2)
+
+	signalSent := func(_ mock.Arguments) {
+		sent.Done()
+	}
+	streamToNode1.On("Send", mock.Anything).Return(nil).Run(signalSent).Once()
+	streamToNode2.On("Send", mock.Anything).Return(nil).Run(signalSent).Once()
 	streamToNode1.On("Recv").Return(nil, io.EOF)
 	streamToNode2.On("Recv").Return(nil, io.EOF)
 
 	rpc.SendSubmit(1, &orderer.SubmitRequest{Channel: "mychannel"})
 	rpc.SendSubmit(2, &orderer.SubmitRequest{Channel: "mychannel"})
 
+	sent.Wait()
 	streamToNode1.AssertNumberOfCalls(t, "Send", 1)
 	streamToNode2.AssertNumberOfCalls(t, "Send", 1)
 }
@@ -100,13 +109,23 @@ func TestSend(t *testing.T) {
 	client := &mocks.ClusterClient{}
 
 	resetMocks := func() {
+		// When a mock invokes a method from a different goroutine,
+		// it records this invocation. However - we overwrite the recording
+		// in this function.
+
+		// Call a setter method on the mock, so it will
+		// lock itself and thus synchronize the recordings
+		// being done by goroutines from previous test cases.
+
+		stream.Mock.On("bla")
 		stream.Mock = mock.Mock{}
 		client.Mock = mock.Mock{}
 		comm.Mock = mock.Mock{}
 	}
 
 	submit := func(rpc *cluster.RPC) error {
-		return rpc.SendSubmit(1, submitRequest)
+		err := rpc.SendSubmit(1, submitRequest)
+		return err
 	}
 
 	step := func(rpc *cluster.RPC) error {
@@ -119,7 +138,7 @@ func TestSend(t *testing.T) {
 		sendReturns    interface{}
 		sendCalledWith *orderer.StepRequest
 		receiveReturns []interface{}
-		submitReturns  []interface{}
+		stepReturns    []interface{}
 		remoteError    error
 		expectedErr    string
 	}{
@@ -127,7 +146,7 @@ func TestSend(t *testing.T) {
 			name:           "Send and Receive submit succeed",
 			method:         submit,
 			sendReturns:    nil,
-			submitReturns:  []interface{}{stream, nil},
+			stepReturns:    []interface{}{stream, nil},
 			receiveReturns: []interface{}{submitResponse, nil},
 			sendCalledWith: submitReq,
 		},
@@ -135,52 +154,63 @@ func TestSend(t *testing.T) {
 			name:           "Send step succeed",
 			method:         step,
 			sendReturns:    nil,
-			submitReturns:  []interface{}{stream, nil},
+			stepReturns:    []interface{}{stream, nil},
 			sendCalledWith: consensusReq,
 		},
 		{
-			name:          "Send submit fails",
-			method:        submit,
-			sendReturns:   errors.New("oops"),
-			submitReturns: []interface{}{stream, nil},
-			expectedErr:   "oops",
+			name:           "Send submit fails",
+			method:         submit,
+			sendReturns:    errors.New("oops"),
+			stepReturns:    []interface{}{stream, nil},
+			sendCalledWith: submitReq,
+			expectedErr:    "stream is aborted",
 		},
 		{
-			name:          "Send step fails",
-			method:        step,
-			sendReturns:   errors.New("oops"),
-			submitReturns: []interface{}{stream, nil},
-			expectedErr:   "oops",
+			name:           "Send step fails",
+			method:         step,
+			sendReturns:    errors.New("oops"),
+			stepReturns:    []interface{}{stream, nil},
+			sendCalledWith: consensusReq,
+			expectedErr:    "stream is aborted",
 		},
 		{
-			name:          "Remote() fails",
-			method:        submit,
-			remoteError:   errors.New("timed out"),
-			submitReturns: []interface{}{stream, nil},
-			expectedErr:   "timed out",
+			name:        "Remote() fails",
+			method:      submit,
+			remoteError: errors.New("timed out"),
+			stepReturns: []interface{}{stream, nil},
+			expectedErr: "timed out",
 		},
 		{
-			name:          "Submit fails with Send",
-			method:        submit,
-			submitReturns: []interface{}{nil, errors.New("deadline exceeded")},
-			expectedErr:   "deadline exceeded",
+			name:        "Submit fails with Send",
+			method:      submit,
+			stepReturns: []interface{}{nil, errors.New("deadline exceeded")},
+			expectedErr: "deadline exceeded",
 		},
 	} {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			isSend := testCase.receiveReturns == nil
 			defer resetMocks()
+			var sent sync.WaitGroup
+			sent.Add(1)
+
 			stream.On("Context", mock.Anything).Return(context.Background())
-			stream.On("Send", mock.Anything).Return(testCase.sendReturns)
+			stream.On("Send", mock.Anything).Run(func(_ mock.Arguments) {
+				sent.Done()
+			}).Return(testCase.sendReturns)
 			stream.On("Recv").Return(testCase.receiveReturns...)
-			client.On("Step", mock.Anything).Return(testCase.submitReturns...)
-			comm.On("Remote", "mychannel", uint64(1)).Return(&cluster.RemoteContext{
-				Logger:    flogging.MustGetLogger("test"),
-				ProbeConn: func(_ *grpc.ClientConn) error { return nil },
-				Client:    client,
-			}, testCase.remoteError)
+			client.On("Step", mock.Anything).Return(testCase.stepReturns...)
+			rm := &cluster.RemoteContext{
+				SendBuffSize: 1,
+				Logger:       flogging.MustGetLogger("test"),
+				ProbeConn:    func(_ *grpc.ClientConn) error { return nil },
+				Client:       client,
+			}
+			defer rm.Abort()
+			comm.On("Remote", "mychannel", uint64(1)).Return(rm, testCase.remoteError)
 
 			rpc := &cluster.RPC{
+				Logger:        flogging.MustGetLogger("test"),
 				Timeout:       time.Hour,
 				StreamsByType: cluster.NewStreamsByType(),
 				Channel:       "mychannel",
@@ -190,17 +220,26 @@ func TestSend(t *testing.T) {
 			var err error
 
 			err = testCase.method(rpc)
+			if testCase.remoteError == nil && testCase.stepReturns[1] == nil {
+				sent.Wait()
+				sent.Add(1)
+			}
 
-			if testCase.expectedErr == "" {
+			if testCase.stepReturns[1] == nil && testCase.remoteError == nil {
 				assert.NoError(t, err)
 			} else {
 				assert.EqualError(t, err, testCase.expectedErr)
 			}
+
 			if testCase.remoteError == nil && testCase.expectedErr == "" && isSend {
 				stream.AssertCalled(t, "Send", testCase.sendCalledWith)
 				// Ensure that if we succeeded - only 1 stream was created despite 2 calls
 				// to Send() were made
 				err := testCase.method(rpc)
+				if testCase.expectedErr == "" {
+					sent.Wait()
+				}
+
 				assert.NoError(t, err)
 				stream.AssertNumberOfCalls(t, "Send", 2)
 				client.AssertNumberOfCalls(t, "Step", 1)
@@ -228,11 +267,16 @@ func TestRPCGarbageCollection(t *testing.T) {
 		ProbeConn: func(_ *grpc.ClientConn) error { return nil },
 	}
 
+	var sent sync.WaitGroup
+
 	defineMocks := func(destination uint64) {
+		sent.Add(1)
 		comm.On("Remote", "mychannel", destination).Return(remote, nil)
 		stream.On("Context", mock.Anything).Return(context.Background())
 		client.On("Step", mock.Anything).Return(stream, nil).Once()
-		stream.On("Send", mock.Anything).Return(nil).Once()
+		stream.On("Send", mock.Anything).Return(nil).Once().Run(func(_ mock.Arguments) {
+			sent.Done()
+		})
 		stream.On("Recv").Return(nil, nil)
 	}
 
@@ -249,6 +293,8 @@ func TestRPCGarbageCollection(t *testing.T) {
 	defineMocks(1)
 
 	rpc.SendSubmit(1, &orderer.SubmitRequest{Channel: "mychannel"})
+	// Wait for the message to arrive
+	sent.Wait()
 	// Ensure the stream is initialized in the mapping
 	assert.Len(t, mapping[cluster.SubmitOperation], 1)
 	assert.Equal(t, uint64(1), mapping[cluster.SubmitOperation][1].ID)
