@@ -45,6 +45,16 @@ func TestSpawnEtcdRaft(t *testing.T) {
 
 	defer gexec.CleanupBuildArtifacts()
 
+	t.Run("EtcdRaft launch failure", func(t *testing.T) {
+		testEtcdRaftOSNFailure(gt, tempDir, orderer, fabricRootDir)
+	})
+
+	t.Run("EtcdRaft launch success", func(t *testing.T) {
+		testEtcdRaftOSNSuccess(gt, tempDir, configtxgen, cwd, orderer, fabricRootDir)
+	})
+}
+
+func testEtcdRaftOSNSuccess(gt *GomegaWithT, tempDir, configtxgen, cwd, orderer, fabricRootDir string) {
 	// Create the genesis block for the system channel
 	genesisBlockPath := filepath.Join(tempDir, "genesis.block")
 	cmd := exec.Command(configtxgen, "-channelID", "system", "-profile", "SampleDevModeEtcdRaft",
@@ -57,7 +67,7 @@ func TestSpawnEtcdRaft(t *testing.T) {
 	gt.Expect(configtxgenProcess.Err).To(gbytes.Say("Writing genesis block"))
 
 	// Launch the OSN
-	ordererProcess := launchOrderer(gt, cmd, orderer, tempDir, genesisBlockPath, fabricRootDir)
+	ordererProcess := launchOrderer(gt, orderer, tempDir, genesisBlockPath, fabricRootDir)
 	defer ordererProcess.Kill()
 	// General.Cluster.ReplicationMaxRetries is not specified in the orderer.yaml, so let's ensure
 	// it is really configured autonomously via the localconfig code.
@@ -68,12 +78,31 @@ func TestSpawnEtcdRaft(t *testing.T) {
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("becomeLeader"))
 }
 
-func launchOrderer(gt *GomegaWithT, cmd *exec.Cmd, orderer, tempDir, genesisBlockPath, fabricRootDir string) *gexec.Session {
+func testEtcdRaftOSNFailure(gt *GomegaWithT, tempDir, orderer, fabricRootDir string) {
+	// Grab an application channel genesis block
+	genesisBlockPath := filepath.Join(filepath.Join("testdata", "mychannel.block"))
+	genesisBlockBytes, err := ioutil.ReadFile(genesisBlockPath)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	// Copy it to the designated location in the temporary folder
+	genesisBlockPath = filepath.Join(tempDir, "genesis.block")
+	err = ioutil.WriteFile(genesisBlockPath, genesisBlockBytes, 0644)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	// Launch the OSN
+	ordererProcess := launchOrderer(gt, orderer, tempDir, genesisBlockPath, fabricRootDir)
+	defer ordererProcess.Kill()
+
+	expectedErr := "Failed validating bootstrap block: the block isn't a system channel block because it lacks ConsortiumsConfig"
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say(expectedErr))
+}
+
+func launchOrderer(gt *GomegaWithT, orderer, tempDir, genesisBlockPath, fabricRootDir string) *gexec.Session {
 	cwd, err := filepath.Abs(".")
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// Launch the orderer process
-	cmd = exec.Command(orderer)
+	cmd := exec.Command(orderer)
 	cmd.Env = []string{
 		"ORDERER_GENERAL_LISTENPORT=5611",
 		"ORDERER_GENERAL_GENESISMETHOD=file",

@@ -94,6 +94,10 @@ func Main() {
 // Start provides a layer of abstraction for benchmark test
 func Start(cmd string, conf *localconfig.TopLevel) {
 	bootstrapBlock := extractBootstrapBlock(conf)
+	if err := ValidateBootstrapBlock(bootstrapBlock); err != nil {
+		logger.Panicf("Failed validating bootstrap block: %v", err)
+	}
+
 	clusterType := isClusterType(bootstrapBlock)
 	signer := localmsp.NewSigner()
 
