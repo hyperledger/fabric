@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 )
 
@@ -65,6 +66,10 @@ const (
 
 // Consensus passes the given ConsensusRequest message to the raft.Node instance.
 func (s *RPC) SendConsensus(destination uint64, msg *orderer.ConsensusRequest) error {
+	if s.Logger.IsEnabledFor(zapcore.DebugLevel) {
+		defer s.consensusSent(time.Now(), destination, msg)
+	}
+
 	stream, err := s.getOrCreateStream(destination, ConsensusOperation)
 	if err != nil {
 		return err
@@ -89,6 +94,10 @@ func (s *RPC) SendConsensus(destination uint64, msg *orderer.ConsensusRequest) e
 
 // SendSubmit sends a SubmitRequest to the given destination node.
 func (s *RPC) SendSubmit(destination uint64, request *orderer.SubmitRequest) error {
+	if s.Logger.IsEnabledFor(zapcore.DebugLevel) {
+		defer s.submitSent(time.Now(), destination, request)
+	}
+
 	stream, err := s.getOrCreateStream(destination, SubmitOperation)
 	if err != nil {
 		return err
@@ -110,6 +119,14 @@ func (s *RPC) SendSubmit(destination uint64, request *orderer.SubmitRequest) err
 	return err
 }
 
+func (s *RPC) submitSent(start time.Time, to uint64, msg *orderer.SubmitRequest) {
+	s.Logger.Debugf("Sending msg of %d bytes to %d on channel %s took %v", submitMsgLength(msg), to, s.Channel, time.Since(start))
+}
+
+func (s *RPC) consensusSent(start time.Time, to uint64, msg *orderer.ConsensusRequest) {
+	s.Logger.Debugf("Sending msg of %d bytes to %d on channel %s took %v", len(msg.Payload), to, s.Channel, time.Since(start))
+}
+
 // getProposeStream obtains a Submit stream for the given destination node
 func (s *RPC) getOrCreateStream(destination uint64, operationType OperationType) (orderer.Cluster_StepClient, error) {
 	stream := s.getStream(destination, operationType)
@@ -122,7 +139,7 @@ func (s *RPC) getOrCreateStream(destination uint64, operationType OperationType)
 	}
 	stream, err = stub.NewStream(s.Timeout)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	s.mapStream(destination, stream, operationType)
 	return stream, nil
@@ -155,4 +172,11 @@ func (s *RPC) cleanCanceledStreams(operationType OperationType) {
 		s.Logger.Infof("Removing stream %d to %d for channel %s because it is canceled", stream.ID, destination, s.Channel)
 		delete(s.StreamsByType[operationType], destination)
 	}
+}
+
+func submitMsgLength(request *orderer.SubmitRequest) int {
+	if request.Payload == nil {
+		return 0
+	}
+	return len(request.Payload.Payload)
 }
