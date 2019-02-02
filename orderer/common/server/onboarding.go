@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
@@ -19,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -309,4 +312,32 @@ func (vl *verifierLoader) loadVerifiers() verifiersByChannel {
 	}
 
 	return res
+}
+
+// ValidateBootstrapBlock returns whether this block can be used as a bootstrap block.
+// A bootstrap block is a block of a system channel, and needs to have a ConsortiumsConfig.
+func ValidateBootstrapBlock(block *common.Block) error {
+	if block == nil {
+		return errors.New("nil block")
+	}
+
+	if block.Data == nil || len(block.Data.Data) == 0 {
+		return errors.New("empty block data")
+	}
+
+	firstTransaction := &common.Envelope{}
+	if err := proto.Unmarshal(block.Data.Data[0], firstTransaction); err != nil {
+		return errors.Wrap(err, "failed extracting envelope from block")
+	}
+
+	bundle, err := channelconfig.NewBundleFromEnvelope(firstTransaction)
+	if err != nil {
+		return err
+	}
+
+	_, exists := bundle.ConsortiumsConfig()
+	if !exists {
+		return errors.New("the block isn't a system channel block because it lacks ConsortiumsConfig")
+	}
+	return nil
 }
