@@ -21,6 +21,8 @@ import (
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
@@ -320,7 +322,13 @@ func NewApplicationOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, 
 			Port: int32(anchorPeer.Port),
 		})
 	}
-	addValue(applicationOrgGroup, channelconfig.AnchorPeersValue(anchorProtos), channelconfig.AdminsPolicyKey)
+
+	// Avoid adding an unnecessary anchor peers element when one is not required.  This helps
+	// prevent a delta from the orderer system channel when computing more complex channel
+	// creation transactions
+	if len(anchorProtos) > 0 {
+		addValue(applicationOrgGroup, channelconfig.AnchorPeersValue(anchorProtos), channelconfig.AdminsPolicyKey)
+	}
 
 	applicationOrgGroup.ModPolicy = channelconfig.AdminsPolicyKey
 	return applicationOrgGroup, nil
@@ -420,14 +428,80 @@ func DefaultConfigTemplate(conf *genesisconfig.Profile) (*cb.ConfigGroup, error)
 	return channelGroup, nil
 }
 
-// MakeChannelCreationTransaction is a handy utility function for creating transactions for channel creation
-func MakeChannelCreationTransaction(channelID string, signer crypto.LocalSigner, conf *genesisconfig.Profile) (*cb.Envelope, error) {
-	defaultTemplate, err := DefaultConfigTemplate(conf)
-	if err != nil {
-		return nil, errors.WithMessage(err, "default template config generation failed")
+func ConfigTemplateFromGroup(conf *genesisconfig.Profile, cg *cb.ConfigGroup) (*cb.ConfigGroup, error) {
+	template := proto.Clone(cg).(*cb.ConfigGroup)
+	if template.Groups == nil {
+		return nil, errors.Errorf("supplied system channel group has no sub-groups")
 	}
 
-	newChannelConfigUpdate, err := NewChannelCreateConfigUpdate(channelID, conf, defaultTemplate)
+	template.Groups[channelconfig.ApplicationGroupKey] = &cb.ConfigGroup{
+		Groups: map[string]*cb.ConfigGroup{},
+	}
+
+	consortiums, ok := template.Groups[channelconfig.ConsortiumsGroupKey]
+	if !ok {
+		return nil, errors.Errorf("supplied system channel group does not appear to be system channel (missing consortiums group)")
+	}
+
+	if consortiums.Groups == nil {
+		return nil, errors.Errorf("system channel consortiums group appears to have no consortiums defined")
+	}
+
+	consortium, ok := consortiums.Groups[conf.Consortium]
+	if !ok {
+		return nil, errors.Errorf("supplied system channel group is missing '%s' consortium", conf.Consortium)
+	}
+
+	if conf.Application == nil {
+		return nil, errors.Errorf("supplied channel creation profile does not contain an application section")
+	}
+
+	for _, organization := range conf.Application.Organizations {
+		var ok bool
+		template.Groups[channelconfig.ApplicationGroupKey].Groups[organization.Name], ok = consortium.Groups[organization.Name]
+		if !ok {
+			return nil, errors.Errorf("consortium %s does not contain member org %s", conf.Consortium, organization.Name)
+		}
+	}
+	delete(template.Groups, channelconfig.ConsortiumsGroupKey)
+
+	addValue(template, channelconfig.ConsortiumValue(conf.Consortium), channelconfig.AdminsPolicyKey)
+
+	return template, nil
+}
+
+// MakeChannelCreationTransaction is a handy utility function for creating transactions for channel creation.
+// It assumes the invoker has no system channel context so ignores all but the application section.
+func MakeChannelCreationTransaction(channelID string, signer crypto.LocalSigner, conf *genesisconfig.Profile) (*cb.Envelope, error) {
+	template, err := DefaultConfigTemplate(conf)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not generate default config template")
+	}
+	return MakeChannelCreationTransactionFromTemplate(channelID, signer, conf, template)
+}
+
+// MakeChannelCreationTransactionWithSystemChannelContext is a utility function for creating channel creation txes.
+// It requires a configuration representing the orderer system channel to allow more sophisticated channel creation
+// transactions modifying pieces of the configuration like the orderer set.
+func MakeChannelCreationTransactionWithSystemChannelContext(channelID string, signer crypto.LocalSigner, conf, systemChannelConf *genesisconfig.Profile) (*cb.Envelope, error) {
+	cg, err := NewChannelGroup(systemChannelConf)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not parse system channel config")
+	}
+
+	template, err := ConfigTemplateFromGroup(conf, cg)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not create config template")
+	}
+
+	return MakeChannelCreationTransactionFromTemplate(channelID, signer, conf, template)
+}
+
+// MakeChannelCreationTransactionFromTemplate creates a transaction for creating a channel.  It uses
+// the given template to produce the config update set.  Usually, the caller will want to invoke
+// MakeChannelCreationTransaction or MakeChannelCreationTransactionWithSystemChannelContext.
+func MakeChannelCreationTransactionFromTemplate(channelID string, signer crypto.LocalSigner, conf *genesisconfig.Profile, template *cb.ConfigGroup) (*cb.Envelope, error) {
+	newChannelConfigUpdate, err := NewChannelCreateConfigUpdate(channelID, conf, template)
 	if err != nil {
 		return nil, errors.Wrap(err, "config update generation failure")
 	}
