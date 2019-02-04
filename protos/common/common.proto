@@ -51,7 +51,6 @@ enum HeaderType {
     CHAINCODE_PACKAGE = 6;           // Used for packaging chaincode artifacts for install
     PEER_ADMIN_OPERATION = 8;        // Used for invoking an administrative operation on a peer
     TOKEN_TRANSACTION = 9;           // Used to denote transactions that invoke token management operations
-    TOKEN_ENDORSER_TRANSACTION = 10; // Used to denote endorsement transactions that use FabToken as payment settlement
 }
 
 // This enum enlists indexes of the block metadata array
