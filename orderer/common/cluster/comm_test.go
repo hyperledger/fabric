@@ -8,6 +8,7 @@ package cluster_test
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"net"
 	"sync"
@@ -113,6 +114,7 @@ func (*mockChannelExtractor) TargetChannel(msg proto.Message) string {
 }
 
 type clusterNode struct {
+	freezeWG     sync.WaitGroup
 	dialer       *cluster.PredicateDialer
 	handler      *mocks.Handler
 	nodeInfo     cluster.RemoteNode
@@ -124,6 +126,7 @@ type clusterNode struct {
 }
 
 func (cn *clusterNode) Step(stream orderer.Cluster_StepServer) error {
+	cn.freezeWG.Wait()
 	req, err := stream.Recv()
 	if err != nil {
 		return err
@@ -135,6 +138,14 @@ func (cn *clusterNode) Step(stream orderer.Cluster_StepServer) error {
 		return err
 	}
 	return stream.Send(&orderer.StepResponse{})
+}
+
+func (cn *clusterNode) freeze() {
+	cn.freezeWG.Add(1)
+}
+
+func (cn *clusterNode) unfreeze() {
+	cn.freezeWG.Done()
 }
 
 func (cn *clusterNode) resurrect() {
@@ -221,16 +232,206 @@ func newTestNode(t *testing.T) *clusterNode {
 	}
 
 	tstSrv.c = &cluster.Comm{
-		Logger:       flogging.MustGetLogger("test"),
-		Chan2Members: make(cluster.MembersByChannel),
-		H:            handler,
-		ChanExt:      channelExtractor,
-		Connections:  cluster.NewConnectionStore(dialer),
+		SendBufferSize: 1,
+		Logger:         flogging.MustGetLogger("test"),
+		Chan2Members:   make(cluster.MembersByChannel),
+		H:              handler,
+		ChanExt:        channelExtractor,
+		Connections:    cluster.NewConnectionStore(dialer),
 	}
 
 	orderer.RegisterClusterServer(gRPCServer.Server(), tstSrv)
 	go gRPCServer.Start()
 	return tstSrv
+}
+
+func TestSendBigMessage(t *testing.T) {
+	t.Parallel()
+
+	// Scenario: Basic test that spawns 5 nodes and sends a big message
+	// from one of the nodes to the others.
+	// A receiver node's Step() server side method (which calls Recv)
+	// is frozen until the sender's node Send method returns,
+	// Hence - the sender node finishes calling Send
+	// before a receiver node starts calling Recv.
+	// This ensures that Send is non blocking even with big messages.
+	// In the test, we send a total of 8MB of random data (2MB to each node).
+	// The randomness is used so gRPC compression won't compress it to a lower size.
+
+	node1 := newTestNode(t)
+	node2 := newTestNode(t)
+	node3 := newTestNode(t)
+	node4 := newTestNode(t)
+	node5 := newTestNode(t)
+
+	for _, node := range []*clusterNode{node2, node3, node4, node5} {
+		node.c.SendBufferSize = 1
+	}
+
+	defer node1.stop()
+	defer node2.stop()
+	defer node3.stop()
+	defer node4.stop()
+	defer node5.stop()
+
+	config := []cluster.RemoteNode{node1.nodeInfo, node2.nodeInfo, node3.nodeInfo, node4.nodeInfo, node5.nodeInfo}
+	node1.c.Configure(testChannel, config)
+	node2.c.Configure(testChannel, config)
+	node3.c.Configure(testChannel, config)
+	node4.c.Configure(testChannel, config)
+	node5.c.Configure(testChannel, config)
+
+	var messageReceived sync.WaitGroup
+	messageReceived.Add(4)
+
+	msgSize := 1024 * 1024 * 2
+	bigMsg := &orderer.ConsensusRequest{
+		Channel: testChannel,
+		Payload: make([]byte, msgSize),
+	}
+
+	_, err := rand.Read(bigMsg.Payload)
+	assert.NoError(t, err)
+
+	wrappedMsg := &orderer.StepRequest{
+		Payload: &orderer.StepRequest_ConsensusRequest{
+			ConsensusRequest: bigMsg,
+		},
+	}
+
+	for _, node := range []*clusterNode{node2, node3, node4, node5} {
+		node.handler.On("OnConsensus", testChannel, node1.nodeInfo.ID, mock.Anything).Run(func(args mock.Arguments) {
+			msg := args.Get(2).(*orderer.ConsensusRequest)
+			assert.Len(t, msg.Payload, msgSize)
+			messageReceived.Done()
+		}).Return(nil)
+	}
+
+	streams := map[uint64]*cluster.Stream{}
+
+	for _, node := range []*clusterNode{node2, node3, node4, node5} {
+		rm, err := node1.c.Remote(testChannel, node.nodeInfo.ID)
+		assert.NoError(t, err)
+
+		stream := assertEventualEstablishStream(t, rm)
+		streams[node.nodeInfo.ID] = stream
+	}
+
+	t0 := time.Now()
+	for _, node := range []*clusterNode{node2, node3, node4, node5} {
+		stream := streams[node.nodeInfo.ID]
+		// Freeze the node, in order to block its Recv
+		node.freeze()
+
+		t1 := time.Now()
+		err = stream.Send(wrappedMsg)
+		assert.NoError(t, err)
+		t.Log("Sending took", time.Since(t1))
+		t1 = time.Now()
+
+		// Unfreeze the node. It can now call Recv, and signal the messageReceived waitGroup.
+		node.unfreeze()
+	}
+
+	t.Log("Total sending time to all 4 nodes took:", time.Since(t0))
+
+	messageReceived.Wait()
+}
+
+func TestBlockingSend(t *testing.T) {
+	t.Parallel()
+	// Scenario: Basic test that spawns 2 nodes and sends from the first node
+	// to the second node, three SubmitRequests, or three consensus requests.
+	// SubmitRequests should block, but consensus requests should not.
+
+	for _, testCase := range []struct {
+		description        string
+		messageToSend      *orderer.StepRequest
+		streamUnblocks     bool
+		elapsedGreaterThan time.Duration
+		overflowErr        string
+	}{
+		{
+			description:        "SubmitRequest",
+			messageToSend:      wrapSubmitReq(testReq),
+			streamUnblocks:     true,
+			elapsedGreaterThan: time.Second / 2,
+		},
+		{
+			description:   "ConsensusRequest",
+			messageToSend: testConsensusReq,
+			overflowErr:   "send queue overflown",
+		},
+	} {
+		t.Run(testCase.description, func(t *testing.T) {
+			node1 := newTestNode(t)
+			node2 := newTestNode(t)
+
+			node1.c.SendBufferSize = 1
+			node2.c.SendBufferSize = 1
+
+			defer node1.stop()
+			defer node2.stop()
+
+			config := []cluster.RemoteNode{node1.nodeInfo, node2.nodeInfo}
+			node1.c.Configure(testChannel, config)
+			node2.c.Configure(testChannel, config)
+
+			rm, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
+			assert.NoError(t, err)
+
+			client := &mocks.ClusterClient{}
+			fakeStream := &mocks.StepClient{}
+
+			// Replace real client with a mock client
+			rm.Client = client
+			rm.ProbeConn = func(_ *grpc.ClientConn) error {
+				return nil
+			}
+			// Configure client to return the mock stream
+			fakeStream.On("Context", mock.Anything).Return(context.Background())
+			client.On("Step", mock.Anything).Return(fakeStream, nil).Once()
+
+			var unBlock sync.WaitGroup
+			unBlock.Add(1)
+			fakeStream.On("Send", mock.Anything).Run(func(_ mock.Arguments) {
+				unBlock.Wait()
+			}).Return(errors.New("oops"))
+
+			stream, err := rm.NewStream(time.Hour)
+			assert.NoError(t, err)
+
+			// The first send doesn't block, even though the Send operation blocks.
+			err = stream.Send(testCase.messageToSend)
+			assert.NoError(t, err)
+
+			// The second once doesn't either.
+			// At this point, we have 1 goroutine which is blocked on Send(),
+			// and one message in the buffer.
+			err = stream.Send(testCase.messageToSend)
+			if testCase.overflowErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.EqualError(t, err, testCase.overflowErr)
+			}
+
+			// The third blocks, so we need to unblock it ourselves
+			// in order for it to go through, unless the operation
+			// is non blocking.
+			go func() {
+				time.Sleep(time.Second)
+				if testCase.streamUnblocks {
+					unBlock.Done()
+				}
+			}()
+
+			t1 := time.Now()
+			stream.Send(testCase.messageToSend)
+			elapsed := time.Since(t1)
+			t.Log("Elapsed time:", elapsed)
+			assert.True(t, elapsed > testCase.elapsedGreaterThan)
+		})
+	}
 }
 
 func TestBasic(t *testing.T) {
@@ -513,7 +714,7 @@ func testAbort(t *testing.T, abortFunc func(*cluster.RemoteContext), rpcTimeout 
 	gt.Eventually(func() error {
 		stream, err = rm.NewStream(rpcTimeout)
 		return err
-	}).Should(gomega.Succeed())
+	}, time.Second*10, time.Millisecond*10).Should(gomega.Succeed())
 
 	stream.Send(wrapSubmitReq(testSubReq))
 	_, err = stream.Recv()

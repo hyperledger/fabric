@@ -24,6 +24,12 @@ import (
 	"google.golang.org/grpc/connectivity"
 )
 
+var (
+	errOverflow = errors.New("send queue overflown")
+	errAborted  = errors.New("aborted")
+	errTimeout  = errors.New("rpc timeout expired")
+)
+
 // ChannelExtractor extracts the channel of a given message,
 // or returns an empty string if that's not possible
 type ChannelExtractor interface {
@@ -78,13 +84,15 @@ type MembersByChannel map[string]MemberMapping
 
 // Comm implements Communicator
 type Comm struct {
-	shutdown     bool
-	Lock         sync.RWMutex
-	Logger       *flogging.FabricLogger
-	ChanExt      ChannelExtractor
-	H            Handler
-	Connections  *ConnectionStore
-	Chan2Members MembersByChannel
+	shutdownSignal chan struct{}
+	shutdown       bool
+	SendBufferSize int
+	Lock           sync.RWMutex
+	Logger         *flogging.FabricLogger
+	ChanExt        ChannelExtractor
+	H              Handler
+	Connections    *ConnectionStore
+	Chan2Members   MembersByChannel
 }
 
 type requestContext struct {
@@ -181,6 +189,8 @@ func (c *Comm) Configure(channel string, newNodes []RemoteNode) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 
+	c.createShutdownSignalIfNeeded()
+
 	if c.shutdown {
 		return
 	}
@@ -192,10 +202,21 @@ func (c *Comm) Configure(channel string, newNodes []RemoteNode) {
 	c.cleanUnusedConnections(beforeConfigChange)
 }
 
+func (c *Comm) createShutdownSignalIfNeeded() {
+	if c.shutdownSignal == nil {
+		c.shutdownSignal = make(chan struct{})
+	}
+}
+
 // Shutdown shuts down the instance
 func (c *Comm) Shutdown() {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
+
+	c.createShutdownSignalIfNeeded()
+	if !c.shutdown {
+		close(c.shutdownSignal)
+	}
 
 	c.shutdown = true
 	for _, members := range c.Chan2Members {
@@ -307,11 +328,13 @@ func (c *Comm) createRemoteContext(stub *Stub, channel string) func() (*RemoteCo
 		clusterClient := orderer.NewClusterClient(conn)
 
 		rc := &RemoteContext{
-			endpoint:  stub.Endpoint,
-			Logger:    c.Logger,
-			ProbeConn: probeConnection,
-			conn:      conn,
-			Client:    clusterClient,
+			SendBuffSize:   c.SendBufferSize,
+			shutdownSignal: c.shutdownSignal,
+			endpoint:       stub.Endpoint,
+			Logger:         c.Logger,
+			ProbeConn:      probeConnection,
+			conn:           conn,
+			Client:         clusterClient,
 		}
 		return rc, nil
 	}
@@ -387,24 +410,30 @@ func (stub *Stub) Activate(createRemoteContext func() (*RemoteContext, error)) e
 // RemoteContext interacts with remote cluster
 // nodes. Every call can be aborted via call to Abort()
 type RemoteContext struct {
-	Logger       *flogging.FabricLogger
-	endpoint     string
-	Client       orderer.ClusterClient
-	ProbeConn    func(conn *grpc.ClientConn) error
-	conn         *grpc.ClientConn
-	nextStreamID uint64
-	streamsByID  sync.Map
+	SendBuffSize   int
+	shutdownSignal chan struct{}
+	Logger         *flogging.FabricLogger
+	endpoint       string
+	Client         orderer.ClusterClient
+	ProbeConn      func(conn *grpc.ClientConn) error
+	conn           *grpc.ClientConn
+	nextStreamID   uint64
+	streamsByID    sync.Map
 }
 
 // Stream is used to send/receive messages to/from the remote cluster member.
 type Stream struct {
-	ID       uint64
-	NodeName string
-	Endpoint string
-	Logger   *flogging.FabricLogger
-	Timeout  time.Duration
+	abortChan    <-chan struct{}
+	sendBuff     chan *orderer.StepRequest
+	commShutdown chan struct{}
+	abortReason  *atomic.Value
+	ID           uint64
+	NodeName     string
+	Endpoint     string
+	Logger       *flogging.FabricLogger
+	Timeout      time.Duration
 	orderer.Cluster_StepClient
-	Cancel   func()
+	Cancel   func(error)
 	canceled *uint32
 }
 
@@ -418,12 +447,51 @@ func (stream *Stream) Canceled() bool {
 
 // Send sends the given request to the remote cluster member.
 func (stream *Stream) Send(request *orderer.StepRequest) error {
+	if stream.Canceled() {
+		return errors.New(stream.abortReason.Load().(string))
+	}
+	var allowDrop bool
+	// We want to drop consensus transactions if the remote node cannot keep up with us,
+	// otherwise we'll slow down the entire FSM.
+	if request.GetConsensusRequest() != nil {
+		allowDrop = true
+	}
+
+	return stream.sendOrDrop(request, allowDrop)
+}
+
+// sendOrDrop sends the given request to the remote cluster member, or drops it
+// if it is a consensus request and the queue is full.
+func (stream *Stream) sendOrDrop(request *orderer.StepRequest, allowDrop bool) error {
+	if allowDrop && len(stream.sendBuff) == cap(stream.sendBuff) {
+		stream.Cancel(errOverflow)
+		return errOverflow
+	}
+
+	select {
+	case <-stream.abortChan:
+		return errors.New("stream aborted")
+	case stream.sendBuff <- request:
+		return nil
+	case <-stream.commShutdown:
+		return nil
+	}
+}
+
+// sendMessage sends the request down the stream
+func (stream *Stream) sendMessage(request *orderer.StepRequest) {
 	start := time.Now()
+	var err error
 	defer func() {
 		if !stream.Logger.IsEnabledFor(zap.DebugLevel) {
 			return
 		}
-		stream.Logger.Debugf("Send of %s to %s(%s) took %v", requestAsString(request), stream.NodeName, stream.Endpoint, time.Since(start))
+		var result string
+		if err != nil {
+			result = fmt.Sprintf("but failed due to %s", err.Error())
+		}
+		stream.Logger.Debugf("Send of %s to %s(%s) took %v %s", requestAsString(request),
+			stream.NodeName, stream.Endpoint, time.Since(start), result)
 	}()
 
 	f := func() (*orderer.StepResponse, error) {
@@ -431,8 +499,22 @@ func (stream *Stream) Send(request *orderer.StepRequest) error {
 		return nil, err
 	}
 
-	_, err := stream.operateWithTimeout(f)
-	return err
+	_, err = stream.operateWithTimeout(f)
+}
+
+func (stream *Stream) periodicFlushStream() {
+	defer stream.Cancel(errAborted)
+
+	for {
+		select {
+		case msg := <-stream.sendBuff:
+			stream.sendMessage(msg)
+		case <-stream.abortChan:
+			return
+		case <-stream.commShutdown:
+			return
+		}
+	}
 }
 
 // Recv receives a message from a remote cluster member.
@@ -477,16 +559,16 @@ func (stream *Stream) operateWithTimeout(invoke StreamOperation) (*orderer.StepR
 	select {
 	case r := <-responseChan:
 		if r.err != nil {
-			stream.Cancel()
+			stream.Cancel(r.err)
 		}
 		return r.res, r.err
 	case <-timer.C:
-		stream.Cancel()
+		stream.Cancel(errTimeout)
 		// Wait for the operation goroutine to end
 		operationEnded.Wait()
 		stream.Logger.Warningf("Stream %d to %s(%s) was forcibly terminated because timeout (%v) expired",
 			stream.ID, stream.NodeName, stream.Endpoint, stream.Timeout)
-		return nil, errors.New("rpc timeout expired")
+		return nil, errTimeout
 	}
 }
 
@@ -525,30 +607,47 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 
 	var canceled uint32
 
+	abortChan := make(chan struct{})
+
 	abort := func() {
 		cancel()
 		rc.streamsByID.Delete(streamID)
 		rc.Logger.Debugf("Stream %d to %s(%s) is aborted", streamID, nodeName, rc.endpoint)
 		atomic.StoreUint32(&canceled, 1)
+		close(abortChan)
+	}
+
+	once := &sync.Once{}
+	abortReason := &atomic.Value{}
+	cancelWithReason := func(err error) {
+		abortReason.Store(err.Error())
+		once.Do(abort)
 	}
 
 	logger := flogging.MustGetLogger("orderer.common.cluster.step")
 	stepLogger := logger.WithOptions(zap.AddCallerSkip(1))
 
 	s := &Stream{
+		abortReason:        abortReason,
+		abortChan:          abortChan,
+		sendBuff:           make(chan *orderer.StepRequest, rc.SendBuffSize),
+		commShutdown:       rc.shutdownSignal,
 		NodeName:           nodeName,
 		Logger:             stepLogger,
 		ID:                 streamID,
 		Endpoint:           rc.endpoint,
 		Timeout:            timeout,
 		Cluster_StepClient: stream,
-		Cancel:             abort,
+		Cancel:             cancelWithReason,
 		canceled:           &canceled,
 	}
 
-	rc.Logger.Debugf("Created new stream to %s with ID of %d", rc.endpoint, streamID)
+	rc.Logger.Debugf("Created new stream to %s with ID of %d and buffer size of %d",
+		rc.endpoint, streamID, cap(s.sendBuff))
 
 	rc.streamsByID.Store(streamID, s)
+
+	go s.periodicFlushStream()
 
 	return s, nil
 }
@@ -557,7 +656,7 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 // causes all operations that use this RemoteContext to terminate.
 func (rc *RemoteContext) Abort() {
 	rc.streamsByID.Range(func(_, value interface{}) bool {
-		value.(*Stream).Cancel()
+		value.(*Stream).Cancel(errAborted)
 		return false
 	})
 }

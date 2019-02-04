@@ -72,6 +72,7 @@ type Cluster struct {
 	ReplicationRetryTimeout              time.Duration
 	ReplicationBackgroundRefreshInterval time.Duration
 	ReplicationMaxRetries                int
+	SendBufferSize                       int
 }
 
 // Keepalive contains configuration for gRPC servers.
@@ -345,6 +346,8 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			c.General.SystemChannel = Defaults.General.SystemChannel
 		case c.General.Cluster.ReplicationMaxRetries == 0:
 			c.General.Cluster.ReplicationMaxRetries = 12
+		case c.General.Cluster.SendBufferSize == 0:
+			c.General.Cluster.SendBufferSize = 10
 
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.Certificate == "":
 			logger.Panicf("General.Kafka.TLS.Certificate must be set if General.Kafka.TLS.Enabled is set to true.")
