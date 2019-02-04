@@ -434,6 +434,206 @@ var _ bool = Describe("Token EndToEnd", func() {
 			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
 			Expect(committed).To(BeFalse())
 		})
+
+		It("User1's spending its token to a nil output, to zero value", func() {
+			By("User1 issuing tokens to User2")
+			tClient := GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
+			txID := RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+
+			By("User2 lists tokens as sanity check")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("User2 attempts to spend to a nil recipient by using the prover peer")
+			tempTxID, ordererStatus, committed, err := RunTransferRequestWithFailure(tClient, issuedTokens, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("error from prover: invalid recipient in transfer request 'identity cannot be nil'"))
+			Expect(ordererStatus).To(BeNil())
+			Expect(committed).To(BeFalse())
+
+			By("Check that nothing changed")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("User2 attempts to spend to a nil recipient by assembling a faulty token transaction")
+			expectedTokenTransaction = &token.TokenTransaction{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Transfer{
+							Transfer: &token.Transfer{
+								Inputs: []*token.TokenId{{TxId: txID, Index: 0}},
+								Outputs: []*token.Token{{
+									Owner:    nil,
+									Type:     "ABC123",
+									Quantity: ToHex(119),
+								}}}}}}}
+			tempTxID, ordererStatus, committed, err = SubmitTokenTx(tClient, expectedTokenTransaction)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", tempTxID)))
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+			Expect(committed).To(BeFalse())
+
+			By("Check that nothing changed")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("User2 attempts to spend to an invalid recipient by using the prover peer")
+			tempTxID, ordererStatus, committed, err = RunTransferRequestWithFailure(tClient, issuedTokens, &token.TokenOwner{Raw: []byte{1, 2, 3, 4}})
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("error from prover: invalid recipient in transfer request 'identity [0x7261773a225c3030315c3030325c3030335c3030342220] cannot be deserialised: could not deserialize a SerializedIdentity: proto: msp.SerializedIdentity: illegal tag 0 (wire type 1)'"))
+			Expect(ordererStatus).To(BeNil())
+			Expect(committed).To(BeFalse())
+
+			By("Check that nothing changed")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("User2 attempts to spend to an invalid recipient by assembling a faulty token transaction")
+			expectedTokenTransaction = &token.TokenTransaction{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Transfer{
+							Transfer: &token.Transfer{
+								Inputs: []*token.TokenId{{TxId: txID, Index: 0}},
+								Outputs: []*token.Token{{
+									Owner:    &token.TokenOwner{Raw: []byte{1, 2, 3, 4}},
+									Type:     "ABC123",
+									Quantity: ToHex(119),
+								}}}}}}}
+			tempTxID, ordererStatus, committed, err = SubmitTokenTx(tClient, expectedTokenTransaction)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", tempTxID)))
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+			Expect(committed).To(BeFalse())
+
+			By("Check that nothing changed")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("User2 attempts to transfer zero amount by assembling a faulty token transaction by using the prover peer")
+			tempTxID, ordererStatus, committed, err = RunTransferRequestWithSharesAddFailure(tClient, issuedTokens,
+				[]*token.RecipientTransferShare{{Recipient: recipientUser1, Quantity: ToHex(0)}})
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("error from prover: invalid quantity in transfer request 'quantity must be larger than 0'"))
+			Expect(ordererStatus).To(BeNil())
+			Expect(committed).To(BeFalse())
+
+			By("Check that nothing changed")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("User2 attempts to transfer zero amount by assembling a faulty token transaction")
+			expectedTokenTransaction = &token.TokenTransaction{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Transfer{
+							Transfer: &token.Transfer{
+								Inputs: []*token.TokenId{{TxId: txID, Index: 0}},
+								Outputs: []*token.Token{{
+									Owner:    recipientUser1,
+									Type:     "ABC123",
+									Quantity: ToHex(0),
+								}}}}}}}
+			tempTxID, ordererStatus, committed, err = SubmitTokenTx(tClient, expectedTokenTransaction)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", tempTxID)))
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+			Expect(committed).To(BeFalse())
+
+			By("Check that nothing changed")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("User2 attempts to transfer an over supported precision amount by assembling a faulty token transaction by using the prover peer")
+			tempTxID, ordererStatus, committed, err = RunTransferRequestWithSharesAddFailure(tClient, issuedTokens,
+				[]*token.RecipientTransferShare{{Recipient: recipientUser1, Quantity: "99999999999999999999"}})
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("error from prover: invalid quantity in transfer request '99999999999999999999 has precision 67 > 64'"))
+			Expect(ordererStatus).To(BeNil())
+			Expect(committed).To(BeFalse())
+
+			By("Check that nothing changed")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("User2 attempts to transfer an over supported precision amount by assembling a faulty token transaction")
+			expectedTokenTransaction = &token.TokenTransaction{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Transfer{
+							Transfer: &token.Transfer{
+								Inputs: []*token.TokenId{{TxId: txID, Index: 0}},
+								Outputs: []*token.Token{{
+									Owner:    recipientUser1,
+									Type:     "ABC123",
+									Quantity: "99999999999999999999",
+								}}}}}}}
+			tempTxID, ordererStatus, committed, err = SubmitTokenTx(tClient, expectedTokenTransaction)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", tempTxID)))
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+			Expect(committed).To(BeFalse())
+
+			By("Check that nothing changed")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("User2 attempts to transfer a negative amount by assembling a faulty token transaction by using the prover peer")
+			tempTxID, ordererStatus, committed, err = RunTransferRequestWithSharesAddFailure(tClient, issuedTokens,
+				[]*token.RecipientTransferShare{{Recipient: recipientUser1, Quantity: "-99999999999999999999"}})
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("error from prover: invalid quantity in transfer request 'quantity must be larger than 0'"))
+			Expect(ordererStatus).To(BeNil())
+			Expect(committed).To(BeFalse())
+
+			By("Check that nothing changed")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			By("User2 attempts to transfer a negative amount by assembling a faulty token transaction")
+			expectedTokenTransaction = &token.TokenTransaction{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Transfer{
+							Transfer: &token.Transfer{
+								Inputs: []*token.TokenId{{TxId: txID, Index: 0}},
+								Outputs: []*token.Token{{
+									Owner:    recipientUser1,
+									Type:     "ABC123",
+									Quantity: "-99999999999999999999",
+								}}}}}}}
+			tempTxID, ordererStatus, committed, err = SubmitTokenTx(tClient, expectedTokenTransaction)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", tempTxID)))
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+			Expect(committed).To(BeFalse())
+
+			By("Check that nothing changed")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+		})
 	})
 
 })
@@ -559,6 +759,22 @@ func RunTransferRequestWithFailure(c *tokenclient.Client, inputTokens []*token.T
 		{Recipient: recipient, Quantity: sum.Hex()},
 	}
 
+	_, txid, ordererStatus, committed, err := c.Transfer(inputTokenIDs, shares, 30*time.Second)
+	return txid, ordererStatus, committed, err
+}
+
+func RunTransferRequestWithSharesAddFailure(c *tokenclient.Client, inputTokens []*token.TokenOutput, shares []*token.RecipientTransferShare) (string, *common.Status, bool, error) {
+	inputTokenIDs := make([]*token.TokenId, len(inputTokens))
+	sum := plain.NewZeroQuantity(64)
+	var err error
+	for i, inToken := range inputTokens {
+		inputTokenIDs[i] = &token.TokenId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
+
+		v, err := plain.ToQuantity(inToken.GetQuantity(), 64)
+		Expect(err).NotTo(HaveOccurred())
+		sum, err = sum.Add(v)
+		Expect(err).NotTo(HaveOccurred())
+	}
 	_, txid, ordererStatus, committed, err := c.Transfer(inputTokenIDs, shares, 30*time.Second)
 	return txid, ordererStatus, committed, err
 }
