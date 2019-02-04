@@ -130,7 +130,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 	var cc *grpc.ClientConn
 	var stream proto.Gossip_GossipStreamClient
 	var pkiID common.PKIidType
-	var connInfo *proto.ConnectionInfo
+	var connInfo *protoext.ConnectionInfo
 	var dialOpts []grpc.DialOption
 
 	c.logger.Debug("Entering", endpoint, expectedPKIID)
@@ -395,7 +395,7 @@ func extractRemoteAddress(stream stream) string {
 	return remoteAddress
 }
 
-func (c *commImpl) authenticateRemotePeer(stream stream, initiator bool) (*proto.ConnectionInfo, error) {
+func (c *commImpl) authenticateRemotePeer(stream stream, initiator bool) (*protoext.ConnectionInfo, error) {
 	ctx := stream.Context()
 	remoteAddress := extractRemoteAddress(stream)
 	remoteCertHash := extractCertificateHashFromContext(ctx)
@@ -452,11 +452,11 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator bool) (*proto
 		return nil, err
 	}
 
-	connInfo := &proto.ConnectionInfo{
+	connInfo := &protoext.ConnectionInfo{
 		ID:       receivedMsg.PkiId,
 		Identity: receivedMsg.Identity,
 		Endpoint: remoteAddress,
-		Auth: &proto.AuthInfo{
+		Auth: &protoext.AuthInfo{
 			Signature:  m.Signature,
 			SignedData: m.Payload,
 		},

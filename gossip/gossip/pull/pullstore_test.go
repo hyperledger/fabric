@@ -56,7 +56,7 @@ func (pm *pullMsg) GetGossipMessage() *proto.SignedGossipMessage {
 	return pm.msg
 }
 
-func (pm *pullMsg) GetConnectionInfo() *proto.ConnectionInfo {
+func (pm *pullMsg) GetConnectionInfo() *protoext.ConnectionInfo {
 	return nil
 }
 

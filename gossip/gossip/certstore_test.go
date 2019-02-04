@@ -66,7 +66,7 @@ func (s *sentMsg) GetGossipMessage() *proto.SignedGossipMessage {
 	return s.msg
 }
 
-func (s *sentMsg) GetConnectionInfo() *proto.ConnectionInfo {
+func (s *sentMsg) GetConnectionInfo() *protoext.ConnectionInfo {
 	return nil
 }
 

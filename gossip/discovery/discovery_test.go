@@ -49,7 +49,7 @@ func init() {
 
 type dummyReceivedMessage struct {
 	msg  *proto.SignedGossipMessage
-	info *proto.ConnectionInfo
+	info *protoext.ConnectionInfo
 }
 
 func (*dummyReceivedMessage) Respond(msg *proto.GossipMessage) {
@@ -64,7 +64,7 @@ func (*dummyReceivedMessage) GetSourceEnvelope() *proto.Envelope {
 	panic("implement me")
 }
 
-func (rm *dummyReceivedMessage) GetConnectionInfo() *proto.ConnectionInfo {
+func (rm *dummyReceivedMessage) GetConnectionInfo() *protoext.ConnectionInfo {
 	return rm.info
 }
 
@@ -275,7 +275,7 @@ func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) er
 		lgr.Debug(g.Discovery.Self().Endpoint, "Got message:", gMsg)
 		g.comm.incMsgs <- &dummyReceivedMessage{
 			msg: gMsg,
-			info: &proto.ConnectionInfo{
+			info: &protoext.ConnectionInfo{
 				ID: common.PKIidType("testID"),
 			},
 		}
@@ -461,7 +461,7 @@ func TestBadInput(t *testing.T) {
 	}).NoopSign()
 	inst.Discovery.(*gossipDiscoveryImpl).handleMsgFromComm(&dummyReceivedMessage{
 		msg: s,
-		info: &proto.ConnectionInfo{
+		info: &protoext.ConnectionInfo{
 			ID: common.PKIidType("testID"),
 		},
 	})
@@ -533,7 +533,7 @@ func TestValidation(t *testing.T) {
 	wrapReceivedMessage := func(msg *proto.SignedGossipMessage) protoext.ReceivedMessage {
 		return &dummyReceivedMessage{
 			msg: msg,
-			info: &proto.ConnectionInfo{
+			info: &protoext.ConnectionInfo{
 				ID: common.PKIidType("testID"),
 			},
 		}
@@ -1212,7 +1212,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 		for k := 0; k < peersNum; k++ {
 			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 				msg: aliveMsgs[k],
-				info: &proto.ConnectionInfo{
+				info: &protoext.ConnectionInfo{
 					ID: common.PKIidType(fmt.Sprintf("d%d", i)),
 				},
 			})
@@ -1279,7 +1279,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 		for k := 0; k < peersNum; k++ {
 			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 				msg: newAliveMsgs[k],
-				info: &proto.ConnectionInfo{
+				info: &protoext.ConnectionInfo{
 					ID: common.PKIidType(fmt.Sprintf("d%d", i)),
 				},
 			})
@@ -1319,7 +1319,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 			func(k int) {
 				instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 					msg: memReqMsgs[k],
-					info: &proto.ConnectionInfo{
+					info: &protoext.ConnectionInfo{
 						ID: common.PKIidType(fmt.Sprintf("d%d", i)),
 					},
 				})
@@ -1336,7 +1336,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 		for k := 0; k < peersNum; k++ {
 			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 				msg: aliveMsgs[k],
-				info: &proto.ConnectionInfo{
+				info: &protoext.ConnectionInfo{
 					ID: common.PKIidType(fmt.Sprintf("d%d", i)),
 				},
 			})
@@ -1362,7 +1362,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 			}).NoopSign()
 			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 				msg: sMsg,
-				info: &proto.ConnectionInfo{
+				info: &protoext.ConnectionInfo{
 					ID: common.PKIidType(fmt.Sprintf("d%d", i)),
 				},
 			})

@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
@@ -165,7 +166,7 @@ func (cs *connectionStore) shutdown() {
 }
 
 func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamServer,
-	connInfo *proto.ConnectionInfo, metrics *metrics.CommMetrics) *connection {
+	connInfo *protoext.ConnectionInfo, metrics *metrics.CommMetrics) *connection {
 	cs.Lock()
 	defer cs.Unlock()
 
@@ -176,7 +177,7 @@ func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamSer
 	return cs.registerConn(connInfo, serverStream, metrics)
 }
 
-func (cs *connectionStore) registerConn(connInfo *proto.ConnectionInfo,
+func (cs *connectionStore) registerConn(connInfo *protoext.ConnectionInfo,
 	serverStream proto.Gossip_GossipStreamServer, metrics *metrics.CommMetrics) *connection {
 	conn := newConnection(nil, nil, nil, serverStream, metrics, cs.config)
 	conn.pkiID = connInfo.ID
@@ -221,7 +222,7 @@ type connection struct {
 	recvBuffSize int
 	metrics      *metrics.CommMetrics
 	cancel       context.CancelFunc
-	info         *proto.ConnectionInfo
+	info         *protoext.ConnectionInfo
 	outBuff      chan *msgSending
 	logger       util.Logger                     // logger
 	pkiID        common.PKIidType                // pkiID of the remote endpoint

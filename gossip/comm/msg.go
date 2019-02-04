@@ -9,6 +9,7 @@ package comm
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric/gossip/protoext"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
 )
@@ -18,7 +19,7 @@ type ReceivedMessageImpl struct {
 	*proto.SignedGossipMessage
 	lock     sync.Locker
 	conn     *connection
-	connInfo *proto.ConnectionInfo
+	connInfo *protoext.ConnectionInfo
 }
 
 // GetSourceEnvelope Returns the Envelope the ReceivedMessage was
@@ -45,7 +46,7 @@ func (m *ReceivedMessageImpl) GetGossipMessage() *proto.SignedGossipMessage {
 
 // GetConnectionInfo returns information about the remote peer
 // that send the message
-func (m *ReceivedMessageImpl) GetConnectionInfo() *proto.ConnectionInfo {
+func (m *ReceivedMessageImpl) GetConnectionInfo() *protoext.ConnectionInfo {
 	return m.connInfo
 }
 

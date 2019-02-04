@@ -193,10 +193,10 @@ func (msg *receivedMsg) GetSourceEnvelope() *proto.Envelope {
 	panic("implement me")
 }
 
-func (msg *receivedMsg) GetConnectionInfo() *proto.ConnectionInfo {
-	return &proto.ConnectionInfo{
+func (msg *receivedMsg) GetConnectionInfo() *protoext.ConnectionInfo {
+	return &protoext.ConnectionInfo{
 		Identity: api.PeerIdentityType(msg.RemotePeer.PKIID),
-		Auth: &proto.AuthInfo{
+		Auth: &protoext.AuthInfo{
 			SignedData: []byte{},
 			Signature:  []byte{},
 		},

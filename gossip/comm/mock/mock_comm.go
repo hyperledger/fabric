@@ -104,7 +104,7 @@ func (packet *packetMock) GetGossipMessage() *proto.SignedGossipMessage {
 
 // GetConnectionInfo returns information about the remote peer
 // that sent the message
-func (packet *packetMock) GetConnectionInfo() *proto.ConnectionInfo {
+func (packet *packetMock) GetConnectionInfo() *protoext.ConnectionInfo {
 	return nil
 }
 

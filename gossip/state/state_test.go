@@ -1319,9 +1319,9 @@ func (mock *receivedMessageMock) GetSourceEnvelope() *proto.Envelope {
 	return args.Get(0).(*proto.Envelope)
 }
 
-func (mock *receivedMessageMock) GetConnectionInfo() *proto.ConnectionInfo {
+func (mock *receivedMessageMock) GetConnectionInfo() *protoext.ConnectionInfo {
 	args := mock.Called()
-	return args.Get(0).(*proto.ConnectionInfo)
+	return args.Get(0).(*protoext.ConnectionInfo)
 }
 
 type testData struct {
@@ -1448,8 +1448,8 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 	msg, _ := requestGossipMsg.NoopSign()
 
 	requestMsg.On("GetGossipMessage").Return(msg)
-	requestMsg.On("GetConnectionInfo").Return(&proto.ConnectionInfo{
-		Auth: &proto.AuthInfo{},
+	requestMsg.On("GetConnectionInfo").Return(&protoext.ConnectionInfo{
+		Auth: &protoext.AuthInfo{},
 	})
 
 	// Channel to send responses back
@@ -1634,8 +1634,8 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 		requestMsg := new(receivedMessageMock)
 		msg, _ := request.NoopSign()
 		requestMsg.On("GetGossipMessage").Return(msg)
-		requestMsg.On("GetConnectionInfo").Return(&proto.ConnectionInfo{
-			Auth: &proto.AuthInfo{},
+		requestMsg.On("GetConnectionInfo").Return(&protoext.ConnectionInfo{
+			Auth: &protoext.AuthInfo{},
 		})
 
 		requestMsg.On("Respond", mock.Anything).Run(func(args mock.Arguments) {

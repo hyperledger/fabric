@@ -12,8 +12,6 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/protos/msp"
 )
 
@@ -198,28 +196,6 @@ type Verifier func(peerIdentity []byte, signature, message []byte) error
 // Signer signs a message, and returns (signature, nil)
 // on success, and nil and an error on failure.
 type Signer func(msg []byte) ([]byte, error)
-
-// ConnectionInfo represents information about
-// the remote peer that sent a certain ReceivedMessage
-type ConnectionInfo struct {
-	ID       common.PKIidType
-	Auth     *AuthInfo
-	Identity api.PeerIdentityType
-	Endpoint string
-}
-
-// String returns a string representation of this ConnectionInfo
-func (c *ConnectionInfo) String() string {
-	return fmt.Sprintf("%s %v", c.Endpoint, c.ID)
-}
-
-// AuthInfo represents the authentication
-// data that was provided by the remote peer
-// at the connection time
-type AuthInfo struct {
-	SignedData []byte
-	Signature  []byte
-}
 
 // Sign signs a GossipMessage with given Signer.
 // Returns an Envelope on success,

@@ -6,7 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 
 package protoext
 
-import "github.com/hyperledger/fabric/protos/gossip"
+import (
+	"fmt"
+
+	"github.com/hyperledger/fabric/gossip/api"
+	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/protos/gossip"
+)
 
 // ReceivedMessage is a GossipMessage wrapper that
 // enables the user to send a message to the origin from which
@@ -27,10 +33,32 @@ type ReceivedMessage interface {
 
 	// GetConnectionInfo returns information about the remote peer
 	// that sent the message
-	GetConnectionInfo() *gossip.ConnectionInfo
+	GetConnectionInfo() *ConnectionInfo
 
 	// Ack returns to the sender an acknowledgement for the message
 	// An ack can receive an error that indicates that the operation related
 	// to the message has failed
 	Ack(err error)
+}
+
+// ConnectionInfo represents information about
+// the remote peer that sent a certain ReceivedMessage
+type ConnectionInfo struct {
+	ID       common.PKIidType
+	Auth     *AuthInfo
+	Identity api.PeerIdentityType
+	Endpoint string
+}
+
+// String returns a string representation of this ConnectionInfo
+func (c *ConnectionInfo) String() string {
+	return fmt.Sprintf("%s %v", c.Endpoint, c.ID)
+}
+
+// AuthInfo represents the authentication
+// data that was provided by the remote peer
+// at the connection time
+type AuthInfo struct {
+	SignedData []byte
+	Signature  []byte
 }

@@ -179,8 +179,8 @@ func (m *receivedMsg) Ack(err error) {
 
 }
 
-func (m *receivedMsg) GetConnectionInfo() *proto.ConnectionInfo {
-	return &proto.ConnectionInfo{
+func (m *receivedMsg) GetConnectionInfo() *protoext.ConnectionInfo {
+	return &protoext.ConnectionInfo{
 		ID: m.PKIID,
 	}
 }
