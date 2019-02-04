@@ -24,6 +24,7 @@ import (
 	protoG "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -81,7 +82,7 @@ type dummyCommModule struct {
 	streams           map[string]proto.Gossip_GossipStreamClient
 	conns             map[string]*grpc.ClientConn
 	lock              *sync.RWMutex
-	incMsgs           chan proto.ReceivedMessage
+	incMsgs           chan protoext.ReceivedMessage
 	lastSeqs          map[string]uint64
 	shouldGossip      bool
 	mock              *mock.Mock
@@ -144,7 +145,7 @@ func (comm *dummyCommModule) Gossip(msg *proto.SignedGossipMessage) {
 	}
 }
 
-func (comm *dummyCommModule) Forward(msg proto.ReceivedMessage) {
+func (comm *dummyCommModule) Forward(msg protoext.ReceivedMessage) {
 	if !comm.shouldGossip {
 		return
 	}
@@ -206,7 +207,7 @@ func (comm *dummyCommModule) Ping(peer *NetworkMember) bool {
 	return true
 }
 
-func (comm *dummyCommModule) Accept() <-chan proto.ReceivedMessage {
+func (comm *dummyCommModule) Accept() <-chan protoext.ReceivedMessage {
 	return comm.incMsgs
 }
 
@@ -360,7 +361,7 @@ func createDiscoveryInstanceThatGossipsWithInterceptors(port int, id string, boo
 	comm := &dummyCommModule{
 		conns:        make(map[string]*grpc.ClientConn),
 		streams:      make(map[string]proto.Gossip_GossipStreamClient),
-		incMsgs:      make(chan proto.ReceivedMessage, 1000),
+		incMsgs:      make(chan protoext.ReceivedMessage, 1000),
 		presumeDead:  make(chan common.PKIidType, 10000),
 		id:           id,
 		detectedDead: make(chan string, 10000),
@@ -529,7 +530,7 @@ func TestValidation(t *testing.T) {
 	//   2.2) once alive messages enter the message store, reception of them via membership responses
 	//        doesn't trigger validation, but via membership requests - do.
 
-	wrapReceivedMessage := func(msg *proto.SignedGossipMessage) proto.ReceivedMessage {
+	wrapReceivedMessage := func(msg *proto.SignedGossipMessage) protoext.ReceivedMessage {
 		return &dummyReceivedMessage{
 			msg: msg,
 			info: &proto.ConnectionInfo{
@@ -629,7 +630,7 @@ func TestValidation(t *testing.T) {
 		}
 
 		// Simulate the messages received by p4 into the message store
-		policy := proto.NewGossipMessageComparator(0)
+		policy := protoext.NewGossipMessageComparator(0)
 		msgStore := msgstore.NewMessageStore(policy, func(_ interface{}) {})
 		close(tmpMsgs)
 		for msg := range tmpMsgs {

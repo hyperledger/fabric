@@ -18,6 +18,7 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
@@ -305,7 +306,7 @@ func (d *gossipDiscoveryImpl) handleMessages() {
 	}
 }
 
-func (d *gossipDiscoveryImpl) handleMsgFromComm(msg proto.ReceivedMessage) {
+func (d *gossipDiscoveryImpl) handleMsgFromComm(msg protoext.ReceivedMessage) {
 	if msg == nil {
 		return
 	}
@@ -1011,7 +1012,7 @@ type aliveMsgStore struct {
 }
 
 func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
-	policy := proto.NewGossipMessageComparator(0)
+	policy := protoext.NewGossipMessageComparator(0)
 	trigger := func(m interface{}) {}
 	aliveMsgTTL := d.aliveExpirationTimeout * msgExpirationFactor
 	externalLock := func() { d.lock.Lock() }

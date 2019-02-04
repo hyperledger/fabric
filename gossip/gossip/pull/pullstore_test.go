@@ -18,7 +18,9 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/protos/gossip"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 )
@@ -115,7 +117,7 @@ func (p *pullInstance) stop() {
 	p.stopChan <- struct{}{}
 }
 
-func (p *pullInstance) wrapPullMsg(msg *proto.SignedGossipMessage) proto.ReceivedMessage {
+func (p *pullInstance) wrapPullMsg(msg *proto.SignedGossipMessage) protoext.ReceivedMessage {
 	return &pullMsg{
 		msg:         msg,
 		respondChan: p.msgChan,
@@ -197,7 +199,7 @@ func TestRegisterMsgHook(t *testing.T) {
 
 	for _, msgType := range []MsgType{HelloMsgType, DigestMsgType, RequestMsgType, ResponseMsgType} {
 		mType := msgType
-		inst1.mediator.RegisterMsgHook(mType, func(_ []string, items []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
+		inst1.mediator.RegisterMsgHook(mType, func(_ []string, items []*proto.SignedGossipMessage, _ protoext.ReceivedMessage) {
 			receivedMsgTypes.Add(mType)
 		})
 	}
@@ -217,7 +219,7 @@ func TestFilter(t *testing.T) {
 	eq := func(a interface{}, b interface{}) bool {
 		return a == b
 	}
-	df := func(msg proto.ReceivedMessage) func(string) bool {
+	df := func(msg protoext.ReceivedMessage) func(string) bool {
 		if msg.GetGossipMessage().IsDataReq() {
 			req := msg.GetGossipMessage().GetDataReq()
 			return func(item string) bool {
@@ -288,22 +290,22 @@ func TestAddAndRemove(t *testing.T) {
 	wg.Add(4)
 
 	// Make sure there is a Hello message
-	inst1.mediator.RegisterMsgHook(HelloMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(HelloMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg protoext.ReceivedMessage) {
 		wg.Done()
 	})
 
 	// Instance 1 answering with digest
-	inst2.mediator.RegisterMsgHook(DigestMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage) {
+	inst2.mediator.RegisterMsgHook(DigestMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg protoext.ReceivedMessage) {
 		wg.Done()
 	})
 
 	// Instance 2 requesting missing items
-	inst1.mediator.RegisterMsgHook(RequestMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(RequestMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg protoext.ReceivedMessage) {
 		wg.Done()
 	})
 
 	// Instance 1 sends missing item
-	inst2.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage) {
+	inst2.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg protoext.ReceivedMessage) {
 		wg.Done()
 	})
 
@@ -329,7 +331,7 @@ func TestDigestsFilters(t *testing.T) {
 	defer inst1.stop()
 	defer inst2.stop()
 
-	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*proto.SignedGossipMessage, _ protoext.ReceivedMessage) {
 		if atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) {
 			return
 		}
@@ -373,7 +375,7 @@ func TestHandleMessage(t *testing.T) {
 	inst1ReceivedDigest := int32(0)
 	inst1ReceivedResponse := int32(0)
 
-	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*proto.SignedGossipMessage, _ protoext.ReceivedMessage) {
 		if atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) {
 			return
 		}
@@ -381,7 +383,7 @@ func TestHandleMessage(t *testing.T) {
 		assert.True(t, len(itemIds) == 3)
 	})
 
-	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.SignedGossipMessage, msg protoext.ReceivedMessage) {
 		if atomic.LoadInt32(&inst1ReceivedResponse) == int32(1) {
 			return
 		}
@@ -480,5 +482,37 @@ func createDigestsFilter(level uint64) IngressDigestFilter {
 
 		}
 		return res
+	}
+}
+
+func TestFormattedDigests(t *testing.T) {
+	tests := []struct {
+		dataRequest *gossip.DataRequest
+		expected    []string
+	}{
+		{
+			dataRequest: &gossip.DataRequest{},
+			expected:    []string{},
+		},
+		{
+			dataRequest: &gossip.DataRequest{
+				MsgType: gossip.PullMsgType_UNDEFINED,
+				Digests: [][]byte{[]byte("undefined-1"), []byte("undefined-2")},
+			},
+			expected: []string{"undefined-1", "undefined-2"},
+		},
+		{
+			dataRequest: &gossip.DataRequest{
+				MsgType: gossip.PullMsgType_IDENTITY_MSG,
+				Digests: [][]byte{{0, 1, 2, 3}, {10, 11, 12, 13}},
+			},
+			expected: []string{"00010203", "0a0b0c0d"},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			assert.Equal(t, tt.expected, formattedDigests(tt.dataRequest))
+		})
 	}
 }

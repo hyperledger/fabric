@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
@@ -145,7 +146,7 @@ func NewGossipService(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 }
 
 func (g *gossipServiceImpl) newStateInfoMsgStore() msgstore.MessageStore {
-	pol := proto.NewGossipMessageComparator(0)
+	pol := protoext.NewGossipMessageComparator(0)
 	return msgstore.NewMessageStoreExpirable(pol,
 		msgstore.Noop,
 		g.conf.PublishStateInfoInterval*100,
@@ -286,7 +287,7 @@ func (g *gossipServiceImpl) start() {
 	go g.handlePresumedDead()
 
 	msgSelector := func(msg interface{}) bool {
-		gMsg, isGossipMsg := msg.(proto.ReceivedMessage)
+		gMsg, isGossipMsg := msg.(protoext.ReceivedMessage)
 		if !isGossipMsg {
 			return false
 		}
@@ -305,7 +306,7 @@ func (g *gossipServiceImpl) start() {
 	g.logger.Info("Gossip instance", g.conf.ID, "started")
 }
 
-func (g *gossipServiceImpl) acceptMessages(incMsgs <-chan proto.ReceivedMessage) {
+func (g *gossipServiceImpl) acceptMessages(incMsgs <-chan protoext.ReceivedMessage) {
 	defer g.logger.Debug("Exiting")
 	defer g.stopSignal.Done()
 	for {
@@ -319,7 +320,7 @@ func (g *gossipServiceImpl) acceptMessages(incMsgs <-chan proto.ReceivedMessage)
 	}
 }
 
-func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
+func (g *gossipServiceImpl) handleMessage(m protoext.ReceivedMessage) {
 	if g.toDie() {
 		return
 	}
@@ -391,7 +392,7 @@ func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 	}
 }
 
-func (g *gossipServiceImpl) forwardDiscoveryMsg(msg proto.ReceivedMessage) {
+func (g *gossipServiceImpl) forwardDiscoveryMsg(msg protoext.ReceivedMessage) {
 	defer func() { // can be closed while shutting down
 		recover()
 	}()
@@ -401,7 +402,7 @@ func (g *gossipServiceImpl) forwardDiscoveryMsg(msg proto.ReceivedMessage) {
 
 // validateMsg checks the signature of the message if exists,
 // and also checks that the tag matches the message type
-func (g *gossipServiceImpl) validateMsg(msg proto.ReceivedMessage) bool {
+func (g *gossipServiceImpl) validateMsg(msg protoext.ReceivedMessage) bool {
 	if err := msg.GetGossipMessage().IsTagLegal(); err != nil {
 		g.logger.Warningf("Tag of %v isn't legal: %v", msg.GetGossipMessage(), errors.WithStack(err))
 		return false
@@ -786,7 +787,7 @@ func (g *gossipServiceImpl) UpdateChaincodes(chaincodes []*proto.Chaincode, chai
 // If passThrough is false, the messages are processed by the gossip layer beforehand.
 // If passThrough is true, the gossip layer doesn't intervene and the messages
 // can be used to send a reply back to the sender
-func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage) {
+func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan protoext.ReceivedMessage) {
 	if passThrough {
 		return nil, g.comm.Accept(acceptor)
 	}
@@ -821,7 +822,7 @@ func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor, passThrough 
 }
 
 func selectOnlyDiscoveryMessages(m interface{}) bool {
-	msg, isGossipMsg := m.(proto.ReceivedMessage)
+	msg, isGossipMsg := m.(protoext.ReceivedMessage)
 	if !isGossipMsg {
 		return false
 	}
@@ -849,7 +850,7 @@ func (g *gossipServiceImpl) newDiscoveryAdapter() *discoveryAdapter {
 				},
 			})
 		},
-		forwardFunc: func(message proto.ReceivedMessage) {
+		forwardFunc: func(message protoext.ReceivedMessage) {
 			if g.conf.PropagateIterations == 0 {
 				return
 			}
@@ -858,7 +859,7 @@ func (g *gossipServiceImpl) newDiscoveryAdapter() *discoveryAdapter {
 				filter:              message.GetConnectionInfo().ID.IsNotSameFilter,
 			})
 		},
-		incChan:          make(chan proto.ReceivedMessage),
+		incChan:          make(chan protoext.ReceivedMessage),
 		presumedDead:     g.presumedDead,
 		disclosurePolicy: g.disclosurePolicy,
 	}
@@ -870,9 +871,9 @@ type discoveryAdapter struct {
 	stopping         int32
 	c                comm.Comm
 	presumedDead     chan common.PKIidType
-	incChan          chan proto.ReceivedMessage
+	incChan          chan protoext.ReceivedMessage
 	gossipFunc       func(message *proto.SignedGossipMessage)
-	forwardFunc      func(message proto.ReceivedMessage)
+	forwardFunc      func(message protoext.ReceivedMessage)
 	disclosurePolicy discovery.DisclosurePolicy
 }
 
@@ -893,7 +894,7 @@ func (da *discoveryAdapter) Gossip(msg *proto.SignedGossipMessage) {
 	da.gossipFunc(msg)
 }
 
-func (da *discoveryAdapter) Forward(msg proto.ReceivedMessage) {
+func (da *discoveryAdapter) Forward(msg protoext.ReceivedMessage) {
 	if da.toDie() {
 		return
 	}
@@ -949,7 +950,7 @@ func (da *discoveryAdapter) Ping(peer *discovery.NetworkMember) bool {
 	return err == nil
 }
 
-func (da *discoveryAdapter) Accept() <-chan proto.ReceivedMessage {
+func (da *discoveryAdapter) Accept() <-chan protoext.ReceivedMessage {
 	return da.incChan
 }
 
@@ -1105,7 +1106,7 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 	return pull.NewPullMediator(conf, adapter)
 }
 
-func (g *gossipServiceImpl) sameOrgOrOurOrgPullFilter(msg proto.ReceivedMessage) func(string) bool {
+func (g *gossipServiceImpl) sameOrgOrOurOrgPullFilter(msg protoext.ReceivedMessage) func(string) bool {
 	peersOrg := g.secAdvisor.OrgByPeerIdentity(msg.GetConnectionInfo().Identity)
 	if len(peersOrg) == 0 {
 		g.logger.Warning("Failed determining organization of", msg.GetConnectionInfo())

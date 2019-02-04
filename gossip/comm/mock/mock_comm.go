@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
@@ -39,7 +40,7 @@ type packetMock struct {
 type channelMock struct {
 	accept common.MessageAcceptor
 
-	channel chan proto.ReceivedMessage
+	channel chan protoext.ReceivedMessage
 }
 
 type commMock struct {
@@ -169,8 +170,8 @@ func (mock *commMock) Handshake(peer *comm.RemotePeer) (api.PeerIdentityType, er
 
 // Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 // Each message from the channel can be used to send a reply back to the sender
-func (mock *commMock) Accept(accept common.MessageAcceptor) <-chan proto.ReceivedMessage {
-	ch := make(chan proto.ReceivedMessage)
+func (mock *commMock) Accept(accept common.MessageAcceptor) <-chan protoext.ReceivedMessage {
+	ch := make(chan protoext.ReceivedMessage)
 	mock.acceptors = append(mock.acceptors, &channelMock{accept, ch})
 	return ch
 }

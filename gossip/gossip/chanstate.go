@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
 	"github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
@@ -43,7 +44,7 @@ func (cs *channelState) isStopping() bool {
 	return atomic.LoadInt32(&cs.stopping) == int32(1)
 }
 
-func (cs *channelState) lookupChannelForMsg(msg proto.ReceivedMessage) channel.GossipChannel {
+func (cs *channelState) lookupChannelForMsg(msg protoext.ReceivedMessage) channel.GossipChannel {
 	if msg.GetGossipMessage().IsStateInfoPullRequestMsg() {
 		sipr := msg.GetGossipMessage().GetStateInfoPullReq()
 		mac := sipr.Channel_MAC
@@ -162,7 +163,7 @@ func (ga *gossipAdapterImpl) Gossip(msg *proto.SignedGossipMessage) {
 }
 
 // Forward sends message to the next hops
-func (ga *gossipAdapterImpl) Forward(msg proto.ReceivedMessage) {
+func (ga *gossipAdapterImpl) Forward(msg protoext.ReceivedMessage) {
 	ga.gossipServiceImpl.emitter.Add(&emittedGossipMessage{
 		SignedGossipMessage: msg.GetGossipMessage(),
 		filter:              msg.GetConnectionInfo().ID.IsNotSameFilter,

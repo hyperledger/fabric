@@ -31,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/metrics/mocks"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -673,7 +674,7 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 	// Wait until both peers get connected
 	waitUntilOrFail(t, checkPeersMembership(t, []Gossip{peer}, 1), "waiting for peers to form membership view")
 	_, commCh := boot.Accept(func(msg interface{}) bool {
-		return msg.(proto.ReceivedMessage).GetGossipMessage().IsDataMsg()
+		return msg.(protoext.ReceivedMessage).GetGossipMessage().IsDataMsg()
 	}, true)
 
 	wg := sync.WaitGroup{}
@@ -681,7 +682,7 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 
 	// Make sure sending peer is not getting his own
 	// message back
-	go func(ch <-chan proto.ReceivedMessage) {
+	go func(ch <-chan protoext.ReceivedMessage) {
 		defer wg.Done()
 		for {
 			select {
@@ -983,7 +984,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 	waitUntilOrFail(t, checkPeersMembership(t, []Gossip{g2, g3}, 1), "wait for g2 and g3 to know about each other")
 	// Obtain an alive message from p3
 	_, aliveMsgChan := g2.Accept(func(o interface{}) bool {
-		msg := o.(proto.ReceivedMessage).GetGossipMessage()
+		msg := o.(protoext.ReceivedMessage).GetGossipMessage()
 		// Make sure we get an AliveMessage and it's about g3
 		return msg.IsAliveMsg() && bytes.Equal(msg.GetAliveMsg().Membership.PkiId, []byte(endpoint2))
 	}, true)
@@ -991,13 +992,13 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 
 	// Obtain channel for messages from g1 to g2
 	_, g1ToG2 := g2.Accept(func(o interface{}) bool {
-		connInfo := o.(proto.ReceivedMessage).GetConnectionInfo()
+		connInfo := o.(protoext.ReceivedMessage).GetConnectionInfo()
 		return bytes.Equal([]byte(endpoint0), connInfo.ID)
 	}, true)
 
 	// Obtain channel for messages from g1 to g3
 	_, g1ToG3 := g3.Accept(func(o interface{}) bool {
-		connInfo := o.(proto.ReceivedMessage).GetConnectionInfo()
+		connInfo := o.(protoext.ReceivedMessage).GetConnectionInfo()
 		return bytes.Equal([]byte(endpoint0), connInfo.ID)
 	}, true)
 
@@ -1332,12 +1333,12 @@ func TestSendByCriteria(t *testing.T) {
 	// We retry the test above, but this time the peers acknowledge
 	// Peers now ack
 	acceptDataMsgs := func(m interface{}) bool {
-		return m.(proto.ReceivedMessage).GetGossipMessage().IsDataMsg()
+		return m.(protoext.ReceivedMessage).GetGossipMessage().IsDataMsg()
 	}
 	_, ackChan2 := g2.Accept(acceptDataMsgs, true)
 	_, ackChan3 := g3.Accept(acceptDataMsgs, true)
 	_, ackChan4 := g4.Accept(acceptDataMsgs, true)
-	ack := func(c <-chan proto.ReceivedMessage) {
+	ack := func(c <-chan protoext.ReceivedMessage) {
 		msg := <-c
 		msg.Ack(nil)
 	}
@@ -1349,7 +1350,7 @@ func TestSendByCriteria(t *testing.T) {
 	assert.NoError(t, err)
 
 	// We send to 3 peers, but 2 out of 3 peers acknowledge with an error
-	nack := func(c <-chan proto.ReceivedMessage) {
+	nack := func(c <-chan protoext.ReceivedMessage) {
 		msg := <-c
 		msg.Ack(fmt.Errorf("uh oh"))
 	}
@@ -1363,7 +1364,7 @@ func TestSendByCriteria(t *testing.T) {
 	// We try to send to either g2 or g3, but neither would ack us, so we would fail.
 	// However - what we actually check in this test is that we send to peers according to the
 	// filter passed in the criteria
-	failOnAckRequest := func(c <-chan proto.ReceivedMessage, peerId int) {
+	failOnAckRequest := func(c <-chan protoext.ReceivedMessage, peerId int) {
 		msg := <-c
 		if msg == nil {
 			return
@@ -1389,7 +1390,7 @@ func TestSendByCriteria(t *testing.T) {
 	// this property is respected - and only 1 peer receives a message, and not both
 	criteria.MaxPeers = 1
 	// invoke f() in case message has been received
-	waitForMessage := func(c <-chan proto.ReceivedMessage, f func()) {
+	waitForMessage := func(c <-chan protoext.ReceivedMessage, f func()) {
 		select {
 		case msg := <-c:
 			if msg == nil {

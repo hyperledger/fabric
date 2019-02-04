@@ -13,6 +13,7 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
@@ -39,7 +40,7 @@ type Comm interface {
 
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 	// Each message from the channel can be used to send a reply back to the sender
-	Accept(common.MessageAcceptor) <-chan proto.ReceivedMessage
+	Accept(common.MessageAcceptor) <-chan protoext.ReceivedMessage
 
 	// PresumedDead returns a read-only channel for node endpoints that are suspected to be offline
 	PresumedDead() <-chan common.PKIidType

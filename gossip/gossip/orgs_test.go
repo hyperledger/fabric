@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
 	"github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -382,7 +383,7 @@ func TestConfidentiality(t *testing.T) {
 	var wg sync.WaitGroup
 
 	msgSelector := func(o interface{}) bool {
-		msg := o.(proto.ReceivedMessage).GetGossipMessage()
+		msg := o.(protoext.ReceivedMessage).GetGossipMessage()
 		identitiesPull := msg.IsPullMsg() && msg.GetPullMsgType() == proto.PullMsgType_IDENTITY_MSG
 		return msg.IsAliveMsg() || msg.IsStateInfoMsg() || msg.IsStateInfoSnapshot() || msg.GetMemRes() != nil || identitiesPull
 	}
@@ -393,7 +394,7 @@ func TestConfidentiality(t *testing.T) {
 		_, msgs := p.Accept(msgSelector, true)
 		peerNetMember := p.(*gossipGRPC).gossipServiceImpl.selfNetworkMember()
 		targetORg := string(cs.OrgByPeerIdentity(api.PeerIdentityType(peerNetMember.InternalEndpoint)))
-		go func(targetOrg string, msgs <-chan proto.ReceivedMessage) {
+		go func(targetOrg string, msgs <-chan protoext.ReceivedMessage) {
 			defer wg.Done()
 			for receivedMsg := range msgs {
 				m := &msg{

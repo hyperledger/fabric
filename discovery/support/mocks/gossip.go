@@ -10,6 +10,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/filter"
 	"github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
@@ -108,7 +109,7 @@ type Gossip struct {
 		result1 filter.RoutingFilter
 		result2 error
 	}
-	AcceptStub        func(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage)
+	AcceptStub        func(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan protoext.ReceivedMessage)
 	acceptMutex       sync.RWMutex
 	acceptArgsForCall []struct {
 		acceptor    common.MessageAcceptor
@@ -116,11 +117,11 @@ type Gossip struct {
 	}
 	acceptReturns struct {
 		result1 <-chan *proto.GossipMessage
-		result2 <-chan proto.ReceivedMessage
+		result2 <-chan protoext.ReceivedMessage
 	}
 	acceptReturnsOnCall map[int]struct {
 		result1 <-chan *proto.GossipMessage
-		result2 <-chan proto.ReceivedMessage
+		result2 <-chan protoext.ReceivedMessage
 	}
 	JoinChanStub        func(joinMsg api.JoinChannelMessage, chainID common.ChainID)
 	joinChanMutex       sync.RWMutex
@@ -564,7 +565,7 @@ func (fake *Gossip) PeerFilterReturnsOnCall(i int, result1 filter.RoutingFilter,
 	}{result1, result2}
 }
 
-func (fake *Gossip) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage) {
+func (fake *Gossip) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan protoext.ReceivedMessage) {
 	fake.acceptMutex.Lock()
 	ret, specificReturn := fake.acceptReturnsOnCall[len(fake.acceptArgsForCall)]
 	fake.acceptArgsForCall = append(fake.acceptArgsForCall, struct {
@@ -594,25 +595,25 @@ func (fake *Gossip) AcceptArgsForCall(i int) (common.MessageAcceptor, bool) {
 	return fake.acceptArgsForCall[i].acceptor, fake.acceptArgsForCall[i].passThrough
 }
 
-func (fake *Gossip) AcceptReturns(result1 <-chan *proto.GossipMessage, result2 <-chan proto.ReceivedMessage) {
+func (fake *Gossip) AcceptReturns(result1 <-chan *proto.GossipMessage, result2 <-chan protoext.ReceivedMessage) {
 	fake.AcceptStub = nil
 	fake.acceptReturns = struct {
 		result1 <-chan *proto.GossipMessage
-		result2 <-chan proto.ReceivedMessage
+		result2 <-chan protoext.ReceivedMessage
 	}{result1, result2}
 }
 
-func (fake *Gossip) AcceptReturnsOnCall(i int, result1 <-chan *proto.GossipMessage, result2 <-chan proto.ReceivedMessage) {
+func (fake *Gossip) AcceptReturnsOnCall(i int, result1 <-chan *proto.GossipMessage, result2 <-chan protoext.ReceivedMessage) {
 	fake.AcceptStub = nil
 	if fake.acceptReturnsOnCall == nil {
 		fake.acceptReturnsOnCall = make(map[int]struct {
 			result1 <-chan *proto.GossipMessage
-			result2 <-chan proto.ReceivedMessage
+			result2 <-chan protoext.ReceivedMessage
 		})
 	}
 	fake.acceptReturnsOnCall[i] = struct {
 		result1 <-chan *proto.GossipMessage
-		result2 <-chan proto.ReceivedMessage
+		result2 <-chan protoext.ReceivedMessage
 	}{result1, result2}
 }
 

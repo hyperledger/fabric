@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package pull
 
 import (
+	"encoding/hex"
 	"sync"
 	"time"
 
@@ -14,7 +15,9 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/protos/gossip"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
@@ -32,7 +35,7 @@ const (
 type MsgType int
 
 // MessageHook defines a function that will run after a certain pull message is received
-type MessageHook func(itemIDs []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage)
+type MessageHook func(itemIDs []string, items []*proto.SignedGossipMessage, msg protoext.ReceivedMessage)
 
 // Sender sends messages to remote peers
 type Sender interface {
@@ -62,24 +65,30 @@ type IngressDigestFilter func(digestMsg *proto.DataDigest) *proto.DataDigest
 
 // EgressDigestFilter filters digests to be sent to a remote peer, that
 // sent a hello with the following message
-type EgressDigestFilter func(helloMsg proto.ReceivedMessage) func(digestItem string) bool
+type EgressDigestFilter func(helloMsg protoext.ReceivedMessage) func(digestItem string) bool
 
 // byContext converts this EgressDigFilter to an algo.DigestFilter
 func (df EgressDigestFilter) byContext() algo.DigestFilter {
 	return func(context interface{}) func(digestItem string) bool {
 		return func(digestItem string) bool {
-			return df(context.(proto.ReceivedMessage))(digestItem)
+			return df(context.(protoext.ReceivedMessage))(digestItem)
 		}
 	}
 }
+
+// MsgConsumer invokes code given a SignedGossipMessage
+type MsgConsumer func(message *proto.SignedGossipMessage)
+
+// IdentifierExtractor extracts from a SignedGossipMessage an identifier
+type IdentifierExtractor func(*proto.SignedGossipMessage) string
 
 // PullAdapter defines methods of the pullStore to interact
 // with various modules of gossip
 type PullAdapter struct {
 	Sndr             Sender
 	MemSvc           MembershipService
-	IdExtractor      proto.IdentifierExtractor
-	MsgCons          proto.MsgConsumer
+	IdExtractor      IdentifierExtractor
+	MsgCons          MsgConsumer
 	EgressDigFilter  EgressDigestFilter
 	IngressDigFilter IngressDigestFilter
 }
@@ -105,7 +114,7 @@ type Mediator interface {
 	Remove(digest string)
 
 	// HandleMessage handles a message from some remote peer
-	HandleMessage(msg proto.ReceivedMessage)
+	HandleMessage(msg protoext.ReceivedMessage)
 }
 
 // pullMediatorImpl is an implementation of Mediator
@@ -123,7 +132,7 @@ type pullMediatorImpl struct {
 func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 	egressDigFilter := adapter.EgressDigFilter
 
-	acceptAllFilter := func(_ proto.ReceivedMessage) func(string) bool {
+	acceptAllFilter := func(_ protoext.ReceivedMessage) func(string) bool {
 		return func(_ string) bool {
 			return true
 		}
@@ -153,7 +162,7 @@ func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 
 }
 
-func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
+func (p *pullMediatorImpl) HandleMessage(m protoext.ReceivedMessage) {
 	if m.GetGossipMessage() == nil || !m.GetGossipMessage().IsPullMsg() {
 		return
 	}
@@ -287,12 +296,12 @@ func (p *pullMediatorImpl) SendDigest(digest []string, nonce uint64, context int
 			},
 		},
 	}
-	remotePeer := context.(proto.ReceivedMessage).GetConnectionInfo()
+	remotePeer := context.(protoext.ReceivedMessage).GetConnectionInfo()
 	if p.logger.IsEnabledFor(zapcore.DebugLevel) {
-		p.logger.Debug("Sending", p.config.MsgType, "digest:", digMsg.GetDataDig().FormattedDigests(), "to", remotePeer)
+		p.logger.Debug("Sending", p.config.MsgType, "digest:", formattedDigests(digMsg.GetDataDig()), "to", remotePeer)
 	}
 
-	context.(proto.ReceivedMessage).Respond(digMsg)
+	context.(protoext.ReceivedMessage).Respond(digMsg)
 }
 
 // SendReq sends an array of items to a certain remote PullEngine identified
@@ -311,7 +320,7 @@ func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
 		},
 	}
 	if p.logger.IsEnabledFor(zapcore.DebugLevel) {
-		p.logger.Debug("Sending", req.GetDataReq().FormattedDigests(), "to", dest)
+		p.logger.Debug("Sending", formattedDigests(req.GetDataReq()), "to", dest)
 	}
 	sMsg, err := req.NoopSign()
 	if err != nil {
@@ -319,6 +328,38 @@ func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
 		return
 	}
 	p.Sndr.Send(sMsg, p.peersWithEndpoints(dest)...)
+}
+
+// typeDigster normalizes the common digest operations needed to format them
+// for log messages.
+type typedDigester interface {
+	GetMsgType() gossip.PullMsgType
+	GetDigests() [][]byte
+}
+
+func formattedDigests(dd typedDigester) []string {
+	switch dd.GetMsgType() {
+	case gossip.PullMsgType_IDENTITY_MSG:
+		return digestsToHex(dd.GetDigests())
+	default:
+		return digestsAsStrings(dd.GetDigests())
+	}
+}
+
+func digestsAsStrings(digests [][]byte) []string {
+	a := make([]string, len(digests))
+	for i, dig := range digests {
+		a[i] = string(dig)
+	}
+	return a
+}
+
+func digestsToHex(digests [][]byte) []string {
+	a := make([]string, len(digests))
+	for i, dig := range digests {
+		a[i] = hex.EncodeToString(dig)
+	}
+	return a
 }
 
 // SendRes sends an array of items to a remote PullEngine identified by a context.
@@ -343,9 +384,9 @@ func (p *pullMediatorImpl) SendRes(items []string, context interface{}, nonce ui
 			},
 		},
 	}
-	remotePeer := context.(proto.ReceivedMessage).GetConnectionInfo()
+	remotePeer := context.(protoext.ReceivedMessage).GetConnectionInfo()
 	p.logger.Debug("Sending", len(returnedUpdate.GetDataUpdate().Data), p.config.MsgType, "items to", remotePeer)
-	context.(proto.ReceivedMessage).Respond(returnedUpdate)
+	context.(protoext.ReceivedMessage).Respond(returnedUpdate)
 }
 
 func (p *pullMediatorImpl) peersWithEndpoints(endpoints ...string) []*comm.RemotePeer {

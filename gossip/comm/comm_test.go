@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/mocks"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -174,7 +175,7 @@ const (
 	mutualTLS
 )
 
-func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator msgMutator, connType tlsType) <-chan proto.ReceivedMessage {
+func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator msgMutator, connType tlsType) <-chan protoext.ReceivedMessage {
 	c := &commImpl{}
 	cert := GenerateCertificatesOrPanic()
 	tlsCfg := &tls.Config{
@@ -251,7 +252,7 @@ func TestMutualParallelSendWithAck(t *testing.T) {
 	defer comm2.Stop()
 
 	acceptData := func(o interface{}) bool {
-		return o.(proto.ReceivedMessage).GetGossipMessage().IsDataMsg()
+		return o.(protoext.ReceivedMessage).GetGossipMessage().IsDataMsg()
 	}
 
 	inc1 := comm1.Accept(acceptData)
@@ -302,7 +303,7 @@ func TestHandshake(t *testing.T) {
 	mutator := func(msg *proto.SignedGossipMessage) *proto.SignedGossipMessage {
 		return msg
 	}
-	assertPositivePath := func(msg proto.ReceivedMessage, endpoint string) {
+	assertPositivePath := func(msg protoext.ReceivedMessage, endpoint string) {
 		expectedPKIID := common.PKIidType(endpoint)
 		assert.Equal(t, expectedPKIID, msg.GetConnectionInfo().ID)
 		assert.Equal(t, api.PeerIdentityType(endpoint), msg.GetConnectionInfo().Identity)
@@ -321,7 +322,7 @@ func TestHandshake(t *testing.T) {
 	}, naiveSec, disabledMetrics, testCommConfig)
 	go s.Serve(ll)
 	assert.NoError(t, err)
-	var msg proto.ReceivedMessage
+	var msg protoext.ReceivedMessage
 
 	_, tempEndpoint, tempL := getAvailablePort(t)
 	acceptChan := handshaker(port, tempEndpoint, inst, t, mutator, none)
@@ -447,7 +448,7 @@ func TestBasic(t *testing.T) {
 	m1 := comm1.Accept(acceptAll)
 	m2 := comm2.Accept(acceptAll)
 	out := make(chan uint64, 2)
-	reader := func(ch <-chan proto.ReceivedMessage) {
+	reader := func(ch <-chan protoext.ReceivedMessage) {
 		m := <-ch
 		out <- m.GetGossipMessage().Nonce
 	}
@@ -537,7 +538,7 @@ func TestProdConstructor(t *testing.T) {
 	m1 := comm1.Accept(acceptAll)
 	m2 := comm2.Accept(acceptAll)
 	out := make(chan uint64, 2)
-	reader := func(ch <-chan proto.ReceivedMessage) {
+	reader := func(ch <-chan protoext.ReceivedMessage) {
 		m := <-ch
 		out <- m.GetGossipMessage().Nonce
 	}
@@ -753,11 +754,11 @@ func TestAccept(t *testing.T) {
 	comm2, _ := newCommInstance(t, naiveSec)
 
 	evenNONCESelector := func(m interface{}) bool {
-		return m.(proto.ReceivedMessage).GetGossipMessage().Nonce%2 == 0
+		return m.(protoext.ReceivedMessage).GetGossipMessage().Nonce%2 == 0
 	}
 
 	oddNONCESelector := func(m interface{}) bool {
-		return m.(proto.ReceivedMessage).GetGossipMessage().Nonce%2 != 0
+		return m.(protoext.ReceivedMessage).GetGossipMessage().Nonce%2 != 0
 	}
 
 	evenNONCES := comm1.Accept(evenNONCESelector)
@@ -769,7 +770,7 @@ func TestAccept(t *testing.T) {
 	out := make(chan uint64, DefRecvBuffSize)
 	sem := make(chan struct{}, 0)
 
-	readIntoSlice := func(a *[]uint64, ch <-chan proto.ReceivedMessage) {
+	readIntoSlice := func(a *[]uint64, ch <-chan protoext.ReceivedMessage) {
 		for m := range ch {
 			*a = append(*a, m.GetGossipMessage().Nonce)
 			out <- m.GetGossipMessage().Nonce
@@ -810,7 +811,7 @@ func TestReConnections(t *testing.T) {
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, port2 := newCommInstance(t, naiveSec)
 
-	reader := func(out chan uint64, in <-chan proto.ReceivedMessage) {
+	reader := func(out chan uint64, in <-chan protoext.ReceivedMessage) {
 		for {
 			msg := <-in
 			if msg == nil {

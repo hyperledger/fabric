@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
@@ -55,7 +56,7 @@ type CommService interface {
 	Ping(peer *NetworkMember) bool
 
 	// Accept returns a read-only channel for membership messages sent from remote peers
-	Accept() <-chan proto.ReceivedMessage
+	Accept() <-chan protoext.ReceivedMessage
 
 	// PresumedDead returns a read-only channel for peers that are presumed to be dead
 	PresumedDead() <-chan common.PKIidType
@@ -65,7 +66,7 @@ type CommService interface {
 
 	// Forward sends message to the next hop, excluding the hop
 	// from which message was initially received
-	Forward(msg proto.ReceivedMessage)
+	Forward(msg protoext.ReceivedMessage)
 }
 
 // NetworkMember is a peer's representation

@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,8 +28,8 @@ func TestMockComm(t *testing.T) {
 	defer comm1.Stop()
 
 	msgCh := comm1.Accept(func(message interface{}) bool {
-		return message.(proto.ReceivedMessage).GetGossipMessage().GetStateRequest() != nil ||
-			message.(proto.ReceivedMessage).GetGossipMessage().GetStateResponse() != nil
+		return message.(protoext.ReceivedMessage).GetGossipMessage().GetStateRequest() != nil ||
+			message.(protoext.ReceivedMessage).GetGossipMessage().GetStateResponse() != nil
 	})
 
 	comm2 := NewCommMock(second.endpoint, members)

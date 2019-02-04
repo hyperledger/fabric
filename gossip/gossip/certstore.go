@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
@@ -49,7 +50,7 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 		certStore.logger.Panicf("Failed creating self identity message: %+v", errors.WithStack(err))
 	}
 	puller.Add(selfIDMsg)
-	puller.RegisterMsgHook(pull.RequestMsgType, func(_ []string, msgs []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
+	puller.RegisterMsgHook(pull.RequestMsgType, func(_ []string, msgs []*proto.SignedGossipMessage, _ protoext.ReceivedMessage) {
 		for _, msg := range msgs {
 			pkiID := common.PKIidType(msg.GetPeerIdentity().PkiId)
 			cert := api.PeerIdentityType(msg.GetPeerIdentity().Cert)
@@ -61,7 +62,7 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 	return certStore
 }
 
-func (cs *certStore) handleMessage(msg proto.ReceivedMessage) {
+func (cs *certStore) handleMessage(msg protoext.ReceivedMessage) {
 	if update := msg.GetGossipMessage().GetDataUpdate(); update != nil {
 		for _, env := range update.Data {
 			m, err := env.ToGossipMessage()

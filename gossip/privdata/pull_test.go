@@ -25,6 +25,7 @@ import (
 	gmetricsmocks "github.com/hyperledger/fabric/gossip/metrics/mocks"
 	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/privdata/mocks"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	fcommon "github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
@@ -170,7 +171,7 @@ func (dr *dataRetrieverMock) CollectionRWSet(dig []*proto.PvtDataDigest, blockNu
 }
 
 type receivedMsg struct {
-	responseChan chan proto.ReceivedMessage
+	responseChan chan protoext.ReceivedMessage
 	*comm.RemotePeer
 	*proto.SignedGossipMessage
 }
@@ -204,14 +205,14 @@ func (msg *receivedMsg) GetConnectionInfo() *proto.ConnectionInfo {
 
 type mockGossip struct {
 	mock.Mock
-	msgChan chan proto.ReceivedMessage
+	msgChan chan protoext.ReceivedMessage
 	id      *comm.RemotePeer
 	network *gossipNetwork
 }
 
 func newMockGossip(id *comm.RemotePeer) *mockGossip {
 	return &mockGossip{
-		msgChan: make(chan proto.ReceivedMessage),
+		msgChan: make(chan protoext.ReceivedMessage),
 		id:      id,
 	}
 }
@@ -251,7 +252,7 @@ func (g *mockGossip) PeersOfChannel(common.ChainID) []discovery.NetworkMember {
 	return g.Called().Get(0).([]discovery.NetworkMember)
 }
 
-func (g *mockGossip) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage) {
+func (g *mockGossip) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan protoext.ReceivedMessage) {
 	return nil, g.msgChan
 }
 

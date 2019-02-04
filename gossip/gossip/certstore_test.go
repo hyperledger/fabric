@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -87,7 +88,7 @@ func (m *membershipSvcMock) GetMembership() []discovery.NetworkMember {
 }
 
 func TestCertStoreBadSignature(t *testing.T) {
-	badSignature := func(nonce uint64) proto.ReceivedMessage {
+	badSignature := func(nonce uint64) protoext.ReceivedMessage {
 		return createUpdateMessage(nonce, createBadlySignedUpdateMessage())
 	}
 	pm, cs, _ := createObjects(badSignature, nil)
@@ -97,7 +98,7 @@ func TestCertStoreBadSignature(t *testing.T) {
 }
 
 func TestCertStoreMismatchedIdentity(t *testing.T) {
-	mismatchedIdentity := func(nonce uint64) proto.ReceivedMessage {
+	mismatchedIdentity := func(nonce uint64) protoext.ReceivedMessage {
 		return createUpdateMessage(nonce, createMismatchedUpdateMessage())
 	}
 
@@ -108,7 +109,7 @@ func TestCertStoreMismatchedIdentity(t *testing.T) {
 }
 
 func TestCertStoreShouldSucceed(t *testing.T) {
-	totallyFineIdentity := func(nonce uint64) proto.ReceivedMessage {
+	totallyFineIdentity := func(nonce uint64) protoext.ReceivedMessage {
 		return createUpdateMessage(nonce, createValidUpdateMessage())
 	}
 
@@ -123,7 +124,7 @@ func TestCertRevocation(t *testing.T) {
 		cs.revokedPkiIDS = map[string]struct{}{}
 	}()
 
-	totallyFineIdentity := func(nonce uint64) proto.ReceivedMessage {
+	totallyFineIdentity := func(nonce uint64) protoext.ReceivedMessage {
 		return createUpdateMessage(nonce, createValidUpdateMessage())
 	}
 
@@ -229,7 +230,7 @@ func TestCertExpiration(t *testing.T) {
 	// Make the channel bigger than needed so goroutines won't get stuck
 	identitiesGotViaPull := make(chan struct{}, identities2Detect+100)
 	acceptIdentityPullMsgs := func(o interface{}) bool {
-		m := o.(proto.ReceivedMessage).GetGossipMessage()
+		m := o.(protoext.ReceivedMessage).GetGossipMessage()
 		if m.IsPullMsg() && m.IsDigestMsg() {
 			for _, dig := range m.GetDataDig().Digests {
 				if bytes.Equal(dig, []byte(fmt.Sprintf("127.0.0.1:%d", port0))) {
@@ -365,7 +366,7 @@ func createValidUpdateMessage() *proto.SignedGossipMessage {
 	return sMsg
 }
 
-func createUpdateMessage(nonce uint64, idMsg *proto.SignedGossipMessage) proto.ReceivedMessage {
+func createUpdateMessage(nonce uint64, idMsg *proto.SignedGossipMessage) protoext.ReceivedMessage {
 	update := &proto.GossipMessage{
 		Tag: proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataUpdate{
@@ -380,7 +381,7 @@ func createUpdateMessage(nonce uint64, idMsg *proto.SignedGossipMessage) proto.R
 	return &sentMsg{msg: sMsg}
 }
 
-func createDigest(nonce uint64) proto.ReceivedMessage {
+func createDigest(nonce uint64) protoext.ReceivedMessage {
 	digest := &proto.GossipMessage{
 		Tag: proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataDig{
@@ -395,7 +396,7 @@ func createDigest(nonce uint64) proto.ReceivedMessage {
 	return &sentMsg{msg: sMsg}
 }
 
-func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons proto.MsgConsumer) (pull.Mediator, *certStore, *senderMock) {
+func createObjects(updateFactory func(uint64) protoext.ReceivedMessage, msgCons pull.MsgConsumer) (pull.Mediator, *certStore, *senderMock) {
 	if msgCons == nil {
 		msgCons = func(_ *proto.SignedGossipMessage) {}
 	}

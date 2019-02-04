@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
@@ -82,7 +83,7 @@ type GossipChannel interface {
 	EligibleForChannel(member discovery.NetworkMember) bool
 
 	// HandleMessage processes a message sent by a remote peer
-	HandleMessage(proto.ReceivedMessage)
+	HandleMessage(protoext.ReceivedMessage)
 
 	// AddToMsgStore adds a given GossipMessage to the message store
 	AddToMsgStore(msg *proto.SignedGossipMessage)
@@ -110,7 +111,7 @@ type Adapter interface {
 	Gossip(message *proto.SignedGossipMessage)
 
 	// Forward sends a message to the next hops
-	Forward(message proto.ReceivedMessage)
+	Forward(message protoext.ReceivedMessage)
 
 	// DeMultiplex de-multiplexes an item to subscribers
 	DeMultiplex(interface{})
@@ -203,7 +204,7 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 
 	gc.memFilter = &membershipFilter{adapter: gc.Adapter, gossipChannel: gc}
 
-	comparator := proto.NewGossipMessageComparator(adapter.GetConf().MaxBlockCountToStore)
+	comparator := protoext.NewGossipMessageComparator(adapter.GetConf().MaxBlockCountToStore)
 
 	gc.blocksPuller = gc.createBlockPuller()
 
@@ -265,7 +266,7 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 	gc.stateInfoMsgStore = newStateInfoCache(gc.GetConf().StateInfoCacheSweepInterval, hashPeerExpiredInMembership, verifyStateInfoMsg)
 
 	ttl := adapter.GetConf().MsgExpirationTimeout
-	pol := proto.NewGossipMessageComparator(0)
+	pol := protoext.NewGossipMessageComparator(0)
 
 	gc.leaderMsgStore = msgstore.NewMessageStoreExpirable(pol, msgstore.Noop, ttl, nil, nil, nil)
 
@@ -551,7 +552,7 @@ func (gc *gossipChannel) ConfigureChannel(joinMsg api.JoinChannelMessage) {
 }
 
 // HandleMessage processes a message sent by a remote peer
-func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
+func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 	if !gc.verifyMsg(msg) {
 		gc.logger.Warning("Failed verifying message:", msg.GetGossipMessage().GossipMessage)
 		return
@@ -779,7 +780,7 @@ func (gc *gossipChannel) createStateInfoSnapshot(requestersOrg api.OrgIdentityTy
 	}
 }
 
-func (gc *gossipChannel) verifyMsg(msg proto.ReceivedMessage) bool {
+func (gc *gossipChannel) verifyMsg(msg protoext.ReceivedMessage) bool {
 	if msg == nil {
 		gc.logger.Warning("Messsage is nil")
 		return false
@@ -905,7 +906,7 @@ func (gc *gossipChannel) updateProperties(ledgerHeight uint64, chaincodes []*pro
 
 func newStateInfoCache(sweepInterval time.Duration, hasExpired func(interface{}) bool, verifyFunc membershipPredicate) *stateInfoCache {
 	membershipStore := util.NewMembershipStore()
-	pol := proto.NewGossipMessageComparator(0)
+	pol := protoext.NewGossipMessageComparator(0)
 
 	s := &stateInfoCache{
 		verify:          verifyFunc,

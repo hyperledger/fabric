@@ -7,120 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 package gossip
 
 import (
-	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/protos/msp"
 )
-
-// NewGossipMessageComparator creates a MessageReplacingPolicy given a maximum number of blocks to hold
-func NewGossipMessageComparator(dataBlockStorageSize int) common.MessageReplacingPolicy {
-	return (&msgComparator{dataBlockStorageSize: dataBlockStorageSize}).getMsgReplacingPolicy()
-}
-
-type msgComparator struct {
-	dataBlockStorageSize int
-}
-
-func (mc *msgComparator) getMsgReplacingPolicy() common.MessageReplacingPolicy {
-	return func(this interface{}, that interface{}) common.InvalidationResult {
-		return mc.invalidationPolicy(this, that)
-	}
-}
-
-func (mc *msgComparator) invalidationPolicy(this interface{}, that interface{}) common.InvalidationResult {
-	thisMsg := this.(*SignedGossipMessage)
-	thatMsg := that.(*SignedGossipMessage)
-
-	if thisMsg.IsAliveMsg() && thatMsg.IsAliveMsg() {
-		return aliveInvalidationPolicy(thisMsg.GetAliveMsg(), thatMsg.GetAliveMsg())
-	}
-
-	if thisMsg.IsDataMsg() && thatMsg.IsDataMsg() {
-		return mc.dataInvalidationPolicy(thisMsg.GetDataMsg(), thatMsg.GetDataMsg())
-	}
-
-	if thisMsg.IsStateInfoMsg() && thatMsg.IsStateInfoMsg() {
-		return mc.stateInvalidationPolicy(thisMsg.GetStateInfo(), thatMsg.GetStateInfo())
-	}
-
-	if thisMsg.IsIdentityMsg() && thatMsg.IsIdentityMsg() {
-		return mc.identityInvalidationPolicy(thisMsg.GetPeerIdentity(), thatMsg.GetPeerIdentity())
-	}
-
-	if thisMsg.IsLeadershipMsg() && thatMsg.IsLeadershipMsg() {
-		return leaderInvalidationPolicy(thisMsg.GetLeadershipMsg(), thatMsg.GetLeadershipMsg())
-	}
-
-	return common.MessageNoAction
-}
-
-func (mc *msgComparator) stateInvalidationPolicy(thisStateMsg *StateInfo, thatStateMsg *StateInfo) common.InvalidationResult {
-	if !bytes.Equal(thisStateMsg.PkiId, thatStateMsg.PkiId) {
-		return common.MessageNoAction
-	}
-	return compareTimestamps(thisStateMsg.Timestamp, thatStateMsg.Timestamp)
-}
-
-func (mc *msgComparator) identityInvalidationPolicy(thisIdentityMsg *PeerIdentity, thatIdentityMsg *PeerIdentity) common.InvalidationResult {
-	if bytes.Equal(thisIdentityMsg.PkiId, thatIdentityMsg.PkiId) {
-		return common.MessageInvalidated
-	}
-
-	return common.MessageNoAction
-}
-
-func (mc *msgComparator) dataInvalidationPolicy(thisDataMsg *DataMessage, thatDataMsg *DataMessage) common.InvalidationResult {
-	if thisDataMsg.Payload.SeqNum == thatDataMsg.Payload.SeqNum {
-		return common.MessageInvalidated
-	}
-
-	diff := abs(thisDataMsg.Payload.SeqNum, thatDataMsg.Payload.SeqNum)
-	if diff <= uint64(mc.dataBlockStorageSize) {
-		return common.MessageNoAction
-	}
-
-	if thisDataMsg.Payload.SeqNum > thatDataMsg.Payload.SeqNum {
-		return common.MessageInvalidates
-	}
-	return common.MessageInvalidated
-}
-
-func aliveInvalidationPolicy(thisMsg *AliveMessage, thatMsg *AliveMessage) common.InvalidationResult {
-	if !bytes.Equal(thisMsg.Membership.PkiId, thatMsg.Membership.PkiId) {
-		return common.MessageNoAction
-	}
-
-	return compareTimestamps(thisMsg.Timestamp, thatMsg.Timestamp)
-}
-
-func leaderInvalidationPolicy(thisMsg *LeadershipMessage, thatMsg *LeadershipMessage) common.InvalidationResult {
-	if !bytes.Equal(thisMsg.PkiId, thatMsg.PkiId) {
-		return common.MessageNoAction
-	}
-
-	return compareTimestamps(thisMsg.Timestamp, thatMsg.Timestamp)
-}
-
-func compareTimestamps(thisTS *PeerTime, thatTS *PeerTime) common.InvalidationResult {
-	if thisTS.IncNum == thatTS.IncNum {
-		if thisTS.SeqNum > thatTS.SeqNum {
-			return common.MessageInvalidates
-		}
-
-		return common.MessageInvalidated
-	}
-	if thisTS.IncNum < thatTS.IncNum {
-		return common.MessageInvalidated
-	}
-	return common.MessageInvalidates
-}
 
 // IsAliveMsg returns whether this GossipMessage is an AliveMessage
 func (m *GossipMessage) IsAliveMsg() bool {
@@ -234,12 +129,6 @@ func (m *GossipMessage) IsLeadershipMsg() bool {
 	return m.GetLeadershipMsg() != nil
 }
 
-// MsgConsumer invokes code given a SignedGossipMessage
-type MsgConsumer func(message *SignedGossipMessage)
-
-// IdentifierExtractor extracts from a SignedGossipMessage an identifier
-type IdentifierExtractor func(*SignedGossipMessage) string
-
 // IsTagLegal checks the GossipMessage tags and inner type
 // and returns an error if the tag doesn't match the type.
 func (m *GossipMessage) IsTagLegal() error {
@@ -309,33 +198,6 @@ type Verifier func(peerIdentity []byte, signature, message []byte) error
 // Signer signs a message, and returns (signature, nil)
 // on success, and nil and an error on failure.
 type Signer func(msg []byte) ([]byte, error)
-
-// ReceivedMessage is a GossipMessage wrapper that
-// enables the user to send a message to the origin from which
-// the ReceivedMessage was sent from.
-// It also allows to know the identity of the sender,
-// to obtain the raw bytes the GossipMessage was un-marshaled from,
-// and the signature over these raw bytes.
-type ReceivedMessage interface {
-	// Respond sends a GossipMessage to the origin from which this ReceivedMessage was sent from
-	Respond(msg *GossipMessage)
-
-	// GetGossipMessage returns the underlying GossipMessage
-	GetGossipMessage() *SignedGossipMessage
-
-	// GetSourceMessage Returns the Envelope the ReceivedMessage was
-	// constructed with
-	GetSourceEnvelope() *Envelope
-
-	// GetConnectionInfo returns information about the remote peer
-	// that sent the message
-	GetConnectionInfo() *ConnectionInfo
-
-	// Ack returns to the sender an acknowledgement for the message
-	// An ack can receive an error that indicates that the operation related
-	// to the message has failed
-	Ack(err error)
-}
 
 // ConnectionInfo represents information about
 // the remote peer that sent a certain ReceivedMessage
@@ -644,30 +506,6 @@ func (m *SignedGossipMessage) String() string {
 	return fmt.Sprintf("GossipMessage: %v, Envelope: %s", gMsg, env)
 }
 
-func (dd *DataRequest) FormattedDigests() []string {
-	if dd.MsgType == PullMsgType_IDENTITY_MSG {
-		return digestsToHex(dd.Digests)
-	}
-
-	return digestsAsStrings(dd.Digests)
-}
-
-func (dd *DataDigest) FormattedDigests() []string {
-	if dd.MsgType == PullMsgType_IDENTITY_MSG {
-		return digestsToHex(dd.Digests)
-	}
-	return digestsAsStrings(dd.Digests)
-}
-
-// Hash returns the SHA256 representation of the PvtDataDigest's bytes
-func (dig *PvtDataDigest) Hash() (string, error) {
-	b, err := proto.Marshal(dig)
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(util.ComputeSHA256(b)), nil
-}
-
 // ToString returns a string representation of this RemotePvtDataResponse
 func (res *RemotePvtDataResponse) ToString() string {
 	a := make([]string, len(res.Elements))
@@ -675,37 +513,4 @@ func (res *RemotePvtDataResponse) ToString() string {
 		a[i] = fmt.Sprintf("%s with %d elements", el.Digest.String(), len(el.Payload))
 	}
 	return fmt.Sprintf("%v", a)
-}
-
-func digestsAsStrings(digests [][]byte) []string {
-	a := make([]string, len(digests))
-	for i, dig := range digests {
-		a[i] = string(dig)
-	}
-	return a
-}
-
-func digestsToHex(digests [][]byte) []string {
-	a := make([]string, len(digests))
-	for i, dig := range digests {
-		a[i] = hex.EncodeToString(dig)
-	}
-	return a
-}
-
-// LedgerHeight returns the ledger height that is specified
-// in the StateInfo message
-func (msg *StateInfo) LedgerHeight() (uint64, error) {
-	if msg.Properties != nil {
-		return msg.Properties.LedgerHeight, nil
-	}
-	return 0, errors.New("properties undefined")
-}
-
-// Abs returns abs(a-b)
-func abs(a, b uint64) uint64 {
-	if a > b {
-		return a - b
-	}
-	return b - a
 }

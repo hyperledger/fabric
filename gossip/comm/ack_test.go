@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -71,15 +72,15 @@ func TestAck(t *testing.T) {
 	defer comm4.Stop()
 
 	acceptData := func(o interface{}) bool {
-		return o.(proto.ReceivedMessage).GetGossipMessage().IsDataMsg()
+		return o.(protoext.ReceivedMessage).GetGossipMessage().IsDataMsg()
 	}
 
-	ack := func(c <-chan proto.ReceivedMessage) {
+	ack := func(c <-chan protoext.ReceivedMessage) {
 		msg := <-c
 		msg.Ack(nil)
 	}
 
-	nack := func(c <-chan proto.ReceivedMessage) {
+	nack := func(c <-chan protoext.ReceivedMessage) {
 		msg := <-c
 		msg.Ack(errors.New("Failed processing message because reasons"))
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
@@ -70,7 +71,7 @@ func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore iden
 		deadEndpoints:  make(chan common.PKIidType, 100),
 		stopping:       int32(0),
 		exitChan:       make(chan struct{}),
-		subscriptions:  make([]chan proto.ReceivedMessage, 0),
+		subscriptions:  make([]chan protoext.ReceivedMessage, 0),
 		tlsCerts:       certs,
 		metrics:        commMetrics,
 		dialTimeout:    config.DialTimeout,
@@ -115,7 +116,7 @@ type commImpl struct {
 	lock           *sync.Mutex
 	exitChan       chan struct{}
 	stopWG         sync.WaitGroup
-	subscriptions  []chan proto.ReceivedMessage
+	subscriptions  []chan protoext.ReceivedMessage
 	stopping       int32
 	metrics        *metrics.CommMetrics
 	dialTimeout    time.Duration
@@ -310,9 +311,9 @@ func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, erro
 	return connInfo.Identity, nil
 }
 
-func (c *commImpl) Accept(acceptor common.MessageAcceptor) <-chan proto.ReceivedMessage {
+func (c *commImpl) Accept(acceptor common.MessageAcceptor) <-chan protoext.ReceivedMessage {
 	genericChan := c.msgPublisher.AddChannel(acceptor)
-	specificChan := make(chan proto.ReceivedMessage, 10)
+	specificChan := make(chan protoext.ReceivedMessage, 10)
 
 	if c.isStopping() {
 		c.logger.Warning("Accept() called but comm module is stopping, returning empty channel")
