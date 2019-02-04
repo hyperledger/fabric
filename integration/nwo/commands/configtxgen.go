@@ -31,6 +31,7 @@ type CreateChannelTx struct {
 	Profile               string
 	ConfigPath            string
 	OutputCreateChannelTx string
+	BaseProfile           string
 }
 
 func (c CreateChannelTx) SessionName() string {
@@ -43,6 +44,7 @@ func (c CreateChannelTx) Args() []string {
 		"-profile", c.Profile,
 		"-configPath", c.ConfigPath,
 		"-outputCreateChannelTx", c.OutputCreateChannelTx,
+		"-channelCreateTxBaseProfile", c.BaseProfile,
 	}
 }
 
