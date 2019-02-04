@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
+	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/common/metrics"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -16,8 +17,15 @@ import (
 	logging "github.com/op/go-logging"
 )
 
+//go:generate counterfeiter -o mock/health_checker.go -fake-name HealthChecker . healthChecker
+
+// healthChecker defines the contract for health checker
+type healthChecker interface {
+	RegisterChecker(component string, checker healthz.HealthChecker) error
+}
+
 // New creates a Kafka-based consenter. Called by orderer's main.go.
-func New(config localconfig.Kafka, metricsProvider metrics.Provider) (consensus.Consenter, *Metrics) {
+func New(config localconfig.Kafka, metricsProvider metrics.Provider, healthChecker healthChecker) (consensus.Consenter, *Metrics) {
 	if config.Verbose {
 		logging.SetLevel(logging.DEBUG, "orderer.consensus.kafka.sarama")
 	}
@@ -38,6 +46,7 @@ func New(config localconfig.Kafka, metricsProvider metrics.Provider) (consensus.
 			NumPartitions:     1,
 			ReplicationFactor: config.Topic.ReplicationFactor,
 		},
+		healthChecker: healthChecker,
 	}, NewMetrics(metricsProvider, brokerConfig.MetricRegistry)
 }
 
@@ -50,6 +59,7 @@ type consenterImpl struct {
 	retryOptionsVal localconfig.Retry
 	kafkaVersionVal sarama.KafkaVersion
 	topicDetailVal  *sarama.TopicDetail
+	healthChecker   healthChecker
 }
 
 // HandleChain creates/returns a reference to a consensus.Chain object for the
@@ -59,7 +69,12 @@ type consenterImpl struct {
 // existingChains.
 func (consenter *consenterImpl) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
 	lastOffsetPersisted, lastOriginalOffsetProcessed, lastResubmittedConfigOffset := getOffsets(metadata.Value, support.ChainID())
-	return newChain(consenter, support, lastOffsetPersisted, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
+	ch, err := newChain(consenter, support, lastOffsetPersisted, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
+	if err != nil {
+		return nil, err
+	}
+	consenter.healthChecker.RegisterChecker(ch.channel.String(), ch)
+	return ch, nil
 }
 
 // commonConsenter allows us to retrieve the configuration options set on the
