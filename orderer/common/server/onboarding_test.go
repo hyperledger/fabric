@@ -1035,3 +1035,64 @@ func TestVerifierLoader(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateBootstrapBlock(t *testing.T) {
+	systemChannelBlockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "system.block"))
+	assert.NoError(t, err)
+
+	applicationChannelBlockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "mychannel.block"))
+	assert.NoError(t, err)
+
+	appBlock := &common.Block{}
+	err = proto.Unmarshal(applicationChannelBlockBytes, appBlock)
+	assert.NoError(t, err)
+
+	systemBlock := &common.Block{}
+	err = proto.Unmarshal(systemChannelBlockBytes, systemBlock)
+	assert.NoError(t, err)
+
+	for _, testCase := range []struct {
+		description   string
+		block         *common.Block
+		expectedError string
+	}{
+		{
+			description:   "nil block",
+			expectedError: "nil block",
+		},
+		{
+			description:   "empty block",
+			block:         &common.Block{},
+			expectedError: "empty block data",
+		},
+		{
+			description: "bad envelope",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{{1, 2, 3}},
+				},
+			},
+			expectedError: "failed extracting envelope from block: " +
+				"proto: common.Envelope: illegal tag 0 (wire type 1)",
+		},
+		{
+			description:   "application channel block",
+			block:         appBlock,
+			expectedError: "the block isn't a system channel block because it lacks ConsortiumsConfig",
+		},
+		{
+			description: "system channel block",
+			block:       systemBlock,
+		},
+	} {
+		t.Run(testCase.description, func(t *testing.T) {
+			err := ValidateBootstrapBlock(testCase.block)
+			if testCase.expectedError == "" {
+				assert.NoError(t, err)
+				return
+			}
+
+			assert.EqualError(t, err, testCase.expectedError)
+		})
+	}
+}
