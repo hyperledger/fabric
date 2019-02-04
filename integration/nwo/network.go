@@ -73,8 +73,9 @@ type SystemChannel struct {
 
 // Channel associates a channel name with a configtxgen profile name.
 type Channel struct {
-	Name    string `yaml:"name,omitempty"`
-	Profile string `yaml:"profile,omitempty"`
+	Name        string `yaml:"name,omitempty"`
+	Profile     string `yaml:"profile,omitempty"`
+	BaseProfile string `yaml:"baseprofile,omitempty"`
 }
 
 // Orderer defines an orderer instance and its owning organization.
@@ -581,6 +582,7 @@ func (n *Network) Bootstrap() {
 		sess, err := n.ConfigTxGen(commands.CreateChannelTx{
 			ChannelID:             c.Name,
 			Profile:               c.Profile,
+			BaseProfile:           c.BaseProfile,
 			ConfigPath:            n.RootDir,
 			OutputCreateChannelTx: n.CreateChannelTxPath(c.Name),
 		})
@@ -720,21 +722,32 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 
 // CreateChannel will submit an existing create channel transaction to the
 // specified orderer. The channel transaction must exist at the location
-// returned by CreateChannelTxPath.
+// returned by CreateChannelTxPath.  Optionally, additional signers may be
+// included in the case where the channel creation tx modifies other
+// aspects of the channel config for the new channel.
 //
 // The orderer must be running when this is called.
-func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer) {
+func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additionalSigners ...*Peer) {
+	channelCreateTxPath := n.CreateChannelTxPath(channelName)
+
+	for _, signer := range additionalSigners {
+		sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{
+			File: channelCreateTxPath,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	}
+
 	createChannel := func() int {
 		sess, err := n.PeerAdminSession(p, commands.ChannelCreate{
 			ChannelID:   channelName,
 			Orderer:     n.OrdererAddress(o, ListenPort),
-			File:        n.CreateChannelTxPath(channelName),
+			File:        channelCreateTxPath,
 			OutputBlock: "/dev/null",
 		})
 		Expect(err).NotTo(HaveOccurred())
 		return sess.Wait(n.EventuallyTimeout).ExitCode()
 	}
-
 	Eventually(createChannel, n.EventuallyTimeout).Should(Equal(0))
 }
 
