@@ -606,7 +606,7 @@ func TestInitializeEtcdraftConsenter(t *testing.T) {
 				Key:         crt.Key,
 				UseTLS:      true,
 			},
-		}, srv, &multichannel.Registrar{})
+		}, srv, &multichannel.Registrar{}, &disabled.Provider{})
 	assert.NotNil(t, consenters["etcdraft"])
 }
 

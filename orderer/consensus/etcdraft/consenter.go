@@ -16,6 +16,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
@@ -69,6 +70,7 @@ type Consenter struct {
 	EtcdRaftConfig Config
 	OrdererConfig  localconfig.TopLevel
 	Cert           []byte
+	Metrics        *Metrics
 }
 
 // TargetChannel extracts the channel from the given proto.Message.
@@ -161,6 +163,8 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 
 		WALDir:  path.Join(c.EtcdRaftConfig.WALDir, support.ChainID()),
 		SnapDir: path.Join(c.EtcdRaftConfig.SnapDir, support.ChainID()),
+
+		Metrics: c.Metrics,
 	}
 
 	rpc := &cluster.RPC{
@@ -211,6 +215,7 @@ func New(
 	srv *comm.GRPCServer,
 	r *multichannel.Registrar,
 	icr InactiveChainRegistry,
+	metricsProvider metrics.Provider,
 ) *Consenter {
 	logger := flogging.MustGetLogger("orderer.consensus.etcdraft")
 
@@ -221,13 +226,14 @@ func New(
 
 	consenter := &Consenter{
 		CreateChain:           r.CreateChain,
-		InactiveChainRegistry: icr,
 		Cert:                  srvConf.SecOpts.Certificate,
 		Logger:                logger,
 		Chains:                r,
 		EtcdRaftConfig:        cfg,
 		OrdererConfig:         *conf,
 		Dialer:                clusterDialer,
+		Metrics:               NewMetrics(metricsProvider),
+		InactiveChainRegistry: icr,
 	}
 	consenter.Dispatcher = &Dispatcher{
 		Logger:        logger,
