@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/discovery/protoext"
 	common2 "github.com/hyperledger/fabric/gossip/common"
 	discovery2 "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/protos/discovery"
@@ -37,8 +38,8 @@ type dispatcher func(q *discovery.Query) *discovery.QueryResult
 
 type service struct {
 	config             Config
-	channelDispatchers map[discovery.QueryType]dispatcher
-	localDispatchers   map[discovery.QueryType]dispatcher
+	channelDispatchers map[protoext.QueryType]dispatcher
+	localDispatchers   map[protoext.QueryType]dispatcher
 	auth               *authCache
 	Support
 }
@@ -72,13 +73,13 @@ func NewService(config Config, sup Support) *service {
 		}),
 		Support: sup,
 	}
-	s.channelDispatchers = map[discovery.QueryType]dispatcher{
-		discovery.ConfigQueryType:         s.configQuery,
-		discovery.ChaincodeQueryType:      s.chaincodeQuery,
-		discovery.PeerMembershipQueryType: s.channelMembershipResponse,
+	s.channelDispatchers = map[protoext.QueryType]dispatcher{
+		protoext.ConfigQueryType:         s.configQuery,
+		protoext.ChaincodeQueryType:      s.chaincodeQuery,
+		protoext.PeerMembershipQueryType: s.channelMembershipResponse,
 	}
-	s.localDispatchers = map[discovery.QueryType]dispatcher{
-		discovery.LocalMembershipQueryType: s.localMembershipResponse,
+	s.localDispatchers = map[protoext.QueryType]dispatcher{
+		protoext.LocalMembershipQueryType: s.localMembershipResponse,
 	}
 	logger.Info("Created with config", config)
 	return s
@@ -124,7 +125,7 @@ func (s *service) dispatch(q *discovery.Query) *discovery.QueryResult {
 	if q.Channel == "" {
 		dispatchers = s.localDispatchers
 	}
-	dispatchQuery, exists := dispatchers[q.GetType()]
+	dispatchQuery, exists := dispatchers[protoext.GetQueryType(q)]
 	if !exists {
 		return wrapError(errors.New("unknown or missing request type"))
 	}
@@ -237,7 +238,7 @@ func validateStructure(ctx context.Context, request *discovery.SignedRequest, tl
 	if request == nil {
 		return nil, errors.New("nil request")
 	}
-	req, err := request.ToRequest()
+	req, err := protoext.SignedRequestToRequest(request)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed parsing request")
 	}
