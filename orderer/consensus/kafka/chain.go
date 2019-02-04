@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"sync"
@@ -20,6 +21,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 )
 
 // Used for capturing metrics -- see processMessagesToBlocks
@@ -76,6 +78,14 @@ func newChain(
 	}, nil
 }
 
+//go:generate counterfeiter -o mock/sync_producer.go --fake-name SyncProducer . syncProducer
+
+type syncProducer interface {
+	SendMessage(msg *sarama.ProducerMessage) (partition int32, offset int64, err error)
+	SendMessages(msgs []*sarama.ProducerMessage) error
+	Close() error
+}
+
 type chainImpl struct {
 	consenter commonConsenter
 	consensus.ConsenterSupport
@@ -86,7 +96,7 @@ type chainImpl struct {
 	lastResubmittedConfigOffset int64
 	lastCutBlockNumber          uint64
 
-	producer        sarama.SyncProducer
+	producer        syncProducer
 	parentConsumer  sarama.Consumer
 	channelConsumer sarama.PartitionConsumer
 
@@ -108,6 +118,8 @@ type chainImpl struct {
 	startChan chan struct{}
 	// timer controls the batch timeout of cutting pending messages into block
 	timer <-chan time.Time
+
+	replicaIDs []int32
 }
 
 // Errored returns a channel which will close when a partition consumer error
@@ -255,6 +267,23 @@ func (chain *chainImpl) enqueue(kafkaMsg *ab.KafkaMessage) bool {
 	}
 }
 
+func (chain *chainImpl) HealthCheck(ctx context.Context) error {
+	var err error
+
+	payload := utils.MarshalOrPanic(newConnectMessage())
+	message := newProducerMessage(chain.channel, payload)
+
+	_, _, err = chain.producer.SendMessage(message)
+	if err != nil {
+		logger.Warnf("[channel %s] Cannot post CONNECT message = %s", chain.channel.topic(), err)
+		if err == sarama.ErrNotEnoughReplicas {
+			errMsg := fmt.Sprintf("[replica ids: %d]", chain.replicaIDs)
+			return errors.WithMessage(err, errMsg)
+		}
+	}
+	return nil
+}
+
 // Called by Start().
 func startThread(chain *chainImpl) {
 	var err error
@@ -292,6 +321,11 @@ func startThread(chain *chainImpl) {
 		logger.Panicf("[channel: %s] Cannot set up channel consumer = %s", chain.channel.topic(), err)
 	}
 	logger.Infof("[channel: %s] Channel consumer set up successfully", chain.channel.topic())
+
+	chain.replicaIDs, err = getHealthyClusterReplicaInfo(chain.consenter.retryOptions(), chain.haltChan, chain.SharedConfig().KafkaBrokers(), chain.channel)
+	if err != nil {
+		logger.Panicf("[channel: %s] failed to get replica IDs = %s", chain.channel.topic(), err)
+	}
 
 	chain.doneProcessingMessagesToBlocks = make(chan struct{})
 
@@ -1103,4 +1137,29 @@ func setupTopicForChannel(retryOptions localconfig.Retry, haltChan chan struct{}
 		})
 
 	return setupTopic.retry()
+}
+
+// Replica ID information can accurately be retrieved only when the cluster
+// is healthy. Otherwise, the replica request does not return the full set
+// of initial replicas. This information is needed to provide context when
+// a health check returns an error.
+func getHealthyClusterReplicaInfo(retryOptions localconfig.Retry, haltChan chan struct{}, brokers []string, channel channel) ([]int32, error) {
+	var replicaIDs []int32
+
+	retryMsg := "Getting list of Kafka brokers replicating the channel"
+	getReplicaInfo := newRetryProcess(retryOptions, haltChan, channel, retryMsg, func() error {
+		client, err := sarama.NewClient(brokers, nil)
+		if err != nil {
+			return err
+		}
+		defer client.Close()
+
+		replicaIDs, err = client.Replicas(channel.topic(), channel.partition())
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	return replicaIDs, getReplicaInfo.retry()
 }

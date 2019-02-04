@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -21,6 +23,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+	. "github.com/onsi/gomega"
 
 	"github.com/Shopify/sarama"
 	"github.com/Shopify/sarama/mocks"
@@ -630,6 +633,32 @@ func TestSetupProducerForChannel(t *testing.T) {
 	t.Run("WithError", func(t *testing.T) {
 		_, err := setupProducerForChannel(mockConsenter.retryOptions(), haltChan, []string{}, mockBrokerConfig, mockChannel)
 		assert.Error(t, err, "Expected the setupProducerForChannel call to return an error")
+	})
+}
+
+func TestGetHealthyClusterReplicaInfo(t *testing.T) {
+	mockBroker := sarama.NewMockBroker(t, 0)
+	defer mockBroker.Close()
+
+	mockChannel := newChannel(channelNameForTest(t), defaultPartition)
+
+	haltChan := make(chan struct{})
+
+	t.Run("Proper", func(t *testing.T) {
+		ids := []int32{int32(1), int32(2)}
+		metadataResponse := new(sarama.MetadataResponse)
+		metadataResponse.AddBroker(mockBroker.Addr(), mockBroker.BrokerID())
+		metadataResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), mockBroker.BrokerID(), ids, nil, sarama.ErrNoError)
+		mockBroker.Returns(metadataResponse)
+
+		replicaIDs, err := getHealthyClusterReplicaInfo(mockConsenter.retryOptions(), haltChan, []string{mockBroker.Addr()}, mockChannel)
+		assert.NoError(t, err, "Expected the getHealthyClusterReplicaInfo call to return without errors")
+		assert.Equal(t, replicaIDs, ids)
+	})
+
+	t.Run("WithError", func(t *testing.T) {
+		_, err := getHealthyClusterReplicaInfo(mockConsenter.retryOptions(), haltChan, []string{}, mockChannel)
+		assert.Error(t, err, "Expected the getHealthyClusterReplicaInfo call to return an error")
 	})
 }
 
@@ -3404,7 +3433,7 @@ func TestDeliverSession(t *testing.T) {
 		defer env.broker2.Close()
 
 		// initialize consenter
-		consenter, _ := New(mockLocalConfig.Kafka, &lmock.MetricsProvider{})
+		consenter, _ := New(mockLocalConfig.Kafka, &lmock.MetricsProvider{}, &lmock.HealthChecker{})
 
 		// initialize chain
 		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
@@ -3493,7 +3522,7 @@ func TestDeliverSession(t *testing.T) {
 		defer env.broker0.Close()
 
 		// initialize consenter
-		consenter, _ := New(mockLocalConfig.Kafka, &lmock.MetricsProvider{})
+		consenter, _ := New(mockLocalConfig.Kafka, &lmock.MetricsProvider{}, &lmock.HealthChecker{})
 
 		// initialize chain
 		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
@@ -3555,7 +3584,7 @@ func TestDeliverSession(t *testing.T) {
 		defer env.broker0.Close()
 
 		// initialize consenter
-		consenter, _ := New(mockLocalConfig.Kafka, &lmock.MetricsProvider{})
+		consenter, _ := New(mockLocalConfig.Kafka, &lmock.MetricsProvider{}, &lmock.HealthChecker{})
 
 		// initialize chain
 		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
@@ -3616,6 +3645,40 @@ func TestDeliverSession(t *testing.T) {
 		chain.Halt()
 	})
 
+}
+
+func TestHealthCheck(t *testing.T) {
+	gt := NewGomegaWithT(t)
+	var err error
+
+	ch := newChannel("mockChannelFoo", defaultPartition)
+	mockSyncProducer := &lmock.SyncProducer{}
+	chain := &chainImpl{
+		channel:  ch,
+		producer: mockSyncProducer,
+	}
+
+	err = chain.HealthCheck(context.Background())
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(mockSyncProducer.SendMessageCallCount()).To(Equal(1))
+
+	payload := utils.MarshalOrPanic(newConnectMessage())
+	message := newProducerMessage(chain.channel, payload)
+	gt.Expect(mockSyncProducer.SendMessageArgsForCall(0)).To(Equal(message))
+
+	// Only return error if the error is not for enough replicas
+	mockSyncProducer.SendMessageReturns(int32(1), int64(1), sarama.ErrNotEnoughReplicas)
+	chain.replicaIDs = []int32{int32(1), int32(2)}
+	err = chain.HealthCheck(context.Background())
+	gt.Expect(err).To(HaveOccurred())
+	gt.Expect(err.Error()).To(Equal(fmt.Sprintf("[replica ids: [1 2]]: %s", sarama.ErrNotEnoughReplicas.Error())))
+	gt.Expect(mockSyncProducer.SendMessageCallCount()).To(Equal(2))
+
+	// If another type of error is returned, it should be ignored by health check
+	mockSyncProducer.SendMessageReturns(int32(1), int64(1), errors.New("error occurred"))
+	err = chain.HealthCheck(context.Background())
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(mockSyncProducer.SendMessageCallCount()).To(Equal(3))
 }
 
 type mockReceiver struct {

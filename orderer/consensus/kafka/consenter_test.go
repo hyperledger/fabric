@@ -71,12 +71,12 @@ func init() {
 }
 
 func TestNew(t *testing.T) {
-	c, _ := New(mockLocalConfig.Kafka, &mock.MetricsProvider{})
+	c, _ := New(mockLocalConfig.Kafka, &mock.MetricsProvider{}, &mock.HealthChecker{})
 	_ = consensus.Consenter(c)
 }
 
 func TestHandleChain(t *testing.T) {
-	consenter, _ := New(mockLocalConfig.Kafka, &mock.MetricsProvider{})
+	consenter, _ := New(mockLocalConfig.Kafka, &mock.MetricsProvider{}, &mock.HealthChecker{})
 
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
