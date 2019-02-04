@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
@@ -97,6 +98,7 @@ var _ = Describe("Chain", func() {
 			walDir            string
 			snapDir           string
 			err               error
+			fakeFields        *fakeMetricsFields
 		)
 
 		BeforeEach(func() {
@@ -136,6 +138,8 @@ var _ = Describe("Chain", func() {
 				meta.NextConsenterId++
 			}
 
+			fakeFields = newFakeMetricsFields()
+
 			opts = etcdraft.Options{
 				RaftID:          1,
 				Clock:           clock,
@@ -149,6 +153,7 @@ var _ = Describe("Chain", func() {
 				MemoryStorage:   storage,
 				WALDir:          walDir,
 				SnapDir:         snapDir,
+				Metrics:         newFakeMetrics(fakeFields),
 			}
 		})
 
@@ -199,12 +204,40 @@ var _ = Describe("Chain", func() {
 				expectedNodeConfig := nodeConfigFromMetadata(consenterMetadata)
 				configurator.AssertCalled(testingInstance, "Configure", channelID, expectedNodeConfig)
 			})
+
+			It("correctly sets the metrics labels and publishes requisite metrics", func() {
+				type withImplementers interface {
+					WithCallCount() int
+					WithArgsForCall(int) []string
+				}
+				metricsList := []withImplementers{
+					fakeFields.fakeClusterSize,
+					fakeFields.fakeIsLeader,
+					fakeFields.fakeCommittedBlockNumber,
+					fakeFields.fakeSnapshotBlockNumber,
+					fakeFields.fakeLeaderChanges,
+					fakeFields.fakeProposalFailures,
+				}
+				for _, m := range metricsList {
+					Expect(m.WithCallCount()).To(Equal(1))
+					Expect(func() string {
+						return m.WithArgsForCall(0)[1]
+					}()).To(Equal(channelID))
+				}
+
+				Expect(fakeFields.fakeClusterSize.SetCallCount()).To(Equal(1))
+				Expect(fakeFields.fakeClusterSize.SetArgsForCall(0)).To(Equal(float64(1)))
+				Expect(fakeFields.fakeIsLeader.SetCallCount()).To(Equal(1))
+				Expect(fakeFields.fakeIsLeader.SetArgsForCall(0)).To(Equal(float64(0)))
+			})
 		})
 
 		Context("when no Raft leader is elected", func() {
 			It("fails to order envelope", func() {
 				err := chain.Order(env, 0)
 				Expect(err).To(MatchError("no Raft leader"))
+				Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
+				Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
 			})
 		})
 
@@ -213,10 +246,19 @@ var _ = Describe("Chain", func() {
 				campaign(clock, observeC)
 			})
 
+			It("updates metrics upon leader election)", func() {
+				Expect(fakeFields.fakeIsLeader.SetCallCount()).To(Equal(2))
+				Expect(fakeFields.fakeIsLeader.SetArgsForCall(1)).To(Equal(float64(1)))
+				Expect(fakeFields.fakeLeaderChanges.AddCallCount()).To(Equal(1))
+				Expect(fakeFields.fakeLeaderChanges.AddArgsForCall(0)).To(Equal(float64(1)))
+			})
+
 			It("fails to order envelope if chain is halted", func() {
 				chain.Halt()
 				err := chain.Order(env, 0)
 				Expect(err).To(MatchError("chain is stopped"))
+				Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
+				Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
 			})
 
 			It("produces blocks following batch rules", func() {
@@ -227,6 +269,8 @@ var _ = Describe("Chain", func() {
 				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+				Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(1))
+				Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(0)).Should(Equal(float64(1)))
 
 				By("respecting batch timeout")
 				cutter.CutNext = false
@@ -237,6 +281,8 @@ var _ = Describe("Chain", func() {
 
 				clock.WaitForNWatchersAndIncrement(timeout, 2)
 				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+				Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(2))
+				Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(1)).Should(Equal(float64(2)))
 			})
 
 			It("does not reset timer for every envelope", func() {
@@ -383,6 +429,8 @@ var _ = Describe("Chain", func() {
 					It("should throw an error", func() {
 						err := chain.Configure(configEnv, configSeq)
 						Expect(err).To(MatchError("config transaction has unknown header type"))
+						Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
+						Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
 					})
 				})
 
@@ -414,7 +462,9 @@ var _ = Describe("Chain", func() {
 									err := chain.Configure(configEnv, configSeq)
 									Expect(err).NotTo(HaveOccurred())
 									Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-									Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
+									Consistently(support.WriteBlockCallCount).Should(Equal(0))
+									Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(1))
+									Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(0)).Should(Equal(float64(1)))
 								})
 							})
 
@@ -436,6 +486,8 @@ var _ = Describe("Chain", func() {
 
 									Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 									Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+									Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(2))
+									Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(1)).Should(Equal(float64(2)))
 								})
 							})
 						})
@@ -531,6 +583,8 @@ var _ = Describe("Chain", func() {
 						It("should fail, since consenters set change is not supported", func() {
 							err := chain.Configure(configEnv, configSeq)
 							Expect(err).To(MatchError("update of more than one consenters at a time is not supported"))
+							Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
+							Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
 						})
 					})
 
@@ -607,6 +661,8 @@ var _ = Describe("Chain", func() {
 
 							err := chain.Configure(configEnv, configSeq)
 							Expect(err).To(MatchError("update of more than one consenters at a time is not supported"))
+							Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
+							Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
 						})
 					})
 				})
@@ -809,13 +865,22 @@ var _ = Describe("Chain", func() {
 							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 							Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
 							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
+							Expect(fakeFields.fakeSnapshotBlockNumber.SetCallCount()).To(Equal(1))
+							s, _ := opts.MemoryStorage.Snapshot()
+							b := utils.UnmarshalBlockOrPanic(s.Data)
+							Expect(fakeFields.fakeSnapshotBlockNumber.SetArgsForCall(0)).To(Equal(float64(b.Header.Number)))
 
 							i, _ = opts.MemoryStorage.FirstIndex()
 
 							Expect(chain.Order(env, uint64(0))).To(Succeed())
 							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+
 							Eventually(countFiles, LongEventualTimeout).Should(Equal(2))
 							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
+							Expect(fakeFields.fakeSnapshotBlockNumber.SetCallCount()).To(Equal(2))
+							s, _ = opts.MemoryStorage.Snapshot()
+							b = utils.UnmarshalBlockOrPanic(s.Data)
+							Expect(fakeFields.fakeSnapshotBlockNumber.SetArgsForCall(1)).To(Equal(float64(b.Header.Number)))
 						})
 
 						It("pauses chain if sync is in progress", func() {
@@ -1106,6 +1171,7 @@ var _ = Describe("Chain", func() {
 								Logger:        logger,
 								MemoryStorage: storage,
 								RaftMetadata:  &raftprotos.RaftMetadata{},
+								Metrics:       newFakeMetrics(newFakeMetricsFields()),
 							},
 							configurator,
 							nil,
@@ -1137,6 +1203,7 @@ var _ = Describe("Chain", func() {
 								Logger:        logger,
 								MemoryStorage: storage,
 								RaftMetadata:  &raftprotos.RaftMetadata{},
+								Metrics:       newFakeMetrics(newFakeMetricsFields()),
 							},
 							nil,
 							nil,
@@ -1429,6 +1496,8 @@ var _ = Describe("Chain", func() {
 
 					network.exec(func(c *chain) {
 						Eventually(c.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+						Eventually(c.fakeFields.fakeClusterSize.SetCallCount, LongEventualTimeout).Should(Equal(2))
+						Expect(c.fakeFields.fakeClusterSize.SetArgsForCall(1)).To(Equal(float64(4)))
 					})
 
 					_, raftmetabytes := c1.support.WriteConfigBlockArgsForCall(0)
@@ -1767,6 +1836,8 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+							Eventually(c.fakeFields.fakeClusterSize.SetCallCount, LongEventualTimeout).Should(Equal(2))
+							Expect(c.fakeFields.fakeClusterSize.SetArgsForCall(1)).To(Equal(float64(2)))
 						})
 
 					// Assert c1 has exited
@@ -1810,6 +1881,24 @@ var _ = Describe("Chain", func() {
 
 			AfterEach(func() {
 				network.stop()
+			})
+
+			It("correctly sets the cluster size and leadership metrics", func() {
+				// the network should see only one leadership change
+				network.exec(func(c *chain) {
+					Expect(c.fakeFields.fakeLeaderChanges.AddCallCount()).Should(Equal(1))
+					Expect(c.fakeFields.fakeLeaderChanges.AddArgsForCall(0)).Should(Equal(float64(1)))
+					Expect(c.fakeFields.fakeClusterSize.SetCallCount()).Should(Equal(1))
+					Expect(c.fakeFields.fakeClusterSize.SetArgsForCall(0)).To(Equal(float64(3)))
+				})
+				// c1 should be the leader
+				Expect(c1.fakeFields.fakeIsLeader.SetCallCount()).Should(Equal(2))
+				Expect(c1.fakeFields.fakeIsLeader.SetArgsForCall(1)).Should(Equal(float64(1)))
+				// c2 and c3 should continue to remain followers
+				Expect(c2.fakeFields.fakeIsLeader.SetCallCount()).Should(Equal(1))
+				Expect(c2.fakeFields.fakeIsLeader.SetArgsForCall(0)).Should(Equal(float64(0)))
+				Expect(c3.fakeFields.fakeIsLeader.SetCallCount()).Should(Equal(1))
+				Expect(c3.fakeFields.fakeIsLeader.SetArgsForCall(0)).Should(Equal(float64(0)))
 			})
 
 			It("orders envelope on leader", func() {
@@ -1947,7 +2036,21 @@ var _ = Describe("Chain", func() {
 					Expect(err).To(MatchError("no Raft leader"))
 
 					network.elect(2)
+
+					// c1 should have lost leadership
+					Expect(c1.fakeFields.fakeIsLeader.SetCallCount()).Should(Equal(3))
+					Expect(c1.fakeFields.fakeIsLeader.SetArgsForCall(2)).Should(Equal(float64(0)))
+					// c2 should become the leader
+					Expect(c2.fakeFields.fakeIsLeader.SetCallCount()).Should(Equal(2))
+					Expect(c2.fakeFields.fakeIsLeader.SetArgsForCall(1)).Should(Equal(float64(1)))
+					// c2 should continue to remain follower
+					Expect(c3.fakeFields.fakeIsLeader.SetCallCount()).Should(Equal(1))
+
 					network.join(1, true)
+					network.exec(func(c *chain) {
+						Expect(c.fakeFields.fakeLeaderChanges.AddCallCount()).Should(Equal(3))
+						Expect(c.fakeFields.fakeLeaderChanges.AddArgsForCall(2)).Should(Equal(float64(1)))
+					})
 
 					err = c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
@@ -2564,6 +2667,8 @@ type chain struct {
 	unstarted chan struct{}
 	stopped   chan struct{}
 
+	fakeFields *fakeMetricsFields
+
 	*etcdraft.Chain
 }
 
@@ -2571,6 +2676,8 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 	rpc := &mocks.FakeRPC{}
 	clock := fakeclock.NewFakeClock(time.Now())
 	storage := raft.NewMemoryStorage()
+
+	fakeFields := newFakeMetricsFields()
 
 	opts := etcdraft.Options{
 		RaftID:          uint64(id),
@@ -2585,6 +2692,7 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 		MemoryStorage:   storage,
 		WALDir:          path.Join(dataDir, "wal"),
 		SnapDir:         path.Join(dataDir, "snapshot"),
+		Metrics:         newFakeMetrics(fakeFields),
 	}
 
 	support := &consensusmocks.FakeConsenterSupport{}
@@ -2625,6 +2733,7 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 			0: getSeedBlock(), // Very first block
 		},
 		ledgerHeight: 1,
+		fakeFields:   fakeFields,
 	}
 
 	// receives blocks and metadata and appends it into
@@ -3005,4 +3114,47 @@ func getSeedBlock() *common.Block {
 
 func StateEqual(lead uint64, state raft.StateType) types.GomegaMatcher {
 	return Equal(raft.SoftState{Lead: lead, RaftState: state})
+}
+
+func newFakeMetrics(fakeFields *fakeMetricsFields) *etcdraft.Metrics {
+	return &etcdraft.Metrics{
+		ClusterSize:          fakeFields.fakeClusterSize,
+		IsLeader:             fakeFields.fakeIsLeader,
+		CommittedBlockNumber: fakeFields.fakeCommittedBlockNumber,
+		SnapshotBlockNumber:  fakeFields.fakeSnapshotBlockNumber,
+		LeaderChanges:        fakeFields.fakeLeaderChanges,
+		ProposalFailures:     fakeFields.fakeProposalFailures,
+	}
+}
+
+type fakeMetricsFields struct {
+	fakeClusterSize          *metricsfakes.Gauge
+	fakeIsLeader             *metricsfakes.Gauge
+	fakeCommittedBlockNumber *metricsfakes.Gauge
+	fakeSnapshotBlockNumber  *metricsfakes.Gauge
+	fakeLeaderChanges        *metricsfakes.Counter
+	fakeProposalFailures     *metricsfakes.Counter
+}
+
+func newFakeMetricsFields() *fakeMetricsFields {
+	return &fakeMetricsFields{
+		fakeClusterSize:          newFakeGauge(),
+		fakeIsLeader:             newFakeGauge(),
+		fakeCommittedBlockNumber: newFakeGauge(),
+		fakeSnapshotBlockNumber:  newFakeGauge(),
+		fakeLeaderChanges:        newFakeCounter(),
+		fakeProposalFailures:     newFakeCounter(),
+	}
+}
+
+func newFakeGauge() *metricsfakes.Gauge {
+	fakeGauge := &metricsfakes.Gauge{}
+	fakeGauge.WithReturns(fakeGauge)
+	return fakeGauge
+}
+
+func newFakeCounter() *metricsfakes.Counter {
+	fakeCounter := &metricsfakes.Counter{}
+	fakeCounter.WithReturns(fakeCounter)
+	return fakeCounter
 }

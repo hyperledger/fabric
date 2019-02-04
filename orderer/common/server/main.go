@@ -578,7 +578,7 @@ func initializeMultichannelRegistrar(
 	// closes if we wished to cleanup this routine on exit.
 	go kafkaMetrics.PollGoMetricsUntilStop(time.Minute, nil)
 	if isClusterType(bootstrapBlock) {
-		initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar)
+		initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider)
 	}
 	registrar.Initialize(consenters)
 	return registrar
@@ -594,6 +594,7 @@ func initializeEtcdraftConsenter(
 	srvConf comm.ServerConfig,
 	srv *comm.GRPCServer,
 	registrar *multichannel.Registrar,
+	metricsProvider metrics.Provider,
 ) {
 	replicationRefreshInterval := conf.General.Cluster.ReplicationBackgroundRefreshInterval
 	if replicationRefreshInterval == 0 {
@@ -631,7 +632,7 @@ func initializeEtcdraftConsenter(
 	ri.channelLister = icr
 
 	go icr.run()
-	raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, icr)
+	raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, icr, metricsProvider)
 	consenters["etcdraft"] = raftConsenter
 }
 

@@ -48,6 +48,19 @@ The following metrics are currently exported for consumption by Prometheus.
 |                                                     |           |                                                            | channel            |
 |                                                     |           |                                                            | chaincode          |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| consensus_etcdraft_cluster_size                     | gauge     | Number of nodes in this channel.                           | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| consensus_etcdraft_committed_block_number           | gauge     | The block number of the latest block committed.            | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| consensus_etcdraft_is_leader                        | gauge     | The leadership status of the current node: 1 if it is the  | channel            |
+|                                                     |           | leader else 0.                                             |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| consensus_etcdraft_leader_changes                   | counter   | The number of leader changes.                              | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| consensus_etcdraft_proposal_failures                | counter   | The number of proposal failures.                           | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| consensus_etcdraft_snapshot_block_number            | gauge     | The block number of the latest snapshot.                   | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | consensus_kafka_batch_size                          | gauge     | The mean batch size in bytes sent to topics.               | topic              |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | consensus_kafka_compression_ratio                   | gauge     | The mean compression ratio (as percentage) for topics.     | topic              |
@@ -251,6 +264,19 @@ associated with the metric.
 | chaincode.shim_requests_completed.%{type}.%{channel}.%{chaincode}.%{success}            | counter   | The number of chaincode shim requests completed.           |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | chaincode.shim_requests_received.%{type}.%{channel}.%{chaincode}                        | counter   | The number of chaincode shim requests received.            |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.cluster_size.%{channel}                                              | gauge     | Number of nodes in this channel.                           |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.committed_block_number.%{channel}                                    | gauge     | The block number of the latest block committed.            |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.is_leader.%{channel}                                                 | gauge     | The leadership status of the current node: 1 if it is the  |
+|                                                                                         |           | leader else 0.                                             |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.leader_changes.%{channel}                                            | counter   | The number of leader changes.                              |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.proposal_failures.%{channel}                                         | counter   | The number of proposal failures.                           |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.snapshot_block_number.%{channel}                                     | gauge     | The block number of the latest snapshot.                   |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.kafka.batch_size.%{topic}                                                     | gauge     | The mean batch size in bytes sent to topics.               |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+

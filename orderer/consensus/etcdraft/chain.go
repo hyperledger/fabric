@@ -102,6 +102,7 @@ type Options struct {
 	MaxInflightMsgs int
 
 	RaftMetadata *etcdraft.RaftMetadata
+	Metrics      *Metrics
 }
 
 type submit struct {
@@ -161,7 +162,8 @@ type Chain struct {
 	node *node
 	opts Options
 
-	logger *flogging.FabricLogger
+	Metrics *Metrics
+	logger  *flogging.FabricLogger
 }
 
 // NewChain constructs a chain object.
@@ -220,8 +222,16 @@ func NewChain(
 		lastSnapBlockNum: snapBlkNum,
 		createPuller:     f,
 		clock:            opts.Clock,
-		logger:           lg,
-		opts:             opts,
+		Metrics: &Metrics{
+			ClusterSize:          opts.Metrics.ClusterSize.With("channel", support.ChainID()),
+			IsLeader:             opts.Metrics.IsLeader.With("channel", support.ChainID()),
+			CommittedBlockNumber: opts.Metrics.CommittedBlockNumber.With("channel", support.ChainID()),
+			SnapshotBlockNumber:  opts.Metrics.SnapshotBlockNumber.With("channel", support.ChainID()),
+			LeaderChanges:        opts.Metrics.LeaderChanges.With("channel", support.ChainID()),
+			ProposalFailures:     opts.Metrics.ProposalFailures.With("channel", support.ChainID()),
+		},
+		logger: lg,
+		opts:   opts,
 	}
 
 	// DO NOT use Applied option in config, see https://github.com/etcd-io/etcd/issues/10217
@@ -260,6 +270,9 @@ func NewChain(
 func (c *Chain) Start() {
 	c.logger.Infof("Starting Raft node")
 
+	c.Metrics.ClusterSize.Set(float64(len(c.opts.RaftMetadata.Consenters)))
+	// all nodes start out as followers
+	c.Metrics.IsLeader.Set(float64(0))
 	if err := c.configureComm(); err != nil {
 		c.logger.Errorf("Failed to start chain, aborting: +%v", err)
 		close(c.doneC)
@@ -282,6 +295,7 @@ func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
 // Configure submits config type transactions for ordering.
 func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 	if err := c.checkConfigUpdateValidity(env); err != nil {
+		c.Metrics.ProposalFailures.Add(1)
 		return err
 	}
 	return c.Submit(&orderer.SubmitRequest{LastValidationSeq: configSeq, Payload: env, Channel: c.channelID}, 0)
@@ -403,6 +417,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 // The call fails if there's no leader elected yet.
 func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	if err := c.isRunning(); err != nil {
+		c.Metrics.ProposalFailures.Add(1)
 		return err
 	}
 
@@ -411,14 +426,19 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	case c.submitC <- &submit{req, leadC}:
 		lead := <-leadC
 		if lead == raft.None {
+			c.Metrics.ProposalFailures.Add(1)
 			return errors.Errorf("no Raft leader")
 		}
 
 		if lead != c.raftID {
-			return c.rpc.SendSubmit(lead, req)
+			if err := c.rpc.SendSubmit(lead, req); err != nil {
+				c.Metrics.ProposalFailures.Add(1)
+				return err
+			}
 		}
 
 	case <-c.doneC:
+		c.Metrics.ProposalFailures.Add(1)
 		return errors.Errorf("chain is stopped")
 	}
 
@@ -478,6 +498,7 @@ func (c *Chain) serveRequest() {
 			c.confChangeInProgress = cc
 			c.configInflight = true
 		}
+		c.Metrics.IsLeader.Set(1)
 	}
 
 	becomeFollower := func() {
@@ -486,6 +507,7 @@ func (c *Chain) serveRequest() {
 		stop()
 		submitC = c.submitC
 		bc = nil
+		c.Metrics.IsLeader.Set(0)
 	}
 
 	for {
@@ -532,6 +554,7 @@ func (c *Chain) serveRequest() {
 				newLeader := atomic.LoadUint64(&app.soft.Lead) // etcdraft requires atomic access
 				if newLeader != soft.Lead {
 					c.logger.Infof("Raft leader changed: %d -> %d", soft.Lead, newLeader)
+					c.Metrics.LeaderChanges.Add(1)
 
 					if newLeader == c.raftID {
 						becomeLeader()
@@ -778,6 +801,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 			c.writeBlock(block, ents[i].Index)
 
 			appliedb = block.Header.Number
+			c.Metrics.CommittedBlockNumber.Set(float64(appliedb))
 			position = i
 			c.accDataSize += uint32(len(ents[i].Data))
 
@@ -811,6 +835,8 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 
 				c.confChangeInProgress = nil
 				c.configInflight = false
+				// report the new cluster size
+				c.Metrics.ClusterSize.Set(float64(len(c.opts.RaftMetadata.Consenters)))
 			}
 
 			if cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == c.raftID {
@@ -839,6 +865,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				c.accDataSize, c.sizeLimit, appliedb, c.lastSnapBlockNum)
 			c.accDataSize = 0
 			c.lastSnapBlockNum = appliedb
+			c.Metrics.SnapshotBlockNumber.Set(float64(appliedb))
 		default:
 			c.logger.Warnf("Snapshotting is in progress, it is very likely that SnapshotInterval is too small")
 		}

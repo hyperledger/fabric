@@ -157,6 +157,7 @@ var _ = Describe("Consenter", func() {
 		consenter := newConsenter(chainGetter)
 		consenter.EtcdRaftConfig.WALDir = walDir
 		consenter.EtcdRaftConfig.SnapDir = snapDir
+		consenter.Metrics = newFakeMetrics(newFakeMetricsFields())
 
 		chain, err := consenter.HandleChain(support, nil)
 		Expect(err).NotTo(HaveOccurred())
