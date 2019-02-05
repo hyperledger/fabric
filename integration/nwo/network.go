@@ -89,10 +89,6 @@ func (o Orderer) ID() string {
 	return fmt.Sprintf("%s.%s", o.Organization, o.Name)
 }
 
-type OrdererCapabilities struct {
-	V2_0 bool `yaml:"v20,omitempty"`
-}
-
 // Peer defines a peer instance, it's owning organization, and the list of
 // channels that the peer shoudl be joined to.
 type Peer struct {
@@ -149,7 +145,6 @@ type Network struct {
 	SystemChannel    *SystemChannel
 	Channels         []*Channel
 	Consensus        *Consensus
-	OrdererCap       *OrdererCapabilities
 	Orderers         []*Orderer
 	Peers            []*Peer
 	Profiles         []*Profile
@@ -178,7 +173,6 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 
 		Organizations: c.Organizations,
 		Consensus:     c.Consensus,
-		OrdererCap:    c.OrdererCap,
 		Orderers:      c.Orderers,
 		Peers:         c.Peers,
 		SystemChannel: c.SystemChannel,

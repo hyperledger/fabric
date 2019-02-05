@@ -77,11 +77,7 @@ Profiles:{{ range .Profiles }}
         AbsoluteMaxBytes: 98 MB
         PreferredMaxBytes: 512 KB
       Capabilities:
-        V1_1: true
-      {{- if $w.OrdererCap.V2_0 }}
         V2_0: true
-      {{- end }}
-
       {{- if eq $w.Consensus.Type "kafka" }}
       Kafka:
         Brokers:{{ range $w.BrokerAddresses "HostPort" }}

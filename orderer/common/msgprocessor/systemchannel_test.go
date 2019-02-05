@@ -412,7 +412,7 @@ func TestNewChannelConfig(t *testing.T) {
 	channelID := "foo"
 	gConf := configtxgentest.Load(genesisconfig.SampleSingleMSPSoloProfile)
 	gConf.Orderer.Capabilities = map[string]bool{
-		capabilities.OrdererV1_1: true,
+		capabilities.OrdererV2_0: true,
 	}
 	channelGroup, err := encoder.NewChannelGroup(gConf)
 	assert.NoError(t, err)
@@ -680,6 +680,14 @@ func TestNewChannelConfig(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotEmpty(t, res.ConfigtxValidator().ConfigProto().ChannelGroup.ModPolicy)
 		assert.True(t, proto.Equal(originalCG, ctxm.ConfigtxValidator().ConfigProto().ChannelGroup), "Underlying system channel config proto was mutated")
+	})
+
+	// Successful new channel config type
+	t.Run("SuccessWithNewCreateType", func(t *testing.T) {
+		createTx, err := encoder.MakeChannelCreationTransactionWithSystemChannelContext("foo", nil, configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile), configtxgentest.Load(genesisconfig.SampleSingleMSPSoloProfile))
+		assert.Nil(t, err)
+		_, err = templator.NewChannelConfig(createTx)
+		assert.Nil(t, err)
 	})
 }
 

@@ -196,6 +196,11 @@ type OrdererCapabilities interface {
 
 	// Kafka2RaftMigration checks whether the orderer permits a Kafka to Raft migration.
 	Kafka2RaftMigration() bool
+
+	// UseChannelCreationPolicyAsAdmins checks whether the orderer should use more sophisticated
+	// channel creation logic using channel creation policy as the Admins policy if
+	// the creation transaction appears to support it.
+	UseChannelCreationPolicyAsAdmins() bool
 }
 
 // PolicyMapper is an interface for

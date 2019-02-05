@@ -36,10 +36,11 @@ func TestOrdererV11(t *testing.T) {
 
 func TestOrdererV20(t *testing.T) {
 	op := NewOrdererProvider(map[string]*cb.Capability{
-		OrdererV1_1: {}, OrdererV2_0: {},
+		OrdererV2_0: {},
 	})
 	assert.NoError(t, op.Supported())
 	assert.True(t, op.PredictableChannelTemplate())
+	assert.True(t, op.UseChannelCreationPolicyAsAdmins())
 	assert.True(t, op.Resubmission())
 	assert.True(t, op.ExpirationCheck())
 	assert.True(t, op.Kafka2RaftMigration())

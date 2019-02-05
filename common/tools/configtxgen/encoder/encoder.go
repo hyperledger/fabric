@@ -436,6 +436,9 @@ func ConfigTemplateFromGroup(conf *genesisconfig.Profile, cg *cb.ConfigGroup) (*
 
 	template.Groups[channelconfig.ApplicationGroupKey] = &cb.ConfigGroup{
 		Groups: map[string]*cb.ConfigGroup{},
+		Policies: map[string]*cb.ConfigPolicy{
+			channelconfig.AdminsPolicyKey: {},
+		},
 	}
 
 	consortiums, ok := template.Groups[channelconfig.ConsortiumsGroupKey]

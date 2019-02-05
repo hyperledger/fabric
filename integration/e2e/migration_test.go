@@ -90,9 +90,7 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 	// and verify that these config update have the desired effect.
 	Describe("kafka2raft migration kafka side", func() {
 		BeforeEach(func() {
-			conf := nwo.BasicKafka()
-			conf.OrdererCap.V2_0 = true
-			network = nwo.New(conf, testDir, client, BasePort(), components)
+			network = nwo.New(nwo.BasicKafka(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -508,7 +506,6 @@ func updateConfigWithConsensusType(consensusType string, consensusMetadata []byt
 
 func kafka2RaftMultiChannel() *nwo.Config {
 	config := nwo.BasicKafka()
-	config.OrdererCap.V2_0 = true
 
 	config.Channels = []*nwo.Channel{
 		{Name: "testchannel1", Profile: "TwoOrgsChannel"},
