@@ -50,7 +50,7 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 		certStore.logger.Panicf("Failed creating self identity message: %+v", errors.WithStack(err))
 	}
 	puller.Add(selfIDMsg)
-	puller.RegisterMsgHook(pull.RequestMsgType, func(_ []string, msgs []*proto.SignedGossipMessage, _ protoext.ReceivedMessage) {
+	puller.RegisterMsgHook(pull.RequestMsgType, func(_ []string, msgs []*protoext.SignedGossipMessage, _ protoext.ReceivedMessage) {
 		for _, msg := range msgs {
 			pkiID := common.PKIidType(msg.GetPeerIdentity().PkiId)
 			cert := api.PeerIdentityType(msg.GetPeerIdentity().Cert)
@@ -65,7 +65,7 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 func (cs *certStore) handleMessage(msg protoext.ReceivedMessage) {
 	if update := msg.GetGossipMessage().GetDataUpdate(); update != nil {
 		for _, env := range update.Data {
-			m, err := env.ToGossipMessage()
+			m, err := protoext.EnvelopeToGossipMessage(env)
 			if err != nil {
 				cs.logger.Warningf("Data update contains an invalid message: %+v", errors.WithStack(err))
 				return
@@ -83,7 +83,7 @@ func (cs *certStore) handleMessage(msg protoext.ReceivedMessage) {
 	cs.pull.HandleMessage(msg)
 }
 
-func (cs *certStore) validateIdentityMsg(msg *proto.SignedGossipMessage) error {
+func (cs *certStore) validateIdentityMsg(msg *protoext.SignedGossipMessage) error {
 	idMsg := msg.GetPeerIdentity()
 	if idMsg == nil {
 		return errors.Errorf("Identity empty: %+v", msg)
@@ -108,7 +108,7 @@ func (cs *certStore) validateIdentityMsg(msg *proto.SignedGossipMessage) error {
 	return cs.mcs.ValidateIdentity(api.PeerIdentityType(idMsg.Cert))
 }
 
-func (cs *certStore) createIdentityMessage() (*proto.SignedGossipMessage, error) {
+func (cs *certStore) createIdentityMessage() (*protoext.SignedGossipMessage, error) {
 	pi := &proto.PeerIdentity{
 		Cert:     cs.selfIdentity,
 		Metadata: nil,
@@ -125,7 +125,7 @@ func (cs *certStore) createIdentityMessage() (*proto.SignedGossipMessage, error)
 	signer := func(msg []byte) ([]byte, error) {
 		return cs.idMapper.Sign(msg)
 	}
-	sMsg := &proto.SignedGossipMessage{
+	sMsg := &protoext.SignedGossipMessage{
 		GossipMessage: m,
 	}
 	_, err := sMsg.Sign(signer)

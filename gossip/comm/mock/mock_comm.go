@@ -78,7 +78,7 @@ func NewCommMock(id string, members map[string]*socketMock) comm.Comm {
 
 // Respond sends a GossipMessage to the origin from which this ReceivedMessage was sent from
 func (packet *packetMock) Respond(msg *proto.GossipMessage) {
-	sMsg, _ := msg.NoopSign()
+	sMsg, _ := protoext.NoopSign(msg)
 	packet.src.socket <- &packetMock{
 		src: packet.dst,
 		dst: packet.src,
@@ -98,8 +98,8 @@ func (packet *packetMock) GetSourceEnvelope() *proto.Envelope {
 }
 
 // GetGossipMessage returns the underlying GossipMessage
-func (packet *packetMock) GetGossipMessage() *proto.SignedGossipMessage {
-	return packet.msg.(*proto.SignedGossipMessage)
+func (packet *packetMock) GetGossipMessage() *protoext.SignedGossipMessage {
+	return packet.msg.(*protoext.SignedGossipMessage)
 }
 
 // GetConnectionInfo returns information about the remote peer
@@ -141,7 +141,7 @@ func (mock *commMock) GetPKIid() common.PKIidType {
 }
 
 // Send sends a message to remote peers
-func (mock *commMock) Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer) {
+func (mock *commMock) Send(msg *protoext.SignedGossipMessage, peers ...*comm.RemotePeer) {
 	for _, peer := range peers {
 		logger.Debug("Sending message to peer ", peer.Endpoint, "from ", mock.id)
 		mock.members[peer.Endpoint].socket <- &packetMock{
@@ -152,7 +152,7 @@ func (mock *commMock) Send(msg *proto.SignedGossipMessage, peers ...*comm.Remote
 	}
 }
 
-func (mock *commMock) SendWithAck(_ *proto.SignedGossipMessage, _ time.Duration, _ int, _ ...*comm.RemotePeer) comm.AggregatedSendResult {
+func (mock *commMock) SendWithAck(_ *protoext.SignedGossipMessage, _ time.Duration, _ int, _ ...*comm.RemotePeer) comm.AggregatedSendResult {
 	panic("not implemented")
 }
 

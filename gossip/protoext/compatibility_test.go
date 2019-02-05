@@ -4,20 +4,22 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package gossip
+package protoext_test
 
 import (
 	"encoding/hex"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/gossip/protoext"
+	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 )
 
-var digestMsg = &GossipMessage{
+var digestMsg = &gossip.GossipMessage{
 	Channel: []byte("mychannel"),
-	Content: &GossipMessage_DataDig{
-		DataDig: &DataDigest{
+	Content: &gossip.GossipMessage_DataDig{
+		DataDig: &gossip.DataDigest{
 			Digests: [][]byte{
 				{255},
 				{255, 255},
@@ -29,10 +31,10 @@ var digestMsg = &GossipMessage{
 	},
 }
 
-var requestMsg = &GossipMessage{
+var requestMsg = &gossip.GossipMessage{
 	Channel: []byte("mychannel"),
-	Content: &GossipMessage_DataReq{
-		DataReq: &DataRequest{
+	Content: &gossip.GossipMessage_DataReq{
+		DataReq: &gossip.DataRequest{
 			Digests: [][]byte{
 				{255},
 				{255, 255},
@@ -52,18 +54,15 @@ const (
 func TestUnmarshalV12Digests(t *testing.T) {
 	// This test ensures that digests of data digest messages and data requests
 	// that originated from fabric v1.3 can be successfully parsed by v1.2
-	for msgBytes, expectedMsg := range map[string]*GossipMessage{
+	for msgBytes, expectedMsg := range map[string]*gossip.GossipMessage{
 		v12DataDigestBytes:  digestMsg,
 		v12DataRequestBytes: requestMsg,
 	} {
 		var err error
-		v13Envelope := &Envelope{}
+		v13Envelope := &gossip.Envelope{}
 		v13Envelope.Payload, err = hex.DecodeString(msgBytes)
 		assert.NoError(t, err)
-		sMsg := &SignedGossipMessage{
-			Envelope: v13Envelope,
-		}
-		v13Digest, err := sMsg.ToGossipMessage()
+		v13Digest, err := protoext.EnvelopeToGossipMessage(v13Envelope)
 		assert.NoError(t, err)
 		assert.True(t, proto.Equal(expectedMsg, v13Digest.GossipMessage))
 	}

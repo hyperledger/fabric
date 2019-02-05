@@ -15,7 +15,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/cmd/common"
-	"github.com/hyperledger/fabric/discovery/client"
+	discovery "github.com/hyperledger/fabric/discovery/client"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	. "github.com/hyperledger/fabric/protos/discovery"
 	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/msp"
@@ -215,7 +216,7 @@ func endpointFromEnvelope(env *gossip.Envelope) string {
 	if env == nil {
 		return ""
 	}
-	aliveMsg, _ := env.ToGossipMessage()
+	aliveMsg, _ := protoext.EnvelopeToGossipMessage(env)
 	if aliveMsg == nil {
 		return ""
 	}
@@ -232,7 +233,7 @@ func ledgerHeightFromEnvelope(env *gossip.Envelope) uint64 {
 	if env == nil {
 		return 0
 	}
-	stateInfoMsg, _ := env.ToGossipMessage()
+	stateInfoMsg, _ := protoext.EnvelopeToGossipMessage(env)
 	if stateInfoMsg == nil {
 		return 0
 	}

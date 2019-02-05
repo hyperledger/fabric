@@ -21,12 +21,12 @@ import (
 func TestInterceptAcks(t *testing.T) {
 	pubsub := util.NewPubSub()
 	pkiID := common.PKIidType("pkiID")
-	msgs := make(chan *proto.SignedGossipMessage, 1)
-	handlerFunc := func(message *proto.SignedGossipMessage) {
+	msgs := make(chan *protoext.SignedGossipMessage, 1)
+	handlerFunc := func(message *protoext.SignedGossipMessage) {
 		msgs <- message
 	}
 	wrappedHandler := interceptAcks(handlerFunc, pkiID, pubsub)
-	ack := &proto.SignedGossipMessage{
+	ack := &protoext.SignedGossipMessage{
 		GossipMessage: &proto.GossipMessage{
 			Nonce: 1,
 			Content: &proto.GossipMessage_Ack{
@@ -43,7 +43,7 @@ func TestInterceptAcks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test none acks are just forwarded
-	notAck := &proto.SignedGossipMessage{
+	notAck := &protoext.SignedGossipMessage{
 		GossipMessage: &proto.GossipMessage{
 			Nonce: 2,
 			Content: &proto.GossipMessage_DataMsg{

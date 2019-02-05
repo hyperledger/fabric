@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	utilgossip "github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -47,7 +48,7 @@ func (p *peerMock) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 		if err != nil {
 			return err
 		}
-		gMsg, err := envelope.ToGossipMessage()
+		gMsg, err := protoext.EnvelopeToGossipMessage(envelope)
 		if err != nil {
 			panic(err)
 		}
@@ -89,7 +90,7 @@ func newPeerMockWithGRPC(port int, gRPCServer *comm.GRPCServer, certs *common.TL
 	return p
 }
 
-func (p *peerMock) connEstablishMsg(pkiID common.PKIidType, hash []byte, cert api.PeerIdentityType) *proto.SignedGossipMessage {
+func (p *peerMock) connEstablishMsg(pkiID common.PKIidType, hash []byte, cert api.PeerIdentityType) *protoext.SignedGossipMessage {
 	m := &proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
@@ -101,7 +102,7 @@ func (p *peerMock) connEstablishMsg(pkiID common.PKIidType, hash []byte, cert ap
 			},
 		},
 	}
-	gMsg := &proto.SignedGossipMessage{
+	gMsg := &protoext.SignedGossipMessage{
 		GossipMessage: m,
 	}
 	gMsg.Sign((&configurableCryptoService{}).Sign)
@@ -113,16 +114,16 @@ func (p *peerMock) stop() {
 }
 
 type receivedMsg struct {
-	*proto.SignedGossipMessage
+	*protoext.SignedGossipMessage
 	stream proto.Gossip_GossipStreamServer
 }
 
-func (msg *receivedMsg) respond(message *proto.SignedGossipMessage) {
+func (msg *receivedMsg) respond(message *protoext.SignedGossipMessage) {
 	msg.stream.Send(message.Envelope)
 }
 
-func memResp(nonce uint64, endpoint string) *proto.SignedGossipMessage {
-	fakePeerAliveMsg := &proto.SignedGossipMessage{
+func memResp(nonce uint64, endpoint string) *protoext.SignedGossipMessage {
+	fakePeerAliveMsg := &protoext.SignedGossipMessage{
 		GossipMessage: &proto.GossipMessage{
 			Tag: proto.GossipMessage_EMPTY,
 			Content: &proto.GossipMessage_AliveMsg{
@@ -142,18 +143,16 @@ func memResp(nonce uint64, endpoint string) *proto.SignedGossipMessage {
 	}
 
 	m, _ := fakePeerAliveMsg.Sign((&configurableCryptoService{}).Sign)
-	sMsg, _ := (&proto.SignedGossipMessage{
-		GossipMessage: &proto.GossipMessage{
-			Tag:   proto.GossipMessage_EMPTY,
-			Nonce: nonce,
-			Content: &proto.GossipMessage_MemRes{
-				MemRes: &proto.MembershipResponse{
-					Alive: []*proto.Envelope{m},
-					Dead:  []*proto.Envelope{},
-				},
+	sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
+		Tag:   proto.GossipMessage_EMPTY,
+		Nonce: nonce,
+		Content: &proto.GossipMessage_MemRes{
+			MemRes: &proto.MembershipResponse{
+				Alive: []*proto.Envelope{m},
+				Dead:  []*proto.Envelope{},
 			},
 		},
-	}).NoopSign()
+	})
 	return sMsg
 }
 
@@ -212,7 +211,7 @@ func TestAnchorPeer(t *testing.T) {
 		}
 		assert.True(t, index > 0)
 		req := m.GetMemReq()
-		am, err := req.SelfInformation.ToGossipMessage()
+		am, err := protoext.EnvelopeToGossipMessage(req.SelfInformation)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, am.GetSecretEnvelope().InternalEndpoint())
 		m.respond(memResp(m.Nonce, fmt.Sprintf("127.0.0.1:%d", port3)))
@@ -224,7 +223,7 @@ func TestAnchorPeer(t *testing.T) {
 		}
 		assert.True(t, index > 0)
 		req := m.GetMemReq()
-		am, err := req.SelfInformation.ToGossipMessage()
+		am, err := protoext.EnvelopeToGossipMessage(req.SelfInformation)
 		assert.NoError(t, err)
 		assert.Nil(t, am.GetSecretEnvelope())
 		m.respond(memResp(m.Nonce, fmt.Sprintf("127.0.0.1:%d", port4)))

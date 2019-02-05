@@ -19,6 +19,7 @@ import (
 	gossip2 "github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/metrics/mocks"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/transientstore"
@@ -93,7 +94,7 @@ func (g *gossipMock) PeersOfChannel(chainID gcommon.ChainID) []discovery.Network
 	return g.Called(chainID).Get(0).([]discovery.NetworkMember)
 }
 
-func (g *gossipMock) SendByCriteria(message *proto.SignedGossipMessage, criteria gossip2.SendCriteria) error {
+func (g *gossipMock) SendByCriteria(message *protoext.SignedGossipMessage, criteria gossip2.SendCriteria) error {
 	args := g.Called(message, criteria)
 	if args.Get(0) != nil {
 		return args.Get(0).(error)
@@ -143,7 +144,7 @@ func TestDistributor(t *testing.T) {
 	})
 
 	g.On("SendByCriteria", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		msg := args.Get(0).(*proto.SignedGossipMessage)
+		msg := args.Get(0).(*protoext.SignedGossipMessage)
 		sendCriteria := args.Get(1).(gossip2.SendCriteria)
 		sendings <- struct {
 			*proto.PrivatePayload

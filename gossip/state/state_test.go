@@ -465,7 +465,7 @@ func TestNilDirectMsg(t *testing.T) {
 	defer p.shutdown()
 	p.s.handleStateRequest(nil)
 	p.s.directMessage(nil)
-	sMsg, _ := p.s.stateRequestMessage(uint64(10), uint64(8)).NoopSign()
+	sMsg, _ := protoext.NoopSign(p.s.stateRequestMessage(uint64(10), uint64(8)))
 	req := &comm.ReceivedMessageImpl{
 		SignedGossipMessage: sMsg,
 	}
@@ -561,7 +561,7 @@ func TestLargeBlockGap(t *testing.T) {
 			res.GetStateResponse().Payloads = append(res.GetStateResponse().Payloads, payload)
 		}
 		// Finally, send the response down the channel the peer expects to receive it from
-		sMsg, _ := res.NoopSign()
+		sMsg, _ := protoext.NoopSign(res)
 		msgsFromPeer <- &comm.ReceivedMessageImpl{
 			SignedGossipMessage: sMsg,
 		}
@@ -1309,9 +1309,9 @@ func (mock *receivedMessageMock) Respond(msg *proto.GossipMessage) {
 	mock.Called(msg)
 }
 
-func (mock *receivedMessageMock) GetGossipMessage() *proto.SignedGossipMessage {
+func (mock *receivedMessageMock) GetGossipMessage() *protoext.SignedGossipMessage {
 	args := mock.Called()
-	return args.Get(0).(*proto.SignedGossipMessage)
+	return args.Get(0).(*protoext.SignedGossipMessage)
 }
 
 func (mock *receivedMessageMock) GetSourceEnvelope() *proto.Envelope {
@@ -1445,7 +1445,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 		}},
 	}
 
-	msg, _ := requestGossipMsg.NoopSign()
+	msg, _ := protoext.NoopSign(requestGossipMsg)
 
 	requestMsg.On("GetGossipMessage").Return(msg)
 	requestMsg.On("GetConnectionInfo").Return(&protoext.ConnectionInfo{
@@ -1462,7 +1462,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 		// Wrap it up into received response
 		receivedMsg := new(receivedMessageMock)
 		// Create sign response
-		msg, _ := response.NoopSign()
+		msg, _ := protoext.NoopSign(response)
 		// Mock to respond
 		receivedMsg.On("GetGossipMessage").Return(msg)
 		// Send response
@@ -1632,7 +1632,7 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 	peers["peer2"].On("Send", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		request := args.Get(0).(*proto.GossipMessage)
 		requestMsg := new(receivedMessageMock)
-		msg, _ := request.NoopSign()
+		msg, _ := protoext.NoopSign(request)
 		requestMsg.On("GetGossipMessage").Return(msg)
 		requestMsg.On("GetConnectionInfo").Return(&protoext.ConnectionInfo{
 			Auth: &protoext.AuthInfo{},
@@ -1641,7 +1641,7 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 		requestMsg.On("Respond", mock.Anything).Run(func(args mock.Arguments) {
 			response := args.Get(0).(*proto.GossipMessage)
 			receivedMsg := new(receivedMessageMock)
-			msg, _ := response.NoopSign()
+			msg, _ := protoext.NoopSign(response)
 			receivedMsg.On("GetGossipMessage").Return(msg)
 			// Send response back to the peer
 			peers["peer2"].commChannel <- receivedMsg

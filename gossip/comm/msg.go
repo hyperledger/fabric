@@ -16,7 +16,7 @@ import (
 
 // ReceivedMessageImpl is an implementation of ReceivedMessage
 type ReceivedMessageImpl struct {
-	*proto.SignedGossipMessage
+	*protoext.SignedGossipMessage
 	lock     sync.Locker
 	conn     *connection
 	connInfo *protoext.ConnectionInfo
@@ -30,7 +30,7 @@ func (m *ReceivedMessageImpl) GetSourceEnvelope() *proto.Envelope {
 
 // Respond sends a msg to the source that sent the ReceivedMessageImpl
 func (m *ReceivedMessageImpl) Respond(msg *proto.GossipMessage) {
-	sMsg, err := msg.NoopSign()
+	sMsg, err := protoext.NoopSign(msg)
 	if err != nil {
 		err = errors.WithStack(err)
 		m.conn.logger.Errorf("Failed creating SignedGossipMessage: %+v", err)
@@ -40,7 +40,7 @@ func (m *ReceivedMessageImpl) Respond(msg *proto.GossipMessage) {
 }
 
 // GetGossipMessage returns the inner GossipMessage
-func (m *ReceivedMessageImpl) GetGossipMessage() *proto.SignedGossipMessage {
+func (m *ReceivedMessageImpl) GetGossipMessage() *protoext.SignedGossipMessage {
 	return m.SignedGossipMessage
 }
 

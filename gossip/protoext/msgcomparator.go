@@ -37,8 +37,8 @@ func (mc *msgComparator) getMsgReplacingPolicy() common.MessageReplacingPolicy {
 }
 
 func (mc *msgComparator) invalidationPolicy(this interface{}, that interface{}) common.InvalidationResult {
-	thisMsg := this.(*gossip.SignedGossipMessage)
-	thatMsg := that.(*gossip.SignedGossipMessage)
+	thisMsg := this.(*SignedGossipMessage)
+	thatMsg := that.(*SignedGossipMessage)
 
 	if thisMsg.IsAliveMsg() && thatMsg.IsAliveMsg() {
 		return aliveInvalidationPolicy(thisMsg.GetAliveMsg(), thatMsg.GetAliveMsg())

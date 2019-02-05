@@ -26,13 +26,13 @@ type Gossip interface {
 	SelfMembershipInfo() discovery.NetworkMember
 
 	// SelfChannelInfo returns the peer's latest StateInfo message of a given channel
-	SelfChannelInfo(common.ChainID) *proto.SignedGossipMessage
+	SelfChannelInfo(common.ChainID) *protoext.SignedGossipMessage
 
 	// Send sends a message to remote peers
 	Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer)
 
 	// SendByCriteria sends a given message to all peers that match the given SendCriteria
-	SendByCriteria(*proto.SignedGossipMessage, SendCriteria) error
+	SendByCriteria(*protoext.SignedGossipMessage, SendCriteria) error
 
 	// GetPeers returns the NetworkMembers considered alive
 	Peers() []discovery.NetworkMember
@@ -89,7 +89,7 @@ type Gossip interface {
 // emittedGossipMessage encapsulates signed gossip message to compose
 // with routing filter to be used while message is forwarded
 type emittedGossipMessage struct {
-	*proto.SignedGossipMessage
+	*protoext.SignedGossipMessage
 	filter func(id common.PKIidType) bool
 }
 

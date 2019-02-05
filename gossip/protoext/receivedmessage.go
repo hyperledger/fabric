@@ -25,7 +25,7 @@ type ReceivedMessage interface {
 	Respond(msg *gossip.GossipMessage)
 
 	// GetGossipMessage returns the underlying GossipMessage
-	GetGossipMessage() *gossip.SignedGossipMessage
+	GetGossipMessage() *SignedGossipMessage
 
 	// GetSourceMessage Returns the Envelope the ReceivedMessage was
 	// constructed with

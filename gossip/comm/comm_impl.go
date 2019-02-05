@@ -188,7 +188,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 			conn.logger = c.logger
 			conn.cancel = cancel
 
-			h := func(m *proto.SignedGossipMessage) {
+			h := func(m *protoext.SignedGossipMessage) {
 				c.logger.Debug("Got message:", m)
 				c.msgPublisher.DeMultiplex(&ReceivedMessageImpl{
 					conn:                conn,
@@ -207,20 +207,20 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 	return nil, errors.WithStack(err)
 }
 
-func (c *commImpl) Send(msg *proto.SignedGossipMessage, peers ...*RemotePeer) {
+func (c *commImpl) Send(msg *protoext.SignedGossipMessage, peers ...*RemotePeer) {
 	if c.isStopping() || len(peers) == 0 {
 		return
 	}
 	c.logger.Debug("Entering, sending", msg, "to ", len(peers), "peers")
 
 	for _, peer := range peers {
-		go func(peer *RemotePeer, msg *proto.SignedGossipMessage) {
+		go func(peer *RemotePeer, msg *protoext.SignedGossipMessage) {
 			c.sendToEndpoint(peer, msg, nonBlockingSend)
 		}(peer, msg)
 	}
 }
 
-func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *proto.SignedGossipMessage, shouldBlock blockingBehavior) {
+func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *protoext.SignedGossipMessage, shouldBlock blockingBehavior) {
 	if c.isStopping() {
 		return
 	}
@@ -400,7 +400,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator bool) (*proto
 	remoteAddress := extractRemoteAddress(stream)
 	remoteCertHash := extractCertificateHashFromContext(ctx)
 	var err error
-	var cMsg *proto.SignedGossipMessage
+	var cMsg *protoext.SignedGossipMessage
 	useTLS := c.tlsCerts != nil
 	var selfCertHash []byte
 
@@ -487,7 +487,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator bool) (*proto
 }
 
 // SendWithAck sends a message to remote peers, waiting for acknowledgement from minAck of them, or until a certain timeout expires
-func (c *commImpl) SendWithAck(msg *proto.SignedGossipMessage, timeout time.Duration, minAck int, peers ...*RemotePeer) AggregatedSendResult {
+func (c *commImpl) SendWithAck(msg *protoext.SignedGossipMessage, timeout time.Duration, minAck int, peers ...*RemotePeer) AggregatedSendResult {
 	if len(peers) == 0 {
 		return nil
 	}
@@ -497,7 +497,7 @@ func (c *commImpl) SendWithAck(msg *proto.SignedGossipMessage, timeout time.Dura
 	// between different invocations
 	msg.Nonce = util.RandomUInt64()
 	// Replace the envelope in the message to update the NONCE
-	msg, err = msg.NoopSign()
+	msg, err = protoext.NoopSign(msg.GossipMessage)
 
 	if c.isStopping() || err != nil {
 		if err == nil {
@@ -513,7 +513,7 @@ func (c *commImpl) SendWithAck(msg *proto.SignedGossipMessage, timeout time.Dura
 		return results
 	}
 	c.logger.Debug("Entering, sending", msg, "to ", len(peers), "peers")
-	sndFunc := func(peer *RemotePeer, msg *proto.SignedGossipMessage) {
+	sndFunc := func(peer *RemotePeer, msg *protoext.SignedGossipMessage) {
 		c.sendToEndpoint(peer, msg, blockingSend)
 	}
 	// Subscribe to acks
@@ -556,7 +556,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 
 	conn := c.connStore.onConnected(stream, connInfo, c.metrics)
 
-	h := func(m *proto.SignedGossipMessage) {
+	h := func(m *protoext.SignedGossipMessage) {
 		c.msgPublisher.DeMultiplex(&ReceivedMessageImpl{
 			conn:                conn,
 			lock:                conn,
@@ -588,13 +588,13 @@ func (c *commImpl) disconnect(pkiID common.PKIidType) {
 	c.connStore.closeByPKIid(pkiID)
 }
 
-func readWithTimeout(stream interface{}, timeout time.Duration, address string) (*proto.SignedGossipMessage, error) {
-	incChan := make(chan *proto.SignedGossipMessage, 1)
+func readWithTimeout(stream interface{}, timeout time.Duration, address string) (*protoext.SignedGossipMessage, error) {
+	incChan := make(chan *protoext.SignedGossipMessage, 1)
 	errChan := make(chan error, 1)
 	go func() {
 		if srvStr, isServerStr := stream.(proto.Gossip_GossipStreamServer); isServerStr {
 			if m, err := srvStr.Recv(); err == nil {
-				msg, err := m.ToGossipMessage()
+				msg, err := protoext.EnvelopeToGossipMessage(m)
 				if err != nil {
 					errChan <- err
 					return
@@ -603,7 +603,7 @@ func readWithTimeout(stream interface{}, timeout time.Duration, address string) 
 			}
 		} else if clStr, isClientStr := stream.(proto.Gossip_GossipStreamClient); isClientStr {
 			if m, err := clStr.Recv(); err == nil {
-				msg, err := m.ToGossipMessage()
+				msg, err := protoext.EnvelopeToGossipMessage(m)
 				if err != nil {
 					errChan <- err
 					return
@@ -624,7 +624,7 @@ func readWithTimeout(stream interface{}, timeout time.Duration, address string) 
 	}
 }
 
-func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, certHash []byte, cert api.PeerIdentityType, signer proto.Signer) (*proto.SignedGossipMessage, error) {
+func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, certHash []byte, cert api.PeerIdentityType, signer protoext.Signer) (*protoext.SignedGossipMessage, error) {
 	m := &proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
@@ -636,7 +636,7 @@ func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, certHash []byte, 
 			},
 		},
 	}
-	sMsg := &proto.SignedGossipMessage{
+	sMsg := &protoext.SignedGossipMessage{
 		GossipMessage: m,
 	}
 	_, err := sMsg.Sign(signer)

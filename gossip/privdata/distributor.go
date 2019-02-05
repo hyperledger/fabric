@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/filter"
 	gossip2 "github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -35,7 +36,7 @@ import (
 // gossipAdapter an adapter for API's required from gossip module
 type gossipAdapter interface {
 	// SendByCriteria sends a given message to all peers that match the given SendCriteria
-	SendByCriteria(message *proto.SignedGossipMessage, criteria gossip2.SendCriteria) error
+	SendByCriteria(message *protoext.SignedGossipMessage, criteria gossip2.SendCriteria) error
 
 	// PeerFilter receives a SubChannelSelectionCriteria and returns a RoutingFilter that selects
 	// only peer identities that match the given criteria, and that they published their channel participation
@@ -127,7 +128,7 @@ func (d *distributorImpl) Distribute(txID string, privData *transientstore.TxPvt
 }
 
 type dissemination struct {
-	msg      *proto.SignedGossipMessage
+	msg      *protoext.SignedGossipMessage
 	criteria gossip2.SendCriteria
 }
 
@@ -190,7 +191,7 @@ func (d *distributorImpl) getCollectionConfig(config *common.CollectionConfigPac
 	return nil, errors.New(fmt.Sprint("no configuration for collection", collection.CollectionName, "found"))
 }
 
-func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAccessPolicy, colFilter privdata.Filter, pvtDataMsg *proto.SignedGossipMessage) ([]*dissemination, error) {
+func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAccessPolicy, colFilter privdata.Filter, pvtDataMsg *protoext.SignedGossipMessage) ([]*dissemination, error) {
 	var disseminationPlan []*dissemination
 
 	routingFilter, err := d.gossipAdapter.PeerFilter(gossipCommon.ChainID(d.chainID), func(signature api.PeerSignature) bool {
@@ -231,7 +232,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 			}
 			disseminationPlan = append(disseminationPlan, &dissemination{
 				criteria: sc,
-				msg: &proto.SignedGossipMessage{
+				msg: &protoext.SignedGossipMessage{
 					Envelope:      proto2.Clone(pvtDataMsg.Envelope).(*proto.Envelope),
 					GossipMessage: proto2.Clone(pvtDataMsg.GossipMessage).(*proto.GossipMessage),
 				},
@@ -331,7 +332,7 @@ func (d *distributorImpl) reportSendDuration(startTime time.Time) {
 func (d *distributorImpl) createPrivateDataMessage(txID, namespace string,
 	collection *rwset.CollectionPvtReadWriteSet,
 	ccp *common.CollectionConfigPackage,
-	blkHt uint64) (*proto.SignedGossipMessage, error) {
+	blkHt uint64) (*protoext.SignedGossipMessage, error) {
 	msg := &proto.GossipMessage{
 		Channel: []byte(d.chainID),
 		Nonce:   util.RandomUInt64(),
@@ -350,7 +351,7 @@ func (d *distributorImpl) createPrivateDataMessage(txID, namespace string,
 		},
 	}
 
-	pvtDataMsg, err := msg.NoopSign()
+	pvtDataMsg, err := protoext.NoopSign(msg)
 	if err != nil {
 		return nil, err
 	}

@@ -26,7 +26,7 @@ func (g *GossipMock) SelfMembershipInfo() discovery.NetworkMember {
 	panic("implement me")
 }
 
-func (g *GossipMock) SelfChannelInfo(common.ChainID) *proto.SignedGossipMessage {
+func (g *GossipMock) SelfChannelInfo(common.ChainID) *protoext.SignedGossipMessage {
 	panic("implement me")
 }
 
@@ -95,6 +95,6 @@ func (g *GossipMock) Stop() {
 
 }
 
-func (g *GossipMock) SendByCriteria(*proto.SignedGossipMessage, gossip.SendCriteria) error {
+func (g *GossipMock) SendByCriteria(*protoext.SignedGossipMessage, gossip.SendCriteria) error {
 	return nil
 }

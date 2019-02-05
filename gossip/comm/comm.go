@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/protoext"
-	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
 // Comm is an object that enables to communicate with other peers
@@ -25,10 +24,10 @@ type Comm interface {
 	GetPKIid() common.PKIidType
 
 	// Send sends a message to remote peers
-	Send(msg *proto.SignedGossipMessage, peers ...*RemotePeer)
+	Send(msg *protoext.SignedGossipMessage, peers ...*RemotePeer)
 
 	// SendWithAck sends a message to remote peers, waiting for acknowledgement from minAck of them, or until a certain timeout expires
-	SendWithAck(msg *proto.SignedGossipMessage, timeout time.Duration, minAck int, peers ...*RemotePeer) AggregatedSendResult
+	SendWithAck(msg *protoext.SignedGossipMessage, timeout time.Duration, minAck int, peers ...*RemotePeer) AggregatedSendResult
 
 	// Probe probes a remote node and returns nil if its responsive,
 	// and an error if it's not.

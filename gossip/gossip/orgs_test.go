@@ -526,7 +526,7 @@ func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []str
 
 		if msg.IsDataUpdate() {
 			for _, identityMsg := range msg.GetDataUpdate().Data {
-				gMsg, _ := identityMsg.ToGossipMessage()
+				gMsg, _ := protoext.EnvelopeToGossipMessage(identityMsg)
 				id := string(gMsg.GetPeerIdentity().Cert)
 				org := sec.OrgByPeerIdentity(api.PeerIdentityType(id))
 				orgs[string(org)] = struct{}{}
@@ -538,7 +538,7 @@ func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []str
 		alive := msg.GetMemRes().Alive
 		dead := msg.GetMemRes().Dead
 		for _, envp := range append(alive, dead...) {
-			msg, _ := envp.ToGossipMessage()
+			msg, _ := protoext.EnvelopeToGossipMessage(envp)
 			orgs[string(sec.OrgByPeerIdentity(api.PeerIdentityType(msg.GetAliveMsg().Membership.PkiId)))] = struct{}{}
 		}
 	}
@@ -585,7 +585,7 @@ func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor, peers
 			continue
 		}
 		for _, envp := range msg.GetDataUpdate().Data {
-			identityMsg, _ := envp.ToGossipMessage()
+			identityMsg, _ := protoext.EnvelopeToGossipMessage(envp)
 			pkiID := identityMsg.GetPeerIdentity().PkiId
 			_, hasExternalEndpoint := peersWithExternalEndpoints[string(pkiID)]
 			assert.True(t, hasExternalEndpoint,
@@ -603,7 +603,7 @@ func inspectStateInfoMsg(t *testing.T, m *msg, peersWithExternalEndpoints map[st
 	}
 
 	for _, envp := range m.GetStateSnapshot().Elements {
-		msg, _ := envp.ToGossipMessage()
+		msg, _ := protoext.EnvelopeToGossipMessage(envp)
 		pkiID := msg.GetStateInfo().PkiId
 		_, hasExternalEndpoint := peersWithExternalEndpoints[string(pkiID)]
 		assert.True(t, hasExternalEndpoint, "peer %s has no external endpoint but crossed an org", string(pkiID))

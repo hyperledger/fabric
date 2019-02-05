@@ -17,7 +17,7 @@ import (
 // CryptoService is an interface that the discovery expects to be implemented and passed on creation
 type CryptoService interface {
 	// ValidateAliveMsg validates that an Alive message is authentic
-	ValidateAliveMsg(message *proto.SignedGossipMessage) bool
+	ValidateAliveMsg(message *protoext.SignedGossipMessage) bool
 
 	// SignMessage signs a message
 	SignMessage(m *proto.GossipMessage, internalEndpoint string) *proto.Envelope
@@ -25,12 +25,12 @@ type CryptoService interface {
 
 // EnvelopeFilter may or may not remove part of the Envelope
 // that the given SignedGossipMessage originates from.
-type EnvelopeFilter func(message *proto.SignedGossipMessage) *proto.Envelope
+type EnvelopeFilter func(message *protoext.SignedGossipMessage) *proto.Envelope
 
 // Sieve defines the messages that are allowed to be sent to some remote peer,
 // based on some criteria.
 // Returns whether the sieve permits sending a given message.
-type Sieve func(message *proto.SignedGossipMessage) bool
+type Sieve func(message *protoext.SignedGossipMessage) bool
 
 // DisclosurePolicy defines which messages a given remote peer
 // is eligible of knowing about, and also what is it eligible
@@ -46,11 +46,11 @@ type DisclosurePolicy func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter)
 // CommService is an interface that the discovery expects to be implemented and passed on creation
 type CommService interface {
 	// Gossip gossips a message
-	Gossip(msg *proto.SignedGossipMessage)
+	Gossip(msg *protoext.SignedGossipMessage)
 
 	// SendToPeer sends to a given peer a message.
 	// The nonce can be anything since the communication module handles the nonce itself
-	SendToPeer(peer *NetworkMember, msg *proto.SignedGossipMessage)
+	SendToPeer(peer *NetworkMember, msg *protoext.SignedGossipMessage)
 
 	// Ping probes a remote peer and returns if it's responsive or not
 	Ping(peer *NetworkMember) bool

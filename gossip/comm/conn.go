@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type handler func(message *proto.SignedGossipMessage)
+type handler func(message *protoext.SignedGossipMessage)
 
 type blockingBehavior bool
 
@@ -268,7 +268,7 @@ func (conn *connection) toDie() bool {
 	return atomic.LoadInt32(&(conn.stopFlag)) == int32(1)
 }
 
-func (conn *connection) send(msg *proto.SignedGossipMessage, onErr func(error), shouldBlock blockingBehavior) {
+func (conn *connection) send(msg *protoext.SignedGossipMessage, onErr func(error), shouldBlock blockingBehavior) {
 	if conn.toDie() {
 		conn.logger.Debug("Aborting send() to ", conn.info.Endpoint, "because connection is closing")
 		return
@@ -294,7 +294,7 @@ func (conn *connection) send(msg *proto.SignedGossipMessage, onErr func(error), 
 
 func (conn *connection) serviceConnection() error {
 	errChan := make(chan error, 1)
-	msgChan := make(chan *proto.SignedGossipMessage, conn.recvBuffSize)
+	msgChan := make(chan *protoext.SignedGossipMessage, conn.recvBuffSize)
 	quit := make(chan struct{})
 	// Call stream.Recv() asynchronously in readFromStream(),
 	// and wait for either the Recv() call to end,
@@ -350,7 +350,7 @@ func (conn *connection) drainOutputBuffer() {
 	}
 }
 
-func (conn *connection) readFromStream(errChan chan error, quit chan struct{}, msgChan chan *proto.SignedGossipMessage) {
+func (conn *connection) readFromStream(errChan chan error, quit chan struct{}, msgChan chan *protoext.SignedGossipMessage) {
 	for !conn.toDie() {
 		stream := conn.getStream()
 		if stream == nil {
@@ -369,7 +369,7 @@ func (conn *connection) readFromStream(errChan chan error, quit chan struct{}, m
 			return
 		}
 		conn.metrics.ReceivedMessages.Add(1)
-		msg, err := envelope.ToGossipMessage()
+		msg, err := protoext.EnvelopeToGossipMessage(envelope)
 		if err != nil {
 			errChan <- err
 			conn.logger.Warningf("Got error, aborting: %v", err)

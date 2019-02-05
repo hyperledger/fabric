@@ -1003,8 +1003,8 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 	}, true)
 
 	// Now, create a membership request message
-	memRequestSpoofFactory := func(aliveMsgEnv *proto.Envelope) *proto.SignedGossipMessage {
-		sMsg, _ := (&proto.GossipMessage{
+	memRequestSpoofFactory := func(aliveMsgEnv *proto.Envelope) *protoext.SignedGossipMessage {
+		sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
 			Tag:   proto.GossipMessage_EMPTY,
 			Nonce: uint64(0),
 			Content: &proto.GossipMessage_MemReq{
@@ -1013,7 +1013,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 					Known:           [][]byte{},
 				},
 			},
-		}).NoopSign()
+		})
 		return sMsg
 	}
 	spoofedMemReq := memRequestSpoofFactory(aliveMsg.GetSourceEnvelope())
@@ -1276,7 +1276,7 @@ func TestSendByCriteria(t *testing.T) {
 		p.UpdateLedgerHeight(1, common.ChainID("A"))
 	}
 	defer stopPeers(peers)
-	msg, _ := createDataMsg(1, []byte{}, common.ChainID("A")).NoopSign()
+	msg, _ := protoext.NoopSign(createDataMsg(1, []byte{}, common.ChainID("A")))
 
 	// We send without specifying maximum peers,
 	// which sets it to the zero value, and

@@ -173,7 +173,7 @@ func (dr *dataRetrieverMock) CollectionRWSet(dig []*proto.PvtDataDigest, blockNu
 type receivedMsg struct {
 	responseChan chan protoext.ReceivedMessage
 	*comm.RemotePeer
-	*proto.SignedGossipMessage
+	*protoext.SignedGossipMessage
 }
 
 func (msg *receivedMsg) Ack(_ error) {
@@ -181,11 +181,11 @@ func (msg *receivedMsg) Ack(_ error) {
 }
 
 func (msg *receivedMsg) Respond(message *proto.GossipMessage) {
-	m, _ := message.NoopSign()
+	m, _ := protoext.NoopSign(message)
 	msg.responseChan <- &receivedMsg{SignedGossipMessage: m, RemotePeer: &comm.RemotePeer{}}
 }
 
-func (msg *receivedMsg) GetGossipMessage() *proto.SignedGossipMessage {
+func (msg *receivedMsg) GetGossipMessage() *protoext.SignedGossipMessage {
 	return msg.SignedGossipMessage
 }
 
@@ -235,7 +235,7 @@ func (g *mockGossip) PeerFilter(channel common.ChainID, messagePredicate api.Sub
 }
 
 func (g *mockGossip) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
-	sMsg, _ := msg.NoopSign()
+	sMsg, _ := protoext.NoopSign(msg)
 	for _, peer := range g.network.peers {
 		if bytes.Equal(peer.id.PKIID, peers[0].PKIID) {
 			peer.msgChan <- &receivedMsg{

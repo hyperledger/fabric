@@ -24,16 +24,16 @@ type Gossip struct {
 	selfMembershipInfoReturnsOnCall map[int]struct {
 		result1 discovery.NetworkMember
 	}
-	SelfChannelInfoStub        func(common.ChainID) *proto.SignedGossipMessage
+	SelfChannelInfoStub        func(common.ChainID) *protoext.SignedGossipMessage
 	selfChannelInfoMutex       sync.RWMutex
 	selfChannelInfoArgsForCall []struct {
 		arg1 common.ChainID
 	}
 	selfChannelInfoReturns struct {
-		result1 *proto.SignedGossipMessage
+		result1 *protoext.SignedGossipMessage
 	}
 	selfChannelInfoReturnsOnCall map[int]struct {
-		result1 *proto.SignedGossipMessage
+		result1 *protoext.SignedGossipMessage
 	}
 	SendStub        func(msg *proto.GossipMessage, peers ...*comm.RemotePeer)
 	sendMutex       sync.RWMutex
@@ -41,10 +41,10 @@ type Gossip struct {
 		msg   *proto.GossipMessage
 		peers []*comm.RemotePeer
 	}
-	SendByCriteriaStub        func(*proto.SignedGossipMessage, gossip.SendCriteria) error
+	SendByCriteriaStub        func(*protoext.SignedGossipMessage, gossip.SendCriteria) error
 	sendByCriteriaMutex       sync.RWMutex
 	sendByCriteriaArgsForCall []struct {
-		arg1 *proto.SignedGossipMessage
+		arg1 *protoext.SignedGossipMessage
 		arg2 gossip.SendCriteria
 	}
 	sendByCriteriaReturns struct {
@@ -195,7 +195,7 @@ func (fake *Gossip) SelfMembershipInfoReturnsOnCall(i int, result1 discovery.Net
 	}{result1}
 }
 
-func (fake *Gossip) SelfChannelInfo(arg1 common.ChainID) *proto.SignedGossipMessage {
+func (fake *Gossip) SelfChannelInfo(arg1 common.ChainID) *protoext.SignedGossipMessage {
 	fake.selfChannelInfoMutex.Lock()
 	ret, specificReturn := fake.selfChannelInfoReturnsOnCall[len(fake.selfChannelInfoArgsForCall)]
 	fake.selfChannelInfoArgsForCall = append(fake.selfChannelInfoArgsForCall, struct {
@@ -224,22 +224,22 @@ func (fake *Gossip) SelfChannelInfoArgsForCall(i int) common.ChainID {
 	return fake.selfChannelInfoArgsForCall[i].arg1
 }
 
-func (fake *Gossip) SelfChannelInfoReturns(result1 *proto.SignedGossipMessage) {
+func (fake *Gossip) SelfChannelInfoReturns(result1 *protoext.SignedGossipMessage) {
 	fake.SelfChannelInfoStub = nil
 	fake.selfChannelInfoReturns = struct {
-		result1 *proto.SignedGossipMessage
+		result1 *protoext.SignedGossipMessage
 	}{result1}
 }
 
-func (fake *Gossip) SelfChannelInfoReturnsOnCall(i int, result1 *proto.SignedGossipMessage) {
+func (fake *Gossip) SelfChannelInfoReturnsOnCall(i int, result1 *protoext.SignedGossipMessage) {
 	fake.SelfChannelInfoStub = nil
 	if fake.selfChannelInfoReturnsOnCall == nil {
 		fake.selfChannelInfoReturnsOnCall = make(map[int]struct {
-			result1 *proto.SignedGossipMessage
+			result1 *protoext.SignedGossipMessage
 		})
 	}
 	fake.selfChannelInfoReturnsOnCall[i] = struct {
-		result1 *proto.SignedGossipMessage
+		result1 *protoext.SignedGossipMessage
 	}{result1}
 }
 
@@ -268,11 +268,11 @@ func (fake *Gossip) SendArgsForCall(i int) (*proto.GossipMessage, []*comm.Remote
 	return fake.sendArgsForCall[i].msg, fake.sendArgsForCall[i].peers
 }
 
-func (fake *Gossip) SendByCriteria(arg1 *proto.SignedGossipMessage, arg2 gossip.SendCriteria) error {
+func (fake *Gossip) SendByCriteria(arg1 *protoext.SignedGossipMessage, arg2 gossip.SendCriteria) error {
 	fake.sendByCriteriaMutex.Lock()
 	ret, specificReturn := fake.sendByCriteriaReturnsOnCall[len(fake.sendByCriteriaArgsForCall)]
 	fake.sendByCriteriaArgsForCall = append(fake.sendByCriteriaArgsForCall, struct {
-		arg1 *proto.SignedGossipMessage
+		arg1 *protoext.SignedGossipMessage
 		arg2 gossip.SendCriteria
 	}{arg1, arg2})
 	fake.recordInvocation("SendByCriteria", []interface{}{arg1, arg2})
@@ -292,7 +292,7 @@ func (fake *Gossip) SendByCriteriaCallCount() int {
 	return len(fake.sendByCriteriaArgsForCall)
 }
 
-func (fake *Gossip) SendByCriteriaArgsForCall(i int) (*proto.SignedGossipMessage, gossip.SendCriteria) {
+func (fake *Gossip) SendByCriteriaArgsForCall(i int) (*protoext.SignedGossipMessage, gossip.SendCriteria) {
 	fake.sendByCriteriaMutex.RLock()
 	defer fake.sendByCriteriaMutex.RUnlock()
 	return fake.sendByCriteriaArgsForCall[i].arg1, fake.sendByCriteriaArgsForCall[i].arg2

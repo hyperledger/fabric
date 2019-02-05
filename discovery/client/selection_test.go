@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 )
@@ -40,7 +41,7 @@ func TestShuffle(t *testing.T) {
 func TestExclusionAndPriority(t *testing.T) {
 	newPeer := func(i int) *Peer {
 		si := stateInfoWithHeight(uint64(i))
-		am, _ := aliveMessage(i).ToGossipMessage()
+		am, _ := protoext.EnvelopeToGossipMessage(aliveMessage(i))
 		return &Peer{
 			StateInfoMessage: si,
 			AliveMessage:     am,
@@ -68,9 +69,9 @@ func TestExcludeEndpoints(t *testing.T) {
 		Payload: secret,
 	}
 	am3 := aliveMessage(3)
-	g1, _ := am1.ToGossipMessage()
-	g2, _ := am2.ToGossipMessage()
-	g3, _ := am3.ToGossipMessage()
+	g1, _ := protoext.EnvelopeToGossipMessage(am1)
+	g2, _ := protoext.EnvelopeToGossipMessage(am2)
+	g3, _ := protoext.EnvelopeToGossipMessage(am3)
 	p1 := Peer{
 		AliveMessage: g1,
 	}
@@ -149,7 +150,7 @@ func TestPrioritiesByHeight(t *testing.T) {
 
 }
 
-func stateInfoWithHeight(h uint64) *gossip.SignedGossipMessage {
+func stateInfoWithHeight(h uint64) *protoext.SignedGossipMessage {
 	g := &gossip.GossipMessage{
 		Content: &gossip.GossipMessage_StateInfo{
 			StateInfo: &gossip.StateInfo{
@@ -160,7 +161,7 @@ func stateInfoWithHeight(h uint64) *gossip.SignedGossipMessage {
 			},
 		},
 	}
-	sMsg, _ := g.NoopSign()
+	sMsg, _ := protoext.NoopSign(g)
 	return sMsg
 }
 

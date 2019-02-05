@@ -43,7 +43,7 @@ type pullerMock struct {
 }
 
 type sentMsg struct {
-	msg *proto.SignedGossipMessage
+	msg *protoext.SignedGossipMessage
 	mock.Mock
 }
 
@@ -62,7 +62,7 @@ func (s *sentMsg) Respond(msg *proto.GossipMessage) {
 	s.Called(msg)
 }
 
-func (s *sentMsg) GetGossipMessage() *proto.SignedGossipMessage {
+func (s *sentMsg) GetGossipMessage() *protoext.SignedGossipMessage {
 	return s.msg
 }
 
@@ -74,7 +74,7 @@ type senderMock struct {
 	mock.Mock
 }
 
-func (s *senderMock) Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer) {
+func (s *senderMock) Send(msg *protoext.SignedGossipMessage, peers ...*comm.RemotePeer) {
 	s.Called(msg, peers)
 }
 
@@ -130,7 +130,7 @@ func TestCertRevocation(t *testing.T) {
 
 	askedForIdentity := make(chan struct{}, 1)
 
-	pm, cStore, sender := createObjects(totallyFineIdentity, func(message *proto.SignedGossipMessage) {
+	pm, cStore, sender := createObjects(totallyFineIdentity, func(message *protoext.SignedGossipMessage) {
 		askedForIdentity <- struct{}{}
 	})
 	defer cStore.stop()
@@ -147,7 +147,7 @@ func TestCertRevocation(t *testing.T) {
 	l := sync.Mutex{}
 	sender.Mock = mock.Mock{}
 	sender.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
-		msg := arg.Get(0).(*proto.SignedGossipMessage)
+		msg := arg.Get(0).(*protoext.SignedGossipMessage)
 		l.Lock()
 		defer l.Unlock()
 
@@ -163,7 +163,7 @@ func TestCertRevocation(t *testing.T) {
 					},
 				},
 			}
-			sMsg, _ := dig.NoopSign()
+			sMsg, _ := protoext.NoopSign(dig)
 			go cStore.handleMessage(&sentMsg{msg: sMsg})
 		}
 
@@ -252,7 +252,7 @@ func TestCertExpiration(t *testing.T) {
 }
 
 func testCertificateUpdate(t *testing.T, shouldSucceed bool, certStore *certStore) {
-	msg, _ := (&proto.GossipMessage{
+	msg, _ := protoext.NoopSign(&proto.GossipMessage{
 		Channel: []byte(""),
 		Tag:     proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_Hello{
@@ -262,7 +262,7 @@ func testCertificateUpdate(t *testing.T, shouldSucceed bool, certStore *certStor
 				MsgType:  proto.PullMsgType_IDENTITY_MSG,
 			},
 		},
-	}).NoopSign()
+	})
 	hello := &sentMsg{
 		msg: msg,
 	}
@@ -285,7 +285,7 @@ func testCertificateUpdate(t *testing.T, shouldSucceed bool, certStore *certStor
 	}
 }
 
-func createMismatchedUpdateMessage() *proto.SignedGossipMessage {
+func createMismatchedUpdateMessage() *protoext.SignedGossipMessage {
 	peeridentity := &proto.PeerIdentity{
 		// This PKI-ID is different than the cert, and the mapping between
 		// certificate to PKI-ID in this test is simply the identity function.
@@ -304,14 +304,14 @@ func createMismatchedUpdateMessage() *proto.SignedGossipMessage {
 			PeerIdentity: peeridentity,
 		},
 	}
-	sMsg := &proto.SignedGossipMessage{
+	sMsg := &protoext.SignedGossipMessage{
 		GossipMessage: m,
 	}
 	sMsg.Sign(signer)
 	return sMsg
 }
 
-func createBadlySignedUpdateMessage() *proto.SignedGossipMessage {
+func createBadlySignedUpdateMessage() *protoext.SignedGossipMessage {
 	peeridentity := &proto.PeerIdentity{
 		PkiId: []byte("C"),
 		Cert:  []byte("C"),
@@ -329,7 +329,7 @@ func createBadlySignedUpdateMessage() *proto.SignedGossipMessage {
 			PeerIdentity: peeridentity,
 		},
 	}
-	sMsg := &proto.SignedGossipMessage{
+	sMsg := &protoext.SignedGossipMessage{
 		GossipMessage: m,
 	}
 	sMsg.Sign(signer)
@@ -342,7 +342,7 @@ func createBadlySignedUpdateMessage() *proto.SignedGossipMessage {
 	return sMsg
 }
 
-func createValidUpdateMessage() *proto.SignedGossipMessage {
+func createValidUpdateMessage() *protoext.SignedGossipMessage {
 	peeridentity := &proto.PeerIdentity{
 		PkiId: []byte("B"),
 		Cert:  []byte("B"),
@@ -359,14 +359,14 @@ func createValidUpdateMessage() *proto.SignedGossipMessage {
 			PeerIdentity: peeridentity,
 		},
 	}
-	sMsg := &proto.SignedGossipMessage{
+	sMsg := &protoext.SignedGossipMessage{
 		GossipMessage: m,
 	}
 	sMsg.Sign(signer)
 	return sMsg
 }
 
-func createUpdateMessage(nonce uint64, idMsg *proto.SignedGossipMessage) protoext.ReceivedMessage {
+func createUpdateMessage(nonce uint64, idMsg *protoext.SignedGossipMessage) protoext.ReceivedMessage {
 	update := &proto.GossipMessage{
 		Tag: proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataUpdate{
@@ -377,7 +377,7 @@ func createUpdateMessage(nonce uint64, idMsg *proto.SignedGossipMessage) protoex
 			},
 		},
 	}
-	sMsg, _ := update.NoopSign()
+	sMsg, _ := protoext.NoopSign(update)
 	return &sentMsg{msg: sMsg}
 }
 
@@ -392,13 +392,13 @@ func createDigest(nonce uint64) protoext.ReceivedMessage {
 			},
 		},
 	}
-	sMsg, _ := digest.NoopSign()
+	sMsg, _ := protoext.NoopSign(digest)
 	return &sentMsg{msg: sMsg}
 }
 
 func createObjects(updateFactory func(uint64) protoext.ReceivedMessage, msgCons pull.MsgConsumer) (pull.Mediator, *certStore, *senderMock) {
 	if msgCons == nil {
-		msgCons = func(_ *proto.SignedGossipMessage) {}
+		msgCons = func(_ *protoext.SignedGossipMessage) {}
 	}
 	shortenedWaitTime := time.Millisecond * 300
 	config := pull.Config{
@@ -421,11 +421,11 @@ func createObjects(updateFactory func(uint64) protoext.ReceivedMessage, msgCons 
 	var certStore *certStore
 	adapter := &pull.PullAdapter{
 		Sndr: sender,
-		MsgCons: func(msg *proto.SignedGossipMessage) {
+		MsgCons: func(msg *protoext.SignedGossipMessage) {
 			certStore.idMapper.Put(msg.GetPeerIdentity().PkiId, msg.GetPeerIdentity().Cert)
 			msgCons(msg)
 		},
-		IdExtractor: func(msg *proto.SignedGossipMessage) string {
+		IdExtractor: func(msg *protoext.SignedGossipMessage) string {
 			return string(msg.GetPeerIdentity().PkiId)
 		},
 		MemSvc: memberSvc,
@@ -444,7 +444,7 @@ func createObjects(updateFactory func(uint64) protoext.ReceivedMessage, msgCons 
 	sentDataReq := false
 	l := sync.Mutex{}
 	sender.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
-		msg := arg.Get(0).(*proto.SignedGossipMessage)
+		msg := arg.Get(0).(*protoext.SignedGossipMessage)
 		l.Lock()
 		defer l.Unlock()
 

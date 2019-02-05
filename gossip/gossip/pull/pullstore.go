@@ -35,12 +35,12 @@ const (
 type MsgType int
 
 // MessageHook defines a function that will run after a certain pull message is received
-type MessageHook func(itemIDs []string, items []*proto.SignedGossipMessage, msg protoext.ReceivedMessage)
+type MessageHook func(itemIDs []string, items []*protoext.SignedGossipMessage, msg protoext.ReceivedMessage)
 
 // Sender sends messages to remote peers
 type Sender interface {
 	// Send sends a message to a list of remote peers
-	Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer)
+	Send(msg *protoext.SignedGossipMessage, peers ...*comm.RemotePeer)
 }
 
 // MembershipService obtains membership information of alive peers
@@ -77,10 +77,10 @@ func (df EgressDigestFilter) byContext() algo.DigestFilter {
 }
 
 // MsgConsumer invokes code given a SignedGossipMessage
-type MsgConsumer func(message *proto.SignedGossipMessage)
+type MsgConsumer func(message *protoext.SignedGossipMessage)
 
 // IdentifierExtractor extracts from a SignedGossipMessage an identifier
-type IdentifierExtractor func(*proto.SignedGossipMessage) string
+type IdentifierExtractor func(*protoext.SignedGossipMessage) string
 
 // PullAdapter defines methods of the pullStore to interact
 // with various modules of gossip
@@ -107,7 +107,7 @@ type Mediator interface {
 	RegisterMsgHook(MsgType, MessageHook)
 
 	// Add adds a GossipMessage to the Mediator
-	Add(*proto.SignedGossipMessage)
+	Add(*protoext.SignedGossipMessage)
 
 	// Remove removes a GossipMessage from the Mediator with a matching digest,
 	// if such a message exits
@@ -124,7 +124,7 @@ type pullMediatorImpl struct {
 	msgType2Hook map[MsgType][]MessageHook
 	config       Config
 	logger       util.Logger
-	itemID2Msg   map[string]*proto.SignedGossipMessage
+	itemID2Msg   map[string]*protoext.SignedGossipMessage
 	engine       *algo.PullEngine
 }
 
@@ -147,7 +147,7 @@ func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 		msgType2Hook: make(map[MsgType][]MessageHook),
 		config:       config,
 		logger:       util.GetLogger(util.PullLogger, config.ID),
-		itemID2Msg:   make(map[string]*proto.SignedGossipMessage),
+		itemID2Msg:   make(map[string]*protoext.SignedGossipMessage),
 	}
 
 	p.engine = algo.NewPullEngineWithFilter(p, config.PullInterval, egressDigFilter.byContext(), config.PullEngineConfig)
@@ -175,7 +175,7 @@ func (p *pullMediatorImpl) HandleMessage(m protoext.ReceivedMessage) {
 	p.logger.Debug(msg)
 
 	itemIDs := []string{}
-	items := []*proto.SignedGossipMessage{}
+	items := []*protoext.SignedGossipMessage{}
 	var pullMsgType MsgType
 
 	if helloMsg := msg.GetHello(); helloMsg != nil {
@@ -192,10 +192,10 @@ func (p *pullMediatorImpl) HandleMessage(m protoext.ReceivedMessage) {
 		p.engine.OnReq(itemIDs, req.Nonce, m)
 	} else if res := msg.GetDataUpdate(); res != nil {
 		itemIDs = make([]string, len(res.Data))
-		items = make([]*proto.SignedGossipMessage, len(res.Data))
+		items = make([]*protoext.SignedGossipMessage, len(res.Data))
 		pullMsgType = ResponseMsgType
 		for i, pulledMsg := range res.Data {
-			msg, err := pulledMsg.ToGossipMessage()
+			msg, err := protoext.EnvelopeToGossipMessage(pulledMsg)
 			if err != nil {
 				p.logger.Warningf("Data update contains an invalid message: %+v", errors.WithStack(err))
 				return
@@ -229,7 +229,7 @@ func (p *pullMediatorImpl) RegisterMsgHook(pullMsgType MsgType, hook MessageHook
 }
 
 // Add adds a GossipMessage to the store
-func (p *pullMediatorImpl) Add(msg *proto.SignedGossipMessage) {
+func (p *pullMediatorImpl) Add(msg *protoext.SignedGossipMessage) {
 	p.Lock()
 	defer p.Unlock()
 	itemID := p.IdExtractor(msg)
@@ -273,7 +273,7 @@ func (p *pullMediatorImpl) Hello(dest string, nonce uint64) {
 	}
 
 	p.logger.Debug("Sending", p.config.MsgType, "hello to", dest)
-	sMsg, err := helloMsg.NoopSign()
+	sMsg, err := protoext.NoopSign(helloMsg)
 	if err != nil {
 		p.logger.Errorf("Failed creating SignedGossipMessage: %+v", errors.WithStack(err))
 		return
@@ -322,7 +322,7 @@ func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
 	if p.logger.IsEnabledFor(zapcore.DebugLevel) {
 		p.logger.Debug("Sending", formattedDigests(req.GetDataReq()), "to", dest)
 	}
-	sMsg, err := req.NoopSign()
+	sMsg, err := protoext.NoopSign(req)
 	if err != nil {
 		p.logger.Warningf("Failed creating SignedGossipMessage: %+v", errors.WithStack(err))
 		return

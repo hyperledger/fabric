@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/discovery/support/mocks"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 )
@@ -54,7 +55,7 @@ func TestPeersOfChannel(t *testing.T) {
 			},
 		},
 	}
-	sMsg, _ := stateInfo.NoopSign()
+	sMsg, _ := protoext.NoopSign(stateInfo)
 	g := &mocks.Gossip{}
 	g.SelfChannelInfoReturnsOnCall(0, nil)
 	g.SelfChannelInfoReturnsOnCall(1, sMsg)

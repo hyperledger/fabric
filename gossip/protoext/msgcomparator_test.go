@@ -18,7 +18,7 @@ import (
 func TestAliveMessageNoActionTaken(t *testing.T) {
 	comparator := protoext.NewGossipMessageComparator(1)
 
-	sMsg1 := &gossip.SignedGossipMessage{
+	sMsg1 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -39,7 +39,7 @@ func TestAliveMessageNoActionTaken(t *testing.T) {
 		},
 	}
 
-	sMsg2 := &gossip.SignedGossipMessage{
+	sMsg2 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -69,14 +69,14 @@ func TestStateInfoMessageNoActionTaken(t *testing.T) {
 	// msg1 and msg2 have same channel mac, while different pkid, while
 	// msg and msg3 same pkid and different channel mac
 
-	sMsg1 := &gossip.SignedGossipMessage{
+	sMsg1 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
 			Content: stateInfoMessage(1, 1, []byte{17}, []byte{17, 13}),
 		},
 	}
-	sMsg2 := &gossip.SignedGossipMessage{
+	sMsg2 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -92,28 +92,28 @@ func TestStateInfoMessageNoActionTaken(t *testing.T) {
 func TestStateInfoMessagesInvalidation(t *testing.T) {
 	comparator := protoext.NewGossipMessageComparator(1)
 
-	sMsg1 := &gossip.SignedGossipMessage{
+	sMsg1 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
 			Content: stateInfoMessage(1, 1, []byte{17}, []byte{17}),
 		},
 	}
-	sMsg2 := &gossip.SignedGossipMessage{
+	sMsg2 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
 			Content: stateInfoMessage(1, 1, []byte{17}, []byte{17}),
 		},
 	}
-	sMsg3 := &gossip.SignedGossipMessage{
+	sMsg3 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
 			Content: stateInfoMessage(1, 2, []byte{17}, []byte{17}),
 		},
 	}
-	sMsg4 := &gossip.SignedGossipMessage{
+	sMsg4 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -136,7 +136,7 @@ func TestStateInfoMessagesInvalidation(t *testing.T) {
 func TestAliveMessageInvalidation(t *testing.T) {
 	comparator := protoext.NewGossipMessageComparator(1)
 
-	sMsg1 := &gossip.SignedGossipMessage{
+	sMsg1 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -157,7 +157,7 @@ func TestAliveMessageInvalidation(t *testing.T) {
 		},
 	}
 
-	sMsg2 := &gossip.SignedGossipMessage{
+	sMsg2 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -178,7 +178,7 @@ func TestAliveMessageInvalidation(t *testing.T) {
 		},
 	}
 
-	sMsg3 := &gossip.SignedGossipMessage{
+	sMsg3 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -209,28 +209,28 @@ func TestDataMessageInvalidation(t *testing.T) {
 	comparator := protoext.NewGossipMessageComparator(5)
 
 	data := []byte{1, 1, 1}
-	sMsg1 := &gossip.SignedGossipMessage{
+	sMsg1 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
 			Content: dataMessage(1, data),
 		},
 	}
-	sMsg1Clone := &gossip.SignedGossipMessage{
+	sMsg1Clone := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
 			Content: dataMessage(1, data),
 		},
 	}
-	sMsg3 := &gossip.SignedGossipMessage{
+	sMsg3 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
 			Content: dataMessage(2, data),
 		},
 	}
-	sMsg4 := &gossip.SignedGossipMessage{
+	sMsg4 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -247,7 +247,7 @@ func TestDataMessageInvalidation(t *testing.T) {
 func TestIdentityMessagesInvalidation(t *testing.T) {
 	comparator := protoext.NewGossipMessageComparator(5)
 
-	msg1 := &gossip.SignedGossipMessage{
+	msg1 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -261,7 +261,7 @@ func TestIdentityMessagesInvalidation(t *testing.T) {
 		},
 	}
 
-	msg2 := &gossip.SignedGossipMessage{
+	msg2 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -275,7 +275,7 @@ func TestIdentityMessagesInvalidation(t *testing.T) {
 		},
 	}
 
-	msg3 := &gossip.SignedGossipMessage{
+	msg3 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -296,14 +296,14 @@ func TestIdentityMessagesInvalidation(t *testing.T) {
 func TestLeadershipMessagesNoAction(t *testing.T) {
 	comparator := protoext.NewGossipMessageComparator(5)
 
-	msg1 := &gossip.SignedGossipMessage{
+	msg1 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
 			Content: leadershipMessage(1, 1, []byte{17}),
 		},
 	}
-	msg2 := &gossip.SignedGossipMessage{
+	msg2 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -319,21 +319,21 @@ func TestLeadershipMessagesInvalidation(t *testing.T) {
 	comparator := protoext.NewGossipMessageComparator(5)
 
 	pkiID := []byte{17}
-	msg1 := &gossip.SignedGossipMessage{
+	msg1 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
 			Content: leadershipMessage(1, 1, pkiID),
 		},
 	}
-	msg2 := &gossip.SignedGossipMessage{
+	msg2 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,
 			Content: leadershipMessage(1, 2, pkiID),
 		},
 	}
-	msg3 := &gossip.SignedGossipMessage{
+	msg3 := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannel"),
 			Tag:     gossip.GossipMessage_EMPTY,

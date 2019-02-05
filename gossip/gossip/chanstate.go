@@ -135,25 +135,25 @@ func (ga *gossipAdapterImpl) GetConf() channel.Config {
 	}
 }
 
-func (ga *gossipAdapterImpl) Sign(msg *proto.GossipMessage) (*proto.SignedGossipMessage, error) {
+func (ga *gossipAdapterImpl) Sign(msg *proto.GossipMessage) (*protoext.SignedGossipMessage, error) {
 	signer := func(msg []byte) ([]byte, error) {
 		return ga.mcs.Sign(msg)
 	}
-	sMsg := &proto.SignedGossipMessage{
+	sMsg := &protoext.SignedGossipMessage{
 		GossipMessage: msg,
 	}
 	e, err := sMsg.Sign(signer)
 	if err != nil {
 		return nil, err
 	}
-	return &proto.SignedGossipMessage{
+	return &protoext.SignedGossipMessage{
 		Envelope:      e,
 		GossipMessage: msg,
 	}, nil
 }
 
 // Gossip gossips a message
-func (ga *gossipAdapterImpl) Gossip(msg *proto.SignedGossipMessage) {
+func (ga *gossipAdapterImpl) Gossip(msg *protoext.SignedGossipMessage) {
 	ga.gossipServiceImpl.emitter.Add(&emittedGossipMessage{
 		SignedGossipMessage: msg,
 		filter: func(_ common.PKIidType) bool {
@@ -170,13 +170,13 @@ func (ga *gossipAdapterImpl) Forward(msg protoext.ReceivedMessage) {
 	})
 }
 
-func (ga *gossipAdapterImpl) Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer) {
+func (ga *gossipAdapterImpl) Send(msg *protoext.SignedGossipMessage, peers ...*comm.RemotePeer) {
 	ga.gossipServiceImpl.comm.Send(msg, peers...)
 }
 
 // ValidateStateInfoMessage returns error if a message isn't valid
 // nil otherwise
-func (ga *gossipAdapterImpl) ValidateStateInfoMessage(msg *proto.SignedGossipMessage) error {
+func (ga *gossipAdapterImpl) ValidateStateInfoMessage(msg *protoext.SignedGossipMessage) error {
 	return ga.gossipServiceImpl.validateStateInfoMsg(msg)
 }
 

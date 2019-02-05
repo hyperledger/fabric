@@ -41,7 +41,7 @@ type gossipMock struct {
 	mock.Mock
 }
 
-func (g *gossipMock) SelfChannelInfo(common.ChainID) *proto.SignedGossipMessage {
+func (g *gossipMock) SelfChannelInfo(common.ChainID) *protoext.SignedGossipMessage {
 	panic("implement me")
 }
 
@@ -109,7 +109,7 @@ func (*gossipMock) Stop() {
 	panic("implement me")
 }
 
-func (*gossipMock) SendByCriteria(*proto.SignedGossipMessage, gossip.SendCriteria) error {
+func (*gossipMock) SendByCriteria(*protoext.SignedGossipMessage, gossip.SendCriteria) error {
 	panic("implement me")
 }
 
