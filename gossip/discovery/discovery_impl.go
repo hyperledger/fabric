@@ -250,7 +250,7 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 		pulledPeer := aliveMembersAsSlice[i].GetAliveMsg().Membership
 		var internalEndpoint string
 		if aliveMembersAsSlice[i].Envelope.SecretEnvelope != nil {
-			internalEndpoint = aliveMembersAsSlice[i].Envelope.SecretEnvelope.InternalEndpoint()
+			internalEndpoint = protoext.InternalEndpoint(aliveMembersAsSlice[i].Envelope.SecretEnvelope)
 		}
 		netMember := &NetworkMember{
 			Endpoint:         pulledPeer.Endpoint,
@@ -336,7 +336,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(msg protoext.ReceivedMessage) {
 
 		var internalEndpoint string
 		if m.Envelope.SecretEnvelope != nil {
-			internalEndpoint = m.Envelope.SecretEnvelope.InternalEndpoint()
+			internalEndpoint = protoext.InternalEndpoint(m.Envelope.SecretEnvelope)
 		}
 
 		// Sending a membership response to a peer may block this routine
@@ -553,8 +553,11 @@ func (d *gossipDiscoveryImpl) isSentByMe(m *protoext.SignedGossipMessage) bool {
 	diffExternalEndpoint := d.self.Endpoint != m.GetAliveMsg().Membership.Endpoint
 	var diffInternalEndpoint bool
 	secretEnvelope := m.GetSecretEnvelope()
-	if secretEnvelope != nil && secretEnvelope.InternalEndpoint() != "" {
-		diffInternalEndpoint = secretEnvelope.InternalEndpoint() != d.self.InternalEndpoint
+	if secretEnvelope != nil {
+		internalEndpoint := protoext.InternalEndpoint(secretEnvelope)
+		if internalEndpoint != "" {
+			diffInternalEndpoint = internalEndpoint != d.self.InternalEndpoint
+		}
 	}
 	if diffInternalEndpoint || diffExternalEndpoint {
 		d.logger.Error("Bad configuration detected: Received AliveMessage from a peer with the same PKI-ID as myself:", m.GossipMessage)
@@ -581,7 +584,7 @@ func (d *gossipDiscoveryImpl) resurrectMember(am *protoext.SignedGossipMessage, 
 		internalEndpoint = prevNetMem.InternalEndpoint
 	}
 	if am.Envelope.SecretEnvelope != nil {
-		internalEndpoint = am.Envelope.SecretEnvelope.InternalEndpoint()
+		internalEndpoint = protoext.InternalEndpoint(am.Envelope.SecretEnvelope)
 	}
 
 	d.id2Member[string(pkiID)] = &NetworkMember{
@@ -813,7 +816,7 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*protoext.SignedGo
 			internalEndpoint = prevNetMem.InternalEndpoint
 		}
 		if m.Envelope.SecretEnvelope != nil {
-			internalEndpoint = m.Envelope.SecretEnvelope.InternalEndpoint()
+			internalEndpoint = protoext.InternalEndpoint(m.Envelope.SecretEnvelope)
 		}
 
 		// update member's data
@@ -897,7 +900,7 @@ func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*protoext.SignedGos
 
 			var internalEndpoint string
 			if m.Envelope.SecretEnvelope != nil {
-				internalEndpoint = m.Envelope.SecretEnvelope.InternalEndpoint()
+				internalEndpoint = protoext.InternalEndpoint(m.Envelope.SecretEnvelope)
 			}
 
 			if prevNetMem := d.id2Member[string(member.Membership.PkiId)]; prevNetMem != nil {

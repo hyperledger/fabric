@@ -213,7 +213,7 @@ func TestAnchorPeer(t *testing.T) {
 		req := m.GetMemReq()
 		am, err := protoext.EnvelopeToGossipMessage(req.SelfInformation)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, am.GetSecretEnvelope().InternalEndpoint())
+		assert.NotEmpty(t, protoext.InternalEndpoint(am.GetSecretEnvelope()))
 		m.respond(memResp(m.Nonce, fmt.Sprintf("127.0.0.1:%d", port3)))
 	}
 
