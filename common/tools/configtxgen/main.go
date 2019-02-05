@@ -232,8 +232,7 @@ func main() {
 	flag.Parse()
 
 	if channelID == "" && (outputBlock != "" || outputChannelCreateTx != "" || outputAnchorPeersUpdate != "") {
-		channelID = genesisconfig.TestChainID
-		logger.Warningf("Omitting the channel ID for configtxgen for output operations is deprecated.  Explicitly passing the channel ID will be required in the future, defaulting to '%s'.", channelID)
+		logger.Fatalf("Missing channelID, please specify it with '-channelID'")
 	}
 
 	// show version
