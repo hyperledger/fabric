@@ -469,6 +469,37 @@ var _ = Describe("Deliver", func() {
 			})
 		})
 
+		Context("when seek info is configured to send just the newest block and a new block is committed to the ledger after the iterator is acquired", func() {
+			BeforeEach(func() {
+				seekInfo = &ab.SeekInfo{Start: seekNewest, Stop: seekNewest}
+
+				fakeBlockReader.IteratorReturns(fakeBlockIterator, 0)
+				fakeBlockReader.HeightReturns(2)
+				fakeChain.ReaderReturns(fakeBlockReader)
+				fakeBlockIterator.NextStub = func() (*cb.Block, cb.Status) {
+					blk := &cb.Block{
+						Header: &cb.BlockHeader{Number: uint64(fakeBlockIterator.NextCallCount() - 1)},
+					}
+					return blk, cb.Status_SUCCESS
+				}
+			})
+
+			It("sends only the newest block at the time the iterator was acquired", func() {
+				err := handler.Handle(context.Background(), server)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeBlockReader.IteratorCallCount()).To(Equal(1))
+				Expect(fakeBlockIterator.NextCallCount()).To(Equal(1))
+				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(1))
+				for i := 0; i < fakeResponseSender.SendBlockResponseCallCount(); i++ {
+					b := fakeResponseSender.SendBlockResponseArgsForCall(i)
+					Expect(b).To(Equal(&cb.Block{
+						Header: &cb.BlockHeader{Number: uint64(i)},
+					}))
+				}
+			})
+		})
+
 		Context("when filtered blocks are requested", func() {
 			var fakeResponseSender *mock.FilteredResponseSender
 
