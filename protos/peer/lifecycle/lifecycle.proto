@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 
 syntax = "proto3";
 
+import "common/collection.proto";
+
 package lifecycle;
 
 option java_package = "org.hyperledger.fabric.protos.peer.lifecycle";
@@ -66,6 +68,7 @@ message DefineChaincodeForMyOrgArgs {
     string endorsement_plugin = 5;
     string validation_plugin = 6;
     bytes validation_parameter = 7;
+    common.CollectionConfigPackage collections = 8;
 }
 
 // DefineChaincodeForMyOrgResult is the message returned by
@@ -84,6 +87,7 @@ message DefineChaincodeArgs {
     string endorsement_plugin = 5;
     string validation_plugin = 6;
     bytes validation_parameter = 7;
+    common.CollectionConfigPackage collections = 8;
 }
 
 // DefineChaincodeResult is the message returned by
@@ -108,6 +112,7 @@ message QueryDefinedChaincodeResult {
     string endorsement_plugin = 5;
     string validation_plugin = 6;
     bytes validation_parameter = 7;
+    common.CollectionConfigPackage collections = 8;
 }
 
 // QueryDefinedNamespaces is the message used as arguments to

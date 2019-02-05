@@ -234,6 +234,7 @@ func (i *Invocation) DefineChaincodeForMyOrg(input *lb.DefineChaincodeForMyOrgAr
 				EndorsementPlugin:   input.EndorsementPlugin,
 				ValidationPlugin:    input.ValidationPlugin,
 				ValidationParameter: input.ValidationParameter,
+				Collections:         input.Collections,
 			},
 		},
 		i.Stub,
@@ -284,6 +285,7 @@ func (i *Invocation) DefineChaincode(input *lb.DefineChaincodeArgs) (proto.Messa
 				EndorsementPlugin:   input.EndorsementPlugin,
 				ValidationPlugin:    input.ValidationPlugin,
 				ValidationParameter: input.ValidationParameter,
+				Collections:         input.Collections,
 			},
 		},
 		i.Stub,
@@ -314,6 +316,7 @@ func (i *Invocation) QueryDefinedChaincode(input *lb.QueryDefinedChaincodeArgs) 
 		ValidationPlugin:    definedChaincode.ValidationPlugin,
 		ValidationParameter: definedChaincode.ValidationParameter,
 		Hash:                definedChaincode.Hash,
+		Collections:         definedChaincode.Collections,
 	}, nil
 }
 
