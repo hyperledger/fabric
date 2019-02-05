@@ -267,6 +267,14 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	case *ab.SeekPosition_Oldest:
 		stopNum = number
 	case *ab.SeekPosition_Newest:
+		// when seeking only the newest block (i.e. starting
+		// and stopping at newest), don't reevaluate the ledger
+		// height as this can lead to multiple blocks being
+		// sent when only one is expected
+		if proto.Equal(seekInfo.Start, seekInfo.Stop) {
+			stopNum = number
+			break
+		}
 		stopNum = chain.Reader().Height() - 1
 	case *ab.SeekPosition_Specified:
 		stopNum = stop.Specified.Number
@@ -316,7 +324,7 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 			return cb.Status_FORBIDDEN, nil
 		}
 
-		logger.Debugf("[channel: %s] Delivering block for (%p) for %s", chdr.ChannelId, seekInfo, addr)
+		logger.Debugf("[channel: %s] Delivering block [%d] for (%p) for %s", chdr.ChannelId, block.Header.Number, seekInfo, addr)
 
 		if err := srv.SendBlockResponse(block); err != nil {
 			logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.ChannelId, addr, err)
