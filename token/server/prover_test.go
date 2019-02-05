@@ -9,7 +9,6 @@ package server_test
 import (
 	"context"
 	"net"
-	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -178,7 +177,7 @@ var _ = Describe("Prover", func() {
 
 		transferRequest = &token.TransferRequest{
 			Credential: []byte("credential"),
-			TokenIds:   [][]byte{},
+			TokenIds:   []*token.InputId{},
 			Shares: []*token.RecipientTransferShare{{
 				Recipient: []byte("recipient"),
 				Quantity:  99,
@@ -187,7 +186,7 @@ var _ = Describe("Prover", func() {
 
 		redeemRequest = &token.RedeemRequest{
 			Credential:       []byte("credential"),
-			TokenIds:         [][]byte{},
+			TokenIds:         []*token.InputId{},
 			QuantityToRedeem: 50,
 		}
 
@@ -216,7 +215,7 @@ var _ = Describe("Prover", func() {
 
 		transferExpectationRequest = &token.ExpectationRequest{
 			Credential: []byte("credential"),
-			TokenIds:   [][]byte{},
+			TokenIds:   []*token.InputId{},
 			Expectation: &token.TokenExpectation{
 				Expectation: &token.TokenExpectation_PlainExpectation{
 					PlainExpectation: &token.PlainExpectation{
@@ -1245,12 +1244,7 @@ var _ = Describe("Prover Transfer using TMS", func() {
 		transferRequest       *token.TransferRequest
 	)
 	It("initializes variables and expected responses", func() {
-
-		keys := make([]string, 2)
-		keys[0] = generateKey("1", "0", "tokenOutput")
-		keys[1] = generateKey("2", "1", "tokenOutput")
-
-		tokenIDs := [][]byte{[]byte(keys[0]), []byte(keys[1])}
+		tokenIDs := []*token.InputId{{TxId: "1", Index: 0}, {TxId: "2", Index: 1}}
 
 		shares := []*token.RecipientTransferShare{
 			{Recipient: []byte("Alice"), Quantity: 20},
@@ -1275,9 +1269,6 @@ var _ = Describe("Prover Transfer using TMS", func() {
 			Signature: []byte("command-signature"),
 		}
 
-		inputIDs, err := getInputIDs(keys)
-		Expect(err).NotTo(HaveOccurred())
-
 		outTokens := make([]*token.PlainOutput, 3)
 		outTokens[0] = &token.PlainOutput{Owner: []byte("Alice"), Type: "XYZ", Quantity: 20}
 		outTokens[1] = &token.PlainOutput{Owner: []byte("Bob"), Type: "XYZ", Quantity: 250}
@@ -1288,7 +1279,7 @@ var _ = Describe("Prover Transfer using TMS", func() {
 				PlainAction: &token.PlainTokenAction{
 					Data: &token.PlainTokenAction_PlainTransfer{
 						PlainTransfer: &token.PlainTransfer{
-							Inputs:  inputIDs,
+							Inputs:  tokenIDs,
 							Outputs: outTokens,
 						},
 					},
@@ -1713,27 +1704,6 @@ func splitCompositeKey(compositeKey string) (string, []string, error) {
 		}
 	}
 	return components[0], components[1:], nil
-}
-
-func getInputIDs(keys []string) ([]*token.InputId, error) {
-	inputIDs := make([]*token.InputId, len(keys))
-	for i := 0; i < len(keys); i++ {
-		_, indices, err := splitCompositeKey(keys[i])
-
-		if err != nil {
-			return nil, err
-		}
-		if len(indices) != 2 {
-			return nil, errors.New("error splitting composite keys")
-		}
-
-		index, err := strconv.Atoi(indices[1])
-		if err != nil {
-			return nil, err
-		}
-		inputIDs[i] = &token.InputId{TxId: indices[0], Index: uint32(index)}
-	}
-	return inputIDs, nil
 }
 
 func generateKey(txID, index, namespace string) string {

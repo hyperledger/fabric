@@ -31,7 +31,14 @@ type Transactor struct {
 func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.TokenTransaction, error) {
 	var outputs []*token.PlainOutput
 
-	inputs, tokenType, _, err := t.getInputsFromTokenIds(request.GetTokenIds())
+	if len(request.GetTokenIds()) == 0 {
+		return nil, errors.New("no token IDs in transfer request")
+	}
+	if len(request.GetShares()) == 0 {
+		return nil, errors.New("no shares in transfer request")
+	}
+
+	tokenType, _, err := t.getInputsFromTokenIds(request.GetTokenIds())
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +57,7 @@ func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.Tok
 			PlainAction: &token.PlainTokenAction{
 				Data: &token.PlainTokenAction_PlainTransfer{
 					PlainTransfer: &token.PlainTransfer{
-						Inputs:  inputs,
+						Inputs:  request.GetTokenIds(),
 						Outputs: outputs,
 					},
 				},
@@ -70,7 +77,7 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 		return nil, errors.Errorf("quantity to redeem [%d] must be greater than 0", request.GetQuantityToRedeem())
 	}
 
-	inputs, tokenType, quantitySum, err := t.getInputsFromTokenIds(request.GetTokenIds())
+	tokenType, quantitySum, err := t.getInputsFromTokenIds(request.GetTokenIds())
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +108,7 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 			PlainAction: &token.PlainTokenAction{
 				Data: &token.PlainTokenAction_PlainRedeem{
 					PlainRedeem: &token.PlainTransfer{
-						Inputs:  inputs,
+						Inputs:  request.GetTokenIds(),
 						Outputs: outputs,
 					},
 				},
@@ -114,67 +121,51 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 
 // read token data from ledger for each token ids and calculate the sum of quantities for all token ids
 // Returns InputIds, token type, sum of token quantities, and error in the case of failure
-func (t *Transactor) getInputsFromTokenIds(tokenIds [][]byte) ([]*token.InputId, string, uint64, error) {
-	var inputs []*token.InputId
-	var tokenType string = ""
+func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.InputId) (string, uint64, error) {
+	var tokenType = ""
 	var quantitySum uint64 = 0
-	for _, inKeyBytes := range tokenIds {
-		// parse the composite key bytes into a string
-		inKey := parseCompositeKeyBytes(inKeyBytes)
+	for _, tokenId := range tokenIds {
+		// create the composite key from tokenId
+		inKey, err := createCompositeKey(tokenOutput, []string{tokenId.TxId, strconv.Itoa(int(tokenId.Index))})
+		if err != nil {
+			verifierLogger.Errorf("error getting creating input key: %s", err)
+			return "", 0, err
+		}
 		verifierLogger.Debugf("transferring token with ID: '%s'", inKey)
-
-		// check whether the composite key conforms to the composite key of an output
-		namespace, components, err := splitCompositeKey(inKey)
-		if err != nil {
-			return nil, "", 0, errors.New(fmt.Sprintf("error splitting input composite key: '%s'", err))
-		}
-		if namespace != tokenOutput {
-			return nil, "", 0, errors.New(fmt.Sprintf("namespace not '%s': '%s'", tokenOutput, namespace))
-		}
-		if len(components) != 2 {
-			return nil, "", 0, errors.New(fmt.Sprintf("not enough components in output ID composite key; expected 2, received '%s'", components))
-		}
-		txID := components[0]
-		index, err := strconv.Atoi(components[1])
-		if err != nil {
-			return nil, "", 0, errors.New(fmt.Sprintf("error parsing output index '%s': '%s'", components[1], err))
-		}
 
 		// make sure the output exists in the ledger
 		verifierLogger.Debugf("getting output '%s' to spend from ledger", inKey)
 		inBytes, err := t.Ledger.GetState(tokenNameSpace, inKey)
 		if err != nil {
 			verifierLogger.Errorf("error getting output '%s' to spend from ledger: %s", inKey, err)
-			return nil, "", 0, err
+			return "", 0, err
 		}
 		if len(inBytes) == 0 {
-			return nil, "", 0, errors.New(fmt.Sprintf("input '%s' does not exist", inKey))
+			return "", 0, errors.New(fmt.Sprintf("input '%s' does not exist", inKey))
 		}
 		input := &token.PlainOutput{}
 		err = proto.Unmarshal(inBytes, input)
 		if err != nil {
-			return nil, "", 0, errors.New(fmt.Sprintf("error unmarshaling input bytes: '%s'", err))
+			return "", 0, errors.New(fmt.Sprintf("error unmarshaling input bytes: '%s'", err))
 		}
 
 		// check the owner of the token
 		if !bytes.Equal(t.PublicCredential, input.Owner) {
-			return nil, "", 0, errors.New(fmt.Sprintf("the requestor does not own inputs"))
+			return "", 0, errors.New(fmt.Sprintf("the requestor does not own inputs"))
 		}
 
 		// check the token type - only one type allowed per transfer
 		if tokenType == "" {
 			tokenType = input.Type
 		} else if tokenType != input.Type {
-			return nil, "", 0, errors.New(fmt.Sprintf("two or more token types specified in input: '%s', '%s'", tokenType, input.Type))
+			return "", 0, errors.New(fmt.Sprintf("two or more token types specified in input: '%s', '%s'", tokenType, input.Type))
 		}
-		// add input to list of inputs
-		inputs = append(inputs, &token.InputId{TxId: txID, Index: uint32(index)})
 
 		// sum up the quantity
 		quantitySum += input.Quantity
 	}
 
-	return inputs, tokenType, quantitySum, nil
+	return tokenType, quantitySum, nil
 }
 
 // ListTokens creates a TokenTransaction that lists the unspent tokens owned by owner.
@@ -249,7 +240,7 @@ func (t *Transactor) RequestApprove(request *token.ApproveRequest) (*token.Token
 
 	var delegatedOutputs []*token.PlainDelegatedOutput
 
-	inputs, tokenType, sumQuantity, err := t.getInputsFromTokenIds(request.GetTokenIds())
+	tokenType, sumQuantity, err := t.getInputsFromTokenIds(request.GetTokenIds())
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +281,7 @@ func (t *Transactor) RequestApprove(request *token.ApproveRequest) (*token.Token
 			PlainAction: &token.PlainTokenAction{
 				Data: &token.PlainTokenAction_PlainApprove{
 					PlainApprove: &token.PlainApprove{
-						Inputs:           inputs,
+						Inputs:           request.GetTokenIds(),
 						DelegatedOutputs: delegatedOutputs,
 						Output:           output,
 					},
@@ -312,7 +303,7 @@ func (t *Transactor) RequestTransferFrom(request *token.TransferRequest) (*token
 		return nil, errors.New("no recipient shares in TransferFromRequest")
 	}
 
-	inputs, owner, tokenType, sumQuantity, err := t.getDelegateInputsFromTokenIds(request.GetTokenIds())
+	owner, tokenType, sumQuantity, err := t.getDelegateInputsFromTokenIds(request.GetTokenIds())
 
 	if err != nil {
 		return nil, err
@@ -338,7 +329,7 @@ func (t *Transactor) RequestTransferFrom(request *token.TransferRequest) (*token
 			PlainAction: &token.PlainTokenAction{
 				Data: &token.PlainTokenAction_PlainTransfer_From{
 					PlainTransfer_From: &token.PlainTransferFrom{
-						Inputs:          inputs,
+						Inputs:          request.GetTokenIds(),
 						DelegatedOutput: delegatedOutput,
 						Outputs:         outputs,
 					},
@@ -350,45 +341,31 @@ func (t *Transactor) RequestTransferFrom(request *token.TransferRequest) (*token
 	return transaction, nil
 }
 
-func (t *Transactor) getDelegateInputsFromTokenIds(tokenIds [][]byte) ([]*token.InputId, []byte, string, uint64, error) {
-	var inputs []*token.InputId
+func (t *Transactor) getDelegateInputsFromTokenIds(tokenIds []*token.InputId) ([]byte, string, uint64, error) {
 	tokenType := ""
 	var tokenOwner []byte
 	sumQuantity := uint64(0)
 
 	input := &token.PlainDelegatedOutput{}
-	for _, inKeyBytes := range tokenIds {
-		// parse the composite key bytes into a string
-		inKey := parseCompositeKeyBytes(inKeyBytes)
-
-		// check whether the composite key conforms to the composite key of a delegated output
-		namespace, components, err := splitCompositeKey(inKey)
+	for _, tokenId := range tokenIds {
+		inKey, err := createCompositeKey(tokenDelegatedOutput, []string{tokenId.TxId, strconv.Itoa(int(tokenId.Index))})
 		if err != nil {
-			return nil, nil, "", 0, errors.Errorf("error splitting input composite key: '%s'", err)
+			verifierLogger.Errorf("error getting creating input key: %s", err)
+			return nil, "", 0, err
 		}
-		if namespace != tokenDelegatedOutput {
-			return nil, nil, "", 0, errors.Errorf("namespace not '%s': '%s'", tokenDelegatedOutput, namespace)
-		}
-		if len(components) != 2 {
-			return nil, nil, "", 0, errors.Errorf("the number of components in output ID composite key is not correct; expected 2, received '%d'", len(components))
-		}
-		txID := components[0]
-		index, err := strconv.Atoi(components[1])
-		if err != nil {
-			return nil, nil, "", 0, errors.Errorf("error parsing output index '%s': '%s'", components[1], err)
-		}
+		verifierLogger.Debugf("transferring token with ID: '%s'", inKey)
 
 		// make sure the delegated output exists in the ledger
 		inBytes, err := t.Ledger.GetState(tokenNameSpace, inKey)
 		if err != nil {
-			return nil, nil, "", 0, err
+			return nil, "", 0, err
 		}
 		if len(inBytes) == 0 {
-			return nil, nil, "", 0, errors.Errorf("input '%s' does not exist", inKey)
+			return nil, "", 0, errors.Errorf("input '%s' does not exist", inKey)
 		}
 		err = proto.Unmarshal(inBytes, input)
 		if err != nil {
-			return nil, nil, "", 0, errors.Errorf("error unmarshaling input bytes: '%s'", err)
+			return nil, "", 0, errors.Errorf("error unmarshaling input bytes: '%s'", err)
 		}
 		if len(input.Delegatees) != 1 {
 			panic(fmt.Sprintf("the number of delegatees of input ID is not correct; expected 1, received '%d'", len(input.Delegatees)))
@@ -397,26 +374,24 @@ func (t *Transactor) getDelegateInputsFromTokenIds(tokenIds [][]byte) ([]*token.
 		if tokenType == "" {
 			tokenType = input.Type
 		} else if tokenType != input.Type {
-			return nil, nil, "", 0, errors.Errorf("two or more token types specified in input: '%s', '%s'", tokenType, input.Type)
+			return nil, "", 0, errors.Errorf("two or more token types specified in input: '%s', '%s'", tokenType, input.Type)
 		}
 
 		// check the tokens actual owner
 		if tokenOwner == nil {
 			tokenOwner = input.Owner
 		} else if !bytes.Equal(tokenOwner, input.Owner) {
-			return nil, nil, "", 0, errors.Errorf("two or more token owners specified in input: '%s', '%s'", tokenOwner, input.Owner)
+			return nil, "", 0, errors.Errorf("two or more token owners specified in input: '%s', '%s'", tokenOwner, input.Owner)
 		}
 
 		// check that the requestor is allowed to transfer the tokens
 		if !bytes.Equal(input.Delegatees[0], t.PublicCredential) {
-			return nil, nil, "", 0, errors.Errorf("requestor is not allowed to transfer inputs")
+			return nil, "", 0, errors.Errorf("requestor is not allowed to transfer inputs")
 
 		}
-		// add input to list of inputs
-		inputs = append(inputs, &token.InputId{TxId: txID, Index: uint32(index)})
 		sumQuantity = sumQuantity + input.Quantity
 	}
-	return inputs, tokenOwner, tokenType, sumQuantity, nil
+	return tokenOwner, tokenType, sumQuantity, nil
 }
 
 func getOutputsForTx(shares []*token.RecipientTransferShare, tokenType string, inputQuantity uint64) ([]*token.PlainOutput, uint64, error) {
@@ -461,7 +436,7 @@ func (t *Transactor) RequestExpectation(request *token.ExpectationRequest) (*tok
 		return nil, errors.New("no transfer expectation in ExpectationRequest")
 	}
 
-	inputs, inputType, inputSum, err := t.getInputsFromTokenIds(request.GetTokenIds())
+	inputType, inputSum, err := t.getInputsFromTokenIds(request.GetTokenIds())
 	if err != nil {
 		return nil, err
 	}
@@ -492,7 +467,7 @@ func (t *Transactor) RequestExpectation(request *token.ExpectationRequest) (*tok
 			PlainAction: &token.PlainTokenAction{
 				Data: &token.PlainTokenAction_PlainTransfer{
 					PlainTransfer: &token.PlainTransfer{
-						Inputs:  inputs,
+						Inputs:  request.GetTokenIds(),
 						Outputs: outputs,
 					},
 				},
