@@ -215,7 +215,7 @@ var _ = Describe("TokenClient", func() {
 
 	Describe("RequestTransfer", func() {
 		var (
-			tokenIDs          []*token.InputId
+			tokenIDs          []*token.TokenId
 			transferShares    []*token.RecipientTransferShare
 			marshalledCommand []byte
 			signedCommand     *token.SignedCommand
@@ -223,7 +223,7 @@ var _ = Describe("TokenClient", func() {
 
 		BeforeEach(func() {
 			// input data for Transfer
-			tokenIDs = []*token.InputId{
+			tokenIDs = []*token.TokenId{
 				{TxId: "id1", Index: 0},
 				{TxId: "id2", Index: 0},
 			}
@@ -340,7 +340,7 @@ var _ = Describe("TokenClient", func() {
 
 	Describe("RequestRedeem", func() {
 		var (
-			tokenIDs          []*token.InputId
+			tokenIDs          []*token.TokenId
 			quantity          uint64
 			marshalledCommand []byte
 			signedCommand     *token.SignedCommand
@@ -348,7 +348,7 @@ var _ = Describe("TokenClient", func() {
 
 		BeforeEach(func() {
 			// input data for redeem
-			tokenIDs = []*token.InputId{
+			tokenIDs = []*token.TokenId{
 				{TxId: "id1", Index: 0},
 				{TxId: "id2", Index: 0},
 			}
@@ -477,8 +477,8 @@ var _ = Describe("TokenClient", func() {
 
 			// prepare SignedCommandResponse for fakeProverClient to return
 			expectedTokens = []*token.TokenOutput{
-				{Id: &token.InputId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: 135},
-				{Id: &token.InputId{TxId: "idby", Index: 0}, Type: "typeby", Quantity: 79},
+				{Id: &token.TokenId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: 135},
+				{Id: &token.TokenId{TxId: "idby", Index: 0}, Type: "typeby", Quantity: 79},
 			}
 			commandResp := &token.CommandResponse{
 				Payload: &token.CommandResponse_UnspentTokens{

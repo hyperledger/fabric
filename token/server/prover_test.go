@@ -91,7 +91,7 @@ var _ = Describe("Prover", func() {
 				PlainAction: &token.PlainTokenAction{
 					Data: &token.PlainTokenAction_PlainTransfer{
 						PlainTransfer: &token.PlainTransfer{
-							Inputs: []*token.InputId{{
+							Inputs: []*token.TokenId{{
 								TxId:  "txid",
 								Index: 0,
 							}},
@@ -113,7 +113,7 @@ var _ = Describe("Prover", func() {
 				PlainAction: &token.PlainTokenAction{
 					Data: &token.PlainTokenAction_PlainRedeem{
 						PlainRedeem: &token.PlainTransfer{
-							Inputs: []*token.InputId{{
+							Inputs: []*token.TokenId{{
 								TxId:  "txid",
 								Index: 0,
 							}},
@@ -129,8 +129,8 @@ var _ = Describe("Prover", func() {
 		fakeTransactor.RequestRedeemReturns(redeemTokenTransaction, nil)
 
 		transactorTokens = []*token.TokenOutput{
-			{Id: &token.InputId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: 135},
-			{Id: &token.InputId{TxId: "idby", Index: 0}, Type: "typeby", Quantity: 79},
+			{Id: &token.TokenId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: 135},
+			{Id: &token.TokenId{TxId: "idby", Index: 0}, Type: "typeby", Quantity: 79},
 		}
 		unspentTokens = &token.UnspentTokens{Tokens: transactorTokens}
 
@@ -177,7 +177,7 @@ var _ = Describe("Prover", func() {
 
 		transferRequest = &token.TransferRequest{
 			Credential: []byte("credential"),
-			TokenIds:   []*token.InputId{},
+			TokenIds:   []*token.TokenId{},
 			Shares: []*token.RecipientTransferShare{{
 				Recipient: []byte("recipient"),
 				Quantity:  99,
@@ -186,7 +186,7 @@ var _ = Describe("Prover", func() {
 
 		redeemRequest = &token.RedeemRequest{
 			Credential:       []byte("credential"),
-			TokenIds:         []*token.InputId{},
+			TokenIds:         []*token.TokenId{},
 			QuantityToRedeem: 50,
 		}
 
@@ -215,7 +215,7 @@ var _ = Describe("Prover", func() {
 
 		transferExpectationRequest = &token.ExpectationRequest{
 			Credential: []byte("credential"),
-			TokenIds:   []*token.InputId{},
+			TokenIds:   []*token.TokenId{},
 			Expectation: &token.TokenExpectation{
 				Expectation: &token.TokenExpectation_PlainExpectation{
 					PlainExpectation: &token.PlainExpectation{
@@ -1165,7 +1165,7 @@ var _ = Describe("ProverListUnspentTokens", func() {
 
 		queryResult = &queryresult.KV{Key: key, Value: outputToken}
 
-		unspentTokens := &token.UnspentTokens{Tokens: []*token.TokenOutput{{Type: "XYZ", Quantity: 100, Id: &token.InputId{TxId: "1", Index: 0}}}}
+		unspentTokens := &token.UnspentTokens{Tokens: []*token.TokenOutput{{Type: "XYZ", Quantity: 100, Id: &token.TokenId{TxId: "1", Index: 0}}}}
 		expectedResponse = &token.CommandResponse_UnspentTokens{UnspentTokens: unspentTokens}
 	})
 
@@ -1244,7 +1244,7 @@ var _ = Describe("Prover Transfer using TMS", func() {
 		transferRequest       *token.TransferRequest
 	)
 	It("initializes variables and expected responses", func() {
-		tokenIDs := []*token.InputId{{TxId: "1", Index: 0}, {TxId: "2", Index: 1}}
+		tokenIDs := []*token.TokenId{{TxId: "1", Index: 0}, {TxId: "2", Index: 1}}
 
 		shares := []*token.RecipientTransferShare{
 			{Recipient: []byte("Alice"), Quantity: 20},
@@ -1411,7 +1411,7 @@ var _ = Describe("Prover Approve using mock TMS", func() {
 			PlainAction: &token.PlainTokenAction{
 				Data: &token.PlainTokenAction_PlainApprove{
 					PlainApprove: &token.PlainApprove{
-						Inputs: []*token.InputId{{
+						Inputs: []*token.TokenId{{
 							TxId:  "txid",
 							Index: 0,
 						}},
@@ -1565,7 +1565,7 @@ var _ = Describe("RequestTransferFrom using mock TMS", func() {
 			PlainAction: &token.PlainTokenAction{
 				Data: &token.PlainTokenAction_PlainTransfer_From{
 					PlainTransfer_From: &token.PlainTransferFrom{
-						Inputs: []*token.InputId{{
+						Inputs: []*token.TokenId{{
 							TxId:  "txid",
 							Index: 0,
 						}},

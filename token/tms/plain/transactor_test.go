@@ -56,8 +56,8 @@ var _ = Describe("RequestListTokens", func() {
 
 		unspentTokens = &token.UnspentTokens{
 			Tokens: []*token.TokenOutput{
-				{Id: &token.InputId{TxId: "1", Index: uint32(0)}, Type: "TOK1", Quantity: 100},
-				{Id: &token.InputId{TxId: "3", Index: uint32(0)}, Type: "TOK4", Quantity: 400},
+				{Id: &token.TokenId{TxId: "1", Index: uint32(0)}, Type: "TOK1", Quantity: 100},
+				{Id: &token.TokenId{TxId: "3", Index: uint32(0)}, Type: "TOK4", Quantity: 400},
 			},
 		}
 	})
@@ -136,7 +136,7 @@ var _ = Describe("Transactor", func() {
 	It("converts a transfer request with no inputs into a token transaction", func() {
 		transferRequest := &token.TransferRequest{
 			Credential: []byte("credential"),
-			TokenIds:   []*token.InputId{},
+			TokenIds:   []*token.TokenId{},
 			Shares:     recipientTransferShares,
 		}
 
@@ -151,7 +151,7 @@ var _ = Describe("Transactor", func() {
 		It("returns an error", func() {
 			transferRequest := &token.TransferRequest{
 				Credential: []byte("credential"),
-				TokenIds:   []*token.InputId{{TxId: "george", Index: 0}},
+				TokenIds:   []*token.TokenId{{TxId: "george", Index: 0}},
 				Shares:     []*token.RecipientTransferShare{},
 			}
 
@@ -187,7 +187,7 @@ var _ = Describe("Transactor", func() {
 		It("creates a valid transfer request", func() {
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("credential"),
-				TokenIds:   []*token.InputId{{TxId: "george", Index: 0}},
+				TokenIds:   []*token.TokenId{{TxId: "george", Index: 0}},
 				Shares:     recipientTransferShares,
 			}
 			tt, err := transactor.RequestTransfer(transferRequest)
@@ -197,7 +197,7 @@ var _ = Describe("Transactor", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainTransfer{
 							PlainTransfer: &token.PlainTransfer{
-								Inputs: []*token.InputId{
+								Inputs: []*token.TokenId{
 									{TxId: "george", Index: uint32(0)},
 								},
 								Outputs: []*token.PlainOutput{
@@ -217,7 +217,7 @@ var _ = Describe("Transactor", func() {
 		var (
 			fakeLedger      *mock.LedgerWriter
 			transferRequest *token.TransferRequest
-			inputID         *token.InputId
+			tokenID         *token.TokenId
 		)
 
 		BeforeEach(func() {
@@ -226,13 +226,13 @@ var _ = Describe("Transactor", func() {
 			fakeLedger.GetStateReturnsOnCall(0, nil, nil)
 			transactor.Ledger = fakeLedger
 
-			inputID = &token.InputId{TxId: "george", Index: 0}
+			tokenID = &token.TokenId{TxId: "george", Index: 0}
 		})
 
 		It("returns an invalid transaction error", func() {
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("credential"),
-				TokenIds:   []*token.InputId{inputID},
+				TokenIds:   []*token.TokenId{tokenID},
 				Shares:     recipientTransferShares,
 			}
 			_, err := transactor.RequestTransfer(transferRequest)
@@ -246,8 +246,8 @@ var _ = Describe("Transactor", func() {
 			transferRequest *token.TransferRequest
 			inputBytes1     []byte
 			inputBytes2     []byte
-			inputID1        *token.InputId
-			inputID2        *token.InputId
+			tokenID1        *token.TokenId
+			tokenID2        *token.TokenId
 		)
 
 		BeforeEach(func() {
@@ -271,14 +271,14 @@ var _ = Describe("Transactor", func() {
 			fakeLedger.GetStateReturnsOnCall(0, inputBytes1, nil)
 			fakeLedger.GetStateReturnsOnCall(1, inputBytes2, nil)
 			transactor.Ledger = fakeLedger
-			inputID1 = &token.InputId{TxId: "george", Index: 0}
-			inputID2 = &token.InputId{TxId: "george", Index: 1}
+			tokenID1 = &token.TokenId{TxId: "george", Index: 0}
+			tokenID2 = &token.TokenId{TxId: "george", Index: 1}
 		})
 
 		It("returns an invalid transaction error", func() {
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("credential"),
-				TokenIds:   []*token.InputId{inputID1, inputID2},
+				TokenIds:   []*token.TokenId{tokenID1, tokenID2},
 				Shares:     recipientTransferShares,
 			}
 			_, err := transactor.RequestTransfer(transferRequest)
@@ -315,7 +315,7 @@ var _ = Describe("Transactor", func() {
 			redeemQuantity = inputQuantity
 			redeemRequest = &token.RedeemRequest{
 				Credential:       []byte("credential"),
-				TokenIds:         []*token.InputId{{TxId: "robert", Index: uint32(0)}},
+				TokenIds:         []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
 				QuantityToRedeem: redeemQuantity,
 			}
 			tt, err := transactor.RequestRedeem(redeemRequest)
@@ -325,7 +325,7 @@ var _ = Describe("Transactor", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainRedeem{
 							PlainRedeem: &token.PlainTransfer{
-								Inputs: []*token.InputId{
+								Inputs: []*token.TokenId{
 									{TxId: "robert", Index: uint32(0)},
 								},
 								Outputs: []*token.PlainOutput{
@@ -343,7 +343,7 @@ var _ = Describe("Transactor", func() {
 			unredeemedQuantity := inputQuantity - 50
 			redeemRequest = &token.RedeemRequest{
 				Credential:       []byte("credential"),
-				TokenIds:         []*token.InputId{{TxId: "robert", Index: uint32(0)}},
+				TokenIds:         []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
 				QuantityToRedeem: redeemQuantity,
 			}
 			tt, err := transactor.RequestRedeem(redeemRequest)
@@ -353,7 +353,7 @@ var _ = Describe("Transactor", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainRedeem{
 							PlainRedeem: &token.PlainTransfer{
-								Inputs: []*token.InputId{
+								Inputs: []*token.TokenId{
 									{TxId: "robert", Index: uint32(0)},
 								},
 								Outputs: []*token.PlainOutput{
@@ -372,7 +372,7 @@ var _ = Describe("Transactor", func() {
 				redeemQuantity = inputQuantity + 10
 				redeemRequest = &token.RedeemRequest{
 					Credential:       []byte("credential"),
-					TokenIds:         []*token.InputId{{TxId: "robert", Index: uint32(0)}},
+					TokenIds:         []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
 					QuantityToRedeem: redeemQuantity,
 				}
 			})
@@ -406,7 +406,7 @@ var _ = Describe("Transactor", func() {
 
 			expectationRequest = &token.ExpectationRequest{
 				Credential: []byte("credential"),
-				TokenIds:   []*token.InputId{{TxId: "robert", Index: uint32(0)}},
+				TokenIds:   []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
 
 				Expectation: &token.TokenExpectation{
 					Expectation: &token.TokenExpectation_PlainExpectation{
@@ -434,7 +434,7 @@ var _ = Describe("Transactor", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainTransfer{
 							PlainTransfer: &token.PlainTransfer{
-								Inputs: []*token.InputId{
+								Inputs: []*token.TokenId{
 									{TxId: "robert", Index: uint32(0)},
 								},
 								Outputs: []*token.PlainOutput{{
@@ -459,7 +459,7 @@ var _ = Describe("Transactor", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainTransfer{
 							PlainTransfer: &token.PlainTransfer{
-								Inputs: []*token.InputId{
+								Inputs: []*token.TokenId{
 									{TxId: "robert", Index: uint32(0)},
 								},
 								Outputs: []*token.PlainOutput{
@@ -576,7 +576,7 @@ var _ = Describe("Transactor Approve", func() {
 		It("creates a valid approve request", func() {
 			approveRequest = &token.ApproveRequest{
 				Credential: []byte("credential"),
-				TokenIds:   []*token.InputId{{TxId: "lalaland", Index: uint32(0)}},
+				TokenIds:   []*token.TokenId{{TxId: "lalaland", Index: uint32(0)}},
 
 				//[][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "0" + string("\x00"))},
 				AllowanceShares: allowanceShares,
@@ -588,7 +588,7 @@ var _ = Describe("Transactor Approve", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainApprove{
 							PlainApprove: &token.PlainApprove{
-								Inputs: []*token.InputId{
+								Inputs: []*token.TokenId{
 									{TxId: "lalaland", Index: uint32(0)},
 								},
 								DelegatedOutputs: []*token.PlainDelegatedOutput{
@@ -616,7 +616,7 @@ var _ = Describe("Transactor Approve", func() {
 			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
 			approveRequest = &token.ApproveRequest{
 				Credential:      []byte("credential"),
-				TokenIds:        []*token.InputId{{TxId: "lalaland", Index: uint32(0)}},
+				TokenIds:        []*token.TokenId{{TxId: "lalaland", Index: uint32(0)}},
 				AllowanceShares: allowanceShares,
 			}
 			tt, err := transactor.RequestApprove(approveRequest)
@@ -626,7 +626,7 @@ var _ = Describe("Transactor Approve", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainApprove{
 							PlainApprove: &token.PlainApprove{
-								Inputs: []*token.InputId{
+								Inputs: []*token.TokenId{
 									{TxId: "lalaland", Index: uint32(0)},
 								},
 								DelegatedOutputs: []*token.PlainDelegatedOutput{
@@ -643,7 +643,7 @@ var _ = Describe("Transactor Approve", func() {
 		When("no inputs are provided", func() {
 			It("returns an error", func() {
 				approveRequest = &token.ApproveRequest{
-					TokenIds:        []*token.InputId{},
+					TokenIds:        []*token.TokenId{},
 					AllowanceShares: allowanceShares,
 				}
 
@@ -657,7 +657,7 @@ var _ = Describe("Transactor Approve", func() {
 		When("no recipient shares are provided", func() {
 			It("returns an error", func() {
 				approveRequest = &token.ApproveRequest{
-					TokenIds:        []*token.InputId{{TxId: "1", Index: 0}},
+					TokenIds:        []*token.TokenId{{TxId: "1", Index: 0}},
 					AllowanceShares: []*token.AllowanceRecipientShare{},
 				}
 
@@ -671,7 +671,7 @@ var _ = Describe("Transactor Approve", func() {
 		When("a quantity in a share <= 0", func() {
 			It("returns an error", func() {
 				approveRequest = &token.ApproveRequest{
-					TokenIds:        []*token.InputId{{TxId: "1", Index: 0}},
+					TokenIds:        []*token.TokenId{{TxId: "1", Index: 0}},
 					AllowanceShares: []*token.AllowanceRecipientShare{{Recipient: []byte("Bob"), Quantity: 0}},
 				}
 
@@ -685,7 +685,7 @@ var _ = Describe("Transactor Approve", func() {
 		When("a recipient is not specified", func() {
 			It("returns an error", func() {
 				approveRequest = &token.ApproveRequest{
-					TokenIds:        []*token.InputId{{TxId: "1", Index: 0}},
+					TokenIds:        []*token.TokenId{{TxId: "1", Index: 0}},
 					AllowanceShares: []*token.AllowanceRecipientShare{{Quantity: 10}},
 				}
 
@@ -710,7 +710,7 @@ var _ = Describe("Transactor Approve", func() {
 				fakeLedger.GetStateReturnsOnCall(1, inputBytes, nil)
 				approveRequest = &token.ApproveRequest{
 					Credential:      []byte("credential"),
-					TokenIds:        []*token.InputId{{TxId: "lalaland", Index: 0}, {TxId: "lalaland", Index: 1}},
+					TokenIds:        []*token.TokenId{{TxId: "lalaland", Index: 0}, {TxId: "lalaland", Index: 1}},
 					AllowanceShares: allowanceShares,
 				}
 
@@ -735,7 +735,7 @@ var _ = Describe("Transactor Approve", func() {
 				fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
 				approveRequest = &token.ApproveRequest{
 					Credential:      []byte("credential"),
-					TokenIds:        []*token.InputId{{TxId: "lalaland", Index: 0}},
+					TokenIds:        []*token.TokenId{{TxId: "lalaland", Index: 0}},
 					AllowanceShares: allowanceShares,
 				}
 
@@ -751,7 +751,7 @@ var _ = Describe("Transactor Approve", func() {
 				fakeLedger.GetStateReturnsOnCall(0, nil, errors.New("banana"))
 				approveRequest = &token.ApproveRequest{
 					Credential:      []byte("credential"),
-					TokenIds:        []*token.InputId{{TxId: "lalaland", Index: 0}},
+					TokenIds:        []*token.TokenId{{TxId: "lalaland", Index: 0}},
 					AllowanceShares: allowanceShares,
 				}
 				tt, err := transactor.RequestApprove(approveRequest)
@@ -804,7 +804,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 		It("creates a valid transferFrom request", func() {
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Charlie"),
-				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}},
+				TokenIds:   []*token.TokenId{{TxId: "pot pourri", Index: 0}},
 				Shares:     shares,
 			}
 			tt, err := transactor.RequestTransferFrom(transferRequest)
@@ -814,7 +814,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainTransfer_From{
 							PlainTransfer_From: &token.PlainTransferFrom{
-								Inputs: []*token.InputId{
+								Inputs: []*token.TokenId{
 									{TxId: "pot pourri", Index: uint32(0)},
 								},
 								Outputs: []*token.PlainOutput{
@@ -843,7 +843,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Charlie"),
-				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}},
+				TokenIds:   []*token.TokenId{{TxId: "pot pourri", Index: 0}},
 				Shares:     shares,
 			}
 			tt, err := transactor.RequestTransferFrom(transferRequest)
@@ -853,7 +853,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainTransfer_From{
 							PlainTransfer_From: &token.PlainTransferFrom{
-								Inputs: []*token.InputId{
+								Inputs: []*token.TokenId{
 									{TxId: "pot pourri", Index: uint32(0)},
 								},
 								Outputs: []*token.PlainOutput{
@@ -881,7 +881,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 			fakeLedger.GetStateReturnsOnCall(1, inputBytes, nil)
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Charlie"),
-				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}, {TxId: "pot pourri", Index: 1}},
+				TokenIds:   []*token.TokenId{{TxId: "pot pourri", Index: 0}, {TxId: "pot pourri", Index: 1}},
 				Shares:     shares,
 			}
 
@@ -905,7 +905,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 			fakeLedger.GetStateReturnsOnCall(1, inputBytes, nil)
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Charlie"),
-				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}, {TxId: "pot pourri", Index: 1}},
+				TokenIds:   []*token.TokenId{{TxId: "pot pourri", Index: 0}, {TxId: "pot pourri", Index: 1}},
 				Shares:     shares,
 			}
 
@@ -929,7 +929,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Charlie"),
-				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}},
+				TokenIds:   []*token.TokenId{{TxId: "pot pourri", Index: 0}},
 				Shares:     shares,
 			}
 			tt, err := transactor.RequestTransferFrom(transferRequest)
@@ -942,7 +942,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 			transactor.PublicCredential = []byte("Dave")
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Dave"),
-				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}},
+				TokenIds:   []*token.TokenId{{TxId: "pot pourri", Index: 0}},
 				Shares:     shares,
 			}
 			tt, err := transactor.RequestTransferFrom(transferRequest)
@@ -955,7 +955,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 			fakeLedger.GetStateReturnsOnCall(0, nil, errors.New("banana"))
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Charlie"),
-				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}},
+				TokenIds:   []*token.TokenId{{TxId: "pot pourri", Index: 0}},
 				Shares:     shares,
 			}
 			tt, err := transactor.RequestTransferFrom(transferRequest)
