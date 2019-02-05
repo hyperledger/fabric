@@ -22,6 +22,14 @@ Organizations:
         # Name can include alphanumeric characters as well as dots and dashes.
         Name: SampleOrg
 
+        # SkipAsForeign can be set to true for org definitions which are to be
+        # inherited from the orderer system channel during channel creation.  This
+        # is especially useful when an admin of a single org without access to the
+        # MSP directories of the other orgs wishes to create a channel.  Note
+        # this property must always be set to false for orgs included in block
+        # creation.
+        SkipAsForeign: false
+
         # ID is the key by which this org's MSP definition will be referenced.
         # ID can include alphanumeric characters as well as dots and dashes.
         ID: SampleOrg
@@ -555,7 +563,12 @@ Profiles:
         Application:
             <<: *ApplicationDefaults
             Organizations:
-                - *SampleOrg
+                - <<: *SampleOrg
+                  # SkipAsForeign tells configtxgen not to attempt to parse the
+                  # MSP directories or other information for this org.  For channel
+                  # creation these values are typically ignored and can produce
+                  # errors which would not otherwise interfere in the generation.
+                  SkipAsForeign: true
 
     # SampleDevModeEtcdRaft defines a configuration that differs from the
     # SampleDevModeSolo one only in that it uses the etcd/raft-based orderer.

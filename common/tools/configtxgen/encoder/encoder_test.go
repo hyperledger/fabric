@@ -398,6 +398,30 @@ var _ = Describe("Encoder", func() {
 			Expect(cg.Policies["SamplePolicy"]).NotTo(BeNil())
 		})
 
+		Context("when the org is marked to be skipped as foreign", func() {
+			BeforeEach(func() {
+				conf.SkipAsForeign = true
+			})
+
+			It("returns an empty org group with mod policy set", func() {
+				cg, err := encoder.NewOrdererOrgGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(cg.Values)).To(Equal(0))
+				Expect(len(cg.Policies)).To(Equal(0))
+			})
+
+			Context("even when the MSP dir is invalid/corrupt", func() {
+				BeforeEach(func() {
+					conf.MSPDir = "garbage"
+				})
+
+				It("returns without error", func() {
+					_, err := encoder.NewOrdererOrgGroup(conf)
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+		})
+
 		Context("when the policies are ommitted", func() {
 			BeforeEach(func() {
 				conf.Policies = nil
@@ -511,6 +535,30 @@ var _ = Describe("Encoder", func() {
 			Expect(len(cg.Values)).To(Equal(2))
 			Expect(cg.Values["MSP"]).NotTo(BeNil())
 			Expect(cg.Values["AnchorPeers"]).NotTo(BeNil())
+		})
+
+		Context("when the org is marked to be skipped as foreign", func() {
+			BeforeEach(func() {
+				conf.SkipAsForeign = true
+			})
+
+			It("returns an empty org group with mod policy set", func() {
+				cg, err := encoder.NewApplicationOrgGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(cg.Values)).To(Equal(0))
+				Expect(len(cg.Policies)).To(Equal(0))
+			})
+
+			Context("even when the MSP dir is invalid/corrupt", func() {
+				BeforeEach(func() {
+					conf.MSPDir = "garbage"
+				})
+
+				It("returns without error", func() {
+					_, err := encoder.NewApplicationOrgGroup(conf)
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
 		})
 
 		Context("when the policies are ommitted", func() {
@@ -1122,9 +1170,137 @@ var _ = Describe("Encoder", func() {
 			})
 
 		})
+
+		Describe("HasSkippedForeignOrgs", func() {
+			var (
+				conf *genesisconfig.Profile
+			)
+
+			BeforeEach(func() {
+				conf = &genesisconfig.Profile{
+					Orderer: &genesisconfig.Orderer{
+						Organizations: []*genesisconfig.Organization{
+							{
+								Name: "OrdererOrg1",
+							},
+							{
+								Name: "OrdererOrg2",
+							},
+						},
+					},
+					Application: &genesisconfig.Application{
+						Organizations: []*genesisconfig.Organization{
+							{
+								Name: "ApplicationOrg1",
+							},
+							{
+								Name: "ApplicationOrg2",
+							},
+						},
+					},
+					Consortiums: map[string]*genesisconfig.Consortium{
+						"SomeConsortium": {
+							Organizations: []*genesisconfig.Organization{
+								{
+									Name: "ConsortiumOrg1",
+								},
+								{
+									Name: "ConsortiumOrg2",
+								},
+							},
+						},
+					},
+				}
+			})
+
+			It("returns no error if all orgs are not skipped as foreign", func() {
+				err := encoder.HasSkippedForeignOrgs(conf)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			Context("when the orderer group has foreign orgs", func() {
+				BeforeEach(func() {
+					conf.Orderer.Organizations[1].SkipAsForeign = true
+				})
+
+				It("returns an error indicating the offending org", func() {
+					err := encoder.HasSkippedForeignOrgs(conf)
+					Expect(err).To(MatchError("organization 'OrdererOrg2' is marked to be skipped as foreign"))
+				})
+			})
+
+			Context("when the application group has foreign orgs", func() {
+				BeforeEach(func() {
+					conf.Application.Organizations[1].SkipAsForeign = true
+				})
+
+				It("returns an error indicating the offending org", func() {
+					err := encoder.HasSkippedForeignOrgs(conf)
+					Expect(err).To(MatchError("organization 'ApplicationOrg2' is marked to be skipped as foreign"))
+				})
+			})
+
+			Context("when the consortium group has foreign orgs", func() {
+				BeforeEach(func() {
+					conf.Consortiums["SomeConsortium"].Organizations[1].SkipAsForeign = true
+				})
+
+				It("returns an error indicating the offending org", func() {
+					err := encoder.HasSkippedForeignOrgs(conf)
+					Expect(err).To(MatchError("organization 'ConsortiumOrg2' is marked to be skipped as foreign"))
+				})
+			})
+		})
 	})
 
 	Describe("Bootstrapper", func() {
+		Describe("NewBootstrapper", func() {
+			var (
+				conf *genesisconfig.Profile
+			)
+
+			BeforeEach(func() {
+				conf = &genesisconfig.Profile{
+					Orderer: &genesisconfig.Orderer{
+						OrdererType: "solo",
+					},
+				}
+			})
+
+			It("creates a new bootstrapper for the given config", func() {
+				bs, err := encoder.NewBootstrapper(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(bs).NotTo(BeNil())
+			})
+
+			Context("when the channel config is bad", func() {
+				BeforeEach(func() {
+					conf.Orderer.OrdererType = "bad-type"
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := encoder.NewBootstrapper(conf)
+					Expect(err).To(MatchError("could not create channel group: could not create orderer group: unknown orderer type: bad-type"))
+				})
+			})
+
+			Context("when the channel config contains a foreign org", func() {
+				BeforeEach(func() {
+					conf.Orderer.Organizations = []*genesisconfig.Organization{
+						{
+							Name:          "MyOrg",
+							SkipAsForeign: true,
+						},
+					}
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := encoder.NewBootstrapper(conf)
+					Expect(err).To(MatchError("all org definitions must be local during bootstrapping: organization 'MyOrg' is marked to be skipped as foreign"))
+				})
+			})
+		})
+
 		Describe("New", func() {
 			var (
 				conf *genesisconfig.Profile

@@ -144,6 +144,10 @@ type Organization struct {
 	// it was used for modifying the default policy generation, but policies
 	// may now be specified explicitly so it is redundant and unnecessary
 	AdminPrincipal string `yaml:"AdminPrincipal"`
+
+	// SkipAsForeign indicates that this org definition is actually unknown to this
+	// instance of the tool, so, parsing of this org's parameters should be ignored.
+	SkipAsForeign bool
 }
 
 // AnchorPeer encodes the necessary fields to identify an anchor peer.

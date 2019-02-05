@@ -242,12 +242,18 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 // NewOrdererOrgGroup returns an orderer org component of the channel configuration.  It defines the crypto material for the
 // organization (its MSP).  It sets the mod_policy of all elements to "Admins".
 func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, error) {
+	ordererOrgGroup := cb.NewConfigGroup()
+	ordererOrgGroup.ModPolicy = channelconfig.AdminsPolicyKey
+
+	if conf.SkipAsForeign {
+		return ordererOrgGroup, nil
+	}
+
 	mspConfig, err := msp.GetVerifyingMspConfig(conf.MSPDir, conf.ID, conf.MSPType)
 	if err != nil {
 		return nil, errors.Wrapf(err, "1 - Error loading MSP configuration for org: %s", conf.Name)
 	}
 
-	ordererOrgGroup := cb.NewConfigGroup()
 	if len(conf.Policies) == 0 {
 		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the orderer org group %s in configtx.yaml", conf.Name)
 		addSignaturePolicyDefaults(ordererOrgGroup, conf.ID, conf.AdminPrincipal != genesisconfig.AdminRoleAdminPrincipal)
@@ -259,7 +265,6 @@ func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, erro
 
 	addValue(ordererOrgGroup, channelconfig.MSPValue(mspConfig), channelconfig.AdminsPolicyKey)
 
-	ordererOrgGroup.ModPolicy = channelconfig.AdminsPolicyKey
 	return ordererOrgGroup, nil
 }
 
@@ -299,12 +304,18 @@ func NewApplicationGroup(conf *genesisconfig.Application) (*cb.ConfigGroup, erro
 // NewApplicationOrgGroup returns an application org component of the channel configuration.  It defines the crypto material for the organization
 // (its MSP) as well as its anchor peers for use by the gossip network.  It sets the mod_policy of all elements to "Admins".
 func NewApplicationOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, error) {
+	applicationOrgGroup := cb.NewConfigGroup()
+	applicationOrgGroup.ModPolicy = channelconfig.AdminsPolicyKey
+
+	if conf.SkipAsForeign {
+		return applicationOrgGroup, nil
+	}
+
 	mspConfig, err := msp.GetVerifyingMspConfig(conf.MSPDir, conf.ID, conf.MSPType)
 	if err != nil {
 		return nil, errors.Wrapf(err, "1 - Error loading MSP configuration for org %s", conf.Name)
 	}
 
-	applicationOrgGroup := cb.NewConfigGroup()
 	if len(conf.Policies) == 0 {
 		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the application org group %s in configtx.yaml", conf.Name)
 		addSignaturePolicyDefaults(applicationOrgGroup, conf.ID, conf.AdminPrincipal != genesisconfig.AdminRoleAdminPrincipal)
@@ -330,7 +341,6 @@ func NewApplicationOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, 
 		addValue(applicationOrgGroup, channelconfig.AnchorPeersValue(anchorProtos), channelconfig.AdminsPolicyKey)
 	}
 
-	applicationOrgGroup.ModPolicy = channelconfig.AdminsPolicyKey
 	return applicationOrgGroup, nil
 }
 
@@ -533,20 +543,61 @@ func MakeChannelCreationTransactionFromTemplate(channelID string, signer crypto.
 	return utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, newConfigUpdateEnv, msgVersion, epoch)
 }
 
+// HasSkippedForeignOrgs is used to detect whether a configuration includes
+// org definitions which should not be parsed because this tool is being
+// run in a context where the user does not have access to that org's info
+func HasSkippedForeignOrgs(conf *genesisconfig.Profile) error {
+	var organizations []*genesisconfig.Organization
+
+	if conf.Orderer != nil {
+		organizations = append(organizations, conf.Orderer.Organizations...)
+	}
+
+	if conf.Application != nil {
+		organizations = append(organizations, conf.Application.Organizations...)
+	}
+
+	for _, consortium := range conf.Consortiums {
+		organizations = append(organizations, consortium.Organizations...)
+	}
+
+	for _, org := range organizations {
+		if org.SkipAsForeign {
+			return errors.Errorf("organization '%s' is marked to be skipped as foreign", org.Name)
+		}
+	}
+
+	return nil
+}
+
 // Bootstrapper is a wrapper around NewChannelConfigGroup which can produce genesis blocks
 type Bootstrapper struct {
 	channelGroup *cb.ConfigGroup
 }
 
-// New creates a new Bootstrapper for generating genesis blocks
-func New(config *genesisconfig.Profile) *Bootstrapper {
+// NewBootstrapper creates a bootstrapper but returns an error instead of panic-ing
+func NewBootstrapper(config *genesisconfig.Profile) (*Bootstrapper, error) {
+	if err := HasSkippedForeignOrgs(config); err != nil {
+		return nil, errors.WithMessage(err, "all org definitions must be local during bootstrapping")
+	}
+
 	channelGroup, err := NewChannelGroup(config)
 	if err != nil {
-		logger.Panicf("Error creating channel group: %s", err)
+		return nil, errors.WithMessage(err, "could not create channel group")
 	}
+
 	return &Bootstrapper{
 		channelGroup: channelGroup,
+	}, nil
+}
+
+// New creates a new Bootstrapper for generating genesis blocks
+func New(config *genesisconfig.Profile) *Bootstrapper {
+	bs, err := NewBootstrapper(config)
+	if err != nil {
+		logger.Panicf("Error creating bootsrapper: %s", err)
 	}
+	return bs
 }
 
 // GenesisBlock produces a genesis block for the default test chain id

@@ -31,7 +31,10 @@ var exitCode = 0
 var logger = flogging.MustGetLogger("common.tools.configtxgen")
 
 func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock string) error {
-	pgen := encoder.New(config)
+	pgen, err := encoder.NewBootstrapper(config)
+	if err != nil {
+		return errors.WithMessage(err, "could not create bootstrapper")
+	}
 	logger.Info("Generating genesis block")
 	if config.Orderer == nil {
 		return errors.Errorf("refusing to generate block which is missing orderer section")
@@ -41,7 +44,7 @@ func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock 
 	}
 	genesisBlock := pgen.GenesisBlockForChannel(channelID)
 	logger.Info("Writing genesis block")
-	err := ioutil.WriteFile(outputBlock, utils.MarshalOrPanic(genesisBlock), 0644)
+	err = ioutil.WriteFile(outputBlock, utils.MarshalOrPanic(genesisBlock), 0644)
 	if err != nil {
 		return fmt.Errorf("Error writing genesis block: %s", err)
 	}
