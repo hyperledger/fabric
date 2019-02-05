@@ -17,7 +17,6 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/msp"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -25,7 +24,124 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+func CreateStandardPolicies() map[string]*genesisconfig.Policy {
+	return map[string]*genesisconfig.Policy{
+		"Admins": {
+			Type: "ImplicitMeta",
+			Rule: "ANY Admins",
+		},
+		"Readers": {
+			Type: "ImplicitMeta",
+			Rule: "ANY Readers",
+		},
+		"Writers": {
+			Type: "ImplicitMeta",
+			Rule: "ANY Writers",
+		},
+	}
+}
+
 var _ = Describe("Encoder", func() {
+	Describe("AddPolicies", func() {
+		var (
+			cg       *cb.ConfigGroup
+			policies map[string]*genesisconfig.Policy
+		)
+
+		BeforeEach(func() {
+			cg = cb.NewConfigGroup()
+			policies = CreateStandardPolicies()
+		})
+
+		It("adds the policies to the group", func() {
+			err := encoder.AddPolicies(cg, policies, "Admins")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(cg.Policies)).To(Equal(3))
+			Expect(cg.Policies["Admins"]).NotTo(BeNil())
+			Expect(cg.Policies["Readers"]).NotTo(BeNil())
+			Expect(cg.Policies["Writers"]).NotTo(BeNil())
+		})
+
+		Context("when the policy map is nil", func() {
+			BeforeEach(func() {
+				policies = nil
+			})
+
+			It("returns an error", func() {
+				err := encoder.AddPolicies(cg, policies, "Admins")
+				Expect(err).To(MatchError("no policies defined"))
+			})
+		})
+
+		Context("when the policy map is missing 'Admins'", func() {
+			BeforeEach(func() {
+				delete(policies, "Admins")
+			})
+
+			It("returns an error", func() {
+				err := encoder.AddPolicies(cg, policies, "Admins")
+				Expect(err).To(MatchError("no Admins policy defined"))
+			})
+		})
+
+		Context("when the policy map is missing 'Readers'", func() {
+			BeforeEach(func() {
+				delete(policies, "Readers")
+			})
+
+			It("returns an error", func() {
+				err := encoder.AddPolicies(cg, policies, "Readers")
+				Expect(err).To(MatchError("no Readers policy defined"))
+			})
+		})
+
+		Context("when the policy map is missing 'Writers'", func() {
+			BeforeEach(func() {
+				delete(policies, "Writers")
+			})
+
+			It("returns an error", func() {
+				err := encoder.AddPolicies(cg, policies, "Writers")
+				Expect(err).To(MatchError("no Writers policy defined"))
+			})
+		})
+
+		Context("when the signature policy definition is bad", func() {
+			BeforeEach(func() {
+				policies["Readers"].Type = "Signature"
+				policies["Readers"].Rule = "garbage"
+			})
+
+			It("wraps and returns the error", func() {
+				err := encoder.AddPolicies(cg, policies, "Readers")
+				Expect(err).To(MatchError("invalid signature policy rule 'garbage': unrecognized token 'garbage' in policy string"))
+			})
+		})
+
+		Context("when the implicit policy definition is bad", func() {
+			BeforeEach(func() {
+				policies["Readers"].Type = "ImplicitMeta"
+				policies["Readers"].Rule = "garbage"
+			})
+
+			It("wraps and returns the error", func() {
+				err := encoder.AddPolicies(cg, policies, "Readers")
+				Expect(err).To(MatchError("invalid implicit meta policy rule 'garbage': expected two space separated tokens, but got 1"))
+			})
+		})
+
+		Context("when the policy type is unknown", func() {
+			BeforeEach(func() {
+				policies["Readers"].Type = "garbage"
+			})
+
+			It("returns an error", func() {
+				err := encoder.AddPolicies(cg, policies, "Readers")
+				Expect(err).To(MatchError("unknown policy type: garbage"))
+			})
+		})
+	})
+
 	Describe("NewChannelGroup", func() {
 		var (
 			conf *genesisconfig.Profile
@@ -33,19 +149,17 @@ var _ = Describe("Encoder", func() {
 
 		BeforeEach(func() {
 			conf = &genesisconfig.Profile{
-				Consortium:  "MyConsortium",
-				Application: &genesisconfig.Application{},
+				Consortium: "MyConsortium",
+				Policies:   CreateStandardPolicies(),
+				Application: &genesisconfig.Application{
+					Policies: CreateStandardPolicies(),
+				},
 				Orderer: &genesisconfig.Orderer{
 					OrdererType: "solo",
+					Policies:    CreateStandardPolicies(),
 				},
 				Consortiums: map[string]*genesisconfig.Consortium{
 					"SampleConsortium": {},
-				},
-				Policies: map[string]*genesisconfig.Policy{
-					"SamplePolicy": {
-						Type: "ImplicitMeta",
-						Rule: "ANY Admins",
-					},
 				},
 				Capabilities: map[string]bool{
 					"FakeCapability": true,
@@ -59,24 +173,9 @@ var _ = Describe("Encoder", func() {
 			_ = cg
 		})
 
-		Context("when the policies are ommitted", func() {
-			BeforeEach(func() {
-				conf.Policies = nil
-			})
-
-			It("adds default policies", func() {
-				cg, err := encoder.NewChannelGroup(conf)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Policies)).To(Equal(3))
-				Expect(cg.Policies["Readers"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
-				Expect(cg.Policies["Writers"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
-				Expect(cg.Policies["Admins"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
-			})
-		})
-
 		Context("when the policy definition is bad", func() {
 			BeforeEach(func() {
-				conf.Policies["SamplePolicy"].Rule = "garbage"
+				conf.Policies["Admins"].Rule = "garbage"
 			})
 
 			It("wraps and returns the error", func() {
@@ -109,10 +208,8 @@ var _ = Describe("Encoder", func() {
 
 		Context("when the application config is bad", func() {
 			BeforeEach(func() {
-				conf.Application.Policies = map[string]*genesisconfig.Policy{
-					"garbage-policy": {
-						Type: "garbage",
-					},
+				conf.Application.Policies["Admins"] = &genesisconfig.Policy{
+					Type: "garbage",
 				}
 			})
 
@@ -152,18 +249,14 @@ var _ = Describe("Encoder", func() {
 				OrdererType: "solo",
 				Organizations: []*genesisconfig.Organization{
 					{
-						MSPDir:  "../../../../sampleconfig/msp",
-						ID:      "SampleMSP",
-						MSPType: "bccsp",
-						Name:    "SampleOrg",
+						MSPDir:   "../../../../sampleconfig/msp",
+						ID:       "SampleMSP",
+						MSPType:  "bccsp",
+						Name:     "SampleOrg",
+						Policies: CreateStandardPolicies(),
 					},
 				},
-				Policies: map[string]*genesisconfig.Policy{
-					"SamplePolicy": {
-						Type: "ImplicitMeta",
-						Rule: "ANY Admins",
-					},
-				},
+				Policies: CreateStandardPolicies(),
 				Capabilities: map[string]bool{
 					"FakeCapability": true,
 				},
@@ -173,8 +266,10 @@ var _ = Describe("Encoder", func() {
 		It("translates the config into a config group", func() {
 			cg, err := encoder.NewOrdererGroup(conf)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Policies)).To(Equal(2)) // BlockValidation automatically added
-			Expect(cg.Policies["SamplePolicy"]).NotTo(BeNil())
+			Expect(len(cg.Policies)).To(Equal(4)) // BlockValidation automatically added
+			Expect(cg.Policies["Admins"]).NotTo(BeNil())
+			Expect(cg.Policies["Readers"]).NotTo(BeNil())
+			Expect(cg.Policies["Writers"]).NotTo(BeNil())
 			Expect(cg.Policies["BlockValidation"]).NotTo(BeNil())
 			Expect(len(cg.Groups)).To(Equal(1))
 			Expect(cg.Groups["SampleOrg"]).NotTo(BeNil())
@@ -185,25 +280,9 @@ var _ = Describe("Encoder", func() {
 			Expect(cg.Values["Capabilities"]).NotTo(BeNil())
 		})
 
-		Context("when the policies are ommitted", func() {
-			BeforeEach(func() {
-				conf.Policies = nil
-			})
-
-			It("adds default policies", func() {
-				cg, err := encoder.NewOrdererGroup(conf)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Policies)).To(Equal(4))
-				Expect(cg.Policies["BlockValidation"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
-				Expect(cg.Policies["Readers"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
-				Expect(cg.Policies["Writers"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
-				Expect(cg.Policies["Admins"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
-			})
-		})
-
 		Context("when the policy definition is bad", func() {
 			BeforeEach(func() {
-				conf.Policies["SamplePolicy"].Rule = "garbage"
+				conf.Policies["Admins"].Rule = "garbage"
 			})
 
 			It("wraps and returns the error", func() {
@@ -297,21 +376,17 @@ var _ = Describe("Encoder", func() {
 			conf = &genesisconfig.Application{
 				Organizations: []*genesisconfig.Organization{
 					{
-						MSPDir:  "../../../../sampleconfig/msp",
-						ID:      "SampleMSP",
-						MSPType: "bccsp",
-						Name:    "SampleOrg",
+						MSPDir:   "../../../../sampleconfig/msp",
+						ID:       "SampleMSP",
+						MSPType:  "bccsp",
+						Name:     "SampleOrg",
+						Policies: CreateStandardPolicies(),
 					},
 				},
 				ACLs: map[string]string{
 					"SomeACL": "SomePolicy",
 				},
-				Policies: map[string]*genesisconfig.Policy{
-					"SamplePolicy": {
-						Type: "ImplicitMeta",
-						Rule: "ANY Admins",
-					},
-				},
+				Policies: CreateStandardPolicies(),
 				Capabilities: map[string]bool{
 					"FakeCapability": true,
 				},
@@ -321,8 +396,10 @@ var _ = Describe("Encoder", func() {
 		It("translates the config into a config group", func() {
 			cg, err := encoder.NewApplicationGroup(conf)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Policies)).To(Equal(1)) // BlockValidation automatically added
-			Expect(cg.Policies["SamplePolicy"]).NotTo(BeNil())
+			Expect(len(cg.Policies)).To(Equal(3))
+			Expect(cg.Policies["Admins"]).NotTo(BeNil())
+			Expect(cg.Policies["Readers"]).NotTo(BeNil())
+			Expect(cg.Policies["Writers"]).NotTo(BeNil())
 			Expect(len(cg.Groups)).To(Equal(1))
 			Expect(cg.Groups["SampleOrg"]).NotTo(BeNil())
 			Expect(len(cg.Values)).To(Equal(2))
@@ -330,24 +407,9 @@ var _ = Describe("Encoder", func() {
 			Expect(cg.Values["Capabilities"]).NotTo(BeNil())
 		})
 
-		Context("when the policies are ommitted", func() {
-			BeforeEach(func() {
-				conf.Policies = nil
-			})
-
-			It("adds default policies", func() {
-				cg, err := encoder.NewApplicationGroup(conf)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Policies)).To(Equal(3))
-				Expect(cg.Policies["Readers"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
-				Expect(cg.Policies["Writers"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
-				Expect(cg.Policies["Admins"].Policy.Type).To(Equal(int32(cb.Policy_IMPLICIT_META)))
-			})
-		})
-
 		Context("when the policy definition is bad", func() {
 			BeforeEach(func() {
-				conf.Policies["SamplePolicy"].Rule = "garbage"
+				conf.Policies["Admins"].Rule = "garbage"
 			})
 
 			It("wraps and returns the error", func() {
@@ -375,17 +437,11 @@ var _ = Describe("Encoder", func() {
 
 		BeforeEach(func() {
 			conf = &genesisconfig.Organization{
-				MSPDir:  "../../../../sampleconfig/msp",
-				ID:      "SampleMSP",
-				MSPType: "bccsp",
-				Name:    "SampleOrg",
-				Policies: map[string]*genesisconfig.Policy{
-					"SamplePolicy": {
-						Type: "Signature",
-						Rule: "OR('SampleMSP.member')",
-					},
-				},
-				AdminPrincipal: "Role.ADMIN",
+				MSPDir:   "../../../../sampleconfig/msp",
+				ID:       "SampleMSP",
+				MSPType:  "bccsp",
+				Name:     "SampleOrg",
+				Policies: CreateStandardPolicies(),
 			}
 		})
 
@@ -394,8 +450,10 @@ var _ = Describe("Encoder", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(cg.Values)).To(Equal(1))
 			Expect(cg.Values["MSP"]).NotTo(BeNil())
-			Expect(len(cg.Policies)).To(Equal(1))
-			Expect(cg.Policies["SamplePolicy"]).NotTo(BeNil())
+			Expect(len(cg.Policies)).To(Equal(3))
+			Expect(cg.Policies["Admins"]).NotTo(BeNil())
+			Expect(cg.Policies["Readers"]).NotTo(BeNil())
+			Expect(cg.Policies["Writers"]).NotTo(BeNil())
 		})
 
 		Context("when the org is marked to be skipped as foreign", func() {
@@ -422,77 +480,25 @@ var _ = Describe("Encoder", func() {
 			})
 		})
 
-		Context("when the policies are ommitted", func() {
+		Context("when dev mode is enabled", func() {
 			BeforeEach(func() {
-				conf.Policies = nil
+				conf.AdminPrincipal = "Member"
 			})
 
-			It("adds default policies", func() {
-				cg, err := encoder.NewOrdererOrgGroup(conf)
+			It("does not produce an error", func() {
+				_, err := encoder.NewOrdererOrgGroup(conf)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Policies)).To(Equal(3))
-				Expect(cg.Policies["Readers"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
-				Expect(cg.Policies["Writers"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
-				Expect(cg.Policies["Admins"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
-			})
-
-			Context("when dev mode is enabled", func() {
-				BeforeEach(func() {
-					conf.AdminPrincipal = "Member"
-				})
-
-				It("encodes default policies", func() {
-					cg, err := encoder.NewOrdererOrgGroup(conf)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(len(cg.Policies)).To(Equal(3))
-					Expect(cg.Policies["Readers"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
-					Expect(cg.Policies["Writers"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
-					Expect(cg.Policies["Admins"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
-					signaturePolicy := &cb.SignaturePolicyEnvelope{}
-					err = proto.Unmarshal(cg.Policies["Admins"].Policy.Value, signaturePolicy)
-					Expect(err).NotTo(HaveOccurred())
-					role := &msp.MSPRole{}
-					err = proto.Unmarshal(signaturePolicy.Identities[0].Principal, role)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(role.Role).To(Equal(msp.MSPRole_MEMBER))
-				})
-			})
-		})
-
-		Context("when the policies definition is bad", func() {
-			BeforeEach(func() {
-				conf.Policies = nil
-			})
-
-			It("adds default policies", func() {
-				cg, err := encoder.NewOrdererOrgGroup(conf)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Policies)).To(Equal(3))
-				Expect(cg.Policies["Readers"]).NotTo(BeNil())
-				Expect(cg.Policies["Writers"]).NotTo(BeNil())
-				Expect(cg.Policies["Admins"]).NotTo(BeNil())
 			})
 		})
 
 		Context("when the policy definition is bad", func() {
 			BeforeEach(func() {
-				conf.Policies["SamplePolicy"].Rule = "garbage"
+				conf.Policies["Admins"].Rule = "garbage"
 			})
 
 			It("wraps and returns the error", func() {
 				_, err := encoder.NewOrdererOrgGroup(conf)
-				Expect(err).To(MatchError("error adding policies to orderer org group 'SampleOrg': invalid signature policy rule 'garbage': unrecognized token 'garbage' in policy string"))
-			})
-		})
-
-		Context("when the policy definition is bad", func() {
-			BeforeEach(func() {
-				conf.Policies["SamplePolicy"].Rule = "garbage"
-			})
-
-			It("wraps and returns the error", func() {
-				_, err := encoder.NewOrdererOrgGroup(conf)
-				Expect(err).To(MatchError("error adding policies to orderer org group 'SampleOrg': invalid signature policy rule 'garbage': unrecognized token 'garbage' in policy string"))
+				Expect(err).To(MatchError("error adding policies to orderer org group 'SampleOrg': invalid implicit meta policy rule 'garbage': expected two space separated tokens, but got 1"))
 			})
 		})
 	})
@@ -504,17 +510,11 @@ var _ = Describe("Encoder", func() {
 
 		BeforeEach(func() {
 			conf = &genesisconfig.Organization{
-				MSPDir:  "../../../../sampleconfig/msp",
-				ID:      "SampleMSP",
-				MSPType: "bccsp",
-				Name:    "SampleOrg",
-				Policies: map[string]*genesisconfig.Policy{
-					"SamplePolicy": {
-						Type: "Signature",
-						Rule: "OR('SampleMSP.member')",
-					},
-				},
-				AdminPrincipal: "Role.ADMIN",
+				MSPDir:   "../../../../sampleconfig/msp",
+				ID:       "SampleMSP",
+				MSPType:  "bccsp",
+				Name:     "SampleOrg",
+				Policies: CreateStandardPolicies(),
 				AnchorPeers: []*genesisconfig.AnchorPeer{
 					{
 						Host: "hostname",
@@ -530,8 +530,10 @@ var _ = Describe("Encoder", func() {
 			Expect(len(cg.Values)).To(Equal(2))
 			Expect(cg.Values["MSP"]).NotTo(BeNil())
 			Expect(cg.Values["AnchorPeers"]).NotTo(BeNil())
-			Expect(len(cg.Policies)).To(Equal(1))
-			Expect(cg.Policies["SamplePolicy"]).NotTo(BeNil())
+			Expect(len(cg.Policies)).To(Equal(3))
+			Expect(cg.Policies["Admins"]).NotTo(BeNil())
+			Expect(cg.Policies["Readers"]).NotTo(BeNil())
+			Expect(cg.Policies["Writers"]).NotTo(BeNil())
 			Expect(len(cg.Values)).To(Equal(2))
 			Expect(cg.Values["MSP"]).NotTo(BeNil())
 			Expect(cg.Values["AnchorPeers"]).NotTo(BeNil())
@@ -561,24 +563,9 @@ var _ = Describe("Encoder", func() {
 			})
 		})
 
-		Context("when the policies are ommitted", func() {
-			BeforeEach(func() {
-				conf.Policies = nil
-			})
-
-			It("adds default policies", func() {
-				cg, err := encoder.NewApplicationOrgGroup(conf)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Policies)).To(Equal(3))
-				Expect(cg.Policies["Readers"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
-				Expect(cg.Policies["Writers"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
-				Expect(cg.Policies["Admins"].Policy.Type).To(Equal(int32(cb.Policy_SIGNATURE)))
-			})
-		})
-
 		Context("when the policy definition is bad", func() {
 			BeforeEach(func() {
-				conf.Policies["SamplePolicy"].Type = "garbage"
+				conf.Policies["Admins"].Type = "garbage"
 			})
 
 			It("wraps and returns the error", func() {
@@ -595,17 +582,6 @@ var _ = Describe("Encoder", func() {
 			It("wraps and returns the error", func() {
 				_, err := encoder.NewApplicationOrgGroup(conf)
 				Expect(err).To(MatchError("1 - Error loading MSP configuration for org SampleOrg: could not load a valid ca certificate from directory garbage/cacerts: stat garbage/cacerts: no such file or directory"))
-			})
-		})
-
-		Context("when the policy definition is bad", func() {
-			BeforeEach(func() {
-				conf.Policies["SamplePolicy"].Rule = "garbage"
-			})
-
-			It("wraps and returns the error", func() {
-				_, err := encoder.NewApplicationOrgGroup(conf)
-				Expect(err).To(MatchError("error adding policies to application org group SampleOrg: invalid signature policy rule 'garbage': unrecognized token 'garbage' in policy string"))
 			})
 		})
 
@@ -632,27 +608,24 @@ var _ = Describe("Encoder", func() {
 		BeforeEach(func() {
 			conf = &genesisconfig.Profile{
 				Consortium: "MyConsortium",
+				Policies:   CreateStandardPolicies(),
 				Application: &genesisconfig.Application{
 					Organizations: []*genesisconfig.Organization{
 						{
-							MSPDir:  "../../../../sampleconfig/msp",
-							ID:      "SampleMSP",
-							MSPType: "bccsp",
-							Name:    "SampleOrg",
+							Name:     "SampleOrg",
+							MSPDir:   "../../../../sampleconfig/msp",
+							ID:       "SampleMSP",
+							MSPType:  "bccsp",
+							Policies: CreateStandardPolicies(),
 							AnchorPeers: []*genesisconfig.AnchorPeer{
 								{
-									Host: "some-host",
-									Port: 1111,
+									Host: "hostname",
+									Port: 4444,
 								},
 							},
 						},
 					},
-					Policies: map[string]*genesisconfig.Policy{
-						"SamplePolicy": {
-							Type: "ImplicitMeta",
-							Rule: "ANY Admins",
-						},
-					},
+					Policies: CreateStandardPolicies(),
 				},
 			}
 
@@ -665,7 +638,7 @@ var _ = Describe("Encoder", func() {
 			It("translates the config into a config group", func() {
 				cg, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf, template)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proto.Equal(&cb.ConfigUpdate{
+				expected := &cb.ConfigUpdate{
 					ChannelId: "channel-id",
 					ReadSet: &cb.ConfigGroup{
 						Groups: map[string]*cb.ConfigGroup{
@@ -688,11 +661,31 @@ var _ = Describe("Encoder", func() {
 									"SampleOrg": {},
 								},
 								Policies: map[string]*cb.ConfigPolicy{
-									"SamplePolicy": {
+									"Admins": {
 										Policy: &cb.Policy{
 											Type: int32(cb.Policy_IMPLICIT_META),
 											Value: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 												SubPolicy: "Admins",
+												Rule:      cb.ImplicitMetaPolicy_ANY,
+											}),
+										},
+										ModPolicy: "Admins",
+									},
+									"Readers": {
+										Policy: &cb.Policy{
+											Type: int32(cb.Policy_IMPLICIT_META),
+											Value: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+												SubPolicy: "Readers",
+												Rule:      cb.ImplicitMetaPolicy_ANY,
+											}),
+										},
+										ModPolicy: "Admins",
+									},
+									"Writers": {
+										Policy: &cb.Policy{
+											Type: int32(cb.Policy_IMPLICIT_META),
+											Value: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+												SubPolicy: "Writers",
 												Rule:      cb.ImplicitMetaPolicy_ANY,
 											}),
 										},
@@ -709,13 +702,15 @@ var _ = Describe("Encoder", func() {
 							},
 						},
 					},
-				}, cg)).To(BeTrue())
+				}
+				Expect(proto.Equal(expected, cg)).To(BeTrue())
 			})
 
 			Context("when the template configuration is not the default", func() {
 				BeforeEach(func() {
 					differentConf := &genesisconfig.Profile{
 						Consortium: "MyConsortium",
+						Policies:   CreateStandardPolicies(),
 						Application: &genesisconfig.Application{
 							Organizations: []*genesisconfig.Organization{
 								{
@@ -729,8 +724,10 @@ var _ = Describe("Encoder", func() {
 											Port: 5555,
 										},
 									},
+									Policies: CreateStandardPolicies(),
 								},
 							},
+							Policies: CreateStandardPolicies(),
 						},
 					}
 
@@ -748,11 +745,7 @@ var _ = Describe("Encoder", func() {
 
 			Context("when the application config is bad", func() {
 				BeforeEach(func() {
-					conf.Application.Policies = map[string]*genesisconfig.Policy{
-						"BadPolicy": {
-							Type: "bad-type",
-						},
-					}
+					conf.Application.Policies["Admins"].Type = "bad-type"
 				})
 
 				It("returns an error", func() {
@@ -879,8 +872,10 @@ var _ = Describe("Encoder", func() {
 			BeforeEach(func() {
 				applicationConf = &genesisconfig.Profile{
 					Consortium: "SampleConsortium",
+					Policies:   CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "solo",
+						Policies:    CreateStandardPolicies(),
 					},
 					Application: &genesisconfig.Application{
 						Organizations: []*genesisconfig.Organization{
@@ -895,35 +890,42 @@ var _ = Describe("Encoder", func() {
 										Port: 5555,
 									},
 								},
+								Policies: CreateStandardPolicies(),
 							},
 							{
-								MSPDir:  "../../../../sampleconfig/msp",
-								ID:      "Org2MSP",
-								MSPType: "bccsp",
-								Name:    "Org2",
+								MSPDir:   "../../../../sampleconfig/msp",
+								ID:       "Org2MSP",
+								MSPType:  "bccsp",
+								Name:     "Org2",
+								Policies: CreateStandardPolicies(),
 							},
 						},
+						Policies: CreateStandardPolicies(),
 					},
 				}
 
 				sysChannelConf = &genesisconfig.Profile{
+					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "kafka",
+						Policies:    CreateStandardPolicies(),
 					},
 					Consortiums: map[string]*genesisconfig.Consortium{
 						"SampleConsortium": {
 							Organizations: []*genesisconfig.Organization{
 								{
-									MSPDir:  "../../../../sampleconfig/msp",
-									ID:      "Org1MSP",
-									MSPType: "bccsp",
-									Name:    "Org1",
+									MSPDir:   "../../../../sampleconfig/msp",
+									ID:       "Org1MSP",
+									MSPType:  "bccsp",
+									Name:     "Org1",
+									Policies: CreateStandardPolicies(),
 								},
 								{
-									MSPDir:  "../../../../sampleconfig/msp",
-									ID:      "Org2MSP",
-									MSPType: "bccsp",
-									Name:    "Org2",
+									MSPDir:   "../../../../sampleconfig/msp",
+									ID:       "Org2MSP",
+									MSPType:  "bccsp",
+									Name:     "Org2",
+									Policies: CreateStandardPolicies(),
 								},
 							},
 						},
@@ -981,28 +983,21 @@ var _ = Describe("Encoder", func() {
 
 			BeforeEach(func() {
 				conf = &genesisconfig.Profile{
+					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "solo",
+						Policies:    CreateStandardPolicies(),
 					},
 					Application: &genesisconfig.Application{
-						Policies: map[string]*genesisconfig.Policy{
-							"IgnoredPolicy": {
-								Type: "ImplicitMeta",
-								Rule: "ANY Admins",
-							},
-						},
+						Policies: CreateStandardPolicies(),
 						Organizations: []*genesisconfig.Organization{
 							{
-								MSPDir:  "../../../../sampleconfig/msp",
-								ID:      "Org1MSP",
-								MSPType: "bccsp",
-								Name:    "Org1",
+								Name:          "Org1",
+								SkipAsForeign: true,
 							},
 							{
-								MSPDir:  "../../../../sampleconfig/msp",
-								ID:      "Org2MSP",
-								MSPType: "bccsp",
-								Name:    "Org2",
+								Name:          "Org2",
+								SkipAsForeign: true,
 							},
 						},
 					},
@@ -1051,37 +1046,43 @@ var _ = Describe("Encoder", func() {
 
 			BeforeEach(func() {
 				applicationConf = &genesisconfig.Profile{
+					Policies:   CreateStandardPolicies(),
 					Consortium: "SampleConsortium",
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "solo",
+						Policies:    CreateStandardPolicies(),
 					},
 					Application: &genesisconfig.Application{
 						Organizations: []*genesisconfig.Organization{
-							{Name: "Org1"},
-							{Name: "Org2"},
+							{
+								Name:          "Org1",
+								SkipAsForeign: true,
+							},
+							{
+								Name:          "Org2",
+								SkipAsForeign: true,
+							},
 						},
 					},
 				}
 
 				var err error
 				sysChannelGroup, err = encoder.NewChannelGroup(&genesisconfig.Profile{
+					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "kafka",
+						Policies:    CreateStandardPolicies(),
 					},
 					Consortiums: map[string]*genesisconfig.Consortium{
 						"SampleConsortium": {
 							Organizations: []*genesisconfig.Organization{
 								{
-									MSPDir:  "../../../../sampleconfig/msp",
-									ID:      "Org1MSP",
-									MSPType: "bccsp",
-									Name:    "Org1",
+									Name:          "Org1",
+									SkipAsForeign: true,
 								},
 								{
-									MSPDir:  "../../../../sampleconfig/msp",
-									ID:      "Org2MSP",
-									MSPType: "bccsp",
-									Name:    "Org2",
+									Name:          "Org2",
+									SkipAsForeign: true,
 								},
 							},
 						},
@@ -1261,8 +1262,10 @@ var _ = Describe("Encoder", func() {
 
 			BeforeEach(func() {
 				conf = &genesisconfig.Profile{
+					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "solo",
+						Policies:    CreateStandardPolicies(),
 					},
 				}
 			})
@@ -1308,8 +1311,10 @@ var _ = Describe("Encoder", func() {
 
 			BeforeEach(func() {
 				conf = &genesisconfig.Profile{
+					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "solo",
+						Policies:    CreateStandardPolicies(),
 					},
 				}
 			})
@@ -1338,7 +1343,9 @@ var _ = Describe("Encoder", func() {
 
 			BeforeEach(func() {
 				bs = encoder.New(&genesisconfig.Profile{
+					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
+						Policies:    CreateStandardPolicies(),
 						OrdererType: "solo",
 					},
 				})

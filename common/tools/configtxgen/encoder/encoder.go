@@ -68,7 +68,18 @@ func addPolicy(cg *cb.ConfigGroup, policy policies.ConfigPolicy, modPolicy strin
 	}
 }
 
-func addPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.Policy, modPolicy string) error {
+func AddPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.Policy, modPolicy string) error {
+	switch {
+	case policyMap == nil:
+		return errors.Errorf("no policies defined")
+	case policyMap[channelconfig.AdminsPolicyKey] == nil:
+		return errors.Errorf("no Admins policy defined")
+	case policyMap[channelconfig.ReadersPolicyKey] == nil:
+		return errors.Errorf("no Readers policy defined")
+	case policyMap[channelconfig.WritersPolicyKey] == nil:
+		return errors.Errorf("no Writers policy defined")
+	}
+
 	for policyName, policy := range policyMap {
 		switch policy.Type {
 		case ImplicitMetaPolicyType:
@@ -102,27 +113,6 @@ func addPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.Policy,
 	return nil
 }
 
-// addImplicitMetaPolicyDefaults adds the Readers/Writers/Admins policies, with Any/Any/Majority rules respectively.
-func addImplicitMetaPolicyDefaults(cg *cb.ConfigGroup) {
-	addPolicy(cg, policies.ImplicitMetaMajorityPolicy(channelconfig.AdminsPolicyKey), channelconfig.AdminsPolicyKey)
-	addPolicy(cg, policies.ImplicitMetaAnyPolicy(channelconfig.ReadersPolicyKey), channelconfig.AdminsPolicyKey)
-	addPolicy(cg, policies.ImplicitMetaAnyPolicy(channelconfig.WritersPolicyKey), channelconfig.AdminsPolicyKey)
-}
-
-// addSignaturePolicyDefaults adds the Readers/Writers/Admins policies as signature policies requiring one signature from the given mspID.
-// If devMode is set to true, the Admins policy will accept arbitrary user certs for admin functions, otherwise it requires the cert satisfies
-// the admin role principal.
-func addSignaturePolicyDefaults(cg *cb.ConfigGroup, mspID string, devMode bool) {
-	if devMode {
-		logger.Warningf("Specifying AdminPrincipal is deprecated and will be removed in a future release, override the admin principal with explicit policies.")
-		addPolicy(cg, policies.SignaturePolicy(channelconfig.AdminsPolicyKey, cauthdsl.SignedByMspMember(mspID)), channelconfig.AdminsPolicyKey)
-	} else {
-		addPolicy(cg, policies.SignaturePolicy(channelconfig.AdminsPolicyKey, cauthdsl.SignedByMspAdmin(mspID)), channelconfig.AdminsPolicyKey)
-	}
-	addPolicy(cg, policies.SignaturePolicy(channelconfig.ReadersPolicyKey, cauthdsl.SignedByMspMember(mspID)), channelconfig.AdminsPolicyKey)
-	addPolicy(cg, policies.SignaturePolicy(channelconfig.WritersPolicyKey, cauthdsl.SignedByMspMember(mspID)), channelconfig.AdminsPolicyKey)
-}
-
 // NewChannelGroup defines the root of the channel configuration.  It defines basic operating principles like the hashing
 // algorithm used for the blocks, as well as the location of the ordering service.  It will recursively call into the
 // NewOrdererGroup, NewConsortiumsGroup, and NewApplicationGroup depending on whether these sub-elements are set in the
@@ -130,13 +120,8 @@ func addSignaturePolicyDefaults(cg *cb.ConfigGroup, mspID string, devMode bool) 
 // value which is set to "/Channel/Orderer/Admins".
 func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 	channelGroup := cb.NewConfigGroup()
-	if len(conf.Policies) == 0 {
-		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the channel group in configtx.yaml")
-		addImplicitMetaPolicyDefaults(channelGroup)
-	} else {
-		if err := addPolicies(channelGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
-			return nil, errors.Wrapf(err, "error adding policies to channel group")
-		}
+	if err := AddPolicies(channelGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
+		return nil, errors.Wrapf(err, "error adding policies to channel group")
 	}
 
 	addValue(channelGroup, channelconfig.HashingAlgorithmValue(), channelconfig.AdminsPolicyKey)
@@ -186,13 +171,8 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 // It sets the mod_policy of all elements to "Admins".  This group is always present in any channel configuration.
 func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 	ordererGroup := cb.NewConfigGroup()
-	if len(conf.Policies) == 0 {
-		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the orderer group in configtx.yaml")
-		addImplicitMetaPolicyDefaults(ordererGroup)
-	} else {
-		if err := addPolicies(ordererGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
-			return nil, errors.Wrapf(err, "error adding policies to orderer group")
-		}
+	if err := AddPolicies(ordererGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
+		return nil, errors.Wrapf(err, "error adding policies to orderer group")
 	}
 	ordererGroup.Policies[BlockValidationPolicyKey] = &cb.ConfigPolicy{
 		Policy:    policies.ImplicitMetaAnyPolicy(channelconfig.WritersPolicyKey).Value(),
@@ -254,13 +234,8 @@ func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, erro
 		return nil, errors.Wrapf(err, "1 - Error loading MSP configuration for org: %s", conf.Name)
 	}
 
-	if len(conf.Policies) == 0 {
-		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the orderer org group %s in configtx.yaml", conf.Name)
-		addSignaturePolicyDefaults(ordererOrgGroup, conf.ID, conf.AdminPrincipal != genesisconfig.AdminRoleAdminPrincipal)
-	} else {
-		if err := addPolicies(ordererOrgGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
-			return nil, errors.Wrapf(err, "error adding policies to orderer org group '%s'", conf.Name)
-		}
+	if err := AddPolicies(ordererOrgGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
+		return nil, errors.Wrapf(err, "error adding policies to orderer org group '%s'", conf.Name)
 	}
 
 	addValue(ordererOrgGroup, channelconfig.MSPValue(mspConfig), channelconfig.AdminsPolicyKey)
@@ -272,13 +247,8 @@ func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, erro
 // in application logic like chaincodes, and how these members may interact with the orderer.  It sets the mod_policy of all elements to "Admins".
 func NewApplicationGroup(conf *genesisconfig.Application) (*cb.ConfigGroup, error) {
 	applicationGroup := cb.NewConfigGroup()
-	if len(conf.Policies) == 0 {
-		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the application group in configtx.yaml")
-		addImplicitMetaPolicyDefaults(applicationGroup)
-	} else {
-		if err := addPolicies(applicationGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
-			return nil, errors.Wrapf(err, "error adding policies to application group")
-		}
+	if err := AddPolicies(applicationGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
+		return nil, errors.Wrapf(err, "error adding policies to application group")
 	}
 
 	if len(conf.ACLs) > 0 {
@@ -316,13 +286,8 @@ func NewApplicationOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, 
 		return nil, errors.Wrapf(err, "1 - Error loading MSP configuration for org %s", conf.Name)
 	}
 
-	if len(conf.Policies) == 0 {
-		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the application org group %s in configtx.yaml", conf.Name)
-		addSignaturePolicyDefaults(applicationOrgGroup, conf.ID, conf.AdminPrincipal != genesisconfig.AdminRoleAdminPrincipal)
-	} else {
-		if err := addPolicies(applicationOrgGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
-			return nil, errors.Wrapf(err, "error adding policies to application org group %s", conf.Name)
-		}
+	if err := AddPolicies(applicationOrgGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
+		return nil, errors.Wrapf(err, "error adding policies to application org group %s", conf.Name)
 	}
 	addValue(applicationOrgGroup, channelconfig.MSPValue(mspConfig), channelconfig.AdminsPolicyKey)
 
