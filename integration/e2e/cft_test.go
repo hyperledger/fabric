@@ -186,7 +186,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 				files, err := ioutil.ReadDir(path.Join(o2SnapDir, "testchannel"))
 				Expect(err).NotTo(HaveOccurred())
 				return len(files)
-			}).Should(Equal(1))
+			}).Should(Equal(5)) // snapshot interval is 1 KB, every block triggers snapshot
 
 			ordererProc.Signal(syscall.SIGKILL)
 			Eventually(ordererProc.Wait(), network.EventuallyTimeout).Should(Receive())
