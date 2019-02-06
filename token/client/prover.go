@@ -159,7 +159,7 @@ func (prover *ProverPeer) ListTokens(signingIdentity tk.SigningIdentity) ([]*tok
 	return commandResp.GetUnspentTokens().GetTokens(), nil
 }
 
-// SendCommand is for issue, transfer, redeem, approve, and transferFrom commands that will create a token transaction.
+// SendCommand is for issue, transfer and redeem commands that will create a token transaction.
 // It calls prover to process command and returns marshalled token transaction.
 func (prover *ProverPeer) SendCommand(ctx context.Context, sc *token.SignedCommand) ([]byte, error) {
 	commandResp, err := prover.processCommand(ctx, sc)
