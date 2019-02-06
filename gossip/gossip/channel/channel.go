@@ -516,12 +516,12 @@ func (gc *gossipChannel) EligibleForChannel(member discovery.NetworkMember) bool
 
 // AddToMsgStore adds a given GossipMessage to the message store
 func (gc *gossipChannel) AddToMsgStore(msg *protoext.SignedGossipMessage) {
-	if msg.IsDataMsg() {
+	if protoext.IsDataMsg(msg.GossipMessage) {
 		gc.blockMsgStore.Add(msg)
 		gc.blocksPuller.Add(msg)
 	}
 
-	if msg.IsStateInfoMsg() {
+	if protoext.IsStateInfoMsg(msg.GossipMessage) {
 		gc.stateInfoMsgStore.Add(msg)
 	}
 }
@@ -558,7 +558,7 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 		return
 	}
 	m := msg.GetGossipMessage()
-	if !m.IsChannelRestricted() {
+	if !protoext.IsChannelRestricted(m.GossipMessage) {
 		gc.logger.Warning("Got message", msg.GetGossipMessage(), "but it's not a per-channel message, discarding it")
 		return
 	}
@@ -573,20 +573,20 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 		return
 	}
 
-	if m.IsStateInfoPullRequestMsg() {
+	if protoext.IsStateInfoPullRequestMsg(m.GossipMessage) {
 		msg.Respond(gc.createStateInfoSnapshot(orgID))
 		return
 	}
 
-	if m.IsStateInfoSnapshot() {
+	if protoext.IsStateInfoSnapshot(m.GossipMessage) {
 		gc.handleStateInfSnapshot(m.GossipMessage, msg.GetConnectionInfo().ID)
 		return
 	}
 
-	if m.IsDataMsg() || m.IsStateInfoMsg() {
+	if protoext.IsDataMsg(m.GossipMessage) || protoext.IsStateInfoMsg(m.GossipMessage) {
 		added := false
 
-		if m.IsDataMsg() {
+		if protoext.IsDataMsg(m.GossipMessage) {
 			if m.GetDataMsg().Payload == nil {
 				gc.logger.Warning("Payload is empty, got it from", msg.GetConnectionInfo().ID)
 				return
@@ -611,14 +611,14 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 			// DeMultiplex to local subscribers
 			gc.DeMultiplex(m)
 
-			if m.IsDataMsg() {
+			if protoext.IsDataMsg(m.GossipMessage) {
 				gc.blocksPuller.Add(msg.GetGossipMessage())
 			}
 		}
 		return
 	}
 
-	if m.IsPullMsg() && m.GetPullMsgType() == proto.PullMsgType_BLOCK_MSG {
+	if protoext.IsPullMsg(m.GossipMessage) && protoext.GetPullMsgType(m.GossipMessage) == proto.PullMsgType_BLOCK_MSG {
 		if gc.hasLeftChannel() {
 			gc.logger.Info("Received Pull message from", msg.GetConnectionInfo().Endpoint, "but left the channel", string(gc.chainID))
 			return
@@ -633,7 +633,7 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 			gc.logger.Warning(msg.GetConnectionInfo(), "isn't eligible for pulling blocks of", string(gc.chainID))
 			return
 		}
-		if m.IsDataUpdate() {
+		if protoext.IsDataUpdate(m.GossipMessage) {
 			// Iterate over the envelopes, and filter out blocks
 			// that we already have in the blockMsgStore, or blocks that
 			// are too far in the past.
@@ -669,7 +669,7 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 		gc.blocksPuller.HandleMessage(msg)
 	}
 
-	if m.IsLeadershipMsg() {
+	if protoext.IsLeadershipMsg(m.GossipMessage) {
 		// Handling leadership message
 		added := gc.leaderMsgStore.Add(m)
 		if added {
@@ -686,7 +686,7 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 			gc.logger.Warningf("Channel %s : StateInfo snapshot contains an invalid message: %+v", chanName, errors.WithStack(err))
 			return
 		}
-		if !stateInf.IsStateInfoMsg() {
+		if !protoext.IsStateInfoMsg(stateInf.GossipMessage) {
 			gc.logger.Warning("Channel", chanName, ": Element of StateInfoSnapshot isn't a StateInfoMessage:",
 				stateInf, "message sent from", sender)
 			return
@@ -728,7 +728,7 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 }
 
 func (gc *gossipChannel) verifyBlock(msg *proto.GossipMessage, sender common.PKIidType) bool {
-	if !msg.IsDataMsg() {
+	if !protoext.IsDataMsg(msg) {
 		gc.logger.Warning("Received from ", sender, "a DataUpdate message that contains a non-block GossipMessage:", msg)
 		return false
 	}
@@ -796,7 +796,7 @@ func (gc *gossipChannel) verifyMsg(msg protoext.ReceivedMessage) bool {
 		return false
 	}
 
-	if m.IsStateInfoMsg() {
+	if protoext.IsStateInfoMsg(m.GossipMessage) {
 		si := m.GetStateInfo()
 		expectedMAC := GenerateMAC(si.PkiId, gc.chainID)
 		if !bytes.Equal(expectedMAC, si.Channel_MAC) {
@@ -806,7 +806,7 @@ func (gc *gossipChannel) verifyMsg(msg protoext.ReceivedMessage) bool {
 		return true
 	}
 
-	if m.IsStateInfoPullRequestMsg() {
+	if protoext.IsStateInfoPullRequestMsg(m.GossipMessage) {
 		sipr := m.GetStateInfoPullReq()
 		expectedMAC := GenerateMAC(msg.GetConnectionInfo().ID, gc.chainID)
 		if !bytes.Equal(expectedMAC, sipr.Channel_MAC) {

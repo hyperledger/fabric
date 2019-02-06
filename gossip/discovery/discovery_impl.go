@@ -346,7 +346,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(msg protoext.ReceivedMessage) {
 		return
 	}
 
-	if m.IsAliveMsg() {
+	if protoext.IsAliveMsg(m.GossipMessage) {
 		if !d.msgStore.CheckValid(m) || !d.crypt.ValidateAliveMsg(m) {
 			return
 		}
@@ -369,7 +369,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(msg protoext.ReceivedMessage) {
 				d.logger.Warningf("Membership response contains an invalid message from an online peer:%+v", errors.WithStack(err))
 				return
 			}
-			if !am.IsAliveMsg() {
+			if !protoext.IsAliveMsg(am.GossipMessage) {
 				d.logger.Warning("Expected alive message, got", am, "instead")
 				return
 			}
@@ -1022,7 +1022,7 @@ func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
 	externalUnlock := func() { d.lock.Unlock() }
 	callback := func(m interface{}) {
 		msg := m.(*protoext.SignedGossipMessage)
-		if !msg.IsAliveMsg() {
+		if !protoext.IsAliveMsg(msg.GossipMessage) {
 			return
 		}
 		id := msg.GetAliveMsg().Membership.PkiId
@@ -1040,14 +1040,16 @@ func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
 }
 
 func (s *aliveMsgStore) Add(msg interface{}) bool {
-	if !msg.(*protoext.SignedGossipMessage).IsAliveMsg() {
+	m := msg.(*protoext.SignedGossipMessage)
+	if !protoext.IsAliveMsg(m.GossipMessage) {
 		panic(fmt.Sprint("Msg ", msg, " is not AliveMsg"))
 	}
 	return s.MessageStore.Add(msg)
 }
 
 func (s *aliveMsgStore) CheckValid(msg interface{}) bool {
-	if !msg.(*protoext.SignedGossipMessage).IsAliveMsg() {
+	m := msg.(*protoext.SignedGossipMessage)
+	if !protoext.IsAliveMsg(m.GossipMessage) {
 		panic(fmt.Sprint("Msg ", msg, " is not AliveMsg"))
 	}
 	return s.MessageStore.CheckValid(msg)

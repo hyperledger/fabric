@@ -231,7 +231,7 @@ func TestCertExpiration(t *testing.T) {
 	identitiesGotViaPull := make(chan struct{}, identities2Detect+100)
 	acceptIdentityPullMsgs := func(o interface{}) bool {
 		m := o.(protoext.ReceivedMessage).GetGossipMessage()
-		if m.IsPullMsg() && m.IsDigestMsg() {
+		if protoext.IsPullMsg(m.GossipMessage) && protoext.IsDigestMsg(m.GossipMessage) {
 			for _, dig := range m.GetDataDig().Digests {
 				if bytes.Equal(dig, []byte(fmt.Sprintf("127.0.0.1:%d", port0))) {
 					identitiesGotViaPull <- struct{}{}

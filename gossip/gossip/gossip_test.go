@@ -91,7 +91,7 @@ func acceptData(m interface{}) bool {
 
 func acceptLeadershp(message interface{}) bool {
 	validMsg := message.(*proto.GossipMessage).Tag == proto.GossipMessage_CHAN_AND_ORG &&
-		message.(*proto.GossipMessage).IsLeadershipMsg()
+		protoext.IsLeadershipMsg(message.(*proto.GossipMessage))
 
 	return validMsg
 }
@@ -674,7 +674,7 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 	// Wait until both peers get connected
 	waitUntilOrFail(t, checkPeersMembership(t, []Gossip{peer}, 1), "waiting for peers to form membership view")
 	_, commCh := boot.Accept(func(msg interface{}) bool {
-		return msg.(protoext.ReceivedMessage).GetGossipMessage().IsDataMsg()
+		return protoext.IsDataMsg(msg.(protoext.ReceivedMessage).GetGossipMessage().GossipMessage)
 	}, true)
 
 	wg := sync.WaitGroup{}
@@ -688,7 +688,7 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 			select {
 			case msg := <-ch:
 				{
-					if msg.GetGossipMessage().IsDataMsg() {
+					if protoext.IsDataMsg(msg.GetGossipMessage().GossipMessage) {
 						t.Fatal("Should not receive data message back, got", msg)
 					}
 				}
@@ -986,7 +986,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 	_, aliveMsgChan := g2.Accept(func(o interface{}) bool {
 		msg := o.(protoext.ReceivedMessage).GetGossipMessage()
 		// Make sure we get an AliveMessage and it's about g3
-		return msg.IsAliveMsg() && bytes.Equal(msg.GetAliveMsg().Membership.PkiId, []byte(endpoint2))
+		return protoext.IsAliveMsg(msg.GossipMessage) && bytes.Equal(msg.GetAliveMsg().Membership.PkiId, []byte(endpoint2))
 	}, true)
 	aliveMsg := <-aliveMsgChan
 
@@ -1333,7 +1333,7 @@ func TestSendByCriteria(t *testing.T) {
 	// We retry the test above, but this time the peers acknowledge
 	// Peers now ack
 	acceptDataMsgs := func(m interface{}) bool {
-		return m.(protoext.ReceivedMessage).GetGossipMessage().IsDataMsg()
+		return protoext.IsDataMsg(m.(protoext.ReceivedMessage).GetGossipMessage().GossipMessage)
 	}
 	_, ackChan2 := g2.Accept(acceptDataMsgs, true)
 	_, ackChan3 := g3.Accept(acceptDataMsgs, true)

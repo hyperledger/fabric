@@ -446,7 +446,7 @@ func TestLeaveChannel(t *testing.T) {
 	gc := NewGossipChannel(common.PKIidType("p0"), orgInChannelA, cs, channelA, adapter, jcm, disabledMetrics)
 	adapter.On("Send", mock.Anything, mock.Anything).Run(func(arguments mock.Arguments) {
 		msg := arguments.Get(0).(*protoext.SignedGossipMessage)
-		if msg.IsPullMsg() {
+		if protoext.IsPullMsg(msg.GossipMessage) {
 			helloPullWG.Done()
 			assert.False(t, gc.(*gossipChannel).hasLeftChannel())
 		}
@@ -560,17 +560,17 @@ func TestChannelMsgStoreEviction(t *testing.T) {
 	adapter.On("Send", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		msg := args.Get(0).(*protoext.SignedGossipMessage)
 		// Ignore all other messages sent like StateInfo messages
-		if !msg.IsPullMsg() {
+		if !protoext.IsPullMsg(msg.GossipMessage) {
 			return
 		}
 		// Stop the pull when we reach the final phase
-		if atomic.LoadUint64(&phaseNum) == totalPhases && msg.IsHelloMsg() {
+		if atomic.LoadUint64(&phaseNum) == totalPhases && protoext.IsHelloMsg(msg.GossipMessage) {
 			return
 		}
 
 		start := atomic.LoadUint64(&phaseNum) * msgsPerPhase
 		end := start + msgsPerPhase
-		if msg.IsHelloMsg() {
+		if protoext.IsHelloMsg(msg.GossipMessage) {
 			// Advance phase
 			atomic.AddUint64(&phaseNum, uint64(1))
 		}
@@ -581,7 +581,7 @@ func TestChannelMsgStoreEviction(t *testing.T) {
 		pullPhase(args)
 
 		// If we finished the last phase, save the sequence to be used later for inspection
-		if msg.IsDataReq() && atomic.LoadUint64(&phaseNum) == totalPhases {
+		if protoext.IsDataReq(msg.GossipMessage) && atomic.LoadUint64(&phaseNum) == totalPhases {
 			for _, seq := range currSeq {
 				lastPullPhase <- seq
 			}
@@ -596,7 +596,7 @@ func TestChannelMsgStoreEviction(t *testing.T) {
 	helloMsg := createHelloMsg(pkiIDInOrg1)
 	helloMsg.On("Respond", mock.Anything).Run(func(arg mock.Arguments) {
 		msg := arg.Get(0).(*proto.GossipMessage)
-		if !msg.IsDigestMsg() {
+		if !protoext.IsDigestMsg(msg) {
 			return
 		}
 		msgSentFromPullMediator <- msg
@@ -614,7 +614,7 @@ func TestChannelMsgStoreEviction(t *testing.T) {
 	assert.Len(t, msgSentFromPullMediator, 1)
 	msg := <-msgSentFromPullMediator
 	// It's a digest and not anything else, like an update
-	assert.True(t, msg.IsDigestMsg())
+	assert.True(t, protoext.IsDigestMsg(msg))
 	assert.Len(t, msg.GetDataDig().Digests, adapter.GetConf().MaxBlockCountToStore+1)
 	// Check that the last sequences are kept.
 	// Since we checked the length, it proves that the old blocks were discarded, since we had much more
@@ -635,11 +635,11 @@ func TestChannelPull(t *testing.T) {
 	adapter.On("Forward", mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything).Run(func(arg mock.Arguments) {
 		msg := arg.Get(0).(*protoext.SignedGossipMessage)
-		if !msg.IsDataMsg() {
+		if !protoext.IsDataMsg(msg.GossipMessage) {
 			return
 		}
 		// The peer is supposed to de-multiplex 2 ledger blocks
-		assert.True(t, msg.IsDataMsg())
+		assert.True(t, protoext.IsDataMsg(msg.GossipMessage))
 		receivedBlocksChan <- msg
 	})
 	gc := NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, &joinChanMsg{}, disabledMetrics)
@@ -699,7 +699,7 @@ func TestChannelPullAccessControl(t *testing.T) {
 	sentHello := int32(0)
 	adapter.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
 		msg := arg.Get(0).(*protoext.SignedGossipMessage)
-		if !msg.IsHelloMsg() {
+		if !protoext.IsHelloMsg(msg.GossipMessage) {
 			return
 		}
 		atomic.StoreInt32(&sentHello, int32(1))
@@ -994,7 +994,7 @@ func TestChannelBlockExpiration(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("Haven't responded to hello message within a time period")
 	case msg := <-respondedChan:
-		if msg.IsDigestMsg() {
+		if protoext.IsDigestMsg(msg) {
 			assert.Equal(t, 1, len(msg.GetDataDig().Digests), "Number of digests returned by channel blockPuller incorrect")
 		} else {
 			t.Fatal("Not correct pull msg type in response - expect digest")
@@ -1038,7 +1038,7 @@ func TestChannelBlockExpiration(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("Haven't responded to hello message within a time period")
 	case msg := <-respondedChan:
-		if msg.IsDigestMsg() {
+		if protoext.IsDigestMsg(msg) {
 			assert.Equal(t, 1, len(msg.GetDataDig().Digests), "Number of digests returned by channel blockPuller incorrect")
 		} else {
 			t.Fatal("Not correct pull msg type in response - expect digest")
@@ -1796,11 +1796,11 @@ func TestChannelPullWithDigestsFilter(t *testing.T) {
 	adapter.On("Forward", mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything).Run(func(arg mock.Arguments) {
 		msg := arg.Get(0).(*protoext.SignedGossipMessage)
-		if !msg.IsDataMsg() {
+		if !protoext.IsDataMsg(msg.GossipMessage) {
 			return
 		}
 		// The peer is supposed to de-multiplex 1 ledger block
-		assert.True(t, msg.IsDataMsg())
+		assert.True(t, protoext.IsDataMsg(msg.GossipMessage))
 		receivedBlocksChan <- msg
 	})
 	gc := NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, &joinChanMsg{}, disabledMetrics)
@@ -1941,7 +1941,7 @@ func simulatePullPhaseWithVariableDigest(gc GossipChannel, t *testing.T, wg *syn
 		msg := args.Get(0).(*protoext.SignedGossipMessage)
 		l.Lock()
 		defer l.Unlock()
-		if msg.IsHelloMsg() && !sentHello {
+		if protoext.IsHelloMsg(msg.GossipMessage) && !sentHello {
 			sentHello = true
 			// Simulate a digest message an imaginary peer responds to the hello message sent
 			sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
@@ -1961,7 +1961,7 @@ func simulatePullPhaseWithVariableDigest(gc GossipChannel, t *testing.T, wg *syn
 			}
 			go gc.HandleMessage(digestMsg)
 		}
-		if msg.IsDataReq() && !sentReq {
+		if protoext.IsDataReq(msg.GossipMessage) && !sentReq {
 			sentReq = true
 			dataReq := msg.GetDataReq()
 			for _, expectedDigest := range util.StringsToBytes(resultDigestSeqs) {

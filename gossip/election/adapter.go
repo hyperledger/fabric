@@ -101,7 +101,7 @@ func (ai *adapterImpl) Accept() <-chan Msg {
 	adapterCh, _ := ai.gossip.Accept(func(message interface{}) bool {
 		// Get only leadership org and channel messages
 		return message.(*proto.GossipMessage).Tag == proto.GossipMessage_CHAN_AND_ORG &&
-			message.(*proto.GossipMessage).IsLeadershipMsg() &&
+			protoext.IsLeadershipMsg(message.(*proto.GossipMessage)) &&
 			bytes.Equal(message.(*proto.GossipMessage).Channel, ai.channel)
 	}, false)
 

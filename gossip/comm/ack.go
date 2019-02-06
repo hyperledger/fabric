@@ -63,7 +63,7 @@ func (aso *ackSendOperation) send(msg *protoext.SignedGossipMessage, minAckNum i
 
 func interceptAcks(nextHandler handler, remotePeerID common.PKIidType, pubSub *util.PubSub) func(*protoext.SignedGossipMessage) {
 	return func(m *protoext.SignedGossipMessage) {
-		if m.IsAck() {
+		if protoext.IsAck(m.GossipMessage) {
 			topic := topicForAck(m.Nonce, remotePeerID)
 			pubSub.Publish(topic, m.GetAck())
 			return

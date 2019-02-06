@@ -183,14 +183,14 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 
 	gossipChan, _ := services.Accept(func(message interface{}) bool {
 		// Get only data messages
-		return message.(*proto.GossipMessage).IsDataMsg() &&
+		return protoext.IsDataMsg(message.(*proto.GossipMessage)) &&
 			bytes.Equal(message.(*proto.GossipMessage).Channel, []byte(chainID))
 	}, false)
 
 	remoteStateMsgFilter := func(message interface{}) bool {
 		receivedMsg := message.(protoext.ReceivedMessage)
 		msg := receivedMsg.GetGossipMessage()
-		if !(msg.IsRemoteStateMessage() || msg.GetPrivateData() != nil) {
+		if !(protoext.IsRemoteStateMessage(msg.GossipMessage) || msg.GetPrivateData() != nil) {
 			return false
 		}
 		// Ensure we deal only with messages that belong to this channel
@@ -301,7 +301,7 @@ func (s *GossipStateProviderImpl) listen() {
 }
 func (s *GossipStateProviderImpl) dispatch(msg protoext.ReceivedMessage) {
 	// Check type of the message
-	if msg.GetGossipMessage().IsRemoteStateMessage() {
+	if protoext.IsRemoteStateMessage(msg.GetGossipMessage().GossipMessage) {
 		logger.Debug("Handling direct state transfer message")
 		// Got state transfer request response
 		s.directMessage(msg)

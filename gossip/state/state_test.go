@@ -1139,7 +1139,7 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 	defer peer.shutdown()
 
 	naiveStateMsgPredicate := func(message interface{}) bool {
-		return message.(protoext.ReceivedMessage).GetGossipMessage().IsRemoteStateMessage()
+		return protoext.IsRemoteStateMessage(message.(protoext.ReceivedMessage).GetGossipMessage().GossipMessage)
 	}
 
 	_, bootCh := bootPeer.g.Accept(naiveStateMsgPredicate, true)
@@ -1215,7 +1215,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 	defer peer.shutdown()
 
 	naiveStateMsgPredicate := func(message interface{}) bool {
-		return message.(protoext.ReceivedMessage).GetGossipMessage().IsRemoteStateMessage()
+		return protoext.IsRemoteStateMessage(message.(protoext.ReceivedMessage).GetGossipMessage().GossipMessage)
 	}
 	_, peerCh := peer.g.Accept(naiveStateMsgPredicate, true)
 

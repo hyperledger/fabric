@@ -51,7 +51,7 @@ func NoopSign(m *gossip.GossipMessage) (*SignedGossipMessage, error) {
 	return sMsg, err
 }
 
-// ToGossipMessage un-marshals a given envelope and creates a
+// EnvelopeToGossipMessage un-marshals a given envelope and creates a
 // SignedGossipMessage out of it.
 // Returns an error if un-marshaling fails.
 func EnvelopeToGossipMessage(e *gossip.Envelope) (*SignedGossipMessage, error) {
@@ -158,14 +158,14 @@ func (m *SignedGossipMessage) String() string {
 		var isSimpleMsg bool
 		if m.GetStateResponse() != nil {
 			gMsg = fmt.Sprintf("StateResponse with %d items", len(m.GetStateResponse().Payloads))
-		} else if m.IsDataMsg() && m.GetDataMsg().Payload != nil {
+		} else if IsDataMsg(m.GossipMessage) && m.GetDataMsg().Payload != nil {
 			gMsg = m.GetDataMsg().Payload.ToString()
-		} else if m.IsDataUpdate() {
+		} else if IsDataUpdate(m.GossipMessage) {
 			update := m.GetDataUpdate()
 			gMsg = fmt.Sprintf("DataUpdate: %s", update.ToString())
 		} else if m.GetMemRes() != nil {
 			gMsg = m.GetMemRes().ToString()
-		} else if m.IsStateInfoSnapshot() {
+		} else if IsStateInfoSnapshot(m.GossipMessage) {
 			gMsg = m.GetStateSnapshot().ToString()
 		} else if m.GetPrivateRes() != nil {
 			gMsg = m.GetPrivateRes().ToString()

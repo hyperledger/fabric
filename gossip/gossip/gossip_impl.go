@@ -294,7 +294,7 @@ func (g *gossipServiceImpl) start() {
 
 		isConn := gMsg.GetGossipMessage().GetConn() != nil
 		isEmpty := gMsg.GetGossipMessage().GetEmpty() != nil
-		isPrivateData := gMsg.GetGossipMessage().IsPrivateDataMsg()
+		isPrivateData := protoext.IsPrivateDataMsg(gMsg.GetGossipMessage().GossipMessage)
 
 		return !(isConn || isEmpty || isPrivateData)
 	}
@@ -339,11 +339,11 @@ func (g *gossipServiceImpl) handleMessage(m protoext.ReceivedMessage) {
 		return
 	}
 
-	if msg.IsChannelRestricted() {
+	if protoext.IsChannelRestricted(msg.GossipMessage) {
 		if gc := g.chanState.lookupChannelForMsg(m); gc == nil {
 			// If we're not in the channel, we should still forward to peers of our org
 			// in case it's a StateInfo message
-			if g.isInMyorg(discovery.NetworkMember{PKIid: m.GetConnectionInfo().ID}) && msg.IsStateInfoMsg() {
+			if g.isInMyorg(discovery.NetworkMember{PKIid: m.GetConnectionInfo().ID}) && protoext.IsStateInfoMsg(msg.GossipMessage) {
 				if g.stateInfoMsgStore.Add(msg) {
 					g.emitter.Add(&emittedGossipMessage{
 						SignedGossipMessage: msg,
@@ -355,7 +355,7 @@ func (g *gossipServiceImpl) handleMessage(m protoext.ReceivedMessage) {
 				g.logger.Debug("No such channel", msg.Channel, "discarding message", msg)
 			}
 		} else {
-			if m.GetGossipMessage().IsLeadershipMsg() {
+			if protoext.IsLeadershipMsg(m.GetGossipMessage().GossipMessage) {
 				if err := g.validateLeadershipMessage(m.GetGossipMessage()); err != nil {
 					g.logger.Warningf("Failed validating LeaderElection message: %+v", errors.WithStack(err))
 					return
@@ -375,7 +375,7 @@ func (g *gossipServiceImpl) handleMessage(m protoext.ReceivedMessage) {
 				g.logger.Warningf("Got membership request with invalid selfInfo: %+v", errors.WithStack(err))
 				return
 			}
-			if !sMsg.IsAliveMsg() {
+			if !protoext.IsAliveMsg(sMsg.GossipMessage) {
 				g.logger.Warning("Got membership request with selfInfo that isn't an AliveMessage")
 				return
 			}
@@ -387,7 +387,7 @@ func (g *gossipServiceImpl) handleMessage(m protoext.ReceivedMessage) {
 		g.forwardDiscoveryMsg(m)
 	}
 
-	if msg.IsPullMsg() && msg.GetPullMsgType() == proto.PullMsgType_IDENTITY_MSG {
+	if protoext.IsPullMsg(msg.GossipMessage) && protoext.GetPullMsgType(msg.GossipMessage) == proto.PullMsgType_IDENTITY_MSG {
 		g.certStore.handleMessage(m)
 	}
 }
@@ -403,12 +403,12 @@ func (g *gossipServiceImpl) forwardDiscoveryMsg(msg protoext.ReceivedMessage) {
 // validateMsg checks the signature of the message if exists,
 // and also checks that the tag matches the message type
 func (g *gossipServiceImpl) validateMsg(msg protoext.ReceivedMessage) bool {
-	if err := msg.GetGossipMessage().IsTagLegal(); err != nil {
+	if err := protoext.IsTagLegal(msg.GetGossipMessage().GossipMessage); err != nil {
 		g.logger.Warningf("Tag of %v isn't legal: %v", msg.GetGossipMessage(), errors.WithStack(err))
 		return false
 	}
 
-	if msg.GetGossipMessage().IsStateInfoMsg() {
+	if protoext.IsStateInfoMsg(msg.GetGossipMessage().GossipMessage) {
 		if err := g.validateStateInfoMsg(msg.GetGossipMessage()); err != nil {
 			g.logger.Warningf("StateInfo message %v is found invalid: %v", msg, err)
 			return false
@@ -449,24 +449,24 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*emittedGossipMessage) {
 	var leadershipMsgs []*emittedGossipMessage
 
 	isABlock := func(o interface{}) bool {
-		return o.(*emittedGossipMessage).IsDataMsg()
+		return protoext.IsDataMsg(o.(*emittedGossipMessage).GossipMessage)
 	}
 	isAStateInfoMsg := func(o interface{}) bool {
-		return o.(*emittedGossipMessage).IsStateInfoMsg()
+		return protoext.IsStateInfoMsg(o.(*emittedGossipMessage).GossipMessage)
 	}
 	aliveMsgsWithNoEndpointAndInOurOrg := func(o interface{}) bool {
 		msg := o.(*emittedGossipMessage)
-		if !msg.IsAliveMsg() {
+		if !protoext.IsAliveMsg(msg.GossipMessage) {
 			return false
 		}
 		member := msg.GetAliveMsg().Membership
 		return member.Endpoint == "" && g.isInMyorg(discovery.NetworkMember{PKIid: member.PkiId})
 	}
 	isOrgRestricted := func(o interface{}) bool {
-		return aliveMsgsWithNoEndpointAndInOurOrg(o) || o.(*emittedGossipMessage).IsOrgRestricted()
+		return aliveMsgsWithNoEndpointAndInOurOrg(o) || protoext.IsOrgRestricted(o.(*emittedGossipMessage).GossipMessage)
 	}
 	isLeadershipMsg := func(o interface{}) bool {
-		return o.(*emittedGossipMessage).IsLeadershipMsg()
+		return protoext.IsLeadershipMsg(o.(*emittedGossipMessage).GossipMessage)
 	}
 
 	// Gossip blocks
@@ -507,7 +507,7 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*emittedGossipMessage) {
 
 	// Finally, gossip the remaining messages
 	for _, msg := range msgs {
-		if !msg.IsAliveMsg() {
+		if !protoext.IsAliveMsg(msg.GossipMessage) {
 			g.logger.Error("Unknown message type", msg)
 			continue
 		}
@@ -524,7 +524,7 @@ func (g *gossipServiceImpl) sendAndFilterSecrets(msg *protoext.SignedGossipMessa
 	for _, peer := range peers {
 		// Prevent forwarding alive messages of external organizations
 		// to peers that have no external endpoints
-		aliveMsgFromDiffOrg := msg.IsAliveMsg() && !g.isInMyorg(discovery.NetworkMember{PKIid: msg.GetAliveMsg().Membership.PkiId})
+		aliveMsgFromDiffOrg := protoext.IsAliveMsg(msg.GossipMessage) && !g.isInMyorg(discovery.NetworkMember{PKIid: msg.GetAliveMsg().Membership.PkiId})
 		if aliveMsgFromDiffOrg && !g.hasExternalEndpoint(peer.PKIID) {
 			continue
 		}
@@ -566,7 +566,7 @@ func (g *gossipServiceImpl) gossipInChan(messages []*emittedGossipMessage, chanR
 		// For leadership messages we will select all peers that pass routing factory - e.g. all peers in channel and org
 		membership := g.disc.GetMembership()
 		var peers2Send []*comm.RemotePeer
-		if messagesOfChannel[0].IsLeadershipMsg() {
+		if protoext.IsLeadershipMsg(messagesOfChannel[0].GossipMessage) {
 			peers2Send = filter.SelectPeers(len(membership), membership, chanRoutingFactory(gc))
 		} else {
 			peers2Send = filter.SelectPeers(g.conf.PropagatePeerNum, membership, chanRoutingFactory(gc))
@@ -643,7 +643,7 @@ func (g *gossipServiceImpl) SendByCriteria(msg *protoext.SignedGossipMessage, cr
 func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
 	// Educate developers to Gossip messages with the right tags.
 	// See IsTagLegal() for wanted behavior.
-	if err := msg.IsTagLegal(); err != nil {
+	if err := protoext.IsTagLegal(msg); err != nil {
 		panic(errors.WithStack(err))
 	}
 
@@ -652,7 +652,7 @@ func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
 	}
 
 	var err error
-	if sMsg.IsDataMsg() {
+	if protoext.IsDataMsg(sMsg.GossipMessage) {
 		sMsg, err = protoext.NoopSign(sMsg.GossipMessage)
 	} else {
 		_, err = sMsg.Sign(func(msg []byte) ([]byte, error) {
@@ -665,13 +665,13 @@ func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
 		return
 	}
 
-	if msg.IsChannelRestricted() {
+	if protoext.IsChannelRestricted(msg) {
 		gc := g.chanState.getGossipChannelByChainID(msg.Channel)
 		if gc == nil {
 			g.logger.Warning("Failed obtaining gossipChannel of", msg.Channel, "aborting")
 			return
 		}
-		if msg.IsDataMsg() {
+		if protoext.IsDataMsg(msg) {
 			gc.AddToMsgStore(sMsg)
 		}
 	}
@@ -1020,7 +1020,7 @@ func (sa *discoverySecurityAdapter) SignMessage(m *proto.GossipMessage, internal
 	signer := func(msg []byte) ([]byte, error) {
 		return sa.mcs.Sign(msg)
 	}
-	if m.IsAliveMsg() && time.Now().Before(sa.includeIdentityPeriod) {
+	if protoext.IsAliveMsg(m) && time.Now().Before(sa.includeIdentityPeriod) {
 		m.GetAliveMsg().Identity = sa.identity
 	}
 	sMsg := &protoext.SignedGossipMessage{
@@ -1230,7 +1230,7 @@ func (g *gossipServiceImpl) disclosurePolicy(remotePeer *discovery.NetworkMember
 	}
 
 	return func(msg *protoext.SignedGossipMessage) bool {
-			if !msg.IsAliveMsg() {
+			if !protoext.IsAliveMsg(msg.GossipMessage) {
 				g.logger.Panic("Programming error, this should be used only on alive messages")
 			}
 			org := g.getOrgOfPeer(msg.GetAliveMsg().Membership.PkiId)

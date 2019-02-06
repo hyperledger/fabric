@@ -56,7 +56,7 @@ func TestAdapterImpl_CreateMessage(t *testing.T) {
 		metrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics)
 	msg := adapter.CreateMessage(true)
 
-	if !msg.(*msgImpl).msg.IsLeadershipMsg() {
+	if !protoext.IsLeadershipMsg(msg.(*msgImpl).msg) {
 		t.Error("Newly created message should be LeadershipMsg")
 	}
 
@@ -66,7 +66,7 @@ func TestAdapterImpl_CreateMessage(t *testing.T) {
 
 	msg = adapter.CreateMessage(false)
 
-	if !msg.(*msgImpl).msg.IsLeadershipMsg() {
+	if !protoext.IsLeadershipMsg(msg.(*msgImpl).msg) {
 		t.Error("Newly created message should be LeadershipMsg")
 	}
 

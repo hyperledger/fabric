@@ -384,8 +384,8 @@ func TestConfidentiality(t *testing.T) {
 
 	msgSelector := func(o interface{}) bool {
 		msg := o.(protoext.ReceivedMessage).GetGossipMessage()
-		identitiesPull := msg.IsPullMsg() && msg.GetPullMsgType() == proto.PullMsgType_IDENTITY_MSG
-		return msg.IsAliveMsg() || msg.IsStateInfoMsg() || msg.IsStateInfoSnapshot() || msg.GetMemRes() != nil || identitiesPull
+		identitiesPull := protoext.IsPullMsg(msg.GossipMessage) && protoext.GetPullMsgType(msg.GossipMessage) == proto.PullMsgType_IDENTITY_MSG
+		return protoext.IsAliveMsg(msg.GossipMessage) || protoext.IsStateInfoMsg(msg.GossipMessage) || protoext.IsStateInfoSnapshot(msg.GossipMessage) || msg.GetMemRes() != nil || identitiesPull
 	}
 	// Listen to all peers membership messages and forward them to the inspection channel
 	// where they will be inspected, and the test would fail if a confidentiality violation is found
@@ -503,16 +503,16 @@ func expectedMembershipSize(peersInOrg, externalEndpointsInOrg int, org string, 
 }
 
 func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []string {
-	if msg.IsAliveMsg() {
+	if protoext.IsAliveMsg(msg) {
 		return []string{string(sec.OrgByPeerIdentity(api.PeerIdentityType(msg.GetAliveMsg().Membership.PkiId)))}
 	}
 
 	orgs := map[string]struct{}{}
 
-	if msg.IsPullMsg() {
-		if msg.IsDigestMsg() || msg.IsDataReq() {
+	if protoext.IsPullMsg(msg) {
+		if protoext.IsDigestMsg(msg) || protoext.IsDataReq(msg) {
 			var digests []string
-			if msg.IsDigestMsg() {
+			if protoext.IsDigestMsg(msg) {
 				digests = util.BytesToStrings(msg.GetDataDig().Digests)
 			} else {
 				digests = util.BytesToStrings(msg.GetDataReq().Digests)
@@ -524,7 +524,7 @@ func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []str
 			}
 		}
 
-		if msg.IsDataUpdate() {
+		if protoext.IsDataUpdate(msg) {
 			for _, identityMsg := range msg.GetDataUpdate().Data {
 				gMsg, _ := protoext.EnvelopeToGossipMessage(identityMsg)
 				id := string(gMsg.GetPeerIdentity().Cert)
@@ -557,7 +557,7 @@ func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor, peers
 		if msg.src == msg.dst {
 			continue
 		}
-		if msg.IsStateInfoMsg() || msg.IsStateInfoSnapshot() {
+		if protoext.IsStateInfoMsg(msg.GossipMessage) || protoext.IsStateInfoSnapshot(msg.GossipMessage) {
 			inspectStateInfoMsg(t, msg, peersWithExternalEndpoints)
 			continue
 		}
@@ -580,8 +580,8 @@ func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor, peers
 
 		// If this is an identity snapshot, make sure that only identities of peers
 		// with external endpoints pass between the organizations.
-		isIdentityPull := msg.IsPullMsg() && msg.GetPullMsgType() == proto.PullMsgType_IDENTITY_MSG
-		if !(isIdentityPull && msg.IsDataUpdate()) {
+		isIdentityPull := protoext.IsPullMsg(msg.GossipMessage) && protoext.GetPullMsgType(msg.GossipMessage) == proto.PullMsgType_IDENTITY_MSG
+		if !(isIdentityPull && protoext.IsDataUpdate(msg.GossipMessage)) {
 			continue
 		}
 		for _, envp := range msg.GetDataUpdate().Data {
@@ -595,7 +595,7 @@ func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor, peers
 }
 
 func inspectStateInfoMsg(t *testing.T, m *msg, peersWithExternalEndpoints map[string]struct{}) {
-	if m.IsStateInfoMsg() {
+	if protoext.IsStateInfoMsg(m.GossipMessage) {
 		pkiID := m.GetStateInfo().PkiId
 		_, hasExternalEndpoint := peersWithExternalEndpoints[string(pkiID)]
 		assert.True(t, hasExternalEndpoint, "peer %s has no external endpoint but crossed an org", string(pkiID))

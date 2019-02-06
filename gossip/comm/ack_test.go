@@ -72,7 +72,8 @@ func TestAck(t *testing.T) {
 	defer comm4.Stop()
 
 	acceptData := func(o interface{}) bool {
-		return o.(protoext.ReceivedMessage).GetGossipMessage().IsDataMsg()
+		m := o.(protoext.ReceivedMessage).GetGossipMessage()
+		return protoext.IsDataMsg(m.GossipMessage)
 	}
 
 	ack := func(c <-chan protoext.ReceivedMessage) {

@@ -220,7 +220,7 @@ func endpointFromEnvelope(env *gossip.Envelope) string {
 	if aliveMsg == nil {
 		return ""
 	}
-	if !aliveMsg.IsAliveMsg() {
+	if !protoext.IsAliveMsg(aliveMsg.GossipMessage) {
 		return ""
 	}
 	if aliveMsg.GetAliveMsg().Membership == nil {
@@ -237,7 +237,7 @@ func ledgerHeightFromEnvelope(env *gossip.Envelope) uint64 {
 	if stateInfoMsg == nil {
 		return 0
 	}
-	if !stateInfoMsg.IsStateInfoMsg() {
+	if !protoext.IsStateInfoMsg(stateInfoMsg.GossipMessage) {
 		return 0
 	}
 	if stateInfoMsg.GetStateInfo().Properties == nil {

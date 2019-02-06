@@ -252,7 +252,8 @@ func TestMutualParallelSendWithAck(t *testing.T) {
 	defer comm2.Stop()
 
 	acceptData := func(o interface{}) bool {
-		return o.(protoext.ReceivedMessage).GetGossipMessage().IsDataMsg()
+		m := o.(protoext.ReceivedMessage).GetGossipMessage()
+		return protoext.IsDataMsg(m.GossipMessage)
 	}
 
 	inc1 := comm1.Accept(acceptData)

@@ -101,7 +101,7 @@ func NewPuller(metrics *metrics.PrivdataMetrics, cs privdata.CollectionStore, g 
 		if !bytes.Equal(msg.Channel, []byte(p.channel)) {
 			return false
 		}
-		return msg.IsPrivateDataMsg()
+		return protoext.IsPrivateDataMsg(msg.GossipMessage)
 	}, true)
 	go p.listen()
 	return p

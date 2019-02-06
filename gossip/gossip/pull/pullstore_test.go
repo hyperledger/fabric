@@ -220,7 +220,7 @@ func TestFilter(t *testing.T) {
 		return a == b
 	}
 	df := func(msg protoext.ReceivedMessage) func(string) bool {
-		if msg.GetGossipMessage().IsDataReq() {
+		if protoext.IsDataReq(msg.GetGossipMessage().GossipMessage) {
 			req := msg.GetGossipMessage().GetDataReq()
 			return func(item string) bool {
 				return util.IndexInSlice(util.BytesToStrings(req.Digests), item, eq) != -1

@@ -70,7 +70,7 @@ func (cs *certStore) handleMessage(msg protoext.ReceivedMessage) {
 				cs.logger.Warningf("Data update contains an invalid message: %+v", errors.WithStack(err))
 				return
 			}
-			if !m.IsIdentityMsg() {
+			if !protoext.IsIdentityMsg(m.GossipMessage) {
 				cs.logger.Warning("Got a non-identity message:", m, "aborting")
 				return
 			}

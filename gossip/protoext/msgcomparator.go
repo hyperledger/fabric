@@ -40,23 +40,23 @@ func (mc *msgComparator) invalidationPolicy(this interface{}, that interface{}) 
 	thisMsg := this.(*SignedGossipMessage)
 	thatMsg := that.(*SignedGossipMessage)
 
-	if thisMsg.IsAliveMsg() && thatMsg.IsAliveMsg() {
+	if IsAliveMsg(thisMsg.GossipMessage) && IsAliveMsg(thatMsg.GossipMessage) {
 		return aliveInvalidationPolicy(thisMsg.GetAliveMsg(), thatMsg.GetAliveMsg())
 	}
 
-	if thisMsg.IsDataMsg() && thatMsg.IsDataMsg() {
+	if IsDataMsg(thisMsg.GossipMessage) && IsDataMsg(thatMsg.GossipMessage) {
 		return mc.dataInvalidationPolicy(thisMsg.GetDataMsg(), thatMsg.GetDataMsg())
 	}
 
-	if thisMsg.IsStateInfoMsg() && thatMsg.IsStateInfoMsg() {
+	if IsStateInfoMsg(thisMsg.GossipMessage) && IsStateInfoMsg(thatMsg.GossipMessage) {
 		return mc.stateInvalidationPolicy(thisMsg.GetStateInfo(), thatMsg.GetStateInfo())
 	}
 
-	if thisMsg.IsIdentityMsg() && thatMsg.IsIdentityMsg() {
+	if IsIdentityMsg(thisMsg.GossipMessage) && IsIdentityMsg(thatMsg.GossipMessage) {
 		return mc.identityInvalidationPolicy(thisMsg.GetPeerIdentity(), thatMsg.GetPeerIdentity())
 	}
 
-	if thisMsg.IsLeadershipMsg() && thatMsg.IsLeadershipMsg() {
+	if IsLeadershipMsg(thisMsg.GossipMessage) && IsLeadershipMsg(thatMsg.GossipMessage) {
 		return leaderInvalidationPolicy(thisMsg.GetLeadershipMsg(), thatMsg.GetLeadershipMsg())
 	}
 

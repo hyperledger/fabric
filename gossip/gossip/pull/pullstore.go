@@ -163,11 +163,11 @@ func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 }
 
 func (p *pullMediatorImpl) HandleMessage(m protoext.ReceivedMessage) {
-	if m.GetGossipMessage() == nil || !m.GetGossipMessage().IsPullMsg() {
+	if m.GetGossipMessage() == nil || !protoext.IsPullMsg(m.GetGossipMessage().GossipMessage) {
 		return
 	}
 	msg := m.GetGossipMessage()
-	msgType := msg.GetPullMsgType()
+	msgType := protoext.GetPullMsgType(msg.GossipMessage)
 	if msgType != p.config.MsgType {
 		return
 	}
