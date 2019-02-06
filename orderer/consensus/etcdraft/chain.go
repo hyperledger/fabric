@@ -30,10 +30,25 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DefaultSnapshotCatchUpEntries is the default number of entries
-// to preserve in memory when a snapshot is taken. This is for
-// slow followers to catch up.
-const DefaultSnapshotCatchUpEntries = uint64(500)
+const (
+	BYTE = 1 << (10 * iota)
+	KILOBYTE
+	MEGABYTE
+	GIGABYTE
+	TERABYTE
+)
+
+const (
+	// DefaultSnapshotCatchUpEntries is the default number of entries
+	// to preserve in memory when a snapshot is taken. This is for
+	// slow followers to catch up.
+	DefaultSnapshotCatchUpEntries = uint64(20)
+
+	// DefaultSnapshotInterval is the default snapshot interval. It is
+	// used if SnapshotInterval is not provided in channel config options.
+	// It is needed to enforce snapshot being set.
+	DefaultSnapshotInterval = 100 * MEGABYTE // 100MB
+)
 
 //go:generate mockery -dir . -name Configurator -case underscore -output ./mocks/
 
@@ -71,7 +86,7 @@ type Options struct {
 
 	WALDir       string
 	SnapDir      string
-	SnapInterval uint64
+	SnapInterval uint32
 
 	// This is configurable mainly for testing purpose. Users are not
 	// expected to alter this. Instead, DefaultSnapshotCatchUpEntries is used.
@@ -134,6 +149,8 @@ type Chain struct {
 	appliedIndex uint64
 
 	// needed by snapshotting
+	sizeLimit        uint32 // SnapshotInterval in bytes
+	accDataSize      uint32 // accumulative data size since last snapshot
 	lastSnapBlockNum uint64
 	confState        raftpb.ConfState // Etcdraft requires ConfState to be persisted within snapshot
 
@@ -170,6 +187,11 @@ func NewChain(
 		storage.SnapshotCatchUpEntries = opts.SnapshotCatchUpEntries
 	}
 
+	sizeLimit := opts.SnapInterval
+	if sizeLimit == 0 {
+		sizeLimit = DefaultSnapshotInterval
+	}
+
 	// get block number in last snapshot, if exists
 	var snapBlkNum uint64
 	if s := storage.Snapshot(); !raft.IsEmptySnap(s) {
@@ -194,6 +216,7 @@ func NewChain(
 		support:          support,
 		fresh:            fresh,
 		appliedIndex:     opts.RaftMetadata.RaftIndex,
+		sizeLimit:        sizeLimit,
 		lastSnapBlockNum: snapBlkNum,
 		createPuller:     f,
 		clock:            opts.Clock,
@@ -742,6 +765,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 
 			appliedb = block.Header.Number
 			position = i
+			c.accDataSize += uint32(len(ents[i].Data))
 
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
@@ -779,19 +803,21 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		}
 	}
 
-	if c.opts.SnapInterval == 0 || appliedb == 0 {
-		// snapshot is not enabled (SnapInterval == 0) or
+	if appliedb == 0 {
 		// no block has been written (appliedb == 0) in this round
 		return
 	}
 
-	if appliedb-c.lastSnapBlockNum >= c.opts.SnapInterval {
+	if c.accDataSize >= c.sizeLimit {
 		select {
 		case c.gcC <- &gc{index: c.appliedIndex, state: c.confState, data: ents[position].Data}:
-			c.logger.Infof("Taking snapshot at block %d, last snapshotted block number is %d", appliedb, c.lastSnapBlockNum)
+			c.logger.Infof("Accumulated %d bytes since last snapshot, exceeding size limit (%d bytes), "+
+				"taking snapshot at block %d, last snapshotted block number is %d",
+				c.accDataSize, c.sizeLimit, appliedb, c.lastSnapBlockNum)
+			c.accDataSize = 0
 			c.lastSnapBlockNum = appliedb
 		default:
-			c.logger.Warnf("Snapshotting is in progress, it is very likely that SnapInterval is too small")
+			c.logger.Warnf("Snapshotting is in progress, it is very likely that SnapshotInterval is too small")
 		}
 	}
 

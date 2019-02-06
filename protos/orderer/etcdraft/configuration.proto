@@ -34,7 +34,8 @@ message Options {
 	uint32 heartbeat_tick = 3;
 	uint32 max_inflight_msgs = 4;
 	uint64 max_size_per_msg = 5;
-	uint64 snapshot_interval = 6; // take snapshot every n blocks
+	// Take snapshot when cumulative data exceeds certain size in bytes.
+	uint32 snapshot_interval = 6;
 }
 
 // RaftMetadata stores data used by the Raft OSNs when
