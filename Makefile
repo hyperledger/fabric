@@ -17,6 +17,7 @@
 #   - orderer - builds a native fabric orderer binary
 #   - release - builds release packages for the host platform
 #   - release-all - builds release packages for all target platforms
+#   - publish-images - publishes release docker images to nexus3 or docker hub.
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 #   - profile - runs unit tests for all packages in coverprofile mode (slow)
@@ -103,6 +104,7 @@ RELEASE_TEMPLATES = $(shell git ls-files | grep "release/templates")
 IMAGES = peer orderer baseos ccenv buildenv tools
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-s390x linux-ppc64le
 RELEASE_PKGS = configtxgen cryptogen idemixgen discover configtxlator peer orderer
+RELEASE_IMAGES = peer orderer tools ccenv baseos
 
 pkgmap.cryptogen      := $(PKGNAME)/common/tools/cryptogen
 pkgmap.idemixgen      := $(PKGNAME)/common/tools/idemixgen
@@ -383,6 +385,13 @@ docker-tag-stable: $(IMAGES:%=%-docker-tag-stable)
 %-docker-tag-stable:
 	$(eval TARGET = ${patsubst %-docker-tag-stable,%,${@}})
 	docker tag $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG) $(DOCKER_NS)/fabric-$(TARGET):stable
+
+publish-images: $(RELEASE_IMAGES:%=%-publish-images) ## Build and publish docker images
+
+%-publish-images:
+	$(eval TARGET = ${patsubst %-publish-images,%,${@}})
+	@docker login $(DOCKER_HUB_USERNAME) $(DOCKER_HUB_PASSWORD)
+	@docker push $(DOCKER_NS)/fabric-$(TARGET):$(PROJECT_VERSION)
 
 .PHONY: clean
 clean: docker-clean unit-test-clean release-clean
