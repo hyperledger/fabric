@@ -108,7 +108,7 @@ var _ = Describe("DiscoveryService", func() {
 		}
 		nwo.DeployChaincode(network, "testchannel", orderer, chaincode, org1Peer0)
 
-		By("discovering endorsers for chaincode that has not been installed to enough orgs to satisy endorsement policy")
+		By("discovering endorsers for chaincode that has not been installed to enough orgs to satisfy endorsement policy")
 		sess, err = network.Discover(endorsers)
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))

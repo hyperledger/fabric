@@ -185,7 +185,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	flags.SetFlag(0, peer.TxValidationCode_BAD_CHANNEL_HEADER)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = flags
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
-	assert.NoError(t, err) // invalid filter should take precendence
+	assert.NoError(t, err) // invalid filter should take precedence
 
 	// new block
 	var blockNum uint64 = 15

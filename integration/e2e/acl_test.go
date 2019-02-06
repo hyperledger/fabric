@@ -118,7 +118,7 @@ var _ = Describe("EndToEndACL", func() {
 		Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
 		//
-		// when the ACL policy for DeliverFiltered is not satisifed
+		// when the ACL policy for DeliverFiltered is not satisfied
 		//
 		By("setting the filtered block event ACL policy to org2/Admins")
 		policyName = resources.Event_FilteredBlock
@@ -145,7 +145,7 @@ var _ = Describe("EndToEndACL", func() {
 		Expect(sess.Err).To(gbytes.Say("Received block: "))
 
 		//
-		// when the ACL policy for Deliver is not satisifed
+		// when the ACL policy for Deliver is not satisfied
 		//
 		By("fetching the latest block from the peer as a forbidden org2 Admin identity")
 		sess, err = network.PeerAdminSession(org2Peer0, fetchNewest)
