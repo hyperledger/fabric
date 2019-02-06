@@ -22,6 +22,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const tokenNamespace = "_fabtoken"
+
 var _ = Describe("Verifier", func() {
 	var (
 		fakePublicInfo       *mockid.PublicInfo
@@ -85,7 +87,7 @@ var _ = Describe("Verifier", func() {
 			outputBytes, err := proto.Marshal(&token.PlainOutput{Owner: []byte("owner-1"), Type: "TOK1", Quantity: 111})
 			Expect(err).NotTo(HaveOccurred())
 			ns, k, td := fakeLedger.SetStateArgsForCall(0)
-			Expect(ns).To(Equal("tms"))
+			Expect(ns).To(Equal(tokenNamespace))
 			expectedOutput := strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00")
 			Expect(k).To(Equal(expectedOutput))
 			Expect(td).To(Equal(outputBytes))
@@ -93,7 +95,7 @@ var _ = Describe("Verifier", func() {
 			outputBytes, err = proto.Marshal(&token.PlainOutput{Owner: []byte("owner-2"), Type: "TOK2", Quantity: 222})
 			Expect(err).NotTo(HaveOccurred())
 			ns, k, td = fakeLedger.SetStateArgsForCall(1)
-			Expect(ns).To(Equal("tms"))
+			Expect(ns).To(Equal(tokenNamespace))
 			expectedOutput = strings.Join([]string{"", "tokenOutput", "0", "1", ""}, "\x00")
 			Expect(k).To(Equal(expectedOutput))
 			Expect(td).To(Equal(outputBytes))
@@ -206,7 +208,7 @@ var _ = Describe("Verifier", func() {
 		})
 
 		It("retrieves the PlainOutput associated with the entry ID", func() {
-			po, err := memoryLedger.GetState("tms", strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00"))
+			po, err := memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00"))
 			Expect(err).NotTo(HaveOccurred())
 
 			output := &token.PlainOutput{}
@@ -219,7 +221,7 @@ var _ = Describe("Verifier", func() {
 				Quantity: 111,
 			}))
 
-			po, err = memoryLedger.GetState("tms", strings.Join([]string{"", "tokenOutput", "0", "1", ""}, "\x00"))
+			po, err = memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", "tokenOutput", "0", "1", ""}, "\x00"))
 			Expect(err).NotTo(HaveOccurred())
 
 			err = proto.Unmarshal(po, output)
@@ -234,7 +236,7 @@ var _ = Describe("Verifier", func() {
 
 		Context("when the output does not exist", func() {
 			It("returns a nil and no error", func() {
-				val, err := memoryLedger.GetState("tms", strings.Join([]string{"", "tokenOutput", "george", "0", ""}, "\x00"))
+				val, err := memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", "tokenOutput", "george", "0", ""}, "\x00"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(val).To(BeNil())
 			})
@@ -321,7 +323,7 @@ var _ = Describe("Verifier", func() {
 				ns, k := fakeLedger.GetStateArgsForCall(0)
 				expectedOutput := strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00")
 				Expect(k).To(Equal(expectedOutput))
-				Expect(ns).To(Equal("tms"))
+				Expect(ns).To(Equal(tokenNamespace))
 			})
 		})
 	})
@@ -364,7 +366,7 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("is processed successfully", func() {
-				po, err := memoryLedger.GetState("tms", string("\x00")+"tokenOutput"+string("\x00")+"1"+string("\x00")+"0"+string("\x00"))
+				po, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenOutput"+string("\x00")+"1"+string("\x00")+"0"+string("\x00"))
 				Expect(err).NotTo(HaveOccurred())
 
 				output := &token.PlainOutput{}
@@ -377,7 +379,7 @@ var _ = Describe("Verifier", func() {
 					Quantity: 99,
 				}))
 
-				po, err = memoryLedger.GetState("tms", string("\x00")+"tokenOutput"+string("\x00")+"1"+string("\x00")+"1"+string("\x00"))
+				po, err = memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenOutput"+string("\x00")+"1"+string("\x00")+"1"+string("\x00"))
 				Expect(err).NotTo(HaveOccurred())
 
 				err = proto.Unmarshal(po, output)
@@ -389,7 +391,7 @@ var _ = Describe("Verifier", func() {
 					Quantity: 12,
 				}))
 
-				spentMarker, err := memoryLedger.GetState("tms", string("\x00")+"tokenInput"+string("\x00")+"0"+string("\x00")+"0"+string("\x00"))
+				spentMarker, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenInput"+string("\x00")+"0"+string("\x00")+"0"+string("\x00"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(bytes.Equal(spentMarker, plain.TokenInputSpentMarker)).To(BeTrue())
 			})
@@ -679,7 +681,7 @@ var _ = Describe("Verifier", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// verify we can get the output from "tokenRedeem" for this transaction
-			po, err := memoryLedger.GetState("tms", string("\x00")+"tokenRedeem"+string("\x00")+redeemTxID+string("\x00")+"0"+string("\x00"))
+			po, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenRedeem"+string("\x00")+redeemTxID+string("\x00")+"0"+string("\x00"))
 			Expect(err).NotTo(HaveOccurred())
 
 			output := &token.PlainOutput{}
@@ -714,7 +716,7 @@ var _ = Describe("Verifier", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// verify we can get 1 output from "tokenRedeem" and 1 output from "tokenOutput" for this transaction
-			po, err := memoryLedger.GetState("tms", string("\x00")+"tokenRedeem"+string("\x00")+redeemTxID+string("\x00")+"0"+string("\x00"))
+			po, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenRedeem"+string("\x00")+redeemTxID+string("\x00")+"0"+string("\x00"))
 			Expect(err).NotTo(HaveOccurred())
 
 			output := &token.PlainOutput{}
@@ -726,7 +728,7 @@ var _ = Describe("Verifier", func() {
 				Quantity: 99,
 			}))
 
-			po, err = memoryLedger.GetState("tms", string("\x00")+"tokenOutput"+string("\x00")+redeemTxID+string("\x00")+"1"+string("\x00"))
+			po, err = memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenOutput"+string("\x00")+redeemTxID+string("\x00")+"1"+string("\x00"))
 			Expect(err).NotTo(HaveOccurred())
 
 			err = proto.Unmarshal(po, output)
@@ -738,7 +740,7 @@ var _ = Describe("Verifier", func() {
 				Quantity: 12,
 			}))
 
-			spentMarker, err := memoryLedger.GetState("tms", string("\x00")+"tokenInput"+string("\x00")+"0"+string("\x00")+"0"+string("\x00"))
+			spentMarker, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenInput"+string("\x00")+"0"+string("\x00")+"0"+string("\x00"))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(bytes.Equal(spentMarker, plain.TokenInputSpentMarker)).To(BeTrue())
 		})

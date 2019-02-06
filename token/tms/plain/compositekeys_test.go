@@ -23,7 +23,7 @@ var _ = Describe("Composite keys", func() {
 	)
 
 	BeforeEach(func() {
-		namespace = "tms"
+		namespace = "_fabtoken"
 		txID = "tx0"
 		index = 0
 		chaincode = &shim.ChaincodeStub{}
