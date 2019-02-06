@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -263,7 +264,7 @@ func TestToString(t *testing.T) {
 	assert.NotContains(t, fmt.Sprintf("%v", sMsg), "2")
 }
 
-func TestGossipMessageSign(t *testing.T) {
+func TestSignedGossipMessageSign(t *testing.T) {
 	idSigner := func(msg []byte) ([]byte, error) {
 		return msg, nil
 	}
@@ -272,7 +273,7 @@ func TestGossipMessageSign(t *testing.T) {
 		return nil, errors.New("Error")
 	}
 
-	msg := protoext.SignedGossipMessage{
+	msg := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
 			Channel: []byte("testChannelID"),
 			Tag:     gossip.GossipMessage_EMPTY,
@@ -281,7 +282,6 @@ func TestGossipMessageSign(t *testing.T) {
 			},
 		},
 	}
-
 	signedMsg, _ := msg.Sign(idSigner)
 
 	// Since checking the identity signer, signature will be same as the payload
@@ -309,10 +309,12 @@ func TestEnvelope_NoopSign(t *testing.T) {
 }
 
 func TestSignedGossipMessage_Verify(t *testing.T) {
+	channelID := "testChannelID"
 	peerID := []byte("peer")
-	msg := protoext.SignedGossipMessage{
+
+	msg := &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
-			Channel: []byte("testChannelID"),
+			Channel: []byte(channelID),
 			Tag:     gossip.GossipMessage_EMPTY,
 			Content: &gossip.GossipMessage_DataMsg{
 				DataMsg: &gossip.DataMessage{},
@@ -320,19 +322,17 @@ func TestSignedGossipMessage_Verify(t *testing.T) {
 		},
 		Envelope: envelopes()[0],
 	}
-
 	assert.True(t, msg.IsSigned())
 
 	verifier := func(peerIdentity []byte, signature, message []byte) error {
 		return nil
 	}
-
 	res := msg.Verify(peerID, verifier)
 	assert.Nil(t, res)
 
-	msg = protoext.SignedGossipMessage{
+	msg = &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
-			Channel: []byte("testChannelID"),
+			Channel: []byte(channelID),
 			Tag:     gossip.GossipMessage_EMPTY,
 			Content: &gossip.GossipMessage_DataMsg{
 				DataMsg: &gossip.DataMessage{},
@@ -365,6 +365,46 @@ func TestSignedGossipMessage_Verify(t *testing.T) {
 
 	res = msg.Verify(peerID, errVerifier)
 	assert.Error(t, res)
+}
+
+func TestEnvelope(t *testing.T) {
+	dataMsg := &gossip.GossipMessage{
+		Content: dataMessage(1, []byte("data")),
+	}
+	bytes, err := proto.Marshal(dataMsg)
+	assert.NoError(t, err)
+
+	env := envelopes()[0]
+	env.Payload = bytes
+
+	msg, err := protoext.EnvelopeToGossipMessage(env)
+	assert.NoError(t, err)
+	assert.NotNil(t, msg)
+
+	assert.True(t, protoext.IsDataMsg(msg.GossipMessage))
+}
+
+func TestEnvelope_SignSecret(t *testing.T) {
+	dataMsg := &gossip.GossipMessage{
+		Content: dataMessage(1, []byte("data")),
+	}
+	bytes, err := proto.Marshal(dataMsg)
+	assert.NoError(t, err)
+
+	env := envelopes()[0]
+	env.Payload = bytes
+	env.SecretEnvelope = nil
+
+	protoext.SignSecret(env, func(message []byte) ([]byte, error) {
+		return message, nil
+	}, &gossip.Secret{
+		Content: &gossip.Secret_InternalEndpoint{
+			InternalEndpoint: "localhost:5050",
+		},
+	})
+
+	assert.NotNil(t, env.SecretEnvelope)
+	assert.Equal(t, protoext.InternalEndpoint(env.SecretEnvelope), "localhost:5050")
 }
 
 func envelopes() []*gossip.Envelope {

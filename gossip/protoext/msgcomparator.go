@@ -13,14 +13,6 @@ import (
 	"github.com/hyperledger/fabric/protos/gossip"
 )
 
-// Abs returns abs(a-b)
-func abs(a, b uint64) uint64 {
-	if a > b {
-		return a - b
-	}
-	return b - a
-}
-
 // NewGossipMessageComparator creates a MessageReplacingPolicy given a maximum number of blocks to hold
 func NewGossipMessageComparator(dataBlockStorageSize int) common.MessageReplacingPolicy {
 	return (&msgComparator{dataBlockStorageSize: dataBlockStorageSize}).getMsgReplacingPolicy()
@@ -122,4 +114,12 @@ func compareTimestamps(thisTS *gossip.PeerTime, thatTS *gossip.PeerTime) common.
 		return common.MessageInvalidated
 	}
 	return common.MessageInvalidates
+}
+
+// abs returns abs(a-b)
+func abs(a, b uint64) uint64 {
+	if a > b {
+		return a - b
+	}
+	return b - a
 }

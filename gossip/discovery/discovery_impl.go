@@ -403,7 +403,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(msg protoext.ReceivedMessage) {
 }
 
 func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, internalEndpoint string, nonce uint64) {
-	d.logger.Debug("Entering", targetMember.ToString())
+	d.logger.Debug("Entering", protoext.MemberToString(targetMember))
 
 	targetPeer := &NetworkMember{
 		Endpoint:         targetMember.Endpoint,
@@ -432,7 +432,7 @@ func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, intern
 		return
 	}
 
-	defer d.logger.Debug("Exiting, replying with", memResp.ToString())
+	defer d.logger.Debug("Exiting, replying with", protoext.MembershipResponseToString(memResp))
 
 	msg, err := protoext.NoopSign(&proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
@@ -524,7 +524,7 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *protoext.SignedGossipMessage
 			// resurrect peer
 			d.resurrectMember(m, *ts)
 		} else if !same(lastDeadTS, ts) {
-			d.logger.Debug("got old alive message about dead peer ", m.GetAliveMsg().Membership.ToString(), "lastDeadTS:", lastDeadTS, "but got ts:", ts)
+			d.logger.Debug("got old alive message about dead peer ", protoext.MemberToString(m.GetAliveMsg().Membership), "lastDeadTS:", lastDeadTS, "but got ts:", ts)
 		}
 		return
 	}
@@ -537,7 +537,7 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *protoext.SignedGossipMessage
 		if before(lastAliveTS, ts) {
 			d.learnExistingMembers([]*protoext.SignedGossipMessage{m})
 		} else if !same(lastAliveTS, ts) {
-			d.logger.Debug("got old alive message about alive peer ", m.GetAliveMsg().Membership.ToString(), "lastAliveTS:", lastAliveTS, "but got ts:", ts)
+			d.logger.Debug("got old alive message about alive peer ", protoext.MemberToString(m.GetAliveMsg().Membership), "lastAliveTS:", lastAliveTS, "but got ts:", ts)
 		}
 
 	}
@@ -809,7 +809,7 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*protoext.SignedGo
 			d.logger.Warning("Expected alive message, got instead:", m)
 			return
 		}
-		d.logger.Debug("updating", am.ToString())
+		d.logger.Debug("updating", protoext.AliveMessageToString(am))
 
 		var internalEndpoint string
 		if prevNetMem := d.id2Member[string(am.Membership.PkiId)]; prevNetMem != nil {
@@ -834,7 +834,7 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*protoext.SignedGo
 			d.logger.Warning(am.Membership, "has already expired")
 			continue
 		} else {
-			d.logger.Debug("Updating aliveness data:", am.ToString())
+			d.logger.Debug("Updating aliveness data:", protoext.AliveMessageToString(am))
 			// update existing aliveness data
 			alive := d.aliveLastTS[string(am.Membership.PkiId)]
 			alive.incTime = tsToTime(am.Timestamp.IncNum)

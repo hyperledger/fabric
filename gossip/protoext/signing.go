@@ -69,6 +69,16 @@ func EnvelopeToGossipMessage(e *gossip.Envelope) (*SignedGossipMessage, error) {
 	}, nil
 }
 
+// InternalEndpoint returns the internal endpoint in the secret envelope, or an
+// empty string if a failure occurs.
+func InternalEndpoint(s *gossip.SecretEnvelope) string {
+	secret := &gossip.Secret{}
+	if err := proto.Unmarshal(s.Payload, secret); err != nil {
+		return ""
+	}
+	return secret.GetInternalEndpoint()
+}
+
 // SignedGossipMessage contains a GossipMessage and the Envelope from which it
 // came from
 type SignedGossipMessage struct {
@@ -159,30 +169,30 @@ func (m *SignedGossipMessage) String() string {
 		if m.GetStateResponse() != nil {
 			gMsg = fmt.Sprintf("StateResponse with %d items", len(m.GetStateResponse().Payloads))
 		} else if IsDataMsg(m.GossipMessage) && m.GetDataMsg().Payload != nil {
-			gMsg = m.GetDataMsg().Payload.ToString()
+			gMsg = PayloadToString(m.GetDataMsg().Payload)
 		} else if IsDataUpdate(m.GossipMessage) {
 			update := m.GetDataUpdate()
-			gMsg = fmt.Sprintf("DataUpdate: %s", update.ToString())
+			gMsg = fmt.Sprintf("DataUpdate: %s", DataUpdateToString(update))
 		} else if m.GetMemRes() != nil {
-			gMsg = m.GetMemRes().ToString()
+			gMsg = MembershipResponseToString(m.GetMemRes())
 		} else if IsStateInfoSnapshot(m.GossipMessage) {
-			gMsg = m.GetStateSnapshot().ToString()
+			gMsg = StateInfoSnapshotToString(m.GetStateSnapshot())
 		} else if m.GetPrivateRes() != nil {
-			gMsg = m.GetPrivateRes().ToString()
+			gMsg = RemovePvtDataResponseToString(m.GetPrivateRes())
 		} else if m.GetAliveMsg() != nil {
-			gMsg = m.GetAliveMsg().ToString()
+			gMsg = AliveMessageToString(m.GetAliveMsg())
 		} else if m.GetMemReq() != nil {
-			gMsg = m.GetMemReq().ToString()
+			gMsg = MembershipRequestToString(m.GetMemReq())
 		} else if m.GetStateInfoPullReq() != nil {
-			gMsg = m.GetStateInfoPullReq().ToString()
+			gMsg = StateInfoPullRequestToString(m.GetStateInfoPullReq())
 		} else if m.GetStateInfo() != nil {
-			gMsg = m.GetStateInfo().ToString()
+			gMsg = StateInfoToString(m.GetStateInfo())
 		} else if m.GetDataDig() != nil {
-			gMsg = m.GetDataDig().ToString()
+			gMsg = DataDigestToString(m.GetDataDig())
 		} else if m.GetDataReq() != nil {
-			gMsg = m.GetDataReq().ToString()
+			gMsg = DataRequestToString(m.GetDataReq())
 		} else if m.GetLeadershipMsg() != nil {
-			gMsg = m.GetLeadershipMsg().ToString()
+			gMsg = LeadershipMessageToString(m.GetLeadershipMsg())
 		} else {
 			gMsg = m.GossipMessage.String()
 			isSimpleMsg = true
