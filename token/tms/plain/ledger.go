@@ -33,7 +33,12 @@ func (p *MemoryLedger) GetState(namespace string, key string) ([]byte, error) {
 // SetState sets the given value for the given namespace and Key. For a chaincode, the namespace corresponds to the chaincodeID
 func (p *MemoryLedger) SetState(namespace string, key string, value []byte) error {
 	p.entries[key] = value
+	return nil
+}
 
+// DeleteState deletes the given namespace and key
+func (p *MemoryLedger) DeleteState(namespace string, key string) error {
+	delete(p.entries, key)
 	return nil
 }
 

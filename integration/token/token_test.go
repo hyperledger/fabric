@@ -379,9 +379,27 @@ var _ bool = Describe("Token EndToEnd", func() {
 			RunTransferRequest(tClient, issuedTokens, recipientUser1, expectedTransferTransaction)
 
 			By("User2 try to transfer again the same token already transferred before")
-			txid, ordererStatus, committed, err := RunTransferRequestWithFailure(tClient, issuedTokens, recipientUser1)
+			_, ordererStatus, committed, err := RunTransferRequestWithFailure(tClient, issuedTokens, recipientUser1)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txid)))
+			Expect(err.Error()).To(ContainSubstring("does not exist"))
+			Expect(ordererStatus).To(BeNil())
+			Expect(committed).To(BeFalse())
+
+			By("User2 try to transfer again the same token already transferred before but bypassing prover peer")
+			expectedTokenTransaction = &token.TokenTransaction{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Transfer{
+							Transfer: &token.Transfer{
+								Inputs: []*token.TokenId{{TxId: txID, Index: 0}},
+								Outputs: []*token.Token{{
+									Owner:    &token.TokenOwner{Raw: []byte("test-owner")},
+									Type:     "ABC123",
+									Quantity: ToHex(119),
+								}}}}}}}
+			tempTxID, ordererStatus, committed, err := SubmitTokenTx(tClient, expectedTokenTransaction)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", tempTxID)))
 			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
 			Expect(committed).To(BeFalse())
 		})
@@ -401,7 +419,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			tClient = GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
 			_, ordererStatus, committed, err := RunTransferRequestWithFailure(tClient, issuedTokens, recipientUser1)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError("error from prover: the requestor does not own inputs"))
+			Expect(err).To(MatchError("error from prover: the requestor does not own token"))
 			Expect(ordererStatus).To(BeNil())
 			Expect(committed).To(BeFalse())
 
