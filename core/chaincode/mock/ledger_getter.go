@@ -2,16 +2,16 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	ledger "github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger"
 )
 
 type LedgerGetter struct {
-	GetLedgerStub        func(string) ledger.PeerLedger
+	GetLedgerStub        func(cid string) ledger.PeerLedger
 	getLedgerMutex       sync.RWMutex
 	getLedgerArgsForCall []struct {
-		arg1 string
+		cid string
 	}
 	getLedgerReturns struct {
 		result1 ledger.PeerLedger
@@ -23,22 +23,21 @@ type LedgerGetter struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *LedgerGetter) GetLedger(arg1 string) ledger.PeerLedger {
+func (fake *LedgerGetter) GetLedger(cid string) ledger.PeerLedger {
 	fake.getLedgerMutex.Lock()
 	ret, specificReturn := fake.getLedgerReturnsOnCall[len(fake.getLedgerArgsForCall)]
 	fake.getLedgerArgsForCall = append(fake.getLedgerArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("GetLedger", []interface{}{arg1})
+		cid string
+	}{cid})
+	fake.recordInvocation("GetLedger", []interface{}{cid})
 	fake.getLedgerMutex.Unlock()
 	if fake.GetLedgerStub != nil {
-		return fake.GetLedgerStub(arg1)
+		return fake.GetLedgerStub(cid)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.getLedgerReturns
-	return fakeReturns.result1
+	return fake.getLedgerReturns.result1
 }
 
 func (fake *LedgerGetter) GetLedgerCallCount() int {
@@ -47,22 +46,13 @@ func (fake *LedgerGetter) GetLedgerCallCount() int {
 	return len(fake.getLedgerArgsForCall)
 }
 
-func (fake *LedgerGetter) GetLedgerCalls(stub func(string) ledger.PeerLedger) {
-	fake.getLedgerMutex.Lock()
-	defer fake.getLedgerMutex.Unlock()
-	fake.GetLedgerStub = stub
-}
-
 func (fake *LedgerGetter) GetLedgerArgsForCall(i int) string {
 	fake.getLedgerMutex.RLock()
 	defer fake.getLedgerMutex.RUnlock()
-	argsForCall := fake.getLedgerArgsForCall[i]
-	return argsForCall.arg1
+	return fake.getLedgerArgsForCall[i].cid
 }
 
 func (fake *LedgerGetter) GetLedgerReturns(result1 ledger.PeerLedger) {
-	fake.getLedgerMutex.Lock()
-	defer fake.getLedgerMutex.Unlock()
 	fake.GetLedgerStub = nil
 	fake.getLedgerReturns = struct {
 		result1 ledger.PeerLedger
@@ -70,8 +60,6 @@ func (fake *LedgerGetter) GetLedgerReturns(result1 ledger.PeerLedger) {
 }
 
 func (fake *LedgerGetter) GetLedgerReturnsOnCall(i int, result1 ledger.PeerLedger) {
-	fake.getLedgerMutex.Lock()
-	defer fake.getLedgerMutex.Unlock()
 	fake.GetLedgerStub = nil
 	if fake.getLedgerReturnsOnCall == nil {
 		fake.getLedgerReturnsOnCall = make(map[int]struct {

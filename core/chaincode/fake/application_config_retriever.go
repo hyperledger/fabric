@@ -2,16 +2,16 @@
 package fake
 
 import (
-	sync "sync"
+	"sync"
 
-	channelconfig "github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/channelconfig"
 )
 
 type ApplicationConfigRetriever struct {
-	GetApplicationConfigStub        func(string) (channelconfig.Application, bool)
+	GetApplicationConfigStub        func(cid string) (channelconfig.Application, bool)
 	getApplicationConfigMutex       sync.RWMutex
 	getApplicationConfigArgsForCall []struct {
-		arg1 string
+		cid string
 	}
 	getApplicationConfigReturns struct {
 		result1 channelconfig.Application
@@ -25,22 +25,21 @@ type ApplicationConfigRetriever struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ApplicationConfigRetriever) GetApplicationConfig(arg1 string) (channelconfig.Application, bool) {
+func (fake *ApplicationConfigRetriever) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
 	fake.getApplicationConfigMutex.Lock()
 	ret, specificReturn := fake.getApplicationConfigReturnsOnCall[len(fake.getApplicationConfigArgsForCall)]
 	fake.getApplicationConfigArgsForCall = append(fake.getApplicationConfigArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("GetApplicationConfig", []interface{}{arg1})
+		cid string
+	}{cid})
+	fake.recordInvocation("GetApplicationConfig", []interface{}{cid})
 	fake.getApplicationConfigMutex.Unlock()
 	if fake.GetApplicationConfigStub != nil {
-		return fake.GetApplicationConfigStub(arg1)
+		return fake.GetApplicationConfigStub(cid)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.getApplicationConfigReturns
-	return fakeReturns.result1, fakeReturns.result2
+	return fake.getApplicationConfigReturns.result1, fake.getApplicationConfigReturns.result2
 }
 
 func (fake *ApplicationConfigRetriever) GetApplicationConfigCallCount() int {
@@ -49,22 +48,13 @@ func (fake *ApplicationConfigRetriever) GetApplicationConfigCallCount() int {
 	return len(fake.getApplicationConfigArgsForCall)
 }
 
-func (fake *ApplicationConfigRetriever) GetApplicationConfigCalls(stub func(string) (channelconfig.Application, bool)) {
-	fake.getApplicationConfigMutex.Lock()
-	defer fake.getApplicationConfigMutex.Unlock()
-	fake.GetApplicationConfigStub = stub
-}
-
 func (fake *ApplicationConfigRetriever) GetApplicationConfigArgsForCall(i int) string {
 	fake.getApplicationConfigMutex.RLock()
 	defer fake.getApplicationConfigMutex.RUnlock()
-	argsForCall := fake.getApplicationConfigArgsForCall[i]
-	return argsForCall.arg1
+	return fake.getApplicationConfigArgsForCall[i].cid
 }
 
 func (fake *ApplicationConfigRetriever) GetApplicationConfigReturns(result1 channelconfig.Application, result2 bool) {
-	fake.getApplicationConfigMutex.Lock()
-	defer fake.getApplicationConfigMutex.Unlock()
 	fake.GetApplicationConfigStub = nil
 	fake.getApplicationConfigReturns = struct {
 		result1 channelconfig.Application
@@ -73,8 +63,6 @@ func (fake *ApplicationConfigRetriever) GetApplicationConfigReturns(result1 chan
 }
 
 func (fake *ApplicationConfigRetriever) GetApplicationConfigReturnsOnCall(i int, result1 channelconfig.Application, result2 bool) {
-	fake.getApplicationConfigMutex.Lock()
-	defer fake.getApplicationConfigMutex.Unlock()
 	fake.GetApplicationConfigStub = nil
 	if fake.getApplicationConfigReturnsOnCall == nil {
 		fake.getApplicationConfigReturnsOnCall = make(map[int]struct {

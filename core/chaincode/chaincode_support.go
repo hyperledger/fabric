@@ -37,10 +37,10 @@ type Launcher interface {
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
 type Lifecycle interface {
 	// ChaincodeDefinition returns the details for a chaincode by name
-	ChaincodeDefinition(chaincodeName string, qe ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
+	ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error)
 
 	// ChaincodeContainerInfo returns the package necessary to launch a chaincode
-	ChaincodeContainerInfo(chaincodeName string, qe ledger.QueryExecutor) (*ccprovider.ChaincodeContainerInfo, error)
+	ChaincodeContainerInfo(chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error)
 }
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
