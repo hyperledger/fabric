@@ -1,20 +1,10 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
-package kvrwset
+package rwsetutil
 
 import (
 	"io/ioutil"
@@ -26,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const binaryTestFileName = "kvrwsetV1ProtoBytes"
+const binaryTestFileName = "testdata/kvrwsetV1ProtoBytes"
 
 // TestKVRWSetV1BackwardCompatible passes if the 'KVRWSet' messgae declared in the latest version
 // is able to unmarshal the protobytes that are produced by the 'KVRWSet' proto message declared in
@@ -53,13 +43,13 @@ func PrepareBinaryFileSampleKVRWSetV1(t *testing.T) {
 
 func constructSampleKVRWSet() *kvrwset.KVRWSet {
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "k0", EndKey: "k9", ItrExhausted: true}
-	rqi1.SetRawReads([]*kvrwset.KVRead{
+	SetRawReads(rqi1, []*kvrwset.KVRead{
 		{Key: "k1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}},
 		{Key: "k2", Version: &kvrwset.Version{BlockNum: 1, TxNum: 2}},
 	})
 
 	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "k00", EndKey: "k90", ItrExhausted: true}
-	rqi2.SetMerkelSummary(&kvrwset.QueryReadsMerkleSummary{MaxDegree: 5, MaxLevel: 4, MaxLevelHashes: [][]byte{[]byte("Hash-1"), []byte("Hash-2")}})
+	SetMerkelSummary(rqi2, &kvrwset.QueryReadsMerkleSummary{MaxDegree: 5, MaxLevel: 4, MaxLevelHashes: [][]byte{[]byte("Hash-1"), []byte("Hash-2")}})
 	return &kvrwset.KVRWSet{
 		Reads:            []*kvrwset.KVRead{{Key: "key1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
 		RangeQueriesInfo: []*kvrwset.RangeQueryInfo{rqi1, rqi2},

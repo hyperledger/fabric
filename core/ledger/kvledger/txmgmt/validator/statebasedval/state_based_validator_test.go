@@ -239,7 +239,7 @@ func TestPhantomValidation(t *testing.T) {
 	//rwset1 should be valid
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: true}
-	rqi1.SetRawReads([]*kvrwset.KVRead{
+	rwsetutil.SetRawReads(rqi1, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2))})
 	rwsetBuilder1.AddToRangeQuerySet("ns1", rqi1)
@@ -248,7 +248,7 @@ func TestPhantomValidation(t *testing.T) {
 	//rwset2 should not be valid - Version of key4 changed
 	rwsetBuilder2 := rwsetutil.NewRWSetBuilder()
 	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: false}
-	rqi2.SetRawReads([]*kvrwset.KVRead{
+	rwsetutil.SetRawReads(rqi2, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2)),
 		rwsetutil.NewKVRead("key4", version.NewHeight(1, 2))})
@@ -258,7 +258,7 @@ func TestPhantomValidation(t *testing.T) {
 	//rwset3 should not be valid - simulate key3 got committed to db
 	rwsetBuilder3 := rwsetutil.NewRWSetBuilder()
 	rqi3 := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: false}
-	rqi3.SetRawReads([]*kvrwset.KVRead{
+	rwsetutil.SetRawReads(rqi3, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 		rwsetutil.NewKVRead("key4", version.NewHeight(1, 3))})
 	rwsetBuilder3.AddToRangeQuerySet("ns1", rqi3)
@@ -269,7 +269,7 @@ func TestPhantomValidation(t *testing.T) {
 	rwsetBuilder4.AddToWriteSet("ns1", "key3", nil)
 	rwsetBuilder5 := rwsetutil.NewRWSetBuilder()
 	rqi5 := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: false}
-	rqi5.SetRawReads([]*kvrwset.KVRead{
+	rwsetutil.SetRawReads(rqi5, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2)),
 		rwsetutil.NewKVRead("key4", version.NewHeight(1, 3))})
@@ -282,7 +282,7 @@ func TestPhantomValidation(t *testing.T) {
 
 	rwsetBuilder7 := rwsetutil.NewRWSetBuilder()
 	rqi7 := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: false}
-	rqi7.SetRawReads([]*kvrwset.KVRead{
+	rwsetutil.SetRawReads(rqi7, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2)),
 		rwsetutil.NewKVRead("key4", version.NewHeight(1, 3))})
@@ -322,7 +322,7 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 		rwsetutil.NewKVRead("key7", version.NewHeight(1, 6)),
 		rwsetutil.NewKVRead("key8", version.NewHeight(1, 7)),
 	}
-	rqi1.SetMerkelSummary(buildTestHashResults(t, 2, kvReadsDuringSimulation1))
+	rwsetutil.SetMerkelSummary(rqi1, buildTestHashResults(t, 2, kvReadsDuringSimulation1))
 	rwsetBuilder1.AddToRangeQuerySet("ns1", rqi1)
 	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder1), []int{})
 
@@ -339,7 +339,7 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 		rwsetutil.NewKVRead("key8", version.NewHeight(1, 7)),
 		rwsetutil.NewKVRead("key9", version.NewHeight(1, 8)),
 	}
-	rqi2.SetMerkelSummary(buildTestHashResults(t, 2, kvReadsDuringSimulation2))
+	rwsetutil.SetMerkelSummary(rqi2, buildTestHashResults(t, 2, kvReadsDuringSimulation2))
 	rwsetBuilder2.AddToRangeQuerySet("ns1", rqi2)
 	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder2), []int{0})
 }

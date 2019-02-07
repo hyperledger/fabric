@@ -300,10 +300,10 @@ func (h *queryHelper) addRangeQueryInfo() {
 				return
 			}
 			if results != nil {
-				itr.rangeQueryInfo.SetRawReads(results)
+				rwsetutil.SetRawReads(itr.rangeQueryInfo, results)
 			}
 			if hash != nil {
-				itr.rangeQueryInfo.SetMerkelSummary(hash)
+				rwsetutil.SetMerkelSummary(itr.rangeQueryInfo, hash)
 			}
 			h.rwsetBuilder.AddToRangeQuerySet(itr.ns, itr.rangeQueryInfo)
 		}

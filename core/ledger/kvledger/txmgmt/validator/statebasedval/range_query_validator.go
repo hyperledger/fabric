@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package statebasedval
@@ -123,7 +113,7 @@ func (v *rangeQueryHashValidator) validate() (bool, error) {
 			if _, merkle, err = v.resultsHelper.Done(); err != nil {
 				return false, err
 			}
-			equals := inMerkle.Equal(merkle)
+			equals := merkleSummariesEqual(inMerkle, merkle)
 			logger.Debugf("Combined iterator exhausted. merkle=%#v, equals=%t", merkle, equals)
 			return equals, nil
 		}
@@ -150,6 +140,23 @@ func (v *rangeQueryHashValidator) validate() (bool, error) {
 			return false, nil
 		}
 	}
+}
+
+func merkleSummariesEqual(ms, anotherMS *kvrwset.QueryReadsMerkleSummary) bool {
+	if anotherMS == nil {
+		return false
+	}
+	if ms.MaxDegree != anotherMS.MaxDegree ||
+		ms.MaxLevel != anotherMS.MaxLevel ||
+		len(ms.MaxLevelHashes) != len(anotherMS.MaxLevelHashes) {
+		return false
+	}
+	for i := 0; i < len(ms.MaxLevelHashes); i++ {
+		if !bytes.Equal(ms.MaxLevelHashes[i], anotherMS.MaxLevelHashes[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 func convertToVersionHeight(v *kvrwset.Version) *version.Height {
