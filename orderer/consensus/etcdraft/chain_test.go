@@ -1970,25 +1970,19 @@ var _ = Describe("Chain", func() {
 
 				c1.cutter.CutNext = true
 				for i := 0; i < 3; i++ {
-					err := c1.Order(env, 0)
-					Expect(err).NotTo(HaveOccurred())
+					Expect(c1.Order(env, 0)).To(Succeed())
 				}
 
 				Consistently(c1.support.WriteBlockCallCount).Should(Equal(0))
 
 				network.connect(1)
 
-				// keep ticking leader until all the blocks are replicated and committed.
-				// Otherwise, if we only tick once, and leader was still preserving block
-				// data to disk due to long wal sync, this tick may be dropped and cannot
-				// trigger retransmission of messages upon reconnection.
-				Eventually(func() int {
-					c1.clock.Increment(interval)
-					return c1.support.WriteBlockCallCount()
-				}, LongEventualTimeout).Should(Equal(3))
+				// Enque another env to trigger resend of previous data
+				Expect(c1.Order(env, 0)).To(Succeed())
 
-				Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
-				Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
+				network.exec(func(c *chain) {
+					Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(4))
+				})
 			})
 
 			It("new leader should wait for in-fight blocks to commit before accepting new env", func() {
