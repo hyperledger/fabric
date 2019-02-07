@@ -9,7 +9,6 @@ package plain_test
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
@@ -137,48 +136,29 @@ var _ = Describe("Transactor", func() {
 	It("converts a transfer request with no inputs into a token transaction", func() {
 		transferRequest := &token.TransferRequest{
 			Credential: []byte("credential"),
-			TokenIds:   [][]byte{},
+			TokenIds:   []*token.InputId{},
 			Shares:     recipientTransferShares,
 		}
 
 		tt, err := transactor.RequestTransfer(transferRequest)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(tt).To(Equal(&token.TokenTransaction{
-			Action: &token.TokenTransaction_PlainAction{
-				PlainAction: &token.PlainTokenAction{
-					Data: &token.PlainTokenAction_PlainTransfer{
-						PlainTransfer: &token.PlainTransfer{
-							Inputs: nil,
-							Outputs: []*token.PlainOutput{
-								{Owner: []byte("R1"), Type: "", Quantity: 1001},
-								{Owner: []byte("R2"), Type: "", Quantity: 1002},
-								{Owner: []byte("R3"), Type: "", Quantity: 1003},
-							},
-						},
-					},
-				},
-			},
-		}))
+		Expect(tt).To(BeNil())
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("no token IDs in transfer request"))
+
 	})
 
-	Describe("when no inputs or tokens to issue are provided", func() {
-		It("creates a token transaction with no outputs", func() {
+	Describe("when no recipient shares are provided", func() {
+		It("returns an error", func() {
 			transferRequest := &token.TransferRequest{
 				Credential: []byte("credential"),
-				TokenIds:   [][]byte{},
+				TokenIds:   []*token.InputId{{TxId: "george", Index: 0}},
 				Shares:     []*token.RecipientTransferShare{},
 			}
 
 			tt, err := transactor.RequestTransfer(transferRequest)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(tt).To(Equal(&token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainTransfer{PlainTransfer: &token.PlainTransfer{}},
-					},
-				},
-			}))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("no shares in transfer request"))
+			Expect(tt).To(BeNil())
 		})
 	})
 
@@ -207,7 +187,7 @@ var _ = Describe("Transactor", func() {
 		It("creates a valid transfer request", func() {
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("credential"),
-				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "george" + string("\x00") + "0" + string("\x00"))},
+				TokenIds:   []*token.InputId{{TxId: "george", Index: 0}},
 				Shares:     recipientTransferShares,
 			}
 			tt, err := transactor.RequestTransfer(transferRequest)
@@ -237,7 +217,7 @@ var _ = Describe("Transactor", func() {
 		var (
 			fakeLedger      *mock.LedgerWriter
 			transferRequest *token.TransferRequest
-			inputID         string
+			inputID         *token.InputId
 		)
 
 		BeforeEach(func() {
@@ -245,17 +225,18 @@ var _ = Describe("Transactor", func() {
 			fakeLedger.SetStateReturns(nil)
 			fakeLedger.GetStateReturnsOnCall(0, nil, nil)
 			transactor.Ledger = fakeLedger
-			inputID = "\x00" + strings.Join([]string{"tokenOutput", "george", "0"}, "\x00") + "\x00"
+
+			inputID = &token.InputId{TxId: "george", Index: 0}
 		})
 
 		It("returns an invalid transaction error", func() {
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("credential"),
-				TokenIds:   [][]byte{[]byte(inputID)},
+				TokenIds:   []*token.InputId{inputID},
 				Shares:     recipientTransferShares,
 			}
 			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err.Error()).To(Equal(fmt.Sprintf("input '%s' does not exist", inputID)))
+			Expect(err.Error()).To(Equal(fmt.Sprintf("input '%s' does not exist", string("\x00")+"tokenOutput"+string("\x00")+"george"+string("\x00")+"0"+string("\x00"))))
 		})
 	})
 
@@ -265,8 +246,8 @@ var _ = Describe("Transactor", func() {
 			transferRequest *token.TransferRequest
 			inputBytes1     []byte
 			inputBytes2     []byte
-			inputID1        string
-			inputID2        string
+			inputID1        *token.InputId
+			inputID2        *token.InputId
 		)
 
 		BeforeEach(func() {
@@ -290,114 +271,18 @@ var _ = Describe("Transactor", func() {
 			fakeLedger.GetStateReturnsOnCall(0, inputBytes1, nil)
 			fakeLedger.GetStateReturnsOnCall(1, inputBytes2, nil)
 			transactor.Ledger = fakeLedger
-			inputID1 = "\x00" + strings.Join([]string{"tokenOutput", "george", "0"}, "\x00") + "\x00"
-			inputID2 = "\x00" + strings.Join([]string{"tokenOutput", "george", "1"}, "\x00") + "\x00"
+			inputID1 = &token.InputId{TxId: "george", Index: 0}
+			inputID2 = &token.InputId{TxId: "george", Index: 1}
 		})
 
 		It("returns an invalid transaction error", func() {
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("credential"),
-				TokenIds:   [][]byte{[]byte(inputID1), []byte(inputID2)},
+				TokenIds:   []*token.InputId{inputID1, inputID2},
 				Shares:     recipientTransferShares,
 			}
 			_, err := transactor.RequestTransfer(transferRequest)
 			Expect(err.Error()).To(Equal("two or more token types specified in input: 'TOK1', 'TOK2'"))
-		})
-	})
-
-	Describe("when a transfer request where the input is a composite key with an invalid number of components is provided", func() {
-		var (
-			fakeLedger      *mock.LedgerWriter
-			transferRequest *token.TransferRequest
-			inputID         string
-		)
-
-		BeforeEach(func() {
-			fakeLedger = &mock.LedgerWriter{}
-			transactor.Ledger = fakeLedger
-			inputID = "\x00" + strings.Join([]string{"tokenOutput", "george", "0", "1"}, "\x00") + "\x00"
-		})
-
-		It("returns an invalid transaction error", func() {
-			transferRequest = &token.TransferRequest{
-				Credential: []byte("credential"),
-				TokenIds:   [][]byte{[]byte(inputID)},
-				Shares:     recipientTransferShares,
-			}
-			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err.Error()).To(Equal("not enough components in output ID composite key; expected 2, received '[george 0 1]'"))
-		})
-	})
-
-	Describe("when a transfer request where the input is not a composite key is provided", func() {
-		var (
-			fakeLedger      *mock.LedgerWriter
-			transferRequest *token.TransferRequest
-			inputID         string
-		)
-
-		BeforeEach(func() {
-			fakeLedger = &mock.LedgerWriter{}
-			transactor.Ledger = fakeLedger
-			inputID = "not a composite key"
-		})
-
-		It("returns an invalid transaction error", func() {
-			transferRequest = &token.TransferRequest{
-				Credential: []byte("credential"),
-				TokenIds:   [][]byte{[]byte(inputID)},
-				Shares:     recipientTransferShares,
-			}
-			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err.Error()).To(Equal("error splitting input composite key: 'invalid composite key - not enough components found in key 'not a composite key''"))
-		})
-	})
-
-	Describe("when a transfer request where the input is a composite key with an invalid namespace is provided", func() {
-		var (
-			fakeLedger      *mock.LedgerWriter
-			transferRequest *token.TransferRequest
-			inputID         string
-		)
-
-		BeforeEach(func() {
-			fakeLedger = &mock.LedgerWriter{}
-			transactor.Ledger = fakeLedger
-			inputID = "\x00" + strings.Join([]string{"badNamespace", "george", "0"}, "\x00") + "\x00"
-		})
-
-		It("returns an invalid transaction error", func() {
-			transferRequest = &token.TransferRequest{
-				Credential: []byte("credential"),
-				TokenIds:   [][]byte{[]byte(inputID)},
-				Shares:     recipientTransferShares,
-			}
-			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err.Error()).To(Equal("namespace not 'tokenOutput': 'badNamespace'"))
-		})
-	})
-
-	Describe("when a transfer request where the input is a composite key with an output index that is not an integer is provided", func() {
-		var (
-			fakeLedger      *mock.LedgerWriter
-			transferRequest *token.TransferRequest
-			inputID         string
-		)
-
-		BeforeEach(func() {
-			fakeLedger = &mock.LedgerWriter{}
-			transactor.Ledger = fakeLedger
-			inputID = "\x00" + strings.Join([]string{"tokenOutput", "george", "bear"}, "\x00") + "\x00"
-		})
-
-		It("returns an invalid transaction error", func() {
-			transferRequest = &token.TransferRequest{
-				Credential: []byte("credential"),
-				TokenIds:   [][]byte{[]byte(inputID)},
-				Shares:     recipientTransferShares,
-			}
-			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err.Error()).To(Equal("error parsing output index 'bear': 'strconv.Atoi: parsing \"bear\": invalid syntax'"))
 		})
 	})
 
@@ -430,7 +315,7 @@ var _ = Describe("Transactor", func() {
 			redeemQuantity = inputQuantity
 			redeemRequest = &token.RedeemRequest{
 				Credential:       []byte("credential"),
-				TokenIds:         [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "robert" + string("\x00") + "0" + string("\x00"))},
+				TokenIds:         []*token.InputId{{TxId: "robert", Index: uint32(0)}},
 				QuantityToRedeem: redeemQuantity,
 			}
 			tt, err := transactor.RequestRedeem(redeemRequest)
@@ -458,7 +343,7 @@ var _ = Describe("Transactor", func() {
 			unredeemedQuantity := inputQuantity - 50
 			redeemRequest = &token.RedeemRequest{
 				Credential:       []byte("credential"),
-				TokenIds:         [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "robert" + string("\x00") + "0" + string("\x00"))},
+				TokenIds:         []*token.InputId{{TxId: "robert", Index: uint32(0)}},
 				QuantityToRedeem: redeemQuantity,
 			}
 			tt, err := transactor.RequestRedeem(redeemRequest)
@@ -487,7 +372,7 @@ var _ = Describe("Transactor", func() {
 				redeemQuantity = inputQuantity + 10
 				redeemRequest = &token.RedeemRequest{
 					Credential:       []byte("credential"),
-					TokenIds:         [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "robert" + string("\x00") + "0" + string("\x00"))},
+					TokenIds:         []*token.InputId{{TxId: "robert", Index: uint32(0)}},
 					QuantityToRedeem: redeemQuantity,
 				}
 			})
@@ -521,7 +406,8 @@ var _ = Describe("Transactor", func() {
 
 			expectationRequest = &token.ExpectationRequest{
 				Credential: []byte("credential"),
-				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "robert" + string("\x00") + "0" + string("\x00"))},
+				TokenIds:   []*token.InputId{{TxId: "robert", Index: uint32(0)}},
+
 				Expectation: &token.TokenExpectation{
 					Expectation: &token.TokenExpectation_PlainExpectation{
 						PlainExpectation: &token.PlainExpectation{
@@ -689,8 +575,10 @@ var _ = Describe("Transactor Approve", func() {
 
 		It("creates a valid approve request", func() {
 			approveRequest = &token.ApproveRequest{
-				Credential:      []byte("credential"),
-				TokenIds:        [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "0" + string("\x00"))},
+				Credential: []byte("credential"),
+				TokenIds:   []*token.InputId{{TxId: "lalaland", Index: uint32(0)}},
+
+				//[][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "0" + string("\x00"))},
 				AllowanceShares: allowanceShares,
 			}
 			tt, err := transactor.RequestApprove(approveRequest)
@@ -728,7 +616,7 @@ var _ = Describe("Transactor Approve", func() {
 			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
 			approveRequest = &token.ApproveRequest{
 				Credential:      []byte("credential"),
-				TokenIds:        [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "0" + string("\x00"))},
+				TokenIds:        []*token.InputId{{TxId: "lalaland", Index: uint32(0)}},
 				AllowanceShares: allowanceShares,
 			}
 			tt, err := transactor.RequestApprove(approveRequest)
@@ -755,7 +643,7 @@ var _ = Describe("Transactor Approve", func() {
 		When("no inputs are provided", func() {
 			It("returns an error", func() {
 				approveRequest = &token.ApproveRequest{
-					TokenIds:        [][]byte{},
+					TokenIds:        []*token.InputId{},
 					AllowanceShares: allowanceShares,
 				}
 
@@ -768,9 +656,8 @@ var _ = Describe("Transactor Approve", func() {
 
 		When("no recipient shares are provided", func() {
 			It("returns an error", func() {
-				key := generateKey("1", "0", "tokenOutput")
 				approveRequest = &token.ApproveRequest{
-					TokenIds:        [][]byte{[]byte(key)},
+					TokenIds:        []*token.InputId{{TxId: "1", Index: 0}},
 					AllowanceShares: []*token.AllowanceRecipientShare{},
 				}
 
@@ -783,10 +670,8 @@ var _ = Describe("Transactor Approve", func() {
 
 		When("a quantity in a share <= 0", func() {
 			It("returns an error", func() {
-				key := generateKey("1", "0", "tokenOutput")
-
 				approveRequest = &token.ApproveRequest{
-					TokenIds:        [][]byte{[]byte(key)},
+					TokenIds:        []*token.InputId{{TxId: "1", Index: 0}},
 					AllowanceShares: []*token.AllowanceRecipientShare{{Recipient: []byte("Bob"), Quantity: 0}},
 				}
 
@@ -799,9 +684,8 @@ var _ = Describe("Transactor Approve", func() {
 
 		When("a recipient is not specified", func() {
 			It("returns an error", func() {
-				key := generateKey("1", "0", "tokenOutput")
 				approveRequest = &token.ApproveRequest{
-					TokenIds:        [][]byte{[]byte(key)},
+					TokenIds:        []*token.InputId{{TxId: "1", Index: 0}},
 					AllowanceShares: []*token.AllowanceRecipientShare{{Quantity: 10}},
 				}
 
@@ -825,10 +709,8 @@ var _ = Describe("Transactor Approve", func() {
 
 				fakeLedger.GetStateReturnsOnCall(1, inputBytes, nil)
 				approveRequest = &token.ApproveRequest{
-					Credential: []byte("credential"),
-					TokenIds: [][]byte{
-						[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "0" + string("\x00")),
-						[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "1" + string("\x00"))},
+					Credential:      []byte("credential"),
+					TokenIds:        []*token.InputId{{TxId: "lalaland", Index: 0}, {TxId: "lalaland", Index: 1}},
 					AllowanceShares: allowanceShares,
 				}
 
@@ -853,7 +735,7 @@ var _ = Describe("Transactor Approve", func() {
 				fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
 				approveRequest = &token.ApproveRequest{
 					Credential:      []byte("credential"),
-					TokenIds:        [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "0" + string("\x00"))},
+					TokenIds:        []*token.InputId{{TxId: "lalaland", Index: 0}},
 					AllowanceShares: allowanceShares,
 				}
 
@@ -869,7 +751,7 @@ var _ = Describe("Transactor Approve", func() {
 				fakeLedger.GetStateReturnsOnCall(0, nil, errors.New("banana"))
 				approveRequest = &token.ApproveRequest{
 					Credential:      []byte("credential"),
-					TokenIds:        [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "0" + string("\x00"))},
+					TokenIds:        []*token.InputId{{TxId: "lalaland", Index: 0}},
 					AllowanceShares: allowanceShares,
 				}
 				tt, err := transactor.RequestApprove(approveRequest)
@@ -922,7 +804,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 		It("creates a valid transferFrom request", func() {
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Charlie"),
-				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00"))},
+				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}},
 				Shares:     shares,
 			}
 			tt, err := transactor.RequestTransferFrom(transferRequest)
@@ -961,7 +843,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Charlie"),
-				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00"))},
+				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}},
 				Shares:     shares,
 			}
 			tt, err := transactor.RequestTransferFrom(transferRequest)
@@ -999,10 +881,8 @@ var _ = Describe("Transactor TransferFrom", func() {
 			fakeLedger.GetStateReturnsOnCall(1, inputBytes, nil)
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Charlie"),
-				TokenIds: [][]byte{
-					[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00")),
-					[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "1" + string("\x00"))},
-				Shares: shares,
+				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}, {TxId: "pot pourri", Index: 1}},
+				Shares:     shares,
 			}
 
 			tt, err := transactor.RequestTransferFrom(transferRequest)
@@ -1025,10 +905,8 @@ var _ = Describe("Transactor TransferFrom", func() {
 			fakeLedger.GetStateReturnsOnCall(1, inputBytes, nil)
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Charlie"),
-				TokenIds: [][]byte{
-					[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00")),
-					[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "1" + string("\x00"))},
-				Shares: shares,
+				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}, {TxId: "pot pourri", Index: 1}},
+				Shares:     shares,
 			}
 
 			tt, err := transactor.RequestTransferFrom(transferRequest)
@@ -1051,7 +929,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Charlie"),
-				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00"))},
+				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}},
 				Shares:     shares,
 			}
 			tt, err := transactor.RequestTransferFrom(transferRequest)
@@ -1064,7 +942,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 			transactor.PublicCredential = []byte("Dave")
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Dave"),
-				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00"))},
+				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}},
 				Shares:     shares,
 			}
 			tt, err := transactor.RequestTransferFrom(transferRequest)
@@ -1077,7 +955,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 			fakeLedger.GetStateReturnsOnCall(0, nil, errors.New("banana"))
 			transferRequest = &token.TransferRequest{
 				Credential: []byte("Charlie"),
-				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00"))},
+				TokenIds:   []*token.InputId{{TxId: "pot pourri", Index: 0}},
 				Shares:     shares,
 			}
 			tt, err := transactor.RequestTransferFrom(transferRequest)

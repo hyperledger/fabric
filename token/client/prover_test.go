@@ -215,7 +215,7 @@ var _ = Describe("TokenClient", func() {
 
 	Describe("RequestTransfer", func() {
 		var (
-			tokenIDs          [][]byte
+			tokenIDs          []*token.InputId
 			transferShares    []*token.RecipientTransferShare
 			marshalledCommand []byte
 			signedCommand     *token.SignedCommand
@@ -223,7 +223,10 @@ var _ = Describe("TokenClient", func() {
 
 		BeforeEach(func() {
 			// input data for Transfer
-			tokenIDs = [][]byte{[]byte("id1"), []byte("id2")}
+			tokenIDs = []*token.InputId{
+				{TxId: "id1", Index: 0},
+				{TxId: "id2", Index: 0},
+			}
 			transferShares = []*token.RecipientTransferShare{
 				{Recipient: []byte("alice"), Quantity: 100},
 				{Recipient: []byte("Bob"), Quantity: 50},
@@ -337,7 +340,7 @@ var _ = Describe("TokenClient", func() {
 
 	Describe("RequestRedeem", func() {
 		var (
-			tokenIds          [][]byte
+			tokenIDs          []*token.InputId
 			quantity          uint64
 			marshalledCommand []byte
 			signedCommand     *token.SignedCommand
@@ -345,14 +348,18 @@ var _ = Describe("TokenClient", func() {
 
 		BeforeEach(func() {
 			// input data for redeem
-			tokenIds = [][]byte{[]byte("id1"), []byte("id2")}
+			tokenIDs = []*token.InputId{
+				{TxId: "id1", Index: 0},
+				{TxId: "id2", Index: 0},
+			}
+
 			quantity = 100
 
 			command := &token.Command{
 				Header: commandHeader,
 				Payload: &token.Command_RedeemRequest{
 					RedeemRequest: &token.RedeemRequest{
-						TokenIds:         tokenIds,
+						TokenIds:         tokenIDs,
 						QuantityToRedeem: quantity,
 					},
 				},
@@ -365,7 +372,7 @@ var _ = Describe("TokenClient", func() {
 		})
 
 		It("returns serialized token transaction", func() {
-			response, err := prover.RequestRedeem(tokenIds, quantity, fakeSigningIdentity)
+			response, err := prover.RequestRedeem(tokenIDs, quantity, fakeSigningIdentity)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(response).To(Equal(serializedTokenTx))
 
@@ -385,7 +392,7 @@ var _ = Describe("TokenClient", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := prover.RequestRedeem(tokenIds, quantity, fakeSigningIdentity)
+				_, err := prover.RequestRedeem(tokenIDs, quantity, fakeSigningIdentity)
 				Expect(err).To(MatchError("wild-banana"))
 				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
 				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(0))
@@ -399,7 +406,7 @@ var _ = Describe("TokenClient", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := prover.RequestRedeem(tokenIds, quantity, fakeSigningIdentity)
+				_, err := prover.RequestRedeem(tokenIDs, quantity, fakeSigningIdentity)
 				Expect(err).To(MatchError("wild-banana"))
 				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(0))
 				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
@@ -415,7 +422,7 @@ var _ = Describe("TokenClient", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := prover.RequestRedeem(tokenIds, quantity, fakeSigningIdentity)
+				_, err := prover.RequestRedeem(tokenIDs, quantity, fakeSigningIdentity)
 				Expect(err).To(MatchError("wild-banana"))
 				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
 				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(1))
@@ -440,7 +447,7 @@ var _ = Describe("TokenClient", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := prover.RequestRedeem(tokenIds, quantity, fakeSigningIdentity)
+				_, err := prover.RequestRedeem(tokenIDs, quantity, fakeSigningIdentity)
 				Expect(err).To(MatchError("error from prover: flying-pineapple"))
 				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
 				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))

@@ -162,13 +162,16 @@ var _ = Describe("Client", func() {
 
 	Describe("Transfer", func() {
 		var (
-			tokenIDs       [][]byte
+			tokenIDs       []*token.InputId
 			transferShares []*token.RecipientTransferShare
 		)
 
 		BeforeEach(func() {
 			// input data for Transfer
-			tokenIDs = [][]byte{[]byte("id1"), []byte("id2")}
+			tokenIDs = []*token.InputId{
+				{TxId: "id1", Index: 0},
+				{TxId: "id2", Index: 0},
+			}
 			transferShares = []*token.RecipientTransferShare{
 				{Recipient: []byte("alice"), Quantity: 100},
 				{Recipient: []byte("Bob"), Quantity: 50},
@@ -259,13 +262,16 @@ var _ = Describe("Client", func() {
 
 	Describe("Redeem", func() {
 		var (
-			tokenIDs [][]byte
+			tokenIDs []*token.InputId
 			quantity uint64
 		)
 
 		BeforeEach(func() {
 			// input data for redeem
-			tokenIDs = [][]byte{[]byte("id1"), []byte("id2")}
+			tokenIDs = []*token.InputId{
+				{TxId: "id1", Index: 0},
+				{TxId: "id2", Index: 0},
+			}
 			quantity = 100
 		})
 

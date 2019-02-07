@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"syscall"
 	"time"
 	"unicode/utf8"
@@ -354,14 +353,9 @@ func RunListTokens(c *tokenclient.Client, expectedUnspentTokens *token.UnspentTo
 }
 
 func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, recipient []byte, expectedTokenTx *token.TokenTransaction) string {
-	inputTokenIDs := make([][]byte, len(inputTokens))
-	for i, token := range inputTokens {
-		index := strconv.Itoa(int(token.GetId().Index))
-		txID := token.GetId().TxId
-
-		id, err := createCompositeKey("tokenOutput", []string{txID, index})
-		Expect(err).NotTo(HaveOccurred())
-		inputTokenIDs[i] = []byte(id)
+	inputTokenIDs := make([]*token.InputId, len(inputTokens))
+	for i, inToken := range inputTokens {
+		inputTokenIDs[i] = &token.InputId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
 	}
 	shares := []*token.RecipientTransferShare{
 		{Recipient: recipient, Quantity: 119},
@@ -392,14 +386,9 @@ func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput,
 }
 
 func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, quantity uint64, expectedTokenTx *token.TokenTransaction) {
-	inputTokenIDs := make([][]byte, len(inputTokens))
-	for i, token := range inputTokens {
-		index := strconv.Itoa(int(token.GetId().Index))
-		txID := token.GetId().TxId
-
-		id, err := createCompositeKey("tokenOutput", []string{txID, index})
-		Expect(err).NotTo(HaveOccurred())
-		inputTokenIDs[i] = []byte(id)
+	inputTokenIDs := make([]*token.InputId, len(inputTokens))
+	for i, inToken := range inputTokens {
+		inputTokenIDs[i] = &token.InputId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
 	}
 
 	envelope, txid, ordererStatus, committed, err := c.Redeem(inputTokenIDs, quantity, 30*time.Second)
@@ -420,17 +409,12 @@ func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, q
 }
 
 func RunTransferRequestWithFailure(c *tokenclient.Client, inputTokens []*token.TokenOutput, recipient []byte) (string, *common.Status, bool, error) {
-	inputTokenIDs := make([][]byte, len(inputTokens))
+	inputTokenIDs := make([]*token.InputId, len(inputTokens))
 	var sum uint64 = 0
-	for i, token := range inputTokens {
-		index := strconv.Itoa(int(token.GetId().Index))
-		txID := token.GetId().TxId
+	for i, inToken := range inputTokens {
+		inputTokenIDs[i] = &token.InputId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
 
-		id, err := createCompositeKey("tokenOutput", []string{txID, index})
-		Expect(err).NotTo(HaveOccurred())
-		inputTokenIDs[i] = []byte(id)
-
-		sum += token.GetQuantity()
+		sum += inToken.GetQuantity()
 	}
 	shares := []*token.RecipientTransferShare{
 		{Recipient: recipient, Quantity: sum},
