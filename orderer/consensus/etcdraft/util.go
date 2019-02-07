@@ -296,27 +296,6 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.Metadata, 
 	return MetadataFromConfigUpdate(configUpdate)
 }
 
-// IsMembershipUpdate checks whenever block is config block and carries
-// raft cluster membership updates
-func IsMembershipUpdate(block *common.Block, currentMetadata *etcdraft.RaftMetadata) (bool, error) {
-	if !utils.IsConfigBlock(block) {
-		return false, nil
-	}
-
-	metadata, err := ConsensusMetadataFromConfigBlock(block)
-	if err != nil {
-		return false, errors.Wrap(err, "error reading consensus metadata")
-	}
-
-	if metadata != nil {
-		changes := ComputeMembershipChanges(currentMetadata.Consenters, metadata.Consenters)
-
-		return changes.TotalChanges > 0, nil
-	}
-
-	return false, nil
-}
-
 // ConsenterCertificate denotes a TLS certificate of a consenter
 type ConsenterCertificate []byte
 
