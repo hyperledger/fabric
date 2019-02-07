@@ -77,7 +77,7 @@ func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	}
 
 	// Build the spec
-	input := &pb.ChaincodeInput{}
+	input := chaincodeInput{}
 	if err := json.Unmarshal([]byte(chaincodeCtorJSON), &input); err != nil {
 		return spec, errors.Wrap(err, "chaincode argument error")
 	}
@@ -86,9 +86,34 @@ func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	spec = &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value[chaincodeLang]),
 		ChaincodeId: &pb.ChaincodeID{Path: chaincodePath, Name: chaincodeName, Version: chaincodeVersion},
-		Input:       input,
+		Input:       &input.ChaincodeInput,
 	}
 	return spec, nil
+}
+
+// chaincodeInput is wrapper around the proto defined ChaincodeInput message that
+// is decorated with a custom JSON unmarshaller.
+type chaincodeInput struct {
+	pb.ChaincodeInput
+}
+
+// UnmarshalJSON converts the string-based REST/JSON input to
+// the []byte-based current ChaincodeInput structure.
+func (c *chaincodeInput) UnmarshalJSON(b []byte) error {
+	sa := struct {
+		Function string
+		Args     []string
+	}{}
+	err := json.Unmarshal(b, &sa)
+	if err != nil {
+		return err
+	}
+	allArgs := sa.Args
+	if sa.Function != "" {
+		allArgs = append([]string{sa.Function}, sa.Args...)
+	}
+	c.Args = util.ToChaincodeArgs(allArgs...)
+	return nil
 }
 
 func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFactory) (err error) {

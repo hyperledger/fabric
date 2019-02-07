@@ -88,7 +88,7 @@ func TestCheckChaincodeCmdParamsEmptyCtor(t *testing.T) {
 
 func TestCheckValidJSON(t *testing.T) {
 	validJSON := `{"Args":["a","b","c"]}`
-	input := &pb.ChaincodeInput{}
+	input := &chaincodeInput{}
 	if err := json.Unmarshal([]byte(validJSON), &input); err != nil {
 		t.Fail()
 		t.Logf("Chaincode argument error: %s", err)
@@ -119,7 +119,7 @@ func TestCheckValidJSON(t *testing.T) {
 
 func TestCheckInvalidJSON(t *testing.T) {
 	invalidJSON := `{["a","b","c"]}`
-	input := &pb.ChaincodeInput{}
+	input := &chaincodeInput{}
 	if err := json.Unmarshal([]byte(invalidJSON), &input); err == nil {
 		t.Fail()
 		t.Logf("Bar argument error should have been caught: %s", invalidJSON)
