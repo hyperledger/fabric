@@ -42,9 +42,9 @@ var _ = Describe("Lifecycle", func() {
 				fakeLegacyProvider.NamespacesReturns([]string{"a", "b", "c"})
 			})
 
-			It("passes through to the legacy impl", func() {
+			It("appends its own namespaces the legacy impl", func() {
 				res := l.Namespaces()
-				Expect(res).To(Equal([]string{"a", "b", "c"}))
+				Expect(res).To(Equal([]string{"+lifecycle", "a", "b", "c"}))
 				Expect(fakeLegacyProvider.NamespacesCallCount()).To(Equal(1))
 			})
 		})

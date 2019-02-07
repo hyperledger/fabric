@@ -14,7 +14,7 @@ import (
 
 // Namespaces returns the list of namespaces which are relevant to chaincode lifecycle
 func (l *Lifecycle) Namespaces() []string {
-	return l.LegacyDeployedCCInfoProvider.Namespaces()
+	return append([]string{LifecycleNamespace}, l.LegacyDeployedCCInfoProvider.Namespaces()...)
 }
 
 // UpdatedChaincodes returns the chaincodes that are getting updated by the supplied 'stateUpdates'
@@ -36,6 +36,5 @@ func (l *Lifecycle) CollectionInfo(channelName, chaincodeName, collectionName st
 // ImplicitCollections implements function in interface ledger.DeployedChaincodeInfoProvider.  It returns
 //a slice that contains one proto msg for each of the implicit collections
 func (l *Lifecycle) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*cb.StaticCollectionConfig, error) {
-	// Implicit collections are a v2.0 lifecycle concept, so no need to fall-back
 	return nil, nil
 }
