@@ -19,7 +19,6 @@ import (
 	mock2 "github.com/hyperledger/fabric/token/ledger/mock"
 	"github.com/hyperledger/fabric/token/server"
 	"github.com/hyperledger/fabric/token/server/mock"
-	"github.com/hyperledger/fabric/token/tms/plain"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -131,8 +130,8 @@ var _ = Describe("Prover", func() {
 		fakeTransactor.RequestRedeemReturns(redeemTokenTransaction, nil)
 
 		transactorTokens = []*token.TokenOutput{
-			{Id: []byte("idaz"), Type: "typeaz", Quantity: 135},
-			{Id: []byte("idby"), Type: "typeby", Quantity: 79},
+			{Id: &token.InputId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: 135},
+			{Id: &token.InputId{TxId: "idby", Index: 0}, Type: "typeby", Quantity: 79},
 		}
 		unspentTokens = &token.UnspentTokens{Tokens: transactorTokens}
 
@@ -1163,12 +1162,11 @@ var _ = Describe("ProverListUnspentTokens", func() {
 		outputToken, err := proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100})
 		Expect(err).NotTo(HaveOccurred())
 
-		key, err := plain.GenerateKeyForTest("1", 0)
-		Expect(err).NotTo(HaveOccurred())
+		key := generateKey("1", "0", "tokenOutput")
 
 		queryResult = &queryresult.KV{Key: key, Value: outputToken}
 
-		unspentTokens := &token.UnspentTokens{Tokens: []*token.TokenOutput{{Type: "XYZ", Quantity: 100, Id: []byte(key)}}}
+		unspentTokens := &token.UnspentTokens{Tokens: []*token.TokenOutput{{Type: "XYZ", Quantity: 100, Id: &token.InputId{TxId: "1", Index: 0}}}}
 		expectedResponse = &token.CommandResponse_UnspentTokens{UnspentTokens: unspentTokens}
 	})
 
@@ -1248,12 +1246,9 @@ var _ = Describe("Prover Transfer using TMS", func() {
 	)
 	It("initializes variables and expected responses", func() {
 
-		var err error
 		keys := make([]string, 2)
-		keys[0], err = plain.GenerateKeyForTest("1", 0)
-		Expect(err).NotTo(HaveOccurred())
-		keys[1], err = plain.GenerateKeyForTest("2", 1)
-		Expect(err).NotTo(HaveOccurred())
+		keys[0] = generateKey("1", "0", "tokenOutput")
+		keys[1] = generateKey("2", "1", "tokenOutput")
 
 		tokenIDs := [][]byte{[]byte(keys[0]), []byte(keys[1])}
 
@@ -1281,6 +1276,7 @@ var _ = Describe("Prover Transfer using TMS", func() {
 		}
 
 		inputIDs, err := getInputIDs(keys)
+		Expect(err).NotTo(HaveOccurred())
 
 		outTokens := make([]*token.PlainOutput, 3)
 		outTokens[0] = &token.PlainOutput{Owner: []byte("Alice"), Type: "XYZ", Quantity: 20}
@@ -1738,4 +1734,8 @@ func getInputIDs(keys []string) ([]*token.InputId, error) {
 		inputIDs[i] = &token.InputId{TxId: indices[0], Index: uint32(index)}
 	}
 	return inputIDs, nil
+}
+
+func generateKey(txID, index, namespace string) string {
+	return "\x00" + namespace + "\x00" + txID + "\x00" + index + "\x00"
 }

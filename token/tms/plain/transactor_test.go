@@ -10,169 +10,114 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/ledger/mock"
 	"github.com/hyperledger/fabric/token/tms/plain"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/assert"
 )
 
-type nextReturns struct {
-	result interface{}
-	err    error
-}
+var _ = Describe("RequestListTokens", func() {
+	var (
+		transactor    *plain.Transactor
+		unspentTokens *token.UnspentTokens
+		outputs       [][]byte
+		keys          []string
+		results       []*queryresult.KV
+	)
 
-type getStateRangeScanIteratorReturns struct {
-	iterator ledger.ResultsIterator
-	err      error
-}
+	It("initializes variables for test", func() {
+		outputs = make([][]byte, 4)
+		keys = make([]string, 4)
+		results = make([]*queryresult.KV, 5)
 
-type getStateReturns struct {
-	value []byte
-	err   error
-}
+		var err error
+		outputs[0], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "TOK1", Quantity: 100})
+		Expect(err).NotTo(HaveOccurred())
+		outputs[1], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Bob"), Type: "TOK2", Quantity: 200})
+		Expect(err).NotTo(HaveOccurred())
+		outputs[2], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "TOK3", Quantity: 300})
+		Expect(err).NotTo(HaveOccurred())
+		outputs[3], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "TOK4", Quantity: 400})
+		Expect(err).NotTo(HaveOccurred())
 
-func TestTransactor_ListTokens(t *testing.T) {
-	t.Parallel()
+		keys[0] = generateKey("1", "0", "tokenOutput")
+		keys[1] = generateKey("1", "1", "tokenOutput")
+		keys[2] = generateKey("2", "0", "tokenOutput")
+		keys[3] = generateKey("3", "0", "tokenOutput")
 
-	var err error
+		results[0] = &queryresult.KV{Key: keys[0], Value: outputs[0]}
+		results[1] = &queryresult.KV{Key: keys[1], Value: outputs[1]}
+		results[2] = &queryresult.KV{Key: keys[2], Value: outputs[2]}
+		results[3] = &queryresult.KV{Key: keys[3], Value: outputs[3]}
+		results[4] = &queryresult.KV{Key: "123", Value: []byte("not an output")}
 
-	ledgerReader := &mock.LedgerReader{}
-	iterator := &mock.ResultsIterator{}
-
-	transactor := &plain.Transactor{PublicCredential: []byte("Alice"), Ledger: ledgerReader}
-
-	outputs := make([][]byte, 3)
-	keys := make([]string, 3)
-	results := make([]*queryresult.KV, 4)
-
-	outputs[0], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "TOK1", Quantity: 100})
-	assert.NoError(t, err)
-	outputs[1], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Bob"), Type: "TOK2", Quantity: 200})
-	assert.NoError(t, err)
-	outputs[2], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "TOK3", Quantity: 300})
-	assert.NoError(t, err)
-
-	keys[0], err = plain.GenerateKeyForTest("1", 0)
-	assert.NoError(t, err)
-	keys[1], err = plain.GenerateKeyForTest("1", 1)
-	assert.NoError(t, err)
-	keys[2], err = plain.GenerateKeyForTest("2", 0)
-	assert.NoError(t, err)
-
-	results[0] = &queryresult.KV{Key: keys[0], Value: outputs[0]}
-	results[1] = &queryresult.KV{Key: keys[1], Value: outputs[1]}
-	results[2] = &queryresult.KV{Key: keys[2], Value: outputs[2]}
-	results[3] = &queryresult.KV{Key: "123", Value: []byte("not an output")}
-
-	for _, testCase := range []struct {
-		name                             string
-		getStateRangeScanIteratorReturns getStateRangeScanIteratorReturns
-		nextReturns                      []nextReturns
-		getStateReturns                  []getStateReturns
-		expectedErr                      string
-	}{
-		{
-			name:                             "getStateRangeScanIterator() fails",
-			getStateRangeScanIteratorReturns: getStateRangeScanIteratorReturns{nil, errors.New("wild potato")},
-			expectedErr:                      "wild potato",
-		},
-		{
-			name:                             "next() fails",
-			getStateRangeScanIteratorReturns: getStateRangeScanIteratorReturns{iterator, nil},
-			nextReturns:                      []nextReturns{{queryresult.KV{}, errors.New("wild banana")}},
-			expectedErr:                      "wild banana",
-		},
-		{
-			name:                             "getStateReturns() fails",
-			getStateRangeScanIteratorReturns: getStateRangeScanIteratorReturns{iterator, nil},
-			nextReturns:                      []nextReturns{{results[0], nil}},
-			getStateReturns:                  []getStateReturns{{nil, errors.New("wild apple")}},
-			expectedErr:                      "wild apple",
-		},
-		{
-			name:                             "Success",
-			getStateRangeScanIteratorReturns: getStateRangeScanIteratorReturns{iterator, nil},
-			getStateReturns: []getStateReturns{
-				{nil, nil},
-				{[]byte("value"), nil},
+		unspentTokens = &token.UnspentTokens{
+			Tokens: []*token.TokenOutput{
+				{Id: &token.InputId{TxId: "1", Index: uint32(0)}, Type: "TOK1", Quantity: 100},
+				{Id: &token.InputId{TxId: "3", Index: uint32(0)}, Type: "TOK4", Quantity: 400},
 			},
-			nextReturns: []nextReturns{
-				{results[0], nil},
-				{results[1], nil},
-				{results[2], nil},
-				{results[3], nil},
-				{nil, nil},
-			},
-		},
-	} {
-		testCase := testCase
-		t.Run(testCase.name, func(t *testing.T) {
+		}
+	})
 
-			ledgerReader.GetStateRangeScanIteratorReturns(testCase.getStateRangeScanIteratorReturns.iterator, testCase.getStateRangeScanIteratorReturns.err)
-			if testCase.getStateRangeScanIteratorReturns.iterator != nil {
-				if len(testCase.nextReturns) == 1 {
-					iterator.NextReturns(testCase.nextReturns[0].result, testCase.nextReturns[0].err)
-					if testCase.nextReturns[0].err == nil {
-						ledgerReader.GetStateReturns(testCase.getStateReturns[0].value, testCase.getStateReturns[0].err)
-					}
-				} else {
-					iterator.NextReturnsOnCall(2, testCase.nextReturns[0].result, testCase.nextReturns[0].err)
-					iterator.NextReturnsOnCall(3, testCase.nextReturns[1].result, testCase.nextReturns[1].err)
-					iterator.NextReturnsOnCall(4, testCase.nextReturns[2].result, testCase.nextReturns[2].err)
-					iterator.NextReturnsOnCall(5, testCase.nextReturns[3].result, testCase.nextReturns[3].err)
-					iterator.NextReturnsOnCall(6, testCase.nextReturns[4].result, testCase.nextReturns[4].err)
+	Describe("verify the unspentTokens returned by a list token request", func() {
+		var (
+			fakeLedger   *mock.LedgerReader
+			fakeIterator *mock.ResultsIterator
+		)
 
-					ledgerReader.GetStateReturnsOnCall(1, testCase.getStateReturns[0].value, testCase.getStateReturns[0].err)
-					ledgerReader.GetStateReturnsOnCall(2, testCase.getStateReturns[1].value, testCase.getStateReturns[1].err)
-				}
-
-			}
-			expectedTokens := &token.UnspentTokens{Tokens: []*token.TokenOutput{{Type: "TOK1", Quantity: 100, Id: []byte(keys[0])}}}
-			tokens, err := transactor.ListTokens()
-
-			if testCase.expectedErr == "" {
-				assert.NoError(t, err)
-				assert.NotNil(t, tokens)
-				assert.Equal(t, expectedTokens, tokens)
-			} else {
-				assert.Error(t, err)
-				assert.Nil(t, tokens)
-				assert.EqualError(t, err, testCase.expectedErr)
-			}
-			if testCase.getStateRangeScanIteratorReturns.err != nil {
-				assert.Equal(t, 1, ledgerReader.GetStateRangeScanIteratorCallCount())
-				assert.Equal(t, 0, ledgerReader.GetStateCallCount())
-				assert.Equal(t, 0, iterator.NextCallCount())
-			} else {
-				if testCase.nextReturns[0].err != nil {
-					assert.Equal(t, 2, ledgerReader.GetStateRangeScanIteratorCallCount())
-					assert.Equal(t, 0, ledgerReader.GetStateCallCount())
-					assert.Equal(t, 1, iterator.NextCallCount())
-				} else {
-					if testCase.getStateReturns[0].err != nil {
-						assert.Equal(t, 3, ledgerReader.GetStateRangeScanIteratorCallCount())
-						assert.Equal(t, 1, ledgerReader.GetStateCallCount())
-						assert.Equal(t, 2, iterator.NextCallCount())
-					} else {
-						assert.Equal(t, 4, ledgerReader.GetStateRangeScanIteratorCallCount())
-						assert.Equal(t, 3, ledgerReader.GetStateCallCount())
-						assert.Equal(t, 7, iterator.NextCallCount())
-					}
-
-				}
-			}
-
+		BeforeEach(func() {
+			fakeLedger = &mock.LedgerReader{}
+			fakeIterator = &mock.ResultsIterator{}
+			transactor = &plain.Transactor{PublicCredential: []byte("Alice"), Ledger: fakeLedger}
 		})
 
-	}
-}
+		When("request list tokens does not fail", func() {
+			It("returns unspent tokens", func() {
+				fakeLedger.GetStateRangeScanIteratorReturns(fakeIterator, nil)
+				fakeIterator.NextReturnsOnCall(0, results[0], nil)
+				fakeIterator.NextReturnsOnCall(1, results[1], nil)
+				fakeIterator.NextReturnsOnCall(2, results[2], nil)
+				fakeIterator.NextReturnsOnCall(3, results[3], nil)
+				fakeIterator.NextReturnsOnCall(4, results[4], nil)
+				fakeIterator.NextReturnsOnCall(4, nil, nil)
+
+				fakeLedger.GetStateReturnsOnCall(1, []byte("token is spent"), nil)
+				tokens, err := transactor.ListTokens()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(tokens).To(Equal(unspentTokens))
+			})
+		})
+
+		When("request list tokens fails", func() {
+			It("returns an error", func() {
+				When("GetStateRangeScanIterator fails", func() {
+					fakeLedger.GetStateRangeScanIteratorReturns(nil, errors.New("water melon"))
+					tokens, err := transactor.ListTokens()
+
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(Equal("water melon"))
+					Expect(tokens).To(BeNil())
+					Expect(fakeIterator.NextCallCount()).To(Equal(0))
+				})
+				When("Next fails", func() {
+					fakeLedger.GetStateRangeScanIteratorReturns(fakeIterator, nil)
+					fakeIterator.NextReturnsOnCall(0, results[0], nil)
+					fakeIterator.NextReturnsOnCall(1, queryresult.KV{}, errors.New("banana"))
+
+					tokens, err := transactor.ListTokens()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(Equal("banana"))
+					Expect(tokens).To(BeNil())
+					Expect(fakeIterator.NextCallCount()).To(Equal(2))
+				})
+			})
+		})
+	})
+})
 
 var _ = Describe("Transactor", func() {
 	var (
@@ -823,8 +768,7 @@ var _ = Describe("Transactor Approve", func() {
 
 		When("no recipient shares are provided", func() {
 			It("returns an error", func() {
-				key, err := plain.GenerateKeyForTest("1", 0)
-				Expect(err).NotTo(HaveOccurred())
+				key := generateKey("1", "0", "tokenOutput")
 				approveRequest = &token.ApproveRequest{
 					TokenIds:        [][]byte{[]byte(key)},
 					AllowanceShares: []*token.AllowanceRecipientShare{},
@@ -839,8 +783,8 @@ var _ = Describe("Transactor Approve", func() {
 
 		When("a quantity in a share <= 0", func() {
 			It("returns an error", func() {
-				key, err := plain.GenerateKeyForTest("1", 0)
-				Expect(err).NotTo(HaveOccurred())
+				key := generateKey("1", "0", "tokenOutput")
+
 				approveRequest = &token.ApproveRequest{
 					TokenIds:        [][]byte{[]byte(key)},
 					AllowanceShares: []*token.AllowanceRecipientShare{{Recipient: []byte("Bob"), Quantity: 0}},
@@ -855,8 +799,7 @@ var _ = Describe("Transactor Approve", func() {
 
 		When("a recipient is not specified", func() {
 			It("returns an error", func() {
-				key, err := plain.GenerateKeyForTest("1", 0)
-				Expect(err).NotTo(HaveOccurred())
+				key := generateKey("1", "0", "tokenOutput")
 				approveRequest = &token.ApproveRequest{
 					TokenIds:        [][]byte{[]byte(key)},
 					AllowanceShares: []*token.AllowanceRecipientShare{{Quantity: 10}},
@@ -1146,3 +1089,7 @@ var _ = Describe("Transactor TransferFrom", func() {
 	})
 
 })
+
+func generateKey(txID, index, namespace string) string {
+	return "\x00" + namespace + "\x00" + txID + "\x00" + index + "\x00"
+}

@@ -359,8 +359,8 @@ var _ = Describe("Client", func() {
 		BeforeEach(func() {
 			// prepare CommandResponse for mocked prover to return
 			expectedTokens = []*token.TokenOutput{
-				{Id: []byte("idaz"), Type: "typeaz", Quantity: 135},
-				{Id: []byte("idby"), Type: "typeby", Quantity: 79},
+				{Id: &token.InputId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: 135},
+				{Id: &token.InputId{TxId: "idby", Index: 1}, Type: "typeby", Quantity: 79},
 			}
 			fakeProver.ListTokensReturns(expectedTokens, nil)
 		})
