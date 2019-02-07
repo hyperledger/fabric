@@ -467,10 +467,18 @@ func TestConnectToAnchorPeers(t *testing.T) {
 		jcm.members2AnchorPeers[string(orgInChannelA)] = append(jcm.members2AnchorPeers[string(orgInChannelA)], ap)
 	}
 
+	// Start a random anchor peer
+	anchorPeer := newGossipInstance(portPrefix, rand.Intn(anchorPeercount), 100)
+	anchorPeer.JoinChan(jcm, common.ChainID("A"))
+	anchorPeer.UpdateLedgerHeight(1, common.ChainID("A"))
+
+	defer anchorPeer.Stop()
+
+	// Start peers
 	peers := make([]Gossip, n)
 	wg := sync.WaitGroup{}
+	wg.Add(n)
 	for i := 0; i < n; i++ {
-		wg.Add(1)
 		go func(i int) {
 			peers[i] = newGossipInstance(portPrefix, i+anchorPeercount, 100)
 			peers[i].JoinChan(jcm, common.ChainID("A"))
@@ -481,12 +489,6 @@ func TestConnectToAnchorPeers(t *testing.T) {
 
 	waitUntilOrFailBlocking(t, wg.Wait, "waiting until all peers join the channel")
 
-	// Now start a random anchor peer
-	anchorPeer := newGossipInstance(portPrefix, rand.Intn(anchorPeercount), 100)
-	anchorPeer.JoinChan(jcm, common.ChainID("A"))
-	anchorPeer.UpdateLedgerHeight(1, common.ChainID("A"))
-
-	defer anchorPeer.Stop()
 	waitUntilOrFail(t, checkPeersMembership(t, peers, n), "waiting for peers to form membership view")
 
 	channelMembership := func() bool {
