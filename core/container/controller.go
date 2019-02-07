@@ -214,5 +214,5 @@ func GetChaincodePackageBytes(pr *platforms.Registry, spec *pb.ChaincodeSpec) ([
 		return nil, fmt.Errorf("invalid chaincode spec")
 	}
 
-	return pr.GetDeploymentPayload(spec.CCType(), spec.Path())
+	return pr.GetDeploymentPayload(spec.Type.String(), spec.ChaincodeId.Path)
 }

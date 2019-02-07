@@ -129,7 +129,7 @@ func Test_Start(t *testing.T) {
 		ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: chaincodePath},
 		Input:       &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")},
 	}
-	codePackage, err := platforms.NewRegistry(&golang.Platform{}).GetDeploymentPayload(spec.CCType(), spec.Path())
+	codePackage, err := platforms.NewRegistry(&golang.Platform{}).GetDeploymentPayload(spec.Type.String(), spec.ChaincodeId.Path)
 	if err != nil {
 		t.Fatal()
 	}
@@ -137,11 +137,11 @@ func Test_Start(t *testing.T) {
 	bldr := &mockBuilder{
 		buildFunc: func() (io.Reader, error) {
 			return platforms.NewRegistry(&golang.Platform{}).GenerateDockerBuild(
-				cds.CCType(),
-				cds.Path(),
-				cds.Name(),
-				cds.Version(),
-				cds.Bytes(),
+				cds.ChaincodeSpec.Type.String(),
+				cds.ChaincodeSpec.ChaincodeId.Path,
+				cds.ChaincodeSpec.ChaincodeId.Name,
+				cds.ChaincodeSpec.ChaincodeId.Version,
+				cds.CodePackage,
 			)
 		},
 	}

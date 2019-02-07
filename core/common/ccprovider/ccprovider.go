@@ -137,7 +137,7 @@ func (cifs *CCInfoFSImpl) GetChaincodeCodePackage(ccname, ccversion string) ([]b
 	if err != nil {
 		return nil, err
 	}
-	return ccpack.GetDepSpec().Bytes(), nil
+	return ccpack.GetDepSpec().CodePackage, nil
 }
 
 // GetChaincodeFromPath this is a wrapper for hiding package implementation.
@@ -546,10 +546,10 @@ type ChaincodeProvider interface {
 
 func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec) *ChaincodeContainerInfo {
 	return &ChaincodeContainerInfo{
-		Name:          cds.Name(),
-		Version:       cds.Version(),
-		Path:          cds.Path(),
-		Type:          cds.CCType(),
+		Name:          cds.ChaincodeSpec.ChaincodeId.Name,
+		Version:       cds.ChaincodeSpec.ChaincodeId.Version,
+		Path:          cds.ChaincodeSpec.ChaincodeId.Path,
+		Type:          cds.ChaincodeSpec.Type.String(),
 		ContainerType: cds.ExecEnv.String(),
 	}
 }

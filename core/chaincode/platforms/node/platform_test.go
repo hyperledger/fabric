@@ -1,7 +1,7 @@
 /*
-# Copyright IBM Corp. All Rights Reserved.
-#
-# SPDX-License-Identifier: Apache-2.0
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
 */
 
 package node
@@ -188,17 +188,18 @@ func TestGenerateDockerBuild(t *testing.T) {
 		ChaincodeId: &peer.ChaincodeID{Path: dir},
 		Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("init")}}}
 
-	cp, _ := platform.GetDeploymentPayload(ccSpec.Path())
+	cp, _ := platform.GetDeploymentPayload(ccSpec.ChaincodeId.Path)
 
 	cds := &peer.ChaincodeDeploymentSpec{
 		ChaincodeSpec: ccSpec,
-		CodePackage:   cp}
+		CodePackage:   cp,
+	}
 
 	payload := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	err = platform.GenerateDockerBuild(cds.Path(), cds.Bytes(), tw)
+	err = platform.GenerateDockerBuild(cds.ChaincodeSpec.ChaincodeId.Path, cds.CodePackage, tw)
 	if err != nil {
 		t.Fatal(err)
 	}

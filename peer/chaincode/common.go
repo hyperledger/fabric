@@ -41,8 +41,11 @@ func checkSpec(spec *pb.ChaincodeSpec) error {
 	if spec == nil {
 		return errors.New("expected chaincode specification, nil received")
 	}
+	if spec.ChaincodeId == nil {
+		return errors.New("expected chaincode ID, nil received")
+	}
 
-	return platformRegistry.ValidateSpec(spec.CCType(), spec.Path())
+	return platformRegistry.ValidateSpec(spec.Type.String(), spec.ChaincodeId.Path)
 }
 
 // getChaincodeDeploymentSpec get chaincode deployment spec given the chaincode spec

@@ -158,7 +158,7 @@ func GetChaincodeDeploymentSpec(code []byte, pr *platforms.Registry) (*peer.Chai
 	}
 
 	// FAB-2122: Validate the CDS according to platform specific requirements
-	return cds, pr.ValidateDeploymentSpec(cds.CCType(), cds.Bytes())
+	return cds, pr.ValidateDeploymentSpec(cds.ChaincodeSpec.Type.String(), cds.CodePackage)
 }
 
 // GetChaincodeAction gets the ChaincodeAction given chaicnode action bytes
