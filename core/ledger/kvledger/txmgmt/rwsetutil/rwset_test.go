@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kvrwset
+package rwsetutil
 
 import (
 	"io/ioutil"
@@ -26,13 +26,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const binaryTestFileName = "rwsetV1ProtoBytes"
+const rwsetV1ProtoBytesFile = "testdata/rwsetV1ProtoBytes"
 
 // TestRWSetV1BackwardCompatible passes if the 'RWSet' messgae declared in the latest version
 // is able to unmarshal the protobytes that are produced by the 'RWSet' proto message declared in
 // v1.0. This is to make sure that any incompatible changes does not go uncaught.
 func TestRWSetV1BackwardCompatible(t *testing.T) {
-	protoBytes, err := ioutil.ReadFile(binaryTestFileName)
+	protoBytes, err := ioutil.ReadFile(rwsetV1ProtoBytesFile)
 	assert.NoError(t, err)
 	rwset1 := &rwset.TxReadWriteSet{}
 	assert.NoError(t, proto.Unmarshal(protoBytes, rwset1))
@@ -48,7 +48,7 @@ func TestRWSetV1BackwardCompatible(t *testing.T) {
 func PrepareBinaryFileSampleRWSetV1(t *testing.T) {
 	b, err := proto.Marshal(constructSampleRWSet())
 	assert.NoError(t, err)
-	assert.NoError(t, ioutil.WriteFile(binaryTestFileName, b, 0644))
+	assert.NoError(t, ioutil.WriteFile(rwsetV1ProtoBytesFile, b, 0644))
 }
 
 func constructSampleRWSet() *rwset.TxReadWriteSet {

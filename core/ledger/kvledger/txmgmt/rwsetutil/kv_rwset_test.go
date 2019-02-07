@@ -16,13 +16,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const binaryTestFileName = "testdata/kvrwsetV1ProtoBytes"
+const kvrwsetV1ProtoBytesFile = "testdata/kvrwsetV1ProtoBytes"
 
 // TestKVRWSetV1BackwardCompatible passes if the 'KVRWSet' messgae declared in the latest version
 // is able to unmarshal the protobytes that are produced by the 'KVRWSet' proto message declared in
 // v1.0. This is to make sure that any incompatible changes does not go uncaught.
 func TestKVRWSetV1BackwardCompatible(t *testing.T) {
-	protoBytes, err := ioutil.ReadFile(binaryTestFileName)
+	protoBytes, err := ioutil.ReadFile(kvrwsetV1ProtoBytesFile)
 	assert.NoError(t, err)
 	kvrwset1 := &kvrwset.KVRWSet{}
 	assert.NoError(t, proto.Unmarshal(protoBytes, kvrwset1))
@@ -38,7 +38,7 @@ func TestKVRWSetV1BackwardCompatible(t *testing.T) {
 func PrepareBinaryFileSampleKVRWSetV1(t *testing.T) {
 	b, err := proto.Marshal(constructSampleKVRWSet())
 	assert.NoError(t, err)
-	assert.NoError(t, ioutil.WriteFile(binaryTestFileName, b, 0644))
+	assert.NoError(t, ioutil.WriteFile(kvrwsetV1ProtoBytesFile, b, 0644))
 }
 
 func constructSampleKVRWSet() *kvrwset.KVRWSet {
