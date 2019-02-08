@@ -52,7 +52,12 @@ var _ = Describe("Manager", func() {
 				txProcessor, err := mgm.GetTxProcessor(channel)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(txProcessor).NotTo(BeNil())
-				Expect(txProcessor).To(Equal(&plain.Verifier{IssuingValidator: &manager.AllIssuingValidator{Deserializer: fakeIdentityDeserializer}}))
+				Expect(txProcessor).To(Equal(
+					&plain.Verifier{
+						IssuingValidator:    &manager.AllIssuingValidator{Deserializer: fakeIdentityDeserializer},
+						TokenOwnerValidator: &manager.FabricTokenOwnerValidator{Deserializer: fakeIdentityDeserializer},
+					}),
+				)
 			})
 		})
 	})

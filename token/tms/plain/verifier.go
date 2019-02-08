@@ -41,7 +41,8 @@ var verifierLogger = flogging.MustGetLogger("token.tms.plain.verifier")
 
 // A Verifier validates and commits token transactions.
 type Verifier struct {
-	IssuingValidator identity.IssuingValidator
+	IssuingValidator    identity.IssuingValidator
+	TokenOwnerValidator identity.TokenOwnerValidator
 }
 
 // ProcessTx checks that transactions are correct wrt. the most recent ledger state.
@@ -217,8 +218,11 @@ func (v *Verifier) checkOutputs(outputs []*token.PlainOutput, txID string, simul
 		} else if tokenType != output.GetType() {
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types ('%s', '%s') in output for txID '%s'", tokenType, output.GetType(), txID)}
 		}
-		if ownerRequired && output.GetOwner() == nil {
-			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("missing owner in output for txID '%s'", txID)}
+		if ownerRequired {
+			err = v.TokenOwnerValidator.Validate(output.GetOwner())
+			if err != nil {
+				return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err '%s'", txID, err)}
+			}
 		}
 		tokenSum += output.GetQuantity()
 	}
@@ -770,8 +774,9 @@ func (v *Verifier) checkTransferFromOutputs(creator identity.PublicInfo, owner *
 
 	for i, output := range outputs {
 		// check that the owner field is not empty
-		if output.GetOwner() == nil {
-			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("owner must be specified in output in txID [%s]", txID)}
+		err := v.TokenOwnerValidator.Validate(output.GetOwner())
+		if err != nil {
+			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output in txID '%s', err '%s'", txID, err)}
 		}
 		// check that the type is consistent
 		if tokenType == "" {
@@ -779,7 +784,7 @@ func (v *Verifier) checkTransferFromOutputs(creator identity.PublicInfo, owner *
 		} else if tokenType != output.GetType() {
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types ('%s', '%s') in transferFrom outputs for txID '%s'", tokenType, output.GetType(), txID)}
 		}
-		err := v.checkOutputDoesNotExist(i, output, txID, simulator)
+		err = v.checkOutputDoesNotExist(i, output, txID, simulator)
 		if err != nil {
 			return "", 0, err
 		}

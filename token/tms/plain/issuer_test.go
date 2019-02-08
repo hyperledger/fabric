@@ -25,7 +25,7 @@ var _ = Describe("Issuer", func() {
 			{Recipient: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK2", Quantity: 1002},
 			{Recipient: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK3", Quantity: 1003},
 		}
-		issuer = &plain.Issuer{}
+		issuer = &plain.Issuer{TokenOwnerValidator: &TestTokenOwnerValidator{}}
 	})
 
 	It("converts an import request to a token transaction", func() {

@@ -8,16 +8,23 @@ package plain
 
 import (
 	"github.com/hyperledger/fabric/protos/token"
+	"github.com/hyperledger/fabric/token/identity"
 	"github.com/pkg/errors"
 )
 
 // An Issuer that can import new tokens
-type Issuer struct{}
+type Issuer struct {
+	TokenOwnerValidator identity.TokenOwnerValidator
+}
 
 // RequestImport creates an import request with the token owners, types, and quantities specified in tokensToIssue.
 func (i *Issuer) RequestImport(tokensToIssue []*token.TokenToIssue) (*token.TokenTransaction, error) {
 	var outputs []*token.PlainOutput
 	for _, tti := range tokensToIssue {
+		err := i.TokenOwnerValidator.Validate(tti.Recipient)
+		if err != nil {
+			return nil, errors.Errorf("invalid recipient in issue request '%s'", err)
+		}
 		outputs = append(outputs, &token.PlainOutput{
 			Owner:    tti.Recipient,
 			Type:     tti.Type,

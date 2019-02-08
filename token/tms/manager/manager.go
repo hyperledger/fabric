@@ -41,5 +41,8 @@ func (m *Manager) GetTxProcessor(channel string) (transaction.TMSTxProcessor, er
 		return nil, errors.Wrapf(err, "failed getting identity deserialiser manager for channel '%s'", channel)
 	}
 
-	return &plain.Verifier{IssuingValidator: &AllIssuingValidator{Deserializer: identityDeserializerManager}}, nil
+	return &plain.Verifier{
+		IssuingValidator:    &AllIssuingValidator{Deserializer: identityDeserializerManager},
+		TokenOwnerValidator: &FabricTokenOwnerValidator{Deserializer: identityDeserializerManager},
+	}, nil
 }

@@ -5,8 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric/msp"
-	mspprotos "github.com/hyperledger/fabric/protos/msp"
+	mspfabric "github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/token/identity"
 )
 
 type Identity struct {
@@ -19,14 +20,14 @@ type Identity struct {
 	expiresAtReturnsOnCall map[int]struct {
 		result1 time.Time
 	}
-	GetIdentifierStub        func() *msp.IdentityIdentifier
+	GetIdentifierStub        func() *mspfabric.IdentityIdentifier
 	getIdentifierMutex       sync.RWMutex
 	getIdentifierArgsForCall []struct{}
 	getIdentifierReturns     struct {
-		result1 *msp.IdentityIdentifier
+		result1 *mspfabric.IdentityIdentifier
 	}
 	getIdentifierReturnsOnCall map[int]struct {
-		result1 *msp.IdentityIdentifier
+		result1 *mspfabric.IdentityIdentifier
 	}
 	GetMSPIdentifierStub        func() string
 	getMSPIdentifierMutex       sync.RWMutex
@@ -46,14 +47,14 @@ type Identity struct {
 	validateReturnsOnCall map[int]struct {
 		result1 error
 	}
-	GetOrganizationalUnitsStub        func() []*msp.OUIdentifier
+	GetOrganizationalUnitsStub        func() []*mspfabric.OUIdentifier
 	getOrganizationalUnitsMutex       sync.RWMutex
 	getOrganizationalUnitsArgsForCall []struct{}
 	getOrganizationalUnitsReturns     struct {
-		result1 []*msp.OUIdentifier
+		result1 []*mspfabric.OUIdentifier
 	}
 	getOrganizationalUnitsReturnsOnCall map[int]struct {
-		result1 []*msp.OUIdentifier
+		result1 []*mspfabric.OUIdentifier
 	}
 	AnonymousStub        func() bool
 	anonymousMutex       sync.RWMutex
@@ -87,10 +88,10 @@ type Identity struct {
 		result1 []byte
 		result2 error
 	}
-	SatisfiesPrincipalStub        func(principal *mspprotos.MSPPrincipal) error
+	SatisfiesPrincipalStub        func(principal *msp.MSPPrincipal) error
 	satisfiesPrincipalMutex       sync.RWMutex
 	satisfiesPrincipalArgsForCall []struct {
-		principal *mspprotos.MSPPrincipal
+		principal *msp.MSPPrincipal
 	}
 	satisfiesPrincipalReturns struct {
 		result1 error
@@ -142,7 +143,7 @@ func (fake *Identity) ExpiresAtReturnsOnCall(i int, result1 time.Time) {
 	}{result1}
 }
 
-func (fake *Identity) GetIdentifier() *msp.IdentityIdentifier {
+func (fake *Identity) GetIdentifier() *mspfabric.IdentityIdentifier {
 	fake.getIdentifierMutex.Lock()
 	ret, specificReturn := fake.getIdentifierReturnsOnCall[len(fake.getIdentifierArgsForCall)]
 	fake.getIdentifierArgsForCall = append(fake.getIdentifierArgsForCall, struct{}{})
@@ -163,22 +164,22 @@ func (fake *Identity) GetIdentifierCallCount() int {
 	return len(fake.getIdentifierArgsForCall)
 }
 
-func (fake *Identity) GetIdentifierReturns(result1 *msp.IdentityIdentifier) {
+func (fake *Identity) GetIdentifierReturns(result1 *mspfabric.IdentityIdentifier) {
 	fake.GetIdentifierStub = nil
 	fake.getIdentifierReturns = struct {
-		result1 *msp.IdentityIdentifier
+		result1 *mspfabric.IdentityIdentifier
 	}{result1}
 }
 
-func (fake *Identity) GetIdentifierReturnsOnCall(i int, result1 *msp.IdentityIdentifier) {
+func (fake *Identity) GetIdentifierReturnsOnCall(i int, result1 *mspfabric.IdentityIdentifier) {
 	fake.GetIdentifierStub = nil
 	if fake.getIdentifierReturnsOnCall == nil {
 		fake.getIdentifierReturnsOnCall = make(map[int]struct {
-			result1 *msp.IdentityIdentifier
+			result1 *mspfabric.IdentityIdentifier
 		})
 	}
 	fake.getIdentifierReturnsOnCall[i] = struct {
-		result1 *msp.IdentityIdentifier
+		result1 *mspfabric.IdentityIdentifier
 	}{result1}
 }
 
@@ -262,7 +263,7 @@ func (fake *Identity) ValidateReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Identity) GetOrganizationalUnits() []*msp.OUIdentifier {
+func (fake *Identity) GetOrganizationalUnits() []*mspfabric.OUIdentifier {
 	fake.getOrganizationalUnitsMutex.Lock()
 	ret, specificReturn := fake.getOrganizationalUnitsReturnsOnCall[len(fake.getOrganizationalUnitsArgsForCall)]
 	fake.getOrganizationalUnitsArgsForCall = append(fake.getOrganizationalUnitsArgsForCall, struct{}{})
@@ -283,22 +284,22 @@ func (fake *Identity) GetOrganizationalUnitsCallCount() int {
 	return len(fake.getOrganizationalUnitsArgsForCall)
 }
 
-func (fake *Identity) GetOrganizationalUnitsReturns(result1 []*msp.OUIdentifier) {
+func (fake *Identity) GetOrganizationalUnitsReturns(result1 []*mspfabric.OUIdentifier) {
 	fake.GetOrganizationalUnitsStub = nil
 	fake.getOrganizationalUnitsReturns = struct {
-		result1 []*msp.OUIdentifier
+		result1 []*mspfabric.OUIdentifier
 	}{result1}
 }
 
-func (fake *Identity) GetOrganizationalUnitsReturnsOnCall(i int, result1 []*msp.OUIdentifier) {
+func (fake *Identity) GetOrganizationalUnitsReturnsOnCall(i int, result1 []*mspfabric.OUIdentifier) {
 	fake.GetOrganizationalUnitsStub = nil
 	if fake.getOrganizationalUnitsReturnsOnCall == nil {
 		fake.getOrganizationalUnitsReturnsOnCall = make(map[int]struct {
-			result1 []*msp.OUIdentifier
+			result1 []*mspfabric.OUIdentifier
 		})
 	}
 	fake.getOrganizationalUnitsReturnsOnCall[i] = struct {
-		result1 []*msp.OUIdentifier
+		result1 []*mspfabric.OUIdentifier
 	}{result1}
 }
 
@@ -444,11 +445,11 @@ func (fake *Identity) SerializeReturnsOnCall(i int, result1 []byte, result2 erro
 	}{result1, result2}
 }
 
-func (fake *Identity) SatisfiesPrincipal(principal *mspprotos.MSPPrincipal) error {
+func (fake *Identity) SatisfiesPrincipal(principal *msp.MSPPrincipal) error {
 	fake.satisfiesPrincipalMutex.Lock()
 	ret, specificReturn := fake.satisfiesPrincipalReturnsOnCall[len(fake.satisfiesPrincipalArgsForCall)]
 	fake.satisfiesPrincipalArgsForCall = append(fake.satisfiesPrincipalArgsForCall, struct {
-		principal *mspprotos.MSPPrincipal
+		principal *msp.MSPPrincipal
 	}{principal})
 	fake.recordInvocation("SatisfiesPrincipal", []interface{}{principal})
 	fake.satisfiesPrincipalMutex.Unlock()
@@ -467,7 +468,7 @@ func (fake *Identity) SatisfiesPrincipalCallCount() int {
 	return len(fake.satisfiesPrincipalArgsForCall)
 }
 
-func (fake *Identity) SatisfiesPrincipalArgsForCall(i int) *mspprotos.MSPPrincipal {
+func (fake *Identity) SatisfiesPrincipalArgsForCall(i int) *msp.MSPPrincipal {
 	fake.satisfiesPrincipalMutex.RLock()
 	defer fake.satisfiesPrincipalMutex.RUnlock()
 	return fake.satisfiesPrincipalArgsForCall[i].principal
@@ -532,4 +533,4 @@ func (fake *Identity) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ msp.Identity = new(Identity)
+var _ identity.Identity = new(Identity)

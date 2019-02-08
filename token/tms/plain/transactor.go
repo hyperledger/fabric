@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hyperledger/fabric/token/identity"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/token"
@@ -22,8 +24,9 @@ import (
 
 // A Transactor that can transfer tokens.
 type Transactor struct {
-	PublicCredential []byte
-	Ledger           ledger.LedgerReader
+	PublicCredential    []byte
+	Ledger              ledger.LedgerReader
+	TokenOwnerValidator identity.TokenOwnerValidator
 }
 
 // RequestTransfer creates a TokenTransaction of type transfer request
@@ -43,6 +46,10 @@ func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.Tok
 	}
 
 	for _, ttt := range request.GetShares() {
+		err := t.TokenOwnerValidator.Validate(ttt.Recipient)
+		if err != nil {
+			return nil, errors.Errorf("invalid recipient in transfer request '%s'", err)
+		}
 		outputs = append(outputs, &token.PlainOutput{
 			Owner:    ttt.Recipient,
 			Type:     tokenType,
@@ -249,8 +256,9 @@ func (t *Transactor) RequestApprove(request *token.ApproveRequest) (*token.Token
 
 	delegatedQuantity := uint64(0)
 	for _, share := range request.GetAllowanceShares() {
-		if share.Recipient == nil {
-			return nil, errors.Errorf("the recipient in approve must be specified")
+		err := t.TokenOwnerValidator.Validate(share.Recipient)
+		if err != nil {
+			return nil, errors.Errorf("invalid recipient in approve request '%s'", err)
 		}
 		if share.Quantity <= 0 {
 			return nil, errors.Errorf("the quantity to approve [%d] must be greater than 0", share.GetQuantity())

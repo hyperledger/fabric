@@ -85,6 +85,7 @@ import (
 	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/hyperledger/fabric/token/server"
+	"github.com/hyperledger/fabric/token/tms/manager"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -931,6 +932,9 @@ func registerProverService(peerServer *comm.GRPCServer, aclProvider aclmgmt.ACLP
 		PolicyChecker: policyChecker,
 		TMSManager: &server.Manager{
 			LedgerManager: &server.PeerLedgerManager{},
+			TokenOwnerValidatorManager: &server.PeerTokenOwnerValidatorManager{
+				IdentityDeserializerManager: &manager.FabricIdentityDeserializerManager{},
+			},
 		},
 	}
 	token.RegisterProverServer(peerServer.Server(), prover)

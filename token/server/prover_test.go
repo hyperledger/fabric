@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/token"
+	mock3 "github.com/hyperledger/fabric/token/identity/mock"
 	mock2 "github.com/hyperledger/fabric/token/ledger/mock"
 	"github.com/hyperledger/fabric/token/server"
 	"github.com/hyperledger/fabric/token/server/mock"
@@ -826,6 +827,10 @@ var _ = Describe("Prover", func() {
 		)
 
 		BeforeEach(func() {
+			fakeTokenOwnerValidatorManager := &mock3.TokenOwnerValidatorManager{}
+			fakeTokenOwnerValidatorManager.GetReturns(&TestTokenOwnerValidator{}, nil)
+			manager = &server.Manager{TokenOwnerValidatorManager: fakeTokenOwnerValidatorManager}
+
 			prover = &server.Prover{
 				CapabilityChecker: fakeCapabilityChecker,
 				PolicyChecker:     fakePolicyChecker,
@@ -1121,7 +1126,10 @@ var _ = Describe("ProverListUnspentTokens", func() {
 		fakeLedgerManager := &mock2.LedgerManager{}
 		fakeLedgerManager.GetLedgerReaderReturns(fakeLedgerReader, nil)
 
-		manager := &server.Manager{LedgerManager: fakeLedgerManager}
+		fakeTokenOwnerValidatorManager := &mock3.TokenOwnerValidatorManager{}
+		fakeTokenOwnerValidatorManager.GetReturns(&TestTokenOwnerValidator{}, nil)
+
+		manager := &server.Manager{LedgerManager: fakeLedgerManager, TokenOwnerValidatorManager: fakeTokenOwnerValidatorManager}
 		marshaler = &server.ResponseMarshaler{Signer: fakeSigner, Creator: []byte("Alice"), Time: clock}
 
 		prover = &server.Prover{
@@ -1306,7 +1314,10 @@ var _ = Describe("Prover Transfer using TMS", func() {
 		fakeLedgerReader := &mock2.LedgerReader{}
 		fakeLedgerManager := &mock2.LedgerManager{}
 
-		manager := &server.Manager{LedgerManager: fakeLedgerManager}
+		fakeTokenOwnerValidatorManager := &mock3.TokenOwnerValidatorManager{}
+		fakeTokenOwnerValidatorManager.GetReturns(&TestTokenOwnerValidator{}, nil)
+
+		manager := &server.Manager{LedgerManager: fakeLedgerManager, TokenOwnerValidatorManager: fakeTokenOwnerValidatorManager}
 		marshaler = &server.ResponseMarshaler{Signer: fakeSigner, Creator: []byte("creator"), Time: clock}
 
 		prover = &server.Prover{
@@ -1711,4 +1722,18 @@ func splitCompositeKey(compositeKey string) (string, []string, error) {
 
 func generateKey(txID, index, namespace string) string {
 	return "\x00" + namespace + "\x00" + txID + "\x00" + index + "\x00"
+}
+
+type TestTokenOwnerValidator struct {
+}
+
+func (TestTokenOwnerValidator) Validate(owner *token.TokenOwner) error {
+	if owner == nil {
+		return errors.New("owner is nil")
+	}
+
+	if len(owner.Raw) == 0 {
+		return errors.New("raw is emptyr")
+	}
+	return nil
 }

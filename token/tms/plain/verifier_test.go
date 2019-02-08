@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hyperledger/fabric/token/identity"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/token"
@@ -26,10 +28,11 @@ const tokenNamespace = "_fabtoken"
 
 var _ = Describe("Verifier", func() {
 	var (
-		fakePublicInfo       *mockid.PublicInfo
-		fakeIssuingValidator *mockid.IssuingValidator
-		fakeLedger           *mockledger.LedgerWriter
-		memoryLedger         *plain.MemoryLedger
+		fakePublicInfo          *mockid.PublicInfo
+		fakeIssuingValidator    *mockid.IssuingValidator
+		fakeTokenOwnerValidator identity.TokenOwnerValidator
+		fakeLedger              *mockledger.LedgerWriter
+		memoryLedger            *plain.MemoryLedger
 
 		importTransaction *token.TokenTransaction
 		importTxID        string
@@ -40,6 +43,7 @@ var _ = Describe("Verifier", func() {
 	BeforeEach(func() {
 		fakePublicInfo = &mockid.PublicInfo{}
 		fakeIssuingValidator = &mockid.IssuingValidator{}
+		fakeTokenOwnerValidator = &TestTokenOwnerValidator{}
 		fakeLedger = &mockledger.LedgerWriter{}
 		fakeLedger.SetStateReturns(nil)
 
@@ -60,7 +64,8 @@ var _ = Describe("Verifier", func() {
 		}
 
 		verifier = &plain.Verifier{
-			IssuingValidator: fakeIssuingValidator,
+			IssuingValidator:    fakeIssuingValidator,
+			TokenOwnerValidator: fakeTokenOwnerValidator,
 		}
 	})
 
@@ -638,7 +643,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("missing owner in output for txID '%s'", transferTxID)}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'owner is nil'", transferTxID)}))
 			})
 		})
 	})
@@ -1472,3 +1477,17 @@ var _ = Describe("Verifier", func() {
 
 	})
 })
+
+type TestTokenOwnerValidator struct {
+}
+
+func (TestTokenOwnerValidator) Validate(owner *token.TokenOwner) error {
+	if owner == nil {
+		return errors.New("owner is nil")
+	}
+
+	if len(owner.Raw) == 0 {
+		return errors.New("raw is emptyr")
+	}
+	return nil
+}

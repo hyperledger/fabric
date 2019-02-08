@@ -181,6 +181,7 @@ var _ = Describe("Transactor", func() {
 			fakeLedger.SetStateReturns(nil)
 			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
 			transactor.Ledger = fakeLedger
+			transactor.TokenOwnerValidator = &TestTokenOwnerValidator{}
 		})
 
 		It("creates a valid transfer request", func() {
@@ -546,7 +547,9 @@ var _ = Describe("Transactor Approve", func() {
 			{Recipient: &token.TokenOwner{Raw: []byte("Alice")}, Quantity: 100},
 			{Recipient: &token.TokenOwner{Raw: []byte("Bob")}, Quantity: 200},
 		}
-		transactor = &plain.Transactor{}
+		transactor = &plain.Transactor{
+			TokenOwnerValidator: &TestTokenOwnerValidator{},
+		}
 	})
 
 	Describe("converts an approve request into a token transaction", func() {
@@ -691,7 +694,7 @@ var _ = Describe("Transactor Approve", func() {
 				tt, err := transactor.RequestApprove(approveRequest)
 				Expect(err).To(HaveOccurred())
 				Expect(tt).To(BeNil())
-				Expect(err.Error()).To(Equal("the recipient in approve must be specified"))
+				Expect(err.Error()).To(Equal("invalid recipient in approve request 'owner is nil'"))
 			})
 		})
 
