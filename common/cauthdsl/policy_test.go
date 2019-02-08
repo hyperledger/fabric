@@ -122,3 +122,18 @@ func TestVerifyFirstPanics(t *testing.T) {
 	d := &deserializeAndVerify{}
 	assert.Panics(t, func() { d.Verify() })
 }
+
+func TestProviderFromStruct(t *testing.T) {
+	pfs := &ProviderFromStruct{Deserializer: &mockDeserializer{}}
+	p, err := pfs.NewPolicy(nil)
+	assert.Nil(t, p)
+	assert.Error(t, err)
+
+	p, err = pfs.NewPolicy(&cb.SignaturePolicyEnvelope{})
+	assert.Nil(t, p)
+	assert.Error(t, err)
+
+	p, err = pfs.NewPolicy(SignedByMspPeer("primus inter pares"))
+	assert.NotNil(t, p)
+	assert.NoError(t, err)
+}
