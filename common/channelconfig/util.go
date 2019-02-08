@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
+	"fmt"
+	"io/ioutil"
 	"math"
 
 	"github.com/golang/protobuf/proto"
@@ -14,6 +16,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -272,4 +275,25 @@ func ValidateCapabilities(block *cb.Block) error {
 	}
 
 	return nil
+}
+
+// MarshalEtcdRaftMetadata serializes etcd RAFT metadata.
+func MarshalEtcdRaftMetadata(md *etcdraft.Metadata) ([]byte, error) {
+	copyMd := proto.Clone(md).(*etcdraft.Metadata)
+	for _, c := range copyMd.Consenters {
+		// Expect the user to set the config value for client/server certs to the
+		// path where they are persisted locally, then load these files to memory.
+		clientCert, err := ioutil.ReadFile(string(c.GetClientTlsCert()))
+		if err != nil {
+			return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+		}
+		c.ClientTlsCert = clientCert
+
+		serverCert, err := ioutil.ReadFile(string(c.GetServerTlsCert()))
+		if err != nil {
+			return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+		}
+		c.ServerTlsCert = serverCert
+	}
+	return proto.Marshal(copyMd)
 }

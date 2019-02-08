@@ -24,6 +24,9 @@ import (
 const (
 	// Prefix identifies the prefix for the configtxgen-related ENV vars.
 	Prefix string = "CONFIGTX"
+
+	// The type key for etcd based RAFT consensus.
+	EtcdRaft = "etcdraft"
 )
 
 var logger = flogging.MustGetLogger("common.tools.configtxgen.localconfig")
@@ -397,9 +400,9 @@ loop:
 			logger.Infof("Orderer.Kafka unset, setting to %v", genesisDefaults.Orderer.Kafka.Brokers)
 			ord.Kafka.Brokers = genesisDefaults.Orderer.Kafka.Brokers
 		}
-	case etcdraft.TypeKey:
+	case EtcdRaft:
 		if ord.EtcdRaft == nil {
-			logger.Panicf("%s raft configuration missing", etcdraft.TypeKey)
+			logger.Panicf("%s configuration missing", EtcdRaft)
 		}
 		if ord.EtcdRaft.Options == nil {
 			logger.Infof("Orderer.EtcdRaft.Options unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options)
@@ -433,7 +436,7 @@ loop:
 				ord.EtcdRaft.Options.SnapshotInterval = genesisDefaults.Orderer.EtcdRaft.Options.SnapshotInterval
 
 			case len(ord.EtcdRaft.Consenters) == 0:
-				logger.Panicf("%s configuration did not specify any consenter", etcdraft.TypeKey)
+				logger.Panicf("%s configuration did not specify any consenter", EtcdRaft)
 
 			default:
 				break second_loop
@@ -451,16 +454,16 @@ loop:
 
 		for _, c := range ord.EtcdRaft.GetConsenters() {
 			if c.Host == "" {
-				logger.Panicf("consenter info in %s configuration did not specify host", etcdraft.TypeKey)
+				logger.Panicf("consenter info in %s configuration did not specify host", EtcdRaft)
 			}
 			if c.Port == 0 {
-				logger.Panicf("consenter info in %s configuration did not specify port", etcdraft.TypeKey)
+				logger.Panicf("consenter info in %s configuration did not specify port", EtcdRaft)
 			}
 			if c.ClientTlsCert == nil {
-				logger.Panicf("consenter info in %s configuration did not specify client TLS cert", etcdraft.TypeKey)
+				logger.Panicf("consenter info in %s configuration did not specify client TLS cert", EtcdRaft)
 			}
 			if c.ServerTlsCert == nil {
-				logger.Panicf("consenter info in %s configuration did not specify server TLS cert", etcdraft.TypeKey)
+				logger.Panicf("consenter info in %s configuration did not specify server TLS cert", EtcdRaft)
 			}
 			clientCertPath := string(c.GetClientTlsCert())
 			cf.TranslatePathInPlace(configDir, &clientCertPath)
