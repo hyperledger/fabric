@@ -110,7 +110,7 @@ var _ = Describe("Token EndToEnd", func() {
 				{
 					Quantity: 119,
 					Type:     "ABC123",
-					Id:       &token.InputId{TxId: "ledger-id", Index: 1},
+					Id:       &token.TokenId{TxId: "ledger-id", Index: 1},
 				},
 			},
 		}
@@ -196,8 +196,8 @@ var _ = Describe("Token EndToEnd", func() {
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("transferring tokens to user1")
-			inputIDs := []*token.InputId{{TxId: txID, Index: 0}}
-			expectedTransferTransaction.GetPlainAction().GetPlainTransfer().Inputs = inputIDs
+			tokenIDs := []*token.TokenId{{TxId: txID, Index: 0}}
+			expectedTransferTransaction.GetPlainAction().GetPlainTransfer().Inputs = tokenIDs
 			txID = RunTransferRequest(tClient, issuedTokens, recipientUser1, expectedTransferTransaction)
 
 			By("list tokens user 2")
@@ -215,8 +215,8 @@ var _ = Describe("Token EndToEnd", func() {
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
 
 			By("redeeming tokens user1")
-			inputIDs = []*token.InputId{{TxId: txID, Index: 0}}
-			expectedRedeemTransaction.GetPlainAction().GetPlainRedeem().Inputs = inputIDs
+			tokenIDs = []*token.TokenId{{TxId: txID, Index: 0}}
+			expectedRedeemTransaction.GetPlainAction().GetPlainRedeem().Inputs = tokenIDs
 			quantityToRedeem := 50 // redeem 50 out of 119
 			RunRedeemRequest(tClient, issuedTokens, uint64(quantityToRedeem), expectedRedeemTransaction)
 
@@ -226,7 +226,7 @@ var _ = Describe("Token EndToEnd", func() {
 					{
 						Quantity: 119 - 50,
 						Type:     "ABC123",
-						Id:       &token.InputId{TxId: "ledger-id", Index: 0},
+						Id:       &token.TokenId{TxId: "ledger-id", Index: 0},
 					},
 				},
 			}
@@ -289,7 +289,7 @@ var _ = Describe("Token EndToEnd", func() {
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User2 transfers his token to User1")
-			inputIDs := []*token.InputId{{TxId: txID, Index: 0}}
+			inputIDs := []*token.TokenId{{TxId: txID, Index: 0}}
 			expectedTransferTransaction.GetPlainAction().GetPlainTransfer().Inputs = inputIDs
 			RunTransferRequest(tClient, issuedTokens, recipientUser1, expectedTransferTransaction)
 
@@ -389,9 +389,9 @@ func RunListTokens(c *tokenclient.Client, expectedUnspentTokens *token.UnspentTo
 }
 
 func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, recipient []byte, expectedTokenTx *token.TokenTransaction) string {
-	inputTokenIDs := make([]*token.InputId, len(inputTokens))
+	inputTokenIDs := make([]*token.TokenId, len(inputTokens))
 	for i, inToken := range inputTokens {
-		inputTokenIDs[i] = &token.InputId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
+		inputTokenIDs[i] = &token.TokenId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
 	}
 	shares := []*token.RecipientTransferShare{
 		{Recipient: recipient, Quantity: 119},
@@ -422,9 +422,9 @@ func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput,
 }
 
 func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, quantity uint64, expectedTokenTx *token.TokenTransaction) {
-	inputTokenIDs := make([]*token.InputId, len(inputTokens))
+	inputTokenIDs := make([]*token.TokenId, len(inputTokens))
 	for i, inToken := range inputTokens {
-		inputTokenIDs[i] = &token.InputId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
+		inputTokenIDs[i] = &token.TokenId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
 	}
 
 	envelope, txid, ordererStatus, committed, err := c.Redeem(inputTokenIDs, quantity, 30*time.Second)
@@ -445,10 +445,10 @@ func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, q
 }
 
 func RunTransferRequestWithFailure(c *tokenclient.Client, inputTokens []*token.TokenOutput, recipient []byte) (string, *common.Status, bool, error) {
-	inputTokenIDs := make([]*token.InputId, len(inputTokens))
+	inputTokenIDs := make([]*token.TokenId, len(inputTokens))
 	var sum uint64 = 0
 	for i, inToken := range inputTokens {
-		inputTokenIDs[i] = &token.InputId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
+		inputTokenIDs[i] = &token.TokenId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
 
 		sum += inToken.GetQuantity()
 	}

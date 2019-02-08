@@ -104,10 +104,7 @@ func (prover *ProverPeer) RequestImport(tokensToIssue []*token.TokenToIssue, sig
 // to be transferred and the shares describing how they are going to be distributed
 // among recipients; it returns a marshalled token transaction and an error message in the case the
 // request fails
-func (prover *ProverPeer) RequestTransfer(
-	tokenIDs []*token.InputId,
-	shares []*token.RecipientTransferShare,
-	signingIdentity tk.SigningIdentity) ([]byte, error) {
+func (prover *ProverPeer) RequestTransfer(tokenIDs []*token.TokenId, shares []*token.RecipientTransferShare, signingIdentity tk.SigningIdentity) ([]byte, error) {
 
 	tr := &token.TransferRequest{
 		Shares:   shares,
@@ -127,7 +124,7 @@ func (prover *ProverPeer) RequestTransfer(
 // It queries the ledger to read detail for each token id.
 // It creates a token transaction with an output for redeemed tokens and
 // possibly another output to transfer the remaining tokens, if any, to the same user
-func (prover *ProverPeer) RequestRedeem(tokenIDs []*token.InputId, quantity uint64, signingIdentity tk.SigningIdentity) ([]byte, error) {
+func (prover *ProverPeer) RequestRedeem(tokenIDs []*token.TokenId, quantity uint64, signingIdentity tk.SigningIdentity) ([]byte, error) {
 	rr := &token.RedeemRequest{
 		QuantityToRedeem: quantity,
 		TokenIds:         tokenIDs,

@@ -39,7 +39,7 @@ message RecipientTransferShare {
 // TokenOutput is used to specify a token returned by ListRequest
 message TokenOutput {
     // ID is used to uniquely identify the token
-    InputId id = 1;
+    TokenId id = 1;
 
     // Type is the type of the token
     string type = 2;
@@ -72,7 +72,7 @@ message ImportRequest {
 message TransferRequest {
     bytes credential = 1;
 
-    repeated InputId token_ids = 2;
+    repeated TokenId token_ids = 2;
 
     repeated RecipientTransferShare shares = 3;
 }
@@ -84,7 +84,7 @@ message RedeemRequest {
     bytes credential = 1;
 
     // token_ids specifies the ids for the tokens that will be redeemed
-    repeated InputId token_ids = 2;
+    repeated TokenId token_ids = 2;
 
     // quantity refers to the number of units of a given token needs to be redeemed.
     uint64 quantity_to_redeem = 3;
@@ -108,7 +108,7 @@ message ApproveRequest{
     repeated AllowanceRecipientShare allowance_shares = 2;
 
     // TokenIds are the token identifiers used to create the allowance
-    repeated InputId token_ids = 3;
+    repeated TokenId token_ids = 3;
 }
 
 // ExpectationRequest is used to request indirect token import or transfer based on the token expectation
@@ -121,7 +121,7 @@ message ExpectationRequest {
     TokenExpectation expectation = 2;
 
     // TokenIds are the token identifiers used to fulfill the expectation
-    repeated InputId token_ids = 3;
+    repeated TokenId token_ids = 3;
 }
 
 // Header is a generic replay prevention and identity message to include in a signed command

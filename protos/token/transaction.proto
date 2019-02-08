@@ -88,7 +88,7 @@ message PlainImport {
 message PlainTransfer {
 
     // The inputs to the transfer transaction are specified by their ID
-    repeated InputId inputs = 1;
+    repeated TokenId inputs = 1;
 
     // A transfer transaction may contain one or more outputs
     repeated PlainOutput outputs = 2;
@@ -97,7 +97,7 @@ message PlainTransfer {
 // PlainApprove specifies an approve of one or more tokens in plaintext format
 message PlainApprove {
     // The inputs to the transfer transaction are specified by their ID
-    repeated InputId inputs = 1;
+    repeated TokenId inputs = 1;
 
     // An approve transaction contains one or more plain delegated outputs
     repeated PlainDelegatedOutput delegated_outputs = 2;
@@ -110,7 +110,7 @@ message PlainApprove {
 // an to a delegated output
 message PlainTransferFrom {
     // The inputs to the transfer transaction are specified by their ID
-    repeated InputId inputs = 1;
+    repeated TokenId inputs = 1;
 
     // A transferFrom transaction contains multiple outputs
     repeated PlainOutput outputs = 2;
@@ -132,8 +132,8 @@ message PlainOutput {
     uint64 quantity = 3;
 }
 
-// An InputId specifies an output using the transaction ID and the index of the output in the transaction
-message InputId {
+// A TokenId specifies an output using the transaction ID and the index of the output in the transaction
+message TokenId {
 
     // The transaction ID
     string tx_id = 1;

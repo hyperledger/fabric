@@ -341,7 +341,7 @@ var _ = Describe("Verifier", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainTransfer{
 							PlainTransfer: &token.PlainTransfer{
-								Inputs: []*token.InputId{
+								Inputs: []*token.TokenId{
 									{TxId: "0", Index: 0},
 								},
 								Outputs: []*token.PlainOutput{
@@ -404,7 +404,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer{
 								PlainTransfer: &token.PlainTransfer{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "wild_pineapple", Index: 0},
 									},
 									Outputs: []*token.PlainOutput{
@@ -442,7 +442,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer{
 								PlainTransfer: &token.PlainTransfer{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 										{TxId: "0", Index: 0},
 									},
@@ -470,7 +470,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer{
 								PlainTransfer: &token.PlainTransfer{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.PlainOutput{
@@ -497,7 +497,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer{
 								PlainTransfer: &token.PlainTransfer{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.PlainOutput{
@@ -544,7 +544,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer{
 								PlainTransfer: &token.PlainTransfer{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 										{TxId: "2", Index: 0},
 									},
@@ -571,7 +571,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer{
 								PlainTransfer: &token.PlainTransfer{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.PlainOutput{
@@ -610,7 +610,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer{
 								PlainTransfer: &token.PlainTransfer{
-									Inputs: []*token.InputId{},
+									Inputs: []*token.TokenId{},
 									Outputs: []*token.PlainOutput{
 										{Owner: []byte("owner-1"), Type: "", Quantity: 0},
 									},
@@ -645,14 +645,14 @@ var _ = Describe("Verifier", func() {
 
 	Describe("Test ProcessTx PlainRedeem with memory ledger", func() {
 		var (
-			inputIds          []*token.InputId
+			tokenIds          []*token.TokenId
 			redeemTxID        string
 			redeemTransaction *token.TokenTransaction
 		)
 
 		BeforeEach(func() {
 			redeemTxID = "r1"
-			inputIds = []*token.InputId{
+			tokenIds = []*token.TokenId{
 				{TxId: "0", Index: 0},
 			}
 			redeemTransaction = &token.TokenTransaction{
@@ -660,7 +660,7 @@ var _ = Describe("Verifier", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainRedeem{
 							PlainRedeem: &token.PlainTransfer{
-								Inputs: inputIds,
+								Inputs: tokenIds,
 								Outputs: []*token.PlainOutput{
 									{Type: "TOK1", Quantity: 111},
 								},
@@ -701,7 +701,7 @@ var _ = Describe("Verifier", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainRedeem{
 							PlainRedeem: &token.PlainTransfer{
-								Inputs: inputIds,
+								Inputs: tokenIds,
 								Outputs: []*token.PlainOutput{
 									{Type: "TOK1", Quantity: 99},
 									{Owner: []byte("owner-1"), Type: "TOK1", Quantity: 12},
@@ -764,7 +764,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainRedeem{
 								PlainRedeem: &token.PlainTransfer{
-									Inputs: inputIds,
+									Inputs: tokenIds,
 									Outputs: []*token.PlainOutput{
 										{Type: "TOK1", Quantity: 100},
 									},
@@ -810,7 +810,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainRedeem{
 								PlainRedeem: &token.PlainTransfer{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 										{TxId: "2", Index: 0},
 									},
@@ -851,7 +851,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainRedeem{
 								PlainRedeem: &token.PlainTransfer{
-									Inputs: inputIds,
+									Inputs: tokenIds,
 									Outputs: []*token.PlainOutput{
 										{Type: "TOK1", Quantity: 99},
 										{Owner: []byte("owner-2"), Type: "TOK1", Quantity: 12},
@@ -877,7 +877,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainRedeem{
 								PlainRedeem: &token.PlainTransfer{
-									Inputs: inputIds,
+									Inputs: tokenIds,
 									Outputs: []*token.PlainOutput{
 										{Type: "TOK1", Quantity: 99},
 										{Type: "TOK1", Quantity: 12},
@@ -934,7 +934,7 @@ var _ = Describe("Verifier", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainApprove{
 							PlainApprove: &token.PlainApprove{
-								Inputs: []*token.InputId{
+								Inputs: []*token.TokenId{
 									{TxId: "0", Index: 0},
 								},
 								DelegatedOutputs: []*token.PlainDelegatedOutput{
@@ -994,7 +994,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainApprove{
 								PlainApprove: &token.PlainApprove{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
 									DelegatedOutputs: []*token.PlainDelegatedOutput{
@@ -1022,7 +1022,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainApprove{
 								PlainApprove: &token.PlainApprove{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 										{TxId: "0", Index: 0},
 									},
@@ -1049,7 +1049,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainApprove{
 								PlainApprove: &token.PlainApprove{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
 									DelegatedOutputs: []*token.PlainDelegatedOutput{
@@ -1075,7 +1075,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainApprove{
 								PlainApprove: &token.PlainApprove{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
 									DelegatedOutputs: []*token.PlainDelegatedOutput{
@@ -1110,7 +1110,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainApprove{
 								PlainApprove: &token.PlainApprove{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 										{TxId: "0", Index: 0},
 									},
@@ -1136,7 +1136,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainApprove{
 								PlainApprove: &token.PlainApprove{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
 									DelegatedOutputs: []*token.PlainDelegatedOutput{
@@ -1160,7 +1160,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainApprove{
 								PlainApprove: &token.PlainApprove{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
 									DelegatedOutputs: []*token.PlainDelegatedOutput{
@@ -1202,7 +1202,7 @@ var _ = Describe("Verifier", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainTransfer_From{
 							PlainTransfer_From: &token.PlainTransferFrom{
-								Inputs: []*token.InputId{
+								Inputs: []*token.TokenId{
 									{TxId: "0", Index: 0},
 								},
 								Outputs: []*token.PlainOutput{
@@ -1292,7 +1292,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer_From{
 								PlainTransfer_From: &token.PlainTransferFrom{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 										{TxId: "0", Index: 0},
 									},
@@ -1319,7 +1319,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer_From{
 								PlainTransfer_From: &token.PlainTransferFrom{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.PlainOutput{
@@ -1345,7 +1345,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer_From{
 								PlainTransfer_From: &token.PlainTransferFrom{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.PlainOutput{
@@ -1381,7 +1381,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer_From{
 								PlainTransfer_From: &token.PlainTransferFrom{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 										{TxId: "0", Index: 0},
 									},
@@ -1407,7 +1407,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer_From{
 								PlainTransfer_From: &token.PlainTransferFrom{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.PlainOutput{
@@ -1432,7 +1432,7 @@ var _ = Describe("Verifier", func() {
 						PlainAction: &token.PlainTokenAction{
 							Data: &token.PlainTokenAction_PlainTransfer_From{
 								PlainTransfer_From: &token.PlainTransferFrom{
-									Inputs: []*token.InputId{
+									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.PlainOutput{

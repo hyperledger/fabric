@@ -27,7 +27,6 @@ type Transactor struct {
 }
 
 // RequestTransfer creates a TokenTransaction of type transfer request
-//func (t *Transactor) RequestTransfer(inTokens []*token.InputId, tokensToTransfer []*token.RecipientTransferShare) (*token.TokenTransaction, error) {
 func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.TokenTransaction, error) {
 	var outputs []*token.PlainOutput
 
@@ -120,8 +119,8 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 }
 
 // read token data from ledger for each token ids and calculate the sum of quantities for all token ids
-// Returns InputIds, token type, sum of token quantities, and error in the case of failure
-func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.InputId) (string, uint64, error) {
+// Returns TokenIds, token type, sum of token quantities, and error in the case of failure
+func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, uint64, error) {
 	var tokenType = ""
 	var quantitySum uint64 = 0
 	for _, tokenId := range tokenIds {
@@ -210,7 +209,7 @@ func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 					}
 					if !spent {
 						verifierLogger.Debugf("adding token with ID '%s' to list of unspent tokens", result.GetKey())
-						id, err := getInputIdFromKey(result.Key)
+						id, err := getTokenIdFromKey(result.Key)
 						if err != nil {
 							return nil, err
 						}
@@ -341,7 +340,7 @@ func (t *Transactor) RequestTransferFrom(request *token.TransferRequest) (*token
 	return transaction, nil
 }
 
-func (t *Transactor) getDelegateInputsFromTokenIds(tokenIds []*token.InputId) ([]byte, string, uint64, error) {
+func (t *Transactor) getDelegateInputsFromTokenIds(tokenIds []*token.TokenId) ([]byte, string, uint64, error) {
 	tokenType := ""
 	var tokenOwner []byte
 	sumQuantity := uint64(0)
@@ -562,7 +561,7 @@ func parseOutputs(outputs []*token.PlainOutput) (string, uint64, error) {
 	return outputType, outputSum, nil
 }
 
-func getInputIdFromKey(key string) (*token.InputId, error) {
+func getTokenIdFromKey(key string) (*token.TokenId, error) {
 	_, components, err := splitCompositeKey(key)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("error splitting input composite key: '%s'", err))
@@ -577,5 +576,5 @@ func getInputIdFromKey(key string) (*token.InputId, error) {
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("error parsing output index '%s': '%s'", components[1], err))
 	}
-	return &token.InputId{TxId: txID, Index: uint32(index)}, nil
+	return &token.TokenId{TxId: txID, Index: uint32(index)}, nil
 }
