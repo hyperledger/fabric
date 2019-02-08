@@ -755,8 +755,6 @@ var _ = Describe("Chain", func() {
 
 				Describe("when snapshotting is enabled (snapshot interval is not zero)", func() {
 					var (
-						m *raftprotos.RaftMetadata
-
 						ledgerLock sync.Mutex
 						ledger     map[uint64]*common.Block
 					)
@@ -768,7 +766,6 @@ var _ = Describe("Chain", func() {
 					}
 
 					BeforeEach(func() {
-						opts.SnapInterval = 2
 						opts.SnapshotCatchUpEntries = 2
 
 						close(cutter.Block)
@@ -797,231 +794,127 @@ var _ = Describe("Chain", func() {
 						}
 					})
 
-					JustBeforeEach(func() {
-						err = chain.Order(env, uint64(0))
-						Expect(err).NotTo(HaveOccurred())
-						Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
-
-						err = chain.Order(env, uint64(0))
-						Expect(err).NotTo(HaveOccurred())
-						Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-
-						_, metadata := support.WriteBlockArgsForCall(1)
-						m = &raftprotos.RaftMetadata{}
-						proto.Unmarshal(metadata, m)
-					})
-
-					It("writes snapshot file to snapDir", func() {
-						// Scenario: start a chain with SnapInterval = 1, expect it to take
-						// one snapshot after ordering 3 blocks.
-						//
-						// block number starts from 0, and we determine if snapshot should be taken by:
-						//        appliedBlockNum - snapBlockNum < SnapInterval
-
-						Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
-						Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", 1))
-
-						// chain should still be functioning
-						err = chain.Order(env, uint64(0))
-						Expect(err).NotTo(HaveOccurred())
-						Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
-					})
-
-					It("pauses chain if sync is in progress", func() {
-						// Scenario:
-						// after a snapshot is taken, reboot chain with raftIndex = 0
-						// chain should attempt to sync upon reboot, and blocks on
-						// `WaitReady` API
-
-						// check snapshot does exit
-						Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
-
-						chain.Halt()
-
-						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
-						c.init()
-
-						signal := make(chan struct{})
-
-						c.puller.PullBlockStub = func(i uint64) *common.Block {
-							<-signal // blocking for assertions
-							ledgerLock.Lock()
-							defer ledgerLock.Unlock()
-							if i >= uint64(len(ledger)) {
-								return nil
-							}
-
-							return ledger[i]
-						}
-
-						err := c.WaitReady()
-						Expect(err).To(MatchError("chain is not started"))
-
-						c.Start()
-						defer c.Halt()
-
-						// pull block is called, so chain should be catching up now, WaitReady should block
-						signal <- struct{}{}
-
-						done := make(chan error)
-						go func() {
-							done <- c.WaitReady()
-						}()
-
-						Consistently(done).ShouldNot(Receive())
-						close(signal)                         // unblock block puller
-						Eventually(done).Should(Receive(nil)) // WaitReady should be unblocked
-						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-					})
-
-					It("restores snapshot w/o extra entries", func() {
-						// Scenario:
-						// after a snapshot is taken, no more entries are appended.
-						// then node is restarted, it loads snapshot, finds its term
-						// and index. While replaying WAL to memory storage, it should
-						// not append any entry because no extra entry was appended
-						// after snapshot was taken.
-
-						Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
-						Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", 1))
-						snapshot, err := opts.MemoryStorage.Snapshot() // get the snapshot just created
-						Expect(err).NotTo(HaveOccurred())
-						i, err := opts.MemoryStorage.FirstIndex() // get the first index in memory
-						Expect(err).NotTo(HaveOccurred())
-
-						// expect storage to preserve SnapshotCatchUpEntries entries before snapshot
-						Expect(i).To(Equal(snapshot.Metadata.Index - opts.SnapshotCatchUpEntries + 1))
-
-						chain.Halt()
-
-						raftMetadata.RaftIndex = m.RaftIndex
-						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
-
-						c.init()
-						c.Start()
-						defer c.Halt()
-
-						// following arithmetic reflects how etcdraft MemoryStorage is implemented
-						// when no entry is appended after snapshot being loaded.
-						Eventually(c.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index + 1))
-						Eventually(c.opts.MemoryStorage.LastIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index))
-
-						// chain keeps functioning
-						Eventually(func() bool {
-							c.clock.Increment(interval)
-							select {
-							case <-c.observe:
-								return true
-							default:
-								return false
-							}
-						}, LongEventualTimeout).Should(BeTrue())
-
-						c.cutter.CutNext = true
-						err = c.Order(env, uint64(0))
-						Expect(err).NotTo(HaveOccurred())
-						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
-					})
-
-					It("restores snapshot w/ extra entries", func() {
-						// Scenario:
-						// after a snapshot is taken, more entries are appended.
-						// then node is restarted, it loads snapshot, finds its term
-						// and index. While replaying WAL to memory storage, it should
-						// append some entries.
-
-						// check snapshot does exit
-						Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
-						Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", 1))
-						snapshot, err := opts.MemoryStorage.Snapshot() // get the snapshot just created
-						Expect(err).NotTo(HaveOccurred())
-						i, err := opts.MemoryStorage.FirstIndex() // get the first index in memory
-						Expect(err).NotTo(HaveOccurred())
-
-						// expect storage to preserve SnapshotCatchUpEntries entries before snapshot
-						Expect(i).To(Equal(snapshot.Metadata.Index - opts.SnapshotCatchUpEntries + 1))
-
-						err = chain.Order(env, uint64(0))
-						Expect(err).NotTo(HaveOccurred())
-						Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
-
-						lasti, _ := opts.MemoryStorage.LastIndex()
-
-						chain.Halt()
-
-						raftMetadata.RaftIndex = m.RaftIndex
-						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
-						c.support.HeightReturns(5)
-						c.support.BlockReturns(&common.Block{
-							Header:   &common.BlockHeader{},
-							Data:     &common.BlockData{Data: [][]byte{[]byte("foo")}},
-							Metadata: &common.BlockMetadata{Metadata: make([][]byte, 4)},
+					Context("Small SnapshotInterval", func() {
+						BeforeEach(func() {
+							opts.SnapInterval = 1
 						})
 
-						c.init()
-						c.Start()
-						defer c.Halt()
+						It("writes snapshot file to snapDir", func() {
+							// Scenario: start a chain with SnapInterval = 1 byte, expect it to take
+							// one snapshot for each block
 
-						Eventually(c.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index + 1))
-						Eventually(c.opts.MemoryStorage.LastIndex, LongEventualTimeout).Should(Equal(lasti))
+							i, _ := opts.MemoryStorage.FirstIndex()
 
-						// chain keeps functioning
-						Eventually(func() bool {
-							c.clock.Increment(interval)
-							select {
-							case <-c.observe:
-								return true
-							default:
-								return false
-							}
-						}, LongEventualTimeout).Should(BeTrue())
-
-						c.cutter.CutNext = true
-						err = c.Order(env, uint64(0))
-						Expect(err).NotTo(HaveOccurred())
-						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-					})
-
-					When("local ledger is in sync with snapshot", func() {
-						It("does not pull blocks and still respects snapshot interval", func() {
-							// Scenario:
-							// - snapshot is taken at block 2
-							// - order one more envelope (block 3)
-							// - reboot chain at block 2
-							// - block 3 should be replayed from wal
-							// - order another envelope to trigger snapshot, containing block 3 & 4
-							// Assertions:
-							// - block puller should NOT be called
-							// - chain should keep functioning after reboot
-							// - chain should respect snapshot interval to trigger next snapshot
-
-							// check snapshot does exit
+							Expect(chain.Order(env, uint64(0))).To(Succeed())
+							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 							Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
+							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
 
-							// order another envelope. this should not trigger snapshot
-							err = chain.Order(env, uint64(0))
+							i, _ = opts.MemoryStorage.FirstIndex()
+
+							Expect(chain.Order(env, uint64(0))).To(Succeed())
+							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+							Eventually(countFiles, LongEventualTimeout).Should(Equal(2))
+							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
+						})
+
+						It("pauses chain if sync is in progress", func() {
+							// Scenario:
+							// after a snapshot is taken, reboot chain with raftIndex = 0
+							// chain should attempt to sync upon reboot, and blocks on
+							// `WaitReady` API
+
+							i, _ := opts.MemoryStorage.FirstIndex()
+
+							Expect(chain.Order(env, uint64(0))).To(Succeed())
+							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+							Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
+							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
+
+							i, _ = opts.MemoryStorage.FirstIndex()
+
+							Expect(chain.Order(env, uint64(0))).To(Succeed())
+							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+							Eventually(countFiles, LongEventualTimeout).Should(Equal(2))
+							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
+
+							chain.Halt()
+
+							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
+							c.init()
+
+							signal := make(chan struct{})
+
+							c.puller.PullBlockStub = func(i uint64) *common.Block {
+								<-signal // blocking for assertions
+								ledgerLock.Lock()
+								defer ledgerLock.Unlock()
+								if i >= uint64(len(ledger)) {
+									return nil
+								}
+
+								return ledger[i]
+							}
+
+							err := c.WaitReady()
+							Expect(err).To(MatchError("chain is not started"))
+
+							c.Start()
+							defer c.Halt()
+
+							// pull block is called, so chain should be catching up now, WaitReady should block
+							signal <- struct{}{}
+
+							done := make(chan error)
+							go func() {
+								done <- c.WaitReady()
+							}()
+
+							Consistently(done).ShouldNot(Receive())
+							close(signal)                         // unblock block puller
+							Eventually(done).Should(Receive(nil)) // WaitReady should be unblocked
+							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+						})
+
+						It("restores snapshot w/o extra entries", func() {
+							// Scenario:
+							// after a snapshot is taken, no more entries are appended.
+							// then node is restarted, it loads snapshot, finds its term
+							// and index. While replaying WAL to memory storage, it should
+							// not append any entry because no extra entry was appended
+							// after snapshot was taken.
+
+							Expect(chain.Order(env, uint64(0))).To(Succeed())
+							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+							_, metadata := support.WriteBlockArgsForCall(0)
+							m := &raftprotos.RaftMetadata{}
+							proto.Unmarshal(metadata, m)
+
+							Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
+							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", 1))
+							snapshot, err := opts.MemoryStorage.Snapshot() // get the snapshot just created
 							Expect(err).NotTo(HaveOccurred())
-							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
+							i, err := opts.MemoryStorage.FirstIndex() // get the first index in memory
+							Expect(err).NotTo(HaveOccurred())
+
+							// expect storage to preserve SnapshotCatchUpEntries entries before snapshot
+							Expect(i).To(Equal(snapshot.Metadata.Index - opts.SnapshotCatchUpEntries + 1))
 
 							chain.Halt()
 
 							raftMetadata.RaftIndex = m.RaftIndex
 							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
-							// start chain at block 2 (height = 3)
-
-							c.support.HeightReturns(3)
-							c.support.BlockReturns(&common.Block{
-								Header:   &common.BlockHeader{},
-								Data:     &common.BlockData{Data: [][]byte{[]byte("foo")}},
-								Metadata: &common.BlockMetadata{Metadata: make([][]byte, 4)},
-							})
-							c.opts.SnapInterval = 2
 
 							c.init()
 							c.Start()
 							defer c.Halt()
 
-							// elect leader
+							// following arithmetic reflects how etcdraft MemoryStorage is implemented
+							// when no entry is appended after snapshot being loaded.
+							Eventually(c.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index + 1))
+							Eventually(c.opts.MemoryStorage.LastIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index))
+
+							// chain keeps functioning
 							Eventually(func() bool {
 								c.clock.Increment(interval)
 								select {
@@ -1035,11 +928,157 @@ var _ = Describe("Chain", func() {
 							c.cutter.CutNext = true
 							err = c.Order(env, uint64(0))
 							Expect(err).NotTo(HaveOccurred())
+							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+						})
+					})
 
-							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-							Expect(c.puller.PullBlockCallCount()).Should(BeZero())
-							// old snapshot file is retained
-							Eventually(countFiles, LongEventualTimeout).Should(Equal(2))
+					Context("Large SnapshotInterval", func() {
+						BeforeEach(func() {
+							opts.SnapInterval = 1024
+						})
+
+						It("restores snapshot w/ extra entries", func() {
+							// Scenario:
+							// after a snapshot is taken, more entries are appended.
+							// then node is restarted, it loads snapshot, finds its term
+							// and index. While replaying WAL to memory storage, it should
+							// append some entries.
+
+							largeEnv := &common.Envelope{
+								Payload: marshalOrPanic(&common.Payload{
+									Header: &common.Header{ChannelHeader: marshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_MESSAGE), ChannelId: channelID})},
+									Data:   make([]byte, 500),
+								}),
+							}
+
+							By("Ordering two large envelopes to trigger snapshot")
+							Expect(chain.Order(largeEnv, uint64(0))).To(Succeed())
+							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+
+							Expect(chain.Order(largeEnv, uint64(0))).To(Succeed())
+							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+
+							_, metadata := support.WriteBlockArgsForCall(1)
+							m := &raftprotos.RaftMetadata{}
+							proto.Unmarshal(metadata, m)
+
+							// check snapshot does exit
+							Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
+							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", 1))
+							snapshot, err := opts.MemoryStorage.Snapshot() // get the snapshot just created
+							Expect(err).NotTo(HaveOccurred())
+							i, err := opts.MemoryStorage.FirstIndex() // get the first index in memory
+							Expect(err).NotTo(HaveOccurred())
+
+							// expect storage to preserve SnapshotCatchUpEntries entries before snapshot
+							Expect(i).To(Equal(snapshot.Metadata.Index - opts.SnapshotCatchUpEntries + 1))
+
+							By("Ordering another envlope to append new data to memory after snaphost")
+							Expect(chain.Order(env, uint64(0))).To(Succeed())
+							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
+
+							lasti, _ := opts.MemoryStorage.LastIndex()
+
+							chain.Halt()
+
+							raftMetadata.RaftIndex = m.RaftIndex
+							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
+							c.support.HeightReturns(5)
+							c.support.BlockReturns(&common.Block{
+								Header:   &common.BlockHeader{},
+								Data:     &common.BlockData{Data: [][]byte{[]byte("foo")}},
+								Metadata: &common.BlockMetadata{Metadata: make([][]byte, 4)},
+							})
+
+							By("Restarting the node")
+							c.init()
+							c.Start()
+							defer c.Halt()
+
+							By("Checking latest index is larger than index in snapshot")
+							Eventually(c.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index + 1))
+							Eventually(c.opts.MemoryStorage.LastIndex, LongEventualTimeout).Should(Equal(lasti))
+						})
+
+						When("local ledger is in sync with snapshot", func() {
+							It("does not pull blocks and still respects snapshot interval", func() {
+								// Scenario:
+								// - snapshot is taken at block 2
+								// - order one more envelope (block 3)
+								// - reboot chain at block 2
+								// - block 3 should be replayed from wal
+								// - order another envelope to trigger snapshot, containing block 3 & 4
+								// Assertions:
+								// - block puller should NOT be called
+								// - chain should keep functioning after reboot
+								// - chain should respect snapshot interval to trigger next snapshot
+
+								largeEnv := &common.Envelope{
+									Payload: marshalOrPanic(&common.Payload{
+										Header: &common.Header{ChannelHeader: marshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_MESSAGE), ChannelId: channelID})},
+										Data:   make([]byte, 500),
+									}),
+								}
+
+								By("Ordering two large envelopes to trigger snapshot")
+								Expect(chain.Order(largeEnv, uint64(0))).To(Succeed())
+								Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+
+								Expect(chain.Order(largeEnv, uint64(0))).To(Succeed())
+								Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+
+								Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
+
+								_, metadata := support.WriteBlockArgsForCall(1)
+								m := &raftprotos.RaftMetadata{}
+								proto.Unmarshal(metadata, m)
+
+								By("Cutting block 3")
+								// order another envelope. this should not trigger snapshot
+								err = chain.Order(largeEnv, uint64(0))
+								Expect(err).NotTo(HaveOccurred())
+								Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
+
+								chain.Halt()
+
+								raftMetadata.RaftIndex = m.RaftIndex
+								c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
+								// start chain at block 2 (height = 3)
+
+								c.support.HeightReturns(3)
+								c.support.BlockReturns(&common.Block{
+									Header:   &common.BlockHeader{},
+									Data:     &common.BlockData{Data: [][]byte{[]byte("foo")}},
+									Metadata: &common.BlockMetadata{Metadata: make([][]byte, 4)},
+								})
+								c.opts.SnapInterval = 1024
+
+								By("Restarting node at block 2")
+								c.init()
+								c.Start()
+								defer c.Halt()
+
+								// elect leader
+								Eventually(func() bool {
+									c.clock.Increment(interval)
+									select {
+									case <-c.observe:
+										return true
+									default:
+										return false
+									}
+								}, LongEventualTimeout).Should(BeTrue())
+
+								By("Ordering one more block to trigger snapshot")
+								c.cutter.CutNext = true
+								err = c.Order(largeEnv, uint64(0))
+								Expect(err).NotTo(HaveOccurred())
+
+								Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+								Expect(c.puller.PullBlockCallCount()).Should(BeZero())
+								// old snapshot file is retained
+								Eventually(countFiles, LongEventualTimeout).Should(Equal(2))
+							})
 						})
 					})
 				})

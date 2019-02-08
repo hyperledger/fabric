@@ -194,11 +194,12 @@ var genesisDefaults = TopLevel{
 		},
 		EtcdRaft: &etcdraft.Metadata{
 			Options: &etcdraft.Options{
-				TickInterval:    500,
-				ElectionTick:    10,
-				HeartbeatTick:   1,
-				MaxInflightMsgs: 256,
-				MaxSizePerMsg:   1048576,
+				TickInterval:     500,
+				ElectionTick:     10,
+				HeartbeatTick:    1,
+				MaxInflightMsgs:  256,
+				MaxSizePerMsg:    1048576,
+				SnapshotInterval: 100 * 1024 * 1024, // 100MB
 			},
 		},
 	},
@@ -422,6 +423,10 @@ loop:
 			case ord.EtcdRaft.Options.MaxSizePerMsg == 0:
 				logger.Infof("Orderer.EtcdRaft.Options.MaxSizePerMsg unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.MaxSizePerMsg)
 				ord.EtcdRaft.Options.MaxSizePerMsg = genesisDefaults.Orderer.EtcdRaft.Options.MaxSizePerMsg
+
+			case ord.EtcdRaft.Options.SnapshotInterval == 0:
+				logger.Infof("Orderer.EtcdRaft.Options.SnapshotInterval unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.SnapshotInterval)
+				ord.EtcdRaft.Options.SnapshotInterval = genesisDefaults.Orderer.EtcdRaft.Options.SnapshotInterval
 
 			case len(ord.EtcdRaft.Consenters) == 0:
 				logger.Panicf("%s configuration did not specify any consenter", etcdraft.TypeKey)

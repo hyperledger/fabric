@@ -90,7 +90,7 @@ Profiles:{{ range .Profiles }}
       {{- if eq $w.Consensus.Type "etcdraft" }}
       EtcdRaft:
         Options:
-          SnapshotInterval: 5
+          SnapshotInterval: 1 KB
         Consenters:{{ range .Orderers }}{{ with $w.Orderer . }}
         - Host: 127.0.0.1
           Port: {{ $w.OrdererPort . "Listen" }}
