@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/golang/protobuf/proto"
 
@@ -32,6 +33,7 @@ var _ = Describe("Lifecycle", func() {
 			fakeChannelConfig       *mock.ChannelConfig
 			fakeApplicationConfig   *mock.ApplicationConfig
 			fakeOrgConfigs          []*mock.ApplicationOrgConfig
+			fakePolicyManager       *mock.PolicyManager
 
 			fakePublicState MapLedgerShim
 		)
@@ -46,6 +48,9 @@ var _ = Describe("Lifecycle", func() {
 			fakeOrgConfigs = []*mock.ApplicationOrgConfig{{}, {}}
 			fakeOrgConfigs[0].MSPIDReturns("first-mspid")
 			fakeOrgConfigs[1].MSPIDReturns("second-mspid")
+			fakePolicyManager = &mock.PolicyManager{}
+			fakePolicyManager.GetPolicyReturns(nil, true)
+			fakeChannelConfig.PolicyManagerReturns(fakePolicyManager)
 
 			fakeApplicationConfig.OrganizationsReturns(map[string]channelconfig.ApplicationOrg{
 				"org0": fakeOrgConfigs[0],
@@ -65,8 +70,10 @@ var _ = Describe("Lifecycle", func() {
 			}
 
 			err := l.Serializer.Serialize(lifecycle.NamespacesName, "cc-name", &lifecycle.DefinedChaincode{
-				Version: "version",
-				Hash:    []byte("hash"),
+				Version:             "version",
+				Hash:                []byte("hash"),
+				ValidationPlugin:    "validation-plugin",
+				ValidationParameter: []byte("validation-parameter"),
 				Collections: &cb.CollectionConfigPackage{
 					Config: []*cb.CollectionConfig{
 						{
@@ -400,5 +407,117 @@ var _ = Describe("Lifecycle", func() {
 			})
 		})
 
+		Describe("LifecycleEndorsementPolicyAsBytes", func() {
+			It("returns the endorsement policy for the lifecycle chaincode", func() {
+				b, err := l.LifecycleEndorsementPolicyAsBytes("channel-id")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(b).NotTo(BeNil())
+				policy := &pb.ApplicationPolicy{}
+				err = proto.Unmarshal(b, policy)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(policy.GetChannelConfigPolicyReference()).To(Equal("/Channel/Application/LifecycleEndorsement"))
+			})
+
+			Context("when the endorsement policy reference is not found", func() {
+				BeforeEach(func() {
+					fakePolicyManager.GetPolicyReturns(nil, false)
+				})
+
+				It("returns an error", func() {
+					b, err := l.LifecycleEndorsementPolicyAsBytes("channel-id")
+					Expect(err).NotTo(HaveOccurred())
+					policy := &pb.ApplicationPolicy{}
+					err = proto.Unmarshal(b, policy)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(policy.GetSignaturePolicy()).NotTo(BeNil())
+				})
+
+				Context("when the application config cannot be retrieved", func() {
+					BeforeEach(func() {
+						fakeChannelConfig.ApplicationConfigReturns(nil, false)
+					})
+
+					It("returns an error", func() {
+						_, err := l.LifecycleEndorsementPolicyAsBytes("channel-id")
+						Expect(err).To(MatchError("could not get application config for channel 'channel-id'"))
+					})
+				})
+			})
+
+			Context("when the channel config cannot be retrieved", func() {
+				BeforeEach(func() {
+					fakeChannelConfigSource.GetStableChannelConfigReturns(nil)
+				})
+
+				It("returns an error", func() {
+					_, err := l.LifecycleEndorsementPolicyAsBytes("channel-id")
+					Expect(err).To(MatchError("could not get channel config for channel 'channel-id'"))
+				})
+			})
+		})
+
+		Describe("ValidationInfo", func() {
+			It("returns the validation info as defined in the new lifecycle", func() {
+				vPlugin, vParm, uerr, verr := l.ValidationInfo("channel-id", "cc-name", fakeQueryExecutor)
+				Expect(uerr).NotTo(HaveOccurred())
+				Expect(verr).NotTo(HaveOccurred())
+				Expect(vPlugin).To(Equal("validation-plugin"))
+				Expect(vParm).To(Equal([]byte("validation-parameter")))
+			})
+
+			Context("when the chaincode in question is +lifecycle", func() {
+				It("returns the builtin plugin and (temporarily) a permissive endorsement policy", func() {
+					vPlugin, vParm, uerr, verr := l.ValidationInfo("channel-id", "+lifecycle", fakeQueryExecutor)
+					Expect(uerr).NotTo(HaveOccurred())
+					Expect(verr).NotTo(HaveOccurred())
+					Expect(vPlugin).To(Equal("builtin"))
+					Expect(vParm).NotTo(BeNil())
+				})
+
+				Context("when fetching the lifecycle endorsement policy returns an error", func() {
+					BeforeEach(func() {
+						fakeChannelConfigSource.GetStableChannelConfigReturns(nil)
+					})
+
+					It("treats the error as non-deterministic", func() {
+						_, _, uerr, _ := l.ValidationInfo("channel-id", "+lifecycle", fakeQueryExecutor)
+						Expect(uerr).To(MatchError("unexpected failure to create lifecycle endorsement policy: could not get channel config for channel 'channel-id'"))
+					})
+				})
+			})
+
+			Context("when the ledger returns an error", func() {
+				BeforeEach(func() {
+					fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, _, uerr, _ := l.ValidationInfo("channel-id", "cc-name", fakeQueryExecutor)
+					Expect(uerr).To(MatchError("could not get chaincode: could not deserialize metadata for chaincode cc-name: could not query metadata for namespace namespaces/cc-name: state-error"))
+				})
+			})
+
+			Context("when the chaincode is not in the new lifecycle", func() {
+				It("passes through to the legacy impl", func() {
+					vPlugin, vParm, uerr, verr := l.ValidationInfo("channel-id", "missing-name", fakeQueryExecutor)
+					Expect(vPlugin).To(BeEmpty())
+					Expect(vParm).To(BeNil())
+					Expect(uerr).NotTo(HaveOccurred())
+					Expect(verr).NotTo(HaveOccurred())
+				})
+			})
+
+			Context("when the data is corrupt", func() {
+				BeforeEach(func() {
+					fakePublicState["namespaces/fields/cc-name/Version"] = []byte("garbage")
+				})
+
+				It("wraps and returns that error", func() {
+					_, _, uerr, _ := l.ValidationInfo("channel-id", "cc-name", fakeQueryExecutor)
+					Expect(uerr).To(MatchError("could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
+				})
+			})
+		})
 	})
+
 })

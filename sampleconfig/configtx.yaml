@@ -48,6 +48,9 @@ Organizations:
             Admins:
                 Type: Signature
                 Rule: "OR('SampleOrg.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('SampleOrg.member')"
 
         # AnchorPeers defines the location of peers which can be used for
         # cross-org gossip communication. Note, this value is only encoded in
@@ -200,6 +203,12 @@ Application: &ApplicationDefaults
     # For Application policies, their canonical path is
     #   /Channel/Application/<PolicyName>
     Policies: &ApplicationDefaultPolicies
+        LifecycleEndorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+        Endorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
         Readers:
             Type: ImplicitMeta
             Rule: "ANY Readers"
