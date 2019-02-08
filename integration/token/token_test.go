@@ -326,7 +326,7 @@ var _ = Describe("Token EndToEnd", func() {
 					PlainAction: &token.PlainTokenAction{
 						Data: &token.PlainTokenAction_PlainTransfer{
 							PlainTransfer: &token.PlainTransfer{
-								Inputs: []*token.InputId{{TxId: txID, Index: 0}},
+								Inputs: []*token.TokenId{{TxId: txID, Index: 0}},
 								Outputs: []*token.PlainOutput{{
 									Owner:    []byte("test-owner"),
 									Type:     "ABC123",
