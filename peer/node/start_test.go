@@ -11,10 +11,13 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/handlers/library"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/peer/node/mock"
+	"github.com/hyperledger/fabric/protos/common"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -172,4 +175,52 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 
 	/*** Scenario 4: set up both chaincodeAddress and chaincodeListenAddress ***/
 	// This scenario will be the same to scenarios 3: set up chaincodeAddress only.
+}
+
+func TestResetLoop(t *testing.T) {
+	peerLedger := &mock.PeerLedger{}
+	peerLedger.GetBlockchainInfoReturnsOnCall(
+		0,
+		&common.BlockchainInfo{
+			Height: uint64(1),
+		},
+		nil,
+	)
+	peerLedger.GetBlockchainInfoReturnsOnCall(
+		1,
+		&common.BlockchainInfo{
+			Height: uint64(5),
+		},
+		nil,
+	)
+	peerLedger.GetBlockchainInfoReturnsOnCall(
+		2,
+		&common.BlockchainInfo{
+			Height: uint64(11),
+		},
+		nil,
+	)
+	peerLedger.GetBlockchainInfoReturnsOnCall(
+		3,
+		&common.BlockchainInfo{
+			Height: uint64(11),
+		},
+		nil,
+	)
+
+	getLedger := &mock.GetLedger{}
+	getLedger.Returns(peerLedger)
+
+	resetFilter := &reset{
+		reject: true,
+	}
+
+	heights := map[string]uint64{
+		"testchannel":  uint64(10),
+		"testchannel2": uint64(10),
+	}
+
+	resetLoop(resetFilter, heights, getLedger.Spy, 1*time.Second)
+	assert.False(t, resetFilter.reject)
+	assert.Equal(t, 4, peerLedger.GetBlockchainInfoCallCount())
 }
