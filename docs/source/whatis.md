@@ -188,7 +188,7 @@ Smart contracts executing in a blockchain that operates with the order-execute
 architecture must be deterministic; otherwise, consensus might never be reached.
 To address the non-determinism issue, many platforms require that the smart
 contracts be written in a non-standard, or domain-specific language
-(such as [Solidity](https://solidity.readthedocs.io/en/v0.4.23/)) so that
+(such as [Solidity](https://solidity.readthedocs.io/)) so that
 non-deterministic operations can be eliminated. This hinders wide-spread
 adoption because it requires developers writing smart contracts to learn a new
 language and may lead to programming errors.
@@ -306,7 +306,7 @@ Performance of a blockchain platform can be affected by many variables such as
 transaction size, block size, network size, as well as limits of the hardware,
 etc. The Hyperledger community is currently developing [a draft set of measures](https://docs.google.com/document/d/1DQ6PqoeIH0pCNJSEYiw7JVbExDvWh_ZRVhWkuioG4k0/edit#heading=h.t3gztry2ja8i) within the Performance and Scale working group, along
 with a corresponding implementation of a benchmarking framework called
-[Hyperledger Caliper](https://wiki.hyperledger.org/projects/caliper).
+[Hyperledger Caliper](https://wiki.hyperledger.org/display/caliper/Hyperledger+Caliper).
 
 While that work continues to be developed and should be seen as a definitive
 measure of blockchain platform performance and scale characteristics, a team
@@ -332,7 +332,7 @@ enable the platform to support a wide range of industry use cases ranging from
 government, to finance, to supply-chain logistics, to healthcare and so much
 more.
 
-More importantly, Hyperledger Fabric is the most active of the (currently) ten
+More importantly, Hyperledger Fabric is the most active of the (currently) twelve
 Hyperledger projects. The community building around the platform is growing
 steadily, and the innovation delivered with each successive release far
 out-paces any of the other enterprise blockchain platforms.
