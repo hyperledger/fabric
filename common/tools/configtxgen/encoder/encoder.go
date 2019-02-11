@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -463,18 +463,10 @@ func New(config *genesisconfig.Profile) *Bootstrapper {
 
 // GenesisBlock produces a genesis block for the default test chain id
 func (bs *Bootstrapper) GenesisBlock() *cb.Block {
-	block, err := genesis.NewFactoryImpl(bs.channelGroup).Block(genesisconfig.TestChainID)
-	if err != nil {
-		logger.Panicf("Error creating genesis block from channel group: %s", err)
-	}
-	return block
+	return genesis.NewFactoryImpl(bs.channelGroup).Block(genesisconfig.TestChainID)
 }
 
 // GenesisBlockForChannel produces a genesis block for a given channel ID
 func (bs *Bootstrapper) GenesisBlockForChannel(channelID string) *cb.Block {
-	block, err := genesis.NewFactoryImpl(bs.channelGroup).Block(channelID)
-	if err != nil {
-		logger.Panicf("Error creating genesis block from channel group: %s", err)
-	}
-	return block
+	return genesis.NewFactoryImpl(bs.channelGroup).Block(channelID)
 }
