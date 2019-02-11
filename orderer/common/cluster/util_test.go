@@ -234,9 +234,9 @@ func TestVerifyBlockHash(t *testing.T) {
 		},
 		{
 			name: "prev hash mismatch",
-			errorContains: "block 13's hash " +
+			errorContains: "block 12's hash " +
 				"(866351705f1c2f13e10d52ead9d0ca3b80689ede8cc8bf70a6d60c67578323f4) " +
-				"mismatches 12's prev block hash (07)",
+				"mismatches 13's prev block hash (07)",
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
 				blockSequence[len(blockSequence)/2].Header.PreviousHash = []byte{7}
 				return blockSequence
@@ -307,9 +307,9 @@ func TestVerifyBlocks(t *testing.T) {
 				blockSequence[len(blockSequence)/2].Header.PreviousHash = []byte{7}
 				return blockSequence
 			},
-			expectedError: "block 75's hash " +
+			expectedError: "block 74's hash " +
 				"(5cb4bd1b6a73f81afafd96387bb7ff4473c2425929d0862586f5fbfa12d762dd) " +
-				"mismatches 74's prev block hash (07)",
+				"mismatches 75's prev block hash (07)",
 		},
 		{
 			name: "bad signature",

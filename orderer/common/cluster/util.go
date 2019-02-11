@@ -326,7 +326,7 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 			claimedPrevHash := hex.EncodeToString(block.Header.PreviousHash)
 			actualPrevHash := hex.EncodeToString(prevBlock.Header.Hash())
 			return errors.Errorf("block %d's hash (%s) mismatches %d's prev block hash (%s)",
-				currSeq, actualPrevHash, prevSeq, claimedPrevHash)
+				prevSeq, actualPrevHash, currSeq, claimedPrevHash)
 		}
 	}
 	return nil

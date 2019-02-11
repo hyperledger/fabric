@@ -522,7 +522,7 @@ func (ci *ChainInspector) Channels() []ChannelGenesisBlock {
 	lastConfigBlockNum := ci.LastConfigBlock.Header.Number
 	var block *common.Block
 	var prevHash []byte
-	for seq := uint64(1); seq < lastConfigBlockNum; seq++ {
+	for seq := uint64(0); seq < lastConfigBlockNum; seq++ {
 		block = ci.Puller.PullBlock(seq)
 		if block == nil {
 			ci.Logger.Panicf("Failed pulling block %d from the system channel", seq)

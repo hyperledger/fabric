@@ -389,6 +389,12 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 			Block: bootBlock,
 		},
 	}
+	// Send the bootstrap block of the system channel
+	deliverServer.blockResponses <- &orderer.DeliverResponse{
+		Type: &orderer.DeliverResponse_Block{
+			Block: systemChannelGenesisBlock,
+		},
+	}
 	// Send a channel creation block (sequence 1) that denotes creation of 'testchainid'
 	deliverServer.blockResponses <- &orderer.DeliverResponse{
 		Type: &orderer.DeliverResponse_Block{
@@ -454,12 +460,11 @@ func TestReplicate(t *testing.T) {
 		}
 
 		blocks := make([]*common.Block, 11)
-		// Genesis block can be anything... not important for channel traversal
-		// since it is skipped.
-		blocks[0] = &common.Block{Header: &common.BlockHeader{}}
-		for seq := uint64(1); seq <= uint64(10); seq++ {
+		for seq := uint64(0); seq <= uint64(10); seq++ {
 			block := copyBlock(&bootBlock, seq)
-			block.Header.PreviousHash = blocks[seq-1].Header.Hash()
+			if seq > 0 {
+				block.Header.PreviousHash = blocks[seq-1].Header.Hash()
+			}
 			blocks[seq] = &block
 			deliverServer.blockResponses <- &orderer.DeliverResponse{
 				Type: &orderer.DeliverResponse_Block{Block: &block},
@@ -595,7 +600,7 @@ func TestReplicate(t *testing.T) {
 		},
 		{
 			name:               "Explicit replication is requested, but the channel shouldn't be pulled",
-			verificationCount:  18,
+			verificationCount:  20,
 			shouldConnect:      true,
 			systemLedgerHeight: 10,
 			bootBlock:          &bootBlock,
