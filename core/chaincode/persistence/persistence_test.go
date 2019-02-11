@@ -109,7 +109,8 @@ var _ = Describe("Persistence", func() {
 
 		BeforeEach(func() {
 			mockReadWriter = &mock.IOReadWriter{}
-			mockReadWriter.StatReturns(nil, errors.New("gameball"))
+			mockReadWriter.ReadFileReturns(nil, errors.New("gameball"))
+			mockReadWriter.StatReturns(nil, errors.New("ballgame"))
 			store = &persistence.Store{
 				ReadWriter: mockReadWriter,
 			}
@@ -118,36 +119,54 @@ var _ = Describe("Persistence", func() {
 			hashString = hex.EncodeToString(util.ComputeSHA256(pkgBytes))
 		})
 
-		It("saves successfully", func() {
+		It("saves a new code package successfully", func() {
 			hash, err := store.Save("testcc", "1.0", pkgBytes)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(hash).To(Equal(util.ComputeSHA256([]byte("testpkg"))))
 		})
 
-		Context("when the metadata file already exists", func() {
+		Context("when the existing metadata file contains invalid content", func() {
 			BeforeEach(func() {
-				mockReadWriter.StatReturnsOnCall(0, nil, nil)
+				mockReadWriter.ReadFileReturns([]byte("handball"), nil)
 			})
 
 			It("returns an error", func() {
 				hash, err := store.Save("testcc", "1.0", pkgBytes)
-				Expect(err).To(HaveOccurred())
 				Expect(hash).To(BeNil())
-				Expect(err.Error()).To(Equal("chaincode metadata already exists at " + hashString + ".json"))
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("error reading existing chaincode metadata"))
 			})
 		})
 
-		Context("when the chaincode install package already exists", func() {
+		Context("when the code package was previously installed successfully", func() {
 			BeforeEach(func() {
-				mockReadWriter.StatReturnsOnCall(0, nil, errors.New("worldcup"))
-				mockReadWriter.StatReturnsOnCall(1, nil, nil)
+				mockReadWriter.ReadFileReturnsOnCall(0, []byte(`[{"Name":"vuvuzela","Version":"1.0"}]`), nil)
+				mockReadWriter.StatReturns(nil, nil)
+			})
+
+			It("appends the name and version to the metadata and returns the hash", func() {
+				hash, err := store.Save("testcc", "1.0", pkgBytes)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(hash).To(Equal(util.ComputeSHA256([]byte("testpkg"))))
+				Expect(mockReadWriter.WriteFileCallCount()).To(Equal(1))
+				metadataPath, metadataJSON, _ := mockReadWriter.WriteFileArgsForCall(0)
+				Expect(metadataPath).To(Equal(hashString + ".json"))
+				Expect(metadataJSON).To(Equal([]byte(`[{"Name":"vuvuzela","Version":"1.0"},{"Name":"testcc","Version":"1.0"}]`)))
+			})
+		})
+
+		Context("when a chaincode with the same name and version was previously saved", func() {
+			BeforeEach(func() {
+				mockReadWriter.ReadFileReturnsOnCall(0, []byte(`[{"Name":"vuvuzela","Version":"1.0"}]`), nil)
+				mockReadWriter.StatReturns(nil, nil)
 			})
 
 			It("returns an error", func() {
-				hash, err := store.Save("testcc", "1.0", pkgBytes)
-				Expect(hash).To(BeNil())
+				hash, err := store.Save("vuvuzela", "1.0", pkgBytes)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("ChaincodeInstallPackage already exists at " + hashString + ".bin"))
+				Expect(hash).To(BeNil())
+				Expect(err.Error()).To(ContainSubstring("chaincode already installed with name 'vuvuzela' and version '1.0'"))
+				Expect(mockReadWriter.WriteFileCallCount()).To(Equal(0))
 			})
 		})
 
@@ -204,18 +223,21 @@ var _ = Describe("Persistence", func() {
 		BeforeEach(func() {
 			mockReadWriter = &mock.IOReadWriter{}
 			mockReadWriter.ReadFileReturnsOnCall(0, []byte("cornerkick"), nil)
-			mockReadWriter.ReadFileReturnsOnCall(1, []byte(`{"Name":"vuvuzela","Version":"2.0"}`), nil)
+			mockReadWriter.ReadFileReturnsOnCall(1, []byte(`[{"Name":"vuvuzela","Version":"2.0"},{"Name":"airhorn","Version":"3.0"}]`), nil)
 			store = &persistence.Store{
 				ReadWriter: mockReadWriter,
 			}
 		})
 
-		It("loads successfully", func() {
-			ccInstallPkgBytes, name, version, err := store.Load([]byte("hash"))
+		It("loads successfully and returns the chaincode names/versions", func() {
+			ccInstallPkgBytes, metadata, err := store.Load([]byte("hash"))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ccInstallPkgBytes).To(Equal([]byte("cornerkick")))
-			Expect(name).To(Equal("vuvuzela"))
-			Expect(version).To(Equal("2.0"))
+			Expect(len(metadata)).To(Equal(2))
+			Expect(metadata[0].Name).To(Equal("vuvuzela"))
+			Expect(metadata[0].Version).To(Equal("2.0"))
+			Expect(metadata[1].Name).To(Equal("airhorn"))
+			Expect(metadata[1].Version).To(Equal("3.0"))
 		})
 
 		Context("when reading the chaincode install package fails", func() {
@@ -224,12 +246,11 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				ccInstallPkgBytes, name, version, err := store.Load([]byte("hash"))
+				ccInstallPkgBytes, metadata, err := store.Load([]byte("hash"))
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error reading chaincode install package"))
 				Expect(len(ccInstallPkgBytes)).To(Equal(0))
-				Expect(name).To(Equal(""))
-				Expect(version).To(Equal(""))
+				Expect(metadata).To(BeNil())
 			})
 		})
 
@@ -239,12 +260,11 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				ccInstallPkgBytes, name, version, err := store.Load([]byte("hash"))
+				ccInstallPkgBytes, metadata, err := store.Load([]byte("hash"))
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error reading metadata"))
 				Expect(len(ccInstallPkgBytes)).To(Equal(0))
-				Expect(name).To(Equal(""))
-				Expect(version).To(Equal(""))
+				Expect(metadata).To(BeNil())
 			})
 		})
 
@@ -254,12 +274,11 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				ccInstallPkgBytes, name, version, err := store.Load([]byte("hash"))
+				ccInstallPkgBytes, metadata, err := store.Load([]byte("hash"))
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error unmarshaling metadata"))
 				Expect(len(ccInstallPkgBytes)).To(Equal(0))
-				Expect(name).To(Equal(""))
-				Expect(version).To(Equal(""))
+				Expect(metadata).To(BeNil())
 			})
 		})
 	})
@@ -277,8 +296,8 @@ var _ = Describe("Persistence", func() {
 			mockFileInfo2 := &mock.OSFileInfo{}
 			mockFileInfo2.NameReturns(hex.EncodeToString([]byte("hash2")) + ".json")
 			mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo, mockFileInfo2}, nil)
-			mockReadWriter.ReadFileReturnsOnCall(0, []byte(`{"Name":"test1","Version":"1.0"}`), nil)
-			mockReadWriter.ReadFileReturnsOnCall(1, []byte(`{"Name":"test2","Version":"2.0"}`), nil)
+			mockReadWriter.ReadFileReturnsOnCall(0, []byte(`[{"Name":"test1","Version":"1.0"}]`), nil)
+			mockReadWriter.ReadFileReturnsOnCall(1, []byte(`[{"Name":"test2","Version":"2.0"}]`), nil)
 			store = &persistence.Store{
 				ReadWriter: mockReadWriter,
 			}
@@ -334,7 +353,7 @@ var _ = Describe("Persistence", func() {
 		Context("when reading a different metadata file fails but the desired chaincode metadata file exists", func() {
 			BeforeEach(func() {
 				mockReadWriter.ReadFileReturnsOnCall(0, nil, errors.New("penaltykick"))
-				mockReadWriter.ReadFileReturnsOnCall(1, []byte(`{"Name":"test2","Version":"2.0"}`), nil)
+				mockReadWriter.ReadFileReturnsOnCall(1, []byte(`[{"Name":"test2","Version":"2.0"}]`), nil)
 			})
 
 			It("returns sucessfully", func() {
@@ -367,8 +386,8 @@ var _ = Describe("Persistence", func() {
 			mockFileInfo2 := &mock.OSFileInfo{}
 			mockFileInfo2.NameReturns(hex.EncodeToString([]byte("hash2")) + ".json")
 			mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo, mockFileInfo2}, nil)
-			mockReadWriter.ReadFileReturnsOnCall(0, []byte(`{"Name":"test1","Version":"1.0"}`), nil)
-			mockReadWriter.ReadFileReturnsOnCall(1, []byte(`{"Name":"test2","Version":"2.0"}`), nil)
+			mockReadWriter.ReadFileReturnsOnCall(0, []byte(`[{"Name":"test1","Version":"1.0"},{"Name":"test1","Version":"2.0"}]`), nil)
+			mockReadWriter.ReadFileReturnsOnCall(1, []byte(`[{"Name":"test2","Version":"2.0"}]`), nil)
 			store = &persistence.Store{
 				ReadWriter: mockReadWriter,
 			}
@@ -377,7 +396,7 @@ var _ = Describe("Persistence", func() {
 		It("returns the list of installed chaincodes", func() {
 			installedChaincodes, err := store.ListInstalledChaincodes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(installedChaincodes)).To(Equal(2))
+			Expect(len(installedChaincodes)).To(Equal(3))
 		})
 
 		Context("when the hash cannot be decoded from the filename", func() {

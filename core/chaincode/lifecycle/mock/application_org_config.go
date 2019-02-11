@@ -4,85 +4,101 @@ package mock
 import (
 	"sync"
 
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 type ApplicationOrgConfig struct {
-	NameStub        func() string
-	nameMutex       sync.RWMutex
-	nameArgsForCall []struct{}
-	nameReturns     struct {
-		result1 string
+	AnchorPeersStub        func() []*peer.AnchorPeer
+	anchorPeersMutex       sync.RWMutex
+	anchorPeersArgsForCall []struct {
 	}
-	nameReturnsOnCall map[int]struct {
-		result1 string
+	anchorPeersReturns struct {
+		result1 []*peer.AnchorPeer
+	}
+	anchorPeersReturnsOnCall map[int]struct {
+		result1 []*peer.AnchorPeer
 	}
 	MSPIDStub        func() string
 	mSPIDMutex       sync.RWMutex
-	mSPIDArgsForCall []struct{}
-	mSPIDReturns     struct {
+	mSPIDArgsForCall []struct {
+	}
+	mSPIDReturns struct {
 		result1 string
 	}
 	mSPIDReturnsOnCall map[int]struct {
 		result1 string
 	}
-	AnchorPeersStub        func() []*pb.AnchorPeer
-	anchorPeersMutex       sync.RWMutex
-	anchorPeersArgsForCall []struct{}
-	anchorPeersReturns     struct {
-		result1 []*pb.AnchorPeer
+	NameStub        func() string
+	nameMutex       sync.RWMutex
+	nameArgsForCall []struct {
 	}
-	anchorPeersReturnsOnCall map[int]struct {
-		result1 []*pb.AnchorPeer
+	nameReturns struct {
+		result1 string
+	}
+	nameReturnsOnCall map[int]struct {
+		result1 string
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ApplicationOrgConfig) Name() string {
-	fake.nameMutex.Lock()
-	ret, specificReturn := fake.nameReturnsOnCall[len(fake.nameArgsForCall)]
-	fake.nameArgsForCall = append(fake.nameArgsForCall, struct{}{})
-	fake.recordInvocation("Name", []interface{}{})
-	fake.nameMutex.Unlock()
-	if fake.NameStub != nil {
-		return fake.NameStub()
+func (fake *ApplicationOrgConfig) AnchorPeers() []*peer.AnchorPeer {
+	fake.anchorPeersMutex.Lock()
+	ret, specificReturn := fake.anchorPeersReturnsOnCall[len(fake.anchorPeersArgsForCall)]
+	fake.anchorPeersArgsForCall = append(fake.anchorPeersArgsForCall, struct {
+	}{})
+	fake.recordInvocation("AnchorPeers", []interface{}{})
+	fake.anchorPeersMutex.Unlock()
+	if fake.AnchorPeersStub != nil {
+		return fake.AnchorPeersStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.nameReturns.result1
+	fakeReturns := fake.anchorPeersReturns
+	return fakeReturns.result1
 }
 
-func (fake *ApplicationOrgConfig) NameCallCount() int {
-	fake.nameMutex.RLock()
-	defer fake.nameMutex.RUnlock()
-	return len(fake.nameArgsForCall)
+func (fake *ApplicationOrgConfig) AnchorPeersCallCount() int {
+	fake.anchorPeersMutex.RLock()
+	defer fake.anchorPeersMutex.RUnlock()
+	return len(fake.anchorPeersArgsForCall)
 }
 
-func (fake *ApplicationOrgConfig) NameReturns(result1 string) {
-	fake.NameStub = nil
-	fake.nameReturns = struct {
-		result1 string
+func (fake *ApplicationOrgConfig) AnchorPeersCalls(stub func() []*peer.AnchorPeer) {
+	fake.anchorPeersMutex.Lock()
+	defer fake.anchorPeersMutex.Unlock()
+	fake.AnchorPeersStub = stub
+}
+
+func (fake *ApplicationOrgConfig) AnchorPeersReturns(result1 []*peer.AnchorPeer) {
+	fake.anchorPeersMutex.Lock()
+	defer fake.anchorPeersMutex.Unlock()
+	fake.AnchorPeersStub = nil
+	fake.anchorPeersReturns = struct {
+		result1 []*peer.AnchorPeer
 	}{result1}
 }
 
-func (fake *ApplicationOrgConfig) NameReturnsOnCall(i int, result1 string) {
-	fake.NameStub = nil
-	if fake.nameReturnsOnCall == nil {
-		fake.nameReturnsOnCall = make(map[int]struct {
-			result1 string
+func (fake *ApplicationOrgConfig) AnchorPeersReturnsOnCall(i int, result1 []*peer.AnchorPeer) {
+	fake.anchorPeersMutex.Lock()
+	defer fake.anchorPeersMutex.Unlock()
+	fake.AnchorPeersStub = nil
+	if fake.anchorPeersReturnsOnCall == nil {
+		fake.anchorPeersReturnsOnCall = make(map[int]struct {
+			result1 []*peer.AnchorPeer
 		})
 	}
-	fake.nameReturnsOnCall[i] = struct {
-		result1 string
+	fake.anchorPeersReturnsOnCall[i] = struct {
+		result1 []*peer.AnchorPeer
 	}{result1}
 }
 
 func (fake *ApplicationOrgConfig) MSPID() string {
 	fake.mSPIDMutex.Lock()
 	ret, specificReturn := fake.mSPIDReturnsOnCall[len(fake.mSPIDArgsForCall)]
-	fake.mSPIDArgsForCall = append(fake.mSPIDArgsForCall, struct{}{})
+	fake.mSPIDArgsForCall = append(fake.mSPIDArgsForCall, struct {
+	}{})
 	fake.recordInvocation("MSPID", []interface{}{})
 	fake.mSPIDMutex.Unlock()
 	if fake.MSPIDStub != nil {
@@ -91,7 +107,8 @@ func (fake *ApplicationOrgConfig) MSPID() string {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.mSPIDReturns.result1
+	fakeReturns := fake.mSPIDReturns
+	return fakeReturns.result1
 }
 
 func (fake *ApplicationOrgConfig) MSPIDCallCount() int {
@@ -100,7 +117,15 @@ func (fake *ApplicationOrgConfig) MSPIDCallCount() int {
 	return len(fake.mSPIDArgsForCall)
 }
 
+func (fake *ApplicationOrgConfig) MSPIDCalls(stub func() string) {
+	fake.mSPIDMutex.Lock()
+	defer fake.mSPIDMutex.Unlock()
+	fake.MSPIDStub = stub
+}
+
 func (fake *ApplicationOrgConfig) MSPIDReturns(result1 string) {
+	fake.mSPIDMutex.Lock()
+	defer fake.mSPIDMutex.Unlock()
 	fake.MSPIDStub = nil
 	fake.mSPIDReturns = struct {
 		result1 string
@@ -108,6 +133,8 @@ func (fake *ApplicationOrgConfig) MSPIDReturns(result1 string) {
 }
 
 func (fake *ApplicationOrgConfig) MSPIDReturnsOnCall(i int, result1 string) {
+	fake.mSPIDMutex.Lock()
+	defer fake.mSPIDMutex.Unlock()
 	fake.MSPIDStub = nil
 	if fake.mSPIDReturnsOnCall == nil {
 		fake.mSPIDReturnsOnCall = make(map[int]struct {
@@ -119,55 +146,67 @@ func (fake *ApplicationOrgConfig) MSPIDReturnsOnCall(i int, result1 string) {
 	}{result1}
 }
 
-func (fake *ApplicationOrgConfig) AnchorPeers() []*pb.AnchorPeer {
-	fake.anchorPeersMutex.Lock()
-	ret, specificReturn := fake.anchorPeersReturnsOnCall[len(fake.anchorPeersArgsForCall)]
-	fake.anchorPeersArgsForCall = append(fake.anchorPeersArgsForCall, struct{}{})
-	fake.recordInvocation("AnchorPeers", []interface{}{})
-	fake.anchorPeersMutex.Unlock()
-	if fake.AnchorPeersStub != nil {
-		return fake.AnchorPeersStub()
+func (fake *ApplicationOrgConfig) Name() string {
+	fake.nameMutex.Lock()
+	ret, specificReturn := fake.nameReturnsOnCall[len(fake.nameArgsForCall)]
+	fake.nameArgsForCall = append(fake.nameArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Name", []interface{}{})
+	fake.nameMutex.Unlock()
+	if fake.NameStub != nil {
+		return fake.NameStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.anchorPeersReturns.result1
+	fakeReturns := fake.nameReturns
+	return fakeReturns.result1
 }
 
-func (fake *ApplicationOrgConfig) AnchorPeersCallCount() int {
-	fake.anchorPeersMutex.RLock()
-	defer fake.anchorPeersMutex.RUnlock()
-	return len(fake.anchorPeersArgsForCall)
+func (fake *ApplicationOrgConfig) NameCallCount() int {
+	fake.nameMutex.RLock()
+	defer fake.nameMutex.RUnlock()
+	return len(fake.nameArgsForCall)
 }
 
-func (fake *ApplicationOrgConfig) AnchorPeersReturns(result1 []*pb.AnchorPeer) {
-	fake.AnchorPeersStub = nil
-	fake.anchorPeersReturns = struct {
-		result1 []*pb.AnchorPeer
+func (fake *ApplicationOrgConfig) NameCalls(stub func() string) {
+	fake.nameMutex.Lock()
+	defer fake.nameMutex.Unlock()
+	fake.NameStub = stub
+}
+
+func (fake *ApplicationOrgConfig) NameReturns(result1 string) {
+	fake.nameMutex.Lock()
+	defer fake.nameMutex.Unlock()
+	fake.NameStub = nil
+	fake.nameReturns = struct {
+		result1 string
 	}{result1}
 }
 
-func (fake *ApplicationOrgConfig) AnchorPeersReturnsOnCall(i int, result1 []*pb.AnchorPeer) {
-	fake.AnchorPeersStub = nil
-	if fake.anchorPeersReturnsOnCall == nil {
-		fake.anchorPeersReturnsOnCall = make(map[int]struct {
-			result1 []*pb.AnchorPeer
+func (fake *ApplicationOrgConfig) NameReturnsOnCall(i int, result1 string) {
+	fake.nameMutex.Lock()
+	defer fake.nameMutex.Unlock()
+	fake.NameStub = nil
+	if fake.nameReturnsOnCall == nil {
+		fake.nameReturnsOnCall = make(map[int]struct {
+			result1 string
 		})
 	}
-	fake.anchorPeersReturnsOnCall[i] = struct {
-		result1 []*pb.AnchorPeer
+	fake.nameReturnsOnCall[i] = struct {
+		result1 string
 	}{result1}
 }
 
 func (fake *ApplicationOrgConfig) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.nameMutex.RLock()
-	defer fake.nameMutex.RUnlock()
-	fake.mSPIDMutex.RLock()
-	defer fake.mSPIDMutex.RUnlock()
 	fake.anchorPeersMutex.RLock()
 	defer fake.anchorPeersMutex.RUnlock()
+	fake.mSPIDMutex.RLock()
+	defer fake.mSPIDMutex.RUnlock()
+	fake.nameMutex.RLock()
+	defer fake.nameMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

@@ -9,10 +9,10 @@ import (
 )
 
 type ChannelConfigSource struct {
-	GetStableChannelConfigStub        func(channelID string) channelconfig.Resources
+	GetStableChannelConfigStub        func(string) channelconfig.Resources
 	getStableChannelConfigMutex       sync.RWMutex
 	getStableChannelConfigArgsForCall []struct {
-		channelID string
+		arg1 string
 	}
 	getStableChannelConfigReturns struct {
 		result1 channelconfig.Resources
@@ -24,21 +24,22 @@ type ChannelConfigSource struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ChannelConfigSource) GetStableChannelConfig(channelID string) channelconfig.Resources {
+func (fake *ChannelConfigSource) GetStableChannelConfig(arg1 string) channelconfig.Resources {
 	fake.getStableChannelConfigMutex.Lock()
 	ret, specificReturn := fake.getStableChannelConfigReturnsOnCall[len(fake.getStableChannelConfigArgsForCall)]
 	fake.getStableChannelConfigArgsForCall = append(fake.getStableChannelConfigArgsForCall, struct {
-		channelID string
-	}{channelID})
-	fake.recordInvocation("GetStableChannelConfig", []interface{}{channelID})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetStableChannelConfig", []interface{}{arg1})
 	fake.getStableChannelConfigMutex.Unlock()
 	if fake.GetStableChannelConfigStub != nil {
-		return fake.GetStableChannelConfigStub(channelID)
+		return fake.GetStableChannelConfigStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getStableChannelConfigReturns.result1
+	fakeReturns := fake.getStableChannelConfigReturns
+	return fakeReturns.result1
 }
 
 func (fake *ChannelConfigSource) GetStableChannelConfigCallCount() int {
@@ -47,13 +48,22 @@ func (fake *ChannelConfigSource) GetStableChannelConfigCallCount() int {
 	return len(fake.getStableChannelConfigArgsForCall)
 }
 
+func (fake *ChannelConfigSource) GetStableChannelConfigCalls(stub func(string) channelconfig.Resources) {
+	fake.getStableChannelConfigMutex.Lock()
+	defer fake.getStableChannelConfigMutex.Unlock()
+	fake.GetStableChannelConfigStub = stub
+}
+
 func (fake *ChannelConfigSource) GetStableChannelConfigArgsForCall(i int) string {
 	fake.getStableChannelConfigMutex.RLock()
 	defer fake.getStableChannelConfigMutex.RUnlock()
-	return fake.getStableChannelConfigArgsForCall[i].channelID
+	argsForCall := fake.getStableChannelConfigArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *ChannelConfigSource) GetStableChannelConfigReturns(result1 channelconfig.Resources) {
+	fake.getStableChannelConfigMutex.Lock()
+	defer fake.getStableChannelConfigMutex.Unlock()
 	fake.GetStableChannelConfigStub = nil
 	fake.getStableChannelConfigReturns = struct {
 		result1 channelconfig.Resources
@@ -61,6 +71,8 @@ func (fake *ChannelConfigSource) GetStableChannelConfigReturns(result1 channelco
 }
 
 func (fake *ChannelConfigSource) GetStableChannelConfigReturnsOnCall(i int, result1 channelconfig.Resources) {
+	fake.getStableChannelConfigMutex.Lock()
+	defer fake.getStableChannelConfigMutex.Unlock()
 	fake.GetStableChannelConfigStub = nil
 	if fake.getStableChannelConfigReturnsOnCall == nil {
 		fake.getStableChannelConfigReturnsOnCall = make(map[int]struct {

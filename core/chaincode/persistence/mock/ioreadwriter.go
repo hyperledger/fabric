@@ -2,8 +2,8 @@
 package mock
 
 import (
-	os "os"
-	sync "sync"
+	"os"
+	"sync"
 )
 
 type IOReadWriter struct {

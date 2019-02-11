@@ -110,7 +110,7 @@ type ChaincodeStore interface {
 	Save(name, version string, ccInstallPkg []byte) (hash []byte, err error)
 	RetrieveHash(name, version string) (hash []byte, err error)
 	ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error)
-	Load(hash []byte) (ccInstallPkg []byte, name, version string, err error)
+	Load(hash []byte) (ccInstallPkg []byte, metadata []*persistence.ChaincodeMetadata, err error)
 }
 
 type PackageParser interface {

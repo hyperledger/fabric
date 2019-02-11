@@ -8,10 +8,10 @@ import (
 )
 
 type PolicyManager struct {
-	GetPolicyStub        func(id string) (policies.Policy, bool)
+	GetPolicyStub        func(string) (policies.Policy, bool)
 	getPolicyMutex       sync.RWMutex
 	getPolicyArgsForCall []struct {
-		id string
+		arg1 string
 	}
 	getPolicyReturns struct {
 		result1 policies.Policy
@@ -21,10 +21,10 @@ type PolicyManager struct {
 		result1 policies.Policy
 		result2 bool
 	}
-	ManagerStub        func(path []string) (policies.Manager, bool)
+	ManagerStub        func([]string) (policies.Manager, bool)
 	managerMutex       sync.RWMutex
 	managerArgsForCall []struct {
-		path []string
+		arg1 []string
 	}
 	managerReturns struct {
 		result1 policies.Manager
@@ -38,21 +38,22 @@ type PolicyManager struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PolicyManager) GetPolicy(id string) (policies.Policy, bool) {
+func (fake *PolicyManager) GetPolicy(arg1 string) (policies.Policy, bool) {
 	fake.getPolicyMutex.Lock()
 	ret, specificReturn := fake.getPolicyReturnsOnCall[len(fake.getPolicyArgsForCall)]
 	fake.getPolicyArgsForCall = append(fake.getPolicyArgsForCall, struct {
-		id string
-	}{id})
-	fake.recordInvocation("GetPolicy", []interface{}{id})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetPolicy", []interface{}{arg1})
 	fake.getPolicyMutex.Unlock()
 	if fake.GetPolicyStub != nil {
-		return fake.GetPolicyStub(id)
+		return fake.GetPolicyStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getPolicyReturns.result1, fake.getPolicyReturns.result2
+	fakeReturns := fake.getPolicyReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *PolicyManager) GetPolicyCallCount() int {
@@ -61,13 +62,22 @@ func (fake *PolicyManager) GetPolicyCallCount() int {
 	return len(fake.getPolicyArgsForCall)
 }
 
+func (fake *PolicyManager) GetPolicyCalls(stub func(string) (policies.Policy, bool)) {
+	fake.getPolicyMutex.Lock()
+	defer fake.getPolicyMutex.Unlock()
+	fake.GetPolicyStub = stub
+}
+
 func (fake *PolicyManager) GetPolicyArgsForCall(i int) string {
 	fake.getPolicyMutex.RLock()
 	defer fake.getPolicyMutex.RUnlock()
-	return fake.getPolicyArgsForCall[i].id
+	argsForCall := fake.getPolicyArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *PolicyManager) GetPolicyReturns(result1 policies.Policy, result2 bool) {
+	fake.getPolicyMutex.Lock()
+	defer fake.getPolicyMutex.Unlock()
 	fake.GetPolicyStub = nil
 	fake.getPolicyReturns = struct {
 		result1 policies.Policy
@@ -76,6 +86,8 @@ func (fake *PolicyManager) GetPolicyReturns(result1 policies.Policy, result2 boo
 }
 
 func (fake *PolicyManager) GetPolicyReturnsOnCall(i int, result1 policies.Policy, result2 bool) {
+	fake.getPolicyMutex.Lock()
+	defer fake.getPolicyMutex.Unlock()
 	fake.GetPolicyStub = nil
 	if fake.getPolicyReturnsOnCall == nil {
 		fake.getPolicyReturnsOnCall = make(map[int]struct {
@@ -89,26 +101,27 @@ func (fake *PolicyManager) GetPolicyReturnsOnCall(i int, result1 policies.Policy
 	}{result1, result2}
 }
 
-func (fake *PolicyManager) Manager(path []string) (policies.Manager, bool) {
-	var pathCopy []string
-	if path != nil {
-		pathCopy = make([]string, len(path))
-		copy(pathCopy, path)
+func (fake *PolicyManager) Manager(arg1 []string) (policies.Manager, bool) {
+	var arg1Copy []string
+	if arg1 != nil {
+		arg1Copy = make([]string, len(arg1))
+		copy(arg1Copy, arg1)
 	}
 	fake.managerMutex.Lock()
 	ret, specificReturn := fake.managerReturnsOnCall[len(fake.managerArgsForCall)]
 	fake.managerArgsForCall = append(fake.managerArgsForCall, struct {
-		path []string
-	}{pathCopy})
-	fake.recordInvocation("Manager", []interface{}{pathCopy})
+		arg1 []string
+	}{arg1Copy})
+	fake.recordInvocation("Manager", []interface{}{arg1Copy})
 	fake.managerMutex.Unlock()
 	if fake.ManagerStub != nil {
-		return fake.ManagerStub(path)
+		return fake.ManagerStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.managerReturns.result1, fake.managerReturns.result2
+	fakeReturns := fake.managerReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *PolicyManager) ManagerCallCount() int {
@@ -117,13 +130,22 @@ func (fake *PolicyManager) ManagerCallCount() int {
 	return len(fake.managerArgsForCall)
 }
 
+func (fake *PolicyManager) ManagerCalls(stub func([]string) (policies.Manager, bool)) {
+	fake.managerMutex.Lock()
+	defer fake.managerMutex.Unlock()
+	fake.ManagerStub = stub
+}
+
 func (fake *PolicyManager) ManagerArgsForCall(i int) []string {
 	fake.managerMutex.RLock()
 	defer fake.managerMutex.RUnlock()
-	return fake.managerArgsForCall[i].path
+	argsForCall := fake.managerArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *PolicyManager) ManagerReturns(result1 policies.Manager, result2 bool) {
+	fake.managerMutex.Lock()
+	defer fake.managerMutex.Unlock()
 	fake.ManagerStub = nil
 	fake.managerReturns = struct {
 		result1 policies.Manager
@@ -132,6 +154,8 @@ func (fake *PolicyManager) ManagerReturns(result1 policies.Manager, result2 bool
 }
 
 func (fake *PolicyManager) ManagerReturnsOnCall(i int, result1 policies.Manager, result2 bool) {
+	fake.managerMutex.Lock()
+	defer fake.managerMutex.Unlock()
 	fake.ManagerStub = nil
 	if fake.managerReturnsOnCall == nil {
 		fake.managerReturnsOnCall = make(map[int]struct {

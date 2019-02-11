@@ -11,34 +11,12 @@ import (
 )
 
 type LegacyDeployedCCInfoProvider struct {
-	NamespacesStub        func() []string
-	namespacesMutex       sync.RWMutex
-	namespacesArgsForCall []struct{}
-	namespacesReturns     struct {
-		result1 []string
-	}
-	namespacesReturnsOnCall map[int]struct {
-		result1 []string
-	}
-	UpdatedChaincodesStub        func(stateUpdates map[string][]*kvrwset.KVWrite) ([]*ledger.ChaincodeLifecycleInfo, error)
-	updatedChaincodesMutex       sync.RWMutex
-	updatedChaincodesArgsForCall []struct {
-		stateUpdates map[string][]*kvrwset.KVWrite
-	}
-	updatedChaincodesReturns struct {
-		result1 []*ledger.ChaincodeLifecycleInfo
-		result2 error
-	}
-	updatedChaincodesReturnsOnCall map[int]struct {
-		result1 []*ledger.ChaincodeLifecycleInfo
-		result2 error
-	}
-	ChaincodeInfoStub        func(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error)
+	ChaincodeInfoStub        func(string, string, ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error)
 	chaincodeInfoMutex       sync.RWMutex
 	chaincodeInfoArgsForCall []struct {
-		channelName   string
-		chaincodeName string
-		qe            ledger.SimpleQueryExecutor
+		arg1 string
+		arg2 string
+		arg3 ledger.SimpleQueryExecutor
 	}
 	chaincodeInfoReturns struct {
 		result1 *ledger.DeployedChaincodeInfo
@@ -48,13 +26,13 @@ type LegacyDeployedCCInfoProvider struct {
 		result1 *ledger.DeployedChaincodeInfo
 		result2 error
 	}
-	CollectionInfoStub        func(channelName, chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error)
+	CollectionInfoStub        func(string, string, string, ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error)
 	collectionInfoMutex       sync.RWMutex
 	collectionInfoArgsForCall []struct {
-		channelName    string
-		chaincodeName  string
-		collectionName string
-		qe             ledger.SimpleQueryExecutor
+		arg1 string
+		arg2 string
+		arg3 string
+		arg4 ledger.SimpleQueryExecutor
 	}
 	collectionInfoReturns struct {
 		result1 *common.StaticCollectionConfig
@@ -64,12 +42,12 @@ type LegacyDeployedCCInfoProvider struct {
 		result1 *common.StaticCollectionConfig
 		result2 error
 	}
-	ImplicitCollectionsStub        func(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error)
+	ImplicitCollectionsStub        func(string, string, ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error)
 	implicitCollectionsMutex       sync.RWMutex
 	implicitCollectionsArgsForCall []struct {
-		channelName   string
-		chaincodeName string
-		qe            ledger.SimpleQueryExecutor
+		arg1 string
+		arg2 string
+		arg3 ledger.SimpleQueryExecutor
 	}
 	implicitCollectionsReturns struct {
 		result1 []*common.StaticCollectionConfig
@@ -79,118 +57,51 @@ type LegacyDeployedCCInfoProvider struct {
 		result1 []*common.StaticCollectionConfig
 		result2 error
 	}
+	NamespacesStub        func() []string
+	namespacesMutex       sync.RWMutex
+	namespacesArgsForCall []struct {
+	}
+	namespacesReturns struct {
+		result1 []string
+	}
+	namespacesReturnsOnCall map[int]struct {
+		result1 []string
+	}
+	UpdatedChaincodesStub        func(map[string][]*kvrwset.KVWrite) ([]*ledger.ChaincodeLifecycleInfo, error)
+	updatedChaincodesMutex       sync.RWMutex
+	updatedChaincodesArgsForCall []struct {
+		arg1 map[string][]*kvrwset.KVWrite
+	}
+	updatedChaincodesReturns struct {
+		result1 []*ledger.ChaincodeLifecycleInfo
+		result2 error
+	}
+	updatedChaincodesReturnsOnCall map[int]struct {
+		result1 []*ledger.ChaincodeLifecycleInfo
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *LegacyDeployedCCInfoProvider) Namespaces() []string {
-	fake.namespacesMutex.Lock()
-	ret, specificReturn := fake.namespacesReturnsOnCall[len(fake.namespacesArgsForCall)]
-	fake.namespacesArgsForCall = append(fake.namespacesArgsForCall, struct{}{})
-	fake.recordInvocation("Namespaces", []interface{}{})
-	fake.namespacesMutex.Unlock()
-	if fake.NamespacesStub != nil {
-		return fake.NamespacesStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.namespacesReturns.result1
-}
-
-func (fake *LegacyDeployedCCInfoProvider) NamespacesCallCount() int {
-	fake.namespacesMutex.RLock()
-	defer fake.namespacesMutex.RUnlock()
-	return len(fake.namespacesArgsForCall)
-}
-
-func (fake *LegacyDeployedCCInfoProvider) NamespacesReturns(result1 []string) {
-	fake.NamespacesStub = nil
-	fake.namespacesReturns = struct {
-		result1 []string
-	}{result1}
-}
-
-func (fake *LegacyDeployedCCInfoProvider) NamespacesReturnsOnCall(i int, result1 []string) {
-	fake.NamespacesStub = nil
-	if fake.namespacesReturnsOnCall == nil {
-		fake.namespacesReturnsOnCall = make(map[int]struct {
-			result1 []string
-		})
-	}
-	fake.namespacesReturnsOnCall[i] = struct {
-		result1 []string
-	}{result1}
-}
-
-func (fake *LegacyDeployedCCInfoProvider) UpdatedChaincodes(stateUpdates map[string][]*kvrwset.KVWrite) ([]*ledger.ChaincodeLifecycleInfo, error) {
-	fake.updatedChaincodesMutex.Lock()
-	ret, specificReturn := fake.updatedChaincodesReturnsOnCall[len(fake.updatedChaincodesArgsForCall)]
-	fake.updatedChaincodesArgsForCall = append(fake.updatedChaincodesArgsForCall, struct {
-		stateUpdates map[string][]*kvrwset.KVWrite
-	}{stateUpdates})
-	fake.recordInvocation("UpdatedChaincodes", []interface{}{stateUpdates})
-	fake.updatedChaincodesMutex.Unlock()
-	if fake.UpdatedChaincodesStub != nil {
-		return fake.UpdatedChaincodesStub(stateUpdates)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.updatedChaincodesReturns.result1, fake.updatedChaincodesReturns.result2
-}
-
-func (fake *LegacyDeployedCCInfoProvider) UpdatedChaincodesCallCount() int {
-	fake.updatedChaincodesMutex.RLock()
-	defer fake.updatedChaincodesMutex.RUnlock()
-	return len(fake.updatedChaincodesArgsForCall)
-}
-
-func (fake *LegacyDeployedCCInfoProvider) UpdatedChaincodesArgsForCall(i int) map[string][]*kvrwset.KVWrite {
-	fake.updatedChaincodesMutex.RLock()
-	defer fake.updatedChaincodesMutex.RUnlock()
-	return fake.updatedChaincodesArgsForCall[i].stateUpdates
-}
-
-func (fake *LegacyDeployedCCInfoProvider) UpdatedChaincodesReturns(result1 []*ledger.ChaincodeLifecycleInfo, result2 error) {
-	fake.UpdatedChaincodesStub = nil
-	fake.updatedChaincodesReturns = struct {
-		result1 []*ledger.ChaincodeLifecycleInfo
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *LegacyDeployedCCInfoProvider) UpdatedChaincodesReturnsOnCall(i int, result1 []*ledger.ChaincodeLifecycleInfo, result2 error) {
-	fake.UpdatedChaincodesStub = nil
-	if fake.updatedChaincodesReturnsOnCall == nil {
-		fake.updatedChaincodesReturnsOnCall = make(map[int]struct {
-			result1 []*ledger.ChaincodeLifecycleInfo
-			result2 error
-		})
-	}
-	fake.updatedChaincodesReturnsOnCall[i] = struct {
-		result1 []*ledger.ChaincodeLifecycleInfo
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *LegacyDeployedCCInfoProvider) ChaincodeInfo(channelName string, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
+func (fake *LegacyDeployedCCInfoProvider) ChaincodeInfo(arg1 string, arg2 string, arg3 ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
 	fake.chaincodeInfoMutex.Lock()
 	ret, specificReturn := fake.chaincodeInfoReturnsOnCall[len(fake.chaincodeInfoArgsForCall)]
 	fake.chaincodeInfoArgsForCall = append(fake.chaincodeInfoArgsForCall, struct {
-		channelName   string
-		chaincodeName string
-		qe            ledger.SimpleQueryExecutor
-	}{channelName, chaincodeName, qe})
-	fake.recordInvocation("ChaincodeInfo", []interface{}{channelName, chaincodeName, qe})
+		arg1 string
+		arg2 string
+		arg3 ledger.SimpleQueryExecutor
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("ChaincodeInfo", []interface{}{arg1, arg2, arg3})
 	fake.chaincodeInfoMutex.Unlock()
 	if fake.ChaincodeInfoStub != nil {
-		return fake.ChaincodeInfoStub(channelName, chaincodeName, qe)
+		return fake.ChaincodeInfoStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.chaincodeInfoReturns.result1, fake.chaincodeInfoReturns.result2
+	fakeReturns := fake.chaincodeInfoReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *LegacyDeployedCCInfoProvider) ChaincodeInfoCallCount() int {
@@ -199,13 +110,22 @@ func (fake *LegacyDeployedCCInfoProvider) ChaincodeInfoCallCount() int {
 	return len(fake.chaincodeInfoArgsForCall)
 }
 
+func (fake *LegacyDeployedCCInfoProvider) ChaincodeInfoCalls(stub func(string, string, ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error)) {
+	fake.chaincodeInfoMutex.Lock()
+	defer fake.chaincodeInfoMutex.Unlock()
+	fake.ChaincodeInfoStub = stub
+}
+
 func (fake *LegacyDeployedCCInfoProvider) ChaincodeInfoArgsForCall(i int) (string, string, ledger.SimpleQueryExecutor) {
 	fake.chaincodeInfoMutex.RLock()
 	defer fake.chaincodeInfoMutex.RUnlock()
-	return fake.chaincodeInfoArgsForCall[i].channelName, fake.chaincodeInfoArgsForCall[i].chaincodeName, fake.chaincodeInfoArgsForCall[i].qe
+	argsForCall := fake.chaincodeInfoArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *LegacyDeployedCCInfoProvider) ChaincodeInfoReturns(result1 *ledger.DeployedChaincodeInfo, result2 error) {
+	fake.chaincodeInfoMutex.Lock()
+	defer fake.chaincodeInfoMutex.Unlock()
 	fake.ChaincodeInfoStub = nil
 	fake.chaincodeInfoReturns = struct {
 		result1 *ledger.DeployedChaincodeInfo
@@ -214,6 +134,8 @@ func (fake *LegacyDeployedCCInfoProvider) ChaincodeInfoReturns(result1 *ledger.D
 }
 
 func (fake *LegacyDeployedCCInfoProvider) ChaincodeInfoReturnsOnCall(i int, result1 *ledger.DeployedChaincodeInfo, result2 error) {
+	fake.chaincodeInfoMutex.Lock()
+	defer fake.chaincodeInfoMutex.Unlock()
 	fake.ChaincodeInfoStub = nil
 	if fake.chaincodeInfoReturnsOnCall == nil {
 		fake.chaincodeInfoReturnsOnCall = make(map[int]struct {
@@ -227,24 +149,25 @@ func (fake *LegacyDeployedCCInfoProvider) ChaincodeInfoReturnsOnCall(i int, resu
 	}{result1, result2}
 }
 
-func (fake *LegacyDeployedCCInfoProvider) CollectionInfo(channelName string, chaincodeName string, collectionName string, qe ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error) {
+func (fake *LegacyDeployedCCInfoProvider) CollectionInfo(arg1 string, arg2 string, arg3 string, arg4 ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error) {
 	fake.collectionInfoMutex.Lock()
 	ret, specificReturn := fake.collectionInfoReturnsOnCall[len(fake.collectionInfoArgsForCall)]
 	fake.collectionInfoArgsForCall = append(fake.collectionInfoArgsForCall, struct {
-		channelName    string
-		chaincodeName  string
-		collectionName string
-		qe             ledger.SimpleQueryExecutor
-	}{channelName, chaincodeName, collectionName, qe})
-	fake.recordInvocation("CollectionInfo", []interface{}{channelName, chaincodeName, collectionName, qe})
+		arg1 string
+		arg2 string
+		arg3 string
+		arg4 ledger.SimpleQueryExecutor
+	}{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("CollectionInfo", []interface{}{arg1, arg2, arg3, arg4})
 	fake.collectionInfoMutex.Unlock()
 	if fake.CollectionInfoStub != nil {
-		return fake.CollectionInfoStub(channelName, chaincodeName, collectionName, qe)
+		return fake.CollectionInfoStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.collectionInfoReturns.result1, fake.collectionInfoReturns.result2
+	fakeReturns := fake.collectionInfoReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *LegacyDeployedCCInfoProvider) CollectionInfoCallCount() int {
@@ -253,13 +176,22 @@ func (fake *LegacyDeployedCCInfoProvider) CollectionInfoCallCount() int {
 	return len(fake.collectionInfoArgsForCall)
 }
 
+func (fake *LegacyDeployedCCInfoProvider) CollectionInfoCalls(stub func(string, string, string, ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error)) {
+	fake.collectionInfoMutex.Lock()
+	defer fake.collectionInfoMutex.Unlock()
+	fake.CollectionInfoStub = stub
+}
+
 func (fake *LegacyDeployedCCInfoProvider) CollectionInfoArgsForCall(i int) (string, string, string, ledger.SimpleQueryExecutor) {
 	fake.collectionInfoMutex.RLock()
 	defer fake.collectionInfoMutex.RUnlock()
-	return fake.collectionInfoArgsForCall[i].channelName, fake.collectionInfoArgsForCall[i].chaincodeName, fake.collectionInfoArgsForCall[i].collectionName, fake.collectionInfoArgsForCall[i].qe
+	argsForCall := fake.collectionInfoArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *LegacyDeployedCCInfoProvider) CollectionInfoReturns(result1 *common.StaticCollectionConfig, result2 error) {
+	fake.collectionInfoMutex.Lock()
+	defer fake.collectionInfoMutex.Unlock()
 	fake.CollectionInfoStub = nil
 	fake.collectionInfoReturns = struct {
 		result1 *common.StaticCollectionConfig
@@ -268,6 +200,8 @@ func (fake *LegacyDeployedCCInfoProvider) CollectionInfoReturns(result1 *common.
 }
 
 func (fake *LegacyDeployedCCInfoProvider) CollectionInfoReturnsOnCall(i int, result1 *common.StaticCollectionConfig, result2 error) {
+	fake.collectionInfoMutex.Lock()
+	defer fake.collectionInfoMutex.Unlock()
 	fake.CollectionInfoStub = nil
 	if fake.collectionInfoReturnsOnCall == nil {
 		fake.collectionInfoReturnsOnCall = make(map[int]struct {
@@ -281,23 +215,24 @@ func (fake *LegacyDeployedCCInfoProvider) CollectionInfoReturnsOnCall(i int, res
 	}{result1, result2}
 }
 
-func (fake *LegacyDeployedCCInfoProvider) ImplicitCollections(channelName string, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error) {
+func (fake *LegacyDeployedCCInfoProvider) ImplicitCollections(arg1 string, arg2 string, arg3 ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error) {
 	fake.implicitCollectionsMutex.Lock()
 	ret, specificReturn := fake.implicitCollectionsReturnsOnCall[len(fake.implicitCollectionsArgsForCall)]
 	fake.implicitCollectionsArgsForCall = append(fake.implicitCollectionsArgsForCall, struct {
-		channelName   string
-		chaincodeName string
-		qe            ledger.SimpleQueryExecutor
-	}{channelName, chaincodeName, qe})
-	fake.recordInvocation("ImplicitCollections", []interface{}{channelName, chaincodeName, qe})
+		arg1 string
+		arg2 string
+		arg3 ledger.SimpleQueryExecutor
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("ImplicitCollections", []interface{}{arg1, arg2, arg3})
 	fake.implicitCollectionsMutex.Unlock()
 	if fake.ImplicitCollectionsStub != nil {
-		return fake.ImplicitCollectionsStub(channelName, chaincodeName, qe)
+		return fake.ImplicitCollectionsStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.implicitCollectionsReturns.result1, fake.implicitCollectionsReturns.result2
+	fakeReturns := fake.implicitCollectionsReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *LegacyDeployedCCInfoProvider) ImplicitCollectionsCallCount() int {
@@ -306,13 +241,22 @@ func (fake *LegacyDeployedCCInfoProvider) ImplicitCollectionsCallCount() int {
 	return len(fake.implicitCollectionsArgsForCall)
 }
 
+func (fake *LegacyDeployedCCInfoProvider) ImplicitCollectionsCalls(stub func(string, string, ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error)) {
+	fake.implicitCollectionsMutex.Lock()
+	defer fake.implicitCollectionsMutex.Unlock()
+	fake.ImplicitCollectionsStub = stub
+}
+
 func (fake *LegacyDeployedCCInfoProvider) ImplicitCollectionsArgsForCall(i int) (string, string, ledger.SimpleQueryExecutor) {
 	fake.implicitCollectionsMutex.RLock()
 	defer fake.implicitCollectionsMutex.RUnlock()
-	return fake.implicitCollectionsArgsForCall[i].channelName, fake.implicitCollectionsArgsForCall[i].chaincodeName, fake.implicitCollectionsArgsForCall[i].qe
+	argsForCall := fake.implicitCollectionsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *LegacyDeployedCCInfoProvider) ImplicitCollectionsReturns(result1 []*common.StaticCollectionConfig, result2 error) {
+	fake.implicitCollectionsMutex.Lock()
+	defer fake.implicitCollectionsMutex.Unlock()
 	fake.ImplicitCollectionsStub = nil
 	fake.implicitCollectionsReturns = struct {
 		result1 []*common.StaticCollectionConfig
@@ -321,6 +265,8 @@ func (fake *LegacyDeployedCCInfoProvider) ImplicitCollectionsReturns(result1 []*
 }
 
 func (fake *LegacyDeployedCCInfoProvider) ImplicitCollectionsReturnsOnCall(i int, result1 []*common.StaticCollectionConfig, result2 error) {
+	fake.implicitCollectionsMutex.Lock()
+	defer fake.implicitCollectionsMutex.Unlock()
 	fake.ImplicitCollectionsStub = nil
 	if fake.implicitCollectionsReturnsOnCall == nil {
 		fake.implicitCollectionsReturnsOnCall = make(map[int]struct {
@@ -334,19 +280,134 @@ func (fake *LegacyDeployedCCInfoProvider) ImplicitCollectionsReturnsOnCall(i int
 	}{result1, result2}
 }
 
+func (fake *LegacyDeployedCCInfoProvider) Namespaces() []string {
+	fake.namespacesMutex.Lock()
+	ret, specificReturn := fake.namespacesReturnsOnCall[len(fake.namespacesArgsForCall)]
+	fake.namespacesArgsForCall = append(fake.namespacesArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Namespaces", []interface{}{})
+	fake.namespacesMutex.Unlock()
+	if fake.NamespacesStub != nil {
+		return fake.NamespacesStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.namespacesReturns
+	return fakeReturns.result1
+}
+
+func (fake *LegacyDeployedCCInfoProvider) NamespacesCallCount() int {
+	fake.namespacesMutex.RLock()
+	defer fake.namespacesMutex.RUnlock()
+	return len(fake.namespacesArgsForCall)
+}
+
+func (fake *LegacyDeployedCCInfoProvider) NamespacesCalls(stub func() []string) {
+	fake.namespacesMutex.Lock()
+	defer fake.namespacesMutex.Unlock()
+	fake.NamespacesStub = stub
+}
+
+func (fake *LegacyDeployedCCInfoProvider) NamespacesReturns(result1 []string) {
+	fake.namespacesMutex.Lock()
+	defer fake.namespacesMutex.Unlock()
+	fake.NamespacesStub = nil
+	fake.namespacesReturns = struct {
+		result1 []string
+	}{result1}
+}
+
+func (fake *LegacyDeployedCCInfoProvider) NamespacesReturnsOnCall(i int, result1 []string) {
+	fake.namespacesMutex.Lock()
+	defer fake.namespacesMutex.Unlock()
+	fake.NamespacesStub = nil
+	if fake.namespacesReturnsOnCall == nil {
+		fake.namespacesReturnsOnCall = make(map[int]struct {
+			result1 []string
+		})
+	}
+	fake.namespacesReturnsOnCall[i] = struct {
+		result1 []string
+	}{result1}
+}
+
+func (fake *LegacyDeployedCCInfoProvider) UpdatedChaincodes(arg1 map[string][]*kvrwset.KVWrite) ([]*ledger.ChaincodeLifecycleInfo, error) {
+	fake.updatedChaincodesMutex.Lock()
+	ret, specificReturn := fake.updatedChaincodesReturnsOnCall[len(fake.updatedChaincodesArgsForCall)]
+	fake.updatedChaincodesArgsForCall = append(fake.updatedChaincodesArgsForCall, struct {
+		arg1 map[string][]*kvrwset.KVWrite
+	}{arg1})
+	fake.recordInvocation("UpdatedChaincodes", []interface{}{arg1})
+	fake.updatedChaincodesMutex.Unlock()
+	if fake.UpdatedChaincodesStub != nil {
+		return fake.UpdatedChaincodesStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.updatedChaincodesReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *LegacyDeployedCCInfoProvider) UpdatedChaincodesCallCount() int {
+	fake.updatedChaincodesMutex.RLock()
+	defer fake.updatedChaincodesMutex.RUnlock()
+	return len(fake.updatedChaincodesArgsForCall)
+}
+
+func (fake *LegacyDeployedCCInfoProvider) UpdatedChaincodesCalls(stub func(map[string][]*kvrwset.KVWrite) ([]*ledger.ChaincodeLifecycleInfo, error)) {
+	fake.updatedChaincodesMutex.Lock()
+	defer fake.updatedChaincodesMutex.Unlock()
+	fake.UpdatedChaincodesStub = stub
+}
+
+func (fake *LegacyDeployedCCInfoProvider) UpdatedChaincodesArgsForCall(i int) map[string][]*kvrwset.KVWrite {
+	fake.updatedChaincodesMutex.RLock()
+	defer fake.updatedChaincodesMutex.RUnlock()
+	argsForCall := fake.updatedChaincodesArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *LegacyDeployedCCInfoProvider) UpdatedChaincodesReturns(result1 []*ledger.ChaincodeLifecycleInfo, result2 error) {
+	fake.updatedChaincodesMutex.Lock()
+	defer fake.updatedChaincodesMutex.Unlock()
+	fake.UpdatedChaincodesStub = nil
+	fake.updatedChaincodesReturns = struct {
+		result1 []*ledger.ChaincodeLifecycleInfo
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *LegacyDeployedCCInfoProvider) UpdatedChaincodesReturnsOnCall(i int, result1 []*ledger.ChaincodeLifecycleInfo, result2 error) {
+	fake.updatedChaincodesMutex.Lock()
+	defer fake.updatedChaincodesMutex.Unlock()
+	fake.UpdatedChaincodesStub = nil
+	if fake.updatedChaincodesReturnsOnCall == nil {
+		fake.updatedChaincodesReturnsOnCall = make(map[int]struct {
+			result1 []*ledger.ChaincodeLifecycleInfo
+			result2 error
+		})
+	}
+	fake.updatedChaincodesReturnsOnCall[i] = struct {
+		result1 []*ledger.ChaincodeLifecycleInfo
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *LegacyDeployedCCInfoProvider) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.namespacesMutex.RLock()
-	defer fake.namespacesMutex.RUnlock()
-	fake.updatedChaincodesMutex.RLock()
-	defer fake.updatedChaincodesMutex.RUnlock()
 	fake.chaincodeInfoMutex.RLock()
 	defer fake.chaincodeInfoMutex.RUnlock()
 	fake.collectionInfoMutex.RLock()
 	defer fake.collectionInfoMutex.RUnlock()
 	fake.implicitCollectionsMutex.RLock()
 	defer fake.implicitCollectionsMutex.RUnlock()
+	fake.namespacesMutex.RLock()
+	defer fake.namespacesMutex.RUnlock()
+	fake.updatedChaincodesMutex.RLock()
+	defer fake.updatedChaincodesMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

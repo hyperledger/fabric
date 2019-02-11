@@ -2,9 +2,9 @@
 package mock
 
 import (
-	os "os"
-	sync "sync"
-	time "time"
+	"os"
+	"sync"
+	"time"
 )
 
 type OSFileInfo struct {

@@ -2,9 +2,10 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	chaincode "github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
 )
 
 type StorePackageProvider struct {
@@ -30,22 +31,20 @@ type StorePackageProvider struct {
 		result1 []chaincode.InstalledChaincode
 		result2 error
 	}
-	LoadStub        func([]byte) ([]byte, string, string, error)
+	LoadStub        func([]byte) ([]byte, []*persistence.ChaincodeMetadata, error)
 	loadMutex       sync.RWMutex
 	loadArgsForCall []struct {
 		arg1 []byte
 	}
 	loadReturns struct {
 		result1 []byte
-		result2 string
-		result3 string
-		result4 error
+		result2 []*persistence.ChaincodeMetadata
+		result3 error
 	}
 	loadReturnsOnCall map[int]struct {
 		result1 []byte
-		result2 string
-		result3 string
-		result4 error
+		result2 []*persistence.ChaincodeMetadata
+		result3 error
 	}
 	RetrieveHashStub        func(string, string) ([]byte, error)
 	retrieveHashMutex       sync.RWMutex
@@ -172,7 +171,7 @@ func (fake *StorePackageProvider) ListInstalledChaincodesReturnsOnCall(i int, re
 	}{result1, result2}
 }
 
-func (fake *StorePackageProvider) Load(arg1 []byte) ([]byte, string, string, error) {
+func (fake *StorePackageProvider) Load(arg1 []byte) ([]byte, []*persistence.ChaincodeMetadata, error) {
 	var arg1Copy []byte
 	if arg1 != nil {
 		arg1Copy = make([]byte, len(arg1))
@@ -189,10 +188,10 @@ func (fake *StorePackageProvider) Load(arg1 []byte) ([]byte, string, string, err
 		return fake.LoadStub(arg1)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2, ret.result3, ret.result4
+		return ret.result1, ret.result2, ret.result3
 	}
 	fakeReturns := fake.loadReturns
-	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3, fakeReturns.result4
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 
 func (fake *StorePackageProvider) LoadCallCount() int {
@@ -201,7 +200,7 @@ func (fake *StorePackageProvider) LoadCallCount() int {
 	return len(fake.loadArgsForCall)
 }
 
-func (fake *StorePackageProvider) LoadCalls(stub func([]byte) ([]byte, string, string, error)) {
+func (fake *StorePackageProvider) LoadCalls(stub func([]byte) ([]byte, []*persistence.ChaincodeMetadata, error)) {
 	fake.loadMutex.Lock()
 	defer fake.loadMutex.Unlock()
 	fake.LoadStub = stub
@@ -214,36 +213,33 @@ func (fake *StorePackageProvider) LoadArgsForCall(i int) []byte {
 	return argsForCall.arg1
 }
 
-func (fake *StorePackageProvider) LoadReturns(result1 []byte, result2 string, result3 string, result4 error) {
+func (fake *StorePackageProvider) LoadReturns(result1 []byte, result2 []*persistence.ChaincodeMetadata, result3 error) {
 	fake.loadMutex.Lock()
 	defer fake.loadMutex.Unlock()
 	fake.LoadStub = nil
 	fake.loadReturns = struct {
 		result1 []byte
-		result2 string
-		result3 string
-		result4 error
-	}{result1, result2, result3, result4}
+		result2 []*persistence.ChaincodeMetadata
+		result3 error
+	}{result1, result2, result3}
 }
 
-func (fake *StorePackageProvider) LoadReturnsOnCall(i int, result1 []byte, result2 string, result3 string, result4 error) {
+func (fake *StorePackageProvider) LoadReturnsOnCall(i int, result1 []byte, result2 []*persistence.ChaincodeMetadata, result3 error) {
 	fake.loadMutex.Lock()
 	defer fake.loadMutex.Unlock()
 	fake.LoadStub = nil
 	if fake.loadReturnsOnCall == nil {
 		fake.loadReturnsOnCall = make(map[int]struct {
 			result1 []byte
-			result2 string
-			result3 string
-			result4 error
+			result2 []*persistence.ChaincodeMetadata
+			result3 error
 		})
 	}
 	fake.loadReturnsOnCall[i] = struct {
 		result1 []byte
-		result2 string
-		result3 string
-		result4 error
-	}{result1, result2, result3, result4}
+		result2 []*persistence.ChaincodeMetadata
+		result3 error
+	}{result1, result2, result3}
 }
 
 func (fake *StorePackageProvider) RetrieveHash(arg1 string, arg2 string) ([]byte, error) {

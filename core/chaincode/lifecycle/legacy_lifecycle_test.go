@@ -147,7 +147,7 @@ var _ = Describe("Lifecycle", func() {
 
 			BeforeEach(func() {
 				fakeChaincodeStore = &mock.ChaincodeStore{}
-				fakeChaincodeStore.LoadReturns([]byte("package"), "name", "version", nil)
+				fakeChaincodeStore.LoadReturns([]byte("package"), []*persistence.ChaincodeMetadata{{Name: "name", Version: "version"}}, nil)
 				fakePackageParser = &mock.PackageParser{}
 				fakePackageParser.ParseReturns(&persistence.ChaincodePackage{
 					Metadata: &persistence.ChaincodePackageMetadata{
@@ -251,7 +251,7 @@ var _ = Describe("Lifecycle", func() {
 
 			Context("when the package cannot be retrieved", func() {
 				BeforeEach(func() {
-					fakeChaincodeStore.LoadReturns(nil, "", "", fmt.Errorf("load-error"))
+					fakeChaincodeStore.LoadReturns(nil, nil, fmt.Errorf("load-error"))
 				})
 
 				It("wraps and returns the error", func() {
