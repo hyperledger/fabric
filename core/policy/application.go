@@ -8,7 +8,9 @@ package policy
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -27,13 +29,40 @@ type ChannelPolicyReferenceProvider interface {
 }
 
 //go:generate mockery -dir ../../common/policies/ -name Policy -case underscore -output mocks/
+//go:generate mockery -dir ../../common/policies/ -name ChannelPolicyManagerGetter -case underscore -output mocks/
+//go:generate mockery -dir ../../common/policies/ -name Manager -case underscore -output mocks/
 //go:generate mockery -dir . -name ChannelPolicyReferenceProvider -case underscore -output mocks/
 //go:generate mockery -dir . -name SignaturePolicyProvider -case underscore -output mocks/
 
 type ApplicationPolicyEvaluator struct {
-	channel                        string
 	signaturePolicyProvider        SignaturePolicyProvider
 	channelPolicyReferenceProvider ChannelPolicyReferenceProvider
+}
+
+type ChannelPolicyReferenceProviderImpl struct {
+	policies.Manager
+}
+
+func (c *ChannelPolicyReferenceProviderImpl) NewPolicy(channelConfigPolicyReference string) (policies.Policy, error) {
+	p, ok := c.GetPolicy(channelConfigPolicyReference)
+	if !ok {
+		return nil, errors.Errorf("failed to retrieve policy for reference %s", channelConfigPolicyReference)
+	}
+
+	return p, nil
+}
+
+// New returns an evaluator for application policies
+func New(deserializer msp.IdentityDeserializer, channel string, channelPolicyManagerGetter policies.ChannelPolicyManagerGetter) (*ApplicationPolicyEvaluator, error) {
+	cpp, ok := channelPolicyManagerGetter.Manager(channel)
+	if !ok {
+		return nil, errors.Errorf("failed to retrieve policy manager for channel %s", channel)
+	}
+
+	return &ApplicationPolicyEvaluator{
+		signaturePolicyProvider:        &cauthdsl.ProviderFromStruct{Deserializer: deserializer},
+		channelPolicyReferenceProvider: &ChannelPolicyReferenceProviderImpl{Manager: cpp},
+	}, nil
 }
 
 func (a *ApplicationPolicyEvaluator) evaluateSignaturePolicy(signaturePolicy *common.SignaturePolicyEnvelope, signatureSet []*common.SignedData) error {

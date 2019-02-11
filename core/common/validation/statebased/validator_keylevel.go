@@ -12,12 +12,136 @@ import (
 
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/core/handlers/validation/api/policies"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
+
+type epEvaluator interface {
+	CheckCCEPIfNotChecked(cc, coll string, blockNum, txNum uint64, sd []*common.SignedData) commonerrors.TxValidationError
+	CheckCCEPIfNoEPChecked(cc string, blockNum, txNum uint64, sd []*common.SignedData) commonerrors.TxValidationError
+	SBEPChecked()
+}
+
+/**********************************************************************************************************/
+/**********************************************************************************************************/
+
+type baseEvaluator struct {
+	epEvaluator
+	vpmgr         KeyLevelValidationParameterManager
+	policySupport validation.PolicyEvaluator
+}
+
+func (p *baseEvaluator) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uint64, signatureSet []*common.SignedData) commonerrors.TxValidationError {
+	// see if there is a key-level validation parameter for this key
+	vp, err := p.vpmgr.GetValidationParameterForKey(cc, coll, key, blockNum, txNum)
+	if err != nil {
+		// error handling for GetValidationParameterForKey follows this rationale:
+		switch err := errors.Cause(err).(type) {
+		// 1) if there is a conflict because validation params have been updated
+		//    by another transaction in this block, we will get ValidationParameterUpdatedError.
+		//    This should lead to invalidating the transaction by calling policyErr
+		case *ValidationParameterUpdatedError:
+			return policyErr(err)
+		// 2) if the ledger returns "determinstic" errors, that is, errors that
+		//    every peer in the channel will also return (such as errors linked to
+		//    an attempt to retrieve metadata from a non-defined collection) should be
+		//    logged and ignored. The ledger will take the most appropriate action
+		//    when performing its side of the validation.
+		case *ledger.CollConfigNotDefinedError, *ledger.InvalidCollNameError:
+			logger.Warningf(errors.WithMessage(err, "skipping key-level validation").Error())
+			err = nil
+		// 3) any other type of error should return an execution failure which will
+		//    lead to halting the processing on this channel. Note that any non-categorized
+		//    deterministic error would be caught by the default and would lead to
+		//    a processing halt. This would certainly be a bug, but - in the absence of a
+		//    single, well-defined deterministic error returned by the ledger, it is
+		//    best to err on the side of caution and rather halt processing (because a
+		//    deterministic error is treated like an I/O one) rather than risking a fork
+		//    (in case an I/O error is treated as a deterministic one).
+		default:
+			return &commonerrors.VSCCExecutionFailureError{
+				Err: err,
+			}
+		}
+	}
+
+	// if no key-level validation parameter has been specified, the regular cc endorsement policy needs to hold
+	if len(vp) == 0 {
+		return p.CheckCCEPIfNotChecked(cc, coll, blockNum, txNum, signatureSet)
+	}
+
+	// validate against key-level vp
+	err = p.policySupport.Evaluate(vp, signatureSet)
+	if err != nil {
+		return policyErr(errors.Wrapf(err, "validation of key %s (coll'%s':ns'%s') in tx %d:%d failed", key, coll, cc, blockNum, txNum))
+	}
+
+	p.SBEPChecked()
+
+	return nil
+}
+
+func (p *baseEvaluator) Evaluate(blockNum, txNum uint64, NsRwSets []*rwsetutil.NsRwSet, ns string, sd []*common.SignedData) commonerrors.TxValidationError {
+	// iterate over all writes in the rwset
+	for _, nsRWSet := range NsRwSets {
+		// skip other namespaces
+		if nsRWSet.NameSpace != ns {
+			continue
+		}
+
+		// public writes
+		// we validate writes against key-level validation parameters
+		// if any are present or the chaincode-wide endorsement policy
+		for _, pubWrite := range nsRWSet.KvRwSet.Writes {
+			err := p.checkSBAndCCEP(ns, "", pubWrite.Key, blockNum, txNum, sd)
+			if err != nil {
+				return err
+			}
+		}
+		// public metadata writes
+		// we validate writes against key-level validation parameters
+		// if any are present or the chaincode-wide endorsement policy
+		for _, pubMdWrite := range nsRWSet.KvRwSet.MetadataWrites {
+			err := p.checkSBAndCCEP(ns, "", pubMdWrite.Key, blockNum, txNum, sd)
+			if err != nil {
+				return err
+			}
+		}
+		// writes in collections
+		// we validate writes against key-level validation parameters
+		// if any are present or the chaincode-wide endorsement policy
+		for _, collRWSet := range nsRWSet.CollHashedRwSets {
+			coll := collRWSet.CollectionName
+			for _, hashedWrite := range collRWSet.HashedRwSet.HashedWrites {
+				key := string(hashedWrite.KeyHash)
+				err := p.checkSBAndCCEP(ns, coll, key, blockNum, txNum, sd)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		// metadata writes in collections
+		// we validate writes against key-level validation parameters
+		// if any are present or the chaincode-wide endorsement policy
+		for _, collRWSet := range nsRWSet.CollHashedRwSets {
+			coll := collRWSet.CollectionName
+			for _, hashedMdWrite := range collRWSet.HashedRwSet.MetadataWrites {
+				key := string(hashedMdWrite.KeyHash)
+				err := p.checkSBAndCCEP(ns, coll, key, blockNum, txNum, sd)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// we make sure that we check at least the CCEP to honour FAB-9473
+	return p.CheckCCEPIfNoEPChecked(ns, blockNum, txNum, sd)
+}
 
 /**********************************************************************************************************/
 /**********************************************************************************************************/
@@ -50,10 +174,7 @@ func NewKeyLevelValidator(policySupport validation.PolicyEvaluator, vpmgr KeyLev
 	return &KeyLevelValidator{
 		vpmgr:    vpmgr,
 		blockDep: blockDependency{},
-		pef: &policyCheckerFactory{
-			policySupport: policySupport,
-			vpmgr:         vpmgr,
-		},
+		pef:      NewV13Evaluator(policySupport, vpmgr),
 	}
 }
 

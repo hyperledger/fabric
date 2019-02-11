@@ -10,14 +10,16 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/policies"
 	vp "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
+	p "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
@@ -59,19 +61,22 @@ type PluginValidator struct {
 	QueryExecutorCreator
 	msp.IdentityDeserializer
 	capabilities Capabilities
+	policies.ChannelPolicyManagerGetter
 }
 
 //go:generate mockery -dir ../../../../handlers/validation/api/capabilities/ -name Capabilities -case underscore -output mocks/
 //go:generate mockery -dir ../../../../../msp/ -name IdentityDeserializer -case underscore -output mocks/
+//go:generate mockery -dir ../../../../../common/policies/ -name ChannelPolicyManagerGetter -case underscore -output mocks/
 
 // NewPluginValidator creates a new PluginValidator
-func NewPluginValidator(pm vp.Mapper, qec QueryExecutorCreator, deserializer msp.IdentityDeserializer, capabilities Capabilities) *PluginValidator {
+func NewPluginValidator(pm vp.Mapper, qec QueryExecutorCreator, deserializer msp.IdentityDeserializer, capabilities Capabilities, cpmg policies.ChannelPolicyManagerGetter) *PluginValidator {
 	return &PluginValidator{
-		capabilities:         capabilities,
-		pluginChannelMapping: make(map[vp.Name]*pluginsByChannel),
-		Mapper:               pm,
-		QueryExecutorCreator: qec,
-		IdentityDeserializer: deserializer,
+		capabilities:               capabilities,
+		pluginChannelMapping:       make(map[vp.Name]*pluginsByChannel),
+		Mapper:                     pm,
+		QueryExecutorCreator:       qec,
+		IdentityDeserializer:       deserializer,
+		ChannelPolicyManagerGetter: cpmg,
 	}
 }
 
@@ -149,7 +154,12 @@ func (pbc *pluginsByChannel) createPluginIfAbsent(channel string) (validation.Pl
 }
 
 func (pbc *pluginsByChannel) initPlugin(plugin validation.Plugin, channel string) (validation.Plugin, error) {
-	pe := &PolicyEvaluator{IdentityDeserializer: pbc.pv.IdentityDeserializer}
+	pp, err := policy.New(pbc.pv.IdentityDeserializer, channel, pbc.pv.ChannelPolicyManagerGetter)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not obtain a policy evaluator")
+	}
+
+	pe := &PolicyEvaluatorWrapper{IdentityDeserializer: pbc.pv.IdentityDeserializer, PolicyEvaluator: pp}
 	sf := &StateFetcherImpl{QueryExecutorCreator: pbc.pv}
 	if err := plugin.Init(pe, sf, pbc.pv.capabilities); err != nil {
 		return nil, errors.Wrap(err, "failed initializing plugin")
@@ -157,22 +167,18 @@ func (pbc *pluginsByChannel) initPlugin(plugin validation.Plugin, channel string
 	return plugin, nil
 }
 
-type PolicyEvaluator struct {
+type PolicyEvaluatorWrapper struct {
 	msp.IdentityDeserializer
+	p.PolicyEvaluator
 }
 
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (id *PolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*common.SignedData) error {
-	pp := cauthdsl.NewPolicyProvider(id.IdentityDeserializer)
-	policy, _, err := pp.NewPolicy(policyBytes)
-	if err != nil {
-		return err
-	}
-	return policy.Evaluate(signatureSet)
+func (id *PolicyEvaluatorWrapper) Evaluate(policyBytes []byte, signatureSet []*common.SignedData) error {
+	return id.PolicyEvaluator.Evaluate(policyBytes, signatureSet)
 }
 
 // DeserializeIdentity unmarshals the given identity to msp.Identity
-func (id *PolicyEvaluator) DeserializeIdentity(serializedIdentity []byte) (Identity, error) {
+func (id *PolicyEvaluatorWrapper) DeserializeIdentity(serializedIdentity []byte) (Identity, error) {
 	mspIdentity, err := id.IdentityDeserializer.DeserializeIdentity(serializedIdentity)
 	if err != nil {
 		return nil, err

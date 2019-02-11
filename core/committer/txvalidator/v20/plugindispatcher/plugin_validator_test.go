@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	. "github.com/hyperledger/fabric/msp/mocks"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -33,7 +34,11 @@ func TestValidateWithPlugin(t *testing.T) {
 	qec := &mocks.QueryExecutorCreator{}
 	deserializer := &mocks.IdentityDeserializer{}
 	capabilites := &mocks.Capabilities{}
-	v := plugindispatcher.NewPluginValidator(pm, qec, deserializer, capabilites)
+
+	mcpmg := &mocks.ChannelPolicyManagerGetter{}
+	mcpmg.On("Manager", "").Return(nil, true)
+
+	v := plugindispatcher.NewPluginValidator(pm, qec, deserializer, capabilites, mcpmg)
 	ctx := &plugindispatcher.Context{
 		Namespace:  "mycc",
 		PluginName: "vscc",
@@ -94,6 +99,9 @@ func TestSamplePlugin(t *testing.T) {
 	factory.On("New").Return(testdata.NewSampleValidationPlugin(t))
 	pm["vscc"] = factory
 
+	mcpmg := &mocks.ChannelPolicyManagerGetter{}
+	mcpmg.On("Manager", "mychannel").Return(nil, true)
+
 	transaction := testdata.MarshaledSignedData{
 		Data:      []byte{1, 2, 3},
 		Signature: []byte{4, 5, 6},
@@ -102,8 +110,8 @@ func TestSamplePlugin(t *testing.T) {
 
 	txnData, _ := proto.Marshal(&transaction)
 
-	v := plugindispatcher.NewPluginValidator(pm, qec, deserializer, capabilites)
-	acceptAllPolicyBytes, _ := proto.Marshal(cauthdsl.AcceptAllPolicy)
+	v := plugindispatcher.NewPluginValidator(pm, qec, deserializer, capabilites, mcpmg)
+	acceptAllPolicyBytes, _ := proto.Marshal(&peer.ApplicationPolicy{Type: &peer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: cauthdsl.AcceptAllPolicy}})
 	ctx := &plugindispatcher.Context{
 		Namespace:  "mycc",
 		PluginName: "vscc",

@@ -386,7 +386,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 		peerSingletonCallback,
 	)
 
-	validator := txvalidator.NewTxValidator(cid, validationWorkersSemaphore, cs, chaincodeSupport, sccp, pm)
+	validator := txvalidator.NewTxValidator(cid, validationWorkersSemaphore, cs, chaincodeSupport, sccp, pm, NewChannelPolicyManagerGetter())
 	c := committer.NewLedgerCommitterReactive(ledger, func(block *common.Block) error {
 		chainID, err := utils.GetChainIDFromBlock(block)
 		if err != nil {
