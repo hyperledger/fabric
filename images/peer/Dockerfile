@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-ARG GO_VER=1.11.1
-ARG ALPINE_VER=3.8
+
+ARG GO_VER
+ARG ALPINE_VER
+
 FROM alpine:${ALPINE_VER} as base
 RUN apk add --no-cache tzdata libltdl
 
