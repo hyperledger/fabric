@@ -472,7 +472,7 @@ chaincode:
 
     golang:
         # golang will never need more than baseos
-        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
+        runtime: $(DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
 
         # whether or not golang chaincode should be linked dynamically
         dynamicLink: false
@@ -480,7 +480,7 @@ chaincode:
     car:
         # car may need more facilities (JVM, etc) in the future as the catalog
         # of platforms are expanded.  For now, we can just use baseos
-        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
+        runtime: $(DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
 
     java:
         # This is an image based on java:openjdk-8 with addition compiler

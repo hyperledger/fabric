@@ -148,10 +148,10 @@ chaincode:
   builder: $(DOCKER_NS)/fabric-ccenv:$(PROJECT_VERSION)
   pull: false
   golang:
-    runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
+    runtime: $(DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
     dynamicLink: false
   car:
-    runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
+    runtime: $(DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
   java:
     runtime: $(DOCKER_NS)/fabric-javaenv:latest
   node:

@@ -254,10 +254,10 @@ $(BUILD_DIR)/images/baseos/$(DUMMY):
 	$(DBUILD) -f images/peer/Dockerfile \
 		--target base \
 		--build-arg GO_VER=${GO_VER} --build-arg ALPINE_VER=${ALPINE_VER} \
-		-t $(BASE_DOCKER_NS)/fabric-$(TARGET) images/peer
-	docker tag $(BASE_DOCKER_NS)/fabric-$(TARGET) \
+		-t $(DOCKER_NS)/fabric-$(TARGET) images/peer
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) \
 		$(DOCKER_NS)/fabric-$(TARGET):$(BASE_VERSION)
-	docker tag $(BASE_DOCKER_NS)/fabric-$(TARGET) \
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) \
 		$(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 	@touch $@
 
@@ -271,10 +271,10 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 	$(DBUILD) -f images/$(TARGET)/Dockerfile \
 		--build-arg GO_VER=${GO_VER} --build-arg ALPINE_VER=${ALPINE_VER} \
 		${BUILD_ARGS} \
-		-t $(BASE_DOCKER_NS)/fabric-$(TARGET) .
-	docker tag $(BASE_DOCKER_NS)/fabric-$(TARGET) \
+		-t $(DOCKER_NS)/fabric-$(TARGET) .
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) \
 		$(DOCKER_NS)/fabric-$(TARGET):$(BASE_VERSION)
-	docker tag $(BASE_DOCKER_NS)/fabric-$(TARGET) \
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) \
 		$(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 	@touch $@
 
