@@ -248,7 +248,7 @@ func (g *gossipServiceImpl) learnAnchorPeers(channel string, orgOfAnchorPeers ap
 			isAnchorPeerInMyOrg := bytes.Equal(g.selfOrg, g.secAdvisor.OrgByPeerIdentity(remotePeerIdentity))
 			if bytes.Equal(orgOfAnchorPeers, g.selfOrg) && !isAnchorPeerInMyOrg {
 				err := errors.Errorf("Anchor peer %s isn't in our org, but is claimed to be", endpoint)
-				g.logger.Warningf("%+v", err)
+				g.logger.Warningf("%s", err)
 				return nil, err
 			}
 			pkiID := g.mcs.GetPKIidOfCert(remotePeerIdentity)

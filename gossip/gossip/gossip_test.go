@@ -1602,7 +1602,7 @@ func waitUntilOrFail(t *testing.T, pred func() bool, context string) {
 		if pred() {
 			return
 		}
-		time.Sleep(timeout / 60)
+		time.Sleep(timeout / 1000)
 	}
 	util.PrintStackTrace()
 	assert.Failf(t, "Timeout expired, while %s", context)
