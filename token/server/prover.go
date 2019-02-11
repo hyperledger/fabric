@@ -83,10 +83,6 @@ func (s *Prover) ProcessCommand(ctx context.Context, sc *token.SignedCommand) (c
 		payload, err = s.RequestRedeem(ctx, command.Header, t.RedeemRequest)
 	case *token.Command_ListRequest:
 		payload, err = s.ListUnspentTokens(ctx, command.Header, t.ListRequest)
-	case *token.Command_ApproveRequest:
-		payload, err = s.RequestApprove(ctx, command.Header, t.ApproveRequest)
-	case *token.Command_TransferFromRequest:
-		payload, err = s.RequestTransferFrom(ctx, command.Header, t.TransferFromRequest)
 	case *token.Command_ExpectationRequest:
 		payload, err = s.RequestExpectation(ctx, command.Header, t.ExpectationRequest)
 	default:
@@ -161,36 +157,6 @@ func (s *Prover) ListUnspentTokens(ctxt context.Context, header *token.Header, l
 	}
 
 	return &token.CommandResponse_UnspentTokens{UnspentTokens: tokens}, nil
-}
-
-func (s *Prover) RequestApprove(ctx context.Context, header *token.Header, request *token.ApproveRequest) (*token.CommandResponse_TokenTransaction, error) {
-	transactor, err := s.TMSManager.GetTransactor(header.ChannelId, request.Credential, header.Creator)
-	if err != nil {
-		return nil, err
-	}
-	defer transactor.Done()
-
-	tokenTransaction, err := transactor.RequestApprove(request)
-	if err != nil {
-		return nil, err
-	}
-
-	return &token.CommandResponse_TokenTransaction{TokenTransaction: tokenTransaction}, nil
-}
-
-func (s *Prover) RequestTransferFrom(ctx context.Context, header *token.Header, request *token.TransferRequest) (*token.CommandResponse_TokenTransaction, error) {
-	transactor, err := s.TMSManager.GetTransactor(header.ChannelId, request.Credential, header.Creator)
-	if err != nil {
-		return nil, err
-	}
-	defer transactor.Done()
-
-	tokenTransaction, err := transactor.RequestTransferFrom(request)
-	if err != nil {
-		return nil, err
-	}
-
-	return &token.CommandResponse_TokenTransaction{TokenTransaction: tokenTransaction}, nil
 }
 
 // RequestExpectation gets an issuer or transactor and creates a token transaction response

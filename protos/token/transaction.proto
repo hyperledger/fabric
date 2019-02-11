@@ -70,10 +70,6 @@ message PlainTokenAction {
         PlainTransfer plain_transfer = 2;
         // A plaintext token redeem transaction
         PlainTransfer plain_redeem = 3;
-        // A plaintext token approve transaction
-        PlainApprove plain_approve = 4;
-        // A plaintext token transfer from transaction
-        PlainTransferFrom plain_transfer_From = 5;
     }
 }
 
@@ -110,31 +106,6 @@ message PlainTransfer {
     repeated PlainOutput outputs = 2;
 }
 
-// PlainApprove specifies an approve of one or more tokens in plaintext format
-message PlainApprove {
-    // The inputs to the transfer transaction are specified by their ID
-    repeated TokenId inputs = 1;
-
-    // An approve transaction contains one or more plain delegated outputs
-    repeated PlainDelegatedOutput delegated_outputs = 2;
-
-    // An approve transaction contains one plain output
-    PlainOutput output = 3;
-}
-
-// PlainTransferFrom specifies a transfer of one or more plaintext delegated tokens to one or more outputs
-// an to a delegated output
-message PlainTransferFrom {
-    // The inputs to the transfer transaction are specified by their ID
-    repeated TokenId inputs = 1;
-
-    // A transferFrom transaction contains multiple outputs
-    repeated PlainOutput outputs = 2;
-
-    // A transferFrom transaction may contain one delegatable output
-    PlainDelegatedOutput delegated_output = 3;
-}
-
 // A PlainOutput is the result of import and transfer transactions using plaintext tokens
 message PlainOutput {
 
@@ -156,20 +127,4 @@ message TokenId {
 
     // The index of the output in the transaction
     uint32 index = 2;
-}
-
-// A PlainDelegatedOutput is the result of approve transactions using plaintext tokens
-message PlainDelegatedOutput {
-    // The owner is the serialization of a SerializedIdentity struct
-    TokenOwner owner = 1;
-
-    // The delegatees is an arrary of the serialized identities that can spend the output on behalf
-    // the owner
-    repeated TokenOwner delegatees = 2;
-
-    // The token type
-    string type = 3;
-
-    // The quantity of tokens
-    uint64 quantity = 4;
 }

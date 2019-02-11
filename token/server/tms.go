@@ -39,15 +39,6 @@ type Transactor interface {
 	// ListTokens returns a slice of unspent tokens owned by this transactor
 	ListTokens() (*token.UnspentTokens, error)
 
-	// RequestApprove creates a token transaction that includes the data necessary
-	// for approve
-	RequestApprove(request *token.ApproveRequest) (*token.TokenTransaction, error)
-
-	// RequestTransferFrom creates a token transaction that includes the data necessary
-	// for transferring the tokens of a third party that previsouly delegated the transfer
-	// via an approve request
-	RequestTransferFrom(request *token.TransferRequest) (*token.TokenTransaction, error)
-
 	// RequestExpectation allows indirect transfer based on the expectation.
 	// It creates a token transaction with the outputs as specified in the expectation.
 	RequestExpectation(request *token.ExpectationRequest) (*token.TokenTransaction, error)
