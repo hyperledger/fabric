@@ -3,17 +3,25 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package rwset
+
+package rwsetext
 
 import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
+type TxReadWriteSet struct{ *rwset.TxReadWriteSet }
+
+func (txrws *TxReadWriteSet) Underlying() proto.Message {
+	return txrws.TxReadWriteSet
+}
+
 func (txrws *TxReadWriteSet) DynamicSliceFields() []string {
-	if txrws.DataModel != TxReadWriteSet_KV {
+	if txrws.DataModel != rwset.TxReadWriteSet_KV {
 		// We only know how to handle TxReadWriteSet_KV types
 		return []string{}
 	}
@@ -26,7 +34,7 @@ func (txrws *TxReadWriteSet) DynamicSliceFieldProto(name string, index int, base
 		return nil, fmt.Errorf("Not a dynamic field: %s", name)
 	}
 
-	nsrw, ok := base.(*NsReadWriteSet)
+	nsrw, ok := base.(*rwset.NsReadWriteSet)
 	if !ok {
 		return nil, fmt.Errorf("TxReadWriteSet must embed a NsReadWriteSet its dynamic field")
 	}
@@ -38,8 +46,8 @@ func (txrws *TxReadWriteSet) DynamicSliceFieldProto(name string, index int, base
 }
 
 type DynamicNsReadWriteSet struct {
-	*NsReadWriteSet
-	DataModel TxReadWriteSet_DataModel
+	*rwset.NsReadWriteSet
+	DataModel rwset.TxReadWriteSet_DataModel
 }
 
 func (dnrws *DynamicNsReadWriteSet) Underlying() proto.Message {
@@ -54,7 +62,7 @@ func (dnrws *DynamicNsReadWriteSet) StaticallyOpaqueFieldProto(name string) (pro
 	switch name {
 	case "rwset":
 		switch dnrws.DataModel {
-		case TxReadWriteSet_KV:
+		case rwset.TxReadWriteSet_KV:
 			return &kvrwset.KVRWSet{}, nil
 		default:
 			return nil, fmt.Errorf("unknown data model type: %v", dnrws.DataModel)
@@ -65,7 +73,7 @@ func (dnrws *DynamicNsReadWriteSet) StaticallyOpaqueFieldProto(name string) (pro
 }
 
 func (dnrws *DynamicNsReadWriteSet) DynamicSliceFields() []string {
-	if dnrws.DataModel != TxReadWriteSet_KV {
+	if dnrws.DataModel != rwset.TxReadWriteSet_KV {
 		// We only know how to handle TxReadWriteSet_KV types
 		return []string{}
 	}
@@ -78,7 +86,7 @@ func (dnrws *DynamicNsReadWriteSet) DynamicSliceFieldProto(name string, index in
 		return nil, fmt.Errorf("Not a dynamic field: %s", name)
 	}
 
-	chrws, ok := base.(*CollectionHashedReadWriteSet)
+	chrws, ok := base.(*rwset.CollectionHashedReadWriteSet)
 	if !ok {
 		return nil, fmt.Errorf("NsReadWriteSet must embed a *CollectionHashedReadWriteSet its dynamic field")
 	}
@@ -90,8 +98,8 @@ func (dnrws *DynamicNsReadWriteSet) DynamicSliceFieldProto(name string, index in
 }
 
 type DynamicCollectionHashedReadWriteSet struct {
-	*CollectionHashedReadWriteSet
-	DataModel TxReadWriteSet_DataModel
+	*rwset.CollectionHashedReadWriteSet
+	DataModel rwset.TxReadWriteSet_DataModel
 }
 
 func (dchrws *DynamicCollectionHashedReadWriteSet) Underlying() proto.Message {
@@ -106,7 +114,7 @@ func (dchrws *DynamicCollectionHashedReadWriteSet) StaticallyOpaqueFieldProto(na
 	switch name {
 	case "rwset":
 		switch dchrws.DataModel {
-		case TxReadWriteSet_KV:
+		case rwset.TxReadWriteSet_KV:
 			return &kvrwset.HashedRWSet{}, nil
 		default:
 			return nil, fmt.Errorf("unknown data model type: %v", dchrws.DataModel)

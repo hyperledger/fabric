@@ -4,13 +4,22 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package peer
+package peerext
 
 import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/peer"
 )
+
+type ProposalResponsePayload struct {
+	*peer.ProposalResponsePayload
+}
+
+func (ppr *ProposalResponsePayload) Underlying() proto.Message {
+	return ppr.ProposalResponsePayload
+}
 
 func (ppr *ProposalResponsePayload) StaticallyOpaqueFields() []string {
 	return []string{"extension"}
@@ -20,5 +29,5 @@ func (ppr *ProposalResponsePayload) StaticallyOpaqueFieldProto(name string) (pro
 	if name != ppr.StaticallyOpaqueFields()[0] {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}
-	return &ChaincodeAction{}, nil
+	return &peer.ChaincodeAction{}, nil
 }

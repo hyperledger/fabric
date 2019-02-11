@@ -1,31 +1,23 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
-package peer
+package peerext
 
 import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/commonext"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 func init() {
-	common.ChannelGroupMap["Application"] = DynamicApplicationGroupFactory{}
+	commonext.ChannelGroupMap["Application"] = DynamicApplicationGroupFactory{}
 }
 
 type DynamicApplicationGroupFactory struct{}
@@ -38,6 +30,10 @@ func (dagf DynamicApplicationGroupFactory) DynamicConfigGroup(cg *common.ConfigG
 
 type DynamicApplicationGroup struct {
 	*common.ConfigGroup
+}
+
+func (dag *DynamicApplicationGroup) Underlying() proto.Message {
+	return dag.ConfigGroup
 }
 
 func (dag *DynamicApplicationGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
@@ -69,6 +65,10 @@ type DynamicApplicationOrgGroup struct {
 	*common.ConfigGroup
 }
 
+func (dag *DynamicApplicationOrgGroup) Underlying() proto.Message {
+	return dag.ConfigGroup
+}
+
 func (dag *DynamicApplicationOrgGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
 	switch name {
 	case "groups":
@@ -93,15 +93,19 @@ type DynamicApplicationConfigValue struct {
 	name string
 }
 
+func (ccv *DynamicApplicationConfigValue) Underlying() proto.Message {
+	return ccv.ConfigValue
+}
+
 func (ccv *DynamicApplicationConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
-	if name != ccv.VariablyOpaqueFields()[0] {
+	if name != "value" {
 		return nil, fmt.Errorf("Not a marshaled field: %s", name)
 	}
 	switch ccv.name {
 	case "Capabilities":
 		return &common.Capabilities{}, nil
 	case "ACLs":
-		return &ACLs{}, nil
+		return &peer.ACLs{}, nil
 	default:
 		return nil, fmt.Errorf("Unknown Application ConfigValue name: %s", ccv.name)
 	}
@@ -112,15 +116,19 @@ type DynamicApplicationOrgConfigValue struct {
 	name string
 }
 
+func (daocv *DynamicApplicationOrgConfigValue) Underlying() proto.Message {
+	return daocv.ConfigValue
+}
+
 func (daocv *DynamicApplicationOrgConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
-	if name != daocv.VariablyOpaqueFields()[0] {
+	if name != "value" {
 		return nil, fmt.Errorf("Not a marshaled field: %s", name)
 	}
 	switch daocv.name {
 	case "MSP":
 		return &msp.MSPConfig{}, nil
 	case "AnchorPeers":
-		return &AnchorPeers{}, nil
+		return &peer.AnchorPeers{}, nil
 	default:
 		return nil, fmt.Errorf("Unknown Application Org ConfigValue name: %s", daocv.name)
 	}

@@ -4,17 +4,27 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package peer
+package peerext
 
 import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/commonext"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 func init() {
-	common.PayloadDataMap[int32(common.HeaderType_ENDORSER_TRANSACTION)] = &Transaction{}
+	commonext.PayloadDataMap[int32(common.HeaderType_ENDORSER_TRANSACTION)] = &peer.Transaction{}
+}
+
+type TransactionAction struct { // nothing was testing this
+	*peer.TransactionAction
+}
+
+func (ta *TransactionAction) Underlying() proto.Message {
+	return ta.TransactionAction
 }
 
 func (ta *TransactionAction) StaticallyOpaqueFields() []string {
@@ -26,10 +36,18 @@ func (ta *TransactionAction) StaticallyOpaqueFieldProto(name string) (proto.Mess
 	case ta.StaticallyOpaqueFields()[0]:
 		return &common.SignatureHeader{}, nil
 	case ta.StaticallyOpaqueFields()[1]:
-		return &ChaincodeActionPayload{}, nil
+		return &peer.ChaincodeActionPayload{}, nil
 	default:
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}
+}
+
+type ChaincodeActionPayload struct {
+	*peer.ChaincodeActionPayload
+}
+
+func (cap *ChaincodeActionPayload) Underlying() proto.Message {
+	return cap.ChaincodeActionPayload
 }
 
 func (cap *ChaincodeActionPayload) StaticallyOpaqueFields() []string {
@@ -40,7 +58,15 @@ func (cap *ChaincodeActionPayload) StaticallyOpaqueFieldProto(name string) (prot
 	if name != cap.StaticallyOpaqueFields()[0] {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}
-	return &ChaincodeProposalPayload{}, nil
+	return &peer.ChaincodeProposalPayload{}, nil
+}
+
+type ChaincodeEndorsedAction struct {
+	*peer.ChaincodeEndorsedAction
+}
+
+func (cae *ChaincodeEndorsedAction) Underlying() proto.Message {
+	return cae.ChaincodeEndorsedAction
 }
 
 func (cae *ChaincodeEndorsedAction) StaticallyOpaqueFields() []string {
@@ -51,5 +77,5 @@ func (cae *ChaincodeEndorsedAction) StaticallyOpaqueFieldProto(name string) (pro
 	if name != cae.StaticallyOpaqueFields()[0] {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}
-	return &ProposalResponsePayload{}, nil
+	return &peer.ProposalResponsePayload{}, nil
 }

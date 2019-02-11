@@ -4,15 +4,16 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package etcdraft
+package etcdraftext
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/ordererext"
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 )
 
 func init() {
-	orderer.ConsensusTypeMetadataMap["etcdraft"] = ConsensusTypeMetadataFactory{}
+	ordererext.ConsensusTypeMetadataMap["etcdraft"] = ConsensusTypeMetadataFactory{}
 }
 
 // ConsensusTypeMetadataFactory allows this implementation's proto messages to register
@@ -21,5 +22,5 @@ type ConsensusTypeMetadataFactory struct{}
 
 // NewMessage implements the Orderer.ConsensusTypeMetadataFactory interface.
 func (dogf ConsensusTypeMetadataFactory) NewMessage() proto.Message {
-	return &Metadata{}
+	return &etcdraft.Metadata{}
 }

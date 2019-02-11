@@ -4,19 +4,21 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package orderer
+package ordererext
 
 import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/commonext"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protos/orderer"
 )
 
 func init() {
-	common.ChannelGroupMap["Orderer"] = DynamicOrdererGroupFactory{}
+	commonext.ChannelGroupMap["Orderer"] = DynamicOrdererGroupFactory{}
 }
 
 type DynamicOrdererGroupFactory struct{}
@@ -29,6 +31,10 @@ func (dogf DynamicOrdererGroupFactory) DynamicConfigGroup(cg *common.ConfigGroup
 
 type DynamicOrdererGroup struct {
 	*common.ConfigGroup
+}
+
+func (dcg *DynamicOrdererGroup) Underlying() proto.Message {
+	return dcg.ConfigGroup
 }
 
 func (dcg *DynamicOrdererGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
@@ -63,6 +69,14 @@ type ConsensusTypeMetadataFactory interface {
 // ConsensuTypeMetadataMap should have consensus implementations register their metadata message factories
 var ConsensusTypeMetadataMap = map[string]ConsensusTypeMetadataFactory{}
 
+type ConsensusType struct {
+	*orderer.ConsensusType
+}
+
+func (ct *ConsensusType) Underlying() proto.Message {
+	return ct.ConsensusType
+}
+
 func (ct *ConsensusType) VariablyOpaqueFields() []string {
 	return []string{"metadata"}
 }
@@ -81,6 +95,10 @@ func (ct *ConsensusType) VariablyOpaqueFieldProto(name string) (proto.Message, e
 
 type DynamicOrdererOrgGroup struct {
 	*common.ConfigGroup
+}
+
+func (dcg *DynamicOrdererOrgGroup) Underlying() proto.Message {
+	return dcg.ConfigGroup
 }
 
 func (dcg *DynamicOrdererOrgGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
@@ -107,21 +125,25 @@ type DynamicOrdererConfigValue struct {
 	name string
 }
 
+func (docv *DynamicOrdererConfigValue) Underlying() proto.Message {
+	return docv.ConfigValue
+}
+
 func (docv *DynamicOrdererConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
-	if name != docv.VariablyOpaqueFields()[0] {
+	if name != "value" {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}
 	switch docv.name {
 	case "ConsensusType":
-		return &ConsensusType{}, nil
+		return &orderer.ConsensusType{}, nil
 	case "BatchSize":
-		return &BatchSize{}, nil
+		return &orderer.BatchSize{}, nil
 	case "BatchTimeout":
-		return &BatchTimeout{}, nil
+		return &orderer.BatchTimeout{}, nil
 	case "KafkaBrokers":
-		return &KafkaBrokers{}, nil
+		return &orderer.KafkaBrokers{}, nil
 	case "ChannelRestrictions":
-		return &ChannelRestrictions{}, nil
+		return &orderer.ChannelRestrictions{}, nil
 	case "Capabilities":
 		return &common.Capabilities{}, nil
 	default:
@@ -134,8 +156,12 @@ type DynamicOrdererOrgConfigValue struct {
 	name string
 }
 
+func (doocv *DynamicOrdererOrgConfigValue) Underlying() proto.Message {
+	return doocv.ConfigValue
+}
+
 func (doocv *DynamicOrdererOrgConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
-	if name != doocv.VariablyOpaqueFields()[0] {
+	if name != "value" {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}
 	switch doocv.name {

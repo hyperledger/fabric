@@ -1,30 +1,21 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
-package common
+package commonext
 
 import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 )
 
 type DynamicConfigGroupFactory interface {
-	DynamicConfigGroup(cg *ConfigGroup) proto.Message
+	DynamicConfigGroup(cg *common.ConfigGroup) proto.Message
 }
 
 // ChannelGroupMap is a slightly hacky way to break the dependency cycle which would
@@ -35,14 +26,38 @@ var ChannelGroupMap = map[string]DynamicConfigGroupFactory{
 	"Consortiums": DynamicConsortiumsGroupFactory{},
 }
 
+type ConfigGroup struct{ *common.ConfigGroup }
+
+func (cg *ConfigGroup) Underlying() proto.Message { // MJS was already here
+	return cg.ConfigGroup
+}
+
+func (cg *ConfigGroup) DynamicMapFields() []string {
+	return []string{"groups", "values"}
+}
+
+type ConfigValue struct{ *common.ConfigValue }
+
+func (cv *ConfigValue) Underlying() proto.Message { // MJS was already here
+	return cv.ConfigValue
+}
+
+func (cv *ConfigValue) VariablyOpaqueFields() []string {
+	return []string{"value"}
+}
+
 type DynamicChannelGroup struct {
-	*ConfigGroup
+	*common.ConfigGroup
+}
+
+func (dcg *DynamicChannelGroup) Underlying() proto.Message {
+	return dcg.ConfigGroup
 }
 
 func (dcg *DynamicChannelGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
 	switch name {
 	case "groups":
-		cg, ok := base.(*ConfigGroup)
+		cg, ok := base.(*common.ConfigGroup)
 		if !ok {
 			return nil, fmt.Errorf("ConfigGroup groups can only contain ConfigGroup messages")
 		}
@@ -53,7 +68,7 @@ func (dcg *DynamicChannelGroup) DynamicMapFieldProto(name string, key string, ba
 		}
 		return dcgf.DynamicConfigGroup(cg), nil
 	case "values":
-		cv, ok := base.(*ConfigValue)
+		cv, ok := base.(*common.ConfigValue)
 		if !ok {
 			return nil, fmt.Errorf("ConfigGroup values can only contain ConfigValue messages")
 		}
@@ -67,50 +82,54 @@ func (dcg *DynamicChannelGroup) DynamicMapFieldProto(name string, key string, ba
 }
 
 type DynamicChannelConfigValue struct {
-	*ConfigValue
+	*common.ConfigValue
 	name string
-}
-
-func (dccv *DynamicChannelConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
-	if name != dccv.VariablyOpaqueFields()[0] {
-		return nil, fmt.Errorf("not a marshaled field: %s", name)
-	}
-	switch dccv.name {
-	case "HashingAlgorithm":
-		return &HashingAlgorithm{}, nil
-	case "BlockDataHashingStructure":
-		return &BlockDataHashingStructure{}, nil
-	case "OrdererAddresses":
-		return &OrdererAddresses{}, nil
-	case "Consortium":
-		return &Consortium{}, nil
-	case "Capabilities":
-		return &Capabilities{}, nil
-	default:
-		return nil, fmt.Errorf("unknown Channel ConfigValue name: %s", dccv.name)
-	}
 }
 
 func (dccv *DynamicChannelConfigValue) Underlying() proto.Message {
 	return dccv.ConfigValue
 }
 
+func (dccv *DynamicChannelConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
+	if name != "value " {
+		return nil, fmt.Errorf("not a marshaled field: %s", name)
+	}
+	switch dccv.name {
+	case "HashingAlgorithm":
+		return &common.HashingAlgorithm{}, nil
+	case "BlockDataHashingStructure":
+		return &common.BlockDataHashingStructure{}, nil
+	case "OrdererAddresses":
+		return &common.OrdererAddresses{}, nil
+	case "Consortium":
+		return &common.Consortium{}, nil
+	case "Capabilities":
+		return &common.Capabilities{}, nil
+	default:
+		return nil, fmt.Errorf("unknown Channel ConfigValue name: %s", dccv.name)
+	}
+}
+
 type DynamicConsortiumsGroupFactory struct{}
 
-func (dogf DynamicConsortiumsGroupFactory) DynamicConfigGroup(cg *ConfigGroup) proto.Message {
+func (dogf DynamicConsortiumsGroupFactory) DynamicConfigGroup(cg *common.ConfigGroup) proto.Message {
 	return &DynamicConsortiumsGroup{
 		ConfigGroup: cg,
 	}
 }
 
 type DynamicConsortiumsGroup struct {
-	*ConfigGroup
+	*common.ConfigGroup
+}
+
+func (dcg *DynamicConsortiumsGroup) Underlying() proto.Message {
+	return dcg.ConfigGroup
 }
 
 func (dcg *DynamicConsortiumsGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
 	switch name {
 	case "groups":
-		cg, ok := base.(*ConfigGroup)
+		cg, ok := base.(*common.ConfigGroup)
 		if !ok {
 			return nil, fmt.Errorf("ConfigGroup groups can only contain ConfigGroup messages")
 		}
@@ -125,18 +144,18 @@ func (dcg *DynamicConsortiumsGroup) DynamicMapFieldProto(name string, key string
 	}
 }
 
-func (dcg *DynamicConsortiumsGroup) Underlying() proto.Message {
-	return dcg.ConfigGroup
+type DynamicConsortiumGroup struct {
+	*common.ConfigGroup
 }
 
-type DynamicConsortiumGroup struct {
-	*ConfigGroup
+func (dcg *DynamicConsortiumGroup) Underlying() proto.Message {
+	return dcg.ConfigGroup
 }
 
 func (dcg *DynamicConsortiumGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
 	switch name {
 	case "groups":
-		cg, ok := base.(*ConfigGroup)
+		cg, ok := base.(*common.ConfigGroup)
 		if !ok {
 			return nil, fmt.Errorf("ConfigGroup groups can only contain ConfigGroup messages")
 		}
@@ -144,7 +163,7 @@ func (dcg *DynamicConsortiumGroup) DynamicMapFieldProto(name string, key string,
 			ConfigGroup: cg,
 		}, nil
 	case "values":
-		cv, ok := base.(*ConfigValue)
+		cv, ok := base.(*common.ConfigValue)
 		if !ok {
 			return nil, fmt.Errorf("ConfigGroup values can only contain ConfigValue messages")
 		}
@@ -158,29 +177,33 @@ func (dcg *DynamicConsortiumGroup) DynamicMapFieldProto(name string, key string,
 	}
 }
 
-func (dcg *DynamicConsortiumGroup) Underlying() proto.Message {
-	return dcg.ConfigGroup
-}
-
 type DynamicConsortiumConfigValue struct {
-	*ConfigValue
+	*common.ConfigValue
 	name string
 }
 
+func (dccv *DynamicConsortiumConfigValue) Underlying() proto.Message {
+	return dccv.ConfigValue
+}
+
 func (dccv *DynamicConsortiumConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
-	if name != dccv.VariablyOpaqueFields()[0] {
+	if name != "value" {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}
 	switch dccv.name {
 	case "ChannelCreationPolicy":
-		return &Policy{}, nil
+		return &common.Policy{}, nil
 	default:
 		return nil, fmt.Errorf("unknown Consortium ConfigValue name: %s", dccv.name)
 	}
 }
 
 type DynamicConsortiumOrgGroup struct {
-	*ConfigGroup
+	*common.ConfigGroup
+}
+
+func (dcg *DynamicConsortiumOrgGroup) Underlying() proto.Message {
+	return dcg.ConfigGroup
 }
 
 func (dcg *DynamicConsortiumOrgGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
@@ -188,7 +211,7 @@ func (dcg *DynamicConsortiumOrgGroup) DynamicMapFieldProto(name string, key stri
 	case "groups":
 		return nil, fmt.Errorf("ConsortiumOrg groups do not support sub groups")
 	case "values":
-		cv, ok := base.(*ConfigValue)
+		cv, ok := base.(*common.ConfigValue)
 		if !ok {
 			return nil, fmt.Errorf("ConfigGroup values can only contain ConfigValue messages")
 		}
@@ -203,12 +226,16 @@ func (dcg *DynamicConsortiumOrgGroup) DynamicMapFieldProto(name string, key stri
 }
 
 type DynamicConsortiumOrgConfigValue struct {
-	*ConfigValue
+	*common.ConfigValue
 	name string
 }
 
+func (dcocv *DynamicConsortiumOrgConfigValue) Underlying() proto.Message {
+	return dcocv.ConfigValue
+}
+
 func (dcocv *DynamicConsortiumOrgConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
-	if name != dcocv.VariablyOpaqueFields()[0] {
+	if name != "value" {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}
 	switch dcocv.name {
