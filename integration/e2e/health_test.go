@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"syscall"
+	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/healthz"
@@ -40,7 +41,10 @@ var _ = Describe("Health", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicSolo(), testDir, client, BasePort(), components)
+		config := nwo.BasicKafka()
+		config.Consensus.Brokers = 3
+
+		network = nwo.New(config, testDir, client, BasePort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 	})
@@ -133,6 +137,108 @@ var _ = Describe("Health", func() {
 				Expect(status.Status).To(Equal("Service Unavailable"))
 				Expect(status.FailedChecks[0].Component).To(Equal("couchdb"))
 				Expect(status.FailedChecks[0].Reason).Should((HavePrefix(fmt.Sprintf("failed to connect to couch db [Head http://%s: dial tcp %s: ", couchAddr, couchAddr))))
+			})
+		})
+	})
+
+	Describe("Kafka health checks", func() {
+		var (
+			oProcess ifrit.Process
+			zProcess ifrit.Process
+			kProcess []ifrit.Process
+
+			authClient *http.Client
+			healthURL  string
+		)
+
+		BeforeEach(func() {
+			// Start Zookeeper
+			zookeepers := []string{}
+			zk := network.ZooKeeperRunner(0)
+			zookeepers = append(zookeepers, fmt.Sprintf("%s:2181", zk.Name))
+			zProcess = ifrit.Invoke(zk)
+			Eventually(zProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			// Start Kafka Brokers
+			for i := 0; i < network.Consensus.Brokers; i++ {
+				kafkaRunner := network.BrokerRunner(i, zookeepers)
+				kp := ifrit.Invoke(kafkaRunner)
+				Eventually(kp.Ready(), network.EventuallyTimeout).Should(BeClosed())
+				kProcess = append(kProcess, kp)
+			}
+
+			// Start Orderer
+			ordererRunner := network.OrdererGroupRunner()
+			oProcess = ifrit.Invoke(ordererRunner)
+			Eventually(oProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			orderer := network.Orderers[0]
+			authClient, _ = OrdererOperationalClients(network, orderer)
+			healthURL = fmt.Sprintf("https://127.0.0.1:%d/healthz", network.OrdererPort(orderer, nwo.OperationsPort))
+		})
+
+		AfterEach(func() {
+			if zProcess != nil {
+				zProcess.Signal(syscall.SIGTERM)
+				Eventually(zProcess.Wait, network.EventuallyTimeout).Should(Receive())
+			}
+			if oProcess != nil {
+				oProcess.Signal(syscall.SIGTERM)
+				Eventually(oProcess.Wait, network.EventuallyTimeout).Should(Receive())
+			}
+			for _, k := range kProcess {
+				if k != nil {
+					k.Signal(syscall.SIGTERM)
+					Eventually(k.Wait, network.EventuallyTimeout).Should(Receive())
+				}
+			}
+		})
+
+		Context("when running health checks on orderer the kafka health check", func() {
+			It("returns appropriate response code", func() {
+				By("returning 200 when all brokers are online", func() {
+					statusCode, status := DoHealthCheck(authClient, healthURL)
+					Expect(statusCode).To(Equal(http.StatusOK))
+					Expect(status.Status).To(Equal("OK"))
+				})
+
+				By("returning a 200 when one of the three brokers goes offline", func() {
+					k := kProcess[1]
+					k.Signal(syscall.SIGTERM)
+					Eventually(k.Wait, network.EventuallyTimeout).Should(Receive())
+
+					var statusCode int
+					var status healthz.HealthStatus
+					for i := 0; i < 4; i++ {
+						statusCode, status = DoHealthCheck(authClient, healthURL)
+						if statusCode != http.StatusOK {
+							break
+						}
+						time.Sleep(3 * time.Second)
+					}
+					Expect(statusCode).To(Equal(http.StatusOK))
+					Expect(status.Status).To(Equal("OK"))
+				})
+
+				By("returning a 503 when two of the three brokers go offline", func() {
+					k := kProcess[0]
+					k.Signal(syscall.SIGTERM)
+					Eventually(k.Wait, network.EventuallyTimeout).Should(Receive())
+
+					var statusCode int
+					var status healthz.HealthStatus
+					for i := 0; i < 20; i++ {
+						statusCode, status = DoHealthCheck(authClient, healthURL)
+						if statusCode != http.StatusOK {
+							break
+						}
+						time.Sleep(3 * time.Second)
+					}
+					Expect(statusCode).To(Equal(http.StatusServiceUnavailable))
+					Expect(status.Status).To(Equal("Service Unavailable"))
+					Expect(status.FailedChecks[0].Component).To(Equal("systemchannel/0"))
+					Expect(status.FailedChecks[0].Reason).To(MatchRegexp(`\[replica ids: \[\d \d \d\]\]: kafka server: Messages are rejected since there are fewer in-sync replicas than required\.`))
+				})
 			})
 		})
 	})
