@@ -77,7 +77,7 @@ func getTokenTransaction() *token.TokenTransaction {
 				Data: &token.PlainTokenAction_PlainImport{
 					PlainImport: &token.PlainImport{
 						Outputs: []*token.PlainOutput{{
-							Owner:    []byte("token-owner"),
+							Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 							Type:     "PDQ",
 							Quantity: 777,
 						}},

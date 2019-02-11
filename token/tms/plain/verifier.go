@@ -116,7 +116,7 @@ func (v *Verifier) checkImportOutputs(outputs []*token.PlainOutput, txID string,
 			return &customtx.InvalidTxError{Msg: fmt.Sprintf("output %d quantity is 0 in transaction: %s", i, txID)}
 		}
 
-		if len(output.Owner) == 0 {
+		if output.Owner == nil {
 			return &customtx.InvalidTxError{Msg: fmt.Sprintf("missing owner in output for txID '%s'", txID)}
 		}
 	}
@@ -146,10 +146,10 @@ func (v *Verifier) checkRedeemAction(creator identity.PublicInfo, redeemAction *
 	}
 
 	// if output[1] presents, its owner must be same as the creator
-	if len(outputs) == 2 && !bytes.Equal(creator.Public(), outputs[1].Owner) {
+	if len(outputs) == 2 && !bytes.Equal(creator.Public(), outputs[1].Owner.Raw) {
 		println(hex.EncodeToString(creator.Public()))
-		println(hex.EncodeToString(outputs[1].Owner))
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("wrong owner for remaining tokens, should be original owner %s, but got %s", creator.Public(), outputs[1].Owner)}
+		println(hex.EncodeToString(outputs[1].Owner.Raw))
+		return &customtx.InvalidTxError{Msg: fmt.Sprintf("wrong owner for remaining tokens, should be original owner %s, but got %s", creator.Public(), outputs[1].Owner.Raw)}
 	}
 
 	return nil
@@ -217,7 +217,7 @@ func (v *Verifier) checkOutputs(outputs []*token.PlainOutput, txID string, simul
 		} else if tokenType != output.GetType() {
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types ('%s', '%s') in output for txID '%s'", tokenType, output.GetType(), txID)}
 		}
-		if ownerRequired && len(output.GetOwner()) == 0 {
+		if ownerRequired && output.GetOwner() == nil {
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("missing owner in output for txID '%s'", txID)}
 		}
 		tokenSum += output.GetQuantity()
@@ -271,7 +271,7 @@ func (v *Verifier) checkInputs(creator identity.PublicInfo, tokenIds []*token.To
 }
 
 func (v *Verifier) checkInputOwner(creator identity.PublicInfo, input *token.PlainOutput, tokenId string) error {
-	if !bytes.Equal(creator.Public(), input.Owner) {
+	if !bytes.Equal(creator.Public(), input.Owner.Raw) {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("transfer input with ID %s not owned by creator", tokenId)}
 	}
 	return nil
@@ -281,15 +281,15 @@ func (v *Verifier) checkDelegatedInputDelegatee(creator identity.PublicInfo, inp
 	if len(input.Delegatees) != 1 {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("transferFrom input with ID %s has an invalid delegatees field", tokenId)}
 	}
-	if !bytes.Equal(creator.Public(), input.Delegatees[0]) {
+	if !bytes.Equal(creator.Public(), input.Delegatees[0].Raw) {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("transferFrom input with ID %s cannot be spent by creator", tokenId)}
 	}
 	return nil
 }
 
-func (v *Verifier) checkDelegatedInputs(creator identity.PublicInfo, tokenIds []*token.TokenId, txID string, simulator ledger.LedgerReader) ([]byte, string, uint64, error) {
+func (v *Verifier) checkDelegatedInputs(creator identity.PublicInfo, tokenIds []*token.TokenId, txID string, simulator ledger.LedgerReader) (*token.TokenOwner, string, uint64, error) {
 	tokenType := ""
-	var tokenOwner []byte
+	var tokenOwner *token.TokenOwner
 	inputSum := uint64(0)
 	processedIDs := make(map[string]bool)
 	for _, id := range tokenIds {
@@ -320,7 +320,7 @@ func (v *Verifier) checkDelegatedInputs(creator identity.PublicInfo, tokenIds []
 		// check the consistency of the owner of the delegated inputs
 		if tokenOwner == nil {
 			tokenOwner = input.Owner
-		} else if !bytes.Equal(tokenOwner, input.Owner) {
+		} else if !proto.Equal(tokenOwner, input.Owner) {
 			return nil, "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple owners in transferFrom input for txID: %s (%s, %s)", txID, tokenType, input.GetType())}
 		}
 		// check for double spending within the same tx
@@ -471,7 +471,7 @@ func (v *Verifier) checkApproveOutputs(creator identity.PublicInfo, output *toke
 	// check whether this tx contains an output
 	if output != nil {
 		// check that the owner is not an empty slice
-		if !bytes.Equal(output.Owner, creator.Public()) {
+		if !bytes.Equal(output.Owner.Raw, creator.Public()) {
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("the owner of the output is not valid")}
 		}
 		tokenType = output.GetType()
@@ -497,7 +497,7 @@ func (v *Verifier) checkApproveOutputs(creator identity.PublicInfo, output *toke
 	// check consistency of delegated outputs
 	for i, delegatedOutput := range delegatedOutputs {
 		// check that delegated outputs have the creator as one of the owners
-		if !bytes.Equal(delegatedOutput.Owner, creator.Public()) {
+		if !bytes.Equal(delegatedOutput.Owner.Raw, creator.Public()) {
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("the owner of the delegated output is invalid")}
 		}
 		// check consistency of type
@@ -511,7 +511,7 @@ func (v *Verifier) checkApproveOutputs(creator identity.PublicInfo, output *toke
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("the number of delegates in approve txID '%s' is not 1, it is [%d]", txID, len(delegatedOutput.Delegatees))}
 		}
 		// check that the delegatee is not an empty slice
-		if len(delegatedOutput.Delegatees[0]) == 0 {
+		if len(delegatedOutput.Delegatees[0].Raw) == 0 {
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("the delegated output for approve txID '%s' does not have a delegatee", txID)}
 		}
 
@@ -731,12 +731,12 @@ func (v *Verifier) checkTransferFromAction(creator identity.PublicInfo, transfer
 	return nil
 }
 
-func (v *Verifier) checkTransferFromOutputs(creator identity.PublicInfo, owner []byte, outputs []*token.PlainOutput, delegatedOutput *token.PlainDelegatedOutput, txID string, simulator ledger.LedgerReader) (string, uint64, error) {
+func (v *Verifier) checkTransferFromOutputs(creator identity.PublicInfo, owner *token.TokenOwner, outputs []*token.PlainOutput, delegatedOutput *token.PlainDelegatedOutput, txID string, simulator ledger.LedgerReader) (string, uint64, error) {
 	tokenType := ""
 	tokenSum := uint64(0)
 	if delegatedOutput != nil {
 		// check if the delegated output has the right owner
-		if !bytes.Equal(delegatedOutput.GetOwner(), owner) {
+		if !proto.Equal(delegatedOutput.GetOwner(), owner) {
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("the delegated output for transferFrom txID '%s' is in invalid: does not have a valid owner", txID)}
 		}
 		//check if delegated output has one delegatee
@@ -744,7 +744,7 @@ func (v *Verifier) checkTransferFromOutputs(creator identity.PublicInfo, owner [
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("the delegated output for transferFrom txID '%s' is in invalid", txID)}
 		}
 		// check that the creator of the tx is a delegatee
-		if !bytes.Equal(creator.Public(), delegatedOutput.GetDelegatees()[0]) {
+		if !bytes.Equal(creator.Public(), delegatedOutput.GetDelegatees()[0].Raw) {
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("the delegated output for transferFrom txID '%s' is in invalid: does not have the right owners", txID)}
 		}
 
@@ -770,7 +770,7 @@ func (v *Verifier) checkTransferFromOutputs(creator identity.PublicInfo, owner [
 
 	for i, output := range outputs {
 		// check that the owner field is not empty
-		if len(output.GetOwner()) == 0 {
+		if output.GetOwner() == nil {
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("owner must be specified in output in txID [%s]", txID)}
 		}
 		// check that the type is consistent

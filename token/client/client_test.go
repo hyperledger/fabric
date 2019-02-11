@@ -73,7 +73,7 @@ var _ = Describe("Client", func() {
 				{
 					Type:      "type",
 					Quantity:  1,
-					Recipient: []byte("alice"),
+					Recipient: &token.TokenOwner{Raw: []byte("alice")},
 				},
 			}
 		})
@@ -173,8 +173,8 @@ var _ = Describe("Client", func() {
 				{TxId: "id2", Index: 0},
 			}
 			transferShares = []*token.RecipientTransferShare{
-				{Recipient: []byte("alice"), Quantity: 100},
-				{Recipient: []byte("Bob"), Quantity: 50},
+				{Recipient: &token.TokenOwner{Raw: []byte("alice")}, Quantity: 100},
+				{Recipient: &token.TokenOwner{Raw: []byte("bob")}, Quantity: 50},
 			}
 		})
 

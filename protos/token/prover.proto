@@ -18,7 +18,7 @@ import "token/transaction.proto";
 // TokenToIssue describes a token to be issued in the system
 message TokenToIssue {
     // Recipient refers to the owner of the token to be issued
-    bytes recipient = 1;
+    TokenOwner recipient = 1;
 
     // Type refers to the token type
     string type = 2;
@@ -30,7 +30,7 @@ message TokenToIssue {
 // RecipientTransferShare describes how much a recipient will receive in a token transfer
 message RecipientTransferShare {
     // Recipient refers to the prospective owner of a transferred token
-    bytes recipient = 1;
+    TokenOwner recipient = 1;
 
     // Quantity refers to the number of token units to be transferred to the recipient
     uint64 quantity = 2;
@@ -93,7 +93,7 @@ message RedeemRequest {
 // ALlowance defines how many and what tokens a recipient can transfer on behalf of their actual owner
 message AllowanceRecipientShare {
     // Recipient refers to the entity allowed to spend the specified quantity from the tokens identified by token IDs
-    bytes recipient = 1;
+    TokenOwner recipient = 1;
 
     // Quantity is how many tokens are delegated to the recipient
     uint64 quantity = 2;

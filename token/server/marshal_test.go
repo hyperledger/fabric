@@ -41,7 +41,7 @@ var _ = Describe("Marshal", func() {
 					ImportRequest: &token.ImportRequest{
 						Credential: []byte("credential"),
 						TokensToIssue: []*token.TokenToIssue{{
-							Recipient: []byte("recipient"),
+							Recipient: &token.TokenOwner{Raw: []byte("recipient")},
 							Type:      "TYPE",
 							Quantity:  999,
 						}},
@@ -139,8 +139,8 @@ var _ = Describe("Marshal", func() {
 							Data: &token.PlainTokenAction_PlainImport{
 								PlainImport: &token.PlainImport{
 									Outputs: []*token.PlainOutput{
-										{Owner: []byte("owner-1"), Type: "TOK1", Quantity: 888},
-										{Owner: []byte("owner-2"), Type: "TOK2", Quantity: 999},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 888},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: 999},
 									},
 								},
 							},

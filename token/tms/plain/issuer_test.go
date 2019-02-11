@@ -21,9 +21,9 @@ var _ = Describe("Issuer", func() {
 
 	BeforeEach(func() {
 		tokensToIssue = []*token.TokenToIssue{
-			{Recipient: []byte("R1"), Type: "TOK1", Quantity: 1001},
-			{Recipient: []byte("R2"), Type: "TOK2", Quantity: 1002},
-			{Recipient: []byte("R3"), Type: "TOK3", Quantity: 1003},
+			{Recipient: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: 1001},
+			{Recipient: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK2", Quantity: 1002},
+			{Recipient: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK3", Quantity: 1003},
 		}
 		issuer = &plain.Issuer{}
 	})
@@ -37,9 +37,9 @@ var _ = Describe("Issuer", func() {
 					Data: &token.PlainTokenAction_PlainImport{
 						PlainImport: &token.PlainImport{
 							Outputs: []*token.PlainOutput{
-								{Owner: []byte("R1"), Type: "TOK1", Quantity: 1001},
-								{Owner: []byte("R2"), Type: "TOK2", Quantity: 1002},
-								{Owner: []byte("R3"), Type: "TOK3", Quantity: 1003},
+								{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: 1001},
+								{Owner: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK2", Quantity: 1002},
+								{Owner: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK3", Quantity: 1003},
 							},
 						},
 					},
@@ -86,7 +86,7 @@ var _ = Describe("Issuer", func() {
 
 		BeforeEach(func() {
 			outputs = []*token.PlainOutput{{
-				Owner:    []byte("token-owner"),
+				Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 				Type:     "XYZ",
 				Quantity: 99,
 			}}
