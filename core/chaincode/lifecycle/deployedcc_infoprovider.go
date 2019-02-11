@@ -11,6 +11,7 @@ import (
 	"regexp"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	validationState "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
@@ -69,12 +70,7 @@ func (l *Lifecycle) UpdatedChaincodes(stateUpdates map[string][]*kvrwset.KVWrite
 // ChaincodeDefinitionIfDefined returns whether the chaincode name is defined in the new lifecycle, a shim around
 // the SimpleQueryExecutor to work with the serializer, or an error.  If the namespace is defined, but it is
 // not a chaincode, this is considered an error.
-func (l *Lifecycle) ChaincodeDefinitionIfDefined(chaincodeName string, qe ledger.SimpleQueryExecutor) (bool, *ChaincodeDefinition, error) {
-	state := &SimpleQueryExecutorShim{
-		Namespace:           LifecycleNamespace,
-		SimpleQueryExecutor: qe,
-	}
-
+func (l *Lifecycle) ChaincodeDefinitionIfDefined(chaincodeName string, state ReadableState) (bool, *ChaincodeDefinition, error) {
 	if chaincodeName == LifecycleNamespace {
 		return true, &ChaincodeDefinition{
 			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
@@ -107,7 +103,10 @@ func (l *Lifecycle) ChaincodeDefinitionIfDefined(chaincodeName string, qe ledger
 }
 
 func (l *Lifecycle) ChaincodeInfo(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
-	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, qe)
+	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, &SimpleQueryExecutorShim{
+		Namespace:           LifecycleNamespace,
+		SimpleQueryExecutor: qe,
+	})
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get info about chaincode")
 	}
@@ -135,7 +134,10 @@ var ImplicitCollectionMatcher = regexp.MustCompile("^" + ImplicitCollectionNameF
 // CollectionInfo implements function in interface ledger.DeployedChaincodeInfoProvider, it returns config for
 // both static and implicit collections.
 func (l *Lifecycle) CollectionInfo(channelName, chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*cb.StaticCollectionConfig, error) {
-	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, qe)
+	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, &SimpleQueryExecutorShim{
+		Namespace:           LifecycleNamespace,
+		SimpleQueryExecutor: qe,
+	})
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get chaincode")
 	}
@@ -163,7 +165,10 @@ func (l *Lifecycle) CollectionInfo(channelName, chaincodeName, collectionName st
 // ImplicitCollections implements function in interface ledger.DeployedChaincodeInfoProvider.  It returns
 //a slice that contains one proto msg for each of the implicit collections
 func (l *Lifecycle) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*cb.StaticCollectionConfig, error) {
-	exists, _, err := l.ChaincodeDefinitionIfDefined(chaincodeName, qe)
+	exists, _, err := l.ChaincodeDefinitionIfDefined(chaincodeName, &SimpleQueryExecutorShim{
+		Namespace:           LifecycleNamespace,
+		SimpleQueryExecutor: qe,
+	})
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get info about chaincode")
 	}
@@ -211,6 +216,48 @@ func ImplicitCollectionNameForOrg(mspid string) string {
 	return fmt.Sprintf("_implicit_org_%s", mspid)
 }
 
+func (l *Lifecycle) ImplicitCollectionEndorsementPolicyAsBytes(channelID, orgMSPID string) (policy []byte, unexpectedErr, validationErr error) {
+	channelConfig := l.ChannelConfigSource.GetStableChannelConfig(channelID)
+	if channelConfig == nil {
+		return nil, errors.Errorf("could not get channel config for channel '%s'", channelID), nil
+	}
+
+	ac, ok := channelConfig.ApplicationConfig()
+	if !ok {
+		return nil, errors.Errorf("could not get application config for channel '%s'", channelID), nil
+	}
+
+	matchedOrgName := ""
+	for orgName, org := range ac.Organizations() {
+		if org.MSPID() == orgMSPID {
+			matchedOrgName = orgName
+			break
+		}
+	}
+
+	if matchedOrgName == "" {
+		return nil, nil, errors.Errorf("no org found in channel with MSPID '%s'", orgMSPID)
+	}
+
+	policyName := fmt.Sprintf("/Channel/Application/%s/Endorsement", matchedOrgName)
+	if _, ok := channelConfig.PolicyManager().GetPolicy(policyName); ok {
+		return utils.MarshalOrPanic(&pb.ApplicationPolicy{
+			Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+				ChannelConfigPolicyReference: policyName,
+			},
+		}), nil, nil
+	}
+
+	// This was a channel which was upgraded or did not define an org level endorsement policy, use a default
+	// of "any member of the org"
+
+	return utils.MarshalOrPanic(&pb.ApplicationPolicy{
+		Type: &pb.ApplicationPolicy_SignaturePolicy{
+			SignaturePolicy: cauthdsl.SignedByAnyMember([]string{orgMSPID}),
+		},
+	}), nil, nil
+}
+
 func (l *Lifecycle) LifecycleEndorsementPolicyAsBytes(channelID string) ([]byte, error) {
 	channelConfig := l.ChannelConfigSource.GetStableChannelConfig(channelID)
 	if channelConfig == nil {
@@ -248,7 +295,10 @@ func (l *Lifecycle) LifecycleEndorsementPolicyAsBytes(channelID string) ([]byte,
 // error is not nil.
 func (l *Lifecycle) ValidationInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error) {
 	// TODO, this is a bit of an overkill check, and will need to be scaled back for non-chaincode type namespaces
-	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, qe)
+	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, &SimpleQueryExecutorShim{
+		Namespace:           LifecycleNamespace,
+		SimpleQueryExecutor: qe,
+	})
 	if err != nil {
 		return "", nil, errors.WithMessage(err, "could not get chaincode"), nil
 	}
@@ -269,4 +319,39 @@ func (l *Lifecycle) ValidationInfo(channelID, chaincodeName string, qe ledger.Si
 	}
 
 	return definedChaincode.ValidationInfo.ValidationPlugin, definedChaincode.ValidationInfo.ValidationParameter, nil, nil
+}
+
+// CollectionValidationInfo returns information about collections to the validation component
+func (l *Lifecycle) CollectionValidationInfo(channelID, chaincodeName, collectionName string, state validationState.State) (args []byte, unexpectedErr, validationErr error) {
+	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, &ValidatorStateShim{
+		Namespace:      LifecycleNamespace,
+		ValidatorState: state,
+	})
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not get chaincode"), nil
+	}
+
+	if !exists {
+		// TODO, this is inconsistent with how the legacy lifecycle reports
+		// that a missing chaincode is a validation error.  But, for now
+		// this is required to make the passthrough work.
+		return nil, nil, nil
+	}
+
+	matches := ImplicitCollectionMatcher.FindStringSubmatch(collectionName)
+	if len(matches) == 2 {
+		return l.ImplicitCollectionEndorsementPolicyAsBytes(channelID, matches[1])
+	}
+
+	if definedChaincode.Collections != nil {
+		for _, conf := range definedChaincode.Collections.Config {
+			staticCollConfig := conf.GetStaticCollectionConfig()
+			if staticCollConfig != nil && staticCollConfig.Name == collectionName {
+				// TODO, return the collection EP if defined
+				return definedChaincode.ValidationInfo.ValidationParameter, nil, nil
+			}
+		}
+	}
+
+	return nil, nil, errors.Errorf("no such collection '%s'", collectionName)
 }

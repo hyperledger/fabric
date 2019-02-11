@@ -65,7 +65,10 @@ func (ld *LegacyDefinition) RequiresInit() bool {
 
 // ChaincodeDefinition returns the details for a chaincode by name
 func (l *Lifecycle) ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
-	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, qe)
+	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, &SimpleQueryExecutorShim{
+		Namespace:           LifecycleNamespace,
+		SimpleQueryExecutor: qe,
+	})
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not get definition for chaincode %s", chaincodeName))
 	}

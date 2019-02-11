@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -86,6 +87,11 @@ type policyManager interface {
 //go:generate counterfeiter -o mock/application_capabilities.go --fake-name ApplicationCapabilities . applicationCapabilities
 type applicationCapabilities interface {
 	channelconfig.ApplicationCapabilities
+}
+
+//go:generate counterfeiter -o mock/validation_state.go --fake-name ValidationState . validationState
+type validationState interface {
+	validation.State
 }
 
 func TestLifecycle(t *testing.T) {

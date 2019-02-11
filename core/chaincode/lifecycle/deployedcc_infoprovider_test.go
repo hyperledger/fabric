@@ -108,7 +108,10 @@ var _ = Describe("Lifecycle", func() {
 
 		Describe("ChaincodeDefinitionIfDefined", func() {
 			It("returns that the chaincode is defined and the definition", func() {
-				exists, definition, err := l.ChaincodeDefinitionIfDefined("cc-name", fakeQueryExecutor)
+				exists, definition, err := l.ChaincodeDefinitionIfDefined("cc-name", &lifecycle.SimpleQueryExecutorShim{
+					Namespace:           lifecycle.LifecycleNamespace,
+					SimpleQueryExecutor: fakeQueryExecutor,
+				})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(exists).To(BeTrue())
 				Expect(definition.EndorsementInfo.Version).To(Equal("version"))
@@ -116,10 +119,13 @@ var _ = Describe("Lifecycle", func() {
 
 			Context("when the requested chaincode is _lifecycle", func() {
 				It("it returns true", func() {
-					exists, state, err := l.ChaincodeDefinitionIfDefined("_lifecycle", fakeQueryExecutor)
+					exists, definition, err := l.ChaincodeDefinitionIfDefined("_lifecycle", &lifecycle.SimpleQueryExecutorShim{
+						Namespace:           lifecycle.LifecycleNamespace,
+						SimpleQueryExecutor: fakeQueryExecutor,
+					})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(exists).To(BeTrue())
-					Expect(state).NotTo(BeNil())
+					Expect(definition).NotTo(BeNil())
 					Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(0))
 				})
 			})
@@ -136,7 +142,10 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("returns an error", func() {
-					_, _, err := l.ChaincodeDefinitionIfDefined("cc-name", fakeQueryExecutor)
+					_, _, err := l.ChaincodeDefinitionIfDefined("cc-name", &lifecycle.SimpleQueryExecutorShim{
+						Namespace:           lifecycle.LifecycleNamespace,
+						SimpleQueryExecutor: fakeQueryExecutor,
+					})
 					Expect(err).To(MatchError("not a chaincode type: badStruct"))
 				})
 			})
@@ -147,7 +156,10 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("wraps and returns the error", func() {
-					_, _, err := l.ChaincodeDefinitionIfDefined("cc-name", fakeQueryExecutor)
+					_, _, err := l.ChaincodeDefinitionIfDefined("cc-name", &lifecycle.SimpleQueryExecutorShim{
+						Namespace:           lifecycle.LifecycleNamespace,
+						SimpleQueryExecutor: fakeQueryExecutor,
+					})
 					Expect(err).To(MatchError("could not deserialize metadata for chaincode cc-name: could not query metadata for namespace namespaces/cc-name: state-error"))
 				})
 			})
@@ -521,6 +533,132 @@ var _ = Describe("Lifecycle", func() {
 					Expect(uerr).To(MatchError("could not get chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo: proto: can't skip unknown wire type 7"))
 				})
 			})
+		})
+
+		Describe("CollectionValidationInfo", func() {
+			var (
+				fakeValidationState *mock.ValidationState
+			)
+
+			BeforeEach(func() {
+				fakeValidationState = &mock.ValidationState{}
+				fakeValidationState.GetStateMultipleKeysStub = func(namespace string, keys []string) ([][]byte, error) {
+					return [][]byte{fakePublicState[keys[0]]}, nil
+				}
+			})
+
+			It("returns the endorsement policy for the collection", func() {
+				ep, uErr, vErr := l.CollectionValidationInfo("channel-id", "cc-name", "collection-name", fakeValidationState)
+				Expect(uErr).NotTo(HaveOccurred())
+				Expect(vErr).NotTo(HaveOccurred())
+				Expect(ep).To(Equal([]byte("validation-parameter")))
+			})
+
+			Context("when the chaincode definition cannot be retrieved", func() {
+				BeforeEach(func() {
+					fakeValidationState.GetStateMultipleKeysReturns(nil, fmt.Errorf("state-error"))
+				})
+
+				It("returns an unexpected error", func() {
+					_, uErr, vErr := l.CollectionValidationInfo("channel-id", "cc-name", "collection-name", fakeValidationState)
+					Expect(vErr).NotTo(HaveOccurred())
+					Expect(uErr).To(MatchError("could not get chaincode: could not deserialize metadata for chaincode cc-name: could not query metadata for namespace namespaces/cc-name: could not get state thought validatorstate shim: state-error"))
+				})
+			})
+
+			Context("when the chaincode does not exist in the new lifecycle", func() {
+				It("returns nil nil nil", func() {
+					ep, uErr, vErr := l.CollectionValidationInfo("channel-id", "missing-name", "collection-name", fakeValidationState)
+					Expect(uErr).NotTo(HaveOccurred())
+					Expect(vErr).NotTo(HaveOccurred())
+					Expect(ep).To(BeNil())
+				})
+			})
+
+			Context("when the collection does not exist", func() {
+				It("returns a validation error", func() {
+					_, uErr, vErr := l.CollectionValidationInfo("channel-id", "cc-name", "missing-collection-name", fakeValidationState)
+					Expect(uErr).NotTo(HaveOccurred())
+					Expect(vErr).To(MatchError("no such collection 'missing-collection-name'"))
+				})
+			})
+
+			Context("when the collection is an implicit collection", func() {
+				It("returns the implicit endorsement policy", func() {
+					ep, uErr, vErr := l.CollectionValidationInfo("channel-id", "cc-name", "_implicit_org_first-mspid", fakeValidationState)
+					Expect(uErr).NotTo(HaveOccurred())
+					Expect(vErr).NotTo(HaveOccurred())
+					Expect(ep).NotTo(Equal([]byte("validation-parameter")))
+				})
+
+				Context("when the implicit endorsement policy returns an error", func() {
+					It("returns the error", func() {
+						_, _, vErr := l.CollectionValidationInfo("channel-id", "cc-name", "_implicit_org_bad-mspid", fakeValidationState)
+						Expect(vErr).To(MatchError("no org found in channel with MSPID 'bad-mspid'"))
+					})
+				})
+			})
+		})
+
+		Describe("ImplicitCollectionEndorsementPolicyAsBytes", func() {
+			It("returns the marshaled standard EP for an implicit collection", func() {
+				ep, uErr, vErr := l.ImplicitCollectionEndorsementPolicyAsBytes("channel-id", "first-mspid")
+				Expect(uErr).NotTo(HaveOccurred())
+				Expect(vErr).NotTo(HaveOccurred())
+				policy := &pb.ApplicationPolicy{}
+				err := proto.Unmarshal(ep, policy)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(policy.GetChannelConfigPolicyReference()).To(Equal("/Channel/Application/org0/Endorsement"))
+			})
+
+			Context("when the standard channel policy for endorsement does not exist", func() {
+				BeforeEach(func() {
+					fakePolicyManager.GetPolicyReturns(nil, false)
+				})
+
+				It("returns a signature policy", func() {
+					ep, uErr, vErr := l.ImplicitCollectionEndorsementPolicyAsBytes("channel-id", "first-mspid")
+					Expect(uErr).NotTo(HaveOccurred())
+					Expect(vErr).NotTo(HaveOccurred())
+					policy := &pb.ApplicationPolicy{}
+					err := proto.Unmarshal(ep, policy)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(policy.GetSignaturePolicy()).NotTo(BeNil())
+				})
+			})
+
+			Context("when the channel config cannot be retrieved", func() {
+				BeforeEach(func() {
+					fakeChannelConfigSource.GetStableChannelConfigReturns(nil)
+				})
+
+				It("returns an unexpected error", func() {
+					_, uErr, vErr := l.ImplicitCollectionEndorsementPolicyAsBytes("channel-id", "first-mspid")
+					Expect(vErr).NotTo(HaveOccurred())
+					Expect(uErr).To(MatchError("could not get channel config for channel 'channel-id'"))
+				})
+			})
+
+			Context("when the application config cannot be retrieved", func() {
+				BeforeEach(func() {
+					fakeChannelConfig.ApplicationConfigReturns(nil, false)
+				})
+
+				It("returns an unexpected error", func() {
+					_, uErr, vErr := l.ImplicitCollectionEndorsementPolicyAsBytes("channel-id", "first-mspid")
+					Expect(vErr).NotTo(HaveOccurred())
+					Expect(uErr).To(MatchError("could not get application config for channel 'channel-id'"))
+				})
+			})
+
+			Context("when the MSPID is not for any application org", func() {
+				It("returns a validation error", func() {
+					_, uErr, vErr := l.ImplicitCollectionEndorsementPolicyAsBytes("channel-id", "bad-mspid")
+					Expect(uErr).NotTo(HaveOccurred())
+					Expect(vErr).To(MatchError("no org found in channel with MSPID 'bad-mspid'"))
+				})
+			})
+
 		})
 	})
 

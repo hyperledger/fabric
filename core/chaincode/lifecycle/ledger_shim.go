@@ -9,6 +9,7 @@ package lifecycle
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	validatorstate "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 
@@ -142,4 +143,17 @@ func (ris *ResultsIteratorShim) Next() (*queryresult.KV, error) {
 func (ris *ResultsIteratorShim) Close() error {
 	ris.ResultsIterator.Close()
 	return nil
+}
+
+type ValidatorStateShim struct {
+	ValidatorState validatorstate.State
+	Namespace      string
+}
+
+func (vss *ValidatorStateShim) GetState(key string) ([]byte, error) {
+	result, err := vss.ValidatorState.GetStateMultipleKeys(vss.Namespace, []string{key})
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not get state thought validatorstate shim")
+	}
+	return result[0], nil
 }
