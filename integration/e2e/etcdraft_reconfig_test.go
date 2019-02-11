@@ -98,6 +98,75 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		os.RemoveAll(testDir)
 	})
 
+	When("a single node cluster is expanded", func() {
+		It("is still possible to onboard the new cluster member", func() {
+			launch := func(o *nwo.Orderer) {
+				runner := network.OrdererRunner(o)
+				ordererRunners = append(ordererRunners, runner)
+
+				process := ifrit.Invoke(grouper.Member{Name: o.ID(), Runner: runner})
+				Eventually(process.Ready()).Should(BeClosed())
+				ordererProcesses = append(ordererProcesses, process)
+			}
+
+			layout := nwo.BasicEtcdRaft()
+			network = nwo.New(layout, testDir, client, BasePort(), components)
+			orderer := network.Orderer("orderer")
+
+			peer = network.Peer("Org1", "peer1")
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			By("Launching the orderer")
+			launch(orderer)
+
+			By("Checking that it elected itself as a leader")
+			findLeader(ordererRunners)
+
+			By("Extending the network configuration to add a new orderer")
+			orderer2 := &nwo.Orderer{
+				Name:         "orderer2",
+				Organization: "OrdererOrg",
+			}
+			ports := nwo.Ports{}
+			for _, portName := range nwo.OrdererPortNames() {
+				ports[portName] = network.ReservePort()
+			}
+			network.PortsByOrdererID[orderer2.ID()] = ports
+			network.Orderers = append(network.Orderers, orderer2)
+			network.GenerateOrdererConfig(orderer2)
+			extendNetwork(network)
+
+			secondOrdererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(orderer2), "server.crt")
+			secondOrdererCertificate, err := ioutil.ReadFile(secondOrdererCertificatePath)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Adding the second orderer")
+			nwo.AddConsenter(network, peer, orderer, "systemchannel", etcdraft.Consenter{
+				ServerTlsCert: secondOrdererCertificate,
+				ClientTlsCert: secondOrdererCertificate,
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(orderer2, nwo.ListenPort)),
+			})
+
+			By("Obtaining the last config block from the orderer")
+			// Get the last config block of the system channel
+			configBlock := nwo.GetConfigBlock(network, peer, orderer, "systemchannel")
+			// Plant it in the file system of orderer2, the new node to be onboarded.
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), utils.MarshalOrPanic(configBlock), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Waiting for the existing orderer to relinquish its leadership")
+			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("1 stepped down to follower since quorum is not active"))
+			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("No leader is present, cluster size is 2"))
+			By("Launching the second orderer")
+			launch(orderer2)
+			By("Waiting for a leader to be re-elected")
+			findLeader(ordererRunners)
+		})
+	})
+
 	When("the orderer certificates are all rotated", func() {
 		It("is still possible to onboard new orderers", func() {
 			// In this test, we have 3 OSNs and we rotate their TLS certificates one by one,
@@ -172,6 +241,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, orderers, peer, network)
 
 			By("Preparing new certificates for the orderer nodes")
+			extendNetwork(network)
 			certificateRotations := refreshOrdererPEMs(network)
 
 			expectedBlockHeightsPerChannel := []map[string]int{
@@ -297,7 +367,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			// Get the last config block of the system channel
 			configBlock := nwo.GetConfigBlock(network, peer, o1, "systemchannel")
 			// Plant it in the file system of orderer4, the new node to be onboarded.
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), utils.MarshalOrPanic(configBlock), 06444)
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), utils.MarshalOrPanic(configBlock), 0644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Launching orderer4")
@@ -464,13 +534,12 @@ type certificateChange struct {
 	srcFile string
 	dstFile string
 	oldCert []byte
+	oldKey  []byte
 	newCert []byte
 }
 
-// refreshOrdererPEMs rotates all TLS certificates of all nodes,
-// and returns the deltas
-func refreshOrdererPEMs(n *nwo.Network) []*certificateChange {
-	var fileChanges []*certificateChange
+// extendNetwork rotates adds an additional orderer
+func extendNetwork(n *nwo.Network) {
 	// Overwrite the current crypto-config with additional orderers
 	cryptoConfigYAML, err := ioutil.TempFile("", "crypto-config.yaml")
 	Expect(err).NotTo(HaveOccurred())
@@ -486,7 +555,12 @@ func refreshOrdererPEMs(n *nwo.Network) []*certificateChange {
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+}
 
+// refreshOrdererPEMs rotates all TLS certificates of all nodes,
+// and returns the deltas
+func refreshOrdererPEMs(n *nwo.Network) []*certificateChange {
+	var fileChanges []*certificateChange
 	// Populate source to destination files
 	filepath.Walk(filepath.Join(n.RootDir, "crypto"), func(path string, info os.FileInfo, err error) error {
 		if !strings.Contains(path, "/tls/") {
@@ -511,15 +585,21 @@ func refreshOrdererPEMs(n *nwo.Network) []*certificateChange {
 		newCertBytes, err := ioutil.ReadFile(certChange.srcFile)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = ioutil.WriteFile(certChange.dstFile, newCertBytes, 06444)
+		err = ioutil.WriteFile(certChange.dstFile, newCertBytes, 0644)
 		Expect(err).NotTo(HaveOccurred())
 
 		if !strings.Contains(certChange.dstFile, "server.crt") {
 			continue
 		}
+
+		// Read the previous key file
+		previousKeyBytes, err := ioutil.ReadFile(strings.Replace(certChange.dstFile, "server.crt", "server.key", -1))
+		Expect(err).NotTo(HaveOccurred())
+
 		serverCertChanges = append(serverCertChanges, certChange)
 		certChange.newCert = newCertBytes
 		certChange.oldCert = previousCertBytes
+		certChange.oldKey = previousKeyBytes
 	}
 	return serverCertChanges
 }

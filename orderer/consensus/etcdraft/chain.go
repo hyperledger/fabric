@@ -578,7 +578,14 @@ func (c *Chain) serveRequest() {
 					select {
 					case <-c.errorC:
 					default:
-						close(c.errorC)
+						nodeCount := len(c.opts.RaftMetadata.Consenters)
+						// Only close the error channel (to signal the broadcast/deliver front-end a consensus backend error)
+						// If we are a cluster of size 3 or more, otherwise we can't expand a cluster of size 1 to 2 nodes.
+						if nodeCount > 2 {
+							close(c.errorC)
+						} else {
+							c.logger.Warningf("No leader is present, cluster size is %d", nodeCount)
+						}
 					}
 				}
 
