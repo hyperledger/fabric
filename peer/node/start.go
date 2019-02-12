@@ -382,26 +382,6 @@ func serve(args []string) error {
 	// start the chaincode specific gRPC listening service
 	go ccSrv.Start()
 
-	// register HealthChecker
-	certPair, err := ca.NewClientCertKeyPair()
-	if err != nil {
-		logger.Panicf("Failed to create key pair for health checker: %s", err)
-	}
-	clientConfig := comm.ClientConfig{
-		SecOpts: &comm.SecureOptions{
-			UseTLS:            ccSrv.TLSEnabled(),
-			RequireClientCert: ccSrv.MutualTLSRequired(),
-			Certificate:       certPair.Cert,
-			Key:               certPair.Key,
-			ServerRootCAs:     [][]byte{ca.CertBytes()},
-		},
-		Timeout: 10 * time.Second,
-	}
-	hcc, err := comm.NewHealthCheckClient(clientConfig, ccEndpoint, "")
-	if err != nil {
-		logger.Panicf("Failed to create health checker: %s", err)
-	}
-	opsSystem.RegisterChecker("chaincodeServer", hcc)
 	logger.Debugf("Running peer")
 
 	// Start the Admin server
