@@ -9,6 +9,7 @@ package lifecycle_test
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -22,19 +23,50 @@ import (
 var _ = Describe("Lifecycle", func() {
 	Describe("DeployedCCInfoProvider", func() {
 		var (
-			l                  *lifecycle.Lifecycle
-			fakeLegacyProvider *mock.LegacyDeployedCCInfoProvider
-			fakeQueryExecutor  *mock.SimpleQueryExecutor
+			l                       *lifecycle.Lifecycle
+			fakeLegacyProvider      *mock.LegacyDeployedCCInfoProvider
+			fakeQueryExecutor       *mock.SimpleQueryExecutor
+			fakeChannelConfigSource *mock.ChannelConfigSource
+			fakeChannelConfig       *mock.ChannelConfig
+			fakeApplicationConfig   *mock.ApplicationConfig
+			fakeOrgConfigs          []*mock.ApplicationOrgConfig
+
+			fakePublicState MapLedgerShim
 		)
 
 		BeforeEach(func() {
 			fakeLegacyProvider = &mock.LegacyDeployedCCInfoProvider{}
+			fakeChannelConfigSource = &mock.ChannelConfigSource{}
+			fakeChannelConfig = &mock.ChannelConfig{}
+			fakeChannelConfigSource.GetStableChannelConfigReturns(fakeChannelConfig)
+			fakeApplicationConfig = &mock.ApplicationConfig{}
+			fakeChannelConfig.ApplicationConfigReturns(fakeApplicationConfig, true)
+			fakeOrgConfigs = []*mock.ApplicationOrgConfig{{}, {}}
+			fakeOrgConfigs[0].MSPIDReturns("first-mspid")
+			fakeOrgConfigs[1].MSPIDReturns("second-mspid")
+
+			fakeApplicationConfig.OrganizationsReturns(map[string]channelconfig.ApplicationOrg{
+				"org0": fakeOrgConfigs[0],
+				"org1": fakeOrgConfigs[1],
+			})
 
 			l = &lifecycle.Lifecycle{
 				LegacyDeployedCCInfoProvider: fakeLegacyProvider,
+				ChannelConfigSource:          fakeChannelConfigSource,
+				Serializer:                   &lifecycle.Serializer{},
 			}
 
+			fakePublicState = MapLedgerShim(map[string][]byte{})
 			fakeQueryExecutor = &mock.SimpleQueryExecutor{}
+			fakeQueryExecutor.GetStateStub = func(namespace, key string) ([]byte, error) {
+				return fakePublicState.GetState(key)
+			}
+
+			err := l.Serializer.Serialize(lifecycle.NamespacesName, "cc-name", &lifecycle.DefinedChaincode{
+				Version: "version",
+				Hash:    []byte("hash"),
+			}, fakePublicState)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Describe("Namespaces", func() {
@@ -47,6 +79,55 @@ var _ = Describe("Lifecycle", func() {
 				Expect(res).To(Equal([]string{"+lifecycle", "a", "b", "c"}))
 				Expect(fakeLegacyProvider.NamespacesCallCount()).To(Equal(1))
 			})
+		})
+
+		Describe("ChaincodeInNewLifecycle", func() {
+			It("returns whether the chaincode is part of the new lifecycle", func() {
+				exists, state, err := l.ChaincodeInNewLifecycle("cc-name", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(exists).To(BeTrue())
+				Expect(state).NotTo(BeNil())
+				Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(1))
+			})
+
+			Context("when the requested chaincode is +lifecycle", func() {
+				It("it returns true", func() {
+					exists, state, err := l.ChaincodeInNewLifecycle("+lifecycle", fakeQueryExecutor)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(exists).To(BeTrue())
+					Expect(state).NotTo(BeNil())
+					Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(0))
+				})
+			})
+
+			Context("when the metadata is not for a chaincode", func() {
+				BeforeEach(func() {
+					type badStruct struct{}
+					err := l.Serializer.Serialize(lifecycle.NamespacesName,
+						"cc-name",
+						&badStruct{},
+						fakePublicState,
+					)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("returns an error", func() {
+					_, _, err := l.ChaincodeInNewLifecycle("cc-name", fakeQueryExecutor)
+					Expect(err).To(MatchError("not a chaincode type: badStruct"))
+				})
+			})
+
+			Context("when the ledger returns an error", func() {
+				BeforeEach(func() {
+					fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, _, err := l.ChaincodeInNewLifecycle("cc-name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not deserialize metadata for chaincode cc-name: could not query metadata for namespace namespaces/cc-name: state-error"))
+				})
+			})
+
 		})
 
 		Describe("UpdatedChaincodes", func() {
@@ -98,16 +179,16 @@ var _ = Describe("Lifecycle", func() {
 		Describe("ChaincodeInfo", func() {
 			BeforeEach(func() {
 				fakeLegacyProvider.ChaincodeInfoReturns(&ledger.DeployedChaincodeInfo{
-					Name:    "cc-name",
+					Name:    "legacy-name",
 					Hash:    []byte("hash"),
 					Version: "cc-version",
 				}, fmt.Errorf("chaincode-info-error"))
 			})
 
 			It("passes through to the legacy impl", func() {
-				res, err := l.ChaincodeInfo("channel-name", "cc-name", fakeQueryExecutor)
+				res, err := l.ChaincodeInfo("channel-name", "legacy-name", fakeQueryExecutor)
 				Expect(res).To(Equal(&ledger.DeployedChaincodeInfo{
-					Name:    "cc-name",
+					Name:    "legacy-name",
 					Hash:    []byte("hash"),
 					Version: "cc-version",
 				}))
@@ -115,7 +196,7 @@ var _ = Describe("Lifecycle", func() {
 				Expect(fakeLegacyProvider.ChaincodeInfoCallCount()).To(Equal(1))
 				channelID, ccName, qe := fakeLegacyProvider.ChaincodeInfoArgsForCall(0)
 				Expect(channelID).To(Equal("channel-name"))
-				Expect(ccName).To(Equal("cc-name"))
+				Expect(ccName).To(Equal("legacy-name"))
 				Expect(qe).To(Equal(fakeQueryExecutor))
 			})
 		})
@@ -131,24 +212,77 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("passes through to the legacy impl", func() {
-				res, err := l.CollectionInfo("channel-name", "cc-name", "collection-name", fakeQueryExecutor)
+				res, err := l.CollectionInfo("channel-name", "legacy-name", "collection-name", fakeQueryExecutor)
 				Expect(res).To(Equal(collInfo))
 				Expect(err).To(MatchError("collection-info-error"))
 				Expect(fakeLegacyProvider.CollectionInfoCallCount()).To(Equal(1))
 				channelID, ccName, collName, qe := fakeLegacyProvider.CollectionInfoArgsForCall(0)
 				Expect(channelID).To(Equal("channel-name"))
-				Expect(ccName).To(Equal("cc-name"))
+				Expect(ccName).To(Equal("legacy-name"))
 				Expect(collName).To(Equal("collection-name"))
 				Expect(qe).To(Equal(fakeQueryExecutor))
 			})
 		})
 
 		Describe("ImplicitCollections", func() {
-			It("always returns nil", func() {
-				res, err := l.ImplicitCollections("channel-id", "chaincode-id", fakeQueryExecutor)
+			It("returns an implicit collection for every org", func() {
+				res, err := l.ImplicitCollections("channel-id", "cc-name", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).To(BeNil())
+				Expect(len(res)).To(Equal(2))
+				var firstOrg, secondOrg *cb.StaticCollectionConfig
+				for _, collection := range res {
+					switch collection.Name {
+					case "_implicit_org_first-mspid":
+						firstOrg = collection
+					case "_implicit_org_second-mspid":
+						secondOrg = collection
+					}
+				}
+				Expect(firstOrg).NotTo(BeNil())
+				Expect(secondOrg).NotTo(BeNil())
+			})
+
+			Context("when the chaincode does not exist", func() {
+				It("returns nil, nil", func() {
+					res, err := l.ImplicitCollections("channel-id", "missing-name", fakeQueryExecutor)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(res).To(BeNil())
+				})
+			})
+
+			Context("when the ledger returns an error", func() {
+				BeforeEach(func() {
+					fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := l.ImplicitCollections("channel-id", "missing-name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not get info about chaincode: could not deserialize metadata for chaincode missing-name: could not query metadata for namespace namespaces/missing-name: state-error"))
+				})
+			})
+
+			Context("when there is no channel config", func() {
+				BeforeEach(func() {
+					fakeChannelConfigSource.GetStableChannelConfigReturns(nil)
+				})
+
+				It("returns an error", func() {
+					_, err := l.ImplicitCollections("channel-id", "cc-name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not get channelconfig for channel channel-id"))
+				})
+			})
+
+			Context("when there is no application config", func() {
+				BeforeEach(func() {
+					fakeChannelConfig.ApplicationConfigReturns(nil, false)
+				})
+
+				It("returns an error", func() {
+					_, err := l.ImplicitCollections("channel-id", "cc-name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not get application config for channel channel-id"))
+				})
 			})
 		})
+
 	})
 })

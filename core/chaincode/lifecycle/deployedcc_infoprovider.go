@@ -7,8 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
+	"fmt"
 	"regexp"
 
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
@@ -47,7 +49,36 @@ func (l *Lifecycle) UpdatedChaincodes(stateUpdates map[string][]*kvrwset.KVWrite
 	return append(lifecycleInfo, legacyUpdates...), nil
 }
 
-// ChaincodeInfo implements function in interface ledger.DeployedChaincodeInfoProvider and returns info about a deployed chaincode
+// ChaincodeInNewLifecycle returns whether the chaincode name is defined in the new lifecycle, a shim around
+// the SimpleQueryExecutor to work with the serializer, or an error.  If the namespace is defined, but it is
+// not a chaincode, this is considered an error.
+func (l *Lifecycle) ChaincodeInNewLifecycle(chaincodeName string, qe ledger.SimpleQueryExecutor) (bool, *SimpleQueryExecutorShim, error) {
+	state := &SimpleQueryExecutorShim{
+		Namespace:           LifecycleNamespace,
+		SimpleQueryExecutor: qe,
+	}
+
+	if chaincodeName == LifecycleNamespace {
+		return true, state, nil
+	}
+
+	metadata, err := l.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state, false)
+	if err != nil {
+		return false, nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize metadata for chaincode %s", chaincodeName))
+	}
+
+	if metadata.Datatype == "" {
+		// If the type is unset, then fallback to the legacy definition
+		return false, state, nil
+	}
+
+	if metadata.Datatype != DefinedChaincodeType {
+		return false, nil, errors.Errorf("not a chaincode type: %s", metadata.Datatype)
+	}
+
+	return true, state, nil
+}
+
 func (l *Lifecycle) ChaincodeInfo(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
 	return l.LegacyDeployedCCInfoProvider.ChaincodeInfo(channelName, chaincodeName, qe)
 }
@@ -61,5 +92,45 @@ func (l *Lifecycle) CollectionInfo(channelName, chaincodeName, collectionName st
 // ImplicitCollections implements function in interface ledger.DeployedChaincodeInfoProvider.  It returns
 //a slice that contains one proto msg for each of the implicit collections
 func (l *Lifecycle) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*cb.StaticCollectionConfig, error) {
-	return nil, nil
+	exists, _, err := l.ChaincodeInNewLifecycle(chaincodeName, qe)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not get info about chaincode")
+	}
+
+	if !exists {
+		// Implicit collections are a v2.0 lifecycle concept, if the chaincode is not in the new lifecycle, return nothing
+		return nil, nil
+	}
+
+	channelConfig := l.ChannelConfigSource.GetStableChannelConfig(channelName)
+	if channelConfig == nil {
+		return nil, errors.Errorf("could not get channelconfig for channel %s", channelName)
+	}
+	ac, ok := channelConfig.ApplicationConfig()
+	if !ok {
+		return nil, errors.Errorf("could not get application config for channel %s", channelName)
+	}
+
+	orgs := ac.Organizations()
+	implicitCollections := make([]*cb.StaticCollectionConfig, 0, len(orgs))
+	for _, org := range orgs {
+		implicitCollections = append(implicitCollections, GenerateImplicitCollectionForOrg(org.MSPID()))
+	}
+
+	return implicitCollections, nil
+}
+
+func GenerateImplicitCollectionForOrg(mspid string) *cb.StaticCollectionConfig {
+	return &cb.StaticCollectionConfig{
+		Name: ImplicitCollectionNameForOrg(mspid),
+		MemberOrgsPolicy: &cb.CollectionPolicyConfig{
+			Payload: &cb.CollectionPolicyConfig_SignaturePolicy{
+				SignaturePolicy: cauthdsl.SignedByMspMember(mspid),
+			},
+		},
+	}
+}
+
+func ImplicitCollectionNameForOrg(mspid string) string {
+	return fmt.Sprintf("_implicit_org_%s", mspid)
 }
