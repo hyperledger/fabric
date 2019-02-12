@@ -7,21 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
-	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
-	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	pcommon "github.com/hyperledger/fabric/protos/common"
@@ -46,17 +37,6 @@ func defaultCDSFactory(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, err
 	return getChaincodeDeploymentSpec(spec, true)
 }
 
-// PlatformRegistry defines the interface to get the code bytes
-// for a chaincode given the type and path
-type PlatformRegistry interface {
-	GetDeploymentPayload(ccType, path string) ([]byte, error)
-}
-
-// Writer defines the interface needed for writing a file
-type Writer interface {
-	WriteFile(string, []byte, os.FileMode) error
-}
-
 // Packager holds the dependencies needed to package
 // a chaincode and write it
 type Packager struct {
@@ -64,8 +44,6 @@ type Packager struct {
 	ChaincodeCmdFactory *ChaincodeCmdFactory
 	Command             *cobra.Command
 	Input               *PackageInput
-	PlatformRegistry    PlatformRegistry
-	Writer              Writer
 }
 
 // PackageInput holds the input parameters for packaging a
@@ -77,7 +55,6 @@ type PackageInput struct {
 	CreateSignedCCDepSpec bool
 	SignCCDepSpec         bool
 	OutputFile            string
-	NewLifecycle          bool
 	Path                  string
 	Type                  string
 }
@@ -91,8 +68,6 @@ func packageCmd(cf *ChaincodeCmdFactory, cdsFact ccDepSpecFactory, p *Packager) 
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if p == nil {
-				pr := platforms.NewRegistry(platforms.SupportedPlatforms...)
-
 				// UT will supply its own mock factory
 				if cdsFact == nil {
 					cdsFact = defaultCDSFactory
@@ -100,8 +75,6 @@ func packageCmd(cf *ChaincodeCmdFactory, cdsFact ccDepSpecFactory, p *Packager) 
 				p = &Packager{
 					CDSFactory:          cdsFact,
 					ChaincodeCmdFactory: cf,
-					PlatformRegistry:    pr,
-					Writer:              &persistence.FilesystemIO{},
 				}
 			}
 			p.Command = cmd
@@ -118,7 +91,6 @@ func packageCmd(cf *ChaincodeCmdFactory, cdsFact ccDepSpecFactory, p *Packager) 
 		"cc-package",
 		"sign",
 		"instantiate-policy",
-		"newLifecycle",
 	}
 	attachFlags(chaincodePackageCmd, flagList)
 
@@ -137,13 +109,8 @@ func (p *Packager) packageChaincode(args []string) error {
 	}
 	p.setInput(args[0])
 
-	// _lifecycle package
-	if p.Input.NewLifecycle {
-		return p.packageCC()
-	}
-
-	// legacy LSCC package
-	return p.packageCCLegacy()
+	// LSCC package
+	return p.packageCC()
 }
 
 func (p *Packager) setInput(outputFile string) {
@@ -156,36 +123,12 @@ func (p *Packager) setInput(outputFile string) {
 		OutputFile:            outputFile,
 		Path:                  chaincodePath,
 		Type:                  chaincodeLang,
-		NewLifecycle:          newLifecycle,
 	}
 }
 
-// packageCC packages chaincodes into the package type,
-// (.tar.gz) used by the new _lifecycle and writes it to disk
-func (p *Packager) packageCC() error {
-	err := p.validateInput()
-	if err != nil {
-		return err
-	}
-
-	pkgTarGzBytes, err := p.getTarGzBytes()
-	if err != nil {
-		return err
-	}
-
-	err = p.Writer.WriteFile(p.Input.OutputFile, pkgTarGzBytes, 0600)
-	if err != nil {
-		err = errors.Wrapf(err, "error writing chaincode package to %s", p.Input.OutputFile)
-		logger.Error(err.Error())
-		return err
-	}
-
-	return nil
-}
-
-// packageCCLegacy creates the legacy chaincode packages
+// packageCC creates the LSCC chaincode packages
 // (ChaincodeDeploymentSpec and SignedChaincodeDeploymentSpec)
-func (p *Packager) packageCCLegacy() error {
+func (p *Packager) packageCC() error {
 	if p.CDSFactory == nil {
 		return errors.New("chaincode deployment spec factory not specified")
 	}
@@ -227,94 +170,6 @@ func (p *Packager) packageCCLegacy() error {
 	return err
 }
 
-// validateInput checks for the required inputs (chaincode language and path)
-// and any flags supported by the legacy lscc but not _lifecycle
-func (p *Packager) validateInput() error {
-	if p.Input.Path == "" {
-		return errors.New("chaincode path must be set")
-	}
-	if p.Input.Type == "" {
-		return errors.New("chaincode language must be set")
-	}
-	if p.Input.Name != "" {
-		return errors.New("chaincode name not supported by _lifecycle")
-	}
-	if p.Input.Version != "" {
-		return errors.New("chaincode version not supported by _lifecycle")
-	}
-	if p.Input.InstantiationPolicy != "" {
-		return errors.New("instantiation policy not supported by _lifecycle")
-	}
-	if p.Input.CreateSignedCCDepSpec {
-		return errors.New("signed package not supported by _lifecycle")
-	}
-	if p.Input.SignCCDepSpec {
-		return errors.New("signing of chaincode package not supported by _lifecycle")
-	}
-
-	return nil
-}
-
-func (p *Packager) getTarGzBytes() ([]byte, error) {
-	payload := bytes.NewBuffer(nil)
-	gw := gzip.NewWriter(payload)
-	tw := tar.NewWriter(gw)
-
-	metadataBytes, err := toJSON(p.Input.Path, p.Input.Type)
-	if err != nil {
-		return nil, err
-	}
-	err = cutil.WriteBytesToPackage("Chaincode-Package-Metadata.json", metadataBytes, tw)
-	if err != nil {
-		return nil, errors.Wrap(err, "error writing package metadata to tar")
-	}
-
-	codeBytes, err := p.PlatformRegistry.GetDeploymentPayload(strings.ToUpper(p.Input.Type), p.Input.Path)
-	if err != nil {
-		err = errors.WithMessage(err, "error getting chaincode bytes")
-		return nil, err
-	}
-
-	codePackageName := "Code-Package.tar.gz"
-	if strings.ToLower(p.Input.Type) == "car" {
-		codePackageName = "Code-Package.car"
-	}
-
-	err = cutil.WriteBytesToPackage(codePackageName, codeBytes, tw)
-	if err != nil {
-		return nil, errors.Wrap(err, "error writing package code bytes to tar")
-	}
-
-	err = tw.Close()
-	if err == nil {
-		err = gw.Close()
-	}
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create tar for chaincode")
-	}
-
-	return payload.Bytes(), nil
-}
-
-// PackageMetadata holds the path and type for a chaincode package
-type PackageMetadata struct {
-	Path string `json:"Path"`
-	Type string `json:"Type"`
-}
-
-func toJSON(path, ccType string) ([]byte, error) {
-	metadata := &PackageMetadata{
-		Path: path,
-		Type: ccType,
-	}
-
-	metadataBytes, err := json.Marshal(metadata)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal chaincode package metadata into JSON")
-	}
-
-	return metadataBytes, nil
-}
 func getInstantiationPolicy(policy string) (*pcommon.SignaturePolicyEnvelope, error) {
 	p, err := cauthdsl.FromString(policy)
 	if err != nil {

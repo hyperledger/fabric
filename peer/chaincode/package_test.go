@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,22 +15,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/msp"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
-	"github.com/hyperledger/fabric/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/peer/common"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/stretchr/testify/assert"
 )
-
-//go:generate counterfeiter -o mock/writer.go -fake-name Writer . writer
-type writer interface {
-	Writer
-}
-
-//go:generate counterfeiter -o mock/platform_registry.go -fake-name PlatformRegistry . platformRegistryIntf
-type platformRegistryIntf interface {
-	PlatformRegistry
-}
 
 func TestMain(m *testing.M) {
 	err := msptesttools.LoadMSPSetupForTesting()
@@ -100,7 +87,7 @@ func TestCDSPackage(t *testing.T) {
 
 // helper to create a SignedChaincodeDeploymentSpec
 func createSignedCDSPackage(t *testing.T, args []string, sign bool) error {
-	p := newPackagerForTest(t, nil, nil, sign)
+	p := newPackagerForTest(t, sign)
 
 	cmd := packageCmd(nil, mockCDSFactory, p)
 	addFlags(cmd)
@@ -218,15 +205,7 @@ func TestInvalidPolicy(t *testing.T) {
 	}
 }
 
-func newPackagerForTest(t *testing.T, pr PlatformRegistry, w Writer, sign bool) *Packager {
-	if pr == nil {
-		pr = &mock.PlatformRegistry{}
-	}
-
-	if w == nil {
-		w = &mock.Writer{}
-	}
-
+func newPackagerForTest(t *testing.T /*pr PlatformRegistry, w Writer,*/, sign bool) *Packager {
 	mockCF, err := mockChaincodeCmdFactoryForTest(sign)
 	if err != nil {
 		t.Fatal("error creating mock ChaincodeCmdFactory", err)
@@ -235,201 +214,7 @@ func newPackagerForTest(t *testing.T, pr PlatformRegistry, w Writer, sign bool) 
 	p := &Packager{
 		ChaincodeCmdFactory: mockCF,
 		CDSFactory:          mockCDSFactory,
-		PlatformRegistry:    pr,
-		Writer:              w,
 	}
 
 	return p
-}
-
-func TestPackageCC(t *testing.T) {
-	assert := assert.New(t)
-
-	t.Run("success", func(t *testing.T) {
-		resetFlags()
-
-		p := newPackagerForTest(t, nil, nil, false)
-		args := []string{"output"}
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		newLifecycle = true
-
-		err := p.packageChaincode(args)
-		assert.NoError(err)
-	})
-
-	t.Run("input validation failure", func(t *testing.T) {
-		resetFlags()
-
-		p := newPackagerForTest(t, nil, nil, false)
-		args := []string{"output"}
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		chaincodeName = "testcc"
-		newLifecycle = true
-
-		err := p.packageChaincode(args)
-		assert.Error(err)
-		assert.Equal("chaincode name not supported by _lifecycle", err.Error())
-	})
-
-	t.Run("getting the chaincode bytes fails", func(t *testing.T) {
-		resetFlags()
-
-		mockPlatformRegistry := &mock.PlatformRegistry{}
-		mockPlatformRegistry.GetDeploymentPayloadReturns(nil, errors.New("seitan"))
-		p := newPackagerForTest(t, mockPlatformRegistry, nil, false)
-		args := []string{"outputFile"}
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		newLifecycle = true
-
-		err := p.packageChaincode(args)
-		assert.Error(err)
-		assert.Equal("error getting chaincode bytes: seitan", err.Error())
-	})
-
-	t.Run("writing the file fails", func(t *testing.T) {
-		mockWriter := &mock.Writer{}
-		mockWriter.WriteFileReturns(errors.New("quinoa"))
-		p := newPackagerForTest(t, nil, mockWriter, false)
-		args := []string{"outputFile"}
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		newLifecycle = true
-
-		err := p.packageChaincode(args)
-		assert.Error(err)
-		assert.Equal("error writing chaincode package to outputFile: quinoa", err.Error())
-	})
-}
-
-func TestPackagerValidateInput(t *testing.T) {
-	defer resetFlags()
-	assert := assert.New(t)
-	p := newPackagerForTest(t, nil, nil, false)
-
-	t.Run("success - no unsupported flags set", func(t *testing.T) {
-		resetFlags()
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		p.setInput("outputFile")
-
-		err := p.validateInput()
-		assert.NoError(err)
-	})
-
-	t.Run("path not set", func(t *testing.T) {
-		resetFlags()
-		chaincodePath = ""
-		chaincodeLang = "golang"
-		p.setInput("outputFile")
-
-		err := p.validateInput()
-		assert.Error(err)
-		assert.Equal("chaincode path must be set", err.Error())
-	})
-
-	t.Run("language not set", func(t *testing.T) {
-		resetFlags()
-		chaincodeLang = ""
-		chaincodePath = "testPath"
-		p.setInput("outputFile")
-
-		err := p.validateInput()
-		assert.Error(err)
-		assert.Equal("chaincode language must be set", err.Error())
-	})
-
-	t.Run("name not supported", func(t *testing.T) {
-		resetFlags()
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		chaincodeName = "yeehaw"
-		p.setInput("outputFile")
-
-		err := p.validateInput()
-		assert.Error(err)
-		assert.Equal("chaincode name not supported by _lifecycle", err.Error())
-	})
-
-	t.Run("version not supported", func(t *testing.T) {
-		resetFlags()
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		chaincodeVersion = "hah"
-		p.setInput("outputFile")
-
-		err := p.validateInput()
-		assert.Error(err)
-		assert.Equal("chaincode version not supported by _lifecycle", err.Error())
-	})
-
-	t.Run("instantiation policy not supported", func(t *testing.T) {
-		resetFlags()
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		instantiationPolicy = "notachance"
-		p.setInput("outputFile")
-
-		err := p.validateInput()
-		assert.Error(err)
-		assert.Equal("instantiation policy not supported by _lifecycle", err.Error())
-	})
-
-	t.Run("signed package not supported", func(t *testing.T) {
-		resetFlags()
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		createSignedCCDepSpec = true
-		p.setInput("outputFile")
-
-		err := p.validateInput()
-		assert.Error(err)
-		assert.Equal("signed package not supported by _lifecycle", err.Error())
-	})
-
-	t.Run("signing of chaincode package not supported", func(t *testing.T) {
-		resetFlags()
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		signCCDepSpec = true
-		p.setInput("outputFile")
-
-		err := p.validateInput()
-		assert.Error(err)
-		assert.Equal("signing of chaincode package not supported by _lifecycle", err.Error())
-	})
-}
-
-func TestPackageCmd(t *testing.T) {
-	defer resetFlags()
-	assert := assert.New(t)
-
-	t.Run("success", func(t *testing.T) {
-		resetFlags()
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		outputFile := "testFile"
-		newLifecycle = true
-
-		p := newPackagerForTest(t, nil, nil, false)
-		cmd := packageCmd(nil, nil, p)
-		cmd.SetArgs([]string{outputFile})
-		err := cmd.Execute()
-		assert.NoError(err)
-	})
-
-	t.Run("invalid number of args", func(t *testing.T) {
-		resetFlags()
-		outputFile := "testFile"
-		newLifecycle = true
-
-		p := newPackagerForTest(t, nil, nil, false)
-		cmd := packageCmd(nil, nil, p)
-		cmd.SetArgs([]string{outputFile, "extraArg"})
-		err := cmd.Execute()
-		assert.Error(err)
-		assert.Contains(err.Error(), "output file not specified or invalid number of args")
-	})
 }

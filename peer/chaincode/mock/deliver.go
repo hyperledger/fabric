@@ -5,15 +5,37 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/peer/chaincode/api"
-	pcommon "github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 type Deliver struct {
-	SendStub        func(*pcommon.Envelope) error
+	CloseSendStub        func() error
+	closeSendMutex       sync.RWMutex
+	closeSendArgsForCall []struct {
+	}
+	closeSendReturns struct {
+		result1 error
+	}
+	closeSendReturnsOnCall map[int]struct {
+		result1 error
+	}
+	RecvStub        func() (*peer.DeliverResponse, error)
+	recvMutex       sync.RWMutex
+	recvArgsForCall []struct {
+	}
+	recvReturns struct {
+		result1 *peer.DeliverResponse
+		result2 error
+	}
+	recvReturnsOnCall map[int]struct {
+		result1 *peer.DeliverResponse
+		result2 error
+	}
+	SendStub        func(*common.Envelope) error
 	sendMutex       sync.RWMutex
 	sendArgsForCall []struct {
-		arg1 *pcommon.Envelope
+		arg1 *common.Envelope
 	}
 	sendReturns struct {
 		result1 error
@@ -21,125 +43,15 @@ type Deliver struct {
 	sendReturnsOnCall map[int]struct {
 		result1 error
 	}
-	RecvStub        func() (*pb.DeliverResponse, error)
-	recvMutex       sync.RWMutex
-	recvArgsForCall []struct{}
-	recvReturns     struct {
-		result1 *pb.DeliverResponse
-		result2 error
-	}
-	recvReturnsOnCall map[int]struct {
-		result1 *pb.DeliverResponse
-		result2 error
-	}
-	CloseSendStub        func() error
-	closeSendMutex       sync.RWMutex
-	closeSendArgsForCall []struct{}
-	closeSendReturns     struct {
-		result1 error
-	}
-	closeSendReturnsOnCall map[int]struct {
-		result1 error
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *Deliver) Send(arg1 *pcommon.Envelope) error {
-	fake.sendMutex.Lock()
-	ret, specificReturn := fake.sendReturnsOnCall[len(fake.sendArgsForCall)]
-	fake.sendArgsForCall = append(fake.sendArgsForCall, struct {
-		arg1 *pcommon.Envelope
-	}{arg1})
-	fake.recordInvocation("Send", []interface{}{arg1})
-	fake.sendMutex.Unlock()
-	if fake.SendStub != nil {
-		return fake.SendStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.sendReturns.result1
-}
-
-func (fake *Deliver) SendCallCount() int {
-	fake.sendMutex.RLock()
-	defer fake.sendMutex.RUnlock()
-	return len(fake.sendArgsForCall)
-}
-
-func (fake *Deliver) SendArgsForCall(i int) *pcommon.Envelope {
-	fake.sendMutex.RLock()
-	defer fake.sendMutex.RUnlock()
-	return fake.sendArgsForCall[i].arg1
-}
-
-func (fake *Deliver) SendReturns(result1 error) {
-	fake.SendStub = nil
-	fake.sendReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *Deliver) SendReturnsOnCall(i int, result1 error) {
-	fake.SendStub = nil
-	if fake.sendReturnsOnCall == nil {
-		fake.sendReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.sendReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *Deliver) Recv() (*pb.DeliverResponse, error) {
-	fake.recvMutex.Lock()
-	ret, specificReturn := fake.recvReturnsOnCall[len(fake.recvArgsForCall)]
-	fake.recvArgsForCall = append(fake.recvArgsForCall, struct{}{})
-	fake.recordInvocation("Recv", []interface{}{})
-	fake.recvMutex.Unlock()
-	if fake.RecvStub != nil {
-		return fake.RecvStub()
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.recvReturns.result1, fake.recvReturns.result2
-}
-
-func (fake *Deliver) RecvCallCount() int {
-	fake.recvMutex.RLock()
-	defer fake.recvMutex.RUnlock()
-	return len(fake.recvArgsForCall)
-}
-
-func (fake *Deliver) RecvReturns(result1 *pb.DeliverResponse, result2 error) {
-	fake.RecvStub = nil
-	fake.recvReturns = struct {
-		result1 *pb.DeliverResponse
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *Deliver) RecvReturnsOnCall(i int, result1 *pb.DeliverResponse, result2 error) {
-	fake.RecvStub = nil
-	if fake.recvReturnsOnCall == nil {
-		fake.recvReturnsOnCall = make(map[int]struct {
-			result1 *pb.DeliverResponse
-			result2 error
-		})
-	}
-	fake.recvReturnsOnCall[i] = struct {
-		result1 *pb.DeliverResponse
-		result2 error
-	}{result1, result2}
 }
 
 func (fake *Deliver) CloseSend() error {
 	fake.closeSendMutex.Lock()
 	ret, specificReturn := fake.closeSendReturnsOnCall[len(fake.closeSendArgsForCall)]
-	fake.closeSendArgsForCall = append(fake.closeSendArgsForCall, struct{}{})
+	fake.closeSendArgsForCall = append(fake.closeSendArgsForCall, struct {
+	}{})
 	fake.recordInvocation("CloseSend", []interface{}{})
 	fake.closeSendMutex.Unlock()
 	if fake.CloseSendStub != nil {
@@ -148,7 +60,8 @@ func (fake *Deliver) CloseSend() error {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.closeSendReturns.result1
+	fakeReturns := fake.closeSendReturns
+	return fakeReturns.result1
 }
 
 func (fake *Deliver) CloseSendCallCount() int {
@@ -157,7 +70,15 @@ func (fake *Deliver) CloseSendCallCount() int {
 	return len(fake.closeSendArgsForCall)
 }
 
+func (fake *Deliver) CloseSendCalls(stub func() error) {
+	fake.closeSendMutex.Lock()
+	defer fake.closeSendMutex.Unlock()
+	fake.CloseSendStub = stub
+}
+
 func (fake *Deliver) CloseSendReturns(result1 error) {
+	fake.closeSendMutex.Lock()
+	defer fake.closeSendMutex.Unlock()
 	fake.CloseSendStub = nil
 	fake.closeSendReturns = struct {
 		result1 error
@@ -165,6 +86,8 @@ func (fake *Deliver) CloseSendReturns(result1 error) {
 }
 
 func (fake *Deliver) CloseSendReturnsOnCall(i int, result1 error) {
+	fake.closeSendMutex.Lock()
+	defer fake.closeSendMutex.Unlock()
 	fake.CloseSendStub = nil
 	if fake.closeSendReturnsOnCall == nil {
 		fake.closeSendReturnsOnCall = make(map[int]struct {
@@ -176,15 +99,130 @@ func (fake *Deliver) CloseSendReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *Deliver) Recv() (*peer.DeliverResponse, error) {
+	fake.recvMutex.Lock()
+	ret, specificReturn := fake.recvReturnsOnCall[len(fake.recvArgsForCall)]
+	fake.recvArgsForCall = append(fake.recvArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Recv", []interface{}{})
+	fake.recvMutex.Unlock()
+	if fake.RecvStub != nil {
+		return fake.RecvStub()
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.recvReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Deliver) RecvCallCount() int {
+	fake.recvMutex.RLock()
+	defer fake.recvMutex.RUnlock()
+	return len(fake.recvArgsForCall)
+}
+
+func (fake *Deliver) RecvCalls(stub func() (*peer.DeliverResponse, error)) {
+	fake.recvMutex.Lock()
+	defer fake.recvMutex.Unlock()
+	fake.RecvStub = stub
+}
+
+func (fake *Deliver) RecvReturns(result1 *peer.DeliverResponse, result2 error) {
+	fake.recvMutex.Lock()
+	defer fake.recvMutex.Unlock()
+	fake.RecvStub = nil
+	fake.recvReturns = struct {
+		result1 *peer.DeliverResponse
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Deliver) RecvReturnsOnCall(i int, result1 *peer.DeliverResponse, result2 error) {
+	fake.recvMutex.Lock()
+	defer fake.recvMutex.Unlock()
+	fake.RecvStub = nil
+	if fake.recvReturnsOnCall == nil {
+		fake.recvReturnsOnCall = make(map[int]struct {
+			result1 *peer.DeliverResponse
+			result2 error
+		})
+	}
+	fake.recvReturnsOnCall[i] = struct {
+		result1 *peer.DeliverResponse
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Deliver) Send(arg1 *common.Envelope) error {
+	fake.sendMutex.Lock()
+	ret, specificReturn := fake.sendReturnsOnCall[len(fake.sendArgsForCall)]
+	fake.sendArgsForCall = append(fake.sendArgsForCall, struct {
+		arg1 *common.Envelope
+	}{arg1})
+	fake.recordInvocation("Send", []interface{}{arg1})
+	fake.sendMutex.Unlock()
+	if fake.SendStub != nil {
+		return fake.SendStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.sendReturns
+	return fakeReturns.result1
+}
+
+func (fake *Deliver) SendCallCount() int {
+	fake.sendMutex.RLock()
+	defer fake.sendMutex.RUnlock()
+	return len(fake.sendArgsForCall)
+}
+
+func (fake *Deliver) SendCalls(stub func(*common.Envelope) error) {
+	fake.sendMutex.Lock()
+	defer fake.sendMutex.Unlock()
+	fake.SendStub = stub
+}
+
+func (fake *Deliver) SendArgsForCall(i int) *common.Envelope {
+	fake.sendMutex.RLock()
+	defer fake.sendMutex.RUnlock()
+	argsForCall := fake.sendArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Deliver) SendReturns(result1 error) {
+	fake.sendMutex.Lock()
+	defer fake.sendMutex.Unlock()
+	fake.SendStub = nil
+	fake.sendReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Deliver) SendReturnsOnCall(i int, result1 error) {
+	fake.sendMutex.Lock()
+	defer fake.sendMutex.Unlock()
+	fake.SendStub = nil
+	if fake.sendReturnsOnCall == nil {
+		fake.sendReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.sendReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *Deliver) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.sendMutex.RLock()
-	defer fake.sendMutex.RUnlock()
-	fake.recvMutex.RLock()
-	defer fake.recvMutex.RUnlock()
 	fake.closeSendMutex.RLock()
 	defer fake.closeSendMutex.RUnlock()
+	fake.recvMutex.RLock()
+	defer fake.recvMutex.RUnlock()
+	fake.sendMutex.RLock()
+	defer fake.sendMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

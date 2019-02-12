@@ -15,6 +15,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/common/api"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -39,16 +40,18 @@ type Committer struct {
 	Signer          msp.SigningIdentity
 }
 
+// CommitInput holds all of the input parameters for committing a
+// chaincode definition. ValidationParameter bytes is the (marshalled)
+// endorsement policy when using the default endorsement and validation
+// plugins
 type CommitInput struct {
-	ChannelID         string
-	Name              string
-	Version           string
-	Hash              []byte
-	Sequence          int64
-	EndorsementPlugin string
-	ValidationPlugin  string
-	// ValidationParameter bytes is the (marshalled) endorsement policy
-	// when using default escc/vscc
+	ChannelID                string
+	Name                     string
+	Version                  string
+	Hash                     []byte
+	Sequence                 int64
+	EndorsementPlugin        string
+	ValidationPlugin         string
 	ValidationParameterBytes []byte
 	CollectionConfigPackage  *cb.CollectionConfigPackage
 	InitRequired             bool
@@ -95,7 +98,7 @@ func (c *CommitInput) Validate() error {
 }
 
 // commitCmd returns the cobra command for chaincode Commit
-func commitCmd(cf *ChaincodeCmdFactory, c *Committer) *cobra.Command {
+func commitCmd(cf *CmdFactory, c *Committer) *cobra.Command {
 	chaincodeCommitCmd = &cobra.Command{
 		Use:   "commit",
 		Short: fmt.Sprintf("Commit the chaincode definition on the channel."),
@@ -135,6 +138,7 @@ func commitCmd(cf *ChaincodeCmdFactory, c *Committer) *cobra.Command {
 		"collections-config",
 		"peerAddresses",
 		"tlsRootCertFiles",
+		"connectionProfile",
 		"waitForEvent",
 		"waitForEventTimeout",
 	}
@@ -202,14 +206,14 @@ func (c *Committer) Commit() error {
 		return errors.WithMessage(err, "could not assemble transaction")
 	}
 
-	var dg *deliverGroup
+	var dg *chaincode.DeliverGroup
 	var ctx context.Context
 	if c.Input.WaitForEvent {
 		var cancelFunc context.CancelFunc
 		ctx, cancelFunc = context.WithTimeout(context.Background(), c.Input.WaitForEventTimeout)
 		defer cancelFunc()
 
-		dg = newDeliverGroup(c.DeliverClients, c.Input.PeerAddresses, c.Certificate, c.Input.ChannelID, txID)
+		dg = chaincode.NewDeliverGroup(c.DeliverClients, c.Input.PeerAddresses, c.Certificate, c.Input.ChannelID, txID)
 		// connect to deliver service on all peers
 		err := dg.Connect(ctx)
 		if err != nil {
@@ -218,7 +222,7 @@ func (c *Committer) Commit() error {
 	}
 
 	if err = c.BroadcastClient.Send(env); err != nil {
-		return errors.WithMessage(err, "error sending transaction for ApproveForMyOrg")
+		return errors.WithMessage(err, "error sending transaction for commit")
 	}
 
 	if dg != nil && ctx != nil {
@@ -254,7 +258,7 @@ func (c *Committer) setInput() error {
 
 	if collectionsConfigFile != "" {
 		var err error
-		ccp, _, err = getCollectionConfigFromFile(collectionsConfigFile)
+		ccp, _, err = chaincode.GetCollectionConfigFromFile(collectionsConfigFile)
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
 		}
@@ -304,7 +308,7 @@ func (c *Committer) createProposals(inputTxID string) (proposal *pb.Proposal, si
 
 	cis := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{
-			ChaincodeId: &pb.ChaincodeID{Name: newLifecycleName},
+			ChaincodeId: &pb.ChaincodeID{Name: lifecycleName},
 			Input:       ccInput,
 		},
 	}

@@ -12,14 +12,12 @@ import (
 	"io/ioutil"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -31,30 +29,23 @@ const (
 	installCmdName = "install"
 )
 
-// Reader defines the interface needed for reading a file
-type Reader interface {
-	ReadFile(string) ([]byte, error)
-}
-
 // Installer holds the dependencies needed to install
 // a chaincode
 type Installer struct {
 	Command         *cobra.Command
 	EndorserClients []pb.EndorserClient
 	Input           *InstallInput
-	Reader          Reader
 	Signer          msp.SigningIdentity
 }
 
 // InstallInput holds the input parameters for installing
 // a chaincode
 type InstallInput struct {
-	Name         string
-	Version      string
-	Language     string
-	PackageFile  string
-	Path         string
-	NewLifecycle bool
+	Name        string
+	Version     string
+	Language    string
+	PackageFile string
+	Path        string
 }
 
 // installCmd returns the cobra command for chaincode install
@@ -62,7 +53,7 @@ func installCmd(cf *ChaincodeCmdFactory, i *Installer) *cobra.Command {
 	chaincodeInstallCmd = &cobra.Command{
 		Use:       "install",
 		Short:     "Install a chaincode.",
-		Long:      "Install a chaincode on a peer. For the legacy lifecycle (lscc), this installs a chaincode deployment spec package (if provided) or packages the specified chaincode before subsequently installing it.",
+		Long:      "Install a chaincode on a peer. This installs a chaincode deployment spec package (if provided) or packages the specified chaincode before subsequently installing it.",
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if i == nil {
@@ -76,7 +67,6 @@ func installCmd(cf *ChaincodeCmdFactory, i *Installer) *cobra.Command {
 				i = &Installer{
 					Command:         cmd,
 					EndorserClients: cf.EndorserClients,
-					Reader:          &persistence.FilesystemIO{},
 					Signer:          cf.Signer,
 				}
 			}
@@ -92,7 +82,6 @@ func installCmd(cf *ChaincodeCmdFactory, i *Installer) *cobra.Command {
 		"peerAddresses",
 		"tlsRootCertFiles",
 		"connectionProfile",
-		"newLifecycle",
 	}
 	attachFlags(chaincodeInstallCmd, flagList)
 
@@ -108,21 +97,15 @@ func (i *Installer) installChaincode(args []string) error {
 
 	i.setInput(args)
 
-	// _lifecycle install
-	if i.Input.NewLifecycle {
-		return i.install()
-	}
-
-	// legacy LSCC install
-	return i.installLegacy()
+	// LSCC install
+	return i.install()
 }
 
 func (i *Installer) setInput(args []string) {
 	i.Input = &InstallInput{
-		Name:         chaincodeName,
-		Version:      chaincodeVersion,
-		Path:         chaincodePath,
-		NewLifecycle: newLifecycle,
+		Name:    chaincodeName,
+		Version: chaincodeVersion,
+		Path:    chaincodePath,
 	}
 
 	if len(args) > 0 {
@@ -130,45 +113,15 @@ func (i *Installer) setInput(args []string) {
 	}
 }
 
-// install installs a chaincode for use with _lifecycle
+// install installs a chaincode deployment spec to "peer.address"
+// for use with lscc
 func (i *Installer) install() error {
-	err := i.validateInput()
+	ccPkgMsg, err := i.getChaincodePackageMessage()
 	if err != nil {
 		return err
 	}
 
-	pkgBytes, err := i.Reader.ReadFile(i.Input.PackageFile)
-	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("error reading chaincode package at %s", i.Input.PackageFile))
-	}
-
-	serializedSigner, err := i.Signer.Serialize()
-	if err != nil {
-		errors.WithMessage(err, fmt.Sprintf("error serializing signer for %v", i.Signer.GetIdentifier()))
-	}
-
-	proposal, err := i.createNewLifecycleInstallProposal(i.Input.Name, i.Input.Version, pkgBytes, serializedSigner)
-	if err != nil {
-		return err
-	}
-
-	signedProposal, err := protoutil.GetSignedProposal(proposal, i.Signer)
-	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", chainFuncName))
-	}
-
-	return i.submitInstallProposal(signedProposal)
-}
-
-// installLegacy installs a chaincode deployment spec to "peer.address"
-// for use with the legacy lscc
-func (i *Installer) installLegacy() error {
-	ccPkgMsg, err := i.getLegacyChaincodePackageMessage()
-	if err != nil {
-		return err
-	}
-
-	proposal, err := i.createLegacyInstallProposal(ccPkgMsg)
+	proposal, err := i.createInstallProposal(ccPkgMsg)
 	if err != nil {
 		return err
 	}
@@ -201,68 +154,10 @@ func (i *Installer) submitInstallProposal(signedProposal *pb.SignedProposal) err
 	}
 	logger.Infof("Installed remotely: %v", proposalResponse)
 
-	if i.Input.NewLifecycle {
-		icr := &lb.InstallChaincodeResult{}
-		err := proto.Unmarshal(proposalResponse.Response.Payload, icr)
-		if err != nil {
-			return errors.Wrap(err, "error unmarshaling proposal response's response payload")
-		}
-		logger.Infof("Chaincode code package hash: %x", icr.Hash)
-	}
-
 	return nil
 }
 
-func (i *Installer) validateInput() error {
-	if i.Input.PackageFile == "" {
-		return errors.New("chaincode install package must be provided")
-	}
-
-	if i.Input.Name == "" {
-		return errors.New("chaincode name must be specified")
-	}
-
-	if i.Input.Version == "" {
-		return errors.New("chaincode version must be specified")
-	}
-
-	if i.Input.Path != "" {
-		return errors.New("chaincode path parameter not supported by _lifecycle")
-	}
-
-	return nil
-}
-
-func (i *Installer) createNewLifecycleInstallProposal(name, version string, pkgBytes []byte, creatorBytes []byte) (*pb.Proposal, error) {
-	installChaincodeArgs := &lb.InstallChaincodeArgs{
-		Name:                    name,
-		Version:                 version,
-		ChaincodeInstallPackage: pkgBytes,
-	}
-
-	installChaincodeArgsBytes, err := proto.Marshal(installChaincodeArgs)
-	if err != nil {
-		return nil, errors.Wrap(err, "error marshaling InstallChaincodeArgs")
-	}
-
-	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte("InstallChaincode"), installChaincodeArgsBytes}}
-
-	cis := &pb.ChaincodeInvocationSpec{
-		ChaincodeSpec: &pb.ChaincodeSpec{
-			ChaincodeId: &pb.ChaincodeID{Name: newLifecycleName},
-			Input:       ccInput,
-		},
-	}
-
-	proposal, _, err := protoutil.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, creatorBytes)
-	if err != nil {
-		return nil, errors.WithMessage(err, "error creating proposal for ChaincodeInvocationSpec")
-	}
-
-	return proposal, nil
-}
-
-func (i *Installer) getLegacyChaincodePackageMessage() (proto.Message, error) {
+func (i *Installer) getChaincodePackageMessage() (proto.Message, error) {
 	// if no package provided, create one
 	if i.Input.PackageFile == "" {
 		if i.Input.Path == common.UndefinedParamValue || i.Input.Version == common.UndefinedParamValue || i.Input.Name == common.UndefinedParamValue {
@@ -301,7 +196,7 @@ func (i *Installer) getLegacyChaincodePackageMessage() (proto.Message, error) {
 	return ccPkgMsg, nil
 }
 
-func (i *Installer) createLegacyInstallProposal(msg proto.Message) (*pb.Proposal, error) {
+func (i *Installer) createInstallProposal(msg proto.Message) (*pb.Proposal, error) {
 	creator, err := i.Signer.Serialize()
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("error serializing identity for %s", i.Signer.GetIdentifier()))

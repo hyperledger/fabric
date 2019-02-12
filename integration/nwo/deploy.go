@@ -117,7 +117,7 @@ func DeployChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 }
 
 func PackageChaincodeNewLifecycle(n *Network, chaincode Chaincode, peer *Peer) {
-	sess, err := n.PeerAdminSession(peer, commands.ChaincodePackagePlusLifecycle{
+	sess, err := n.PeerAdminSession(peer, commands.ChaincodePackageLifecycle{
 		Path:       chaincode.Path,
 		Lang:       chaincode.Lang,
 		OutputFile: chaincode.PackageFile,
@@ -140,7 +140,7 @@ func PackageChaincode(n *Network, chaincode Chaincode, peer *Peer) {
 
 func InstallChaincodeNewLifecycle(n *Network, chaincode Chaincode, peers ...*Peer) {
 	for _, p := range peers {
-		sess, err := n.PeerAdminSession(p, commands.ChaincodeInstallPlusLifecycle{
+		sess, err := n.PeerAdminSession(p, commands.ChaincodeInstallLifecycle{
 			Name:        chaincode.Name,
 			Version:     chaincode.Version,
 			PackageFile: chaincode.PackageFile,
@@ -148,7 +148,7 @@ func InstallChaincodeNewLifecycle(n *Network, chaincode Chaincode, peers ...*Pee
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
-		sess, err = n.PeerAdminSession(p, commands.ChaincodeListInstalledPlusLifecycle{})
+		sess, err = n.PeerAdminSession(p, commands.ChaincodeQueryInstalledLifecycle{})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 		Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s, Hash:", chaincode.Name, chaincode.Version)))
@@ -190,7 +190,7 @@ func ApproveChaincodeForMyOrgNewLifecycle(n *Network, channel string, orderer *O
 		peerAddresses = append(peerAddresses, n.PeerAddress(p, ListenPort))
 	}
 
-	sess, err := n.PeerAdminSession(peers[0], commands.ChaincodeApproveForMyOrg{
+	sess, err := n.PeerAdminSession(peers[0], commands.ChaincodeApproveForMyOrgLifecycle{
 		ChannelID:         channel,
 		Orderer:           n.OrdererAddress(orderer, ListenPort),
 		Name:              chaincode.Name,
@@ -226,7 +226,7 @@ func CommitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 		n.PeerAddress(n.Peer("org2", "peer1"), ListenPort),
 	}
 
-	sess, err := n.PeerAdminSession(peer, commands.ChaincodeCommit{
+	sess, err := n.PeerAdminSession(peer, commands.ChaincodeCommitLifecycle{
 		ChannelID:         channel,
 		Orderer:           n.OrdererAddress(orderer, ListenPort),
 		Name:              chaincode.Name,
@@ -245,13 +245,13 @@ func CommitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 	for i := 0; i < len(peerAddresses); i++ {
 		Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
 	}
-	EnsureCommitted(n, channel, chaincode.Name, chaincode.Version, checkPeers...)
+	EnsureCommitted(n, channel, chaincode.Name, chaincode.Version, chaincode.Sequence, checkPeers...)
 }
 
-func EnsureCommitted(n *Network, channel, name, version string, peers ...*Peer) {
+func EnsureCommitted(n *Network, channel, name, version, sequence string, peers ...*Peer) {
 	for _, p := range peers {
 		Eventually(listCommitted(n, p, channel, name), n.EventuallyTimeout).Should(
-			gbytes.Say(fmt.Sprintf("Get committed chaincode definition for chaincode '%s' on channel '%s':", name, channel)),
+			gbytes.Say(fmt.Sprintf("Committed chaincode definition for chaincode '%s' on channel '%s':\nVersion: %s, Sequence: %s", name, channel, version, sequence)),
 		)
 	}
 }
@@ -332,7 +332,7 @@ func UpgradeChaincode(n *Network, channel string, orderer *Orderer, chaincode Ch
 
 func listCommitted(n *Network, peer *Peer, channel, name string) func() *gbytes.Buffer {
 	return func() *gbytes.Buffer {
-		sess, err := n.PeerAdminSession(peer, commands.ChaincodeListCommitted{
+		sess, err := n.PeerAdminSession(peer, commands.ChaincodeListCommittedLifecycle{
 			ChannelID: channel,
 			Name:      name,
 		})

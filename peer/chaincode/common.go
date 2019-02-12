@@ -190,10 +190,10 @@ type collectionConfigJson struct {
 	MemberOnlyWrite bool   `json:"memberOnlyWrite"`
 }
 
-// getCollectionConfig retrieves the collection configuration
+// GetCollectionConfigFromFile retrieves the collection configuration
 // from the supplied file; the supplied file must contain a
 // json-formatted array of collectionConfigJson elements
-func getCollectionConfigFromFile(ccFile string) (*pcommon.CollectionConfigPackage, []byte, error) {
+func GetCollectionConfigFromFile(ccFile string) (*pcommon.CollectionConfigPackage, []byte, error) {
 	fileBytes, err := ioutil.ReadFile(ccFile)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "could not read file '%s'", ccFile)
@@ -283,7 +283,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 
 		if collectionsConfigFile != common.UndefinedParamValue {
 			var err error
-			_, collectionConfigBytes, err = getCollectionConfigFromFile(collectionsConfigFile)
+			_, collectionConfigBytes, err = GetCollectionConfigFromFile(collectionsConfigFile)
 			if err != nil {
 				return errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
 			}
@@ -342,12 +342,9 @@ func validatePeerConnectionParameters(cmdName string) error {
 		}
 	}
 
-	// currently only support multiple peer addresses for invoke,
-	// approveformyorg, and commit
+	// currently only support multiple peer addresses for invoke
 	multiplePeersAllowed := map[string]bool{
-		"invoke":          true,
-		"approveformyorg": true,
-		"commit":          true,
+		"invoke": true,
 	}
 	_, ok := multiplePeersAllowed[cmdName]
 	if !ok && len(peerAddresses) > 1 {
@@ -529,14 +526,14 @@ func ChaincodeInvokeOrQuery(
 			if err != nil {
 				return proposalResp, errors.WithMessage(err, "could not assemble transaction")
 			}
-			var dg *deliverGroup
+			var dg *DeliverGroup
 			var ctx context.Context
 			if waitForEvent {
 				var cancelFunc context.CancelFunc
 				ctx, cancelFunc = context.WithTimeout(context.Background(), waitForEventTimeout)
 				defer cancelFunc()
 
-				dg = newDeliverGroup(deliverClients, peerAddresses, certificate, channelID, txid)
+				dg = NewDeliverGroup(deliverClients, peerAddresses, certificate, channelID, txid)
 				// connect to deliver service on all peers
 				err := dg.Connect(ctx)
 				if err != nil {
@@ -562,15 +559,15 @@ func ChaincodeInvokeOrQuery(
 	return proposalResp, nil
 }
 
-// deliverGroup holds all of the information needed to connect
+// DeliverGroup holds all of the information needed to connect
 // to a set of peers to wait for the interested txid to be
 // committed to the ledgers of all peers. This functionality
 // is currently implemented via the peer's DeliverFiltered service.
 // An error from any of the peers/deliver clients will result in
 // the invoke command returning an error. Only the first error that
 // occurs will be set
-type deliverGroup struct {
-	Clients     []*deliverClient
+type DeliverGroup struct {
+	Clients     []*DeliverClient
 	Certificate tls.Certificate
 	ChannelID   string
 	TxID        string
@@ -579,25 +576,25 @@ type deliverGroup struct {
 	wg          sync.WaitGroup
 }
 
-// deliverClient holds the client/connection related to a specific
+// DeliverClient holds the client/connection related to a specific
 // peer. The address is included for logging purposes
-type deliverClient struct {
+type DeliverClient struct {
 	Client     api.PeerDeliverClient
 	Connection ccapi.Deliver
 	Address    string
 }
 
-func newDeliverGroup(deliverClients []api.PeerDeliverClient, peerAddresses []string, certificate tls.Certificate, channelID string, txid string) *deliverGroup {
-	clients := make([]*deliverClient, len(deliverClients))
+func NewDeliverGroup(deliverClients []api.PeerDeliverClient, peerAddresses []string, certificate tls.Certificate, channelID string, txid string) *DeliverGroup {
+	clients := make([]*DeliverClient, len(deliverClients))
 	for i, client := range deliverClients {
-		dc := &deliverClient{
+		dc := &DeliverClient{
 			Client:  client,
 			Address: peerAddresses[i],
 		}
 		clients[i] = dc
 	}
 
-	dg := &deliverGroup{
+	dg := &DeliverGroup{
 		Clients:     clients,
 		Certificate: certificate,
 		ChannelID:   channelID,
@@ -611,7 +608,7 @@ func newDeliverGroup(deliverClients []api.PeerDeliverClient, peerAddresses []str
 // the peer's deliver service, receive an error, or for the context
 // to timeout. An error will be returned whenever even a single
 // deliver client fails to connect to its peer
-func (dg *deliverGroup) Connect(ctx context.Context) error {
+func (dg *DeliverGroup) Connect(ctx context.Context) error {
 	dg.wg.Add(len(dg.Clients))
 	for _, client := range dg.Clients {
 		go dg.ClientConnect(ctx, client)
@@ -636,7 +633,7 @@ func (dg *deliverGroup) Connect(ctx context.Context) error {
 // ClientConnect sends a deliver seek info envelope using the
 // provided deliver client, setting the deliverGroup's Error
 // field upon any error
-func (dg *deliverGroup) ClientConnect(ctx context.Context, dc *deliverClient) {
+func (dg *DeliverGroup) ClientConnect(ctx context.Context, dc *DeliverClient) {
 	defer dg.wg.Done()
 	df, err := dc.Client.DeliverFiltered(ctx)
 	if err != nil {
@@ -659,7 +656,7 @@ func (dg *deliverGroup) ClientConnect(ctx context.Context, dc *deliverClient) {
 // Wait waits for all deliver client connections in the group to
 // either receive a block with the txid, an error, or for the
 // context to timeout
-func (dg *deliverGroup) Wait(ctx context.Context) error {
+func (dg *DeliverGroup) Wait(ctx context.Context) error {
 	if len(dg.Clients) == 0 {
 		return nil
 	}
@@ -687,7 +684,7 @@ func (dg *deliverGroup) Wait(ctx context.Context) error {
 
 // ClientWait waits for the specified deliver client to receive
 // a block event with the requested txid
-func (dg *deliverGroup) ClientWait(dc *deliverClient) {
+func (dg *DeliverGroup) ClientWait(dc *DeliverClient) {
 	defer dg.wg.Done()
 	for {
 		resp, err := dc.Connection.Recv()
@@ -719,13 +716,13 @@ func (dg *deliverGroup) ClientWait(dc *deliverClient) {
 
 // WaitForWG waits for the deliverGroup's wait group and closes
 // the channel when ready
-func (dg *deliverGroup) WaitForWG(readyCh chan struct{}) {
+func (dg *DeliverGroup) WaitForWG(readyCh chan struct{}) {
 	dg.wg.Wait()
 	close(readyCh)
 }
 
 // setError serializes an error for the deliverGroup
-func (dg *deliverGroup) setError(err error) {
+func (dg *DeliverGroup) setError(err error) {
 	dg.mutex.Lock()
 	dg.Error = err
 	dg.mutex.Unlock()

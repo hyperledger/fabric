@@ -19,12 +19,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestApproverForMyOrg(t *testing.T) {
+func TestCommitter(t *testing.T) {
 	assert := assert.New(t)
 
 	t.Run("success", func(t *testing.T) {
-		a := newApproverForMyOrgForTest(t, nil, nil)
-		a.Input = &ApproveForMyOrgInput{
+		c := newCommitterForTest(t, nil, nil)
+		c.Input = &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
 			Hash:      []byte("hash"),
@@ -32,42 +32,42 @@ func TestApproverForMyOrg(t *testing.T) {
 			ChannelID: "testchannel",
 		}
 
-		err := a.Approve()
+		err := c.Commit()
 		assert.NoError(err)
 	})
 
 	t.Run("failure - validation fails due to no name provided", func(t *testing.T) {
-		a := newApproverForMyOrgForTest(t, nil, nil)
-		a.Input = &ApproveForMyOrgInput{
+		c := newCommitterForTest(t, nil, nil)
+		c.Input = &CommitInput{
 			Version:   "testversion",
 			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
 
-		err := a.Approve()
+		err := c.Commit()
 		assert.EqualError(err, "The required parameter 'name' is empty. Rerun the command with -n flag")
 	})
 
 	t.Run("failure - creating signed proposal fails", func(t *testing.T) {
-		a := newApproverForMyOrgForTest(t, nil, nil)
-		a.Input = &ApproveForMyOrgInput{
+		c := newCommitterForTest(t, nil, nil)
+		c.Input = &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
 			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
-		a.Signer = nil
+		c.Signer = nil
 
-		err := a.Approve()
+		err := c.Commit()
 		assert.EqualError(err, "error creating signed proposal: nil signer provided")
 	})
 
 	t.Run("endorser client returns error", func(t *testing.T) {
 		ec := common.GetMockEndorserClient(nil, errors.New("badbadnotgood"))
-		a := newApproverForMyOrgForTest(t, nil, ec)
-		a.Input = &ApproveForMyOrgInput{
+		c := newCommitterForTest(t, nil, ec)
+		c.Input = &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
 			Hash:      []byte("hash"),
@@ -75,8 +75,23 @@ func TestApproverForMyOrg(t *testing.T) {
 			ChannelID: "testchannel",
 		}
 
-		err := a.Approve()
+		err := c.Commit()
 		assert.EqualError(err, "error endorsing proposal: badbadnotgood")
+	})
+
+	t.Run("endorser client returns a nil proposal response", func(t *testing.T) {
+		ec := common.GetMockEndorserClient(nil, nil)
+		c := newCommitterForTest(t, nil, ec)
+		c.Input = &CommitInput{
+			Name:      "testcc",
+			Version:   "testversion",
+			Hash:      []byte("hash"),
+			Sequence:  1,
+			ChannelID: "testchannel",
+		}
+
+		err := c.Commit()
+		assert.EqualError(err, "received nil proposal response")
 	})
 
 	t.Run("endorser client returns a proposal response with nil response", func(t *testing.T) {
@@ -84,8 +99,8 @@ func TestApproverForMyOrg(t *testing.T) {
 			Response: nil,
 		}
 		ec := common.GetMockEndorserClient(mockResponse, nil)
-		a := newApproverForMyOrgForTest(t, nil, ec)
-		a.Input = &ApproveForMyOrgInput{
+		c := newCommitterForTest(t, nil, ec)
+		c.Input = &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
 			Hash:      []byte("hash"),
@@ -93,8 +108,24 @@ func TestApproverForMyOrg(t *testing.T) {
 			ChannelID: "testchannel",
 		}
 
-		err := a.Approve()
+		err := c.Commit()
 		assert.EqualError(err, "proposal response had nil response")
+	})
+
+	t.Run("broadcast client returns an error", func(t *testing.T) {
+		c := newCommitterForTest(t, nil, nil)
+		c.BroadcastClient = common.GetMockBroadcastClient(errors.New("jinkies"))
+
+		c.Input = &CommitInput{
+			Name:      "testcc",
+			Version:   "testversion",
+			Hash:      []byte("hash"),
+			Sequence:  1,
+			ChannelID: "testchannel",
+		}
+
+		err := c.Commit()
+		assert.EqualError(err, "error sending transaction for commit: jinkies")
 	})
 
 	t.Run("endorser client returns a failure status code", func(t *testing.T) {
@@ -105,8 +136,8 @@ func TestApproverForMyOrg(t *testing.T) {
 			},
 		}
 		ec := common.GetMockEndorserClient(mockResponse, nil)
-		a := newApproverForMyOrgForTest(t, nil, ec)
-		a.Input = &ApproveForMyOrgInput{
+		c := newCommitterForTest(t, nil, ec)
+		c.Input = &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
 			Hash:      []byte("hash"),
@@ -114,22 +145,22 @@ func TestApproverForMyOrg(t *testing.T) {
 			ChannelID: "testchannel",
 		}
 
-		err := a.Approve()
+		err := c.Commit()
 		assert.EqualError(err, "bad response: 500 - rutroh")
 	})
 
 	t.Run("wait for event success", func(t *testing.T) {
 		// success - one deliver client first receives block without txid and
 		// then one with txid
-		a := newApproverForMyOrgForTest(t, nil, nil)
+		c := newCommitterForTest(t, nil, nil)
 		filteredBlocks := []*pb.FilteredBlock{
 			createFilteredBlock("theseare", "notthetxidsyouarelookingfor"),
 			createFilteredBlock("txid0"),
 		}
 		mockDCTwoBlocks := getMockDeliverClientRespondsWithFilteredBlocks(filteredBlocks)
 		mockDC := getMockDeliverClientResponseWithTxID("txid0")
-		a.DeliverClients = []api.PeerDeliverClient{mockDCTwoBlocks, mockDC}
-		a.Input = &ApproveForMyOrgInput{
+		c.DeliverClients = []api.PeerDeliverClient{mockDCTwoBlocks, mockDC}
+		c.Input = &CommitInput{
 			Name:                "testcc",
 			Version:             "testversion",
 			Hash:                []byte("hash"),
@@ -141,16 +172,16 @@ func TestApproverForMyOrg(t *testing.T) {
 			TxID:                "txid0",
 		}
 
-		err := a.Approve()
+		err := c.Commit()
 		assert.NoError(err)
 	})
 
 	t.Run("wait for event failure - one deliver client returns error", func(t *testing.T) {
-		a := newApproverForMyOrgForTest(t, nil, nil)
+		c := newCommitterForTest(t, nil, nil)
 		mockDCErr := getMockDeliverClientWithErr("moist")
 		mockDC := getMockDeliverClientResponseWithTxID("txid0")
-		a.DeliverClients = []api.PeerDeliverClient{mockDCErr, mockDC}
-		a.Input = &ApproveForMyOrgInput{
+		c.DeliverClients = []api.PeerDeliverClient{mockDCErr, mockDC}
+		c.Input = &CommitInput{
 			Name:                "testcc",
 			Version:             "testversion",
 			Hash:                []byte("hash"),
@@ -162,17 +193,17 @@ func TestApproverForMyOrg(t *testing.T) {
 			TxID:                "txid0",
 		}
 
-		err := a.Approve()
+		err := c.Commit()
 		assert.Error(err)
 		assert.Contains(err.Error(), "moist")
 	})
 
-	t.Run("wait for event failure - both deliver clients don't return an event with the expected txid before timeout", func(t *testing.T) {
-		a := newApproverForMyOrgForTest(t, nil, nil)
+	t.Run("wait for event failure - both deliver clients don't return an event with the expected txid", func(t *testing.T) {
+		c := newCommitterForTest(t, nil, nil)
 		delayChan := make(chan struct{})
 		mockDCDelay := getMockDeliverClientRespondAfterDelay(delayChan, "txid0")
-		a.DeliverClients = []api.PeerDeliverClient{mockDCDelay, mockDCDelay}
-		a.Input = &ApproveForMyOrgInput{
+		c.DeliverClients = []api.PeerDeliverClient{mockDCDelay, mockDCDelay}
+		c.Input = &CommitInput{
 			Name:                "testcc",
 			Version:             "testversion",
 			Hash:                []byte("hash"),
@@ -184,19 +215,18 @@ func TestApproverForMyOrg(t *testing.T) {
 			TxID:                "txid0",
 		}
 
-		err := a.Approve()
+		err := c.Commit()
 		assert.Error(err)
 		assert.Contains(err.Error(), "timed out")
-		close(delayChan)
 	})
 }
 
-func TestApproveForMyOrgCmd(t *testing.T) {
+func TestCommitCmd(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		resetFlags()
-		a := newApproverForMyOrgForTest(t, nil, nil)
-		cmd := approveForMyOrgCmd(nil, a)
-		a.Command = cmd
+		c := newCommitterForTest(t, nil, nil)
+		cmd := commitCmd(nil, c)
+		c.Command = cmd
 		args := []string{
 			"-C", "testchannel",
 			"-n", "testcc",
@@ -213,9 +243,9 @@ func TestApproveForMyOrgCmd(t *testing.T) {
 
 	t.Run("failure - invalid signature policy", func(t *testing.T) {
 		resetFlags()
-		a := newApproverForMyOrgForTest(t, nil, nil)
-		cmd := approveForMyOrgCmd(nil, a)
-		a.Command = cmd
+		c := newCommitterForTest(t, nil, nil)
+		cmd := commitCmd(nil, c)
+		c.Command = cmd
 		args := []string{
 			"-C", "testchannel",
 			"-n", "testcc",
@@ -232,9 +262,9 @@ func TestApproveForMyOrgCmd(t *testing.T) {
 
 	t.Run("failure - invalid collection config file", func(t *testing.T) {
 		resetFlags()
-		a := newApproverForMyOrgForTest(t, nil, nil)
-		cmd := approveForMyOrgCmd(nil, a)
-		a.Command = cmd
+		c := newCommitterForTest(t, nil, nil)
+		cmd := commitCmd(nil, c)
+		c.Command = cmd
 		args := []string{
 			"-C", "testchannel",
 			"-n", "testcc",
@@ -250,12 +280,12 @@ func TestApproveForMyOrgCmd(t *testing.T) {
 	})
 }
 
-func TestValidateApproveForMyOrgInput(t *testing.T) {
+func TestValidateCommitInput(t *testing.T) {
 	defer resetFlags()
 	assert := assert.New(t)
 
 	t.Run("success - all required parameters provided", func(t *testing.T) {
-		input := &ApproveForMyOrgInput{
+		input := &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
 			Hash:      []byte("hash"),
@@ -267,13 +297,13 @@ func TestValidateApproveForMyOrgInput(t *testing.T) {
 	})
 
 	t.Run("failure - nil input", func(t *testing.T) {
-		var input *ApproveForMyOrgInput
+		var input *CommitInput
 		err := input.Validate()
 		assert.EqualError(err, "nil input")
 	})
 
 	t.Run("failure - name not set", func(t *testing.T) {
-		input := &ApproveForMyOrgInput{
+		input := &CommitInput{
 			Version:   "testversion",
 			Hash:      []byte("hash"),
 			Sequence:  1,
@@ -284,7 +314,7 @@ func TestValidateApproveForMyOrgInput(t *testing.T) {
 	})
 
 	t.Run("failure - version not set", func(t *testing.T) {
-		input := &ApproveForMyOrgInput{
+		input := &CommitInput{
 			Name:      "testcc",
 			Hash:      []byte("hash"),
 			Sequence:  1,
@@ -295,7 +325,7 @@ func TestValidateApproveForMyOrgInput(t *testing.T) {
 	})
 
 	t.Run("failure - hash not set", func(t *testing.T) {
-		input := &ApproveForMyOrgInput{
+		input := &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
 			Sequence:  1,
@@ -306,7 +336,7 @@ func TestValidateApproveForMyOrgInput(t *testing.T) {
 	})
 
 	t.Run("failure - sequence not set", func(t *testing.T) {
-		input := &ApproveForMyOrgInput{
+		input := &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
 			Hash:      []byte("hash"),
@@ -317,7 +347,7 @@ func TestValidateApproveForMyOrgInput(t *testing.T) {
 	})
 
 	t.Run("failure - channelID not set", func(t *testing.T) {
-		input := &ApproveForMyOrgInput{
+		input := &CommitInput{
 			Name:     "testcc",
 			Version:  "testversion",
 			Hash:     []byte("hash"),
@@ -328,7 +358,7 @@ func TestValidateApproveForMyOrgInput(t *testing.T) {
 	})
 }
 
-func initApproveForMyOrgTest(t *testing.T, ec pb.EndorserClient, mockResponse *pb.ProposalResponse) (*cobra.Command, *ChaincodeCmdFactory) {
+func initCommitterForTest(t *testing.T, ec pb.EndorserClient, mockResponse *pb.ProposalResponse) (*cobra.Command, *CmdFactory) {
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
 		t.Fatalf("Get default signer error: %v", err)
@@ -347,23 +377,23 @@ func initApproveForMyOrgTest(t *testing.T, ec pb.EndorserClient, mockResponse *p
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
 	mockDC := getMockDeliverClientResponseWithTxID("txid0")
 	mockDeliverClients := []api.PeerDeliverClient{mockDC, mockDC}
-	mockCF := &ChaincodeCmdFactory{
+	mockCF := &CmdFactory{
 		Signer:          signer,
 		EndorserClients: []pb.EndorserClient{ec},
 		BroadcastClient: mockBroadcastClient,
 		DeliverClients:  mockDeliverClients,
 	}
 
-	cmd := approveForMyOrgCmd(mockCF, nil)
+	cmd := commitCmd(mockCF, nil)
 	addFlags(cmd)
 
 	return cmd, mockCF
 }
 
-func newApproverForMyOrgForTest(t *testing.T, r Reader, ec pb.EndorserClient) *ApproverForMyOrg {
-	_, mockCF := initApproveForMyOrgTest(t, ec, nil)
+func newCommitterForTest(t *testing.T, r Reader, ec pb.EndorserClient) *Committer {
+	_, mockCF := initCommitterForTest(t, ec, nil)
 
-	return &ApproverForMyOrg{
+	return &Committer{
 		BroadcastClient: mockCF.BroadcastClient,
 		DeliverClients:  mockCF.DeliverClients,
 		EndorserClients: mockCF.EndorserClients,
