@@ -62,12 +62,12 @@ func TestInterceptAcks(t *testing.T) {
 func TestAck(t *testing.T) {
 	t.Parallel()
 
-	comm1, _ := newCommInstance(14000, naiveSec)
-	comm2, _ := newCommInstance(14001, naiveSec)
+	comm1, _ := newCommInstance(t, naiveSec)
+	comm2, port2 := newCommInstance(t, naiveSec)
 	defer comm2.Stop()
-	comm3, _ := newCommInstance(14002, naiveSec)
+	comm3, port3 := newCommInstance(t, naiveSec)
 	defer comm3.Stop()
-	comm4, _ := newCommInstance(14003, naiveSec)
+	comm4, port4 := newCommInstance(t, naiveSec)
 	defer comm4.Stop()
 
 	acceptData := func(o interface{}) bool {
@@ -91,7 +91,7 @@ func TestAck(t *testing.T) {
 	// Collect 2 out of 2 acks - should succeed
 	go ack(inc2)
 	go ack(inc3)
-	res := comm1.SendWithAck(createGossipMsg(), time.Second*3, 2, remotePeer(14001), remotePeer(14002))
+	res := comm1.SendWithAck(createGossipMsg(), time.Second*3, 2, remotePeer(port2), remotePeer(port3))
 	assert.Len(t, res, 2)
 	assert.Empty(t, res[0].Error())
 	assert.Empty(t, res[1].Error())
@@ -100,7 +100,7 @@ func TestAck(t *testing.T) {
 	t1 := time.Now()
 	go ack(inc2)
 	go ack(inc3)
-	res = comm1.SendWithAck(createGossipMsg(), time.Second*10, 2, remotePeer(14001), remotePeer(14002), remotePeer(14003))
+	res = comm1.SendWithAck(createGossipMsg(), time.Second*10, 2, remotePeer(port2), remotePeer(port3), remotePeer(port4))
 	elapsed := time.Since(t1)
 	assert.Len(t, res, 2)
 	assert.Empty(t, res[0].Error())
@@ -111,13 +111,13 @@ func TestAck(t *testing.T) {
 	// Collect 2 out of 3 acks - should fail, because peer3 now have sent an error along with the ack
 	go ack(inc2)
 	go nack(inc3)
-	res = comm1.SendWithAck(createGossipMsg(), time.Second*10, 2, remotePeer(14001), remotePeer(14002), remotePeer(14003))
+	res = comm1.SendWithAck(createGossipMsg(), time.Second*10, 2, remotePeer(port2), remotePeer(port3), remotePeer(port4))
 	assert.Len(t, res, 3)
 	assert.Contains(t, []string{res[0].Error(), res[1].Error(), res[2].Error()}, "Failed processing message because reasons")
 	assert.Contains(t, []string{res[0].Error(), res[1].Error(), res[2].Error()}, "timed out")
 
 	// Collect 2 out of 2 acks - should fail because comm2 and comm3 now don't acknowledge messages
-	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 2, remotePeer(14001), remotePeer(14002))
+	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 2, remotePeer(port2), remotePeer(port3))
 	assert.Len(t, res, 2)
 	assert.Contains(t, res[0].Error(), "timed out")
 	assert.Contains(t, res[1].Error(), "timed out")
@@ -128,7 +128,7 @@ func TestAck(t *testing.T) {
 	// Collect 2 out of 3 acks - should fail
 	go ack(inc2)
 	go nack(inc3)
-	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 2, remotePeer(14001), remotePeer(14002), remotePeer(14003))
+	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 2, remotePeer(port2), remotePeer(port3), remotePeer(port4))
 	assert.Len(t, res, 3)
 	assert.Contains(t, []string{res[0].Error(), res[1].Error(), res[2].Error()}, "") // This is the "successful ack"
 	assert.Contains(t, []string{res[0].Error(), res[1].Error(), res[2].Error()}, "Failed processing message because reasons")
@@ -145,7 +145,7 @@ func TestAck(t *testing.T) {
 
 	// Send a message while stopping
 	comm1.Stop()
-	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 1, remotePeer(14001), remotePeer(14002), remotePeer(14003))
+	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 1, remotePeer(port2), remotePeer(port3), remotePeer(port4))
 	assert.Len(t, res, 3)
 	assert.Contains(t, res[0].Error(), "comm is stopping")
 	assert.Contains(t, res[1].Error(), "comm is stopping")
