@@ -116,10 +116,42 @@ func (l *Lifecycle) ChaincodeInfo(channelName, chaincodeName string, qe ledger.S
 	}, nil
 }
 
+var ImplicitCollectionMatcher = regexp.MustCompile("^" + ImplicitCollectionNameForOrg("(.+)") + "$")
+
 // CollectionInfo implements function in interface ledger.DeployedChaincodeInfoProvider, it returns config for
 // both static and implicit collections.
 func (l *Lifecycle) CollectionInfo(channelName, chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*cb.StaticCollectionConfig, error) {
-	return l.LegacyDeployedCCInfoProvider.CollectionInfo(channelName, chaincodeName, collectionName, qe)
+	definedChaincode := &DefinedChaincode{}
+	if chaincodeName != LifecycleNamespace {
+		exists, state, err := l.ChaincodeInNewLifecycle(chaincodeName, qe)
+		if err != nil {
+			return nil, errors.WithMessage(err, "could not get chaincode")
+		}
+
+		if !exists {
+			return l.LegacyDeployedCCInfoProvider.CollectionInfo(channelName, chaincodeName, collectionName, qe)
+		}
+
+		err = l.Serializer.Deserialize(NamespacesName, chaincodeName, definedChaincode, state)
+		if err != nil {
+			return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))
+		}
+	}
+
+	matches := ImplicitCollectionMatcher.FindStringSubmatch(collectionName)
+	if len(matches) == 2 {
+		return GenerateImplicitCollectionForOrg(matches[1]), nil
+	}
+
+	if definedChaincode.Collections != nil {
+		for _, conf := range definedChaincode.Collections.Config {
+			staticCollConfig := conf.GetStaticCollectionConfig()
+			if staticCollConfig != nil && staticCollConfig.Name == collectionName {
+				return staticCollConfig, nil
+			}
+		}
+	}
+	return nil, nil
 }
 
 // ImplicitCollections implements function in interface ledger.DeployedChaincodeInfoProvider.  It returns
