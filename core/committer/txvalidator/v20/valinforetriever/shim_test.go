@@ -30,8 +30,8 @@ func TestValidationInfoRetrieverFromNew(t *testing.T) {
 	}
 
 	// successfully retrieve data from new source
-	new.On("ValidationInfo", cc, nil).Return(newPlugin, newArgs, nil, nil).Once()
-	plugin, args, unexpectedErr, validationErr := shim.ValidationInfo("cc", nil)
+	new.On("ValidationInfo", "channel", cc, nil).Return(newPlugin, newArgs, nil, nil).Once()
+	plugin, args, unexpectedErr, validationErr := shim.ValidationInfo("channel", "cc", nil)
 	assert.NoError(t, unexpectedErr)
 	assert.NoError(t, validationErr)
 	assert.Equal(t, "new", plugin)
@@ -39,8 +39,8 @@ func TestValidationInfoRetrieverFromNew(t *testing.T) {
 	legacy.AssertNotCalled(t, "ValidationInfo")
 
 	// get validation error from new source
-	new.On("ValidationInfo", cc, nil).Return("", nil, nil, verr).Once()
-	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("cc", nil)
+	new.On("ValidationInfo", "channel", cc, nil).Return("", nil, nil, verr).Once()
+	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("channel", "cc", nil)
 	assert.NoError(t, unexpectedErr)
 	assert.Error(t, validationErr)
 	assert.Contains(t, validationErr.Error(), "validation error")
@@ -49,8 +49,8 @@ func TestValidationInfoRetrieverFromNew(t *testing.T) {
 	legacy.AssertNotCalled(t, "ValidationInfo")
 
 	// get unexpected error from new source
-	new.On("ValidationInfo", cc, nil).Return("", nil, uerr, verr).Once()
-	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("cc", nil)
+	new.On("ValidationInfo", "channel", cc, nil).Return("", nil, uerr, verr).Once()
+	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("channel", "cc", nil)
 	assert.Error(t, unexpectedErr)
 	assert.Error(t, validationErr)
 	assert.Contains(t, unexpectedErr.Error(), "unexpected error")
@@ -75,19 +75,19 @@ func TestValidationInfoRetrieverFromLegacy(t *testing.T) {
 	}
 
 	// new source always returns no data
-	new.On("ValidationInfo", cc, nil).Return("", nil, nil, nil)
+	new.On("ValidationInfo", "channel", cc, nil).Return("", nil, nil, nil)
 
 	// successfully retrieve data from legacy source
-	legacy.On("ValidationInfo", cc, nil).Return(legacyPlugin, legacyArgs, nil, nil).Once()
-	plugin, args, unexpectedErr, validationErr := shim.ValidationInfo("cc", nil)
+	legacy.On("ValidationInfo", "channel", cc, nil).Return(legacyPlugin, legacyArgs, nil, nil).Once()
+	plugin, args, unexpectedErr, validationErr := shim.ValidationInfo("channel", "cc", nil)
 	assert.NoError(t, unexpectedErr)
 	assert.NoError(t, validationErr)
 	assert.Equal(t, "legacy", plugin)
 	assert.Equal(t, []byte("legacy"), args)
 
 	// get validation error from legacy source
-	legacy.On("ValidationInfo", cc, nil).Return("", nil, nil, verr).Once()
-	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("cc", nil)
+	legacy.On("ValidationInfo", "channel", cc, nil).Return("", nil, nil, verr).Once()
+	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("channel", "cc", nil)
 	assert.NoError(t, unexpectedErr)
 	assert.Error(t, validationErr)
 	assert.Contains(t, validationErr.Error(), "validation error")
@@ -95,8 +95,8 @@ func TestValidationInfoRetrieverFromLegacy(t *testing.T) {
 	assert.Equal(t, []byte(nil), args)
 
 	// get unexpected error from legacy source
-	legacy.On("ValidationInfo", cc, nil).Return("", nil, uerr, nil).Once()
-	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("cc", nil)
+	legacy.On("ValidationInfo", "channel", cc, nil).Return("", nil, uerr, nil).Once()
+	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("channel", "cc", nil)
 	assert.Error(t, unexpectedErr)
 	assert.NoError(t, validationErr)
 	assert.Contains(t, unexpectedErr.Error(), "unexpected error")

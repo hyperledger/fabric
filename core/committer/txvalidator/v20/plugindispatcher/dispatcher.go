@@ -53,7 +53,7 @@ type LifecycleResources interface {
 	// which needs to differentiate the two types of error to halt processing on the channel
 	// if the unexpected error is not nil and mark the transaction as invalid if the validation
 	// error is not nil.
-	ValidationInfo(chaincodeName string, qe ledger.SimpleQueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error)
+	ValidationInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error)
 }
 
 //go:generate mockery -dir . -name LifecycleResources -case underscore -output mocks/
@@ -248,14 +248,14 @@ func (v *dispatcherImpl) invokeValidationPlugin(ctx *Context) error {
 	return &commonerrors.VSCCEndorsementPolicyError{Err: err}
 }
 
-func (v *dispatcherImpl) getCDataForCC(ccid string) (string, []byte, error) {
+func (v *dispatcherImpl) getCDataForCC(channelID, ccid string) (string, []byte, error) {
 	qe, err := v.ler.NewQueryExecutor()
 	if err != nil {
 		return "", nil, errors.WithMessage(err, "could not retrieve QueryExecutor")
 	}
 	defer qe.Done()
 
-	plugin, args, unexpectedErr, validationErr := v.lcr.ValidationInfo(ccid, qe)
+	plugin, args, unexpectedErr, validationErr := v.lcr.ValidationInfo(channelID, ccid, qe)
 	if unexpectedErr != nil {
 		return "", nil, &commonerrors.VSCCInfoLookupFailureError{
 			Reason: fmt.Sprintf("Could not retrieve state for chaincode %s, error %s", ccid, unexpectedErr),
@@ -291,7 +291,7 @@ func (v *dispatcherImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID str
 		// of the validation plugin and of the policy that should be used
 
 		// obtain name of the validation plugin and the policy
-		validationPlugin.ChaincodeName, policy, err = v.getCDataForCC(ccID)
+		validationPlugin.ChaincodeName, policy, err = v.getCDataForCC(chdr.ChannelId, ccID)
 		if err != nil {
 			msg := fmt.Sprintf("Unable to get chaincode data from ledger for txid %s, due to %s", chdr.TxId, err)
 			logger.Errorf(msg)

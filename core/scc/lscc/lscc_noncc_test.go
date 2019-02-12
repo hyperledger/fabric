@@ -171,7 +171,7 @@ var _ = Describe("LSCC", func() {
 		})
 
 		It("retrieves the chaincode data from the state", func() {
-			vscc, policy, unexpectedErr, validationErr := l.ValidationInfo("cc-name", fakeQueryExecutor)
+			vscc, policy, unexpectedErr, validationErr := l.ValidationInfo("", "cc-name", fakeQueryExecutor)
 			Expect(validationErr).NotTo(HaveOccurred())
 			Expect(unexpectedErr).NotTo(HaveOccurred())
 			Expect(vscc).To(Equal(ccData.Vscc))
@@ -189,7 +189,7 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("returns the wrapped error", func() {
-				_, _, unexpectedErr, validationErr := l.ValidationInfo("cc-name", fakeQueryExecutor)
+				_, _, unexpectedErr, validationErr := l.ValidationInfo("", "cc-name", fakeQueryExecutor)
 				Expect(unexpectedErr).To(MatchError("could not retrieve state for chaincode cc-name: fake-error"))
 				Expect(validationErr).NotTo(HaveOccurred())
 			})
@@ -201,7 +201,7 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("returns an error", func() {
-				_, _, unexpectedErr, validationErr := l.ValidationInfo("cc-name", fakeQueryExecutor)
+				_, _, unexpectedErr, validationErr := l.ValidationInfo("", "cc-name", fakeQueryExecutor)
 				Expect(unexpectedErr).NotTo(HaveOccurred())
 				Expect(validationErr).To(MatchError("chaincode cc-name not found"))
 			})
@@ -213,7 +213,7 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, _, unexpectedErr, validationErr := l.ValidationInfo("cc-name", fakeQueryExecutor)
+				_, _, unexpectedErr, validationErr := l.ValidationInfo("", "cc-name", fakeQueryExecutor)
 				Expect(validationErr).NotTo(HaveOccurred())
 				Expect(unexpectedErr).To(MatchError(MatchRegexp("chaincode cc-name has bad definition: proto:.*")))
 			})
