@@ -16,6 +16,8 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 
+	"github.com/golang/protobuf/proto"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -177,27 +179,82 @@ var _ = Describe("Lifecycle", func() {
 		})
 
 		Describe("ChaincodeInfo", func() {
-			BeforeEach(func() {
-				fakeLegacyProvider.ChaincodeInfoReturns(&ledger.DeployedChaincodeInfo{
-					Name:    "legacy-name",
-					Hash:    []byte("hash"),
-					Version: "cc-version",
-				}, fmt.Errorf("chaincode-info-error"))
+			It("returns the info found in the new lifecycle", func() {
+				res, err := l.ChaincodeInfo("channel-name", "cc-name", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.Name).To(Equal("cc-name"))
+				Expect(res.Version).To(Equal("version"))
+				Expect(res.Hash).To(Equal([]byte("hash")))
+				Expect(proto.Equal(res.ExplicitCollectionConfigPkg, &cb.CollectionConfigPackage{})).To(BeTrue())
+				Expect(len(res.ImplicitCollections)).To(Equal(2))
 			})
 
-			It("passes through to the legacy impl", func() {
-				res, err := l.ChaincodeInfo("channel-name", "legacy-name", fakeQueryExecutor)
-				Expect(res).To(Equal(&ledger.DeployedChaincodeInfo{
-					Name:    "legacy-name",
-					Hash:    []byte("hash"),
-					Version: "cc-version",
-				}))
-				Expect(err).To(MatchError("chaincode-info-error"))
-				Expect(fakeLegacyProvider.ChaincodeInfoCallCount()).To(Equal(1))
-				channelID, ccName, qe := fakeLegacyProvider.ChaincodeInfoArgsForCall(0)
-				Expect(channelID).To(Equal("channel-name"))
-				Expect(ccName).To(Equal("legacy-name"))
-				Expect(qe).To(Equal(fakeQueryExecutor))
+			Context("when the requested chaincode is +lifecycle", func() {
+				It("returns the implicit collections only", func() {
+					res, err := l.ChaincodeInfo("channel-name", "+lifecycle", fakeQueryExecutor)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(res.Name).To(Equal("+lifecycle"))
+					Expect(len(res.ImplicitCollections)).To(Equal(2))
+					Expect(res.ExplicitCollectionConfigPkg).To(BeNil())
+				})
+			})
+
+			Context("when the implicit collections return an error", func() {
+				BeforeEach(func() {
+					fakeChannelConfig.ApplicationConfigReturns(nil, false)
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := l.ChaincodeInfo("channel-name", "cc-name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not create implicit collections for channel: could not get application config for channel channel-name"))
+				})
+			})
+
+			Context("when the ledger returns an error", func() {
+				BeforeEach(func() {
+					fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := l.ChaincodeInfo("channel-name", "cc-name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not get info about chaincode: could not deserialize metadata for chaincode cc-name: could not query metadata for namespace namespaces/cc-name: state-error"))
+				})
+			})
+
+			Context("when the chaincode cannot be found in the new lifecycle", func() {
+				BeforeEach(func() {
+					fakeLegacyProvider.ChaincodeInfoReturns(&ledger.DeployedChaincodeInfo{
+						Name:    "legacy-name",
+						Hash:    []byte("hash"),
+						Version: "cc-version",
+					}, fmt.Errorf("chaincode-info-error"))
+				})
+
+				It("passes through to the legacy impl", func() {
+					res, err := l.ChaincodeInfo("channel-name", "legacy-name", fakeQueryExecutor)
+					Expect(res).To(Equal(&ledger.DeployedChaincodeInfo{
+						Name:    "legacy-name",
+						Hash:    []byte("hash"),
+						Version: "cc-version",
+					}))
+					Expect(err).To(MatchError("chaincode-info-error"))
+					Expect(fakeLegacyProvider.ChaincodeInfoCallCount()).To(Equal(1))
+					channelID, ccName, qe := fakeLegacyProvider.ChaincodeInfoArgsForCall(0)
+					Expect(channelID).To(Equal("channel-name"))
+					Expect(ccName).To(Equal("legacy-name"))
+					Expect(qe).To(Equal(fakeQueryExecutor))
+				})
+			})
+
+			Context("when the data is corrupt", func() {
+				BeforeEach(func() {
+					fakePublicState["namespaces/fields/cc-name/Version"] = []byte("garbage")
+				})
+
+				It("wraps and returns that error", func() {
+					_, err := l.ChaincodeInfo("channel-name", "cc-name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/Version: proto: can't skip unknown wire type 7"))
+				})
 			})
 		})
 
