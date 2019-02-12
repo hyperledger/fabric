@@ -109,7 +109,7 @@ Firstly, different components of the blockchain network use certificates to
 identify themselves to each other as being from a particular organization.
 That's why there is usually more than one CA supporting a blockchain network --
 different organizations often use different CAs. We're going to use four CAs in
-our network; one of for each organization. Indeed, CAs are so important that
+our network; one for each organization. Indeed, CAs are so important that
 Hyperledger Fabric provides you with a built-in one (called *Fabric-CA*) to help
 you get going, though in practice, organizations will choose to use their own
 CA.
@@ -917,7 +917,7 @@ organizations may have their permissions increased or decreased. Let's
 investigate a little more how change policy is implemented in Hyperledger
 Fabric.
 
-They key point of understanding is that policy change is managed by a
+The key point of understanding is that policy change is managed by a
 policy within the policy itself.  The **modification policy**, or
 **mod_policy** for short, is a first class policy within a network or channel
 configuration that manages change. Let's give two brief examples of how we've
