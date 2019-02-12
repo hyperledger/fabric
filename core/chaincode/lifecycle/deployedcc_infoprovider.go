@@ -315,7 +315,7 @@ func (l *Lifecycle) ValidationInfo(channelID, chaincodeName string, qe ledger.Si
 		if err != nil {
 			return "", nil, errors.WithMessage(err, "unexpected failure to create lifecycle endorsement policy"), nil
 		}
-		return "builtin", b, nil, nil
+		return "vscc", b, nil, nil
 	}
 
 	return definedChaincode.ValidationInfo.ValidationPlugin, definedChaincode.ValidationInfo.ValidationParameter, nil, nil

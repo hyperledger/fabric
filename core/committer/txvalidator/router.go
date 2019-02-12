@@ -52,6 +52,6 @@ func NewTxValidator(
 	return &routingValidator{
 		ChannelResources: cr,
 		validator_v14:    validatorv14.NewTxValidator(chainID, sem, cr, sccp, pm),
-		validator_v20:    validatorv20.NewTxValidator(chainID, sem, cr, cr.Ledger(), lr, cor, sccp, pm, cpmg),
+		validator_v20:    validatorv20.NewTxValidator(chainID, sem, cr, cr.Ledger(), lr, cor, pm, cpmg),
 	}
 }

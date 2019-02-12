@@ -486,7 +486,7 @@ var _ = Describe("Lifecycle", func() {
 					vPlugin, vParm, uerr, verr := l.ValidationInfo("channel-id", "_lifecycle", fakeQueryExecutor)
 					Expect(uerr).NotTo(HaveOccurred())
 					Expect(verr).NotTo(HaveOccurred())
-					Expect(vPlugin).To(Equal("builtin"))
+					Expect(vPlugin).To(Equal("vscc"))
 					Expect(vParm).NotTo(BeNil())
 				})
 

@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
@@ -117,7 +116,6 @@ func NewTxValidator(
 	ler LedgerResources,
 	lcr plugindispatcher.LifecycleResources,
 	cor plugindispatcher.CollectionResources,
-	sccp sysccprovider.SystemChaincodeProvider,
 	pm plugin.Mapper,
 	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter,
 ) *TxValidator {
@@ -128,7 +126,7 @@ func NewTxValidator(
 		Semaphore:        sem,
 		ChannelResources: cr,
 		LedgerResources:  ler,
-		Dispatcher:       plugindispatcher.New(chainID, cr, ler, lcr, sccp, pluginValidator),
+		Dispatcher:       plugindispatcher.New(chainID, cr, ler, lcr, pluginValidator),
 	}
 }
 
