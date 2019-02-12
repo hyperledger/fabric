@@ -8,7 +8,6 @@ package plain
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -111,8 +110,9 @@ func (v *Verifier) checkImportOutputs(outputs []*token.PlainOutput, txID string,
 			return &customtx.InvalidTxError{Msg: fmt.Sprintf("output %d quantity is 0 in transaction: %s", i, txID)}
 		}
 
-		if output.Owner == nil {
-			return &customtx.InvalidTxError{Msg: fmt.Sprintf("missing owner in output for txID '%s'", txID)}
+		err = v.TokenOwnerValidator.Validate(output.Owner)
+		if err != nil {
+			return &customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err '%s'", txID, err)}
 		}
 	}
 	return nil
@@ -142,8 +142,6 @@ func (v *Verifier) checkRedeemAction(creator identity.PublicInfo, redeemAction *
 
 	// if output[1] presents, its owner must be same as the creator
 	if len(outputs) == 2 && !bytes.Equal(creator.Public(), outputs[1].Owner.Raw) {
-		println(hex.EncodeToString(creator.Public()))
-		println(hex.EncodeToString(outputs[1].Owner.Raw))
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("wrong owner for remaining tokens, should be original owner %s, but got %s", creator.Public(), outputs[1].Owner.Raw)}
 	}
 

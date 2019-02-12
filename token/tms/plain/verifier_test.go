@@ -199,7 +199,19 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("missing owner in output for txID '%s'", importTxID)}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'owner is nil'", importTxID)}))
+			})
+		})
+
+		Context("when an output has empty owner", func() {
+			BeforeEach(func() {
+				importTransaction.GetPlainAction().GetPlainImport().Outputs[0].Owner = &token.TokenOwner{}
+				importTxID = "no-owner-id"
+			})
+
+			It("returns an InvalidTxError", func() {
+				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, memoryLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'raw is empty'", importTxID)}))
 			})
 		})
 
@@ -935,7 +947,8 @@ func (TestTokenOwnerValidator) Validate(owner *token.TokenOwner) error {
 	}
 
 	if len(owner.Raw) == 0 {
-		return errors.New("raw is emptyr")
+		return errors.New("raw is empty")
 	}
+
 	return nil
 }
