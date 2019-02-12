@@ -207,7 +207,7 @@ func (lscc *LifeCycleSysCC) ChaincodeDefinition(chaincodeName string, qe ledger.
 // needs to tell apart the two types of error to halt processing on the channel if the
 // unexpected error is not nil and mark the transaction as invalid if the validation error
 // is not nil.
-func (lscc *LifeCycleSysCC) ValidationInfo(chaincodeName string, qe ledger.QueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error) {
+func (lscc *LifeCycleSysCC) ValidationInfo(chaincodeName string, qe ledger.SimpleQueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error) {
 	chaincodeDataBytes, err := qe.GetState("lscc", chaincodeName)
 	if err != nil {
 		// failure to access the ledger is clearly an unexpected
