@@ -88,14 +88,34 @@ func TestInitialize(t *testing.T) {
 	cleanup := setupPeerFS(t)
 	defer cleanup()
 
-	Initialize(nil, &ccprovider.MockCcProviderImpl{}, (&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(), plugin.MapBasedMapper(map[string]validation.PluginFactory{}), nil, &ledgermocks.DeployedChaincodeInfoProvider{}, nil, &disabled.Provider{}, nil)
+	Initialize(
+		nil,
+		&ccprovider.MockCcProviderImpl{},
+		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
+		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
+		nil,
+		&ledgermocks.DeployedChaincodeInfoProvider{},
+		nil,
+		&disabled.Provider{},
+		nil, nil,
+	)
 }
 
 func TestCreateChainFromBlock(t *testing.T) {
 	cleanup := setupPeerFS(t)
 	defer cleanup()
 
-	Initialize(nil, &ccprovider.MockCcProviderImpl{}, (&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(), plugin.MapBasedMapper(map[string]validation.PluginFactory{}), &platforms.Registry{}, &ledgermocks.DeployedChaincodeInfoProvider{}, nil, &disabled.Provider{}, nil)
+	Initialize(
+		nil,
+		&ccprovider.MockCcProviderImpl{},
+		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
+		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
+		&platforms.Registry{},
+		&ledgermocks.DeployedChaincodeInfoProvider{},
+		nil,
+		&disabled.Provider{},
+		nil, nil,
+	)
 	testChainID := fmt.Sprintf("mytestchainid-%d", rand.Int())
 	block, err := configtxtest.MakeGenesisBlock(testChainID)
 	if err != nil {
@@ -127,7 +147,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	err = CreateChainFromBlock(block, nil, nil, &mock.DeployedChaincodeInfoProvider{}, nil)
+	err = CreateChainFromBlock(block, nil, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to create chain %s", err)
 	}
