@@ -198,7 +198,7 @@ func (pe *PluginEndorser) EndorseWithPlugin(ctx Context) (*pb.ProposalResponse, 
 	return resp, nil
 }
 
-// getAndStorePlugin returns a plugin instance for the given plugin name and channel
+// getOrCreatePlugin returns a plugin instance for the given plugin name and channel
 func (pe *PluginEndorser) getOrCreatePlugin(plugin PluginName, channel string) (endorsement.Plugin, error) {
 	pluginFactory := pe.PluginFactoryByName(plugin)
 	if pluginFactory == nil {
