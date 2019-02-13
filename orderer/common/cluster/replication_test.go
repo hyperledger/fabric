@@ -1383,13 +1383,13 @@ func TestChannels(t *testing.T) {
 				err = proto.Unmarshal(blockbytes, block)
 				assert.NoError(t, err)
 
-				systemChain[len(systemChain)/2] = block
+				systemChain[len(systemChain)/2-1] = block
 				assignHashes(systemChain)
 			},
 			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
 				actual := cluster.GenesisBlocks(ci.Channels())
 				// Assert that the returned channels are returned in any order
-				assert.Contains(t, [][]string{{"mychannel", "bar"}, {"bar", "mychannel"}}, actual.Names())
+				assert.Contains(t, [][]string{{"mychannel2", "bar"}, {"bar", "mychannel2"}}, actual.Names())
 			},
 		},
 		{
@@ -1400,7 +1400,7 @@ func TestChannels(t *testing.T) {
 			},
 			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
 				panicValue := "System channel pulled doesn't match the boot last config block:" +
-					" block 4's hash (34762d9deefdea2514a85663856e92b5c7e1ae4669e6265b27b079d1f320e741)" +
+					" block 2's hash (bc4ef5cc8a61ac0747cc82df58bac9ad3278622c1cfc7a119b9b1068e422c9f1)" +
 					" mismatches 3's prev block hash ()"
 				assert.PanicsWithValue(t, panicValue, func() {
 					ci.Channels()
@@ -1411,11 +1411,11 @@ func TestChannels(t *testing.T) {
 			name: "bad path - hash chain mismatch",
 			prepareSystemChain: func(systemChain []*common.Block) {
 				assignHashes(systemChain)
-				systemChain[len(systemChain)/2].Header.PreviousHash = nil
+				systemChain[len(systemChain)-2].Header.PreviousHash = nil
 			},
 			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
-				panicValue := "Claimed previous hash of block 3 is  but actual previous " +
-					"hash is ab6be2effec106c0324f9d6b1af2cf115c60c3f60e250658362991cb8e195a50"
+				panicValue := "Claimed previous hash of block 2 is  but actual previous " +
+					"hash is 920faeb0bd8a02b3f2553247359fb3b684819c75c6e5487bc7eed632841ddc5f"
 				assert.PanicsWithValue(t, panicValue, func() {
 					ci.Channels()
 				})
@@ -1428,7 +1428,7 @@ func TestChannels(t *testing.T) {
 				systemChain[len(systemChain)-2].Data.Data = [][]byte{{1, 2, 3}}
 			},
 			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
-				panicValue := "Failed classifying block 3 : block data does not carry" +
+				panicValue := "Failed classifying block 2 : block data does not carry" +
 					" an envelope at index 0: error unmarshaling Envelope: " +
 					"proto: common.Envelope: illegal tag 0 (wire type 1)"
 				assert.PanicsWithValue(t, panicValue, func() {
@@ -1445,7 +1445,7 @@ func TestChannels(t *testing.T) {
 				systemChain[len(systemChain)/2] = nil
 			},
 			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
-				panicValue := "Failed pulling block 3 from the system channel"
+				panicValue := "Failed pulling block 2 from the system channel"
 				assert.PanicsWithValue(t, panicValue, func() {
 					ci.Channels()
 				})
@@ -1462,13 +1462,13 @@ func TestChannels(t *testing.T) {
 
 			for i := 0; i < len(systemChain); i++ {
 				systemChain[i].Header.DataHash = systemChain[i].Data.Hash()
-				systemChain[i].Header.Number = uint64(i + 1)
+				systemChain[i].Header.Number = uint64(i)
 			}
 			testCase.prepareSystemChain(systemChain)
 			puller := &mocks.ChainPuller{}
 			puller.On("Close")
-			for seq := uint64(1); int(seq) <= len(systemChain); seq++ {
-				puller.On("PullBlock", seq).Return(systemChain[int(seq)-1])
+			for seq := uint64(0); int(seq) < len(systemChain)-1; seq++ {
+				puller.On("PullBlock", seq).Return(systemChain[int(seq)])
 			}
 
 			ci := &cluster.ChainInspector{
