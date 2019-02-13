@@ -161,7 +161,7 @@ chaincode:
   mode: net
   keepalive: 0
   system:
-    +lifecycle: enable
+    _lifecycle: enable
     cscc:       enable
     lscc:       enable
     qscc:       enable

@@ -346,7 +346,7 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 			ccpack, err := GetChaincodeFromFS(ccname, ccversion)
 			if err != nil {
 				// either chaincode on filesystem has been tampered with or
-				// +lifecycle chaincode files exist in the chaincodes directory.
+				// _lifecycle chaincode files exist in the chaincodes directory.
 				continue
 			}
 

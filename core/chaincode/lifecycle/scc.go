@@ -22,7 +22,7 @@ import (
 
 const (
 	// LifecycleNamespace is the namespace in the statedb where lifecycle information is stored
-	LifecycleNamespace = "+lifecycle"
+	LifecycleNamespace = "_lifecycle"
 
 	//InstalledChaincodeFuncName is the chaincode function name used to install a chaincode
 	InstallChaincodeFuncName = "InstallChaincode"
@@ -101,7 +101,7 @@ type SCC struct {
 	Dispatcher *dispatcher.Dispatcher
 }
 
-// Name returns "+lifecycle"
+// Name returns "_lifecycle"
 func (scc *SCC) Name() string {
 	return LifecycleNamespace
 }

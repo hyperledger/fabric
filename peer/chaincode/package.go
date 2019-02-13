@@ -146,7 +146,7 @@ func (p *Packager) packageChaincode(args []string) error {
 	}
 	p.setInput(args[0])
 
-	// +lifecycle package
+	// _lifecycle package
 	if p.Input.NewLifecycle {
 		return p.packageCC()
 	}
@@ -170,7 +170,7 @@ func (p *Packager) setInput(outputFile string) {
 }
 
 // packageCC packages chaincodes into the package type,
-// (.tar.gz) used by the new +lifecycle and writes it to disk
+// (.tar.gz) used by the new _lifecycle and writes it to disk
 func (p *Packager) packageCC() error {
 	err := p.validateInput()
 	if err != nil {
@@ -237,7 +237,7 @@ func (p *Packager) packageCCLegacy() error {
 }
 
 // validateInput checks for the required inputs (chaincode language and path)
-// and any flags supported by the legacy lscc but not +lifecycle
+// and any flags supported by the legacy lscc but not _lifecycle
 func (p *Packager) validateInput() error {
 	if p.Input.Path == "" {
 		return errors.New("chaincode path must be set")
@@ -246,19 +246,19 @@ func (p *Packager) validateInput() error {
 		return errors.New("chaincode language must be set")
 	}
 	if p.Input.Name != "" {
-		return errors.New("chaincode name not supported by +lifecycle")
+		return errors.New("chaincode name not supported by _lifecycle")
 	}
 	if p.Input.Version != "" {
-		return errors.New("chaincode version not supported by +lifecycle")
+		return errors.New("chaincode version not supported by _lifecycle")
 	}
 	if p.Input.InstantiationPolicy != "" {
-		return errors.New("instantiation policy not supported by +lifecycle")
+		return errors.New("instantiation policy not supported by _lifecycle")
 	}
 	if p.Input.CreateSignedCCDepSpec {
-		return errors.New("signed package not supported by +lifecycle")
+		return errors.New("signed package not supported by _lifecycle")
 	}
 	if p.Input.SignCCDepSpec {
-		return errors.New("signing of chaincode package not supported by +lifecycle")
+		return errors.New("signing of chaincode package not supported by _lifecycle")
 	}
 
 	return nil

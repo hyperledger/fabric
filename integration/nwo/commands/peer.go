@@ -235,7 +235,7 @@ func (c ChaincodeInstantiate) Args() []string {
 type ChaincodeListInstalledPlusLifecycle struct{}
 
 func (c ChaincodeListInstalledPlusLifecycle) SessionName() string {
-	return "peer-chaincode-list-installed-+lifecycle"
+	return "peer-chaincode-list-installed-_lifecycle"
 }
 
 func (c ChaincodeListInstalledPlusLifecycle) Args() []string {

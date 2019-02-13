@@ -523,7 +523,7 @@ chaincode:
     # whitelist, add "myscc: enable" to the list below, and register in
     # chaincode/importsysccs.go
     system:
-        +lifecycle: enable
+        _lifecycle: enable
         cscc: enable
         lscc: enable
         escc: enable

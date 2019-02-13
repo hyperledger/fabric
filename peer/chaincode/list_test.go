@@ -59,7 +59,7 @@ func TestChaincodeListCmd(t *testing.T) {
 		}
 	})
 
-	t.Run("get installed chaincodes - +lifecycle", func(t *testing.T) {
+	t.Run("get installed chaincodes - _lifecycle", func(t *testing.T) {
 		resetFlags()
 		queryInstalledChaincodeResult := &lb.QueryInstalledChaincodesResult{
 			InstalledChaincodes: []*lb.QueryInstalledChaincodesResult_InstalledChaincode{

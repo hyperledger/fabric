@@ -18,7 +18,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-// DBMetadata describes the keys in a namespace.  It is necessary because
+// StateMetadata describes the keys in a namespace.  It is necessary because
 // in collections, range scans are not possible during transactions which
 // write.  Therefore we must track the keys in our namespace ourselves.
 type StateMetadata struct {
@@ -33,7 +33,7 @@ func (m *StateMetadata) Reset()         { *m = StateMetadata{} }
 func (m *StateMetadata) String() string { return proto.CompactTextString(m) }
 func (*StateMetadata) ProtoMessage()    {}
 func (*StateMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_db_7342255f8aba90fe, []int{0}
+	return fileDescriptor_db_6f46a6331700e30a, []int{0}
 }
 func (m *StateMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StateMetadata.Unmarshal(m, b)
@@ -84,7 +84,7 @@ func (m *StateData) Reset()         { *m = StateData{} }
 func (m *StateData) String() string { return proto.CompactTextString(m) }
 func (*StateData) ProtoMessage()    {}
 func (*StateData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_db_7342255f8aba90fe, []int{1}
+	return fileDescriptor_db_6f46a6331700e30a, []int{1}
 }
 func (m *StateData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StateData.Unmarshal(m, b)
@@ -266,9 +266,9 @@ func init() {
 	proto.RegisterType((*StateData)(nil), "lifecycle.StateData")
 }
 
-func init() { proto.RegisterFile("peer/lifecycle/db.proto", fileDescriptor_db_7342255f8aba90fe) }
+func init() { proto.RegisterFile("peer/lifecycle/db.proto", fileDescriptor_db_6f46a6331700e30a) }
 
-var fileDescriptor_db_7342255f8aba90fe = []byte{
+var fileDescriptor_db_6f46a6331700e30a = []byte{
 	// 244 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x90, 0x31, 0x4f, 0xc3, 0x30,
 	0x10, 0x85, 0x6b, 0x12, 0x22, 0x72, 0x82, 0x25, 0x43, 0x89, 0x98, 0xa2, 0x4e, 0x1e, 0x90, 0x3d,

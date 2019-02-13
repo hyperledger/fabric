@@ -270,7 +270,7 @@ func TestPackageCC(t *testing.T) {
 
 		err := p.packageChaincode(args)
 		assert.Error(err)
-		assert.Equal("chaincode name not supported by +lifecycle", err.Error())
+		assert.Equal("chaincode name not supported by _lifecycle", err.Error())
 	})
 
 	t.Run("getting the chaincode bytes fails", func(t *testing.T) {
@@ -350,7 +350,7 @@ func TestPackagerValidateInput(t *testing.T) {
 
 		err := p.validateInput()
 		assert.Error(err)
-		assert.Equal("chaincode name not supported by +lifecycle", err.Error())
+		assert.Equal("chaincode name not supported by _lifecycle", err.Error())
 	})
 
 	t.Run("version not supported", func(t *testing.T) {
@@ -362,7 +362,7 @@ func TestPackagerValidateInput(t *testing.T) {
 
 		err := p.validateInput()
 		assert.Error(err)
-		assert.Equal("chaincode version not supported by +lifecycle", err.Error())
+		assert.Equal("chaincode version not supported by _lifecycle", err.Error())
 	})
 
 	t.Run("instantiation policy not supported", func(t *testing.T) {
@@ -374,7 +374,7 @@ func TestPackagerValidateInput(t *testing.T) {
 
 		err := p.validateInput()
 		assert.Error(err)
-		assert.Equal("instantiation policy not supported by +lifecycle", err.Error())
+		assert.Equal("instantiation policy not supported by _lifecycle", err.Error())
 	})
 
 	t.Run("signed package not supported", func(t *testing.T) {
@@ -386,7 +386,7 @@ func TestPackagerValidateInput(t *testing.T) {
 
 		err := p.validateInput()
 		assert.Error(err)
-		assert.Equal("signed package not supported by +lifecycle", err.Error())
+		assert.Equal("signed package not supported by _lifecycle", err.Error())
 	})
 
 	t.Run("signing of chaincode package not supported", func(t *testing.T) {
@@ -398,7 +398,7 @@ func TestPackagerValidateInput(t *testing.T) {
 
 		err := p.validateInput()
 		assert.Error(err)
-		assert.Equal("signing of chaincode package not supported by +lifecycle", err.Error())
+		assert.Equal("signing of chaincode package not supported by _lifecycle", err.Error())
 	})
 }
 

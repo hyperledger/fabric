@@ -51,7 +51,7 @@ var _ = Describe("SCC", func() {
 
 	Describe("Name", func() {
 		It("returns the name", func() {
-			Expect(scc.Name()).To(Equal("+lifecycle"))
+			Expect(scc.Name()).To(Equal("_lifecycle"))
 		})
 	})
 

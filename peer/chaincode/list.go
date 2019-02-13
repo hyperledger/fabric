@@ -206,7 +206,7 @@ func createNewLifecycleQueryInstalledChaincodeProposal(creatorBytes []byte) (*pb
 
 	cis := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{
-			ChaincodeId: &pb.ChaincodeID{Name: "+lifecycle"},
+			ChaincodeId: &pb.ChaincodeID{Name: "_lifecycle"},
 			Input:       ccInput,
 		},
 	}

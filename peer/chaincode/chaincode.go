@@ -143,7 +143,7 @@ func resetFlags() {
 		fmt.Sprint("Whether to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully"))
 	flags.DurationVar(&waitForEventTimeout, "waitForEventTimeout", 30*time.Second,
 		fmt.Sprint("Time to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully"))
-	flags.BoolVarP(&newLifecycle, "newLifecycle", "N", false, "Run command using +lifecycle")
+	flags.BoolVarP(&newLifecycle, "newLifecycle", "N", false, "Run command using _lifecycle")
 	flags.BoolVarP(&createSignedCCDepSpec, "cc-package", "s", false, "create CC deployment spec for owner endorsements instead of raw CC deployment spec")
 	flags.BoolVarP(&signCCDepSpec, "sign", "S", false, "if creating CC deployment spec package for owner endorsements, also sign it with local MSP")
 	flags.StringVarP(&instantiationPolicy, "instantiate-policy", "i", "", "instantiation policy for the chaincode")
