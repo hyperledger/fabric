@@ -72,11 +72,11 @@ func (l *Lifecycle) ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQu
 		return l.LegacyImpl.ChaincodeDefinition(chaincodeName, qe)
 	}
 
-	if metadata.Datatype != DefinedChaincodeType {
+	if metadata.Datatype != ChaincodeDefinitionType {
 		return nil, errors.Errorf("not a chaincode type: %s", metadata.Datatype)
 	}
 
-	definedChaincode := &DefinedChaincode{}
+	definedChaincode := &ChaincodeDefinition{}
 	// Note, this is generally overkill, there's no reason to read keys for the whole definition, but that's how
 	// the old lifecycle does it, so to avoid contention, we'll reproduce that logic.  This interface should really be broken
 	// into retrieving different bits of chaincode data, like the hash, the endorsement plugin, etc. and only called as needed.
@@ -112,11 +112,11 @@ func (l *Lifecycle) ChaincodeContainerInfo(chaincodeName string, qe ledger.Simpl
 		return l.LegacyImpl.ChaincodeContainerInfo(chaincodeName, qe)
 	}
 
-	if metadata.Datatype != DefinedChaincodeType {
+	if metadata.Datatype != ChaincodeDefinitionType {
 		return nil, errors.Errorf("not a chaincode type: %s", metadata.Datatype)
 	}
 
-	definedChaincode := &DefinedChaincode{}
+	definedChaincode := &ChaincodeDefinition{}
 	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, definedChaincode, state)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))

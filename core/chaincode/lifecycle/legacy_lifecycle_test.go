@@ -47,7 +47,7 @@ var _ = Describe("Lifecycle", func() {
 			BeforeEach(func() {
 				err := l.Serializer.Serialize(lifecycle.NamespacesName,
 					"name",
-					&lifecycle.DefinedChaincode{
+					&lifecycle.ChaincodeDefinition{
 						Version:             "version",
 						Hash:                []byte("hash"),
 						EndorsementPlugin:   "endorsement-plugin",
@@ -161,7 +161,7 @@ var _ = Describe("Lifecycle", func() {
 
 				err := l.Serializer.Serialize(lifecycle.NamespacesName,
 					"name",
-					&lifecycle.DefinedChaincode{
+					&lifecycle.ChaincodeDefinition{
 						Version:             "version",
 						Hash:                []byte("hash"),
 						EndorsementPlugin:   "endorsement-plugin",

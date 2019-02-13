@@ -27,11 +27,11 @@ const (
 	// in the future.
 	NamespacesName = "namespaces"
 
-	// DefinedChaincodeType is the name of the type used to store defined chaincodes
-	DefinedChaincodeType = "DefinedChaincode"
+	// ChaincodeDefinitionType is the name of the type used to store defined chaincodes
+	ChaincodeDefinitionType = "ChaincodeDefinition"
 
-	// FriendlyDefinedChaincodeType is the name exposed to the outside world for the chaincode namespace
-	FriendlyDefinedChaincodeType = "Chaincode"
+	// FriendlyChaincodeDefinitionType is the name exposed to the outside world for the chaincode namespace
+	FriendlyChaincodeDefinitionType = "Chaincode"
 )
 
 // Public/World DB layout looks like the following:
@@ -41,7 +41,7 @@ const (
 //
 // So, for instance, a db might look like:
 //
-// namespaces/metadata/mycc:                   "DefinedChaincode"
+// namespaces/metadata/mycc:                   "ChaincodeDefinition"
 // namespaces/fields/mycc/Sequence             1 (The current sequence)
 // namespaces/fields/mycc/Version:             "1.3"
 // namespaces/fields/mycc/Hash:                []byte("some-hash")
@@ -66,14 +66,6 @@ const (
 // namespaces/fields/mycc#1/ValidationPlugin:    "builtin"
 // namespaces/fields/mycc#1/ValidationParameter: []byte("some-marshaled-signature-policy")
 
-// ChaincodeDefinition contains all of the information required to execute
-// and validate a chaincode.
-type ChaincodeDefinition struct {
-	Sequence   int64
-	Name       string
-	Parameters *ChaincodeParameters
-}
-
 // ChaincodeParameters are the parts of the chaincode definition which are serialized
 // as values in the statedb.
 // WARNING: This structure is serialized/deserialized from the DB, re-ordering or adding fields
@@ -87,11 +79,11 @@ type ChaincodeParameters struct {
 	Collections         *cb.CollectionConfigPackage
 }
 
-// DefinedChaincode contains the chaincode parameters, as well as the sequence number of the definition.
+// ChaincodeDefinition contains the chaincode parameters, as well as the sequence number of the definition.
 // Note, it does not embed ChaincodeParameters so as not to complicate the serialization.
 // WARNING: This structure is serialized/deserialized from the DB, re-ordering or adding fields
 // will cause opaque checks to fail.
-type DefinedChaincode struct {
+type ChaincodeDefinition struct {
 	Sequence            int64
 	Version             string
 	Hash                []byte
@@ -99,6 +91,18 @@ type DefinedChaincode struct {
 	ValidationPlugin    string
 	ValidationParameter []byte
 	Collections         *cb.CollectionConfigPackage
+}
+
+// Parameters returns the non-sequence info of the chaincode definition
+func (cd *ChaincodeDefinition) Parameters() *ChaincodeParameters {
+	return &ChaincodeParameters{
+		Version:             cd.Version,
+		Hash:                cd.Hash,
+		EndorsementPlugin:   cd.EndorsementPlugin,
+		ValidationPlugin:    cd.ValidationPlugin,
+		ValidationParameter: cd.ValidationParameter,
+		Collections:         cd.Collections,
+	}
 }
 
 // ChaincodeStore provides a way to persist chaincodes
@@ -134,12 +138,12 @@ type Lifecycle struct {
 	LegacyDeployedCCInfoProvider LegacyDeployedCCInfoProvider
 }
 
-// DefineChaincode takes a chaincode definition, checks that its sequence number is the next allowable sequence number,
+// CommitChaincodeDefinition takes a chaincode definition, checks that its sequence number is the next allowable sequence number,
 // checks which organizations agree with the definition, and applies the definition to the public world state.
 // It is the responsibility of the caller to check the agreement to determine if the result is valid (typically
 // this means checking that the peer's own org is in agreement.)
-func (l *Lifecycle) DefineChaincode(cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
-	currentSequence, err := l.Serializer.DeserializeFieldAsInt64(NamespacesName, cd.Name, "Sequence", publicState)
+func (l *Lifecycle) CommitChaincodeDefinition(name string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
+	currentSequence, err := l.Serializer.DeserializeFieldAsInt64(NamespacesName, name, "Sequence", publicState)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get current sequence")
 	}
@@ -149,33 +153,25 @@ func (l *Lifecycle) DefineChaincode(cd *ChaincodeDefinition, publicState ReadWri
 	}
 
 	agreement := make([]bool, len(orgStates))
-	privateName := fmt.Sprintf("%s#%d", cd.Name, cd.Sequence)
+	privateName := fmt.Sprintf("%s#%d", name, cd.Sequence)
 	for i, orgState := range orgStates {
-		match, err := l.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters, orgState)
+		match, err := l.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters(), orgState)
 		agreement[i] = (err == nil && match)
 	}
 
-	if err = l.Serializer.Serialize(NamespacesName, cd.Name, &DefinedChaincode{
-		Sequence:            cd.Sequence,
-		Version:             cd.Parameters.Version,
-		Hash:                cd.Parameters.Hash,
-		EndorsementPlugin:   cd.Parameters.EndorsementPlugin,
-		ValidationPlugin:    cd.Parameters.ValidationPlugin,
-		ValidationParameter: cd.Parameters.ValidationParameter,
-		Collections:         cd.Parameters.Collections,
-	}, publicState); err != nil {
+	if err = l.Serializer.Serialize(NamespacesName, name, cd, publicState); err != nil {
 		return nil, errors.WithMessage(err, "could not serialize chaincode definition")
 	}
 
 	return agreement, nil
 }
 
-// DefineChaincodeForOrg adds a chaincode definition entry into the passed in Org state.  The definition must be
+// ApproveChaincodeDefinitionForOrg adds a chaincode definition entry into the passed in Org state.  The definition must be
 // for either the currently defined sequence number or the next sequence number.  If the definition is
 // for the current sequence number, then it must match exactly the current definition or it will be rejected.
-func (l *Lifecycle) DefineChaincodeForOrg(cd *ChaincodeDefinition, publicState ReadableState, orgState ReadWritableState) error {
+func (l *Lifecycle) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, publicState ReadableState, orgState ReadWritableState) error {
 	// Get the current sequence from the public state
-	currentSequence, err := l.Serializer.DeserializeFieldAsInt64(NamespacesName, cd.Name, "Sequence", publicState)
+	currentSequence, err := l.Serializer.DeserializeFieldAsInt64(NamespacesName, name, "Sequence", publicState)
 	if err != nil {
 		return errors.WithMessage(err, "could not get current sequence")
 	}
@@ -195,43 +191,43 @@ func (l *Lifecycle) DefineChaincodeForOrg(cd *ChaincodeDefinition, publicState R
 	}
 
 	if requestedSequence == currentSequence {
-		definedChaincode := &DefinedChaincode{}
-		if err := l.Serializer.Deserialize(NamespacesName, cd.Name, definedChaincode, publicState); err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", cd.Name))
+		definedChaincode := &ChaincodeDefinition{}
+		if err := l.Serializer.Deserialize(NamespacesName, name, definedChaincode, publicState); err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", name))
 		}
 
 		switch {
-		case definedChaincode.Version != cd.Parameters.Version:
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Version '%s' != '%s'", currentSequence, cd.Name, definedChaincode.Version, cd.Parameters.Version)
-		case definedChaincode.EndorsementPlugin != cd.Parameters.EndorsementPlugin:
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but EndorsementPlugin '%s' != '%s'", currentSequence, cd.Name, definedChaincode.EndorsementPlugin, cd.Parameters.EndorsementPlugin)
-		case definedChaincode.ValidationPlugin != cd.Parameters.ValidationPlugin:
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but ValidationPlugin '%s' != '%s'", currentSequence, cd.Name, definedChaincode.ValidationPlugin, cd.Parameters.ValidationPlugin)
-		case !bytes.Equal(definedChaincode.ValidationParameter, cd.Parameters.ValidationParameter):
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but ValidationParameter '%x' != '%x'", currentSequence, cd.Name, definedChaincode.ValidationParameter, cd.Parameters.ValidationParameter)
-		case !bytes.Equal(definedChaincode.Hash, cd.Parameters.Hash):
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Hash '%x' != '%x'", currentSequence, cd.Name, definedChaincode.Hash, cd.Parameters.Hash)
-		case !proto.Equal(definedChaincode.Collections, cd.Parameters.Collections):
-			if proto.Equal(definedChaincode.Collections, &cb.CollectionConfigPackage{}) && cd.Parameters.Collections == nil {
+		case definedChaincode.Version != cd.Version:
+			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Version '%s' != '%s'", currentSequence, name, definedChaincode.Version, cd.Version)
+		case definedChaincode.EndorsementPlugin != cd.EndorsementPlugin:
+			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but EndorsementPlugin '%s' != '%s'", currentSequence, name, definedChaincode.EndorsementPlugin, cd.EndorsementPlugin)
+		case definedChaincode.ValidationPlugin != cd.ValidationPlugin:
+			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but ValidationPlugin '%s' != '%s'", currentSequence, name, definedChaincode.ValidationPlugin, cd.ValidationPlugin)
+		case !bytes.Equal(definedChaincode.ValidationParameter, cd.ValidationParameter):
+			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but ValidationParameter '%x' != '%x'", currentSequence, name, definedChaincode.ValidationParameter, cd.ValidationParameter)
+		case !bytes.Equal(definedChaincode.Hash, cd.Hash):
+			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Hash '%x' != '%x'", currentSequence, name, definedChaincode.Hash, cd.Hash)
+		case !proto.Equal(definedChaincode.Collections, cd.Collections):
+			if proto.Equal(definedChaincode.Collections, &cb.CollectionConfigPackage{}) && cd.Collections == nil {
 				break
 			}
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Collections do not match", currentSequence, cd.Name)
+			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Collections do not match", currentSequence, name)
 		default:
 		}
 	}
 
-	privateName := fmt.Sprintf("%s#%d", cd.Name, requestedSequence)
-	if err := l.Serializer.Serialize(NamespacesName, privateName, cd.Parameters, orgState); err != nil {
+	privateName := fmt.Sprintf("%s#%d", name, requestedSequence)
+	if err := l.Serializer.Serialize(NamespacesName, privateName, cd.Parameters(), orgState); err != nil {
 		return errors.WithMessage(err, "could not serialize chaincode parameters to state")
 	}
 
 	return nil
 }
 
-// QueryDefinedChaincode returns the defined chaincode by the given name (if it is defined, and a chaincode)
+// QueryChaincodeDefinition returns the defined chaincode by the given name (if it is defined, and a chaincode)
 // or otherwise returns an error.
-func (l *Lifecycle) QueryDefinedChaincode(name string, publicState ReadableState) (*DefinedChaincode, error) {
-	definedChaincode := &DefinedChaincode{}
+func (l *Lifecycle) QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error) {
+	definedChaincode := &ChaincodeDefinition{}
 	if err := l.Serializer.Deserialize(NamespacesName, name, definedChaincode, publicState); err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", name))
 	}
@@ -256,10 +252,10 @@ func (l *Lifecycle) InstallChaincode(name, version string, chaincodeInstallPacka
 	return hash, nil
 }
 
-// QueryDefinedNamespaces lists the publicly defined namespaces in a channel.  Today it should only ever
-// find Datatype encodings of 'DefinedChaincode'.  In the future as we support encodings like 'TokenManagementSystem'
+// QueryNamespaceDefinitions lists the publicly defined namespaces in a channel.  Today it should only ever
+// find Datatype encodings of 'ChaincodeDefinition'.  In the future as we support encodings like 'TokenManagementSystem'
 // or similar, additional statements will be added to the switch.
-func (l *Lifecycle) QueryDefinedNamespaces(publicState RangeableState) (map[string]string, error) {
+func (l *Lifecycle) QueryNamespaceDefinitions(publicState RangeableState) (map[string]string, error) {
 	metadatas, err := l.Serializer.DeserializeAllMetadata(NamespacesName, publicState)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not query namespace metadata")
@@ -268,8 +264,8 @@ func (l *Lifecycle) QueryDefinedNamespaces(publicState RangeableState) (map[stri
 	result := map[string]string{}
 	for key, value := range metadatas {
 		switch value.Datatype {
-		case DefinedChaincodeType:
-			result[key] = FriendlyDefinedChaincodeType
+		case ChaincodeDefinitionType:
+			result[key] = FriendlyChaincodeDefinitionType
 		default:
 			// This should never execute, but seems preferable to returning an error
 			result[key] = value.Datatype
