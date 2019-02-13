@@ -234,6 +234,9 @@ func LoadCertificateECDSA(certPath string) (*x509.Certificate, error) {
 				return errors.Errorf("%s: wrong PEM encoding", path)
 			}
 			cert, err = utils.DERToX509Certificate(block.Bytes)
+			if err != nil {
+				return errors.Errorf("%s: wrong DER encoding", path)
+			}
 		}
 		return nil
 	}

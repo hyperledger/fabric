@@ -14,11 +14,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/hyperledger/fabric/common/tools/cryptogen/ca"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -83,6 +82,22 @@ func TestLoadCertificateECDSA_wrongEncoding(t *testing.T) {
 	_, err = ca.LoadCertificateECDSA(dir)
 	assert.NotNil(t, err)
 	assert.EqualError(t, err, filename+": wrong PEM encoding")
+}
+
+func TestLoadCertificateECDSA_empty_DER_cert(t *testing.T) {
+	dir, err := ioutil.TempDir("", "empty_cert")
+	require.NoError(t, err, "failed to create test directory")
+	defer cleanup(dir)
+
+	filename := filepath.Join(dir, "empty_cert.pem")
+	empty_cert := "-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----"
+	err = ioutil.WriteFile(filename, []byte(empty_cert), 0644)
+	require.NoErrorf(t, err, "failed to create file %s", filename)
+
+	cert, err := ca.LoadCertificateECDSA(dir)
+	assert.Nil(t, cert)
+	assert.NotNil(t, err)
+	assert.EqualError(t, err, filename+": wrong DER encoding")
 }
 
 func TestNewCA(t *testing.T) {
