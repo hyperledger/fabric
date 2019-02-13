@@ -106,8 +106,9 @@ func (v *Verifier) checkImportOutputs(outputs []*token.Token, txID string, simul
 			return err
 		}
 
-		if output.Quantity == 0 {
-			return &customtx.InvalidTxError{Msg: fmt.Sprintf("output %d quantity is 0 in transaction: %s", i, txID)}
+		_, err = ToQuantity(output.Quantity)
+		if err != nil {
+			return &customtx.InvalidTxError{Msg: fmt.Sprintf("output %d quantity is invalid in transaction: %s", i, txID)}
 		}
 
 		err = v.TokenOwnerValidator.Validate(output.Owner)
@@ -168,7 +169,11 @@ func (v *Verifier) checkInputsAndOutputs(
 	if outputType != inputType {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("token type mismatch in inputs and outputs for transaction ID %s (%s vs %s)", txID, outputType, inputType)}
 	}
-	if outputSum != inputSum {
+	cmp, err := outputSum.Cmp(inputSum)
+	if err != nil {
+		return &customtx.InvalidTxError{Msg: fmt.Sprintf("cannot compare quantities '%s'", err)}
+	}
+	if cmp != 0 {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("token sum mismatch in inputs and outputs for transaction ID %s (%d vs %d)", txID, outputSum, inputSum)}
 	}
 	return nil
@@ -197,70 +202,92 @@ func (v *Verifier) checkOutputDoesNotExist(index int, output *token.Token, txID 
 	return nil
 }
 
-func (v *Verifier) checkOutputs(outputs []*token.Token, txID string, simulator ledger.LedgerReader, ownerRequired bool) (string, uint64, error) {
+func (v *Verifier) checkOutputs(outputs []*token.Token, txID string, simulator ledger.LedgerReader, ownerRequired bool) (string, Quantity, error) {
 	tokenType := ""
-	tokenSum := uint64(0)
+	tokenSum := NewZeroQuantity()
 	for i, output := range outputs {
 		err := v.checkOutputDoesNotExist(i, output, txID, simulator)
 		if err != nil {
-			return "", 0, err
+			return "", nil, err
 		}
 		if tokenType == "" {
 			tokenType = output.GetType()
 		} else if tokenType != output.GetType() {
-			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types ('%s', '%s') in output for txID '%s'", tokenType, output.GetType(), txID)}
+			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types ('%s', '%s') in output for txID '%s'", tokenType, output.GetType(), txID)}
 		}
 		if ownerRequired {
 			err = v.TokenOwnerValidator.Validate(output.GetOwner())
 			if err != nil {
-				return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err '%s'", txID, err)}
+				return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err '%s'", txID, err)}
 			}
 		}
-		tokenSum += output.GetQuantity()
+		quantity, err := ToQuantity(output.GetQuantity())
+		if err != nil {
+			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("quantity in output [%d] is invalid, err '%s'", output.GetQuantity(), err)}
+		}
+
+		tokenSum, err = tokenSum.Add(quantity)
+		if err != nil {
+			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("failed adding up output quantities, err '%s'", err)}
+		}
+
 	}
 	return tokenType, tokenSum, nil
 }
 
-func (v *Verifier) checkInputs(creator identity.PublicInfo, tokenIds []*token.TokenId, txID string, simulator ledger.LedgerReader) (string, uint64, error) {
+func (v *Verifier) checkInputs(creator identity.PublicInfo, tokenIds []*token.TokenId, txID string, simulator ledger.LedgerReader) (string, Quantity, error) {
+	if len(tokenIds) == 0 {
+		return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("no tokenIds in transaction: %s", txID)}
+	}
+
 	tokenType := ""
-	inputSum := uint64(0)
+	inputSum := NewZeroQuantity()
 	processedIDs := make(map[string]bool)
 	for _, id := range tokenIds {
 		inputKey, err := createOutputKey(id.TxId, int(id.Index))
 		if err != nil {
-			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating output ID for transfer input: %s", err)}
+			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating output ID for transfer input: %s", err)}
 		}
 		input, err := v.getOutput(inputKey, simulator)
 		if err != nil {
-			return "", 0, err
+			return "", nil, err
 		}
 		if input == nil {
-			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("input with ID %s for transfer does not exist", inputKey)}
+			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("input with ID %s for transfer does not exist", inputKey)}
 		}
 		err = v.checkInputOwner(creator, input, inputKey)
 		if err != nil {
-			return "", 0, err
+			return "", nil, err
 		}
 		if tokenType == "" {
 			tokenType = input.GetType()
 		} else if tokenType != input.GetType() {
-			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types in input for txID: %s (%s, %s)", txID, tokenType, input.GetType())}
+			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types in input for txID: %s (%s, %s)", txID, tokenType, input.GetType())}
 		}
 		if processedIDs[inputKey] {
-			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("token input '%s' spent more than once in transaction ID '%s'", inputKey, txID)}
+			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("token input '%s' spent more than once in transaction ID '%s'", inputKey, txID)}
 		}
 		processedIDs[inputKey] = true
-		inputSum += input.GetQuantity()
+
+		inputQuantity, err := ToQuantity(input.GetQuantity())
+		if err != nil {
+			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("quantity in output [%d] is invalid, err '%s'", input.GetQuantity(), err)}
+		}
+		inputSum, err = inputSum.Add(inputQuantity)
+		if err != nil {
+			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("failed adding up input quantities, err '%s'", err)}
+		}
+
 		spentKey, err := createSpentKey(id.TxId, int(id.Index))
 		if err != nil {
-			return "", 0, err
+			return "", nil, err
 		}
 		spent, err := v.isSpent(spentKey, simulator)
 		if err != nil {
-			return "", 0, err
+			return "", nil, err
 		}
 		if spent {
-			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("input with ID %s for transfer has already been spent", inputKey)}
+			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("input with ID %s for transfer has already been spent", inputKey)}
 		}
 	}
 	return tokenType, inputSum, nil

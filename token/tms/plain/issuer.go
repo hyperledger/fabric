@@ -25,10 +25,15 @@ func (i *Issuer) RequestImport(tokensToIssue []*token.TokenToIssue) (*token.Toke
 		if err != nil {
 			return nil, errors.Errorf("invalid recipient in issue request '%s'", err)
 		}
+		q, err := ToQuantity(tti.Quantity)
+		if err != nil {
+			return nil, errors.Errorf("invalid quantity in issue request '%s'", err)
+		}
+
 		outputs = append(outputs, &token.Token{
 			Owner:    tti.Recipient,
 			Type:     tti.Type,
-			Quantity: tti.Quantity,
+			Quantity: q.ToUInt64(),
 		})
 	}
 

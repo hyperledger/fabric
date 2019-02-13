@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/hyperledger/fabric/token/identity"
@@ -173,7 +174,7 @@ var _ = Describe("Verifier", func() {
 			It("returns an error", func() {
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "output 0 quantity is 0 in transaction: 0"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "output 0 quantity is invalid in transaction: 0"}))
 			})
 		})
 
@@ -622,28 +623,31 @@ var _ = Describe("Verifier", func() {
 
 		Context("when an output already exists", func() {
 			BeforeEach(func() {
+				memoryLedger = plain.NewMemoryLedger()
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
+				Expect(err).NotTo(HaveOccurred())
+
 				transferTransaction = &token.TokenTransaction{
 					Action: &token.TokenTransaction_TokenAction{
 						TokenAction: &token.TokenAction{
 							Data: &token.TokenAction_Transfer{
 								Transfer: &token.Transfer{
-									Inputs: []*token.TokenId{},
+									Inputs: []*token.TokenId{
+										{TxId: "0", Index: 0},
+									},
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "", Quantity: 0},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 111},
 									},
 								},
 							},
 						},
 					},
 				}
-				memoryLedger = plain.NewMemoryLedger()
-				err := verifier.ProcessTx(issueTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).NotTo(HaveOccurred())
 			})
 			It("returns an error", func() {
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, transferTransaction, memoryLedger)
 				Expect(err).To(HaveOccurred())
-				existingOutputId := string("\x00") + "tokenOutput" + string("\x00") + "0" + string("\x00") + "0" + string("\x00")
+				existingOutputId := string("\x00") + "tokenOutput" + string("\x00") + issueTxID + string("\x00") + "0" + string("\x00")
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("output already exists: %s", existingOutputId)}))
 			})
 		})
@@ -658,6 +662,82 @@ var _ = Describe("Verifier", func() {
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'owner is nil'", transferTxID)}))
 			})
 		})
+
+		Context("when the sum of the inputs produces an overflow", func() {
+			BeforeEach(func() {
+				issueTxID = "1"
+				issueTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Issue{
+								Issue: &token.Issue{
+									Outputs: []*token.Token{
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: math.MaxUint64},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 10},
+									},
+								},
+							},
+						},
+					},
+				}
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
+				Expect(err).NotTo(HaveOccurred())
+
+				transferTxID = "2"
+				transferTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Transfer{
+								Transfer: &token.Transfer{
+									Inputs: []*token.TokenId{
+										{TxId: "1", Index: 0},
+										{TxId: "1", Index: 1},
+									},
+									Outputs: []*token.Token{
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 10},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: 10},
+									},
+								},
+							},
+						},
+					},
+				}
+			})
+
+			It("it fails", func() {
+				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
+				Expect(err).To(MatchError("failed adding up input quantities, err '18446744073709551615 + 10 = overflow'"))
+			})
+		})
+
+		Context("when the sum of the outputs produces an overflow", func() {
+			BeforeEach(func() {
+				transferTxID = "1"
+				transferTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Transfer{
+								Transfer: &token.Transfer{
+									Inputs: []*token.TokenId{
+										{TxId: "0", Index: 0},
+									},
+									Outputs: []*token.Token{
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: math.MaxUint64},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: math.MaxUint64},
+									},
+								},
+							},
+						},
+					},
+				}
+			})
+
+			It("it fails", func() {
+				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
+				Expect(err).To(MatchError("failed adding up output quantities, err '18446744073709551615 + 18446744073709551615 = overflow'"))
+			})
+		})
+
 	})
 
 	Describe("Test ProcessTx Redeem with memory ledger", func() {

@@ -50,10 +50,15 @@ func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.Tok
 		if err != nil {
 			return nil, errors.Errorf("invalid recipient in transfer request '%s'", err)
 		}
+		q, err := ToQuantity(ttt.Quantity)
+		if err != nil {
+			return nil, errors.Errorf("invalid quantity in transfer request '%s'", err)
+		}
+
 		outputs = append(outputs, &token.Token{
 			Owner:    ttt.Recipient,
 			Type:     tokenType,
-			Quantity: ttt.Quantity,
+			Quantity: q.ToUInt64(),
 		})
 	}
 
@@ -79,8 +84,9 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 	if len(request.GetTokenIds()) == 0 {
 		return nil, errors.New("no token ids in RedeemRequest")
 	}
-	if request.GetQuantityToRedeem() <= 0 {
-		return nil, errors.Errorf("quantity to redeem [%d] must be greater than 0", request.GetQuantityToRedeem())
+	quantityToRedeem, err := ToQuantity(request.GetQuantityToRedeem())
+	if err != nil {
+		return nil, errors.Errorf("quantity to redeem [%d] is invalid, err '%s'", request.GetQuantityToRedeem(), err)
 	}
 
 	tokenType, quantitySum, err := t.getInputsFromTokenIds(request.GetTokenIds())
@@ -88,7 +94,11 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 		return nil, err
 	}
 
-	if quantitySum < request.QuantityToRedeem {
+	cmp, err := quantitySum.Cmp(quantityToRedeem)
+	if err != nil {
+		return nil, errors.Errorf("cannot compare quantities '%s'", err)
+	}
+	if cmp < 0 {
 		return nil, errors.Errorf("total quantity [%d] from TokenIds is less than quantity [%d] to be redeemed", quantitySum, request.QuantityToRedeem)
 	}
 
@@ -96,16 +106,21 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 	var outputs []*token.Token
 	outputs = append(outputs, &token.Token{
 		Type:     tokenType,
-		Quantity: request.QuantityToRedeem,
+		Quantity: quantityToRedeem.ToUInt64(),
 	})
 
 	// add another output if there is remaining quantity after redemption
-	if quantitySum > request.QuantityToRedeem {
+	if cmp > 0 {
+		change, err := quantitySum.Sub(quantityToRedeem)
+		if err != nil {
+			return nil, errors.Errorf("failed computing change, err '%s'", err)
+		}
+
 		outputs = append(outputs, &token.Token{
 			// note that tokenOwner type may change in the future depending on creator type
 			Owner:    &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}, // PublicCredential is serialized identity for the creator
 			Type:     tokenType,
-			Quantity: quantitySum - request.QuantityToRedeem,
+			Quantity: change.ToUInt64(),
 		})
 	}
 
@@ -128,15 +143,15 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 
 // read token data from ledger for each token ids and calculate the sum of quantities for all token ids
 // Returns TokenIds, token type, sum of token quantities, and error in the case of failure
-func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, uint64, error) {
+func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, Quantity, error) {
 	var tokenType = ""
-	var quantitySum uint64 = 0
+	var sum = NewZeroQuantity()
 	for _, tokenId := range tokenIds {
 		// create the composite key from tokenId
 		inKey, err := createCompositeKey(tokenOutput, []string{tokenId.TxId, strconv.Itoa(int(tokenId.Index))})
 		if err != nil {
 			verifierLogger.Errorf("error getting creating input key: %s", err)
-			return "", 0, err
+			return "", nil, err
 		}
 		verifierLogger.Debugf("transferring token with ID: '%s'", inKey)
 
@@ -145,34 +160,42 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, u
 		inBytes, err := t.Ledger.GetState(tokenNameSpace, inKey)
 		if err != nil {
 			verifierLogger.Errorf("error getting output '%s' to spend from ledger: %s", inKey, err)
-			return "", 0, err
+			return "", nil, err
 		}
 		if len(inBytes) == 0 {
-			return "", 0, errors.New(fmt.Sprintf("input '%s' does not exist", inKey))
+			return "", nil, errors.New(fmt.Sprintf("input '%s' does not exist", inKey))
 		}
 		input := &token.Token{}
 		err = proto.Unmarshal(inBytes, input)
 		if err != nil {
-			return "", 0, errors.New(fmt.Sprintf("error unmarshaling input bytes: '%s'", err))
+			return "", nil, errors.New(fmt.Sprintf("error unmarshaling input bytes: '%s'", err))
 		}
 
 		// check the owner of the token
 		if !bytes.Equal(t.PublicCredential, input.Owner.Raw) {
-			return "", 0, errors.New(fmt.Sprintf("the requestor does not own inputs"))
+			return "", nil, errors.New(fmt.Sprintf("the requestor does not own inputs"))
 		}
 
 		// check the token type - only one type allowed per transfer
 		if tokenType == "" {
 			tokenType = input.Type
 		} else if tokenType != input.Type {
-			return "", 0, errors.New(fmt.Sprintf("two or more token types specified in input: '%s', '%s'", tokenType, input.Type))
+			return "", nil, errors.New(fmt.Sprintf("two or more token types specified in input: '%s', '%s'", tokenType, input.Type))
 		}
 
 		// sum up the quantity
-		quantitySum += input.Quantity
+		quantity, err := ToQuantity(input.Quantity)
+		if err != nil {
+			return "", nil, errors.Errorf("quantity in input [%d] is invalid, err '%s'", input.Quantity, err)
+		}
+
+		sum, err = sum.Add(quantity)
+		if err != nil {
+			return "", nil, errors.Errorf("failed adding up quantities, err '%s'", err)
+		}
 	}
 
-	return tokenType, quantitySum, nil
+	return tokenType, sum, nil
 }
 
 // ListTokens creates a TokenTransaction that lists the unspent tokens owned by owner.
@@ -265,16 +288,29 @@ func (t *Transactor) RequestExpectation(request *token.ExpectationRequest) (*tok
 	if outputType != inputType {
 		return nil, errors.Errorf("token type mismatch in inputs and outputs for expectation (%s vs %s)", outputType, inputType)
 	}
-	if outputSum > inputSum {
+	cmp, err := outputSum.Cmp(inputSum)
+	if err != nil {
+		return nil, errors.Errorf("cannot compare quantities '%s'", err)
+	}
+	if cmp > 0 {
 		return nil, errors.Errorf("total quantity [%d] from TokenIds is less than total quantity [%d] in expectation", inputSum, outputSum)
 	}
 
 	// inputs may have remaining tokens after outputs - add a new output in this case
-	if inputSum > outputSum {
+	cmp, err = inputSum.Cmp(outputSum)
+	if err != nil {
+		return nil, errors.Errorf("cannot compare quantities '%s'", err)
+	}
+	if cmp > 0 {
+		change, err := inputSum.Sub(outputSum)
+		if err != nil {
+			return nil, errors.Errorf("failed computing change, err '%s'", err)
+		}
+
 		outputs = append(outputs, &token.Token{
 			Owner:    &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}, // PublicCredential is serialized identity for the creator
 			Type:     outputType,
-			Quantity: inputSum - outputSum,
+			Quantity: change.ToUInt64(),
 		})
 	}
 
@@ -359,20 +395,28 @@ func splitCompositeKey(compositeKey string) (string, []string, error) {
 }
 
 // parseOutputs iterates each output to verify token type and calculate the sum
-func parseOutputs(outputs []*token.Token) (string, uint64, error) {
+func parseOutputs(outputs []*token.Token) (string, Quantity, error) {
 	if len(outputs) == 0 {
-		return "", 0, errors.New("no outputs in request")
+		return "", nil, errors.New("no outputs in request")
 	}
 
 	outputType := ""
-	outputSum := uint64(0)
+	outputSum := NewZeroQuantity()
 	for _, output := range outputs {
 		if outputType == "" {
 			outputType = output.GetType()
 		} else if outputType != output.GetType() {
-			return "", 0, errors.Errorf("multiple token types ('%s', '%s') in outputs", outputType, output.GetType())
+			return "", nil, errors.Errorf("multiple token types ('%s', '%s') in outputs", outputType, output.GetType())
 		}
-		outputSum += output.GetQuantity()
+		quantity, err := ToQuantity(output.GetQuantity())
+		if err != nil {
+			return "", nil, errors.Errorf("quantity in output [%d] is invalid, err '%s'", output.GetQuantity(), err)
+		}
+
+		outputSum, err = outputSum.Add(quantity)
+		if err != nil {
+			return "", nil, errors.Errorf("failed adding up quantities, err '%s'", err)
+		}
 	}
 
 	return outputType, outputSum, nil
