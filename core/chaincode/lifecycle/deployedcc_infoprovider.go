@@ -14,8 +14,24 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/protos/msp"
+	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/pkg/errors"
+)
+
+const (
+	LifecycleEndorsementPolicyRef = "/Channel/Application/LifecycleEndorsement"
+)
+
+var (
+	// This is a channel which was created with a lifecycle endorsement policy
+	LifecycleDefaultEndorsementPolicyBytes = utils.MarshalOrPanic(&pb.ApplicationPolicy{
+		Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+			ChannelConfigPolicyReference: LifecycleEndorsementPolicyRef,
+		},
+	})
 )
 
 // Namespaces returns the list of namespaces which are relevant to chaincode lifecycle
@@ -203,4 +219,70 @@ func GenerateImplicitCollectionForOrg(mspid string) *cb.StaticCollectionConfig {
 
 func ImplicitCollectionNameForOrg(mspid string) string {
 	return fmt.Sprintf("_implicit_org_%s", mspid)
+}
+
+func (l *Lifecycle) LifecycleEndorsementPolicyAsBytes(channelID string) ([]byte, error) {
+	channelConfig := l.ChannelConfigSource.GetStableChannelConfig(channelID)
+	if channelConfig == nil {
+		return nil, errors.Errorf("could not get channel config for channel '%s'", channelID)
+	}
+
+	if _, ok := channelConfig.PolicyManager().GetPolicy(LifecycleEndorsementPolicyRef); ok {
+		return LifecycleDefaultEndorsementPolicyBytes, nil
+	}
+
+	// This was a channel which was upgraded or did not define a lifecycle endorsement policy, use a default
+	// of "a majority of orgs must have a member sign".
+	ac, ok := channelConfig.ApplicationConfig()
+	if !ok {
+		return nil, errors.Errorf("could not get application config for channel '%s'", channelID)
+	}
+	orgs := ac.Organizations()
+	mspids := make([]string, 0, len(orgs))
+	for _, org := range orgs {
+		mspids = append(mspids, org.MSPID())
+	}
+
+	return utils.MarshalOrPanic(&pb.ApplicationPolicy{
+		Type: &pb.ApplicationPolicy_SignaturePolicy{
+			SignaturePolicy: cauthdsl.SignedByNOutOfGivenRole(int32(len(mspids)/2+1), msp.MSPRole_MEMBER, mspids),
+		},
+	}), nil
+}
+
+// ValidationInfo returns the name and arguments of the validation plugin for the supplied
+// chaincode. The function returns two types of errors, unexpected errors and validation
+// errors. The reason for this is that this function is called from the validation code,
+// which needs to differentiate the two types of error to halt processing on the channel
+// if the unexpected error is not nil and mark the transaction as invalid if the validation
+// error is not nil.
+func (l *Lifecycle) ValidationInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error) {
+	// TODO, this is a bit of an overkill check, and will need to be scaled back for non-chaincode type namespaces
+	exists, state, err := l.ChaincodeInNewLifecycle(chaincodeName, qe)
+	if err != nil {
+		return "", nil, errors.WithMessage(err, "could not get chaincode"), nil
+	}
+
+	if !exists {
+		// TODO, this is inconsistent with how the legacy lifecycle reports
+		// that a missing chaincode is a validation error.  But, for now
+		// this is required to make the passthrough work.
+		return "", nil, nil, nil
+	}
+
+	if chaincodeName == LifecycleNamespace {
+		b, err := l.LifecycleEndorsementPolicyAsBytes(channelID)
+		if err != nil {
+			return "", nil, errors.WithMessage(err, "unexpected failure to create lifecycle endorsement policy"), nil
+		}
+		return "builtin", b, nil, nil
+	}
+
+	definedChaincode := &DefinedChaincode{}
+	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, definedChaincode, state)
+	if err != nil {
+		return "", nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName)), nil
+	}
+
+	return definedChaincode.ValidationPlugin, definedChaincode.ValidationParameter, nil, nil
 }

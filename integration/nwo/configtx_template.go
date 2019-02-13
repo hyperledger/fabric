@@ -20,6 +20,9 @@ Organizations:{{ range .PeerOrgs }}
     Writers:
       Type: Signature
       Rule: OR('{{.MSPID}}.admin', '{{.MSPID}}.client')
+    Endorsement:
+      Type: Signature
+      Rule: OR('{{.MSPID}}.peer')
     Admins:
       Type: Signature
       Rule: OR('{{.MSPID}}.admin')
@@ -132,6 +135,12 @@ Profiles:{{ range .Profiles }}
         Admins:
           Type: ImplicitMeta
           Rule: MAJORITY Admins
+        LifecycleEndorsement:
+          Type: ImplicitMeta
+          Rule: "MAJORITY Endorsement"
+        Endorsement:
+          Type: ImplicitMeta
+          Rule: "MAJORITY Endorsement"
     Consortium: {{ .Consortium }}
     {{- end }}
 {{- end }}

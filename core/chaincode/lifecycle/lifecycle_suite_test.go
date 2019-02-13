@@ -12,6 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
@@ -81,6 +82,11 @@ type applicationConfig interface {
 //go:generate counterfeiter -o mock/application_org_config.go --fake-name ApplicationOrgConfig . applicationOrgConfig
 type applicationOrgConfig interface {
 	channelconfig.ApplicationOrg
+}
+
+//go:generate counterfeiter -o mock/policy_manager.go --fake-name PolicyManager . policyManager
+type policyManager interface {
+	policies.Manager
 }
 
 func TestLifecycle(t *testing.T) {
