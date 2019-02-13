@@ -107,9 +107,12 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 		return errors.WithMessage(err, fmt.Sprintf("structure for namespace %s/%s is not serializable", namespace, name))
 	}
 
-	metadata, err := s.DeserializeMetadata(namespace, name, state, false)
+	metadata, ok, err := s.DeserializeMetadata(namespace, name, state)
 	if err != nil {
 		return errors.WithMessage(err, fmt.Sprintf("could not deserialize metadata for namespace %s/%s", namespace, name))
+	}
+	if !ok {
+		metadata = &lb.StateMetadata{}
 	}
 
 	existingKeys := map[string][]byte{}
@@ -275,9 +278,12 @@ func (s *Serializer) Deserialize(namespace, name string, structure interface{}, 
 		return errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s/%s to unserializable type %T", namespace, name, structure))
 	}
 
-	metadata, err := s.DeserializeMetadata(namespace, name, state, true)
+	metadata, ok, err := s.DeserializeMetadata(namespace, name, state)
 	if err != nil {
 		return errors.Wrapf(err, "could not unmarshal metadata for namespace %s/%s", namespace, name)
+	}
+	if !ok {
+		return errors.Errorf("metadata for namespace %s/%s does not exist", namespace, name)
 	}
 
 	typeName := value.Type().Name()
@@ -329,22 +335,22 @@ func (s *Serializer) Deserialize(namespace, name string, structure interface{}, 
 	return nil
 }
 
-func (s *Serializer) DeserializeMetadata(namespace, name string, state ReadableState, failOnMissing bool) (*lb.StateMetadata, error) {
+func (s *Serializer) DeserializeMetadata(namespace, name string, state ReadableState) (*lb.StateMetadata, bool, error) {
 	metadataBin, err := state.GetState(fmt.Sprintf("%s/metadata/%s", namespace, name))
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not query metadata for namespace %s/%s", namespace, name))
+		return nil, false, errors.WithMessage(err, fmt.Sprintf("could not query metadata for namespace %s/%s", namespace, name))
 	}
-	if metadataBin == nil && failOnMissing {
-		return nil, errors.Errorf("no existing serialized message found")
+	if metadataBin == nil {
+		return nil, false, nil
 	}
 
 	metadata := &lb.StateMetadata{}
 	err = proto.Unmarshal(metadataBin, metadata)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not unmarshal metadata for namespace %s/%s", namespace, name)
+		return nil, false, errors.Wrapf(err, "could not unmarshal metadata for namespace %s/%s", namespace, name)
 	}
 
-	return metadata, nil
+	return metadata, true, nil
 }
 
 func (s *Serializer) DeserializeField(namespace, name, field string, state ReadableState) (*lb.StateData, error) {
