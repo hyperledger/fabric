@@ -395,10 +395,8 @@ func findLeader(ordererRunners []*ginkgomon.Runner) int {
 
 	for _, runner := range ordererRunners {
 		go func(runner *ginkgomon.Runner) {
-			defer func() {
-				GinkgoRecover()
-				wg.Done()
-			}()
+			defer GinkgoRecover()
+			defer wg.Done()
 
 			leader := findLeader(runner)
 			leaders <- leader
