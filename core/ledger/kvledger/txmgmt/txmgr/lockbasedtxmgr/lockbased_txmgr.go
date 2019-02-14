@@ -66,17 +66,22 @@ func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, er
 }
 
 // ValidateAndPrepare implements method in interface `txmgmt.TxMgr`
-func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) error {
+func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) ([]byte, error) {
 	block := blockAndPvtdata.Block
 	logger.Debugf("Validating new block with num trans = [%d]", len(block.Data.Data))
 	batch, err := txmgr.validator.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
 	if err != nil {
 		txmgr.clearCache()
-		return err
+		return nil, err
 	}
 	txmgr.currentBlock = block
 	txmgr.batch = batch
-	return txmgr.invokeNamespaceListeners(batch)
+	if err := txmgr.invokeNamespaceListeners(batch); err != nil {
+		return nil, err
+	}
+
+	updateBytesBuilder := &privacyenabledstate.UpdatesBytesBuilder{}
+	return updateBytesBuilder.DeterministicBytesForPubAndHashUpdates(batch)
 }
 
 func (txmgr *LockBasedTxMgr) invokeNamespaceListeners(batch *privacyenabledstate.UpdateBatch) error {
@@ -160,7 +165,7 @@ func (txmgr *LockBasedTxMgr) ShouldRecover(lastAvailableBlock uint64) (bool, uin
 func (txmgr *LockBasedTxMgr) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvtData) error {
 	block := blockAndPvtdata.Block
 	logger.Debugf("Constructing updateSet for the block %d", block.Header.Number)
-	if err := txmgr.ValidateAndPrepare(blockAndPvtdata, false); err != nil {
+	if _, err := txmgr.ValidateAndPrepare(blockAndPvtdata, false); err != nil {
 		return err
 	}
 	logger.Debugf("Committing block %d to state database", block.Header.Number)

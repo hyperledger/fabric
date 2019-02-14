@@ -154,7 +154,7 @@ func TestInitBlockMeta(t *testing.T) {
 	block := &cb.Block{}
 	utils.InitBlockMetadata(block)
 	// should have 3 entries
-	assert.Equal(t, 3, len(block.Metadata.Metadata), "Expected block to have 3 metadata entries")
+	assert.Equal(t, 5, len(block.Metadata.Metadata), "Expected block to have 5 metadata entries")
 
 	// block with a single entry
 	block = &cb.Block{
@@ -163,7 +163,7 @@ func TestInitBlockMeta(t *testing.T) {
 	block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 	utils.InitBlockMetadata(block)
 	// should have 3 entries
-	assert.Equal(t, 3, len(block.Metadata.Metadata), "Expected block to have 3 metadata entries")
+	assert.Equal(t, 5, len(block.Metadata.Metadata), "Expected block to have 5 metadata entries")
 }
 
 func TestCopyBlockMetadata(t *testing.T) {

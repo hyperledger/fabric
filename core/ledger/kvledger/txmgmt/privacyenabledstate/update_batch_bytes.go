@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 )
 
-type updatesBytesBuilder struct {
+type UpdatesBytesBuilder struct {
 }
 
 // DeterministicBytesForPubAndHashUpdates constructs the bytes for a given UpdateBatch
@@ -26,7 +26,7 @@ type updatesBytesBuilder struct {
 // If an entry has the same namespace as its preceding entry, the namespcae field is skipped.
 // A Similar treatment is given to the repeative entries for a collection within a namespace.
 // For illustration, see the corresponding unit tests
-func (bb *updatesBytesBuilder) DeterministicBytesForPubAndHashUpdates(u *UpdateBatch) ([]byte, error) {
+func (bb *UpdatesBytesBuilder) DeterministicBytesForPubAndHashUpdates(u *UpdateBatch) ([]byte, error) {
 	pubUpdates := u.PubUpdates
 	hashUpdates := u.HashUpdates.UpdateMap
 	namespaces := dedupAndSort(
@@ -50,7 +50,7 @@ func (bb *updatesBytesBuilder) DeterministicBytesForPubAndHashUpdates(u *UpdateB
 	return proto.Marshal(batchProto)
 }
 
-func (bb *updatesBytesBuilder) buildForColls(colls nsBatch) []*KVWriteProto {
+func (bb *UpdatesBytesBuilder) buildForColls(colls nsBatch) []*KVWriteProto {
 	collNames := colls.GetCollectionNames()
 	sort.Strings(collNames)
 	collsProto := []*KVWriteProto{}
@@ -63,7 +63,7 @@ func (bb *updatesBytesBuilder) buildForColls(colls nsBatch) []*KVWriteProto {
 	return collsProto
 }
 
-func (bb *updatesBytesBuilder) buildForKeys(kv map[string]*statedb.VersionedValue) []*KVWriteProto {
+func (bb *UpdatesBytesBuilder) buildForKeys(kv map[string]*statedb.VersionedValue) []*KVWriteProto {
 	keys := util.GetSortedKeys(kv)
 	p := []*KVWriteProto{}
 	for _, key := range keys {

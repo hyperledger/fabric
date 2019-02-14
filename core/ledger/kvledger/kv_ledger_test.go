@@ -127,6 +127,56 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	testutil.AssertEquals(t, validCode, peer.TxValidationCode_VALID)
 }
 
+func TestAddCommitHash(t *testing.T) {
+	env := newTestEnv(t)
+	defer env.cleanup()
+	provider, _ := NewProvider()
+	defer provider.Close()
+
+	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	gbHash := gb.Header.Hash()
+	ledger, _ := provider.Create(gb)
+	defer ledger.Close()
+
+	// metadata associated with the above created geneis block is
+	// empty. Hence, no commitHash would be empty.
+	commitHash, err := ledger.(*kvLedger).lastPersistedCommitHash()
+	assert.NoError(t, err)
+	assert.Equal(t, commitHash, ledger.(*kvLedger).commitHash)
+	assert.Equal(t, len(commitHash), 0)
+
+	bcInfo, _ := ledger.GetBlockchainInfo()
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil})
+	txid := util.GenerateUUID()
+	simulator, _ := ledger.NewTxSimulator(txid)
+	simulator.SetState("ns1", "key1", []byte("value1"))
+	simulator.SetState("ns1", "key2", []byte("value2"))
+	simulator.SetState("ns1", "key3", []byte("value3"))
+	simulator.Done()
+	simRes, _ := simulator.GetTxSimulationResults()
+	pubSimBytes, _ := simRes.GetPubSimulationBytes()
+	block1 := bg.NextBlock([][]byte{pubSimBytes})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1})
+
+	commitHash, err = ledger.(*kvLedger).lastPersistedCommitHash()
+	assert.NoError(t, err)
+	assert.Equal(t, commitHash, ledger.(*kvLedger).commitHash)
+	assert.Equal(t, len(commitHash), 32)
+
+	// if the kvledger.commitHash is nil and the block number is > 1, the
+	// commitHash should not be added to the block
+	block2 := bg.NextBlock([][]byte{pubSimBytes})
+	ledger.(*kvLedger).commitHash = nil
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2})
+
+	commitHash, err = ledger.(*kvLedger).lastPersistedCommitHash()
+	assert.NoError(t, err)
+	assert.Equal(t, commitHash, ledger.(*kvLedger).commitHash)
+	assert.Equal(t, len(commitHash), 0)
+
+}
+
 func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	t.Skip()
 	env := newTestEnv(t)
@@ -226,7 +276,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
 		map[string]string{"key1": "pvtValue1.2", "key2": "pvtValue2.2", "key3": "pvtValue3.2"})
 
-	assert.NoError(t, ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata2, true))
+	_, err := ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata2, true)
+	assert.NoError(t, err)
 	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata2))
 
 	// block storage should be as of block-2 but the state and history db should be as of block-1
@@ -273,7 +324,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 		map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"},
 	)
-	assert.NoError(t, ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata3, true))
+	_, err = ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata3, true)
+	assert.NoError(t, err)
 	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata3))
 	// committing the transaction to state DB
 	assert.NoError(t, ledger.(*kvLedger).txtmgmt.Commit())
@@ -324,7 +376,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		map[string]string{"key1": "pvtValue1.4", "key2": "pvtValue2.4", "key3": "pvtValue3.4"},
 	)
 
-	assert.NoError(t, ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata4, true))
+	_, err = ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata4, true)
+	assert.NoError(t, err)
 	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata4))
 	assert.NoError(t, ledger.(*kvLedger).historyDB.Commit(blockAndPvtdata4.Block))
 
