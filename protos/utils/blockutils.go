@@ -115,9 +115,9 @@ func CopyBlockMetadata(src *cb.Block, dst *cb.Block) {
 // InitBlockMetadata copies metadata from one block into another
 func InitBlockMetadata(block *cb.Block) {
 	if block.Metadata == nil {
-		block.Metadata = &cb.BlockMetadata{Metadata: [][]byte{{}, {}, {}}}
-	} else if len(block.Metadata.Metadata) < int(cb.BlockMetadataIndex_TRANSACTIONS_FILTER+1) {
-		for i := int(len(block.Metadata.Metadata)); i <= int(cb.BlockMetadataIndex_TRANSACTIONS_FILTER); i++ {
+		block.Metadata = &cb.BlockMetadata{Metadata: [][]byte{{}, {}, {}, {}, {}}}
+	} else if len(block.Metadata.Metadata) < int(cb.BlockMetadataIndex_COMMIT_HASH+1) {
+		for i := int(len(block.Metadata.Metadata)); i <= int(cb.BlockMetadataIndex_COMMIT_HASH); i++ {
 			block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 		}
 	}
