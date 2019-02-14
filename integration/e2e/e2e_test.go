@@ -303,10 +303,10 @@ var _ = Describe("EndToEnd", func() {
 			nwo.DeployChaincode(network, "testchannel1", orderer, chaincode)
 
 			network.CreateAndJoinChannel(orderer, "testchannel2")
-			nwo.InstantiateChaincode(network, "testchannel2", orderer, chaincode, peer)
+			nwo.InstantiateChaincode(network, "testchannel2", orderer, chaincode, peer, network.PeersWithChannel("testchannel2")...)
 
-			RunQueryInvokeQuery(network, orderer, peer, "testchannel1")
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel2")
+			RunQueryInvokeQuery(network, orderer, peer, "testchannel1")
 		})
 	})
 })
