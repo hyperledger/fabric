@@ -73,25 +73,34 @@ CouchDB pagination
 
 Fabric supports paging of query results for rich queries and range based queries.
 APIs supporting pagination allow the use of page size and bookmarks to be used for
-both range and rich queries.
+both range and rich queries. To support efficient pagination, the Fabric
+pagination APIs must be used. Specifically, the CouchDB ``limit`` keyword will
+not be honored in CouchDB queries since Fabric itself manages the pagination of
+query results and implicitly sets the pageSize limit that is passed to CouchDB.
 
-If a pagesize is specified using the paginated query APIs (``GetStateByRangeWithPagination``,
+If a pageSize is specified using the paginated query APIs (``GetStateByRangeWithPagination()``,
 ``GetStateByPartialCompositeKeyWithPagination()``, and ``GetQueryResultWithPagination()``),
-a set of results will be returned along with a bookmark. The bookmark can be used
-with a follow on query to receive the next "page" of results.
+a set of results (bound by the pageSize) will be returned to the chaincode along with
+a bookmark. The bookmark can be returned from chaincode to invoking clients,
+which can use the bookmark in a follow on query to receive the next "page" of results.
 
-All chaincode queries are bound by ``totalQueryLimit`` (default 100000)
-from ``core.yaml``. This is the maximum number of results that chaincode
-will iterate through and return to the client, in order to avoid accidental
-or malicious long-running queries.
+The pagination APIs are for use in read-only transactions only, the query results
+are intended to support client paging requirements. For transactions
+that need to read and write, use the non-paginated chaincode query APIs. Within
+chaincode you can iterate through result sets to your desired depth.
 
-An example using pagination is included in the :doc:`couchdb_tutorial` tutorial.
+Regardless of whether the pagination APIs are utilized, all chaincode queries are
+bound by ``totalQueryLimit`` (default 100000) from ``core.yaml``. This is the maximum
+number of results that chaincode will iterate through and return to the client,
+in order to avoid accidental or malicious long-running queries.
 
 .. note:: Regardless of whether chaincode uses paginated queries or not, the peer will
           query CouchDB in batches based on ``internalQueryLimit`` (default 1000)
           from ``core.yaml``. This behavior ensures reasonably sized result sets are
-          passed between the peer and CouchDB, and is transparent to chaincode and
-          requires no additional configuration.
+          passed between the peer and CouchDB when executing chaincode, and is
+          transparent to chaincode and the calling client.
+
+An example using pagination is included in the :doc:`couchdb_tutorial` tutorial.
 
 CouchDB indexes
 ~~~~~~~~~~~~~~~
