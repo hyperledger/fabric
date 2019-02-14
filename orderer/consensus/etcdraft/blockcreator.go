@@ -34,12 +34,14 @@ func (bc *blockCreator) createNextBlock(envs []*cb.Envelope) *cb.Block {
 		}
 	}
 
-	block := cb.NewBlock(bc.number+1, bc.hash)
+	bc.number++
+
+	block := cb.NewBlock(bc.number, bc.hash)
 	block.Header.DataHash = data.Hash()
 	block.Data = data
 
 	bc.hash = block.Header.Hash()
-	bc.number++
 
+	bc.logger.Debugf("Created block %d", bc.number)
 	return block
 }

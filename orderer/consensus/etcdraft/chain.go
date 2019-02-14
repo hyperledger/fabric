@@ -517,8 +517,14 @@ func (c *Chain) serveRequest() {
 			}
 
 			c.propose(bc, batches...)
-			if c.configInflight || c.blockInflight >= c.opts.MaxInflightMsgs {
-				submitC = nil // stop accepting new envelopes
+
+			if c.configInflight {
+				c.logger.Info("Received config block, pause accepting transaction till it is committed")
+				submitC = nil
+			} else if c.blockInflight >= c.opts.MaxInflightMsgs {
+				c.logger.Debugf("Number of in-flight blocks (%d) reaches limit (%d), pause accepting transaction",
+					c.blockInflight, c.opts.MaxInflightMsgs)
+				submitC = nil
 			}
 
 		case app := <-c.applyC:
@@ -581,7 +587,7 @@ func (c *Chain) serveRequest() {
 				submitC = c.submitC
 				c.justElected = false
 			} else if c.configInflight {
-				c.logger.Debugf("Config block or ConfChange in flight, pause accepting transaction")
+				c.logger.Info("Config block or ConfChange in flight, pause accepting transaction")
 				submitC = nil
 			} else if c.blockInflight < c.opts.MaxInflightMsgs {
 				submitC = c.submitC
@@ -632,6 +638,8 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 	if c.blockInflight > 0 {
 		c.blockInflight-- // only reduce on leader
 	}
+
+	c.logger.Debugf("Writing block %d to ledger, there are %d blocks in flight", block.Header.Number, c.blockInflight)
 
 	if utils.IsConfigBlock(block) {
 		c.writeConfigBlock(block, index)
@@ -697,6 +705,7 @@ func (c *Chain) propose(bc *blockCreator, batches ...[]*common.Envelope) {
 		}
 
 		c.blockInflight++
+		c.logger.Debugf("Proposed block %d to raft consensus, there are %d blocks in flight", b.Header.Number, c.blockInflight)
 	}
 
 	return
@@ -754,9 +763,14 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 	for i := range ents {
 		switch ents[i].Type {
 		case raftpb.EntryNormal:
+			if len(ents[i].Data) == 0 {
+				break
+			}
+
 			// We need to strictly avoid re-applying normal entries,
 			// otherwise we are writing the same block twice.
-			if len(ents[i].Data) == 0 || ents[i].Index <= c.appliedIndex {
+			if ents[i].Index <= c.appliedIndex {
+				c.logger.Debugf("Received block with raft index (%d) <= applied index (%d), skip", ents[i].Index, c.appliedIndex)
 				break
 			}
 
@@ -775,6 +789,15 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 			}
 
 			c.confState = *c.node.ApplyConfChange(cc)
+
+			switch cc.Type {
+			case raftpb.ConfChangeAddNode:
+				c.logger.Infof("Applied config change to add node %d, current nodes in channel: %+v", cc.NodeID, c.confState.Nodes)
+			case raftpb.ConfChangeRemoveNode:
+				c.logger.Infof("Applied config change to remove node %d, current nodes in channel: %+v", cc.NodeID, c.confState.Nodes)
+			default:
+				c.logger.Panic("Programming error, encountered unsupported raft config change")
+			}
 
 			// This ConfChange was introduced by a previously committed config block,
 			// we can now unblock submitC to accept envelopes.
@@ -945,6 +968,15 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 		c.raftMetadataLock.Lock()
 		c.opts.RaftMetadata = raftMetadata
 		c.raftMetadataLock.Unlock()
+
+		switch confChange.Type {
+		case raftpb.ConfChangeAddNode:
+			c.logger.Infof("Config block just committed adds node %d, pause accepting transactions till config change is applied", confChange.NodeID)
+		case raftpb.ConfChangeRemoveNode:
+			c.logger.Infof("Config block just committed removes node %d, pause accepting transactions till config change is applied", confChange.NodeID)
+		default:
+			c.logger.Panic("Programming error, encountered unsupported raft config change")
+		}
 
 		c.configInflight = true
 	}
