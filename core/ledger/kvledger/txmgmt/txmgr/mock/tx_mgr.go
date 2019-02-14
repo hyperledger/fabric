@@ -103,7 +103,7 @@ type TxMgr struct {
 	shutdownMutex       sync.RWMutex
 	shutdownArgsForCall []struct {
 	}
-	ValidateAndPrepareStub        func(*ledger.BlockAndPvtData, bool) ([]*txmgr.TxStatInfo, error)
+	ValidateAndPrepareStub        func(*ledger.BlockAndPvtData, bool) ([]*txmgr.TxStatInfo, []byte, error)
 	validateAndPrepareMutex       sync.RWMutex
 	validateAndPrepareArgsForCall []struct {
 		arg1 *ledger.BlockAndPvtData
@@ -111,11 +111,13 @@ type TxMgr struct {
 	}
 	validateAndPrepareReturns struct {
 		result1 []*txmgr.TxStatInfo
-		result2 error
+		result2 []byte
+		result3 error
 	}
 	validateAndPrepareReturnsOnCall map[int]struct {
 		result1 []*txmgr.TxStatInfo
-		result2 error
+		result2 []byte
+		result3 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -586,7 +588,7 @@ func (fake *TxMgr) ShutdownCalls(stub func()) {
 	fake.ShutdownStub = stub
 }
 
-func (fake *TxMgr) ValidateAndPrepare(arg1 *ledger.BlockAndPvtData, arg2 bool) ([]*txmgr.TxStatInfo, error) {
+func (fake *TxMgr) ValidateAndPrepare(arg1 *ledger.BlockAndPvtData, arg2 bool) ([]*txmgr.TxStatInfo, []byte, error) {
 	fake.validateAndPrepareMutex.Lock()
 	ret, specificReturn := fake.validateAndPrepareReturnsOnCall[len(fake.validateAndPrepareArgsForCall)]
 	fake.validateAndPrepareArgsForCall = append(fake.validateAndPrepareArgsForCall, struct {
@@ -599,10 +601,10 @@ func (fake *TxMgr) ValidateAndPrepare(arg1 *ledger.BlockAndPvtData, arg2 bool) (
 		return fake.ValidateAndPrepareStub(arg1, arg2)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1, ret.result2, ret.result3
 	}
 	fakeReturns := fake.validateAndPrepareReturns
-	return fakeReturns.result1, fakeReturns.result2
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 
 func (fake *TxMgr) ValidateAndPrepareCallCount() int {
@@ -611,7 +613,7 @@ func (fake *TxMgr) ValidateAndPrepareCallCount() int {
 	return len(fake.validateAndPrepareArgsForCall)
 }
 
-func (fake *TxMgr) ValidateAndPrepareCalls(stub func(*ledger.BlockAndPvtData, bool) ([]*txmgr.TxStatInfo, error)) {
+func (fake *TxMgr) ValidateAndPrepareCalls(stub func(*ledger.BlockAndPvtData, bool) ([]*txmgr.TxStatInfo, []byte, error)) {
 	fake.validateAndPrepareMutex.Lock()
 	defer fake.validateAndPrepareMutex.Unlock()
 	fake.ValidateAndPrepareStub = stub
@@ -624,30 +626,33 @@ func (fake *TxMgr) ValidateAndPrepareArgsForCall(i int) (*ledger.BlockAndPvtData
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *TxMgr) ValidateAndPrepareReturns(result1 []*txmgr.TxStatInfo, result2 error) {
+func (fake *TxMgr) ValidateAndPrepareReturns(result1 []*txmgr.TxStatInfo, result2 []byte, result3 error) {
 	fake.validateAndPrepareMutex.Lock()
 	defer fake.validateAndPrepareMutex.Unlock()
 	fake.ValidateAndPrepareStub = nil
 	fake.validateAndPrepareReturns = struct {
 		result1 []*txmgr.TxStatInfo
-		result2 error
-	}{result1, result2}
+		result2 []byte
+		result3 error
+	}{result1, result2, result3}
 }
 
-func (fake *TxMgr) ValidateAndPrepareReturnsOnCall(i int, result1 []*txmgr.TxStatInfo, result2 error) {
+func (fake *TxMgr) ValidateAndPrepareReturnsOnCall(i int, result1 []*txmgr.TxStatInfo, result2 []byte, result3 error) {
 	fake.validateAndPrepareMutex.Lock()
 	defer fake.validateAndPrepareMutex.Unlock()
 	fake.ValidateAndPrepareStub = nil
 	if fake.validateAndPrepareReturnsOnCall == nil {
 		fake.validateAndPrepareReturnsOnCall = make(map[int]struct {
 			result1 []*txmgr.TxStatInfo
-			result2 error
+			result2 []byte
+			result3 error
 		})
 	}
 	fake.validateAndPrepareReturnsOnCall[i] = struct {
 		result1 []*txmgr.TxStatInfo
-		result2 error
-	}{result1, result2}
+		result2 []byte
+		result3 error
+	}{result1, result2, result3}
 }
 
 func (fake *TxMgr) Invocations() map[string][][]interface{} {

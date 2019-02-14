@@ -173,9 +173,19 @@ func (r *retrievedBlockAndPvtdata) sameMetadata(expectedBlock *common.Block) {
 	retrievedMetadata := r.Block.Metadata.Metadata
 	expectedMetadata := expectedBlock.Metadata.Metadata
 	r.assert.Equal(len(expectedMetadata), len(retrievedMetadata))
-	for i := 0; i < len(retrievedMetadata); i++ {
+	for i := 0; i < len(expectedMetadata); i++ {
 		if len(expectedMetadata[i])+len(retrievedMetadata[i]) != 0 {
-			r.assert.Equal(expectedMetadata[i], retrievedMetadata[i])
+			if i != int(common.BlockMetadataIndex_COMMIT_HASH) {
+				r.assert.Equal(expectedMetadata[i], retrievedMetadata[i])
+			} else {
+				// in order to compare the exact hash value, we need to duplicate the
+				// production code in this test too (which is not recommended).
+				commitHash := &common.Metadata{}
+				err := proto.Unmarshal(retrievedMetadata[common.BlockMetadataIndex_COMMIT_HASH],
+					commitHash)
+				r.assert.NoError(err)
+				r.assert.Equal(len(commitHash.Value), 32)
+			}
 		}
 	}
 }

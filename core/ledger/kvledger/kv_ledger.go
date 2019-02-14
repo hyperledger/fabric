@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/util"
@@ -25,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -40,6 +42,7 @@ type kvLedger struct {
 	configHistoryRetriever ledger.ConfigHistoryRetriever
 	blockAPIsRWLock        *sync.RWMutex
 	stats                  *ledgerStats
+	commitHash             []byte
 }
 
 // NewKVLedger constructs new `KVLedger`
@@ -76,6 +79,13 @@ func newKVLedger(
 
 	l.initBlockStore(btlPolicy)
 
+	// Retrieves the current commit hash from the blockstore
+	var err error
+	l.commitHash, err = l.lastPersistedCommitHash()
+	if err != nil {
+		return nil, err
+	}
+
 	// TODO Move the function `GetChaincodeEventListener` to ledger interface and
 	// this functionality of regiserting for events to ledgermgmt package so that this
 	// is reused across other future ledger implementations
@@ -88,7 +98,7 @@ func newKVLedger(
 
 	//Recover both state DB and history DB if they are out of sync with block storage
 	if err := l.recoverDBs(); err != nil {
-		panic(errors.WithMessage(err, "error during state DB recovery"))
+		return nil, err
 	}
 	l.configHistoryRetriever = configHistoryMgr.GetRetriever(ledgerID, l)
 
@@ -135,6 +145,35 @@ func (l *kvLedger) initTxMgr(
 
 func (l *kvLedger) initBlockStore(btlPolicy pvtdatapolicy.BTLPolicy) {
 	l.blockStore.Init(btlPolicy)
+}
+
+func (l *kvLedger) lastPersistedCommitHash() ([]byte, error) {
+	bcInfo, err := l.GetBlockchainInfo()
+	if err != nil {
+		return nil, err
+	}
+	if bcInfo.Height == 0 {
+		logger.Debugf("Chain is empty")
+		return nil, nil
+	}
+
+	logger.Debugf("Fetching block [%d] to retrieve the currentCommitHash", bcInfo.Height-1)
+	block, err := l.GetBlockByNumber(bcInfo.Height - 1)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(block.Metadata.Metadata) < int(common.BlockMetadataIndex_COMMIT_HASH+1) {
+		logger.Debugf("Last block metadata does not contain commit hash")
+		return nil, nil
+	}
+
+	commitHash := &common.Metadata{}
+	err = proto.Unmarshal(block.Metadata.Metadata[common.BlockMetadataIndex_COMMIT_HASH], commitHash)
+	if err != nil {
+		return nil, errors.Wrap(err, "error unmarshaling last persisted commit hash")
+	}
+	return commitHash.Value, nil
 }
 
 //Recover the state database and history database (if exist)
@@ -337,13 +376,16 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 
 	startBlockProcessing := time.Now()
 	logger.Debugf("[%s] Validating state for block [%d]", l.ledgerID, blockNo)
-	txstatsInfo, err := l.txtmgmt.ValidateAndPrepare(pvtdataAndBlock, true)
+	txstatsInfo, updateBatchBytes, err := l.txtmgmt.ValidateAndPrepare(pvtdataAndBlock, true)
 	if err != nil {
 		return err
 	}
 	elapsedBlockProcessing := time.Since(startBlockProcessing)
 
 	startBlockstorageAndPvtdataCommit := time.Now()
+	logger.Debugf("[%s] Adding CommitHash to the block [%d]", l.ledgerID, blockNo)
+	l.addBlockCommitHashIfApplicable(pvtdataAndBlock.Block, updateBatchBytes)
+
 	logger.Debugf("[%s] Committing block [%d] to storage", l.ledgerID, blockNo)
 	l.blockAPIsRWLock.Lock()
 	defer l.blockAPIsRWLock.Unlock()
@@ -368,12 +410,14 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 		}
 	}
 
-	logger.Infof("[%s] Committed block [%d] with %d transaction(s) in %dms (state_validation=%dms block_and_pvtdata_commit=%dms state_commit=%dms)",
+	logger.Infof("[%s] Committed block [%d] with %d transaction(s) in %dms (state_validation=%dms block_and_pvtdata_commit=%dms state_commit=%dms)"+
+		" commitHash=[%x]",
 		l.ledgerID, block.Header.Number, len(block.Data.Data),
 		time.Since(startBlockProcessing)/time.Millisecond,
 		elapsedBlockProcessing/time.Millisecond,
 		elapsedBlockstorageAndPvtdataCommit/time.Millisecond,
 		elapsedCommitState/time.Millisecond,
+		l.commitHash,
 	)
 	l.updateBlockStats(
 		elapsedBlockProcessing,
@@ -400,6 +444,25 @@ func (l *kvLedger) updateBlockStats(
 // most recent `maxBlock` blocks which miss at least a private data of a eligible collection.
 func (l *kvLedger) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
 	return l.blockStore.GetMissingPvtDataInfoForMostRecentBlocks(maxBlock)
+}
+
+func (l *kvLedger) addBlockCommitHashIfApplicable(block *common.Block, updateBatchBytes []byte) {
+	// to ensure that only after a gensis block, commitHash is computed.
+	// in other words, only after joining a new channel or peer reset,
+	// the commitHash would be added to the block
+	if block.Header.Number != 1 && l.commitHash == nil {
+		return
+	}
+	var valueBytes []byte
+
+	txValidationCode := block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER]
+	valueBytes = append(valueBytes, proto.EncodeVarint(uint64(len(txValidationCode)))...)
+	valueBytes = append(valueBytes, txValidationCode...)
+	valueBytes = append(valueBytes, updateBatchBytes...)
+	valueBytes = append(valueBytes, l.commitHash...)
+
+	l.commitHash = util.ComputeSHA256(valueBytes)
+	block.Metadata.Metadata[common.BlockMetadataIndex_COMMIT_HASH] = protoutil.MarshalOrPanic(&common.Metadata{Value: l.commitHash})
 }
 
 // GetPvtDataAndBlockByNum returns the block and the corresponding pvt data.
