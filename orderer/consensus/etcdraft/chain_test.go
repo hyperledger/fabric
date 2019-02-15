@@ -74,7 +74,7 @@ var _ = Describe("Chain", func() {
 	BeforeEach(func() {
 		tlsCA, _ = tlsgen.NewCA()
 		channelID = "test-channel"
-		logger = flogging.NewFabricLogger(zap.NewNop())
+		logger = flogging.NewFabricLogger(zap.NewExample())
 		env = &common.Envelope{
 			Payload: marshalOrPanic(&common.Payload{
 				Header: &common.Header{ChannelHeader: marshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_MESSAGE), ChannelId: channelID})},
@@ -1869,6 +1869,68 @@ var _ = Describe("Chain", func() {
 					Consistently(c3.support.WriteBlockCallCount).Should(Equal(2))
 					Consistently(c1.support.WriteBlockCallCount).Should(Equal(1))
 				})
+
+				It("does not deadlock if leader steps down while config block is in-flight", func() {
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
+					c1.cutter.CutNext = true
+
+					signal := make(chan struct{})
+					stub := c1.support.WriteConfigBlockStub
+					c1.support.WriteConfigBlockStub = func(b *common.Block, meta []byte) {
+						signal <- struct{}{}
+						<-signal
+						stub(b, meta)
+					}
+
+					By("Sending config transaction")
+					Expect(c1.Configure(configEnv, 0)).To(Succeed())
+
+					Eventually(signal, LongEventualTimeout).Should(Receive())
+					network.disconnect(1)
+
+					By("Ticking leader till it steps down")
+					Eventually(func() raft.SoftState {
+						c1.clock.Increment(interval)
+						return c1.Node.Status().SoftState
+					}, LongEventualTimeout).Should(StateEqual(0, raft.StateFollower))
+
+					close(signal)
+
+					Eventually(c1.observe, LongEventualTimeout).Should(Receive(StateEqual(0, raft.StateFollower)))
+
+					By("Re-electing 1 as leader")
+					network.connect(1)
+					network.elect(1)
+
+					_, raftmetabytes := c1.support.WriteConfigBlockArgsForCall(0)
+					meta := &common.Metadata{Value: raftmetabytes}
+					raftmeta, err := etcdraft.ReadRaftMetadata(meta, nil)
+					Expect(err).NotTo(HaveOccurred())
+
+					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta)
+					c4.init()
+
+					// if we join a node to existing network, it MUST already obtained blocks
+					// till the config block that adds this node to cluster.
+					c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
+					c4.support.WriteConfigBlock(c1.support.WriteConfigBlockArgsForCall(0))
+
+					network.addChain(c4)
+					c4.Start()
+
+					Eventually(func() <-chan raft.SoftState {
+						c1.clock.Increment(interval)
+						return c4.observe
+					}, LongEventualTimeout).Should(Receive(StateEqual(1, raft.StateFollower)))
+
+					By("Submitting tx to confirm network is still working")
+					Expect(c1.Order(env, 0)).To(Succeed())
+
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+						Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					})
+				})
 			})
 		})
 
@@ -2054,6 +2116,47 @@ var _ = Describe("Chain", func() {
 
 					err = c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("does not deadlock if propose is blocked", func() {
+					signal := make(chan struct{})
+					c1.cutter.CutNext = true
+					c1.support.SequenceStub = func() uint64 {
+						signal <- struct{}{}
+						<-signal
+						return 0
+					}
+
+					By("Sending a normal transaction")
+					Expect(c1.Order(env, 0)).To(Succeed())
+
+					Eventually(signal).Should(Receive())
+					network.disconnect(1)
+
+					By("Ticking leader till it steps down")
+					Eventually(func() raft.SoftState {
+						c1.clock.Increment(interval)
+						return c1.Node.Status().SoftState
+					}).Should(StateEqual(0, raft.StateFollower))
+
+					close(signal)
+
+					Eventually(c1.observe).Should(Receive(StateEqual(0, raft.StateFollower)))
+					c1.support.SequenceStub = nil
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
+					})
+
+					By("Re-electing 1 as leader")
+					network.connect(1)
+					network.elect(1)
+
+					By("Sending another normal transaction")
+					Expect(c1.Order(env, 0)).To(Succeed())
+
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					})
 				})
 			})
 
@@ -2689,7 +2792,7 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 		MaxSizePerMsg:   1024 * 1024,
 		MaxInflightMsgs: 256,
 		RaftMetadata:    raftMetadata,
-		Logger:          flogging.NewFabricLogger(zap.NewNop()),
+		Logger:          flogging.NewFabricLogger(zap.NewExample()),
 		MemoryStorage:   storage,
 		WALDir:          path.Join(dataDir, "wal"),
 		SnapDir:         path.Join(dataDir, "snapshot"),

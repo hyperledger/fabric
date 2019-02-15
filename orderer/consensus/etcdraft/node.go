@@ -87,7 +87,11 @@ func (n *node) run() {
 				n.chain.snapC <- &rd.Snapshot
 			}
 
-			n.chain.applyC <- apply{rd.CommittedEntries, rd.SoftState}
+			// skip empty apply
+			if len(rd.CommittedEntries) != 0 || rd.SoftState != nil {
+				n.chain.applyC <- apply{rd.CommittedEntries, rd.SoftState}
+			}
+
 			n.Advance()
 
 			// TODO(jay_guo) leader can write to disk in parallel with replicating
