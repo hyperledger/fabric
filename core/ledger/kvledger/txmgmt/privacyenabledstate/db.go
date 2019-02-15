@@ -156,6 +156,18 @@ func (nsb nsBatch) GetCollectionNames() []string {
 	return nsb.GetUpdatedNamespaces()
 }
 
+func (nsb nsBatch) getCollectionUpdates(collName string) map[string]*statedb.VersionedValue {
+	return nsb.GetUpdates(collName)
+}
+
+func (b UpdateMap) getUpdatedNamespaces() []string {
+	namespaces := []string{}
+	for ns := range b {
+		namespaces = append(namespaces, ns)
+	}
+	return namespaces
+}
+
 func (b UpdateMap) getOrCreateNsBatch(ns string) nsBatch {
 	batch, ok := b[ns]
 	if !ok {
