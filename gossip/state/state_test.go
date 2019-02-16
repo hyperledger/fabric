@@ -1112,19 +1112,20 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 	go func() {
 		msg := <-peerCh
 		t.Log("Peer node got an answer, ", msg)
+		if msg.GetGossipMessage() == nil {
+			t.Log("Peer got nil GossipMessage")
+			if msg.GetConnectionInfo() != nil {
+				t.Logf("Connection info %+v", msg.GetConnectionInfo())
+			}
+			t.FailNow()
+		}
 		assert.True(t, msg.GetGossipMessage().GetStateResponse() != nil)
 		wg.Done()
 	}()
 
-	readyCh := make(chan struct{})
-	go func() {
-		wg.Wait()
-		readyCh <- struct{}{}
-	}()
-
 	chainID := common.ChainID(util.GetTestChainID())
 	waitUntilTrueOrTimeout(t, func() bool {
-		return len(peer.g.PeersOfChannel(chainID)) == 1
+		return len(peer.g.PeersOfChannel(chainID)) == 1 && len(bootPeer.g.PeersOfChannel(chainID)) == 1
 	}, 30*time.Second)
 
 	t.Log("Sending gossip message with remote state request")
@@ -1133,17 +1134,7 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 	}, &comm.RemotePeer{Endpoint: peer.g.PeersOfChannel(chainID)[0].Endpoint, PKIID: peer.g.PeersOfChannel(chainID)[0].PKIid})
 	t.Log("Waiting until peers exchange messages")
 
-	select {
-	case <-readyCh:
-		{
-			t.Log("Done!!!")
-
-		}
-	case <-time.After(time.Duration(10) * time.Second):
-		{
-			t.Fail()
-		}
-	}
+	wg.Wait()
 }
 
 // Start one bootstrap peer and submit defAntiEntropyBatchSize + 5 messages into
