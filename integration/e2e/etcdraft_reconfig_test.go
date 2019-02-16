@@ -377,31 +377,22 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Waiting for them to elect a leader")
 			evictedNode := findLeader(ordererRunners) - 1
 
-			By("Creating a channel")
-			network.CreateChannel("testchannel", network.Orderers[evictedNode], peer)
+			By("Removing the leader from system channel")
+			serverCertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(network.Orderers[evictedNode]), "server.crt"))
+			Expect(err).To(Not(HaveOccurred()))
 
-			By("Waiting for the channel to be serviced")
-			assertBlockReception(map[string]int{
-				"testchannel": 0,
-			}, orderers, peer, network)
+			nwo.RemoveConsenter(network, peer, network.Orderers[(evictedNode+1)%3], "systemchannel", serverCertBytes)
 
-			By("Removing the leader from both system channel and application channel")
-			certificatesOfOrderers := refreshOrdererPEMs(network)
-			for _, channelName := range []string{"systemchannel", "testchannel"} {
-				nwo.RemoveConsenter(network, peer, network.Orderers[(evictedNode+1)%3], channelName, certificatesOfOrderers[evictedNode].oldCert)
+			fmt.Fprintln(GinkgoWriter, "Ensuring the other orderers detect the eviction of the node on channel", "systemchannel")
+			Eventually(ordererRunners[(evictedNode+1)%3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Deactivated node"))
+			Eventually(ordererRunners[(evictedNode+2)%3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Deactivated node"))
 
-				fmt.Fprintln(GinkgoWriter, "Ensuring the other orderers detect the eviction of the node on channel", channelName)
-				Eventually(ordererRunners[(evictedNode+1)%3].Err(), time.Minute, time.Second).Should(gbytes.Say("Deactivated node"))
-				Eventually(ordererRunners[(evictedNode+2)%3].Err(), time.Minute, time.Second).Should(gbytes.Say("Deactivated node"))
-
-				fmt.Fprintln(GinkgoWriter, "Ensuring the evicted orderer stops rafting on channel", channelName)
-				stopMSg := fmt.Sprintf("Raft node stopped channel=%s", channelName)
-				Eventually(ordererRunners[evictedNode].Err(), time.Minute, time.Second).Should(gbytes.Say(stopMSg))
-			}
+			fmt.Fprintln(GinkgoWriter, "Ensuring the evicted orderer stops rafting on channel", "systemchannel")
+			stopMSg := fmt.Sprintf("Raft node stopped channel=%s", "systemchannel")
+			Eventually(ordererRunners[evictedNode].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(stopMSg))
 
 			By("Ensuring the evicted orderer now doesn't serve clients")
 			ensureEvicted(orderers[evictedNode], peer, network, "systemchannel")
-			ensureEvicted(orderers[evictedNode], peer, network, "testchannel")
 
 			By("Ensuring that all orderers don't log errors to the log")
 			assertNoErrorsAreLogged(ordererRunners)
