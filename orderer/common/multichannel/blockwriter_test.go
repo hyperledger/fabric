@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package multichannel
@@ -23,6 +13,8 @@ import (
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -165,7 +157,9 @@ func TestWriteConfigBlock(t *testing.T) {
 }
 
 func TestGoodWriteConfig(t *testing.T) {
-	l := NewRAMLedger(10)
+	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	genesisBlockSys := encoder.New(confSys).GenesisBlock()
+	_, l := newRAMLedgerAndFactory(10, genesisconfig.TestChainID, genesisBlockSys)
 
 	bw := &BlockWriter{
 		support: &mockBlockWriterSupport{
@@ -176,7 +170,7 @@ func TestGoodWriteConfig(t *testing.T) {
 	}
 
 	ctx := makeConfigTx(genesisconfig.TestChainID, 1)
-	block := cb.NewBlock(1, genesisBlock.Header.Hash())
+	block := cb.NewBlock(1, genesisBlockSys.Header.Hash())
 	block.Data.Data = [][]byte{utils.MarshalOrPanic(ctx)}
 	consenterMetadata := []byte("foo")
 	bw.WriteConfigBlock(block, consenterMetadata)
