@@ -1171,65 +1171,45 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 	}
 	_, peerCh := peer.g.Accept(naiveStateMsgPredicate, true)
 
-	messageCh := make(chan struct{})
-	stopWaiting := make(chan struct{})
+	wg := sync.WaitGroup{}
+	wg.Add(expectedMessagesCnt)
 
 	// Number of submitted messages is defAntiEntropyBatchSize + 5, therefore
 	// expected number of batches is expectedMessagesCnt = 2. Following go routine
 	// makes sure it receives expected amount of messages and sends signal of success
 	// to continue the test
-	go func(expected int) {
-		cnt := 0
-		for cnt < expected {
-			select {
-			case <-peerCh:
-				{
-					cnt++
-				}
-
-			case <-stopWaiting:
-				{
-					return
-				}
-			}
+	go func() {
+		for count := 0; count < expectedMessagesCnt; count++ {
+			<-peerCh
+			wg.Done()
 		}
+	}()
 
-		messageCh <- struct{}{}
-	}(expectedMessagesCnt)
+	// Once we got message which indicate of two batches being received,
+	// making sure messages indeed committed.
+	waitUntilTrueOrTimeout(t, func() bool {
+		if len(peer.g.PeersOfChannel(common.ChainID(util.GetTestChainID()))) != 1 {
+			t.Log("Peer discovery has not finished yet")
+			return false
+		}
+		t.Log("All peer discovered each other!!!")
+		return true
+	}, 30*time.Second)
 
 	// Waits for message which indicates that expected number of message batches received
 	// otherwise timeouts after 2 * defAntiEntropyInterval + 1 seconds
-	select {
-	case <-messageCh:
-		{
-			// Once we got message which indicate of two batches being received,
-			// making sure messages indeed committed.
-			waitUntilTrueOrTimeout(t, func() bool {
-				if len(peer.g.PeersOfChannel(common.ChainID(util.GetTestChainID()))) != 1 {
-					t.Log("Peer discovery has not finished yet")
-					return false
-				}
-				t.Log("All peer discovered each other!!!")
-				return true
-			}, 30*time.Second)
+	wg.Wait()
 
-			t.Log("Waiting for all blocks to arrive.")
-			waitUntilTrueOrTimeout(t, func() bool {
-				t.Log("Trying to see all peers get all blocks")
-				height, err := peer.commit.LedgerHeight()
-				if height != uint64(msgCount+1) || err != nil {
-					return false
-				}
-				t.Log("All peers have same ledger height!!!")
-				return true
-			}, 60*time.Second)
+	t.Log("Waiting for all blocks to arrive.")
+	waitUntilTrueOrTimeout(t, func() bool {
+		t.Log("Trying to see all peers get all blocks")
+		height, err := peer.commit.LedgerHeight()
+		if height != uint64(msgCount+1) || err != nil {
+			return false
 		}
-	case <-time.After(defAntiEntropyInterval*2 + time.Second*1):
-		{
-			close(stopWaiting)
-			t.Fatal("Expected to receive two batches with missing payloads")
-		}
-	}
+		t.Log("All peers have same ledger height!!!")
+		return true
+	}, 60*time.Second)
 }
 
 // coordinatorMock mocking structure to capture mock interface for
