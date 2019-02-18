@@ -17,15 +17,15 @@ type Issuer struct {
 	TokenOwnerValidator identity.TokenOwnerValidator
 }
 
-// RequestImport creates an import request with the token owners, types, and quantities specified in tokensToIssue.
+// RequestIssue creates an import request with the token owners, types, and quantities specified in tokensToIssue.
 func (i *Issuer) RequestImport(tokensToIssue []*token.TokenToIssue) (*token.TokenTransaction, error) {
-	var outputs []*token.PlainOutput
+	var outputs []*token.Token
 	for _, tti := range tokensToIssue {
 		err := i.TokenOwnerValidator.Validate(tti.Recipient)
 		if err != nil {
 			return nil, errors.Errorf("invalid recipient in issue request '%s'", err)
 		}
-		outputs = append(outputs, &token.PlainOutput{
+		outputs = append(outputs, &token.Token{
 			Owner:    tti.Recipient,
 			Type:     tti.Type,
 			Quantity: tti.Quantity,
@@ -33,10 +33,10 @@ func (i *Issuer) RequestImport(tokensToIssue []*token.TokenToIssue) (*token.Toke
 	}
 
 	return &token.TokenTransaction{
-		Action: &token.TokenTransaction_PlainAction{
-			PlainAction: &token.PlainTokenAction{
-				Data: &token.PlainTokenAction_PlainImport{
-					PlainImport: &token.PlainImport{
+		Action: &token.TokenTransaction_TokenAction{
+			TokenAction: &token.TokenAction{
+				Data: &token.TokenAction_Issue{
+					Issue: &token.Issue{
 						Outputs: outputs,
 					},
 				},
@@ -63,10 +63,10 @@ func (i *Issuer) RequestExpectation(request *token.ExpectationRequest) (*token.T
 		return nil, errors.New("no outputs in ExpectationRequest")
 	}
 	return &token.TokenTransaction{
-		Action: &token.TokenTransaction_PlainAction{
-			PlainAction: &token.PlainTokenAction{
-				Data: &token.PlainTokenAction_PlainImport{
-					PlainImport: &token.PlainImport{
+		Action: &token.TokenTransaction_TokenAction{
+			TokenAction: &token.TokenAction{
+				Data: &token.TokenAction_Issue{
+					Issue: &token.Issue{
 						Outputs: outputs,
 					},
 				},

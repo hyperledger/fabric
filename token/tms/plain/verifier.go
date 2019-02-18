@@ -62,7 +62,7 @@ func (v *Verifier) ProcessTx(txID string, creator identity.PublicInfo, ttx *toke
 }
 
 func (v *Verifier) checkProcess(txID string, creator identity.PublicInfo, ttx *token.TokenTransaction, simulator ledger.LedgerReader) error {
-	action := ttx.GetPlainAction()
+	action := ttx.GetTokenAction()
 	if action == nil {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("check process failed for transaction '%s': missing token action", txID)}
 	}
@@ -75,28 +75,28 @@ func (v *Verifier) checkProcess(txID string, creator identity.PublicInfo, ttx *t
 	return nil
 }
 
-func (v *Verifier) checkAction(creator identity.PublicInfo, plainAction *token.PlainTokenAction, txID string, simulator ledger.LedgerReader) error {
-	switch action := plainAction.Data.(type) {
-	case *token.PlainTokenAction_PlainImport:
-		return v.checkImportAction(creator, action.PlainImport, txID, simulator)
-	case *token.PlainTokenAction_PlainTransfer:
-		return v.checkTransferAction(creator, action.PlainTransfer, txID, simulator)
-	case *token.PlainTokenAction_PlainRedeem:
-		return v.checkRedeemAction(creator, action.PlainRedeem, txID, simulator)
+func (v *Verifier) checkAction(creator identity.PublicInfo, tokenAction *token.TokenAction, txID string, simulator ledger.LedgerReader) error {
+	switch action := tokenAction.Data.(type) {
+	case *token.TokenAction_Issue:
+		return v.checkImportAction(creator, action.Issue, txID, simulator)
+	case *token.TokenAction_Transfer:
+		return v.checkTransferAction(creator, action.Transfer, txID, simulator)
+	case *token.TokenAction_Redeem:
+		return v.checkRedeemAction(creator, action.Redeem, txID, simulator)
 	default:
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("unknown plain token action: %T", action)}
 	}
 }
 
-func (v *Verifier) checkImportAction(creator identity.PublicInfo, importAction *token.PlainImport, txID string, simulator ledger.LedgerReader) error {
-	err := v.checkImportOutputs(importAction.GetOutputs(), txID, simulator)
+func (v *Verifier) checkImportAction(creator identity.PublicInfo, issueAction *token.Issue, txID string, simulator ledger.LedgerReader) error {
+	err := v.checkImportOutputs(issueAction.GetOutputs(), txID, simulator)
 	if err != nil {
 		return err
 	}
-	return v.checkImportPolicy(creator, txID, importAction)
+	return v.checkIssuePolicy(creator, txID, issueAction)
 }
 
-func (v *Verifier) checkImportOutputs(outputs []*token.PlainOutput, txID string, simulator ledger.LedgerReader) error {
+func (v *Verifier) checkImportOutputs(outputs []*token.Token, txID string, simulator ledger.LedgerReader) error {
 	if len(outputs) == 0 {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("no outputs in transaction: %s", txID)}
 	}
@@ -118,11 +118,11 @@ func (v *Verifier) checkImportOutputs(outputs []*token.PlainOutput, txID string,
 	return nil
 }
 
-func (v *Verifier) checkTransferAction(creator identity.PublicInfo, transferAction *token.PlainTransfer, txID string, simulator ledger.LedgerReader) error {
+func (v *Verifier) checkTransferAction(creator identity.PublicInfo, transferAction *token.Transfer, txID string, simulator ledger.LedgerReader) error {
 	return v.checkInputsAndOutputs(creator, transferAction.GetInputs(), transferAction.GetOutputs(), txID, simulator, true)
 }
 
-func (v *Verifier) checkRedeemAction(creator identity.PublicInfo, redeemAction *token.PlainTransfer, txID string, simulator ledger.LedgerReader) error {
+func (v *Verifier) checkRedeemAction(creator identity.PublicInfo, redeemAction *token.Transfer, txID string, simulator ledger.LedgerReader) error {
 	err := v.checkInputsAndOutputs(creator, redeemAction.GetInputs(), redeemAction.GetOutputs(), txID, simulator, false)
 	if err != nil {
 		return err
@@ -152,7 +152,7 @@ func (v *Verifier) checkRedeemAction(creator identity.PublicInfo, redeemAction *
 func (v *Verifier) checkInputsAndOutputs(
 	creator identity.PublicInfo,
 	tokenIds []*token.TokenId,
-	outputs []*token.PlainOutput,
+	outputs []*token.Token,
 	txID string,
 	simulator ledger.LedgerReader,
 	ownerRequired bool) error {
@@ -174,7 +174,7 @@ func (v *Verifier) checkInputsAndOutputs(
 	return nil
 }
 
-func (v *Verifier) checkOutputDoesNotExist(index int, output *token.PlainOutput, txID string, simulator ledger.LedgerReader) error {
+func (v *Verifier) checkOutputDoesNotExist(index int, output *token.Token, txID string, simulator ledger.LedgerReader) error {
 	var outputID string
 	var err error
 	if output.Owner != nil {
@@ -197,7 +197,7 @@ func (v *Verifier) checkOutputDoesNotExist(index int, output *token.PlainOutput,
 	return nil
 }
 
-func (v *Verifier) checkOutputs(outputs []*token.PlainOutput, txID string, simulator ledger.LedgerReader, ownerRequired bool) (string, uint64, error) {
+func (v *Verifier) checkOutputs(outputs []*token.Token, txID string, simulator ledger.LedgerReader, ownerRequired bool) (string, uint64, error) {
 	tokenType := ""
 	tokenSum := uint64(0)
 	for i, output := range outputs {
@@ -266,18 +266,18 @@ func (v *Verifier) checkInputs(creator identity.PublicInfo, tokenIds []*token.To
 	return tokenType, inputSum, nil
 }
 
-func (v *Verifier) checkInputOwner(creator identity.PublicInfo, input *token.PlainOutput, tokenId string) error {
+func (v *Verifier) checkInputOwner(creator identity.PublicInfo, input *token.Token, tokenId string) error {
 	if !bytes.Equal(creator.Public(), input.Owner.Raw) {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("transfer input with ID %s not owned by creator", tokenId)}
 	}
 	return nil
 }
 
-func (v *Verifier) checkImportPolicy(creator identity.PublicInfo, txID string, importData *token.PlainImport) error {
-	for _, output := range importData.Outputs {
+func (v *Verifier) checkIssuePolicy(creator identity.PublicInfo, txID string, issueData *token.Issue) error {
+	for _, output := range issueData.Outputs {
 		err := v.IssuingValidator.Validate(creator, output.Type)
 		if err != nil {
-			return &customtx.InvalidTxError{Msg: fmt.Sprintf("import policy check failed: %s", err)}
+			return &customtx.InvalidTxError{Msg: fmt.Sprintf("issue policy check failed: %s", err)}
 		}
 	}
 	return nil
@@ -285,7 +285,7 @@ func (v *Verifier) checkImportPolicy(creator identity.PublicInfo, txID string, i
 
 func (v *Verifier) commitProcess(txID string, creator identity.PublicInfo, ttx *token.TokenTransaction, simulator ledger.LedgerWriter) error {
 	verifierLogger.Debugf("committing action with txID '%s'", txID)
-	err := v.commitAction(ttx.GetPlainAction(), txID, simulator)
+	err := v.commitAction(ttx.GetTokenAction(), txID, simulator)
 	if err != nil {
 		verifierLogger.Errorf("error committing action with txID '%s': %s", txID, err)
 		return err
@@ -295,21 +295,21 @@ func (v *Verifier) commitProcess(txID string, creator identity.PublicInfo, ttx *
 	return nil
 }
 
-func (v *Verifier) commitAction(plainAction *token.PlainTokenAction, txID string, simulator ledger.LedgerWriter) (err error) {
-	switch action := plainAction.Data.(type) {
-	case *token.PlainTokenAction_PlainImport:
-		err = v.commitImportAction(action.PlainImport, txID, simulator)
-	case *token.PlainTokenAction_PlainTransfer:
-		err = v.commitTransferAction(action.PlainTransfer, txID, simulator)
-	case *token.PlainTokenAction_PlainRedeem:
-		// call the same commit method as transfer because PlainRedeem points to the same type of outputs as transfer
-		err = v.commitTransferAction(action.PlainRedeem, txID, simulator)
+func (v *Verifier) commitAction(tokenAction *token.TokenAction, txID string, simulator ledger.LedgerWriter) (err error) {
+	switch action := tokenAction.Data.(type) {
+	case *token.TokenAction_Issue:
+		err = v.commitIssueAction(action.Issue, txID, simulator)
+	case *token.TokenAction_Transfer:
+		err = v.commitTransferAction(action.Transfer, txID, simulator)
+	case *token.TokenAction_Redeem:
+		// call the same commit method as transfer because Redeem points to the same type of outputs as transfer
+		err = v.commitTransferAction(action.Redeem, txID, simulator)
 	}
 	return
 }
 
-func (v *Verifier) commitImportAction(importAction *token.PlainImport, txID string, simulator ledger.LedgerWriter) error {
-	for i, output := range importAction.GetOutputs() {
+func (v *Verifier) commitIssueAction(issueAction *token.Issue, txID string, simulator ledger.LedgerWriter) error {
+	for i, output := range issueAction.GetOutputs() {
 		outputID, err := createOutputKey(txID, i)
 		if err != nil {
 			return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating output ID: %s", err)}
@@ -325,7 +325,7 @@ func (v *Verifier) commitImportAction(importAction *token.PlainImport, txID stri
 
 // commitTransferAction is called for both transfer and redeem transactions
 // Check the owner of each output to determine how to generate the key
-func (v *Verifier) commitTransferAction(transferAction *token.PlainTransfer, txID string, simulator ledger.LedgerWriter) error {
+func (v *Verifier) commitTransferAction(transferAction *token.Transfer, txID string, simulator ledger.LedgerWriter) error {
 	var outputID string
 	var err error
 	for i, output := range transferAction.GetOutputs() {
@@ -346,7 +346,7 @@ func (v *Verifier) commitTransferAction(transferAction *token.PlainTransfer, txI
 	return v.markInputsSpent(txID, transferAction.GetInputs(), simulator)
 }
 
-func (v *Verifier) addOutput(outputID string, output *token.PlainOutput, simulator ledger.LedgerWriter) error {
+func (v *Verifier) addOutput(outputID string, output *token.Token, simulator ledger.LedgerWriter) error {
 	outputBytes := utils.MarshalOrPanic(output)
 
 	return simulator.SetState(tokenNameSpace, outputID, outputBytes)
@@ -384,7 +384,7 @@ func (v *Verifier) markDelegatedInputsSpent(txID string, inputs []*token.TokenId
 	return nil
 }
 
-func (v *Verifier) getOutput(outputID string, simulator ledger.LedgerReader) (*token.PlainOutput, error) {
+func (v *Verifier) getOutput(outputID string, simulator ledger.LedgerReader) (*token.Token, error) {
 	if !strings.Contains(outputID, tokenOutput) {
 		return nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("input with ID %s for transfer is not an output", outputID)}
 	}
@@ -398,7 +398,7 @@ func (v *Verifier) getOutput(outputID string, simulator ledger.LedgerReader) (*t
 	if len(outputBytes) == 0 {
 		return nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("input with ID %s for transfer does not exist", outputID)}
 	}
-	output := &token.PlainOutput{}
+	output := &token.Token{}
 	err = proto.Unmarshal(outputBytes, output)
 	if err != nil {
 		return nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("unmarshaling error: %s", err)}

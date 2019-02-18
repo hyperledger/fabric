@@ -76,7 +76,7 @@ func (s *Prover) ProcessCommand(ctx context.Context, sc *token.SignedCommand) (c
 	var payload interface{}
 	switch t := command.GetPayload().(type) {
 	case *token.Command_ImportRequest:
-		payload, err = s.RequestImport(ctx, command.Header, t.ImportRequest)
+		payload, err = s.RequestIssue(ctx, command.Header, t.ImportRequest)
 	case *token.Command_TransferRequest:
 		payload, err = s.RequestTransfer(ctx, command.Header, t.TransferRequest)
 	case *token.Command_RedeemRequest:
@@ -100,7 +100,7 @@ func (s *Prover) ProcessCommand(ctx context.Context, sc *token.SignedCommand) (c
 	return
 }
 
-func (s *Prover) RequestImport(ctx context.Context, header *token.Header, requestImport *token.ImportRequest) (*token.CommandResponse_TokenTransaction, error) {
+func (s *Prover) RequestIssue(ctx context.Context, header *token.Header, requestImport *token.ImportRequest) (*token.CommandResponse_TokenTransaction, error) {
 	issuer, err := s.TMSManager.GetIssuer(header.ChannelId, requestImport.Credential, header.Creator)
 	if err != nil {
 		return nil, err

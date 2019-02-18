@@ -152,11 +152,11 @@ func getEnvWithSigner(ccID string, event []byte, res []byte, sig msp.SigningIden
 
 func getTokenTx(t *testing.T) *common.Envelope {
 	transactionData := &token.TokenTransaction{
-		Action: &token.TokenTransaction_PlainAction{
-			PlainAction: &token.PlainTokenAction{
-				Data: &token.PlainTokenAction_PlainImport{
-					PlainImport: &token.PlainImport{
-						Outputs: []*token.PlainOutput{
+		Action: &token.TokenTransaction_TokenAction{
+			TokenAction: &token.TokenAction{
+				Data: &token.TokenAction_Issue{
+					Issue: &token.Issue{
+						Outputs: []*token.Token{
 							{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 111},
 							{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: 222},
 						},

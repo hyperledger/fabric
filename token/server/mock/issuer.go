@@ -113,7 +113,7 @@ func (fake *Issuer) RequestImport(arg1 []*token.TokenToIssue) (*token.TokenTrans
 	fake.requestImportArgsForCall = append(fake.requestImportArgsForCall, struct {
 		arg1 []*token.TokenToIssue
 	}{arg1Copy})
-	fake.recordInvocation("RequestImport", []interface{}{arg1Copy})
+	fake.recordInvocation("RequestIssue", []interface{}{arg1Copy})
 	fake.requestImportMutex.Unlock()
 	if fake.RequestImportStub != nil {
 		return fake.RequestImportStub(arg1)

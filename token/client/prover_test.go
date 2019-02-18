@@ -67,11 +67,11 @@ var _ = Describe("TokenClient", func() {
 		fakeProverPeerClient = &mock.ProverPeerClient{}
 
 		tokenTx := &token.TokenTransaction{
-			Action: &token.TokenTransaction_PlainAction{
-				PlainAction: &token.PlainTokenAction{
-					Data: &token.PlainTokenAction_PlainImport{
-						PlainImport: &token.PlainImport{
-							Outputs: []*token.PlainOutput{},
+			Action: &token.TokenTransaction_TokenAction{
+				TokenAction: &token.TokenAction{
+					Data: &token.TokenAction_Issue{
+						Issue: &token.Issue{
+							Outputs: []*token.Token{},
 						},
 					},
 				},
@@ -95,7 +95,7 @@ var _ = Describe("TokenClient", func() {
 		prover = &client.ProverPeer{RandomnessReader: fakeRandomnessReader, ProverPeerClient: fakeProverPeerClient, ChannelID: channelID, Time: clock}
 	})
 
-	Describe("RequestImport", func() {
+	Describe("RequestIssue", func() {
 		var (
 			tokensToIssue     []*token.TokenToIssue
 			marshalledCommand []byte

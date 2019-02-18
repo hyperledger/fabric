@@ -31,7 +31,7 @@ type Transactor struct {
 
 // RequestTransfer creates a TokenTransaction of type transfer request
 func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.TokenTransaction, error) {
-	var outputs []*token.PlainOutput
+	var outputs []*token.Token
 
 	if len(request.GetTokenIds()) == 0 {
 		return nil, errors.New("no token IDs in transfer request")
@@ -50,7 +50,7 @@ func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.Tok
 		if err != nil {
 			return nil, errors.Errorf("invalid recipient in transfer request '%s'", err)
 		}
-		outputs = append(outputs, &token.PlainOutput{
+		outputs = append(outputs, &token.Token{
 			Owner:    ttt.Recipient,
 			Type:     tokenType,
 			Quantity: ttt.Quantity,
@@ -59,10 +59,10 @@ func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.Tok
 
 	// prepare transfer request
 	transaction := &token.TokenTransaction{
-		Action: &token.TokenTransaction_PlainAction{
-			PlainAction: &token.PlainTokenAction{
-				Data: &token.PlainTokenAction_PlainTransfer{
-					PlainTransfer: &token.PlainTransfer{
+		Action: &token.TokenTransaction_TokenAction{
+			TokenAction: &token.TokenAction{
+				Data: &token.TokenAction_Transfer{
+					Transfer: &token.Transfer{
 						Inputs:  request.GetTokenIds(),
 						Outputs: outputs,
 					},
@@ -93,15 +93,15 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 	}
 
 	// add the output for redeem itself
-	var outputs []*token.PlainOutput
-	outputs = append(outputs, &token.PlainOutput{
+	var outputs []*token.Token
+	outputs = append(outputs, &token.Token{
 		Type:     tokenType,
 		Quantity: request.QuantityToRedeem,
 	})
 
 	// add another output if there is remaining quantity after redemption
 	if quantitySum > request.QuantityToRedeem {
-		outputs = append(outputs, &token.PlainOutput{
+		outputs = append(outputs, &token.Token{
 			// note that tokenOwner type may change in the future depending on creator type
 			Owner:    &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}, // PublicCredential is serialized identity for the creator
 			Type:     tokenType,
@@ -109,12 +109,12 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 		})
 	}
 
-	// PlainRedeem shares the same data structure as PlainTransfer
+	// Redeem shares the same data structure as Transfer
 	transaction := &token.TokenTransaction{
-		Action: &token.TokenTransaction_PlainAction{
-			PlainAction: &token.PlainTokenAction{
-				Data: &token.PlainTokenAction_PlainRedeem{
-					PlainRedeem: &token.PlainTransfer{
+		Action: &token.TokenTransaction_TokenAction{
+			TokenAction: &token.TokenAction{
+				Data: &token.TokenAction_Redeem{
+					Redeem: &token.Transfer{
 						Inputs:  request.GetTokenIds(),
 						Outputs: outputs,
 					},
@@ -150,7 +150,7 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, u
 		if len(inBytes) == 0 {
 			return "", 0, errors.New(fmt.Sprintf("input '%s' does not exist", inKey))
 		}
-		input := &token.PlainOutput{}
+		input := &token.Token{}
 		err = proto.Unmarshal(inBytes, input)
 		if err != nil {
 			return "", 0, errors.New(fmt.Sprintf("error unmarshaling input bytes: '%s'", err))
@@ -205,7 +205,7 @@ func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 				return nil, errors.New("failed to retrieve unspent tokens: casting error")
 			}
 			if strings.HasPrefix(result.Key, prefix) {
-				output := &token.PlainOutput{}
+				output := &token.Token{}
 				err = proto.Unmarshal(result.Value, output)
 				if err != nil {
 					return nil, errors.New("failed to retrieve unspent tokens: casting error")
@@ -271,7 +271,7 @@ func (t *Transactor) RequestExpectation(request *token.ExpectationRequest) (*tok
 
 	// inputs may have remaining tokens after outputs - add a new output in this case
 	if inputSum > outputSum {
-		outputs = append(outputs, &token.PlainOutput{
+		outputs = append(outputs, &token.Token{
 			Owner:    &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}, // PublicCredential is serialized identity for the creator
 			Type:     outputType,
 			Quantity: inputSum - outputSum,
@@ -279,10 +279,10 @@ func (t *Transactor) RequestExpectation(request *token.ExpectationRequest) (*tok
 	}
 
 	return &token.TokenTransaction{
-		Action: &token.TokenTransaction_PlainAction{
-			PlainAction: &token.PlainTokenAction{
-				Data: &token.PlainTokenAction_PlainTransfer{
-					PlainTransfer: &token.PlainTransfer{
+		Action: &token.TokenTransaction_TokenAction{
+			TokenAction: &token.TokenAction{
+				Data: &token.TokenAction_Transfer{
+					Transfer: &token.Transfer{
 						Inputs:  request.GetTokenIds(),
 						Outputs: outputs,
 					},
@@ -359,7 +359,7 @@ func splitCompositeKey(compositeKey string) (string, []string, error) {
 }
 
 // parseOutputs iterates each output to verify token type and calculate the sum
-func parseOutputs(outputs []*token.PlainOutput) (string, uint64, error) {
+func parseOutputs(outputs []*token.Token) (string, uint64, error) {
 	if len(outputs) == 0 {
 		return "", 0, errors.New("no outputs in request")
 	}

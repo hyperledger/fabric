@@ -34,13 +34,13 @@ var _ = Describe("RequestListTokens", func() {
 		results = make([]*queryresult.KV, 5)
 
 		var err error
-		outputs[0], err = proto.Marshal(&token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: 100})
+		outputs[0], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: 100})
 		Expect(err).NotTo(HaveOccurred())
-		outputs[1], err = proto.Marshal(&token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("Bob")}, Type: "TOK2", Quantity: 200})
+		outputs[1], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Bob")}, Type: "TOK2", Quantity: 200})
 		Expect(err).NotTo(HaveOccurred())
-		outputs[2], err = proto.Marshal(&token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK3", Quantity: 300})
+		outputs[2], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK3", Quantity: 300})
 		Expect(err).NotTo(HaveOccurred())
-		outputs[3], err = proto.Marshal(&token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK4", Quantity: 400})
+		outputs[3], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK4", Quantity: 400})
 		Expect(err).NotTo(HaveOccurred())
 
 		keys[0] = generateKey("1", "0", "tokenOutput")
@@ -169,7 +169,7 @@ var _ = Describe("Transactor", func() {
 		)
 
 		BeforeEach(func() {
-			input := &token.PlainOutput{
+			input := &token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK1",
 				Quantity: 99,
@@ -193,14 +193,14 @@ var _ = Describe("Transactor", func() {
 			tt, err := transactor.RequestTransfer(transferRequest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tt).To(Equal(&token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainTransfer{
-							PlainTransfer: &token.PlainTransfer{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Transfer{
+							Transfer: &token.Transfer{
 								Inputs: []*token.TokenId{
 									{TxId: "george", Index: uint32(0)},
 								},
-								Outputs: []*token.PlainOutput{
+								Outputs: []*token.Token{
 									{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: 1001},
 									{Owner: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK1", Quantity: 1002},
 									{Owner: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK1", Quantity: 1003},
@@ -251,12 +251,12 @@ var _ = Describe("Transactor", func() {
 		)
 
 		BeforeEach(func() {
-			input1 := &token.PlainOutput{
+			input1 := &token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK1",
 				Quantity: 99,
 			}
-			input2 := &token.PlainOutput{
+			input2 := &token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK2",
 				Quantity: 99,
@@ -297,7 +297,7 @@ var _ = Describe("Transactor", func() {
 
 		BeforeEach(func() {
 			inputQuantity = 99
-			input := &token.PlainOutput{
+			input := &token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK1",
 				Quantity: inputQuantity,
@@ -321,14 +321,14 @@ var _ = Describe("Transactor", func() {
 			tt, err := transactor.RequestRedeem(redeemRequest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tt).To(Equal(&token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainRedeem{
-							PlainRedeem: &token.PlainTransfer{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Redeem{
+							Redeem: &token.Transfer{
 								Inputs: []*token.TokenId{
 									{TxId: "robert", Index: uint32(0)},
 								},
-								Outputs: []*token.PlainOutput{
+								Outputs: []*token.Token{
 									{Type: "TOK1", Quantity: redeemQuantity},
 								},
 							},
@@ -349,14 +349,14 @@ var _ = Describe("Transactor", func() {
 			tt, err := transactor.RequestRedeem(redeemRequest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tt).To(Equal(&token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainRedeem{
-							PlainRedeem: &token.PlainTransfer{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Redeem{
+							Redeem: &token.Transfer{
 								Inputs: []*token.TokenId{
 									{TxId: "robert", Index: uint32(0)},
 								},
-								Outputs: []*token.PlainOutput{
+								Outputs: []*token.Token{
 									{Type: "TOK1", Quantity: redeemQuantity},
 									{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: unredeemedQuantity},
 								},
@@ -393,7 +393,7 @@ var _ = Describe("Transactor", func() {
 
 		BeforeEach(func() {
 			inputQuantity = 100
-			input := &token.PlainOutput{
+			input := &token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK1",
 				Quantity: inputQuantity,
@@ -413,7 +413,7 @@ var _ = Describe("Transactor", func() {
 						PlainExpectation: &token.PlainExpectation{
 							Payload: &token.PlainExpectation_TransferExpectation{
 								TransferExpectation: &token.PlainTokenExpectation{
-									Outputs: []*token.PlainOutput{{
+									Outputs: []*token.Token{{
 										Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
 										Type:     "TOK1",
 										Quantity: inputQuantity,
@@ -430,14 +430,14 @@ var _ = Describe("Transactor", func() {
 			tt, err := transactor.RequestExpectation(expectationRequest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tt).To(Equal(&token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainTransfer{
-							PlainTransfer: &token.PlainTransfer{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Transfer{
+							Transfer: &token.Transfer{
 								Inputs: []*token.TokenId{
 									{TxId: "robert", Index: uint32(0)},
 								},
-								Outputs: []*token.PlainOutput{{
+								Outputs: []*token.Token{{
 									Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
 									Type:     "TOK1",
 									Quantity: inputQuantity,
@@ -455,14 +455,14 @@ var _ = Describe("Transactor", func() {
 			tt, err := transactor.RequestExpectation(expectationRequest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tt).To(Equal(&token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainTransfer{
-							PlainTransfer: &token.PlainTransfer{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Transfer{
+							Transfer: &token.Transfer{
 								Inputs: []*token.TokenId{
 									{TxId: "robert", Index: uint32(0)},
 								},
-								Outputs: []*token.PlainOutput{
+								Outputs: []*token.Token{
 									{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 40},
 									{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: inputQuantity - 40},
 								},

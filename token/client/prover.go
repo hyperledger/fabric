@@ -82,7 +82,7 @@ func (pc *ProverPeerClientImpl) Certificate() *tls.Certificate {
 	return &cert
 }
 
-// RequestImport allows the client to submit an issue request to a prover peer service;
+// RequestIssue allows the client to submit an issue request to a prover peer service;
 // the function takes as parameters tokensToIssue and the signing identity of the client;
 // it returns a marshalled TokenTransaction and an error message in the case the request fails.
 func (prover *ProverPeer) RequestImport(tokensToIssue []*token.TokenToIssue, signingIdentity tk.SigningIdentity) ([]byte, error) {

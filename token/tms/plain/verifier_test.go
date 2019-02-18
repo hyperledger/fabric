@@ -34,8 +34,8 @@ var _ = Describe("Verifier", func() {
 		fakeLedger              *mockledger.LedgerWriter
 		memoryLedger            *plain.MemoryLedger
 
-		importTransaction *token.TokenTransaction
-		importTxID        string
+		issueTransaction *token.TokenTransaction
+		issueTxID        string
 
 		verifier *plain.Verifier
 	)
@@ -47,13 +47,13 @@ var _ = Describe("Verifier", func() {
 		fakeLedger = &mockledger.LedgerWriter{}
 		fakeLedger.SetStateReturns(nil)
 
-		importTxID = "0"
-		importTransaction = &token.TokenTransaction{
-			Action: &token.TokenTransaction_PlainAction{
-				PlainAction: &token.PlainTokenAction{
-					Data: &token.PlainTokenAction_PlainImport{
-						PlainImport: &token.PlainImport{
-							Outputs: []*token.PlainOutput{
+		issueTxID = "0"
+		issueTransaction = &token.TokenTransaction{
+			Action: &token.TokenTransaction_TokenAction{
+				TokenAction: &token.TokenAction{
+					Data: &token.TokenAction_Issue{
+						Issue: &token.Issue{
+							Outputs: []*token.Token{
 								{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 111},
 								{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: 222},
 							},
@@ -69,9 +69,9 @@ var _ = Describe("Verifier", func() {
 		}
 	})
 
-	Describe("ProcessTx PlainImport", func() {
+	Describe("ProcessTx Issue", func() {
 		It("evaluates policy for each output", func() {
-			err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
+			err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeIssuingValidator.ValidateCallCount()).To(Equal(2))
@@ -84,12 +84,12 @@ var _ = Describe("Verifier", func() {
 		})
 
 		It("checks the fake ledger", func() {
-			err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
+			err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeLedger.SetStateCallCount()).To(Equal(2))
 
-			outputBytes, err := proto.Marshal(&token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 111})
+			outputBytes, err := proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 111})
 			Expect(err).NotTo(HaveOccurred())
 			ns, k, td := fakeLedger.SetStateArgsForCall(0)
 			Expect(ns).To(Equal(tokenNamespace))
@@ -97,7 +97,7 @@ var _ = Describe("Verifier", func() {
 			Expect(k).To(Equal(expectedOutput))
 			Expect(td).To(Equal(outputBytes))
 
-			outputBytes, err = proto.Marshal(&token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: 222})
+			outputBytes, err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: 222})
 			Expect(err).NotTo(HaveOccurred())
 			ns, k, td = fakeLedger.SetStateArgsForCall(1)
 			Expect(ns).To(Equal(tokenNamespace))
@@ -112,9 +112,9 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("returns an error and does not write to the ledger", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "import policy check failed: no-way-man"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "issue policy check failed: no-way-man"}))
 				Expect(fakeLedger.SetStateCallCount()).To(Equal(0))
 			})
 		})
@@ -125,7 +125,7 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("returns an error", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError("no-can-do"))
 
@@ -135,12 +135,12 @@ var _ = Describe("Verifier", func() {
 
 		Context("when transaction does not contain any outputs", func() {
 			BeforeEach(func() {
-				importTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainImport{
-								PlainImport: &token.PlainImport{
-									Outputs: []*token.PlainOutput{},
+				issueTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Issue{
+								Issue: &token.Issue{
+									Outputs: []*token.Token{},
 								},
 							},
 						},
@@ -148,7 +148,7 @@ var _ = Describe("Verifier", func() {
 				}
 			})
 			It("returns an error", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "no outputs in transaction: 0"}))
 			})
@@ -156,12 +156,12 @@ var _ = Describe("Verifier", func() {
 
 		Context("when the output of a transaction has quantity of 0", func() {
 			BeforeEach(func() {
-				importTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainImport{
-								PlainImport: &token.PlainImport{
-									Outputs: []*token.PlainOutput{
+				issueTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Issue{
+								Issue: &token.Issue{
+									Outputs: []*token.Token{
 										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 0},
 									},
 								},
@@ -171,7 +171,7 @@ var _ = Describe("Verifier", func() {
 				}
 			})
 			It("returns an error", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "output 0 quantity is 0 in transaction: 0"}))
 			})
@@ -180,11 +180,11 @@ var _ = Describe("Verifier", func() {
 		Context("when an output already exists", func() {
 			BeforeEach(func() {
 				memoryLedger = plain.NewMemoryLedger()
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, memoryLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
 				Expect(err).NotTo(HaveOccurred())
 			})
 			It("returns an error", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, memoryLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
 				Expect(err).To(HaveOccurred())
 				existingOutputId := strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00")
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("output already exists: %s", existingOutputId)}))
@@ -193,25 +193,25 @@ var _ = Describe("Verifier", func() {
 
 		Context("when an output has no owner", func() {
 			BeforeEach(func() {
-				importTransaction.GetPlainAction().GetPlainImport().Outputs[0].Owner = nil
-				importTxID = "no-owner-id"
+				issueTransaction.GetTokenAction().GetIssue().Outputs[0].Owner = nil
+				issueTxID = "no-owner-id"
 			})
 
 			It("returns an InvalidTxError", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'owner is nil'", importTxID)}))
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'owner is nil'", issueTxID)}))
 			})
 		})
 
 		Context("when an output has empty owner", func() {
 			BeforeEach(func() {
-				importTransaction.GetPlainAction().GetPlainImport().Outputs[0].Owner = &token.TokenOwner{}
-				importTxID = "no-owner-id"
+				issueTransaction.GetTokenAction().GetIssue().Outputs[0].Owner = &token.TokenOwner{}
+				issueTxID = "no-owner-id"
 			})
 
 			It("returns an InvalidTxError", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'raw is empty'", importTxID)}))
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'raw is empty'", issueTxID)}))
 			})
 		})
 
@@ -220,19 +220,19 @@ var _ = Describe("Verifier", func() {
 	Describe("Output GetState error scenarios", func() {
 		BeforeEach(func() {
 			memoryLedger = plain.NewMemoryLedger()
-			err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, memoryLedger)
+			err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("retrieves the PlainOutput associated with the entry ID", func() {
+		It("retrieves the Token associated with the entry ID", func() {
 			po, err := memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00"))
 			Expect(err).NotTo(HaveOccurred())
 
-			output := &token.PlainOutput{}
+			output := &token.Token{}
 			err = proto.Unmarshal(po, output)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(output).To(Equal(&token.PlainOutput{
+			Expect(output).To(Equal(&token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
 				Type:     "TOK1",
 				Quantity: 111,
@@ -244,7 +244,7 @@ var _ = Describe("Verifier", func() {
 			err = proto.Unmarshal(po, output)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(output).To(Equal(&token.PlainOutput{
+			Expect(output).To(Equal(&token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("owner-2")},
 				Type:     "TOK2",
 				Quantity: 222,
@@ -263,64 +263,64 @@ var _ = Describe("Verifier", func() {
 	Describe("ProcessTx empty or invalid input", func() {
 		Context("when a plain action is not provided", func() {
 			BeforeEach(func() {
-				importTxID = "255"
-				importTransaction = &token.TokenTransaction{}
+				issueTxID = "255"
+				issueTransaction = &token.TokenTransaction{}
 			})
 
 			It("returns an error", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(MatchError("check process failed for transaction '255': missing token action"))
 			})
 		})
 
 		Context("when an unknown plain token action is provided", func() {
 			BeforeEach(func() {
-				importTxID = "254"
-				importTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{},
+				issueTxID = "254"
+				issueTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{},
 					},
 				}
 			})
 
 			It("returns an error", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "unknown plain token action: <nil>"}))
 			})
 		})
 
 		Context("when a transaction has invalid characters in key", func() {
 			BeforeEach(func() {
-				importTxID = string(0)
+				issueTxID = string(0)
 			})
 
 			It("fails when creating the ledger key for the output", func() {
 				By("returning an error")
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error creating output ID: input contain unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
 			})
 		})
 
 		Context("when a transaction has invalid characters in key", func() {
 			BeforeEach(func() {
-				importTxID = string(0)
+				issueTxID = string(0)
 			})
 
 			It("fails when creating the ledger key for the first output", func() {
 				By("returning an error")
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error creating output ID: input contain unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
 			})
 		})
 
 		Context("when a transaction key is an invalid utf8 string", func() {
 			BeforeEach(func() {
-				importTxID = string([]byte{0xE0, 0x80, 0x80})
+				issueTxID = string([]byte{0xE0, 0x80, 0x80})
 			})
 
 			It("fails when creating the ledger key for the output", func() {
 				By("returning an error")
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error creating output ID: not a valid utf8 string: [e08080]"}))
 			})
 		})
@@ -331,7 +331,7 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("returns an error", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, fakeLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError("error reading output"))
 
@@ -345,7 +345,7 @@ var _ = Describe("Verifier", func() {
 		})
 	})
 
-	Describe("Test ProcessTx PlainTransfer with memory ledger", func() {
+	Describe("Test ProcessTx Transfer with memory ledger", func() {
 		var (
 			transferTransaction *token.TokenTransaction
 			transferTxID        string
@@ -354,14 +354,14 @@ var _ = Describe("Verifier", func() {
 		BeforeEach(func() {
 			transferTxID = "1"
 			transferTransaction = &token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainTransfer{
-							PlainTransfer: &token.PlainTransfer{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Transfer{
+							Transfer: &token.Transfer{
 								Inputs: []*token.TokenId{
 									{TxId: "0", Index: 0},
 								},
-								Outputs: []*token.PlainOutput{
+								Outputs: []*token.Token{
 									{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 99},
 									{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: 12},
 								},
@@ -372,7 +372,7 @@ var _ = Describe("Verifier", func() {
 			}
 			fakePublicInfo.PublicReturns([]byte("owner-1"))
 			memoryLedger = plain.NewMemoryLedger()
-			err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, memoryLedger)
+			err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -386,11 +386,11 @@ var _ = Describe("Verifier", func() {
 				po, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenOutput"+string("\x00")+"1"+string("\x00")+"0"+string("\x00"))
 				Expect(err).NotTo(HaveOccurred())
 
-				output := &token.PlainOutput{}
+				output := &token.Token{}
 				err = proto.Unmarshal(po, output)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(output).To(Equal(&token.PlainOutput{
+				Expect(output).To(Equal(&token.Token{
 					Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
 					Type:     "TOK1",
 					Quantity: 99,
@@ -402,7 +402,7 @@ var _ = Describe("Verifier", func() {
 				err = proto.Unmarshal(po, output)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(output).To(Equal(&token.PlainOutput{
+				Expect(output).To(Equal(&token.Token{
 					Owner:    &token.TokenOwner{Raw: []byte("owner-2")},
 					Type:     "TOK1",
 					Quantity: 12,
@@ -417,14 +417,14 @@ var _ = Describe("Verifier", func() {
 		Context("when a non-existent input is referenced", func() {
 			BeforeEach(func() {
 				transferTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainTransfer{
-								PlainTransfer: &token.PlainTransfer{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Transfer{
+								Transfer: &token.Transfer{
 									Inputs: []*token.TokenId{
 										{TxId: "wild_pineapple", Index: 0},
 									},
-									Outputs: []*token.PlainOutput{
+									Outputs: []*token.Token{
 										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 99},
 										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: 12},
 									},
@@ -455,15 +455,15 @@ var _ = Describe("Verifier", func() {
 		Context("when the same input is spent twice", func() {
 			BeforeEach(func() {
 				transferTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainTransfer{
-								PlainTransfer: &token.PlainTransfer{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Transfer{
+								Transfer: &token.Transfer{
 									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 										{TxId: "0", Index: 0},
 									},
-									Outputs: []*token.PlainOutput{
+									Outputs: []*token.Token{
 										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 221},
 										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: 1},
 									},
@@ -483,14 +483,14 @@ var _ = Describe("Verifier", func() {
 		Context("when the input type does not match the output type", func() {
 			BeforeEach(func() {
 				transferTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainTransfer{
-								PlainTransfer: &token.PlainTransfer{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Transfer{
+								Transfer: &token.Transfer{
 									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
-									Outputs: []*token.PlainOutput{
+									Outputs: []*token.Token{
 										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "wild_pineapple", Quantity: 100},
 										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "wild_pineapple", Quantity: 11},
 									},
@@ -510,14 +510,14 @@ var _ = Describe("Verifier", func() {
 		Context("when the input sum does not match the output sum", func() {
 			BeforeEach(func() {
 				transferTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainTransfer{
-								PlainTransfer: &token.PlainTransfer{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Transfer{
+								Transfer: &token.Transfer{
 									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
-									Outputs: []*token.PlainOutput{
+									Outputs: []*token.Token{
 										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 112},
 										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: 12},
 									},
@@ -542,11 +542,11 @@ var _ = Describe("Verifier", func() {
 			BeforeEach(func() {
 				anotherImportTxID = "2"
 				anotherImportTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainImport{
-								PlainImport: &token.PlainImport{
-									Outputs: []*token.PlainOutput{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Issue{
+								Issue: &token.Issue{
+									Outputs: []*token.Token{
 										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK2", Quantity: 2121},
 									},
 								},
@@ -557,15 +557,15 @@ var _ = Describe("Verifier", func() {
 				err := verifier.ProcessTx(anotherImportTxID, fakePublicInfo, anotherImportTransaction, memoryLedger)
 				Expect(err).NotTo(HaveOccurred())
 				transferTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainTransfer{
-								PlainTransfer: &token.PlainTransfer{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Transfer{
+								Transfer: &token.Transfer{
 									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 										{TxId: "2", Index: 0},
 									},
-									Outputs: []*token.PlainOutput{
+									Outputs: []*token.Token{
 										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 111},
 									},
 								},
@@ -584,14 +584,14 @@ var _ = Describe("Verifier", func() {
 		Context("when the output contains multiple token types", func() {
 			BeforeEach(func() {
 				transferTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainTransfer{
-								PlainTransfer: &token.PlainTransfer{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Transfer{
+								Transfer: &token.Transfer{
 									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 									},
-									Outputs: []*token.PlainOutput{
+									Outputs: []*token.Token{
 										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 112},
 										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: 12},
 									},
@@ -623,12 +623,12 @@ var _ = Describe("Verifier", func() {
 		Context("when an output already exists", func() {
 			BeforeEach(func() {
 				transferTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainTransfer{
-								PlainTransfer: &token.PlainTransfer{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Transfer{
+								Transfer: &token.Transfer{
 									Inputs: []*token.TokenId{},
-									Outputs: []*token.PlainOutput{
+									Outputs: []*token.Token{
 										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "", Quantity: 0},
 									},
 								},
@@ -637,11 +637,11 @@ var _ = Describe("Verifier", func() {
 					},
 				}
 				memoryLedger = plain.NewMemoryLedger()
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, transferTransaction, memoryLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, transferTransaction, memoryLedger)
 				Expect(err).NotTo(HaveOccurred())
 			})
 			It("returns an error", func() {
-				err := verifier.ProcessTx(importTxID, fakePublicInfo, transferTransaction, memoryLedger)
+				err := verifier.ProcessTx(issueTxID, fakePublicInfo, transferTransaction, memoryLedger)
 				Expect(err).To(HaveOccurred())
 				existingOutputId := string("\x00") + "tokenOutput" + string("\x00") + "0" + string("\x00") + "0" + string("\x00")
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("output already exists: %s", existingOutputId)}))
@@ -650,7 +650,7 @@ var _ = Describe("Verifier", func() {
 
 		Context("when an output has no owner", func() {
 			BeforeEach(func() {
-				transferTransaction.GetPlainAction().GetPlainTransfer().Outputs[0].Owner = nil
+				transferTransaction.GetTokenAction().GetTransfer().Outputs[0].Owner = nil
 			})
 
 			It("returns an InvalidTxError", func() {
@@ -660,7 +660,7 @@ var _ = Describe("Verifier", func() {
 		})
 	})
 
-	Describe("Test ProcessTx PlainRedeem with memory ledger", func() {
+	Describe("Test ProcessTx Redeem with memory ledger", func() {
 		var (
 			tokenIds          []*token.TokenId
 			redeemTxID        string
@@ -673,12 +673,12 @@ var _ = Describe("Verifier", func() {
 				{TxId: "0", Index: 0},
 			}
 			redeemTransaction = &token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainRedeem{
-							PlainRedeem: &token.PlainTransfer{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Redeem{
+							Redeem: &token.Transfer{
 								Inputs: tokenIds,
-								Outputs: []*token.PlainOutput{
+								Outputs: []*token.Token{
 									{Type: "TOK1", Quantity: 111},
 								},
 							},
@@ -689,7 +689,7 @@ var _ = Describe("Verifier", func() {
 
 			fakePublicInfo.PublicReturns([]byte("owner-1"))
 			memoryLedger = plain.NewMemoryLedger()
-			err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, memoryLedger)
+			err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -701,11 +701,11 @@ var _ = Describe("Verifier", func() {
 			po, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenRedeem"+string("\x00")+redeemTxID+string("\x00")+"0"+string("\x00"))
 			Expect(err).NotTo(HaveOccurred())
 
-			output := &token.PlainOutput{}
+			output := &token.Token{}
 			err = proto.Unmarshal(po, output)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(output).To(Equal(&token.PlainOutput{
+			Expect(output).To(Equal(&token.Token{
 				Type:     "TOK1",
 				Quantity: 111,
 			}))
@@ -714,12 +714,12 @@ var _ = Describe("Verifier", func() {
 		It("processes a redeem transaction with some tokens redeemed", func() {
 			// prepare redeemTransaction with 2 outputs: one for redeemed tokens and another for remaining tokens
 			redeemTransaction = &token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainRedeem{
-							PlainRedeem: &token.PlainTransfer{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Redeem{
+							Redeem: &token.Transfer{
 								Inputs: tokenIds,
-								Outputs: []*token.PlainOutput{
+								Outputs: []*token.Token{
 									{Type: "TOK1", Quantity: 99},
 									{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 12},
 								},
@@ -736,11 +736,11 @@ var _ = Describe("Verifier", func() {
 			po, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenRedeem"+string("\x00")+redeemTxID+string("\x00")+"0"+string("\x00"))
 			Expect(err).NotTo(HaveOccurred())
 
-			output := &token.PlainOutput{}
+			output := &token.Token{}
 			err = proto.Unmarshal(po, output)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(output).To(Equal(&token.PlainOutput{
+			Expect(output).To(Equal(&token.Token{
 				Type:     "TOK1",
 				Quantity: 99,
 			}))
@@ -751,7 +751,7 @@ var _ = Describe("Verifier", func() {
 			err = proto.Unmarshal(po, output)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(output).To(Equal(&token.PlainOutput{
+			Expect(output).To(Equal(&token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
 				Type:     "TOK1",
 				Quantity: 12,
@@ -777,12 +777,12 @@ var _ = Describe("Verifier", func() {
 		Context("when token sum mismatches in inputs and outputs", func() {
 			BeforeEach(func() {
 				redeemTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainRedeem{
-								PlainRedeem: &token.PlainTransfer{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Redeem{
+								Redeem: &token.Transfer{
 									Inputs: tokenIds,
-									Outputs: []*token.PlainOutput{
+									Outputs: []*token.Token{
 										{Type: "TOK1", Quantity: 100},
 									},
 								},
@@ -807,11 +807,11 @@ var _ = Describe("Verifier", func() {
 			BeforeEach(func() {
 				anotherImportTxID = "2"
 				anotherImportTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainImport{
-								PlainImport: &token.PlainImport{
-									Outputs: []*token.PlainOutput{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Issue{
+								Issue: &token.Issue{
+									Outputs: []*token.Token{
 										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK2", Quantity: 222},
 									},
 								},
@@ -823,15 +823,15 @@ var _ = Describe("Verifier", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				redeemTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainRedeem{
-								PlainRedeem: &token.PlainTransfer{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Redeem{
+								Redeem: &token.Transfer{
 									Inputs: []*token.TokenId{
 										{TxId: "0", Index: 0},
 										{TxId: "2", Index: 0},
 									},
-									Outputs: []*token.PlainOutput{
+									Outputs: []*token.Token{
 										{Type: "TOK1", Quantity: 300},
 									},
 								},
@@ -850,7 +850,7 @@ var _ = Describe("Verifier", func() {
 
 		Context("when redeem output has wrong type", func() {
 			BeforeEach(func() {
-				redeemTransaction.GetPlainAction().GetPlainRedeem().Outputs[0].Type = "newtype"
+				redeemTransaction.GetTokenAction().GetRedeem().Outputs[0].Type = "newtype"
 			})
 
 			It("returns an error", func() {
@@ -864,12 +864,12 @@ var _ = Describe("Verifier", func() {
 			BeforeEach(func() {
 				// set wrong owner in the output for unredeemed tokens
 				redeemTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainRedeem{
-								PlainRedeem: &token.PlainTransfer{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Redeem{
+								Redeem: &token.Transfer{
 									Inputs: tokenIds,
-									Outputs: []*token.PlainOutput{
+									Outputs: []*token.Token{
 										{Type: "TOK1", Quantity: 99},
 										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: 12},
 									},
@@ -890,12 +890,12 @@ var _ = Describe("Verifier", func() {
 			BeforeEach(func() {
 				// do not set owner in the output for unredeemed tokens
 				redeemTransaction = &token.TokenTransaction{
-					Action: &token.TokenTransaction_PlainAction{
-						PlainAction: &token.PlainTokenAction{
-							Data: &token.PlainTokenAction_PlainRedeem{
-								PlainRedeem: &token.PlainTransfer{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Redeem{
+								Redeem: &token.Transfer{
 									Inputs: tokenIds,
-									Outputs: []*token.PlainOutput{
+									Outputs: []*token.Token{
 										{Type: "TOK1", Quantity: 99},
 										{Owner: &token.TokenOwner{Raw: []byte("wrong-owner")}, Type: "TOK1", Quantity: 12},
 									},
@@ -915,7 +915,7 @@ var _ = Describe("Verifier", func() {
 		Context("when output for redeemed tokens has owner", func() {
 			BeforeEach(func() {
 				// set owner for the redeem output
-				redeemTransaction.GetPlainAction().GetPlainRedeem().Outputs[0].Owner = &token.TokenOwner{Raw: []byte("Owner-1")}
+				redeemTransaction.GetTokenAction().GetRedeem().Outputs[0].Owner = &token.TokenOwner{Raw: []byte("Owner-1")}
 			})
 
 			It("returns an error", func() {

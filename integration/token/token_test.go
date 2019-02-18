@@ -56,22 +56,22 @@ var _ = Describe("Token EndToEnd", func() {
 
 		// expected token transaction returned by prover peer
 		expectedTokenTransaction = &token.TokenTransaction{
-			Action: &token.TokenTransaction_PlainAction{
-				PlainAction: &token.PlainTokenAction{
-					Data: &token.PlainTokenAction_PlainImport{
-						PlainImport: &token.PlainImport{
-							Outputs: []*token.PlainOutput{{
+			Action: &token.TokenTransaction_TokenAction{
+				TokenAction: &token.TokenAction{
+					Data: &token.TokenAction_Issue{
+						Issue: &token.Issue{
+							Outputs: []*token.Token{{
 								Owner:    &token.TokenOwner{Raw: []byte("test-owner")},
 								Type:     "ABC123",
 								Quantity: 119,
 							}}}}}}}
 		expectedTransferTransaction = &token.TokenTransaction{
-			Action: &token.TokenTransaction_PlainAction{
-				PlainAction: &token.PlainTokenAction{
-					Data: &token.PlainTokenAction_PlainTransfer{
-						PlainTransfer: &token.PlainTransfer{
+			Action: &token.TokenTransaction_TokenAction{
+				TokenAction: &token.TokenAction{
+					Data: &token.TokenAction_Transfer{
+						Transfer: &token.Transfer{
 							Inputs: nil,
-							Outputs: []*token.PlainOutput{{
+							Outputs: []*token.Token{{
 								Owner:    nil,
 								Type:     "ABC123",
 								Quantity: 119,
@@ -82,12 +82,12 @@ var _ = Describe("Token EndToEnd", func() {
 			},
 		}
 		expectedRedeemTransaction = &token.TokenTransaction{
-			Action: &token.TokenTransaction_PlainAction{
-				PlainAction: &token.PlainTokenAction{
-					Data: &token.PlainTokenAction_PlainRedeem{
-						PlainRedeem: &token.PlainTransfer{
+			Action: &token.TokenTransaction_TokenAction{
+				TokenAction: &token.TokenAction{
+					Data: &token.TokenAction_Redeem{
+						Redeem: &token.Transfer{
 							Inputs: nil,
-							Outputs: []*token.PlainOutput{
+							Outputs: []*token.Token{
 								{
 									Owner:    nil,
 									Type:     "ABC123",
@@ -155,12 +155,12 @@ var _ = Describe("Token EndToEnd", func() {
 			Expect(err).NotTo(HaveOccurred())
 			recipientUser2 = &token.TokenOwner{Raw: recipientUser2Bytes}
 			tokensToIssue[0].Recipient = recipientUser2
-			expectedTokenTransaction.GetPlainAction().GetPlainImport().Outputs[0].Owner = recipientUser2
+			expectedTokenTransaction.GetTokenAction().GetIssue().Outputs[0].Owner = recipientUser2
 			recipientUser1Bytes, err := getIdentity(network, peer, "User1", "Org1MSP")
 			Expect(err).NotTo(HaveOccurred())
 			recipientUser1 = &token.TokenOwner{Raw: recipientUser1Bytes}
-			expectedTransferTransaction.GetPlainAction().GetPlainTransfer().Outputs[0].Owner = recipientUser1
-			expectedRedeemTransaction.GetPlainAction().GetPlainRedeem().Outputs[1].Owner = recipientUser1
+			expectedTransferTransaction.GetTokenAction().GetTransfer().Outputs[0].Owner = recipientUser1
+			expectedRedeemTransaction.GetTokenAction().GetRedeem().Outputs[1].Owner = recipientUser1
 
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
@@ -199,7 +199,7 @@ var _ = Describe("Token EndToEnd", func() {
 
 			By("transferring tokens to user1")
 			tokenIDs := []*token.TokenId{{TxId: txID, Index: 0}}
-			expectedTransferTransaction.GetPlainAction().GetPlainTransfer().Inputs = tokenIDs
+			expectedTransferTransaction.GetTokenAction().GetTransfer().Inputs = tokenIDs
 			txID = RunTransferRequest(tClient, issuedTokens, recipientUser1, expectedTransferTransaction)
 
 			By("list tokens user 2")
@@ -218,7 +218,7 @@ var _ = Describe("Token EndToEnd", func() {
 
 			By("redeeming tokens user1")
 			tokenIDs = []*token.TokenId{{TxId: txID, Index: 0}}
-			expectedRedeemTransaction.GetPlainAction().GetPlainRedeem().Inputs = tokenIDs
+			expectedRedeemTransaction.GetTokenAction().GetRedeem().Inputs = tokenIDs
 			quantityToRedeem := 50 // redeem 50 out of 119
 			RunRedeemRequest(tClient, issuedTokens, uint64(quantityToRedeem), expectedRedeemTransaction)
 
@@ -264,11 +264,11 @@ var _ = Describe("Token EndToEnd", func() {
 			Expect(err).NotTo(HaveOccurred())
 			recipientUser2 = &token.TokenOwner{Raw: recipientUser2Bytes}
 			tokensToIssue[0].Recipient = &token.TokenOwner{Raw: recipientUser2Bytes}
-			expectedTokenTransaction.GetPlainAction().GetPlainImport().Outputs[0].Owner = recipientUser2
+			expectedTokenTransaction.GetTokenAction().GetIssue().Outputs[0].Owner = recipientUser2
 			recipientUser1Bytes, err := getIdentity(network, peer, "User1", "Org1MSP")
 			Expect(err).NotTo(HaveOccurred())
 			recipientUser1 = &token.TokenOwner{Raw: recipientUser1Bytes}
-			expectedTransferTransaction.GetPlainAction().GetPlainTransfer().Outputs[0].Owner = &token.TokenOwner{Raw: recipientUser1Bytes}
+			expectedTransferTransaction.GetTokenAction().GetTransfer().Outputs[0].Owner = &token.TokenOwner{Raw: recipientUser1Bytes}
 
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
@@ -294,7 +294,7 @@ var _ = Describe("Token EndToEnd", func() {
 
 			By("User2 transfers his token to User1")
 			inputIDs := []*token.TokenId{{TxId: txID, Index: 0}}
-			expectedTransferTransaction.GetPlainAction().GetPlainTransfer().Inputs = inputIDs
+			expectedTransferTransaction.GetTokenAction().GetTransfer().Inputs = inputIDs
 			RunTransferRequest(tClient, issuedTokens, recipientUser1, expectedTransferTransaction)
 
 			By("User2 try to transfer again the same token already transferred before")
@@ -326,12 +326,12 @@ var _ = Describe("Token EndToEnd", func() {
 
 			By("User1 attempts to spend User2's tokens by submitting a token transaction directly")
 			expectedTokenTransaction = &token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainTransfer{
-							PlainTransfer: &token.PlainTransfer{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Transfer{
+							Transfer: &token.Transfer{
 								Inputs: []*token.TokenId{{TxId: txID, Index: 0}},
-								Outputs: []*token.PlainOutput{{
+								Outputs: []*token.Token{{
 									Owner:    &token.TokenOwner{Raw: []byte("test-owner")},
 									Type:     "ABC123",
 									Quantity: 119,
@@ -421,9 +421,9 @@ func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput,
 	Expect(tokenTxid).To(Equal(txid))
 
 	// Verify the result
-	Expect(tokenTx.GetPlainAction().GetPlainTransfer().GetInputs()).ToNot(BeNil())
-	Expect(len(tokenTx.GetPlainAction().GetPlainTransfer().GetInputs())).To(Equal(1))
-	Expect(tokenTx.GetPlainAction().GetPlainTransfer().GetOutputs()).ToNot(BeNil())
+	Expect(tokenTx.GetTokenAction().GetTransfer().GetInputs()).ToNot(BeNil())
+	Expect(len(tokenTx.GetTokenAction().GetTransfer().GetInputs())).To(Equal(1))
+	Expect(tokenTx.GetTokenAction().GetTransfer().GetOutputs()).ToNot(BeNil())
 
 	return txid
 }

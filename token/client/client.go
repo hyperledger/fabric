@@ -18,7 +18,7 @@ import (
 
 type Prover interface {
 
-	// RequestImport allows the client to submit an issue request to a prover peer service;
+	// RequestIssue allows the client to submit an issue request to a prover peer service;
 	// the function takes as parameters tokensToIssue and the signing identity of the client;
 	// it returns a response in bytes and an error message in the case the request fails.
 	// The response corresponds to a serialized TokenTransaction protobuf message.

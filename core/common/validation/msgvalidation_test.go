@@ -72,11 +72,11 @@ func protoMarshal(t *testing.T, m proto.Message) []byte {
 // getTokenTransaction returns a valid token transaction
 func getTokenTransaction() *token.TokenTransaction {
 	return &token.TokenTransaction{
-		Action: &token.TokenTransaction_PlainAction{
-			PlainAction: &token.PlainTokenAction{
-				Data: &token.PlainTokenAction_PlainImport{
-					PlainImport: &token.PlainImport{
-						Outputs: []*token.PlainOutput{{
+		Action: &token.TokenTransaction_TokenAction{
+			TokenAction: &token.TokenAction{
+				Data: &token.TokenAction_Issue{
+					Issue: &token.Issue{
+						Outputs: []*token.Token{{
 							Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 							Type:     "PDQ",
 							Quantity: 777,
