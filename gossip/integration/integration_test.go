@@ -46,12 +46,12 @@ func TestNewGossipCryptoService(t *testing.T) {
 	s1 := grpc.NewServer()
 	s2 := grpc.NewServer()
 	s3 := grpc.NewServer()
-	ll1, _ := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5611))
-	ll2, _ := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5612))
-	ll3, _ := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5613))
-	endpoint1 := "localhost:5611"
-	endpoint2 := "localhost:5612"
-	endpoint3 := "localhost:5613"
+	ll1, _ := net.Listen("tcp", "127.0.0.1:0")
+	ll2, _ := net.Listen("tcp", "127.0.0.1:0")
+	ll3, _ := net.Listen("tcp", "127.0.0.1:0")
+	endpoint1 := ll1.Addr().String()
+	endpoint2 := ll2.Addr().String()
+	endpoint3 := ll3.Addr().String()
 	msptesttools.LoadMSPSetupForTesting()
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 	gossipMetrics := metrics.NewGossipMetrics(&disabled.Provider{})
