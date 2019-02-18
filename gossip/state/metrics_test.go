@@ -48,8 +48,7 @@ func TestMetrics(t *testing.T) {
 	gossipMetrics := metrics.NewGossipMetrics(testMetricProvider.FakeProvider)
 
 	// create peer with fake metrics provider for gossip state
-	p := newPeerNodeWithGossipWithMetrics(newGossipConfig(0, 0),
-		mc, noopPeerIdentityAcceptor, g, gossipMetrics)
+	p := newPeerNodeWithGossipWithMetrics(0, mc, noopPeerIdentityAcceptor, g, gossipMetrics)
 	defer p.shutdown()
 
 	// add a payload to the payload buffer
