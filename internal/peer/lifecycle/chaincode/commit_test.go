@@ -211,7 +211,7 @@ func TestCommitter(t *testing.T) {
 
 func TestCommitCmd(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 		c := newCommitterForTest(t, nil, nil)
 		cmd := commitCmd(nil, c)
 		c.Command = cmd
@@ -229,7 +229,7 @@ func TestCommitCmd(t *testing.T) {
 	})
 
 	t.Run("failure - invalid signature policy", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 		c := newCommitterForTest(t, nil, nil)
 		cmd := commitCmd(nil, c)
 		c.Command = cmd
@@ -247,7 +247,7 @@ func TestCommitCmd(t *testing.T) {
 	})
 
 	t.Run("failure - invalid collection config file", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 		c := newCommitterForTest(t, nil, nil)
 		cmd := commitCmd(nil, c)
 		c.Command = cmd
@@ -266,7 +266,7 @@ func TestCommitCmd(t *testing.T) {
 }
 
 func TestValidateCommitInput(t *testing.T) {
-	defer resetFlags()
+	defer ResetFlags()
 	assert := assert.New(t)
 
 	t.Run("success - all required parameters provided", func(t *testing.T) {

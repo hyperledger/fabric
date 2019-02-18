@@ -138,12 +138,12 @@ func validatePeerConnectionParameters(cmdName string) error {
 		logger.Warningf("received more TLS root cert files (%d) than peer addresses (%d)", len(tlsRootCertFiles), len(peerAddresses))
 	}
 
-	if viper.GetBool("peer.tls.enabled") {
-		if len(tlsRootCertFiles) != len(peerAddresses) {
-			return errors.Errorf("number of peer addresses (%d) does not match the number of TLS root cert files (%d)", len(peerAddresses), len(tlsRootCertFiles))
-		}
-	} else {
+	if !viper.GetBool("peer.tls.enabled") {
 		tlsRootCertFiles = nil
+		return nil
+	}
+	if len(tlsRootCertFiles) != len(peerAddresses) {
+		return errors.Errorf("number of peer addresses (%d) does not match the number of TLS root cert files (%d)", len(peerAddresses), len(tlsRootCertFiles))
 	}
 
 	return nil

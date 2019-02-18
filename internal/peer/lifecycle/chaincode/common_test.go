@@ -72,7 +72,7 @@ func TestGetOrdererEndpointFail(t *testing.T) {
 }
 
 func TestValidatePeerConnectionParams(t *testing.T) {
-	defer resetFlags()
+	defer ResetFlags()
 	defer viper.Reset()
 	assert := assert.New(t)
 	cleanup := configtest.SetDevFabricConfigPath(t)
@@ -82,7 +82,7 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 	viper.Set("peer.tls.enabled", false)
 
 	// failure - more than one peer and TLS root cert for package
-	resetFlags()
+	ResetFlags()
 	peerAddresses = []string{"peer0", "peer1"}
 	tlsRootCertFiles = []string{"cert0", "cert1"}
 	err := validatePeerConnectionParameters("package")
@@ -91,35 +91,32 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 
 	// success - peer provided and no TLS root certs
 	// TLS disabled
-	resetFlags()
+	ResetFlags()
 	peerAddresses = []string{"peer0"}
 	err = validatePeerConnectionParameters("package")
 	assert.NoError(err)
-	assert.Nil(tlsRootCertFiles)
 
 	// success - more TLS root certs than peers - approveformyorg
 	// TLS disabled
-	resetFlags()
+	ResetFlags()
 	peerAddresses = []string{"peer0"}
 	tlsRootCertFiles = []string{"cert0", "cert1"}
 	err = validatePeerConnectionParameters("approveformyorg")
 	assert.NoError(err)
-	assert.Nil(tlsRootCertFiles)
 
 	// success - multiple peers and no TLS root certs - approveformyorg
 	// TLS disabled
-	resetFlags()
+	ResetFlags()
 	peerAddresses = []string{"peer0", "peer1"}
 	err = validatePeerConnectionParameters("approveformyorg")
 	assert.NoError(err)
-	assert.Nil(tlsRootCertFiles)
 
 	// TLS enabled
 	viper.Set("peer.tls.enabled", true)
 
 	// failure - uneven number of peers and TLS root certs - commit
 	// TLS enabled
-	resetFlags()
+	ResetFlags()
 	peerAddresses = []string{"peer0", "peer1"}
 	tlsRootCertFiles = []string{"cert0"}
 	err = validatePeerConnectionParameters("commit")
@@ -128,14 +125,14 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 
 	// success - more than one peer and TLS root certs - commit
 	// TLS enabled
-	resetFlags()
+	ResetFlags()
 	peerAddresses = []string{"peer0", "peer1"}
 	tlsRootCertFiles = []string{"cert0", "cert1"}
 	err = validatePeerConnectionParameters("commit")
 	assert.NoError(err)
 
 	// failure - connection profile doesn't exist
-	resetFlags()
+	ResetFlags()
 	connectionProfilePath = "blah"
 	err = validatePeerConnectionParameters("approveformyorg")
 	assert.Error(err)
@@ -143,7 +140,7 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 
 	// failure - connection profile has peer defined in channel config but
 	// not in peer config
-	resetFlags()
+	ResetFlags()
 	channelID = "mychannel"
 	connectionProfilePath = "../../common/testdata/connectionprofile-uneven.yaml"
 	err = validatePeerConnectionParameters("approveformyorg")
@@ -151,7 +148,7 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 	assert.Contains(err.Error(), "defined in the channel config but doesn't have associated peer config")
 
 	// success - connection profile exists
-	resetFlags()
+	ResetFlags()
 	channelID = "mychannel"
 	connectionProfilePath = "../../common/testdata/connectionprofile.yaml"
 	err = validatePeerConnectionParameters("commit")
@@ -159,11 +156,11 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 }
 
 func TestInitCmdFactoryFailures(t *testing.T) {
-	defer resetFlags()
+	defer ResetFlags()
 	assert := assert.New(t)
 
 	// failure validating peer connection parameters
-	resetFlags()
+	ResetFlags()
 	peerAddresses = []string{"peer0", "peer1"}
 	tlsRootCertFiles = []string{"cert0", "cert1"}
 	cf, err := InitCmdFactory("package", true, false)
@@ -172,7 +169,7 @@ func TestInitCmdFactoryFailures(t *testing.T) {
 	assert.Nil(cf)
 
 	// failure - no peers supplied and endorser client is needed
-	resetFlags()
+	ResetFlags()
 	peerAddresses = []string{}
 	cf, err = InitCmdFactory("package", true, false)
 	assert.Error(err)
@@ -181,7 +178,7 @@ func TestInitCmdFactoryFailures(t *testing.T) {
 
 	// failure - orderer client is needed, ordering endpoint is empty and no
 	// endorser client supplied
-	resetFlags()
+	ResetFlags()
 	peerAddresses = nil
 	cf, err = InitCmdFactory("acceptformyorg", false, true)
 	assert.Error(err)
@@ -190,7 +187,7 @@ func TestInitCmdFactoryFailures(t *testing.T) {
 }
 
 func TestDeliverGroupConnect(t *testing.T) {
-	defer resetFlags()
+	defer ResetFlags()
 	g := NewGomegaWithT(t)
 
 	// success
@@ -283,7 +280,7 @@ func TestDeliverGroupConnect(t *testing.T) {
 }
 
 func TestDeliverGroupWait(t *testing.T) {
-	defer resetFlags()
+	defer ResetFlags()
 	g := NewGomegaWithT(t)
 
 	// success

@@ -8,66 +8,96 @@ package chaincode
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"google.golang.org/grpc"
 )
 
-var chaincodeInstallCmd *cobra.Command
-
-// Reader defines the interface needed for reading a file
+// Reader defines the interface needed for reading a file.
 type Reader interface {
 	ReadFile(string) ([]byte, error)
 }
 
+// EndorserClient defines the interface for sending a proposal
+// to an endorser.
+type EndorserClient interface {
+	ProcessProposal(ctx context.Context, in *pb.SignedProposal, opts ...grpc.CallOption) (*pb.ProposalResponse, error)
+}
+
+// Signer defines the interface needed for signing messages.
+type Signer interface {
+	Sign(msg []byte) ([]byte, error)
+	Serialize() ([]byte, error)
+}
+
 // Installer holds the dependencies needed to install
-// a chaincode
+// a chaincode.
 type Installer struct {
-	Command         *cobra.Command
-	EndorserClients []pb.EndorserClient
-	Input           *InstallInput
-	Reader          Reader
-	Signer          identity.SignerSerializer
+	Command        *cobra.Command
+	EndorserClient EndorserClient
+	Input          *InstallInput
+	Reader         Reader
+	Signer         Signer
 }
 
 // InstallInput holds the input parameters for installing
-// a chaincode
+// a chaincode.
 type InstallInput struct {
 	PackageFile string
 }
 
-// installCmd returns the cobra command for chaincode install
-func installCmd(cf *CmdFactory, i *Installer) *cobra.Command {
-	chaincodeInstallCmd = &cobra.Command{
+// Validate checks that the required install parameters
+// are provided.
+func (i *InstallInput) Validate() error {
+	if i.PackageFile == "" {
+		return errors.New("chaincode install package must be provided")
+	}
+
+	return nil
+}
+
+// InstallCmd returns the cobra command for chaincode install.
+func InstallCmd(i *Installer) *cobra.Command {
+	chaincodeInstallCmd := &cobra.Command{
 		Use:       "install",
 		Short:     "Install a chaincode.",
 		Long:      "Install a chaincode on a peer.",
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if i == nil {
-				var err error
-				if cf == nil {
-					cf, err = InitCmdFactory(cmd.Name(), true, false)
-					if err != nil {
-						return err
-					}
+				ccInput := &ClientConnectionsInput{
+					CommandName:           cmd.Name(),
+					EndorserRequired:      true,
+					ChannelID:             channelID,
+					PeerAddresses:         peerAddresses,
+					TLSRootCertFiles:      tlsRootCertFiles,
+					ConnectionProfilePath: connectionProfilePath,
+					TLSEnabled:            viper.GetBool("peer.tls.enabled"),
 				}
+				c, err := NewClientConnections(ccInput)
+				if err != nil {
+					return err
+				}
+
+				// install is currently only supported for one peer so just use
+				// the first endorser client
 				i = &Installer{
-					Command:         cmd,
-					EndorserClients: cf.EndorserClients,
-					Reader:          &persistence.FilesystemIO{},
-					Signer:          cf.Signer,
+					Command:        cmd,
+					EndorserClient: c.EndorserClients[0],
+					Reader:         &persistence.FilesystemIO{},
+					Signer:         c.Signer,
 				}
 			}
-			return i.installChaincode(args)
+			return i.InstallChaincode(args)
 		},
 	}
 	flagList := []string{
@@ -80,8 +110,8 @@ func installCmd(cf *CmdFactory, i *Installer) *cobra.Command {
 	return chaincodeInstallCmd
 }
 
-// installChaincode installs the chaincode
-func (i *Installer) installChaincode(args []string) error {
+// InstallChaincode installs the chaincode.
+func (i *Installer) InstallChaincode(args []string) error {
 	if i.Command != nil {
 		// Parsing of the command line is done so silence cmd usage
 		i.Command.SilenceUsage = true
@@ -89,7 +119,7 @@ func (i *Installer) installChaincode(args []string) error {
 
 	i.setInput(args)
 
-	return i.install()
+	return i.Install()
 }
 
 func (i *Installer) setInput(args []string) {
@@ -100,21 +130,21 @@ func (i *Installer) setInput(args []string) {
 	}
 }
 
-// install installs a chaincode for use with _lifecycle
-func (i *Installer) install() error {
-	err := i.validateInput()
+// Install installs a chaincode for use with _lifecycle.
+func (i *Installer) Install() error {
+	err := i.Input.Validate()
 	if err != nil {
 		return err
 	}
 
 	pkgBytes, err := i.Reader.ReadFile(i.Input.PackageFile)
 	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("error reading chaincode package at %s", i.Input.PackageFile))
+		return errors.WithMessagef(err, "failed to read chaincode package at '%s'", i.Input.PackageFile)
 	}
 
 	serializedSigner, err := i.Signer.Serialize()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to serialize signer")
 	}
 
 	proposal, err := i.createInstallProposal(pkgBytes, serializedSigner)
@@ -122,48 +152,39 @@ func (i *Installer) install() error {
 		return err
 	}
 
-	signedProposal, err := protoutil.GetSignedProposal(proposal, i.Signer)
+	signedProposal, err := i.signProposal(proposal)
 	if err != nil {
-		return errors.WithMessage(err, "error creating signed proposal for chaincode install")
+		return errors.WithMessage(err, "failed to create signed proposal for chaincode install")
 	}
 
 	return i.submitInstallProposal(signedProposal)
 }
 
 func (i *Installer) submitInstallProposal(signedProposal *pb.SignedProposal) error {
-	// install is currently only supported for one peer
-	proposalResponse, err := i.EndorserClients[0].ProcessProposal(context.Background(), signedProposal)
+	proposalResponse, err := i.EndorserClient.ProcessProposal(context.Background(), signedProposal)
 	if err != nil {
-		return errors.WithMessage(err, "error endorsing chaincode install")
+		return errors.WithMessage(err, "failed to endorse chaincode install")
 	}
 
 	if proposalResponse == nil {
-		return errors.New("error during install: received nil proposal response")
+		return errors.New("chaincode install failed: received nil proposal response")
 	}
 
 	if proposalResponse.Response == nil {
-		return errors.New("error during install: received proposal response with nil response")
+		return errors.New("chaincode install failed: received proposal response with nil response")
 	}
 
 	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("install failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+		return errors.Errorf("chaincode install failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
 	}
 	logger.Infof("Installed remotely: %v", proposalResponse)
 
 	icr := &lb.InstallChaincodeResult{}
 	err = proto.Unmarshal(proposalResponse.Response.Payload, icr)
 	if err != nil {
-		return errors.Wrap(err, "error unmarshaling proposal response's response payload")
+		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
 	logger.Infof("Chaincode code package identifier: %s", icr.PackageId)
-
-	return nil
-}
-
-func (i *Installer) validateInput() error {
-	if i.Input.PackageFile == "" {
-		return errors.New("chaincode install package must be provided")
-	}
 
 	return nil
 }
@@ -175,7 +196,7 @@ func (i *Installer) createInstallProposal(pkgBytes []byte, creatorBytes []byte) 
 
 	installChaincodeArgsBytes, err := proto.Marshal(installChaincodeArgs)
 	if err != nil {
-		return nil, errors.Wrap(err, "error marshaling InstallChaincodeArgs")
+		return nil, errors.Wrap(err, "failed to marshal InstallChaincodeArgs")
 	}
 
 	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte("InstallChaincode"), installChaincodeArgsBytes}}
@@ -189,8 +210,27 @@ func (i *Installer) createInstallProposal(pkgBytes []byte, creatorBytes []byte) 
 
 	proposal, _, err := protoutil.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, creatorBytes)
 	if err != nil {
-		return nil, errors.WithMessage(err, "error creating proposal for ChaincodeInvocationSpec")
+		return nil, errors.WithMessage(err, "failed to create proposal for ChaincodeInvocationSpec")
 	}
 
 	return proposal, nil
+}
+
+func (i *Installer) signProposal(proposal *peer.Proposal) (*peer.SignedProposal, error) {
+	// check for nil argument
+	if proposal == nil {
+		return nil, errors.New("proposal cannot be nil")
+	}
+
+	proposalBytes, err := proto.Marshal(proposal)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal proposal")
+	}
+
+	signature, err := i.Signer.Sign(proposalBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &peer.SignedProposal{ProposalBytes: proposalBytes, Signature: signature}, nil
 }

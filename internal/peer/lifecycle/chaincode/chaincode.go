@@ -38,7 +38,7 @@ func Cmd(cf *CmdFactory) *cobra.Command {
 	addFlags(chaincodeCmd)
 
 	chaincodeCmd.AddCommand(packageCmd(cf, nil))
-	chaincodeCmd.AddCommand(installCmd(cf, nil))
+	chaincodeCmd.AddCommand(InstallCmd(nil))
 	chaincodeCmd.AddCommand(queryInstalledCmd(cf))
 	chaincodeCmd.AddCommand(approveForMyOrgCmd(cf, nil))
 	chaincodeCmd.AddCommand(commitCmd(cf, nil))
@@ -84,11 +84,11 @@ var chaincodeCmd = &cobra.Command{
 var flags *pflag.FlagSet
 
 func init() {
-	resetFlags()
+	ResetFlags()
 }
 
-// Explicitly define a method to facilitate tests
-func resetFlags() {
+// ResetFlags resets the values of these flags to facilitate tests
+func ResetFlags() {
 	flags = &pflag.FlagSet{}
 
 	flags.StringVarP(&chaincodeLang, "lang", "l", "golang", "Language the chaincode is written in")

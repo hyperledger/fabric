@@ -4,234 +4,215 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package chaincode
+package chaincode_test
 
 import (
-	"io/ioutil"
-	"os"
-	"testing"
-
-	"github.com/hyperledger/fabric/internal/peer/common"
+	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-//go:generate counterfeiter -o mock/reader.go -fake-name Reader . reader
-type reader interface {
-	Reader
-}
+var _ = Describe("Install", func() {
+	Describe("Installer", func() {
+		var (
+			mockProposalResponse *pb.ProposalResponse
+			mockEndorserClient   *mock.EndorserClient
+			mockReader           *mock.Reader
+			mockSigner           *mock.Signer
+			input                *chaincode.InstallInput
+			installer            *chaincode.Installer
+		)
 
-func initInstallTest(t *testing.T, fsPath string, ec pb.EndorserClient, mockResponse *pb.ProposalResponse) (*cobra.Command, *CmdFactory) {
-	viper.Set("peer.fileSystemPath", fsPath)
+		BeforeEach(func() {
+			mockEndorserClient = &mock.EndorserClient{}
+			mockProposalResponse = &pb.ProposalResponse{
+				Response: &pb.Response{
+					Status: 200,
+				},
+			}
+			mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
 
-	signer, err := common.GetDefaultSigner()
-	if err != nil {
-		t.Fatalf("Get default signer error: %v", err)
-	}
+			input = &chaincode.InstallInput{
+				PackageFile: "pkgFile",
+			}
 
-	if mockResponse == nil {
-		mockResponse = &pb.ProposalResponse{
-			Response:    &pb.Response{Status: 200},
-			Endorsement: &pb.Endorsement{},
-		}
-	}
-	if ec == nil {
-		ec = common.GetMockEndorserClient(mockResponse, nil)
-	}
+			mockReader = &mock.Reader{}
+			mockSigner = &mock.Signer{}
 
-	mockCF := &CmdFactory{
-		Signer:          signer,
-		EndorserClients: []pb.EndorserClient{ec},
-	}
+			installer = &chaincode.Installer{
+				Input:          input,
+				EndorserClient: mockEndorserClient,
+				Reader:         mockReader,
+				Signer:         mockSigner,
+			}
+		})
 
-	cmd := installCmd(mockCF, nil)
-	addFlags(cmd)
+		It("installs chaincodes", func() {
+			err := installer.Install()
+			Expect(err).NotTo(HaveOccurred())
+		})
 
-	return cmd, mockCF
-}
+		Context("when the chaincode install package is not provided", func() {
+			BeforeEach(func() {
+				installer.Input.PackageFile = ""
+			})
 
-func cleanupInstallTest(fsPath string) {
-	os.RemoveAll(fsPath)
-}
+			It("returns an error", func() {
+				err := installer.Install()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("chaincode install package must be provided"))
+			})
+		})
 
-func newInstallerForTest(t *testing.T, r Reader, ec pb.EndorserClient) (installer *Installer, cleanup func()) {
-	fsPath, err := ioutil.TempDir("", "installerForTest")
-	assert.NoError(t, err)
-	_, mockCF := initInstallTest(t, fsPath, ec, nil)
-	if r == nil {
-		r = &mock.Reader{}
-	}
+		Context("when the package file cannot be read", func() {
+			BeforeEach(func() {
+				mockReader.ReadFileReturns(nil, errors.New("coffee"))
+			})
 
-	i := &Installer{
-		Reader:          r,
-		EndorserClients: mockCF.EndorserClients,
-		Signer:          mockCF.Signer,
-	}
+			It("returns an error", func() {
+				err := installer.Install()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("failed to read chaincode package at 'pkgFile': coffee"))
+			})
+		})
 
-	cleanupFunc := func() {
-		cleanupInstallTest(fsPath)
-	}
+		Context("when the signer cannot be serialized", func() {
+			BeforeEach(func() {
+				mockSigner.SerializeReturns(nil, errors.New("cafe"))
+			})
 
-	return i, cleanupFunc
-}
+			It("returns an error", func() {
+				err := installer.Install()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("failed to serialize signer: cafe"))
+			})
+		})
 
-func TestInstallCmd(t *testing.T) {
-	resetFlags()
+		Context("when the signer fails to sign the proposal", func() {
+			BeforeEach(func() {
+				mockSigner.SignReturns(nil, errors.New("tea"))
+			})
 
-	i, cleanup := newInstallerForTest(t, nil, nil)
-	defer cleanup()
-	cmd := installCmd(nil, i)
-	i.Command = cmd
-	args := []string{"pkgFile"}
-	cmd.SetArgs(args)
+			It("returns an error", func() {
+				err := installer.Install()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("failed to create signed proposal for chaincode install: tea"))
+			})
+		})
 
-	err := cmd.Execute()
-	assert.NoError(t, err)
-}
+		Context("when the endorser fails to endorse the proposal", func() {
+			BeforeEach(func() {
+				mockEndorserClient.ProcessProposalReturns(nil, errors.New("latte"))
+			})
 
-func TestInstaller(t *testing.T) {
-	assert := assert.New(t)
+			It("returns an error", func() {
+				err := installer.Install()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("failed to endorse chaincode install: latte"))
+			})
+		})
 
-	t.Run("success", func(t *testing.T) {
-		i, cleanup := newInstallerForTest(t, nil, nil)
-		defer cleanup()
+		Context("when the endorser returns a nil proposal response", func() {
+			BeforeEach(func() {
+				mockProposalResponse = nil
+				mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+			})
 
-		i.Input = &InstallInput{
-			PackageFile: "chaincode-install-package.tar.gz",
-		}
+			It("returns an error", func() {
+				err := installer.Install()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("chaincode install failed: received nil proposal response"))
+			})
+		})
 
-		err := i.install()
-		assert.NoError(err)
+		Context("when the endorser returns a proposal response with a nil response", func() {
+			BeforeEach(func() {
+				mockProposalResponse.Response = nil
+				mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+			})
+
+			It("returns an error", func() {
+				err := installer.Install()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("chaincode install failed: received proposal response with nil response"))
+			})
+		})
+
+		Context("when the endorser returns a non-success status", func() {
+			BeforeEach(func() {
+				mockProposalResponse.Response = &pb.Response{
+					Status:  500,
+					Message: "capuccino",
+				}
+				mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+			})
+
+			It("returns an error", func() {
+				err := installer.Install()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("chaincode install failed with status: 500 - capuccino"))
+			})
+		})
+
+		Context("when the payload contains bytes that aren't an InstallChaincodeResult", func() {
+			BeforeEach(func() {
+				mockProposalResponse.Response = &pb.Response{
+					Payload: []byte("badpayloadbadpayload"),
+					Status:  200,
+				}
+				mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+			})
+
+			It("returns an error", func() {
+				err := installer.Install()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload"))
+			})
+		})
 	})
 
-	t.Run("validatation fails", func(t *testing.T) {
-		i, cleanup := newInstallerForTest(t, nil, nil)
-		defer cleanup()
-		i.Input = &InstallInput{}
+	Describe("InstallCmd", func() {
+		var (
+			installCmd *cobra.Command
+		)
 
-		err := i.install()
-		assert.Error(err)
-		assert.Equal("chaincode install package must be provided", err.Error())
+		BeforeEach(func() {
+			installCmd = chaincode.InstallCmd(nil)
+			installCmd.SetArgs([]string{
+				"testpkg",
+				"--peerAddresses=test1",
+				"--tlsRootCertFiles=tls1",
+			})
+		})
+
+		AfterEach(func() {
+			chaincode.ResetFlags()
+		})
+
+		It("sets up the installer and attempts to install the chaincode", func() {
+			err := installCmd.Execute()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to retrieve endorser client for install"))
+		})
+
+		Context("when more than one peer address is provided", func() {
+			BeforeEach(func() {
+				installCmd.SetArgs([]string{
+					"--peerAddresses=test3",
+					"--peerAddresses=test4",
+				})
+			})
+
+			It("returns an error", func() {
+				err := installCmd.Execute()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to validate peer connection parameters"))
+			})
+		})
 	})
-
-	t.Run("reading the package file fails", func(t *testing.T) {
-		mockReader := &mock.Reader{}
-		mockReader.ReadFileReturns(nil, errors.New("balloon"))
-
-		i, cleanup := newInstallerForTest(t, mockReader, nil)
-		defer cleanup()
-		i.Input = &InstallInput{
-			PackageFile: "pkgFile",
-		}
-
-		err := i.install()
-		assert.Error(err)
-		assert.Equal("error reading chaincode package at pkgFile: balloon", err.Error())
-	})
-
-	t.Run("endorser client returns error", func(t *testing.T) {
-		ec := common.GetMockEndorserClient(nil, errors.New("blimp"))
-		i, cleanup := newInstallerForTest(t, nil, ec)
-		defer cleanup()
-		i.Input = &InstallInput{
-			PackageFile: "pkgFile",
-		}
-
-		err := i.install()
-		assert.Error(err)
-		assert.Equal("error endorsing chaincode install: blimp", err.Error())
-	})
-
-	t.Run("endorser client returns a proposal response with nil response", func(t *testing.T) {
-		mockResponse := &pb.ProposalResponse{
-			Response: nil,
-		}
-		ec := common.GetMockEndorserClient(mockResponse, nil)
-		i, cleanup := newInstallerForTest(t, nil, ec)
-		defer cleanup()
-		i.Input = &InstallInput{
-			PackageFile: "pkgFile",
-		}
-
-		err := i.install()
-		assert.Error(err)
-		assert.Equal("error during install: received proposal response with nil response", err.Error())
-	})
-
-	t.Run("endorser client returns a failure status code", func(t *testing.T) {
-		mockResponse := &pb.ProposalResponse{
-			Response: &pb.Response{
-				Status:  500,
-				Message: "dangerdanger",
-			},
-		}
-		ec := common.GetMockEndorserClient(mockResponse, nil)
-		i, cleanup := newInstallerForTest(t, nil, ec)
-		defer cleanup()
-		i.Input = &InstallInput{
-			PackageFile: "pkgFile",
-		}
-
-		err := i.install()
-		assert.Error(err)
-		assert.Equal("install failed with status: 500 - dangerdanger", err.Error())
-	})
-
-	t.Run("endorser client returns nil proposal response", func(t *testing.T) {
-		ec := common.GetMockEndorserClient(nil, nil)
-		i, cleanup := newInstallerForTest(t, nil, ec)
-		defer cleanup()
-		i.Input = &InstallInput{
-			PackageFile: "pkgFile",
-		}
-
-		err := i.install()
-		assert.Error(err)
-		assert.Contains(err.Error(), "error during install: received nil proposal response")
-	})
-
-	t.Run("unexpected proposal response response payload", func(t *testing.T) {
-		mockResponse := &pb.ProposalResponse{
-			Response: &pb.Response{
-				Status:  200,
-				Payload: []byte("supplies!")},
-		}
-		ec := common.GetMockEndorserClient(mockResponse, nil)
-		i, cleanup := newInstallerForTest(t, nil, ec)
-		defer cleanup()
-		i.Input = &InstallInput{
-			PackageFile: "pkgFile",
-		}
-
-		err := i.install()
-		assert.Error(err)
-		assert.Contains(err.Error(), "error unmarshaling proposal response's response payload")
-	})
-}
-
-func TestValidateInput(t *testing.T) {
-	assert := assert.New(t)
-	i, cleanup := newInstallerForTest(t, nil, nil)
-	defer cleanup()
-
-	t.Run("success", func(t *testing.T) {
-		i.Input = &InstallInput{
-			PackageFile: "chaincode-install-package.tar.gz",
-		}
-
-		err := i.validateInput()
-		assert.NoError(err)
-	})
-
-	t.Run("package file not provided", func(t *testing.T) {
-		i.Input = &InstallInput{}
-
-		err := i.validateInput()
-		assert.Error(err)
-		assert.Equal("chaincode install package must be provided", err.Error())
-	})
-}
+})
