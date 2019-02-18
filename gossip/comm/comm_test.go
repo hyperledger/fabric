@@ -136,9 +136,17 @@ func newCommInstanceOnlyWithMetrics(t *testing.T, commMetrics *metrics.CommMetri
 		assert.NoError(t, err)
 	}()
 
-	commInst.(*commImpl).gSrv = gRPCServer.Server()
+	return &commGRPC{commInst.(*commImpl), gRPCServer}
+}
 
-	return commInst
+type commGRPC struct {
+	*commImpl
+	gRPCServer *comm.GRPCServer
+}
+
+func (c *commGRPC) Stop() {
+	c.commImpl.Stop()
+	c.gRPCServer.Stop()
 }
 
 func newCommInstanceOnly(t *testing.T, sec *naiveSecProvider,
@@ -448,8 +456,6 @@ func TestBasic(t *testing.T) {
 	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, port2 := newCommInstance(t, naiveSec)
-	comm1.(*commImpl).SetDialOpts()
-	comm2.(*commImpl).SetDialOpts()
 	defer comm1.Stop()
 	defer comm2.Stop()
 	m1 := comm1.Accept(acceptAll)
