@@ -11,27 +11,25 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"net"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
+	utilgossip "github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 type peerMock struct {
 	pkiID                common.PKIidType
 	selfCertHash         []byte
 	gRGCserv             *grpc.Server
-	lsnr                 net.Listener
 	finishedSignal       sync.WaitGroup
 	expectedMsgs2Receive uint32
 	msgReceivedCount     uint32
@@ -73,37 +71,22 @@ func (p *peerMock) Ping(context.Context, *proto.Empty) (*proto.Empty, error) {
 	return &proto.Empty{}, nil
 }
 
-func newPeerMock(port int, expectedMsgs2Receive int, t *testing.T, msgAssertions ...msgInspection) *peerMock {
-	listenAddress := fmt.Sprintf(":%d", port)
-	ll, err := net.Listen("tcp", listenAddress)
-	if err != nil {
-		fmt.Printf("Error listening on %v, %v", listenAddress, err)
-	}
-	s, selfCertHash := newGRPCServerWithTLS()
+func newPeerMockWithGRPC(port int, gRPCServer *comm.GRPCServer, certs *common.TLSCertificates,
+	expectedMsgs2Receive int, t *testing.T, msgAssertions ...msgInspection) *peerMock {
 	p := &peerMock{
-		lsnr:                 ll,
-		gRGCserv:             s,
+		gRGCserv:             gRPCServer.Server(),
 		msgAssertions:        msgAssertions,
 		t:                    t,
-		pkiID:                common.PKIidType(fmt.Sprintf("localhost:%d", port)),
-		selfCertHash:         selfCertHash,
+		pkiID:                common.PKIidType(fmt.Sprintf("127.0.0.1:%d", port)),
+		selfCertHash:         util.ComputeSHA256(certs.TLSServerCert.Load().(*tls.Certificate).Certificate[0]),
 		expectedMsgs2Receive: uint32(expectedMsgs2Receive),
 	}
 	p.finishedSignal.Add(1)
-	proto.RegisterGossipServer(s, p)
-	go s.Serve(ll)
+	proto.RegisterGossipServer(gRPCServer.Server(), p)
+	go func() {
+		gRPCServer.Start()
+	}()
 	return p
-}
-
-func newGRPCServerWithTLS() (*grpc.Server, []byte) {
-	cert := comm.GenerateCertificatesOrPanic()
-	tlsConf := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		ClientAuth:         tls.RequestClientCert,
-		InsecureSkipVerify: true,
-	}
-	s := grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConf)))
-	return s, util.ComputeSHA256(cert.Certificate[0])
 }
 
 func (p *peerMock) connEstablishMsg(pkiID common.PKIidType, hash []byte, cert api.PeerIdentityType) *proto.SignedGossipMessage {
@@ -126,7 +109,6 @@ func (p *peerMock) connEstablishMsg(pkiID common.PKIidType, hash []byte, cert ap
 }
 
 func (p *peerMock) stop() {
-	p.lsnr.Close()
 	p.gRGCserv.Stop()
 }
 
@@ -201,14 +183,20 @@ func TestAnchorPeer(t *testing.T) {
 	//	was successfully sent from the anchor peers to p.
 
 	cs := &configurableCryptoService{m: make(map[string]api.OrgIdentityType)}
-	portPrefix := 13610
 	orgA := "orgA"
 	orgB := "orgB"
-	cs.putInOrg(portPrefix, orgA)   // Real peer
-	cs.putInOrg(portPrefix+1, orgA) // Anchor peer mock
-	cs.putInOrg(portPrefix+2, orgB) // Anchor peer mock
-	cs.putInOrg(portPrefix+3, orgA) // peer mock I
-	cs.putInOrg(portPrefix+4, orgB) // peer mock II
+
+	port, grpc, cert, secDialOpt, _ := utilgossip.CreateGRPCLayer()
+	port1, grpc1, cert1, _, _ := utilgossip.CreateGRPCLayer()
+	port2, grpc2, cert2, _, _ := utilgossip.CreateGRPCLayer()
+	port3, grpc3, cert3, _, _ := utilgossip.CreateGRPCLayer()
+	port4, grpc4, cert4, _, _ := utilgossip.CreateGRPCLayer()
+
+	cs.putInOrg(port, orgA)  // Real peer
+	cs.putInOrg(port1, orgA) // Anchor peer mock
+	cs.putInOrg(port2, orgB) // Anchor peer mock
+	cs.putInOrg(port3, orgA) // peer mock I
+	cs.putInOrg(port4, orgB) // peer mock II
 
 	// Create the assertions
 	handshake := func(t *testing.T, index int, m *receivedMsg) {
@@ -227,7 +215,7 @@ func TestAnchorPeer(t *testing.T) {
 		am, err := req.SelfInformation.ToGossipMessage()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, am.GetSecretEnvelope().InternalEndpoint())
-		m.respond(memResp(m.Nonce, fmt.Sprintf("localhost:%d", portPrefix+3)))
+		m.respond(memResp(m.Nonce, fmt.Sprintf("127.0.0.1:%d", port3)))
 	}
 
 	memReqWithoutInternalEndpoint := func(t *testing.T, index int, m *receivedMsg) {
@@ -239,28 +227,28 @@ func TestAnchorPeer(t *testing.T) {
 		am, err := req.SelfInformation.ToGossipMessage()
 		assert.NoError(t, err)
 		assert.Nil(t, am.GetSecretEnvelope())
-		m.respond(memResp(m.Nonce, fmt.Sprintf("localhost:%d", portPrefix+4)))
+		m.respond(memResp(m.Nonce, fmt.Sprintf("127.0.0.1:%d", port4)))
 	}
 
-	// Create a peer mock
-	pm1 := newPeerMock(portPrefix+3, 1, t, handshake)
+	// Create peer mocks
+	pm1 := newPeerMockWithGRPC(port3, grpc3, cert3, 1, t, handshake)
 	defer pm1.stop()
-	pm2 := newPeerMock(portPrefix+4, 1, t, handshake)
+	pm2 := newPeerMockWithGRPC(port4, grpc4, cert4, 1, t, handshake)
 	defer pm2.stop()
 	jcm := &joinChanMsg{
 		members2AnchorPeers: map[string][]api.AnchorPeer{
 			orgA: {
-				{Host: "localhost", Port: portPrefix + 1},
+				{Host: "127.0.0.1", Port: port1},
 			},
 			orgB: {
-				{Host: "localhost", Port: portPrefix + 2},
+				{Host: "127.0.0.1", Port: port2},
 			},
 		},
 	}
 	channel := common.ChainID("TEST")
-	endpoint := fmt.Sprintf("localhost:%d", portPrefix)
+	endpoint := fmt.Sprintf("127.0.0.1:%d", port)
 	// Create the gossip instance (the peer that connects to anchor peers)
-	p := newGossipInstanceWithExternalEndpoint(portPrefix, 0, cs, endpoint)
+	p := newGossipInstanceWithGRPCWithExternalEndpoint(0, port, grpc, cert, secDialOpt, cs, endpoint)
 	defer p.Stop()
 	p.JoinChan(jcm, channel)
 	p.UpdateLedgerHeight(1, channel)
@@ -268,9 +256,9 @@ func TestAnchorPeer(t *testing.T) {
 	time.Sleep(time.Second * 5)
 
 	// Create the anchor peers
-	ap1 := newPeerMock(portPrefix+1, 3, t, handshake, memReqWithInternalEndpoint)
+	ap1 := newPeerMockWithGRPC(port1, grpc1, cert1, 3, t, handshake, memReqWithInternalEndpoint)
 	defer ap1.stop()
-	ap2 := newPeerMock(portPrefix+2, 3, t, handshake, memReqWithoutInternalEndpoint)
+	ap2 := newPeerMockWithGRPC(port2, grpc2, cert2, 3, t, handshake, memReqWithoutInternalEndpoint)
 	defer ap2.stop()
 
 	// Wait until received all expected messages from gossip instance
@@ -293,12 +281,19 @@ func TestBootstrapPeerMisConfiguration(t *testing.T) {
 	// 2) A membership request was sent from p to bs2
 
 	cs := &configurableCryptoService{m: make(map[string]api.OrgIdentityType)}
-	portPrefix := 43478
 	orgA := "orgA"
 	orgB := "orgB"
-	cs.putInOrg(portPrefix, orgA)
-	cs.putInOrg(portPrefix+1, orgB)
-	cs.putInOrg(portPrefix+2, orgA)
+
+	port, grpc, cert, secDialOpt, _ := utilgossip.CreateGRPCLayer()
+	fmt.Printf("port %d\n", port)
+	port1, grpc1, cert1, secDialOpt, _ := utilgossip.CreateGRPCLayer()
+	fmt.Printf("port1 %d\n", port1)
+	port2, grpc2, cert2, secDialOpt, _ := utilgossip.CreateGRPCLayer()
+	fmt.Printf("port2 %d\n", port2)
+
+	cs.putInOrg(port, orgA)
+	cs.putInOrg(port1, orgB)
+	cs.putInOrg(port2, orgA)
 
 	onlyHandshakes := func(t *testing.T, index int, m *receivedMsg) {
 		// Ensure all messages sent are connection establishment messages
@@ -310,7 +305,7 @@ func TestBootstrapPeerMisConfiguration(t *testing.T) {
 		assert.Nil(t, m.GetMemReq())
 	}
 	// Initialize a peer mock that would wait for 3 messages sent to it
-	bs1 := newPeerMock(portPrefix+1, 3, t, onlyHandshakes)
+	bs1 := newPeerMockWithGRPC(port1, grpc1, cert1, 3, t, onlyHandshakes)
 	defer bs1.stop()
 
 	membershipRequestsSent := make(chan struct{}, 100)
@@ -320,10 +315,11 @@ func TestBootstrapPeerMisConfiguration(t *testing.T) {
 		}
 	}
 
-	bs2 := newPeerMock(portPrefix+2, 0, t, detectMembershipRequest)
+	bs2 := newPeerMockWithGRPC(port2, grpc2, cert2, 0, t, detectMembershipRequest)
 	defer bs2.stop()
 
-	p := newGossipInstanceWithExternalEndpoint(portPrefix, 0, cs, fmt.Sprintf("localhost:%d", portPrefix), 1, 2)
+	endpoint := fmt.Sprintf("127.0.0.1:%d", port)
+	p := newGossipInstanceWithGRPCWithExternalEndpoint(0, port, grpc, cert, secDialOpt, cs, endpoint, port1, port2)
 	defer p.Stop()
 
 	// Wait for 3 handshake attempts from the bootstrap peer from orgB,

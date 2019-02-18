@@ -13,11 +13,12 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/metrics/mocks"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/stretchr/testify/assert"
 )
 
 func newCommInstanceWithMetrics(t *testing.T, sec *naiveSecProvider, metrics *metrics.CommMetrics) (c Comm, port int) {
-	port, gRPCServer, certs, secureDialOpts, dialOpts := prepareForNewComm(t)
+	port, gRPCServer, certs, secureDialOpts, dialOpts := util.CreateGRPCLayer()
 	comm := newCommInstanceOnlyWithMetrics(t, metrics, sec, gRPCServer, certs, secureDialOpts, dialOpts...)
 	return comm, port
 }
