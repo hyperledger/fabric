@@ -169,7 +169,7 @@ func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvt
 	}
 	expectedBlockNum := s.nextBlockNum()
 	if expectedBlockNum != blockNum {
-		return &ErrIllegalArgs{fmt.Sprintf("Expected block number=%d, recived block number=%d", expectedBlockNum, blockNum)}
+		return &ErrIllegalArgs{fmt.Sprintf("Expected block number=%d, received block number=%d", expectedBlockNum, blockNum)}
 	}
 
 	batch := leveldbhelper.NewUpdateBatch()
