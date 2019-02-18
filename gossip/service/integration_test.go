@@ -119,21 +119,24 @@ func TestLeaderYield(t *testing.T) {
 	viper.Set("peer.gossip.useLeaderElection", true)
 	viper.Set("peer.gossip.orgLeader", false)
 	n := 2
-	portPrefix := 30000
-	gossips := startPeers(t, n, portPrefix, 0, 1)
+	gossips := startPeers(t, n, 0, 1)
 	defer stopPeers(gossips)
 	channelName := "channelA"
 	peerIndexes := []int{0, 1}
 	// Add peers to the channel
-	addPeersToChannel(t, n, portPrefix, channelName, gossips, peerIndexes)
+	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
 	// Prime the membership view of the peers
 	waitForFullMembership(t, gossips, n, time.Second*30, time.Millisecond*100)
+
+	endpoint, socket := getAvailablePort(t)
+	socket.Close()
+
 	// Helper function that creates a gossipService instance
 	newGossipService := func(i int) *gossipServiceImpl {
-		gs := gossips[i].(*gossipServiceImpl)
+		gs := gossips[i].(*gossipGRPC).gossipServiceImpl
 		gs.deliveryFactory = &embeddingDeliveryServiceFactory{&deliveryFactoryImpl{}}
 		gossipServiceInstance = gs
-		gs.InitializeChannel(channelName, []string{"localhost:7050"}, Support{
+		gs.InitializeChannel(channelName, []string{endpoint}, Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &transientStoreMock{},
 		})
