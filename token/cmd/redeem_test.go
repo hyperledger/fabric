@@ -21,7 +21,7 @@ import (
 func TestRedeemCmd(t *testing.T) {
 	clientConfigPath := "configuration"
 	tokenIDs := "token_ids"
-	var quantity uint64 = 100
+	var quantity = ToHex(100)
 
 	stub := &mocks.Stub{}
 	parser := &mocks.ResponseParser{}
@@ -60,7 +60,7 @@ func TestRedeemCmd(t *testing.T) {
 func TestTestRedeemCmd_InvalidQuantities(t *testing.T) {
 	clientConfigPath := "configuration"
 	tokenIDs := "token_ids"
-	var quantity uint64 = 1
+	var quantity = ToHex(1)
 
 	stub := &mocks.Stub{}
 	parser := &mocks.ResponseParser{}
@@ -78,7 +78,7 @@ func TestTestRedeemCmd_InvalidQuantities(t *testing.T) {
 func TestTestRedeemCmd_FailedStubSetup(t *testing.T) {
 	clientConfigPath := "configuration"
 	tokenIDs := "token_ids"
-	var quantity uint64 = 1
+	var quantity = ToHex(1)
 
 	stub := &mocks.Stub{}
 	parser := &mocks.ResponseParser{}
@@ -97,7 +97,7 @@ func TestTestRedeemCmd_FailedStubSetup(t *testing.T) {
 func TestTestRedeemCmd_FailedStubRedeem(t *testing.T) {
 	clientConfigPath := "configuration"
 	tokenIDsString := "token_ids"
-	quantity := uint64(10)
+	quantity := ToHex(10)
 
 	stub := &mocks.Stub{}
 	parser := &mocks.ResponseParser{}

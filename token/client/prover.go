@@ -124,7 +124,7 @@ func (prover *ProverPeer) RequestTransfer(tokenIDs []*token.TokenId, shares []*t
 // It queries the ledger to read detail for each token id.
 // It creates a token transaction with an output for redeemed tokens and
 // possibly another output to transfer the remaining tokens, if any, to the same user
-func (prover *ProverPeer) RequestRedeem(tokenIDs []*token.TokenId, quantity uint64, signingIdentity tk.SigningIdentity) ([]byte, error) {
+func (prover *ProverPeer) RequestRedeem(tokenIDs []*token.TokenId, quantity string, signingIdentity tk.SigningIdentity) ([]byte, error) {
 	rr := &token.RedeemRequest{
 		QuantityToRedeem: quantity,
 		TokenIds:         tokenIDs,

@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package server_test
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -23,4 +24,8 @@ func ProtoMarshal(m proto.Message) []byte {
 	Expect(err).NotTo(HaveOccurred())
 
 	return bytes
+}
+
+func ToHex(q uint64) string {
+	return "0x" + strconv.FormatUint(q, 16)
 }

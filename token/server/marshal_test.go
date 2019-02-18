@@ -43,7 +43,7 @@ var _ = Describe("Marshal", func() {
 						TokensToIssue: []*token.TokenToIssue{{
 							Recipient: &token.TokenOwner{Raw: []byte("recipient")},
 							Type:      "TYPE",
-							Quantity:  999,
+							Quantity:  ToHex(999),
 						}},
 					},
 				},
@@ -139,8 +139,8 @@ var _ = Describe("Marshal", func() {
 							Data: &token.TokenAction_Issue{
 								Issue: &token.Issue{
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 888},
-										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: 999},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(888)},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: ToHex(999)},
 									},
 								},
 							},

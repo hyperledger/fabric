@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package client_test
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -75,4 +76,8 @@ func getClientConfig(tlsEnabled bool, channelID, ordererEndpoint, committerEndpo
 		},
 	}
 	return &config
+}
+
+func ToHex(q uint64) string {
+	return "0x" + strconv.FormatUint(q, 16)
 }

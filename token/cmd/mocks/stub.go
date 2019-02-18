@@ -58,11 +58,11 @@ func (_m *Stub) ListTokens() (cmd.StubResponse, error) {
 }
 
 // Redeem provides a mock function with given fields: tokenIDs, quantity, waitTimeout
-func (_m *Stub) Redeem(tokenIDs []*token.TokenId, quantity uint64, waitTimeout time.Duration) (cmd.StubResponse, error) {
+func (_m *Stub) Redeem(tokenIDs []*token.TokenId, quantity string, waitTimeout time.Duration) (cmd.StubResponse, error) {
 	ret := _m.Called(tokenIDs, quantity, waitTimeout)
 
 	var r0 cmd.StubResponse
-	if rf, ok := ret.Get(0).(func([]*token.TokenId, uint64, time.Duration) cmd.StubResponse); ok {
+	if rf, ok := ret.Get(0).(func([]*token.TokenId, string, time.Duration) cmd.StubResponse); ok {
 		r0 = rf(tokenIDs, quantity, waitTimeout)
 	} else {
 		if ret.Get(0) != nil {
@@ -71,7 +71,7 @@ func (_m *Stub) Redeem(tokenIDs []*token.TokenId, quantity uint64, waitTimeout t
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([]*token.TokenId, uint64, time.Duration) error); ok {
+	if rf, ok := ret.Get(1).(func([]*token.TokenId, string, time.Duration) error); ok {
 		r1 = rf(tokenIDs, quantity, waitTimeout)
 	} else {
 		r1 = ret.Error(1)

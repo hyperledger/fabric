@@ -105,7 +105,7 @@ var _ = Describe("TokenClient", func() {
 		BeforeEach(func() {
 			tokensToIssue = []*token.TokenToIssue{{
 				Type:      "type",
-				Quantity:  10,
+				Quantity:  ToHex(10),
 				Recipient: &token.TokenOwner{Raw: []byte("Alice")},
 			}}
 
@@ -228,8 +228,8 @@ var _ = Describe("TokenClient", func() {
 				{TxId: "id2", Index: 0},
 			}
 			transferShares = []*token.RecipientTransferShare{
-				{Recipient: &token.TokenOwner{Raw: []byte("alice")}, Quantity: 100},
-				{Recipient: &token.TokenOwner{Raw: []byte("bob")}, Quantity: 50},
+				{Recipient: &token.TokenOwner{Raw: []byte("alice")}, Quantity: ToHex(100)},
+				{Recipient: &token.TokenOwner{Raw: []byte("bob")}, Quantity: ToHex(50)},
 			}
 
 			command := &token.Command{
@@ -360,7 +360,7 @@ var _ = Describe("TokenClient", func() {
 				Payload: &token.Command_RedeemRequest{
 					RedeemRequest: &token.RedeemRequest{
 						TokenIds:         tokenIDs,
-						QuantityToRedeem: quantity,
+						QuantityToRedeem: ToHex(quantity),
 					},
 				},
 			}
@@ -372,7 +372,7 @@ var _ = Describe("TokenClient", func() {
 		})
 
 		It("returns serialized token transaction", func() {
-			response, err := prover.RequestRedeem(tokenIDs, quantity, fakeSigningIdentity)
+			response, err := prover.RequestRedeem(tokenIDs, ToHex(quantity), fakeSigningIdentity)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(response).To(Equal(serializedTokenTx))
 
@@ -392,7 +392,7 @@ var _ = Describe("TokenClient", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := prover.RequestRedeem(tokenIDs, quantity, fakeSigningIdentity)
+				_, err := prover.RequestRedeem(tokenIDs, ToHex(quantity), fakeSigningIdentity)
 				Expect(err).To(MatchError("wild-banana"))
 				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
 				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(0))
@@ -406,7 +406,7 @@ var _ = Describe("TokenClient", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := prover.RequestRedeem(tokenIDs, quantity, fakeSigningIdentity)
+				_, err := prover.RequestRedeem(tokenIDs, ToHex(quantity), fakeSigningIdentity)
 				Expect(err).To(MatchError("wild-banana"))
 				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(0))
 				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
@@ -422,7 +422,7 @@ var _ = Describe("TokenClient", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := prover.RequestRedeem(tokenIDs, quantity, fakeSigningIdentity)
+				_, err := prover.RequestRedeem(tokenIDs, ToHex(quantity), fakeSigningIdentity)
 				Expect(err).To(MatchError("wild-banana"))
 				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
 				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(1))
@@ -447,7 +447,7 @@ var _ = Describe("TokenClient", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := prover.RequestRedeem(tokenIDs, quantity, fakeSigningIdentity)
+				_, err := prover.RequestRedeem(tokenIDs, ToHex(quantity), fakeSigningIdentity)
 				Expect(err).To(MatchError("error from prover: flying-pineapple"))
 				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
 				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
@@ -477,8 +477,8 @@ var _ = Describe("TokenClient", func() {
 
 			// prepare SignedCommandResponse for fakeProverClient to return
 			expectedTokens = []*token.TokenOutput{
-				{Id: &token.TokenId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: 135},
-				{Id: &token.TokenId{TxId: "idby", Index: 0}, Type: "typeby", Quantity: 79},
+				{Id: &token.TokenId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: ToHex(135)},
+				{Id: &token.TokenId{TxId: "idby", Index: 0}, Type: "typeby", Quantity: ToHex(79)},
 			}
 			commandResp := &token.CommandResponse{
 				Payload: &token.CommandResponse_UnspentTokens{
@@ -709,7 +709,7 @@ var _ = Describe("TokenClient", func() {
 			// create a valid payload
 			tokensToIssue := []*token.TokenToIssue{{
 				Type:      "type",
-				Quantity:  10,
+				Quantity:  ToHex(10),
 				Recipient: &token.TokenOwner{Raw: []byte("alice")},
 			}}
 			payload = &token.Command_ImportRequest{

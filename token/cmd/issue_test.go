@@ -21,7 +21,7 @@ import (
 func TestIssueCmd(t *testing.T) {
 	clientConfigPath := "configuration"
 	recipient := "alice"
-	var quantity uint64 = 100
+	var quantity string = ToHex(100)
 	ttype := "pineapple"
 
 	stub := &mocks.Stub{}
@@ -84,7 +84,7 @@ func TestIssueCmd(t *testing.T) {
 func TestImportCmd_FailedSetup(t *testing.T) {
 	clientConfigPath := "configuration"
 	recipient := "alice"
-	var quantity uint64 = 100
+	var quantity string = ToHex(100)
 	ttype := "pineapple"
 
 	stub := &mocks.Stub{}
@@ -106,7 +106,7 @@ func TestImportCmd_FailedSetup(t *testing.T) {
 func TestImportCmd_FailedIssue(t *testing.T) {
 	clientConfigPath := "configuration"
 	recipient := "alice"
-	var quantity uint64 = 100
+	var quantity string = ToHex(100)
 	ttype := "pineapple"
 
 	stub := &mocks.Stub{}

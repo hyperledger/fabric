@@ -60,7 +60,7 @@ type Stub interface {
 	Transfer(tokenIDs []*token.TokenId, shares []*token.RecipientTransferShare, waitTimeout time.Duration) (StubResponse, error)
 
 	// Redeem allows the redemption of the tokens in the input tokenIDs
-	Redeem(tokenIDs []*token.TokenId, quantity uint64, waitTimeout time.Duration) (StubResponse, error)
+	Redeem(tokenIDs []*token.TokenId, quantity string, waitTimeout time.Duration) (StubResponse, error)
 
 	// ListTokens allows the client to submit a list request to a prover peer service;
 	ListTokens() (StubResponse, error)
@@ -143,7 +143,7 @@ func AddCommands(cli CommandRegistrar) {
 	addBaseFlags(importCli, issueCmd.BaseCmd)
 	configPath := importCli.Flag("config", "Sets the client configuration path").String()
 	ttype := importCli.Flag("type", "Sets the token type to issue").String()
-	quantity := importCli.Flag("quantity", "Sets the quantity of tokens to issue").Uint64()
+	quantity := importCli.Flag("quantity", "Sets the quantity of tokens to issue").String()
 	recipient := importCli.Flag("recipient", "Sets the recipient of tokens to issue").String()
 
 	issueCmd.SetClientConfigPath(configPath)
@@ -175,7 +175,7 @@ func AddCommands(cli CommandRegistrar) {
 	addBaseFlags(redeemCli, redeemCmd.BaseCmd)
 	configPath = redeemCli.Flag("config", "Sets the client configuration path").String()
 	tokenIDs = redeemCli.Flag("tokenIDs", "Sets the token IDs to redeem").String()
-	quantity = redeemCli.Flag("quantity", "Sets the quantity of tokens to redeem").Uint64()
+	quantity = redeemCli.Flag("quantity", "Sets the quantity of tokens to redeem").String()
 	redeemCmd.SetClientConfigPath(configPath)
 	redeemCmd.SetTokenIDs(tokenIDs)
 	redeemCmd.SetQuantity(quantity)

@@ -16,6 +16,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/hyperledger/fabric/token/tms/plain"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -51,7 +53,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 	BeforeEach(func() {
 		// prepare data for issue tokens
 		tokensToIssue = []*token.TokenToIssue{
-			{Recipient: &token.TokenOwner{Raw: []byte("test-owner")}, Type: "ABC123", Quantity: 119},
+			{Recipient: &token.TokenOwner{Raw: []byte("test-owner")}, Type: "ABC123", Quantity: ToHex(119)},
 		}
 
 		// expected token transaction returned by prover peer
@@ -63,7 +65,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 							Outputs: []*token.Token{{
 								Owner:    &token.TokenOwner{Raw: []byte("test-owner")},
 								Type:     "ABC123",
-								Quantity: 119,
+								Quantity: ToHex(119),
 							}}}}}}}
 		expectedTransferTransaction = &token.TokenTransaction{
 			Action: &token.TokenTransaction_TokenAction{
@@ -74,7 +76,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 							Outputs: []*token.Token{{
 								Owner:    nil,
 								Type:     "ABC123",
-								Quantity: 119,
+								Quantity: ToHex(119),
 							}},
 						},
 					},
@@ -91,12 +93,12 @@ var _ bool = Describe("Token EndToEnd", func() {
 								{
 									Owner:    nil,
 									Type:     "ABC123",
-									Quantity: 50,
+									Quantity: ToHex(50),
 								},
 								{
 									Owner:    nil,
 									Type:     "ABC123",
-									Quantity: 119 - 50,
+									Quantity: ToHex(119 - 50),
 								},
 							},
 						},
@@ -108,7 +110,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 		expectedUnspentTokens = &token.UnspentTokens{
 			Tokens: []*token.TokenOutput{
 				{
-					Quantity: 119,
+					Quantity: ToHex(119),
 					Type:     "ABC123",
 					Id:       &token.TokenId{TxId: "ledger-id", Index: 1},
 				},
@@ -173,7 +175,9 @@ var _ bool = Describe("Token EndToEnd", func() {
 			outputs := ListTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
 				"testchannel", "User2", "Org1MSP")
 			Expect(len(outputs)).To(BeEquivalentTo(1))
-			Expect(outputs[0].Quantity).To(BeEquivalentTo(100))
+			fmt.Println(outputs[0].Quantity)
+			fmt.Println(ToHex(100))
+			Expect(outputs[0].Quantity).To(BeEquivalentTo(ToHex(100)))
 			Expect(outputs[0].Type).To(BeEquivalentTo("ABC123"))
 
 			// User2 transfers back the tokens to User1
@@ -182,11 +186,11 @@ var _ bool = Describe("Token EndToEnd", func() {
 				[]*token.TokenId{outputs[0].Id},
 				[]*token.RecipientTransferShare{
 					{
-						Quantity:  50,
+						Quantity:  ToHex(50),
 						Recipient: &token.TokenOwner{Raw: user2},
 					},
 					{
-						Quantity:  50,
+						Quantity:  ToHex(50),
 						Recipient: &token.TokenOwner{Raw: user1},
 					},
 				},
@@ -196,14 +200,14 @@ var _ bool = Describe("Token EndToEnd", func() {
 			outputs = ListTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
 				"testchannel", "User2", "Org1MSP")
 			Expect(len(outputs)).To(BeEquivalentTo(1))
-			Expect(outputs[0].Quantity).To(BeEquivalentTo(50))
+			Expect(outputs[0].Quantity).To(BeEquivalentTo(ToHex(50)))
 			Expect(outputs[0].Type).To(BeEquivalentTo("ABC123"))
 
 			// User1 lists her tokens and verify
 			outputs = ListTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
 				"testchannel", "User2", "Org1MSP")
 			Expect(len(outputs)).To(BeEquivalentTo(1))
-			Expect(outputs[0].Quantity).To(BeEquivalentTo(50))
+			Expect(outputs[0].Quantity).To(BeEquivalentTo(ToHex(50)))
 			Expect(outputs[0].Type).To(BeEquivalentTo("ABC123"))
 
 			// User1 redeems 25 of her tokens
@@ -215,7 +219,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			outputs = ListTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
 				"testchannel", "User2", "Org1MSP")
 			Expect(len(outputs)).To(BeEquivalentTo(1))
-			Expect(outputs[0].Quantity).To(BeEquivalentTo(25))
+			Expect(outputs[0].Quantity).To(BeEquivalentTo(ToHex(25)))
 			Expect(outputs[0].Type).To(BeEquivalentTo("ABC123"))
 		})
 
@@ -307,14 +311,14 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("redeeming tokens user1")
 			tokenIDs = []*token.TokenId{{TxId: txID, Index: 0}}
 			expectedRedeemTransaction.GetTokenAction().GetRedeem().Inputs = tokenIDs
-			quantityToRedeem := 50 // redeem 50 out of 119
-			RunRedeemRequest(tClient, issuedTokens, uint64(quantityToRedeem), expectedRedeemTransaction)
+			var quantityToRedeem uint64 = 50 // redeem 50 out of 119
+			RunRedeemRequest(tClient, issuedTokens, ToHex(quantityToRedeem), expectedRedeemTransaction)
 
 			By("listing tokens user1")
 			expectedUnspentTokens = &token.UnspentTokens{
 				Tokens: []*token.TokenOutput{
 					{
-						Quantity: 119 - 50,
+						Quantity: ToHex(119 - 50),
 						Type:     "ABC123",
 						Id:       &token.TokenId{TxId: "ledger-id", Index: 0},
 					},
@@ -422,7 +426,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 								Outputs: []*token.Token{{
 									Owner:    &token.TokenOwner{Raw: []byte("test-owner")},
 									Type:     "ABC123",
-									Quantity: 119,
+									Quantity: ToHex(119),
 								}}}}}}}
 			tempTxID, ordererStatus, committed, err := SubmitTokenTx(tClient, expectedTokenTransaction)
 			Expect(err).To(HaveOccurred())
@@ -486,7 +490,7 @@ func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput,
 		inputTokenIDs[i] = &token.TokenId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
 	}
 	shares := []*token.RecipientTransferShare{
-		{Recipient: recipient, Quantity: 119},
+		{Recipient: recipient, Quantity: ToHex(119)},
 	}
 
 	envelope, txid, ordererStatus, committed, err := c.Transfer(inputTokenIDs, shares, 30*time.Second)
@@ -516,7 +520,7 @@ func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput,
 	return txid
 }
 
-func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, quantity uint64, expectedTokenTx *token.TokenTransaction) {
+func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, quantity string, expectedTokenTx *token.TokenTransaction) {
 	inputTokenIDs := make([]*token.TokenId, len(inputTokens))
 	for i, inToken := range inputTokens {
 		inputTokenIDs[i] = &token.TokenId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
@@ -541,14 +545,18 @@ func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, q
 
 func RunTransferRequestWithFailure(c *tokenclient.Client, inputTokens []*token.TokenOutput, recipient *token.TokenOwner) (string, *common.Status, bool, error) {
 	inputTokenIDs := make([]*token.TokenId, len(inputTokens))
-	var sum uint64 = 0
+	sum := plain.NewZeroQuantity(64)
+	var err error
 	for i, inToken := range inputTokens {
 		inputTokenIDs[i] = &token.TokenId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
 
-		sum += inToken.GetQuantity()
+		v, err := plain.ToQuantity(inToken.GetQuantity(), 64)
+		Expect(err).NotTo(HaveOccurred())
+		sum, err = sum.Add(v)
+		Expect(err).NotTo(HaveOccurred())
 	}
 	shares := []*token.RecipientTransferShare{
-		{Recipient: recipient, Quantity: sum},
+		{Recipient: recipient, Quantity: sum.Hex()},
 	}
 
 	_, txid, ordererStatus, committed, err := c.Transfer(inputTokenIDs, shares, 30*time.Second)

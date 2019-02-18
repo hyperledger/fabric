@@ -4,13 +4,15 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package token
+package token_test
 
 import (
 	"encoding/json"
+	"strconv"
 	"testing"
 
 	"github.com/hyperledger/fabric/protos/token"
+	. "github.com/hyperledger/fabric/token/cmd"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,11 +60,11 @@ func TestLoadTokenIDs(t *testing.T) {
 func TestShares(t *testing.T) {
 	shares := []*token.RecipientTransferShare{
 		{
-			Quantity:  10,
+			Quantity:  ToHex(10),
 			Recipient: &token.TokenOwner{Raw: []byte{0, 1, 2, 3, 4}},
 		},
 		{
-			Quantity:  20,
+			Quantity:  ToHex(20),
 			Recipient: &token.TokenOwner{Raw: []byte{5, 6, 7, 8, 9}},
 		},
 	}
@@ -111,4 +113,8 @@ func TestLoadLocalMspRecipient(t *testing.T) {
 	owner2, err := jsonLoader.TokenOwner("./testdata/mspid")
 	assert.NoError(t, err)
 	assert.Equal(t, owner, owner2)
+}
+
+func ToHex(q uint64) string {
+	return "0x" + strconv.FormatUint(q, 16)
 }

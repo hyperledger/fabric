@@ -8,6 +8,7 @@ package validation
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -79,7 +80,7 @@ func getTokenTransaction() *token.TokenTransaction {
 						Outputs: []*token.Token{{
 							Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 							Type:     "PDQ",
-							Quantity: 777,
+							Quantity: ToHex(777),
 						}},
 					},
 				},
@@ -237,4 +238,8 @@ func TestValidateTransactionBadTokenTxID(t *testing.T) {
 	payload, code := ValidateTransaction(envelope, &config.MockApplicationCapabilities{})
 	assert.Equal(t, code, peer.TxValidationCode_BAD_PROPOSAL_TXID)
 	assert.Nil(t, payload)
+}
+
+func ToHex(q uint64) string {
+	return "0x" + strconv.FormatUint(q, 16)
 }

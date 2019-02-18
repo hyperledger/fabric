@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package token
+package token_test
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 
 	common2 "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/token"
+	. "github.com/hyperledger/fabric/token/cmd"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,7 +29,7 @@ func TestTokenClientStub_Setup(t *testing.T) {
 	assert.Equal(t, "stub not initialised!!!", err.Error())
 	_, err = stub.ListTokens()
 	assert.Equal(t, "stub not initialised!!!", err.Error())
-	_, err = stub.Redeem(nil, 0, 10)
+	_, err = stub.Redeem(nil, ToHex(0), 10)
 	assert.Equal(t, "stub not initialised!!!", err.Error())
 	_, err = stub.Transfer(nil, nil, 10)
 	assert.Equal(t, "stub not initialised!!!", err.Error())
@@ -38,8 +39,11 @@ func TestTokenOutputResponseParser_ParseResponse(t *testing.T) {
 	buffer := &bytes.Buffer{}
 	parser := &TokenOutputResponseParser{Writer: buffer}
 
-	resp := &TokenOutputResponse{[]*token.TokenOutput{
-		{Type: "token_type", Id: &token.TokenId{TxId: "0", Index: 1}},
+	resp := &TokenOutputResponse{Tokens: []*token.TokenOutput{
+		{
+			Type: "token_type",
+			Id:   &token.TokenId{TxId: "0", Index: 1},
+		},
 	}}
 	err := parser.ParseResponse(resp)
 	assert.NoError(t, err)

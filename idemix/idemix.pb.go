@@ -32,7 +32,7 @@ func (m *ECP) Reset()         { *m = ECP{} }
 func (m *ECP) String() string { return proto.CompactTextString(m) }
 func (*ECP) ProtoMessage()    {}
 func (*ECP) Descriptor() ([]byte, []int) {
-	return fileDescriptor_idemix_ea623f6980eee47e, []int{0}
+	return fileDescriptor_idemix_9eaaac972d0b8c7e, []int{0}
 }
 func (m *ECP) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ECP.Unmarshal(m, b)
@@ -82,7 +82,7 @@ func (m *ECP2) Reset()         { *m = ECP2{} }
 func (m *ECP2) String() string { return proto.CompactTextString(m) }
 func (*ECP2) ProtoMessage()    {}
 func (*ECP2) Descriptor() ([]byte, []int) {
-	return fileDescriptor_idemix_ea623f6980eee47e, []int{1}
+	return fileDescriptor_idemix_9eaaac972d0b8c7e, []int{1}
 }
 func (m *ECP2) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ECP2.Unmarshal(m, b)
@@ -155,7 +155,7 @@ func (m *IssuerPublicKey) Reset()         { *m = IssuerPublicKey{} }
 func (m *IssuerPublicKey) String() string { return proto.CompactTextString(m) }
 func (*IssuerPublicKey) ProtoMessage()    {}
 func (*IssuerPublicKey) Descriptor() ([]byte, []int) {
-	return fileDescriptor_idemix_ea623f6980eee47e, []int{2}
+	return fileDescriptor_idemix_9eaaac972d0b8c7e, []int{2}
 }
 func (m *IssuerPublicKey) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IssuerPublicKey.Unmarshal(m, b)
@@ -260,7 +260,7 @@ func (m *IssuerKey) Reset()         { *m = IssuerKey{} }
 func (m *IssuerKey) String() string { return proto.CompactTextString(m) }
 func (*IssuerKey) ProtoMessage()    {}
 func (*IssuerKey) Descriptor() ([]byte, []int) {
-	return fileDescriptor_idemix_ea623f6980eee47e, []int{3}
+	return fileDescriptor_idemix_9eaaac972d0b8c7e, []int{3}
 }
 func (m *IssuerKey) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IssuerKey.Unmarshal(m, b)
@@ -312,7 +312,7 @@ func (m *Credential) Reset()         { *m = Credential{} }
 func (m *Credential) String() string { return proto.CompactTextString(m) }
 func (*Credential) ProtoMessage()    {}
 func (*Credential) Descriptor() ([]byte, []int) {
-	return fileDescriptor_idemix_ea623f6980eee47e, []int{4}
+	return fileDescriptor_idemix_9eaaac972d0b8c7e, []int{4}
 }
 func (m *Credential) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Credential.Unmarshal(m, b)
@@ -386,7 +386,7 @@ func (m *CredRequest) Reset()         { *m = CredRequest{} }
 func (m *CredRequest) String() string { return proto.CompactTextString(m) }
 func (*CredRequest) ProtoMessage()    {}
 func (*CredRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_idemix_ea623f6980eee47e, []int{5}
+	return fileDescriptor_idemix_9eaaac972d0b8c7e, []int{5}
 }
 func (m *CredRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CredRequest.Unmarshal(m, b)
@@ -467,7 +467,7 @@ func (m *Signature) Reset()         { *m = Signature{} }
 func (m *Signature) String() string { return proto.CompactTextString(m) }
 func (*Signature) ProtoMessage()    {}
 func (*Signature) Descriptor() ([]byte, []int) {
-	return fileDescriptor_idemix_ea623f6980eee47e, []int{6}
+	return fileDescriptor_idemix_9eaaac972d0b8c7e, []int{6}
 }
 func (m *Signature) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Signature.Unmarshal(m, b)
@@ -619,7 +619,7 @@ func (m *NonRevocationProof) Reset()         { *m = NonRevocationProof{} }
 func (m *NonRevocationProof) String() string { return proto.CompactTextString(m) }
 func (*NonRevocationProof) ProtoMessage()    {}
 func (*NonRevocationProof) Descriptor() ([]byte, []int) {
-	return fileDescriptor_idemix_ea623f6980eee47e, []int{7}
+	return fileDescriptor_idemix_9eaaac972d0b8c7e, []int{7}
 }
 func (m *NonRevocationProof) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NonRevocationProof.Unmarshal(m, b)
@@ -676,7 +676,7 @@ func (m *NymSignature) Reset()         { *m = NymSignature{} }
 func (m *NymSignature) String() string { return proto.CompactTextString(m) }
 func (*NymSignature) ProtoMessage()    {}
 func (*NymSignature) Descriptor() ([]byte, []int) {
-	return fileDescriptor_idemix_ea623f6980eee47e, []int{8}
+	return fileDescriptor_idemix_9eaaac972d0b8c7e, []int{8}
 }
 func (m *NymSignature) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NymSignature.Unmarshal(m, b)
@@ -744,7 +744,7 @@ func (m *CredentialRevocationInformation) Reset()         { *m = CredentialRevoc
 func (m *CredentialRevocationInformation) String() string { return proto.CompactTextString(m) }
 func (*CredentialRevocationInformation) ProtoMessage()    {}
 func (*CredentialRevocationInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_idemix_ea623f6980eee47e, []int{9}
+	return fileDescriptor_idemix_9eaaac972d0b8c7e, []int{9}
 }
 func (m *CredentialRevocationInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CredentialRevocationInformation.Unmarshal(m, b)
@@ -812,9 +812,9 @@ func init() {
 	proto.RegisterType((*CredentialRevocationInformation)(nil), "CredentialRevocationInformation")
 }
 
-func init() { proto.RegisterFile("idemix/idemix.proto", fileDescriptor_idemix_ea623f6980eee47e) }
+func init() { proto.RegisterFile("idemix/idemix.proto", fileDescriptor_idemix_9eaaac972d0b8c7e) }
 
-var fileDescriptor_idemix_ea623f6980eee47e = []byte{
+var fileDescriptor_idemix_9eaaac972d0b8c7e = []byte{
 	// 816 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x55, 0xdd, 0x6e, 0xe2, 0x46,
 	0x14, 0xd6, 0x60, 0x9b, 0x84, 0x83, 0x13, 0xb2, 0x93, 0xa8, 0x3b, 0xfd, 0x53, 0x59, 0xab, 0xdb,

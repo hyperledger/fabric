@@ -67,7 +67,7 @@ func (stub *TokenClientStub) Transfer(tokenIDs []*token.TokenId, shares []*token
 	return &OperationResponse{Envelope: envelope, TxID: txid, Status: ordererStatus, Committed: committed}, err
 }
 
-func (stub *TokenClientStub) Redeem(tokenIDs []*token.TokenId, quantity uint64, waitTimeout time.Duration) (StubResponse, error) {
+func (stub *TokenClientStub) Redeem(tokenIDs []*token.TokenId, quantity string, waitTimeout time.Duration) (StubResponse, error) {
 	if stub.client == nil {
 		return nil, errors.New("stub not initialised!!!")
 	}

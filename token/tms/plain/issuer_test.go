@@ -21,9 +21,9 @@ var _ = Describe("Issuer", func() {
 
 	BeforeEach(func() {
 		tokensToIssue = []*token.TokenToIssue{
-			{Recipient: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: 1001},
-			{Recipient: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK2", Quantity: 1002},
-			{Recipient: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK3", Quantity: 1003},
+			{Recipient: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: ToHex(1001)},
+			{Recipient: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK2", Quantity: ToHex(1002)},
+			{Recipient: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK3", Quantity: ToHex(1003)},
 		}
 		issuer = &plain.Issuer{TokenOwnerValidator: &TestTokenOwnerValidator{}}
 	})
@@ -37,9 +37,9 @@ var _ = Describe("Issuer", func() {
 					Data: &token.TokenAction_Issue{
 						Issue: &token.Issue{
 							Outputs: []*token.Token{
-								{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: 1001},
-								{Owner: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK2", Quantity: 1002},
-								{Owner: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK3", Quantity: 1003},
+								{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: ToHex(1001)},
+								{Owner: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK2", Quantity: ToHex(1002)},
+								{Owner: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK3", Quantity: ToHex(1003)},
 							},
 						},
 					},
@@ -88,7 +88,7 @@ var _ = Describe("Issuer", func() {
 			outputs = []*token.Token{{
 				Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 				Type:     "XYZ",
-				Quantity: 99,
+				Quantity: ToHex(99),
 			}}
 			expectationRequest = &token.ExpectationRequest{
 				Credential: []byte("credential"),

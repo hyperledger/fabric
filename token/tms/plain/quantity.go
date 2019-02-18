@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package plain
 
 import (
+	"math/big"
+
 	"github.com/pkg/errors"
 )
 
@@ -24,71 +26,87 @@ type Quantity interface {
 	// Cmd compare this with b
 	Cmp(b Quantity) (int, error)
 
-	// ToUInt64 returns the uint64 representation of this quantity
-	ToUInt64() uint64
+	// Hex returns the hexadecimal representation of this quantity
+	Hex() string
 }
 
-// UInt64Quantity implements Quantity based on a uint64
-type UInt64Quantity uint64
+type BigQuantity struct {
+	*big.Int
+	Precision uint64
+}
 
-// ToQuantity returns a Quantity from the passed uint65
-func ToQuantity(q uint64) (Quantity, error) {
-	if q == 0 {
-		return nil, errors.New("must be larger than 0")
+// ToQuantity converts a string q to a BigQuantity of a given precision.
+// Argument q is supposed to be formatted following big.Int#scan specification.
+// The precision is expressed in bits.
+func ToQuantity(q string, precision uint64) (Quantity, error) {
+	v, success := big.NewInt(0).SetString(q, 0)
+	if !success {
+		return nil, errors.New("invalid input")
+	}
+	if v.Cmp(big.NewInt(0)) <= 0 {
+		return nil, errors.New("quantity must be larger than 0")
+	}
+	if precision == 0 {
+		return nil, errors.New("precision be larger than 0")
+	}
+	if v.BitLen() > int(precision) {
+		return nil, errors.Errorf("%s has precision %d > %d", q, v.BitLen(), precision)
 	}
 
-	return UInt64Quantity(q), nil
+	return &BigQuantity{Int: v, Precision: precision}, nil
 }
 
-// NewZeroQuantity returns a zero Quantity
-func NewZeroQuantity() Quantity {
-	return UInt64Quantity(0)
+// NewZeroQuantity returns to zero quantity at the passed precision/
+// The precision is expressed in bits.
+func NewZeroQuantity(precision uint64) Quantity {
+	b := BigQuantity{Int: big.NewInt(0), Precision: precision}
+	return &b
 }
 
-func (q UInt64Quantity) Add(b Quantity) (Quantity, error) {
-	bq, ok := b.(UInt64Quantity)
+func (q *BigQuantity) Add(b Quantity) (Quantity, error) {
+	bq, ok := b.(*BigQuantity)
 	if !ok {
 		return nil, errors.Errorf("expected uint64 quantity, got '%t", b)
 	}
 
 	// Check overflow
-	s := q + bq
-	if uint64(s) < uint64(q) || uint64(s) < uint64(bq) {
+	sum := big.NewInt(0)
+	sum = sum.Add(q.Int, bq.Int)
+
+	if sum.BitLen() > int(q.Precision) {
 		return nil, errors.Errorf("%d + %d = overflow", q, b)
 	}
 
-	return s, nil
+	sumq := BigQuantity{Int: sum, Precision: q.Precision}
+	return &sumq, nil
 }
 
-func (q UInt64Quantity) Sub(b Quantity) (Quantity, error) {
-	bq, ok := b.(UInt64Quantity)
+func (q *BigQuantity) Sub(b Quantity) (Quantity, error) {
+	bq, ok := b.(*BigQuantity)
 	if !ok {
 		return nil, errors.Errorf("expected uint64 quantity, got '%t", b)
 	}
 
 	// Check overflow
-	if q < bq {
+	if q.Int.Cmp(bq.Int) < 0 {
 		return nil, errors.Errorf("%d < %d", q, b)
 	}
+	diff := big.NewInt(0)
+	diff.Sub(q.Int, b.(*BigQuantity).Int)
 
-	return UInt64Quantity(q - b.(UInt64Quantity)), nil
+	diffq := BigQuantity{Int: diff, Precision: q.Precision}
+	return &diffq, nil
 }
 
-func (q UInt64Quantity) Cmp(b Quantity) (int, error) {
-	bq, ok := b.(UInt64Quantity)
+func (q *BigQuantity) Cmp(b Quantity) (int, error) {
+	bq, ok := b.(*BigQuantity)
 	if !ok {
 		return 0, errors.Errorf("expected uint64 quantity, got '%t", b)
 	}
 
-	if q == bq {
-		return 0, nil
-	}
-	if q < bq {
-		return -1, nil
-	}
-	return 1, nil
+	return q.Int.Cmp(bq.Int), nil
 }
 
-func (q UInt64Quantity) ToUInt64() uint64 {
-	return uint64(q)
+func (q *BigQuantity) Hex() string {
+	return "0x" + q.Int.Text(16)
 }

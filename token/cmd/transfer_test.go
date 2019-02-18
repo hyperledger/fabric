@@ -123,7 +123,7 @@ func TestTestTransferCmd_FailedStubTransfer(t *testing.T) {
 	shares := []*ptoken.RecipientTransferShare{
 		{
 			Recipient: &ptoken.TokenOwner{Raw: []byte("bob")},
-			Quantity:  100,
+			Quantity:  ToHex(100),
 		},
 	}
 

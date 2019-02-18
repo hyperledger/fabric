@@ -77,7 +77,7 @@ var _ = Describe("Prover", func() {
 							Outputs: []*token.Token{{
 								Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 								Type:     "PDQ",
-								Quantity: 777,
+								Quantity: ToHex(777),
 							}},
 						},
 					},
@@ -99,7 +99,7 @@ var _ = Describe("Prover", func() {
 							Outputs: []*token.Token{{
 								Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 								Type:     "PDQ",
-								Quantity: 777,
+								Quantity: ToHex(777),
 							}},
 						},
 					},
@@ -120,7 +120,7 @@ var _ = Describe("Prover", func() {
 							}},
 							Outputs: []*token.Token{{
 								Type:     "PDQ",
-								Quantity: 50,
+								Quantity: ToHex(50),
 							}},
 						},
 					},
@@ -130,8 +130,8 @@ var _ = Describe("Prover", func() {
 		fakeTransactor.RequestRedeemReturns(redeemTokenTransaction, nil)
 
 		transactorTokens = []*token.TokenOutput{
-			{Id: &token.TokenId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: 135},
-			{Id: &token.TokenId{TxId: "idby", Index: 0}, Type: "typeby", Quantity: 79},
+			{Id: &token.TokenId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: ToHex(135)},
+			{Id: &token.TokenId{TxId: "idby", Index: 0}, Type: "typeby", Quantity: ToHex(79)},
 		}
 		unspentTokens = &token.UnspentTokens{Tokens: transactorTokens}
 
@@ -157,7 +157,7 @@ var _ = Describe("Prover", func() {
 			TokensToIssue: []*token.TokenToIssue{{
 				Recipient: &token.TokenOwner{Raw: []byte("recipient")},
 				Type:      "XYZ",
-				Quantity:  99,
+				Quantity:  ToHex(99),
 			}},
 		}
 		command = &token.Command{
@@ -181,14 +181,14 @@ var _ = Describe("Prover", func() {
 			TokenIds:   []*token.TokenId{},
 			Shares: []*token.RecipientTransferShare{{
 				Recipient: &token.TokenOwner{Raw: []byte("recipient")},
-				Quantity:  99,
+				Quantity:  ToHex(99),
 			}},
 		}
 
 		redeemRequest = &token.RedeemRequest{
 			Credential:       []byte("credential"),
 			TokenIds:         []*token.TokenId{},
-			QuantityToRedeem: 50,
+			QuantityToRedeem: ToHex(50),
 		}
 
 		listRequest = &token.ListRequest{
@@ -205,7 +205,7 @@ var _ = Describe("Prover", func() {
 								Outputs: []*token.Token{{
 									Owner:    &token.TokenOwner{Raw: []byte("recipient")},
 									Type:     "XYZ",
-									Quantity: 99,
+									Quantity: ToHex(99),
 								}},
 							},
 						},
@@ -225,7 +225,7 @@ var _ = Describe("Prover", func() {
 								Outputs: []*token.Token{{
 									Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 									Type:     "PDQ",
-									Quantity: 777,
+									Quantity: ToHex(777),
 								}},
 							},
 						},
@@ -843,12 +843,12 @@ var _ = Describe("Prover", func() {
 					{
 						Recipient: &token.TokenOwner{Raw: []byte("recipient1")},
 						Type:      "XYZ1",
-						Quantity:  10,
+						Quantity:  ToHex(10),
 					},
 					{
 						Recipient: &token.TokenOwner{Raw: []byte("recipient2")},
 						Type:      "XYZ2",
-						Quantity:  200,
+						Quantity:  ToHex(200),
 					},
 				},
 			}
@@ -857,12 +857,12 @@ var _ = Describe("Prover", func() {
 				{
 					Owner:    &token.TokenOwner{Raw: []byte("recipient1")},
 					Type:     "XYZ1",
-					Quantity: 10,
+					Quantity: ToHex(10),
 				},
 				{
 					Owner:    &token.TokenOwner{Raw: []byte("recipient2")},
 					Type:     "XYZ2",
-					Quantity: 200,
+					Quantity: ToHex(200),
 				},
 			}
 			expectedTokenTx = &token.TokenTransaction{
@@ -1166,14 +1166,14 @@ var _ = Describe("ProverListUnspentTokens", func() {
 			Command:   marshaledCommand,
 			Signature: []byte("command-signature"),
 		}
-		outputToken, err := proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: 100})
+		outputToken, err := proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: ToHex(100)})
 		Expect(err).NotTo(HaveOccurred())
 
 		key := generateKey("1", "0", "tokenOutput")
 
 		queryResult = &queryresult.KV{Key: key, Value: outputToken}
 
-		unspentTokens := &token.UnspentTokens{Tokens: []*token.TokenOutput{{Type: "XYZ", Quantity: 100, Id: &token.TokenId{TxId: "1", Index: 0}}}}
+		unspentTokens := &token.UnspentTokens{Tokens: []*token.TokenOutput{{Type: "XYZ", Quantity: ToHex(100), Id: &token.TokenId{TxId: "1", Index: 0}}}}
 		expectedResponse = &token.CommandResponse_UnspentTokens{UnspentTokens: unspentTokens}
 	})
 
@@ -1255,9 +1255,9 @@ var _ = Describe("Prover Transfer using TMS", func() {
 		tokenIDs := []*token.TokenId{{TxId: "1", Index: 0}, {TxId: "2", Index: 1}}
 
 		shares := []*token.RecipientTransferShare{
-			{Recipient: &token.TokenOwner{Raw: []byte("Alice")}, Quantity: 20},
-			{Recipient: &token.TokenOwner{Raw: []byte("Bob")}, Quantity: 250},
-			{Recipient: &token.TokenOwner{Raw: []byte("Charlie")}, Quantity: 30},
+			{Recipient: &token.TokenOwner{Raw: []byte("Alice")}, Quantity: ToHex(20)},
+			{Recipient: &token.TokenOwner{Raw: []byte("Bob")}, Quantity: ToHex(250)},
+			{Recipient: &token.TokenOwner{Raw: []byte("Charlie")}, Quantity: ToHex(30)},
 		}
 		transferRequest = &token.TransferRequest{Credential: []byte("Alice"), TokenIds: tokenIDs, Shares: shares}
 
@@ -1278,9 +1278,9 @@ var _ = Describe("Prover Transfer using TMS", func() {
 		}
 
 		outTokens := make([]*token.Token, 3)
-		outTokens[0] = &token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: 20}
-		outTokens[1] = &token.Token{Owner: &token.TokenOwner{Raw: []byte("Bob")}, Type: "XYZ", Quantity: 250}
-		outTokens[2] = &token.Token{Owner: &token.TokenOwner{Raw: []byte("Charlie")}, Type: "XYZ", Quantity: 30}
+		outTokens[0] = &token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: ToHex(20)}
+		outTokens[1] = &token.Token{Owner: &token.TokenOwner{Raw: []byte("Bob")}, Type: "XYZ", Quantity: ToHex(250)}
+		outTokens[2] = &token.Token{Owner: &token.TokenOwner{Raw: []byte("Charlie")}, Type: "XYZ", Quantity: ToHex(30)}
 
 		tokenTx := &token.TokenTransaction{
 			Action: &token.TokenTransaction_TokenAction{
@@ -1300,11 +1300,11 @@ var _ = Describe("Prover Transfer using TMS", func() {
 		var err error
 		inTokens := make([][]byte, 2)
 		inTokens[0], err = proto.Marshal(&token.Token{
-			Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: 100})
+			Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: ToHex(100)})
 		Expect(err).NotTo(HaveOccurred())
 
 		inTokens[1], err = proto.Marshal(&token.Token{
-			Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: 200})
+			Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: ToHex(200)})
 		Expect(err).NotTo(HaveOccurred())
 
 		fakeCapabilityChecker = &mock.CapabilityChecker{}

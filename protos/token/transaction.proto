@@ -115,8 +115,8 @@ message Token {
     // The token type
     string type = 2;
 
-    // The quantity of units carried in the tokens
-    uint64 quantity = 3;
+    // The quantity of units carried in the tokens, in hex format
+    string quantity = 3;
 }
 
 // A TokenId specifies a token using the transaction ID and the index of the token in the transaction

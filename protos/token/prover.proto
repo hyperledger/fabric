@@ -23,8 +23,8 @@ message TokenToIssue {
     // Type refers to the token type
     string type = 2;
 
-    // Quantity refers to the number of token units to be issued
-    uint64 quantity = 3;
+    // Quantity refers to the number of token units to be issued, in hex format
+    string quantity = 3;
 }
 
 // RecipientTransferShare describes how much a recipient will receive in a token transfer
@@ -32,8 +32,8 @@ message RecipientTransferShare {
     // Recipient refers to the prospective owner of a transferred token
     TokenOwner recipient = 1;
 
-    // Quantity refers to the number of token units to be transferred to the recipient
-    uint64 quantity = 2;
+    // Quantity refers to the number of token units to be transferred to the recipient, in hex format
+    string quantity = 2;
 }
 
 // TokenOutput is used to specify a token returned by ListRequest
@@ -44,8 +44,8 @@ message TokenOutput {
     // Type is the type of the token
     string type = 2;
 
-    // Quantity represents the number for this type of token
-    uint64 quantity = 3;
+    // Quantity represents the number for this type of token, in hex format
+    string quantity = 3;
 }
 
 // UnspentTokens is used to hold the output of listRequest
@@ -86,8 +86,8 @@ message RedeemRequest {
     // token_ids specifies the ids for the tokens that will be redeemed
     repeated TokenId token_ids = 2;
 
-    // quantity refers to the number of units of a given token needs to be redeemed.
-    uint64 quantity_to_redeem = 3;
+    // quantity refers to the number of units of a given token needs to be redeemed, in hex format
+    string quantity_to_redeem = 3;
 }
 
 // ExpectationRequest is used to request indirect token import or transfer based on the token expectation

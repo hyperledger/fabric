@@ -17,7 +17,7 @@ type IssueCmd struct {
 	*BaseCmd
 	clientConfigPath *string
 	recipient        *string
-	quantity         *uint64
+	quantity         *string
 	ttype            *string
 
 	stub   Stub
@@ -40,7 +40,7 @@ func (cmd *IssueCmd) SetRecipient(recipient *string) {
 }
 
 // SetQuantity sets the quantity
-func (cmd *IssueCmd) SetQuantity(quantity *uint64) {
+func (cmd *IssueCmd) SetQuantity(quantity *string) {
 	cmd.quantity = quantity
 }
 
@@ -56,7 +56,7 @@ func (cmd *IssueCmd) Execute(conf common.Config) error {
 	if cmd.recipient == nil || len(*cmd.recipient) == 0 {
 		return errors.New("no recipient specified")
 	}
-	if cmd.quantity == nil || *cmd.quantity == 0 {
+	if cmd.quantity == nil || len(*cmd.quantity) == 0 {
 		return errors.New("no quantity specified")
 	}
 	if cmd.ttype == nil || len(*cmd.ttype) == 0 {

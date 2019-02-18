@@ -209,8 +209,8 @@ func getTokenTx(t *testing.T) *common.Envelope {
 				Data: &token.TokenAction_Issue{
 					Issue: &token.Issue{
 						Outputs: []*token.Token{
-							{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 111},
-							{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: 222},
+							{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(111)},
+							{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: ToHex(222)},
 						},
 					},
 				},
@@ -2011,4 +2011,8 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(m.Run())
+}
+
+func ToHex(q uint64) string {
+	return "0x" + strconv.FormatUint(q, 16)
 }

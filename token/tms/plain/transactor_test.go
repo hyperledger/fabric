@@ -34,13 +34,13 @@ var _ = Describe("RequestListTokens", func() {
 		results = make([]*queryresult.KV, 5)
 
 		var err error
-		outputs[0], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: 100})
+		outputs[0], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: ToHex(100)})
 		Expect(err).NotTo(HaveOccurred())
-		outputs[1], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Bob")}, Type: "TOK2", Quantity: 200})
+		outputs[1], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Bob")}, Type: "TOK2", Quantity: ToHex(200)})
 		Expect(err).NotTo(HaveOccurred())
-		outputs[2], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK3", Quantity: 300})
+		outputs[2], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK3", Quantity: ToHex(300)})
 		Expect(err).NotTo(HaveOccurred())
-		outputs[3], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK4", Quantity: 400})
+		outputs[3], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK4", Quantity: ToHex(400)})
 		Expect(err).NotTo(HaveOccurred())
 
 		keys[0] = generateKey("1", "0", "tokenOutput")
@@ -56,8 +56,8 @@ var _ = Describe("RequestListTokens", func() {
 
 		unspentTokens = &token.UnspentTokens{
 			Tokens: []*token.TokenOutput{
-				{Id: &token.TokenId{TxId: "1", Index: uint32(0)}, Type: "TOK1", Quantity: 100},
-				{Id: &token.TokenId{TxId: "3", Index: uint32(0)}, Type: "TOK4", Quantity: 400},
+				{Id: &token.TokenId{TxId: "1", Index: uint32(0)}, Type: "TOK1", Quantity: ToHex(100)},
+				{Id: &token.TokenId{TxId: "3", Index: uint32(0)}, Type: "TOK4", Quantity: ToHex(400)},
 			},
 		}
 	})
@@ -126,9 +126,9 @@ var _ = Describe("Transactor", func() {
 
 	BeforeEach(func() {
 		recipientTransferShares = []*token.RecipientTransferShare{
-			{Recipient: &token.TokenOwner{Raw: []byte("R1")}, Quantity: 1001},
-			{Recipient: &token.TokenOwner{Raw: []byte("R2")}, Quantity: 1002},
-			{Recipient: &token.TokenOwner{Raw: []byte("R3")}, Quantity: 1003},
+			{Recipient: &token.TokenOwner{Raw: []byte("R1")}, Quantity: ToHex(1001)},
+			{Recipient: &token.TokenOwner{Raw: []byte("R2")}, Quantity: ToHex(1002)},
+			{Recipient: &token.TokenOwner{Raw: []byte("R3")}, Quantity: ToHex(1003)},
 		}
 		transactor = &plain.Transactor{PublicCredential: []byte("Alice")}
 	})
@@ -172,7 +172,7 @@ var _ = Describe("Transactor", func() {
 			input := &token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK1",
-				Quantity: 99,
+				Quantity: ToHex(99),
 			}
 			var err error
 			inputBytes, err = proto.Marshal(input)
@@ -201,9 +201,9 @@ var _ = Describe("Transactor", func() {
 									{TxId: "george", Index: uint32(0)},
 								},
 								Outputs: []*token.Token{
-									{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: 1001},
-									{Owner: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK1", Quantity: 1002},
-									{Owner: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK1", Quantity: 1003},
+									{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: ToHex(1001)},
+									{Owner: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK1", Quantity: ToHex(1002)},
+									{Owner: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK1", Quantity: ToHex(1003)},
 								},
 							},
 						},
@@ -254,12 +254,12 @@ var _ = Describe("Transactor", func() {
 			input1 := &token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK1",
-				Quantity: 99,
+				Quantity: ToHex(99),
 			}
 			input2 := &token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK2",
-				Quantity: 99,
+				Quantity: ToHex(99),
 			}
 			var err error
 			inputBytes1, err = proto.Marshal(input1)
@@ -300,7 +300,7 @@ var _ = Describe("Transactor", func() {
 			input := &token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK1",
-				Quantity: inputQuantity,
+				Quantity: ToHex(inputQuantity),
 			}
 			var err error
 			inputBytes, err = proto.Marshal(input)
@@ -316,7 +316,7 @@ var _ = Describe("Transactor", func() {
 			redeemRequest = &token.RedeemRequest{
 				Credential:       []byte("credential"),
 				TokenIds:         []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
-				QuantityToRedeem: redeemQuantity,
+				QuantityToRedeem: ToHex(redeemQuantity),
 			}
 			tt, err := transactor.RequestRedeem(redeemRequest)
 			Expect(err).NotTo(HaveOccurred())
@@ -329,7 +329,7 @@ var _ = Describe("Transactor", func() {
 									{TxId: "robert", Index: uint32(0)},
 								},
 								Outputs: []*token.Token{
-									{Type: "TOK1", Quantity: redeemQuantity},
+									{Type: "TOK1", Quantity: ToHex(redeemQuantity)},
 								},
 							},
 						},
@@ -344,7 +344,7 @@ var _ = Describe("Transactor", func() {
 			redeemRequest = &token.RedeemRequest{
 				Credential:       []byte("credential"),
 				TokenIds:         []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
-				QuantityToRedeem: redeemQuantity,
+				QuantityToRedeem: ToHex(redeemQuantity),
 			}
 			tt, err := transactor.RequestRedeem(redeemRequest)
 			Expect(err).NotTo(HaveOccurred())
@@ -357,8 +357,8 @@ var _ = Describe("Transactor", func() {
 									{TxId: "robert", Index: uint32(0)},
 								},
 								Outputs: []*token.Token{
-									{Type: "TOK1", Quantity: redeemQuantity},
-									{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: unredeemedQuantity},
+									{Type: "TOK1", Quantity: ToHex(redeemQuantity)},
+									{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: ToHex(unredeemedQuantity)},
 								},
 							},
 						},
@@ -373,13 +373,13 @@ var _ = Describe("Transactor", func() {
 				redeemRequest = &token.RedeemRequest{
 					Credential:       []byte("credential"),
 					TokenIds:         []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
-					QuantityToRedeem: redeemQuantity,
+					QuantityToRedeem: ToHex(redeemQuantity),
 				}
 			})
 
 			It("returns an error", func() {
 				_, err := transactor.RequestRedeem(redeemRequest)
-				Expect(err).To(MatchError(fmt.Sprintf("total quantity [%d] from TokenIds is less than quantity [%d] to be redeemed", inputQuantity, redeemQuantity)))
+				Expect(err).To(MatchError(fmt.Sprintf("total quantity [%d] from TokenIds is less than quantity [%s] to be redeemed", inputQuantity, ToHex(redeemQuantity))))
 			})
 		})
 	})
@@ -396,7 +396,7 @@ var _ = Describe("Transactor", func() {
 			input := &token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
 				Type:     "TOK1",
-				Quantity: inputQuantity,
+				Quantity: ToHex(inputQuantity),
 			}
 			inputBytes, err := proto.Marshal(input)
 			Expect(err).ToNot(HaveOccurred())
@@ -416,7 +416,7 @@ var _ = Describe("Transactor", func() {
 									Outputs: []*token.Token{{
 										Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
 										Type:     "TOK1",
-										Quantity: inputQuantity,
+										Quantity: ToHex(inputQuantity),
 									}},
 								},
 							},
@@ -440,7 +440,7 @@ var _ = Describe("Transactor", func() {
 								Outputs: []*token.Token{{
 									Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
 									Type:     "TOK1",
-									Quantity: inputQuantity,
+									Quantity: ToHex(inputQuantity),
 								}},
 							},
 						},
@@ -451,7 +451,7 @@ var _ = Describe("Transactor", func() {
 
 		It("creates a token transaction when input quantity is greater than output quantity", func() {
 			// change quantity in expectation output to be less than inputQuantity
-			expectationRequest.GetExpectation().GetPlainExpectation().GetTransferExpectation().Outputs[0].Quantity = 40
+			expectationRequest.GetExpectation().GetPlainExpectation().GetTransferExpectation().Outputs[0].Quantity = ToHex(40)
 			tt, err := transactor.RequestExpectation(expectationRequest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tt).To(Equal(&token.TokenTransaction{
@@ -463,8 +463,8 @@ var _ = Describe("Transactor", func() {
 									{TxId: "robert", Index: uint32(0)},
 								},
 								Outputs: []*token.Token{
-									{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 40},
-									{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: inputQuantity - 40},
+									{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(40)},
+									{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: ToHex(inputQuantity - 40)},
 								},
 							},
 						},
@@ -476,7 +476,7 @@ var _ = Describe("Transactor", func() {
 		Context("when quantity in output is greater than input quantity", func() {
 			BeforeEach(func() {
 				// change quantity in expectation output
-				expectationRequest.GetExpectation().GetPlainExpectation().GetTransferExpectation().Outputs[0].Quantity = inputQuantity + 1
+				expectationRequest.GetExpectation().GetPlainExpectation().GetTransferExpectation().Outputs[0].Quantity = ToHex(inputQuantity + 1)
 			})
 
 			It("returns an error", func() {
@@ -488,7 +488,7 @@ var _ = Describe("Transactor", func() {
 		Context("when quantity in output is greater than input quantity", func() {
 			BeforeEach(func() {
 				// change quantity in expectation output
-				expectationRequest.GetExpectation().GetPlainExpectation().GetTransferExpectation().Outputs[0].Quantity = inputQuantity + 1
+				expectationRequest.GetExpectation().GetPlainExpectation().GetTransferExpectation().Outputs[0].Quantity = ToHex(inputQuantity + 1)
 			})
 
 			It("returns an error", func() {

@@ -16,7 +16,7 @@ type RedeemCmd struct {
 	*BaseCmd
 	clientConfigPath *string
 	tokenIDs         *string
-	quantity         *uint64
+	quantity         *string
 
 	stub   Stub
 	loader Loader
@@ -38,7 +38,7 @@ func (cmd *RedeemCmd) SetTokenIDs(tokenIDs *string) {
 }
 
 // SetQuantity sets the quantity
-func (cmd *RedeemCmd) SetQuantity(quantity *uint64) {
+func (cmd *RedeemCmd) SetQuantity(quantity *string) {
 	cmd.quantity = quantity
 }
 
@@ -49,7 +49,7 @@ func (cmd *RedeemCmd) Execute(conf common.Config) error {
 	if cmd.tokenIDs == nil || len(*cmd.tokenIDs) == 0 {
 		return errors.New("no token IDs specified")
 	}
-	if cmd.quantity == nil || *cmd.quantity == 0 {
+	if cmd.quantity == nil || len(*cmd.quantity) == 0 {
 		return errors.New("no quantity specified")
 	}
 

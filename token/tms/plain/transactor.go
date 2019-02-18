@@ -22,6 +22,10 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+const (
+	Precision uint64 = 64
+)
+
 // A Transactor that can transfer tokens.
 type Transactor struct {
 	PublicCredential    []byte
@@ -50,7 +54,7 @@ func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.Tok
 		if err != nil {
 			return nil, errors.Errorf("invalid recipient in transfer request '%s'", err)
 		}
-		q, err := ToQuantity(ttt.Quantity)
+		q, err := ToQuantity(ttt.Quantity, Precision)
 		if err != nil {
 			return nil, errors.Errorf("invalid quantity in transfer request '%s'", err)
 		}
@@ -58,7 +62,7 @@ func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.Tok
 		outputs = append(outputs, &token.Token{
 			Owner:    ttt.Recipient,
 			Type:     tokenType,
-			Quantity: q.ToUInt64(),
+			Quantity: q.Hex(),
 		})
 	}
 
@@ -84,9 +88,9 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 	if len(request.GetTokenIds()) == 0 {
 		return nil, errors.New("no token ids in RedeemRequest")
 	}
-	quantityToRedeem, err := ToQuantity(request.GetQuantityToRedeem())
+	quantityToRedeem, err := ToQuantity(request.GetQuantityToRedeem(), Precision)
 	if err != nil {
-		return nil, errors.Errorf("quantity to redeem [%d] is invalid, err '%s'", request.GetQuantityToRedeem(), err)
+		return nil, errors.Errorf("quantity to redeem [%s] is invalid, err '%s'", request.GetQuantityToRedeem(), err)
 	}
 
 	tokenType, quantitySum, err := t.getInputsFromTokenIds(request.GetTokenIds())
@@ -99,14 +103,14 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 		return nil, errors.Errorf("cannot compare quantities '%s'", err)
 	}
 	if cmp < 0 {
-		return nil, errors.Errorf("total quantity [%d] from TokenIds is less than quantity [%d] to be redeemed", quantitySum, request.QuantityToRedeem)
+		return nil, errors.Errorf("total quantity [%d] from TokenIds is less than quantity [%s] to be redeemed", quantitySum, request.QuantityToRedeem)
 	}
 
 	// add the output for redeem itself
 	var outputs []*token.Token
 	outputs = append(outputs, &token.Token{
 		Type:     tokenType,
-		Quantity: quantityToRedeem.ToUInt64(),
+		Quantity: quantityToRedeem.Hex(),
 	})
 
 	// add another output if there is remaining quantity after redemption
@@ -120,7 +124,7 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 			// note that tokenOwner type may change in the future depending on creator type
 			Owner:    &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}, // PublicCredential is serialized identity for the creator
 			Type:     tokenType,
-			Quantity: change.ToUInt64(),
+			Quantity: change.Hex(),
 		})
 	}
 
@@ -145,7 +149,7 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 // Returns TokenIds, token type, sum of token quantities, and error in the case of failure
 func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, Quantity, error) {
 	var tokenType = ""
-	var sum = NewZeroQuantity()
+	var sum = NewZeroQuantity(Precision)
 	for _, tokenId := range tokenIds {
 		// create the composite key from tokenId
 		inKey, err := createCompositeKey(tokenOutput, []string{tokenId.TxId, strconv.Itoa(int(tokenId.Index))})
@@ -184,9 +188,9 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, Q
 		}
 
 		// sum up the quantity
-		quantity, err := ToQuantity(input.Quantity)
+		quantity, err := ToQuantity(input.Quantity, Precision)
 		if err != nil {
-			return "", nil, errors.Errorf("quantity in input [%d] is invalid, err '%s'", input.Quantity, err)
+			return "", nil, errors.Errorf("quantity in input [%s] is invalid, err '%s'", input.Quantity, err)
 		}
 
 		sum, err = sum.Add(quantity)
@@ -310,7 +314,7 @@ func (t *Transactor) RequestExpectation(request *token.ExpectationRequest) (*tok
 		outputs = append(outputs, &token.Token{
 			Owner:    &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}, // PublicCredential is serialized identity for the creator
 			Type:     outputType,
-			Quantity: change.ToUInt64(),
+			Quantity: change.Hex(),
 		})
 	}
 
@@ -401,16 +405,16 @@ func parseOutputs(outputs []*token.Token) (string, Quantity, error) {
 	}
 
 	outputType := ""
-	outputSum := NewZeroQuantity()
+	outputSum := NewZeroQuantity(Precision)
 	for _, output := range outputs {
 		if outputType == "" {
 			outputType = output.GetType()
 		} else if outputType != output.GetType() {
 			return "", nil, errors.Errorf("multiple token types ('%s', '%s') in outputs", outputType, output.GetType())
 		}
-		quantity, err := ToQuantity(output.GetQuantity())
+		quantity, err := ToQuantity(output.GetQuantity(), Precision)
 		if err != nil {
-			return "", nil, errors.Errorf("quantity in output [%d] is invalid, err '%s'", output.GetQuantity(), err)
+			return "", nil, errors.Errorf("quantity in output [%s] is invalid, err '%s'", output.GetQuantity(), err)
 		}
 
 		outputSum, err = outputSum.Add(quantity)

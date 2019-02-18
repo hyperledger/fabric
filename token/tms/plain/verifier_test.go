@@ -55,8 +55,8 @@ var _ = Describe("Verifier", func() {
 					Data: &token.TokenAction_Issue{
 						Issue: &token.Issue{
 							Outputs: []*token.Token{
-								{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 111},
-								{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: 222},
+								{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(111)},
+								{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: ToHex(222)},
 							},
 						},
 					},
@@ -90,7 +90,7 @@ var _ = Describe("Verifier", func() {
 
 			Expect(fakeLedger.SetStateCallCount()).To(Equal(2))
 
-			outputBytes, err := proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 111})
+			outputBytes, err := proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(111)})
 			Expect(err).NotTo(HaveOccurred())
 			ns, k, td := fakeLedger.SetStateArgsForCall(0)
 			Expect(ns).To(Equal(tokenNamespace))
@@ -98,7 +98,7 @@ var _ = Describe("Verifier", func() {
 			Expect(k).To(Equal(expectedOutput))
 			Expect(td).To(Equal(outputBytes))
 
-			outputBytes, err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: 222})
+			outputBytes, err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: ToHex(222)})
 			Expect(err).NotTo(HaveOccurred())
 			ns, k, td = fakeLedger.SetStateArgsForCall(1)
 			Expect(ns).To(Equal(tokenNamespace))
@@ -163,7 +163,7 @@ var _ = Describe("Verifier", func() {
 							Data: &token.TokenAction_Issue{
 								Issue: &token.Issue{
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 0},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(0)},
 									},
 								},
 							},
@@ -236,7 +236,7 @@ var _ = Describe("Verifier", func() {
 			Expect(output).To(Equal(&token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
 				Type:     "TOK1",
-				Quantity: 111,
+				Quantity: ToHex(111),
 			}))
 
 			po, err = memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", "tokenOutput", "0", "1", ""}, "\x00"))
@@ -248,7 +248,7 @@ var _ = Describe("Verifier", func() {
 			Expect(output).To(Equal(&token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("owner-2")},
 				Type:     "TOK2",
-				Quantity: 222,
+				Quantity: ToHex(222),
 			}))
 		})
 
@@ -363,8 +363,8 @@ var _ = Describe("Verifier", func() {
 									{TxId: "0", Index: 0},
 								},
 								Outputs: []*token.Token{
-									{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 99},
-									{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: 12},
+									{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(99)},
+									{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: ToHex(12)},
 								},
 							},
 						},
@@ -394,7 +394,7 @@ var _ = Describe("Verifier", func() {
 				Expect(output).To(Equal(&token.Token{
 					Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
 					Type:     "TOK1",
-					Quantity: 99,
+					Quantity: ToHex(99),
 				}))
 
 				po, err = memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenOutput"+string("\x00")+"1"+string("\x00")+"1"+string("\x00"))
@@ -406,7 +406,7 @@ var _ = Describe("Verifier", func() {
 				Expect(output).To(Equal(&token.Token{
 					Owner:    &token.TokenOwner{Raw: []byte("owner-2")},
 					Type:     "TOK1",
-					Quantity: 12,
+					Quantity: ToHex(12),
 				}))
 
 				spentMarker, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenInput"+string("\x00")+"0"+string("\x00")+"0"+string("\x00"))
@@ -426,8 +426,8 @@ var _ = Describe("Verifier", func() {
 										{TxId: "wild_pineapple", Index: 0},
 									},
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 99},
-										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: 12},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(99)},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: ToHex(12)},
 									},
 								},
 							},
@@ -465,8 +465,8 @@ var _ = Describe("Verifier", func() {
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 221},
-										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: 1},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(221)},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: ToHex(1)},
 									},
 								},
 							},
@@ -492,8 +492,8 @@ var _ = Describe("Verifier", func() {
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "wild_pineapple", Quantity: 100},
-										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "wild_pineapple", Quantity: 11},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "wild_pineapple", Quantity: ToHex(100)},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "wild_pineapple", Quantity: ToHex(11)},
 									},
 								},
 							},
@@ -519,8 +519,8 @@ var _ = Describe("Verifier", func() {
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 112},
-										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: 12},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(112)},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: ToHex(12)},
 									},
 								},
 							},
@@ -548,7 +548,7 @@ var _ = Describe("Verifier", func() {
 							Data: &token.TokenAction_Issue{
 								Issue: &token.Issue{
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK2", Quantity: 2121},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK2", Quantity: ToHex(2121)},
 									},
 								},
 							},
@@ -567,7 +567,7 @@ var _ = Describe("Verifier", func() {
 										{TxId: "2", Index: 0},
 									},
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 111},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(111)},
 									},
 								},
 							},
@@ -593,8 +593,8 @@ var _ = Describe("Verifier", func() {
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 112},
-										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: 12},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(112)},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: ToHex(12)},
 									},
 								},
 							},
@@ -636,7 +636,7 @@ var _ = Describe("Verifier", func() {
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 111},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(111)},
 									},
 								},
 							},
@@ -672,8 +672,8 @@ var _ = Describe("Verifier", func() {
 							Data: &token.TokenAction_Issue{
 								Issue: &token.Issue{
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: math.MaxUint64},
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 10},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(math.MaxUint64)},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(10)},
 									},
 								},
 							},
@@ -694,8 +694,8 @@ var _ = Describe("Verifier", func() {
 										{TxId: "1", Index: 1},
 									},
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 10},
-										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: 10},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(10)},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: ToHex(10)},
 									},
 								},
 							},
@@ -722,8 +722,8 @@ var _ = Describe("Verifier", func() {
 										{TxId: "0", Index: 0},
 									},
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: math.MaxUint64},
-										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: math.MaxUint64},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(math.MaxUint64)},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: ToHex(math.MaxUint64)},
 									},
 								},
 							},
@@ -759,7 +759,7 @@ var _ = Describe("Verifier", func() {
 							Redeem: &token.Transfer{
 								Inputs: tokenIds,
 								Outputs: []*token.Token{
-									{Type: "TOK1", Quantity: 111},
+									{Type: "TOK1", Quantity: ToHex(111)},
 								},
 							},
 						},
@@ -787,7 +787,7 @@ var _ = Describe("Verifier", func() {
 
 			Expect(output).To(Equal(&token.Token{
 				Type:     "TOK1",
-				Quantity: 111,
+				Quantity: ToHex(111),
 			}))
 		})
 
@@ -800,8 +800,8 @@ var _ = Describe("Verifier", func() {
 							Redeem: &token.Transfer{
 								Inputs: tokenIds,
 								Outputs: []*token.Token{
-									{Type: "TOK1", Quantity: 99},
-									{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: 12},
+									{Type: "TOK1", Quantity: ToHex(99)},
+									{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(12)},
 								},
 							},
 						},
@@ -822,7 +822,7 @@ var _ = Describe("Verifier", func() {
 
 			Expect(output).To(Equal(&token.Token{
 				Type:     "TOK1",
-				Quantity: 99,
+				Quantity: ToHex(99),
 			}))
 
 			po, err = memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenOutput"+string("\x00")+redeemTxID+string("\x00")+"1"+string("\x00"))
@@ -834,7 +834,7 @@ var _ = Describe("Verifier", func() {
 			Expect(output).To(Equal(&token.Token{
 				Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
 				Type:     "TOK1",
-				Quantity: 12,
+				Quantity: ToHex(12),
 			}))
 
 			spentMarker, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenInput"+string("\x00")+"0"+string("\x00")+"0"+string("\x00"))
@@ -863,7 +863,7 @@ var _ = Describe("Verifier", func() {
 								Redeem: &token.Transfer{
 									Inputs: tokenIds,
 									Outputs: []*token.Token{
-										{Type: "TOK1", Quantity: 100},
+										{Type: "TOK1", Quantity: ToHex(100)},
 									},
 								},
 							},
@@ -892,7 +892,7 @@ var _ = Describe("Verifier", func() {
 							Data: &token.TokenAction_Issue{
 								Issue: &token.Issue{
 									Outputs: []*token.Token{
-										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK2", Quantity: 222},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK2", Quantity: ToHex(222)},
 									},
 								},
 							},
@@ -912,7 +912,7 @@ var _ = Describe("Verifier", func() {
 										{TxId: "2", Index: 0},
 									},
 									Outputs: []*token.Token{
-										{Type: "TOK1", Quantity: 300},
+										{Type: "TOK1", Quantity: ToHex(300)},
 									},
 								},
 							},
@@ -950,8 +950,8 @@ var _ = Describe("Verifier", func() {
 								Redeem: &token.Transfer{
 									Inputs: tokenIds,
 									Outputs: []*token.Token{
-										{Type: "TOK1", Quantity: 99},
-										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: 12},
+										{Type: "TOK1", Quantity: ToHex(99)},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: ToHex(12)},
 									},
 								},
 							},
@@ -976,8 +976,8 @@ var _ = Describe("Verifier", func() {
 								Redeem: &token.Transfer{
 									Inputs: tokenIds,
 									Outputs: []*token.Token{
-										{Type: "TOK1", Quantity: 99},
-										{Owner: &token.TokenOwner{Raw: []byte("wrong-owner")}, Type: "TOK1", Quantity: 12},
+										{Type: "TOK1", Quantity: ToHex(99)},
+										{Owner: &token.TokenOwner{Raw: []byte("wrong-owner")}, Type: "TOK1", Quantity: ToHex(12)},
 									},
 								},
 							},

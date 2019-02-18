@@ -106,7 +106,7 @@ func (v *Verifier) checkImportOutputs(outputs []*token.Token, txID string, simul
 			return err
 		}
 
-		_, err = ToQuantity(output.Quantity)
+		_, err = ToQuantity(output.Quantity, Precision)
 		if err != nil {
 			return &customtx.InvalidTxError{Msg: fmt.Sprintf("output %d quantity is invalid in transaction: %s", i, txID)}
 		}
@@ -204,7 +204,7 @@ func (v *Verifier) checkOutputDoesNotExist(index int, output *token.Token, txID 
 
 func (v *Verifier) checkOutputs(outputs []*token.Token, txID string, simulator ledger.LedgerReader, ownerRequired bool) (string, Quantity, error) {
 	tokenType := ""
-	tokenSum := NewZeroQuantity()
+	tokenSum := NewZeroQuantity(Precision)
 	for i, output := range outputs {
 		err := v.checkOutputDoesNotExist(i, output, txID, simulator)
 		if err != nil {
@@ -221,9 +221,9 @@ func (v *Verifier) checkOutputs(outputs []*token.Token, txID string, simulator l
 				return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err '%s'", txID, err)}
 			}
 		}
-		quantity, err := ToQuantity(output.GetQuantity())
+		quantity, err := ToQuantity(output.GetQuantity(), Precision)
 		if err != nil {
-			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("quantity in output [%d] is invalid, err '%s'", output.GetQuantity(), err)}
+			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("quantity in output [%s] is invalid, err '%s'", output.GetQuantity(), err)}
 		}
 
 		tokenSum, err = tokenSum.Add(quantity)
@@ -241,7 +241,7 @@ func (v *Verifier) checkInputs(creator identity.PublicInfo, tokenIds []*token.To
 	}
 
 	tokenType := ""
-	inputSum := NewZeroQuantity()
+	inputSum := NewZeroQuantity(Precision)
 	processedIDs := make(map[string]bool)
 	for _, id := range tokenIds {
 		inputKey, err := createOutputKey(id.TxId, int(id.Index))
@@ -269,9 +269,9 @@ func (v *Verifier) checkInputs(creator identity.PublicInfo, tokenIds []*token.To
 		}
 		processedIDs[inputKey] = true
 
-		inputQuantity, err := ToQuantity(input.GetQuantity())
+		inputQuantity, err := ToQuantity(input.GetQuantity(), Precision)
 		if err != nil {
-			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("quantity in output [%d] is invalid, err '%s'", input.GetQuantity(), err)}
+			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("quantity in output [%s] is invalid, err '%s'", input.GetQuantity(), err)}
 		}
 		inputSum, err = inputSum.Add(inputQuantity)
 		if err != nil {

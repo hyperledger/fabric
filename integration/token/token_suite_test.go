@@ -8,6 +8,7 @@ package token
 
 import (
 	"encoding/json"
+	"strconv"
 	"testing"
 
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -39,3 +40,7 @@ var _ = SynchronizedAfterSuite(func() {
 }, func() {
 	components.Cleanup()
 })
+
+func ToHex(q uint64) string {
+	return "0x" + strconv.FormatUint(q, 16)
+}

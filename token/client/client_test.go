@@ -72,7 +72,7 @@ var _ = Describe("Client", func() {
 			tokensToIssue = []*token.TokenToIssue{
 				{
 					Type:      "type",
-					Quantity:  1,
+					Quantity:  ToHex(1),
 					Recipient: &token.TokenOwner{Raw: []byte("alice")},
 				},
 			}
@@ -173,8 +173,8 @@ var _ = Describe("Client", func() {
 				{TxId: "id2", Index: 0},
 			}
 			transferShares = []*token.RecipientTransferShare{
-				{Recipient: &token.TokenOwner{Raw: []byte("alice")}, Quantity: 100},
-				{Recipient: &token.TokenOwner{Raw: []byte("bob")}, Quantity: 50},
+				{Recipient: &token.TokenOwner{Raw: []byte("alice")}, Quantity: ToHex(100)},
+				{Recipient: &token.TokenOwner{Raw: []byte("bob")}, Quantity: ToHex(50)},
 			}
 		})
 
@@ -276,7 +276,7 @@ var _ = Describe("Client", func() {
 		})
 
 		It("returns tx envelope without error", func() {
-			txEnvelope, txid, ordererStatus, committed, err := tokenClient.Redeem(tokenIDs, quantity, 10*time.Second)
+			txEnvelope, txid, ordererStatus, committed, err := tokenClient.Redeem(tokenIDs, ToHex(quantity), 10*time.Second)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(txEnvelope).To(Equal(envelope))
 			Expect(txid).To(Equal(expectedTxid))
@@ -286,7 +286,7 @@ var _ = Describe("Client", func() {
 			Expect(fakeProver.RequestRedeemCallCount()).To(Equal(1))
 			ids, num, signingIdentity := fakeProver.RequestRedeemArgsForCall(0)
 			Expect(ids).To(Equal(tokenIDs))
-			Expect(num).To(Equal(quantity))
+			Expect(num).To(Equal(ToHex(quantity)))
 			Expect(signingIdentity).To(Equal(fakeSigningIdentity))
 
 			Expect(fakeTxSubmitter.CreateTxEnvelopeCallCount()).To(Equal(1))
@@ -305,7 +305,7 @@ var _ = Describe("Client", func() {
 			})
 
 			It("returns an error", func() {
-				envelope, txid, ordererStatus, committed, err := tokenClient.Redeem(tokenIDs, quantity, 0)
+				envelope, txid, ordererStatus, committed, err := tokenClient.Redeem(tokenIDs, ToHex(quantity), 0)
 				Expect(err).To(MatchError("wild-banana"))
 				Expect(envelope).To(BeNil())
 				Expect(txid).To(Equal(""))
@@ -324,7 +324,7 @@ var _ = Describe("Client", func() {
 			})
 
 			It("returns an error", func() {
-				envelope, txid, ordererStatus, committed, err := tokenClient.Redeem(tokenIDs, quantity, 0)
+				envelope, txid, ordererStatus, committed, err := tokenClient.Redeem(tokenIDs, ToHex(quantity), 0)
 				Expect(err).To(MatchError("wild-banana"))
 				Expect(envelope).To(BeNil())
 				Expect(txid).To(Equal(""))
@@ -343,7 +343,7 @@ var _ = Describe("Client", func() {
 			})
 
 			It("returns an error", func() {
-				txEnvelope, txid, ordererStatus, committed, err := tokenClient.Redeem(tokenIDs, quantity, 0)
+				txEnvelope, txid, ordererStatus, committed, err := tokenClient.Redeem(tokenIDs, ToHex(quantity), 0)
 				Expect(err).To(MatchError("wild-banana"))
 				Expect(txEnvelope).To(Equal(envelope))
 				Expect(txid).To(Equal(expectedTxid))
@@ -365,8 +365,8 @@ var _ = Describe("Client", func() {
 		BeforeEach(func() {
 			// prepare CommandResponse for mocked prover to return
 			expectedTokens = []*token.TokenOutput{
-				{Id: &token.TokenId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: 135},
-				{Id: &token.TokenId{TxId: "idby", Index: 1}, Type: "typeby", Quantity: 79},
+				{Id: &token.TokenId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: ToHex(135)},
+				{Id: &token.TokenId{TxId: "idby", Index: 1}, Type: "typeby", Quantity: ToHex(79)},
 			}
 			fakeProver.ListTokensReturns(expectedTokens, nil)
 		})
