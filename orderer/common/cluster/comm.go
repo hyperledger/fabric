@@ -93,6 +93,7 @@ type Comm struct {
 	H              Handler
 	Connections    *ConnectionStore
 	Chan2Members   MembersByChannel
+	Metrics        *Metrics
 }
 
 type requestContext struct {
@@ -327,14 +328,21 @@ func (c *Comm) createRemoteContext(stub *Stub, channel string) func() (*RemoteCo
 
 		clusterClient := orderer.NewClusterClient(conn)
 
+		workerCountReporter := workerCountReporter{
+			channel: channel,
+		}
+
 		rc := &RemoteContext{
-			SendBuffSize:   c.SendBufferSize,
-			shutdownSignal: c.shutdownSignal,
-			endpoint:       stub.Endpoint,
-			Logger:         c.Logger,
-			ProbeConn:      probeConnection,
-			conn:           conn,
-			Client:         clusterClient,
+			workerCountReporter: workerCountReporter,
+			Channel:             channel,
+			Metrics:             c.Metrics,
+			SendBuffSize:        c.SendBufferSize,
+			shutdownSignal:      c.shutdownSignal,
+			endpoint:            stub.Endpoint,
+			Logger:              c.Logger,
+			ProbeConn:           probeConnection,
+			conn:                conn,
+			Client:              clusterClient,
 		}
 		return rc, nil
 	}
@@ -410,15 +418,18 @@ func (stub *Stub) Activate(createRemoteContext func() (*RemoteContext, error)) e
 // RemoteContext interacts with remote cluster
 // nodes. Every call can be aborted via call to Abort()
 type RemoteContext struct {
-	SendBuffSize   int
-	shutdownSignal chan struct{}
-	Logger         *flogging.FabricLogger
-	endpoint       string
-	Client         orderer.ClusterClient
-	ProbeConn      func(conn *grpc.ClientConn) error
-	conn           *grpc.ClientConn
-	nextStreamID   uint64
-	streamsByID    sync.Map
+	Metrics             *Metrics
+	Channel             string
+	SendBuffSize        int
+	shutdownSignal      chan struct{}
+	Logger              *flogging.FabricLogger
+	endpoint            string
+	Client              orderer.ClusterClient
+	ProbeConn           func(conn *grpc.ClientConn) error
+	conn                *grpc.ClientConn
+	nextStreamID        uint64
+	streamsByID         streamsMapperReporter
+	workerCountReporter workerCountReporter
 }
 
 // Stream is used to send/receive messages to/from the remote cluster member.
@@ -427,7 +438,9 @@ type Stream struct {
 	sendBuff     chan *orderer.StepRequest
 	commShutdown chan struct{}
 	abortReason  *atomic.Value
+	metrics      *Metrics
 	ID           uint64
+	Channel      string
 	NodeName     string
 	Endpoint     string
 	Logger       *flogging.FabricLogger
@@ -463,8 +476,16 @@ func (stream *Stream) Send(request *orderer.StepRequest) error {
 // sendOrDrop sends the given request to the remote cluster member, or drops it
 // if it is a consensus request and the queue is full.
 func (stream *Stream) sendOrDrop(request *orderer.StepRequest, allowDrop bool) error {
+	msgType := "transaction"
+	if allowDrop {
+		msgType = "consensus"
+	}
+
+	stream.metrics.reportQueueOccupancy(stream.Endpoint, msgType, stream.Channel, len(stream.sendBuff), cap(stream.sendBuff))
+
 	if allowDrop && len(stream.sendBuff) == cap(stream.sendBuff) {
 		stream.Cancel(errOverflow)
+		stream.metrics.reportMessagesDropped(stream.Endpoint, stream.Channel)
 		return errOverflow
 	}
 
@@ -495,14 +516,16 @@ func (stream *Stream) sendMessage(request *orderer.StepRequest) {
 	}()
 
 	f := func() (*orderer.StepResponse, error) {
+		startSend := time.Now()
 		err := stream.Cluster_StepClient.Send(request)
+		stream.metrics.reportMsgSendTime(stream.Endpoint, stream.Channel, time.Since(startSend))
 		return nil, err
 	}
 
 	_, err = stream.operateWithTimeout(f)
 }
 
-func (stream *Stream) periodicFlushStream() {
+func (stream *Stream) serviceStream() {
 	defer stream.Cancel(errAborted)
 
 	for {
@@ -612,6 +635,7 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 	abort := func() {
 		cancel()
 		rc.streamsByID.Delete(streamID)
+		rc.Metrics.reportEgressStreamCount(rc.Channel, atomic.LoadUint32(&rc.streamsByID.size))
 		rc.Logger.Debugf("Stream %d to %s(%s) is aborted", streamID, nodeName, rc.endpoint)
 		atomic.StoreUint32(&canceled, 1)
 		close(abortChan)
@@ -628,6 +652,8 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 	stepLogger := logger.WithOptions(zap.AddCallerSkip(1))
 
 	s := &Stream{
+		Channel:            rc.Channel,
+		metrics:            rc.Metrics,
 		abortReason:        abortReason,
 		abortChan:          abortChan,
 		sendBuff:           make(chan *orderer.StepRequest, rc.SendBuffSize),
@@ -646,8 +672,13 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 		rc.endpoint, streamID, cap(s.sendBuff))
 
 	rc.streamsByID.Store(streamID, s)
+	rc.Metrics.reportEgressStreamCount(rc.Channel, atomic.LoadUint32(&rc.streamsByID.size))
 
-	go s.periodicFlushStream()
+	go func() {
+		rc.workerCountReporter.increment(s.metrics)
+		s.serviceStream()
+		rc.workerCountReporter.decrement(s.metrics)
+	}()
 
 	return s, nil
 }
@@ -667,4 +698,39 @@ func commonNameFromContext(ctx context.Context) string {
 		return "unidentified node"
 	}
 	return cert.Subject.CommonName
+}
+
+type streamsMapperReporter struct {
+	size uint32
+	sync.Map
+}
+
+func (smr *streamsMapperReporter) Delete(key interface{}) {
+	smr.Map.Delete(key)
+	atomic.AddUint32(&smr.size, ^uint32(0))
+}
+
+func (smr *streamsMapperReporter) Store(key, value interface{}) {
+	smr.Map.Store(key, value)
+	atomic.AddUint32(&smr.size, 1)
+}
+
+type workerCountReporter struct {
+	channel     string
+	workerCount uint32
+}
+
+func (wcr *workerCountReporter) increment(m *Metrics) {
+	count := atomic.AddUint32(&wcr.workerCount, 1)
+	m.reportWorkerCount(wcr.channel, count)
+}
+
+func (wcr *workerCountReporter) decrement(m *Metrics) {
+	// ^0 flips all zeros to ones, which means
+	// 2^32 - 1, and then we add this number wcr.workerCount.
+	// It follows from commutativity of the unsigned integers group
+	// that wcr.workerCount + 2^32 - 1 = wcr.workerCount - 1 + 2^32
+	// which is just wcr.workerCount - 1.
+	count := atomic.AddUint32(&wcr.workerCount, ^uint32(0))
+	m.reportWorkerCount(wcr.channel, count)
 }

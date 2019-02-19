@@ -274,9 +274,12 @@ func New(
 		ChainSelector: consenter,
 	}
 
-	comm := createComm(clusterDialer, consenter, conf.General.Cluster.SendBufferSize)
+	comm := createComm(clusterDialer, consenter, conf.General.Cluster.SendBufferSize, metricsProvider)
 	consenter.Communication = comm
 	svc := &cluster.Service{
+		StreamCountReporter: &cluster.StreamCountReporter{
+			Metrics: comm.Metrics,
+		},
 		StepLogger: flogging.MustGetLogger("orderer.common.cluster.step"),
 		Logger:     flogging.MustGetLogger("orderer.common.cluster"),
 		Dispatcher: comm,
@@ -285,12 +288,14 @@ func New(
 	return consenter
 }
 
-func createComm(clusterDialer *cluster.PredicateDialer, c *Consenter, sendBuffSize int) *cluster.Comm {
+func createComm(clusterDialer *cluster.PredicateDialer, c *Consenter, sendBuffSize int, p metrics.Provider) *cluster.Comm {
+	metrics := cluster.NewMetrics(p)
 	comm := &cluster.Comm{
 		SendBufferSize: sendBuffSize,
 		Logger:         flogging.MustGetLogger("orderer.common.cluster"),
 		Chan2Members:   make(map[string]cluster.MemberMapping),
-		Connections:    cluster.NewConnectionStore(clusterDialer),
+		Connections:    cluster.NewConnectionStore(clusterDialer, metrics.EgressTLSConnectionCount),
+		Metrics:        metrics,
 		ChanExt:        c,
 		H:              c,
 	}
