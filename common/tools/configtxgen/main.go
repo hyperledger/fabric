@@ -13,15 +13,16 @@ import (
 	"os"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/metadata"
+	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	cb "github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
@@ -83,75 +84,39 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 		return fmt.Errorf("Cannot update anchor peers without an application section")
 	}
 
-	var org *genesisconfig.Organization
-	for _, iorg := range conf.Application.Organizations {
-		if iorg.Name == asOrg {
-			org = iorg
-		}
+	original, err := encoder.NewChannelGroup(conf)
+	if err != nil {
+		return errors.WithMessage(err, "error parsing profile as channel group")
+	}
+	original.Groups[channelconfig.ApplicationGroupKey].Version = 1
+
+	updated := proto.Clone(original).(*cb.ConfigGroup)
+
+	originalOrg, ok := original.Groups[channelconfig.ApplicationGroupKey].Groups[asOrg]
+	if !ok {
+		return errors.Errorf("org with name '%s' does not exist in config", asOrg)
 	}
 
-	if org == nil {
-		return fmt.Errorf("No organization name matching: %s", asOrg)
+	if _, ok = originalOrg.Values[channelconfig.AnchorPeersKey]; !ok {
+		return errors.Errorf("org '%s' does not have any anchor peers defined", asOrg)
 	}
 
-	anchorPeers := make([]*pb.AnchorPeer, len(org.AnchorPeers))
-	for i, anchorPeer := range org.AnchorPeers {
-		anchorPeers[i] = &pb.AnchorPeer{
-			Host: anchorPeer.Host,
-			Port: int32(anchorPeer.Port),
-		}
+	delete(originalOrg.Values, channelconfig.AnchorPeersKey)
+
+	updt, err := update.Compute(&cb.Config{ChannelGroup: original}, &cb.Config{ChannelGroup: updated})
+	if err != nil {
+		return errors.WithMessage(err, "could not compute update")
+	}
+	updt.ChannelId = channelID
+
+	newConfigUpdateEnv := &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: utils.MarshalOrPanic(updt),
 	}
 
-	configUpdate := &cb.ConfigUpdate{
-		ChannelId: channelID,
-		WriteSet:  cb.NewConfigGroup(),
-		ReadSet:   cb.NewConfigGroup(),
-	}
-
-	// Add all the existing config to the readset
-	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey] = cb.NewConfigGroup()
-	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Version = 1
-	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].ModPolicy = channelconfig.AdminsPolicyKey
-	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name] = cb.NewConfigGroup()
-	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Values[channelconfig.MSPKey] = &cb.ConfigValue{}
-	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[channelconfig.ReadersPolicyKey] = &cb.ConfigPolicy{}
-	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[channelconfig.WritersPolicyKey] = &cb.ConfigPolicy{}
-	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[channelconfig.AdminsPolicyKey] = &cb.ConfigPolicy{}
-
-	// Add all the existing at the same versions to the writeset
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey] = cb.NewConfigGroup()
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Version = 1
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].ModPolicy = channelconfig.AdminsPolicyKey
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name] = cb.NewConfigGroup()
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Version = 1
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].ModPolicy = channelconfig.AdminsPolicyKey
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Values[channelconfig.MSPKey] = &cb.ConfigValue{}
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[channelconfig.ReadersPolicyKey] = &cb.ConfigPolicy{}
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[channelconfig.WritersPolicyKey] = &cb.ConfigPolicy{}
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[channelconfig.AdminsPolicyKey] = &cb.ConfigPolicy{}
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Values[channelconfig.AnchorPeersKey] = &cb.ConfigValue{
-		Value:     utils.MarshalOrPanic(channelconfig.AnchorPeersValue(anchorPeers).Value()),
-		ModPolicy: channelconfig.AdminsPolicyKey,
-	}
-
-	configUpdateEnvelope := &cb.ConfigUpdateEnvelope{
-		ConfigUpdate: utils.MarshalOrPanic(configUpdate),
-	}
-
-	update := &cb.Envelope{
-		Payload: utils.MarshalOrPanic(&cb.Payload{
-			Header: &cb.Header{
-				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
-					ChannelId: channelID,
-					Type:      int32(cb.HeaderType_CONFIG_UPDATE),
-				}),
-			},
-			Data: utils.MarshalOrPanic(configUpdateEnvelope),
-		}),
-	}
+	updateTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, nil, newConfigUpdateEnv, 0, 0)
 
 	logger.Info("Writing anchor peer update")
-	err := ioutil.WriteFile(outputAnchorPeersUpdate, utils.MarshalOrPanic(update), 0644)
+	err = ioutil.WriteFile(outputAnchorPeersUpdate, utils.MarshalOrPanic(updateTx), 0644)
 	if err != nil {
 		return fmt.Errorf("Error writing channel anchor peer update: %s", err)
 	}

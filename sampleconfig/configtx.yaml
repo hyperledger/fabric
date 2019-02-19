@@ -565,11 +565,6 @@ Profiles:
             <<: *ApplicationDefaults
             Organizations:
                 - <<: *SampleOrg
-                  # SkipAsForeign tells configtxgen not to attempt to parse the
-                  # MSP directories or other information for this org.  For channel
-                  # creation these values are typically ignored and can produce
-                  # errors which would not otherwise interfere in the generation.
-                  SkipAsForeign: true
 
     # SampleDevModeEtcdRaft defines a configuration that differs from the
     # SampleDevModeSolo one only in that it uses the etcd/raft-based orderer.
