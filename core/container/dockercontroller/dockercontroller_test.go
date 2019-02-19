@@ -265,6 +265,32 @@ func Test_Stop(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func Test_Wait(t *testing.T) {
+	dvm := DockerVM{}
+
+	// failure to get a client
+	dvm.getClientFnc = func() (dockerClient, error) {
+		return nil, errors.New("gorilla-goo")
+	}
+	_, err := dvm.Wait(ccintf.CCID{})
+	assert.EqualError(t, err, "gorilla-goo")
+
+	// happy path
+	client := &mockClient{}
+	dvm.getClientFnc = func() (dockerClient, error) { return client, nil }
+
+	client.exitCode = 99
+	exitCode, err := dvm.Wait(ccintf.CCID{Name: "the-name", Version: "the-version"})
+	assert.NoError(t, err)
+	assert.Equal(t, 99, exitCode)
+	assert.Equal(t, "the-name-the-version", client.containerID)
+
+	// wait fails
+	client.waitErr = errors.New("no-wait-for-you")
+	_, err = dvm.Wait(ccintf.CCID{})
+	assert.EqualError(t, err, "no-wait-for-you")
+}
+
 func Test_HealthCheck(t *testing.T) {
 	dvm := DockerVM{}
 
@@ -408,6 +434,10 @@ type mockClient struct {
 	noSuchImgErrReturned bool
 	pingErr              bool
 
+	containerID string
+	exitCode    int
+	waitErr     error
+
 	attachToContainerStub func(docker.AttachToContainerOptions) error
 }
 
@@ -489,4 +519,9 @@ func (c *mockClient) PingWithContext(context.Context) error {
 		return errors.New("Error pinging daemon")
 	}
 	return nil
+}
+
+func (c *mockClient) WaitContainer(id string) (int, error) {
+	c.containerID = id
+	return c.exitCode, c.waitErr
 }
