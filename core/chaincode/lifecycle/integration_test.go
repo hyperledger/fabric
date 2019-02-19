@@ -35,6 +35,7 @@ var _ = Describe("Integration", func() {
 		fakeCapabilities        *mock.ApplicationCapabilities
 		fakeOrgConfig           *mock.ApplicationOrgConfig
 		fakeStub                *mock.ChaincodeStub
+		fakeACLProvider         *mock.ACLProvider
 
 		fakeOrgKVStore    map[string][]byte
 		fakePublicKVStore map[string][]byte
@@ -53,6 +54,7 @@ var _ = Describe("Integration", func() {
 		fakeCapabilities = &mock.ApplicationCapabilities{}
 		fakeCapabilities.LifecycleV20Returns(true)
 		fakeApplicationConfig.CapabilitiesReturns(fakeCapabilities)
+		fakeACLProvider = &mock.ACLProvider{}
 
 		fakeOrgConfig = &mock.ApplicationOrgConfig{}
 		fakeOrgConfig.MSPIDReturns("fake-mspid")
@@ -68,6 +70,7 @@ var _ = Describe("Integration", func() {
 			Functions:           l,
 			OrgMSPID:            "fake-mspid",
 			ChannelConfigSource: fakeChannelConfigSource,
+			ACLProvider:         fakeACLProvider,
 		}
 
 		fakePublicKVStore = map[string][]byte{}

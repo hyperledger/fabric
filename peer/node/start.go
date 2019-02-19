@@ -314,6 +314,7 @@ func serve(args []string) error {
 		Functions:           lifecycleImpl,
 		OrgMSPID:            mspID,
 		ChannelConfigSource: peer.Default,
+		ACLProvider:         aclProvider,
 	}
 
 	dockerProvider := dockercontroller.NewProvider(

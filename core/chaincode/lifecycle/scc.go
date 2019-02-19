@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -91,6 +92,8 @@ type ChannelConfigSource interface {
 type SCC struct {
 	OrgMSPID string
 
+	ACLProvider aclmgmt.ACLProvider
+
 	ChannelConfigSource ChannelConfigSource
 
 	// Functions provides the backing implementation of lifecycle.
@@ -170,7 +173,16 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		}
 	}
 
-	// TODO add ACLs
+	// Handle ACL:
+	sp, err := stub.GetSignedProposal()
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed getting signed proposal from stub: [%s]", err))
+	}
+
+	err = scc.ACLProvider.CheckACL(fmt.Sprintf("%s/%s", LifecycleNamespace, args[0]), stub.GetChannelID(), sp)
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed to authorize invocation due to failed ACL check: %s", err))
+	}
 
 	outputBytes, err := scc.Dispatcher.Dispatch(
 		args[1],

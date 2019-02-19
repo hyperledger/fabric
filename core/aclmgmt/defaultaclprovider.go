@@ -58,6 +58,16 @@ func (d *defaultACLProviderImpl) initialize() {
 	d.pResourcePolicyMap = make(map[string]string)
 	d.cResourcePolicyMap = make(map[string]string)
 
+	//-------------- _lifecycle --------------
+	d.pResourcePolicyMap[resources.Lifecycle_InstallChaincode] = mgmt.Admins
+	d.pResourcePolicyMap[resources.Lifecycle_QueryInstalledChaincode] = mgmt.Admins
+	d.pResourcePolicyMap[resources.Lifecycle_QueryInstalledChaincodes] = mgmt.Admins
+	d.pResourcePolicyMap[resources.Lifecycle_ApproveChaincodeDefinitionForMyOrg] = mgmt.Admins
+
+	d.cResourcePolicyMap[resources.Lifecycle_CommitChaincodeDefinition] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.Lifecycle_QueryChaincodeDefinition] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.Lifecycle_QueryNamespaceDefinitions] = CHANNELWRITERS
+
 	//-------------- LSCC --------------
 	//p resources (implemented by the chaincode currently)
 	d.pResourcePolicyMap[resources.Lscc_Install] = mgmt.Admins
