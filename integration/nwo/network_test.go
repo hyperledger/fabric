@@ -110,6 +110,10 @@ var _ = Describe("Network", func() {
 			}
 
 			network.CreateAndJoinChannels(orderer)
+
+			network.UpdateChannelAnchors(orderer, "testchannel")
+			network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
+
 			nwo.EnableV2_0Capabilities(network, "testchannel", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
 			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
 
@@ -243,6 +247,10 @@ var _ = Describe("Network", func() {
 			testPeers := network.PeersWithChannel("testchannel")
 			network.CreateChannel("testchannel", orderer, testPeers[0])
 			network.JoinChannel("testchannel", orderer, testPeers...)
+
+			network.UpdateChannelAnchors(orderer, "testchannel")
+			network.VerifyMembership(testPeers, "testchannel")
+
 			nwo.EnableV2_0Capabilities(network, "testchannel", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
 
 			chaincode := nwo.Chaincode{
@@ -260,9 +268,15 @@ var _ = Describe("Network", func() {
 			}
 			nwo.PackageChaincodeNewLifecycle(network, chaincode, testPeers[0])
 			nwo.InstallChaincodeNewLifecycle(network, chaincode, testPeers...)
+			maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", testPeers...)
 			for _, org := range network.PeerOrgs() {
 				nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersInOrg(org.Name)...)
 			}
+			// wait for all peers to have same ledger height (to ensure the
+			// ApproveChaincodeDefinitionForMyOrg blocks have been gossiped
+			// to the other peers in each org
+			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight+len(network.PeerOrgs()), testPeers...)
+
 			nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
 			nwo.InitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers...)
 

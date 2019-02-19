@@ -8,9 +8,11 @@ package nwo
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
@@ -67,10 +69,17 @@ func DeployChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 	// install on all peers
 	InstallChaincodeNewLifecycle(n, chaincode, peers...)
 
+	// get the max ledger height before approving the
+	// chaincode definition for each org
+	maxLedgerHeight := GetMaxLedgerHeight(n, channel, peers...)
+
 	// approve for each org
-	for _, org := range n.PeerOrgs() {
-		ApproveChaincodeForMyOrgNewLifecycle(n, channel, orderer, chaincode, n.PeersInOrg(org.Name)...)
-	}
+	ApproveChaincodeForMyOrgNewLifecycle(n, channel, orderer, chaincode, peers...)
+
+	// wait for all peers to have same ledger height (to ensure the
+	// ApproveChaincodeDefinitionForMyOrg blocks have been gossiped
+	// to the other peers in each org)
+	WaitUntilEqualLedgerHeight(n, channel, maxLedgerHeight+len(n.PeerOrgs()), peers...)
 
 	// commit definition
 	CommitChaincodeNewLifecycle(n, channel, orderer, chaincode, peers[0], peers...)
@@ -182,32 +191,28 @@ func ApproveChaincodeForMyOrgNewLifecycle(n *Network, channel string, orderer *O
 		chaincode.Hash = hex.EncodeToString(hash)
 	}
 
-	// TODO Figure out why private data is unable to be fetched by the
-	// other peers for the org. For now, we will have each peer in the
-	// org endorse the proposal.
-	peerAddresses := []string{}
+	// used to ensure we only approve once per org
+	approvedOrgs := map[string]bool{}
 	for _, p := range peers {
-		peerAddresses = append(peerAddresses, n.PeerAddress(p, ListenPort))
-	}
-
-	sess, err := n.PeerAdminSession(peers[0], commands.ChaincodeApproveForMyOrgLifecycle{
-		ChannelID:         channel,
-		Orderer:           n.OrdererAddress(orderer, ListenPort),
-		Name:              chaincode.Name,
-		Version:           chaincode.Version,
-		Hash:              chaincode.Hash,
-		Sequence:          chaincode.Sequence,
-		EndorsementPlugin: chaincode.EndorsementPlugin,
-		ValidationPlugin:  chaincode.ValidationPlugin,
-		Policy:            chaincode.Policy,
-		InitRequired:      chaincode.InitRequired,
-		PeerAddresses:     peerAddresses,
-		WaitForEvent:      true,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	for i := 0; i < len(peerAddresses); i++ {
-		Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
+		if _, ok := approvedOrgs[p.Organization]; !ok {
+			sess, err := n.PeerAdminSession(p, commands.ChaincodeApproveForMyOrgLifecycle{
+				ChannelID:         channel,
+				Orderer:           n.OrdererAddress(orderer, ListenPort),
+				Name:              chaincode.Name,
+				Version:           chaincode.Version,
+				Hash:              chaincode.Hash,
+				Sequence:          chaincode.Sequence,
+				EndorsementPlugin: chaincode.EndorsementPlugin,
+				ValidationPlugin:  chaincode.ValidationPlugin,
+				Policy:            chaincode.Policy,
+				InitRequired:      chaincode.InitRequired,
+				WaitForEvent:      true,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+			approvedOrgs[p.Organization] = true
+			Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
+		}
 	}
 }
 
@@ -378,4 +383,42 @@ func EnableV2_0Capabilities(network *Network, channel string, orderer *Orderer, 
 	}
 
 	UpdateConfig(network, orderer, channel, config, updatedConfig, false, peers[0], peers...)
+}
+
+// WaitUntilEqualLedgerHeight waits until all specified peers have the
+// provided ledger height on a channel
+func WaitUntilEqualLedgerHeight(n *Network, channel string, height int, peers ...*Peer) {
+	for _, peer := range peers {
+		Eventually(func() int {
+			return GetLedgerHeight(n, peer, channel)
+		}, n.EventuallyTimeout).Should(Equal(height))
+	}
+}
+
+// GetLedgerHeight returns the current ledger height for a peer on
+// a channel
+func GetLedgerHeight(n *Network, peer *Peer, channel string) int {
+	sess, err := n.PeerUserSession(peer, "User1", commands.ChannelInfo{
+		ChannelID: channel,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
+	channelInfoStr := strings.TrimPrefix(string(sess.Buffer().Contents()[:]), "Blockchain info:")
+	var channelInfo = common.BlockchainInfo{}
+	json.Unmarshal([]byte(channelInfoStr), &channelInfo)
+	return int(channelInfo.Height)
+}
+
+// GetMaxLedgerHeight returns the maximum ledger height for the
+// peers on a channel
+func GetMaxLedgerHeight(n *Network, channel string, peers ...*Peer) int {
+	var maxHeight int
+	for _, peer := range peers {
+		peerHeight := GetLedgerHeight(n, peer, channel)
+		if peerHeight > maxHeight {
+			maxHeight = peerHeight
+		}
+	}
+	return maxHeight
 }
