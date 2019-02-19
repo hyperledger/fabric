@@ -50,6 +50,9 @@ orderers:
 - name: orderer
   organization: orderer-org
 
+orderercapabilities:
+  v20: false
+
 channels:
 - name: testchannel
   profile: ThreeOrgsChannel
