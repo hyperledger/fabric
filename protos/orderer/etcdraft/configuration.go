@@ -33,7 +33,8 @@ func (dogf ConsensusTypeMetadataFactory) NewMessage() proto.Message {
 // Marshal serializes this implementation's proto messages. It is called by the encoder package
 // during the creation of the Orderer ConfigGroup.
 func Marshal(md *Metadata) ([]byte, error) {
-	for _, c := range md.Consenters {
+	copyMd := proto.Clone(md).(*Metadata)
+	for _, c := range copyMd.Consenters {
 		// Expect the user to set the config value for client/server certs to the
 		// path where they are persisted locally, then load these files to memory.
 		clientCert, err := ioutil.ReadFile(string(c.GetClientTlsCert()))
@@ -48,5 +49,5 @@ func Marshal(md *Metadata) ([]byte, error) {
 		}
 		c.ServerTlsCert = serverCert
 	}
-	return proto.Marshal(md)
+	return proto.Marshal(copyMd)
 }
