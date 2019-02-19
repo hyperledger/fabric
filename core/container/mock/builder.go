@@ -2,8 +2,10 @@
 package mock
 
 import (
-	io "io"
-	sync "sync"
+	"io"
+	"sync"
+
+	"github.com/hyperledger/fabric/core/container"
 )
 
 type Builder struct {
@@ -101,3 +103,5 @@ func (fake *Builder) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
+
+var _ container.Builder = new(Builder)
