@@ -366,8 +366,8 @@ func TestStop(t *testing.T) {
 		assert.Nil(t, err, "err should be nil")
 	}()
 
-	msg := <-stopChan
-	assert.NotNil(t, msg, "msg should not be nil")
+	_, ok := <-stopChan
+	assert.False(t, ok, "channel should be closed")
 }
 
 func TestStopNoIPCTemplate(t *testing.T) {
@@ -438,4 +438,26 @@ func TestStopIPCNotRunning(t *testing.T) {
 	err := vm.Stop(ccid, 1000, true, true)
 	assert.NotNil(t, err, "err should not be nil")
 	assert.Equal(t, err.Error(), "name-1 not running", "error should be correct")
+}
+
+func TestWait(t *testing.T) {
+	r := NewRegistry()
+	r.ChaincodeSupport = MockCCSupport{}
+	vm := NewInprocVM(r)
+
+	closed := make(chan struct{})
+	close(closed)
+	ipc := &inprocContainer{chaincode: MockShim{}, stopChan: closed}
+	ipc.running = true
+
+	ccid := ccintf.CCID{Name: "name", Version: "1"}
+	r.typeRegistry["name-1"] = ipc
+	r.instRegistry["name-1"] = ipc
+
+	exitCode, err := vm.Wait(ccid)
+	assert.Equal(t, 0, exitCode)
+	assert.NoError(t, err)
+
+	_, err = vm.Wait(ccintf.CCID{Name: "name", Version: "2"})
+	assert.EqualError(t, err, "name-2 not found")
 }

@@ -280,3 +280,37 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 		assert.NoError(t, err)
 	}
 }
+
+func TestContainerRuntimeWait(t *testing.T) {
+	fakeProcessor := &mock.Processor{}
+	fakeProcessor.ProcessStub = func(containerType string, req container.VMCReq) error {
+		waitReq := req.(container.WaitContainerReq)
+		waitReq.Exited(0, nil)
+		return nil
+	}
+	cr := &chaincode.ContainerRuntime{
+		Processor: fakeProcessor,
+	}
+
+	ccci := &ccprovider.ChaincodeContainerInfo{
+		Type:          pb.ChaincodeSpec_GOLANG.String(),
+		Name:          "chaincode-id-name",
+		Version:       "chaincode-version",
+		ContainerType: "container-type",
+	}
+
+	exitCode, err := cr.Wait(ccci)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, exitCode)
+
+	assert.Equal(t, 1, fakeProcessor.ProcessCallCount())
+	vmType, req := fakeProcessor.ProcessArgsForCall(0)
+	assert.Equal(t, vmType, "container-type")
+	waitReq, ok := req.(container.WaitContainerReq)
+	assert.True(t, ok)
+	assert.Equal(t, ccintf.CCID{Name: "chaincode-id-name", Version: "chaincode-version"}, waitReq.CCID)
+
+	fakeProcessor.ProcessReturns(errors.New("moles-and-trolls"))
+	_, err = cr.Wait(ccci)
+	assert.EqualError(t, err, "moles-and-trolls")
+}

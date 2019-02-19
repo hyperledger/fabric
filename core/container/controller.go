@@ -30,6 +30,7 @@ type Builder interface {
 type VM interface {
 	Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder Builder) error
 	Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
+	Wait(ccid ccintf.CCID) (int, error)
 	HealthCheck(context.Context) error
 }
 
@@ -170,6 +171,31 @@ func (si StopContainerReq) Do(v VM) error {
 
 func (si StopContainerReq) GetCCID() ccintf.CCID {
 	return si.CCID
+}
+
+//go:generate counterfeiter -o mock/exitedfunc.go --fake-name ExitedFunc ExitedFunc
+
+// ExitedFunc is the prototype for the function called when a container exits.
+type ExitedFunc func(exitCode int, err error)
+
+// WaitContainerReq provides the chaincode ID of the container to wait on and a
+// callback to call upon chaincode termination.
+type WaitContainerReq struct {
+	CCID   ccintf.CCID
+	Exited ExitedFunc
+}
+
+func (w WaitContainerReq) Do(v VM) error {
+	exited := w.Exited
+	go func() {
+		exitCode, err := v.Wait(w.CCID)
+		exited(exitCode, err)
+	}()
+	return nil
+}
+
+func (w WaitContainerReq) GetCCID() ccintf.CCID {
+	return w.CCID
 }
 
 func (vmc *VMController) Process(vmtype string, req VMCReq) error {

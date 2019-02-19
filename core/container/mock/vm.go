@@ -50,6 +50,19 @@ type VM struct {
 	stopReturnsOnCall map[int]struct {
 		result1 error
 	}
+	WaitStub        func(ccintf.CCID) (int, error)
+	waitMutex       sync.RWMutex
+	waitArgsForCall []struct {
+		arg1 ccintf.CCID
+	}
+	waitReturns struct {
+		result1 int
+		result2 error
+	}
+	waitReturnsOnCall map[int]struct {
+		result1 int
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -251,6 +264,69 @@ func (fake *VM) StopReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *VM) Wait(arg1 ccintf.CCID) (int, error) {
+	fake.waitMutex.Lock()
+	ret, specificReturn := fake.waitReturnsOnCall[len(fake.waitArgsForCall)]
+	fake.waitArgsForCall = append(fake.waitArgsForCall, struct {
+		arg1 ccintf.CCID
+	}{arg1})
+	fake.recordInvocation("Wait", []interface{}{arg1})
+	fake.waitMutex.Unlock()
+	if fake.WaitStub != nil {
+		return fake.WaitStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.waitReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *VM) WaitCallCount() int {
+	fake.waitMutex.RLock()
+	defer fake.waitMutex.RUnlock()
+	return len(fake.waitArgsForCall)
+}
+
+func (fake *VM) WaitCalls(stub func(ccintf.CCID) (int, error)) {
+	fake.waitMutex.Lock()
+	defer fake.waitMutex.Unlock()
+	fake.WaitStub = stub
+}
+
+func (fake *VM) WaitArgsForCall(i int) ccintf.CCID {
+	fake.waitMutex.RLock()
+	defer fake.waitMutex.RUnlock()
+	argsForCall := fake.waitArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *VM) WaitReturns(result1 int, result2 error) {
+	fake.waitMutex.Lock()
+	defer fake.waitMutex.Unlock()
+	fake.WaitStub = nil
+	fake.waitReturns = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *VM) WaitReturnsOnCall(i int, result1 int, result2 error) {
+	fake.waitMutex.Lock()
+	defer fake.waitMutex.Unlock()
+	fake.WaitStub = nil
+	if fake.waitReturnsOnCall == nil {
+		fake.waitReturnsOnCall = make(map[int]struct {
+			result1 int
+			result2 error
+		})
+	}
+	fake.waitReturnsOnCall[i] = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *VM) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -260,6 +336,8 @@ func (fake *VM) Invocations() map[string][][]interface{} {
 	defer fake.startMutex.RUnlock()
 	fake.stopMutex.RLock()
 	defer fake.stopMutex.RUnlock()
+	fake.waitMutex.RLock()
+	defer fake.waitMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

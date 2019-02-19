@@ -259,8 +259,10 @@ func (vm *InprocVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremo
 		return fmt.Errorf("%s not running", instName)
 	}
 
-	ipc.stopChan <- struct{}{}
+	ipc.running = false
+	close(ipc.stopChan)
 	vm.registry.removeInstance(instName)
+
 	//TODO stop
 	return nil
 }
@@ -269,6 +271,19 @@ func (vm *InprocVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremo
 // It always returns nil..
 func (vm *InprocVM) HealthCheck(ctx context.Context) error {
 	return nil
+}
+
+// Wait will block until the chaincode is stopped.
+func (vm *InprocVM) Wait(ccid ccintf.CCID) (int, error) {
+	instName := vm.GetVMName(ccid)
+	ipc := vm.registry.getInstance(instName)
+	if ipc == nil {
+		return 0, fmt.Errorf("%s not found", instName)
+	}
+
+	<-ipc.stopChan
+
+	return 0, nil
 }
 
 // GetVMName ignores the peer and network name as it just needs to be unique in
