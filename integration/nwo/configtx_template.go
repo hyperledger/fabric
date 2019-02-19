@@ -64,14 +64,8 @@ Channel: &ChannelDefaults
 
 Profiles:{{ range .Profiles }}
   {{ .Name }}:
-    {{- if .Orderers }}
     <<: *ChannelDefaults
-    Consortiums:{{ range $w.Consortiums }}
-      {{ .Name }}:
-        Organizations:{{ range .Organizations }}
-        - *{{ ($w.Organization .).MSPID }}
-        {{- end }}
-    {{- end }}
+    {{- if .Orderers }}
     Orderer:
       OrdererType: {{ $w.Consensus.Type }}
       Addresses:{{ range .Orderers }}{{ with $w.Orderer . }}
@@ -117,7 +111,9 @@ Profiles:{{ range .Profiles }}
         BlockValidation:
           Type: ImplicitMeta
           Rule: ANY Writers
-    {{- else }}
+    {{- end }}
+    {{- if .Consortium }}
+    Consortium: {{ .Consortium }}
     Application:
       Capabilities:
         V1_3: true
@@ -141,7 +137,13 @@ Profiles:{{ range .Profiles }}
         Endorsement:
           Type: ImplicitMeta
           Rule: "MAJORITY Endorsement"
-    Consortium: {{ .Consortium }}
+    {{- else }}
+    Consortiums:{{ range $w.Consortiums }}
+      {{ .Name }}:
+        Organizations:{{ range .Organizations }}
+        - *{{ ($w.Organization .).MSPID }}
+        {{- end }}
+    {{- end }}
     {{- end }}
 {{- end }}
 {{ end }}

@@ -81,7 +81,7 @@ func TestMissingConsortiumValue(t *testing.T) {
 	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 	config.Consortium = ""
 
-	assert.Error(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Missing Consortium value in Application Profile definition")
+	assert.Error(t, doOutputChannelCreateTx(config, nil, "foo", configTxDest), "Missing Consortium value in Application Profile definition")
 }
 
 func TestMissingApplicationValue(t *testing.T) {
@@ -90,7 +90,7 @@ func TestMissingApplicationValue(t *testing.T) {
 	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 	config.Application = nil
 
-	assert.Error(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Missing Application value in Application Profile definition")
+	assert.Error(t, doOutputChannelCreateTx(config, nil, "foo", configTxDest), "Missing Application value in Application Profile definition")
 }
 
 func TestInspectMissingConfigTx(t *testing.T) {
@@ -102,7 +102,7 @@ func TestInspectConfigTx(t *testing.T) {
 
 	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 
-	assert.NoError(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Good outputChannelCreateTx generation request")
+	assert.NoError(t, doOutputChannelCreateTx(config, nil, "foo", configTxDest), "Good outputChannelCreateTx generation request")
 	assert.NoError(t, doInspectChannelCreateTx(configTxDest), "Good configtx inspection request")
 }
 
@@ -148,6 +148,7 @@ func TestConfigTxFlags(t *testing.T) {
 	os.Args = []string{
 		"cmd",
 		"-outputCreateChannelTx=" + configTxDest,
+		"-channelCreateTxBaseProfile=" + genesisconfig.SampleSingleMSPSoloProfile,
 		"-profile=" + genesisconfig.SampleSingleMSPChannelProfile,
 		"-configPath=" + devConfigDir,
 		"-inspectChannelCreateTx=" + configTxDest,

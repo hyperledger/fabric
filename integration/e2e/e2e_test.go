@@ -81,6 +81,17 @@ var _ = Describe("EndToEnd", func() {
 			network = nwo.New(nwo.BasicSolo(), testDir, client, BasePort(), components)
 			network.MetricsProvider = "statsd"
 			network.StatsdEndpoint = datagramReader.Address()
+			network.Profiles = append(network.Profiles, &nwo.Profile{
+				Name:          "TwoOrgsBaseProfileChannel",
+				Consortium:    "SampleConsortium",
+				Orderers:      []string{"orderer"},
+				Organizations: []string{"Org1", "Org2"},
+			})
+			network.Channels = append(network.Channels, &nwo.Channel{
+				Name:        "baseprofilechannel",
+				Profile:     "TwoOrgsBaseProfileChannel",
+				BaseProfile: "TwoOrgsOrdererGenesis",
+			})
 
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -120,6 +131,10 @@ var _ = Describe("EndToEnd", func() {
 			CheckPeerStatsdMetrics(datagramReader.String(), "org1_peer0")
 			CheckPeerStatsdMetrics(datagramReader.String(), "org2_peer1")
 			CheckOrdererStatsdMetrics(datagramReader.String(), "ordererorg_orderer")
+
+			By("setting up a channel from a base profile")
+			additionalPeer := network.Peer("Org2", "peer1")
+			network.CreateChannel("baseprofilechannel", orderer, peer, additionalPeer)
 		})
 	})
 
