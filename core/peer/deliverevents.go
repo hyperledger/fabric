@@ -252,6 +252,7 @@ func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_Tran
 					TxId:        ccEvent.TxId,
 					ChaincodeId: ccEvent.ChaincodeId,
 					EventName:   ccEvent.EventName,
+					Payload:     ccEvent.Payload,
 				},
 			}
 			transactionActions.ChaincodeActions = append(transactionActions.ChaincodeActions, filteredAction)
