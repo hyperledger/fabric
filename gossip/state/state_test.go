@@ -1020,7 +1020,7 @@ func TestAccessControl(t *testing.T) {
 		t.Log("Trying to see all authorized peers get all blocks, and all non-authorized didn't")
 		for _, p := range peersSet {
 			height, err := p.commit.LedgerHeight()
-			id := fmt.Sprintf("localhost:%d", p.port)
+			id := fmt.Sprintf("127.0.0.1:%d", p.port)
 			if _, isAuthorized := authorizedPeers[id]; isAuthorized {
 				if height != uint64(msgCount+1) || err != nil {
 					return false
