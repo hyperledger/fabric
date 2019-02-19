@@ -41,7 +41,5 @@ func (bc *blockCreator) createNextBlock(envs []*cb.Envelope) *cb.Block {
 	block.Data = data
 
 	bc.hash = block.Header.Hash()
-
-	bc.logger.Debugf("Created block %d", bc.number)
 	return block
 }
