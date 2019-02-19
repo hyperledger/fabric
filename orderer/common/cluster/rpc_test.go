@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/protos/common"
@@ -37,15 +38,21 @@ func TestRPCChangeDestination(t *testing.T) {
 	client1 := &mocks.ClusterClient{}
 	client2 := &mocks.ClusterClient{}
 
+	metrics := cluster.NewMetrics(&disabled.Provider{})
+
 	comm.On("Remote", "mychannel", uint64(1)).Return(&cluster.RemoteContext{
-		Logger:    flogging.MustGetLogger("test"),
-		Client:    client1,
-		ProbeConn: func(_ *grpc.ClientConn) error { return nil },
+		SendBuffSize: 10,
+		Metrics:      metrics,
+		Logger:       flogging.MustGetLogger("test"),
+		Client:       client1,
+		ProbeConn:    func(_ *grpc.ClientConn) error { return nil },
 	}, nil)
 	comm.On("Remote", "mychannel", uint64(2)).Return(&cluster.RemoteContext{
-		Logger:    flogging.MustGetLogger("test"),
-		Client:    client2,
-		ProbeConn: func(_ *grpc.ClientConn) error { return nil },
+		SendBuffSize: 10,
+		Metrics:      metrics,
+		Logger:       flogging.MustGetLogger("test"),
+		Client:       client2,
+		ProbeConn:    func(_ *grpc.ClientConn) error { return nil },
 	}, nil)
 
 	streamToNode1 := &mocks.StepClient{}
@@ -201,6 +208,7 @@ func TestSend(t *testing.T) {
 			stream.On("Recv").Return(testCase.receiveReturns...)
 			client.On("Step", mock.Anything).Return(testCase.stepReturns...)
 			rm := &cluster.RemoteContext{
+				Metrics:      cluster.NewMetrics(&disabled.Provider{}),
 				SendBuffSize: 1,
 				Logger:       flogging.MustGetLogger("test"),
 				ProbeConn:    func(_ *grpc.ClientConn) error { return nil },
@@ -262,9 +270,11 @@ func TestRPCGarbageCollection(t *testing.T) {
 	stream := &mocks.StepClient{}
 
 	remote := &cluster.RemoteContext{
-		Logger:    flogging.MustGetLogger("test"),
-		Client:    client,
-		ProbeConn: func(_ *grpc.ClientConn) error { return nil },
+		SendBuffSize: 10,
+		Metrics:      cluster.NewMetrics(&disabled.Provider{}),
+		Logger:       flogging.MustGetLogger("test"),
+		Client:       client,
+		ProbeConn:    func(_ *grpc.ClientConn) error { return nil },
 	}
 
 	var sent sync.WaitGroup

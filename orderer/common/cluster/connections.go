@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -31,6 +32,7 @@ type ConnectionMapper interface {
 	Lookup(cert []byte) (*grpc.ClientConn, bool)
 	Put(cert []byte, conn *grpc.ClientConn)
 	Remove(cert []byte)
+	Size() int
 }
 
 // ConnectionStore stores connections to remote nodes
@@ -42,10 +44,13 @@ type ConnectionStore struct {
 }
 
 // NewConnectionStore creates a new ConnectionStore with the given SecureDialer
-func NewConnectionStore(dialer SecureDialer) *ConnectionStore {
+func NewConnectionStore(dialer SecureDialer, tlsConnectionCount metrics.Gauge) *ConnectionStore {
 	connMapping := &ConnectionStore{
-		Connections: make(ConnByCertMap),
-		dialer:      dialer,
+		Connections: &connMapperReporter{
+			ConnectionMapper:          make(ConnByCertMap),
+			tlsConnectionCountMetrics: tlsConnectionCount,
+		},
+		dialer: dialer,
 	}
 	return connMapping
 }
@@ -109,4 +114,23 @@ func (c *ConnectionStore) connect(endpoint string, expectedServerCert []byte) (*
 
 	c.Connections.Put(expectedServerCert, conn)
 	return conn, nil
+}
+
+type connMapperReporter struct {
+	tlsConnectionCountMetrics metrics.Gauge
+	ConnectionMapper
+}
+
+func (cmg *connMapperReporter) Put(cert []byte, conn *grpc.ClientConn) {
+	cmg.ConnectionMapper.Put(cert, conn)
+	cmg.reportSize()
+}
+
+func (cmg *connMapperReporter) Remove(cert []byte) {
+	cmg.ConnectionMapper.Remove(cert)
+	cmg.reportSize()
+}
+
+func (cmg *connMapperReporter) reportSize() {
+	cmg.tlsConnectionCountMetrics.Set(float64(cmg.ConnectionMapper.Size()))
 }

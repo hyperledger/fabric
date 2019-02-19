@@ -47,6 +47,10 @@ func (cbc ConnByCertMap) Remove(cert []byte) {
 	delete(cbc, string(cert))
 }
 
+func (cbc ConnByCertMap) Size() int {
+	return len(cbc)
+}
+
 // MemberMapping defines NetworkMembers by their ID
 type MemberMapping map[uint64]*Stub
 
@@ -567,4 +571,20 @@ func LastConfigBlock(block *common.Block, blockRetriever BlockRetriever) (*commo
 		return nil, errors.Errorf("unable to retrieve last config block %d", lastConfigBlockNum)
 	}
 	return lastConfigBlock, nil
+}
+
+// StreamCountReporter reports the number of streams currently connected to this node
+type StreamCountReporter struct {
+	Metrics *Metrics
+	count   uint32
+}
+
+func (scr *StreamCountReporter) Increment() {
+	count := atomic.AddUint32(&scr.count, 1)
+	scr.Metrics.reportStreamCount(count)
+}
+
+func (scr *StreamCountReporter) Decrement() {
+	count := atomic.AddUint32(&scr.count, ^uint32(0))
+	scr.Metrics.reportStreamCount(count)
 }

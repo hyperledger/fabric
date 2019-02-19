@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,7 @@ func TestConcurrentConnections(t *testing.T) {
 	dialer := &mocks.SecureDialer{}
 	conn := &grpc.ClientConn{}
 	dialer.On("Dial", mock.Anything, mock.Anything).Return(conn, nil)
-	connStore := cluster.NewConnectionStore(dialer)
+	connStore := cluster.NewConnectionStore(dialer, &disabled.Gauge{})
 	connect := func() {
 		defer wg.Done()
 		conn2, err := connStore.Connection("", nil)
@@ -70,7 +71,7 @@ func TestConcurrentLookupMiss(t *testing.T) {
 	conn := &grpc.ClientConn{}
 	dialer.On("Dial", mock.Anything, mock.Anything).Return(conn, nil)
 
-	connStore := cluster.NewConnectionStore(dialer)
+	connStore := cluster.NewConnectionStore(dialer, &disabled.Gauge{})
 	// Wrap the connection mapping with a spy that intercepts Lookup() invocations
 	spy := &connectionMapperSpy{
 		ConnectionMapper: connStore.Connections,
