@@ -369,7 +369,8 @@ docker-list: $(patsubst %,%-docker-list, $(IMAGES))
 
 %-docker-clean:
 	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})
-	-docker images --quiet --filter=reference='$(DOCKER_NS)/fabric-$(TARGET):$(ARCH)-$(BASE_VERSION)$(if $(EXTRA_VERSION),-snapshot-*,)' | xargs docker rmi -f
+	$(eval DOCKER_IMAGES = $(shell docker images --quiet --filter=reference='$(DOCKER_NS)/fabric-$(TARGET):$(ARCH)-$(BASE_VERSION)$(if $(EXTRA_VERSION),-snapshot-*,)'))
+	[ -n "$(DOCKER_IMAGES)" ] && docker rmi -f $(DOCKER_IMAGES) || true
 	-@rm -rf $(BUILD_DIR)/images/$(TARGET) ||:
 
 docker-clean: $(patsubst %,%-docker-clean, $(IMAGES))
