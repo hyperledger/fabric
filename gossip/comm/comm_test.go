@@ -15,9 +15,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -26,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/comm"
-	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/identity"
@@ -34,7 +31,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
@@ -46,6 +42,13 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 	factory.InitFactories(nil)
 	naiveSec.On("OrgByPeerIdentity", mock.Anything).Return(api.OrgIdentityType{})
+}
+
+var testCommConfig = CommConfig{
+	DialTimeout:  300 * time.Millisecond,
+	ConnTimeout:  DefConnTimeout,
+	RecvBuffSize: DefRecvBuffSize,
+	SendBuffSize: DefSendBuffSize,
 }
 
 func acceptAll(msg interface{}) bool {
@@ -128,7 +131,7 @@ func newCommInstanceOnlyWithMetrics(t *testing.T, commMetrics *metrics.CommMetri
 	identityMapper := identity.NewIdentityMapper(sec, id, noopPurgeIdentity, sec)
 
 	commInst, err := NewCommInstance(gRPCServer.Server(), certs, identityMapper, id, secureDialOpts,
-		sec, commMetrics, dialOpts...)
+		sec, commMetrics, testCommConfig, dialOpts...)
 	assert.NoError(t, err)
 
 	go func() {
@@ -234,23 +237,6 @@ func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator 
 	return acceptChan
 }
 
-func TestViperConfig(t *testing.T) {
-	viper.SetConfigName("core")
-	viper.SetEnvPrefix("CORE")
-	configtest.AddDevConfigPath(nil)
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-	err := viper.ReadInConfig()
-	if err != nil { // Handle errors reading the config file
-		panic(fmt.Errorf("fatal error config file: %s", err))
-	}
-
-	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.connTimeout", 0))
-	assert.Equal(t, time.Duration(300)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.dialTimeout", 0))
-	assert.Equal(t, 20, util.GetIntOrDefault("peer.gossip.recvBuffSize", 0))
-	assert.Equal(t, 200, util.GetIntOrDefault("peer.gossip.sendBuffSize", 0))
-}
-
 func TestMutualParallelSendWithAck(t *testing.T) {
 	t.Parallel()
 
@@ -332,7 +318,7 @@ func TestHandshake(t *testing.T) {
 	idMapper := identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity, naiveSec)
 	inst, err := NewCommInstance(s, nil, idMapper, api.PeerIdentityType(endpoint), func() []grpc.DialOption {
 		return []grpc.DialOption{grpc.WithInsecure()}
-	}, naiveSec, disabledMetrics)
+	}, naiveSec, disabledMetrics, testCommConfig)
 	go s.Serve(ll)
 	assert.NoError(t, err)
 	var msg proto.ReceivedMessage
@@ -623,7 +609,7 @@ func TestCloseConn(t *testing.T) {
 		Data: make([]byte, 1024*1024),
 	}
 	msg2Send.NoopSign()
-	for i := 0; i < defRecvBuffSize; i++ {
+	for i := 0; i < DefRecvBuffSize; i++ {
 		err := stream.Send(msg2Send.Envelope)
 		if err != nil {
 			gotErr = true
@@ -640,7 +626,7 @@ func TestParallelSend(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
-	messages2Send := util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize)
+	messages2Send := DefRecvBuffSize
 
 	wg := sync.WaitGroup{}
 	wg.Add(messages2Send)
@@ -780,7 +766,7 @@ func TestAccept(t *testing.T) {
 	var evenResults []uint64
 	var oddResults []uint64
 
-	out := make(chan uint64, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize))
+	out := make(chan uint64, DefRecvBuffSize)
 	sem := make(chan struct{}, 0)
 
 	readIntoSlice := func(a *[]uint64, ch <-chan proto.ReceivedMessage) {
@@ -794,11 +780,11 @@ func TestAccept(t *testing.T) {
 	go readIntoSlice(&evenResults, evenNONCES)
 	go readIntoSlice(&oddResults, oddNONCES)
 
-	for i := 0; i < util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize); i++ {
+	for i := 0; i < DefRecvBuffSize; i++ {
 		comm2.Send(createGossipMsg(), remotePeer(port1))
 	}
 
-	waitForMessages(t, out, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize), "Didn't receive all messages sent")
+	waitForMessages(t, out, DefRecvBuffSize, "Didn't receive all messages sent")
 
 	comm1.Stop()
 	comm2.Stop()
@@ -974,13 +960,6 @@ func waitForMessages(t *testing.T, msgChan chan uint64, count int, errMsg string
 		}
 	}
 	assert.Equal(t, count, c, errMsg)
-}
-
-func TestMain(m *testing.M) {
-	SetDialTimeout(time.Duration(300) * time.Millisecond)
-
-	ret := m.Run()
-	os.Exit(ret)
 }
 
 func TestConcurrentCloseSend(t *testing.T) {

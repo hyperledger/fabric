@@ -24,17 +24,16 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
 )
 
 const (
-	handshakeTimeout = time.Second * time.Duration(10)
-	defDialTimeout   = time.Second * time.Duration(3)
-	defConnTimeout   = time.Second * time.Duration(2)
-	defRecvBuffSize  = 20
-	defSendBuffSize  = 20
+	handshakeTimeout = time.Second * 10
+	DefDialTimeout   = time.Second * 3
+	DefConnTimeout   = time.Second * 2
+	DefRecvBuffSize  = 20
+	DefSendBuffSize  = 20
 )
 
 // SecurityAdvisor defines an external auxiliary object
@@ -42,11 +41,6 @@ const (
 type SecurityAdvisor interface {
 	// OrgByPeerIdentity returns the organization identity of the given PeerIdentityType
 	OrgByPeerIdentity(api.PeerIdentityType) api.OrgIdentityType
-}
-
-// SetDialTimeout sets the dial timeout
-func SetDialTimeout(timeout time.Duration) {
-	viper.Set("peer.gossip.dialTimeout", timeout)
 }
 
 func (c *commImpl) SetDialOpts(opts ...grpc.DialOption) {
@@ -60,7 +54,7 @@ func (c *commImpl) SetDialOpts(opts ...grpc.DialOption) {
 // NewCommInstance creates a new comm instance that binds itself to the given gRPC server
 func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore identity.Mapper,
 	peerIdentity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor,
-	commMetrics *metrics.CommMetrics, dialOpts ...grpc.DialOption) (Comm, error) {
+	commMetrics *metrics.CommMetrics, config CommConfig, dialOpts ...grpc.DialOption) (Comm, error) {
 
 	commInst := &commImpl{
 		sa:             sa,
@@ -77,16 +71,32 @@ func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore iden
 		stopping:       int32(0),
 		exitChan:       make(chan struct{}),
 		subscriptions:  make([]chan proto.ReceivedMessage, 0),
-		dialTimeout:    util.GetDurationOrDefault("peer.gossip.dialTimeout", defDialTimeout),
 		tlsCerts:       certs,
 		metrics:        commMetrics,
+		dialTimeout:    config.DialTimeout,
+		connTimeout:    config.ConnTimeout,
+		recvBuffSize:   config.RecvBuffSize,
+		sendBuffSize:   config.SendBuffSize,
 	}
 
-	commInst.connStore = newConnStore(commInst, commInst.logger)
+	connConfig := ConnConfig{
+		RecvBuffSize: config.RecvBuffSize,
+		SendBuffSize: config.SendBuffSize,
+	}
+
+	commInst.connStore = newConnStore(commInst, commInst.logger, connConfig)
 
 	proto.RegisterGossipServer(s, commInst)
 
 	return commInst, nil
+}
+
+// CommConfig is the configuration required to initialize a new comm
+type CommConfig struct {
+	DialTimeout  time.Duration // Dial timeout
+	ConnTimeout  time.Duration // Connection timeout
+	RecvBuffSize int           // Buffer size of received messages
+	SendBuffSize int           // Buffer size of sending messages
 }
 
 type commImpl struct {
@@ -107,8 +117,11 @@ type commImpl struct {
 	stopWG         sync.WaitGroup
 	subscriptions  []chan proto.ReceivedMessage
 	stopping       int32
-	dialTimeout    time.Duration
 	metrics        *metrics.CommMetrics
+	dialTimeout    time.Duration
+	connTimeout    time.Duration
+	recvBuffSize   int
+	sendBuffSize   int
 }
 
 func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidType) (*connection, error) {
@@ -138,7 +151,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 
 	cl := proto.NewGossipClient(cc)
 
-	ctx, cancel = context.WithTimeout(context.Background(), defConnTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), DefConnTimeout)
 	defer cancel()
 	if _, err = cl.Ping(ctx, &proto.Empty{}); err != nil {
 		cc.Close()
@@ -164,7 +177,11 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 					return nil, errors.New("authentication failure")
 				}
 			}
-			conn := newConnection(cl, cc, stream, nil, c.metrics)
+			connConfig := ConnConfig{
+				RecvBuffSize: c.recvBuffSize,
+				SendBuffSize: c.sendBuffSize,
+			}
+			conn := newConnection(cl, cc, stream, nil, c.metrics, connConfig)
 			conn.pkiID = pkiID
 			conn.info = connInfo
 			conn.logger = c.logger
@@ -248,7 +265,7 @@ func (c *commImpl) Probe(remotePeer *RemotePeer) error {
 	}
 	defer cc.Close()
 	cl := proto.NewGossipClient(cc)
-	ctx, cancel = context.WithTimeout(context.Background(), defConnTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), DefConnTimeout)
 	defer cancel()
 	_, err = cl.Ping(ctx, &proto.Empty{})
 	c.logger.Debugf("Returning %v", err)
@@ -270,7 +287,7 @@ func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, erro
 	defer cc.Close()
 
 	cl := proto.NewGossipClient(cc)
-	ctx, cancel = context.WithTimeout(context.Background(), defConnTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), DefConnTimeout)
 	defer cancel()
 	if _, err = cl.Ping(ctx, &proto.Empty{}); err != nil {
 		return nil, err
@@ -411,7 +428,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator bool) (*proto
 
 	c.logger.Debug("Sending", cMsg, "to", remoteAddress)
 	stream.Send(cMsg.Envelope)
-	m, err := readWithTimeout(stream, util.GetDurationOrDefault("peer.gossip.connTimeout", defConnTimeout), remoteAddress)
+	m, err := readWithTimeout(stream, c.connTimeout, remoteAddress)
 	if err != nil {
 		c.logger.Warningf("Failed reading messge from %s, reason: %v", remoteAddress, err)
 		return nil, err

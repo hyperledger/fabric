@@ -138,4 +138,9 @@ type Config struct {
 	DigestWaitTime   time.Duration // Time to wait before pull engine processes incoming digests
 	RequestWaitTime  time.Duration // Time to wait before pull engine removes incoming nonce
 	ResponseWaitTime time.Duration // Time to wait before pull engine ends pull
+
+	DialTimeout  time.Duration // Dial timeout
+	ConnTimeout  time.Duration // Connection timeout
+	RecvBuffSize int           // Buffer size of received messages
+	SendBuffSize int           // Buffer size of sending messages
 }

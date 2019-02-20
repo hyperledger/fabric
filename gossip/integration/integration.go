@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/api"
+	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
@@ -58,6 +59,10 @@ func newConfig(selfEndpoint string, externalEndpoint string, certs *common.TLSCe
 		DigestWaitTime:             util.GetDurationOrDefault("peer.gossip.digestWaitTime", algo.DefDigestWaitTime),
 		RequestWaitTime:            util.GetDurationOrDefault("peer.gossip.requestWaitTime", algo.DefRequestWaitTime),
 		ResponseWaitTime:           util.GetDurationOrDefault("peer.gossip.responseWaitTime", algo.DefResponseWaitTime),
+		DialTimeout:                util.GetDurationOrDefault("peer.gossip.dialTimeout", comm.DefDialTimeout),
+		ConnTimeout:                util.GetDurationOrDefault("peer.gossip.connTimeout", comm.DefConnTimeout),
+		RecvBuffSize:               util.GetIntOrDefault("peer.gossip.recvBuffSize", comm.DefRecvBuffSize),
+		SendBuffSize:               util.GetIntOrDefault("peer.gossip.sendBuffSize", comm.DefSendBuffSize),
 	}
 
 	return conf, nil
