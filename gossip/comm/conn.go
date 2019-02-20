@@ -35,6 +35,7 @@ type connFactory interface {
 }
 
 type connectionStore struct {
+	config           ConnConfig
 	logger           util.Logger            // logger
 	isClosing        bool                   // whether this connection store is shutting down
 	connFactory      connFactory            // creates a connection to remote peer
@@ -44,13 +45,14 @@ type connectionStore struct {
 	// used to prevent concurrent connection establishment to the same remote endpoint
 }
 
-func newConnStore(connFactory connFactory, logger util.Logger) *connectionStore {
+func newConnStore(connFactory connFactory, logger util.Logger, config ConnConfig) *connectionStore {
 	return &connectionStore{
 		connFactory:      connFactory,
 		isClosing:        false,
 		pki2Conn:         make(map[string]*connection),
 		destinationLocks: make(map[string]*sync.Mutex),
 		logger:           logger,
+		config:           config,
 	}
 }
 
@@ -176,7 +178,7 @@ func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamSer
 
 func (cs *connectionStore) registerConn(connInfo *proto.ConnectionInfo,
 	serverStream proto.Gossip_GossipStreamServer, metrics *metrics.CommMetrics) *connection {
-	conn := newConnection(nil, nil, nil, serverStream, metrics)
+	conn := newConnection(nil, nil, nil, serverStream, metrics, cs.config)
 	conn.pkiID = connInfo.ID
 	conn.info = connInfo
 	conn.logger = cs.logger
@@ -194,21 +196,29 @@ func (cs *connectionStore) closeByPKIid(pkiID common.PKIidType) {
 }
 
 func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_GossipStreamClient,
-	ss proto.Gossip_GossipStreamServer, metrics *metrics.CommMetrics) *connection {
+	ss proto.Gossip_GossipStreamServer, metrics *metrics.CommMetrics, config ConnConfig) *connection {
 	connection := &connection{
 		metrics:      metrics,
-		outBuff:      make(chan *msgSending, util.GetIntOrDefault("peer.gossip.sendBuffSize", defSendBuffSize)),
+		outBuff:      make(chan *msgSending, config.SendBuffSize),
 		cl:           cl,
 		conn:         c,
 		clientStream: cs,
 		serverStream: ss,
 		stopFlag:     int32(0),
 		stopChan:     make(chan struct{}, 1),
+		recvBuffSize: config.RecvBuffSize,
 	}
 	return connection
 }
 
+// ConnConfig is the configuration required to initialize a new conn
+type ConnConfig struct {
+	RecvBuffSize int
+	SendBuffSize int
+}
+
 type connection struct {
+	recvBuffSize int
 	metrics      *metrics.CommMetrics
 	cancel       context.CancelFunc
 	info         *proto.ConnectionInfo
@@ -283,7 +293,7 @@ func (conn *connection) send(msg *proto.SignedGossipMessage, onErr func(error), 
 
 func (conn *connection) serviceConnection() error {
 	errChan := make(chan error, 1)
-	msgChan := make(chan *proto.SignedGossipMessage, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize))
+	msgChan := make(chan *proto.SignedGossipMessage, conn.recvBuffSize)
 	quit := make(chan struct{})
 	// Call stream.Recv() asynchronously in readFromStream(),
 	// and wait for either the Recv() call to end,

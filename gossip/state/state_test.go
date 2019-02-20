@@ -370,6 +370,10 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 			DigestWaitTime:             algo.DefDigestWaitTime,
 			RequestWaitTime:            algo.DefRequestWaitTime,
 			ResponseWaitTime:           algo.DefResponseWaitTime,
+			DialTimeout:                comm.DefDialTimeout,
+			ConnTimeout:                comm.DefConnTimeout,
+			RecvBuffSize:               comm.DefRecvBuffSize,
+			SendBuffSize:               comm.DefSendBuffSize,
 		}
 
 		selfID := api.PeerIdentityType(config.InternalEndpoint)

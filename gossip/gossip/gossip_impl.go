@@ -97,7 +97,14 @@ func NewGossipService(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 		g.certPuller.Remove(string(pkiID))
 	}, sa)
 
-	g.comm, err = comm.NewCommInstance(s, conf.TLSCerts, g.idMapper, selfIdentity, secureDialOpts, sa, gossipMetrics.CommMetrics)
+	commConfig := comm.CommConfig{
+		DialTimeout:  conf.DialTimeout,
+		ConnTimeout:  conf.ConnTimeout,
+		RecvBuffSize: conf.RecvBuffSize,
+		SendBuffSize: conf.SendBuffSize,
+	}
+	g.comm, err = comm.NewCommInstance(s, conf.TLSCerts, g.idMapper, selfIdentity, secureDialOpts, sa,
+		gossipMetrics.CommMetrics, commConfig)
 
 	if err != nil {
 		lgr.Error("Failed instntiating communication layer:", err)

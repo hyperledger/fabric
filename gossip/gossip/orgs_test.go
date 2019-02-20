@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/gossip/api"
+	gcomm "github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
@@ -125,6 +126,10 @@ func newGossipInstanceWithGRPCWithExternalEndpoint(id int, port int, gRPCServer 
 		DigestWaitTime:             algo.DefDigestWaitTime,
 		RequestWaitTime:            algo.DefRequestWaitTime,
 		ResponseWaitTime:           algo.DefResponseWaitTime,
+		DialTimeout:                gcomm.DefDialTimeout,
+		ConnTimeout:                gcomm.DefConnTimeout,
+		RecvBuffSize:               gcomm.DefRecvBuffSize,
+		SendBuffSize:               gcomm.DefSendBuffSize,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	g := NewGossipService(conf, gRPCServer.Server(), mcs, mcs, selfID,
