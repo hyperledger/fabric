@@ -21,8 +21,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var chaincodePackageCmd *cobra.Command
-
 // PlatformRegistry defines the interface to get the code bytes
 // for a chaincode given the type and path
 type PlatformRegistry interface {
@@ -37,11 +35,10 @@ type Writer interface {
 // Packager holds the dependencies needed to package
 // a chaincode and write it
 type Packager struct {
-	ChaincodeCmdFactory *CmdFactory
-	Command             *cobra.Command
-	Input               *PackageInput
-	PlatformRegistry    PlatformRegistry
-	Writer              Writer
+	Command          *cobra.Command
+	Input            *PackageInput
+	PlatformRegistry PlatformRegistry
+	Writer           Writer
 }
 
 // PackageInput holds the input parameters for packaging a
@@ -53,9 +50,27 @@ type PackageInput struct {
 	Label      string
 }
 
-// packageCmd returns the cobra command for packaging chaincode
-func packageCmd(cf *CmdFactory, p *Packager) *cobra.Command {
-	chaincodePackageCmd = &cobra.Command{
+// Validate checks for the required inputs
+func (p *PackageInput) Validate() error {
+	if p.Path == "" {
+		return errors.New("chaincode path must be specified")
+	}
+	if p.Type == "" {
+		return errors.New("chaincode language must be specified")
+	}
+	if p.OutputFile == "" {
+		return errors.New("output file must be specified")
+	}
+	if p.Label == "" {
+		return errors.New("package label must be specified")
+	}
+
+	return nil
+}
+
+// PackageCmd returns the cobra command for packaging chaincode
+func PackageCmd(p *Packager) *cobra.Command {
+	chaincodePackageCmd := &cobra.Command{
 		Use:       "package [outputfile]",
 		Short:     "Package a chaincode",
 		Long:      "Package a chaincode and write the package to a file.",
@@ -65,14 +80,13 @@ func packageCmd(cf *CmdFactory, p *Packager) *cobra.Command {
 				pr := platforms.NewRegistry(platforms.SupportedPlatforms...)
 
 				p = &Packager{
-					ChaincodeCmdFactory: cf,
-					PlatformRegistry:    pr,
-					Writer:              &persistence.FilesystemIO{},
+					PlatformRegistry: pr,
+					Writer:           &persistence.FilesystemIO{},
 				}
 			}
 			p.Command = cmd
 
-			return p.packageChaincode(args)
+			return p.PackageChaincode(args)
 		},
 	}
 	flagList := []string{
@@ -88,19 +102,19 @@ func packageCmd(cf *CmdFactory, p *Packager) *cobra.Command {
 	return chaincodePackageCmd
 }
 
-// packageChaincode packages the chaincode.
-func (p *Packager) packageChaincode(args []string) error {
+// PackageChaincode packages a chaincode.
+func (p *Packager) PackageChaincode(args []string) error {
 	if p.Command != nil {
 		// Parsing of the command line is done so silence cmd usage
 		p.Command.SilenceUsage = true
 	}
 
 	if len(args) != 1 {
-		return errors.New("output file not specified or invalid number of args (filename should be the only arg)")
+		return errors.New("invalid number of args. expected only the output file")
 	}
 	p.setInput(args[0])
 
-	return p.packageCC()
+	return p.Package()
 }
 
 func (p *Packager) setInput(outputFile string) {
@@ -112,10 +126,10 @@ func (p *Packager) setInput(outputFile string) {
 	}
 }
 
-// packageCC packages chaincodes into the package type,
+// Package packages chaincodes into the package type,
 // (.tar.gz) used by _lifecycle and writes it to disk
-func (p *Packager) packageCC() error {
-	err := p.validateInput()
+func (p *Packager) Package() error {
+	err := p.Input.Validate()
 	if err != nil {
 		return err
 	}
@@ -130,21 +144,6 @@ func (p *Packager) packageCC() error {
 		err = errors.Wrapf(err, "error writing chaincode package to %s", p.Input.OutputFile)
 		logger.Error(err.Error())
 		return err
-	}
-
-	return nil
-}
-
-// validateInput checks for the required inputs (chaincode language and path)
-func (p *Packager) validateInput() error {
-	if p.Input.Path == "" {
-		return errors.New("chaincode path must be set")
-	}
-	if p.Input.Type == "" {
-		return errors.New("chaincode language must be set")
-	}
-	if p.Input.Label == "" {
-		return errors.New("package label must be set")
 	}
 
 	return nil
@@ -166,8 +165,7 @@ func (p *Packager) getTarGzBytes() ([]byte, error) {
 
 	codeBytes, err := p.PlatformRegistry.GetDeploymentPayload(strings.ToUpper(p.Input.Type), p.Input.Path)
 	if err != nil {
-		err = errors.WithMessage(err, "error getting chaincode bytes")
-		return nil, err
+		return nil, errors.WithMessage(err, "error getting chaincode bytes")
 	}
 
 	codePackageName := "Code-Package.tar.gz"

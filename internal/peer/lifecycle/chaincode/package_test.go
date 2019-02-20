@@ -4,213 +4,172 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package chaincode
+package chaincode_test
 
 import (
-	"errors"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"testing"
-
-	"github.com/hyperledger/fabric/internal/peer/common"
+	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
-	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
-	"github.com/stretchr/testify/assert"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-//go:generate counterfeiter -o mock/writer.go -fake-name Writer . writer
-type writer interface {
-	Writer
-}
+var _ = Describe("Package", func() {
+	Describe("Packager", func() {
+		var (
+			mockPlatformRegistry *mock.PlatformRegistry
+			mockWriter           *mock.Writer
+			input                *chaincode.PackageInput
+			packager             *chaincode.Packager
+		)
 
-//go:generate counterfeiter -o mock/platform_registry.go -fake-name PlatformRegistry . platformRegistryIntf
-type platformRegistryIntf interface {
-	PlatformRegistry
-}
+		BeforeEach(func() {
+			mockPlatformRegistry = &mock.PlatformRegistry{}
 
-func TestMain(m *testing.M) {
-	err := msptesttools.LoadMSPSetupForTesting()
-	if err != nil {
-		panic(fmt.Sprintf("Fatal error when reading MSP config: %s", err))
-	}
+			input = &chaincode.PackageInput{
+				OutputFile: "testPackage",
+				Path:       "testPath",
+				Type:       "testType",
+				Label:      "testLabel",
+			}
 
-	os.Exit(m.Run())
-}
+			mockWriter = &mock.Writer{}
 
-func newTempDir() string {
-	tempDir, err := ioutil.TempDir("/tmp", "packagetest-")
-	if err != nil {
-		panic(err)
-	}
-	return tempDir
-}
+			packager = &chaincode.Packager{
+				PlatformRegistry: mockPlatformRegistry,
+				Writer:           mockWriter,
+				Input:            input,
+			}
+		})
 
-func mockChaincodeCmdFactoryForTest(sign bool) (*CmdFactory, error) {
-	var signer identity.SignerSerializer
-	var err error
-	if sign {
-		signer, err = common.GetDefaultSigner()
-		if err != nil {
-			return nil, fmt.Errorf("Get default signer error: %v", err)
-		}
-	}
+		It("packages chaincodes", func() {
+			err := packager.Package()
+			Expect(err).NotTo(HaveOccurred())
+		})
 
-	cf := &CmdFactory{Signer: signer}
-	return cf, nil
-}
+		Context("when the path is not provided", func() {
+			BeforeEach(func() {
+				input.Path = ""
+			})
 
-func newPackagerForTest(t *testing.T, pr PlatformRegistry, w Writer, sign bool) *Packager {
-	if pr == nil {
-		pr = &mock.PlatformRegistry{}
-	}
+			It("returns an error", func() {
+				err := packager.Package()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("chaincode path must be specified"))
+			})
+		})
 
-	if w == nil {
-		w = &mock.Writer{}
-	}
+		Context("when the type is not provided", func() {
+			BeforeEach(func() {
+				input.Type = ""
+			})
 
-	mockCF, err := mockChaincodeCmdFactoryForTest(sign)
-	if err != nil {
-		t.Fatal("error creating mock ChaincodeCmdFactory", err)
-	}
+			It("returns an error", func() {
+				err := packager.Package()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("chaincode language must be specified"))
+			})
+		})
 
-	p := &Packager{
-		ChaincodeCmdFactory: mockCF,
-		PlatformRegistry:    pr,
-		Writer:              w,
-	}
+		Context("when the output file is not provided", func() {
+			BeforeEach(func() {
+				input.OutputFile = ""
+			})
 
-	return p
-}
+			It("returns an error", func() {
+				err := packager.Package()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("output file must be specified"))
+			})
+		})
 
-func TestPackageCC(t *testing.T) {
-	assert := assert.New(t)
+		Context("when the label is not provided", func() {
+			BeforeEach(func() {
+				input.Label = ""
+			})
 
-	t.Run("success", func(t *testing.T) {
-		ResetFlags()
+			It("returns an error", func() {
+				err := packager.Package()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("package label must be specified"))
+			})
+		})
 
-		p := newPackagerForTest(t, nil, nil, false)
-		args := []string{"output"}
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		packageLabel = "label"
+		Context("when the platform registry fails to get the deployment payload", func() {
+			BeforeEach(func() {
+				mockPlatformRegistry.GetDeploymentPayloadReturns(nil, errors.New("americano"))
+			})
 
-		err := p.packageChaincode(args)
-		assert.NoError(err)
+			It("returns an error", func() {
+				err := packager.Package()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("error getting chaincode bytes: americano"))
+			})
+		})
+
+		Context("when writing the file fails", func() {
+			BeforeEach(func() {
+				mockWriter.WriteFileReturns(errors.New("espresso"))
+			})
+
+			It("returns an error", func() {
+				err := packager.Package()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("error writing chaincode package to testPackage: espresso"))
+			})
+		})
 	})
 
-	t.Run("input validation failure", func(t *testing.T) {
-		ResetFlags()
+	Describe("PackageCmd", func() {
+		var (
+			packageCmd *cobra.Command
+		)
 
-		p := newPackagerForTest(t, nil, nil, false)
-		args := []string{"output"}
-		chaincodePath = ""
-		chaincodeLang = "golang"
+		BeforeEach(func() {
+			packageCmd = chaincode.PackageCmd(nil)
+			packageCmd.SetArgs([]string{
+				"testPackage",
+				"--path=testPath",
+				"--lang=golang",
+				"--label=testLabel",
+			})
+		})
 
-		err := p.packageChaincode(args)
-		assert.Error(err)
-		assert.Equal("chaincode path must be set", err.Error())
+		It("sets up the packager and attempts to package the chaincode", func() {
+			err := packageCmd.Execute()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("error getting chaincode bytes"))
+		})
+
+		Context("when more than one argument is provided", func() {
+			BeforeEach(func() {
+				packageCmd = chaincode.PackageCmd(nil)
+				packageCmd.SetArgs([]string{
+					"testPackage",
+					"whatthe",
+				})
+			})
+
+			It("returns an error", func() {
+				err := packageCmd.Execute()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("invalid number of args. expected only the output file"))
+			})
+		})
+
+		Context("when no argument is provided", func() {
+			BeforeEach(func() {
+				packageCmd = chaincode.PackageCmd(nil)
+				packageCmd.SetArgs([]string{})
+			})
+
+			It("returns an error", func() {
+				err := packageCmd.Execute()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("invalid number of args. expected only the output file"))
+			})
+		})
 	})
-
-	t.Run("getting the chaincode bytes fails", func(t *testing.T) {
-		ResetFlags()
-
-		mockPlatformRegistry := &mock.PlatformRegistry{}
-		mockPlatformRegistry.GetDeploymentPayloadReturns(nil, errors.New("seitan"))
-		p := newPackagerForTest(t, mockPlatformRegistry, nil, false)
-		args := []string{"outputFile"}
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		packageLabel = "label"
-
-		err := p.packageChaincode(args)
-		assert.Error(err)
-		assert.Equal("error getting chaincode bytes: seitan", err.Error())
-	})
-
-	t.Run("writing the file fails", func(t *testing.T) {
-		mockWriter := &mock.Writer{}
-		mockWriter.WriteFileReturns(errors.New("quinoa"))
-		p := newPackagerForTest(t, nil, mockWriter, false)
-		args := []string{"outputFile"}
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		packageLabel = "label"
-
-		err := p.packageChaincode(args)
-		assert.Error(err)
-		assert.Equal("error writing chaincode package to outputFile: quinoa", err.Error())
-	})
-}
-
-func TestPackagerValidateInput(t *testing.T) {
-	defer ResetFlags()
-	assert := assert.New(t)
-	p := newPackagerForTest(t, nil, nil, false)
-
-	t.Run("success - no unsupported flags set", func(t *testing.T) {
-		ResetFlags()
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		packageLabel = "label"
-		p.setInput("outputFile")
-
-		err := p.validateInput()
-		assert.NoError(err)
-	})
-
-	t.Run("path not set", func(t *testing.T) {
-		ResetFlags()
-		chaincodePath = ""
-		chaincodeLang = "golang"
-		p.setInput("outputFile")
-
-		err := p.validateInput()
-		assert.Error(err)
-		assert.Equal("chaincode path must be set", err.Error())
-	})
-
-	t.Run("language not set", func(t *testing.T) {
-		ResetFlags()
-		chaincodeLang = ""
-		chaincodePath = "testPath"
-		p.setInput("outputFile")
-
-		err := p.validateInput()
-		assert.Error(err)
-		assert.Equal("chaincode language must be set", err.Error())
-	})
-
-}
-
-func TestPackageCmd(t *testing.T) {
-	defer ResetFlags()
-	assert := assert.New(t)
-
-	t.Run("success", func(t *testing.T) {
-		ResetFlags()
-		chaincodePath = "testPath"
-		chaincodeLang = "golang"
-		packageLabel = "label"
-		outputFile := "testFile"
-
-		p := newPackagerForTest(t, nil, nil, false)
-		cmd := packageCmd(nil, p)
-		cmd.SetArgs([]string{outputFile})
-		err := cmd.Execute()
-		assert.NoError(err)
-	})
-
-	t.Run("invalid number of args", func(t *testing.T) {
-		ResetFlags()
-		outputFile := "testFile"
-
-		p := newPackagerForTest(t, nil, nil, false)
-		cmd := packageCmd(nil, p)
-		cmd.SetArgs([]string{outputFile, "extraArg"})
-		err := cmd.Execute()
-		assert.Error(err)
-		assert.Contains(err.Error(), "output file not specified or invalid number of args")
-	})
-}
+})

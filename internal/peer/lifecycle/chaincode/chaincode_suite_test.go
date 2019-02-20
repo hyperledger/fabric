@@ -14,6 +14,16 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+//go:generate counterfeiter -o mock/writer.go -fake-name Writer . writer
+type writer interface {
+	chaincode.Writer
+}
+
+//go:generate counterfeiter -o mock/platform_registry.go -fake-name PlatformRegistry . platformRegistryIntf
+type platformRegistryIntf interface {
+	chaincode.PlatformRegistry
+}
+
 //go:generate counterfeiter -o mock/reader.go -fake-name Reader . reader
 type reader interface {
 	chaincode.Reader
