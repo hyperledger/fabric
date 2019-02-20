@@ -43,7 +43,7 @@ func TestTokenOutputResponseParser_ParseResponse(t *testing.T) {
 	}}
 	err := parser.ParseResponse(resp)
 	assert.NoError(t, err)
-	assert.Equal(t, "Token[0] = [{\n    \"id\": {\n        \"tx_id\": \"0\",\n        \"index\": 1\n    },\n    \"type\": \"token_type\"\n}]", buffer.String())
+	assert.Equal(t, "Token = {\"id\":{\"tx_id\":\"0\",\"index\":1},\"type\":\"token_type\"}", buffer.String())
 }
 
 func TestOperationResponseParser_ParseResponse(t *testing.T) {

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package client
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/pkg/errors"
@@ -35,6 +36,10 @@ type ClientConfig struct {
 	Orderer       ConnectionConfig
 	CommitterPeer ConnectionConfig
 	ProverPeer    ConnectionConfig
+}
+
+func (config *ClientConfig) ToJSon() ([]byte, error) {
+	return json.Marshal(config)
 }
 
 func ValidateClientConfig(config ClientConfig) error {

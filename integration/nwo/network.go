@@ -821,6 +821,12 @@ func (n *Network) Discover(command Command) (*gexec.Session, error) {
 	return n.StartSession(cmd, command.SessionName())
 }
 
+// Token starts a gexec.Session for the provided token command.
+func (n *Network) Token(command Command) (*gexec.Session, error) {
+	cmd := NewCommand(n.Components.Token(), command)
+	return n.StartSession(cmd, command.SessionName())
+}
+
 // ZooKeeperRunner returns a runner for a ZooKeeper instance.
 func (n *Network) ZooKeeperRunner(idx int) *runner.ZooKeeper {
 	colorCode := n.nextColor()

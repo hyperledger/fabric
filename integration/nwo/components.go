@@ -57,6 +57,10 @@ func (c *Components) Build(args ...string) {
 	discover, err := gexec.Build("github.com/hyperledger/fabric/cmd/discover", args...)
 	Expect(err).NotTo(HaveOccurred())
 	c.Paths["discover"] = discover
+
+	token, err := gexec.Build("github.com/hyperledger/fabric/cmd/token", args...)
+	Expect(err).NotTo(HaveOccurred())
+	c.Paths["token"] = token
 }
 
 func (c *Components) Cleanup() {
@@ -73,3 +77,4 @@ func (c *Components) ConfigTxGen() string { return c.Paths["configtxgen"] }
 func (c *Components) Orderer() string     { return c.Paths["orderer"] }
 func (c *Components) Peer() string        { return c.Paths["peer"] }
 func (c *Components) Discover() string    { return c.Paths["discover"] }
+func (c *Components) Token() string       { return c.Paths["token"] }
