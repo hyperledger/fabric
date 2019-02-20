@@ -28,10 +28,6 @@ import (
 
 func init() {
 	util.SetupTestLogging()
-	shortenedWaitTime := time.Millisecond * 300
-	algo.SetDigestWaitTime(shortenedWaitTime / 2)
-	algo.SetRequestWaitTime(shortenedWaitTime)
-	algo.SetResponseWaitTime(shortenedWaitTime)
 }
 
 var (
@@ -403,6 +399,7 @@ func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons pro
 	if msgCons == nil {
 		msgCons = func(_ *proto.SignedGossipMessage) {}
 	}
+	shortenedWaitTime := time.Millisecond * 300
 	config := pull.Config{
 		MsgType:           proto.PullMsgType_IDENTITY_MSG,
 		PeerCountToSelect: 1,
@@ -410,6 +407,11 @@ func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons pro
 		Tag:               proto.GossipMessage_EMPTY,
 		Channel:           nil,
 		ID:                "id1",
+		PullEngineConfig: algo.PullEngineConfig{
+			DigestWaitTime:   shortenedWaitTime / 2,
+			RequestWaitTime:  shortenedWaitTime,
+			ResponseWaitTime: shortenedWaitTime,
+		},
 	}
 	sender := &senderMock{}
 	memberSvc := &membershipSvcMock{}

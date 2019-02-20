@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/metrics/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -37,6 +36,7 @@ import (
 
 type msgMutator func(message *proto.Envelope)
 
+var shortenedWaitTime = time.Millisecond * 300
 var conf = Config{
 	ID:                          "test",
 	PublishStateInfoInterval:    time.Millisecond * 100,
@@ -47,16 +47,15 @@ var conf = Config{
 	BlockExpirationInterval:     time.Second * 6,
 	StateInfoCacheSweepInterval: time.Second,
 	TimeForMembershipTracker:    time.Second * 5,
+	DigestWaitTime:              shortenedWaitTime / 2,
+	RequestWaitTime:             shortenedWaitTime,
+	ResponseWaitTime:            shortenedWaitTime,
 }
 
 var disabledMetrics = metrics.NewGossipMetrics(&disabled.Provider{}).MembershipMetrics
 
 func init() {
 	util.SetupTestLogging()
-	shortenedWaitTime := time.Millisecond * 300
-	algo.SetDigestWaitTime(shortenedWaitTime / 2)
-	algo.SetRequestWaitTime(shortenedWaitTime)
-	algo.SetResponseWaitTime(shortenedWaitTime)
 	factory.InitFactories(nil)
 }
 
