@@ -247,6 +247,9 @@ func newGossipInstanceWithGrpcMcsMetrics(id int, port int, gRPCServer *corecomm.
 		RequestStateInfoInterval:   time.Duration(1) * time.Second,
 		TimeForMembershipTracker:   5 * time.Second,
 		TLSCerts:                   certs,
+		DigestWaitTime:             algo.DefDigestWaitTime,
+		RequestWaitTime:            algo.DefRequestWaitTime,
+		ResponseWaitTime:           algo.DefResponseWaitTime,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	g := NewGossipService(conf, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID,
@@ -267,7 +270,7 @@ func newGossipInstanceWithGRPC(id int, port int, gRPCServer *corecomm.GRPCServer
 func newGossipInstanceWithGRPCWithOnlyPull(id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, mcs api.MessageCryptoService,
 	metrics *metrics.GossipMetrics, bootPorts ...int) Gossip {
-
+	shortenedWaitTime := time.Duration(200) * time.Millisecond
 	conf := &Config{
 		BootstrapPeers:             bootPeersWithPorts(bootPorts...),
 		ID:                         fmt.Sprintf("p%d", id),
@@ -285,6 +288,9 @@ func newGossipInstanceWithGRPCWithOnlyPull(id int, port int, gRPCServer *corecom
 		RequestStateInfoInterval:   time.Duration(1) * time.Second,
 		TimeForMembershipTracker:   5 * time.Second,
 		TLSCerts:                   certs,
+		DigestWaitTime:             shortenedWaitTime,
+		RequestWaitTime:            shortenedWaitTime,
+		ResponseWaitTime:           shortenedWaitTime,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	g := NewGossipService(conf, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID,
@@ -377,17 +383,6 @@ func TestPull(t *testing.T) {
 	// Scenario: Turn off forwarding and use only pull-based gossip.
 	// First phase: Ensure full membership view for all nodes
 	// Second phase: Disseminate 10 messages and ensure all nodes got them
-
-	shortenedWaitTime := time.Duration(200) * time.Millisecond
-	algo.SetDigestWaitTime(shortenedWaitTime)
-	algo.SetRequestWaitTime(shortenedWaitTime)
-	algo.SetResponseWaitTime(shortenedWaitTime)
-
-	defer func() {
-		algo.SetDigestWaitTime(time.Duration(1) * time.Second)
-		algo.SetRequestWaitTime(time.Duration(1) * time.Second)
-		algo.SetResponseWaitTime(time.Duration(2) * time.Second)
-	}()
 
 	stopped := int32(0)
 	go waitForTestCompletion(&stopped, t)

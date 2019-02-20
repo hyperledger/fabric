@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/filter"
+	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
@@ -1054,6 +1055,11 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 		PeerCountToSelect: g.conf.PullPeerNum,
 		PullInterval:      g.conf.PullInterval,
 		Tag:               proto.GossipMessage_EMPTY,
+		PullEngineConfig: algo.PullEngineConfig{
+			DigestWaitTime:   g.conf.DigestWaitTime,
+			RequestWaitTime:  g.conf.RequestWaitTime,
+			ResponseWaitTime: g.conf.ResponseWaitTime,
+		},
 	}
 	pkiIDFromMsg := func(msg *proto.SignedGossipMessage) string {
 		identityMsg := msg.GetPeerIdentity()

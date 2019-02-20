@@ -23,9 +23,6 @@ import (
 
 func init() {
 	util.SetupTestLogging()
-	SetDigestWaitTime(time.Duration(100) * time.Millisecond)
-	SetRequestWaitTime(time.Duration(200) * time.Millisecond)
-	SetResponseWaitTime(time.Duration(200) * time.Millisecond)
 }
 
 type messageHook func(interface{})
@@ -73,7 +70,13 @@ func newPushPullTestInstance(name string, peers map[string]*pullTestInstance) *p
 		name:              name,
 	}
 
-	inst.PullEngine = NewPullEngine(inst, time.Duration(500)*time.Millisecond)
+	config := PullEngineConfig{
+		DigestWaitTime:   time.Duration(100) * time.Millisecond,
+		RequestWaitTime:  time.Duration(200) * time.Millisecond,
+		ResponseWaitTime: time.Duration(200) * time.Millisecond,
+	}
+
+	inst.PullEngine = NewPullEngine(inst, time.Duration(500)*time.Millisecond, config)
 
 	peers[name] = inst
 	go func() {
@@ -541,21 +544,21 @@ func TestFilter(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
-	preDigestWaitTime := util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime)
-	preRequestWaitTime := util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime)
-	preResponseWaitTime := util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime)
+	preDigestWaitTime := util.GetDurationOrDefault("peer.gossip.digestWaitTime", DefDigestWaitTime)
+	preRequestWaitTime := util.GetDurationOrDefault("peer.gossip.requestWaitTime", DefRequestWaitTime)
+	preResponseWaitTime := util.GetDurationOrDefault("peer.gossip.responseWaitTime", DefResponseWaitTime)
 	defer func() {
-		SetDigestWaitTime(preDigestWaitTime)
-		SetRequestWaitTime(preRequestWaitTime)
-		SetResponseWaitTime(preResponseWaitTime)
+		viper.Set("peer.gossip.digestWaitTime", preDigestWaitTime)
+		viper.Set("peer.gossip.requestWaitTime", preRequestWaitTime)
+		viper.Set("peer.gossip.responseWaitTime", preResponseWaitTime)
 	}()
 
 	// Check if we can read default duration when no properties are
 	// defined in config file.
 	viper.Reset()
-	assert.Equal(t, time.Duration(1000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime))
-	assert.Equal(t, time.Duration(1500)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime))
-	assert.Equal(t, time.Duration(2000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime))
+	assert.Equal(t, time.Duration(1000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.digestWaitTime", DefDigestWaitTime))
+	assert.Equal(t, time.Duration(1500)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.requestWaitTime", DefRequestWaitTime))
+	assert.Equal(t, time.Duration(2000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.responseWaitTime", DefResponseWaitTime))
 
 	// Check if the properties in the config file (core.yaml)
 	// are set to the desired duration.
@@ -567,9 +570,9 @@ func TestDefaultConfig(t *testing.T) {
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()
 	assert.NoError(t, err)
-	assert.Equal(t, time.Duration(1000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime))
-	assert.Equal(t, time.Duration(1500)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime))
-	assert.Equal(t, time.Duration(2000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime))
+	assert.Equal(t, time.Duration(1000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.digestWaitTime", DefDigestWaitTime))
+	assert.Equal(t, time.Duration(1500)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.requestWaitTime", DefRequestWaitTime))
+	assert.Equal(t, time.Duration(2000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.responseWaitTime", DefResponseWaitTime))
 }
 
 func Strcmp(a interface{}, b interface{}) bool {
