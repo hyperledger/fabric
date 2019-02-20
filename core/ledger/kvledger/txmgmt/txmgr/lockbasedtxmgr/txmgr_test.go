@@ -1083,8 +1083,6 @@ func producePvtdata(t *testing.T, txNum uint64, nsColls []string, keys []string,
 func TestRemoveStaleAndCommitPvtDataOfOldBlocks(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
-		testLedgerID := "testvalidationandcommitofoldpvtdata"
-		testEnv.init(t, testLedgerID, nil)
 		testValidationAndCommitOfOldPvtData(t, testEnv)
 		testEnv.cleanup()
 	}
