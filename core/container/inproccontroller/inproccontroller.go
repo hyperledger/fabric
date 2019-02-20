@@ -9,6 +9,7 @@ package inproccontroller
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -51,8 +52,10 @@ func (s SysCCRegisteredErr) Error() string {
 // Registry stores registered system chaincodes.
 // It implements container.VMProvider and scc.Registrar
 type Registry struct {
-	typeRegistry     map[string]*inprocContainer
-	instRegistry     map[string]*inprocContainer
+	mutex        sync.Mutex
+	typeRegistry map[string]*inprocContainer
+	instRegistry map[string]*inprocContainer
+
 	ChaincodeSupport ccintf.CCSupport
 }
 
@@ -75,6 +78,9 @@ func (r *Registry) NewVM() container.VM {
 
 //Register registers system chaincode with given path. The deploy should be called to initialize
 func (r *Registry) Register(ccid *ccintf.CCID, cc shim.Chaincode) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	name := ccid.GetName()
 	inprocLogger.Debugf("Registering chaincode instance: %s", name)
 	tmp := r.typeRegistry[name]
@@ -86,7 +92,31 @@ func (r *Registry) Register(ccid *ccintf.CCID, cc shim.Chaincode) error {
 	return nil
 }
 
-//InprocVM is a vm. It is identified by a executable name
+func (r *Registry) getType(name string) *inprocContainer {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	return r.typeRegistry[name]
+}
+
+func (r *Registry) getInstance(name string) *inprocContainer {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	return r.instRegistry[name]
+}
+
+func (r *Registry) setInstance(name string, inst *inprocContainer) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.instRegistry[name] = inst
+}
+
+func (r *Registry) removeInstance(name string) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	delete(r.instRegistry, name)
+}
+
+// InprocVM is a vm. It is identified by a executable name
 type InprocVM struct {
 	id       string
 	registry *Registry
@@ -100,7 +130,7 @@ func NewInprocVM(r *Registry) *InprocVM {
 }
 
 func (vm *InprocVM) getInstance(ipctemplate *inprocContainer, instName string, args []string, env []string) (*inprocContainer, error) {
-	ipc := vm.registry.instRegistry[instName]
+	ipc := vm.registry.getInstance(instName)
 	if ipc != nil {
 		inprocLogger.Warningf("chaincode instance exists for %s", instName)
 		return ipc, nil
@@ -112,7 +142,7 @@ func (vm *InprocVM) getInstance(ipctemplate *inprocContainer, instName string, a
 		chaincode:        ipctemplate.chaincode,
 		stopChan:         make(chan struct{}),
 	}
-	vm.registry.instRegistry[instName] = ipc
+	vm.registry.setInstance(instName, ipc)
 	inprocLogger.Debugf("chaincode instance created for %s", instName)
 	return ipc, nil
 }
@@ -178,8 +208,7 @@ func (ipc *inprocContainer) launchInProc(id string, args []string, env []string)
 func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
 	path := ccid.GetName()
 
-	ipctemplate := vm.registry.typeRegistry[path]
-
+	ipctemplate := vm.registry.getType(path)
 	if ipctemplate == nil {
 		return fmt.Errorf(fmt.Sprintf("%s not registered", path))
 	}
@@ -214,15 +243,14 @@ func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesTo
 func (vm *InprocVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
 	path := ccid.GetName()
 
-	ipctemplate := vm.registry.typeRegistry[path]
+	ipctemplate := vm.registry.getType(path)
 	if ipctemplate == nil {
 		return fmt.Errorf("%s not registered", path)
 	}
 
 	instName := vm.GetVMName(ccid)
 
-	ipc := vm.registry.instRegistry[instName]
-
+	ipc := vm.registry.getInstance(instName)
 	if ipc == nil {
 		return fmt.Errorf("%s not found", instName)
 	}
@@ -232,8 +260,7 @@ func (vm *InprocVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremo
 	}
 
 	ipc.stopChan <- struct{}{}
-
-	delete(vm.registry.instRegistry, instName)
+	vm.registry.removeInstance(instName)
 	//TODO stop
 	return nil
 }
