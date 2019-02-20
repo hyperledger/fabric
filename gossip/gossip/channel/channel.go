@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/filter"
+	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/metrics"
@@ -42,6 +43,9 @@ type Config struct {
 	BlockExpirationInterval     time.Duration
 	StateInfoCacheSweepInterval time.Duration
 	TimeForMembershipTracker    time.Duration
+	DigestWaitTime              time.Duration
+	RequestWaitTime             time.Duration
+	ResponseWaitTime            time.Duration
 }
 
 // GossipChannel defines an object that deals with all channel-related messages
@@ -404,6 +408,11 @@ func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 		PeerCountToSelect: gc.GetConf().PullPeerNum,
 		PullInterval:      gc.GetConf().PullInterval,
 		Tag:               proto.GossipMessage_CHAN_AND_ORG,
+		PullEngineConfig: algo.PullEngineConfig{
+			DigestWaitTime:   gc.GetConf().DigestWaitTime,
+			RequestWaitTime:  gc.GetConf().RequestWaitTime,
+			ResponseWaitTime: gc.GetConf().ResponseWaitTime,
+		},
 	}
 	seqNumFromMsg := func(msg *proto.SignedGossipMessage) string {
 		dataMsg := msg.GetDataMsg()

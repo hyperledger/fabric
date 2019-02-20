@@ -54,6 +54,7 @@ type Config struct {
 	PeerCountToSelect int // Number of peers to initiate pull with
 	Tag               proto.GossipMessage_Tag
 	MsgType           proto.PullMsgType
+	PullEngineConfig  algo.PullEngineConfig
 }
 
 // IngressDigestFilter filters out entities in digests that are received from remote peers
@@ -140,7 +141,7 @@ func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 		itemID2Msg:   make(map[string]*proto.SignedGossipMessage),
 	}
 
-	p.engine = algo.NewPullEngineWithFilter(p, config.PullInterval, egressDigFilter.byContext())
+	p.engine = algo.NewPullEngineWithFilter(p, config.PullInterval, egressDigFilter.byContext(), config.PullEngineConfig)
 
 	if adapter.IngressDigFilter == nil {
 		// Create accept all filter

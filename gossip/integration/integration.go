@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/pkg/errors"
@@ -54,6 +55,9 @@ func newConfig(selfEndpoint string, externalEndpoint string, certs *common.TLSCe
 		SkipBlockVerification:      viper.GetBool("peer.gossip.skipBlockVerification"),
 		TLSCerts:                   certs,
 		TimeForMembershipTracker:   util.GetDurationOrDefault("peer.gossip.membershipTrackerInterval", 5*time.Second),
+		DigestWaitTime:             util.GetDurationOrDefault("peer.gossip.digestWaitTime", algo.DefDigestWaitTime),
+		RequestWaitTime:            util.GetDurationOrDefault("peer.gossip.requestWaitTime", algo.DefRequestWaitTime),
+		ResponseWaitTime:           util.GetDurationOrDefault("peer.gossip.responseWaitTime", algo.DefResponseWaitTime),
 	}
 
 	return conf, nil

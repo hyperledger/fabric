@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/state/mocks"
@@ -366,6 +367,9 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 			PublishStateInfoInterval:   4 * time.Second,
 			TimeForMembershipTracker:   5 * time.Second,
 			TLSCerts:                   certs,
+			DigestWaitTime:             algo.DefDigestWaitTime,
+			RequestWaitTime:            algo.DefRequestWaitTime,
+			ResponseWaitTime:           algo.DefResponseWaitTime,
 		}
 
 		selfID := api.PeerIdentityType(config.InternalEndpoint)
