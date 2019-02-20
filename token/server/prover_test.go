@@ -70,11 +70,11 @@ var _ = Describe("Prover", func() {
 		fakePolicyChecker = &mock.PolicyChecker{}
 
 		tokenTransaction = &token.TokenTransaction{
-			Action: &token.TokenTransaction_PlainAction{
-				PlainAction: &token.PlainTokenAction{
-					Data: &token.PlainTokenAction_PlainImport{
-						PlainImport: &token.PlainImport{
-							Outputs: []*token.PlainOutput{{
+			Action: &token.TokenTransaction_TokenAction{
+				TokenAction: &token.TokenAction{
+					Data: &token.TokenAction_Issue{
+						Issue: &token.Issue{
+							Outputs: []*token.Token{{
 								Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 								Type:     "PDQ",
 								Quantity: 777,
@@ -88,15 +88,15 @@ var _ = Describe("Prover", func() {
 		fakeIssuer.RequestImportReturns(tokenTransaction, nil)
 
 		trTokenTransaction = &token.TokenTransaction{
-			Action: &token.TokenTransaction_PlainAction{
-				PlainAction: &token.PlainTokenAction{
-					Data: &token.PlainTokenAction_PlainTransfer{
-						PlainTransfer: &token.PlainTransfer{
+			Action: &token.TokenTransaction_TokenAction{
+				TokenAction: &token.TokenAction{
+					Data: &token.TokenAction_Transfer{
+						Transfer: &token.Transfer{
 							Inputs: []*token.TokenId{{
 								TxId:  "txid",
 								Index: 0,
 							}},
-							Outputs: []*token.PlainOutput{{
+							Outputs: []*token.Token{{
 								Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 								Type:     "PDQ",
 								Quantity: 777,
@@ -110,15 +110,15 @@ var _ = Describe("Prover", func() {
 		fakeTransactor.RequestTransferReturns(trTokenTransaction, nil)
 
 		redeemTokenTransaction = &token.TokenTransaction{
-			Action: &token.TokenTransaction_PlainAction{
-				PlainAction: &token.PlainTokenAction{
-					Data: &token.PlainTokenAction_PlainRedeem{
-						PlainRedeem: &token.PlainTransfer{
+			Action: &token.TokenTransaction_TokenAction{
+				TokenAction: &token.TokenAction{
+					Data: &token.TokenAction_Redeem{
+						Redeem: &token.Transfer{
 							Inputs: []*token.TokenId{{
 								TxId:  "txid",
 								Index: 0,
 							}},
-							Outputs: []*token.PlainOutput{{
+							Outputs: []*token.Token{{
 								Type:     "PDQ",
 								Quantity: 50,
 							}},
@@ -202,7 +202,7 @@ var _ = Describe("Prover", func() {
 					PlainExpectation: &token.PlainExpectation{
 						Payload: &token.PlainExpectation_ImportExpectation{
 							ImportExpectation: &token.PlainTokenExpectation{
-								Outputs: []*token.PlainOutput{{
+								Outputs: []*token.Token{{
 									Owner:    &token.TokenOwner{Raw: []byte("recipient")},
 									Type:     "XYZ",
 									Quantity: 99,
@@ -222,7 +222,7 @@ var _ = Describe("Prover", func() {
 					PlainExpectation: &token.PlainExpectation{
 						Payload: &token.PlainExpectation_TransferExpectation{
 							TransferExpectation: &token.PlainTokenExpectation{
-								Outputs: []*token.PlainOutput{{
+								Outputs: []*token.Token{{
 									Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 									Type:     "PDQ",
 									Quantity: 777,
@@ -508,7 +508,7 @@ var _ = Describe("Prover", func() {
 		})
 	})
 
-	Describe("Process RequestImport command", func() {
+	Describe("Process RequestIssue command", func() {
 		It("returns a signed command response", func() {
 			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
 			Expect(err).NotTo(HaveOccurred())
@@ -556,9 +556,9 @@ var _ = Describe("Prover", func() {
 		})
 	})
 
-	Describe("RequestImport", func() {
+	Describe("RequestIssue", func() {
 		It("gets an issuer", func() {
-			_, err := prover.RequestImport(context.Background(), command.Header, importRequest)
+			_, err := prover.RequestIssue(context.Background(), command.Header, importRequest)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeTMSManager.GetIssuerCallCount()).To(Equal(1))
@@ -569,7 +569,7 @@ var _ = Describe("Prover", func() {
 		})
 
 		It("uses the issuer to request an import", func() {
-			resp, err := prover.RequestImport(context.Background(), command.Header, importRequest)
+			resp, err := prover.RequestIssue(context.Background(), command.Header, importRequest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp).To(Equal(&token.CommandResponse_TokenTransaction{
 				TokenTransaction: tokenTransaction,
@@ -586,7 +586,7 @@ var _ = Describe("Prover", func() {
 			})
 
 			It("returns the error", func() {
-				_, err := prover.RequestImport(context.Background(), command.Header, importRequest)
+				_, err := prover.RequestIssue(context.Background(), command.Header, importRequest)
 				Expect(err).To(MatchError("boing boing"))
 			})
 		})
@@ -597,7 +597,7 @@ var _ = Describe("Prover", func() {
 			})
 
 			It("returns the error", func() {
-				_, err := prover.RequestImport(context.Background(), command.Header, importRequest)
+				_, err := prover.RequestIssue(context.Background(), command.Header, importRequest)
 				Expect(err).To(MatchError("watermelon"))
 			})
 		})
@@ -853,7 +853,7 @@ var _ = Describe("Prover", func() {
 				},
 			}
 
-			plainOutputs := []*token.PlainOutput{
+			outputs := []*token.Token{
 				{
 					Owner:    &token.TokenOwner{Raw: []byte("recipient1")},
 					Type:     "XYZ1",
@@ -866,11 +866,11 @@ var _ = Describe("Prover", func() {
 				},
 			}
 			expectedTokenTx = &token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainImport{
-							PlainImport: &token.PlainImport{
-								Outputs: plainOutputs,
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Issue{
+							Issue: &token.Issue{
+								Outputs: outputs,
 							},
 						},
 					},
@@ -878,9 +878,9 @@ var _ = Describe("Prover", func() {
 			}
 		})
 
-		Describe("RequestImport", func() {
+		Describe("RequestIssue", func() {
 			It("returns a TokenTransaction response", func() {
-				resp, err := prover.RequestImport(context.Background(), command.Header, importRequest)
+				resp, err := prover.RequestIssue(context.Background(), command.Header, importRequest)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp).To(Equal(&token.CommandResponse_TokenTransaction{
 					TokenTransaction: expectedTokenTx,
@@ -1166,7 +1166,7 @@ var _ = Describe("ProverListUnspentTokens", func() {
 			Command:   marshaledCommand,
 			Signature: []byte("command-signature"),
 		}
-		outputToken, err := proto.Marshal(&token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: 100})
+		outputToken, err := proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: 100})
 		Expect(err).NotTo(HaveOccurred())
 
 		key := generateKey("1", "0", "tokenOutput")
@@ -1277,16 +1277,16 @@ var _ = Describe("Prover Transfer using TMS", func() {
 			Signature: []byte("command-signature"),
 		}
 
-		outTokens := make([]*token.PlainOutput, 3)
-		outTokens[0] = &token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: 20}
-		outTokens[1] = &token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("Bob")}, Type: "XYZ", Quantity: 250}
-		outTokens[2] = &token.PlainOutput{Owner: &token.TokenOwner{Raw: []byte("Charlie")}, Type: "XYZ", Quantity: 30}
+		outTokens := make([]*token.Token, 3)
+		outTokens[0] = &token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: 20}
+		outTokens[1] = &token.Token{Owner: &token.TokenOwner{Raw: []byte("Bob")}, Type: "XYZ", Quantity: 250}
+		outTokens[2] = &token.Token{Owner: &token.TokenOwner{Raw: []byte("Charlie")}, Type: "XYZ", Quantity: 30}
 
 		tokenTx := &token.TokenTransaction{
-			Action: &token.TokenTransaction_PlainAction{
-				PlainAction: &token.PlainTokenAction{
-					Data: &token.PlainTokenAction_PlainTransfer{
-						PlainTransfer: &token.PlainTransfer{
+			Action: &token.TokenTransaction_TokenAction{
+				TokenAction: &token.TokenAction{
+					Data: &token.TokenAction_Transfer{
+						Transfer: &token.Transfer{
 							Inputs:  tokenIDs,
 							Outputs: outTokens,
 						},
@@ -1299,11 +1299,11 @@ var _ = Describe("Prover Transfer using TMS", func() {
 	BeforeEach(func() {
 		var err error
 		inTokens := make([][]byte, 2)
-		inTokens[0], err = proto.Marshal(&token.PlainOutput{
+		inTokens[0], err = proto.Marshal(&token.Token{
 			Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: 100})
 		Expect(err).NotTo(HaveOccurred())
 
-		inTokens[1], err = proto.Marshal(&token.PlainOutput{
+		inTokens[1], err = proto.Marshal(&token.Token{
 			Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: 200})
 		Expect(err).NotTo(HaveOccurred())
 

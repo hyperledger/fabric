@@ -54,22 +54,22 @@ package token;
 // the transaction's envelope header indicates a transaction of type
 // "Token"
 message TokenTransaction {
-    // action carries the content of this transaction.
+    // TokenAction carries the content of this transaction.
     oneof action {
-        PlainTokenAction plain_action = 1;
+        TokenAction token_action = 1;
     }
 }
 
-// PlainTokenAction governs the structure of a token action that is
-// subjected to no privacy restrictions
-message PlainTokenAction {
+// TokenAction governs the structure of the action
+// that a token undertakes
+message TokenAction {
     oneof data {
-        // A plaintext token import transaction
-        PlainImport plain_import = 1;
-        // A plaintext token transfer transaction
-        PlainTransfer plain_transfer = 2;
-        // A plaintext token redeem transaction
-        PlainTransfer plain_redeem = 3;
+        // An issue transaction
+        Issue issue = 1;
+        // A transfer transaction
+        Transfer transfer = 2;
+        // A redeem transaction
+        Transfer redeem = 3;
     }
 }
 
@@ -85,41 +85,42 @@ message TokenOwner {
 
     // The type of the identity
     Type type = 1;
-    // The serialization of an identity
+    // The serialization of the identity
     bytes raw = 2;
 }
 
-// PlainImport specifies an import of one or more tokens in plaintext format
-message PlainImport {
+// Issue specifies an issue of one or more tokens
+message Issue {
 
-    // An import transaction may contain one or more outputs
-    repeated PlainOutput outputs = 1;
+    // An issue transaction may contain one or more tokens
+    repeated Token outputs = 1;
 }
 
-// PlainTransfer specifies a transfer of one or more plaintext tokens to one or more outputs
-message PlainTransfer {
+// Transfer specifies a transfer of one or more tokens
+message Transfer {
 
     // The inputs to the transfer transaction are specified by their ID
     repeated TokenId inputs = 1;
 
-    // A transfer transaction may contain one or more outputs
-    repeated PlainOutput outputs = 2;
+    // A transfer transaction results in one or more tokens
+    repeated Token outputs = 2;
 }
 
-// A PlainOutput is the result of import and transfer transactions using plaintext tokens
-message PlainOutput {
+// Token is the result of issue and transfer transactions using plaintext tokens
+message Token {
 
-    // The owner is the serialization of a SerializedIdentity struct
+    // The token owner
     TokenOwner owner = 1;
 
     // The token type
     string type = 2;
 
-    // The quantity of tokens
+    // The quantity of units carried in the tokens
     uint64 quantity = 3;
 }
 
-// A TokenId specifies an output using the transaction ID and the index of the output in the transaction
+// A TokenId specifies a token using the transaction ID and the index of the token in the transaction
+// that creates it
 message TokenId {
 
     // The transaction ID

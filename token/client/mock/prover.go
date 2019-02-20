@@ -146,7 +146,7 @@ func (fake *Prover) RequestImport(arg1 []*token.TokenToIssue, arg2 tokena.Signin
 		arg1 []*token.TokenToIssue
 		arg2 tokena.SigningIdentity
 	}{arg1Copy, arg2})
-	fake.recordInvocation("RequestImport", []interface{}{arg1Copy, arg2})
+	fake.recordInvocation("RequestIssue", []interface{}{arg1Copy, arg2})
 	fake.requestImportMutex.Unlock()
 	if fake.RequestImportStub != nil {
 		return fake.RequestImportStub(arg1, arg2)

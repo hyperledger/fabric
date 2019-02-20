@@ -101,7 +101,7 @@ var _ = Describe("Client", func() {
 			Expect(waitTime).To(Equal(10 * time.Second))
 		})
 
-		Context("when prover.RequestImport fails", func() {
+		Context("when prover.RequestIssue fails", func() {
 			BeforeEach(func() {
 				fakeProver.RequestImportReturns(nil, errors.New("wild-banana"))
 			})

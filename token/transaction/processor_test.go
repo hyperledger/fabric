@@ -35,8 +35,8 @@ var _ = Describe("Processor", func() {
 		fakeManager = &mock.TMSManager{}
 		txProcessor.TMSManager = fakeManager
 		validTtx = &token.TokenTransaction{
-			Action: &token.TokenTransaction_PlainAction{
-				PlainAction: &token.PlainTokenAction{},
+			Action: &token.TokenTransaction_TokenAction{
+				TokenAction: &token.TokenAction{},
 			},
 		}
 

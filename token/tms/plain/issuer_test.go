@@ -32,11 +32,11 @@ var _ = Describe("Issuer", func() {
 		tt, err := issuer.RequestImport(tokensToIssue)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(tt).To(Equal(&token.TokenTransaction{
-			Action: &token.TokenTransaction_PlainAction{
-				PlainAction: &token.PlainTokenAction{
-					Data: &token.PlainTokenAction_PlainImport{
-						PlainImport: &token.PlainImport{
-							Outputs: []*token.PlainOutput{
+			Action: &token.TokenTransaction_TokenAction{
+				TokenAction: &token.TokenAction{
+					Data: &token.TokenAction_Issue{
+						Issue: &token.Issue{
+							Outputs: []*token.Token{
 								{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: 1001},
 								{Owner: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK2", Quantity: 1002},
 								{Owner: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK3", Quantity: 1003},
@@ -54,9 +54,9 @@ var _ = Describe("Issuer", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(tt).To(Equal(&token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainImport{PlainImport: &token.PlainImport{}},
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Issue{Issue: &token.Issue{}},
 					},
 				},
 			}))
@@ -69,9 +69,9 @@ var _ = Describe("Issuer", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(tt).To(Equal(&token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainImport{PlainImport: &token.PlainImport{}},
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Issue{Issue: &token.Issue{}},
 					},
 				},
 			}))
@@ -80,12 +80,12 @@ var _ = Describe("Issuer", func() {
 
 	Describe("RequestExpectation", func() {
 		var (
-			outputs            []*token.PlainOutput
+			outputs            []*token.Token
 			expectationRequest *token.ExpectationRequest
 		)
 
 		BeforeEach(func() {
-			outputs = []*token.PlainOutput{{
+			outputs = []*token.Token{{
 				Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 				Type:     "XYZ",
 				Quantity: 99,
@@ -110,10 +110,10 @@ var _ = Describe("Issuer", func() {
 			tt, err := issuer.RequestExpectation(expectationRequest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tt).To(Equal(&token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainImport{
-							PlainImport: &token.PlainImport{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Issue{
+							Issue: &token.Issue{
 								Outputs: outputs,
 							},
 						},
@@ -135,7 +135,7 @@ var _ = Describe("Issuer", func() {
 
 		Context("when outputs is empty", func() {
 			BeforeEach(func() {
-				expectationRequest.GetExpectation().GetPlainExpectation().GetImportExpectation().Outputs = []*token.PlainOutput{}
+				expectationRequest.GetExpectation().GetPlainExpectation().GetImportExpectation().Outputs = []*token.Token{}
 			})
 
 			It("returns an error", func() {
