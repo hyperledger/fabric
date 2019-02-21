@@ -242,8 +242,12 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	dataRetriever := privdata2.NewDataRetriever(storeSupport)
 	collectionAccessFactory := privdata2.NewCollectionAccessFactory(support.IdDeserializeFactory)
 	fetcher := privdata2.NewPuller(g.metrics.PrivdataMetrics, support.Cs, g.gossipSvc, dataRetriever,
-		collectionAccessFactory, chainID)
+		collectionAccessFactory, chainID, privdata2.GetBtlPullMargin())
 
+	coordinatorConfig := privdata2.CoordinatorConfig{
+		TransientBlockRetention: privdata2.GetTransientBlockRetention(),
+		PullRetryThreshold:      viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold"),
+	}
 	coordinator := privdata2.NewCoordinator(privdata2.Support{
 		ChainID:         chainID,
 		CollectionStore: support.Cs,
@@ -251,7 +255,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		TransientStore:  support.Store,
 		Committer:       support.Committer,
 		Fetcher:         fetcher,
-	}, g.createSelfSignedData(), g.metrics.PrivdataMetrics)
+	}, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig)
 
 	reconcilerConfig := privdata2.GetReconcilerConfig()
 	var reconciler privdata2.PvtDataReconciler
@@ -263,10 +267,11 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		reconciler = &privdata2.NoOpReconciler{}
 	}
 
+	pushAckTimeout := viper.GetDuration("peer.gossip.pvtData.pushAckTimeout")
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
-		distributor: privdata2.NewDistributor(chainID, g, collectionAccessFactory, g.metrics.PrivdataMetrics),
+		distributor: privdata2.NewDistributor(chainID, g, collectionAccessFactory, g.metrics.PrivdataMetrics, pushAckTimeout),
 		reconciler:  reconciler,
 	}
 	g.privateHandlers[chainID].reconciler.Start()

@@ -179,7 +179,7 @@ func TestDistributor(t *testing.T) {
 	testMetricProvider := mocks.TestUtilConstructMetricProvider()
 	metrics := metrics.NewGossipMetrics(testMetricProvider.FakeProvider).PrivdataMetrics
 
-	d := NewDistributor(channelID, g, accessFactoryMock, metrics)
+	d := NewDistributor(channelID, g, accessFactoryMock, metrics, 0)
 	pdFactory := &pvtDataFactory{}
 	pvtData := pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").addRWSet().addNSRWSet("ns2", "c1", "c2").create()
 	err := d.Distribute("tx1", &transientstore.TxPvtReadWriteSetWithConfigInfo{

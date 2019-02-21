@@ -394,11 +394,15 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 	// basic parts
 
 	servicesAdapater := &ServicesMediator{GossipAdapter: g, MCSAdapter: cs}
+	coordConfig := privdata.CoordinatorConfig{
+		PullRetryThreshold:      0,
+		TransientBlockRetention: privdata.TransientBlockRetentionDefault,
+	}
 	coord := privdata.NewCoordinator(privdata.Support{
 		Validator:      v,
 		TransientStore: &mockTransientStore{},
 		Committer:      committer,
-	}, pcomm.SignedData{}, gossipMetrics.PrivdataMetrics)
+	}, pcomm.SignedData{}, gossipMetrics.PrivdataMetrics, coordConfig)
 	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, coord, gossipMetrics.StateMetrics)
 	if sp == nil {
 		gRPCServer.Stop()

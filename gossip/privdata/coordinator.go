@@ -31,14 +31,9 @@ import (
 	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 )
 
-const (
-	pullRetrySleepInterval           = time.Second
-	transientBlockRetentionConfigKey = "peer.gossip.pvtData.transientstoreMaxBlockRetention"
-	transientBlockRetentionDefault   = 1000
-)
+const pullRetrySleepInterval = time.Second
 
 var logger = util.GetLogger(util.PrivateDataLogger, "")
 
@@ -126,17 +121,20 @@ type coordinator struct {
 	Support
 	transientBlockRetention uint64
 	metrics                 *metrics.PrivdataMetrics
+	pullRetryThreshold      time.Duration
+}
+
+type CoordinatorConfig struct {
+	TransientBlockRetention uint64
+	PullRetryThreshold      time.Duration
 }
 
 // NewCoordinator creates a new instance of coordinator
-func NewCoordinator(support Support, selfSignedData common.SignedData, metrics *metrics.PrivdataMetrics) Coordinator {
-	transientBlockRetention := uint64(viper.GetInt(transientBlockRetentionConfigKey))
-	if transientBlockRetention == 0 {
-		logger.Warning("Configuration key", transientBlockRetentionConfigKey, "isn't set, defaulting to", transientBlockRetentionDefault)
-		transientBlockRetention = transientBlockRetentionDefault
-	}
+func NewCoordinator(support Support, selfSignedData common.SignedData, metrics *metrics.PrivdataMetrics,
+	config CoordinatorConfig) Coordinator {
 	return &coordinator{Support: support, selfSignedData: selfSignedData,
-		transientBlockRetention: transientBlockRetention, metrics: metrics}
+		transientBlockRetention: config.TransientBlockRetention, metrics: metrics,
+		pullRetryThreshold: config.PullRetryThreshold}
 }
 
 // StorePvtData used to persist private date into transient store
@@ -186,7 +184,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 
 	c.reportListMissingPrivateDataDuration(time.Since(listMissingStart))
 
-	retryThresh := viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold")
+	retryThresh := c.pullRetryThreshold
 	var bFetchFromPeers bool // defaults to false
 	if len(privateInfo.missingKeys) == 0 {
 		logger.Debugf("[%s] No missing collection private write sets to fetch from remote peers", c.ChainID)
