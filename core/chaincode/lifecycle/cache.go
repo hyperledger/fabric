@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 
 	"github.com/pkg/errors"
@@ -18,10 +19,25 @@ import (
 type CachedChaincodeDefinition struct {
 	Definition *ChaincodeDefinition
 	Approved   bool
+
+	// Hashes is the list of hashed keys in the implicit collection referring to this definition.
+	// These hashes are determined by the current sequence number of chaincode definition.  When dirty,
+	// these hashes will be empty, and when not, they will be populated.
+	Hashes []string
+}
+
+type ChannelCache struct {
+	Chaincodes map[string]*CachedChaincodeDefinition
+
+	// InterestingHashes is a map of hashed key names to the chaincode name which they affect.
+	// These are to be used for the state listener, to mark chaincode definitions dirty when
+	// a write is made into the implicit collection for this org.  Interesting hashes are
+	// added when marking a definition clean, and deleted when marking it dirty.
+	InterestingHashes map[string]string
 }
 
 type Cache struct {
-	definedChaincodes map[string]map[string]*CachedChaincodeDefinition
+	definedChaincodes map[string]*ChannelCache
 	Lifecycle         *Lifecycle
 	MyOrgMSPID        string
 
@@ -36,7 +52,7 @@ type Cache struct {
 
 func NewCache(lifecycle *Lifecycle, myOrgMSPID string) *Cache {
 	return &Cache{
-		definedChaincodes: map[string]map[string]*CachedChaincodeDefinition{},
+		definedChaincodes: map[string]*ChannelCache{},
 		Lifecycle:         lifecycle,
 		MyOrgMSPID:        myOrgMSPID,
 	}
@@ -50,7 +66,7 @@ func (c *Cache) ChaincodeDefinition(channelID, name string) (*ChaincodeDefinitio
 		return nil, false, errors.Errorf("unknown channel '%s'", channelID)
 	}
 
-	cachedChaincode, ok := channelChaincodes[name]
+	cachedChaincode, ok := channelChaincodes.Chaincodes[name]
 	if !ok {
 		return nil, false, errors.Errorf("unknown chaincode '%s' for channel '%s'", name, channelID)
 	}
@@ -61,10 +77,13 @@ func (c *Cache) ChaincodeDefinition(channelID, name string) (*ChaincodeDefinitio
 func (c *Cache) Update(channelID string, dirtyChaincodes map[string]struct{}, qe ledger.SimpleQueryExecutor) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	channelChaincodes, ok := c.definedChaincodes[channelID]
+	channelCache, ok := c.definedChaincodes[channelID]
 	if !ok {
-		channelChaincodes = map[string]*CachedChaincodeDefinition{}
-		c.definedChaincodes[channelID] = channelChaincodes
+		channelCache = &ChannelCache{
+			Chaincodes:        map[string]*CachedChaincodeDefinition{},
+			InterestingHashes: map[string]string{},
+		}
+		c.definedChaincodes[channelID] = channelCache
 	}
 
 	publicState := &SimpleQueryExecutorShim{
@@ -79,10 +98,14 @@ func (c *Cache) Update(channelID string, dirtyChaincodes map[string]struct{}, qe
 	}
 
 	for name := range dirtyChaincodes {
-		cachedChaincode, ok := channelChaincodes[name]
+		cachedChaincode, ok := channelCache.Chaincodes[name]
 		if !ok {
 			cachedChaincode = &CachedChaincodeDefinition{}
-			channelChaincodes[name] = cachedChaincode
+			channelCache.Chaincodes[name] = cachedChaincode
+		}
+
+		for _, hash := range cachedChaincode.Hashes {
+			delete(channelCache.InterestingHashes, hash)
 		}
 
 		exists, chaincodeDefinition, err := c.Lifecycle.ChaincodeDefinitionIfDefined(name, publicState)
@@ -93,7 +116,7 @@ func (c *Cache) Update(channelID string, dirtyChaincodes map[string]struct{}, qe
 		if !exists {
 			// the chaincode definition was deleted, this is currently not
 			// possible, but there should be no problems with that.
-			delete(channelChaincodes, name)
+			delete(channelCache.Chaincodes, name)
 			continue
 		}
 
@@ -101,7 +124,20 @@ func (c *Cache) Update(channelID string, dirtyChaincodes map[string]struct{}, qe
 		cachedChaincode.Approved = false
 
 		privateName := fmt.Sprintf("%s#%d", name, chaincodeDefinition.Sequence)
+
+		cachedChaincode.Hashes = []string{
+			string(util.ComputeSHA256([]byte(MetadataKey(NamespacesName, privateName)))),
+			string(util.ComputeSHA256([]byte(FieldKey(NamespacesName, privateName, "EndorsementInfo")))),
+			string(util.ComputeSHA256([]byte(FieldKey(NamespacesName, privateName, "ValidationInfo")))),
+			string(util.ComputeSHA256([]byte(FieldKey(NamespacesName, privateName, "Collections")))),
+		}
+
+		for _, hash := range cachedChaincode.Hashes {
+			channelCache.InterestingHashes[hash] = name
+		}
+
 		ok, err = c.Lifecycle.Serializer.IsSerialized(NamespacesName, privateName, chaincodeDefinition.Parameters(), orgState)
+
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("could not check opaque org state for '%s' on channel '%s'", name, channelID))
 		}
