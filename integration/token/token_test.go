@@ -641,6 +641,334 @@ var _ bool = Describe("Token EndToEnd", func() {
 			Expect(issuedTokens).ToNot(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 		})
+
+		Context("user1 sends malformed TokenTransaction", func() {
+
+			var tClient *tokenclient.Client
+
+			JustBeforeEach(func() {
+				tClient = GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
+			})
+
+			Context("when serialized token transaction is empty", func() {
+				It("should fail with BAD_PAYLOAD", func() {
+					var serializedTokenTx []byte
+					txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+					Expect(err).ToNot(HaveOccurred())
+
+					ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: BAD_PAYLOAD", txId)))
+					Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+					Expect(committed).To(BeFalse())
+				})
+			})
+
+			Context("when serialized token transaction is not a token transaction", func() {
+				It("should fail with  BAD_PAYLOAD", func() {
+					serializedTokenTx := []byte("I am not a token transaction")
+					txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+					Expect(err).ToNot(HaveOccurred())
+
+					ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: BAD_PAYLOAD", txId)))
+					Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+					Expect(committed).To(BeFalse())
+				})
+			})
+
+			Context("when token transaction has no action", func() {
+				It("Should fail with BAD_PAYLOAD", func() {
+					tokenTx := &token.TokenTransaction{}
+					serializedTokenTx, err := proto.Marshal(tokenTx)
+					Expect(err).ToNot(HaveOccurred())
+					txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+					Expect(err).ToNot(HaveOccurred())
+
+					ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: BAD_PAYLOAD", txId)))
+					Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+					Expect(committed).To(BeFalse())
+				})
+			})
+
+			Context("when token transaction action has no data", func() {
+				It("Should fail with INVALID_OTHER_REASON", func() {
+					tokenTx := &token.TokenTransaction{Action: &token.TokenTransaction_TokenAction{TokenAction: &token.TokenAction{}}}
+					serializedTokenTx, err := proto.Marshal(tokenTx)
+					Expect(err).ToNot(HaveOccurred())
+					txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+					Expect(err).ToNot(HaveOccurred())
+
+					ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txId)))
+					Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+					Expect(committed).To(BeFalse())
+				})
+			})
+
+			Context("when token action is issue", func() {
+				Context("and issue has no token", func() {
+					It("Should fail with INVALID_OTHER_REASON", func() {
+						tokenTx := &token.TokenTransaction{
+							Action: &token.TokenTransaction_TokenAction{
+								TokenAction: &token.TokenAction{
+									Data: &token.TokenAction_Issue{
+										Issue: &token.Issue{
+											Outputs: nil,
+										}}}}}
+
+						serializedTokenTx, err := proto.Marshal(tokenTx)
+						Expect(err).ToNot(HaveOccurred())
+						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+						Expect(err).ToNot(HaveOccurred())
+
+						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+						Expect(err).To(HaveOccurred())
+						Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txId)))
+						Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+						Expect(committed).To(BeFalse())
+					})
+				})
+
+				Context("and issue has invalid token", func() {
+					It("Should fail with INVALID_OTHER_REASON", func() {
+						tokenTx := &token.TokenTransaction{
+							Action: &token.TokenTransaction_TokenAction{
+								TokenAction: &token.TokenAction{
+									Data: &token.TokenAction_Issue{
+										Issue: &token.Issue{
+											Outputs: []*token.Token{{}},
+										}}}}}
+
+						serializedTokenTx, err := proto.Marshal(tokenTx)
+						Expect(err).ToNot(HaveOccurred())
+						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+						Expect(err).ToNot(HaveOccurred())
+
+						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+						Expect(err).To(HaveOccurred())
+						Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txId)))
+						Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+						Expect(committed).To(BeFalse())
+					})
+				})
+			})
+
+			Context("when token action is transfer", func() {
+				Context("and transfer has no inputs ", func() {
+					It("Should fail with INVALID_OTHER_REASON", func() {
+						RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+
+						tokenTx := &token.TokenTransaction{
+							Action: &token.TokenTransaction_TokenAction{
+								TokenAction: &token.TokenAction{
+									Data: &token.TokenAction_Transfer{
+										Transfer: &token.Transfer{
+											Inputs: nil,
+											Outputs: []*token.Token{{
+												Owner:    recipientUser2,
+												Type:     "ABC123",
+												Quantity: ToHex(119),
+											}}}}}}}
+
+						serializedTokenTx, err := proto.Marshal(tokenTx)
+						Expect(err).ToNot(HaveOccurred())
+						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+						Expect(err).ToNot(HaveOccurred())
+
+						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+						Expect(err).To(HaveOccurred())
+						Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txId)))
+						Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+						Expect(committed).To(BeFalse())
+					})
+				})
+
+				Context("and transfer has invalid input ", func() {
+					It("Should fail with INVALID_OTHER_REASON", func() {
+						RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+
+						tokenTx := &token.TokenTransaction{
+							Action: &token.TokenTransaction_TokenAction{
+								TokenAction: &token.TokenAction{
+									Data: &token.TokenAction_Transfer{
+										Transfer: &token.Transfer{
+											Inputs: []*token.TokenId{{TxId: "xxx", Index: 0}},
+											Outputs: []*token.Token{{
+												Owner:    recipientUser2,
+												Type:     "ABC123",
+												Quantity: ToHex(119),
+											}}}}}}}
+
+						serializedTokenTx, err := proto.Marshal(tokenTx)
+						Expect(err).ToNot(HaveOccurred())
+						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+						Expect(err).ToNot(HaveOccurred())
+
+						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+						Expect(err).To(HaveOccurred())
+						Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txId)))
+						Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+						Expect(committed).To(BeFalse())
+					})
+				})
+
+				Context("and transfer has no outputs", func() {
+					It("Should fail with INVALID_OTHER_REASON", func() {
+						TxId := RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+
+						tokenTx := &token.TokenTransaction{
+							Action: &token.TokenTransaction_TokenAction{
+								TokenAction: &token.TokenAction{
+									Data: &token.TokenAction_Transfer{
+										Transfer: &token.Transfer{
+											Inputs:  []*token.TokenId{{TxId: TxId, Index: 0}},
+											Outputs: nil,
+										}}}}}
+
+						serializedTokenTx, err := proto.Marshal(tokenTx)
+						Expect(err).ToNot(HaveOccurred())
+						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+						Expect(err).ToNot(HaveOccurred())
+
+						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+						Expect(err).To(HaveOccurred())
+						Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txId)))
+						Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+						Expect(committed).To(BeFalse())
+					})
+				})
+
+				Context("and transfer has invalid output", func() {
+					It("Should fail with INVALID_OTHER_REASON", func() {
+						TxId := RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+
+						tokenTx := &token.TokenTransaction{
+							Action: &token.TokenTransaction_TokenAction{
+								TokenAction: &token.TokenAction{
+									Data: &token.TokenAction_Transfer{
+										Transfer: &token.Transfer{
+											Inputs:  []*token.TokenId{{TxId: TxId, Index: 0}},
+											Outputs: []*token.Token{{}},
+										}}}}}
+
+						serializedTokenTx, err := proto.Marshal(tokenTx)
+						Expect(err).ToNot(HaveOccurred())
+						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+						Expect(err).ToNot(HaveOccurred())
+
+						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+						Expect(err).To(HaveOccurred())
+						Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txId)))
+						Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+						Expect(committed).To(BeFalse())
+					})
+				})
+			})
+
+			Context("when token action is redeem", func() {
+				Context("and redeem has no input", func() {
+					It("Should fail with INVALID_OTHER_REASON", func() {
+						RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+
+						tokenTx := &token.TokenTransaction{
+							Action: &token.TokenTransaction_TokenAction{
+								TokenAction: &token.TokenAction{
+									Data: &token.TokenAction_Redeem{
+										Redeem: &token.Transfer{
+											Inputs: nil,
+											Outputs: []*token.Token{{
+												Type:     "ABC123",
+												Quantity: ToHex(119),
+											}}}}}}}
+
+						serializedTokenTx, err := proto.Marshal(tokenTx)
+						Expect(err).ToNot(HaveOccurred())
+						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+						Expect(err).ToNot(HaveOccurred())
+
+						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+						Expect(err).To(HaveOccurred())
+						Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txId)))
+						Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+						Expect(committed).To(BeFalse())
+					})
+				})
+
+				Context("and redeem has no output", func() {
+					It("Should fail with INVALID_OTHER_REASON", func() {
+						TxId := RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+
+						tokenTx := &token.TokenTransaction{
+							Action: &token.TokenTransaction_TokenAction{
+								TokenAction: &token.TokenAction{
+									Data: &token.TokenAction_Redeem{
+										Redeem: &token.Transfer{
+											Inputs:  []*token.TokenId{{TxId: TxId, Index: 0}},
+											Outputs: nil,
+										}}}}}
+
+						serializedTokenTx, err := proto.Marshal(tokenTx)
+						Expect(err).ToNot(HaveOccurred())
+						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+						Expect(err).ToNot(HaveOccurred())
+
+						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+						Expect(err).To(HaveOccurred())
+						Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txId)))
+						Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+						Expect(committed).To(BeFalse())
+					})
+				})
+
+				Context("and redeem has more than two outputs", func() {
+					It("Should fail with INVALID_OTHER_REASON", func() {
+						TxId := RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+
+						tokenTx := &token.TokenTransaction{
+							Action: &token.TokenTransaction_TokenAction{
+								TokenAction: &token.TokenAction{
+									Data: &token.TokenAction_Redeem{
+										Redeem: &token.Transfer{
+											Inputs: []*token.TokenId{{TxId: TxId, Index: 0}},
+											Outputs: []*token.Token{
+												{Type: "ABC123", Quantity: ToHex(111)},
+												{Owner: recipientUser1, Type: "ABC123", Quantity: ToHex(8)},
+												{Owner: recipientUser2, Type: "ABC123", Quantity: ToHex(8)},
+											}}}}}}
+
+						serializedTokenTx, err := proto.Marshal(tokenTx)
+						Expect(err).ToNot(HaveOccurred())
+						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
+						Expect(err).ToNot(HaveOccurred())
+
+						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
+
+						Expect(err).To(HaveOccurred())
+						Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txId)))
+						Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+						Expect(committed).To(BeFalse())
+					})
+				})
+			})
+
+		})
 	})
 
 })
