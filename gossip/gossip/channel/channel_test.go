@@ -50,6 +50,7 @@ var conf = Config{
 	DigestWaitTime:              shortenedWaitTime / 2,
 	RequestWaitTime:             shortenedWaitTime,
 	ResponseWaitTime:            shortenedWaitTime,
+	MsgExpirationTimeout:        DefMsgExpirationTimeout,
 }
 
 var disabledMetrics = metrics.NewGossipMetrics(&disabled.Provider{}).MembershipMetrics

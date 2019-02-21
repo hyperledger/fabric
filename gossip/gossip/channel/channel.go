@@ -31,6 +31,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const DefMsgExpirationTimeout = election.DefLeaderAliveThreshold * 10
+
 // Config is a configuration item
 // of the channel store
 type Config struct {
@@ -46,6 +48,7 @@ type Config struct {
 	DigestWaitTime              time.Duration
 	RequestWaitTime             time.Duration
 	ResponseWaitTime            time.Duration
+	MsgExpirationTimeout        time.Duration
 }
 
 // GossipChannel defines an object that deals with all channel-related messages
@@ -263,7 +266,7 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 	}
 	gc.stateInfoMsgStore = newStateInfoCache(gc.GetConf().StateInfoCacheSweepInterval, hashPeerExpiredInMembership, verifyStateInfoMsg)
 
-	ttl := election.GetMsgExpirationTimeout()
+	ttl := adapter.GetConf().MsgExpirationTimeout
 	pol := proto.NewGossipMessageComparator(0)
 
 	gc.leaderMsgStore = msgstore.NewMessageStoreExpirable(pol, msgstore.Noop, ttl, nil, nil, nil)
