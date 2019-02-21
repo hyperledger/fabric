@@ -26,7 +26,7 @@ type TarFileEntry struct {
 
 // ExtractStatedbArtifactsAsTarbytes extracts the statedb artifacts from the code package tar and create a statedb artifact tar.
 // The state db artifacts are expected to contain state db specific artifacts such as index specification in the case of couchdb.
-// This function is intented to be used during chaincode instantiate/upgrade so that statedb artifacts can be created.
+// This function is intended to be used during chaincode instantiate/upgrade so that statedb artifacts can be created.
 func ExtractStatedbArtifactsForChaincode(ccname, ccversion string, pr *platforms.Registry) (installed bool, statedbArtifactsTar []byte, err error) {
 	ccpackage, err := GetChaincodeFromFS(ccname, ccversion)
 	if err != nil {
@@ -51,7 +51,7 @@ func ExtractStatedbArtifactsFromCCPackage(ccpackage CCPackage, pr *platforms.Reg
 		ccproviderLogger.Infof("invalid deployment spec: %s", err)
 		return nil, fmt.Errorf("invalid deployment spec")
 	}
-	return metaprov.GetMetadataAsTarEntries()
+	return metaprov, nil
 }
 
 // ExtractFileEntries extract file entries from the given `tarBytes`. A file entry is included in the

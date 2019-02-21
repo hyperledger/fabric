@@ -14,7 +14,6 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -85,7 +84,8 @@ func (carPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *t
 	return cutil.WriteBytesToPackage("binpackage.tar", binpackage.Bytes(), tw)
 }
 
-//GetMetadataProvider fetches metadata provider given deployment spec
-func (carPlatform *Platform) GetMetadataProvider(code []byte) platforms.MetadataProvider {
-	return &MetadataProvider{}
+// GetMetadataProvider fetches metadata provider given deployment spec
+func (carPlatform *Platform) GetMetadataAsTarEntries(code []byte) ([]byte, error) {
+	metadataProvider := &MetadataProvider{}
+	return metadataProvider.GetMetadataAsTarEntries()
 }

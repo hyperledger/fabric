@@ -2,10 +2,8 @@
 package mock
 
 import (
-	tar "archive/tar"
-	sync "sync"
-
-	platforms "github.com/hyperledger/fabric/core/chaincode/platforms"
+	"archive/tar"
+	"sync"
 )
 
 type Platform struct {
@@ -47,16 +45,18 @@ type Platform struct {
 		result1 []byte
 		result2 error
 	}
-	GetMetadataProviderStub        func([]byte) platforms.MetadataProvider
-	getMetadataProviderMutex       sync.RWMutex
-	getMetadataProviderArgsForCall []struct {
+	GetMetadataAsTarEntriesStub        func([]byte) ([]byte, error)
+	getMetadataAsTarEntriesMutex       sync.RWMutex
+	getMetadataAsTarEntriesArgsForCall []struct {
 		arg1 []byte
 	}
-	getMetadataProviderReturns struct {
-		result1 platforms.MetadataProvider
+	getMetadataAsTarEntriesReturns struct {
+		result1 []byte
+		result2 error
 	}
-	getMetadataProviderReturnsOnCall map[int]struct {
-		result1 platforms.MetadataProvider
+	getMetadataAsTarEntriesReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
 	}
 	NameStub        func() string
 	nameMutex       sync.RWMutex
@@ -279,69 +279,72 @@ func (fake *Platform) GetDeploymentPayloadReturnsOnCall(i int, result1 []byte, r
 	}{result1, result2}
 }
 
-func (fake *Platform) GetMetadataProvider(arg1 []byte) platforms.MetadataProvider {
+func (fake *Platform) GetMetadataAsTarEntries(arg1 []byte) ([]byte, error) {
 	var arg1Copy []byte
 	if arg1 != nil {
 		arg1Copy = make([]byte, len(arg1))
 		copy(arg1Copy, arg1)
 	}
-	fake.getMetadataProviderMutex.Lock()
-	ret, specificReturn := fake.getMetadataProviderReturnsOnCall[len(fake.getMetadataProviderArgsForCall)]
-	fake.getMetadataProviderArgsForCall = append(fake.getMetadataProviderArgsForCall, struct {
+	fake.getMetadataAsTarEntriesMutex.Lock()
+	ret, specificReturn := fake.getMetadataAsTarEntriesReturnsOnCall[len(fake.getMetadataAsTarEntriesArgsForCall)]
+	fake.getMetadataAsTarEntriesArgsForCall = append(fake.getMetadataAsTarEntriesArgsForCall, struct {
 		arg1 []byte
 	}{arg1Copy})
-	fake.recordInvocation("GetMetadataProvider", []interface{}{arg1Copy})
-	fake.getMetadataProviderMutex.Unlock()
-	if fake.GetMetadataProviderStub != nil {
-		return fake.GetMetadataProviderStub(arg1)
+	fake.recordInvocation("GetMetadataAsTarEntries", []interface{}{arg1Copy})
+	fake.getMetadataAsTarEntriesMutex.Unlock()
+	if fake.GetMetadataAsTarEntriesStub != nil {
+		return fake.GetMetadataAsTarEntriesStub(arg1)
 	}
 	if specificReturn {
-		return ret.result1
+		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.getMetadataProviderReturns
-	return fakeReturns.result1
+	fakeReturns := fake.getMetadataAsTarEntriesReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *Platform) GetMetadataProviderCallCount() int {
-	fake.getMetadataProviderMutex.RLock()
-	defer fake.getMetadataProviderMutex.RUnlock()
-	return len(fake.getMetadataProviderArgsForCall)
+func (fake *Platform) GetMetadataAsTarEntriesCallCount() int {
+	fake.getMetadataAsTarEntriesMutex.RLock()
+	defer fake.getMetadataAsTarEntriesMutex.RUnlock()
+	return len(fake.getMetadataAsTarEntriesArgsForCall)
 }
 
-func (fake *Platform) GetMetadataProviderCalls(stub func([]byte) platforms.MetadataProvider) {
-	fake.getMetadataProviderMutex.Lock()
-	defer fake.getMetadataProviderMutex.Unlock()
-	fake.GetMetadataProviderStub = stub
+func (fake *Platform) GetMetadataAsTarEntriesCalls(stub func([]byte) ([]byte, error)) {
+	fake.getMetadataAsTarEntriesMutex.Lock()
+	defer fake.getMetadataAsTarEntriesMutex.Unlock()
+	fake.GetMetadataAsTarEntriesStub = stub
 }
 
-func (fake *Platform) GetMetadataProviderArgsForCall(i int) []byte {
-	fake.getMetadataProviderMutex.RLock()
-	defer fake.getMetadataProviderMutex.RUnlock()
-	argsForCall := fake.getMetadataProviderArgsForCall[i]
+func (fake *Platform) GetMetadataAsTarEntriesArgsForCall(i int) []byte {
+	fake.getMetadataAsTarEntriesMutex.RLock()
+	defer fake.getMetadataAsTarEntriesMutex.RUnlock()
+	argsForCall := fake.getMetadataAsTarEntriesArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *Platform) GetMetadataProviderReturns(result1 platforms.MetadataProvider) {
-	fake.getMetadataProviderMutex.Lock()
-	defer fake.getMetadataProviderMutex.Unlock()
-	fake.GetMetadataProviderStub = nil
-	fake.getMetadataProviderReturns = struct {
-		result1 platforms.MetadataProvider
-	}{result1}
+func (fake *Platform) GetMetadataAsTarEntriesReturns(result1 []byte, result2 error) {
+	fake.getMetadataAsTarEntriesMutex.Lock()
+	defer fake.getMetadataAsTarEntriesMutex.Unlock()
+	fake.GetMetadataAsTarEntriesStub = nil
+	fake.getMetadataAsTarEntriesReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
 }
 
-func (fake *Platform) GetMetadataProviderReturnsOnCall(i int, result1 platforms.MetadataProvider) {
-	fake.getMetadataProviderMutex.Lock()
-	defer fake.getMetadataProviderMutex.Unlock()
-	fake.GetMetadataProviderStub = nil
-	if fake.getMetadataProviderReturnsOnCall == nil {
-		fake.getMetadataProviderReturnsOnCall = make(map[int]struct {
-			result1 platforms.MetadataProvider
+func (fake *Platform) GetMetadataAsTarEntriesReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.getMetadataAsTarEntriesMutex.Lock()
+	defer fake.getMetadataAsTarEntriesMutex.Unlock()
+	fake.GetMetadataAsTarEntriesStub = nil
+	if fake.getMetadataAsTarEntriesReturnsOnCall == nil {
+		fake.getMetadataAsTarEntriesReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
 		})
 	}
-	fake.getMetadataProviderReturnsOnCall[i] = struct {
-		result1 platforms.MetadataProvider
-	}{result1}
+	fake.getMetadataAsTarEntriesReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *Platform) Name() string {
@@ -530,8 +533,8 @@ func (fake *Platform) Invocations() map[string][][]interface{} {
 	defer fake.generateDockerfileMutex.RUnlock()
 	fake.getDeploymentPayloadMutex.RLock()
 	defer fake.getDeploymentPayloadMutex.RUnlock()
-	fake.getMetadataProviderMutex.RLock()
-	defer fake.getMetadataProviderMutex.RUnlock()
+	fake.getMetadataAsTarEntriesMutex.RLock()
+	defer fake.getMetadataAsTarEntriesMutex.RUnlock()
 	fake.nameMutex.RLock()
 	defer fake.nameMutex.RUnlock()
 	fake.validateCodePackageMutex.RLock()

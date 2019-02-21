@@ -17,7 +17,6 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
@@ -163,7 +162,8 @@ func (javaPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *
 	return cutil.WriteBytesToPackage("binpackage.tar", resultBytes, tw)
 }
 
-//GetMetadataProvider fetches metadata provider given deployment spec
-func (javaPlatform *Platform) GetMetadataProvider(code []byte) platforms.MetadataProvider {
-	return &ccmetadata.TargzMetadataProvider{Code: code}
+// GetMetadataProvider fetches metadata provider given deployment spec
+func (javaPlatform *Platform) GetMetadataAsTarEntries(code []byte) ([]byte, error) {
+	metadataProvider := &ccmetadata.TargzMetadataProvider{Code: code}
+	return metadataProvider.GetMetadataAsTarEntries()
 }
