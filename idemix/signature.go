@@ -12,11 +12,8 @@ import (
 
 	"github.com/hyperledger/fabric-amcl/amcl"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/pkg/errors"
 )
-
-var idemixLogger = flogging.MustGetLogger("idemix")
 
 // signLabel is the label used in zero-knowledge proof (ZKP) to identify that this ZKP is a signature of knowledge
 const signLabel = "sign"
@@ -376,7 +373,7 @@ func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, a
 
 	if *ProofC != *HashModOrder(proofData) {
 		// This debug line helps identify where the mismatch happened
-		idemixLogger.Debugf("Signature Verification : \n"+
+		logger.Printf("Signature Verification : \n"+
 			"	[t1:%v]\n,"+
 			"	[t2:%v]\n,"+
 			"	[t3:%v]\n,"+
@@ -398,7 +395,8 @@ func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, a
 			nonRevokedProofBytes,
 			ipk.Hash,
 			Disclosure,
-			msg)
+			msg,
+		)
 		return errors.Errorf("signature invalid: zero-knowledge proof is invalid")
 	}
 
