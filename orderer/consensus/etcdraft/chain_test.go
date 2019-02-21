@@ -2443,48 +2443,41 @@ var _ = Describe("Chain", func() {
 
 				It("lagged node can catch up using snapshot", func() {
 					network.disconnect(2)
-
 					c1.cutter.CutNext = true
 
-					var lasti uint64
-					var indices []uint64
-					// Only produce 4 blocks here, so that snapshot pruning does not occur.
-					// Otherwise, a slow garbage collection may prevent snapshotting from
-					// being triggered on next block, and assertion on number of snapshots
-					// would fail nondeterministically.
-					for i := 1; i <= 4; i++ {
-						err := c1.Order(env, 0)
-						Expect(err).NotTo(HaveOccurred())
-						Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(i))
-						Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(i))
-						Eventually(func() uint64 {
-							indices = etcdraft.ListSnapshots(logger, c1.opts.SnapDir)
-							if len(indices) == 0 {
-								return 0
-							}
-							return indices[len(indices)-1]
-						}, LongEventualTimeout).Should(BeNumerically(">", lasti))
-						lasti = indices[len(indices)-1]
-					}
+					c2Lasti, _ := c2.opts.MemoryStorage.LastIndex()
+					var blockCnt int
+					// Order blocks until first index of c1 memory is greater than last index of c2,
+					// so a snapshot will be sent to c2 when it rejoins network
+					Eventually(func() bool {
+						c1Firsti, _ := c1.opts.MemoryStorage.FirstIndex()
+						if c1Firsti > c2Lasti+1 {
+							return true
+						}
+
+						Expect(c1.Order(env, 0)).To(Succeed())
+						blockCnt++
+						Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(blockCnt))
+						Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(blockCnt))
+						return false
+					}, LongEventualTimeout).Should(BeTrue())
 
 					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
 
 					network.join(2, false)
 
-					Eventually(c2.puller.PullBlockCallCount, LongEventualTimeout).Should(Equal(4))
-					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(4))
-
-					files, err := ioutil.ReadDir(c2.opts.SnapDir)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(files).To(HaveLen(1)) // expect to store exact 1 snapshot
+					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(blockCnt))
+					indices := etcdraft.ListSnapshots(logger, c2.opts.SnapDir)
+					Expect(indices).To(HaveLen(1))
+					gap := indices[0] - c2Lasti
+					Expect(c2.puller.PullBlockCallCount()).To(Equal(int(gap)))
 
 					// chain should keeps functioning
-					err = c1.Order(env, 0)
-					Expect(err).NotTo(HaveOccurred())
+					Expect(c2.Order(env, 0)).To(Succeed())
 
 					network.exec(
 						func(c *chain) {
-							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(5))
+							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(blockCnt + 1))
 						})
 				})
 			})
