@@ -13,14 +13,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap"
-	"github.com/coreos/etcd/wal"
-	"github.com/coreos/etcd/wal/walpb"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal"
+	"go.etcd.io/etcd/wal/walpb"
 )
 
 // MaxSnapshotFiles defines max number of etcd/raft snapshot files to retain
@@ -69,7 +69,7 @@ func CreateStorage(
 	ram MemoryStorage,
 ) (*RaftStorage, error) {
 
-	sn, err := createSnapshotter(snapDir)
+	sn, err := createSnapshotter(lg, snapDir)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func ListSnapshots(logger *flogging.FabricLogger, snapDir string) []uint64 {
 	var snapshots []uint64
 	for _, snapfile := range snapfiles {
 		fpath := filepath.Join(snapDir, snapfile)
-		s, err := snap.Read(fpath)
+		s, err := snap.Read(logger.Zap(), fpath)
 		if err != nil {
 			logger.Errorf("Snapshot file %s is corrupted: %s", fpath, err)
 
@@ -167,12 +167,12 @@ func ListSnapshots(logger *flogging.FabricLogger, snapDir string) []uint64 {
 	return snapshots
 }
 
-func createSnapshotter(snapDir string) (*snap.Snapshotter, error) {
+func createSnapshotter(logger *flogging.FabricLogger, snapDir string) (*snap.Snapshotter, error) {
 	if err := os.MkdirAll(snapDir, os.ModePerm); err != nil {
 		return nil, errors.Errorf("failed to mkdir '%s' for snapshot: %s", snapDir, err)
 	}
 
-	return snap.New(snapDir), nil
+	return snap.New(logger.Zap(), snapDir), nil
 }
 
 func createWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.Snapshot) (*wal.WAL, error) {
@@ -180,7 +180,7 @@ func createWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.Snapsh
 		lg.Infof("No WAL data found, creating new WAL at path '%s'", walDir)
 		// TODO(jay_guo) add metadata to be persisted with wal once we need it.
 		// use case could be data dump and restore on a new node.
-		w, err := wal.Create(walDir, nil)
+		w, err := wal.Create(lg.Zap(), walDir, nil)
 		if err == os.ErrExist {
 			lg.Fatalf("programming error, we've just checked that WAL does not exist")
 		}
@@ -202,7 +202,7 @@ func createWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.Snapsh
 	}
 
 	lg.Debugf("Loading WAL at Term %d and Index %d", walsnap.Term, walsnap.Index)
-	w, err := wal.Open(walDir, walsnap)
+	w, err := wal.Open(lg.Zap(), walDir, walsnap)
 	if err != nil {
 		return nil, errors.Errorf("failed to open existing WAL: %s", err)
 	}

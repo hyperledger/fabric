@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
-	"github.com/coreos/etcd/raft"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
@@ -29,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/raft"
 )
 
 // CreateChainCallback creates a new chain

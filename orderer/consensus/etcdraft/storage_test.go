@@ -15,12 +15,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal"
 	"go.uber.org/zap"
 )
 
