@@ -23,7 +23,13 @@ type TokenCapabilityChecker struct {
 }
 
 func (c *TokenCapabilityChecker) FabToken(channelId string) (bool, error) {
-	ac, ok := c.PeerOps.GetChannelConfig(channelId).ApplicationConfig()
+	channelConfig := c.PeerOps.GetChannelConfig(channelId)
+	if channelConfig == nil {
+		// no channelConfig is found, most likely the channel does not exist
+		return false, errors.Errorf("no channel config found for channel %s", channelId)
+	}
+
+	ac, ok := channelConfig.ApplicationConfig()
 	if !ok {
 		return false, errors.Errorf("no application config found for channel %s", channelId)
 	}

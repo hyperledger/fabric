@@ -86,6 +86,17 @@ func BasicSolo() *Config {
 	}
 }
 
+// BasicSoloV20 returns a BasicSolo config with V2_0 application capability
+func BasicSoloV20() *Config {
+	basicSolo := BasicSolo()
+	for _, profile := range basicSolo.Profiles {
+		if profile.Consortium != "" {
+			profile.AppCapabilities = []string{"V2_0"}
+		}
+	}
+	return basicSolo
+}
+
 func BasicKafka() *Config {
 	config := BasicSolo()
 	config.Consensus.Type = "kafka"
