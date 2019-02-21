@@ -20,10 +20,6 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/msp"
@@ -95,12 +91,7 @@ func packageCmd(cf *ChaincodeCmdFactory, cdsFact ccDepSpecFactory, p *Packager) 
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if p == nil {
-				pr := platforms.NewRegistry(
-					&golang.Platform{},
-					&car.Platform{},
-					&java.Platform{},
-					&node.Platform{},
-				)
+				pr := platforms.NewRegistry(platforms.SupportedPlatforms...)
 
 				// UT will supply its own mock factory
 				if cdsFact == nil {

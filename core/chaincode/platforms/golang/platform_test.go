@@ -19,15 +19,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-var _ = platforms.Platform(&Platform{})
 
 func testerr(err error, succ bool) error {
 	if succ && err != nil {

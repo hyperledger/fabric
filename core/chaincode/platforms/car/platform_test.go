@@ -12,13 +12,9 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
 	"github.com/hyperledger/fabric/core/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
-
-var _ = platforms.Platform(&car.Platform{})
 
 func TestMain(m *testing.M) {
 	testutil.SetupTestConfig()
