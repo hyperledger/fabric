@@ -177,7 +177,7 @@ func LoadTokenIDsFromFile(s string) ([]*token.TokenId, error) {
 // LoadShares converts the passed string to an array of Shares.
 // The string is either a json representing the shares, or a path to a file
 // containing the json representation.
-func LoadShares(s string) ([]*token.RecipientTransferShare, error) {
+func LoadShares(s string) ([]*token.RecipientShare, error) {
 	// s can be a
 	// - json string representing the shares
 	// - a path containing a json string representing the shares
@@ -193,8 +193,8 @@ func LoadShares(s string) ([]*token.RecipientTransferShare, error) {
 }
 
 // LoadSharesFromJson converts the passed json string to shares
-func LoadSharesFromJson(s string) ([]*token.RecipientTransferShare, error) {
-	var shares []*token.RecipientTransferShare
+func LoadSharesFromJson(s string) ([]*token.RecipientShare, error) {
+	var shares []*token.RecipientShare
 	err := json.Unmarshal([]byte(s), &shares)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed unmarshalling json")
@@ -204,7 +204,7 @@ func LoadSharesFromJson(s string) ([]*token.RecipientTransferShare, error) {
 }
 
 // LoadSharesFromFile loads from file shares in json representation.
-func LoadSharesFromFile(s string) ([]*token.RecipientTransferShare, error) {
+func LoadSharesFromFile(s string) ([]*token.RecipientShare, error) {
 	fileCont, err := ioutil.ReadFile(s)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not read file %s", s)
@@ -216,7 +216,7 @@ func LoadSharesFromFile(s string) ([]*token.RecipientTransferShare, error) {
 // SubstituteShareRecipient scans the recipients to see if they need additional
 // post-processing. For example, a recipient can contain the path of a file containing
 // the serialised identity to be loaded.
-func SubstituteShareRecipient(shares []*token.RecipientTransferShare) ([]*token.RecipientTransferShare, error) {
+func SubstituteShareRecipient(shares []*token.RecipientShare) ([]*token.RecipientShare, error) {
 	for _, share := range shares {
 		if share == nil {
 			continue
@@ -246,6 +246,6 @@ func (*JsonLoader) TokenIDs(s string) ([]*token.TokenId, error) {
 	return LoadTokenIDs(s)
 }
 
-func (*JsonLoader) Shares(s string) ([]*token.RecipientTransferShare, error) {
+func (*JsonLoader) Shares(s string) ([]*token.RecipientShare, error) {
 	return LoadShares(s)
 }

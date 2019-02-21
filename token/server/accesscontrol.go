@@ -42,7 +42,7 @@ func (ac *PolicyBasedAccessControl) Check(sc *token.SignedCommand, c *token.Comm
 
 	switch t := c.GetPayload().(type) {
 
-	case *token.Command_ImportRequest:
+	case *token.Command_IssueRequest:
 		return ac.ACLProvider.CheckACL(
 			ac.ACLResources.IssueTokens,
 			c.Header.ChannelId,

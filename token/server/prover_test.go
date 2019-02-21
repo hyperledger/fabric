@@ -40,7 +40,7 @@ var _ = Describe("Prover", func() {
 
 		prover *server.Prover
 
-		importRequest     *token.ImportRequest
+		importRequest     *token.IssueRequest
 		command           *token.Command
 		marshaledCommand  []byte
 		signedCommand     *token.SignedCommand
@@ -55,7 +55,7 @@ var _ = Describe("Prover", func() {
 
 		listRequest      *token.ListRequest
 		unspentTokens    *token.UnspentTokens
-		transactorTokens []*token.TokenOutput
+		transactorTokens []*token.UnspentToken
 
 		importExpectationRequest     *token.ExpectationRequest
 		importExpectationTransaction *token.TokenTransaction
@@ -85,7 +85,7 @@ var _ = Describe("Prover", func() {
 			},
 		}
 		fakeIssuer = &mock.Issuer{}
-		fakeIssuer.RequestImportReturns(tokenTransaction, nil)
+		fakeIssuer.RequestIssueReturns(tokenTransaction, nil)
 
 		trTokenTransaction = &token.TokenTransaction{
 			Action: &token.TokenTransaction_TokenAction{
@@ -129,7 +129,7 @@ var _ = Describe("Prover", func() {
 		}
 		fakeTransactor.RequestRedeemReturns(redeemTokenTransaction, nil)
 
-		transactorTokens = []*token.TokenOutput{
+		transactorTokens = []*token.UnspentToken{
 			{Id: &token.TokenId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: ToHex(135)},
 			{Id: &token.TokenId{TxId: "idby", Index: 0}, Type: "typeby", Quantity: ToHex(79)},
 		}
@@ -152,12 +152,12 @@ var _ = Describe("Prover", func() {
 			TMSManager:        fakeTMSManager,
 		}
 
-		importRequest = &token.ImportRequest{
+		importRequest = &token.IssueRequest{
 			Credential: []byte("credential"),
-			TokensToIssue: []*token.TokenToIssue{{
-				Recipient: &token.TokenOwner{Raw: []byte("recipient")},
-				Type:      "XYZ",
-				Quantity:  ToHex(99),
+			TokensToIssue: []*token.Token{{
+				Owner:    &token.TokenOwner{Raw: []byte("recipient")},
+				Type:     "XYZ",
+				Quantity: ToHex(99),
 			}},
 		}
 		command = &token.Command{
@@ -166,8 +166,8 @@ var _ = Describe("Prover", func() {
 				Creator:   []byte("creator"),
 				Nonce:     []byte("nonce"),
 			},
-			Payload: &token.Command_ImportRequest{
-				ImportRequest: importRequest,
+			Payload: &token.Command_IssueRequest{
+				IssueRequest: importRequest,
 			},
 		}
 		marshaledCommand = ProtoMarshal(command)
@@ -179,16 +179,16 @@ var _ = Describe("Prover", func() {
 		transferRequest = &token.TransferRequest{
 			Credential: []byte("credential"),
 			TokenIds:   []*token.TokenId{},
-			Shares: []*token.RecipientTransferShare{{
+			Shares: []*token.RecipientShare{{
 				Recipient: &token.TokenOwner{Raw: []byte("recipient")},
 				Quantity:  ToHex(99),
 			}},
 		}
 
 		redeemRequest = &token.RedeemRequest{
-			Credential:       []byte("credential"),
-			TokenIds:         []*token.TokenId{},
-			QuantityToRedeem: ToHex(50),
+			Credential: []byte("credential"),
+			TokenIds:   []*token.TokenId{},
+			Quantity:   ToHex(50),
 		}
 
 		listRequest = &token.ListRequest{
@@ -425,7 +425,7 @@ var _ = Describe("Prover", func() {
 		})
 	})
 
-	Describe("ProcessCommand_RequestImport", func() {
+	Describe("ProcessCommand_RequestIssue", func() {
 		It("returns a signed command response", func() {
 			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
 			Expect(err).NotTo(HaveOccurred())
@@ -575,8 +575,8 @@ var _ = Describe("Prover", func() {
 				TokenTransaction: tokenTransaction,
 			}))
 
-			Expect(fakeIssuer.RequestImportCallCount()).To(Equal(1))
-			tti := fakeIssuer.RequestImportArgsForCall(0)
+			Expect(fakeIssuer.RequestIssueCallCount()).To(Equal(1))
+			tti := fakeIssuer.RequestIssueArgsForCall(0)
 			Expect(tti).To(Equal(importRequest.TokensToIssue))
 		})
 
@@ -593,7 +593,7 @@ var _ = Describe("Prover", func() {
 
 		Context("when the issuer fails to import", func() {
 			BeforeEach(func() {
-				fakeIssuer.RequestImportReturns(nil, errors.New("watermelon"))
+				fakeIssuer.RequestIssueReturns(nil, errors.New("watermelon"))
 			})
 
 			It("returns the error", func() {
@@ -837,18 +837,18 @@ var _ = Describe("Prover", func() {
 				Marshaler:         fakeMarshaler,
 				TMSManager:        manager,
 			}
-			importRequest = &token.ImportRequest{
+			importRequest = &token.IssueRequest{
 				Credential: []byte("credential"),
-				TokensToIssue: []*token.TokenToIssue{
+				TokensToIssue: []*token.Token{
 					{
-						Recipient: &token.TokenOwner{Raw: []byte("recipient1")},
-						Type:      "XYZ1",
-						Quantity:  ToHex(10),
+						Owner:    &token.TokenOwner{Raw: []byte("recipient1")},
+						Type:     "XYZ1",
+						Quantity: ToHex(10),
 					},
 					{
-						Recipient: &token.TokenOwner{Raw: []byte("recipient2")},
-						Type:      "XYZ2",
-						Quantity:  ToHex(200),
+						Owner:    &token.TokenOwner{Raw: []byte("recipient2")},
+						Type:     "XYZ2",
+						Quantity: ToHex(200),
 					},
 				},
 			}
@@ -885,7 +885,7 @@ var _ = Describe("Prover", func() {
 				Expect(resp).To(Equal(&token.CommandResponse_TokenTransaction{
 					TokenTransaction: expectedTokenTx,
 				}))
-				Expect(fakeIssuer.RequestImportCallCount()).To(Equal(0))
+				Expect(fakeIssuer.RequestIssueCallCount()).To(Equal(0))
 			})
 		})
 
@@ -897,8 +897,8 @@ var _ = Describe("Prover", func() {
 						Creator:   []byte("creator"),
 						Nonce:     []byte("nonce"),
 					},
-					Payload: &token.Command_ImportRequest{
-						ImportRequest: importRequest,
+					Payload: &token.Command_IssueRequest{
+						IssueRequest: importRequest,
 					},
 				}
 				marshaledCommand = ProtoMarshal(command)
@@ -911,7 +911,7 @@ var _ = Describe("Prover", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp).To(Equal(marshaledResponse))
 
-				Expect(fakeIssuer.RequestImportCallCount()).To(Equal(0))
+				Expect(fakeIssuer.RequestIssueCallCount()).To(Equal(0))
 				Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
 				cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
 				Expect(cmd).To(Equal(marshaledCommand))
@@ -953,8 +953,8 @@ var _ = Describe("Prover", func() {
 						Creator:   []byte("response_creator"),
 						Nonce:     []byte("nonce"),
 					},
-					Payload: &token.Command_ImportRequest{
-						ImportRequest: importRequest,
+					Payload: &token.Command_IssueRequest{
+						IssueRequest: importRequest,
 					},
 				}
 				signedCommand = &token.SignedCommand{
@@ -1173,7 +1173,7 @@ var _ = Describe("ProverListUnspentTokens", func() {
 
 		queryResult = &queryresult.KV{Key: key, Value: outputToken}
 
-		unspentTokens := &token.UnspentTokens{Tokens: []*token.TokenOutput{{Type: "XYZ", Quantity: ToHex(100), Id: &token.TokenId{TxId: "1", Index: 0}}}}
+		unspentTokens := &token.UnspentTokens{Tokens: []*token.UnspentToken{{Type: "XYZ", Quantity: ToHex(100), Id: &token.TokenId{TxId: "1", Index: 0}}}}
 		expectedResponse = &token.CommandResponse_UnspentTokens{UnspentTokens: unspentTokens}
 	})
 
@@ -1254,7 +1254,7 @@ var _ = Describe("Prover Transfer using TMS", func() {
 	It("initializes variables and expected responses", func() {
 		tokenIDs := []*token.TokenId{{TxId: "1", Index: 0}, {TxId: "2", Index: 1}}
 
-		shares := []*token.RecipientTransferShare{
+		shares := []*token.RecipientShare{
 			{Recipient: &token.TokenOwner{Raw: []byte("Alice")}, Quantity: ToHex(20)},
 			{Recipient: &token.TokenOwner{Raw: []byte("Bob")}, Quantity: ToHex(250)},
 			{Recipient: &token.TokenOwner{Raw: []byte("Charlie")}, Quantity: ToHex(30)},

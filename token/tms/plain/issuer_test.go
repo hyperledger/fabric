@@ -16,20 +16,20 @@ import (
 var _ = Describe("Issuer", func() {
 	var (
 		issuer        *plain.Issuer
-		tokensToIssue []*token.TokenToIssue
+		tokensToIssue []*token.Token
 	)
 
 	BeforeEach(func() {
-		tokensToIssue = []*token.TokenToIssue{
-			{Recipient: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: ToHex(1001)},
-			{Recipient: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK2", Quantity: ToHex(1002)},
-			{Recipient: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK3", Quantity: ToHex(1003)},
+		tokensToIssue = []*token.Token{
+			{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: ToHex(1001)},
+			{Owner: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK2", Quantity: ToHex(1002)},
+			{Owner: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK3", Quantity: ToHex(1003)},
 		}
 		issuer = &plain.Issuer{TokenOwnerValidator: &TestTokenOwnerValidator{}}
 	})
 
 	It("converts an import request to a token transaction", func() {
-		tt, err := issuer.RequestImport(tokensToIssue)
+		tt, err := issuer.RequestIssue(tokensToIssue)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(tt).To(Equal(&token.TokenTransaction{
 			Action: &token.TokenTransaction_TokenAction{
@@ -50,7 +50,7 @@ var _ = Describe("Issuer", func() {
 
 	Context("when tokens to issue is nil", func() {
 		It("creates a token transaction with no outputs", func() {
-			tt, err := issuer.RequestImport(nil)
+			tt, err := issuer.RequestIssue(nil)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(tt).To(Equal(&token.TokenTransaction{
@@ -65,7 +65,7 @@ var _ = Describe("Issuer", func() {
 
 	Context("when tokens to issue is empty", func() {
 		It("creates a token transaction with no outputs", func() {
-			tt, err := issuer.RequestImport([]*token.TokenToIssue{})
+			tt, err := issuer.RequestIssue([]*token.Token{})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(tt).To(Equal(&token.TokenTransaction{

@@ -40,10 +40,10 @@ var _ bool = Describe("Token EndToEnd", func() {
 		network *nwo.Network
 		process ifrit.Process
 
-		tokensToIssue               []*token.TokenToIssue
+		tokensToIssue               []*token.Token
 		expectedTokenTransaction    *token.TokenTransaction
 		expectedUnspentTokens       *token.UnspentTokens
-		issuedTokens                []*token.TokenOutput
+		issuedTokens                []*token.UnspentToken
 		expectedTransferTransaction *token.TokenTransaction
 		expectedRedeemTransaction   *token.TokenTransaction
 		recipientUser1              *token.TokenOwner
@@ -52,8 +52,8 @@ var _ bool = Describe("Token EndToEnd", func() {
 
 	BeforeEach(func() {
 		// prepare data for issue tokens
-		tokensToIssue = []*token.TokenToIssue{
-			{Recipient: &token.TokenOwner{Raw: []byte("test-owner")}, Type: "ABC123", Quantity: ToHex(119)},
+		tokensToIssue = []*token.Token{
+			{Owner: &token.TokenOwner{Raw: []byte("test-owner")}, Type: "ABC123", Quantity: ToHex(119)},
 		}
 
 		// expected token transaction returned by prover peer
@@ -108,7 +108,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 		}
 
 		expectedUnspentTokens = &token.UnspentTokens{
-			Tokens: []*token.TokenOutput{
+			Tokens: []*token.UnspentToken{
 				{
 					Quantity: ToHex(119),
 					Type:     "ABC123",
@@ -184,7 +184,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			TransferTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
 				"testchannel", "User2", "Org1MSP",
 				[]*token.TokenId{outputs[0].Id},
-				[]*token.RecipientTransferShare{
+				[]*token.RecipientShare{
 					{
 						Quantity:  ToHex(50),
 						Recipient: &token.TokenOwner{Raw: user2},
@@ -246,7 +246,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			recipientUser2Bytes, err := getIdentity(network, peer, "User2", "Org1MSP")
 			Expect(err).NotTo(HaveOccurred())
 			recipientUser2 = &token.TokenOwner{Raw: recipientUser2Bytes}
-			tokensToIssue[0].Recipient = recipientUser2
+			tokensToIssue[0].Owner = recipientUser2
 			expectedTokenTransaction.GetTokenAction().GetIssue().Outputs[0].Owner = recipientUser2
 			recipientUser1Bytes, err := getIdentity(network, peer, "User1", "Org1MSP")
 			Expect(err).NotTo(HaveOccurred())
@@ -316,7 +316,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 
 			By("listing tokens user1")
 			expectedUnspentTokens = &token.UnspentTokens{
-				Tokens: []*token.TokenOutput{
+				Tokens: []*token.UnspentToken{
 					{
 						Quantity: ToHex(119 - 50),
 						Type:     "ABC123",
@@ -355,7 +355,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			recipientUser2Bytes, err := getIdentity(network, peer, "User2", "Org1MSP")
 			Expect(err).NotTo(HaveOccurred())
 			recipientUser2 = &token.TokenOwner{Raw: recipientUser2Bytes}
-			tokensToIssue[0].Recipient = &token.TokenOwner{Raw: recipientUser2Bytes}
+			tokensToIssue[0].Owner = &token.TokenOwner{Raw: recipientUser2Bytes}
 			expectedTokenTransaction.GetTokenAction().GetIssue().Outputs[0].Owner = recipientUser2
 			recipientUser1Bytes, err := getIdentity(network, peer, "User1", "Org1MSP")
 			Expect(err).NotTo(HaveOccurred())
@@ -522,7 +522,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 
 			By("User2 attempts to transfer zero amount by assembling a faulty token transaction by using the prover peer")
 			tempTxID, ordererStatus, committed, err = RunTransferRequestWithSharesAddFailure(tClient, issuedTokens,
-				[]*token.RecipientTransferShare{{Recipient: recipientUser1, Quantity: ToHex(0)}})
+				[]*token.RecipientShare{{Recipient: recipientUser1, Quantity: ToHex(0)}})
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("error from prover: invalid quantity in transfer request 'quantity must be larger than 0'"))
 			Expect(ordererStatus).To(BeNil())
@@ -560,7 +560,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 
 			By("User2 attempts to transfer an over supported precision amount by assembling a faulty token transaction by using the prover peer")
 			tempTxID, ordererStatus, committed, err = RunTransferRequestWithSharesAddFailure(tClient, issuedTokens,
-				[]*token.RecipientTransferShare{{Recipient: recipientUser1, Quantity: "99999999999999999999"}})
+				[]*token.RecipientShare{{Recipient: recipientUser1, Quantity: "99999999999999999999"}})
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("error from prover: invalid quantity in transfer request '99999999999999999999 has precision 67 > 64'"))
 			Expect(ordererStatus).To(BeNil())
@@ -598,7 +598,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 
 			By("User2 attempts to transfer a negative amount by assembling a faulty token transaction by using the prover peer")
 			tempTxID, ordererStatus, committed, err = RunTransferRequestWithSharesAddFailure(tClient, issuedTokens,
-				[]*token.RecipientTransferShare{{Recipient: recipientUser1, Quantity: "-99999999999999999999"}})
+				[]*token.RecipientShare{{Recipient: recipientUser1, Quantity: "-99999999999999999999"}})
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("error from prover: invalid quantity in transfer request 'quantity must be larger than 0'"))
 			Expect(ordererStatus).To(BeNil())
@@ -648,7 +648,7 @@ func GetTokenClient(network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, 
 	return tClient
 }
 
-func RunIssueRequest(c *tokenclient.Client, tokens []*token.TokenToIssue, expectedTokenTx *token.TokenTransaction) string {
+func RunIssueRequest(c *tokenclient.Client, tokens []*token.Token, expectedTokenTx *token.TokenTransaction) string {
 	envelope, txid, ordererStatus, committed, err := c.Issue(tokens, 30*time.Second)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
@@ -667,7 +667,7 @@ func RunIssueRequest(c *tokenclient.Client, tokens []*token.TokenToIssue, expect
 	return txid
 }
 
-func RunListTokens(c *tokenclient.Client, expectedUnspentTokens *token.UnspentTokens) []*token.TokenOutput {
+func RunListTokens(c *tokenclient.Client, expectedUnspentTokens *token.UnspentTokens) []*token.UnspentToken {
 	tokenOutputs, err := c.ListTokens()
 	Expect(err).NotTo(HaveOccurred())
 
@@ -684,12 +684,12 @@ func RunListTokens(c *tokenclient.Client, expectedUnspentTokens *token.UnspentTo
 	return tokenOutputs
 }
 
-func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, recipient *token.TokenOwner, expectedTokenTx *token.TokenTransaction) string {
+func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.UnspentToken, recipient *token.TokenOwner, expectedTokenTx *token.TokenTransaction) string {
 	inputTokenIDs := make([]*token.TokenId, len(inputTokens))
 	for i, inToken := range inputTokens {
 		inputTokenIDs[i] = &token.TokenId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
 	}
-	shares := []*token.RecipientTransferShare{
+	shares := []*token.RecipientShare{
 		{Recipient: recipient, Quantity: ToHex(119)},
 	}
 
@@ -720,7 +720,7 @@ func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput,
 	return txid
 }
 
-func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, quantity string, expectedTokenTx *token.TokenTransaction) {
+func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.UnspentToken, quantity string, expectedTokenTx *token.TokenTransaction) {
 	inputTokenIDs := make([]*token.TokenId, len(inputTokens))
 	for i, inToken := range inputTokens {
 		inputTokenIDs[i] = &token.TokenId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
@@ -743,7 +743,7 @@ func RunRedeemRequest(c *tokenclient.Client, inputTokens []*token.TokenOutput, q
 	Expect(tokenTxid).To(Equal(txid))
 }
 
-func RunTransferRequestWithFailure(c *tokenclient.Client, inputTokens []*token.TokenOutput, recipient *token.TokenOwner) (string, *common.Status, bool, error) {
+func RunTransferRequestWithFailure(c *tokenclient.Client, inputTokens []*token.UnspentToken, recipient *token.TokenOwner) (string, *common.Status, bool, error) {
 	inputTokenIDs := make([]*token.TokenId, len(inputTokens))
 	sum := plain.NewZeroQuantity(64)
 	var err error
@@ -755,7 +755,7 @@ func RunTransferRequestWithFailure(c *tokenclient.Client, inputTokens []*token.T
 		sum, err = sum.Add(v)
 		Expect(err).NotTo(HaveOccurred())
 	}
-	shares := []*token.RecipientTransferShare{
+	shares := []*token.RecipientShare{
 		{Recipient: recipient, Quantity: sum.Hex()},
 	}
 
@@ -763,7 +763,7 @@ func RunTransferRequestWithFailure(c *tokenclient.Client, inputTokens []*token.T
 	return txid, ordererStatus, committed, err
 }
 
-func RunTransferRequestWithSharesAddFailure(c *tokenclient.Client, inputTokens []*token.TokenOutput, shares []*token.RecipientTransferShare) (string, *common.Status, bool, error) {
+func RunTransferRequestWithSharesAddFailure(c *tokenclient.Client, inputTokens []*token.UnspentToken, shares []*token.RecipientShare) (string, *common.Status, bool, error) {
 	inputTokenIDs := make([]*token.TokenId, len(inputTokens))
 	sum := plain.NewZeroQuantity(64)
 	var err error

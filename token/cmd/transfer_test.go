@@ -100,7 +100,7 @@ func TestTestTransferCmd_FailedStubSetup(t *testing.T) {
 	cmd.SetShares(&shares)
 
 	loader.On("TokenIDs", "token_ids").Return([]*ptoken.TokenId{}, nil)
-	loader.On("Shares", "shares").Return([]*ptoken.RecipientTransferShare{}, nil)
+	loader.On("Shares", "shares").Return([]*ptoken.RecipientShare{}, nil)
 	stub.On("Setup", "configuration", "", "", "").Return(errors.New("failed setup"))
 	err := cmd.Execute(common.Config{})
 	assert.Equal(t, err.Error(), "failed setup")
@@ -120,7 +120,7 @@ func TestTestTransferCmd_FailedStubTransfer(t *testing.T) {
 	cmd.SetShares(&sharesString)
 
 	tokenIDs := []*ptoken.TokenId{{TxId: "1", Index: 1}, {TxId: "2", Index: 1}}
-	shares := []*ptoken.RecipientTransferShare{
+	shares := []*ptoken.RecipientShare{
 		{
 			Recipient: &ptoken.TokenOwner{Raw: []byte("bob")},
 			Quantity:  ToHex(100),

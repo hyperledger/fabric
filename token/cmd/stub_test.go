@@ -35,11 +35,11 @@ func TestTokenClientStub_Setup(t *testing.T) {
 	assert.Equal(t, "stub not initialised!!!", err.Error())
 }
 
-func TestTokenOutputResponseParser_ParseResponse(t *testing.T) {
+func TestUnspentTokenResponseParser_ParseResponse(t *testing.T) {
 	buffer := &bytes.Buffer{}
-	parser := &TokenOutputResponseParser{Writer: buffer}
+	parser := &UnspentTokenResponseParser{Writer: buffer}
 
-	resp := &TokenOutputResponse{Tokens: []*token.TokenOutput{
+	resp := &UnspentTokenResponse{Tokens: []*token.UnspentToken{
 		{
 			Type: "token_type",
 			Id:   &token.TokenId{TxId: "0", Index: 1},

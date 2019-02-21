@@ -58,7 +58,7 @@ func TestLoadTokenIDs(t *testing.T) {
 }
 
 func TestShares(t *testing.T) {
-	shares := []*token.RecipientTransferShare{
+	shares := []*token.RecipientShare{
 		{
 			Quantity:  ToHex(10),
 			Recipient: &token.TokenOwner{Raw: []byte{0, 1, 2, 3, 4}},

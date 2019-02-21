@@ -44,7 +44,7 @@ func IssueToken(n *nwo.Network, peer *nwo.Peer, o *nwo.Orderer, channelId, user,
 	Expect(consoleOutput).To(ContainSubstring("Committed [true]"))
 }
 
-func ListTokens(n *nwo.Network, peer *nwo.Peer, o *nwo.Orderer, channelId, user, mspID string) []*token.TokenOutput {
+func ListTokens(n *nwo.Network, peer *nwo.Peer, o *nwo.Orderer, channelId, user, mspID string) []*token.UnspentToken {
 	config := getClientConfig(n, peer, o, channelId, user, mspID)
 	jsonBytes, err := config.ToJSon()
 	Expect(err).NotTo(HaveOccurred())
@@ -60,11 +60,11 @@ func ListTokens(n *nwo.Network, peer *nwo.Peer, o *nwo.Orderer, channelId, user,
 
 	// Extract Token Outputs
 	scanner := bufio.NewScanner(strings.NewReader(string(sess.Out.Contents())))
-	var tokens []*token.TokenOutput
+	var tokens []*token.UnspentToken
 	for scanner.Scan() {
 		outputJson := strings.TrimPrefix(scanner.Text(), "Token = ")
 
-		output := &token.TokenOutput{}
+		output := &token.UnspentToken{}
 		err := json.Unmarshal([]byte(outputJson), output)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -73,7 +73,7 @@ func ListTokens(n *nwo.Network, peer *nwo.Peer, o *nwo.Orderer, channelId, user,
 	return tokens
 }
 
-func TransferTokens(n *nwo.Network, peer *nwo.Peer, o *nwo.Orderer, channelId, user, mspID string, tokenIDs []*token.TokenId, shares []*token.RecipientTransferShare) {
+func TransferTokens(n *nwo.Network, peer *nwo.Peer, o *nwo.Orderer, channelId, user, mspID string, tokenIDs []*token.TokenId, shares []*token.RecipientShare) {
 	config := getClientConfig(n, peer, o, channelId, user, mspID)
 	jsonBytes, err := config.ToJSon()
 	Expect(err).NotTo(HaveOccurred())

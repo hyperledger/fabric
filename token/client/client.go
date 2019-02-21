@@ -22,14 +22,14 @@ type Prover interface {
 	// the function takes as parameters tokensToIssue and the signing identity of the client;
 	// it returns a response in bytes and an error message in the case the request fails.
 	// The response corresponds to a serialized TokenTransaction protobuf message.
-	RequestImport(tokensToIssue []*token.TokenToIssue, signingIdentity tk.SigningIdentity) ([]byte, error)
+	RequestIssue(tokensToIssue []*token.Token, signingIdentity tk.SigningIdentity) ([]byte, error)
 
 	// RequestTransfer allows the client to submit a transfer request to a prover peer service;
 	// the function takes as parameters a fabtoken application credential, the identifiers of the tokens
 	// to be transfererd and the shares describing how they are going to be distributed
 	// among recipients; it returns a response in bytes and an error message in the case the
 	// request fails
-	RequestTransfer(tokenIDs []*token.TokenId, shares []*token.RecipientTransferShare, signingIdentity tk.SigningIdentity) ([]byte, error)
+	RequestTransfer(tokenIDs []*token.TokenId, shares []*token.RecipientShare, signingIdentity tk.SigningIdentity) ([]byte, error)
 
 	// RequestRedeem allows the redemption of the tokens in the input tokenIDs
 	// It queries the ledger to read detail for each token id.
@@ -38,8 +38,8 @@ type Prover interface {
 	RequestRedeem(tokenIDs []*token.TokenId, quantity string, signingIdentity tk.SigningIdentity) ([]byte, error)
 
 	// ListTokens allows the client to submit a list request to a prover peer service;
-	// it returns a list of TokenOutput and an error message in the case the request fails
-	ListTokens(signingIdentity tk.SigningIdentity) ([]*token.TokenOutput, error)
+	// it returns a list of UnspentToken and an error message in the case the request fails
+	ListTokens(signingIdentity tk.SigningIdentity) ([]*token.UnspentToken, error)
 }
 
 //go:generate counterfeiter -o mock/fabric_tx_submitter.go -fake-name FabricTxSubmitter . FabricTxSubmitter
@@ -95,7 +95,7 @@ func NewClient(config ClientConfig, signingIdentity tk.SigningIdentity) (*Client
 }
 
 // Issue is the function that the client calls to introduce tokens into the system.
-// It takes as parameter an array of token.TokenToIssue that defines what tokens are going to be issued.
+// It takes as parameter an array of token.Token that defines what tokens are going to be issued.
 // The 'waitTimeout' parameter defines the time to wait for the transaction to be committed.
 // If it is 0, the function will return right after receiving a response from the orderer.
 // If it is greater than 0, the function will wait until receiving the transaction event or timed out, whichever is earlier.
@@ -104,8 +104,8 @@ func NewClient(config ClientConfig, signingIdentity tk.SigningIdentity) (*Client
 // If the status is SUCCESS (200), it means that the transaction has been successfully submitted regardless of the error.
 // In this case, check the transaction status to know if the transaction is committed or invalidated.
 // If the transaction is invalidated, the application can fix the error and call the function again.
-func (c *Client) Issue(tokensToIssue []*token.TokenToIssue, waitTimeout time.Duration) (*common.Envelope, string, *common.Status, bool, error) {
-	serializedTokenTx, err := c.Prover.RequestImport(tokensToIssue, c.SigningIdentity)
+func (c *Client) Issue(tokensToIssue []*token.Token, waitTimeout time.Duration) (*common.Envelope, string, *common.Status, bool, error) {
+	serializedTokenTx, err := c.Prover.RequestIssue(tokensToIssue, c.SigningIdentity)
 	if err != nil {
 		return nil, "", nil, false, err
 	}
@@ -120,7 +120,7 @@ func (c *Client) Issue(tokensToIssue []*token.TokenToIssue, waitTimeout time.Dur
 }
 
 // Transfer is the function that the client calls to transfer his tokens.
-// Transfer takes as parameter an array of token.RecipientTransferShare that
+// Transfer takes as parameter an array of token.RecipientShare that
 // identifies who receives the tokens and describes how the tokens are distributed.
 // The 'waitTimeout' parameter defines the time to wait for the transaction to be committed.
 // If it is 0, the function will return right after receiving a response from the orderer.
@@ -130,7 +130,7 @@ func (c *Client) Issue(tokensToIssue []*token.TokenToIssue, waitTimeout time.Dur
 // If the status is SUCCESS (200), it means that the transaction has been successfully submitted regardless of the error.
 // In this case, check the transaction status to know if the transaction is committed or invalidated.
 // If the transaction is invalidated, the application can fix the error and call the function again.
-func (c *Client) Transfer(tokenIDs []*token.TokenId, shares []*token.RecipientTransferShare, waitTimeout time.Duration) (*common.Envelope, string, *common.Status, bool, error) {
+func (c *Client) Transfer(tokenIDs []*token.TokenId, shares []*token.RecipientShare, waitTimeout time.Duration) (*common.Envelope, string, *common.Status, bool, error) {
 	serializedTokenTx, err := c.Prover.RequestTransfer(tokenIDs, shares, c.SigningIdentity)
 	if err != nil {
 		return nil, "", nil, false, err
@@ -171,7 +171,7 @@ func (c *Client) Redeem(tokenIDs []*token.TokenId, quantity string, waitTimeout 
 }
 
 // ListTokens allows the client to submit a list request to a prover peer service;
-// it returns a list of TokenOutput and an error in the case the request fails
-func (c *Client) ListTokens() ([]*token.TokenOutput, error) {
+// it returns a list of UnspentToken and an error in the case the request fails
+func (c *Client) ListTokens() ([]*token.UnspentToken, error) {
 	return c.Prover.ListTokens(c.SigningIdentity)
 }

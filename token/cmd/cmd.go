@@ -54,10 +54,10 @@ type Stub interface {
 	Setup(configFilePath, channel, mspPath, mspID string) error
 
 	// Issue is the function that the client calls to introduce tokens into the system.
-	Issue(tokensToIssue []*token.TokenToIssue, waitTimeout time.Duration) (StubResponse, error)
+	Issue(tokensToIssue []*token.Token, waitTimeout time.Duration) (StubResponse, error)
 
 	// Transfer is the function that the client calls to transfer his tokens.
-	Transfer(tokenIDs []*token.TokenId, shares []*token.RecipientTransferShare, waitTimeout time.Duration) (StubResponse, error)
+	Transfer(tokenIDs []*token.TokenId, shares []*token.RecipientShare, waitTimeout time.Duration) (StubResponse, error)
 
 	// Redeem allows the redemption of the tokens in the input tokenIDs
 	Redeem(tokenIDs []*token.TokenId, quantity string, waitTimeout time.Duration) (StubResponse, error)
@@ -76,8 +76,8 @@ type Loader interface {
 	// TokenIDs converts a string to a slice of token ids
 	TokenIDs(s string) ([]*token.TokenId, error)
 
-	// Shares converts a string to a slice of RecipientTransferShare
-	Shares(s string) ([]*token.RecipientTransferShare, error)
+	// Shares converts a string to a slice of RecipientShare
+	Shares(s string) ([]*token.RecipientShare, error)
 }
 
 // BaseCmd contains shared command arguments
@@ -152,7 +152,7 @@ func AddCommands(cli CommandRegistrar) {
 	issueCmd.SetRecipient(recipient)
 
 	// List Tokens
-	listTokensCmd := NewListTokensCmd(&TokenClientStub{}, &TokenOutputResponseParser{responseParserWriter})
+	listTokensCmd := NewListTokensCmd(&TokenClientStub{}, &UnspentTokenResponseParser{responseParserWriter})
 	listTokensCli := cli.Command(ListTokensCommad, "List tokens command", listTokensCmd.Execute)
 	addBaseFlags(listTokensCli, listTokensCmd.BaseCmd)
 	configPath = listTokensCli.Flag("config", "Sets the client configuration path").String()

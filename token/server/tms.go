@@ -13,8 +13,8 @@ import (
 
 // An Issuer creates token import requests.
 type Issuer interface {
-	// Issue creates an import request transaction.
-	RequestImport(tokensToIssue []*token.TokenToIssue) (*token.TokenTransaction, error)
+	// RequestIssue creates an issue request transaction.
+	RequestIssue(tokensToIssue []*token.Token) (*token.TokenTransaction, error)
 
 	// RequestExpectation allows indirect import based on the expectation.
 	// It creates a token transaction with the outputs as specified in the expectation.

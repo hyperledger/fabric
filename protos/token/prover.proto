@@ -15,20 +15,20 @@ import "google/protobuf/timestamp.proto";
 import "token/expectations.proto";
 import "token/transaction.proto";
 
-// TokenToIssue describes a token to be issued in the system
-message TokenToIssue {
-    // Recipient refers to the owner of the token to be issued
-    TokenOwner recipient = 1;
 
-    // Type refers to the token type
-    string type = 2;
 
-    // Quantity refers to the number of token units to be issued, in hex format
-    string quantity = 3;
+// IssueRequest is used to request token issuance
+message IssueRequest {
+    // Credential contains information about the party who is requesting the operation
+    // the content of this field depends on the charateristic of the token manager system used.
+    bytes credential = 1;
+
+    // TokensToIssue contains the information about the tokens to be issued
+    repeated Token tokens_to_issue = 2;
 }
 
-// RecipientTransferShare describes how much a recipient will receive in a token transfer
-message RecipientTransferShare {
+// RecipientShare describes how much a recipient will receive in a token transfer
+message RecipientShare {
     // Recipient refers to the prospective owner of a transferred token
     TokenOwner recipient = 1;
 
@@ -36,67 +36,63 @@ message RecipientTransferShare {
     string quantity = 2;
 }
 
-// TokenOutput is used to specify a token returned by ListRequest
-message TokenOutput {
-    // ID is used to uniquely identify the token
+// TransferRequest is used to request token transfers
+message TransferRequest {
+    // Credential is the public credential of the requestor of the transfer
+    // The content of this field depends on the characteristic of token manager system
+    bytes credential = 1;
+
+    // TokenIds identifies the tokens to be transferred
+    repeated TokenId token_ids = 2;
+
+    // Shares identify the prospective recipients and the quantity of tokens that each would receive
+    repeated RecipientShare shares = 3;
+}
+
+// RedeemRequest is used to request token redemption
+message RedeemRequest {
+    // Credential is the public credential of the requestor of the redemption
+    // The content of this field depends on the characteristic of token manager system
+    bytes credential = 1;
+
+    // TokenIds identifies the tokens to be redeemed
+    repeated TokenId token_ids = 2;
+
+    // Quantity refers to the number of units of a given token needs to be redeemed, in hex format
+    string quantity = 3;
+}
+
+// UnspentToken is used to specify a token returned by ListRequest
+message UnspentToken {
+    // Id is used to uniquely identify the token in the ledger
     TokenId id = 1;
 
     // Type is the type of the token
     string type = 2;
 
-    // Quantity represents the number for this type of token, in hex format
+    // Quantity represents the number of units of Type that this unspent token holds
     string quantity = 3;
 }
 
-// UnspentTokens is used to hold the output of listRequest
+// UnspentTokens is used to hold the output of ListRequest
 message UnspentTokens {
-    repeated TokenOutput tokens = 1;
+    // Tokens is an array of UnspentToken
+    repeated UnspentToken tokens = 1;
 }
 
-// ListRequest is used to request a list of unspent tokens
+// ListRequest is used to retrieve the unspent tokens belonging to the party holding Credential
 message ListRequest {
+    // Credential refers to the public credential of the party whose unspent tokens is to be listed
     bytes credential = 1;
 }
 
-// ImportRequest is used to request creation of imports
-message ImportRequest {
-    // Credential contains information about the party who is requesting the operation
-    // the content of this field depends on the charateristic of the token manager system used.
-    bytes credential = 1;
-
-    // TokenToIssue contains the information about the tokens to be issued
-    repeated TokenToIssue tokens_to_issue = 2;
-}
-
-// RequestTransfer is used to request creation of transfers
-message TransferRequest {
-    bytes credential = 1;
-
-    repeated TokenId token_ids = 2;
-
-    repeated RecipientTransferShare shares = 3;
-}
-
-// RedeemRequest is used to request token redemption
-message RedeemRequest {
-    // Credential contains information for the party who is requesting the operation
-    // The content of this field depends on the characteristic of token manager system
-    bytes credential = 1;
-
-    // token_ids specifies the ids for the tokens that will be redeemed
-    repeated TokenId token_ids = 2;
-
-    // quantity refers to the number of units of a given token needs to be redeemed, in hex format
-    string quantity_to_redeem = 3;
-}
-
-// ExpectationRequest is used to request indirect token import or transfer based on the token expectation
+// ExpectationRequest is used to request a token issue or transfer based on the token expectation
 message ExpectationRequest {
-    // credential contains information for the party who is requesting the operation
+    // Credential is the public credential of the requestor of the expectation
     // The content of this field depends on the characteristic of token manager system
     bytes credential = 1;
 
-    // expectation contains the expected outputs for token import or transfer
+    // Expectation contains the expected outputs for token issue or transfer
     TokenExpectation expectation = 2;
 
     // TokenIds are the token identifiers used to fulfill the expectation
@@ -109,7 +105,7 @@ message Header {
     // by the sender
     google.protobuf.Timestamp timestamp = 1;
 
-    // ChannelId identifies the channel this message is bound for
+    // ChannelId identifies the channel this message is meant for
     string channel_id = 2;
 
     // Nonce is a sufficientley long random value
@@ -120,8 +116,8 @@ message Header {
     // Typically, a marshaled msp.SerializedIdentity
     bytes creator = 4;
 
-    // If mutual TLS is enabled, this represents
-    // the hash of the client's TLS certificate
+    // TlsCertHash represents the hash of the client's TLS certificate
+    // when mutual TLS is enabled
     bytes tls_cert_hash = 5;
 }
 
@@ -133,7 +129,7 @@ message Command {
 
     // Payload is the payload of this command. It can assume one of the following value
     oneof payload {
-        ImportRequest import_request = 2;
+        IssueRequest issue_request = 2;
         TransferRequest transfer_request = 3;
         ListRequest list_request = 4;
         RedeemRequest redeem_request = 5;

@@ -10,10 +10,10 @@ import (
 )
 
 type Prover struct {
-	RequestImportStub        func(tokensToIssue []*token.TokenToIssue, signingIdentity tk.SigningIdentity) ([]byte, error)
+	RequestIssueStub         func(tokensToIssue []*token.Token, signingIdentity tk.SigningIdentity) ([]byte, error)
 	requestImportMutex       sync.RWMutex
 	requestImportArgsForCall []struct {
-		tokensToIssue   []*token.TokenToIssue
+		tokensToIssue   []*token.Token
 		signingIdentity tk.SigningIdentity
 	}
 	requestImportReturns struct {
@@ -24,11 +24,11 @@ type Prover struct {
 		result1 []byte
 		result2 error
 	}
-	RequestTransferStub        func(tokenIDs []*token.TokenId, shares []*token.RecipientTransferShare, signingIdentity tk.SigningIdentity) ([]byte, error)
+	RequestTransferStub        func(tokenIDs []*token.TokenId, shares []*token.RecipientShare, signingIdentity tk.SigningIdentity) ([]byte, error)
 	requestTransferMutex       sync.RWMutex
 	requestTransferArgsForCall []struct {
 		tokenIDs        []*token.TokenId
-		shares          []*token.RecipientTransferShare
+		shares          []*token.RecipientShare
 		signingIdentity tk.SigningIdentity
 	}
 	requestTransferReturns struct {
@@ -54,39 +54,39 @@ type Prover struct {
 		result1 []byte
 		result2 error
 	}
-	ListTokensStub        func(signingIdentity tk.SigningIdentity) ([]*token.TokenOutput, error)
+	ListTokensStub        func(signingIdentity tk.SigningIdentity) ([]*token.UnspentToken, error)
 	listTokensMutex       sync.RWMutex
 	listTokensArgsForCall []struct {
 		signingIdentity tk.SigningIdentity
 	}
 	listTokensReturns struct {
-		result1 []*token.TokenOutput
+		result1 []*token.UnspentToken
 		result2 error
 	}
 	listTokensReturnsOnCall map[int]struct {
-		result1 []*token.TokenOutput
+		result1 []*token.UnspentToken
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Prover) RequestImport(tokensToIssue []*token.TokenToIssue, signingIdentity tk.SigningIdentity) ([]byte, error) {
-	var tokensToIssueCopy []*token.TokenToIssue
+func (fake *Prover) RequestIssue(tokensToIssue []*token.Token, signingIdentity tk.SigningIdentity) ([]byte, error) {
+	var tokensToIssueCopy []*token.Token
 	if tokensToIssue != nil {
-		tokensToIssueCopy = make([]*token.TokenToIssue, len(tokensToIssue))
+		tokensToIssueCopy = make([]*token.Token, len(tokensToIssue))
 		copy(tokensToIssueCopy, tokensToIssue)
 	}
 	fake.requestImportMutex.Lock()
 	ret, specificReturn := fake.requestImportReturnsOnCall[len(fake.requestImportArgsForCall)]
 	fake.requestImportArgsForCall = append(fake.requestImportArgsForCall, struct {
-		tokensToIssue   []*token.TokenToIssue
+		tokensToIssue   []*token.Token
 		signingIdentity tk.SigningIdentity
 	}{tokensToIssueCopy, signingIdentity})
-	fake.recordInvocation("RequestImport", []interface{}{tokensToIssueCopy, signingIdentity})
+	fake.recordInvocation("RequestIssue", []interface{}{tokensToIssueCopy, signingIdentity})
 	fake.requestImportMutex.Unlock()
-	if fake.RequestImportStub != nil {
-		return fake.RequestImportStub(tokensToIssue, signingIdentity)
+	if fake.RequestIssueStub != nil {
+		return fake.RequestIssueStub(tokensToIssue, signingIdentity)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -94,28 +94,28 @@ func (fake *Prover) RequestImport(tokensToIssue []*token.TokenToIssue, signingId
 	return fake.requestImportReturns.result1, fake.requestImportReturns.result2
 }
 
-func (fake *Prover) RequestImportCallCount() int {
+func (fake *Prover) RequestIssueCallCount() int {
 	fake.requestImportMutex.RLock()
 	defer fake.requestImportMutex.RUnlock()
 	return len(fake.requestImportArgsForCall)
 }
 
-func (fake *Prover) RequestImportArgsForCall(i int) ([]*token.TokenToIssue, tk.SigningIdentity) {
+func (fake *Prover) RequestIssueArgsForCall(i int) ([]*token.Token, tk.SigningIdentity) {
 	fake.requestImportMutex.RLock()
 	defer fake.requestImportMutex.RUnlock()
 	return fake.requestImportArgsForCall[i].tokensToIssue, fake.requestImportArgsForCall[i].signingIdentity
 }
 
-func (fake *Prover) RequestImportReturns(result1 []byte, result2 error) {
-	fake.RequestImportStub = nil
+func (fake *Prover) RequestIssueReturns(result1 []byte, result2 error) {
+	fake.RequestIssueStub = nil
 	fake.requestImportReturns = struct {
 		result1 []byte
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *Prover) RequestImportReturnsOnCall(i int, result1 []byte, result2 error) {
-	fake.RequestImportStub = nil
+func (fake *Prover) RequestIssueReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.RequestIssueStub = nil
 	if fake.requestImportReturnsOnCall == nil {
 		fake.requestImportReturnsOnCall = make(map[int]struct {
 			result1 []byte
@@ -128,22 +128,22 @@ func (fake *Prover) RequestImportReturnsOnCall(i int, result1 []byte, result2 er
 	}{result1, result2}
 }
 
-func (fake *Prover) RequestTransfer(tokenIDs []*token.TokenId, shares []*token.RecipientTransferShare, signingIdentity tk.SigningIdentity) ([]byte, error) {
+func (fake *Prover) RequestTransfer(tokenIDs []*token.TokenId, shares []*token.RecipientShare, signingIdentity tk.SigningIdentity) ([]byte, error) {
 	var tokenIDsCopy []*token.TokenId
 	if tokenIDs != nil {
 		tokenIDsCopy = make([]*token.TokenId, len(tokenIDs))
 		copy(tokenIDsCopy, tokenIDs)
 	}
-	var sharesCopy []*token.RecipientTransferShare
+	var sharesCopy []*token.RecipientShare
 	if shares != nil {
-		sharesCopy = make([]*token.RecipientTransferShare, len(shares))
+		sharesCopy = make([]*token.RecipientShare, len(shares))
 		copy(sharesCopy, shares)
 	}
 	fake.requestTransferMutex.Lock()
 	ret, specificReturn := fake.requestTransferReturnsOnCall[len(fake.requestTransferArgsForCall)]
 	fake.requestTransferArgsForCall = append(fake.requestTransferArgsForCall, struct {
 		tokenIDs        []*token.TokenId
-		shares          []*token.RecipientTransferShare
+		shares          []*token.RecipientShare
 		signingIdentity tk.SigningIdentity
 	}{tokenIDsCopy, sharesCopy, signingIdentity})
 	fake.recordInvocation("RequestTransfer", []interface{}{tokenIDsCopy, sharesCopy, signingIdentity})
@@ -163,7 +163,7 @@ func (fake *Prover) RequestTransferCallCount() int {
 	return len(fake.requestTransferArgsForCall)
 }
 
-func (fake *Prover) RequestTransferArgsForCall(i int) ([]*token.TokenId, []*token.RecipientTransferShare, tk.SigningIdentity) {
+func (fake *Prover) RequestTransferArgsForCall(i int) ([]*token.TokenId, []*token.RecipientShare, tk.SigningIdentity) {
 	fake.requestTransferMutex.RLock()
 	defer fake.requestTransferMutex.RUnlock()
 	return fake.requestTransferArgsForCall[i].tokenIDs, fake.requestTransferArgsForCall[i].shares, fake.requestTransferArgsForCall[i].signingIdentity
@@ -249,7 +249,7 @@ func (fake *Prover) RequestRedeemReturnsOnCall(i int, result1 []byte, result2 er
 	}{result1, result2}
 }
 
-func (fake *Prover) ListTokens(signingIdentity tk.SigningIdentity) ([]*token.TokenOutput, error) {
+func (fake *Prover) ListTokens(signingIdentity tk.SigningIdentity) ([]*token.UnspentToken, error) {
 	fake.listTokensMutex.Lock()
 	ret, specificReturn := fake.listTokensReturnsOnCall[len(fake.listTokensArgsForCall)]
 	fake.listTokensArgsForCall = append(fake.listTokensArgsForCall, struct {
@@ -278,24 +278,24 @@ func (fake *Prover) ListTokensArgsForCall(i int) tk.SigningIdentity {
 	return fake.listTokensArgsForCall[i].signingIdentity
 }
 
-func (fake *Prover) ListTokensReturns(result1 []*token.TokenOutput, result2 error) {
+func (fake *Prover) ListTokensReturns(result1 []*token.UnspentToken, result2 error) {
 	fake.ListTokensStub = nil
 	fake.listTokensReturns = struct {
-		result1 []*token.TokenOutput
+		result1 []*token.UnspentToken
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *Prover) ListTokensReturnsOnCall(i int, result1 []*token.TokenOutput, result2 error) {
+func (fake *Prover) ListTokensReturnsOnCall(i int, result1 []*token.UnspentToken, result2 error) {
 	fake.ListTokensStub = nil
 	if fake.listTokensReturnsOnCall == nil {
 		fake.listTokensReturnsOnCall = make(map[int]struct {
-			result1 []*token.TokenOutput
+			result1 []*token.UnspentToken
 			result2 error
 		})
 	}
 	fake.listTokensReturnsOnCall[i] = struct {
-		result1 []*token.TokenOutput
+		result1 []*token.UnspentToken
 		result2 error
 	}{result1, result2}
 }

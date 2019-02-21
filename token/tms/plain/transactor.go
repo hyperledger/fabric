@@ -88,9 +88,9 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 	if len(request.GetTokenIds()) == 0 {
 		return nil, errors.New("no token ids in RedeemRequest")
 	}
-	quantityToRedeem, err := ToQuantity(request.GetQuantityToRedeem(), Precision)
+	quantityToRedeem, err := ToQuantity(request.GetQuantity(), Precision)
 	if err != nil {
-		return nil, errors.Errorf("quantity to redeem [%s] is invalid, err '%s'", request.GetQuantityToRedeem(), err)
+		return nil, errors.Errorf("quantity to redeem [%s] is invalid, err '%s'", request.GetQuantity(), err)
 	}
 
 	tokenType, quantitySum, err := t.getInputsFromTokenIds(request.GetTokenIds())
@@ -103,7 +103,7 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 		return nil, errors.Errorf("cannot compare quantities '%s'", err)
 	}
 	if cmp < 0 {
-		return nil, errors.Errorf("total quantity [%d] from TokenIds is less than quantity [%s] to be redeemed", quantitySum, request.QuantityToRedeem)
+		return nil, errors.Errorf("total quantity [%d] from TokenIds is less than quantity [%s] to be redeemed", quantitySum, request.Quantity)
 	}
 
 	// add the output for redeem itself
@@ -210,7 +210,7 @@ func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 		return nil, err
 	}
 
-	tokens := make([]*token.TokenOutput, 0)
+	tokens := make([]*token.UnspentToken, 0)
 	prefix, err := createPrefix(tokenOutput)
 	if err != nil {
 		return nil, err
@@ -249,7 +249,7 @@ func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 							return nil, err
 						}
 						tokens = append(tokens,
-							&token.TokenOutput{
+							&token.UnspentToken{
 								Type:     output.Type,
 								Quantity: output.Quantity,
 								Id:       id,

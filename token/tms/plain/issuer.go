@@ -17,11 +17,11 @@ type Issuer struct {
 	TokenOwnerValidator identity.TokenOwnerValidator
 }
 
-// RequestIssue creates an import request with the token owners, types, and quantities specified in tokensToIssue.
-func (i *Issuer) RequestImport(tokensToIssue []*token.TokenToIssue) (*token.TokenTransaction, error) {
+// RequestIssue creates an issue request with the token owners, types, and quantities specified in tokensToIssue.
+func (i *Issuer) RequestIssue(tokensToIssue []*token.Token) (*token.TokenTransaction, error) {
 	var outputs []*token.Token
 	for _, tti := range tokensToIssue {
-		err := i.TokenOwnerValidator.Validate(tti.Recipient)
+		err := i.TokenOwnerValidator.Validate(tti.Owner)
 		if err != nil {
 			return nil, errors.Errorf("invalid recipient in issue request '%s'", err)
 		}
@@ -31,7 +31,7 @@ func (i *Issuer) RequestImport(tokensToIssue []*token.TokenToIssue) (*token.Toke
 		}
 
 		outputs = append(outputs, &token.Token{
-			Owner:    tti.Recipient,
+			Owner:    tti.Owner,
 			Type:     tti.Type,
 			Quantity: q.Hex(),
 		})
