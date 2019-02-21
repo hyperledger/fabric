@@ -68,7 +68,7 @@ const (
 // namespaces/fields/mycc#2/Collections          {<collection info>}
 
 // ChaincodeParameters are the parts of the chaincode definition which are serialized
-// as values in the statedb.
+// as values in the statedb.  It is expected that any instance will have no nil fields once initialized.
 // WARNING: This structure is serialized/deserialized from the DB, re-ordering or adding fields
 // will cause opaque checks to fail.
 type ChaincodeParameters struct {
@@ -77,8 +77,28 @@ type ChaincodeParameters struct {
 	Collections     *cb.CollectionConfigPackage
 }
 
+func (cp *ChaincodeParameters) Equal(ocp *ChaincodeParameters) error {
+	switch {
+	case cp.EndorsementInfo.Version != ocp.EndorsementInfo.Version:
+		return errors.Errorf("Version '%s' != '%s'", cp.EndorsementInfo.Version, ocp.EndorsementInfo.Version)
+	case cp.EndorsementInfo.EndorsementPlugin != ocp.EndorsementInfo.EndorsementPlugin:
+		return errors.Errorf("EndorsementPlugin '%s' != '%s'", cp.EndorsementInfo.EndorsementPlugin, ocp.EndorsementInfo.EndorsementPlugin)
+	case cp.ValidationInfo.ValidationPlugin != ocp.ValidationInfo.ValidationPlugin:
+		return errors.Errorf("ValidationPlugin '%s' != '%s'", cp.ValidationInfo.ValidationPlugin, ocp.ValidationInfo.ValidationPlugin)
+	case !bytes.Equal(cp.ValidationInfo.ValidationParameter, ocp.ValidationInfo.ValidationParameter):
+		return errors.Errorf("ValidationParameter '%x' != '%x'", cp.ValidationInfo.ValidationParameter, ocp.ValidationInfo.ValidationParameter)
+	case !bytes.Equal(cp.EndorsementInfo.Id, ocp.EndorsementInfo.Id):
+		return errors.Errorf("Hash '%x' != '%x'", cp.EndorsementInfo.Id, ocp.EndorsementInfo.Id)
+	case !proto.Equal(cp.Collections, ocp.Collections):
+		return errors.Errorf("Collections do not match")
+	default:
+	}
+	return nil
+}
+
 // ChaincodeDefinition contains the chaincode parameters, as well as the sequence number of the definition.
-// Note, it does not embed ChaincodeParameters so as not to complicate the serialization.
+// Note, it does not embed ChaincodeParameters so as not to complicate the serialization.  It is expected
+// that any instance will have no nil fields once initialized.
 // WARNING: This structure is serialized/deserialized from the DB, re-ordering or adding fields
 // will cause opaque checks to fail.
 type ChaincodeDefinition struct {
@@ -196,23 +216,8 @@ func (l *Lifecycle) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeD
 			return errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", name))
 		}
 
-		switch {
-		case definedChaincode.EndorsementInfo.Version != cd.EndorsementInfo.Version:
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Version '%s' != '%s'", currentSequence, name, definedChaincode.EndorsementInfo.Version, cd.EndorsementInfo.Version)
-		case definedChaincode.EndorsementInfo.EndorsementPlugin != cd.EndorsementInfo.EndorsementPlugin:
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but EndorsementPlugin '%s' != '%s'", currentSequence, name, definedChaincode.EndorsementInfo.EndorsementPlugin, cd.EndorsementInfo.EndorsementPlugin)
-		case definedChaincode.ValidationInfo.ValidationPlugin != cd.ValidationInfo.ValidationPlugin:
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but ValidationPlugin '%s' != '%s'", currentSequence, name, definedChaincode.ValidationInfo.ValidationPlugin, cd.ValidationInfo.ValidationPlugin)
-		case !bytes.Equal(definedChaincode.ValidationInfo.ValidationParameter, cd.ValidationInfo.ValidationParameter):
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but ValidationParameter '%x' != '%x'", currentSequence, name, definedChaincode.ValidationInfo.ValidationParameter, cd.ValidationInfo.ValidationParameter)
-		case !bytes.Equal(definedChaincode.EndorsementInfo.Id, cd.EndorsementInfo.Id):
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Hash '%x' != '%x'", currentSequence, name, definedChaincode.EndorsementInfo.Id, cd.EndorsementInfo.Id)
-		case !proto.Equal(definedChaincode.Collections, cd.Collections):
-			if proto.Equal(definedChaincode.Collections, &cb.CollectionConfigPackage{}) && cd.Collections == nil {
-				break
-			}
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Collections do not match", currentSequence, name)
-		default:
+		if err := definedChaincode.Parameters().Equal(cd.Parameters()); err != nil {
+			return errors.WithMessage(err, "attempted to define the current sequence (%d) for namespace %s, but")
 		}
 	}
 

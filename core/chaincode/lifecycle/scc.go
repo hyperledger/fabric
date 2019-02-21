@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
+	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
@@ -257,6 +258,10 @@ func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodes
 // lifecycle implementation
 func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChaincodeDefinitionForMyOrgArgs) (proto.Message, error) {
 	collectionName := ImplicitCollectionNameForOrg(i.SCC.OrgMSPID)
+	var collectionConfig []*cb.CollectionConfig
+	if input.Collections != nil {
+		collectionConfig = input.Collections.Config
+	}
 	if err := i.SCC.Functions.ApproveChaincodeDefinitionForOrg(
 		input.Name,
 		&ChaincodeDefinition{
@@ -271,7 +276,9 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 				ValidationPlugin:    input.ValidationPlugin,
 				ValidationParameter: input.ValidationParameter,
 			},
-			Collections: input.Collections,
+			Collections: &cb.CollectionConfigPackage{
+				Config: collectionConfig,
+			},
 		},
 		i.Stub,
 		&ChaincodePrivateLedgerShim{
