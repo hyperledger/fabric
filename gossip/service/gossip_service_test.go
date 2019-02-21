@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
+	"github.com/hyperledger/fabric/gossip/gossip/channel"
 	gossipMetrics "github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -698,6 +699,7 @@ func newGossipInstance(port int, id int, gRPCServer *comm.GRPCServer, certs *gos
 		ConnTimeout:                gcomm.DefConnTimeout,
 		RecvBuffSize:               gcomm.DefRecvBuffSize,
 		SendBuffSize:               gcomm.DefSendBuffSize,
+		MsgExpirationTimeout:       channel.DefMsgExpirationTimeout,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	cryptoService := &naiveCryptoService{}

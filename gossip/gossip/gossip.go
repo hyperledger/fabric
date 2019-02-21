@@ -143,4 +143,6 @@ type Config struct {
 	ConnTimeout  time.Duration // Connection timeout
 	RecvBuffSize int           // Buffer size of received messages
 	SendBuffSize int           // Buffer size of sending messages
+
+	MsgExpirationTimeout time.Duration // Leadership message expiration timeout
 }
