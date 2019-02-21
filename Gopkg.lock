@@ -102,25 +102,6 @@
   revision = "be9bd761db19d4fc551d40be908f02e00487511d"
 
 [[projects]]
-  digest = "1:cffadb7be778996825cde9028332fa925f07f6c487467f7f8ae41e7472bdbfc4"
-  name = "github.com/coreos/etcd"
-  packages = [
-    "pkg/crc",
-    "pkg/fileutil",
-    "pkg/ioutil",
-    "pkg/pbutil",
-    "raft",
-    "raft/raftpb",
-    "snap",
-    "snap/snappb",
-    "wal",
-    "wal/walpb",
-  ]
-  pruneopts = "UT"
-  revision = "fca8add78a9d926166eb739b8e4a124434025ba3"
-  version = "v3.3.9"
-
-[[projects]]
   digest = "1:e3b55611cb86797357cc1cd2b3d38faf07ae3c4079f04b32e84d497422ab0d60"
   name = "github.com/coreos/go-systemd"
   packages = ["journal"]
@@ -196,6 +177,14 @@
   packages = ["ipamutils"]
   pruneopts = "NUT"
   revision = "19279f0492417475b6bfbd0aa529f73e8f178fb5"
+
+[[projects]]
+  digest = "1:b7ffca49e9cfd3dfb04a8e0a59347708c6f78f68476a32c5e0a0edca5d1b258c"
+  name = "github.com/dustin/go-humanize"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "9f541cc9db5d55bce703bd99987c9d5cb8eea45e"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:08143362be979b087c2c1bae5dde986e988d3d5d4dc661727cbe436411b3f33a"
@@ -731,6 +720,24 @@
   version = "v1.1.9"
 
 [[projects]]
+  digest = "1:7994f0511ea39eb049909df41301aabf5e6289b97c1084f7cc8c351d765469e1"
+  name = "go.etcd.io/etcd"
+  packages = [
+    "etcdserver/api/snap",
+    "etcdserver/api/snap/snappb",
+    "pkg/crc",
+    "pkg/fileutil",
+    "pkg/ioutil",
+    "pkg/pbutil",
+    "raft",
+    "raft/raftpb",
+    "wal",
+    "wal/walpb",
+  ]
+  pruneopts = "UT"
+  revision = "23731bf9ba556867089a9cc8db5e492ca6035fe8"
+
+[[projects]]
   digest = "1:22f696cee54865fb8e9ff91df7b633f6b8f22037a8015253c6b6a71ca82219c7"
   name = "go.uber.org/atomic"
   packages = ["."]
@@ -952,12 +959,6 @@
     "github.com/Knetic/govaluate",
     "github.com/Shopify/sarama",
     "github.com/Shopify/sarama/mocks",
-    "github.com/coreos/etcd/pkg/fileutil",
-    "github.com/coreos/etcd/raft",
-    "github.com/coreos/etcd/raft/raftpb",
-    "github.com/coreos/etcd/snap",
-    "github.com/coreos/etcd/wal",
-    "github.com/coreos/etcd/wal/walpb",
     "github.com/davecgh/go-spew/spew",
     "github.com/fsouza/go-dockerclient",
     "github.com/go-kit/kit/metrics",
@@ -1008,6 +1009,12 @@
     "github.com/tedsuo/ifrit/ginkgomon",
     "github.com/tedsuo/ifrit/grouper",
     "github.com/willf/bitset",
+    "go.etcd.io/etcd/etcdserver/api/snap",
+    "go.etcd.io/etcd/pkg/fileutil",
+    "go.etcd.io/etcd/raft",
+    "go.etcd.io/etcd/raft/raftpb",
+    "go.etcd.io/etcd/wal",
+    "go.etcd.io/etcd/wal/walpb",
     "go.uber.org/zap",
     "go.uber.org/zap/buffer",
     "go.uber.org/zap/zapcore",

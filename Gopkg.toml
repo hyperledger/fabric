@@ -150,8 +150,8 @@ noverify = [
   version = "1.4.2"
 
 [[constraint]]
-  name = "github.com/coreos/etcd"
-  version = "3.3.8"
+  name = "go.etcd.io/etcd"
+  revision = "23731bf9ba556867089a9cc8db5e492ca6035fe8"
 
 [[constraint]]
   name = "go.uber.org/zap"
@@ -187,7 +187,7 @@ noverify = [
       unused-packages = false
 
   [[prune.project]]
-      name = "github.com/coreos/etcd"
+      name = "go.etcd.io/etcd"
       non-go = false
 
 [[constraint]]

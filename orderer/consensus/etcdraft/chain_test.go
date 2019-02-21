@@ -17,8 +17,6 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
-	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
@@ -39,6 +37,8 @@ import (
 	"github.com/onsi/gomega/types"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
 	"go.uber.org/zap"
 )
 
@@ -2171,7 +2171,7 @@ var _ = Describe("Chain", func() {
 					Eventually(func() <-chan raft.SoftState {
 						c2.clock.Increment(interval)
 						return c2.observe
-					}, LongEventualTimeout).Should(Receive(Equal(raft.SoftState{Lead: 1, RaftState: raft.StatePreCandidate})))
+					}, LongEventualTimeout).Should(Receive(Equal(raft.SoftState{Lead: 0, RaftState: raft.StatePreCandidate})))
 
 					Eventually(errorC).Should(BeClosed())
 					err := c2.Order(env, 0)
