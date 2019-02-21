@@ -7,16 +7,32 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/common/api"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/protos/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
 )
+
+// EndorserClient defines the interface for sending a proposal
+// to an endorser
+type EndorserClient interface {
+	ProcessProposal(ctx context.Context, in *pb.SignedProposal, opts ...grpc.CallOption) (*pb.ProposalResponse, error)
+}
+
+// Signer defines the interface needed for signing messages
+type Signer interface {
+	Sign(msg []byte) ([]byte, error)
+	Serialize() ([]byte, error)
+}
 
 // CmdFactory holds the clients used by ChaincodeCmd
 type CmdFactory struct {
@@ -147,4 +163,30 @@ func validatePeerConnectionParameters(cmdName string) error {
 	}
 
 	return nil
+}
+
+func signProposal(proposal *peer.Proposal, signer Signer) (*peer.SignedProposal, error) {
+	// check for nil argument
+	if proposal == nil {
+		return nil, errors.New("proposal cannot be nil")
+	}
+
+	if signer == nil {
+		return nil, errors.New("signer cannot be nil")
+	}
+
+	proposalBytes, err := proto.Marshal(proposal)
+	if err != nil {
+		return nil, errors.Wrap(err, "error marshaling Proposal")
+	}
+
+	signature, err := signer.Sign(proposalBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &peer.SignedProposal{
+		ProposalBytes: proposalBytes,
+		Signature:     signature,
+	}, nil
 }

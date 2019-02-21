@@ -12,31 +12,17 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"google.golang.org/grpc"
 )
 
 // Reader defines the interface needed for reading a file.
 type Reader interface {
 	ReadFile(string) ([]byte, error)
-}
-
-// EndorserClient defines the interface for sending a proposal
-// to an endorser.
-type EndorserClient interface {
-	ProcessProposal(ctx context.Context, in *pb.SignedProposal, opts ...grpc.CallOption) (*pb.ProposalResponse, error)
-}
-
-// Signer defines the interface needed for signing messages.
-type Signer interface {
-	Sign(msg []byte) ([]byte, error)
-	Serialize() ([]byte, error)
 }
 
 // Installer holds the dependencies needed to install
@@ -152,7 +138,7 @@ func (i *Installer) Install() error {
 		return err
 	}
 
-	signedProposal, err := i.signProposal(proposal)
+	signedProposal, err := signProposal(proposal, i.Signer)
 	if err != nil {
 		return errors.WithMessage(err, "failed to create signed proposal for chaincode install")
 	}
@@ -214,23 +200,4 @@ func (i *Installer) createInstallProposal(pkgBytes []byte, creatorBytes []byte) 
 	}
 
 	return proposal, nil
-}
-
-func (i *Installer) signProposal(proposal *peer.Proposal) (*peer.SignedProposal, error) {
-	// check for nil argument
-	if proposal == nil {
-		return nil, errors.New("proposal cannot be nil")
-	}
-
-	proposalBytes, err := proto.Marshal(proposal)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal proposal")
-	}
-
-	signature, err := i.Signer.Sign(proposalBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return &peer.SignedProposal{ProposalBytes: proposalBytes, Signature: signature}, nil
 }
