@@ -683,6 +683,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:b9a00fb37a0075071b6787ff0abc4caad3e23b8b0986ca8a0a9f5d1311de06ea"
+  name = "github.com/sykesm/zap-logfmt"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "f9c81d9cb090ad639813e03ea60132bdd515d3f8"
+
+[[projects]]
+  branch = "master"
   digest = "1:f2ffd421680b0a3f7887501b3c6974bcf19217ecd301d0e2c9b681940ec363d5"
   name = "github.com/syndtr/goleveldb"
   packages = [
@@ -988,6 +996,7 @@
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/mock",
     "github.com/stretchr/testify/require",
+    "github.com/sykesm/zap-logfmt",
     "github.com/syndtr/goleveldb/leveldb",
     "github.com/syndtr/goleveldb/leveldb/errors",
     "github.com/syndtr/goleveldb/leveldb/iterator",

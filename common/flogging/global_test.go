@@ -64,6 +64,23 @@ func TestGlobalInitJSON(t *testing.T) {
 	assert.Regexp(t, `{"level":"debug","ts":\d+.\d+,"name":"testlogger","caller":"flogging/global_test.go:\d+","msg":"this is a message"}\s+`, buf.String())
 }
 
+func TestGlobalInitLogfmt(t *testing.T) {
+	flogging.Reset()
+	defer flogging.Reset()
+
+	buf := &bytes.Buffer{}
+	flogging.Init(flogging.Config{
+		Format:  "logfmt",
+		LogSpec: "DEBUG",
+		Writer:  buf,
+	})
+
+	logger := flogging.MustGetLogger("testlogger")
+	logger.Debug("this is a message")
+
+	assert.Regexp(t, `^ts=\d+.\d+ level=debug name=testlogger caller=flogging/global_test.go:\d+ msg="this is a message"`, buf.String())
+}
+
 func TestGlobalInitPanic(t *testing.T) {
 	flogging.Reset()
 	defer flogging.Reset()

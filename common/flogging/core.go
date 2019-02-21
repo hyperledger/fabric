@@ -15,10 +15,11 @@ type Encoding int8
 const (
 	CONSOLE = iota
 	JSON
+	LOGFMT
 )
 
 // EncodingSelector is used to determine whether log records are
-// encoded as JSON or in a human readable CONSOLE format.
+// encoded as JSON or in human readable CONSOLE or LOGFMT formats.
 type EncodingSelector interface {
 	Encoding() Encoding
 }

@@ -88,5 +88,5 @@ func TestRecordingCoreWith(t *testing.T) {
 	logger = logger.With("key", "value")
 
 	logger.Debug("message")
-	gt.Expect(recorder).To(gbytes.Say(`message {"key": "value"}`))
+	gt.Expect(recorder).To(gbytes.Say(`message key=value`))
 }
