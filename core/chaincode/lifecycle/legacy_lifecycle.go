@@ -128,7 +128,7 @@ func (l *Lifecycle) ChaincodeContainerInfo(chaincodeName string, qe ledger.Simpl
 	// every time, which will be quite slow.  There is purposefully no optimization here
 	// as it is throwaway code.
 
-	ccPackageBytes, _, _, err := l.ChaincodeStore.Load(definedChaincode.Hash)
+	ccPackageBytes, _, err := l.ChaincodeStore.Load(definedChaincode.Hash)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not load chaincode from chaincode store for %s:%s (%x)", chaincodeName, definedChaincode.Version, definedChaincode.Hash))
 	}

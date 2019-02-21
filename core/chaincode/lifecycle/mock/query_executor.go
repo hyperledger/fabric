@@ -4,15 +4,15 @@ package mock
 import (
 	"sync"
 
-	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger"
 )
 
 type SimpleQueryExecutor struct {
-	GetStateStub        func(namespace string, key string) ([]byte, error)
+	GetStateStub        func(string, string) ([]byte, error)
 	getStateMutex       sync.RWMutex
 	getStateArgsForCall []struct {
-		namespace string
-		key       string
+		arg1 string
+		arg2 string
 	}
 	getStateReturns struct {
 		result1 []byte
@@ -22,41 +22,42 @@ type SimpleQueryExecutor struct {
 		result1 []byte
 		result2 error
 	}
-	GetStateRangeScanIteratorStub        func(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error)
+	GetStateRangeScanIteratorStub        func(string, string, string) (ledger.ResultsIterator, error)
 	getStateRangeScanIteratorMutex       sync.RWMutex
 	getStateRangeScanIteratorArgsForCall []struct {
-		namespace string
-		startKey  string
-		endKey    string
+		arg1 string
+		arg2 string
+		arg3 string
 	}
 	getStateRangeScanIteratorReturns struct {
-		result1 commonledger.ResultsIterator
+		result1 ledger.ResultsIterator
 		result2 error
 	}
 	getStateRangeScanIteratorReturnsOnCall map[int]struct {
-		result1 commonledger.ResultsIterator
+		result1 ledger.ResultsIterator
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *SimpleQueryExecutor) GetState(namespace string, key string) ([]byte, error) {
+func (fake *SimpleQueryExecutor) GetState(arg1 string, arg2 string) ([]byte, error) {
 	fake.getStateMutex.Lock()
 	ret, specificReturn := fake.getStateReturnsOnCall[len(fake.getStateArgsForCall)]
 	fake.getStateArgsForCall = append(fake.getStateArgsForCall, struct {
-		namespace string
-		key       string
-	}{namespace, key})
-	fake.recordInvocation("GetState", []interface{}{namespace, key})
+		arg1 string
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("GetState", []interface{}{arg1, arg2})
 	fake.getStateMutex.Unlock()
 	if fake.GetStateStub != nil {
-		return fake.GetStateStub(namespace, key)
+		return fake.GetStateStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getStateReturns.result1, fake.getStateReturns.result2
+	fakeReturns := fake.getStateReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *SimpleQueryExecutor) GetStateCallCount() int {
@@ -65,13 +66,22 @@ func (fake *SimpleQueryExecutor) GetStateCallCount() int {
 	return len(fake.getStateArgsForCall)
 }
 
+func (fake *SimpleQueryExecutor) GetStateCalls(stub func(string, string) ([]byte, error)) {
+	fake.getStateMutex.Lock()
+	defer fake.getStateMutex.Unlock()
+	fake.GetStateStub = stub
+}
+
 func (fake *SimpleQueryExecutor) GetStateArgsForCall(i int) (string, string) {
 	fake.getStateMutex.RLock()
 	defer fake.getStateMutex.RUnlock()
-	return fake.getStateArgsForCall[i].namespace, fake.getStateArgsForCall[i].key
+	argsForCall := fake.getStateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *SimpleQueryExecutor) GetStateReturns(result1 []byte, result2 error) {
+	fake.getStateMutex.Lock()
+	defer fake.getStateMutex.Unlock()
 	fake.GetStateStub = nil
 	fake.getStateReturns = struct {
 		result1 []byte
@@ -80,6 +90,8 @@ func (fake *SimpleQueryExecutor) GetStateReturns(result1 []byte, result2 error) 
 }
 
 func (fake *SimpleQueryExecutor) GetStateReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.getStateMutex.Lock()
+	defer fake.getStateMutex.Unlock()
 	fake.GetStateStub = nil
 	if fake.getStateReturnsOnCall == nil {
 		fake.getStateReturnsOnCall = make(map[int]struct {
@@ -93,23 +105,24 @@ func (fake *SimpleQueryExecutor) GetStateReturnsOnCall(i int, result1 []byte, re
 	}{result1, result2}
 }
 
-func (fake *SimpleQueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
+func (fake *SimpleQueryExecutor) GetStateRangeScanIterator(arg1 string, arg2 string, arg3 string) (ledger.ResultsIterator, error) {
 	fake.getStateRangeScanIteratorMutex.Lock()
 	ret, specificReturn := fake.getStateRangeScanIteratorReturnsOnCall[len(fake.getStateRangeScanIteratorArgsForCall)]
 	fake.getStateRangeScanIteratorArgsForCall = append(fake.getStateRangeScanIteratorArgsForCall, struct {
-		namespace string
-		startKey  string
-		endKey    string
-	}{namespace, startKey, endKey})
-	fake.recordInvocation("GetStateRangeScanIterator", []interface{}{namespace, startKey, endKey})
+		arg1 string
+		arg2 string
+		arg3 string
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("GetStateRangeScanIterator", []interface{}{arg1, arg2, arg3})
 	fake.getStateRangeScanIteratorMutex.Unlock()
 	if fake.GetStateRangeScanIteratorStub != nil {
-		return fake.GetStateRangeScanIteratorStub(namespace, startKey, endKey)
+		return fake.GetStateRangeScanIteratorStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getStateRangeScanIteratorReturns.result1, fake.getStateRangeScanIteratorReturns.result2
+	fakeReturns := fake.getStateRangeScanIteratorReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *SimpleQueryExecutor) GetStateRangeScanIteratorCallCount() int {
@@ -118,30 +131,41 @@ func (fake *SimpleQueryExecutor) GetStateRangeScanIteratorCallCount() int {
 	return len(fake.getStateRangeScanIteratorArgsForCall)
 }
 
+func (fake *SimpleQueryExecutor) GetStateRangeScanIteratorCalls(stub func(string, string, string) (ledger.ResultsIterator, error)) {
+	fake.getStateRangeScanIteratorMutex.Lock()
+	defer fake.getStateRangeScanIteratorMutex.Unlock()
+	fake.GetStateRangeScanIteratorStub = stub
+}
+
 func (fake *SimpleQueryExecutor) GetStateRangeScanIteratorArgsForCall(i int) (string, string, string) {
 	fake.getStateRangeScanIteratorMutex.RLock()
 	defer fake.getStateRangeScanIteratorMutex.RUnlock()
-	return fake.getStateRangeScanIteratorArgsForCall[i].namespace, fake.getStateRangeScanIteratorArgsForCall[i].startKey, fake.getStateRangeScanIteratorArgsForCall[i].endKey
+	argsForCall := fake.getStateRangeScanIteratorArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *SimpleQueryExecutor) GetStateRangeScanIteratorReturns(result1 commonledger.ResultsIterator, result2 error) {
+func (fake *SimpleQueryExecutor) GetStateRangeScanIteratorReturns(result1 ledger.ResultsIterator, result2 error) {
+	fake.getStateRangeScanIteratorMutex.Lock()
+	defer fake.getStateRangeScanIteratorMutex.Unlock()
 	fake.GetStateRangeScanIteratorStub = nil
 	fake.getStateRangeScanIteratorReturns = struct {
-		result1 commonledger.ResultsIterator
+		result1 ledger.ResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *SimpleQueryExecutor) GetStateRangeScanIteratorReturnsOnCall(i int, result1 commonledger.ResultsIterator, result2 error) {
+func (fake *SimpleQueryExecutor) GetStateRangeScanIteratorReturnsOnCall(i int, result1 ledger.ResultsIterator, result2 error) {
+	fake.getStateRangeScanIteratorMutex.Lock()
+	defer fake.getStateRangeScanIteratorMutex.Unlock()
 	fake.GetStateRangeScanIteratorStub = nil
 	if fake.getStateRangeScanIteratorReturnsOnCall == nil {
 		fake.getStateRangeScanIteratorReturnsOnCall = make(map[int]struct {
-			result1 commonledger.ResultsIterator
+			result1 ledger.ResultsIterator
 			result2 error
 		})
 	}
 	fake.getStateRangeScanIteratorReturnsOnCall[i] = struct {
-		result1 commonledger.ResultsIterator
+		result1 ledger.ResultsIterator
 		result2 error
 	}{result1, result2}
 }

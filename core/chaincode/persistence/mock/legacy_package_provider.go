@@ -2,10 +2,10 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	chaincode "github.com/hyperledger/fabric/common/chaincode"
-	ccprovider "github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 )
 
 type LegacyPackageProvider struct {

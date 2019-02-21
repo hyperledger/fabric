@@ -29,7 +29,7 @@ var _ = Describe("PackageProvider", func() {
 		BeforeEach(func() {
 			mockSPP = &mock.StorePackageProvider{}
 			mockSPP.RetrieveHashReturns([]byte("testcchash"), nil)
-			mockSPP.LoadReturns([]byte("storeCode"), "testcc", "1.0", nil)
+			mockSPP.LoadReturns([]byte("storeCode"), []*persistence.ChaincodeMetadata{{Name: "testcc", Version: "1.0"}}, nil)
 
 			mockParser = &mock.PackageParser{}
 			mockParser.ParseReturns(&persistence.ChaincodePackage{
@@ -99,7 +99,7 @@ var _ = Describe("PackageProvider", func() {
 
 		Context("when the code package fails to load from the store package provider", func() {
 			BeforeEach(func() {
-				mockSPP.LoadReturns(nil, "", "", errors.New("mocha"))
+				mockSPP.LoadReturns(nil, nil, errors.New("mocha"))
 			})
 
 			It("returns an error", func() {

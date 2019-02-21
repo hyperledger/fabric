@@ -6,10 +6,21 @@ import (
 )
 
 type ReadWritableState struct {
-	GetStateStub        func(key string) (value []byte, err error)
+	DelStateStub        func(string) error
+	delStateMutex       sync.RWMutex
+	delStateArgsForCall []struct {
+		arg1 string
+	}
+	delStateReturns struct {
+		result1 error
+	}
+	delStateReturnsOnCall map[int]struct {
+		result1 error
+	}
+	GetStateStub        func(string) ([]byte, error)
 	getStateMutex       sync.RWMutex
 	getStateArgsForCall []struct {
-		key string
+		arg1 string
 	}
 	getStateReturns struct {
 		result1 []byte
@@ -19,33 +30,10 @@ type ReadWritableState struct {
 		result1 []byte
 		result2 error
 	}
-	PutStateStub        func(key string, value []byte) error
-	putStateMutex       sync.RWMutex
-	putStateArgsForCall []struct {
-		key   string
-		value []byte
-	}
-	putStateReturns struct {
-		result1 error
-	}
-	putStateReturnsOnCall map[int]struct {
-		result1 error
-	}
-	DelStateStub        func(key string) error
-	delStateMutex       sync.RWMutex
-	delStateArgsForCall []struct {
-		key string
-	}
-	delStateReturns struct {
-		result1 error
-	}
-	delStateReturnsOnCall map[int]struct {
-		result1 error
-	}
-	GetStateHashStub        func(key string) (value []byte, err error)
+	GetStateHashStub        func(string) ([]byte, error)
 	getStateHashMutex       sync.RWMutex
 	getStateHashArgsForCall []struct {
-		key string
+		arg1 string
 	}
 	getStateHashReturns struct {
 		result1 []byte
@@ -55,10 +43,10 @@ type ReadWritableState struct {
 		result1 []byte
 		result2 error
 	}
-	GetStateRangeStub        func(prefix string) (map[string][]byte, error)
+	GetStateRangeStub        func(string) (map[string][]byte, error)
 	getStateRangeMutex       sync.RWMutex
 	getStateRangeArgsForCall []struct {
-		prefix string
+		arg1 string
 	}
 	getStateRangeReturns struct {
 		result1 map[string][]byte
@@ -68,25 +56,98 @@ type ReadWritableState struct {
 		result1 map[string][]byte
 		result2 error
 	}
+	PutStateStub        func(string, []byte) error
+	putStateMutex       sync.RWMutex
+	putStateArgsForCall []struct {
+		arg1 string
+		arg2 []byte
+	}
+	putStateReturns struct {
+		result1 error
+	}
+	putStateReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ReadWritableState) GetState(key string) (value []byte, err error) {
+func (fake *ReadWritableState) DelState(arg1 string) error {
+	fake.delStateMutex.Lock()
+	ret, specificReturn := fake.delStateReturnsOnCall[len(fake.delStateArgsForCall)]
+	fake.delStateArgsForCall = append(fake.delStateArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("DelState", []interface{}{arg1})
+	fake.delStateMutex.Unlock()
+	if fake.DelStateStub != nil {
+		return fake.DelStateStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.delStateReturns
+	return fakeReturns.result1
+}
+
+func (fake *ReadWritableState) DelStateCallCount() int {
+	fake.delStateMutex.RLock()
+	defer fake.delStateMutex.RUnlock()
+	return len(fake.delStateArgsForCall)
+}
+
+func (fake *ReadWritableState) DelStateCalls(stub func(string) error) {
+	fake.delStateMutex.Lock()
+	defer fake.delStateMutex.Unlock()
+	fake.DelStateStub = stub
+}
+
+func (fake *ReadWritableState) DelStateArgsForCall(i int) string {
+	fake.delStateMutex.RLock()
+	defer fake.delStateMutex.RUnlock()
+	argsForCall := fake.delStateArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *ReadWritableState) DelStateReturns(result1 error) {
+	fake.delStateMutex.Lock()
+	defer fake.delStateMutex.Unlock()
+	fake.DelStateStub = nil
+	fake.delStateReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ReadWritableState) DelStateReturnsOnCall(i int, result1 error) {
+	fake.delStateMutex.Lock()
+	defer fake.delStateMutex.Unlock()
+	fake.DelStateStub = nil
+	if fake.delStateReturnsOnCall == nil {
+		fake.delStateReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.delStateReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ReadWritableState) GetState(arg1 string) ([]byte, error) {
 	fake.getStateMutex.Lock()
 	ret, specificReturn := fake.getStateReturnsOnCall[len(fake.getStateArgsForCall)]
 	fake.getStateArgsForCall = append(fake.getStateArgsForCall, struct {
-		key string
-	}{key})
-	fake.recordInvocation("GetState", []interface{}{key})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetState", []interface{}{arg1})
 	fake.getStateMutex.Unlock()
 	if fake.GetStateStub != nil {
-		return fake.GetStateStub(key)
+		return fake.GetStateStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getStateReturns.result1, fake.getStateReturns.result2
+	fakeReturns := fake.getStateReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *ReadWritableState) GetStateCallCount() int {
@@ -95,13 +156,22 @@ func (fake *ReadWritableState) GetStateCallCount() int {
 	return len(fake.getStateArgsForCall)
 }
 
+func (fake *ReadWritableState) GetStateCalls(stub func(string) ([]byte, error)) {
+	fake.getStateMutex.Lock()
+	defer fake.getStateMutex.Unlock()
+	fake.GetStateStub = stub
+}
+
 func (fake *ReadWritableState) GetStateArgsForCall(i int) string {
 	fake.getStateMutex.RLock()
 	defer fake.getStateMutex.RUnlock()
-	return fake.getStateArgsForCall[i].key
+	argsForCall := fake.getStateArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *ReadWritableState) GetStateReturns(result1 []byte, result2 error) {
+	fake.getStateMutex.Lock()
+	defer fake.getStateMutex.Unlock()
 	fake.GetStateStub = nil
 	fake.getStateReturns = struct {
 		result1 []byte
@@ -110,6 +180,8 @@ func (fake *ReadWritableState) GetStateReturns(result1 []byte, result2 error) {
 }
 
 func (fake *ReadWritableState) GetStateReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.getStateMutex.Lock()
+	defer fake.getStateMutex.Unlock()
 	fake.GetStateStub = nil
 	if fake.getStateReturnsOnCall == nil {
 		fake.getStateReturnsOnCall = make(map[int]struct {
@@ -123,123 +195,22 @@ func (fake *ReadWritableState) GetStateReturnsOnCall(i int, result1 []byte, resu
 	}{result1, result2}
 }
 
-func (fake *ReadWritableState) PutState(key string, value []byte) error {
-	var valueCopy []byte
-	if value != nil {
-		valueCopy = make([]byte, len(value))
-		copy(valueCopy, value)
-	}
-	fake.putStateMutex.Lock()
-	ret, specificReturn := fake.putStateReturnsOnCall[len(fake.putStateArgsForCall)]
-	fake.putStateArgsForCall = append(fake.putStateArgsForCall, struct {
-		key   string
-		value []byte
-	}{key, valueCopy})
-	fake.recordInvocation("PutState", []interface{}{key, valueCopy})
-	fake.putStateMutex.Unlock()
-	if fake.PutStateStub != nil {
-		return fake.PutStateStub(key, value)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.putStateReturns.result1
-}
-
-func (fake *ReadWritableState) PutStateCallCount() int {
-	fake.putStateMutex.RLock()
-	defer fake.putStateMutex.RUnlock()
-	return len(fake.putStateArgsForCall)
-}
-
-func (fake *ReadWritableState) PutStateArgsForCall(i int) (string, []byte) {
-	fake.putStateMutex.RLock()
-	defer fake.putStateMutex.RUnlock()
-	return fake.putStateArgsForCall[i].key, fake.putStateArgsForCall[i].value
-}
-
-func (fake *ReadWritableState) PutStateReturns(result1 error) {
-	fake.PutStateStub = nil
-	fake.putStateReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *ReadWritableState) PutStateReturnsOnCall(i int, result1 error) {
-	fake.PutStateStub = nil
-	if fake.putStateReturnsOnCall == nil {
-		fake.putStateReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.putStateReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *ReadWritableState) DelState(key string) error {
-	fake.delStateMutex.Lock()
-	ret, specificReturn := fake.delStateReturnsOnCall[len(fake.delStateArgsForCall)]
-	fake.delStateArgsForCall = append(fake.delStateArgsForCall, struct {
-		key string
-	}{key})
-	fake.recordInvocation("DelState", []interface{}{key})
-	fake.delStateMutex.Unlock()
-	if fake.DelStateStub != nil {
-		return fake.DelStateStub(key)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.delStateReturns.result1
-}
-
-func (fake *ReadWritableState) DelStateCallCount() int {
-	fake.delStateMutex.RLock()
-	defer fake.delStateMutex.RUnlock()
-	return len(fake.delStateArgsForCall)
-}
-
-func (fake *ReadWritableState) DelStateArgsForCall(i int) string {
-	fake.delStateMutex.RLock()
-	defer fake.delStateMutex.RUnlock()
-	return fake.delStateArgsForCall[i].key
-}
-
-func (fake *ReadWritableState) DelStateReturns(result1 error) {
-	fake.DelStateStub = nil
-	fake.delStateReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *ReadWritableState) DelStateReturnsOnCall(i int, result1 error) {
-	fake.DelStateStub = nil
-	if fake.delStateReturnsOnCall == nil {
-		fake.delStateReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.delStateReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *ReadWritableState) GetStateHash(key string) (value []byte, err error) {
+func (fake *ReadWritableState) GetStateHash(arg1 string) ([]byte, error) {
 	fake.getStateHashMutex.Lock()
 	ret, specificReturn := fake.getStateHashReturnsOnCall[len(fake.getStateHashArgsForCall)]
 	fake.getStateHashArgsForCall = append(fake.getStateHashArgsForCall, struct {
-		key string
-	}{key})
-	fake.recordInvocation("GetStateHash", []interface{}{key})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetStateHash", []interface{}{arg1})
 	fake.getStateHashMutex.Unlock()
 	if fake.GetStateHashStub != nil {
-		return fake.GetStateHashStub(key)
+		return fake.GetStateHashStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getStateHashReturns.result1, fake.getStateHashReturns.result2
+	fakeReturns := fake.getStateHashReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *ReadWritableState) GetStateHashCallCount() int {
@@ -248,13 +219,22 @@ func (fake *ReadWritableState) GetStateHashCallCount() int {
 	return len(fake.getStateHashArgsForCall)
 }
 
+func (fake *ReadWritableState) GetStateHashCalls(stub func(string) ([]byte, error)) {
+	fake.getStateHashMutex.Lock()
+	defer fake.getStateHashMutex.Unlock()
+	fake.GetStateHashStub = stub
+}
+
 func (fake *ReadWritableState) GetStateHashArgsForCall(i int) string {
 	fake.getStateHashMutex.RLock()
 	defer fake.getStateHashMutex.RUnlock()
-	return fake.getStateHashArgsForCall[i].key
+	argsForCall := fake.getStateHashArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *ReadWritableState) GetStateHashReturns(result1 []byte, result2 error) {
+	fake.getStateHashMutex.Lock()
+	defer fake.getStateHashMutex.Unlock()
 	fake.GetStateHashStub = nil
 	fake.getStateHashReturns = struct {
 		result1 []byte
@@ -263,6 +243,8 @@ func (fake *ReadWritableState) GetStateHashReturns(result1 []byte, result2 error
 }
 
 func (fake *ReadWritableState) GetStateHashReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.getStateHashMutex.Lock()
+	defer fake.getStateHashMutex.Unlock()
 	fake.GetStateHashStub = nil
 	if fake.getStateHashReturnsOnCall == nil {
 		fake.getStateHashReturnsOnCall = make(map[int]struct {
@@ -276,21 +258,22 @@ func (fake *ReadWritableState) GetStateHashReturnsOnCall(i int, result1 []byte, 
 	}{result1, result2}
 }
 
-func (fake *ReadWritableState) GetStateRange(prefix string) (map[string][]byte, error) {
+func (fake *ReadWritableState) GetStateRange(arg1 string) (map[string][]byte, error) {
 	fake.getStateRangeMutex.Lock()
 	ret, specificReturn := fake.getStateRangeReturnsOnCall[len(fake.getStateRangeArgsForCall)]
 	fake.getStateRangeArgsForCall = append(fake.getStateRangeArgsForCall, struct {
-		prefix string
-	}{prefix})
-	fake.recordInvocation("GetStateRange", []interface{}{prefix})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetStateRange", []interface{}{arg1})
 	fake.getStateRangeMutex.Unlock()
 	if fake.GetStateRangeStub != nil {
-		return fake.GetStateRangeStub(prefix)
+		return fake.GetStateRangeStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getStateRangeReturns.result1, fake.getStateRangeReturns.result2
+	fakeReturns := fake.getStateRangeReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *ReadWritableState) GetStateRangeCallCount() int {
@@ -299,13 +282,22 @@ func (fake *ReadWritableState) GetStateRangeCallCount() int {
 	return len(fake.getStateRangeArgsForCall)
 }
 
+func (fake *ReadWritableState) GetStateRangeCalls(stub func(string) (map[string][]byte, error)) {
+	fake.getStateRangeMutex.Lock()
+	defer fake.getStateRangeMutex.Unlock()
+	fake.GetStateRangeStub = stub
+}
+
 func (fake *ReadWritableState) GetStateRangeArgsForCall(i int) string {
 	fake.getStateRangeMutex.RLock()
 	defer fake.getStateRangeMutex.RUnlock()
-	return fake.getStateRangeArgsForCall[i].prefix
+	argsForCall := fake.getStateRangeArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *ReadWritableState) GetStateRangeReturns(result1 map[string][]byte, result2 error) {
+	fake.getStateRangeMutex.Lock()
+	defer fake.getStateRangeMutex.Unlock()
 	fake.GetStateRangeStub = nil
 	fake.getStateRangeReturns = struct {
 		result1 map[string][]byte
@@ -314,6 +306,8 @@ func (fake *ReadWritableState) GetStateRangeReturns(result1 map[string][]byte, r
 }
 
 func (fake *ReadWritableState) GetStateRangeReturnsOnCall(i int, result1 map[string][]byte, result2 error) {
+	fake.getStateRangeMutex.Lock()
+	defer fake.getStateRangeMutex.Unlock()
 	fake.GetStateRangeStub = nil
 	if fake.getStateRangeReturnsOnCall == nil {
 		fake.getStateRangeReturnsOnCall = make(map[int]struct {
@@ -327,19 +321,85 @@ func (fake *ReadWritableState) GetStateRangeReturnsOnCall(i int, result1 map[str
 	}{result1, result2}
 }
 
+func (fake *ReadWritableState) PutState(arg1 string, arg2 []byte) error {
+	var arg2Copy []byte
+	if arg2 != nil {
+		arg2Copy = make([]byte, len(arg2))
+		copy(arg2Copy, arg2)
+	}
+	fake.putStateMutex.Lock()
+	ret, specificReturn := fake.putStateReturnsOnCall[len(fake.putStateArgsForCall)]
+	fake.putStateArgsForCall = append(fake.putStateArgsForCall, struct {
+		arg1 string
+		arg2 []byte
+	}{arg1, arg2Copy})
+	fake.recordInvocation("PutState", []interface{}{arg1, arg2Copy})
+	fake.putStateMutex.Unlock()
+	if fake.PutStateStub != nil {
+		return fake.PutStateStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.putStateReturns
+	return fakeReturns.result1
+}
+
+func (fake *ReadWritableState) PutStateCallCount() int {
+	fake.putStateMutex.RLock()
+	defer fake.putStateMutex.RUnlock()
+	return len(fake.putStateArgsForCall)
+}
+
+func (fake *ReadWritableState) PutStateCalls(stub func(string, []byte) error) {
+	fake.putStateMutex.Lock()
+	defer fake.putStateMutex.Unlock()
+	fake.PutStateStub = stub
+}
+
+func (fake *ReadWritableState) PutStateArgsForCall(i int) (string, []byte) {
+	fake.putStateMutex.RLock()
+	defer fake.putStateMutex.RUnlock()
+	argsForCall := fake.putStateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *ReadWritableState) PutStateReturns(result1 error) {
+	fake.putStateMutex.Lock()
+	defer fake.putStateMutex.Unlock()
+	fake.PutStateStub = nil
+	fake.putStateReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ReadWritableState) PutStateReturnsOnCall(i int, result1 error) {
+	fake.putStateMutex.Lock()
+	defer fake.putStateMutex.Unlock()
+	fake.PutStateStub = nil
+	if fake.putStateReturnsOnCall == nil {
+		fake.putStateReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.putStateReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *ReadWritableState) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.getStateMutex.RLock()
-	defer fake.getStateMutex.RUnlock()
-	fake.putStateMutex.RLock()
-	defer fake.putStateMutex.RUnlock()
 	fake.delStateMutex.RLock()
 	defer fake.delStateMutex.RUnlock()
+	fake.getStateMutex.RLock()
+	defer fake.getStateMutex.RUnlock()
 	fake.getStateHashMutex.RLock()
 	defer fake.getStateHashMutex.RUnlock()
 	fake.getStateRangeMutex.RLock()
 	defer fake.getStateRangeMutex.RUnlock()
+	fake.putStateMutex.RLock()
+	defer fake.putStateMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

@@ -19,7 +19,7 @@ import (
 type StorePackageProvider interface {
 	GetChaincodeInstallPath() string
 	ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error)
-	Load(hash []byte) (codePackage []byte, name, version string, err error)
+	Load(hash []byte) (codePackage []byte, metadata []*ChaincodeMetadata, err error)
 	RetrieveHash(name, version string) (hash []byte, err error)
 }
 
@@ -78,7 +78,7 @@ func (p *PackageProvider) getCodePackageFromStore(name, version string) ([]byte,
 		return nil, errors.WithMessage(err, "error retrieving hash")
 	}
 
-	fsBytes, _, _, err := p.Store.Load(hash)
+	fsBytes, _, err := p.Store.Load(hash)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error loading code package from ChaincodeInstallPackage")
 	}

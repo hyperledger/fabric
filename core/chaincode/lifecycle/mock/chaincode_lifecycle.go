@@ -4,12 +4,11 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
-type LegacyLifecycle struct {
+type ChaincodeLifecycle struct {
 	ChaincodeContainerInfoStub        func(string, ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error)
 	chaincodeContainerInfoMutex       sync.RWMutex
 	chaincodeContainerInfoArgsForCall []struct {
@@ -42,7 +41,7 @@ type LegacyLifecycle struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *LegacyLifecycle) ChaincodeContainerInfo(arg1 string, arg2 ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
+func (fake *ChaincodeLifecycle) ChaincodeContainerInfo(arg1 string, arg2 ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 	fake.chaincodeContainerInfoMutex.Lock()
 	ret, specificReturn := fake.chaincodeContainerInfoReturnsOnCall[len(fake.chaincodeContainerInfoArgsForCall)]
 	fake.chaincodeContainerInfoArgsForCall = append(fake.chaincodeContainerInfoArgsForCall, struct {
@@ -61,26 +60,26 @@ func (fake *LegacyLifecycle) ChaincodeContainerInfo(arg1 string, arg2 ledger.Sim
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *LegacyLifecycle) ChaincodeContainerInfoCallCount() int {
+func (fake *ChaincodeLifecycle) ChaincodeContainerInfoCallCount() int {
 	fake.chaincodeContainerInfoMutex.RLock()
 	defer fake.chaincodeContainerInfoMutex.RUnlock()
 	return len(fake.chaincodeContainerInfoArgsForCall)
 }
 
-func (fake *LegacyLifecycle) ChaincodeContainerInfoCalls(stub func(string, ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error)) {
+func (fake *ChaincodeLifecycle) ChaincodeContainerInfoCalls(stub func(string, ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error)) {
 	fake.chaincodeContainerInfoMutex.Lock()
 	defer fake.chaincodeContainerInfoMutex.Unlock()
 	fake.ChaincodeContainerInfoStub = stub
 }
 
-func (fake *LegacyLifecycle) ChaincodeContainerInfoArgsForCall(i int) (string, ledger.SimpleQueryExecutor) {
+func (fake *ChaincodeLifecycle) ChaincodeContainerInfoArgsForCall(i int) (string, ledger.SimpleQueryExecutor) {
 	fake.chaincodeContainerInfoMutex.RLock()
 	defer fake.chaincodeContainerInfoMutex.RUnlock()
 	argsForCall := fake.chaincodeContainerInfoArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *LegacyLifecycle) ChaincodeContainerInfoReturns(result1 *ccprovider.ChaincodeContainerInfo, result2 error) {
+func (fake *ChaincodeLifecycle) ChaincodeContainerInfoReturns(result1 *ccprovider.ChaincodeContainerInfo, result2 error) {
 	fake.chaincodeContainerInfoMutex.Lock()
 	defer fake.chaincodeContainerInfoMutex.Unlock()
 	fake.ChaincodeContainerInfoStub = nil
@@ -90,7 +89,7 @@ func (fake *LegacyLifecycle) ChaincodeContainerInfoReturns(result1 *ccprovider.C
 	}{result1, result2}
 }
 
-func (fake *LegacyLifecycle) ChaincodeContainerInfoReturnsOnCall(i int, result1 *ccprovider.ChaincodeContainerInfo, result2 error) {
+func (fake *ChaincodeLifecycle) ChaincodeContainerInfoReturnsOnCall(i int, result1 *ccprovider.ChaincodeContainerInfo, result2 error) {
 	fake.chaincodeContainerInfoMutex.Lock()
 	defer fake.chaincodeContainerInfoMutex.Unlock()
 	fake.ChaincodeContainerInfoStub = nil
@@ -106,7 +105,7 @@ func (fake *LegacyLifecycle) ChaincodeContainerInfoReturnsOnCall(i int, result1 
 	}{result1, result2}
 }
 
-func (fake *LegacyLifecycle) ChaincodeDefinition(arg1 string, arg2 ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+func (fake *ChaincodeLifecycle) ChaincodeDefinition(arg1 string, arg2 ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
 	fake.chaincodeDefinitionMutex.Lock()
 	ret, specificReturn := fake.chaincodeDefinitionReturnsOnCall[len(fake.chaincodeDefinitionArgsForCall)]
 	fake.chaincodeDefinitionArgsForCall = append(fake.chaincodeDefinitionArgsForCall, struct {
@@ -125,26 +124,26 @@ func (fake *LegacyLifecycle) ChaincodeDefinition(arg1 string, arg2 ledger.Simple
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *LegacyLifecycle) ChaincodeDefinitionCallCount() int {
+func (fake *ChaincodeLifecycle) ChaincodeDefinitionCallCount() int {
 	fake.chaincodeDefinitionMutex.RLock()
 	defer fake.chaincodeDefinitionMutex.RUnlock()
 	return len(fake.chaincodeDefinitionArgsForCall)
 }
 
-func (fake *LegacyLifecycle) ChaincodeDefinitionCalls(stub func(string, ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error)) {
+func (fake *ChaincodeLifecycle) ChaincodeDefinitionCalls(stub func(string, ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error)) {
 	fake.chaincodeDefinitionMutex.Lock()
 	defer fake.chaincodeDefinitionMutex.Unlock()
 	fake.ChaincodeDefinitionStub = stub
 }
 
-func (fake *LegacyLifecycle) ChaincodeDefinitionArgsForCall(i int) (string, ledger.SimpleQueryExecutor) {
+func (fake *ChaincodeLifecycle) ChaincodeDefinitionArgsForCall(i int) (string, ledger.SimpleQueryExecutor) {
 	fake.chaincodeDefinitionMutex.RLock()
 	defer fake.chaincodeDefinitionMutex.RUnlock()
 	argsForCall := fake.chaincodeDefinitionArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *LegacyLifecycle) ChaincodeDefinitionReturns(result1 ccprovider.ChaincodeDefinition, result2 error) {
+func (fake *ChaincodeLifecycle) ChaincodeDefinitionReturns(result1 ccprovider.ChaincodeDefinition, result2 error) {
 	fake.chaincodeDefinitionMutex.Lock()
 	defer fake.chaincodeDefinitionMutex.Unlock()
 	fake.ChaincodeDefinitionStub = nil
@@ -154,7 +153,7 @@ func (fake *LegacyLifecycle) ChaincodeDefinitionReturns(result1 ccprovider.Chain
 	}{result1, result2}
 }
 
-func (fake *LegacyLifecycle) ChaincodeDefinitionReturnsOnCall(i int, result1 ccprovider.ChaincodeDefinition, result2 error) {
+func (fake *ChaincodeLifecycle) ChaincodeDefinitionReturnsOnCall(i int, result1 ccprovider.ChaincodeDefinition, result2 error) {
 	fake.chaincodeDefinitionMutex.Lock()
 	defer fake.chaincodeDefinitionMutex.Unlock()
 	fake.ChaincodeDefinitionStub = nil
@@ -170,7 +169,7 @@ func (fake *LegacyLifecycle) ChaincodeDefinitionReturnsOnCall(i int, result1 ccp
 	}{result1, result2}
 }
 
-func (fake *LegacyLifecycle) Invocations() map[string][][]interface{} {
+func (fake *ChaincodeLifecycle) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.chaincodeContainerInfoMutex.RLock()
@@ -184,7 +183,7 @@ func (fake *LegacyLifecycle) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *LegacyLifecycle) recordInvocation(key string, args []interface{}) {
+func (fake *ChaincodeLifecycle) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -195,5 +194,3 @@ func (fake *LegacyLifecycle) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ lifecycle.LegacyLifecycle = new(LegacyLifecycle)
