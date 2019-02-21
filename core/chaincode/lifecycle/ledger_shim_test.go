@@ -269,4 +269,32 @@ var _ = Describe("LedgerShims", func() {
 			})
 		})
 	})
+
+	Describe("PrivateQueryExecutorShim", func() {
+		var (
+			pqes                    *lifecycle.PrivateQueryExecutorShim
+			fakeSimpleQueryExecutor *mock.SimpleQueryExecutor
+		)
+
+		BeforeEach(func() {
+			fakeSimpleQueryExecutor = &mock.SimpleQueryExecutor{}
+			pqes = &lifecycle.PrivateQueryExecutorShim{
+				Namespace:  "cc-namespace",
+				Collection: "collection",
+				State:      fakeSimpleQueryExecutor,
+			}
+			fakeSimpleQueryExecutor.GetPrivateDataHashReturns([]byte("hash"), fmt.Errorf("fake-error"))
+		})
+
+		It("passes through to the underlying implementation", func() {
+			data, err := pqes.GetStateHash("key")
+			Expect(data).To(Equal([]byte("hash")))
+			Expect(err).To(MatchError("fake-error"))
+			Expect(fakeSimpleQueryExecutor.GetPrivateDataHashCallCount()).To(Equal(1))
+			namespace, collection, key := fakeSimpleQueryExecutor.GetPrivateDataHashArgsForCall(0)
+			Expect(namespace).To(Equal("cc-namespace"))
+			Expect(collection).To(Equal("collection"))
+			Expect(key).To(Equal("key"))
+		})
+	})
 })
