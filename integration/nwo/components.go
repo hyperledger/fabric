@@ -77,7 +77,7 @@ func (c *Components) Orderer() string {
 
 func (c *Components) Peer() string {
 	c.peerOnce.Do(func() {
-		c.Paths["peer"] = c.build("peer", "github.com/hyperledger/fabric/peer")
+		c.Paths["peer"] = c.build("peer", "github.com/hyperledger/fabric/cmd/peer")
 	})
 	return c.Paths["peer"]
 }

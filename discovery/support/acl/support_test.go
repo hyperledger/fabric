@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/discovery/support/acl"
 	"github.com/hyperledger/fabric/discovery/support/mocks"
-	gmocks "github.com/hyperledger/fabric/peer/gossip/mocks"
+	gmocks "github.com/hyperledger/fabric/internal/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,7 @@ func TestConfigSequence(t *testing.T) {
 			shouldPanic:    true,
 		},
 		{
-			name:           "both resoruces and validator are found",
+			name:           "both resources and validator are found",
 			resourcesFound: true,
 			validatorFound: true,
 			sequence:       100,

@@ -125,12 +125,12 @@ func Test_findSource(t *testing.T) {
 
 	var source SourceMap
 
-	source, err = findSource(gopath, "github.com/hyperledger/fabric/peer")
+	source, err = findSource(gopath, "github.com/hyperledger/fabric/cmd/peer")
 	if err != nil {
 		t.Errorf("failed to find source: %s", err)
 	}
 
-	if _, ok := source["src/github.com/hyperledger/fabric/peer/main.go"]; !ok {
+	if _, ok := source["src/github.com/hyperledger/fabric/cmd/peer/main.go"]; !ok {
 		t.Errorf("Failed to find expected source file: %v", source)
 	}
 
