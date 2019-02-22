@@ -9,7 +9,7 @@ package semaphore
 
 import "context"
 
-// Semaaphore is a buffered channel based implementation of a counting
+// Semaphore is a buffered channel based implementation of a counting
 // semaphore.
 type Semaphore chan struct{}
 
