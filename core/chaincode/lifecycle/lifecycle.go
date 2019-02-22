@@ -12,7 +12,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
-	corechaincode "github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -132,14 +131,14 @@ type PackageParser interface {
 	Parse(data []byte) (*persistence.ChaincodePackage, error)
 }
 
-//go:generate counterfeiter -o mock/legacy_lifecycle.go --fake-name LegacyLifecycle . LegacyLifecycle
-type LegacyLifecycle interface {
-	corechaincode.Lifecycle
-}
-
 //go:generate counterfeiter -o mock/legacy_ccinfo.go --fake-name LegacyDeployedCCInfoProvider . LegacyDeployedCCInfoProvider
 type LegacyDeployedCCInfoProvider interface {
 	ledger.DeployedChaincodeInfoProvider
+}
+
+//go:generate counterfeiter -o mock/install_listener.go --fake-name InstallListener . InstallListener
+type InstallListener interface {
+	HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, hash []byte)
 }
 
 // Lifecycle implements the lifecycle operations which are invoked
@@ -149,8 +148,8 @@ type Lifecycle struct {
 	ChaincodeStore               ChaincodeStore
 	PackageParser                PackageParser
 	Serializer                   *Serializer
-	LegacyImpl                   LegacyLifecycle
 	LegacyDeployedCCInfoProvider LegacyDeployedCCInfoProvider
+	InstallListener              InstallListener
 }
 
 // CommitChaincodeDefinition takes a chaincode definition, checks that its sequence number is the next allowable sequence number,
@@ -255,7 +254,7 @@ func (l *Lifecycle) QueryChaincodeDefinition(name string, publicState ReadableSt
 // It returns the hash to reference the chaincode by or an error on failure.
 func (l *Lifecycle) InstallChaincode(name, version string, chaincodeInstallPackage []byte) ([]byte, error) {
 	// Let's validate that the chaincodeInstallPackage is at least well formed before writing it
-	_, err := l.PackageParser.Parse(chaincodeInstallPackage)
+	pkg, err := l.PackageParser.Parse(chaincodeInstallPackage)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not parse as a chaincode install package")
 	}
@@ -263,6 +262,10 @@ func (l *Lifecycle) InstallChaincode(name, version string, chaincodeInstallPacka
 	hash, err := l.ChaincodeStore.Save(name, version, chaincodeInstallPackage)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not save cc install package")
+	}
+
+	if l.InstallListener != nil {
+		l.InstallListener.HandleChaincodeInstalled(pkg.Metadata, hash)
 	}
 
 	return hash, nil

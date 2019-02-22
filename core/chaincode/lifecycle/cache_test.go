@@ -108,29 +108,44 @@ var _ = Describe("Cache", func() {
 
 	})
 
-	Describe("ChaincodeDefinition", func() {
+	Describe("ChaincodInfo", func() {
+		BeforeEach(func() {
+			channelCache.Chaincodes["chaincode-name"].InstallInfo = &lifecycle.ChaincodeInstallInfo{
+				Type: "cc-type",
+				Path: "cc-path",
+				Hash: []byte("hash"),
+			}
+		})
+
 		It("returns the cached chaincode definition", func() {
-			cachedDefinition, approved, err := c.ChaincodeDefinition("channel-id", "chaincode-name")
+			localInfo, err := c.ChaincodeInfo("channel-id", "chaincode-name")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(cachedDefinition).To(Equal(&lifecycle.ChaincodeDefinition{
-				Sequence: 3,
-				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-					Id: []byte("hash"),
+			Expect(localInfo).To(Equal(&lifecycle.LocalChaincodeInfo{
+				Definition: &lifecycle.ChaincodeDefinition{
+					Sequence: 3,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Id: []byte("hash"),
+					},
 				},
+				InstallInfo: &lifecycle.ChaincodeInstallInfo{
+					Type: "cc-type",
+					Path: "cc-path",
+					Hash: []byte("hash"),
+				},
+				Approved: true,
 			}))
-			Expect(approved).To(BeTrue())
 		})
 
 		Context("when the chaincode has no cache", func() {
 			It("returns an error", func() {
-				_, _, err := c.ChaincodeDefinition("channel-id", "missing-name")
+				_, err := c.ChaincodeInfo("channel-id", "missing-name")
 				Expect(err).To(MatchError("unknown chaincode 'missing-name' for channel 'channel-id'"))
 			})
 		})
 
 		Context("when the channel does not exist", func() {
 			It("returns an error", func() {
-				_, _, err := c.ChaincodeDefinition("missing-channel-id", "missing-name")
+				_, err := c.ChaincodeInfo("missing-channel-id", "missing-name")
 				Expect(err).To(MatchError("unknown channel 'missing-channel-id'"))
 			})
 		})

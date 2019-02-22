@@ -17,6 +17,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+type LocalChaincodeInfo struct {
+	Definition  *ChaincodeDefinition
+	Approved    bool
+	InstallInfo *ChaincodeInstallInfo
+}
+
 type ChaincodeInstallInfo struct {
 	Hash []byte
 	Type string
@@ -254,20 +260,25 @@ func (c *Cache) StateCommitDone(channelName string) {
 	// as current as the committed state.
 }
 
-func (c *Cache) ChaincodeDefinition(channelID, name string) (*ChaincodeDefinition, bool, error) {
+// ChaincodeInfo returns the chaincode definition and its install info.
+func (c *Cache) ChaincodeInfo(channelID, name string) (*LocalChaincodeInfo, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	channelChaincodes, ok := c.definedChaincodes[channelID]
 	if !ok {
-		return nil, false, errors.Errorf("unknown channel '%s'", channelID)
+		return nil, errors.Errorf("unknown channel '%s'", channelID)
 	}
 
 	cachedChaincode, ok := channelChaincodes.Chaincodes[name]
 	if !ok {
-		return nil, false, errors.Errorf("unknown chaincode '%s' for channel '%s'", name, channelID)
+		return nil, errors.Errorf("unknown chaincode '%s' for channel '%s'", name, channelID)
 	}
 
-	return cachedChaincode.Definition, cachedChaincode.Approved, nil
+	return &LocalChaincodeInfo{
+		Definition:  cachedChaincode.Definition,
+		InstallInfo: cachedChaincode.InstallInfo,
+		Approved:    cachedChaincode.Approved,
+	}, nil
 }
 
 // update should only be called with the write lock already held

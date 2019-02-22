@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	cb "github.com/hyperledger/fabric/protos/common"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
@@ -107,24 +108,33 @@ var _ = Describe("ChaincodeParameters", func() {
 
 var _ = Describe("Lifecycle", func() {
 	var (
-		l           *lifecycle.Lifecycle
-		fakeCCStore *mock.ChaincodeStore
-		fakeParser  *mock.PackageParser
+		l            *lifecycle.Lifecycle
+		fakeCCStore  *mock.ChaincodeStore
+		fakeParser   *mock.PackageParser
+		fakeListener *mock.InstallListener
 	)
 
 	BeforeEach(func() {
 		fakeCCStore = &mock.ChaincodeStore{}
 		fakeParser = &mock.PackageParser{}
+		fakeListener = &mock.InstallListener{}
 
 		l = &lifecycle.Lifecycle{
-			PackageParser:  fakeParser,
-			ChaincodeStore: fakeCCStore,
-			Serializer:     &lifecycle.Serializer{},
+			PackageParser:   fakeParser,
+			ChaincodeStore:  fakeCCStore,
+			Serializer:      &lifecycle.Serializer{},
+			InstallListener: fakeListener,
 		}
 	})
 
 	Describe("InstallChaincode", func() {
 		BeforeEach(func() {
+			fakeParser.ParseReturns(&persistence.ChaincodePackage{
+				Metadata: &persistence.ChaincodePackageMetadata{
+					Type: "cc-type",
+					Path: "cc-path",
+				},
+			}, nil)
 			fakeCCStore.SaveReturns([]byte("fake-hash"), nil)
 		})
 
@@ -141,6 +151,14 @@ var _ = Describe("Lifecycle", func() {
 			Expect(name).To(Equal("name"))
 			Expect(version).To(Equal("version"))
 			Expect(msg).To(Equal([]byte("cc-package")))
+
+			Expect(fakeListener.HandleChaincodeInstalledCallCount()).To(Equal(1))
+			md, hash := fakeListener.HandleChaincodeInstalledArgsForCall(0)
+			Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{
+				Type: "cc-type",
+				Path: "cc-path",
+			}))
+			Expect(hash).To(Equal([]byte("fake-hash")))
 		})
 
 		Context("when saving the chaincode fails", func() {
