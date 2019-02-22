@@ -269,6 +269,15 @@ func Test_WriteBytesToPackage(t *testing.T) {
 	defer tw.Close()
 	err := WriteBytesToPackage("foo", []byte("blah"), tw)
 	assert.NoError(t, err, "Error writing bytes to package")
+
+	tr := tar.NewReader(inputbuf)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF { // No more entries
+			break
+		}
+		assert.Equal(t, header.Mode, int64(0100644))
+	}
 }
 
 func createTestTar(t *testing.T, srcPath string, excludeDir []string, includeFileTypeMap map[string]bool, excludeFileTypeMap map[string]bool) []byte {
