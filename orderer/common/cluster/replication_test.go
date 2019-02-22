@@ -995,6 +995,58 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 	assert.True(t, seenExpectedLogMsg)
 }
 
+func TestSkipPullingPulledChannels(t *testing.T) {
+	blockchain := createBlockChain(0, 5)
+	lw := &mocks.LedgerWriter{}
+	lw.On("Height").Return(uint64(6))
+
+	lf := &mocks.LedgerFactory{}
+	lf.On("GetOrCreate", "mychannel").Return(lw, nil)
+
+	osn := newClusterNode(t)
+	defer osn.stop()
+
+	enqueueBlock := func(seq int) {
+		osn.blockResponses <- &orderer.DeliverResponse{
+			Type: &orderer.DeliverResponse_Block{
+				Block: blockchain[seq],
+			},
+		}
+	}
+
+	dialer := newCountingDialer()
+	bp := newBlockPuller(dialer, osn.srv.Address())
+	bp.FetchTimeout = time.Hour
+
+	r := cluster.Replicator{
+		Filter: cluster.AnyChannel,
+		AmIPartOfChannel: func(configBlock *common.Block) error {
+			return nil
+		},
+		Logger:        flogging.MustGetLogger("test"),
+		SystemChannel: "system",
+		LedgerFactory: lf,
+		Puller:        bp,
+	}
+
+	var detectedChannelPulled bool
+	r.Logger = r.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		if strings.Contains(entry.Message, "Latest height found (6) is equal to our height, skipping pulling channel mychannel") {
+			detectedChannelPulled = true
+		}
+		return nil
+	}))
+
+	osn.addExpectProbeAssert()
+	enqueueBlock(5)
+	osn.addExpectProbeAssert()
+	enqueueBlock(5)
+
+	err := r.PullChannel("mychannel")
+	assert.NoError(t, err)
+	assert.True(t, detectedChannelPulled)
+}
+
 func TestBlockPullerFromConfigBlockGreenPath(t *testing.T) {
 	for _, testCase := range []struct {
 		description        string
