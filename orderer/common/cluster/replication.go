@@ -200,6 +200,10 @@ func (r *Replicator) PullChannel(channel string) error {
 
 func (r *Replicator) pullChannelBlocks(channel string, puller *BlockPuller, latestHeight uint64, ledger LedgerWriter) error {
 	nextBlockToPull := ledger.Height()
+	if nextBlockToPull == latestHeight {
+		r.Logger.Infof("Latest height found (%d) is equal to our height, skipping pulling channel %s", latestHeight, channel)
+		return nil
+	}
 	// Pull the next block and remember its hash.
 	nextBlock := puller.PullBlock(nextBlockToPull)
 	if nextBlock == nil {
