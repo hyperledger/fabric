@@ -410,7 +410,10 @@ func (txmgr *LockBasedTxMgr) invokeNamespaceListeners() error {
 
 		postCommitQueryExecuter := &queryutil.QECombiner{
 			QueryExecuters: []queryutil.QueryExecuter{
-				&queryutil.UpdateBatchBackedQueryExecuter{UpdateBatch: txmgr.current.batch.PubUpdates.UpdateBatch},
+				&queryutil.UpdateBatchBackedQueryExecuter{
+					UpdateBatch:      txmgr.current.batch.PubUpdates.UpdateBatch,
+					HashUpdatesBatch: txmgr.current.batch.HashUpdates,
+				},
 				txmgr.db,
 			},
 		}

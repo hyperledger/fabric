@@ -114,6 +114,11 @@ type SimpleQueryExecutor interface {
 	// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
 	// The returned ResultsIterator contains results of type *KV which is defined in protos/ledger/queryresult.
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error)
+	// GetPrivateDataHash gets the hash of the value of a private data item identified by a tuple <namespace, collection, key>
+	// Function `GetPrivateData` is only meaningful when it is invoked on a peer that is authorized to have the private data
+	// for the collection <namespace, collection>. However, the function `GetPrivateDataHash` can be invoked on any peer
+	// to get the hash of the current value
+	GetPrivateDataHash(namespace, collection, key string) ([]byte, error)
 }
 
 // QueryExecutor executes the queries
@@ -147,11 +152,6 @@ type QueryExecutor interface {
 	ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (QueryResultsIterator, error)
 	// GetPrivateData gets the value of a private data item identified by a tuple <namespace, collection, key>
 	GetPrivateData(namespace, collection, key string) ([]byte, error)
-	// GetPrivateDataHash gets the hash of the value of a private data item identified by a tuple <namespace, collection, key>
-	// Function `GetPrivateData` is only meaningful when it is invoked on a peer that is authorized to have the private data
-	// for the collection <namespace, collection>. However, the function `GetPrivateDataHash` can be invoked on any peer
-	// to get the hash of the current value
-	GetPrivateDataHash(namespace, collection, key string) ([]byte, error)
 	// GetPrivateDataMetadata gets the metadata of a private data item identified by a tuple <namespace, collection, key>
 	GetPrivateDataMetadata(namespace, collection, key string) (map[string][]byte, error)
 	// GetPrivateDataMetadataByHash gets the metadata of a private data item identified by a tuple <namespace, collection, keyhash>

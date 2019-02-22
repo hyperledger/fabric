@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
@@ -138,13 +139,25 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
 
 	namespace := "ns"
+	populateCollConfigForTest(t, txMgr,
+		[]collConfigkey{
+			{"ns", "coll"},
+		},
+		version.NewHeight(1, 0),
+	)
+
 	initialData := []*queryresult.KV{
 		{Namespace: namespace, Key: "key1", Value: []byte("value1")},
 		{Namespace: namespace, Key: "key2", Value: []byte("value2")},
 		{Namespace: namespace, Key: "key3", Value: []byte("value3")},
 	}
+
+	initialPvtdata := []*testutilPvtdata{
+		{coll: "coll", key: "key1", value: []byte("value1")},
+		{coll: "coll", key: "key2", value: []byte("value2")},
+	}
 	// populate initial data in db
-	testutilPopulateDB(t, txMgr, namespace, initialData, version.NewHeight(1, 1))
+	testutilPopulateDB(t, txMgr, namespace, initialData, initialPvtdata, version.NewHeight(1, 1))
 
 	sl := new(mock.StateListener)
 	sl.InterestedInNamespacesStub = func() []string { return []string{"ns"} }
@@ -156,6 +169,8 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 	sim.SetState(namespace, "key1", []byte("value1_new"))
 	sim.DeleteState(namespace, "key2")
 	sim.SetState(namespace, "key4", []byte("value4_new"))
+	sim.SetPrivateData(namespace, "coll", "key1", []byte("value1_new")) // change value for key1
+	sim.DeletePrivateData(namespace, "coll", "key2")                    // delete key2
 	simRes, err := sim.GetTxSimulationResults()
 	simResBytes, err := simRes.GetPubSimulationBytes()
 	assert.NoError(t, err)
@@ -168,9 +183,10 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 	// validate that the query executors passed to the state listener
 	trigger := sl.HandleStateUpdatesArgsForCall(0)
 	assert.NotNil(t, trigger)
-
 	expectedCommittedData := initialData
 	checkQueryExecutor(t, trigger.CommittedStateQueryExecutor, namespace, expectedCommittedData)
+	expectedCommittedPvtdata := initialPvtdata
+	checkQueryExecutorForPvtdataHashes(t, trigger.CommittedStateQueryExecutor, namespace, expectedCommittedPvtdata)
 
 	expectedPostCommitData := []*queryresult.KV{
 		{Namespace: namespace, Key: "key1", Value: []byte("value1_new")},
@@ -178,6 +194,11 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 		{Namespace: namespace, Key: "key4", Value: []byte("value4_new")},
 	}
 	checkQueryExecutor(t, trigger.PostCommitQueryExecutor, namespace, expectedPostCommitData)
+	expectedPostCommitPvtdata := []*testutilPvtdata{
+		{coll: "coll", key: "key1", value: []byte("value1_new")},
+		{coll: "coll", key: "key2", value: nil},
+	}
+	checkQueryExecutorForPvtdataHashes(t, trigger.PostCommitQueryExecutor, namespace, expectedPostCommitPvtdata)
 }
 
 func checkHandleStateUpdatesCallback(t *testing.T, ml *mock.StateListener, callNumber int,
@@ -228,4 +249,16 @@ func checkQueryExecutor(t *testing.T, qe ledger.SimpleQueryExecutor, namespace s
 		actualRes = append(actualRes, res.(*queryresult.KV))
 	}
 	assert.Equal(t, expectedResults, actualRes)
+}
+
+func checkQueryExecutorForPvtdataHashes(t *testing.T, qe ledger.SimpleQueryExecutor, namespace string, expectedPvtdata []*testutilPvtdata) {
+	for _, p := range expectedPvtdata {
+		valueHash, err := qe.GetPrivateDataHash(namespace, p.coll, p.key)
+		assert.NoError(t, err)
+		if p.value == nil {
+			assert.Nil(t, valueHash) // key does not exist
+		} else {
+			assert.Equal(t, util.ComputeHash(p.value), valueHash)
+		}
+	}
 }

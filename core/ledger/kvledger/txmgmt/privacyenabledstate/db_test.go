@@ -108,6 +108,10 @@ func testDB(t *testing.T, env TestEnv) {
 	assert.NoError(t, err)
 	assert.Equal(t, &statedb.VersionedValue{Value: []byte("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
 
+	vv, err = db.GetPrivateDataHash("ns1", "coll1", "key1")
+	assert.NoError(t, err)
+	assert.Equal(t, &statedb.VersionedValue{Value: util.ComputeStringHash("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
+
 	vv, err = db.GetValueHash("ns1", "coll1", util.ComputeStringHash("key1"))
 	assert.NoError(t, err)
 	assert.Equal(t, &statedb.VersionedValue{Value: util.ComputeStringHash("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)

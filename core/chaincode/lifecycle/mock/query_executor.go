@@ -8,6 +8,21 @@ import (
 )
 
 type SimpleQueryExecutor struct {
+	GetPrivateDataHashStub        func(string, string, string) ([]byte, error)
+	getPrivateDataHashMutex       sync.RWMutex
+	getPrivateDataHashArgsForCall []struct {
+		arg1 string
+		arg2 string
+		arg3 string
+	}
+	getPrivateDataHashReturns struct {
+		result1 []byte
+		result2 error
+	}
+	getPrivateDataHashReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
 	GetStateStub        func(string, string) ([]byte, error)
 	getStateMutex       sync.RWMutex
 	getStateArgsForCall []struct {
@@ -39,6 +54,71 @@ type SimpleQueryExecutor struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *SimpleQueryExecutor) GetPrivateDataHash(arg1 string, arg2 string, arg3 string) ([]byte, error) {
+	fake.getPrivateDataHashMutex.Lock()
+	ret, specificReturn := fake.getPrivateDataHashReturnsOnCall[len(fake.getPrivateDataHashArgsForCall)]
+	fake.getPrivateDataHashArgsForCall = append(fake.getPrivateDataHashArgsForCall, struct {
+		arg1 string
+		arg2 string
+		arg3 string
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("GetPrivateDataHash", []interface{}{arg1, arg2, arg3})
+	fake.getPrivateDataHashMutex.Unlock()
+	if fake.GetPrivateDataHashStub != nil {
+		return fake.GetPrivateDataHashStub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.getPrivateDataHashReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *SimpleQueryExecutor) GetPrivateDataHashCallCount() int {
+	fake.getPrivateDataHashMutex.RLock()
+	defer fake.getPrivateDataHashMutex.RUnlock()
+	return len(fake.getPrivateDataHashArgsForCall)
+}
+
+func (fake *SimpleQueryExecutor) GetPrivateDataHashCalls(stub func(string, string, string) ([]byte, error)) {
+	fake.getPrivateDataHashMutex.Lock()
+	defer fake.getPrivateDataHashMutex.Unlock()
+	fake.GetPrivateDataHashStub = stub
+}
+
+func (fake *SimpleQueryExecutor) GetPrivateDataHashArgsForCall(i int) (string, string, string) {
+	fake.getPrivateDataHashMutex.RLock()
+	defer fake.getPrivateDataHashMutex.RUnlock()
+	argsForCall := fake.getPrivateDataHashArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *SimpleQueryExecutor) GetPrivateDataHashReturns(result1 []byte, result2 error) {
+	fake.getPrivateDataHashMutex.Lock()
+	defer fake.getPrivateDataHashMutex.Unlock()
+	fake.GetPrivateDataHashStub = nil
+	fake.getPrivateDataHashReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *SimpleQueryExecutor) GetPrivateDataHashReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.getPrivateDataHashMutex.Lock()
+	defer fake.getPrivateDataHashMutex.Unlock()
+	fake.GetPrivateDataHashStub = nil
+	if fake.getPrivateDataHashReturnsOnCall == nil {
+		fake.getPrivateDataHashReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.getPrivateDataHashReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *SimpleQueryExecutor) GetState(arg1 string, arg2 string) ([]byte, error) {
@@ -173,6 +253,8 @@ func (fake *SimpleQueryExecutor) GetStateRangeScanIteratorReturnsOnCall(i int, r
 func (fake *SimpleQueryExecutor) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.getPrivateDataHashMutex.RLock()
+	defer fake.getPrivateDataHashMutex.RUnlock()
 	fake.getStateMutex.RLock()
 	defer fake.getStateMutex.RUnlock()
 	fake.getStateRangeScanIteratorMutex.RLock()
