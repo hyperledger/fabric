@@ -58,6 +58,36 @@ func NewCache(lifecycle *Lifecycle, myOrgMSPID string) *Cache {
 	}
 }
 
+// Initialize will populate the set of currently committed chaincode definitions
+// for a channel into the cache.  Note, it this looks like a bit of a DRY violation
+// with respect to 'Update', but, the error handling is quite different and attempting
+// to factor out the common pieces results in a net total of more code.
+func (c *Cache) Initialize(channelID string, qe ledger.SimpleQueryExecutor) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	publicState := &SimpleQueryExecutorShim{
+		Namespace:           LifecycleNamespace,
+		SimpleQueryExecutor: qe,
+	}
+
+	namespaces, err := c.Lifecycle.QueryNamespaceDefinitions(publicState)
+	if err != nil {
+		return errors.WithMessage(err, "could not query namespace definitions")
+	}
+
+	dirtyChaincodes := map[string]struct{}{}
+
+	for namespace, namespaceType := range namespaces {
+		if namespaceType != FriendlyChaincodeDefinitionType {
+			continue
+		}
+		dirtyChaincodes[namespace] = struct{}{}
+	}
+
+	return c.update(channelID, dirtyChaincodes, qe)
+}
+
 func (c *Cache) ChaincodeDefinition(channelID, name string) (*ChaincodeDefinition, bool, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -74,9 +104,8 @@ func (c *Cache) ChaincodeDefinition(channelID, name string) (*ChaincodeDefinitio
 	return cachedChaincode.Definition, cachedChaincode.Approved, nil
 }
 
-func (c *Cache) Update(channelID string, dirtyChaincodes map[string]struct{}, qe ledger.SimpleQueryExecutor) error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+// update should only be called with the write lock already held
+func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe ledger.SimpleQueryExecutor) error {
 	channelCache, ok := c.definedChaincodes[channelID]
 	if !ok {
 		channelCache = &ChannelCache{
