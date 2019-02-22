@@ -19,7 +19,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
@@ -521,7 +520,8 @@ func (goPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *ta
 	return cutil.WriteBytesToPackage("binpackage.tar", binpackage.Bytes(), tw)
 }
 
-//GetMetadataProvider fetches metadata provider given deployment spec
-func (goPlatform *Platform) GetMetadataProvider(code []byte) platforms.MetadataProvider {
-	return &ccmetadata.TargzMetadataProvider{Code: code}
+// GetMetadataProvider fetches metadata provider given deployment spec
+func (goPlatform *Platform) GetMetadataAsTarEntries(code []byte) ([]byte, error) {
+	metadataProvider := ccmetadata.TargzMetadataProvider{Code: code}
+	return metadataProvider.GetMetadataAsTarEntries()
 }

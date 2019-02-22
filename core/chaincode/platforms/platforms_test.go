@@ -75,8 +75,8 @@ var _ = Describe("Platforms", func() {
 				md, err := registry.GetMetadataProvider("fakeType", []byte("code-package"))
 				Expect(md).To(BeNil())
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakePlatform.GetMetadataProviderCallCount()).To(Equal(1))
-				Expect(fakePlatform.GetMetadataProviderArgsForCall(0)).To(Equal([]byte("code-package")))
+				Expect(fakePlatform.GetMetadataAsTarEntriesCallCount()).To(Equal(1))
+				Expect(fakePlatform.GetMetadataAsTarEntriesArgsForCall(0)).To(Equal([]byte("code-package")))
 			})
 
 			Context("when the platform is unknown", func() {
