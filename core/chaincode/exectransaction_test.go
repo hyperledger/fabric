@@ -127,10 +127,10 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	pr := platforms.NewRegistry(&golang.Platform{})
 	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
 	ml := &cm.Lifecycle{}
-	ml.On("ChaincodeContainerInfo", "lscc", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "lscc", Version: util.GetSysCCVersion()}, nil)
-	ml.On("ChaincodeContainerInfo", "pthru", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "pthru", Version: "0"}, nil)
-	ml.On("ChaincodeContainerInfo", "example02", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "example02", Version: "0"}, nil)
-	ml.On("ChaincodeContainerInfo", "tmap", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "tmap", Version: "0"}, nil)
+	ml.On("ChaincodeContainerInfo", ma.Anything, "lscc", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "lscc", Version: util.GetSysCCVersion()}, nil)
+	ml.On("ChaincodeContainerInfo", ma.Anything, "pthru", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "pthru", Version: "0"}, nil)
+	ml.On("ChaincodeContainerInfo", ma.Anything, "example02", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "example02", Version: "0"}, nil)
+	ml.On("ChaincodeContainerInfo", ma.Anything, "tmap", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "tmap", Version: "0"}, nil)
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		peerAddress,
@@ -602,13 +602,13 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 
 	// chaincode2: the chaincode that will call by chaincode1
 	chaincode2Name := generateChaincodeName(tc.chaincodeType)
-	ml.On("ChaincodeContainerInfo", chaincode2Name, ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: chaincode2Name, Version: "0"}, nil)
+	ml.On("ChaincodeContainerInfo", ma.Anything, chaincode2Name, ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: chaincode2Name, Version: "0"}, nil)
 	mcd := &cm.ChaincodeDefinition{}
 	mcd.On("CCName").Return(chaincode2Name)
 	mcd.On("CCVersion").Return("0")
 	mcd.On("Hash").Return([]byte("Hulk, (sm)hash"))
 	mcd.On("RequiresInit").Return(false)
-	ml.On("ChaincodeDefinition", chaincode2Name, ma.Anything).Return(mcd, nil)
+	ml.On("ChaincodeDefinition", ma.Anything, chaincode2Name, ma.Anything).Return(mcd, nil)
 	chaincode2Version := "0"
 	chaincode2Type := tc.chaincodeType
 	chaincode2Path := tc.chaincodePath
@@ -779,13 +779,13 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 
 	// deploy the chaincode that will be called by the second chaincode
 	chaincode1Name := generateChaincodeName(pb.ChaincodeSpec_GOLANG)
-	ml.On("ChaincodeContainerInfo", chaincode1Name, ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: chaincode1Name, Version: "0"}, nil)
+	ml.On("ChaincodeContainerInfo", ma.Anything, chaincode1Name, ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: chaincode1Name, Version: "0"}, nil)
 	mcd := &cm.ChaincodeDefinition{}
 	mcd.On("CCName").Return(chaincode1Name)
 	mcd.On("CCVersion").Return("0")
 	mcd.On("Hash").Return([]byte("Hulk, (sm)hash"))
 	mcd.On("RequiresInit").Return(false)
-	ml.On("ChaincodeDefinition", chaincode1Name, ma.Anything).Return(mcd, nil)
+	ml.On("ChaincodeDefinition", ma.Anything, chaincode1Name, ma.Anything).Return(mcd, nil)
 	chaincode1Version := "0"
 	chaincode1Type := pb.ChaincodeSpec_GOLANG
 	chaincode1Path := chaincodeExample02GolangPath
@@ -865,7 +865,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	mcd.On("CCVersion").Return("0")
 	mcd.On("Hash").Return([]byte("Hulk, (sm)hash"))
 	mcd.On("RequiresInit").Return(false)
-	ml.On("ChaincodeDefinition", "example02", ma.Anything).Return(mcd, nil)
+	ml.On("ChaincodeDefinition", ma.Anything, "example02", ma.Anything).Return(mcd, nil)
 
 	// Deploy first chaincode
 	cID1 := &pb.ChaincodeID{Name: "example02", Path: chaincodeExample02GolangPath, Version: "0"}

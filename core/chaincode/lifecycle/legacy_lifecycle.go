@@ -64,7 +64,7 @@ func (ld *LegacyDefinition) RequiresInit() bool {
 }
 
 // ChaincodeDefinition returns the details for a chaincode by name
-func (l *Lifecycle) ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+func (l *Lifecycle) ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
 	exists, definedChaincode, err := l.ChaincodeDefinitionIfDefined(chaincodeName, &SimpleQueryExecutorShim{
 		Namespace:           LifecycleNamespace,
 		SimpleQueryExecutor: qe,
@@ -73,7 +73,7 @@ func (l *Lifecycle) ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQu
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not get definition for chaincode %s", chaincodeName))
 	}
 	if !exists {
-		return l.LegacyImpl.ChaincodeDefinition(chaincodeName, qe)
+		return l.LegacyImpl.ChaincodeDefinition(channelID, chaincodeName, qe)
 	}
 
 	return &LegacyDefinition{
@@ -89,7 +89,7 @@ func (l *Lifecycle) ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQu
 }
 
 // ChaincodeContainerInfo returns the information necessary to launch a chaincode
-func (l *Lifecycle) ChaincodeContainerInfo(chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
+func (l *Lifecycle) ChaincodeContainerInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 	state := &SimpleQueryExecutorShim{
 		Namespace:           LifecycleNamespace,
 		SimpleQueryExecutor: qe,
@@ -100,7 +100,7 @@ func (l *Lifecycle) ChaincodeContainerInfo(chaincodeName string, qe ledger.Simpl
 	}
 
 	if !ok {
-		return l.LegacyImpl.ChaincodeContainerInfo(chaincodeName, qe)
+		return l.LegacyImpl.ChaincodeContainerInfo(channelID, chaincodeName, qe)
 	}
 
 	if metadata.Datatype != ChaincodeDefinitionType {

@@ -64,7 +64,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("adapts the underlying lifecycle response", func() {
-				def, err := l.ChaincodeDefinition("name", fakeQueryExecutor)
+				def, err := l.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(def).To(Equal(&lifecycle.LegacyDefinition{
 					Name:                "name",
@@ -82,7 +82,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("wraps and returns that error", func() {
-					_, err := l.ChaincodeDefinition("name", fakeQueryExecutor)
+					_, err := l.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
 					Expect(err).To(MatchError("could not get definition for chaincode name: could not deserialize metadata for chaincode name: could not unmarshal metadata for namespace namespaces/name: proto: can't skip unknown wire type 7"))
 				})
 			})
@@ -99,7 +99,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := l.ChaincodeDefinition("name", fakeQueryExecutor)
+					_, err := l.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
 					Expect(err).To(MatchError("could not get definition for chaincode name: not a chaincode type: badStruct"))
 				})
 			})
@@ -110,7 +110,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("wraps and returns that error", func() {
-					_, err := l.ChaincodeDefinition("name", fakeQueryExecutor)
+					_, err := l.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
 					Expect(err).To(MatchError("could not get definition for chaincode name: could not deserialize chaincode definition for chaincode name: could not unmarshal state for key namespaces/fields/name/ValidationInfo: proto: can't skip unknown wire type 7"))
 				})
 			})
@@ -131,11 +131,12 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("passes through the legacy implementation", func() {
-					res, err := l.ChaincodeDefinition("cc-name", fakeQueryExecutor)
+					res, err := l.ChaincodeDefinition("channel-id", "cc-name", fakeQueryExecutor)
 					Expect(err).To(MatchError("fake-error"))
 					Expect(res).To(Equal(legacyChaincodeDefinition))
 					Expect(fakeLegacyImpl.ChaincodeDefinitionCallCount()).To(Equal(1))
-					name, qe := fakeLegacyImpl.ChaincodeDefinitionArgsForCall(0)
+					channelID, name, qe := fakeLegacyImpl.ChaincodeDefinitionArgsForCall(0)
+					Expect(channelID).To(Equal("channel-id"))
 					Expect(name).To(Equal("cc-name"))
 					Expect(qe).To(Equal(fakeQueryExecutor))
 				})
@@ -189,7 +190,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("returns the current definition", func() {
-				res, err := l.ChaincodeContainerInfo("name", fakeQueryExecutor)
+				res, err := l.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res).To(Equal(&ccprovider.ChaincodeContainerInfo{
 					Name:          "name",
@@ -212,7 +213,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("wraps and returns that error", func() {
-					_, err := l.ChaincodeContainerInfo("name", fakeQueryExecutor)
+					_, err := l.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
 					Expect(err).To(MatchError("could not deserialize metadata for chaincode name: could not unmarshal metadata for namespace namespaces/name: proto: can't skip unknown wire type 7"))
 				})
 			})
@@ -229,7 +230,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := l.ChaincodeContainerInfo("name", fakeQueryExecutor)
+					_, err := l.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
 					Expect(err).To(MatchError("not a chaincode type: badStruct"))
 				})
 			})
@@ -240,18 +241,19 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("wraps and returns that error", func() {
-					_, err := l.ChaincodeContainerInfo("name", fakeQueryExecutor)
+					_, err := l.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
 					Expect(err).To(MatchError("could not deserialize chaincode definition for chaincode name: could not unmarshal state for key namespaces/fields/name/ValidationInfo: proto: can't skip unknown wire type 7"))
 				})
 			})
 
 			Context("when the definition does not exist in the new lifecycle", func() {
 				It("passes through the legacy implementation", func() {
-					res, err := l.ChaincodeContainerInfo("different-name", fakeQueryExecutor)
+					res, err := l.ChaincodeContainerInfo("channel-id", "different-name", fakeQueryExecutor)
 					Expect(err).To(MatchError("fake-error"))
 					Expect(res).To(Equal(legacyContainerInfo))
 					Expect(fakeLegacyImpl.ChaincodeContainerInfoCallCount()).To(Equal(1))
-					name, qe := fakeLegacyImpl.ChaincodeContainerInfoArgsForCall(0)
+					channelID, name, qe := fakeLegacyImpl.ChaincodeContainerInfoArgsForCall(0)
+					Expect(channelID).To(Equal("channel-id"))
 					Expect(name).To(Equal("different-name"))
 					Expect(qe).To(Equal(fakeQueryExecutor))
 				})
@@ -263,7 +265,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("wraps and returns the error", func() {
-					_, err := l.ChaincodeContainerInfo("name", fakeQueryExecutor)
+					_, err := l.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
 					Expect(err).To(MatchError("could not load chaincode from chaincode store for name:version (68617368): load-error"))
 				})
 			})
@@ -274,7 +276,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("wraps and returns the error", func() {
-					_, err := l.ChaincodeContainerInfo("name", fakeQueryExecutor)
+					_, err := l.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
 					Expect(err).To(MatchError("could not parse chaincode package for name:version (68617368): parse-error"))
 				})
 			})

@@ -145,9 +145,10 @@ type Support struct {
 		result2 *pb.ChaincodeEvent
 		result3 error
 	}
-	GetChaincodeDefinitionStub        func(chaincodeID string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
+	GetChaincodeDefinitionStub        func(channelID, chaincodeID string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
 	getChaincodeDefinitionMutex       sync.RWMutex
 	getChaincodeDefinitionArgsForCall []struct {
+		channelID   string
 		chaincodeID string
 		txsim       ledger.QueryExecutor
 	}
@@ -755,17 +756,18 @@ func (fake *Support) ExecuteLegacyInitReturnsOnCall(i int, result1 *pb.Response,
 	}{result1, result2, result3}
 }
 
-func (fake *Support) GetChaincodeDefinition(chaincodeID string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+func (fake *Support) GetChaincodeDefinition(channelID string, chaincodeID string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
 	fake.getChaincodeDefinitionMutex.Lock()
 	ret, specificReturn := fake.getChaincodeDefinitionReturnsOnCall[len(fake.getChaincodeDefinitionArgsForCall)]
 	fake.getChaincodeDefinitionArgsForCall = append(fake.getChaincodeDefinitionArgsForCall, struct {
+		channelID   string
 		chaincodeID string
 		txsim       ledger.QueryExecutor
-	}{chaincodeID, txsim})
-	fake.recordInvocation("GetChaincodeDefinition", []interface{}{chaincodeID, txsim})
+	}{channelID, chaincodeID, txsim})
+	fake.recordInvocation("GetChaincodeDefinition", []interface{}{channelID, chaincodeID, txsim})
 	fake.getChaincodeDefinitionMutex.Unlock()
 	if fake.GetChaincodeDefinitionStub != nil {
-		return fake.GetChaincodeDefinitionStub(chaincodeID, txsim)
+		return fake.GetChaincodeDefinitionStub(channelID, chaincodeID, txsim)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -779,10 +781,10 @@ func (fake *Support) GetChaincodeDefinitionCallCount() int {
 	return len(fake.getChaincodeDefinitionArgsForCall)
 }
 
-func (fake *Support) GetChaincodeDefinitionArgsForCall(i int) (string, ledger.QueryExecutor) {
+func (fake *Support) GetChaincodeDefinitionArgsForCall(i int) (string, string, ledger.QueryExecutor) {
 	fake.getChaincodeDefinitionMutex.RLock()
 	defer fake.getChaincodeDefinitionMutex.RUnlock()
-	return fake.getChaincodeDefinitionArgsForCall[i].chaincodeID, fake.getChaincodeDefinitionArgsForCall[i].txsim
+	return fake.getChaincodeDefinitionArgsForCall[i].channelID, fake.getChaincodeDefinitionArgsForCall[i].chaincodeID, fake.getChaincodeDefinitionArgsForCall[i].txsim
 }
 
 func (fake *Support) GetChaincodeDefinitionReturns(result1 ccprovider.ChaincodeDefinition, result2 error) {
