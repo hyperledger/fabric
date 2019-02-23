@@ -16,7 +16,7 @@ import (
 // package-scoped variables
 
 // Package version
-var Version string
+var Version string = common.Version
 
 // package-scoped constants
 
@@ -24,11 +24,6 @@ var Version string
 const ProgramName = "orderer"
 
 func GetVersionInfo() string {
-	Version = common.Version
-	if Version == "" {
-		Version = "development build"
-	}
-
 	return fmt.Sprintf(
 		"%s:\n Version: %s\n Commit SHA: %s\n Go version: %s\n OS/Arch: %s\n",
 		ProgramName,
