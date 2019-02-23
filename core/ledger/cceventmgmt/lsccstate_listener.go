@@ -16,6 +16,11 @@ type KVLedgerLSCCStateListener struct {
 	DeployedChaincodeInfoProvider ledger.DeployedChaincodeInfoProvider
 }
 
+func (listener *KVLedgerLSCCStateListener) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
+	// Noop
+	return nil
+}
+
 // HandleStateUpdates uses 'DeployedChaincodeInfoProvider' to findout deployment of a chaincode
 // and invokes `HandleChaincodeDeploy` function on chaincode event manager (which in turn is responsible for creation of statedb
 // artifacts for the chaincode statedata)

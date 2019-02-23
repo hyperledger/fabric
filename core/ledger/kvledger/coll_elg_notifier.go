@@ -20,6 +20,11 @@ type collElgNotifier struct {
 	listeners                     map[string]collElgListener
 }
 
+func (n *collElgNotifier) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
+	// Noop
+	return nil
+}
+
 // InterestedInNamespaces implements function in interface ledger.StateListener
 func (n *collElgNotifier) InterestedInNamespaces() []string {
 	return n.deployedChaincodeInfoProvider.Namespaces()

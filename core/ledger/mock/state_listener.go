@@ -19,6 +19,18 @@ type StateListener struct {
 	handleStateUpdatesReturnsOnCall map[int]struct {
 		result1 error
 	}
+	InitializeStub        func(string, ledger.SimpleQueryExecutor) error
+	initializeMutex       sync.RWMutex
+	initializeArgsForCall []struct {
+		arg1 string
+		arg2 ledger.SimpleQueryExecutor
+	}
+	initializeReturns struct {
+		result1 error
+	}
+	initializeReturnsOnCall map[int]struct {
+		result1 error
+	}
 	InterestedInNamespacesStub        func() []string
 	interestedInNamespacesMutex       sync.RWMutex
 	interestedInNamespacesArgsForCall []struct {
@@ -94,6 +106,67 @@ func (fake *StateListener) HandleStateUpdatesReturnsOnCall(i int, result1 error)
 		})
 	}
 	fake.handleStateUpdatesReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *StateListener) Initialize(arg1 string, arg2 ledger.SimpleQueryExecutor) error {
+	fake.initializeMutex.Lock()
+	ret, specificReturn := fake.initializeReturnsOnCall[len(fake.initializeArgsForCall)]
+	fake.initializeArgsForCall = append(fake.initializeArgsForCall, struct {
+		arg1 string
+		arg2 ledger.SimpleQueryExecutor
+	}{arg1, arg2})
+	fake.recordInvocation("Initialize", []interface{}{arg1, arg2})
+	fake.initializeMutex.Unlock()
+	if fake.InitializeStub != nil {
+		return fake.InitializeStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.initializeReturns
+	return fakeReturns.result1
+}
+
+func (fake *StateListener) InitializeCallCount() int {
+	fake.initializeMutex.RLock()
+	defer fake.initializeMutex.RUnlock()
+	return len(fake.initializeArgsForCall)
+}
+
+func (fake *StateListener) InitializeCalls(stub func(string, ledger.SimpleQueryExecutor) error) {
+	fake.initializeMutex.Lock()
+	defer fake.initializeMutex.Unlock()
+	fake.InitializeStub = stub
+}
+
+func (fake *StateListener) InitializeArgsForCall(i int) (string, ledger.SimpleQueryExecutor) {
+	fake.initializeMutex.RLock()
+	defer fake.initializeMutex.RUnlock()
+	argsForCall := fake.initializeArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *StateListener) InitializeReturns(result1 error) {
+	fake.initializeMutex.Lock()
+	defer fake.initializeMutex.Unlock()
+	fake.InitializeStub = nil
+	fake.initializeReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *StateListener) InitializeReturnsOnCall(i int, result1 error) {
+	fake.initializeMutex.Lock()
+	defer fake.initializeMutex.Unlock()
+	fake.InitializeStub = nil
+	if fake.initializeReturnsOnCall == nil {
+		fake.initializeReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.initializeReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -186,6 +259,8 @@ func (fake *StateListener) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.handleStateUpdatesMutex.RLock()
 	defer fake.handleStateUpdatesMutex.RUnlock()
+	fake.initializeMutex.RLock()
+	defer fake.initializeMutex.RUnlock()
 	fake.interestedInNamespacesMutex.RLock()
 	defer fake.interestedInNamespacesMutex.RUnlock()
 	fake.stateCommitDoneMutex.RLock()
