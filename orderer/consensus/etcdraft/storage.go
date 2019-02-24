@@ -83,7 +83,8 @@ func CreateStorage(
 		}
 	} else {
 		// snapshot found
-		lg.Debugf("Loaded snapshot at Term %d and Index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+		lg.Debugf("Loaded snapshot at Term %d and Index %d, Nodes: %+v",
+			snapshot.Metadata.Term, snapshot.Metadata.Index, snapshot.Metadata.ConfState.Nodes)
 	}
 
 	w, err := createWAL(lg, walDir, snapshot)

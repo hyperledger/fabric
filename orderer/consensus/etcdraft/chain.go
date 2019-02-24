@@ -206,9 +206,11 @@ func NewChain(
 
 	// get block number in last snapshot, if exists
 	var snapBlkNum uint64
+	var cc raftpb.ConfState
 	if s := storage.Snapshot(); !raft.IsEmptySnap(s) {
 		b := utils.UnmarshalBlockOrPanic(s.Data)
 		snapBlkNum = b.Header.Number
+		cc = s.Metadata.ConfState
 	}
 
 	b := support.Block(support.Height() - 1)
@@ -236,6 +238,7 @@ func NewChain(
 		lastBlock:        b,
 		sizeLimit:        sizeLimit,
 		lastSnapBlockNum: snapBlkNum,
+		confState:        cc,
 		createPuller:     f,
 		clock:            opts.Clock,
 		Metrics: &Metrics{
@@ -992,8 +995,8 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		select {
 		case c.gcC <- &gc{index: c.appliedIndex, state: c.confState, data: ents[position].Data}:
 			c.logger.Infof("Accumulated %d bytes since last snapshot, exceeding size limit (%d bytes), "+
-				"taking snapshot at block %d, last snapshotted block number is %d",
-				c.accDataSize, c.sizeLimit, appliedb, c.lastSnapBlockNum)
+				"taking snapshot at block %d, last snapshotted block number is %d, nodes: %+v",
+				c.accDataSize, c.sizeLimit, appliedb, c.lastSnapBlockNum, c.confState.Nodes)
 			c.accDataSize = 0
 			c.lastSnapBlockNum = appliedb
 			c.Metrics.SnapshotBlockNumber.Set(float64(appliedb))

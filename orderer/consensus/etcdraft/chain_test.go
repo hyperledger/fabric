@@ -969,10 +969,10 @@ var _ = Describe("Chain", func() {
 
 							raftMetadata.RaftIndex = m.RaftIndex
 							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
+							c.opts.SnapInterval = 1
 
 							c.init()
 							c.Start()
-							defer c.Halt()
 
 							// following arithmetic reflects how etcdraft MemoryStorage is implemented
 							// when no entry is appended after snapshot being loaded.
@@ -980,20 +980,34 @@ var _ = Describe("Chain", func() {
 							Eventually(c.opts.MemoryStorage.LastIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index))
 
 							// chain keeps functioning
-							Eventually(func() bool {
+							Eventually(func() <-chan raft.SoftState {
 								c.clock.Increment(interval)
-								select {
-								case <-c.observe:
-									return true
-								default:
-									return false
-								}
-							}, LongEventualTimeout).Should(BeTrue())
+								return c.observe
+							}, LongEventualTimeout).Should(Receive(StateEqual(1, raft.StateLeader)))
 
 							c.cutter.CutNext = true
 							err = c.Order(env, uint64(0))
 							Expect(err).NotTo(HaveOccurred())
 							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+
+							Eventually(countFiles, LongEventualTimeout).Should(Equal(2))
+							c.Halt()
+
+							_, metadata = c.support.WriteBlockArgsForCall(0)
+							m = &raftprotos.RaftMetadata{}
+							proto.Unmarshal(metadata, m)
+							raftMetadata.RaftIndex = m.RaftIndex
+							cx := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
+
+							cx.init()
+							cx.Start()
+							defer cx.Halt()
+
+							// chain keeps functioning
+							Eventually(func() <-chan raft.SoftState {
+								cx.clock.Increment(interval)
+								return cx.observe
+							}, LongEventualTimeout).Should(Receive(StateEqual(1, raft.StateLeader)))
 						})
 					})
 
