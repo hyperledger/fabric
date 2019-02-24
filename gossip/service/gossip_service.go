@@ -276,7 +276,8 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	}
 	g.privateHandlers[chainID].reconciler.Start()
 
-	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapter, coordinator, g.metrics.StateMetrics)
+	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapter, coordinator,
+		g.metrics.StateMetrics, getStateConfiguration())
 	if g.deliveryService[chainID] == nil {
 		var err error
 		g.deliveryService[chainID], err = g.deliveryFactory.Service(g, endpoints, g.mcs)
@@ -446,4 +447,51 @@ func orgListFromConfig(config Config) []string {
 		orgList = append(orgList, appOrg.MSPID())
 	}
 	return orgList
+}
+
+func getStateConfiguration() *state.Configuration {
+	config := &state.Configuration{
+		AntiEntropyInterval:             state.DefAntiEntropyInterval,
+		AntiEntropyStateResponseTimeout: state.DefAntiEntropyStateResponseTimeout,
+		AntiEntropyBatchSize:            state.DefAntiEntropyBatchSize,
+		MaxBlockDistance:                state.DefMaxBlockDistance,
+		AntiEntropyMaxRetries:           state.DefAntiEntropyMaxRetries,
+		ChannelBufferSize:               state.DefChannelBufferSize,
+		EnableStateTransfer:             true,
+		BlockingMode:                    state.Blocking,
+	}
+
+	if viper.IsSet("peer.gossip.state.checkInterval") {
+		config.AntiEntropyInterval = viper.GetDuration("peer.gossip.state.checkInterval")
+	}
+
+	if viper.IsSet("peer.gossip.state.responseTimeout") {
+		config.AntiEntropyStateResponseTimeout = viper.GetDuration("peer.gossip.state.responseTimeout")
+	}
+
+	if viper.IsSet("peer.gossip.state.batchSize") {
+		config.AntiEntropyBatchSize = uint64(viper.GetInt("peer.gossip.state.batchSize"))
+	}
+
+	if viper.IsSet("peer.gossip.state.blockBufferSize") {
+		config.MaxBlockDistance = viper.GetInt("peer.gossip.state.blockBufferSize")
+	}
+
+	if viper.IsSet("peer.gossip.state.maxRetries") {
+		config.AntiEntropyMaxRetries = viper.GetInt("peer.gossip.state.maxRetries")
+	}
+
+	if viper.IsSet("peer.gossip.state.channelSize") {
+		config.ChannelBufferSize = viper.GetInt("peer.gossip.state.channelSize")
+	}
+
+	if viper.IsSet("peer.gossip.state.enabled") {
+		config.EnableStateTransfer = viper.GetBool("peer.gossip.state.enabled")
+	}
+
+	if viper.GetBool("peer.gossip.nonBlockingCommitMode") {
+		config.BlockingMode = state.NonBlocking
+	}
+
+	return config
 }

@@ -56,6 +56,17 @@ var (
 	noopPeerIdentityAcceptor = func(identity api.PeerIdentityType) error {
 		return nil
 	}
+
+	config = &Configuration{
+		AntiEntropyInterval:             DefAntiEntropyInterval,
+		AntiEntropyStateResponseTimeout: DefAntiEntropyStateResponseTimeout,
+		AntiEntropyBatchSize:            DefAntiEntropyBatchSize,
+		MaxBlockDistance:                DefMaxBlockDistance,
+		AntiEntropyMaxRetries:           DefAntiEntropyMaxRetries,
+		ChannelBufferSize:               DefChannelBufferSize,
+		EnableStateTransfer:             true,
+		BlockingMode:                    Blocking,
+	}
 )
 
 type peerIdentityAcceptor func(identity api.PeerIdentityType) error
@@ -403,7 +414,7 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 		TransientStore: &mockTransientStore{},
 		Committer:      committer,
 	}, pcomm.SignedData{}, gossipMetrics.PrivdataMetrics, coordConfig)
-	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, coord, gossipMetrics.StateMetrics)
+	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, coord, gossipMetrics.StateMetrics, config)
 	if sp == nil {
 		gRPCServer.Stop()
 		return nil, port
@@ -572,7 +583,7 @@ func TestLargeBlockGap(t *testing.T) {
 		blockSeq := <-blocksPassedToLedger
 		assert.Equal(t, expectedSequence, int(blockSeq))
 		// Ensure payload buffer isn't over-populated
-		assert.True(t, p.s.payloads.Size() <= defMaxBlockDistance*2+defAntiEntropyBatchSize, "payload buffer size is %d", p.s.payloads.Size())
+		assert.True(t, p.s.payloads.Size() <= DefMaxBlockDistance*2+DefAntiEntropyBatchSize, "payload buffer size is %d", p.s.payloads.Size())
 		expectedSequence++
 		time.Sleep(blockProcessingTime)
 	}
@@ -603,29 +614,29 @@ func TestOverPopulation(t *testing.T) {
 		assert.NoError(t, p.s.addPayload(&proto.Payload{
 			SeqNum: uint64(i),
 			Data:   b,
-		}, nonBlocking))
+		}, NonBlocking))
 	}
 
 	// Add payloads from 10 to defMaxBlockDistance, while we're missing blocks [5,9]
 	// Should succeed
-	for i := 10; i <= defMaxBlockDistance; i++ {
+	for i := 10; i <= DefMaxBlockDistance; i++ {
 		rawblock := pcomm.NewBlock(uint64(i), []byte{})
 		b, _ := pb.Marshal(rawblock)
 		assert.NoError(t, p.s.addPayload(&proto.Payload{
 			SeqNum: uint64(i),
 			Data:   b,
-		}, nonBlocking))
+		}, NonBlocking))
 	}
 
 	// Add payloads from defMaxBlockDistance + 2 to defMaxBlockDistance * 10
 	// Should fail.
-	for i := defMaxBlockDistance + 1; i <= defMaxBlockDistance*10; i++ {
+	for i := DefMaxBlockDistance + 1; i <= DefMaxBlockDistance*10; i++ {
 		rawblock := pcomm.NewBlock(uint64(i), []byte{})
 		b, _ := pb.Marshal(rawblock)
 		assert.Error(t, p.s.addPayload(&proto.Payload{
 			SeqNum: uint64(i),
 			Data:   b,
-		}, nonBlocking))
+		}, NonBlocking))
 	}
 
 	// Ensure only blocks 1-4 were passed to the ledger
@@ -639,7 +650,7 @@ func TestOverPopulation(t *testing.T) {
 
 	// Ensure we don't store too many blocks in memory
 	sp := p.s
-	assert.True(t, sp.payloads.Size() < defMaxBlockDistance)
+	assert.True(t, sp.payloads.Size() < DefMaxBlockDistance)
 }
 
 func TestBlockingEnqueue(t *testing.T) {
@@ -686,7 +697,7 @@ func TestBlockingEnqueue(t *testing.T) {
 				SeqNum: uint64(blockSeq),
 				Data:   b,
 			}
-			p.s.addPayload(block, nonBlocking)
+			p.s.addPayload(block, NonBlocking)
 			time.Sleep(time.Millisecond)
 		}
 	}()
@@ -1198,7 +1209,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 	bootPeer, bootPort := newBootNode(0, newCommitter(), noopPeerIdentityAcceptor)
 	defer bootPeer.shutdown()
 
-	msgCount := defAntiEntropyBatchSize + 5
+	msgCount := DefAntiEntropyBatchSize + 5
 	expectedMessagesCnt := 2
 
 	for i := 1; i <= msgCount; i++ {
@@ -1275,7 +1286,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 				return true
 			}, 60*time.Second)
 		}
-	case <-time.After(defAntiEntropyInterval*2 + time.Second*1):
+	case <-time.After(DefAntiEntropyInterval*2 + time.Second*1):
 		{
 			close(stopWaiting)
 			t.Fatal("Expected to receive two batches with missing payloads")
@@ -1450,7 +1461,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 
 	servicesAdapater := &ServicesMediator{GossipAdapter: g, MCSAdapter: &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor}}
 	stateMetrics := metrics.NewGossipMetrics(&disabled.Provider{}).StateMetrics
-	st := NewGossipStateProvider(chainID, servicesAdapater, coord1, stateMetrics)
+	st := NewGossipStateProvider(chainID, servicesAdapater, coord1, stateMetrics, config)
 	defer st.Stop()
 
 	// Mocked state request message
@@ -1684,11 +1695,11 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 	stateMetrics := metrics.NewGossipMetrics(&disabled.Provider{}).StateMetrics
 
 	mediator := &ServicesMediator{GossipAdapter: peers["peer1"], MCSAdapter: cryptoService}
-	peer1State := NewGossipStateProvider(chainID, mediator, peers["peer1"].coord, stateMetrics)
+	peer1State := NewGossipStateProvider(chainID, mediator, peers["peer1"].coord, stateMetrics, config)
 	defer peer1State.Stop()
 
 	mediator = &ServicesMediator{GossipAdapter: peers["peer2"], MCSAdapter: cryptoService}
-	peer2State := NewGossipStateProvider(chainID, mediator, peers["peer2"].coord, stateMetrics)
+	peer2State := NewGossipStateProvider(chainID, mediator, peers["peer2"].coord, stateMetrics, config)
 	defer peer2State.Stop()
 
 	// Make sure state was replicated
@@ -1711,21 +1722,21 @@ func TestStateRequestValidator(t *testing.T) {
 	err := validator.validate(&proto.RemoteStateRequest{
 		StartSeqNum: 10,
 		EndSeqNum:   5,
-	}, defAntiEntropyBatchSize)
+	}, DefAntiEntropyBatchSize)
 	assert.Contains(t, err.Error(), "Invalid sequence interval [10...5).")
 	assert.Error(t, err)
 
 	err = validator.validate(&proto.RemoteStateRequest{
 		StartSeqNum: 10,
 		EndSeqNum:   30,
-	}, defAntiEntropyBatchSize)
+	}, DefAntiEntropyBatchSize)
 	assert.Contains(t, err.Error(), "Requesting blocks range [10-30) greater than configured")
 	assert.Error(t, err)
 
 	err = validator.validate(&proto.RemoteStateRequest{
 		StartSeqNum: 10,
 		EndSeqNum:   20,
-	}, defAntiEntropyBatchSize)
+	}, DefAntiEntropyBatchSize)
 	assert.NoError(t, err)
 }
 
