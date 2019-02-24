@@ -88,7 +88,7 @@ type Replicator struct {
 	Logger                          *flogging.FabricLogger
 	Puller                          *BlockPuller
 	BootBlock                       *common.Block
-	AmIPartOfChannel                selfMembershipPredicate
+	AmIPartOfChannel                SelfMembershipPredicate
 	LedgerFactory                   LedgerFactory
 }
 
@@ -423,7 +423,7 @@ type ChainInspector struct {
 var ErrSkipped = errors.New("skipped")
 
 // ErrForbidden denotes that an ordering node refuses sending blocks due to access control.
-var ErrForbidden = errors.New("forbidden")
+var ErrForbidden = errors.New("forbidden pulling the channel")
 
 // ErrServiceUnavailable denotes that an ordering node is not servicing at the moment.
 var ErrServiceUnavailable = errors.New("service unavailable")
@@ -433,33 +433,42 @@ var ErrNotInChannel = errors.New("not in the channel")
 
 var ErrRetryCountExhausted = errors.New("retry attempts exhausted")
 
-// selfMembershipPredicate determines whether the caller is found in the given config block
-type selfMembershipPredicate func(configBlock *common.Block) error
+// SelfMembershipPredicate determines whether the caller is found in the given config block
+type SelfMembershipPredicate func(configBlock *common.Block) error
 
 // Participant returns whether the caller participates in the chain.
 // It receives a ChainPuller that should already be calibrated for the chain,
-// and a selfMembershipPredicate that is used to detect whether the caller should service the chain.
+// and a SelfMembershipPredicate that is used to detect whether the caller should service the chain.
 // It returns nil if the caller participates in the chain.
 // It may return:
 // ErrNotInChannel in case the caller doesn't participate in the chain.
 // ErrForbidden in case the caller is forbidden from pulling the block.
 // ErrServiceUnavailable in case all orderers reachable cannot complete the request.
 // ErrRetryCountExhausted in case no orderer is reachable.
-func Participant(puller ChainPuller, analyzeLastConfBlock selfMembershipPredicate) error {
-	endpoint, latestHeight, err := latestHeightAndEndpoint(puller)
+func Participant(puller ChainPuller, analyzeLastConfBlock SelfMembershipPredicate) error {
+	lastConfigBlock, err := PullLastConfigBlock(puller)
 	if err != nil {
 		return err
 	}
+	return analyzeLastConfBlock(lastConfigBlock)
+}
+
+// PullLastConfigBlock pulls the last configuration block, or returns an error on failure.
+func PullLastConfigBlock(puller ChainPuller) (*common.Block, error) {
+	endpoint, latestHeight, err := latestHeightAndEndpoint(puller)
+	if err != nil {
+		return nil, err
+	}
 	if endpoint == "" {
-		return ErrRetryCountExhausted
+		return nil, ErrRetryCountExhausted
 	}
 	lastBlock := puller.PullBlock(latestHeight - 1)
 	if lastBlock == nil {
-		return ErrRetryCountExhausted
+		return nil, ErrRetryCountExhausted
 	}
 	lastConfNumber, err := lastConfigFromBlock(lastBlock)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// The last config block is smaller than the latest height,
 	// and a block iterator on the server side is a sequenced one.
@@ -467,9 +476,9 @@ func Participant(puller ChainPuller, analyzeLastConfBlock selfMembershipPredicat
 	puller.Close()
 	lastConfigBlock := puller.PullBlock(lastConfNumber)
 	if lastConfigBlock == nil {
-		return ErrRetryCountExhausted
+		return nil, ErrRetryCountExhausted
 	}
-	return analyzeLastConfBlock(lastConfigBlock)
+	return lastConfigBlock, nil
 }
 
 func latestHeightAndEndpoint(puller ChainPuller) (string, uint64, error) {
