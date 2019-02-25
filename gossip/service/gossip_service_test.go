@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	gcomm "github.com/hyperledger/fabric/gossip/comm"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
@@ -675,31 +676,35 @@ func startPeers(t *testing.T, n int, boot ...int) []GossipService {
 func newGossipInstance(port int, id int, gRPCServer *comm.GRPCServer, certs *gossipCommon.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int) GossipService {
 	conf := &gossip.Config{
-		BindPort:                   port,
-		BootstrapPeers:             bootPeers(bootPorts...),
-		ID:                         fmt.Sprintf("p%d", id),
-		MaxBlockCountToStore:       maxMsgCount,
-		MaxPropagationBurstLatency: time.Duration(500) * time.Millisecond,
-		MaxPropagationBurstSize:    20,
-		PropagateIterations:        1,
-		PropagatePeerNum:           3,
-		PullInterval:               time.Duration(2) * time.Second,
-		PullPeerNum:                5,
-		InternalEndpoint:           fmt.Sprintf("127.0.0.1:%d", port),
-		ExternalEndpoint:           fmt.Sprintf("1.2.3.4:%d", port),
-		PublishCertPeriod:          time.Duration(4) * time.Second,
-		PublishStateInfoInterval:   time.Duration(1) * time.Second,
-		RequestStateInfoInterval:   time.Duration(1) * time.Second,
-		TimeForMembershipTracker:   time.Second * 5,
-		TLSCerts:                   certs,
-		DigestWaitTime:             algo.DefDigestWaitTime,
-		RequestWaitTime:            algo.DefRequestWaitTime,
-		ResponseWaitTime:           algo.DefResponseWaitTime,
-		DialTimeout:                gcomm.DefDialTimeout,
-		ConnTimeout:                gcomm.DefConnTimeout,
-		RecvBuffSize:               gcomm.DefRecvBuffSize,
-		SendBuffSize:               gcomm.DefSendBuffSize,
-		MsgExpirationTimeout:       channel.DefMsgExpirationTimeout,
+		BindPort:                     port,
+		BootstrapPeers:               bootPeers(bootPorts...),
+		ID:                           fmt.Sprintf("p%d", id),
+		MaxBlockCountToStore:         maxMsgCount,
+		MaxPropagationBurstLatency:   time.Duration(500) * time.Millisecond,
+		MaxPropagationBurstSize:      20,
+		PropagateIterations:          1,
+		PropagatePeerNum:             3,
+		PullInterval:                 time.Duration(2) * time.Second,
+		PullPeerNum:                  5,
+		InternalEndpoint:             fmt.Sprintf("127.0.0.1:%d", port),
+		ExternalEndpoint:             fmt.Sprintf("1.2.3.4:%d", port),
+		PublishCertPeriod:            time.Duration(4) * time.Second,
+		PublishStateInfoInterval:     time.Duration(1) * time.Second,
+		RequestStateInfoInterval:     time.Duration(1) * time.Second,
+		TimeForMembershipTracker:     time.Second * 5,
+		TLSCerts:                     certs,
+		DigestWaitTime:               algo.DefDigestWaitTime,
+		RequestWaitTime:              algo.DefRequestWaitTime,
+		ResponseWaitTime:             algo.DefResponseWaitTime,
+		DialTimeout:                  gcomm.DefDialTimeout,
+		ConnTimeout:                  gcomm.DefConnTimeout,
+		RecvBuffSize:                 gcomm.DefRecvBuffSize,
+		SendBuffSize:                 gcomm.DefSendBuffSize,
+		MsgExpirationTimeout:         channel.DefMsgExpirationTimeout,
+		AliveTimeInterval:            discovery.DefAliveTimeInterval,
+		AliveExpirationTimeout:       discovery.DefAliveExpirationTimeout,
+		AliveExpirationCheckInterval: discovery.DefAliveExpirationCheckInterval,
+		ReconnectInterval:            discovery.DefReconnectInterval,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	cryptoService := &naiveCryptoService{}
