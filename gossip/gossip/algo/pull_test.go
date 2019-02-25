@@ -9,15 +9,12 @@ package algo
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -541,38 +538,6 @@ func TestFilter(t *testing.T) {
 	assert.True(t, util.IndexInSlice(inst3.state.ToArray(), "4", Strcmp) == -1)
 	assert.True(t, util.IndexInSlice(inst3.state.ToArray(), "5", Strcmp) != -1)
 
-}
-
-func TestDefaultConfig(t *testing.T) {
-	preDigestWaitTime := util.GetDurationOrDefault("peer.gossip.digestWaitTime", DefDigestWaitTime)
-	preRequestWaitTime := util.GetDurationOrDefault("peer.gossip.requestWaitTime", DefRequestWaitTime)
-	preResponseWaitTime := util.GetDurationOrDefault("peer.gossip.responseWaitTime", DefResponseWaitTime)
-	defer func() {
-		viper.Set("peer.gossip.digestWaitTime", preDigestWaitTime)
-		viper.Set("peer.gossip.requestWaitTime", preRequestWaitTime)
-		viper.Set("peer.gossip.responseWaitTime", preResponseWaitTime)
-	}()
-
-	// Check if we can read default duration when no properties are
-	// defined in config file.
-	viper.Reset()
-	assert.Equal(t, time.Duration(1000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.digestWaitTime", DefDigestWaitTime))
-	assert.Equal(t, time.Duration(1500)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.requestWaitTime", DefRequestWaitTime))
-	assert.Equal(t, time.Duration(2000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.responseWaitTime", DefResponseWaitTime))
-
-	// Check if the properties in the config file (core.yaml)
-	// are set to the desired duration.
-	viper.Reset()
-	viper.SetConfigName("core")
-	viper.SetEnvPrefix("CORE")
-	configtest.AddDevConfigPath(nil)
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-	err := viper.ReadInConfig()
-	assert.NoError(t, err)
-	assert.Equal(t, time.Duration(1000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.digestWaitTime", DefDigestWaitTime))
-	assert.Equal(t, time.Duration(1500)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.requestWaitTime", DefRequestWaitTime))
-	assert.Equal(t, time.Duration(2000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.responseWaitTime", DefResponseWaitTime))
 }
 
 func Strcmp(a interface{}, b interface{}) bool {
