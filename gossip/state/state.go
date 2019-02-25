@@ -25,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 )
 
 // GossipStateProvider is the interface to acquire sequences of the ledger blocks
@@ -152,6 +151,8 @@ type GossipStateProviderImpl struct {
 	stateMetrics *metrics.StateMetrics
 
 	requestValidator *stateRequestValidator
+
+	blockingMode bool
 }
 
 var logger = util.GetLogger(util.StateLogger, "")
@@ -175,7 +176,8 @@ func (v *stateRequestValidator) validate(request *proto.RemoteStateRequest) erro
 
 // NewGossipStateProvider creates state provider with coordinator instance
 // to orchestrate arrival of private rwsets and blocks before committing them into the ledger.
-func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger ledgerResources, stateMetrics *metrics.StateMetrics) GossipStateProvider {
+func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger ledgerResources,
+	stateMetrics *metrics.StateMetrics, blockingMode bool) GossipStateProvider {
 
 	gossipChan, _ := services.Accept(func(message interface{}) bool {
 		// Get only data messages
@@ -254,6 +256,8 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 		stateMetrics: stateMetrics,
 
 		requestValidator: &stateRequestValidator{},
+
+		blockingMode: blockingMode,
 	}
 
 	logger.Infof("Updating metadata information, "+
@@ -755,11 +759,7 @@ func (s *GossipStateProviderImpl) hasRequiredHeight(height uint64) func(peer dis
 
 // AddPayload adds new payload into state.
 func (s *GossipStateProviderImpl) AddPayload(payload *proto.Payload) error {
-	blockingMode := blocking
-	if viper.GetBool("peer.gossip.nonBlockingCommitMode") {
-		blockingMode = false
-	}
-	return s.addPayload(payload, blockingMode)
+	return s.addPayload(payload, s.blockingMode)
 }
 
 // addPayload adds new payload into state. It may (or may not) block according to the

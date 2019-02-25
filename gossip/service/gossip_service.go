@@ -276,7 +276,9 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	}
 	g.privateHandlers[chainID].reconciler.Start()
 
-	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapter, coordinator, g.metrics.StateMetrics)
+	blockingMode := !viper.GetBool("peer.gossip.nonBlockingCommitMode")
+	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapter, coordinator,
+		g.metrics.StateMetrics, blockingMode)
 	if g.deliveryService[chainID] == nil {
 		var err error
 		g.deliveryService[chainID], err = g.deliveryFactory.Service(g, endpoints, g.mcs)
