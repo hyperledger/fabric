@@ -22,12 +22,10 @@ import (
 	"time"
 
 	protoG "github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
@@ -35,13 +33,16 @@ import (
 
 var timeout = time.Second * time.Duration(15)
 
+var aliveTimeInterval = time.Duration(time.Millisecond * 300)
+var config = DiscoveryConfig{
+	AliveTimeInterval:            aliveTimeInterval,
+	AliveExpirationTimeout:       10 * aliveTimeInterval,
+	AliveExpirationCheckInterval: aliveTimeInterval,
+	ReconnectInterval:            10 * aliveTimeInterval,
+}
+
 func init() {
 	util.SetupTestLogging()
-	aliveTimeInterval := time.Duration(time.Millisecond * 300)
-	SetAliveTimeInterval(aliveTimeInterval)
-	SetAliveExpirationTimeout(10 * aliveTimeInterval)
-	SetAliveExpirationCheckInterval(aliveTimeInterval)
-	SetReconnectInterval(10 * aliveTimeInterval)
 	maxConnectionAttempts = 10000
 }
 
@@ -383,7 +384,7 @@ func createDiscoveryInstanceThatGossipsWithInterceptors(port int, id string, boo
 	}
 	s := grpc.NewServer()
 
-	discSvc := NewDiscoveryService(self, comm, comm, pol)
+	discSvc := NewDiscoveryService(self, comm, comm, pol, config)
 	for _, bootPeer := range bootstrapPeers {
 		bp := bootPeer
 		discSvc.Connect(NetworkMember{Endpoint: bp, InternalEndpoint: bootPeer}, func() (*PeerIdentification, error) {
@@ -774,12 +775,12 @@ func TestInitiateSync(t *testing.T) {
 				if atomic.LoadInt32(&toDie) == int32(1) {
 					return
 				}
-				time.Sleep(getAliveExpirationTimeout() / 3)
+				time.Sleep(config.AliveExpirationTimeout / 3)
 				inst.InitiateSync(9)
 			}
 		}()
 	}
-	time.Sleep(getAliveExpirationTimeout() * 4)
+	time.Sleep(config.AliveExpirationTimeout * 4)
 	assertMembership(t, instances, nodeNum-1)
 	atomic.StoreInt32(&toDie, int32(1))
 	stopInstances(t, instances)
@@ -1040,7 +1041,7 @@ func createDisjointPeerGroupsWithNoGossip(bootPeerMap map[int]int) ([]*gossipIns
 			bootPeers := []string{bootPeer(bootPeerMap[port])}
 			pol := discPolForPeer(port)
 			inst := createDiscoveryInstanceWithNoGossipWithDisclosurePolicy(8610+group*5+i, id, bootPeers, pol)
-			inst.initiateSync(getAliveExpirationTimeout()/3, 10)
+			inst.initiateSync(config.AliveExpirationTimeout/3, 10)
 			if group == 0 {
 				instances1 = append(instances1, inst)
 			} else {
@@ -1081,44 +1082,6 @@ func discPolForPeer(selfPort int) DisclosurePolicy {
 				return envelope
 			}
 	}
-}
-
-func TestConfigFromFile(t *testing.T) {
-	preAliveTimeInterval := getAliveTimeInterval()
-	preAliveExpirationTimeout := getAliveExpirationTimeout()
-	preAliveExpirationCheckInterval := getAliveExpirationCheckInterval()
-	preReconnectInterval := getReconnectInterval()
-
-	// Recover the config values in order to avoid impacting other tests
-	defer func() {
-		SetAliveTimeInterval(preAliveTimeInterval)
-		SetAliveExpirationTimeout(preAliveExpirationTimeout)
-		SetAliveExpirationCheckInterval(preAliveExpirationCheckInterval)
-		SetReconnectInterval(preReconnectInterval)
-	}()
-
-	// Verify if using default values when config is missing
-	viper.Reset()
-	aliveExpirationCheckInterval = 0 * time.Second
-	assert.Equal(t, time.Duration(5)*time.Second, getAliveTimeInterval())
-	assert.Equal(t, time.Duration(25)*time.Second, getAliveExpirationTimeout())
-	assert.Equal(t, time.Duration(25)*time.Second/10, getAliveExpirationCheckInterval())
-	assert.Equal(t, time.Duration(25)*time.Second, getReconnectInterval())
-
-	//Verify reading the values from config file
-	viper.Reset()
-	aliveExpirationCheckInterval = 0 * time.Second
-	viper.SetConfigName("core")
-	viper.SetEnvPrefix("CORE")
-	configtest.AddDevConfigPath(nil)
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-	err := viper.ReadInConfig()
-	assert.NoError(t, err)
-	assert.Equal(t, time.Duration(5)*time.Second, getAliveTimeInterval())
-	assert.Equal(t, time.Duration(25)*time.Second, getAliveExpirationTimeout())
-	assert.Equal(t, time.Duration(25)*time.Second/10, getAliveExpirationCheckInterval())
-	assert.Equal(t, time.Duration(25)*time.Second, getReconnectInterval())
 }
 
 func TestMsgStoreExpiration(t *testing.T) {
@@ -1187,7 +1150,7 @@ func TestMsgStoreExpiration(t *testing.T) {
 		return true
 	}
 
-	waitUntilTimeoutOrFail(t, checkMessages, getAliveExpirationTimeout()*(msgExpirationFactor+5))
+	waitUntilTimeoutOrFail(t, checkMessages, config.AliveExpirationTimeout*(msgExpirationFactor+5))
 
 	assertMembership(t, instances[:len(instances)-2], nodeNum-3)
 
@@ -1339,7 +1302,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	}
 
 	// Sleep until expire
-	time.Sleep(getAliveExpirationTimeout() * (msgExpirationFactor + 5))
+	time.Sleep(config.AliveExpirationTimeout * (msgExpirationFactor + 5))
 
 	// Checking Alive expired
 	for i := 0; i < peersNum; i++ {

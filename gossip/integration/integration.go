@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
@@ -65,7 +66,12 @@ func newConfig(selfEndpoint string, externalEndpoint string, certs *common.TLSCe
 		RecvBuffSize:               util.GetIntOrDefault("peer.gossip.recvBuffSize", comm.DefRecvBuffSize),
 		SendBuffSize:               util.GetIntOrDefault("peer.gossip.sendBuffSize", comm.DefSendBuffSize),
 		MsgExpirationTimeout:       util.GetDurationOrDefault("peer.gossip.election.leaderAliveThreshold", election.DefLeaderAliveThreshold) * 10,
+		AliveTimeInterval:          util.GetDurationOrDefault("peer.gossip.aliveTimeInterval", discovery.DefAliveTimeInterval),
 	}
+
+	conf.AliveExpirationTimeout = util.GetDurationOrDefault("peer.gossip.aliveExpirationTimeout", 5*conf.AliveTimeInterval)
+	conf.AliveExpirationCheckInterval = conf.AliveExpirationTimeout / 10
+	conf.ReconnectInterval = util.GetDurationOrDefault("peer.gossip.reconnectInterval", conf.AliveExpirationTimeout)
 
 	return conf, nil
 }

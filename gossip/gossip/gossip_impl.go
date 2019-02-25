@@ -119,7 +119,15 @@ func NewGossipService(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 
 	g.discAdapter = g.newDiscoveryAdapter()
 	g.disSecAdap = g.newDiscoverySecurityAdapter()
-	g.disc = discovery.NewDiscoveryService(g.selfNetworkMember(), g.discAdapter, g.disSecAdap, g.disclosurePolicy)
+
+	discoveryConfig := discovery.DiscoveryConfig{
+		AliveTimeInterval:            conf.AliveTimeInterval,
+		AliveExpirationTimeout:       conf.AliveExpirationTimeout,
+		AliveExpirationCheckInterval: conf.AliveExpirationCheckInterval,
+		ReconnectInterval:            conf.ReconnectInterval,
+	}
+	g.disc = discovery.NewDiscoveryService(g.selfNetworkMember(), g.discAdapter, g.disSecAdap, g.disclosurePolicy,
+		discoveryConfig)
 	g.logger.Infof("Creating gossip service with self membership of %s", g.selfNetworkMember())
 
 	g.certPuller = g.createCertStorePuller()
