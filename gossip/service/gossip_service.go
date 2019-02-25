@@ -393,7 +393,13 @@ func (g *gossipServiceImpl) newLeaderElectionComponent(chainID string, callback 
 	electionMetrics *gossipMetrics.ElectionMetrics) election.LeaderElectionService {
 	PKIid := g.mcs.GetPKIidOfCert(g.peerIdentity)
 	adapter := election.NewAdapter(g, PKIid, gossipCommon.ChainID(chainID), electionMetrics)
-	return election.NewLeaderElectionService(adapter, string(PKIid), callback)
+	config := election.ElectionConfig{
+		StartupGracePeriod:       util.GetDurationOrDefault("peer.gossip.election.startupGracePeriod", election.DefStartupGracePeriod),
+		MembershipSampleInterval: util.GetDurationOrDefault("peer.gossip.election.membershipSampleInterval", election.DefMembershipSampleInterval),
+		LeaderAliveThreshold:     util.GetDurationOrDefault("peer.gossip.election.leaderAliveThreshold", election.DefLeaderAliveThreshold),
+		LeaderElectionDuration:   util.GetDurationOrDefault("peer.gossip.election.leaderElectionDuration", election.DefLeaderElectionDuration),
+	}
+	return election.NewLeaderElectionService(adapter, string(PKIid), callback, config)
 }
 
 func (g *gossipServiceImpl) amIinChannel(myOrg string, config Config) bool {

@@ -130,6 +130,7 @@ func (ga *gossipAdapterImpl) GetConf() channel.Config {
 		DigestWaitTime:              ga.conf.DigestWaitTime,
 		RequestWaitTime:             ga.conf.RequestWaitTime,
 		ResponseWaitTime:            ga.conf.ResponseWaitTime,
+		MsgExpirationTimeout:        ga.conf.MsgExpirationTimeout,
 	}
 }
 

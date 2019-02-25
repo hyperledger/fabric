@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
+	"github.com/hyperledger/fabric/gossip/gossip/channel"
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/metrics/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -254,6 +255,7 @@ func newGossipInstanceWithGrpcMcsMetrics(id int, port int, gRPCServer *corecomm.
 		ConnTimeout:                comm.DefConnTimeout,
 		RecvBuffSize:               comm.DefRecvBuffSize,
 		SendBuffSize:               comm.DefSendBuffSize,
+		MsgExpirationTimeout:       channel.DefMsgExpirationTimeout,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	g := NewGossipService(conf, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID,
@@ -299,6 +301,7 @@ func newGossipInstanceWithGRPCWithOnlyPull(id int, port int, gRPCServer *corecom
 		ConnTimeout:                comm.DefConnTimeout,
 		RecvBuffSize:               comm.DefRecvBuffSize,
 		SendBuffSize:               comm.DefSendBuffSize,
+		MsgExpirationTimeout:       channel.DefMsgExpirationTimeout,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	g := NewGossipService(conf, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID,
