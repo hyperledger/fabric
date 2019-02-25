@@ -268,7 +268,7 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 					},
 				},
 				Options: &protosraft.Options{
-					TickInterval:     100,
+					TickInterval:     "500ms",
 					ElectionTick:     10,
 					HeartbeatTick:    1,
 					MaxInflightMsgs:  256,

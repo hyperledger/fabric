@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder/mock"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
@@ -21,8 +22,6 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protos/utils"
-
-	"github.com/golang/protobuf/proto"
 )
 
 var _ = Describe("Encoder", func() {
@@ -230,7 +229,7 @@ var _ = Describe("Encoder", func() {
 				conf.OrdererType = "etcdraft"
 				conf.EtcdRaft = &etcdraft.Metadata{
 					Options: &etcdraft.Options{
-						TickInterval: 5,
+						TickInterval: "500ms",
 					},
 				}
 			})
@@ -246,7 +245,7 @@ var _ = Describe("Encoder", func() {
 				metadata := &etcdraft.Metadata{}
 				err = proto.Unmarshal(consensusType.Metadata, metadata)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(metadata.Options.TickInterval).To(Equal(uint64(5)))
+				Expect(metadata.Options.TickInterval).To(Equal("500ms"))
 			})
 
 			Context("when the raft configuration is bad", func() {
