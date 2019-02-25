@@ -125,7 +125,7 @@ var _ = Describe("Health", func() {
 			})
 		})
 
-		Context("when CouchDB is unavailable", func() {
+		PContext("when CouchDB is unavailable", func() {
 			BeforeEach(func() {
 				couchProcess.Signal(syscall.SIGTERM)
 				Eventually(couchProcess.Wait(), network.EventuallyTimeout).Should(Receive())
