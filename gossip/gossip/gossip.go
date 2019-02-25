@@ -145,4 +145,10 @@ type Config struct {
 	SendBuffSize int           // Buffer size of sending messages
 
 	MsgExpirationTimeout time.Duration // Leadership message expiration timeout
+
+	AliveTimeInterval            time.Duration // Alive check interval
+	AliveExpirationTimeout       time.Duration // Alive expiration timeout
+	AliveExpirationCheckInterval time.Duration // Alive expiration check interval
+	ReconnectInterval            time.Duration // Reconnect interval
+
 }
