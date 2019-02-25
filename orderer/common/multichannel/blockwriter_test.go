@@ -35,7 +35,9 @@ type mockBlockWriterSupport struct {
 	blockledger.ReadWriter
 }
 
-func (mbws mockBlockWriterSupport) Update(bundle *newchannelconfig.Bundle) {}
+func (mbws mockBlockWriterSupport) Update(bundle *newchannelconfig.Bundle) {
+	mbws.Validator.SequenceVal++
+}
 
 func (mbws mockBlockWriterSupport) CreateBundle(channelID string, config *cb.Config) (*newchannelconfig.Bundle, error) {
 	return nil, nil
@@ -191,4 +193,48 @@ func TestGoodWriteConfig(t *testing.T) {
 
 	omd := utils.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
 	assert.Equal(t, consenterMetadata, omd.Value)
+}
+
+func TestRaceWriteConfig(t *testing.T) {
+	_, l := NewRAMLedgerAndFactory(10)
+
+	bw := &BlockWriter{
+		support: &mockBlockWriterSupport{
+			LocalSigner: mockCrypto(),
+			ReadWriter:  l,
+			Validator:   &mockconfigtx.Validator{},
+		},
+	}
+
+	ctx := makeConfigTx(genesisconfig.TestChainID, 1)
+	block1 := cb.NewBlock(1, genesisBlock.Header.Hash())
+	block1.Data.Data = [][]byte{utils.MarshalOrPanic(ctx)}
+	consenterMetadata1 := []byte("foo")
+
+	ctx = makeConfigTx(genesisconfig.TestChainID, 1)
+	block2 := cb.NewBlock(2, block1.Header.Hash())
+	block2.Data.Data = [][]byte{utils.MarshalOrPanic(ctx)}
+	consenterMetadata2 := []byte("bar")
+
+	bw.WriteConfigBlock(block1, consenterMetadata1)
+	bw.WriteConfigBlock(block2, consenterMetadata2)
+
+	// Wait for the commit to complete
+	bw.committingBlock.Lock()
+	bw.committingBlock.Unlock()
+
+	cBlock := blockledger.GetBlock(l, block1.Header.Number)
+	assert.Equal(t, block1.Header, cBlock.Header)
+	assert.Equal(t, block1.Data, cBlock.Data)
+	expectedLastConfigBlockNumber := block1.Header.Number
+	testLastConfigBlockNumber(t, block1, expectedLastConfigBlockNumber)
+
+	cBlock = blockledger.GetBlock(l, block2.Header.Number)
+	assert.Equal(t, block2.Header, cBlock.Header)
+	assert.Equal(t, block2.Data, cBlock.Data)
+	expectedLastConfigBlockNumber = block2.Header.Number
+	testLastConfigBlockNumber(t, block2, expectedLastConfigBlockNumber)
+
+	omd := utils.GetMetadataFromBlockOrPanic(block1, cb.BlockMetadataIndex_ORDERER)
+	assert.Equal(t, consenterMetadata1, omd.Value)
 }
