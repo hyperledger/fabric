@@ -147,7 +147,7 @@ var _ = Describe("Consenter", func() {
 				{ServerTlsCert: certBytes},
 			},
 			Options: &etcdraftproto.Options{
-				TickInterval:    500,
+				TickInterval:    "500ms",
 				ElectionTick:    10,
 				HeartbeatTick:   1,
 				MaxInflightMsgs: 256,
@@ -189,7 +189,7 @@ var _ = Describe("Consenter", func() {
 				{ServerTlsCert: []byte("cert.orderer1.org1")},
 			},
 			Options: &etcdraftproto.Options{
-				TickInterval:    500,
+				TickInterval:    "500ms",
 				ElectionTick:    10,
 				HeartbeatTick:   1,
 				MaxInflightMsgs: 256,
@@ -234,6 +234,35 @@ var _ = Describe("Consenter", func() {
 		chain, err := consenter.HandleChain(support, nil)
 		Expect(chain).To(BeNil())
 		Expect(err).To(MatchError("etcdraft options have not been provided"))
+	})
+
+	It("fails to handle chain if tick interval is invalid", func() {
+		certBytes := []byte("cert.orderer0.org0")
+		m := &etcdraftproto.Metadata{
+			Consenters: []*etcdraftproto.Consenter{
+				{ServerTlsCert: certBytes},
+			},
+			Options: &etcdraftproto.Options{
+				TickInterval:    "500",
+				ElectionTick:    10,
+				HeartbeatTick:   1,
+				MaxInflightMsgs: 256,
+				MaxSizePerMsg:   1048576,
+			},
+		}
+		metadata := utils.MarshalOrPanic(m)
+		support.SharedConfigReturns(&mockconfig.Orderer{
+			ConsensusMetadataVal: metadata,
+			CapabilitiesVal: &mockconfig.OrdererCapabilities{
+				Kafka2RaftMigVal: false,
+			},
+		})
+
+		consenter := newConsenter(chainGetter)
+
+		chain, err := consenter.HandleChain(support, nil)
+		Expect(chain).To(BeNil())
+		Expect(err).To(MatchError("failed to parse TickInterval (500) to time duration"))
 	})
 })
 

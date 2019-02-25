@@ -329,10 +329,8 @@ Orderer: &OrdererDefaults
         # are the defaults for all new channels and can be modified on a
         # per-channel basis via configuration updates.
         Options:
-            # TickInterval is the time interval between two Node.Tick
-            # invocations.
-            # Unit: millisecond
-            TickInterval: 500
+            # TickInterval is the time interval between two Node.Tick invocations.
+            TickInterval: 500ms
 
             # ElectionTick is the number of Node.Tick invocations that must pass
             # between elections. That is, if a follower does not receive any

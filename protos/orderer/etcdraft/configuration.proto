@@ -29,7 +29,7 @@ message Consenter {
 // Options to be specified for all the etcd/raft nodes. These can be modified on a
 // per-channel basis.
 message Options {
-	uint64 tick_interval = 1; // specified in miliseconds
+	string tick_interval = 1; // time duration format, e.g. 500ms
 	uint32 election_tick = 2;
 	uint32 heartbeat_tick = 3;
 	uint32 max_inflight_msgs = 4;

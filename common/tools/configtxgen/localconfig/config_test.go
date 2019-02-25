@@ -246,10 +246,21 @@ func TestConsensusSpecificInit(t *testing.T) {
 					"HeartbeatTick should be set to the default value")
 			})
 
-			t.Run("panic on invalid options", func(t *testing.T) {
+			t.Run("panic on invalid Heartbeat and Election tick", func(t *testing.T) {
 				options := &etcdraft.Options{
 					HeartbeatTick: 2,
 					ElectionTick:  1,
+				}
+				profile := makeProfile(consenters, options)
+
+				assert.Panics(t, func() {
+					profile.completeInitialization(devConfigDir)
+				})
+			})
+
+			t.Run("panic on invalid TickInterval", func(t *testing.T) {
+				options := &etcdraft.Options{
+					TickInterval: "500",
 				}
 				profile := makeProfile(consenters, options)
 

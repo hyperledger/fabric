@@ -179,13 +179,18 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		}
 	}
 
+	tickInterval, err := time.ParseDuration(m.Options.TickInterval)
+	if err != nil {
+		return nil, errors.Errorf("failed to parse TickInterval (%s) to time duration", m.Options.TickInterval)
+	}
+
 	opts := Options{
 		RaftID:        id,
 		Clock:         clock.NewClock(),
 		MemoryStorage: raft.NewMemoryStorage(),
 		Logger:        c.Logger,
 
-		TickInterval:    time.Duration(m.Options.TickInterval) * time.Millisecond,
+		TickInterval:    tickInterval,
 		ElectionTick:    int(m.Options.ElectionTick),
 		HeartbeatTick:   int(m.Options.HeartbeatTick),
 		MaxInflightMsgs: int(m.Options.MaxInflightMsgs),
