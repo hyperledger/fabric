@@ -12,10 +12,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -32,12 +28,7 @@ var logger = flogging.MustGetLogger("chaincodeCmd")
 // it simply making a latent dependency explicit.
 // It should be removed along with the other package
 // scoped variables
-var platformRegistry = platforms.NewRegistry(
-	&golang.Platform{},
-	&car.Platform{},
-	&java.Platform{},
-	&node.Platform{},
-)
+var platformRegistry = platforms.NewRegistry(platforms.SupportedPlatforms...)
 
 func addFlags(cmd *cobra.Command) {
 	common.AddOrdererFlags(cmd)

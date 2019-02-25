@@ -16,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/container/util"
@@ -24,8 +23,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
-
-var _ = platforms.Platform(&java.Platform{})
 
 const chaincodePathFolder = "testdata"
 const chaincodePathFolderGradle = chaincodePathFolder + "/gradle"
