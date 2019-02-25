@@ -132,6 +132,11 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 			logger.Panicf("Told to write a config block with a new config, but could not convert it to a bundle: %s", err)
 		}
 
+		// Avoid Bundle update before the go-routine in WriteBlock() finished writing the previous block.
+		// We do this (in particular) to prevent bw.support.Sequence() from advancing before the go-routine reads it.
+		// In general, this prevents the StableBundle from changing before the go-routine in WriteBlock() finishes.
+		bw.committingBlock.Lock()
+		bw.committingBlock.Unlock()
 		bw.support.Update(bundle)
 	default:
 		logger.Panicf("Told to write a config block with unknown header type: %v", chdr.Type)
