@@ -2,11 +2,11 @@
 package mock
 
 import (
-	context "context"
-	sync "sync"
+	"context"
+	"sync"
 
-	container "github.com/hyperledger/fabric/core/container"
-	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 type VM struct {
@@ -278,3 +278,5 @@ func (fake *VM) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
+
+var _ container.VM = new(VM)

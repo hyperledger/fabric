@@ -2,9 +2,9 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	container "github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container"
 )
 
 type VMProvider struct {
@@ -97,3 +97,5 @@ func (fake *VMProvider) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
+
+var _ container.VMProvider = new(VMProvider)

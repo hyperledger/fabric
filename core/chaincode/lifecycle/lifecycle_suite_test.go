@@ -14,7 +14,6 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -62,11 +61,6 @@ type simpleQueryExecutor interface {
 //go:generate counterfeiter -o mock/results_iterator.go --fake-name ResultsIterator . resultsIterator
 type resultsIterator interface {
 	commonledger.ResultsIterator
-}
-
-//go:generate counterfeiter -o mock/chaincode_lifecycle.go --fake-name ChaincodeLifecycle . chaincodeLifecycle
-type chaincodeLifecycle interface {
-	chaincode.Lifecycle
 }
 
 //go:generate counterfeiter -o mock/channel_config.go --fake-name ChannelConfig . channelConfig

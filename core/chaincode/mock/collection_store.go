@@ -7,10 +7,24 @@ import (
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 type CollectionStore struct {
+	AccessFilterStub        func(string, *common.CollectionPolicyConfig) (privdata.Filter, error)
+	accessFilterMutex       sync.RWMutex
+	accessFilterArgsForCall []struct {
+		arg1 string
+		arg2 *common.CollectionPolicyConfig
+	}
+	accessFilterReturns struct {
+		result1 privdata.Filter
+		result2 error
+	}
+	accessFilterReturnsOnCall map[int]struct {
+		result1 privdata.Filter
+		result2 error
+	}
 	RetrieveCollectionStub        func(common.CollectionCriteria) (privdata.Collection, error)
 	retrieveCollectionMutex       sync.RWMutex
 	retrieveCollectionArgsForCall []struct {
@@ -63,11 +77,11 @@ type CollectionStore struct {
 		result1 privdata.CollectionPersistenceConfigs
 		result2 error
 	}
-	RetrieveReadWritePermissionStub        func(common.CollectionCriteria, *pb.SignedProposal, ledger.QueryExecutor) (bool, bool, error)
+	RetrieveReadWritePermissionStub        func(common.CollectionCriteria, *peer.SignedProposal, ledger.QueryExecutor) (bool, bool, error)
 	retrieveReadWritePermissionMutex       sync.RWMutex
 	retrieveReadWritePermissionArgsForCall []struct {
 		arg1 common.CollectionCriteria
-		arg2 *pb.SignedProposal
+		arg2 *peer.SignedProposal
 		arg3 ledger.QueryExecutor
 	}
 	retrieveReadWritePermissionReturns struct {
@@ -80,22 +94,72 @@ type CollectionStore struct {
 		result2 bool
 		result3 error
 	}
-	AccessFilterStub        func(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (privdata.Filter, error)
-	accessFilterMutex       sync.RWMutex
-	accessFilterArgsForCall []struct {
-		channelName            string
-		collectionPolicyConfig *common.CollectionPolicyConfig
-	}
-	accessFilterReturns struct {
-		result1 privdata.Filter
-		result2 error
-	}
-	accessFilterReturnsOnCall map[int]struct {
-		result1 privdata.Filter
-		result2 error
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *CollectionStore) AccessFilter(arg1 string, arg2 *common.CollectionPolicyConfig) (privdata.Filter, error) {
+	fake.accessFilterMutex.Lock()
+	ret, specificReturn := fake.accessFilterReturnsOnCall[len(fake.accessFilterArgsForCall)]
+	fake.accessFilterArgsForCall = append(fake.accessFilterArgsForCall, struct {
+		arg1 string
+		arg2 *common.CollectionPolicyConfig
+	}{arg1, arg2})
+	fake.recordInvocation("AccessFilter", []interface{}{arg1, arg2})
+	fake.accessFilterMutex.Unlock()
+	if fake.AccessFilterStub != nil {
+		return fake.AccessFilterStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.accessFilterReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *CollectionStore) AccessFilterCallCount() int {
+	fake.accessFilterMutex.RLock()
+	defer fake.accessFilterMutex.RUnlock()
+	return len(fake.accessFilterArgsForCall)
+}
+
+func (fake *CollectionStore) AccessFilterCalls(stub func(string, *common.CollectionPolicyConfig) (privdata.Filter, error)) {
+	fake.accessFilterMutex.Lock()
+	defer fake.accessFilterMutex.Unlock()
+	fake.AccessFilterStub = stub
+}
+
+func (fake *CollectionStore) AccessFilterArgsForCall(i int) (string, *common.CollectionPolicyConfig) {
+	fake.accessFilterMutex.RLock()
+	defer fake.accessFilterMutex.RUnlock()
+	argsForCall := fake.accessFilterArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *CollectionStore) AccessFilterReturns(result1 privdata.Filter, result2 error) {
+	fake.accessFilterMutex.Lock()
+	defer fake.accessFilterMutex.Unlock()
+	fake.AccessFilterStub = nil
+	fake.accessFilterReturns = struct {
+		result1 privdata.Filter
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *CollectionStore) AccessFilterReturnsOnCall(i int, result1 privdata.Filter, result2 error) {
+	fake.accessFilterMutex.Lock()
+	defer fake.accessFilterMutex.Unlock()
+	fake.AccessFilterStub = nil
+	if fake.accessFilterReturnsOnCall == nil {
+		fake.accessFilterReturnsOnCall = make(map[int]struct {
+			result1 privdata.Filter
+			result2 error
+		})
+	}
+	fake.accessFilterReturnsOnCall[i] = struct {
+		result1 privdata.Filter
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *CollectionStore) RetrieveCollection(arg1 common.CollectionCriteria) (privdata.Collection, error) {
@@ -112,7 +176,8 @@ func (fake *CollectionStore) RetrieveCollection(arg1 common.CollectionCriteria) 
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.retrieveCollectionReturns.result1, fake.retrieveCollectionReturns.result2
+	fakeReturns := fake.retrieveCollectionReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *CollectionStore) RetrieveCollectionCallCount() int {
@@ -121,13 +186,22 @@ func (fake *CollectionStore) RetrieveCollectionCallCount() int {
 	return len(fake.retrieveCollectionArgsForCall)
 }
 
+func (fake *CollectionStore) RetrieveCollectionCalls(stub func(common.CollectionCriteria) (privdata.Collection, error)) {
+	fake.retrieveCollectionMutex.Lock()
+	defer fake.retrieveCollectionMutex.Unlock()
+	fake.RetrieveCollectionStub = stub
+}
+
 func (fake *CollectionStore) RetrieveCollectionArgsForCall(i int) common.CollectionCriteria {
 	fake.retrieveCollectionMutex.RLock()
 	defer fake.retrieveCollectionMutex.RUnlock()
-	return fake.retrieveCollectionArgsForCall[i].arg1
+	argsForCall := fake.retrieveCollectionArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *CollectionStore) RetrieveCollectionReturns(result1 privdata.Collection, result2 error) {
+	fake.retrieveCollectionMutex.Lock()
+	defer fake.retrieveCollectionMutex.Unlock()
 	fake.RetrieveCollectionStub = nil
 	fake.retrieveCollectionReturns = struct {
 		result1 privdata.Collection
@@ -136,6 +210,8 @@ func (fake *CollectionStore) RetrieveCollectionReturns(result1 privdata.Collecti
 }
 
 func (fake *CollectionStore) RetrieveCollectionReturnsOnCall(i int, result1 privdata.Collection, result2 error) {
+	fake.retrieveCollectionMutex.Lock()
+	defer fake.retrieveCollectionMutex.Unlock()
 	fake.RetrieveCollectionStub = nil
 	if fake.retrieveCollectionReturnsOnCall == nil {
 		fake.retrieveCollectionReturnsOnCall = make(map[int]struct {
@@ -163,7 +239,8 @@ func (fake *CollectionStore) RetrieveCollectionAccessPolicy(arg1 common.Collecti
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.retrieveCollectionAccessPolicyReturns.result1, fake.retrieveCollectionAccessPolicyReturns.result2
+	fakeReturns := fake.retrieveCollectionAccessPolicyReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *CollectionStore) RetrieveCollectionAccessPolicyCallCount() int {
@@ -172,13 +249,22 @@ func (fake *CollectionStore) RetrieveCollectionAccessPolicyCallCount() int {
 	return len(fake.retrieveCollectionAccessPolicyArgsForCall)
 }
 
+func (fake *CollectionStore) RetrieveCollectionAccessPolicyCalls(stub func(common.CollectionCriteria) (privdata.CollectionAccessPolicy, error)) {
+	fake.retrieveCollectionAccessPolicyMutex.Lock()
+	defer fake.retrieveCollectionAccessPolicyMutex.Unlock()
+	fake.RetrieveCollectionAccessPolicyStub = stub
+}
+
 func (fake *CollectionStore) RetrieveCollectionAccessPolicyArgsForCall(i int) common.CollectionCriteria {
 	fake.retrieveCollectionAccessPolicyMutex.RLock()
 	defer fake.retrieveCollectionAccessPolicyMutex.RUnlock()
-	return fake.retrieveCollectionAccessPolicyArgsForCall[i].arg1
+	argsForCall := fake.retrieveCollectionAccessPolicyArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *CollectionStore) RetrieveCollectionAccessPolicyReturns(result1 privdata.CollectionAccessPolicy, result2 error) {
+	fake.retrieveCollectionAccessPolicyMutex.Lock()
+	defer fake.retrieveCollectionAccessPolicyMutex.Unlock()
 	fake.RetrieveCollectionAccessPolicyStub = nil
 	fake.retrieveCollectionAccessPolicyReturns = struct {
 		result1 privdata.CollectionAccessPolicy
@@ -187,6 +273,8 @@ func (fake *CollectionStore) RetrieveCollectionAccessPolicyReturns(result1 privd
 }
 
 func (fake *CollectionStore) RetrieveCollectionAccessPolicyReturnsOnCall(i int, result1 privdata.CollectionAccessPolicy, result2 error) {
+	fake.retrieveCollectionAccessPolicyMutex.Lock()
+	defer fake.retrieveCollectionAccessPolicyMutex.Unlock()
 	fake.RetrieveCollectionAccessPolicyStub = nil
 	if fake.retrieveCollectionAccessPolicyReturnsOnCall == nil {
 		fake.retrieveCollectionAccessPolicyReturnsOnCall = make(map[int]struct {
@@ -214,7 +302,8 @@ func (fake *CollectionStore) RetrieveCollectionConfigPackage(arg1 common.Collect
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.retrieveCollectionConfigPackageReturns.result1, fake.retrieveCollectionConfigPackageReturns.result2
+	fakeReturns := fake.retrieveCollectionConfigPackageReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *CollectionStore) RetrieveCollectionConfigPackageCallCount() int {
@@ -223,13 +312,22 @@ func (fake *CollectionStore) RetrieveCollectionConfigPackageCallCount() int {
 	return len(fake.retrieveCollectionConfigPackageArgsForCall)
 }
 
+func (fake *CollectionStore) RetrieveCollectionConfigPackageCalls(stub func(common.CollectionCriteria) (*common.CollectionConfigPackage, error)) {
+	fake.retrieveCollectionConfigPackageMutex.Lock()
+	defer fake.retrieveCollectionConfigPackageMutex.Unlock()
+	fake.RetrieveCollectionConfigPackageStub = stub
+}
+
 func (fake *CollectionStore) RetrieveCollectionConfigPackageArgsForCall(i int) common.CollectionCriteria {
 	fake.retrieveCollectionConfigPackageMutex.RLock()
 	defer fake.retrieveCollectionConfigPackageMutex.RUnlock()
-	return fake.retrieveCollectionConfigPackageArgsForCall[i].arg1
+	argsForCall := fake.retrieveCollectionConfigPackageArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *CollectionStore) RetrieveCollectionConfigPackageReturns(result1 *common.CollectionConfigPackage, result2 error) {
+	fake.retrieveCollectionConfigPackageMutex.Lock()
+	defer fake.retrieveCollectionConfigPackageMutex.Unlock()
 	fake.RetrieveCollectionConfigPackageStub = nil
 	fake.retrieveCollectionConfigPackageReturns = struct {
 		result1 *common.CollectionConfigPackage
@@ -238,6 +336,8 @@ func (fake *CollectionStore) RetrieveCollectionConfigPackageReturns(result1 *com
 }
 
 func (fake *CollectionStore) RetrieveCollectionConfigPackageReturnsOnCall(i int, result1 *common.CollectionConfigPackage, result2 error) {
+	fake.retrieveCollectionConfigPackageMutex.Lock()
+	defer fake.retrieveCollectionConfigPackageMutex.Unlock()
 	fake.RetrieveCollectionConfigPackageStub = nil
 	if fake.retrieveCollectionConfigPackageReturnsOnCall == nil {
 		fake.retrieveCollectionConfigPackageReturnsOnCall = make(map[int]struct {
@@ -265,7 +365,8 @@ func (fake *CollectionStore) RetrieveCollectionPersistenceConfigs(arg1 common.Co
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.retrieveCollectionPersistenceConfigsReturns.result1, fake.retrieveCollectionPersistenceConfigsReturns.result2
+	fakeReturns := fake.retrieveCollectionPersistenceConfigsReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *CollectionStore) RetrieveCollectionPersistenceConfigsCallCount() int {
@@ -274,13 +375,22 @@ func (fake *CollectionStore) RetrieveCollectionPersistenceConfigsCallCount() int
 	return len(fake.retrieveCollectionPersistenceConfigsArgsForCall)
 }
 
+func (fake *CollectionStore) RetrieveCollectionPersistenceConfigsCalls(stub func(common.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error)) {
+	fake.retrieveCollectionPersistenceConfigsMutex.Lock()
+	defer fake.retrieveCollectionPersistenceConfigsMutex.Unlock()
+	fake.RetrieveCollectionPersistenceConfigsStub = stub
+}
+
 func (fake *CollectionStore) RetrieveCollectionPersistenceConfigsArgsForCall(i int) common.CollectionCriteria {
 	fake.retrieveCollectionPersistenceConfigsMutex.RLock()
 	defer fake.retrieveCollectionPersistenceConfigsMutex.RUnlock()
-	return fake.retrieveCollectionPersistenceConfigsArgsForCall[i].arg1
+	argsForCall := fake.retrieveCollectionPersistenceConfigsArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *CollectionStore) RetrieveCollectionPersistenceConfigsReturns(result1 privdata.CollectionPersistenceConfigs, result2 error) {
+	fake.retrieveCollectionPersistenceConfigsMutex.Lock()
+	defer fake.retrieveCollectionPersistenceConfigsMutex.Unlock()
 	fake.RetrieveCollectionPersistenceConfigsStub = nil
 	fake.retrieveCollectionPersistenceConfigsReturns = struct {
 		result1 privdata.CollectionPersistenceConfigs
@@ -289,6 +399,8 @@ func (fake *CollectionStore) RetrieveCollectionPersistenceConfigsReturns(result1
 }
 
 func (fake *CollectionStore) RetrieveCollectionPersistenceConfigsReturnsOnCall(i int, result1 privdata.CollectionPersistenceConfigs, result2 error) {
+	fake.retrieveCollectionPersistenceConfigsMutex.Lock()
+	defer fake.retrieveCollectionPersistenceConfigsMutex.Unlock()
 	fake.RetrieveCollectionPersistenceConfigsStub = nil
 	if fake.retrieveCollectionPersistenceConfigsReturnsOnCall == nil {
 		fake.retrieveCollectionPersistenceConfigsReturnsOnCall = make(map[int]struct {
@@ -302,12 +414,12 @@ func (fake *CollectionStore) RetrieveCollectionPersistenceConfigsReturnsOnCall(i
 	}{result1, result2}
 }
 
-func (fake *CollectionStore) RetrieveReadWritePermission(arg1 common.CollectionCriteria, arg2 *pb.SignedProposal, arg3 ledger.QueryExecutor) (bool, bool, error) {
+func (fake *CollectionStore) RetrieveReadWritePermission(arg1 common.CollectionCriteria, arg2 *peer.SignedProposal, arg3 ledger.QueryExecutor) (bool, bool, error) {
 	fake.retrieveReadWritePermissionMutex.Lock()
 	ret, specificReturn := fake.retrieveReadWritePermissionReturnsOnCall[len(fake.retrieveReadWritePermissionArgsForCall)]
 	fake.retrieveReadWritePermissionArgsForCall = append(fake.retrieveReadWritePermissionArgsForCall, struct {
 		arg1 common.CollectionCriteria
-		arg2 *pb.SignedProposal
+		arg2 *peer.SignedProposal
 		arg3 ledger.QueryExecutor
 	}{arg1, arg2, arg3})
 	fake.recordInvocation("RetrieveReadWritePermission", []interface{}{arg1, arg2, arg3})
@@ -318,7 +430,8 @@ func (fake *CollectionStore) RetrieveReadWritePermission(arg1 common.CollectionC
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
 	}
-	return fake.retrieveReadWritePermissionReturns.result1, fake.retrieveReadWritePermissionReturns.result2, fake.retrieveReadWritePermissionReturns.result3
+	fakeReturns := fake.retrieveReadWritePermissionReturns
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 
 func (fake *CollectionStore) RetrieveReadWritePermissionCallCount() int {
@@ -327,13 +440,22 @@ func (fake *CollectionStore) RetrieveReadWritePermissionCallCount() int {
 	return len(fake.retrieveReadWritePermissionArgsForCall)
 }
 
-func (fake *CollectionStore) RetrieveReadWritePermissionArgsForCall(i int) (common.CollectionCriteria, *pb.SignedProposal, ledger.QueryExecutor) {
+func (fake *CollectionStore) RetrieveReadWritePermissionCalls(stub func(common.CollectionCriteria, *peer.SignedProposal, ledger.QueryExecutor) (bool, bool, error)) {
+	fake.retrieveReadWritePermissionMutex.Lock()
+	defer fake.retrieveReadWritePermissionMutex.Unlock()
+	fake.RetrieveReadWritePermissionStub = stub
+}
+
+func (fake *CollectionStore) RetrieveReadWritePermissionArgsForCall(i int) (common.CollectionCriteria, *peer.SignedProposal, ledger.QueryExecutor) {
 	fake.retrieveReadWritePermissionMutex.RLock()
 	defer fake.retrieveReadWritePermissionMutex.RUnlock()
-	return fake.retrieveReadWritePermissionArgsForCall[i].arg1, fake.retrieveReadWritePermissionArgsForCall[i].arg2, fake.retrieveReadWritePermissionArgsForCall[i].arg3
+	argsForCall := fake.retrieveReadWritePermissionArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *CollectionStore) RetrieveReadWritePermissionReturns(result1 bool, result2 bool, result3 error) {
+	fake.retrieveReadWritePermissionMutex.Lock()
+	defer fake.retrieveReadWritePermissionMutex.Unlock()
 	fake.RetrieveReadWritePermissionStub = nil
 	fake.retrieveReadWritePermissionReturns = struct {
 		result1 bool
@@ -343,6 +465,8 @@ func (fake *CollectionStore) RetrieveReadWritePermissionReturns(result1 bool, re
 }
 
 func (fake *CollectionStore) RetrieveReadWritePermissionReturnsOnCall(i int, result1 bool, result2 bool, result3 error) {
+	fake.retrieveReadWritePermissionMutex.Lock()
+	defer fake.retrieveReadWritePermissionMutex.Unlock()
 	fake.RetrieveReadWritePermissionStub = nil
 	if fake.retrieveReadWritePermissionReturnsOnCall == nil {
 		fake.retrieveReadWritePermissionReturnsOnCall = make(map[int]struct {
@@ -358,61 +482,11 @@ func (fake *CollectionStore) RetrieveReadWritePermissionReturnsOnCall(i int, res
 	}{result1, result2, result3}
 }
 
-func (fake *CollectionStore) AccessFilter(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (privdata.Filter, error) {
-	fake.accessFilterMutex.Lock()
-	ret, specificReturn := fake.accessFilterReturnsOnCall[len(fake.accessFilterArgsForCall)]
-	fake.accessFilterArgsForCall = append(fake.accessFilterArgsForCall, struct {
-		channelName            string
-		collectionPolicyConfig *common.CollectionPolicyConfig
-	}{channelName, collectionPolicyConfig})
-	fake.recordInvocation("AccessFilter", []interface{}{channelName, collectionPolicyConfig})
-	fake.accessFilterMutex.Unlock()
-	if fake.AccessFilterStub != nil {
-		return fake.AccessFilterStub(channelName, collectionPolicyConfig)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.accessFilterReturns.result1, fake.accessFilterReturns.result2
-}
-
-func (fake *CollectionStore) AccessFilterCallCount() int {
-	fake.accessFilterMutex.RLock()
-	defer fake.accessFilterMutex.RUnlock()
-	return len(fake.accessFilterArgsForCall)
-}
-
-func (fake *CollectionStore) AccessFilterArgsForCall(i int) (string, *common.CollectionPolicyConfig) {
-	fake.accessFilterMutex.RLock()
-	defer fake.accessFilterMutex.RUnlock()
-	return fake.accessFilterArgsForCall[i].channelName, fake.accessFilterArgsForCall[i].collectionPolicyConfig
-}
-
-func (fake *CollectionStore) AccessFilterReturns(result1 privdata.Filter, result2 error) {
-	fake.AccessFilterStub = nil
-	fake.accessFilterReturns = struct {
-		result1 privdata.Filter
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *CollectionStore) AccessFilterReturnsOnCall(i int, result1 privdata.Filter, result2 error) {
-	fake.AccessFilterStub = nil
-	if fake.accessFilterReturnsOnCall == nil {
-		fake.accessFilterReturnsOnCall = make(map[int]struct {
-			result1 privdata.Filter
-			result2 error
-		})
-	}
-	fake.accessFilterReturnsOnCall[i] = struct {
-		result1 privdata.Filter
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *CollectionStore) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.accessFilterMutex.RLock()
+	defer fake.accessFilterMutex.RUnlock()
 	fake.retrieveCollectionMutex.RLock()
 	defer fake.retrieveCollectionMutex.RUnlock()
 	fake.retrieveCollectionAccessPolicyMutex.RLock()
@@ -423,8 +497,6 @@ func (fake *CollectionStore) Invocations() map[string][][]interface{} {
 	defer fake.retrieveCollectionPersistenceConfigsMutex.RUnlock()
 	fake.retrieveReadWritePermissionMutex.RLock()
 	defer fake.retrieveReadWritePermissionMutex.RUnlock()
-	fake.accessFilterMutex.RLock()
-	defer fake.accessFilterMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

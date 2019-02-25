@@ -2,10 +2,10 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	container "github.com/hyperledger/fabric/core/container"
-	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 type VMCReq struct {
@@ -171,3 +171,5 @@ func (fake *VMCReq) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
+
+var _ container.VMCReq = new(VMCReq)
