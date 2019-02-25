@@ -10,7 +10,6 @@ set -eux -o pipefail
 # To set a proto root for a set of protos, create a .protoroot file in one of the parent directories
 # which you wish to use as the proto root.  If no .protoroot file exists within fabric/.../<your_proto>
 # then the proto root for that proto is inferred to be its containing directory.
-
 # Find explicit proto roots
 PROTO_ROOT_DIRS="$(find . -name ".protoroot" -exec readlink -f {} \; | xargs -n 1 dirname | sort -u)"
 
