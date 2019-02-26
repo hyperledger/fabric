@@ -14,10 +14,10 @@ import (
 const (
 	channelTypeName = "Channel"
 
-	// ChannelV1_1 is the capabilties string for standard new non-backwards compatible fabric v1.1 channel capabilities.
+	// ChannelV1_1 is the capabilities string for standard new non-backwards compatible fabric v1.1 channel capabilities.
 	ChannelV1_1 = "V1_1"
 
-	// ChannelV1_3 is the capabilties string for standard new non-backwards compatible fabric v1.3 channel capabilities.
+	// ChannelV1_3 is the capabilities string for standard new non-backwards compatible fabric v1.3 channel capabilities.
 	ChannelV1_3 = "V1_3"
 
 	// ChannelV1_4_2 is the capabilities string for standard new non-backwards compatible fabric v1.4.2 channel capabilities.
