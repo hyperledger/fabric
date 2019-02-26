@@ -7,19 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator_test
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/mocks/ledger"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14/testdata"
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	"github.com/hyperledger/fabric/msp"
 	. "github.com/hyperledger/fabric/msp/mocks"
 	"github.com/hyperledger/fabric/protos/common"
@@ -117,20 +114,4 @@ func TestSamplePlugin(t *testing.T) {
 		Channel: "mychannel",
 	}
 	assert.NoError(t, v.ValidateWithPlugin(ctx))
-}
-
-func TestCapabilitiesInterface(t *testing.T) {
-	// Make sure that the application capabilities are all implemented by the validation capabilities
-	// Obtain all methods of the ApplicationCapabilities and ensure
-	// that every method in ApplicationCapabilities exists in the validation capabilities
-	var appCapabilities *channelconfig.ApplicationCapabilities
-	appMeta := reflect.TypeOf(appCapabilities).Elem()
-
-	var validationCapabilities *Capabilities
-	validationMeta := reflect.TypeOf(validationCapabilities).Elem()
-	for i := 0; i < appMeta.NumMethod(); i++ {
-		method := appMeta.Method(i).Name
-		_, exists := validationMeta.MethodByName(method)
-		assert.True(t, exists, "method %s doesn't exist", method)
-	}
 }

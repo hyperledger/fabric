@@ -113,9 +113,15 @@ func (ap *ApplicationProvider) V2_0Validation() bool {
 	return ap.v20
 }
 
-// MetadataLifecycle indicates whether the peer should use the deprecated and problematic
-// v1.0/v1.1/v1.2 lifecycle, or whether it should use the newer per channel peer local chaincode
-// metadata package approach planned for release with Fabric v1.3
+// LifecycleV20 indicates whether the peer should use the deprecated and problematic
+// v1.x lifecycle, or whether it should use the newer per channel approve/commit definitions
+// process introduced in v2.0.  Note, this should only be used on the endorsing side
+// of peer processing, so that we may safely remove all checks against it in v2.1.
+func (ap *ApplicationProvider) LifecycleV20() bool {
+	return ap.v20
+}
+
+// MetadataLifecycle always returns false
 func (ap *ApplicationProvider) MetadataLifecycle() bool {
 	return false
 }

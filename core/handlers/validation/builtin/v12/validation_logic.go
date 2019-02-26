@@ -12,7 +12,6 @@ import (
 	"regexp"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/channelconfig"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
@@ -336,7 +335,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 	cdRWSet *ccprovider.ChaincodeData,
 	lsccArgs [][]byte,
 	lsccFunc string,
-	ac channelconfig.ApplicationCapabilities,
+	ac Capabilities,
 	channelName string,
 ) commonerrors.TxValidationError {
 	/********************************************/
@@ -456,7 +455,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 	env *common.Envelope,
 	cap *pb.ChaincodeActionPayload,
 	payl *common.Payload,
-	ac channelconfig.ApplicationCapabilities,
+	ac Capabilities,
 ) commonerrors.TxValidationError {
 	cpp, err := utils.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
 	if err != nil {
