@@ -32,6 +32,7 @@ var _ = Describe("Integration", func() {
 		fakeChannelConfigSource *mock.ChannelConfigSource
 		fakeChannelConfig       *mock.ChannelConfig
 		fakeApplicationConfig   *mock.ApplicationConfig
+		fakeCapabilities        *mock.ApplicationCapabilities
 		fakeOrgConfig           *mock.ApplicationOrgConfig
 		fakeStub                *mock.ChaincodeStub
 
@@ -49,6 +50,9 @@ var _ = Describe("Integration", func() {
 		fakeChannelConfigSource.GetStableChannelConfigReturns(fakeChannelConfig)
 		fakeApplicationConfig = &mock.ApplicationConfig{}
 		fakeChannelConfig.ApplicationConfigReturns(fakeApplicationConfig, true)
+		fakeCapabilities = &mock.ApplicationCapabilities{}
+		fakeCapabilities.LifecycleV20Returns(true)
+		fakeApplicationConfig.CapabilitiesReturns(fakeCapabilities)
 
 		fakeOrgConfig = &mock.ApplicationOrgConfig{}
 		fakeOrgConfig.MSPIDReturns("fake-mspid")
