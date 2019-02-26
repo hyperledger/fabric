@@ -349,8 +349,10 @@ func (txSim *TxSimulationResults) ContainsPvtWrites() bool {
 // `github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset.KVWrite`
 // Function `HandleStateUpdates` is expected to be invoked before block is committed and if this
 // function returns an error, the ledger implementation is expected to halt block commit operation
-// and result in a panic
+// and result in a panic.
+// The function Initialize is invoked only once at the time of opening the ledger.
 type StateListener interface {
+	Initialize(ledgerID string, qe SimpleQueryExecutor) error
 	InterestedInNamespaces() []string
 	HandleStateUpdates(trigger *StateUpdateTrigger) error
 	StateCommitDone(channelID string)

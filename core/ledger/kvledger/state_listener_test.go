@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,7 +22,6 @@ func TestStateListener(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.cleanup()
 	provider, _ := NewProvider()
-	defer provider.Close()
 
 	// create a listener and register it to listen to state change in a namespace
 	channelid := "testLedger"
@@ -35,8 +35,6 @@ func TestStateListener(t *testing.T) {
 
 	bg, gb := testutil.NewBlockGenerator(t, channelid, false)
 	lgr, err := provider.Create(gb)
-	defer lgr.Close()
-
 	// Simulate tx1
 	sim1, err := lgr.NewTxSimulator("test_tx_1")
 	assert.NoError(t, err)
@@ -79,7 +77,7 @@ func TestStateListener(t *testing.T) {
 	assert.Equal(t, "", mockListener.channelName)
 	assert.Nil(t, mockListener.kvWrites)
 
-	// commit tx3 and thsi should cause mock listener to recieve changes made by tx3
+	// commit tx3 and this should cause mock listener to recieve changes made by tx3
 	mockListener.reset()
 	sim3Res, _ := sim3.GetTxSimulationResults()
 	sim3ResBytes, _ := sim3Res.GetPubSimulationBytes()
@@ -90,12 +88,68 @@ func TestStateListener(t *testing.T) {
 	assert.Equal(t, []*kvrwset.KVWrite{
 		{Key: "key4", Value: []byte("value4")},
 	}, mockListener.kvWrites)
+
+	provider.Close()
+	provider, _ = NewProvider()
+	provider.Initialize(&ledger.Initializer{
+		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
+		StateListeners:                []ledger.StateListener{mockListener},
+		MetricsProvider:               &disabled.Provider{},
+	})
+	defer provider.Close()
+	lgr, err = provider.Open(channelid)
+	assert.NoError(t, err)
+	defer lgr.Close()
+	assert.NoError(t, err)
+	assert.Equal(t,
+		[]*queryresult.KV{
+			{
+				Namespace: namespace,
+				Key:       "key1",
+				Value:     []byte("value1"),
+			},
+			{
+				Namespace: namespace,
+				Key:       "key2",
+				Value:     []byte("value2"),
+			},
+			{
+				Namespace: namespace,
+				Key:       "key4",
+				Value:     []byte("value4"),
+			},
+		},
+		mockListener.queryResultsInInitializeFunc,
+	)
 }
 
 type mockStateListener struct {
-	channelName string
-	namespace   string
-	kvWrites    []*kvrwset.KVWrite
+	channelName                  string
+	namespace                    string
+	kvWrites                     []*kvrwset.KVWrite
+	queryResultsInInitializeFunc []*queryresult.KV
+}
+
+func (l *mockStateListener) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
+	l.channelName = ledgerID
+	itr, err := qe.GetStateRangeScanIterator(l.namespace, "", "")
+	if err != nil {
+		return err
+	}
+	for {
+		res, err := itr.Next()
+		if err != nil {
+			return err
+		}
+		if res == nil {
+			break
+		}
+		kv := res.(*queryresult.KV)
+		l.queryResultsInInitializeFunc = append(l.queryResultsInInitializeFunc,
+			kv,
+		)
+	}
+	return nil
 }
 
 func (l *mockStateListener) InterestedInNamespaces() []string {
@@ -116,4 +170,5 @@ func (l *mockStateListener) StateCommitDone(channelID string) {
 func (l *mockStateListener) reset() {
 	l.channelName = ""
 	l.kvWrites = nil
+	l.queryResultsInInitializeFunc = nil
 }

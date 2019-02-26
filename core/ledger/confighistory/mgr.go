@@ -45,6 +45,11 @@ func newMgr(ccInfoProvider ledger.DeployedChaincodeInfoProvider, dbPath string) 
 	return &mgr{ccInfoProvider, newDBProvider(dbPath)}
 }
 
+func (m *mgr) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
+	// Noop
+	return nil
+}
+
 // InterestedInNamespaces implements function from the interface ledger.StateListener
 func (m *mgr) InterestedInNamespaces() []string {
 	return m.ccInfoProvider.Namespaces()

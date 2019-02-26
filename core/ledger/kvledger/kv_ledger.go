@@ -93,6 +93,16 @@ func (l *kvLedger) initTxMgr(versionedDB privacyenabledstate.DB, stateListeners 
 	btlPolicy pvtdatapolicy.BTLPolicy, bookkeeperProvider bookkeeping.Provider, ccInfoProvider ledger.DeployedChaincodeInfoProvider) error {
 	var err error
 	l.txtmgmt, err = lockbasedtxmgr.NewLockBasedTxMgr(l.ledgerID, versionedDB, stateListeners, btlPolicy, bookkeeperProvider, ccInfoProvider)
+	qe, err := l.NewQueryExecutor()
+	if err != nil {
+		return err
+	}
+	defer qe.Done()
+	for _, sl := range stateListeners {
+		if err := sl.Initialize(l.ledgerID, qe); err != nil {
+			return err
+		}
+	}
 	return err
 }
 
