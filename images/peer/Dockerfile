@@ -8,6 +8,11 @@ ARG ALPINE_VER
 
 FROM alpine:${ALPINE_VER} as base
 RUN apk add --no-cache tzdata libltdl
+RUN addgroup chaincode && adduser -D -h /chaincode -G chaincode chaincode
+USER chaincode
+
+FROM alpine:${ALPINE_VER} as peer-base
+RUN apk add --no-cache tzdata libltdl
 
 FROM golang:${GO_VER}-alpine${ALPINE_VER} as golang
 RUN apk add --no-cache \
@@ -23,7 +28,7 @@ ENV EXECUTABLES go git
 FROM golang as peer
 RUN make peer
 
-FROM base
+FROM peer-base
 ENV FABRIC_CFG_PATH /etc/hyperledger/fabric
 VOLUME /etc/hyperledger/fabric
 VOLUME /var/hyperledger

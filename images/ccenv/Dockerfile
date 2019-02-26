@@ -56,3 +56,6 @@ COPY --from=golang /usr/local/go /usr/local/go
 COPY --from=golang /usr/local/bin/chaintool /usr/local/bin/chaintool
 COPY --from=golang /go/bin /usr/local/bin
 COPY --from=golang /go/src/input/vendor $GOPATH/src
+RUN addgroup chaincode && adduser -D -h /home/chaincode -G chaincode chaincode
+RUN chown -R chaincode:chaincode /chaincode/output
+USER chaincode

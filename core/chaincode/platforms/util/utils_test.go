@@ -306,7 +306,7 @@ func getDeploymentPayload() []byte {
 	tw.WriteHeader(&tar.Header{
 		Name:       "src/helloworld/helloworld.go",
 		Size:       int64(len(payload)),
-		Mode:       0600,
+		Mode:       0100644,
 		ModTime:    zeroTime,
 		AccessTime: zeroTime,
 		ChangeTime: zeroTime,

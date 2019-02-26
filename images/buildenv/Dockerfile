@@ -18,7 +18,6 @@ ENV EXECUTABLES go git curl
 RUN make gotools
 
 FROM golang:${GO_VER}-alpine
-
 RUN apk add --no-cache \
 	gcc \
 	musl-dev \
@@ -29,6 +28,8 @@ RUN apk add --no-cache \
 	make;
 COPY --from=golang /go/bin /usr/local/bin
 ENV GOCACHE "/tmp"
+RUN addgroup chaincode && adduser -D -h /home/chaincode -G chaincode chaincode
+USER chaincode
 
 
 
