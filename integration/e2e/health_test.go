@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"syscall"
-	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/healthz"
@@ -117,26 +116,28 @@ var _ = Describe("Health", func() {
 			Eventually(couchProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		})
 
-		Context("when CouchDB is configured and available", func() {
-			It("passes the health check when CouchDB is listening", func() {
-				statusCode, status := DoHealthCheck(authClient, healthURL)
-				Expect(statusCode).To(Equal(http.StatusOK))
-				Expect(status.Status).To(Equal("OK"))
-			})
-		})
+		When("running health checks on Couch DB", func() {
+			It("returns approprate response codes", func() {
+				By("returning 200 when able to reach Couch DB", func() {
+					statusCode, status := DoHealthCheck(authClient, healthURL)
+					Expect(statusCode).To(Equal(http.StatusOK))
+					Expect(status.Status).To(Equal("OK"))
+				})
 
-		PContext("when CouchDB is unavailable", func() {
-			BeforeEach(func() {
-				couchProcess.Signal(syscall.SIGTERM)
-				Eventually(couchProcess.Wait(), network.EventuallyTimeout).Should(Receive())
-			})
+				By("returning 503 when unable to reach Couch DB", func() {
+					couchProcess.Signal(syscall.SIGTERM)
+					Eventually(couchProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 
-			It("fails the health check", func() {
-				statusCode, status := DoHealthCheck(authClient, healthURL)
-				Expect(statusCode).To(Equal(http.StatusServiceUnavailable))
-				Expect(status.Status).To(Equal("Service Unavailable"))
-				Expect(status.FailedChecks[0].Component).To(Equal("couchdb"))
-				Expect(status.FailedChecks[0].Reason).Should((HavePrefix(fmt.Sprintf("failed to connect to couch db [Head http://%s: dial tcp %s: ", couchAddr, couchAddr))))
+					var statusCode int
+					var status *healthz.HealthStatus
+					Eventually(func() int {
+						statusCode, status = DoHealthCheck(authClient, healthURL)
+						return statusCode
+					}, network.EventuallyTimeout).Should(Equal(http.StatusServiceUnavailable))
+					Expect(status.Status).To(Equal("Service Unavailable"))
+					Expect(status.FailedChecks[0].Component).To(Equal("couchdb"))
+					Expect(status.FailedChecks[0].Reason).Should((HavePrefix(fmt.Sprintf("failed to connect to couch db [Head http://%s: dial tcp %s: ", couchAddr, couchAddr))))
+				})
 			})
 		})
 	})
@@ -208,15 +209,11 @@ var _ = Describe("Health", func() {
 					Eventually(k.Wait, network.EventuallyTimeout).Should(Receive())
 
 					var statusCode int
-					var status healthz.HealthStatus
-					for i := 0; i < 4; i++ {
+					var status *healthz.HealthStatus
+					Consistently(func() int {
 						statusCode, status = DoHealthCheck(authClient, healthURL)
-						if statusCode != http.StatusOK {
-							break
-						}
-						time.Sleep(3 * time.Second)
-					}
-					Expect(statusCode).To(Equal(http.StatusOK))
+						return statusCode
+					}).Should(Equal(http.StatusOK))
 					Expect(status.Status).To(Equal("OK"))
 				})
 
@@ -226,15 +223,11 @@ var _ = Describe("Health", func() {
 					Eventually(k.Wait, network.EventuallyTimeout).Should(Receive())
 
 					var statusCode int
-					var status healthz.HealthStatus
-					for i := 0; i < 20; i++ {
+					var status *healthz.HealthStatus
+					Eventually(func() int {
 						statusCode, status = DoHealthCheck(authClient, healthURL)
-						if statusCode != http.StatusOK {
-							break
-						}
-						time.Sleep(3 * time.Second)
-					}
-					Expect(statusCode).To(Equal(http.StatusServiceUnavailable))
+						return statusCode
+					}, network.EventuallyTimeout).Should(Equal(http.StatusServiceUnavailable))
 					Expect(status.Status).To(Equal("Service Unavailable"))
 					Expect(status.FailedChecks[0].Component).To(Equal("systemchannel/0"))
 					Expect(status.FailedChecks[0].Reason).To(MatchRegexp(`\[replica ids: \[\d \d \d\]\]: kafka server: Messages are rejected since there are fewer in-sync replicas than required\.`))
@@ -244,7 +237,7 @@ var _ = Describe("Health", func() {
 	})
 })
 
-func DoHealthCheck(client *http.Client, url string) (int, healthz.HealthStatus) {
+func DoHealthCheck(client *http.Client, url string) (int, *healthz.HealthStatus) {
 	resp, err := client.Get(url)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -252,8 +245,14 @@ func DoHealthCheck(client *http.Client, url string) (int, healthz.HealthStatus) 
 	Expect(err).NotTo(HaveOccurred())
 	resp.Body.Close()
 
-	var healthStatus healthz.HealthStatus
-	err = json.Unmarshal(bodyBytes, &healthStatus)
+	// This occurs when a request to the health check server times out, no body is
+	// returned when a timeout occurs
+	if len(bodyBytes) == 0 {
+		return resp.StatusCode, nil
+	}
+
+	healthStatus := &healthz.HealthStatus{}
+	err = json.Unmarshal(bodyBytes, healthStatus)
 	Expect(err).NotTo(HaveOccurred())
 
 	return resp.StatusCode, healthStatus
