@@ -70,6 +70,9 @@ var _ = Describe("Integration", func() {
 		fakeOrgKVStore = map[string][]byte{}
 
 		fakeStub = &mock.ChaincodeStub{}
+
+		fakeStub.GetChannelIDReturns("test-channel")
+
 		fakeStub.GetStateStub = func(key string) ([]byte, error) {
 			return fakePublicKVStore[key], nil
 		}
@@ -139,6 +142,7 @@ var _ = Describe("Integration", func() {
 				}),
 			})
 			response = scc.Invoke(fakeStub)
+			Expect(response.Message).To(Equal(""))
 			Expect(response.Status).To(Equal(int32(200)))
 
 			// Get channel definitions

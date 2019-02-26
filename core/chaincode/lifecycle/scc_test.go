@@ -104,6 +104,7 @@ var _ = Describe("SCC", func() {
 
 		BeforeEach(func() {
 			fakeStub = &mock.ChaincodeStub{}
+			fakeStub.GetChannelIDReturns("test-channel")
 		})
 
 		Context("when no arguments are provided", func() {
@@ -139,6 +140,8 @@ var _ = Describe("SCC", func() {
 			)
 
 			BeforeEach(func() {
+				fakeStub.GetChannelIDReturns("")
+
 				arg = &lb.InstallChaincodeArgs{
 					Name:                    "name",
 					Version:                 "version",
@@ -393,6 +396,7 @@ var _ = Describe("SCC", func() {
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
+				Expect(res.Message).To(Equal(""))
 				Expect(res.Status).To(Equal(int32(200)))
 				payload := &lb.CommitChaincodeDefinitionResult{}
 				err = proto.Unmarshal(res.Payload, payload)
@@ -451,7 +455,7 @@ var _ = Describe("SCC", func() {
 				It("returns an error indicating the lack of agreement", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': could not get channelconfig for channel "))
+					Expect(res.Message).To(Equal("could not get channelconfig for channel 'test-channel'"))
 				})
 			})
 
@@ -463,7 +467,19 @@ var _ = Describe("SCC", func() {
 				It("returns an error indicating the lack of agreement", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': could not get application config for channel "))
+					Expect(res.Message).To(Equal("could not get application config for channel 'test-channel'"))
+				})
+
+				Context("when there is no application config yet somehow the sentinal is wrong", func() {
+					BeforeEach(func() {
+						fakeChannelConfig.ApplicationConfigReturns(nil, true)
+					})
+
+					It("returns an error indicating the lack of agreement", func() {
+						res := scc.Invoke(fakeStub)
+						Expect(res.Status).To(Equal(int32(500)))
+						Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': no application config for channel 'test-channel'"))
+					})
 				})
 			})
 
