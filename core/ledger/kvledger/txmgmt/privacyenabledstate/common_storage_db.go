@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/pkg/errors"
 )
 
@@ -156,6 +157,11 @@ func (s *CommonStorageDB) GetChaincodeEventListener() cceventmgmt.ChaincodeLifec
 // GetPrivateData implements corresponding function in interface DB
 func (s *CommonStorageDB) GetPrivateData(namespace, collection, key string) (*statedb.VersionedValue, error) {
 	return s.GetState(derivePvtDataNs(namespace, collection), key)
+}
+
+// GetPrivateDataHash implements corresponding function in interface DB
+func (s *CommonStorageDB) GetPrivateDataHash(namespace, collection, key string) (*statedb.VersionedValue, error) {
+	return s.GetValueHash(namespace, collection, util.ComputeStringHash(key))
 }
 
 // GetValueHash implements corresponding function in interface DB

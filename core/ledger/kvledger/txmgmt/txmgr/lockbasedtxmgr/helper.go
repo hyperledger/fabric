@@ -162,9 +162,7 @@ func (h *queryHelper) getPrivateDataValueHash(ns, coll, key string) (valueHash, 
 		return nil, nil, err
 	}
 	var versionedValue *statedb.VersionedValue
-
-	keyHash := util.ComputeStringHash(key)
-	if versionedValue, err = h.txmgr.db.GetValueHash(ns, coll, keyHash); err != nil {
+	if versionedValue, err = h.txmgr.db.GetPrivateDataHash(ns, coll, key); err != nil {
 		return nil, nil, err
 	}
 	valHash, metadata, ver := decomposeVersionedValue(versionedValue)

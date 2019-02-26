@@ -172,10 +172,22 @@ func populateCollConfigForTest(t *testing.T, txMgr *LockBasedTxMgr, nsColls []co
 	txMgr.ccInfoProvider = ccInfoProvider
 }
 
-func testutilPopulateDB(t *testing.T, txMgr *LockBasedTxMgr, ns string, data []*queryresult.KV, version *version.Height) {
+func testutilPopulateDB(
+	t *testing.T, txMgr *LockBasedTxMgr, ns string,
+	data []*queryresult.KV, pvtdataHashes []*testutilPvtdata,
+	version *version.Height,
+) {
 	updates := privacyenabledstate.NewUpdateBatch()
 	for _, kv := range data {
 		updates.PubUpdates.Put(ns, kv.Key, kv.Value, version)
 	}
+	for _, p := range pvtdataHashes {
+		updates.HashUpdates.Put(ns, p.coll, util.ComputeStringHash(p.key), util.ComputeHash(p.value), version)
+	}
 	txMgr.db.ApplyPrivacyAwareUpdates(updates, version)
+}
+
+type testutilPvtdata struct {
+	coll, key string
+	value     []byte
 }
