@@ -50,7 +50,7 @@ Organizations:{{ range .PeerOrgs }}
 
 Channel: &ChannelDefaults
   Capabilities:
-    V1_3: true
+    V1_4_2: true
   Policies:
     Readers:
       Type: ImplicitMeta
