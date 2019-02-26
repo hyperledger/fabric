@@ -176,6 +176,25 @@ func testInstall(t *testing.T, ccname string, version string, path string, creat
 	}
 }
 
+func TestNewLifecycleEnabled(t *testing.T) {
+	// Enable PrivateChannelData
+	mocksccProvider := (&mscc.MocksccProviderFactory{
+		ApplicationConfigBool: true,
+		ApplicationConfigRv: &config.MockApplication{
+			CapabilitiesRv: &config.MockApplicationCapabilities{
+				LifecycleV20Rv: true,
+			},
+		},
+	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
+
+	scc := New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	stub := shim.NewMockStub("lscc", scc)
+	res := stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("deploy"), []byte("test"), nil}, nil)
+	assert.NotEqual(t, int32(shim.OK), res.Status)
+	assert.Equal(t, "Channel 'test' has been migrated to the new lifecycle, LSCC is now read-only", res.Message)
+
+}
+
 func TestDeploy(t *testing.T) {
 	path := "mychaincode"
 
