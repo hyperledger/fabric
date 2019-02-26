@@ -99,6 +99,33 @@ func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 	return nil
 }
 
+// Wait waits for the container runtime to terminate.
+func (c *ContainerRuntime) Wait(ccci *ccprovider.ChaincodeContainerInfo) (int, error) {
+	type result struct {
+		exitCode int
+		err      error
+	}
+
+	resultCh := make(chan result, 1)
+	wcr := container.WaitContainerReq{
+		CCID: ccintf.CCID{
+			Name:    ccci.Name,
+			Version: ccci.Version,
+		},
+		Exited: func(exitCode int, err error) {
+			resultCh <- result{exitCode: exitCode, err: err}
+			close(resultCh)
+		},
+	}
+
+	if err := c.Processor.Process(ccci.ContainerType, wcr); err != nil {
+		return -1, err
+	}
+	r := <-resultCh
+
+	return r.exitCode, r.err
+}
+
 const (
 	// Mutual TLS auth client key and cert paths in the chaincode container
 	TLSClientKeyPath      string = "/etc/hyperledger/fabric/client.key"

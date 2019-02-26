@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
@@ -82,6 +82,9 @@ type dockerClient interface {
 	// PingWithContext pings the docker daemon. The context object can be used
 	// to cancel the ping request.
 	PingWithContext(context.Context) error
+	// WaitContainer blocks until the given container stops, and returns the exit
+	// code of the container status.
+	WaitContainer(containerID string) (int, error)
 }
 
 // Provider implements container.VMProvider
@@ -376,9 +379,25 @@ func (vm *DockerVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremo
 		dockerLogger.Debugf("stop - cannot create client %s", err)
 		return err
 	}
-	id := strings.Replace(vm.GetVMName(ccid), ":", "_", -1)
+	id := vm.ccidToContainerID(ccid)
 
 	return vm.stopInternal(client, id, timeout, dontkill, dontremove)
+}
+
+// Wait blocks until the container stops and returns the exit code of the container.
+func (vm *DockerVM) Wait(ccid ccintf.CCID) (int, error) {
+	client, err := vm.getClientFnc()
+	if err != nil {
+		dockerLogger.Debugf("stop - cannot create client %s", err)
+		return 0, err
+	}
+	id := vm.ccidToContainerID(ccid)
+
+	return client.WaitContainer(id)
+}
+
+func (vm *DockerVM) ccidToContainerID(ccid ccintf.CCID) string {
+	return strings.Replace(vm.GetVMName(ccid), ":", "_", -1)
 }
 
 // HealthCheck checks if the DockerVM is able to communicate with the Docker
