@@ -9,10 +9,12 @@ package lifecycle_test
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/chaincode"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
@@ -23,23 +25,54 @@ import (
 )
 
 var _ = Describe("Cache", func() {
+
 	var (
-		c            *lifecycle.Cache
-		l            *lifecycle.Lifecycle
-		channelCache *lifecycle.ChannelCache
+		c               *lifecycle.Cache
+		l               *lifecycle.Lifecycle
+		fakeCCStore     *mock.ChaincodeStore
+		fakeParser      *mock.PackageParser
+		channelCache    *lifecycle.ChannelCache
+		localChaincodes map[string]*lifecycle.LocalChaincode
 	)
 
 	BeforeEach(func() {
+		fakeCCStore = &mock.ChaincodeStore{}
+		fakeParser = &mock.PackageParser{}
+
 		l = &lifecycle.Lifecycle{
-			Serializer: &lifecycle.Serializer{},
+			PackageParser:  fakeParser,
+			ChaincodeStore: fakeCCStore,
+			Serializer:     &lifecycle.Serializer{},
 		}
+
+		fakeCCStore.ListInstalledChaincodesReturns([]chaincode.InstalledChaincode{
+			{
+				Id: []byte("hash"),
+			},
+		}, nil)
+
+		fakeCCStore.LoadReturns([]byte("package-bytes"), nil, nil)
+
+		fakeParser.ParseReturns(&persistence.ChaincodePackage{
+			Metadata: &persistence.ChaincodePackageMetadata{
+				Path: "cc-path",
+				Type: "cc-type",
+			},
+			CodePackage: []byte("code-package"),
+		}, nil)
+
+		var err error
 		c = lifecycle.NewCache(l, "my-mspid")
+		Expect(err).NotTo(HaveOccurred())
 
 		channelCache = &lifecycle.ChannelCache{
 			Chaincodes: map[string]*lifecycle.CachedChaincodeDefinition{
 				"chaincode-name": {
 					Definition: &lifecycle.ChaincodeDefinition{
 						Sequence: 3,
+						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+							Id: []byte("hash"),
+						},
 					},
 					Approved: true,
 					Hashes: []string{
@@ -60,7 +93,19 @@ var _ = Describe("Cache", func() {
 			},
 		}
 
+		localChaincodes = map[string]*lifecycle.LocalChaincode{
+			string(util.ComputeSHA256([]byte("hash"))): {
+				References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{
+					"channel-id": {
+						"chaincode-name": channelCache.Chaincodes["chaincode-name"],
+					},
+				},
+			},
+		}
+
 		lifecycle.SetChaincodeMap(c, "channel-id", channelCache)
+		lifecycle.SetLocalChaincodesMap(c, localChaincodes)
+
 	})
 
 	Describe("ChaincodeDefinition", func() {
@@ -69,6 +114,9 @@ var _ = Describe("Cache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cachedDefinition).To(Equal(&lifecycle.ChaincodeDefinition{
 				Sequence: 3,
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Id: []byte("hash"),
+				},
 			}))
 			Expect(approved).To(BeTrue())
 		})
@@ -84,6 +132,68 @@ var _ = Describe("Cache", func() {
 			It("returns an error", func() {
 				_, _, err := c.ChaincodeDefinition("missing-channel-id", "missing-name")
 				Expect(err).To(MatchError("unknown channel 'missing-channel-id'"))
+			})
+		})
+	})
+
+	Describe("InitializeLocalChaincodes", func() {
+		It("loads the already installed chaincodes into the cache", func() {
+			Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(BeNil())
+			err := c.InitializeLocalChaincodes()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(Equal(&lifecycle.ChaincodeInstallInfo{
+				Type: "cc-type",
+				Path: "cc-path",
+				Hash: []byte("hash"),
+			}))
+		})
+
+		Context("when the installed chaincode does not match any current definition", func() {
+			BeforeEach(func() {
+				fakeCCStore.ListInstalledChaincodesReturns([]chaincode.InstalledChaincode{
+					{
+						Id: []byte("other-hash"),
+					},
+				}, nil)
+			})
+
+			It("does not update the chaincode", func() {
+				err := c.InitializeLocalChaincodes()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(BeNil())
+			})
+		})
+
+		Context("when the chaincodes cannot be listed", func() {
+			BeforeEach(func() {
+				fakeCCStore.ListInstalledChaincodesReturns(nil, fmt.Errorf("list-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				err := c.InitializeLocalChaincodes()
+				Expect(err).To(MatchError("could not list installed chaincodes: list-error"))
+			})
+		})
+
+		Context("when the chaincodes cannot be loaded", func() {
+			BeforeEach(func() {
+				fakeCCStore.LoadReturns(nil, nil, fmt.Errorf("load-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				err := c.InitializeLocalChaincodes()
+				Expect(err).To(MatchError("could not load chaincode with hash '68617368': load-error"))
+			})
+		})
+
+		Context("when the chaincode package cannot be parsed", func() {
+			BeforeEach(func() {
+				fakeParser.ParseReturns(nil, fmt.Errorf("parse-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				err := c.InitializeLocalChaincodes()
+				Expect(err).To(MatchError("could not parse chaincode package with hash '68617368': parse-error"))
 			})
 		})
 	})
@@ -124,10 +234,17 @@ var _ = Describe("Cache", func() {
 
 			err := l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
 				Sequence: 7,
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Id: []byte("hash"),
+				},
 			}, fakePublicState)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{}, fakePrivateState)
+			err = l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Id: []byte("hash"),
+				},
+			}, fakePrivateState)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -145,6 +262,47 @@ var _ = Describe("Cache", func() {
 			for _, hash := range channelCache.Chaincodes["chaincode-name"].Hashes {
 				Expect(channelCache.InterestingHashes[hash]).To(Equal("chaincode-name"))
 			}
+		})
+
+		Context("when the chaincode is not installed", func() {
+			BeforeEach(func() {
+				err := l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
+					Sequence: 7,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Id: []byte("different-hash"),
+					},
+				}, fakePublicState)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Id: []byte("different-hash"),
+					},
+				}, fakePrivateState)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("does not have install info set", func() {
+				err := c.Initialize("channel-id", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(BeNil())
+			})
+
+			Context("when the chaincode is installed afterwards", func() {
+				It("gets its install info set", func() {
+					err := c.Initialize("channel-id", fakeQueryExecutor)
+					Expect(err).NotTo(HaveOccurred())
+					c.HandleChaincodeInstalled(&persistence.ChaincodePackageMetadata{
+						Type: "some-type",
+						Path: "some-path",
+					}, []byte("different-hash"))
+					Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(Equal(&lifecycle.ChaincodeInstallInfo{
+						Type: "some-type",
+						Path: "some-path",
+						Hash: []byte("different-hash"),
+					}))
+				})
+			})
 		})
 
 		Context("when the namespaces query fails", func() {
@@ -212,6 +370,25 @@ var _ = Describe("Cache", func() {
 			})
 		})
 
+		Context("when the chaincode is already installed", func() {
+			BeforeEach(func() {
+				c.HandleChaincodeInstalled(&persistence.ChaincodePackageMetadata{
+					Type: "cc-type",
+					Path: "cc-path",
+				}, []byte("hash"))
+			})
+
+			It("updates the install info", func() {
+				err := c.Initialize("channel-id", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(Equal(&lifecycle.ChaincodeInstallInfo{
+					Type: "cc-type",
+					Path: "cc-path",
+					Hash: []byte("hash"),
+				}))
+			})
+		})
+
 		Context("when the update is for an unknown channel", func() {
 			It("creates the underlying map", func() {
 				Expect(lifecycle.GetChaincodeMap(c, "new-channel")).To(BeNil())
@@ -267,6 +444,9 @@ var _ = Describe("Cache", func() {
 
 				err := l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
 					Sequence: 7,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Id: []byte("hash"),
+					},
 				}, fakePublicState)
 
 				Expect(err).NotTo(HaveOccurred())
