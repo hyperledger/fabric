@@ -33,3 +33,5 @@ func (e *InvalidTxError) Error() string {
 type Processor interface {
 	GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error
 }
+
+//go:generate counterfeiter -o mock/processor.go -fake-name Processor . Processor
