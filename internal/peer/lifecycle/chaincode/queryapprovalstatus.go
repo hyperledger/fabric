@@ -8,7 +8,6 @@ package chaincode
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var chaincodeQueryApprovalStatusCmd *cobra.Command
@@ -31,11 +31,10 @@ var chaincodeQueryApprovalStatusCmd *cobra.Command
 // QueryApprovalStatus holds the dependencies needed to approve
 // a chaincode definition for an organization
 type QueryApprovalStatus struct {
-	Certificate     tls.Certificate
-	Command         *cobra.Command
-	EndorserClients []pb.EndorserClient
-	Input           *QueryApprovalStatusInput
-	Signer          identity.SignerSerializer
+	Command        *cobra.Command
+	EndorserClient pb.EndorserClient
+	Input          *QueryApprovalStatusInput
+	Signer         identity.SignerSerializer
 }
 
 type QueryApprovalStatusInput struct {
@@ -76,27 +75,35 @@ func (a *QueryApprovalStatusInput) Validate() error {
 }
 
 // queryApprovalStatusCmd returns the cobra command for the QueryApprovalStatus lifecycle operation
-func queryApprovalStatusCmd(cf *CmdFactory, a *QueryApprovalStatus) *cobra.Command {
+func queryApprovalStatusCmd(a *QueryApprovalStatus) *cobra.Command {
 	chaincodeQueryApprovalStatusCmd = &cobra.Command{
 		Use:   "queryapprovalstatus",
 		Short: fmt.Sprintf("Query approval status for chaincode definition."),
 		Long:  fmt.Sprintf("Query approval status for chaincode definition."),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if a == nil {
-				var err error
-				if cf == nil {
-					cf, err = InitCmdFactory(cmd.Name(), true, false)
-					if err != nil {
-						return err
-					}
+				ccInput := &ClientConnectionsInput{
+					CommandName:           cmd.Name(),
+					EndorserRequired:      true,
+					ChannelID:             channelID,
+					PeerAddresses:         peerAddresses,
+					TLSRootCertFiles:      tlsRootCertFiles,
+					ConnectionProfilePath: connectionProfilePath,
+					TLSEnabled:            viper.GetBool("peer.tls.enabled"),
 				}
+
+				cc, err := NewClientConnections(ccInput)
+				if err != nil {
+					return err
+				}
+
 				a = &QueryApprovalStatus{
-					Command:         cmd,
-					Certificate:     cf.Certificate,
-					EndorserClients: cf.EndorserClients,
-					Signer:          cf.Signer,
+					Command:        cmd,
+					EndorserClient: cc.EndorserClients[0],
+					Signer:         cc.Signer,
 				}
 			}
+
 			return a.Approve()
 		},
 	}
@@ -145,7 +152,7 @@ func (a *QueryApprovalStatus) Approve() error {
 	}
 
 	// queryapprovalstatus currently only supports a single peer
-	proposalResponse, err := a.EndorserClients[0].ProcessProposal(context.Background(), signedProposal)
+	proposalResponse, err := a.EndorserClient.ProcessProposal(context.Background(), signedProposal)
 	if err != nil {
 		return errors.WithMessage(err, "error endorsing proposal")
 	}

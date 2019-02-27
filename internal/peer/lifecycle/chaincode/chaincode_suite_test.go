@@ -7,11 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	ccapi "github.com/hyperledger/fabric/internal/peer/chaincode/api"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -59,4 +62,13 @@ type deliver interface {
 func TestChaincode(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Chaincode Suite")
+}
+
+// TODO remove this?
+func TestMain(m *testing.M) {
+	err := msptesttools.LoadMSPSetupForTesting()
+	if err != nil {
+		panic(fmt.Sprintf("Fatal error when reading MSP config: %s", err))
+	}
+	os.Exit(m.Run())
 }

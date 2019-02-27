@@ -17,16 +17,14 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/common/api"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
-
-var chaincodeCommitCmd *cobra.Command
 
 // Committer holds the dependencies needed to commit
 // a chaincode
@@ -34,10 +32,10 @@ type Committer struct {
 	Certificate     tls.Certificate
 	Command         *cobra.Command
 	BroadcastClient common.BroadcastClient
-	EndorserClients []pb.EndorserClient
+	EndorserClients []EndorserClient
 	DeliverClients  []api.PeerDeliverClient
 	Input           *CommitInput
-	Signer          identity.SignerSerializer
+	Signer          Signer
 }
 
 // CommitInput holds all of the input parameters for committing a
@@ -61,11 +59,8 @@ type CommitInput struct {
 	TxID                     string
 }
 
+// Validate the input for a CommitChaincodeDefinition proposal
 func (c *CommitInput) Validate() error {
-	if c == nil {
-		return errors.New("nil input")
-	}
-
 	if c.ChannelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
@@ -93,29 +88,49 @@ func (c *CommitInput) Validate() error {
 	return nil
 }
 
-// commitCmd returns the cobra command for chaincode Commit
-func commitCmd(cf *CmdFactory, c *Committer) *cobra.Command {
-	chaincodeCommitCmd = &cobra.Command{
+// CommitCmd returns the cobra command for chaincode Commit
+func CommitCmd(c *Committer) *cobra.Command {
+	chaincodeCommitCmd := &cobra.Command{
 		Use:   "commit",
 		Short: fmt.Sprintf("Commit the chaincode definition on the channel."),
 		Long:  fmt.Sprintf("Commit the chaincode definition on the channel."),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if c == nil {
-				var err error
-				if cf == nil {
-					cf, err = InitCmdFactory(cmd.Name(), true, true)
-					if err != nil {
-						return err
-					}
-					defer cf.BroadcastClient.Close()
+				// set input from CLI flags
+				input, err := c.createInput()
+				if err != nil {
+					return err
 				}
+
+				ccInput := &ClientConnectionsInput{
+					CommandName:           cmd.Name(),
+					EndorserRequired:      true,
+					OrdererRequired:       true,
+					ChannelID:             channelID,
+					PeerAddresses:         peerAddresses,
+					TLSRootCertFiles:      tlsRootCertFiles,
+					ConnectionProfilePath: connectionProfilePath,
+					TLSEnabled:            viper.GetBool("peer.tls.enabled"),
+				}
+
+				cc, err := NewClientConnections(ccInput)
+				if err != nil {
+					return err
+				}
+
+				endorserClients := make([]EndorserClient, len(cc.EndorserClients))
+				for i, e := range cc.EndorserClients {
+					endorserClients[i] = e
+				}
+
 				c = &Committer{
 					Command:         cmd,
-					Certificate:     cf.Certificate,
-					BroadcastClient: cf.BroadcastClient,
-					DeliverClients:  cf.DeliverClients,
-					EndorserClients: cf.EndorserClients,
-					Signer:          cf.Signer,
+					Input:           input,
+					Certificate:     cc.Certificate,
+					BroadcastClient: cc.BroadcastClient,
+					DeliverClients:  cc.DeliverClients,
+					EndorserClients: endorserClients,
+					Signer:          cc.Signer,
 				}
 			}
 			return c.Commit()
@@ -142,15 +157,8 @@ func commitCmd(cf *CmdFactory, c *Committer) *cobra.Command {
 	return chaincodeCommitCmd
 }
 
+// Commit submits a CommitChaincodeDefinition proposal
 func (c *Committer) Commit() error {
-	if c.Input == nil {
-		// set input from CLI flags
-		err := c.setInput()
-		if err != nil {
-			return err
-		}
-	}
-
 	err := c.Input.Validate()
 	if err != nil {
 		return err
@@ -161,23 +169,28 @@ func (c *Committer) Commit() error {
 		c.Command.SilenceUsage = true
 	}
 
-	proposal, signedProposal, txID, err := c.createProposals(c.Input.TxID)
+	proposal, txID, err := c.createProposals(c.Input.TxID)
 	if err != nil {
-		return errors.WithMessage(err, "error creating signed proposal")
+		return errors.WithMessage(err, "failed to create proposal")
+	}
+
+	signedProposal, err := signProposal(proposal, c.Signer)
+	if err != nil {
+		return errors.WithMessage(err, "failed to create signed proposal")
 	}
 
 	var responses []*pb.ProposalResponse
 	for _, endorser := range c.EndorserClients {
 		proposalResponse, err := endorser.ProcessProposal(context.Background(), signedProposal)
 		if err != nil {
-			return errors.WithMessage(err, "error endorsing proposal")
+			return errors.WithMessage(err, "failed to endorse proposal")
 		}
 		responses = append(responses, proposalResponse)
 	}
 
 	if len(responses) == 0 {
-		// this should only happen if some new code has introduced a bug
-		return errors.New("no proposal responses received - this might indicate a bug")
+		// this should only be empty due to a programming bug
+		return errors.New("no proposal responses received")
 	}
 
 	// all responses will be checked when the signed transaction is created.
@@ -189,16 +202,16 @@ func (c *Committer) Commit() error {
 	}
 
 	if proposalResponse.Response == nil {
-		return errors.Errorf("proposal response had nil response")
+		return errors.New("received proposal response with nil response")
 	}
 
 	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("bad response: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+		return errors.Errorf("proposal failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
 	}
 	// assemble a signed transaction (it's an Envelope message)
 	env, err := protoutil.CreateSignedTx(proposal, c.Signer, responses...)
 	if err != nil {
-		return errors.WithMessage(err, "could not assemble transaction")
+		return errors.WithMessage(err, "failed to create signed transaction")
 	}
 
 	var dg *chaincode.DeliverGroup
@@ -224,7 +237,7 @@ func (c *Committer) Commit() error {
 	}
 
 	if err = c.BroadcastClient.Send(env); err != nil {
-		return errors.WithMessage(err, "error sending transaction for commit")
+		return errors.WithMessage(err, "failed to send transaction")
 	}
 
 	if dg != nil && ctx != nil {
@@ -237,8 +250,8 @@ func (c *Committer) Commit() error {
 	return err
 }
 
-// setInput sets the input struct based on the CLI flags
-func (c *Committer) setInput() error {
+// createInput creates the input struct based on the CLI flags
+func (c *Committer) createInput() (*CommitInput, error) {
 	var (
 		policyBytes []byte
 		ccp         *cb.CollectionConfigPackage
@@ -247,7 +260,7 @@ func (c *Committer) setInput() error {
 	if policy != "" {
 		signaturePolicyEnvelope, err := cauthdsl.FromString(policy)
 		if err != nil {
-			return errors.Errorf("invalid signature policy: %s", policy)
+			return nil, errors.Errorf("invalid signature policy: %s", policy)
 		}
 
 		applicationPolicy := &pb.ApplicationPolicy{
@@ -262,11 +275,11 @@ func (c *Committer) setInput() error {
 		var err error
 		ccp, _, err = chaincode.GetCollectionConfigFromFile(collectionsConfigFile)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
+			return nil, errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
 		}
 	}
 
-	c.Input = &CommitInput{
+	input := &CommitInput{
 		ChannelID:                channelID,
 		Name:                     chaincodeName,
 		Version:                  chaincodeVersion,
@@ -281,14 +294,10 @@ func (c *Committer) setInput() error {
 		WaitForEventTimeout:      waitForEventTimeout,
 	}
 
-	return nil
+	return input, nil
 }
 
-func (c *Committer) createProposals(inputTxID string) (proposal *pb.Proposal, signedProposal *pb.SignedProposal, txID string, err error) {
-	if c.Signer == nil {
-		return nil, nil, "", errors.New("nil signer provided")
-	}
-
+func (c *Committer) createProposals(inputTxID string) (proposal *pb.Proposal, txID string, err error) {
 	args := &lb.CommitChaincodeDefinitionArgs{
 		Name:                c.Input.Name,
 		Version:             c.Input.Version,
@@ -302,9 +311,9 @@ func (c *Committer) createProposals(inputTxID string) (proposal *pb.Proposal, si
 
 	argsBytes, err := proto.Marshal(args)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, "", err
 	}
-	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte("CommitChaincodeDefinition"), argsBytes}}
+	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte(commitFuncName), argsBytes}}
 
 	cis := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{
@@ -315,18 +324,13 @@ func (c *Committer) createProposals(inputTxID string) (proposal *pb.Proposal, si
 
 	creatorBytes, err := c.Signer.Serialize()
 	if err != nil {
-		return nil, nil, "", errors.WithMessage(err, "error serializing identity")
+		return nil, "", errors.WithMessage(err, "failed to serialize identity")
 	}
 
 	proposal, txID, err = protoutil.CreateChaincodeProposalWithTxIDAndTransient(cb.HeaderType_ENDORSER_TRANSACTION, c.Input.ChannelID, cis, creatorBytes, inputTxID, nil)
 	if err != nil {
-		return nil, nil, "", errors.WithMessage(err, "error creating proposal for ChaincodeInvocationSpec")
+		return nil, "", errors.WithMessage(err, "failed to create ChaincodeInvocationSpec proposal")
 	}
 
-	signedProposal, err = protoutil.GetSignedProposal(proposal, c.Signer)
-	if err != nil {
-		return nil, nil, "", errors.WithMessage(err, "error signing proposal")
-	}
-
-	return proposal, signedProposal, txID, nil
+	return proposal, txID, nil
 }

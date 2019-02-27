@@ -4,478 +4,379 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package chaincode
+package chaincode_test
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"os"
-	"testing"
+	"crypto/tls"
 	"time"
 
 	ccapi "github.com/hyperledger/fabric/internal/peer/chaincode/api"
-	"github.com/hyperledger/fabric/internal/peer/chaincode/mock"
-	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/common/api"
-	cmock "github.com/hyperledger/fabric/internal/peer/common/mock"
-	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
-	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
+	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func TestMain(m *testing.M) {
-	err := msptesttools.LoadMSPSetupForTesting()
-	if err != nil {
-		panic(fmt.Sprintf("Fatal error when reading MSP config: %s", err))
-	}
+var _ = Describe("Commit", func() {
+	Describe("Committer", func() {
+		var (
+			mockProposalResponse *pb.ProposalResponse
+			mockEndorserClient   *mock.EndorserClient
+			mockEndorserClients  []chaincode.EndorserClient
+			mockDeliverClient    *mock.PeerDeliverClient
+			mockSigner           *mock.Signer
+			certificate          tls.Certificate
+			mockBroadcastClient  *mock.BroadcastClient
+			input                *chaincode.CommitInput
+			committer            *chaincode.Committer
+		)
 
-	os.Exit(m.Run())
-}
+		BeforeEach(func() {
+			mockEndorserClient = &mock.EndorserClient{}
 
-func TestCommitter(t *testing.T) {
-	assert := assert.New(t)
-
-	t.Run("success", func(t *testing.T) {
-		c := newCommitterForTest(t, nil, nil)
-		c.Input = &CommitInput{
-			Name:      "testcc",
-			Version:   "testversion",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-
-		err := c.Commit()
-		assert.NoError(err)
-	})
-
-	t.Run("failure - validation fails due to no name provided", func(t *testing.T) {
-		c := newCommitterForTest(t, nil, nil)
-		c.Input = &CommitInput{
-			Version:   "testversion",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-
-		err := c.Commit()
-		assert.EqualError(err, "The required parameter 'name' is empty. Rerun the command with -n flag")
-	})
-
-	t.Run("failure - creating signed proposal fails", func(t *testing.T) {
-		c := newCommitterForTest(t, nil, nil)
-		c.Input = &CommitInput{
-			Name:      "testcc",
-			Version:   "testversion",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-		c.Signer = nil
-
-		err := c.Commit()
-		assert.EqualError(err, "error creating signed proposal: nil signer provided")
-	})
-
-	t.Run("endorser client returns error", func(t *testing.T) {
-		ec := common.GetMockEndorserClient(nil, errors.New("badbadnotgood"))
-		c := newCommitterForTest(t, nil, ec)
-		c.Input = &CommitInput{
-			Name:      "testcc",
-			Version:   "testversion",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-
-		err := c.Commit()
-		assert.EqualError(err, "error endorsing proposal: badbadnotgood")
-	})
-
-	t.Run("endorser client returns a nil proposal response", func(t *testing.T) {
-		ec := common.GetMockEndorserClient(nil, nil)
-		c := newCommitterForTest(t, nil, ec)
-		c.Input = &CommitInput{
-			Name:      "testcc",
-			Version:   "testversion",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-
-		err := c.Commit()
-		assert.EqualError(err, "received nil proposal response")
-	})
-
-	t.Run("endorser client returns a proposal response with nil response", func(t *testing.T) {
-		mockResponse := &pb.ProposalResponse{
-			Response: nil,
-		}
-		ec := common.GetMockEndorserClient(mockResponse, nil)
-		c := newCommitterForTest(t, nil, ec)
-		c.Input = &CommitInput{
-			Name:      "testcc",
-			Version:   "testversion",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-
-		err := c.Commit()
-		assert.EqualError(err, "proposal response had nil response")
-	})
-
-	t.Run("broadcast client returns an error", func(t *testing.T) {
-		c := newCommitterForTest(t, nil, nil)
-		c.BroadcastClient = common.GetMockBroadcastClient(errors.New("jinkies"))
-
-		c.Input = &CommitInput{
-			Name:      "testcc",
-			Version:   "testversion",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-
-		err := c.Commit()
-		assert.EqualError(err, "error sending transaction for commit: jinkies")
-	})
-
-	t.Run("endorser client returns a failure status code", func(t *testing.T) {
-		mockResponse := &pb.ProposalResponse{
-			Response: &pb.Response{
-				Status:  500,
-				Message: "rutroh",
-			},
-		}
-		ec := common.GetMockEndorserClient(mockResponse, nil)
-		c := newCommitterForTest(t, nil, ec)
-		c.Input = &CommitInput{
-			Name:      "testcc",
-			Version:   "testversion",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-
-		err := c.Commit()
-		assert.EqualError(err, "bad response: 500 - rutroh")
-	})
-
-	t.Run("wait for event success", func(t *testing.T) {
-		// success - one deliver client first receives block without txid and
-		// then one with txid
-		c := newCommitterForTest(t, nil, nil)
-		filteredBlocks := []*pb.FilteredBlock{
-			createFilteredBlock("theseare", "notthetxidsyouarelookingfor"),
-			createFilteredBlock("txid0"),
-		}
-		mockDCTwoBlocks := getMockDeliverClientRespondsWithFilteredBlocks(filteredBlocks)
-		mockDC := getMockDeliverClientResponseWithTxID("txid0")
-		c.DeliverClients = []api.PeerDeliverClient{mockDCTwoBlocks, mockDC}
-		c.Input = &CommitInput{
-			Name:                "testcc",
-			Version:             "testversion",
-			Sequence:            1,
-			ChannelID:           "testchannel",
-			PeerAddresses:       []string{"peer0", "peer1"},
-			WaitForEvent:        true,
-			WaitForEventTimeout: 30 * time.Second,
-			TxID:                "txid0",
-		}
-
-		err := c.Commit()
-		assert.NoError(err)
-	})
-
-	t.Run("wait for event failure - one deliver client returns error", func(t *testing.T) {
-		c := newCommitterForTest(t, nil, nil)
-		mockDCErr := getMockDeliverClientWithErr("moist")
-		mockDC := getMockDeliverClientResponseWithTxID("txid0")
-		c.DeliverClients = []api.PeerDeliverClient{mockDCErr, mockDC}
-		c.Input = &CommitInput{
-			Name:                "testcc",
-			Version:             "testversion",
-			Sequence:            1,
-			ChannelID:           "testchannel",
-			PeerAddresses:       []string{"peer0", "peer1"},
-			WaitForEvent:        true,
-			WaitForEventTimeout: 30 * time.Second,
-			TxID:                "txid0",
-		}
-
-		err := c.Commit()
-		assert.Error(err)
-		assert.Contains(err.Error(), "moist")
-	})
-
-	t.Run("wait for event failure - both deliver clients don't return an event with the expected txid", func(t *testing.T) {
-		c := newCommitterForTest(t, nil, nil)
-		delayChan := make(chan struct{})
-		mockDCDelay := getMockDeliverClientRespondAfterDelay(delayChan, "txid0")
-		c.DeliverClients = []api.PeerDeliverClient{mockDCDelay, mockDCDelay}
-		c.Input = &CommitInput{
-			Name:                "testcc",
-			Version:             "testversion",
-			Sequence:            1,
-			ChannelID:           "testchannel",
-			PeerAddresses:       []string{"peer0", "peer1"},
-			WaitForEvent:        true,
-			WaitForEventTimeout: 10 * time.Millisecond,
-			TxID:                "txid0",
-		}
-
-		err := c.Commit()
-		assert.Error(err)
-		assert.Contains(err.Error(), "timed out")
-	})
-}
-
-func TestCommitCmd(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		ResetFlags()
-		c := newCommitterForTest(t, nil, nil)
-		cmd := commitCmd(nil, c)
-		c.Command = cmd
-		args := []string{
-			"-C", "testchannel",
-			"-n", "testcc",
-			"-v", "1.0",
-			"--sequence", "1",
-			"-P", `AND ('Org1MSP.member','Org2MSP.member')`,
-		}
-		cmd.SetArgs(args)
-
-		err := cmd.Execute()
-		assert.NoError(t, err)
-	})
-
-	t.Run("failure - invalid signature policy", func(t *testing.T) {
-		ResetFlags()
-		c := newCommitterForTest(t, nil, nil)
-		cmd := commitCmd(nil, c)
-		c.Command = cmd
-		args := []string{
-			"-C", "testchannel",
-			"-n", "testcc",
-			"-v", "1.0",
-			"--sequence", "1",
-			"-P", "notapolicy",
-		}
-		cmd.SetArgs(args)
-
-		err := cmd.Execute()
-		assert.EqualError(t, err, "invalid signature policy: notapolicy")
-	})
-
-	t.Run("failure - invalid collection config file", func(t *testing.T) {
-		ResetFlags()
-		c := newCommitterForTest(t, nil, nil)
-		cmd := commitCmd(nil, c)
-		c.Command = cmd
-		args := []string{
-			"-C", "testchannel",
-			"-n", "testcc",
-			"-v", "1.0",
-			"--sequence", "1",
-			"--collections-config", "idontexist.json",
-		}
-		cmd.SetArgs(args)
-
-		err := cmd.Execute()
-		assert.EqualError(t, err, "invalid collection configuration in file idontexist.json: could not read file 'idontexist.json': open idontexist.json: no such file or directory")
-	})
-}
-
-func TestValidateCommitInput(t *testing.T) {
-	defer ResetFlags()
-	assert := assert.New(t)
-
-	t.Run("success - all required parameters provided", func(t *testing.T) {
-		input := &CommitInput{
-			Name:      "testcc",
-			Version:   "testversion",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-		err := input.Validate()
-		assert.NoError(err)
-	})
-
-	t.Run("failure - nil input", func(t *testing.T) {
-		var input *CommitInput
-		err := input.Validate()
-		assert.EqualError(err, "nil input")
-	})
-
-	t.Run("failure - name not set", func(t *testing.T) {
-		input := &CommitInput{
-			Version:   "testversion",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-		err := input.Validate()
-		assert.EqualError(err, "The required parameter 'name' is empty. Rerun the command with -n flag")
-	})
-
-	t.Run("failure - version not set", func(t *testing.T) {
-		input := &CommitInput{
-			Name:      "testcc",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-		err := input.Validate()
-		assert.EqualError(err, "The required parameter 'version' is empty. Rerun the command with -v flag")
-	})
-
-	t.Run("failure - sequence not set", func(t *testing.T) {
-		input := &CommitInput{
-			Name:      "testcc",
-			Version:   "testversion",
-			ChannelID: "testchannel",
-		}
-		err := input.Validate()
-		assert.EqualError(err, "The required parameter 'sequence' is empty. Rerun the command with --sequence flag")
-	})
-
-	t.Run("failure - channelID not set", func(t *testing.T) {
-		input := &CommitInput{
-			Name:     "testcc",
-			Version:  "testversion",
-			Sequence: 1,
-		}
-		err := input.Validate()
-		assert.EqualError(err, "The required parameter 'channelID' is empty. Rerun the command with -C flag")
-	})
-}
-
-func initCommitterForTest(t *testing.T, ec pb.EndorserClient, mockResponse *pb.ProposalResponse) (*cobra.Command, *CmdFactory) {
-	signer, err := common.GetDefaultSigner()
-	if err != nil {
-		t.Fatalf("Get default signer error: %v", err)
-	}
-
-	if mockResponse == nil {
-		mockResponse = &pb.ProposalResponse{
-			Response:    &pb.Response{Status: 200},
-			Endorsement: &pb.Endorsement{},
-		}
-	}
-	if ec == nil {
-		ec = common.GetMockEndorserClient(mockResponse, nil)
-	}
-
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-	mockDC := getMockDeliverClientResponseWithTxID("txid0")
-	mockDeliverClients := []api.PeerDeliverClient{mockDC, mockDC}
-	mockCF := &CmdFactory{
-		Signer:          signer,
-		EndorserClients: []pb.EndorserClient{ec},
-		BroadcastClient: mockBroadcastClient,
-		DeliverClients:  mockDeliverClients,
-	}
-
-	cmd := commitCmd(mockCF, nil)
-	addFlags(cmd)
-
-	return cmd, mockCF
-}
-
-func newCommitterForTest(t *testing.T, r Reader, ec pb.EndorserClient) *Committer {
-	_, mockCF := initCommitterForTest(t, ec, nil)
-
-	return &Committer{
-		BroadcastClient: mockCF.BroadcastClient,
-		DeliverClients:  mockCF.DeliverClients,
-		EndorserClients: mockCF.EndorserClients,
-		Signer:          mockCF.Signer,
-	}
-}
-
-func getMockDeliverClientResponseWithTxID(txID string) *cmock.PeerDeliverClient {
-	mockDC := &cmock.PeerDeliverClient{}
-	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
-		return getMockDeliverConnectionResponseWithTxID(txID), nil
-	}
-	return mockDC
-}
-
-func getMockDeliverConnectionResponseWithTxID(txID string) *mock.Deliver {
-	mockDF := &mock.Deliver{}
-	resp := &pb.DeliverResponse{
-		Type: &pb.DeliverResponse_FilteredBlock{
-			FilteredBlock: createFilteredBlock(txID),
-		},
-	}
-	mockDF.RecvReturns(resp, nil)
-	return mockDF
-}
-
-func getMockDeliverClientRespondsWithFilteredBlocks(fb []*pb.FilteredBlock) *cmock.PeerDeliverClient {
-	mockDC := &cmock.PeerDeliverClient{}
-	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
-		mockDF := &mock.Deliver{}
-		for i, f := range fb {
-			resp := &pb.DeliverResponse{
-				Type: &pb.DeliverResponse_FilteredBlock{
-					FilteredBlock: f,
+			mockProposalResponse = &pb.ProposalResponse{
+				Response: &pb.Response{
+					Status: 200,
 				},
+				Endorsement: &pb.Endorsement{},
 			}
-			mockDF.RecvReturnsOnCall(i, resp, nil)
-		}
-		return mockDF, nil
-	}
-	return mockDC
-}
+			mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+			mockEndorserClients = []chaincode.EndorserClient{mockEndorserClient}
 
-func getMockDeliverClientRegisterAfterDelay(delayChan chan struct{}) *cmock.PeerDeliverClient {
-	mockDC := &cmock.PeerDeliverClient{}
-	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
-		mockDF := &mock.Deliver{}
-		mockDF.SendStub = func(*cb.Envelope) error {
-			<-delayChan
-			return nil
-		}
-		return mockDF, nil
-	}
-	return mockDC
-}
-
-func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}, txID string) *cmock.PeerDeliverClient {
-	mockDC := &cmock.PeerDeliverClient{}
-	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
-		mockDF := &mock.Deliver{}
-		mockDF.RecvStub = func() (*pb.DeliverResponse, error) {
-			<-delayChan
-			resp := &pb.DeliverResponse{
-				Type: &pb.DeliverResponse_FilteredBlock{
-					FilteredBlock: createFilteredBlock(txID),
-				},
+			mockDeliverClient = &mock.PeerDeliverClient{}
+			input = &chaincode.CommitInput{
+				ChannelID: "testchannel",
+				Name:      "testcc",
+				Version:   "1.0",
+				Sequence:  1,
 			}
-			return resp, nil
-		}
-		return mockDF, nil
-	}
-	return mockDC
-}
 
-func getMockDeliverClientWithErr(errMsg string) *cmock.PeerDeliverClient {
-	mockDC := &cmock.PeerDeliverClient{}
-	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
-		return nil, fmt.Errorf(errMsg)
-	}
-	return mockDC
-}
+			mockSigner = &mock.Signer{}
 
-func createFilteredBlock(txIDs ...string) *pb.FilteredBlock {
-	var filteredTransactions []*pb.FilteredTransaction
-	for _, txID := range txIDs {
-		ft := &pb.FilteredTransaction{
-			Txid:             txID,
-			TxValidationCode: pb.TxValidationCode_VALID,
-		}
-		filteredTransactions = append(filteredTransactions, ft)
-	}
-	fb := &pb.FilteredBlock{
-		Number:               0,
-		ChannelId:            "testchannel",
-		FilteredTransactions: filteredTransactions,
-	}
-	return fb
-}
+			certificate = tls.Certificate{}
+			mockBroadcastClient = &mock.BroadcastClient{}
+
+			committer = &chaincode.Committer{
+				Certificate:     certificate,
+				BroadcastClient: mockBroadcastClient,
+				DeliverClients:  []api.PeerDeliverClient{mockDeliverClient},
+				EndorserClients: mockEndorserClients,
+				Input:           input,
+				Signer:          mockSigner,
+			}
+		})
+
+		It("commits a chaincode definition", func() {
+			err := committer.Commit()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("when the channel name is not provided", func() {
+			BeforeEach(func() {
+				committer.Input.ChannelID = ""
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("The required parameter 'channelID' is empty. Rerun the command with -C flag"))
+			})
+		})
+
+		Context("when the chaincode name is not provided", func() {
+			BeforeEach(func() {
+				committer.Input.Name = ""
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("The required parameter 'name' is empty. Rerun the command with -n flag"))
+			})
+		})
+
+		Context("when the chaincode version is not provided", func() {
+			BeforeEach(func() {
+				committer.Input.Version = ""
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("The required parameter 'version' is empty. Rerun the command with -v flag"))
+			})
+		})
+
+		Context("when the sequence is not provided", func() {
+			BeforeEach(func() {
+				committer.Input.Sequence = 0
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("The required parameter 'sequence' is empty. Rerun the command with --sequence flag"))
+			})
+		})
+
+		Context("when the signer cannot be serialized", func() {
+			BeforeEach(func() {
+				mockSigner.SerializeReturns(nil, errors.New("cafe"))
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("failed to create proposal: failed to serialize identity: cafe"))
+			})
+		})
+
+		Context("when the signer fails to sign the proposal", func() {
+			BeforeEach(func() {
+				mockSigner.SignReturns(nil, errors.New("tea"))
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("failed to create signed proposal: tea"))
+			})
+		})
+
+		Context("when the endorser fails to endorse the proposal", func() {
+			BeforeEach(func() {
+				mockEndorserClient.ProcessProposalReturns(nil, errors.New("latte"))
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("failed to endorse proposal: latte"))
+			})
+		})
+
+		Context("when no endorser clients are set", func() {
+			BeforeEach(func() {
+				committer.EndorserClients = nil
+			})
+
+			It("doesn't receive any responses and returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("no proposal responses received"))
+			})
+		})
+
+		Context("when the endorser returns a nil proposal response", func() {
+			BeforeEach(func() {
+				mockProposalResponse = nil
+				mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("received nil proposal response"))
+			})
+		})
+
+		Context("when the endorser returns a proposal response with a nil response", func() {
+			BeforeEach(func() {
+				mockProposalResponse.Response = nil
+				mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("received proposal response with nil response"))
+			})
+		})
+
+		Context("when the endorser returns a non-success status", func() {
+			BeforeEach(func() {
+				mockProposalResponse.Response = &pb.Response{
+					Status:  500,
+					Message: "capuccino",
+				}
+				mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("proposal failed with status: 500 - capuccino"))
+			})
+		})
+
+		Context("when the signer fails to sign the transaction", func() {
+			BeforeEach(func() {
+				mockSigner.SignReturnsOnCall(1, nil, errors.New("peaberry"))
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("failed to create signed transaction: peaberry"))
+				Expect(mockSigner.SignCallCount()).To(Equal(2))
+			})
+		})
+
+		Context("when the broadcast client fails to send the envelope", func() {
+			BeforeEach(func() {
+				mockBroadcastClient.SendReturns(errors.New("arabica"))
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("failed to send transaction: arabica"))
+			})
+		})
+
+		Context("when the wait for event flag is enabled and the transaction is committed", func() {
+			BeforeEach(func() {
+				input.WaitForEvent = true
+				input.WaitForEventTimeout = 3 * time.Second
+				input.TxID = "testtx"
+				input.PeerAddresses = []string{"commitpeer0"}
+				mockDeliverClient.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
+					mockDF := &mock.Deliver{}
+					resp := &pb.DeliverResponse{
+						Type: &pb.DeliverResponse_FilteredBlock{
+							FilteredBlock: createFilteredBlock(input.ChannelID, "testtx"),
+						},
+					}
+					mockDF.RecvReturns(resp, nil)
+					return mockDF, nil
+				}
+			})
+
+			It("waits for the event containing the txid", func() {
+				err := committer.Commit()
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when the wait for event flag is enabled and the client can't connect", func() {
+			BeforeEach(func() {
+				input.WaitForEvent = true
+				input.WaitForEventTimeout = 10 * time.Millisecond
+				input.TxID = "testtx"
+				input.PeerAddresses = []string{"commitpeer0"}
+				mockDeliverClient.DeliverFilteredReturns(nil, errors.New("robusta"))
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("failed to connect to deliver on all peers: error connecting to deliver filtered at commitpeer0: robusta"))
+			})
+		})
+
+		Context("when the wait for event flag is enabled and the transaction isn't returned before the timeout", func() {
+			BeforeEach(func() {
+				input.WaitForEvent = true
+				input.WaitForEventTimeout = 10 * time.Millisecond
+				input.TxID = "testtx"
+				input.PeerAddresses = []string{"commitpeer0"}
+				delayChan := make(chan struct{})
+				mockDeliverClient.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
+					mockDF := &mock.Deliver{}
+					mockDF.RecvStub = func() (*pb.DeliverResponse, error) {
+						<-delayChan
+						resp := &pb.DeliverResponse{
+							Type: &pb.DeliverResponse_FilteredBlock{
+								FilteredBlock: createFilteredBlock(input.ChannelID, "testtx"),
+							},
+						}
+						return resp, nil
+					}
+					return mockDF, nil
+				}
+			})
+
+			It("returns an error", func() {
+				err := committer.Commit()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("timed out waiting for txid on all peers"))
+			})
+		})
+	})
+
+	Describe("CommitCmd", func() {
+		var (
+			commitCmd *cobra.Command
+		)
+
+		BeforeEach(func() {
+			commitCmd = chaincode.CommitCmd(nil)
+			commitCmd.SetArgs([]string{
+				"--channelID=testchannel",
+				"--name=testcc",
+				"--version=testversion",
+				"--sequence=1",
+				"--peerAddresses=querypeer1",
+				"--tlsRootCertFiles=tls1",
+				"--policy=AND ('Org1MSP.member','Org2MSP.member')",
+			})
+		})
+
+		AfterEach(func() {
+			chaincode.ResetFlags()
+		})
+
+		It("sets up the committer and attempts to commit the chaincode definition", func() {
+			err := commitCmd.Execute()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to retrieve endorser client"))
+		})
+
+		Context("when the policy is invalid", func() {
+			BeforeEach(func() {
+				commitCmd.SetArgs([]string{
+					"--policy=notapolicy",
+					"--channelID=testchannel",
+					"--name=testcc",
+					"--version=testversion",
+					"--sequence=1",
+					"--peerAddresses=querypeer1",
+					"--tlsRootCertFiles=tls1",
+				})
+			})
+
+			It("returns an error", func() {
+				err := commitCmd.Execute()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("invalid signature policy: notapolicy"))
+			})
+		})
+
+		Context("when the collections config is invalid", func() {
+			BeforeEach(func() {
+				commitCmd.SetArgs([]string{
+					"--collections-config=idontexist.json",
+					"--channelID=testchannel",
+					"--name=testcc",
+					"--version=testversion",
+					"--sequence=1",
+					"--peerAddresses=querypeer1",
+					"--tlsRootCertFiles=tls1",
+				})
+			})
+
+			It("returns an error", func() {
+				err := commitCmd.Execute()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("invalid collection configuration in file idontexist.json: could not read file 'idontexist.json': open idontexist.json: no such file or directory"))
+			})
+		})
+	})
+})
