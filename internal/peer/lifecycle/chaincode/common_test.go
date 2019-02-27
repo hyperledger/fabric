@@ -136,7 +136,7 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 
 	// failure - connection profile doesn't exist
 	resetFlags()
-	connectionProfile = "blah"
+	connectionProfilePath = "blah"
 	err = validatePeerConnectionParameters("approveformyorg")
 	assert.Error(err)
 	assert.Contains(err.Error(), "error reading connection profile")
@@ -145,7 +145,7 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 	// not in peer config
 	resetFlags()
 	channelID = "mychannel"
-	connectionProfile = "../../common/testdata/connectionprofile-uneven.yaml"
+	connectionProfilePath = "../../common/testdata/connectionprofile-uneven.yaml"
 	err = validatePeerConnectionParameters("approveformyorg")
 	assert.Error(err)
 	assert.Contains(err.Error(), "defined in the channel config but doesn't have associated peer config")
@@ -153,7 +153,7 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 	// success - connection profile exists
 	resetFlags()
 	channelID = "mychannel"
-	connectionProfile = "../../common/testdata/connectionprofile.yaml"
+	connectionProfilePath = "../../common/testdata/connectionprofile.yaml"
 	err = validatePeerConnectionParameters("commit")
 	assert.NoError(err)
 }

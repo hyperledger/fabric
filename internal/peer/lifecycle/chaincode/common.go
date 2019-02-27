@@ -102,8 +102,8 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) 
 }
 
 func validatePeerConnectionParameters(cmdName string) error {
-	if connectionProfile != common.UndefinedParamValue {
-		networkConfig, err := common.GetConfig(connectionProfile)
+	if connectionProfilePath != "" {
+		networkConfig, err := common.GetConfig(connectionProfilePath)
 		if err != nil {
 			return err
 		}
