@@ -121,21 +121,6 @@ func (m *mockLedger) GetMissingPvtDataTracker() (ledger2.MissingPvtDataTracker, 
 	panic("implement me")
 }
 
-func (m *mockLedger) PurgePrivateData(maxBlockNumToRetain uint64) error {
-	args := m.Called(maxBlockNumToRetain)
-	return args.Error(0)
-}
-
-func (m *mockLedger) PrivateDataMinBlockNum() (uint64, error) {
-	args := m.Called()
-	return args.Get(0).(uint64), args.Error(1)
-}
-
-func (m *mockLedger) Prune(policy ledger.PrunePolicy) error {
-	args := m.Called(policy)
-	return args.Error(0)
-}
-
 func createLedger(channelID string) (*common.Block, *mockLedger) {
 	gb, _ := test.MakeGenesisBlock(channelID)
 	ledger := &mockLedger{

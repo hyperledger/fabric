@@ -1569,21 +1569,6 @@ func (m *mockLedger) CommitWithPvtData(pvtDataAndBlock *ledger.BlockAndPvtData) 
 	return nil
 }
 
-// PurgePrivateData purges the private data
-func (m *mockLedger) PurgePrivateData(maxBlockNumToRetain uint64) error {
-	return nil
-}
-
-// PrivateDataMinBlockNum returns the lowest retained endorsement block height
-func (m *mockLedger) PrivateDataMinBlockNum() (uint64, error) {
-	return 0, nil
-}
-
-// Prune prune using policy
-func (m *mockLedger) Prune(policy ledger2.PrunePolicy) error {
-	return nil
-}
-
 func (m *mockLedger) GetBlockchainInfo() (*common.BlockchainInfo, error) {
 	args := m.Called()
 	return args.Get(0).(*common.BlockchainInfo), nil
