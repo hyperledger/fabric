@@ -82,6 +82,7 @@ func TestResetBlockStore(t *testing.T) {
 	maxFileSie := int(0.2 * float64(testutilEstimateTotalSizeOnDisk(t, blocks1)))
 
 	env := newTestEnv(t, NewConf(blockStoreRootDir, maxFileSie))
+	defer env.Cleanup()
 	provider := env.provider
 	store1, err := provider.OpenBlockStore("ledger1")
 	assert.NoError(t, err)
@@ -115,6 +116,13 @@ func TestResetBlockStore(t *testing.T) {
 	store2, _ = provider.CreateBlockStore("ledger2")
 	assertBlockStorePostReset(t, store1, blocks1)
 	assertBlockStorePostReset(t, store2, blocks2)
+
+	assert.NoError(t, ClearPreResetHeight(blockStoreRootDir))
+	h, err = LoadPreResetHeight(blockStoreRootDir)
+	assert.Equal(t,
+		map[string]uint64{},
+		h,
+	)
 }
 
 func TestRecordHeight(t *testing.T) {
