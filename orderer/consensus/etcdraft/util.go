@@ -241,6 +241,22 @@ func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.Metadata, 
 	return nil, nil
 }
 
+// ConfigChannelHeader expects a config block and returns the header type
+// of the config envelope wrapped in it, e.g. HeaderType_ORDERER_TRANSACTION
+func ConfigChannelHeader(block *common.Block) (hdr *common.ChannelHeader, err error) {
+	envelope, err := protoutil.ExtractEnvelope(block, 0)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to extract envelope from the block")
+	}
+
+	channelHeader, err := protoutil.ChannelHeader(envelope)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot extract channel header")
+	}
+
+	return channelHeader, nil
+}
+
 // ConfigEnvelopeFromBlock extracts configuration envelope from the block based on the
 // config type, i.e. HeaderType_ORDERER_TRANSACTION or HeaderType_CONFIG
 func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
