@@ -28,7 +28,7 @@ var _ = Describe("Cache", func() {
 
 	var (
 		c               *lifecycle.Cache
-		l               *lifecycle.Lifecycle
+		resources       *lifecycle.Resources
 		fakeCCStore     *mock.ChaincodeStore
 		fakeParser      *mock.PackageParser
 		channelCache    *lifecycle.ChannelCache
@@ -39,7 +39,7 @@ var _ = Describe("Cache", func() {
 		fakeCCStore = &mock.ChaincodeStore{}
 		fakeParser = &mock.PackageParser{}
 
-		l = &lifecycle.Lifecycle{
+		resources = &lifecycle.Resources{
 			PackageParser:  fakeParser,
 			ChaincodeStore: fakeCCStore,
 			Serializer:     &lifecycle.Serializer{},
@@ -62,7 +62,7 @@ var _ = Describe("Cache", func() {
 		}, nil)
 
 		var err error
-		c = lifecycle.NewCache(l, "my-mspid")
+		c = lifecycle.NewCache(resources, "my-mspid")
 		Expect(err).NotTo(HaveOccurred())
 
 		channelCache = &lifecycle.ChannelCache{
@@ -247,7 +247,7 @@ var _ = Describe("Cache", func() {
 				return fakePrivateState.GetStateHash(key)
 			}
 
-			err := l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
+			err := resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
 				Sequence: 7,
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 					Id: []byte("hash"),
@@ -255,7 +255,7 @@ var _ = Describe("Cache", func() {
 			}, fakePublicState)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{
+			err = resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 					Id: []byte("hash"),
 				},
@@ -281,7 +281,7 @@ var _ = Describe("Cache", func() {
 
 		Context("when the chaincode is not installed", func() {
 			BeforeEach(func() {
-				err := l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
+				err := resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
 					Sequence: 7,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						Id: []byte("different-hash"),
@@ -289,7 +289,7 @@ var _ = Describe("Cache", func() {
 				}, fakePublicState)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{
+				err = resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						Id: []byte("different-hash"),
 					},
@@ -327,13 +327,13 @@ var _ = Describe("Cache", func() {
 
 			It("wraps and returns the error", func() {
 				err := c.Initialize("channel-id", fakeQueryExecutor)
-				Expect(err).To(MatchError("could not query namespace definitions: could not query namespace metadata: could not get state range for namespace namespaces: could not get state iterator: range-error"))
+				Expect(err).To(MatchError("could not query namespace metadata: could not get state range for namespace namespaces: could not get state iterator: range-error"))
 			})
 		})
 
 		Context("when the namespace is not of type chaincode", func() {
 			BeforeEach(func() {
-				err := l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeParameters{}, fakePublicState)
+				err := resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeParameters{}, fakePublicState)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -358,7 +358,7 @@ var _ = Describe("Cache", func() {
 
 		Context("when the org's definition differs", func() {
 			BeforeEach(func() {
-				err := l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{
+				err := resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						EndorsementPlugin: "different",
 					},
@@ -457,7 +457,7 @@ var _ = Describe("Cache", func() {
 					return fakePublicState.GetState(key)
 				}
 
-				err := l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
+				err := resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
 					Sequence: 7,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						Id: []byte("hash"),

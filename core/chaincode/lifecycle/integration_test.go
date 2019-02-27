@@ -26,8 +26,9 @@ import (
 
 var _ = Describe("Integration", func() {
 	var (
-		l   *lifecycle.Lifecycle
-		scc *lifecycle.SCC
+		resources *lifecycle.Resources
+		ef        *lifecycle.ExternalFunctions
+		scc       *lifecycle.SCC
 
 		fakeChannelConfigSource *mock.ChannelConfigSource
 		fakeChannelConfig       *mock.ChannelConfig
@@ -42,8 +43,12 @@ var _ = Describe("Integration", func() {
 	)
 
 	BeforeEach(func() {
-		l = &lifecycle.Lifecycle{
+		resources = &lifecycle.Resources{
 			Serializer: &lifecycle.Serializer{},
+		}
+
+		ef = &lifecycle.ExternalFunctions{
+			Resources: resources,
 		}
 
 		fakeChannelConfigSource = &mock.ChannelConfigSource{}
@@ -67,7 +72,7 @@ var _ = Describe("Integration", func() {
 			Dispatcher: &dispatcher.Dispatcher{
 				Protobuf: &dispatcher.ProtobufImpl{},
 			},
-			Functions:           l,
+			Functions:           ef,
 			OrgMSPID:            "fake-mspid",
 			ChannelConfigSource: fakeChannelConfigSource,
 			ACLProvider:         fakeACLProvider,

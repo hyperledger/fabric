@@ -74,13 +74,13 @@ func (ld *LegacyDefinition) RequiresInit() bool {
 }
 
 type ChaincodeEndorsementInfo struct {
-	Lifecycle  *Lifecycle
+	Resources  *Resources
 	Cache      ChaincodeInfoCache
 	LegacyImpl LegacyLifecycle
 }
 
 func (cei *ChaincodeEndorsementInfo) CachedChaincodeInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*LocalChaincodeInfo, bool, error) {
-	currentSequence, err := cei.Lifecycle.Serializer.DeserializeFieldAsInt64(NamespacesName, chaincodeName, "Sequence", &SimpleQueryExecutorShim{
+	currentSequence, err := cei.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, chaincodeName, "Sequence", &SimpleQueryExecutorShim{
 		Namespace:           LifecycleNamespace,
 		SimpleQueryExecutor: qe,
 	})

@@ -52,7 +52,7 @@ type ChannelCache struct {
 
 type Cache struct {
 	definedChaincodes map[string]*ChannelCache
-	Lifecycle         *Lifecycle
+	Resources         *Resources
 	MyOrgMSPID        string
 
 	// mutex serializes lifecycle operations globally for the peer.  It will cause a lifecycle update
@@ -74,11 +74,11 @@ type LocalChaincode struct {
 	References map[string]map[string]*CachedChaincodeDefinition
 }
 
-func NewCache(lifecycle *Lifecycle, myOrgMSPID string) *Cache {
+func NewCache(resources *Resources, myOrgMSPID string) *Cache {
 	return &Cache{
 		definedChaincodes: map[string]*ChannelCache{},
 		localChaincodes:   map[string]*LocalChaincode{},
-		Lifecycle:         lifecycle,
+		Resources:         resources,
 		MyOrgMSPID:        myOrgMSPID,
 	}
 }
@@ -90,17 +90,17 @@ func NewCache(lifecycle *Lifecycle, myOrgMSPID string) *Cache {
 func (c *Cache) InitializeLocalChaincodes() error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	ccPackages, err := c.Lifecycle.ChaincodeStore.ListInstalledChaincodes()
+	ccPackages, err := c.Resources.ChaincodeStore.ListInstalledChaincodes()
 	if err != nil {
 		return errors.WithMessage(err, "could not list installed chaincodes")
 	}
 
 	for _, ccPackage := range ccPackages {
-		ccPackageBytes, _, err := c.Lifecycle.ChaincodeStore.Load(ccPackage.Id)
+		ccPackageBytes, _, err := c.Resources.ChaincodeStore.Load(ccPackage.Id)
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("could not load chaincode with hash '%x'", ccPackage.Id))
 		}
-		parsedCCPackage, err := c.Lifecycle.PackageParser.Parse(ccPackageBytes)
+		parsedCCPackage, err := c.Resources.PackageParser.Parse(ccPackageBytes)
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("could not parse chaincode package with hash '%x'", ccPackage.Id))
 		}
@@ -141,18 +141,20 @@ func (c *Cache) Initialize(channelID string, qe ledger.SimpleQueryExecutor) erro
 		SimpleQueryExecutor: qe,
 	}
 
-	namespaces, err := c.Lifecycle.QueryNamespaceDefinitions(publicState)
+	metadatas, err := c.Resources.Serializer.DeserializeAllMetadata(NamespacesName, publicState)
 	if err != nil {
-		return errors.WithMessage(err, "could not query namespace definitions")
+		return errors.WithMessage(err, "could not query namespace metadata")
 	}
 
 	dirtyChaincodes := map[string]struct{}{}
 
-	for namespace, namespaceType := range namespaces {
-		if namespaceType != FriendlyChaincodeDefinitionType {
-			continue
+	for namespace, metadata := range metadatas {
+		switch metadata.Datatype {
+		case ChaincodeDefinitionType:
+			dirtyChaincodes[namespace] = struct{}{}
+		default:
+			// non-chaincode
 		}
-		dirtyChaincodes[namespace] = struct{}{}
 	}
 
 	return c.update(channelID, dirtyChaincodes, qe)
@@ -315,7 +317,7 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 			delete(channelCache.InterestingHashes, hash)
 		}
 
-		exists, chaincodeDefinition, err := c.Lifecycle.ChaincodeDefinitionIfDefined(name, publicState)
+		exists, chaincodeDefinition, err := c.Resources.ChaincodeDefinitionIfDefined(name, publicState)
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("could not get chaincode definition for '%s' on channel '%s'", name, channelID))
 		}
@@ -343,7 +345,7 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 			channelCache.InterestingHashes[hash] = name
 		}
 
-		ok, err = c.Lifecycle.Serializer.IsSerialized(NamespacesName, privateName, chaincodeDefinition.Parameters(), orgState)
+		ok, err = c.Resources.Serializer.IsSerialized(NamespacesName, privateName, chaincodeDefinition.Parameters(), orgState)
 
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("could not check opaque org state for '%s' on channel '%s'", name, channelID))

@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	"github.com/hyperledger/fabric/core/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
@@ -131,33 +130,72 @@ type PackageParser interface {
 	Parse(data []byte) (*persistence.ChaincodePackage, error)
 }
 
-//go:generate counterfeiter -o mock/legacy_ccinfo.go --fake-name LegacyDeployedCCInfoProvider . LegacyDeployedCCInfoProvider
-type LegacyDeployedCCInfoProvider interface {
-	ledger.DeployedChaincodeInfoProvider
-}
-
 //go:generate counterfeiter -o mock/install_listener.go --fake-name InstallListener . InstallListener
 type InstallListener interface {
 	HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, hash []byte)
 }
 
-// Lifecycle implements the lifecycle operations which are invoked
-// by the SCC as well as internally
-type Lifecycle struct {
-	ChannelConfigSource          ChannelConfigSource
-	ChaincodeStore               ChaincodeStore
-	PackageParser                PackageParser
-	Serializer                   *Serializer
-	LegacyDeployedCCInfoProvider LegacyDeployedCCInfoProvider
-	InstallListener              InstallListener
+// Resources stores the common functions needed by all components of the lifecycle
+// by the SCC as well as internally.  It also has some utility methods attached to it
+// for querying the lifecycle definitions.
+type Resources struct {
+	ChannelConfigSource ChannelConfigSource
+	ChaincodeStore      ChaincodeStore
+	PackageParser       PackageParser
+	Serializer          *Serializer
+}
+
+// ChaincodeDefinitionIfDefined returns whether the chaincode name is defined in the new lifecycle, a shim around
+// the SimpleQueryExecutor to work with the serializer, or an error.  If the namespace is defined, but it is
+// not a chaincode, this is considered an error.
+func (r *Resources) ChaincodeDefinitionIfDefined(chaincodeName string, state ReadableState) (bool, *ChaincodeDefinition, error) {
+	if chaincodeName == LifecycleNamespace {
+		return true, &ChaincodeDefinition{
+			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+				InitRequired: false,
+			},
+			ValidationInfo: &lb.ChaincodeValidationInfo{},
+		}, nil
+	}
+
+	metadata, ok, err := r.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state)
+	if err != nil {
+		return false, nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize metadata for chaincode %s", chaincodeName))
+	}
+
+	if !ok {
+		return false, nil, nil
+	}
+
+	if metadata.Datatype != ChaincodeDefinitionType {
+		return false, nil, errors.Errorf("not a chaincode type: %s", metadata.Datatype)
+	}
+
+	definedChaincode := &ChaincodeDefinition{}
+	err = r.Serializer.Deserialize(NamespacesName, chaincodeName, metadata, definedChaincode, state)
+	if err != nil {
+		return false, nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))
+	}
+
+	return true, definedChaincode, nil
+}
+
+// ExternalFunctions is intended primarily to support the SCC functions.  In general,
+// its methods signatures produce writes (which must be commmitted as part of an endorsement
+// flow), or return human readable errors (for instance indicating a chaincode is not found)
+// rather than sentinals.  Instead, use the utility functions attached to the lifecycle Resources
+// when needed.
+type ExternalFunctions struct {
+	Resources       *Resources
+	InstallListener InstallListener
 }
 
 // CommitChaincodeDefinition takes a chaincode definition, checks that its sequence number is the next allowable sequence number,
 // checks which organizations agree with the definition, and applies the definition to the public world state.
 // It is the responsibility of the caller to check the agreement to determine if the result is valid (typically
 // this means checking that the peer's own org is in agreement.)
-func (l *Lifecycle) CommitChaincodeDefinition(name string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
-	currentSequence, err := l.Serializer.DeserializeFieldAsInt64(NamespacesName, name, "Sequence", publicState)
+func (ef *ExternalFunctions) CommitChaincodeDefinition(name string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
+	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, name, "Sequence", publicState)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get current sequence")
 	}
@@ -169,11 +207,11 @@ func (l *Lifecycle) CommitChaincodeDefinition(name string, cd *ChaincodeDefiniti
 	agreement := make([]bool, len(orgStates))
 	privateName := fmt.Sprintf("%s#%d", name, cd.Sequence)
 	for i, orgState := range orgStates {
-		match, err := l.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters(), orgState)
+		match, err := ef.Resources.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters(), orgState)
 		agreement[i] = (err == nil && match)
 	}
 
-	if err = l.Serializer.Serialize(NamespacesName, name, cd, publicState); err != nil {
+	if err = ef.Resources.Serializer.Serialize(NamespacesName, name, cd, publicState); err != nil {
 		return nil, errors.WithMessage(err, "could not serialize chaincode definition")
 	}
 
@@ -183,9 +221,9 @@ func (l *Lifecycle) CommitChaincodeDefinition(name string, cd *ChaincodeDefiniti
 // ApproveChaincodeDefinitionForOrg adds a chaincode definition entry into the passed in Org state.  The definition must be
 // for either the currently defined sequence number or the next sequence number.  If the definition is
 // for the current sequence number, then it must match exactly the current definition or it will be rejected.
-func (l *Lifecycle) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, publicState ReadableState, orgState ReadWritableState) error {
+func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, publicState ReadableState, orgState ReadWritableState) error {
 	// Get the current sequence from the public state
-	currentSequence, err := l.Serializer.DeserializeFieldAsInt64(NamespacesName, name, "Sequence", publicState)
+	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, name, "Sequence", publicState)
 	if err != nil {
 		return errors.WithMessage(err, "could not get current sequence")
 	}
@@ -205,7 +243,7 @@ func (l *Lifecycle) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeD
 	}
 
 	if requestedSequence == currentSequence {
-		metadata, ok, err := l.Serializer.DeserializeMetadata(NamespacesName, name, publicState)
+		metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, name, publicState)
 		if err != nil {
 			return errors.WithMessage(err, "could not fetch metadata for current definition")
 		}
@@ -214,7 +252,7 @@ func (l *Lifecycle) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeD
 		}
 
 		definedChaincode := &ChaincodeDefinition{}
-		if err := l.Serializer.Deserialize(NamespacesName, name, metadata, definedChaincode, publicState); err != nil {
+		if err := ef.Resources.Serializer.Deserialize(NamespacesName, name, metadata, definedChaincode, publicState); err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", name))
 		}
 
@@ -224,7 +262,7 @@ func (l *Lifecycle) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeD
 	}
 
 	privateName := fmt.Sprintf("%s#%d", name, requestedSequence)
-	if err := l.Serializer.Serialize(NamespacesName, privateName, cd.Parameters(), orgState); err != nil {
+	if err := ef.Resources.Serializer.Serialize(NamespacesName, privateName, cd.Parameters(), orgState); err != nil {
 		return errors.WithMessage(err, "could not serialize chaincode parameters to state")
 	}
 
@@ -233,8 +271,8 @@ func (l *Lifecycle) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeD
 
 // QueryChaincodeDefinition returns the defined chaincode by the given name (if it is defined, and a chaincode)
 // or otherwise returns an error.
-func (l *Lifecycle) QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error) {
-	metadata, ok, err := l.Serializer.DeserializeMetadata(NamespacesName, name, publicState)
+func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error) {
+	metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, name, publicState)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not fetch metadata for namespace %s", name))
 	}
@@ -243,7 +281,7 @@ func (l *Lifecycle) QueryChaincodeDefinition(name string, publicState ReadableSt
 	}
 
 	definedChaincode := &ChaincodeDefinition{}
-	if err := l.Serializer.Deserialize(NamespacesName, name, metadata, definedChaincode, publicState); err != nil {
+	if err := ef.Resources.Serializer.Deserialize(NamespacesName, name, metadata, definedChaincode, publicState); err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", name))
 	}
 
@@ -252,20 +290,20 @@ func (l *Lifecycle) QueryChaincodeDefinition(name string, publicState ReadableSt
 
 // InstallChaincode installs a given chaincode to the peer's chaincode store.
 // It returns the hash to reference the chaincode by or an error on failure.
-func (l *Lifecycle) InstallChaincode(name, version string, chaincodeInstallPackage []byte) ([]byte, error) {
+func (ef *ExternalFunctions) InstallChaincode(name, version string, chaincodeInstallPackage []byte) ([]byte, error) {
 	// Let's validate that the chaincodeInstallPackage is at least well formed before writing it
-	pkg, err := l.PackageParser.Parse(chaincodeInstallPackage)
+	pkg, err := ef.Resources.PackageParser.Parse(chaincodeInstallPackage)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not parse as a chaincode install package")
 	}
 
-	hash, err := l.ChaincodeStore.Save(name, version, chaincodeInstallPackage)
+	hash, err := ef.Resources.ChaincodeStore.Save(name, version, chaincodeInstallPackage)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not save cc install package")
 	}
 
-	if l.InstallListener != nil {
-		l.InstallListener.HandleChaincodeInstalled(pkg.Metadata, hash)
+	if ef.InstallListener != nil {
+		ef.InstallListener.HandleChaincodeInstalled(pkg.Metadata, hash)
 	}
 
 	return hash, nil
@@ -274,8 +312,8 @@ func (l *Lifecycle) InstallChaincode(name, version string, chaincodeInstallPacka
 // QueryNamespaceDefinitions lists the publicly defined namespaces in a channel.  Today it should only ever
 // find Datatype encodings of 'ChaincodeDefinition'.  In the future as we support encodings like 'TokenManagementSystem'
 // or similar, additional statements will be added to the switch.
-func (l *Lifecycle) QueryNamespaceDefinitions(publicState RangeableState) (map[string]string, error) {
-	metadatas, err := l.Serializer.DeserializeAllMetadata(NamespacesName, publicState)
+func (ef *ExternalFunctions) QueryNamespaceDefinitions(publicState RangeableState) (map[string]string, error) {
+	metadatas, err := ef.Resources.Serializer.DeserializeAllMetadata(NamespacesName, publicState)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not query namespace metadata")
 	}
@@ -294,8 +332,8 @@ func (l *Lifecycle) QueryNamespaceDefinitions(publicState RangeableState) (map[s
 }
 
 // QueryInstalledChaincode returns the hash of an installed chaincode of a given name and version.
-func (l *Lifecycle) QueryInstalledChaincode(name, version string) ([]byte, error) {
-	hash, err := l.ChaincodeStore.RetrieveHash(name, version)
+func (ef *ExternalFunctions) QueryInstalledChaincode(name, version string) ([]byte, error) {
+	hash, err := ef.Resources.ChaincodeStore.RetrieveHash(name, version)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve hash for chaincode '%s:%s'", name, version))
 	}
@@ -304,6 +342,6 @@ func (l *Lifecycle) QueryInstalledChaincode(name, version string) ([]byte, error
 }
 
 // QueryInstalledChaincodes returns a list of installed chaincodes
-func (l *Lifecycle) QueryInstalledChaincodes() ([]chaincode.InstalledChaincode, error) {
-	return l.ChaincodeStore.ListInstalledChaincodes()
+func (ef *ExternalFunctions) QueryInstalledChaincodes() ([]chaincode.InstalledChaincode, error) {
+	return ef.Resources.ChaincodeStore.ListInstalledChaincodes()
 }

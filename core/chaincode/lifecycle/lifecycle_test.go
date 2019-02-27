@@ -106,9 +106,88 @@ var _ = Describe("ChaincodeParameters", func() {
 	})
 })
 
-var _ = Describe("Lifecycle", func() {
+var _ = Describe("Resources", func() {
 	var (
-		l            *lifecycle.Lifecycle
+		resources *lifecycle.Resources
+	)
+
+	BeforeEach(func() {
+		resources = &lifecycle.Resources{
+			Serializer: &lifecycle.Serializer{},
+		}
+	})
+
+	Describe("ChaincodeDefinitionIfDefined", func() {
+		var (
+			fakePublicState   MapLedgerShim
+			fakeReadableState *mock.ReadWritableState
+		)
+
+		BeforeEach(func() {
+			fakePublicState = map[string][]byte{}
+			err := resources.Serializer.Serialize(lifecycle.NamespacesName, "cc-name", &lifecycle.ChaincodeDefinition{
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Version: "version",
+				},
+				ValidationInfo: &lb.ChaincodeValidationInfo{},
+				Collections:    &cb.CollectionConfigPackage{},
+			}, fakePublicState)
+			Expect(err).NotTo(HaveOccurred())
+			fakeReadableState = &mock.ReadWritableState{}
+			fakeReadableState.GetStateStub = fakePublicState.GetState
+		})
+
+		It("returns that the chaincode is defined and the definition", func() {
+			exists, definition, err := resources.ChaincodeDefinitionIfDefined("cc-name", fakeReadableState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exists).To(BeTrue())
+			Expect(definition.EndorsementInfo.Version).To(Equal("version"))
+		})
+
+		Context("when the requested chaincode is _lifecycle", func() {
+			It("it returns true", func() {
+				exists, definition, err := resources.ChaincodeDefinitionIfDefined("_lifecycle", fakeReadableState)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(exists).To(BeTrue())
+				Expect(definition).NotTo(BeNil())
+				Expect(fakeReadableState.GetStateCallCount()).To(Equal(0))
+			})
+		})
+
+		Context("when the metadata is not for a chaincode", func() {
+			BeforeEach(func() {
+				type badStruct struct{}
+				err := resources.Serializer.Serialize(lifecycle.NamespacesName,
+					"cc-name",
+					&badStruct{},
+					fakePublicState,
+				)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns an error", func() {
+				_, _, err := resources.ChaincodeDefinitionIfDefined("cc-name", fakeReadableState)
+				Expect(err).To(MatchError("not a chaincode type: badStruct"))
+			})
+		})
+
+		Context("when the ledger returns an error", func() {
+			BeforeEach(func() {
+				fakeReadableState.GetStateReturns(nil, fmt.Errorf("state-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, _, err := resources.ChaincodeDefinitionIfDefined("cc-name", fakeReadableState)
+				Expect(err).To(MatchError("could not deserialize metadata for chaincode cc-name: could not query metadata for namespace namespaces/cc-name: state-error"))
+			})
+		})
+	})
+})
+
+var _ = Describe("ExternalFunctions", func() {
+	var (
+		resources    *lifecycle.Resources
+		ef           *lifecycle.ExternalFunctions
 		fakeCCStore  *mock.ChaincodeStore
 		fakeParser   *mock.PackageParser
 		fakeListener *mock.InstallListener
@@ -119,10 +198,14 @@ var _ = Describe("Lifecycle", func() {
 		fakeParser = &mock.PackageParser{}
 		fakeListener = &mock.InstallListener{}
 
-		l = &lifecycle.Lifecycle{
-			PackageParser:   fakeParser,
-			ChaincodeStore:  fakeCCStore,
-			Serializer:      &lifecycle.Serializer{},
+		resources = &lifecycle.Resources{
+			PackageParser:  fakeParser,
+			ChaincodeStore: fakeCCStore,
+			Serializer:     &lifecycle.Serializer{},
+		}
+
+		ef = &lifecycle.ExternalFunctions{
+			Resources:       resources,
 			InstallListener: fakeListener,
 		}
 	})
@@ -139,7 +222,7 @@ var _ = Describe("Lifecycle", func() {
 		})
 
 		It("saves the chaincode", func() {
-			hash, err := l.InstallChaincode("name", "version", []byte("cc-package"))
+			hash, err := ef.InstallChaincode("name", "version", []byte("cc-package"))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(hash).To(Equal([]byte("fake-hash")))
 
@@ -167,7 +250,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				hash, err := l.InstallChaincode("name", "version", []byte("cc-package"))
+				hash, err := ef.InstallChaincode("name", "version", []byte("cc-package"))
 				Expect(hash).To(BeNil())
 				Expect(err).To(MatchError("could not save cc install package: fake-error"))
 			})
@@ -179,7 +262,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				hash, err := l.InstallChaincode("name", "version", []byte("fake-package"))
+				hash, err := ef.InstallChaincode("name", "version", []byte("fake-package"))
 				Expect(hash).To(BeNil())
 				Expect(err).To(MatchError("could not parse as a chaincode install package: parse-error"))
 			})
@@ -192,7 +275,7 @@ var _ = Describe("Lifecycle", func() {
 		})
 
 		It("passes through to the backing chaincode store", func() {
-			hash, err := l.QueryInstalledChaincode("name", "version")
+			hash, err := ef.QueryInstalledChaincode("name", "version")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(hash).To(Equal([]byte("fake-hash")))
 			Expect(fakeCCStore.RetrieveHashCallCount()).To(Equal(1))
@@ -206,7 +289,7 @@ var _ = Describe("Lifecycle", func() {
 				fakeCCStore.RetrieveHashReturns(nil, fmt.Errorf("fake-error"))
 			})
 			It("wraps and returns the error", func() {
-				hash, err := l.QueryInstalledChaincode("name", "version")
+				hash, err := ef.QueryInstalledChaincode("name", "version")
 				Expect(hash).To(BeNil())
 				Expect(err).To(MatchError("could not retrieve hash for chaincode 'name:version': fake-error"))
 			})
@@ -234,7 +317,7 @@ var _ = Describe("Lifecycle", func() {
 		})
 
 		It("passes through to the backing chaincode store", func() {
-			result, err := l.QueryInstalledChaincodes()
+			result, err := ef.QueryInstalledChaincodes()
 			Expect(result).To(Equal(chaincodes))
 			Expect(err).To(MatchError(fmt.Errorf("fake-error")))
 		})
@@ -272,21 +355,21 @@ var _ = Describe("Lifecycle", func() {
 			fakeOrgState.PutStateStub = fakeOrgKVStore.PutState
 			fakeOrgState.GetStateStub = fakeOrgKVStore.GetState
 
-			err := l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
+			err := resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
 				Sequence: 4,
 			}, fakePublicKVStore)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("serializes the chaincode parameters to the org scoped collection", func() {
-			err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+			err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
 
-			metadata, ok, err := l.Serializer.DeserializeMetadata("namespaces", "cc-name#5", fakeOrgState)
+			metadata, ok, err := resources.Serializer.DeserializeMetadata("namespaces", "cc-name#5", fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ok).To(BeTrue())
 			committedDefinition := &lifecycle.ChaincodeParameters{}
-			err = l.Serializer.Deserialize("namespaces", "cc-name#5", metadata, committedDefinition, fakeOrgState)
+			err = resources.Serializer.Deserialize("namespaces", "cc-name#5", metadata, committedDefinition, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(committedDefinition.EndorsementInfo.Version).To(Equal("version"))
 			Expect(committedDefinition.EndorsementInfo.Id).To(BeEmpty())
@@ -300,14 +383,14 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("returns an error", func() {
-				err := l.ApproveChaincodeDefinitionForOrg("unknown-name", &lifecycle.ChaincodeDefinition{}, fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("unknown-name", &lifecycle.ChaincodeDefinition{}, fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("requested sequence is 0, but first definable sequence number is 1"))
 			})
 		})
 
 		Context("when the sequence number already has a definition", func() {
 			BeforeEach(func() {
-				err := l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
+				err := resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
 					Sequence: 5,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						Version: "version",
@@ -317,7 +400,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("verifies that the definition matches before writing", func() {
-				err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -327,7 +410,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("returns an error", func() {
-					err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("missing metadata for currently committed sequence number (5)"))
 				})
 			})
@@ -338,7 +421,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("returns an error", func() {
-					err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("could not fetch metadata for current definition: could not unmarshal metadata for namespace namespaces/cc-name: proto: can't skip unknown wire type 7"))
 				})
 			})
@@ -349,14 +432,14 @@ var _ = Describe("Lifecycle", func() {
 					type OtherStruct struct {
 						Sequence int64
 					}
-					err := l.Serializer.Serialize("namespaces", "cc-name", &OtherStruct{
+					err := resources.Serializer.Serialize("namespaces", "cc-name", &OtherStruct{
 						Sequence: 5,
 					}, fakePublicState)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("returns an error", func() {
-					err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: type name mismatch 'ChaincodeDefinition' != 'OtherStruct'"))
 				})
 			})
@@ -365,7 +448,7 @@ var _ = Describe("Lifecycle", func() {
 				BeforeEach(func() {
 					fakePublicKVStore = map[string][]byte{}
 
-					err := l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
+					err := resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
 						Sequence: 5,
 						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 							Version: "other-version",
@@ -375,7 +458,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("returns an error", func() {
-					err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("attempted to define the current sequence (%d) for namespace %s, but: Version 'other-version' != 'version'"))
 				})
 			})
@@ -387,7 +470,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("fails", func() {
-				err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("currently defined sequence 4 is larger than requested sequence 3"))
 			})
 		})
@@ -398,7 +481,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("fails", func() {
-				err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("requested sequence 9 is larger than the next available sequence number 5"))
 			})
 		})
@@ -409,7 +492,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("could not get current sequence: could not get state for key namespaces/fields/cc-name/Sequence: get-state-error"))
 			})
 		})
@@ -420,7 +503,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("could not serialize chaincode parameters to state: could not write key into state: put-state-error"))
 			})
 		})
@@ -455,7 +538,7 @@ var _ = Describe("Lifecycle", func() {
 			fakePublicState.GetStateStub = publicKVS.GetState
 			fakePublicState.PutStateStub = publicKVS.PutState
 
-			l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
+			resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
 				Sequence: 4,
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 					Version:           "version",
@@ -478,12 +561,12 @@ var _ = Describe("Lifecycle", func() {
 				fakeOrgStates[i].PutStateStub = kvs.PutState
 			}
 
-			l.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[0])
-			l.Serializer.Serialize("namespaces", "cc-name#5", &lifecycle.ChaincodeParameters{}, fakeOrgStates[1])
+			resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[0])
+			resources.Serializer.Serialize("namespaces", "cc-name#5", &lifecycle.ChaincodeParameters{}, fakeOrgStates[1])
 		})
 
 		It("applies the chaincode definition and returns the agreements", func() {
-			agreements, err := l.CommitChaincodeDefinition("cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+			agreements, err := ef.CommitChaincodeDefinition("cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(agreements).To(Equal([]bool{true, false}))
 		})
@@ -494,7 +577,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := l.CommitChaincodeDefinition("cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				_, err := ef.CommitChaincodeDefinition("cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).To(MatchError("could not get current sequence: could not get state for key namespaces/fields/cc-name/Sequence: getstate-error"))
 			})
 		})
@@ -505,14 +588,14 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := l.CommitChaincodeDefinition("cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				_, err := ef.CommitChaincodeDefinition("cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).To(MatchError("could not serialize chaincode definition: could not write key into state: putstate-error"))
 			})
 		})
 
 		Context("when the current sequence is not immediately prior to the new", func() {
 			BeforeEach(func() {
-				l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
+				resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
 					Sequence: 3,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						Version:           "version",
@@ -527,7 +610,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := l.CommitChaincodeDefinition("cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				_, err := ef.CommitChaincodeDefinition("cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).To(MatchError("requested sequence is 5, but new definition must be sequence 4"))
 			})
 		})
@@ -546,7 +629,7 @@ var _ = Describe("Lifecycle", func() {
 			fakePublicState.GetStateStub = publicKVS.GetState
 			fakePublicState.PutStateStub = publicKVS.PutState
 
-			l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
+			resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
 				Sequence: 4,
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 					Version:           "version",
@@ -561,7 +644,7 @@ var _ = Describe("Lifecycle", func() {
 		})
 
 		It("returns the defined chaincode", func() {
-			cc, err := l.QueryChaincodeDefinition("cc-name", fakePublicState)
+			cc, err := ef.QueryChaincodeDefinition("cc-name", fakePublicState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cc).To(Equal(&lifecycle.ChaincodeDefinition{
 				Sequence: 4,
@@ -584,7 +667,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := l.QueryChaincodeDefinition("cc-name", fakePublicState)
+				_, err := ef.QueryChaincodeDefinition("cc-name", fakePublicState)
 				Expect(err).To(MatchError("namespace cc-name is not defined"))
 			})
 		})
@@ -595,7 +678,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := l.QueryChaincodeDefinition("cc-name", fakePublicState)
+				_, err := ef.QueryChaincodeDefinition("cc-name", fakePublicState)
 				Expect(err).To(MatchError("could not fetch metadata for namespace cc-name: could not query metadata for namespace namespaces/cc-name: metadata-error"))
 			})
 		})
@@ -606,7 +689,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := l.QueryChaincodeDefinition("cc-name", fakePublicState)
+				_, err := ef.QueryChaincodeDefinition("cc-name", fakePublicState)
 				Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: could not unmarshal state for key namespaces/fields/cc-name/EndorsementInfo: proto: can't skip unknown wire type 7"))
 			})
 		})
@@ -624,12 +707,12 @@ var _ = Describe("Lifecycle", func() {
 			fakePublicState = &mock.ReadWritableState{}
 			fakePublicState.GetStateStub = publicKVS.GetState
 			fakePublicState.GetStateRangeStub = publicKVS.GetStateRange
-			l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{}, publicKVS)
-			l.Serializer.Serialize("namespaces", "other-name", &lifecycle.ChaincodeParameters{}, publicKVS)
+			resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{}, publicKVS)
+			resources.Serializer.Serialize("namespaces", "other-name", &lifecycle.ChaincodeParameters{}, publicKVS)
 		})
 
 		It("returns the defined namespaces", func() {
-			result, err := l.QueryNamespaceDefinitions(fakePublicState)
+			result, err := ef.QueryNamespaceDefinitions(fakePublicState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal(map[string]string{
 				"cc-name":    "Chaincode",
@@ -643,7 +726,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := l.QueryNamespaceDefinitions(fakePublicState)
+				_, err := ef.QueryNamespaceDefinitions(fakePublicState)
 				Expect(err).To(MatchError("could not query namespace metadata: could not get state range for namespace namespaces: state-range-error"))
 			})
 		})
