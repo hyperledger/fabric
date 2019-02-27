@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/pkg/errors"
@@ -75,7 +76,10 @@ func (l *Lifecycle) ChaincodeDefinitionIfDefined(chaincodeName string, qe ledger
 	}
 
 	if chaincodeName == LifecycleNamespace {
-		return true, &ChaincodeDefinition{}, nil
+		return true, &ChaincodeDefinition{
+			EndorsementInfo: &lb.ChaincodeEndorsementInfo{},
+			ValidationInfo:  &lb.ChaincodeValidationInfo{},
+		}, nil
 	}
 
 	metadata, ok, err := l.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state)
@@ -117,8 +121,8 @@ func (l *Lifecycle) ChaincodeInfo(channelName, chaincodeName string, qe ledger.S
 
 	return &ledger.DeployedChaincodeInfo{
 		Name:                        chaincodeName,
-		Version:                     definedChaincode.Version,
-		Hash:                        definedChaincode.Hash,
+		Version:                     definedChaincode.EndorsementInfo.Version,
+		Hash:                        definedChaincode.EndorsementInfo.Id,
 		ExplicitCollectionConfigPkg: definedChaincode.Collections,
 		ImplicitCollections:         ic,
 	}, nil
@@ -262,5 +266,5 @@ func (l *Lifecycle) ValidationInfo(channelID, chaincodeName string, qe ledger.Si
 		return "builtin", b, nil, nil
 	}
 
-	return definedChaincode.ValidationPlugin, definedChaincode.ValidationParameter, nil, nil
+	return definedChaincode.ValidationInfo.ValidationPlugin, definedChaincode.ValidationInfo.ValidationParameter, nil, nil
 }

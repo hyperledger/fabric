@@ -335,13 +335,17 @@ var _ = Describe("SCC", func() {
 				name, cd, pubState, privState := fakeSCCFuncs.ApproveChaincodeDefinitionForOrgArgsForCall(0)
 				Expect(name).To(Equal("name"))
 				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
-					Sequence:            7,
-					Version:             "version",
-					Hash:                []byte("hash"),
-					EndorsementPlugin:   "endorsement-plugin",
-					ValidationPlugin:    "validation-plugin",
-					ValidationParameter: []byte("validation-parameter"),
-					Collections:         arg.Collections,
+					Sequence: 7,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Version:           "version",
+						Id:                []byte("hash"),
+						EndorsementPlugin: "endorsement-plugin",
+					},
+					ValidationInfo: &lb.ChaincodeValidationInfo{
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+					},
+					Collections: arg.Collections,
 				}))
 				Expect(pubState).To(Equal(fakeStub))
 				Expect(privState).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
@@ -420,13 +424,17 @@ var _ = Describe("SCC", func() {
 				name, cd, pubState, orgStates := fakeSCCFuncs.CommitChaincodeDefinitionArgsForCall(0)
 				Expect(name).To(Equal("name"))
 				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
-					Sequence:            7,
-					Version:             "version",
-					Hash:                []byte("hash"),
-					EndorsementPlugin:   "endorsement-plugin",
-					ValidationPlugin:    "validation-plugin",
-					ValidationParameter: []byte("validation-parameter"),
-					Collections:         arg.Collections,
+					Sequence: 7,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Version:           "version",
+						Id:                []byte("hash"),
+						EndorsementPlugin: "endorsement-plugin",
+					},
+					ValidationInfo: &lb.ChaincodeValidationInfo{
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+					},
+					Collections: arg.Collections,
 				}))
 				Expect(pubState).To(Equal(fakeStub))
 				Expect(len(orgStates)).To(Equal(2))
@@ -527,13 +535,17 @@ var _ = Describe("SCC", func() {
 
 				fakeStub.GetArgsReturns([][]byte{[]byte("QueryChaincodeDefinition"), marshaledArg})
 				fakeSCCFuncs.QueryChaincodeDefinitionReturns(&lifecycle.ChaincodeDefinition{
-					Sequence:            2,
-					Version:             "version",
-					EndorsementPlugin:   "endorsement-plugin",
-					ValidationPlugin:    "validation-plugin",
-					ValidationParameter: []byte("validation-parameter"),
-					Hash:                []byte("hash"),
-					Collections:         &cb.CollectionConfigPackage{},
+					Sequence: 2,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Version:           "version",
+						EndorsementPlugin: "endorsement-plugin",
+						Id:                []byte("hash"),
+					},
+					ValidationInfo: &lb.ChaincodeValidationInfo{
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+					},
+					Collections: &cb.CollectionConfigPackage{},
 				}, nil)
 			})
 
@@ -546,10 +558,10 @@ var _ = Describe("SCC", func() {
 				Expect(proto.Equal(payload, &lb.QueryChaincodeDefinitionResult{
 					Sequence:            2,
 					Version:             "version",
+					Hash:                []byte("hash"),
 					EndorsementPlugin:   "endorsement-plugin",
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
-					Hash:                []byte("hash"),
 					Collections:         &cb.CollectionConfigPackage{},
 				})).To(BeTrue())
 

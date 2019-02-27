@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
+	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
@@ -49,40 +50,31 @@ const (
 //
 // namespaces/metadata/mycc:                   "ChaincodeDefinition"
 // namespaces/fields/mycc/Sequence             1 (The current sequence)
-// namespaces/fields/mycc/Version:             "1.3"
-// namespaces/fields/mycc/Hash:                []byte("some-hash")
-// namespaces/fields/mycc/EndorsementPlugin:   "builtin"
-// namespaces/fields/mycc/ValidationPlugin:    "builtin"
-// namespaces/fields/mycc/ValidationParameter: []byte("some-marshaled-signature-policy")
+// namespaces/fields/mycc/EndorsementInfo:     {Version: "1.3", EndorsementPlugin: "builtin", InitRequired: true, ID: "hash1"}
+// namespaces/fields/mycc/ValidationInfo:      {ValidationPlugin: "builtin", ValidationParameter: <application-policy>}
+// namespaces/fields/mycc/Collections          {<collection info>}
 //
 // Private/Org Scope Implcit Collection layout looks like the following
 // namespaces/metadata/<namespace>#<sequence_number> -> namespace metadata, including type
 // namespaces/fields/<namespace>#<sequence_number>/<field>  -> field of namespace type
 //
-// namespaces/metadata/mycc#0:                   "ChaincodeParameters"
-// namespaces/fields/mycc#0/Version:             "1.2"
-// namespaces/fields/mycc#0/Hash:                []byte("some-hash-for-v1.2")
-// namespaces/fields/mycc#0/EndorsementPlugin:   "builtin"
-// namespaces/fields/mycc#0/ValidationPlugin:    "builtin"
-// namespaces/fields/mycc#0/ValidationParameter: []byte("some-marshaled-signature-policy")
 // namespaces/metadata/mycc#1:                   "ChaincodeParameters"
-// namespaces/fields/mycc#1/Version:             "1.3"
-// namespaces/fields/mycc#1/Hash:                []byte("some-hash-for-v1.3")
-// namespaces/fields/mycc#1/EndorsementPlugin:   "builtin"
-// namespaces/fields/mycc#1/ValidationPlugin:    "builtin"
-// namespaces/fields/mycc#1/ValidationParameter: []byte("some-marshaled-signature-policy")
+// namespaces/fields/mycc#1/EndorsementInfo:     {Version: "1.3", EndorsementPlugin: "builtin", InitRequired: true, ID: "hash1"}
+// namespaces/fields/mycc#1/ValidationInfo:      {ValidationPlugin: "builtin", ValidationParameter: <application-policy>}
+// namespaces/fields/mycc#1/Collections          {<collection info>}
+// namespaces/metadata/mycc#2:                   "ChaincodeParameters"
+// namespaces/fields/mycc#2/EndorsementInfo:     {Version: "1.4", EndorsementPlugin: "builtin", InitRequired: true, ID: "hash2"}
+// namespaces/fields/mycc#2/ValidationInfo:      {ValidationPlugin: "builtin", ValidationParameter: <application-policy>}
+// namespaces/fields/mycc#2/Collections          {<collection info>}
 
 // ChaincodeParameters are the parts of the chaincode definition which are serialized
 // as values in the statedb.
 // WARNING: This structure is serialized/deserialized from the DB, re-ordering or adding fields
 // will cause opaque checks to fail.
 type ChaincodeParameters struct {
-	Version             string
-	Hash                []byte
-	EndorsementPlugin   string
-	ValidationPlugin    string
-	ValidationParameter []byte
-	Collections         *cb.CollectionConfigPackage
+	EndorsementInfo *lb.ChaincodeEndorsementInfo
+	ValidationInfo  *lb.ChaincodeValidationInfo
+	Collections     *cb.CollectionConfigPackage
 }
 
 // ChaincodeDefinition contains the chaincode parameters, as well as the sequence number of the definition.
@@ -90,24 +82,18 @@ type ChaincodeParameters struct {
 // WARNING: This structure is serialized/deserialized from the DB, re-ordering or adding fields
 // will cause opaque checks to fail.
 type ChaincodeDefinition struct {
-	Sequence            int64
-	Version             string
-	Hash                []byte
-	EndorsementPlugin   string
-	ValidationPlugin    string
-	ValidationParameter []byte
-	Collections         *cb.CollectionConfigPackage
+	Sequence        int64
+	EndorsementInfo *lb.ChaincodeEndorsementInfo
+	ValidationInfo  *lb.ChaincodeValidationInfo
+	Collections     *cb.CollectionConfigPackage
 }
 
 // Parameters returns the non-sequence info of the chaincode definition
 func (cd *ChaincodeDefinition) Parameters() *ChaincodeParameters {
 	return &ChaincodeParameters{
-		Version:             cd.Version,
-		Hash:                cd.Hash,
-		EndorsementPlugin:   cd.EndorsementPlugin,
-		ValidationPlugin:    cd.ValidationPlugin,
-		ValidationParameter: cd.ValidationParameter,
-		Collections:         cd.Collections,
+		EndorsementInfo: cd.EndorsementInfo,
+		ValidationInfo:  cd.ValidationInfo,
+		Collections:     cd.Collections,
 	}
 }
 
@@ -211,16 +197,16 @@ func (l *Lifecycle) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeD
 		}
 
 		switch {
-		case definedChaincode.Version != cd.Version:
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Version '%s' != '%s'", currentSequence, name, definedChaincode.Version, cd.Version)
-		case definedChaincode.EndorsementPlugin != cd.EndorsementPlugin:
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but EndorsementPlugin '%s' != '%s'", currentSequence, name, definedChaincode.EndorsementPlugin, cd.EndorsementPlugin)
-		case definedChaincode.ValidationPlugin != cd.ValidationPlugin:
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but ValidationPlugin '%s' != '%s'", currentSequence, name, definedChaincode.ValidationPlugin, cd.ValidationPlugin)
-		case !bytes.Equal(definedChaincode.ValidationParameter, cd.ValidationParameter):
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but ValidationParameter '%x' != '%x'", currentSequence, name, definedChaincode.ValidationParameter, cd.ValidationParameter)
-		case !bytes.Equal(definedChaincode.Hash, cd.Hash):
-			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Hash '%x' != '%x'", currentSequence, name, definedChaincode.Hash, cd.Hash)
+		case definedChaincode.EndorsementInfo.Version != cd.EndorsementInfo.Version:
+			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Version '%s' != '%s'", currentSequence, name, definedChaincode.EndorsementInfo.Version, cd.EndorsementInfo.Version)
+		case definedChaincode.EndorsementInfo.EndorsementPlugin != cd.EndorsementInfo.EndorsementPlugin:
+			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but EndorsementPlugin '%s' != '%s'", currentSequence, name, definedChaincode.EndorsementInfo.EndorsementPlugin, cd.EndorsementInfo.EndorsementPlugin)
+		case definedChaincode.ValidationInfo.ValidationPlugin != cd.ValidationInfo.ValidationPlugin:
+			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but ValidationPlugin '%s' != '%s'", currentSequence, name, definedChaincode.ValidationInfo.ValidationPlugin, cd.ValidationInfo.ValidationPlugin)
+		case !bytes.Equal(definedChaincode.ValidationInfo.ValidationParameter, cd.ValidationInfo.ValidationParameter):
+			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but ValidationParameter '%x' != '%x'", currentSequence, name, definedChaincode.ValidationInfo.ValidationParameter, cd.ValidationInfo.ValidationParameter)
+		case !bytes.Equal(definedChaincode.EndorsementInfo.Id, cd.EndorsementInfo.Id):
+			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Hash '%x' != '%x'", currentSequence, name, definedChaincode.EndorsementInfo.Id, cd.EndorsementInfo.Id)
 		case !proto.Equal(definedChaincode.Collections, cd.Collections):
 			if proto.Equal(definedChaincode.Collections, &cb.CollectionConfigPackage{}) && cd.Collections == nil {
 				break
