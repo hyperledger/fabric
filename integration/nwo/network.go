@@ -214,6 +214,50 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 	return network
 }
 
+// AddOrg adds an organization to a network.
+func (n *Network) AddOrg(o *Organization, peers ...*Peer) {
+	for _, p := range peers {
+		ports := Ports{}
+		for _, portName := range PeerPortNames() {
+			ports[portName] = n.ReservePort()
+		}
+		n.PortsByPeerID[p.ID()] = ports
+		n.Peers = append(n.Peers, p)
+	}
+
+	n.Organizations = append(n.Organizations, o)
+	n.Consortiums[0].Organizations = append(n.Consortiums[0].Organizations, o.Name)
+}
+
+// GenerateOrgUpdateMeterials generates the necessary configtx and
+// crypto materials for a new org's peers to join a network
+func (n *Network) GenerateOrgUpdateMaterials(peers ...*Peer) {
+	orgUpdateNetwork := *n
+	orgUpdateNetwork.Peers = peers
+	orgUpdateNetwork.Templates = &Templates{
+		ConfigTx: OrgUpdateConfigTxTemplate,
+		Crypto:   OrgUpdateCryptoTemplate,
+		Core:     n.Templates.CoreTemplate(),
+	}
+
+	orgUpdateNetwork.GenerateConfigTxConfig()
+	for _, peer := range peers {
+		orgUpdateNetwork.GenerateCoreConfig(peer)
+	}
+
+	orgUpdateNetwork.GenerateCryptoConfig()
+	sess, err := orgUpdateNetwork.Cryptogen(commands.Generate{
+		Config: orgUpdateNetwork.CryptoConfigPath(),
+		Output: orgUpdateNetwork.CryptoPath(),
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, orgUpdateNetwork.EventuallyTimeout).Should(gexec.Exit(0))
+
+	// refresh TLSCACertificates ca-certs.pem so that it includes
+	// the newly generated cert
+	n.ConcatenateTLSCACertificates()
+}
+
 // ConfigTxPath returns the path to the generated configtxgen configuration
 // file.
 func (n *Network) ConfigTxConfigPath() string {
@@ -618,12 +662,12 @@ func (n *Network) Bootstrap() {
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	}
 
-	n.concatenateTLSCACertificates()
+	n.ConcatenateTLSCACertificates()
 }
 
-// concatenateTLSCACertificates concatenates all TLS CA certificates into a
+// ConcatenateTLSCACertificates concatenates all TLS CA certificates into a
 // single file to be used by peer CLI.
-func (n *Network) concatenateTLSCACertificates() {
+func (n *Network) ConcatenateTLSCACertificates() {
 	bundle := &bytes.Buffer{}
 	for _, tlsCertPath := range n.listTLSCACertificates() {
 		certBytes, err := ioutil.ReadFile(tlsCertPath)
