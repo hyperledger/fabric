@@ -37,13 +37,17 @@ type StepStream interface {
 
 // Service defines the raft Service
 type Service struct {
-	Dispatcher Dispatcher
-	Logger     *flogging.FabricLogger
-	StepLogger *flogging.FabricLogger
+	StreamCountReporter *StreamCountReporter
+	Dispatcher          Dispatcher
+	Logger              *flogging.FabricLogger
+	StepLogger          *flogging.FabricLogger
 }
 
 // Step passes an implementation-specific message to another cluster member.
 func (s *Service) Step(stream orderer.Cluster_StepServer) error {
+	s.StreamCountReporter.Increment()
+	defer s.StreamCountReporter.Decrement()
+
 	addr := util.ExtractRemoteAddress(stream.Context())
 	commonName := commonNameFromContext(stream.Context())
 	s.Logger.Debugf("Connection from %s(%s)", commonName, addr)

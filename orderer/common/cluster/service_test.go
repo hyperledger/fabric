@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
@@ -57,6 +58,9 @@ func TestStep(t *testing.T) {
 	dispatcher := &mocks.Dispatcher{}
 
 	svc := &cluster.Service{
+		StreamCountReporter: &cluster.StreamCountReporter{
+			Metrics: cluster.NewMetrics(&disabled.Provider{}),
+		},
 		Logger:     flogging.MustGetLogger("test"),
 		StepLogger: flogging.MustGetLogger("test"),
 		Dispatcher: dispatcher,
@@ -110,6 +114,9 @@ func TestSubmitSuccess(t *testing.T) {
 	})
 
 	svc := &cluster.Service{
+		StreamCountReporter: &cluster.StreamCountReporter{
+			Metrics: cluster.NewMetrics(&disabled.Provider{}),
+		},
 		Logger:     flogging.MustGetLogger("test"),
 		StepLogger: flogging.MustGetLogger("test"),
 		Dispatcher: dispatcher,
@@ -170,6 +177,9 @@ func TestSubmitFailure(t *testing.T) {
 			defer dispatcher.AssertNumberOfCalls(t, "DispatchSubmit", testCase.expectedDispatches)
 			dispatcher.On("DispatchSubmit", mock.Anything, mock.Anything).Return(testCase.dispatchReturns)
 			svc := &cluster.Service{
+				StreamCountReporter: &cluster.StreamCountReporter{
+					Metrics: cluster.NewMetrics(&disabled.Provider{}),
+				},
 				Logger:     flogging.MustGetLogger("test"),
 				StepLogger: flogging.MustGetLogger("test"),
 				Dispatcher: dispatcher,
@@ -178,6 +188,43 @@ func TestSubmitFailure(t *testing.T) {
 			assert.EqualError(t, err, oops.Error())
 		})
 	}
+}
+
+func TestIngresStreamsMetrics(t *testing.T) {
+	t.Parallel()
+
+	dispatcher := &mocks.Dispatcher{}
+	dispatcher.On("DispatchConsensus", mock.Anything, mock.Anything).Return(nil)
+
+	fakeProvider := &mocks.MetricsProvider{}
+	testMetrics := &testMetrics{
+		fakeProvider: fakeProvider,
+	}
+	testMetrics.initialize()
+
+	metrics := cluster.NewMetrics(fakeProvider)
+
+	svc := &cluster.Service{
+		Logger:     flogging.MustGetLogger("test"),
+		StepLogger: flogging.MustGetLogger("test"),
+		Dispatcher: dispatcher,
+		StreamCountReporter: &cluster.StreamCountReporter{
+			Metrics: metrics,
+		},
+	}
+
+	stream := &mocks.StepStream{}
+	stream.On("Context").Return(context.Background())
+	// Upon first receive, return nil to proceed to the next receive.
+	stream.On("Recv").Return(nil, nil).Once()
+	// Upon the second receive, return EOF to trigger the stream to end
+	stream.On("Recv").Return(nil, io.EOF).Once()
+
+	svc.Step(stream)
+	// The stream started so stream count incremented from 0 to 1
+	assert.Equal(t, float64(1), testMetrics.ingressStreamsCount.SetArgsForCall(0))
+	// The stream ended so stream count is decremented from 1 to 0
+	assert.Equal(t, float64(0), testMetrics.ingressStreamsCount.SetArgsForCall(1))
 }
 
 func TestServiceGRPC(t *testing.T) {
