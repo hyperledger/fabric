@@ -134,24 +134,26 @@ documentation on [transaction flow](../txflow.html).
    their copy of the private state database and private writeset storage. The
    private data is then deleted from the `transient data store`.
 
+## Purging private data
+
+For very sensitive data, even the parties sharing the private data might want
+--- or might be required by government regulations --- to periodically "purge" the data
+on their peers, leaving behind a hash of the data on the blockchain
+to serve as immutable evidence of the private data.
+
+In some of these cases, the private data only needs to exist on the peer's private
+database until it can be replicated into a database external to the peer's
+blockchain. The data might also only need to exist on the peers until a chaincode business
+process is done with it (trade settled, contract fulfilled, etc).
+
+To support these use cases, private data can be purged if it has not been modified
+for a configurable number of blocks. Purged private data cannot be queried from chaincode,
+and is not available to other requesting peers.
+
 ## How a private data collection is defined
 
 For more details on collection definitions, and other low level information about
 private data and collections, refer to the [private data reference topic](../private-data-arch.html).
-
-## Purging data
-
-For very sensitive data, even the parties sharing the private data might want
---- or might be required by government regulations --- to "purge" the data stored
-on their peers after a set amount of time, leaving behind only a hash of the data
-to serve as immutable evidence of the transaction.
-
-In some of these cases, the private data only needs to exist on the peer's private
-database until it can be replicated into a database external to the blockchain
-network. The data might also only need to exist on the peers until a chaincode business
-process is done with it (trade settled, contract fulfilled, etc). To support the later
-use case, it is possible to purge private data if it has not been modified once a set
-number of subsequent blocks have been added to the private database.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->
