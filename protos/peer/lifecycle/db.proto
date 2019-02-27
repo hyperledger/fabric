@@ -25,9 +25,7 @@ message StateMetadata {
 // StateData encodes a particular field of a datatype
 message StateData {
     oneof Type {
-        string String = 1;
+        int64 Int64 = 1;
         bytes Bytes = 2;
-        uint64 Uint64 = 3;
-        int64 Int64 = 4;
     }
 }
