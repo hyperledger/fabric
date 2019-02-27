@@ -7,16 +7,34 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
+	ccapi "github.com/hyperledger/fabric/internal/peer/chaincode/api"
+	"github.com/hyperledger/fabric/internal/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/common/api"
+	cmock "github.com/hyperledger/fabric/internal/peer/common/mock"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
+	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 )
+
+func TestMain(m *testing.M) {
+	err := msptesttools.LoadMSPSetupForTesting()
+	if err != nil {
+		panic(fmt.Sprintf("Fatal error when reading MSP config: %s", err))
+	}
+
+	os.Exit(m.Run())
+}
 
 func TestCommitter(t *testing.T) {
 	assert := assert.New(t)
@@ -368,4 +386,96 @@ func newCommitterForTest(t *testing.T, r Reader, ec pb.EndorserClient) *Committe
 		EndorserClients: mockCF.EndorserClients,
 		Signer:          mockCF.Signer,
 	}
+}
+
+func getMockDeliverClientResponseWithTxID(txID string) *cmock.PeerDeliverClient {
+	mockDC := &cmock.PeerDeliverClient{}
+	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
+		return getMockDeliverConnectionResponseWithTxID(txID), nil
+	}
+	return mockDC
+}
+
+func getMockDeliverConnectionResponseWithTxID(txID string) *mock.Deliver {
+	mockDF := &mock.Deliver{}
+	resp := &pb.DeliverResponse{
+		Type: &pb.DeliverResponse_FilteredBlock{
+			FilteredBlock: createFilteredBlock(txID),
+		},
+	}
+	mockDF.RecvReturns(resp, nil)
+	return mockDF
+}
+
+func getMockDeliverClientRespondsWithFilteredBlocks(fb []*pb.FilteredBlock) *cmock.PeerDeliverClient {
+	mockDC := &cmock.PeerDeliverClient{}
+	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
+		mockDF := &mock.Deliver{}
+		for i, f := range fb {
+			resp := &pb.DeliverResponse{
+				Type: &pb.DeliverResponse_FilteredBlock{
+					FilteredBlock: f,
+				},
+			}
+			mockDF.RecvReturnsOnCall(i, resp, nil)
+		}
+		return mockDF, nil
+	}
+	return mockDC
+}
+
+func getMockDeliverClientRegisterAfterDelay(delayChan chan struct{}) *cmock.PeerDeliverClient {
+	mockDC := &cmock.PeerDeliverClient{}
+	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
+		mockDF := &mock.Deliver{}
+		mockDF.SendStub = func(*cb.Envelope) error {
+			<-delayChan
+			return nil
+		}
+		return mockDF, nil
+	}
+	return mockDC
+}
+
+func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}, txID string) *cmock.PeerDeliverClient {
+	mockDC := &cmock.PeerDeliverClient{}
+	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
+		mockDF := &mock.Deliver{}
+		mockDF.RecvStub = func() (*pb.DeliverResponse, error) {
+			<-delayChan
+			resp := &pb.DeliverResponse{
+				Type: &pb.DeliverResponse_FilteredBlock{
+					FilteredBlock: createFilteredBlock(txID),
+				},
+			}
+			return resp, nil
+		}
+		return mockDF, nil
+	}
+	return mockDC
+}
+
+func getMockDeliverClientWithErr(errMsg string) *cmock.PeerDeliverClient {
+	mockDC := &cmock.PeerDeliverClient{}
+	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
+		return nil, fmt.Errorf(errMsg)
+	}
+	return mockDC
+}
+
+func createFilteredBlock(txIDs ...string) *pb.FilteredBlock {
+	var filteredTransactions []*pb.FilteredTransaction
+	for _, txID := range txIDs {
+		ft := &pb.FilteredTransaction{
+			Txid:             txID,
+			TxValidationCode: pb.TxValidationCode_VALID,
+		}
+		filteredTransactions = append(filteredTransactions, ft)
+	}
+	fb := &pb.FilteredBlock{
+		Number:               0,
+		ChannelId:            "testchannel",
+		FilteredTransactions: filteredTransactions,
+	}
+	return fb
 }

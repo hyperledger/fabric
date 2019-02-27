@@ -123,13 +123,19 @@ func CreateSignedEnvelopeWithTLSBinding(
 	return env, nil
 }
 
+// Signer is the interface needed to sign a transaction
+type Signer interface {
+	Sign(msg []byte) ([]byte, error)
+	Serialize() ([]byte, error)
+}
+
 // CreateSignedTx assembles an Envelope message from proposal, endorsements,
 // and a signer. This function should be called by a client when it has
 // collected enough endorsements for a proposal to create a transaction and
 // submit it to peers for ordering
 func CreateSignedTx(
 	proposal *peer.Proposal,
-	signer identity.SignerSerializer,
+	signer Signer,
 	resps ...*peer.ProposalResponse,
 ) (*common.Envelope, error) {
 	if len(resps) == 0 {

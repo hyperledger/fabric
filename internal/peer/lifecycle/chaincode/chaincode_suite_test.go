@@ -9,6 +9,8 @@ package chaincode_test
 import (
 	"testing"
 
+	ccapi "github.com/hyperledger/fabric/internal/peer/chaincode/api"
+	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -37,6 +39,21 @@ type endorserClient interface {
 //go:generate counterfeiter -o mock/signer.go -fake-name Signer . signer
 type signer interface {
 	chaincode.Signer
+}
+
+//go:generate counterfeiter -o mock/broadcast_client.go -fake-name BroadcastClient . broadcastClient
+type broadcastClient interface {
+	common.BroadcastClient
+}
+
+//go:generate counterfeiter -o mock/peer_deliver_client.go -fake-name PeerDeliverClient . peerDeliverClient
+type peerDeliverClient interface {
+	chaincode.PeerDeliverClient
+}
+
+//go:generate counterfeiter -o mock/deliver.go -fake-name Deliver . deliver
+type deliver interface {
+	ccapi.Deliver
 }
 
 func TestChaincode(t *testing.T) {

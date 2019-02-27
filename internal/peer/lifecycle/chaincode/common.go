@@ -12,10 +12,10 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	ccapi "github.com/hyperledger/fabric/internal/peer/chaincode/api"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/common/api"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/protos/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -26,6 +26,12 @@ import (
 // to an endorser
 type EndorserClient interface {
 	ProcessProposal(ctx context.Context, in *pb.SignedProposal, opts ...grpc.CallOption) (*pb.ProposalResponse, error)
+}
+
+// PeerDeliverClient defines the interface for a peer deliver client
+type PeerDeliverClient interface {
+	Deliver(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error)
+	DeliverFiltered(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error)
 }
 
 // Signer defines the interface needed for signing messages
@@ -165,7 +171,7 @@ func validatePeerConnectionParameters(cmdName string) error {
 	return nil
 }
 
-func signProposal(proposal *peer.Proposal, signer Signer) (*peer.SignedProposal, error) {
+func signProposal(proposal *pb.Proposal, signer Signer) (*pb.SignedProposal, error) {
 	// check for nil argument
 	if proposal == nil {
 		return nil, errors.New("proposal cannot be nil")
@@ -185,7 +191,7 @@ func signProposal(proposal *peer.Proposal, signer Signer) (*peer.SignedProposal,
 		return nil, err
 	}
 
-	return &peer.SignedProposal{
+	return &pb.SignedProposal{
 		ProposalBytes: proposalBytes,
 		Signature:     signature,
 	}, nil

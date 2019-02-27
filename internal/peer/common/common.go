@@ -71,7 +71,7 @@ var (
 
 	// GetOrdererEndpointOfChainFnc returns orderer endpoints of given chain
 	// by default it is set to GetOrdererEndpointOfChain function
-	GetOrdererEndpointOfChainFnc func(chainID string, signer msp.SigningIdentity,
+	GetOrdererEndpointOfChainFnc func(chainID string, signer Signer,
 		endorserClient pb.EndorserClient) ([]string, error)
 
 	// GetCertificateFnc is a function that returns the client TLS certificate
@@ -165,8 +165,14 @@ func GetDefaultSigner() (msp.SigningIdentity, error) {
 	return signer, err
 }
 
+// Signer defines the interface needed for signing messages
+type Signer interface {
+	Sign(msg []byte) ([]byte, error)
+	Serialize() ([]byte, error)
+}
+
 // GetOrdererEndpointOfChain returns orderer endpoints of given chain
-func GetOrdererEndpointOfChain(chainID string, signer msp.SigningIdentity, endorserClient pb.EndorserClient) ([]string, error) {
+func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.EndorserClient) ([]string, error) {
 	// query cscc for chain config block
 	invocation := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{
@@ -178,7 +184,7 @@ func GetOrdererEndpointOfChain(chainID string, signer msp.SigningIdentity, endor
 
 	creator, err := signer.Serialize()
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error serializing identity for %s", signer.GetIdentifier()))
+		return nil, errors.WithMessage(err, "error serializing identity for signer")
 	}
 
 	prop, _, err := protoutil.CreateProposalFromCIS(pcommon.HeaderType_CONFIG, "", invocation, creator)

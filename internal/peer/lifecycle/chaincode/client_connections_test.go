@@ -137,6 +137,6 @@ func TestNewClientConnections(t *testing.T) {
 		c, err := NewClientConnections(input)
 		assert.Nil(c)
 		assert.Error(err)
-		assert.Contains(err.Error(), "failed to retrieve broadcast client")
+		assert.Contains(err.Error(), "cannot obtain orderer endpoint, empty endorser list")
 	})
 }

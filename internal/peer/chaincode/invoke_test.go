@@ -75,7 +75,7 @@ func TestInvokeCmd(t *testing.T) {
 	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
 		return mockCF.EndorserClients[0], nil
 	}
-	common.GetOrdererEndpointOfChainFnc = func(chainID string, signer msp.SigningIdentity, endorserClient pb.EndorserClient) ([]string, error) {
+	common.GetOrdererEndpointOfChainFnc = func(chainID string, signer common.Signer, endorserClient pb.EndorserClient) ([]string, error) {
 		return []string{}, nil
 	}
 	cmd = invokeCmd(nil)
@@ -129,7 +129,7 @@ func TestInvokeCmd(t *testing.T) {
 	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
 		return mockCF.EndorserClients[0], nil
 	}
-	common.GetOrdererEndpointOfChainFnc = func(chainID string, signer msp.SigningIdentity, endorserClient pb.EndorserClient) ([]string, error) {
+	common.GetOrdererEndpointOfChainFnc = func(chainID string, signer common.Signer, endorserClient pb.EndorserClient) ([]string, error) {
 		return nil, errors.New("error")
 	}
 	err = cmd.Execute()
@@ -137,7 +137,7 @@ func TestInvokeCmd(t *testing.T) {
 
 	// Error case 7: getBroadcastClient returns error
 	t.Logf("Start error case 7: getBroadcastClient returns error")
-	common.GetOrdererEndpointOfChainFnc = func(chainID string, signer msp.SigningIdentity, endorserClient pb.EndorserClient) ([]string, error) {
+	common.GetOrdererEndpointOfChainFnc = func(chainID string, signer common.Signer, endorserClient pb.EndorserClient) ([]string, error) {
 		return []string{"localhost:9999"}, nil
 	}
 	common.GetBroadcastClientFnc = func() (common.BroadcastClient, error) {

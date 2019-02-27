@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
 // ClientConnections holds the clients for connecting to the various
@@ -162,6 +163,31 @@ func (c *ClientConnections) setCertificate() error {
 }
 
 func (c *ClientConnections) setOrdererClient() error {
+	oe := viper.GetString("orderer.address")
+	if oe == "" {
+		// if we're here we didn't get an orderer endpoint from the command line
+		// so we'll attempt to get one from cscc - bless it
+		if c.Signer == nil {
+			return errors.New("cannot obtain orderer endpoint, no signer was configured")
+		}
+
+		if len(c.EndorserClients) == 0 {
+			return errors.New("cannot obtain orderer endpoint, empty endorser list")
+		}
+
+		orderingEndpoints, err := common.GetOrdererEndpointOfChainFnc(channelID, c.Signer, c.EndorserClients[0])
+		if err != nil {
+			return errors.WithMessagef(err, "error getting channel (%s) orderer endpoint", channelID)
+		}
+		if len(orderingEndpoints) == 0 {
+			return errors.Errorf("no orderer endpoints retrieved for channel %s", channelID)
+		}
+
+		logger.Infof("Retrieved channel (%s) orderer endpoint: %s", channelID, orderingEndpoints[0])
+		// override viper env
+		viper.Set("orderer.address", orderingEndpoints[0])
+	}
+
 	broadcastClient, err := common.GetBroadcastClient()
 	if err != nil {
 		return errors.WithMessage(err, "failed to retrieve broadcast client")
