@@ -42,6 +42,7 @@ After SoftHSM has been configured, the following command can be used to
 initialize the required token:
 
 ::
+
     softhsm2-util --init-token --slot 0 --label "ForFabric" --so-pin 1234 --pin 98765432
 
 If the test cannot find libsofthsm2.so in your environment, specify its path,
@@ -49,6 +50,7 @@ the PIN and the label of the token through environment variables. For example,
 on macOS:
 
 ::
+
     export PKCS11_LIB="/usr/local/Cellar/softhsm/2.5.0/lib/softhsm/libsofthsm2.so"
     export PKCS11_PIN=98765432
     export PKCS11_LABEL="ForFabric"
