@@ -36,6 +36,13 @@ func LoadPreResetHeight(rootFSPath string) (map[string]uint64, error) {
 	return fsblkstorage.LoadPreResetHeight(blockstorePath)
 }
 
+// ClearPreResetHeight removes the prereset height recorded in the file system.
+func ClearPreResetHeight(rootFSPath string) error {
+	blockstorePath := filepath.Join(rootFSPath, "chains")
+	logger.Infof("Clearing off prereset height files from path [%s]", blockstorePath)
+	return fsblkstorage.ClearPreResetHeight(blockstorePath)
+}
+
 func dropHistoryDB(rootFSPath string) error {
 	historyDBPath := filepath.Join(rootFSPath, "historyLeveldb")
 	logger.Infof("Dropping HistoryDB at location [%s] ...if present", historyDBPath)

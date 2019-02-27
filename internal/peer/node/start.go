@@ -1234,6 +1234,11 @@ func resetLoop(
 			logger.Debugf("Ledger rebuild: Number of ledgers still rebuilding after check: %d", len(preResetHeights))
 			if len(preResetHeights) == 0 {
 				logger.Infof("Ledger rebuild: Complete, all ledgers surpass prereset heights. Endorsement request processing will be enabled.")
+				rootFSPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "ledgersData")
+				err := kvledger.ClearPreResetHeight(rootFSPath)
+				if err != nil {
+					logger.Warningf("Ledger rebuild: could not clear off prerest files: error=%s", err)
+				}
 				resetFilter.setReject(false)
 				return
 			}
