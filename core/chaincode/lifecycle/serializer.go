@@ -83,9 +83,7 @@ func (s *Serializer) SerializableChecks(structure interface{}) (reflect.Value, [
 		fieldValue := value.Field(i)
 		allFields[i] = fieldName
 		switch fieldValue.Kind() {
-		case reflect.String:
 		case reflect.Int64:
-		case reflect.Uint64:
 		case reflect.Slice:
 			if fieldValue.Type().Elem().Kind() != reflect.Uint8 {
 				return reflect.Value{}, nil, errors.Errorf("unsupported slice type %v for field %s", fieldValue.Type().Elem().Kind(), fieldName)
@@ -138,12 +136,8 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 
 		stateData := &lb.StateData{}
 		switch fieldValue.Kind() {
-		case reflect.String:
-			stateData.Type = &lb.StateData_String_{String_: fieldValue.String()}
 		case reflect.Int64:
 			stateData.Type = &lb.StateData_Int64{Int64: fieldValue.Int()}
-		case reflect.Uint64:
-			stateData.Type = &lb.StateData_Uint64{Uint64: fieldValue.Uint()}
 		case reflect.Slice:
 			stateData.Type = &lb.StateData_Bytes{Bytes: fieldValue.Bytes()}
 		case reflect.Ptr:
@@ -155,7 +149,7 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 				}
 			}
 			stateData.Type = &lb.StateData_Bytes{Bytes: bin}
-			// Note, other field kinds and bad slice types have already been checked by SerializableChecks
+			// Note, other field kinds and bad types have already been checked by SerializableChecks
 		}
 
 		marshaledFieldValue, err := s.Marshaler.Marshal(stateData)
@@ -241,12 +235,8 @@ func (s *Serializer) IsSerialized(namespace, name string, structure interface{},
 
 		stateData := &lb.StateData{}
 		switch fieldValue.Kind() {
-		case reflect.String:
-			stateData.Type = &lb.StateData_String_{String_: fieldValue.String()}
 		case reflect.Int64:
 			stateData.Type = &lb.StateData_Int64{Int64: fieldValue.Int()}
-		case reflect.Uint64:
-			stateData.Type = &lb.StateData_Uint64{Uint64: fieldValue.Uint()}
 		case reflect.Slice:
 			stateData.Type = &lb.StateData_Bytes{Bytes: fieldValue.Bytes()}
 		case reflect.Ptr:
@@ -258,7 +248,7 @@ func (s *Serializer) IsSerialized(namespace, name string, structure interface{},
 				}
 			}
 			stateData.Type = &lb.StateData_Bytes{Bytes: bin}
-			// Note, other field kinds and bad slice types have already been checked by SerializableChecks
+			// Note, other field kinds and bad types have already been checked by SerializableChecks
 		}
 
 		marshaledFieldValue, err := s.Marshaler.Marshal(stateData)
@@ -293,24 +283,12 @@ func (s *Serializer) Deserialize(namespace, name string, metadata *lb.StateMetad
 		fieldName := value.Type().Field(i).Name
 		fieldValue := value.Field(i)
 		switch fieldValue.Kind() {
-		case reflect.String:
-			oneOf, err := s.DeserializeFieldAsString(namespace, name, fieldName, state)
-			if err != nil {
-				return err
-			}
-			fieldValue.SetString(oneOf)
 		case reflect.Int64:
 			oneOf, err := s.DeserializeFieldAsInt64(namespace, name, fieldName, state)
 			if err != nil {
 				return err
 			}
 			fieldValue.SetInt(oneOf)
-		case reflect.Uint64:
-			oneOf, err := s.DeserializeFieldAsUint64(namespace, name, fieldName, state)
-			if err != nil {
-				return err
-			}
-			fieldValue.SetUint(oneOf)
 		case reflect.Slice:
 			oneOf, err := s.DeserializeFieldAsBytes(namespace, name, fieldName, state)
 			if err != nil {
@@ -327,7 +305,7 @@ func (s *Serializer) Deserialize(namespace, name string, metadata *lb.StateMetad
 				return err
 			}
 			fieldValue.Set(msg)
-			// Note, other field kinds and bad slice types have already been checked by SerializableChecks
+			// Note, other field kinds and bad types have already been checked by SerializableChecks
 		}
 	}
 
@@ -376,21 +354,6 @@ func (s *Serializer) DeserializeField(namespace, name, field string, state Reada
 	return stateData, nil
 }
 
-func (s *Serializer) DeserializeFieldAsString(namespace, name, field string, state ReadableState) (string, error) {
-	value, err := s.DeserializeField(namespace, name, field, state)
-	if err != nil {
-		return "", err
-	}
-	if value.Type == nil {
-		return "", nil
-	}
-	oneOf, ok := value.Type.(*lb.StateData_String_)
-	if !ok {
-		return "", errors.Errorf("expected key %s to encode a value of type String, but was %T", FieldKey(namespace, name, field), value.Type)
-	}
-	return oneOf.String_, nil
-}
-
 func (s *Serializer) DeserializeFieldAsBytes(namespace, name, field string, state ReadableState) ([]byte, error) {
 	value, err := s.DeserializeField(namespace, name, field, state)
 	if err != nil {
@@ -431,21 +394,6 @@ func (s *Serializer) DeserializeFieldAsInt64(namespace, name, field string, stat
 		return 0, errors.Errorf("expected key %s to encode a value of type Int64, but was %T", FieldKey(namespace, name, field), value.Type)
 	}
 	return oneOf.Int64, nil
-}
-
-func (s *Serializer) DeserializeFieldAsUint64(namespace, name, field string, state ReadableState) (uint64, error) {
-	value, err := s.DeserializeField(namespace, name, field, state)
-	if err != nil {
-		return 0, err
-	}
-	if value.Type == nil {
-		return 0, nil
-	}
-	oneOf, ok := value.Type.(*lb.StateData_Uint64)
-	if !ok {
-		return 0, errors.Errorf("expected key %s to encode a value of type Uint64, but was %T", FieldKey(namespace, name, field), value.Type)
-	}
-	return oneOf.Uint64, nil
 }
 
 func (s *Serializer) DeserializeAllMetadata(namespace string, state RangeableState) (map[string]*lb.StateMetadata, error) {
