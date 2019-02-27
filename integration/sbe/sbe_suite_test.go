@@ -27,7 +27,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		nwo.CCEnvDefaultImage,
 	}
 	components = &nwo.Components{}
-	components.Build()
 
 	payload, err := json.Marshal(components)
 	Expect(err).NotTo(HaveOccurred())
