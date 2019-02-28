@@ -55,7 +55,7 @@ paper might be subsequently sold to BrokerHouse or HedgeMatic, and the
 corresponding change to `Owner`. Note how `Current state` allow us to easily
 identify that the paper is now `trading`.
 
-After 6 months, if DigiBank still holds the the commercial paper, it can redeem
+After 6 months, if DigiBank still holds the commercial paper, it can redeem
 it with MagnetoCorp:
 
 ```
@@ -170,7 +170,7 @@ Purchase time = 3 June 2020 15:59:00 EST
 Price = 4.90M USD
 ```
 
-See how the paper owners changes, and how in out example, the price changes. Can
+See how the paper owners changes, and how in our example, the price changes. Can
 you think of a reason why the price of MagnetoCorp commercial paper might be
 falling?
 
@@ -208,14 +208,14 @@ In this topic, we've seen how transactions and the resultant paper states are
 the two most important concepts in PaperNet. Indeed, we'll see these two
 fundamental elements in any Hyperledger Fabric distributed
 [ledger](../ledger/ledger.html) -- a world state, that contains the current
-value of all objects, and a blockchain that records the history of all
+value of all objects, and a blockchain (also called transaction log) that records the history of all
 transactions that resulted in the current world state.
 
 The required sign-offs on transactions are enforced through rules, which
 are evaluated before appending a transaction to the ledger. Only if the
 required signatures are present, Fabric will accept a transaction as valid.
 
-You're now in a great place translate these ideas into a smart contract. Don't
+You're now in a great place to translate these ideas into a smart contract. Don't
 worry if your programming is a little rusty, we'll provide tips and pointers to
 understand the program code. Mastering the commercial paper smart contract is
 the first big step towards designing your own application. Or, if you're a
