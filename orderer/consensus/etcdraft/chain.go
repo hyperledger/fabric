@@ -322,7 +322,7 @@ func (c *Chain) Start() {
 
 	evictionFromChain := &PeriodicCheck{
 		Report:        es.confirmSuspicion,
-		CheckInterval: time.Second,
+		CheckInterval: time.Second * 10,
 		Condition:     c.suspectEviction,
 	}
 
