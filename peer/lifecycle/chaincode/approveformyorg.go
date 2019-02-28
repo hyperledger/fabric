@@ -288,13 +288,19 @@ func (a *ApproverForMyOrg) createProposals(inputTxID string) (proposal *pb.Propo
 	args := &lb.ApproveChaincodeDefinitionForMyOrgArgs{
 		Name:                a.Input.Name,
 		Version:             a.Input.Version,
-		Hash:                a.Input.Hash,
 		Sequence:            a.Input.Sequence,
 		EndorsementPlugin:   a.Input.EndorsementPlugin,
 		ValidationPlugin:    a.Input.ValidationPlugin,
 		ValidationParameter: a.Input.ValidationParameterBytes,
 		InitRequired:        a.Input.InitRequired,
 		Collections:         a.Input.CollectionConfigPackage,
+		Source: &lb.ChaincodeSource{
+			Type: &lb.ChaincodeSource_LocalPackage{
+				LocalPackage: &lb.ChaincodeSource_Local{
+					Hash: a.Input.Hash,
+				},
+			},
+		},
 	}
 
 	argsBytes, err := proto.Marshal(args)

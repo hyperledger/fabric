@@ -134,7 +134,13 @@ var _ = Describe("Integration", func() {
 					EndorsementPlugin:   "builtin",
 					ValidationPlugin:    "builtin",
 					ValidationParameter: []byte("validation-parameter"),
-					Hash:                []byte("hash-value"),
+					Source: &lb.ChaincodeSource{
+						Type: &lb.ChaincodeSource_LocalPackage{
+							LocalPackage: &lb.ChaincodeSource_Local{
+								Hash: []byte("hash-value"),
+							},
+						},
+					},
 				}),
 			})
 			response := scc.Invoke(fakeStub)
@@ -150,7 +156,6 @@ var _ = Describe("Integration", func() {
 					EndorsementPlugin:   "builtin",
 					ValidationPlugin:    "builtin",
 					ValidationParameter: []byte("validation-parameter"),
-					Hash:                []byte("hash-value"),
 				}),
 			})
 			response = scc.Invoke(fakeStub)

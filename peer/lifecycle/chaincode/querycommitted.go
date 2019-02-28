@@ -8,7 +8,6 @@ package chaincode
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -102,7 +101,7 @@ func printQueryCommittedResponse(proposalResponse *pb.ProposalResponse) error {
 		return err
 	}
 	fmt.Printf("Committed chaincode definition for chaincode '%s' on channel '%s':\n", chaincodeName, channelID)
-	fmt.Printf("Version: %s, Sequence: %d, Hash: %s, Endorsement Plugin: %s, Validation Plugin: %s\n", qdcr.Version, qdcr.Sequence, hex.EncodeToString(qdcr.Hash), qdcr.EndorsementPlugin, qdcr.ValidationPlugin)
+	fmt.Printf("Version: %s, Sequence: %d, Endorsement Plugin: %s, Validation Plugin: %s\n", qdcr.Version, qdcr.Sequence, qdcr.EndorsementPlugin, qdcr.ValidationPlugin)
 	return nil
 
 }

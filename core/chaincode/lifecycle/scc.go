@@ -262,6 +262,17 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 	if input.Collections != nil {
 		collectionConfig = input.Collections.Config
 	}
+
+	var hash []byte
+	if input.Source != nil {
+		switch source := input.Source.Type.(type) {
+		case *lb.ChaincodeSource_LocalPackage:
+			hash = source.LocalPackage.Hash
+		case *lb.ChaincodeSource_Unavailable:
+		default:
+		}
+	}
+
 	if err := i.SCC.Functions.ApproveChaincodeDefinitionForOrg(
 		input.Name,
 		&ChaincodeDefinition{
@@ -279,7 +290,7 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 				Config: collectionConfig,
 			},
 		},
-		input.Hash,
+		hash,
 		i.Stub,
 		&ChaincodePrivateLedgerShim{
 			Collection: collectionName,

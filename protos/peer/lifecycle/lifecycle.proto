@@ -64,12 +64,25 @@ message ApproveChaincodeDefinitionForMyOrgArgs {
     int64 sequence = 1;
     string name = 2;
     string version = 3;
-    bytes hash = 4;
-    string endorsement_plugin = 5;
-    string validation_plugin = 6;
-    bytes validation_parameter = 7;
-    common.CollectionConfigPackage collections = 8;
-    bool init_required = 9;
+    string endorsement_plugin = 4;
+    string validation_plugin = 5;
+    bytes validation_parameter = 6;
+    common.CollectionConfigPackage collections = 7;
+    bool init_required = 8;
+    ChaincodeSource source = 9;
+}
+
+message ChaincodeSource {
+    message None {}
+
+    message Local {
+        bytes hash = 1;
+    }
+
+    oneof Type {
+        None unavailable = 1;
+        Local local_package = 2;
+    }
 }
 
 // ApproveChaincodeDefinitionForMyOrgResult is the message returned by
@@ -84,12 +97,11 @@ message CommitChaincodeDefinitionArgs {
     int64 sequence = 1;
     string name = 2;
     string version = 3;
-    bytes hash = 4;
-    string endorsement_plugin = 5;
-    string validation_plugin = 6;
-    bytes validation_parameter = 7;
-    common.CollectionConfigPackage collections = 8;
-    bool init_required = 9;
+    string endorsement_plugin = 4;
+    string validation_plugin = 5;
+    bytes validation_parameter = 6;
+    common.CollectionConfigPackage collections = 7;
+    bool init_required = 8;
 }
 
 // CommitChaincodeDefinitionResult is the message returned by
@@ -109,12 +121,11 @@ message QueryChaincodeDefinitionArgs {
 message QueryChaincodeDefinitionResult {
     int64 sequence = 1;
     string version = 2;
-    bytes hash = 3;
-    string endorsement_plugin = 4;
-    string validation_plugin = 5;
-    bytes validation_parameter = 6;
-    common.CollectionConfigPackage collections = 7;
-    bool init_required = 8;
+    string endorsement_plugin = 3;
+    string validation_plugin = 4;
+    bytes validation_parameter = 5;
+    common.CollectionConfigPackage collections = 6;
+    bool init_required = 7;
 }
 
 // QueryNamespaceDefinitions is the message used as arguments to

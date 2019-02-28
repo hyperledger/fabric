@@ -335,12 +335,18 @@ var _ = Describe("SCC", func() {
 					Sequence:            7,
 					Name:                "name",
 					Version:             "version",
-					Hash:                []byte("hash"),
 					EndorsementPlugin:   "endorsement-plugin",
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
 					Collections:         &cb.CollectionConfigPackage{},
 					InitRequired:        true,
+					Source: &lb.ChaincodeSource{
+						Type: &lb.ChaincodeSource_LocalPackage{
+							LocalPackage: &lb.ChaincodeSource_Local{
+								Hash: []byte("hash"),
+							},
+						},
+					},
 				}
 
 				marshaledArg, err = proto.Marshal(arg)
@@ -414,7 +420,6 @@ var _ = Describe("SCC", func() {
 					Sequence:            7,
 					Name:                "name",
 					Version:             "version",
-					Hash:                []byte("hash"),
 					EndorsementPlugin:   "endorsement-plugin",
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),

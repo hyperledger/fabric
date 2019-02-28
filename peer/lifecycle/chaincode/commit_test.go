@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
-	"encoding/hex"
 	"errors"
 	"testing"
 	"time"
@@ -27,7 +26,6 @@ func TestCommitter(t *testing.T) {
 		c.Input = &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -40,7 +38,6 @@ func TestCommitter(t *testing.T) {
 		c := newCommitterForTest(t, nil, nil)
 		c.Input = &CommitInput{
 			Version:   "testversion",
-			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -54,7 +51,6 @@ func TestCommitter(t *testing.T) {
 		c.Input = &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -70,7 +66,6 @@ func TestCommitter(t *testing.T) {
 		c.Input = &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -85,7 +80,6 @@ func TestCommitter(t *testing.T) {
 		c.Input = &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -103,7 +97,6 @@ func TestCommitter(t *testing.T) {
 		c.Input = &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -119,7 +112,6 @@ func TestCommitter(t *testing.T) {
 		c.Input = &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -140,7 +132,6 @@ func TestCommitter(t *testing.T) {
 		c.Input = &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -163,7 +154,6 @@ func TestCommitter(t *testing.T) {
 		c.Input = &CommitInput{
 			Name:                "testcc",
 			Version:             "testversion",
-			Hash:                []byte("hash"),
 			Sequence:            1,
 			ChannelID:           "testchannel",
 			PeerAddresses:       []string{"peer0", "peer1"},
@@ -184,7 +174,6 @@ func TestCommitter(t *testing.T) {
 		c.Input = &CommitInput{
 			Name:                "testcc",
 			Version:             "testversion",
-			Hash:                []byte("hash"),
 			Sequence:            1,
 			ChannelID:           "testchannel",
 			PeerAddresses:       []string{"peer0", "peer1"},
@@ -206,7 +195,6 @@ func TestCommitter(t *testing.T) {
 		c.Input = &CommitInput{
 			Name:                "testcc",
 			Version:             "testversion",
-			Hash:                []byte("hash"),
 			Sequence:            1,
 			ChannelID:           "testchannel",
 			PeerAddresses:       []string{"peer0", "peer1"},
@@ -231,7 +219,6 @@ func TestCommitCmd(t *testing.T) {
 			"-C", "testchannel",
 			"-n", "testcc",
 			"-v", "1.0",
-			"--hash", hex.EncodeToString([]byte("hash")),
 			"--sequence", "1",
 			"-P", `AND ('Org1MSP.member','Org2MSP.member')`,
 		}
@@ -250,7 +237,6 @@ func TestCommitCmd(t *testing.T) {
 			"-C", "testchannel",
 			"-n", "testcc",
 			"-v", "1.0",
-			"--hash", hex.EncodeToString([]byte("hash")),
 			"--sequence", "1",
 			"-P", "notapolicy",
 		}
@@ -269,7 +255,6 @@ func TestCommitCmd(t *testing.T) {
 			"-C", "testchannel",
 			"-n", "testcc",
 			"-v", "1.0",
-			"--hash", hex.EncodeToString([]byte("hash")),
 			"--sequence", "1",
 			"--collections-config", "idontexist.json",
 		}
@@ -288,7 +273,6 @@ func TestValidateCommitInput(t *testing.T) {
 		input := &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -305,7 +289,6 @@ func TestValidateCommitInput(t *testing.T) {
 	t.Run("failure - name not set", func(t *testing.T) {
 		input := &CommitInput{
 			Version:   "testversion",
-			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -316,7 +299,6 @@ func TestValidateCommitInput(t *testing.T) {
 	t.Run("failure - version not set", func(t *testing.T) {
 		input := &CommitInput{
 			Name:      "testcc",
-			Hash:      []byte("hash"),
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -324,22 +306,10 @@ func TestValidateCommitInput(t *testing.T) {
 		assert.EqualError(err, "The required parameter 'version' is empty. Rerun the command with -v flag")
 	})
 
-	t.Run("failure - hash not set", func(t *testing.T) {
-		input := &CommitInput{
-			Name:      "testcc",
-			Version:   "testversion",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-		err := input.Validate()
-		assert.EqualError(err, "The required parameter 'hash' is empty. Rerun the command with --hash flag")
-	})
-
 	t.Run("failure - sequence not set", func(t *testing.T) {
 		input := &CommitInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
 			ChannelID: "testchannel",
 		}
 		err := input.Validate()
@@ -350,7 +320,6 @@ func TestValidateCommitInput(t *testing.T) {
 		input := &CommitInput{
 			Name:     "testcc",
 			Version:  "testversion",
-			Hash:     []byte("hash"),
 			Sequence: 1,
 		}
 		err := input.Validate()

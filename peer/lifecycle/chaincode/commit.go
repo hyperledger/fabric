@@ -78,10 +78,6 @@ func (c *CommitInput) Validate() error {
 		return errors.New("The required parameter 'version' is empty. Rerun the command with -v flag")
 	}
 
-	if c.Hash == nil {
-		return errors.New("The required parameter 'hash' is empty. Rerun the command with --hash flag")
-	}
-
 	if c.Sequence == 0 {
 		return errors.New("The required parameter 'sequence' is empty. Rerun the command with --sequence flag")
 	}
@@ -129,7 +125,6 @@ func commitCmd(cf *CmdFactory, c *Committer) *cobra.Command {
 		"channelID",
 		"name",
 		"version",
-		"hash",
 		"sequence",
 		"escc",
 		"vscc",
@@ -268,7 +263,6 @@ func (c *Committer) setInput() error {
 		ChannelID:                channelID,
 		Name:                     chaincodeName,
 		Version:                  chaincodeVersion,
-		Hash:                     hash,
 		Sequence:                 int64(sequence),
 		EndorsementPlugin:        escc,
 		ValidationPlugin:         vscc,
@@ -291,7 +285,6 @@ func (c *Committer) createProposals(inputTxID string) (proposal *pb.Proposal, si
 	args := &lb.CommitChaincodeDefinitionArgs{
 		Name:                c.Input.Name,
 		Version:             c.Input.Version,
-		Hash:                c.Input.Hash,
 		Sequence:            c.Input.Sequence,
 		EndorsementPlugin:   c.Input.EndorsementPlugin,
 		ValidationPlugin:    c.Input.ValidationPlugin,
