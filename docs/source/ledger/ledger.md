@@ -342,8 +342,8 @@ different color, make, model and owner. Here's what the ledger looks like after
 the first four cars have been created.
 
 ![ledger.transaction](./ledger.diagram.6.png) *The ledger, L, comprises a world
-state, W and a blockchain, B. W contains four states with keys: CAR1, CAR2, CAR3
-and CAR4. B contains two blocks, 0 and 1. Block 1 contains four transactions:
+state, W and a blockchain, B. W contains four states with keys: CAR0, CAR1, CAR2
+and CAR3. B contains two blocks, 0 and 1. Block 1 contains four transactions:
 T1, T2, T3, T4.*
 
 We can see that the world state contains states that correspond to CAR0, CAR1,
