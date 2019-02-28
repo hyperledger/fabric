@@ -90,7 +90,7 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 	// and verify that these config update have the desired effect.
 	Describe("kafka2raft migration kafka side", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicKafka(), testDir, client, BasePort(), components)
+			network = nwo.New(nwo.BasicKafka(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -244,7 +244,7 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 		// It then restarts the orderer onto a Raft-based system, and verifies that the
 		// newly restarted orderer performs as expected.
 		It("executes bootstrap to raft", func() {
-			network = nwo.New(kafka2RaftMultiChannel(), testDir, client, BasePort(), components)
+			network = nwo.New(kafka2RaftMultiChannel(), testDir, client, StartPort(), components)
 
 			orderer := network.Orderer("orderer")
 			peer := network.Peer("Org1", "peer1")

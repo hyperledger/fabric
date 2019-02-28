@@ -68,7 +68,7 @@ var _ = Describe("EndToEnd", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(soloConfig, testDir, client, 33000, components)
+		network = nwo.New(soloConfig, testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 
 		// modify config

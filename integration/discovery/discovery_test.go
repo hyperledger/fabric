@@ -55,7 +55,7 @@ var _ = Describe("DiscoveryService", func() {
 		err = yaml.Unmarshal(configBytes, &networkConfig)
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(networkConfig, testDir, client, 35000+1000*GinkgoParallelNode(), components)
+		network = nwo.New(networkConfig, testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 

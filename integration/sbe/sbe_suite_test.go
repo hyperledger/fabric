@@ -21,6 +21,7 @@ func TestEndToEnd(t *testing.T) {
 }
 
 var components *nwo.Components
+var suiteBase = 33000
 
 var _ = SynchronizedBeforeSuite(func() []byte {
 	nwo.RequiredImages = []string{
@@ -41,3 +42,7 @@ var _ = SynchronizedAfterSuite(func() {
 }, func() {
 	components.Cleanup()
 })
+
+func StartPort() int {
+	return suiteBase + (GinkgoParallelNode()-1)*100
+}

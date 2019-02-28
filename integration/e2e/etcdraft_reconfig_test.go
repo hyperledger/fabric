@@ -110,7 +110,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			layout := nwo.BasicEtcdRaft()
-			network = nwo.New(layout, testDir, client, BasePort(), components)
+
+			network = nwo.New(layout, testDir, client, StartPort(), components)
 			orderer := network.Orderer("orderer")
 
 			peer = network.Peer("Org1", "peer1")
@@ -202,7 +203,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Name:    "testchannel3",
 				Profile: "TwoOrgsChannel",
 			})
-			network = nwo.New(layout, testDir, client, BasePort(), components)
+
+			network = nwo.New(layout, testDir, client, StartPort(), components)
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
 			orderers := []*nwo.Orderer{o1, o2, o3}
 
@@ -425,7 +427,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ordererRunners = nil
 			ordererProcesses = nil
 
-			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, BasePort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 
 			peer = network.Peer("Org1", "peer1")
 
@@ -579,7 +581,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			layout.Orderers = append(layout.Orderers, o4)
 			layout.Profiles[0].Orderers = append(layout.Profiles[0].Orderers, o4.Name)
 
-			network = nwo.New(layout, testDir, client, BasePort(), components)
+			network = nwo.New(layout, testDir, client, StartPort(), components)
 			orderers := []*nwo.Orderer{layout.Orderers[0], layout.Orderers[1], layout.Orderers[2]}
 			network.GenerateConfigTree()
 			network.Bootstrap()

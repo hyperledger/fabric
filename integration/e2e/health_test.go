@@ -43,7 +43,7 @@ var _ = Describe("Health", func() {
 		config := nwo.BasicKafka()
 		config.Consensus.Brokers = 3
 
-		network = nwo.New(config, testDir, client, BasePort(), components)
+		network = nwo.New(config, testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 	})
@@ -117,7 +117,7 @@ var _ = Describe("Health", func() {
 		})
 
 		When("running health checks on Couch DB", func() {
-			It("returns approprate response codes", func() {
+			It("returns appropriate response codes", func() {
 				By("returning 200 when able to reach Couch DB", func() {
 					statusCode, status := DoHealthCheck(authClient, healthURL)
 					Expect(statusCode).To(Equal(http.StatusOK))

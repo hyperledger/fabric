@@ -138,7 +138,8 @@ var _ bool = Describe("Token EndToEnd", func() {
 	Describe("basic solo network for token transaction e2e using Token CLI", func() {
 		BeforeEach(func() {
 			var err error
-			network = nwo.New(BasicSoloV20(), testDir, client, 30000, components)
+
+			network = nwo.New(BasicSoloV20(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 
 			network.Bootstrap()
@@ -223,7 +224,8 @@ var _ bool = Describe("Token EndToEnd", func() {
 	Describe("basic solo network for token transaction e2e", func() {
 		BeforeEach(func() {
 			var err error
-			network = nwo.New(BasicSoloV20(), testDir, client, 30000, components)
+
+			network = nwo.New(BasicSoloV20(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 
 			network.Bootstrap()
@@ -327,7 +329,8 @@ var _ bool = Describe("Token EndToEnd", func() {
 
 		BeforeEach(func() {
 			var err error
-			network = nwo.New(BasicSoloV20(), testDir, client, 30000, components)
+
+			network = nwo.New(BasicSoloV20(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 
 			network.Bootstrap()

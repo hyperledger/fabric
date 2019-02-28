@@ -90,7 +90,7 @@ func (o Orderer) ID() string {
 }
 
 // Peer defines a peer instance, it's owning organization, and the list of
-// channels that the peer shoudl be joined to.
+// channels that the peer should be joined to.
 type Peer struct {
 	Name         string         `yaml:"name,omitempty"`
 	Organization string         `yaml:"organization,omitempty"`
