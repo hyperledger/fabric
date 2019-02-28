@@ -41,15 +41,15 @@ Fabric Samples and binaries, go ahead and execute the following command:
 
 .. code:: bash
 
-  curl -sSL http://bit.ly/2ysbOFE | bash -s -- 1.4.0
+  curl -sSL https://bit.ly/2ysbOFE | bash -s -- 1.4.0
 
 .. note:: If you want to download different versions for Fabric, Fabric-ca and thirdparty
           Docker images, you must pass the version identifier for each.
 
 .. code:: bash
 
-  curl -sSL http://bit.ly/2ysbOFE | bash -s -- <fabric> <fabric-ca> <thirdparty>
-  curl -sSL http://bit.ly/2ysbOFE | bash -s -- 1.4.0 1.4.0 0.4.14
+  curl -sSL https://bit.ly/2ysbOFE | bash -s -- <fabric> <fabric-ca> <thirdparty>
+  curl -sSL https://bit.ly/2ysbOFE | bash -s -- 1.4.0 1.4.0 0.4.14
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle
