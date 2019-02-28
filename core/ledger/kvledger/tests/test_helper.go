@@ -35,7 +35,7 @@ func newTestHelperCreateLgr(id string, t *testing.T) *testhelper {
 	assert.NoError(t, err)
 	lgr, err := ledgermgmt.CreateLedger(genesisBlk)
 	assert.NoError(t, err)
-	client, committer, verifier := newClient(lgr, t), newCommitter(lgr, t), newVerifier(lgr, t)
+	client, committer, verifier := newClient(lgr, id, t), newCommitter(lgr, t), newVerifier(lgr, t)
 	return &testhelper{client, committer, verifier, lgr, id, assert.New(t)}
 }
 
@@ -43,7 +43,7 @@ func newTestHelperCreateLgr(id string, t *testing.T) *testhelper {
 func newTestHelperOpenLgr(id string, t *testing.T) *testhelper {
 	lgr, err := ledgermgmt.OpenLedger(id)
 	assert.NoError(t, err)
-	client, committer, verifier := newClient(lgr, t), newCommitter(lgr, t), newVerifier(lgr, t)
+	client, committer, verifier := newClient(lgr, id, t), newCommitter(lgr, t), newVerifier(lgr, t)
 	return &testhelper{client, committer, verifier, lgr, id, assert.New(t)}
 }
 
