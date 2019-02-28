@@ -31,13 +31,13 @@ func ResetAllKVLedgers() error {
 
 func LoadPreResetHeight() (map[string]uint64, error) {
 	blockstorePath := ledgerconfig.GetBlockStorePath()
-	logger.Infof("Loading prereset height from path [%s]", blockstorePath)
+	logger.Infof("Ledger rebuild: Checking whether any channel ledgers are marked for rebuild in path [%s]", blockstorePath)
 	return fsblkstorage.LoadPreResetHeight(blockstorePath)
 }
 
 func ClearPreResetHeight() error {
 	blockstorePath := ledgerconfig.GetBlockStorePath()
-	logger.Infof("Clearing off prereset height files from path [%s]", blockstorePath)
+	logger.Infof("Ledger rebuild: Clearing off pre-reset height files from path [%s]", blockstorePath)
 	return fsblkstorage.ClearPreResetHeight(blockstorePath)
 }
 

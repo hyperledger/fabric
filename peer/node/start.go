@@ -336,13 +336,13 @@ func serve(args []string) error {
 	// check to see if the peer ledgers have been reset
 	preResetHeights, err := kvledger.LoadPreResetHeight()
 	if err != nil {
-		return fmt.Errorf("error loading prereset height: %s", err)
+		return fmt.Errorf("error loading pre-reset height: %s", err)
 	}
 	for cid, height := range preResetHeights {
-		logger.Infof("Ledger rebuild: channel [%s]: preresetHeight: [%d]", cid, height)
+		logger.Infof("Ledger rebuild: channel [%s]: pre-reset height: [%d]", cid, height)
 	}
 	if len(preResetHeights) > 0 {
-		logger.Info("Ledger rebuild: Entering loop to check if current ledger heights surpass prereset ledger heights. Endorsement request processing will be disabled.")
+		logger.Info("Ledger rebuild: Entering loop to check if current ledger heights match or surpass pre-reset ledger heights. Endorsement request processing will be disabled.")
 		resetFilter := &reset{
 			reject: true,
 		}
@@ -623,18 +623,19 @@ func resetLoop(
 	for {
 		select {
 		case <-ticker.C:
-			logger.Info("Ledger rebuild: Checking if current ledger heights surpass prereset ledger heights")
-			logger.Debugf("Ledger rebuild: Number of ledgers still rebuilding before check: %d", len(preResetHeights))
+			logger.Info("Ledger rebuild: Checking if current ledger heights match or surpass pre-reset ledger heights")
+			logger.Infof("Ledger rebuild: Number of channel ledgers still rebuilding before check: %d", len(preResetHeights))
 
 			for cid, height := range preResetHeights {
 				ledger := peerLedger(cid)
 				if ledger != nil {
 					bcInfo, err := ledger.GetBlockchainInfo()
 					if bcInfo != nil {
-						logger.Debugf("Ledger rebuild: channel [%s]: currentHeight [%d] : preresetHeight [%d]", cid, bcInfo.GetHeight(), height)
 						if bcInfo.GetHeight() >= height {
+							logger.Infof("Ledger rebuild: channel [%s] ledger done rebuilding: current height=[%d] : pre-reset height [%d]", cid, bcInfo.GetHeight(), height)
 							delete(preResetHeights, cid)
 						} else {
+							logger.Infof("Ledger rebuild: channel [%s] ledger still rebuilding: current height=[%d] : pre-reset height [%d]", cid, bcInfo.GetHeight(), height)
 							break
 						}
 					} else {
@@ -644,12 +645,12 @@ func resetLoop(
 					}
 				}
 			}
-			logger.Debugf("Ledger rebuild: Number of ledgers still rebuilding after check: %d", len(preResetHeights))
+			logger.Infof("Ledger rebuild: Number of channel ledgers still rebuilding after check: %d", len(preResetHeights))
 			if len(preResetHeights) == 0 {
-				logger.Infof("Ledger rebuild: Complete, all ledgers surpass prereset heights. Endorsement request processing will be enabled.")
+				logger.Infof("Ledger rebuild: Complete, all channel ledgers match or surpass pre-reset heights. Endorsement request processing will be enabled.")
 				err := kvledger.ClearPreResetHeight()
 				if err != nil {
-					logger.Warningf("Ledger rebuild: could not clear off prerest files: error=%s", err)
+					logger.Warningf("Ledger rebuild: could not clear off pre-reset files: error=%s", err)
 				}
 				resetFilter.setReject(false)
 				return

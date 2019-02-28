@@ -170,8 +170,9 @@ func recordHeightIfGreaterThanPreviousRecording(ledgerDir string) error {
 	return nil
 }
 
+// LoadPreResetHeight returns a map of any channel ledgers that are marked for rebuild, along with their pre-reset heights
 func LoadPreResetHeight(blockStorageDir string) (map[string]uint64, error) {
-	logger.Info("Loading Pre-reset heights")
+	logger.Debug("Ledger rebuild: Checking whether any channel ledgers are marked for rebuild")
 	preResetFilesMap, err := preRestHtFiles(blockStorageDir)
 	if err != nil {
 		return nil, err
@@ -188,12 +189,15 @@ func LoadPreResetHeight(blockStorageDir string) (map[string]uint64, error) {
 		}
 		m[ledgerID] = previuoslyRecordedHt
 	}
-	logger.Info("Pre-reset heights loaded")
+
+	logger.Infof("Ledger rebuild: Number of channel ledgers that are marked for rebuild: %d", len(m))
+
 	return m, nil
 }
 
+// ClearPreResetHeight clears the reset indicators in channel ledgers after they have been rebuilt
 func ClearPreResetHeight(blockStorageDir string) error {
-	logger.Info("Clearing Pre-reset heights")
+	logger.Debug("Ledger rebuild: Clearing pre-reset height files")
 	preResetFilesMap, err := preRestHtFiles(blockStorageDir)
 	if err != nil {
 		return err
@@ -203,7 +207,7 @@ func ClearPreResetHeight(blockStorageDir string) error {
 			return err
 		}
 	}
-	logger.Info("Cleared off Pre-reset heights")
+	logger.Info("Ledger rebuild: Cleared off pre-reset height files")
 	return nil
 }
 
@@ -226,7 +230,7 @@ func preRestHtFiles(blockStorageDir string) (map[string]string, error) {
 		logger.Info("No ledgers found.. exiting")
 		return nil, nil
 	}
-	logger.Infof("Found ledgers - %s", ledgerIDs)
+	logger.Debugf("Ledger rebuild: Found ledgers - %s", ledgerIDs)
 	m := map[string]string{}
 	for _, ledgerID := range ledgerIDs {
 		ledgerDir := conf.getLedgerBlockDir(ledgerID)

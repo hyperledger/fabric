@@ -280,7 +280,8 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 	elapsedStateValidation := time.Since(startStateValidation) / time.Millisecond // duration in ms
 
 	startCommitBlockStorage := time.Now()
-	logger.Debugf("[%s] Adding CommitHash to the block [%d]", l.ledgerID, blockNo)
+
+	logger.Debugf("[%s] Adding CommitHash to block [%d]", l.ledgerID, blockNo)
 	l.addBlockCommitHashIfApplicable(pvtdataAndBlock.Block, updateBatchBytes)
 	logger.Debugf("[%s] Committing block [%d] to storage", l.ledgerID, blockNo)
 	l.blockAPIsRWLock.Lock()
@@ -308,11 +309,15 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 
 	elapsedCommitWithPvtData := time.Since(startStateValidation) / time.Millisecond // total duration in ms
 
-	logger.Infof("[%s] Committed block [%d] with %d transaction(s) in %dms (state_validation=%dms block_commit=%dms state_commit=%dms)"+
-		" commitHash=[%x]",
+	// add a commitHash log message only if there is a commit hash calculated since block1
+	commitHashLogMessage := ""
+	if l.commitHash != nil {
+		commitHashLogMessage = fmt.Sprintf(" commitHash=[%x]", l.commitHash)
+	}
+
+	logger.Infof("[%s] Committed block [%d] with %d transaction(s) in %dms (state_validation=%dms block_commit=%dms state_commit=%dms)"+commitHashLogMessage,
 		l.ledgerID, block.Header.Number, len(block.Data.Data), elapsedCommitWithPvtData,
-		elapsedStateValidation, elapsedCommitBlockStorage, elapsedCommitState,
-		l.commitHash)
+		elapsedStateValidation, elapsedCommitBlockStorage, elapsedCommitState)
 
 	return nil
 }
