@@ -9,6 +9,7 @@ package lifecycle
 import (
 	"strings"
 
+	"github.com/hyperledger/fabric/common/util"
 	corechaincode "github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -44,9 +45,12 @@ func (ld *LegacyDefinition) CCName() string {
 	return ld.Name
 }
 
-// Hash returns the hash of the chaincode.
+// Hash returns the hash of <name>:<version>.  This is useless, but
+// is a hack to allow the rest of the code to have consistent view of
+// what hash means for a chaincode definition.  Ultimately, this should
+// be removed.
 func (ld *LegacyDefinition) Hash() []byte {
-	return ld.HashField
+	return util.ComputeSHA256([]byte(ld.Name + ":" + ld.Version))
 }
 
 // CCVersion returns the version of the chaincode.
@@ -133,7 +137,6 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeNam
 	return &LegacyDefinition{
 		Name:                chaincodeName,
 		Version:             chaincodeDefinition.EndorsementInfo.Version,
-		HashField:           chaincodeDefinition.EndorsementInfo.Id,
 		EndorsementPlugin:   chaincodeDefinition.EndorsementInfo.EndorsementPlugin,
 		RequiresInitField:   chaincodeDefinition.EndorsementInfo.InitRequired,
 		ValidationPlugin:    chaincodeDefinition.ValidationInfo.ValidationPlugin,

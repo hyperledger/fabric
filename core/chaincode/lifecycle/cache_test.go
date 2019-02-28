@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
+	"github.com/hyperledger/fabric/protoutil"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -69,10 +70,8 @@ var _ = Describe("Cache", func() {
 			Chaincodes: map[string]*lifecycle.CachedChaincodeDefinition{
 				"chaincode-name": {
 					Definition: &lifecycle.ChaincodeDefinition{
-						Sequence: 3,
-						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-							Id: []byte("hash"),
-						},
+						Sequence:        3,
+						EndorsementInfo: &lb.ChaincodeEndorsementInfo{},
 					},
 					Approved: true,
 					Hashes: []string{
@@ -94,7 +93,9 @@ var _ = Describe("Cache", func() {
 		}
 
 		localChaincodes = map[string]*lifecycle.LocalChaincode{
-			string(util.ComputeSHA256([]byte("hash"))): {
+			string(util.ComputeSHA256(protoutil.MarshalOrPanic(&lb.StateData{
+				Type: &lb.StateData_Bytes{Bytes: []byte("hash")},
+			}))): {
 				References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{
 					"channel-id": {
 						"chaincode-name": channelCache.Chaincodes["chaincode-name"],
@@ -105,7 +106,6 @@ var _ = Describe("Cache", func() {
 
 		lifecycle.SetChaincodeMap(c, "channel-id", channelCache)
 		lifecycle.SetLocalChaincodesMap(c, localChaincodes)
-
 	})
 
 	Describe("ChaincodInfo", func() {
@@ -122,10 +122,8 @@ var _ = Describe("Cache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(localInfo).To(Equal(&lifecycle.LocalChaincodeInfo{
 				Definition: &lifecycle.ChaincodeDefinition{
-					Sequence: 3,
-					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-						Id: []byte("hash"),
-					},
+					Sequence:        3,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{},
 				},
 				InstallInfo: &lifecycle.ChaincodeInstallInfo{
 					Type: "cc-type",
@@ -249,17 +247,13 @@ var _ = Describe("Cache", func() {
 
 			err := resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
 				Sequence: 7,
-				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-					Id: []byte("hash"),
-				},
 			}, fakePublicState)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{
-				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-					Id: []byte("hash"),
-				},
-			}, fakePrivateState)
+			err = resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{}, fakePrivateState)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = resources.Serializer.Serialize(lifecycle.ChaincodeSourcesName, "chaincode-name#7", &lifecycle.ChaincodeLocalPackage{Hash: []byte("hash")}, fakePrivateState)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -283,16 +277,14 @@ var _ = Describe("Cache", func() {
 			BeforeEach(func() {
 				err := resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
 					Sequence: 7,
-					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-						Id: []byte("different-hash"),
-					},
 				}, fakePublicState)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{
-					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-						Id: []byte("different-hash"),
-					},
+				err = resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{}, fakePrivateState)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = resources.Serializer.Serialize(lifecycle.ChaincodeSourcesName, "chaincode-name#7", &lifecycle.ChaincodeLocalPackage{
+					Hash: []byte("different-hash"),
 				}, fakePrivateState)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -433,6 +425,50 @@ var _ = Describe("Cache", func() {
 				err := c.Initialize("channel-id", fakeQueryExecutor)
 				Expect(err).To(MatchError("could not check opaque org state for 'chaincode-name' on channel 'channel-id': could not get value for key namespaces/metadata/chaincode-name#7: private-data-error"))
 			})
+
+			Context("when the private state returns an error for the chaincode source metadata", func() {
+				BeforeEach(func() {
+					fakeQueryExecutor.GetPrivateDataHashStub = func(channel, collection, key string) ([]byte, error) {
+						if key != "chaincode-sources/metadata/chaincode-name#7" {
+							return fakePrivateState.GetStateHash(key)
+						}
+						return nil, fmt.Errorf("private-data-error")
+					}
+				})
+
+				It("wraps and returns the error", func() {
+					err := c.Initialize("channel-id", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not check opaque org state for chaincode source for 'chaincode-name' on channel 'channel-id': could not get state hash for metadata key chaincode-sources/metadata/chaincode-name#7: private-data-error"))
+				})
+			})
+
+			Context("when the private state returns an error for the chaincode source", func() {
+				BeforeEach(func() {
+					fakeQueryExecutor.GetPrivateDataHashStub = func(channel, collection, key string) ([]byte, error) {
+						if key != "chaincode-sources/fields/chaincode-name#7/Hash" {
+							return fakePrivateState.GetStateHash(key)
+						}
+						return nil, fmt.Errorf("private-data-error")
+					}
+				})
+
+				It("wraps and returns the error", func() {
+					err := c.Initialize("channel-id", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not check opaque org state for chaincode source hash for 'chaincode-name' on channel 'channel-id': private-data-error"))
+				})
+			})
+		})
+
+		Context("when the chaincode-source is not a local package", func() {
+			BeforeEach(func() {
+				fakePrivateState["chaincode-sources/metadata/chaincode-name#7"] = []byte("garbage")
+			})
+
+			It("does not set the install info", func() {
+				err := c.Initialize("channel-id", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(BeNil())
+			})
 		})
 	})
 
@@ -459,9 +495,6 @@ var _ = Describe("Cache", func() {
 
 				err := resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
 					Sequence: 7,
-					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-						Id: []byte("hash"),
-					},
 				}, fakePublicState)
 
 				Expect(err).NotTo(HaveOccurred())

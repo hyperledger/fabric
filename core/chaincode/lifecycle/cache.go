@@ -13,6 +13,8 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/ledger"
+	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
+	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/pkg/errors"
 )
@@ -63,8 +65,8 @@ type Cache struct {
 	// chaincodes are installed and which channels that installed chaincode is currently in use on.
 	mutex sync.RWMutex
 
-	// localChaincodes is a map from the hash of the locally installed chaincode's hash
-	// (yes, the hash of the hash), to a set of channels, to a set of chaincode
+	// localChaincodes is a map from the hash of the locally installed chaincode's proto
+	// encoded hash (yes, the hash of the hash), to a set of channels, to a set of chaincode
 	// definitions which reference this local installed chaincode hash.
 	localChaincodes map[string]*LocalChaincode
 }
@@ -168,7 +170,12 @@ func (c *Cache) HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadat
 }
 
 func (c *Cache) handleChaincodeInstalledWhileLocked(md *persistence.ChaincodePackageMetadata, hash []byte) {
-	hashOfCCHash := string(util.ComputeSHA256(hash))
+	// it would be nice to get this value from the serialization package, but it was not obvious
+	// how to expose this in a nice way, so we manually compute it.
+	encodedCCHash := protoutil.MarshalOrPanic(&lb.StateData{
+		Type: &lb.StateData_Bytes{Bytes: hash},
+	})
+	hashOfCCHash := string(util.ComputeSHA256(encodedCCHash))
 	localChaincode, ok := c.localChaincodes[hashOfCCHash]
 	if !ok {
 		localChaincode = &LocalChaincode{
@@ -356,13 +363,29 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 		}
 
 		cachedChaincode.Approved = true
-		hashOfCCHash := string(util.ComputeSHA256(cachedChaincode.Definition.EndorsementInfo.Id))
-		localChaincode, ok := c.localChaincodes[hashOfCCHash]
+
+		isLocalPackage, err := c.Resources.Serializer.IsMetadataSerialized(ChaincodeSourcesName, privateName, &ChaincodeLocalPackage{}, orgState)
+		if err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("could not check opaque org state for chaincode source for '%s' on channel '%s'", name, channelID))
+		}
+
+		if !isLocalPackage {
+			logger.Debugf("Channel %s for chaincode definition %s:%s does not have a chaincode source defined", channelID, name, chaincodeDefinition.EndorsementInfo.Version)
+			continue
+		}
+
+		hashKey := FieldKey(ChaincodeSourcesName, privateName, "Hash")
+		hashOfCCHash, err := orgState.GetStateHash(hashKey)
+		if err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("could not check opaque org state for chaincode source hash for '%s' on channel '%s'", name, channelID))
+		}
+
+		localChaincode, ok := c.localChaincodes[string(hashOfCCHash)]
 		if !ok {
 			localChaincode = &LocalChaincode{
 				References: map[string]map[string]*CachedChaincodeDefinition{},
 			}
-			c.localChaincodes[hashOfCCHash] = localChaincode
+			c.localChaincodes[string(hashOfCCHash)] = localChaincode
 		}
 
 		cachedChaincode.InstallInfo = localChaincode.Info

@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -77,7 +78,6 @@ var _ = Describe("ValidatorCommitter", func() {
 		err := resources.Serializer.Serialize(lifecycle.NamespacesName, "cc-name", &lifecycle.ChaincodeDefinition{
 			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 				Version: "version",
-				Id:      []byte("hash"),
 			},
 			ValidationInfo: &lb.ChaincodeValidationInfo{
 				ValidationPlugin:    "validation-plugin",
@@ -162,7 +162,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res.Name).To(Equal("cc-name"))
 			Expect(res.Version).To(Equal("version"))
-			Expect(res.Hash).To(Equal([]byte("hash")))
+			Expect(res.Hash).To(Equal(util.ComputeSHA256([]byte("cc-name:version"))))
 			Expect(len(res.ExplicitCollectionConfigPkg.Config)).To(Equal(1))
 			Expect(len(res.ImplicitCollections)).To(Equal(2))
 		})

@@ -18,9 +18,8 @@ option go_package = "github.com/hyperledger/fabric/protos/peer/lifecycle";
 // to execute a chaincode
 message ChaincodeEndorsementInfo {
 	string version = 1;
-	bytes id = 2;
-	bool init_required = 3;
-        string endorsement_plugin = 4;
+	bool init_required = 2;
+        string endorsement_plugin = 3;
 }
 
 // ValidationInfo is (most) everything the peer needs to know in order

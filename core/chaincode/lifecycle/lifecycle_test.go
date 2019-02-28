@@ -76,16 +76,6 @@ var _ = Describe("ChaincodeParameters", func() {
 			})
 		})
 
-		Context("when the Hash differs from the current definition", func() {
-			BeforeEach(func() {
-				rhs.EndorsementInfo.Id = []byte("different")
-			})
-
-			It("returns an error", func() {
-				Expect(lhs.Equal(rhs)).To(MatchError("Hash '' != '646966666572656e74'"))
-			})
-		})
-
 		Context("when the Collections differ from the current definition", func() {
 			BeforeEach(func() {
 				rhs.Collections = &cb.CollectionConfigPackage{
@@ -362,7 +352,7 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 
 		It("serializes the chaincode parameters to the org scoped collection", func() {
-			err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+			err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, []byte("hash"), fakePublicState, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
 
 			metadata, ok, err := resources.Serializer.DeserializeMetadata("namespaces", "cc-name#5", fakeOrgState)
@@ -372,9 +362,18 @@ var _ = Describe("ExternalFunctions", func() {
 			err = resources.Serializer.Deserialize("namespaces", "cc-name#5", metadata, committedDefinition, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(committedDefinition.EndorsementInfo.Version).To(Equal("version"))
-			Expect(committedDefinition.EndorsementInfo.Id).To(BeEmpty())
 			Expect(proto.Equal(committedDefinition.ValidationInfo, &lb.ChaincodeValidationInfo{})).To(BeTrue())
 			Expect(proto.Equal(committedDefinition.Collections, &cb.CollectionConfigPackage{})).To(BeTrue())
+
+			metadata, ok, err = resources.Serializer.DeserializeMetadata("chaincode-sources", "cc-name#5", fakeOrgState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ok).To(BeTrue())
+			localPackage := &lifecycle.ChaincodeLocalPackage{}
+			err = resources.Serializer.Deserialize("chaincode-sources", "cc-name#5", metadata, localPackage, fakeOrgState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(localPackage).To(Equal(&lifecycle.ChaincodeLocalPackage{
+				Hash: []byte("hash"),
+			}))
 		})
 
 		Context("when the current sequence is undefined and the requested sequence is 0", func() {
@@ -383,7 +382,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("returns an error", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("unknown-name", &lifecycle.ChaincodeDefinition{}, fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("unknown-name", &lifecycle.ChaincodeDefinition{}, []byte("hash"), fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("requested sequence is 0, but first definable sequence number is 1"))
 			})
 		})
@@ -400,7 +399,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("verifies that the definition matches before writing", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, []byte("hash"), fakePublicState, fakeOrgState)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -410,7 +409,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, []byte("hash"), fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("missing metadata for currently committed sequence number (5)"))
 				})
 			})
@@ -421,7 +420,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, []byte("hash"), fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("could not fetch metadata for current definition: could not unmarshal metadata for namespace namespaces/cc-name: proto: can't skip unknown wire type 7"))
 				})
 			})
@@ -439,7 +438,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, []byte("hash"), fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: type name mismatch 'ChaincodeDefinition' != 'OtherStruct'"))
 				})
 			})
@@ -458,7 +457,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, []byte("hash"), fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("attempted to define the current sequence (%d) for namespace %s, but: Version 'other-version' != 'version'"))
 				})
 			})
@@ -470,7 +469,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("fails", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, []byte("hash"), fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("currently defined sequence 4 is larger than requested sequence 3"))
 			})
 		})
@@ -481,7 +480,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("fails", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, []byte("hash"), fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("requested sequence 9 is larger than the next available sequence number 5"))
 			})
 		})
@@ -492,19 +491,30 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, []byte("hash"), fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("could not get current sequence: could not get state for key namespaces/fields/cc-name/Sequence: get-state-error"))
 			})
 		})
 
-		Context("when writing to the public state fails", func() {
+		Context("when writing to the org state fails for the parameters", func() {
 			BeforeEach(func() {
 				fakeOrgState.PutStateReturns(fmt.Errorf("put-state-error"))
 			})
 
 			It("wraps and returns the error", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, []byte("hash"), fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("could not serialize chaincode parameters to state: could not write key into state: put-state-error"))
+			})
+		})
+
+		Context("when writing to the org state fails for the package", func() {
+			BeforeEach(func() {
+				fakeOrgState.PutStateReturnsOnCall(4, fmt.Errorf("put-state-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, []byte("hash"), fakePublicState, fakeOrgState)
+				Expect(err).To(MatchError("could not serialize chaincode package info to state: could not write key into state: put-state-error"))
 			})
 		})
 	})
@@ -524,7 +534,6 @@ var _ = Describe("ExternalFunctions", func() {
 				Sequence: 5,
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 					Version:           "version",
-					Id:                []byte("hash"),
 					EndorsementPlugin: "endorsement-plugin",
 				},
 				ValidationInfo: &lb.ChaincodeValidationInfo{
@@ -542,7 +551,6 @@ var _ = Describe("ExternalFunctions", func() {
 				Sequence: 4,
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 					Version:           "version",
-					Id:                []byte("hash"),
 					EndorsementPlugin: "endorsement-plugin",
 				},
 				ValidationInfo: &lb.ChaincodeValidationInfo{
@@ -599,7 +607,6 @@ var _ = Describe("ExternalFunctions", func() {
 					Sequence: 3,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						Version:           "version",
-						Id:                []byte("hash"),
 						EndorsementPlugin: "endorsement-plugin",
 					},
 					ValidationInfo: &lb.ChaincodeValidationInfo{
@@ -633,7 +640,6 @@ var _ = Describe("ExternalFunctions", func() {
 				Sequence: 4,
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 					Version:           "version",
-					Id:                []byte("hash"),
 					EndorsementPlugin: "endorsement-plugin",
 				},
 				ValidationInfo: &lb.ChaincodeValidationInfo{
@@ -650,7 +656,6 @@ var _ = Describe("ExternalFunctions", func() {
 				Sequence: 4,
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 					Version:           "version",
-					Id:                []byte("hash"),
 					EndorsementPlugin: "endorsement-plugin",
 				},
 				ValidationInfo: &lb.ChaincodeValidationInfo{

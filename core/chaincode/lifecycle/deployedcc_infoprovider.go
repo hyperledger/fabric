@@ -11,6 +11,7 @@ import (
 	"regexp"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/util"
 	validationState "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -97,7 +98,7 @@ func (vc *ValidatorCommitter) ChaincodeInfo(channelName, chaincodeName string, q
 	return &ledger.DeployedChaincodeInfo{
 		Name:                        chaincodeName,
 		Version:                     definedChaincode.EndorsementInfo.Version,
-		Hash:                        definedChaincode.EndorsementInfo.Id,
+		Hash:                        util.ComputeSHA256([]byte(chaincodeName + ":" + definedChaincode.EndorsementInfo.Version)),
 		ExplicitCollectionConfigPkg: definedChaincode.Collections,
 		ImplicitCollections:         ic,
 	}, nil

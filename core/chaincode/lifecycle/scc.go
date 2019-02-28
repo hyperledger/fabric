@@ -65,7 +65,7 @@ type SCCFunctions interface {
 	QueryInstalledChaincodes() (chaincodes []chaincode.InstalledChaincode, err error)
 
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
-	ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, publicState ReadableState, orgState ReadWritableState) error
+	ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, hash []byte, publicState ReadableState, orgState ReadWritableState) error
 
 	// CommitChaincodeDefinition records a new chaincode definition into the public state and returns the orgs which agreed with that definition.
 	CommitChaincodeDefinition(name string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
@@ -268,7 +268,6 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 			Sequence: input.Sequence,
 			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 				Version:           input.Version,
-				Id:                input.Hash,
 				EndorsementPlugin: input.EndorsementPlugin,
 				InitRequired:      input.InitRequired,
 			},
@@ -280,6 +279,7 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 				Config: collectionConfig,
 			},
 		},
+		input.Hash,
 		i.Stub,
 		&ChaincodePrivateLedgerShim{
 			Collection: collectionName,
@@ -318,7 +318,6 @@ func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefiniti
 		&ChaincodeDefinition{
 			Sequence: input.Sequence,
 			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-				Id:                input.Hash,
 				Version:           input.Version,
 				EndorsementPlugin: input.EndorsementPlugin,
 				InitRequired:      input.InitRequired,
@@ -356,7 +355,6 @@ func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinition
 		EndorsementPlugin:   definedChaincode.EndorsementInfo.EndorsementPlugin,
 		ValidationPlugin:    definedChaincode.ValidationInfo.ValidationPlugin,
 		ValidationParameter: definedChaincode.ValidationInfo.ValidationParameter,
-		Hash:                definedChaincode.EndorsementInfo.Id,
 		InitRequired:        definedChaincode.EndorsementInfo.InitRequired,
 		Collections:         definedChaincode.Collections,
 	}, nil

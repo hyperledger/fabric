@@ -9,13 +9,14 @@ import (
 )
 
 type SCCFunctions struct {
-	ApproveChaincodeDefinitionForOrgStub        func(string, *lifecycle.ChaincodeDefinition, lifecycle.ReadableState, lifecycle.ReadWritableState) error
+	ApproveChaincodeDefinitionForOrgStub        func(string, *lifecycle.ChaincodeDefinition, []byte, lifecycle.ReadableState, lifecycle.ReadWritableState) error
 	approveChaincodeDefinitionForOrgMutex       sync.RWMutex
 	approveChaincodeDefinitionForOrgArgsForCall []struct {
 		arg1 string
 		arg2 *lifecycle.ChaincodeDefinition
-		arg3 lifecycle.ReadableState
-		arg4 lifecycle.ReadWritableState
+		arg3 []byte
+		arg4 lifecycle.ReadableState
+		arg5 lifecycle.ReadWritableState
 	}
 	approveChaincodeDefinitionForOrgReturns struct {
 		result1 error
@@ -111,19 +112,25 @@ type SCCFunctions struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrg(arg1 string, arg2 *lifecycle.ChaincodeDefinition, arg3 lifecycle.ReadableState, arg4 lifecycle.ReadWritableState) error {
+func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrg(arg1 string, arg2 *lifecycle.ChaincodeDefinition, arg3 []byte, arg4 lifecycle.ReadableState, arg5 lifecycle.ReadWritableState) error {
+	var arg3Copy []byte
+	if arg3 != nil {
+		arg3Copy = make([]byte, len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.approveChaincodeDefinitionForOrgMutex.Lock()
 	ret, specificReturn := fake.approveChaincodeDefinitionForOrgReturnsOnCall[len(fake.approveChaincodeDefinitionForOrgArgsForCall)]
 	fake.approveChaincodeDefinitionForOrgArgsForCall = append(fake.approveChaincodeDefinitionForOrgArgsForCall, struct {
 		arg1 string
 		arg2 *lifecycle.ChaincodeDefinition
-		arg3 lifecycle.ReadableState
-		arg4 lifecycle.ReadWritableState
-	}{arg1, arg2, arg3, arg4})
-	fake.recordInvocation("ApproveChaincodeDefinitionForOrg", []interface{}{arg1, arg2, arg3, arg4})
+		arg3 []byte
+		arg4 lifecycle.ReadableState
+		arg5 lifecycle.ReadWritableState
+	}{arg1, arg2, arg3Copy, arg4, arg5})
+	fake.recordInvocation("ApproveChaincodeDefinitionForOrg", []interface{}{arg1, arg2, arg3Copy, arg4, arg5})
 	fake.approveChaincodeDefinitionForOrgMutex.Unlock()
 	if fake.ApproveChaincodeDefinitionForOrgStub != nil {
-		return fake.ApproveChaincodeDefinitionForOrgStub(arg1, arg2, arg3, arg4)
+		return fake.ApproveChaincodeDefinitionForOrgStub(arg1, arg2, arg3, arg4, arg5)
 	}
 	if specificReturn {
 		return ret.result1
@@ -138,17 +145,17 @@ func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrgCallCount() int {
 	return len(fake.approveChaincodeDefinitionForOrgArgsForCall)
 }
 
-func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrgCalls(stub func(string, *lifecycle.ChaincodeDefinition, lifecycle.ReadableState, lifecycle.ReadWritableState) error) {
+func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrgCalls(stub func(string, *lifecycle.ChaincodeDefinition, []byte, lifecycle.ReadableState, lifecycle.ReadWritableState) error) {
 	fake.approveChaincodeDefinitionForOrgMutex.Lock()
 	defer fake.approveChaincodeDefinitionForOrgMutex.Unlock()
 	fake.ApproveChaincodeDefinitionForOrgStub = stub
 }
 
-func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrgArgsForCall(i int) (string, *lifecycle.ChaincodeDefinition, lifecycle.ReadableState, lifecycle.ReadWritableState) {
+func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrgArgsForCall(i int) (string, *lifecycle.ChaincodeDefinition, []byte, lifecycle.ReadableState, lifecycle.ReadWritableState) {
 	fake.approveChaincodeDefinitionForOrgMutex.RLock()
 	defer fake.approveChaincodeDefinitionForOrgMutex.RUnlock()
 	argsForCall := fake.approveChaincodeDefinitionForOrgArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
 }
 
 func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrgReturns(result1 error) {

@@ -190,6 +190,31 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 	return nil
 }
 
+func (s *Serializer) IsMetadataSerialized(namespace, name string, structure interface{}, state OpaqueState) (bool, error) {
+	value, allFields, err := s.SerializableChecks(structure)
+	if err != nil {
+		return false, errors.WithMessage(err, fmt.Sprintf("structure for namespace %s/%s is not serializable", namespace, name))
+	}
+
+	mdKey := MetadataKey(namespace, name)
+	metadata := &lb.StateMetadata{
+		Datatype: value.Type().Name(),
+		Fields:   allFields,
+	}
+
+	metadataBin, err := s.Marshaler.Marshal(metadata)
+	if err != nil {
+		return false, errors.WithMessage(err, fmt.Sprintf("could not marshal metadata for namespace %s/%s", namespace, name))
+	}
+
+	existingMDHash, err := state.GetStateHash(mdKey)
+	if err != nil {
+		return false, errors.WithMessage(err, fmt.Sprintf("could not get state hash for metadata key %s", mdKey))
+	}
+
+	return bytes.Equal(util.ComputeSHA256(metadataBin), existingMDHash), nil
+}
+
 // IsSerialized essentially checks if the hashes of a serialized version of a structure matches the hashes
 // of the pre-image of some struct serialized into the database.
 func (s *Serializer) IsSerialized(namespace, name string, structure interface{}, state OpaqueState) (bool, error) {
