@@ -83,30 +83,6 @@ func (cas *CASupport) GetServerRootCAs() (appRootCAs, ordererRootCAs [][]byte) {
 	return appRootCAs, ordererRootCAs
 }
 
-// GetClientRootCAs returns the PEM-encoded root certificates for all of the
-// application and orderer organizations defined for all chains.  The root
-// certificates returned should be used to set the trusted client roots for
-// TLS servers.
-func (cas *CASupport) GetClientRootCAs() (appRootCAs, ordererRootCAs [][]byte) {
-	cas.RLock()
-	defer cas.RUnlock()
-
-	appRootCAs = [][]byte{}
-	ordererRootCAs = [][]byte{}
-
-	for _, appRootCA := range cas.AppRootCAsByChain {
-		appRootCAs = append(appRootCAs, appRootCA...)
-	}
-
-	for _, ordererRootCA := range cas.OrdererRootCAsByChain {
-		ordererRootCAs = append(ordererRootCAs, ordererRootCA...)
-	}
-
-	// also need to append statically configured root certs
-	appRootCAs = append(appRootCAs, cas.ClientRootCAs...)
-	return appRootCAs, ordererRootCAs
-}
-
 // SetClientCertificate sets the tls.Certificate to use for gRPC client
 // connections
 func (cs *CredentialSupport) SetClientCertificate(cert tls.Certificate) {
