@@ -1117,6 +1117,12 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 		// propose raft ConfChange if it adds/removes node.
 		metadata, raftMetadata := c.newRaftMetadata(block)
 
+		if metadata != nil && metadata.Options != nil && metadata.Options.SnapshotInterval != 0 {
+			old := c.sizeLimit
+			c.sizeLimit = metadata.Options.SnapshotInterval
+			c.logger.Infof("Snapshot interval is updated to %d bytes (was %d)", c.sizeLimit, old)
+		}
+
 		var changes *MembershipChanges
 		if metadata != nil {
 			changes = ComputeMembershipChanges(raftMetadata.Consenters, metadata.Consenters)
