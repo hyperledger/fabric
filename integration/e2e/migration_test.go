@@ -30,15 +30,16 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-var _ bool = Describe("Kafka2RaftMigration", func() {
+var _ = Describe("Kafka2RaftMigration", func() {
 	var (
 		testDir   string
 		client    *docker.Client
 		network   *nwo.Network
 		chaincode nwo.Chaincode
 
-		process                           ifrit.Process
-		peerProc, ordererProc, brokerProc ifrit.Process
+		process                             ifrit.Process
+		peerProc, brokerProc                ifrit.Process
+		ordererProc, o1Proc, o2Proc, o3Proc ifrit.Process
 	)
 
 	BeforeEach(func() {
@@ -69,9 +70,11 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			Eventually(peerProc.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
 
-		if ordererProc != nil {
-			ordererProc.Signal(syscall.SIGTERM)
-			Eventually(ordererProc.Wait(), network.EventuallyTimeout).Should(Receive())
+		for _, oProc := range []ifrit.Process{ordererProc, o1Proc, o2Proc, o3Proc} {
+			if oProc != nil {
+				oProc.Signal(syscall.SIGTERM)
+				Eventually(oProc.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
 		}
 
 		if brokerProc != nil {
@@ -86,8 +89,8 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 		os.RemoveAll(testDir)
 	})
 
-	// These tests execute the migration config updates on Kafka based system,
-	// and verify that these config update have the desired effect.
+	// These tests execute the migration config updates on Kafka based system, and verify that these config update
+	// have the desired effect. These tests use a single node.
 	Describe("kafka2raft migration kafka side", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.BasicKafka(), testDir, client, StartPort(), components)
@@ -139,11 +142,12 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_MIG_STATE_START, 0)
 
 			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", []byte{}, protosorderer.ConsensusType_MIG_STATE_COMMIT, migrationContext,
+			raftMetadata := prepareRaftMetadata(network)
+			updateConfigWithConsensusType("etcdraft", raftMetadata, protosorderer.ConsensusType_MIG_STATE_COMMIT, migrationContext,
 				updatedConfig, consensusTypeValue)
 			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
-			num := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(num).To(Equal(migrationContext + 1))
+			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysBlockNum).To(Equal(migrationContext + 1))
 
 			By("Step 2, Verify: system channel config change, OSN ready to restart")
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
@@ -208,7 +212,8 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			//Verify initial status
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_MIG_STATE_NONE, 0)
 			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", []byte{}, protosorderer.ConsensusType_MIG_STATE_CONTEXT, migrationContext,
+			raftMetadata := prepareRaftMetadata(network)
+			updateConfigWithConsensusType("etcdraft", raftMetadata, protosorderer.ConsensusType_MIG_STATE_CONTEXT, migrationContext,
 				updatedConfig, consensusTypeValue)
 			nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
 			//Verify standard channel changed
@@ -224,19 +229,18 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
 			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", []byte{}, protosorderer.ConsensusType_MIG_STATE_COMMIT, migrationContext,
+			updateConfigWithConsensusType("etcdraft", raftMetadata, protosorderer.ConsensusType_MIG_STATE_COMMIT, migrationContext,
 				updatedConfig, consensusTypeValue)
 			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
 			By("Step 3, Verify: system channel config changed")
-			num := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(num).To(Equal(migrationContext + 1))
+			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysBlockNum).To(Equal(migrationContext + 1))
 		})
 	})
 
-	// These tests execute the migration config updates on Kafka based system
-	// restart the orderer onto a Raft-based system, and verifies that the newly
-	// restarted orderer performs as expected.
+	// These tests execute the migration config updates on Kafka based system, restart the orderer onto a Raft-based
+	// system, and verifies that the newly restarted orderer performs as expected.
 	Describe("kafka2raft migration raft side", func() {
 
 		// This test executes the "green path" migration config updates on Kafka based system
@@ -252,32 +256,7 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
-			tlsPath := "crypto/ordererOrganizations/example.com/orderers/orderer.example.com/tls/"
-			Expect(filepath.Join(network.RootDir, tlsPath)).To(Equal(network.OrdererLocalTLSDir(orderer)))
-			certBytes, err := ioutil.ReadFile(filepath.Join(network.RootDir, tlsPath, "server.crt"))
-			Expect(err).NotTo(HaveOccurred())
-			raft_metadata := &protosraft.Metadata{
-				Consenters: []*protosraft.Consenter{
-					{
-						ClientTlsCert: certBytes,
-						ServerTlsCert: certBytes,
-						Host:          "127.0.0.1",
-						Port:          uint32(31001),
-					},
-				},
-				Options: &protosraft.Options{
-					TickInterval:     "500ms",
-					ElectionTick:     10,
-					HeartbeatTick:    1,
-					MaxInflightMsgs:  256,
-					MaxSizePerMsg:    1048576,
-					SnapshotInterval: 8388608,
-				}}
-
-			raft_metadata_bytes := protoutil.MarshalOrPanic(raft_metadata)
-			raft_metadata2 := &protosraft.Metadata{}
-			errUnma := proto.Unmarshal(raft_metadata_bytes, raft_metadata2)
-			Expect(errUnma).NotTo(HaveOccurred())
+			raftMetadata := prepareRaftMetadata(network)
 
 			brokerGroup := network.BrokerGroupRunner()
 			brokerProc = ifrit.Invoke(brokerGroup)
@@ -321,7 +300,7 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
 			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", raft_metadata_bytes, protosorderer.ConsensusType_MIG_STATE_CONTEXT, migrationContext,
+			updateConfigWithConsensusType("etcdraft", raftMetadata, protosorderer.ConsensusType_MIG_STATE_CONTEXT, migrationContext,
 				updatedConfig, consensusTypeValue)
 			nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
 
@@ -331,14 +310,14 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
 			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", raft_metadata_bytes, protosorderer.ConsensusType_MIG_STATE_COMMIT, migrationContext,
+			updateConfigWithConsensusType("etcdraft", raftMetadata, protosorderer.ConsensusType_MIG_STATE_COMMIT, migrationContext,
 				updatedConfig, consensusTypeValue)
 			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
 			By("Step 3, Verify: system channel config changed")
-			num := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(num).To(Equal(migrationContext + 1))
-			num1 := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel)
+			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysBlockNum).To(Equal(migrationContext + 1))
+			chan1BlocNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel)
 
 			//=== Step 4: kill ===
 			By("Step 4: killing orderer1")
@@ -352,15 +331,17 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			ordererProc = ifrit.Invoke(ordererRunner)
 			Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-			waitForBlockReception(orderer, peer, network, syschannel, int(num))
-			waitForBlockReception(orderer, peer, network, channel, int(num1))
+			waitForBlockReception(orderer, peer, network, syschannel, int(sysBlockNum))
+			waitForBlockReception(orderer, peer, network, channel, int(chan1BlocNum))
+
+			Eventually(ordererRunner.Err(), time.Minute, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
 
 			By("Step 5, Verify: executing config transaction on system channel with restarted orderer")
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
 			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", raft_metadata_bytes, protosorderer.ConsensusType_MIG_STATE_NONE, 0,
+			updateConfigWithConsensusType("etcdraft", raftMetadata, protosorderer.ConsensusType_MIG_STATE_NONE, 0,
 				updatedConfig, consensusTypeValue)
 			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
@@ -369,7 +350,7 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
 			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", raft_metadata_bytes, protosorderer.ConsensusType_MIG_STATE_NONE, 0,
+			updateConfigWithConsensusType("etcdraft", raftMetadata, protosorderer.ConsensusType_MIG_STATE_NONE, 0,
 				updatedConfig, consensusTypeValue)
 			nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
 
@@ -380,9 +361,160 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			channel2 := "testchannel2"
 			network.CreateAndJoinChannel(orderer, channel2)
 			nwo.InstantiateChaincode(network, channel2, orderer, chaincode, peer, network.PeersWithChannel(channel2)...)
-			RunExpectQueryRetry(network, orderer, peer, channel2, 100)
+			RunExpectQueryRetry(network, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 90)
+		})
+
+		// This test executes the "green path" migration config updates on Kafka based system
+		// with a three orderers, a system channel and two standard channels.
+		// It then restarts the orderers onto a Raft-based system, and verifies that the
+		// newly restarted orderers perform as expected.
+		It("executes bootstrap to raft - multi node", func() {
+			network = nwo.New(kafka2RaftMultiNode(), testDir, client, StartPort(), components)
+
+			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+			peer := network.Peer("Org1", "peer1")
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+			//In migration orderers manipulate the GenesisFile, so each orderer must have a separate copy
+			separateBootstrap(network)
+
+			brokerGroup := network.BrokerGroupRunner()
+			brokerProc = ifrit.Invoke(brokerGroup)
+			Eventually(brokerProc.Ready()).Should(BeClosed())
+
+			o1Runner := network.OrdererRunner(o1)
+			o2Runner := network.OrdererRunner(o2)
+			o3Runner := network.OrdererRunner(o3)
+
+			peerGroup := network.PeerGroupRunner()
+
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
+
+			Eventually(o1Proc.Ready()).Should(BeClosed())
+			Eventually(o2Proc.Ready()).Should(BeClosed())
+			Eventually(o3Proc.Ready()).Should(BeClosed())
+
+			peerProc = ifrit.Invoke(peerGroup)
+			Eventually(peerProc.Ready()).Should(BeClosed())
+
+			raftMetadata := prepareRaftMetadata(network)
+
+			syschannel := network.SystemChannel.Name
+
+			By("Step 0: create & join first channel, deploy and invoke chaincode")
+			channel1 := "testchannel1"
+			network.CreateAndJoinChannel(o1, channel1)
+			nwo.DeployChaincode(network, channel1, o1, chaincode)
+			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 100)
+			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 90)
+
+			//=== Step 1: Config update on system channel, START ===
+			By("Step 1: Config update on system channel, MigrationState=START")
+			config := nwo.GetConfig(network, peer, o1, syschannel)
+			updatedConfig, consensusTypeValue, err := extractOrdererConsensusType(config)
+			Expect(err).NotTo(HaveOccurred())
+			//Change ConsensusType value
+			updateConfigWithConsensusType("kafka", []byte{}, protosorderer.ConsensusType_MIG_STATE_START, 0,
+				updatedConfig, consensusTypeValue)
+			nwo.UpdateOrdererConfig(network, o1, syschannel, config, updatedConfig, peer, o1)
+
+			By("Step 1, Verify: system channel config changed, get context")
+			migrationContext := nwo.CurrentConfigBlockNumber(network, peer, o1, syschannel)
+			Expect(migrationContext).ToNot(Equal(0))
+
+			//=== Step 2: Config update on standard channel, CONTEXT ===
+			By("Step 2: Config update on standard channel, MigrationState=CONTEXT")
+			config = nwo.GetConfig(network, peer, o1, channel1)
+			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
+			Expect(err).NotTo(HaveOccurred())
+			//Change ConsensusType value
+			updateConfigWithConsensusType("etcdraft", raftMetadata, protosorderer.ConsensusType_MIG_STATE_CONTEXT, migrationContext,
+				updatedConfig, consensusTypeValue)
+			nwo.UpdateOrdererConfig(network, o1, channel1, config, updatedConfig, peer, o1)
+
+			//=== Step 3: config update on system channel, COMMIT ===
+			By("Step 3: config update on system channel, MigrationState=COMMIT")
+			config = nwo.GetConfig(network, peer, o1, syschannel)
+			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
+			Expect(err).NotTo(HaveOccurred())
+			//Change ConsensusType value
+			updateConfigWithConsensusType("etcdraft", raftMetadata, protosorderer.ConsensusType_MIG_STATE_COMMIT, migrationContext,
+				updatedConfig, consensusTypeValue)
+			nwo.UpdateOrdererConfig(network, o1, syschannel, config, updatedConfig, peer, o1)
+
+			By("Step 3, Verify: system channel config changed")
+			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, o1, syschannel)
+			Expect(sysBlockNum).To(Equal(migrationContext + 1))
+			chan1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, o1, channel1)
+
+			//=== Step 4: kill ===
+			By("Step 4: killing orderer1,2,3")
+			for _, oProc := range []ifrit.Process{o1Proc, o2Proc, o3Proc} {
+				if oProc != nil {
+					oProc.Signal(syscall.SIGKILL)
+					Eventually(oProc.Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
+				}
+			}
+
+			//=== Step 5: restart ===
+			By("Step 5: restarting orderer1,2,3")
+			network.Consensus.Type = "etcdraft"
+			o1Runner = network.OrdererRunner(o1)
+			o2Runner = network.OrdererRunner(o2)
+			o3Runner = network.OrdererRunner(o3)
+
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
+
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			waitForBlockReception(o1, peer, network, syschannel, int(sysBlockNum))
+			waitForBlockReception(o1, peer, network, channel1, int(chan1BlockNum))
+			waitForBlockReception(o2, peer, network, syschannel, int(sysBlockNum))
+			waitForBlockReception(o2, peer, network, channel1, int(chan1BlockNum))
+			waitForBlockReception(o3, peer, network, syschannel, int(sysBlockNum))
+			waitForBlockReception(o3, peer, network, channel1, int(chan1BlockNum))
+
+			Eventually(o1Runner.Err(), time.Minute, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+			Eventually(o2Runner.Err(), time.Minute, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+			Eventually(o3Runner.Err(), time.Minute, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+
+			By("Step 5, Verify: executing config transaction on system channel with restarted orderer")
+			config = nwo.GetConfig(network, peer, o1, syschannel)
+			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
+			Expect(err).NotTo(HaveOccurred())
+			//Change ConsensusType value
+			updateConfigWithConsensusType("etcdraft", raftMetadata, protosorderer.ConsensusType_MIG_STATE_NONE, 0,
+				updatedConfig, consensusTypeValue)
+			nwo.UpdateOrdererConfig(network, o1, syschannel, config, updatedConfig, peer, o1)
+
+			By("Step 5, Verify: executing config transaction on standard channel with restarted orderer")
+			config = nwo.GetConfig(network, peer, o1, channel1)
+			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
+			Expect(err).NotTo(HaveOccurred())
+			//Change ConsensusType value
+			updateConfigWithConsensusType("etcdraft", raftMetadata, protosorderer.ConsensusType_MIG_STATE_NONE, 0,
+				updatedConfig, consensusTypeValue)
+			nwo.UpdateOrdererConfig(network, o1, channel1, config, updatedConfig, peer, o1)
+
+			By("Step 5, Verify: executing transaction on standard channel with restarted orderer")
+			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 80)
+
+			By("Step 5, Verify: create new channel, executing transaction with restarted orderer")
+			channel2 := "testchannel2"
+			network.CreateAndJoinChannel(o1, channel2)
+			nwo.InstantiateChaincode(network, channel2, o1, chaincode, peer, network.PeersWithChannel(channel2)...)
+			RunExpectQueryRetry(network, peer, channel2, 100)
+			RunExpectQueryInvokeQuery(network, o1, peer, channel2, 100)
+			RunExpectQueryInvokeQuery(network, o1, peer, channel2, 90)
 		})
 	})
 })
@@ -425,7 +557,7 @@ func RunExpectQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.P
 	Expect(sess).To(gbytes.Say(fmt.Sprint(expect - 10)))
 }
 
-func RunExpectQueryRetry(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string, expect int) {
+func RunExpectQueryRetry(n *nwo.Network, peer *nwo.Peer, channel string, expect int) {
 	By("querying the chaincode with retry")
 
 	Eventually(func() string {
@@ -518,4 +650,90 @@ func kafka2RaftMultiChannel() *nwo.Config {
 		}
 	}
 	return config
+}
+
+func kafka2RaftMultiNode() *nwo.Config {
+	config := nwo.BasicKafka()
+	config.Orderers = []*nwo.Orderer{
+		{Name: "orderer1", Organization: "OrdererOrg"},
+		{Name: "orderer2", Organization: "OrdererOrg"},
+		{Name: "orderer3", Organization: "OrdererOrg"},
+	}
+
+	config.Profiles = []*nwo.Profile{{
+		Name:     "TwoOrgsOrdererGenesis",
+		Orderers: []string{"orderer1", "orderer2", "orderer3"},
+	}, {
+		Name:          "TwoOrgsChannel",
+		Consortium:    "SampleConsortium",
+		Organizations: []string{"Org1", "Org2"},
+	}}
+
+	config.Channels = []*nwo.Channel{
+		{Name: "testchannel1", Profile: "TwoOrgsChannel"},
+		{Name: "testchannel2", Profile: "TwoOrgsChannel"},
+		{Name: "testchannel3", Profile: "TwoOrgsChannel"},
+	}
+
+	for _, peer := range config.Peers {
+		peer.Channels = []*nwo.PeerChannel{
+			{Name: "testchannel1", Anchor: true},
+			{Name: "testchannel2", Anchor: true},
+			{Name: "testchannel3", Anchor: true},
+		}
+	}
+	return config
+}
+
+func prepareRaftMetadata(network *nwo.Network) []byte {
+	var consenters []*protosraft.Consenter
+	for _, o := range network.Orderers {
+		fullTlsPath := network.OrdererLocalTLSDir(o)
+		certBytes, err := ioutil.ReadFile(filepath.Join(fullTlsPath, "server.crt"))
+		Expect(err).NotTo(HaveOccurred())
+		port := network.OrdererPort(o, nwo.ListenPort)
+
+		consenter := &protosraft.Consenter{
+			ClientTlsCert: certBytes,
+			ServerTlsCert: certBytes,
+			Host:          "127.0.0.1",
+			Port:          uint32(port),
+		}
+		consenters = append(consenters, consenter)
+	}
+
+	raftMetadata := &protosraft.Metadata{
+		Consenters: consenters,
+		Options: &protosraft.Options{
+			TickInterval:     "500ms",
+			ElectionTick:     10,
+			HeartbeatTick:    1,
+			MaxInflightMsgs:  256,
+			MaxSizePerMsg:    1048576,
+			SnapshotInterval: 8388608,
+		}}
+
+	raftMetadataBytes := protoutil.MarshalOrPanic(raftMetadata)
+	raftMetadata2 := &protosraft.Metadata{}
+	errUnma := proto.Unmarshal(raftMetadataBytes, raftMetadata2)
+	Expect(errUnma).NotTo(HaveOccurred())
+
+	return raftMetadataBytes
+}
+
+// separateBootstrap distributes the GenesisFile to the orderer(s) config dir, so that every orderer has its own copy
+// of the GenesisFile. It also changes the orderer's config to point to the new location.
+func separateBootstrap(network *nwo.Network) {
+	from := filepath.Join(network.RootDir, "systemchannel_block.pb")
+	input, errR := ioutil.ReadFile(from)
+	Expect(errR).NotTo(HaveOccurred())
+
+	for _, o := range network.Orderers {
+		to := filepath.Join(network.OrdererDir(o), "systemchannel_block.pb")
+		errW := ioutil.WriteFile(to, input, 0644)
+		Expect(errW).NotTo(HaveOccurred())
+		oConf := network.ReadOrdererConfig(o)
+		oConf.General.GenesisFile = to
+		network.WriteOrdererConfig(o, oConf)
+	}
 }
