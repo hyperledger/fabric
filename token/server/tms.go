@@ -16,9 +16,8 @@ type Issuer interface {
 	// RequestIssue creates an issue request transaction.
 	RequestIssue(tokensToIssue []*token.Token) (*token.TokenTransaction, error)
 
-	// RequestExpectation allows indirect import based on the expectation.
-	// It creates a token transaction with the outputs as specified in the expectation.
-	RequestExpectation(request *token.ExpectationRequest) (*token.TokenTransaction, error)
+	// RequestTokenOperation returns a token transaction matching the requested issue operation
+	RequestTokenOperation(op *token.TokenOperation) (*token.TokenTransaction, error)
 }
 
 //go:generate counterfeiter -o mock/transactor.go -fake-name Transactor . Transactor
@@ -39,9 +38,8 @@ type Transactor interface {
 	// ListTokens returns a slice of unspent tokens owned by this transactor
 	ListTokens() (*token.UnspentTokens, error)
 
-	// RequestExpectation allows indirect transfer based on the expectation.
-	// It creates a token transaction with the outputs as specified in the expectation.
-	RequestExpectation(request *token.ExpectationRequest) (*token.TokenTransaction, error)
+	// RequestTokenOperation returns a token transaction matching the requested transfer operation
+	RequestTokenOperation(tokenIDs []*token.TokenId, op *token.TokenOperation) (*token.TokenTransaction, int, error)
 
 	// Done releases any resources held by this transactor
 	Done()

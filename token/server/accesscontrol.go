@@ -67,37 +67,45 @@ func (ac *PolicyBasedAccessControl) Check(sc *token.SignedCommand, c *token.Comm
 			c.Header.ChannelId,
 			signedData,
 		)
-
-	case *token.Command_ExpectationRequest:
-		if c.GetExpectationRequest().GetExpectation() == nil {
-			return errors.New("ExpectationRequest has nil Expectation")
+	case *token.Command_TokenOperationRequest:
+		request := c.GetTokenOperationRequest()
+		if request == nil {
+			return errors.New("command has no token operation request")
 		}
-		plainExpectation := c.GetExpectationRequest().GetExpectation().GetPlainExpectation()
-		if plainExpectation == nil {
-			return errors.New("ExpectationRequest has nil PlainExpectation")
-		}
-		return ac.checkExpectation(plainExpectation, signedData, c)
+		return ac.checkTokenOperationRequest(request.Operations, signedData, c)
 	default:
 		return errors.Errorf("command type not recognized: %T", t)
 	}
 }
 
-// checkExpectation checks either issue policy or transfer policy depending on the payload type in expectation
-func (ac *PolicyBasedAccessControl) checkExpectation(plainExpectation *token.PlainExpectation, signedData []*protoutil.SignedData, c *token.Command) error {
-	switch t := plainExpectation.GetPayload().(type) {
-	case *token.PlainExpectation_ImportExpectation:
-		return ac.ACLProvider.CheckACL(
-			ac.ACLResources.IssueTokens,
-			c.Header.ChannelId,
-			signedData,
-		)
-	case *token.PlainExpectation_TransferExpectation:
-		return ac.ACLProvider.CheckACL(
-			ac.ACLResources.TransferTokens,
-			c.Header.ChannelId,
-			signedData,
-		)
-	default:
-		return errors.Errorf("expectation payload type not recognized: %T", t)
+// checkTokenOperationRequest checks either issue policy or transfer policy depending on the payload type of the token operation
+func (ac *PolicyBasedAccessControl) checkTokenOperationRequest(ops []*token.TokenOperation, signedData []*protoutil.SignedData, c *token.Command) error {
+	if len(ops) == 0 {
+		return errors.New("TokenOperationRequest has no operations")
 	}
+	for _, op := range ops {
+		if op.GetAction() == nil {
+			return errors.New("no action in request")
+		}
+		if op.GetAction().GetPayload() == nil {
+			return errors.New("no payload in action")
+		}
+		switch t := op.GetAction().GetPayload().(type) {
+		case *token.TokenOperationAction_Issue:
+			return ac.ACLProvider.CheckACL(
+				ac.ACLResources.IssueTokens,
+				c.Header.ChannelId,
+				signedData,
+			)
+		case *token.TokenOperationAction_Transfer:
+			return ac.ACLProvider.CheckACL(
+				ac.ACLResources.TransferTokens,
+				c.Header.ChannelId,
+				signedData,
+			)
+		default:
+			return errors.Errorf("operation payload type not recognized: %T", t)
+		}
+	}
+	return nil
 }

@@ -57,10 +57,10 @@ var _ = Describe("Prover", func() {
 		unspentTokens    *token.UnspentTokens
 		transactorTokens []*token.UnspentToken
 
-		importExpectationRequest     *token.ExpectationRequest
+		importExpectationRequest     *token.TokenOperationRequest
 		importExpectationTransaction *token.TokenTransaction
 
-		transferExpectationRequest     *token.ExpectationRequest
+		transferExpectationRequest     *token.TokenOperationRequest
 		transferExpectationTransaction *token.TokenTransaction
 	)
 
@@ -195,13 +195,14 @@ var _ = Describe("Prover", func() {
 			Credential: []byte("credential"),
 		}
 
-		importExpectationRequest = &token.ExpectationRequest{
+		importExpectationRequest = &token.TokenOperationRequest{
 			Credential: []byte("credential"),
-			Expectation: &token.TokenExpectation{
-				Expectation: &token.TokenExpectation_PlainExpectation{
-					PlainExpectation: &token.PlainExpectation{
-						Payload: &token.PlainExpectation_ImportExpectation{
-							ImportExpectation: &token.PlainTokenExpectation{
+			Operations: []*token.TokenOperation{{
+				Operation: &token.TokenOperation_Action{
+					Action: &token.TokenOperationAction{
+						Payload: &token.TokenOperationAction_Issue{
+							Issue: &token.TokenActionTerms{
+								Sender: &token.TokenOwner{Raw: []byte("credential")},
 								Outputs: []*token.Token{{
 									Owner:    &token.TokenOwner{Raw: []byte("recipient")},
 									Type:     "XYZ",
@@ -212,16 +213,18 @@ var _ = Describe("Prover", func() {
 					},
 				},
 			},
+			},
 		}
 
-		transferExpectationRequest = &token.ExpectationRequest{
+		transferExpectationRequest = &token.TokenOperationRequest{
 			Credential: []byte("credential"),
-			TokenIds:   []*token.TokenId{},
-			Expectation: &token.TokenExpectation{
-				Expectation: &token.TokenExpectation_PlainExpectation{
-					PlainExpectation: &token.PlainExpectation{
-						Payload: &token.PlainExpectation_TransferExpectation{
-							TransferExpectation: &token.PlainTokenExpectation{
+			TokenIds:   []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
+			Operations: []*token.TokenOperation{{
+				Operation: &token.TokenOperation_Action{
+					Action: &token.TokenOperationAction{
+						Payload: &token.TokenOperationAction_Transfer{
+							Transfer: &token.TokenActionTerms{
+								Sender: &token.TokenOwner{Raw: []byte("credential")},
 								Outputs: []*token.Token{{
 									Owner:    &token.TokenOwner{Raw: []byte("token-owner")},
 									Type:     "PDQ",
@@ -232,12 +235,13 @@ var _ = Describe("Prover", func() {
 					},
 				},
 			},
+			},
 		}
 
 		importExpectationTransaction = tokenTransaction
 		transferExpectationTransaction = trTokenTransaction
-		fakeIssuer.RequestExpectationReturns(tokenTransaction, nil)
-		fakeTransactor.RequestExpectationReturns(trTokenTransaction, nil)
+		fakeIssuer.RequestTokenOperationReturns(tokenTransaction, nil)
+		fakeTransactor.RequestTokenOperationReturns(trTokenTransaction, 1, nil)
 	})
 
 	Describe("ProcessCommand", func() {
@@ -697,13 +701,12 @@ var _ = Describe("Prover", func() {
 		})
 	})
 
-	Describe("RequestExpectation import", func() {
+	Describe("RequestTokenOperation import", func() {
 		It("gets an issuer", func() {
-			_, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
+			_, err := prover.RequestTokenOperations(context.Background(), command.Header, importExpectationRequest)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeTMSManager.GetIssuerCallCount()).To(Equal(1))
-			Expect(fakeTMSManager.GetTransactorCallCount()).To(Equal(0))
 			channel, cred, creator := fakeTMSManager.GetIssuerArgsForCall(0)
 			Expect(channel).To(Equal("channel-id"))
 			Expect(cred).To(Equal([]byte("credential")))
@@ -711,15 +714,17 @@ var _ = Describe("Prover", func() {
 		})
 
 		It("uses the issuer to request an import", func() {
-			resp, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
+			resp, err := prover.RequestTokenOperations(context.Background(), command.Header, importExpectationRequest)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(&token.CommandResponse_TokenTransaction{
-				TokenTransaction: importExpectationTransaction,
+			Expect(resp).To(Equal(&token.CommandResponse_TokenTransactions{
+				TokenTransactions: &token.TokenTransactions{
+					Txs: []*token.TokenTransaction{importExpectationTransaction},
+				},
 			}))
 
-			Expect(fakeIssuer.RequestExpectationCallCount()).To(Equal(1))
-			request := fakeIssuer.RequestExpectationArgsForCall(0)
-			Expect(request).To(Equal(importExpectationRequest))
+			Expect(fakeIssuer.RequestTokenOperationCallCount()).To(Equal(1))
+			request := fakeIssuer.RequestTokenOperationArgsForCall(0)
+			Expect(request).To(Equal(importExpectationRequest.Operations[0]))
 		})
 
 		Context("when the TMS manager fails to get an issuer", func() {
@@ -728,56 +733,55 @@ var _ = Describe("Prover", func() {
 			})
 
 			It("returns the error", func() {
-				_, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
+				_, err := prover.RequestTokenOperations(context.Background(), command.Header, importExpectationRequest)
 				Expect(err).To(MatchError("boing boing"))
 			})
 		})
 
 		Context("when the issuer fails to import", func() {
 			BeforeEach(func() {
-				fakeIssuer.RequestExpectationReturns(nil, errors.New("watermelon"))
+				fakeIssuer.RequestTokenOperationReturns(nil, errors.New("watermelon"))
 			})
 
 			It("returns the error", func() {
-				_, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
+				_, err := prover.RequestTokenOperations(context.Background(), command.Header, importExpectationRequest)
 				Expect(err).To(MatchError("watermelon"))
 			})
 		})
 
 		Context("when ExpectationRequest has nil Expectation", func() {
 			BeforeEach(func() {
-				importExpectationRequest = &token.ExpectationRequest{
+				importExpectationRequest = &token.TokenOperationRequest{
 					Credential: []byte("credential"),
 				}
 			})
 
 			It("returns the error", func() {
-				_, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
-				Expect(err).To(MatchError("no token expectation in ExpectationRequest"))
+				_, err := prover.RequestTokenOperations(context.Background(), command.Header, importExpectationRequest)
+				Expect(err).To(MatchError("no token operations requested"))
 			})
 		})
 
 		Context("when ExpectationRequest has nil PlainExpectation", func() {
 			BeforeEach(func() {
-				importExpectationRequest = &token.ExpectationRequest{
-					Credential:  []byte("credential"),
-					Expectation: &token.TokenExpectation{},
+				importExpectationRequest = &token.TokenOperationRequest{
+					Credential: []byte("credential"),
+					Operations: []*token.TokenOperation{},
 				}
 			})
 
 			It("returns the error", func() {
-				_, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
-				Expect(err).To(MatchError("no plain expectation in ExpectationRequest"))
+				_, err := prover.RequestTokenOperations(context.Background(), command.Header, importExpectationRequest)
+				Expect(err).To(MatchError("no token operations requested"))
 			})
 		})
 	})
 
-	Describe("RequestExpectation transfer", func() {
+	Describe("RequestTokenOperation transfer", func() {
 		It("gets a transactor", func() {
-			_, err := prover.RequestExpectation(context.Background(), command.Header, transferExpectationRequest)
+			_, err := prover.RequestTokenOperations(context.Background(), command.Header, transferExpectationRequest)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(fakeTMSManager.GetIssuerCallCount()).To(Equal(0))
 			Expect(fakeTMSManager.GetTransactorCallCount()).To(Equal(1))
 			channel, cred, creator := fakeTMSManager.GetTransactorArgsForCall(0)
 			Expect(channel).To(Equal("channel-id"))
@@ -785,16 +789,18 @@ var _ = Describe("Prover", func() {
 			Expect(creator).To(Equal([]byte("creator")))
 		})
 
-		It("uses the transactor to request a transfer expectation", func() {
-			resp, err := prover.RequestExpectation(context.Background(), command.Header, transferExpectationRequest)
+		It("uses the transactor to request a transfer operation request", func() {
+			resp, err := prover.RequestTokenOperations(context.Background(), command.Header, transferExpectationRequest)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(&token.CommandResponse_TokenTransaction{
-				TokenTransaction: transferExpectationTransaction,
+			Expect(resp).To(Equal(&token.CommandResponse_TokenTransactions{
+				TokenTransactions: &token.TokenTransactions{
+					Txs: []*token.TokenTransaction{transferExpectationTransaction},
+				},
 			}))
 
-			Expect(fakeTransactor.RequestExpectationCallCount()).To(Equal(1))
-			tr := fakeTransactor.RequestExpectationArgsForCall(0)
-			Expect(tr).To(Equal(transferExpectationRequest))
+			Expect(fakeTransactor.RequestTokenOperationCallCount()).To(Equal(1))
+			_, tr := fakeTransactor.RequestTokenOperationArgsForCall(0)
+			Expect(tr).To(Equal(transferExpectationRequest.Operations[0]))
 		})
 
 		Context("when the TMS manager fails to get a transactor", func() {
@@ -803,18 +809,18 @@ var _ = Describe("Prover", func() {
 			})
 
 			It("returns the error", func() {
-				_, err := prover.RequestExpectation(context.Background(), command.Header, transferExpectationRequest)
+				_, err := prover.RequestTokenOperations(context.Background(), command.Header, transferExpectationRequest)
 				Expect(err).To(MatchError("boing boing"))
 			})
 		})
 
 		Context("when the transactor fails to transfer", func() {
 			BeforeEach(func() {
-				fakeTransactor.RequestExpectationReturns(nil, errors.New("watermelon"))
+				fakeTransactor.RequestTokenOperationReturns(nil, 0, errors.New("watermelon"))
 			})
 
 			It("returns the error", func() {
-				_, err := prover.RequestExpectation(context.Background(), command.Header, transferExpectationRequest)
+				_, err := prover.RequestTokenOperations(context.Background(), command.Header, transferExpectationRequest)
 				Expect(err).To(MatchError("watermelon"))
 			})
 		})
@@ -1043,8 +1049,8 @@ var _ = Describe("Prover", func() {
 					Creator:   []byte("creator"),
 					Nonce:     []byte("nonce"),
 				},
-				Payload: &token.Command_ExpectationRequest{
-					ExpectationRequest: importExpectationRequest,
+				Payload: &token.Command_TokenOperationRequest{
+					TokenOperationRequest: importExpectationRequest,
 				},
 			}
 			marshaledCommand = ProtoMarshal(command)
@@ -1063,8 +1069,10 @@ var _ = Describe("Prover", func() {
 			Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
 			cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
 			Expect(cmd).To(Equal(marshaledCommand))
-			Expect(payload).To(Equal(&token.CommandResponse_TokenTransaction{
-				TokenTransaction: importExpectationTransaction,
+			Expect(payload).To(Equal(&token.CommandResponse_TokenTransactions{
+				TokenTransactions: &token.TokenTransactions{
+					Txs: []*token.TokenTransaction{importExpectationTransaction},
+				},
 			}))
 		})
 	})
@@ -1077,8 +1085,8 @@ var _ = Describe("Prover", func() {
 					Creator:   []byte("creator"),
 					Nonce:     []byte("nonce"),
 				},
-				Payload: &token.Command_ExpectationRequest{
-					ExpectationRequest: transferExpectationRequest,
+				Payload: &token.Command_TokenOperationRequest{
+					TokenOperationRequest: transferExpectationRequest,
 				},
 			}
 			marshaledCommand = ProtoMarshal(command)
@@ -1097,8 +1105,10 @@ var _ = Describe("Prover", func() {
 			Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
 			cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
 			Expect(cmd).To(Equal(marshaledCommand))
-			Expect(payload).To(Equal(&token.CommandResponse_TokenTransaction{
-				TokenTransaction: transferExpectationTransaction,
+			Expect(payload).To(Equal(&token.CommandResponse_TokenTransactions{
+				TokenTransactions: &token.TokenTransactions{
+					Txs: []*token.TokenTransaction{transferExpectationTransaction},
+				},
 			}))
 		})
 	})

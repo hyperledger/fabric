@@ -1,0 +1,41 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/protos/token";
+option java_package = "org.hyperledger.fabric.protos.token";
+
+package token;
+
+import "token/transaction.proto";
+
+// TokenOperation describes a token operation
+message TokenOperation {
+    oneof Operation {
+        // Action describes a class of token operation
+        TokenOperationAction Action = 1;
+    }
+}
+
+// TokenOperationAction lists the available operations
+message TokenOperationAction {
+    oneof Payload {
+        // Issue describes a token issue operation
+        TokenActionTerms Issue = 1;
+        // Transfer describes a token transfer operation
+        TokenActionTerms Transfer = 2;
+    }
+}
+
+// TokenActionTerms describes the expected sender and outputs of a token operation
+message TokenActionTerms {
+    // Sender is the party who should perform the operation
+    TokenOwner Sender = 1;
+    // Outputs contains the expected outputs
+    repeated Token Outputs = 2;
+}
+

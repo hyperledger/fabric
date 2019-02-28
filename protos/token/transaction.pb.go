@@ -35,7 +35,7 @@ func (x TokenOwner_Type) String() string {
 	return proto.EnumName(TokenOwner_Type_name, int32(x))
 }
 func (TokenOwner_Type) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_2992db9cb374f82c, []int{2, 0}
+	return fileDescriptor_transaction_f976d1453a3f05a8, []int{2, 0}
 }
 
 // TokenTransaction governs the structure of Payload.data, when
@@ -56,7 +56,7 @@ func (m *TokenTransaction) Reset()         { *m = TokenTransaction{} }
 func (m *TokenTransaction) String() string { return proto.CompactTextString(m) }
 func (*TokenTransaction) ProtoMessage()    {}
 func (*TokenTransaction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_2992db9cb374f82c, []int{0}
+	return fileDescriptor_transaction_f976d1453a3f05a8, []int{0}
 }
 func (m *TokenTransaction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TokenTransaction.Unmarshal(m, b)
@@ -173,7 +173,7 @@ func (m *TokenAction) Reset()         { *m = TokenAction{} }
 func (m *TokenAction) String() string { return proto.CompactTextString(m) }
 func (*TokenAction) ProtoMessage()    {}
 func (*TokenAction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_2992db9cb374f82c, []int{1}
+	return fileDescriptor_transaction_f976d1453a3f05a8, []int{1}
 }
 func (m *TokenAction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TokenAction.Unmarshal(m, b)
@@ -351,7 +351,7 @@ func (m *TokenOwner) Reset()         { *m = TokenOwner{} }
 func (m *TokenOwner) String() string { return proto.CompactTextString(m) }
 func (*TokenOwner) ProtoMessage()    {}
 func (*TokenOwner) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_2992db9cb374f82c, []int{2}
+	return fileDescriptor_transaction_f976d1453a3f05a8, []int{2}
 }
 func (m *TokenOwner) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TokenOwner.Unmarshal(m, b)
@@ -398,7 +398,7 @@ func (m *Issue) Reset()         { *m = Issue{} }
 func (m *Issue) String() string { return proto.CompactTextString(m) }
 func (*Issue) ProtoMessage()    {}
 func (*Issue) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_2992db9cb374f82c, []int{3}
+	return fileDescriptor_transaction_f976d1453a3f05a8, []int{3}
 }
 func (m *Issue) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Issue.Unmarshal(m, b)
@@ -440,7 +440,7 @@ func (m *Transfer) Reset()         { *m = Transfer{} }
 func (m *Transfer) String() string { return proto.CompactTextString(m) }
 func (*Transfer) ProtoMessage()    {}
 func (*Transfer) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_2992db9cb374f82c, []int{4}
+	return fileDescriptor_transaction_f976d1453a3f05a8, []int{4}
 }
 func (m *Transfer) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Transfer.Unmarshal(m, b)
@@ -492,7 +492,7 @@ func (m *Token) Reset()         { *m = Token{} }
 func (m *Token) String() string { return proto.CompactTextString(m) }
 func (*Token) ProtoMessage()    {}
 func (*Token) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_2992db9cb374f82c, []int{5}
+	return fileDescriptor_transaction_f976d1453a3f05a8, []int{5}
 }
 func (m *Token) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Token.Unmarshal(m, b)
@@ -549,7 +549,7 @@ func (m *TokenId) Reset()         { *m = TokenId{} }
 func (m *TokenId) String() string { return proto.CompactTextString(m) }
 func (*TokenId) ProtoMessage()    {}
 func (*TokenId) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_2992db9cb374f82c, []int{6}
+	return fileDescriptor_transaction_f976d1453a3f05a8, []int{6}
 }
 func (m *TokenId) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TokenId.Unmarshal(m, b)
@@ -595,10 +595,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("token/transaction.proto", fileDescriptor_transaction_2992db9cb374f82c)
+	proto.RegisterFile("token/transaction.proto", fileDescriptor_transaction_f976d1453a3f05a8)
 }
 
-var fileDescriptor_transaction_2992db9cb374f82c = []byte{
+var fileDescriptor_transaction_f976d1453a3f05a8 = []byte{
 	// 409 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x52, 0x5d, 0xaf, 0xd2, 0x40,
 	0x10, 0x6d, 0x2f, 0xb4, 0xb7, 0x77, 0x40, 0xc4, 0xd1, 0x68, 0x73, 0x9f, 0x6e, 0x1a, 0x83, 0x4a,

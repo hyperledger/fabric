@@ -12,7 +12,7 @@ option java_package = "org.hyperledger.fabric.protos.token";
 package token;
 
 import "google/protobuf/timestamp.proto";
-import "token/expectations.proto";
+import "token/operations.proto";
 import "token/transaction.proto";
 
 
@@ -37,6 +37,11 @@ message RecipientShare {
     // ``0x'' or ``0X'' selects base 16; the ``0'' prefix selects base 8, and a
     // ``0b'' or ``0B'' prefix selects base 2. Otherwise the selected base is 10.
     string quantity = 2;
+}
+
+// TokenTransactions is a container for token transactions
+message TokenTransactions {
+    repeated TokenTransaction txs = 1;
 }
 
 // TransferRequest is used to request token transfers
@@ -93,16 +98,19 @@ message ListRequest {
     bytes credential = 1;
 }
 
-// ExpectationRequest is used to request a token issue or transfer based on the token expectation
-message ExpectationRequest {
-    // Credential is the public credential of the requestor of the expectation
+// TokenOperationRequest is used to ask the prover peer to perform a specific
+// token operation using given token ids. In this way, the prover peer can assemble
+// token transactions as requested by a chaincode.
+message TokenOperationRequest {
+    // credential contains information for the party who is requesting the operation
     // The content of this field depends on the characteristic of token manager system
     bytes credential = 1;
 
-    // Expectation contains the expected outputs for token issue or transfer
-    TokenExpectation expectation = 2;
+    // operations contains the token operations to be performed
+    repeated TokenOperation operations = 2;
 
-    // TokenIds are the token identifiers used to fulfill the expectation
+    // TokenIds are the token identifiers used for the operation. It is empty,
+    // in the case of an issue. It must not be empty for operations like transfer or redeem.
     repeated TokenId token_ids = 3;
 }
 
@@ -140,7 +148,7 @@ message Command {
         TransferRequest transfer_request = 3;
         ListRequest list_request = 4;
         RedeemRequest redeem_request = 5;
-        ExpectationRequest expectation_request = 6;
+        TokenOperationRequest token_operation_request = 6;
     }
 }
 
@@ -187,6 +195,7 @@ message CommandResponse {
         Error err = 2;
         TokenTransaction token_transaction = 3;
         UnspentTokens unspent_tokens = 4;
+        TokenTransactions token_transactions = 5;
     }
 }
 

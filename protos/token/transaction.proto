@@ -39,6 +39,7 @@ package token;
 //  Envelope
 //  |\_ Signature                                    (signature on the Payload message including
 //  |                                                 the transaction by the creator
+
 //  |                                                 specified in the Payload.header)
 //   \_ Payload
 //      |\_ Header (1)                               (the header of the proposal that requested
