@@ -43,3 +43,13 @@ var _ = SynchronizedAfterSuite(func() {
 func ToHex(q uint64) string {
 	return "0x" + strconv.FormatUint(q, 16)
 }
+
+func BasicSoloV20() *nwo.Config {
+	basicSolo := nwo.BasicSolo()
+	for _, profile := range basicSolo.Profiles {
+		if profile.Consortium != "" {
+			profile.AppCapabilities = []string{"V2_0"}
+		}
+	}
+	return basicSolo
+}
