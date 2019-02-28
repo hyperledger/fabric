@@ -70,6 +70,7 @@ func TestApplicationV20(t *testing.T) {
 	assert.True(t, ap.CollectionUpgrade())
 	assert.True(t, ap.PrivateChannelData())
 	assert.True(t, ap.LifecycleV20())
+	assert.True(t, ap.FabToken())
 }
 
 func TestApplicationPvtDataExperimental(t *testing.T) {
@@ -77,13 +78,6 @@ func TestApplicationPvtDataExperimental(t *testing.T) {
 		ApplicationPvtDataExperimental: {},
 	})
 	assert.True(t, ap.PrivateChannelData())
-}
-
-func TestFabTokenExperimental(t *testing.T) {
-	ap := NewApplicationProvider(map[string]*cb.Capability{
-		ApplicationFabTokenExperimental: {},
-	})
-	assert.True(t, ap.FabToken())
 }
 
 func TestHasCapability(t *testing.T) {

@@ -117,8 +117,12 @@ Profiles:{{ range .Profiles }}
     Consortium: {{ .Consortium }}
     Application:
       Capabilities:
+      {{- if .AppCapabilities }}{{ range .AppCapabilities }}
+        {{ . }}: true
+        {{- end }}
+      {{- else }}
         V1_3: true
-        CAPABILITY_PLACEHOLDER: false
+      {{- end }}
       Organizations:{{ range .Organizations }}
       - *{{ ($w.Organization .).MSPID }}
       {{- end}}

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package token
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -139,12 +138,8 @@ var _ bool = Describe("Token EndToEnd", func() {
 	Describe("basic solo network for token transaction e2e using Token CLI", func() {
 		BeforeEach(func() {
 			var err error
-			network = nwo.New(nwo.BasicSolo(), testDir, client, 30000, components)
+			network = nwo.New(nwo.BasicSoloV20(), testDir, client, 30000, components)
 			network.GenerateConfigTree()
-
-			// update configtx with fabtoken capability
-			err = updateConfigtx(network)
-			Expect(err).NotTo(HaveOccurred())
 
 			network.Bootstrap()
 
@@ -229,12 +224,8 @@ var _ bool = Describe("Token EndToEnd", func() {
 
 		BeforeEach(func() {
 			var err error
-			network = nwo.New(nwo.BasicSolo(), testDir, client, 30000, components)
+			network = nwo.New(nwo.BasicSoloV20(), testDir, client, 30000, components)
 			network.GenerateConfigTree()
-
-			// update configtx with fabtoken capability
-			err = updateConfigtx(network)
-			Expect(err).NotTo(HaveOccurred())
 
 			network.Bootstrap()
 
@@ -337,12 +328,8 @@ var _ bool = Describe("Token EndToEnd", func() {
 
 		BeforeEach(func() {
 			var err error
-			network = nwo.New(nwo.BasicSolo(), testDir, client, 30000, components)
+			network = nwo.New(nwo.BasicSoloV20(), testDir, client, 30000, components)
 			network.GenerateConfigTree()
-
-			// update configtx with fabtoken capability
-			err = updateConfigtx(network)
-			Expect(err).NotTo(HaveOccurred())
 
 			network.Bootstrap()
 
@@ -824,19 +811,6 @@ func getSigningIdentity(mspConfigPath, mspID, mspType string) (tk.SigningIdentit
 	}
 
 	return signingIdentity, nil
-}
-
-// update configtx.yaml with V1_4_FABTOKEN_EXPERIMENTAL: true
-func updateConfigtx(network *nwo.Network) error {
-	filepath := network.ConfigTxConfigPath()
-	input, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		return err
-	}
-
-	// update the CAPABILITY_PLACEHOLDER to enable fabtoken capability
-	output := bytes.Replace(input, []byte("CAPABILITY_PLACEHOLDER: false"), []byte("V1_4_FABTOKEN_EXPERIMENTAL: true"), -1)
-	return ioutil.WriteFile(filepath, output, 0644)
 }
 
 // LoadLocalMSPAt loads an MSP whose configuration is stored at 'dir', and whose
