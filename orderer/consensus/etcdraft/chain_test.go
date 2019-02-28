@@ -45,8 +45,14 @@ import (
 const (
 	interval            = time.Second
 	LongEventualTimeout = 10 * time.Second
-	ELECTION_TICK       = 2
-	HEARTBEAT_TICK      = 1
+
+	// 10 is the default setting of ELECTION_TICK.
+	// We used to have a small number here (2) to reduce the time for test - we don't
+	// need to tick node 10 times to trigger election - however, we are using another
+	// mechanism to trigger it now which does not depend on time: send an artificial
+	// MsgTimeoutNow to node.
+	ELECTION_TICK  = 10
+	HEARTBEAT_TICK = 1
 )
 
 func init() {
@@ -157,16 +163,11 @@ var _ = Describe("Chain", func() {
 			}
 		})
 
-		campaign := func(clock *fakeclock.FakeClock, observeC <-chan raft.SoftState) {
-			Eventually(func() bool {
-				clock.Increment(interval)
-				select {
-				case s := <-observeC:
-					return s.RaftState == raft.StateLeader
-				default:
-					return false
-				}
-			}, LongEventualTimeout).Should(BeTrue())
+		campaign := func(c *etcdraft.Chain, observeC <-chan raft.SoftState) {
+			Eventually(func() <-chan raft.SoftState {
+				c.Consensus(&orderer.ConsensusRequest{Payload: utils.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow})}, 0)
+				return observeC
+			}, LongEventualTimeout).Should(Receive(StateEqual(1, raft.StateLeader)))
 		}
 
 		JustBeforeEach(func() {
@@ -243,7 +244,7 @@ var _ = Describe("Chain", func() {
 
 		Context("when Raft leader is elected", func() {
 			JustBeforeEach(func() {
-				campaign(clock, observeC)
+				campaign(chain, observeC)
 			})
 
 			It("updates metrics upon leader election)", func() {
@@ -739,7 +740,7 @@ var _ = Describe("Chain", func() {
 						Expect(m.RaftIndex).To(Equal(m2.RaftIndex))
 
 						// chain should keep functioning
-						campaign(c.clock, c.observe)
+						campaign(c.Chain, c.observe)
 
 						c.cutter.CutNext = true
 
@@ -764,7 +765,7 @@ var _ = Describe("Chain", func() {
 						Expect(m.RaftIndex).To(Equal(m2.RaftIndex))
 
 						// chain should keep functioning
-						campaign(c.clock, c.observe)
+						campaign(c.Chain, c.observe)
 
 						c.cutter.CutNext = true
 
@@ -783,7 +784,7 @@ var _ = Describe("Chain", func() {
 						Consistently(c.support.WriteBlockCallCount).Should(Equal(0))
 
 						// chain should keep functioning
-						campaign(c.clock, c.observe)
+						campaign(c.Chain, c.observe)
 
 						c.cutter.CutNext = true
 
@@ -3119,8 +3120,13 @@ func (n *network) join(id uint64, expectLeaderChange bool) {
 		return step(dest, msg)
 	})
 
-	leader.clock.Increment(interval)
-	Eventually(signal, LongEventualTimeout).Should(BeClosed())
+	// Tick leader so it sends out a heartbeat to new node.
+	// One tick _may_ not be enough because leader might be busy
+	// and this tick is droppped on the floor.
+	Eventually(func() <-chan struct{} {
+		leader.clock.Increment(interval)
+		return signal
+	}, LongEventualTimeout, 100*time.Millisecond).Should(BeClosed())
 
 	leader.setStepFunc(step)
 
