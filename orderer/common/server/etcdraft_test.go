@@ -69,9 +69,20 @@ func testEtcdRaftOSNSuccess(gt *GomegaWithT, tempDir, configtxgen, cwd, orderer,
 	// Launch the OSN
 	ordererProcess := launchOrderer(gt, orderer, tempDir, genesisBlockPath, fabricRootDir)
 	defer ordererProcess.Kill()
-	// General.Cluster.ReplicationMaxRetries is not specified in the orderer.yaml, so let's ensure
-	// it is really configured autonomously via the localconfig code.
+	// The following configuration parameters are not specified in the orderer.yaml, so let's ensure
+	// they are really configured autonomously via the localconfig code.
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("General.Cluster.DialTimeout = 5s"))
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("General.Cluster.RPCTimeout = 7s"))
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("General.Cluster.ReplicationBufferSize = 20971520"))
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("General.Cluster.ReplicationPullTimeout = 5s"))
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("General.Cluster.ReplicationRetryTimeout = 5s"))
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("General.Cluster.ReplicationBackgroundRefreshInterval = 5m0s"))
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("General.Cluster.ReplicationMaxRetries = 12"))
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("General.Cluster.SendBufferSize = 10"))
+
+	// Consensus.EvictionSuspicion is not specified in orderer.yaml, so let's ensure
+	// it is really configured autonomously via the etcdraft chain itself.
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("EvictionSuspicion not set, defaulting to 10m"))
 	// Wait until the the node starts up and elects itself as a single leader in a single node cluster.
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Starting cluster listener on 127.0.0.1:5612"))
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Beginning to serve requests"))
