@@ -37,7 +37,7 @@ application more readable, and less error prone.
 ## Usage
 
 We'll describe the [full set](#options) of connection options available to an
-application in a moment; let's first see see how they are specified by the
+application in a moment; let's first see how they are specified by the
 sample MagnetoCorp `issue` application:
 
 ```javascript
