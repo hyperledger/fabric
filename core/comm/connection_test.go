@@ -171,19 +171,12 @@ func TestCASupport(t *testing.T) {
 	cas.OrdererRootCAsByChain["channel1"] = [][]byte{rootCAs[3]}
 	cas.OrdererRootCAsByChain["channel2"] = [][]byte{rootCAs[4]}
 	cas.ServerRootCAs = [][]byte{rootCAs[5]}
-	cas.ClientRootCAs = [][]byte{rootCAs[5]}
 
 	appServerRoots, ordererServerRoots := cas.GetServerRootCAs()
 	t.Logf("%d appServerRoots | %d ordererServerRoots", len(appServerRoots),
 		len(ordererServerRoots))
 	assert.Equal(t, 4, len(appServerRoots), "Expected 4 app server root CAs")
 	assert.Equal(t, 2, len(ordererServerRoots), "Expected 2 orderer server root CAs")
-
-	appClientRoots, ordererClientRoots := cas.GetClientRootCAs()
-	t.Logf("%d appClientRoots | %d ordererClientRoots", len(appClientRoots),
-		len(ordererClientRoots))
-	assert.Equal(t, 4, len(appClientRoots), "Expected 4 app client root CAs")
-	assert.Equal(t, 2, len(ordererClientRoots), "Expected 4 orderer client root CAs")
 }
 
 func TestCredentialSupport(t *testing.T) {
@@ -211,19 +204,12 @@ func TestCredentialSupport(t *testing.T) {
 	cs.OrdererRootCAsByChain["channel1"] = [][]byte{rootCAs[3]}
 	cs.OrdererRootCAsByChain["channel2"] = [][]byte{rootCAs[4]}
 	cs.ServerRootCAs = [][]byte{rootCAs[5]}
-	cs.ClientRootCAs = [][]byte{rootCAs[5]}
 
 	appServerRoots, ordererServerRoots := cs.GetServerRootCAs()
 	t.Logf("%d appServerRoots | %d ordererServerRoots", len(appServerRoots),
 		len(ordererServerRoots))
 	assert.Equal(t, 4, len(appServerRoots), "Expected 4 app server root CAs")
 	assert.Equal(t, 2, len(ordererServerRoots), "Expected 2 orderer server root CAs")
-
-	appClientRoots, ordererClientRoots := cs.GetClientRootCAs()
-	t.Logf("%d appClientRoots | %d ordererClientRoots", len(appClientRoots),
-		len(ordererClientRoots))
-	assert.Equal(t, 4, len(appClientRoots), "Expected 4 app client root CAs")
-	assert.Equal(t, 2, len(ordererClientRoots), "Expected 4 orderer client root CAs")
 
 	creds, _ := cs.GetDeliverServiceCredentials("channel1")
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,

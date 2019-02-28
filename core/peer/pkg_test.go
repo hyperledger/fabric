@@ -313,11 +313,6 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 				// creating channel should update the trusted client roots
 				test.createChannel()
 
-				// make sure we have the expected number of CAs
-				appCAs, ordererCAs := comm.GetCredentialSupport().GetClientRootCAs()
-				assert.Equal(t, test.numAppCAs, len(appCAs), "Did not find expected number of app CAs for channel")
-				assert.Equal(t, test.numOrdererCAs, len(ordererCAs), "Did not find expected number of orderer CAs for channel")
-
 				// invoke the EmptyCall service with good options
 				_, err = invokeEmptyCall(testAddress, test.goodOptions)
 				assert.NoError(t, err, "Failed to invoke the EmptyCall service")
