@@ -322,7 +322,9 @@ Operations:
         # PrivateKey points to the location of the PEM-encoded key
         PrivateKey:
 
-        # Require client certificate authentication to access all resources
+        # Most operations service endpoints require client authentication when TLS
+        # is enabled. ClientAuthRequired requires client certificate authentication
+        # at the TLS layer to access all resources.
         ClientAuthRequired: false
 
         # Paths to PEM encoded ca certificates to trust for client authentication

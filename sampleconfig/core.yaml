@@ -630,7 +630,9 @@ operations:
         key:
             file:
 
-        # require client certificate authentication to access all resources
+        # most operations service endpoints require client authentication when TLS
+        # is enabled. clientAuthRequired requires client certificate authentication
+        # at the TLS layer to access all resources.
         clientAuthRequired: false
 
         # paths to PEM encoded ca certificates to trust for client authentication
