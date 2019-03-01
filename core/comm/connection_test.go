@@ -153,32 +153,6 @@ func loadRootCAs() [][]byte {
 	return rootCAs
 }
 
-func TestCASupport(t *testing.T) {
-	t.Parallel()
-	rootCAs := loadRootCAs()
-	t.Logf("loaded %d root certificates", len(rootCAs))
-	if len(rootCAs) != 6 {
-		t.Fatalf("failed to load root certificates")
-	}
-
-	cas := &CASupport{
-		AppRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
-	}
-	cas.AppRootCAsByChain["channel1"] = [][]byte{rootCAs[0]}
-	cas.AppRootCAsByChain["channel2"] = [][]byte{rootCAs[1]}
-	cas.AppRootCAsByChain["channel3"] = [][]byte{rootCAs[2]}
-	cas.OrdererRootCAsByChain["channel1"] = [][]byte{rootCAs[3]}
-	cas.OrdererRootCAsByChain["channel2"] = [][]byte{rootCAs[4]}
-	cas.ServerRootCAs = [][]byte{rootCAs[5]}
-
-	appServerRoots, ordererServerRoots := cas.GetServerRootCAs()
-	t.Logf("%d appServerRoots | %d ordererServerRoots", len(appServerRoots),
-		len(ordererServerRoots))
-	assert.Equal(t, 4, len(appServerRoots), "Expected 4 app server root CAs")
-	assert.Equal(t, 2, len(ordererServerRoots), "Expected 2 orderer server root CAs")
-}
-
 func TestCredentialSupport(t *testing.T) {
 	t.Parallel()
 	rootCAs := loadRootCAs()
@@ -205,18 +179,15 @@ func TestCredentialSupport(t *testing.T) {
 	cs.OrdererRootCAsByChain["channel2"] = [][]byte{rootCAs[4]}
 	cs.ServerRootCAs = [][]byte{rootCAs[5]}
 
-	appServerRoots, ordererServerRoots := cs.GetServerRootCAs()
-	t.Logf("%d appServerRoots | %d ordererServerRoots", len(appServerRoots),
-		len(ordererServerRoots))
-	assert.Equal(t, 4, len(appServerRoots), "Expected 4 app server root CAs")
-	assert.Equal(t, 2, len(ordererServerRoots), "Expected 2 orderer server root CAs")
-
 	creds, _ := cs.GetDeliverServiceCredentials("channel1")
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 	creds = cs.GetPeerCredentials()
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
+
+	_, err := cs.GetDeliverServiceCredentials("channel99")
+	assert.EqualError(t, err, "didn't find any root CA certs for channel channel99")
 
 	// append some bad certs and make sure things still work
 	cs.ServerRootCAs = append(cs.ServerRootCAs, []byte("badcert"))
