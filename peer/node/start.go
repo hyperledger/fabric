@@ -239,12 +239,16 @@ func serve(args []string) error {
 		logger.Info("Starting peer with TLS enabled")
 		// set up credential support
 		cs := comm.GetCredentialSupport()
-		cs.ServerRootCAs = serverConfig.SecOpts.ServerRootCAs
+		roots, err := peer.GetServerRootCAs()
+		if err != nil {
+			logger.Fatalf("Failed to set TLS server root CAs: %s", err)
+		}
+		cs.ServerRootCAs = roots
 
 		// set the cert to use if client auth is requested by remote endpoints
 		clientCert, err := peer.GetClientCertificate()
 		if err != nil {
-			logger.Fatalf("Failed to set TLS client certificate (%s)", err)
+			logger.Fatalf("Failed to set TLS client certificate: %s", err)
 		}
 		comm.GetCredentialSupport().SetClientCertificate(clientCert)
 	}

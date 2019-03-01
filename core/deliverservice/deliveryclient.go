@@ -44,6 +44,10 @@ func getReConnectBackoffThreshold() float64 {
 	return util.GetFloat64OrDefault("peer.deliveryclient.reConnectBackoffThreshold", defaultReConnectBackoffThreshold)
 }
 
+func staticRootsEnabled() bool {
+	return viper.GetBool("peer.deliveryclient.staticRootsEnabled")
+}
+
 // DeliverService used to communicate with orderers to obtain
 // new blocks and send them to the committer service
 type DeliverService interface {
@@ -251,7 +255,7 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
 
 		if viper.GetBool("peer.tls.enabled") {
-			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID)
+			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID, staticRootsEnabled())
 			if err != nil {
 				return nil, fmt.Errorf("failed obtaining credentials for channel %s: %v", channelID, err)
 			}
