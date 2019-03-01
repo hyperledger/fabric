@@ -16,6 +16,7 @@ import (
 	_ "net/http/pprof" // This is essentially the main package for the orderer
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -125,10 +126,10 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 
 	serverConfig := initializeServerConfig(conf, metricsProvider)
 	grpcServer := initializeGrpcServer(conf, serverConfig)
-	caSupport := &comm.CASupport{
-		AppRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
-		ClientRootCAs:         serverConfig.SecOpts.ClientRootCAs,
+	caMgr := &caManager{
+		appRootCAsByChain:     make(map[string][][]byte),
+		ordererRootCAsByChain: make(map[string][][]byte),
+		clientRootCAs:         serverConfig.SecOpts.ClientRootCAs,
 	}
 
 	clusterServerConfig := serverConfig
@@ -148,9 +149,12 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		// only need to do this if mutual TLS is required or if the orderer node is part of a cluster
 		if grpcServer.MutualTLSRequired() || clusterType {
 			logger.Debug("Executing callback to update root CAs")
-			updateTrustedRoots(caSupport, bundle, servers...)
+			caMgr.updateTrustedRoots(bundle, servers...)
 			if clusterType {
-				updateClusterDialer(caSupport, clusterDialer, clusterClientConfig.SecOpts.ServerRootCAs)
+				caMgr.updateClusterDialer(
+					clusterDialer,
+					clusterClientConfig.SecOpts.ServerRootCAs,
+				)
 			}
 		}
 	}
@@ -660,9 +664,20 @@ func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics
 	})
 }
 
-func updateTrustedRoots(rootCASupport *comm.CASupport, cm channelconfig.Resources, servers ...*comm.GRPCServer) {
-	rootCASupport.Lock()
-	defer rootCASupport.Unlock()
+// caMgr manages certificate authorities scoped by channel
+type caManager struct {
+	sync.Mutex
+	appRootCAsByChain     map[string][][]byte
+	ordererRootCAsByChain map[string][][]byte
+	clientRootCAs         [][]byte
+}
+
+func (mgr *caManager) updateTrustedRoots(
+	cm channelconfig.Resources,
+	servers ...*comm.GRPCServer,
+) {
+	mgr.Lock()
+	defer mgr.Unlock()
 
 	appRootCAs := [][]byte{}
 	ordererRootCAs := [][]byte{}
@@ -728,20 +743,20 @@ func updateTrustedRoots(rootCASupport *comm.CASupport, cm channelconfig.Resource
 			}
 		}
 	}
-	rootCASupport.AppRootCAsByChain[cid] = appRootCAs
-	rootCASupport.OrdererRootCAsByChain[cid] = ordererRootCAs
+	mgr.appRootCAsByChain[cid] = appRootCAs
+	mgr.ordererRootCAsByChain[cid] = ordererRootCAs
 
 	// now iterate over all roots for all app and orderer chains
 	trustedRoots := [][]byte{}
-	for _, roots := range rootCASupport.AppRootCAsByChain {
+	for _, roots := range mgr.appRootCAsByChain {
 		trustedRoots = append(trustedRoots, roots...)
 	}
-	for _, roots := range rootCASupport.OrdererRootCAsByChain {
+	for _, roots := range mgr.ordererRootCAsByChain {
 		trustedRoots = append(trustedRoots, roots...)
 	}
 	// also need to append statically configured root certs
-	if len(rootCASupport.ClientRootCAs) > 0 {
-		trustedRoots = append(trustedRoots, rootCASupport.ClientRootCAs...)
+	if len(mgr.clientRootCAs) > 0 {
+		trustedRoots = append(trustedRoots, mgr.clientRootCAs...)
 	}
 
 	// now update the client roots for the gRPC server
@@ -756,14 +771,17 @@ func updateTrustedRoots(rootCASupport *comm.CASupport, cm channelconfig.Resource
 	}
 }
 
-func updateClusterDialer(rootCASupport *comm.CASupport, clusterDialer *cluster.PredicateDialer, localClusterRootCAs [][]byte) {
-	rootCASupport.Lock()
-	defer rootCASupport.Unlock()
+func (mgr *caManager) updateClusterDialer(
+	clusterDialer *cluster.PredicateDialer,
+	localClusterRootCAs [][]byte,
+) {
+	mgr.Lock()
+	defer mgr.Unlock()
 
 	// Iterate over all orderer root CAs for all chains and add them
 	// to the root CAs
 	var clusterRootCAs [][]byte
-	for _, roots := range rootCASupport.OrdererRootCAsByChain {
+	for _, roots := range mgr.ordererRootCAsByChain {
 		clusterRootCAs = append(clusterRootCAs, roots...)
 	}
 

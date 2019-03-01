@@ -30,19 +30,14 @@ var commLogger = flogging.MustGetLogger("comm")
 var credSupport *CredentialSupport
 var once sync.Once
 
-// CASupport type manages certificate authorities scoped by channel
-type CASupport struct {
+// CredentialSupport type manages credentials used for gRPC client connections
+type CredentialSupport struct {
 	sync.RWMutex
 	AppRootCAsByChain     map[string][][]byte
 	OrdererRootCAsByChain map[string][][]byte
 	ClientRootCAs         [][]byte
 	ServerRootCAs         [][]byte
-}
-
-// CredentialSupport type manages credentials used for gRPC client connections
-type CredentialSupport struct {
-	*CASupport
-	clientCert tls.Certificate
+	clientCert            tls.Certificate
 }
 
 // GetCredentialSupport returns the singleton CredentialSupport instance
@@ -50,10 +45,8 @@ func GetCredentialSupport() *CredentialSupport {
 
 	once.Do(func() {
 		credSupport = &CredentialSupport{
-			CASupport: &CASupport{
-				AppRootCAsByChain:     make(map[string][][]byte),
-				OrdererRootCAsByChain: make(map[string][][]byte),
-			},
+			AppRootCAsByChain:     make(map[string][][]byte),
+			OrdererRootCAsByChain: make(map[string][][]byte),
 		}
 	})
 	return credSupport

@@ -162,10 +162,8 @@ func TestCredentialSupport(t *testing.T) {
 	}
 
 	cs := &CredentialSupport{
-		CASupport: &CASupport{
-			AppRootCAsByChain:     make(map[string][][]byte),
-			OrdererRootCAsByChain: make(map[string][][]byte),
-		},
+		AppRootCAsByChain:     make(map[string][][]byte),
+		OrdererRootCAsByChain: make(map[string][][]byte),
 	}
 	cert := tls.Certificate{Certificate: [][]byte{}}
 	cs.SetClientCertificate(cert)
@@ -282,10 +280,8 @@ func TestImpersonation(t *testing.T) {
 	time.Sleep(time.Second)
 
 	cs := &CredentialSupport{
-		CASupport: &CASupport{
-			AppRootCAsByChain:     make(map[string][][]byte),
-			OrdererRootCAsByChain: make(map[string][][]byte),
-		},
+		AppRootCAsByChain:     make(map[string][][]byte),
+		OrdererRootCAsByChain: make(map[string][][]byte),
 	}
 	_, err := cs.GetDeliverServiceCredentials("C")
 	assert.Error(t, err)
