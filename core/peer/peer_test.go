@@ -220,7 +220,8 @@ func TestCreateChainFromBlock(t *testing.T) {
 }
 
 func TestGetLocalIP(t *testing.T) {
-	ip := GetLocalIP()
+	ip, err := GetLocalIP()
+	assert.NoError(t, err)
 	t.Log(ip)
 }
 
