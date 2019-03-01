@@ -14,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type updatesBytesBuilder struct {
+type UpdatesBytesBuilder struct {
 }
 
 // DeterministicBytesForPubAndHashUpdates constructs the bytes for a given UpdateBatch
@@ -27,7 +27,7 @@ type updatesBytesBuilder struct {
 // If an entry has the same namespace as its preceding entry, the namespcae field is skipped.
 // A Similar treatment is given to the repeative entries for a collection within a namespace.
 // For illustration, see the corresponding unit tests
-func (bb *updatesBytesBuilder) DeterministicBytesForPubAndHashUpdates(u *UpdateBatch) ([]byte, error) {
+func (bb *UpdatesBytesBuilder) DeterministicBytesForPubAndHashUpdates(u *UpdateBatch) ([]byte, error) {
 	pubUpdates := u.PubUpdates
 	hashUpdates := u.HashUpdates.UpdateMap
 	namespaces := dedupAndSort(
@@ -37,6 +37,12 @@ func (bb *updatesBytesBuilder) DeterministicBytesForPubAndHashUpdates(u *UpdateB
 
 	kvWritesProto := []*KVWriteProto{}
 	for _, ns := range namespaces {
+		if ns == "" {
+			// an empty namespace is used for persisting the channel config
+			// skipping the channel config from including into commit hash computation
+			// as this proto uses maps and hence is non deterministic
+			continue
+		}
 		p := bb.buildForKeys(pubUpdates.GetUpdates(ns))
 		collsForNs, ok := hashUpdates[ns]
 		if ok {
@@ -53,7 +59,7 @@ func (bb *updatesBytesBuilder) DeterministicBytesForPubAndHashUpdates(u *UpdateB
 	return batchBytes, errors.Wrap(err, "error constructing deterministic bytes from update batch")
 }
 
-func (bb *updatesBytesBuilder) buildForColls(colls nsBatch) []*KVWriteProto {
+func (bb *UpdatesBytesBuilder) buildForColls(colls nsBatch) []*KVWriteProto {
 	collNames := colls.GetCollectionNames()
 	sort.Strings(collNames)
 	collsProto := []*KVWriteProto{}
@@ -66,7 +72,7 @@ func (bb *updatesBytesBuilder) buildForColls(colls nsBatch) []*KVWriteProto {
 	return collsProto
 }
 
-func (bb *updatesBytesBuilder) buildForKeys(kv map[string]*statedb.VersionedValue) []*KVWriteProto {
+func (bb *UpdatesBytesBuilder) buildForKeys(kv map[string]*statedb.VersionedValue) []*KVWriteProto {
 	keys := util.GetSortedKeys(kv)
 	p := []*KVWriteProto{}
 	for _, key := range keys {
