@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
-	"bytes"
 	"context"
 	"encoding/pem"
 	"fmt"
@@ -60,15 +59,6 @@ type BlockPuller interface {
 	Close()
 }
 
-type block struct {
-	b *common.Block
-
-	// i is the etcd/raft entry Index associated with block.
-	// it is persisted as block metatdata so we know where
-	// to continue rafting upon reboot.
-	i uint64
-}
-
 // Options contains all the configurations relevant to the chain.
 type Options struct {
 	RaftID uint64
@@ -95,51 +85,48 @@ type Options struct {
 	RaftMetadata *etcdraft.RaftMetadata
 }
 
+type submit struct {
+	req  *orderer.SubmitRequest
+	errC chan error
+}
+
 // Chain implements consensus.Chain interface.
 type Chain struct {
 	configurator Configurator
 
-	// access to `SendSubmit` should be serialzed because gRPC is not thread-safe
-	submitLock sync.Mutex
-	rpc        RPC
+	rpc RPC
 
 	raftID    uint64
 	channelID string
 
-	submitC  chan *orderer.SubmitRequest
-	commitC  chan block
+	submitC  chan *submit
+	applyC   chan apply
 	observeC chan<- uint64         // Notifies external observer on leader change (passed in optionally as an argument for tests)
 	haltC    chan struct{}         // Signals to goroutines that the chain is halting
 	doneC    chan struct{}         // Closes when the chain halts
-	resignC  chan struct{}         // Notifies node that it is no longer the leader
 	startC   chan struct{}         // Closes when the node is started
 	snapC    chan *raftpb.Snapshot // Signal to catch up with snapshot
 
-	configChangeAppliedC   chan struct{} // Notifies that a Raft configuration change has been applied
-	configChangeInProgress bool          // Flag to indicate node waiting for Raft config change to be applied
-	checkingFailover       uint32        // Flag to indicate whenever node checked for reconfiguration
-	raftMetadataLock       sync.RWMutex
+	raftMetadataLock     sync.RWMutex
+	confChangeInProgress *raftpb.ConfChange
+	justElected          bool // this is true when node has just been elected
+	configInflight       bool // this is true when there is config block or ConfChange in flight
 
 	clock clock.Clock // Tests can inject a fake clock
 
-	support      consensus.ConsenterSupport
-	BlockCreator *blockCreator
+	support consensus.ConsenterSupport
 
-	leader       uint64
 	appliedIndex uint64
 
 	// needed by snapshotting
 	lastSnapBlockNum uint64
-	syncLock         sync.Mutex       // Protects the manipulation of syncC
-	syncC            chan struct{}    // Indicate sync in progress
 	confState        raftpb.ConfState // Etcdraft requires ConfState to be persisted within snapshot
 	puller           BlockPuller      // Deliver client to pull blocks from other OSNs
 
 	fresh bool // indicate if this is a fresh raft node
 
-	node    raft.Node
-	storage *RaftStorage
-	opts    Options
+	node *node
+	opts Options
 
 	logger *flogging.FabricLogger
 }
@@ -174,39 +161,27 @@ func NewChain(
 		snapBlkNum = b.Header.Number
 	}
 
-	lastBlock := support.Block(support.Height() - 1)
-
-	return &Chain{
-		configurator:         conf,
-		rpc:                  rpc,
-		channelID:            support.ChainID(),
-		raftID:               opts.RaftID,
-		submitC:              make(chan *orderer.SubmitRequest),
-		commitC:              make(chan block),
-		haltC:                make(chan struct{}),
-		doneC:                make(chan struct{}),
-		resignC:              make(chan struct{}),
-		startC:               make(chan struct{}),
-		syncC:                make(chan struct{}),
-		snapC:                make(chan *raftpb.Snapshot),
-		configChangeAppliedC: make(chan struct{}),
-		observeC:             observeC,
-		support:              support,
-		fresh:                fresh,
-		BlockCreator:         newBlockCreator(lastBlock, lg),
-		appliedIndex:         opts.RaftMetadata.RaftIndex,
-		lastSnapBlockNum:     snapBlkNum,
-		puller:               puller,
-		clock:                opts.Clock,
-		logger:               lg,
-		storage:              storage,
-		opts:                 opts,
-	}, nil
-}
-
-// Start instructs the orderer to begin serving the chain and keep it current.
-func (c *Chain) Start() {
-	c.logger.Infof("Starting Raft node")
+	c := &Chain{
+		configurator:     conf,
+		rpc:              rpc,
+		channelID:        support.ChainID(),
+		raftID:           opts.RaftID,
+		submitC:          make(chan *submit),
+		applyC:           make(chan apply),
+		haltC:            make(chan struct{}),
+		doneC:            make(chan struct{}),
+		startC:           make(chan struct{}),
+		snapC:            make(chan *raftpb.Snapshot),
+		observeC:         observeC,
+		support:          support,
+		fresh:            fresh,
+		appliedIndex:     opts.RaftMetadata.RaftIndex,
+		lastSnapBlockNum: snapBlkNum,
+		puller:           puller,
+		clock:            opts.Clock,
+		logger:           lg,
+		opts:             opts,
+	}
 
 	// DO NOT use Applied option in config, see https://github.com/etcd-io/etcd/issues/10217
 	// We guard against replay of written blocks in `entriesToApply` instead.
@@ -224,32 +199,34 @@ func (c *Chain) Start() {
 		DisableProposalForwarding: true, // This prevents blocks from being accidentally proposed by followers
 	}
 
+	c.node = &node{
+		chainID:      c.channelID,
+		chain:        c,
+		logger:       c.logger,
+		storage:      storage,
+		rpc:          c.rpc,
+		config:       config,
+		tickInterval: c.opts.TickInterval,
+		clock:        c.clock,
+		metadata:     c.opts.RaftMetadata,
+	}
+
+	return c, nil
+}
+
+// Start instructs the orderer to begin serving the chain and keep it current.
+func (c *Chain) Start() {
+	c.logger.Infof("Starting Raft node")
+
 	if err := c.configureComm(); err != nil {
 		c.logger.Errorf("Failed to start chain, aborting: +%v", err)
 		close(c.doneC)
 		return
 	}
 
-	raftPeers := RaftPeers(c.opts.RaftMetadata.Consenters)
-
-	if c.fresh {
-		if c.support.Height() > 1 {
-			raftPeers = nil
-			c.logger.Info("Starting raft node to join an existing channel")
-		} else {
-			c.logger.Info("Starting raft node as part of a new channel")
-		}
-		c.node = raft.StartNode(config, raftPeers)
-	} else {
-		c.logger.Info("Restarting raft node")
-		c.node = raft.RestartNode(config)
-	}
-
+	c.node.start(c.fresh, c.support.Height() > 1)
 	close(c.startC)
 
-	c.startCheckingFailover()
-
-	go c.serveRaft()
 	go c.serveRequest()
 }
 
@@ -309,12 +286,8 @@ func (c *Chain) WaitReady() error {
 		return err
 	}
 
-	c.syncLock.Lock()
-	ch := c.syncC
-	c.syncLock.Unlock()
-
 	select {
-	case <-ch:
+	case c.submitC <- nil:
 	case <-c.doneC:
 		return errors.Errorf("chain is stopped")
 	}
@@ -387,29 +360,18 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 		return err
 	}
 
-	if c.isFailoverInProgress() {
-		return errors.Errorf("node bootstrapping has not finished")
+	errC := make(chan error, 1)
+	select {
+	case c.submitC <- &submit{req, errC}:
+		return <-errC
+	case <-c.doneC:
+		return errors.Errorf("chain is stopped")
 	}
+}
 
-	lead := atomic.LoadUint64(&c.leader)
-
-	if lead == raft.None {
-		return errors.Errorf("no Raft leader")
-	}
-
-	if lead == c.raftID {
-		select {
-		case c.submitC <- req:
-			return nil
-		case <-c.doneC:
-			return errors.Errorf("chain is stopped")
-		}
-	}
-
-	c.logger.Debugf("Forwarding submit request to Raft leader %d", lead)
-	c.submitLock.Lock()
-	defer c.submitLock.Unlock()
-	return c.rpc.SendSubmit(lead, req)
+type apply struct {
+	entries []raftpb.Entry
+	soft    *raft.SoftState
 }
 
 func (c *Chain) serveRequest() {
@@ -437,39 +399,106 @@ func (c *Chain) serveRequest() {
 		ticking = false
 	}
 
-	if s := c.storage.Snapshot(); !raft.IsEmptySnap(s) {
-		if err := c.catchUp(&s); err != nil {
-			c.logger.Errorf("Failed to recover from snapshot taken at Term %d and Index %d: %s",
-				s.Metadata.Term, s.Metadata.Index, err)
+	var leader uint64
+	submitC := c.submitC
+	var bc *blockCreator
+
+	becomeLeader := func() {
+		c.justElected = true
+		submitC = nil
+
+		lastBlock := c.support.Block(c.support.Height() - 1)
+		bc = &blockCreator{
+			hash:   lastBlock.Header.Hash(),
+			number: lastBlock.Header.Number,
+			logger: c.logger,
 		}
-	} else {
-		close(c.syncC)
+
+		// if there is unfinished ConfChange, we should resume the effort to propose it as
+		// new leader, and wait for it to be committed before start serving new requests.
+		if cc := c.getInFlightConfChange(); cc != nil {
+			if err := c.node.ProposeConfChange(context.TODO(), *cc); err != nil {
+				c.logger.Warnf("Failed to propose configuration update to Raft node: %s", err)
+			}
+
+			c.confChangeInProgress = cc
+			c.configInflight = true
+		}
+	}
+
+	becomeFollower := func() {
+		_ = c.support.BlockCutter().Cut()
+		stop()
+		submitC = c.submitC
+		bc = nil
 	}
 
 	for {
 		select {
-		case msg := <-c.submitC:
-			batches, pending, err := c.ordered(msg)
-			if err != nil {
-				c.logger.Errorf("Failed to order message: %s", err)
-			}
-			if pending {
-				start() // no-op if timer is already started
-			} else {
-				stop()
+		case s := <-submitC:
+			if s == nil {
+				// polled by `WaitReady`
+				continue
 			}
 
-			if err := c.commitBatches(batches...); err != nil {
-				c.logger.Errorf("Failed to commit block: %s", err)
+			var err error
+			switch leader {
+			case raft.None: // no Raft leader
+				c.logger.Debugf("Request is dropped because there is no Raft leader")
+				err = errors.Errorf("no Raft leader")
+
+			case c.raftID: // this is leader
+				batches, pending, err := c.ordered(s.req)
+				if err != nil {
+					c.logger.Errorf("Failed to order message: %s", err)
+				}
+				if pending {
+					start() // no-op if timer is already started
+				} else {
+					stop()
+				}
+
+				c.propose(bc, batches...)
+				if c.configInflight {
+					submitC = nil // stop accepting new envelopes
+				}
+
+			default: // this is follower
+				c.logger.Debugf("Forwarding submit request to raft leader %d", leader)
+				err = c.rpc.SendSubmit(leader, s.req)
 			}
 
-		case b := <-c.commitC:
-			c.writeBlock(b)
+			s.errC <- err // send error back to submitter
 
-		case <-c.resignC:
-			_ = c.support.BlockCutter().Cut()
-			c.BlockCreator.resetCreatedBlocks()
-			stop()
+		case app := <-c.applyC:
+			if app.soft != nil {
+				newLeader := atomic.LoadUint64(&app.soft.Lead) // etcdraft requires atomic access
+				if newLeader != leader {
+					c.logger.Infof("Raft leader changed: %d -> %d", leader, newLeader)
+
+					if newLeader == c.raftID {
+						becomeLeader()
+					}
+
+					if leader == c.raftID {
+						becomeFollower()
+					}
+
+					leader = newLeader
+
+					// notify external observer
+					select {
+					case c.observeC <- leader:
+					default:
+					}
+				}
+			}
+
+			c.apply(app.entries)
+
+			if !c.configInflight {
+				submitC = c.submitC
+			}
 
 		case <-timer.C():
 			ticking = false
@@ -481,11 +510,19 @@ func (c *Chain) serveRequest() {
 			}
 
 			c.logger.Debugf("Batch timer expired, creating block")
-			if err := c.commitBatches(batch); err != nil {
-				c.logger.Errorf("Failed to commit block: %s", err)
-			}
+			c.propose(bc, batch) // we are certain this is normal block, no need to block
 
 		case sn := <-c.snapC:
+			if sn.Metadata.Index <= c.appliedIndex {
+				c.logger.Debugf("Skip snapshot taken at index %d, because it is behind current applied index %d", sn.Metadata.Index, c.appliedIndex)
+				break
+			}
+
+			b := utils.UnmarshalBlockOrPanic(sn.Data)
+			c.lastSnapBlockNum = b.Header.Number
+			c.confState = sn.Metadata.ConfState
+			c.appliedIndex = sn.Metadata.Index
+
 			if err := c.catchUp(sn); err != nil {
 				c.logger.Errorf("Failed to recover from snapshot taken at Term %d and Index %d: %s",
 					sn.Metadata.Term, sn.Metadata.Index, err)
@@ -498,21 +535,18 @@ func (c *Chain) serveRequest() {
 	}
 }
 
-func (c *Chain) writeBlock(b block) {
-	c.BlockCreator.commitBlock(b.b)
-	if utils.IsConfigBlock(b.b) {
-		if err := c.writeConfigBlock(b); err != nil {
-			c.logger.Panicf("failed to write configuration block, %+v", err)
-		}
+func (c *Chain) writeBlock(block *common.Block, index uint64) {
+	if utils.IsConfigBlock(block) {
+		c.writeConfigBlock(block, index)
 		return
 	}
 
 	c.raftMetadataLock.Lock()
-	c.opts.RaftMetadata.RaftIndex = b.i
+	c.opts.RaftMetadata.RaftIndex = index
 	m := utils.MarshalOrPanic(c.opts.RaftMetadata)
 	c.raftMetadataLock.Unlock()
 
-	c.support.WriteBlock(b.b, m)
+	c.support.WriteBlock(block, m)
 }
 
 // Orders the envelope in the `msg` content. SubmitRequest.
@@ -551,38 +585,22 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 
 }
 
-func (c *Chain) commitBatches(batches ...[]*common.Envelope) error {
+func (c *Chain) propose(bc *blockCreator, batches ...[]*common.Envelope) {
 	for _, batch := range batches {
-		b := c.BlockCreator.createNextBlock(batch)
+		b := bc.createNextBlock(batch)
 		data := utils.MarshalOrPanic(b)
 		if err := c.node.Propose(context.TODO(), data); err != nil {
-			return errors.Errorf("failed to propose data to Raft node: %s", err)
+			c.logger.Errorf("Failed to propose block to raft: %s", err)
+			return // don't bother continue proposing next batch
 		}
 
-		// if it is config block, then wait for the commit of the block
+		// if it is config block, then we should wait for the commit of the block
 		if utils.IsConfigBlock(b) {
-			// we need the loop to account for the normal blocks that might be in-flight before the arrival of the config block
-		commitConfigLoop:
-			for {
-				select {
-				case block := <-c.commitC:
-					c.writeBlock(block)
-					// since this is the config block that have been looking for, we break out of the loop
-					if bytes.Equal(b.Header.Bytes(), block.b.Header.Bytes()) {
-						break commitConfigLoop
-					}
-
-				case <-c.resignC:
-					return errors.Errorf("aborted block committing: lost leadership")
-
-				case <-c.doneC:
-					return nil
-				}
-			}
+			c.configInflight = true
 		}
 	}
 
-	return nil
+	return
 }
 
 func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
@@ -599,11 +617,7 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 		return nil
 	}
 
-	c.syncLock.Lock()
-	c.syncC = make(chan struct{})
-	c.syncLock.Unlock()
 	defer func() {
-		close(c.syncC)
 		c.puller.Close()
 	}()
 
@@ -612,7 +626,6 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 		if block == nil {
 			return errors.Errorf("failed to fetch block %d from cluster", next)
 		}
-		c.BlockCreator.commitBlock(block)
 		if utils.IsConfigBlock(block) {
 			c.support.WriteConfigBlock(block, nil)
 		} else {
@@ -624,75 +637,6 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 
 	c.logger.Infof("Finished syncing with cluster up to block %d (incl.)", b.Header.Number)
 	return nil
-}
-
-func (c *Chain) serveRaft() {
-	ticker := c.clock.NewTicker(c.opts.TickInterval)
-
-	for {
-		select {
-		case <-ticker.C():
-			c.node.Tick()
-
-		case rd := <-c.node.Ready():
-			if err := c.storage.Store(rd.Entries, rd.HardState, rd.Snapshot); err != nil {
-				c.logger.Panicf("Failed to persist etcd/raft data: %s", err)
-			}
-
-			if !raft.IsEmptySnap(rd.Snapshot) {
-				c.snapC <- &rd.Snapshot
-
-				b := utils.UnmarshalBlockOrPanic(rd.Snapshot.Data)
-				c.lastSnapBlockNum = b.Header.Number
-				c.confState = rd.Snapshot.Metadata.ConfState
-				c.appliedIndex = rd.Snapshot.Metadata.Index
-			}
-
-			c.apply(rd.CommittedEntries)
-			c.node.Advance()
-
-			// TODO(jay_guo) leader can write to disk in parallel with replicating
-			// to the followers and them writing to their disks. Check 10.2.1 in thesis
-			c.send(rd.Messages)
-
-			if rd.SoftState != nil {
-				newLead := atomic.LoadUint64(&rd.SoftState.Lead)
-				lead := atomic.LoadUint64(&c.leader)
-				if newLead != lead {
-					c.startCheckingFailover()
-
-					c.logger.Infof("Raft leader changed: %d -> %d", lead, newLead)
-					atomic.StoreUint64(&c.leader, newLead)
-
-					if lead == c.raftID {
-						c.resignC <- struct{}{}
-					}
-
-					if newLead == c.raftID {
-						// need to read recent config updates of replica set
-						// and finish reconfiguration
-						c.handleReconfigurationFailover()
-					}
-
-					// notify external observer
-					select {
-					case c.observeC <- newLead:
-					default:
-					}
-
-					c.doneCheckingFailover()
-				}
-			}
-
-		case <-c.haltC:
-			ticker.Stop()
-			c.node.Stop()
-			c.storage.Close()
-			c.logger.Infof("Raft node stopped")
-			close(c.doneC) // close after all the artifacts are closed
-			return
-		}
-	}
 }
 
 func (c *Chain) apply(ents []raftpb.Entry) {
@@ -715,29 +659,10 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				break
 			}
 
-			b := utils.UnmarshalBlockOrPanic(ents[i].Data)
-			// need to check whenever given block carries updates
-			// which will lead to membership change and eventually
-			// to the cluster reconfiguration
-			c.raftMetadataLock.RLock()
-			m := c.opts.RaftMetadata
-			c.raftMetadataLock.RUnlock()
+			block := utils.UnmarshalBlockOrPanic(ents[i].Data)
+			c.writeBlock(block, ents[i].Index)
 
-			isConfigMembershipUpdate, err := IsMembershipUpdate(b, m)
-			if err != nil {
-				c.logger.Warnf("Error while attempting to determine membership update, due to %s", err)
-			}
-			// if error occurred isConfigMembershipUpdate will be false, hence will skip setting config change in
-			// progress
-			if isConfigMembershipUpdate {
-				// set flag config change is progress only if config block
-				// and has updates for raft replica set
-				c.configChangeInProgress = true
-			}
-
-			c.commitC <- block{b, ents[i].Index}
-
-			appliedb = b.Header.Number
+			appliedb = block.Header.Number
 			position = i
 
 		case raftpb.EntryConfChange:
@@ -749,11 +674,18 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 
 			c.confState = *c.node.ApplyConfChange(cc)
 
-			if c.configChangeInProgress {
-				// signal that config changes has been applied
-				c.configChangeAppliedC <- struct{}{}
-				// set flag back
-				c.configChangeInProgress = false
+			// This ConfChange was introduced by a previously committed config block,
+			// we can now unblock submitC to accept envelopes.
+			if c.confChangeInProgress != nil &&
+				c.confChangeInProgress.NodeID == cc.NodeID &&
+				c.confChangeInProgress.Type == cc.Type {
+
+				if err := c.configureComm(); err != nil {
+					c.logger.Panicf("Failed to configure communication: %s", err)
+				}
+
+				c.confChangeInProgress = nil
+				c.configInflight = false
 			}
 
 			if cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == c.raftID {
@@ -777,35 +709,11 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 
 	if appliedb-c.lastSnapBlockNum >= c.opts.SnapInterval {
 		c.logger.Infof("Taking snapshot at block %d, last snapshotted block number is %d", appliedb, c.lastSnapBlockNum)
-		if err := c.storage.TakeSnapshot(c.appliedIndex, &c.confState, ents[position].Data); err != nil {
-			c.logger.Fatalf("Failed to create snapshot at index %d", c.appliedIndex)
-		}
-
+		c.node.takeSnapshot(c.appliedIndex, &c.confState, ents[position].Data)
 		c.lastSnapBlockNum = appliedb
 	}
-}
 
-func (c *Chain) send(msgs []raftpb.Message) {
-	for _, msg := range msgs {
-		if msg.To == 0 {
-			continue
-		}
-
-		status := raft.SnapshotFinish
-
-		msgBytes := utils.MarshalOrPanic(&msg)
-		_, err := c.rpc.Step(msg.To, &orderer.StepRequest{Channel: c.support.ChainID(), Payload: msgBytes})
-		if err != nil {
-			// TODO We should call ReportUnreachable if message delivery fails
-			c.logger.Errorf("Failed to send StepRequest to %d, because: %s", msg.To, err)
-
-			status = raft.SnapshotFailure
-		}
-
-		if msg.Type == raftpb.MsgSnap {
-			c.node.ReportSnapshot(msg.To, status)
-		}
-	}
+	return
 }
 
 func (c *Chain) isConfig(env *common.Envelope) bool {
@@ -880,45 +788,11 @@ func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
 	return nil
 }
 
-// updateMembership updates raft metadata with new membership changes, apply raft changes to replica set
-// by proposing config change and blocking until it get applied
-func (c *Chain) updateMembership(metadata *etcdraft.RaftMetadata, change *raftpb.ConfChange) error {
-	lead := atomic.LoadUint64(&c.leader)
-	// leader to propose configuration change
-	if lead == c.raftID {
-		// ProposeConfChange returns error only if node being stopped.
-		if err := c.node.ProposeConfChange(context.TODO(), *change); err != nil {
-			c.logger.Warnf("Failed to propose configuration update to Raft node: %s", err)
-			return nil
-		}
-	}
-
-	var err error
-
-	for {
-		select {
-		case <-c.configChangeAppliedC: // Raft configuration changes of the raft cluster has been applied
-			// update metadata once we have block committed
-			c.raftMetadataLock.Lock()
-			c.opts.RaftMetadata = metadata
-			c.raftMetadataLock.Unlock()
-
-			// now we need to reconfigure the communication layer with new updates
-			return c.configureComm()
-		case <-c.resignC:
-			c.logger.Debug("Raft cluster leader has changed, new leader should re-propose Raft config change based on last config block")
-		case <-c.doneC:
-			c.logger.Debug("Shutting down node, aborting config change update")
-			return err
-		}
-	}
-}
-
 // writeConfigBlock writes configuration blocks into the ledger in
 // addition extracts updates about raft replica set and if there
 // are changes updates cluster membership as well
-func (c *Chain) writeConfigBlock(b block) error {
-	metadata, raftMetadata := c.newRaftMetadata(b.b)
+func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
+	metadata, raftMetadata := c.newRaftMetadata(block)
 
 	var changes *MembershipChanges
 	if metadata != nil {
@@ -926,31 +800,48 @@ func (c *Chain) writeConfigBlock(b block) error {
 	}
 
 	confChange := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
-	raftMetadata.RaftIndex = b.i
+	raftMetadata.RaftIndex = index
 
 	raftMetadataBytes := utils.MarshalOrPanic(raftMetadata)
 	// write block with metadata
-	c.support.WriteConfigBlock(b.b, raftMetadataBytes)
+	c.support.WriteConfigBlock(block, raftMetadataBytes)
+	c.configInflight = false
+
+	// update membership
 	if confChange != nil {
-		if err := c.updateMembership(raftMetadata, confChange); err != nil {
-			return errors.Wrap(err, "failed to update Raft with consenters membership changes")
+		// ProposeConfChange returns error only if node being stopped.
+		// This proposal is dropped by followers because DisableProposalForwarding is enabled.
+		if err := c.node.ProposeConfChange(context.TODO(), *confChange); err != nil {
+			c.logger.Warnf("Failed to propose configuration update to Raft node: %s", err)
 		}
+
+		c.confChangeInProgress = confChange
+
+		c.raftMetadataLock.Lock()
+		c.opts.RaftMetadata = raftMetadata
+		c.raftMetadataLock.Unlock()
+
+		c.configInflight = true
 	}
-	return nil
 }
 
-// handleReconfigurationFailover read last configuration block and proposes
-// new raft configuration
-func (c *Chain) handleReconfigurationFailover() {
+// getInFlightConfChange returns ConfChange in-flight if any.
+// It either returns confChangeInProgress if it is not nil, or
+// attempts to read ConfChange from last committed block.
+func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
+	if c.confChangeInProgress != nil {
+		return c.confChangeInProgress
+	}
+
 	if c.support.Height() <= 1 {
-		return // nothing to failover just started the chain
+		return nil // nothing to failover just started the chain
 	}
 	lastBlock := c.support.Block(c.support.Height() - 1)
 	if lastBlock == nil {
 		c.logger.Panicf("nil block, failed to read last written block, blockNum = %d, ledger height = %d, raftID = %d", c.support.Height()-1, c.support.Height(), c.raftID)
 	}
 	if !utils.IsConfigBlock(lastBlock) {
-		return
+		return nil
 	}
 
 	// extract membership mapping from configuration block metadata
@@ -974,14 +865,10 @@ func (c *Chain) handleReconfigurationFailover() {
 		// equal to membership stored in block metadata field,
 		// that means everything is in sync and no need to propose
 		// update
-		return
+		return nil
 	}
 
-	raftConfChange := ConfChange(raftMetadata, confState)
-
-	if err := c.node.ProposeConfChange(context.TODO(), raftConfChange); err != nil {
-		c.logger.Warnf("failed to propose configuration update to Raft node: %s", err)
-	}
+	return ConfChange(raftMetadata, confState)
 }
 
 // newRaftMetadata extract raft metadata from the configuration block
@@ -990,29 +877,11 @@ func (c *Chain) newRaftMetadata(block *common.Block) (*etcdraft.Metadata, *etcdr
 	if err != nil {
 		c.logger.Panicf("error reading consensus metadata: %s", err)
 	}
-	c.raftMetadataLock.RLock()
 	raftMetadata := proto.Clone(c.opts.RaftMetadata).(*etcdraft.RaftMetadata)
 	// proto.Clone doesn't copy an empty map, hence need to initialize it after
 	// cloning
 	if raftMetadata.Consenters == nil {
 		raftMetadata.Consenters = map[uint64]*etcdraft.Consenter{}
 	}
-	c.raftMetadataLock.RUnlock()
 	return metadata, raftMetadata
-}
-
-// startCheckingFailover set failover check flag on
-func (c *Chain) startCheckingFailover() {
-	atomic.StoreUint32(&c.checkingFailover, 1)
-}
-
-// doneCheckingFailover set failover check flag off
-func (c *Chain) doneCheckingFailover() {
-	atomic.StoreUint32(&c.checkingFailover, 0)
-}
-
-// isFailoverInProgress returns true if there is failover check
-// is currently in progress and has not finished yet
-func (c *Chain) isFailoverInProgress() bool {
-	return atomic.LoadUint32(&c.checkingFailover) == 1
 }

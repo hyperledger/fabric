@@ -54,19 +54,19 @@ func (ri *replicationInitiator) createReplicator(bootstrapBlock *common.Block, f
 	if err != nil {
 		ri.logger.Panicf("Failed creating puller config from bootstrap block: %v", err)
 	}
-
-	pullerLogger := flogging.MustGetLogger("orderer.common.cluster")
+	puller.MaxPullBlockRetries = uint64(ri.conf.General.Cluster.ReplicationMaxRetries)
+	puller.RetryTimeout = ri.conf.General.Cluster.ReplicationRetryTimeout
 
 	replicator := &cluster.Replicator{
 		Filter:           filter,
 		LedgerFactory:    ri.lf,
 		SystemChannel:    systemChannelName,
 		BootBlock:        bootstrapBlock,
-		Logger:           pullerLogger,
+		Logger:           ri.logger,
 		AmIPartOfChannel: consenterCert.IsConsenterOfChannel,
 		Puller:           puller,
 		ChannelLister: &cluster.ChainInspector{
-			Logger:          pullerLogger,
+			Logger:          ri.logger,
 			Puller:          puller,
 			LastConfigBlock: bootstrapBlock,
 		},
@@ -166,7 +166,7 @@ type chainCreation struct {
 
 // TrackChain tracks a chain with the given name, and calls the given callback
 // when this chain should be activated.
-func (dc *inactiveChainReplicator) TrackChain(chain string, genesisBlock *common.Block, createChainCallback func()) {
+func (dc *inactiveChainReplicator) TrackChain(chain string, genesisBlock *common.Block, createChain etcdraft.CreateChainCallback) {
 	if genesisBlock == nil {
 		dc.logger.Panicf("Called with a nil genesis block")
 	}
@@ -175,7 +175,7 @@ func (dc *inactiveChainReplicator) TrackChain(chain string, genesisBlock *common
 	dc.logger.Infof("Adding %s to the set of chains to track", chain)
 	dc.chains2CreationCallbacks[chain] = chainCreation{
 		genesisBlock: genesisBlock,
-		create:       createChainCallback,
+		create:       createChain,
 	}
 }
 
@@ -221,38 +221,4 @@ func (dc *inactiveChainReplicator) listInactiveChains() []string {
 		chains = append(chains, chain)
 	}
 	return chains
-}
-
-func exponentialDurationSeries(initialDuration, maxDuration time.Duration) func() time.Duration {
-	exp := &exponentialDuration{
-		n:   initialDuration,
-		max: maxDuration,
-	}
-	return exp.next
-}
-
-type exponentialDuration struct {
-	n   time.Duration
-	max time.Duration
-}
-
-func (exp *exponentialDuration) next() time.Duration {
-	n := exp.n
-	exp.n *= 2
-	if exp.n > exp.max {
-		exp.n = exp.max
-	}
-	return n
-}
-
-func makeTickChannel(computeSleepDuration func() time.Duration, sleep func(time.Duration)) <-chan time.Time {
-	c := make(chan time.Time)
-	go func() {
-		for {
-			sleep(computeSleepDuration())
-			c <- time.Now()
-		}
-	}()
-
-	return c
 }

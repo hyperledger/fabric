@@ -499,7 +499,7 @@ func waitForBlockReception(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Net
 			return ""
 		}
 		return sessErr
-	}, time.Minute, time.Second).Should(BeEmpty())
+	}, network.EventuallyTimeout, time.Second).Should(BeEmpty())
 }
 
 func assertNoErrorsAreLogged(ordererRunners []*ginkgomon.Runner) {
