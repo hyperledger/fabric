@@ -36,7 +36,7 @@ func TestSpawnEtcdRaft(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// Build the configtxgen binary
-	configtxgen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/configtxgen")
+	configtxgen, err := gexec.Build("github.com/hyperledger/fabric/cmd/configtxgen")
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// Build the orderer binary

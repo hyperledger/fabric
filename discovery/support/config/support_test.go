@@ -18,10 +18,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
-	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/discovery/support/config"
 	"github.com/hyperledger/fabric/discovery/support/mocks"
+	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
+	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/onsi/gomega/gexec"
 	"github.com/stretchr/testify/assert"
@@ -66,11 +66,11 @@ func TestMSPIDMapping(t *testing.T) {
 	os.Mkdir(dir, 0700)
 	defer os.RemoveAll(dir)
 
-	cryptogen, err := gexec.Build(filepath.Join("github.com", "hyperledger", "fabric", "common", "tools", "cryptogen"))
+	cryptogen, err := gexec.Build("github.com/hyperledger/fabric/cmd/cryptogen")
 	assert.NoError(t, err)
 	defer os.Remove(cryptogen)
 
-	idemixgen, err := gexec.Build(filepath.Join("github.com", "hyperledger", "fabric", "common", "tools", "idemixgen"))
+	idemixgen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/idemixgen")
 	assert.NoError(t, err)
 	defer os.Remove(idemixgen)
 

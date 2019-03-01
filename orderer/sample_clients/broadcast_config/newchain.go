@@ -5,8 +5,8 @@ package main
 
 import (
 	"github.com/hyperledger/fabric/common/localmsp"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
-	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
+	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 

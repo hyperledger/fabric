@@ -15,8 +15,8 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/internal/configtxlator/update"
 	"github.com/hyperledger/fabric/protos/common"
 	protosorderer "github.com/hyperledger/fabric/protos/orderer"
 	ectdraft_protos "github.com/hyperledger/fabric/protos/orderer/etcdraft"
