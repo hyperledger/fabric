@@ -20,8 +20,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
-	"github.com/hyperledger/fabric/protos/utils"
-	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -197,7 +196,7 @@ func (a *ApproverForMyOrg) Approve() error {
 		return errors.Errorf("bad response: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
 	}
 	// assemble a signed transaction (it's an Envelope message)
-	env, err := utils.CreateSignedTx(proposal, a.Signer, responses...)
+	env, err := protoutil.CreateSignedTx(proposal, a.Signer, responses...)
 	if err != nil {
 		return errors.WithMessage(err, "could not assemble transaction")
 	}
@@ -248,7 +247,7 @@ func (a *ApproverForMyOrg) setInput() error {
 				SignaturePolicy: signaturePolicyEnvelope,
 			},
 		}
-		policyBytes = putils.MarshalOrPanic(applicationPolicy)
+		policyBytes = protoutil.MarshalOrPanic(applicationPolicy)
 	}
 
 	if collectionsConfigFile != "" {
@@ -313,12 +312,12 @@ func (a *ApproverForMyOrg) createProposals(inputTxID string) (proposal *pb.Propo
 		return nil, nil, "", errors.WithMessage(err, fmt.Sprintf("error serializing identity for %s", a.Signer.GetIdentifier()))
 	}
 
-	proposal, txID, err = utils.CreateChaincodeProposalWithTxIDAndTransient(cb.HeaderType_ENDORSER_TRANSACTION, a.Input.ChannelID, cis, creatorBytes, inputTxID, nil)
+	proposal, txID, err = protoutil.CreateChaincodeProposalWithTxIDAndTransient(cb.HeaderType_ENDORSER_TRANSACTION, a.Input.ChannelID, cis, creatorBytes, inputTxID, nil)
 	if err != nil {
 		return nil, nil, "", errors.WithMessage(err, "error creating proposal for ChaincodeInvocationSpec")
 	}
 
-	signedProposal, err = utils.GetSignedProposal(proposal, a.Signer)
+	signedProposal, err = protoutil.GetSignedProposal(proposal, a.Signer)
 	if err != nil {
 		return nil, nil, "", errors.WithMessage(err, "error signing proposal")
 	}

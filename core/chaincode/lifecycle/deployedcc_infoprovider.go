@@ -241,7 +241,7 @@ func (l *Lifecycle) ImplicitCollectionEndorsementPolicyAsBytes(channelID, orgMSP
 
 	policyName := fmt.Sprintf("/Channel/Application/%s/Endorsement", matchedOrgName)
 	if _, ok := channelConfig.PolicyManager().GetPolicy(policyName); ok {
-		return utils.MarshalOrPanic(&pb.ApplicationPolicy{
+		return protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
 			Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
 				ChannelConfigPolicyReference: policyName,
 			},
@@ -251,7 +251,7 @@ func (l *Lifecycle) ImplicitCollectionEndorsementPolicyAsBytes(channelID, orgMSP
 	// This was a channel which was upgraded or did not define an org level endorsement policy, use a default
 	// of "any member of the org"
 
-	return utils.MarshalOrPanic(&pb.ApplicationPolicy{
+	return protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
 		Type: &pb.ApplicationPolicy_SignaturePolicy{
 			SignaturePolicy: cauthdsl.SignedByAnyMember([]string{orgMSPID}),
 		},
