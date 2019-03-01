@@ -139,3 +139,16 @@ func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBytes, bytes)
 }
+
+func TestUpdateBatchBytesBuilderOnlyChannelConfig(t *testing.T) {
+	updateBatch := NewUpdateBatch()
+	updateBatch.PubUpdates.Put("", "resourcesconfigtx.CHANNEL_CONFIG_KEY", []byte("value1"), version.NewHeight(1, 1))
+
+	bb := &UpdatesBytesBuilder{}
+	bytes, err := bb.DeterministicBytesForPubAndHashUpdates(updateBatch)
+	assert.NoError(t, err)
+	expectedProto := &KVWritesBatchProto{}
+	expectedBytes, err := proto.Marshal(expectedProto)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedBytes, bytes)
+}

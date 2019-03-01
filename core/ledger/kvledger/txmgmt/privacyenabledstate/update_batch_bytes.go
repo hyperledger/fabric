@@ -36,6 +36,12 @@ func (bb *UpdatesBytesBuilder) DeterministicBytesForPubAndHashUpdates(u *UpdateB
 
 	kvWritesProto := []*KVWriteProto{}
 	for _, ns := range namespaces {
+		if ns == "" {
+			// an empty namespace is used for persisting the channel config
+			// skipping the channel config from including into commit hash computation
+			// as this proto uses maps and hence is non deterministic
+			continue
+		}
 		p := bb.buildForKeys(pubUpdates.GetUpdates(ns))
 		collsForNs, ok := hashUpdates[ns]
 		if ok {
