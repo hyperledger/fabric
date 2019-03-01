@@ -10,7 +10,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -58,7 +58,7 @@ func (scf *SystemChainFilter) Apply(env *cb.Envelope) error {
 		return errors.Errorf("missing payload header")
 	}
 
-	chdr, err := utils.UnmarshalChannelHeader(msgData.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(msgData.Header.ChannelHeader)
 	if err != nil {
 		return errors.Errorf("bad channel header: %s", err)
 	}
@@ -100,7 +100,7 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return errors.Errorf("wrapped configtx envelope missing header")
 	}
 
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return errors.Errorf("error unmarshaling wrapped configtx envelope channel header: %s", err)
 	}

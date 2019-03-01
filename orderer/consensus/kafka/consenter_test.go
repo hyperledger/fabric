@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Shopify/sarama"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -21,10 +23,7 @@ import (
 	mockmultichannel "github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
-
-	"github.com/Shopify/sarama"
-	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -107,7 +106,7 @@ func TestHandleChain(t *testing.T) {
 		},
 	}
 
-	mockMetadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: newestOffset - 1})}
+	mockMetadata := &cb.Metadata{Value: protoutil.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: newestOffset - 1})}
 	_, err := consenter.HandleChain(mockSupport, mockMetadata)
 	assert.NoError(t, err, "Expected the HandleChain call to return without errors")
 }
@@ -169,13 +168,13 @@ func newMockConsenter(brokerConfig *sarama.Config, tlsConfig localconfig.TLS, re
 
 func newMockConsumerMessage(wrappedMessage *ab.KafkaMessage) *sarama.ConsumerMessage {
 	return &sarama.ConsumerMessage{
-		Value: sarama.ByteEncoder(utils.MarshalOrPanic(wrappedMessage)),
+		Value: sarama.ByteEncoder(protoutil.MarshalOrPanic(wrappedMessage)),
 	}
 }
 
 func newMockEnvelope(content string) *cb.Envelope {
-	return &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{
-		Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{ChannelId: "foo"})},
+	return &cb.Envelope{Payload: protoutil.MarshalOrPanic(&cb.Payload{
+		Header: &cb.Header{ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{ChannelId: "foo"})},
 		Data:   []byte(content),
 	})}
 }

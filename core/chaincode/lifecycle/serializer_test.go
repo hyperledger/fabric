@@ -12,13 +12,12 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
-	"github.com/hyperledger/fabric/protos/utils"
-
-	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 var _ = Describe("Serializer", func() {
@@ -60,25 +59,25 @@ var _ = Describe("Serializer", func() {
 
 			key, value := fakeState.PutStateArgsForCall(0)
 			Expect(key).To(Equal("namespaces/fields/fake/Int"))
-			Expect(value).To(Equal(utils.MarshalOrPanic(&lb.StateData{
+			Expect(value).To(Equal(protoutil.MarshalOrPanic(&lb.StateData{
 				Type: &lb.StateData_Int64{Int64: -3},
 			})))
 
 			key, value = fakeState.PutStateArgsForCall(1)
 			Expect(key).To(Equal("namespaces/fields/fake/Bytes"))
-			Expect(value).To(Equal(utils.MarshalOrPanic(&lb.StateData{
+			Expect(value).To(Equal(protoutil.MarshalOrPanic(&lb.StateData{
 				Type: &lb.StateData_Bytes{Bytes: []byte("bytes")},
 			})))
 
 			key, value = fakeState.PutStateArgsForCall(2)
 			Expect(key).To(Equal("namespaces/fields/fake/Proto"))
-			Expect(value).To(Equal(utils.MarshalOrPanic(&lb.StateData{
-				Type: &lb.StateData_Bytes{Bytes: utils.MarshalOrPanic(testStruct.Proto)},
+			Expect(value).To(Equal(protoutil.MarshalOrPanic(&lb.StateData{
+				Type: &lb.StateData_Bytes{Bytes: protoutil.MarshalOrPanic(testStruct.Proto)},
 			})))
 
 			key, value = fakeState.PutStateArgsForCall(3)
 			Expect(key).To(Equal("namespaces/metadata/fake"))
-			Expect(value).To(Equal(utils.MarshalOrPanic(&lb.StateMetadata{
+			Expect(value).To(Equal(protoutil.MarshalOrPanic(&lb.StateMetadata{
 				Datatype: "TestStruct",
 				Fields:   []string{"Int", "Bytes", "Proto"},
 			})))
@@ -89,13 +88,13 @@ var _ = Describe("Serializer", func() {
 		Context("when the namespace contains extraneous keys", func() {
 			BeforeEach(func() {
 				kvs := map[string][]byte{
-					"namespaces/fields/fake/ExtraneousKey1": utils.MarshalOrPanic(&lb.StateData{
+					"namespaces/fields/fake/ExtraneousKey1": protoutil.MarshalOrPanic(&lb.StateData{
 						Type: &lb.StateData_Bytes{Bytes: []byte("value1")},
 					}),
-					"namespaces/fields/fake/ExtraneousKey2": utils.MarshalOrPanic(&lb.StateData{
+					"namespaces/fields/fake/ExtraneousKey2": protoutil.MarshalOrPanic(&lb.StateData{
 						Type: &lb.StateData_Bytes{Bytes: []byte("value2")},
 					}),
-					"namespaces/metadata/fake": utils.MarshalOrPanic(&lb.StateMetadata{
+					"namespaces/metadata/fake": protoutil.MarshalOrPanic(&lb.StateMetadata{
 						Datatype: "Other",
 						Fields:   []string{"ExtraneousKey1", "ExtraneousKey2"},
 					}),
@@ -138,16 +137,16 @@ var _ = Describe("Serializer", func() {
 
 			BeforeEach(func() {
 				kvs = map[string][]byte{
-					"namespaces/fields/fake/Int": utils.MarshalOrPanic(&lb.StateData{
+					"namespaces/fields/fake/Int": protoutil.MarshalOrPanic(&lb.StateData{
 						Type: &lb.StateData_Int64{Int64: -3},
 					}),
-					"namespaces/fields/fake/Bytes": utils.MarshalOrPanic(&lb.StateData{
+					"namespaces/fields/fake/Bytes": protoutil.MarshalOrPanic(&lb.StateData{
 						Type: &lb.StateData_Bytes{Bytes: []byte("bytes")},
 					}),
-					"namespaces/fields/fake/Proto": utils.MarshalOrPanic(&lb.StateData{
-						Type: &lb.StateData_Bytes{Bytes: utils.MarshalOrPanic(testStruct.Proto)},
+					"namespaces/fields/fake/Proto": protoutil.MarshalOrPanic(&lb.StateData{
+						Type: &lb.StateData_Bytes{Bytes: protoutil.MarshalOrPanic(testStruct.Proto)},
 					}),
-					"namespaces/metadata/fake": utils.MarshalOrPanic(&lb.StateMetadata{
+					"namespaces/metadata/fake": protoutil.MarshalOrPanic(&lb.StateMetadata{
 						Datatype: "TestStruct",
 						Fields:   []string{"Int", "Bytes", "Proto"},
 					}),
@@ -167,7 +166,7 @@ var _ = Describe("Serializer", func() {
 
 			Context("when some of the values are missing", func() {
 				BeforeEach(func() {
-					kvs["namespaces/metadata/fake"] = utils.MarshalOrPanic(&lb.StateMetadata{
+					kvs["namespaces/metadata/fake"] = protoutil.MarshalOrPanic(&lb.StateMetadata{
 						Datatype: "TestStruct",
 						Fields:   []string{"Proto", "Bytes"},
 					})
@@ -180,13 +179,13 @@ var _ = Describe("Serializer", func() {
 
 					Expect(fakeState.PutStateCallCount()).To(Equal(2))
 					key, value := fakeState.PutStateArgsForCall(0)
-					Expect(value).To(Equal(utils.MarshalOrPanic(&lb.StateData{
+					Expect(value).To(Equal(protoutil.MarshalOrPanic(&lb.StateData{
 						Type: &lb.StateData_Int64{Int64: -3},
 					})))
 					Expect(key).To(Equal("namespaces/fields/fake/Int"))
 					key, value = fakeState.PutStateArgsForCall(1)
 					Expect(key).To(Equal("namespaces/metadata/fake"))
-					Expect(value).To(Equal(utils.MarshalOrPanic(&lb.StateMetadata{
+					Expect(value).To(Equal(protoutil.MarshalOrPanic(&lb.StateMetadata{
 						Datatype: "TestStruct",
 						Fields:   []string{"Int", "Bytes", "Proto"},
 					})))
@@ -267,7 +266,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when the field data cannot be retrieved", func() {
 			BeforeEach(func() {
-				fakeState.GetStateReturnsOnCall(0, utils.MarshalOrPanic(&lb.StateMetadata{
+				fakeState.GetStateReturnsOnCall(0, protoutil.MarshalOrPanic(&lb.StateMetadata{
 					Fields: []string{"field1"},
 				}), nil)
 				fakeState.GetStateReturnsOnCall(1, nil, fmt.Errorf("state-error"))
@@ -359,14 +358,14 @@ var _ = Describe("Serializer", func() {
 			}
 
 			kvs = map[string][]byte{
-				"namespaces/fields/fake/Int": utils.MarshalOrPanic(&lb.StateData{
+				"namespaces/fields/fake/Int": protoutil.MarshalOrPanic(&lb.StateData{
 					Type: &lb.StateData_Int64{Int64: -3},
 				}),
-				"namespaces/fields/fake/Bytes": utils.MarshalOrPanic(&lb.StateData{
+				"namespaces/fields/fake/Bytes": protoutil.MarshalOrPanic(&lb.StateData{
 					Type: &lb.StateData_Bytes{Bytes: []byte("bytes")},
 				}),
-				"namespaces/fields/fake/Proto": utils.MarshalOrPanic(&lb.StateData{
-					Type: &lb.StateData_Bytes{Bytes: utils.MarshalOrPanic(testStruct.Proto)},
+				"namespaces/fields/fake/Proto": protoutil.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_Bytes{Bytes: protoutil.MarshalOrPanic(testStruct.Proto)},
 				}),
 			}
 
@@ -473,7 +472,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when the argument contains an illegal field type", func() {
 			BeforeEach(func() {
-				kvs["namespaces/metadata/fake"] = utils.MarshalOrPanic(&lb.StateMetadata{
+				kvs["namespaces/metadata/fake"] = protoutil.MarshalOrPanic(&lb.StateMetadata{
 					Datatype: "BadStruct",
 				})
 			})
@@ -538,16 +537,16 @@ var _ = Describe("Serializer", func() {
 
 		BeforeEach(func() {
 			kvs = map[string][]byte{
-				"namespaces/fields/fake/Int": utils.MarshalOrPanic(&lb.StateData{
+				"namespaces/fields/fake/Int": protoutil.MarshalOrPanic(&lb.StateData{
 					Type: &lb.StateData_Int64{Int64: -3},
 				}),
-				"namespaces/fields/fake/Bytes": utils.MarshalOrPanic(&lb.StateData{
+				"namespaces/fields/fake/Bytes": protoutil.MarshalOrPanic(&lb.StateData{
 					Type: &lb.StateData_Bytes{Bytes: []byte("bytes")},
 				}),
-				"namespaces/fields/fake/Proto": utils.MarshalOrPanic(&lb.StateData{
-					Type: &lb.StateData_Bytes{Bytes: utils.MarshalOrPanic(testStruct.Proto)},
+				"namespaces/fields/fake/Proto": protoutil.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_Bytes{Bytes: protoutil.MarshalOrPanic(testStruct.Proto)},
 				}),
-				"namespaces/metadata/fake": utils.MarshalOrPanic(&lb.StateMetadata{
+				"namespaces/metadata/fake": protoutil.MarshalOrPanic(&lb.StateMetadata{
 					Datatype: "TestStruct",
 					Fields:   []string{"Int", "Bytes", "Proto"},
 				}),
@@ -572,11 +571,11 @@ var _ = Describe("Serializer", func() {
 
 		Context("when the namespace contains extraneous keys", func() {
 			BeforeEach(func() {
-				kvs["namespaces/metadata/fake"] = utils.MarshalOrPanic(&lb.StateMetadata{
+				kvs["namespaces/metadata/fake"] = protoutil.MarshalOrPanic(&lb.StateMetadata{
 					Datatype: "TestStruct",
 					Fields:   []string{"Int", "Uint", "String", "Bytes", "Other"},
 				})
-				kvs["namespaces/fields/fake/Other"] = utils.MarshalOrPanic(&lb.StateData{
+				kvs["namespaces/fields/fake/Other"] = protoutil.MarshalOrPanic(&lb.StateData{
 					Type: &lb.StateData_Bytes{Bytes: []byte("value1")},
 				})
 			})
@@ -590,7 +589,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when the namespace contains different keys", func() {
 			BeforeEach(func() {
-				kvs["namespaces/fields/fake/Int"] = utils.MarshalOrPanic(&lb.StateData{
+				kvs["namespaces/fields/fake/Int"] = protoutil.MarshalOrPanic(&lb.StateData{
 					Type: &lb.StateData_Bytes{Bytes: []byte("value1")},
 				})
 			})
@@ -685,13 +684,13 @@ var _ = Describe("Serializer", func() {
 	Describe("DeserializeAllMetadata", func() {
 		BeforeEach(func() {
 			fakeState.GetStateRangeReturns(map[string][]byte{
-				"namespaces/metadata/thing0": utils.MarshalOrPanic(&lb.StateMetadata{
+				"namespaces/metadata/thing0": protoutil.MarshalOrPanic(&lb.StateMetadata{
 					Datatype: "TestDatatype0",
 				}),
-				"namespaces/metadata/thing1": utils.MarshalOrPanic(&lb.StateMetadata{
+				"namespaces/metadata/thing1": protoutil.MarshalOrPanic(&lb.StateMetadata{
 					Datatype: "TestDatatype1",
 				}),
-				"namespaces/metadata/thing2": utils.MarshalOrPanic(&lb.StateMetadata{
+				"namespaces/metadata/thing2": protoutil.MarshalOrPanic(&lb.StateMetadata{
 					Datatype: "TestDatatype2",
 				}),
 			}, nil)
@@ -746,7 +745,7 @@ var _ = Describe("Serializer", func() {
 
 	Describe("DeserializeMetadata", func() {
 		BeforeEach(func() {
-			fakeState.GetStateReturns(utils.MarshalOrPanic(&lb.StateMetadata{
+			fakeState.GetStateReturns(protoutil.MarshalOrPanic(&lb.StateMetadata{
 				Datatype: "TestDatatype",
 			}), nil)
 		})
@@ -798,7 +797,7 @@ var _ = Describe("Serializer", func() {
 
 	Describe("DeserializeFieldAsBytes", func() {
 		BeforeEach(func() {
-			fakeState.GetStateReturns(utils.MarshalOrPanic(&lb.StateData{
+			fakeState.GetStateReturns(protoutil.MarshalOrPanic(&lb.StateData{
 				Type: &lb.StateData_Bytes{Bytes: []byte("bytes")},
 			}), nil)
 		})
@@ -838,8 +837,8 @@ var _ = Describe("Serializer", func() {
 
 	Describe("DeserializeFieldAsProto", func() {
 		BeforeEach(func() {
-			fakeState.GetStateReturns(utils.MarshalOrPanic(&lb.StateData{
-				Type: &lb.StateData_Bytes{Bytes: utils.MarshalOrPanic(&lb.InstallChaincodeResult{Hash: []byte("hash")})},
+			fakeState.GetStateReturns(protoutil.MarshalOrPanic(&lb.StateData{
+				Type: &lb.StateData_Bytes{Bytes: protoutil.MarshalOrPanic(&lb.InstallChaincodeResult{Hash: []byte("hash")})},
 			}), nil)
 		})
 
@@ -879,7 +878,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when the db does not encode a proto", func() {
 			BeforeEach(func() {
-				fakeState.GetStateReturns(utils.MarshalOrPanic(&lb.StateData{
+				fakeState.GetStateReturns(protoutil.MarshalOrPanic(&lb.StateData{
 					Type: &lb.StateData_Bytes{Bytes: []byte("garbage")},
 				}), nil)
 			})
@@ -893,7 +892,7 @@ var _ = Describe("Serializer", func() {
 
 	Describe("DeserializeFieldAsInt64", func() {
 		BeforeEach(func() {
-			fakeState.GetStateReturns(utils.MarshalOrPanic(&lb.StateData{
+			fakeState.GetStateReturns(protoutil.MarshalOrPanic(&lb.StateData{
 				Type: &lb.StateData_Int64{Int64: -3},
 			}), nil)
 		})

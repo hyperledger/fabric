@@ -21,7 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	putil "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -548,7 +548,7 @@ func (mgr *blockfileMgr) fetchTransactionEnvelope(lp *fileLocPointer) (*common.E
 		return nil, err
 	}
 	_, n := proto.DecodeVarint(txEnvelopeBytes)
-	return putil.GetEnvelopeFromBlock(txEnvelopeBytes[n:])
+	return protoutil.GetEnvelopeFromBlock(txEnvelopeBytes[n:])
 }
 
 func (mgr *blockfileMgr) fetchBlockBytes(lp *fileLocPointer) ([]byte, error) {

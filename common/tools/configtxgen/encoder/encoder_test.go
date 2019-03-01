@@ -20,7 +20,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 func CreateStandardPolicies() map[string]*genesisconfig.Policy {
@@ -663,7 +663,7 @@ var _ = Describe("Encoder", func() {
 									"Admins": {
 										Policy: &cb.Policy{
 											Type: int32(cb.Policy_IMPLICIT_META),
-											Value: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+											Value: protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 												SubPolicy: "Admins",
 												Rule:      cb.ImplicitMetaPolicy_ANY,
 											}),
@@ -673,7 +673,7 @@ var _ = Describe("Encoder", func() {
 									"Readers": {
 										Policy: &cb.Policy{
 											Type: int32(cb.Policy_IMPLICIT_META),
-											Value: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+											Value: protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 												SubPolicy: "Readers",
 												Rule:      cb.ImplicitMetaPolicy_ANY,
 											}),
@@ -683,7 +683,7 @@ var _ = Describe("Encoder", func() {
 									"Writers": {
 										Policy: &cb.Policy{
 											Type: int32(cb.Policy_IMPLICIT_META),
-											Value: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+											Value: protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 												SubPolicy: "Writers",
 												Rule:      cb.ImplicitMetaPolicy_ANY,
 											}),
@@ -695,7 +695,7 @@ var _ = Describe("Encoder", func() {
 						},
 						Values: map[string]*cb.ConfigValue{
 							"Consortium": {
-								Value: utils.MarshalOrPanic(&cb.Consortium{
+								Value: protoutil.MarshalOrPanic(&cb.Consortium{
 									Name: "MyConsortium",
 								}),
 							},

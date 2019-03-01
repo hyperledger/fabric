@@ -14,11 +14,11 @@ import (
 
 	"github.com/hyperledger/fabric/cmd/common"
 	. "github.com/hyperledger/fabric/discovery/client"
-	"github.com/hyperledger/fabric/discovery/cmd"
+	discovery "github.com/hyperledger/fabric/discovery/cmd"
 	"github.com/hyperledger/fabric/discovery/cmd/mocks"
 	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -71,7 +71,7 @@ func TestParsePeers(t *testing.T) {
 		IdBytes: []byte("identity"),
 	}
 
-	idBytes := utils.MarshalOrPanic(sID)
+	idBytes := protoutil.MarshalOrPanic(sID)
 
 	validPeer := &Peer{
 		MSPID:            "Org1MSP",

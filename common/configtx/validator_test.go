@@ -13,7 +13,7 @@ import (
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -62,14 +62,14 @@ func makeConfigSet(configPairs ...*configPair) *cb.ConfigGroup {
 
 func makeConfigUpdateEnvelope(chainID string, readSet, writeSet *cb.ConfigGroup) *cb.Envelope {
 	return &cb.Envelope{
-		Payload: utils.MarshalOrPanic(&cb.Payload{
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
 					Type: int32(cb.HeaderType_CONFIG_UPDATE),
 				}),
 			},
-			Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-				ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
+			Data: protoutil.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+				ConfigUpdate: protoutil.MarshalOrPanic(&cb.ConfigUpdate{
 					ChannelId: chainID,
 					ReadSet:   readSet,
 					WriteSet:  writeSet,

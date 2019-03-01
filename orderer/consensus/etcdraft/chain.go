@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
@@ -208,7 +208,7 @@ func NewChain(
 	var snapBlkNum uint64
 	var cc raftpb.ConfState
 	if s := storage.Snapshot(); !raft.IsEmptySnap(s) {
-		b := utils.UnmarshalBlockOrPanic(s.Data)
+		b := protoutil.UnmarshalBlockOrPanic(s.Data)
 		snapBlkNum = b.Header.Number
 		cc = s.Metadata.ConfState
 	}
@@ -335,7 +335,7 @@ func (c *Chain) Start() {
 func (c *Chain) detectMigration() bool {
 	startOfChain := false
 	if c.support.SharedConfig().Capabilities().Kafka2RaftMigration() {
-		lastConfigIndex, err := utils.GetLastConfigIndexFromBlock(c.lastBlock)
+		lastConfigIndex, err := protoutil.GetLastConfigIndexFromBlock(c.lastBlock)
 		if err != nil {
 			c.logger.Panicf("Chain did not have appropriately encoded last config in its latest block: %s", err)
 		}
@@ -383,11 +383,11 @@ func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 // Validate the config update for being of Type A or Type B as described in the design doc.
 func (c *Chain) checkConfigUpdateValidity(ctx *common.Envelope) error {
 	var err error
-	payload, err := utils.UnmarshalPayload(ctx.Payload)
+	payload, err := protoutil.UnmarshalPayload(ctx.Payload)
 	if err != nil {
 		return err
 	}
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return err
 	}
@@ -596,7 +596,7 @@ func (c *Chain) serveRequest() {
 			for {
 				select {
 				case b := <-ch:
-					data := utils.MarshalOrPanic(b)
+					data := protoutil.MarshalOrPanic(b)
 					if err := c.Node.Propose(ctx, data); err != nil {
 						c.logger.Errorf("Failed to propose block %d to raft and discard %d blocks in queue: %s", b.Header.Number, len(ch), err)
 						return
@@ -761,7 +761,7 @@ func (c *Chain) serveRequest() {
 				break
 			}
 
-			b := utils.UnmarshalBlockOrPanic(sn.Data)
+			b := protoutil.UnmarshalBlockOrPanic(sn.Data)
 			c.lastSnapBlockNum = b.Header.Number
 			c.confState = sn.Metadata.ConfState
 			c.appliedIndex = sn.Metadata.Index
@@ -794,14 +794,14 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 
 	c.logger.Debugf("Writing block %d to ledger", block.Header.Number)
 
-	if utils.IsConfigBlock(block) {
+	if protoutil.IsConfigBlock(block) {
 		c.writeConfigBlock(block, index)
 		return
 	}
 
 	c.raftMetadataLock.Lock()
 	c.opts.RaftMetadata.RaftIndex = index
-	m := utils.MarshalOrPanic(c.opts.RaftMetadata)
+	m := protoutil.MarshalOrPanic(c.opts.RaftMetadata)
 	c.raftMetadataLock.Unlock()
 
 	c.support.WriteBlock(block, m)
@@ -855,7 +855,7 @@ func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]
 		}
 
 		// if it is config block, then we should wait for the commit of the block
-		if utils.IsConfigBlock(b) {
+		if protoutil.IsConfigBlock(b) {
 			c.configInflight = true
 		}
 
@@ -866,7 +866,7 @@ func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]
 }
 
 func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
-	b, err := utils.UnmarshalBlock(snap.Data)
+	b, err := protoutil.UnmarshalBlock(snap.Data)
 	if err != nil {
 		return errors.Errorf("failed to unmarshal snapshot data to block: %s", err)
 	}
@@ -892,7 +892,7 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 		if block == nil {
 			return errors.Errorf("failed to fetch block %d from cluster", next)
 		}
-		if utils.IsConfigBlock(block) {
+		if protoutil.IsConfigBlock(block) {
 			c.support.WriteConfigBlock(block, nil)
 		} else {
 			c.support.WriteBlock(block, nil)
@@ -931,7 +931,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				break
 			}
 
-			block := utils.UnmarshalBlockOrPanic(ents[i].Data)
+			block := protoutil.UnmarshalBlockOrPanic(ents[i].Data)
 			c.writeBlock(block, ents[i].Index)
 
 			appliedb = block.Header.Number
@@ -1021,7 +1021,7 @@ func (c *Chain) gc() {
 }
 
 func (c *Chain) isConfig(env *common.Envelope) bool {
-	h, err := utils.ChannelHeader(env)
+	h, err := protoutil.ChannelHeader(env)
 	if err != nil {
 		c.logger.Panicf("failed to extract channel header from envelope")
 	}
@@ -1111,7 +1111,7 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 	confChange := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
 	raftMetadata.RaftIndex = index
 
-	raftMetadataBytes := utils.MarshalOrPanic(raftMetadata)
+	raftMetadataBytes := protoutil.MarshalOrPanic(raftMetadata)
 	// write block with metadata
 	c.support.WriteConfigBlock(block, raftMetadataBytes)
 	c.configInflight = false
@@ -1160,7 +1160,7 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 		return nil // nothing to failover just started the chain
 	}
 
-	if !utils.IsConfigBlock(c.lastBlock) {
+	if !protoutil.IsConfigBlock(c.lastBlock) {
 		return nil
 	}
 

@@ -12,9 +12,9 @@ import (
 	"github.com/hyperledger/fabric/cmd/common"
 	"github.com/hyperledger/fabric/cmd/common/comm"
 	"github.com/hyperledger/fabric/cmd/common/signer"
-	"github.com/hyperledger/fabric/discovery/client"
+	discovery "github.com/hyperledger/fabric/discovery/client"
 	. "github.com/hyperledger/fabric/protos/discovery"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -98,7 +98,7 @@ func (stub *RawStub) Send(server string, conf common.Config, req *discovery.Requ
 		ClientTlsCertHash: comm.TLSCertHash,
 	}
 
-	payload := utils.MarshalOrPanic(req.Request)
+	payload := protoutil.MarshalOrPanic(req.Request)
 	sig, err := signer.Sign(payload)
 	if err != nil {
 		return nil, err

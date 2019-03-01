@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	gossip_proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc"
 )
 
@@ -109,7 +109,7 @@ func MockRecv(mock *MockBlocksDeliverer) (*orderer.DeliverResponse, error) {
 // Send sends the envelope with request for the blocks for ordering service
 // currently mocked and not doing anything
 func (mock *MockBlocksDeliverer) Send(env *common.Envelope) error {
-	payload, _ := utils.GetPayload(env)
+	payload, _ := protoutil.GetPayload(env)
 	seekInfo := &orderer.SeekInfo{}
 
 	proto.Unmarshal(payload.Data, seekInfo)

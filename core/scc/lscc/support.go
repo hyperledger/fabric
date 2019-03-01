@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -60,7 +60,7 @@ func (s *supportImpl) GetInstantiationPolicy(channel string, ccpack ccprovider.C
 		mspids := peer.GetMSPIDs(channel)
 
 		p := cauthdsl.SignedByAnyAdmin(mspids)
-		ip, err = utils.Marshal(p)
+		ip, err = protoutil.Marshal(p)
 		if err != nil {
 			return nil, errors.Errorf("error marshalling default instantiation policy")
 		}
@@ -82,16 +82,16 @@ func (s *supportImpl) CheckInstantiationPolicy(signedProp *pb.SignedProposal, ch
 	if err != nil {
 		return err
 	}
-	proposal, err := utils.GetProposal(signedProp.ProposalBytes)
+	proposal, err := protoutil.GetProposal(signedProp.ProposalBytes)
 	if err != nil {
 		return err
 	}
 	// get the signature header of the proposal
-	header, err := utils.GetHeader(proposal.Header)
+	header, err := protoutil.GetHeader(proposal.Header)
 	if err != nil {
 		return err
 	}
-	shdr, err := utils.GetSignatureHeader(header.SignatureHeader)
+	shdr, err := protoutil.GetSignatureHeader(header.SignatureHeader)
 	if err != nil {
 		return err
 	}

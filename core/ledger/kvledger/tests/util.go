@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	protopeer "github.com/hyperledger/fabric/protos/peer"
 	prototestutils "github.com/hyperledger/fabric/protos/testutils"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 var logger = flogging.MustGetLogger("test2")
@@ -111,7 +111,7 @@ func constructTestGenesisBlock(channelid string) (*common.Block, error) {
 }
 
 func setBlockFlagsToValid(block *common.Block) {
-	utils.InitBlockMetadata(block)
+	protoutil.InitBlockMetadata(block)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
 		lutils.NewTxValidationFlagsSetValue(len(block.Data.Data), protopeer.TxValidationCode_VALID)
 }

@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -501,7 +501,7 @@ func lastConfigFromBlock(block *common.Block) (uint64, error) {
 	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_LAST_CONFIG) {
 		return 0, errors.New("no metadata in block")
 	}
-	return utils.GetLastConfigIndexFromBlock(block)
+	return protoutil.GetLastConfigIndexFromBlock(block)
 }
 
 // Close closes the ChainInspector
@@ -597,11 +597,11 @@ func ChannelCreationBlockToGenesisBlock(block *common.Block) (*common.Block, err
 	if block == nil {
 		return nil, errors.New("nil block")
 	}
-	env, err := utils.ExtractEnvelope(block, 0)
+	env, err := protoutil.ExtractEnvelope(block, 0)
 	if err != nil {
 		return nil, err
 	}
-	payload, err := utils.ExtractPayload(env)
+	payload, err := protoutil.ExtractPayload(env)
 	if err != nil {
 		return nil, err
 	}
@@ -613,7 +613,7 @@ func ChannelCreationBlockToGenesisBlock(block *common.Block) (*common.Block, err
 		Metadata: make([][]byte, 4),
 	}
 	block.Metadata = metadata
-	metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&common.LastConfig{
+	metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.LastConfig{
 		Index: 0,
 	})
 	return block, nil
@@ -625,18 +625,18 @@ func IsNewChannelBlock(block *common.Block) (string, error) {
 	if block == nil {
 		return "", errors.New("nil block")
 	}
-	env, err := utils.ExtractEnvelope(block, 0)
+	env, err := protoutil.ExtractEnvelope(block, 0)
 	if err != nil {
 		return "", err
 	}
-	payload, err := utils.ExtractPayload(env)
+	payload, err := protoutil.ExtractPayload(env)
 	if err != nil {
 		return "", err
 	}
 	if payload.Header == nil {
 		return "", errors.New("nil header in payload")
 	}
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return "", err
 	}
@@ -645,18 +645,18 @@ func IsNewChannelBlock(block *common.Block) (string, error) {
 		return "", nil
 	}
 	systemChannelName := chdr.ChannelId
-	innerEnvelope, err := utils.UnmarshalEnvelope(payload.Data)
+	innerEnvelope, err := protoutil.UnmarshalEnvelope(payload.Data)
 	if err != nil {
 		return "", err
 	}
-	innerPayload, err := utils.UnmarshalPayload(innerEnvelope.Payload)
+	innerPayload, err := protoutil.UnmarshalPayload(innerEnvelope.Payload)
 	if err != nil {
 		return "", err
 	}
 	if innerPayload.Header == nil {
 		return "", errors.New("inner payload's header is nil")
 	}
-	chdr, err = utils.UnmarshalChannelHeader(innerPayload.Header.ChannelHeader)
+	chdr, err = protoutil.UnmarshalChannelHeader(innerPayload.Header.ChannelHeader)
 	if err != nil {
 		return "", err
 	}

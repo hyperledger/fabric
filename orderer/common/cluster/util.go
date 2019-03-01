@@ -21,7 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -264,11 +264,11 @@ func ConfigFromBlock(block *common.Block) (*common.ConfigEnvelope, error) {
 		return nil, errors.New("empty block")
 	}
 	txn := block.Data.Data[0]
-	env, err := utils.GetEnvelopeFromBlock(txn)
+	env, err := protoutil.GetEnvelopeFromBlock(txn)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	payload, err := utils.GetPayload(env)
+	payload, err := protoutil.GetPayload(env)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -282,7 +282,7 @@ func ConfigFromBlock(block *common.Block) (*common.ConfigEnvelope, error) {
 	if payload.Header == nil {
 		return nil, errors.New("nil header in payload")
 	}
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -341,14 +341,14 @@ func SignatureSetFromBlock(block *common.Block) ([]*common.SignedData, error) {
 	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_SIGNATURES) {
 		return nil, errors.New("no metadata in block")
 	}
-	metadata, err := utils.GetMetadataFromBlock(block, common.BlockMetadataIndex_SIGNATURES)
+	metadata, err := protoutil.GetMetadataFromBlock(block, common.BlockMetadataIndex_SIGNATURES)
 	if err != nil {
 		return nil, errors.Errorf("failed unmarshaling medatata for signatures: %v", err)
 	}
 
 	var signatureSet []*common.SignedData
 	for _, metadataSignature := range metadata.Signatures {
-		sigHdr, err := utils.GetSignatureHeader(metadataSignature.SignatureHeader)
+		sigHdr, err := protoutil.GetSignatureHeader(metadataSignature.SignatureHeader)
 		if err != nil {
 			return nil, errors.Errorf("failed unmarshaling signature header for block with id %d: %v",
 				block.Header.Number, err)
@@ -387,7 +387,7 @@ func EndpointconfigFromConfigBlock(block *common.Block) (*EndpointConfig, error)
 	if block == nil {
 		return nil, errors.New("nil block")
 	}
-	envelopeConfig, err := utils.ExtractEnvelope(block, 0)
+	envelopeConfig, err := protoutil.ExtractEnvelope(block, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -562,7 +562,7 @@ func LastConfigBlock(block *common.Block, blockRetriever BlockRetriever) (*commo
 	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_LAST_CONFIG) {
 		return nil, errors.New("no metadata in block")
 	}
-	lastConfigBlockNum, err := utils.GetLastConfigIndexFromBlock(block)
+	lastConfigBlockNum, err := protoutil.GetLastConfigIndexFromBlock(block)
 	if err != nil {
 		return nil, err
 	}

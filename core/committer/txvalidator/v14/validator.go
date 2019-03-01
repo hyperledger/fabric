@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -224,7 +224,7 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	}
 
 	// Initialize metadata structure
-	utils.InitBlockMetadata(block)
+	protoutil.InitBlockMetadata(block)
 
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr
 
@@ -277,7 +277,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		return
 	}
 
-	if env, err := utils.GetEnvelopeFromBlock(d); err != nil {
+	if env, err := protoutil.GetEnvelopeFromBlock(d); err != nil {
 		logger.Warningf("Error getting tx from block: %+v", err)
 		results <- &blockValidationResult{
 			tIdx:           tIdx,
@@ -307,7 +307,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 			return
 		}
 
-		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 		if err != nil {
 			logger.Warningf("Could not unmarshal channel header, err %s, skipping", err)
 			results <- &blockValidationResult{
@@ -549,7 +549,7 @@ func (v *TxValidator) invalidTXsForUpgradeCC(txsChaincodeNames map[int]*sysccpro
 
 func (v *TxValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upgradeCCIns *sysccprovider.ChaincodeInstance, err error) {
 	// This is duplicated unpacking work, but make test easier.
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -558,7 +558,7 @@ func (v *TxValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 	chainID := chdr.ChannelId // it is guaranteed to be an existing channel by now
 
 	// ChaincodeID
-	hdrExt, err := utils.GetChaincodeHeaderExtension(payload.Header)
+	hdrExt, err := protoutil.GetChaincodeHeaderExtension(payload.Header)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -566,21 +566,21 @@ func (v *TxValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 	invokeIns := &sysccprovider.ChaincodeInstance{ChainID: chainID, ChaincodeName: invokeCC.Name, ChaincodeVersion: invokeCC.Version}
 
 	// Transaction
-	tx, err := utils.GetTransaction(payload.Data)
+	tx, err := protoutil.GetTransaction(payload.Data)
 	if err != nil {
 		logger.Errorf("GetTransaction failed: %+v", err)
 		return invokeIns, nil, nil
 	}
 
 	// ChaincodeActionPayload
-	cap, err := utils.GetChaincodeActionPayload(tx.Actions[0].Payload)
+	cap, err := protoutil.GetChaincodeActionPayload(tx.Actions[0].Payload)
 	if err != nil {
 		logger.Errorf("GetChaincodeActionPayload failed: %+v", err)
 		return invokeIns, nil, nil
 	}
 
 	// ChaincodeProposalPayload
-	cpp, err := utils.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
+	cpp, err := protoutil.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
 	if err != nil {
 		logger.Errorf("GetChaincodeProposalPayload failed: %+v", err)
 		return invokeIns, nil, nil
@@ -608,7 +608,7 @@ func (v *TxValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 }
 
 func (v *TxValidator) getUpgradeTxInstance(chainID string, cdsBytes []byte) (*sysccprovider.ChaincodeInstance, error) {
-	cds, err := utils.GetChaincodeDeploymentSpec(cdsBytes, platforms.NewRegistry(&golang.Platform{}))
+	cds, err := protoutil.GetChaincodeDeploymentSpec(cdsBytes, platforms.NewRegistry(&golang.Platform{}))
 	if err != nil {
 		return nil, err
 	}

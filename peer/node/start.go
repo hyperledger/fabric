@@ -79,7 +79,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protos/transientstore"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/token/server"
 	"github.com/hyperledger/fabric/token/tms/manager"
 	"github.com/pkg/errors"
@@ -535,7 +535,7 @@ func handleSignals(handlers map[os.Signal]func()) {
 func localPolicy(policyObject proto.Message) policies.Policy {
 	localMSP := mgmt.GetLocalMSP()
 	pp := cauthdsl.NewPolicyProvider(localMSP)
-	policy, _, err := pp.NewPolicy(utils.MarshalOrPanic(policyObject))
+	policy, _, err := pp.NewPolicy(protoutil.MarshalOrPanic(policyObject))
 	if err != nil {
 		logger.Panicf("Failed creating local policy: +%v", err)
 	}

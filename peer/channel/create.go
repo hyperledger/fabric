@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package channel
@@ -29,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -83,11 +73,11 @@ func createChannelFromConfigTx(configTxFileName string) (*cb.Envelope, error) {
 		return nil, ConfigTxFileNotFound(err.Error())
 	}
 
-	return utils.UnmarshalEnvelope(cftx)
+	return protoutil.UnmarshalEnvelope(cftx)
 }
 
 func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope) (*cb.Envelope, error) {
-	payload, err := utils.ExtractPayload(envConfigUpdate)
+	payload, err := protoutil.ExtractPayload(envConfigUpdate)
 	if err != nil {
 		return nil, InvalidCreateTx("bad payload")
 	}
@@ -96,7 +86,7 @@ func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope) (*cb.Envelope, err
 		return nil, InvalidCreateTx("bad header")
 	}
 
-	ch, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	ch, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return nil, InvalidCreateTx("could not unmarshall channel header")
 	}
@@ -131,14 +121,14 @@ func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope) (*cb.Envelope, err
 	}
 
 	configSig := &cb.ConfigSignature{
-		SignatureHeader: utils.MarshalOrPanic(sigHeader),
+		SignatureHeader: protoutil.MarshalOrPanic(sigHeader),
 	}
 
 	configSig.Signature, err = signer.Sign(util.ConcatenateBytes(configSig.SignatureHeader, configUpdateEnv.ConfigUpdate))
 
 	configUpdateEnv.Signatures = append(configUpdateEnv.Signatures, configSig)
 
-	return utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, configUpdateEnv, 0, 0)
+	return protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, configUpdateEnv, 0, 0)
 }
 
 func sendCreateChainTransaction(cf *ChannelCmdFactory) error {

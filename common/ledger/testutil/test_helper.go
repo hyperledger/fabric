@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	ptestutils "github.com/hyperledger/fabric/protos/testutils"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -191,7 +191,7 @@ func NewBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *com
 		block.Data.Data = append(block.Data.Data, txEnvBytes)
 	}
 	block.Header.DataHash = block.Data.Hash()
-	utils.InitBlockMetadata(block)
+	protoutil.InitBlockMetadata(block)
 
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = lutils.NewTxValidationFlagsSetValue(len(env), pb.TxValidationCode_VALID)
 

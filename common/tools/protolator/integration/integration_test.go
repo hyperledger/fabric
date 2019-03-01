@@ -19,7 +19,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,7 +52,7 @@ func TestConfigUpdate(t *testing.T) {
 	assert.NoError(t, err)
 
 	bidirectionalMarshal(t, &cb.ConfigUpdateEnvelope{
-		ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
+		ConfigUpdate: protoutil.MarshalOrPanic(&cb.ConfigUpdate{
 			ReadSet:  cg,
 			WriteSet: cg,
 		}),
@@ -62,7 +62,7 @@ func TestConfigUpdate(t *testing.T) {
 func TestIdemix(t *testing.T) {
 	bidirectionalMarshal(t, &msp.MSPConfig{
 		Type: 1,
-		Config: utils.MarshalOrPanic(&msp.IdemixMSPConfig{
+		Config: protoutil.MarshalOrPanic(&msp.IdemixMSPConfig{
 			Name: "fooo",
 		}),
 	})
@@ -82,10 +82,10 @@ func TestEmitDefaultsBug(t *testing.T) {
 		},
 		Data: &cb.BlockData{
 			Data: [][]byte{
-				utils.MarshalOrPanic(&cb.Envelope{
-					Payload: utils.MarshalOrPanic(&cb.Payload{
+				protoutil.MarshalOrPanic(&cb.Envelope{
+					Payload: protoutil.MarshalOrPanic(&cb.Payload{
 						Header: &cb.Header{
-							ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+							ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
 								Type: int32(cb.HeaderType_CONFIG),
 							}),
 						},

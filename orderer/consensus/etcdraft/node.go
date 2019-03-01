@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
 )
@@ -120,7 +120,7 @@ func (n *node) send(msgs []raftpb.Message) {
 
 		status := raft.SnapshotFinish
 
-		msgBytes := utils.MarshalOrPanic(&msg)
+		msgBytes := protoutil.MarshalOrPanic(&msg)
 		err := n.rpc.SendConsensus(msg.To, &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
 		if err != nil {
 			n.ReportUnreachable(msg.To)

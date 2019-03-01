@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
-	putils "github.com/hyperledger/fabric/protos/utils"
+	protoutil "github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
@@ -118,22 +118,22 @@ func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string,
 	logger.Debugf("Entering getKeyModificationFromTran()\n", namespace, key)
 
 	// extract action from the envelope
-	payload, err := putils.GetPayload(tranEnvelope)
+	payload, err := protoutil.GetPayload(tranEnvelope)
 	if err != nil {
 		return nil, err
 	}
 
-	tx, err := putils.GetTransaction(payload.Data)
+	tx, err := protoutil.GetTransaction(payload.Data)
 	if err != nil {
 		return nil, err
 	}
 
-	_, respPayload, err := putils.GetPayloads(tx.Actions[0])
+	_, respPayload, err := protoutil.GetPayloads(tx.Actions[0])
 	if err != nil {
 		return nil, err
 	}
 
-	chdr, err := putils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return nil, err
 	}

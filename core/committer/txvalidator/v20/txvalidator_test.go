@@ -23,7 +23,7 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -180,12 +180,12 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	// Create simple endorsement transaction
 	payload := &common.Payload{
 		Header: &common.Header{
-			ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+			ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
 				TxId:      "INVALID TXID!!!",
 				Type:      int32(common.HeaderType_ENDORSER_TRANSACTION),
 				ChannelId: util2.GetTestChainID(),
 			}),
-			SignatureHeader: utils.MarshalOrPanic(&common.SignatureHeader{
+			SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{
 				Nonce:   []byte("nonce"),
 				Creator: mockSignerSerialized,
 			}),
@@ -225,7 +225,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	}
 
 	// Initialize metadata
-	utils.InitBlockMetadata(block)
+	protoutil.InitBlockMetadata(block)
 	txsFilter := util.NewTxValidationFlagsSetValue(len(block.Data.Data), peer.TxValidationCode_VALID)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 

@@ -31,7 +31,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	mb "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -814,7 +814,7 @@ func (lscc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 	}
 
 	lifecycleEvent := &pb.LifecycleEvent{ChaincodeName: chaincodeName}
-	lifecycleEventBytes := utils.MarshalOrPanic(lifecycleEvent)
+	lifecycleEventBytes := protoutil.MarshalOrPanic(lifecycleEvent)
 	stub.SetEvent(UPGRADE, lifecycleEventBytes)
 	return cdfs, nil
 }
@@ -913,7 +913,7 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			EP = args[3]
 		} else {
 			p := cauthdsl.SignedByAnyMember(peer.GetMSPIDs(channel))
-			EP, err = utils.Marshal(p)
+			EP, err = protoutil.Marshal(p)
 			if err != nil {
 				return shim.Error(err.Error())
 			}

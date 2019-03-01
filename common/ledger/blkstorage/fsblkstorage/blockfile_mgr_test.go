@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package fsblkstorage
@@ -24,7 +14,7 @@ import (
 	ledgerutil "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	putil "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -178,7 +168,7 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 			assert.NoError(t, err)
 			txEnvelopeFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByID(txID)
 			assert.NoError(t, err, "Error while retrieving tx from blkfileMgr")
-			txEnvelope, err := putil.GetEnvelopeFromBlock(txEnvelopeBytes)
+			txEnvelope, err := protoutil.GetEnvelopeFromBlock(txEnvelopeBytes)
 			assert.NoError(t, err, "Error while unmarshalling tx")
 			assert.Equal(t, txEnvelope, txEnvelopeFromFileMgr)
 		}
@@ -224,11 +214,11 @@ func TestBlockfileMgrGetTxByIdDuplicateTxid(t *testing.T) {
 	block2.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txValidationFlags
 	assert.NoError(t, blkFileMgr.addBlock(block2))
 
-	txenvp1, err := putil.GetEnvelopeFromBlock(block1.Data.Data[0])
+	txenvp1, err := protoutil.GetEnvelopeFromBlock(block1.Data.Data[0])
 	assert.NoError(t, err)
-	txenvp2, err := putil.GetEnvelopeFromBlock(block1.Data.Data[1])
+	txenvp2, err := protoutil.GetEnvelopeFromBlock(block1.Data.Data[1])
 	assert.NoError(t, err)
-	txenvp3, err := putil.GetEnvelopeFromBlock(block2.Data.Data[0])
+	txenvp3, err := protoutil.GetEnvelopeFromBlock(block2.Data.Data[0])
 	assert.NoError(t, err)
 
 	indexedTxenvp, _ := blkFileMgr.retrieveTransactionByID("txid-1")
@@ -265,7 +255,7 @@ func TestBlockfileMgrGetTxByBlockNumTranNum(t *testing.T) {
 			// blockNum and tranNum both start with 0
 			txEnvelopeFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByBlockNumTranNum(uint64(blockIndex), uint64(tranIndex))
 			assert.NoError(t, err, "Error while retrieving tx from blkfileMgr")
-			txEnvelope, err := putil.GetEnvelopeFromBlock(txEnvelopeBytes)
+			txEnvelope, err := protoutil.GetEnvelopeFromBlock(txEnvelopeBytes)
 			assert.NoError(t, err, "Error while unmarshalling tx")
 			assert.Equal(t, txEnvelope, txEnvelopeFromFileMgr)
 		}

@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -49,7 +49,7 @@ func validateStructure(ctx context.Context, env *common.Envelope) (*peer.AdminOp
 	}
 	addr := util.ExtractRemoteAddress(ctx)
 	op := &peer.AdminOperation{}
-	ch, err := utils.UnmarshalEnvelopeOfType(env, common.HeaderType_PEER_ADMIN_OPERATION, op)
+	ch, err := protoutil.UnmarshalEnvelopeOfType(env, common.HeaderType_PEER_ADMIN_OPERATION, op)
 	if err != nil {
 		logger.Warningf("Request from %s is badly formed: +%v", addr, err)
 		return nil, nil, errors.Wrap(err, "bad request")

@@ -1,18 +1,9 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
+
 package qscc
 
 import (
@@ -30,7 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos/common"
 	peer2 "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -195,7 +186,7 @@ func TestFailingAccessControl(t *testing.T) {
 
 	// GetChainInfo
 	args := [][]byte{[]byte(GetChainInfo), []byte(chainid)}
-	sProp, _ := utils.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetChainInfo, chainid, sProp, errors.New("Failed access control"))
@@ -207,7 +198,7 @@ func TestFailingAccessControl(t *testing.T) {
 
 	// GetBlockByNumber
 	args = [][]byte{[]byte(GetBlockByNumber), []byte(chainid), []byte("1")}
-	sProp, _ = utils.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetBlockByNumber, chainid, sProp, errors.New("Failed access control"))
@@ -219,7 +210,7 @@ func TestFailingAccessControl(t *testing.T) {
 
 	// GetBlockByHash
 	args = [][]byte{[]byte(GetBlockByHash), []byte(chainid), []byte("1")}
-	sProp, _ = utils.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetBlockByHash, chainid, sProp, errors.New("Failed access control"))
@@ -231,7 +222,7 @@ func TestFailingAccessControl(t *testing.T) {
 
 	// GetBlockByTxID
 	args = [][]byte{[]byte(GetBlockByTxID), []byte(chainid), []byte("1")}
-	sProp, _ = utils.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetBlockByTxID, chainid, sProp, errors.New("Failed access control"))
@@ -243,7 +234,7 @@ func TestFailingAccessControl(t *testing.T) {
 
 	// GetTransactionByID
 	args = [][]byte{[]byte(GetTransactionByID), []byte(chainid), []byte("1")}
-	sProp, _ = utils.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetTransactionByID, chainid, sProp, errors.New("Failed access control"))
@@ -300,14 +291,14 @@ func TestQueryGeneratedBlock(t *testing.T) {
 	for _, d := range block1.Data.Data {
 		ebytes := d
 		if ebytes != nil {
-			if env, err := utils.GetEnvelopeFromBlock(ebytes); err != nil {
+			if env, err := protoutil.GetEnvelopeFromBlock(ebytes); err != nil {
 				t.Fatalf("error getting envelope from block: %s", err)
 			} else if env != nil {
-				payload, err := utils.GetPayload(env)
+				payload, err := protoutil.GetPayload(env)
 				if err != nil {
 					t.Fatalf("error extracting payload from envelope: %s", err)
 				}
-				chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+				chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 				if err != nil {
 					t.Fatalf(err.Error())
 				}

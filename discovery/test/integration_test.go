@@ -33,7 +33,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/cclifecycle"
+	cc "github.com/hyperledger/fabric/core/cclifecycle"
 	lifecyclemocks "github.com/hyperledger/fabric/core/cclifecycle/mocks"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -53,7 +53,7 @@ import (
 	. "github.com/hyperledger/fabric/protos/discovery"
 	"github.com/hyperledger/fabric/protos/gossip"
 	msprotos "github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -70,18 +70,18 @@ var (
 		"col12": {orgPrincipal("Org1MSP"), orgPrincipal("Org2MSP")},
 	})
 
-	cc1Bytes = utils.MarshalOrPanic(&ccprovider.ChaincodeData{
+	cc1Bytes = protoutil.MarshalOrPanic(&ccprovider.ChaincodeData{
 		Name:    "cc1",
 		Version: "1.0",
 		Id:      []byte{42},
-		Policy:  utils.MarshalOrPanic(policyFromString("AND('Org1MSP.member', 'Org1MSP.member')")),
+		Policy:  protoutil.MarshalOrPanic(policyFromString("AND('Org1MSP.member', 'Org1MSP.member')")),
 	})
 
-	cc2Bytes = utils.MarshalOrPanic(&ccprovider.ChaincodeData{
+	cc2Bytes = protoutil.MarshalOrPanic(&ccprovider.ChaincodeData{
 		Name:    "cc2",
 		Version: "1.0",
 		Id:      []byte{43},
-		Policy:  utils.MarshalOrPanic(policyFromString("AND('Org1MSP.member', 'Org2MSP.member')")),
+		Policy:  protoutil.MarshalOrPanic(policyFromString("AND('Org1MSP.member', 'Org2MSP.member')")),
 	})
 )
 
@@ -409,7 +409,7 @@ func createSupport(t *testing.T, dir string, lc *lifeCycle) *support {
 
 	org1Admin, err := cauthdsl.FromString("OR('Org1MSP.admin')")
 	assert.NoError(t, err)
-	org1AdminPolicy, _, err := cauthdsl.NewPolicyProvider(org1MSP).NewPolicy(utils.MarshalOrPanic(org1Admin))
+	org1AdminPolicy, _, err := cauthdsl.NewPolicyProvider(org1MSP).NewPolicy(protoutil.MarshalOrPanic(org1Admin))
 	assert.NoError(t, err)
 	acl := discacl.NewDiscoverySupport(channelVerifier, org1AdminPolicy, chConfig)
 
@@ -571,7 +571,7 @@ func createChannelConfigGetter(s *sequenceWrapper, mspMgr msp.MSPManager) discac
 func createPolicyManagerGetter(t *testing.T, mspMgr msp.MSPManager) *mocks.ChannelPolicyManagerGetter {
 	org1Org2Members, err := cauthdsl.FromString("OR('Org1MSP.client', 'Org2MSP.client')")
 	assert.NoError(t, err)
-	org1Org2MembersPolicy, _, err := cauthdsl.NewPolicyProvider(mspMgr).NewPolicy(utils.MarshalOrPanic(org1Org2Members))
+	org1Org2MembersPolicy, _, err := cauthdsl.NewPolicyProvider(mspMgr).NewPolicy(protoutil.MarshalOrPanic(org1Org2Members))
 	assert.NoError(t, err)
 	_ = org1Org2MembersPolicy
 	polMgr := &mocks.ChannelPolicyManagerGetter{}
@@ -780,7 +780,7 @@ func newPeer(dir, mspID string, org, id int) *testPeer {
 		Mspid:   mspID,
 		IdBytes: certBytes,
 	}
-	identityBytes := utils.MarshalOrPanic(sID)
+	identityBytes := protoutil.MarshalOrPanic(sID)
 	pkiID := gcommon.PKIidType(hex.EncodeToString(util.ComputeSHA256(identityBytes)))
 	return &testPeer{
 		mspID:        mspID,
@@ -862,13 +862,13 @@ func buildCollectionConfig(col2principals map[string][]*msprotos.MSPPrincipal) [
 			},
 		})
 	}
-	return utils.MarshalOrPanic(collections)
+	return protoutil.MarshalOrPanic(collections)
 }
 
 func orgPrincipal(mspID string) *msprotos.MSPPrincipal {
 	return &msprotos.MSPPrincipal{
 		PrincipalClassification: msprotos.MSPPrincipal_ROLE,
-		Principal: utils.MarshalOrPanic(&msprotos.MSPRole{
+		Principal: protoutil.MarshalOrPanic(&msprotos.MSPRole{
 			MspIdentifier: mspID,
 			Role:          msprotos.MSPRole_MEMBER,
 		}),
@@ -912,7 +912,7 @@ func serializeIdentity(clientCert string, mspID string) ([]byte, error) {
 		Mspid:   mspID,
 		IdBytes: b,
 	}
-	return utils.MarshalOrPanic(sId), nil
+	return protoutil.MarshalOrPanic(sId), nil
 }
 
 func (si *signer) Sign(msg []byte) ([]byte, error) {

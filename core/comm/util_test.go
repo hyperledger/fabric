@@ -20,7 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/comm/testpb"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -93,7 +93,7 @@ func TestBindingInspector(t *testing.T) {
 		if !isEnvelope || env == nil {
 			return nil
 		}
-		ch, err := utils.ChannelHeader(env)
+		ch, err := protoutil.ChannelHeader(env)
 		if err != nil {
 			return nil
 		}
@@ -110,7 +110,7 @@ func TestBindingInspector(t *testing.T) {
 	assert.Contains(t, err.Error(), "client didn't include its TLS cert hash")
 
 	// Scenario II: invalid channel header
-	ch, _ := proto.Marshal(utils.MakeChannelHeader(common.HeaderType_CONFIG, 0, "test", 0))
+	ch, _ := proto.Marshal(protoutil.MakeChannelHeader(common.HeaderType_CONFIG, 0, "test", 0))
 	// Corrupt channel header
 	ch = append(ch, 0)
 	err = srv.newInspection(t).inspectBinding(envelopeWithChannelHeader(ch))
@@ -118,7 +118,7 @@ func TestBindingInspector(t *testing.T) {
 	assert.Contains(t, err.Error(), "client didn't include its TLS cert hash")
 
 	// Scenario III: No TLS cert hash in envelope
-	chanHdr := utils.MakeChannelHeader(common.HeaderType_CONFIG, 0, "test", 0)
+	chanHdr := protoutil.MakeChannelHeader(common.HeaderType_CONFIG, 0, "test", 0)
 	ch, _ = proto.Marshal(chanHdr)
 	err = srv.newInspection(t).inspectBinding(envelopeWithChannelHeader(ch))
 	assert.Error(t, err)

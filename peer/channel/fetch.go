@@ -15,7 +15,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/cobra"
 )
 
@@ -74,7 +74,7 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		if err2 != nil {
 			return err2
 		}
-		lc, err2 := utils.GetLastConfigIndexFromBlock(iBlock)
+		lc, err2 := protoutil.GetLastConfigIndexFromBlock(iBlock)
 		if err2 != nil {
 			return err2
 		}

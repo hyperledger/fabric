@@ -20,7 +20,7 @@ import (
 	discoveryprotos "github.com/hyperledger/fabric/protos/discovery"
 	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -539,7 +539,7 @@ func identitySet(pkiID2MSPID map[string]string) api.PeerIdentitySet {
 			IdBytes: []byte(pkiID),
 		}
 		res = append(res, api.PeerIdentityInfo{
-			Identity:     api.PeerIdentityType(utils.MarshalOrPanic(sID)),
+			Identity:     api.PeerIdentityType(protoutil.MarshalOrPanic(sID)),
 			PKIId:        common.PKIidType(pkiID),
 			Organization: api.OrgIdentityType(mspID),
 		})
@@ -554,7 +554,7 @@ type peerInfo struct {
 }
 
 func peerIdentityString(id string) string {
-	return string(utils.MarshalOrPanic(&msp.SerializedIdentity{
+	return string(protoutil.MarshalOrPanic(&msp.SerializedIdentity{
 		Mspid:   pkiID2MSPID[id],
 		IdBytes: []byte(id),
 	}))
@@ -562,7 +562,7 @@ func peerIdentityString(id string) string {
 
 func newPeer(i int) *peerInfo {
 	p := fmt.Sprintf("p%d", i)
-	identity := utils.MarshalOrPanic(&msp.SerializedIdentity{
+	identity := protoutil.MarshalOrPanic(&msp.SerializedIdentity{
 		Mspid:   pkiID2MSPID[p],
 		IdBytes: []byte(p),
 	})
@@ -583,7 +583,7 @@ func newPeer(i int) *peerInfo {
 func peerRole(pkiID string) *msp.MSPPrincipal {
 	return &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal: utils.MarshalOrPanic(&msp.MSPRole{
+		Principal: protoutil.MarshalOrPanic(&msp.MSPRole{
 			MspIdentifier: pkiID2MSPID[pkiID],
 			Role:          msp.MSPRole_PEER,
 		}),

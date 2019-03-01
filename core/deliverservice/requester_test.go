@@ -20,7 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -135,7 +135,7 @@ func (o *mockOrderer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) erro
 		if !isEnvelope || env == nil {
 			assert.Fail(o.t, "not an envelope")
 		}
-		ch, err := utils.ChannelHeader(env)
+		ch, err := protoutil.ChannelHeader(env)
 		assert.NoError(o.t, err)
 		return ch.TlsCertHash
 	})

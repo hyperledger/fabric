@@ -9,7 +9,7 @@ package channel
 import (
 	"io/ioutil"
 
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +50,7 @@ func sign(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		return ConfigTxFileNotFound(err.Error())
 	}
 
-	ctxEnv, err := utils.UnmarshalEnvelope(fileData)
+	ctxEnv, err := protoutil.UnmarshalEnvelope(fileData)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func sign(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		return err
 	}
 
-	sCtxEnvData := utils.MarshalOrPanic(sCtxEnv)
+	sCtxEnvData := protoutil.MarshalOrPanic(sCtxEnv)
 
 	return ioutil.WriteFile(channelTxFile, sCtxEnvData, 0660)
 }

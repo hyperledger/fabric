@@ -20,7 +20,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -153,7 +153,7 @@ func (i *Installer) install() error {
 		return err
 	}
 
-	signedProposal, err := utils.GetSignedProposal(proposal, i.Signer)
+	signedProposal, err := protoutil.GetSignedProposal(proposal, i.Signer)
 	if err != nil {
 		return errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", chainFuncName))
 	}
@@ -174,7 +174,7 @@ func (i *Installer) installLegacy() error {
 		return err
 	}
 
-	signedProposal, err := utils.GetSignedProposal(proposal, i.Signer)
+	signedProposal, err := protoutil.GetSignedProposal(proposal, i.Signer)
 	if err != nil {
 		return errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", chainFuncName))
 	}
@@ -255,7 +255,7 @@ func (i *Installer) createNewLifecycleInstallProposal(name, version string, pkgB
 		},
 	}
 
-	proposal, _, err := utils.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, creatorBytes)
+	proposal, _, err := protoutil.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, creatorBytes)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error creating proposal for ChaincodeInvocationSpec")
 	}
@@ -308,7 +308,7 @@ func (i *Installer) createLegacyInstallProposal(msg proto.Message) (*pb.Proposal
 		return nil, errors.WithMessage(err, fmt.Sprintf("error serializing identity for %s", i.Signer.GetIdentifier()))
 	}
 
-	prop, _, err := utils.CreateInstallProposalFromCDS(msg, creator)
+	prop, _, err := protoutil.CreateInstallProposalFromCDS(msg, creator)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("error creating proposal for %s", chainFuncName))
 	}
@@ -367,7 +367,7 @@ func getPackageFromFile(ccPkgFile string) (proto.Message, *pb.ChaincodeDeploymen
 		}
 
 		// ...and get the CDS at last
-		cds, err = utils.GetChaincodeDeploymentSpec(sCDS.ChaincodeDeploymentSpec, platformRegistry)
+		cds, err = protoutil.GetChaincodeDeploymentSpec(sCDS.ChaincodeDeploymentSpec, platformRegistry)
 		if err != nil {
 			return nil, nil, errors.WithMessage(err, "error extracting chaincode deployment spec")
 		}

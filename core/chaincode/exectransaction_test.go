@@ -63,7 +63,7 @@ import (
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -236,7 +236,7 @@ func endTxSimulationCDS(chainID string, txid string, txsim ledger.TxSimulator, p
 	}
 
 	// get a proposal - we need it to get a transaction
-	prop, _, err := putils.CreateDeployProposalFromCDS(chainID, cds, ss, nil, nil, nil, nil)
+	prop, _, err := protoutil.CreateDeployProposalFromCDS(chainID, cds, ss, nil, nil, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -252,7 +252,7 @@ func endTxSimulationCIS(chainID string, ccid *pb.ChaincodeID, txid string, txsim
 	}
 
 	// get a proposal - we need it to get a transaction
-	prop, returnedTxid, err := putils.CreateProposalFromCISAndTxid(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, cis, ss)
+	prop, returnedTxid, err := protoutil.CreateProposalFromCISAndTxid(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, cis, ss)
 	if err != nil {
 		return err
 	}
@@ -291,19 +291,19 @@ func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimula
 				return err
 			}
 			// assemble a (signed) proposal response message
-			resp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200},
+			resp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200},
 				txSimulationBytes, nil, ccid, nil, signer)
 			if err != nil {
 				return err
 			}
 
 			// get the envelope
-			env, err := putils.CreateSignedTx(prop, signer, resp)
+			env, err := protoutil.CreateSignedTx(prop, signer, resp)
 			if err != nil {
 				return err
 			}
 
-			envBytes, err := putils.GetBytesEnvelope(env)
+			envBytes, err := protoutil.GetBytesEnvelope(env)
 			if err != nil {
 				return err
 			}
@@ -432,7 +432,7 @@ func deploy2(chainID string, cccid *ccprovider.CCContext, chaincodeDeploymentSpe
 
 	uuid := util.GenerateUUID()
 	txsim, hqe, err := startTxSimulation(chainID, uuid)
-	sprop, prop := putils.MockSignedEndorserProposal2OrPanic(chainID, cis.ChaincodeSpec, signer)
+	sprop, prop := protoutil.MockSignedEndorserProposal2OrPanic(chainID, cis.ChaincodeSpec, signer)
 	txParams := &ccprovider.TransactionParams{
 		TxID:                 uuid,
 		ChannelID:            chainID,
@@ -508,7 +508,7 @@ func invokeWithVersion(chainID string, version string, spec *pb.ChaincodeSpec, b
 	if len(creator) == 0 {
 		creator = []byte("Admin")
 	}
-	sprop, prop := putils.MockSignedEndorserProposalOrPanic(chainID, spec, creator, []byte("msg1"))
+	sprop, prop := protoutil.MockSignedEndorserProposalOrPanic(chainID, spec, creator, []byte("msg1"))
 	cccid := &ccprovider.CCContext{
 		Name:    cdInvocationSpec.ChaincodeSpec.ChaincodeId.Name,
 		Version: version,

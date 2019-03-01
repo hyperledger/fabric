@@ -26,7 +26,7 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -214,7 +214,7 @@ func (p *Packager) packageCCLegacy() error {
 			return err
 		}
 	} else {
-		bytesToWrite = utils.MarshalOrPanic(cds)
+		bytesToWrite = protoutil.MarshalOrPanic(cds)
 	}
 
 	logger.Debugf("Packaged chaincode into deployment spec of size <%d>, output file ", len(bytesToWrite), p.Input.OutputFile)

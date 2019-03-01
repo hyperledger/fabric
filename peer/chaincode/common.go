@@ -29,7 +29,7 @@ import (
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -115,11 +115,11 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 
 	if invoke {
 		logger.Debugf("ESCC invoke result: %v", proposalResp)
-		pRespPayload, err := putils.GetProposalResponsePayload(proposalResp.Payload)
+		pRespPayload, err := protoutil.GetProposalResponsePayload(proposalResp.Payload)
 		if err != nil {
 			return errors.WithMessage(err, "error while unmarshaling proposal response payload")
 		}
-		ca, err := putils.GetChaincodeAction(pRespPayload.Extension)
+		ca, err := protoutil.GetChaincodeAction(pRespPayload.Extension)
 		if err != nil {
 			return errors.WithMessage(err, "error while unmarshaling chaincode action")
 		}
@@ -248,7 +248,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 			if err != nil {
 				return errors.Errorf("invalid policy %s", policy)
 			}
-			policyMarshalled = putils.MarshalOrPanic(p)
+			policyMarshalled = protoutil.MarshalOrPanic(p)
 		}
 
 		if collectionsConfigFile != common.UndefinedParamValue {
@@ -456,12 +456,12 @@ func ChaincodeInvokeOrQuery(
 		}
 	}
 
-	prop, txid, err := putils.CreateChaincodeProposalWithTxIDAndTransient(pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator, txID, tMap)
+	prop, txid, err := protoutil.CreateChaincodeProposalWithTxIDAndTransient(pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator, txID, tMap)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("error creating proposal for %s", funcName))
 	}
 
-	signedProp, err := putils.GetSignedProposal(prop, signer)
+	signedProp, err := protoutil.GetSignedProposal(prop, signer)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", funcName))
 	}
@@ -488,7 +488,7 @@ func ChaincodeInvokeOrQuery(
 				return proposalResp, nil
 			}
 			// assemble a signed transaction (it's an Envelope message)
-			env, err := putils.CreateSignedTx(prop, signer, responses...)
+			env, err := protoutil.CreateSignedTx(prop, signer, responses...)
 			if err != nil {
 				return proposalResp, errors.WithMessage(err, "could not assemble transaction")
 			}
@@ -721,7 +721,7 @@ func createDeliverEnvelope(channelID string, certificate tls.Certificate) *pcomm
 		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
 	}
 
-	env, err := putils.CreateSignedEnvelopeWithTLSBinding(
+	env, err := protoutil.CreateSignedEnvelopeWithTLSBinding(
 		pcommon.HeaderType_DELIVER_SEEK_INFO, channelID, localmsp.NewSigner(),
 		seekInfo, int32(0), uint64(0), tlsCertHash)
 	if err != nil {

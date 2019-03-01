@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/token"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -32,7 +32,7 @@ func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*p
 	putilsLogger.Debugf("validateChaincodeProposalMessage starts for proposal %p, header %p", prop, hdr)
 
 	// 4) based on the header type (assuming it's CHAINCODE), look at the extensions
-	chaincodeHdrExt, err := utils.GetChaincodeHeaderExtension(hdr)
+	chaincodeHdrExt, err := protoutil.GetChaincodeHeaderExtension(hdr)
 	if err != nil {
 		return nil, errors.New("invalid header extension for type CHAINCODE")
 	}
@@ -72,13 +72,13 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 	putilsLogger.Debugf("ValidateProposalMessage starts for signed proposal %p", signedProp)
 
 	// extract the Proposal message from signedProp
-	prop, err := utils.GetProposal(signedProp.ProposalBytes)
+	prop, err := protoutil.GetProposal(signedProp.ProposalBytes)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	// 1) look at the ProposalHeader
-	hdr, err := utils.GetHeader(prop.Header)
+	hdr, err := protoutil.GetHeader(prop.Header)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -108,7 +108,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 	// Verify that the transaction ID has been computed properly.
 	// This check is needed to ensure that the lookup into the ledger
 	// for the same TxID catches duplicates.
-	err = utils.CheckTxID(
+	err = protoutil.CheckTxID(
 		chdr.TxId,
 		shdr.Nonce,
 		shdr.Creator)
@@ -241,12 +241,12 @@ func validateCommonHeader(hdr *common.Header) (*common.ChannelHeader, *common.Si
 		return nil, nil, errors.New("nil header")
 	}
 
-	chdr, err := utils.UnmarshalChannelHeader(hdr.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	shdr, err := utils.GetSignatureHeader(hdr.SignatureHeader)
+	shdr, err := protoutil.GetSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -290,7 +290,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 	}
 
 	// if the type is ENDORSER_TRANSACTION we unmarshal a Transaction message
-	tx, err := utils.GetTransaction(data)
+	tx, err := protoutil.GetTransaction(data)
 	if err != nil {
 		return err
 	}
@@ -318,7 +318,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 		}
 
 		// if the type is ENDORSER_TRANSACTION we unmarshal a SignatureHeader
-		sHdr, err := utils.GetSignatureHeader(act.Header)
+		sHdr, err := protoutil.GetSignatureHeader(act.Header)
 		if err != nil {
 			return err
 		}
@@ -333,13 +333,13 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 		putilsLogger.Debugf("validateEndorserTransaction info: signature header is valid")
 
 		// if the type is ENDORSER_TRANSACTION we unmarshal a ChaincodeActionPayload
-		ccActionPayload, err := utils.GetChaincodeActionPayload(act.Payload)
+		ccActionPayload, err := protoutil.GetChaincodeActionPayload(act.Payload)
 		if err != nil {
 			return err
 		}
 
 		// extract the proposal response payload
-		prp, err := utils.GetProposalResponsePayload(ccActionPayload.Action.ProposalResponsePayload)
+		prp, err := protoutil.GetProposalResponsePayload(ccActionPayload.Action.ProposalResponsePayload)
 		if err != nil {
 			return err
 		}
@@ -349,7 +349,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 		hdrOrig := &common.Header{ChannelHeader: hdr.ChannelHeader, SignatureHeader: act.Header}
 
 		// compute proposalHash
-		pHash, err := utils.GetProposalHash2(hdrOrig, ccActionPayload.ChaincodeProposalPayload)
+		pHash, err := protoutil.GetProposalHash2(hdrOrig, ccActionPayload.ChaincodeProposalPayload)
 		if err != nil {
 			return err
 		}
@@ -391,7 +391,7 @@ func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabili
 	}
 
 	// get the payload from the envelope
-	payload, err := utils.GetPayload(e)
+	payload, err := protoutil.GetPayload(e)
 	if err != nil {
 		putilsLogger.Errorf("GetPayload returns err %s", err)
 		return nil, pb.TxValidationCode_BAD_PAYLOAD
@@ -421,7 +421,7 @@ func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabili
 		// Verify that the transaction ID has been computed properly.
 		// This check is needed to ensure that the lookup into the ledger
 		// for the same TxID catches duplicates.
-		err = utils.CheckTxID(
+		err = protoutil.CheckTxID(
 			chdr.TxId,
 			shdr.Nonce,
 			shdr.Creator)
@@ -456,7 +456,7 @@ func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabili
 		// Verify that the transaction ID has been computed properly.
 		// This check is needed to ensure that the lookup into the ledger
 		// for the same TxID catches duplicates.
-		err = utils.CheckTxID(
+		err = protoutil.CheckTxID(
 			chdr.TxId,
 			shdr.Nonce,
 			shdr.Creator)

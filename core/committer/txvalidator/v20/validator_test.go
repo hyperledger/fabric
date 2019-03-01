@@ -44,14 +44,14 @@ import (
 	"github.com/hyperledger/fabric/protos/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/token"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func signedByAnyMember(ids []string) []byte {
 	p := cauthdsl.SignedByAnyMember(ids)
-	return utils.MarshalOrPanic(&pb.ApplicationPolicy{Type: &pb.ApplicationPolicy_SignaturePolicy{SignaturePolicy: p}})
+	return protoutil.MarshalOrPanic(&pb.ApplicationPolicy{Type: &pb.ApplicationPolicy_SignaturePolicy{SignaturePolicy: p}})
 }
 
 func v20Capabilities() *mockconfig.MockApplicationCapabilities {
@@ -93,7 +93,7 @@ func getProposalWithType(ccID string, pType common.HeaderType) (*peer.Proposal, 
 			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("func")}},
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	proposal, _, err := utils.CreateProposalFromCIS(pType, util.GetTestChainID(), cis, signerSerialized)
+	proposal, _, err := protoutil.CreateProposalFromCIS(pType, util.GetTestChainID(), cis, signerSerialized)
 	return proposal, err
 }
 
@@ -107,11 +107,11 @@ func getEnvWithType(ccID string, event []byte, res []byte, pType common.HeaderTy
 	response := &peer.Response{Status: 200}
 
 	// endorse it to get a proposal response
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, nil, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, nil, signer)
 	assert.NoError(t, err)
 
 	// assemble a transaction from that proposal and endorsement
-	tx, err := utils.CreateSignedTx(prop, signer, presp)
+	tx, err := protoutil.CreateSignedTx(prop, signer, presp)
 	assert.NoError(t, err)
 
 	return tx
@@ -134,17 +134,17 @@ func getEnvWithSigner(ccID string, event []byte, res []byte, sig msp.SigningIden
 
 	sID, err := sig.Serialize()
 	assert.NoError(t, err)
-	prop, _, err := utils.CreateProposalFromCIS(pType, "foochain", cis, sID)
+	prop, _, err := protoutil.CreateProposalFromCIS(pType, "foochain", cis, sID)
 	assert.NoError(t, err)
 
 	response := &peer.Response{Status: 200}
 
 	// endorse it to get a proposal response
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, nil, sig)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, nil, sig)
 	assert.NoError(t, err)
 
 	// assemble a transaction from that proposal and endorsement
-	tx, err := utils.CreateSignedTx(prop, sig, presp)
+	tx, err := protoutil.CreateSignedTx(prop, sig, presp)
 	assert.NoError(t, err)
 
 	return tx
@@ -171,17 +171,17 @@ func getTokenTx(t *testing.T) *common.Envelope {
 	signerBytes, err := signer.Serialize()
 	assert.NoError(t, err)
 	nonce := []byte{0, 1, 2, 3, 4}
-	txID, err := utils.ComputeTxID(nonce, signerBytes)
+	txID, err := protoutil.ComputeTxID(nonce, signerBytes)
 	assert.NoError(t, err)
 
 	hdr := &common.Header{
-		SignatureHeader: utils.MarshalOrPanic(
+		SignatureHeader: protoutil.MarshalOrPanic(
 			&common.SignatureHeader{
 				Creator: signerBytes,
 				Nonce:   nonce,
 			},
 		),
-		ChannelHeader: utils.MarshalOrPanic(
+		ChannelHeader: protoutil.MarshalOrPanic(
 			&common.ChannelHeader{
 				Type: int32(common.HeaderType_TOKEN_TRANSACTION),
 				TxId: txID,
@@ -191,7 +191,7 @@ func getTokenTx(t *testing.T) *common.Envelope {
 
 	// create the payload
 	payl := &common.Payload{Header: hdr, Data: tdBytes}
-	paylBytes, err := utils.GetBytesPayload(payl)
+	paylBytes, err := protoutil.GetBytesPayload(payl)
 	assert.NoError(t, err)
 
 	// sign the payload
@@ -260,7 +260,7 @@ func TestInvokeBadRWSet(t *testing.T) {
 	v, _, _ := setupValidator()
 
 	tx := getEnv(ccID, nil, []byte("barf"), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -275,7 +275,7 @@ func TestInvokeNoPolicy(t *testing.T) {
 	mockQE.On("GetState", "lscc", ccID).Return(nil, nil)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -287,7 +287,7 @@ func TestInvokeOK(t *testing.T) {
 
 	v, mockQE, _ := setupValidator()
 
-	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "vscc",
@@ -296,7 +296,7 @@ func TestInvokeOK(t *testing.T) {
 	mockQE.On("GetStateMetadata", ccID, "key").Return(nil, nil)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -309,7 +309,7 @@ func TestInvokeNoRWSet(t *testing.T) {
 	v, mockQE, mockID := setupValidator()
 	mockID.SatisfiesPrincipalReturns(errors.New("principal not satisfied"))
 
-	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "vscc",
@@ -318,7 +318,7 @@ func TestInvokeNoRWSet(t *testing.T) {
 	mockQE.On("GetStateMetadata", ccID, "key").Return(nil, nil)
 
 	tx := getEnv(ccID, nil, createRWset(t), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -368,7 +368,7 @@ func (msi *mockSI) Serialize() ([]byte, error) {
 		Mspid:   msi.MspID,
 		IdBytes: msi.SerializedID,
 	}
-	sidBytes := utils.MarshalOrPanic(sid)
+	sidBytes := protoutil.MarshalOrPanic(sid)
 	return sidBytes, nil
 }
 
@@ -472,8 +472,8 @@ func TestParallelValidation(t *testing.T) {
 	v, mockQE, _ := setupValidatorWithMspMgr(mgr, nil)
 
 	policy := cauthdsl.SignedByMspPeer("Org1")
-	polBytes := utils.MarshalOrPanic(&pb.ApplicationPolicy{Type: &pb.ApplicationPolicy_SignaturePolicy{SignaturePolicy: policy}})
-	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+	polBytes := protoutil.MarshalOrPanic(&pb.ApplicationPolicy{Type: &pb.ApplicationPolicy_SignaturePolicy{SignaturePolicy: policy}})
+	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "vscc",
@@ -557,7 +557,7 @@ func TestParallelValidation(t *testing.T) {
 		assert.NoError(t, err)
 		rwsetBytes, err := rwset.GetPubSimulationBytes()
 		tx := getEnvWithSigner(ccID, nil, rwsetBytes, sig, t)
-		blockData = append(blockData, utils.MarshalOrPanic(tx))
+		blockData = append(blockData, protoutil.MarshalOrPanic(tx))
 	}
 
 	// assemble block from all those txes
@@ -592,7 +592,7 @@ func TestChaincodeEvent(t *testing.T) {
 	t.Run("MisMatchedName", func(t *testing.T) {
 		v, mockQE, _ := setupValidator()
 
-		mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+		mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 			Name:    ccID,
 			Version: ccVersion,
 			Vscc:    "vscc",
@@ -606,7 +606,7 @@ func TestChaincodeEvent(t *testing.T) {
 	t.Run("BadBytes", func(t *testing.T) {
 		v, mockQE, _ := setupValidator()
 
-		mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+		mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 			Name:    ccID,
 			Version: ccVersion,
 			Vscc:    "vscc",
@@ -620,7 +620,7 @@ func TestChaincodeEvent(t *testing.T) {
 	t.Run("GoodPath", func(t *testing.T) {
 		v, mockQE, _ := setupValidator()
 
-		mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+		mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 			Name:    ccID,
 			Version: ccVersion,
 			Vscc:    "vscc",
@@ -633,8 +633,8 @@ func TestChaincodeEvent(t *testing.T) {
 }
 
 func testCCEventMismatchedName(t *testing.T, v txvalidator.Validator, ccID string) {
-	tx := getEnv(ccID, utils.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: "wrong"}), createRWset(t), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+	tx := getEnv(ccID, protoutil.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: "wrong"}), createRWset(t), t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err) // TODO, convert test so it can check the error text for INVALID_OTHER_REASON
@@ -643,7 +643,7 @@ func testCCEventMismatchedName(t *testing.T, v txvalidator.Validator, ccID strin
 
 func testCCEventBadBytes(t *testing.T, v txvalidator.Validator, ccID string) {
 	tx := getEnv(ccID, []byte("garbage"), createRWset(t), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err) // TODO, convert test so it can check the error text for INVALID_OTHER_REASON
@@ -651,8 +651,8 @@ func testCCEventBadBytes(t *testing.T, v txvalidator.Validator, ccID string) {
 }
 
 func testCCEventGoodPath(t *testing.T, v txvalidator.Validator, ccID string) {
-	tx := getEnv(ccID, utils.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: ccID}), createRWset(t), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+	tx := getEnv(ccID, protoutil.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: ccID}), createRWset(t), t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -665,7 +665,7 @@ func TestInvokeOKPvtDataOnly(t *testing.T) {
 	v, mockQE, mockID := setupValidator()
 	mockID.SatisfiesPrincipalReturns(errors.New("principal not satisfied"))
 
-	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "vscc",
@@ -681,7 +681,7 @@ func TestInvokeOKPvtDataOnly(t *testing.T) {
 	assert.NoError(t, err)
 
 	tx := getEnv(ccID, nil, rwsetBytes, t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err = v.Validate(b)
 	assert.NoError(t, err)
@@ -694,7 +694,7 @@ func TestInvokeOKMetaUpdateOnly(t *testing.T) {
 	v, mockQE, mockID := setupValidator()
 	mockID.SatisfiesPrincipalReturns(errors.New("principal not satisfied"))
 
-	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "vscc",
@@ -710,7 +710,7 @@ func TestInvokeOKMetaUpdateOnly(t *testing.T) {
 	assert.NoError(t, err)
 
 	tx := getEnv(ccID, nil, rwsetBytes, t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err = v.Validate(b)
 	assert.NoError(t, err)
@@ -723,7 +723,7 @@ func TestInvokeOKPvtMetaUpdateOnly(t *testing.T) {
 	v, mockQE, mockID := setupValidator()
 	mockID.SatisfiesPrincipalReturns(errors.New("principal not satisfied"))
 
-	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "vscc",
@@ -739,7 +739,7 @@ func TestInvokeOKPvtMetaUpdateOnly(t *testing.T) {
 	assert.NoError(t, err)
 
 	tx := getEnv(ccID, nil, rwsetBytes, t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err = v.Validate(b)
 	assert.NoError(t, err)
@@ -752,7 +752,7 @@ func TestInvokeNOKWritesToLSCC(t *testing.T) {
 	v, _, _ := setupValidator()
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID, "lscc"), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -766,7 +766,7 @@ func TestInvokeNOKWritesToESCC(t *testing.T) {
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID, "escc"), t)
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
 	}
 
@@ -782,7 +782,7 @@ func TestInvokeNOKWritesToNotExt(t *testing.T) {
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID, "notext"), t)
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
 	}
 
@@ -798,7 +798,7 @@ func TestInvokeNOKInvokesNotExt(t *testing.T) {
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
 	}
 
@@ -814,7 +814,7 @@ func TestInvokeNOKInvokesEmptyCCName(t *testing.T) {
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
 	}
 
@@ -830,7 +830,7 @@ func TestInvokeNOKBogusActions(t *testing.T) {
 
 	tx := getEnv(ccID, nil, []byte("barf"), t)
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
 	}
 
@@ -847,7 +847,7 @@ func TestInvokeNOKCCDoesntExist(t *testing.T) {
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
 	}
 
@@ -861,7 +861,7 @@ func TestInvokeNOKVSCCUnspecified(t *testing.T) {
 
 	v, mockQE, _ := setupValidator()
 
-	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "",
@@ -870,7 +870,7 @@ func TestInvokeNOKVSCCUnspecified(t *testing.T) {
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
 	}
 
@@ -893,16 +893,16 @@ func TestValidateTxWithStateBasedEndorsement(t *testing.T) {
 
 	v, mockQE, _ := setupValidator()
 
-	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "vscc",
 		Policy:  signedByAnyMember([]string{"SampleOrg"}),
 	}), nil)
-	mockQE.On("GetStateMetadata", ccID, "key").Return(map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): utils.MarshalOrPanic(&pb.ApplicationPolicy{Type: &pb.ApplicationPolicy_SignaturePolicy{SignaturePolicy: cauthdsl.RejectAllPolicy}})}, nil)
+	mockQE.On("GetStateMetadata", ccID, "key").Return(map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): protoutil.MarshalOrPanic(&pb.ApplicationPolicy{Type: &pb.ApplicationPolicy_SignaturePolicy{SignaturePolicy: cauthdsl.RejectAllPolicy}})}, nil)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 3}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 3}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -914,7 +914,7 @@ func TestTokenValidTransaction(t *testing.T) {
 	v.ChannelResources.(*mocktxvalidator.Support).ACVal = fabTokenCapabilities()
 
 	tx := getTokenTx(t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -925,7 +925,7 @@ func TestTokenCapabilityNotEnabled(t *testing.T) {
 	v, _, _ := setupValidator()
 
 	tx := getTokenTx(t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
 
 	err := v.Validate(b)
 
@@ -968,7 +968,7 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 
 	v, mockQE, _ := setupValidator()
 
-	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "vscc",
@@ -978,7 +978,7 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{Number: 1},
 	}
 
@@ -1019,7 +1019,7 @@ func TestLedgerIsNotAvailable(t *testing.T) {
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
 	}
 
@@ -1044,7 +1044,7 @@ func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, errors.New("uh, oh"))
 
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{Number: 1},
 	}
 
@@ -1067,7 +1067,7 @@ func TestDuplicateTxId(t *testing.T) {
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
 	}
 
@@ -1131,12 +1131,12 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 		Policy:  signedByAnyMember([]string{"SampleOrg"}),
 	}
 
-	cdbytes := utils.MarshalOrPanic(cd)
+	cdbytes := protoutil.MarshalOrPanic(cd)
 
 	mockQE.On("GetState", "lscc", ccID).Return(cdbytes, nil)
 
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
 	}
 
@@ -1169,7 +1169,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 
 	mockQE := &mocks3.QueryExecutor{}
 	mockQE.On("Done").Return(nil)
-	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "vscc",
@@ -1196,7 +1196,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
 	}
 
@@ -1220,7 +1220,7 @@ func TestValidationPluginNotFound(t *testing.T) {
 
 	mockQE := &mocks3.QueryExecutor{}
 	mockQE.On("Done").Return(nil)
-	mockQE.On("GetState", "lscc", ccID).Return(utils.MarshalOrPanic(&ccp.ChaincodeData{
+	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "vscc",
@@ -1247,7 +1247,7 @@ func TestValidationPluginNotFound(t *testing.T) {
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
 	}
 

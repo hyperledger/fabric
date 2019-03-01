@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -59,7 +59,7 @@ func TestBlockSignature(t *testing.T) {
 	block := cb.NewBlock(7, []byte("foo"))
 	bw.addBlockSignature(block)
 
-	md := utils.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_SIGNATURES)
+	md := protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_SIGNATURES)
 	assert.Nil(t, md.Value, "Value is empty in this case")
 	assert.NotNil(t, md.Signatures, "Should have signature")
 }
@@ -85,11 +85,11 @@ func TestBlockLastConfig(t *testing.T) {
 	assert.Equal(t, newBlockNum, bw.lastConfigBlockNum)
 	assert.Equal(t, newConfigSeq, bw.lastConfigSeq)
 
-	md := utils.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_LAST_CONFIG)
+	md := protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_LAST_CONFIG)
 	assert.NotNil(t, md.Value, "Value not be empty in this case")
 	assert.NotNil(t, md.Signatures, "Should have signature")
 
-	lc := utils.GetLastConfigIndexFromBlockOrPanic(block)
+	lc := protoutil.GetLastConfigIndexFromBlockOrPanic(block)
 	assert.Equal(t, newBlockNum, lc)
 }
 
@@ -103,7 +103,7 @@ func TestWriteConfigBlock(t *testing.T) {
 			(&BlockWriter{}).WriteConfigBlock(&cb.Block{
 				Data: &cb.BlockData{
 					Data: [][]byte{
-						utils.MarshalOrPanic(&cb.Envelope{Payload: []byte("bad")}),
+						protoutil.MarshalOrPanic(&cb.Envelope{Payload: []byte("bad")}),
 					},
 				},
 			}, nil)
@@ -114,8 +114,8 @@ func TestWriteConfigBlock(t *testing.T) {
 			(&BlockWriter{}).WriteConfigBlock(&cb.Block{
 				Data: &cb.BlockData{
 					Data: [][]byte{
-						utils.MarshalOrPanic(&cb.Envelope{
-							Payload: utils.MarshalOrPanic(&cb.Payload{}),
+						protoutil.MarshalOrPanic(&cb.Envelope{
+							Payload: protoutil.MarshalOrPanic(&cb.Payload{}),
 						}),
 					},
 				},
@@ -127,8 +127,8 @@ func TestWriteConfigBlock(t *testing.T) {
 			(&BlockWriter{}).WriteConfigBlock(&cb.Block{
 				Data: &cb.BlockData{
 					Data: [][]byte{
-						utils.MarshalOrPanic(&cb.Envelope{
-							Payload: utils.MarshalOrPanic(&cb.Payload{
+						protoutil.MarshalOrPanic(&cb.Envelope{
+							Payload: protoutil.MarshalOrPanic(&cb.Payload{
 								Header: &cb.Header{
 									ChannelHeader: []byte("bad"),
 								},
@@ -144,10 +144,10 @@ func TestWriteConfigBlock(t *testing.T) {
 			(&BlockWriter{}).WriteConfigBlock(&cb.Block{
 				Data: &cb.BlockData{
 					Data: [][]byte{
-						utils.MarshalOrPanic(&cb.Envelope{
-							Payload: utils.MarshalOrPanic(&cb.Payload{
+						protoutil.MarshalOrPanic(&cb.Envelope{
+							Payload: protoutil.MarshalOrPanic(&cb.Payload{
 								Header: &cb.Header{
-									ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{}),
+									ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{}),
 								},
 							}),
 						}),
@@ -173,7 +173,7 @@ func TestGoodWriteConfig(t *testing.T) {
 
 	ctx := makeConfigTx(genesisconfig.TestChainID, 1)
 	block := cb.NewBlock(1, genesisBlockSys.Header.Hash())
-	block.Data.Data = [][]byte{utils.MarshalOrPanic(ctx)}
+	block.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata := []byte("foo")
 	bw.WriteConfigBlock(block, consenterMetadata)
 
@@ -185,7 +185,7 @@ func TestGoodWriteConfig(t *testing.T) {
 	assert.Equal(t, block.Header, cBlock.Header)
 	assert.Equal(t, block.Data, cBlock.Data)
 
-	omd := utils.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
+	omd := protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
 	assert.Equal(t, consenterMetadata, omd.Value)
 }
 
@@ -204,12 +204,12 @@ func TestRaceWriteConfig(t *testing.T) {
 
 	ctx := makeConfigTx(genesisconfig.TestChainID, 1)
 	block1 := cb.NewBlock(1, genesisBlockSys.Header.Hash())
-	block1.Data.Data = [][]byte{utils.MarshalOrPanic(ctx)}
+	block1.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata1 := []byte("foo")
 
 	ctx = makeConfigTx(genesisconfig.TestChainID, 1)
 	block2 := cb.NewBlock(2, block1.Header.Hash())
-	block2.Data.Data = [][]byte{utils.MarshalOrPanic(ctx)}
+	block2.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata2 := []byte("bar")
 
 	bw.WriteConfigBlock(block1, consenterMetadata1)
@@ -231,6 +231,6 @@ func TestRaceWriteConfig(t *testing.T) {
 	expectedLastConfigBlockNumber = block2.Header.Number
 	testLastConfigBlockNumber(t, block2, expectedLastConfigBlockNumber)
 
-	omd := utils.GetMetadataFromBlockOrPanic(block1, cb.BlockMetadataIndex_ORDERER)
+	omd := protoutil.GetMetadataFromBlockOrPanic(block1, cb.BlockMetadataIndex_ORDERER)
 	assert.Equal(t, consenterMetadata1, omd.Value)
 }

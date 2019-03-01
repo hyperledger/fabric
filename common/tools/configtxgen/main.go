@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -45,7 +45,7 @@ func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock 
 	}
 	genesisBlock := pgen.GenesisBlockForChannel(channelID)
 	logger.Info("Writing genesis block")
-	err = ioutil.WriteFile(outputBlock, utils.MarshalOrPanic(genesisBlock), 0644)
+	err = ioutil.WriteFile(outputBlock, protoutil.MarshalOrPanic(genesisBlock), 0644)
 	if err != nil {
 		return fmt.Errorf("Error writing genesis block: %s", err)
 	}
@@ -67,7 +67,7 @@ func doOutputChannelCreateTx(conf, baseProfile *genesisconfig.Profile, channelID
 	}
 
 	logger.Info("Writing new channel tx")
-	err = ioutil.WriteFile(outputChannelCreateTx, utils.MarshalOrPanic(configtx), 0644)
+	err = ioutil.WriteFile(outputChannelCreateTx, protoutil.MarshalOrPanic(configtx), 0644)
 	if err != nil {
 		return fmt.Errorf("Error writing channel create tx: %s", err)
 	}
@@ -110,13 +110,13 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 	updt.ChannelId = channelID
 
 	newConfigUpdateEnv := &cb.ConfigUpdateEnvelope{
-		ConfigUpdate: utils.MarshalOrPanic(updt),
+		ConfigUpdate: protoutil.MarshalOrPanic(updt),
 	}
 
-	updateTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, nil, newConfigUpdateEnv, 0, 0)
+	updateTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, nil, newConfigUpdateEnv, 0, 0)
 
 	logger.Info("Writing anchor peer update")
-	err = ioutil.WriteFile(outputAnchorPeersUpdate, utils.MarshalOrPanic(updateTx), 0644)
+	err = ioutil.WriteFile(outputAnchorPeersUpdate, protoutil.MarshalOrPanic(updateTx), 0644)
 	if err != nil {
 		return fmt.Errorf("Error writing channel anchor peer update: %s", err)
 	}
@@ -131,7 +131,7 @@ func doInspectBlock(inspectBlock string) error {
 	}
 
 	logger.Info("Parsing genesis block")
-	block, err := utils.UnmarshalBlock(data)
+	block, err := protoutil.UnmarshalBlock(data)
 	if err != nil {
 		return fmt.Errorf("error unmarshaling to block: %s", err)
 	}
@@ -150,7 +150,7 @@ func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 	}
 
 	logger.Info("Parsing transaction")
-	env, err := utils.UnmarshalEnvelope(data)
+	env, err := protoutil.UnmarshalEnvelope(data)
 	if err != nil {
 		return fmt.Errorf("Error unmarshaling envelope: %s", err)
 	}

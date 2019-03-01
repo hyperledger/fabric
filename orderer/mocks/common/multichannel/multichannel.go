@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/common/blockcutter"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // ConsenterSupport is used to mock the multichannel.ConsenterSupport interface
@@ -90,7 +90,7 @@ func (mcs *ConsenterSupport) CreateNextBlock(data []*cb.Envelope) *cb.Block {
 	block := cb.NewBlock(0, nil)
 	mtxs := make([][]byte, len(data))
 	for i := range data {
-		mtxs[i] = utils.MarshalOrPanic(data[i])
+		mtxs[i] = protoutil.MarshalOrPanic(data[i])
 	}
 	block.Data = &cb.BlockData{Data: mtxs}
 	mcs.NextBlockVal = block
@@ -100,7 +100,7 @@ func (mcs *ConsenterSupport) CreateNextBlock(data []*cb.Envelope) *cb.Block {
 // WriteBlock writes data to the Blocks channel
 func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, encodedMetadataValue []byte) {
 	if encodedMetadataValue != nil {
-		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
+		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = protoutil.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
 	}
 	mcs.HeightVal++
 	mcs.Blocks <- block

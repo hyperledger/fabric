@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -108,7 +108,7 @@ type Registrar struct {
 // Panics on failure.
 func ConfigBlock(reader blockledger.Reader) *cb.Block {
 	lastBlock := blockledger.GetBlock(reader, reader.Height()-1)
-	index, err := utils.GetLastConfigIndexFromBlock(lastBlock)
+	index, err := protoutil.GetLastConfigIndexFromBlock(lastBlock)
 	if err != nil {
 		logger.Panicf("Chain did not have appropriately encoded last config in its latest block: %s", err)
 	}
@@ -121,7 +121,7 @@ func ConfigBlock(reader blockledger.Reader) *cb.Block {
 }
 
 func configTx(reader blockledger.Reader) *cb.Envelope {
-	return utils.ExtractEnvelopeOrPanic(ConfigBlock(reader), 0)
+	return protoutil.ExtractEnvelopeOrPanic(ConfigBlock(reader), 0)
 }
 
 // NewRegistrar produces an instance of a *Registrar.
@@ -220,7 +220,7 @@ func (r *Registrar) SystemChannelID() string {
 // and the channel resources for a message or an error if the message is not a message which can
 // be processed directly (like CONFIG and ORDERER_TRANSACTION messages)
 func (r *Registrar) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader, bool, *ChainSupport, error) {
-	chdr, err := utils.ChannelHeader(msg)
+	chdr, err := protoutil.ChannelHeader(msg)
 	if err != nil {
 		return nil, false, nil, fmt.Errorf("could not determine channel ID: %s", err)
 	}
@@ -318,7 +318,7 @@ func (r *Registrar) GetChain(chainID string) *ChainSupport {
 }
 
 func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
-	payload, err := utils.UnmarshalPayload(configTx.Payload)
+	payload, err := protoutil.UnmarshalPayload(configTx.Payload)
 	if err != nil {
 		logger.Panicf("Error umarshaling envelope to payload: %s", err)
 	}
@@ -327,7 +327,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 		logger.Panicf("Missing channel header: %s", err)
 	}
 
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		logger.Panicf("Error unmarshaling channel header: %s", err)
 	}

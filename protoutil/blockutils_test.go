@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package utils_test
+package protoutil_test
 
 import (
 	"testing"
@@ -13,7 +13,7 @@ import (
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/protos/common"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,12 +23,12 @@ func TestGetChainIDFromBlockBytes(t *testing.T) {
 	gb, err := configtxtest.MakeGenesisBlock(testChainID)
 	assert.NoError(t, err, "Failed to create test configuration block")
 	bytes, err := proto.Marshal(gb)
-	cid, err := utils.GetChainIDFromBlockBytes(bytes)
+	cid, err := protoutil.GetChainIDFromBlockBytes(bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, testChainID, cid, "Failed to return expected chain ID")
 
 	// bad block bytes
-	_, err = utils.GetChainIDFromBlockBytes([]byte("bad block"))
+	_, err = protoutil.GetChainIDFromBlockBytes([]byte("bad block"))
 	assert.Error(t, err, "Expected error with malformed block bytes")
 }
 
@@ -38,20 +38,20 @@ func TestGetChainIDFromBlock(t *testing.T) {
 	var cid string
 
 	// nil block
-	_, err = utils.GetChainIDFromBlock(gb)
+	_, err = protoutil.GetChainIDFromBlock(gb)
 	assert.Error(t, err, "Expected error getting channel id from nil block")
 
 	gb, err = configtxtest.MakeGenesisBlock(testChainID)
 	assert.NoError(t, err, "Failed to create test configuration block")
 
-	cid, err = utils.GetChainIDFromBlock(gb)
+	cid, err = protoutil.GetChainIDFromBlock(gb)
 	assert.NoError(t, err, "Failed to get chain ID from block")
 	assert.Equal(t, testChainID, cid, "Failed to return expected chain ID")
 
 	// missing data
 	badBlock := gb
 	badBlock.Data = nil
-	_, err = utils.GetChainIDFromBlock(badBlock)
+	_, err = protoutil.GetChainIDFromBlock(badBlock)
 	assert.Error(t, err, "Expected error with missing block data")
 
 	// no envelope
@@ -60,7 +60,7 @@ func TestGetChainIDFromBlock(t *testing.T) {
 			Data: [][]byte{[]byte("bad envelope")},
 		},
 	}
-	_, err = utils.GetChainIDFromBlock(badBlock)
+	_, err = protoutil.GetChainIDFromBlock(badBlock)
 	assert.Error(t, err, "Expected error with no envelope in data")
 
 	// bad payload
@@ -72,7 +72,7 @@ func TestGetChainIDFromBlock(t *testing.T) {
 			Data: [][]byte{env},
 		},
 	}
-	_, err = utils.GetChainIDFromBlock(badBlock)
+	_, err = protoutil.GetChainIDFromBlock(badBlock)
 	assert.Error(t, err, "Expected error - malformed payload")
 
 	// bad channel header
@@ -89,7 +89,7 @@ func TestGetChainIDFromBlock(t *testing.T) {
 			Data: [][]byte{env},
 		},
 	}
-	_, err = utils.GetChainIDFromBlock(badBlock)
+	_, err = protoutil.GetChainIDFromBlock(badBlock)
 	assert.Error(t, err, "Expected error with malformed channel header")
 
 	// nil payload header
@@ -102,7 +102,7 @@ func TestGetChainIDFromBlock(t *testing.T) {
 			Data: [][]byte{env},
 		},
 	}
-	_, err = utils.GetChainIDFromBlock(badBlock)
+	_, err = protoutil.GetChainIDFromBlock(badBlock)
 	assert.Error(t, err, "Expected error when payload header is nil")
 }
 
@@ -110,38 +110,38 @@ func TestGetBlockFromBlockBytes(t *testing.T) {
 	testChainID := "myuniquetestchainid"
 	gb, err := configtxtest.MakeGenesisBlock(testChainID)
 	assert.NoError(t, err, "Failed to create test configuration block")
-	blockBytes, err := utils.Marshal(gb)
+	blockBytes, err := protoutil.Marshal(gb)
 	assert.NoError(t, err, "Failed to marshal block")
-	_, err = utils.GetBlockFromBlockBytes(blockBytes)
+	_, err = protoutil.GetBlockFromBlockBytes(blockBytes)
 	assert.NoError(t, err, "to get block from block bytes")
 
 	// bad block bytes
-	_, err = utils.GetBlockFromBlockBytes([]byte("bad block"))
+	_, err = protoutil.GetBlockFromBlockBytes([]byte("bad block"))
 	assert.Error(t, err, "Expected error for malformed block bytes")
 }
 
 func TestGetMetadataFromNewBlock(t *testing.T) {
 	block := common.NewBlock(0, nil)
-	md, err := utils.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
+	md, err := protoutil.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
 	assert.NoError(t, err, "Unexpected error extracting metadata from new block")
 	assert.Nil(t, md.Value, "Expected metadata field value to be nil")
 	assert.Equal(t, 0, len(md.Value), "Expected length of metadata field value to be 0")
-	md = utils.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
+	md = protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
 	assert.NotNil(t, md, "Expected to get metadata from block")
 
 	// malformed metadata
 	block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = []byte("bad metadata")
-	_, err = utils.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
+	_, err = protoutil.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
 	assert.Error(t, err, "Expected error with malformed metadata")
 	assert.Panics(t, func() {
-		_ = utils.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
+		_ = protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
 	}, "Expected panic with malformed metadata")
 }
 
 func TestInitBlockMeta(t *testing.T) {
 	// block with no metadata
 	block := &cb.Block{}
-	utils.InitBlockMetadata(block)
+	protoutil.InitBlockMetadata(block)
 	// should have 3 entries
 	assert.Equal(t, 3, len(block.Metadata.Metadata), "Expected block to have 3 metadata entries")
 
@@ -150,7 +150,7 @@ func TestInitBlockMeta(t *testing.T) {
 		Metadata: &cb.BlockMetadata{},
 	}
 	block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
-	utils.InitBlockMetadata(block)
+	protoutil.InitBlockMetadata(block)
 	// should have 3 entries
 	assert.Equal(t, 3, len(block.Metadata.Metadata), "Expected block to have 3 metadata entries")
 }
@@ -163,7 +163,7 @@ func TestCopyBlockMetadata(t *testing.T) {
 		Value: []byte("orderer metadata"),
 	})
 	srcBlock.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = metadata
-	utils.CopyBlockMetadata(srcBlock, dstBlock)
+	protoutil.CopyBlockMetadata(srcBlock, dstBlock)
 
 	// check that the copy worked
 	assert.Equal(t, len(srcBlock.Metadata.Metadata), len(dstBlock.Metadata.Metadata),
@@ -182,15 +182,15 @@ func TestGetLastConfigIndexFromBlock(t *testing.T) {
 		Value: lc,
 	})
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = metadata
-	result, err := utils.GetLastConfigIndexFromBlock(block)
+	result, err := protoutil.GetLastConfigIndexFromBlock(block)
 	assert.NoError(t, err, "Unexpected error returning last config index")
 	assert.Equal(t, index, result, "Unexpected last config index returned from block")
-	result = utils.GetLastConfigIndexFromBlockOrPanic(block)
+	result = protoutil.GetLastConfigIndexFromBlockOrPanic(block)
 	assert.Equal(t, index, result, "Unexpected last config index returned from block")
 
 	// malformed metadata
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = []byte("bad metadata")
-	_, err = utils.GetLastConfigIndexFromBlock(block)
+	_, err = protoutil.GetLastConfigIndexFromBlock(block)
 	assert.Error(t, err, "Expected error with malformed metadata")
 
 	// malformed last config
@@ -198,9 +198,9 @@ func TestGetLastConfigIndexFromBlock(t *testing.T) {
 		Value: []byte("bad last config"),
 	})
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = metadata
-	_, err = utils.GetLastConfigIndexFromBlock(block)
+	_, err = protoutil.GetLastConfigIndexFromBlock(block)
 	assert.Error(t, err, "Expected error with malformed last config metadata")
 	assert.Panics(t, func() {
-		_ = utils.GetLastConfigIndexFromBlockOrPanic(block)
+		_ = protoutil.GetLastConfigIndexFromBlockOrPanic(block)
 	}, "Expected panic with malformed last config metadata")
 }

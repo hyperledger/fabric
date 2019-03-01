@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package policy
@@ -25,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // PolicyChecker offers methods to check a signed proposal against a specific policy
@@ -79,17 +69,17 @@ func (p *policyChecker) CheckPolicy(channelID, policyName string, signedProp *pb
 	}
 
 	// Prepare SignedData
-	proposal, err := utils.GetProposal(signedProp.ProposalBytes)
+	proposal, err := protoutil.GetProposal(signedProp.ProposalBytes)
 	if err != nil {
 		return fmt.Errorf("Failing extracting proposal during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
 	}
 
-	header, err := utils.GetHeader(proposal.Header)
+	header, err := protoutil.GetHeader(proposal.Header)
 	if err != nil {
 		return fmt.Errorf("Failing extracting header during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
 	}
 
-	shdr, err := utils.GetSignatureHeader(header.SignatureHeader)
+	shdr, err := protoutil.GetSignatureHeader(header.SignatureHeader)
 	if err != nil {
 		return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
 	}
@@ -114,17 +104,17 @@ func (p *policyChecker) CheckPolicyNoChannel(policyName string, signedProp *pb.S
 		return fmt.Errorf("Invalid signed proposal during channelless check policy with policy [%s]", policyName)
 	}
 
-	proposal, err := utils.GetProposal(signedProp.ProposalBytes)
+	proposal, err := protoutil.GetProposal(signedProp.ProposalBytes)
 	if err != nil {
 		return fmt.Errorf("Failing extracting proposal during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}
 
-	header, err := utils.GetHeader(proposal.Header)
+	header, err := protoutil.GetHeader(proposal.Header)
 	if err != nil {
 		return fmt.Errorf("Failing extracting header during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}
 
-	shdr, err := utils.GetSignatureHeader(header.SignatureHeader)
+	shdr, err := protoutil.GetSignatureHeader(header.SignatureHeader)
 	if err != nil {
 		return fmt.Errorf("Invalid Proposal's SignatureHeader during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}

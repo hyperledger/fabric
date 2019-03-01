@@ -11,12 +11,12 @@ import (
 	"sync"
 
 	commonerrors "github.com/hyperledger/fabric/common/errors"
-	"github.com/hyperledger/fabric/core/handlers/validation/api/policies"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -191,37 +191,37 @@ func (klv *KeyLevelValidator) invokeOnce(block *common.Block, txnum uint64) *syn
 }
 
 func (klv *KeyLevelValidator) extractDependenciesForTx(blockNum, txNum uint64, envelopeBytes []byte) {
-	env, err := utils.GetEnvelopeFromBlock(envelopeBytes)
+	env, err := protoutil.GetEnvelopeFromBlock(envelopeBytes)
 	if err != nil {
 		logger.Warningf("while executing GetEnvelopeFromBlock got error '%s', skipping tx at height (%d,%d)", err, blockNum, txNum)
 		return
 	}
 
-	payl, err := utils.GetPayload(env)
+	payl, err := protoutil.GetPayload(env)
 	if err != nil {
 		logger.Warningf("while executing GetPayload got error '%s', skipping tx at height (%d,%d)", err, blockNum, txNum)
 		return
 	}
 
-	tx, err := utils.GetTransaction(payl.Data)
+	tx, err := protoutil.GetTransaction(payl.Data)
 	if err != nil {
 		logger.Warningf("while executing GetTransaction got error '%s', skipping tx at height (%d,%d)", err, blockNum, txNum)
 		return
 	}
 
-	cap, err := utils.GetChaincodeActionPayload(tx.Actions[0].Payload)
+	cap, err := protoutil.GetChaincodeActionPayload(tx.Actions[0].Payload)
 	if err != nil {
 		logger.Warningf("while executing GetChaincodeActionPayload got error '%s', skipping tx at height (%d,%d)", err, blockNum, txNum)
 		return
 	}
 
-	pRespPayload, err := utils.GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
+	pRespPayload, err := protoutil.GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
 	if err != nil {
 		logger.Warningf("while executing GetProposalResponsePayload got error '%s', skipping tx at height (%d,%d)", err, blockNum, txNum)
 		return
 	}
 
-	respPayload, err := utils.GetChaincodeAction(pRespPayload.Extension)
+	respPayload, err := protoutil.GetChaincodeAction(pRespPayload.Extension)
 	if err != nil {
 		logger.Warningf("while executing GetChaincodeAction got error '%s', skipping tx at height (%d,%d)", err, blockNum, txNum)
 		return

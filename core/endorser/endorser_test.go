@@ -35,7 +35,7 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/transientstore"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/pkg/errors"
@@ -64,9 +64,9 @@ func getSignedPropWithCHIdAndArgs(chid, ccid, ccver string, ccargs [][]byte, t *
 
 	creator, err := signer.Serialize()
 	assert.NoError(t, err)
-	prop, _, err := utils.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chid, cis, creator)
+	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chid, cis, creator)
 	assert.NoError(t, err)
-	propBytes, err := utils.GetBytesProposal(prop)
+	propBytes, err := protoutil.GetBytesProposal(prop)
 	assert.NoError(t, err)
 	signature, err := signer.Sign(propBytes)
 	assert.NoError(t, err)
@@ -138,7 +138,7 @@ func TestEndorserNilProp(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -182,7 +182,7 @@ func TestEndorserCCInvocationFailed(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 1000, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}}), Message: "Chaincode Error"},
+		ExecuteResp:                &pb.Response{Status: 1000, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}}), Message: "Chaincode Error"},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -204,7 +204,7 @@ func TestEndorserNoCCDef(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionError:   errors.New(""),
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -227,7 +227,7 @@ func TestEndorserBadInstPolicy(t *testing.T) {
 		GetTransactionByIDErr:         errors.New(""),
 		CheckInstantiationPolicyError: errors.New(""),
 		ChaincodeDefinitionRv:         &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                   &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                   &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -254,7 +254,7 @@ func TestEndorserSysCC(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		IsSysCCRv:                  true,
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
@@ -293,7 +293,7 @@ func TestEndorserLSCCBadType(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -301,7 +301,7 @@ func TestEndorserLSCCBadType(t *testing.T) {
 		},
 	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
-	cds := utils.MarshalOrPanic(
+	cds := protoutil.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
 			ChaincodeSpec: &pb.ChaincodeSpec{
 				ChaincodeId: &pb.ChaincodeID{Name: "barf"},
@@ -322,7 +322,7 @@ func TestEndorserDupTXId(t *testing.T) {
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -354,7 +354,7 @@ func TestEndorserBadACL(t *testing.T) {
 		CheckACLErr:                errors.New(""),
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -384,7 +384,7 @@ func TestEndorserGoodPathEmptyChannel(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -410,7 +410,7 @@ func TestEndorserLSCCInitFails(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -421,7 +421,7 @@ func TestEndorserLSCCInitFails(t *testing.T) {
 
 	fakeMetrics := initFakeMetrics(es)
 
-	cds := utils.MarshalOrPanic(
+	cds := protoutil.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
 			ChaincodeSpec: &pb.ChaincodeSpec{
 				ChaincodeId: &pb.ChaincodeID{Name: "barf", Version: "0"},
@@ -455,7 +455,7 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -464,7 +464,7 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 		SysCCMap: SysCCMap,
 	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
-	cds := utils.MarshalOrPanic(
+	cds := protoutil.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
 			ChaincodeSpec: &pb.ChaincodeSpec{
 				ChaincodeId: &pb.ChaincodeID{Name: deployedCCName},
@@ -491,7 +491,7 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		ExecuteEvent:               &pb.ChaincodeEvent{},
 	}
 	attachPluginEndorser(support, nil)
@@ -510,7 +510,7 @@ func TestEndorserBadChannel(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -537,7 +537,7 @@ func TestEndorserGoodPath(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Name: "ccid", Version: "0", Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
@@ -570,7 +570,7 @@ func TestEndorserChaincodeCallLogging(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
@@ -597,12 +597,12 @@ func TestEndorserLSCC(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
-	cds := utils.MarshalOrPanic(
+	cds := protoutil.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
 			ChaincodeSpec: &pb.ChaincodeSpec{
 				ChaincodeId: &pb.ChaincodeID{Name: "barf"},
@@ -738,7 +738,7 @@ func TestSimulateProposal(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -763,7 +763,7 @@ func TestEndorserAcquireTxSimulator(t *testing.T) {
 		{"mainline", util.GetTestChainID(), "chaincode", true},
 	}
 
-	expectedResponse := &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})}
+	expectedResponse := &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})}
 	for _, tt := range tc {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {

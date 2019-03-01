@@ -13,7 +13,7 @@ import (
 
 	protcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/cobra"
 )
 
@@ -69,14 +69,14 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 		return nil, fmt.Errorf("error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
 	}
 
-	prop, _, err := utils.CreateUpgradeProposalFromCDS(channelID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc), collectionConfigBytes)
+	prop, _, err := protoutil.CreateUpgradeProposalFromCDS(channelID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc), collectionConfigBytes)
 	if err != nil {
 		return nil, fmt.Errorf("error creating proposal %s: %s", chainFuncName, err)
 	}
 	logger.Debugf("Get upgrade proposal for chaincode <%v>", spec.ChaincodeId)
 
 	var signedProp *pb.SignedProposal
-	signedProp, err = utils.GetSignedProposal(prop, cf.Signer)
+	signedProp, err = protoutil.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
 		return nil, fmt.Errorf("error creating signed proposal  %s: %s", chainFuncName, err)
 	}
@@ -90,7 +90,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 
 	if proposalResponse != nil {
 		// assemble a signed transaction (it's an Envelope message)
-		env, err := utils.CreateSignedTx(prop, cf.Signer, proposalResponse)
+		env, err := protoutil.CreateSignedTx(prop, cf.Signer, proposalResponse)
 		if err != nil {
 			return nil, fmt.Errorf("could not assemble transaction, err %s", err)
 		}

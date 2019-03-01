@@ -1,11 +1,8 @@
 /*
- *
- * Copyright IBM Corp. All Rights Reserved.
- *
- * SPDX-License-Identifier: Apache-2.0
- * /
- *
- */
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
 
 package plugindispatcher
 
@@ -18,12 +15,12 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	coreUtil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
-	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -89,13 +86,13 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 	logger.Debugf("[%s] Dispatch starts for bytes %p", chainID, envBytes)
 
 	// get header extensions so we have the chaincode ID
-	hdrExt, err := utils.GetChaincodeHeaderExtension(payload.Header)
+	hdrExt, err := protoutil.GetChaincodeHeaderExtension(payload.Header)
 	if err != nil {
 		return err, peer.TxValidationCode_BAD_HEADER_EXTENSION
 	}
 
 	// get channel header
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return err, peer.TxValidationCode_BAD_CHANNEL_HEADER
 	}
@@ -107,7 +104,7 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 	   3) does it write to any cc that cannot be invoked? */
 	writesToLSCC := false
 	writesToNonInvokableSCC := false
-	respPayload, err := utils.GetActionFromEnvelope(envBytes)
+	respPayload, err := protoutil.GetActionFromEnvelope(envBytes)
 	if err != nil {
 		return errors.WithMessage(err, "GetActionFromEnvelope failed"), peer.TxValidationCode_BAD_RESPONSE_PAYLOAD
 	}
@@ -302,7 +299,7 @@ func (v *dispatcherImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID str
 		// plugin and a default policy that requires one signature
 		// from any of the members of the channel
 		p := cauthdsl.SignedByAnyMember(v.cr.GetMSPIDs(chdr.ChannelId))
-		policy, err = utils.Marshal(p)
+		policy, err = protoutil.Marshal(p)
 		if err != nil {
 			return nil, nil, err
 		}

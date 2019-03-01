@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -403,18 +403,18 @@ func (stub *ChaincodeStub) init(handler *Handler, channelId string, txid string,
 	if signedProposal != nil {
 		var err error
 
-		stub.proposal, err = utils.GetProposal(signedProposal.ProposalBytes)
+		stub.proposal, err = protoutil.GetProposal(signedProposal.ProposalBytes)
 		if err != nil {
 			return errors.WithMessage(err, "failed extracting signedProposal from signed signedProposal")
 		}
 
 		// Extract creator, transient, binding...
-		stub.creator, stub.transient, err = utils.GetChaincodeProposalContext(stub.proposal)
+		stub.creator, stub.transient, err = protoutil.GetChaincodeProposalContext(stub.proposal)
 		if err != nil {
 			return errors.WithMessage(err, "failed extracting signedProposal fields")
 		}
 
-		stub.binding, err = utils.ComputeProposalBinding(stub.proposal)
+		stub.binding, err = protoutil.ComputeProposalBinding(stub.proposal)
 		if err != nil {
 			return errors.WithMessage(err, "failed computing binding from signedProposal")
 		}
@@ -1008,11 +1008,11 @@ func (stub *ChaincodeStub) GetArgsSlice() ([]byte, error) {
 
 // GetTxTimestamp documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
-	hdr, err := utils.GetHeader(stub.proposal.Header)
+	hdr, err := protoutil.GetHeader(stub.proposal.Header)
 	if err != nil {
 		return nil, err
 	}
-	chdr, err := utils.UnmarshalChannelHeader(hdr.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
 	if err != nil {
 		return nil, err
 	}

@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/token"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,13 +35,13 @@ func createTestTransactionEnvelope(channel string, response *peer.Response, simR
 	}
 
 	// endorse it to get a proposal response
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), nil, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), nil, signer)
 	if err != nil {
 		return nil, fmt.Errorf("CreateProposalResponse failed, err %s", err)
 	}
 
 	// assemble a transaction from that proposal and endorsement
-	tx, err := utils.CreateSignedTx(prop, signer, presp)
+	tx, err := protoutil.CreateSignedTx(prop, signer, presp)
 	if err != nil {
 		return nil, fmt.Errorf("CreateSignedTx failed, err %s", err)
 	}
@@ -57,7 +57,7 @@ func createTestProposalAndSignedProposal(channel string) (*peer.Proposal, *peer.
 	}
 
 	// sign it
-	sProp, err := utils.GetSignedProposal(prop, signer)
+	sProp, err := protoutil.GetSignedProposal(prop, signer)
 	if err != nil {
 		return nil, nil, fmt.Errorf("GetSignedProposal failed, err %s", err)
 	}
@@ -98,7 +98,7 @@ func createTestHeader(t *testing.T, txType common.HeaderType, channelId string, 
 	txid := "bad"
 	if useGoodTxid {
 		var err error
-		txid, err = utils.ComputeTxID(nonce, creator)
+		txid, err = protoutil.ComputeTxID(nonce, creator)
 		assert.NoError(t, err)
 	}
 
@@ -145,7 +145,7 @@ func TestCheckSignatureFromCreator(t *testing.T) {
 	assert.NotNil(t, env)
 
 	// get the payload from the envelope
-	payload, err := utils.GetPayload(env)
+	payload, err := protoutil.GetPayload(env)
 	assert.NoError(t, err, "GetPayload returns err %s", err)
 
 	// validate the header

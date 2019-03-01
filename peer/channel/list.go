@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package channel
@@ -25,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	common2 "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/cobra"
 )
 
@@ -63,13 +53,13 @@ func (cc *endorserClient) getChannels() ([]*pb.ChannelInfo, error) {
 
 	var prop *pb.Proposal
 	c, _ := cc.cf.Signer.Serialize()
-	prop, _, err = utils.CreateProposalFromCIS(common2.HeaderType_ENDORSER_TRANSACTION, "", invocation, c)
+	prop, _, err = protoutil.CreateProposalFromCIS(common2.HeaderType_ENDORSER_TRANSACTION, "", invocation, c)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Cannot create proposal, due to %s", err))
 	}
 
 	var signedProp *pb.SignedProposal
-	signedProp, err = utils.GetSignedProposal(prop, cc.cf.Signer)
+	signedProp, err = protoutil.GetSignedProposal(prop, cc.cf.Signer)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Cannot create signed proposal, due to %s", err))
 	}

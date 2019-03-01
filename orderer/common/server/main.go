@@ -51,7 +51,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/solo"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
@@ -202,7 +202,7 @@ func createReplicator(
 		logger:        logger,
 	}
 
-	systemChannelName, err := utils.GetChainIDFromBlock(bootstrapBlock)
+	systemChannelName, err := protoutil.GetChainIDFromBlock(bootstrapBlock)
 	if err != nil {
 		logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
 	}
@@ -486,7 +486,7 @@ func extractBootstrapBlock(conf *localconfig.TopLevel) *cb.Block {
 }
 
 func initializeBootstrapChannel(genesisBlock *cb.Block, lf blockledger.Factory) {
-	chainID, err := utils.GetChainIDFromBlock(genesisBlock)
+	chainID, err := protoutil.GetChainIDFromBlock(genesisBlock)
 	if err != nil {
 		logger.Fatal("Failed to parse chain ID from genesis block:", err)
 	}
@@ -605,7 +605,7 @@ func initializeEtcdraftConsenter(
 		replicationRefreshInterval = defaultReplicationBackgroundRefreshInterval
 	}
 
-	systemChannelName, err := utils.GetChainIDFromBlock(bootstrapBlock)
+	systemChannelName, err := protoutil.GetChainIDFromBlock(bootstrapBlock)
 	if err != nil {
 		ri.logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
 	}

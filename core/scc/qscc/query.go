@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // New returns an instance of QSCC.
@@ -130,7 +130,7 @@ func getTransactionByID(vledger ledger.PeerLedger, tid []byte) pb.Response {
 		return shim.Error(fmt.Sprintf("Failed to get transaction with id %s, error %s", string(tid), err))
 	}
 
-	bytes, err := utils.Marshal(processedTran)
+	bytes, err := protoutil.Marshal(processedTran)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -155,7 +155,7 @@ func getBlockByNumber(vledger ledger.PeerLedger, number []byte) pb.Response {
 	//  This will preserve the transaction Payload header,
 	//  and client can do GetTransactionByID() if they want the full transaction details
 
-	bytes, err := utils.Marshal(block)
+	bytes, err := protoutil.Marshal(block)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -176,7 +176,7 @@ func getBlockByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
 	//  This will preserve the transaction Payload header,
 	//  and client can do GetTransactionByID() if they want the full transaction details
 
-	bytes, err := utils.Marshal(block)
+	bytes, err := protoutil.Marshal(block)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -189,7 +189,7 @@ func getChainInfo(vledger ledger.PeerLedger) pb.Response {
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to get block info with error %s", err))
 	}
-	bytes, err := utils.Marshal(binfo)
+	bytes, err := protoutil.Marshal(binfo)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -205,7 +205,7 @@ func getBlockByTxID(vledger ledger.PeerLedger, rawTxID []byte) pb.Response {
 		return shim.Error(fmt.Sprintf("Failed to get block for txID %s, error %s", txID, err))
 	}
 
-	bytes, err := utils.Marshal(block)
+	bytes, err := protoutil.Marshal(block)
 
 	if err != nil {
 		return shim.Error(err.Error())

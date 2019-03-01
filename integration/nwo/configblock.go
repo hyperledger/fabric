@@ -20,7 +20,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	protosorderer "github.com/hyperledger/fabric/protos/orderer"
 	ectdraft_protos "github.com/hyperledger/fabric/protos/orderer/etcdraft"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -53,11 +53,11 @@ func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *c
 func GetConfig(n *Network, peer *Peer, orderer *Orderer, channel string) *common.Config {
 	configBlock := GetConfigBlock(n, peer, orderer, channel)
 	// unmarshal the envelope bytes
-	envelope, err := utils.GetEnvelopeFromBlock(configBlock.Data.Data[0])
+	envelope, err := protoutil.GetEnvelopeFromBlock(configBlock.Data.Data[0])
 	Expect(err).NotTo(HaveOccurred())
 
 	// unmarshal the payload bytes
-	payload, err := utils.GetPayload(envelope)
+	payload, err := protoutil.GetPayload(envelope)
 	Expect(err).NotTo(HaveOccurred())
 
 	// unmarshal the config envelope bytes
@@ -81,11 +81,11 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 	Expect(err).NotTo(HaveOccurred())
 	configUpdate.ChannelId = channel
 
-	signedEnvelope, err := utils.CreateSignedEnvelope(
+	signedEnvelope, err := protoutil.CreateSignedEnvelope(
 		common.HeaderType_CONFIG_UPDATE,
 		channel,
 		nil, // local signer
-		&common.ConfigUpdateEnvelope{ConfigUpdate: utils.MarshalOrPanic(configUpdate)},
+		&common.ConfigUpdateEnvelope{ConfigUpdate: protoutil.MarshalOrPanic(configUpdate)},
 		0, // message version
 		0, // epoch
 	)
@@ -93,7 +93,7 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 	Expect(signedEnvelope).NotTo(BeNil())
 
 	updateFile := filepath.Join(tempDir, "update.pb")
-	err = ioutil.WriteFile(updateFile, utils.MarshalOrPanic(signedEnvelope), 0600)
+	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0600)
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {
@@ -210,18 +210,18 @@ func computeUpdateOrdererConfig(updateFile string, n *Network, channel string, c
 	Expect(err).NotTo(HaveOccurred())
 	configUpdate.ChannelId = channel
 
-	signedEnvelope, err := utils.CreateSignedEnvelope(
+	signedEnvelope, err := protoutil.CreateSignedEnvelope(
 		common.HeaderType_CONFIG_UPDATE,
 		channel,
 		nil, // local signer
-		&common.ConfigUpdateEnvelope{ConfigUpdate: utils.MarshalOrPanic(configUpdate)},
+		&common.ConfigUpdateEnvelope{ConfigUpdate: protoutil.MarshalOrPanic(configUpdate)},
 		0, // message version
 		0, // epoch
 	)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(signedEnvelope).NotTo(BeNil())
 
-	err = ioutil.WriteFile(updateFile, utils.MarshalOrPanic(signedEnvelope), 0600)
+	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0600)
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {
@@ -236,7 +236,7 @@ func UnmarshalBlockFromFile(blockFile string) *common.Block {
 	blockBytes, err := ioutil.ReadFile(blockFile)
 	Expect(err).NotTo(HaveOccurred())
 
-	block, err := utils.UnmarshalBlock(blockBytes)
+	block, err := protoutil.UnmarshalBlock(blockBytes)
 	Expect(err).NotTo(HaveOccurred())
 
 	return block
@@ -281,7 +281,7 @@ func UpdateConsensusMetadata(network *Network, peer *Peer, orderer *Orderer, cha
 
 	updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
 		ModPolicy: "Admins",
-		Value:     utils.MarshalOrPanic(consensusTypeValue),
+		Value:     protoutil.MarshalOrPanic(consensusTypeValue),
 	}
 
 	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)

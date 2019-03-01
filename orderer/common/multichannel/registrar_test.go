@@ -12,7 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/ram"
+	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,7 +92,7 @@ func testMessageOrderAndRetrieval(maxMessageCount uint32, chainID string, chainS
 	block, status := it.Next()
 	assert.Equal(t, cb.Status_SUCCESS, status, "Could not retrieve block")
 	for i := uint32(0); i < maxMessageCount; i++ {
-		assert.True(t, proto.Equal(messages[i], utils.ExtractEnvelopeOrPanic(block, int(i))), "Block contents wrong at index %d", i)
+		assert.True(t, proto.Equal(messages[i], protoutil.ExtractEnvelopeOrPanic(block, int(i))), "Block contents wrong at index %d", i)
 	}
 }
 
@@ -113,7 +113,7 @@ func TestConfigTx(t *testing.T) {
 		rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{ctx}))
 
 		block := blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, 7)})
-		block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&cb.Metadata{Value: utils.MarshalOrPanic(&cb.LastConfig{Index: 7})})
+		block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&cb.Metadata{Value: protoutil.MarshalOrPanic(&cb.LastConfig{Index: 7})})
 		rl.Append(block)
 
 		pctx := configTx(rl)
@@ -413,7 +413,7 @@ func TestCreateChain(t *testing.T) {
 		assert.NoError(t, err, "Proposing initial update")
 		assert.Equal(t, expectedLastConfigSeq, configEnv.GetConfig().Sequence, "Sequence of config envelope for new channel should always be set to %d", expectedLastConfigSeq)
 
-		ingressTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, newChainID, mockCrypto(), configEnv, msgVersion, epoch)
+		ingressTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, newChainID, mockCrypto(), configEnv, msgVersion, epoch)
 		assert.NoError(t, err, "Creating ingresstx")
 
 		wrapped := wrapConfigTx(ingressTx)
@@ -433,7 +433,7 @@ func TestCreateChain(t *testing.T) {
 				t.Fatalf("Should have had only one message in the orderer transaction block")
 			}
 
-			assert.True(t, proto.Equal(wrapped, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Orderer config block contains wrong transaction")
+			assert.True(t, proto.Equal(wrapped, protoutil.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Orderer config block contains wrong transaction")
 		}()
 
 		chainSupport = manager.GetChain(newChainID)
@@ -461,7 +461,7 @@ func TestCreateChain(t *testing.T) {
 			t.Fatalf("Should have had only one message in the new genesis block")
 		}
 
-		assert.True(t, proto.Equal(ingressTx, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Genesis block contains wrong transaction")
+		assert.True(t, proto.Equal(ingressTx, protoutil.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Genesis block contains wrong transaction")
 
 		block, status = it.Next()
 		if status != cb.Status_SUCCESS {
@@ -469,7 +469,7 @@ func TestCreateChain(t *testing.T) {
 		}
 		testLastConfigBlockNumber(t, block, expectedLastConfigBlockNumber)
 		for i := 0; i < int(confSys.Orderer.BatchSize.MaxMessageCount); i++ {
-			if !proto.Equal(utils.ExtractEnvelopeOrPanic(block, i), messages[i]) {
+			if !proto.Equal(protoutil.ExtractEnvelopeOrPanic(block, i), messages[i]) {
 				t.Errorf("Block contents wrong at index %d in new chain", i)
 			}
 		}

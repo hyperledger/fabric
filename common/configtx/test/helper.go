@@ -18,7 +18,7 @@ import (
 	mspproto "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 var logger = flogging.MustGetLogger("common.configtx.test")
@@ -54,18 +54,18 @@ func MakeGenesisBlockFromMSPs(chainID string, appMSPConf, ordererMSPConf *msppro
 	ordererOrg := cb.NewConfigGroup()
 	ordererOrg.ModPolicy = channelconfig.AdminsPolicyKey
 	ordererOrg.Values[channelconfig.MSPKey] = &cb.ConfigValue{
-		Value:     utils.MarshalOrPanic(channelconfig.MSPValue(ordererMSPConf).Value()),
+		Value:     protoutil.MarshalOrPanic(channelconfig.MSPValue(ordererMSPConf).Value()),
 		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 
 	applicationOrg := cb.NewConfigGroup()
 	applicationOrg.ModPolicy = channelconfig.AdminsPolicyKey
 	applicationOrg.Values[channelconfig.MSPKey] = &cb.ConfigValue{
-		Value:     utils.MarshalOrPanic(channelconfig.MSPValue(appMSPConf).Value()),
+		Value:     protoutil.MarshalOrPanic(channelconfig.MSPValue(appMSPConf).Value()),
 		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 	applicationOrg.Values[channelconfig.AnchorPeersKey] = &cb.ConfigValue{
-		Value:     utils.MarshalOrPanic(channelconfig.AnchorPeersValue([]*pb.AnchorPeer{}).Value()),
+		Value:     protoutil.MarshalOrPanic(channelconfig.AnchorPeersValue([]*pb.AnchorPeer{}).Value()),
 		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 

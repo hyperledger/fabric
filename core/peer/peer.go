@@ -43,7 +43,7 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/token/tms/manager"
 	"github.com/hyperledger/fabric/token/transaction"
 	"github.com/pkg/errors"
@@ -279,7 +279,7 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 	}
 
 	// get most recent config block location from last block metadata
-	configBlockIndex, err := utils.GetLastConfigIndexFromBlock(lastBlock)
+	configBlockIndex, err := protoutil.GetLastConfigIndexFromBlock(lastBlock)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 	} else {
 		// Config was only stored in the statedb starting with v1.1 binaries
 		// so if the config is not found there, extract it manually from the config block
-		envelopeConfig, err := utils.ExtractEnvelope(cb, 0)
+		envelopeConfig, err := protoutil.ExtractEnvelope(cb, 0)
 		if err != nil {
 			return err
 		}
@@ -395,7 +395,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 	}
 	validator := txvalidator.NewTxValidator(cid, validationWorkersSemaphore, cs, vInfoShim, sccp, pm, NewChannelPolicyManagerGetter())
 	c := committer.NewLedgerCommitterReactive(ledger, func(block *common.Block) error {
-		chainID, err := utils.GetChainIDFromBlock(block)
+		chainID, err := protoutil.GetChainIDFromBlock(block)
 		if err != nil {
 			return err
 		}
@@ -439,7 +439,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 
 // CreateChainFromBlock creates a new chain from config block
 func CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, legacyLifecycleValidation, newLifecycleValidation plugindispatcher.LifecycleResources) error {
-	cid, err := utils.GetChainIDFromBlock(cb)
+	cid, err := protoutil.GetChainIDFromBlock(cb)
 	if err != nil {
 		return err
 	}

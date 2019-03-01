@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -155,7 +155,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			// Get the last config block of the system channel
 			configBlock := nwo.GetConfigBlock(network, peer, orderer, "systemchannel")
 			// Plant it in the file system of orderer2, the new node to be onboarded.
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), utils.MarshalOrPanic(configBlock), 0644)
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Waiting for the existing orderer to relinquish its leadership")
@@ -369,7 +369,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			// Get the last config block of the system channel
 			configBlock := nwo.GetConfigBlock(network, peer, o1, "systemchannel")
 			// Plant it in the file system of orderer4, the new node to be onboarded.
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), utils.MarshalOrPanic(configBlock), 0644)
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Launching orderer4")
@@ -640,7 +640,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			// Get the last config block of the system channel
 			configBlock := nwo.GetConfigBlock(network, peer, network.Orderers[0], "systemchannel")
 			// Plant it in the file system of orderer5, the new node to be onboarded.
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), utils.MarshalOrPanic(configBlock), 0644)
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
 			Expect(err).NotTo(HaveOccurred())
 
 			launch := func(o *nwo.Orderer) {
@@ -955,7 +955,7 @@ func revokeReaderAccess(network *nwo.Network, channel string, orderer *nwo.Order
 	updatedConfig := proto.Clone(config).(*common.Config)
 
 	// set the policy
-	adminPolicy := utils.MarshalOrPanic(&common.ImplicitMetaPolicy{
+	adminPolicy := protoutil.MarshalOrPanic(&common.ImplicitMetaPolicy{
 		SubPolicy: "Admins",
 		Rule:      common.ImplicitMetaPolicy_MAJORITY,
 	})

@@ -12,7 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/peer/common"
 	common2 "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,10 +29,10 @@ func initLoggingTest(command string) (*cobra.Command, *LoggingCmdFactory) {
 		AdminClient: adminClient,
 		wrapWithEnvelope: func(msg proto.Message) *common2.Envelope {
 			pl := &common2.Payload{
-				Data: utils.MarshalOrPanic(msg),
+				Data: protoutil.MarshalOrPanic(msg),
 			}
 			env := &common2.Envelope{
-				Payload: utils.MarshalOrPanic(pl),
+				Payload: protoutil.MarshalOrPanic(pl),
 			}
 			return env
 		},

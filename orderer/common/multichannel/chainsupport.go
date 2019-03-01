@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -42,7 +42,7 @@ func newChainSupport(
 ) *ChainSupport {
 	// Read in the last block and metadata for the channel
 	lastBlock := blockledger.GetBlock(ledgerResources, ledgerResources.Height()-1)
-	metadata, err := utils.GetMetadataFromBlock(lastBlock, cb.BlockMetadataIndex_ORDERER)
+	metadata, err := protoutil.GetMetadataFromBlock(lastBlock, cb.BlockMetadataIndex_ORDERER)
 	// Assuming a block created with cb.NewBlock(), this should not
 	// error even if the orderer metadata is an empty byte slice
 	if err != nil {
@@ -111,7 +111,7 @@ func (cs *ChainSupport) detectMigration(lastBlock *cb.Block) bool {
 		return isMigration
 	}
 
-	lastConfigIndex, err := utils.GetLastConfigIndexFromBlock(lastBlock)
+	lastConfigIndex, err := protoutil.GetLastConfigIndexFromBlock(lastBlock)
 	if err != nil {
 		logger.Panicf("Chain did not have appropriately encoded last config in its latest block: %s", err)
 	}

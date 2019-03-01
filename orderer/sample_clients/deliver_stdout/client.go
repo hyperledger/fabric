@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc"
 )
 
@@ -39,7 +39,7 @@ func newDeliverClient(client ab.AtomicBroadcast_DeliverClient, channelID string,
 }
 
 func (r *deliverClient) seekHelper(start *ab.SeekPosition, stop *ab.SeekPosition) *cb.Envelope {
-	env, err := utils.CreateSignedEnvelope(cb.HeaderType_DELIVER_SEEK_INFO, r.channelID, r.signer, &ab.SeekInfo{
+	env, err := protoutil.CreateSignedEnvelope(cb.HeaderType_DELIVER_SEEK_INFO, r.channelID, r.signer, &ab.SeekInfo{
 		Start:    start,
 		Stop:     stop,
 		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,

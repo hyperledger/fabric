@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
@@ -162,9 +162,9 @@ func TestVerifyBlockSignature(t *testing.T) {
 			name:          "bad signature header",
 			errorContains: "failed unmarshaling signature header",
 			mutateBlock: func(block *common.Block) *common.Block {
-				metadata := utils.GetMetadataFromBlockOrPanic(block, common.BlockMetadataIndex_SIGNATURES)
+				metadata := protoutil.GetMetadataFromBlockOrPanic(block, common.BlockMetadataIndex_SIGNATURES)
 				metadata.Signatures[0].SignatureHeader = []byte{1, 2, 3}
-				block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = utils.MarshalOrPanic(metadata)
+				block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(metadata)
 				return block
 			},
 		},
@@ -173,7 +173,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			// Create a copy of the block
 			blockCopy := &common.Block{}
-			err := proto.Unmarshal(utils.MarshalOrPanic(block), blockCopy)
+			err := proto.Unmarshal(protoutil.MarshalOrPanic(block), blockCopy)
 			assert.NoError(t, err)
 			// Mutate the block to sabotage it
 			blockCopy = testCase.mutateBlock(blockCopy)
@@ -277,10 +277,10 @@ func TestVerifyBlocks(t *testing.T) {
 	}
 	configTransaction := func(envelope *common.ConfigEnvelope) *common.Envelope {
 		return &common.Envelope{
-			Payload: utils.MarshalOrPanic(&common.Payload{
-				Data: utils.MarshalOrPanic(envelope),
+			Payload: protoutil.MarshalOrPanic(&common.Payload{
+				Data: protoutil.MarshalOrPanic(envelope),
 				Header: &common.Header{
-					ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+					ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
 						Type: int32(common.HeaderType_CONFIG),
 					}),
 				},
@@ -326,7 +326,7 @@ func TestVerifyBlocks(t *testing.T) {
 			name: "block that its type cannot be classified",
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
 				blockSequence[len(blockSequence)/2].Data = &common.BlockData{
-					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{})},
+					Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{})},
 				}
 				blockSequence[len(blockSequence)/2].Header.DataHash = blockSequence[len(blockSequence)/2].Data.Hash()
 				assignHashes(blockSequence)
@@ -340,13 +340,13 @@ func TestVerifyBlocks(t *testing.T) {
 				var err error
 				// Put a config transaction in block n / 4
 				blockSequence[len(blockSequence)/4].Data = &common.BlockData{
-					Data: [][]byte{utils.MarshalOrPanic(configTransaction(configEnvelope1))},
+					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope1))},
 				}
 				blockSequence[len(blockSequence)/4].Header.DataHash = blockSequence[len(blockSequence)/4].Data.Hash()
 
 				// Put a config transaction in block n / 2
 				blockSequence[len(blockSequence)/2].Data = &common.BlockData{
-					Data: [][]byte{utils.MarshalOrPanic(configTransaction(configEnvelope2))},
+					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope2))},
 				}
 				blockSequence[len(blockSequence)/2].Header.DataHash = blockSequence[len(blockSequence)/2].Data.Hash()
 
@@ -365,7 +365,7 @@ func TestVerifyBlocks(t *testing.T) {
 				verifier.On("VerifyBlockSignature", sigSet1, nilEnvelope).Return(nil).Once()
 				// However, the second config block - validates incorrectly.
 				confEnv1 := &common.ConfigEnvelope{}
-				proto.Unmarshal(utils.MarshalOrPanic(configEnvelope1), confEnv1)
+				proto.Unmarshal(protoutil.MarshalOrPanic(configEnvelope1), confEnv1)
 				verifier.On("VerifyBlockSignature", sigSet2, confEnv1).Return(errors.New("bad signature")).Once()
 			},
 			expectedError: "bad signature",
@@ -376,7 +376,7 @@ func TestVerifyBlocks(t *testing.T) {
 				var err error
 				// Put a config transaction in block n / 4
 				blockSequence[len(blockSequence)/4].Data = &common.BlockData{
-					Data: [][]byte{utils.MarshalOrPanic(configTransaction(configEnvelope1))},
+					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope1))},
 				}
 				blockSequence[len(blockSequence)/4].Header.DataHash = blockSequence[len(blockSequence)/4].Data.Hash()
 
@@ -393,7 +393,7 @@ func TestVerifyBlocks(t *testing.T) {
 			configureVerifier: func(verifier *mocks.BlockVerifier) {
 				var nilEnvelope *common.ConfigEnvelope
 				confEnv1 := &common.ConfigEnvelope{}
-				proto.Unmarshal(utils.MarshalOrPanic(configEnvelope1), confEnv1)
+				proto.Unmarshal(protoutil.MarshalOrPanic(configEnvelope1), confEnv1)
 				verifier.On("VerifyBlockSignature", sigSet1, nilEnvelope).Return(nil).Once()
 				verifier.On("VerifyBlockSignature", sigSet2, confEnv1).Return(nil).Once()
 			},
@@ -429,17 +429,17 @@ func createBlockChain(start, end uint64) []*common.Block {
 		}
 		block := common.NewBlock(seq, nil)
 		blockSignature := &common.MetadataSignature{
-			SignatureHeader: utils.MarshalOrPanic(sHdr),
+			SignatureHeader: protoutil.MarshalOrPanic(sHdr),
 		}
-		block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = utils.MarshalOrPanic(&common.Metadata{
+		block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&common.Metadata{
 			Value: nil,
 			Signatures: []*common.MetadataSignature{
 				blockSignature,
 			},
 		})
 
-		txn := utils.MarshalOrPanic(&common.Envelope{
-			Payload: utils.MarshalOrPanic(&common.Payload{
+		txn := protoutil.MarshalOrPanic(&common.Envelope{
+			Payload: protoutil.MarshalOrPanic(&common.Payload{
 				Header: &common.Header{},
 			}),
 		})
@@ -575,8 +575,8 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 			name:          "bad genesis block",
 			expectedError: "invalid config envelope: proto: common.ConfigEnvelope: illegal tag 0 (wire type 1)",
 			block: &common.Block{
-				Header: &common.BlockHeader{}, Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
-					Payload: utils.MarshalOrPanic(&common.Payload{
+				Header: &common.BlockHeader{}, Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
+					Payload: protoutil.MarshalOrPanic(&common.Payload{
 						Data: []byte{1, 2, 3},
 					}),
 				})}}},
@@ -589,7 +589,7 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 		{
 			name:          "invalid payload in block envelope",
 			expectedError: "error unmarshaling Payload: proto: common.Payload: illegal tag 0 (wire type 1)",
-			block: &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+			block: &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
 				Payload: []byte{1, 2, 3},
 			})}}},
 		},
@@ -598,8 +598,8 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 			expectedError: "error unmarshaling ChannelHeader: proto: common.ChannelHeader: illegal tag 0 (wire type 1)",
 			block: &common.Block{
 				Header: &common.BlockHeader{Number: 1},
-				Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
-					Payload: utils.MarshalOrPanic(&common.Payload{
+				Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
+					Payload: protoutil.MarshalOrPanic(&common.Payload{
 						Header: &common.Header{
 							ChannelHeader: []byte{1, 2, 3},
 						},
@@ -611,11 +611,11 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 			expectedError: "invalid config envelope: proto: common.ConfigEnvelope: illegal tag 0 (wire type 1)",
 			block: &common.Block{
 				Header: &common.BlockHeader{},
-				Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
-					Payload: utils.MarshalOrPanic(&common.Payload{
+				Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
+					Payload: protoutil.MarshalOrPanic(&common.Payload{
 						Data: []byte{1, 2, 3},
 						Header: &common.Header{
-							ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+							ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
 								Type: int32(common.HeaderType_CONFIG),
 							}),
 						},
@@ -780,8 +780,8 @@ func TestLastConfigBlock(t *testing.T) {
 			name: "no block with index",
 			block: &common.Block{
 				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
-						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 666}),
+					Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
+						Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 666}),
 					})},
 				},
 			},
@@ -792,8 +792,8 @@ func TestLastConfigBlock(t *testing.T) {
 			name: "valid last config block",
 			block: &common.Block{
 				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
-						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 42}),
+					Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
+						Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 42}),
 					})},
 				},
 			},

@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/pkg/errors"
 )
@@ -28,7 +28,7 @@ const (
 
 var (
 	// This is a channel which was created with a lifecycle endorsement policy
-	LifecycleDefaultEndorsementPolicyBytes = utils.MarshalOrPanic(&pb.ApplicationPolicy{
+	LifecycleDefaultEndorsementPolicyBytes = protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
 		Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
 			ChannelConfigPolicyReference: LifecycleEndorsementPolicyRef,
 		},
@@ -233,7 +233,7 @@ func (l *Lifecycle) LifecycleEndorsementPolicyAsBytes(channelID string) ([]byte,
 		mspids = append(mspids, org.MSPID())
 	}
 
-	return utils.MarshalOrPanic(&pb.ApplicationPolicy{
+	return protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
 		Type: &pb.ApplicationPolicy_SignaturePolicy{
 			SignaturePolicy: cauthdsl.SignedByNOutOfGivenRole(int32(len(mspids)/2+1), msp.MSPRole_MEMBER, mspids),
 		},

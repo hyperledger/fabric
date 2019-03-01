@@ -21,7 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/deliverservice/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -577,7 +577,7 @@ func TestProductionUsage(t *testing.T) {
 		return orderer.NewAtomicBroadcastClient(cc)
 	}
 	onConnect := func(bd blocksprovider.BlocksDeliverer) error {
-		env, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE,
+		env, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE,
 			"TEST",
 			&signerMock{}, newTestSeekInfo(), 0, 0)
 		assert.NoError(t, err)

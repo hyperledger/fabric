@@ -15,7 +15,7 @@ import (
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -227,13 +227,13 @@ func ACLValues(acls map[string]string) *StandardConfigValue {
 
 // ValidateCapabilities validates whether the peer can meet the capabilities requirement in the given config block
 func ValidateCapabilities(block *cb.Block) error {
-	envelopeConfig, err := utils.ExtractEnvelope(block, 0)
+	envelopeConfig, err := protoutil.ExtractEnvelope(block, 0)
 	if err != nil {
 		return errors.Errorf("failed to %s", err)
 	}
 
 	configEnv := &cb.ConfigEnvelope{}
-	_, err = utils.UnmarshalEnvelopeOfType(envelopeConfig, cb.HeaderType_CONFIG, configEnv)
+	_, err = protoutil.UnmarshalEnvelopeOfType(envelopeConfig, cb.HeaderType_CONFIG, configEnv)
 	if err != nil {
 		return errors.Errorf("malformed configuration envelope: %s", err)
 	}
