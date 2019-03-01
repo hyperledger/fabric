@@ -9,6 +9,7 @@ package chaincode_test
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -145,4 +146,14 @@ type applicationConfigRetriever interface {
 //go:generate counterfeiter -o mock/collection_store.go --fake-name CollectionStore . collectionStore
 type collectionStore interface {
 	privdata.CollectionStore
+}
+
+//go:generate counterfeiter -o mock/application_capabilities.go --fake-name ApplicationCapabilities . applicationCapabilities
+type applicationCapabilities interface {
+	channelconfig.ApplicationCapabilities
+}
+
+//go:generate counterfeiter -o mock/application_config.go --fake-name ApplicationConfig . applicationConfig
+type applicationConfig interface {
+	channelconfig.Application
 }

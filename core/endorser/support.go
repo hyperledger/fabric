@@ -132,10 +132,12 @@ func (s *SupportImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, 
 }
 
 // Execute a proposal and return the chaincode response
-func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, cid, name, version, txid string, idBytes []byte, requiresInit bool, signedProp *pb.SignedProposal, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
 	cccid := &ccprovider.CCContext{
-		Name:    name,
-		Version: version,
+		Name:         name,
+		Version:      version,
+		InitRequired: requiresInit,
+		ID:           idBytes,
 	}
 
 	// decorate the chaincode input

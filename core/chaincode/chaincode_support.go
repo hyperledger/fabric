@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
@@ -21,6 +22,19 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
+)
+
+const (
+	// InitializedKeyName is the reserved key in a chaincode's namespace which
+	// records the ID of the chaincode which initialized the namespace.
+	// In this way, we can enforce Init exactly once semantics, whenever
+	// the backing chaincode bytes change (but not be required to re-initialize
+	// the chaincode say, when endorsement policy changes).
+	InitializedKeyName = "\x00\x00initialized"
+
+	// InitFunctionName is the reserved name that an invoker may specify to
+	// trigger invocation of the chaincode init function.
+	InitFunctionName = "init"
 )
 
 // Runtime is used to manage chaincode runtime instances.
@@ -55,7 +69,7 @@ type ChaincodeSupport struct {
 	Launcher               Launcher
 	SystemCCProvider       sysccprovider.SystemChaincodeProvider
 	Lifecycle              Lifecycle
-	appConfig              ApplicationConfigRetriever
+	AppConfig              ApplicationConfigRetriever
 	HandlerMetrics         *HandlerMetrics
 	LaunchMetrics          *LaunchMetrics
 	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
@@ -86,7 +100,7 @@ func NewChaincodeSupport(
 		ACLProvider:            aclProvider,
 		SystemCCProvider:       SystemCCProvider,
 		Lifecycle:              lifecycle,
-		appConfig:              appConfig,
+		AppConfig:              appConfig,
 		HandlerMetrics:         NewHandlerMetrics(metricsProvider),
 		LaunchMetrics:          NewLaunchMetrics(metricsProvider),
 		DeployedCCInfoProvider: deployedCCInfoProvider,
@@ -188,7 +202,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream)
 		UUIDGenerator:              UUIDGeneratorFunc(util.GenerateUUID),
 		LedgerGetter:               peer.Default,
 		DeployedCCInfoProvider:     cs.DeployedCCInfoProvider,
-		AppConfig:                  cs.appConfig,
+		AppConfig:                  cs.AppConfig,
 		Metrics:                    cs.HandlerMetrics,
 	}
 
@@ -291,19 +305,70 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 		return nil, err
 	}
 
-	// TODO add Init exactly once semantics here once new lifecycle
-	// is available.  Enforced if the target channel is using the new lifecycle
-	//
-	// First, the function name of the chaincode to invoke should be checked.  If it is
-	// "init", then consider this invocation to be of type pb.ChaincodeMessage_INIT,
-	// otherwise consider it to be of type pb.ChaincodeMessage_TRANSACTION,
-	//
-	// Secondly, A check should be made whether the chaincode has been
-	// inited, then, if true, only allow cctyp pb.ChaincodeMessage_TRANSACTION,
-	// otherwise, only allow cctype pb.ChaincodeMessage_INIT,
+	isInit, err := cs.CheckInit(txParams, cccid, input)
+	if err != nil {
+		return nil, err
+	}
+
 	cctype := pb.ChaincodeMessage_TRANSACTION
+	if isInit {
+		cctype = pb.ChaincodeMessage_INIT
+	}
 
 	return cs.execute(cctype, txParams, cccid, input, h)
+}
+
+func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (bool, error) {
+	if txParams.ChannelID == "" {
+		// Channel-less invocations must be for SCCs, so, we ignore them for now
+		return false, nil
+	}
+
+	ac, ok := cs.AppConfig.GetApplicationConfig(txParams.ChannelID)
+	if !ok {
+		return false, errors.Errorf("could not retrieve application config for channel '%s'", txParams.ChannelID)
+	}
+
+	if !ac.Capabilities().LifecycleV20() {
+		return false, nil
+	}
+
+	isInit := false
+
+	if len(input.Args) != 0 {
+		isInit = string(input.Args[0]) == InitFunctionName
+	}
+
+	if !cccid.InitRequired {
+		// If Init is not required, treat this as a normal invocation
+		// i.e. execute Invoke with 'init' as the function name
+		return false, nil
+	}
+
+	// At this point, we know we must enforce init exactly once semantics
+
+	value, err := txParams.TXSimulator.GetState(cccid.Name, InitializedKeyName)
+	if err != nil {
+		return false, errors.WithMessage(err, "could not get 'initialized' key")
+	}
+
+	needsInitialization := !bytes.Equal(value, []byte(cccid.Version))
+
+	switch {
+	case !isInit && !needsInitialization:
+		return false, nil
+	case !isInit && needsInitialization:
+		return false, errors.Errorf("chaincode '%s' has not been initialized for this version, must call 'init' first", cccid.Name)
+	case isInit && !needsInitialization:
+		return false, errors.Errorf("chaincode '%s' is already initialized but 'init' called", cccid.Name)
+	default:
+		// isInit && needsInitialization:
+		err = txParams.TXSimulator.SetState(cccid.Name, InitializedKeyName, []byte(cccid.Version))
+		if err != nil {
+			return false, errors.WithMessage(err, "could not set 'initialized' key")
+		}
+		return true, nil
+	}
 }
 
 // execute executes a transaction and waits for it to complete until a timeout value.

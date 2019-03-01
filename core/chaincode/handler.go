@@ -1205,6 +1205,8 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s", shorttxid(msg.Txid), targetInstance.ChaincodeName, targetInstance.ChainID)
 
 	version := h.SystemCCVersion
+	var idBytes []byte
+	requiresInit := false
 	if !h.SystemCCProvider.IsSysCC(targetInstance.ChaincodeName) {
 		// if its a user chaincode, get the details
 		cd, err := h.DefinitionGetter.ChaincodeDefinition(targetInstance.ChaincodeName, txParams.TXSimulator)
@@ -1213,6 +1215,8 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 		}
 
 		version = cd.CCVersion()
+		idBytes = cd.Hash()
+		requiresInit = cd.RequiresInit()
 
 		if cData, ok := cd.(*ccprovider.ChaincodeData); ok {
 			err = h.InstantiationPolicyChecker.CheckInstantiationPolicy(targetInstance.ChaincodeName, version, cData)
@@ -1226,8 +1230,10 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	chaincodeLogger.Debugf("[%s] launching chaincode %s on channel %s", shorttxid(msg.Txid), targetInstance.ChaincodeName, targetInstance.ChainID)
 
 	cccid := &ccprovider.CCContext{
-		Name:    targetInstance.ChaincodeName,
-		Version: version,
+		Name:         targetInstance.ChaincodeName,
+		Version:      version,
+		InitRequired: requiresInit,
+		ID:           idBytes,
 	}
 
 	// Execute the chaincode... this CANNOT be an init at least for now
