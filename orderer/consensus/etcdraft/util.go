@@ -254,7 +254,7 @@ func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.Metadata, 
 	return nil, nil
 }
 
-// ConfigEnvelopeFromBlock extracts configuration envelop from the block based on the
+// ConfigEnvelopeFromBlock extracts configuration envelope from the block based on the
 // config type, i.e. HeaderType_ORDERER_TRANSACTION or HeaderType_CONFIG
 func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 	if block == nil {
@@ -263,7 +263,7 @@ func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 
 	envelope, err := utils.ExtractEnvelope(block, 0)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to extract envelop from the block")
+		return nil, errors.Wrapf(err, "failed to extract envelope from the block")
 	}
 
 	channelHeader, err := utils.ChannelHeader(envelope)
@@ -307,7 +307,7 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.Metadata, 
 
 	payload, err := utils.ExtractPayload(configEnvelope)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed extract payload from config envelope")
+		return nil, errors.Wrap(err, "failed to extract payload from config envelope")
 	}
 	// get config update
 	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
@@ -372,4 +372,56 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 		}
 	}
 	return cluster.ErrNotInChannel
+}
+
+// SliceOfConsentersIDs converts maps of consenters into slice of consenters ids
+func SliceOfConsentersIDs(consenters map[uint64]*etcdraft.Consenter) []uint64 {
+	result := make([]uint64, 0)
+	for id := range consenters {
+		result = append(result, id)
+	}
+
+	return result
+}
+
+// NodeExists returns trues if node id exists in the slice
+// and false otherwise
+func NodeExists(id uint64, nodes []uint64) bool {
+	for _, nodeID := range nodes {
+		if nodeID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// ConfChange computes Raft configuration changes based on current Raft configuration state and
+// consenters mapping stored in RaftMetadata
+func ConfChange(raftMetadata *etcdraft.RaftMetadata, confState *raftpb.ConfState) raftpb.ConfChange {
+	raftConfChange := raftpb.ConfChange{}
+
+	raftConfChange.ID = raftMetadata.ConfChangeCounts
+	// need to compute conf changes to propose
+	if len(confState.Nodes) < len(raftMetadata.Consenters) {
+		// adding new node
+		raftConfChange.Type = raftpb.ConfChangeAddNode
+		for consenterID := range raftMetadata.Consenters {
+			if NodeExists(consenterID, confState.Nodes) {
+				continue
+			}
+			raftConfChange.NodeID = consenterID
+		}
+	} else {
+		// removing node
+		raftConfChange.Type = raftpb.ConfChangeRemoveNode
+		consentersIDs := SliceOfConsentersIDs(raftMetadata.Consenters)
+		for _, nodeID := range confState.Nodes {
+			if NodeExists(nodeID, consentersIDs) {
+				continue
+			}
+			raftConfChange.NodeID = nodeID
+		}
+	}
+
+	return raftConfChange
 }

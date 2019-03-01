@@ -20,16 +20,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
-	"github.com/hyperledger/fabric/protos/common"
-	protosorderer "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
-	"github.com/hyperledger/fabric/protos/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -151,7 +148,7 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	PDescribe("basic single node etcdraft network with 2 orgs", func() {
+	Describe("basic single node etcdraft network with 2 orgs", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
@@ -172,7 +169,7 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	PDescribe("three node etcdraft network with 2 orgs", func() {
+	Describe("three node etcdraft network with 2 orgs", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
@@ -250,7 +247,7 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	PDescribe("etcd raft, checking valid configuration update of type B", func() {
+	Describe("etcd raft, checking valid configuration update of type B", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
@@ -270,36 +267,24 @@ var _ = Describe("EndToEnd", func() {
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 
-			config := nwo.GetConfigBlock(network, peer, orderer, channel)
-			updatedConfig := proto.Clone(config).(*common.Config)
+			nwo.UpdateConsensusMetadata(network, peer, orderer, channel, func(originalMetadata []byte) []byte {
+				metadata := &etcdraft.Metadata{}
+				err := proto.Unmarshal(originalMetadata, metadata)
+				Expect(err).NotTo(HaveOccurred())
 
-			consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
-			consensusTypeValue := &protosorderer.ConsensusType{}
-			err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
-			Expect(err).NotTo(HaveOccurred())
+				// update max in flight messages
+				metadata.Options.MaxInflightMsgs = 1000
+				metadata.Options.MaxSizePerMsg = 512
 
-			metadata := &etcdraft.Metadata{}
-			err = proto.Unmarshal(consensusTypeValue.Metadata, metadata)
-			Expect(err).NotTo(HaveOccurred())
-
-			// update max in flight messages
-			metadata.Options.MaxInflightMsgs = 1000
-			metadata.Options.MaxSizePerMsg = 512
-
-			// write metadata back
-			consensusTypeValue.Metadata, err = proto.Marshal(metadata)
-			Expect(err).NotTo(HaveOccurred())
-
-			updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
-				ModPolicy: "Admins",
-				Value:     utils.MarshalOrPanic(consensusTypeValue),
-			}
-
-			nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+				// write metadata back
+				newMetadata, err := proto.Marshal(metadata)
+				Expect(err).NotTo(HaveOccurred())
+				return newMetadata
+			})
 		})
 	})
 
-	PDescribe("basic single node etcdraft network with 2 orgs and 2 channels", func() {
+	Describe("basic single node etcdraft network with 2 orgs and 2 channels", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()

@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
@@ -96,7 +97,7 @@ func (c *Consenter) detectSelfID(consenters map[uint64]*etcdraft.Consenter) (uin
 	}
 
 	c.Logger.Error("Could not find", string(c.Cert), "among", serverCertificates)
-	return 0, errors.Errorf("failed to detect own Raft ID because no matching certificate found")
+	return 0, cluster.ErrNotInChannel
 }
 
 // HandleChain returns a new Chain instance or an error upon failure
@@ -123,7 +124,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 
 	id, err := c.detectSelfID(raftMetadata.Consenters)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChainID())}, nil
 	}
 
 	bp, err := newBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster)

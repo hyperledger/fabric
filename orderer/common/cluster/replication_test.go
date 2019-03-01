@@ -101,6 +101,7 @@ func TestReplicateChainsFailures(t *testing.T) {
 			name: "no block received",
 			expectedPanic: "Failed pulling system channel: " +
 				"failed obtaining the latest block for channel system",
+			isProbeResponseDelayed: true,
 		},
 		{
 			name: "latest block seq is less than boot block seq",
@@ -157,6 +158,7 @@ func TestReplicateChainsFailures(t *testing.T) {
 
 			lw := &mocks.LedgerWriter{}
 			lw.On("Append", mock.Anything).Return(testCase.appendBlockError)
+			lw.On("Height").Return(uint64(0))
 
 			lf := &mocks.LedgerFactory{}
 			lf.On("GetOrCreate", "system").Return(lw, testCase.ledgerFactoryError)
@@ -188,9 +190,12 @@ func TestReplicateChainsFailures(t *testing.T) {
 			osn.addExpectProbeAssert()
 			osn.addExpectProbeAssert()
 			osn.addExpectPullAssert(0)
-			for _, block := range systemChannelBlocks {
-				osn.blockResponses <- &orderer.DeliverResponse{
-					Type: &orderer.DeliverResponse_Block{Block: block},
+
+			if !testCase.isProbeResponseDelayed {
+				for _, block := range systemChannelBlocks {
+					osn.blockResponses <- &orderer.DeliverResponse{
+						Type: &orderer.DeliverResponse_Block{Block: block},
+					}
 				}
 			}
 
@@ -290,6 +295,11 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 	// Scenario: There are 2 channels in the system: A and B.
 	// We are in channel A but not in channel B, therefore
 	// we should pull channel A and then the system channel.
+	// However, this is not the first attempt of replication for
+	// our node, but the second.
+	// In the past, the node pulled 10 blocks of channel A and crashed.
+	// Therefore, it should pull blocks, but commit for channel A
+	// only blocks starting from block number 10.
 
 	systemChannelBlocks := createBlockChain(0, 21)
 	block30WithConfigBlockOf21 := common.NewBlock(30, nil)
@@ -311,23 +321,41 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 
 	amIPartOfChannelMock := &mock.Mock{}
 	// For channel A
-	amIPartOfChannelMock.On("func2").Return(nil).Once()
+	amIPartOfChannelMock.On("func5").Return(nil).Once()
 	// For channel B
-	amIPartOfChannelMock.On("func2").Return(cluster.ErrNotInChannel).Once()
+	amIPartOfChannelMock.On("func5").Return(cluster.ErrNotInChannel).Once()
 
 	// 22 is for the system channel, and 31 is for channel A
-	blocksCommittedToLedger := make(chan *common.Block, 22+31)
+	blocksCommittedToLedgerA := make(chan *common.Block, 31)
+	blocksCommittedToSystemLedger := make(chan *common.Block, 22)
+	// Put 10 blocks in the ledger of channel A, to simulate
+	// that the ledger had blocks when the node started.
+	for seq := 0; seq < 10; seq++ {
+		blocksCommittedToLedgerA <- &common.Block{
+			Header: &common.BlockHeader{Number: uint64(seq)},
+		}
+	}
 
-	lw := &mocks.LedgerWriter{}
-	lw.On("Append", mock.Anything).Return(nil).Run(func(arg mock.Arguments) {
-		blocksCommittedToLedger <- arg.Get(0).(*common.Block)
+	lwA := &mocks.LedgerWriter{}
+	lwA.On("Append", mock.Anything).Return(nil).Run(func(arg mock.Arguments) {
+		blocksCommittedToLedgerA <- arg.Get(0).(*common.Block)
+	})
+	lwA.On("Height").Return(func() uint64 {
+		return uint64(len(blocksCommittedToLedgerA))
+	})
+
+	lwSystem := &mocks.LedgerWriter{}
+	lwSystem.On("Append", mock.Anything).Return(nil).Run(func(arg mock.Arguments) {
+		blocksCommittedToSystemLedger <- arg.Get(0).(*common.Block)
+	})
+	lwSystem.On("Height").Return(func() uint64 {
+		return uint64(len(blocksCommittedToSystemLedger))
 	})
 
 	lf := &mocks.LedgerFactory{}
 	lf.On("Close")
-	lf.On("GetOrCreate", "A").Return(lw, nil)
-	lf.On("GetOrCreate", "B").Return(lw, nil)
-	lf.On("GetOrCreate", "system").Return(lw, nil)
+	lf.On("GetOrCreate", "A").Return(lwA, nil)
+	lf.On("GetOrCreate", "system").Return(lwSystem, nil)
 
 	r := cluster.Replicator{
 		LedgerFactory: lf,
@@ -430,21 +458,20 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 	// We replicated the chains, so all that left is to ensure
 	// the blocks were committed in order, and all blocks we expected
 	// to be committed (for channel A and the system channel) were committed.
-	close(blocksCommittedToLedger)
-	assert.Len(t, blocksCommittedToLedger, cap(blocksCommittedToLedger))
+	close(blocksCommittedToLedgerA)
+	close(blocksCommittedToSystemLedger)
+	assert.Len(t, blocksCommittedToLedgerA, cap(blocksCommittedToLedgerA))
+	assert.Len(t, blocksCommittedToSystemLedger, cap(blocksCommittedToSystemLedger))
 	// Count the blocks for channel A
 	var expectedSequence uint64
-	for block := range blocksCommittedToLedger {
+	for block := range blocksCommittedToLedgerA {
 		assert.Equal(t, expectedSequence, block.Header.Number)
 		expectedSequence++
-		if expectedSequence == 31 {
-			break
-		}
 	}
 
 	// Count the blocks for the system channel
 	expectedSequence = uint64(0)
-	for block := range blocksCommittedToLedger {
+	for block := range blocksCommittedToSystemLedger {
 		assert.Equal(t, expectedSequence, block.Header.Number)
 		expectedSequence++
 	}

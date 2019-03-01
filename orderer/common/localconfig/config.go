@@ -58,9 +58,13 @@ type General struct {
 }
 
 type Cluster struct {
-	RootCAs                 []string
+	ListenAddress           string
+	ListenPort              uint16
+	ServerCertificate       string
+	ServerPrivateKey        string
 	ClientCertificate       string
 	ClientPrivateKey        string
+	RootCAs                 []string
 	DialTimeout             time.Duration
 	RPCTimeout              time.Duration
 	ReplicationBufferSize   int

@@ -21,7 +21,6 @@ import (
 )
 
 func TestSpawnEtcdRaft(t *testing.T) {
-	t.Skip()
 	gt := NewGomegaWithT(t)
 
 	cwd, err := filepath.Abs(".")
@@ -59,9 +58,10 @@ func TestSpawnEtcdRaft(t *testing.T) {
 
 	// Launch the OSN
 	ordererProcess := launchOrderer(gt, cmd, orderer, tempDir, genesisBlockPath, fabricRootDir)
+	defer ordererProcess.Kill()
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Starting cluster listener on 127.0.0.1:5612"))
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Beginning to serve requests"))
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("becomeLeader"))
-	ordererProcess.Kill()
 }
 
 func launchOrderer(gt *GomegaWithT, cmd *exec.Cmd, orderer, tempDir, genesisBlockPath, fabricRootDir string) *gexec.Session {
@@ -79,6 +79,10 @@ func launchOrderer(gt *GomegaWithT, cmd *exec.Cmd, orderer, tempDir, genesisBloc
 		"ORDERER_OPERATIONS_TLS_ENABLED=false",
 		fmt.Sprintf("ORDERER_FILELEDGER_LOCATION=%s", filepath.Join(tempDir, "ledger")),
 		fmt.Sprintf("ORDERER_GENERAL_GENESISFILE=%s", genesisBlockPath),
+		"ORDERER_GENERAL_CLUSTER_LISTENPORT=5612",
+		"ORDERER_GENERAL_CLUSTER_LISTENADDRESS=127.0.0.1",
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", filepath.Join(cwd, "testdata", "tls", "server.crt")),
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERPRIVATEKEY=%s", filepath.Join(cwd, "testdata", "tls", "server.key")),
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=%s", filepath.Join(cwd, "testdata", "tls", "server.crt")),
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=%s", filepath.Join(cwd, "testdata", "tls", "server.key")),
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_ROOTCAS=[%s]", filepath.Join(cwd, "testdata", "tls", "ca.crt")),

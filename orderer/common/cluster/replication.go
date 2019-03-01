@@ -159,7 +159,7 @@ func (r *Replicator) pullChannelBlocks(channel string, puller ChainPuller, lates
 	}
 	// Pull the genesis block and remember its hash.
 	genesisBlock := puller.PullBlock(0)
-	r.appendBlock(genesisBlock, ledger)
+	r.appendBlockIfNeeded(genesisBlock, ledger, channel)
 	actualPrevHash := genesisBlock.Header.Hash()
 
 	for seq := uint64(1); seq < latestHeight; seq++ {
@@ -172,19 +172,26 @@ func (r *Replicator) pullChannelBlocks(channel string, puller ChainPuller, lates
 		actualPrevHash = block.Header.Hash()
 		if channel == r.SystemChannel && block.Header.Number == r.BootBlock.Header.Number {
 			r.compareBootBlockWithSystemChannelLastConfigBlock(block)
-			r.appendBlock(block, ledger)
+			r.appendBlockIfNeeded(block, ledger, channel)
 			// No need to pull further blocks from the system channel
 			return nil
 		}
-		r.appendBlock(block, ledger)
+		r.appendBlockIfNeeded(block, ledger, channel)
 	}
 	return nil
 }
 
-func (r *Replicator) appendBlock(block *common.Block, ledger LedgerWriter) {
+func (r *Replicator) appendBlockIfNeeded(block *common.Block, ledger LedgerWriter, channel string) {
+	currHeight := ledger.Height()
+	if currHeight >= block.Header.Number+1 {
+		r.Logger.Infof("Already at height %d for channel %s, skipping commit of block %d",
+			currHeight, channel, block.Header.Number)
+		return
+	}
 	if err := ledger.Append(block); err != nil {
 		r.Logger.Panicf("Failed to write block %d: %v", block.Header.Number, err)
 	}
+	r.Logger.Infof("Committed block %d for channel %s", block.Header.Number, channel)
 }
 
 func (r *Replicator) compareBootBlockWithSystemChannelLastConfigBlock(block *common.Block) {
@@ -344,7 +351,7 @@ func latestHeightAndEndpoint(puller ChainPuller) (string, uint64) {
 	var maxHeight uint64
 	var mostUpToDateEndpoint string
 	for endpoint, height := range puller.HeightsByEndpoints() {
-		if height > maxHeight {
+		if height >= maxHeight {
 			maxHeight = height
 			mostUpToDateEndpoint = endpoint
 		}
