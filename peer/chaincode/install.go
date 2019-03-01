@@ -28,8 +28,7 @@ import (
 var chaincodeInstallCmd *cobra.Command
 
 const (
-	installCmdName   = "install"
-	newLifecycleName = "_lifecycle"
+	installCmdName = "install"
 )
 
 // Reader defines the interface needed for reading a file

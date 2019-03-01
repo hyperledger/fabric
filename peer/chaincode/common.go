@@ -107,7 +107,8 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 		cf.Certificate,
 		cf.EndorserClients,
 		cf.DeliverClients,
-		cf.BroadcastClient)
+		cf.BroadcastClient,
+	)
 
 	if err != nil {
 		return errors.Errorf("%s - proposal response: %v", err, proposalResp)
@@ -164,10 +165,10 @@ type collectionConfigJson struct {
 // getCollectionConfig retrieves the collection configuration
 // from the supplied file; the supplied file must contain a
 // json-formatted array of collectionConfigJson elements
-func getCollectionConfigFromFile(ccFile string) ([]byte, error) {
+func getCollectionConfigFromFile(ccFile string) (*pcommon.CollectionConfigPackage, []byte, error) {
 	fileBytes, err := ioutil.ReadFile(ccFile)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not read file '%s'", ccFile)
+		return nil, nil, errors.Wrapf(err, "could not read file '%s'", ccFile)
 	}
 
 	return getCollectionConfigFromBytes(fileBytes)
@@ -176,18 +177,18 @@ func getCollectionConfigFromFile(ccFile string) ([]byte, error) {
 // getCollectionConfig retrieves the collection configuration
 // from the supplied byte array; the byte array must contain a
 // json-formatted array of collectionConfigJson elements
-func getCollectionConfigFromBytes(cconfBytes []byte) ([]byte, error) {
+func getCollectionConfigFromBytes(cconfBytes []byte) (*pcommon.CollectionConfigPackage, []byte, error) {
 	cconf := &[]collectionConfigJson{}
 	err := json.Unmarshal(cconfBytes, cconf)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not parse the collection configuration")
+		return nil, nil, errors.Wrap(err, "could not parse the collection configuration")
 	}
 
 	ccarray := make([]*pcommon.CollectionConfig, 0, len(*cconf))
 	for _, cconfitem := range *cconf {
 		p, err := cauthdsl.FromString(cconfitem.Policy)
 		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("invalid policy %s", cconfitem.Policy))
+			return nil, nil, errors.WithMessage(err, fmt.Sprintf("invalid policy %s", cconfitem.Policy))
 		}
 
 		cpc := &pcommon.CollectionPolicyConfig{
@@ -214,7 +215,8 @@ func getCollectionConfigFromBytes(cconfBytes []byte) ([]byte, error) {
 	}
 
 	ccp := &pcommon.CollectionConfigPackage{Config: ccarray}
-	return proto.Marshal(ccp)
+	ccpBytes, err := proto.Marshal(ccp)
+	return ccp, ccpBytes, err
 }
 
 func checkChaincodeCmdParams(cmd *cobra.Command) error {
@@ -253,7 +255,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 
 		if collectionsConfigFile != common.UndefinedParamValue {
 			var err error
-			collectionConfigBytes, err = getCollectionConfigFromFile(collectionsConfigFile)
+			_, collectionConfigBytes, err = getCollectionConfigFromFile(collectionsConfigFile)
 			if err != nil {
 				return errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
 			}
@@ -312,8 +314,13 @@ func validatePeerConnectionParameters(cmdName string) error {
 		}
 	}
 
-	// currently only support multiple peer addresses for invoke
-	if cmdName != "invoke" && len(peerAddresses) > 1 {
+	// currently only support multiple peer addresses for invoke and approveformyorg
+	multiplePeersAllowed := map[string]bool{
+		"invoke":          true,
+		"approveformyorg": true,
+	}
+	_, ok := multiplePeersAllowed[cmdName]
+	if !ok && len(peerAddresses) > 1 {
 		return errors.Errorf("'%s' command can only be executed against one peer. received %d", cmdName, len(peerAddresses))
 	}
 

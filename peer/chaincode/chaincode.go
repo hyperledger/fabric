@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	chainFuncName = "chaincode"
-	chainCmdDes   = "Operate a chaincode: install|instantiate|invoke|package|query|signpackage|upgrade|list."
+	chainFuncName    = "chaincode"
+	chainCmdDes      = "Operate a chaincode: approveformyorg|install|instantiate|invoke|package|query|signpackage|upgrade|list."
+	newLifecycleName = "_lifecycle"
 )
 
 var logger = flogging.MustGetLogger("chaincodeCmd")
@@ -48,6 +49,7 @@ func Cmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeCmd.AddCommand(signpackageCmd(cf))
 	chaincodeCmd.AddCommand(upgradeCmd(cf))
 	chaincodeCmd.AddCommand(listCmd(cf))
+	chaincodeCmd.AddCommand(approveForMyOrgCmd(cf, nil))
 
 	return chaincodeCmd
 }
@@ -76,6 +78,9 @@ var (
 	waitForEvent          bool
 	waitForEventTimeout   time.Duration
 	newLifecycle          bool
+	hash                  []byte
+	sequence              int
+	initRequired          bool
 )
 
 var chaincodeCmd = &cobra.Command{
@@ -138,6 +143,9 @@ func resetFlags() {
 	flags.BoolVarP(&createSignedCCDepSpec, "cc-package", "s", false, "create CC deployment spec for owner endorsements instead of raw CC deployment spec")
 	flags.BoolVarP(&signCCDepSpec, "sign", "S", false, "if creating CC deployment spec package for owner endorsements, also sign it with local MSP")
 	flags.StringVarP(&instantiationPolicy, "instantiate-policy", "i", "", "instantiation policy for the chaincode")
+	flags.BytesHexVarP(&hash, "hash", "", nil, "The hash of the chaincode install package")
+	flags.IntVarP(&sequence, "sequence", "", 1, "The sequence number of the chaincode definition for the channel")
+	flags.BoolVarP(&initRequired, "init-required", "", false, "Whether the chaincode requires invoking 'init'")
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {

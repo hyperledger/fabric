@@ -310,25 +310,23 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
 }
 
-// non recording mock of deliver api
-type dummyDeliver struct {
-	resp *pb.DeliverResponse
-	err  error
-}
-
-func (d *dummyDeliver) Send(*cb.Envelope) error            { return nil }
-func (d *dummyDeliver) Recv() (*pb.DeliverResponse, error) { return d.resp, d.err }
-func (d *dummyDeliver) CloseSend() error                   { return nil }
-
 func getMockDeliverClientResponseWithTxID(txID string) *cmock.PeerDeliverClient {
 	mockDC := &cmock.PeerDeliverClient{}
 	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
-		resp := &pb.DeliverResponse{
-			Type: &pb.DeliverResponse_FilteredBlock{FilteredBlock: createFilteredBlock(txID)},
-		}
-		return &dummyDeliver{resp: resp}, nil
+		return getMockDeliverConnectionResponseWithTxID(txID), nil
 	}
 	return mockDC
+}
+
+func getMockDeliverConnectionResponseWithTxID(txID string) *mock.Deliver {
+	mockDF := &mock.Deliver{}
+	resp := &pb.DeliverResponse{
+		Type: &pb.DeliverResponse_FilteredBlock{
+			FilteredBlock: createFilteredBlock(txID),
+		},
+	}
+	mockDF.RecvReturns(resp, nil)
+	return mockDF
 }
 
 func getMockDeliverClientRespondsWithFilteredBlocks(fb []*pb.FilteredBlock) *cmock.PeerDeliverClient {
