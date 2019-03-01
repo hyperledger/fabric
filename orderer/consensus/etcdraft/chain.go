@@ -646,6 +646,7 @@ func (c *Chain) serveRequest() {
 			batches, pending, err := c.ordered(s.req)
 			if err != nil {
 				c.logger.Errorf("Failed to order message: %s", err)
+				continue
 			}
 			if pending {
 				start() // no-op if timer is already started
