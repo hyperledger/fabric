@@ -78,7 +78,7 @@ var _ = Describe("EndToEnd", func() {
 			datagramReader = NewDatagramReader()
 			go datagramReader.Start()
 
-			network = nwo.New(nwo.BasicSolo(), testDir, client, BasePort(), components)
+			network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
 			network.MetricsProvider = "statsd"
 			network.StatsdEndpoint = datagramReader.Address()
 			network.Profiles = append(network.Profiles, &nwo.Profile{
@@ -140,7 +140,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("basic kafka network with 2 orgs", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicKafka(), testDir, client, BasePort(), components)
+			network = nwo.New(nwo.BasicKafka(), testDir, client, StartPort(), components)
 			network.MetricsProvider = "prometheus"
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -165,7 +165,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("basic single node etcdraft network with 2 orgs", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, BasePort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -186,7 +186,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("three node etcdraft network with 2 orgs", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, BasePort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -264,7 +264,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("etcd raft, checking valid configuration update of type B", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, BasePort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -301,7 +301,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("basic single node etcdraft network with 2 orgs and 2 channels", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, BasePort(), components)
+			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 

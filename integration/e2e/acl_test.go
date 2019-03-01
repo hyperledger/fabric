@@ -58,7 +58,7 @@ var _ = Describe("EndToEndACL", func() {
 		soloConfig.RemovePeer("Org2", "peer1")
 		Expect(soloConfig.Peers).To(HaveLen(2))
 
-		network = nwo.New(soloConfig, testDir, client, BasePort(), components)
+		network = nwo.New(soloConfig, testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 

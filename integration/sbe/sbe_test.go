@@ -64,7 +64,7 @@ var _ = Describe("SBE_E2E", func() {
 
 	Describe("basic solo network with 2 orgs", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicSolo(), testDir, client, 30000, components)
+			network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -190,7 +190,7 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, time.Minute).Should(gexec.Exit(0))
 
-	By("org2 checks that setting the value was not succesful by reading it")
+	By("org2 checks that setting the value was not successful by reading it")
 	sess, err = n.PeerUserSession(peerOrg2, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      "mycc",

@@ -54,7 +54,8 @@ var _ = Describe("Network", func() {
 			var config *nwo.Config
 			err = yaml.Unmarshal(soloBytes, &config)
 			Expect(err).NotTo(HaveOccurred())
-			network = nwo.New(config, tempDir, client, 44444, components)
+
+			network = nwo.New(config, tempDir, client, StartPort(), components)
 
 			// Generate config and bootstrap the network
 			network.GenerateConfigTree()
@@ -132,7 +133,7 @@ var _ = Describe("Network", func() {
 			config.Consensus.ZooKeepers = 1
 			config.Consensus.Brokers = 1
 
-			network = nwo.New(&config, tempDir, client, 55555, components)
+			network = nwo.New(&config, tempDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 			processes = map[string]ifrit.Process{}

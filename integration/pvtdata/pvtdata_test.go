@@ -360,7 +360,7 @@ var _ bool = Describe("PrivateData", func() {
 			err = yaml.Unmarshal(configBytes, &networkConfig)
 			Expect(err).NotTo(HaveOccurred())
 
-			network = nwo.New(networkConfig, testDir, client, 35000+1000*GinkgoParallelNode(), components)
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -564,7 +564,7 @@ var _ bool = Describe("PrivateData", func() {
 
 		BeforeEach(func() {
 			testDir, network, process, orderer, expectedPeers = initThreeOrgsSetup()
-			By("installing and instantiating chaincode on all peers. All three orgs are memeber of 'collectionMarbles'")
+			By("installing and instantiating chaincode on all peers. All three orgs are member of 'collectionMarbles'")
 			chaincode := nwo.Chaincode{
 				Name:              "marblesp",
 				Version:           "1.0",
@@ -661,7 +661,7 @@ func initThreeOrgsSetup() (string, *nwo.Network, ifrit.Process, *nwo.Orderer, []
 	err = yaml.Unmarshal(configBytes, &networkConfig)
 	Expect(err).NotTo(HaveOccurred())
 
-	n := nwo.New(networkConfig, testDir, client, 35000+1000*GinkgoParallelNode(), components)
+	n := nwo.New(networkConfig, testDir, client, StartPort(), components)
 	n.GenerateConfigTree()
 	n.Bootstrap()
 

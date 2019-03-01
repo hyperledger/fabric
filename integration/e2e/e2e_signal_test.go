@@ -38,7 +38,7 @@ var _ = Describe("SignalHandling", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicSolo(), testDir, client, BasePort(), components)
+		network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
