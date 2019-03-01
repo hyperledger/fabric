@@ -1373,16 +1373,6 @@ var _ = Describe("Chain", func() {
 				})
 
 				It("adding node to the cluster", func() {
-
-					c4 := newChain(timeout, channelID, dataDir, 4, &raftprotos.RaftMetadata{
-						Consenters: map[uint64]*raftprotos.Consenter{},
-					})
-					c4.init()
-
-					By("adding new node to the network")
-					Expect(c4.support.WriteBlockCallCount()).Should(Equal(0))
-					Expect(c4.support.WriteConfigBlockCallCount()).Should(Equal(0))
-
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
 					c1.cutter.CutNext = true
 
@@ -1393,6 +1383,19 @@ var _ = Describe("Chain", func() {
 					network.exec(func(c *chain) {
 						Eventually(c.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
 					})
+
+					_, raftmetabytes := c1.support.WriteConfigBlockArgsForCall(0)
+					meta := &common.Metadata{Value: raftmetabytes}
+					raftmeta, err := etcdraft.ReadRaftMetadata(meta, nil)
+					Expect(err).NotTo(HaveOccurred())
+
+					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta)
+					c4.init()
+
+					// if we join a node to existing network, it MUST already obtained blocks
+					// till the config block that adds this node to cluster.
+					c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
+					c4.support.WriteConfigBlock(c1.support.WriteConfigBlockArgsForCall(0))
 
 					network.addChain(c4)
 					c4.Start()
@@ -1428,15 +1431,6 @@ var _ = Describe("Chain", func() {
 					// disconnect second node
 					network.disconnect(2)
 
-					c4 := newChain(timeout, channelID, dataDir, 4, &raftprotos.RaftMetadata{
-						Consenters: map[uint64]*raftprotos.Consenter{},
-					})
-					c4.init()
-
-					By("adding new node to the network")
-					Eventually(c4.support.WriteBlockCallCount, defaultTimeout).Should(Equal(0))
-					Eventually(c4.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(0))
-
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
 					c1.cutter.CutNext = true
 
@@ -1448,6 +1442,19 @@ var _ = Describe("Chain", func() {
 					// second node is disconnected hence should not be able to get the config block
 					Eventually(c2.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(0))
 					Eventually(c3.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+
+					_, raftmetabytes := c1.support.WriteConfigBlockArgsForCall(0)
+					meta := &common.Metadata{Value: raftmetabytes}
+					raftmeta, err := etcdraft.ReadRaftMetadata(meta, nil)
+					Expect(err).NotTo(HaveOccurred())
+
+					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta)
+					c4.init()
+
+					// if we join a node to existing network, it MUST already obtained blocks
+					// till the config block that adds this node to cluster.
+					c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
+					c4.support.WriteConfigBlock(c1.support.WriteConfigBlockArgsForCall(0))
 
 					network.addChain(c4)
 					c4.Start()
@@ -1502,15 +1509,6 @@ var _ = Describe("Chain", func() {
 					// re-configuration. Later we connecting c1 back and making sure it capable of catching up with
 					// new configuration and successfully rejoins replica set.
 
-					c4 := newChain(timeout, channelID, dataDir, 4, &raftprotos.RaftMetadata{
-						Consenters: map[uint64]*raftprotos.Consenter{},
-					})
-					c4.init()
-
-					By("adding new node to the network")
-					Expect(c4.support.WriteBlockCallCount()).Should(Equal(0))
-					Expect(c4.support.WriteConfigBlockCallCount()).Should(Equal(0))
-
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
 					c1.cutter.CutNext = true
 
@@ -1532,6 +1530,19 @@ var _ = Describe("Chain", func() {
 						func(c *chain) {
 							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 						})
+
+					_, raftmetabytes := c1.support.WriteConfigBlockArgsForCall(0)
+					meta := &common.Metadata{Value: raftmetabytes}
+					raftmeta, err := etcdraft.ReadRaftMetadata(meta, nil)
+					Expect(err).NotTo(HaveOccurred())
+
+					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta)
+					c4.init()
+
+					// if we join a node to existing network, it MUST already obtained blocks
+					// till the config block that adds this node to cluster.
+					c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
+					c4.support.WriteConfigBlock(c1.support.WriteConfigBlockArgsForCall(0))
 
 					network.addChain(c4)
 					c4.Start()
@@ -1574,34 +1585,24 @@ var _ = Describe("Chain", func() {
 					// configure chain support mock to stop cluster after config block is committed.
 					// Restart the cluster and ensure it picks up updates and capable to finish reconfiguration.
 
-					c4 := newChain(timeout, channelID, dataDir, 4, &raftprotos.RaftMetadata{
-						Consenters: map[uint64]*raftprotos.Consenter{},
-					})
-					c4.init()
-
-					By("adding new node to the network")
-					Expect(c4.support.WriteBlockCallCount()).Should(Equal(0))
-					Expect(c4.support.WriteConfigBlockCallCount()).Should(Equal(0))
-
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
 					c1.cutter.CutNext = true
 
-					stub1 := c1.support.WriteConfigBlockStub
-					c1.support.WriteConfigBlockStub = func(block *common.Block, metadata []byte) {
-						stub1(block, metadata)
-						network.disconnect(1)
-					}
+					step := c1.rpc.StepStub
+					count := c1.rpc.StepCallCount() // record current step call count
+					c1.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+						// disconnect network after 4 MsgApp are sent by c1:
+						// - 2 MsgApp to c2 & c3 that replicate data to raft followers
+						// - 2 MsgApp to c2 & c3 that instructs followers to commit data
+						if c1.rpc.StepCallCount() == count+4 {
+							defer func() {
+								network.disconnect(1)
+								network.disconnect(2)
+								network.disconnect(3)
+							}()
+						}
 
-					stub2 := c2.support.WriteConfigBlockStub
-					c2.support.WriteConfigBlockStub = func(block *common.Block, metadata []byte) {
-						stub2(block, metadata)
-						network.disconnect(2)
-					}
-
-					stub3 := c3.support.WriteConfigBlockStub
-					c3.support.WriteConfigBlockStub = func(block *common.Block, metadata []byte) {
-						stub3(block, metadata)
-						network.disconnect(3)
+						return step(dest, msg)
 					}
 
 					By("sending config transaction")
@@ -1613,6 +1614,19 @@ var _ = Describe("Chain", func() {
 						func(c *chain) {
 							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 						})
+
+					_, raftmetabytes := c1.support.WriteConfigBlockArgsForCall(0)
+					meta := &common.Metadata{Value: raftmetabytes}
+					raftmeta, err := etcdraft.ReadRaftMetadata(meta, nil)
+					Expect(err).NotTo(HaveOccurred())
+
+					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta)
+					c4.init()
+
+					// if we join a node to existing network, it MUST already obtained blocks
+					// till the config block that adds this node to cluster.
+					c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
+					c4.support.WriteConfigBlock(c1.support.WriteConfigBlockArgsForCall(0))
 
 					network.addChain(c4)
 
@@ -1816,7 +1830,6 @@ var _ = Describe("Chain", func() {
 
 				c1.cutter.CutNext = true
 
-				stepCnt := c1.rpc.StepCallCount()
 				network.disconnect(1) // drop MsgApp
 
 				err := c1.Order(env, 0)
@@ -1827,8 +1840,6 @@ var _ = Describe("Chain", func() {
 						Consistently(func() int { return c.support.WriteBlockCallCount() }).Should(Equal(0))
 					})
 
-				// Since the leader has 2 followers, assert that we actually dropped MsgApp for both of them.
-				Eventually(c1.rpc.StepCallCount).Should(Equal(stepCnt + 2))
 				network.connect(1) // reconnect leader
 
 				c1.clock.Increment(interval) // trigger a heartbeat
@@ -2374,6 +2385,7 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 	// receives blocks and metadata and appends it into
 	// the ledger struct to simulate write behaviour
 	appendBlockToLedger := func(b *common.Block, meta []byte) {
+		b = proto.Clone(b).(*common.Block)
 		bytes, err := proto.Marshal(&common.Metadata{Value: meta})
 		Expect(err).NotTo(HaveOccurred())
 		b.Metadata.Metadata[common.BlockMetadataIndex_ORDERER] = bytes
@@ -2597,7 +2609,7 @@ func (n *network) elect(id uint64) (tick int) {
 	// results in undeterministic behavior. Therefore
 	// we are going to wait for enough time after each
 	// tick so it could take effect.
-	t := 50 * time.Millisecond
+	t := 10 * time.Millisecond
 
 	n.connLock.RLock()
 	c := n.chains[id]

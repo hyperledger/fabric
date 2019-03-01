@@ -102,17 +102,16 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	clusterClientConfig := initializeClusterClientConfig(conf)
 	clusterDialer.SetConfig(clusterClientConfig)
 
+	r := &replicationInitiator{
+		logger:  logger,
+		secOpts: clusterClientConfig.SecOpts,
+		conf:    conf,
+		lf:      &ledgerFactory{lf},
+		signer:  signer,
+	}
 	// Only clusters that are equipped with a recent config block can replicate.
 	if clusterType && conf.General.GenesisMethod == "file" {
-		r := &replicationInitiator{
-			logger:         logger,
-			secOpts:        clusterClientConfig.SecOpts,
-			bootstrapBlock: bootstrapBlock,
-			conf:           conf,
-			lf:             &ledgerFactory{lf},
-			signer:         signer,
-		}
-		r.replicateIfNeeded()
+		r.replicateIfNeeded(bootstrapBlock)
 	}
 
 	opsSystem := newOperationsSystem(conf.Operations, conf.Metrics)
@@ -157,7 +156,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		}
 	}
 
-	manager := initializeMultichannelRegistrar(bootstrapBlock, clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, opsSystem, lf, tlsCallback)
+	manager := initializeMultichannelRegistrar(bootstrapBlock, r, clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, opsSystem, lf, tlsCallback)
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	server := NewServer(manager, metricsProvider, &conf.Debug, conf.General.Authentication.TimeWindow, mutualTLS)
 
@@ -502,6 +501,7 @@ type healthChecker interface {
 
 func initializeMultichannelRegistrar(
 	bootstrapBlock *cb.Block,
+	ri *replicationInitiator,
 	clusterDialer *cluster.PredicateDialer,
 	srvConf comm.ServerConfig,
 	srv *comm.GRPCServer,
@@ -530,11 +530,58 @@ func initializeMultichannelRegistrar(
 	// closes if we wished to cleanup this routine on exit.
 	go kafkaMetrics.PollGoMetricsUntilStop(time.Minute, nil)
 	if isClusterType(bootstrapBlock) {
-		raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar)
-		consenters["etcdraft"] = raftConsenter
+		initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar)
 	}
 	registrar.Initialize(consenters)
 	return registrar
+}
+
+func initializeEtcdraftConsenter(consenters map[string]consensus.Consenter,
+	conf *localconfig.TopLevel,
+	lf blockledger.Factory,
+	clusterDialer *cluster.PredicateDialer,
+	bootstrapBlock *cb.Block,
+	ri *replicationInitiator,
+	srvConf comm.ServerConfig,
+	srv *comm.GRPCServer,
+	registrar *multichannel.Registrar) {
+	replicationRefreshInterval := conf.General.Cluster.ReplicationBackgroundRefreshInterval
+	if replicationRefreshInterval == 0 {
+		replicationRefreshInterval = defaultReplicationBackgroundRefreshInterval
+	}
+
+	systemChannelName, err := utils.GetChainIDFromBlock(bootstrapBlock)
+	if err != nil {
+		ri.logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
+	}
+	systemLedger, err := lf.GetOrCreate(systemChannelName)
+	if err != nil {
+		ri.logger.Panicf("Failed obtaining system channel (%s) ledger: %v", systemChannelName, err)
+	}
+	getConfigBlock := func() *cb.Block {
+		return multichannel.ConfigBlock(systemLedger)
+	}
+
+	exponentialSleep := exponentialDurationSeries(replicationBackgroundInitialRefreshInterval, replicationRefreshInterval)
+
+	icr := &inactiveChainReplicator{
+		logger:                            logger,
+		scheduleChan:                      makeTickChannel(exponentialSleep, time.Sleep),
+		quitChan:                          make(chan struct{}),
+		replicator:                        ri,
+		chains2CreationCallbacks:          make(map[string]chainCreation),
+		retrieveLastSysChannelConfigBlock: getConfigBlock,
+	}
+
+	// Use the inactiveChainReplicator as a channel lister, since it has knowledge
+	// of all inactive chains.
+	// This is to prevent us pulling the entire system chain when attempting to enumerate
+	// the channels in the system.
+	ri.channelLister = icr
+
+	go icr.run()
+	raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, icr)
+	consenters["etcdraft"] = raftConsenter
 }
 
 func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics) *operations.System {

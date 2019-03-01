@@ -4,7 +4,7 @@
 ---
 organizations:
 - name: orderer-org
-  msp_id: OrdererOrgMSP
+  msp_id: OrdererMSP
   domain: orderer.example.com
   enable_node_organizational_units: false
   users: 0

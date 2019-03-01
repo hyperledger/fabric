@@ -29,6 +29,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+//go:generate mockery -dir . -name InactiveChainRegistry -case underscore -output mocks
+
+// InactiveChainRegistry registers chains that are inactive
+type InactiveChainRegistry interface {
+	// TrackChain tracks a chain with the given name, and calls the given callback
+	// when this chain should be activated.
+	TrackChain(chainName string, genesisBlock *common.Block, createChainCallback func())
+}
+
 //go:generate mockery -dir . -name ChainGetter -case underscore -output mocks
 
 // ChainGetter obtains instances of ChainSupport for the given channel
@@ -47,8 +56,10 @@ type Config struct {
 
 // Consenter implements etddraft consenter
 type Consenter struct {
-	Dialer        *cluster.PredicateDialer
-	Communication cluster.Communicator
+	CreateChain           func(chainName string)
+	InactiveChainRegistry InactiveChainRegistry
+	Dialer                *cluster.PredicateDialer
+	Communication         cluster.Communicator
 	*Dispatcher
 	Chains         ChainGetter
 	Logger         *flogging.FabricLogger
@@ -117,13 +128,16 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	// In case chain has been restarted we restore raft metadata
 	// information from the recently committed block meta data
 	// field.
-	raftMetadata, err := readRaftMetadata(metadata, m)
+	raftMetadata, err := ReadRaftMetadata(metadata, m)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read Raft metadata")
 	}
 
 	id, err := c.detectSelfID(raftMetadata.Consenters)
 	if err != nil {
+		c.InactiveChainRegistry.TrackChain(support.ChainID(), support.Block(0), func() {
+			c.CreateChain(support.ChainID())
+		})
 		return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChainID())}, nil
 	}
 
@@ -159,7 +173,9 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	return NewChain(support, opts, c.Communication, rpc, bp, nil)
 }
 
-func readRaftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {
+// ReadRaftMetadata attempts to read raft metadata from block metadata, if available.
+// otherwise, it reads raft metadata from config metadata supplied.
+func ReadRaftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {
 	m := &etcdraft.RaftMetadata{
 		Consenters:      map[uint64]*etcdraft.Consenter{},
 		NextConsenterId: 1,
@@ -182,7 +198,7 @@ func readRaftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.M
 
 // New creates a etcdraft Consenter
 func New(clusterDialer *cluster.PredicateDialer, conf *localconfig.TopLevel,
-	srvConf comm.ServerConfig, srv *comm.GRPCServer, r *multichannel.Registrar) *Consenter {
+	srvConf comm.ServerConfig, srv *comm.GRPCServer, r *multichannel.Registrar, icr InactiveChainRegistry) *Consenter {
 	logger := flogging.MustGetLogger("orderer.consensus.etcdraft")
 
 	var cfg Config
@@ -191,12 +207,14 @@ func New(clusterDialer *cluster.PredicateDialer, conf *localconfig.TopLevel,
 	}
 
 	consenter := &Consenter{
-		Cert:           srvConf.SecOpts.Certificate,
-		Logger:         logger,
-		Chains:         r,
-		EtcdRaftConfig: cfg,
-		OrdererConfig:  *conf,
-		Dialer:         clusterDialer,
+		CreateChain:           r.CreateChain,
+		InactiveChainRegistry: icr,
+		Cert:                  srvConf.SecOpts.Certificate,
+		Logger:                logger,
+		Chains:                r,
+		EtcdRaftConfig:        cfg,
+		OrdererConfig:         *conf,
+		Dialer:                clusterDialer,
 	}
 	consenter.Dispatcher = &Dispatcher{
 		Logger:        logger,

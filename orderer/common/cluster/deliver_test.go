@@ -171,6 +171,9 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 	}
 	if seekInfo.GetStart().GetNewest() != nil {
 		resp := <-ds.blocks()
+		if resp == nil {
+			return nil
+		}
 		return stream.Send(resp)
 	}
 	panic(fmt.Sprintf("expected either specified or newest seek but got %v", seekInfo.GetStart()))
@@ -482,7 +485,8 @@ func TestBlockPullerHeightsByEndpoints(t *testing.T) {
 	// The third returns the latest block
 	osn3.enqueueResponse(5)
 
-	res := bp.HeightsByEndpoints()
+	res, err := bp.HeightsByEndpoints()
+	assert.NoError(t, err)
 	expected := map[string]uint64{
 		osn3.srv.Address(): 6,
 	}
@@ -877,8 +881,13 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 	}
 
 	changeType := func(resp *orderer.DeliverResponse) *orderer.DeliverResponse {
+		resp.Type = nil
+		return resp
+	}
+
+	statusType := func(resp *orderer.DeliverResponse) *orderer.DeliverResponse {
 		resp.Type = &orderer.DeliverResponse_Status{
-			Status: common.Status_SUCCESS,
+			Status: common.Status_INTERNAL_SERVER_ERROR,
 		}
 		return resp
 	}
@@ -911,7 +920,12 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 		{
 			name:           "wrong type",
 			corruptBlock:   changeType,
-			expectedErrMsg: "response is of type",
+			expectedErrMsg: "response is of type <nil>, but expected a block",
+		},
+		{
+			name:           "bad type",
+			corruptBlock:   statusType,
+			expectedErrMsg: "faulty node, received: status:INTERNAL_SERVER_ERROR ",
 		},
 		{
 			name:           "wrong number",
@@ -1006,4 +1020,75 @@ func TestImpatientStreamFailure(t *testing.T) {
 	}
 	_, err = stream.Recv()
 	assert.Error(t, err)
+}
+
+func TestBlockPullerMaxRetriesExhausted(t *testing.T) {
+	// Scenario:
+	// The block puller is expected to pull blocks 1 to 3.
+	// But the orderer only has blocks 1,2, and from some reason
+	// it sends back block 2 twice (we do this so that we
+	// don't rely on timeout, because timeouts are flaky in tests).
+	// It should attempt to re-connect and to send requests
+	// until the attempt number is exhausted, after which
+	// it gives up, and nil is returned.
+
+	osn := newClusterNode(t)
+	defer osn.stop()
+
+	// We report having up to block 3.
+	osn.enqueueResponse(3)
+	osn.addExpectProbeAssert()
+	// We send blocks 1
+	osn.addExpectPullAssert(1)
+	osn.enqueueResponse(1)
+	// And 2, twice.
+	osn.enqueueResponse(2)
+	osn.enqueueResponse(2)
+	// A nil message signals the deliver stream closes.
+	// This is to signal the server side to prepare for a new deliver
+	// stream that the client should open.
+	osn.blockResponses <- nil
+
+	for i := 0; i < 2; i++ {
+		// Therefore, the block puller should disconnect and reconnect.
+		osn.addExpectProbeAssert()
+		// We report having up to block 3.
+		osn.enqueueResponse(3)
+		// And we expect to be asked for block 3, since blocks 1, 2
+		// have already been passed to the caller.
+		osn.addExpectPullAssert(3)
+		// Once again, we send 2 instead of 3
+		osn.enqueueResponse(2)
+		// The client disconnects again
+		osn.blockResponses <- nil
+	}
+
+	dialer := newCountingDialer()
+	bp := newBlockPuller(dialer, osn.srv.Address())
+
+	var exhaustedRetryAttemptsLogged bool
+
+	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		if entry.Message == "Failed pulling block 3: retry count exhausted(2)" {
+			exhaustedRetryAttemptsLogged = true
+		}
+		return nil
+	}))
+
+	bp.MaxPullBlockRetries = 2
+	// We don't expect to timeout in this test, so make the timeout large
+	// to prevent flakes due to CPU starvation.
+	bp.FetchTimeout = time.Hour
+	// Make the buffer tiny, only a single byte - in order deliver blocks
+	// to the caller one by one and not store them in the buffer.
+	bp.MaxTotalBufferBytes = 1
+
+	// Assert reception of blocks 1 to 3
+	assert.Equal(t, uint64(1), bp.PullBlock(uint64(1)).Header.Number)
+	assert.Equal(t, uint64(2), bp.PullBlock(uint64(2)).Header.Number)
+	assert.Nil(t, bp.PullBlock(uint64(3)))
+
+	bp.Close()
+	dialer.assertAllConnectionsClosed(t)
+	assert.True(t, exhaustedRetryAttemptsLogged)
 }

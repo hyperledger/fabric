@@ -189,6 +189,7 @@ var _ = Describe("Consenter", func() {
 		Expect(chain).To(Not(BeNil()))
 		Expect(err).To(Not(HaveOccurred()))
 		Expect(chain.Order(nil, 0).Error()).To(Equal("channel foo is not serviced by me"))
+		consenter.icr.AssertNumberOfCalls(testingInstance, "TrackChain", 1)
 	})
 
 	It("fails to handle chain if etcdraft options have not been provided", func() {
@@ -209,16 +210,24 @@ var _ = Describe("Consenter", func() {
 
 })
 
-func newConsenter(chainGetter *mocks.ChainGetter) *etcdraft.Consenter {
+type consenter struct {
+	*etcdraft.Consenter
+	icr *mocks.InactiveChainRegistry
+}
+
+func newConsenter(chainGetter *mocks.ChainGetter) *consenter {
 	communicator := &clustermocks.Communicator{}
 	ca, err := tlsgen.NewCA()
 	Expect(err).NotTo(HaveOccurred())
 	communicator.On("Configure", mock.Anything, mock.Anything)
-	consenter := &etcdraft.Consenter{
-		Communication: communicator,
-		Cert:          []byte("cert.orderer0.org0"),
-		Logger:        flogging.MustGetLogger("test"),
-		Chains:        chainGetter,
+	icr := &mocks.InactiveChainRegistry{}
+	icr.On("TrackChain", "foo", mock.Anything, mock.Anything)
+	c := &etcdraft.Consenter{
+		InactiveChainRegistry: icr,
+		Communication:         communicator,
+		Cert:                  []byte("cert.orderer0.org0"),
+		Logger:                flogging.MustGetLogger("test"),
+		Chains:                chainGetter,
 		Dispatcher: &etcdraft.Dispatcher{
 			Logger:        flogging.MustGetLogger("test"),
 			ChainSelector: &mocks.ReceiverGetter{},
@@ -229,5 +238,8 @@ func newConsenter(chainGetter *mocks.ChainGetter) *etcdraft.Consenter {
 			},
 		}),
 	}
-	return consenter
+	return &consenter{
+		Consenter: c,
+		icr:       icr,
+	}
 }
