@@ -606,7 +606,7 @@ var _ = Describe("Chain", func() {
 
 						It("should fail, since consenters set change is not supported", func() {
 							err := chain.Configure(configEnv, configSeq)
-							Expect(err).To(MatchError("update of more than one consenters at a time is not supported"))
+							Expect(err).To(MatchError("update of more than one consenters at a time is not supported, requested changes: add 3 node(s), remove 1 node(s)"))
 							Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
 							Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
 						})
@@ -684,7 +684,7 @@ var _ = Describe("Chain", func() {
 							configSeq = 0
 
 							err := chain.Configure(configEnv, configSeq)
-							Expect(err).To(MatchError("update of more than one consenters at a time is not supported"))
+							Expect(err).To(MatchError("update of more than one consenters at a time is not supported, requested changes: add 1 node(s), remove 1 node(s)"))
 							Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
 							Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
 						})
@@ -1521,7 +1521,34 @@ var _ = Describe("Chain", func() {
 
 					By("sending config transaction")
 					err := c1.Configure(configEnv, 0)
-					Expect(err).To(MatchError("update of more than one consenters at a time is not supported"))
+					Expect(err).To(MatchError("update of more than one consenters at a time is not supported, requested changes: add 1 node(s), remove 1 node(s)"))
+				})
+
+				When("two type B config are sent back-to-back", func() {
+					It("discards the second", func() {
+						// initial state: <1, 2, 3>
+						// first config: <1, 2, 3, 4>
+						// second config: <1, 2>
+						c1.cutter.CutNext = true
+						configEnvAdd := newConfigEnv(channelID,
+							common.HeaderType_CONFIG,
+							newConfigUpdateEnv(channelID, addConsenterConfigValue()))
+						configEnvRm := newConfigEnv(channelID,
+							common.HeaderType_CONFIG,
+							newConfigUpdateEnv(channelID, removeConsenterConfigValue(3)))
+
+						By("Submitting two config tx back-to-back")
+						c1.support.SequenceReturnsOnCall(1, 0)
+						c1.support.SequenceReturnsOnCall(2, 1)
+						c1.support.ProcessConfigMsgReturns(configEnvRm, 1, nil)
+
+						Expect(c1.Configure(configEnvAdd, 0)).To(Succeed())
+						Expect(c1.Configure(configEnvRm, 0)).To(Succeed())
+						network.exec(func(c *chain) {
+							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+							Consistently(c.support.WriteConfigBlockCallCount).Should(Equal(1))
+						})
+					})
 				})
 
 				It("adding node to the cluster", func() {

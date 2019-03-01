@@ -38,6 +38,11 @@ type MembershipChanges struct {
 	TotalChanges uint32
 }
 
+// Stringer implements fmt.Stringer interface
+func (mc *MembershipChanges) String() string {
+	return fmt.Sprintf("add %d node(s), remove %d node(s)", len(mc.AddedNodes), len(mc.RemovedNodes))
+}
+
 // UpdateRaftMetadataAndConfChange given the membership changes and RaftMetadata method calculates
 // updates to be applied to the raft  cluster configuration in addition updates mapping between
 // consenter and its id within metadata

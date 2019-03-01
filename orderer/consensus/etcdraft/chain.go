@@ -823,8 +823,15 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 	if c.isConfig(msg.Payload) {
 		// ConfigMsg
 		if msg.LastValidationSeq < seq {
+			c.logger.Warnf("Config message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
 			msg.Payload, _, err = c.support.ProcessConfigMsg(msg.Payload)
 			if err != nil {
+				c.Metrics.ProposalFailures.Add(1)
+				return nil, true, errors.Errorf("bad config message: %s", err)
+			}
+
+			if err = c.checkConfigUpdateValidity(msg.Payload); err != nil {
+				c.Metrics.ProposalFailures.Add(1)
 				return nil, true, errors.Errorf("bad config message: %s", err)
 			}
 		}
@@ -838,7 +845,9 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 	}
 	// it is a normal message
 	if msg.LastValidationSeq < seq {
+		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
 		if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
+			c.Metrics.ProposalFailures.Add(1)
 			return nil, true, errors.Errorf("bad normal message: %s", err)
 		}
 	}
@@ -1095,7 +1104,7 @@ func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
 	c.raftMetadataLock.RUnlock()
 
 	if changes.TotalChanges > 1 {
-		return errors.New("update of more than one consenters at a time is not supported")
+		return errors.Errorf("update of more than one consenters at a time is not supported, requested changes: %s", changes)
 	}
 
 	return nil
