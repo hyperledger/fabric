@@ -535,8 +535,6 @@ type TransactionParams struct {
 // chaincode package without importing it; more methods
 // should be added below if necessary
 type ChaincodeProvider interface {
-	// Execute executes a standard chaincode invocation for a chaincode and an input
-	Execute(txParams *TransactionParams, cccid *CCContext, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error)
 	// ExecuteLegacyInit is a special case for executing chaincode deployment specs,
 	// which are not already in the LSCC, needed for old lifecycle
 	ExecuteLegacyInit(txParams *TransactionParams, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
