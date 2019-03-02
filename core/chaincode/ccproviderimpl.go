@@ -20,11 +20,6 @@ func NewProvider(cs *ChaincodeSupport) *CCProviderImpl {
 	return &CCProviderImpl{cs: cs}
 }
 
-// Execute executes the chaincode given context and spec (invocation or deploy)
-func (c *CCProviderImpl) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
-	return c.cs.Execute(txParams, cccid, input)
-}
-
 // ExecuteLegacyInit executes a chaincode which is not in the LSCC table
 func (c *CCProviderImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	return c.cs.ExecuteLegacyInit(txParams, cccid, spec)
