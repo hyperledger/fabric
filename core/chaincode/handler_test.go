@@ -682,7 +682,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
-				Expect(err).To(MatchError("key level endorsement is not enabled"))
+				Expect(err).To(MatchError("key level endorsement is not enabled, channel application capability of V1_3 or later is required"))
 			})
 		})
 
@@ -1101,7 +1101,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
-				Expect(err).To(MatchError("key level endorsement is not enabled"))
+				Expect(err).To(MatchError("key level endorsement is not enabled, channel application capability of V1_3 or later is required"))
 			})
 		})
 
