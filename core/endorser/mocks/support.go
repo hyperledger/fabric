@@ -100,13 +100,12 @@ type Support struct {
 	isSysCCReturnsOnCall map[int]struct {
 		result1 bool
 	}
-	ExecuteStub        func(txParams *ccprovider.TransactionParams, cid, name, version, txid string, idBytes []byte, initRequired bool, signedProp *pb.SignedProposal, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error)
+	ExecuteStub        func(txParams *ccprovider.TransactionParams, cid, name, txid string, idBytes []byte, initRequired bool, signedProp *pb.SignedProposal, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error)
 	executeMutex       sync.RWMutex
 	executeArgsForCall []struct {
 		txParams     *ccprovider.TransactionParams
 		cid          string
 		name         string
-		version      string
 		txid         string
 		idBytes      []byte
 		initRequired bool
@@ -628,7 +627,7 @@ func (fake *Support) IsSysCCReturnsOnCall(i int, result1 bool) {
 	}{result1}
 }
 
-func (fake *Support) Execute(txParams *ccprovider.TransactionParams, cid string, name string, version string, txid string, idBytes []byte, initRequired bool, signedProp *pb.SignedProposal, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (fake *Support) Execute(txParams *ccprovider.TransactionParams, cid string, name string, txid string, idBytes []byte, initRequired bool, signedProp *pb.SignedProposal, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
 	var idBytesCopy []byte
 	if idBytes != nil {
 		idBytesCopy = make([]byte, len(idBytes))
@@ -640,18 +639,17 @@ func (fake *Support) Execute(txParams *ccprovider.TransactionParams, cid string,
 		txParams     *ccprovider.TransactionParams
 		cid          string
 		name         string
-		version      string
 		txid         string
 		idBytes      []byte
 		initRequired bool
 		signedProp   *pb.SignedProposal
 		prop         *pb.Proposal
 		input        *pb.ChaincodeInput
-	}{txParams, cid, name, version, txid, idBytesCopy, initRequired, signedProp, prop, input})
-	fake.recordInvocation("Execute", []interface{}{txParams, cid, name, version, txid, idBytesCopy, initRequired, signedProp, prop, input})
+	}{txParams, cid, name, txid, idBytesCopy, initRequired, signedProp, prop, input})
+	fake.recordInvocation("Execute", []interface{}{txParams, cid, name, txid, idBytesCopy, initRequired, signedProp, prop, input})
 	fake.executeMutex.Unlock()
 	if fake.ExecuteStub != nil {
-		return fake.ExecuteStub(txParams, cid, name, version, txid, idBytes, initRequired, signedProp, prop, input)
+		return fake.ExecuteStub(txParams, cid, name, txid, idBytes, initRequired, signedProp, prop, input)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
@@ -665,10 +663,10 @@ func (fake *Support) ExecuteCallCount() int {
 	return len(fake.executeArgsForCall)
 }
 
-func (fake *Support) ExecuteArgsForCall(i int) (*ccprovider.TransactionParams, string, string, string, string, []byte, bool, *pb.SignedProposal, *pb.Proposal, *pb.ChaincodeInput) {
+func (fake *Support) ExecuteArgsForCall(i int) (*ccprovider.TransactionParams, string, string, string, []byte, bool, *pb.SignedProposal, *pb.Proposal, *pb.ChaincodeInput) {
 	fake.executeMutex.RLock()
 	defer fake.executeMutex.RUnlock()
-	return fake.executeArgsForCall[i].txParams, fake.executeArgsForCall[i].cid, fake.executeArgsForCall[i].name, fake.executeArgsForCall[i].version, fake.executeArgsForCall[i].txid, fake.executeArgsForCall[i].idBytes, fake.executeArgsForCall[i].initRequired, fake.executeArgsForCall[i].signedProp, fake.executeArgsForCall[i].prop, fake.executeArgsForCall[i].input
+	return fake.executeArgsForCall[i].txParams, fake.executeArgsForCall[i].cid, fake.executeArgsForCall[i].name, fake.executeArgsForCall[i].txid, fake.executeArgsForCall[i].idBytes, fake.executeArgsForCall[i].initRequired, fake.executeArgsForCall[i].signedProp, fake.executeArgsForCall[i].prop, fake.executeArgsForCall[i].input
 }
 
 func (fake *Support) ExecuteReturns(result1 *pb.Response, result2 *pb.ChaincodeEvent, result3 error) {

@@ -28,7 +28,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	// This test should be moved as an integration test outside of chaincode package.
 	t.Skip()
 	chainID := util.GetTestChainID()
-	_, chaincodeSupport, cleanup, err := initPeer(chainID)
+	_, _, chaincodeSupport, cleanup, err := initPeer(chainID)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error creating peer: %s", err)

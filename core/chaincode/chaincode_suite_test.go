@@ -64,12 +64,8 @@ type packageProvider interface {
 	chaincode.PackageProvider
 }
 
-// This is a bit weird, we need to import the chaincode/lifecycle package, but there is an error,
-// even if we alias it to another name, so, calling 'lifecycleIface' instead of 'lifecycle'
-//go:generate counterfeiter -o mock/lifecycle.go --fake-name Lifecycle . lifecycleIface
-type lifecycleIface interface {
-	chaincode.Lifecycle
-}
+//go:generate mockery -dir . -name Lifecycle -case underscore -output mock/ -outpkg mock
+//go:generate mockery -dir ../common/ccprovider/ -name ChaincodeDefinition -case underscore -output mock/ -outpkg mock
 
 //go:generate counterfeiter -o mock/chaincode_stream.go --fake-name ChaincodeStream . chaincodeStream
 type chaincodeStream interface {

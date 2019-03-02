@@ -150,22 +150,11 @@ func (cs *ChaincodeSupport) LaunchInit(ccci *ccprovider.ChaincodeContainerInfo) 
 // Launch starts executing chaincode if it is not already running. This method
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
-func (cs *ChaincodeSupport) Launch(chainID, chaincodeName, chaincodeVersion string, qe ledger.QueryExecutor) (*Handler, error) {
-	cname := chaincodeName + ":" + chaincodeVersion
+func (cs *ChaincodeSupport) Launch(chainID string, ccci *ccprovider.ChaincodeContainerInfo) (*Handler, error) {
+	cname := ccci.Name + ":" + ccci.Version
+
 	if h := cs.HandlerRegistry.Handler(cname); h != nil {
 		return h, nil
-	}
-
-	ccci, err := cs.Lifecycle.ChaincodeContainerInfo(chaincodeName, qe)
-	if err != nil {
-		// TODO: There has to be a better way to do this...
-		if cs.UserRunsCC {
-			chaincodeLogger.Error(
-				"You are attempting to perform an action other than Deploy on Chaincode that is not ready and you are in developer mode. Did you forget to Deploy your chaincode?",
-			)
-		}
-
-		return nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", chainID, cname)
 	}
 
 	if err := cs.Launcher.Launch(ccci); err != nil {
@@ -174,7 +163,7 @@ func (cs *ChaincodeSupport) Launch(chainID, chaincodeName, chaincodeVersion stri
 
 	h := cs.HandlerRegistry.Handler(cname)
 	if h == nil {
-		return nil, errors.Wrapf(err, "[channel %s] claimed to start chaincode container for %s but could not find handler", chainID, cname)
+		return nil, errors.Errorf("[channel %s] claimed to start chaincode container for %s but could not find handler", chainID, cname)
 	}
 
 	return h, nil
@@ -288,19 +277,38 @@ func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMess
 	}
 }
 
-func (cs *ChaincodeSupport) InvokeInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
-	h, err := cs.Launch(txParams.ChannelID, cccid.Name, cccid.Version, txParams.TXSimulator)
-	if err != nil {
-		return nil, err
-	}
-
-	return cs.execute(pb.ChaincodeMessage_INIT, txParams, cccid, input, h)
-}
-
 // Invoke will invoke chaincode and return the message containing the response.
 // The chaincode will be launched if it is not already running.
 func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
-	h, err := cs.Launch(txParams.ChannelID, cccid.Name, cccid.Version, txParams.TXSimulator)
+	// at first we go to _lifecycle to retrieve information about the chaincode
+	var ccci *ccprovider.ChaincodeContainerInfo
+	var err error
+
+	// TODO: remove this once _lifecycle has definitions for all system chaincodes
+	if !cs.SystemCCProvider.IsSysCC(cccid.Name) {
+		ccci, err = cs.Lifecycle.ChaincodeContainerInfo(cccid.Name, txParams.TXSimulator)
+		if err != nil {
+			// TODO: There has to be a better way to do this...
+			if cs.UserRunsCC {
+				chaincodeLogger.Error(
+					"You are attempting to perform an action other than Deploy on Chaincode that is not ready and you are in developer mode. Did you forget to Deploy your chaincode?",
+				)
+			}
+
+			return nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", txParams.ChannelID, cccid.Name)
+		}
+	} else {
+		ccci = &ccprovider.ChaincodeContainerInfo{
+			Version: util.GetSysCCVersion(),
+			Name:    cccid.Name,
+		}
+	}
+
+	// fill the chaincode version field from the chaincode
+	// container info that we got from _lifecycle
+	cccid.Version = ccci.Version
+
+	h, err := cs.Launch(txParams.ChannelID, ccci)
 	if err != nil {
 		return nil, err
 	}

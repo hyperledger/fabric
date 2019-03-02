@@ -62,7 +62,7 @@ type Support interface {
 	IsSysCC(name string) bool
 
 	// Execute - execute proposal, return original response of chaincode
-	Execute(txParams *ccprovider.TransactionParams, cid, name, version, txid string, idBytes []byte, initRequired bool, signedProp *pb.SignedProposal, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error)
+	Execute(txParams *ccprovider.TransactionParams, cid, name, txid string, idBytes []byte, initRequired bool, signedProp *pb.SignedProposal, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error)
 
 	// ExecuteLegacyInit - executes a deployment proposal, return original response of chaincode
 	ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
@@ -133,7 +133,7 @@ func NewEndorserServer(privDist privateDataDistributor, s Support, pr *platforms
 }
 
 // call specified chaincode (system or user)
-func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, version string, idBytes []byte, requiresInit bool, input *pb.ChaincodeInput, cid *pb.ChaincodeID) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, idBytes []byte, requiresInit bool, input *pb.ChaincodeInput, cid *pb.ChaincodeID) (*pb.Response, *pb.ChaincodeEvent, error) {
 	endorserLogger.Infof("[%s][%s] Entry chaincode: %s", txParams.ChannelID, shorttxid(txParams.TxID), cid)
 	defer func(start time.Time) {
 		logger := endorserLogger.WithOptions(zap.AddCallerSkip(1))
@@ -146,7 +146,7 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, version
 	var ccevent *pb.ChaincodeEvent
 
 	// is this a system chaincode
-	res, ccevent, err = e.s.Execute(txParams, txParams.ChannelID, cid.Name, version, txParams.TxID, idBytes, requiresInit, txParams.SignedProp, txParams.Proposal, input)
+	res, ccevent, err = e.s.Execute(txParams, txParams.ChannelID, cid.Name, txParams.TxID, idBytes, requiresInit, txParams.SignedProp, txParams.Proposal, input)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -225,8 +225,13 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid 
 	}
 
 	var cdLedger ccprovider.ChaincodeDefinition
-	var version string
 
+	// TODO: remove the block below (with if/else) since it's actually
+	//       no longer required: the chaincode support will already be
+	//       looking up the chaincode definition; we just need to push
+	//       the verification of the instantiation policy away from here
+	//       where we have the chaincode definition ready.
+	//       Also: idBytes is currently unused so we can remove it.
 	var idBytes []byte
 	requiresInit := false
 	if !e.s.IsSysCC(cid.Name) {
@@ -234,16 +239,13 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid 
 		if err != nil {
 			return nil, nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("make sure the chaincode %s has been successfully instantiated and try again", cid.Name))
 		}
-		version = cdLedger.CCVersion()
 		idBytes = cdLedger.Hash()
 
-		err = e.s.CheckInstantiationPolicy(cid.Name, version, cdLedger)
+		err = e.s.CheckInstantiationPolicy(cid.Name, cdLedger.CCVersion(), cdLedger)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
 		requiresInit = cdLedger.RequiresInit()
-	} else {
-		version = util.GetSysCCVersion()
 	}
 
 	// ---3. execute the proposal and get simulation results
@@ -251,7 +253,7 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid 
 	var pubSimResBytes []byte
 	var res *pb.Response
 	var ccevent *pb.ChaincodeEvent
-	res, ccevent, err = e.callChaincode(txParams, version, idBytes, requiresInit, cis.ChaincodeSpec.Input, cid)
+	res, ccevent, err = e.callChaincode(txParams, idBytes, requiresInit, cis.ChaincodeSpec.Input, cid)
 	if err != nil {
 		endorserLogger.Errorf("[%s][%s] failed to invoke chaincode %s, error: %+v", txParams.ChannelID, shorttxid(txParams.TxID), cid, err)
 		return nil, nil, nil, nil, err

@@ -53,6 +53,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
+	ma "github.com/stretchr/testify/mock"
 )
 
 var globalBlockNum map[string]uint64
@@ -175,6 +176,16 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	config.ExecuteTimeout = 1 * time.Second
 	pr := platforms.NewRegistry(&golang.Platform{})
 	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
+	ml := &mock.Lifecycle{}
+	ml.On("ChaincodeContainerInfo", "shimTestCC", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "shimTestCC", Version: "0"}, nil)
+	ml.On("ChaincodeContainerInfo", "calledCC", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "calledCC", Version: "0"}, nil)
+	ml.On("ChaincodeContainerInfo", "lscc", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "lscc", Version: util.GetSysCCVersion()}, nil)
+	ml.On("ChaincodeContainerInfo", "badccname", ma.Anything).Return(nil, errors.New("get lost"))
+	mcd := &mock.ChaincodeDefinition{}
+	mcd.On("CCVersion").Return("0")
+	mcd.On("Hash").Return([]byte("Hulk, (sm)hash"))
+	mcd.On("RequiresInit").Return(false)
+	ml.On("ChaincodeDefinition", "calledCC", ma.Anything).Return(mcd, nil)
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		"0.0.0.0:7052",
@@ -182,7 +193,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		ca.CertBytes(),
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
-		lsccImpl,
+		ml,
 		mockAclProvider,
 		container.NewVMController(
 			map[string]container.VMProvider{
@@ -454,8 +465,7 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 	}
 
 	badcccid := &ccprovider.CCContext{
-		Name:    ccname,
-		Version: "unknownver",
+		Name: "badccname",
 	}
 
 	//we are not going to reach the chaincode and so won't get a response from it. processDone will not
