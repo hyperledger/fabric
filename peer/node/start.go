@@ -354,14 +354,13 @@ func serve(args []string) error {
 		lifecycleImpl,
 	)
 	ipRegistry.ChaincodeSupport = chaincodeSupport
-	ccp := chaincode.NewProvider(chaincodeSupport)
 
 	ccSupSrv := pb.ChaincodeSupportServer(chaincodeSupport)
 	if tlsEnabled {
 		ccSupSrv = authenticator.Wrap(ccSupSrv)
 	}
 
-	csccInst := cscc.New(ccp, sccp, aclProvider, lifecycleImpl, lsccInst, lifecycleImpl)
+	csccInst := cscc.New(sccp, aclProvider, lifecycleImpl, lsccInst, lifecycleImpl)
 	qsccInst := qscc.New(aclProvider)
 
 	//Now that chaincode is initialized, register all system chaincodes.
@@ -439,6 +438,7 @@ func serve(args []string) error {
 	// initialize system chaincodes
 
 	// deploy system chaincodes
+	ccp := chaincode.NewProvider(chaincodeSupport)
 	sccp.DeploySysCCs("", ccp)
 	logger.Infof("Deployed system chaincodes")
 
@@ -465,7 +465,7 @@ func serve(args []string) error {
 			logger.Panicf("Failed subscribing to chaincode lifecycle updates")
 		}
 		cceventmgmt.GetMgr().Register(cid, sub)
-	}, ccp, sccp, plugin.MapBasedMapper(validationPluginsByName),
+	}, sccp, plugin.MapBasedMapper(validationPluginsByName),
 		pr, lifecycleImpl, membershipInfoProvider, metricsProvider, lsccInst, lifecycleImpl)
 
 	if viper.GetBool("peer.discovery.enabled") {

@@ -24,7 +24,6 @@ import (
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	ledgermocks "github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -90,7 +89,6 @@ func TestInitialize(t *testing.T) {
 
 	Initialize(
 		nil,
-		&ccprovider.MockCcProviderImpl{},
 		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
 		nil,
@@ -107,7 +105,6 @@ func TestCreateChainFromBlock(t *testing.T) {
 
 	Initialize(
 		nil,
-		&ccprovider.MockCcProviderImpl{},
 		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
 		&platforms.Registry{},
@@ -147,7 +144,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	err = CreateChainFromBlock(block, nil, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
+	err = CreateChainFromBlock(block, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to create chain %s", err)
 	}
