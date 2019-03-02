@@ -574,7 +574,7 @@ func (h *Handler) checkMetadataCap(msg *pb.ChaincodeMessage) error {
 	}
 
 	if !ac.Capabilities().KeyLevelEndorsement() {
-		return errors.New("key level endorsement is not enabled")
+		return errors.New("key level endorsement is not enabled, channel application capability of V1_3 or later is required")
 	}
 	return nil
 }
