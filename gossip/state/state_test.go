@@ -1159,7 +1159,11 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 	}()
 
 	go func() {
-		msg := <-peerCh
+		msg, ok := <-peerCh
+		if !ok {
+			t.Log("Peer receiving channel was closed before getting response from bootstrap peer")
+			t.FailNow()
+		}
 		t.Log("Peer node got an answer, ", msg)
 		if msg.GetGossipMessage() == nil {
 			t.Log("Peer got nil GossipMessage")
