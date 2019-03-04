@@ -1104,7 +1104,7 @@ func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
 	c.raftMetadataLock.RUnlock()
 
 	if changes.TotalChanges > 1 {
-		return errors.Errorf("update of more than one consenters at a time is not supported, requested changes: %s", changes)
+		return errors.Errorf("update of more than one consenter at a time is not supported, requested changes: %s", changes)
 	}
 
 	return nil
