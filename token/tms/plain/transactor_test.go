@@ -55,7 +55,7 @@ var _ = Describe("RequestListTokens", func() {
 		results[4] = &queryresult.KV{Key: "123", Value: []byte("not an output")}
 
 		unspentTokens = &token.UnspentTokens{
-			Tokens: []*token.TokenOutput{
+			Tokens: []*token.UnspentToken{
 				{Id: &token.TokenId{TxId: "1", Index: uint32(0)}, Type: "TOK1", Quantity: ToHex(100)},
 				{Id: &token.TokenId{TxId: "3", Index: uint32(0)}, Type: "TOK4", Quantity: ToHex(400)},
 			},
@@ -121,11 +121,11 @@ var _ = Describe("RequestListTokens", func() {
 var _ = Describe("Transactor", func() {
 	var (
 		transactor              *plain.Transactor
-		recipientTransferShares []*token.RecipientTransferShare
+		recipientTransferShares []*token.RecipientShare
 	)
 
 	BeforeEach(func() {
-		recipientTransferShares = []*token.RecipientTransferShare{
+		recipientTransferShares = []*token.RecipientShare{
 			{Recipient: &token.TokenOwner{Raw: []byte("R1")}, Quantity: ToHex(1001)},
 			{Recipient: &token.TokenOwner{Raw: []byte("R2")}, Quantity: ToHex(1002)},
 			{Recipient: &token.TokenOwner{Raw: []byte("R3")}, Quantity: ToHex(1003)},
@@ -151,7 +151,7 @@ var _ = Describe("Transactor", func() {
 			transferRequest := &token.TransferRequest{
 				Credential: []byte("credential"),
 				TokenIds:   []*token.TokenId{{TxId: "george", Index: 0}},
-				Shares:     []*token.RecipientTransferShare{},
+				Shares:     []*token.RecipientShare{},
 			}
 
 			tt, err := transactor.RequestTransfer(transferRequest)
@@ -314,9 +314,9 @@ var _ = Describe("Transactor", func() {
 		It("creates a token transaction with 1 output if all tokens are redeemed", func() {
 			redeemQuantity = inputQuantity
 			redeemRequest = &token.RedeemRequest{
-				Credential:       []byte("credential"),
-				TokenIds:         []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
-				QuantityToRedeem: ToHex(redeemQuantity),
+				Credential: []byte("credential"),
+				TokenIds:   []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
+				Quantity:   ToHex(redeemQuantity),
 			}
 			tt, err := transactor.RequestRedeem(redeemRequest)
 			Expect(err).NotTo(HaveOccurred())
@@ -342,9 +342,9 @@ var _ = Describe("Transactor", func() {
 			redeemQuantity = 50
 			unredeemedQuantity := inputQuantity - 50
 			redeemRequest = &token.RedeemRequest{
-				Credential:       []byte("credential"),
-				TokenIds:         []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
-				QuantityToRedeem: ToHex(redeemQuantity),
+				Credential: []byte("credential"),
+				TokenIds:   []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
+				Quantity:   ToHex(redeemQuantity),
 			}
 			tt, err := transactor.RequestRedeem(redeemRequest)
 			Expect(err).NotTo(HaveOccurred())
@@ -371,9 +371,9 @@ var _ = Describe("Transactor", func() {
 			BeforeEach(func() {
 				redeemQuantity = inputQuantity + 10
 				redeemRequest = &token.RedeemRequest{
-					Credential:       []byte("credential"),
-					TokenIds:         []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
-					QuantityToRedeem: ToHex(redeemQuantity),
+					Credential: []byte("credential"),
+					TokenIds:   []*token.TokenId{{TxId: "robert", Index: uint32(0)}},
+					Quantity:   ToHex(redeemQuantity),
 				}
 			})
 

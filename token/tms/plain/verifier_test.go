@@ -537,12 +537,12 @@ var _ = Describe("Verifier", func() {
 
 		Context("when the input contains multiple token types", func() {
 			var (
-				anotherImportTransaction *token.TokenTransaction
-				anotherImportTxID        string
+				anotherIssueTransaction *token.TokenTransaction
+				anotherIssueTxID        string
 			)
 			BeforeEach(func() {
-				anotherImportTxID = "2"
-				anotherImportTransaction = &token.TokenTransaction{
+				anotherIssueTxID = "2"
+				anotherIssueTransaction = &token.TokenTransaction{
 					Action: &token.TokenTransaction_TokenAction{
 						TokenAction: &token.TokenAction{
 							Data: &token.TokenAction_Issue{
@@ -555,7 +555,7 @@ var _ = Describe("Verifier", func() {
 						},
 					},
 				}
-				err := verifier.ProcessTx(anotherImportTxID, fakePublicInfo, anotherImportTransaction, memoryLedger)
+				err := verifier.ProcessTx(anotherIssueTxID, fakePublicInfo, anotherIssueTransaction, memoryLedger)
 				Expect(err).NotTo(HaveOccurred())
 				transferTransaction = &token.TokenTransaction{
 					Action: &token.TokenTransaction_TokenAction{
@@ -881,12 +881,12 @@ var _ = Describe("Verifier", func() {
 
 		Context("when inputs have more than one type", func() {
 			var (
-				anotherImportTransaction *token.TokenTransaction
-				anotherImportTxID        string
+				anotherIssueTransaction *token.TokenTransaction
+				anotherIssueTxID        string
 			)
 			BeforeEach(func() {
-				anotherImportTxID = "2"
-				anotherImportTransaction = &token.TokenTransaction{
+				anotherIssueTxID = "2"
+				anotherIssueTransaction = &token.TokenTransaction{
 					Action: &token.TokenTransaction_TokenAction{
 						TokenAction: &token.TokenAction{
 							Data: &token.TokenAction_Issue{
@@ -899,7 +899,7 @@ var _ = Describe("Verifier", func() {
 						},
 					},
 				}
-				err := verifier.ProcessTx(anotherImportTxID, fakePublicInfo, anotherImportTransaction, memoryLedger)
+				err := verifier.ProcessTx(anotherIssueTxID, fakePublicInfo, anotherIssueTransaction, memoryLedger)
 				Expect(err).NotTo(HaveOccurred())
 
 				redeemTransaction = &token.TokenTransaction{

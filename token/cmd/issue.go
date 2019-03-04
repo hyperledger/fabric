@@ -75,10 +75,10 @@ func (cmd *IssueCmd) Execute(conf common.Config) error {
 		return err
 	}
 
-	tti := &token.TokenToIssue{
-		Recipient: recipientBytes,
-		Quantity:  quantity,
-		Type:      ttype,
+	tti := &token.Token{
+		Owner:    recipientBytes,
+		Quantity: quantity,
+		Type:     ttype,
 	}
 
 	// Import
@@ -86,7 +86,7 @@ func (cmd *IssueCmd) Execute(conf common.Config) error {
 	if err != nil {
 		return err
 	}
-	response, err := cmd.stub.Issue([]*token.TokenToIssue{tti}, 30*time.Second)
+	response, err := cmd.stub.Issue([]*token.Token{tti}, 30*time.Second)
 	if err != nil {
 		return err
 	}

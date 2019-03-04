@@ -10,15 +10,15 @@ type Loader struct {
 }
 
 // Shares provides a mock function with given fields: s
-func (_m *Loader) Shares(s string) ([]*token.RecipientTransferShare, error) {
+func (_m *Loader) Shares(s string) ([]*token.RecipientShare, error) {
 	ret := _m.Called(s)
 
-	var r0 []*token.RecipientTransferShare
-	if rf, ok := ret.Get(0).(func(string) []*token.RecipientTransferShare); ok {
+	var r0 []*token.RecipientShare
+	if rf, ok := ret.Get(0).(func(string) []*token.RecipientShare); ok {
 		r0 = rf(s)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*token.RecipientTransferShare)
+			r0 = ret.Get(0).([]*token.RecipientShare)
 		}
 	}
 

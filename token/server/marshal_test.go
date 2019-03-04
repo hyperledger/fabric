@@ -37,13 +37,13 @@ var _ = Describe("Marshal", func() {
 					Nonce:     []byte{1, 2, 3, 4, 5},
 					Creator:   []byte("creator"),
 				},
-				Payload: &token.Command_ImportRequest{
-					ImportRequest: &token.ImportRequest{
+				Payload: &token.Command_IssueRequest{
+					IssueRequest: &token.IssueRequest{
 						Credential: []byte("credential"),
-						TokensToIssue: []*token.TokenToIssue{{
-							Recipient: &token.TokenOwner{Raw: []byte("recipient")},
-							Type:      "TYPE",
-							Quantity:  ToHex(999),
+						TokensToIssue: []*token.Token{{
+							Owner:    &token.TokenOwner{Raw: []byte("recipient")},
+							Type:     "TYPE",
+							Quantity: ToHex(999),
 						}},
 					},
 				},

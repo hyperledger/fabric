@@ -78,7 +78,7 @@ func (v *Verifier) checkProcess(txID string, creator identity.PublicInfo, ttx *t
 func (v *Verifier) checkAction(creator identity.PublicInfo, tokenAction *token.TokenAction, txID string, simulator ledger.LedgerReader) error {
 	switch action := tokenAction.Data.(type) {
 	case *token.TokenAction_Issue:
-		return v.checkImportAction(creator, action.Issue, txID, simulator)
+		return v.checkIssueAction(creator, action.Issue, txID, simulator)
 	case *token.TokenAction_Transfer:
 		return v.checkTransferAction(creator, action.Transfer, txID, simulator)
 	case *token.TokenAction_Redeem:
@@ -88,15 +88,15 @@ func (v *Verifier) checkAction(creator identity.PublicInfo, tokenAction *token.T
 	}
 }
 
-func (v *Verifier) checkImportAction(creator identity.PublicInfo, issueAction *token.Issue, txID string, simulator ledger.LedgerReader) error {
-	err := v.checkImportOutputs(issueAction.GetOutputs(), txID, simulator)
+func (v *Verifier) checkIssueAction(creator identity.PublicInfo, issueAction *token.Issue, txID string, simulator ledger.LedgerReader) error {
+	err := v.checkIssueOutpuuts(issueAction.GetOutputs(), txID, simulator)
 	if err != nil {
 		return err
 	}
 	return v.checkIssuePolicy(creator, txID, issueAction)
 }
 
-func (v *Verifier) checkImportOutputs(outputs []*token.Token, txID string, simulator ledger.LedgerReader) error {
+func (v *Verifier) checkIssueOutpuuts(outputs []*token.Token, txID string, simulator ledger.LedgerReader) error {
 	if len(outputs) == 0 {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("no outputs in transaction: %s", txID)}
 	}

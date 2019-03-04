@@ -42,7 +42,7 @@ var _ = Describe("Client", func() {
 		expectedTxid = "dummy-tx-id"
 
 		fakeProver = &mock.Prover{}
-		fakeProver.RequestImportReturns(payload.Data, nil) // same data as payload
+		fakeProver.RequestIssueReturns(payload.Data, nil) // same data as payload
 		fakeProver.RequestTransferReturns(payload.Data, nil)
 		fakeProver.RequestRedeemReturns(payload.Data, nil)
 
@@ -64,16 +64,16 @@ var _ = Describe("Client", func() {
 
 	Describe("Issue", func() {
 		var (
-			tokensToIssue []*token.TokenToIssue
+			tokensToIssue []*token.Token
 		)
 
 		BeforeEach(func() {
 			// input data for Issue
-			tokensToIssue = []*token.TokenToIssue{
+			tokensToIssue = []*token.Token{
 				{
-					Type:      "type",
-					Quantity:  ToHex(1),
-					Recipient: &token.TokenOwner{Raw: []byte("alice")},
+					Type:     "type",
+					Quantity: ToHex(1),
+					Owner:    &token.TokenOwner{Raw: []byte("alice")},
 				},
 			}
 		})
@@ -86,8 +86,8 @@ var _ = Describe("Client", func() {
 			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
 			Expect(committed).To(Equal(true))
 
-			Expect(fakeProver.RequestImportCallCount()).To(Equal(1))
-			tokens, signingIdentity := fakeProver.RequestImportArgsForCall(0)
+			Expect(fakeProver.RequestIssueCallCount()).To(Equal(1))
+			tokens, signingIdentity := fakeProver.RequestIssueArgsForCall(0)
 			Expect(tokens).To(Equal(tokensToIssue))
 			Expect(signingIdentity).To(Equal(fakeSigningIdentity))
 
@@ -103,7 +103,7 @@ var _ = Describe("Client", func() {
 
 		Context("when prover.RequestIssue fails", func() {
 			BeforeEach(func() {
-				fakeProver.RequestImportReturns(nil, errors.New("wild-banana"))
+				fakeProver.RequestIssueReturns(nil, errors.New("wild-banana"))
 			})
 
 			It("returns an error", func() {
@@ -114,7 +114,7 @@ var _ = Describe("Client", func() {
 				Expect(ordererStatus).To(BeNil())
 				Expect(committed).To(Equal(false))
 
-				Expect(fakeProver.RequestImportCallCount()).To(Equal(1))
+				Expect(fakeProver.RequestIssueCallCount()).To(Equal(1))
 				Expect(fakeTxSubmitter.CreateTxEnvelopeCallCount()).To(Equal(0))
 				Expect(fakeTxSubmitter.SubmitCallCount()).To(Equal(0))
 			})
@@ -133,7 +133,7 @@ var _ = Describe("Client", func() {
 				Expect(ordererStatus).To(BeNil())
 				Expect(committed).To(Equal(false))
 
-				Expect(fakeProver.RequestImportCallCount()).To(Equal(1))
+				Expect(fakeProver.RequestIssueCallCount()).To(Equal(1))
 				Expect(fakeTxSubmitter.CreateTxEnvelopeCallCount()).To(Equal(1))
 				Expect(fakeTxSubmitter.SubmitCallCount()).To(Equal(0))
 			})
@@ -153,7 +153,7 @@ var _ = Describe("Client", func() {
 				Expect(*ordererStatus).To(Equal(common.Status_BAD_REQUEST))
 				Expect(committed).To(Equal(false))
 
-				Expect(fakeProver.RequestImportCallCount()).To(Equal(1))
+				Expect(fakeProver.RequestIssueCallCount()).To(Equal(1))
 				Expect(fakeTxSubmitter.CreateTxEnvelopeCallCount()).To(Equal(1))
 				Expect(fakeTxSubmitter.SubmitCallCount()).To(Equal(1))
 			})
@@ -163,7 +163,7 @@ var _ = Describe("Client", func() {
 	Describe("Transfer", func() {
 		var (
 			tokenIDs       []*token.TokenId
-			transferShares []*token.RecipientTransferShare
+			transferShares []*token.RecipientShare
 		)
 
 		BeforeEach(func() {
@@ -172,7 +172,7 @@ var _ = Describe("Client", func() {
 				{TxId: "id1", Index: 0},
 				{TxId: "id2", Index: 0},
 			}
-			transferShares = []*token.RecipientTransferShare{
+			transferShares = []*token.RecipientShare{
 				{Recipient: &token.TokenOwner{Raw: []byte("alice")}, Quantity: ToHex(100)},
 				{Recipient: &token.TokenOwner{Raw: []byte("bob")}, Quantity: ToHex(50)},
 			}
@@ -359,12 +359,12 @@ var _ = Describe("Client", func() {
 
 	Describe("ListTokens", func() {
 		var (
-			expectedTokens []*token.TokenOutput
+			expectedTokens []*token.UnspentToken
 		)
 
 		BeforeEach(func() {
 			// prepare CommandResponse for mocked prover to return
-			expectedTokens = []*token.TokenOutput{
+			expectedTokens = []*token.UnspentToken{
 				{Id: &token.TokenId{TxId: "idaz", Index: 0}, Type: "typeaz", Quantity: ToHex(135)},
 				{Id: &token.TokenId{TxId: "idby", Index: 1}, Type: "typeby", Quantity: ToHex(79)},
 			}

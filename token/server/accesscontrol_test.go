@@ -41,8 +41,8 @@ var _ = Describe("AccessControl", func() {
 		}
 		command = &token.Command{
 			Header: header,
-			Payload: &token.Command_ImportRequest{
-				ImportRequest: &token.ImportRequest{},
+			Payload: &token.Command_IssueRequest{
+				IssueRequest: &token.IssueRequest{},
 			},
 		}
 

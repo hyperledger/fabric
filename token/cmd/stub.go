@@ -49,7 +49,7 @@ func (stub *TokenClientStub) Setup(configPath, channel, mspPath, mspID string) e
 	return err
 }
 
-func (stub *TokenClientStub) Issue(tokensToIssue []*token.TokenToIssue, waitTimeout time.Duration) (StubResponse, error) {
+func (stub *TokenClientStub) Issue(tokensToIssue []*token.Token, waitTimeout time.Duration) (StubResponse, error) {
 	if stub.client == nil {
 		return nil, errors.New("stub not initialised!!!")
 	}
@@ -58,7 +58,7 @@ func (stub *TokenClientStub) Issue(tokensToIssue []*token.TokenToIssue, waitTime
 	return &OperationResponse{Envelope: envelope, TxID: txid, Status: ordererStatus, Committed: committed}, err
 }
 
-func (stub *TokenClientStub) Transfer(tokenIDs []*token.TokenId, shares []*token.RecipientTransferShare, waitTimeout time.Duration) (StubResponse, error) {
+func (stub *TokenClientStub) Transfer(tokenIDs []*token.TokenId, shares []*token.RecipientShare, waitTimeout time.Duration) (StubResponse, error) {
 	if stub.client == nil {
 		return nil, errors.New("stub not initialised!!!")
 	}
@@ -82,7 +82,7 @@ func (stub *TokenClientStub) ListTokens() (StubResponse, error) {
 	}
 
 	outputs, err := stub.client.ListTokens()
-	return &TokenOutputResponse{Tokens: outputs}, err
+	return &UnspentTokenResponse{Tokens: outputs}, err
 }
 
 type OperationResponse struct {
@@ -92,8 +92,8 @@ type OperationResponse struct {
 	Committed bool
 }
 
-type TokenOutputResponse struct {
-	Tokens []*token.TokenOutput
+type UnspentTokenResponse struct {
+	Tokens []*token.UnspentToken
 }
 
 // OperationResponseParser parses operation responses
@@ -133,14 +133,14 @@ func (parser *OperationResponseParser) ParseResponse(response StubResponse) erro
 	return nil
 }
 
-// TokenOutputResponseParser parses import responses
-type TokenOutputResponseParser struct {
+// UnspentTokenResponseParser parses import responses
+type UnspentTokenResponseParser struct {
 	io.Writer
 }
 
 // ParseResponse parses the given response for the given channel
-func (parser *TokenOutputResponseParser) ParseResponse(response StubResponse) error {
-	resp := response.(*TokenOutputResponse)
+func (parser *UnspentTokenResponseParser) ParseResponse(response StubResponse) error {
+	resp := response.(*UnspentTokenResponse)
 
 	for _, token := range resp.Tokens {
 		out, _ := json.Marshal(token)

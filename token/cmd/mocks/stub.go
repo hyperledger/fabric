@@ -12,11 +12,11 @@ type Stub struct {
 }
 
 // Issue provides a mock function with given fields: tokensToIssue, waitTimeout
-func (_m *Stub) Issue(tokensToIssue []*token.TokenToIssue, waitTimeout time.Duration) (cmd.StubResponse, error) {
+func (_m *Stub) Issue(tokensToIssue []*token.Token, waitTimeout time.Duration) (cmd.StubResponse, error) {
 	ret := _m.Called(tokensToIssue, waitTimeout)
 
 	var r0 cmd.StubResponse
-	if rf, ok := ret.Get(0).(func([]*token.TokenToIssue, time.Duration) cmd.StubResponse); ok {
+	if rf, ok := ret.Get(0).(func([]*token.Token, time.Duration) cmd.StubResponse); ok {
 		r0 = rf(tokensToIssue, waitTimeout)
 	} else {
 		if ret.Get(0) != nil {
@@ -25,7 +25,7 @@ func (_m *Stub) Issue(tokensToIssue []*token.TokenToIssue, waitTimeout time.Dura
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([]*token.TokenToIssue, time.Duration) error); ok {
+	if rf, ok := ret.Get(1).(func([]*token.Token, time.Duration) error); ok {
 		r1 = rf(tokensToIssue, waitTimeout)
 	} else {
 		r1 = ret.Error(1)
@@ -95,11 +95,11 @@ func (_m *Stub) Setup(configFilePath string, channel string, mspPath string, msp
 }
 
 // Transfer provides a mock function with given fields: tokenIDs, shares, waitTimeout
-func (_m *Stub) Transfer(tokenIDs []*token.TokenId, shares []*token.RecipientTransferShare, waitTimeout time.Duration) (cmd.StubResponse, error) {
+func (_m *Stub) Transfer(tokenIDs []*token.TokenId, shares []*token.RecipientShare, waitTimeout time.Duration) (cmd.StubResponse, error) {
 	ret := _m.Called(tokenIDs, shares, waitTimeout)
 
 	var r0 cmd.StubResponse
-	if rf, ok := ret.Get(0).(func([]*token.TokenId, []*token.RecipientTransferShare, time.Duration) cmd.StubResponse); ok {
+	if rf, ok := ret.Get(0).(func([]*token.TokenId, []*token.RecipientShare, time.Duration) cmd.StubResponse); ok {
 		r0 = rf(tokenIDs, shares, waitTimeout)
 	} else {
 		if ret.Get(0) != nil {
@@ -108,7 +108,7 @@ func (_m *Stub) Transfer(tokenIDs []*token.TokenId, shares []*token.RecipientTra
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([]*token.TokenId, []*token.RecipientTransferShare, time.Duration) error); ok {
+	if rf, ok := ret.Get(1).(func([]*token.TokenId, []*token.RecipientShare, time.Duration) error); ok {
 		r1 = rf(tokenIDs, shares, waitTimeout)
 	} else {
 		r1 = ret.Error(1)
