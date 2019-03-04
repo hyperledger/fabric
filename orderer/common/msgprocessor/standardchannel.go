@@ -8,11 +8,13 @@ package msgprocessor
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 )
+
+//go:generate mockery -dir ../../../internal/pkg/identity -name SignerSerializer -case underscore -output ./mocks/
 
 // StandardChannelSupport includes the resources needed for the StandardChannel processor.
 type StandardChannelSupport interface {
@@ -23,7 +25,7 @@ type StandardChannelSupport interface {
 	ChainID() string
 
 	// Signer returns the signer for this orderer
-	Signer() crypto.LocalSigner
+	Signer() identity.SignerSerializer
 
 	// ProposeConfigUpdate takes in an Envelope of type CONFIG_UPDATE and produces a
 	// ConfigEnvelope to be used as the Envelope Payload Data of a CONFIG message

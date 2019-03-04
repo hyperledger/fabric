@@ -13,9 +13,9 @@ import (
 	"encoding/pem"
 	"time"
 
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
@@ -38,7 +38,13 @@ func AnyChannel(_ string) bool {
 // PullerConfigFromTopLevelConfig creates a PullerConfig from a TopLevel config,
 // and from a signer and TLS key cert pair.
 // The PullerConfig's channel is initialized to be the system channel.
-func PullerConfigFromTopLevelConfig(systemChannel string, conf *localconfig.TopLevel, tlsKey, tlsCert []byte, signer crypto.LocalSigner) PullerConfig {
+func PullerConfigFromTopLevelConfig(
+	systemChannel string,
+	conf *localconfig.TopLevel,
+	tlsKey,
+	tlsCert []byte,
+	signer identity.SignerSerializer,
+) PullerConfig {
 	return PullerConfig{
 		Channel:             systemChannel,
 		MaxTotalBufferBytes: conf.General.Cluster.ReplicationBufferSize,
@@ -329,7 +335,7 @@ type PullerConfig struct {
 	TLSKey              []byte
 	TLSCert             []byte
 	Timeout             time.Duration
-	Signer              crypto.LocalSigner
+	Signer              identity.SignerSerializer
 	Channel             string
 	MaxTotalBufferBytes int
 }

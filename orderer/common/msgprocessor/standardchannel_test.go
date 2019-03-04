@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +32,7 @@ func (ms *mockSystemChannelFilterSupport) Sequence() uint64 {
 	return ms.SequenceVal
 }
 
-func (ms *mockSystemChannelFilterSupport) Signer() crypto.LocalSigner {
+func (ms *mockSystemChannelFilterSupport) Signer() identity.SignerSerializer {
 	return nil
 }
 

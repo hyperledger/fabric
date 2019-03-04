@@ -86,18 +86,6 @@ type FakeConsenterSupport struct {
 	isSystemChannelReturnsOnCall map[int]struct {
 		result1 bool
 	}
-	NewSignatureHeaderStub        func() (*common.SignatureHeader, error)
-	newSignatureHeaderMutex       sync.RWMutex
-	newSignatureHeaderArgsForCall []struct {
-	}
-	newSignatureHeaderReturns struct {
-		result1 *common.SignatureHeader
-		result2 error
-	}
-	newSignatureHeaderReturnsOnCall map[int]struct {
-		result1 *common.SignatureHeader
-		result2 error
-	}
 	ProcessConfigMsgStub        func(*common.Envelope) (*common.Envelope, uint64, error)
 	processConfigMsgMutex       sync.RWMutex
 	processConfigMsgArgsForCall []struct {
@@ -150,6 +138,18 @@ type FakeConsenterSupport struct {
 	}
 	sequenceReturnsOnCall map[int]struct {
 		result1 uint64
+	}
+	SerializeStub        func() ([]byte, error)
+	serializeMutex       sync.RWMutex
+	serializeArgsForCall []struct {
+	}
+	serializeReturns struct {
+		result1 []byte
+		result2 error
+	}
+	serializeReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
 	}
 	SharedConfigStub        func() channelconfig.Orderer
 	sharedConfigMutex       sync.RWMutex
@@ -595,61 +595,6 @@ func (fake *FakeConsenterSupport) IsSystemChannelReturnsOnCall(i int, result1 bo
 	}{result1}
 }
 
-func (fake *FakeConsenterSupport) NewSignatureHeader() (*common.SignatureHeader, error) {
-	fake.newSignatureHeaderMutex.Lock()
-	ret, specificReturn := fake.newSignatureHeaderReturnsOnCall[len(fake.newSignatureHeaderArgsForCall)]
-	fake.newSignatureHeaderArgsForCall = append(fake.newSignatureHeaderArgsForCall, struct {
-	}{})
-	fake.recordInvocation("NewSignatureHeader", []interface{}{})
-	fake.newSignatureHeaderMutex.Unlock()
-	if fake.NewSignatureHeaderStub != nil {
-		return fake.NewSignatureHeaderStub()
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.newSignatureHeaderReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *FakeConsenterSupport) NewSignatureHeaderCallCount() int {
-	fake.newSignatureHeaderMutex.RLock()
-	defer fake.newSignatureHeaderMutex.RUnlock()
-	return len(fake.newSignatureHeaderArgsForCall)
-}
-
-func (fake *FakeConsenterSupport) NewSignatureHeaderCalls(stub func() (*common.SignatureHeader, error)) {
-	fake.newSignatureHeaderMutex.Lock()
-	defer fake.newSignatureHeaderMutex.Unlock()
-	fake.NewSignatureHeaderStub = stub
-}
-
-func (fake *FakeConsenterSupport) NewSignatureHeaderReturns(result1 *common.SignatureHeader, result2 error) {
-	fake.newSignatureHeaderMutex.Lock()
-	defer fake.newSignatureHeaderMutex.Unlock()
-	fake.NewSignatureHeaderStub = nil
-	fake.newSignatureHeaderReturns = struct {
-		result1 *common.SignatureHeader
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeConsenterSupport) NewSignatureHeaderReturnsOnCall(i int, result1 *common.SignatureHeader, result2 error) {
-	fake.newSignatureHeaderMutex.Lock()
-	defer fake.newSignatureHeaderMutex.Unlock()
-	fake.NewSignatureHeaderStub = nil
-	if fake.newSignatureHeaderReturnsOnCall == nil {
-		fake.newSignatureHeaderReturnsOnCall = make(map[int]struct {
-			result1 *common.SignatureHeader
-			result2 error
-		})
-	}
-	fake.newSignatureHeaderReturnsOnCall[i] = struct {
-		result1 *common.SignatureHeader
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *FakeConsenterSupport) ProcessConfigMsg(arg1 *common.Envelope) (*common.Envelope, uint64, error) {
 	fake.processConfigMsgMutex.Lock()
 	ret, specificReturn := fake.processConfigMsgReturnsOnCall[len(fake.processConfigMsgArgsForCall)]
@@ -895,6 +840,61 @@ func (fake *FakeConsenterSupport) SequenceReturnsOnCall(i int, result1 uint64) {
 	fake.sequenceReturnsOnCall[i] = struct {
 		result1 uint64
 	}{result1}
+}
+
+func (fake *FakeConsenterSupport) Serialize() ([]byte, error) {
+	fake.serializeMutex.Lock()
+	ret, specificReturn := fake.serializeReturnsOnCall[len(fake.serializeArgsForCall)]
+	fake.serializeArgsForCall = append(fake.serializeArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Serialize", []interface{}{})
+	fake.serializeMutex.Unlock()
+	if fake.SerializeStub != nil {
+		return fake.SerializeStub()
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.serializeReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeConsenterSupport) SerializeCallCount() int {
+	fake.serializeMutex.RLock()
+	defer fake.serializeMutex.RUnlock()
+	return len(fake.serializeArgsForCall)
+}
+
+func (fake *FakeConsenterSupport) SerializeCalls(stub func() ([]byte, error)) {
+	fake.serializeMutex.Lock()
+	defer fake.serializeMutex.Unlock()
+	fake.SerializeStub = stub
+}
+
+func (fake *FakeConsenterSupport) SerializeReturns(result1 []byte, result2 error) {
+	fake.serializeMutex.Lock()
+	defer fake.serializeMutex.Unlock()
+	fake.SerializeStub = nil
+	fake.serializeReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeConsenterSupport) SerializeReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.serializeMutex.Lock()
+	defer fake.serializeMutex.Unlock()
+	fake.SerializeStub = nil
+	if fake.serializeReturnsOnCall == nil {
+		fake.serializeReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.serializeReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeConsenterSupport) SharedConfig() channelconfig.Orderer {
@@ -1174,8 +1174,6 @@ func (fake *FakeConsenterSupport) Invocations() map[string][][]interface{} {
 	defer fake.heightMutex.RUnlock()
 	fake.isSystemChannelMutex.RLock()
 	defer fake.isSystemChannelMutex.RUnlock()
-	fake.newSignatureHeaderMutex.RLock()
-	defer fake.newSignatureHeaderMutex.RUnlock()
 	fake.processConfigMsgMutex.RLock()
 	defer fake.processConfigMsgMutex.RUnlock()
 	fake.processConfigUpdateMsgMutex.RLock()
@@ -1184,6 +1182,8 @@ func (fake *FakeConsenterSupport) Invocations() map[string][][]interface{} {
 	defer fake.processNormalMsgMutex.RUnlock()
 	fake.sequenceMutex.RLock()
 	defer fake.sequenceMutex.RUnlock()
+	fake.serializeMutex.RLock()
+	defer fake.serializeMutex.RUnlock()
 	fake.sharedConfigMutex.RLock()
 	defer fake.sharedConfigMutex.RUnlock()
 	fake.signMutex.RLock()

@@ -18,6 +18,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/protoutil/fakes"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -289,12 +290,15 @@ func TestCreateSignedEnvelope(t *testing.T) {
 	channelID := "mychannelID"
 	msg := &cb.ConfigEnvelope{}
 
+	id := &fakes.SignerSerializer{}
+	id.SignReturnsOnCall(0, []byte("goodsig"), nil)
+	id.SignReturnsOnCall(1, nil, errors.New("bad signature"))
 	env, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID,
-		goodSigner, msg, int32(1), uint64(1))
+		id, msg, int32(1), uint64(1))
 	assert.NoError(t, err, "Unexpected error creating signed envelope")
 	assert.NotNil(t, env, "Envelope should not be nil")
 	// mock sign returns the bytes to be signed
-	assert.Equal(t, env.Payload, env.Signature, "Unexpected signature returned")
+	assert.Equal(t, []byte("goodsig"), env.Signature, "Unexpected signature returned")
 	payload := &cb.Payload{}
 	err = proto.Unmarshal(env.Payload, payload)
 	assert.NoError(t, err, "Failed to unmarshal payload")
@@ -304,7 +308,7 @@ func TestCreateSignedEnvelope(t *testing.T) {
 	assert.Equal(t, msg, data, "Payload data does not match expected value")
 
 	_, err = protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID,
-		badSigner, &cb.ConfigEnvelope{}, int32(1), uint64(1))
+		id, &cb.ConfigEnvelope{}, int32(1), uint64(1))
 	assert.Error(t, err, "Expected sign error")
 }
 
@@ -492,31 +496,4 @@ func TestCreateProposalResponseFailure(t *testing.T) {
 
 	assert.Equal(t, int32(502), ca.Response.Status)
 	assert.Equal(t, "Invalid function name", string(ca.Response.Payload))
-}
-
-// mock
-var badSigner = &mockLocalSigner{
-	returnError: true,
-}
-
-var goodSigner = &mockLocalSigner{
-	returnError: false,
-}
-
-type mockLocalSigner struct {
-	returnError bool
-}
-
-func (m *mockLocalSigner) NewSignatureHeader() (*cb.SignatureHeader, error) {
-	if m.returnError {
-		return nil, errors.New("signature header error")
-	}
-	return &cb.SignatureHeader{}, nil
-}
-
-func (m *mockLocalSigner) Sign(message []byte) ([]byte, error) {
-	if m.returnError {
-		return nil, errors.New("sign error")
-	}
-	return message, nil
 }

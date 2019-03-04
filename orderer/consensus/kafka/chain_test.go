@@ -3399,6 +3399,7 @@ func TestDeliverSession(t *testing.T) {
 		support.On("ProcessNormalMsg", mock.Anything).Return(uint64(0), nil)
 		support.On("BlockCutter").Return(blockcutter)
 		support.On("CreateNextBlock", mock.Anything).Return(&cb.Block{})
+		support.On("Serialize", []byte("creator"), nil)
 
 		// test message that will be returned by mock brokers
 		testMsg := sarama.ByteEncoder(protoutil.MarshalOrPanic(
@@ -3720,6 +3721,11 @@ func (c *mockConsenterSupport) NewSignatureHeader() (*cb.SignatureHeader, error)
 
 func (c *mockConsenterSupport) Sign(message []byte) ([]byte, error) {
 	args := c.Called(message)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (c *mockConsenterSupport) Serialize() ([]byte, error) {
+	args := c.Called()
 	return args.Get(0).([]byte), args.Error(1)
 }
 

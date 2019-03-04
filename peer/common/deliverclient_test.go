@@ -21,6 +21,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//go:generate counterfeiter -o mock/signer_serializer.go --fake-name SignerSerializer ../../internal/pkg/identity SignerSerializer
+
 var once sync.Once
 
 // InitMSP init MSP
@@ -97,7 +99,7 @@ func TestNewOrdererDeliverClient(t *testing.T) {
 	// failure - rootcert file doesn't exist
 	viper.Set("orderer.tls.enabled", true)
 	viper.Set("orderer.tls.rootcert.file", "ukelele.crt")
-	oc, err := NewDeliverClientForOrderer("ukelele")
+	oc, err := NewDeliverClientForOrderer("ukelele", &mock.SignerSerializer{})
 	assert.Nil(t, oc)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to create deliver client: failed to load config for OrdererClient")
@@ -112,7 +114,7 @@ func TestNewDeliverClientForPeer(t *testing.T) {
 	// failure - rootcert file doesn't exist
 	viper.Set("peer.tls.enabled", true)
 	viper.Set("peer.tls.rootcert.file", "ukelele.crt")
-	pc, err := NewDeliverClientForPeer("ukelele")
+	pc, err := NewDeliverClientForPeer("ukelele", &mock.SignerSerializer{})
 	assert.Nil(t, pc)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to create deliver client: failed to load config for PeerClient")

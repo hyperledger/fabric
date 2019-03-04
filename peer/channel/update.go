@@ -64,7 +64,7 @@ func update(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		return err
 	}
 
-	sCtxEnv, err := sanityCheckAndSignConfigTx(ctxEnv)
+	sCtxEnv, err := sanityCheckAndSignConfigTx(ctxEnv, cf.Signer)
 	if err != nil {
 		return err
 	}

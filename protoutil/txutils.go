@@ -8,13 +8,11 @@ package protoutil
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -62,21 +60,36 @@ func GetEnvelopeFromBlock(data []byte) (*common.Envelope, error) {
 
 // CreateSignedEnvelope creates a signed envelope of the desired type, with
 // marshaled dataMsg and signs it
-func CreateSignedEnvelope(txType common.HeaderType, channelID string, signer crypto.LocalSigner, dataMsg proto.Message, msgVersion int32, epoch uint64) (*common.Envelope, error) {
+func CreateSignedEnvelope(
+	txType common.HeaderType,
+	channelID string,
+	signer identity.SignerSerializer,
+	dataMsg proto.Message,
+	msgVersion int32,
+	epoch uint64,
+) (*common.Envelope, error) {
 	return CreateSignedEnvelopeWithTLSBinding(txType, channelID, signer, dataMsg, msgVersion, epoch, nil)
 }
 
 // CreateSignedEnvelopeWithTLSBinding creates a signed envelope of the desired
 // type, with marshaled dataMsg and signs it. It also includes a TLS cert hash
 // into the channel header
-func CreateSignedEnvelopeWithTLSBinding(txType common.HeaderType, channelID string, signer crypto.LocalSigner, dataMsg proto.Message, msgVersion int32, epoch uint64, tlsCertHash []byte) (*common.Envelope, error) {
+func CreateSignedEnvelopeWithTLSBinding(
+	txType common.HeaderType,
+	channelID string,
+	signer identity.SignerSerializer,
+	dataMsg proto.Message,
+	msgVersion int32,
+	epoch uint64,
+	tlsCertHash []byte,
+) (*common.Envelope, error) {
 	payloadChannelHeader := MakeChannelHeader(txType, msgVersion, channelID, epoch)
 	payloadChannelHeader.TlsCertHash = tlsCertHash
 	var err error
 	payloadSignatureHeader := &common.SignatureHeader{}
 
 	if signer != nil {
-		payloadSignatureHeader, err = signer.NewSignatureHeader()
+		payloadSignatureHeader, err = NewSignatureHeader(signer)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +127,11 @@ func CreateSignedEnvelopeWithTLSBinding(txType common.HeaderType, channelID stri
 // and a signer. This function should be called by a client when it has
 // collected enough endorsements for a proposal to create a transaction and
 // submit it to peers for ordering
-func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps ...*peer.ProposalResponse) (*common.Envelope, error) {
+func CreateSignedTx(
+	proposal *peer.Proposal,
+	signer identity.SignerSerializer,
+	resps ...*peer.ProposalResponse,
+) (*common.Envelope, error) {
 	if len(resps) == 0 {
 		return nil, errors.New("at least one proposal response is required")
 	}
@@ -221,7 +238,16 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 }
 
 // CreateProposalResponse creates a proposal response.
-func CreateProposalResponse(hdrbytes []byte, payl []byte, response *peer.Response, results []byte, events []byte, ccid *peer.ChaincodeID, visibility []byte, signingEndorser msp.SigningIdentity) (*peer.ProposalResponse, error) {
+func CreateProposalResponse(
+	hdrbytes []byte,
+	payl []byte,
+	response *peer.Response,
+	results []byte,
+	events []byte,
+	ccid *peer.ChaincodeID,
+	visibility []byte,
+	signingEndorser identity.SignerSerializer,
+) (*peer.ProposalResponse, error) {
 	hdr, err := GetHeader(hdrbytes)
 	if err != nil {
 		return nil, err
@@ -243,7 +269,7 @@ func CreateProposalResponse(hdrbytes []byte, payl []byte, response *peer.Respons
 	// serialize the signing identity
 	endorser, err := signingEndorser.Serialize()
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error serializing signing identity for %s", signingEndorser.GetIdentifier()))
+		return nil, errors.WithMessage(err, "error serializing signing identity")
 	}
 
 	// sign the concatenation of the proposal response and the serialized
@@ -273,7 +299,15 @@ func CreateProposalResponse(hdrbytes []byte, payl []byte, response *peer.Respons
 // CreateProposalResponseFailure creates a proposal response for cases where
 // endorsement proposal fails either due to a endorsement failure or a
 // chaincode failure (chaincode response status >= shim.ERRORTHRESHOLD)
-func CreateProposalResponseFailure(hdrbytes []byte, payl []byte, response *peer.Response, results []byte, events []byte, ccid *peer.ChaincodeID, visibility []byte) (*peer.ProposalResponse, error) {
+func CreateProposalResponseFailure(
+	hdrbytes []byte,
+	payl []byte,
+	response *peer.Response,
+	results []byte,
+	events []byte,
+	ccid *peer.ChaincodeID,
+	visibility []byte,
+) (*peer.ProposalResponse, error) {
 	hdr, err := GetHeader(hdrbytes)
 	if err != nil {
 		return nil, err
@@ -302,7 +336,7 @@ func CreateProposalResponseFailure(hdrbytes []byte, payl []byte, response *peer.
 
 // GetSignedProposal returns a signed proposal given a Proposal message and a
 // signing identity
-func GetSignedProposal(prop *peer.Proposal, signer msp.SigningIdentity) (*peer.SignedProposal, error) {
+func GetSignedProposal(prop *peer.Proposal, signer identity.SignerSerializer) (*peer.SignedProposal, error) {
 	// check for nil argument
 	if prop == nil || signer == nil {
 		return nil, errors.New("nil arguments")
@@ -323,7 +357,12 @@ func GetSignedProposal(prop *peer.Proposal, signer msp.SigningIdentity) (*peer.S
 
 // MockSignedEndorserProposalOrPanic creates a SignedProposal with the
 // passed arguments
-func MockSignedEndorserProposalOrPanic(chainID string, cs *peer.ChaincodeSpec, creator, signature []byte) (*peer.SignedProposal, *peer.Proposal) {
+func MockSignedEndorserProposalOrPanic(
+	chainID string,
+	cs *peer.ChaincodeSpec,
+	creator,
+	signature []byte,
+) (*peer.SignedProposal, *peer.Proposal) {
 	prop, _, err := CreateChaincodeProposal(
 		common.HeaderType_ENDORSER_TRANSACTION,
 		chainID,
@@ -341,7 +380,11 @@ func MockSignedEndorserProposalOrPanic(chainID string, cs *peer.ChaincodeSpec, c
 	return &peer.SignedProposal{ProposalBytes: propBytes, Signature: signature}, prop
 }
 
-func MockSignedEndorserProposal2OrPanic(chainID string, cs *peer.ChaincodeSpec, signer msp.SigningIdentity) (*peer.SignedProposal, *peer.Proposal) {
+func MockSignedEndorserProposal2OrPanic(
+	chainID string,
+	cs *peer.ChaincodeSpec,
+	signer identity.SignerSerializer,
+) (*peer.SignedProposal, *peer.Proposal) {
 	serializedSigner, err := signer.Serialize()
 	if err != nil {
 		panic(err)
@@ -366,7 +409,10 @@ func MockSignedEndorserProposal2OrPanic(chainID string, cs *peer.ChaincodeSpec, 
 
 // GetBytesProposalPayloadForTx takes a ChaincodeProposalPayload and returns
 // its serialized version according to the visibility field
-func GetBytesProposalPayloadForTx(payload *peer.ChaincodeProposalPayload, visibility []byte) ([]byte, error) {
+func GetBytesProposalPayloadForTx(
+	payload *peer.ChaincodeProposalPayload,
+	visibility []byte,
+) ([]byte, error) {
 	// check for nil argument
 	if payload == nil {
 		return nil, errors.New("nil arguments")

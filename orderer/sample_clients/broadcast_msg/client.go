@@ -10,8 +10,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -23,12 +22,12 @@ import (
 
 type broadcastClient struct {
 	client    ab.AtomicBroadcast_BroadcastClient
-	signer    crypto.LocalSigner
+	signer    identity.SignerSerializer
 	channelID string
 }
 
 // newBroadcastClient creates a simple instance of the broadcastClient interface
-func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient, channelID string, signer crypto.LocalSigner) *broadcastClient {
+func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient, channelID string, signer identity.SignerSerializer) *broadcastClient {
 	return &broadcastClient{client: client, channelID: channelID, signer: signer}
 }
 
@@ -65,7 +64,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	signer := localmsp.NewSigner()
+	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	if err != nil {
+		fmt.Println("Failed to load local signing identity:", err)
+		os.Exit(0)
+	}
 
 	var channelID string
 	var serverAddr string

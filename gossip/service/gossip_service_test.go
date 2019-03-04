@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice"
@@ -78,14 +77,16 @@ func TestInitGossipService(t *testing.T) {
 	endpoint, socket := getAvailablePort(t)
 
 	msptesttools.LoadMSPSetupForTesting()
-	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
+	signer := mgmt.GetLocalSigningIdentityOrPanic()
+	identity, err := signer.Serialize()
+	assert.NoError(t, err)
 
 	wg := sync.WaitGroup{}
 	wg.Add(10)
 	for i := 0; i < 10; i++ {
 		go func() {
 			defer wg.Done()
-			messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
+			messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager())
 			secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 			err := InitGossipService(identity, &disabled.Provider{}, endpoint, grpcServer, nil,
 				messageCryptoService, secAdv, nil)

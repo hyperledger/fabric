@@ -15,8 +15,11 @@ import (
 	"github.com/hyperledger/fabric/common/crypto"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil/fakes"
 	"github.com/stretchr/testify/assert"
 )
+
+//go:generate counterfeiter -o fakes/signer_serializer.go --fake-name SignerSerializer ../internal/pkg/identity SignerSerializer
 
 func TestNonceRandomness(t *testing.T) {
 	n1, err := CreateNonce()
@@ -241,7 +244,10 @@ func TestUnmarshalChaincodeID(t *testing.T) {
 func TestNewSignatureHeaderOrPanic(t *testing.T) {
 	var sigHeader *cb.SignatureHeader
 
-	sigHeader = NewSignatureHeaderOrPanic(goodSigner)
+	id := &fakes.SignerSerializer{}
+	id.SerializeReturnsOnCall(0, []byte("serialized"), nil)
+	id.SerializeReturnsOnCall(1, nil, errors.New("serialize failed"))
+	sigHeader = NewSignatureHeaderOrPanic(id)
 	assert.NotNil(t, sigHeader, "Signature header should not be nil")
 
 	assert.Panics(t, func() {
@@ -249,14 +255,17 @@ func TestNewSignatureHeaderOrPanic(t *testing.T) {
 	}, "Expected panic with nil signer")
 
 	assert.Panics(t, func() {
-		_ = NewSignatureHeaderOrPanic(badSigner)
+		_ = NewSignatureHeaderOrPanic(id)
 	}, "Expected panic with signature header error")
 
 }
 
 func TestSignOrPanic(t *testing.T) {
 	msg := []byte("sign me")
-	sig := SignOrPanic(goodSigner, msg)
+	signer := &fakes.SignerSerializer{}
+	signer.SignReturnsOnCall(0, msg, nil)
+	signer.SignReturnsOnCall(1, nil, errors.New("bad signature"))
+	sig := SignOrPanic(signer, msg)
 	// mock signer returns message to be signed
 	assert.Equal(t, msg, sig, "Signature does not match expected value")
 
@@ -265,7 +274,7 @@ func TestSignOrPanic(t *testing.T) {
 	}, "Expected panic with nil signer")
 
 	assert.Panics(t, func() {
-		_ = SignOrPanic(badSigner, []byte("sign me"))
+		_ = SignOrPanic(signer, []byte("sign me"))
 	}, "Expected panic with sign error")
 }
 
@@ -292,15 +301,6 @@ func testBlock() *cb.Block {
 			Data: [][]byte{MarshalOrPanic(testEnvelope())},
 		},
 	}
-}
-
-// mock
-var badSigner = &mockLocalSigner{
-	returnError: true,
-}
-
-var goodSigner = &mockLocalSigner{
-	returnError: false,
 }
 
 type mockLocalSigner struct {

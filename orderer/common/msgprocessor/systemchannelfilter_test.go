@@ -12,16 +12,16 @@ import (
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/crypto"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
-	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 var validConfig *cb.Config
@@ -37,8 +37,16 @@ func init() {
 	}
 }
 
-func mockCrypto() crypto.LocalSigner {
-	return mockcrypto.FakeLocalSigner
+func mockCrypto() *mocks.SignerSerializer {
+	signer := &mocks.SignerSerializer{}
+	signer.On("Serialize").Return([]byte("creator"), nil)
+	signer.On("Sign", mock.AnythingOfType("[]uint8")).Return(
+		func(msg []uint8) []uint8 {
+			return msg
+		},
+		nil,
+	)
+	return signer
 }
 
 func makeConfigTxFromConfigUpdateTx(configUpdateTx *cb.Envelope) *cb.Envelope {

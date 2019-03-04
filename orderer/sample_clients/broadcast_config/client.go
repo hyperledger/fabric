@@ -83,6 +83,12 @@ func main() {
 	flag.StringVar(&cmd.args.chainID, "chainID", "mychannel", "In case of a newChain command, the chain ID to create.")
 	flag.Parse()
 
+	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	if err != nil {
+		fmt.Println("Failed to load local signing identity:", err)
+		os.Exit(0)
+	}
+
 	conn, err := grpc.Dial(srv, grpc.WithInsecure())
 	defer func() {
 		_ = conn.Close()
@@ -102,7 +108,12 @@ func main() {
 
 	switch cmd.name {
 	case "newChain":
-		env := newChainRequest(cmd.args.consensusType, cmd.args.creationPolicy, cmd.args.chainID)
+		env := newChainRequest(
+			cmd.args.consensusType,
+			cmd.args.creationPolicy,
+			cmd.args.chainID,
+			signer,
+		)
 		fmt.Println("Requesting the creation of chain", cmd.args.chainID)
 		fmt.Println(bc.broadcast(env))
 	default:

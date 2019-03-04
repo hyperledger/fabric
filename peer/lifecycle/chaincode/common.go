@@ -10,7 +10,7 @@ import (
 	"crypto/tls"
 	"fmt"
 
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/common/api"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -23,7 +23,7 @@ type CmdFactory struct {
 	EndorserClients []pb.EndorserClient
 	DeliverClients  []api.PeerDeliverClient
 	Certificate     tls.Certificate
-	Signer          msp.SigningIdentity
+	Signer          identity.SignerSerializer
 	BroadcastClient common.BroadcastClient
 }
 

@@ -10,28 +10,36 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
-	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-func mockCrypto() crypto.LocalSigner {
-	return mockcrypto.FakeLocalSigner
+func mockCrypto() *mocks.SignerSerializer {
+	signer := &mocks.SignerSerializer{}
+	signer.On("Serialize").Return([]byte("creator"), nil)
+	signer.On("Sign", mock.AnythingOfType("[]uint8")).Return(
+		func(msg []uint8) []uint8 {
+			return msg
+		},
+		nil,
+	)
+	return signer
 }
 
 func newRAMLedgerAndFactory(maxSize int,

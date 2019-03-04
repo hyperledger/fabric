@@ -10,12 +10,12 @@ import (
 	"testing"
 
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +23,7 @@ import (
 
 type mockBlockWriterSupport struct {
 	*mockconfigtx.Validator
-	crypto.LocalSigner
+	identity.SignerSerializer
 	blockledger.ReadWriter
 }
 
@@ -52,7 +52,7 @@ func TestCreateBlock(t *testing.T) {
 func TestBlockSignature(t *testing.T) {
 	bw := &BlockWriter{
 		support: &mockBlockWriterSupport{
-			LocalSigner: mockCrypto(),
+			SignerSerializer: mockCrypto(),
 		},
 	}
 
@@ -71,7 +71,7 @@ func TestBlockLastConfig(t *testing.T) {
 
 	bw := &BlockWriter{
 		support: &mockBlockWriterSupport{
-			LocalSigner: mockCrypto(),
+			SignerSerializer: mockCrypto(),
 			Validator: &mockconfigtx.Validator{
 				SequenceVal: newConfigSeq,
 			},
@@ -165,9 +165,9 @@ func TestGoodWriteConfig(t *testing.T) {
 
 	bw := &BlockWriter{
 		support: &mockBlockWriterSupport{
-			LocalSigner: mockCrypto(),
-			ReadWriter:  l,
-			Validator:   &mockconfigtx.Validator{},
+			SignerSerializer: mockCrypto(),
+			ReadWriter:       l,
+			Validator:        &mockconfigtx.Validator{},
 		},
 	}
 
@@ -196,9 +196,9 @@ func TestRaceWriteConfig(t *testing.T) {
 
 	bw := &BlockWriter{
 		support: &mockBlockWriterSupport{
-			LocalSigner: mockCrypto(),
-			ReadWriter:  l,
-			Validator:   &mockconfigtx.Validator{},
+			SignerSerializer: mockCrypto(),
+			ReadWriter:       l,
+			Validator:        &mockconfigtx.Validator{},
 		},
 	}
 

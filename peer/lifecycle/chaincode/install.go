@@ -12,7 +12,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
@@ -35,7 +35,7 @@ type Installer struct {
 	EndorserClients []pb.EndorserClient
 	Input           *InstallInput
 	Reader          Reader
-	Signer          msp.SigningIdentity
+	Signer          identity.SignerSerializer
 }
 
 // InstallInput holds the input parameters for installing
@@ -121,7 +121,7 @@ func (i *Installer) install() error {
 
 	serializedSigner, err := i.Signer.Serialize()
 	if err != nil {
-		errors.WithMessage(err, fmt.Sprintf("error serializing signer for %v", i.Signer.GetIdentifier()))
+		return err
 	}
 
 	proposal, err := i.createInstallProposal(i.Input.Name, i.Input.Version, pkgBytes, serializedSigner)

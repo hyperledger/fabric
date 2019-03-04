@@ -14,7 +14,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/common/api"
@@ -37,7 +37,7 @@ type Committer struct {
 	EndorserClients []pb.EndorserClient
 	DeliverClients  []api.PeerDeliverClient
 	Input           *CommitInput
-	Signer          msp.SigningIdentity
+	Signer          identity.SignerSerializer
 }
 
 // CommitInput holds all of the input parameters for committing a
@@ -208,7 +208,14 @@ func (c *Committer) Commit() error {
 		ctx, cancelFunc = context.WithTimeout(context.Background(), c.Input.WaitForEventTimeout)
 		defer cancelFunc()
 
-		dg = chaincode.NewDeliverGroup(c.DeliverClients, c.Input.PeerAddresses, c.Certificate, c.Input.ChannelID, txID)
+		dg = chaincode.NewDeliverGroup(
+			c.DeliverClients,
+			c.Input.PeerAddresses,
+			c.Signer,
+			c.Certificate,
+			c.Input.ChannelID,
+			txID,
+		)
 		// connect to deliver service on all peers
 		err := dg.Connect(ctx)
 		if err != nil {
@@ -308,7 +315,7 @@ func (c *Committer) createProposals(inputTxID string) (proposal *pb.Proposal, si
 
 	creatorBytes, err := c.Signer.Serialize()
 	if err != nil {
-		return nil, nil, "", errors.WithMessage(err, fmt.Sprintf("error serializing identity for %s", c.Signer.GetIdentifier()))
+		return nil, nil, "", errors.WithMessage(err, "error serializing identity")
 	}
 
 	proposal, txID, err = protoutil.CreateChaincodeProposalWithTxIDAndTransient(cb.HeaderType_ENDORSER_TRANSACTION, c.Input.ChannelID, cis, creatorBytes, inputTxID, nil)

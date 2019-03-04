@@ -552,8 +552,8 @@ func testCloseWhileSleep(t *testing.T, bdc blocksDelivererConsumer) {
 type signerMock struct {
 }
 
-func (s *signerMock) NewSignatureHeader() (*common.SignatureHeader, error) {
-	return &common.SignatureHeader{}, nil
+func (s *signerMock) Serialize() ([]byte, error) {
+	return []byte("creator"), nil
 }
 
 func (s *signerMock) Sign(message []byte) ([]byte, error) {

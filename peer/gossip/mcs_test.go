@@ -16,9 +16,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/common/localmsp"
-	mockscrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -33,12 +30,17 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer ../../internal/pkg/identity SignerSerializer
+
 func TestPKIidOfCert(t *testing.T) {
 	deserializersManager := &mocks.DeserializersManager{
 		LocalDeserializer: &mocks.IdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1"), Mock: mock.Mock{}},
 	}
-	msgCryptoService := NewMCS(&mocks.ChannelPolicyManagerGetterWithManager{},
-		&mockscrypto.LocalSigner{Identity: []byte("Alice")},
+	signer := &mocks.SignerSerializer{}
+	signer.SerializeReturns([]byte("Alice"), nil)
+	msgCryptoService := NewMCS(
+		&mocks.ChannelPolicyManagerGetterWithManager{},
+		signer,
 		deserializersManager,
 	)
 
@@ -69,7 +71,8 @@ func TestPKIidOfCert(t *testing.T) {
 }
 
 func TestPKIidOfNil(t *testing.T) {
-	msgCryptoService := NewMCS(&mocks.ChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
+	signer := &mocks.SignerSerializer{}
+	msgCryptoService := NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager())
 
 	pkid := msgCryptoService.GetPKIidOfCert(nil)
 	// Check pkid is not nil
@@ -83,9 +86,11 @@ func TestValidateIdentity(t *testing.T) {
 			"A": &mocks.IdentityDeserializer{Identity: []byte("Bob"), Msg: []byte("msg2"), Mock: mock.Mock{}},
 		},
 	}
+	signer := &mocks.SignerSerializer{}
+	signer.SerializeReturns([]byte("Charlie"), nil)
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetterWithManager{},
-		&mockscrypto.LocalSigner{Identity: []byte("Charlie")},
+		signer,
 		deserializersManager,
 	)
 
@@ -114,9 +119,11 @@ func TestValidateIdentity(t *testing.T) {
 }
 
 func TestSign(t *testing.T) {
+	signer := &mocks.SignerSerializer{}
+	signer.SignReturns([]byte("signature"), nil)
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},
-		&mockscrypto.LocalSigner{Identity: []byte("Alice")},
+		signer,
 		mgmt.NewDeserializersManager(),
 	)
 
@@ -127,6 +134,9 @@ func TestSign(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
+	signer := &mocks.SignerSerializer{}
+	signer.SerializeReturns([]byte("Alice"), nil)
+	signer.SignReturns([]byte("msg1"), nil)
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetterWithManager{
 			Managers: map[string]policies.Manager{
@@ -139,7 +149,7 @@ func TestVerify(t *testing.T) {
 				"C": nil,
 			},
 		},
-		&mockscrypto.LocalSigner{Identity: []byte("Alice")},
+		signer,
 		&mocks.DeserializersManager{
 			LocalDeserializer: &mocks.IdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1"), Mock: mock.Mock{}},
 			ChannelDeserializers: map[string]msp.IdentityDeserializer{
@@ -174,7 +184,8 @@ func TestVerify(t *testing.T) {
 }
 
 func TestVerifyBlock(t *testing.T) {
-	aliceSigner := &mockscrypto.LocalSigner{Identity: []byte("Alice")}
+	aliceSigner := &mocks.SignerSerializer{}
+	aliceSigner.SerializeReturns([]byte("Alice"), nil)
 	policyManagerGetter := &mocks.ChannelPolicyManagerGetterWithManager{
 		Managers: map[string]policies.Manager{
 			"A": &mocks.ChannelPolicyManager{
@@ -235,7 +246,7 @@ func TestVerifyBlock(t *testing.T) {
 	assert.Error(t, msgCryptoService.VerifyBlock([]byte("C"), 42, nil))
 }
 
-func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner crypto.LocalSigner, dataHash []byte) ([]byte, []byte) {
+func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner *mocks.SignerSerializer, dataHash []byte) ([]byte, []byte) {
 	block := protoutil.NewBlock(seqNum, nil)
 
 	// Add a fake transaction to the block referring channel "C"
@@ -252,7 +263,7 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner crypto.L
 	}
 
 	// Add signer's signature to the block
-	shdr, err := localSigner.NewSignatureHeader()
+	shdr, err := protoutil.NewSignatureHeader(localSigner)
 	assert.NoError(t, err, "Failed generating signature header")
 
 	blockSignature := &common.MetadataSignature{
@@ -264,6 +275,7 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner crypto.L
 	blockSignatureValue := []byte(nil)
 
 	msg := util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header))
+	localSigner.SignReturns(msg, nil)
 	blockSignature.Signature, err = localSigner.Sign(msg)
 	assert.NoError(t, err, "Failed signing block")
 
@@ -317,7 +329,7 @@ func TestExpiration(t *testing.T) {
 	}
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetterWithManager{},
-		&mockscrypto.LocalSigner{Identity: []byte("Yacov")},
+		&mocks.SignerSerializer{},
 		deserializersManager,
 	)
 

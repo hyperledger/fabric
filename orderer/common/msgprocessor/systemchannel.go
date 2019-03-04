@@ -12,8 +12,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 )
@@ -191,7 +191,7 @@ type DefaultTemplatorSupport interface {
 	ConfigtxValidator() configtx.Validator
 
 	// Signer returns the local signer suitable for signing forwarded messages.
-	Signer() crypto.LocalSigner
+	Signer() identity.SignerSerializer
 }
 
 // DefaultTemplator implements the ChannelConfigTemplator interface and is the one used in production deployments.

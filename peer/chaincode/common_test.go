@@ -36,6 +36,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//go:generate counterfeiter -o mock/signer_serializer.go --fake-name SignerSerializer ../../internal/pkg/identity SignerSerializer
+
 func TestCheckChaincodeCmdParamsWithNewCallingSchema(t *testing.T) {
 	chaincodeCtorJSON = `{ "Args":["func", "param"] }`
 	chaincodePath = "some/path"
@@ -358,6 +360,7 @@ func TestDeliverGroupConnect(t *testing.T) {
 	dg := DeliverGroup{
 		Clients:   mockDeliverClients,
 		ChannelID: "testchannel",
+		Signer:    &mock.SignerSerializer{},
 		Certificate: tls.Certificate{
 			Certificate: [][]byte{[]byte("test")},
 		},
@@ -378,6 +381,7 @@ func TestDeliverGroupConnect(t *testing.T) {
 	dg = DeliverGroup{
 		Clients:   mockDeliverClients,
 		ChannelID: "testchannel",
+		Signer:    &mock.SignerSerializer{},
 		Certificate: tls.Certificate{
 			Certificate: [][]byte{[]byte("test")},
 		},
@@ -400,6 +404,7 @@ func TestDeliverGroupConnect(t *testing.T) {
 	dg = DeliverGroup{
 		Clients:   mockDeliverClients,
 		ChannelID: "testchannel",
+		Signer:    &mock.SignerSerializer{},
 		Certificate: tls.Certificate{
 			Certificate: [][]byte{[]byte("test")},
 		},
@@ -423,6 +428,7 @@ func TestDeliverGroupConnect(t *testing.T) {
 	dg = DeliverGroup{
 		Clients:   mockDeliverClients,
 		ChannelID: "testchannel",
+		Signer:    &mock.SignerSerializer{},
 		Certificate: tls.Certificate{
 			Certificate: [][]byte{[]byte("test")},
 		},
@@ -452,6 +458,7 @@ func TestDeliverGroupWait(t *testing.T) {
 	dg := DeliverGroup{
 		Clients:   mockDeliverClients,
 		ChannelID: "testchannel",
+		Signer:    &mock.SignerSerializer{},
 		Certificate: tls.Certificate{
 			Certificate: [][]byte{[]byte("test")},
 		},
@@ -472,6 +479,7 @@ func TestDeliverGroupWait(t *testing.T) {
 	dg = DeliverGroup{
 		Clients:   mockDeliverClients,
 		ChannelID: "testchannel",
+		Signer:    &mock.SignerSerializer{},
 		Certificate: tls.Certificate{
 			Certificate: [][]byte{[]byte("test")},
 		},
@@ -496,6 +504,7 @@ func TestDeliverGroupWait(t *testing.T) {
 	dg = DeliverGroup{
 		Clients:   mockDeliverClients,
 		ChannelID: "testchannel",
+		Signer:    &mock.SignerSerializer{},
 		Certificate: tls.Certificate{
 			Certificate: [][]byte{[]byte("test")},
 		},
@@ -522,6 +531,7 @@ func TestDeliverGroupWait(t *testing.T) {
 	dg = DeliverGroup{
 		Clients:   mockDeliverClients,
 		ChannelID: "testchannel",
+		Signer:    &mock.SignerSerializer{},
 		Certificate: tls.Certificate{
 			Certificate: [][]byte{[]byte("test")},
 		},

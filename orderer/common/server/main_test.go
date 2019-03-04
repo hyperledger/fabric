@@ -23,10 +23,8 @@ import (
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
 	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
-	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
-	"github.com/hyperledger/fabric/common/mocks/crypto"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
@@ -44,6 +42,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+//go:generate mockery -dir ../../../internal/pkg/identity -name SignerSerializer -case underscore -output ./mocks/
 
 func TestInitializeLogging(t *testing.T) {
 	origEnvValue := os.Getenv("FABRIC_LOGGING_SPEC")
@@ -275,9 +275,10 @@ func TestInitializeMultiChainManager(t *testing.T) {
 	conf := genesisConfig(t)
 	assert.NotPanics(t, func() {
 		initializeLocalMsp(conf)
+		signer := &server_mocks.SignerSerializer{}
 		lf, _ := createLedgerFactory(conf)
 		bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
-		initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, conf, localmsp.NewSigner(), &disabled.Provider{}, &server_mocks.HealthChecker{}, lf)
+		initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, conf, signer, &disabled.Provider{}, &server_mocks.HealthChecker{}, lf)
 	})
 }
 
@@ -340,7 +341,20 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	}
 	lf, _ := createLedgerFactory(conf)
 	bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
-	initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, genesisConfig(t), localmsp.NewSigner(), &disabled.Provider{}, &server_mocks.HealthChecker{}, lf, callback)
+	signer := &server_mocks.SignerSerializer{}
+	initializeMultichannelRegistrar(
+		bootBlock,
+		&replicationInitiator{},
+		&cluster.PredicateDialer{},
+		comm.ServerConfig{},
+		nil,
+		genesisConfig(t),
+		signer,
+		&disabled.Provider{},
+		&server_mocks.HealthChecker{},
+		lf,
+		callback,
+	)
 	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain[genesisconfig.TestChainID]))
 	t.Logf("# orderer CAs: %d", len(caMgr.ordererRootCAsByChain[genesisconfig.TestChainID]))
 	// mutual TLS not required so no updates should have occurred
@@ -377,7 +391,19 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			caMgr.updateClusterDialer(predDialer, clusterConf.SecOpts.ServerRootCAs)
 		}
 	}
-	initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, genesisConfig(t), localmsp.NewSigner(), &disabled.Provider{}, &server_mocks.HealthChecker{}, lf, callback)
+	initializeMultichannelRegistrar(
+		bootBlock,
+		&replicationInitiator{},
+		&cluster.PredicateDialer{},
+		comm.ServerConfig{},
+		nil,
+		genesisConfig(t),
+		signer,
+		&disabled.Provider{},
+		&server_mocks.HealthChecker{},
+		lf,
+		callback,
+	)
 	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain[genesisconfig.TestChainID]))
 	t.Logf("# orderer CAs: %d", len(caMgr.ordererRootCAsByChain[genesisconfig.TestChainID]))
 	// mutual TLS is required so updates should have occurred
@@ -665,7 +691,7 @@ func TestCreateReplicator(t *testing.T) {
 	ledgerFactory.On("GetOrCreate", "mychannel").Return(ledger, nil)
 	ledgerFactory.On("ChainIDs").Return([]string{"mychannel"})
 
-	signer := &crypto.LocalSigner{}
+	signer := &server_mocks.SignerSerializer{}
 	r := createReplicator(ledgerFactory, bootBlock, &localconfig.TopLevel{}, &comm.SecureOptions{}, signer)
 
 	err := r.verifierRetriever.RetrieveVerifier("mychannel").VerifyBlockSignature(nil, nil)

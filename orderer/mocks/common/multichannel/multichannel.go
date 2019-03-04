@@ -126,6 +126,11 @@ func (mcs *ConsenterSupport) Sign(message []byte) ([]byte, error) {
 	return message, nil
 }
 
+// Serialize returns bytes
+func (mcs *ConsenterSupport) Serialize() ([]byte, error) {
+	return []byte("creator"), nil
+}
+
 // NewSignatureHeader returns an empty signature header
 func (mcs *ConsenterSupport) NewSignatureHeader() (*cb.SignatureHeader, error) {
 	return &cb.SignatureHeader{}, nil

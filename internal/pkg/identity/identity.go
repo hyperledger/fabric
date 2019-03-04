@@ -19,7 +19,6 @@ type Signer interface {
 //
 // Serialize converts an identity to bytes.  It returns an error on failure.
 type Serializer interface {
-	// Serialize converts an identity to bytes
 	Serialize() ([]byte, error)
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -215,13 +216,30 @@ func MakePayloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) *cb.Header 
 	}
 }
 
+// NewSignatureHeader returns a SignatureHeader with a valid nonce.
+func NewSignatureHeader(id identity.Serializer) (*cb.SignatureHeader, error) {
+	creator, err := id.Serialize()
+	if err != nil {
+		return nil, err
+	}
+	nonce, err := CreateNonce()
+	if err != nil {
+		return nil, err
+	}
+
+	return &cb.SignatureHeader{
+		Creator: creator,
+		Nonce:   nonce,
+	}, nil
+}
+
 // NewSignatureHeaderOrPanic returns a signature header and panics on error.
-func NewSignatureHeaderOrPanic(signer crypto.LocalSigner) *cb.SignatureHeader {
-	if signer == nil {
+func NewSignatureHeaderOrPanic(id identity.Serializer) *cb.SignatureHeader {
+	if id == nil {
 		panic(errors.New("invalid signer. cannot be nil"))
 	}
 
-	signatureHeader, err := signer.NewSignatureHeader()
+	signatureHeader, err := NewSignatureHeader(id)
 	if err != nil {
 		panic(fmt.Errorf("failed generating a new SignatureHeader: %s", err))
 	}
@@ -229,7 +247,7 @@ func NewSignatureHeaderOrPanic(signer crypto.LocalSigner) *cb.SignatureHeader {
 }
 
 // SignOrPanic signs a message and panics on error.
-func SignOrPanic(signer crypto.LocalSigner, msg []byte) []byte {
+func SignOrPanic(signer identity.Signer, msg []byte) []byte {
 	if signer == nil {
 		panic(errors.New("invalid signer. cannot be nil"))
 	}

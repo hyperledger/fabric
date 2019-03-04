@@ -2,9 +2,9 @@
 package mocks
 
 import (
-	sync "sync"
+	"sync"
 
-	healthz "github.com/hyperledger/fabric-lib-go/healthz"
+	"github.com/hyperledger/fabric-lib-go/healthz"
 )
 
 type HealthChecker struct {

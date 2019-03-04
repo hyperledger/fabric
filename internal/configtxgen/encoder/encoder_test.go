@@ -15,13 +15,15 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder/mock"
+	"github.com/hyperledger/fabric/internal/configtxgen/encoder/fakes"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protoutil"
 )
+
+//go:generate counterfeiter -o fakes/signer_serializer.go --fake-name SignerSerializer ../../pkg/identity SignerSerializer
 
 func CreateStandardPolicies() map[string]*genesisconfig.Policy {
 	return map[string]*genesisconfig.Policy{
@@ -785,14 +787,12 @@ var _ = Describe("Encoder", func() {
 
 		Describe("MakeChannelCreationTransaction", func() {
 			var (
-				fakeSigner *mock.LocalSigner
+				fakeSigner *fakes.SignerSerializer
 			)
 
 			BeforeEach(func() {
-				fakeSigner = &mock.LocalSigner{}
-				fakeSigner.NewSignatureHeaderReturns(&cb.SignatureHeader{
-					Creator: []byte("fake-creator"),
-				}, nil)
+				fakeSigner = &fakes.SignerSerializer{}
+				fakeSigner.SerializeReturns([]byte("fake-creator"), nil)
 			})
 
 			It("returns an encoded and signed tx", func() {
@@ -805,7 +805,7 @@ var _ = Describe("Encoder", func() {
 				err = proto.Unmarshal(payload.Data, configUpdateEnv)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(configUpdateEnv.Signatures)).To(Equal(1))
-				Expect(fakeSigner.NewSignatureHeaderCallCount()).To(Equal(2))
+				Expect(fakeSigner.SerializeCallCount()).To(Equal(2))
 				Expect(fakeSigner.SignCallCount()).To(Equal(2))
 				Expect(fakeSigner.SignArgsForCall(0)).To(Equal(util.ConcatenateBytes(configUpdateEnv.Signatures[0].SignatureHeader, configUpdateEnv.ConfigUpdate)))
 			})
@@ -823,12 +823,12 @@ var _ = Describe("Encoder", func() {
 
 			Context("when the signer cannot create the signature header", func() {
 				BeforeEach(func() {
-					fakeSigner.NewSignatureHeaderReturns(nil, fmt.Errorf("signature-header-error"))
+					fakeSigner.SerializeReturns(nil, fmt.Errorf("serialize-error"))
 				})
 
 				It("wraps and returns the error", func() {
 					_, err := encoder.MakeChannelCreationTransaction("channel-id", fakeSigner, conf)
-					Expect(err).To(MatchError("creating signature header failed: signature-header-error"))
+					Expect(err).To(MatchError("creating signature header failed: serialize-error"))
 				})
 			})
 

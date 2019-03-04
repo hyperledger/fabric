@@ -13,10 +13,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
-	localsigner "github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
@@ -59,7 +59,11 @@ func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 }
 
 func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
-	chCrtEnv, err := encoder.MakeChannelCreationTransaction(channelID, localsigner.NewSigner(), genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile))
+	chCrtEnv, err := encoder.MakeChannelCreationTransaction(
+		channelID,
+		cf.Signer,
+		genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +80,7 @@ func createChannelFromConfigTx(configTxFileName string) (*cb.Envelope, error) {
 	return protoutil.UnmarshalEnvelope(cftx)
 }
 
-func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope) (*cb.Envelope, error) {
+func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope, signer identity.SignerSerializer) (*cb.Envelope, error) {
 	payload, err := protoutil.ExtractPayload(envConfigUpdate)
 	if err != nil {
 		return nil, InvalidCreateTx("bad payload")
@@ -114,8 +118,7 @@ func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope) (*cb.Envelope, err
 		return nil, InvalidCreateTx("Bad config update env")
 	}
 
-	signer := localsigner.NewSigner()
-	sigHeader, err := signer.NewSignatureHeader()
+	sigHeader, err := protoutil.NewSignatureHeader(signer)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +148,7 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 		}
 	}
 
-	if chCrtEnv, err = sanityCheckAndSignConfigTx(chCrtEnv); err != nil {
+	if chCrtEnv, err = sanityCheckAndSignConfigTx(chCrtEnv, cf.Signer); err != nil {
 		return err
 	}
 

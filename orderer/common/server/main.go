@@ -23,13 +23,11 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	floggingmetrics "github.com/hyperledger/fabric/common/flogging/metrics"
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpcmetrics"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/tools/protolator"
@@ -38,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
@@ -100,7 +99,10 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	}
 
 	clusterType := isClusterType(bootstrapBlock)
-	signer := localmsp.NewSigner()
+	signer, signErr := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	if signErr != nil {
+		logger.Panicf("Failed to get local MSP identity: %s", signErr)
+	}
 
 	lf, _ := createLedgerFactory(conf)
 
@@ -189,7 +191,7 @@ func createReplicator(
 	bootstrapBlock *cb.Block,
 	conf *localconfig.TopLevel,
 	secOpts *comm.SecureOptions,
-	signer crypto.LocalSigner,
+	signer identity.SignerSerializer,
 ) *replicationInitiator {
 	logger := flogging.MustGetLogger("orderer.common.cluster")
 
@@ -557,7 +559,7 @@ func initializeMultichannelRegistrar(
 	srvConf comm.ServerConfig,
 	srv *comm.GRPCServer,
 	conf *localconfig.TopLevel,
-	signer crypto.LocalSigner,
+	signer identity.SignerSerializer,
 	metricsProvider metrics.Provider,
 	healthChecker healthChecker,
 	lf blockledger.Factory,

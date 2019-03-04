@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/mocks/crypto"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
@@ -350,7 +349,7 @@ func TestPullChannelFailure(t *testing.T) {
 }
 
 func TestPullerConfigFromTopLevelConfig(t *testing.T) {
-	signer := &crypto.LocalSigner{}
+	signer := &mocks.SignerSerializer{}
 	expected := cluster.PullerConfig{
 		Channel:             "system",
 		MaxTotalBufferBytes: 100,
@@ -968,13 +967,20 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 		osn.addExpectProbeAssert()
 		osn.addExpectPullAssert(0)
 	}
-
+	signer := &mocks.SignerSerializer{}
+	signer.On("Serialize").Return([]byte("creator"), nil)
+	signer.On("Sign", mock.AnythingOfType("[]uint8")).Return(
+		func(msg []uint8) []uint8 {
+			return msg
+		},
+		nil,
+	)
 	bp, err := cluster.BlockPullerFromConfigBlock(cluster.PullerConfig{
 		TLSCert:             tlsCert,
 		TLSKey:              tlsKey,
 		MaxTotalBufferBytes: 1,
 		Channel:             "mychannel",
-		Signer:              &crypto.LocalSigner{},
+		Signer:              signer,
 		Timeout:             time.Hour,
 	}, validBlock, verifierRetriever)
 	bp.RetryTimeout = time.Millisecond * 10

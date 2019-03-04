@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/peer/common"
 	common2 "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -51,9 +50,8 @@ func status() (err error) {
 		return errors.Errorf("failed obtaining default signer: %v", err)
 	}
 
-	localSigner := crypto.NewSignatureHeaderCreator(signer)
 	wrapEnv := func(msg proto.Message) *common2.Envelope {
-		env, err := protoutil.CreateSignedEnvelope(common2.HeaderType_PEER_ADMIN_OPERATION, "", localSigner, msg, 0, 0)
+		env, err := protoutil.CreateSignedEnvelope(common2.HeaderType_PEER_ADMIN_OPERATION, "", signer, msg, 0, 0)
 		if err != nil {
 			logger.Panicf("Failed signing: %v", err)
 		}

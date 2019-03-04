@@ -12,7 +12,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -161,7 +161,7 @@ func CreateSignedCCDepSpecForInstall(pack []*common.Envelope) (*common.Envelope,
 
 // OwnerCreateSignedCCDepSpec creates a package from a ChaincodeDeploymentSpec and
 // optionally endorses it
-func OwnerCreateSignedCCDepSpec(cds *peer.ChaincodeDeploymentSpec, instPolicy *common.SignaturePolicyEnvelope, owner msp.SigningIdentity) (*common.Envelope, error) {
+func OwnerCreateSignedCCDepSpec(cds *peer.ChaincodeDeploymentSpec, instPolicy *common.SignaturePolicyEnvelope, owner identity.SignerSerializer) (*common.Envelope, error) {
 	if cds == nil {
 		return nil, fmt.Errorf("invalid chaincode deployment spec")
 	}
@@ -182,7 +182,7 @@ func OwnerCreateSignedCCDepSpec(cds *peer.ChaincodeDeploymentSpec, instPolicy *c
 		// serialize the signing identity
 		endorser, err := owner.Serialize()
 		if err != nil {
-			return nil, fmt.Errorf("Could not serialize the signing identity for %s, err %s", owner.GetIdentifier(), err)
+			return nil, fmt.Errorf("Could not serialize the signing identity: %s", err)
 		}
 
 		// sign the concatenation of cds, instpolicy and the serialized endorser identity with this endorser's key
@@ -203,7 +203,7 @@ func OwnerCreateSignedCCDepSpec(cds *peer.ChaincodeDeploymentSpec, instPolicy *c
 }
 
 // SignExistingPackage adds a signature to a signed package.
-func SignExistingPackage(env *common.Envelope, owner msp.SigningIdentity) (*common.Envelope, error) {
+func SignExistingPackage(env *common.Envelope, owner identity.SignerSerializer) (*common.Envelope, error) {
 	if owner == nil {
 		return nil, fmt.Errorf("owner not provided")
 	}
@@ -224,7 +224,7 @@ func SignExistingPackage(env *common.Envelope, owner msp.SigningIdentity) (*comm
 	// serialize the signing identity
 	endorser, err := owner.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Could not serialize the signing identity for %s, err %s", owner.GetIdentifier(), err)
+		return nil, fmt.Errorf("Could not serialize the signing identity: %s", err)
 	}
 
 	// sign the concatenation of cds, instpolicy and the serialized endorser identity with this endorser's key

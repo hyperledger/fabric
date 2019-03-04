@@ -22,15 +22,16 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
-	false_crypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
@@ -275,10 +276,18 @@ func newClusterNode(t *testing.T) *deliverServer {
 }
 
 func newBlockPuller(dialer *countingDialer, orderers ...string) *cluster.BlockPuller {
+	signer := &mocks.SignerSerializer{}
+	signer.On("Serialize").Return([]byte("creator"), nil)
+	signer.On("Sign", mock.AnythingOfType("[]uint8")).Return(
+		func(msg []uint8) []uint8 {
+			return msg
+		},
+		nil,
+	)
 	return &cluster.BlockPuller{
 		Dialer:              dialer,
 		Channel:             "mychannel",
-		Signer:              &false_crypto.LocalSigner{},
+		Signer:              signer,
 		Endpoints:           orderers,
 		FetchTimeout:        time.Second,
 		MaxTotalBufferBytes: 1024 * 1024, // 1MB

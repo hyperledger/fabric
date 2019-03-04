@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
@@ -47,6 +46,7 @@ func (pe *mockPolicyEvaluatorImpl) Evaluate(polName string, sd []*protoutil.Sign
 	return err
 }
 
+//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer ../../internal/pkg/identity SignerSerializer
 //go:generate counterfeiter -o mocks/defaultaclprovider.go --fake-name DefaultACLProvider . defaultACLProvider
 
 func TestPolicyBase(t *testing.T) {
@@ -56,7 +56,8 @@ func TestPolicyBase(t *testing.T) {
 	err := pprov.CheckACL("pol", sProp)
 	assert.NoError(t, err)
 
-	env, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG, "myc", localmsp.NewSigner(), &common.ConfigEnvelope{}, 0, 0)
+	signer := &mocks.SignerSerializer{}
+	env, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG, "myc", signer, &common.ConfigEnvelope{}, 0, 0)
 	assert.NoError(t, err)
 	err = pprov.CheckACL("pol", env)
 	assert.NoError(t, err)

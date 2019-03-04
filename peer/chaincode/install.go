@@ -14,7 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -35,7 +35,7 @@ type Installer struct {
 	Command         *cobra.Command
 	EndorserClients []pb.EndorserClient
 	Input           *InstallInput
-	Signer          msp.SigningIdentity
+	Signer          identity.SignerSerializer
 }
 
 // InstallInput holds the input parameters for installing
@@ -199,7 +199,7 @@ func (i *Installer) getChaincodePackageMessage() (proto.Message, error) {
 func (i *Installer) createInstallProposal(msg proto.Message) (*pb.Proposal, error) {
 	creator, err := i.Signer.Serialize()
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error serializing identity for %s", i.Signer.GetIdentifier()))
+		return nil, errors.WithMessage(err, "error serializing identity")
 	}
 
 	prop, _, err := protoutil.CreateInstallProposalFromCDS(msg, creator)

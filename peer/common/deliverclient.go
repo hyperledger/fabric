@@ -8,8 +8,8 @@ package common
 
 import (
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/peer/common/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -36,6 +36,7 @@ var (
 // DeliverClient holds the necessary information to connect a client
 // to an orderer/peer deliver service
 type DeliverClient struct {
+	Signer      identity.SignerSerializer
 	Service     api.DeliverService
 	ChannelID   string
 	TLSCertHash []byte
@@ -49,17 +50,17 @@ func (d *DeliverClient) seekSpecified(blockNumber uint64) error {
 			},
 		},
 	}
-	env := seekHelper(d.ChannelID, seekPosition, d.TLSCertHash)
+	env := seekHelper(d.ChannelID, seekPosition, d.TLSCertHash, d.Signer)
 	return d.Service.Send(env)
 }
 
 func (d *DeliverClient) seekOldest() error {
-	env := seekHelper(d.ChannelID, seekOldest, d.TLSCertHash)
+	env := seekHelper(d.ChannelID, seekOldest, d.TLSCertHash, d.Signer)
 	return d.Service.Send(env)
 }
 
 func (d *DeliverClient) seekNewest() error {
-	env := seekHelper(d.ChannelID, seekNewest, d.TLSCertHash)
+	env := seekHelper(d.ChannelID, seekNewest, d.TLSCertHash, d.Signer)
 	return d.Service.Send(env)
 }
 
@@ -117,7 +118,12 @@ func (d *DeliverClient) Close() error {
 	return d.Service.CloseSend()
 }
 
-func seekHelper(channelID string, position *ab.SeekPosition, tlsCertHash []byte) *cb.Envelope {
+func seekHelper(
+	channelID string,
+	position *ab.SeekPosition,
+	tlsCertHash []byte,
+	signer identity.SignerSerializer,
+) *cb.Envelope {
 	seekInfo := &ab.SeekInfo{
 		Start:    position,
 		Stop:     position,
@@ -127,7 +133,7 @@ func seekHelper(channelID string, position *ab.SeekPosition, tlsCertHash []byte)
 	env, err := protoutil.CreateSignedEnvelopeWithTLSBinding(
 		cb.HeaderType_DELIVER_SEEK_INFO,
 		channelID,
-		localmsp.NewSigner(),
+		signer,
 		seekInfo,
 		int32(0),
 		uint64(0),
@@ -146,7 +152,7 @@ type ordererDeliverService struct {
 }
 
 // NewDeliverClientForOrderer creates a new DeliverClient from an OrdererClient
-func NewDeliverClientForOrderer(channelID string) (*DeliverClient, error) {
+func NewDeliverClientForOrderer(channelID string, signer identity.SignerSerializer) (*DeliverClient, error) {
 	var tlsCertHash []byte
 	oc, err := NewOrdererClientFromEnv()
 	if err != nil {
@@ -163,6 +169,7 @@ func NewDeliverClientForOrderer(channelID string) (*DeliverClient, error) {
 	}
 	ds := &ordererDeliverService{dc}
 	o := &DeliverClient{
+		Signer:      signer,
 		Service:     ds,
 		ChannelID:   channelID,
 		TLSCertHash: tlsCertHash,
@@ -175,7 +182,7 @@ type peerDeliverService struct {
 }
 
 // NewDeliverClientForPeer creates a new DeliverClient from a PeerClient
-func NewDeliverClientForPeer(channelID string) (*DeliverClient, error) {
+func NewDeliverClientForPeer(channelID string, signer identity.SignerSerializer) (*DeliverClient, error) {
 	var tlsCertHash []byte
 	pc, err := NewPeerClientFromEnv()
 	if err != nil {
@@ -193,6 +200,7 @@ func NewDeliverClientForPeer(channelID string) (*DeliverClient, error) {
 	}
 	ds := &peerDeliverService{d}
 	p := &DeliverClient{
+		Signer:      signer,
 		Service:     ds,
 		ChannelID:   channelID,
 		TLSCertHash: tlsCertHash,

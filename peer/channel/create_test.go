@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/peer/channel/mock"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
@@ -29,6 +30,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
+
+//go:generate counterfeiter -o mock/signer_serializer.go --fake-name SignerSerializer ../../internal/pkg/identity SignerSerializer
 
 type timeoutOrderer struct {
 	counter int
@@ -624,11 +627,12 @@ func TestCreateChainNilCF(t *testing.T) {
 func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	defer resetFlags()
 
+	signer := &mock.SignerSerializer{}
 	// Error case 1
 	env := &cb.Envelope{}
 	env.Payload = make([]byte, 10)
 	var err error
-	env, err = sanityCheckAndSignConfigTx(env)
+	env, err = sanityCheckAndSignConfigTx(env, signer)
 	assert.Error(t, err, "Error expected for nil payload")
 	assert.Contains(t, err.Error(), "bad payload")
 
@@ -637,7 +641,7 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	data, err1 := proto.Marshal(p)
 	assert.NoError(t, err1)
 	env = &cb.Envelope{Payload: data}
-	env, err = sanityCheckAndSignConfigTx(env)
+	env, err = sanityCheckAndSignConfigTx(env, signer)
 	assert.Error(t, err, "Error expected for bad payload header")
 	assert.Contains(t, err.Error(), "bad header")
 
@@ -647,7 +651,7 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	data, err = proto.Marshal(p)
 	assert.NoError(t, err)
 	env = &cb.Envelope{Payload: data}
-	env, err = sanityCheckAndSignConfigTx(env)
+	env, err = sanityCheckAndSignConfigTx(env, signer)
 	assert.Error(t, err, "Error expected for bad channel header")
 	assert.Contains(t, err.Error(), "could not unmarshall channel header")
 
@@ -665,7 +669,7 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	data, err = proto.Marshal(p)
 	assert.NoError(t, err)
 	env = &cb.Envelope{Payload: data}
-	env, err = sanityCheckAndSignConfigTx(env)
+	env, err = sanityCheckAndSignConfigTx(env, signer)
 	assert.Error(t, err, "Error expected for bad payload data")
 	assert.Contains(t, err.Error(), "Bad config update env")
 }

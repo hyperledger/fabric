@@ -24,7 +24,6 @@ import (
 	floggingmetrics "github.com/hyperledger/fabric/common/flogging/metrics"
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpcmetrics"
-	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
@@ -404,10 +403,6 @@ func serve(args []string) error {
 	}
 
 	signingIdentity := mgmt.GetLocalSigningIdentityOrPanic()
-	serializedIdentity, err := signingIdentity.Serialize()
-	if err != nil {
-		logger.Panicf("Failed serializing self identity: %v", err)
-	}
 
 	libConf := library.Config{}
 	if err = viperutil.EnhancedExactUnmarshalKey("peer.handlers", &libConf); err != nil {
@@ -417,7 +412,7 @@ func serve(args []string) error {
 
 	authFilters := reg.Lookup(library.Auth).([]authHandler.Filter)
 	endorserSupport := &endorser.SupportImpl{
-		SignerSupport:    signingIdentity,
+		SignerSerializer: signingIdentity,
 		Peer:             peer.Default,
 		PeerSupport:      peer.DefaultSupport,
 		ChaincodeSupport: chaincodeSupport,
@@ -444,7 +439,7 @@ func serve(args []string) error {
 	policyMgr := peer.NewChannelPolicyManagerGetter()
 
 	// Initialize gossip component
-	err = initGossipService(policyMgr, metricsProvider, peerServer, serializedIdentity, peerEndpoint.Address)
+	err = initGossipService(policyMgr, metricsProvider, peerServer, signingIdentity, peerEndpoint.Address)
 	if err != nil {
 		return err
 	}
@@ -842,8 +837,18 @@ func secureDialOpts() []grpc.DialOption {
 // 2. Init the message crypto service;
 // 3. Init the security advisor;
 // 4. Init gossip related struct.
-func initGossipService(policyMgr policies.ChannelPolicyManagerGetter, metricsProvider metrics.Provider,
-	peerServer *comm.GRPCServer, serializedIdentity []byte, peerAddr string) error {
+func initGossipService(
+	policyMgr policies.ChannelPolicyManagerGetter,
+	metricsProvider metrics.Provider,
+	peerServer *comm.GRPCServer,
+	signer msp.SigningIdentity,
+	peerAddr string,
+) error {
+	serializedIdentity, err := signer.Serialize()
+	if err != nil {
+		return errors.WithMessage(err, "failed to start gossip service")
+	}
+
 	var certs *gossipcommon.TLSCertificates
 	if peerServer.TLSEnabled() {
 		serverCert := peerServer.ServerCertificate()
@@ -858,7 +863,7 @@ func initGossipService(policyMgr policies.ChannelPolicyManagerGetter, metricsPro
 
 	messageCryptoService := peergossip.NewMCS(
 		policyMgr,
-		localmsp.NewSigner(),
+		signer,
 		mgmt.NewDeserializersManager(),
 	)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())

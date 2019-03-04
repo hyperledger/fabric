@@ -8,9 +8,9 @@ package multichannel
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -27,7 +27,7 @@ type ChainSupport struct {
 	*BlockWriter
 	consensus.Chain
 	cutter blockcutter.Receiver
-	crypto.LocalSigner
+	identity.SignerSerializer
 	// Needed for consensus-type migration: to execute the migration state machine correctly,
 	// chains need to know if they are system or standard channel.
 	systemChannel bool
@@ -37,7 +37,7 @@ func newChainSupport(
 	registrar *Registrar,
 	ledgerResources *ledgerResources,
 	consenters map[string]consensus.Consenter,
-	signer crypto.LocalSigner,
+	signer identity.SignerSerializer,
 	blockcutterMetrics *blockcutter.Metrics,
 ) *ChainSupport {
 	// Read in the last block and metadata for the channel
@@ -51,8 +51,8 @@ func newChainSupport(
 
 	// Construct limited support needed as a parameter for additional support
 	cs := &ChainSupport{
-		ledgerResources: ledgerResources,
-		LocalSigner:     signer,
+		ledgerResources:  ledgerResources,
+		SignerSerializer: signer,
 		cutter: blockcutter.NewReceiverImpl(
 			ledgerResources.ConfigtxValidator().ChainID(),
 			ledgerResources,
@@ -154,8 +154,8 @@ func (cs *ChainSupport) Reader() blockledger.Reader {
 	return cs
 }
 
-// Signer returns the crypto.Localsigner for this channel.
-func (cs *ChainSupport) Signer() crypto.LocalSigner {
+// Signer returns the SignerSerializer for this channel.
+func (cs *ChainSupport) Signer() identity.SignerSerializer {
 	return cs
 }
 

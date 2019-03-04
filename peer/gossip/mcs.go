@@ -13,12 +13,12 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	pcommon "github.com/hyperledger/fabric/protos/common"
@@ -39,7 +39,7 @@ var mcsLogger = flogging.MustGetLogger("peer.gossip.mcs")
 // This implementation assumes that these mechanisms are all in place and working.
 type MSPMessageCryptoService struct {
 	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter
-	localSigner                crypto.LocalSigner
+	localSigner                identity.SignerSerializer
 	deserializer               mgmt.DeserializersManager
 }
 
@@ -47,10 +47,18 @@ type MSPMessageCryptoService struct {
 // that implements MessageCryptoService.
 // The method takes in input:
 // 1. a policies.ChannelPolicyManagerGetter that gives access to the policy manager of a given channel via the Manager method.
-// 2. an instance of crypto.LocalSigner
+// 2. an instance of identity.SignerSerializer
 // 3. an identity deserializer manager
-func NewMCS(channelPolicyManagerGetter policies.ChannelPolicyManagerGetter, localSigner crypto.LocalSigner, deserializer mgmt.DeserializersManager) *MSPMessageCryptoService {
-	return &MSPMessageCryptoService{channelPolicyManagerGetter: channelPolicyManagerGetter, localSigner: localSigner, deserializer: deserializer}
+func NewMCS(
+	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter,
+	localSigner identity.SignerSerializer,
+	deserializer mgmt.DeserializersManager,
+) *MSPMessageCryptoService {
+	return &MSPMessageCryptoService{
+		channelPolicyManagerGetter: channelPolicyManagerGetter,
+		localSigner:                localSigner,
+		deserializer:               deserializer,
+	}
 }
 
 // ValidateIdentity validates the identity of a remote peer.

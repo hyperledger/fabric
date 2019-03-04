@@ -150,7 +150,7 @@ func InitCmdFactory(isEndorserRequired, isPeerDeliverRequired, isOrdererRequired
 
 	// for fetching blocks from a peer
 	if isPeerDeliverRequired {
-		cf.DeliverClient, err = common.NewDeliverClientForPeer(channelID)
+		cf.DeliverClient, err = common.NewDeliverClientForPeer(channelID, cf.Signer)
 		if err != nil {
 			return nil, errors.WithMessage(err, "error getting deliver client for channel")
 		}
@@ -161,7 +161,7 @@ func InitCmdFactory(isEndorserRequired, isPeerDeliverRequired, isOrdererRequired
 		if len(strings.Split(common.OrderingEndpoint, ":")) != 2 {
 			return nil, errors.Errorf("ordering service endpoint %s is not valid or missing", common.OrderingEndpoint)
 		}
-		cf.DeliverClient, err = common.NewDeliverClientForOrderer(channelID)
+		cf.DeliverClient, err = common.NewDeliverClientForOrderer(channelID, cf.Signer)
 		if err != nil {
 			return nil, err
 		}

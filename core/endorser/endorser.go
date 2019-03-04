@@ -14,7 +14,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
@@ -23,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/transientstore"
@@ -40,7 +40,7 @@ type privateDataDistributor func(channel string, txID string, privateData *trans
 
 // Support contains functions that the endorser requires to execute its tasks
 type Support interface {
-	crypto.SignerSupport
+	identity.SignerSerializer
 	// IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is
 	// ia system chaincode and it NOT invokable
 	IsSysCCAndNotInvokableExternal(name string) bool

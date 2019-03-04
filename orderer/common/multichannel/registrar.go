@@ -15,10 +15,10 @@ import (
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -89,6 +89,8 @@ type ledgerResources struct {
 	blockledger.ReadWriter
 }
 
+//go:generate mockery -dir ../../../internal/pkg/identity -name SignerSerializer -case underscore -output ./mocks/
+
 // Registrar serves as a point of access and control for the individual channel resources.
 type Registrar struct {
 	lock   sync.RWMutex
@@ -96,7 +98,7 @@ type Registrar struct {
 
 	consenters         map[string]consensus.Consenter
 	ledgerFactory      blockledger.Factory
-	signer             crypto.LocalSigner
+	signer             identity.SignerSerializer
 	blockcutterMetrics *blockcutter.Metrics
 	systemChannelID    string
 	systemChannel      *ChainSupport
@@ -125,8 +127,12 @@ func configTx(reader blockledger.Reader) *cb.Envelope {
 }
 
 // NewRegistrar produces an instance of a *Registrar.
-func NewRegistrar(ledgerFactory blockledger.Factory,
-	signer crypto.LocalSigner, metricsProvider metrics.Provider, callbacks ...channelconfig.BundleActor) *Registrar {
+func NewRegistrar(
+	ledgerFactory blockledger.Factory,
+	signer identity.SignerSerializer,
+	metricsProvider metrics.Provider,
+	callbacks ...channelconfig.BundleActor,
+) *Registrar {
 	r := &Registrar{
 		chains:             make(map[string]*ChainSupport),
 		ledgerFactory:      ledgerFactory,

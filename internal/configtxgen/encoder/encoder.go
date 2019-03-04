@@ -10,13 +10,13 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -450,7 +450,11 @@ func ConfigTemplateFromGroup(conf *genesisconfig.Profile, cg *cb.ConfigGroup) (*
 
 // MakeChannelCreationTransaction is a handy utility function for creating transactions for channel creation.
 // It assumes the invoker has no system channel context so ignores all but the application section.
-func MakeChannelCreationTransaction(channelID string, signer crypto.LocalSigner, conf *genesisconfig.Profile) (*cb.Envelope, error) {
+func MakeChannelCreationTransaction(
+	channelID string,
+	signer identity.SignerSerializer,
+	conf *genesisconfig.Profile,
+) (*cb.Envelope, error) {
 	template, err := DefaultConfigTemplate(conf)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not generate default config template")
@@ -461,7 +465,12 @@ func MakeChannelCreationTransaction(channelID string, signer crypto.LocalSigner,
 // MakeChannelCreationTransactionWithSystemChannelContext is a utility function for creating channel creation txes.
 // It requires a configuration representing the orderer system channel to allow more sophisticated channel creation
 // transactions modifying pieces of the configuration like the orderer set.
-func MakeChannelCreationTransactionWithSystemChannelContext(channelID string, signer crypto.LocalSigner, conf, systemChannelConf *genesisconfig.Profile) (*cb.Envelope, error) {
+func MakeChannelCreationTransactionWithSystemChannelContext(
+	channelID string,
+	signer identity.SignerSerializer,
+	conf,
+	systemChannelConf *genesisconfig.Profile,
+) (*cb.Envelope, error) {
 	cg, err := NewChannelGroup(systemChannelConf)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not parse system channel config")
@@ -478,7 +487,12 @@ func MakeChannelCreationTransactionWithSystemChannelContext(channelID string, si
 // MakeChannelCreationTransactionFromTemplate creates a transaction for creating a channel.  It uses
 // the given template to produce the config update set.  Usually, the caller will want to invoke
 // MakeChannelCreationTransaction or MakeChannelCreationTransactionWithSystemChannelContext.
-func MakeChannelCreationTransactionFromTemplate(channelID string, signer crypto.LocalSigner, conf *genesisconfig.Profile, template *cb.ConfigGroup) (*cb.Envelope, error) {
+func MakeChannelCreationTransactionFromTemplate(
+	channelID string,
+	signer identity.SignerSerializer,
+	conf *genesisconfig.Profile,
+	template *cb.ConfigGroup,
+) (*cb.Envelope, error) {
 	newChannelConfigUpdate, err := NewChannelCreateConfigUpdate(channelID, conf, template)
 	if err != nil {
 		return nil, errors.Wrap(err, "config update generation failure")
@@ -489,7 +503,7 @@ func MakeChannelCreationTransactionFromTemplate(channelID string, signer crypto.
 	}
 
 	if signer != nil {
-		sigHeader, err := signer.NewSignatureHeader()
+		sigHeader, err := protoutil.NewSignatureHeader(signer)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating signature header failed")
 		}

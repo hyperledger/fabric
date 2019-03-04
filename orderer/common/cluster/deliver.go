@@ -15,9 +15,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -25,13 +25,15 @@ import (
 	"google.golang.org/grpc"
 )
 
+//go:generate mockery -dir ../../../internal/pkg/identity -name SignerSerializer -case underscore -output ./mocks/
+
 // BlockPuller pulls blocks from remote ordering nodes.
 // Its operations are not thread safe.
 type BlockPuller struct {
 	// Configuration
 	MaxPullBlockRetries uint64
 	MaxTotalBufferBytes int
-	Signer              crypto.LocalSigner
+	Signer              identity.SignerSerializer
 	TLSCert             []byte
 	Channel             string
 	FetchTimeout        time.Duration

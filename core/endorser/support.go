@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -21,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -30,7 +30,7 @@ import (
 // issuing calls to various static methods of the peer
 type SupportImpl struct {
 	*PluginEndorser
-	crypto.SignerSupport
+	identity.SignerSerializer
 	Peer             peer.Operations
 	PeerSupport      peer.Support
 	ChaincodeSupport *chaincode.ChaincodeSupport
@@ -47,7 +47,7 @@ func (s *SupportImpl) NewQueryCreator(channel string) (QueryCreator, error) {
 }
 
 func (s *SupportImpl) SigningIdentityForRequest(*pb.SignedProposal) (SigningIdentity, error) {
-	return s.SignerSupport, nil
+	return s.SignerSerializer, nil
 }
 
 // IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is

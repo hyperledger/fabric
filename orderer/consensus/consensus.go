@@ -8,7 +8,7 @@ package consensus
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus/migration"
@@ -76,7 +76,7 @@ type Chain interface {
 
 // ConsenterSupport provides the resources available to a Consenter implementation.
 type ConsenterSupport interface {
-	crypto.LocalSigner
+	identity.SignerSerializer
 	msgprocessor.Processor
 
 	// VerifyBlockSignature verifies a signature of a block with a given optional

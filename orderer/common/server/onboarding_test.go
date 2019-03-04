@@ -19,13 +19,13 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/crypto"
 	deliver_mocks "github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/flogging"
 	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
 	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -491,7 +491,7 @@ func TestReplicate(t *testing.T) {
 		secOpts            *comm.SecureOptions
 		conf               *localconfig.TopLevel
 		ledgerFactoryErr   error
-		signer             crypto.LocalSigner
+		signer             identity.SignerSerializer
 		zapHooks           []func(zapcore.Entry) error
 		shouldConnect      bool
 		replicateFunc      func(*replicationInitiator, *common.Block)

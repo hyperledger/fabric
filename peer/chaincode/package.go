@@ -13,7 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -181,27 +181,13 @@ func getInstantiationPolicy(policy string) (*pcommon.SignaturePolicyEnvelope, er
 // getChaincodeInstallPackage returns either a raw ChaincodeDeploymentSpec or
 // a Envelope with ChaincodeDeploymentSpec and (optional) signature
 func getChaincodeInstallPackage(cds *pb.ChaincodeDeploymentSpec, cf *ChaincodeCmdFactory) ([]byte, error) {
-	// this can be raw ChaincodeDeploymentSpec or Envelope with signatures
-	var objToWrite proto.Message
-
-	// start with default cds
-	objToWrite = cds
-
-	var err error
-
-	var owner msp.SigningIdentity
-
-	// create a chaincode package...
-	if createSignedCCDepSpec {
-		// ...and optionally get the signer so the package can be signed
-		// by the local MSP.  This package can be given to other owners
-		// to sign using "peer chaincode sign <package file>"
-		if signCCDepSpec {
-			if cf.Signer == nil {
-				return nil, errors.New("error getting signer")
-			}
-			owner = cf.Signer
+	var owner identity.SignerSerializer
+	// check if we need to sign and set the owner
+	if createSignedCCDepSpec && signCCDepSpec {
+		if cf.Signer == nil {
+			return nil, errors.New("signing identity not found")
 		}
+		owner = cf.Signer
 	}
 
 	ip := instantiationPolicy
@@ -221,7 +207,7 @@ func getChaincodeInstallPackage(cds *pb.ChaincodeDeploymentSpec, cf *ChaincodeCm
 	}
 
 	// we get the Envelope of type CHAINCODE_PACKAGE
-	objToWrite, err = ccpackage.OwnerCreateSignedCCDepSpec(cds, sp, owner)
+	objToWrite, err := ccpackage.OwnerCreateSignedCCDepSpec(cds, sp, owner)
 	if err != nil {
 		return nil, err
 	}

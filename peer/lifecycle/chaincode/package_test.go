@@ -13,7 +13,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/lifecycle/chaincode/mock"
@@ -48,7 +48,7 @@ func newTempDir() string {
 }
 
 func mockChaincodeCmdFactoryForTest(sign bool) (*CmdFactory, error) {
-	var signer msp.SigningIdentity
+	var signer identity.SignerSerializer
 	var err error
 	if sign {
 		signer, err = common.GetDefaultSigner()

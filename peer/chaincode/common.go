@@ -18,11 +18,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	ccapi "github.com/hyperledger/fabric/peer/chaincode/api"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/common/api"
@@ -372,7 +371,7 @@ type ChaincodeCmdFactory struct {
 	EndorserClients []pb.EndorserClient
 	DeliverClients  []api.PeerDeliverClient
 	Certificate     tls.Certificate
-	Signer          msp.SigningIdentity
+	Signer          identity.SignerSerializer
 	BroadcastClient common.BroadcastClient
 }
 
@@ -464,7 +463,7 @@ func ChaincodeInvokeOrQuery(
 	cID string,
 	txID string,
 	invoke bool,
-	signer msp.SigningIdentity,
+	signer identity.SignerSerializer,
 	certificate tls.Certificate,
 	endorserClients []pb.EndorserClient,
 	deliverClients []api.PeerDeliverClient,
@@ -475,7 +474,7 @@ func ChaincodeInvokeOrQuery(
 
 	creator, err := signer.Serialize()
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error serializing identity for %s", signer.GetIdentifier()))
+		return nil, errors.WithMessage(err, "error serializing identity")
 	}
 
 	funcName := "invoke"
@@ -534,7 +533,14 @@ func ChaincodeInvokeOrQuery(
 				ctx, cancelFunc = context.WithTimeout(context.Background(), waitForEventTimeout)
 				defer cancelFunc()
 
-				dg = NewDeliverGroup(deliverClients, peerAddresses, certificate, channelID, txid)
+				dg = NewDeliverGroup(
+					deliverClients,
+					peerAddresses,
+					signer,
+					certificate,
+					channelID,
+					txid,
+				)
 				// connect to deliver service on all peers
 				err := dg.Connect(ctx)
 				if err != nil {
@@ -572,6 +578,7 @@ type DeliverGroup struct {
 	Certificate tls.Certificate
 	ChannelID   string
 	TxID        string
+	Signer      identity.SignerSerializer
 	mutex       sync.Mutex
 	Error       error
 	wg          sync.WaitGroup
@@ -585,7 +592,14 @@ type DeliverClient struct {
 	Address    string
 }
 
-func NewDeliverGroup(deliverClients []api.PeerDeliverClient, peerAddresses []string, certificate tls.Certificate, channelID string, txid string) *DeliverGroup {
+func NewDeliverGroup(
+	deliverClients []api.PeerDeliverClient,
+	peerAddresses []string,
+	signer identity.SignerSerializer,
+	certificate tls.Certificate,
+	channelID string,
+	txid string,
+) *DeliverGroup {
 	clients := make([]*DeliverClient, len(deliverClients))
 	for i, client := range deliverClients {
 		dc := &DeliverClient{
@@ -600,6 +614,7 @@ func NewDeliverGroup(deliverClients []api.PeerDeliverClient, peerAddresses []str
 		Certificate: certificate,
 		ChannelID:   channelID,
 		TxID:        txid,
+		Signer:      signer,
 	}
 
 	return dg
@@ -645,7 +660,7 @@ func (dg *DeliverGroup) ClientConnect(ctx context.Context, dc *DeliverClient) {
 	defer df.CloseSend()
 	dc.Connection = df
 
-	envelope := createDeliverEnvelope(dg.ChannelID, dg.Certificate)
+	envelope := createDeliverEnvelope(dg.ChannelID, dg.Certificate, dg.Signer)
 	err = df.Send(envelope)
 	if err != nil {
 		err = errors.WithMessage(err, fmt.Sprintf("error sending deliver seek info envelope to %s", dc.Address))
@@ -729,7 +744,11 @@ func (dg *DeliverGroup) setError(err error) {
 	dg.mutex.Unlock()
 }
 
-func createDeliverEnvelope(channelID string, certificate tls.Certificate) *pcommon.Envelope {
+func createDeliverEnvelope(
+	channelID string,
+	certificate tls.Certificate,
+	signer identity.SignerSerializer,
+) *pcommon.Envelope {
 	var tlsCertHash []byte
 	// check for client certificate and create hash if present
 	if len(certificate.Certificate) > 0 {
@@ -757,8 +776,14 @@ func createDeliverEnvelope(channelID string, certificate tls.Certificate) *pcomm
 	}
 
 	env, err := protoutil.CreateSignedEnvelopeWithTLSBinding(
-		pcommon.HeaderType_DELIVER_SEEK_INFO, channelID, localmsp.NewSigner(),
-		seekInfo, int32(0), uint64(0), tlsCertHash)
+		pcommon.HeaderType_DELIVER_SEEK_INFO,
+		channelID,
+		signer,
+		seekInfo,
+		int32(0),
+		uint64(0),
+		tlsCertHash,
+	)
 	if err != nil {
 		logger.Errorf("Error signing envelope: %s", err)
 		return nil
