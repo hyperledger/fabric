@@ -174,6 +174,8 @@ type Chain struct {
 	logger  *flogging.FabricLogger
 
 	migrationStatus migration.Status // The consensus-type migration status
+
+	periodicChecker *PeriodicCheck
 }
 
 // NewChain constructs a chain object.
@@ -317,13 +319,13 @@ func (c *Chain) Start() {
 
 	es := c.newEvictionSuspector()
 
-	evictionFromChain := &PeriodicCheck{
+	c.periodicChecker = &PeriodicCheck{
+		Logger:        c.logger,
 		Report:        es.confirmSuspicion,
 		CheckInterval: time.Second * 10,
 		Condition:     c.suspectEviction,
 	}
-
-	evictionFromChain.Run()
+	c.periodicChecker.Run()
 }
 
 // detectMigration detects if the orderer restarts right after consensus-type migration,
@@ -778,6 +780,7 @@ func (c *Chain) serveRequest() {
 			}
 
 			c.logger.Infof("Stop serving requests")
+			c.periodicChecker.Stop()
 			return
 		}
 	}

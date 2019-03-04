@@ -538,6 +538,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Eventually(ordererRunner.Err(), time.Minute, time.Second).Should(evictionDetection)
 
 			By("Ensuring all blocks are pulled up to the block that evicts the OSN")
+			Eventually(ordererRunner.Err(), time.Minute, time.Second).Should(gbytes.Say("Periodic check is stopping. channel=testchannel"))
 			Eventually(ordererRunner.Err(), time.Minute, time.Second).Should(gbytes.Say("Pulled all blocks up to eviction block. channel=testchannel"))
 
 			By("Killing the evicted orderer")
