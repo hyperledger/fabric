@@ -1104,51 +1104,74 @@ func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
 // addition extracts updates about raft replica set and if there
 // are changes updates cluster membership as well
 func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
-	metadata, raftMetadata := c.newRaftMetadata(block)
-
-	var changes *MembershipChanges
-	if metadata != nil {
-		changes = ComputeMembershipChanges(raftMetadata.Consenters, metadata.Consenters)
+	hdr, err := ConfigChannelHeader(block)
+	if err != nil {
+		c.logger.Panicf("Failed to get config header type from config block: %s", err)
 	}
 
-	confChange := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
-	raftMetadata.RaftIndex = index
-
-	raftMetadataBytes := protoutil.MarshalOrPanic(raftMetadata)
-	// write block with metadata
-	c.support.WriteConfigBlock(block, raftMetadataBytes)
 	c.configInflight = false
 
-	// update membership
-	if confChange != nil {
-		// We need to propose conf change in a go routine, because it may be blocked if raft node
-		// becomes leaderless, and we should not block `serveRequest` so it can keep consuming applyC,
-		// otherwise we have a deadlock.
-		go func() {
-			// ProposeConfChange returns error only if node being stopped.
-			// This proposal is dropped by followers because DisableProposalForwarding is enabled.
-			if err := c.Node.ProposeConfChange(context.TODO(), *confChange); err != nil {
-				c.logger.Warnf("Failed to propose configuration update to Raft node: %s", err)
-			}
-		}()
+	switch common.HeaderType(hdr.Type) {
+	case common.HeaderType_CONFIG:
+		// If config is targeting THIS channel, inspect consenter set and
+		// propose raft ConfChange if it adds/removes node.
+		metadata, raftMetadata := c.newRaftMetadata(block)
 
-		c.confChangeInProgress = confChange
-
-		switch confChange.Type {
-		case raftpb.ConfChangeAddNode:
-			c.logger.Infof("Config block just committed adds node %d, pause accepting transactions till config change is applied", confChange.NodeID)
-		case raftpb.ConfChangeRemoveNode:
-			c.logger.Infof("Config block just committed removes node %d, pause accepting transactions till config change is applied", confChange.NodeID)
-		default:
-			c.logger.Panic("Programming error, encountered unsupported raft config change")
+		var changes *MembershipChanges
+		if metadata != nil {
+			changes = ComputeMembershipChanges(raftMetadata.Consenters, metadata.Consenters)
 		}
 
-		c.configInflight = true
-	}
+		confChange := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
+		raftMetadata.RaftIndex = index
 
-	c.raftMetadataLock.Lock()
-	c.opts.RaftMetadata = raftMetadata
-	c.raftMetadataLock.Unlock()
+		raftMetadataBytes := protoutil.MarshalOrPanic(raftMetadata)
+		// write block with metadata
+		c.support.WriteConfigBlock(block, raftMetadataBytes)
+
+		// update membership
+		if confChange != nil {
+			// We need to propose conf change in a go routine, because it may be blocked if raft node
+			// becomes leaderless, and we should not block `serveRequest` so it can keep consuming applyC,
+			// otherwise we have a deadlock.
+			go func() {
+				// ProposeConfChange returns error only if node being stopped.
+				// This proposal is dropped by followers because DisableProposalForwarding is enabled.
+				if err := c.Node.ProposeConfChange(context.TODO(), *confChange); err != nil {
+					c.logger.Warnf("Failed to propose configuration update to Raft node: %s", err)
+				}
+			}()
+
+			c.confChangeInProgress = confChange
+
+			switch confChange.Type {
+			case raftpb.ConfChangeAddNode:
+				c.logger.Infof("Config block just committed adds node %d, pause accepting transactions till config change is applied", confChange.NodeID)
+			case raftpb.ConfChangeRemoveNode:
+				c.logger.Infof("Config block just committed removes node %d, pause accepting transactions till config change is applied", confChange.NodeID)
+			default:
+				c.logger.Panic("Programming error, encountered unsupported raft config change")
+			}
+
+			c.configInflight = true
+		}
+
+		c.raftMetadataLock.Lock()
+		c.opts.RaftMetadata = raftMetadata
+		c.raftMetadataLock.Unlock()
+
+	case common.HeaderType_ORDERER_TRANSACTION:
+		// If this config is channel creation, no extra inspection is needed
+		c.raftMetadataLock.Lock()
+		c.opts.RaftMetadata.RaftIndex = index
+		m := protoutil.MarshalOrPanic(c.opts.RaftMetadata)
+		c.raftMetadataLock.Unlock()
+
+		c.support.WriteConfigBlock(block, m)
+
+	default:
+		c.logger.Panicf("Programming error: unexpected config type: %s", common.HeaderType(hdr.Type))
+	}
 }
 
 // getInFlightConfChange returns ConfChange in-flight if any.
