@@ -17,12 +17,16 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
+	"github.com/hyperledger/fabric/core/ledger/customtx/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
+	mocktxmgr "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	mocklgr "github.com/hyperledger/fabric/core/ledger/mock"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -32,7 +36,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("internal=debug")
+	flogging.ActivateSpec("valimpl,statebasedval,internal=debug")
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/validator/internal")
 	os.Exit(m.Run())
 }
@@ -315,6 +319,55 @@ func TestTxStatsInfoWithConfigTx(t *testing.T) {
 	}
 	t.Logf("txStatsInfo=%s\n", spew.Sdump(txStatsInfo))
 	assert.Equal(t, expectedTxStatInfo, txStatsInfo)
+}
+
+func TestContainsPostOrderWrites(t *testing.T) {
+	testDBEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv.Init(t)
+	defer testDBEnv.Cleanup()
+	testDB := testDBEnv.GetDBHandle("emptydb")
+	mockSimulator := &mocklgr.TxSimulator{}
+	mockTxmgr := &mocktxmgr.TxMgr{}
+	mockTxmgr.NewTxSimulatorReturns(mockSimulator, nil)
+
+	fakeTxProcessor := &mock.Processor{}
+	customtx.InitializeTestEnv(
+		customtx.Processors{
+			common.HeaderType_CONFIG: fakeTxProcessor,
+		},
+	)
+
+	v := NewStatebasedValidator(mockTxmgr, testDB)
+	blocks := testutil.ConstructTestBlocks(t, 2)
+
+	// block with config tx that produces post order writes
+	fakeTxProcessor.GenerateSimulationResultsStub =
+		func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
+			rwSetBuilder := rwsetutil.NewRWSetBuilder()
+			rwSetBuilder.AddToWriteSet("ns1", "key1", []byte("value1"))
+			rwSetBuilder.GetTxSimulationResults()
+			s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(
+				rwSetBuilder.GetTxSimulationResults())
+			return nil
+		}
+	batch, _, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
+	assert.NoError(t, err)
+	assert.True(t, batch.PubUpdates.ContainsPostOrderWrites)
+
+	// block with endorser txs
+	batch, _, err = v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[1]}, true)
+	assert.NoError(t, err)
+	assert.False(t, batch.PubUpdates.ContainsPostOrderWrites)
+
+	// test with block with invalid config tx
+	fakeTxProcessor.GenerateSimulationResultsStub =
+		func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
+			s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(nil, nil)
+			return &customtx.InvalidTxError{Msg: "fake-message"}
+		}
+	batch, _, err = v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
+	assert.NoError(t, err)
+	assert.False(t, batch.PubUpdates.ContainsPostOrderWrites)
 }
 
 func TestTxStatsInfo(t *testing.T) {

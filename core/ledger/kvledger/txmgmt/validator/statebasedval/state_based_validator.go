@@ -107,9 +107,9 @@ func (v *Validator) ValidateAndPrepareBatch(block *internal.Block, doMVCCValidat
 
 		tx.ValidationCode = validationCode
 		if validationCode == peer.TxValidationCode_VALID {
-			logger.Debugf("Block [%d] Transaction index [%d] TxId [%s] marked as valid by state validator", block.Num, tx.IndexInBlock, tx.ID)
+			logger.Debugf("Block [%d] Transaction index [%d] TxId [%s] marked as valid by state validator. ContainsPostOrderWrites [%t]", block.Num, tx.IndexInBlock, tx.ID, tx.ContainsPostOrderWrites)
 			committingTxHeight := version.NewHeight(block.Num, uint64(tx.IndexInBlock))
-			updates.ApplyWriteSet(tx.RWSet, committingTxHeight, v.db)
+			updates.ApplyWriteSet(tx.RWSet, committingTxHeight, v.db, tx.ContainsPostOrderWrites)
 		} else {
 			logger.Warningf("Block [%d] Transaction index [%d] TxId [%s] marked as invalid by state validator. Reason code [%s]",
 				block.Num, tx.IndexInBlock, tx.ID, validationCode.String())

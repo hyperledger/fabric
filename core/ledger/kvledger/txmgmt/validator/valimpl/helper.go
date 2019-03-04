@@ -128,6 +128,7 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 		}
 
 		var txRWSet *rwsetutil.TxRwSet
+		var containsPostOrderWrites bool
 		txType := common.HeaderType(chdr.Type)
 		logger.Debugf("txType=%s", txType)
 		txStatInfo.TxType = txType
@@ -158,6 +159,7 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 					return nil, nil, err
 				}
 			}
+			containsPostOrderWrites = true
 		}
 		if txRWSet != nil {
 			txStatInfo.NumCollections = txRWSet.NumCollections()
@@ -168,7 +170,12 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_WRITESET)
 				continue
 			}
-			b.Txs = append(b.Txs, &internal.Transaction{IndexInBlock: txIndex, ID: chdr.TxId, RWSet: txRWSet})
+			b.Txs = append(b.Txs, &internal.Transaction{
+				IndexInBlock:            txIndex,
+				ID:                      chdr.TxId,
+				RWSet:                   txRWSet,
+				ContainsPostOrderWrites: containsPostOrderWrites,
+			})
 		}
 	}
 	return b, txsStatInfo, nil

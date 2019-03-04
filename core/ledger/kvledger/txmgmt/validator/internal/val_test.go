@@ -26,6 +26,18 @@ func TestNewPubAndHashUpdates(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestContainsPostOrderWrites(t *testing.T) {
+	u := NewPubAndHashUpdates()
+	rws := &rwsetutil.TxRwSet{}
+	u.ApplyWriteSet(rws, nil, nil, false)
+	assert.False(t, u.PubUpdates.ContainsPostOrderWrites)
+	u.ApplyWriteSet(rws, nil, nil, true)
+	assert.True(t, u.PubUpdates.ContainsPostOrderWrites)
+	// once set to true, should always return true
+	u.ApplyWriteSet(rws, nil, nil, false)
+	assert.True(t, u.PubUpdates.ContainsPostOrderWrites)
+}
+
 func TestContainsPvtWrites_ReturnsTrue(t *testing.T) {
 	chrs1 := &rwsetutil.CollHashedRwSet{PvtRwSetHash: []byte{0}}
 	nrs1 := &rwsetutil.NsRwSet{CollHashedRwSets: []*rwsetutil.CollHashedRwSet{chrs1}}
@@ -129,7 +141,7 @@ func TestApplyWriteSet(t *testing.T) {
 	testdb := testdbEnv.GetDBHandle("testdb")
 
 	// Call
-	pahu.ApplyWriteSet(txRWSet1, ver1, testdb)
+	pahu.ApplyWriteSet(txRWSet1, ver1, testdb, false)
 
 	// Check result
 	assert.Equal(t, expected, pahu)

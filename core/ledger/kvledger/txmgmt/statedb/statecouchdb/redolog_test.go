@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -124,6 +123,28 @@ func TestCouchdbRedoLogger(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, version.NewHeight(1, 5), record.Version)
 	assert.Equal(t, []byte("value3"), record.UpdateBatch.Get("ns1", "key1").Value)
+
+	// A batch that does not contain PostOrderWrites should cause skipping the writing of redo-record
+	db, _ = testEnv.DBProvider.GetDBHandle("testcouchdbredologger")
+	vdb = db.(*VersionedDB)
+	batchWithNoGeneratedWrites := batch1
+	batchWithNoGeneratedWrites.ContainsPostOrderWrites = false
+	vdb.ApplyUpdates(batchWithNoGeneratedWrites, version.NewHeight(2, 5))
+	record, err = vdb.redoLogger.load()
+	assert.NoError(t, err)
+	assert.Equal(t, version.NewHeight(1, 5), record.Version)
+	assert.Equal(t, []byte("value3"), record.UpdateBatch.Get("ns1", "key1").Value)
+
+	// A batch that contains PostOrderWrites should cause writing of redo-record
+	db, _ = testEnv.DBProvider.GetDBHandle("testcouchdbredologger")
+	vdb = db.(*VersionedDB)
+	batchWithGeneratedWrites := batch1
+	batchWithGeneratedWrites.ContainsPostOrderWrites = true
+	vdb.ApplyUpdates(batchWithNoGeneratedWrites, version.NewHeight(3, 4))
+	record, err = vdb.redoLogger.load()
+	assert.NoError(t, err)
+	assert.Equal(t, version.NewHeight(3, 4), record.Version)
+	assert.Equal(t, []byte("value1"), record.UpdateBatch.Get("ns1", "key1").Value)
 }
 
 func redologTestSetup(t *testing.T) (p *redoLoggerProvider, cleanup func()) {
