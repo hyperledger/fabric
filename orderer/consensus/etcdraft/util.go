@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -395,16 +396,28 @@ func ConfChange(raftMetadata *etcdraft.RaftMetadata, confState *raftpb.ConfState
 // PeriodicCheck checks periodically a condition, and reports
 // the cumulative consecutive period the condition was fulfilled.
 type PeriodicCheck struct {
+	Logger              *flogging.FabricLogger
 	CheckInterval       time.Duration
 	Condition           func() bool
 	Report              func(cumulativePeriod time.Duration)
 	conditionHoldsSince time.Time
 	once                sync.Once // Used to prevent double initialization
+	stopped             uint32
 }
 
 // Run runs the PeriodicCheck
 func (pc *PeriodicCheck) Run() {
 	pc.once.Do(pc.check)
+}
+
+// Stop stops the periodic checks
+func (pc *PeriodicCheck) Stop() {
+	pc.Logger.Info("Periodic check is stopping.")
+	atomic.AddUint32(&pc.stopped, 1)
+}
+
+func (pc *PeriodicCheck) shouldRun() bool {
+	return atomic.LoadUint32(&pc.stopped) == 0
 }
 
 func (pc *PeriodicCheck) check() {
@@ -414,6 +427,9 @@ func (pc *PeriodicCheck) check() {
 		pc.conditionNotFulfilled()
 	}
 
+	if !pc.shouldRun() {
+		return
+	}
 	time.AfterFunc(pc.CheckInterval, pc.check)
 }
 

@@ -296,6 +296,7 @@ func TestPeriodicCheck(t *testing.T) {
 	}
 
 	check := &PeriodicCheck{
+		Logger:        flogging.MustGetLogger("test"),
 		Condition:     condition,
 		CheckInterval: time.Millisecond,
 		Report:        report,
@@ -346,6 +347,13 @@ func TestPeriodicCheck(t *testing.T) {
 	// so the countdown has been reset when the condition was reset
 	firstReport = <-reports
 	g.Expect(lastReport).To(gomega.BeNumerically(">", firstReport))
+	// Stop the periodic check.
+	check.Stop()
+	checkCountAfterStop := atomic.LoadUint32(&checkNum)
+	// Wait 50 times the check interval.
+	time.Sleep(check.CheckInterval * 50)
+	// Ensure that we cease checking the condition, hence the PeriodicCheck is stopped.
+	g.Expect(atomic.LoadUint32(&checkNum)).To(gomega.BeNumerically("<", checkCountAfterStop+2))
 }
 
 func TestEvictionSuspector(t *testing.T) {
