@@ -570,7 +570,7 @@ we don't have to explicitly pass this argument:
           the local path to the orderer's root cert, allowing us to verify the
           TLS handshake.
 
-This command returns a genesis block - ``<channel-ID.block>`` - which we will use to join the channel.
+This command returns a genesis block - ``<CHANNEL-NAME.block>`` - which we will use to join the channel.
 It contains the configuration information specified in ``channel.tx``  If you have not
 made any modifications to the default channel name, then the command will return you a
 proto titled ``mychannel.block``.
@@ -585,7 +585,7 @@ Now let's join ``peer0.org1.example.com`` to the channel.
 .. code:: bash
 
         # By default, this joins ``peer0.org1.example.com`` only
-        # the <channel-ID.block> was returned by the previous command
+        # the <CHANNEL-NAME.block> was returned by the previous command
         # if you have not modified the channel name, you will join with mychannel.block
         # if you have created a different channel name, then pass in the appropriately named block
 
