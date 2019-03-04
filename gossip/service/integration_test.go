@@ -179,7 +179,7 @@ func TestLeaderYield(t *testing.T) {
 	for getLeader() != 1 && time.Now().Before(timeLimit) {
 		time.Sleep(100 * time.Millisecond)
 	}
-	if time.Now().After(timeLimit) {
+	if time.Now().After(timeLimit) && getLeader() != 1 {
 		util.PrintStackTrace()
 		t.Fatalf("p1 hasn't taken over leadership within %v: %d", takeOverMaxTimeout, getLeader())
 	}
