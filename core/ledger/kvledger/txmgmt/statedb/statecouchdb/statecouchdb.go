@@ -29,10 +29,11 @@ const lsccCacheSize = 50
 
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
-	couchInstance *couchdb.CouchInstance
-	databases     map[string]*VersionedDB
-	mux           sync.Mutex
-	openCounts    uint64
+	couchInstance      *couchdb.CouchInstance
+	databases          map[string]*VersionedDB
+	mux                sync.Mutex
+	openCounts         uint64
+	redoLoggerProvider *redoLoggerProvider
 }
 
 // NewVersionedDBProvider instantiates VersionedDBProvider
@@ -44,7 +45,14 @@ func NewVersionedDBProvider(metricsProvider metrics.Provider) (*VersionedDBProvi
 	if err != nil {
 		return nil, err
 	}
-	return &VersionedDBProvider{couchInstance, make(map[string]*VersionedDB), sync.Mutex{}, 0}, nil
+	return &VersionedDBProvider{
+			couchInstance:      couchInstance,
+			databases:          make(map[string]*VersionedDB),
+			mux:                sync.Mutex{},
+			openCounts:         0,
+			redoLoggerProvider: newRedoLoggerProvider(ledgerconfig.GetCouchdbRedologsPath()),
+		},
+		nil
 }
 
 // GetDBHandle gets the handle to a named database
@@ -54,7 +62,11 @@ func (provider *VersionedDBProvider) GetDBHandle(dbName string) (statedb.Version
 	vdb := provider.databases[dbName]
 	if vdb == nil {
 		var err error
-		vdb, err = newVersionedDB(provider.couchInstance, dbName)
+		vdb, err = newVersionedDB(
+			provider.couchInstance,
+			provider.redoLoggerProvider.newRedoLogger(dbName),
+			dbName,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -66,6 +78,7 @@ func (provider *VersionedDBProvider) GetDBHandle(dbName string) (statedb.Version
 // Close closes the underlying db instance
 func (provider *VersionedDBProvider) Close() {
 	// No close needed on Couch
+	provider.redoLoggerProvider.close()
 }
 
 // HealthCheck checks to see if the couch instance of the peer is healthy
@@ -83,6 +96,7 @@ type VersionedDB struct {
 	verCacheLock       sync.RWMutex
 	mux                sync.RWMutex
 	lsccStateCache     *lsccStateCache
+	redoLogger         *redoLogger
 }
 
 type lsccStateCache struct {
@@ -135,7 +149,7 @@ func (l *lsccStateCache) evictARandomEntry() {
 }
 
 // newVersionedDB constructs an instance of VersionedDB
-func newVersionedDB(couchInstance *couchdb.CouchInstance, dbName string) (*VersionedDB, error) {
+func newVersionedDB(couchInstance *couchdb.CouchInstance, redoLogger *redoLogger, dbName string) (*VersionedDB, error) {
 	// CreateCouchDatabase creates a CouchDB database object, as well as the underlying database if it does not exist
 	chainName := dbName
 	dbName = couchdb.ConstructMetadataDBName(dbName)
@@ -145,7 +159,7 @@ func newVersionedDB(couchInstance *couchdb.CouchInstance, dbName string) (*Versi
 		return nil, err
 	}
 	namespaceDBMap := make(map[string]*couchdb.CouchDatabase)
-	return &VersionedDB{
+	vdb := &VersionedDB{
 		couchInstance:      couchInstance,
 		metadataDB:         metadataDB,
 		chainName:          chainName,
@@ -154,7 +168,36 @@ func newVersionedDB(couchInstance *couchdb.CouchInstance, dbName string) (*Versi
 		lsccStateCache: &lsccStateCache{
 			cache: make(map[string]*statedb.VersionedValue),
 		},
-	}, nil
+		redoLogger: redoLogger,
+	}
+	logger.Debugf("chain [%s]: checking for redolog record", chainName)
+	redologRecord, err := redoLogger.load()
+	if err != nil {
+		return nil, err
+	}
+	savepoint, err := vdb.GetLatestSavePoint()
+	if err != nil {
+		return nil, err
+	}
+
+	// in normal circumstances, redolog is expected to be either equal to the last block
+	// committed to the statedb or one ahead (in the event of a crash). However, either of
+	// these or both could be nil on first time start (fresh start/rebuild)
+	if redologRecord == nil || savepoint == nil {
+		logger.Debugf("chain [%s]: No redo-record or save point present", chainName)
+		return vdb, nil
+	}
+
+	logger.Debugf("chain [%s]: save point = %#v, version of redolog record = %#v",
+		chainName, savepoint, redologRecord.Version)
+
+	if redologRecord.Version.BlockNum-savepoint.BlockNum == 1 {
+		logger.Debugf("chain [%s]: Re-applying last batch", chainName)
+		if err := vdb.applyUpdates(redologRecord.UpdateBatch, redologRecord.Version); err != nil {
+			return nil, err
+		}
+	}
+	return vdb, nil
 }
 
 // getNamespaceDBHandle gets the handle to a named chaincode database
@@ -512,6 +555,20 @@ func validateQueryMetadata(metadata map[string]interface{}) error {
 
 // ApplyUpdates implements method in VersionedDB interface
 func (vdb *VersionedDB) ApplyUpdates(updates *statedb.UpdateBatch, height *version.Height) error {
+	if height != nil {
+		// height is passed nil when commiting missing private data for previously committed blocks
+		r := &redoRecord{
+			UpdateBatch: updates,
+			Version:     height,
+		}
+		if err := vdb.redoLogger.persist(r); err != nil {
+			return err
+		}
+	}
+	return vdb.applyUpdates(updates, height)
+}
+
+func (vdb *VersionedDB) applyUpdates(updates *statedb.UpdateBatch, height *version.Height) error {
 	// TODO a note about https://jira.hyperledger.org/browse/FAB-8622
 	// the function `Apply update can be split into three functions. Each carrying out one of the following three stages`.
 	// The write lock is needed only for the stage 2.
@@ -540,7 +597,6 @@ func (vdb *VersionedDB) ApplyUpdates(updates *statedb.UpdateBatch, height *versi
 	for key, value := range lsccUpdates {
 		vdb.lsccStateCache.updateState(key, value)
 	}
-
 	return nil
 }
 

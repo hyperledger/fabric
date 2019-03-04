@@ -6,10 +6,12 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,19 +24,27 @@ type TestVDBEnv struct {
 // NewTestVDBEnv instantiates and new couch db backed TestVDB
 func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
 	t.Logf("Creating new TestVDBEnv")
-
+	dbPath := ledgerconfig.GetCouchdbRedologsPath()
+	assert.NoError(t, os.RemoveAll(dbPath))
 	dbProvider, _ := NewVersionedDBProvider(&disabled.Provider{})
 	testVDBEnv := &TestVDBEnv{t, dbProvider}
 	// No cleanup for new test environment.  Need to cleanup per test for each DB used in the test.
 	return testVDBEnv
 }
 
+func (env *TestVDBEnv) CloseAndReopen() {
+	env.DBProvider.Close()
+	dbProvider, _ := NewVersionedDBProvider(&disabled.Provider{})
+	env.DBProvider = dbProvider
+}
+
 // Cleanup drops the test couch databases and closes the db provider
 func (env *TestVDBEnv) Cleanup() {
 	env.t.Logf("Cleaningup TestVDBEnv")
 	CleanupDB(env.t, env.DBProvider)
-
+	dbPath := ledgerconfig.GetCouchdbRedologsPath()
 	env.DBProvider.Close()
+	os.RemoveAll(dbPath)
 }
 
 func CleanupDB(t testing.TB, dbProvider statedb.VersionedDBProvider) {

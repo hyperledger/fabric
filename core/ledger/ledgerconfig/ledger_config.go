@@ -29,6 +29,7 @@ const confStateleveldb = "stateLeveldb"
 const confHistoryLeveldb = "historyLeveldb"
 const confBookkeeper = "bookkeeper"
 const confConfigHistory = "configHistory"
+const couchdbRedoLogPath = "couchdbRedoLogs"
 const confChains = "chains"
 const confPvtdataStore = "pvtdataStore"
 const confTotalQueryLimit = "ledger.state.totalQueryLimit"
@@ -81,6 +82,10 @@ func GetInternalBookkeeperPath() string {
 // GetConfigHistoryPath returns the filesystem path that is used for maintaining history of chaincodes collection configurations
 func GetConfigHistoryPath() string {
 	return filepath.Join(GetRootPath(), confConfigHistory)
+}
+
+func GetCouchdbRedologsPath() string {
+	return filepath.Join(GetRootPath(), couchdbRedoLogPath)
 }
 
 // GetMaxBlockfileSize returns maximum size of the block file
