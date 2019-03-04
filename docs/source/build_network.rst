@@ -591,7 +591,7 @@ case, less than 250 characters long and match the regular expression
           the local path to the orderer's root cert, allowing us to verify the
           TLS handshake.
 
-This command returns a genesis block - ``<channel-ID.block>`` - which we will use to join the channel.
+This command returns a genesis block - ``<CHANNEL_NAME.block>`` - which we will use to join the channel.
 It contains the configuration information specified in ``channel.tx``  If you have not
 made any modifications to the default channel name, then the command will return you a
 proto titled ``mychannel.block``.
@@ -606,7 +606,7 @@ Now let's join ``peer0.org1.example.com`` to the channel.
 .. code:: bash
 
         # By default, this joins ``peer0.org1.example.com`` only
-        # the <channel-ID.block> was returned by the previous command
+        # the <CHANNEL_NAME.block> was returned by the previous command
         # if you have not modified the channel name, you will join with mychannel.block
         # if you have created a different channel name, then pass in the appropriately named block
 
@@ -894,7 +894,7 @@ Query
 
 Let's confirm that we can issue the query to Peer1 in Org2. We initialized the
 key ``a`` with a value of ``100`` and just removed ``10`` with our previous
-invocation. Therefore, a query against ``a`` should still return ``90``. 
+invocation. Therefore, a query against ``a`` should still return ``90``.
 
 peer1 in Org2 must first join the channel before it can respond to queries. The
 channel can be joined by issuing the following command:
