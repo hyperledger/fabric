@@ -29,12 +29,14 @@ var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollect
 
 //go:generate mockery -dir ../../api/identities/ -name IdentityDeserializer -case underscore -output mocks/
 //go:generate mockery -dir . -name StateBasedValidator -case underscore -output mocks/
+//go:generate mockery -dir ../../../../common/validation/statebased/ -name CollectionResources -case underscore -output mocks/
 
 // New creates a new instance of the default VSCC
 // Typically this will only be invoked once per peer
-func New(c Capabilities, s StateFetcher, d IdentityDeserializer, pe PolicyEvaluator) *Validator {
+func New(c Capabilities, s StateFetcher, d IdentityDeserializer, pe PolicyEvaluator, cor CollectionResources) *Validator {
 	vpmgr := &KeyLevelValidationParameterManagerImpl{StateFetcher: s}
-	sbv := NewKeyLevelValidator(pe, vpmgr)
+	eval := NewV20Evaluator(vpmgr, pe, cor, s)
+	sbv := NewKeyLevelValidator(eval, vpmgr)
 
 	return &Validator{
 		capabilities:        c,

@@ -44,6 +44,7 @@ func NewTxValidator(
 	sem validatorv14.Semaphore,
 	cr validatorv14.ChannelResources,
 	lr plugindispatcher.LifecycleResources,
+	cor plugindispatcher.CollectionResources,
 	sccp sysccprovider.SystemChaincodeProvider,
 	pm plugin.Mapper,
 	cpmg policies.ChannelPolicyManagerGetter,
@@ -51,6 +52,6 @@ func NewTxValidator(
 	return &routingValidator{
 		ChannelResources: cr,
 		validator_v14:    validatorv14.NewTxValidator(chainID, sem, cr, sccp, pm),
-		validator_v20:    validatorv20.NewTxValidator(chainID, sem, cr, cr.Ledger(), lr, sccp, pm, cpmg),
+		validator_v20:    validatorv20.NewTxValidator(chainID, sem, cr, cr.Ledger(), lr, cor, sccp, pm, cpmg),
 	}
 }

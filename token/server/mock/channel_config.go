@@ -2,12 +2,12 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/msp"
+	channelconfig "github.com/hyperledger/fabric/common/channelconfig"
+	configtx "github.com/hyperledger/fabric/common/configtx"
+	policies "github.com/hyperledger/fabric/common/policies"
+	msp "github.com/hyperledger/fabric/msp"
 )
 
 type ChannelConfig struct {

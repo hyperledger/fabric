@@ -2,18 +2,18 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/protos/token"
-	"github.com/hyperledger/fabric/token/server"
+	token "github.com/hyperledger/fabric/protos/token"
+	server "github.com/hyperledger/fabric/token/server"
 )
 
 type Marshaler struct {
-	MarshalCommandResponseStub        func(command []byte, responsePayload interface{}) (*token.SignedCommandResponse, error)
+	MarshalCommandResponseStub        func([]byte, interface{}) (*token.SignedCommandResponse, error)
 	marshalCommandResponseMutex       sync.RWMutex
 	marshalCommandResponseArgsForCall []struct {
-		command         []byte
-		responsePayload interface{}
+		arg1 []byte
+		arg2 interface{}
 	}
 	marshalCommandResponseReturns struct {
 		result1 *token.SignedCommandResponse
@@ -27,27 +27,28 @@ type Marshaler struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Marshaler) MarshalCommandResponse(command []byte, responsePayload interface{}) (*token.SignedCommandResponse, error) {
-	var commandCopy []byte
-	if command != nil {
-		commandCopy = make([]byte, len(command))
-		copy(commandCopy, command)
+func (fake *Marshaler) MarshalCommandResponse(arg1 []byte, arg2 interface{}) (*token.SignedCommandResponse, error) {
+	var arg1Copy []byte
+	if arg1 != nil {
+		arg1Copy = make([]byte, len(arg1))
+		copy(arg1Copy, arg1)
 	}
 	fake.marshalCommandResponseMutex.Lock()
 	ret, specificReturn := fake.marshalCommandResponseReturnsOnCall[len(fake.marshalCommandResponseArgsForCall)]
 	fake.marshalCommandResponseArgsForCall = append(fake.marshalCommandResponseArgsForCall, struct {
-		command         []byte
-		responsePayload interface{}
-	}{commandCopy, responsePayload})
-	fake.recordInvocation("MarshalCommandResponse", []interface{}{commandCopy, responsePayload})
+		arg1 []byte
+		arg2 interface{}
+	}{arg1Copy, arg2})
+	fake.recordInvocation("MarshalCommandResponse", []interface{}{arg1Copy, arg2})
 	fake.marshalCommandResponseMutex.Unlock()
 	if fake.MarshalCommandResponseStub != nil {
-		return fake.MarshalCommandResponseStub(command, responsePayload)
+		return fake.MarshalCommandResponseStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.marshalCommandResponseReturns.result1, fake.marshalCommandResponseReturns.result2
+	fakeReturns := fake.marshalCommandResponseReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Marshaler) MarshalCommandResponseCallCount() int {
@@ -56,13 +57,22 @@ func (fake *Marshaler) MarshalCommandResponseCallCount() int {
 	return len(fake.marshalCommandResponseArgsForCall)
 }
 
+func (fake *Marshaler) MarshalCommandResponseCalls(stub func([]byte, interface{}) (*token.SignedCommandResponse, error)) {
+	fake.marshalCommandResponseMutex.Lock()
+	defer fake.marshalCommandResponseMutex.Unlock()
+	fake.MarshalCommandResponseStub = stub
+}
+
 func (fake *Marshaler) MarshalCommandResponseArgsForCall(i int) ([]byte, interface{}) {
 	fake.marshalCommandResponseMutex.RLock()
 	defer fake.marshalCommandResponseMutex.RUnlock()
-	return fake.marshalCommandResponseArgsForCall[i].command, fake.marshalCommandResponseArgsForCall[i].responsePayload
+	argsForCall := fake.marshalCommandResponseArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Marshaler) MarshalCommandResponseReturns(result1 *token.SignedCommandResponse, result2 error) {
+	fake.marshalCommandResponseMutex.Lock()
+	defer fake.marshalCommandResponseMutex.Unlock()
 	fake.MarshalCommandResponseStub = nil
 	fake.marshalCommandResponseReturns = struct {
 		result1 *token.SignedCommandResponse
@@ -71,6 +81,8 @@ func (fake *Marshaler) MarshalCommandResponseReturns(result1 *token.SignedComman
 }
 
 func (fake *Marshaler) MarshalCommandResponseReturnsOnCall(i int, result1 *token.SignedCommandResponse, result2 error) {
+	fake.marshalCommandResponseMutex.Lock()
+	defer fake.marshalCommandResponseMutex.Unlock()
 	fake.MarshalCommandResponseStub = nil
 	if fake.marshalCommandResponseReturnsOnCall == nil {
 		fake.marshalCommandResponseReturnsOnCall = make(map[int]struct {

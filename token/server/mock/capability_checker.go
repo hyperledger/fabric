@@ -2,16 +2,16 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/token/server"
+	server "github.com/hyperledger/fabric/token/server"
 )
 
 type CapabilityChecker struct {
-	FabTokenStub        func(channelId string) (bool, error)
+	FabTokenStub        func(string) (bool, error)
 	fabTokenMutex       sync.RWMutex
 	fabTokenArgsForCall []struct {
-		channelId string
+		arg1 string
 	}
 	fabTokenReturns struct {
 		result1 bool
@@ -25,21 +25,22 @@ type CapabilityChecker struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *CapabilityChecker) FabToken(channelId string) (bool, error) {
+func (fake *CapabilityChecker) FabToken(arg1 string) (bool, error) {
 	fake.fabTokenMutex.Lock()
 	ret, specificReturn := fake.fabTokenReturnsOnCall[len(fake.fabTokenArgsForCall)]
 	fake.fabTokenArgsForCall = append(fake.fabTokenArgsForCall, struct {
-		channelId string
-	}{channelId})
-	fake.recordInvocation("FabToken", []interface{}{channelId})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("FabToken", []interface{}{arg1})
 	fake.fabTokenMutex.Unlock()
 	if fake.FabTokenStub != nil {
-		return fake.FabTokenStub(channelId)
+		return fake.FabTokenStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.fabTokenReturns.result1, fake.fabTokenReturns.result2
+	fakeReturns := fake.fabTokenReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *CapabilityChecker) FabTokenCallCount() int {
@@ -48,13 +49,22 @@ func (fake *CapabilityChecker) FabTokenCallCount() int {
 	return len(fake.fabTokenArgsForCall)
 }
 
+func (fake *CapabilityChecker) FabTokenCalls(stub func(string) (bool, error)) {
+	fake.fabTokenMutex.Lock()
+	defer fake.fabTokenMutex.Unlock()
+	fake.FabTokenStub = stub
+}
+
 func (fake *CapabilityChecker) FabTokenArgsForCall(i int) string {
 	fake.fabTokenMutex.RLock()
 	defer fake.fabTokenMutex.RUnlock()
-	return fake.fabTokenArgsForCall[i].channelId
+	argsForCall := fake.fabTokenArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *CapabilityChecker) FabTokenReturns(result1 bool, result2 error) {
+	fake.fabTokenMutex.Lock()
+	defer fake.fabTokenMutex.Unlock()
 	fake.FabTokenStub = nil
 	fake.fabTokenReturns = struct {
 		result1 bool
@@ -63,6 +73,8 @@ func (fake *CapabilityChecker) FabTokenReturns(result1 bool, result2 error) {
 }
 
 func (fake *CapabilityChecker) FabTokenReturnsOnCall(i int, result1 bool, result2 error) {
+	fake.fabTokenMutex.Lock()
+	defer fake.fabTokenMutex.Unlock()
 	fake.FabTokenStub = nil
 	if fake.fabTokenReturnsOnCall == nil {
 		fake.fabTokenReturnsOnCall = make(map[int]struct {

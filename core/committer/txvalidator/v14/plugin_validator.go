@@ -152,10 +152,21 @@ func (pbc *pluginsByChannel) createPluginIfAbsent(channel string) (validation.Pl
 func (pbc *pluginsByChannel) initPlugin(plugin validation.Plugin, channel string) (validation.Plugin, error) {
 	pe := &PolicyEvaluator{IdentityDeserializer: pbc.pv.IdentityDeserializer}
 	sf := &StateFetcherImpl{QueryExecutorCreator: pbc.pv}
-	if err := plugin.Init(pe, sf, pbc.pv.capabilities); err != nil {
+	if err := plugin.Init(pe, sf, pbc.pv.capabilities, &legacyCollectionInfoProvider{}); err != nil {
 		return nil, errors.Wrap(err, "failed initializing plugin")
 	}
 	return plugin, nil
+}
+
+// legacyCollectionInfoProvider implements a provider for collection
+// information for the legacy lifecycle. It will never be called but
+// it is necessary to have this dependency passed at init time to the
+// default plugin
+type legacyCollectionInfoProvider struct {
+}
+
+func (*legacyCollectionInfoProvider) CollectionValidationInfo(chaincodeName, collectionName string, state State) ([]byte, error, error) {
+	panic("programming error")
 }
 
 type PolicyEvaluator struct {

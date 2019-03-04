@@ -83,12 +83,15 @@ func newCustomValidationInstance(qec txvalidator.QueryExecutorCreator, c validat
 	sbvm.On("PostValidate", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	sbvm.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
+	mockCR := &mocks.CollectionResources{}
+	mockCR.On("CollectionValidationInfo", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil, nil)
+
 	sf := &txvalidator.StateFetcherImpl{QueryExecutorCreator: qec}
 	is := &mocks.IdentityDeserializer{}
 	pe := &txvalidator.PolicyEvaluator{
 		IdentityDeserializer: mspmgmt.GetManagerForChain(util.GetTestChainID()),
 	}
-	v := New(c, sf, is, pe)
+	v := New(c, sf, is, pe, mockCR)
 
 	v.stateBasedValidator = sbvm
 	return v
@@ -102,12 +105,15 @@ func TestStateBasedValidationFailure(t *testing.T) {
 	sbvm.On("PreValidate", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	sbvm.On("PostValidate", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
+	mockCR := &mocks.CollectionResources{}
+	mockCR.On("CollectionValidationInfo", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil, nil)
+
 	sf := &txvalidator.StateFetcherImpl{QueryExecutorCreator: qec}
 	is := &mocks.IdentityDeserializer{}
 	pe := &txvalidator.PolicyEvaluator{
 		IdentityDeserializer: mspmgmt.GetManagerForChain(util.GetTestChainID()),
 	}
-	v := New(&mc.MockApplicationCapabilities{}, sf, is, pe)
+	v := New(&mc.MockApplicationCapabilities{}, sf, is, pe, mockCR)
 	v.stateBasedValidator = sbvm
 
 	tx, err := createTx(false)

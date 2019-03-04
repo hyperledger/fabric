@@ -2,12 +2,24 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/token/server"
+	server "github.com/hyperledger/fabric/token/server"
 )
 
 type SignerIdentity struct {
+	SerializeStub        func() ([]byte, error)
+	serializeMutex       sync.RWMutex
+	serializeArgsForCall []struct {
+	}
+	serializeReturns struct {
+		result1 []byte
+		result2 error
+	}
+	serializeReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
 	SignStub        func([]byte) ([]byte, error)
 	signMutex       sync.RWMutex
 	signArgsForCall []struct {
@@ -21,19 +33,63 @@ type SignerIdentity struct {
 		result1 []byte
 		result2 error
 	}
-	SerializeStub        func() ([]byte, error)
-	serializeMutex       sync.RWMutex
-	serializeArgsForCall []struct{}
-	serializeReturns     struct {
-		result1 []byte
-		result2 error
-	}
-	serializeReturnsOnCall map[int]struct {
-		result1 []byte
-		result2 error
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *SignerIdentity) Serialize() ([]byte, error) {
+	fake.serializeMutex.Lock()
+	ret, specificReturn := fake.serializeReturnsOnCall[len(fake.serializeArgsForCall)]
+	fake.serializeArgsForCall = append(fake.serializeArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Serialize", []interface{}{})
+	fake.serializeMutex.Unlock()
+	if fake.SerializeStub != nil {
+		return fake.SerializeStub()
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.serializeReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *SignerIdentity) SerializeCallCount() int {
+	fake.serializeMutex.RLock()
+	defer fake.serializeMutex.RUnlock()
+	return len(fake.serializeArgsForCall)
+}
+
+func (fake *SignerIdentity) SerializeCalls(stub func() ([]byte, error)) {
+	fake.serializeMutex.Lock()
+	defer fake.serializeMutex.Unlock()
+	fake.SerializeStub = stub
+}
+
+func (fake *SignerIdentity) SerializeReturns(result1 []byte, result2 error) {
+	fake.serializeMutex.Lock()
+	defer fake.serializeMutex.Unlock()
+	fake.SerializeStub = nil
+	fake.serializeReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *SignerIdentity) SerializeReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.serializeMutex.Lock()
+	defer fake.serializeMutex.Unlock()
+	fake.SerializeStub = nil
+	if fake.serializeReturnsOnCall == nil {
+		fake.serializeReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.serializeReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *SignerIdentity) Sign(arg1 []byte) ([]byte, error) {
@@ -55,7 +111,8 @@ func (fake *SignerIdentity) Sign(arg1 []byte) ([]byte, error) {
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.signReturns.result1, fake.signReturns.result2
+	fakeReturns := fake.signReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *SignerIdentity) SignCallCount() int {
@@ -64,13 +121,22 @@ func (fake *SignerIdentity) SignCallCount() int {
 	return len(fake.signArgsForCall)
 }
 
+func (fake *SignerIdentity) SignCalls(stub func([]byte) ([]byte, error)) {
+	fake.signMutex.Lock()
+	defer fake.signMutex.Unlock()
+	fake.SignStub = stub
+}
+
 func (fake *SignerIdentity) SignArgsForCall(i int) []byte {
 	fake.signMutex.RLock()
 	defer fake.signMutex.RUnlock()
-	return fake.signArgsForCall[i].arg1
+	argsForCall := fake.signArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *SignerIdentity) SignReturns(result1 []byte, result2 error) {
+	fake.signMutex.Lock()
+	defer fake.signMutex.Unlock()
 	fake.SignStub = nil
 	fake.signReturns = struct {
 		result1 []byte
@@ -79,6 +145,8 @@ func (fake *SignerIdentity) SignReturns(result1 []byte, result2 error) {
 }
 
 func (fake *SignerIdentity) SignReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.signMutex.Lock()
+	defer fake.signMutex.Unlock()
 	fake.SignStub = nil
 	if fake.signReturnsOnCall == nil {
 		fake.signReturnsOnCall = make(map[int]struct {
@@ -92,56 +160,13 @@ func (fake *SignerIdentity) SignReturnsOnCall(i int, result1 []byte, result2 err
 	}{result1, result2}
 }
 
-func (fake *SignerIdentity) Serialize() ([]byte, error) {
-	fake.serializeMutex.Lock()
-	ret, specificReturn := fake.serializeReturnsOnCall[len(fake.serializeArgsForCall)]
-	fake.serializeArgsForCall = append(fake.serializeArgsForCall, struct{}{})
-	fake.recordInvocation("Serialize", []interface{}{})
-	fake.serializeMutex.Unlock()
-	if fake.SerializeStub != nil {
-		return fake.SerializeStub()
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.serializeReturns.result1, fake.serializeReturns.result2
-}
-
-func (fake *SignerIdentity) SerializeCallCount() int {
-	fake.serializeMutex.RLock()
-	defer fake.serializeMutex.RUnlock()
-	return len(fake.serializeArgsForCall)
-}
-
-func (fake *SignerIdentity) SerializeReturns(result1 []byte, result2 error) {
-	fake.SerializeStub = nil
-	fake.serializeReturns = struct {
-		result1 []byte
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *SignerIdentity) SerializeReturnsOnCall(i int, result1 []byte, result2 error) {
-	fake.SerializeStub = nil
-	if fake.serializeReturnsOnCall == nil {
-		fake.serializeReturnsOnCall = make(map[int]struct {
-			result1 []byte
-			result2 error
-		})
-	}
-	fake.serializeReturnsOnCall[i] = struct {
-		result1 []byte
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *SignerIdentity) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.signMutex.RLock()
-	defer fake.signMutex.RUnlock()
 	fake.serializeMutex.RLock()
 	defer fake.serializeMutex.RUnlock()
+	fake.signMutex.RLock()
+	defer fake.signMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

@@ -146,10 +146,14 @@ func (p *baseEvaluator) Evaluate(blockNum, txNum uint64, NsRwSets []*rwsetutil.N
 /**********************************************************************************************************/
 /**********************************************************************************************************/
 
+// RWSetPolicyEvaluatorFactory is a factory for policy evaluators
 type RWSetPolicyEvaluatorFactory interface {
+	// Evaluator returns a new policy evaluator
+	// given the supplied chaincode endorsement policy
 	Evaluator(ccEP []byte) RWSetPolicyEvaluator
 }
 
+// RWSetPolicyEvaluator provides means to evaluate transaction artefacts
 type RWSetPolicyEvaluator interface {
 	Evaluate(blockNum, txNum uint64, NsRwSets []*rwsetutil.NsRwSet, ns string, sd []*protoutil.SignedData) commonerrors.TxValidationError
 }
@@ -170,11 +174,11 @@ type KeyLevelValidator struct {
 	pef      RWSetPolicyEvaluatorFactory
 }
 
-func NewKeyLevelValidator(policySupport validation.PolicyEvaluator, vpmgr KeyLevelValidationParameterManager) *KeyLevelValidator {
+func NewKeyLevelValidator(evaluator RWSetPolicyEvaluatorFactory, vpmgr KeyLevelValidationParameterManager) *KeyLevelValidator {
 	return &KeyLevelValidator{
 		vpmgr:    vpmgr,
 		blockDep: blockDependency{},
-		pef:      NewV13Evaluator(policySupport, vpmgr),
+		pef:      evaluator,
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
@@ -101,10 +102,11 @@ func convertErrorTypeOrPanic(err error) error {
 
 func (v *DefaultValidation) Init(dependencies ...validation.Dependency) error {
 	var (
-		d  IdentityDeserializer
-		c  Capabilities
-		sf StateFetcher
-		pe PolicyEvaluator
+		d   IdentityDeserializer
+		c   Capabilities
+		sf  StateFetcher
+		pe  PolicyEvaluator
+		cor plugindispatcher.CollectionResources
 	)
 	for _, dep := range dependencies {
 		if deserializer, isIdentityDeserializer := dep.(IdentityDeserializer); isIdentityDeserializer {
@@ -119,6 +121,9 @@ func (v *DefaultValidation) Init(dependencies ...validation.Dependency) error {
 		if policyEvaluator, isPolicyFetcher := dep.(PolicyEvaluator); isPolicyFetcher {
 			pe = policyEvaluator
 		}
+		if collectionResources, isCollectionResources := dep.(plugindispatcher.CollectionResources); isCollectionResources {
+			cor = collectionResources
+		}
 	}
 	if sf == nil {
 		return errors.New("stateFetcher not passed in init")
@@ -132,11 +137,14 @@ func (v *DefaultValidation) Init(dependencies ...validation.Dependency) error {
 	if pe == nil {
 		return errors.New("policy fetcher not passed in init")
 	}
+	if cor == nil {
+		return errors.New("collection resources not passed in init")
+	}
 
 	v.Capabilities = c
 	v.TxValidatorV1_2 = v12.New(c, sf, d, pe)
 	v.TxValidatorV1_3 = v13.New(c, sf, d, pe)
-	v.TxValidatorV2_0 = v20.New(c, sf, d, pe)
+	v.TxValidatorV2_0 = v20.New(c, sf, d, pe, cor)
 
 	return nil
 }
