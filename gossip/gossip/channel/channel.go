@@ -973,7 +973,9 @@ func (cache *stateInfoCache) Stop() {
 // and a channel name
 func GenerateMAC(pkiID common.PKIidType, channelID common.ChainID) []byte {
 	// Hash is computed on (PKI-ID || channel ID)
-	preImage := append([]byte(pkiID), []byte(channelID)...)
+	var preImage []byte
+	preImage = append(preImage, []byte(pkiID)...)
+	preImage = append(preImage, []byte(channelID)...)
 	return common_utils.ComputeSHA256(preImage)
 }
 
