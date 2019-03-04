@@ -1454,6 +1454,11 @@ var _ = Describe("Chain", func() {
 			)
 
 			BeforeEach(func() {
+				network.exec(func(c *chain) {
+					c.opts.EvictionSuspicion = time.Millisecond * 100
+					c.opts.LeaderCheckInterval = time.Millisecond * 100
+				})
+
 				network.init()
 				network.start()
 				network.elect(1)
@@ -1626,8 +1631,7 @@ var _ = Describe("Chain", func() {
 					})
 				})
 
-				// TODO re-enable this test as part of FAB-14413
-				PIt("adding node to the cluster of 2/3 available nodes", func() {
+				It("adding node to the cluster of 2/3 available nodes", func() {
 					// Scenario: disconnect one of existing nodes from the replica set
 					// add new node, reconnect the old one and choose newly added as a
 					// leader, check whenever disconnected node will get new configuration
@@ -1654,12 +1658,12 @@ var _ = Describe("Chain", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta)
-					c4.init()
-
 					// if we join a node to existing network, it MUST already obtained blocks
 					// till the config block that adds this node to cluster.
 					c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
 					c4.support.WriteConfigBlock(c1.support.WriteConfigBlockArgsForCall(0))
+
+					c4.init()
 
 					network.addChain(c4)
 					c4.start()
@@ -1677,6 +1681,9 @@ var _ = Describe("Chain", func() {
 
 					// elect newly added node to be the leader
 					network.elect(4)
+
+					c2.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow})}, 0)
+					Eventually(c2.observe, LongEventualTimeout).Should(Receive(StateEqual(0, raft.StateCandidate)))
 
 					// connecting node back again, should be able to catch up and get configuration update
 					network.connect(2)

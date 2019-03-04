@@ -490,6 +490,7 @@ type evictionSuspector struct {
 	amIInChannel               cluster.SelfMembershipPredicate
 	halt                       func()
 	writeBlock                 func(block *common.Block, metadata []byte)
+	triggerCatchUp             func(sn *raftpb.Snapshot)
 	halted                     bool
 }
 
@@ -525,6 +526,8 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 			details = fmt.Sprintf(": %s", err.Error())
 		}
 		es.logger.Infof("Cannot confirm our own eviction from the channel%s", details)
+
+		es.triggerCatchUp(&raftpb.Snapshot{Data: protoutil.MarshalOrPanic(lastConfigBlock)})
 		return
 	}
 
