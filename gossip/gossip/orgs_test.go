@@ -429,12 +429,12 @@ func TestConfidentiality(t *testing.T) {
 				for _, p := range peers {
 					p.JoinChan(joinChanMsgsByChan[ch], common.ChainID(ch))
 					p.UpdateLedgerHeight(1, common.ChainID(ch))
-					go func(p Gossip) {
+					go func(p Gossip, ch string) {
 						for i := 0; i < 5; i++ {
 							time.Sleep(time.Second)
 							p.UpdateLedgerHeight(1, common.ChainID(ch))
 						}
-					}(p)
+					}(p, ch)
 				}
 			}
 		}
