@@ -21,6 +21,90 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+var _ = Describe("ChaincodeParameters", func() {
+	var (
+		lhs, rhs *lifecycle.ChaincodeParameters
+	)
+
+	BeforeEach(func() {
+		lhs = &lifecycle.ChaincodeParameters{
+			EndorsementInfo: &lb.ChaincodeEndorsementInfo{},
+			ValidationInfo:  &lb.ChaincodeValidationInfo{},
+			Collections:     &cb.CollectionConfigPackage{},
+		}
+
+		rhs = &lifecycle.ChaincodeParameters{
+			EndorsementInfo: &lb.ChaincodeEndorsementInfo{},
+			ValidationInfo:  &lb.ChaincodeValidationInfo{},
+			Collections:     &cb.CollectionConfigPackage{},
+		}
+	})
+
+	Describe("Equal", func() {
+		It("returns nil when the parameters match", func() {
+			Expect(lhs.Equal(rhs)).NotTo(HaveOccurred())
+		})
+
+		Context("when the EndorsementPlugin differs from the current definition", func() {
+			BeforeEach(func() {
+				rhs.EndorsementInfo.EndorsementPlugin = "different"
+			})
+
+			It("returns an error", func() {
+				Expect(lhs.Equal(rhs)).To(MatchError("EndorsementPlugin '' != 'different'"))
+			})
+		})
+
+		Context("when the ValidationPlugin differs from the current definition", func() {
+			BeforeEach(func() {
+				rhs.ValidationInfo.ValidationPlugin = "different"
+			})
+
+			It("returns an error", func() {
+				Expect(lhs.Equal(rhs)).To(MatchError("ValidationPlugin '' != 'different'"))
+			})
+		})
+
+		Context("when the ValidationParameter differs from the current definition", func() {
+			BeforeEach(func() {
+				rhs.ValidationInfo.ValidationParameter = []byte("different")
+			})
+
+			It("returns an error", func() {
+				Expect(lhs.Equal(rhs)).To(MatchError("ValidationParameter '' != '646966666572656e74'"))
+			})
+		})
+
+		Context("when the Hash differs from the current definition", func() {
+			BeforeEach(func() {
+				rhs.EndorsementInfo.Id = []byte("different")
+			})
+
+			It("returns an error", func() {
+				Expect(lhs.Equal(rhs)).To(MatchError("Hash '' != '646966666572656e74'"))
+			})
+		})
+
+		Context("when the Collections differ from the current definition", func() {
+			BeforeEach(func() {
+				rhs.Collections = &cb.CollectionConfigPackage{
+					Config: []*cb.CollectionConfig{
+						{
+							Payload: &cb.CollectionConfig_StaticCollectionConfig{
+								StaticCollectionConfig: &cb.StaticCollectionConfig{Name: "foo"},
+							},
+						},
+					},
+				}
+			})
+
+			It("returns an error", func() {
+				Expect(lhs.Equal(rhs)).To(MatchError("Collections do not match"))
+			})
+		})
+	})
+})
+
 var _ = Describe("Lifecycle", func() {
 	var (
 		l           *lifecycle.Lifecycle
@@ -156,6 +240,7 @@ var _ = Describe("Lifecycle", func() {
 					Version: "version",
 				},
 				ValidationInfo: &lb.ChaincodeValidationInfo{},
+				Collections:    &cb.CollectionConfigPackage{},
 			}
 
 			fakePublicState = &mock.ReadWritableState{}
@@ -273,70 +358,7 @@ var _ = Describe("Lifecycle", func() {
 
 				It("returns an error", func() {
 					err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError("attempted to define the current sequence (5) for namespace cc-name, but Version 'other-version' != 'version'"))
-				})
-			})
-
-			Context("when the EndorsementPlugin differs from the current definition", func() {
-				BeforeEach(func() {
-					testDefinition.EndorsementInfo.EndorsementPlugin = "different"
-				})
-
-				It("returns an error", func() {
-					err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError("attempted to define the current sequence (5) for namespace cc-name, but EndorsementPlugin '' != 'different'"))
-				})
-			})
-
-			Context("when the ValidationPlugin differs from the current definition", func() {
-				BeforeEach(func() {
-					testDefinition.ValidationInfo.ValidationPlugin = "different"
-				})
-
-				It("returns an error", func() {
-					err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError("attempted to define the current sequence (5) for namespace cc-name, but ValidationPlugin '' != 'different'"))
-				})
-			})
-
-			Context("when the ValidationParameter differs from the current definition", func() {
-				BeforeEach(func() {
-					testDefinition.ValidationInfo.ValidationParameter = []byte("different")
-				})
-
-				It("returns an error", func() {
-					err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError("attempted to define the current sequence (5) for namespace cc-name, but ValidationParameter '' != '646966666572656e74'"))
-				})
-			})
-
-			Context("when the Hash differs from the current definition", func() {
-				BeforeEach(func() {
-					testDefinition.EndorsementInfo.Id = []byte("different")
-				})
-
-				It("returns an error", func() {
-					err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError("attempted to define the current sequence (5) for namespace cc-name, but Hash '' != '646966666572656e74'"))
-				})
-			})
-
-			Context("when the Collections differ from the current definition", func() {
-				BeforeEach(func() {
-					testDefinition.Collections = &cb.CollectionConfigPackage{
-						Config: []*cb.CollectionConfig{
-							{
-								Payload: &cb.CollectionConfig_StaticCollectionConfig{
-									StaticCollectionConfig: &cb.StaticCollectionConfig{Name: "foo"},
-								},
-							},
-						},
-					}
-				})
-
-				It("returns an error", func() {
-					err := l.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError("attempted to define the current sequence (5) for namespace cc-name, but Collections do not match"))
+					Expect(err).To(MatchError("attempted to define the current sequence (%d) for namespace %s, but: Version 'other-version' != 'version'"))
 				})
 			})
 		})
