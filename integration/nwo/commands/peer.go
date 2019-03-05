@@ -196,6 +196,59 @@ func (c ChaincodeInstall) Args() []string {
 	return args
 }
 
+type ChaincodeApproveForMyOrg struct {
+	ChannelID         string
+	Orderer           string
+	Name              string
+	Version           string
+	Hash              string
+	Sequence          string
+	EndorsementPlugin string
+	ValidationPlugin  string
+	Policy            string
+	InitRequired      bool
+	CollectionsConfig string
+	PeerAddresses     []string
+	WaitForEvent      bool
+}
+
+func (c ChaincodeApproveForMyOrg) SessionName() string {
+	return "peer-chaincode-approveformyorg"
+}
+
+func (c ChaincodeApproveForMyOrg) Args() []string {
+	args := []string{
+		"chaincode", "approveformyorg",
+		"--channelID", c.ChannelID,
+		"--orderer", c.Orderer,
+		"--name", c.Name,
+		"--version", c.Version,
+		"--hash", c.Hash,
+		"--sequence", c.Sequence,
+		"--escc", c.EndorsementPlugin,
+		"--vscc", c.ValidationPlugin,
+		"--policy", c.Policy,
+	}
+
+	if c.InitRequired {
+		args = append(args, "--init-required")
+	}
+
+	if c.CollectionsConfig != "" {
+		args = append(args, "--collections-config", c.CollectionsConfig)
+	}
+
+	for _, p := range c.PeerAddresses {
+		args = append(args, "--peerAddresses", p)
+	}
+
+	if c.WaitForEvent {
+		args = append(args, "--waitForEvent")
+	}
+
+	return args
+}
+
 type ChaincodeInstantiate struct {
 	ChannelID         string
 	Orderer           string

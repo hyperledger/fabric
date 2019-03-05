@@ -97,18 +97,23 @@ var _ = Describe("Network", func() {
 			// peer := network.Peer("org1", "peer2")
 
 			chaincode := nwo.Chaincode{
-				Name:        "mycc",
-				Version:     "0.0",
-				Path:        "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				Lang:        "golang",
-				PackageFile: filepath.Join(tempDir, "simplecc.tar.gz"),
-				Ctor:        `{"Args":["init","a","100","b","200"]}`,
-				Policy:      `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+				Name:              "mycc",
+				Version:           "0.0",
+				Path:              "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+				Lang:              "golang",
+				PackageFile:       filepath.Join(tempDir, "simplecc.tar.gz"),
+				Ctor:              `{"Args":["init","a","100","b","200"]}`,
+				EndorsementPlugin: "escc",
+				ValidationPlugin:  "vscc",
+				Policy:            `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+				Sequence:          "1",
+				InitRequired:      true,
 			}
 
 			network.CreateAndJoinChannels(orderer)
-			nwo.DeployChaincodePlusLifecycle(network, "testchannel", orderer, chaincode)
-			// TODO: uncomment once _lifecycle Define functionality is available
+			nwo.EnableV2_0Capabilities(network, "testchannel", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
+			// TODO uncomment once _lifecycle Commit functionality is fully functional
 			// server-side and has been added to nwo
 			// RunQueryInvokeQuery(network, orderer, peer)
 		})
@@ -240,16 +245,26 @@ var _ = Describe("Network", func() {
 			testPeers := network.PeersWithChannel("testchannel")
 			network.CreateChannel("testchannel", orderer, testPeers[0])
 			network.JoinChannel("testchannel", orderer, testPeers...)
+			nwo.EnableV2_0Capabilities(network, "testchannel", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
 
 			chaincode := nwo.Chaincode{
-				Name:        "mycc",
-				Version:     "0.0",
-				Path:        "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				Lang:        "golang",
-				PackageFile: filepath.Join(tempDir, "simplecc.tar.gz"),
+				Name:              "mycc",
+				Version:           "0.0",
+				Path:              "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+				Lang:              "golang",
+				PackageFile:       filepath.Join(tempDir, "simplecc.tar.gz"),
+				Ctor:              `{"Args":["init","a","100","b","200"]}`,
+				EndorsementPlugin: "escc",
+				ValidationPlugin:  "vscc",
+				Policy:            `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+				Sequence:          "1",
+				InitRequired:      true,
 			}
-			nwo.PackageChaincodePlusLifecycle(network, chaincode, testPeers[0])
-			nwo.InstallChaincodePlusLifecycle(network, chaincode, testPeers...)
+			nwo.PackageChaincodeNewLifecycle(network, chaincode, testPeers[0])
+			nwo.InstallChaincodeNewLifecycle(network, chaincode, testPeers...)
+			for _, org := range network.PeerOrgs() {
+				nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersInOrg(org.Name)...)
+			}
 		})
 	})
 })

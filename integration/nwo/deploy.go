@@ -7,11 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package nwo
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -26,15 +31,22 @@ type Chaincode struct {
 	Lang              string
 	CollectionsConfig string // optional
 	PackageFile       string
+	Hash              string
+	Sequence          string
+	EndorsementPlugin string
+	ValidationPlugin  string
+	InitRequired      bool
 }
 
-// DeployChaincodePlusLifecycle is a helper that will install chaincode to all
-// peers that are connected to the specified channel, instantiate the chaincode
-// on one of the peers, and wait for the instantiation to complete on all of
-// the peers. It uses the _lifecycle implementation.
-// TODO: add _lifecycle DefineChaincode functionality once it has been
-// be implemented server-side
-func DeployChaincodePlusLifecycle(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
+// DeployChaincodeNewLifecycle is a helper that will install chaincode to all
+// peers that are connected to the specified channel, approve the chaincode
+// on one of the peers of each organization in the network, commit the chaincode
+// definition on the channel using one of the peers, and wait for the chaincode
+// commit to complete on all of the peers. It uses the _lifecycle implementation.
+// NOTE V2_0 capabilities must be enabled for this functionality to work.
+// TODO add _lifecycle CommitChaincode functionality once it has been
+// implemented server-side
+func DeployChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
 	if len(peers) == 0 {
 		peers = n.PeersWithChannel(channel)
 	}
@@ -52,13 +64,18 @@ func DeployChaincodePlusLifecycle(n *Network, channel string, orderer *Orderer, 
 	}
 
 	// package using the first peer
-	PackageChaincodePlusLifecycle(n, chaincode, peers[0])
+	PackageChaincodeNewLifecycle(n, chaincode, peers[0])
 
 	// install on all peers
-	InstallChaincodePlusLifecycle(n, chaincode, peers...)
+	InstallChaincodeNewLifecycle(n, chaincode, peers...)
 
-	// define using the first peer
-	// DefineChaincode(n, channel, orderer, chaincode, peers[0], peers...)
+	// approve for each org
+	for _, org := range n.PeerOrgs() {
+		ApproveChaincodeForMyOrgNewLifecycle(n, channel, orderer, chaincode, n.PeersInOrg(org.Name)...)
+	}
+
+	// commit using the first peer
+	// CommitChaincode(n, channel, orderer, chaincode, peers[0], peers...)
 }
 
 // DeployChaincode is a helper that will install chaincode to all peers
@@ -96,7 +113,7 @@ func DeployChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 	InstantiateChaincode(n, channel, orderer, chaincode, peers[0], peers...)
 }
 
-func PackageChaincodePlusLifecycle(n *Network, chaincode Chaincode, peer *Peer) {
+func PackageChaincodeNewLifecycle(n *Network, chaincode Chaincode, peer *Peer) {
 	sess, err := n.PeerAdminSession(peer, commands.ChaincodePackagePlusLifecycle{
 		Path:       chaincode.Path,
 		Lang:       chaincode.Lang,
@@ -118,7 +135,7 @@ func PackageChaincode(n *Network, chaincode Chaincode, peer *Peer) {
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 }
 
-func InstallChaincodePlusLifecycle(n *Network, chaincode Chaincode, peers ...*Peer) {
+func InstallChaincodeNewLifecycle(n *Network, chaincode Chaincode, peers ...*Peer) {
 	for _, p := range peers {
 		sess, err := n.PeerAdminSession(p, commands.ChaincodeInstallPlusLifecycle{
 			Name:        chaincode.Name,
@@ -131,7 +148,7 @@ func InstallChaincodePlusLifecycle(n *Network, chaincode Chaincode, peers ...*Pe
 		sess, err = n.PeerAdminSession(p, commands.ChaincodeListInstalledPlusLifecycle{})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-		Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", chaincode.Name, chaincode.Version)))
+		Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s, Hash:", chaincode.Name, chaincode.Version)))
 	}
 }
 
@@ -152,6 +169,41 @@ func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 		Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", chaincode.Name, chaincode.Version)))
 	}
+}
+
+func ApproveChaincodeForMyOrgNewLifecycle(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
+	if chaincode.Hash == "" {
+		pkgBytes, err := ioutil.ReadFile(chaincode.PackageFile)
+		Expect(err).NotTo(HaveOccurred())
+		hash := util.ComputeSHA256(pkgBytes)
+		chaincode.Hash = hex.EncodeToString(hash)
+	}
+
+	// TODO Figure out why private data is unable to be fetched by the
+	// other peers for the org. For now, we will have each peer in the
+	// org endorse the proposal.
+	peerAddresses := []string{}
+	for _, p := range peers {
+		peerAddresses = append(peerAddresses, n.PeerAddress(p, ListenPort))
+	}
+
+	sess, err := n.PeerAdminSession(peers[0], commands.ChaincodeApproveForMyOrg{
+		ChannelID:         channel,
+		Orderer:           n.OrdererAddress(orderer, ListenPort),
+		Name:              chaincode.Name,
+		Version:           chaincode.Version,
+		Hash:              chaincode.Hash,
+		Sequence:          chaincode.Sequence,
+		EndorsementPlugin: chaincode.EndorsementPlugin,
+		ValidationPlugin:  chaincode.ValidationPlugin,
+		Policy:            chaincode.Policy,
+		InitRequired:      chaincode.InitRequired,
+		PeerAddresses:     peerAddresses,
+		WaitForEvent:      true,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
 }
 
 func InstantiateChaincode(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peer *Peer, checkPeers ...*Peer) {
@@ -215,4 +267,31 @@ func listInstantiated(n *Network, peer *Peer, channel string) func() *gbytes.Buf
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 		return sess.Buffer()
 	}
+}
+
+// EnableV2_0Capabilities enables the V2_0 capabilities for a running network.
+// It generates the config update using the first peer, signs the configuration
+// with the subsequent peers, and then submits the config update using the
+// first peer.
+func EnableV2_0Capabilities(network *Network, channel string, orderer *Orderer, peers ...*Peer) {
+	if len(peers) == 0 {
+		return
+	}
+
+	config := GetConfig(network, peers[0], orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	// include the V2_0 capability in the config
+	updatedConfig.ChannelGroup.Groups["Application"].Values["Capabilities"] = &common.ConfigValue{
+		ModPolicy: "Admins",
+		Value: protoutil.MarshalOrPanic(
+			&common.Capabilities{
+				Capabilities: map[string]*common.Capability{
+					"V2_0": {},
+				},
+			},
+		),
+	}
+
+	UpdateConfig(network, orderer, channel, config, updatedConfig, false, peers[0], peers...)
 }
