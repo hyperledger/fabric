@@ -57,31 +57,10 @@ General:
         ClientCertificate:
         # ClientPrivateKey governs the file location of the private key of the client TLS certificate.
         ClientPrivateKey:
-        # DialTimeout governs the maximum duration of time after which connection
-        # attempts are considered as failed.
-        DialTimeout: 5s
-        # RPCTimeout governs the maximum duration of time after which RPC
-        # attempts are considered as failed.
-        RPCTimeout: 7s
         # RootCAs governs the file locations of certificates of the Certificate Authorities
         # which authorize connections to remote ordering service nodes.
         RootCAs:
           - tls/ca.crt
-        # ReplicationBuffersSize is the maximum number of bytes that can be allocated
-        # for each in-memory buffer used for block replication from other cluster nodes.
-        # Each channel has its own memory buffer.
-        ReplicationBufferSize: 20971520 # 20MB
-        # PullTimeout is the maximum duration the ordering node will wait for a block
-        # to be received before it aborts.
-        ReplicationPullTimeout: 5s
-        # ReplicationRetryTimeout is the maximum duration the ordering node will wait
-        # between 2 consecutive attempts.
-        ReplicationRetryTimeout: 5s
-        # ReplicationBackgroundRefreshInterval is the time between 2 consecutive attempts
-        # to replicate existing chains that this node was added to, or chains
-        # that this node failed to replicate in the past.
-        ReplicationBackgroundRefreshInterval: 5m
-
         # The below 4 properties should be either set together, or be unset together.
         # If they are set, then the orderer node uses a separate listener for intra-cluster
         # communication. If they are unset, then the general orderer listener is used.
@@ -97,7 +76,6 @@ General:
         ServerCertificate:
         # ServerPrivateKey defines the file location of the private key of the TLS certificate.
         ServerPrivateKey:
-
     # Genesis method: The method by which the genesis block for the orderer
     # system channel is specified. Available options are "provisional", "file":
     #  - provisional: Utilizes a genesis profile, specified by GenesisProfile,
@@ -395,10 +373,3 @@ Consensus:
     # SnapDir specifies the location at which snapshots for etcd/raft are
     # stored. Each channel will have its own subdir named after channel ID.
     SnapDir: /var/hyperledger/production/orderer/etcdraft/snapshot
-    # EvictionSuspicion is the cumulative period of time of channel eviction suspicion
-    # that triggers the node to pull blocks from other nodes and see if it has been
-    # evicted from the channel in order to confirm its suspicion.
-    # If the suspicion is confirmed (the inspected block doesn't contain the node's
-    # TLS certificate) - the node halts its operation for that channel.
-    # A node suspects its channel eviction when it doesn't know about any elected leader in the channel
-    EvictionSuspicion: 10m
