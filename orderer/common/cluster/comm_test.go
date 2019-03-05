@@ -1220,8 +1220,8 @@ func TestMetrics(t *testing.T) {
 				assert.NoError(t, err)
 
 				stream := assertEventualEstablishStream(t, rm)
-				// Send 1 too many messages while the server side is not reading from the stream
-				for i := 0; i < node2.c.SendBufferSize+1; i++ {
+				// Send too many messages while the server side is not reading from the stream
+				for i := 0; i < node2.c.SendBufferSize+2; i++ {
 					stream.Send(testConsensusReq)
 				}
 
