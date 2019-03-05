@@ -88,20 +88,19 @@ func (c ChannelFetch) Args() []string {
 	return args
 }
 
-type ChaincodePackagePlusLifecycle struct {
+type ChaincodePackageLifecycle struct {
 	Path       string
 	Lang       string
 	OutputFile string
 }
 
-func (c ChaincodePackagePlusLifecycle) SessionName() string {
-	return "peer-chaincode-package"
+func (c ChaincodePackageLifecycle) SessionName() string {
+	return "peer-lifecycle-chaincode-package"
 }
 
-func (c ChaincodePackagePlusLifecycle) Args() []string {
+func (c ChaincodePackageLifecycle) Args() []string {
 	args := []string{
-		"chaincode", "package",
-		"--newLifecycle",
+		"lifecycle", "chaincode", "package",
 		"--path", c.Path,
 		"--lang", c.Lang,
 		c.OutputFile,
@@ -138,20 +137,19 @@ func (c ChaincodePackage) Args() []string {
 	return args
 }
 
-type ChaincodeInstallPlusLifecycle struct {
+type ChaincodeInstallLifecycle struct {
 	Name        string
 	Version     string
 	PackageFile string
 }
 
-func (c ChaincodeInstallPlusLifecycle) SessionName() string {
-	return "peer-chaincode-install"
+func (c ChaincodeInstallLifecycle) SessionName() string {
+	return "peer-lifecycle-chaincode-install"
 }
 
-func (c ChaincodeInstallPlusLifecycle) Args() []string {
+func (c ChaincodeInstallLifecycle) Args() []string {
 	args := []string{
-		"chaincode", "install",
-		"--newLifecycle",
+		"lifecycle", "chaincode", "install",
 		"--name", c.Name,
 		"--version", c.Version,
 		c.PackageFile,
@@ -196,7 +194,7 @@ func (c ChaincodeInstall) Args() []string {
 	return args
 }
 
-type ChaincodeApproveForMyOrg struct {
+type ChaincodeApproveForMyOrgLifecycle struct {
 	ChannelID         string
 	Orderer           string
 	Name              string
@@ -212,13 +210,13 @@ type ChaincodeApproveForMyOrg struct {
 	WaitForEvent      bool
 }
 
-func (c ChaincodeApproveForMyOrg) SessionName() string {
-	return "peer-chaincode-approveformyorg"
+func (c ChaincodeApproveForMyOrgLifecycle) SessionName() string {
+	return "peer-lifecycle-chaincode-approveformyorg"
 }
 
-func (c ChaincodeApproveForMyOrg) Args() []string {
+func (c ChaincodeApproveForMyOrgLifecycle) Args() []string {
 	args := []string{
-		"chaincode", "approveformyorg",
+		"lifecycle", "chaincode", "approveformyorg",
 		"--channelID", c.ChannelID,
 		"--orderer", c.Orderer,
 		"--name", c.Name,
@@ -249,7 +247,7 @@ func (c ChaincodeApproveForMyOrg) Args() []string {
 	return args
 }
 
-type ChaincodeCommit struct {
+type ChaincodeCommitLifecycle struct {
 	ChannelID         string
 	Orderer           string
 	Name              string
@@ -264,13 +262,13 @@ type ChaincodeCommit struct {
 	WaitForEvent      bool
 }
 
-func (c ChaincodeCommit) SessionName() string {
-	return "peer-chaincode-commit"
+func (c ChaincodeCommitLifecycle) SessionName() string {
+	return "peer-lifecycle-chaincode-commit"
 }
 
-func (c ChaincodeCommit) Args() []string {
+func (c ChaincodeCommitLifecycle) Args() []string {
 	args := []string{
-		"chaincode", "commit",
+		"lifecycle", "chaincode", "commit",
 		"--channelID", c.ChannelID,
 		"--orderer", c.Orderer,
 		"--name", c.Name,
@@ -329,15 +327,15 @@ func (c ChaincodeInstantiate) Args() []string {
 	return args
 }
 
-type ChaincodeListInstalledPlusLifecycle struct{}
+type ChaincodeQueryInstalledLifecycle struct{}
 
-func (c ChaincodeListInstalledPlusLifecycle) SessionName() string {
-	return "peer-chaincode-list-installed-_lifecycle"
+func (c ChaincodeQueryInstalledLifecycle) SessionName() string {
+	return "peer-lifecycle-chaincode-queryinstalled"
 }
 
-func (c ChaincodeListInstalledPlusLifecycle) Args() []string {
+func (c ChaincodeQueryInstalledLifecycle) Args() []string {
 	return []string{
-		"chaincode", "list", "--installed", "--newLifecycle",
+		"lifecycle", "chaincode", "queryinstalled",
 	}
 }
 
@@ -353,18 +351,18 @@ func (c ChaincodeListInstalled) Args() []string {
 	}
 }
 
-type ChaincodeListCommitted struct {
+type ChaincodeListCommittedLifecycle struct {
 	ChannelID string
 	Name      string
 }
 
-func (c ChaincodeListCommitted) SessionName() string {
-	return "peer-chaincode-list-committed"
+func (c ChaincodeListCommittedLifecycle) SessionName() string {
+	return "peer-lifecycle-chaincode-querycommitted"
 }
 
-func (c ChaincodeListCommitted) Args() []string {
+func (c ChaincodeListCommittedLifecycle) Args() []string {
 	return []string{
-		"chaincode", "list", "--committed",
+		"lifecycle", "chaincode", "querycommitted",
 		"--channelID", c.ChannelID,
 		"--name", c.Name,
 	}

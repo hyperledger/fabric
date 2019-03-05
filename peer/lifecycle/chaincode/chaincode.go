@@ -18,11 +18,10 @@ import (
 )
 
 const (
-	chainFuncName = "chaincode"
-	chainCmdDes   = "Operate a chaincode: install|instantiate|invoke|package|query|signpackage|upgrade|list."
+	lifecycleName = "_lifecycle"
 )
 
-var logger = flogging.MustGetLogger("chaincodeCmd")
+var logger = flogging.MustGetLogger("cli.lifecycle.chaincode")
 
 // XXX This is a terrible singleton hack, however
 // it simply making a latent dependency explicit.
@@ -32,22 +31,18 @@ var platformRegistry = platforms.NewRegistry(platforms.SupportedPlatforms...)
 
 func addFlags(cmd *cobra.Command) {
 	common.AddOrdererFlags(cmd)
-	flags := cmd.PersistentFlags()
-	flags.StringVarP(&transient, "transient", "", "", "Transient map of arguments in JSON encoding")
 }
 
 // Cmd returns the cobra command for Chaincode
-func Cmd(cf *ChaincodeCmdFactory) *cobra.Command {
+func Cmd(cf *CmdFactory) *cobra.Command {
 	addFlags(chaincodeCmd)
 
+	chaincodeCmd.AddCommand(packageCmd(cf, nil))
 	chaincodeCmd.AddCommand(installCmd(cf, nil))
-	chaincodeCmd.AddCommand(instantiateCmd(cf))
-	chaincodeCmd.AddCommand(invokeCmd(cf))
-	chaincodeCmd.AddCommand(packageCmd(cf, nil, nil))
-	chaincodeCmd.AddCommand(queryCmd(cf))
-	chaincodeCmd.AddCommand(signpackageCmd(cf))
-	chaincodeCmd.AddCommand(upgradeCmd(cf))
-	chaincodeCmd.AddCommand(listCmd(cf))
+	chaincodeCmd.AddCommand(queryInstalledCmd(cf))
+	chaincodeCmd.AddCommand(approveForMyOrgCmd(cf, nil))
+	chaincodeCmd.AddCommand(commitCmd(cf, nil))
+	chaincodeCmd.AddCommand(queryCommittedCmd(cf))
 
 	return chaincodeCmd
 }
@@ -55,19 +50,14 @@ func Cmd(cf *ChaincodeCmdFactory) *cobra.Command {
 // Chaincode-related variables.
 var (
 	chaincodeLang         string
-	chaincodeCtorJSON     string
 	chaincodePath         string
 	chaincodeName         string
-	chaincodeUsr          string // Not used
-	chaincodeQueryRaw     bool
-	chaincodeQueryHex     bool
 	channelID             string
 	chaincodeVersion      string
 	policy                string
 	escc                  string
 	vscc                  string
 	policyMarshalled      []byte
-	transient             string
 	collectionsConfigFile string
 	collectionConfigBytes []byte
 	peerAddresses         []string
@@ -75,12 +65,15 @@ var (
 	connectionProfile     string
 	waitForEvent          bool
 	waitForEventTimeout   time.Duration
+	hash                  []byte
+	sequence              int
+	initRequired          bool
 )
 
 var chaincodeCmd = &cobra.Command{
-	Use:   chainFuncName,
-	Short: fmt.Sprint(chainCmdDes),
-	Long:  fmt.Sprint(chainCmdDes),
+	Use:   "chaincode",
+	Short: "Perform chaincode operations: package|install|queryinstalled|approveformyorg|commit|querycommitted",
+	Long:  "Perform _lifecycle operations: package|install|queryinstalled|approveformyorg|commit|querycommitted",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		common.InitCmd(cmd, args)
 		common.SetOrdererEnv(cmd, args)
@@ -97,30 +90,16 @@ func init() {
 func resetFlags() {
 	flags = &pflag.FlagSet{}
 
-	flags.StringVarP(&chaincodeLang, "lang", "l", "golang",
-		fmt.Sprintf("Language the %s is written in", chainFuncName))
-	flags.StringVarP(&chaincodeCtorJSON, "ctor", "c", "{}",
-		fmt.Sprintf("Constructor message for the %s in JSON format", chainFuncName))
-	flags.StringVarP(&chaincodePath, "path", "p", common.UndefinedParamValue,
-		fmt.Sprintf("Path to %s", chainFuncName))
-	flags.StringVarP(&chaincodeName, "name", "n", common.UndefinedParamValue,
-		fmt.Sprint("Name of the chaincode"))
-	flags.StringVarP(&chaincodeVersion, "version", "v", common.UndefinedParamValue,
-		fmt.Sprint("Version of the chaincode specified in install/instantiate/upgrade commands"))
-	flags.StringVarP(&chaincodeUsr, "username", "u", common.UndefinedParamValue,
-		fmt.Sprint("Username for chaincode operations when security is enabled"))
-	flags.StringVarP(&channelID, "channelID", "C", "",
-		fmt.Sprint("The channel on which this command should be executed"))
-	flags.StringVarP(&policy, "policy", "P", common.UndefinedParamValue,
-		fmt.Sprint("The endorsement policy associated to this chaincode"))
+	flags.StringVarP(&chaincodeLang, "lang", "l", "golang", "Language the chaincode is written in")
+	flags.StringVarP(&chaincodePath, "path", "p", "", "Path to the chaincode")
+	flags.StringVarP(&chaincodeName, "name", "n", "", "Name of the chaincode")
+	flags.StringVarP(&chaincodeVersion, "version", "v", "", "Version of the chaincode")
+	flags.StringVarP(&channelID, "channelID", "C", "", "The channel on which this command should be executed")
+	flags.StringVarP(&policy, "policy", "P", "", "The endorsement policy associated to this chaincode")
 	flags.StringVarP(&escc, "escc", "E", common.UndefinedParamValue,
 		fmt.Sprint("The name of the endorsement system chaincode to be used for this chaincode"))
 	flags.StringVarP(&vscc, "vscc", "V", common.UndefinedParamValue,
 		fmt.Sprint("The name of the verification system chaincode to be used for this chaincode"))
-	flags.BoolVarP(&getInstalledChaincodes, "installed", "", false,
-		"Get the installed chaincodes on a peer")
-	flags.BoolVarP(&getInstantiatedChaincodes, "instantiated", "", false,
-		"Get the instantiated chaincodes on a channel")
 	flags.StringVar(&collectionsConfigFile, "collections-config", common.UndefinedParamValue,
 		fmt.Sprint("The fully qualified path to the collection JSON file including the file name"))
 	flags.StringArrayVarP(&peerAddresses, "peerAddresses", "", []string{common.UndefinedParamValue},
@@ -133,9 +112,9 @@ func resetFlags() {
 		fmt.Sprint("Whether to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully"))
 	flags.DurationVar(&waitForEventTimeout, "waitForEventTimeout", 30*time.Second,
 		fmt.Sprint("Time to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully"))
-	flags.BoolVarP(&createSignedCCDepSpec, "cc-package", "s", false, "create CC deployment spec for owner endorsements instead of raw CC deployment spec")
-	flags.BoolVarP(&signCCDepSpec, "sign", "S", false, "if creating CC deployment spec package for owner endorsements, also sign it with local MSP")
-	flags.StringVarP(&instantiationPolicy, "instantiate-policy", "i", "", "instantiation policy for the chaincode")
+	flags.BytesHexVarP(&hash, "hash", "", nil, "The hash of the chaincode install package")
+	flags.IntVarP(&sequence, "sequence", "", 1, "The sequence number of the chaincode definition for the channel")
+	flags.BoolVarP(&initRequired, "init-required", "", false, "Whether the chaincode requires invoking 'init'")
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {

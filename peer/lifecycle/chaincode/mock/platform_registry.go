@@ -6,11 +6,11 @@ import (
 )
 
 type PlatformRegistry struct {
-	GetDeploymentPayloadStub        func(ccType, path string) ([]byte, error)
+	GetDeploymentPayloadStub        func(string, string) ([]byte, error)
 	getDeploymentPayloadMutex       sync.RWMutex
 	getDeploymentPayloadArgsForCall []struct {
-		ccType string
-		path   string
+		arg1 string
+		arg2 string
 	}
 	getDeploymentPayloadReturns struct {
 		result1 []byte
@@ -24,22 +24,23 @@ type PlatformRegistry struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PlatformRegistry) GetDeploymentPayload(ccType string, path string) ([]byte, error) {
+func (fake *PlatformRegistry) GetDeploymentPayload(arg1 string, arg2 string) ([]byte, error) {
 	fake.getDeploymentPayloadMutex.Lock()
 	ret, specificReturn := fake.getDeploymentPayloadReturnsOnCall[len(fake.getDeploymentPayloadArgsForCall)]
 	fake.getDeploymentPayloadArgsForCall = append(fake.getDeploymentPayloadArgsForCall, struct {
-		ccType string
-		path   string
-	}{ccType, path})
-	fake.recordInvocation("GetDeploymentPayload", []interface{}{ccType, path})
+		arg1 string
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("GetDeploymentPayload", []interface{}{arg1, arg2})
 	fake.getDeploymentPayloadMutex.Unlock()
 	if fake.GetDeploymentPayloadStub != nil {
-		return fake.GetDeploymentPayloadStub(ccType, path)
+		return fake.GetDeploymentPayloadStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getDeploymentPayloadReturns.result1, fake.getDeploymentPayloadReturns.result2
+	fakeReturns := fake.getDeploymentPayloadReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *PlatformRegistry) GetDeploymentPayloadCallCount() int {
@@ -48,13 +49,22 @@ func (fake *PlatformRegistry) GetDeploymentPayloadCallCount() int {
 	return len(fake.getDeploymentPayloadArgsForCall)
 }
 
+func (fake *PlatformRegistry) GetDeploymentPayloadCalls(stub func(string, string) ([]byte, error)) {
+	fake.getDeploymentPayloadMutex.Lock()
+	defer fake.getDeploymentPayloadMutex.Unlock()
+	fake.GetDeploymentPayloadStub = stub
+}
+
 func (fake *PlatformRegistry) GetDeploymentPayloadArgsForCall(i int) (string, string) {
 	fake.getDeploymentPayloadMutex.RLock()
 	defer fake.getDeploymentPayloadMutex.RUnlock()
-	return fake.getDeploymentPayloadArgsForCall[i].ccType, fake.getDeploymentPayloadArgsForCall[i].path
+	argsForCall := fake.getDeploymentPayloadArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *PlatformRegistry) GetDeploymentPayloadReturns(result1 []byte, result2 error) {
+	fake.getDeploymentPayloadMutex.Lock()
+	defer fake.getDeploymentPayloadMutex.Unlock()
 	fake.GetDeploymentPayloadStub = nil
 	fake.getDeploymentPayloadReturns = struct {
 		result1 []byte
@@ -63,6 +73,8 @@ func (fake *PlatformRegistry) GetDeploymentPayloadReturns(result1 []byte, result
 }
 
 func (fake *PlatformRegistry) GetDeploymentPayloadReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.getDeploymentPayloadMutex.Lock()
+	defer fake.getDeploymentPayloadMutex.Unlock()
 	fake.GetDeploymentPayloadStub = nil
 	if fake.getDeploymentPayloadReturnsOnCall == nil {
 		fake.getDeploymentPayloadReturnsOnCall = make(map[int]struct {

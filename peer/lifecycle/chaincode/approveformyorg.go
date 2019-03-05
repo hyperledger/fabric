@@ -15,6 +15,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/common/api"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -95,7 +96,7 @@ func (a *ApproveForMyOrgInput) Validate() error {
 }
 
 // approveForMyOrgCmd returns the cobra command for chaincode ApproveForMyOrg
-func approveForMyOrgCmd(cf *ChaincodeCmdFactory, a *ApproverForMyOrg) *cobra.Command {
+func approveForMyOrgCmd(cf *CmdFactory, a *ApproverForMyOrg) *cobra.Command {
 	chaincodeApproveForMyOrgCmd = &cobra.Command{
 		Use:   "approveformyorg",
 		Short: fmt.Sprintf("Approve the chaincode definition for my org."),
@@ -135,6 +136,7 @@ func approveForMyOrgCmd(cf *ChaincodeCmdFactory, a *ApproverForMyOrg) *cobra.Com
 		"collections-config",
 		"peerAddresses",
 		"tlsRootCertFiles",
+		"connectionProfile",
 		"waitForEvent",
 		"waitForEventTimeout",
 	}
@@ -180,6 +182,7 @@ func (a *ApproverForMyOrg) Approve() error {
 		// this should only happen if some new code has introduced a bug
 		return errors.New("no proposal responses received - this might indicate a bug")
 	}
+
 	// all responses will be checked when the signed transaction is created.
 	// for now, just set this so we check the first response's status
 	proposalResponse := responses[0]
@@ -200,14 +203,14 @@ func (a *ApproverForMyOrg) Approve() error {
 	if err != nil {
 		return errors.WithMessage(err, "could not assemble transaction")
 	}
-	var dg *deliverGroup
+	var dg *chaincode.DeliverGroup
 	var ctx context.Context
 	if a.Input.WaitForEvent {
 		var cancelFunc context.CancelFunc
 		ctx, cancelFunc = context.WithTimeout(context.Background(), a.Input.WaitForEventTimeout)
 		defer cancelFunc()
 
-		dg = newDeliverGroup(a.DeliverClients, a.Input.PeerAddresses, a.Certificate, a.Input.ChannelID, txID)
+		dg = chaincode.NewDeliverGroup(a.DeliverClients, a.Input.PeerAddresses, a.Certificate, a.Input.ChannelID, txID)
 		// connect to deliver service on all peers
 		err := dg.Connect(ctx)
 		if err != nil {
@@ -216,7 +219,7 @@ func (a *ApproverForMyOrg) Approve() error {
 	}
 
 	if err = a.BroadcastClient.Send(env); err != nil {
-		return errors.WithMessage(err, "error sending transaction for ApproveForMyOrg")
+		return errors.WithMessage(err, "error sending transaction for approveformyorg")
 	}
 
 	if dg != nil && ctx != nil {
@@ -252,7 +255,7 @@ func (a *ApproverForMyOrg) setInput() error {
 
 	if collectionsConfigFile != "" {
 		var err error
-		ccp, _, err = getCollectionConfigFromFile(collectionsConfigFile)
+		ccp, _, err = chaincode.GetCollectionConfigFromFile(collectionsConfigFile)
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
 		}
@@ -302,7 +305,7 @@ func (a *ApproverForMyOrg) createProposals(inputTxID string) (proposal *pb.Propo
 
 	cis := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{
-			ChaincodeId: &pb.ChaincodeID{Name: newLifecycleName},
+			ChaincodeId: &pb.ChaincodeID{Name: lifecycleName},
 			Input:       ccInput,
 		},
 	}

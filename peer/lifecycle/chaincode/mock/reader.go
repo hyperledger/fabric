@@ -37,7 +37,8 @@ func (fake *Reader) ReadFile(arg1 string) ([]byte, error) {
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.readFileReturns.result1, fake.readFileReturns.result2
+	fakeReturns := fake.readFileReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Reader) ReadFileCallCount() int {
@@ -46,13 +47,22 @@ func (fake *Reader) ReadFileCallCount() int {
 	return len(fake.readFileArgsForCall)
 }
 
+func (fake *Reader) ReadFileCalls(stub func(string) ([]byte, error)) {
+	fake.readFileMutex.Lock()
+	defer fake.readFileMutex.Unlock()
+	fake.ReadFileStub = stub
+}
+
 func (fake *Reader) ReadFileArgsForCall(i int) string {
 	fake.readFileMutex.RLock()
 	defer fake.readFileMutex.RUnlock()
-	return fake.readFileArgsForCall[i].arg1
+	argsForCall := fake.readFileArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *Reader) ReadFileReturns(result1 []byte, result2 error) {
+	fake.readFileMutex.Lock()
+	defer fake.readFileMutex.Unlock()
 	fake.ReadFileStub = nil
 	fake.readFileReturns = struct {
 		result1 []byte
@@ -61,6 +71,8 @@ func (fake *Reader) ReadFileReturns(result1 []byte, result2 error) {
 }
 
 func (fake *Reader) ReadFileReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.readFileMutex.Lock()
+	defer fake.readFileMutex.Unlock()
 	fake.ReadFileStub = nil
 	if fake.readFileReturnsOnCall == nil {
 		fake.readFileReturnsOnCall = make(map[int]struct {

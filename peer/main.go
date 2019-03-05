@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/peer/channel"
 	"github.com/hyperledger/fabric/peer/clilogging"
 	"github.com/hyperledger/fabric/peer/common"
+	"github.com/hyperledger/fabric/peer/lifecycle"
 	"github.com/hyperledger/fabric/peer/node"
 	"github.com/hyperledger/fabric/peer/version"
 	"github.com/spf13/cobra"
@@ -23,11 +24,9 @@ import (
 
 // The main command describes the service and
 // defaults to printing the help message.
-var mainCmd = &cobra.Command{
-	Use: "peer"}
+var mainCmd = &cobra.Command{Use: "peer"}
 
 func main() {
-
 	// For environment variables.
 	viper.SetEnvPrefix(common.CmdRoot)
 	viper.AutomaticEnv()
@@ -47,6 +46,7 @@ func main() {
 	mainCmd.AddCommand(chaincode.Cmd(nil))
 	mainCmd.AddCommand(clilogging.Cmd(nil))
 	mainCmd.AddCommand(channel.Cmd(nil))
+	mainCmd.AddCommand(lifecycle.Cmd())
 
 	// On failure Cobra prints the usage message and error string, so we only
 	// need to exit with a non-0 status

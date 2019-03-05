@@ -45,7 +45,8 @@ func (fake *Writer) WriteFile(arg1 string, arg2 []byte, arg3 os.FileMode) error 
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.writeFileReturns.result1
+	fakeReturns := fake.writeFileReturns
+	return fakeReturns.result1
 }
 
 func (fake *Writer) WriteFileCallCount() int {
@@ -54,13 +55,22 @@ func (fake *Writer) WriteFileCallCount() int {
 	return len(fake.writeFileArgsForCall)
 }
 
+func (fake *Writer) WriteFileCalls(stub func(string, []byte, os.FileMode) error) {
+	fake.writeFileMutex.Lock()
+	defer fake.writeFileMutex.Unlock()
+	fake.WriteFileStub = stub
+}
+
 func (fake *Writer) WriteFileArgsForCall(i int) (string, []byte, os.FileMode) {
 	fake.writeFileMutex.RLock()
 	defer fake.writeFileMutex.RUnlock()
-	return fake.writeFileArgsForCall[i].arg1, fake.writeFileArgsForCall[i].arg2, fake.writeFileArgsForCall[i].arg3
+	argsForCall := fake.writeFileArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *Writer) WriteFileReturns(result1 error) {
+	fake.writeFileMutex.Lock()
+	defer fake.writeFileMutex.Unlock()
 	fake.WriteFileStub = nil
 	fake.writeFileReturns = struct {
 		result1 error
@@ -68,6 +78,8 @@ func (fake *Writer) WriteFileReturns(result1 error) {
 }
 
 func (fake *Writer) WriteFileReturnsOnCall(i int, result1 error) {
+	fake.writeFileMutex.Lock()
+	defer fake.writeFileMutex.Unlock()
 	fake.WriteFileStub = nil
 	if fake.writeFileReturnsOnCall == nil {
 		fake.writeFileReturnsOnCall = make(map[int]struct {

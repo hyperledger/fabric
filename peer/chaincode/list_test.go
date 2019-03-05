@@ -14,7 +14,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,32 +48,10 @@ func TestChaincodeListCmd(t *testing.T) {
 
 	cmd := listCmd(mockCF)
 
-	t.Run("get installed chaincodes - legacy lscc", func(t *testing.T) {
+	t.Run("get installed chaincodes - lscc", func(t *testing.T) {
 		resetFlags()
 
 		args := []string{"--installed"}
-		cmd.SetArgs(args)
-		if err := cmd.Execute(); err != nil {
-			t.Errorf("Run chaincode list cmd to get installed chaincodes error:%v", err)
-		}
-	})
-
-	t.Run("get installed chaincodes - _lifecycle", func(t *testing.T) {
-		resetFlags()
-		queryInstalledChaincodeResult := &lb.QueryInstalledChaincodesResult{
-			InstalledChaincodes: []*lb.QueryInstalledChaincodesResult_InstalledChaincode{
-				{Name: "test1", Version: "v1.0", Hash: []byte("hash1")},
-				{Name: "testcc2", Version: "v2.0", Hash: []byte("hash2")},
-			},
-		}
-		qicrBytes, err := proto.Marshal(queryInstalledChaincodeResult)
-		if err != nil {
-			t.Fatalf("Marshal error: %s", err)
-		}
-
-		mockResponse.Response = &pb.Response{Status: 200, Payload: qicrBytes}
-
-		args := []string{"--installed", "--newLifecycle"}
 		cmd.SetArgs(args)
 		if err := cmd.Execute(); err != nil {
 			t.Errorf("Run chaincode list cmd to get installed chaincodes error:%v", err)
@@ -124,7 +101,7 @@ func TestChaincodeListCmd(t *testing.T) {
 		resetFlags()
 		args := []string{"--installed", "--instantiated", "-C", "mychannel"}
 		cmd.SetArgs(args)
-		expectErr := fmt.Errorf("must explicitly specify \"--installed\", \"--committed\", or \"--instantiated\"")
+		expectErr := fmt.Errorf("must explicitly specify \"--installed\" or \"--instantiated\"")
 		err = cmd.Execute()
 		assert.Error(t, err)
 		assert.Equal(t, expectErr.Error(), err.Error())
@@ -135,7 +112,7 @@ func TestChaincodeListCmd(t *testing.T) {
 		args := []string{"-C", "mychannel"}
 		cmd.SetArgs(args)
 
-		expectErr := fmt.Errorf("must explicitly specify \"--installed\", \"--committed\", or \"--instantiated\"")
+		expectErr := fmt.Errorf("must explicitly specify \"--installed\" or \"--instantiated\"")
 		err = cmd.Execute()
 		assert.Error(t, err)
 		assert.Equal(t, expectErr.Error(), err.Error())
