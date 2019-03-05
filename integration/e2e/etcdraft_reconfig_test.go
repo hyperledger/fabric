@@ -574,61 +574,75 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 	When("an orderer node is joined", func() {
 		It("isn't influenced by outdated orderers", func() {
-			o4 := &nwo.Orderer{
-				Name:         "orderer4",
-				Organization: "OrdererOrg",
+			// This test checks that if a lagged is not aware of newly added nodes,
+			// among which leader is present, it eventually pulls config block from
+			// the orderer it knows, gets the certificates from it and participate
+			// in consensus again.
+			//
+			// Steps:
+			// Initial nodes in cluster: <1, 2, 3, 4>
+			// - start <1, 2, 3>
+			// - add <5, 6, 7>, start <5, 6, 7>
+			// - kill <1>
+			// - submit a tx, so that Raft index on <1> is behind <5, 6, 7> and <2, 3>
+			// - kill <2, 3>
+			// - start <1> and <4>. Since <1> is behind <5, 6, 7>, leader is certainly
+			//   going to be elected from <5, 6, 7>
+			// - assert that even <4> is not aware of leader, it can pull config block
+			//   from <1>, and start participating in consensus.
+
+			orderers := make([]*nwo.Orderer, 7)
+			ordererRunners = make([]*ginkgomon.Runner, 7)
+			ordererProcesses = make([]ifrit.Process, 7)
+
+			for i := range orderers {
+				orderers[i] = &nwo.Orderer{
+					Name:         fmt.Sprintf("orderer%d", i+1),
+					Organization: "OrdererOrg",
+				}
 			}
+
 			layout := nwo.MultiNodeEtcdRaft()
-			layout.Orderers = append(layout.Orderers, o4)
-			layout.Profiles[0].Orderers = append(layout.Profiles[0].Orderers, o4.Name)
+			layout.Orderers = orderers[:4]
+			layout.Profiles[0].Orderers = []string{"orderer1", "orderer2", "orderer3", "orderer4"}
 
 			network = nwo.New(layout, testDir, client, StartPort(), components)
-			orderers := []*nwo.Orderer{layout.Orderers[0], layout.Orderers[1], layout.Orderers[2]}
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			peer = network.Peer("Org1", "peer1")
 
-			By("Launching 3 out of 4 orderers")
-			for _, o := range orderers {
-				runner := network.OrdererRunner(o)
-				ordererRunners = append(ordererRunners, runner)
+			launch := func(i int) {
+				runner := network.OrdererRunner(orderers[i])
+				ordererRunners[i] = runner
 				process := ifrit.Invoke(runner)
-				ordererProcesses = append(ordererProcesses, process)
+				Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+				ordererProcesses[i] = process
+			}
+
+			By("Launching 3 out of 4 orderers")
+			for i := range orderers[:3] {
+				launch(i)
 			}
 
 			By("Checking that all orderers are online")
 			assertBlockReception(map[string]int{
 				"systemchannel": 0,
-			}, orderers, peer, network)
+			}, orderers[:3], peer, network)
 
-			By("Configuring the fifth orderer in the network")
-			o5 := &nwo.Orderer{
-				Name:         "orderer1new",
-				Organization: "OrdererOrg",
-			}
-			ports := nwo.Ports{}
-			for _, portName := range nwo.OrdererPortNames() {
-				ports[portName] = network.ReservePort()
-			}
-			network.PortsByOrdererID[o5.ID()] = ports
-
-			network.Orderers = append(network.Orderers, o5)
-			network.GenerateOrdererConfig(o5)
-
+			By("Configuring orderer[5, 6, 7] in the network")
 			extendNetwork(network)
 
-			orderer5CertificatePath := filepath.Join(network.OrdererLocalTLSDir(o5), "server.crt")
-			orderer5Certificate, err := ioutil.ReadFile(orderer5CertificatePath)
-			Expect(err).NotTo(HaveOccurred())
+			for _, o := range orderers[4:7] {
+				ports := nwo.Ports{}
+				for _, portName := range nwo.OrdererPortNames() {
+					ports[portName] = network.ReservePort()
+				}
+				network.PortsByOrdererID[o.ID()] = ports
 
-			By("Adding the fifth orderr")
-			nwo.AddConsenter(network, peer, orderers[0], "systemchannel", etcdraft.Consenter{
-				ServerTlsCert: orderer5Certificate,
-				ClientTlsCert: orderer5Certificate,
-				Host:          "127.0.0.1",
-				Port:          uint32(network.OrdererPort(o5, nwo.ListenPort)),
-			})
+				network.Orderers = append(network.Orderers, o)
+				network.GenerateOrdererConfig(o)
+			}
 
 			// Backup previous system channel block
 			genesisBootBlock, err := ioutil.ReadFile(filepath.Join(testDir, "systemchannel_block.pb"))
@@ -638,62 +652,86 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			// Get the last config block of the system channel
-			configBlock := nwo.GetConfigBlock(network, peer, network.Orderers[0], "systemchannel")
-			// Plant it in the file system of orderer5, the new node to be onboarded.
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
-			Expect(err).NotTo(HaveOccurred())
+			blockSeq := 0 // there's only one block in channel - genesis
+			for _, i := range []int{4, 5, 6} {
+				By(fmt.Sprintf("Adding orderer%d", i+1))
+				ordererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(orderers[i]), "server.crt")
+				ordererCertificate, err := ioutil.ReadFile(ordererCertificatePath)
+				Expect(err).NotTo(HaveOccurred())
 
-			launch := func(o *nwo.Orderer) {
-				orderers = append(orderers, o)
-				runner := network.OrdererRunner(o)
-				ordererRunners = append(ordererRunners, runner)
+				nwo.AddConsenter(network, peer, orderers[0], "systemchannel", etcdraft.Consenter{
+					ServerTlsCert: ordererCertificate,
+					ClientTlsCert: ordererCertificate,
+					Host:          "127.0.0.1",
+					Port:          uint32(network.OrdererPort(orderers[i], nwo.ListenPort)),
+				})
+				blockSeq++
 
-				process := ifrit.Invoke(grouper.Member{Name: o.ID(), Runner: runner})
-				Eventually(process.Ready()).Should(BeClosed())
-				ordererProcesses = append(ordererProcesses, process)
+				// Get the last config block of the system channel
+				configBlock := nwo.GetConfigBlock(network, peer, orderers[0], "systemchannel")
+				// Plant it in the file system of orderer, the new node to be onboarded.
+				err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
+				Expect(err).NotTo(HaveOccurred())
+
+				By(fmt.Sprintf("Launching orderer%d", i+1))
+				launch(i)
+
+				By(fmt.Sprintf("Checking that orderer%d has onboarded the network", i+1))
+				assertBlockReception(map[string]int{
+					"systemchannel": blockSeq,
+				}, []*nwo.Orderer{orderers[i]}, peer, network)
 			}
 
-			By("Launching orderer5")
-			launch(o5)
+			// Later on, when we start [1, 4, 5, 6, 7], we want to make sure that leader
+			// is elected from [5, 6, 7], who are unknown to [4]. So we can assert that
+			// [4] suspects its own eviction, pulls block from [1], and join the cluster.
+			// Otherwise, if [1] is elected, and all other nodes already knew it, [4] may
+			// simply replicate missing blocks with Raft, instead of pulling from others
+			// triggered by eviction suspector.
 
-			By("Checking that orderer5 has onboarded the network")
+			By("Killing orderer1")
+			ordererProcesses[0].Signal(syscall.SIGTERM)
+			Eventually(ordererProcesses[0].Wait(), network.EventuallyTimeout).Should(Receive())
+
+			By("Submitting another tx to increment Raft index on alive orderers")
+			nwo.UpdateConsensusMetadata(network, peer, orderers[4], network.SystemChannel.Name, func(originalMetadata []byte) []byte {
+				metadata := &etcdraft.Metadata{}
+				err := proto.Unmarshal(originalMetadata, metadata)
+				Expect(err).NotTo(HaveOccurred())
+
+				metadata.Options.SnapshotInterval = 2 * 1024 // 100 MB
+
+				// write metadata back
+				newMetadata, err := proto.Marshal(metadata)
+				Expect(err).NotTo(HaveOccurred())
+				return newMetadata
+			})
+			blockSeq++
+
 			assertBlockReception(map[string]int{
-				"systemchannel": 1,
-			}, []*nwo.Orderer{o5}, peer, network)
+				"systemchannel": blockSeq,
+			}, []*nwo.Orderer{orderers[1], orderers[2], orderers[4], orderers[5], orderers[6]}, peer, network) // alive orderers: 2, 3, 5, 6, 7
 
-			By("Kill all orderers but orderer5")
-			for i := 0; i < 3; i++ {
+			By("Killing orderer[2,3]")
+			for _, i := range []int{1, 2} {
 				ordererProcesses[i].Signal(syscall.SIGTERM)
 				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
 			}
 
 			By("Launching the orderer that was never started")
 			restoreBootBlock()
-			launch(o4)
+			launch(3)
+
+			By("Launching orderer1")
+			launch(0)
 
 			By("Waiting until it suspects its eviction from the channel")
-			o4Runner := ordererRunners[len(ordererRunners)-1]
-			Eventually(o4Runner.Err(), time.Minute, time.Second).Should(gbytes.Say("Suspecting our own eviction from the channel"))
+			Eventually(ordererRunners[3].Err(), time.Minute, time.Second).Should(gbytes.Say("Suspecting our own eviction from the channel"))
 
-			By("Resurrecting the dead orderers")
-			for i, o := range []*nwo.Orderer{layout.Orderers[0], layout.Orderers[1], layout.Orderers[2]} {
-				runner := network.OrdererRunner(o)
-				ordererRunners[i] = runner
-				process := ifrit.Invoke(runner)
-				ordererProcesses[i] = process
-			}
-
-			By("Waiting for all orderers to serve the channel again")
+			By("Making sure 4/7 orderers form quorum and serve request")
 			assertBlockReception(map[string]int{
-				"systemchannel": 1,
-			}, orderers, peer, network)
-
-			By("Waiting until orderer 4 pulls the block it is missing")
-			Eventually(o4Runner.Err()).Should(gbytes.Say("Got block 1"))
-
-			By("Ensuring orderer 4 doesn't suspect its own eviction anymore")
-			Consistently(o4Runner.Err(), time.Second*12, time.Second).ShouldNot(gbytes.Say("Suspecting our own eviction from the channel"))
+				"systemchannel": blockSeq,
+			}, []*nwo.Orderer{orderers[3], orderers[4], orderers[5], orderers[6]}, peer, network) // alive orderers: 4, 5, 6, 7
 		})
 	})
 
@@ -806,6 +844,21 @@ OrdererOrgs:
     - 127.0.0.1
     - ::1
   - Hostname: orderer4
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  - Hostname: orderer5
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  - Hostname: orderer6
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  - Hostname: orderer7
     SANS:
     - localhost
     - 127.0.0.1
