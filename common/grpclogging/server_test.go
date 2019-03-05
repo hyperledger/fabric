@@ -329,7 +329,7 @@ var _ = Describe("Server", func() {
 
 			It("uses the levels returned by the levelers", func() {
 				Eventually(leveler.CallCount).Should(Equal(1))
-				Expect(observed.FilterMessage("unary call completed").AllUntimed()).To(HaveLen(1))
+				Eventually(observed.FilterMessage("unary call completed").AllUntimed, 2*time.Second).Should(HaveLen(1))
 				Expect(observed.FilterMessage("unary call completed").AllUntimed()[0].Level).To(Equal(zapcore.ErrorLevel))
 
 				Eventually(payloadLeveler.CallCount).Should(Equal(1))
@@ -635,7 +635,7 @@ var _ = Describe("Server", func() {
 
 			It("uses the levels returned by the levelers", func() {
 				Eventually(leveler.CallCount).Should(Equal(1))
-				Expect(observed.FilterMessage("streaming call completed").AllUntimed()).To(HaveLen(1))
+				Eventually(observed.FilterMessage("streaming call completed").AllUntimed, 2*time.Second).Should(HaveLen(1))
 				Expect(observed.FilterMessage("streaming call completed").AllUntimed()[0].Level).To(Equal(zapcore.ErrorLevel))
 
 				Eventually(payloadLeveler.CallCount).Should(Equal(1))
