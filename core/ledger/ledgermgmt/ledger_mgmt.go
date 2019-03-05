@@ -70,13 +70,16 @@ func initialize(initializer *Initializer) {
 	if err != nil {
 		panic(errors.WithMessage(err, "Error in instantiating ledger provider"))
 	}
-	provider.Initialize(&ledger.Initializer{
+	err = provider.Initialize(&ledger.Initializer{
 		StateListeners:                finalStateListeners,
 		DeployedChaincodeInfoProvider: initializer.DeployedChaincodeInfoProvider,
 		MembershipInfoProvider:        initializer.MembershipInfoProvider,
 		MetricsProvider:               initializer.MetricsProvider,
 		HealthCheckRegistry:           initializer.HealthCheckRegistry,
 	})
+	if err != nil {
+		panic(errors.WithMessage(err, "Error initializing ledger provider"))
+	}
 	ledgerProvider = provider
 	logger.Info("ledger mgmt initialized")
 }

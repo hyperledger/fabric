@@ -232,18 +232,18 @@ func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccp
 	for _, cid := range ledgerIds {
 		peerLogger.Infof("Loading chain %s", cid)
 		if ledger, err = ledgermgmt.OpenLedger(cid); err != nil {
-			peerLogger.Warningf("Failed to load ledger %s(%s)", cid, err)
+			peerLogger.Errorf("Failed to load ledger %s(%s)", cid, err)
 			peerLogger.Debugf("Error while loading ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
 			continue
 		}
 		if cb, err = getCurrConfigBlockFromLedger(ledger); err != nil {
-			peerLogger.Warningf("Failed to find config block on ledger %s(%s)", cid, err)
+			peerLogger.Errorf("Failed to find config block on ledger %s(%s)", cid, err)
 			peerLogger.Debugf("Error while looking for config block on ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
 			continue
 		}
 		// Create a chain if we get a valid ledger with config block
 		if err = createChain(cid, ledger, cb, ccp, sccp, pm); err != nil {
-			peerLogger.Warningf("Failed to load chain %s(%s)", cid, err)
+			peerLogger.Errorf("Failed to load chain %s(%s)", cid, err)
 			peerLogger.Debugf("Error reloading chain %s with message %s. We continue to the next chain rather than abort.", cid, err)
 			continue
 		}
