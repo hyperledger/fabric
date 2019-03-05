@@ -722,15 +722,26 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 // aspects of the channel config for the new channel.
 //
 // The orderer must be running when this is called.
-func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additionalSigners ...*Peer) {
+func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additionalSigners ...interface{}) {
 	channelCreateTxPath := n.CreateChannelTxPath(channelName)
 
 	for _, signer := range additionalSigners {
-		sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{
-			File: channelCreateTxPath,
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		switch t := signer.(type) {
+		case *Peer:
+			sess, err := n.PeerAdminSession(t, commands.SignConfigTx{
+				File: channelCreateTxPath,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		case *Orderer:
+			sess, err := n.OrdererAdminSession(t, p, commands.SignConfigTx{
+				File: channelCreateTxPath,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		default:
+			panic("unknown signer type, expect Peer or Orderer")
+		}
 	}
 
 	createChannel := func() int {

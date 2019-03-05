@@ -696,6 +696,60 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Consistently(o4Runner.Err(), time.Second*12, time.Second).ShouldNot(gbytes.Say("Suspecting our own eviction from the channel"))
 		})
 	})
+
+	It("can create a channel that contains a subset of orderers in system channel", func() {
+		config := nwo.BasicEtcdRaft()
+		config.Orderers = []*nwo.Orderer{
+			{Name: "orderer1", Organization: "OrdererOrg"},
+			{Name: "orderer2", Organization: "OrdererOrg"},
+			{Name: "orderer3", Organization: "OrdererOrg"},
+		}
+		config.Profiles = []*nwo.Profile{{
+			Name:     "SampleDevModeEtcdRaft",
+			Orderers: []string{"orderer1", "orderer2", "orderer3"},
+		}, {
+			Name:          "ThreeOrdererChannel",
+			Consortium:    "SampleConsortium",
+			Organizations: []string{"Org1", "Org2"},
+			Orderers:      []string{"orderer1", "orderer2", "orderer3"},
+		}, {
+			Name:          "SingleOrdererChannel",
+			Consortium:    "SampleConsortium",
+			Organizations: []string{"Org1", "Org2"},
+			Orderers:      []string{"orderer1"},
+		}}
+		config.Channels = []*nwo.Channel{
+			{Name: "single-orderer-channel", Profile: "SingleOrdererChannel", BaseProfile: "SampleDevModeEtcdRaft"},
+			{Name: "three-orderer-channel", Profile: "ThreeOrdererChannel"},
+		}
+
+		network = nwo.New(config, testDir, client, StartPort(), components)
+		o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+		orderers := []*nwo.Orderer{o1, o2, o3}
+		peer = network.Peer("Org1", "peer1")
+
+		network.GenerateConfigTree()
+		network.Bootstrap()
+
+		By("Launching the orderers")
+		for _, o := range orderers {
+			runner := network.OrdererRunner(o)
+			ordererRunners = append(ordererRunners, runner)
+			process := ifrit.Invoke(runner)
+			ordererProcesses = append(ordererProcesses, process)
+		}
+
+		for _, ordererProc := range ordererProcesses {
+			Eventually(ordererProc.Ready()).Should(BeClosed())
+		}
+
+		By("Creating an application channel with a subset of orderers in system channel")
+		additionalPeer := network.Peer("Org2", "peer1")
+		network.CreateChannel("single-orderer-channel", network.Orderers[0], peer, additionalPeer, network.Orderers[0])
+
+		By("Creating another channel via the orderer that is in system channel but not app channel")
+		network.CreateChannel("three-orderer-channel", network.Orderers[2], peer)
+	})
 })
 
 func ensureEvicted(evictedOrderer *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channel string) {
