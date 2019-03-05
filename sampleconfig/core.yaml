@@ -530,7 +530,7 @@ chaincode:
         vscc: enable
         qscc: enable
 
-    # System chaincode plugins: 
+    # System chaincode plugins:
     # System chaincodes can be loaded as shared objects compiled as Go plugins.
     # See examples/plugins/scc for an example.
     # Plugins must be white listed in the chaincode.system section above.
@@ -577,7 +577,7 @@ ledger:
        # This username must have read and write authority on CouchDB
        username:
        # The password is recommended to pass as an environment variable
-       # during start up (eg LEDGER_COUCHDBCONFIG_PASSWORD).
+       # during start up (eg CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD).
        # If it is stored here, the file must be access control protected
        # to prevent unintended users from discovering the password.
        password:
