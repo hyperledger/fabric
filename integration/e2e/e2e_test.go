@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -282,6 +283,11 @@ var _ = Describe("EndToEnd", func() {
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 
+			snapDir := path.Join(network.RootDir, "orderers", orderer.ID(), "etcdraft", "snapshot", channel)
+			files, err := ioutil.ReadDir(snapDir)
+			Expect(err).NotTo(HaveOccurred())
+			numOfSnaps := len(files)
+
 			nwo.UpdateConsensusMetadata(network, peer, orderer, channel, func(originalMetadata []byte) []byte {
 				metadata := &etcdraft.Metadata{}
 				err := proto.Unmarshal(originalMetadata, metadata)
@@ -290,12 +296,18 @@ var _ = Describe("EndToEnd", func() {
 				// update max in flight messages
 				metadata.Options.MaxInflightMsgs = 1000
 				metadata.Options.MaxSizePerMsg = 512
+				metadata.Options.SnapshotInterval = 100 * 1024 * 1024 // 100 MB
 
 				// write metadata back
 				newMetadata, err := proto.Marshal(metadata)
 				Expect(err).NotTo(HaveOccurred())
 				return newMetadata
 			})
+
+			// assert that no new snapshot is taken because SnapshotInterval has just enlarged
+			files, err = ioutil.ReadDir(snapDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(files)).To(Equal(numOfSnaps))
 		})
 	})
 
