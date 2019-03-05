@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	cl "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -147,7 +147,7 @@ func TestReinitialization(t *testing.T) {
 
 	fl, err := tev.flf.GetOrCreate(genesisconfig.TestChainID)
 	ledger1, ok := fl.(*FileLedger)
-	assert.NoError(t, err, "Expected to sucessfully get test chain")
+	assert.NoError(t, err, "Expected to successfully get test chain")
 	assert.Equal(t, 1, len(tev.flf.ChainIDs()), "Exptected not new chain to be created")
 	assert.True(t, ok, "Exptected type assertion to succeed")
 

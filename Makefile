@@ -106,10 +106,10 @@ RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-s390x linux-ppc
 RELEASE_PKGS = configtxgen cryptogen idemixgen discover configtxlator peer orderer
 RELEASE_IMAGES = peer orderer tools ccenv baseos
 
-pkgmap.cryptogen      := $(PKGNAME)/common/tools/cryptogen
+pkgmap.cryptogen      := $(PKGNAME)/cmd/cryptogen
 pkgmap.idemixgen      := $(PKGNAME)/common/tools/idemixgen
-pkgmap.configtxgen    := $(PKGNAME)/common/tools/configtxgen
-pkgmap.configtxlator  := $(PKGNAME)/common/tools/configtxlator
+pkgmap.configtxgen    := $(PKGNAME)/cmd/configtxgen
+pkgmap.configtxlator  := $(PKGNAME)/cmd/configtxlator
 pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
 pkgmap.block-listener := $(PKGNAME)/examples/events/block-listener
