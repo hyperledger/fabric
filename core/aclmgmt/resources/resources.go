@@ -11,6 +11,15 @@ package resources
 //based on local MSP). These are not currently covered by resource or default
 //ACLProviders
 const (
+	// _lifecycle resources
+	Lifecycle_InstallChaincode                   = "_lifecycle/InstallChaincode"
+	Lifecycle_QueryInstalledChaincode            = "_lifecycle/QueryInstalledChaincode"
+	Lifecycle_QueryInstalledChaincodes           = "_lifecycle/QueryInstalledChaincodes"
+	Lifecycle_ApproveChaincodeDefinitionForMyOrg = "_lifecycle/ApproveChaincodeDefinitionForMyOrg"
+	Lifecycle_CommitChaincodeDefinition          = "_lifecycle/CommitChaincodeDefinition"
+	Lifecycle_QueryChaincodeDefinition           = "_lifecycle/QueryChaincodeDefinition"
+	Lifecycle_QueryNamespaceDefinitions          = "_lifecycle/QueryNamespaceDefinitions"
+
 	//Lscc resources
 	Lscc_Install                   = "lscc/Install"
 	Lscc_Deploy                    = "lscc/Deploy"

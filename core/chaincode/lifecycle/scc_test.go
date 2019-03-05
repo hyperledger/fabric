@@ -31,6 +31,7 @@ var _ = Describe("SCC", func() {
 		fakeChannelConfig       *mock.ChannelConfig
 		fakeApplicationConfig   *mock.ApplicationConfig
 		fakeCapabilities        *mock.ApplicationCapabilities
+		fakeACLProvider         *mock.ACLProvider
 	)
 
 	BeforeEach(func() {
@@ -43,6 +44,7 @@ var _ = Describe("SCC", func() {
 		fakeCapabilities = &mock.ApplicationCapabilities{}
 		fakeCapabilities.LifecycleV20Returns(true)
 		fakeApplicationConfig.CapabilitiesReturns(fakeCapabilities)
+		fakeACLProvider = &mock.ACLProvider{}
 		scc = &lifecycle.SCC{
 			Dispatcher: &dispatcher.Dispatcher{
 				Protobuf: &dispatcher.ProtobufImpl{},
@@ -50,6 +52,7 @@ var _ = Describe("SCC", func() {
 			Functions:           fakeSCCFuncs,
 			OrgMSPID:            "fake-mspid",
 			ChannelConfigSource: fakeChannelConfigSource,
+			ACLProvider:         fakeACLProvider,
 		}
 	})
 
@@ -134,6 +137,27 @@ var _ = Describe("SCC", func() {
 
 			It("returns an error", func() {
 				Expect(scc.Invoke(fakeStub)).To(Equal(shim.Error("failed to invoke backing implementation of 'bad-function': receiver *lifecycle.Invocation.bad-function does not exist")))
+			})
+		})
+
+		Context("when the ACL provider disapproves of the function", func() {
+			BeforeEach(func() {
+				fakeStub.GetArgsReturns([][]byte{[]byte("any-function"), nil})
+				fakeACLProvider.CheckACLReturns(fmt.Errorf("acl-error"))
+			})
+
+			It("returns an error", func() {
+				Expect(scc.Invoke(fakeStub)).To(Equal(shim.Error("Failed to authorize invocation due to failed ACL check: acl-error")))
+			})
+
+			Context("when the signed data for the tx cannot be retrieved", func() {
+				BeforeEach(func() {
+					fakeStub.GetSignedProposalReturns(nil, fmt.Errorf("shim-error"))
+				})
+
+				It("returns an error", func() {
+					Expect(scc.Invoke(fakeStub)).To(Equal(shim.Error("Failed getting signed proposal from stub: [shim-error]")))
+				})
 			})
 		})
 
