@@ -128,6 +128,8 @@ func resetFlags() {
 		"Get the installed chaincodes on a peer")
 	flags.BoolVarP(&getInstantiatedChaincodes, "instantiated", "", false,
 		"Get the instantiated chaincodes on a channel")
+	flags.BoolVarP(&getCommittedChaincodeDefinition, "committed", "", false,
+		"Get the committed chaincode definition on a channel")
 	flags.StringVar(&collectionsConfigFile, "collections-config", common.UndefinedParamValue,
 		fmt.Sprint("The fully qualified path to the collection JSON file including the file name"))
 	flags.StringArrayVarP(&peerAddresses, "peerAddresses", "", []string{common.UndefinedParamValue},
