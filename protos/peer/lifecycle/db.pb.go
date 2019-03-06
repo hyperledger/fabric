@@ -33,7 +33,7 @@ func (m *StateMetadata) Reset()         { *m = StateMetadata{} }
 func (m *StateMetadata) String() string { return proto.CompactTextString(m) }
 func (*StateMetadata) ProtoMessage()    {}
 func (*StateMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_db_8951d509ec26cc08, []int{0}
+	return fileDescriptor_db_f76dd0b7567e5783, []int{0}
 }
 func (m *StateMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StateMetadata.Unmarshal(m, b)
@@ -82,7 +82,7 @@ func (m *StateData) Reset()         { *m = StateData{} }
 func (m *StateData) String() string { return proto.CompactTextString(m) }
 func (*StateData) ProtoMessage()    {}
 func (*StateData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_db_8951d509ec26cc08, []int{1}
+	return fileDescriptor_db_f76dd0b7567e5783, []int{1}
 }
 func (m *StateData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StateData.Unmarshal(m, b)
@@ -209,9 +209,9 @@ func init() {
 	proto.RegisterType((*StateData)(nil), "lifecycle.StateData")
 }
 
-func init() { proto.RegisterFile("peer/lifecycle/db.proto", fileDescriptor_db_8951d509ec26cc08) }
+func init() { proto.RegisterFile("peer/lifecycle/db.proto", fileDescriptor_db_f76dd0b7567e5783) }
 
-var fileDescriptor_db_8951d509ec26cc08 = []byte{
+var fileDescriptor_db_f76dd0b7567e5783 = []byte{
 	// 216 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x90, 0x3d, 0x4f, 0xc3, 0x30,
 	0x10, 0x40, 0x09, 0x85, 0x08, 0x9f, 0x60, 0xc9, 0x50, 0x2a, 0xa6, 0xaa, 0x53, 0x06, 0x64, 0x0f,

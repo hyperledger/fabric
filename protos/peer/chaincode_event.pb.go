@@ -34,7 +34,7 @@ func (m *ChaincodeEvent) Reset()         { *m = ChaincodeEvent{} }
 func (m *ChaincodeEvent) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeEvent) ProtoMessage()    {}
 func (*ChaincodeEvent) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_event_b240c71081bd7c2d, []int{0}
+	return fileDescriptor_chaincode_event_8b41fbbca4a6aed1, []int{0}
 }
 func (m *ChaincodeEvent) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeEvent.Unmarshal(m, b)
@@ -87,10 +87,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("peer/chaincode_event.proto", fileDescriptor_chaincode_event_b240c71081bd7c2d)
+	proto.RegisterFile("peer/chaincode_event.proto", fileDescriptor_chaincode_event_8b41fbbca4a6aed1)
 }
 
-var fileDescriptor_chaincode_event_b240c71081bd7c2d = []byte{
+var fileDescriptor_chaincode_event_8b41fbbca4a6aed1 = []byte{
 	// 218 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x2a, 0x48, 0x4d, 0x2d,
 	0xd2, 0x4f, 0xce, 0x48, 0xcc, 0xcc, 0x4b, 0xce, 0x4f, 0x49, 0x8d, 0x4f, 0x2d, 0x4b, 0xcd, 0x2b,

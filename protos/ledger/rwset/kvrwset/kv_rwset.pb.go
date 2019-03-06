@@ -34,7 +34,7 @@ func (m *KVRWSet) Reset()         { *m = KVRWSet{} }
 func (m *KVRWSet) String() string { return proto.CompactTextString(m) }
 func (*KVRWSet) ProtoMessage()    {}
 func (*KVRWSet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{0}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{0}
 }
 func (m *KVRWSet) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KVRWSet.Unmarshal(m, b)
@@ -96,7 +96,7 @@ func (m *HashedRWSet) Reset()         { *m = HashedRWSet{} }
 func (m *HashedRWSet) String() string { return proto.CompactTextString(m) }
 func (*HashedRWSet) ProtoMessage()    {}
 func (*HashedRWSet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{1}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{1}
 }
 func (m *HashedRWSet) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_HashedRWSet.Unmarshal(m, b)
@@ -151,7 +151,7 @@ func (m *KVRead) Reset()         { *m = KVRead{} }
 func (m *KVRead) String() string { return proto.CompactTextString(m) }
 func (*KVRead) ProtoMessage()    {}
 func (*KVRead) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{2}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{2}
 }
 func (m *KVRead) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KVRead.Unmarshal(m, b)
@@ -199,7 +199,7 @@ func (m *KVWrite) Reset()         { *m = KVWrite{} }
 func (m *KVWrite) String() string { return proto.CompactTextString(m) }
 func (*KVWrite) ProtoMessage()    {}
 func (*KVWrite) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{3}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{3}
 }
 func (m *KVWrite) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KVWrite.Unmarshal(m, b)
@@ -253,7 +253,7 @@ func (m *KVMetadataWrite) Reset()         { *m = KVMetadataWrite{} }
 func (m *KVMetadataWrite) String() string { return proto.CompactTextString(m) }
 func (*KVMetadataWrite) ProtoMessage()    {}
 func (*KVMetadataWrite) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{4}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{4}
 }
 func (m *KVMetadataWrite) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KVMetadataWrite.Unmarshal(m, b)
@@ -302,7 +302,7 @@ func (m *KVReadHash) Reset()         { *m = KVReadHash{} }
 func (m *KVReadHash) String() string { return proto.CompactTextString(m) }
 func (*KVReadHash) ProtoMessage()    {}
 func (*KVReadHash) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{5}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{5}
 }
 func (m *KVReadHash) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KVReadHash.Unmarshal(m, b)
@@ -350,7 +350,7 @@ func (m *KVWriteHash) Reset()         { *m = KVWriteHash{} }
 func (m *KVWriteHash) String() string { return proto.CompactTextString(m) }
 func (*KVWriteHash) ProtoMessage()    {}
 func (*KVWriteHash) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{6}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{6}
 }
 func (m *KVWriteHash) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KVWriteHash.Unmarshal(m, b)
@@ -404,7 +404,7 @@ func (m *KVMetadataWriteHash) Reset()         { *m = KVMetadataWriteHash{} }
 func (m *KVMetadataWriteHash) String() string { return proto.CompactTextString(m) }
 func (*KVMetadataWriteHash) ProtoMessage()    {}
 func (*KVMetadataWriteHash) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{7}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{7}
 }
 func (m *KVMetadataWriteHash) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KVMetadataWriteHash.Unmarshal(m, b)
@@ -451,7 +451,7 @@ func (m *KVMetadataEntry) Reset()         { *m = KVMetadataEntry{} }
 func (m *KVMetadataEntry) String() string { return proto.CompactTextString(m) }
 func (*KVMetadataEntry) ProtoMessage()    {}
 func (*KVMetadataEntry) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{8}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{8}
 }
 func (m *KVMetadataEntry) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KVMetadataEntry.Unmarshal(m, b)
@@ -501,7 +501,7 @@ func (m *Version) Reset()         { *m = Version{} }
 func (m *Version) String() string { return proto.CompactTextString(m) }
 func (*Version) ProtoMessage()    {}
 func (*Version) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{9}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{9}
 }
 func (m *Version) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Version.Unmarshal(m, b)
@@ -558,7 +558,7 @@ func (m *RangeQueryInfo) Reset()         { *m = RangeQueryInfo{} }
 func (m *RangeQueryInfo) String() string { return proto.CompactTextString(m) }
 func (*RangeQueryInfo) ProtoMessage()    {}
 func (*RangeQueryInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{10}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{10}
 }
 func (m *RangeQueryInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RangeQueryInfo.Unmarshal(m, b)
@@ -722,7 +722,7 @@ func (m *QueryReads) Reset()         { *m = QueryReads{} }
 func (m *QueryReads) String() string { return proto.CompactTextString(m) }
 func (*QueryReads) ProtoMessage()    {}
 func (*QueryReads) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{11}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{11}
 }
 func (m *QueryReads) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryReads.Unmarshal(m, b)
@@ -767,7 +767,7 @@ func (m *QueryReadsMerkleSummary) Reset()         { *m = QueryReadsMerkleSummary
 func (m *QueryReadsMerkleSummary) String() string { return proto.CompactTextString(m) }
 func (*QueryReadsMerkleSummary) ProtoMessage()    {}
 func (*QueryReadsMerkleSummary) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_rwset_b744a14a894993b5, []int{12}
+	return fileDescriptor_kv_rwset_9b844dafd85b8ad8, []int{12}
 }
 func (m *QueryReadsMerkleSummary) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryReadsMerkleSummary.Unmarshal(m, b)
@@ -825,10 +825,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("ledger/rwset/kvrwset/kv_rwset.proto", fileDescriptor_kv_rwset_b744a14a894993b5)
+	proto.RegisterFile("ledger/rwset/kvrwset/kv_rwset.proto", fileDescriptor_kv_rwset_9b844dafd85b8ad8)
 }
 
-var fileDescriptor_kv_rwset_b744a14a894993b5 = []byte{
+var fileDescriptor_kv_rwset_9b844dafd85b8ad8 = []byte{
 	// 740 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x55, 0xdf, 0x6b, 0xdb, 0x48,
 	0x10, 0x8e, 0x7f, 0xcb, 0x63, 0x3b, 0xf1, 0x6d, 0x72, 0x44, 0xc7, 0xdd, 0x81, 0x51, 0x38, 0x30,

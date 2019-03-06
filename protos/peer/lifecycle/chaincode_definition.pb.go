@@ -34,7 +34,7 @@ func (m *ChaincodeEndorsementInfo) Reset()         { *m = ChaincodeEndorsementIn
 func (m *ChaincodeEndorsementInfo) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeEndorsementInfo) ProtoMessage()    {}
 func (*ChaincodeEndorsementInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_definition_b42f1671bd9c192b, []int{0}
+	return fileDescriptor_chaincode_definition_4c3f527376b149d6, []int{0}
 }
 func (m *ChaincodeEndorsementInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeEndorsementInfo.Unmarshal(m, b)
@@ -96,7 +96,7 @@ func (m *ChaincodeValidationInfo) Reset()         { *m = ChaincodeValidationInfo
 func (m *ChaincodeValidationInfo) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeValidationInfo) ProtoMessage()    {}
 func (*ChaincodeValidationInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_definition_b42f1671bd9c192b, []int{1}
+	return fileDescriptor_chaincode_definition_4c3f527376b149d6, []int{1}
 }
 func (m *ChaincodeValidationInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeValidationInfo.Unmarshal(m, b)
@@ -136,10 +136,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("peer/lifecycle/chaincode_definition.proto", fileDescriptor_chaincode_definition_b42f1671bd9c192b)
+	proto.RegisterFile("peer/lifecycle/chaincode_definition.proto", fileDescriptor_chaincode_definition_4c3f527376b149d6)
 }
 
-var fileDescriptor_chaincode_definition_b42f1671bd9c192b = []byte{
+var fileDescriptor_chaincode_definition_4c3f527376b149d6 = []byte{
 	// 281 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x51, 0x4f, 0x4f, 0x83, 0x30,
 	0x14, 0x0f, 0xd3, 0xa8, 0x6b, 0xa6, 0x71, 0xd5, 0xc4, 0x1e, 0x97, 0x79, 0x99, 0x51, 0xdb, 0x98,

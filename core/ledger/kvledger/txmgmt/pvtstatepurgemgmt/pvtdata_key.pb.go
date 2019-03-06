@@ -29,7 +29,7 @@ func (m *PvtdataKeys) Reset()         { *m = PvtdataKeys{} }
 func (m *PvtdataKeys) String() string { return proto.CompactTextString(m) }
 func (*PvtdataKeys) ProtoMessage()    {}
 func (*PvtdataKeys) Descriptor() ([]byte, []int) {
-	return fileDescriptor_pvtdata_key_a4c461a959db81b6, []int{0}
+	return fileDescriptor_pvtdata_key_0771fded01b9c501, []int{0}
 }
 func (m *PvtdataKeys) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PvtdataKeys.Unmarshal(m, b)
@@ -67,7 +67,7 @@ func (m *Collections) Reset()         { *m = Collections{} }
 func (m *Collections) String() string { return proto.CompactTextString(m) }
 func (*Collections) ProtoMessage()    {}
 func (*Collections) Descriptor() ([]byte, []int) {
-	return fileDescriptor_pvtdata_key_a4c461a959db81b6, []int{1}
+	return fileDescriptor_pvtdata_key_0771fded01b9c501, []int{1}
 }
 func (m *Collections) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Collections.Unmarshal(m, b)
@@ -105,7 +105,7 @@ func (m *KeysAndHashes) Reset()         { *m = KeysAndHashes{} }
 func (m *KeysAndHashes) String() string { return proto.CompactTextString(m) }
 func (*KeysAndHashes) ProtoMessage()    {}
 func (*KeysAndHashes) Descriptor() ([]byte, []int) {
-	return fileDescriptor_pvtdata_key_a4c461a959db81b6, []int{2}
+	return fileDescriptor_pvtdata_key_0771fded01b9c501, []int{2}
 }
 func (m *KeysAndHashes) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KeysAndHashes.Unmarshal(m, b)
@@ -144,7 +144,7 @@ func (m *KeyAndHash) Reset()         { *m = KeyAndHash{} }
 func (m *KeyAndHash) String() string { return proto.CompactTextString(m) }
 func (*KeyAndHash) ProtoMessage()    {}
 func (*KeyAndHash) Descriptor() ([]byte, []int) {
-	return fileDescriptor_pvtdata_key_a4c461a959db81b6, []int{3}
+	return fileDescriptor_pvtdata_key_0771fded01b9c501, []int{3}
 }
 func (m *KeyAndHash) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KeyAndHash.Unmarshal(m, b)
@@ -187,9 +187,9 @@ func init() {
 	proto.RegisterType((*KeyAndHash)(nil), "pvtstatepurgemgmt.KeyAndHash")
 }
 
-func init() { proto.RegisterFile("pvtdata_key.proto", fileDescriptor_pvtdata_key_a4c461a959db81b6) }
+func init() { proto.RegisterFile("pvtdata_key.proto", fileDescriptor_pvtdata_key_0771fded01b9c501) }
 
-var fileDescriptor_pvtdata_key_a4c461a959db81b6 = []byte{
+var fileDescriptor_pvtdata_key_0771fded01b9c501 = []byte{
 	// 297 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x92, 0x4d, 0x4b, 0xc3, 0x40,
 	0x10, 0x86, 0xd9, 0xb6, 0x8a, 0x4e, 0x14, 0x74, 0x4f, 0x45, 0x50, 0x42, 0x2f, 0xf6, 0x94, 0x60,

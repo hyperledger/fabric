@@ -33,7 +33,7 @@ func (m *ChaincodeQueryResponse) Reset()         { *m = ChaincodeQueryResponse{}
 func (m *ChaincodeQueryResponse) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeQueryResponse) ProtoMessage()    {}
 func (*ChaincodeQueryResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_query_37e5d407118e73f5, []int{0}
+	return fileDescriptor_query_5977fd5a5e763a67, []int{0}
 }
 func (m *ChaincodeQueryResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeQueryResponse.Unmarshal(m, b)
@@ -91,7 +91,7 @@ func (m *ChaincodeInfo) Reset()         { *m = ChaincodeInfo{} }
 func (m *ChaincodeInfo) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeInfo) ProtoMessage()    {}
 func (*ChaincodeInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_query_37e5d407118e73f5, []int{1}
+	return fileDescriptor_query_5977fd5a5e763a67, []int{1}
 }
 func (m *ChaincodeInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeInfo.Unmarshal(m, b)
@@ -174,7 +174,7 @@ func (m *ChannelQueryResponse) Reset()         { *m = ChannelQueryResponse{} }
 func (m *ChannelQueryResponse) String() string { return proto.CompactTextString(m) }
 func (*ChannelQueryResponse) ProtoMessage()    {}
 func (*ChannelQueryResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_query_37e5d407118e73f5, []int{2}
+	return fileDescriptor_query_5977fd5a5e763a67, []int{2}
 }
 func (m *ChannelQueryResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChannelQueryResponse.Unmarshal(m, b)
@@ -213,7 +213,7 @@ func (m *ChannelInfo) Reset()         { *m = ChannelInfo{} }
 func (m *ChannelInfo) String() string { return proto.CompactTextString(m) }
 func (*ChannelInfo) ProtoMessage()    {}
 func (*ChannelInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_query_37e5d407118e73f5, []int{3}
+	return fileDescriptor_query_5977fd5a5e763a67, []int{3}
 }
 func (m *ChannelInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChannelInfo.Unmarshal(m, b)
@@ -247,9 +247,9 @@ func init() {
 	proto.RegisterType((*ChannelInfo)(nil), "protos.ChannelInfo")
 }
 
-func init() { proto.RegisterFile("peer/query.proto", fileDescriptor_query_37e5d407118e73f5) }
+func init() { proto.RegisterFile("peer/query.proto", fileDescriptor_query_5977fd5a5e763a67) }
 
-var fileDescriptor_query_37e5d407118e73f5 = []byte{
+var fileDescriptor_query_5977fd5a5e763a67 = []byte{
 	// 296 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x91, 0xdf, 0x4a, 0xc3, 0x30,
 	0x14, 0xc6, 0xe9, 0xfe, 0xba, 0x33, 0x15, 0x89, 0x53, 0x72, 0x23, 0x8c, 0x5e, 0x4d, 0x90, 0x16,

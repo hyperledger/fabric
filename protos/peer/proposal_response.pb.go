@@ -50,7 +50,7 @@ func (m *ProposalResponse) Reset()         { *m = ProposalResponse{} }
 func (m *ProposalResponse) String() string { return proto.CompactTextString(m) }
 func (*ProposalResponse) ProtoMessage()    {}
 func (*ProposalResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proposal_response_22a755721b685f40, []int{0}
+	return fileDescriptor_proposal_response_a1336d02d5a9ee8c, []int{0}
 }
 func (m *ProposalResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ProposalResponse.Unmarshal(m, b)
@@ -123,7 +123,7 @@ func (m *Response) Reset()         { *m = Response{} }
 func (m *Response) String() string { return proto.CompactTextString(m) }
 func (*Response) ProtoMessage()    {}
 func (*Response) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proposal_response_22a755721b685f40, []int{1}
+	return fileDescriptor_proposal_response_a1336d02d5a9ee8c, []int{1}
 }
 func (m *Response) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Response.Unmarshal(m, b)
@@ -201,7 +201,7 @@ func (m *ProposalResponsePayload) Reset()         { *m = ProposalResponsePayload
 func (m *ProposalResponsePayload) String() string { return proto.CompactTextString(m) }
 func (*ProposalResponsePayload) ProtoMessage()    {}
 func (*ProposalResponsePayload) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proposal_response_22a755721b685f40, []int{2}
+	return fileDescriptor_proposal_response_a1336d02d5a9ee8c, []int{2}
 }
 func (m *ProposalResponsePayload) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ProposalResponsePayload.Unmarshal(m, b)
@@ -259,7 +259,7 @@ func (m *Endorsement) Reset()         { *m = Endorsement{} }
 func (m *Endorsement) String() string { return proto.CompactTextString(m) }
 func (*Endorsement) ProtoMessage()    {}
 func (*Endorsement) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proposal_response_22a755721b685f40, []int{3}
+	return fileDescriptor_proposal_response_a1336d02d5a9ee8c, []int{3}
 }
 func (m *Endorsement) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Endorsement.Unmarshal(m, b)
@@ -301,10 +301,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("peer/proposal_response.proto", fileDescriptor_proposal_response_22a755721b685f40)
+	proto.RegisterFile("peer/proposal_response.proto", fileDescriptor_proposal_response_a1336d02d5a9ee8c)
 }
 
-var fileDescriptor_proposal_response_22a755721b685f40 = []byte{
+var fileDescriptor_proposal_response_a1336d02d5a9ee8c = []byte{
 	// 367 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x92, 0x51, 0x4b, 0xfb, 0x30,
 	0x14, 0xc5, 0xe9, 0xfe, 0xff, 0xcd, 0x2d, 0x9b, 0x30, 0x2a, 0x68, 0x19, 0x03, 0x47, 0x7d, 0x99,

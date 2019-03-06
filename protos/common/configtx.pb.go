@@ -51,7 +51,7 @@ func (m *ConfigEnvelope) Reset()         { *m = ConfigEnvelope{} }
 func (m *ConfigEnvelope) String() string { return proto.CompactTextString(m) }
 func (*ConfigEnvelope) ProtoMessage()    {}
 func (*ConfigEnvelope) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configtx_f1e09584bdb3a224, []int{0}
+	return fileDescriptor_configtx_7292a02b1ff5bc0d, []int{0}
 }
 func (m *ConfigEnvelope) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigEnvelope.Unmarshal(m, b)
@@ -98,7 +98,7 @@ func (m *ConfigGroupSchema) Reset()         { *m = ConfigGroupSchema{} }
 func (m *ConfigGroupSchema) String() string { return proto.CompactTextString(m) }
 func (*ConfigGroupSchema) ProtoMessage()    {}
 func (*ConfigGroupSchema) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configtx_f1e09584bdb3a224, []int{1}
+	return fileDescriptor_configtx_7292a02b1ff5bc0d, []int{1}
 }
 func (m *ConfigGroupSchema) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigGroupSchema.Unmarshal(m, b)
@@ -149,7 +149,7 @@ func (m *ConfigValueSchema) Reset()         { *m = ConfigValueSchema{} }
 func (m *ConfigValueSchema) String() string { return proto.CompactTextString(m) }
 func (*ConfigValueSchema) ProtoMessage()    {}
 func (*ConfigValueSchema) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configtx_f1e09584bdb3a224, []int{2}
+	return fileDescriptor_configtx_7292a02b1ff5bc0d, []int{2}
 }
 func (m *ConfigValueSchema) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigValueSchema.Unmarshal(m, b)
@@ -179,7 +179,7 @@ func (m *ConfigPolicySchema) Reset()         { *m = ConfigPolicySchema{} }
 func (m *ConfigPolicySchema) String() string { return proto.CompactTextString(m) }
 func (*ConfigPolicySchema) ProtoMessage()    {}
 func (*ConfigPolicySchema) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configtx_f1e09584bdb3a224, []int{3}
+	return fileDescriptor_configtx_7292a02b1ff5bc0d, []int{3}
 }
 func (m *ConfigPolicySchema) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigPolicySchema.Unmarshal(m, b)
@@ -212,7 +212,7 @@ func (m *Config) Reset()         { *m = Config{} }
 func (m *Config) String() string { return proto.CompactTextString(m) }
 func (*Config) ProtoMessage()    {}
 func (*Config) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configtx_f1e09584bdb3a224, []int{4}
+	return fileDescriptor_configtx_7292a02b1ff5bc0d, []int{4}
 }
 func (m *Config) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Config.Unmarshal(m, b)
@@ -258,7 +258,7 @@ func (m *ConfigUpdateEnvelope) Reset()         { *m = ConfigUpdateEnvelope{} }
 func (m *ConfigUpdateEnvelope) String() string { return proto.CompactTextString(m) }
 func (*ConfigUpdateEnvelope) ProtoMessage()    {}
 func (*ConfigUpdateEnvelope) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configtx_f1e09584bdb3a224, []int{5}
+	return fileDescriptor_configtx_7292a02b1ff5bc0d, []int{5}
 }
 func (m *ConfigUpdateEnvelope) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigUpdateEnvelope.Unmarshal(m, b)
@@ -315,7 +315,7 @@ func (m *ConfigUpdate) Reset()         { *m = ConfigUpdate{} }
 func (m *ConfigUpdate) String() string { return proto.CompactTextString(m) }
 func (*ConfigUpdate) ProtoMessage()    {}
 func (*ConfigUpdate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configtx_f1e09584bdb3a224, []int{6}
+	return fileDescriptor_configtx_7292a02b1ff5bc0d, []int{6}
 }
 func (m *ConfigUpdate) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigUpdate.Unmarshal(m, b)
@@ -379,7 +379,7 @@ func (m *ConfigGroup) Reset()         { *m = ConfigGroup{} }
 func (m *ConfigGroup) String() string { return proto.CompactTextString(m) }
 func (*ConfigGroup) ProtoMessage()    {}
 func (*ConfigGroup) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configtx_f1e09584bdb3a224, []int{7}
+	return fileDescriptor_configtx_7292a02b1ff5bc0d, []int{7}
 }
 func (m *ConfigGroup) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigGroup.Unmarshal(m, b)
@@ -448,7 +448,7 @@ func (m *ConfigValue) Reset()         { *m = ConfigValue{} }
 func (m *ConfigValue) String() string { return proto.CompactTextString(m) }
 func (*ConfigValue) ProtoMessage()    {}
 func (*ConfigValue) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configtx_f1e09584bdb3a224, []int{8}
+	return fileDescriptor_configtx_7292a02b1ff5bc0d, []int{8}
 }
 func (m *ConfigValue) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigValue.Unmarshal(m, b)
@@ -502,7 +502,7 @@ func (m *ConfigPolicy) Reset()         { *m = ConfigPolicy{} }
 func (m *ConfigPolicy) String() string { return proto.CompactTextString(m) }
 func (*ConfigPolicy) ProtoMessage()    {}
 func (*ConfigPolicy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configtx_f1e09584bdb3a224, []int{9}
+	return fileDescriptor_configtx_7292a02b1ff5bc0d, []int{9}
 }
 func (m *ConfigPolicy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigPolicy.Unmarshal(m, b)
@@ -555,7 +555,7 @@ func (m *ConfigSignature) Reset()         { *m = ConfigSignature{} }
 func (m *ConfigSignature) String() string { return proto.CompactTextString(m) }
 func (*ConfigSignature) ProtoMessage()    {}
 func (*ConfigSignature) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configtx_f1e09584bdb3a224, []int{10}
+	return fileDescriptor_configtx_7292a02b1ff5bc0d, []int{10}
 }
 func (m *ConfigSignature) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigSignature.Unmarshal(m, b)
@@ -610,9 +610,9 @@ func init() {
 	proto.RegisterType((*ConfigSignature)(nil), "common.ConfigSignature")
 }
 
-func init() { proto.RegisterFile("common/configtx.proto", fileDescriptor_configtx_f1e09584bdb3a224) }
+func init() { proto.RegisterFile("common/configtx.proto", fileDescriptor_configtx_7292a02b1ff5bc0d) }
 
-var fileDescriptor_configtx_f1e09584bdb3a224 = []byte{
+var fileDescriptor_configtx_7292a02b1ff5bc0d = []byte{
 	// 742 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x56, 0x6f, 0x6f, 0xd3, 0x3e,
 	0x10, 0x56, 0x9b, 0xb6, 0x6b, 0xaf, 0xed, 0xd6, 0x79, 0xfd, 0xe9, 0x17, 0x22, 0x10, 0x23, 0xc0,

@@ -35,7 +35,7 @@ func (m *ApplicationPolicy) Reset()         { *m = ApplicationPolicy{} }
 func (m *ApplicationPolicy) String() string { return proto.CompactTextString(m) }
 func (*ApplicationPolicy) ProtoMessage()    {}
 func (*ApplicationPolicy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_policy_2d7c58412bd4a804, []int{0}
+	return fileDescriptor_policy_cb2dcc38242d4048, []int{0}
 }
 func (m *ApplicationPolicy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ApplicationPolicy.Unmarshal(m, b)
@@ -166,9 +166,9 @@ func init() {
 	proto.RegisterType((*ApplicationPolicy)(nil), "protos.ApplicationPolicy")
 }
 
-func init() { proto.RegisterFile("peer/policy.proto", fileDescriptor_policy_2d7c58412bd4a804) }
+func init() { proto.RegisterFile("peer/policy.proto", fileDescriptor_policy_cb2dcc38242d4048) }
 
-var fileDescriptor_policy_2d7c58412bd4a804 = []byte{
+var fileDescriptor_policy_cb2dcc38242d4048 = []byte{
 	// 240 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x90, 0xc1, 0x4a, 0xc3, 0x40,
 	0x10, 0x86, 0x1b, 0x91, 0x82, 0xeb, 0x41, 0x1b, 0x10, 0x8a, 0x08, 0x2d, 0x3d, 0xd5, 0xcb, 0x2e,

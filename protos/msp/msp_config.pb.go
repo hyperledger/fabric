@@ -36,7 +36,7 @@ func (m *MSPConfig) Reset()         { *m = MSPConfig{} }
 func (m *MSPConfig) String() string { return proto.CompactTextString(m) }
 func (*MSPConfig) ProtoMessage()    {}
 func (*MSPConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_config_e749e5bd1d6d997b, []int{0}
+	return fileDescriptor_msp_config_c60f850a0e089029, []int{0}
 }
 func (m *MSPConfig) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MSPConfig.Unmarshal(m, b)
@@ -131,7 +131,7 @@ func (m *FabricMSPConfig) Reset()         { *m = FabricMSPConfig{} }
 func (m *FabricMSPConfig) String() string { return proto.CompactTextString(m) }
 func (*FabricMSPConfig) ProtoMessage()    {}
 func (*FabricMSPConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_config_e749e5bd1d6d997b, []int{1}
+	return fileDescriptor_msp_config_c60f850a0e089029, []int{1}
 }
 func (m *FabricMSPConfig) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FabricMSPConfig.Unmarshal(m, b)
@@ -249,7 +249,7 @@ func (m *FabricCryptoConfig) Reset()         { *m = FabricCryptoConfig{} }
 func (m *FabricCryptoConfig) String() string { return proto.CompactTextString(m) }
 func (*FabricCryptoConfig) ProtoMessage()    {}
 func (*FabricCryptoConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_config_e749e5bd1d6d997b, []int{2}
+	return fileDescriptor_msp_config_c60f850a0e089029, []int{2}
 }
 func (m *FabricCryptoConfig) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FabricCryptoConfig.Unmarshal(m, b)
@@ -305,7 +305,7 @@ func (m *IdemixMSPConfig) Reset()         { *m = IdemixMSPConfig{} }
 func (m *IdemixMSPConfig) String() string { return proto.CompactTextString(m) }
 func (*IdemixMSPConfig) ProtoMessage()    {}
 func (*IdemixMSPConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_config_e749e5bd1d6d997b, []int{3}
+	return fileDescriptor_msp_config_c60f850a0e089029, []int{3}
 }
 func (m *IdemixMSPConfig) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IdemixMSPConfig.Unmarshal(m, b)
@@ -383,7 +383,7 @@ func (m *IdemixMSPSignerConfig) Reset()         { *m = IdemixMSPSignerConfig{} }
 func (m *IdemixMSPSignerConfig) String() string { return proto.CompactTextString(m) }
 func (*IdemixMSPSignerConfig) ProtoMessage()    {}
 func (*IdemixMSPSignerConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_config_e749e5bd1d6d997b, []int{4}
+	return fileDescriptor_msp_config_c60f850a0e089029, []int{4}
 }
 func (m *IdemixMSPSignerConfig) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IdemixMSPSignerConfig.Unmarshal(m, b)
@@ -465,7 +465,7 @@ func (m *SigningIdentityInfo) Reset()         { *m = SigningIdentityInfo{} }
 func (m *SigningIdentityInfo) String() string { return proto.CompactTextString(m) }
 func (*SigningIdentityInfo) ProtoMessage()    {}
 func (*SigningIdentityInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_config_e749e5bd1d6d997b, []int{5}
+	return fileDescriptor_msp_config_c60f850a0e089029, []int{5}
 }
 func (m *SigningIdentityInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SigningIdentityInfo.Unmarshal(m, b)
@@ -520,7 +520,7 @@ func (m *KeyInfo) Reset()         { *m = KeyInfo{} }
 func (m *KeyInfo) String() string { return proto.CompactTextString(m) }
 func (*KeyInfo) ProtoMessage()    {}
 func (*KeyInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_config_e749e5bd1d6d997b, []int{6}
+	return fileDescriptor_msp_config_c60f850a0e089029, []int{6}
 }
 func (m *KeyInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KeyInfo.Unmarshal(m, b)
@@ -577,7 +577,7 @@ func (m *FabricOUIdentifier) Reset()         { *m = FabricOUIdentifier{} }
 func (m *FabricOUIdentifier) String() string { return proto.CompactTextString(m) }
 func (*FabricOUIdentifier) ProtoMessage()    {}
 func (*FabricOUIdentifier) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_config_e749e5bd1d6d997b, []int{7}
+	return fileDescriptor_msp_config_c60f850a0e089029, []int{7}
 }
 func (m *FabricOUIdentifier) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FabricOUIdentifier.Unmarshal(m, b)
@@ -630,7 +630,7 @@ func (m *FabricNodeOUs) Reset()         { *m = FabricNodeOUs{} }
 func (m *FabricNodeOUs) String() string { return proto.CompactTextString(m) }
 func (*FabricNodeOUs) ProtoMessage()    {}
 func (*FabricNodeOUs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_config_e749e5bd1d6d997b, []int{8}
+	return fileDescriptor_msp_config_c60f850a0e089029, []int{8}
 }
 func (m *FabricNodeOUs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FabricNodeOUs.Unmarshal(m, b)
@@ -683,9 +683,9 @@ func init() {
 	proto.RegisterType((*FabricNodeOUs)(nil), "msp.FabricNodeOUs")
 }
 
-func init() { proto.RegisterFile("msp/msp_config.proto", fileDescriptor_msp_config_e749e5bd1d6d997b) }
+func init() { proto.RegisterFile("msp/msp_config.proto", fileDescriptor_msp_config_c60f850a0e089029) }
 
-var fileDescriptor_msp_config_e749e5bd1d6d997b = []byte{
+var fileDescriptor_msp_config_c60f850a0e089029 = []byte{
 	// 847 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x55, 0x5f, 0x6f, 0xe3, 0x44,
 	0x10, 0x57, 0x92, 0x26, 0x77, 0x99, 0x38, 0x49, 0xd9, 0xeb, 0x15, 0x0b, 0x71, 0x77, 0xa9, 0x01,

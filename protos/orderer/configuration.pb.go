@@ -49,7 +49,7 @@ func (x ConsensusType_MigrationState) String() string {
 	return proto.EnumName(ConsensusType_MigrationState_name, int32(x))
 }
 func (ConsensusType_MigrationState) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_50e2c0f98937cf5a, []int{0, 0}
+	return fileDescriptor_configuration_9ce28addc6cd8ab7, []int{0, 0}
 }
 
 type ConsensusType struct {
@@ -76,7 +76,7 @@ func (m *ConsensusType) Reset()         { *m = ConsensusType{} }
 func (m *ConsensusType) String() string { return proto.CompactTextString(m) }
 func (*ConsensusType) ProtoMessage()    {}
 func (*ConsensusType) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_50e2c0f98937cf5a, []int{0}
+	return fileDescriptor_configuration_9ce28addc6cd8ab7, []int{0}
 }
 func (m *ConsensusType) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConsensusType.Unmarshal(m, b)
@@ -143,7 +143,7 @@ func (m *BatchSize) Reset()         { *m = BatchSize{} }
 func (m *BatchSize) String() string { return proto.CompactTextString(m) }
 func (*BatchSize) ProtoMessage()    {}
 func (*BatchSize) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_50e2c0f98937cf5a, []int{1}
+	return fileDescriptor_configuration_9ce28addc6cd8ab7, []int{1}
 }
 func (m *BatchSize) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BatchSize.Unmarshal(m, b)
@@ -197,7 +197,7 @@ func (m *BatchTimeout) Reset()         { *m = BatchTimeout{} }
 func (m *BatchTimeout) String() string { return proto.CompactTextString(m) }
 func (*BatchTimeout) ProtoMessage()    {}
 func (*BatchTimeout) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_50e2c0f98937cf5a, []int{2}
+	return fileDescriptor_configuration_9ce28addc6cd8ab7, []int{2}
 }
 func (m *BatchTimeout) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BatchTimeout.Unmarshal(m, b)
@@ -239,7 +239,7 @@ func (m *KafkaBrokers) Reset()         { *m = KafkaBrokers{} }
 func (m *KafkaBrokers) String() string { return proto.CompactTextString(m) }
 func (*KafkaBrokers) ProtoMessage()    {}
 func (*KafkaBrokers) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_50e2c0f98937cf5a, []int{3}
+	return fileDescriptor_configuration_9ce28addc6cd8ab7, []int{3}
 }
 func (m *KafkaBrokers) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KafkaBrokers.Unmarshal(m, b)
@@ -278,7 +278,7 @@ func (m *ChannelRestrictions) Reset()         { *m = ChannelRestrictions{} }
 func (m *ChannelRestrictions) String() string { return proto.CompactTextString(m) }
 func (*ChannelRestrictions) ProtoMessage()    {}
 func (*ChannelRestrictions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_50e2c0f98937cf5a, []int{4}
+	return fileDescriptor_configuration_9ce28addc6cd8ab7, []int{4}
 }
 func (m *ChannelRestrictions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChannelRestrictions.Unmarshal(m, b)
@@ -315,10 +315,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("orderer/configuration.proto", fileDescriptor_configuration_50e2c0f98937cf5a)
+	proto.RegisterFile("orderer/configuration.proto", fileDescriptor_configuration_9ce28addc6cd8ab7)
 }
 
-var fileDescriptor_configuration_50e2c0f98937cf5a = []byte{
+var fileDescriptor_configuration_9ce28addc6cd8ab7 = []byte{
 	// 460 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x92, 0xdf, 0x8a, 0xda, 0x40,
 	0x14, 0xc6, 0x1b, 0x95, 0xee, 0x7a, 0x58, 0x35, 0x8e, 0x2d, 0x84, 0xee, 0x8d, 0x08, 0x0b, 0xd2,

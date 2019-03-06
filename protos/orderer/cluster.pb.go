@@ -39,7 +39,7 @@ func (m *StepRequest) Reset()         { *m = StepRequest{} }
 func (m *StepRequest) String() string { return proto.CompactTextString(m) }
 func (*StepRequest) ProtoMessage()    {}
 func (*StepRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cluster_d9833ceca5c79414, []int{0}
+	return fileDescriptor_cluster_1b3a7b21b78c5ea8, []int{0}
 }
 func (m *StepRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StepRequest.Unmarshal(m, b)
@@ -184,7 +184,7 @@ func (m *StepResponse) Reset()         { *m = StepResponse{} }
 func (m *StepResponse) String() string { return proto.CompactTextString(m) }
 func (*StepResponse) ProtoMessage()    {}
 func (*StepResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cluster_d9833ceca5c79414, []int{1}
+	return fileDescriptor_cluster_1b3a7b21b78c5ea8, []int{1}
 }
 func (m *StepResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StepResponse.Unmarshal(m, b)
@@ -296,7 +296,7 @@ func (m *ConsensusRequest) Reset()         { *m = ConsensusRequest{} }
 func (m *ConsensusRequest) String() string { return proto.CompactTextString(m) }
 func (*ConsensusRequest) ProtoMessage()    {}
 func (*ConsensusRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cluster_d9833ceca5c79414, []int{2}
+	return fileDescriptor_cluster_1b3a7b21b78c5ea8, []int{2}
 }
 func (m *ConsensusRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConsensusRequest.Unmarshal(m, b)
@@ -349,7 +349,7 @@ func (m *SubmitRequest) Reset()         { *m = SubmitRequest{} }
 func (m *SubmitRequest) String() string { return proto.CompactTextString(m) }
 func (*SubmitRequest) ProtoMessage()    {}
 func (*SubmitRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cluster_d9833ceca5c79414, []int{3}
+	return fileDescriptor_cluster_1b3a7b21b78c5ea8, []int{3}
 }
 func (m *SubmitRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SubmitRequest.Unmarshal(m, b)
@@ -407,7 +407,7 @@ func (m *SubmitResponse) Reset()         { *m = SubmitResponse{} }
 func (m *SubmitResponse) String() string { return proto.CompactTextString(m) }
 func (*SubmitResponse) ProtoMessage()    {}
 func (*SubmitResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cluster_d9833ceca5c79414, []int{4}
+	return fileDescriptor_cluster_1b3a7b21b78c5ea8, []int{4}
 }
 func (m *SubmitResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SubmitResponse.Unmarshal(m, b)
@@ -562,9 +562,9 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 	Metadata: "orderer/cluster.proto",
 }
 
-func init() { proto.RegisterFile("orderer/cluster.proto", fileDescriptor_cluster_d9833ceca5c79414) }
+func init() { proto.RegisterFile("orderer/cluster.proto", fileDescriptor_cluster_1b3a7b21b78c5ea8) }
 
-var fileDescriptor_cluster_d9833ceca5c79414 = []byte{
+var fileDescriptor_cluster_1b3a7b21b78c5ea8 = []byte{
 	// 399 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x92, 0xd1, 0xee, 0xd2, 0x30,
 	0x14, 0xc6, 0xff, 0x53, 0xc2, 0xb2, 0x03, 0x2c, 0x50, 0x44, 0x91, 0x2b, 0x43, 0xa2, 0x21, 0xc6,

@@ -61,7 +61,7 @@ func (x Status) String() string {
 	return proto.EnumName(Status_name, int32(x))
 }
 func (Status) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{0}
+	return fileDescriptor_common_3543aabd76a108e4, []int{0}
 }
 
 type HeaderType int32
@@ -105,7 +105,7 @@ func (x HeaderType) String() string {
 	return proto.EnumName(HeaderType_name, int32(x))
 }
 func (HeaderType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{1}
+	return fileDescriptor_common_3543aabd76a108e4, []int{1}
 }
 
 // This enum enlists indexes of the block metadata array
@@ -135,7 +135,7 @@ func (x BlockMetadataIndex) String() string {
 	return proto.EnumName(BlockMetadataIndex_name, int32(x))
 }
 func (BlockMetadataIndex) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{2}
+	return fileDescriptor_common_3543aabd76a108e4, []int{2}
 }
 
 // LastConfig is the encoded value for the Metadata message which is encoded in the LAST_CONFIGURATION block metadata index
@@ -150,7 +150,7 @@ func (m *LastConfig) Reset()         { *m = LastConfig{} }
 func (m *LastConfig) String() string { return proto.CompactTextString(m) }
 func (*LastConfig) ProtoMessage()    {}
 func (*LastConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{0}
+	return fileDescriptor_common_3543aabd76a108e4, []int{0}
 }
 func (m *LastConfig) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LastConfig.Unmarshal(m, b)
@@ -190,7 +190,7 @@ func (m *Metadata) Reset()         { *m = Metadata{} }
 func (m *Metadata) String() string { return proto.CompactTextString(m) }
 func (*Metadata) ProtoMessage()    {}
 func (*Metadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{1}
+	return fileDescriptor_common_3543aabd76a108e4, []int{1}
 }
 func (m *Metadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Metadata.Unmarshal(m, b)
@@ -236,7 +236,7 @@ func (m *MetadataSignature) Reset()         { *m = MetadataSignature{} }
 func (m *MetadataSignature) String() string { return proto.CompactTextString(m) }
 func (*MetadataSignature) ProtoMessage()    {}
 func (*MetadataSignature) Descriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{2}
+	return fileDescriptor_common_3543aabd76a108e4, []int{2}
 }
 func (m *MetadataSignature) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MetadataSignature.Unmarshal(m, b)
@@ -282,7 +282,7 @@ func (m *Header) Reset()         { *m = Header{} }
 func (m *Header) String() string { return proto.CompactTextString(m) }
 func (*Header) ProtoMessage()    {}
 func (*Header) Descriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{3}
+	return fileDescriptor_common_3543aabd76a108e4, []int{3}
 }
 func (m *Header) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Header.Unmarshal(m, b)
@@ -355,7 +355,7 @@ func (m *ChannelHeader) Reset()         { *m = ChannelHeader{} }
 func (m *ChannelHeader) String() string { return proto.CompactTextString(m) }
 func (*ChannelHeader) ProtoMessage()    {}
 func (*ChannelHeader) Descriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{4}
+	return fileDescriptor_common_3543aabd76a108e4, []int{4}
 }
 func (m *ChannelHeader) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChannelHeader.Unmarshal(m, b)
@@ -445,7 +445,7 @@ func (m *SignatureHeader) Reset()         { *m = SignatureHeader{} }
 func (m *SignatureHeader) String() string { return proto.CompactTextString(m) }
 func (*SignatureHeader) ProtoMessage()    {}
 func (*SignatureHeader) Descriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{5}
+	return fileDescriptor_common_3543aabd76a108e4, []int{5}
 }
 func (m *SignatureHeader) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SignatureHeader.Unmarshal(m, b)
@@ -494,7 +494,7 @@ func (m *Payload) Reset()         { *m = Payload{} }
 func (m *Payload) String() string { return proto.CompactTextString(m) }
 func (*Payload) ProtoMessage()    {}
 func (*Payload) Descriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{6}
+	return fileDescriptor_common_3543aabd76a108e4, []int{6}
 }
 func (m *Payload) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Payload.Unmarshal(m, b)
@@ -543,7 +543,7 @@ func (m *Envelope) Reset()         { *m = Envelope{} }
 func (m *Envelope) String() string { return proto.CompactTextString(m) }
 func (*Envelope) ProtoMessage()    {}
 func (*Envelope) Descriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{7}
+	return fileDescriptor_common_3543aabd76a108e4, []int{7}
 }
 func (m *Envelope) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Envelope.Unmarshal(m, b)
@@ -594,7 +594,7 @@ func (m *Block) Reset()         { *m = Block{} }
 func (m *Block) String() string { return proto.CompactTextString(m) }
 func (*Block) ProtoMessage()    {}
 func (*Block) Descriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{8}
+	return fileDescriptor_common_3543aabd76a108e4, []int{8}
 }
 func (m *Block) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Block.Unmarshal(m, b)
@@ -651,7 +651,7 @@ func (m *BlockHeader) Reset()         { *m = BlockHeader{} }
 func (m *BlockHeader) String() string { return proto.CompactTextString(m) }
 func (*BlockHeader) ProtoMessage()    {}
 func (*BlockHeader) Descriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{9}
+	return fileDescriptor_common_3543aabd76a108e4, []int{9}
 }
 func (m *BlockHeader) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BlockHeader.Unmarshal(m, b)
@@ -703,7 +703,7 @@ func (m *BlockData) Reset()         { *m = BlockData{} }
 func (m *BlockData) String() string { return proto.CompactTextString(m) }
 func (*BlockData) ProtoMessage()    {}
 func (*BlockData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{10}
+	return fileDescriptor_common_3543aabd76a108e4, []int{10}
 }
 func (m *BlockData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BlockData.Unmarshal(m, b)
@@ -741,7 +741,7 @@ func (m *BlockMetadata) Reset()         { *m = BlockMetadata{} }
 func (m *BlockMetadata) String() string { return proto.CompactTextString(m) }
 func (*BlockMetadata) ProtoMessage()    {}
 func (*BlockMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_common_b374fafc5e1c956e, []int{11}
+	return fileDescriptor_common_3543aabd76a108e4, []int{11}
 }
 func (m *BlockMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BlockMetadata.Unmarshal(m, b)
@@ -786,9 +786,9 @@ func init() {
 	proto.RegisterEnum("common.BlockMetadataIndex", BlockMetadataIndex_name, BlockMetadataIndex_value)
 }
 
-func init() { proto.RegisterFile("common/common.proto", fileDescriptor_common_b374fafc5e1c956e) }
+func init() { proto.RegisterFile("common/common.proto", fileDescriptor_common_3543aabd76a108e4) }
 
-var fileDescriptor_common_b374fafc5e1c956e = []byte{
+var fileDescriptor_common_3543aabd76a108e4 = []byte{
 	// 959 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x55, 0xcf, 0x6f, 0xe3, 0x44,
 	0x18, 0xdd, 0xc4, 0xf9, 0xf9, 0xa5, 0x69, 0xdd, 0x49, 0xcb, 0x9a, 0xc2, 0x6a, 0x2b, 0xc3, 0xa2,

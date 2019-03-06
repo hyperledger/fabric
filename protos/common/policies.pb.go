@@ -45,7 +45,7 @@ func (x Policy_PolicyType) String() string {
 	return proto.EnumName(Policy_PolicyType_name, int32(x))
 }
 func (Policy_PolicyType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_policies_0e89ed70e7bf49a8, []int{0, 0}
+	return fileDescriptor_policies_29919ad21e0f314e, []int{0, 0}
 }
 
 type ImplicitMetaPolicy_Rule int32
@@ -71,7 +71,7 @@ func (x ImplicitMetaPolicy_Rule) String() string {
 	return proto.EnumName(ImplicitMetaPolicy_Rule_name, int32(x))
 }
 func (ImplicitMetaPolicy_Rule) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_policies_0e89ed70e7bf49a8, []int{3, 0}
+	return fileDescriptor_policies_29919ad21e0f314e, []int{3, 0}
 }
 
 // Policy expresses a policy which the orderer can evaluate, because there has been some desire expressed to support
@@ -88,7 +88,7 @@ func (m *Policy) Reset()         { *m = Policy{} }
 func (m *Policy) String() string { return proto.CompactTextString(m) }
 func (*Policy) ProtoMessage()    {}
 func (*Policy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_policies_0e89ed70e7bf49a8, []int{0}
+	return fileDescriptor_policies_29919ad21e0f314e, []int{0}
 }
 func (m *Policy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Policy.Unmarshal(m, b)
@@ -136,7 +136,7 @@ func (m *SignaturePolicyEnvelope) Reset()         { *m = SignaturePolicyEnvelope
 func (m *SignaturePolicyEnvelope) String() string { return proto.CompactTextString(m) }
 func (*SignaturePolicyEnvelope) ProtoMessage()    {}
 func (*SignaturePolicyEnvelope) Descriptor() ([]byte, []int) {
-	return fileDescriptor_policies_0e89ed70e7bf49a8, []int{1}
+	return fileDescriptor_policies_29919ad21e0f314e, []int{1}
 }
 func (m *SignaturePolicyEnvelope) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SignaturePolicyEnvelope.Unmarshal(m, b)
@@ -197,7 +197,7 @@ func (m *SignaturePolicy) Reset()         { *m = SignaturePolicy{} }
 func (m *SignaturePolicy) String() string { return proto.CompactTextString(m) }
 func (*SignaturePolicy) ProtoMessage()    {}
 func (*SignaturePolicy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_policies_0e89ed70e7bf49a8, []int{2}
+	return fileDescriptor_policies_29919ad21e0f314e, []int{2}
 }
 func (m *SignaturePolicy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SignaturePolicy.Unmarshal(m, b)
@@ -335,7 +335,7 @@ func (m *SignaturePolicy_NOutOf) Reset()         { *m = SignaturePolicy_NOutOf{}
 func (m *SignaturePolicy_NOutOf) String() string { return proto.CompactTextString(m) }
 func (*SignaturePolicy_NOutOf) ProtoMessage()    {}
 func (*SignaturePolicy_NOutOf) Descriptor() ([]byte, []int) {
-	return fileDescriptor_policies_0e89ed70e7bf49a8, []int{2, 0}
+	return fileDescriptor_policies_29919ad21e0f314e, []int{2, 0}
 }
 func (m *SignaturePolicy_NOutOf) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SignaturePolicy_NOutOf.Unmarshal(m, b)
@@ -389,7 +389,7 @@ func (m *ImplicitMetaPolicy) Reset()         { *m = ImplicitMetaPolicy{} }
 func (m *ImplicitMetaPolicy) String() string { return proto.CompactTextString(m) }
 func (*ImplicitMetaPolicy) ProtoMessage()    {}
 func (*ImplicitMetaPolicy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_policies_0e89ed70e7bf49a8, []int{3}
+	return fileDescriptor_policies_29919ad21e0f314e, []int{3}
 }
 func (m *ImplicitMetaPolicy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ImplicitMetaPolicy.Unmarshal(m, b)
@@ -433,9 +433,9 @@ func init() {
 	proto.RegisterEnum("common.ImplicitMetaPolicy_Rule", ImplicitMetaPolicy_Rule_name, ImplicitMetaPolicy_Rule_value)
 }
 
-func init() { proto.RegisterFile("common/policies.proto", fileDescriptor_policies_0e89ed70e7bf49a8) }
+func init() { proto.RegisterFile("common/policies.proto", fileDescriptor_policies_29919ad21e0f314e) }
 
-var fileDescriptor_policies_0e89ed70e7bf49a8 = []byte{
+var fileDescriptor_policies_29919ad21e0f314e = []byte{
 	// 480 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x52, 0xdf, 0x8b, 0xda, 0x40,
 	0x10, 0x76, 0xfd, 0x11, 0x75, 0xf4, 0xda, 0x74, 0xb9, 0xa2, 0x1c, 0xb4, 0x95, 0x50, 0x8a, 0x70,

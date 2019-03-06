@@ -32,7 +32,7 @@ func (m *Metadata) Reset()         { *m = Metadata{} }
 func (m *Metadata) String() string { return proto.CompactTextString(m) }
 func (*Metadata) ProtoMessage()    {}
 func (*Metadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_eccf5482c1dcdfdd, []int{0}
+	return fileDescriptor_configuration_7621ba65e418de5f, []int{0}
 }
 func (m *Metadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Metadata.Unmarshal(m, b)
@@ -81,7 +81,7 @@ func (m *Consenter) Reset()         { *m = Consenter{} }
 func (m *Consenter) String() string { return proto.CompactTextString(m) }
 func (*Consenter) ProtoMessage()    {}
 func (*Consenter) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_eccf5482c1dcdfdd, []int{1}
+	return fileDescriptor_configuration_7621ba65e418de5f, []int{1}
 }
 func (m *Consenter) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Consenter.Unmarshal(m, b)
@@ -148,7 +148,7 @@ func (m *Options) Reset()         { *m = Options{} }
 func (m *Options) String() string { return proto.CompactTextString(m) }
 func (*Options) ProtoMessage()    {}
 func (*Options) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_eccf5482c1dcdfdd, []int{2}
+	return fileDescriptor_configuration_7621ba65e418de5f, []int{2}
 }
 func (m *Options) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Options.Unmarshal(m, b)
@@ -233,7 +233,7 @@ func (m *RaftMetadata) Reset()         { *m = RaftMetadata{} }
 func (m *RaftMetadata) String() string { return proto.CompactTextString(m) }
 func (*RaftMetadata) ProtoMessage()    {}
 func (*RaftMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_eccf5482c1dcdfdd, []int{3}
+	return fileDescriptor_configuration_7621ba65e418de5f, []int{3}
 }
 func (m *RaftMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RaftMetadata.Unmarshal(m, b)
@@ -290,10 +290,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("orderer/etcdraft/configuration.proto", fileDescriptor_configuration_eccf5482c1dcdfdd)
+	proto.RegisterFile("orderer/etcdraft/configuration.proto", fileDescriptor_configuration_7621ba65e418de5f)
 }
 
-var fileDescriptor_configuration_eccf5482c1dcdfdd = []byte{
+var fileDescriptor_configuration_7621ba65e418de5f = []byte{
 	// 537 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x93, 0x4d, 0x6b, 0x1b, 0x3d,
 	0x14, 0x85, 0x99, 0x78, 0xf2, 0xa5, 0x78, 0x5e, 0xdb, 0x7a, 0x37, 0xa6, 0x50, 0x30, 0x6e, 0x9b,
