@@ -8,6 +8,7 @@ package etcdraft
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -87,14 +88,9 @@ func CreateStorage(
 			snapshot.Metadata.Term, snapshot.Metadata.Index, snapshot.Metadata.ConfState.Nodes)
 	}
 
-	w, err := createWAL(lg, walDir, snapshot)
+	w, st, ents, err := createOrReadWAL(lg, walDir, snapshot)
 	if err != nil {
-		return nil, err
-	}
-
-	_, st, ents, err := w.ReadAll()
-	if err != nil {
-		return nil, errors.Errorf("failed to read WAL: %s", err)
+		return nil, errors.Errorf("failed to create or read WAL: %s", err)
 	}
 
 	if snapshot != nil {
@@ -176,7 +172,7 @@ func createSnapshotter(logger *flogging.FabricLogger, snapDir string) (*snap.Sna
 	return snap.New(logger.Zap(), snapDir), nil
 }
 
-func createWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.Snapshot) (*wal.WAL, error) {
+func createOrReadWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.Snapshot) (w *wal.WAL, st raftpb.HardState, ents []raftpb.Entry, err error) {
 	if !wal.Exist(walDir) {
 		lg.Infof("No WAL data found, creating new WAL at path '%s'", walDir)
 		// TODO(jay_guo) add metadata to be persisted with wal once we need it.
@@ -187,11 +183,11 @@ func createWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.Snapsh
 		}
 
 		if err != nil {
-			return nil, errors.Errorf("failed to initialize WAL: %s", err)
+			return nil, st, nil, errors.Errorf("failed to initialize WAL: %s", err)
 		}
 
 		if err = w.Close(); err != nil {
-			return nil, errors.Errorf("failed to close the WAL just created: %s", err)
+			return nil, st, nil, errors.Errorf("failed to close the WAL just created: %s", err)
 		}
 	} else {
 		lg.Infof("Found WAL data at path '%s', replaying it", walDir)
@@ -203,12 +199,39 @@ func createWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.Snapsh
 	}
 
 	lg.Debugf("Loading WAL at Term %d and Index %d", walsnap.Term, walsnap.Index)
-	w, err := wal.Open(lg.Zap(), walDir, walsnap)
-	if err != nil {
-		return nil, errors.Errorf("failed to open existing WAL: %s", err)
+
+	var repaired bool
+	for {
+		if w, err = wal.Open(lg.Zap(), walDir, walsnap); err != nil {
+			return nil, st, nil, errors.Errorf("failed to open WAL: %s", err)
+		}
+
+		if _, st, ents, err = w.ReadAll(); err != nil {
+			lg.Warnf("Failed to read WAL: %s", err)
+
+			if errc := w.Close(); errc != nil {
+				return nil, st, nil, errors.Errorf("failed to close erroneous WAL: %s", errc)
+			}
+
+			// only repair UnexpectedEOF and only repair once
+			if repaired || err != io.ErrUnexpectedEOF {
+				return nil, st, nil, errors.Errorf("failed to read WAL and cannot repair: %s", err)
+			}
+
+			if !wal.Repair(lg.Zap(), walDir) {
+				return nil, st, nil, errors.Errorf("failed to repair WAL: %s", err)
+			}
+
+			repaired = true
+			// next loop should be able to open WAL and return
+			continue
+		}
+
+		// successfully opened WAL and read all entries, break
+		break
 	}
 
-	return w, nil
+	return w, st, ents, nil
 }
 
 // Snapshot returns the latest snapshot stored in memory
