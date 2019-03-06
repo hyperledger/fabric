@@ -255,12 +255,15 @@ func NewChain(
 		createPuller:     f,
 		clock:            opts.Clock,
 		Metrics: &Metrics{
-			ClusterSize:          opts.Metrics.ClusterSize.With("channel", support.ChainID()),
-			IsLeader:             opts.Metrics.IsLeader.With("channel", support.ChainID()),
-			CommittedBlockNumber: opts.Metrics.CommittedBlockNumber.With("channel", support.ChainID()),
-			SnapshotBlockNumber:  opts.Metrics.SnapshotBlockNumber.With("channel", support.ChainID()),
-			LeaderChanges:        opts.Metrics.LeaderChanges.With("channel", support.ChainID()),
-			ProposalFailures:     opts.Metrics.ProposalFailures.With("channel", support.ChainID()),
+			ClusterSize:             opts.Metrics.ClusterSize.With("channel", support.ChainID()),
+			IsLeader:                opts.Metrics.IsLeader.With("channel", support.ChainID()),
+			CommittedBlockNumber:    opts.Metrics.CommittedBlockNumber.With("channel", support.ChainID()),
+			SnapshotBlockNumber:     opts.Metrics.SnapshotBlockNumber.With("channel", support.ChainID()),
+			LeaderChanges:           opts.Metrics.LeaderChanges.With("channel", support.ChainID()),
+			ProposalFailures:        opts.Metrics.ProposalFailures.With("channel", support.ChainID()),
+			DataPersistDuration:     opts.Metrics.DataPersistDuration.With("channel", support.ChainID()),
+			NormalProposalsReceived: opts.Metrics.NormalProposalsReceived.With("channel", support.ChainID()),
+			ConfigProposalsReceived: opts.Metrics.ConfigProposalsReceived.With("channel", support.ChainID()),
 		},
 		logger:          lg,
 		opts:            opts,
@@ -288,6 +291,7 @@ func NewChain(
 		chainID:      c.channelID,
 		chain:        c,
 		logger:       c.logger,
+		metrics:      c.Metrics,
 		storage:      storage,
 		rpc:          c.rpc,
 		config:       config,
@@ -386,11 +390,13 @@ func (c *Chain) detectMigration() bool {
 
 // Order submits normal type transactions for ordering.
 func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
+	c.Metrics.NormalProposalsReceived.Add(1)
 	return c.Submit(&orderer.SubmitRequest{LastValidationSeq: configSeq, Payload: env, Channel: c.channelID}, 0)
 }
 
 // Configure submits config type transactions for ordering.
 func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
+	c.Metrics.ConfigProposalsReceived.Add(1)
 	if err := c.checkConfigUpdateValidity(env); err != nil {
 		c.Metrics.ProposalFailures.Add(1)
 		return err

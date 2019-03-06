@@ -22,6 +22,7 @@ import (
 type node struct {
 	chainID string
 	logger  *flogging.FabricLogger
+	metrics *Metrics
 
 	unreachableLock sync.RWMutex
 	unreachable     map[uint64]struct{}
@@ -79,9 +80,12 @@ func (n *node) run() {
 			n.Tick()
 
 		case rd := <-n.Ready():
+			startStoring := n.clock.Now()
 			if err := n.storage.Store(rd.Entries, rd.HardState, rd.Snapshot); err != nil {
 				n.logger.Panicf("Failed to persist etcd/raft data: %s", err)
 			}
+			duration := n.clock.Since(startStoring).Seconds()
+			n.metrics.DataPersistDuration.Observe(float64(duration))
 
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				n.chain.snapC <- &rd.Snapshot

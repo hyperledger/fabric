@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
@@ -218,6 +217,9 @@ var _ = Describe("Chain", func() {
 					fakeFields.fakeSnapshotBlockNumber,
 					fakeFields.fakeLeaderChanges,
 					fakeFields.fakeProposalFailures,
+					fakeFields.fakeDataPersistDuration,
+					fakeFields.fakeNormalProposalsReceived,
+					fakeFields.fakeConfigProposalsReceived,
 				}
 				for _, m := range metricsList {
 					Expect(m.WithCallCount()).To(Equal(1))
@@ -237,6 +239,9 @@ var _ = Describe("Chain", func() {
 			It("fails to order envelope", func() {
 				err := chain.Order(env, 0)
 				Expect(err).To(MatchError("no Raft leader"))
+				Expect(fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
+				Expect(fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
+				Expect(fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(0))
 				Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
 				Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
 			})
@@ -258,6 +263,8 @@ var _ = Describe("Chain", func() {
 				chain.Halt()
 				err := chain.Order(env, 0)
 				Expect(err).To(MatchError("chain is stopped"))
+				Expect(fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
+				Expect(fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 				Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
 				Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
 			})
@@ -269,9 +276,22 @@ var _ = Describe("Chain", func() {
 				cutter.CutNext = true
 				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
+				Expect(fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 				Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(1))
 				Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(0)).Should(Equal(float64(1)))
+
+				// There are three calls to DataPersistDuration by now corresponding to the following three
+				// arriving on the Ready channel:
+				// 1. an EntryConfChange to let this node join the Raft cluster
+				// 2. a SoftState and an associated increase of term in the HardState due to the node being elected leader
+				// 3. a block being committed
+				// The duration being emitted is zero since we don't tick the fake clock during this time
+				Expect(fakeFields.fakeDataPersistDuration.ObserveCallCount()).Should(Equal(3))
+				Expect(fakeFields.fakeDataPersistDuration.ObserveArgsForCall(0)).Should(Equal(float64(0)))
+				Expect(fakeFields.fakeDataPersistDuration.ObserveArgsForCall(1)).Should(Equal(float64(0)))
+				Expect(fakeFields.fakeDataPersistDuration.ObserveArgsForCall(2)).Should(Equal(float64(0)))
 
 				By("respecting batch timeout")
 				cutter.CutNext = false
@@ -279,11 +299,15 @@ var _ = Describe("Chain", func() {
 				support.SharedConfigReturns(&mockconfig.Orderer{BatchTimeoutVal: timeout})
 				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(2))
+				Expect(fakeFields.fakeNormalProposalsReceived.AddArgsForCall(1)).To(Equal(float64(1)))
 
 				clock.WaitForNWatchersAndIncrement(timeout, 2)
 				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 				Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(2))
 				Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(1)).Should(Equal(float64(2)))
+				Expect(fakeFields.fakeDataPersistDuration.ObserveCallCount()).Should(Equal(4))
+				Expect(fakeFields.fakeDataPersistDuration.ObserveArgsForCall(3)).Should(Equal(float64(0)))
 			})
 
 			It("does not reset timer for every envelope", func() {
@@ -432,6 +456,8 @@ var _ = Describe("Chain", func() {
 					It("should throw an error", func() {
 						err := chain.Configure(configEnv, configSeq)
 						Expect(err).To(MatchError("config transaction has unknown header type"))
+						Expect(fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
+						Expect(fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 						Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
 						Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
 					})
@@ -464,6 +490,8 @@ var _ = Describe("Chain", func() {
 								It("should create a config block and no normal block", func() {
 									err := chain.Configure(configEnv, configSeq)
 									Expect(err).NotTo(HaveOccurred())
+									Expect(fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
+									Expect(fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 									Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 									Consistently(support.WriteBlockCallCount).Should(Equal(0))
 									Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(1))
@@ -479,6 +507,8 @@ var _ = Describe("Chain", func() {
 									By("adding a normal envelope")
 									err := chain.Order(env, 0)
 									Expect(err).NotTo(HaveOccurred())
+									Expect(fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
+									Expect(fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 									Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 									// // clock.WaitForNWatchersAndIncrement(timeout, 2)
@@ -486,6 +516,8 @@ var _ = Describe("Chain", func() {
 									By("adding a config envelope")
 									err = chain.Configure(configEnv, configSeq)
 									Expect(err).NotTo(HaveOccurred())
+									Expect(fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
+									Expect(fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 
 									Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 									Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
@@ -583,6 +615,8 @@ var _ = Describe("Chain", func() {
 						It("should be able to process config update of type B", func() {
 							err := chain.Configure(configEnv, configSeq)
 							Expect(err).NotTo(HaveOccurred())
+							Expect(fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
+							Expect(fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 						})
 					})
 
@@ -607,6 +641,8 @@ var _ = Describe("Chain", func() {
 						It("should fail, since consenters set change is not supported", func() {
 							err := chain.Configure(configEnv, configSeq)
 							Expect(err).To(MatchError("update of more than one consenter at a time is not supported, requested changes: add 3 node(s), remove 1 node(s)"))
+							Expect(fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
+							Expect(fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 							Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
 							Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
 						})
@@ -1553,6 +1589,8 @@ var _ = Describe("Chain", func() {
 					By("sending config transaction")
 					err := c1.Configure(configEnv, 0)
 					Expect(err).ToNot(HaveOccurred())
+					Expect(c1.fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
+					Expect(c1.fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 
 					network.exec(func(c *chain) {
 						Eventually(c.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
@@ -1591,6 +1629,8 @@ var _ = Describe("Chain", func() {
 					c1.cutter.CutNext = true
 					err = c4.Order(env, 0)
 					Expect(err).ToNot(HaveOccurred())
+					Expect(c4.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
+					Expect(c4.fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 
 					network.exec(func(c *chain) {
 						Eventually(c.support.WriteBlockCallCount, defaultTimeout).Should(Equal(2))
@@ -2061,6 +2101,8 @@ var _ = Describe("Chain", func() {
 				c1.cutter.CutNext = true
 				err := c1.Order(env, 0)
 				Expect(err).ToNot(HaveOccurred())
+				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
+				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 
 				network.exec(
 					func(c *chain) {
@@ -2072,6 +2114,8 @@ var _ = Describe("Chain", func() {
 
 				err = c1.Order(env, 0)
 				Expect(err).ToNot(HaveOccurred())
+				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(2))
+				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddArgsForCall(1)).To(Equal(float64(1)))
 				Eventually(c1.cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 				c1.clock.WaitForNWatchersAndIncrement(timeout, 2)
@@ -2086,6 +2130,9 @@ var _ = Describe("Chain", func() {
 				c1.cutter.CutNext = true
 				err := c2.Order(env, 0)
 				Expect(err).ToNot(HaveOccurred())
+				Expect(c2.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
+				Expect(c2.fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
+				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(0))
 
 				network.exec(
 					func(c *chain) {
@@ -2097,6 +2144,9 @@ var _ = Describe("Chain", func() {
 
 				err = c2.Order(env, 0)
 				Expect(err).ToNot(HaveOccurred())
+				Expect(c2.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(2))
+				Expect(c2.fakeFields.fakeNormalProposalsReceived.AddArgsForCall(1)).To(Equal(float64(1)))
+				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(0))
 				Eventually(c1.cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 				c1.clock.WaitForNWatchersAndIncrement(timeout, 2)
@@ -2269,6 +2319,9 @@ var _ = Describe("Chain", func() {
 					Eventually(errorC).Should(BeClosed())
 					err := c2.Order(env, 0)
 					Expect(err).To(HaveOccurred())
+					Expect(c2.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
+					Expect(c2.fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
+					Expect(c1.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(0))
 
 					network.connect(2)
 					c1.clock.Increment(interval)
@@ -3405,47 +3458,4 @@ func StateEqual(lead uint64, state raft.StateType) types.GomegaMatcher {
 func noOpBlockPuller() (etcdraft.BlockPuller, error) {
 	bp := &mocks.FakeBlockPuller{}
 	return bp, nil
-}
-
-func newFakeMetrics(fakeFields *fakeMetricsFields) *etcdraft.Metrics {
-	return &etcdraft.Metrics{
-		ClusterSize:          fakeFields.fakeClusterSize,
-		IsLeader:             fakeFields.fakeIsLeader,
-		CommittedBlockNumber: fakeFields.fakeCommittedBlockNumber,
-		SnapshotBlockNumber:  fakeFields.fakeSnapshotBlockNumber,
-		LeaderChanges:        fakeFields.fakeLeaderChanges,
-		ProposalFailures:     fakeFields.fakeProposalFailures,
-	}
-}
-
-type fakeMetricsFields struct {
-	fakeClusterSize          *metricsfakes.Gauge
-	fakeIsLeader             *metricsfakes.Gauge
-	fakeCommittedBlockNumber *metricsfakes.Gauge
-	fakeSnapshotBlockNumber  *metricsfakes.Gauge
-	fakeLeaderChanges        *metricsfakes.Counter
-	fakeProposalFailures     *metricsfakes.Counter
-}
-
-func newFakeMetricsFields() *fakeMetricsFields {
-	return &fakeMetricsFields{
-		fakeClusterSize:          newFakeGauge(),
-		fakeIsLeader:             newFakeGauge(),
-		fakeCommittedBlockNumber: newFakeGauge(),
-		fakeSnapshotBlockNumber:  newFakeGauge(),
-		fakeLeaderChanges:        newFakeCounter(),
-		fakeProposalFailures:     newFakeCounter(),
-	}
-}
-
-func newFakeGauge() *metricsfakes.Gauge {
-	fakeGauge := &metricsfakes.Gauge{}
-	fakeGauge.WithReturns(fakeGauge)
-	return fakeGauge
-}
-
-func newFakeCounter() *metricsfakes.Counter {
-	fakeCounter := &metricsfakes.Counter{}
-	fakeCounter.WithReturns(fakeCounter)
-	return fakeCounter
 }
