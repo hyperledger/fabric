@@ -830,7 +830,7 @@ var _ = Describe("Chain", func() {
 
 							c, err := etcdraft.NewChain(support, opts, configurator, nil, noOpBlockPuller, observeC)
 							Expect(c).To(BeNil())
-							Expect(err).To(MatchError(ContainSubstring("failed to open existing WAL")))
+							Expect(err).To(MatchError(ContainSubstring("permission denied")))
 						})
 					})
 				})
