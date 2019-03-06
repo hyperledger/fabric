@@ -7,10 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
+	"context"
+	"crypto/sha256"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/clock"
+	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
@@ -45,6 +49,7 @@ func (n *node) start(fresh, join, migration bool) {
 	raftPeers := RaftPeers(n.metadata.Consenters)
 	n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
 
+	var campaign bool
 	if fresh {
 		if join {
 			if !migration {
@@ -56,6 +61,14 @@ func (n *node) start(fresh, join, migration bool) {
 			}
 		} else {
 			n.logger.Info("Starting raft node as part of a new channel")
+
+			// determine the node to start campaign by selecting the node with ID equals to:
+			//                hash(channelID) % cluster_size + 1
+			sha := sha256.Sum256([]byte(n.chainID))
+			number, _ := proto.DecodeVarint(sha[24:])
+			if n.config.ID == number%uint64(len(raftPeers))+1 {
+				campaign = true
+			}
 		}
 		n.Node = raft.StartNode(n.config, raftPeers)
 	} else {
@@ -63,19 +76,39 @@ func (n *node) start(fresh, join, migration bool) {
 		n.Node = raft.RestartNode(n.config)
 	}
 
-	go n.run()
+	go n.run(campaign)
 }
 
-func (n *node) run() {
-	ticker := n.clock.NewTicker(n.tickInterval)
+func (n *node) run(campaign bool) {
+	raftTicker := n.clock.NewTicker(n.tickInterval)
 
 	if s := n.storage.Snapshot(); !raft.IsEmptySnap(s) {
 		n.chain.snapC <- &s
 	}
 
+	elected := make(chan struct{})
+	if campaign {
+		n.logger.Infof("This node is picked to start campaign")
+		go func() {
+			campaignTicker := n.clock.NewTicker(n.tickInterval)
+			defer campaignTicker.Stop()
+
+			for {
+				select {
+				case <-campaignTicker.C():
+					n.Campaign(context.TODO())
+				case <-elected:
+					return
+				case <-n.chain.doneC:
+					return
+				}
+			}
+		}()
+	}
+
 	for {
 		select {
-		case <-ticker.C():
+		case <-raftTicker.C():
 			n.Tick()
 
 		case rd := <-n.Ready():
@@ -92,6 +125,15 @@ func (n *node) run() {
 				n.chain.applyC <- apply{rd.CommittedEntries, rd.SoftState}
 			}
 
+			if campaign && rd.SoftState != nil {
+				leader := atomic.LoadUint64(&rd.SoftState.Lead) // etcdraft requires atomic access to this var
+				if leader != raft.None {
+					n.logger.Infof("Leader %d is present, quit campaign", leader)
+					campaign = false
+					close(elected)
+				}
+			}
+
 			n.Advance()
 
 			// TODO(jay_guo) leader can write to disk in parallel with replicating
@@ -99,7 +141,7 @@ func (n *node) run() {
 			n.send(rd.Messages)
 
 		case <-n.chain.haltC:
-			ticker.Stop()
+			raftTicker.Stop()
 			n.Stop()
 			n.storage.Close()
 			n.logger.Infof("Raft node stopped")
