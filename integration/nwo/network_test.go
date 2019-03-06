@@ -97,18 +97,19 @@ var _ = Describe("Network", func() {
 			peer := network.Peer("org1", "peer2")
 
 			chaincode := nwo.Chaincode{
-				Name:              "mycc",
-				Version:           "0.0",
-				Path:              "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				Lang:              "golang",
-				PackageFile:       filepath.Join(tempDir, "simplecc.tar.gz"),
-				Ctor:              `{"Args":["init","a","100","b","200"]}`,
-				EndorsementPlugin: "escc",
-				ValidationPlugin:  "vscc",
-				Policy:            `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
-				Sequence:          "1",
-				InitRequired:      true,
-				Label:             "my_simple_chaincode",
+				Name:                "mycc",
+				Version:             "0.0",
+				Path:                "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+				Lang:                "golang",
+				PackageFile:         filepath.Join(tempDir, "simplecc.tar.gz"),
+				Ctor:                `{"Args":["init","a","100","b","200"]}`,
+				EndorsementPlugin:   "escc",
+				ValidationPlugin:    "vscc",
+				Policy:              `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+				ChannelConfigPolicy: "/Channel/Application/Endorsement",
+				Sequence:            "1",
+				InitRequired:        true,
+				Label:               "my_simple_chaincode",
 			}
 
 			network.CreateAndJoinChannels(orderer)
@@ -264,7 +265,7 @@ var _ = Describe("Network", func() {
 				Ctor:              `{"Args":["init","a","100","b","200"]}`,
 				EndorsementPlugin: "escc",
 				ValidationPlugin:  "vscc",
-				Policy:            `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+				SignaturePolicy:   `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
 				Sequence:          "1",
 				InitRequired:      true,
 				Label:             "my_simple_chaincode",

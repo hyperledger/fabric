@@ -128,7 +128,7 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 	assert.Contains(t, err.Error(), "The required parameter 'sequence' is empty. Rerun the command with --sequence flag")
 
 	sequence = 35
-	policy = "MAD"
+	signaturePolicy = "MAD"
 	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
 		Signer:         &mockSigner{},
 		EndorserClient: me,
@@ -140,7 +140,7 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid signature policy: MAD")
 
-	policy = "AND('A.member', 'B.member')"
+	signaturePolicy = "AND('A.member', 'B.member')"
 	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
 		EndorserClient: me,
 	})
@@ -151,7 +151,7 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error creating signed proposal: nil signer provided")
 
-	policy = "AND('A.member', 'B.member')"
+	signaturePolicy = "AND('A.member', 'B.member')"
 	collectionsConfigFile = "not.there"
 	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
 		Signer:         &mockSigner{},

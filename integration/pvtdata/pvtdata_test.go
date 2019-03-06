@@ -665,7 +665,7 @@ var _ bool = Describe("PrivateData", func() {
 				Lang:              "golang",
 				PackageFile:       filepath.Join(testDir, "marbles-pvtdata.tar.gz"),
 				Label:             "marbles-private-2.0",
-				Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				SignaturePolicy:   `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
 				CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config2.json"),
 				Sequence:          "1",
 			}
@@ -691,7 +691,7 @@ var _ bool = Describe("PrivateData", func() {
 
 			By("upgrading chaincode to remove org3 from collectionMarbles")
 			chaincode.Sequence = "2"
-			chaincode.Policy = `OR ('Org1MSP.member','Org2MSP.member')`
+			chaincode.SignaturePolicy = `OR ('Org1MSP.member','Org2MSP.member')`
 			chaincode.CollectionsConfig = filepath.Join("testdata", "collection_configs", "collections_config1.json")
 
 			maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", peerAllThreeOrgs...)

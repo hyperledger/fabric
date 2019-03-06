@@ -325,7 +325,7 @@ var _ = Describe("Commit", func() {
 				"--sequence=1",
 				"--peerAddresses=querypeer1",
 				"--tlsRootCertFiles=tls1",
-				"--policy=AND ('Org1MSP.member','Org2MSP.member')",
+				"--signature-policy=AND ('Org1MSP.member','Org2MSP.member')",
 			})
 		})
 
@@ -342,7 +342,7 @@ var _ = Describe("Commit", func() {
 		Context("when the policy is invalid", func() {
 			BeforeEach(func() {
 				commitCmd.SetArgs([]string{
-					"--policy=notapolicy",
+					"--signature-policy=notapolicy",
 					"--channelID=testchannel",
 					"--name=testcc",
 					"--version=testversion",

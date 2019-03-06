@@ -327,7 +327,7 @@ var _ = Describe("ApproverForMyOrg", func() {
 				"--sequence=1",
 				"--peerAddresses=querypeer1",
 				"--tlsRootCertFiles=tls1",
-				"--policy=AND ('Org1MSP.member','Org2MSP.member')",
+				"--signature-policy=AND ('Org1MSP.member','Org2MSP.member')",
 			})
 		})
 
@@ -341,10 +341,54 @@ var _ = Describe("ApproverForMyOrg", func() {
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve endorser client"))
 		})
 
-		Context("when the policy is invalid", func() {
+		Context("when the channel config policy is specified", func() {
+			BeforeEach(func() {
+				approveForMyOrgCmd = chaincode.ApproveForMyOrgCmd(nil)
+				approveForMyOrgCmd.SetArgs([]string{
+					"--channel-config-policy=/Channel/Application/Readers",
+					"--channelID=testchannel",
+					"--name=testcc",
+					"--version=testversion",
+					"--package-id=testpackageid",
+					"--sequence=1",
+					"--peerAddresses=querypeer1",
+					"--tlsRootCertFiles=tls1",
+				})
+			})
+
+			It("sets up the approver for my org and attempts to approve the chaincode definition", func() {
+				err := approveForMyOrgCmd.Execute()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to retrieve endorser client"))
+			})
+		})
+
+		Context("when a signature policy and channel config policy are both specified", func() {
 			BeforeEach(func() {
 				approveForMyOrgCmd.SetArgs([]string{
-					"--policy=notapolicy",
+					"--signature-policy=a_policy",
+					"--channel-config-policy=anotha_policy",
+					"--channelID=testchannel",
+					"--name=testcc",
+					"--version=testversion",
+					"--package-id=testpackageid",
+					"--sequence=1",
+					"--peerAddresses=querypeer1",
+					"--tlsRootCertFiles=tls1",
+				})
+			})
+
+			It("returns an error", func() {
+				err := approveForMyOrgCmd.Execute()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("cannot specify both \"--signature-policy\" and \"--channel-config-policy\""))
+			})
+		})
+
+		Context("when the signature policy is invalid", func() {
+			BeforeEach(func() {
+				approveForMyOrgCmd.SetArgs([]string{
+					"--signature-policy=notapolicy",
 					"--channelID=testchannel",
 					"--name=testcc",
 					"--version=testversion",
