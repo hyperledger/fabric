@@ -234,6 +234,7 @@ type connection struct {
 	stopFlag     int32                           // indicates whether this connection is in process of stopping
 	stopChan     chan struct{}                   // a method to stop the server-side gRPC call from a different go-routine
 	sync.RWMutex                                 // synchronizes access to shared variables
+	stopWG       sync.WaitGroup                  // a method to wait for stream activity to stop before closing it
 }
 
 func (conn *connection) close() {
@@ -253,6 +254,7 @@ func (conn *connection) close() {
 	defer conn.Unlock()
 
 	if conn.clientStream != nil {
+		conn.stopWG.Wait()
 		conn.clientStream.CloseSend()
 	}
 	if conn.conn != nil {
@@ -303,6 +305,7 @@ func (conn *connection) serviceConnection() error {
 	// readFromStream() method
 	go conn.readFromStream(errChan, quit, msgChan)
 
+	conn.stopWG.Add(1) // wait for write to finish before closing it
 	go conn.writeToStream()
 
 	for !conn.toDie() {
@@ -321,6 +324,7 @@ func (conn *connection) serviceConnection() error {
 }
 
 func (conn *connection) writeToStream() {
+	defer conn.stopWG.Done()
 	for !conn.toDie() {
 		stream := conn.getStream()
 		if stream == nil {
