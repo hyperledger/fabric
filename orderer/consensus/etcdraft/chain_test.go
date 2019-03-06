@@ -45,8 +45,14 @@ import (
 const (
 	interval            = time.Second
 	LongEventualTimeout = 10 * time.Second
-	ELECTION_TICK       = 2
-	HEARTBEAT_TICK      = 1
+
+	// 10 is the default setting of ELECTION_TICK.
+	// We used to have a small number here (2) to reduce the time for test - we don't
+	// need to tick node 10 times to trigger election - however, we are using another
+	// mechanism to trigger it now which does not depend on time: send an artificial
+	// MsgTimeoutNow to node.
+	ELECTION_TICK  = 10
+	HEARTBEAT_TICK = 1
 )
 
 func init() {
@@ -157,16 +163,11 @@ var _ = Describe("Chain", func() {
 			}
 		})
 
-		campaign := func(clock *fakeclock.FakeClock, observeC <-chan raft.SoftState) {
-			Eventually(func() bool {
-				clock.Increment(interval)
-				select {
-				case s := <-observeC:
-					return s.RaftState == raft.StateLeader
-				default:
-					return false
-				}
-			}, LongEventualTimeout).Should(BeTrue())
+		campaign := func(c *etcdraft.Chain, observeC <-chan raft.SoftState) {
+			Eventually(func() <-chan raft.SoftState {
+				c.Consensus(&orderer.ConsensusRequest{Payload: utils.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow})}, 0)
+				return observeC
+			}, LongEventualTimeout).Should(Receive(StateEqual(1, raft.StateLeader)))
 		}
 
 		JustBeforeEach(func() {
@@ -243,7 +244,7 @@ var _ = Describe("Chain", func() {
 
 		Context("when Raft leader is elected", func() {
 			JustBeforeEach(func() {
-				campaign(clock, observeC)
+				campaign(chain, observeC)
 			})
 
 			It("updates metrics upon leader election)", func() {
@@ -739,7 +740,7 @@ var _ = Describe("Chain", func() {
 						Expect(m.RaftIndex).To(Equal(m2.RaftIndex))
 
 						// chain should keep functioning
-						campaign(c.clock, c.observe)
+						campaign(c.Chain, c.observe)
 
 						c.cutter.CutNext = true
 
@@ -764,7 +765,7 @@ var _ = Describe("Chain", func() {
 						Expect(m.RaftIndex).To(Equal(m2.RaftIndex))
 
 						// chain should keep functioning
-						campaign(c.clock, c.observe)
+						campaign(c.Chain, c.observe)
 
 						c.cutter.CutNext = true
 
@@ -783,7 +784,7 @@ var _ = Describe("Chain", func() {
 						Consistently(c.support.WriteBlockCallCount).Should(Equal(0))
 
 						// chain should keep functioning
-						campaign(c.clock, c.observe)
+						campaign(c.Chain, c.observe)
 
 						c.cutter.CutNext = true
 
@@ -969,10 +970,10 @@ var _ = Describe("Chain", func() {
 
 							raftMetadata.RaftIndex = m.RaftIndex
 							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
+							c.opts.SnapInterval = 1
 
 							c.init()
 							c.Start()
-							defer c.Halt()
 
 							// following arithmetic reflects how etcdraft MemoryStorage is implemented
 							// when no entry is appended after snapshot being loaded.
@@ -980,20 +981,34 @@ var _ = Describe("Chain", func() {
 							Eventually(c.opts.MemoryStorage.LastIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index))
 
 							// chain keeps functioning
-							Eventually(func() bool {
+							Eventually(func() <-chan raft.SoftState {
 								c.clock.Increment(interval)
-								select {
-								case <-c.observe:
-									return true
-								default:
-									return false
-								}
-							}, LongEventualTimeout).Should(BeTrue())
+								return c.observe
+							}, LongEventualTimeout).Should(Receive(StateEqual(1, raft.StateLeader)))
 
 							c.cutter.CutNext = true
 							err = c.Order(env, uint64(0))
 							Expect(err).NotTo(HaveOccurred())
 							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+
+							Eventually(countFiles, LongEventualTimeout).Should(Equal(2))
+							c.Halt()
+
+							_, metadata = c.support.WriteBlockArgsForCall(0)
+							m = &raftprotos.RaftMetadata{}
+							proto.Unmarshal(metadata, m)
+							raftMetadata.RaftIndex = m.RaftIndex
+							cx := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
+
+							cx.init()
+							cx.Start()
+							defer cx.Halt()
+
+							// chain keeps functioning
+							Eventually(func() <-chan raft.SoftState {
+								cx.clock.Increment(interval)
+								return cx.observe
+							}, LongEventualTimeout).Should(Receive(StateEqual(1, raft.StateLeader)))
 						})
 					})
 
@@ -1535,6 +1550,40 @@ var _ = Describe("Chain", func() {
 
 					network.exec(func(c *chain) {
 						Eventually(c.support.WriteBlockCallCount, defaultTimeout).Should(Equal(2))
+					})
+				})
+
+				It("does not reconfigure raft cluster if it's a channel creation tx", func() {
+					configEnv := newConfigEnv("another-channel",
+						common.HeaderType_CONFIG,
+						newConfigUpdateEnv(channelID, removeConsenterConfigValue(2)))
+
+					// Wrap config env in Orderer transaction
+					channelCreationEnv := &common.Envelope{
+						Payload: marshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: marshalOrPanic(&common.ChannelHeader{
+									Type:      int32(common.HeaderType_ORDERER_TRANSACTION),
+									ChannelId: channelID,
+								}),
+							},
+							Data: marshalOrPanic(configEnv),
+						}),
+					}
+
+					c1.cutter.CutNext = true
+
+					Expect(c1.Configure(channelCreationEnv, 0)).To(Succeed())
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					})
+
+					// assert c2 is not evicted
+					Consistently(c2.Errored).ShouldNot(BeClosed())
+					Expect(c2.Order(env, 0)).To(Succeed())
+
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					})
 				})
 
@@ -3106,8 +3155,13 @@ func (n *network) join(id uint64, expectLeaderChange bool) {
 		return step(dest, msg)
 	})
 
-	leader.clock.Increment(interval)
-	Eventually(signal, LongEventualTimeout).Should(BeClosed())
+	// Tick leader so it sends out a heartbeat to new node.
+	// One tick _may_ not be enough because leader might be busy
+	// and this tick is droppped on the floor.
+	Eventually(func() <-chan struct{} {
+		leader.clock.Increment(interval)
+		return signal
+	}, LongEventualTimeout, 100*time.Millisecond).Should(BeClosed())
 
 	leader.setStepFunc(step)
 

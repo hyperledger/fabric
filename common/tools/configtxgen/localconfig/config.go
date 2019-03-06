@@ -194,7 +194,7 @@ var genesisDefaults = TopLevel{
 		},
 		EtcdRaft: &etcdraft.Metadata{
 			Options: &etcdraft.Options{
-				TickInterval:     500,
+				TickInterval:     "500ms",
 				ElectionTick:     10,
 				HeartbeatTick:    1,
 				MaxInflightMsgs:  256,
@@ -404,7 +404,7 @@ loop:
 	second_loop:
 		for {
 			switch {
-			case ord.EtcdRaft.Options.TickInterval == 0:
+			case ord.EtcdRaft.Options.TickInterval == "":
 				logger.Infof("Orderer.EtcdRaft.Options.TickInterval unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.TickInterval)
 				ord.EtcdRaft.Options.TickInterval = genesisDefaults.Orderer.EtcdRaft.Options.TickInterval
 
@@ -434,6 +434,10 @@ loop:
 			default:
 				break second_loop
 			}
+		}
+
+		if _, err := time.ParseDuration(ord.EtcdRaft.Options.TickInterval); err != nil {
+			logger.Panicf("Etcdraft TickInterval (%s) must be in time duration format", ord.EtcdRaft.Options.TickInterval)
 		}
 
 		// validate the specified members for Options

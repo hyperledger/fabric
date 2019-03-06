@@ -88,6 +88,7 @@ Profiles:{{ range .Profiles }}
       {{- if eq $w.Consensus.Type "etcdraft" }}
       EtcdRaft:
         Options:
+          TickInterval: 500ms
           SnapshotInterval: 1 KB
         Consenters:{{ range .Orderers }}{{ with $w.Orderer . }}
         - Host: 127.0.0.1

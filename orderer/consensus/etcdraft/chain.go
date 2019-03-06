@@ -208,9 +208,11 @@ func NewChain(
 
 	// get block number in last snapshot, if exists
 	var snapBlkNum uint64
+	var cc raftpb.ConfState
 	if s := storage.Snapshot(); !raft.IsEmptySnap(s) {
 		b := utils.UnmarshalBlockOrPanic(s.Data)
 		snapBlkNum = b.Header.Number
+		cc = s.Metadata.ConfState
 	}
 
 	b := support.Block(support.Height() - 1)
@@ -238,6 +240,7 @@ func NewChain(
 		lastBlock:        b,
 		sizeLimit:        sizeLimit,
 		lastSnapBlockNum: snapBlkNum,
+		confState:        cc,
 		createPuller:     f,
 		clock:            opts.Clock,
 		Metrics: &Metrics{
@@ -995,8 +998,8 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		select {
 		case c.gcC <- &gc{index: c.appliedIndex, state: c.confState, data: ents[position].Data}:
 			c.logger.Infof("Accumulated %d bytes since last snapshot, exceeding size limit (%d bytes), "+
-				"taking snapshot at block %d, last snapshotted block number is %d",
-				c.accDataSize, c.sizeLimit, appliedb, c.lastSnapBlockNum)
+				"taking snapshot at block %d, last snapshotted block number is %d, nodes: %+v",
+				c.accDataSize, c.sizeLimit, appliedb, c.lastSnapBlockNum, c.confState.Nodes)
 			c.accDataSize = 0
 			c.lastSnapBlockNum = appliedb
 			c.Metrics.SnapshotBlockNumber.Set(float64(appliedb))
@@ -1101,51 +1104,80 @@ func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
 // addition extracts updates about raft replica set and if there
 // are changes updates cluster membership as well
 func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
-	metadata, raftMetadata := c.newRaftMetadata(block)
-
-	var changes *MembershipChanges
-	if metadata != nil {
-		changes = ComputeMembershipChanges(raftMetadata.Consenters, metadata.Consenters)
+	hdr, err := ConfigChannelHeader(block)
+	if err != nil {
+		c.logger.Panicf("Failed to get config header type from config block: %s", err)
 	}
 
-	confChange := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
-	raftMetadata.RaftIndex = index
-
-	raftMetadataBytes := utils.MarshalOrPanic(raftMetadata)
-	// write block with metadata
-	c.support.WriteConfigBlock(block, raftMetadataBytes)
 	c.configInflight = false
 
-	// update membership
-	if confChange != nil {
-		// We need to propose conf change in a go routine, because it may be blocked if raft node
-		// becomes leaderless, and we should not block `serveRequest` so it can keep consuming applyC,
-		// otherwise we have a deadlock.
-		go func() {
-			// ProposeConfChange returns error only if node being stopped.
-			// This proposal is dropped by followers because DisableProposalForwarding is enabled.
-			if err := c.Node.ProposeConfChange(context.TODO(), *confChange); err != nil {
-				c.logger.Warnf("Failed to propose configuration update to Raft node: %s", err)
-			}
-		}()
+	switch common.HeaderType(hdr.Type) {
+	case common.HeaderType_CONFIG:
+		// If config is targeting THIS channel, inspect consenter set and
+		// propose raft ConfChange if it adds/removes node.
+		metadata, raftMetadata := c.newRaftMetadata(block)
 
-		c.confChangeInProgress = confChange
-
-		switch confChange.Type {
-		case raftpb.ConfChangeAddNode:
-			c.logger.Infof("Config block just committed adds node %d, pause accepting transactions till config change is applied", confChange.NodeID)
-		case raftpb.ConfChangeRemoveNode:
-			c.logger.Infof("Config block just committed removes node %d, pause accepting transactions till config change is applied", confChange.NodeID)
-		default:
-			c.logger.Panic("Programming error, encountered unsupported raft config change")
+		if metadata != nil && metadata.Options != nil && metadata.Options.SnapshotInterval != 0 {
+			old := c.sizeLimit
+			c.sizeLimit = metadata.Options.SnapshotInterval
+			c.logger.Infof("Snapshot interval is updated to %d bytes (was %d)", c.sizeLimit, old)
 		}
 
-		c.configInflight = true
-	}
+		var changes *MembershipChanges
+		if metadata != nil {
+			changes = ComputeMembershipChanges(raftMetadata.Consenters, metadata.Consenters)
+		}
 
-	c.raftMetadataLock.Lock()
-	c.opts.RaftMetadata = raftMetadata
-	c.raftMetadataLock.Unlock()
+		confChange := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
+		raftMetadata.RaftIndex = index
+
+		raftMetadataBytes := utils.MarshalOrPanic(raftMetadata)
+		// write block with metadata
+		c.support.WriteConfigBlock(block, raftMetadataBytes)
+
+		// update membership
+		if confChange != nil {
+			// We need to propose conf change in a go routine, because it may be blocked if raft node
+			// becomes leaderless, and we should not block `serveRequest` so it can keep consuming applyC,
+			// otherwise we have a deadlock.
+			go func() {
+				// ProposeConfChange returns error only if node being stopped.
+				// This proposal is dropped by followers because DisableProposalForwarding is enabled.
+				if err := c.Node.ProposeConfChange(context.TODO(), *confChange); err != nil {
+					c.logger.Warnf("Failed to propose configuration update to Raft node: %s", err)
+				}
+			}()
+
+			c.confChangeInProgress = confChange
+
+			switch confChange.Type {
+			case raftpb.ConfChangeAddNode:
+				c.logger.Infof("Config block just committed adds node %d, pause accepting transactions till config change is applied", confChange.NodeID)
+			case raftpb.ConfChangeRemoveNode:
+				c.logger.Infof("Config block just committed removes node %d, pause accepting transactions till config change is applied", confChange.NodeID)
+			default:
+				c.logger.Panic("Programming error, encountered unsupported raft config change")
+			}
+
+			c.configInflight = true
+		}
+
+		c.raftMetadataLock.Lock()
+		c.opts.RaftMetadata = raftMetadata
+		c.raftMetadataLock.Unlock()
+
+	case common.HeaderType_ORDERER_TRANSACTION:
+		// If this config is channel creation, no extra inspection is needed
+		c.raftMetadataLock.Lock()
+		c.opts.RaftMetadata.RaftIndex = index
+		m := utils.MarshalOrPanic(c.opts.RaftMetadata)
+		c.raftMetadataLock.Unlock()
+
+		c.support.WriteConfigBlock(block, m)
+
+	default:
+		c.logger.Panicf("Programming error: unexpected config type: %s", common.HeaderType(hdr.Type))
+	}
 }
 
 // getInFlightConfChange returns ConfChange in-flight if any.
