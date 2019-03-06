@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package token
 
 import (
-	"bufio"
 	"encoding/json"
 	"path/filepath"
 	"strconv"
-	"strings"
+
+	token2 "github.com/hyperledger/fabric/token/cmd"
 
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -59,21 +59,13 @@ func ListTokens(n *nwo.Network, peer *nwo.Peer, o *nwo.Orderer, channelId, user,
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	// Extract Token Outputs
-	scanner := bufio.NewScanner(strings.NewReader(string(sess.Out.Contents())))
-	var tokens []*token.UnspentToken
-	for scanner.Scan() {
-		outputJson := strings.TrimPrefix(scanner.Text(), "Token = ")
+	tokens, err := token2.ExtractUnspentTokensFromOutput(string(sess.Out.Contents()))
+	Expect(err).NotTo(HaveOccurred())
 
-		output := &token.UnspentToken{}
-		err := json.Unmarshal([]byte(outputJson), output)
-		Expect(err).NotTo(HaveOccurred())
-
-		tokens = append(tokens, output)
-	}
 	return tokens
 }
 
-func TransferTokens(n *nwo.Network, peer *nwo.Peer, o *nwo.Orderer, channelId, user, mspID string, tokenIDs []*token.TokenId, shares []*token.RecipientShare) {
+func TransferTokens(n *nwo.Network, peer *nwo.Peer, o *nwo.Orderer, channelId, user, mspID string, tokenIDs []*token.TokenId, shares []*token2.ShellRecipientShare) {
 	config := getClientConfig(n, peer, o, channelId, user, mspID)
 	jsonBytes, err := config.ToJSon()
 	Expect(err).NotTo(HaveOccurred())

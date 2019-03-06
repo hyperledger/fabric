@@ -17,23 +17,22 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/hyperledger/fabric/integration/nwo/commands"
-	"github.com/onsi/gomega/gexec"
-
-	"github.com/hyperledger/fabric/token/client"
-	"github.com/hyperledger/fabric/token/tms/plain"
-
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/token"
 	tk "github.com/hyperledger/fabric/token"
+	"github.com/hyperledger/fabric/token/client"
 	tokenclient "github.com/hyperledger/fabric/token/client"
+	token2 "github.com/hyperledger/fabric/token/cmd"
+	"github.com/hyperledger/fabric/token/tms/plain"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
 )
@@ -164,10 +163,8 @@ var _ bool = Describe("Token EndToEnd", func() {
 		It("executes a basic solo network and submits token transaction", func() {
 			By("issuing tokens to user2")
 
-			user1, err := getIdentity(network, network.Peer("Org1", "peer1"), "User1", "Org1MSP")
-			Expect(err).ToNot(HaveOccurred())
-			user2, err := getIdentity(network, network.Peer("Org1", "peer1"), "User2", "Org1MSP")
-			Expect(err).ToNot(HaveOccurred())
+			user1 := getShellIdentity(network, network.Peer("Org1", "peer1"), "User1", "Org1MSP")
+			user2 := getShellIdentity(network, network.Peer("Org1", "peer1"), "User2", "Org1MSP")
 
 			// User1 issues 100 ABC123 tokens to User2
 			IssueToken(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
@@ -186,14 +183,14 @@ var _ bool = Describe("Token EndToEnd", func() {
 			TransferTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
 				"testchannel", "User2", "Org1MSP",
 				[]*token.TokenId{outputs[0].Id},
-				[]*token.RecipientShare{
+				[]*token2.ShellRecipientShare{
 					{
 						Quantity:  ToHex(50),
-						Recipient: &token.TokenOwner{Raw: user2},
+						Recipient: user2,
 					},
 					{
 						Quantity:  ToHex(50),
-						Recipient: &token.TokenOwner{Raw: user1},
+						Recipient: user1,
 					},
 				},
 			)
@@ -1445,6 +1442,13 @@ func SubmitTokenTx(c *tokenclient.Client, tokenTx *token.TokenTransaction) (stri
 
 	ordererStatus, committed, err := c.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 	return txid, ordererStatus, committed, err
+}
+
+func getShellIdentity(n *nwo.Network, peer *nwo.Peer, user, mspId string) string {
+	orderer := n.Orderer("orderer")
+	config := getClientConfig(n, peer, orderer, "testchannel", user, mspId)
+
+	return mspId + ":" + config.MSPInfo.MSPConfigPath
 }
 
 func getIdentity(n *nwo.Network, peer *nwo.Peer, user, mspId string) ([]byte, error) {
