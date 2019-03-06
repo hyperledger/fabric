@@ -72,23 +72,33 @@ func TestImplicitMetaAny(t *testing.T) {
 	assert.NoError(t, runPolicyTest(cb.ImplicitMetaPolicy_ANY, 1, 1))
 	assert.NoError(t, runPolicyTest(cb.ImplicitMetaPolicy_ANY, 10, 1))
 	assert.NoError(t, runPolicyTest(cb.ImplicitMetaPolicy_ANY, 10, 8))
-	assert.Error(t, runPolicyTest(cb.ImplicitMetaPolicy_ANY, 10, 0))
 	assert.NoError(t, runPolicyTest(cb.ImplicitMetaPolicy_ANY, 0, 0))
+
+	err := runPolicyTest(cb.ImplicitMetaPolicy_ANY, 10, 0)
+	assert.EqualError(t, err, "implicit policy evaluation failed - 0 sub-policies were satisfied, but this policy requires 1 of the 'TestPolicyName' sub-policies to be satisfied")
 }
 
 func TestImplicitMetaAll(t *testing.T) {
 	assert.NoError(t, runPolicyTest(cb.ImplicitMetaPolicy_ALL, 1, 1))
-	assert.Error(t, runPolicyTest(cb.ImplicitMetaPolicy_ALL, 10, 1))
 	assert.NoError(t, runPolicyTest(cb.ImplicitMetaPolicy_ALL, 10, 10))
-	assert.Error(t, runPolicyTest(cb.ImplicitMetaPolicy_ALL, 10, 0))
 	assert.NoError(t, runPolicyTest(cb.ImplicitMetaPolicy_ALL, 0, 0))
+
+	err := runPolicyTest(cb.ImplicitMetaPolicy_ALL, 10, 1)
+	assert.EqualError(t, err, "implicit policy evaluation failed - 1 sub-policies were satisfied, but this policy requires 10 of the 'TestPolicyName' sub-policies to be satisfied")
+
+	err = runPolicyTest(cb.ImplicitMetaPolicy_ALL, 10, 0)
+	assert.EqualError(t, err, "implicit policy evaluation failed - 0 sub-policies were satisfied, but this policy requires 10 of the 'TestPolicyName' sub-policies to be satisfied")
 }
 
 func TestImplicitMetaMajority(t *testing.T) {
 	assert.NoError(t, runPolicyTest(cb.ImplicitMetaPolicy_MAJORITY, 1, 1))
-	assert.Error(t, runPolicyTest(cb.ImplicitMetaPolicy_MAJORITY, 10, 5))
 	assert.NoError(t, runPolicyTest(cb.ImplicitMetaPolicy_MAJORITY, 10, 6))
 	assert.NoError(t, runPolicyTest(cb.ImplicitMetaPolicy_MAJORITY, 3, 2))
-	assert.Error(t, runPolicyTest(cb.ImplicitMetaPolicy_MAJORITY, 10, 0))
 	assert.NoError(t, runPolicyTest(cb.ImplicitMetaPolicy_MAJORITY, 0, 0))
+
+	err := runPolicyTest(cb.ImplicitMetaPolicy_MAJORITY, 10, 5)
+	assert.EqualError(t, err, "implicit policy evaluation failed - 5 sub-policies were satisfied, but this policy requires 6 of the 'TestPolicyName' sub-policies to be satisfied")
+
+	err = runPolicyTest(cb.ImplicitMetaPolicy_MAJORITY, 10, 0)
+	assert.EqualError(t, err, "implicit policy evaluation failed - 0 sub-policies were satisfied, but this policy requires 6 of the 'TestPolicyName' sub-policies to be satisfied")
 }

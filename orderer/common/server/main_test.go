@@ -670,7 +670,7 @@ func TestCreateReplicator(t *testing.T) {
 	r := createReplicator(ledgerFactory, bootBlock, &localconfig.TopLevel{}, &comm.SecureOptions{}, signer)
 
 	err := r.verifierRetriever.RetrieveVerifier("mychannel").VerifyBlockSignature(nil, nil)
-	assert.EqualError(t, err, "Failed to reach implicit threshold of 1 sub-policies, required 1 remaining")
+	assert.EqualError(t, err, "implicit policy evaluation failed - 0 sub-policies were satisfied, but this policy requires 1 of the 'Writers' sub-policies to be satisfied")
 
 	err = r.verifierRetriever.RetrieveVerifier("system").VerifyBlockSignature(nil, nil)
 	assert.NoError(t, err)
