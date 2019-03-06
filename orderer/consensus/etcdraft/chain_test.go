@@ -394,6 +394,7 @@ var _ = Describe("Chain", func() {
 					err := chain.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
+					Eventually(clock.WatcherCount, LongEventualTimeout).Should(Equal(2))
 				})
 
 				It("does not enqueue if envelope is not valid", func() {
@@ -402,6 +403,7 @@ var _ = Describe("Chain", func() {
 					err := chain.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 					Consistently(cutter.CurBatch).Should(HaveLen(0))
+					Consistently(clock.WatcherCount).Should(Equal(1))
 				})
 			})
 
@@ -496,23 +498,44 @@ var _ = Describe("Chain", func() {
 						Context("with revalidation (i.e. incorrect config sequence)", func() {
 
 							BeforeEach(func() {
+								close(cutter.Block)
 								support.SequenceReturns(1) // this causes the revalidation
 							})
 
 							It("should create config block upon correct revalidation", func() {
 								support.ProcessConfigMsgReturns(configEnv, 1, nil) // nil implies correct revalidation
 
-								err := chain.Configure(configEnv, configSeq)
-								Expect(err).NotTo(HaveOccurred())
+								Expect(chain.Configure(configEnv, configSeq)).To(Succeed())
+								Consistently(clock.WatcherCount).Should(Equal(1))
 								Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 							})
 
 							It("should not create config block upon incorrect revalidation", func() {
 								support.ProcessConfigMsgReturns(configEnv, 1, errors.Errorf("Invalid config envelope at changed config sequence"))
 
-								err := chain.Configure(configEnv, configSeq)
-								Expect(err).NotTo(HaveOccurred())
+								Expect(chain.Configure(configEnv, configSeq)).To(Succeed())
+								Consistently(clock.WatcherCount).Should(Equal(1))
 								Consistently(support.WriteConfigBlockCallCount).Should(Equal(0)) // no call to WriteConfigBlock
+							})
+
+							It("should not disturb current running timer upon incorrect revalidation", func() {
+								support.ProcessNormalMsgReturns(1, nil)
+								support.ProcessConfigMsgReturns(configEnv, 1, errors.Errorf("Invalid config envelope at changed config sequence"))
+
+								Expect(chain.Order(env, configSeq)).To(Succeed())
+								Eventually(clock.WatcherCount, LongEventualTimeout).Should(Equal(2))
+
+								clock.Increment(30 * time.Minute)
+								Consistently(support.WriteBlockCallCount).Should(Equal(0))
+
+								Expect(chain.Configure(configEnv, configSeq)).To(Succeed())
+								Consistently(clock.WatcherCount).Should(Equal(2))
+
+								Consistently(support.WriteBlockCallCount).Should(Equal(0))
+								Consistently(support.WriteConfigBlockCallCount).Should(Equal(0))
+
+								clock.Increment(30 * time.Minute)
+								Eventually(support.WriteBlockCallCount).Should(Equal(1))
 							})
 						})
 					})
