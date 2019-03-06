@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"fmt"
 	"time"
+	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/metrics"
@@ -30,11 +31,7 @@ const (
 	// In this way, we can enforce Init exactly once semantics, whenever
 	// the backing chaincode bytes change (but not be required to re-initialize
 	// the chaincode say, when endorsement policy changes).
-	InitializedKeyName = "\x00\x00initialized"
-
-	// InitFunctionName is the reserved name that an invoker may specify to
-	// trigger invocation of the chaincode init function.
-	InitFunctionName = "init"
+	InitializedKeyName = "\x00" + string(utf8.MaxRune) + "initialized"
 )
 
 // Runtime is used to manage chaincode runtime instances.
@@ -341,12 +338,6 @@ func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cc
 		return false, nil
 	}
 
-	isInit := false
-
-	if len(input.Args) != 0 {
-		isInit = string(input.Args[0]) == InitFunctionName
-	}
-
 	if !cccid.InitRequired {
 		// If Init is not required, treat this as a normal invocation
 		// i.e. execute Invoke with 'init' as the function name
@@ -363,14 +354,14 @@ func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cc
 	needsInitialization := !bytes.Equal(value, []byte(cccid.Version))
 
 	switch {
-	case !isInit && !needsInitialization:
+	case !input.IsInit && !needsInitialization:
 		return false, nil
-	case !isInit && needsInitialization:
-		return false, errors.Errorf("chaincode '%s' has not been initialized for this version, must call 'init' first", cccid.Name)
-	case isInit && !needsInitialization:
-		return false, errors.Errorf("chaincode '%s' is already initialized but 'init' called", cccid.Name)
+	case !input.IsInit && needsInitialization:
+		return false, errors.Errorf("chaincode '%s' has not been initialized for this version, must call as init first", cccid.Name)
+	case input.IsInit && !needsInitialization:
+		return false, errors.Errorf("chaincode '%s' is already initialized but called as init", cccid.Name)
 	default:
-		// isInit && needsInitialization:
+		// input.IsInit && needsInitialization:
 		err = txParams.TXSimulator.SetState(cccid.Name, InitializedKeyName, []byte(cccid.Version))
 		if err != nil {
 			return false, errors.WithMessage(err, "could not set 'initialized' key")

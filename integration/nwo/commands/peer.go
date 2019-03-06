@@ -409,6 +409,7 @@ type ChaincodeInvoke struct {
 	Ctor          string
 	PeerAddresses []string
 	WaitForEvent  bool
+	IsInit        bool
 }
 
 func (c ChaincodeInvoke) SessionName() string {
@@ -428,6 +429,9 @@ func (c ChaincodeInvoke) Args() []string {
 	}
 	if c.WaitForEvent {
 		args = append(args, "--waitForEvent")
+	}
+	if c.IsInit {
+		args = append(args, "--isInit")
 	}
 	return args
 }

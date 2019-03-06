@@ -46,6 +46,12 @@ message ChaincodeID {
 message ChaincodeInput {
     repeated bytes args  = 1;
     map<string, bytes> decorations = 2;
+
+    // is_init is used for the application to signal that an invocation is to be routed
+    // to the legacy 'Init' function for compatibility with chaincodes which handled
+    // Init in the old way.  New applications should manage their initialized state
+    // themselves.
+    bool is_init = 3;
 }
 
 // Carries the chaincode specification. This is the actual metadata required for

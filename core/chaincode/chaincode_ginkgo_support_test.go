@@ -8,6 +8,7 @@ package chaincode_test
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/fake"
@@ -68,7 +69,7 @@ var _ = Describe("ChaincodeSupport", func() {
 			}
 
 			input = &pb.ChaincodeInput{
-				Args: [][]byte{[]byte("init")},
+				IsInit: true,
 			}
 		})
 
@@ -80,12 +81,12 @@ var _ = Describe("ChaincodeSupport", func() {
 			Expect(fakeSimulator.GetStateCallCount()).To(Equal(1))
 			namespace, key := fakeSimulator.GetStateArgsForCall(0)
 			Expect(namespace).To(Equal("cc-name"))
-			Expect(key).To(Equal("\x00\x00initialized"))
+			Expect(key).To(Equal("\x00" + string(utf8.MaxRune) + "initialized"))
 
 			Expect(fakeSimulator.SetStateCallCount()).To(Equal(1))
 			namespace, key, value := fakeSimulator.SetStateArgsForCall(0)
 			Expect(namespace).To(Equal("cc-name"))
-			Expect(key).To(Equal("\x00\x00initialized"))
+			Expect(key).To(Equal("\x00" + string(utf8.MaxRune) + "initialized"))
 			Expect(value).To(Equal([]byte("cc-version")))
 		})
 
@@ -96,12 +97,12 @@ var _ = Describe("ChaincodeSupport", func() {
 
 			It("returns an error", func() {
 				_, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-				Expect(err).To(MatchError("chaincode 'cc-name' is already initialized but 'init' called"))
+				Expect(err).To(MatchError("chaincode 'cc-name' is already initialized but called as init"))
 			})
 
 			Context("when the invocation is not 'init'", func() {
 				BeforeEach(func() {
-					input.Args = [][]byte{[]byte("my-func")}
+					input.IsInit = false
 				})
 
 				It("returns that it is not an init", func() {
@@ -111,19 +112,6 @@ var _ = Describe("ChaincodeSupport", func() {
 					Expect(fakeSimulator.GetStateCallCount()).To(Equal(1))
 					Expect(fakeSimulator.SetStateCallCount()).To(Equal(0))
 				})
-
-				Context("when the invocation contains no arguments", func() {
-					BeforeEach(func() {
-						input.Args = nil
-					})
-
-					It("returns that it is an init", func() {
-						isInit, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-						Expect(err).NotTo(HaveOccurred())
-						Expect(isInit).To(BeFalse())
-					})
-				})
-
 			})
 		})
 
@@ -182,12 +170,12 @@ var _ = Describe("ChaincodeSupport", func() {
 
 		Context("when the invocation is not 'init'", func() {
 			BeforeEach(func() {
-				input.Args = [][]byte{[]byte("my-func")}
+				input.IsInit = false
 			})
 
 			It("returns an error", func() {
 				_, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-				Expect(err).To(MatchError("chaincode 'cc-name' has not been initialized for this version, must call 'init' first"))
+				Expect(err).To(MatchError("chaincode 'cc-name' has not been initialized for this version, must call as init first"))
 			})
 		})
 
