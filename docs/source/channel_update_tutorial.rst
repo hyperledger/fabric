@@ -434,7 +434,7 @@ Export the Org2 environment variables:
 
   export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
 
-  export CORE_PEER_ADDRESS=peer0.org2.example.com:7051
+  export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
 
 Lastly, we will issue the ``peer channel update`` command. The Org2 Admin signature
 will be attached to this call so there is no need to manually sign the protobuf a
@@ -595,7 +595,7 @@ and reissue the ``peer channel join command``:
 
 .. code:: bash
 
-  export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org3.example.com/peers/peer1.org3.example.com/tls/ca.crt && export CORE_PEER_ADDRESS=peer1.org3.example.com:7051
+  export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org3.example.com/peers/peer1.org3.example.com/tls/ca.crt && export CORE_PEER_ADDRESS=peer1.org3.example.com:12051
 
   peer channel join -b mychannel.block
 
