@@ -33,7 +33,7 @@ type Orderer struct {
 	// MaxChannelsCountVal is returns as the result of MaxChannelsCount()
 	MaxChannelsCountVal uint64
 	// OrganizationsVal is returned as the result of Organizations()
-	OrganizationsVal map[string]channelconfig.Org
+	OrganizationsVal map[string]channelconfig.OrdererOrg
 	// CapabilitiesVal is returned as the result of Capabilities()
 	CapabilitiesVal channelconfig.OrdererCapabilities
 }
@@ -79,7 +79,7 @@ func (o *Orderer) MaxChannelsCount() uint64 {
 }
 
 // Organizations returns OrganizationsVal
-func (o *Orderer) Organizations() map[string]channelconfig.Org {
+func (o *Orderer) Organizations() map[string]channelconfig.OrdererOrg {
 	return o.OrganizationsVal
 }
 

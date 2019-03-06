@@ -121,10 +121,10 @@ func TestValidateNew(t *testing.T) {
 						},
 						Capabilities: &cb.Capabilities{},
 					},
-					orgs: map[string]Org{
-						"org1": &OrganizationConfig{mspID: "org1msp"},
-						"org2": &OrganizationConfig{mspID: "org2msp"},
-						"org3": &OrganizationConfig{mspID: "org3msp"},
+					orgs: map[string]OrdererOrg{
+						"org1": &OrdererOrgConfig{OrganizationConfig: &OrganizationConfig{mspID: "org1msp"}},
+						"org2": &OrdererOrgConfig{OrganizationConfig: &OrganizationConfig{mspID: "org2msp"}},
+						"org3": &OrdererOrgConfig{OrganizationConfig: &OrganizationConfig{mspID: "org3msp"}},
 					},
 				},
 			},
@@ -139,9 +139,9 @@ func TestValidateNew(t *testing.T) {
 						},
 						Capabilities: &cb.Capabilities{},
 					},
-					orgs: map[string]Org{
-						"org1": &OrganizationConfig{mspID: "org1msp"},
-						"org3": &OrganizationConfig{mspID: "org2msp"},
+					orgs: map[string]OrdererOrg{
+						"org1": &OrdererOrgConfig{OrganizationConfig: &OrganizationConfig{mspID: "org1msp"}},
+						"org3": &OrdererOrgConfig{OrganizationConfig: &OrganizationConfig{mspID: "org2msp"}},
 					},
 				},
 			},

@@ -54,16 +54,34 @@ type OrdererProtos struct {
 // OrdererConfig holds the orderer configuration information.
 type OrdererConfig struct {
 	protos *OrdererProtos
-	orgs   map[string]Org
+	orgs   map[string]OrdererOrg
 
 	batchTimeout time.Duration
+}
+
+// OrdererOrgConfig defines the configuration for an orderer org
+type OrdererOrgConfig struct {
+	*OrganizationConfig
+}
+
+func (*OrdererOrgConfig) Endpoints() []string {
+	panic("implement me")
+}
+
+// NewOrdererOrgConfig returns an orderer org config built from the given ConfigGroup.
+func NewOrdererOrgConfig(orgName string, orgGroup *cb.ConfigGroup, mspConfigHandler *MSPConfigHandler) (*OrdererOrgConfig, error) {
+	orgConf, err := NewOrganizationConfig(orgName, orgGroup, mspConfigHandler)
+	if err != nil {
+		return nil, err
+	}
+	return &OrdererOrgConfig{OrganizationConfig: orgConf}, nil
 }
 
 // NewOrdererConfig creates a new instance of the orderer config.
 func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*OrdererConfig, error) {
 	oc := &OrdererConfig{
 		protos: &OrdererProtos{},
-		orgs:   make(map[string]Org),
+		orgs:   make(map[string]OrdererOrg),
 	}
 
 	if err := DeserializeProtoValuesFromGroup(ordererGroup, oc.protos); err != nil {
@@ -76,7 +94,7 @@ func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler)
 
 	for orgName, orgGroup := range ordererGroup.Groups {
 		var err error
-		if oc.orgs[orgName], err = NewOrganizationConfig(orgName, orgGroup, mspConfig); err != nil {
+		if oc.orgs[orgName], err = NewOrdererOrgConfig(orgName, orgGroup, mspConfig); err != nil {
 			return nil, err
 		}
 	}
@@ -126,7 +144,7 @@ func (oc *OrdererConfig) MaxChannelsCount() uint64 {
 }
 
 // Organizations returns a map of the orgs in the channel.
-func (oc *OrdererConfig) Organizations() map[string]Org {
+func (oc *OrdererConfig) Organizations() map[string]OrdererOrg {
 	return oc.orgs
 }
 
