@@ -22,7 +22,7 @@ func (vi *ValidatorImpl) verifyReadSet(readSet map[string]comparable) error {
 		}
 
 		if existing.version() != value.version() {
-			return errors.Errorf("readset expected key %s at version %d, but got version %d", key, value.version(), existing.version())
+			return errors.Errorf("proposed update requires that key %s be at version %d, but it is currently at version %d", key, value.version(), existing.version())
 		}
 	}
 	return nil
