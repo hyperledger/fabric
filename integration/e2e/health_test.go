@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"syscall"
@@ -87,11 +88,12 @@ var _ = Describe("Health", func() {
 			authClient   *http.Client
 			healthURL    string
 			peer         *nwo.Peer
+			couchDB      *runner.CouchDB
 			couchProcess ifrit.Process
 		)
 
 		BeforeEach(func() {
-			couchDB := &runner.CouchDB{}
+			couchDB = &runner.CouchDB{}
 			couchProcess = ifrit.Invoke(couchDB)
 			Eventually(couchProcess.Ready(), runner.DefaultStartTimeout).Should(BeClosed())
 			Consistently(couchProcess.Wait()).ShouldNot(Receive())
@@ -118,26 +120,33 @@ var _ = Describe("Health", func() {
 
 		When("running health checks on Couch DB", func() {
 			It("returns appropriate response codes", func() {
-				By("returning 200 when able to reach Couch DB", func() {
-					statusCode, status := DoHealthCheck(authClient, healthURL)
-					Expect(statusCode).To(Equal(http.StatusOK))
-					Expect(status.Status).To(Equal("OK"))
-				})
+				By("returning 200 when able to reach Couch DB")
+				statusCode, status := DoHealthCheck(authClient, healthURL)
+				Expect(statusCode).To(Equal(http.StatusOK))
+				Expect(status.Status).To(Equal("OK"))
 
-				By("returning 503 when unable to reach Couch DB", func() {
-					couchProcess.Signal(syscall.SIGTERM)
-					Eventually(couchProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+				By("terminating CouchDB")
+				couchProcess.Signal(syscall.SIGTERM)
+				Eventually(couchProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 
-					var statusCode int
-					var status *healthz.HealthStatus
-					Eventually(func() int {
-						statusCode, status = DoHealthCheck(authClient, healthURL)
-						return statusCode
-					}, network.EventuallyTimeout).Should(Equal(http.StatusServiceUnavailable))
-					Expect(status.Status).To(Equal("Service Unavailable"))
-					Expect(status.FailedChecks[0].Component).To(Equal("couchdb"))
-					Expect(status.FailedChecks[0].Reason).Should((HavePrefix(fmt.Sprintf("failed to connect to couch db [Head http://%s: dial tcp %s: ", couchAddr, couchAddr))))
-				})
+				By("waiting for termination to complete")
+				Eventually(func() bool {
+					if c, err := net.Dial("tcp", couchDB.Address()); err == nil {
+						c.Close()
+						return false
+					}
+					return true
+				}, network.EventuallyTimeout).Should(BeTrue())
+
+				By("returning 503 when unable to reach Couch DB")
+				Eventually(func() int {
+					statusCode, _ := DoHealthCheck(authClient, healthURL)
+					return statusCode
+				}, network.EventuallyTimeout).Should(Equal(http.StatusServiceUnavailable))
+				statusCode, status = DoHealthCheck(authClient, healthURL)
+				Expect(status.Status).To(Equal("Service Unavailable"))
+				Expect(status.FailedChecks[0].Component).To(Equal("couchdb"))
+				Expect(status.FailedChecks[0].Reason).Should((HavePrefix(fmt.Sprintf("failed to connect to couch db [Head http://%s: dial tcp %s: ", couchAddr, couchAddr))))
 			})
 		})
 	})
