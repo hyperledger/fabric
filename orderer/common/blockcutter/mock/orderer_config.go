@@ -2,11 +2,11 @@
 package mock
 
 import (
-	sync "sync"
-	time "time"
+	"sync"
+	"time"
 
-	channelconfig "github.com/hyperledger/fabric/common/channelconfig"
-	orderer "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/protos/orderer"
 )
 
 type OrdererConfig struct {
@@ -100,15 +100,15 @@ type OrdererConfig struct {
 	maxChannelsCountReturnsOnCall map[int]struct {
 		result1 uint64
 	}
-	OrganizationsStub        func() map[string]channelconfig.Org
+	OrganizationsStub        func() map[string]channelconfig.OrdererOrg
 	organizationsMutex       sync.RWMutex
 	organizationsArgsForCall []struct {
 	}
 	organizationsReturns struct {
-		result1 map[string]channelconfig.Org
+		result1 map[string]channelconfig.OrdererOrg
 	}
 	organizationsReturnsOnCall map[int]struct {
-		result1 map[string]channelconfig.Org
+		result1 map[string]channelconfig.OrdererOrg
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -582,7 +582,7 @@ func (fake *OrdererConfig) MaxChannelsCountReturnsOnCall(i int, result1 uint64) 
 	}{result1}
 }
 
-func (fake *OrdererConfig) Organizations() map[string]channelconfig.Org {
+func (fake *OrdererConfig) Organizations() map[string]channelconfig.OrdererOrg {
 	fake.organizationsMutex.Lock()
 	ret, specificReturn := fake.organizationsReturnsOnCall[len(fake.organizationsArgsForCall)]
 	fake.organizationsArgsForCall = append(fake.organizationsArgsForCall, struct {
@@ -605,32 +605,32 @@ func (fake *OrdererConfig) OrganizationsCallCount() int {
 	return len(fake.organizationsArgsForCall)
 }
 
-func (fake *OrdererConfig) OrganizationsCalls(stub func() map[string]channelconfig.Org) {
+func (fake *OrdererConfig) OrganizationsCalls(stub func() map[string]channelconfig.OrdererOrg) {
 	fake.organizationsMutex.Lock()
 	defer fake.organizationsMutex.Unlock()
 	fake.OrganizationsStub = stub
 }
 
-func (fake *OrdererConfig) OrganizationsReturns(result1 map[string]channelconfig.Org) {
+func (fake *OrdererConfig) OrganizationsReturns(result1 map[string]channelconfig.OrdererOrg) {
 	fake.organizationsMutex.Lock()
 	defer fake.organizationsMutex.Unlock()
 	fake.OrganizationsStub = nil
 	fake.organizationsReturns = struct {
-		result1 map[string]channelconfig.Org
+		result1 map[string]channelconfig.OrdererOrg
 	}{result1}
 }
 
-func (fake *OrdererConfig) OrganizationsReturnsOnCall(i int, result1 map[string]channelconfig.Org) {
+func (fake *OrdererConfig) OrganizationsReturnsOnCall(i int, result1 map[string]channelconfig.OrdererOrg) {
 	fake.organizationsMutex.Lock()
 	defer fake.organizationsMutex.Unlock()
 	fake.OrganizationsStub = nil
 	if fake.organizationsReturnsOnCall == nil {
 		fake.organizationsReturnsOnCall = make(map[int]struct {
-			result1 map[string]channelconfig.Org
+			result1 map[string]channelconfig.OrdererOrg
 		})
 	}
 	fake.organizationsReturnsOnCall[i] = struct {
-		result1 map[string]channelconfig.Org
+		result1 map[string]channelconfig.OrdererOrg
 	}{result1}
 }
 
