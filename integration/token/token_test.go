@@ -7,14 +7,20 @@ SPDX-License-Identifier: Apache-2.0
 package token
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 	"unicode/utf8"
 
+	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/onsi/gomega/gexec"
+
+	"github.com/hyperledger/fabric/token/client"
 	"github.com/hyperledger/fabric/token/tms/plain"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -971,7 +977,278 @@ var _ bool = Describe("Token EndToEnd", func() {
 		})
 	})
 
+	Describe("custom solo network for token double spending", func() {
+		var (
+			orderer *nwo.Orderer
+			peer    *nwo.Peer
+			tClient *tokenclient.Client
+			txId    string
+		)
+
+		BeforeEach(func() {
+			var err error
+
+			config := BasicSoloV20()
+
+			// override default block size
+			customTxTemplate := nwo.DefaultConfigTxTemplate
+			customTxTemplate = strings.Replace(customTxTemplate, "MaxMessageCount: 1", "MaxMessageCount: 2", 1)
+			customTxTemplate = strings.Replace(customTxTemplate, "BatchTimeout: 1s", "BatchTimeout: 10s", 1)
+
+			config.Templates = &nwo.Templates{}
+			config.Templates.ConfigTx = customTxTemplate
+
+			network = nwo.New(config, testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+
+			network.Bootstrap()
+
+			client, err = docker.NewClientFromEnv()
+			Expect(err).NotTo(HaveOccurred())
+
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready()).Should(BeClosed())
+
+			orderer = network.Orderer("orderer")
+			network.CreateAndJoinChannel(orderer, "testchannel")
+
+			peer = network.Peer("Org1", "peer1")
+
+			recipientUser2Bytes, err := getIdentity(network, peer, "User2", "Org1MSP")
+			Expect(err).NotTo(HaveOccurred())
+			recipientUser2 = &token.TokenOwner{Raw: recipientUser2Bytes}
+			tokensToIssue[0].Owner = recipientUser2
+			expectedTokenTransaction.GetTokenAction().GetIssue().Outputs[0].Owner = recipientUser2
+			recipientUser1Bytes, err := getIdentity(network, peer, "User1", "Org1MSP")
+			Expect(err).NotTo(HaveOccurred())
+			recipientUser1 = &token.TokenOwner{Raw: recipientUser1Bytes}
+			expectedTransferTransaction.GetTokenAction().GetTransfer().Outputs[0].Owner = recipientUser1
+			expectedRedeemTransaction.GetTokenAction().GetRedeem().Outputs[1].Owner = recipientUser1
+
+			tClient := GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
+
+			By("User1 issuing tokens to User2")
+			txId = RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+
+			By("User2 lists tokens as sanity check")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
+			Expect(issuedTokens).ToNot(BeNil())
+			Expect(len(issuedTokens)).To(Equal(1))
+
+			waitForBlockReception(orderer, peer, network, "testchannel", 1)
+		})
+
+		It("double spending with resend transfer results in INVALID_OTHER_REASON", func() {
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+
+			By("Prepare token transfer")
+			expectedTransferTransaction.GetTokenAction().GetTransfer().Inputs = []*token.TokenId{{TxId: txId, Index: 0}}
+			inputTokenIDs := make([]*token.TokenId, len(issuedTokens))
+			for i, inToken := range issuedTokens {
+				inputTokenIDs[i] = &token.TokenId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
+			}
+			shares1 := []*token.RecipientShare{{Recipient: recipientUser1, Quantity: ToHex(20)}}
+
+			By("create transfer transaction using prover peer")
+			serializedTokenTx1, err := tClient.Prover.RequestTransfer(inputTokenIDs, shares1, tClient.SigningIdentity)
+			Expect(err).NotTo(HaveOccurred())
+			txEnvelope1, txId1, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx1)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("register for transaction commit events")
+			ctx1, cancelFunc1 := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancelFunc1()
+			done1, cErr1, err := RegisterForCommitEvent(txId1, ctx1, tClient)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("User2 transfers his token to User1")
+			ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope1, 0)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+			Expect(committed).To(BeFalse())
+
+			By("User2 submits double spending attack")
+			ordererStatus, _, err = tClient.TxSubmitter.Submit(txEnvelope1, 0)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+
+			By("Waiting for committing")
+			Eventually(<-done1, 30*time.Second, time.Second).Should(BeTrue())
+			Expect(<-cErr1).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txId1)))
+
+			By("User2 lists tokens as sanity check to make sure no tx has been performed")
+			expectedTokens := &token.UnspentTokens{
+				Tokens: []*token.UnspentToken{
+					{
+						Quantity: ToHex(119),
+						Type:     "ABC123",
+						Id:       &token.TokenId{TxId: txId1, Index: 1},
+					},
+				},
+			}
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			RunListTokens(tClient, expectedTokens)
+
+			By("check that transactions have been processed in the same block")
+			waitForBlockReception(orderer, peer, network, "testchannel", 2)
+		})
+
+		It("double spending with transfer results in MVCC_READ_CONFLICT", func() {
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+
+			By("Prepare token transfer")
+			expectedTransferTransaction.GetTokenAction().GetTransfer().Inputs = []*token.TokenId{{TxId: txId, Index: 0}}
+			inputTokenIDs := make([]*token.TokenId, len(issuedTokens))
+			for i, inToken := range issuedTokens {
+				inputTokenIDs[i] = &token.TokenId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
+			}
+			shares1 := []*token.RecipientShare{{Recipient: recipientUser1, Quantity: ToHex(119)}}
+
+			By("create transfer transaction using prover peer")
+			serializedTokenTx1, err := tClient.Prover.RequestTransfer(inputTokenIDs, shares1, tClient.SigningIdentity)
+			Expect(err).NotTo(HaveOccurred())
+			txEnvelope1, txId1, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx1)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("create another transfer transaction with same input using prover peer")
+			serializedTokenTx2, err := tClient.Prover.RequestTransfer(inputTokenIDs, shares1, tClient.SigningIdentity)
+			Expect(err).NotTo(HaveOccurred())
+			txEnvelope2, txId2, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx2)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("register for transaction commit events")
+			ctx1, cancelFunc1 := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancelFunc1()
+			done1, cErr1, err := RegisterForCommitEvent(txId1, ctx1, tClient)
+			Expect(err).NotTo(HaveOccurred())
+			ctx2, cancelFunc2 := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancelFunc2()
+			done2, cErr2, err := RegisterForCommitEvent(txId2, ctx2, tClient)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("User2 transfers his token to User1")
+			ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope1, 0)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+			Expect(committed).To(BeFalse())
+
+			By("User2 submits double spending attack")
+			ordererStatus, _, err = tClient.TxSubmitter.Submit(txEnvelope2, 0)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+
+			By("Waiting for committing")
+			Eventually(<-done1, 30*time.Second, time.Second).Should(BeTrue())
+			Eventually(<-done2, 30*time.Second, time.Second).Should(BeTrue())
+			Expect(<-cErr1).ToNot(HaveOccurred())
+			Expect(<-cErr2).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: MVCC_READ_CONFLICT", txId2)))
+
+			By("User2 lists tokens as sanity check")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			RunListTokens(tClient, nil)
+
+			By("check that transactions have been processed in the same block")
+			waitForBlockReception(orderer, peer, network, "testchannel", 2)
+		})
+
+		It("double spending with redeem results in MVCC_READ_CONFLICT", func() {
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+
+			By("Prepare token transfer")
+			expectedTransferTransaction.GetTokenAction().GetTransfer().Inputs = []*token.TokenId{{TxId: txId, Index: 0}}
+			inputTokenIDs := make([]*token.TokenId, len(issuedTokens))
+			for i, inToken := range issuedTokens {
+				inputTokenIDs[i] = &token.TokenId{TxId: inToken.GetId().TxId, Index: inToken.GetId().Index}
+			}
+			shares := []*token.RecipientShare{{Recipient: recipientUser1, Quantity: ToHex(119)}}
+
+			By("create transfer transaction using prover peer")
+			serializedTokenTx1, err := tClient.Prover.RequestTransfer(inputTokenIDs, shares, tClient.SigningIdentity)
+			Expect(err).NotTo(HaveOccurred())
+			txEnvelope1, txId1, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx1)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("create redeem transaction with same input using prover peer")
+			serializedTokenTx2, err := tClient.Prover.RequestRedeem(inputTokenIDs, ToHex(119), tClient.SigningIdentity)
+			Expect(err).NotTo(HaveOccurred())
+			txEnvelope2, txId2, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx2)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("register for transaction commit events")
+			ctx1, cancelFunc1 := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancelFunc1()
+			done1, cErr1, err := RegisterForCommitEvent(txId1, ctx1, tClient)
+			Expect(err).NotTo(HaveOccurred())
+			ctx2, cancelFunc2 := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancelFunc2()
+			done2, cErr2, err := RegisterForCommitEvent(txId2, ctx2, tClient)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("User2 transfers his token to User1")
+			ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope1, 0)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+			Expect(committed).To(BeFalse())
+
+			By("User2 submits double spending attack")
+			ordererStatus, _, err = tClient.TxSubmitter.Submit(txEnvelope2, 0)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
+
+			By("Waiting for committing")
+			Eventually(<-done1, 30*time.Second, time.Second).Should(BeTrue())
+			Eventually(<-done2, 30*time.Second, time.Second).Should(BeTrue())
+			Expect(<-cErr1).NotTo(HaveOccurred())
+			Expect(<-cErr2).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: MVCC_READ_CONFLICT", txId2)))
+
+			By("User2 lists tokens as sanity check")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			RunListTokens(tClient, nil)
+
+			By("User1 lists tokens as sanity check")
+			expectedTokens := &token.UnspentTokens{
+				Tokens: []*token.UnspentToken{
+					{
+						Quantity: ToHex(119),
+						Type:     "ABC123",
+						Id:       &token.TokenId{TxId: txId1, Index: 1},
+					},
+				},
+			}
+			tClient = GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
+			RunListTokens(tClient, expectedTokens)
+
+			By("check that transactions have been processed in the same block")
+			waitForBlockReception(orderer, peer, network, "testchannel", 2)
+		})
+	})
+
 })
+
+func waitForBlockReception(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channelName string, blockSeq int) {
+	c := commands.ChannelFetch{
+		ChannelID:  channelName,
+		Block:      "newest",
+		OutputFile: "/dev/null",
+		Orderer:    network.OrdererAddress(o, nwo.ListenPort),
+	}
+	Eventually(func() string {
+		sess, err := network.OrdererAdminSession(o, submitter, c)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+		if sess.ExitCode() != 0 {
+			return fmt.Sprintf("exit code is %d: %s", sess.ExitCode(), string(sess.Err.Contents()))
+		}
+		sessErr := string(sess.Err.Contents())
+		expected := fmt.Sprintf("Received block: %d", blockSeq)
+		if strings.Contains(sessErr, expected) {
+			return ""
+		}
+		return sessErr
+	}, network.EventuallyTimeout, time.Second).Should(BeEmpty())
+}
 
 func GetTokenClient(network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, user, mspID string) *tokenclient.Client {
 	config := getClientConfig(network, peer, orderer, "testchannel", user, mspID)
@@ -981,6 +1258,51 @@ func GetTokenClient(network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, 
 	Expect(err).NotTo(HaveOccurred())
 
 	return tClient
+}
+
+func RegisterForCommitEvent(txid string, ctx context.Context, s *tokenclient.Client) (<-chan bool, <-chan error, error) {
+
+	dc, err := client.NewDeliverClient(&s.Config.CommitterPeer)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	deliverFiltered, err := dc.NewDeliverFiltered(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	creator, _ := s.SigningIdentity.Serialize()
+
+	blockEnvelope, err := client.CreateDeliverEnvelope(s.Config.ChannelID, creator, s.SigningIdentity, dc.Certificate())
+	if err != nil {
+		return nil, nil, err
+	}
+	err = client.DeliverSend(deliverFiltered, s.Config.CommitterPeer.Address, blockEnvelope)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	eventCh := make(chan client.TxEvent, 1)
+	go client.DeliverReceive(deliverFiltered, s.Config.CommitterPeer.Address, txid, eventCh)
+
+	done := make(chan bool)
+	errorCh := make(chan error)
+	go func() {
+		select {
+		case event, _ := <-eventCh:
+			if txid == event.Txid {
+				done <- true
+				errorCh <- event.Err
+			} else {
+				Fail("Received wrong event")
+			}
+		case <-ctx.Done():
+			Fail("CTX timeout must not happen")
+		}
+	}()
+
+	return done, errorCh, nil
 }
 
 func RunIssueRequest(c *tokenclient.Client, tokens []*token.Token, expectedTokenTx *token.TokenTransaction) string {
