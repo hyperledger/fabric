@@ -381,7 +381,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("User2 try to transfer again the same token already transferred before")
 			_, ordererStatus, committed, err := RunTransferRequestWithFailure(tClient, issuedTokens, recipientUser1)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("does not exist"))
+			Expect(err.Error()).To(ContainSubstring("does not exist or not owned by the user"))
 			Expect(ordererStatus).To(BeNil())
 			Expect(committed).To(BeFalse())
 
@@ -419,7 +419,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			tClient = GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
 			_, ordererStatus, committed, err := RunTransferRequestWithFailure(tClient, issuedTokens, recipientUser1)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError("error from prover: the requestor does not own token"))
+			Expect(err.Error()).To(ContainSubstring("does not exist or not owned by the user"))
 			Expect(ordererStatus).To(BeNil())
 			Expect(committed).To(BeFalse())
 

@@ -1169,7 +1169,7 @@ var _ = Describe("ProverListUnspentTokens", func() {
 		outputToken, err := proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "XYZ", Quantity: ToHex(100)})
 		Expect(err).NotTo(HaveOccurred())
 
-		key := generateKey("1", "0", "tokenOutput")
+		key := generateKey("owner1", "1", "0", "tokenOutput")
 
 		queryResult = &queryresult.KV{Key: key, Value: outputToken}
 
@@ -1411,8 +1411,8 @@ func splitCompositeKey(compositeKey string) (string, []string, error) {
 	return components[0], components[1:], nil
 }
 
-func generateKey(txID, index, namespace string) string {
-	return "\x00" + namespace + "\x00" + txID + "\x00" + index + "\x00"
+func generateKey(ownerString, txID, index, namespace string) string {
+	return "\x00" + namespace + "\x00" + ownerString + "\x00" + txID + "\x00" + index + "\x00"
 }
 
 type TestTokenOwnerValidator struct {
