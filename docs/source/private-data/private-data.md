@@ -21,9 +21,13 @@ A collection is the combination of two elements:
 
 1. **The actual private data**, sent peer-to-peer [via gossip protocol](../gossip.html)
    to only the organization(s) authorized to see it. This data is stored in a
-   private database on the peer (sometimes called a "side" database, or
-   "SideDB"). The ordering service is not involved here and does not see the
-   private data. Note that setting up gossip requires setting up anchor peers
+   private state database on the peers of authorized organizations (sometimes
+   called a "side" database, or "SideDB"), which can be accessed from chaincode
+   on these authorized peers.
+   The ordering service is not involved here and does not see the
+   private data. Note that because gossip distributes the private data peer-to-peer
+   across authorized organizations, it is required to set up anchor peers on the channel,
+   and configure CORE_PEER_GOSSIP_EXTERNALENDPOINT on each peer,
    in order to bootstrap cross-organization communication.
 
 2. **A hash of that data**, which is endorsed, ordered, and written to the ledgers
@@ -113,23 +117,25 @@ documentation on [transaction flow](../txflow.html).
    distribute the private data, based on the collection policy, to authorized peers
    via [gossip](../gossip.html).
 
-3. The endorsing peer sends the proposal response back to the client with public
-   data, including a hash of the private data key and value. *No private data is
+3. The endorsing peer sends the proposal response back to the client. The proposal
+   response includes the endorsed read/write set, which includes public
+   data, as well as a hash of any private data keys and values. *No private data is
    sent back to the client*. For more information on how endorsement works with
    private data, click [here](../private-data-arch.html#endorsement).
 
-4. The client application submits the transaction to the ordering service (with
-   hashes of the private data) which gets distributed into blocks as normal.
-   The block with the hashed values is distributed to all the peers. In this way,
+4. The client application submits the transaction (which includes the proposal
+   response with the private data hashes) to the ordering service. The transactions
+   with the private data hashes get included in blocks as normal.
+   The block with the private data hashes is distributed to all the peers. In this way,
    all peers on the channel can validate transactions with the hashes of the private
    data in a consistent way, without knowing the actual private data.
 
-5. At block-committal time, authorized peers use the collection policy to
+5. At block commit time, authorized peers use the collection policy to
    determine if they are authorized to have access to the private data. If they do,
    they will first check their local `transient data store` to determine if they
    have already received the private data at chaincode endorsement time. If not,
-   they will attempt to pull the private data from another peer. Then they will
-   validate the private data against the hashes in the public block and commit the
+   they will attempt to pull the private data from another authorized peer. Then they
+   will validate the private data against the hashes in the public block and commit the
    transaction and the block. Upon validation/commit, the private data is moved to
    their copy of the private state database and private writeset storage. The
    private data is then deleted from the `transient data store`.
