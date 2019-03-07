@@ -255,6 +255,7 @@ type ChaincodeCommitLifecycle struct {
 	ValidationPlugin  string
 	Policy            string
 	InitRequired      bool
+	CollectionsConfig string
 	PeerAddresses     []string
 	WaitForEvent      bool
 }
@@ -283,6 +284,9 @@ func (c ChaincodeCommitLifecycle) Args() []string {
 	}
 	if c.WaitForEvent {
 		args = append(args, "--waitForEvent")
+	}
+	if c.CollectionsConfig != "" {
+		args = append(args, "--collections-config", c.CollectionsConfig)
 	}
 	return args
 }
