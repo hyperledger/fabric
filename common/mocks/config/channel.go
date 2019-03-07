@@ -68,6 +68,8 @@ type ChannelCapabilities struct {
 
 	// MSPVersionVal is returned by MSPVersion()
 	MSPVersionVal msp.MSPVersion
+
+	ConsensusTypeMigrationVal bool
 }
 
 // Supported returns SupportedErr
@@ -78,4 +80,9 @@ func (cc *ChannelCapabilities) Supported() error {
 // MSPVersion returns MSPVersionVal
 func (cc *ChannelCapabilities) MSPVersion() msp.MSPVersion {
 	return cc.MSPVersionVal
+}
+
+// ConsensusTypeMigration returns ConsensusTypeMigrationVal
+func (cc *ChannelCapabilities) ConsensusTypeMigration() bool {
+	return cc.ConsensusTypeMigrationVal
 }
