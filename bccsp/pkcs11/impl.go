@@ -239,7 +239,7 @@ func FindPKCS11Lib() (lib, pin, label string) {
 			"/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so",           //Ubuntu
 			"/usr/lib/s390x-linux-gnu/softhsm/libsofthsm2.so",            //Ubuntu
 			"/usr/lib/powerpc64le-linux-gnu/softhsm/libsofthsm2.so",      //Power
-			"/usr/local/Cellar/softhsm/2.1.0/lib/softhsm/libsofthsm2.so", //MacOS
+			"/usr/local/Cellar/softhsm/2.5.0/lib/softhsm/libsofthsm2.so", //MacOS
 		}
 		for _, path := range possibilities {
 			if _, err := os.Stat(path); !os.IsNotExist(err) {
