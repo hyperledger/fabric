@@ -6,7 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
-	"os"
 	"path/filepath"
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
@@ -16,10 +15,7 @@ import (
 func ResetAllKVLedgers(rootFSPath string) error {
 	logger.Info("Resetting all ledgers to genesis block")
 	logger.Infof("Ledger data folder from config = [%s]", rootFSPath)
-	if err := dropHistoryDB(rootFSPath); err != nil {
-		return err
-	}
-	if err := dropStateLevelDB(rootFSPath); err != nil {
+	if err := dropDBs(rootFSPath); err != nil {
 		return err
 	}
 	if err := resetBlockStorage(rootFSPath); err != nil {
@@ -41,18 +37,6 @@ func ClearPreResetHeight(rootFSPath string) error {
 	blockstorePath := filepath.Join(rootFSPath, "chains")
 	logger.Infof("Clearing off prereset height files from path [%s]", blockstorePath)
 	return fsblkstorage.ClearPreResetHeight(blockstorePath)
-}
-
-func dropHistoryDB(rootFSPath string) error {
-	historyDBPath := filepath.Join(rootFSPath, "historyLeveldb")
-	logger.Infof("Dropping HistoryDB at location [%s] ...if present", historyDBPath)
-	return os.RemoveAll(historyDBPath)
-}
-
-func dropStateLevelDB(rootFSPath string) error {
-	stateLeveldbPath := filepath.Join(rootFSPath, "stateLeveldb")
-	logger.Infof("Dropping StateLevelDB at location [%s] ...if present", stateLeveldbPath)
-	return os.RemoveAll(stateLeveldbPath)
 }
 
 func resetBlockStorage(rootFSPath string) error {
