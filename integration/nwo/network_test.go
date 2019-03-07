@@ -88,10 +88,10 @@ var _ = Describe("Network", func() {
 
 			network.CreateAndJoinChannels(orderer)
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
-			RunQueryInvokeQuery(network, orderer, peer)
+			RunQueryInvokeQuery(network, orderer, peer, 100)
 		})
 
-		It("deploys and executes chaincode (simple) using the _lifecycle", func() {
+		It("deploys and executes chaincode (simple) using _lifecycle", func() {
 			orderer := network.Orderer("orderer0")
 			peer := network.Peer("org1", "peer2")
 
@@ -117,7 +117,7 @@ var _ = Describe("Network", func() {
 			nwo.EnableV2_0Capabilities(network, "testchannel", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
 			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
 
-			RunQueryInvokeQuery(network, orderer, peer)
+			RunQueryInvokeQuery(network, orderer, peer, 100)
 		})
 	})
 
@@ -205,10 +205,10 @@ var _ = Describe("Network", func() {
 			nwo.InstantiateChaincode(network, "testchannel", orderer, chaincode, testPeers[0])
 			nwo.EnsureInstantiated(network, "testchannel", "mycc", "0.0", testPeers...)
 
-			RunQueryInvokeQuery(network, orderer, testPeers[0])
+			RunQueryInvokeQuery(network, orderer, testPeers[0], 100)
 		})
 
-		It("packages and installs chaincode (the hard way) using the _lifecycle", func() {
+		It("packages and installs chaincode (the hard way) using _lifecycle and then upgrades it", func() {
 			// This demonstrates how to control the processes that make up a network.
 			// If you don't care about a collection of processes (like the brokers or
 			// the orderers) use the group runner to manage those processes.
@@ -280,12 +280,25 @@ var _ = Describe("Network", func() {
 			nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
 			nwo.InitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers...)
 
-			RunQueryInvokeQuery(network, orderer, testPeers[0])
+			RunQueryInvokeQuery(network, orderer, testPeers[0], 100)
+
+			// upgrade chaincode to sequence 2
+			chaincode.Sequence = "2"
+			maxLedgerHeight = nwo.GetMaxLedgerHeight(network, "testchannel", testPeers...)
+			for _, org := range network.PeerOrgs() {
+				nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersInOrg(org.Name)...)
+			}
+
+			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight+len(network.PeerOrgs()), testPeers...)
+
+			nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
+
+			RunQueryInvokeQuery(network, orderer, testPeers[0], 90)
 		})
 	})
 })
 
-func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
+func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, initialQueryResult int) {
 	By("querying the chaincode")
 	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
@@ -294,7 +307,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess).To(gbytes.Say("100"))
+	Expect(sess).To(gbytes.Say(fmt.Sprint(initialQueryResult)))
 
 	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: "testchannel",
@@ -318,5 +331,5 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess).To(gbytes.Say("90"))
+	Expect(sess).To(gbytes.Say(fmt.Sprint(initialQueryResult - 10)))
 }
