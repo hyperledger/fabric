@@ -41,6 +41,8 @@ func TestResetAllLedgers(t *testing.T) {
 	// Reset All kv ledgers
 	err := kvledger.ResetAllKVLedgers()
 	assert.NoError(t, err)
+	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB | rebuildableBlockIndex
+	env.verifyRebuilableDoesNotExist(rebuildable)
 	initLedgerMgmt()
 	preResetHt, err := kvledger.LoadPreResetHeight()
 	t.Logf("preResetHt = %#v", preResetHt)
@@ -70,4 +72,82 @@ func TestResetAllLedgers(t *testing.T) {
 	preResetHt, err = kvledger.LoadPreResetHeight()
 	assert.NoError(t, err)
 	assert.Len(t, preResetHt, 0)
+}
+
+func TestResetAllLedgersWithBTL(t *testing.T) {
+	env := newEnv(defaultConfig, t)
+	defer env.cleanup()
+	h := newTestHelperCreateLgr("ledger1", t)
+	collConf := []*collConf{{name: "coll1", btl: 0}, {name: "coll2", btl: 1}}
+
+	// deploy cc1 with 'collConf'
+	h.simulateDeployTx("cc1", collConf)
+	blk1 := h.cutBlockAndCommitWithPvtdata()
+
+	// commit pvtdata writes in block 2.
+	h.simulateDataTx("", func(s *simulator) {
+		s.setPvtdata("cc1", "coll1", "key1", "value1") // (key1 would never expire)
+		s.setPvtdata("cc1", "coll2", "key2", "value2") // (key2 would expire at block 4)
+	})
+	blk2 := h.cutBlockAndCommitWithPvtdata()
+
+	// After commit of block 2
+	h.verifyPvtState("cc1", "coll1", "key1", "value1") // key1 should still exist in the state
+	h.verifyPvtState("cc1", "coll2", "key2", "value2") // key2 should still exist in the state
+	h.verifyBlockAndPvtDataSameAs(2, blk2)             // key1 and key2 should still exist in the pvtdata storage
+
+	// After commit of block 3
+	h.simulateDataTx("", func(s *simulator) {
+		s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
+		s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
+	})
+	blk3 := h.cutBlockAndCommitWithPvtdata()
+
+	// After commit of block 4
+	h.simulateDataTx("", func(s *simulator) {
+		s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
+		s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
+	})
+	blk4 := h.cutBlockAndCommitWithPvtdata()
+
+	// After commit of block 4
+	h.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state
+	h.verifyPvtState("cc1", "coll2", "key2", "")                        // key2 should have been purged from the state
+	h.verifyBlockAndPvtData(2, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 2 from pvtdata storage
+		r.pvtdataShouldContain(0, "cc1", "coll1", "key1", "value1") // key1 should still exist in the pvtdata storage
+		r.pvtdataShouldNotContain("cc1", "coll2")                   // <cc1, coll2> shold have been purged from the pvtdata storage
+	})
+
+	closeLedgerMgmt()
+
+	// reset ledgers to genesis block
+	err := kvledger.ResetAllKVLedgers()
+	assert.NoError(t, err)
+	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB | rebuildableBlockIndex
+	env.verifyRebuilableDoesNotExist(rebuildable)
+	initLedgerMgmt()
+
+	// ensure that the reset is executed correctly
+	preResetHt, err := kvledger.LoadPreResetHeight()
+	t.Logf("preResetHt = %#v", preResetHt)
+	assert.Equal(t, uint64(5), preResetHt["ledger1"])
+	h = newTestHelperOpenLgr("ledger1", t)
+	h.verifyLedgerHeight(1)
+
+	// recommit blocks
+	assert.NoError(t, h.lgr.CommitWithPvtData(blk1))
+	assert.NoError(t, h.lgr.CommitWithPvtData(blk2))
+	// After the recommit of block 2
+	h.verifyPvtState("cc1", "coll1", "key1", "value1") // key1 should still exist in the state
+	h.verifyPvtState("cc1", "coll2", "key2", "value2") // key2 should still exist in the state
+	assert.NoError(t, h.lgr.CommitWithPvtData(blk3))
+	assert.NoError(t, h.lgr.CommitWithPvtData(blk4))
+
+	// after the recommit of block 4
+	h.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state
+	h.verifyPvtState("cc1", "coll2", "key2", "")                        // key2 should have been purged from the state
+	h.verifyBlockAndPvtData(2, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 2 from pvtdata storage
+		r.pvtdataShouldContain(0, "cc1", "coll1", "key1", "value1") // key1 should still exist in the pvtdata storage
+		r.pvtdataShouldNotContain("cc1", "coll2")                   // <cc1, coll2> shold have been purged from the pvtdata storage
+	})
 }

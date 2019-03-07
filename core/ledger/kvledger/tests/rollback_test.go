@@ -7,60 +7,62 @@ SPDX-License-Identifier: Apache-2.0
 package tests
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestRebuildComponents(t *testing.T) {
+func TestRollbackKVLedger(t *testing.T) {
 	env := newEnv(defaultConfig, t)
 	defer env.cleanup()
-
-	h1, h2 := newTestHelperCreateLgr("ledger1", t), newTestHelperCreateLgr("ledger2", t)
+	// populate ledgers with sample data
 	dataHelper := newSampleDataHelper(t)
+	var blockchainsInfo []*common.BlockchainInfo
 
-	dataHelper.populateLedger(h1)
-	dataHelper.populateLedger(h2)
+	h := newTestHelperCreateLgr("testLedger", t)
+	// populate creates 8 blocks
+	dataHelper.populateLedger(h)
+	dataHelper.verifyLedgerContent(h)
+	bcInfo, err := h.lgr.GetBlockchainInfo()
+	assert.NoError(t, err)
+	blockchainsInfo = append(blockchainsInfo, bcInfo)
+	closeLedgerMgmt()
 
-	dataHelper.verifyLedgerContent(h1)
-	dataHelper.verifyLedgerContent(h2)
+	// Rollback the testLedger (invalid rollback params)
+	err = kvledger.RollbackKVLedger("noLedger", 0)
+	assert.Equal(t, "ledgerID [noLedger] does not exist", err.Error())
+	err = kvledger.RollbackKVLedger("testLedger", bcInfo.Height)
+	expectedErr := fmt.Sprintf("target block number [%d] should be less than the biggest block number [%d]",
+		bcInfo.Height, bcInfo.Height-1)
+	assert.Equal(t, expectedErr, err.Error())
 
-	t.Run("rebuild only statedb",
-		func(t *testing.T) {
-			env.closeAllLedgersAndDrop(rebuildableStatedb)
-			h1, h2 := newTestHelperOpenLgr("ledger1", t), newTestHelperOpenLgr("ledger2", t)
-			dataHelper.verifyLedgerContent(h1)
-			dataHelper.verifyLedgerContent(h2)
-		},
-	)
+	// Rollback the testLedger (valid rollback params)
+	targetBlockNum := bcInfo.Height - 3
+	err = kvledger.RollbackKVLedger("testLedger", targetBlockNum)
+	assert.NoError(t, err)
+	rebuildable := rebuildableStatedb + rebuildableBookkeeper + rebuildableConfigHistory + rebuildableHistoryDB
+	env.verifyRebuilableDoesNotExist(rebuildable)
+	initLedgerMgmt()
+	preResetHt, err := kvledger.LoadPreResetHeight()
+	assert.Equal(t, bcInfo.Height, preResetHt["testLedger"])
+	t.Logf("preResetHt = %#v", preResetHt)
 
-	t.Run("rebuild statedb and config history",
-		func(t *testing.T) {
-			env.closeAllLedgersAndDrop(rebuildableStatedb | rebuildableConfigHistory)
-			h1, h2 := newTestHelperOpenLgr("ledger1", t), newTestHelperOpenLgr("ledger2", t)
-			dataHelper.verifyLedgerContent(h1)
-			dataHelper.verifyLedgerContent(h2)
-		},
-	)
-
-	t.Run("rebuild statedb and block index",
-		func(t *testing.T) {
-			env.closeAllLedgersAndDrop(rebuildableStatedb | rebuildableBlockIndex)
-			h1, h2 := newTestHelperOpenLgr("ledger1", t), newTestHelperOpenLgr("ledger2", t)
-			dataHelper.verifyLedgerContent(h1)
-			dataHelper.verifyLedgerContent(h2)
-		},
-	)
-
-	t.Run("rebuild statedb and historydb",
-		func(t *testing.T) {
-			env.closeAllLedgersAndDrop(rebuildableStatedb | rebuildableHistoryDB)
-			h1, h2 := newTestHelperOpenLgr("ledger1", t), newTestHelperOpenLgr("ledger2", t)
-			dataHelper.verifyLedgerContent(h1)
-			dataHelper.verifyLedgerContent(h2)
-		},
-	)
+	h = newTestHelperOpenLgr("testLedger", t)
+	h.verifyLedgerHeight(targetBlockNum + 1)
+	targetBlockNumIndex := targetBlockNum - 1
+	for _, b := range dataHelper.submittedData["testLedger"].Blocks[targetBlockNumIndex+1:] {
+		assert.NoError(t, h.lgr.CommitWithPvtData(b))
+	}
+	actualBcInfo, err := h.lgr.GetBlockchainInfo()
+	assert.Equal(t, bcInfo, actualBcInfo)
+	dataHelper.verifyLedgerContent(h)
+	// TODO: extend integration test with BTL support for pvtData. FAB-15704
 }
 
-func TestRebuildComponentsWithBTL(t *testing.T) {
+func TestRollbackKVLedgerWithBTL(t *testing.T) {
 	env := newEnv(defaultConfig, t)
 	defer env.cleanup()
 	h := newTestHelperCreateLgr("ledger1", t)
@@ -83,7 +85,6 @@ func TestRebuildComponentsWithBTL(t *testing.T) {
 	h.verifyBlockAndPvtDataSameAs(2, blk2)             // key1 and key2 should still exist in the pvtdata storage
 
 	// commit 2 more blocks with some random key/vals
-
 	for i := 0; i < 2; i++ {
 		h.simulateDataTx("", func(s *simulator) {
 			s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
@@ -100,9 +101,21 @@ func TestRebuildComponentsWithBTL(t *testing.T) {
 		r.pvtdataShouldNotContain("cc1", "coll2")                   // <cc1, coll2> shold have been purged from the pvtdata storage
 	})
 
-	// rebuild statedb and bookkeeper
-	env.closeAllLedgersAndDrop(rebuildableStatedb | rebuildableBookkeeper)
+	// commit block 5 with some random key/vals
+	h.simulateDataTx("", func(s *simulator) {
+		s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
+		s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
+	})
+	h.cutBlockAndCommitWithPvtdata()
+	closeLedgerMgmt()
 
+	// rebuild statedb and bookkeeper
+	err := kvledger.RollbackKVLedger("ledger1", 4)
+	assert.NoError(t, err)
+	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB
+	env.verifyRebuilableDoesNotExist(rebuildable)
+
+	initLedgerMgmt()
 	h = newTestHelperOpenLgr("ledger1", t)
 	h.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state
 	h.verifyPvtState("cc1", "coll2", "key2", "")                        // key2 should have been purged from the state
@@ -111,10 +124,17 @@ func TestRebuildComponentsWithBTL(t *testing.T) {
 		r.pvtdataShouldNotContain("cc1", "coll2")                   // <cc1, coll2> shold have been purged from the pvtdata storage
 	})
 
-	// commit pvtdata writes in block 5.
+	// commit block 5 with some random key/vals
+	h.simulateDataTx("", func(s *simulator) {
+		s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
+		s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
+	})
+	h.cutBlockAndCommitWithPvtdata()
+
+	// commit pvtdata writes in block 6.
 	h.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "key3", "value1") // (key3 would never expire)
-		s.setPvtdata("cc1", "coll2", "key4", "value2") // (key4 would expire at block 7)
+		s.setPvtdata("cc1", "coll2", "key4", "value2") // (key4 would expire at block 8)
 	})
 	h.cutBlockAndCommitWithPvtdata()
 
@@ -127,10 +147,10 @@ func TestRebuildComponentsWithBTL(t *testing.T) {
 		h.cutBlockAndCommitWithPvtdata()
 	}
 
-	// After commit of block 7
+	// After commit of block 8
 	h.verifyPvtState("cc1", "coll1", "key3", "value1")                  // key3 should still exist in the state
 	h.verifyPvtState("cc1", "coll2", "key4", "")                        // key4 should have been purged from the state
-	h.verifyBlockAndPvtData(5, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 2 from pvtdata storage
+	h.verifyBlockAndPvtData(6, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 2 from pvtdata storage
 		r.pvtdataShouldContain(0, "cc1", "coll1", "key3", "value1") // key3 should still exist in the pvtdata storage
 		r.pvtdataShouldNotContain("cc1", "coll2")                   // <cc1, coll2> shold have been purged from the pvtdata storage
 	})

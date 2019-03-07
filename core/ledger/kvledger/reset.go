@@ -6,22 +6,20 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
-	"os"
-
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 )
 
+// ResetAllKVLedgers resets all ledger to the genesis block.
 func ResetAllKVLedgers() error {
 	logger.Info("Resetting all ledgers to genesis block")
 	ledgerDataFolder := ledgerconfig.GetRootPath()
 	logger.Infof("Ledger data folder from config = [%s]", ledgerDataFolder)
-	if err := dropHistoryDB(); err != nil {
+
+	if err := dropDBs(); err != nil {
 		return err
 	}
-	if err := dropStateLevelDB(); err != nil {
-		return err
-	}
+
 	if err := resetBlockStorage(); err != nil {
 		return err
 	}
@@ -29,6 +27,7 @@ func ResetAllKVLedgers() error {
 	return nil
 }
 
+// LoadPreResetHeight returns the pre-reset height of all ledgers.
 func LoadPreResetHeight() (map[string]uint64, error) {
 	blockstorePath := ledgerconfig.GetBlockStorePath()
 	logger.Infof("Loading prereset height from path [%s]", blockstorePath)
@@ -39,18 +38,6 @@ func ClearPreResetHeight() error {
 	blockstorePath := ledgerconfig.GetBlockStorePath()
 	logger.Infof("Clearing off prereset height files from path [%s]", blockstorePath)
 	return fsblkstorage.ClearPreResetHeight(blockstorePath)
-}
-
-func dropHistoryDB() error {
-	histroryDBPath := ledgerconfig.GetHistoryLevelDBPath()
-	logger.Infof("Dropping HistoryDB at location [%s] ...if present", histroryDBPath)
-	return os.RemoveAll(histroryDBPath)
-}
-
-func dropStateLevelDB() error {
-	stateLeveldbPath := ledgerconfig.GetStateLevelDBPath()
-	logger.Infof("Dropping StateLevelDB at location [%s] ...if present", stateLeveldbPath)
-	return os.RemoveAll(stateLeveldbPath)
 }
 
 func resetBlockStorage() error {

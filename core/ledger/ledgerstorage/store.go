@@ -37,17 +37,19 @@ type Store struct {
 	rwlock       *sync.RWMutex
 }
 
+var attrsToIndex = []blkstorage.IndexableAttr{
+	blkstorage.IndexableAttrBlockHash,
+	blkstorage.IndexableAttrBlockNum,
+	blkstorage.IndexableAttrTxID,
+	blkstorage.IndexableAttrBlockNumTranNum,
+	//BlockTxID index is necessary to detect duplicateTxID during rollback
+	blkstorage.IndexableAttrBlockTxID,
+	blkstorage.IndexableAttrTxValidationCode,
+}
+
 // NewProvider returns the handle to the provider
 func NewProvider(metricsProvider metrics.Provider) *Provider {
 	// Initialize the block storage
-	attrsToIndex := []blkstorage.IndexableAttr{
-		blkstorage.IndexableAttrBlockHash,
-		blkstorage.IndexableAttrBlockNum,
-		blkstorage.IndexableAttrTxID,
-		blkstorage.IndexableAttrBlockNumTranNum,
-		blkstorage.IndexableAttrBlockTxID,
-		blkstorage.IndexableAttrTxValidationCode,
-	}
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 	blockStoreProvider := fsblkstorage.NewProvider(
 		fsblkstorage.NewConf(ledgerconfig.GetBlockStorePath(), ledgerconfig.GetMaxBlockfileSize()),
@@ -81,6 +83,11 @@ func (p *Provider) Open(ledgerid string) (*Store, error) {
 func (p *Provider) Close() {
 	p.blkStoreProvider.Close()
 	p.pvtdataStoreProvider.Close()
+}
+
+// Exists checks whether the ledgerID already presents
+func (p *Provider) Exists(ledgerID string) (bool, error) {
+	return p.blkStoreProvider.Exists(ledgerID)
 }
 
 // Init initializes store with essential configurations
@@ -330,4 +337,26 @@ func constructPvtdataMap(pvtdata []*ledger.TxPvtData) map[uint64]*ledger.TxPvtDa
 		m[pvtdatum.SeqInBlock] = pvtdatum
 	}
 	return m
+}
+
+// LoadPreResetHeight returns the pre reset height.
+func LoadPreResetHeight(blockstorePath string) (map[string]uint64, error) {
+	return fsblkstorage.LoadPreResetHeight(blockstorePath)
+}
+
+// ResetBlockStore resets all ledgers to the genesis block.
+func ResetBlockStore(blockstorePath string) error {
+	return fsblkstorage.ResetBlockStore(blockstorePath)
+}
+
+// ValidateRollbackParams performs necessary validation on the input given for
+// the rollback operation.
+func ValidateRollbackParams(blockstorePath, ledgerID string, blockNum uint64) error {
+	return fsblkstorage.ValidateRollbackParams(blockstorePath, ledgerID, blockNum)
+}
+
+// Rollback reverts changes made to the block store beyond a given block number.
+func Rollback(blockstorePath, ledgerID string, blockNum uint64) error {
+	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
+	return fsblkstorage.Rollback(blockstorePath, ledgerID, blockNum, indexConfig)
 }

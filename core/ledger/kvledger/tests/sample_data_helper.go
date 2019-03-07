@@ -152,6 +152,7 @@ func (d *sampleDataHelper) verifyLedgerContent(h *testhelper) {
 	d.verifyConfigHistory(h)
 	d.verifyBlockAndPvtdata(h)
 	d.verifyGetTransactionByID(h)
+	// TODO: add verifyHistory() -- FAB-15733
 
 	// the submitted data could not be available if the test ledger is loaded from disk in a fresh run
 	// (e.g., a backup of a test lesger from a previous fabric version)
