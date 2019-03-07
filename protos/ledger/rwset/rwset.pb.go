@@ -35,7 +35,7 @@ func (x TxReadWriteSet_DataModel) String() string {
 	return proto.EnumName(TxReadWriteSet_DataModel_name, int32(x))
 }
 func (TxReadWriteSet_DataModel) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_rwset_28a2ad70bffb57df, []int{0, 0}
+	return fileDescriptor_rwset_5943c220cfc3749d, []int{0, 0}
 }
 
 // TxReadWriteSet encapsulates a read-write set for a transaction
@@ -53,7 +53,7 @@ func (m *TxReadWriteSet) Reset()         { *m = TxReadWriteSet{} }
 func (m *TxReadWriteSet) String() string { return proto.CompactTextString(m) }
 func (*TxReadWriteSet) ProtoMessage()    {}
 func (*TxReadWriteSet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rwset_28a2ad70bffb57df, []int{0}
+	return fileDescriptor_rwset_5943c220cfc3749d, []int{0}
 }
 func (m *TxReadWriteSet) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TxReadWriteSet.Unmarshal(m, b)
@@ -101,7 +101,7 @@ func (m *NsReadWriteSet) Reset()         { *m = NsReadWriteSet{} }
 func (m *NsReadWriteSet) String() string { return proto.CompactTextString(m) }
 func (*NsReadWriteSet) ProtoMessage()    {}
 func (*NsReadWriteSet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rwset_28a2ad70bffb57df, []int{1}
+	return fileDescriptor_rwset_5943c220cfc3749d, []int{1}
 }
 func (m *NsReadWriteSet) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NsReadWriteSet.Unmarshal(m, b)
@@ -156,7 +156,7 @@ func (m *CollectionHashedReadWriteSet) Reset()         { *m = CollectionHashedRe
 func (m *CollectionHashedReadWriteSet) String() string { return proto.CompactTextString(m) }
 func (*CollectionHashedReadWriteSet) ProtoMessage()    {}
 func (*CollectionHashedReadWriteSet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rwset_28a2ad70bffb57df, []int{2}
+	return fileDescriptor_rwset_5943c220cfc3749d, []int{2}
 }
 func (m *CollectionHashedReadWriteSet) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CollectionHashedReadWriteSet.Unmarshal(m, b)
@@ -210,7 +210,7 @@ func (m *TxPvtReadWriteSet) Reset()         { *m = TxPvtReadWriteSet{} }
 func (m *TxPvtReadWriteSet) String() string { return proto.CompactTextString(m) }
 func (*TxPvtReadWriteSet) ProtoMessage()    {}
 func (*TxPvtReadWriteSet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rwset_28a2ad70bffb57df, []int{3}
+	return fileDescriptor_rwset_5943c220cfc3749d, []int{3}
 }
 func (m *TxPvtReadWriteSet) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TxPvtReadWriteSet.Unmarshal(m, b)
@@ -257,7 +257,7 @@ func (m *NsPvtReadWriteSet) Reset()         { *m = NsPvtReadWriteSet{} }
 func (m *NsPvtReadWriteSet) String() string { return proto.CompactTextString(m) }
 func (*NsPvtReadWriteSet) ProtoMessage()    {}
 func (*NsPvtReadWriteSet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rwset_28a2ad70bffb57df, []int{4}
+	return fileDescriptor_rwset_5943c220cfc3749d, []int{4}
 }
 func (m *NsPvtReadWriteSet) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NsPvtReadWriteSet.Unmarshal(m, b)
@@ -304,7 +304,7 @@ func (m *CollectionPvtReadWriteSet) Reset()         { *m = CollectionPvtReadWrit
 func (m *CollectionPvtReadWriteSet) String() string { return proto.CompactTextString(m) }
 func (*CollectionPvtReadWriteSet) ProtoMessage()    {}
 func (*CollectionPvtReadWriteSet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rwset_28a2ad70bffb57df, []int{5}
+	return fileDescriptor_rwset_5943c220cfc3749d, []int{5}
 }
 func (m *CollectionPvtReadWriteSet) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CollectionPvtReadWriteSet.Unmarshal(m, b)
@@ -348,9 +348,9 @@ func init() {
 	proto.RegisterEnum("rwset.TxReadWriteSet_DataModel", TxReadWriteSet_DataModel_name, TxReadWriteSet_DataModel_value)
 }
 
-func init() { proto.RegisterFile("ledger/rwset/rwset.proto", fileDescriptor_rwset_28a2ad70bffb57df) }
+func init() { proto.RegisterFile("ledger/rwset/rwset.proto", fileDescriptor_rwset_5943c220cfc3749d) }
 
-var fileDescriptor_rwset_28a2ad70bffb57df = []byte{
+var fileDescriptor_rwset_5943c220cfc3749d = []byte{
 	// 421 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x93, 0x4f, 0x6f, 0xd3, 0x30,
 	0x18, 0xc6, 0x71, 0xab, 0x16, 0xf2, 0x36, 0x0a, 0xd4, 0xb4, 0x22, 0x48, 0x95, 0x28, 0x05, 0x89,

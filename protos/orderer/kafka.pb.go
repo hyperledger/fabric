@@ -41,7 +41,7 @@ func (x KafkaMessageRegular_Class) String() string {
 	return proto.EnumName(KafkaMessageRegular_Class_name, int32(x))
 }
 func (KafkaMessageRegular_Class) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_kafka_d6fc97ca114dc767, []int{1, 0}
+	return fileDescriptor_kafka_0ddd3eb0cfcb1168, []int{1, 0}
 }
 
 // KafkaMessage is a wrapper type for the messages
@@ -61,7 +61,7 @@ func (m *KafkaMessage) Reset()         { *m = KafkaMessage{} }
 func (m *KafkaMessage) String() string { return proto.CompactTextString(m) }
 func (*KafkaMessage) ProtoMessage()    {}
 func (*KafkaMessage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kafka_d6fc97ca114dc767, []int{0}
+	return fileDescriptor_kafka_0ddd3eb0cfcb1168, []int{0}
 }
 func (m *KafkaMessage) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KafkaMessage.Unmarshal(m, b)
@@ -239,7 +239,7 @@ func (m *KafkaMessageRegular) Reset()         { *m = KafkaMessageRegular{} }
 func (m *KafkaMessageRegular) String() string { return proto.CompactTextString(m) }
 func (*KafkaMessageRegular) ProtoMessage()    {}
 func (*KafkaMessageRegular) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kafka_d6fc97ca114dc767, []int{1}
+	return fileDescriptor_kafka_0ddd3eb0cfcb1168, []int{1}
 }
 func (m *KafkaMessageRegular) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KafkaMessageRegular.Unmarshal(m, b)
@@ -300,7 +300,7 @@ func (m *KafkaMessageTimeToCut) Reset()         { *m = KafkaMessageTimeToCut{} }
 func (m *KafkaMessageTimeToCut) String() string { return proto.CompactTextString(m) }
 func (*KafkaMessageTimeToCut) ProtoMessage()    {}
 func (*KafkaMessageTimeToCut) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kafka_d6fc97ca114dc767, []int{2}
+	return fileDescriptor_kafka_0ddd3eb0cfcb1168, []int{2}
 }
 func (m *KafkaMessageTimeToCut) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KafkaMessageTimeToCut.Unmarshal(m, b)
@@ -342,7 +342,7 @@ func (m *KafkaMessageConnect) Reset()         { *m = KafkaMessageConnect{} }
 func (m *KafkaMessageConnect) String() string { return proto.CompactTextString(m) }
 func (*KafkaMessageConnect) ProtoMessage()    {}
 func (*KafkaMessageConnect) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kafka_d6fc97ca114dc767, []int{3}
+	return fileDescriptor_kafka_0ddd3eb0cfcb1168, []int{3}
 }
 func (m *KafkaMessageConnect) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KafkaMessageConnect.Unmarshal(m, b)
@@ -398,7 +398,7 @@ func (m *KafkaMetadata) Reset()         { *m = KafkaMetadata{} }
 func (m *KafkaMetadata) String() string { return proto.CompactTextString(m) }
 func (*KafkaMetadata) ProtoMessage()    {}
 func (*KafkaMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kafka_d6fc97ca114dc767, []int{4}
+	return fileDescriptor_kafka_0ddd3eb0cfcb1168, []int{4}
 }
 func (m *KafkaMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KafkaMetadata.Unmarshal(m, b)
@@ -448,9 +448,9 @@ func init() {
 	proto.RegisterEnum("orderer.KafkaMessageRegular_Class", KafkaMessageRegular_Class_name, KafkaMessageRegular_Class_value)
 }
 
-func init() { proto.RegisterFile("orderer/kafka.proto", fileDescriptor_kafka_d6fc97ca114dc767) }
+func init() { proto.RegisterFile("orderer/kafka.proto", fileDescriptor_kafka_0ddd3eb0cfcb1168) }
 
-var fileDescriptor_kafka_d6fc97ca114dc767 = []byte{
+var fileDescriptor_kafka_0ddd3eb0cfcb1168 = []byte{
 	// 476 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x93, 0xd1, 0x6a, 0xdb, 0x30,
 	0x14, 0x86, 0xe3, 0x26, 0x4d, 0xe8, 0x49, 0xd6, 0x05, 0x85, 0x42, 0x60, 0x5b, 0xe9, 0x0c, 0x63,

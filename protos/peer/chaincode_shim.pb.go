@@ -104,7 +104,7 @@ func (x ChaincodeMessage_Type) String() string {
 	return proto.EnumName(ChaincodeMessage_Type_name, int32(x))
 }
 func (ChaincodeMessage_Type) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{0, 0}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{0, 0}
 }
 
 type ChaincodeMessage struct {
@@ -128,7 +128,7 @@ func (m *ChaincodeMessage) Reset()         { *m = ChaincodeMessage{} }
 func (m *ChaincodeMessage) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeMessage) ProtoMessage()    {}
 func (*ChaincodeMessage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{0}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{0}
 }
 func (m *ChaincodeMessage) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeMessage.Unmarshal(m, b)
@@ -212,7 +212,7 @@ func (m *GetState) Reset()         { *m = GetState{} }
 func (m *GetState) String() string { return proto.CompactTextString(m) }
 func (*GetState) ProtoMessage()    {}
 func (*GetState) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{1}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{1}
 }
 func (m *GetState) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetState.Unmarshal(m, b)
@@ -258,7 +258,7 @@ func (m *GetStateMetadata) Reset()         { *m = GetStateMetadata{} }
 func (m *GetStateMetadata) String() string { return proto.CompactTextString(m) }
 func (*GetStateMetadata) ProtoMessage()    {}
 func (*GetStateMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{2}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{2}
 }
 func (m *GetStateMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetStateMetadata.Unmarshal(m, b)
@@ -309,7 +309,7 @@ func (m *PutState) Reset()         { *m = PutState{} }
 func (m *PutState) String() string { return proto.CompactTextString(m) }
 func (*PutState) ProtoMessage()    {}
 func (*PutState) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{3}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{3}
 }
 func (m *PutState) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PutState.Unmarshal(m, b)
@@ -363,7 +363,7 @@ func (m *PutStateMetadata) Reset()         { *m = PutStateMetadata{} }
 func (m *PutStateMetadata) String() string { return proto.CompactTextString(m) }
 func (*PutStateMetadata) ProtoMessage()    {}
 func (*PutStateMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{4}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{4}
 }
 func (m *PutStateMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PutStateMetadata.Unmarshal(m, b)
@@ -420,7 +420,7 @@ func (m *DelState) Reset()         { *m = DelState{} }
 func (m *DelState) String() string { return proto.CompactTextString(m) }
 func (*DelState) ProtoMessage()    {}
 func (*DelState) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{5}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{5}
 }
 func (m *DelState) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DelState.Unmarshal(m, b)
@@ -472,7 +472,7 @@ func (m *GetStateByRange) Reset()         { *m = GetStateByRange{} }
 func (m *GetStateByRange) String() string { return proto.CompactTextString(m) }
 func (*GetStateByRange) ProtoMessage()    {}
 func (*GetStateByRange) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{6}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{6}
 }
 func (m *GetStateByRange) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetStateByRange.Unmarshal(m, b)
@@ -537,7 +537,7 @@ func (m *GetQueryResult) Reset()         { *m = GetQueryResult{} }
 func (m *GetQueryResult) String() string { return proto.CompactTextString(m) }
 func (*GetQueryResult) ProtoMessage()    {}
 func (*GetQueryResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{7}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{7}
 }
 func (m *GetQueryResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetQueryResult.Unmarshal(m, b)
@@ -593,7 +593,7 @@ func (m *QueryMetadata) Reset()         { *m = QueryMetadata{} }
 func (m *QueryMetadata) String() string { return proto.CompactTextString(m) }
 func (*QueryMetadata) ProtoMessage()    {}
 func (*QueryMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{8}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{8}
 }
 func (m *QueryMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryMetadata.Unmarshal(m, b)
@@ -640,7 +640,7 @@ func (m *GetHistoryForKey) Reset()         { *m = GetHistoryForKey{} }
 func (m *GetHistoryForKey) String() string { return proto.CompactTextString(m) }
 func (*GetHistoryForKey) ProtoMessage()    {}
 func (*GetHistoryForKey) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{9}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{9}
 }
 func (m *GetHistoryForKey) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetHistoryForKey.Unmarshal(m, b)
@@ -678,7 +678,7 @@ func (m *QueryStateNext) Reset()         { *m = QueryStateNext{} }
 func (m *QueryStateNext) String() string { return proto.CompactTextString(m) }
 func (*QueryStateNext) ProtoMessage()    {}
 func (*QueryStateNext) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{10}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{10}
 }
 func (m *QueryStateNext) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryStateNext.Unmarshal(m, b)
@@ -716,7 +716,7 @@ func (m *QueryStateClose) Reset()         { *m = QueryStateClose{} }
 func (m *QueryStateClose) String() string { return proto.CompactTextString(m) }
 func (*QueryStateClose) ProtoMessage()    {}
 func (*QueryStateClose) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{11}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{11}
 }
 func (m *QueryStateClose) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryStateClose.Unmarshal(m, b)
@@ -755,7 +755,7 @@ func (m *QueryResultBytes) Reset()         { *m = QueryResultBytes{} }
 func (m *QueryResultBytes) String() string { return proto.CompactTextString(m) }
 func (*QueryResultBytes) ProtoMessage()    {}
 func (*QueryResultBytes) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{12}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{12}
 }
 func (m *QueryResultBytes) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryResultBytes.Unmarshal(m, b)
@@ -801,7 +801,7 @@ func (m *QueryResponse) Reset()         { *m = QueryResponse{} }
 func (m *QueryResponse) String() string { return proto.CompactTextString(m) }
 func (*QueryResponse) ProtoMessage()    {}
 func (*QueryResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{13}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{13}
 }
 func (m *QueryResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryResponse.Unmarshal(m, b)
@@ -863,7 +863,7 @@ func (m *QueryResponseMetadata) Reset()         { *m = QueryResponseMetadata{} }
 func (m *QueryResponseMetadata) String() string { return proto.CompactTextString(m) }
 func (*QueryResponseMetadata) ProtoMessage()    {}
 func (*QueryResponseMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{14}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{14}
 }
 func (m *QueryResponseMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryResponseMetadata.Unmarshal(m, b)
@@ -909,7 +909,7 @@ func (m *StateMetadata) Reset()         { *m = StateMetadata{} }
 func (m *StateMetadata) String() string { return proto.CompactTextString(m) }
 func (*StateMetadata) ProtoMessage()    {}
 func (*StateMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{15}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{15}
 }
 func (m *StateMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StateMetadata.Unmarshal(m, b)
@@ -954,7 +954,7 @@ func (m *StateMetadataResult) Reset()         { *m = StateMetadataResult{} }
 func (m *StateMetadataResult) String() string { return proto.CompactTextString(m) }
 func (*StateMetadataResult) ProtoMessage()    {}
 func (*StateMetadataResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_shim_b04d3028f86b65a2, []int{16}
+	return fileDescriptor_chaincode_shim_c665f08ea0d5c75e, []int{16}
 }
 func (m *StateMetadataResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StateMetadataResult.Unmarshal(m, b)
@@ -1107,10 +1107,10 @@ var _ChaincodeSupport_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("peer/chaincode_shim.proto", fileDescriptor_chaincode_shim_b04d3028f86b65a2)
+	proto.RegisterFile("peer/chaincode_shim.proto", fileDescriptor_chaincode_shim_c665f08ea0d5c75e)
 }
 
-var fileDescriptor_chaincode_shim_b04d3028f86b65a2 = []byte{
+var fileDescriptor_chaincode_shim_c665f08ea0d5c75e = []byte{
 	// 1027 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x56, 0xcf, 0x73, 0xda, 0x46,
 	0x14, 0x0e, 0x06, 0x8c, 0x78, 0xd8, 0x78, 0xb3, 0x0e, 0x2e, 0x66, 0x26, 0x2d, 0x65, 0x7a, 0xa0,

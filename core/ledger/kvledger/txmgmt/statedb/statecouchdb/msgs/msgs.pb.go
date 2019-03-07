@@ -30,7 +30,7 @@ func (m *VersionFieldProto) Reset()         { *m = VersionFieldProto{} }
 func (m *VersionFieldProto) String() string { return proto.CompactTextString(m) }
 func (*VersionFieldProto) ProtoMessage()    {}
 func (*VersionFieldProto) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msgs_41c2b9a37861a33d, []int{0}
+	return fileDescriptor_msgs_81836a47a7ca9ced, []int{0}
 }
 func (m *VersionFieldProto) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VersionFieldProto.Unmarshal(m, b)
@@ -68,9 +68,9 @@ func init() {
 	proto.RegisterType((*VersionFieldProto)(nil), "msgs.VersionFieldProto")
 }
 
-func init() { proto.RegisterFile("msgs.proto", fileDescriptor_msgs_41c2b9a37861a33d) }
+func init() { proto.RegisterFile("msgs.proto", fileDescriptor_msgs_81836a47a7ca9ced) }
 
-var fileDescriptor_msgs_41c2b9a37861a33d = []byte{
+var fileDescriptor_msgs_81836a47a7ca9ced = []byte{
 	// 177 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0xca, 0x2d, 0x4e, 0x2f,
 	0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x01, 0xb1, 0x95, 0x42, 0xb8, 0x04, 0xc3, 0x52,

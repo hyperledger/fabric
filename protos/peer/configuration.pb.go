@@ -30,7 +30,7 @@ func (m *AnchorPeers) Reset()         { *m = AnchorPeers{} }
 func (m *AnchorPeers) String() string { return proto.CompactTextString(m) }
 func (*AnchorPeers) ProtoMessage()    {}
 func (*AnchorPeers) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_d9ec63ae33c182ef, []int{0}
+	return fileDescriptor_configuration_b4b920cf60a7bfc1, []int{0}
 }
 func (m *AnchorPeers) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnchorPeers.Unmarshal(m, b)
@@ -73,7 +73,7 @@ func (m *AnchorPeer) Reset()         { *m = AnchorPeer{} }
 func (m *AnchorPeer) String() string { return proto.CompactTextString(m) }
 func (*AnchorPeer) ProtoMessage()    {}
 func (*AnchorPeer) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_d9ec63ae33c182ef, []int{1}
+	return fileDescriptor_configuration_b4b920cf60a7bfc1, []int{1}
 }
 func (m *AnchorPeer) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnchorPeer.Unmarshal(m, b)
@@ -120,7 +120,7 @@ func (m *APIResource) Reset()         { *m = APIResource{} }
 func (m *APIResource) String() string { return proto.CompactTextString(m) }
 func (*APIResource) ProtoMessage()    {}
 func (*APIResource) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_d9ec63ae33c182ef, []int{2}
+	return fileDescriptor_configuration_b4b920cf60a7bfc1, []int{2}
 }
 func (m *APIResource) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIResource.Unmarshal(m, b)
@@ -160,7 +160,7 @@ func (m *ACLs) Reset()         { *m = ACLs{} }
 func (m *ACLs) String() string { return proto.CompactTextString(m) }
 func (*ACLs) ProtoMessage()    {}
 func (*ACLs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_d9ec63ae33c182ef, []int{3}
+	return fileDescriptor_configuration_b4b920cf60a7bfc1, []int{3}
 }
 func (m *ACLs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ACLs.Unmarshal(m, b)
@@ -196,10 +196,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("peer/configuration.proto", fileDescriptor_configuration_d9ec63ae33c182ef)
+	proto.RegisterFile("peer/configuration.proto", fileDescriptor_configuration_b4b920cf60a7bfc1)
 }
 
-var fileDescriptor_configuration_d9ec63ae33c182ef = []byte{
+var fileDescriptor_configuration_b4b920cf60a7bfc1 = []byte{
 	// 295 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x91, 0xdf, 0x4b, 0xfb, 0x30,
 	0x14, 0xc5, 0xe9, 0x7e, 0x7c, 0x61, 0xb7, 0xdf, 0x07, 0x89, 0x20, 0x45, 0x10, 0x46, 0x9f, 0x36,

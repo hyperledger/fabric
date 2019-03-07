@@ -34,7 +34,7 @@ func (m *PeerID) Reset()         { *m = PeerID{} }
 func (m *PeerID) String() string { return proto.CompactTextString(m) }
 func (*PeerID) ProtoMessage()    {}
 func (*PeerID) Descriptor() ([]byte, []int) {
-	return fileDescriptor_peer_f225b6e437338532, []int{0}
+	return fileDescriptor_peer_f8c3d1cdb122d768, []int{0}
 }
 func (m *PeerID) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PeerID.Unmarshal(m, b)
@@ -73,7 +73,7 @@ func (m *PeerEndpoint) Reset()         { *m = PeerEndpoint{} }
 func (m *PeerEndpoint) String() string { return proto.CompactTextString(m) }
 func (*PeerEndpoint) ProtoMessage()    {}
 func (*PeerEndpoint) Descriptor() ([]byte, []int) {
-	return fileDescriptor_peer_f225b6e437338532, []int{1}
+	return fileDescriptor_peer_f8c3d1cdb122d768, []int{1}
 }
 func (m *PeerEndpoint) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PeerEndpoint.Unmarshal(m, b)
@@ -184,9 +184,9 @@ var _Endorser_serviceDesc = grpc.ServiceDesc{
 	Metadata: "peer/peer.proto",
 }
 
-func init() { proto.RegisterFile("peer/peer.proto", fileDescriptor_peer_f225b6e437338532) }
+func init() { proto.RegisterFile("peer/peer.proto", fileDescriptor_peer_f8c3d1cdb122d768) }
 
-var fileDescriptor_peer_f225b6e437338532 = []byte{
+var fileDescriptor_peer_f8c3d1cdb122d768 = []byte{
 	// 246 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x90, 0x4f, 0x4b, 0xc4, 0x30,
 	0x10, 0xc5, 0xdd, 0x22, 0xab, 0x8e, 0xe2, 0x42, 0x04, 0x29, 0x65, 0x11, 0xe9, 0x49, 0x2f, 0x29,

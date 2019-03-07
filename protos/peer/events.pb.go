@@ -39,7 +39,7 @@ func (m *FilteredBlock) Reset()         { *m = FilteredBlock{} }
 func (m *FilteredBlock) String() string { return proto.CompactTextString(m) }
 func (*FilteredBlock) ProtoMessage()    {}
 func (*FilteredBlock) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_8af932975aef5a3c, []int{0}
+	return fileDescriptor_events_d6436062713089fb, []int{0}
 }
 func (m *FilteredBlock) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FilteredBlock.Unmarshal(m, b)
@@ -98,7 +98,7 @@ func (m *FilteredTransaction) Reset()         { *m = FilteredTransaction{} }
 func (m *FilteredTransaction) String() string { return proto.CompactTextString(m) }
 func (*FilteredTransaction) ProtoMessage()    {}
 func (*FilteredTransaction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_8af932975aef5a3c, []int{1}
+	return fileDescriptor_events_d6436062713089fb, []int{1}
 }
 func (m *FilteredTransaction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FilteredTransaction.Unmarshal(m, b)
@@ -231,7 +231,7 @@ func (m *FilteredTransactionActions) Reset()         { *m = FilteredTransactionA
 func (m *FilteredTransactionActions) String() string { return proto.CompactTextString(m) }
 func (*FilteredTransactionActions) ProtoMessage()    {}
 func (*FilteredTransactionActions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_8af932975aef5a3c, []int{2}
+	return fileDescriptor_events_d6436062713089fb, []int{2}
 }
 func (m *FilteredTransactionActions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FilteredTransactionActions.Unmarshal(m, b)
@@ -271,7 +271,7 @@ func (m *FilteredChaincodeAction) Reset()         { *m = FilteredChaincodeAction
 func (m *FilteredChaincodeAction) String() string { return proto.CompactTextString(m) }
 func (*FilteredChaincodeAction) ProtoMessage()    {}
 func (*FilteredChaincodeAction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_8af932975aef5a3c, []int{3}
+	return fileDescriptor_events_d6436062713089fb, []int{3}
 }
 func (m *FilteredChaincodeAction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FilteredChaincodeAction.Unmarshal(m, b)
@@ -314,7 +314,7 @@ func (m *DeliverResponse) Reset()         { *m = DeliverResponse{} }
 func (m *DeliverResponse) String() string { return proto.CompactTextString(m) }
 func (*DeliverResponse) ProtoMessage()    {}
 func (*DeliverResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_8af932975aef5a3c, []int{4}
+	return fileDescriptor_events_d6436062713089fb, []int{4}
 }
 func (m *DeliverResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeliverResponse.Unmarshal(m, b)
@@ -661,9 +661,9 @@ var _Deliver_serviceDesc = grpc.ServiceDesc{
 	Metadata: "peer/events.proto",
 }
 
-func init() { proto.RegisterFile("peer/events.proto", fileDescriptor_events_8af932975aef5a3c) }
+func init() { proto.RegisterFile("peer/events.proto", fileDescriptor_events_d6436062713089fb) }
 
-var fileDescriptor_events_8af932975aef5a3c = []byte{
+var fileDescriptor_events_d6436062713089fb = []byte{
 	// 560 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x54, 0xcd, 0x6e, 0xd3, 0x40,
 	0x10, 0x8e, 0x69, 0x08, 0xea, 0x44, 0x49, 0xdb, 0x2d, 0x4d, 0xa3, 0x20, 0xd4, 0xc8, 0x12, 0xc8,

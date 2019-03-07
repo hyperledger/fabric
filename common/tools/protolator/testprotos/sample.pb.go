@@ -33,7 +33,7 @@ func (m *SimpleMsg) Reset()         { *m = SimpleMsg{} }
 func (m *SimpleMsg) String() string { return proto.CompactTextString(m) }
 func (*SimpleMsg) ProtoMessage()    {}
 func (*SimpleMsg) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sample_eb430d3504f11287, []int{0}
+	return fileDescriptor_sample_1b65d606a8063655, []int{0}
 }
 func (m *SimpleMsg) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SimpleMsg.Unmarshal(m, b)
@@ -88,7 +88,7 @@ func (m *NestedMsg) Reset()         { *m = NestedMsg{} }
 func (m *NestedMsg) String() string { return proto.CompactTextString(m) }
 func (*NestedMsg) ProtoMessage()    {}
 func (*NestedMsg) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sample_eb430d3504f11287, []int{1}
+	return fileDescriptor_sample_1b65d606a8063655, []int{1}
 }
 func (m *NestedMsg) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NestedMsg.Unmarshal(m, b)
@@ -144,7 +144,7 @@ func (m *StaticallyOpaqueMsg) Reset()         { *m = StaticallyOpaqueMsg{} }
 func (m *StaticallyOpaqueMsg) String() string { return proto.CompactTextString(m) }
 func (*StaticallyOpaqueMsg) ProtoMessage()    {}
 func (*StaticallyOpaqueMsg) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sample_eb430d3504f11287, []int{2}
+	return fileDescriptor_sample_1b65d606a8063655, []int{2}
 }
 func (m *StaticallyOpaqueMsg) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StaticallyOpaqueMsg.Unmarshal(m, b)
@@ -201,7 +201,7 @@ func (m *VariablyOpaqueMsg) Reset()         { *m = VariablyOpaqueMsg{} }
 func (m *VariablyOpaqueMsg) String() string { return proto.CompactTextString(m) }
 func (*VariablyOpaqueMsg) ProtoMessage()    {}
 func (*VariablyOpaqueMsg) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sample_eb430d3504f11287, []int{3}
+	return fileDescriptor_sample_1b65d606a8063655, []int{3}
 }
 func (m *VariablyOpaqueMsg) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VariablyOpaqueMsg.Unmarshal(m, b)
@@ -266,7 +266,7 @@ func (m *DynamicMsg) Reset()         { *m = DynamicMsg{} }
 func (m *DynamicMsg) String() string { return proto.CompactTextString(m) }
 func (*DynamicMsg) ProtoMessage()    {}
 func (*DynamicMsg) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sample_eb430d3504f11287, []int{4}
+	return fileDescriptor_sample_1b65d606a8063655, []int{4}
 }
 func (m *DynamicMsg) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DynamicMsg.Unmarshal(m, b)
@@ -328,7 +328,7 @@ func (m *ContextlessMsg) Reset()         { *m = ContextlessMsg{} }
 func (m *ContextlessMsg) String() string { return proto.CompactTextString(m) }
 func (*ContextlessMsg) ProtoMessage()    {}
 func (*ContextlessMsg) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sample_eb430d3504f11287, []int{5}
+	return fileDescriptor_sample_1b65d606a8063655, []int{5}
 }
 func (m *ContextlessMsg) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ContextlessMsg.Unmarshal(m, b)
@@ -370,7 +370,7 @@ func (m *UnmarshalableDeepFields) Reset()         { *m = UnmarshalableDeepFields
 func (m *UnmarshalableDeepFields) String() string { return proto.CompactTextString(m) }
 func (*UnmarshalableDeepFields) ProtoMessage()    {}
 func (*UnmarshalableDeepFields) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sample_eb430d3504f11287, []int{6}
+	return fileDescriptor_sample_1b65d606a8063655, []int{6}
 }
 func (m *UnmarshalableDeepFields) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UnmarshalableDeepFields.Unmarshal(m, b)
@@ -427,9 +427,9 @@ func init() {
 	proto.RegisterMapType((map[string][]byte)(nil), "testprotos.UnmarshalableDeepFields.MapOpaqueFieldEntry")
 }
 
-func init() { proto.RegisterFile("sample.proto", fileDescriptor_sample_eb430d3504f11287) }
+func init() { proto.RegisterFile("sample.proto", fileDescriptor_sample_1b65d606a8063655) }
 
-var fileDescriptor_sample_eb430d3504f11287 = []byte{
+var fileDescriptor_sample_1b65d606a8063655 = []byte{
 	// 617 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x94, 0xcb, 0x6e, 0xd3, 0x40,
 	0x14, 0x86, 0x15, 0xbb, 0x20, 0x72, 0x1c, 0x4a, 0xe2, 0x14, 0x51, 0x65, 0xd3, 0x10, 0x36, 0x45,

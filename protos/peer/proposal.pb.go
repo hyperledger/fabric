@@ -59,7 +59,7 @@ func (m *SignedProposal) Reset()         { *m = SignedProposal{} }
 func (m *SignedProposal) String() string { return proto.CompactTextString(m) }
 func (*SignedProposal) ProtoMessage()    {}
 func (*SignedProposal) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proposal_9ea47813bdcd2121, []int{0}
+	return fileDescriptor_proposal_21b4dd7e6f380219, []int{0}
 }
 func (m *SignedProposal) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SignedProposal.Unmarshal(m, b)
@@ -131,7 +131,7 @@ func (m *Proposal) Reset()         { *m = Proposal{} }
 func (m *Proposal) String() string { return proto.CompactTextString(m) }
 func (*Proposal) ProtoMessage()    {}
 func (*Proposal) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proposal_9ea47813bdcd2121, []int{1}
+	return fileDescriptor_proposal_21b4dd7e6f380219, []int{1}
 }
 func (m *Proposal) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Proposal.Unmarshal(m, b)
@@ -199,7 +199,7 @@ func (m *ChaincodeHeaderExtension) Reset()         { *m = ChaincodeHeaderExtensi
 func (m *ChaincodeHeaderExtension) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeHeaderExtension) ProtoMessage()    {}
 func (*ChaincodeHeaderExtension) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proposal_9ea47813bdcd2121, []int{2}
+	return fileDescriptor_proposal_21b4dd7e6f380219, []int{2}
 }
 func (m *ChaincodeHeaderExtension) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeHeaderExtension.Unmarshal(m, b)
@@ -255,7 +255,7 @@ func (m *ChaincodeProposalPayload) Reset()         { *m = ChaincodeProposalPaylo
 func (m *ChaincodeProposalPayload) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeProposalPayload) ProtoMessage()    {}
 func (*ChaincodeProposalPayload) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proposal_9ea47813bdcd2121, []int{3}
+	return fileDescriptor_proposal_21b4dd7e6f380219, []int{3}
 }
 func (m *ChaincodeProposalPayload) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeProposalPayload.Unmarshal(m, b)
@@ -318,7 +318,7 @@ func (m *ChaincodeAction) Reset()         { *m = ChaincodeAction{} }
 func (m *ChaincodeAction) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeAction) ProtoMessage()    {}
 func (*ChaincodeAction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proposal_9ea47813bdcd2121, []int{4}
+	return fileDescriptor_proposal_21b4dd7e6f380219, []int{4}
 }
 func (m *ChaincodeAction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeAction.Unmarshal(m, b)
@@ -382,9 +382,9 @@ func init() {
 	proto.RegisterType((*ChaincodeAction)(nil), "protos.ChaincodeAction")
 }
 
-func init() { proto.RegisterFile("peer/proposal.proto", fileDescriptor_proposal_9ea47813bdcd2121) }
+func init() { proto.RegisterFile("peer/proposal.proto", fileDescriptor_proposal_21b4dd7e6f380219) }
 
-var fileDescriptor_proposal_9ea47813bdcd2121 = []byte{
+var fileDescriptor_proposal_21b4dd7e6f380219 = []byte{
 	// 490 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x53, 0x4f, 0x6f, 0xd3, 0x30,
 	0x14, 0x57, 0x5a, 0x36, 0x36, 0xb7, 0x6c, 0xad, 0x37, 0x41, 0x54, 0xed, 0x30, 0x45, 0x42, 0x1a,

@@ -117,7 +117,7 @@ func (x TxValidationCode) String() string {
 	return proto.EnumName(TxValidationCode_name, int32(x))
 }
 func (TxValidationCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_c77a4b0914a4006b, []int{0}
+	return fileDescriptor_transaction_6a3cf269faade5fe, []int{0}
 }
 
 // Reserved entries in the key-level metadata map
@@ -141,7 +141,7 @@ func (x MetaDataKeys) String() string {
 	return proto.EnumName(MetaDataKeys_name, int32(x))
 }
 func (MetaDataKeys) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_c77a4b0914a4006b, []int{1}
+	return fileDescriptor_transaction_6a3cf269faade5fe, []int{1}
 }
 
 // This message is necessary to facilitate the verification of the signature
@@ -164,7 +164,7 @@ func (m *SignedTransaction) Reset()         { *m = SignedTransaction{} }
 func (m *SignedTransaction) String() string { return proto.CompactTextString(m) }
 func (*SignedTransaction) ProtoMessage()    {}
 func (*SignedTransaction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_c77a4b0914a4006b, []int{0}
+	return fileDescriptor_transaction_6a3cf269faade5fe, []int{0}
 }
 func (m *SignedTransaction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SignedTransaction.Unmarshal(m, b)
@@ -218,7 +218,7 @@ func (m *ProcessedTransaction) Reset()         { *m = ProcessedTransaction{} }
 func (m *ProcessedTransaction) String() string { return proto.CompactTextString(m) }
 func (*ProcessedTransaction) ProtoMessage()    {}
 func (*ProcessedTransaction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_c77a4b0914a4006b, []int{1}
+	return fileDescriptor_transaction_6a3cf269faade5fe, []int{1}
 }
 func (m *ProcessedTransaction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ProcessedTransaction.Unmarshal(m, b)
@@ -277,7 +277,7 @@ func (m *Transaction) Reset()         { *m = Transaction{} }
 func (m *Transaction) String() string { return proto.CompactTextString(m) }
 func (*Transaction) ProtoMessage()    {}
 func (*Transaction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_c77a4b0914a4006b, []int{2}
+	return fileDescriptor_transaction_6a3cf269faade5fe, []int{2}
 }
 func (m *Transaction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Transaction.Unmarshal(m, b)
@@ -321,7 +321,7 @@ func (m *TransactionAction) Reset()         { *m = TransactionAction{} }
 func (m *TransactionAction) String() string { return proto.CompactTextString(m) }
 func (*TransactionAction) ProtoMessage()    {}
 func (*TransactionAction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_c77a4b0914a4006b, []int{3}
+	return fileDescriptor_transaction_6a3cf269faade5fe, []int{3}
 }
 func (m *TransactionAction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TransactionAction.Unmarshal(m, b)
@@ -380,7 +380,7 @@ func (m *ChaincodeActionPayload) Reset()         { *m = ChaincodeActionPayload{}
 func (m *ChaincodeActionPayload) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeActionPayload) ProtoMessage()    {}
 func (*ChaincodeActionPayload) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_c77a4b0914a4006b, []int{4}
+	return fileDescriptor_transaction_6a3cf269faade5fe, []int{4}
 }
 func (m *ChaincodeActionPayload) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeActionPayload.Unmarshal(m, b)
@@ -433,7 +433,7 @@ func (m *ChaincodeEndorsedAction) Reset()         { *m = ChaincodeEndorsedAction
 func (m *ChaincodeEndorsedAction) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeEndorsedAction) ProtoMessage()    {}
 func (*ChaincodeEndorsedAction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_c77a4b0914a4006b, []int{5}
+	return fileDescriptor_transaction_6a3cf269faade5fe, []int{5}
 }
 func (m *ChaincodeEndorsedAction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeEndorsedAction.Unmarshal(m, b)
@@ -478,9 +478,9 @@ func init() {
 	proto.RegisterEnum("protos.MetaDataKeys", MetaDataKeys_name, MetaDataKeys_value)
 }
 
-func init() { proto.RegisterFile("peer/transaction.proto", fileDescriptor_transaction_c77a4b0914a4006b) }
+func init() { proto.RegisterFile("peer/transaction.proto", fileDescriptor_transaction_6a3cf269faade5fe) }
 
-var fileDescriptor_transaction_c77a4b0914a4006b = []byte{
+var fileDescriptor_transaction_6a3cf269faade5fe = []byte{
 	// 872 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x55, 0x5d, 0x6f, 0xe2, 0x46,
 	0x14, 0x5d, 0xb2, 0x4d, 0xd2, 0x5c, 0x48, 0x32, 0x0c, 0x84, 0x00, 0x8d, 0xda, 0x15, 0x0f, 0xd5,

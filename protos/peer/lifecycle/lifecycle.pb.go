@@ -34,7 +34,7 @@ func (m *InstallChaincodeArgs) Reset()         { *m = InstallChaincodeArgs{} }
 func (m *InstallChaincodeArgs) String() string { return proto.CompactTextString(m) }
 func (*InstallChaincodeArgs) ProtoMessage()    {}
 func (*InstallChaincodeArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{0}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{0}
 }
 func (m *InstallChaincodeArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InstallChaincodeArgs.Unmarshal(m, b)
@@ -88,7 +88,7 @@ func (m *InstallChaincodeResult) Reset()         { *m = InstallChaincodeResult{}
 func (m *InstallChaincodeResult) String() string { return proto.CompactTextString(m) }
 func (*InstallChaincodeResult) ProtoMessage()    {}
 func (*InstallChaincodeResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{1}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{1}
 }
 func (m *InstallChaincodeResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InstallChaincodeResult.Unmarshal(m, b)
@@ -129,7 +129,7 @@ func (m *QueryInstalledChaincodeArgs) Reset()         { *m = QueryInstalledChain
 func (m *QueryInstalledChaincodeArgs) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodeArgs) ProtoMessage()    {}
 func (*QueryInstalledChaincodeArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{2}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{2}
 }
 func (m *QueryInstalledChaincodeArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodeArgs.Unmarshal(m, b)
@@ -176,7 +176,7 @@ func (m *QueryInstalledChaincodeResult) Reset()         { *m = QueryInstalledCha
 func (m *QueryInstalledChaincodeResult) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodeResult) ProtoMessage()    {}
 func (*QueryInstalledChaincodeResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{3}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{3}
 }
 func (m *QueryInstalledChaincodeResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodeResult.Unmarshal(m, b)
@@ -216,7 +216,7 @@ func (m *QueryInstalledChaincodesArgs) Reset()         { *m = QueryInstalledChai
 func (m *QueryInstalledChaincodesArgs) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodesArgs) ProtoMessage()    {}
 func (*QueryInstalledChaincodesArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{4}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{4}
 }
 func (m *QueryInstalledChaincodesArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodesArgs.Unmarshal(m, b)
@@ -250,7 +250,7 @@ func (m *QueryInstalledChaincodesResult) Reset()         { *m = QueryInstalledCh
 func (m *QueryInstalledChaincodesResult) String() string { return proto.CompactTextString(m) }
 func (*QueryInstalledChaincodesResult) ProtoMessage()    {}
 func (*QueryInstalledChaincodesResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{5}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{5}
 }
 func (m *QueryInstalledChaincodesResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodesResult.Unmarshal(m, b)
@@ -294,7 +294,7 @@ func (m *QueryInstalledChaincodesResult_InstalledChaincode) String() string {
 }
 func (*QueryInstalledChaincodesResult_InstalledChaincode) ProtoMessage() {}
 func (*QueryInstalledChaincodesResult_InstalledChaincode) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{5, 0}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{5, 0}
 }
 func (m *QueryInstalledChaincodesResult_InstalledChaincode) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInstalledChaincodesResult_InstalledChaincode.Unmarshal(m, b)
@@ -358,7 +358,7 @@ func (m *ApproveChaincodeDefinitionForMyOrgArgs) Reset() {
 func (m *ApproveChaincodeDefinitionForMyOrgArgs) String() string { return proto.CompactTextString(m) }
 func (*ApproveChaincodeDefinitionForMyOrgArgs) ProtoMessage()    {}
 func (*ApproveChaincodeDefinitionForMyOrgArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{6}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{6}
 }
 func (m *ApproveChaincodeDefinitionForMyOrgArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgArgs.Unmarshal(m, b)
@@ -456,7 +456,7 @@ func (m *ApproveChaincodeDefinitionForMyOrgResult) Reset() {
 func (m *ApproveChaincodeDefinitionForMyOrgResult) String() string { return proto.CompactTextString(m) }
 func (*ApproveChaincodeDefinitionForMyOrgResult) ProtoMessage()    {}
 func (*ApproveChaincodeDefinitionForMyOrgResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{7}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{7}
 }
 func (m *ApproveChaincodeDefinitionForMyOrgResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ApproveChaincodeDefinitionForMyOrgResult.Unmarshal(m, b)
@@ -497,7 +497,7 @@ func (m *CommitChaincodeDefinitionArgs) Reset()         { *m = CommitChaincodeDe
 func (m *CommitChaincodeDefinitionArgs) String() string { return proto.CompactTextString(m) }
 func (*CommitChaincodeDefinitionArgs) ProtoMessage()    {}
 func (*CommitChaincodeDefinitionArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{8}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{8}
 }
 func (m *CommitChaincodeDefinitionArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CommitChaincodeDefinitionArgs.Unmarshal(m, b)
@@ -593,7 +593,7 @@ func (m *CommitChaincodeDefinitionResult) Reset()         { *m = CommitChaincode
 func (m *CommitChaincodeDefinitionResult) String() string { return proto.CompactTextString(m) }
 func (*CommitChaincodeDefinitionResult) ProtoMessage()    {}
 func (*CommitChaincodeDefinitionResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{9}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{9}
 }
 func (m *CommitChaincodeDefinitionResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CommitChaincodeDefinitionResult.Unmarshal(m, b)
@@ -626,7 +626,7 @@ func (m *QueryChaincodeDefinitionArgs) Reset()         { *m = QueryChaincodeDefi
 func (m *QueryChaincodeDefinitionArgs) String() string { return proto.CompactTextString(m) }
 func (*QueryChaincodeDefinitionArgs) ProtoMessage()    {}
 func (*QueryChaincodeDefinitionArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{10}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{10}
 }
 func (m *QueryChaincodeDefinitionArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryChaincodeDefinitionArgs.Unmarshal(m, b)
@@ -673,7 +673,7 @@ func (m *QueryChaincodeDefinitionResult) Reset()         { *m = QueryChaincodeDe
 func (m *QueryChaincodeDefinitionResult) String() string { return proto.CompactTextString(m) }
 func (*QueryChaincodeDefinitionResult) ProtoMessage()    {}
 func (*QueryChaincodeDefinitionResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{11}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{11}
 }
 func (m *QueryChaincodeDefinitionResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryChaincodeDefinitionResult.Unmarshal(m, b)
@@ -761,7 +761,7 @@ func (m *QueryNamespaceDefinitionsArgs) Reset()         { *m = QueryNamespaceDef
 func (m *QueryNamespaceDefinitionsArgs) String() string { return proto.CompactTextString(m) }
 func (*QueryNamespaceDefinitionsArgs) ProtoMessage()    {}
 func (*QueryNamespaceDefinitionsArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{12}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{12}
 }
 func (m *QueryNamespaceDefinitionsArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryNamespaceDefinitionsArgs.Unmarshal(m, b)
@@ -794,7 +794,7 @@ func (m *QueryNamespaceDefinitionsResult) Reset()         { *m = QueryNamespaceD
 func (m *QueryNamespaceDefinitionsResult) String() string { return proto.CompactTextString(m) }
 func (*QueryNamespaceDefinitionsResult) ProtoMessage()    {}
 func (*QueryNamespaceDefinitionsResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{13}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{13}
 }
 func (m *QueryNamespaceDefinitionsResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryNamespaceDefinitionsResult.Unmarshal(m, b)
@@ -834,7 +834,7 @@ func (m *QueryNamespaceDefinitionsResult_Namespace) Reset() {
 func (m *QueryNamespaceDefinitionsResult_Namespace) String() string { return proto.CompactTextString(m) }
 func (*QueryNamespaceDefinitionsResult_Namespace) ProtoMessage()    {}
 func (*QueryNamespaceDefinitionsResult_Namespace) Descriptor() ([]byte, []int) {
-	return fileDescriptor_lifecycle_4a021658c9949a10, []int{13, 0}
+	return fileDescriptor_lifecycle_8d4749c7c72a81f5, []int{13, 0}
 }
 func (m *QueryNamespaceDefinitionsResult_Namespace) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryNamespaceDefinitionsResult_Namespace.Unmarshal(m, b)
@@ -882,10 +882,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("peer/lifecycle/lifecycle.proto", fileDescriptor_lifecycle_4a021658c9949a10)
+	proto.RegisterFile("peer/lifecycle/lifecycle.proto", fileDescriptor_lifecycle_8d4749c7c72a81f5)
 }
 
-var fileDescriptor_lifecycle_4a021658c9949a10 = []byte{
+var fileDescriptor_lifecycle_8d4749c7c72a81f5 = []byte{
 	// 678 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xec, 0x56, 0xcd, 0x6f, 0xd3, 0x4e,
 	0x10, 0x95, 0x9d, 0x7e, 0x24, 0x93, 0xfe, 0xf4, 0x6b, 0xdd, 0x8a, 0x9a, 0x40, 0x9b, 0x60, 0x24,

@@ -34,7 +34,7 @@ func (m *ChaincodeIdentifier) Reset()         { *m = ChaincodeIdentifier{} }
 func (m *ChaincodeIdentifier) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeIdentifier) ProtoMessage()    {}
 func (*ChaincodeIdentifier) Descriptor() ([]byte, []int) {
-	return fileDescriptor_resources_8467365451aa3557, []int{0}
+	return fileDescriptor_resources_7e2449932c8d48e8, []int{0}
 }
 func (m *ChaincodeIdentifier) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeIdentifier.Unmarshal(m, b)
@@ -85,7 +85,7 @@ func (m *ChaincodeValidation) Reset()         { *m = ChaincodeValidation{} }
 func (m *ChaincodeValidation) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeValidation) ProtoMessage()    {}
 func (*ChaincodeValidation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_resources_8467365451aa3557, []int{1}
+	return fileDescriptor_resources_7e2449932c8d48e8, []int{1}
 }
 func (m *ChaincodeValidation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeValidation.Unmarshal(m, b)
@@ -132,7 +132,7 @@ func (m *VSCCArgs) Reset()         { *m = VSCCArgs{} }
 func (m *VSCCArgs) String() string { return proto.CompactTextString(m) }
 func (*VSCCArgs) ProtoMessage()    {}
 func (*VSCCArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_resources_8467365451aa3557, []int{2}
+	return fileDescriptor_resources_7e2449932c8d48e8, []int{2}
 }
 func (m *VSCCArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VSCCArgs.Unmarshal(m, b)
@@ -174,7 +174,7 @@ func (m *ChaincodeEndorsement) Reset()         { *m = ChaincodeEndorsement{} }
 func (m *ChaincodeEndorsement) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeEndorsement) ProtoMessage()    {}
 func (*ChaincodeEndorsement) Descriptor() ([]byte, []int) {
-	return fileDescriptor_resources_8467365451aa3557, []int{3}
+	return fileDescriptor_resources_7e2449932c8d48e8, []int{3}
 }
 func (m *ChaincodeEndorsement) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeEndorsement.Unmarshal(m, b)
@@ -215,7 +215,7 @@ func (m *ConfigTree) Reset()         { *m = ConfigTree{} }
 func (m *ConfigTree) String() string { return proto.CompactTextString(m) }
 func (*ConfigTree) ProtoMessage()    {}
 func (*ConfigTree) Descriptor() ([]byte, []int) {
-	return fileDescriptor_resources_8467365451aa3557, []int{4}
+	return fileDescriptor_resources_7e2449932c8d48e8, []int{4}
 }
 func (m *ConfigTree) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigTree.Unmarshal(m, b)
@@ -257,9 +257,9 @@ func init() {
 	proto.RegisterType((*ConfigTree)(nil), "protos.ConfigTree")
 }
 
-func init() { proto.RegisterFile("peer/resources.proto", fileDescriptor_resources_8467365451aa3557) }
+func init() { proto.RegisterFile("peer/resources.proto", fileDescriptor_resources_7e2449932c8d48e8) }
 
-var fileDescriptor_resources_8467365451aa3557 = []byte{
+var fileDescriptor_resources_7e2449932c8d48e8 = []byte{
 	// 326 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x91, 0xbf, 0x4f, 0xfb, 0x30,
 	0x10, 0xc5, 0xd5, 0xea, 0xab, 0x2f, 0xed, 0x51, 0x0a, 0x32, 0x05, 0x55, 0x9d, 0xaa, 0x4c, 0x85,

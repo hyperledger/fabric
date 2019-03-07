@@ -32,7 +32,7 @@ func (m *HashingAlgorithm) Reset()         { *m = HashingAlgorithm{} }
 func (m *HashingAlgorithm) String() string { return proto.CompactTextString(m) }
 func (*HashingAlgorithm) ProtoMessage()    {}
 func (*HashingAlgorithm) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_c60fbe5ebb3de531, []int{0}
+	return fileDescriptor_configuration_4b1e5f1bb60acd8c, []int{0}
 }
 func (m *HashingAlgorithm) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_HashingAlgorithm.Unmarshal(m, b)
@@ -74,7 +74,7 @@ func (m *BlockDataHashingStructure) Reset()         { *m = BlockDataHashingStruc
 func (m *BlockDataHashingStructure) String() string { return proto.CompactTextString(m) }
 func (*BlockDataHashingStructure) ProtoMessage()    {}
 func (*BlockDataHashingStructure) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_c60fbe5ebb3de531, []int{1}
+	return fileDescriptor_configuration_4b1e5f1bb60acd8c, []int{1}
 }
 func (m *BlockDataHashingStructure) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BlockDataHashingStructure.Unmarshal(m, b)
@@ -114,7 +114,7 @@ func (m *OrdererAddresses) Reset()         { *m = OrdererAddresses{} }
 func (m *OrdererAddresses) String() string { return proto.CompactTextString(m) }
 func (*OrdererAddresses) ProtoMessage()    {}
 func (*OrdererAddresses) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_c60fbe5ebb3de531, []int{2}
+	return fileDescriptor_configuration_4b1e5f1bb60acd8c, []int{2}
 }
 func (m *OrdererAddresses) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_OrdererAddresses.Unmarshal(m, b)
@@ -153,7 +153,7 @@ func (m *Consortium) Reset()         { *m = Consortium{} }
 func (m *Consortium) String() string { return proto.CompactTextString(m) }
 func (*Consortium) ProtoMessage()    {}
 func (*Consortium) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_c60fbe5ebb3de531, []int{3}
+	return fileDescriptor_configuration_4b1e5f1bb60acd8c, []int{3}
 }
 func (m *Consortium) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Consortium.Unmarshal(m, b)
@@ -221,7 +221,7 @@ func (m *Capabilities) Reset()         { *m = Capabilities{} }
 func (m *Capabilities) String() string { return proto.CompactTextString(m) }
 func (*Capabilities) ProtoMessage()    {}
 func (*Capabilities) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_c60fbe5ebb3de531, []int{4}
+	return fileDescriptor_configuration_4b1e5f1bb60acd8c, []int{4}
 }
 func (m *Capabilities) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Capabilities.Unmarshal(m, b)
@@ -262,7 +262,7 @@ func (m *Capability) Reset()         { *m = Capability{} }
 func (m *Capability) String() string { return proto.CompactTextString(m) }
 func (*Capability) ProtoMessage()    {}
 func (*Capability) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_c60fbe5ebb3de531, []int{5}
+	return fileDescriptor_configuration_4b1e5f1bb60acd8c, []int{5}
 }
 func (m *Capability) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Capability.Unmarshal(m, b)
@@ -293,10 +293,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("common/configuration.proto", fileDescriptor_configuration_c60fbe5ebb3de531)
+	proto.RegisterFile("common/configuration.proto", fileDescriptor_configuration_4b1e5f1bb60acd8c)
 }
 
-var fileDescriptor_configuration_c60fbe5ebb3de531 = []byte{
+var fileDescriptor_configuration_4b1e5f1bb60acd8c = []byte{
 	// 314 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x91, 0x41, 0x6b, 0xf2, 0x40,
 	0x10, 0x86, 0x89, 0x7e, 0x0a, 0x8e, 0x7e, 0x60, 0x97, 0x1e, 0xac, 0xf4, 0x10, 0x42, 0x91, 0x40,

@@ -29,7 +29,7 @@ func (m *ExpiryData) Reset()         { *m = ExpiryData{} }
 func (m *ExpiryData) String() string { return proto.CompactTextString(m) }
 func (*ExpiryData) ProtoMessage()    {}
 func (*ExpiryData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_persistent_msgs_f79691cf3913ef09, []int{0}
+	return fileDescriptor_persistent_msgs_ecf09b4677457d09, []int{0}
 }
 func (m *ExpiryData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ExpiryData.Unmarshal(m, b)
@@ -72,7 +72,7 @@ func (m *Collections) Reset()         { *m = Collections{} }
 func (m *Collections) String() string { return proto.CompactTextString(m) }
 func (*Collections) ProtoMessage()    {}
 func (*Collections) Descriptor() ([]byte, []int) {
-	return fileDescriptor_persistent_msgs_f79691cf3913ef09, []int{1}
+	return fileDescriptor_persistent_msgs_ecf09b4677457d09, []int{1}
 }
 func (m *Collections) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Collections.Unmarshal(m, b)
@@ -117,7 +117,7 @@ func (m *TxNums) Reset()         { *m = TxNums{} }
 func (m *TxNums) String() string { return proto.CompactTextString(m) }
 func (*TxNums) ProtoMessage()    {}
 func (*TxNums) Descriptor() ([]byte, []int) {
-	return fileDescriptor_persistent_msgs_f79691cf3913ef09, []int{2}
+	return fileDescriptor_persistent_msgs_ecf09b4677457d09, []int{2}
 }
 func (m *TxNums) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TxNums.Unmarshal(m, b)
@@ -155,7 +155,7 @@ func (m *CollElgInfo) Reset()         { *m = CollElgInfo{} }
 func (m *CollElgInfo) String() string { return proto.CompactTextString(m) }
 func (*CollElgInfo) ProtoMessage()    {}
 func (*CollElgInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_persistent_msgs_f79691cf3913ef09, []int{3}
+	return fileDescriptor_persistent_msgs_ecf09b4677457d09, []int{3}
 }
 func (m *CollElgInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CollElgInfo.Unmarshal(m, b)
@@ -193,7 +193,7 @@ func (m *CollNames) Reset()         { *m = CollNames{} }
 func (m *CollNames) String() string { return proto.CompactTextString(m) }
 func (*CollNames) ProtoMessage()    {}
 func (*CollNames) Descriptor() ([]byte, []int) {
-	return fileDescriptor_persistent_msgs_f79691cf3913ef09, []int{4}
+	return fileDescriptor_persistent_msgs_ecf09b4677457d09, []int{4}
 }
 func (m *CollNames) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CollNames.Unmarshal(m, b)
@@ -233,10 +233,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("persistent_msgs.proto", fileDescriptor_persistent_msgs_f79691cf3913ef09)
+	proto.RegisterFile("persistent_msgs.proto", fileDescriptor_persistent_msgs_ecf09b4677457d09)
 }
 
-var fileDescriptor_persistent_msgs_f79691cf3913ef09 = []byte{
+var fileDescriptor_persistent_msgs_ecf09b4677457d09 = []byte{
 	// 389 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x93, 0xdf, 0x6a, 0xdb, 0x30,
 	0x14, 0xc6, 0xb1, 0x93, 0x65, 0xf1, 0x09, 0x84, 0xa1, 0xfd, 0xc1, 0xf3, 0x76, 0x11, 0xb2, 0x0d,

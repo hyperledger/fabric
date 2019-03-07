@@ -54,7 +54,7 @@ func (x MSPPrincipal_Classification) String() string {
 	return proto.EnumName(MSPPrincipal_Classification_name, int32(x))
 }
 func (MSPPrincipal_Classification) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_msp_principal_9016cf1a8a7156cd, []int{0, 0}
+	return fileDescriptor_msp_principal_b2839a61efb913f5, []int{0, 0}
 }
 
 type MSPRole_MSPRoleType int32
@@ -83,7 +83,7 @@ func (x MSPRole_MSPRoleType) String() string {
 	return proto.EnumName(MSPRole_MSPRoleType_name, int32(x))
 }
 func (MSPRole_MSPRoleType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_msp_principal_9016cf1a8a7156cd, []int{2, 0}
+	return fileDescriptor_msp_principal_b2839a61efb913f5, []int{2, 0}
 }
 
 type MSPIdentityAnonymity_MSPIdentityAnonymityType int32
@@ -106,7 +106,7 @@ func (x MSPIdentityAnonymity_MSPIdentityAnonymityType) String() string {
 	return proto.EnumName(MSPIdentityAnonymity_MSPIdentityAnonymityType_name, int32(x))
 }
 func (MSPIdentityAnonymity_MSPIdentityAnonymityType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_msp_principal_9016cf1a8a7156cd, []int{3, 0}
+	return fileDescriptor_msp_principal_b2839a61efb913f5, []int{3, 0}
 }
 
 // MSPPrincipal aims to represent an MSP-centric set of identities.
@@ -153,7 +153,7 @@ func (m *MSPPrincipal) Reset()         { *m = MSPPrincipal{} }
 func (m *MSPPrincipal) String() string { return proto.CompactTextString(m) }
 func (*MSPPrincipal) ProtoMessage()    {}
 func (*MSPPrincipal) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_principal_9016cf1a8a7156cd, []int{0}
+	return fileDescriptor_msp_principal_b2839a61efb913f5, []int{0}
 }
 func (m *MSPPrincipal) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MSPPrincipal.Unmarshal(m, b)
@@ -209,7 +209,7 @@ func (m *OrganizationUnit) Reset()         { *m = OrganizationUnit{} }
 func (m *OrganizationUnit) String() string { return proto.CompactTextString(m) }
 func (*OrganizationUnit) ProtoMessage()    {}
 func (*OrganizationUnit) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_principal_9016cf1a8a7156cd, []int{1}
+	return fileDescriptor_msp_principal_b2839a61efb913f5, []int{1}
 }
 func (m *OrganizationUnit) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_OrganizationUnit.Unmarshal(m, b)
@@ -269,7 +269,7 @@ func (m *MSPRole) Reset()         { *m = MSPRole{} }
 func (m *MSPRole) String() string { return proto.CompactTextString(m) }
 func (*MSPRole) ProtoMessage()    {}
 func (*MSPRole) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_principal_9016cf1a8a7156cd, []int{2}
+	return fileDescriptor_msp_principal_b2839a61efb913f5, []int{2}
 }
 func (m *MSPRole) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MSPRole.Unmarshal(m, b)
@@ -315,7 +315,7 @@ func (m *MSPIdentityAnonymity) Reset()         { *m = MSPIdentityAnonymity{} }
 func (m *MSPIdentityAnonymity) String() string { return proto.CompactTextString(m) }
 func (*MSPIdentityAnonymity) ProtoMessage()    {}
 func (*MSPIdentityAnonymity) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_principal_9016cf1a8a7156cd, []int{3}
+	return fileDescriptor_msp_principal_b2839a61efb913f5, []int{3}
 }
 func (m *MSPIdentityAnonymity) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MSPIdentityAnonymity.Unmarshal(m, b)
@@ -357,7 +357,7 @@ func (m *CombinedPrincipal) Reset()         { *m = CombinedPrincipal{} }
 func (m *CombinedPrincipal) String() string { return proto.CompactTextString(m) }
 func (*CombinedPrincipal) ProtoMessage()    {}
 func (*CombinedPrincipal) Descriptor() ([]byte, []int) {
-	return fileDescriptor_msp_principal_9016cf1a8a7156cd, []int{4}
+	return fileDescriptor_msp_principal_b2839a61efb913f5, []int{4}
 }
 func (m *CombinedPrincipal) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CombinedPrincipal.Unmarshal(m, b)
@@ -396,10 +396,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("msp/msp_principal.proto", fileDescriptor_msp_principal_9016cf1a8a7156cd)
+	proto.RegisterFile("msp/msp_principal.proto", fileDescriptor_msp_principal_b2839a61efb913f5)
 }
 
-var fileDescriptor_msp_principal_9016cf1a8a7156cd = []byte{
+var fileDescriptor_msp_principal_b2839a61efb913f5 = []byte{
 	// 519 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x93, 0xdf, 0x6a, 0xdb, 0x30,
 	0x14, 0xc6, 0xeb, 0xa4, 0x6b, 0x9b, 0x93, 0x3f, 0xa8, 0x22, 0xa5, 0x81, 0x95, 0x11, 0xbc, 0x0d,

@@ -36,7 +36,7 @@ func (m *TxPvtReadWriteSetWithConfigInfo) Reset()         { *m = TxPvtReadWriteS
 func (m *TxPvtReadWriteSetWithConfigInfo) String() string { return proto.CompactTextString(m) }
 func (*TxPvtReadWriteSetWithConfigInfo) ProtoMessage()    {}
 func (*TxPvtReadWriteSetWithConfigInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transientstore_7bb8c3b7e5ece488, []int{0}
+	return fileDescriptor_transientstore_a7d5b38a69543271, []int{0}
 }
 func (m *TxPvtReadWriteSetWithConfigInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TxPvtReadWriteSetWithConfigInfo.Unmarshal(m, b)
@@ -83,10 +83,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("transientstore/transientstore.proto", fileDescriptor_transientstore_7bb8c3b7e5ece488)
+	proto.RegisterFile("transientstore/transientstore.proto", fileDescriptor_transientstore_a7d5b38a69543271)
 }
 
-var fileDescriptor_transientstore_7bb8c3b7e5ece488 = []byte{
+var fileDescriptor_transientstore_a7d5b38a69543271 = []byte{
 	// 320 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x52, 0x4f, 0x4b, 0x3b, 0x31,
 	0x10, 0x65, 0xdb, 0xdf, 0x4f, 0x6c, 0x0a, 0xa2, 0x39, 0xe8, 0xd2, 0x4b, 0x8b, 0x5e, 0x7a, 0x90,

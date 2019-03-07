@@ -47,7 +47,7 @@ func (x ChaincodeSpec_Type) String() string {
 	return proto.EnumName(ChaincodeSpec_Type_name, int32(x))
 }
 func (ChaincodeSpec_Type) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_4b693947e61b8a8b, []int{2, 0}
+	return fileDescriptor_chaincode_bfb65adcc85f215f, []int{2, 0}
 }
 
 type ChaincodeDeploymentSpec_ExecutionEnvironment int32
@@ -70,7 +70,7 @@ func (x ChaincodeDeploymentSpec_ExecutionEnvironment) String() string {
 	return proto.EnumName(ChaincodeDeploymentSpec_ExecutionEnvironment_name, int32(x))
 }
 func (ChaincodeDeploymentSpec_ExecutionEnvironment) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_4b693947e61b8a8b, []int{3, 0}
+	return fileDescriptor_chaincode_bfb65adcc85f215f, []int{3, 0}
 }
 
 // ChaincodeID contains the path as specified by the deploy transaction
@@ -97,7 +97,7 @@ func (m *ChaincodeID) Reset()         { *m = ChaincodeID{} }
 func (m *ChaincodeID) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeID) ProtoMessage()    {}
 func (*ChaincodeID) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_4b693947e61b8a8b, []int{0}
+	return fileDescriptor_chaincode_bfb65adcc85f215f, []int{0}
 }
 func (m *ChaincodeID) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeID.Unmarshal(m, b)
@@ -153,7 +153,7 @@ func (m *ChaincodeInput) Reset()         { *m = ChaincodeInput{} }
 func (m *ChaincodeInput) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeInput) ProtoMessage()    {}
 func (*ChaincodeInput) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_4b693947e61b8a8b, []int{1}
+	return fileDescriptor_chaincode_bfb65adcc85f215f, []int{1}
 }
 func (m *ChaincodeInput) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeInput.Unmarshal(m, b)
@@ -203,7 +203,7 @@ func (m *ChaincodeSpec) Reset()         { *m = ChaincodeSpec{} }
 func (m *ChaincodeSpec) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeSpec) ProtoMessage()    {}
 func (*ChaincodeSpec) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_4b693947e61b8a8b, []int{2}
+	return fileDescriptor_chaincode_bfb65adcc85f215f, []int{2}
 }
 func (m *ChaincodeSpec) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeSpec.Unmarshal(m, b)
@@ -266,7 +266,7 @@ func (m *ChaincodeDeploymentSpec) Reset()         { *m = ChaincodeDeploymentSpec
 func (m *ChaincodeDeploymentSpec) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeDeploymentSpec) ProtoMessage()    {}
 func (*ChaincodeDeploymentSpec) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_4b693947e61b8a8b, []int{3}
+	return fileDescriptor_chaincode_bfb65adcc85f215f, []int{3}
 }
 func (m *ChaincodeDeploymentSpec) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeDeploymentSpec.Unmarshal(m, b)
@@ -319,7 +319,7 @@ func (m *ChaincodeInvocationSpec) Reset()         { *m = ChaincodeInvocationSpec
 func (m *ChaincodeInvocationSpec) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeInvocationSpec) ProtoMessage()    {}
 func (*ChaincodeInvocationSpec) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_4b693947e61b8a8b, []int{4}
+	return fileDescriptor_chaincode_bfb65adcc85f215f, []int{4}
 }
 func (m *ChaincodeInvocationSpec) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChaincodeInvocationSpec.Unmarshal(m, b)
@@ -358,7 +358,7 @@ func (m *LifecycleEvent) Reset()         { *m = LifecycleEvent{} }
 func (m *LifecycleEvent) String() string { return proto.CompactTextString(m) }
 func (*LifecycleEvent) ProtoMessage()    {}
 func (*LifecycleEvent) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chaincode_4b693947e61b8a8b, []int{5}
+	return fileDescriptor_chaincode_bfb65adcc85f215f, []int{5}
 }
 func (m *LifecycleEvent) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LifecycleEvent.Unmarshal(m, b)
@@ -397,9 +397,9 @@ func init() {
 	proto.RegisterEnum("protos.ChaincodeDeploymentSpec_ExecutionEnvironment", ChaincodeDeploymentSpec_ExecutionEnvironment_name, ChaincodeDeploymentSpec_ExecutionEnvironment_value)
 }
 
-func init() { proto.RegisterFile("peer/chaincode.proto", fileDescriptor_chaincode_4b693947e61b8a8b) }
+func init() { proto.RegisterFile("peer/chaincode.proto", fileDescriptor_chaincode_bfb65adcc85f215f) }
 
-var fileDescriptor_chaincode_4b693947e61b8a8b = []byte{
+var fileDescriptor_chaincode_bfb65adcc85f215f = []byte{
 	// 588 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x54, 0x5f, 0x6f, 0xd3, 0x3e,
 	0x14, 0xfd, 0xa5, 0xc9, 0xfe, 0xdd, 0x74, 0x55, 0x7e, 0x66, 0x40, 0xb4, 0xa7, 0x12, 0x09, 0x51,

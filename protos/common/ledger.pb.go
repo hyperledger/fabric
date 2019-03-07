@@ -33,7 +33,7 @@ func (m *BlockchainInfo) Reset()         { *m = BlockchainInfo{} }
 func (m *BlockchainInfo) String() string { return proto.CompactTextString(m) }
 func (*BlockchainInfo) ProtoMessage()    {}
 func (*BlockchainInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ledger_109361caaf4d9d5c, []int{0}
+	return fileDescriptor_ledger_2eb5a49d77a3d612, []int{0}
 }
 func (m *BlockchainInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BlockchainInfo.Unmarshal(m, b)
@@ -78,9 +78,9 @@ func init() {
 	proto.RegisterType((*BlockchainInfo)(nil), "common.BlockchainInfo")
 }
 
-func init() { proto.RegisterFile("common/ledger.proto", fileDescriptor_ledger_109361caaf4d9d5c) }
+func init() { proto.RegisterFile("common/ledger.proto", fileDescriptor_ledger_2eb5a49d77a3d612) }
 
-var fileDescriptor_ledger_109361caaf4d9d5c = []byte{
+var fileDescriptor_ledger_2eb5a49d77a3d612 = []byte{
 	// 186 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x4e, 0xce, 0xcf, 0xcd,
 	0xcd, 0xcf, 0xd3, 0xcf, 0x49, 0x4d, 0x49, 0x4f, 0x2d, 0xd2, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17,

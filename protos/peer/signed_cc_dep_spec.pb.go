@@ -40,7 +40,7 @@ func (m *SignedChaincodeDeploymentSpec) Reset()         { *m = SignedChaincodeDe
 func (m *SignedChaincodeDeploymentSpec) String() string { return proto.CompactTextString(m) }
 func (*SignedChaincodeDeploymentSpec) ProtoMessage()    {}
 func (*SignedChaincodeDeploymentSpec) Descriptor() ([]byte, []int) {
-	return fileDescriptor_signed_cc_dep_spec_80ee01f5d5123140, []int{0}
+	return fileDescriptor_signed_cc_dep_spec_ac9383ae12091d27, []int{0}
 }
 func (m *SignedChaincodeDeploymentSpec) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SignedChaincodeDeploymentSpec.Unmarshal(m, b)
@@ -86,10 +86,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("peer/signed_cc_dep_spec.proto", fileDescriptor_signed_cc_dep_spec_80ee01f5d5123140)
+	proto.RegisterFile("peer/signed_cc_dep_spec.proto", fileDescriptor_signed_cc_dep_spec_ac9383ae12091d27)
 }
 
-var fileDescriptor_signed_cc_dep_spec_80ee01f5d5123140 = []byte{
+var fileDescriptor_signed_cc_dep_spec_ac9383ae12091d27 = []byte{
 	// 255 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x90, 0xc1, 0x4a, 0xc3, 0x40,
 	0x10, 0x86, 0xa9, 0x05, 0x0f, 0xab, 0x17, 0x53, 0xc1, 0x28, 0x16, 0x4a, 0x4f, 0xf5, 0x92, 0xa0,

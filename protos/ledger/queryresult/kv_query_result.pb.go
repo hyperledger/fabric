@@ -33,7 +33,7 @@ func (m *KV) Reset()         { *m = KV{} }
 func (m *KV) String() string { return proto.CompactTextString(m) }
 func (*KV) ProtoMessage()    {}
 func (*KV) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_query_result_8f59f813f4fe5e5a, []int{0}
+	return fileDescriptor_kv_query_result_f027ec5c202a1da9, []int{0}
 }
 func (m *KV) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KV.Unmarshal(m, b)
@@ -90,7 +90,7 @@ func (m *KeyModification) Reset()         { *m = KeyModification{} }
 func (m *KeyModification) String() string { return proto.CompactTextString(m) }
 func (*KeyModification) ProtoMessage()    {}
 func (*KeyModification) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kv_query_result_8f59f813f4fe5e5a, []int{1}
+	return fileDescriptor_kv_query_result_f027ec5c202a1da9, []int{1}
 }
 func (m *KeyModification) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KeyModification.Unmarshal(m, b)
@@ -144,10 +144,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("ledger/queryresult/kv_query_result.proto", fileDescriptor_kv_query_result_8f59f813f4fe5e5a)
+	proto.RegisterFile("ledger/queryresult/kv_query_result.proto", fileDescriptor_kv_query_result_f027ec5c202a1da9)
 }
 
-var fileDescriptor_kv_query_result_8f59f813f4fe5e5a = []byte{
+var fileDescriptor_kv_query_result_f027ec5c202a1da9 = []byte{
 	// 286 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x51, 0x4f, 0x4b, 0xc3, 0x30,
 	0x1c, 0xa5, 0xdd, 0x26, 0x6b, 0x26, 0x28, 0xd1, 0x43, 0x99, 0x82, 0x65, 0xa7, 0x9e, 0x12, 0xd1,

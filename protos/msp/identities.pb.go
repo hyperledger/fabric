@@ -35,7 +35,7 @@ func (m *SerializedIdentity) Reset()         { *m = SerializedIdentity{} }
 func (m *SerializedIdentity) String() string { return proto.CompactTextString(m) }
 func (*SerializedIdentity) ProtoMessage()    {}
 func (*SerializedIdentity) Descriptor() ([]byte, []int) {
-	return fileDescriptor_identities_8fa8af3e5bf2070a, []int{0}
+	return fileDescriptor_identities_8a64c0f25eb30ee4, []int{0}
 }
 func (m *SerializedIdentity) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SerializedIdentity.Unmarshal(m, b)
@@ -97,7 +97,7 @@ func (m *SerializedIdemixIdentity) Reset()         { *m = SerializedIdemixIdenti
 func (m *SerializedIdemixIdentity) String() string { return proto.CompactTextString(m) }
 func (*SerializedIdemixIdentity) ProtoMessage()    {}
 func (*SerializedIdemixIdentity) Descriptor() ([]byte, []int) {
-	return fileDescriptor_identities_8fa8af3e5bf2070a, []int{1}
+	return fileDescriptor_identities_8a64c0f25eb30ee4, []int{1}
 }
 func (m *SerializedIdemixIdentity) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SerializedIdemixIdentity.Unmarshal(m, b)
@@ -157,9 +157,9 @@ func init() {
 	proto.RegisterType((*SerializedIdemixIdentity)(nil), "msp.SerializedIdemixIdentity")
 }
 
-func init() { proto.RegisterFile("msp/identities.proto", fileDescriptor_identities_8fa8af3e5bf2070a) }
+func init() { proto.RegisterFile("msp/identities.proto", fileDescriptor_identities_8a64c0f25eb30ee4) }
 
-var fileDescriptor_identities_8fa8af3e5bf2070a = []byte{
+var fileDescriptor_identities_8a64c0f25eb30ee4 = []byte{
 	// 238 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x8f, 0x3f, 0x4f, 0xc3, 0x30,
 	0x10, 0x47, 0x95, 0x34, 0xe1, 0x8f, 0x55, 0x31, 0x98, 0x0e, 0x66, 0x2b, 0x9d, 0x32, 0xc5, 0x03,

@@ -44,7 +44,7 @@ func (x SeekInfo_SeekBehavior) String() string {
 	return proto.EnumName(SeekInfo_SeekBehavior_name, int32(x))
 }
 func (SeekInfo_SeekBehavior) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_ab_86effae0ebc2388c, []int{5, 0}
+	return fileDescriptor_ab_a649d6145bb7e649, []int{5, 0}
 }
 
 type BroadcastResponse struct {
@@ -61,7 +61,7 @@ func (m *BroadcastResponse) Reset()         { *m = BroadcastResponse{} }
 func (m *BroadcastResponse) String() string { return proto.CompactTextString(m) }
 func (*BroadcastResponse) ProtoMessage()    {}
 func (*BroadcastResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ab_86effae0ebc2388c, []int{0}
+	return fileDescriptor_ab_a649d6145bb7e649, []int{0}
 }
 func (m *BroadcastResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BroadcastResponse.Unmarshal(m, b)
@@ -105,7 +105,7 @@ func (m *SeekNewest) Reset()         { *m = SeekNewest{} }
 func (m *SeekNewest) String() string { return proto.CompactTextString(m) }
 func (*SeekNewest) ProtoMessage()    {}
 func (*SeekNewest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ab_86effae0ebc2388c, []int{1}
+	return fileDescriptor_ab_a649d6145bb7e649, []int{1}
 }
 func (m *SeekNewest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SeekNewest.Unmarshal(m, b)
@@ -135,7 +135,7 @@ func (m *SeekOldest) Reset()         { *m = SeekOldest{} }
 func (m *SeekOldest) String() string { return proto.CompactTextString(m) }
 func (*SeekOldest) ProtoMessage()    {}
 func (*SeekOldest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ab_86effae0ebc2388c, []int{2}
+	return fileDescriptor_ab_a649d6145bb7e649, []int{2}
 }
 func (m *SeekOldest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SeekOldest.Unmarshal(m, b)
@@ -166,7 +166,7 @@ func (m *SeekSpecified) Reset()         { *m = SeekSpecified{} }
 func (m *SeekSpecified) String() string { return proto.CompactTextString(m) }
 func (*SeekSpecified) ProtoMessage()    {}
 func (*SeekSpecified) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ab_86effae0ebc2388c, []int{3}
+	return fileDescriptor_ab_a649d6145bb7e649, []int{3}
 }
 func (m *SeekSpecified) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SeekSpecified.Unmarshal(m, b)
@@ -208,7 +208,7 @@ func (m *SeekPosition) Reset()         { *m = SeekPosition{} }
 func (m *SeekPosition) String() string { return proto.CompactTextString(m) }
 func (*SeekPosition) ProtoMessage()    {}
 func (*SeekPosition) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ab_86effae0ebc2388c, []int{4}
+	return fileDescriptor_ab_a649d6145bb7e649, []int{4}
 }
 func (m *SeekPosition) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SeekPosition.Unmarshal(m, b)
@@ -392,7 +392,7 @@ func (m *SeekInfo) Reset()         { *m = SeekInfo{} }
 func (m *SeekInfo) String() string { return proto.CompactTextString(m) }
 func (*SeekInfo) ProtoMessage()    {}
 func (*SeekInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ab_86effae0ebc2388c, []int{5}
+	return fileDescriptor_ab_a649d6145bb7e649, []int{5}
 }
 func (m *SeekInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SeekInfo.Unmarshal(m, b)
@@ -447,7 +447,7 @@ func (m *DeliverResponse) Reset()         { *m = DeliverResponse{} }
 func (m *DeliverResponse) String() string { return proto.CompactTextString(m) }
 func (*DeliverResponse) ProtoMessage()    {}
 func (*DeliverResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ab_86effae0ebc2388c, []int{6}
+	return fileDescriptor_ab_a649d6145bb7e649, []int{6}
 }
 func (m *DeliverResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeliverResponse.Unmarshal(m, b)
@@ -757,9 +757,9 @@ var _AtomicBroadcast_serviceDesc = grpc.ServiceDesc{
 	Metadata: "orderer/ab.proto",
 }
 
-func init() { proto.RegisterFile("orderer/ab.proto", fileDescriptor_ab_86effae0ebc2388c) }
+func init() { proto.RegisterFile("orderer/ab.proto", fileDescriptor_ab_a649d6145bb7e649) }
 
-var fileDescriptor_ab_86effae0ebc2388c = []byte{
+var fileDescriptor_ab_a649d6145bb7e649 = []byte{
 	// 505 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x93, 0xdf, 0x6e, 0x12, 0x51,
 	0x10, 0xc6, 0x59, 0xa5, 0xb4, 0x8c, 0x2d, 0xa5, 0xa7, 0x69, 0x43, 0xb8, 0x30, 0xcd, 0x26, 0x55,

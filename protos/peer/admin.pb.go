@@ -57,7 +57,7 @@ func (x ServerStatus_StatusCode) String() string {
 	return proto.EnumName(ServerStatus_StatusCode_name, int32(x))
 }
 func (ServerStatus_StatusCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_admin_b2904393863b6bc5, []int{0, 0}
+	return fileDescriptor_admin_1084de83e1aa5890, []int{0, 0}
 }
 
 type ServerStatus struct {
@@ -71,7 +71,7 @@ func (m *ServerStatus) Reset()         { *m = ServerStatus{} }
 func (m *ServerStatus) String() string { return proto.CompactTextString(m) }
 func (*ServerStatus) ProtoMessage()    {}
 func (*ServerStatus) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_b2904393863b6bc5, []int{0}
+	return fileDescriptor_admin_1084de83e1aa5890, []int{0}
 }
 func (m *ServerStatus) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ServerStatus.Unmarshal(m, b)
@@ -110,7 +110,7 @@ func (m *LogLevelRequest) Reset()         { *m = LogLevelRequest{} }
 func (m *LogLevelRequest) String() string { return proto.CompactTextString(m) }
 func (*LogLevelRequest) ProtoMessage()    {}
 func (*LogLevelRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_b2904393863b6bc5, []int{1}
+	return fileDescriptor_admin_1084de83e1aa5890, []int{1}
 }
 func (m *LogLevelRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogLevelRequest.Unmarshal(m, b)
@@ -156,7 +156,7 @@ func (m *LogLevelResponse) Reset()         { *m = LogLevelResponse{} }
 func (m *LogLevelResponse) String() string { return proto.CompactTextString(m) }
 func (*LogLevelResponse) ProtoMessage()    {}
 func (*LogLevelResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_b2904393863b6bc5, []int{2}
+	return fileDescriptor_admin_1084de83e1aa5890, []int{2}
 }
 func (m *LogLevelResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogLevelResponse.Unmarshal(m, b)
@@ -201,7 +201,7 @@ func (m *LogSpecRequest) Reset()         { *m = LogSpecRequest{} }
 func (m *LogSpecRequest) String() string { return proto.CompactTextString(m) }
 func (*LogSpecRequest) ProtoMessage()    {}
 func (*LogSpecRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_b2904393863b6bc5, []int{3}
+	return fileDescriptor_admin_1084de83e1aa5890, []int{3}
 }
 func (m *LogSpecRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogSpecRequest.Unmarshal(m, b)
@@ -240,7 +240,7 @@ func (m *LogSpecResponse) Reset()         { *m = LogSpecResponse{} }
 func (m *LogSpecResponse) String() string { return proto.CompactTextString(m) }
 func (*LogSpecResponse) ProtoMessage()    {}
 func (*LogSpecResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_b2904393863b6bc5, []int{4}
+	return fileDescriptor_admin_1084de83e1aa5890, []int{4}
 }
 func (m *LogSpecResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogSpecResponse.Unmarshal(m, b)
@@ -288,7 +288,7 @@ func (m *AdminOperation) Reset()         { *m = AdminOperation{} }
 func (m *AdminOperation) String() string { return proto.CompactTextString(m) }
 func (*AdminOperation) ProtoMessage()    {}
 func (*AdminOperation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_b2904393863b6bc5, []int{5}
+	return fileDescriptor_admin_1084de83e1aa5890, []int{5}
 }
 func (m *AdminOperation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AdminOperation.Unmarshal(m, b)
@@ -699,9 +699,9 @@ var _Admin_serviceDesc = grpc.ServiceDesc{
 	Metadata: "peer/admin.proto",
 }
 
-func init() { proto.RegisterFile("peer/admin.proto", fileDescriptor_admin_b2904393863b6bc5) }
+func init() { proto.RegisterFile("peer/admin.proto", fileDescriptor_admin_1084de83e1aa5890) }
 
-var fileDescriptor_admin_b2904393863b6bc5 = []byte{
+var fileDescriptor_admin_1084de83e1aa5890 = []byte{
 	// 555 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x54, 0xdd, 0x6e, 0xd3, 0x30,
 	0x14, 0x6e, 0x37, 0xda, 0x92, 0xd3, 0xd1, 0x05, 0x33, 0x6d, 0xa5, 0x13, 0x02, 0xe5, 0x0a, 0x84,
