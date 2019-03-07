@@ -7,26 +7,23 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"syscall"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var _ bool = Describe("PrivateData", func() {
@@ -61,7 +58,7 @@ var _ bool = Describe("PrivateData", func() {
 			invokeChaincode(network, "org1", "peer0", "marblesp", `{"Args":["initMarble","marble1","blue","35","tom","99"]}`, "testchannel", orderer)
 
 			By("waiting for block to propagate")
-			waitUntilAllPeersSameLedgerHeight(network, expectedPeers, "testchannel", getLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel"))
+			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", nwo.GetLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel"), expectedPeers...)
 		})
 
 		AfterEach(func() {
@@ -90,7 +87,7 @@ var _ bool = Describe("PrivateData", func() {
 			invokeChaincode(network, "org2", "peer0", "marblesp", `{"Args":["initMarble","marble2","yellow","53","jerry","22"]}`, "testchannel", orderer)
 
 			By("waiting for block to propagate")
-			waitUntilAllPeersSameLedgerHeight(network, expectedPeers, "testchannel", getLedgerHeight(network, network.Peer("org2", "peer0"), "testchannel"))
+			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", nwo.GetLedgerHeight(network, network.Peer("org2", "peer0"), "testchannel"), expectedPeers...)
 
 			By("verifying access as defined in collection config")
 			peerList := []*nwo.Peer{
@@ -148,7 +145,7 @@ var _ bool = Describe("PrivateData", func() {
 			network.JoinChannel("testchannel", orderer, org2peer1)
 			org2peer1.Channels = append(org2peer1.Channels, &nwo.PeerChannel{Name: "testchannel", Anchor: false})
 
-			ledgerHeight := getLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel")
+			ledgerHeight := nwo.GetLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel")
 
 			By("fetch latest blocks to peer1.org2")
 			sess, err := network.PeerAdminSession(org2peer1, commands.ChannelFetch{
@@ -179,10 +176,10 @@ var _ bool = Describe("PrivateData", func() {
 				network.Peer("org3", "peer0")}
 
 			By("verifying membership")
-			verifyMembership(network, expectedPeers, "testchannel", "marblesp")
+			network.VerifyMembership(expectedPeers, "testchannel", "marblesp")
 
 			By("make sure all peers have the same ledger height")
-			waitUntilAllPeersSameLedgerHeight(network, expectedPeers, "testchannel", getLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel"))
+			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", nwo.GetLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel"), expectedPeers...)
 
 			By("verify peer1.org2 got the private data that was created historically")
 			verifyAccess(
@@ -233,7 +230,7 @@ var _ bool = Describe("PrivateData", func() {
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 			org2peer0 := network.Peer("org2", "peer0")
-			initialLedgerHeight := getLedgerHeight(network, org2peer0, "testchannel")
+			initialLedgerHeight := nwo.GetLedgerHeight(network, org2peer0, "testchannel")
 
 			By("invoking initMarble function of the chaincode to create private data")
 			invokeChaincode(network, "org2", "peer0", "marblesp", `{"Args":["initMarble","marble1","blue","35","tom","99"]}`, "testchannel", orderer)
@@ -243,7 +240,7 @@ var _ bool = Describe("PrivateData", func() {
 			Eventually(func() int {
 				invokeChaincode(network, "org2", "peer0", "marblesp", fmt.Sprintf(`{"Args":["initMarble","marble%d","blue%d","3%d","tom","9%d"]}`, i, i, i, i), "testchannel", orderer)
 				i++
-				return getLedgerHeight(network, org2peer0, "testchannel")
+				return nwo.GetLedgerHeight(network, org2peer0, "testchannel")
 			}, network.EventuallyTimeout).Should(BeNumerically(">", initialLedgerHeight))
 
 			By("verify private data exist in peer0.org2")
@@ -260,7 +257,7 @@ var _ bool = Describe("PrivateData", func() {
 			Eventually(func() int {
 				invokeChaincode(network, "org2", "peer0", "marblesp", fmt.Sprintf(`{"Args":["initMarble","marble%d","blue%d","3%d","tom","9%d"]}`, i, i, i, i), "testchannel", orderer)
 				i++
-				return getLedgerHeight(network, org2peer0, "testchannel")
+				return nwo.GetLedgerHeight(network, org2peer0, "testchannel")
 			}, network.EventuallyTimeout).Should(BeNumerically(">", initialLedgerHeight+4))
 
 			By("querying collectionMarbles by peer0.org2, marble1 should still be available")
@@ -292,7 +289,7 @@ var _ bool = Describe("PrivateData", func() {
 			nwo.InstallChaincode(network, chaincode, org2peer1)
 
 			By("fetch latest blocks to peer1.org2")
-			ledgerHeight := getLedgerHeight(network, org2peer0, "testchannel")
+			ledgerHeight := nwo.GetLedgerHeight(network, org2peer0, "testchannel")
 			sess, err := network.PeerAdminSession(org2peer1, commands.ChannelFetch{
 				Block:      "newest",
 				ChannelID:  "testchannel",
@@ -305,7 +302,7 @@ var _ bool = Describe("PrivateData", func() {
 
 			By("wait until peer1.org2 ledger is updated with all txs")
 			Eventually(func() int {
-				return getLedgerHeight(network, org2peer1, "testchannel")
+				return nwo.GetLedgerHeight(network, org2peer1, "testchannel")
 			}, network.EventuallyTimeout).Should(Equal(ledgerHeight))
 
 			By("verify chaincode is instantiated on peer1.org2")
@@ -391,7 +388,7 @@ var _ bool = Describe("PrivateData", func() {
 			expectedPeers = []*nwo.Peer{org1peer0, org2peer0}
 
 			By("verifying membership")
-			verifyMembership(network, expectedPeers, "testchannel")
+			network.VerifyMembership(expectedPeers, "testchannel")
 		})
 
 		AfterEach(func() {
@@ -435,7 +432,7 @@ var _ bool = Describe("PrivateData", func() {
 
 			By("verifying membership")
 			expectedPeers = []*nwo.Peer{org1peer0}
-			verifyMembership(network, expectedPeers, "testchannel", "marblesp")
+			network.VerifyMembership(expectedPeers, "testchannel", "marblesp")
 
 			By("start p0.org3 process")
 			org3peer0 := network.Peer("org3", "peer0")
@@ -451,7 +448,7 @@ var _ bool = Describe("PrivateData", func() {
 			nwo.InstallChaincode(network, chaincode, org3peer0)
 
 			By("fetch latest blocks to peer0.org3")
-			ledgerHeight := getLedgerHeight(network, org1peer0, "testchannel")
+			ledgerHeight := nwo.GetLedgerHeight(network, org1peer0, "testchannel")
 			sess, err := network.PeerAdminSession(org3peer0, commands.ChannelFetch{
 				Block:      "newest",
 				ChannelID:  "testchannel",
@@ -464,7 +461,7 @@ var _ bool = Describe("PrivateData", func() {
 
 			By("wait until peer0.org3 ledger is updated with all txs")
 			Eventually(func() int {
-				return getLedgerHeight(network, org3peer0, "testchannel")
+				return nwo.GetLedgerHeight(network, org3peer0, "testchannel")
 			}, network.EventuallyTimeout).Should(Equal(ledgerHeight))
 
 			By("verify p0.org3 didn't get private data")
@@ -505,7 +502,7 @@ var _ bool = Describe("PrivateData", func() {
 			invokeChaincode(network, "org1", "peer0", "marblesp", `{"Args":["initMarble","marble1","blue","35","tom","99"]}`, "testchannel", orderer)
 
 			By("waiting for block to propagate")
-			waitUntilAllPeersSameLedgerHeight(network, expectedPeers, "testchannel", getLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel"))
+			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", nwo.GetLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel"), expectedPeers...)
 		})
 
 		AfterEach(func() {
@@ -578,7 +575,7 @@ var _ bool = Describe("PrivateData", func() {
 			invokeChaincode(network, "org1", "peer0", "marblesp", `{"Args":["initMarble","marble1","blue","35","tom","99"]}`, "testchannel", orderer)
 
 			By("waiting for block to propagate")
-			waitUntilAllPeersSameLedgerHeight(network, expectedPeers, "testchannel", getLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel"))
+			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", nwo.GetLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel"), expectedPeers...)
 		})
 
 		AfterEach(func() {
@@ -616,7 +613,7 @@ var _ bool = Describe("PrivateData", func() {
 			invokeChaincode(network, "org2", "peer0", "marblesp", `{"Args":["initMarble","marble2","yellow","53","jerry","22"]}`, "testchannel", orderer)
 
 			By("waiting for block to propagate")
-			waitUntilAllPeersSameLedgerHeight(network, expectedPeers, "testchannel", getLedgerHeight(network, network.Peer("org2", "peer0"), "testchannel"))
+			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", nwo.GetLedgerHeight(network, network.Peer("org2", "peer0"), "testchannel"), expectedPeers...)
 
 			By("verifying availability of new private data (marble2) on org1 and org2")
 			verifyAccess(
@@ -680,7 +677,7 @@ func initThreeOrgsSetup() (string, *nwo.Network, ifrit.Process, *nwo.Orderer, []
 	}
 
 	By("verifying membership")
-	verifyMembership(n, expectedPeers, "testchannel")
+	n.VerifyMembership(expectedPeers, "testchannel")
 
 	return testDir, n, process, orderer, expectedPeers
 }
@@ -759,38 +756,6 @@ func invokeChaincode(n *nwo.Network, org string, peer string, ccname string, arg
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
-}
-
-func getLedgerHeight(n *nwo.Network, peer *nwo.Peer, channelName string) int {
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChannelInfo{
-		ChannelID: channelName,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-
-	channelInfoStr := strings.TrimPrefix(string(sess.Buffer().Contents()[:]), "Blockchain info:")
-	var channelInfo = common.BlockchainInfo{}
-	json.Unmarshal([]byte(channelInfoStr), &channelInfo)
-	return int(channelInfo.Height)
-}
-
-func waitUntilAllPeersSameLedgerHeight(n *nwo.Network, peers []*nwo.Peer, channelName string, height int) {
-	for _, peer := range peers {
-		Eventually(func() int {
-			return getLedgerHeight(n, peer, channelName)
-		}, n.EventuallyTimeout).Should(Equal(height))
-	}
-}
-
-// this function checks that each peer discovered all other peers in the network
-func verifyMembership(n *nwo.Network, expectedPeers []*nwo.Peer, channelName string, chaincodes ...string) {
-	expectedDiscoveredPeers := make([]nwo.DiscoveredPeer, 0, len(expectedPeers))
-	for _, peer := range expectedPeers {
-		expectedDiscoveredPeers = append(expectedDiscoveredPeers, n.DiscoveredPeer(peer, chaincodes...))
-	}
-	for _, peer := range expectedPeers {
-		Eventually(nwo.DiscoverPeers(n, peer, "User1", channelName), n.EventuallyTimeout).Should(ConsistOf(expectedDiscoveredPeers))
-	}
 }
 
 func verifyAccess(n *nwo.Network, chaincodeQueryCmd commands.ChaincodeQuery, peers []*nwo.Peer, expected string) {

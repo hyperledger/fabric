@@ -715,6 +715,18 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 	}
 }
 
+// VerifyMembership checks that each peer has discovered the expected
+// peers in the network
+func (n *Network) VerifyMembership(expectedPeers []*Peer, channel string, chaincodes ...string) {
+	expectedDiscoveredPeers := make([]DiscoveredPeer, len(expectedPeers))
+	for i, peer := range expectedPeers {
+		expectedDiscoveredPeers[i] = n.DiscoveredPeer(peer, chaincodes...)
+	}
+	for _, peer := range expectedPeers {
+		Eventually(DiscoverPeers(n, peer, "User1", channel), n.EventuallyTimeout).Should(ConsistOf(expectedDiscoveredPeers))
+	}
+}
+
 // CreateChannel will submit an existing create channel transaction to the
 // specified orderer. The channel transaction must exist at the location
 // returned by CreateChannelTxPath.  Optionally, additional signers may be
