@@ -20,9 +20,9 @@ sure they're valid (i.e., that they are valid signatures from valid certificates
 Two ways to require endorsement
 -------------------------------
 
-By default, endorsement policies are specified for a channel's chaincode at
-instantiation or upgrade time (that is, one endorsement policy covers all of the
-state associated with a chaincode).
+By default, endorsement policies are specified in the chaincode definition,
+which is agreed to by channel members and then committed to a channel (that is,
+one endorsement policy covers all of the state associated with a chaincode).
 
 However, there are cases where it may be necessary for a particular state (a
 particular key-value pair, in other words) to have a different endorsement policy.
@@ -52,10 +52,20 @@ section. But first, let's see how we set a chaincode-level endorsement policy.
 Setting chaincode-level endorsement policies
 --------------------------------------------
 
-Chaincode-level endorsement policies can be specified at instantiate time using
-either the SDK (for some sample code on how to do this, click
-`here <https://github.com/hyperledger/fabric-sdk-node/blob/f8ffa90dc1b61a4a60a6fa25de760c647587b788/test/integration/e2e/e2eUtils.js#L178>`_)
-or in the peer CLI using the ``-P`` switch followed by the policy.
+Chaincode-level endorsement policies are agreed to by channel members when they
+approve a chaincode definition for their organization. A sufficient number of
+channel members need to approve a chaincode definition to meet the
+``Channel/Application/LifecycleEndorsement`` policy, which by default is set to
+a majority of channel members, before the definition can be committed to the
+channel. Once the definition has been committed, the chaincode is ready to use.
+Any invoke of the chaincode that writes data to the ledger will need to be
+validated by enough channel members to meet the endorsement policy.
+
+You can specify an endorsement policy for a chainocode using the Fabric SDKs.
+For an example, visit the `How to install and start your chaincode <https://fabric-sdk-node.github.io/master/tutorial-chaincode-lifecycle.html>`_
+in the Node.js SDK documentation. You can also create an endorsement policy from
+your CLI when you approve and commit a chaincode definition with the Fabric peer
+binaries by using the ``—-signature-policy`` flag.
 
 .. note:: Don't worry about the policy syntax (``'Org1.member'``, et all) right
           now. We'll talk more about the syntax in the next section.
@@ -64,31 +74,54 @@ For example:
 
 ::
 
-    peer chaincode instantiate -C <channelid> -n mycc -P "AND('Org1.member', 'Org2.member')"
+    peer lifecycle chaincode approveformyorg --channelID mychannel —-signature-policy "AND('Org1.member', 'Org2.member')" --name mycc --version 1.0 --package-id mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173 --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
 
-This command deploys chaincode ``mycc`` ("my chaincode") with the policy
+The above command approves the chaincode definition of ``mycc`` with the policy
 ``AND('Org1.member', 'Org2.member')`` which would require that a member of both
-Org1 and Org2 sign the transaction.
+Org1 and Org2 sign the transaction. After a sufficient number of channel members
+approve a chaincode definition for ``mycc``, the definition and endorsement
+policy can be committed to the channel using the command below:
 
-Notice that, if the identity classification is enabled (see :doc:`msp`),
-one can use the ``PEER`` role to restrict endorsement to only peers.
+::
+
+    peer lifecycle chaincode commit -o orderer.example.com:7050 --channelID mychannel —-signature-policy "AND('Org1.member', 'Org2.member')" --name mycc --version 1.0 --sequence 1 --init-required --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+
+Notice that, if the identity classification is enabled (see :doc:`msp`), one can
+use the ``PEER`` role to restrict endorsement to only peers.
+
+For example:
+
+
+::
+
+    peer lifecycle chaincode approveformyorg --channelID mychannel —-signature-policy "AND('Org1.peer', 'Org2.peer')" --name mycc --version 1.0 --package-id mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173 --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
+
+In addition to the specifying an endorsement policy from the CLI or SDK, a
+chaincode can also use policies in the channel configuration as endorsement
+policies. You can use the ``--channel-config-policy``flag to select a channel policy with
+format used by the channel configuration and by ACLs.
 
 For example:
 
 ::
 
-    peer chaincode instantiate -C <channelid> -n mycc -P "AND('Org1.peer', 'Org2.peer')"
+    peer lifecycle chaincode approveformyorg --channelID mychannel --channel-config-policy Channel/Application/Admins --name mycc --version 1.0 --package-id mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173 --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
 
-A new organization added to the channel after instantiation can query a chaincode
-(provided the query has appropriate authorization as defined by channel policies
-and any application level checks enforced by the chaincode) but will not be able
-to execute or endorse the chaincode. The endorsement policy needs to be modified
-to allow transactions to be committed with endorsements from the new organization.
+If you do not specify a policy, the chaincode definition will use the
+``Channel/Application/Endorsement`` policy by default, which requires that a
+transaction be validated by a majority of channel members. This policy depends on
+the membership of the channel, so it will be updated automatically when organizations
+are added or removed from a channel. One advantage of using channel policies is
+that they can be written to be updated automatically with channel membership.
 
-.. note:: if not specified at instantiation time, the endorsement policy
-          defaults to "any member of the organizations in the channel".
-          For example, a channel with "Org1" and "Org2" would have a default
-          endorsement policy of "OR('Org1.member', 'Org2.member')".
+If you specify an endorsement policy using the ``—-signature-policy`` flag or
+the SDK, you will need to update the policy when organizations join or leave the
+channel. A new organization added to the channel after instantiation will be
+able to query a chaincode (provided the query has appropriate authorization as
+defined by channel policies and any application level checks enforced by the
+chaincode) but will not be able to execute or endorse the chaincode. Only
+organizations listed in the endorsement policy syntax will be able sign
+transactions.
 
 Endorsement policy syntax
 ~~~~~~~~~~~~~~~~~~~~~~~~~
