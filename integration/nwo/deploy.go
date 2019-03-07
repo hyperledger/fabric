@@ -274,6 +274,7 @@ func InitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, cha
 		Ctor:          chaincode.Ctor,
 		PeerAddresses: peerAddresses,
 		WaitForEvent:  true,
+		IsInit:        true,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))

@@ -68,6 +68,7 @@ var (
 	vscc                  string
 	policyMarshalled      []byte
 	transient             string
+	isInit                bool
 	collectionsConfigFile string
 	collectionConfigBytes []byte
 	peerAddresses         []string
@@ -117,6 +118,7 @@ func resetFlags() {
 		fmt.Sprint("The name of the endorsement system chaincode to be used for this chaincode"))
 	flags.StringVarP(&vscc, "vscc", "V", common.UndefinedParamValue,
 		fmt.Sprint("The name of the verification system chaincode to be used for this chaincode"))
+	flags.BoolVarP(&isInit, "isInit", "I", false, "Is this invocation for init (useful for supporting legacy chaincodes in the new lifecycle)")
 	flags.BoolVarP(&getInstalledChaincodes, "installed", "", false,
 		"Get the installed chaincodes on a peer")
 	flags.BoolVarP(&getInstantiatedChaincodes, "instantiated", "", false,
