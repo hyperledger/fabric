@@ -224,11 +224,14 @@ func CommitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 		chaincode.Hash = hex.EncodeToString(hash)
 	}
 
-	// TODO don't hardcode this
 	// commit using one peer per org
-	peerAddresses := []string{
-		n.PeerAddress(n.Peer("org1", "peer1"), ListenPort),
-		n.PeerAddress(n.Peer("org2", "peer1"), ListenPort),
+	commitOrgs := map[string]bool{}
+	var peerAddresses []string
+	for _, p := range checkPeers {
+		if exists := commitOrgs[p.Organization]; !exists {
+			peerAddresses = append(peerAddresses, n.PeerAddress(p, ListenPort))
+			commitOrgs[p.Organization] = true
+		}
 	}
 
 	sess, err := n.PeerAdminSession(peer, commands.ChaincodeCommitLifecycle{
@@ -262,11 +265,16 @@ func EnsureCommitted(n *Network, channel, name, version, sequence string, peers 
 }
 
 func InitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
-	// TODO don't hardcode this
-	peerAddresses := []string{
-		n.PeerAddress(n.Peer("org1", "peer1"), ListenPort),
-		n.PeerAddress(n.Peer("org2", "peer1"), ListenPort),
+	// init using one peer per org
+	initOrgs := map[string]bool{}
+	var peerAddresses []string
+	for _, p := range peers {
+		if exists := initOrgs[p.Organization]; !exists {
+			peerAddresses = append(peerAddresses, n.PeerAddress(p, ListenPort))
+			initOrgs[p.Organization] = true
+		}
 	}
+
 	sess, err := n.PeerUserSession(peers[0], "User1", commands.ChaincodeInvoke{
 		ChannelID:     channel,
 		Orderer:       n.OrdererAddress(orderer, ListenPort),
