@@ -705,35 +705,6 @@ var _ = Describe("Chain", func() {
 							err := chain.Configure(configEnv, configSeq)
 							Expect(err).NotTo(HaveOccurred())
 						})
-
-						It("fail since not allowed to add and remove node at same change", func() {
-							metadata := proto.Clone(consenterMetadata).(*raftprotos.Metadata)
-							// Remove one of the consenters
-							metadata.Consenters = metadata.Consenters[1:]
-							metadata.Consenters = append(metadata.Consenters, &raftprotos.Consenter{
-								Host:          "localhost",
-								Port:          7050,
-								ServerTlsCert: serverTLSCert(tlsCA),
-								ClientTlsCert: clientTLSCert(tlsCA),
-							})
-							values := map[string]*common.ConfigValue{
-								"ConsensusType": {
-									Version: 1,
-									Value: marshalOrPanic(&orderer.ConsensusType{
-										Metadata: marshalOrPanic(metadata),
-									}),
-								},
-							}
-							configEnv = newConfigEnv(channelID,
-								common.HeaderType_CONFIG,
-								newConfigUpdateEnv(channelID, values))
-							configSeq = 0
-
-							err := chain.Configure(configEnv, configSeq)
-							Expect(err).To(MatchError("update of more than one consenter at a time is not supported, requested changes: add 1 node(s), remove 1 node(s)"))
-							Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
-							Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
-						})
 					})
 				})
 			})
@@ -1527,8 +1498,36 @@ var _ = Describe("Chain", func() {
 			})
 
 			Context("reconfiguration", func() {
-				It("trying to simultaneously add and remove nodes in one config update", func() {
+				It("cannot change consenter set by more than 1 node", func() {
+					updatedRaftMetadata := proto.Clone(raftMetadata).(*raftprotos.RaftMetadata)
+					// remove second & third consenter
+					delete(updatedRaftMetadata.Consenters, 2)
+					delete(updatedRaftMetadata.Consenters, 3)
 
+					metadata := &raftprotos.Metadata{}
+					for _, consenter := range updatedRaftMetadata.Consenters {
+						metadata.Consenters = append(metadata.Consenters, consenter)
+					}
+
+					value := map[string]*common.ConfigValue{
+						"ConsensusType": {
+							Version: 1,
+							Value: marshalOrPanic(&orderer.ConsensusType{
+								Metadata: marshalOrPanic(metadata),
+							}),
+						},
+					}
+
+					By("creating new configuration with removed node and new one")
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, value))
+					c1.cutter.CutNext = true
+
+					By("sending config transaction")
+					err := c1.Configure(configEnv, 0)
+					Expect(err).To(MatchError("update of more than one consenter at a time is not supported, requested changes: add 0 node(s), remove 2 node(s)"))
+				})
+
+				It("can rotate certificate by adding and removing 1 node in one config update", func() {
 					updatedRaftMetadata := proto.Clone(raftMetadata).(*raftprotos.RaftMetadata)
 					// remove second consenter
 					delete(updatedRaftMetadata.Consenters, 2)
@@ -1561,8 +1560,7 @@ var _ = Describe("Chain", func() {
 					c1.cutter.CutNext = true
 
 					By("sending config transaction")
-					err := c1.Configure(configEnv, 0)
-					Expect(err).To(MatchError("update of more than one consenter at a time is not supported, requested changes: add 1 node(s), remove 1 node(s)"))
+					Expect(c1.Configure(configEnv, 0)).To(Succeed())
 				})
 
 				When("two type B config are sent back-to-back", func() {
