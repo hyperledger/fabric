@@ -21,6 +21,7 @@ import (
 	ledgerutil "github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 )
 
 type serializedBlockInfo struct {
@@ -87,19 +88,18 @@ func extractSerializedBlockInfo(serializedBlockBytes []byte) (*serializedBlockIn
 	if err != nil {
 		return nil, err
 	}
-
 	return info, nil
 }
 
 func addHeaderBytes(blockHeader *common.BlockHeader, buf *proto.Buffer) error {
 	if err := buf.EncodeVarint(blockHeader.Number); err != nil {
-		return err
+		return errors.Wrapf(err, "error encoding the block number [%d]", blockHeader.Number)
 	}
 	if err := buf.EncodeRawBytes(blockHeader.DataHash); err != nil {
-		return err
+		return errors.Wrapf(err, "error encoding the data hash [%v]", blockHeader.DataHash)
 	}
 	if err := buf.EncodeRawBytes(blockHeader.PreviousHash); err != nil {
-		return err
+		return errors.Wrapf(err, "error encoding the previous hash [%v]", blockHeader.PreviousHash)
 	}
 	return nil
 }
@@ -108,7 +108,7 @@ func addDataBytes(blockData *common.BlockData, buf *proto.Buffer) ([]*txindexInf
 	var txOffsets []*txindexInfo
 
 	if err := buf.EncodeVarint(uint64(len(blockData.Data))); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error encoding the length of block data")
 	}
 	for _, txEnvelopeBytes := range blockData.Data {
 		offset := len(buf.Bytes())
@@ -117,7 +117,7 @@ func addDataBytes(blockData *common.BlockData, buf *proto.Buffer) ([]*txindexInf
 			return nil, err
 		}
 		if err := buf.EncodeRawBytes(txEnvelopeBytes); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "error encoding the transaction envelope")
 		}
 		idxInfo := &txindexInfo{txID: txid, loc: &locPointer{offset, len(buf.Bytes()) - offset}}
 		txOffsets = append(txOffsets, idxInfo)
@@ -131,11 +131,11 @@ func addMetadataBytes(blockMetadata *common.BlockMetadata, buf *proto.Buffer) er
 		numItems = uint64(len(blockMetadata.Metadata))
 	}
 	if err := buf.EncodeVarint(numItems); err != nil {
-		return err
+		return errors.Wrap(err, "error encoding the length of metadata")
 	}
 	for _, b := range blockMetadata.Metadata {
 		if err := buf.EncodeRawBytes(b); err != nil {
-			return err
+			return errors.Wrap(err, "error encoding the block metadata")
 		}
 	}
 	return nil
@@ -145,13 +145,13 @@ func extractHeader(buf *ledgerutil.Buffer) (*common.BlockHeader, error) {
 	header := &common.BlockHeader{}
 	var err error
 	if header.Number, err = buf.DecodeVarint(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error decoding the block number")
 	}
 	if header.DataHash, err = buf.DecodeRawBytes(false); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error decoding the data hash")
 	}
 	if header.PreviousHash, err = buf.DecodeRawBytes(false); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error decoding the previous hash")
 	}
 	if len(header.PreviousHash) == 0 {
 		header.PreviousHash = nil
@@ -166,14 +166,14 @@ func extractData(buf *ledgerutil.Buffer) (*common.BlockData, []*txindexInfo, err
 	var err error
 
 	if numItems, err = buf.DecodeVarint(); err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "error decoding the length of block data")
 	}
 	for i := uint64(0); i < numItems; i++ {
 		var txEnvBytes []byte
 		var txid string
 		txOffset := buf.GetBytesConsumed()
 		if txEnvBytes, err = buf.DecodeRawBytes(false); err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrap(err, "error decoding the transaction enevelope")
 		}
 		if txid, err = extractTxID(txEnvBytes); err != nil {
 			return nil, nil, err
@@ -191,11 +191,11 @@ func extractMetadata(buf *ledgerutil.Buffer) (*common.BlockMetadata, error) {
 	var metadataEntry []byte
 	var err error
 	if numItems, err = buf.DecodeVarint(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error decoding the length of block metadata")
 	}
 	for i := uint64(0); i < numItems; i++ {
 		if metadataEntry, err = buf.DecodeRawBytes(false); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "error decoding the block metadata")
 		}
 		metadata.Metadata = append(metadata.Metadata, metadataEntry)
 	}

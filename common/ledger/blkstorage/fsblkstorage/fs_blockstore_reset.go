@@ -163,10 +163,10 @@ func recordHeightIfGreaterThanPreviousRecording(ledgerDir string) error {
 			[]byte(strconv.FormatUint(currentHt, 10)),
 			0640,
 		)
-	} else {
-		logger.Infof("Not recording current height [%d] since this is less than previously recorded height [%d]",
-			currentHt, previuoslyRecordedHt)
 	}
+	logger.Infof("Not recording current height [%d] since this is less than previously recorded height [%d]",
+		currentHt, previuoslyRecordedHt)
+
 	return nil
 }
 

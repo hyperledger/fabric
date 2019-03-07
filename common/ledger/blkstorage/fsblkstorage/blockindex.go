@@ -42,6 +42,7 @@ type index interface {
 	getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error)
 	getBlockLocByTxID(txID string) (*fileLocPointer, error)
 	getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error)
+	isAttributeIndexed(attribute blkstorage.IndexableAttr) bool
 }
 
 type blockIdxInfo struct {
@@ -104,17 +105,17 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	}
 
 	//Index1
-	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockHash]; ok {
+	if index.isAttributeIndexed(blkstorage.IndexableAttrBlockHash) {
 		batch.Put(constructBlockHashKey(blockIdxInfo.blockHash), flpBytes)
 	}
 
 	//Index2
-	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockNum]; ok {
+	if index.isAttributeIndexed(blkstorage.IndexableAttrBlockNum) {
 		batch.Put(constructBlockNumKey(blockIdxInfo.blockNum), flpBytes)
 	}
 
 	//Index3 Used to find a transaction by it's transaction id
-	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxID]; ok {
+	if index.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
 		if err = index.markDuplicateTxids(blockIdxInfo); err != nil {
 			logger.Errorf("error detecting duplicate txids: %s", err)
 			return errors.WithMessage(err, "error detecting duplicate txids")
@@ -135,7 +136,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	}
 
 	//Index4 - Store BlockNumTranNum will be used to query history data
-	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockNumTranNum]; ok {
+	if index.isAttributeIndexed(blkstorage.IndexableAttrBlockNumTranNum) {
 		for txIterator, txoffset := range txOffsets {
 			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
 			logger.Debugf("Adding txLoc [%s] for tx number:[%d] ID: [%s] to blockNumTranNum index", txFlp, txIterator, txoffset.txID)
@@ -148,7 +149,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	}
 
 	// Index5 - Store BlockNumber will be used to find block by transaction id
-	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockTxID]; ok {
+	if index.isAttributeIndexed(blkstorage.IndexableAttrBlockTxID) {
 		for _, txoffset := range txOffsets {
 			if txoffset.isDuplicate { // do not overwrite txid entry in the index - FAB-8557
 				continue
@@ -158,7 +159,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	}
 
 	// Index6 - Store transaction validation result by transaction id
-	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxValidationCode]; ok {
+	if index.isAttributeIndexed(blkstorage.IndexableAttrTxValidationCode) {
 		for idx, txoffset := range txOffsets {
 			if txoffset.isDuplicate { // do not overwrite txid entry in the index - FAB-8557
 				continue
@@ -173,6 +174,11 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 		return err
 	}
 	return nil
+}
+
+func (index *blockIndex) isAttributeIndexed(attribute blkstorage.IndexableAttr) bool {
+	_, ok := index.indexItemsMap[attribute]
+	return ok
 }
 
 func (index *blockIndex) markDuplicateTxids(blockIdxInfo *blockIdxInfo) error {
@@ -198,7 +204,7 @@ func (index *blockIndex) markDuplicateTxids(blockIdxInfo *blockIdxInfo) error {
 }
 
 func (index *blockIndex) getBlockLocByHash(blockHash []byte) (*fileLocPointer, error) {
-	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockHash]; !ok {
+	if !index.isAttributeIndexed(blkstorage.IndexableAttrBlockHash) {
 		return nil, blkstorage.ErrAttrNotIndexed
 	}
 	b, err := index.db.Get(constructBlockHashKey(blockHash))
@@ -214,7 +220,7 @@ func (index *blockIndex) getBlockLocByHash(blockHash []byte) (*fileLocPointer, e
 }
 
 func (index *blockIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer, error) {
-	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockNum]; !ok {
+	if !index.isAttributeIndexed(blkstorage.IndexableAttrBlockNum) {
 		return nil, blkstorage.ErrAttrNotIndexed
 	}
 	b, err := index.db.Get(constructBlockNumKey(blockNum))
@@ -230,7 +236,7 @@ func (index *blockIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer
 }
 
 func (index *blockIndex) getTxLoc(txID string) (*fileLocPointer, error) {
-	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxID]; !ok {
+	if !index.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
 		return nil, blkstorage.ErrAttrNotIndexed
 	}
 	b, err := index.db.Get(constructTxIDKey(txID))
@@ -246,7 +252,7 @@ func (index *blockIndex) getTxLoc(txID string) (*fileLocPointer, error) {
 }
 
 func (index *blockIndex) getBlockLocByTxID(txID string) (*fileLocPointer, error) {
-	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockTxID]; !ok {
+	if !index.isAttributeIndexed(blkstorage.IndexableAttrBlockTxID) {
 		return nil, blkstorage.ErrAttrNotIndexed
 	}
 	b, err := index.db.Get(constructBlockTxIDKey(txID))
@@ -262,7 +268,7 @@ func (index *blockIndex) getBlockLocByTxID(txID string) (*fileLocPointer, error)
 }
 
 func (index *blockIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
-	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockNumTranNum]; !ok {
+	if !index.isAttributeIndexed(blkstorage.IndexableAttrBlockNumTranNum) {
 		return nil, blkstorage.ErrAttrNotIndexed
 	}
 	b, err := index.db.Get(constructBlockNumTranNumKey(blockNum, tranNum))
@@ -278,7 +284,7 @@ func (index *blockIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint
 }
 
 func (index *blockIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
-	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxValidationCode]; !ok {
+	if !index.isAttributeIndexed(blkstorage.IndexableAttrTxValidationCode) {
 		return peer.TxValidationCode(-1), blkstorage.ErrAttrNotIndexed
 	}
 

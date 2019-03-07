@@ -60,6 +60,10 @@ func (i *noopIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidationCod
 	return peer.TxValidationCode(-1), nil
 }
 
+func (i *noopIndex) isAttributeIndexed(attribute blkstorage.IndexableAttr) bool {
+	return true
+}
+
 func TestBlockIndexSync(t *testing.T) {
 	testBlockIndexSync(t, 10, 5, false)
 	testBlockIndexSync(t, 10, 5, true)

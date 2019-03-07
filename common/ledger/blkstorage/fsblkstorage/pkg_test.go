@@ -22,6 +22,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/metrics"
@@ -48,19 +49,20 @@ type testEnv struct {
 	provider *FsBlockstoreProvider
 }
 
+var attrsToIndex = []blkstorage.IndexableAttr{
+	blkstorage.IndexableAttrBlockHash,
+	blkstorage.IndexableAttrBlockNum,
+	blkstorage.IndexableAttrTxID,
+	blkstorage.IndexableAttrBlockNumTranNum,
+	blkstorage.IndexableAttrBlockTxID,
+	blkstorage.IndexableAttrTxValidationCode,
+}
+
 func newTestEnv(t testing.TB, conf *Conf) *testEnv {
 	return newTestEnvWithMetricsProvider(t, conf, &disabled.Provider{})
 }
 
 func newTestEnvWithMetricsProvider(t testing.TB, conf *Conf, metricsProvider metrics.Provider) *testEnv {
-	attrsToIndex := []blkstorage.IndexableAttr{
-		blkstorage.IndexableAttrBlockHash,
-		blkstorage.IndexableAttrBlockNum,
-		blkstorage.IndexableAttrTxID,
-		blkstorage.IndexableAttrBlockNumTranNum,
-		blkstorage.IndexableAttrBlockTxID,
-		blkstorage.IndexableAttrTxValidationCode,
-	}
 	return newTestEnvSelectiveIndexing(t, conf, attrsToIndex, metricsProvider)
 }
 
@@ -97,18 +99,26 @@ func (w *testBlockfileMgrWrapper) addBlocks(blocks []*common.Block) {
 	}
 }
 
-func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*common.Block) {
+func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*common.Block, expectedErr error) {
 	for i, block := range blocks {
 		hash := block.Header.Hash()
 		b, err := w.blockfileMgr.retrieveBlockByHash(hash)
+		if expectedErr != nil {
+			assert.Error(w.t, err, expectedErr.Error())
+			continue
+		}
 		assert.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
 		assert.Equal(w.t, block, b)
 	}
 }
 
-func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block, startingNum uint64) {
+func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block, startingNum uint64, expectedErr error) {
 	for i := 0; i < len(blocks); i++ {
 		b, err := w.blockfileMgr.retrieveBlockByNumber(startingNum + uint64(i))
+		if expectedErr != nil {
+			assert.Equal(w.t, err.Error(), expectedErr.Error())
+			continue
+		}
 		assert.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
 		assert.Equal(w.t, blocks[i].Header, b.Header)
 	}
@@ -117,6 +127,33 @@ func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block, s
 	iLastBlock := len(blocks) - 1
 	assert.NoError(w.t, err, "Error while retrieving last block from blockfileMgr")
 	assert.Equal(w.t, blocks[iLastBlock], b)
+}
+
+func (w *testBlockfileMgrWrapper) testGetBlockByTxID(blocks []*common.Block, expectedErr error) {
+	for i, block := range blocks {
+		for _, txEnv := range block.Data.Data {
+			txID, err := extractTxID(txEnv)
+			assert.NoError(w.t, err)
+			b, err := w.blockfileMgr.retrieveBlockByTxID(txID)
+			if expectedErr != nil {
+				assert.Equal(w.t, err.Error(), expectedErr.Error())
+				continue
+			}
+			assert.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
+			assert.Equal(w.t, block, b)
+		}
+	}
+}
+
+func (w *testBlockfileMgrWrapper) testGetTransactionByTxID(txID string, expectedEnvelope []byte, expectedErr error) {
+	envelope, err := w.blockfileMgr.retrieveTransactionByID(txID)
+	if expectedErr != nil {
+		assert.Equal(w.t, err.Error(), expectedErr.Error())
+		return
+	}
+	actualEnvelope, err := proto.Marshal(envelope)
+	assert.NoError(w.t, err)
+	assert.Equal(w.t, expectedEnvelope, actualEnvelope)
 }
 
 func (w *testBlockfileMgrWrapper) close() {
