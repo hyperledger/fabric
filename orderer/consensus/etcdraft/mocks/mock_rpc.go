@@ -9,11 +9,11 @@ import (
 )
 
 type FakeRPC struct {
-	SendConsensusStub        func(dest uint64, msg *orderer.ConsensusRequest) error
+	SendConsensusStub        func(uint64, *orderer.ConsensusRequest) error
 	sendConsensusMutex       sync.RWMutex
 	sendConsensusArgsForCall []struct {
-		dest uint64
-		msg  *orderer.ConsensusRequest
+		arg1 uint64
+		arg2 *orderer.ConsensusRequest
 	}
 	sendConsensusReturns struct {
 		result1 error
@@ -21,11 +21,11 @@ type FakeRPC struct {
 	sendConsensusReturnsOnCall map[int]struct {
 		result1 error
 	}
-	SendSubmitStub        func(dest uint64, request *orderer.SubmitRequest) error
+	SendSubmitStub        func(uint64, *orderer.SubmitRequest) error
 	sendSubmitMutex       sync.RWMutex
 	sendSubmitArgsForCall []struct {
-		dest    uint64
-		request *orderer.SubmitRequest
+		arg1 uint64
+		arg2 *orderer.SubmitRequest
 	}
 	sendSubmitReturns struct {
 		result1 error
@@ -37,22 +37,23 @@ type FakeRPC struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeRPC) SendConsensus(dest uint64, msg *orderer.ConsensusRequest) error {
+func (fake *FakeRPC) SendConsensus(arg1 uint64, arg2 *orderer.ConsensusRequest) error {
 	fake.sendConsensusMutex.Lock()
 	ret, specificReturn := fake.sendConsensusReturnsOnCall[len(fake.sendConsensusArgsForCall)]
 	fake.sendConsensusArgsForCall = append(fake.sendConsensusArgsForCall, struct {
-		dest uint64
-		msg  *orderer.ConsensusRequest
-	}{dest, msg})
-	fake.recordInvocation("SendConsensus", []interface{}{dest, msg})
+		arg1 uint64
+		arg2 *orderer.ConsensusRequest
+	}{arg1, arg2})
+	fake.recordInvocation("SendConsensus", []interface{}{arg1, arg2})
 	fake.sendConsensusMutex.Unlock()
 	if fake.SendConsensusStub != nil {
-		return fake.SendConsensusStub(dest, msg)
+		return fake.SendConsensusStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.sendConsensusReturns.result1
+	fakeReturns := fake.sendConsensusReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeRPC) SendConsensusCallCount() int {
@@ -61,13 +62,22 @@ func (fake *FakeRPC) SendConsensusCallCount() int {
 	return len(fake.sendConsensusArgsForCall)
 }
 
+func (fake *FakeRPC) SendConsensusCalls(stub func(uint64, *orderer.ConsensusRequest) error) {
+	fake.sendConsensusMutex.Lock()
+	defer fake.sendConsensusMutex.Unlock()
+	fake.SendConsensusStub = stub
+}
+
 func (fake *FakeRPC) SendConsensusArgsForCall(i int) (uint64, *orderer.ConsensusRequest) {
 	fake.sendConsensusMutex.RLock()
 	defer fake.sendConsensusMutex.RUnlock()
-	return fake.sendConsensusArgsForCall[i].dest, fake.sendConsensusArgsForCall[i].msg
+	argsForCall := fake.sendConsensusArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeRPC) SendConsensusReturns(result1 error) {
+	fake.sendConsensusMutex.Lock()
+	defer fake.sendConsensusMutex.Unlock()
 	fake.SendConsensusStub = nil
 	fake.sendConsensusReturns = struct {
 		result1 error
@@ -75,6 +85,8 @@ func (fake *FakeRPC) SendConsensusReturns(result1 error) {
 }
 
 func (fake *FakeRPC) SendConsensusReturnsOnCall(i int, result1 error) {
+	fake.sendConsensusMutex.Lock()
+	defer fake.sendConsensusMutex.Unlock()
 	fake.SendConsensusStub = nil
 	if fake.sendConsensusReturnsOnCall == nil {
 		fake.sendConsensusReturnsOnCall = make(map[int]struct {
@@ -86,22 +98,23 @@ func (fake *FakeRPC) SendConsensusReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeRPC) SendSubmit(dest uint64, request *orderer.SubmitRequest) error {
+func (fake *FakeRPC) SendSubmit(arg1 uint64, arg2 *orderer.SubmitRequest) error {
 	fake.sendSubmitMutex.Lock()
 	ret, specificReturn := fake.sendSubmitReturnsOnCall[len(fake.sendSubmitArgsForCall)]
 	fake.sendSubmitArgsForCall = append(fake.sendSubmitArgsForCall, struct {
-		dest    uint64
-		request *orderer.SubmitRequest
-	}{dest, request})
-	fake.recordInvocation("SendSubmit", []interface{}{dest, request})
+		arg1 uint64
+		arg2 *orderer.SubmitRequest
+	}{arg1, arg2})
+	fake.recordInvocation("SendSubmit", []interface{}{arg1, arg2})
 	fake.sendSubmitMutex.Unlock()
 	if fake.SendSubmitStub != nil {
-		return fake.SendSubmitStub(dest, request)
+		return fake.SendSubmitStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.sendSubmitReturns.result1
+	fakeReturns := fake.sendSubmitReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeRPC) SendSubmitCallCount() int {
@@ -110,13 +123,22 @@ func (fake *FakeRPC) SendSubmitCallCount() int {
 	return len(fake.sendSubmitArgsForCall)
 }
 
+func (fake *FakeRPC) SendSubmitCalls(stub func(uint64, *orderer.SubmitRequest) error) {
+	fake.sendSubmitMutex.Lock()
+	defer fake.sendSubmitMutex.Unlock()
+	fake.SendSubmitStub = stub
+}
+
 func (fake *FakeRPC) SendSubmitArgsForCall(i int) (uint64, *orderer.SubmitRequest) {
 	fake.sendSubmitMutex.RLock()
 	defer fake.sendSubmitMutex.RUnlock()
-	return fake.sendSubmitArgsForCall[i].dest, fake.sendSubmitArgsForCall[i].request
+	argsForCall := fake.sendSubmitArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeRPC) SendSubmitReturns(result1 error) {
+	fake.sendSubmitMutex.Lock()
+	defer fake.sendSubmitMutex.Unlock()
 	fake.SendSubmitStub = nil
 	fake.sendSubmitReturns = struct {
 		result1 error
@@ -124,6 +146,8 @@ func (fake *FakeRPC) SendSubmitReturns(result1 error) {
 }
 
 func (fake *FakeRPC) SendSubmitReturnsOnCall(i int, result1 error) {
+	fake.sendSubmitMutex.Lock()
+	defer fake.sendSubmitMutex.Unlock()
 	fake.SendSubmitStub = nil
 	if fake.sendSubmitReturnsOnCall == nil {
 		fake.sendSubmitReturnsOnCall = make(map[int]struct {

@@ -60,7 +60,7 @@ const (
 	DefaultLeaderlessCheckInterval = time.Second * 10
 )
 
-//go:generate mockery -dir . -name Configurator -case underscore -output ./mocks/
+//go:generate counterfeiter -o mocks/configurator.go . Configurator
 
 // Configurator is used to configure the communication layer
 // when the chain starts.
@@ -683,7 +683,7 @@ func (c *Chain) serveRequest() {
 			c.propose(propC, bc, batches...)
 
 			if c.configInflight {
-				c.logger.Info("Received config block, pause accepting transaction till it is committed")
+				c.logger.Info("Received config transaction, pause accepting transaction till it is committed")
 				submitC = nil
 			} else if c.blockInflight >= c.opts.MaxInflightBlocks {
 				c.logger.Debugf("Number of in-flight blocks (%d) reaches limit (%d), pause accepting transaction",
@@ -1136,6 +1136,9 @@ func (c *Chain) configureComm() error {
 }
 
 func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
+	c.raftMetadataLock.RLock()
+	defer c.raftMetadataLock.RUnlock()
+
 	var nodes []cluster.RemoteNode
 	for raftID, consenter := range c.opts.Consenters {
 		// No need to know yourself
@@ -1245,8 +1248,19 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 
 			c.configInflight = true
 		} else if configMembership.Rotated() {
-			if err := c.configureComm(); err != nil {
-				c.logger.Panicf("Failed to configure communication: %s", err)
+			lead := atomic.LoadUint64(&c.lastKnownLeader)
+			if configMembership.RotatedNode == lead {
+				c.logger.Infof("Certificate of Raft leader is being rotated, attempt leader transfer before reconfiguring communication")
+				go func() {
+					c.Node.abdicateLeader(lead)
+					if err := c.configureComm(); err != nil {
+						c.logger.Panicf("Failed to configure communication: %s", err)
+					}
+				}()
+			} else {
+				if err := c.configureComm(); err != nil {
+					c.logger.Panicf("Failed to configure communication: %s", err)
+				}
 			}
 		}
 
