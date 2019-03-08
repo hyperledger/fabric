@@ -9,6 +9,7 @@ package lifecycle_test
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
@@ -21,7 +22,7 @@ var _ = Describe("Cache", func() {
 	var (
 		c            *lifecycle.Cache
 		l            *lifecycle.Lifecycle
-		chaincodeMap map[string]*lifecycle.CachedChaincodeDefinition
+		channelCache *lifecycle.ChannelCache
 	)
 
 	BeforeEach(func() {
@@ -30,15 +31,32 @@ var _ = Describe("Cache", func() {
 		}
 		c = lifecycle.NewCache(l, "my-mspid")
 
-		chaincodeMap = map[string]*lifecycle.CachedChaincodeDefinition{
-			"chaincode-name": {
-				Definition: &lifecycle.ChaincodeDefinition{
-					Sequence: 3,
+		channelCache = &lifecycle.ChannelCache{
+			Chaincodes: map[string]*lifecycle.CachedChaincodeDefinition{
+				"chaincode-name": {
+					Definition: &lifecycle.ChaincodeDefinition{
+						Sequence: 3,
+					},
+					Approved: true,
+					Hashes: []string{
+						string(util.ComputeSHA256([]byte("namespaces/metadata/chaincode-name#3"))),
+						string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/Sequence"))),
+						string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/EndorsementInfo"))),
+						string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/ValidationInfo"))),
+						string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/Collections"))),
+					},
 				},
-				Approved: true,
+			},
+			InterestingHashes: map[string]string{
+				string(util.ComputeSHA256([]byte("namespaces/metadata/chaincode-name#3"))):               "chaincode-name",
+				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/Sequence"))):        "chaincode-name",
+				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/EndorsementInfo"))): "chaincode-name",
+				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/ValidationInfo"))):  "chaincode-name",
+				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/Collections"))):     "chaincode-name",
 			},
 		}
-		lifecycle.SetChaincodeMap(c, "channel-id", chaincodeMap)
+
+		lifecycle.SetChaincodeMap(c, "channel-id", channelCache)
 	})
 
 	Describe("ChaincodeDefinition", func() {
@@ -99,8 +117,17 @@ var _ = Describe("Cache", func() {
 		It("updates the dirty definition from the state", func() {
 			err := c.Update("channel-id", dirtyChaincodes, fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(chaincodeMap["chaincode-name"].Definition.Sequence).To(Equal(int64(7)))
-			Expect(chaincodeMap["chaincode-name"].Approved).To(BeTrue())
+			Expect(channelCache.Chaincodes["chaincode-name"].Definition.Sequence).To(Equal(int64(7)))
+			Expect(channelCache.Chaincodes["chaincode-name"].Approved).To(BeTrue())
+			Expect(channelCache.Chaincodes["chaincode-name"].Hashes).To(Equal([]string{
+				string(util.ComputeSHA256([]byte("namespaces/metadata/chaincode-name#7"))),
+				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#7/EndorsementInfo"))),
+				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#7/ValidationInfo"))),
+				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#7/Collections"))),
+			}))
+			for _, hash := range channelCache.Chaincodes["chaincode-name"].Hashes {
+				Expect(channelCache.InterestingHashes[hash]).To(Equal("chaincode-name"))
+			}
 		})
 
 		Context("when the definition is not in the new state", func() {
@@ -111,7 +138,7 @@ var _ = Describe("Cache", func() {
 			It("deletes the cached definition", func() {
 				err := c.Update("channel-id", dirtyChaincodes, fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(chaincodeMap["chaincode-name"]).To(BeNil())
+				Expect(channelCache.Chaincodes["chaincode-name"]).To(BeNil())
 			})
 		})
 
@@ -128,7 +155,7 @@ var _ = Describe("Cache", func() {
 			It("does not mark the definition approved", func() {
 				err := c.Update("channel-id", dirtyChaincodes, fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(chaincodeMap["chaincode-name"].Approved).To(BeFalse())
+				Expect(channelCache.Chaincodes["chaincode-name"].Approved).To(BeFalse())
 			})
 
 			Context("when the org has no definition", func() {
@@ -139,7 +166,7 @@ var _ = Describe("Cache", func() {
 				It("does not mark the definition approved", func() {
 					err := c.Update("channel-id", dirtyChaincodes, fakeQueryExecutor)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(chaincodeMap["chaincode-name"].Approved).To(BeFalse())
+					Expect(channelCache.Chaincodes["chaincode-name"].Approved).To(BeFalse())
 				})
 			})
 		})

@@ -8,10 +8,10 @@ package lifecycle
 
 // Helpers to access unexported state.
 
-func SetChaincodeMap(c *Cache, channelID string, chaincodes map[string]*CachedChaincodeDefinition) {
-	c.definedChaincodes[channelID] = chaincodes
+func SetChaincodeMap(c *Cache, channelID string, channelCache *ChannelCache) {
+	c.definedChaincodes[channelID] = channelCache
 }
 
-func GetChaincodeMap(c *Cache, channelID string) map[string]*CachedChaincodeDefinition {
+func GetChaincodeMap(c *Cache, channelID string) *ChannelCache {
 	return c.definedChaincodes[channelID]
 }
