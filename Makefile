@@ -163,11 +163,17 @@ baseos: $(BUILD_DIR)/images/baseos/$(DUMMY)
 
 ccenv: $(BUILD_DIR)/images/ccenv/$(DUMMY)
 
+.PHONY: check-go-version
+check-go-version:
+	@scripts/check_go_version.sh
+
 .PHONY: peer
+peer: check-go-version
 peer: $(BUILD_DIR)/bin/peer
 peer-docker: $(BUILD_DIR)/images/peer/$(DUMMY)
 
 .PHONY: orderer
+orderer: check-go-version
 orderer: $(BUILD_DIR)/bin/orderer
 orderer-docker: $(BUILD_DIR)/images/orderer/$(DUMMY)
 
@@ -234,7 +240,7 @@ changelog:
 $(BUILD_DIR)/bin:
 	@mkdir -p $@
 
-$(BUILD_DIR)/bin/%: $(PROJECT_FILES)
+$(BUILD_DIR)/bin/%: check-go-version $(PROJECT_FILES)
 	@mkdir -p $(@D)
 	@echo "$@"
 	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
@@ -273,30 +279,30 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 	@touch $@
 
 # builds release packages for the host platform
-release: $(patsubst %,release/%, $(MARCH))
+release: check-go-version $(patsubst %,release/%, $(MARCH))
 
 # builds release packages for all target platforms
-release-all: $(patsubst %,release/%, $(RELEASE_PLATFORMS))
+release-all: check-go-version $(patsubst %,release/%, $(RELEASE_PLATFORMS))
 
 release/%: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.CommitSHA=$(EXTRA_VERSION)
 
 release/windows-amd64: GOOS=windows
-release/windows-amd64: $(patsubst %,release/windows-amd64/bin/%, $(RELEASE_PKGS)) release/windows-amd64/install
+release/windows-amd64: check-go-version $(patsubst %,release/windows-amd64/bin/%, $(RELEASE_PKGS)) release/windows-amd64/install
 
 release/darwin-amd64: GOOS=darwin
-release/darwin-amd64: $(patsubst %,release/darwin-amd64/bin/%, $(RELEASE_PKGS)) release/darwin-amd64/install
+release/darwin-amd64: check-go-version $(patsubst %,release/darwin-amd64/bin/%, $(RELEASE_PKGS)) release/darwin-amd64/install
 
 release/linux-amd64: GOOS=linux
-release/linux-amd64: $(patsubst %,release/linux-amd64/bin/%, $(RELEASE_PKGS)) release/linux-amd64/install
+release/linux-amd64: check-go-version $(patsubst %,release/linux-amd64/bin/%, $(RELEASE_PKGS)) release/linux-amd64/install
 
 release/%-amd64: GOARCH=amd64
 release/linux-%: GOOS=linux
 
 release/linux-s390x: GOARCH=s390x
-release/linux-s390x: $(patsubst %,release/linux-s390x/bin/%, $(RELEASE_PKGS)) release/linux-s390x/install
+release/linux-s390x: check-go-version $(patsubst %,release/linux-s390x/bin/%, $(RELEASE_PKGS)) release/linux-s390x/install
 
 release/linux-ppc64le: GOARCH=ppc64le
-release/linux-ppc64le: $(patsubst %,release/linux-ppc64le/bin/%, $(RELEASE_PKGS)) release/linux-ppc64le/install
+release/linux-ppc64le: check-go-version $(patsubst %,release/linux-ppc64le/bin/%, $(RELEASE_PKGS)) release/linux-ppc64le/install
 
 release/%/bin/configtxlator: $(PROJECT_FILES)
 	@echo "Building $@ for $(GOOS)-$(GOARCH)"
