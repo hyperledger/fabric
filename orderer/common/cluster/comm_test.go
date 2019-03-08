@@ -1240,9 +1240,19 @@ func TestMetrics(t *testing.T) {
 			name: "MsgDropCount",
 			runTest: func(node1, node2 *clusterNode, testMetrics *testMetrics) {
 				blockRecv := make(chan struct{})
+				wasReported := func() bool {
+					select {
+					case <-blockRecv:
+						return true
+					default:
+						return false
+					}
+				}
 				// When the drop count is reported, release the lock on the server side receive operation.
 				testMetrics.msgDropCount.AddStub = func(float642 float64) {
-					close(blockRecv)
+					if !wasReported() {
+						close(blockRecv)
+					}
 				}
 
 				node2.handler.On("OnConsensus", testChannel, node1.nodeInfo.ID, mock.Anything).Run(func(args mock.Arguments) {
@@ -1254,11 +1264,13 @@ func TestMetrics(t *testing.T) {
 				assert.NoError(t, err)
 
 				stream := assertEventualEstablishStream(t, rm)
-				// Send 1 too many messages while the server side is not reading from the stream
-				for i := 0; i < node2.c.SendBufferSize+1; i++ {
+				// Send too many messages while the server side is not reading from the stream
+				for {
 					stream.Send(testConsensusReq)
+					if wasReported() {
+						break
+					}
 				}
-
 				assert.Equal(t, []string{"host", node2.nodeInfo.Endpoint, "channel", testChannel},
 					testMetrics.msgDropCount.WithArgsForCall(0))
 				assert.Equal(t, 1, testMetrics.msgDropCount.AddCallCount())
