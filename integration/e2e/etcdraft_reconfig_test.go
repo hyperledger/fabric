@@ -192,9 +192,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Eventually(ordererProc.Ready()).Should(BeClosed())
 			}
 
+			By("Finding leader")
+			leader := findLeader(ordererRunners)
+			leaderIndex := leader - 1
+			blockSeq := 0
+
 			By("Checking that all orderers are online")
 			assertBlockReception(map[string]int{
-				"systemchannel": 0,
+				"systemchannel": blockSeq,
 			}, orderers, peer, network)
 
 			By("Preparing new certificates for the orderer nodes")
@@ -214,14 +219,33 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 					metadata.Consenters = newConsenters
 				})
+				blockSeq++
 			}
 
-			for i, rotation := range certificateRotations {
-				o := network.Orderers[i]
-				port := network.OrdererPort(o, nwo.ListenPort)
+			rotate := func(target int) {
+				// submit a config tx to rotate the cert of an orderer.
+				// The orderer being rotated is going to be unavailable
+				// eventually, therefore submitter of tx is different
+				// from the target, so the configuration can be reliably
+				// checked.
+				submitter := (target + 1) % 3
+				rotation := certificateRotations[target]
+				targetOrderer := network.Orderers[target]
+				remainder := func() []*nwo.Orderer {
+					var ret []*nwo.Orderer
+					for i, o := range network.Orderers {
+						if i == target {
+							continue
+						}
+						ret = append(ret, o)
+					}
+					return ret
+				}()
+				submitterOrderer := network.Orderers[submitter]
+				port := network.OrdererPort(targetOrderer, nwo.ListenPort)
 
-				fmt.Fprintf(GinkgoWriter, "Adding the future certificate of orderer node %d", i+1)
-				swap(o, rotation.oldCert, etcdraft.Consenter{
+				fmt.Fprintf(GinkgoWriter, "Rotating certificate of orderer node %d\n", target+1)
+				swap(submitterOrderer, rotation.oldCert, etcdraft.Consenter{
 					ServerTlsCert: rotation.newCert,
 					ClientTlsCert: rotation.newCert,
 					Host:          "127.0.0.1",
@@ -230,23 +254,55 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				By("Waiting for all orderers to sync")
 				assertBlockReception(map[string]int{
-					"systemchannel": i + 1,
-				}, orderers, peer, network)
+					"systemchannel": blockSeq,
+				}, remainder, peer, network)
+
+				By("Waiting for rotated node to be unavailable")
+				c := commands.ChannelFetch{
+					ChannelID:  network.SystemChannel.Name,
+					Block:      "newest",
+					OutputFile: "/dev/null",
+					Orderer:    network.OrdererAddress(targetOrderer, nwo.ListenPort),
+				}
+				Eventually(func() string {
+					sess, err := network.OrdererAdminSession(targetOrderer, peer, c)
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+					if sess.ExitCode() != 0 {
+						return fmt.Sprintf("exit code is %d: %s", sess.ExitCode(), string(sess.Err.Contents()))
+					}
+					sessErr := string(sess.Err.Contents())
+					expected := fmt.Sprintf("Received block: %d", blockSeq)
+					if strings.Contains(sessErr, expected) {
+						return ""
+					}
+					return sessErr
+				}, network.EventuallyTimeout, time.Second).ShouldNot(BeEmpty())
 
 				By("Killing the orderer")
-				ordererProcesses[i].Signal(syscall.SIGTERM)
-				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
+				ordererProcesses[target].Signal(syscall.SIGTERM)
+				Eventually(ordererProcesses[target].Wait(), network.EventuallyTimeout).Should(Receive())
 
 				By("Starting the orderer again")
-				ordererRunner := network.OrdererRunner(orderers[i])
+				ordererRunner := network.OrdererRunner(targetOrderer)
 				ordererRunners = append(ordererRunners, ordererRunner)
-				ordererProcesses[i] = ifrit.Invoke(grouper.Member{Name: orderers[i].ID(), Runner: ordererRunner})
-				Eventually(ordererProcesses[i].Ready()).Should(BeClosed())
+				ordererProcesses[target] = ifrit.Invoke(grouper.Member{Name: orderers[target].ID(), Runner: ordererRunner})
+				Eventually(ordererProcesses[target].Ready()).Should(BeClosed())
 
 				By("And waiting for it to stabilize")
 				assertBlockReception(map[string]int{
-					"systemchannel": i + 1,
+					"systemchannel": blockSeq,
 				}, orderers, peer, network)
+			}
+
+			By(fmt.Sprintf("Rotating cert on leader %d", leader))
+			rotate(leaderIndex)
+
+			By("Rotating certificates of other orderer nodes")
+			for i := range certificateRotations {
+				if i != leaderIndex {
+					rotate(i)
+				}
 			}
 
 		})
