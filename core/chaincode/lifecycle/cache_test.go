@@ -9,9 +9,11 @@ package lifecycle_test
 import (
 	"fmt"
 
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	. "github.com/onsi/ginkgo"
@@ -84,10 +86,9 @@ var _ = Describe("Cache", func() {
 		})
 	})
 
-	Describe("Update", func() {
+	Describe("Initialize", func() {
 		var (
 			fakePublicState   MapLedgerShim
-			dirtyChaincodes   map[string]struct{}
 			fakePrivateState  MapLedgerShim
 			fakeQueryExecutor *mock.SimpleQueryExecutor
 		)
@@ -100,6 +101,21 @@ var _ = Describe("Cache", func() {
 				return fakePublicState.GetState(key)
 			}
 
+			fakeQueryExecutor.GetStateRangeScanIteratorStub = func(namespace, begin, end string) (commonledger.ResultsIterator, error) {
+				fakeResultsIterator := &mock.ResultsIterator{}
+				i := 0
+				for key, value := range fakePublicState {
+					if key >= begin && key < end {
+						fakeResultsIterator.NextReturnsOnCall(i, &queryresult.KV{
+							Key:   key,
+							Value: value,
+						}, nil)
+						i++
+					}
+				}
+				return fakeResultsIterator, nil
+			}
+
 			fakeQueryExecutor.GetPrivateDataHashStub = func(namespace, collection, key string) ([]byte, error) {
 				return fakePrivateState.GetStateHash(key)
 			}
@@ -109,13 +125,12 @@ var _ = Describe("Cache", func() {
 			}, fakePublicState)
 			Expect(err).NotTo(HaveOccurred())
 
-			dirtyChaincodes = map[string]struct{}{"chaincode-name": {}}
 			err = l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{}, fakePrivateState)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("updates the dirty definition from the state", func() {
-			err := c.Update("channel-id", dirtyChaincodes, fakeQueryExecutor)
+		It("sets the definitions from the state", func() {
+			err := c.Initialize("channel-id", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(channelCache.Chaincodes["chaincode-name"].Definition.Sequence).To(Equal(int64(7)))
 			Expect(channelCache.Chaincodes["chaincode-name"].Approved).To(BeTrue())
@@ -130,13 +145,37 @@ var _ = Describe("Cache", func() {
 			}
 		})
 
+		Context("when the namespaces query fails", func() {
+			BeforeEach(func() {
+				fakeQueryExecutor.GetStateRangeScanIteratorReturns(nil, fmt.Errorf("range-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				err := c.Initialize("channel-id", fakeQueryExecutor)
+				Expect(err).To(MatchError("could not query namespace definitions: could not query namespace metadata: could not get state range for namespace namespaces: could not get state iterator: range-error"))
+			})
+		})
+
+		Context("when the namespace is not of type chaincode", func() {
+			BeforeEach(func() {
+				err := l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeParameters{}, fakePublicState)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("ignores the definition", func() {
+				err := c.Initialize("channel-id", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(0))
+			})
+		})
+
 		Context("when the definition is not in the new state", func() {
 			BeforeEach(func() {
 				fakeQueryExecutor.GetStateReturns(nil, nil)
 			})
 
 			It("deletes the cached definition", func() {
-				err := c.Update("channel-id", dirtyChaincodes, fakeQueryExecutor)
+				err := c.Initialize("channel-id", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(channelCache.Chaincodes["chaincode-name"]).To(BeNil())
 			})
@@ -153,7 +192,7 @@ var _ = Describe("Cache", func() {
 			})
 
 			It("does not mark the definition approved", func() {
-				err := c.Update("channel-id", dirtyChaincodes, fakeQueryExecutor)
+				err := c.Initialize("channel-id", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(channelCache.Chaincodes["chaincode-name"].Approved).To(BeFalse())
 			})
@@ -164,7 +203,7 @@ var _ = Describe("Cache", func() {
 				})
 
 				It("does not mark the definition approved", func() {
-					err := c.Update("channel-id", dirtyChaincodes, fakeQueryExecutor)
+					err := c.Initialize("channel-id", fakeQueryExecutor)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(channelCache.Chaincodes["chaincode-name"].Approved).To(BeFalse())
 				})
@@ -174,21 +213,9 @@ var _ = Describe("Cache", func() {
 		Context("when the update is for an unknown channel", func() {
 			It("creates the underlying map", func() {
 				Expect(lifecycle.GetChaincodeMap(c, "new-channel")).To(BeNil())
-				err := c.Update("new-channel", dirtyChaincodes, fakeQueryExecutor)
+				err := c.Initialize("new-channel", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(lifecycle.GetChaincodeMap(c, "new-channel")).NotTo(BeNil())
-			})
-		})
-
-		Context("when there are no dirty chaincodes", func() {
-			BeforeEach(func() {
-				dirtyChaincodes = map[string]struct{}{}
-			})
-
-			It("does nothing", func() {
-				err := c.Update("channel-id", dirtyChaincodes, fakeQueryExecutor)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(0))
 			})
 		})
 
@@ -198,7 +225,7 @@ var _ = Describe("Cache", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				err := c.Update("channel-id", dirtyChaincodes, fakeQueryExecutor)
+				err := c.Initialize("channel-id", fakeQueryExecutor)
 				Expect(err).To(MatchError("could not get chaincode definition for 'chaincode-name' on channel 'channel-id': could not deserialize metadata for chaincode chaincode-name: could not query metadata for namespace namespaces/chaincode-name: get-state-error"))
 			})
 		})
@@ -209,7 +236,7 @@ var _ = Describe("Cache", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				err := c.Update("channel-id", dirtyChaincodes, fakeQueryExecutor)
+				err := c.Initialize("channel-id", fakeQueryExecutor)
 				Expect(err).To(MatchError("could not check opaque org state for 'chaincode-name' on channel 'channel-id': could not get value for key namespaces/metadata/chaincode-name#7: private-data-error"))
 			})
 		})
