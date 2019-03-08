@@ -57,24 +57,54 @@ var (
 		LabelNames:   []string{"channel"},
 		StatsdFormat: "%{#fqname}.%{channel}",
 	}
+	dataPersistDurationOpts = metrics.HistogramOpts{
+		Namespace:    "consensus",
+		Subsystem:    "etcdraft",
+		Name:         "data_persist_duration",
+		Help:         "The time taken for etcd/raft data to be persisted in storage (in seconds).",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+	normalProposalsReceivedOpts = metrics.CounterOpts{
+		Namespace:    "consensus",
+		Subsystem:    "etcdraft",
+		Name:         "normal_proposals_received",
+		Help:         "The total number of proposals received for normal type transactions.",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+	configProposalsReceivedOpts = metrics.CounterOpts{
+		Namespace:    "consensus",
+		Subsystem:    "etcdraft",
+		Name:         "config_proposals_received",
+		Help:         "The total number of proposals received for config type transactions.",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
 )
 
 type Metrics struct {
-	ClusterSize          metrics.Gauge
-	IsLeader             metrics.Gauge
-	CommittedBlockNumber metrics.Gauge
-	SnapshotBlockNumber  metrics.Gauge
-	LeaderChanges        metrics.Counter
-	ProposalFailures     metrics.Counter
+	ClusterSize             metrics.Gauge
+	IsLeader                metrics.Gauge
+	CommittedBlockNumber    metrics.Gauge
+	SnapshotBlockNumber     metrics.Gauge
+	LeaderChanges           metrics.Counter
+	ProposalFailures        metrics.Counter
+	DataPersistDuration     metrics.Histogram
+	NormalProposalsReceived metrics.Counter
+	ConfigProposalsReceived metrics.Counter
 }
 
 func NewMetrics(p metrics.Provider) *Metrics {
 	return &Metrics{
-		ClusterSize:          p.NewGauge(clusterSizeOpts),
-		IsLeader:             p.NewGauge(isLeaderOpts),
-		CommittedBlockNumber: p.NewGauge(committedBlockNumberOpts),
-		SnapshotBlockNumber:  p.NewGauge(snapshotBlockNumberOpts),
-		LeaderChanges:        p.NewCounter(leaderChangesOpts),
-		ProposalFailures:     p.NewCounter(proposalFailuresOpts),
+		ClusterSize:             p.NewGauge(clusterSizeOpts),
+		IsLeader:                p.NewGauge(isLeaderOpts),
+		CommittedBlockNumber:    p.NewGauge(committedBlockNumberOpts),
+		SnapshotBlockNumber:     p.NewGauge(snapshotBlockNumberOpts),
+		LeaderChanges:           p.NewCounter(leaderChangesOpts),
+		ProposalFailures:        p.NewCounter(proposalFailuresOpts),
+		DataPersistDuration:     p.NewHistogram(dataPersistDurationOpts),
+		NormalProposalsReceived: p.NewCounter(normalProposalsReceivedOpts),
+		ConfigProposalsReceived: p.NewCounter(configProposalsReceivedOpts),
 	}
 }
