@@ -106,7 +106,7 @@ func (sh *SignatureHeader) StaticallyOpaqueFields() []string {
 
 func (sh *SignatureHeader) StaticallyOpaqueFieldProto(name string) (proto.Message, error) {
 	switch name {
-	case sh.StaticallyOpaqueFields()[0]: // channel_header
+	case sh.StaticallyOpaqueFields()[0]: // creator
 		return &msp.SerializedIdentity{}, nil
 	default:
 		return nil, fmt.Errorf("unknown header field: %s", name)

@@ -171,6 +171,10 @@ func (dccv *DynamicConsortiumConfigValue) Underlying() proto.Message {
 	return dccv.ConfigValue
 }
 
+func (dccv *DynamicConsortiumConfigValue) VariablyOpaqueFields() []string {
+	return []string{"value"}
+}
+
 func (dccv *DynamicConsortiumConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
 	if name != "value" {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)

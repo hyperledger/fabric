@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
+	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -234,11 +235,9 @@ func TestChannelCreationPolicy(t *testing.T) {
 }
 
 func TestStaticMarshal(t *testing.T) {
-	/*
-		To generate artifacts:
-			configtxgen -channelID test -outputBlock block.pb -profile SampleSingleMSPSolo
-			configtxgen -inspectBlock block.pb > block.json
-	*/
+	// To generate artifacts:
+	// 	configtxgen -channelID test -outputBlock block.pb -profile SampleSingleMSPSolo
+	// 	configtxgen -inspectBlock block.pb > block.json
 
 	blockBin, err := ioutil.ReadFile("testdata/block.pb")
 	require.NoError(t, err)
@@ -250,8 +249,9 @@ func TestStaticMarshal(t *testing.T) {
 	jsonBin, err := ioutil.ReadFile("testdata/block.json")
 	require.NoError(t, err)
 
-	var buffer bytes.Buffer
-	require.NoError(t, protolator.DeepMarshalJSON(&buffer, block))
+	buf := &bytes.Buffer{}
+	require.NoError(t, protolator.DeepMarshalJSON(buf, block))
 
-	assert.Equal(t, jsonBin, buffer.Bytes())
+	gt := NewGomegaWithT(t)
+	gt.Expect(buf).To(MatchJSON(jsonBin))
 }

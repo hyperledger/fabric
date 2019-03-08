@@ -178,7 +178,13 @@
 												"values": {
 													"ChannelCreationPolicy": {
 														"mod_policy": "/Channel/Orderer/Admins",
-														"value": "CAMSCAoGQWRtaW5z",
+														"value": {
+															"type": 3,
+															"value": {
+																"rule": "ANY",
+																"sub_policy": "Admins"
+															}
+														},
 														"version": "0"
 													}
 												},
