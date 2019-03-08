@@ -102,6 +102,8 @@ func (env *CouchDBCommonStorageTestEnv) setupCouch() string {
 
 // Init implements corresponding function from interface TestEnv
 func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
+	redologsPath := ledgerconfig.GetCouchdbRedologsPath()
+	assert.NoError(t, os.RemoveAll(redologsPath))
 	viper.Set("ledger.state.stateDatabase", "CouchDB")
 	couchAddr := env.setupCouch()
 	viper.Set("ledger.state.couchDBConfig.couchDBAddress", couchAddr)
@@ -136,7 +138,8 @@ func (env *CouchDBCommonStorageTestEnv) GetName() string {
 func (env *CouchDBCommonStorageTestEnv) Cleanup() {
 	csdbProvider, _ := env.provider.(*CommonStorageDBProvider)
 	statecouchdb.CleanupDB(env.t, csdbProvider.VersionedDBProvider)
-
+	redologsPath := ledgerconfig.GetCouchdbRedologsPath()
+	assert.NoError(env.t, os.RemoveAll(redologsPath))
 	env.bookkeeperTestEnv.Cleanup()
 	env.provider.Close()
 	env.couchCleanup()

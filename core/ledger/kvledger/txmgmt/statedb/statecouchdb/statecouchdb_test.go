@@ -53,7 +53,7 @@ func testMain(m *testing.M) int {
 	// Disable auto warm to avoid error logs when the couchdb database has been dropped
 	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
 
-	flogging.ActivateSpec("statecouchdb,couchdb=debug")
+	flogging.ActivateSpec("statecouchdb=debug")
 	//run the actual test
 	return m.Run()
 }
