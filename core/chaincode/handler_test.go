@@ -2599,7 +2599,7 @@ var _ = Describe("Handler", func() {
 				fakeChatStream.SendReturns(errors.New("where-is-waldo?"))
 			})
 
-			It("returns an error before before timing out", func() {
+			It("returns an error before timing out", func() {
 				respCh := make(chan *pb.ChaincodeMessage, 1)
 				go func() {
 					defer GinkgoRecover()

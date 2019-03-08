@@ -587,7 +587,7 @@ func (lscc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 	cds := ccpack.GetDepSpec()
 
 	if cds == nil {
-		return fmt.Errorf("nil deployment spec from from the CC package")
+		return fmt.Errorf("nil deployment spec from the CC package")
 	}
 
 	if err = lscc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name); err != nil {
