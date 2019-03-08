@@ -541,6 +541,7 @@ instantiate `papercontract` on `mychannel`:
 2018-11-07 14:22:11.163 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default escc
 2018-11-07 14:22:11.163 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 003 Using default vscc
 ```
+This command may take a few minutes to complete.
 
 One of the most important parameters on `instantiate` is `-P`. It specifies the
 [endorsement policy](../endorsement-policies.html) for `papercontract`,
@@ -553,10 +554,11 @@ state](../ledger/ledger.html#world-state).
 In passing, see how `instantiate` passes the orderer address
 `orderer.example.com:7050`. This is because it additionally submits an
 instantiate transaction to the orderer, which will include the transaction
-in the next block and distribute it to all peers that have joined
+in the next block and distribute the transaction to all peers that have joined
 `mychannel`, enabling any peer to execute the chaincode in their own
 isolated chaincode container. Note that `instantiate` only needs to be issued
-once for `papercontract` even though typically it is installed on many peers.
+once for the channel where `papercontract` will run even though typically it is
+installed on many peers.
 
 See how a `papercontract` container has been started with the `docker ps`
 command:
@@ -715,8 +717,8 @@ download and their exact versions:
 
 ```json
   "dependencies": {
-    "fabric-network": "^1.4.0-beta",
-    "fabric-client": "^1.4.0-beta",
+    "fabric-network": "~1.4.0",
+    "fabric-client": "~1.4.0",
     "js-yaml": "^3.12.0"
   },
 ```
@@ -728,6 +730,7 @@ Let's install these packages with the `npm install` command -- this may take up
 to a minute to complete:
 
 ```
+(magnetocorp user)$ cd commercial-paper/organization/magnetocorp/application/
 (magnetocorp user)$ npm install
 
 (           ) extract:lodash: sill extract ansi-styles@3.2.1
