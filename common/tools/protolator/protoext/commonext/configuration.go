@@ -10,44 +10,20 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/ordererext"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/peerext"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
+
+	"github.com/pkg/errors"
 )
-
-type DynamicConfigGroupFactory interface {
-	DynamicConfigGroup(cg *common.ConfigGroup) proto.Message
-}
-
-// ChannelGroupMap is a slightly hacky way to break the dependency cycle which would
-// be created if the protos/common package imported the protos/orderer or protos/peer
-// packages.  These packages instead register a DynamicConfigGroupFactory with the
-// ChannelGroupMap when they are loaded, creating a runtime linkage between the two
-var ChannelGroupMap = map[string]DynamicConfigGroupFactory{
-	"Consortiums": DynamicConsortiumsGroupFactory{},
-}
-
-type ConfigGroup struct{ *common.ConfigGroup }
-
-func (cg *ConfigGroup) Underlying() proto.Message { // MJS was already here
-	return cg.ConfigGroup
-}
-
-func (cg *ConfigGroup) DynamicMapFields() []string {
-	return []string{"groups", "values"}
-}
-
-type ConfigValue struct{ *common.ConfigValue }
-
-func (cv *ConfigValue) Underlying() proto.Message { // MJS was already here
-	return cv.ConfigValue
-}
-
-func (cv *ConfigValue) VariablyOpaqueFields() []string {
-	return []string{"value"}
-}
 
 type DynamicChannelGroup struct {
 	*common.ConfigGroup
+}
+
+func (dcg *DynamicChannelGroup) DynamicMapFields() []string {
+	return []string{"values", "groups"}
 }
 
 func (dcg *DynamicChannelGroup) Underlying() proto.Message {
@@ -62,11 +38,16 @@ func (dcg *DynamicChannelGroup) DynamicMapFieldProto(name string, key string, ba
 			return nil, fmt.Errorf("ConfigGroup groups can only contain ConfigGroup messages")
 		}
 
-		dcgf, ok := ChannelGroupMap[key]
-		if !ok {
-			return nil, fmt.Errorf("unknown channel ConfigGroup sub-group: %s", key)
+		switch key {
+		case "Consortiums":
+			return &DynamicConsortiumsGroup{ConfigGroup: cg}, nil
+		case "Orderer":
+			return &ordererext.DynamicOrdererGroup{ConfigGroup: cg}, nil
+		case "Application":
+			return &peerext.DynamicApplicationGroup{ConfigGroup: cg}, nil
+		default:
+			return nil, errors.Errorf("unknown channel group sub-group '%s'", key)
 		}
-		return dcgf.DynamicConfigGroup(cg), nil
 	case "values":
 		cv, ok := base.(*common.ConfigValue)
 		if !ok {
@@ -86,12 +67,16 @@ type DynamicChannelConfigValue struct {
 	name string
 }
 
+func (dccv *DynamicChannelConfigValue) StaticallyOpaqueFields() []string {
+	return []string{"value"}
+}
+
 func (dccv *DynamicChannelConfigValue) Underlying() proto.Message {
 	return dccv.ConfigValue
 }
 
-func (dccv *DynamicChannelConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
-	if name != "value " {
+func (dccv *DynamicChannelConfigValue) StaticallyOpaqueFieldProto(name string) (proto.Message, error) {
+	if name != "value" {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}
 	switch dccv.name {
@@ -110,20 +95,16 @@ func (dccv *DynamicChannelConfigValue) VariablyOpaqueFieldProto(name string) (pr
 	}
 }
 
-type DynamicConsortiumsGroupFactory struct{}
-
-func (dogf DynamicConsortiumsGroupFactory) DynamicConfigGroup(cg *common.ConfigGroup) proto.Message {
-	return &DynamicConsortiumsGroup{
-		ConfigGroup: cg,
-	}
-}
-
 type DynamicConsortiumsGroup struct {
 	*common.ConfigGroup
 }
 
 func (dcg *DynamicConsortiumsGroup) Underlying() proto.Message {
 	return dcg.ConfigGroup
+}
+
+func (dcg *DynamicConsortiumsGroup) DynamicMapFields() []string {
+	return []string{"values", "groups"}
 }
 
 func (dcg *DynamicConsortiumsGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
@@ -150,6 +131,10 @@ type DynamicConsortiumGroup struct {
 
 func (dcg *DynamicConsortiumGroup) Underlying() proto.Message {
 	return dcg.ConfigGroup
+}
+
+func (dcg *DynamicConsortiumGroup) DynamicMapFields() []string {
+	return []string{"values", "groups"}
 }
 
 func (dcg *DynamicConsortiumGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
@@ -206,6 +191,10 @@ func (dcg *DynamicConsortiumOrgGroup) Underlying() proto.Message {
 	return dcg.ConfigGroup
 }
 
+func (dcg *DynamicConsortiumOrgGroup) DynamicMapFields() []string {
+	return []string{"groups", "values"}
+}
+
 func (dcg *DynamicConsortiumOrgGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
 	switch name {
 	case "groups":
@@ -234,7 +223,11 @@ func (dcocv *DynamicConsortiumOrgConfigValue) Underlying() proto.Message {
 	return dcocv.ConfigValue
 }
 
-func (dcocv *DynamicConsortiumOrgConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
+func (dcocv *DynamicConsortiumOrgConfigValue) StaticallyOpaqueFields() []string {
+	return []string{"value"}
+}
+
+func (dcocv *DynamicConsortiumOrgConfigValue) StaticallyOpaqueFieldProto(name string) (proto.Message, error) {
 	if name != "value" {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}
