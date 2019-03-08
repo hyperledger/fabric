@@ -11,7 +11,7 @@ Endorsement
 
 :Answer:
   The number of peers required to endorse a transaction is driven by the
-  endorsement policy that is specified at chaincode deployment time.
+  endorsement policy that is specified in the chaincode definition.
 
 :Question:
   Does an application client need to connect to all peers?
