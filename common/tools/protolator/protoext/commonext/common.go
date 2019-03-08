@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 type Envelope struct{ *common.Envelope }
@@ -41,12 +42,7 @@ func (p *Payload) VariablyOpaqueFields() []string {
 	return []string{"data"}
 }
 
-var PayloadDataMap = map[int32]proto.Message{
-	int32(common.HeaderType_CONFIG):              &common.ConfigEnvelope{},
-	int32(common.HeaderType_ORDERER_TRANSACTION): &common.Envelope{},
-	int32(common.HeaderType_CONFIG_UPDATE):       &common.ConfigUpdateEnvelope{},
-	int32(common.HeaderType_MESSAGE):             &common.ConfigValue{}, // Only used by broadcast_msg sample client
-}
+var PayloadDataMap = map[int32]proto.Message{}
 
 func (p *Payload) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
 	if name != p.VariablyOpaqueFields()[0] {
@@ -60,10 +56,21 @@ func (p *Payload) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
 		return nil, fmt.Errorf("corrupt channel header: %s", err)
 	}
 
-	if msg, ok := PayloadDataMap[ch.Type]; ok {
-		return proto.Clone(msg), nil
+	switch ch.Type {
+	case int32(common.HeaderType_CONFIG):
+		return &common.ConfigEnvelope{}, nil
+	case int32(common.HeaderType_ORDERER_TRANSACTION):
+		return &common.Envelope{}, nil
+	case int32(common.HeaderType_CONFIG_UPDATE):
+		return &common.ConfigUpdateEnvelope{}, nil
+	case int32(common.HeaderType_MESSAGE):
+		// Only used by broadcast_msg sample client
+		return &common.ConfigValue{}, nil
+	case int32(common.HeaderType_ENDORSER_TRANSACTION):
+		return &peer.Transaction{}, nil
+	default:
+		return nil, fmt.Errorf("decoding type %v is unimplemented", ch.Type)
 	}
-	return nil, fmt.Errorf("decoding type %v is unimplemented", ch.Type)
 }
 
 type Header struct{ *common.Header }

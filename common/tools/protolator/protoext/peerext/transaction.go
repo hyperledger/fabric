@@ -10,14 +10,9 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/tools/protolator/protoext/commonext"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 )
-
-func init() {
-	commonext.PayloadDataMap[int32(common.HeaderType_ENDORSER_TRANSACTION)] = &peer.Transaction{}
-}
 
 type TransactionAction struct { // nothing was testing this
 	*peer.TransactionAction

@@ -28,16 +28,12 @@ func Decorate(msg proto.Message) proto.Message {
 		return &commonext.BlockData{BlockData: m}
 	case *common.Config:
 		return &commonext.Config{Config: m}
-	case *common.ConfigGroup:
-		return &commonext.ConfigGroup{ConfigGroup: m}
 	case *common.ConfigSignature:
 		return &commonext.ConfigSignature{ConfigSignature: m}
 	case *common.ConfigUpdate:
 		return &commonext.ConfigUpdate{ConfigUpdate: m}
 	case *common.ConfigUpdateEnvelope:
 		return &commonext.ConfigUpdateEnvelope{ConfigUpdateEnvelope: m}
-	case *common.ConfigValue:
-		return &commonext.ConfigValue{ConfigValue: m}
 	case *common.Envelope:
 		return &commonext.Envelope{Envelope: m}
 	case *common.Header:

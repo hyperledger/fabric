@@ -10,23 +10,10 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/tools/protolator/protoext/commonext"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 )
-
-func init() {
-	commonext.ChannelGroupMap["Application"] = DynamicApplicationGroupFactory{}
-}
-
-type DynamicApplicationGroupFactory struct{}
-
-func (dagf DynamicApplicationGroupFactory) DynamicConfigGroup(cg *common.ConfigGroup) proto.Message {
-	return &DynamicApplicationGroup{
-		ConfigGroup: cg,
-	}
-}
 
 type DynamicApplicationGroup struct {
 	*common.ConfigGroup
@@ -34,6 +21,10 @@ type DynamicApplicationGroup struct {
 
 func (dag *DynamicApplicationGroup) Underlying() proto.Message {
 	return dag.ConfigGroup
+}
+
+func (dag *DynamicApplicationGroup) DynamicMapFields() []string {
+	return []string{"groups", "values"}
 }
 
 func (dag *DynamicApplicationGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
@@ -69,6 +60,10 @@ func (dag *DynamicApplicationOrgGroup) Underlying() proto.Message {
 	return dag.ConfigGroup
 }
 
+func (dag *DynamicApplicationOrgGroup) DynamicMapFields() []string {
+	return []string{"groups", "values"}
+}
+
 func (dag *DynamicApplicationOrgGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
 	switch name {
 	case "groups":
@@ -97,7 +92,11 @@ func (ccv *DynamicApplicationConfigValue) Underlying() proto.Message {
 	return ccv.ConfigValue
 }
 
-func (ccv *DynamicApplicationConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
+func (ccv *DynamicApplicationConfigValue) StaticallyOpaqueFields() []string {
+	return []string{"value"}
+}
+
+func (ccv *DynamicApplicationConfigValue) StaticallyOpaqueFieldProto(name string) (proto.Message, error) {
 	if name != "value" {
 		return nil, fmt.Errorf("Not a marshaled field: %s", name)
 	}
@@ -120,7 +119,11 @@ func (daocv *DynamicApplicationOrgConfigValue) Underlying() proto.Message {
 	return daocv.ConfigValue
 }
 
-func (daocv *DynamicApplicationOrgConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
+func (daocv *DynamicApplicationOrgConfigValue) StaticallyOpaqueFields() []string {
+	return []string{"value"}
+}
+
+func (daocv *DynamicApplicationOrgConfigValue) StaticallyOpaqueFieldProto(name string) (proto.Message, error) {
 	if name != "value" {
 		return nil, fmt.Errorf("Not a marshaled field: %s", name)
 	}

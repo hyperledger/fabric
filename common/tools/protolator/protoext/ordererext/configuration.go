@@ -11,23 +11,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/hyperledger/fabric/common/tools/protolator/protoext/commonext"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 )
-
-func init() {
-	commonext.ChannelGroupMap["Orderer"] = DynamicOrdererGroupFactory{}
-}
-
-type DynamicOrdererGroupFactory struct{}
-
-func (dogf DynamicOrdererGroupFactory) DynamicConfigGroup(cg *common.ConfigGroup) proto.Message {
-	return &DynamicOrdererGroup{
-		ConfigGroup: cg,
-	}
-}
 
 type DynamicOrdererGroup struct {
 	*common.ConfigGroup
@@ -35,6 +23,10 @@ type DynamicOrdererGroup struct {
 
 func (dcg *DynamicOrdererGroup) Underlying() proto.Message {
 	return dcg.ConfigGroup
+}
+
+func (dcg *DynamicOrdererGroup) DynamicMapFields() []string {
+	return []string{"values", "groups"}
 }
 
 func (dcg *DynamicOrdererGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
@@ -85,12 +77,12 @@ func (ct *ConsensusType) VariablyOpaqueFieldProto(name string) (proto.Message, e
 	if name != "metadata" {
 		return nil, fmt.Errorf("not a valid opaque field: %s", name)
 	}
-	ctmf, ok := ConsensusTypeMetadataMap[ct.Type]
-	if ok {
-		return ctmf.NewMessage(), nil
+	switch ct.Type {
+	case "etcdraft":
+		return &etcdraft.Metadata{}, nil
+	default:
+		return &empty.Empty{}, nil
 	}
-	return &empty.Empty{}, nil
-
 }
 
 type DynamicOrdererOrgGroup struct {
@@ -99,6 +91,10 @@ type DynamicOrdererOrgGroup struct {
 
 func (dcg *DynamicOrdererOrgGroup) Underlying() proto.Message {
 	return dcg.ConfigGroup
+}
+
+func (dcg *DynamicOrdererOrgGroup) DynamicMapFields() []string {
+	return []string{"groups", "values"}
 }
 
 func (dcg *DynamicOrdererOrgGroup) DynamicMapFieldProto(name string, key string, base proto.Message) (proto.Message, error) {
@@ -129,7 +125,11 @@ func (docv *DynamicOrdererConfigValue) Underlying() proto.Message {
 	return docv.ConfigValue
 }
 
-func (docv *DynamicOrdererConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
+func (docv *DynamicOrdererConfigValue) StaticallyOpaqueFields() []string {
+	return []string{"value"}
+}
+
+func (docv *DynamicOrdererConfigValue) StaticallyOpaqueFieldProto(name string) (proto.Message, error) {
 	if name != "value" {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}
@@ -159,8 +159,11 @@ type DynamicOrdererOrgConfigValue struct {
 func (doocv *DynamicOrdererOrgConfigValue) Underlying() proto.Message {
 	return doocv.ConfigValue
 }
+func (doocv *DynamicOrdererOrgConfigValue) StaticallyOpaqueFields() []string {
+	return []string{"value"}
+}
 
-func (doocv *DynamicOrdererOrgConfigValue) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
+func (doocv *DynamicOrdererOrgConfigValue) StaticallyOpaqueFieldProto(name string) (proto.Message, error) {
 	if name != "value" {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}

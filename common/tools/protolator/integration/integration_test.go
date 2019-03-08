@@ -8,6 +8,7 @@ package integration
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -21,6 +22,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func bidirectionalMarshal(t *testing.T, doc proto.Message) {
@@ -229,4 +231,27 @@ func TestChannelCreationPolicy(t *testing.T) {
 	}
 
 	bidirectionalMarshal(t, cu)
+}
+
+func TestStaticMarshal(t *testing.T) {
+	/*
+		To generate artifacts:
+			configtxgen -channelID test -outputBlock block.pb -profile SampleSingleMSPSolo
+			configtxgen -inspectBlock block.pb > block.json
+	*/
+
+	blockBin, err := ioutil.ReadFile("testdata/block.pb")
+	require.NoError(t, err)
+
+	block := &cb.Block{}
+	err = proto.Unmarshal(blockBin, block)
+	require.NoError(t, err)
+
+	jsonBin, err := ioutil.ReadFile("testdata/block.json")
+	require.NoError(t, err)
+
+	var buffer bytes.Buffer
+	require.NoError(t, protolator.DeepMarshalJSON(&buffer, block))
+
+	assert.Equal(t, jsonBin, buffer.Bytes())
 }
