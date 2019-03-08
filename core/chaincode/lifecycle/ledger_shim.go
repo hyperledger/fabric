@@ -157,3 +157,17 @@ func (vss *ValidatorStateShim) GetState(key string) ([]byte, error) {
 	}
 	return result[0], nil
 }
+
+type PrivateQueryExecutor interface {
+	GetPrivateDataHash(namespace, collection, key string) (value []byte, err error)
+}
+
+type PrivateQueryExecutorShim struct {
+	Namespace  string
+	Collection string
+	State      PrivateQueryExecutor
+}
+
+func (pqes *PrivateQueryExecutorShim) GetStateHash(key string) ([]byte, error) {
+	return pqes.State.GetPrivateDataHash(pqes.Namespace, pqes.Collection, key)
+}
