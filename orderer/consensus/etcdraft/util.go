@@ -38,6 +38,11 @@ type MembershipChanges struct {
 	TotalChanges uint32
 }
 
+// Stringer implements fmt.Stringer interface
+func (mc *MembershipChanges) String() string {
+	return fmt.Sprintf("add %d node(s), remove %d node(s)", len(mc.AddedNodes), len(mc.RemovedNodes))
+}
+
 // UpdateRaftMetadataAndConfChange given the membership changes and RaftMetadata method calculates
 // updates to be applied to the raft  cluster configuration in addition updates mapping between
 // consenter and its id within metadata
@@ -485,6 +490,7 @@ type evictionSuspector struct {
 	amIInChannel               cluster.SelfMembershipPredicate
 	halt                       func()
 	writeBlock                 func(block *common.Block, metadata []byte)
+	triggerCatchUp             func(sn *raftpb.Snapshot)
 	halted                     bool
 }
 
@@ -520,6 +526,8 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 			details = fmt.Sprintf(": %s", err.Error())
 		}
 		es.logger.Infof("Cannot confirm our own eviction from the channel%s", details)
+
+		es.triggerCatchUp(&raftpb.Snapshot{Data: utils.MarshalOrPanic(lastConfigBlock)})
 		return
 	}
 

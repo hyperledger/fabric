@@ -49,6 +49,15 @@ const (
 	// used if SnapshotInterval is not provided in channel config options.
 	// It is needed to enforce snapshot being set.
 	DefaultSnapshotInterval = 100 * MEGABYTE // 100MB
+
+	// DefaultEvictionSuspicion is the threshold that a node will start
+	// suspecting its own eviction if it has been leaderless for this
+	// period of time.
+	DefaultEvictionSuspicion = time.Minute * 10
+
+	// DefaultLeaderlessCheckInterval is the interval that a chain checks
+	// its own leadership status.
+	DefaultLeaderlessCheckInterval = time.Second * 10
 )
 
 //go:generate mockery -dir . -name Configurator -case underscore -output ./mocks/
@@ -103,10 +112,12 @@ type Options struct {
 	MaxSizePerMsg   uint64
 	MaxInflightMsgs int
 
-	RaftMetadata      *etcdraft.RaftMetadata
-	Metrics           *Metrics
-	Cert              []byte
-	EvictionSuspicion time.Duration
+	RaftMetadata *etcdraft.RaftMetadata
+	Metrics      *Metrics
+	Cert         []byte
+
+	EvictionSuspicion   time.Duration
+	LeaderCheckInterval time.Duration
 }
 
 type submit struct {
@@ -322,10 +333,15 @@ func (c *Chain) Start() {
 
 	es := c.newEvictionSuspector()
 
+	interval := DefaultLeaderlessCheckInterval
+	if c.opts.LeaderCheckInterval != 0 {
+		interval = c.opts.LeaderCheckInterval
+	}
+
 	c.periodicChecker = &PeriodicCheck{
 		Logger:        c.logger,
 		Report:        es.confirmSuspicion,
-		CheckInterval: time.Second * 10,
+		CheckInterval: interval,
 		Condition:     c.suspectEviction,
 	}
 	c.periodicChecker.Run()
@@ -759,18 +775,20 @@ func (c *Chain) serveRequest() {
 			c.propose(propC, bc, batch) // we are certain this is normal block, no need to block
 
 		case sn := <-c.snapC:
-			if sn.Metadata.Index <= c.appliedIndex {
-				c.logger.Debugf("Skip snapshot taken at index %d, because it is behind current applied index %d", sn.Metadata.Index, c.appliedIndex)
-				break
+			if sn.Metadata.Index != 0 {
+				if sn.Metadata.Index <= c.appliedIndex {
+					c.logger.Debugf("Skip snapshot taken at index %d, because it is behind current applied index %d", sn.Metadata.Index, c.appliedIndex)
+					break
+				}
+
+				c.confState = sn.Metadata.ConfState
+				c.appliedIndex = sn.Metadata.Index
+			} else {
+				c.logger.Infof("Received artificial snapshot to trigger catchup")
 			}
 
-			b := utils.UnmarshalBlockOrPanic(sn.Data)
-			c.lastSnapBlockNum = b.Header.Number
-			c.confState = sn.Metadata.ConfState
-			c.appliedIndex = sn.Metadata.Index
-
 			if err := c.catchUp(sn); err != nil {
-				c.logger.Errorf("Failed to recover from snapshot taken at Term %d and Index %d: %s",
+				c.logger.Panicf("Failed to recover from snapshot taken at Term %d and Index %d: %s",
 					sn.Metadata.Term, sn.Metadata.Index, err)
 			}
 
@@ -791,6 +809,13 @@ func (c *Chain) serveRequest() {
 }
 
 func (c *Chain) writeBlock(block *common.Block, index uint64) {
+	if block.Header.Number > c.lastBlock.Header.Number+1 {
+		c.logger.Panicf("Got block %d, expect block %d", block.Header.Number, c.lastBlock.Header.Number+1)
+	} else if block.Header.Number < c.lastBlock.Header.Number+1 {
+		c.logger.Infof("Got block %d, expect block %d, this node was forced to catch up", block.Header.Number, c.lastBlock.Header.Number+1)
+		return
+	}
+
 	if c.blockInflight > 0 {
 		c.blockInflight-- // only reduce on leader
 	}
@@ -823,8 +848,15 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 	if c.isConfig(msg.Payload) {
 		// ConfigMsg
 		if msg.LastValidationSeq < seq {
+			c.logger.Warnf("Config message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
 			msg.Payload, _, err = c.support.ProcessConfigMsg(msg.Payload)
 			if err != nil {
+				c.Metrics.ProposalFailures.Add(1)
+				return nil, true, errors.Errorf("bad config message: %s", err)
+			}
+
+			if err = c.checkConfigUpdateValidity(msg.Payload); err != nil {
+				c.Metrics.ProposalFailures.Add(1)
 				return nil, true, errors.Errorf("bad config message: %s", err)
 			}
 		}
@@ -838,7 +870,9 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 	}
 	// it is a normal message
 	if msg.LastValidationSeq < seq {
+		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
 		if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
+			c.Metrics.ProposalFailures.Add(1)
 			return nil, true, errors.Errorf("bad normal message: %s", err)
 		}
 	}
@@ -886,28 +920,62 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 	}
 	defer puller.Close()
 
-	var block *common.Block
 	next := c.lastBlock.Header.Number + 1
 
 	c.logger.Infof("Catching up with snapshot taken at block %d, starting from block %d", b.Header.Number, next)
 
 	for next <= b.Header.Number {
-		block = puller.PullBlock(next)
+		block := puller.PullBlock(next)
 		if block == nil {
 			return errors.Errorf("failed to fetch block %d from cluster", next)
 		}
 		if utils.IsConfigBlock(block) {
 			c.support.WriteConfigBlock(block, nil)
+
+			cc, raftMetadata := c.detectConfChange(block)
+
+			if cc != nil {
+				c.logger.Infof("Config block %d changes Raft cluster, communication should be reconfigured", block.Header.Number)
+
+				c.raftMetadataLock.Lock()
+				c.opts.RaftMetadata = raftMetadata
+				c.raftMetadataLock.Unlock()
+
+				if err := c.configureComm(); err != nil {
+					c.logger.Panicf("Failed to configure communication: %s", err)
+				}
+			}
 		} else {
 			c.support.WriteBlock(block, nil)
 		}
 
+		c.lastBlock = block
 		next++
 	}
 
-	c.lastBlock = block
 	c.logger.Infof("Finished syncing with cluster up to block %d (incl.)", b.Header.Number)
 	return nil
+}
+
+func (c *Chain) detectConfChange(block *common.Block) (*raftpb.ConfChange, *etcdraft.RaftMetadata) {
+	// If config is targeting THIS channel, inspect consenter set and
+	// propose raft ConfChange if it adds/removes node.
+	metadata, raftMetadata := c.newRaftMetadata(block)
+
+	if metadata != nil && metadata.Options != nil && metadata.Options.SnapshotInterval != 0 {
+		old := c.sizeLimit
+		c.sizeLimit = metadata.Options.SnapshotInterval
+		c.logger.Infof("Snapshot interval is updated to %d bytes (was %d)", c.sizeLimit, old)
+	}
+
+	var changes *MembershipChanges
+	if metadata != nil {
+		changes = ComputeMembershipChanges(raftMetadata.Consenters, metadata.Consenters)
+	}
+
+	confChange := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
+
+	return confChange, raftMetadata
 }
 
 func (c *Chain) apply(ents []raftpb.Entry) {
@@ -1095,7 +1163,7 @@ func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
 	c.raftMetadataLock.RUnlock()
 
 	if changes.TotalChanges > 1 {
-		return errors.New("update of more than one consenters at a time is not supported")
+		return errors.Errorf("update of more than one consenter at a time is not supported, requested changes: %s", changes)
 	}
 
 	return nil
@@ -1114,22 +1182,7 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 
 	switch common.HeaderType(hdr.Type) {
 	case common.HeaderType_CONFIG:
-		// If config is targeting THIS channel, inspect consenter set and
-		// propose raft ConfChange if it adds/removes node.
-		metadata, raftMetadata := c.newRaftMetadata(block)
-
-		if metadata != nil && metadata.Options != nil && metadata.Options.SnapshotInterval != 0 {
-			old := c.sizeLimit
-			c.sizeLimit = metadata.Options.SnapshotInterval
-			c.logger.Infof("Snapshot interval is updated to %d bytes (was %d)", c.sizeLimit, old)
-		}
-
-		var changes *MembershipChanges
-		if metadata != nil {
-			changes = ComputeMembershipChanges(raftMetadata.Consenters, metadata.Consenters)
-		}
-
-		confChange := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
+		confChange, raftMetadata := c.detectConfChange(block)
 		raftMetadata.RaftIndex = index
 
 		raftMetadataBytes := utils.MarshalOrPanic(raftMetadata)
@@ -1251,9 +1304,17 @@ func (c *Chain) newEvictionSuspector() *evictionSuspector {
 		writeBlock:                 c.support.WriteBlock,
 		createPuller:               c.createPuller,
 		height:                     c.support.Height,
+		triggerCatchUp:             c.triggerCatchup,
 		logger:                     c.logger,
 		halt: func() {
 			c.Halt()
 		},
+	}
+}
+
+func (c *Chain) triggerCatchup(sn *raftpb.Snapshot) {
+	select {
+	case c.snapC <- sn:
+	case <-c.doneC:
 	}
 }

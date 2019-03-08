@@ -29,6 +29,7 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/raft/raftpb"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -462,7 +463,8 @@ func TestEvictionSuspector(t *testing.T) {
 				height: func() uint64 {
 					return testCase.height
 				},
-				logger: flogging.MustGetLogger("test"),
+				logger:         flogging.MustGetLogger("test"),
+				triggerCatchUp: func(sn *raftpb.Snapshot) { return },
 			}
 
 			foundExpectedLog := testCase.expectedLog == ""

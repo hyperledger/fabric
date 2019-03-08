@@ -17,6 +17,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/pkg/fileutil"
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
@@ -30,12 +31,13 @@ var (
 
 	dataDir, walDir, snapDir string
 
+	ram   *raft.MemoryStorage
 	store *RaftStorage
 )
 
 func setup(t *testing.T) {
-	logger = flogging.NewFabricLogger(zap.NewNop())
-	ram := raft.NewMemoryStorage()
+	logger = flogging.NewFabricLogger(zap.NewExample())
+	ram = raft.NewMemoryStorage()
 	dataDir, err = ioutil.TempDir("", "etcdraft-")
 	assert.NoError(t, err)
 	walDir, snapDir = path.Join(dataDir, "wal"), path.Join(dataDir, "snapshot")
@@ -48,6 +50,70 @@ func clean(t *testing.T) {
 	assert.NoError(t, err)
 	err = os.RemoveAll(dataDir)
 	assert.NoError(t, err)
+}
+
+func fileCount(files []string, suffix string) (c int) {
+	for _, f := range files {
+		if strings.HasSuffix(f, suffix) {
+			c++
+		}
+	}
+	return
+}
+
+func assertFileCount(t *testing.T, wal, snap int) {
+	files, err := fileutil.ReadDir(walDir)
+	assert.NoError(t, err)
+	assert.Equal(t, wal, fileCount(files, ".wal"), "WAL file count mismatch")
+
+	files, err = fileutil.ReadDir(snapDir)
+	assert.NoError(t, err)
+	assert.Equal(t, snap, fileCount(files, ".snap"), "Snap file count mismatch")
+}
+
+func TestOpenWAL(t *testing.T) {
+	t.Run("Last WAL file is broken", func(t *testing.T) {
+		setup(t)
+		defer clean(t)
+
+		// create 10 new wal files
+		for i := 0; i < 10; i++ {
+			store.Store(
+				[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 10)}},
+				raftpb.HardState{},
+				raftpb.Snapshot{},
+			)
+		}
+		assertFileCount(t, 1, 0)
+		lasti, _ := store.ram.LastIndex() // it never returns err
+
+		// close current storage
+		err = store.Close()
+		assert.NoError(t, err)
+
+		// truncate wal file
+		w := func() string {
+			files, err := fileutil.ReadDir(walDir)
+			assert.NoError(t, err)
+			for _, f := range files {
+				if strings.HasSuffix(f, ".wal") {
+					return path.Join(walDir, f)
+				}
+			}
+			t.FailNow()
+			return ""
+		}()
+		err = os.Truncate(w, 200)
+		assert.NoError(t, err)
+
+		// create new storage
+		ram = raft.NewMemoryStorage()
+		store, err = CreateStorage(logger, walDir, snapDir, ram)
+		require.NoError(t, err)
+		lastI, _ := store.ram.LastIndex()
+		assert.True(t, lastI > 0)     // we are still able to read some entries
+		assert.True(t, lasti > lastI) // but less than before because some are broken
+	})
 }
 
 func TestTakeSnapshot(t *testing.T) {
@@ -66,25 +132,6 @@ func TestTakeSnapshot(t *testing.T) {
 	// 0000000000000008-0000000000000008.wal
 	// 0000000000000009-0000000000000009.wal
 	// 000000000000000a-000000000000000a.wal
-
-	fileCount := func(files []string, suffix string) (c int) {
-		for _, f := range files {
-			if strings.HasSuffix(f, suffix) {
-				c++
-			}
-		}
-		return
-	}
-
-	assertFileCount := func(t *testing.T, wal, snap int) {
-		files, err := fileutil.ReadDir(walDir)
-		assert.NoError(t, err)
-		assert.Equal(t, wal, fileCount(files, ".wal"), "WAL file count mismatch")
-
-		files, err = fileutil.ReadDir(snapDir)
-		assert.NoError(t, err)
-		assert.Equal(t, snap, fileCount(files, ".snap"), "Snap file count mismatch")
-	}
 
 	t.Run("Good", func(t *testing.T) {
 		t.Run("MaxSnapshotFiles==1", func(t *testing.T) {

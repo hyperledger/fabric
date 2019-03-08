@@ -31,10 +31,6 @@ import (
 	"go.etcd.io/etcd/raft"
 )
 
-const (
-	defaultEvictionSuspicion = time.Minute * 10
-)
-
 // CreateChainCallback creates a new chain
 type CreateChainCallback func()
 
@@ -170,8 +166,8 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 
 	var evictionSuspicion time.Duration
 	if c.EtcdRaftConfig.EvictionSuspicion == "" {
-		c.Logger.Infof("EvictionSuspicion not set, defaulting to %v", defaultEvictionSuspicion)
-		evictionSuspicion = defaultEvictionSuspicion
+		c.Logger.Infof("EvictionSuspicion not set, defaulting to %v", DefaultEvictionSuspicion)
+		evictionSuspicion = DefaultEvictionSuspicion
 	} else {
 		evictionSuspicion, err = time.ParseDuration(c.EtcdRaftConfig.EvictionSuspicion)
 		if err != nil {
