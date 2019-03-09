@@ -49,10 +49,10 @@ type Launcher interface {
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
 type Lifecycle interface {
 	// ChaincodeDefinition returns the details for a chaincode by name
-	ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error)
+	ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error)
 
 	// ChaincodeContainerInfo returns the package necessary to launch a chaincode
-	ChaincodeContainerInfo(chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error)
+	ChaincodeContainerInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error)
 }
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
@@ -283,7 +283,7 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 
 	// TODO: remove this once _lifecycle has definitions for all system chaincodes
 	if !cs.SystemCCProvider.IsSysCC(cccid.Name) {
-		ccci, err = cs.Lifecycle.ChaincodeContainerInfo(cccid.Name, txParams.TXSimulator)
+		ccci, err = cs.Lifecycle.ChaincodeContainerInfo(txParams.ChannelID, cccid.Name, txParams.TXSimulator)
 		if err != nil {
 			// TODO: There has to be a better way to do this...
 			if cs.UserRunsCC {

@@ -2363,7 +2363,8 @@ var _ = Describe("Handler", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeDefinitionGetter.ChaincodeDefinitionCallCount()).To(Equal(1))
-				ccname, txSim := fakeDefinitionGetter.ChaincodeDefinitionArgsForCall(0)
+				channelID, ccname, txSim := fakeDefinitionGetter.ChaincodeDefinitionArgsForCall(0)
+				Expect(channelID).To(Equal("channel-id"))
 				Expect(ccname).To(Equal("target-chaincode-name"))
 				Expect(txSim).To(Equal(newTxSimulator))
 			})

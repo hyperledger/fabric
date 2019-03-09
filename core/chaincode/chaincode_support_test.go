@@ -177,15 +177,15 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	pr := platforms.NewRegistry(&golang.Platform{})
 	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
 	ml := &mock.Lifecycle{}
-	ml.On("ChaincodeContainerInfo", "shimTestCC", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "shimTestCC", Version: "0"}, nil)
-	ml.On("ChaincodeContainerInfo", "calledCC", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "calledCC", Version: "0"}, nil)
-	ml.On("ChaincodeContainerInfo", "lscc", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "lscc", Version: util.GetSysCCVersion()}, nil)
-	ml.On("ChaincodeContainerInfo", "badccname", ma.Anything).Return(nil, errors.New("get lost"))
+	ml.On("ChaincodeContainerInfo", ma.Anything, "shimTestCC", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "shimTestCC", Version: "0"}, nil)
+	ml.On("ChaincodeContainerInfo", ma.Anything, "calledCC", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "calledCC", Version: "0"}, nil)
+	ml.On("ChaincodeContainerInfo", ma.Anything, "lscc", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "lscc", Version: util.GetSysCCVersion()}, nil)
+	ml.On("ChaincodeContainerInfo", ma.Anything, "badccname", ma.Anything).Return(nil, errors.New("get lost"))
 	mcd := &mock.ChaincodeDefinition{}
 	mcd.On("CCVersion").Return("0")
 	mcd.On("Hash").Return([]byte("Hulk, (sm)hash"))
 	mcd.On("RequiresInit").Return(false)
-	ml.On("ChaincodeDefinition", "calledCC", ma.Anything).Return(mcd, nil)
+	ml.On("ChaincodeDefinition", ma.Anything, "calledCC", ma.Anything).Return(mcd, nil)
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		"0.0.0.0:7052",

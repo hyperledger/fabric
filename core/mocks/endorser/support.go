@@ -107,7 +107,7 @@ func (s *MockSupport) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSp
 	return cds, nil
 }
 
-func (s *MockSupport) GetChaincodeDefinition(chaincodeName string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+func (s *MockSupport) GetChaincodeDefinition(channelID, chaincodeName string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
 	return s.ChaincodeDefinitionRv, s.ChaincodeDefinitionError
 }
 

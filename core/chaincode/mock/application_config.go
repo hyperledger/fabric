@@ -8,19 +8,11 @@ import (
 )
 
 type ApplicationConfig struct {
-	OrganizationsStub        func() map[string]channelconfig.ApplicationOrg
-	organizationsMutex       sync.RWMutex
-	organizationsArgsForCall []struct{}
-	organizationsReturns     struct {
-		result1 map[string]channelconfig.ApplicationOrg
-	}
-	organizationsReturnsOnCall map[int]struct {
-		result1 map[string]channelconfig.ApplicationOrg
-	}
 	APIPolicyMapperStub        func() channelconfig.PolicyMapper
 	aPIPolicyMapperMutex       sync.RWMutex
-	aPIPolicyMapperArgsForCall []struct{}
-	aPIPolicyMapperReturns     struct {
+	aPIPolicyMapperArgsForCall []struct {
+	}
+	aPIPolicyMapperReturns struct {
 		result1 channelconfig.PolicyMapper
 	}
 	aPIPolicyMapperReturnsOnCall map[int]struct {
@@ -28,61 +20,33 @@ type ApplicationConfig struct {
 	}
 	CapabilitiesStub        func() channelconfig.ApplicationCapabilities
 	capabilitiesMutex       sync.RWMutex
-	capabilitiesArgsForCall []struct{}
-	capabilitiesReturns     struct {
+	capabilitiesArgsForCall []struct {
+	}
+	capabilitiesReturns struct {
 		result1 channelconfig.ApplicationCapabilities
 	}
 	capabilitiesReturnsOnCall map[int]struct {
 		result1 channelconfig.ApplicationCapabilities
 	}
+	OrganizationsStub        func() map[string]channelconfig.ApplicationOrg
+	organizationsMutex       sync.RWMutex
+	organizationsArgsForCall []struct {
+	}
+	organizationsReturns struct {
+		result1 map[string]channelconfig.ApplicationOrg
+	}
+	organizationsReturnsOnCall map[int]struct {
+		result1 map[string]channelconfig.ApplicationOrg
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *ApplicationConfig) Organizations() map[string]channelconfig.ApplicationOrg {
-	fake.organizationsMutex.Lock()
-	ret, specificReturn := fake.organizationsReturnsOnCall[len(fake.organizationsArgsForCall)]
-	fake.organizationsArgsForCall = append(fake.organizationsArgsForCall, struct{}{})
-	fake.recordInvocation("Organizations", []interface{}{})
-	fake.organizationsMutex.Unlock()
-	if fake.OrganizationsStub != nil {
-		return fake.OrganizationsStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.organizationsReturns.result1
-}
-
-func (fake *ApplicationConfig) OrganizationsCallCount() int {
-	fake.organizationsMutex.RLock()
-	defer fake.organizationsMutex.RUnlock()
-	return len(fake.organizationsArgsForCall)
-}
-
-func (fake *ApplicationConfig) OrganizationsReturns(result1 map[string]channelconfig.ApplicationOrg) {
-	fake.OrganizationsStub = nil
-	fake.organizationsReturns = struct {
-		result1 map[string]channelconfig.ApplicationOrg
-	}{result1}
-}
-
-func (fake *ApplicationConfig) OrganizationsReturnsOnCall(i int, result1 map[string]channelconfig.ApplicationOrg) {
-	fake.OrganizationsStub = nil
-	if fake.organizationsReturnsOnCall == nil {
-		fake.organizationsReturnsOnCall = make(map[int]struct {
-			result1 map[string]channelconfig.ApplicationOrg
-		})
-	}
-	fake.organizationsReturnsOnCall[i] = struct {
-		result1 map[string]channelconfig.ApplicationOrg
-	}{result1}
 }
 
 func (fake *ApplicationConfig) APIPolicyMapper() channelconfig.PolicyMapper {
 	fake.aPIPolicyMapperMutex.Lock()
 	ret, specificReturn := fake.aPIPolicyMapperReturnsOnCall[len(fake.aPIPolicyMapperArgsForCall)]
-	fake.aPIPolicyMapperArgsForCall = append(fake.aPIPolicyMapperArgsForCall, struct{}{})
+	fake.aPIPolicyMapperArgsForCall = append(fake.aPIPolicyMapperArgsForCall, struct {
+	}{})
 	fake.recordInvocation("APIPolicyMapper", []interface{}{})
 	fake.aPIPolicyMapperMutex.Unlock()
 	if fake.APIPolicyMapperStub != nil {
@@ -91,7 +55,8 @@ func (fake *ApplicationConfig) APIPolicyMapper() channelconfig.PolicyMapper {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.aPIPolicyMapperReturns.result1
+	fakeReturns := fake.aPIPolicyMapperReturns
+	return fakeReturns.result1
 }
 
 func (fake *ApplicationConfig) APIPolicyMapperCallCount() int {
@@ -100,7 +65,15 @@ func (fake *ApplicationConfig) APIPolicyMapperCallCount() int {
 	return len(fake.aPIPolicyMapperArgsForCall)
 }
 
+func (fake *ApplicationConfig) APIPolicyMapperCalls(stub func() channelconfig.PolicyMapper) {
+	fake.aPIPolicyMapperMutex.Lock()
+	defer fake.aPIPolicyMapperMutex.Unlock()
+	fake.APIPolicyMapperStub = stub
+}
+
 func (fake *ApplicationConfig) APIPolicyMapperReturns(result1 channelconfig.PolicyMapper) {
+	fake.aPIPolicyMapperMutex.Lock()
+	defer fake.aPIPolicyMapperMutex.Unlock()
 	fake.APIPolicyMapperStub = nil
 	fake.aPIPolicyMapperReturns = struct {
 		result1 channelconfig.PolicyMapper
@@ -108,6 +81,8 @@ func (fake *ApplicationConfig) APIPolicyMapperReturns(result1 channelconfig.Poli
 }
 
 func (fake *ApplicationConfig) APIPolicyMapperReturnsOnCall(i int, result1 channelconfig.PolicyMapper) {
+	fake.aPIPolicyMapperMutex.Lock()
+	defer fake.aPIPolicyMapperMutex.Unlock()
 	fake.APIPolicyMapperStub = nil
 	if fake.aPIPolicyMapperReturnsOnCall == nil {
 		fake.aPIPolicyMapperReturnsOnCall = make(map[int]struct {
@@ -122,7 +97,8 @@ func (fake *ApplicationConfig) APIPolicyMapperReturnsOnCall(i int, result1 chann
 func (fake *ApplicationConfig) Capabilities() channelconfig.ApplicationCapabilities {
 	fake.capabilitiesMutex.Lock()
 	ret, specificReturn := fake.capabilitiesReturnsOnCall[len(fake.capabilitiesArgsForCall)]
-	fake.capabilitiesArgsForCall = append(fake.capabilitiesArgsForCall, struct{}{})
+	fake.capabilitiesArgsForCall = append(fake.capabilitiesArgsForCall, struct {
+	}{})
 	fake.recordInvocation("Capabilities", []interface{}{})
 	fake.capabilitiesMutex.Unlock()
 	if fake.CapabilitiesStub != nil {
@@ -131,7 +107,8 @@ func (fake *ApplicationConfig) Capabilities() channelconfig.ApplicationCapabilit
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.capabilitiesReturns.result1
+	fakeReturns := fake.capabilitiesReturns
+	return fakeReturns.result1
 }
 
 func (fake *ApplicationConfig) CapabilitiesCallCount() int {
@@ -140,7 +117,15 @@ func (fake *ApplicationConfig) CapabilitiesCallCount() int {
 	return len(fake.capabilitiesArgsForCall)
 }
 
+func (fake *ApplicationConfig) CapabilitiesCalls(stub func() channelconfig.ApplicationCapabilities) {
+	fake.capabilitiesMutex.Lock()
+	defer fake.capabilitiesMutex.Unlock()
+	fake.CapabilitiesStub = stub
+}
+
 func (fake *ApplicationConfig) CapabilitiesReturns(result1 channelconfig.ApplicationCapabilities) {
+	fake.capabilitiesMutex.Lock()
+	defer fake.capabilitiesMutex.Unlock()
 	fake.CapabilitiesStub = nil
 	fake.capabilitiesReturns = struct {
 		result1 channelconfig.ApplicationCapabilities
@@ -148,6 +133,8 @@ func (fake *ApplicationConfig) CapabilitiesReturns(result1 channelconfig.Applica
 }
 
 func (fake *ApplicationConfig) CapabilitiesReturnsOnCall(i int, result1 channelconfig.ApplicationCapabilities) {
+	fake.capabilitiesMutex.Lock()
+	defer fake.capabilitiesMutex.Unlock()
 	fake.CapabilitiesStub = nil
 	if fake.capabilitiesReturnsOnCall == nil {
 		fake.capabilitiesReturnsOnCall = make(map[int]struct {
@@ -159,15 +146,67 @@ func (fake *ApplicationConfig) CapabilitiesReturnsOnCall(i int, result1 channelc
 	}{result1}
 }
 
+func (fake *ApplicationConfig) Organizations() map[string]channelconfig.ApplicationOrg {
+	fake.organizationsMutex.Lock()
+	ret, specificReturn := fake.organizationsReturnsOnCall[len(fake.organizationsArgsForCall)]
+	fake.organizationsArgsForCall = append(fake.organizationsArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Organizations", []interface{}{})
+	fake.organizationsMutex.Unlock()
+	if fake.OrganizationsStub != nil {
+		return fake.OrganizationsStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.organizationsReturns
+	return fakeReturns.result1
+}
+
+func (fake *ApplicationConfig) OrganizationsCallCount() int {
+	fake.organizationsMutex.RLock()
+	defer fake.organizationsMutex.RUnlock()
+	return len(fake.organizationsArgsForCall)
+}
+
+func (fake *ApplicationConfig) OrganizationsCalls(stub func() map[string]channelconfig.ApplicationOrg) {
+	fake.organizationsMutex.Lock()
+	defer fake.organizationsMutex.Unlock()
+	fake.OrganizationsStub = stub
+}
+
+func (fake *ApplicationConfig) OrganizationsReturns(result1 map[string]channelconfig.ApplicationOrg) {
+	fake.organizationsMutex.Lock()
+	defer fake.organizationsMutex.Unlock()
+	fake.OrganizationsStub = nil
+	fake.organizationsReturns = struct {
+		result1 map[string]channelconfig.ApplicationOrg
+	}{result1}
+}
+
+func (fake *ApplicationConfig) OrganizationsReturnsOnCall(i int, result1 map[string]channelconfig.ApplicationOrg) {
+	fake.organizationsMutex.Lock()
+	defer fake.organizationsMutex.Unlock()
+	fake.OrganizationsStub = nil
+	if fake.organizationsReturnsOnCall == nil {
+		fake.organizationsReturnsOnCall = make(map[int]struct {
+			result1 map[string]channelconfig.ApplicationOrg
+		})
+	}
+	fake.organizationsReturnsOnCall[i] = struct {
+		result1 map[string]channelconfig.ApplicationOrg
+	}{result1}
+}
+
 func (fake *ApplicationConfig) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.organizationsMutex.RLock()
-	defer fake.organizationsMutex.RUnlock()
 	fake.aPIPolicyMapperMutex.RLock()
 	defer fake.aPIPolicyMapperMutex.RUnlock()
 	fake.capabilitiesMutex.RLock()
 	defer fake.capabilitiesMutex.RUnlock()
+	fake.organizationsMutex.RLock()
+	defer fake.organizationsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
