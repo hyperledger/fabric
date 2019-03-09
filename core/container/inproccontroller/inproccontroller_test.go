@@ -326,7 +326,7 @@ func TestStop(t *testing.T) {
 	r.ChaincodeSupport = MockCCSupport{}
 	vm := NewInprocVM(r)
 
-	ccid := ccintf.CCID("name-1")
+	ccid := ccintf.CCID("name:1")
 
 	mockInprocContainer := &inprocContainer{
 		chaincode: MockShim{},
@@ -339,8 +339,8 @@ func TestStop(t *testing.T) {
 	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: stopChan}
 	ipc.running = true
 
-	r.typeRegistry["name-1"] = ipc
-	r.instRegistry["name-1"] = ipc
+	r.typeRegistry["name:1"] = ipc
+	r.instRegistry["name:1"] = ipc
 
 	go func() {
 		err := vm.Stop(ccid, 1000, true, true)
@@ -356,11 +356,11 @@ func TestStopNoIPCTemplate(t *testing.T) {
 	r.ChaincodeSupport = MockCCSupport{}
 	vm := NewInprocVM(r)
 
-	ccid := ccintf.CCID("name-1")
+	ccid := ccintf.CCID("name:1")
 
 	err := vm.Stop(ccid, 1000, true, true)
 	assert.NotNil(t, err, "err should not be nil")
-	assert.Equal(t, err.Error(), "name-1 not registered", "error should be correct")
+	assert.Equal(t, err.Error(), "name:1 not registered", "error should be correct")
 }
 
 func TestStopNoIPC(t *testing.T) {
@@ -368,7 +368,7 @@ func TestStopNoIPC(t *testing.T) {
 	r.ChaincodeSupport = MockCCSupport{}
 	vm := NewInprocVM(r)
 
-	ccid := ccintf.CCID("name-1")
+	ccid := ccintf.CCID("name:1")
 
 	mockInprocContainer := &inprocContainer{
 		chaincode: MockShim{},
@@ -380,11 +380,11 @@ func TestStopNoIPC(t *testing.T) {
 	stopChan := make(chan struct{})
 	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: stopChan}
 
-	r.typeRegistry["name-1"] = ipc
+	r.typeRegistry["name:1"] = ipc
 
 	err := vm.Stop(ccid, 1000, true, true)
 	assert.NotNil(t, err, "err should not be nil")
-	assert.Equal(t, err.Error(), "name-1 not found", "error should be correct")
+	assert.Equal(t, err.Error(), "name:1 not found", "error should be correct")
 }
 
 func TestStopIPCNotRunning(t *testing.T) {
@@ -392,7 +392,7 @@ func TestStopIPCNotRunning(t *testing.T) {
 	r.ChaincodeSupport = MockCCSupport{}
 	vm := NewInprocVM(r)
 
-	ccid := ccintf.CCID("name-1")
+	ccid := ccintf.CCID("name:1")
 
 	mockInprocContainer := &inprocContainer{
 		chaincode: MockShim{},
@@ -404,12 +404,12 @@ func TestStopIPCNotRunning(t *testing.T) {
 	stopChan := make(chan struct{})
 	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: stopChan}
 
-	r.typeRegistry["name-1"] = ipc
-	r.instRegistry["name-1"] = ipc
+	r.typeRegistry["name:1"] = ipc
+	r.instRegistry["name:1"] = ipc
 
 	err := vm.Stop(ccid, 1000, true, true)
 	assert.NotNil(t, err, "err should not be nil")
-	assert.Equal(t, err.Error(), "name-1 not running", "error should be correct")
+	assert.Equal(t, err.Error(), "name:1 not running", "error should be correct")
 }
 
 func TestWait(t *testing.T) {
@@ -422,14 +422,14 @@ func TestWait(t *testing.T) {
 	ipc := &inprocContainer{chaincode: MockShim{}, stopChan: closed}
 	ipc.running = true
 
-	ccid := ccintf.CCID("name-1")
-	r.typeRegistry["name-1"] = ipc
-	r.instRegistry["name-1"] = ipc
+	ccid := ccintf.CCID("name:1")
+	r.typeRegistry["name:1"] = ipc
+	r.instRegistry["name:1"] = ipc
 
 	exitCode, err := vm.Wait(ccid)
 	assert.Equal(t, 0, exitCode)
 	assert.NoError(t, err)
 
-	_, err = vm.Wait(ccintf.CCID("name-2"))
-	assert.EqualError(t, err, "name-2 not found")
+	_, err = vm.Wait(ccintf.CCID("name:2"))
+	assert.EqualError(t, err, "name:2 not found")
 }

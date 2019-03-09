@@ -68,7 +68,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 		Args:          lc.Args,
 		Env:           lc.Envs,
 		FilesToUpload: lc.Files,
-		CCID:          ccintf.CCID(ccci.Name + "-" + ccci.Version),
+		CCID:          ccintf.CCID(ccci.Name + ":" + ccci.Version),
 	}
 
 	if err := c.Processor.Process(ccci.ContainerType, scr); err != nil {
@@ -81,7 +81,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 // Stop terminates chaincode and its container runtime environment.
 func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 	scr := container.StopContainerReq{
-		CCID:       ccintf.CCID(ccci.Name + "-" + ccci.Version),
+		CCID:       ccintf.CCID(ccci.Name + ":" + ccci.Version),
 		Timeout:    0,
 		Dontremove: false,
 	}
@@ -102,7 +102,7 @@ func (c *ContainerRuntime) Wait(ccci *ccprovider.ChaincodeContainerInfo) (int, e
 
 	resultCh := make(chan result, 1)
 	wcr := container.WaitContainerReq{
-		CCID: ccintf.CCID(ccci.Name + "-" + ccci.Version),
+		CCID: ccintf.CCID(ccci.Name + ":" + ccci.Version),
 		Exited: func(exitCode int, err error) {
 			resultCh <- result{exitCode: exitCode, err: err}
 			close(resultCh)

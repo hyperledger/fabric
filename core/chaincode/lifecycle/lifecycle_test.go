@@ -271,7 +271,7 @@ var _ = Describe("ExternalFunctions", func() {
 			Expect(hash).To(Equal([]byte("fake-hash")))
 			Expect(fakeCCStore.RetrieveHashCallCount()).To(Equal(1))
 			packageID := fakeCCStore.RetrieveHashArgsForCall(0)
-			Expect(packageID).To(Equal(ccintf.CCID("name-version")))
+			Expect(packageID).To(Equal(ccintf.CCID("name:version")))
 		})
 
 		Context("when the backing chaincode store fails to retrieve the hash", func() {

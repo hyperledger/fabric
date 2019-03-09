@@ -48,7 +48,7 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 		timeoutCh = time.NewTimer(r.StartupTimeout).C
 
 		// FIXME: the package ID should be set by our caller; this will take place in the upcoming CRs
-		ccci.PackageID = ccintf.CCID(ccci.Name + "-" + ccci.Version)
+		ccci.PackageID = ccintf.CCID(ccci.Name + ":" + ccci.Version)
 
 		codePackage, err := r.getCodePackage(ccci)
 		if err != nil {

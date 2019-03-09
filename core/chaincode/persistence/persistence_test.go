@@ -305,7 +305,7 @@ var _ = Describe("Persistence", func() {
 		})
 
 		It("retrieves the hash successfully", func() {
-			hash, err := store.RetrieveHash(ccintf.CCID("test2-2.0"))
+			hash, err := store.RetrieveHash(ccintf.CCID("test2:2.0"))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(hash).To(Equal([]byte("hash2")))
 		})
@@ -316,7 +316,7 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				hash, err := store.RetrieveHash(ccintf.CCID("test1-1.0"))
+				hash, err := store.RetrieveHash(ccintf.CCID("test1:1.0"))
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error reading chaincode directory"))
 				Expect(hash).To(BeNil())
@@ -329,9 +329,9 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				hash, err := store.RetrieveHash(ccintf.CCID("test1-1.0"))
+				hash, err := store.RetrieveHash(ccintf.CCID("test1:1.0"))
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("chaincode install package 'test1-1.0' not found"))
+				Expect(err.Error()).To(ContainSubstring("chaincode install package 'test1:1.0' not found"))
 				Expect(hash).To(BeNil())
 			})
 		})
@@ -344,7 +344,7 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				hash, err := store.RetrieveHash(ccintf.CCID("test1-1.0"))
+				hash, err := store.RetrieveHash(ccintf.CCID("test1:1.0"))
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error decoding hash from hex string: ?"))
 				Expect(hash).To(BeNil())
@@ -358,7 +358,7 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns sucessfully", func() {
-				hash, err := store.RetrieveHash(ccintf.CCID("test2-2.0"))
+				hash, err := store.RetrieveHash(ccintf.CCID("test2:2.0"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(hash).To(Equal([]byte("hash2")))
 			})
@@ -366,9 +366,9 @@ var _ = Describe("Persistence", func() {
 
 		Context("when no chaincode install package exists with the given name and version", func() {
 			It("returns an error", func() {
-				hash, err := store.RetrieveHash(ccintf.CCID("test3-1.0"))
+				hash, err := store.RetrieveHash(ccintf.CCID("test3:1.0"))
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("chaincode install package 'test3-1.0' not found"))
+				Expect(err.Error()).To(Equal("chaincode install package 'test3:1.0' not found"))
 				Expect(hash).To(BeNil())
 			})
 		})

@@ -45,10 +45,10 @@ func TestWaitContainerReq(t *testing.T) {
 	exited.Stub = func(int, error) { close(done) }
 
 	req := container.WaitContainerReq{
-		CCID:   ccintf.CCID("the-name-the-version"),
+		CCID:   ccintf.CCID("the-name:the-version"),
 		Exited: exited.Spy,
 	}
-	gt.Expect(req.GetCCID()).To(Equal(ccintf.CCID("the-name-the-version")))
+	gt.Expect(req.GetCCID()).To(Equal(ccintf.CCID("the-name:the-version")))
 
 	fakeVM := &mock.VM{}
 	fakeVM.WaitReturns(99, errors.New("boing-boing"))
@@ -59,7 +59,7 @@ func TestWaitContainerReq(t *testing.T) {
 
 	gt.Expect(fakeVM.WaitCallCount()).To(Equal(1))
 	ccid := fakeVM.WaitArgsForCall(0)
-	gt.Expect(ccid).To(Equal(ccintf.CCID("the-name-the-version")))
+	gt.Expect(ccid).To(Equal(ccintf.CCID("the-name:the-version")))
 
 	ec, exitErr := exited.ArgsForCall(0)
 	gt.Expect(ec).To(Equal(99))

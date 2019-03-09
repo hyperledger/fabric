@@ -133,5 +133,5 @@ func TestRegisterSysCC(t *testing.T) {
 		},
 	})
 	assert.Error(t, err)
-	assert.Contains(t, "invokableExternalButNotCC2CC-latest already registered", err)
+	assert.Contains(t, "invokableExternalButNotCC2CC:latest already registered", err)
 }

@@ -357,7 +357,7 @@ func (ef *ExternalFunctions) QueryNamespaceDefinitions(publicState RangeableStat
 
 // QueryInstalledChaincode returns the hash of an installed chaincode of a given name and version.
 func (ef *ExternalFunctions) QueryInstalledChaincode(name, version string) ([]byte, error) {
-	hash, err := ef.Resources.ChaincodeStore.RetrieveHash(ccintf.CCID(name + "-" + version))
+	hash, err := ef.Resources.ChaincodeStore.RetrieveHash(ccintf.CCID(name + ":" + version))
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve hash for chaincode '%s:%s'", name, version))
 	}
