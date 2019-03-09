@@ -22,10 +22,13 @@ import (
 var _ = Describe("Lifecycle", func() {
 	Describe("LegacyShim", func() {
 		var (
+			cei               *lifecycle.ChaincodeEndorsementInfo
 			l                 *lifecycle.Lifecycle
 			fakeLegacyImpl    *mock.LegacyLifecycle
 			fakePublicState   MapLedgerShim
 			fakeQueryExecutor *mock.SimpleQueryExecutor
+			fakeCache         *mock.ChaincodeInfoCache
+			testInfo          *lifecycle.LocalChaincodeInfo
 		)
 
 		BeforeEach(func() {
@@ -33,7 +36,6 @@ var _ = Describe("Lifecycle", func() {
 
 			l = &lifecycle.Lifecycle{
 				Serializer: &lifecycle.Serializer{},
-				LegacyImpl: fakeLegacyImpl,
 			}
 
 			fakePublicState = MapLedgerShim(map[string][]byte{})
@@ -41,13 +43,56 @@ var _ = Describe("Lifecycle", func() {
 			fakeQueryExecutor.GetStateStub = func(namespace, key string) ([]byte, error) {
 				return fakePublicState.GetState(key)
 			}
+
+			err := l.Serializer.Serialize(lifecycle.NamespacesName,
+				"name",
+				&lifecycle.ChaincodeDefinition{
+					Sequence: 7,
+				},
+				fakePublicState,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			testInfo = &lifecycle.LocalChaincodeInfo{
+				Definition: &lifecycle.ChaincodeDefinition{
+					Sequence: 7,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Version:           "version",
+						Id:                []byte("hash"),
+						EndorsementPlugin: "endorsement-plugin",
+					},
+					ValidationInfo: &lb.ChaincodeValidationInfo{
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+					},
+				},
+				InstallInfo: &lifecycle.ChaincodeInstallInfo{
+					Path: "fake-path",
+					Type: "fake-type",
+					Hash: []byte("hash"),
+				},
+				Approved: true,
+			}
+
+			fakeCache = &mock.ChaincodeInfoCache{}
+			fakeCache.ChaincodeInfoReturns(testInfo, nil)
+
+			cei = &lifecycle.ChaincodeEndorsementInfo{
+				LegacyImpl: fakeLegacyImpl,
+				Lifecycle:  l,
+				Cache:      fakeCache,
+			}
+
 		})
 
-		Describe("ChaincodeDefinition", func() {
-			BeforeEach(func() {
-				err := l.Serializer.Serialize(lifecycle.NamespacesName,
-					"name",
-					&lifecycle.ChaincodeDefinition{
+		Describe("CachedChaincodeInfo", func() {
+			It("returns the info from the cache", func() {
+				info, ok, err := cei.CachedChaincodeInfo("channel-id", "name", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ok).To(BeTrue())
+				Expect(info).To(Equal(&lifecycle.LocalChaincodeInfo{
+					Definition: &lifecycle.ChaincodeDefinition{
+						Sequence: 7,
 						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 							Version:           "version",
 							Id:                []byte("hash"),
@@ -58,13 +103,78 @@ var _ = Describe("Lifecycle", func() {
 							ValidationParameter: []byte("validation-parameter"),
 						},
 					},
-					fakePublicState,
-				)
-				Expect(err).NotTo(HaveOccurred())
+					InstallInfo: &lifecycle.ChaincodeInstallInfo{
+						Type: "fake-type",
+						Path: "fake-path",
+						Hash: []byte("hash"),
+					},
+					Approved: true,
+				}))
+				Expect(fakeCache.ChaincodeInfoCallCount()).To(Equal(1))
+				channelID, chaincodeName := fakeCache.ChaincodeInfoArgsForCall(0)
+				Expect(channelID).To(Equal("channel-id"))
+				Expect(chaincodeName).To(Equal("name"))
 			})
 
+			Context("when the cache returns an error", func() {
+				BeforeEach(func() {
+					fakeCache.ChaincodeInfoReturns(nil, fmt.Errorf("cache-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, _, err := cei.CachedChaincodeInfo("channel-id", "name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not get approved chaincode info from cache: cache-error"))
+				})
+			})
+
+			Context("when the cache has not been approved", func() {
+				BeforeEach(func() {
+					testInfo.Approved = false
+				})
+
+				It("returns an error", func() {
+					_, _, err := cei.CachedChaincodeInfo("channel-id", "name", fakeQueryExecutor)
+					Expect(err).To(MatchError("chaincode definition for 'name' at sequence 7 on channel 'channel-id' has not yet been approved by this org"))
+				})
+			})
+
+			Context("when the chaincode has not been installed", func() {
+				BeforeEach(func() {
+					testInfo.InstallInfo = nil
+				})
+
+				It("returns an error", func() {
+					_, _, err := cei.CachedChaincodeInfo("channel-id", "name", fakeQueryExecutor)
+					Expect(err).To(MatchError("chaincode definition for 'name' exists, but chaincode is not installed"))
+				})
+			})
+
+			Context("when the cache does not match the current sequence", func() {
+				BeforeEach(func() {
+					testInfo.Definition.Sequence = 5
+				})
+
+				It("returns an error", func() {
+					_, _, err := cei.CachedChaincodeInfo("channel-id", "name", fakeQueryExecutor)
+					Expect(err).To(MatchError("chaincode cache at sequence 5 but current sequence is 7, chaincode definition for 'name' changed during invoke"))
+				})
+			})
+
+			Context("when the sequence cannot be fetched from the state", func() {
+				BeforeEach(func() {
+					fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				})
+
+				It("wraps and returns an error", func() {
+					_, _, err := cei.CachedChaincodeInfo("channel-id", "name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not get current sequence: could not get state for key namespaces/fields/name/Sequence: state-error"))
+				})
+			})
+		})
+
+		Describe("ChaincodeDefinition", func() {
 			It("adapts the underlying lifecycle response", func() {
-				def, err := l.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
+				def, err := cei.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(def).To(Equal(&lifecycle.LegacyDefinition{
 					Name:                "name",
@@ -76,42 +186,14 @@ var _ = Describe("Lifecycle", func() {
 				}))
 			})
 
-			Context("when the metadata is corrupt", func() {
+			Context("when the cache returns an error", func() {
 				BeforeEach(func() {
-					fakePublicState["namespaces/metadata/name"] = []byte("garbage")
+					fakeCache.ChaincodeInfoReturns(nil, fmt.Errorf("cache-error"))
 				})
 
-				It("wraps and returns that error", func() {
-					_, err := l.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not get definition for chaincode name: could not deserialize metadata for chaincode name: could not unmarshal metadata for namespace namespaces/name: proto: can't skip unknown wire type 7"))
-				})
-			})
-
-			Context("when the metadata is not for a chaincode", func() {
-				BeforeEach(func() {
-					type badStruct struct{}
-					err := l.Serializer.Serialize(lifecycle.NamespacesName,
-						"name",
-						&badStruct{},
-						fakePublicState,
-					)
-					Expect(err).NotTo(HaveOccurred())
-				})
-
-				It("returns an error", func() {
-					_, err := l.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not get definition for chaincode name: not a chaincode type: badStruct"))
-				})
-			})
-
-			Context("when the data is corrupt", func() {
-				BeforeEach(func() {
-					fakePublicState["namespaces/fields/name/ValidationInfo"] = []byte("garbage")
-				})
-
-				It("wraps and returns that error", func() {
-					_, err := l.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not get definition for chaincode name: could not deserialize chaincode definition for chaincode name: could not unmarshal state for key namespaces/fields/name/ValidationInfo: proto: can't skip unknown wire type 7"))
+				It("returns the wrapped error", func() {
+					_, err := cei.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not get approved chaincode info from cache: cache-error"))
 				})
 			})
 
@@ -121,7 +203,7 @@ var _ = Describe("Lifecycle", func() {
 				)
 
 				BeforeEach(func() {
-					delete(fakePublicState, "namespaces/metadata/name")
+					delete(fakePublicState, "namespaces/fields/name/Sequence")
 					legacyChaincodeDefinition = &ccprovider.ChaincodeData{
 						Name:    "definition-name",
 						Version: "definition-version",
@@ -131,7 +213,7 @@ var _ = Describe("Lifecycle", func() {
 				})
 
 				It("passes through the legacy implementation", func() {
-					res, err := l.ChaincodeDefinition("channel-id", "cc-name", fakeQueryExecutor)
+					res, err := cei.ChaincodeDefinition("channel-id", "cc-name", fakeQueryExecutor)
 					Expect(err).To(MatchError("fake-error"))
 					Expect(res).To(Equal(legacyChaincodeDefinition))
 					Expect(fakeLegacyImpl.ChaincodeDefinitionCallCount()).To(Equal(1))
@@ -163,34 +245,10 @@ var _ = Describe("Lifecycle", func() {
 
 				l.ChaincodeStore = fakeChaincodeStore
 				l.PackageParser = fakePackageParser
-
-				err := l.Serializer.Serialize(lifecycle.NamespacesName,
-					"name",
-					&lifecycle.ChaincodeDefinition{
-						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-							Version:           "version",
-							Id:                []byte("hash"),
-							EndorsementPlugin: "endorsement-plugin",
-						},
-						ValidationInfo: &lb.ChaincodeValidationInfo{
-							ValidationPlugin:    "validation-plugin",
-							ValidationParameter: []byte("validation-parameter"),
-						},
-					},
-					fakePublicState,
-				)
-				Expect(err).NotTo(HaveOccurred())
-
-				legacyContainerInfo = &ccprovider.ChaincodeContainerInfo{
-					Name:    "definition-name",
-					Version: "definition-version",
-				}
-
-				fakeLegacyImpl.ChaincodeContainerInfoReturns(legacyContainerInfo, fmt.Errorf("fake-error"))
 			})
 
 			It("returns the current definition", func() {
-				res, err := l.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
+				res, err := cei.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res).To(Equal(&ccprovider.ChaincodeContainerInfo{
 					Name:          "name",
@@ -199,56 +257,20 @@ var _ = Describe("Lifecycle", func() {
 					Type:          "FAKE-TYPE",
 					ContainerType: "DOCKER",
 				}))
-
-				Expect(fakeChaincodeStore.LoadCallCount()).To(Equal(1))
-				Expect(fakeChaincodeStore.LoadArgsForCall(0)).To(Equal([]byte("hash")))
-				Expect(fakePackageParser.ParseCallCount()).To(Equal(1))
-				Expect(fakePackageParser.ParseArgsForCall(0)).To(Equal([]byte("package")))
-
-			})
-
-			Context("when the metadata is corrupt", func() {
-				BeforeEach(func() {
-					fakePublicState["namespaces/metadata/name"] = []byte("garbage")
-				})
-
-				It("wraps and returns that error", func() {
-					_, err := l.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not deserialize metadata for chaincode name: could not unmarshal metadata for namespace namespaces/name: proto: can't skip unknown wire type 7"))
-				})
-			})
-
-			Context("when the metadata is not for a chaincode", func() {
-				BeforeEach(func() {
-					type badStruct struct{}
-					err := l.Serializer.Serialize(lifecycle.NamespacesName,
-						"name",
-						&badStruct{},
-						fakePublicState,
-					)
-					Expect(err).NotTo(HaveOccurred())
-				})
-
-				It("returns an error", func() {
-					_, err := l.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
-					Expect(err).To(MatchError("not a chaincode type: badStruct"))
-				})
-			})
-
-			Context("when the data is corrupt", func() {
-				BeforeEach(func() {
-					fakePublicState["namespaces/fields/name/ValidationInfo"] = []byte("garbage")
-				})
-
-				It("wraps and returns that error", func() {
-					_, err := l.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not deserialize chaincode definition for chaincode name: could not unmarshal state for key namespaces/fields/name/ValidationInfo: proto: can't skip unknown wire type 7"))
-				})
 			})
 
 			Context("when the definition does not exist in the new lifecycle", func() {
+				BeforeEach(func() {
+					legacyContainerInfo = &ccprovider.ChaincodeContainerInfo{
+						Name:    "definition-name",
+						Version: "definition-version",
+					}
+
+					fakeLegacyImpl.ChaincodeContainerInfoReturns(legacyContainerInfo, fmt.Errorf("fake-error"))
+				})
+
 				It("passes through the legacy implementation", func() {
-					res, err := l.ChaincodeContainerInfo("channel-id", "different-name", fakeQueryExecutor)
+					res, err := cei.ChaincodeContainerInfo("channel-id", "different-name", fakeQueryExecutor)
 					Expect(err).To(MatchError("fake-error"))
 					Expect(res).To(Equal(legacyContainerInfo))
 					Expect(fakeLegacyImpl.ChaincodeContainerInfoCallCount()).To(Equal(1))
@@ -259,25 +281,14 @@ var _ = Describe("Lifecycle", func() {
 				})
 			})
 
-			Context("when the package cannot be retrieved", func() {
+			Context("when the cache returns an error", func() {
 				BeforeEach(func() {
-					fakeChaincodeStore.LoadReturns(nil, nil, fmt.Errorf("load-error"))
+					fakeCache.ChaincodeInfoReturns(nil, fmt.Errorf("cache-error"))
 				})
 
-				It("wraps and returns the error", func() {
-					_, err := l.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not load chaincode from chaincode store for name:version (68617368): load-error"))
-				})
-			})
-
-			Context("when the package cannot be parsed", func() {
-				BeforeEach(func() {
-					fakePackageParser.ParseReturns(nil, fmt.Errorf("parse-error"))
-				})
-
-				It("wraps and returns the error", func() {
-					_, err := l.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
-					Expect(err).To(MatchError("could not parse chaincode package for name:version (68617368): parse-error"))
+				It("returns the wrapped error", func() {
+					_, err := cei.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
+					Expect(err).To(MatchError("could not get approved chaincode info from cache: cache-error"))
 				})
 			})
 		})

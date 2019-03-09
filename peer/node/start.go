@@ -52,6 +52,7 @@ import (
 	endorsement3 "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/core/handlers/library"
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/operations"
@@ -163,6 +164,15 @@ func serve(args []string) error {
 
 	membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(), identityDeserializerFactory)
 
+	mspID := viper.GetString("peer.localMspId")
+
+	chaincodeInstallPath := ccprovider.GetChaincodeInstallPathFromViper()
+	ccPackageParser := &persistence.ChaincodePackageParser{}
+	ccStore := &persistence.Store{
+		Path:       chaincodeInstallPath,
+		ReadWriter: &persistence.FilesystemIO{},
+	}
+
 	// TODO, unfortunately, the lifecycleImpl initialization is very unclean at the moment.
 	// This is because ccprovider.SetChaincodePath only works after ledgermgmt.Initialize,
 	// but ledgermgmt.Initialize requires a reference to lifecycle.  Finally,
@@ -174,7 +184,12 @@ func serve(args []string) error {
 		LegacyDeployedCCInfoProvider: &lscc.DeployedCCInfoProvider{},
 		Serializer:                   &lifecycle.Serializer{},
 		ChannelConfigSource:          peer.Default,
+		ChaincodeStore:               ccStore,
+		PackageParser:                ccPackageParser,
 	}
+
+	lifecycleCache := lifecycle.NewCache(lifecycleImpl, mspID)
+	lifecycleImpl.InstallListener = lifecycleCache
 
 	//initialize resource management exit
 	ledgermgmt.Initialize(
@@ -185,17 +200,15 @@ func serve(args []string) error {
 			MembershipInfoProvider:        membershipInfoProvider,
 			MetricsProvider:               metricsProvider,
 			HealthCheckRegistry:           opsSystem,
+			StateListeners:                []ledger.StateListener{lifecycleCache},
 		},
 	)
 
 	// Configure CC package storage
-	chaincodeInstallPath := ccprovider.GetChaincodeInstallPathFromViper()
 	ccprovider.SetChaincodesPath(chaincodeInstallPath)
 
-	ccPackageParser := &persistence.ChaincodePackageParser{}
-	ccStore := &persistence.Store{
-		Path:       chaincodeInstallPath,
-		ReadWriter: &persistence.FilesystemIO{},
+	if err := lifecycleCache.InitializeLocalChaincodes(); err != nil {
+		return errors.WithMessage(err, "could not initialize local chaincodes")
 	}
 
 	packageProvider := &persistence.PackageProvider{
@@ -203,9 +216,6 @@ func serve(args []string) error {
 		Store:    ccStore,
 		Parser:   ccPackageParser,
 	}
-
-	lifecycleImpl.ChaincodeStore = ccStore
-	lifecycleImpl.PackageParser = ccPackageParser
 
 	// Parameter overrides must be processed before any parameters are
 	// cached. Failures to cache cause the server to terminate immediately.
@@ -303,9 +313,11 @@ func serve(args []string) error {
 	sccp := scc.NewProvider(peer.Default, peer.DefaultSupport, ipRegistry)
 	lsccInst := lscc.New(sccp, aclProvider, pr)
 
-	lifecycleImpl.LegacyImpl = lsccInst
-
-	mspID := viper.GetString("peer.localMspId")
+	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{
+		LegacyImpl: lsccInst,
+		Lifecycle:  lifecycleImpl,
+		Cache:      lifecycleCache,
+	}
 
 	lifecycleSCC := &lifecycle.SCC{
 		Dispatcher: &dispatcher.Dispatcher{
@@ -340,7 +352,7 @@ func serve(args []string) error {
 		ca.CertBytes(),
 		authenticator,
 		packageProvider,
-		lifecycleImpl,
+		chaincodeEndorsementInfo,
 		aclProvider,
 		container.NewVMController(
 			map[string]container.VMProvider{
