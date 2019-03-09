@@ -81,14 +81,13 @@ func (r *Registry) Register(ccid *ccintf.CCID, cc shim.Chaincode) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	name := ccid.GetName()
-	inprocLogger.Debugf("Registering chaincode instance: %s", name)
-	tmp := r.typeRegistry[name]
+	inprocLogger.Debugf("Registering chaincode instance: %s", ccid)
+	tmp := r.typeRegistry[string(*ccid)]
 	if tmp != nil {
-		return SysCCRegisteredErr(name)
+		return SysCCRegisteredErr(string(*ccid))
 	}
 
-	r.typeRegistry[name] = &inprocContainer{chaincode: cc}
+	r.typeRegistry[string(*ccid)] = &inprocContainer{chaincode: cc}
 	return nil
 }
 
@@ -205,11 +204,9 @@ func (ipc *inprocContainer) launchInProc(id string, args []string, env []string)
 
 //Start starts a previously registered system codechain
 func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
-	path := ccid.GetName()
-
-	ipctemplate := vm.registry.getType(path)
+	ipctemplate := vm.registry.getType(string(ccid))
 	if ipctemplate == nil {
-		return fmt.Errorf(fmt.Sprintf("%s not registered", path))
+		return fmt.Errorf(fmt.Sprintf("%s not registered", ccid))
 	}
 
 	instName := vm.GetVMName(ccid)
@@ -221,7 +218,7 @@ func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesTo
 	}
 
 	if ipc.running {
-		return fmt.Errorf(fmt.Sprintf("chaincode running %s", path))
+		return fmt.Errorf(fmt.Sprintf("chaincode running %s", ccid))
 	}
 
 	ipc.running = true
@@ -240,11 +237,9 @@ func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesTo
 
 //Stop stops a system codechain
 func (vm *InprocVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
-	path := ccid.GetName()
-
-	ipctemplate := vm.registry.getType(path)
+	ipctemplate := vm.registry.getType(string(ccid))
 	if ipctemplate == nil {
-		return fmt.Errorf("%s not registered", path)
+		return fmt.Errorf("%s not registered", ccid)
 	}
 
 	instName := vm.GetVMName(ccid)
@@ -289,5 +284,5 @@ func (vm *InprocVM) Wait(ccid ccintf.CCID) (int, error) {
 // process.  It accepts a format function parameter to allow different
 // formatting based on the desired use of the name.
 func (vm *InprocVM) GetVMName(ccid ccintf.CCID) string {
-	return ccid.GetName()
+	return string(ccid)
 }

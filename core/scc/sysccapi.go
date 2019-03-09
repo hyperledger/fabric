@@ -112,11 +112,8 @@ func (p *Provider) registerSysCC(syscc SelfDescribingSysCC) (bool, error) {
 	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
 	version := util.GetSysCCVersion()
 
-	ccid := &ccintf.CCID{
-		Name:    syscc.Name(),
-		Version: version,
-	}
-	err := p.Registrar.Register(ccid, syscc.Chaincode())
+	ccid := ccintf.CCID(syscc.Name() + "-" + version)
+	err := p.Registrar.Register(&ccid, syscc.Chaincode())
 	if err != nil {
 		//if the type is registered, the instance may not be... keep going
 		if _, ok := err.(inproccontroller.SysCCRegisteredErr); !ok {

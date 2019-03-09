@@ -210,7 +210,7 @@ func (vm *DockerVM) deployImage(client dockerClient, ccid ccintf.CCID, reader io
 	err = client.BuildImage(opts)
 
 	vm.BuildMetrics.ChaincodeImageBuildDuration.With(
-		"chaincode", ccid.Name+":"+ccid.Version,
+		"chaincode", string(ccid),
 		"success", strconv.FormatBool(err == nil),
 	).Observe(time.Since(startTime).Seconds())
 
@@ -465,7 +465,7 @@ func (vm *DockerVM) GetVMNameForDocker(ccid ccintf.CCID) (string, error) {
 }
 
 func (vm *DockerVM) preFormatImageName(ccid ccintf.CCID) string {
-	name := ccid.GetName()
+	name := string(ccid)
 
 	if vm.NetworkID != "" && vm.PeerID != "" {
 		name = fmt.Sprintf("%s-%s-%s", vm.NetworkID, vm.PeerID, name)

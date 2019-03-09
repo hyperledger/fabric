@@ -201,10 +201,9 @@ func (w WaitContainerReq) GetCCID() ccintf.CCID {
 func (vmc *VMController) Process(vmtype string, req VMCReq) error {
 	v := vmc.newVM(vmtype)
 	ccid := req.GetCCID()
-	id := ccid.GetName()
 
-	vmc.lockContainer(id)
-	defer vmc.unlockContainer(id)
+	vmc.lockContainer(string(ccid))
+	defer vmc.unlockContainer(string(ccid))
 	return req.Do(v)
 }
 

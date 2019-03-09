@@ -10,11 +10,7 @@ package ccintf
 //communication between chaincode and peer (chaincode support).
 //Currently inproccontroller uses it. dockercontroller does not.
 
-import (
-	"fmt"
-
-	pb "github.com/hyperledger/fabric/protos/peer"
-)
+import pb "github.com/hyperledger/fabric/protos/peer"
 
 // ChaincodeStream interface for stream between Peer and chaincode instance.
 type ChaincodeStream interface {
@@ -28,21 +24,5 @@ type CCSupport interface {
 	HandleChaincodeStream(ChaincodeStream) error
 }
 
-// GetCCHandlerKey is used to pass CCSupport via context
-func GetCCHandlerKey() string {
-	return "CCHANDLER"
-}
-
-//CCID encapsulates chaincode ID
-type CCID struct {
-	Name    string
-	Version string
-}
-
-//GetName returns canonical chaincode name based on the fields of CCID
-func (ccid *CCID) GetName() string {
-	if ccid.Version != "" {
-		return fmt.Sprintf("%s-%s", ccid.Name, ccid.Version)
-	}
-	return ccid.Name
-}
+// CCPackageID encapsulates chaincode ID
+type CCID string

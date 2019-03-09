@@ -37,7 +37,8 @@ func TestRegisterSuccess(t *testing.T) {
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
 	shim := MockShim{}
-	err := r.Register(&ccintf.CCID{Name: "name"}, shim)
+	cccid := ccintf.CCID("name")
+	err := r.Register(&cccid, shim)
 
 	assert.Nil(t, err, "err should be nil")
 	assert.Equal(t, r.typeRegistry["name"].chaincode, shim, "shim should be correct")
@@ -48,7 +49,8 @@ func TestRegisterError(t *testing.T) {
 	r.ChaincodeSupport = MockCCSupport{}
 	r.typeRegistry["name"] = &inprocContainer{}
 	shim := MockShim{}
-	err := r.Register(&ccintf.CCID{Name: "name"}, shim)
+	ccid := ccintf.CCID("name")
+	err := r.Register(&ccid, shim)
 
 	assert.NotNil(t, err, "err should not be nil")
 }
@@ -296,7 +298,7 @@ func TestStart(t *testing.T) {
 	r.ChaincodeSupport = MockCCSupport{}
 	vm := NewInprocVM(r)
 
-	ccid := ccintf.CCID{Name: "name"}
+	ccid := ccintf.CCID("name")
 	mockInprocContainer := &inprocContainer{}
 
 	args := []string{"a", "b"}
@@ -324,10 +326,7 @@ func TestStop(t *testing.T) {
 	r.ChaincodeSupport = MockCCSupport{}
 	vm := NewInprocVM(r)
 
-	ccid := ccintf.CCID{
-		Name:    "name",
-		Version: "1",
-	}
+	ccid := ccintf.CCID("name-1")
 
 	mockInprocContainer := &inprocContainer{
 		chaincode: MockShim{},
@@ -357,10 +356,7 @@ func TestStopNoIPCTemplate(t *testing.T) {
 	r.ChaincodeSupport = MockCCSupport{}
 	vm := NewInprocVM(r)
 
-	ccid := ccintf.CCID{
-		Name:    "name",
-		Version: "1",
-	}
+	ccid := ccintf.CCID("name-1")
 
 	err := vm.Stop(ccid, 1000, true, true)
 	assert.NotNil(t, err, "err should not be nil")
@@ -372,10 +368,7 @@ func TestStopNoIPC(t *testing.T) {
 	r.ChaincodeSupport = MockCCSupport{}
 	vm := NewInprocVM(r)
 
-	ccid := ccintf.CCID{
-		Name:    "name",
-		Version: "1",
-	}
+	ccid := ccintf.CCID("name-1")
 
 	mockInprocContainer := &inprocContainer{
 		chaincode: MockShim{},
@@ -399,10 +392,7 @@ func TestStopIPCNotRunning(t *testing.T) {
 	r.ChaincodeSupport = MockCCSupport{}
 	vm := NewInprocVM(r)
 
-	ccid := ccintf.CCID{
-		Name:    "name",
-		Version: "1",
-	}
+	ccid := ccintf.CCID("name-1")
 
 	mockInprocContainer := &inprocContainer{
 		chaincode: MockShim{},
@@ -432,7 +422,7 @@ func TestWait(t *testing.T) {
 	ipc := &inprocContainer{chaincode: MockShim{}, stopChan: closed}
 	ipc.running = true
 
-	ccid := ccintf.CCID{Name: "name", Version: "1"}
+	ccid := ccintf.CCID("name-1")
 	r.typeRegistry["name-1"] = ipc
 	r.instRegistry["name-1"] = ipc
 
@@ -440,6 +430,6 @@ func TestWait(t *testing.T) {
 	assert.Equal(t, 0, exitCode)
 	assert.NoError(t, err)
 
-	_, err = vm.Wait(ccintf.CCID{Name: "name", Version: "2"})
+	_, err = vm.Wait(ccintf.CCID("name-2"))
 	assert.EqualError(t, err, "name-2 not found")
 }
