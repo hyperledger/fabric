@@ -46,6 +46,7 @@ func (c *TransactionContexts) Create(txParams *ccprovider.TransactionParams) (*T
 	}
 
 	txctx := &TransactionContext{
+		NamespaceID:          txParams.NamespaceID,
 		ChainID:              txParams.ChannelID,
 		SignedProp:           txParams.SignedProp,
 		Proposal:             txParams.Proposal,

@@ -634,7 +634,7 @@ func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *Transactio
 	}
 
 	var res []byte
-	chaincodeName := h.ChaincodeName()
+	chaincodeName := txContext.NamespaceID
 	collection := getState.Collection
 	chaincodeLogger.Debugf("[%s] getting state for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), chaincodeName, getState.Key, txContext.ChainID)
 
@@ -668,7 +668,7 @@ func (h *Handler) HandleGetPrivateDataHash(msg *pb.ChaincodeMessage, txContext *
 	}
 
 	var res []byte
-	chaincodeName := h.ChaincodeName()
+	chaincodeName := txContext.NamespaceID
 	collection := getState.Collection
 	chaincodeLogger.Debugf("[%s] getting private data hash for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), chaincodeName, getState.Key, txContext.ChainID)
 	if txContext.IsInitTransaction {
@@ -698,7 +698,7 @@ func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	chaincodeName := h.ChaincodeName()
+	chaincodeName := txContext.NamespaceID
 	collection := getStateMetadata.Collection
 	chaincodeLogger.Debugf("[%s] getting state metadata for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), chaincodeName, getStateMetadata.Key, txContext.ChainID)
 
@@ -753,7 +753,7 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 
 	isPaginated := false
 
-	chaincodeName := h.ChaincodeName()
+	chaincodeName := txContext.NamespaceID
 	collection := getStateByRange.Collection
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
@@ -877,7 +877,7 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 	var executeIter commonledger.ResultsIterator
 	var paginationInfo map[string]interface{}
 
-	chaincodeName := h.ChaincodeName()
+	chaincodeName := txContext.NamespaceID
 	collection := getQueryResult.Collection
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
@@ -924,7 +924,7 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 // Handles query to ledger history db
 func (h *Handler) HandleGetHistoryForKey(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	iterID := h.UUIDGenerator.New()
-	chaincodeName := h.ChaincodeName()
+	chaincodeName := txContext.NamespaceID
 
 	getHistoryForKey := &pb.GetHistoryForKey{}
 	err := proto.Unmarshal(msg.Payload, getHistoryForKey)
@@ -1053,7 +1053,7 @@ func (h *Handler) HandlePutState(msg *pb.ChaincodeMessage, txContext *Transactio
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	chaincodeName := h.ChaincodeName()
+	chaincodeName := txContext.NamespaceID
 	collection := putState.Collection
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
@@ -1088,7 +1088,7 @@ func (h *Handler) HandlePutStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 	metadata := make(map[string][]byte)
 	metadata[putStateMetadata.Metadata.Metakey] = putStateMetadata.Metadata.Value
 
-	chaincodeName := h.ChaincodeName()
+	chaincodeName := txContext.NamespaceID
 	collection := putStateMetadata.Collection
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
@@ -1115,7 +1115,7 @@ func (h *Handler) HandleDelState(msg *pb.ChaincodeMessage, txContext *Transactio
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	chaincodeName := h.ChaincodeName()
+	chaincodeName := txContext.NamespaceID
 	collection := delState.Collection
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
@@ -1258,6 +1258,7 @@ func (h *Handler) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovi
 
 	txParams.CollectionStore = h.getCollectionStore(msg.ChannelId)
 	txParams.IsInitTransaction = (msg.Type == pb.ChaincodeMessage_INIT)
+	txParams.NamespaceID = cccid.Name
 
 	txctx, err := h.TXContexts.Create(txParams)
 	if err != nil {

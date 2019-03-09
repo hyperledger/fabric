@@ -1200,6 +1200,7 @@ func genNewPldAndCtxFromLdgr(t *testing.T, ccName string, chnl string, txid stri
 		TxID:        txid,
 		ChannelID:   chnl,
 		TXSimulator: txsim,
+		NamespaceID: ccName,
 	}
 	newTxCtxt, err := h.TXContexts.Create(txParams)
 	if err != nil {

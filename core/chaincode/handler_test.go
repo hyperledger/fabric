@@ -69,6 +69,7 @@ var _ = Describe("Handler", func() {
 		responseNotifier = make(chan *pb.ChaincodeMessage, 1)
 		txContext = &chaincode.TransactionContext{
 			ChainID:              "channel-id",
+			NamespaceID:          "cc-instance-name",
 			TXSimulator:          fakeTxSimulator,
 			HistoryQueryExecutor: fakeHistoryQueryExecutor,
 			ResponseNotifier:     responseNotifier,
@@ -130,7 +131,6 @@ var _ = Describe("Handler", func() {
 		}
 		chaincode.SetHandlerChatStream(handler, fakeChatStream)
 		chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "test-handler-name", Version: "1.0"})
-		chaincode.SetHandlerCCInstance(handler, &sysccprovider.ChaincodeInstance{ChaincodeName: "cc-instance-name"})
 	})
 
 	Describe("HandleTransaction", func() {
