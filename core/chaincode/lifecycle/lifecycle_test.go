@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 var _ = Describe("ChaincodeParameters", func() {
@@ -269,9 +270,8 @@ var _ = Describe("ExternalFunctions", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(hash).To(Equal([]byte("fake-hash")))
 			Expect(fakeCCStore.RetrieveHashCallCount()).To(Equal(1))
-			name, version := fakeCCStore.RetrieveHashArgsForCall(0)
-			Expect(name).To(Equal("name"))
-			Expect(version).To(Equal("version"))
+			packageID := fakeCCStore.RetrieveHashArgsForCall(0)
+			Expect(packageID).To(Equal(ccintf.CCID("name-version")))
 		})
 
 		Context("when the backing chaincode store fails to retrieve the hash", func() {

@@ -281,7 +281,6 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 	var ccci *ccprovider.ChaincodeContainerInfo
 	var err error
 
-	// TODO: remove this once _lifecycle has definitions for all system chaincodes
 	if !cs.SystemCCProvider.IsSysCC(cccid.Name) {
 		ccci, err = cs.Lifecycle.ChaincodeContainerInfo(txParams.ChannelID, cccid.Name, txParams.TXSimulator)
 		if err != nil {
@@ -295,6 +294,7 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 			return nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", txParams.ChannelID, cccid.Name)
 		}
 	} else {
+		// FIXME: remove this once _lifecycle has definitions for all system chaincodes
 		ccci = &ccprovider.ChaincodeContainerInfo{
 			Version: util.GetSysCCVersion(),
 			Name:    cccid.Name,

@@ -147,6 +147,14 @@ func (meqe *mockExecQuerySimulator) GetTxSimulationResults() ([]byte, error) {
 
 var mockAclProvider *mocks.MockACLProvider
 
+type PackageProviderWrapper struct {
+	FS *ccprovider.CCInfoFSImpl
+}
+
+func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
+	return p.FS.GetChaincodeCodePackage(ccci.Name, ccci.Version)
+}
+
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	msi := &cmp.MockSupportImpl{
@@ -192,7 +200,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		true,
 		ca.CertBytes(),
 		certGenerator,
-		&ccprovider.CCInfoFSImpl{},
+		&PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
 		ml,
 		mockAclProvider,
 		container.NewVMController(

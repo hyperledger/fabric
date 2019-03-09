@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/pkg/errors"
 )
@@ -23,7 +24,7 @@ type LaunchRegistry interface {
 
 // PackageProvider gets chaincode packages from the filesystem.
 type PackageProvider interface {
-	GetChaincodeCodePackage(ccname string, ccversion string) ([]byte, error)
+	GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error)
 }
 
 // RuntimeLauncher is responsible for launching chaincode runtimes.
@@ -45,6 +46,9 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 	if !alreadyStarted {
 		startFailCh = make(chan error, 1)
 		timeoutCh = time.NewTimer(r.StartupTimeout).C
+
+		// FIXME: the package ID should be set by our caller; this will take place in the upcoming CRs
+		ccci.PackageID = ccintf.CCID(ccci.Name + "-" + ccci.Version)
 
 		codePackage, err := r.getCodePackage(ccci)
 		if err != nil {
@@ -101,7 +105,7 @@ func (r *RuntimeLauncher) getCodePackage(ccci *ccprovider.ChaincodeContainerInfo
 		return nil, nil
 	}
 
-	codePackage, err := r.PackageProvider.GetChaincodeCodePackage(ccci.Name, ccci.Version)
+	codePackage, err := r.PackageProvider.GetChaincodeCodePackage(ccci)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get chaincode package")
 	}

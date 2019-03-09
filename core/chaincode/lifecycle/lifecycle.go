@@ -17,6 +17,7 @@ import (
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
 
@@ -135,7 +136,8 @@ func (cd *ChaincodeDefinition) Parameters() *ChaincodeParameters {
 // ChaincodeStore provides a way to persist chaincodes
 type ChaincodeStore interface {
 	Save(name, version string, ccInstallPkg []byte) (hash []byte, err error)
-	RetrieveHash(name, version string) (hash []byte, err error)
+	// FIXME: this is just a hack to get the green path going; the hash lookup step will disappear in the upcoming CRs
+	RetrieveHash(packageID ccintf.CCID) (hash []byte, err error)
 	ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error)
 	Load(hash []byte) (ccInstallPkg []byte, metadata []*persistence.ChaincodeMetadata, err error)
 }
@@ -355,7 +357,7 @@ func (ef *ExternalFunctions) QueryNamespaceDefinitions(publicState RangeableStat
 
 // QueryInstalledChaincode returns the hash of an installed chaincode of a given name and version.
 func (ef *ExternalFunctions) QueryInstalledChaincode(name, version string) ([]byte, error) {
-	hash, err := ef.Resources.ChaincodeStore.RetrieveHash(name, version)
+	hash, err := ef.Resources.ChaincodeStore.RetrieveHash(ccintf.CCID(name + "-" + version))
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve hash for chaincode '%s:%s'", name, version))
 	}

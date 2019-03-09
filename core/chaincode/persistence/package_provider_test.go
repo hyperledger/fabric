@@ -12,6 +12,8 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/chaincode/persistence/mock"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -47,13 +49,16 @@ var _ = Describe("PackageProvider", func() {
 		})
 
 		It("gets the code package successfully", func() {
-			pkgBytes, err := packageProvider.GetChaincodeCodePackage("testcc", "1.0")
+			pkgBytes, err := packageProvider.GetChaincodeCodePackage(&ccprovider.ChaincodeContainerInfo{
+				PackageID: ccintf.CCID("testcc-1.0"),
+				Name:      "testcc",
+				Version:   "1.0",
+			})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(mockSPP.RetrieveHashCallCount()).To(Equal(1))
-			ccName, ccVersion := mockSPP.RetrieveHashArgsForCall(0)
-			Expect(ccName).To(Equal("testcc"))
-			Expect(ccVersion).To(Equal("1.0"))
+			packageID := mockSPP.RetrieveHashArgsForCall(0)
+			Expect(packageID).To(Equal(ccintf.CCID("testcc-1.0")))
 
 			Expect(mockParser.ParseCallCount()).To(Equal(1))
 			Expect(mockParser.ParseArgsForCall(0)).To(Equal([]byte("storeCode")))
@@ -67,7 +72,11 @@ var _ = Describe("PackageProvider", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := packageProvider.GetChaincodeCodePackage("testcc", "1.0")
+				_, err := packageProvider.GetChaincodeCodePackage(&ccprovider.ChaincodeContainerInfo{
+					PackageID: ccintf.CCID("testcc-1.0"),
+					Name:      "testcc",
+					Version:   "1.0",
+				})
 				Expect(err).To(MatchError("error parsing chaincode package: fake-error"))
 			})
 		})
@@ -78,7 +87,11 @@ var _ = Describe("PackageProvider", func() {
 			})
 
 			It("gets the code package successfully from the legacy package provider", func() {
-				pkgBytes, err := packageProvider.GetChaincodeCodePackage("testcc", "1.0")
+				pkgBytes, err := packageProvider.GetChaincodeCodePackage(&ccprovider.ChaincodeContainerInfo{
+					PackageID: ccintf.CCID("testcc-1.0"),
+					Name:      "testcc",
+					Version:   "1.0",
+				})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pkgBytes).To(Equal([]byte("legacyCode")))
 			})
@@ -90,7 +103,11 @@ var _ = Describe("PackageProvider", func() {
 			})
 
 			It("returns an error", func() {
-				pkgBytes, err := packageProvider.GetChaincodeCodePackage("testcc", "1.0")
+				pkgBytes, err := packageProvider.GetChaincodeCodePackage(&ccprovider.ChaincodeContainerInfo{
+					PackageID: ccintf.CCID("testcc-1.0"),
+					Name:      "testcc",
+					Version:   "1.0",
+				})
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("error retrieving hash: chai"))
 				Expect(pkgBytes).To(BeNil())
@@ -103,7 +120,11 @@ var _ = Describe("PackageProvider", func() {
 			})
 
 			It("returns an error", func() {
-				pkgBytes, err := packageProvider.GetChaincodeCodePackage("testcc", "1.0")
+				pkgBytes, err := packageProvider.GetChaincodeCodePackage(&ccprovider.ChaincodeContainerInfo{
+					PackageID: ccintf.CCID("testcc-1.0"),
+					Name:      "testcc",
+					Version:   "1.0",
+				})
 				Expect(err).To(HaveOccurred())
 				Expect(pkgBytes).To(BeNil())
 			})
@@ -116,7 +137,11 @@ var _ = Describe("PackageProvider", func() {
 			})
 
 			It("returns an error", func() {
-				pkgBytes, err := packageProvider.GetChaincodeCodePackage("testcc", "1.0")
+				pkgBytes, err := packageProvider.GetChaincodeCodePackage(&ccprovider.ChaincodeContainerInfo{
+					PackageID: ccintf.CCID("testcc-1.0"),
+					Name:      "testcc",
+					Version:   "1.0",
+				})
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("code package not found for chaincode with name 'testcc', version '1.0'"))
 				Expect(len(pkgBytes)).To(Equal(0))

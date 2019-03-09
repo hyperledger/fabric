@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
 
@@ -161,31 +162,30 @@ func (s *Store) LoadMetadata(path string) ([]*ChaincodeMetadata, error) {
 // CodePackageNotFoundErr is the error returned when a code package cannot
 // be found in the persistence store
 type CodePackageNotFoundErr struct {
-	Name    string
-	Version string
+	PackageID ccintf.CCID
 }
 
-func (e *CodePackageNotFoundErr) Error() string {
-	return fmt.Sprintf("chaincode install package not found with name '%s', version '%s'", e.Name, e.Version)
+func (e CodePackageNotFoundErr) Error() string {
+	return fmt.Sprintf("chaincode install package '%s' not found", e.PackageID)
 }
 
 // RetrieveHash retrieves the hash of a chaincode install package given the
 // name and version of the chaincode
-func (s *Store) RetrieveHash(name string, version string) ([]byte, error) {
+// FIXME: this is just a hack to get the green path going; the hash lookup step will disappear in the upcoming CRs
+func (s *Store) RetrieveHash(packageID ccintf.CCID) ([]byte, error) {
 	installedChaincodes, err := s.ListInstalledChaincodes()
 	if err != nil {
 		return nil, errors.WithMessage(err, "error getting installed chaincodes")
 	}
 
 	for _, installedChaincode := range installedChaincodes {
-		if installedChaincode.Name == name && installedChaincode.Version == version {
+		if installedChaincode.Name+"-"+installedChaincode.Version == string(packageID) {
 			return installedChaincode.Id, nil
 		}
 	}
 
 	err = &CodePackageNotFoundErr{
-		Name:    name,
-		Version: version,
+		PackageID: packageID,
 	}
 
 	return nil, err

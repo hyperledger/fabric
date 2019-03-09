@@ -148,6 +148,7 @@ func (c *ContainerRuntime) LaunchConfig(cname string, ccType string) (*LaunchCon
 	var lc LaunchConfig
 
 	// common environment variables
+	// FIXME: remove since the chaincode id is not a property of the container
 	lc.Envs = append(c.CommonEnv, "CORE_CHAINCODE_ID_NAME="+cname)
 
 	// language specific arguments

@@ -207,6 +207,14 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 	}
 }
 
+type PackageProviderWrapper struct {
+	FS *ccprovider.CCInfoFSImpl
+}
+
+func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
+	return p.FS.GetChaincodeCodePackage(ccci.Name, ccci.Version)
+}
+
 func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 
@@ -234,7 +242,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		false,
 		ca.CertBytes(),
 		certGenerator,
-		&ccprovider.CCInfoFSImpl{},
+		&PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
 		nil,
 		mockAclProvider,
 		container.NewVMController(

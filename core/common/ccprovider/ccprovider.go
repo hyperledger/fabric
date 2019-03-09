@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/privdata"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -36,9 +37,6 @@ var chaincodeInstallPath string
 type CCPackage interface {
 	//InitFromBuffer initialize the package from bytes
 	InitFromBuffer(buf []byte) (*ChaincodeData, error)
-
-	// InitFromFS gets the chaincode from the filesystem (includes the raw bytes too)
-	InitFromFS(ccname string, ccversion string) ([]byte, *pb.ChaincodeDeploymentSpec, error)
 
 	// PutChaincodeToFS writes the chaincode to the filesystem
 	PutChaincodeToFS() error
@@ -79,10 +77,6 @@ func SetChaincodesPath(path string) {
 	}
 
 	chaincodeInstallPath = path
-}
-
-func GetChaincodePackage(ccname string, ccversion string) ([]byte, error) {
-	return GetChaincodePackageFromPath(ccname, ccversion, chaincodeInstallPath)
 }
 
 // isPrintable is used by CDSPackage and SignedCDSPackage validation to
@@ -505,13 +499,17 @@ func (*ChaincodeData) ProtoMessage() {}
 
 // ChaincodeContainerInfo is yet another synonym for the data required to start/stop a chaincode.
 type ChaincodeContainerInfo struct {
-	Name    string
-	Version string
-	Path    string
-	Type    string
+	PackageID ccintf.CCID
+	Path      string
+	Type      string
 
 	// ContainerType is not a great name, but 'DOCKER' and 'SYSTEM' are the valid types
 	ContainerType string
+
+	// FIXME: Name and Version fields must disappear from this struct
+	// because they are *NOT* a property of the chaincode container
+	Name    string
+	Version string
 }
 
 // TransactionParams are parameters which are tied to a particular transaction

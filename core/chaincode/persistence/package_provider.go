@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +21,7 @@ type StorePackageProvider interface {
 	GetChaincodeInstallPath() string
 	ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error)
 	Load(hash []byte) (codePackage []byte, metadata []*ChaincodeMetadata, err error)
-	RetrieveHash(name, version string) (hash []byte, err error)
+	RetrieveHash(packageID ccintf.CCID) (hash []byte, err error)
 }
 
 // LegacyPackageProvider is the interface needed to retrieve
@@ -47,8 +48,8 @@ type PackageProvider struct {
 // the name and version. It first searches through the persisted
 // ChaincodeInstallPackages and then falls back to searching for
 // ChaincodeDeploymentSpecs
-func (p *PackageProvider) GetChaincodeCodePackage(name, version string) ([]byte, error) {
-	codePackage, err := p.getCodePackageFromStore(name, version)
+func (p *PackageProvider) GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
+	codePackage, err := p.getCodePackageFromStore(ccci.PackageID)
 	if err == nil {
 		return codePackage, nil
 	}
@@ -58,10 +59,10 @@ func (p *PackageProvider) GetChaincodeCodePackage(name, version string) ([]byte,
 		return nil, err
 	}
 
-	codePackage, err = p.getCodePackageFromLegacyPP(name, version)
+	codePackage, err = p.getCodePackageFromLegacyPP(ccci.Name, ccci.Version)
 	if err != nil {
 		logger.Debug(err.Error())
-		err = errors.Errorf("code package not found for chaincode with name '%s', version '%s'", name, version)
+		err = errors.Errorf("code package not found for chaincode with name '%s', version '%s'", ccci.Name, ccci.Version)
 		return nil, err
 	}
 	return codePackage, nil
@@ -69,8 +70,9 @@ func (p *PackageProvider) GetChaincodeCodePackage(name, version string) ([]byte,
 
 // GetCodePackageFromStore gets the code package bytes from the package
 // provider's Store, which persists ChaincodeInstallPackages
-func (p *PackageProvider) getCodePackageFromStore(name, version string) ([]byte, error) {
-	hash, err := p.Store.RetrieveHash(name, version)
+func (p *PackageProvider) getCodePackageFromStore(packageID ccintf.CCID) ([]byte, error) {
+	// FIXME: this is just a hack to get the green path going; the hash lookup step will disappear in the upcoming CRs
+	hash, err := p.Store.RetrieveHash(packageID)
 	if _, ok := err.(*CodePackageNotFoundErr); ok {
 		return nil, err
 	}

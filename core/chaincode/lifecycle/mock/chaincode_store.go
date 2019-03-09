@@ -6,14 +6,42 @@ import (
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 type ChaincodeStore struct {
+	SaveStub        func(name, version string, ccInstallPkg []byte) (hash []byte, err error)
+	saveMutex       sync.RWMutex
+	saveArgsForCall []struct {
+		name         string
+		version      string
+		ccInstallPkg []byte
+	}
+	saveReturns struct {
+		result1 []byte
+		result2 error
+	}
+	saveReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
+	RetrieveHashStub        func(packageID ccintf.CCID) (hash []byte, err error)
+	retrieveHashMutex       sync.RWMutex
+	retrieveHashArgsForCall []struct {
+		packageID ccintf.CCID
+	}
+	retrieveHashReturns struct {
+		result1 []byte
+		result2 error
+	}
+	retrieveHashReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
 	ListInstalledChaincodesStub        func() ([]chaincode.InstalledChaincode, error)
 	listInstalledChaincodesMutex       sync.RWMutex
-	listInstalledChaincodesArgsForCall []struct {
-	}
-	listInstalledChaincodesReturns struct {
+	listInstalledChaincodesArgsForCall []struct{}
+	listInstalledChaincodesReturns     struct {
 		result1 []chaincode.InstalledChaincode
 		result2 error
 	}
@@ -21,10 +49,10 @@ type ChaincodeStore struct {
 		result1 []chaincode.InstalledChaincode
 		result2 error
 	}
-	LoadStub        func([]byte) ([]byte, []*persistence.ChaincodeMetadata, error)
+	LoadStub        func(hash []byte) (ccInstallPkg []byte, metadata []*persistence.ChaincodeMetadata, err error)
 	loadMutex       sync.RWMutex
 	loadArgsForCall []struct {
-		arg1 []byte
+		hash []byte
 	}
 	loadReturns struct {
 		result1 []byte
@@ -36,44 +64,123 @@ type ChaincodeStore struct {
 		result2 []*persistence.ChaincodeMetadata
 		result3 error
 	}
-	RetrieveHashStub        func(string, string) ([]byte, error)
-	retrieveHashMutex       sync.RWMutex
-	retrieveHashArgsForCall []struct {
-		arg1 string
-		arg2 string
-	}
-	retrieveHashReturns struct {
-		result1 []byte
-		result2 error
-	}
-	retrieveHashReturnsOnCall map[int]struct {
-		result1 []byte
-		result2 error
-	}
-	SaveStub        func(string, string, []byte) ([]byte, error)
-	saveMutex       sync.RWMutex
-	saveArgsForCall []struct {
-		arg1 string
-		arg2 string
-		arg3 []byte
-	}
-	saveReturns struct {
-		result1 []byte
-		result2 error
-	}
-	saveReturnsOnCall map[int]struct {
-		result1 []byte
-		result2 error
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *ChaincodeStore) Save(name string, version string, ccInstallPkg []byte) (hash []byte, err error) {
+	var ccInstallPkgCopy []byte
+	if ccInstallPkg != nil {
+		ccInstallPkgCopy = make([]byte, len(ccInstallPkg))
+		copy(ccInstallPkgCopy, ccInstallPkg)
+	}
+	fake.saveMutex.Lock()
+	ret, specificReturn := fake.saveReturnsOnCall[len(fake.saveArgsForCall)]
+	fake.saveArgsForCall = append(fake.saveArgsForCall, struct {
+		name         string
+		version      string
+		ccInstallPkg []byte
+	}{name, version, ccInstallPkgCopy})
+	fake.recordInvocation("Save", []interface{}{name, version, ccInstallPkgCopy})
+	fake.saveMutex.Unlock()
+	if fake.SaveStub != nil {
+		return fake.SaveStub(name, version, ccInstallPkg)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.saveReturns.result1, fake.saveReturns.result2
+}
+
+func (fake *ChaincodeStore) SaveCallCount() int {
+	fake.saveMutex.RLock()
+	defer fake.saveMutex.RUnlock()
+	return len(fake.saveArgsForCall)
+}
+
+func (fake *ChaincodeStore) SaveArgsForCall(i int) (string, string, []byte) {
+	fake.saveMutex.RLock()
+	defer fake.saveMutex.RUnlock()
+	return fake.saveArgsForCall[i].name, fake.saveArgsForCall[i].version, fake.saveArgsForCall[i].ccInstallPkg
+}
+
+func (fake *ChaincodeStore) SaveReturns(result1 []byte, result2 error) {
+	fake.SaveStub = nil
+	fake.saveReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStore) SaveReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.SaveStub = nil
+	if fake.saveReturnsOnCall == nil {
+		fake.saveReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.saveReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStore) RetrieveHash(packageID ccintf.CCID) (hash []byte, err error) {
+	fake.retrieveHashMutex.Lock()
+	ret, specificReturn := fake.retrieveHashReturnsOnCall[len(fake.retrieveHashArgsForCall)]
+	fake.retrieveHashArgsForCall = append(fake.retrieveHashArgsForCall, struct {
+		packageID ccintf.CCID
+	}{packageID})
+	fake.recordInvocation("RetrieveHash", []interface{}{packageID})
+	fake.retrieveHashMutex.Unlock()
+	if fake.RetrieveHashStub != nil {
+		return fake.RetrieveHashStub(packageID)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.retrieveHashReturns.result1, fake.retrieveHashReturns.result2
+}
+
+func (fake *ChaincodeStore) RetrieveHashCallCount() int {
+	fake.retrieveHashMutex.RLock()
+	defer fake.retrieveHashMutex.RUnlock()
+	return len(fake.retrieveHashArgsForCall)
+}
+
+func (fake *ChaincodeStore) RetrieveHashArgsForCall(i int) ccintf.CCID {
+	fake.retrieveHashMutex.RLock()
+	defer fake.retrieveHashMutex.RUnlock()
+	return fake.retrieveHashArgsForCall[i].packageID
+}
+
+func (fake *ChaincodeStore) RetrieveHashReturns(result1 []byte, result2 error) {
+	fake.RetrieveHashStub = nil
+	fake.retrieveHashReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStore) RetrieveHashReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.RetrieveHashStub = nil
+	if fake.retrieveHashReturnsOnCall == nil {
+		fake.retrieveHashReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.retrieveHashReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *ChaincodeStore) ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error) {
 	fake.listInstalledChaincodesMutex.Lock()
 	ret, specificReturn := fake.listInstalledChaincodesReturnsOnCall[len(fake.listInstalledChaincodesArgsForCall)]
-	fake.listInstalledChaincodesArgsForCall = append(fake.listInstalledChaincodesArgsForCall, struct {
-	}{})
+	fake.listInstalledChaincodesArgsForCall = append(fake.listInstalledChaincodesArgsForCall, struct{}{})
 	fake.recordInvocation("ListInstalledChaincodes", []interface{}{})
 	fake.listInstalledChaincodesMutex.Unlock()
 	if fake.ListInstalledChaincodesStub != nil {
@@ -82,8 +189,7 @@ func (fake *ChaincodeStore) ListInstalledChaincodes() ([]chaincode.InstalledChai
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.listInstalledChaincodesReturns
-	return fakeReturns.result1, fakeReturns.result2
+	return fake.listInstalledChaincodesReturns.result1, fake.listInstalledChaincodesReturns.result2
 }
 
 func (fake *ChaincodeStore) ListInstalledChaincodesCallCount() int {
@@ -92,15 +198,7 @@ func (fake *ChaincodeStore) ListInstalledChaincodesCallCount() int {
 	return len(fake.listInstalledChaincodesArgsForCall)
 }
 
-func (fake *ChaincodeStore) ListInstalledChaincodesCalls(stub func() ([]chaincode.InstalledChaincode, error)) {
-	fake.listInstalledChaincodesMutex.Lock()
-	defer fake.listInstalledChaincodesMutex.Unlock()
-	fake.ListInstalledChaincodesStub = stub
-}
-
 func (fake *ChaincodeStore) ListInstalledChaincodesReturns(result1 []chaincode.InstalledChaincode, result2 error) {
-	fake.listInstalledChaincodesMutex.Lock()
-	defer fake.listInstalledChaincodesMutex.Unlock()
 	fake.ListInstalledChaincodesStub = nil
 	fake.listInstalledChaincodesReturns = struct {
 		result1 []chaincode.InstalledChaincode
@@ -109,8 +207,6 @@ func (fake *ChaincodeStore) ListInstalledChaincodesReturns(result1 []chaincode.I
 }
 
 func (fake *ChaincodeStore) ListInstalledChaincodesReturnsOnCall(i int, result1 []chaincode.InstalledChaincode, result2 error) {
-	fake.listInstalledChaincodesMutex.Lock()
-	defer fake.listInstalledChaincodesMutex.Unlock()
 	fake.ListInstalledChaincodesStub = nil
 	if fake.listInstalledChaincodesReturnsOnCall == nil {
 		fake.listInstalledChaincodesReturnsOnCall = make(map[int]struct {
@@ -124,27 +220,26 @@ func (fake *ChaincodeStore) ListInstalledChaincodesReturnsOnCall(i int, result1 
 	}{result1, result2}
 }
 
-func (fake *ChaincodeStore) Load(arg1 []byte) ([]byte, []*persistence.ChaincodeMetadata, error) {
-	var arg1Copy []byte
-	if arg1 != nil {
-		arg1Copy = make([]byte, len(arg1))
-		copy(arg1Copy, arg1)
+func (fake *ChaincodeStore) Load(hash []byte) (ccInstallPkg []byte, metadata []*persistence.ChaincodeMetadata, err error) {
+	var hashCopy []byte
+	if hash != nil {
+		hashCopy = make([]byte, len(hash))
+		copy(hashCopy, hash)
 	}
 	fake.loadMutex.Lock()
 	ret, specificReturn := fake.loadReturnsOnCall[len(fake.loadArgsForCall)]
 	fake.loadArgsForCall = append(fake.loadArgsForCall, struct {
-		arg1 []byte
-	}{arg1Copy})
-	fake.recordInvocation("Load", []interface{}{arg1Copy})
+		hash []byte
+	}{hashCopy})
+	fake.recordInvocation("Load", []interface{}{hashCopy})
 	fake.loadMutex.Unlock()
 	if fake.LoadStub != nil {
-		return fake.LoadStub(arg1)
+		return fake.LoadStub(hash)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
 	}
-	fakeReturns := fake.loadReturns
-	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
+	return fake.loadReturns.result1, fake.loadReturns.result2, fake.loadReturns.result3
 }
 
 func (fake *ChaincodeStore) LoadCallCount() int {
@@ -153,22 +248,13 @@ func (fake *ChaincodeStore) LoadCallCount() int {
 	return len(fake.loadArgsForCall)
 }
 
-func (fake *ChaincodeStore) LoadCalls(stub func([]byte) ([]byte, []*persistence.ChaincodeMetadata, error)) {
-	fake.loadMutex.Lock()
-	defer fake.loadMutex.Unlock()
-	fake.LoadStub = stub
-}
-
 func (fake *ChaincodeStore) LoadArgsForCall(i int) []byte {
 	fake.loadMutex.RLock()
 	defer fake.loadMutex.RUnlock()
-	argsForCall := fake.loadArgsForCall[i]
-	return argsForCall.arg1
+	return fake.loadArgsForCall[i].hash
 }
 
 func (fake *ChaincodeStore) LoadReturns(result1 []byte, result2 []*persistence.ChaincodeMetadata, result3 error) {
-	fake.loadMutex.Lock()
-	defer fake.loadMutex.Unlock()
 	fake.LoadStub = nil
 	fake.loadReturns = struct {
 		result1 []byte
@@ -178,8 +264,6 @@ func (fake *ChaincodeStore) LoadReturns(result1 []byte, result2 []*persistence.C
 }
 
 func (fake *ChaincodeStore) LoadReturnsOnCall(i int, result1 []byte, result2 []*persistence.ChaincodeMetadata, result3 error) {
-	fake.loadMutex.Lock()
-	defer fake.loadMutex.Unlock()
 	fake.LoadStub = nil
 	if fake.loadReturnsOnCall == nil {
 		fake.loadReturnsOnCall = make(map[int]struct {
@@ -195,151 +279,17 @@ func (fake *ChaincodeStore) LoadReturnsOnCall(i int, result1 []byte, result2 []*
 	}{result1, result2, result3}
 }
 
-func (fake *ChaincodeStore) RetrieveHash(arg1 string, arg2 string) ([]byte, error) {
-	fake.retrieveHashMutex.Lock()
-	ret, specificReturn := fake.retrieveHashReturnsOnCall[len(fake.retrieveHashArgsForCall)]
-	fake.retrieveHashArgsForCall = append(fake.retrieveHashArgsForCall, struct {
-		arg1 string
-		arg2 string
-	}{arg1, arg2})
-	fake.recordInvocation("RetrieveHash", []interface{}{arg1, arg2})
-	fake.retrieveHashMutex.Unlock()
-	if fake.RetrieveHashStub != nil {
-		return fake.RetrieveHashStub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.retrieveHashReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *ChaincodeStore) RetrieveHashCallCount() int {
-	fake.retrieveHashMutex.RLock()
-	defer fake.retrieveHashMutex.RUnlock()
-	return len(fake.retrieveHashArgsForCall)
-}
-
-func (fake *ChaincodeStore) RetrieveHashCalls(stub func(string, string) ([]byte, error)) {
-	fake.retrieveHashMutex.Lock()
-	defer fake.retrieveHashMutex.Unlock()
-	fake.RetrieveHashStub = stub
-}
-
-func (fake *ChaincodeStore) RetrieveHashArgsForCall(i int) (string, string) {
-	fake.retrieveHashMutex.RLock()
-	defer fake.retrieveHashMutex.RUnlock()
-	argsForCall := fake.retrieveHashArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *ChaincodeStore) RetrieveHashReturns(result1 []byte, result2 error) {
-	fake.retrieveHashMutex.Lock()
-	defer fake.retrieveHashMutex.Unlock()
-	fake.RetrieveHashStub = nil
-	fake.retrieveHashReturns = struct {
-		result1 []byte
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *ChaincodeStore) RetrieveHashReturnsOnCall(i int, result1 []byte, result2 error) {
-	fake.retrieveHashMutex.Lock()
-	defer fake.retrieveHashMutex.Unlock()
-	fake.RetrieveHashStub = nil
-	if fake.retrieveHashReturnsOnCall == nil {
-		fake.retrieveHashReturnsOnCall = make(map[int]struct {
-			result1 []byte
-			result2 error
-		})
-	}
-	fake.retrieveHashReturnsOnCall[i] = struct {
-		result1 []byte
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *ChaincodeStore) Save(arg1 string, arg2 string, arg3 []byte) ([]byte, error) {
-	var arg3Copy []byte
-	if arg3 != nil {
-		arg3Copy = make([]byte, len(arg3))
-		copy(arg3Copy, arg3)
-	}
-	fake.saveMutex.Lock()
-	ret, specificReturn := fake.saveReturnsOnCall[len(fake.saveArgsForCall)]
-	fake.saveArgsForCall = append(fake.saveArgsForCall, struct {
-		arg1 string
-		arg2 string
-		arg3 []byte
-	}{arg1, arg2, arg3Copy})
-	fake.recordInvocation("Save", []interface{}{arg1, arg2, arg3Copy})
-	fake.saveMutex.Unlock()
-	if fake.SaveStub != nil {
-		return fake.SaveStub(arg1, arg2, arg3)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.saveReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *ChaincodeStore) SaveCallCount() int {
-	fake.saveMutex.RLock()
-	defer fake.saveMutex.RUnlock()
-	return len(fake.saveArgsForCall)
-}
-
-func (fake *ChaincodeStore) SaveCalls(stub func(string, string, []byte) ([]byte, error)) {
-	fake.saveMutex.Lock()
-	defer fake.saveMutex.Unlock()
-	fake.SaveStub = stub
-}
-
-func (fake *ChaincodeStore) SaveArgsForCall(i int) (string, string, []byte) {
-	fake.saveMutex.RLock()
-	defer fake.saveMutex.RUnlock()
-	argsForCall := fake.saveArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
-}
-
-func (fake *ChaincodeStore) SaveReturns(result1 []byte, result2 error) {
-	fake.saveMutex.Lock()
-	defer fake.saveMutex.Unlock()
-	fake.SaveStub = nil
-	fake.saveReturns = struct {
-		result1 []byte
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *ChaincodeStore) SaveReturnsOnCall(i int, result1 []byte, result2 error) {
-	fake.saveMutex.Lock()
-	defer fake.saveMutex.Unlock()
-	fake.SaveStub = nil
-	if fake.saveReturnsOnCall == nil {
-		fake.saveReturnsOnCall = make(map[int]struct {
-			result1 []byte
-			result2 error
-		})
-	}
-	fake.saveReturnsOnCall[i] = struct {
-		result1 []byte
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *ChaincodeStore) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.saveMutex.RLock()
+	defer fake.saveMutex.RUnlock()
+	fake.retrieveHashMutex.RLock()
+	defer fake.retrieveHashMutex.RUnlock()
 	fake.listInstalledChaincodesMutex.RLock()
 	defer fake.listInstalledChaincodesMutex.RUnlock()
 	fake.loadMutex.RLock()
 	defer fake.loadMutex.RUnlock()
-	fake.retrieveHashMutex.RLock()
-	defer fake.retrieveHashMutex.RUnlock()
-	fake.saveMutex.RLock()
-	defer fake.saveMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
