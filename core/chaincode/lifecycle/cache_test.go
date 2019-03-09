@@ -13,7 +13,9 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	. "github.com/onsi/ginkgo"
@@ -238,6 +240,137 @@ var _ = Describe("Cache", func() {
 			It("wraps and returns the error", func() {
 				err := c.Initialize("channel-id", fakeQueryExecutor)
 				Expect(err).To(MatchError("could not check opaque org state for 'chaincode-name' on channel 'channel-id': could not get value for key namespaces/metadata/chaincode-name#7: private-data-error"))
+			})
+		})
+	})
+
+	Describe("StateListener", func() {
+		Describe("InterestedInNamespaces", func() {
+			It("returns _lifecycle", func() {
+				Expect(c.InterestedInNamespaces()).To(Equal([]string{"_lifecycle"}))
+			})
+		})
+
+		Describe("HandleStateUpdates", func() {
+			var (
+				fakePublicState   MapLedgerShim
+				trigger           *ledger.StateUpdateTrigger
+				fakeQueryExecutor *mock.SimpleQueryExecutor
+			)
+
+			BeforeEach(func() {
+				fakePublicState = map[string][]byte{}
+				fakeQueryExecutor = &mock.SimpleQueryExecutor{}
+				fakeQueryExecutor.GetStateStub = func(namespace, key string) ([]byte, error) {
+					return fakePublicState.GetState(key)
+				}
+
+				err := l.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
+					Sequence: 7,
+				}, fakePublicState)
+
+				Expect(err).NotTo(HaveOccurred())
+
+				trigger = &ledger.StateUpdateTrigger{
+					LedgerID: "channel-id",
+					StateUpdates: ledger.StateUpdates(map[string]*ledger.KVStateUpdates{
+						"_lifecycle": {
+							PublicUpdates: []*kvrwset.KVWrite{
+								{Key: "namespaces/fields/chaincode-name/Sequence"},
+							},
+							CollHashUpdates: map[string][]*kvrwset.KVWriteHash{},
+						},
+					}),
+					PostCommitQueryExecutor: fakeQueryExecutor,
+				}
+			})
+
+			It("updates the modified chaincodes", func() {
+				err := c.HandleStateUpdates(trigger)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(channelCache.Chaincodes["chaincode-name"].Definition.Sequence).To(Equal(int64(7)))
+			})
+
+			Context("when the update is not to the sequence", func() {
+				BeforeEach(func() {
+					trigger.StateUpdates["_lifecycle"].PublicUpdates[0].Key = "namespaces/fields/chaincode-name/EndorsementInfo"
+				})
+
+				It("no update occurs", func() {
+					err := c.HandleStateUpdates(trigger)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(channelCache.Chaincodes["chaincode-name"].Definition.Sequence).To(Equal(int64(3)))
+					Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(0))
+				})
+			})
+
+			Context("when the update encounters an error", func() {
+				BeforeEach(func() {
+					fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					err := c.HandleStateUpdates(trigger)
+					Expect(err.Error()).To(Equal("error updating cache: could not get chaincode definition for 'chaincode-name' on channel 'channel-id': could not deserialize metadata for chaincode chaincode-name: could not query metadata for namespace namespaces/chaincode-name: state-error"))
+				})
+			})
+
+			Context("when the update is to private data", func() {
+				BeforeEach(func() {
+					trigger.StateUpdates["_lifecycle"].PublicUpdates = nil
+					trigger.StateUpdates["_lifecycle"].CollHashUpdates["_implicit_org_my-mspid"] = []*kvrwset.KVWriteHash{
+						{KeyHash: util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/EndorsementInfo"))},
+					}
+				})
+
+				It("updates the corresponding chaincode", func() {
+					err := c.HandleStateUpdates(trigger)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(channelCache.Chaincodes["chaincode-name"].Definition.Sequence).To(Equal(int64(7)))
+				})
+			})
+
+			Context("when the private update is not in our implicit collection", func() {
+				BeforeEach(func() {
+					trigger.StateUpdates["_lifecycle"].PublicUpdates = nil
+					trigger.StateUpdates["_lifecycle"].CollHashUpdates["_implicit_org_other-mspid"] = []*kvrwset.KVWriteHash{
+						{KeyHash: util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/EndorsementInfo"))},
+					}
+				})
+
+				It("it does not mark the chaincode dirty", func() {
+					err := c.HandleStateUpdates(trigger)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(channelCache.Chaincodes["chaincode-name"].Definition.Sequence).To(Equal(int64(3)))
+					Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(0))
+				})
+			})
+
+			Context("when the private update is not in an implicit collection", func() {
+				BeforeEach(func() {
+					trigger.StateUpdates["_lifecycle"].PublicUpdates = nil
+					trigger.StateUpdates["_lifecycle"].CollHashUpdates["random-collection"] = []*kvrwset.KVWriteHash{
+						{KeyHash: util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/EndorsementInfo"))},
+					}
+				})
+
+				It("it does not mark the chaincode dirty", func() {
+					err := c.HandleStateUpdates(trigger)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(channelCache.Chaincodes["chaincode-name"].Definition.Sequence).To(Equal(int64(3)))
+					Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(0))
+				})
+			})
+
+			Context("when the state update contains no updates to _lifecycle", func() {
+				BeforeEach(func() {
+					trigger.StateUpdates = ledger.StateUpdates(map[string]*ledger.KVStateUpdates{})
+				})
+
+				It("returns an error", func() {
+					err := c.HandleStateUpdates(trigger)
+					Expect(err).To(MatchError("no state updates for promised namespace _lifecycle"))
+				})
 			})
 		})
 	})

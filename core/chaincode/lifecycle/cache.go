@@ -88,6 +88,79 @@ func (c *Cache) Initialize(channelID string, qe ledger.SimpleQueryExecutor) erro
 	return c.update(channelID, dirtyChaincodes, qe)
 }
 
+// HandleStateUpdates is required to implement the ledger state listener interface.  It applies
+// any state updates to the cache.
+func (c *Cache) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	channelID := trigger.LedgerID
+	updates, ok := trigger.StateUpdates[LifecycleNamespace]
+	if !ok {
+		return errors.Errorf("no state updates for promised namespace _lifecycle")
+	}
+
+	dirtyChaincodes := map[string]struct{}{}
+
+	for _, publicUpdate := range updates.PublicUpdates {
+		matches := SequenceMatcher.FindStringSubmatch(publicUpdate.Key)
+		if len(matches) != 2 {
+			continue
+		}
+
+		dirtyChaincodes[matches[1]] = struct{}{}
+	}
+
+	channelCache, ok := c.definedChaincodes[channelID]
+
+	// if the channel cache does not yet exist, there are no interesting hashes, so skip
+	if ok {
+		for collection, privateUpdates := range updates.CollHashUpdates {
+			matches := ImplicitCollectionMatcher.FindStringSubmatch(collection)
+			if len(matches) != 2 {
+				// This is not an implicit collection
+				continue
+			}
+
+			if matches[1] != c.MyOrgMSPID {
+				// This is not our implicit collection
+				continue
+			}
+
+			for _, privateUpdate := range privateUpdates {
+				chaincodeName, ok := channelCache.InterestingHashes[string(privateUpdate.KeyHash)]
+				if ok {
+					dirtyChaincodes[chaincodeName] = struct{}{}
+				}
+			}
+		}
+	}
+
+	err := c.update(channelID, dirtyChaincodes, trigger.PostCommitQueryExecutor)
+	if err != nil {
+		return errors.WithMessage(err, "error updating cache")
+	}
+
+	return nil
+}
+
+// InterestedInNamespaces is required to implement the ledger state listener interface
+func (c *Cache) InterestedInNamespaces() []string {
+	return []string{LifecycleNamespace}
+}
+
+// StateCommitDone is required to implement the ledger state listener interface
+func (c *Cache) StateCommitDone(channelName string) {
+	// NOTE: It's extremely tempting to acquire the write lock in HandleStateUpdate
+	// and release it here, however, this is asking for a deadlock.  In particular,
+	// because the 'write lock' on the state is only held for a short period
+	// between HandleStateUpdate and StateCommitDone, it's possible (in fact likely)
+	// that a chaincode invocation will acquire a read-lock on the world state, then attempt
+	// to get chaincode info from the cache, resulting in a deadlock.  So, we choose
+	// potential inconsistenty between the cache and the world state which the callers
+	// must detect and cope with as necessary.  Note, the cache will always be _at least_
+	// as current as the committed state.
+}
+
 func (c *Cache) ChaincodeDefinition(channelID, name string) (*ChaincodeDefinition, bool, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
