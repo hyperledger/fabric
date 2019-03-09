@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/common/flogging"
 	corechaincode "github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -20,6 +21,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
+
+var logger = flogging.MustGetLogger("lifecycle")
 
 const (
 	// NamespacesName is the prefix (or namespace) of the DB which will be used to store

@@ -11,14 +11,22 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/ledger"
 
 	"github.com/pkg/errors"
 )
 
+type ChaincodeInstallInfo struct {
+	Hash []byte
+	Type string
+	Path string
+}
+
 type CachedChaincodeDefinition struct {
-	Definition *ChaincodeDefinition
-	Approved   bool
+	Definition  *ChaincodeDefinition
+	Approved    bool
+	InstallInfo *ChaincodeInstallInfo
 
 	// Hashes is the list of hashed keys in the implicit collection referring to this definition.
 	// These hashes are determined by the current sequence number of chaincode definition.  When dirty,
@@ -48,14 +56,70 @@ type Cache struct {
 	// event, by synchronizing at a peer global level, we drastically simplify accounting for which
 	// chaincodes are installed and which channels that installed chaincode is currently in use on.
 	mutex sync.RWMutex
+
+	// localChaincodes is a map from the hash of the locally installed chaincode's hash
+	// (yes, the hash of the hash), to a set of channels, to a set of chaincode
+	// definitions which reference this local installed chaincode hash.
+	localChaincodes map[string]*LocalChaincode
+}
+
+type LocalChaincode struct {
+	Info       *ChaincodeInstallInfo
+	References map[string]map[string]*CachedChaincodeDefinition
 }
 
 func NewCache(lifecycle *Lifecycle, myOrgMSPID string) *Cache {
 	return &Cache{
 		definedChaincodes: map[string]*ChannelCache{},
+		localChaincodes:   map[string]*LocalChaincode{},
 		Lifecycle:         lifecycle,
 		MyOrgMSPID:        myOrgMSPID,
 	}
+}
+
+// InitializeLocalChaincodes should be called once after cache creation (timing doesn't matter,
+// though already installed chaincodes will not be invokable until it it completes).  Ideally,
+// this would be part of the constructor, but, we cannot rely on the chaincode store being created
+// before the cache is created.
+func (c *Cache) InitializeLocalChaincodes() error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	ccPackages, err := c.Lifecycle.ChaincodeStore.ListInstalledChaincodes()
+	if err != nil {
+		return errors.WithMessage(err, "could not list installed chaincodes")
+	}
+
+	for _, ccPackage := range ccPackages {
+		ccPackageBytes, _, err := c.Lifecycle.ChaincodeStore.Load(ccPackage.Id)
+		if err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("could not load chaincode with hash '%x'", ccPackage.Id))
+		}
+		parsedCCPackage, err := c.Lifecycle.PackageParser.Parse(ccPackageBytes)
+		if err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("could not parse chaincode package with hash '%x'", ccPackage.Id))
+		}
+		c.handleChaincodeInstalledWhileLocked(parsedCCPackage.Metadata, ccPackage.Id)
+	}
+
+	logger.Infof("Initialized lifecycle cache with %d already installed chaincodes", len(c.localChaincodes))
+	for channelID, chaincodeCache := range c.definedChaincodes {
+		approved, installed, runnable := 0, 0, 0
+		for _, cachedChaincode := range chaincodeCache.Chaincodes {
+			if cachedChaincode.Approved {
+				approved++
+			}
+			if cachedChaincode.InstallInfo != nil {
+				installed++
+			}
+			if cachedChaincode.Approved && cachedChaincode.InstallInfo != nil {
+				runnable++
+			}
+		}
+
+		logger.Infof("Initialized lifecycle cache for channel '%s' with %d chaincodes runnable (%d approved, %d installed)", channelID, runnable, approved, installed)
+	}
+
+	return nil
 }
 
 // Initialize will populate the set of currently committed chaincode definitions
@@ -86,6 +150,35 @@ func (c *Cache) Initialize(channelID string, qe ledger.SimpleQueryExecutor) erro
 	}
 
 	return c.update(channelID, dirtyChaincodes, qe)
+}
+
+// HandleChaincodeInstalled should be invoked whenever a new chaincode is installed
+func (c *Cache) HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, hash []byte) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.handleChaincodeInstalledWhileLocked(md, hash)
+}
+
+func (c *Cache) handleChaincodeInstalledWhileLocked(md *persistence.ChaincodePackageMetadata, hash []byte) {
+	hashOfCCHash := string(util.ComputeSHA256(hash))
+	localChaincode, ok := c.localChaincodes[hashOfCCHash]
+	if !ok {
+		localChaincode = &LocalChaincode{
+			References: map[string]map[string]*CachedChaincodeDefinition{},
+		}
+		c.localChaincodes[hashOfCCHash] = localChaincode
+	}
+	localChaincode.Info = &ChaincodeInstallInfo{
+		Hash: hash,
+		Type: md.Type,
+		Path: md.Path,
+	}
+	for channelID, channelCache := range localChaincode.References {
+		for chaincodeName, cachedChaincode := range channelCache {
+			cachedChaincode.InstallInfo = localChaincode.Info
+			logger.Infof("Installed chaincode with hash %x now available on channel %s for chaincode definition %s:%s", hash, channelID, chaincodeName, cachedChaincode.Definition.EndorsementInfo.Version)
+		}
+	}
 }
 
 // HandleStateUpdates is required to implement the ledger state listener interface.  It applies
@@ -200,6 +293,7 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 	}
 
 	for name := range dirtyChaincodes {
+		logger.Infof("Updating cached definition for chaincode '%s' on channel '%s'", name, channelID)
 		cachedChaincode, ok := channelCache.Chaincodes[name]
 		if !ok {
 			cachedChaincode = &CachedChaincodeDefinition{}
@@ -243,9 +337,35 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("could not check opaque org state for '%s' on channel '%s'", name, channelID))
 		}
-		if ok {
-			cachedChaincode.Approved = true
+		if !ok {
+			logger.Debugf("Channel %s for chaincode definition %s:%s does not have our org's approval", channelID, name, chaincodeDefinition.EndorsementInfo.Version)
+			continue
 		}
+
+		cachedChaincode.Approved = true
+		hashOfCCHash := string(util.ComputeSHA256(cachedChaincode.Definition.EndorsementInfo.Id))
+		localChaincode, ok := c.localChaincodes[hashOfCCHash]
+		if !ok {
+			localChaincode = &LocalChaincode{
+				References: map[string]map[string]*CachedChaincodeDefinition{},
+			}
+			c.localChaincodes[hashOfCCHash] = localChaincode
+		}
+
+		cachedChaincode.InstallInfo = localChaincode.Info
+		if localChaincode.Info != nil {
+			logger.Infof("Chaincode with hash %x now available on channel %s for chaincode definition %s:%s", localChaincode.Info.Hash, channelID, name, cachedChaincode.Definition.EndorsementInfo.Version)
+		} else {
+			logger.Debugf("Chaincode definition for chaincode '%s' on channel '%s' is approved, but not installed", name, channelID)
+		}
+
+		channelReferences, ok := localChaincode.References[channelID]
+		if !ok {
+			channelReferences = map[string]*CachedChaincodeDefinition{}
+			localChaincode.References[channelID] = channelReferences
+		}
+
+		channelReferences[name] = cachedChaincode
 	}
 
 	return nil
