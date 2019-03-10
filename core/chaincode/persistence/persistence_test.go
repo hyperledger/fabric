@@ -305,7 +305,7 @@ var _ = Describe("Persistence", func() {
 		})
 
 		It("retrieves the hash successfully", func() {
-			hash, err := store.RetrieveHash(ccintf.CCID("test2:2.0"))
+			hash, err := store.RetrieveHash(ccintf.CCID("labellissima:6861736832"))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(hash).To(Equal([]byte("hash2")))
 		})
@@ -358,7 +358,7 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns sucessfully", func() {
-				hash, err := store.RetrieveHash(ccintf.CCID("test2:2.0"))
+				hash, err := store.RetrieveHash(ccintf.CCID("labellissima:6861736832"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(hash).To(Equal([]byte("hash2")))
 			})

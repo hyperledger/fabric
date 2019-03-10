@@ -168,6 +168,7 @@ func TestContainerRuntimeStart(t *testing.T) {
 		Name:          "chaincode-name",
 		Version:       "chaincode-version",
 		ContainerType: "container-type",
+		PackageID:     "chaincode-name:chaincode-version",
 	}
 
 	err := cr.Start(ccci, nil)
@@ -227,6 +228,7 @@ func TestContainerRuntimeStop(t *testing.T) {
 		Name:          "chaincode-id-name",
 		Version:       "chaincode-version",
 		ContainerType: "container-type",
+		PackageID:     "chaincode-id-name:chaincode-version",
 	}
 
 	err := cr.Stop(ccci)
@@ -291,6 +293,7 @@ func TestContainerRuntimeWait(t *testing.T) {
 		Name:          "chaincode-id-name",
 		Version:       "chaincode-version",
 		ContainerType: "container-type",
+		PackageID:     ccintf.CCID("chaincode-id-name:chaincode-version"),
 	}
 
 	exitCode, err := cr.Wait(ccci)

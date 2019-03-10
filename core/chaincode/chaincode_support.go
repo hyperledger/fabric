@@ -219,6 +219,10 @@ func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid stri
 func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(spec)
 	ccci.Version = cccid.Version
+	// FIXME: this is a hack, we shouldn't construct the
+	// packageID manually but rather let lifecycle construct it
+	// for us. However this is legacy code that will disappear
+	// so it is acceptable for now
 	ccci.PackageID = ccintf.CCID(ccci.Name + ":" + ccci.Version)
 
 	err := cs.LaunchInit(ccci)
@@ -293,13 +297,11 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 	} else {
 		// FIXME: remove this once _lifecycle has definitions for all system chaincodes
 		ccci = &ccprovider.ChaincodeContainerInfo{
-			Version: util.GetSysCCVersion(),
-			Name:    cccid.Name,
+			Version:   util.GetSysCCVersion(),
+			Name:      cccid.Name,
+			PackageID: ccintf.CCID(cccid.Name + ":" + util.GetSysCCVersion()),
 		}
 	}
-
-	// FIXME: the package ID should be set by ChaincodeContainerInfo
-	ccci.PackageID = ccintf.CCID(ccci.Name + ":" + ccci.Version)
 
 	// fill the chaincode version field from the chaincode
 	// container info that we got from _lifecycle

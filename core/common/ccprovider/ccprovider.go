@@ -389,7 +389,7 @@ type CCContext struct {
 }
 
 // GetCanonicalName returns the canonical name associated with the proposal context
-func (cccid *CCContext) GetCanonicalName() string {
+func (cccid *CCContext) GetCanonicalNameForTests() string {
 	return cccid.Name + ":" + cccid.Version
 }
 
@@ -548,5 +548,6 @@ func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec) *Ch
 		Path:          cds.ChaincodeSpec.ChaincodeId.Path,
 		Type:          cds.ChaincodeSpec.Type.String(),
 		ContainerType: cds.ExecEnv.String(),
+		PackageID:     ccintf.CCID(cds.ChaincodeSpec.ChaincodeId.Name + ":" + cds.ChaincodeSpec.ChaincodeId.Version),
 	}
 }

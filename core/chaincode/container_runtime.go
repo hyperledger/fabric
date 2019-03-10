@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
@@ -45,14 +44,14 @@ type ContainerRuntime struct {
 
 // Start launches chaincode in a runtime environment.
 func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
-	cname := ccci.Name + ":" + ccci.Version
+	packageID := string(ccci.PackageID)
 
-	lc, err := c.LaunchConfig(cname, ccci.Type)
+	lc, err := c.LaunchConfig(packageID, ccci.Type)
 	if err != nil {
 		return err
 	}
 
-	chaincodeLogger.Debugf("start container: %s", cname)
+	chaincodeLogger.Debugf("start container: %s", packageID)
 	chaincodeLogger.Debugf("start container with args: %s", strings.Join(lc.Args, " "))
 	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(lc.Envs, "\n\t"))
 
@@ -68,7 +67,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 		Args:          lc.Args,
 		Env:           lc.Envs,
 		FilesToUpload: lc.Files,
-		CCID:          ccintf.CCID(ccci.Name + ":" + ccci.Version),
+		CCID:          ccci.PackageID,
 	}
 
 	if err := c.Processor.Process(ccci.ContainerType, scr); err != nil {
@@ -81,7 +80,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 // Stop terminates chaincode and its container runtime environment.
 func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 	scr := container.StopContainerReq{
-		CCID:       ccintf.CCID(ccci.Name + ":" + ccci.Version),
+		CCID:       ccci.PackageID,
 		Timeout:    0,
 		Dontremove: false,
 	}
@@ -102,7 +101,7 @@ func (c *ContainerRuntime) Wait(ccci *ccprovider.ChaincodeContainerInfo) (int, e
 
 	resultCh := make(chan result, 1)
 	wcr := container.WaitContainerReq{
-		CCID: ccintf.CCID(ccci.Name + ":" + ccci.Version),
+		CCID: ccci.PackageID,
 		Exited: func(exitCode int, err error) {
 			resultCh <- result{exitCode: exitCode, err: err}
 			close(resultCh)
@@ -144,12 +143,16 @@ type LaunchConfig struct {
 }
 
 // LaunchConfig creates the LaunchConfig for chaincode running in a container.
-func (c *ContainerRuntime) LaunchConfig(cname string, ccType string) (*LaunchConfig, error) {
+func (c *ContainerRuntime) LaunchConfig(packageID string, ccType string) (*LaunchConfig, error) {
 	var lc LaunchConfig
 
 	// common environment variables
-	// FIXME: remove since the chaincode id is not a property of the container
-	lc.Envs = append(c.CommonEnv, "CORE_CHAINCODE_ID_NAME="+cname)
+	// FIXME: we are using the env variable CHAINCODE_ID to store
+	// the package ID; in the legacy lifecycle they used to be the
+	// same but now they are not, so we should use a different env
+	// variable. However chaincodes built by older versions of the
+	// peer still adopt this broken convention.
+	lc.Envs = append(c.CommonEnv, "CORE_CHAINCODE_ID_NAME="+packageID)
 
 	// language specific arguments
 	switch ccType {
@@ -165,13 +168,13 @@ func (c *ContainerRuntime) LaunchConfig(cname string, ccType string) (*LaunchCon
 
 	// Pass TLS options to chaincode
 	if c.CertGenerator != nil {
-		certKeyPair, err := c.CertGenerator.Generate(cname)
+		certKeyPair, err := c.CertGenerator.Generate(packageID)
 		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("failed to generate TLS certificates for %s", cname))
+			return nil, errors.WithMessage(err, fmt.Sprintf("failed to generate TLS certificates for %s", packageID))
 		}
 		lc.Files = c.getTLSFiles(certKeyPair)
 		if lc.Files == nil {
-			return nil, errors.Errorf("failed to acquire TLS certificates for %s", cname)
+			return nil, errors.Errorf("failed to acquire TLS certificates for %s", packageID)
 		}
 
 		lc.Envs = append(lc.Envs, "CORE_PEER_TLS_ENABLED=true")

@@ -26,9 +26,10 @@ type LocalChaincodeInfo struct {
 }
 
 type ChaincodeInstallInfo struct {
-	Hash []byte
-	Type string
-	Path string
+	Hash  []byte
+	Type  string
+	Path  string
+	Label string // FIXME: set from package data
 }
 
 type CachedChaincodeDefinition struct {

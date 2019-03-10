@@ -179,7 +179,7 @@ func (s *Store) RetrieveHash(packageID ccintf.CCID) ([]byte, error) {
 	}
 
 	for _, installedChaincode := range installedChaincodes {
-		if installedChaincode.Name+":"+installedChaincode.Version == string(packageID) {
+		if fmt.Sprintf("labellissima:%x", installedChaincode.Id) == string(packageID) {
 			return installedChaincode.Id, nil
 		}
 	}

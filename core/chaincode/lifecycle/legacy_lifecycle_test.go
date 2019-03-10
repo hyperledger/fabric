@@ -231,6 +231,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 				Path:          "fake-path",
 				Type:          "FAKE-TYPE",
 				ContainerType: "DOCKER",
+				PackageID:     "labellissima:68617368",
 			}))
 		})
 
