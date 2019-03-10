@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/fake"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -72,6 +73,7 @@ var _ = Describe("RuntimeLauncher", func() {
 			Version:       "chaincode-version",
 			ContainerType: "chaincode-container-type",
 			Type:          "chaincode-type",
+			PackageID:     "chaincode-name:chaincode-version",
 		}
 
 		runtimeLauncher = &chaincode.RuntimeLauncher{
@@ -93,7 +95,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 		Expect(fakeRegistry.LaunchingCallCount()).To(Equal(1))
 		cname := fakeRegistry.LaunchingArgsForCall(0)
-		Expect(cname).To(Equal("chaincode-name:chaincode-version"))
+		Expect(cname).To(Equal(ccintf.CCID("chaincode-name:chaincode-version")))
 	})
 
 	It("starts the runtime for the chaincode", func() {
@@ -178,7 +180,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 			Expect(fakeRegistry.DeregisterCallCount()).To(Equal(1))
 			cname := fakeRegistry.DeregisterArgsForCall(0)
-			Expect(cname).To(Equal("chaincode-name:chaincode-version"))
+			Expect(cname).To(Equal(ccintf.CCID("chaincode-name:chaincode-version")))
 		})
 	})
 
@@ -206,7 +208,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 			Expect(fakeRegistry.DeregisterCallCount()).To(Equal(1))
 			cname := fakeRegistry.DeregisterArgsForCall(0)
-			Expect(cname).To(Equal("chaincode-name:chaincode-version"))
+			Expect(cname).To(Equal(ccintf.CCID("chaincode-name:chaincode-version")))
 		})
 	})
 
@@ -236,7 +238,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 			Expect(fakeRegistry.DeregisterCallCount()).To(Equal(1))
 			cname := fakeRegistry.DeregisterArgsForCall(0)
-			Expect(cname).To(Equal("chaincode-name:chaincode-version"))
+			Expect(cname).To(Equal(ccintf.CCID("chaincode-name:chaincode-version")))
 		})
 	})
 
@@ -281,7 +283,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 			Expect(fakeRegistry.DeregisterCallCount()).To(Equal(1))
 			cname := fakeRegistry.DeregisterArgsForCall(0)
-			Expect(cname).To(Equal("chaincode-name:chaincode-version"))
+			Expect(cname).To(Equal(ccintf.CCID("chaincode-name:chaincode-version")))
 		})
 	})
 

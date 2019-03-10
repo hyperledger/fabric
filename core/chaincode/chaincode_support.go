@@ -136,8 +136,7 @@ func NewChaincodeSupport(
 // as in the case of v1.0-v1.2 lifecycle, the chaincode will not yet be
 // defined in the LSCC table
 func (cs *ChaincodeSupport) LaunchInit(ccci *ccprovider.ChaincodeContainerInfo) error {
-	cname := ccci.Name + ":" + ccci.Version
-	if cs.HandlerRegistry.Handler(cname) != nil {
+	if cs.HandlerRegistry.Handler(ccci.PackageID) != nil {
 		return nil
 	}
 
@@ -148,19 +147,17 @@ func (cs *ChaincodeSupport) LaunchInit(ccci *ccprovider.ChaincodeContainerInfo) 
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
 func (cs *ChaincodeSupport) Launch(chainID string, ccci *ccprovider.ChaincodeContainerInfo) (*Handler, error) {
-	cname := ccci.Name + ":" + ccci.Version
-
-	if h := cs.HandlerRegistry.Handler(cname); h != nil {
+	if h := cs.HandlerRegistry.Handler(ccci.PackageID); h != nil {
 		return h, nil
 	}
 
 	if err := cs.Launcher.Launch(ccci); err != nil {
-		return nil, errors.Wrapf(err, "[channel %s] could not launch chaincode %s", chainID, cname)
+		return nil, errors.Wrapf(err, "[channel %s] could not launch chaincode %s", chainID, ccci.PackageID)
 	}
 
-	h := cs.HandlerRegistry.Handler(cname)
+	h := cs.HandlerRegistry.Handler(ccci.PackageID)
 	if h == nil {
-		return nil, errors.Errorf("[channel %s] claimed to start chaincode container for %s but could not find handler", chainID, cname)
+		return nil, errors.Errorf("[channel %s] claimed to start chaincode container for %s but could not find handler", chainID, ccci.PackageID)
 	}
 
 	return h, nil
@@ -222,16 +219,16 @@ func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid stri
 func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(spec)
 	ccci.Version = cccid.Version
+	ccci.PackageID = ccintf.CCID(ccci.Name + ":" + ccci.Version)
 
 	err := cs.LaunchInit(ccci)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	cname := ccci.Name + ":" + ccci.Version
-	h := cs.HandlerRegistry.Handler(cname)
+	h := cs.HandlerRegistry.Handler(ccci.PackageID)
 	if h == nil {
-		return nil, nil, errors.Wrapf(err, "[channel %s] claimed to start chaincode container for %s but could not find handler", txParams.ChannelID, cname)
+		return nil, nil, errors.Wrapf(err, "[channel %s] claimed to start chaincode container for %s but could not find handler", txParams.ChannelID, ccci.PackageID)
 	}
 
 	resp, err := cs.execute(pb.ChaincodeMessage_INIT, txParams, cccid, spec.GetChaincodeSpec().Input, h)
@@ -300,6 +297,9 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 			Name:    cccid.Name,
 		}
 	}
+
+	// FIXME: the package ID should be set by ChaincodeContainerInfo
+	ccci.PackageID = ccintf.CCID(ccci.Name + ":" + ccci.Version)
 
 	// fill the chaincode version field from the chaincode
 	// container info that we got from _lifecycle

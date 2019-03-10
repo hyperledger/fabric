@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -2750,7 +2751,7 @@ var _ = Describe("Handler", func() {
 			Expect(fakeHandlerRegistry.FailedCallCount()).To(Equal(0))
 			Expect(fakeHandlerRegistry.ReadyCallCount()).To(Equal(1))
 			name := fakeHandlerRegistry.ReadyArgsForCall(0)
-			Expect(name).To(Equal("chaincode-id-name"))
+			Expect(name).To(Equal(ccintf.CCID("chaincode-id-name")))
 		})
 
 		It("sends registered and ready messsages", func() {
@@ -2786,7 +2787,7 @@ var _ = Describe("Handler", func() {
 				Expect(fakeHandlerRegistry.ReadyCallCount()).To(Equal(0))
 				Expect(fakeHandlerRegistry.FailedCallCount()).To(Equal(1))
 				name, err := fakeHandlerRegistry.FailedArgsForCall(0)
-				Expect(name).To(Equal("chaincode-id-name"))
+				Expect(name).To(Equal(ccintf.CCID("chaincode-id-name")))
 				Expect(err).To(MatchError("[] error sending READY: carrot"))
 			})
 		})
