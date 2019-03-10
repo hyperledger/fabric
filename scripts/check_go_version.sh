@@ -1,14 +1,42 @@
 #!/bin/bash
 #
 # SPDX-License-Identifier: Apache-2.0
-#
-# This is based on check-go-version from coreos/dex by ericchiang
 
 set -e
 
-SUPPORTED_VERSION="go"$(grep "GO_VER" ci.properties |cut -d'=' -f2-|cut -d'.' -f1-2)
-MAJOR_VERSION=$(go version|cut -d' ' -f3|cut -d'.' -f1-2)
-if [ $MAJOR_VERSION != $SUPPORTED_VERSION ]; then
-	>&2 echo "ERROR: ${SUPPORTED_VERSION}.x is required to build Fabric.  Please update your Go installation: https://golang.org/dl/"
-	exit 2
+CI_VERSION="$(grep "GO_VER" ci.properties | cut -f2- -d'=')"
+GO_VERSION="$(go version | cut -f3 -d' ' | sed -E 's/^go//')"
+
+fail() {
+    >&2 echo "ERROR: ${CI_VERSION} is required to build Fabric and you are using ${GO_VERSION}. Please update go."
+    exit 2
+}
+
+vpos () {
+    local v
+    v="$(echo "$1" | sed -E 's/([[:digit:]]+)\.([[:digit:]]+)(\.([[:digit:]]+))?/'"\\$2"'/g')"
+    echo "${v:-0}"
+}
+version() {
+    vpos "$1" 1
+}
+release() {
+    vpos "$1" 2
+}
+patch () {
+    vpos "$1" 4
+}
+
+# major versions must match
+[ "$(version "$GO_VERSION")" -eq "$(version "$CI_VERSION")" ] || fail
+
+# go release must be >= ci release
+[ "$(release "$GO_VERSION")" -ge "$(release "$CI_VERSION")" ] || fail
+
+# if releases are equal, patch must be >= ci patch
+if [ "$(release "$GO_VERSION")" -eq "$(release "$CI_VERSION")" ]; then
+    [ "$(patch "$GO_VERSION")" -ge "$(patch "$CI_VERSION")" ] || fail
 fi
+
+# versions are equal and go release > required ci release
+exit 0
