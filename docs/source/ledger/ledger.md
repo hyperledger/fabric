@@ -166,7 +166,7 @@ what's important is that block sequencing, as well as transaction sequencing
 within blocks, is established when blocks are first created by a Hyperledger
 Fabric component called the **ordering service**.
 
-Each block's header includes a hash of the block's transactions, as well a copy
+Each block's header includes a hash of the block's transactions, as well as a copy
 of the hash of the prior block's header. In this way, all transactions on the
 ledger are sequenced and cryptographically linked together. This hashing and
 linking makes the ledger data very secure. Even if one node hosting the ledger
