@@ -14,6 +14,7 @@ import (
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo"
@@ -268,6 +269,14 @@ var _ = Describe("Network", func() {
 			}
 			nwo.PackageChaincodeNewLifecycle(network, chaincode, testPeers[0])
 			nwo.InstallChaincodeNewLifecycle(network, chaincode, testPeers...)
+
+			// we get the hash of the package
+			filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
+			Expect(err).NotTo(HaveOccurred())
+			hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
+			// we set in the Hash field the package ID for this chaincode
+			chaincode.Hash = "labellissima:" + hashStr
+
 			maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", testPeers...)
 			for _, org := range network.PeerOrgs() {
 				nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersInOrg(org.Name)...)

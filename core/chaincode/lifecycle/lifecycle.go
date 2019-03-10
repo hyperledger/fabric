@@ -135,11 +135,9 @@ func (cd *ChaincodeDefinition) Parameters() *ChaincodeParameters {
 
 // ChaincodeStore provides a way to persist chaincodes
 type ChaincodeStore interface {
-	Save(name, version string, ccInstallPkg []byte) (hash []byte, err error)
-	// FIXME: this is just a hack to get the green path going; the hash lookup step will disappear in the upcoming CRs
-	RetrieveHash(packageID ccintf.CCID) (hash []byte, err error)
+	Save(label string, ccInstallPkg []byte) (ccintf.CCID, error)
 	ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error)
-	Load(hash []byte) (ccInstallPkg []byte, metadata []*persistence.ChaincodeMetadata, err error)
+	Load(packageID ccintf.CCID) (ccInstallPkg []byte, err error)
 }
 
 type PackageParser interface {
@@ -148,7 +146,7 @@ type PackageParser interface {
 
 //go:generate counterfeiter -o mock/install_listener.go --fake-name InstallListener . InstallListener
 type InstallListener interface {
-	HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, hash []byte)
+	HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID ccintf.CCID)
 }
 
 // Resources stores the common functions needed by all components of the lifecycle
@@ -314,23 +312,28 @@ func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState R
 
 // InstallChaincode installs a given chaincode to the peer's chaincode store.
 // It returns the hash to reference the chaincode by or an error on failure.
-func (ef *ExternalFunctions) InstallChaincode(name, version string, chaincodeInstallPackage []byte) ([]byte, error) {
+func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (ccintf.CCID, error) {
 	// Let's validate that the chaincodeInstallPackage is at least well formed before writing it
 	pkg, err := ef.Resources.PackageParser.Parse(chaincodeInstallPackage)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not parse as a chaincode install package")
+		return ccintf.CCID(""), errors.WithMessage(err, "could not parse as a chaincode install package")
 	}
 
-	hash, err := ef.Resources.ChaincodeStore.Save(name, version, chaincodeInstallPackage)
+	// FIXME: this is just a hack to get the green path going
+	// in the upcoming CRs this will be set by the client in
+	// the chaincode package
+	pkg.Metadata.Label = "labellissima"
+
+	packageID, err := ef.Resources.ChaincodeStore.Save(pkg.Metadata.Label, chaincodeInstallPackage)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not save cc install package")
+		return ccintf.CCID(""), errors.WithMessage(err, "could not save cc install package")
 	}
 
 	if ef.InstallListener != nil {
-		ef.InstallListener.HandleChaincodeInstalled(pkg.Metadata, hash)
+		ef.InstallListener.HandleChaincodeInstalled(pkg.Metadata, packageID)
 	}
 
-	return hash, nil
+	return packageID, nil
 }
 
 // QueryNamespaceDefinitions lists the publicly defined namespaces in a channel.  Today it should only ever
@@ -356,13 +359,19 @@ func (ef *ExternalFunctions) QueryNamespaceDefinitions(publicState RangeableStat
 }
 
 // QueryInstalledChaincode returns the hash of an installed chaincode of a given name and version.
-func (ef *ExternalFunctions) QueryInstalledChaincode(name, version string) ([]byte, error) {
-	hash, err := ef.Resources.ChaincodeStore.RetrieveHash(ccintf.CCID(name + ":" + version))
+func (ef *ExternalFunctions) QueryInstalledChaincode(label string) ([]chaincode.InstalledChaincode, error) {
+	chaincodes, err := ef.Resources.ChaincodeStore.ListInstalledChaincodes()
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve hash for chaincode '%s:%s'", name, version))
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve chaincode info for label '%s'", label))
 	}
 
-	return hash, nil
+	for i, chaincode := range chaincodes {
+		if chaincode.Label != label {
+			chaincodes = append(chaincodes[:i], chaincodes[i+1:]...)
+		}
+	}
+
+	return chaincodes, nil
 }
 
 // QueryInstalledChaincodes returns a list of installed chaincodes

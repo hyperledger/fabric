@@ -43,12 +43,12 @@ func TestInstalledCCs(t *testing.T) {
 				{
 					Name:    "example02",
 					Version: "1.0",
-					Id:      hashes["example02.1.0"],
+					Hash:    hashes["example02.1.0"],
 				},
 				{
 					Name:    "example04",
 					Version: "1",
-					Id:      hashes["example04.1"],
+					Hash:    hashes["example04.1"],
 				},
 			},
 			directory: "nonempty",

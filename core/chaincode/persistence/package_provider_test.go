@@ -30,8 +30,7 @@ var _ = Describe("PackageProvider", func() {
 
 		BeforeEach(func() {
 			mockSPP = &mock.StorePackageProvider{}
-			mockSPP.RetrieveHashReturns([]byte("testcchash"), nil)
-			mockSPP.LoadReturns([]byte("storeCode"), []*persistence.ChaincodeMetadata{{Name: "testcc", Version: "1.0"}}, nil)
+			mockSPP.LoadReturns([]byte("storeCode"), nil)
 
 			mockParser = &mock.PackageParser{}
 			mockParser.ParseReturns(&persistence.ChaincodePackage{
@@ -56,8 +55,8 @@ var _ = Describe("PackageProvider", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(mockSPP.RetrieveHashCallCount()).To(Equal(1))
-			packageID := mockSPP.RetrieveHashArgsForCall(0)
+			Expect(mockSPP.LoadCallCount()).To(Equal(1))
+			packageID := mockSPP.LoadArgsForCall(0)
 			Expect(packageID).To(Equal(ccintf.CCID("testcc:1.0")))
 
 			Expect(mockParser.ParseCallCount()).To(Equal(1))
@@ -83,7 +82,7 @@ var _ = Describe("PackageProvider", func() {
 
 		Context("when the code package is not available in the store package provider", func() {
 			BeforeEach(func() {
-				mockSPP.RetrieveHashReturns(nil, &persistence.CodePackageNotFoundErr{})
+				mockSPP.LoadReturns(nil, &persistence.CodePackageNotFoundErr{})
 			})
 
 			It("gets the code package successfully from the legacy package provider", func() {
@@ -99,7 +98,7 @@ var _ = Describe("PackageProvider", func() {
 
 		Context("when retrieving the hash from the store package provider fails", func() {
 			BeforeEach(func() {
-				mockSPP.RetrieveHashReturns(nil, errors.New("chai"))
+				mockSPP.LoadReturns(nil, errors.New("chai"))
 			})
 
 			It("returns an error", func() {
@@ -109,14 +108,14 @@ var _ = Describe("PackageProvider", func() {
 					Version:   "1.0",
 				})
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("error retrieving hash: chai"))
+				Expect(err.Error()).To(Equal("error loading code package from ChaincodeInstallPackage: chai"))
 				Expect(pkgBytes).To(BeNil())
 			})
 		})
 
 		Context("when the code package fails to load from the store package provider", func() {
 			BeforeEach(func() {
-				mockSPP.LoadReturns(nil, nil, errors.New("mocha"))
+				mockSPP.LoadReturns(nil, errors.New("mocha"))
 			})
 
 			It("returns an error", func() {
@@ -132,7 +131,7 @@ var _ = Describe("PackageProvider", func() {
 
 		Context("when the code package is not available in either package provider", func() {
 			BeforeEach(func() {
-				mockSPP.RetrieveHashReturns(nil, &persistence.CodePackageNotFoundErr{})
+				mockSPP.LoadReturns(nil, &persistence.CodePackageNotFoundErr{})
 				mockLPP.GetChaincodeCodePackageReturns(nil, errors.New("latte"))
 			})
 
@@ -162,12 +161,12 @@ var _ = Describe("PackageProvider", func() {
 				{
 					Name:    "test1",
 					Version: "1.0",
-					Id:      []byte("hash1"),
+					Hash:    []byte("hash1"),
 				},
 				{
 					Name:    "cc1",
 					Version: "2.0",
-					Id:      []byte("hash2"),
+					Hash:    []byte("hash2"),
 				},
 			}
 			mockSPP.ListInstalledChaincodesReturns(installedChaincodes, nil)
@@ -177,7 +176,7 @@ var _ = Describe("PackageProvider", func() {
 				{
 					Name:    "testLegacy",
 					Version: "1.0",
-					Id:      []byte("hashLegacy"),
+					Hash:    []byte("hashLegacy"),
 				},
 			}
 			mockLPP.ListInstalledChaincodesReturns(installedChaincodesLegacy, nil)

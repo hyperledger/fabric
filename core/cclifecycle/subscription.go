@@ -45,7 +45,7 @@ func (sub *Subscription) processPendingUpdate(ccDef *cceventmgmt.ChaincodeDefini
 	installedCC := []chaincode.InstalledChaincode{{
 		Name:    ccDef.Name,
 		Version: ccDef.Version,
-		Id:      ccDef.Hash,
+		Hash:    ccDef.Hash,
 	}}
 	ccs, err := queryChaincodeDefinitions(query, installedCC, DeployedChaincodes)
 	if err != nil {
@@ -86,8 +86,8 @@ func queryChaincodeDefinitions(query Query, ccs []chaincode.InstalledChaincode, 
 	installedCCsToIDs := make(map[nameVersion][]byte)
 	// Populate the map
 	for _, cc := range ccs {
-		Logger.Debug("Chaincode", cc, "'s version is", cc.Version, "and Id is", cc.Id)
-		installedCCsToIDs[installedCCToNameVersion(cc)] = cc.Id
+		Logger.Debug("Chaincode", cc, "'s version is", cc.Version, "and Id is", cc.Hash)
+		installedCCsToIDs[installedCCToNameVersion(cc)] = cc.Hash
 	}
 
 	filter := func(cc chaincode.Metadata) bool {

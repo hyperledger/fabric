@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/hyperledger/fabric/common/util"
@@ -15,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
 
@@ -171,6 +169,6 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeContainerInfo(channelID, chaincode
 		Path:          chaincodeInfo.InstallInfo.Path,
 		Type:          strings.ToUpper(chaincodeInfo.InstallInfo.Type),
 		ContainerType: "DOCKER",
-		PackageID:     ccintf.CCID(fmt.Sprintf("%s:%x", chaincodeInfo.InstallInfo.Label, chaincodeInfo.InstallInfo.Hash)),
+		PackageID:     chaincodeInfo.InstallInfo.PackageID,
 	}, nil
 }

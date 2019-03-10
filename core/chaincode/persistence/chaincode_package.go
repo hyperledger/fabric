@@ -38,8 +38,9 @@ type ChaincodePackage struct {
 // ChaincodePackageMetadata contains the information necessary to understand
 // the embedded code package.
 type ChaincodePackageMetadata struct {
-	Type string `json:"Type"`
-	Path string `json:"Path"`
+	Type  string `json:"Type"`
+	Path  string `json:"Path"`
+	Label string `json:"Label"` // FIXME: fill through the CLI and check nonempty
 }
 
 // ChaincodePackageParser provides the ability to parse chaincode packages

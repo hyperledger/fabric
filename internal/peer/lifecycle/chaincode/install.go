@@ -162,7 +162,7 @@ func (i *Installer) submitInstallProposal(signedProposal *pb.SignedProposal) err
 	if err != nil {
 		return errors.Wrap(err, "error unmarshaling proposal response's response payload")
 	}
-	logger.Infof("Chaincode code package hash: %x", icr.Hash)
+	logger.Infof("Chaincode code package hash: %s", string(icr.Hash))
 
 	return nil
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -65,9 +66,9 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 				},
 			},
 			InstallInfo: &lifecycle.ChaincodeInstallInfo{
-				Path: "fake-path",
-				Type: "fake-type",
-				Hash: []byte("hash"),
+				Path:      "fake-path",
+				Type:      "fake-type",
+				PackageID: ccintf.CCID("hash"),
 			},
 			Approved: true,
 		}
@@ -101,9 +102,9 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 					},
 				},
 				InstallInfo: &lifecycle.ChaincodeInstallInfo{
-					Type: "fake-type",
-					Path: "fake-path",
-					Hash: []byte("hash"),
+					Type:      "fake-type",
+					Path:      "fake-path",
+					PackageID: ccintf.CCID("hash"),
 				},
 				Approved: true,
 			}))
@@ -231,7 +232,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 				Path:          "fake-path",
 				Type:          "FAKE-TYPE",
 				ContainerType: "DOCKER",
-				PackageID:     "labellissima:68617368",
+				PackageID:     "hash",
 			}))
 		})
 

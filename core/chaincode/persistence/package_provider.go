@@ -20,8 +20,7 @@ import (
 type StorePackageProvider interface {
 	GetChaincodeInstallPath() string
 	ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error)
-	Load(hash []byte) (codePackage []byte, metadata []*ChaincodeMetadata, err error)
-	RetrieveHash(packageID ccintf.CCID) (hash []byte, err error)
+	Load(packageID ccintf.CCID) ([]byte, error)
 }
 
 // LegacyPackageProvider is the interface needed to retrieve
@@ -71,16 +70,10 @@ func (p *PackageProvider) GetChaincodeCodePackage(ccci *ccprovider.ChaincodeCont
 // GetCodePackageFromStore gets the code package bytes from the package
 // provider's Store, which persists ChaincodeInstallPackages
 func (p *PackageProvider) getCodePackageFromStore(packageID ccintf.CCID) ([]byte, error) {
-	// FIXME: this is just a hack to get the green path going; the hash lookup step will disappear in the upcoming CRs
-	hash, err := p.Store.RetrieveHash(packageID)
+	fsBytes, err := p.Store.Load(packageID)
 	if _, ok := err.(*CodePackageNotFoundErr); ok {
 		return nil, err
 	}
-	if err != nil {
-		return nil, errors.WithMessage(err, "error retrieving hash")
-	}
-
-	fsBytes, _, err := p.Store.Load(hash)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error loading code package from ChaincodeInstallPackage")
 	}

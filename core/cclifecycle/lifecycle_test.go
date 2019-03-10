@@ -103,19 +103,19 @@ func TestHandleChaincodeDeployGreenPath(t *testing.T) {
 		{
 			Name:    "cc1",
 			Version: "1.0",
-			Id:      []byte{42},
+			Hash:    []byte{42},
 		},
 		{
 			// This chaincode has a different version installed than is instantiated
 			Name:    "cc2",
 			Version: "1.1",
-			Id:      []byte{50},
+			Hash:    []byte{50},
 		},
 		{
 			// This chaincode isn't instantiated on the channel (the Id is 50 but in the state its 42), but is installed
 			Name:    "cc3",
 			Version: "1.0",
-			Id:      []byte{50},
+			Hash:    []byte{50},
 		},
 	}, nil)
 
@@ -208,7 +208,7 @@ func TestHandleChaincodeDeployFailures(t *testing.T) {
 		{
 			Name:    "cc1",
 			Version: "1.0",
-			Id:      []byte{42},
+			Hash:    []byte{42},
 		},
 	}, nil)
 
@@ -296,12 +296,12 @@ func TestMultipleUpdates(t *testing.T) {
 		{
 			Name:    "cc1",
 			Version: "1.1",
-			Id:      []byte{42},
+			Hash:    []byte{42},
 		},
 		{
 			Name:    "cc2",
 			Version: "1.0",
-			Id:      []byte{50},
+			Hash:    []byte{50},
 		},
 	}, nil)
 
@@ -377,7 +377,7 @@ func TestMetadata(t *testing.T) {
 		{
 			Name:    "cc1",
 			Version: "1.0",
-			Id:      []byte{42},
+			Hash:    []byte{42},
 		},
 	}, nil)
 

@@ -19,6 +19,7 @@ import (
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
 
@@ -56,10 +57,10 @@ const (
 // for each of the SCC functions
 type SCCFunctions interface {
 	// InstallChaincode persists a chaincode definition to disk
-	InstallChaincode(name, version string, chaincodePackage []byte) (hash []byte, err error)
+	InstallChaincode([]byte) (ccintf.CCID, error)
 
 	// QueryInstalledChaincode returns the hash for a given name and version of an installed chaincode
-	QueryInstalledChaincode(name, version string) (hash []byte, err error)
+	QueryInstalledChaincode(label string) ([]chaincode.InstalledChaincode, error)
 
 	// QueryInstalledChaincodes returns the currently installed chaincodes
 	QueryInstalledChaincodes() (chaincodes []chaincode.InstalledChaincode, err error)
@@ -210,26 +211,32 @@ type Invocation struct {
 // InstallChaincode is a SCC function that may be dispatched to which routes to the underlying
 // lifecycle implementation.
 func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Message, error) {
-	hash, err := i.SCC.Functions.InstallChaincode(input.Name, input.Version, input.ChaincodeInstallPackage)
+	packageID, err := i.SCC.Functions.InstallChaincode(input.ChaincodeInstallPackage)
 	if err != nil {
 		return nil, err
 	}
 
 	return &lb.InstallChaincodeResult{
-		Hash: hash,
+		Hash: []byte(packageID), // fixme, this field should be renamed and retyped
 	}, nil
 }
 
 // QueryInstalledChaincode is a SCC function that may be dispatched to which routes to the underlying
 // lifecycle implementation.
 func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeArgs) (proto.Message, error) {
-	hash, err := i.SCC.Functions.QueryInstalledChaincode(input.Name, input.Version)
+	chaincodes, err := i.SCC.Functions.QueryInstalledChaincode(input.Name)
 	if err != nil {
 		return nil, err
 	}
 
+	// fixme
+	hash := []byte{}
+	if len(chaincodes) != 0 {
+		hash = []byte(chaincodes[0].PackageID)
+	}
+
 	return &lb.QueryInstalledChaincodeResult{
-		Hash: hash,
+		Hash: hash, // fixme
 	}, nil
 }
 
@@ -248,7 +255,7 @@ func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodes
 			&lb.QueryInstalledChaincodesResult_InstalledChaincode{
 				Name:    chaincode.Name,
 				Version: chaincode.Version,
-				Hash:    chaincode.Id,
+				Hash:    chaincode.Hash,
 			})
 	}
 	return result, nil

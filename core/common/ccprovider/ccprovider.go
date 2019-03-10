@@ -212,7 +212,7 @@ func (cifs *CCInfoFSImpl) ListInstalledChaincodes(dir string, ls DirEnumerator, 
 		chaincodes = append(chaincodes, chaincode.InstalledChaincode{
 			Name:    ccName,
 			Version: ccVersion,
-			Id:      ccPackage.GetId(),
+			Hash:    ccPackage.GetId(),
 		})
 	}
 	ccproviderLogger.Debug("Returning", chaincodes)

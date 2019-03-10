@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/pkg/errors"
 )
 
 var _ = Describe("ChaincodeParameters", func() {
@@ -209,40 +210,40 @@ var _ = Describe("ExternalFunctions", func() {
 					Path: "cc-path",
 				},
 			}, nil)
-			fakeCCStore.SaveReturns([]byte("fake-hash"), nil)
+			fakeCCStore.SaveReturns(ccintf.CCID("fake-hash"), nil)
 		})
 
 		It("saves the chaincode", func() {
-			hash, err := ef.InstallChaincode("name", "version", []byte("cc-package"))
+			hash, err := ef.InstallChaincode([]byte("cc-package"))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(hash).To(Equal([]byte("fake-hash")))
+			Expect(hash).To(Equal(ccintf.CCID("fake-hash")))
 
 			Expect(fakeParser.ParseCallCount()).To(Equal(1))
 			Expect(fakeParser.ParseArgsForCall(0)).To(Equal([]byte("cc-package")))
 
 			Expect(fakeCCStore.SaveCallCount()).To(Equal(1))
-			name, version, msg := fakeCCStore.SaveArgsForCall(0)
-			Expect(name).To(Equal("name"))
-			Expect(version).To(Equal("version"))
+			name, msg := fakeCCStore.SaveArgsForCall(0)
+			Expect(name).To(Equal("labellissima"))
 			Expect(msg).To(Equal([]byte("cc-package")))
 
 			Expect(fakeListener.HandleChaincodeInstalledCallCount()).To(Equal(1))
 			md, hash := fakeListener.HandleChaincodeInstalledArgsForCall(0)
 			Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{
-				Type: "cc-type",
-				Path: "cc-path",
+				Type:  "cc-type",
+				Path:  "cc-path",
+				Label: "labellissima",
 			}))
-			Expect(hash).To(Equal([]byte("fake-hash")))
+			Expect(hash).To(Equal(ccintf.CCID("fake-hash")))
 		})
 
 		Context("when saving the chaincode fails", func() {
 			BeforeEach(func() {
-				fakeCCStore.SaveReturns(nil, fmt.Errorf("fake-error"))
+				fakeCCStore.SaveReturns("", fmt.Errorf("fake-error"))
 			})
 
 			It("wraps and returns the error", func() {
-				hash, err := ef.InstallChaincode("name", "version", []byte("cc-package"))
-				Expect(hash).To(BeNil())
+				hash, err := ef.InstallChaincode([]byte("cc-package"))
+				Expect(hash).To(Equal(ccintf.CCID("")))
 				Expect(err).To(MatchError("could not save cc install package: fake-error"))
 			})
 		})
@@ -253,8 +254,8 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				hash, err := ef.InstallChaincode("name", "version", []byte("fake-package"))
-				Expect(hash).To(BeNil())
+				hash, err := ef.InstallChaincode([]byte("fake-package"))
+				Expect(hash).To(Equal(ccintf.CCID("")))
 				Expect(err).To(MatchError("could not parse as a chaincode install package: parse-error"))
 			})
 		})
@@ -262,26 +263,38 @@ var _ = Describe("ExternalFunctions", func() {
 
 	Describe("QueryInstalledChaincode", func() {
 		BeforeEach(func() {
-			fakeCCStore.RetrieveHashReturns([]byte("fake-hash"), nil)
+			fakeCCStore.ListInstalledChaincodesReturns([]chaincode.InstalledChaincode{
+				{
+					Label: "label",
+					Hash:  []byte("fake-hash"),
+				},
+				{
+					Label: "another",
+					Hash:  []byte("fake-hash"),
+				},
+			}, nil)
 		})
 
 		It("passes through to the backing chaincode store", func() {
-			hash, err := ef.QueryInstalledChaincode("name", "version")
+			chaincodes, err := ef.QueryInstalledChaincode("label")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(hash).To(Equal([]byte("fake-hash")))
-			Expect(fakeCCStore.RetrieveHashCallCount()).To(Equal(1))
-			packageID := fakeCCStore.RetrieveHashArgsForCall(0)
-			Expect(packageID).To(Equal(ccintf.CCID("name:version")))
+			Expect(chaincodes).To(Equal([]chaincode.InstalledChaincode{
+				{
+					Label: "label",
+					Hash:  []byte("fake-hash"),
+				},
+			}))
 		})
 
 		Context("when the backing chaincode store fails to retrieve the hash", func() {
 			BeforeEach(func() {
-				fakeCCStore.RetrieveHashReturns(nil, fmt.Errorf("fake-error"))
+				fakeCCStore.ListInstalledChaincodesReturns([]chaincode.InstalledChaincode{}, errors.New("no"))
 			})
+
 			It("wraps and returns the error", func() {
-				hash, err := ef.QueryInstalledChaincode("name", "version")
+				hash, err := ef.QueryInstalledChaincode("name")
 				Expect(hash).To(BeNil())
-				Expect(err).To(MatchError("could not retrieve hash for chaincode 'name:version': fake-error"))
+				Expect(err.Error()).To(ContainSubstring("could not retrieve chaincode info for label 'name'"))
 			})
 		})
 	})
@@ -294,12 +307,12 @@ var _ = Describe("ExternalFunctions", func() {
 				{
 					Name:    "cc1-name",
 					Version: "cc1-version",
-					Id:      []byte("cc1-hash"),
+					Hash:    []byte("cc1-hash"),
 				},
 				{
 					Name:    "cc2-name",
 					Version: "cc2-version",
-					Id:      []byte("cc2-hash"),
+					Hash:    []byte("cc2-hash"),
 				},
 			}
 

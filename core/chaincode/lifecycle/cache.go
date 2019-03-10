@@ -16,6 +16,7 @@ import (
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
 
@@ -26,10 +27,10 @@ type LocalChaincodeInfo struct {
 }
 
 type ChaincodeInstallInfo struct {
-	Hash  []byte
-	Type  string
-	Path  string
-	Label string // FIXME: set from package data
+	PackageID ccintf.CCID
+	Type      string
+	Path      string
+	Label     string // FIXME: set from package data
 }
 
 type CachedChaincodeDefinition struct {
@@ -99,15 +100,15 @@ func (c *Cache) InitializeLocalChaincodes() error {
 	}
 
 	for _, ccPackage := range ccPackages {
-		ccPackageBytes, _, err := c.Resources.ChaincodeStore.Load(ccPackage.Id)
+		ccPackageBytes, err := c.Resources.ChaincodeStore.Load(ccPackage.PackageID)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("could not load chaincode with hash '%x'", ccPackage.Id))
+			return errors.WithMessage(err, fmt.Sprintf("could not load chaincode with hash '%x'", ccPackage.Hash))
 		}
 		parsedCCPackage, err := c.Resources.PackageParser.Parse(ccPackageBytes)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("could not parse chaincode package with hash '%x'", ccPackage.Id))
+			return errors.WithMessage(err, fmt.Sprintf("could not parse chaincode package with hash '%x'", ccPackage.Hash))
 		}
-		c.handleChaincodeInstalledWhileLocked(parsedCCPackage.Metadata, ccPackage.Id)
+		c.handleChaincodeInstalledWhileLocked(parsedCCPackage.Metadata, ccPackage.PackageID)
 	}
 
 	logger.Infof("Initialized lifecycle cache with %d already installed chaincodes", len(c.localChaincodes))
@@ -164,17 +165,17 @@ func (c *Cache) Initialize(channelID string, qe ledger.SimpleQueryExecutor) erro
 }
 
 // HandleChaincodeInstalled should be invoked whenever a new chaincode is installed
-func (c *Cache) HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, hash []byte) {
+func (c *Cache) HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID ccintf.CCID) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	c.handleChaincodeInstalledWhileLocked(md, hash)
+	c.handleChaincodeInstalledWhileLocked(md, packageID)
 }
 
-func (c *Cache) handleChaincodeInstalledWhileLocked(md *persistence.ChaincodePackageMetadata, hash []byte) {
+func (c *Cache) handleChaincodeInstalledWhileLocked(md *persistence.ChaincodePackageMetadata, packageID ccintf.CCID) {
 	// it would be nice to get this value from the serialization package, but it was not obvious
 	// how to expose this in a nice way, so we manually compute it.
 	encodedCCHash := protoutil.MarshalOrPanic(&lb.StateData{
-		Type: &lb.StateData_Bytes{Bytes: hash},
+		Type: &lb.StateData_Bytes{Bytes: []byte(packageID)},
 	})
 	hashOfCCHash := string(util.ComputeSHA256(encodedCCHash))
 	localChaincode, ok := c.localChaincodes[hashOfCCHash]
@@ -185,14 +186,14 @@ func (c *Cache) handleChaincodeInstalledWhileLocked(md *persistence.ChaincodePac
 		c.localChaincodes[hashOfCCHash] = localChaincode
 	}
 	localChaincode.Info = &ChaincodeInstallInfo{
-		Hash: hash,
-		Type: md.Type,
-		Path: md.Path,
+		PackageID: packageID,
+		Type:      md.Type,
+		Path:      md.Path,
 	}
 	for channelID, channelCache := range localChaincode.References {
 		for chaincodeName, cachedChaincode := range channelCache {
 			cachedChaincode.InstallInfo = localChaincode.Info
-			logger.Infof("Installed chaincode with hash %x now available on channel %s for chaincode definition %s:%s", hash, channelID, chaincodeName, cachedChaincode.Definition.EndorsementInfo.Version)
+			logger.Infof("Installed chaincode with package ID '%s' now available on channel %s for chaincode definition %s:%s", packageID, channelID, chaincodeName, cachedChaincode.Definition.EndorsementInfo.Version)
 		}
 	}
 }
@@ -391,7 +392,7 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 
 		cachedChaincode.InstallInfo = localChaincode.Info
 		if localChaincode.Info != nil {
-			logger.Infof("Chaincode with hash %x now available on channel %s for chaincode definition %s:%s", localChaincode.Info.Hash, channelID, name, cachedChaincode.Definition.EndorsementInfo.Version)
+			logger.Infof("Chaincode with package ID '%s' now available on channel %s for chaincode definition %s:%s", localChaincode.Info.PackageID, channelID, name, cachedChaincode.Definition.EndorsementInfo.Version)
 		} else {
 			logger.Debugf("Chaincode definition for chaincode '%s' on channel '%s' is approved, but not installed", name, channelID)
 		}

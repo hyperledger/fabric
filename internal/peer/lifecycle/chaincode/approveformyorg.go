@@ -272,7 +272,7 @@ func (a *ApproverForMyOrg) setInput() error {
 		ChannelID:                channelID,
 		Name:                     chaincodeName,
 		Version:                  chaincodeVersion,
-		Hash:                     hash,
+		Hash:                     []byte(hash),
 		Sequence:                 int64(sequence),
 		EndorsementPlugin:        escc,
 		ValidationPlugin:         vscc,

@@ -66,12 +66,22 @@ func DeployChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 	// package using the first peer
 	PackageChaincodeNewLifecycle(n, chaincode, peers[0])
 
+	// we get the hash of the package
+	filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
+	Expect(err).NotTo(HaveOccurred())
+	hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
+	// we pass the hash so that we can compare what we get from the peer
+	chaincode.Hash = hashStr
+
 	// install on all peers
 	InstallChaincodeNewLifecycle(n, chaincode, peers...)
 
 	// get the max ledger height before approving the
 	// chaincode definition for each org
 	maxLedgerHeight := GetMaxLedgerHeight(n, channel, peers...)
+
+	// we set in the Hash field the package ID for this chaincode
+	chaincode.Hash = "labellissima:" + hashStr
 
 	// approve for each org
 	ApproveChaincodeForMyOrgNewLifecycle(n, channel, orderer, chaincode, peers...)
@@ -160,7 +170,7 @@ func InstallChaincodeNewLifecycle(n *Network, chaincode Chaincode, peers ...*Pee
 		sess, err = n.PeerAdminSession(p, commands.ChaincodeQueryInstalledLifecycle{})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-		Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s, Hash:", chaincode.Name, chaincode.Version)))
+		Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: , Version: , Hash: %s", chaincode.Hash)))
 	}
 }
 

@@ -6,34 +6,30 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 type InstallListener struct {
-	HandleChaincodeInstalledStub        func(*persistence.ChaincodePackageMetadata, []byte)
+	HandleChaincodeInstalledStub        func(md *persistence.ChaincodePackageMetadata, packageID ccintf.CCID)
 	handleChaincodeInstalledMutex       sync.RWMutex
 	handleChaincodeInstalledArgsForCall []struct {
-		arg1 *persistence.ChaincodePackageMetadata
-		arg2 []byte
+		md        *persistence.ChaincodePackageMetadata
+		packageID ccintf.CCID
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *InstallListener) HandleChaincodeInstalled(arg1 *persistence.ChaincodePackageMetadata, arg2 []byte) {
-	var arg2Copy []byte
-	if arg2 != nil {
-		arg2Copy = make([]byte, len(arg2))
-		copy(arg2Copy, arg2)
-	}
+func (fake *InstallListener) HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID ccintf.CCID) {
 	fake.handleChaincodeInstalledMutex.Lock()
 	fake.handleChaincodeInstalledArgsForCall = append(fake.handleChaincodeInstalledArgsForCall, struct {
-		arg1 *persistence.ChaincodePackageMetadata
-		arg2 []byte
-	}{arg1, arg2Copy})
-	fake.recordInvocation("HandleChaincodeInstalled", []interface{}{arg1, arg2Copy})
+		md        *persistence.ChaincodePackageMetadata
+		packageID ccintf.CCID
+	}{md, packageID})
+	fake.recordInvocation("HandleChaincodeInstalled", []interface{}{md, packageID})
 	fake.handleChaincodeInstalledMutex.Unlock()
 	if fake.HandleChaincodeInstalledStub != nil {
-		fake.HandleChaincodeInstalledStub(arg1, arg2)
+		fake.HandleChaincodeInstalledStub(md, packageID)
 	}
 }
 
@@ -43,17 +39,10 @@ func (fake *InstallListener) HandleChaincodeInstalledCallCount() int {
 	return len(fake.handleChaincodeInstalledArgsForCall)
 }
 
-func (fake *InstallListener) HandleChaincodeInstalledCalls(stub func(*persistence.ChaincodePackageMetadata, []byte)) {
-	fake.handleChaincodeInstalledMutex.Lock()
-	defer fake.handleChaincodeInstalledMutex.Unlock()
-	fake.HandleChaincodeInstalledStub = stub
-}
-
-func (fake *InstallListener) HandleChaincodeInstalledArgsForCall(i int) (*persistence.ChaincodePackageMetadata, []byte) {
+func (fake *InstallListener) HandleChaincodeInstalledArgsForCall(i int) (*persistence.ChaincodePackageMetadata, ccintf.CCID) {
 	fake.handleChaincodeInstalledMutex.RLock()
 	defer fake.handleChaincodeInstalledMutex.RUnlock()
-	argsForCall := fake.handleChaincodeInstalledArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return fake.handleChaincodeInstalledArgsForCall[i].md, fake.handleChaincodeInstalledArgsForCall[i].packageID
 }
 
 func (fake *InstallListener) Invocations() map[string][][]interface{} {

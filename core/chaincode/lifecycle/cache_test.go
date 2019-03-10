@@ -21,6 +21,7 @@ import (
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -48,11 +49,12 @@ var _ = Describe("Cache", func() {
 
 		fakeCCStore.ListInstalledChaincodesReturns([]chaincode.InstalledChaincode{
 			{
-				Id: []byte("hash"),
+				Hash:      []byte("hash"),
+				PackageID: ccintf.CCID("packageID"),
 			},
 		}, nil)
 
-		fakeCCStore.LoadReturns([]byte("package-bytes"), nil, nil)
+		fakeCCStore.LoadReturns([]byte("package-bytes"), nil)
 
 		fakeParser.ParseReturns(&persistence.ChaincodePackage{
 			Metadata: &persistence.ChaincodePackageMetadata{
@@ -94,7 +96,7 @@ var _ = Describe("Cache", func() {
 
 		localChaincodes = map[string]*lifecycle.LocalChaincode{
 			string(util.ComputeSHA256(protoutil.MarshalOrPanic(&lb.StateData{
-				Type: &lb.StateData_Bytes{Bytes: []byte("hash")},
+				Type: &lb.StateData_Bytes{Bytes: []byte("packageID")},
 			}))): {
 				References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{
 					"channel-id": {
@@ -111,9 +113,9 @@ var _ = Describe("Cache", func() {
 	Describe("ChaincodInfo", func() {
 		BeforeEach(func() {
 			channelCache.Chaincodes["chaincode-name"].InstallInfo = &lifecycle.ChaincodeInstallInfo{
-				Type: "cc-type",
-				Path: "cc-path",
-				Hash: []byte("hash"),
+				Type:      "cc-type",
+				Path:      "cc-path",
+				PackageID: ccintf.CCID("hash"),
 			}
 		})
 
@@ -126,9 +128,9 @@ var _ = Describe("Cache", func() {
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{},
 				},
 				InstallInfo: &lifecycle.ChaincodeInstallInfo{
-					Type: "cc-type",
-					Path: "cc-path",
-					Hash: []byte("hash"),
+					Type:      "cc-type",
+					Path:      "cc-path",
+					PackageID: ccintf.CCID("hash"),
 				},
 				Approved: true,
 			}))
@@ -155,9 +157,9 @@ var _ = Describe("Cache", func() {
 			err := c.InitializeLocalChaincodes()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(Equal(&lifecycle.ChaincodeInstallInfo{
-				Type: "cc-type",
-				Path: "cc-path",
-				Hash: []byte("hash"),
+				Type:      "cc-type",
+				Path:      "cc-path",
+				PackageID: ccintf.CCID("packageID"),
 			}))
 		})
 
@@ -165,7 +167,7 @@ var _ = Describe("Cache", func() {
 			BeforeEach(func() {
 				fakeCCStore.ListInstalledChaincodesReturns([]chaincode.InstalledChaincode{
 					{
-						Id: []byte("other-hash"),
+						Hash: []byte("other-hash"),
 					},
 				}, nil)
 			})
@@ -190,7 +192,7 @@ var _ = Describe("Cache", func() {
 
 		Context("when the chaincodes cannot be loaded", func() {
 			BeforeEach(func() {
-				fakeCCStore.LoadReturns(nil, nil, fmt.Errorf("load-error"))
+				fakeCCStore.LoadReturns(nil, fmt.Errorf("load-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -302,11 +304,11 @@ var _ = Describe("Cache", func() {
 					c.HandleChaincodeInstalled(&persistence.ChaincodePackageMetadata{
 						Type: "some-type",
 						Path: "some-path",
-					}, []byte("different-hash"))
+					}, ccintf.CCID("different-hash"))
 					Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(Equal(&lifecycle.ChaincodeInstallInfo{
-						Type: "some-type",
-						Path: "some-path",
-						Hash: []byte("different-hash"),
+						Type:      "some-type",
+						Path:      "some-path",
+						PackageID: ccintf.CCID("different-hash"),
 					}))
 				})
 			})
@@ -382,16 +384,16 @@ var _ = Describe("Cache", func() {
 				c.HandleChaincodeInstalled(&persistence.ChaincodePackageMetadata{
 					Type: "cc-type",
 					Path: "cc-path",
-				}, []byte("hash"))
+				}, ccintf.CCID("hash"))
 			})
 
 			It("updates the install info", func() {
 				err := c.Initialize("channel-id", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(Equal(&lifecycle.ChaincodeInstallInfo{
-					Type: "cc-type",
-					Path: "cc-path",
-					Hash: []byte("hash"),
+					Type:      "cc-type",
+					Path:      "cc-path",
+					PackageID: ccintf.CCID("hash"),
 				}))
 			})
 		})

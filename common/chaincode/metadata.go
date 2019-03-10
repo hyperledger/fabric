@@ -9,14 +9,21 @@ package chaincode
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/protos/gossip"
 )
 
 // InstalledChaincode defines metadata about an installed chaincode
 type InstalledChaincode struct {
+	PackageID ccintf.CCID // FIXME: set
+	Hash      []byte
+	Label     string // FIXME: set
+
+	// FIXME: we should remove these two
+	// fields since they are not properties
+	// of the chaincode
 	Name    string
 	Version string
-	Id      []byte
 }
 
 // Metadata defines channel-scoped metadata of a chaincode

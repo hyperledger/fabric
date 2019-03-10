@@ -19,6 +19,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -182,7 +183,7 @@ var _ = Describe("SCC", func() {
 
 				fakeStub.GetArgsReturns([][]byte{[]byte("InstallChaincode"), marshaledArg})
 
-				fakeSCCFuncs.InstallChaincodeReturns([]byte("fake-hash"), nil)
+				fakeSCCFuncs.InstallChaincodeReturns(ccintf.CCID("fake-hash"), nil)
 			})
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
@@ -194,15 +195,13 @@ var _ = Describe("SCC", func() {
 				Expect(payload.Hash).To(Equal([]byte("fake-hash")))
 
 				Expect(fakeSCCFuncs.InstallChaincodeCallCount()).To(Equal(1))
-				name, version, ccInstallPackage := fakeSCCFuncs.InstallChaincodeArgsForCall(0)
-				Expect(name).To(Equal("name"))
-				Expect(version).To(Equal("version"))
+				ccInstallPackage := fakeSCCFuncs.InstallChaincodeArgsForCall(0)
 				Expect(ccInstallPackage).To(Equal([]byte("chaincode-package")))
 			})
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.InstallChaincodeReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.InstallChaincodeReturns("", fmt.Errorf("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -221,8 +220,7 @@ var _ = Describe("SCC", func() {
 
 			BeforeEach(func() {
 				arg = &lb.QueryInstalledChaincodeArgs{
-					Name:    "name",
-					Version: "version",
+					Name: "label",
 				}
 
 				var err error
@@ -231,7 +229,18 @@ var _ = Describe("SCC", func() {
 
 				fakeStub.GetArgsReturns([][]byte{[]byte("QueryInstalledChaincode"), marshaledArg})
 
-				fakeSCCFuncs.QueryInstalledChaincodeReturns([]byte("fake-hash"), nil)
+				fakeSCCFuncs.QueryInstalledChaincodeReturns([]chaincode.InstalledChaincode{
+					{
+						Hash:      []byte("yellow"),
+						Name:      "label",
+						PackageID: ccintf.CCID("bro"),
+					},
+					{
+						Hash:      []byte("talisker"),
+						Name:      "single malt",
+						PackageID: ccintf.CCID("mate"),
+					},
+				}, nil)
 			})
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
@@ -240,12 +249,11 @@ var _ = Describe("SCC", func() {
 				payload := &lb.QueryInstalledChaincodeResult{}
 				err := proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(payload.Hash).To(Equal([]byte("fake-hash")))
+				Expect(payload.Hash).To(Equal([]byte("bro")))
 
 				Expect(fakeSCCFuncs.QueryInstalledChaincodeCallCount()).To(Equal(1))
-				name, version := fakeSCCFuncs.QueryInstalledChaincodeArgsForCall(0)
-				Expect(name).To(Equal("name"))
-				Expect(version).To(Equal("version"))
+				name := fakeSCCFuncs.QueryInstalledChaincodeArgsForCall(0)
+				Expect(name).To(Equal("label"))
 			})
 
 			Context("when the underlying function implementation fails", func() {
@@ -280,12 +288,12 @@ var _ = Describe("SCC", func() {
 					{
 						Name:    "cc0-name",
 						Version: "cc0-version",
-						Id:      []byte("cc0-hash"),
+						Hash:    []byte("cc0-hash"),
 					},
 					{
 						Name:    "cc1-name",
 						Version: "cc1-version",
-						Id:      []byte("cc1-hash"),
+						Hash:    []byte("cc1-hash"),
 					},
 				}, nil)
 			})

@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/chaincode"
-	persistence_test "github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
@@ -30,31 +29,16 @@ type StorePackageProvider struct {
 		result1 []chaincode.InstalledChaincode
 		result2 error
 	}
-	LoadStub        func(hash []byte) (codePackage []byte, metadata []*persistence_test.ChaincodeMetadata, err error)
+	LoadStub        func(packageID ccintf.CCID) ([]byte, error)
 	loadMutex       sync.RWMutex
 	loadArgsForCall []struct {
-		hash []byte
+		packageID ccintf.CCID
 	}
 	loadReturns struct {
 		result1 []byte
-		result2 []*persistence_test.ChaincodeMetadata
-		result3 error
-	}
-	loadReturnsOnCall map[int]struct {
-		result1 []byte
-		result2 []*persistence_test.ChaincodeMetadata
-		result3 error
-	}
-	RetrieveHashStub        func(packageID ccintf.CCID) (hash []byte, err error)
-	retrieveHashMutex       sync.RWMutex
-	retrieveHashArgsForCall []struct {
-		packageID ccintf.CCID
-	}
-	retrieveHashReturns struct {
-		result1 []byte
 		result2 error
 	}
-	retrieveHashReturnsOnCall map[int]struct {
+	loadReturnsOnCall map[int]struct {
 		result1 []byte
 		result2 error
 	}
@@ -145,26 +129,21 @@ func (fake *StorePackageProvider) ListInstalledChaincodesReturnsOnCall(i int, re
 	}{result1, result2}
 }
 
-func (fake *StorePackageProvider) Load(hash []byte) (codePackage []byte, metadata []*persistence_test.ChaincodeMetadata, err error) {
-	var hashCopy []byte
-	if hash != nil {
-		hashCopy = make([]byte, len(hash))
-		copy(hashCopy, hash)
-	}
+func (fake *StorePackageProvider) Load(packageID ccintf.CCID) ([]byte, error) {
 	fake.loadMutex.Lock()
 	ret, specificReturn := fake.loadReturnsOnCall[len(fake.loadArgsForCall)]
 	fake.loadArgsForCall = append(fake.loadArgsForCall, struct {
-		hash []byte
-	}{hashCopy})
-	fake.recordInvocation("Load", []interface{}{hashCopy})
+		packageID ccintf.CCID
+	}{packageID})
+	fake.recordInvocation("Load", []interface{}{packageID})
 	fake.loadMutex.Unlock()
 	if fake.LoadStub != nil {
-		return fake.LoadStub(hash)
+		return fake.LoadStub(packageID)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2, ret.result3
+		return ret.result1, ret.result2
 	}
-	return fake.loadReturns.result1, fake.loadReturns.result2, fake.loadReturns.result3
+	return fake.loadReturns.result1, fake.loadReturns.result2
 }
 
 func (fake *StorePackageProvider) LoadCallCount() int {
@@ -173,83 +152,29 @@ func (fake *StorePackageProvider) LoadCallCount() int {
 	return len(fake.loadArgsForCall)
 }
 
-func (fake *StorePackageProvider) LoadArgsForCall(i int) []byte {
+func (fake *StorePackageProvider) LoadArgsForCall(i int) ccintf.CCID {
 	fake.loadMutex.RLock()
 	defer fake.loadMutex.RUnlock()
-	return fake.loadArgsForCall[i].hash
+	return fake.loadArgsForCall[i].packageID
 }
 
-func (fake *StorePackageProvider) LoadReturns(result1 []byte, result2 []*persistence_test.ChaincodeMetadata, result3 error) {
+func (fake *StorePackageProvider) LoadReturns(result1 []byte, result2 error) {
 	fake.LoadStub = nil
 	fake.loadReturns = struct {
-		result1 []byte
-		result2 []*persistence_test.ChaincodeMetadata
-		result3 error
-	}{result1, result2, result3}
-}
-
-func (fake *StorePackageProvider) LoadReturnsOnCall(i int, result1 []byte, result2 []*persistence_test.ChaincodeMetadata, result3 error) {
-	fake.LoadStub = nil
-	if fake.loadReturnsOnCall == nil {
-		fake.loadReturnsOnCall = make(map[int]struct {
-			result1 []byte
-			result2 []*persistence_test.ChaincodeMetadata
-			result3 error
-		})
-	}
-	fake.loadReturnsOnCall[i] = struct {
-		result1 []byte
-		result2 []*persistence_test.ChaincodeMetadata
-		result3 error
-	}{result1, result2, result3}
-}
-
-func (fake *StorePackageProvider) RetrieveHash(packageID ccintf.CCID) (hash []byte, err error) {
-	fake.retrieveHashMutex.Lock()
-	ret, specificReturn := fake.retrieveHashReturnsOnCall[len(fake.retrieveHashArgsForCall)]
-	fake.retrieveHashArgsForCall = append(fake.retrieveHashArgsForCall, struct {
-		packageID ccintf.CCID
-	}{packageID})
-	fake.recordInvocation("RetrieveHash", []interface{}{packageID})
-	fake.retrieveHashMutex.Unlock()
-	if fake.RetrieveHashStub != nil {
-		return fake.RetrieveHashStub(packageID)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.retrieveHashReturns.result1, fake.retrieveHashReturns.result2
-}
-
-func (fake *StorePackageProvider) RetrieveHashCallCount() int {
-	fake.retrieveHashMutex.RLock()
-	defer fake.retrieveHashMutex.RUnlock()
-	return len(fake.retrieveHashArgsForCall)
-}
-
-func (fake *StorePackageProvider) RetrieveHashArgsForCall(i int) ccintf.CCID {
-	fake.retrieveHashMutex.RLock()
-	defer fake.retrieveHashMutex.RUnlock()
-	return fake.retrieveHashArgsForCall[i].packageID
-}
-
-func (fake *StorePackageProvider) RetrieveHashReturns(result1 []byte, result2 error) {
-	fake.RetrieveHashStub = nil
-	fake.retrieveHashReturns = struct {
 		result1 []byte
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *StorePackageProvider) RetrieveHashReturnsOnCall(i int, result1 []byte, result2 error) {
-	fake.RetrieveHashStub = nil
-	if fake.retrieveHashReturnsOnCall == nil {
-		fake.retrieveHashReturnsOnCall = make(map[int]struct {
+func (fake *StorePackageProvider) LoadReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.LoadStub = nil
+	if fake.loadReturnsOnCall == nil {
+		fake.loadReturnsOnCall = make(map[int]struct {
 			result1 []byte
 			result2 error
 		})
 	}
-	fake.retrieveHashReturnsOnCall[i] = struct {
+	fake.loadReturnsOnCall[i] = struct {
 		result1 []byte
 		result2 error
 	}{result1, result2}
@@ -264,8 +189,6 @@ func (fake *StorePackageProvider) Invocations() map[string][][]interface{} {
 	defer fake.listInstalledChaincodesMutex.RUnlock()
 	fake.loadMutex.RLock()
 	defer fake.loadMutex.RUnlock()
-	fake.retrieveHashMutex.RLock()
-	defer fake.retrieveHashMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
