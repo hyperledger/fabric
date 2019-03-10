@@ -45,13 +45,13 @@
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - help-docs - generate the command reference docs
 
-ALPINE_VER ?= 3.8
+ALPINE_VER ?= 3.9
 BASE_VERSION = 2.0.0
 PREV_VERSION = 1.4.0
 CHAINTOOL_RELEASE ?= 1.1.3
 BASEIMAGE_RELEASE = 0.4.14
 JAVA_VER ?= 8
-NODE_VER ?= 8
+NODE_VER ?= 10
 
 # Allow to build as a submodule setting the main project to
 # the PROJECT_NAME env variable, for example,
