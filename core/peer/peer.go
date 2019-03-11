@@ -169,6 +169,8 @@ func (cs *chainSupport) Reader() blockledger.Reader {
 // the peer does not have any error conditions that lead to
 // this function signaling that an error has occurred.
 func (cs *chainSupport) Errored() <-chan struct{} {
+	// If this is ever updated to return a real channel, the error message
+	// in deliver.go around this channel closing should be updated.
 	return nil
 }
 
