@@ -8,10 +8,10 @@ import (
 )
 
 type LedgerManager struct {
-	GetLedgerReaderStub        func(channel string) (ledger.LedgerReader, error)
+	GetLedgerReaderStub        func(string) (ledger.LedgerReader, error)
 	getLedgerReaderMutex       sync.RWMutex
 	getLedgerReaderArgsForCall []struct {
-		channel string
+		arg1 string
 	}
 	getLedgerReaderReturns struct {
 		result1 ledger.LedgerReader
@@ -25,21 +25,22 @@ type LedgerManager struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *LedgerManager) GetLedgerReader(channel string) (ledger.LedgerReader, error) {
+func (fake *LedgerManager) GetLedgerReader(arg1 string) (ledger.LedgerReader, error) {
 	fake.getLedgerReaderMutex.Lock()
 	ret, specificReturn := fake.getLedgerReaderReturnsOnCall[len(fake.getLedgerReaderArgsForCall)]
 	fake.getLedgerReaderArgsForCall = append(fake.getLedgerReaderArgsForCall, struct {
-		channel string
-	}{channel})
-	fake.recordInvocation("GetLedgerReader", []interface{}{channel})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetLedgerReader", []interface{}{arg1})
 	fake.getLedgerReaderMutex.Unlock()
 	if fake.GetLedgerReaderStub != nil {
-		return fake.GetLedgerReaderStub(channel)
+		return fake.GetLedgerReaderStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getLedgerReaderReturns.result1, fake.getLedgerReaderReturns.result2
+	fakeReturns := fake.getLedgerReaderReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *LedgerManager) GetLedgerReaderCallCount() int {
@@ -48,13 +49,22 @@ func (fake *LedgerManager) GetLedgerReaderCallCount() int {
 	return len(fake.getLedgerReaderArgsForCall)
 }
 
+func (fake *LedgerManager) GetLedgerReaderCalls(stub func(string) (ledger.LedgerReader, error)) {
+	fake.getLedgerReaderMutex.Lock()
+	defer fake.getLedgerReaderMutex.Unlock()
+	fake.GetLedgerReaderStub = stub
+}
+
 func (fake *LedgerManager) GetLedgerReaderArgsForCall(i int) string {
 	fake.getLedgerReaderMutex.RLock()
 	defer fake.getLedgerReaderMutex.RUnlock()
-	return fake.getLedgerReaderArgsForCall[i].channel
+	argsForCall := fake.getLedgerReaderArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *LedgerManager) GetLedgerReaderReturns(result1 ledger.LedgerReader, result2 error) {
+	fake.getLedgerReaderMutex.Lock()
+	defer fake.getLedgerReaderMutex.Unlock()
 	fake.GetLedgerReaderStub = nil
 	fake.getLedgerReaderReturns = struct {
 		result1 ledger.LedgerReader
@@ -63,6 +73,8 @@ func (fake *LedgerManager) GetLedgerReaderReturns(result1 ledger.LedgerReader, r
 }
 
 func (fake *LedgerManager) GetLedgerReaderReturnsOnCall(i int, result1 ledger.LedgerReader, result2 error) {
+	fake.getLedgerReaderMutex.Lock()
+	defer fake.getLedgerReaderMutex.Unlock()
 	fake.GetLedgerReaderStub = nil
 	if fake.getLedgerReaderReturnsOnCall == nil {
 		fake.getLedgerReaderReturnsOnCall = make(map[int]struct {

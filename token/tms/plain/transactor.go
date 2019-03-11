@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/hyperledger/fabric/token/identity"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/ledger"
 	"github.com/pkg/errors"
-	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -152,18 +150,18 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, Q
 	var sum = NewZeroQuantity(Precision)
 	for _, tokenId := range tokenIds {
 		// create the composite key from tokenId
-		inKey, err := createCompositeKey(tokenOutput, []string{tokenId.TxId, strconv.Itoa(int(tokenId.Index))})
+		inKey, err := createCompositeKey(tokenIdPrefix, []string{tokenId.TxId, strconv.Itoa(int(tokenId.Index))})
 		if err != nil {
 			verifierLogger.Errorf("error getting creating input key: %s", err)
 			return "", nil, err
 		}
 		verifierLogger.Debugf("transferring token with ID: '%s'", inKey)
 
-		// make sure the output exists in the ledger
+		// make sure the token exists in the ledger
 		verifierLogger.Debugf("getting output '%s' to spend from ledger", inKey)
 		inBytes, err := t.Ledger.GetState(tokenNameSpace, inKey)
 		if err != nil {
-			verifierLogger.Errorf("error getting output '%s' to spend from ledger: %s", inKey, err)
+			verifierLogger.Errorf("error getting token '%s' to spend from ledger: %s", inKey, err)
 			return "", nil, err
 		}
 		if len(inBytes) == 0 {
@@ -177,7 +175,7 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, Q
 
 		// check the owner of the token
 		if !bytes.Equal(t.PublicCredential, input.Owner.Raw) {
-			return "", nil, errors.New(fmt.Sprintf("the requestor does not own inputs"))
+			return "", nil, errors.New(fmt.Sprintf("the requestor does not own token"))
 		}
 
 		// check the token type - only one type allowed per transfer
@@ -211,10 +209,6 @@ func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 	}
 
 	tokens := make([]*token.UnspentToken, 0)
-	prefix, err := createPrefix(tokenOutput)
-	if err != nil {
-		return nil, err
-	}
 	for {
 		next, err := iterator.Next()
 
@@ -231,33 +225,26 @@ func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 			if !ok {
 				return nil, errors.New("failed to retrieve unspent tokens: casting error")
 			}
-			if strings.HasPrefix(result.Key, prefix) {
-				output := &token.Token{}
-				err = proto.Unmarshal(result.Value, output)
+
+			output := &token.Token{}
+			err = proto.Unmarshal(result.Value, output)
+			if err != nil {
+				return nil, errors.New("failed to retrieve unspent tokens: casting error")
+			}
+
+			// show only tokens which are owned by transactor
+			if bytes.Equal(output.Owner.Raw, t.PublicCredential) {
+				verifierLogger.Debugf("adding token with ID '%s' to list of unspent tokens", result.GetKey())
+				id, err := getTokenIdFromKey(result.Key)
 				if err != nil {
-					return nil, errors.New("failed to retrieve unspent tokens: casting error")
+					return nil, err
 				}
-				if bytes.Equal(output.Owner.Raw, t.PublicCredential) {
-					spent, err := t.isSpent(result.Key)
-					if err != nil {
-						return nil, err
-					}
-					if !spent {
-						verifierLogger.Debugf("adding token with ID '%s' to list of unspent tokens", result.GetKey())
-						id, err := getTokenIdFromKey(result.Key)
-						if err != nil {
-							return nil, err
-						}
-						tokens = append(tokens,
-							&token.UnspentToken{
-								Type:     output.Type,
-								Quantity: output.Quantity,
-								Id:       id,
-							})
-					} else {
-						verifierLogger.Debugf("token with ID '%s' has been spent, not adding to list of unspent tokens", result.GetKey())
-					}
-				}
+				tokens = append(tokens,
+					&token.UnspentToken{
+						Type:     output.Type,
+						Quantity: output.Quantity,
+						Id:       id,
+					})
 			}
 		}
 	}
@@ -337,50 +324,6 @@ func (t *Transactor) Done() {
 	if t.Ledger != nil {
 		t.Ledger.Done()
 	}
-}
-
-// isSpent checks whether an output token with identifier outputID has been spent.
-func (t *Transactor) isSpent(outputID string) (bool, error) {
-	key, err := createInputKey(outputID)
-	if err != nil {
-		return false, err
-	}
-	result, err := t.Ledger.GetState(tokenNameSpace, key)
-	if err != nil {
-		return false, err
-	}
-	if result == nil {
-		verifierLogger.Debugf("input '%s' has not been spent", key)
-		return false, nil
-	}
-	verifierLogger.Debugf("input '%s' has already been spent", key)
-	return true, nil
-}
-
-// Create a ledger key for an individual input in a token transaction, as a function of
-// the outputID, which is a composite key (i.e., starts and ends with a minUnicodeRuneValue)
-func createInputKey(outputID string) (string, error) {
-	att := strings.Split(outputID, string(minUnicodeRuneValue))
-	if len(att) < 2 {
-		return "", errors.Errorf("outputID '%s' is not a valid composite key (less than two components)", outputID)
-	}
-	if att[0] != "" {
-		return "", errors.Errorf("outputID '%s' is not a valid composite key (does not start with a component separator)", outputID)
-	}
-	if att[len(att)-1] != "" {
-		return "", errors.Errorf("outputID '%s' is not a valid composite key (does not end with a component separator)", outputID)
-	}
-	if verifierLogger.IsEnabledFor(zapcore.DebugLevel) {
-		for i, a := range att {
-			verifierLogger.Debugf("inputID composite key attribute %d: '%s'", i, a)
-		}
-	}
-	return createCompositeKey(tokenInput, att[2:len(att)-1])
-}
-
-// Create a prefix as a function of the string passed as argument
-func createPrefix(keyword string) (string, error) {
-	return createCompositeKey(keyword, nil)
 }
 
 func splitCompositeKey(compositeKey string) (string, []string, error) {

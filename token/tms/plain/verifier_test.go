@@ -7,17 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 package plain_test
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"math"
 	"strings"
 
-	"github.com/hyperledger/fabric/token/identity"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/token"
+	"github.com/hyperledger/fabric/token/identity"
 	mockid "github.com/hyperledger/fabric/token/identity/mock"
 	mockledger "github.com/hyperledger/fabric/token/ledger/mock"
 	"github.com/hyperledger/fabric/token/tms/plain"
@@ -25,7 +23,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const tokenNamespace = "_fabtoken"
+const (
+	tokenNamespace = "_fabtoken"
+	tokenIdPrefix  = "tokenId"
+)
 
 var _ = Describe("Verifier", func() {
 	var (
@@ -94,7 +95,7 @@ var _ = Describe("Verifier", func() {
 			Expect(err).NotTo(HaveOccurred())
 			ns, k, td := fakeLedger.SetStateArgsForCall(0)
 			Expect(ns).To(Equal(tokenNamespace))
-			expectedOutput := strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00")
+			expectedOutput := strings.Join([]string{"", tokenIdPrefix, "0", "0", ""}, "\x00")
 			Expect(k).To(Equal(expectedOutput))
 			Expect(td).To(Equal(outputBytes))
 
@@ -102,7 +103,7 @@ var _ = Describe("Verifier", func() {
 			Expect(err).NotTo(HaveOccurred())
 			ns, k, td = fakeLedger.SetStateArgsForCall(1)
 			Expect(ns).To(Equal(tokenNamespace))
-			expectedOutput = strings.Join([]string{"", "tokenOutput", "0", "1", ""}, "\x00")
+			expectedOutput = strings.Join([]string{"", tokenIdPrefix, "0", "1", ""}, "\x00")
 			Expect(k).To(Equal(expectedOutput))
 			Expect(td).To(Equal(outputBytes))
 		})
@@ -187,8 +188,8 @@ var _ = Describe("Verifier", func() {
 			It("returns an error", func() {
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
 				Expect(err).To(HaveOccurred())
-				existingOutputId := strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00")
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("output already exists: %s", existingOutputId)}))
+				existingOutputId := strings.Join([]string{"", tokenIdPrefix, "0", "0", ""}, "\x00")
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("token already exists: %s", existingOutputId)}))
 			})
 		})
 
@@ -226,7 +227,7 @@ var _ = Describe("Verifier", func() {
 		})
 
 		It("retrieves the Token associated with the entry ID", func() {
-			po, err := memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00"))
+			po, err := memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", tokenIdPrefix, "0", "0", ""}, "\x00"))
 			Expect(err).NotTo(HaveOccurred())
 
 			output := &token.Token{}
@@ -239,7 +240,7 @@ var _ = Describe("Verifier", func() {
 				Quantity: ToHex(111),
 			}))
 
-			po, err = memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", "tokenOutput", "0", "1", ""}, "\x00"))
+			po, err = memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", tokenIdPrefix, "0", "1", ""}, "\x00"))
 			Expect(err).NotTo(HaveOccurred())
 
 			err = proto.Unmarshal(po, output)
@@ -254,7 +255,7 @@ var _ = Describe("Verifier", func() {
 
 		Context("when the output does not exist", func() {
 			It("returns a nil and no error", func() {
-				val, err := memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", "tokenOutput", "george", "0", ""}, "\x00"))
+				val, err := memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", tokenIdPrefix, "george", "0", ""}, "\x00"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(val).To(BeNil())
 			})
@@ -339,7 +340,7 @@ var _ = Describe("Verifier", func() {
 				Expect(fakeLedger.GetStateCallCount()).To(Equal(1))
 				Expect(fakeLedger.SetStateCallCount()).To(Equal(0))
 				ns, k := fakeLedger.GetStateArgsForCall(0)
-				expectedOutput := strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00")
+				expectedOutput := strings.Join([]string{"", tokenIdPrefix, "0", "0", ""}, "\x00")
 				Expect(k).To(Equal(expectedOutput))
 				Expect(ns).To(Equal(tokenNamespace))
 			})
@@ -384,7 +385,7 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("is processed successfully", func() {
-				po, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenOutput"+string("\x00")+"1"+string("\x00")+"0"+string("\x00"))
+				po, err := memoryLedger.GetState(tokenNamespace, string("\x00")+tokenIdPrefix+string("\x00")+"1"+string("\x00")+"0"+string("\x00"))
 				Expect(err).NotTo(HaveOccurred())
 
 				output := &token.Token{}
@@ -397,7 +398,7 @@ var _ = Describe("Verifier", func() {
 					Quantity: ToHex(99),
 				}))
 
-				po, err = memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenOutput"+string("\x00")+"1"+string("\x00")+"1"+string("\x00"))
+				po, err = memoryLedger.GetState(tokenNamespace, string("\x00")+tokenIdPrefix+string("\x00")+"1"+string("\x00")+"1"+string("\x00"))
 				Expect(err).NotTo(HaveOccurred())
 
 				err = proto.Unmarshal(po, output)
@@ -409,9 +410,34 @@ var _ = Describe("Verifier", func() {
 					Quantity: ToHex(12),
 				}))
 
-				spentMarker, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenInput"+string("\x00")+"0"+string("\x00")+"0"+string("\x00"))
+				tokenOutput, err := memoryLedger.GetState(tokenNamespace, string("\x00")+tokenIdPrefix+string("\x00")+"0"+string("\x00")+"0"+string("\x00"))
 				Expect(err).NotTo(HaveOccurred())
-				Expect(bytes.Equal(spentMarker, plain.TokenInputSpentMarker)).To(BeTrue())
+				Expect(tokenOutput).To(BeNil())
+			})
+		})
+
+		Context("when the input is empty", func() {
+			BeforeEach(func() {
+				transferTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Transfer{
+								Transfer: &token.Transfer{
+									Inputs: nil,
+									Outputs: []*token.Token{
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(99)},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK1", Quantity: ToHex(12)},
+									},
+								},
+							},
+						},
+					},
+				}
+			})
+
+			It("returns an InvalidTxError", func() {
+				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("no tokenIds in transaction: %s", transferTxID)}))
 			})
 		})
 
@@ -438,7 +464,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "input with ID \x00tokenOutput\x00wild_pineapple\x000\x00 for transfer does not exist"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token with ID \x00" + tokenIdPrefix + "\x00wild_pineapple\x000\x00 does not exist"}))
 			})
 		})
 
@@ -449,7 +475,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "transfer input with ID \x00tokenOutput\x000\x000\x00 not owned by creator"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "transfer input with ID \x00tokenId\x000\x000\x00 not owned by creator"}))
 			})
 		})
 
@@ -477,7 +503,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token input '\x00tokenOutput\x000\x000\x00' spent more than once in transaction ID '1'"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "Input duplicates found"}))
 			})
 		})
 
@@ -617,7 +643,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx("2", fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "input with ID \x00tokenOutput\x000\x000\x00 for transfer has already been spent"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token with ID \x00" + tokenIdPrefix + "\x000\x000\x00 does not exist"}))
 			})
 		})
 
@@ -647,8 +673,8 @@ var _ = Describe("Verifier", func() {
 			It("returns an error", func() {
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, transferTransaction, memoryLedger)
 				Expect(err).To(HaveOccurred())
-				existingOutputId := string("\x00") + "tokenOutput" + string("\x00") + issueTxID + string("\x00") + "0" + string("\x00")
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("output already exists: %s", existingOutputId)}))
+				existingOutputId := string("\x00") + tokenIdPrefix + string("\x00") + issueTxID + string("\x00") + "0" + string("\x00")
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("token already exists: %s", existingOutputId)}))
 			})
 		})
 
@@ -740,6 +766,135 @@ var _ = Describe("Verifier", func() {
 
 	})
 
+	Describe("Test get/set/delete token with fake ledger", func() {
+		var redeemTx *token.TokenTransaction
+		var issuedTokenBytes []byte
+
+		BeforeEach(func() {
+
+			fakePublicInfo.PublicReturns([]byte("owner-1"))
+
+			// issue tokens
+			issuedToken := &token.Token{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(111)}
+			issuedTokenBytes, _ = proto.Marshal(issuedToken)
+
+			// redeem tokens
+			redeemTx = &token.TokenTransaction{
+				Action: &token.TokenTransaction_TokenAction{
+					TokenAction: &token.TokenAction{
+						Data: &token.TokenAction_Redeem{
+							Redeem: &token.Transfer{
+								Inputs: []*token.TokenId{
+									{TxId: "0", Index: 0},
+								},
+								Outputs: []*token.Token{
+									{Type: "TOK1", Quantity: ToHex(100)},
+									{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(11)},
+								},
+							},
+						},
+					},
+				},
+			}
+		})
+
+		Context("when ledger returns error on delete token", func() {
+			It("returns an error", func() {
+
+				// first call is checkout outputs does not exists
+				fakeLedger.GetStateReturnsOnCall(0, nil, nil)
+				fakeLedger.GetStateReturnsOnCall(1, nil, nil)
+				// next call is check input exists
+				fakeLedger.GetStateReturnsOnCall(2, issuedTokenBytes, nil)
+
+				expectedErr := errors.New("some delete error")
+				fakeLedger.DeleteStateReturns(expectedErr)
+
+				err := verifier.ProcessTx("r2", fakePublicInfo, redeemTx, fakeLedger)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(expectedErr))
+				Expect(fakeLedger.GetStateCallCount()).To(Equal(3))
+				Expect(fakeLedger.DeleteStateCallCount()).To(Equal(1))
+
+			})
+		})
+
+		Context("when ledger returns error on get token", func() {
+			It("returns an error", func() {
+
+				expectedErr := errors.New("some error on get token")
+
+				// first call is checkout outputs does not exists
+				fakeLedger.GetStateReturnsOnCall(0, nil, nil)
+				fakeLedger.GetStateReturnsOnCall(1, nil, nil)
+				// second call is check input exists
+				fakeLedger.GetStateReturnsOnCall(2, nil, expectedErr)
+
+				err := verifier.ProcessTx("r2", fakePublicInfo, redeemTx, fakeLedger)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(expectedErr))
+				Expect(fakeLedger.GetStateCallCount()).To(Equal(3))
+
+			})
+		})
+
+		Context("when ledger returns invalid token bytes on get token", func() {
+			It("returns an error", func() {
+
+				expectedErr := &customtx.InvalidTxError{Msg: "unmarshaling error: unexpected EOF"}
+
+				// first call is checkout outputs does not exists
+				fakeLedger.GetStateReturnsOnCall(0, nil, nil)
+				fakeLedger.GetStateReturnsOnCall(1, nil, nil)
+				// next call is check input exists
+				fakeLedger.GetStateReturnsOnCall(2, []byte("some invalid proto bytes"), nil)
+
+				err := verifier.ProcessTx("r2", fakePublicInfo, redeemTx, fakeLedger)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(expectedErr))
+				Expect(fakeLedger.GetStateCallCount()).To(Equal(3))
+			})
+		})
+
+		Context("when ledger return error on set state (commit issue)", func() {
+			It("returns an error", func() {
+
+				expectedErr := errors.New("some error")
+
+				// first call is checkout outputs does not exists
+				fakeLedger.GetStateReturnsOnCall(0, nil, nil)
+
+				fakeLedger.SetStateReturnsOnCall(0, expectedErr)
+
+				err := verifier.ProcessTx("0", fakePublicInfo, issueTransaction, fakeLedger)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(expectedErr))
+				Expect(fakeLedger.GetStateCallCount()).To(Equal(2))
+				Expect(fakeLedger.SetStateCallCount()).To(Equal(1))
+			})
+		})
+
+		Context("when ledger return error on set state (commit transfer/redeem)", func() {
+			It("returns an error", func() {
+				expectedErr := errors.New("some error")
+
+				// first call is checkout outputs does not exists
+				fakeLedger.GetStateReturnsOnCall(0, nil, nil)
+				fakeLedger.GetStateReturnsOnCall(1, nil, nil)
+				// next call is check input exists
+				fakeLedger.GetStateReturnsOnCall(2, issuedTokenBytes, nil)
+
+				fakeLedger.SetStateReturnsOnCall(0, expectedErr)
+
+				err := verifier.ProcessTx("0", fakePublicInfo, redeemTx, fakeLedger)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(expectedErr))
+				Expect(fakeLedger.GetStateCallCount()).To(Equal(3))
+				Expect(fakeLedger.SetStateCallCount()).To(Equal(1))
+			})
+		})
+	})
+
 	Describe("Test ProcessTx Redeem with memory ledger", func() {
 		var (
 			tokenIds          []*token.TokenId
@@ -774,21 +929,24 @@ var _ = Describe("Verifier", func() {
 		})
 
 		It("processes a redeem transaction with all tokens redeemed", func() {
-			err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
-			Expect(err).NotTo(HaveOccurred())
+			tokenId := strings.Join([]string{"", tokenIdPrefix, "0", "0", ""}, "\x00")
 
-			// verify we can get the output from "tokenRedeem" for this transaction
-			po, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenRedeem"+string("\x00")+redeemTxID+string("\x00")+"0"+string("\x00"))
+			// verify that token does exist
+			po, err := memoryLedger.GetState(tokenNamespace, tokenId)
 			Expect(err).NotTo(HaveOccurred())
 
 			output := &token.Token{}
 			err = proto.Unmarshal(po, output)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(proto.Equal(output, &token.Token{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(111)})).To(BeTrue())
 
-			Expect(output).To(Equal(&token.Token{
-				Type:     "TOK1",
-				Quantity: ToHex(111),
-			}))
+			err = verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
+			Expect(err).NotTo(HaveOccurred())
+
+			// verify that token does not exist anymore
+			po, err = memoryLedger.GetState(tokenNamespace, tokenId)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(po).To(Equal([]byte{}))
 		})
 
 		It("processes a redeem transaction with some tokens redeemed", func() {
@@ -809,37 +967,33 @@ var _ = Describe("Verifier", func() {
 				},
 			}
 
-			err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
-			Expect(err).NotTo(HaveOccurred())
-
-			// verify we can get 1 output from "tokenRedeem" and 1 output from "tokenOutput" for this transaction
-			po, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenRedeem"+string("\x00")+redeemTxID+string("\x00")+"0"+string("\x00"))
+			// check that token (TOK1 111) does exist
+			tokenId := strings.Join([]string{"", tokenIdPrefix, "0", "0", ""}, "\x00")
+			po, err := memoryLedger.GetState(tokenNamespace, tokenId)
 			Expect(err).NotTo(HaveOccurred())
 
 			output := &token.Token{}
 			err = proto.Unmarshal(po, output)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(proto.Equal(output, &token.Token{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(111)})).To(BeTrue())
 
-			Expect(output).To(Equal(&token.Token{
-				Type:     "TOK1",
-				Quantity: ToHex(99),
-			}))
-
-			po, err = memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenOutput"+string("\x00")+redeemTxID+string("\x00")+"1"+string("\x00"))
+			err = verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
 			Expect(err).NotTo(HaveOccurred())
 
+			// check that token (TOK1 111) does not exist anymore
+			po, err = memoryLedger.GetState(tokenNamespace, tokenId)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(po).To(Equal([]byte{}))
+
+			// check that token (TOK1 12) does exist
+			newTokenId := strings.Join([]string{"", tokenIdPrefix, redeemTxID, "1", ""}, "\x00")
+			po, err = memoryLedger.GetState(tokenNamespace, newTokenId)
+			Expect(err).NotTo(HaveOccurred())
+
+			output = &token.Token{}
 			err = proto.Unmarshal(po, output)
 			Expect(err).NotTo(HaveOccurred())
-
-			Expect(output).To(Equal(&token.Token{
-				Owner:    &token.TokenOwner{Raw: []byte("owner-1")},
-				Type:     "TOK1",
-				Quantity: ToHex(12),
-			}))
-
-			spentMarker, err := memoryLedger.GetState(tokenNamespace, string("\x00")+"tokenInput"+string("\x00")+"0"+string("\x00")+"0"+string("\x00"))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(bytes.Equal(spentMarker, plain.TokenInputSpentMarker)).To(BeTrue())
+			Expect(proto.Equal(output, &token.Token{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(12)})).To(BeTrue())
 		})
 
 		Context("when an input has already been spent", func() {
@@ -850,7 +1004,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx("r2", fakePublicInfo, redeemTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "input with ID \x00tokenOutput\x000\x000\x00 for transfer has already been spent"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token with ID \x00" + tokenIdPrefix + "\x000\x000\x00 does not exist"}))
 			})
 		})
 
@@ -876,6 +1030,33 @@ var _ = Describe("Verifier", func() {
 				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
 				Expect(err).To(Equal(&customtx.InvalidTxError{
 					Msg: fmt.Sprintf("token sum mismatch in inputs and outputs for transaction ID %s (%d vs %d)", redeemTxID, 100, 111)}))
+			})
+		})
+
+		Context("when redeem has more than two outputs", func() {
+			BeforeEach(func() {
+				redeemTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Redeem{
+								Redeem: &token.Transfer{
+									Inputs: tokenIds,
+									Outputs: []*token.Token{
+										{Type: "TOK1", Quantity: ToHex(100)},
+										{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(10)},
+										{Owner: &token.TokenOwner{Raw: []byte("my-friend")}, Type: "TOK1", Quantity: ToHex(1)},
+									},
+								},
+							},
+						},
+					},
+				}
+			})
+
+			It("returns an error", func() {
+				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{
+					Msg: fmt.Sprintf("too many outputs in a redeem transaction")}))
 			})
 		})
 
@@ -1001,18 +1182,6 @@ var _ = Describe("Verifier", func() {
 			It("returns an error", func() {
 				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
 				Expect(err).To(MatchError(fmt.Sprintf(fmt.Sprintf("owner should be nil in a redeem output"))))
-			})
-		})
-
-		Context("when redeem output key already exists", func() {
-			BeforeEach(func() {
-				fakeLedger.GetStateReturns([]byte("state-bytes"), nil)
-			})
-
-			It("returns an error", func() {
-				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, fakeLedger)
-				existingOutputID := string("\x00") + "tokenRedeem" + string("\x00") + redeemTxID + string("\x00") + "0" + string("\x00")
-				Expect(err).To(MatchError(fmt.Sprintf("output already exists: %s", existingOutputID)))
 			})
 		})
 	})

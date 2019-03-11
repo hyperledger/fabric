@@ -40,6 +40,8 @@ type LedgerWriter interface {
 	LedgerReader
 	// SetState sets the given value for the given namespace and key. For a chaincode, the namespace corresponds to the chaincodeId
 	SetState(namespace string, key string, value []byte) error
+	// DeleteState deletes the given namespace and key
+	DeleteState(namespace string, key string) error
 }
 
 //go:generate counterfeiter -o mock/results_iterator.go -fake-name ResultsIterator . ResultsIterator
