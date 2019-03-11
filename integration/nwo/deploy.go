@@ -217,13 +217,6 @@ func ApproveChaincodeForMyOrgNewLifecycle(n *Network, channel string, orderer *O
 }
 
 func CommitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peer *Peer, checkPeers ...*Peer) {
-	if chaincode.Hash == "" {
-		pkgBytes, err := ioutil.ReadFile(chaincode.PackageFile)
-		Expect(err).NotTo(HaveOccurred())
-		hash := util.ComputeSHA256(pkgBytes)
-		chaincode.Hash = hex.EncodeToString(hash)
-	}
-
 	// commit using one peer per org
 	commitOrgs := map[string]bool{}
 	var peerAddresses []string
@@ -239,7 +232,6 @@ func CommitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 		Orderer:           n.OrdererAddress(orderer, ListenPort),
 		Name:              chaincode.Name,
 		Version:           chaincode.Version,
-		Hash:              chaincode.Hash,
 		Sequence:          chaincode.Sequence,
 		EndorsementPlugin: chaincode.EndorsementPlugin,
 		ValidationPlugin:  chaincode.ValidationPlugin,

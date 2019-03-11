@@ -252,7 +252,6 @@ type ChaincodeCommitLifecycle struct {
 	Orderer           string
 	Name              string
 	Version           string
-	Hash              string
 	Sequence          string
 	EndorsementPlugin string
 	ValidationPlugin  string
@@ -273,7 +272,6 @@ func (c ChaincodeCommitLifecycle) Args() []string {
 		"--orderer", c.Orderer,
 		"--name", c.Name,
 		"--version", c.Version,
-		"--hash", c.Hash,
 		"--sequence", c.Sequence,
 		"--escc", c.EndorsementPlugin,
 		"--vscc", c.ValidationPlugin,
