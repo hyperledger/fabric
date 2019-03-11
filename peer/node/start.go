@@ -173,30 +173,33 @@ func serve(args []string) error {
 		ReadWriter: &persistence.FilesystemIO{},
 	}
 
-	// TODO, unfortunately, the lifecycleImpl initialization is very unclean at the moment.
+	// TODO, unfortunately, the lifecycle initialization is very unclean at the moment.
 	// This is because ccprovider.SetChaincodePath only works after ledgermgmt.Initialize,
 	// but ledgermgmt.Initialize requires a reference to lifecycle.  Finally,
 	// lscc requires a reference to the system chaincode provider in order to be created,
 	// which requires chaincode support to be up, which also requires, you guessed it, lifecycle.
 	// Once we remove the v1.0 lifecycle, we should be good to collapse all of the init
 	// of lifecycle to this point
-	lifecycleImpl := &lifecycle.Lifecycle{
-		LegacyDeployedCCInfoProvider: &lscc.DeployedCCInfoProvider{},
-		Serializer:                   &lifecycle.Serializer{},
-		ChannelConfigSource:          peer.Default,
-		ChaincodeStore:               ccStore,
-		PackageParser:                ccPackageParser,
+	lifecycleResources := &lifecycle.Resources{
+		Serializer:          &lifecycle.Serializer{},
+		ChannelConfigSource: peer.Default,
+		ChaincodeStore:      ccStore,
+		PackageParser:       ccPackageParser,
 	}
 
-	lifecycleCache := lifecycle.NewCache(lifecycleImpl, mspID)
-	lifecycleImpl.InstallListener = lifecycleCache
+	lifecycleValidatorCommitter := &lifecycle.ValidatorCommitter{
+		Resources:                    lifecycleResources,
+		LegacyDeployedCCInfoProvider: &lscc.DeployedCCInfoProvider{},
+	}
+
+	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID)
 
 	//initialize resource management exit
 	ledgermgmt.Initialize(
 		&ledgermgmt.Initializer{
 			CustomTxProcessors:            peer.ConfigTxProcessors,
 			PlatformRegistry:              pr,
-			DeployedChaincodeInfoProvider: lifecycleImpl,
+			DeployedChaincodeInfoProvider: lifecycleValidatorCommitter,
 			MembershipInfoProvider:        membershipInfoProvider,
 			MetricsProvider:               metricsProvider,
 			HealthCheckRegistry:           opsSystem,
@@ -315,15 +318,20 @@ func serve(args []string) error {
 
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{
 		LegacyImpl: lsccInst,
-		Lifecycle:  lifecycleImpl,
+		Resources:  lifecycleResources,
 		Cache:      lifecycleCache,
+	}
+
+	lifecycleFunctions := &lifecycle.ExternalFunctions{
+		Resources:       lifecycleResources,
+		InstallListener: lifecycleCache,
 	}
 
 	lifecycleSCC := &lifecycle.SCC{
 		Dispatcher: &dispatcher.Dispatcher{
 			Protobuf: &dispatcher.ProtobufImpl{},
 		},
-		Functions:           lifecycleImpl,
+		Functions:           lifecycleFunctions,
 		OrgMSPID:            mspID,
 		ChannelConfigSource: peer.Default,
 		ACLProvider:         aclProvider,
@@ -364,7 +372,7 @@ func serve(args []string) error {
 		pr,
 		peer.DefaultSupport,
 		opsSystem.Provider,
-		lifecycleImpl,
+		lifecycleValidatorCommitter,
 	)
 	ipRegistry.ChaincodeSupport = chaincodeSupport
 
@@ -373,7 +381,7 @@ func serve(args []string) error {
 		ccSupSrv = authenticator.Wrap(ccSupSrv)
 	}
 
-	csccInst := cscc.New(sccp, aclProvider, lifecycleImpl, lsccInst, lifecycleImpl)
+	csccInst := cscc.New(sccp, aclProvider, lifecycleValidatorCommitter, lsccInst, lifecycleValidatorCommitter)
 	qsccInst := qscc.New(aclProvider)
 
 	//Now that chaincode is initialized, register all system chaincodes.
@@ -479,7 +487,7 @@ func serve(args []string) error {
 		}
 		cceventmgmt.GetMgr().Register(cid, sub)
 	}, sccp, plugin.MapBasedMapper(validationPluginsByName),
-		pr, lifecycleImpl, membershipInfoProvider, metricsProvider, lsccInst, lifecycleImpl)
+		pr, lifecycleValidatorCommitter, membershipInfoProvider, metricsProvider, lsccInst, lifecycleValidatorCommitter)
 
 	if viper.GetBool("peer.discovery.enabled") {
 		registerDiscoveryService(peerServer, policyMgr, lifecycle)
