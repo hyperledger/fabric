@@ -45,13 +45,23 @@ func (mc *MembershipChanges) String() string {
 
 // UpdateRaftMetadataAndConfChange given the membership changes and RaftMetadata method calculates
 // updates to be applied to the raft  cluster configuration in addition updates mapping between
-// consenter and its id within metadata
-func (mc *MembershipChanges) UpdateRaftMetadataAndConfChange(raftMetadata *etcdraft.RaftMetadata) *raftpb.ConfChange {
+// consenter and its id within metadata. Adding and removing a node at the same time is considered
+// to be certificate rotation, and the ID of rotated node is returned.
+func (mc *MembershipChanges) UpdateRaftMetadataAndConfChange(raftMetadata *etcdraft.RaftMetadata) (cc *raftpb.ConfChange, rotate uint64) {
 	if mc == nil || mc.TotalChanges == 0 {
-		return nil
+		return nil, 0
 	}
 
 	var confChange *raftpb.ConfChange
+
+	if len(mc.AddedNodes) == 1 && len(mc.RemovedNodes) == 1 {
+		for id, node := range raftMetadata.Consenters {
+			if bytes.Equal(mc.RemovedNodes[0].ClientTlsCert, node.ClientTlsCert) {
+				raftMetadata.Consenters[id] = mc.AddedNodes[0]
+				return nil, id
+			}
+		}
+	}
 
 	// producing corresponding raft configuration changes
 	if len(mc.AddedNodes) > 0 {
@@ -64,7 +74,7 @@ func (mc *MembershipChanges) UpdateRaftMetadataAndConfChange(raftMetadata *etcdr
 			Type:   raftpb.ConfChangeAddNode,
 		}
 		raftMetadata.ConfChangeCounts++
-		return confChange
+		return confChange, 0
 	}
 
 	if len(mc.RemovedNodes) > 0 {
@@ -84,7 +94,7 @@ func (mc *MembershipChanges) UpdateRaftMetadataAndConfChange(raftMetadata *etcdr
 		}
 	}
 
-	return confChange
+	return confChange, 0
 }
 
 // EndpointconfigFromFromSupport extracts TLS CA certificates and endpoints from the ConsenterSupport

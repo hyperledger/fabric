@@ -168,6 +168,88 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 	})
 
 	When("the orderer certificates are all rotated", func() {
+		It("is possible to rotate certificate by adding & removing cert in single config", func() {
+			layout := nwo.MultiNodeEtcdRaft()
+			network = nwo.New(layout, testDir, client, BasePort(), components)
+			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+			orderers := []*nwo.Orderer{o1, o2, o3}
+
+			peer = network.Peer("Org1", "peer1")
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			By("Launching the orderers")
+			for _, o := range orderers {
+				runner := network.OrdererRunner(o)
+				ordererRunners = append(ordererRunners, runner)
+				process := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, process)
+			}
+
+			for _, ordererProc := range ordererProcesses {
+				Eventually(ordererProc.Ready()).Should(BeClosed())
+			}
+
+			By("Checking that all orderers are online")
+			assertBlockReception(map[string]int{
+				"systemchannel": 0,
+			}, orderers, peer, network)
+
+			By("Preparing new certificates for the orderer nodes")
+			extendNetwork(network)
+			certificateRotations := refreshOrdererPEMs(network)
+
+			swap := func(o *nwo.Orderer, certificate []byte, c etcdraft.Consenter) {
+				nwo.UpdateEtcdRaftMetadata(network, peer, o, network.SystemChannel.Name, func(metadata *etcdraft.Metadata) {
+					var newConsenters []*etcdraft.Consenter
+					for _, consenter := range metadata.Consenters {
+						if bytes.Equal(consenter.ClientTlsCert, certificate) || bytes.Equal(consenter.ServerTlsCert, certificate) {
+							continue
+						}
+						newConsenters = append(newConsenters, consenter)
+					}
+					newConsenters = append(newConsenters, &c)
+
+					metadata.Consenters = newConsenters
+				})
+			}
+
+			for i, rotation := range certificateRotations {
+				o := network.Orderers[i]
+				port := network.OrdererPort(o, nwo.ListenPort)
+
+				fmt.Fprintf(GinkgoWriter, "Adding the future certificate of orderer node %d", i+1)
+				swap(o, rotation.oldCert, etcdraft.Consenter{
+					ServerTlsCert: rotation.newCert,
+					ClientTlsCert: rotation.newCert,
+					Host:          "127.0.0.1",
+					Port:          uint32(port),
+				})
+
+				By("Waiting for all orderers to sync")
+				assertBlockReception(map[string]int{
+					"systemchannel": i + 1,
+				}, orderers, peer, network)
+
+				By("Killing the orderer")
+				ordererProcesses[i].Signal(syscall.SIGTERM)
+				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
+
+				By("Starting the orderer again")
+				ordererRunner := network.OrdererRunner(orderers[i])
+				ordererRunners = append(ordererRunners, ordererRunner)
+				ordererProcesses[i] = ifrit.Invoke(grouper.Member{Name: orderers[i].ID(), Runner: ordererRunner})
+				Eventually(ordererProcesses[i].Ready()).Should(BeClosed())
+
+				By("And waiting for it to stabilize")
+				assertBlockReception(map[string]int{
+					"systemchannel": i + 1,
+				}, orderers, peer, network)
+			}
+
+		})
+
 		It("is still possible to onboard new orderers", func() {
 			// In this test, we have 3 OSNs and we rotate their TLS certificates one by one,
 			// by adding the future certificate to the channel, killing the OSN to make it

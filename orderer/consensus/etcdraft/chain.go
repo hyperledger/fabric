@@ -938,10 +938,10 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 		if utils.IsConfigBlock(block) {
 			c.support.WriteConfigBlock(block, nil)
 
-			cc, raftMetadata := c.detectConfChange(block)
+			cc, raftMetadata, rotate := c.detectConfChange(block)
 
-			if cc != nil {
-				c.logger.Infof("Config block %d changes Raft cluster, communication should be reconfigured", block.Header.Number)
+			if cc != nil || rotate != 0 {
+				c.logger.Infof("Config block %d changes consenter set, communication should be reconfigured", block.Header.Number)
 
 				c.raftMetadataLock.Lock()
 				c.opts.RaftMetadata = raftMetadata
@@ -963,7 +963,7 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 	return nil
 }
 
-func (c *Chain) detectConfChange(block *common.Block) (*raftpb.ConfChange, *etcdraft.RaftMetadata) {
+func (c *Chain) detectConfChange(block *common.Block) (*raftpb.ConfChange, *etcdraft.RaftMetadata, uint64) {
 	// If config is targeting THIS channel, inspect consenter set and
 	// propose raft ConfChange if it adds/removes node.
 	metadata, raftMetadata := c.newRaftMetadata(block)
@@ -979,9 +979,12 @@ func (c *Chain) detectConfChange(block *common.Block) (*raftpb.ConfChange, *etcd
 		changes = ComputeMembershipChanges(raftMetadata.Consenters, metadata.Consenters)
 	}
 
-	confChange := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
+	confChange, rotate := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
+	if rotate != 0 {
+		c.logger.Infof("Config block %d rotates TLS certificate of node %d", block.Header.Number, rotate)
+	}
 
-	return confChange, raftMetadata
+	return confChange, raftMetadata, rotate
 }
 
 func (c *Chain) apply(ents []raftpb.Entry) {
@@ -1168,6 +1171,11 @@ func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
 	changes := ComputeMembershipChanges(c.opts.RaftMetadata.Consenters, updatedMetadata.Consenters)
 	c.raftMetadataLock.RUnlock()
 
+	// Adding and removing 1 node is considered as certificate rotation, which is allowed.
+	if len(changes.AddedNodes) == 1 && len(changes.RemovedNodes) == 1 {
+		return nil
+	}
+
 	if changes.TotalChanges > 1 {
 		return errors.Errorf("update of more than one consenter at a time is not supported, requested changes: %s", changes)
 	}
@@ -1188,12 +1196,16 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 
 	switch common.HeaderType(hdr.Type) {
 	case common.HeaderType_CONFIG:
-		confChange, raftMetadata := c.detectConfChange(block)
+		confChange, raftMetadata, rotate := c.detectConfChange(block)
 		raftMetadata.RaftIndex = index
 
 		raftMetadataBytes := utils.MarshalOrPanic(raftMetadata)
 		// write block with metadata
 		c.support.WriteConfigBlock(block, raftMetadataBytes)
+
+		c.raftMetadataLock.Lock()
+		c.opts.RaftMetadata = raftMetadata
+		c.raftMetadataLock.Unlock()
 
 		// update membership
 		if confChange != nil {
@@ -1220,11 +1232,11 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 			}
 
 			c.configInflight = true
+		} else if rotate != 0 {
+			if err := c.configureComm(); err != nil {
+				c.logger.Panicf("Failed to configure communication: %s", err)
+			}
 		}
-
-		c.raftMetadataLock.Lock()
-		c.opts.RaftMetadata = raftMetadata
-		c.raftMetadataLock.Unlock()
 
 	case common.HeaderType_ORDERER_TRANSACTION:
 		// If this config is channel creation, no extra inspection is needed
