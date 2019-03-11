@@ -278,7 +278,7 @@ Orderer: &OrdererDefaults
 
         # Max Message Count: The maximum number of messages to permit in a
         # batch.  No block will contain more than this number of messages.
-        MaxMessageCount: 10
+        MaxMessageCount: 500
 
         # Absolute Max Bytes: The absolute maximum number of bytes allowed for
         # the serialized messages in a batch. The maximum block size is this value
@@ -300,7 +300,7 @@ Orderer: &OrdererDefaults
         # will contain only that message.  Because messages may be larger than
         # preferred max bytes (up to AbsoluteMaxBytes), some batches may exceed
         # the preferred max bytes, but will always contain exactly one transaction.
-        PreferredMaxBytes: 512 KB
+        PreferredMaxBytes: 2 MB
 
     # Max Channels is the maximum number of channels to allow on the ordering
     # network. When set to 0, this implies no maximum number of channels.
@@ -357,7 +357,7 @@ Orderer: &OrdererDefaults
 
             # MaxInflightMsgs limits the max number of in-flight append messages
             # during optimistic replication phase.
-            MaxInflightMsgs: 256
+            MaxInflightMsgs: 5
 
             # MaxSizePerMsg limits the max size of each append message. Smaller
             # value lowers the raft recovery cost(initial probing and message
