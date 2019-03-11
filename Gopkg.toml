@@ -79,7 +79,7 @@ noverify = [
 
 [[constraint]]
   name = "github.com/pkg/errors"
-  version = "0.8.0"
+  version = "0.8.1"
 
 [[constraint]]
   name = "github.com/spf13/cobra"
