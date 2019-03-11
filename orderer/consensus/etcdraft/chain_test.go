@@ -245,6 +245,16 @@ var _ = Describe("Chain", func() {
 				Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
 				Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
 			})
+
+			It("starts proactive campaign", func() {
+				// assert that even tick supplied are less than ELECTION_TIMEOUT,
+				// a leader can still be successfully elected.
+				for i := 0; i < ELECTION_TICK; i++ {
+					clock.Increment(interval)
+					time.Sleep(10 * time.Millisecond)
+				}
+				Eventually(observeC, LongEventualTimeout).Should(Receive(StateEqual(1, raft.StateLeader)))
+			})
 		})
 
 		Context("when Raft leader is elected", func() {
