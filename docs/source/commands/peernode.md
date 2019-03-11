@@ -19,7 +19,6 @@ Usage:
 
 Flags:
   -h, --help                help for start
-  -o, --orderer string      Ordering service endpoint (default "orderer:7050")
       --peer-chaincodedev   Whether peer in chaincode development mode
 ```
 
