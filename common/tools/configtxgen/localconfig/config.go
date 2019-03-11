@@ -185,9 +185,9 @@ var genesisDefaults = TopLevel{
 		Addresses:    []string{"127.0.0.1:7050"},
 		BatchTimeout: 2 * time.Second,
 		BatchSize: BatchSize{
-			MaxMessageCount:   10,
+			MaxMessageCount:   500,
 			AbsoluteMaxBytes:  10 * 1024 * 1024,
-			PreferredMaxBytes: 512 * 1024,
+			PreferredMaxBytes: 2 * 1024 * 1024,
 		},
 		Kafka: Kafka{
 			Brokers: []string{"127.0.0.1:9092"},
@@ -197,7 +197,7 @@ var genesisDefaults = TopLevel{
 				TickInterval:     "500ms",
 				ElectionTick:     10,
 				HeartbeatTick:    1,
-				MaxInflightMsgs:  256,
+				MaxInflightMsgs:  5,
 				MaxSizePerMsg:    1048576,
 				SnapshotInterval: 100 * 1024 * 1024, // 100MB
 			},
