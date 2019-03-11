@@ -217,7 +217,7 @@ func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Mes
 	}
 
 	return &lb.InstallChaincodeResult{
-		Hash: []byte(packageID), // fixme, this field should be renamed and retyped
+		PackageId: string(packageID),
 	}, nil
 }
 

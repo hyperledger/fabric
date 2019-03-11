@@ -192,7 +192,7 @@ var _ = Describe("SCC", func() {
 				payload := &lb.InstallChaincodeResult{}
 				err := proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(payload.Hash).To(Equal([]byte("fake-hash")))
+				Expect(payload.PackageId).To(Equal("fake-hash"))
 
 				Expect(fakeSCCFuncs.InstallChaincodeCallCount()).To(Equal(1))
 				ccInstallPackage := fakeSCCFuncs.InstallChaincodeArgsForCall(0)

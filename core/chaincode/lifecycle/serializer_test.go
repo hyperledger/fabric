@@ -42,7 +42,7 @@ var _ = Describe("Serializer", func() {
 			Int:   -3,
 			Bytes: []byte("bytes"),
 			Proto: &lb.InstallChaincodeResult{
-				Hash: []byte("hash"),
+				PackageId: "hash",
 			},
 		}
 	})
@@ -887,7 +887,7 @@ var _ = Describe("Serializer", func() {
 	Describe("DeserializeFieldAsProto", func() {
 		BeforeEach(func() {
 			fakeState.GetStateReturns(protoutil.MarshalOrPanic(&lb.StateData{
-				Type: &lb.StateData_Bytes{Bytes: protoutil.MarshalOrPanic(&lb.InstallChaincodeResult{Hash: []byte("hash")})},
+				Type: &lb.StateData_Bytes{Bytes: protoutil.MarshalOrPanic(&lb.InstallChaincodeResult{PackageId: "hash"})},
 			}), nil)
 		})
 
@@ -895,7 +895,7 @@ var _ = Describe("Serializer", func() {
 			result := &lb.InstallChaincodeResult{}
 			err := s.DeserializeFieldAsProto("namespaces", "fake", "field", fakeState, result)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(result, &lb.InstallChaincodeResult{Hash: []byte("hash")})).To(BeTrue())
+			Expect(proto.Equal(result, &lb.InstallChaincodeResult{PackageId: "hash"})).To(BeTrue())
 
 			Expect(fakeState.GetStateCallCount()).To(Equal(1))
 			Expect(fakeState.GetStateArgsForCall(0)).To(Equal("namespaces/fields/fake/field"))

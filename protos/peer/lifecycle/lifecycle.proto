@@ -24,7 +24,7 @@ message InstallChaincodeArgs {
 // InstallChaincodeArgs is the message returned by
 // '_lifecycle.InstallChaincode'
 message InstallChaincodeResult {
-    bytes hash = 1;
+    string package_id = 1;
 }
 
 // QueryInstalledChaincodeArgs is the message used as arguments
