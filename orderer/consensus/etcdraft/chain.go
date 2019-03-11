@@ -1164,6 +1164,10 @@ func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
 		return err
 	}
 
+	if err := MetadataHasDuplication(updatedMetadata); err != nil {
+		return err
+	}
+
 	c.raftMetadataLock.RLock()
 	changes := ComputeMembershipChanges(c.opts.RaftMetadata.Consenters, updatedMetadata.Consenters)
 	c.raftMetadataLock.RUnlock()

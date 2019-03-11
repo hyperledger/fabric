@@ -1593,7 +1593,8 @@ var _ = Describe("Chain", func() {
 				})
 
 				It("adding node to the cluster", func() {
-					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
+					addConsenterUpdate := addConsenterConfigValue()
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterUpdate))
 					c1.cutter.CutNext = true
 
 					By("sending config transaction")
@@ -1645,6 +1646,29 @@ var _ = Describe("Chain", func() {
 					network.exec(func(c *chain) {
 						Eventually(c.support.WriteBlockCallCount, defaultTimeout).Should(Equal(2))
 					})
+
+					By("resubmitting the config update by mistake")
+					c1.cutter.CutNext = true
+					consensusType := &orderer.ConsensusType{}
+					proto.Unmarshal(addConsenterUpdate["ConsensusType"].Value, consensusType)
+					duplicatedMetadata := &raftprotos.Metadata{}
+					proto.Unmarshal(consensusType.Metadata, duplicatedMetadata)
+					duplicatedMetadata.Consenters = append(duplicatedMetadata.Consenters, duplicatedMetadata.Consenters[1])
+					configEnv = newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, map[string]*common.ConfigValue{
+						"ConsensusType": {
+							Version: 1,
+							Value: marshalOrPanic(&orderer.ConsensusType{
+								Metadata: marshalOrPanic(duplicatedMetadata),
+							}),
+						},
+					}))
+
+					err = c1.Configure(configEnv, 1)
+					By("Expecting it to be rejected")
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("duplicate consenter"))
+					Expect(err.Error()).To(ContainSubstring(string(duplicatedMetadata.Consenters[1].ServerTlsCert)))
+					Expect(err.Error()).To(ContainSubstring(string(duplicatedMetadata.Consenters[1].ClientTlsCert)))
 				})
 
 				It("does not reconfigure raft cluster if it's a channel creation tx", func() {
