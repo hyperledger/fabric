@@ -9,6 +9,7 @@ package lifecycle_test
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -56,7 +57,6 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 				Sequence: 7,
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 					Version:           "version",
-					Id:                []byte("hash"),
 					EndorsementPlugin: "endorsement-plugin",
 				},
 				ValidationInfo: &lb.ChaincodeValidationInfo{
@@ -93,7 +93,6 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 					Sequence: 7,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						Version:           "version",
-						Id:                []byte("hash"),
 						EndorsementPlugin: "endorsement-plugin",
 					},
 					ValidationInfo: &lb.ChaincodeValidationInfo{
@@ -177,7 +176,6 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			Expect(def).To(Equal(&lifecycle.LegacyDefinition{
 				Name:                "name",
 				Version:             "version",
-				HashField:           []byte("hash"),
 				EndorsementPlugin:   "endorsement-plugin",
 				ValidationPlugin:    "validation-plugin",
 				ValidationParameter: []byte("validation-parameter"),
@@ -305,8 +303,8 @@ var _ = Describe("LegacyDefinition", func() {
 	})
 
 	Describe("Hash", func() {
-		It("returns the hash", func() {
-			Expect(ld.Hash()).To(Equal([]byte("hash")))
+		It("returns the sha256 hash of name and version", func() {
+			Expect(ld.Hash()).To(Equal(util.ComputeSHA256([]byte("name:version"))))
 		})
 	})
 

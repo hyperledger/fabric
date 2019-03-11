@@ -357,13 +357,12 @@ var _ = Describe("SCC", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeSCCFuncs.ApproveChaincodeDefinitionForOrgCallCount()).To(Equal(1))
-				name, cd, pubState, privState := fakeSCCFuncs.ApproveChaincodeDefinitionForOrgArgsForCall(0)
+				name, cd, hash, pubState, privState := fakeSCCFuncs.ApproveChaincodeDefinitionForOrgArgsForCall(0)
 				Expect(name).To(Equal("name"))
 				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
 					Sequence: 7,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						Version:           "version",
-						Id:                []byte("hash"),
 						EndorsementPlugin: "endorsement-plugin",
 						InitRequired:      true,
 					},
@@ -373,6 +372,7 @@ var _ = Describe("SCC", func() {
 					},
 					Collections: arg.Collections,
 				}))
+				Expect(hash).To(Equal([]byte("hash")))
 				Expect(pubState).To(Equal(fakeStub))
 				Expect(privState).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
 				Expect(privState.(*lifecycle.ChaincodePrivateLedgerShim).Collection).To(Equal("_implicit_org_fake-mspid"))
@@ -454,7 +454,6 @@ var _ = Describe("SCC", func() {
 					Sequence: 7,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						Version:           "version",
-						Id:                []byte("hash"),
 						EndorsementPlugin: "endorsement-plugin",
 						InitRequired:      true,
 					},
@@ -567,7 +566,6 @@ var _ = Describe("SCC", func() {
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						Version:           "version",
 						EndorsementPlugin: "endorsement-plugin",
-						Id:                []byte("hash"),
 					},
 					ValidationInfo: &lb.ChaincodeValidationInfo{
 						ValidationPlugin:    "validation-plugin",
@@ -586,7 +584,6 @@ var _ = Describe("SCC", func() {
 				Expect(proto.Equal(payload, &lb.QueryChaincodeDefinitionResult{
 					Sequence:            2,
 					Version:             "version",
-					Hash:                []byte("hash"),
 					EndorsementPlugin:   "endorsement-plugin",
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),

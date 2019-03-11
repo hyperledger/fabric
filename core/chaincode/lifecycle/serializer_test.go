@@ -530,6 +530,55 @@ var _ = Describe("Serializer", func() {
 		})
 	})
 
+	Describe("IsMetadataSerialized", func() {
+		var (
+			kvs map[string][]byte
+		)
+
+		BeforeEach(func() {
+			kvs = map[string][]byte{
+				"namespaces/metadata/fake": protoutil.MarshalOrPanic(&lb.StateMetadata{
+					Datatype: "TestStruct",
+					Fields:   []string{"Int", "Bytes", "Proto"},
+				}),
+			}
+
+			fakeState.GetStateHashStub = func(key string) ([]byte, error) {
+				return util.ComputeSHA256(kvs[key]), nil
+			}
+		})
+
+		It("checks to see if the metadata type is stored in the opaque state", func() {
+			matched, err := s.IsMetadataSerialized("namespaces", "fake", testStruct, fakeState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(matched).To(BeTrue())
+
+			Expect(fakeState.GetStateHashCallCount()).To(Equal(1))
+			Expect(fakeState.GetStateHashArgsForCall(0)).To(Equal("namespaces/metadata/fake"))
+		})
+
+		Context("when the struct is not serializable", func() {
+			It("wraps and returns the error", func() {
+				_, err := s.IsMetadataSerialized("namespaces", "fake", nil, fakeState)
+				Expect(err).To(MatchError("structure for namespace namespaces/fake is not serializable: must be pointer to struct, but got non-pointer invalid"))
+			})
+		})
+
+		Context("when marshaling the metadata fails", func() {
+			BeforeEach(func() {
+				s.Marshaler = func(msg proto.Message) ([]byte, error) {
+					return nil, fmt.Errorf("marshal-error")
+				}
+			})
+
+			It("wraps and returns the error", func() {
+				type Other struct{}
+				_, err := s.IsMetadataSerialized("namespaces", "fake", &Other{}, fakeState)
+				Expect(err).To(MatchError("could not marshal metadata for namespace namespaces/fake: marshal-error"))
+			})
+		})
+	})
+
 	Describe("IsSerialized", func() {
 		var (
 			kvs map[string][]byte

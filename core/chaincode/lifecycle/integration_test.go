@@ -190,7 +190,6 @@ var _ = Describe("Integration", func() {
 				EndorsementPlugin:   "builtin",
 				ValidationPlugin:    "builtin",
 				ValidationParameter: []byte("validation-parameter"),
-				Hash:                []byte("hash-value"),
 				Collections:         &cb.CollectionConfigPackage{},
 			})).To(BeTrue())
 		})

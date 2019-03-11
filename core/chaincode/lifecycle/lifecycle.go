@@ -29,6 +29,11 @@ const (
 	// in the future.
 	NamespacesName = "namespaces"
 
+	// ChaincodeSourcesName is the namespace reserved for storing the information about where
+	// to find the chaincode (such as as a package on the local filesystem, or in the future,
+	// at some network resource).  This namespace is only populated in the org implicit collection.
+	ChaincodeSourcesName = "chaincode-sources"
+
 	// ChaincodeDefinitionType is the name of the type used to store defined chaincodes
 	ChaincodeDefinitionType = "ChaincodeDefinition"
 
@@ -51,7 +56,7 @@ const (
 //
 // namespaces/metadata/mycc:                   "ChaincodeDefinition"
 // namespaces/fields/mycc/Sequence             1 (The current sequence)
-// namespaces/fields/mycc/EndorsementInfo:     {Version: "1.3", EndorsementPlugin: "builtin", InitRequired: true, ID: "hash1"}
+// namespaces/fields/mycc/EndorsementInfo:     {Version: "1.3", EndorsementPlugin: "builtin", InitRequired: true}
 // namespaces/fields/mycc/ValidationInfo:      {ValidationPlugin: "builtin", ValidationParameter: <application-policy>}
 // namespaces/fields/mycc/Collections          {<collection info>}
 //
@@ -60,13 +65,24 @@ const (
 // namespaces/fields/<namespace>#<sequence_number>/<field>  -> field of namespace type
 //
 // namespaces/metadata/mycc#1:                   "ChaincodeParameters"
-// namespaces/fields/mycc#1/EndorsementInfo:     {Version: "1.3", EndorsementPlugin: "builtin", InitRequired: true, ID: "hash1"}
+// namespaces/fields/mycc#1/EndorsementInfo:     {Version: "1.3", EndorsementPlugin: "builtin", InitRequired: true}
 // namespaces/fields/mycc#1/ValidationInfo:      {ValidationPlugin: "builtin", ValidationParameter: <application-policy>}
 // namespaces/fields/mycc#1/Collections          {<collection info>}
 // namespaces/metadata/mycc#2:                   "ChaincodeParameters"
-// namespaces/fields/mycc#2/EndorsementInfo:     {Version: "1.4", EndorsementPlugin: "builtin", InitRequired: true, ID: "hash2"}
+// namespaces/fields/mycc#2/EndorsementInfo:     {Version: "1.4", EndorsementPlugin: "builtin", InitRequired: true}
 // namespaces/fields/mycc#2/ValidationInfo:      {ValidationPlugin: "builtin", ValidationParameter: <application-policy>}
 // namespaces/fields/mycc#2/Collections          {<collection info>}
+//
+// chaincode-source/metadata/mycc#1              "LocalPackage"
+// chaincode-source/fields/mycc#1/Hash           "hash1"
+
+// ChaincodePackage is a type of chaincode-source which may be serialized into the
+// org's private data collection.
+// WARNING: This structure is serialized/deserialized from the DB, re-ordering or adding fields
+// will cause opaque checks to fail.
+type ChaincodeLocalPackage struct {
+	Hash []byte
+}
 
 // ChaincodeParameters are the parts of the chaincode definition which are serialized
 // as values in the statedb.  It is expected that any instance will have no nil fields once initialized.
@@ -88,8 +104,6 @@ func (cp *ChaincodeParameters) Equal(ocp *ChaincodeParameters) error {
 		return errors.Errorf("ValidationPlugin '%s' != '%s'", cp.ValidationInfo.ValidationPlugin, ocp.ValidationInfo.ValidationPlugin)
 	case !bytes.Equal(cp.ValidationInfo.ValidationParameter, ocp.ValidationInfo.ValidationParameter):
 		return errors.Errorf("ValidationParameter '%x' != '%x'", cp.ValidationInfo.ValidationParameter, ocp.ValidationInfo.ValidationParameter)
-	case !bytes.Equal(cp.EndorsementInfo.Id, ocp.EndorsementInfo.Id):
-		return errors.Errorf("Hash '%x' != '%x'", cp.EndorsementInfo.Id, ocp.EndorsementInfo.Id)
 	case !proto.Equal(cp.Collections, ocp.Collections):
 		return errors.Errorf("Collections do not match")
 	default:
@@ -221,7 +235,7 @@ func (ef *ExternalFunctions) CommitChaincodeDefinition(name string, cd *Chaincod
 // ApproveChaincodeDefinitionForOrg adds a chaincode definition entry into the passed in Org state.  The definition must be
 // for either the currently defined sequence number or the next sequence number.  If the definition is
 // for the current sequence number, then it must match exactly the current definition or it will be rejected.
-func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, publicState ReadableState, orgState ReadWritableState) error {
+func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, localPackageHash []byte, publicState ReadableState, orgState ReadWritableState) error {
 	// Get the current sequence from the public state
 	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, name, "Sequence", publicState)
 	if err != nil {
@@ -264,6 +278,14 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *C
 	privateName := fmt.Sprintf("%s#%d", name, requestedSequence)
 	if err := ef.Resources.Serializer.Serialize(NamespacesName, privateName, cd.Parameters(), orgState); err != nil {
 		return errors.WithMessage(err, "could not serialize chaincode parameters to state")
+	}
+
+	if localPackageHash != nil {
+		if err := ef.Resources.Serializer.Serialize(ChaincodeSourcesName, privateName, &ChaincodeLocalPackage{
+			Hash: localPackageHash,
+		}, orgState); err != nil {
+			return errors.WithMessage(err, "could not serialize chaincode package info to state")
+		}
 	}
 
 	return nil
