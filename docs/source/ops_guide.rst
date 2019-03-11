@@ -18,4 +18,5 @@ Operations Guides
    error-handling
    logging-control
    enable_tls
+   raft_configuration.md
    kafka
