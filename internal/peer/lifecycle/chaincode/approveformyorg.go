@@ -44,7 +44,7 @@ type ApproveForMyOrgInput struct {
 	ChannelID         string
 	Name              string
 	Version           string
-	Hash              []byte
+	PackageID         string
 	Sequence          int64
 	EndorsementPlugin string
 	ValidationPlugin  string
@@ -74,10 +74,6 @@ func (a *ApproveForMyOrgInput) Validate() error {
 
 	if a.Version == "" {
 		return errors.New("The required parameter 'version' is empty. Rerun the command with -v flag")
-	}
-
-	if a.Hash == nil {
-		return errors.New("The required parameter 'hash' is empty. Rerun the command with --hash flag")
 	}
 
 	if a.Sequence == 0 {
@@ -127,7 +123,7 @@ func approveForMyOrgCmd(cf *CmdFactory, a *ApproverForMyOrg) *cobra.Command {
 		"channelID",
 		"name",
 		"version",
-		"hash",
+		"package-id",
 		"sequence",
 		"escc",
 		"vscc",
@@ -272,7 +268,7 @@ func (a *ApproverForMyOrg) setInput() error {
 		ChannelID:                channelID,
 		Name:                     chaincodeName,
 		Version:                  chaincodeVersion,
-		Hash:                     []byte(hash),
+		PackageID:                packageID,
 		Sequence:                 int64(sequence),
 		EndorsementPlugin:        escc,
 		ValidationPlugin:         vscc,
@@ -292,6 +288,23 @@ func (a *ApproverForMyOrg) createProposals(inputTxID string) (proposal *pb.Propo
 		return nil, nil, "", errors.New("nil signer provided")
 	}
 
+	var ccsrc *lb.ChaincodeSource
+	if a.Input.PackageID != "" {
+		ccsrc = &lb.ChaincodeSource{
+			Type: &lb.ChaincodeSource_LocalPackage{
+				LocalPackage: &lb.ChaincodeSource_Local{
+					PackageId: a.Input.PackageID,
+				},
+			},
+		}
+	} else {
+		ccsrc = &lb.ChaincodeSource{
+			Type: &lb.ChaincodeSource_Unavailable{
+				Unavailable: &lb.ChaincodeSource_None{},
+			},
+		}
+	}
+
 	args := &lb.ApproveChaincodeDefinitionForMyOrgArgs{
 		Name:                a.Input.Name,
 		Version:             a.Input.Version,
@@ -301,13 +314,7 @@ func (a *ApproverForMyOrg) createProposals(inputTxID string) (proposal *pb.Propo
 		ValidationParameter: a.Input.ValidationParameterBytes,
 		InitRequired:        a.Input.InitRequired,
 		Collections:         a.Input.CollectionConfigPackage,
-		Source: &lb.ChaincodeSource{
-			Type: &lb.ChaincodeSource_LocalPackage{
-				LocalPackage: &lb.ChaincodeSource_Local{
-					Hash: a.Input.Hash,
-				},
-			},
-		},
+		Source:              ccsrc,
 	}
 
 	argsBytes, err := proto.Marshal(args)

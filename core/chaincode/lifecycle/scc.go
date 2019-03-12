@@ -66,7 +66,7 @@ type SCCFunctions interface {
 	QueryInstalledChaincodes() (chaincodes []chaincode.InstalledChaincode, err error)
 
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
-	ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, hash []byte, publicState ReadableState, orgState ReadWritableState) error
+	ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, packageID ccintf.CCID, publicState ReadableState, orgState ReadWritableState) error
 
 	// CommitChaincodeDefinition records a new chaincode definition into the public state and returns the orgs which agreed with that definition.
 	CommitChaincodeDefinition(name string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
@@ -270,11 +270,11 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 		collectionConfig = input.Collections.Config
 	}
 
-	var hash []byte
+	var packageID ccintf.CCID
 	if input.Source != nil {
 		switch source := input.Source.Type.(type) {
 		case *lb.ChaincodeSource_LocalPackage:
-			hash = source.LocalPackage.Hash
+			packageID = ccintf.CCID(source.LocalPackage.PackageId)
 		case *lb.ChaincodeSource_Unavailable:
 		default:
 		}
@@ -297,7 +297,7 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 				Config: collectionConfig,
 			},
 		},
-		hash,
+		packageID,
 		i.Stub,
 		&ChaincodePrivateLedgerShim{
 			Collection: collectionName,

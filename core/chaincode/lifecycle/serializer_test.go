@@ -22,9 +22,10 @@ import (
 
 var _ = Describe("Serializer", func() {
 	type TestStruct struct {
-		Int   int64
-		Bytes []byte
-		Proto *lb.InstallChaincodeResult
+		Int    int64
+		Bytes  []byte
+		Proto  *lb.InstallChaincodeResult
+		String string
 	}
 
 	var (
@@ -44,6 +45,7 @@ var _ = Describe("Serializer", func() {
 			Proto: &lb.InstallChaincodeResult{
 				PackageId: "hash",
 			},
+			String: "theory",
 		}
 	})
 
@@ -55,7 +57,7 @@ var _ = Describe("Serializer", func() {
 			Expect(fakeState.GetStateCallCount()).To(Equal(1))
 			Expect(fakeState.GetStateArgsForCall(0)).To(Equal("namespaces/metadata/fake"))
 
-			Expect(fakeState.PutStateCallCount()).To(Equal(4))
+			Expect(fakeState.PutStateCallCount()).To(Equal(5))
 
 			key, value := fakeState.PutStateArgsForCall(0)
 			Expect(key).To(Equal("namespaces/fields/fake/Int"))
@@ -76,10 +78,16 @@ var _ = Describe("Serializer", func() {
 			})))
 
 			key, value = fakeState.PutStateArgsForCall(3)
+			Expect(key).To(Equal("namespaces/fields/fake/String"))
+			Expect(value).To(Equal(protoutil.MarshalOrPanic(&lb.StateData{
+				Type: &lb.StateData_String_{String_: "theory"},
+			})))
+
+			key, value = fakeState.PutStateArgsForCall(4)
 			Expect(key).To(Equal("namespaces/metadata/fake"))
 			Expect(value).To(Equal(protoutil.MarshalOrPanic(&lb.StateMetadata{
 				Datatype: "TestStruct",
-				Fields:   []string{"Int", "Bytes", "Proto"},
+				Fields:   []string{"Int", "Bytes", "Proto", "String"},
 			})))
 
 			Expect(fakeState.DelStateCallCount()).To(Equal(0))
@@ -146,9 +154,12 @@ var _ = Describe("Serializer", func() {
 					"namespaces/fields/fake/Proto": protoutil.MarshalOrPanic(&lb.StateData{
 						Type: &lb.StateData_Bytes{Bytes: protoutil.MarshalOrPanic(testStruct.Proto)},
 					}),
+					"namespaces/fields/fake/String": protoutil.MarshalOrPanic(&lb.StateData{
+						Type: &lb.StateData_String_{String_: "theory"},
+					}),
 					"namespaces/metadata/fake": protoutil.MarshalOrPanic(&lb.StateMetadata{
 						Datatype: "TestStruct",
-						Fields:   []string{"Int", "Bytes", "Proto"},
+						Fields:   []string{"Int", "Bytes", "Proto", "String"},
 					}),
 				}
 				fakeState.GetStateStub = func(key string) ([]byte, error) {
@@ -177,17 +188,19 @@ var _ = Describe("Serializer", func() {
 					err := s.Serialize("namespaces", "fake", testStruct, fakeState)
 					Expect(err).NotTo(HaveOccurred())
 
-					Expect(fakeState.PutStateCallCount()).To(Equal(2))
+					Expect(fakeState.PutStateCallCount()).To(Equal(3))
 					key, value := fakeState.PutStateArgsForCall(0)
 					Expect(value).To(Equal(protoutil.MarshalOrPanic(&lb.StateData{
 						Type: &lb.StateData_Int64{Int64: -3},
 					})))
 					Expect(key).To(Equal("namespaces/fields/fake/Int"))
 					key, value = fakeState.PutStateArgsForCall(1)
+					Expect(key).To(Equal("namespaces/fields/fake/String"))
+					key, value = fakeState.PutStateArgsForCall(2)
 					Expect(key).To(Equal("namespaces/metadata/fake"))
 					Expect(value).To(Equal(protoutil.MarshalOrPanic(&lb.StateMetadata{
 						Datatype: "TestStruct",
-						Fields:   []string{"Int", "Bytes", "Proto"},
+						Fields:   []string{"Int", "Bytes", "Proto", "String"},
 					})))
 					Expect(fakeState.DelStateCallCount()).To(Equal(0))
 				})
@@ -367,6 +380,9 @@ var _ = Describe("Serializer", func() {
 				"namespaces/fields/fake/Proto": protoutil.MarshalOrPanic(&lb.StateData{
 					Type: &lb.StateData_Bytes{Bytes: protoutil.MarshalOrPanic(testStruct.Proto)},
 				}),
+				"namespaces/fields/fake/String": protoutil.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_String_{String_: "theory"},
+				}),
 			}
 
 			fakeState.GetStateStub = func(key string) ([]byte, error) {
@@ -380,10 +396,11 @@ var _ = Describe("Serializer", func() {
 			err := s.Deserialize("namespaces", "fake", metadata, target, fakeState)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(fakeState.GetStateCallCount()).To(Equal(3))
+			Expect(fakeState.GetStateCallCount()).To(Equal(4))
 
 			Expect(target.Int).To(Equal(int64(-3)))
 			Expect(target.Bytes).To(Equal([]byte("bytes")))
+			Expect(target.String).To(Equal("theory"))
 			Expect(proto.Equal(target.Proto, testStruct.Proto)).To(BeTrue())
 		})
 
@@ -432,6 +449,18 @@ var _ = Describe("Serializer", func() {
 				testStruct := &TestStruct{}
 				err := s.Deserialize("namespaces", "fake", metadata, testStruct, fakeState)
 				Expect(err).To(MatchError("expected key namespaces/fields/fake/Proto to encode a value of type []byte, but was *lifecycle.StateData_Int64"))
+			})
+		})
+
+		Context("when the bytes are not the correct type", func() {
+			BeforeEach(func() {
+				kvs["namespaces/fields/fake/String"] = kvs["namespaces/fields/fake/Int"]
+			})
+
+			It("fails", func() {
+				testStruct := &TestStruct{}
+				err := s.Deserialize("namespaces", "fake", metadata, testStruct, fakeState)
+				Expect(err).To(MatchError("expected key namespaces/fields/fake/String to encode a value of type String, but was *lifecycle.StateData_Int64"))
 			})
 		})
 
@@ -539,7 +568,7 @@ var _ = Describe("Serializer", func() {
 			kvs = map[string][]byte{
 				"namespaces/metadata/fake": protoutil.MarshalOrPanic(&lb.StateMetadata{
 					Datatype: "TestStruct",
-					Fields:   []string{"Int", "Bytes", "Proto"},
+					Fields:   []string{"Int", "Bytes", "Proto", "String"},
 				}),
 			}
 
@@ -595,9 +624,12 @@ var _ = Describe("Serializer", func() {
 				"namespaces/fields/fake/Proto": protoutil.MarshalOrPanic(&lb.StateData{
 					Type: &lb.StateData_Bytes{Bytes: protoutil.MarshalOrPanic(testStruct.Proto)},
 				}),
+				"namespaces/fields/fake/String": protoutil.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_String_{String_: "theory"},
+				}),
 				"namespaces/metadata/fake": protoutil.MarshalOrPanic(&lb.StateMetadata{
 					Datatype: "TestStruct",
-					Fields:   []string{"Int", "Bytes", "Proto"},
+					Fields:   []string{"Int", "Bytes", "Proto", "String"},
 				}),
 			}
 
@@ -611,11 +643,12 @@ var _ = Describe("Serializer", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(matched).To(BeTrue())
 
-			Expect(fakeState.GetStateHashCallCount()).To(Equal(4))
+			Expect(fakeState.GetStateHashCallCount()).To(Equal(5))
 			Expect(fakeState.GetStateHashArgsForCall(0)).To(Equal("namespaces/metadata/fake"))
 			Expect(fakeState.GetStateHashArgsForCall(1)).To(Equal("namespaces/fields/fake/Int"))
 			Expect(fakeState.GetStateHashArgsForCall(2)).To(Equal("namespaces/fields/fake/Bytes"))
 			Expect(fakeState.GetStateHashArgsForCall(3)).To(Equal("namespaces/fields/fake/Proto"))
+			Expect(fakeState.GetStateHashArgsForCall(4)).To(Equal("namespaces/fields/fake/String"))
 		})
 
 		Context("when the namespace contains extraneous keys", func() {
@@ -985,6 +1018,57 @@ var _ = Describe("Serializer", func() {
 
 			It("returns an error", func() {
 				_, err := s.DeserializeFieldAsInt64("namespaces", "fake", "field", fakeState)
+				Expect(err).To(MatchError("could not unmarshal state for key namespaces/fields/fake/field: unexpected EOF"))
+			})
+		})
+	})
+
+	Describe("DeserializeFieldAsString", func() {
+		BeforeEach(func() {
+			fakeState.GetStateReturns(protoutil.MarshalOrPanic(&lb.StateData{
+				Type: &lb.StateData_String_{String_: "theory"},
+			}), nil)
+		})
+
+		It("deserializes the field to a string", func() {
+			result, err := s.DeserializeFieldAsString("namespaces", "fake", "field", fakeState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal("theory"))
+
+			Expect(fakeState.GetStateCallCount()).To(Equal(1))
+			Expect(fakeState.GetStateArgsForCall(0)).To(Equal("namespaces/fields/fake/field"))
+		})
+
+		Context("when GetState returns an error", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := s.DeserializeFieldAsString("namespaces", "fake", "field", fakeState)
+				Expect(err).To(MatchError("could not get state for key namespaces/fields/fake/field: get-state-error"))
+			})
+		})
+
+		Context("when GetState returns nil", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, nil)
+			})
+
+			It("returns nil", func() {
+				result, err := s.DeserializeFieldAsString("namespaces", "fake", "field", fakeState)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(""))
+			})
+		})
+
+		Context("when the field has trailing data", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns([]byte("bad-data"), nil)
+			})
+
+			It("returns an error", func() {
+				_, err := s.DeserializeFieldAsString("namespaces", "fake", "field", fakeState)
 				Expect(err).To(MatchError("could not unmarshal state for key namespaces/fields/fake/field: unexpected EOF"))
 			})
 		})

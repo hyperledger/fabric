@@ -76,7 +76,7 @@ message ChaincodeSource {
     message None {}
 
     message Local {
-        bytes hash = 1;
+        string package_id = 1;
     }
 
     oneof Type {

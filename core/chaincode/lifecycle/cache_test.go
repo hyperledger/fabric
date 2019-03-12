@@ -96,7 +96,7 @@ var _ = Describe("Cache", func() {
 
 		localChaincodes = map[string]*lifecycle.LocalChaincode{
 			string(util.ComputeSHA256(protoutil.MarshalOrPanic(&lb.StateData{
-				Type: &lb.StateData_Bytes{Bytes: []byte("packageID")},
+				Type: &lb.StateData_String_{String_: "packageID"},
 			}))): {
 				References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{
 					"channel-id": {
@@ -255,7 +255,7 @@ var _ = Describe("Cache", func() {
 			err = resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name#7", &lifecycle.ChaincodeParameters{}, fakePrivateState)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = resources.Serializer.Serialize(lifecycle.ChaincodeSourcesName, "chaincode-name#7", &lifecycle.ChaincodeLocalPackage{Hash: []byte("hash")}, fakePrivateState)
+			err = resources.Serializer.Serialize(lifecycle.ChaincodeSourcesName, "chaincode-name#7", &lifecycle.ChaincodeLocalPackage{PackageID: "hash"}, fakePrivateState)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -286,7 +286,7 @@ var _ = Describe("Cache", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				err = resources.Serializer.Serialize(lifecycle.ChaincodeSourcesName, "chaincode-name#7", &lifecycle.ChaincodeLocalPackage{
-					Hash: []byte("different-hash"),
+					PackageID: "different-hash",
 				}, fakePrivateState)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -447,7 +447,7 @@ var _ = Describe("Cache", func() {
 			Context("when the private state returns an error for the chaincode source", func() {
 				BeforeEach(func() {
 					fakeQueryExecutor.GetPrivateDataHashStub = func(channel, collection, key string) ([]byte, error) {
-						if key != "chaincode-sources/fields/chaincode-name#7/Hash" {
+						if key != "chaincode-sources/fields/chaincode-name#7/PackageID" {
 							return fakePrivateState.GetStateHash(key)
 						}
 						return nil, fmt.Errorf("private-data-error")

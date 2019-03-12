@@ -137,7 +137,7 @@ var _ = Describe("Integration", func() {
 					Source: &lb.ChaincodeSource{
 						Type: &lb.ChaincodeSource_LocalPackage{
 							LocalPackage: &lb.ChaincodeSource_Local{
-								Hash: []byte("hash-value"),
+								PackageId: "hash-value",
 							},
 						},
 					},

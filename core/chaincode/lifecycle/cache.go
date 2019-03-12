@@ -175,7 +175,7 @@ func (c *Cache) handleChaincodeInstalledWhileLocked(md *persistence.ChaincodePac
 	// it would be nice to get this value from the serialization package, but it was not obvious
 	// how to expose this in a nice way, so we manually compute it.
 	encodedCCHash := protoutil.MarshalOrPanic(&lb.StateData{
-		Type: &lb.StateData_Bytes{Bytes: []byte(packageID)},
+		Type: &lb.StateData_String_{String_: string(packageID)},
 	})
 	hashOfCCHash := string(util.ComputeSHA256(encodedCCHash))
 	localChaincode, ok := c.localChaincodes[hashOfCCHash]
@@ -376,7 +376,7 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 			continue
 		}
 
-		hashKey := FieldKey(ChaincodeSourcesName, privateName, "Hash")
+		hashKey := FieldKey(ChaincodeSourcesName, privateName, "PackageID")
 		hashOfCCHash, err := orgState.GetStateHash(hashKey)
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("could not check opaque org state for chaincode source hash for '%s' on channel '%s'", name, channelID))

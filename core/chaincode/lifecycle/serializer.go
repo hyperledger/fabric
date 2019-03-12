@@ -83,6 +83,7 @@ func (s *Serializer) SerializableChecks(structure interface{}) (reflect.Value, [
 		fieldValue := value.Field(i)
 		allFields[i] = fieldName
 		switch fieldValue.Kind() {
+		case reflect.String:
 		case reflect.Int64:
 		case reflect.Slice:
 			if fieldValue.Type().Elem().Kind() != reflect.Uint8 {
@@ -136,6 +137,8 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 
 		stateData := &lb.StateData{}
 		switch fieldValue.Kind() {
+		case reflect.String:
+			stateData.Type = &lb.StateData_String_{String_: fieldValue.String()}
 		case reflect.Int64:
 			stateData.Type = &lb.StateData_Int64{Int64: fieldValue.Int()}
 		case reflect.Slice:
@@ -260,6 +263,8 @@ func (s *Serializer) IsSerialized(namespace, name string, structure interface{},
 
 		stateData := &lb.StateData{}
 		switch fieldValue.Kind() {
+		case reflect.String:
+			stateData.Type = &lb.StateData_String_{String_: fieldValue.String()}
 		case reflect.Int64:
 			stateData.Type = &lb.StateData_Int64{Int64: fieldValue.Int()}
 		case reflect.Slice:
@@ -308,6 +313,12 @@ func (s *Serializer) Deserialize(namespace, name string, metadata *lb.StateMetad
 		fieldName := value.Type().Field(i).Name
 		fieldValue := value.Field(i)
 		switch fieldValue.Kind() {
+		case reflect.String:
+			oneOf, err := s.DeserializeFieldAsString(namespace, name, fieldName, state)
+			if err != nil {
+				return err
+			}
+			fieldValue.SetString(oneOf)
 		case reflect.Int64:
 			oneOf, err := s.DeserializeFieldAsInt64(namespace, name, fieldName, state)
 			if err != nil {
@@ -377,6 +388,21 @@ func (s *Serializer) DeserializeField(namespace, name, field string, state Reada
 	}
 
 	return stateData, nil
+}
+
+func (s *Serializer) DeserializeFieldAsString(namespace, name, field string, state ReadableState) (string, error) {
+	value, err := s.DeserializeField(namespace, name, field, state)
+	if err != nil {
+		return "", err
+	}
+	if value.Type == nil {
+		return "", nil
+	}
+	oneOf, ok := value.Type.(*lb.StateData_String_)
+	if !ok {
+		return "", errors.Errorf("expected key %s/fields/%s/%s to encode a value of type String, but was %T", namespace, name, field, value.Type)
+	}
+	return oneOf.String_, nil
 }
 
 func (s *Serializer) DeserializeFieldAsBytes(namespace, name, field string, state ReadableState) ([]byte, error) {

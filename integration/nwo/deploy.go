@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package nwo
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -33,7 +32,7 @@ type Chaincode struct {
 	Lang              string
 	CollectionsConfig string // optional
 	PackageFile       string
-	Hash              string
+	PackageID         string // if unspecified, chaincode won't be executable
 	Sequence          string
 	EndorsementPlugin string
 	ValidationPlugin  string
@@ -71,7 +70,7 @@ func DeployChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 	Expect(err).NotTo(HaveOccurred())
 	hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
 	// we pass the hash so that we can compare what we get from the peer
-	chaincode.Hash = hashStr
+	chaincode.PackageID = hashStr
 
 	// install on all peers
 	InstallChaincodeNewLifecycle(n, chaincode, peers...)
@@ -81,7 +80,7 @@ func DeployChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 	maxLedgerHeight := GetMaxLedgerHeight(n, channel, peers...)
 
 	// we set in the Hash field the package ID for this chaincode
-	chaincode.Hash = "labellissima:" + hashStr
+	chaincode.PackageID = "labellissima:" + hashStr
 
 	// approve for each org
 	ApproveChaincodeForMyOrgNewLifecycle(n, channel, orderer, chaincode, peers...)
@@ -170,7 +169,7 @@ func InstallChaincodeNewLifecycle(n *Network, chaincode Chaincode, peers ...*Pee
 		sess, err = n.PeerAdminSession(p, commands.ChaincodeQueryInstalledLifecycle{})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-		Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: , Version: , Hash: %s", chaincode.Hash)))
+		Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: , Version: , Hash: %s", chaincode.PackageID)))
 	}
 }
 
@@ -194,11 +193,11 @@ func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
 }
 
 func ApproveChaincodeForMyOrgNewLifecycle(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
-	if chaincode.Hash == "" {
+	if chaincode.PackageID == "" {
 		pkgBytes, err := ioutil.ReadFile(chaincode.PackageFile)
 		Expect(err).NotTo(HaveOccurred())
 		hash := util.ComputeSHA256(pkgBytes)
-		chaincode.Hash = hex.EncodeToString(hash)
+		chaincode.PackageID = fmt.Sprintf("labellissima:%x", hash)
 	}
 
 	// used to ensure we only approve once per org
@@ -210,7 +209,7 @@ func ApproveChaincodeForMyOrgNewLifecycle(n *Network, channel string, orderer *O
 				Orderer:           n.OrdererAddress(orderer, ListenPort),
 				Name:              chaincode.Name,
 				Version:           chaincode.Version,
-				Hash:              chaincode.Hash,
+				PackageID:         chaincode.PackageID,
 				Sequence:          chaincode.Sequence,
 				EndorsementPlugin: chaincode.EndorsementPlugin,
 				ValidationPlugin:  chaincode.ValidationPlugin,

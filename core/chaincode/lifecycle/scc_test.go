@@ -351,7 +351,7 @@ var _ = Describe("SCC", func() {
 					Source: &lb.ChaincodeSource{
 						Type: &lb.ChaincodeSource_LocalPackage{
 							LocalPackage: &lb.ChaincodeSource_Local{
-								Hash: []byte("hash"),
+								PackageId: "hash",
 							},
 						},
 					},
@@ -371,7 +371,7 @@ var _ = Describe("SCC", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeSCCFuncs.ApproveChaincodeDefinitionForOrgCallCount()).To(Equal(1))
-				name, cd, hash, pubState, privState := fakeSCCFuncs.ApproveChaincodeDefinitionForOrgArgsForCall(0)
+				name, cd, packageID, pubState, privState := fakeSCCFuncs.ApproveChaincodeDefinitionForOrgArgsForCall(0)
 				Expect(name).To(Equal("name"))
 				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
 					Sequence: 7,
@@ -386,7 +386,7 @@ var _ = Describe("SCC", func() {
 					},
 					Collections: arg.Collections,
 				}))
-				Expect(hash).To(Equal([]byte("hash")))
+				Expect(packageID).To(Equal(ccintf.CCID("hash")))
 				Expect(pubState).To(Equal(fakeStub))
 				Expect(privState).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
 				Expect(privState.(*lifecycle.ChaincodePrivateLedgerShim).Collection).To(Equal("_implicit_org_fake-mspid"))

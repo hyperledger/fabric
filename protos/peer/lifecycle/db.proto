@@ -27,5 +27,6 @@ message StateData {
     oneof Type {
         int64 Int64 = 1;
         bytes Bytes = 2;
+        string String = 3;
     }
 }

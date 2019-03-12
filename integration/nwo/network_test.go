@@ -275,7 +275,7 @@ var _ = Describe("Network", func() {
 			Expect(err).NotTo(HaveOccurred())
 			hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
 			// we set in the Hash field the package ID for this chaincode
-			chaincode.Hash = "labellissima:" + hashStr
+			chaincode.PackageID = "labellissima:" + hashStr
 
 			maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", testPeers...)
 			for _, org := range network.PeerOrgs() {

@@ -8,7 +8,6 @@ package chaincode
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"testing"
@@ -34,7 +33,7 @@ func TestApproverForMyOrg(t *testing.T) {
 		a.Input = &ApproveForMyOrgInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
+			PackageID: "hash",
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -47,7 +46,7 @@ func TestApproverForMyOrg(t *testing.T) {
 		a := newApproverForMyOrgForTest(t, nil, nil)
 		a.Input = &ApproveForMyOrgInput{
 			Version:   "testversion",
-			Hash:      []byte("hash"),
+			PackageID: "hash",
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -61,7 +60,7 @@ func TestApproverForMyOrg(t *testing.T) {
 		a.Input = &ApproveForMyOrgInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
+			PackageID: "hash",
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -77,7 +76,7 @@ func TestApproverForMyOrg(t *testing.T) {
 		a.Input = &ApproveForMyOrgInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
+			PackageID: "hash",
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -92,7 +91,7 @@ func TestApproverForMyOrg(t *testing.T) {
 		a.Input = &ApproveForMyOrgInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
+			PackageID: "hash",
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -110,7 +109,7 @@ func TestApproverForMyOrg(t *testing.T) {
 		a.Input = &ApproveForMyOrgInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
+			PackageID: "hash",
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -125,7 +124,7 @@ func TestApproverForMyOrg(t *testing.T) {
 		a.Input = &ApproveForMyOrgInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
+			PackageID: "hash",
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -146,7 +145,7 @@ func TestApproverForMyOrg(t *testing.T) {
 		a.Input = &ApproveForMyOrgInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
+			PackageID: "hash",
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -169,7 +168,7 @@ func TestApproverForMyOrg(t *testing.T) {
 		a.Input = &ApproveForMyOrgInput{
 			Name:                "testcc",
 			Version:             "testversion",
-			Hash:                []byte("hash"),
+			PackageID:           "hash",
 			Sequence:            1,
 			ChannelID:           "testchannel",
 			PeerAddresses:       []string{"peer0", "peer1"},
@@ -190,7 +189,7 @@ func TestApproverForMyOrg(t *testing.T) {
 		a.Input = &ApproveForMyOrgInput{
 			Name:                "testcc",
 			Version:             "testversion",
-			Hash:                []byte("hash"),
+			PackageID:           "hash",
 			Sequence:            1,
 			ChannelID:           "testchannel",
 			PeerAddresses:       []string{"peer0", "peer1"},
@@ -212,7 +211,7 @@ func TestApproverForMyOrg(t *testing.T) {
 		a.Input = &ApproveForMyOrgInput{
 			Name:                "testcc",
 			Version:             "testversion",
-			Hash:                []byte("hash"),
+			PackageID:           "hash",
 			Sequence:            1,
 			ChannelID:           "testchannel",
 			PeerAddresses:       []string{"peer0", "peer1"},
@@ -238,7 +237,7 @@ func TestApproveForMyOrgCmd(t *testing.T) {
 			"-C", "testchannel",
 			"-n", "testcc",
 			"-v", "1.0",
-			"--hash", hex.EncodeToString([]byte("hash")),
+			"--package-id", "hash",
 			"--sequence", "1",
 			"-P", `AND ('Org1MSP.member','Org2MSP.member')`,
 		}
@@ -257,7 +256,7 @@ func TestApproveForMyOrgCmd(t *testing.T) {
 			"-C", "testchannel",
 			"-n", "testcc",
 			"-v", "1.0",
-			"--hash", hex.EncodeToString([]byte("hash")),
+			"--package-id", "hash",
 			"--sequence", "1",
 			"-P", "notapolicy",
 		}
@@ -276,7 +275,7 @@ func TestApproveForMyOrgCmd(t *testing.T) {
 			"-C", "testchannel",
 			"-n", "testcc",
 			"-v", "1.0",
-			"--hash", hex.EncodeToString([]byte("hash")),
+			"--package-id", "hash",
 			"--sequence", "1",
 			"--collections-config", "idontexist.json",
 		}
@@ -295,7 +294,7 @@ func TestValidateApproveForMyOrgInput(t *testing.T) {
 		input := &ApproveForMyOrgInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
+			PackageID: "hash",
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -312,7 +311,7 @@ func TestValidateApproveForMyOrgInput(t *testing.T) {
 	t.Run("failure - name not set", func(t *testing.T) {
 		input := &ApproveForMyOrgInput{
 			Version:   "testversion",
-			Hash:      []byte("hash"),
+			PackageID: "hash",
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -323,7 +322,7 @@ func TestValidateApproveForMyOrgInput(t *testing.T) {
 	t.Run("failure - version not set", func(t *testing.T) {
 		input := &ApproveForMyOrgInput{
 			Name:      "testcc",
-			Hash:      []byte("hash"),
+			PackageID: "hash",
 			Sequence:  1,
 			ChannelID: "testchannel",
 		}
@@ -331,22 +330,11 @@ func TestValidateApproveForMyOrgInput(t *testing.T) {
 		assert.EqualError(err, "The required parameter 'version' is empty. Rerun the command with -v flag")
 	})
 
-	t.Run("failure - hash not set", func(t *testing.T) {
-		input := &ApproveForMyOrgInput{
-			Name:      "testcc",
-			Version:   "testversion",
-			Sequence:  1,
-			ChannelID: "testchannel",
-		}
-		err := input.Validate()
-		assert.EqualError(err, "The required parameter 'hash' is empty. Rerun the command with --hash flag")
-	})
-
 	t.Run("failure - sequence not set", func(t *testing.T) {
 		input := &ApproveForMyOrgInput{
 			Name:      "testcc",
 			Version:   "testversion",
-			Hash:      []byte("hash"),
+			PackageID: "hash",
 			ChannelID: "testchannel",
 		}
 		err := input.Validate()
@@ -355,10 +343,10 @@ func TestValidateApproveForMyOrgInput(t *testing.T) {
 
 	t.Run("failure - channelID not set", func(t *testing.T) {
 		input := &ApproveForMyOrgInput{
-			Name:     "testcc",
-			Version:  "testversion",
-			Hash:     []byte("hash"),
-			Sequence: 1,
+			Name:      "testcc",
+			Version:   "testversion",
+			PackageID: "hash",
+			Sequence:  1,
 		}
 		err := input.Validate()
 		assert.EqualError(err, "The required parameter 'channelID' is empty. Rerun the command with -C flag")

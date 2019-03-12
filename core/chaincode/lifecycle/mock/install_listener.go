@@ -10,26 +10,26 @@ import (
 )
 
 type InstallListener struct {
-	HandleChaincodeInstalledStub        func(md *persistence.ChaincodePackageMetadata, packageID ccintf.CCID)
+	HandleChaincodeInstalledStub        func(*persistence.ChaincodePackageMetadata, ccintf.CCID)
 	handleChaincodeInstalledMutex       sync.RWMutex
 	handleChaincodeInstalledArgsForCall []struct {
-		md        *persistence.ChaincodePackageMetadata
-		packageID ccintf.CCID
+		arg1 *persistence.ChaincodePackageMetadata
+		arg2 ccintf.CCID
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *InstallListener) HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID ccintf.CCID) {
+func (fake *InstallListener) HandleChaincodeInstalled(arg1 *persistence.ChaincodePackageMetadata, arg2 ccintf.CCID) {
 	fake.handleChaincodeInstalledMutex.Lock()
 	fake.handleChaincodeInstalledArgsForCall = append(fake.handleChaincodeInstalledArgsForCall, struct {
-		md        *persistence.ChaincodePackageMetadata
-		packageID ccintf.CCID
-	}{md, packageID})
-	fake.recordInvocation("HandleChaincodeInstalled", []interface{}{md, packageID})
+		arg1 *persistence.ChaincodePackageMetadata
+		arg2 ccintf.CCID
+	}{arg1, arg2})
+	fake.recordInvocation("HandleChaincodeInstalled", []interface{}{arg1, arg2})
 	fake.handleChaincodeInstalledMutex.Unlock()
 	if fake.HandleChaincodeInstalledStub != nil {
-		fake.HandleChaincodeInstalledStub(md, packageID)
+		fake.HandleChaincodeInstalledStub(arg1, arg2)
 	}
 }
 
@@ -39,10 +39,17 @@ func (fake *InstallListener) HandleChaincodeInstalledCallCount() int {
 	return len(fake.handleChaincodeInstalledArgsForCall)
 }
 
+func (fake *InstallListener) HandleChaincodeInstalledCalls(stub func(*persistence.ChaincodePackageMetadata, ccintf.CCID)) {
+	fake.handleChaincodeInstalledMutex.Lock()
+	defer fake.handleChaincodeInstalledMutex.Unlock()
+	fake.HandleChaincodeInstalledStub = stub
+}
+
 func (fake *InstallListener) HandleChaincodeInstalledArgsForCall(i int) (*persistence.ChaincodePackageMetadata, ccintf.CCID) {
 	fake.handleChaincodeInstalledMutex.RLock()
 	defer fake.handleChaincodeInstalledMutex.RUnlock()
-	return fake.handleChaincodeInstalledArgsForCall[i].md, fake.handleChaincodeInstalledArgsForCall[i].packageID
+	argsForCall := fake.handleChaincodeInstalledArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *InstallListener) Invocations() map[string][][]interface{} {

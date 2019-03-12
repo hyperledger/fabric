@@ -199,7 +199,7 @@ type ChaincodeApproveForMyOrgLifecycle struct {
 	Orderer           string
 	Name              string
 	Version           string
-	Hash              string
+	PackageID         string
 	Sequence          string
 	EndorsementPlugin string
 	ValidationPlugin  string
@@ -221,7 +221,7 @@ func (c ChaincodeApproveForMyOrgLifecycle) Args() []string {
 		"--orderer", c.Orderer,
 		"--name", c.Name,
 		"--version", c.Version,
-		"--hash", c.Hash,
+		"--package-id", c.PackageID,
 		"--sequence", c.Sequence,
 		"--escc", c.EndorsementPlugin,
 		"--vscc", c.ValidationPlugin,

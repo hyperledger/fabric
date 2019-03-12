@@ -82,7 +82,7 @@ const (
 // WARNING: This structure is serialized/deserialized from the DB, re-ordering or adding fields
 // will cause opaque checks to fail.
 type ChaincodeLocalPackage struct {
-	Hash []byte
+	PackageID string
 }
 
 // ChaincodeParameters are the parts of the chaincode definition which are serialized
@@ -235,7 +235,7 @@ func (ef *ExternalFunctions) CommitChaincodeDefinition(name string, cd *Chaincod
 // ApproveChaincodeDefinitionForOrg adds a chaincode definition entry into the passed in Org state.  The definition must be
 // for either the currently defined sequence number or the next sequence number.  If the definition is
 // for the current sequence number, then it must match exactly the current definition or it will be rejected.
-func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, localPackageHash []byte, publicState ReadableState, orgState ReadWritableState) error {
+func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, packageID ccintf.CCID, publicState ReadableState, orgState ReadWritableState) error {
 	// Get the current sequence from the public state
 	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, name, "Sequence", publicState)
 	if err != nil {
@@ -280,9 +280,9 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *C
 		return errors.WithMessage(err, "could not serialize chaincode parameters to state")
 	}
 
-	if localPackageHash != nil {
+	if packageID != "" {
 		if err := ef.Resources.Serializer.Serialize(ChaincodeSourcesName, privateName, &ChaincodeLocalPackage{
-			Hash: localPackageHash,
+			PackageID: string(packageID),
 		}, orgState); err != nil {
 			return errors.WithMessage(err, "could not serialize chaincode package info to state")
 		}
