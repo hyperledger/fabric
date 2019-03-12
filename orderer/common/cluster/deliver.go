@@ -65,7 +65,7 @@ func (p *BlockPuller) Clone() *BlockPuller {
 }
 
 // Close makes the BlockPuller close the connection and stream
-// with the remote endpoint.
+// with the remote endpoint, and wipe the internal block buffer.
 func (p *BlockPuller) Close() {
 	if p.cancelStream != nil {
 		p.cancelStream()
@@ -78,6 +78,7 @@ func (p *BlockPuller) Close() {
 	p.conn = nil
 	p.endpoint = ""
 	p.latestSeq = 0
+	p.blockBuff = nil
 }
 
 // PullBlock blocks until a block with the given sequence is fetched

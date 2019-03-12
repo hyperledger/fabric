@@ -733,11 +733,13 @@ func TestInactiveChainReplicator(t *testing.T) {
 		ReplicateChainsOutput1               []string
 		ReplicateChainsOutput2               []string
 		chainsExpectedToBeReplicated         []string
+		expectedRegisteredChains             map[string]struct{}
 		ReplicateChainsExpectedCallCount     int
 		genesisBlock                         *common.Block
 	}{
 		{
-			description: "no chains tracked",
+			description:              "no chains tracked",
+			expectedRegisteredChains: map[string]struct{}{},
 		},
 		{
 			description:                          "some chains tracked, but not all succeed replication",
@@ -750,6 +752,10 @@ func TestInactiveChainReplicator(t *testing.T) {
 			chainsExpectedToBeReplicated:         []string{"foo"},
 			ReplicateChainsExpectedCallCount:     2,
 			genesisBlock:                         &common.Block{},
+			expectedRegisteredChains: map[string]struct{}{
+				"foo": {},
+				"bar": {},
+			},
 		},
 		{
 			description:                          "some chains tracked, and all succeed replication but on 2nd pass",
@@ -762,12 +768,21 @@ func TestInactiveChainReplicator(t *testing.T) {
 			chainsExpectedToBeReplicated:         []string{"foo", "bar"},
 			ReplicateChainsExpectedCallCount:     2,
 			genesisBlock:                         &common.Block{},
+			expectedRegisteredChains: map[string]struct{}{
+				"foo": {},
+				"bar": {},
+			},
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
+			registeredChains := make(map[string]struct{})
+			registerChain := func(chain string) {
+				registeredChains[chain] = struct{}{}
+			}
 			scheduler := make(chan time.Time)
 			replicator := &server_mocks.ChainReplicator{}
 			icr := &inactiveChainReplicator{
+				registerChain:            registerChain,
 				logger:                   flogging.MustGetLogger("test"),
 				replicator:               replicator,
 				chains2CreationCallbacks: make(map[string]chainCreation),
@@ -820,6 +835,7 @@ func TestInactiveChainReplicator(t *testing.T) {
 			}
 			assert.Equal(t, testCase.chainsExpectedToBeReplicated, replicatedChains)
 			replicator.AssertNumberOfCalls(t, "ReplicateChains", testCase.ReplicateChainsExpectedCallCount)
+			assert.Equal(t, testCase.expectedRegisteredChains, registeredChains)
 		})
 	}
 }
