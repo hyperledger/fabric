@@ -45,7 +45,7 @@ type refCountedLock struct {
 //     eventually probably need fine grained management)
 type VMController struct {
 	sync.RWMutex
-	containerLocks map[string]*refCountedLock
+	containerLocks map[ccintf.CCID]*refCountedLock
 	vmProviders    map[string]VMProvider
 }
 
@@ -54,7 +54,7 @@ var vmLogger = flogging.MustGetLogger("container")
 // NewVMController creates a new instance of VMController
 func NewVMController(vmProviders map[string]VMProvider) *VMController {
 	return &VMController{
-		containerLocks: make(map[string]*refCountedLock),
+		containerLocks: make(map[ccintf.CCID]*refCountedLock),
 		vmProviders:    vmProviders,
 	}
 }
@@ -67,7 +67,7 @@ func (vmc *VMController) newVM(typ string) VM {
 	return v.NewVM()
 }
 
-func (vmc *VMController) lockContainer(id string) {
+func (vmc *VMController) lockContainer(id ccintf.CCID) {
 	//get the container lock under global lock
 	vmc.Lock()
 	var refLck *refCountedLock
@@ -85,7 +85,7 @@ func (vmc *VMController) lockContainer(id string) {
 	vmLogger.Debugf("got container (%s) lock", id)
 }
 
-func (vmc *VMController) unlockContainer(id string) {
+func (vmc *VMController) unlockContainer(id ccintf.CCID) {
 	vmc.Lock()
 	if refLck, ok := vmc.containerLocks[id]; ok {
 		if refLck.refCount <= 0 {
@@ -202,8 +202,8 @@ func (vmc *VMController) Process(vmtype string, req VMCReq) error {
 	v := vmc.newVM(vmtype)
 	ccid := req.GetCCID()
 
-	vmc.lockContainer(string(ccid))
-	defer vmc.unlockContainer(string(ccid))
+	vmc.lockContainer(ccid)
+	defer vmc.unlockContainer(ccid)
 	return req.Do(v)
 }
 
