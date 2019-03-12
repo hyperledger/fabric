@@ -52,6 +52,10 @@ type ServiceConfig struct {
 	// TransientstoreMaxBlockRetention defines the maximum difference between the current ledger's height upon commit,
 	// and the private data residing inside the transient store that is guaranteed not to be purged.
 	TransientstoreMaxBlockRetention uint64
+	// SkipPullingInvalidTransactionsDuringCommit is a flag that indicates whether pulling of invalid
+	// transaction's private data from other peers need to be skipped during the commit time and pulled
+	// only through reconciler.
+	SkipPullingInvalidTransactionsDuringCommit bool
 }
 
 func GlobalConfig() *ServiceConfig {
@@ -75,6 +79,7 @@ func (c *ServiceConfig) loadGossipConfig() {
 
 	c.PvtDataPushAckTimeout = viper.GetDuration("peer.gossip.pvtData.pushAckTimeout")
 	c.PvtDataPullRetryThreshold = viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold")
+	c.SkipPullingInvalidTransactionsDuringCommit = viper.GetBool("peer.gossip.pvtData.skipPullingInvalidTransactionsDuringCommit")
 
 	c.BtlPullMargin = btlPullMarginDefault
 	if viper.IsSet("peer.gossip.pvtData.btlPullMargin") {

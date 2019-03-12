@@ -321,8 +321,9 @@ func (g *GossipService) InitializeChannel(channelID string, endpoints []string, 
 		collectionAccessFactory, channelID, g.serviceConfig.BtlPullMargin)
 
 	coordinatorConfig := gossipprivdata.CoordinatorConfig{
-		TransientBlockRetention: g.serviceConfig.TransientstoreMaxBlockRetention,
-		PullRetryThreshold:      g.serviceConfig.PvtDataPullRetryThreshold,
+		TransientBlockRetention:        g.serviceConfig.TransientstoreMaxBlockRetention,
+		PullRetryThreshold:             g.serviceConfig.PvtDataPullRetryThreshold,
+		SkipPullingInvalidTransactions: g.serviceConfig.SkipPullingInvalidTransactionsDuringCommit,
 	}
 	coordinator := gossipprivdata.NewCoordinator(gossipprivdata.Support{
 		ChainID:         channelID,

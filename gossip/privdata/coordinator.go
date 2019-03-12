@@ -130,22 +130,27 @@ type Support struct {
 type coordinator struct {
 	selfSignedData protoutil.SignedData
 	Support
-	transientBlockRetention uint64
-	metrics                 *metrics.PrivdataMetrics
-	pullRetryThreshold      time.Duration
+	transientBlockRetention        uint64
+	metrics                        *metrics.PrivdataMetrics
+	pullRetryThreshold             time.Duration
+	skipPullingInvalidTransactions bool
 }
 
 type CoordinatorConfig struct {
-	TransientBlockRetention uint64
-	PullRetryThreshold      time.Duration
+	TransientBlockRetention        uint64
+	PullRetryThreshold             time.Duration
+	SkipPullingInvalidTransactions bool
 }
 
 // NewCoordinator creates a new instance of coordinator
 func NewCoordinator(support Support, selfSignedData protoutil.SignedData, metrics *metrics.PrivdataMetrics,
 	config CoordinatorConfig) Coordinator {
-	return &coordinator{Support: support, selfSignedData: selfSignedData,
-		transientBlockRetention: config.TransientBlockRetention, metrics: metrics,
-		pullRetryThreshold: config.PullRetryThreshold}
+	return &coordinator{Support: support,
+		selfSignedData:                 selfSignedData,
+		transientBlockRetention:        config.TransientBlockRetention,
+		metrics:                        metrics,
+		pullRetryThreshold:             config.PullRetryThreshold,
+		skipPullingInvalidTransactions: config.SkipPullingInvalidTransactions}
 }
 
 // StorePvtData used to persist private date into transient store
@@ -191,6 +196,21 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	if err != nil {
 		logger.Warning(err)
 		return err
+	}
+
+	// if the peer is configured to not pull private rwset of invalid
+	// transaction during block commit, we need to delete those
+	// missing entries from the missingKeys list (to be used for pulling rwset
+	// from other peers). Instead add them to the block's private data
+	// missing list so that the private data reconciler can pull them later.
+	if c.skipPullingInvalidTransactions {
+		txsFilter := txValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+		for missingRWS := range privateInfo.missingKeys {
+			if txsFilter[missingRWS.seqInBlock] != uint8(peer.TxValidationCode_VALID) {
+				blockAndPvtData.MissingPvtData.Add(missingRWS.seqInBlock, missingRWS.namespace, missingRWS.collection, true)
+				delete(privateInfo.missingKeys, missingRWS)
+			}
+		}
 	}
 
 	c.reportListMissingPrivateDataDuration(time.Since(listMissingStart))
@@ -563,7 +583,7 @@ type txns []string
 type blockData [][]byte
 type blockConsumer func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, endorsers []*peer.Endorsement) error
 
-func (data blockData) forEachTxn(txsFilter txValidationFlags, consumer blockConsumer) (txns, error) {
+func (data blockData) forEachTxn(consumer blockConsumer) (txns, error) {
 	var txList []string
 	for seqInBlock, envBytes := range data {
 		env, err := protoutil.GetEnvelopeFromBlock(envBytes)
@@ -589,11 +609,6 @@ func (data blockData) forEachTxn(txsFilter txValidationFlags, consumer blockCons
 		}
 
 		txList = append(txList, chdr.TxId)
-
-		if txsFilter[seqInBlock] != uint8(peer.TxValidationCode_VALID) {
-			logger.Debug("Skipping Tx", seqInBlock, "because it's invalid. Status is", txsFilter[seqInBlock])
-			continue
-		}
 
 		respPayload, err := protoutil.GetActionFromEnvelope(envBytes)
 		if err != nil {
@@ -678,7 +693,7 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 		privateRWsetsInBlock: privateRWsetsInBlock,
 		coordinator:          c,
 	}
-	txList, err := data.forEachTxn(txsFilter, bi.inspectTransaction)
+	txList, err := data.forEachTxn(bi.inspectTransaction)
 	if err != nil {
 		return nil, err
 	}
@@ -855,7 +870,7 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protou
 
 	seqs2Namespaces := aggregatedCollections(make(map[seqAndDataModel]map[string][]*rwset.CollectionPvtReadWriteSet))
 	data := blockData(blockAndPvtData.Block.Data.Data)
-	data.forEachTxn(make(txValidationFlags, len(data)), func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, _ []*peer.Endorsement) error {
+	data.forEachTxn(func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, endorsers []*peer.Endorsement) error {
 		item, exists := blockAndPvtData.PvtData[seqInBlock]
 		if !exists {
 			return nil

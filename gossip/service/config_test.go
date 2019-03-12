@@ -30,23 +30,25 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.gossip.election.leaderElectionDuration", "5s")
 	viper.Set("peer.gossip.pvtData.btlPullMargin", 15)
 	viper.Set("peer.gossip.pvtData.transientstoreMaxBlockRetention", 1000)
+	viper.Set("peer.gossip.pvtData.skipPullingInvalidTransactionsDuringCommit", false)
 
 	coreConfig := service.GlobalConfig()
 
 	expectedConfig := &service.ServiceConfig{
-		PeerTLSEnabled:                   true,
-		PvtDataPullRetryThreshold:        10 * time.Second,
-		Endpoint:                         "gossip_endpoint",
-		PvtDataPushAckTimeout:            20 * time.Second,
-		NonBlockingCommitMode:            true,
-		UseLeaderElection:                true,
-		OrgLeader:                        true,
-		ElectionLeaderAliveThreshold:     10 * time.Minute,
-		ElectionLeaderElectionDuration:   5 * time.Second,
-		ElectionStartupGracePeriod:       election.DefStartupGracePeriod,
-		ElectionMembershipSampleInterval: election.DefMembershipSampleInterval,
-		BtlPullMargin:                    15,
-		TransientstoreMaxBlockRetention:  uint64(1000),
+		PeerTLSEnabled:                             true,
+		PvtDataPullRetryThreshold:                  10 * time.Second,
+		Endpoint:                                   "gossip_endpoint",
+		PvtDataPushAckTimeout:                      20 * time.Second,
+		NonBlockingCommitMode:                      true,
+		UseLeaderElection:                          true,
+		OrgLeader:                                  true,
+		ElectionLeaderAliveThreshold:               10 * time.Minute,
+		ElectionLeaderElectionDuration:             5 * time.Second,
+		ElectionStartupGracePeriod:                 election.DefStartupGracePeriod,
+		ElectionMembershipSampleInterval:           election.DefMembershipSampleInterval,
+		BtlPullMargin:                              15,
+		TransientstoreMaxBlockRetention:            uint64(1000),
+		SkipPullingInvalidTransactionsDuringCommit: false,
 	}
 
 	assert.Equal(t, coreConfig, expectedConfig)
