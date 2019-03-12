@@ -2709,8 +2709,6 @@ var _ = Describe("Handler", func() {
 		var incomingMessage *pb.ChaincodeMessage
 
 		BeforeEach(func() {
-			chaincode.SetHandlerCCInstance(handler, nil)
-
 			request := &pb.ChaincodeID{
 				Name:    "chaincode-id-name",
 				Version: "chaincode-id-version",
@@ -2724,13 +2722,6 @@ var _ = Describe("Handler", func() {
 				ChannelId: "channel-id",
 				Payload:   payload,
 			}
-		})
-
-		It("sets chainodeID on the handler", func() {
-			Expect(handler.ChaincodeName()).To(Equal(""))
-
-			handler.HandleRegister(incomingMessage)
-			Expect(handler.ChaincodeName()).To(Equal("chaincode-id-name"))
 		})
 
 		It("registers the handler with the registry", func() {
