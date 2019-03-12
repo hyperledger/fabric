@@ -86,7 +86,7 @@ func TestInstallCmd(t *testing.T) {
 	defer cleanup()
 	cmd := installCmd(nil, i)
 	i.Command = cmd
-	args := []string{"-n", "testcc", "-v", "2.0", "pkgFile"}
+	args := []string{"pkgFile"}
 	cmd.SetArgs(args)
 
 	err := cmd.Execute()
@@ -101,8 +101,6 @@ func TestInstaller(t *testing.T) {
 		defer cleanup()
 
 		i.Input = &InstallInput{
-			Name:        "testcc",
-			Version:     "test.0",
 			PackageFile: "chaincode-install-package.tar.gz",
 		}
 
@@ -113,10 +111,7 @@ func TestInstaller(t *testing.T) {
 	t.Run("validatation fails", func(t *testing.T) {
 		i, cleanup := newInstallerForTest(t, nil, nil)
 		defer cleanup()
-		i.Input = &InstallInput{
-			Name:    "testcc",
-			Version: "test.0",
-		}
+		i.Input = &InstallInput{}
 
 		err := i.install()
 		assert.Error(err)
@@ -130,8 +125,6 @@ func TestInstaller(t *testing.T) {
 		i, cleanup := newInstallerForTest(t, mockReader, nil)
 		defer cleanup()
 		i.Input = &InstallInput{
-			Name:        "testcc",
-			Version:     "test.0",
 			PackageFile: "pkgFile",
 		}
 
@@ -145,8 +138,6 @@ func TestInstaller(t *testing.T) {
 		i, cleanup := newInstallerForTest(t, nil, ec)
 		defer cleanup()
 		i.Input = &InstallInput{
-			Name:        "testcc",
-			Version:     "test.0",
 			PackageFile: "pkgFile",
 		}
 
@@ -163,8 +154,6 @@ func TestInstaller(t *testing.T) {
 		i, cleanup := newInstallerForTest(t, nil, ec)
 		defer cleanup()
 		i.Input = &InstallInput{
-			Name:        "testcc",
-			Version:     "test.0",
 			PackageFile: "pkgFile",
 		}
 
@@ -184,8 +173,6 @@ func TestInstaller(t *testing.T) {
 		i, cleanup := newInstallerForTest(t, nil, ec)
 		defer cleanup()
 		i.Input = &InstallInput{
-			Name:        "testcc",
-			Version:     "test.0",
 			PackageFile: "pkgFile",
 		}
 
@@ -199,8 +186,6 @@ func TestInstaller(t *testing.T) {
 		i, cleanup := newInstallerForTest(t, nil, ec)
 		defer cleanup()
 		i.Input = &InstallInput{
-			Name:        "testcc",
-			Version:     "test.0",
 			PackageFile: "pkgFile",
 		}
 
@@ -219,8 +204,6 @@ func TestInstaller(t *testing.T) {
 		i, cleanup := newInstallerForTest(t, nil, ec)
 		defer cleanup()
 		i.Input = &InstallInput{
-			Name:        "testcc",
-			Version:     "test.0",
 			PackageFile: "pkgFile",
 		}
 
@@ -237,8 +220,6 @@ func TestValidateInput(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		i.Input = &InstallInput{
-			Name:        "testcc",
-			Version:     "test.0",
 			PackageFile: "chaincode-install-package.tar.gz",
 		}
 
@@ -247,35 +228,10 @@ func TestValidateInput(t *testing.T) {
 	})
 
 	t.Run("package file not provided", func(t *testing.T) {
-		i.Input = &InstallInput{
-			Name:    "testcc",
-			Version: "test.0",
-		}
+		i.Input = &InstallInput{}
 
 		err := i.validateInput()
 		assert.Error(err)
 		assert.Equal("chaincode install package must be provided", err.Error())
-	})
-
-	t.Run("chaincode name not specified", func(t *testing.T) {
-		i.Input = &InstallInput{
-			Version:     "test.0",
-			PackageFile: "testPkg",
-		}
-
-		err := i.validateInput()
-		assert.Error(err)
-		assert.Equal("chaincode name must be specified", err.Error())
-	})
-
-	t.Run("chaincode version not specified", func(t *testing.T) {
-		i.Input = &InstallInput{
-			Name:        "testcc",
-			PackageFile: "testPkg",
-		}
-
-		err := i.validateInput()
-		assert.Error(err)
-		assert.Equal("chaincode version must be specified", err.Error())
 	})
 }

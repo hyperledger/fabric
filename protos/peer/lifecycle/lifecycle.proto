@@ -16,9 +16,7 @@ option go_package = "github.com/hyperledger/fabric/protos/peer/lifecycle";
 // InstallChaincodeArgs is the message used as the argument to
 // '_lifecycle.InstallChaincode'
 message InstallChaincodeArgs {
-    string name = 1;
-    string version = 2;
-    bytes chaincode_install_package = 3; // This should be a marshaled peer.ChaincodeInstallPackage
+    bytes chaincode_install_package = 1; // This should be a marshaled lifecycle.ChaincodePackage
 }
 
 // InstallChaincodeArgs is the message returned by

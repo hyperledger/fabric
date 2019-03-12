@@ -41,8 +41,6 @@ type Installer struct {
 // InstallInput holds the input parameters for installing
 // a chaincode
 type InstallInput struct {
-	Name        string
-	Version     string
 	PackageFile string
 }
 
@@ -73,8 +71,6 @@ func installCmd(cf *CmdFactory, i *Installer) *cobra.Command {
 		},
 	}
 	flagList := []string{
-		"name",
-		"version",
 		"peerAddresses",
 		"tlsRootCertFiles",
 		"connectionProfile",
@@ -97,10 +93,7 @@ func (i *Installer) installChaincode(args []string) error {
 }
 
 func (i *Installer) setInput(args []string) {
-	i.Input = &InstallInput{
-		Name:    chaincodeName,
-		Version: chaincodeVersion,
-	}
+	i.Input = &InstallInput{}
 
 	if len(args) > 0 {
 		i.Input.PackageFile = args[0]
@@ -124,7 +117,7 @@ func (i *Installer) install() error {
 		return err
 	}
 
-	proposal, err := i.createInstallProposal(i.Input.Name, i.Input.Version, pkgBytes, serializedSigner)
+	proposal, err := i.createInstallProposal(pkgBytes, serializedSigner)
 	if err != nil {
 		return err
 	}
@@ -172,21 +165,11 @@ func (i *Installer) validateInput() error {
 		return errors.New("chaincode install package must be provided")
 	}
 
-	if i.Input.Name == "" {
-		return errors.New("chaincode name must be specified")
-	}
-
-	if i.Input.Version == "" {
-		return errors.New("chaincode version must be specified")
-	}
-
 	return nil
 }
 
-func (i *Installer) createInstallProposal(name, version string, pkgBytes []byte, creatorBytes []byte) (*pb.Proposal, error) {
+func (i *Installer) createInstallProposal(pkgBytes []byte, creatorBytes []byte) (*pb.Proposal, error) {
 	installChaincodeArgs := &lb.InstallChaincodeArgs{
-		Name:                    name,
-		Version:                 version,
 		ChaincodeInstallPackage: pkgBytes,
 	}
 

@@ -159,8 +159,6 @@ func PackageChaincode(n *Network, chaincode Chaincode, peer *Peer) {
 func InstallChaincodeNewLifecycle(n *Network, chaincode Chaincode, peers ...*Peer) {
 	for _, p := range peers {
 		sess, err := n.PeerAdminSession(p, commands.ChaincodeInstallLifecycle{
-			Name:        chaincode.Name,
-			Version:     chaincode.Version,
 			PackageFile: chaincode.PackageFile,
 		})
 		Expect(err).NotTo(HaveOccurred())

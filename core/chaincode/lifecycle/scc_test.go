@@ -172,8 +172,6 @@ var _ = Describe("SCC", func() {
 				fakeStub.GetChannelIDReturns("")
 
 				arg = &lb.InstallChaincodeArgs{
-					Name:                    "name",
-					Version:                 "version",
 					ChaincodeInstallPackage: []byte("chaincode-package"),
 				}
 

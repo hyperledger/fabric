@@ -138,8 +138,6 @@ func (c ChaincodePackage) Args() []string {
 }
 
 type ChaincodeInstallLifecycle struct {
-	Name        string
-	Version     string
 	PackageFile string
 }
 
@@ -150,8 +148,6 @@ func (c ChaincodeInstallLifecycle) SessionName() string {
 func (c ChaincodeInstallLifecycle) Args() []string {
 	args := []string{
 		"lifecycle", "chaincode", "install",
-		"--name", c.Name,
-		"--version", c.Version,
 		c.PackageFile,
 	}
 

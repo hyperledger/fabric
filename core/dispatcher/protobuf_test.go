@@ -25,8 +25,6 @@ var _ = Describe("ProtobufImpl", func() {
 	BeforeEach(func() {
 		pi = &dispatcher.ProtobufImpl{}
 		sampleMsg = &lc.InstallChaincodeArgs{
-			Name:                    "name",
-			Version:                 "version",
 			ChaincodeInstallPackage: []byte("install-package"),
 		}
 	})
