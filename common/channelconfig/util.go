@@ -278,8 +278,8 @@ func ValidateCapabilities(block *cb.Block) error {
 }
 
 // MarshalEtcdRaftMetadata serializes etcd RAFT metadata.
-func MarshalEtcdRaftMetadata(md *etcdraft.Metadata) ([]byte, error) {
-	copyMd := proto.Clone(md).(*etcdraft.Metadata)
+func MarshalEtcdRaftMetadata(md *etcdraft.ConfigMetadata) ([]byte, error) {
+	copyMd := proto.Clone(md).(*etcdraft.ConfigMetadata)
 	for _, c := range copyMd.Consenters {
 		// Expect the user to set the config value for client/server certs to the
 		// path where they are persisted locally, then load these files to memory.

@@ -702,7 +702,7 @@ func prepareRaftMetadata(network *nwo.Network) []byte {
 		consenters = append(consenters, consenter)
 	}
 
-	raftMetadata := &protosraft.Metadata{
+	raftMetadata := &protosraft.ConfigMetadata{
 		Consenters: consenters,
 		Options: &protosraft.Options{
 			TickInterval:     "500ms",
@@ -714,7 +714,7 @@ func prepareRaftMetadata(network *nwo.Network) []byte {
 		}}
 
 	raftMetadataBytes := protoutil.MarshalOrPanic(raftMetadata)
-	raftMetadata2 := &protosraft.Metadata{}
+	raftMetadata2 := &protosraft.ConfigMetadata{}
 	errUnma := proto.Unmarshal(raftMetadataBytes, raftMetadata2)
 	Expect(errUnma).NotTo(HaveOccurred())
 
