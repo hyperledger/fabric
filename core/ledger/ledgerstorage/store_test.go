@@ -324,6 +324,76 @@ func TestAddAfterBlkStoreError(t *testing.T) {
 	assert.False(t, pvtStorePndingBatch)
 }
 
+func TestPvtStoreAheadOfBlockStore(t *testing.T) {
+	testEnv := newTestEnv(t)
+	defer testEnv.cleanup()
+	provider := NewProvider(metricsProvider)
+	store, err := provider.Open("testLedger")
+	assert.NoError(t, err)
+	store.Init(btlPolicyForSampleData())
+	// when both stores are empty, isPvtstoreAheadOfBlockstore should be false
+	assert.False(t, store.IsPvtStoreAheadOfBlockStore())
+
+	sampleData := sampleDataWithPvtdataForSelectiveTx(t)
+	for _, d := range sampleData[0:9] { // commit block number 0 to 8
+		assert.NoError(t, store.CommitWithPvtData(d))
+	}
+	assert.False(t, store.IsPvtStoreAheadOfBlockStore())
+
+	// close and reopen
+	store.Shutdown()
+	provider.Close()
+	provider = NewProvider(metricsProvider)
+	store, err = provider.Open("testLedger")
+	assert.NoError(t, err)
+	store.Init(btlPolicyForSampleData())
+
+	// as both stores are at the same block height, isPvtstoreAheadOfBlockstore should be false
+	info, err := store.GetBlockchainInfo()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(9), info.Height)
+	pvtStoreHt, err := store.pvtdataStore.LastCommittedBlockHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(9), pvtStoreHt)
+	assert.False(t, store.IsPvtStoreAheadOfBlockStore())
+
+	lastBlkAndPvtData := sampleData[9]
+	// Add the last block directly to the pvtdataStore but not to blockstore. This would make
+	// the pvtdatastore height greater than the block store height.
+	validTxPvtData, validTxMissingPvtData := constructValidTxPvtDataAndMissingData(lastBlkAndPvtData)
+	err = store.pvtdataStore.Prepare(lastBlkAndPvtData.Block.Header.Number, validTxPvtData, validTxMissingPvtData)
+	assert.NoError(t, err)
+	err = store.pvtdataStore.Commit()
+	assert.NoError(t, err)
+
+	// close and reopen
+	store.Shutdown()
+	provider.Close()
+	provider = NewProvider(metricsProvider)
+	store, err = provider.Open("testLedger")
+	assert.NoError(t, err)
+	store.Init(btlPolicyForSampleData())
+
+	// pvtdataStore should be ahead of blockstore
+	info, err = store.GetBlockchainInfo()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(9), info.Height)
+	pvtStoreHt, err = store.pvtdataStore.LastCommittedBlockHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(10), pvtStoreHt)
+	assert.True(t, store.IsPvtStoreAheadOfBlockStore())
+
+	// bring the height of BlockStore equal to pvtdataStore
+	assert.NoError(t, store.CommitWithPvtData(lastBlkAndPvtData))
+	info, err = store.GetBlockchainInfo()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(10), info.Height)
+	pvtStoreHt, err = store.pvtdataStore.LastCommittedBlockHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(10), pvtStoreHt)
+	assert.False(t, store.IsPvtStoreAheadOfBlockStore())
+}
+
 func TestConstructPvtdataMap(t *testing.T) {
 	assert.Nil(t, constructPvtdataMap(nil))
 }

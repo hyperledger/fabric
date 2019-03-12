@@ -49,14 +49,14 @@ func newTestHelperOpenLgr(id string, t *testing.T) *testhelper {
 
 // cutBlockAndCommitWithPvtdata gathers all the transactions simulated by the test code (by calling
 // the functions available in the 'client') and cuts the next block and commits to the ledger
-func (h *testhelper) cutBlockAndCommitWithPvtdata() *ledger.BlockAndPvtData {
+func (h *testhelper) cutBlockAndCommitWithPvtdata(missingPvtData ledger.TxMissingPvtDataMap) *ledger.BlockAndPvtData {
 	defer func() { h.simulatedTrans = nil }()
-	return h.committer.cutBlockAndCommitWithPvtdata(h.simulatedTrans...)
+	return h.committer.cutBlockAndCommitWithPvtdata(h.simulatedTrans, missingPvtData)
 }
 
 func (h *testhelper) cutBlockAndCommitExpectError() (*ledger.BlockAndPvtData, error) {
 	defer func() { h.simulatedTrans = nil }()
-	return h.committer.cutBlockAndCommitExpectError(h.simulatedTrans...)
+	return h.committer.cutBlockAndCommitExpectError(h.simulatedTrans)
 }
 
 // assertError is a helper function that can be called as assertError(f()) where 'f' is some other function

@@ -399,6 +399,13 @@ func (l *kvLedger) updateBlockStats(
 // GetMissingPvtDataInfoForMostRecentBlocks returns the missing private data information for the
 // most recent `maxBlock` blocks which miss at least a private data of a eligible collection.
 func (l *kvLedger) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
+	// the missing pvtData info in the pvtdataStore could belong to a block which is yet
+	// to be processed and committed to the blockStore and stateDB.
+	// In such cases, we cannot return missing pvtData info. Otherwise, we would end up in
+	// an inconsistent state database.
+	if l.blockStore.IsPvtStoreAheadOfBlockStore() {
+		return nil, nil
+	}
 	return l.blockStore.GetMissingPvtDataInfoForMostRecentBlocks(maxBlock)
 }
 
