@@ -9,6 +9,7 @@ package ledgerstorage
 import (
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
@@ -35,8 +36,9 @@ type Provider struct {
 // Store encapsulates two stores 1) block store and pvt data store
 type Store struct {
 	blkstorage.BlockStore
-	pvtdataStore pvtdatastorage.Store
-	rwlock       *sync.RWMutex
+	pvtdataStore                pvtdatastorage.Store
+	rwlock                      sync.RWMutex
+	isPvtstoreAheadOfBlockstore atomic.Value
 }
 
 var attrsToIndex = []blkstorage.IndexableAttr{
@@ -78,10 +80,24 @@ func (p *Provider) Open(ledgerid string) (*Store, error) {
 	if pvtdataStore, err = p.pvtdataStoreProvider.OpenStore(ledgerid); err != nil {
 		return nil, err
 	}
-	store := &Store{blockStore, pvtdataStore, &sync.RWMutex{}}
+	store := &Store{
+		BlockStore:   blockStore,
+		pvtdataStore: pvtdataStore,
+	}
 	if err := store.init(); err != nil {
 		return nil, err
 	}
+
+	info, err := blockStore.GetBlockchainInfo()
+	if err != nil {
+		return nil, err
+	}
+	pvtstoreHeight, err := pvtdataStore.LastCommittedBlockHeight()
+	if err != nil {
+		return nil, err
+	}
+	store.isPvtstoreAheadOfBlockstore.Store(pvtstoreHeight > info.Height)
+
 	return store, nil
 }
 
@@ -147,6 +163,10 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 	if err := s.AddBlock(blockAndPvtdata.Block); err != nil {
 		s.pvtdataStore.Rollback()
 		return err
+	}
+
+	if pvtBlkStoreHt == blockNum+1 {
+		s.isPvtstoreAheadOfBlockstore.Store(false)
 	}
 
 	if writtenToPvtStore {
@@ -254,6 +274,12 @@ func (s *Store) GetLastUpdatedOldBlocksPvtData() (map[uint64][]*ledger.TxPvtData
 // ResetLastUpdatedOldBlocksList invokes the function on underlying pvtdata store
 func (s *Store) ResetLastUpdatedOldBlocksList() error {
 	return s.pvtdataStore.ResetLastUpdatedOldBlocksList()
+}
+
+// IsPvtStoreAheadOfBlockStore returns true when the pvtStore height is
+// greater than the blockstore height. Otherwise, it returns false.
+func (s *Store) IsPvtStoreAheadOfBlockStore() bool {
+	return s.isPvtstoreAheadOfBlockstore.Load().(bool)
 }
 
 // init first invokes function `initFromExistingBlockchain`

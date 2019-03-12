@@ -95,6 +95,14 @@ func (v *verifier) verifyBlockAndPvtDataSameAs(blockNum uint64, expectedOut *led
 	})
 }
 
+func (v *verifier) verifyMissingPvtDataSameAs(recentNBlocks int, expectedMissingData ledger.MissingPvtDataInfo) {
+	missingDataTracker, err := v.lgr.GetMissingPvtDataTracker()
+	v.assert.NoError(err)
+	missingPvtData, err := missingDataTracker.GetMissingPvtDataInfoForMostRecentBlocks(recentNBlocks)
+	v.assert.NoError(err)
+	v.assert.Equal(expectedMissingData, missingPvtData)
+}
+
 func (v *verifier) verifyGetTransactionByID(txid string, expectedOut *protopeer.ProcessedTransaction) {
 	tran, err := v.lgr.GetTransactionByID(txid)
 	v.assert.NoError(err)

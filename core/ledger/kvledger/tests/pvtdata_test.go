@@ -8,6 +8,8 @@ package tests
 
 import (
 	"testing"
+
+	"github.com/hyperledger/fabric/core/ledger"
 )
 
 func TestMissingCollConfig(t *testing.T) {
@@ -20,7 +22,7 @@ func TestMissingCollConfig(t *testing.T) {
 
 	// deploy cc1 with no coll config
 	h.simulateDeployTx("cc1", nil)
-	h.cutBlockAndCommitWithPvtdata()
+	h.cutBlockAndCommitWithPvtdata(nil)
 
 	// pvt data operations should give error as no collection config defined
 	h.simulateDataTx("", func(s *simulator) {
@@ -31,7 +33,7 @@ func TestMissingCollConfig(t *testing.T) {
 
 	// upgrade cc1 (add collConf)
 	h.simulateUpgradeTx("cc1", collConf)
-	h.cutBlockAndCommitWithPvtdata()
+	h.cutBlockAndCommitWithPvtdata(nil)
 
 	// operations on coll1 should not give error
 	// operations on coll2 should give error (because, only coll1 is defined in collConf)
@@ -55,7 +57,7 @@ func TestTxWithMissingPvtdata(t *testing.T) {
 
 	// deploy cc1 with 'collConf'
 	h.simulateDeployTx("cc1", collConf)
-	h.cutBlockAndCommitWithPvtdata()
+	h.cutBlockAndCommitWithPvtdata(nil)
 
 	// pvtdata simulation
 	h.simulateDataTx("", func(s *simulator) {
@@ -65,8 +67,11 @@ func TestTxWithMissingPvtdata(t *testing.T) {
 	h.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "key2", "value2")
 	})
+
 	h.simulatedTrans[0].Pvtws = nil // drop pvt writeset from first simulation
-	blk2 := h.cutBlockAndCommitWithPvtdata()
+	missingPvtData := make(ledger.TxMissingPvtDataMap)
+	missingPvtData.Add(0, "cc1", "coll1", true)
+	blk2 := h.cutBlockAndCommitWithPvtdata(missingPvtData)
 
 	h.verifyPvtState("cc1", "coll1", "key2", "value2") // key2 should have been committed
 	h.simulateDataTx("", func(s *simulator) {
@@ -77,7 +82,7 @@ func TestTxWithMissingPvtdata(t *testing.T) {
 	h.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "key1", "newvalue1")
 	})
-	blk3 := h.cutBlockAndCommitWithPvtdata()
+	blk3 := h.cutBlockAndCommitWithPvtdata(nil)
 	h.verifyPvtState("cc1", "coll1", "key1", "newvalue1") // key1 should have been committed with new value
 	h.verifyBlockAndPvtDataSameAs(2, blk2)
 	h.verifyBlockAndPvtDataSameAs(3, blk3)
@@ -93,7 +98,7 @@ func TestTxWithWrongPvtdata(t *testing.T) {
 
 	// deploy cc1 with 'collConf'
 	h.simulateDeployTx("cc1", collConf)
-	h.cutBlockAndCommitWithPvtdata()
+	h.cutBlockAndCommitWithPvtdata(nil)
 
 	// pvtdata simulation
 	h.simulateDataTx("", func(s *simulator) {
@@ -118,14 +123,14 @@ func TestBTL(t *testing.T) {
 
 	// deploy cc1 with 'collConf'
 	h.simulateDeployTx("cc1", collConf)
-	h.cutBlockAndCommitWithPvtdata()
+	h.cutBlockAndCommitWithPvtdata(nil)
 
 	// commit pvtdata writes in block 2.
 	h.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "key1", "value1") // (key1 would never expire)
 		s.setPvtdata("cc1", "coll2", "key2", "value2") // (key2 would expire at block 8)
 	})
-	blk2 := h.cutBlockAndCommitWithPvtdata()
+	blk2 := h.cutBlockAndCommitWithPvtdata(nil)
 
 	// commit 5 more blocks with some random key/vals
 	for i := 0; i < 5; i++ {
@@ -133,7 +138,7 @@ func TestBTL(t *testing.T) {
 			s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 			s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
 		})
-		h.cutBlockAndCommitWithPvtdata()
+		h.cutBlockAndCommitWithPvtdata(nil)
 	}
 
 	// After commit of block 7
@@ -146,7 +151,7 @@ func TestBTL(t *testing.T) {
 		s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 		s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
 	})
-	h.cutBlockAndCommitWithPvtdata()
+	h.cutBlockAndCommitWithPvtdata(nil)
 
 	// After commit of block 8
 	h.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state
