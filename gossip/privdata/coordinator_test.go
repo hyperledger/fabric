@@ -44,8 +44,9 @@ func init() {
 }
 
 var testConfig = CoordinatorConfig{
-	PullRetryThreshold:      time.Second * 3,
-	TransientBlockRetention: TransientBlockRetentionDefault,
+	PullRetryThreshold:             time.Second * 3,
+	TransientBlockRetention:        TransientBlockRetentionDefault,
+	SkipPullingInvalidTransactions: false,
 }
 
 // CollectionCriteria aggregates criteria of
@@ -708,9 +709,11 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	assert.Contains(t, err.Error(), "Block data size")
 	assert.Contains(t, err.Error(), "is different from Tx filter size")
 
-	// Scenario IV: The second transaction in the block we got is invalid, and we have no private data for that.
-	// If the coordinator would try to fetch private data, the test would fall because we haven't defined the
-	// mock operations for the transientstore (or for gossip) in this test.
+	// Scenario IV: The second transaction in the block we got is invalid, and we have no private
+	// data for that in the transient store. As we have configured the coordinator to skip pulling
+	// pvtData of invalid transactions from other peers, it should not store the pvtData of invalid
+	// transaction in the ledger instead a missing entry.
+	testConfig.SkipPullingInvalidTransactions = true
 	var commitHappened bool
 	assertCommitHappened := func() {
 		assert.True(t, commitHappened)
@@ -718,16 +721,27 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	}
 	committer = &mocks.Committer{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
-		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
+		blockAndPvtData := args.Get(0).(*ledger.BlockAndPvtData)
 		commitHappened = true
 		// Only the first transaction's private data is passed to the ledger
+		privateDataPassed2Ledger := blockAndPvtData.PvtData
 		assert.Len(t, privateDataPassed2Ledger, 1)
 		assert.Equal(t, 0, int(privateDataPassed2Ledger[0].SeqInBlock))
 		// The private data passed to the ledger contains "ns1" and has 2 collections in it
 		assert.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset, 1)
 		assert.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].Namespace)
 		assert.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 2)
+
+		missingPrivateDataPassed2Ledger := blockAndPvtData.MissingPvtData
+		assert.Len(t, missingPrivateDataPassed2Ledger, 1)
+		assert.Len(t, missingPrivateDataPassed2Ledger[1], 1)
+		assert.Equal(t, missingPrivateDataPassed2Ledger[1][0].Namespace, "ns2")
+		assert.Equal(t, missingPrivateDataPassed2Ledger[1][0].Collection, "c1")
+		assert.Equal(t, missingPrivateDataPassed2Ledger[1][0].IsEligible, true)
 	}).Return(nil)
+
+	store.On("GetTxPvtRWSetByTxid", "tx2", mock.Anything).Return(&mockRWSetScanner{}, nil)
+
 	block = bf.withInvalidTxns(1).AddTxn("tx1", "ns1", hash, "c1", "c2").AddTxn("tx2", "ns2", hash, "c1").create()
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
 	coordinator = NewCoordinator(Support{
@@ -740,18 +754,81 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
-	// Ensure the 2nd transaction which is invalid and wasn't committed - is still purged.
-	// This is so that if we get a transaction via dissemination from an endorser, we purge it
-	// when its block comes.
 	assertPurged("tx1", "tx2")
 
-	// Scenario V: Block doesn't contain a header
+	// Scenario V: The second transaction in the block we got is invalid. As we have configured the
+	// coordinator to pull pvtData of invalid transactions, it should store the pvtData of invalid
+	// transactions in the ledger.
+	testConfig.SkipPullingInvalidTransactions = false
+	committer = &mocks.Committer{}
+	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
+		blockAndPvtData := args.Get(0).(*ledger.BlockAndPvtData)
+		commitHappened = true
+		// pvtData of both transactions must be present though the second transaction
+		// is invalid.
+		privateDataPassed2Ledger := blockAndPvtData.PvtData
+		assert.Len(t, privateDataPassed2Ledger, 2)
+		assert.Equal(t, 0, int(privateDataPassed2Ledger[0].SeqInBlock))
+		assert.Equal(t, 1, int(privateDataPassed2Ledger[1].SeqInBlock))
+		// The private data passed to the ledger for tx1 contains "ns1" and has 2 collections in it
+		assert.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset, 1)
+		assert.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].Namespace)
+		assert.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 2)
+		// The private data passed to the ledger for tx2 contains "ns2" and has 1 collection in it
+		assert.Len(t, privateDataPassed2Ledger[1].WriteSet.NsPvtRwset, 1)
+		assert.Equal(t, "ns2", privateDataPassed2Ledger[1].WriteSet.NsPvtRwset[0].Namespace)
+		assert.Len(t, privateDataPassed2Ledger[1].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 1)
+
+		missingPrivateDataPassed2Ledger := blockAndPvtData.MissingPvtData
+		assert.Len(t, missingPrivateDataPassed2Ledger, 0)
+	}).Return(nil)
+
+	fetcher.On("fetch", mock.Anything).expectingDigests([]privdatacommon.DigKey{
+		{
+			TxId: "tx2", Namespace: "ns2", Collection: "c1", BlockSeq: 1, SeqInBlock: 1,
+		},
+	}).Return(&privdatacommon.FetchedPvtDataContainer{
+		AvailableElements: []*proto.PvtDataElement{
+			{
+				Digest: &proto.PvtDataDigest{
+					SeqInBlock: 1,
+					BlockSeq:   1,
+					Collection: "c1",
+					Namespace:  "ns2",
+					TxId:       "tx2",
+				},
+				Payload: [][]byte{[]byte("rws-pre-image")},
+			},
+		},
+	}, nil)
+
+	store.On("Persist", mock.Anything, uint64(1), mock.Anything).
+		expectRWSet("ns2", "c1", []byte("rws-pre-image")).Return(nil)
+
+	store.On("GetTxPvtRWSetByTxid", "tx2", mock.Anything).Return(&mockRWSetScanner{}, nil)
+
+	block = bf.withInvalidTxns(1).AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1", "c2").
+		AddTxnWithEndorsement("tx2", "ns2", hash, "org2", true, "c1").create()
+	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
+	coordinator = NewCoordinator(Support{
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
+	}, peerSelfSignedData, metrics, testConfig)
+	err = coordinator.StoreBlock(block, pvtData)
+	assert.NoError(t, err)
+	assertCommitHappened()
+	assertPurged("tx1", "tx2")
+
+	// Scenario VI: Block doesn't contain a header
 	block.Header = nil
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Block header is nil")
 
-	// Scenario VI: Block doesn't contain Data
+	// Scenario VII: Block doesn't contain Data
 	block.Data = nil
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.Error(t, err)

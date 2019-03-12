@@ -410,8 +410,9 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 
 	servicesAdapater := &ServicesMediator{GossipAdapter: g, MCSAdapter: cs}
 	coordConfig := privdata.CoordinatorConfig{
-		PullRetryThreshold:      0,
-		TransientBlockRetention: privdata.TransientBlockRetentionDefault,
+		PullRetryThreshold:             0,
+		TransientBlockRetention:        privdata.TransientBlockRetentionDefault,
+		SkipPullingInvalidTransactions: false,
 	}
 	coord := privdata.NewCoordinator(privdata.Support{
 		Validator:      v,

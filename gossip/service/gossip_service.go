@@ -255,8 +255,9 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, oac OrdererAddress
 		collectionAccessFactory, chainID, privdata2.GetBtlPullMargin())
 
 	coordinatorConfig := privdata2.CoordinatorConfig{
-		TransientBlockRetention: privdata2.GetTransientBlockRetention(),
-		PullRetryThreshold:      viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold"),
+		TransientBlockRetention:        privdata2.GetTransientBlockRetention(),
+		PullRetryThreshold:             viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold"),
+		SkipPullingInvalidTransactions: viper.GetBool("peer.gossip.pvtData.skipPullingInvalidTransactionsDuringCommit"),
 	}
 	coordinator := privdata2.NewCoordinator(privdata2.Support{
 		ChainID:         chainID,
