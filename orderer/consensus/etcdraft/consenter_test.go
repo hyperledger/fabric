@@ -142,7 +142,7 @@ var _ = Describe("Consenter", func() {
 
 	It("successfully constructs a Chain", func() {
 		certBytes := []byte("cert.orderer0.org0")
-		m := &etcdraftproto.Metadata{
+		m := &etcdraftproto.ConfigMetadata{
 			Consenters: []*etcdraftproto.Consenter{
 				{ServerTlsCert: certBytes},
 			},
@@ -184,7 +184,7 @@ var _ = Describe("Consenter", func() {
 	})
 
 	It("fails to handle chain if no matching cert found", func() {
-		m := &etcdraftproto.Metadata{
+		m := &etcdraftproto.ConfigMetadata{
 			Consenters: []*etcdraftproto.Consenter{
 				{ServerTlsCert: []byte("cert.orderer1.org1")},
 			},
@@ -216,7 +216,7 @@ var _ = Describe("Consenter", func() {
 	})
 
 	It("fails to handle chain if etcdraft options have not been provided", func() {
-		m := &etcdraftproto.Metadata{
+		m := &etcdraftproto.ConfigMetadata{
 			Consenters: []*etcdraftproto.Consenter{
 				{ServerTlsCert: []byte("cert.orderer1.org1")},
 			},
@@ -238,7 +238,7 @@ var _ = Describe("Consenter", func() {
 
 	It("fails to handle chain if tick interval is invalid", func() {
 		certBytes := []byte("cert.orderer0.org0")
-		m := &etcdraftproto.Metadata{
+		m := &etcdraftproto.ConfigMetadata{
 			Consenters: []*etcdraftproto.Consenter{
 				{ServerTlsCert: certBytes},
 			},

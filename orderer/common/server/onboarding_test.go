@@ -880,7 +880,7 @@ func injectConsenterCertificate(t *testing.T, block *common.Block, tlsCert []byt
 	consensus := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.ConsensusTypeKey]
 	consensus.Value = utils.MarshalOrPanic(&orderer.ConsensusType{
 		Type: "etcdraft",
-		Metadata: utils.MarshalOrPanic(&etcdraft.Metadata{
+		Metadata: utils.MarshalOrPanic(&etcdraft.ConfigMetadata{
 			Consenters: []*etcdraft.Consenter{
 				{
 					ServerTlsCert: tlsCert,
