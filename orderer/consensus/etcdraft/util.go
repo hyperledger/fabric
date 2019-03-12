@@ -69,11 +69,9 @@ func (mc *MembershipChanges) UpdateRaftMetadataAndConfChange(raftMetadata *etcdr
 		raftMetadata.Consenters[nodeID] = mc.AddedNodes[0]
 		raftMetadata.NextConsenterId++
 		confChange = &raftpb.ConfChange{
-			ID:     raftMetadata.ConfChangeCounts,
 			NodeID: nodeID,
 			Type:   raftpb.ConfChangeAddNode,
 		}
-		raftMetadata.ConfChangeCounts++
 		return confChange, 0
 	}
 
@@ -83,11 +81,9 @@ func (mc *MembershipChanges) UpdateRaftMetadataAndConfChange(raftMetadata *etcdr
 				if bytes.Equal(c.ClientTlsCert, node.ClientTlsCert) {
 					delete(raftMetadata.Consenters, nodeID)
 					confChange = &raftpb.ConfChange{
-						ID:     raftMetadata.ConfChangeCounts,
 						NodeID: nodeID,
 						Type:   raftpb.ConfChangeRemoveNode,
 					}
-					raftMetadata.ConfChangeCounts++
 					break
 				}
 			}
@@ -428,7 +424,6 @@ func NodeExists(id uint64, nodes []uint64) bool {
 func ConfChange(raftMetadata *etcdraft.RaftMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
 	raftConfChange := &raftpb.ConfChange{}
 
-	raftConfChange.ID = raftMetadata.ConfChangeCounts
 	// need to compute conf changes to propose
 	if len(confState.Nodes) < len(raftMetadata.Consenters) {
 		// adding new node
