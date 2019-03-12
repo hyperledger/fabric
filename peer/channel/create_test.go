@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/channel/mock"
 	"github.com/hyperledger/fabric/peer/common"
@@ -31,7 +32,11 @@ import (
 	"google.golang.org/grpc"
 )
 
-//go:generate counterfeiter -o mock/signer_serializer.go --fake-name SignerSerializer ../../internal/pkg/identity SignerSerializer
+//go:generate counterfeiter -o mock/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
+}
 
 type timeoutOrderer struct {
 	counter int

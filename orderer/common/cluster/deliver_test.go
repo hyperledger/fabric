@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/protos/common"
@@ -31,7 +32,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
@@ -44,6 +44,12 @@ var gRPCBalancerLock = sync.Mutex{}
 
 func init() {
 	factory.InitFactories(nil)
+}
+
+//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
 }
 
 type wrappedBalancer struct {
@@ -276,18 +282,10 @@ func newClusterNode(t *testing.T) *deliverServer {
 }
 
 func newBlockPuller(dialer *countingDialer, orderers ...string) *cluster.BlockPuller {
-	signer := &mocks.SignerSerializer{}
-	signer.On("Serialize").Return([]byte("creator"), nil)
-	signer.On("Sign", mock.AnythingOfType("[]uint8")).Return(
-		func(msg []uint8) []uint8 {
-			return msg
-		},
-		nil,
-	)
 	return &cluster.BlockPuller{
 		Dialer:              dialer,
 		Channel:             "mychannel",
-		Signer:              signer,
+		Signer:              &mocks.SignerSerializer{},
 		Endpoints:           orderers,
 		FetchTimeout:        time.Second,
 		MaxTotalBufferBytes: 1024 * 1024, // 1MB

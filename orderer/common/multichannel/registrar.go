@@ -89,8 +89,6 @@ type ledgerResources struct {
 	blockledger.ReadWriter
 }
 
-//go:generate mockery -dir ../../../internal/pkg/identity -name SignerSerializer -case underscore -output ./mocks/
-
 // Registrar serves as a point of access and control for the individual channel resources.
 type Registrar struct {
 	lock   sync.RWMutex

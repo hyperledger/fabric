@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common/mock"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -21,7 +22,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//go:generate counterfeiter -o mock/signer_serializer.go --fake-name SignerSerializer ../../internal/pkg/identity SignerSerializer
+//go:generate counterfeiter -o mock/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
+}
 
 var once sync.Once
 

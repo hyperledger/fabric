@@ -13,13 +13,18 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil/fakes"
 	"github.com/stretchr/testify/assert"
 )
 
-//go:generate counterfeiter -o fakes/signer_serializer.go --fake-name SignerSerializer ../internal/pkg/identity SignerSerializer
+//go:generate counterfeiter -o fakes/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
+}
 
 func TestNonceRandomness(t *testing.T) {
 	n1, err := CreateNonce()

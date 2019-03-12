@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -26,20 +27,17 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
+//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
+}
+
 func mockCrypto() *mocks.SignerSerializer {
-	signer := &mocks.SignerSerializer{}
-	signer.On("Serialize").Return([]byte("creator"), nil)
-	signer.On("Sign", mock.AnythingOfType("[]uint8")).Return(
-		func(msg []uint8) []uint8 {
-			return msg
-		},
-		nil,
-	)
-	return signer
+	return &mocks.SignerSerializer{}
 }
 
 func newRAMLedgerAndFactory(maxSize int,

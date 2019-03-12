@@ -21,7 +21,6 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 var validConfig *cb.Config
@@ -38,15 +37,7 @@ func init() {
 }
 
 func mockCrypto() *mocks.SignerSerializer {
-	signer := &mocks.SignerSerializer{}
-	signer.On("Serialize").Return([]byte("creator"), nil)
-	signer.On("Sign", mock.AnythingOfType("[]uint8")).Return(
-		func(msg []uint8) []uint8 {
-			return msg
-		},
-		nil,
-	)
-	return signer
+	return &mocks.SignerSerializer{}
 }
 
 func makeConfigTxFromConfigUpdateTx(configUpdateTx *cb.Envelope) *cb.Envelope {

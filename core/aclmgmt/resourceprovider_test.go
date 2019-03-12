@@ -13,6 +13,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -46,7 +47,12 @@ func (pe *mockPolicyEvaluatorImpl) Evaluate(polName string, sd []*protoutil.Sign
 	return err
 }
 
-//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer ../../internal/pkg/identity SignerSerializer
+//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
+}
+
 //go:generate counterfeiter -o mocks/defaultaclprovider.go --fake-name DefaultACLProvider . defaultACLProvider
 
 func TestPolicyBase(t *testing.T) {

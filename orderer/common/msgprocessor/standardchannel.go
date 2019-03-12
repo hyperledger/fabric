@@ -14,7 +14,11 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 )
 
-//go:generate mockery -dir ../../../internal/pkg/identity -name SignerSerializer -case underscore -output ./mocks/
+//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
+}
 
 // StandardChannelSupport includes the resources needed for the StandardChannel processor.
 type StandardChannelSupport interface {

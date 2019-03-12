@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/common/api"
@@ -36,7 +37,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//go:generate counterfeiter -o mock/signer_serializer.go --fake-name SignerSerializer ../../internal/pkg/identity SignerSerializer
+//go:generate counterfeiter -o mock/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
+}
 
 func TestCheckChaincodeCmdParamsWithNewCallingSchema(t *testing.T) {
 	chaincodeCtorJSON = `{ "Args":["func", "param"] }`

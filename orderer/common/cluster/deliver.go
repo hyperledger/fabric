@@ -25,8 +25,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-//go:generate mockery -dir ../../../internal/pkg/identity -name SignerSerializer -case underscore -output ./mocks/
-
 // BlockPuller pulls blocks from remote ordering nodes.
 // Its operations are not thread safe.
 type BlockPuller struct {

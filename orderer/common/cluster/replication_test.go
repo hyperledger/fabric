@@ -967,20 +967,13 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 		osn.addExpectProbeAssert()
 		osn.addExpectPullAssert(0)
 	}
-	signer := &mocks.SignerSerializer{}
-	signer.On("Serialize").Return([]byte("creator"), nil)
-	signer.On("Sign", mock.AnythingOfType("[]uint8")).Return(
-		func(msg []uint8) []uint8 {
-			return msg
-		},
-		nil,
-	)
+
 	bp, err := cluster.BlockPullerFromConfigBlock(cluster.PullerConfig{
 		TLSCert:             tlsCert,
 		TLSKey:              tlsKey,
 		MaxTotalBufferBytes: 1,
 		Channel:             "mychannel",
-		Signer:              signer,
+		Signer:              &mocks.SignerSerializer{},
 		Timeout:             time.Hour,
 	}, validBlock, verifierRetriever)
 	bp.RetryTimeout = time.Millisecond * 10
