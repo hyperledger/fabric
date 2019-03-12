@@ -30,7 +30,7 @@ type ChaincodeInstallInfo struct {
 	PackageID ccintf.CCID
 	Type      string
 	Path      string
-	Label     string // FIXME: set from package data
+	Label     string
 }
 
 type CachedChaincodeDefinition struct {
@@ -189,6 +189,7 @@ func (c *Cache) handleChaincodeInstalledWhileLocked(md *persistence.ChaincodePac
 		PackageID: packageID,
 		Type:      md.Type,
 		Path:      md.Path,
+		Label:     md.Label,
 	}
 	for channelID, channelCache := range localChaincode.References {
 		for chaincodeName, cachedChaincode := range channelCache {

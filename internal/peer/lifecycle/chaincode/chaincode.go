@@ -54,6 +54,7 @@ var (
 	chaincodeName         string
 	channelID             string
 	chaincodeVersion      string
+	packageLabel          string
 	policy                string
 	escc                  string
 	vscc                  string
@@ -94,6 +95,7 @@ func resetFlags() {
 	flags.StringVarP(&chaincodePath, "path", "p", "", "Path to the chaincode")
 	flags.StringVarP(&chaincodeName, "name", "n", "", "Name of the chaincode")
 	flags.StringVarP(&chaincodeVersion, "version", "v", "", "Version of the chaincode")
+	flags.StringVarP(&packageLabel, "label", "", "", "The package label contains a human-readable description of the package")
 	flags.StringVarP(&channelID, "channelID", "C", "", "The channel on which this command should be executed")
 	flags.StringVarP(&policy, "policy", "P", "", "The endorsement policy associated to this chaincode")
 	flags.StringVarP(&escc, "escc", "E", common.UndefinedParamValue,

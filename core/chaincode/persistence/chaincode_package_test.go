@@ -27,8 +27,9 @@ var _ = Describe("ChaincodePackageParser", func() {
 			ccPackage, err := ccpp.Parse(data)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ccPackage.Metadata).To(Equal(&persistence.ChaincodePackageMetadata{
-				Type: "Fake-Type",
-				Path: "Fake-Path",
+				Type:  "Fake-Type",
+				Path:  "Fake-Path",
+				Label: "Real-Label",
 			}))
 		})
 
@@ -56,6 +57,16 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 				_, err = ccpp.Parse(data)
 				Expect(err).To(MatchError("could not unmarshal Chaincode-Package-Metadata.json as json: invalid character '\\n' in string literal"))
+			})
+		})
+
+		Context("when the label is empty or missing", func() {
+			It("fails", func() {
+				data, err := ioutil.ReadFile("testdata/empty-label.tar.gz")
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = ccpp.Parse(data)
+				Expect(err.Error()).To(ContainSubstring("empty label in package metadata"))
 			})
 		})
 

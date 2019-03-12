@@ -108,6 +108,7 @@ var _ = Describe("Network", func() {
 				Policy:            `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
 				Sequence:          "1",
 				InitRequired:      true,
+				Label:             "my_simple_chaincode",
 			}
 
 			network.CreateAndJoinChannels(orderer)
@@ -266,6 +267,7 @@ var _ = Describe("Network", func() {
 				Policy:            `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
 				Sequence:          "1",
 				InitRequired:      true,
+				Label:             "my_simple_chaincode",
 			}
 			nwo.PackageChaincodeNewLifecycle(network, chaincode, testPeers[0])
 			nwo.InstallChaincodeNewLifecycle(network, chaincode, testPeers...)
@@ -275,7 +277,7 @@ var _ = Describe("Network", func() {
 			Expect(err).NotTo(HaveOccurred())
 			hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
 			// we set in the Hash field the package ID for this chaincode
-			chaincode.PackageID = "labellissima:" + hashStr
+			chaincode.PackageID = chaincode.Label + ":" + hashStr
 
 			maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", testPeers...)
 			for _, org := range network.PeerOrgs() {

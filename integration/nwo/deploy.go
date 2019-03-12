@@ -37,6 +37,7 @@ type Chaincode struct {
 	EndorsementPlugin string
 	ValidationPlugin  string
 	InitRequired      bool
+	Label             string
 }
 
 // DeployChaincodeNewLifecycle is a helper that will install chaincode to all
@@ -80,7 +81,7 @@ func DeployChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 	maxLedgerHeight := GetMaxLedgerHeight(n, channel, peers...)
 
 	// we set in the Hash field the package ID for this chaincode
-	chaincode.PackageID = "labellissima:" + hashStr
+	chaincode.PackageID = chaincode.Label + ":" + hashStr
 
 	// approve for each org
 	ApproveChaincodeForMyOrgNewLifecycle(n, channel, orderer, chaincode, peers...)
@@ -138,6 +139,7 @@ func PackageChaincodeNewLifecycle(n *Network, chaincode Chaincode, peer *Peer) {
 	sess, err := n.PeerAdminSession(peer, commands.ChaincodePackageLifecycle{
 		Path:       chaincode.Path,
 		Lang:       chaincode.Lang,
+		Label:      chaincode.Label,
 		OutputFile: chaincode.PackageFile,
 	})
 	Expect(err).NotTo(HaveOccurred())

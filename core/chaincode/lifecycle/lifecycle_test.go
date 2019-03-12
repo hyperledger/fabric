@@ -206,8 +206,9 @@ var _ = Describe("ExternalFunctions", func() {
 		BeforeEach(func() {
 			fakeParser.ParseReturns(&persistence.ChaincodePackage{
 				Metadata: &persistence.ChaincodePackageMetadata{
-					Type: "cc-type",
-					Path: "cc-path",
+					Type:  "cc-type",
+					Path:  "cc-path",
+					Label: "cc-label",
 				},
 			}, nil)
 			fakeCCStore.SaveReturns(ccintf.CCID("fake-hash"), nil)
@@ -223,7 +224,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 			Expect(fakeCCStore.SaveCallCount()).To(Equal(1))
 			name, msg := fakeCCStore.SaveArgsForCall(0)
-			Expect(name).To(Equal("labellissima"))
+			Expect(name).To(Equal("cc-label"))
 			Expect(msg).To(Equal([]byte("cc-package")))
 
 			Expect(fakeListener.HandleChaincodeInstalledCallCount()).To(Equal(1))
@@ -231,7 +232,7 @@ var _ = Describe("ExternalFunctions", func() {
 			Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{
 				Type:  "cc-type",
 				Path:  "cc-path",
-				Label: "labellissima",
+				Label: "cc-label",
 			}))
 			Expect(hash).To(Equal(ccintf.CCID("fake-hash")))
 		})

@@ -154,15 +154,6 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeContainerInfo(channelID, chaincode
 		return cei.LegacyImpl.ChaincodeContainerInfo(channelID, chaincodeName, qe)
 	}
 
-	// FIXME: this is a hack to get the green path going.
-	// The next CRs will fill this field from the installed
-	// cc package. However this field can't be empty because
-	// when the cc build infrastructure creates the container
-	// name it will convert the ':' separator into a '-' and
-	// if the field is empty there will be two consecutive
-	// '-', which violates the regex
-	chaincodeInfo.InstallInfo.Label = "labellissima"
-
 	return &ccprovider.ChaincodeContainerInfo{
 		Name:          chaincodeName,
 		Version:       chaincodeInfo.Definition.EndorsementInfo.Version,

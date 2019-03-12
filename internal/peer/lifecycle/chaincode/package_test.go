@@ -94,6 +94,7 @@ func TestPackageCC(t *testing.T) {
 		args := []string{"output"}
 		chaincodePath = "testPath"
 		chaincodeLang = "golang"
+		packageLabel = "label"
 
 		err := p.packageChaincode(args)
 		assert.NoError(err)
@@ -121,6 +122,7 @@ func TestPackageCC(t *testing.T) {
 		args := []string{"outputFile"}
 		chaincodePath = "testPath"
 		chaincodeLang = "golang"
+		packageLabel = "label"
 
 		err := p.packageChaincode(args)
 		assert.Error(err)
@@ -134,6 +136,7 @@ func TestPackageCC(t *testing.T) {
 		args := []string{"outputFile"}
 		chaincodePath = "testPath"
 		chaincodeLang = "golang"
+		packageLabel = "label"
 
 		err := p.packageChaincode(args)
 		assert.Error(err)
@@ -150,6 +153,7 @@ func TestPackagerValidateInput(t *testing.T) {
 		resetFlags()
 		chaincodePath = "testPath"
 		chaincodeLang = "golang"
+		packageLabel = "label"
 		p.setInput("outputFile")
 
 		err := p.validateInput()
@@ -188,6 +192,7 @@ func TestPackageCmd(t *testing.T) {
 		resetFlags()
 		chaincodePath = "testPath"
 		chaincodeLang = "golang"
+		packageLabel = "label"
 		outputFile := "testFile"
 
 		p := newPackagerForTest(t, nil, nil, false)

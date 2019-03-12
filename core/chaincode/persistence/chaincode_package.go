@@ -40,7 +40,7 @@ type ChaincodePackage struct {
 type ChaincodePackageMetadata struct {
 	Type  string `json:"Type"`
 	Path  string `json:"Path"`
-	Label string `json:"Label"` // FIXME: fill through the CLI and check nonempty
+	Label string `json:"Label"`
 }
 
 // ChaincodePackageParser provides the ability to parse chaincode packages
@@ -100,6 +100,10 @@ func (ccpp ChaincodePackageParser) Parse(source []byte) (*ChaincodePackage, erro
 
 	if ccPackageMetadata == nil {
 		return nil, errors.Errorf("did not find any package metadata (missing %s)", ChaincodePackageMetadataFile)
+	}
+
+	if ccPackageMetadata.Label == "" {
+		return nil, errors.New("empty label in package metadata")
 	}
 
 	return &ChaincodePackage{

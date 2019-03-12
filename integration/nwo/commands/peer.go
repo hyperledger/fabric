@@ -91,6 +91,7 @@ func (c ChannelFetch) Args() []string {
 type ChaincodePackageLifecycle struct {
 	Path       string
 	Lang       string
+	Label      string
 	OutputFile string
 }
 
@@ -103,6 +104,7 @@ func (c ChaincodePackageLifecycle) Args() []string {
 		"lifecycle", "chaincode", "package",
 		"--path", c.Path,
 		"--lang", c.Lang,
+		"--label", c.Label,
 		c.OutputFile,
 	}
 

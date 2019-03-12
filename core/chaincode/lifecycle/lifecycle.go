@@ -319,11 +319,6 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (c
 		return ccintf.CCID(""), errors.WithMessage(err, "could not parse as a chaincode install package")
 	}
 
-	// FIXME: this is just a hack to get the green path going
-	// in the upcoming CRs this will be set by the client in
-	// the chaincode package
-	pkg.Metadata.Label = "labellissima"
-
 	packageID, err := ef.Resources.ChaincodeStore.Save(pkg.Metadata.Label, chaincodeInstallPackage)
 	if err != nil {
 		return ccintf.CCID(""), errors.WithMessage(err, "could not save cc install package")

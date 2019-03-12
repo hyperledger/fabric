@@ -50,6 +50,7 @@ type PackageInput struct {
 	OutputFile string
 	Path       string
 	Type       string
+	Label      string
 }
 
 // packageCmd returns the cobra command for packaging chaincode
@@ -75,6 +76,7 @@ func packageCmd(cf *CmdFactory, p *Packager) *cobra.Command {
 		},
 	}
 	flagList := []string{
+		"label",
 		"lang",
 		"path",
 		"peerAddresses",
@@ -106,6 +108,7 @@ func (p *Packager) setInput(outputFile string) {
 		OutputFile: outputFile,
 		Path:       chaincodePath,
 		Type:       chaincodeLang,
+		Label:      packageLabel,
 	}
 }
 
@@ -140,6 +143,9 @@ func (p *Packager) validateInput() error {
 	if p.Input.Type == "" {
 		return errors.New("chaincode language must be set")
 	}
+	if p.Input.Label == "" {
+		return errors.New("package label must be set")
+	}
 
 	return nil
 }
@@ -149,7 +155,7 @@ func (p *Packager) getTarGzBytes() ([]byte, error) {
 	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	metadataBytes, err := toJSON(p.Input.Path, p.Input.Type)
+	metadataBytes, err := toJSON(p.Input.Path, p.Input.Type, p.Input.Label)
 	if err != nil {
 		return nil, err
 	}
@@ -187,14 +193,16 @@ func (p *Packager) getTarGzBytes() ([]byte, error) {
 
 // PackageMetadata holds the path and type for a chaincode package
 type PackageMetadata struct {
-	Path string `json:"Path"`
-	Type string `json:"Type"`
+	Path  string `json:"Path"`
+	Type  string `json:"Type"`
+	Label string `json:"Label"`
 }
 
-func toJSON(path, ccType string) ([]byte, error) {
+func toJSON(path, ccType, label string) ([]byte, error) {
 	metadata := &PackageMetadata{
-		Path: path,
-		Type: ccType,
+		Path:  path,
+		Type:  ccType,
+		Label: label,
 	}
 
 	metadataBytes, err := json.Marshal(metadata)
