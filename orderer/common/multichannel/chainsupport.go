@@ -207,6 +207,12 @@ func (cs *ChainSupport) Sequence() uint64 {
 	return cs.ConfigtxValidator().Sequence()
 }
 
+// Append appends a new block to the ledger in its raw form,
+// unlike WriteBlock that also mutates its metadata.
+func (cs *ChainSupport) Append(block *cb.Block) error {
+	return cs.ledgerResources.ReadWriter.Append(block)
+}
+
 // VerifyBlockSignature verifies a signature of a block.
 // It has an optional argument of a configuration envelope
 // which would make the block verification to use validation rules

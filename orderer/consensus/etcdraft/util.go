@@ -529,7 +529,7 @@ type evictionSuspector struct {
 	height                     func() uint64
 	amIInChannel               cluster.SelfMembershipPredicate
 	halt                       func()
-	writeBlock                 func(block *common.Block, metadata []byte)
+	writeBlock                 func(block *common.Block) error
 	triggerCatchUp             func(sn *raftpb.Snapshot)
 	halted                     bool
 }
@@ -583,7 +583,10 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 	for seq := nextBlock; seq <= lastConfigBlock.Header.Number; seq++ {
 		es.logger.Infof("Pulling block %d", seq)
 		block := puller.PullBlock(seq)
-		es.writeBlock(block, nil)
+		err := es.writeBlock(block)
+		if err != nil {
+			es.logger.Panicf("Failed writing block %d to the ledger: %v", block.Header.Number, err)
+		}
 	}
 
 	es.logger.Infof("Pulled all blocks up to eviction block.")
