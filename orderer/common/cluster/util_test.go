@@ -814,6 +814,47 @@ func TestLastConfigBlock(t *testing.T) {
 	}
 }
 
+func TestVerificationRegistryRegisterVerifier(t *testing.T) {
+	t.Parallel()
+
+	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+	assert.NoError(t, err)
+
+	block := &common.Block{}
+	assert.NoError(t, proto.Unmarshal(blockBytes, block))
+
+	verifier := &mocks.BlockVerifier{}
+
+	verifierFactory := &mocks.VerifierFactory{}
+	verifierFactory.On("VerifierFromConfig",
+		mock.Anything, "mychannel").Return(verifier, nil)
+
+	registry := &cluster.VerificationRegistry{
+		Logger:             flogging.MustGetLogger("test"),
+		VerifiersByChannel: make(map[string]cluster.BlockVerifier),
+		VerifierFactory:    verifierFactory,
+	}
+
+	var loadCount int
+	registry.LoadVerifier = func(chain string) cluster.BlockVerifier {
+		assert.Equal(t, "mychannel", chain)
+		loadCount++
+		return verifier
+	}
+
+	v := registry.RetrieveVerifier("mychannel")
+	assert.Nil(t, v)
+
+	registry.RegisterVerifier("mychannel")
+	v = registry.RetrieveVerifier("mychannel")
+	assert.Equal(t, verifier, v)
+	assert.Equal(t, 1, loadCount)
+
+	// If the verifier exists, this is a no-op
+	registry.RegisterVerifier("mychannel")
+	assert.Equal(t, 1, loadCount)
+}
+
 func TestVerificationRegistry(t *testing.T) {
 	t.Parallel()
 	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")

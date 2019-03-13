@@ -427,9 +427,27 @@ type VerifierFactory interface {
 
 // VerificationRegistry registers verifiers and retrieves them.
 type VerificationRegistry struct {
+	LoadVerifier       func(chain string) BlockVerifier
 	Logger             *flogging.FabricLogger
 	VerifierFactory    VerifierFactory
 	VerifiersByChannel map[string]BlockVerifier
+}
+
+// RegisterVerifier adds a verifier into the registry if applicable.
+func (vr *VerificationRegistry) RegisterVerifier(chain string) {
+	if _, exists := vr.VerifiersByChannel[chain]; exists {
+		vr.Logger.Debugf("No need to register verifier for chain %s", chain)
+		return
+	}
+
+	v := vr.LoadVerifier(chain)
+	if v == nil {
+		vr.Logger.Errorf("Failed loading verifier for chain %s", chain)
+		return
+	}
+
+	vr.VerifiersByChannel[chain] = v
+	vr.Logger.Infof("Registered verifier for chain %s", chain)
 }
 
 // RetrieveVerifier returns a BlockVerifier for the given channel, or nil if not found.
@@ -466,7 +484,9 @@ func (vr *VerificationRegistry) BlockCommitted(block *common.Block, channel stri
 			channel, err, BlockToString(block))
 		return
 	}
+
 	vr.VerifiersByChannel[channel] = verifier
+
 	vr.Logger.Debugf("Committed config block %d for channel %s", block.Header.Number, channel)
 }
 

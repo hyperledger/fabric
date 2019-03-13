@@ -215,6 +215,7 @@ func createReplicator(
 	verifiersByChannel[systemChannelName] = &cluster.NoopBlockVerifier{}
 
 	vr := &cluster.VerificationRegistry{
+		LoadVerifier:       vl.loadVerifier,
 		Logger:             logger,
 		VerifiersByChannel: verifiersByChannel,
 		VerifierFactory:    &cluster.BlockVerifierAssembler{Logger: logger},
@@ -225,6 +226,7 @@ func createReplicator(
 		onBlockCommit: vr.BlockCommitted,
 	}
 	return &replicationInitiator{
+		registerChain:     vr.RegisterVerifier,
 		verifierRetriever: vr,
 		logger:            logger,
 		secOpts:           secOpts,
@@ -629,6 +631,7 @@ func initializeEtcdraftConsenter(
 		replicator:                        ri,
 		chains2CreationCallbacks:          make(map[string]chainCreation),
 		retrieveLastSysChannelConfigBlock: getConfigBlock,
+		registerChain:                     ri.registerChain,
 	}
 
 	// Use the inactiveChainReplicator as a channel lister, since it has knowledge

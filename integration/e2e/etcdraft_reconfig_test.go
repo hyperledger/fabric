@@ -422,6 +422,92 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		})
 	})
 
+	When("an orderer channel is created with a subset of nodes", func() {
+		It("is still possible to onboard a new orderer to the channel", func() {
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
+			network.Profiles = append(network.Profiles, &nwo.Profile{
+				Name:          "myprofile",
+				Consortium:    "SampleConsortium",
+				Orderers:      []string{"orderer1"},
+				Organizations: []string{"Org1"},
+			})
+			network.Channels = append(network.Channels, &nwo.Channel{
+				Name:        "mychannel",
+				Profile:     "myprofile",
+				BaseProfile: "SampleDevModeEtcdRaft",
+			})
+
+			peer = network.Peer("Org1", "peer1")
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+			orderers := []*nwo.Orderer{o1, o2, o3}
+			By("Launching the orderers")
+			for _, o := range orderers {
+				runner := network.OrdererRunner(o)
+				ordererRunners = append(ordererRunners, runner)
+				process := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, process)
+			}
+
+			for _, ordererProc := range ordererProcesses {
+				Eventually(ordererProc.Ready()).Should(BeClosed())
+			}
+
+			By("Waiting for the system channel to be available")
+			assertBlockReception(map[string]int{
+				"systemchannel": 0,
+			}, orderers, peer, network)
+
+			By("Creating a channel with a subset of orderers")
+			network.CreateChannel("mychannel", o1, peer, peer, o1)
+
+			By("Waiting for the channel to be available")
+			assertBlockReception(map[string]int{
+				"mychannel": 0,
+			}, []*nwo.Orderer{o1}, peer, network)
+
+			By("Ensuring only orderer1 services the channel")
+			ensureEvicted(o2, peer, network, "mychannel")
+			ensureEvicted(o3, peer, network, "mychannel")
+
+			By("Adding orderer2 to the channel")
+			ordererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(o2), "server.crt")
+			ordererCertificate, err := ioutil.ReadFile(ordererCertificatePath)
+			Expect(err).NotTo(HaveOccurred())
+
+			nwo.AddConsenter(network, peer, o1, "mychannel", etcdraft.Consenter{
+				ServerTlsCert: ordererCertificate,
+				ClientTlsCert: ordererCertificate,
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(o2, nwo.ListenPort)),
+			})
+
+			By("Waiting for orderer2 to join the channel")
+			assertBlockReception(map[string]int{
+				"mychannel": 1,
+			}, []*nwo.Orderer{o1, o2}, peer, network)
+
+			By("Adding orderer3 to the channel")
+			ordererCertificatePath = filepath.Join(network.OrdererLocalTLSDir(o3), "server.crt")
+			ordererCertificate, err = ioutil.ReadFile(ordererCertificatePath)
+			Expect(err).NotTo(HaveOccurred())
+			nwo.AddConsenter(network, peer, o1, "mychannel", etcdraft.Consenter{
+				ServerTlsCert: ordererCertificate,
+				ClientTlsCert: ordererCertificate,
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(o3, nwo.ListenPort)),
+			})
+
+			By("Waiting for orderer3 to join the channel")
+			assertBlockReception(map[string]int{
+				"mychannel": 2,
+			}, orderers, peer, network)
+		})
+	})
+
 	When("an orderer node is evicted", func() {
 		BeforeEach(func() {
 			ordererRunners = nil

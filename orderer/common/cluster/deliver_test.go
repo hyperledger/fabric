@@ -577,11 +577,11 @@ func TestBlockPullerFailover(t *testing.T) {
 	defer osn2.stop()
 
 	osn2.addExpectProbeAssert()
-	osn2.addExpectPullAssert(2)
+	osn2.addExpectPullAssert(1)
 	// First response is for the probe
 	osn2.enqueueResponse(3)
-	// Next two responses are for the pulling, while the first block
-	// is skipped because it should've been retrieved from node 1
+	// Next three responses are for the pulling.
+	osn2.enqueueResponse(1)
 	osn2.enqueueResponse(2)
 	osn2.enqueueResponse(3)
 
@@ -599,9 +599,10 @@ func TestBlockPullerFailover(t *testing.T) {
 	// received the first block.
 	var pulledBlock1 sync.WaitGroup
 	pulledBlock1.Add(1)
+	var once sync.Once
 	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
 		if strings.Contains(entry.Message, "Got block 1 of size") {
-			pulledBlock1.Done()
+			once.Do(pulledBlock1.Done)
 		}
 		return nil
 	}))
@@ -650,11 +651,12 @@ func TestBlockPullerNoneResponsiveOrderer(t *testing.T) {
 	// isn't connected to. This is done by intercepting the appropriate message
 	var waitForConnection sync.WaitGroup
 	waitForConnection.Add(1)
+	var once sync.Once
 	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
 		if !strings.Contains(entry.Message, "Sending request for block 1") {
 			return nil
 		}
-		defer waitForConnection.Done()
+		defer once.Do(waitForConnection.Done)
 		s := entry.Message[len("Sending request for block 1 to 127.0.0.1:"):]
 		port, err := strconv.ParseInt(s, 10, 32)
 		assert.NoError(t, err)
@@ -679,8 +681,9 @@ func TestBlockPullerNoneResponsiveOrderer(t *testing.T) {
 		// Enqueue the height int the orderer we're connected to
 		notInUseOrdererNode.enqueueResponse(3)
 		notInUseOrdererNode.addExpectProbeAssert()
-		// Enqueue blocks 2 and 3 to the orderer node we're not connected to.
-		notInUseOrdererNode.addExpectPullAssert(2)
+		// Enqueue blocks 1, 2, 3 to the orderer node we're not connected to.
+		notInUseOrdererNode.addExpectPullAssert(1)
+		notInUseOrdererNode.enqueueResponse(1)
 		notInUseOrdererNode.enqueueResponse(2)
 		notInUseOrdererNode.enqueueResponse(3)
 	}()
@@ -745,14 +748,24 @@ func TestBlockPullerFailures(t *testing.T) {
 		osn.Unlock()
 	}
 
+	badSigErr := errors.New("bad signature")
 	malformBlockSignatureAndRecreateOSNBuffer := func(osn *deliverServer, bp *cluster.BlockPuller) {
 		bp.VerifyBlockSequence = func(_ []*common.Block, _ string) error {
 			close(osn.blocks())
-			osn.setBlocks(make(chan *orderer.DeliverResponse, 100))
-			osn.enqueueResponse(1)
-			osn.enqueueResponse(2)
-			osn.enqueueResponse(3)
-			return errors.New("bad signature")
+			// After failing once, recover and remove the bad signature error.
+			defer func() {
+				// Skip recovery if we already recovered.
+				if badSigErr == nil {
+					return
+				}
+				badSigErr = nil
+				osn.setBlocks(make(chan *orderer.DeliverResponse, 100))
+				osn.enqueueResponse(3)
+				osn.enqueueResponse(1)
+				osn.enqueueResponse(2)
+				osn.enqueueResponse(3)
+			}()
+			return badSigErr
 		}
 	}
 
