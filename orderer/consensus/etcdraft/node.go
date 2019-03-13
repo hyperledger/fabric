@@ -47,7 +47,7 @@ type node struct {
 }
 
 func (n *node) start(fresh, join, migration bool) {
-	raftPeers := RaftPeers(n.metadata.Consenters)
+	raftPeers := RaftPeers(n.metadata.ConsenterIds)
 	n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
 
 	var campaign bool
