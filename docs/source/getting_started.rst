@@ -39,7 +39,7 @@ Hyperledger Fabric CA
 ^^^^^^^^^^^^^^^^^^^^^
 
 Hyperledger Fabric provides an optional
-`certificate authority service <http://hyperledger-fabric-ca.readthedocs.io/en/latest>`_
+`certificate authority service <https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/>`_
 that you may choose to use to generate the certificates and key material
 to configure and manage identity in your blockchain network. However, any CA
 that can generate ECDSA certificates may be used.
