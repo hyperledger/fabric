@@ -579,7 +579,7 @@ func checkFinalState(chainID string, cccid *ccprovider.CCContext, a int, b int) 
 
 	defer txsim.Done()
 
-	cName := cccid.GetCanonicalNameForTests()
+	cName := cccid.Name + ":" + cccid.Version
 
 	// Invoke ledger to get state
 	var Aval, Bval int

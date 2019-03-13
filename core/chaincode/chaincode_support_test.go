@@ -959,11 +959,8 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 
 func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 	gt := NewGomegaWithT(t)
-	ccContext := &ccprovider.CCContext{
-		Name:    "mycc",
-		Version: "v0",
-	}
-	lc, err := cr.LaunchConfig(ccContext.GetCanonicalNameForTests(), pb.ChaincodeSpec_GOLANG.String())
+	packageID := "mycc:v0"
+	lc, err := cr.LaunchConfig(packageID, pb.ChaincodeSpec_GOLANG.String())
 	if err != nil {
 		t.Fatalf("calling getLaunchConfigs() failed with error %s", err)
 	}
@@ -994,7 +991,7 @@ func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 	}
 
 	cr.CertGenerator = nil // disable TLS
-	lc, err = cr.LaunchConfig(ccContext.GetCanonicalNameForTests(), pb.ChaincodeSpec_NODE.String())
+	lc, err = cr.LaunchConfig(packageID, pb.ChaincodeSpec_NODE.String())
 	assert.NoError(t, err)
 	args = lc.Args
 
@@ -1006,7 +1003,7 @@ func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 		t.Fatalf("calling getLaunchConfigs() should have returned the start command for node.js chaincode, but got %v", args)
 	}
 
-	lc, err = cr.LaunchConfig(ccContext.GetCanonicalNameForTests(), pb.ChaincodeSpec_GOLANG.String())
+	lc, err = cr.LaunchConfig(packageID, pb.ChaincodeSpec_GOLANG.String())
 	assert.NoError(t, err)
 
 	envs = lc.Envs

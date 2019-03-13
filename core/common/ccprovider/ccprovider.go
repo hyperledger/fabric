@@ -388,11 +388,6 @@ type CCContext struct {
 	InitRequired bool
 }
 
-// GetCanonicalName returns the canonical name associated with the proposal context
-func (cccid *CCContext) GetCanonicalNameForTests() string {
-	return cccid.Name + ":" + cccid.Version
-}
-
 //-------- ChaincodeDefinition - interface for ChaincodeData ------
 // ChaincodeDefinition describes all of the necessary information for a peer to decide whether to endorse
 // a proposal and whether to validate a transaction, for a particular chaincode.
