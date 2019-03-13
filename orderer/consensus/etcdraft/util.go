@@ -232,6 +232,36 @@ func ComputeMembershipChanges(oldConsenters map[uint64]*etcdraft.Consenter, newC
 	return result
 }
 
+// MetadataHasDuplication returns an error if the metadata has duplication of consenters.
+// A duplication is defined by having a server or a client TLS certificate that is found
+// in two different consenters, regardless of the type of certificate (client/server).
+func MetadataHasDuplication(md *etcdraft.Metadata) error {
+	if md == nil {
+		return errors.New("nil metadata")
+	}
+
+	for _, consenter := range md.Consenters {
+		if consenter == nil {
+			return errors.New("nil consenter in metadata")
+		}
+	}
+
+	seen := make(map[string]struct{})
+	for _, consenter := range md.Consenters {
+		serverKey := string(consenter.ServerTlsCert)
+		clientKey := string(consenter.ClientTlsCert)
+		_, duplicateServerCert := seen[serverKey]
+		_, duplicateClientCert := seen[clientKey]
+		if duplicateServerCert || duplicateClientCert {
+			return errors.Errorf("duplicate consenter: server cert: %s, client cert: %s", serverKey, clientKey)
+		}
+
+		seen[serverKey] = struct{}{}
+		seen[clientKey] = struct{}{}
+	}
+	return nil
+}
+
 // MetadataFromConfigValue reads and translates configuration updates from config value into raft metadata
 func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.Metadata, error) {
 	consensusTypeValue := &orderer.ConsensusType{}
