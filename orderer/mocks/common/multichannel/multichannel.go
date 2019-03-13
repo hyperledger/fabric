@@ -102,8 +102,7 @@ func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, encodedMetadataValue []
 	if encodedMetadataValue != nil {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = protoutil.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
 	}
-	mcs.HeightVal++
-	mcs.Blocks <- block
+	mcs.Append(block)
 }
 
 // WriteConfigBlock calls WriteBlock
@@ -169,4 +168,12 @@ func (mcs *ConsenterSupport) VerifyBlockSignature(_ []*protoutil.SignedData, _ *
 // IsSystemChannel returns true if this is the system channel
 func (mcs *ConsenterSupport) IsSystemChannel() bool {
 	return mcs.SystemChannelVal
+}
+
+// Append appends a new block to the ledger in its raw form,
+// unlike WriteBlock that also mutates its metadata.
+func (mcs *ConsenterSupport) Append(block *cb.Block) error {
+	mcs.HeightVal++
+	mcs.Blocks <- block
+	return nil
 }

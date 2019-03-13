@@ -445,9 +445,9 @@ func TestEvictionSuspector(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			committedBlocks := make(chan *common.Block, 2)
 
-			commitBlock := func(block *common.Block, metadata []byte) {
-				assert.Nil(t, metadata)
+			commitBlock := func(block *common.Block) error {
 				committedBlocks <- block
+				return nil
 			}
 
 			es := &evictionSuspector{

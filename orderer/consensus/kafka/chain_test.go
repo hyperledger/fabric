@@ -3792,3 +3792,8 @@ func (c *mockConsenterSupport) Height() uint64 {
 func (c *mockConsenterSupport) IsSystemChannel() bool {
 	return false
 }
+
+func (c *mockConsenterSupport) Append(block *cb.Block) error {
+	c.Called(block)
+	return nil
+}

@@ -1310,7 +1310,7 @@ func (c *Chain) newEvictionSuspector() *evictionSuspector {
 	return &evictionSuspector{
 		amIInChannel:               ConsenterCertificate(c.opts.Cert).IsConsenterOfChannel,
 		evictionSuspicionThreshold: c.opts.EvictionSuspicion,
-		writeBlock:                 c.support.WriteBlock,
+		writeBlock:                 c.support.Append,
 		createPuller:               c.createPuller,
 		height:                     c.support.Height,
 		triggerCatchUp:             c.triggerCatchup,
