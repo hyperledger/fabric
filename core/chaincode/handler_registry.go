@@ -135,7 +135,7 @@ func (r *HandlerRegistry) Register(h *Handler) error {
 	// actually set as the concatenation of chaincode name and
 	// chaincode ID, which is set at build time. While it's ok
 	// for the chaincode to communicate back its packageID, the
-	// usage of the chaincodeID field is misleading
+	// usage of the chaincodeID field is misleading (FAB-14630)
 	packageID := ccintf.CCID(h.chaincodeID.Name)
 
 	if r.handlers[packageID] != nil {

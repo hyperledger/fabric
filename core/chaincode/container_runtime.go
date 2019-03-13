@@ -152,7 +152,7 @@ func (c *ContainerRuntime) LaunchConfig(packageID string, ccType string) (*Launc
 	// the package ID; in the legacy lifecycle they used to be the
 	// same but now they are not, so we should use a different env
 	// variable. However chaincodes built by older versions of the
-	// peer still adopt this broken convention.
+	// peer still adopt this broken convention. (FAB-14630)
 	lc.Envs = append(c.CommonEnv, "CORE_CHAINCODE_ID_NAME="+packageID)
 
 	// language specific arguments

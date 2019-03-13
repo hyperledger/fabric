@@ -126,7 +126,7 @@ func (r *Registry) GenerateDockerfile(ccType, name, version string) (string, err
 	// ----------------------------------------------------------------------------------------------------
 	// Add some handy labels
 	// ----------------------------------------------------------------------------------------------------
-	// FIXME: remove these two fields since they are *NOT* properties of the chaincode; rather add packageid/label
+	// FIXME: remove these two fields since they are *NOT* properties of the chaincode; rather add packageid/label (FAB-14630)
 	/* REMOVE */
 	buf = append(buf, fmt.Sprintf(`LABEL %s.chaincode.id.name="%s" \`, metadata.BaseDockerLabel, name))
 	/* REMOVE */ buf = append(buf, fmt.Sprintf(`      %s.chaincode.id.version="%s" \`, metadata.BaseDockerLabel, version))

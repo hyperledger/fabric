@@ -15,13 +15,13 @@ import (
 
 // InstalledChaincode defines metadata about an installed chaincode
 type InstalledChaincode struct {
-	PackageID persistence.PackageID // FIXME: set
+	PackageID persistence.PackageID
 	Hash      []byte
-	Label     string // FIXME: set
+	Label     string
 
 	// FIXME: we should remove these two
 	// fields since they are not properties
-	// of the chaincode
+	// of the chaincode (FAB-14561)
 	Name    string
 	Version string
 }

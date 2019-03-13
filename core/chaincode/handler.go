@@ -379,7 +379,7 @@ func (h *Handler) deregister() {
 	if h.chaincodeID != nil {
 		// FIXME: this works once again because h.chaincodeID.Name
 		// is not the chaincode name but the concatenation of name
-		// and version
+		// and version (FAB-14630)
 		h.Registry.Deregister(ccintf.CCID(h.chaincodeID.Name))
 	}
 }

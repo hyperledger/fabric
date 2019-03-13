@@ -225,7 +225,7 @@ func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionPa
 	// FIXME: this is a hack, we shouldn't construct the
 	// packageID manually but rather let lifecycle construct it
 	// for us. However this is legacy code that will disappear
-	// so it is acceptable for now
+	// so it is acceptable for now (FAB-14627)
 	ccci.PackageID = persistence.PackageID(ccci.Name + ":" + ccci.Version)
 
 	err := cs.LaunchInit(ccci)
@@ -298,7 +298,7 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 			return nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", txParams.ChannelID, cccid.Name)
 		}
 	} else {
-		// FIXME: remove this once _lifecycle has definitions for all system chaincodes
+		// FIXME: remove this once _lifecycle has definitions for all system chaincodes (FAB-14628)
 		ccci = &ccprovider.ChaincodeContainerInfo{
 			Version:   util.GetSysCCVersion(),
 			Name:      cccid.Name,

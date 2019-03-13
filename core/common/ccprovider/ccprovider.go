@@ -502,7 +502,7 @@ type ChaincodeContainerInfo struct {
 	ContainerType string
 
 	// FIXME: Name and Version fields must disappear from this struct
-	// because they are *NOT* a property of the chaincode container
+	// because they are *NOT* a property of the chaincode container (FAB-14561)
 	Name    string
 	Version string
 }
