@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/tools/protolator"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/ordererext"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/configtxgen/metadata"
@@ -171,7 +172,7 @@ func doPrintOrg(t *genesisconfig.TopLevel, printOrg string) error {
 				return errors.Wrapf(err, "bad org definition for org %s", org.Name)
 			}
 
-			if err := protolator.DeepMarshalJSON(os.Stdout, og); err != nil {
+			if err := protolator.DeepMarshalJSON(os.Stdout, &ordererext.DynamicOrdererOrgGroup{ConfigGroup: og}); err != nil {
 				return errors.Wrapf(err, "malformed org definition for org: %s", org.Name)
 			}
 			return nil
