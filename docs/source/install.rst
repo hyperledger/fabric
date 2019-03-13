@@ -98,7 +98,7 @@ The script lists out the Docker images installed upon conclusion.
 Look at the names for each image; these are the components that will ultimately
 comprise our Hyperledger Fabric network.  You will also notice that you have
 two instances of the same image ID - one tagged as "amd64-1.x.x" and
-one tagged as "latest". Prior to 1.2.0, the image being downloaded was determined
+one tagged as "latest". Prior to 1.4.0, the image being downloaded was determined
 by ``uname -m`` and showed as "x86_64-1.x.x".
 
 .. note:: On different architectures, the x86_64/amd64 would be replaced
