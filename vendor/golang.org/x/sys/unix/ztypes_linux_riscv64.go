@@ -848,6 +848,8 @@ type Sigset_t struct {
 	Val [16]uint64
 }
 
+const _C__NSIG = 0x41
+
 type SignalfdSiginfo struct {
 	Signo     uint32
 	Errno     int32
@@ -2483,4 +2485,21 @@ const (
 	BPF_FD_TYPE_KRETPROBE               = 0x3
 	BPF_FD_TYPE_UPROBE                  = 0x4
 	BPF_FD_TYPE_URETPROBE               = 0x5
+)
+
+type CapUserHeader struct {
+	Version uint32
+	Pid     int32
+}
+
+type CapUserData struct {
+	Effective   uint32
+	Permitted   uint32
+	Inheritable uint32
+}
+
+const (
+	LINUX_CAPABILITY_VERSION_1 = 0x19980330
+	LINUX_CAPABILITY_VERSION_2 = 0x20071026
+	LINUX_CAPABILITY_VERSION_3 = 0x20080522
 )

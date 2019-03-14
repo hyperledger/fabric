@@ -587,7 +587,6 @@ func (c *Client) TagImage(name string, opts TagImageOptions) error {
 	resp, err := c.do("POST", "/images/"+name+"/tag?"+queryString(&opts), doOptions{
 		context: opts.Context,
 	})
-
 	if err != nil {
 		return err
 	}

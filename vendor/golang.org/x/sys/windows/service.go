@@ -85,19 +85,33 @@ const (
 	SERVICE_INACTIVE  = 2
 	SERVICE_STATE_ALL = 3
 
-	SERVICE_QUERY_CONFIG           = 1
-	SERVICE_CHANGE_CONFIG          = 2
-	SERVICE_QUERY_STATUS           = 4
-	SERVICE_ENUMERATE_DEPENDENTS   = 8
-	SERVICE_START                  = 16
-	SERVICE_STOP                   = 32
-	SERVICE_PAUSE_CONTINUE         = 64
-	SERVICE_INTERROGATE            = 128
-	SERVICE_USER_DEFINED_CONTROL   = 256
-	SERVICE_ALL_ACCESS             = STANDARD_RIGHTS_REQUIRED | SERVICE_QUERY_CONFIG | SERVICE_CHANGE_CONFIG | SERVICE_QUERY_STATUS | SERVICE_ENUMERATE_DEPENDENTS | SERVICE_START | SERVICE_STOP | SERVICE_PAUSE_CONTINUE | SERVICE_INTERROGATE | SERVICE_USER_DEFINED_CONTROL
+	SERVICE_QUERY_CONFIG         = 1
+	SERVICE_CHANGE_CONFIG        = 2
+	SERVICE_QUERY_STATUS         = 4
+	SERVICE_ENUMERATE_DEPENDENTS = 8
+	SERVICE_START                = 16
+	SERVICE_STOP                 = 32
+	SERVICE_PAUSE_CONTINUE       = 64
+	SERVICE_INTERROGATE          = 128
+	SERVICE_USER_DEFINED_CONTROL = 256
+	SERVICE_ALL_ACCESS           = STANDARD_RIGHTS_REQUIRED | SERVICE_QUERY_CONFIG | SERVICE_CHANGE_CONFIG | SERVICE_QUERY_STATUS | SERVICE_ENUMERATE_DEPENDENTS | SERVICE_START | SERVICE_STOP | SERVICE_PAUSE_CONTINUE | SERVICE_INTERROGATE | SERVICE_USER_DEFINED_CONTROL
+
 	SERVICE_RUNS_IN_SYSTEM_PROCESS = 1
-	SERVICE_CONFIG_DESCRIPTION     = 1
-	SERVICE_CONFIG_FAILURE_ACTIONS = 2
+
+	SERVICE_CONFIG_DESCRIPTION              = 1
+	SERVICE_CONFIG_FAILURE_ACTIONS          = 2
+	SERVICE_CONFIG_DELAYED_AUTO_START_INFO  = 3
+	SERVICE_CONFIG_FAILURE_ACTIONS_FLAG     = 4
+	SERVICE_CONFIG_SERVICE_SID_INFO         = 5
+	SERVICE_CONFIG_REQUIRED_PRIVILEGES_INFO = 6
+	SERVICE_CONFIG_PRESHUTDOWN_INFO         = 7
+	SERVICE_CONFIG_TRIGGER_INFO             = 8
+	SERVICE_CONFIG_PREFERRED_NODE           = 9
+	SERVICE_CONFIG_LAUNCH_PROTECTED         = 12
+
+	SERVICE_SID_TYPE_NONE         = 0
+	SERVICE_SID_TYPE_UNRESTRICTED = 1
+	SERVICE_SID_TYPE_RESTRICTED   = 2 | SERVICE_SID_TYPE_UNRESTRICTED
 
 	SC_ENUM_PROCESS_INFO = 0
 
@@ -186,12 +200,19 @@ type SC_ACTION struct {
 	Delay uint32
 }
 
+type QUERY_SERVICE_LOCK_STATUS struct {
+	IsLocked     uint32
+	LockOwner    *uint16
+	LockDuration uint32
+}
+
 //sys	CloseServiceHandle(handle Handle) (err error) = advapi32.CloseServiceHandle
 //sys	CreateService(mgr Handle, serviceName *uint16, displayName *uint16, access uint32, srvType uint32, startType uint32, errCtl uint32, pathName *uint16, loadOrderGroup *uint16, tagId *uint32, dependencies *uint16, serviceStartName *uint16, password *uint16) (handle Handle, err error) [failretval==0] = advapi32.CreateServiceW
 //sys	OpenService(mgr Handle, serviceName *uint16, access uint32) (handle Handle, err error) [failretval==0] = advapi32.OpenServiceW
 //sys	DeleteService(service Handle) (err error) = advapi32.DeleteService
 //sys	StartService(service Handle, numArgs uint32, argVectors **uint16) (err error) = advapi32.StartServiceW
 //sys	QueryServiceStatus(service Handle, status *SERVICE_STATUS) (err error) = advapi32.QueryServiceStatus
+//sys	QueryServiceLockStatus(mgr Handle, lockStatus *QUERY_SERVICE_LOCK_STATUS, bufSize uint32, bytesNeeded *uint32) (err error) = advapi32.QueryServiceLockStatusW
 //sys	ControlService(service Handle, control uint32, status *SERVICE_STATUS) (err error) = advapi32.ControlService
 //sys	StartServiceCtrlDispatcher(serviceTable *SERVICE_TABLE_ENTRY) (err error) = advapi32.StartServiceCtrlDispatcherW
 //sys	SetServiceStatus(service Handle, serviceStatus *SERVICE_STATUS) (err error) = advapi32.SetServiceStatus

@@ -132,11 +132,6 @@ noverify = [
   name = "github.com/onsi/gomega"
   version = "1.5.0"
 
-# https://github.com/golang/dep/issues/1799
-[[override]]
-  name = "gopkg.in/fsnotify.v1"
-  source = "gopkg.in/fsnotify/fsnotify.v1"
-
 [[constraint]]
   name = "go.etcd.io/etcd"
   revision = "23731bf9ba556867089a9cc8db5e492ca6035fe8"
@@ -161,6 +156,19 @@ noverify = [
   name = "github.com/go-kit/kit"
   version = "0.7.0"
 
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  version = "0.9.0"
+
+# https://github.com/golang/dep/issues/1799
+[[override]]
+  name = "gopkg.in/fsnotify.v1"
+  source = "gopkg.in/fsnotify/fsnotify.v1"
+
+[[override]]
+  name = "github.com/opencontainers/runc"
+  version = "1.0.0-rc8"
+
 [prune]
   go-tests = true
   unused-packages = true
@@ -177,7 +185,3 @@ noverify = [
   [[prune.project]]
       name = "go.etcd.io/etcd"
       non-go = false
-
-[[constraint]]
-  name = "github.com/prometheus/client_golang"
-  version = "0.9.0"

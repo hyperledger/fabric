@@ -147,6 +147,17 @@ type RawSockaddrUnix struct {
 	Path   [1023]uint8
 }
 
+type RawSockaddrDatalink struct {
+	Len    uint8
+	Family uint8
+	Index  uint16
+	Type   uint8
+	Nlen   uint8
+	Alen   uint8
+	Slen   uint8
+	Data   [120]uint8
+}
+
 type RawSockaddr struct {
 	Len    uint8
 	Family uint8
@@ -206,17 +217,18 @@ type Msghdr struct {
 }
 
 const (
-	SizeofSockaddrInet4 = 0x10
-	SizeofSockaddrInet6 = 0x1c
-	SizeofSockaddrAny   = 0x404
-	SizeofSockaddrUnix  = 0x401
-	SizeofLinger        = 0x8
-	SizeofIPMreq        = 0x8
-	SizeofIPv6Mreq      = 0x14
-	SizeofIPv6MTUInfo   = 0x20
-	SizeofMsghdr        = 0x30
-	SizeofCmsghdr       = 0xc
-	SizeofICMPv6Filter  = 0x20
+	SizeofSockaddrInet4    = 0x10
+	SizeofSockaddrInet6    = 0x1c
+	SizeofSockaddrAny      = 0x404
+	SizeofSockaddrUnix     = 0x401
+	SizeofSockaddrDatalink = 0x80
+	SizeofLinger           = 0x8
+	SizeofIPMreq           = 0x8
+	SizeofIPv6Mreq         = 0x14
+	SizeofIPv6MTUInfo      = 0x20
+	SizeofMsghdr           = 0x30
+	SizeofCmsghdr          = 0xc
+	SizeofICMPv6Filter     = 0x20
 )
 
 const (
