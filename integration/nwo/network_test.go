@@ -270,14 +270,16 @@ var _ = Describe("Network", func() {
 				Label:             "my_simple_chaincode",
 			}
 			nwo.PackageChaincodeNewLifecycle(network, chaincode, testPeers[0])
-			nwo.InstallChaincodeNewLifecycle(network, chaincode, testPeers...)
 
-			// we get the hash of the package
+			// we set the hash of the package - this is only used to validate the response from the peer
 			filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
 			Expect(err).NotTo(HaveOccurred())
 			hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
-			// we set in the Hash field the package ID for this chaincode
+			chaincode.Hash = hashStr
+			// we set the PackageID so that we can pass it to the approve step
 			chaincode.PackageID = chaincode.Label + ":" + hashStr
+
+			nwo.InstallChaincodeNewLifecycle(network, chaincode, testPeers...)
 
 			maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", testPeers...)
 			for _, org := range network.PeerOrgs() {

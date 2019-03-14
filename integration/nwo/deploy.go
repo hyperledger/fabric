@@ -38,6 +38,7 @@ type Chaincode struct {
 	ValidationPlugin  string
 	InitRequired      bool
 	Label             string
+	Hash              string // this field plays no role in the invocation but it's useful to hold the expected value of the hash that get installed returns
 }
 
 // DeployChaincodeNewLifecycle is a helper that will install chaincode to all
@@ -66,12 +67,13 @@ func DeployChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 	// package using the first peer
 	PackageChaincodeNewLifecycle(n, chaincode, peers[0])
 
-	// we get the hash of the package
+	// we set the hash of the package - this is only used to validate the response from the peer
 	filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
 	Expect(err).NotTo(HaveOccurred())
 	hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
-	// we pass the hash so that we can compare what we get from the peer
-	chaincode.PackageID = hashStr
+	chaincode.Hash = hashStr
+	// we set the PackageID so that we can pass it to the approve step
+	chaincode.PackageID = chaincode.Label + ":" + hashStr
 
 	// install on all peers
 	InstallChaincodeNewLifecycle(n, chaincode, peers...)
@@ -79,9 +81,6 @@ func DeployChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 	// get the max ledger height before approving the
 	// chaincode definition for each org
 	maxLedgerHeight := GetMaxLedgerHeight(n, channel, peers...)
-
-	// we set in the Hash field the package ID for this chaincode
-	chaincode.PackageID = chaincode.Label + ":" + hashStr
 
 	// approve for each org
 	ApproveChaincodeForMyOrgNewLifecycle(n, channel, orderer, chaincode, peers...)
@@ -169,7 +168,7 @@ func InstallChaincodeNewLifecycle(n *Network, chaincode Chaincode, peers ...*Pee
 		sess, err = n.PeerAdminSession(p, commands.ChaincodeQueryInstalledLifecycle{})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-		Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: , Version: , Hash: %s", chaincode.PackageID)))
+		Expect(sess).To(gbytes.Say(fmt.Sprintf("Package ID: %s, Label: %s, Hash: %s", chaincode.PackageID, chaincode.Label, chaincode.Hash)))
 	}
 }
 

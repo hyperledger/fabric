@@ -49,8 +49,8 @@ message QueryInstalledChaincodesArgs {
 // installed chaincodes.
 message QueryInstalledChaincodesResult {
     message InstalledChaincode {
-        string name = 1;
-        string version = 2;
+        string package_id = 1;
+        string label = 2;
         bytes hash = 3;
     }
     repeated InstalledChaincode installed_chaincodes = 1;

@@ -253,9 +253,9 @@ func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodes
 		result.InstalledChaincodes = append(
 			result.InstalledChaincodes,
 			&lb.QueryInstalledChaincodesResult_InstalledChaincode{
-				Name:    chaincode.Name,
-				Version: chaincode.Version,
-				Hash:    chaincode.Hash,
+				Label:     chaincode.Label,
+				Hash:      chaincode.Hash,
+				PackageId: chaincode.PackageID.String(),
 			})
 	}
 	return result, nil

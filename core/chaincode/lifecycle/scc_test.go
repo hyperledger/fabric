@@ -284,14 +284,14 @@ var _ = Describe("SCC", func() {
 
 				fakeSCCFuncs.QueryInstalledChaincodesReturns([]chaincode.InstalledChaincode{
 					{
-						Name:    "cc0-name",
-						Version: "cc0-version",
-						Hash:    []byte("cc0-hash"),
+						Hash:      []byte("cc0-hash"),
+						Label:     "cc0-label",
+						PackageID: persistence.PackageID("cc0-package-id"),
 					},
 					{
-						Name:    "cc1-name",
-						Version: "cc1-version",
-						Hash:    []byte("cc1-hash"),
+						Hash:      []byte("cc1-hash"),
+						Label:     "cc1-label",
+						PackageID: persistence.PackageID("cc1-package-id"),
 					},
 				}, nil)
 			})
@@ -305,12 +305,12 @@ var _ = Describe("SCC", func() {
 
 				Expect(payload.InstalledChaincodes).To(HaveLen(2))
 
-				Expect(payload.InstalledChaincodes[0].Name).To(Equal(fmt.Sprintf("cc0-name")))
-				Expect(payload.InstalledChaincodes[0].Version).To(Equal(fmt.Sprintf("cc0-version")))
+				Expect(payload.InstalledChaincodes[0].Label).To(Equal("cc0-label"))
+				Expect(payload.InstalledChaincodes[0].PackageId).To(Equal("cc0-package-id"))
 				Expect(payload.InstalledChaincodes[0].Hash).To(Equal([]byte(fmt.Sprintf("cc0-hash"))))
 
-				Expect(payload.InstalledChaincodes[1].Name).To(Equal(fmt.Sprintf("cc1-name")))
-				Expect(payload.InstalledChaincodes[1].Version).To(Equal(fmt.Sprintf("cc1-version")))
+				Expect(payload.InstalledChaincodes[1].Label).To(Equal("cc1-label"))
+				Expect(payload.InstalledChaincodes[1].PackageId).To(Equal("cc1-package-id"))
 				Expect(payload.InstalledChaincodes[1].Hash).To(Equal([]byte(fmt.Sprintf("cc1-hash"))))
 
 				Expect(fakeSCCFuncs.QueryInstalledChaincodesCallCount()).To(Equal(1))
