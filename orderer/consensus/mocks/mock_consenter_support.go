@@ -2,16 +2,27 @@
 package mocks
 
 import (
-	sync "sync"
+	"sync"
 
-	channelconfig "github.com/hyperledger/fabric/common/channelconfig"
-	blockcutter "github.com/hyperledger/fabric/orderer/common/blockcutter"
-	msgprocessor "github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	consensus "github.com/hyperledger/fabric/orderer/consensus"
-	common "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 type FakeConsenterSupport struct {
+	AppendStub        func(*common.Block) error
+	appendMutex       sync.RWMutex
+	appendArgsForCall []struct {
+		arg1 *common.Block
+	}
+	appendReturns struct {
+		result1 error
+	}
+	appendReturnsOnCall map[int]struct {
+		result1 error
+	}
 	BlockStub        func(uint64) *common.Block
 	blockMutex       sync.RWMutex
 	blockArgsForCall []struct {
@@ -199,6 +210,66 @@ type FakeConsenterSupport struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *FakeConsenterSupport) Append(arg1 *common.Block) error {
+	fake.appendMutex.Lock()
+	ret, specificReturn := fake.appendReturnsOnCall[len(fake.appendArgsForCall)]
+	fake.appendArgsForCall = append(fake.appendArgsForCall, struct {
+		arg1 *common.Block
+	}{arg1})
+	fake.recordInvocation("Append", []interface{}{arg1})
+	fake.appendMutex.Unlock()
+	if fake.AppendStub != nil {
+		return fake.AppendStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.appendReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeConsenterSupport) AppendCallCount() int {
+	fake.appendMutex.RLock()
+	defer fake.appendMutex.RUnlock()
+	return len(fake.appendArgsForCall)
+}
+
+func (fake *FakeConsenterSupport) AppendCalls(stub func(*common.Block) error) {
+	fake.appendMutex.Lock()
+	defer fake.appendMutex.Unlock()
+	fake.AppendStub = stub
+}
+
+func (fake *FakeConsenterSupport) AppendArgsForCall(i int) *common.Block {
+	fake.appendMutex.RLock()
+	defer fake.appendMutex.RUnlock()
+	argsForCall := fake.appendArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeConsenterSupport) AppendReturns(result1 error) {
+	fake.appendMutex.Lock()
+	defer fake.appendMutex.Unlock()
+	fake.AppendStub = nil
+	fake.appendReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeConsenterSupport) AppendReturnsOnCall(i int, result1 error) {
+	fake.appendMutex.Lock()
+	defer fake.appendMutex.Unlock()
+	fake.AppendStub = nil
+	if fake.appendReturnsOnCall == nil {
+		fake.appendReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.appendReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *FakeConsenterSupport) Block(arg1 uint64) *common.Block {
@@ -1159,6 +1230,8 @@ func (fake *FakeConsenterSupport) WriteConfigBlockArgsForCall(i int) (*common.Bl
 func (fake *FakeConsenterSupport) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.appendMutex.RLock()
+	defer fake.appendMutex.RUnlock()
 	fake.blockMutex.RLock()
 	defer fake.blockMutex.RUnlock()
 	fake.blockCutterMutex.RLock()

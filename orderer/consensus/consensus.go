@@ -114,4 +114,8 @@ type ConsenterSupport interface {
 	// IsSystemChannel returns true if this is the system channel.
 	// The chain needs to know if it is system or standard for consensus-type migration.
 	IsSystemChannel() bool
+
+	// Append appends a new block to the ledger in its raw form,
+	// unlike WriteBlock that also mutates its metadata.
+	Append(block *cb.Block) error
 }
