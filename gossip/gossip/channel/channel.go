@@ -186,20 +186,25 @@ func (mf *membershipFilter) GetMembership() []discovery.NetworkMember {
 // NewGossipChannel creates a new GossipChannel
 func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.MessageCryptoService,
 	chainID common.ChainID, adapter Adapter, joinMsg api.JoinChannelMessage,
-	metrics *metrics.MembershipMetrics) GossipChannel {
+	metrics *metrics.MembershipMetrics, logger util.Logger) GossipChannel {
 	gc := &gossipChannel{
 		incTime:                   uint64(time.Now().UnixNano()),
 		selfOrg:                   org,
 		pkiID:                     pkiID,
 		mcs:                       mcs,
 		Adapter:                   adapter,
-		logger:                    util.GetLogger(util.ChannelLogger, adapter.GetConf().ID),
 		stopChan:                  make(chan struct{}, 1),
 		shouldGossipStateInfo:     int32(0),
 		stateInfoPublishScheduler: time.NewTicker(adapter.GetConf().PublishStateInfoInterval),
 		stateInfoRequestScheduler: time.NewTicker(adapter.GetConf().RequestStateInfoInterval),
 		orgs:                      []api.OrgIdentityType{},
 		chainID:                   chainID,
+	}
+
+	if logger == nil {
+		gc.logger = util.GetLogger(util.ChannelLogger, adapter.GetConf().ID)
+	} else {
+		gc.logger = logger
 	}
 
 	gc.memFilter = &membershipFilter{adapter: gc.Adapter, gossipChannel: gc}

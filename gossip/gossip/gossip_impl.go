@@ -393,10 +393,6 @@ func (g *gossipServiceImpl) handleMessage(m protoext.ReceivedMessage) {
 }
 
 func (g *gossipServiceImpl) forwardDiscoveryMsg(msg protoext.ReceivedMessage) {
-	defer func() { // can be closed while shutting down
-		recover()
-	}()
-
 	g.discAdapter.incChan <- msg
 }
 
@@ -528,12 +524,18 @@ func (g *gossipServiceImpl) sendAndFilterSecrets(msg *protoext.SignedGossipMessa
 		if aliveMsgFromDiffOrg && !g.hasExternalEndpoint(peer.PKIID) {
 			continue
 		}
+
+		// Use cloned message to filter secrets to avoid data races when same message is sent multiple times
+		clonedMsg := &protoext.SignedGossipMessage{}
+		clonedMsg.GossipMessage = msg.GossipMessage
+		clonedMsg.Envelope = msg.Envelope
+
 		// Don't gossip secrets
 		if !g.isInMyorg(discovery.NetworkMember{PKIid: peer.PKIID}) {
-			msg.Envelope.SecretEnvelope = nil
+			clonedMsg.Envelope = protoG.Clone(msg.Envelope).(*proto.Envelope) // clone the envelope
+			clonedMsg.Envelope.SecretEnvelope = nil
 		}
-
-		g.comm.Send(msg, peer)
+		g.comm.Send(clonedMsg, peer)
 	}
 }
 
@@ -745,15 +747,15 @@ func (g *gossipServiceImpl) Stop() {
 	}
 	atomic.StoreInt32(&g.stopFlag, int32(1))
 	g.logger.Info("Stopping gossip")
+	g.toDieChan <- struct{}{}
+	g.stopSignal.Wait()
 	g.chanState.stop()
 	g.discAdapter.close()
 	g.disc.Stop()
 	g.certStore.stop()
-	g.toDieChan <- struct{}{}
 	g.emitter.Stop()
 	g.ChannelDeMultiplexer.Close()
 	g.stateInfoMsgStore.Stop()
-	g.stopSignal.Wait()
 	g.comm.Stop()
 }
 
