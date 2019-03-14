@@ -21,7 +21,7 @@ import (
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -50,7 +50,7 @@ var _ = Describe("Cache", func() {
 		fakeCCStore.ListInstalledChaincodesReturns([]chaincode.InstalledChaincode{
 			{
 				Hash:      []byte("hash"),
-				PackageID: ccintf.CCID("packageID"),
+				PackageID: p.PackageID("packageID"),
 			},
 		}, nil)
 
@@ -115,7 +115,7 @@ var _ = Describe("Cache", func() {
 			channelCache.Chaincodes["chaincode-name"].InstallInfo = &lifecycle.ChaincodeInstallInfo{
 				Type:      "cc-type",
 				Path:      "cc-path",
-				PackageID: ccintf.CCID("hash"),
+				PackageID: p.PackageID("hash"),
 			}
 		})
 
@@ -130,7 +130,7 @@ var _ = Describe("Cache", func() {
 				InstallInfo: &lifecycle.ChaincodeInstallInfo{
 					Type:      "cc-type",
 					Path:      "cc-path",
-					PackageID: ccintf.CCID("hash"),
+					PackageID: p.PackageID("hash"),
 				},
 				Approved: true,
 			}))
@@ -159,7 +159,7 @@ var _ = Describe("Cache", func() {
 			Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(Equal(&lifecycle.ChaincodeInstallInfo{
 				Type:      "cc-type",
 				Path:      "cc-path",
-				PackageID: ccintf.CCID("packageID"),
+				PackageID: p.PackageID("packageID"),
 			}))
 		})
 
@@ -304,11 +304,11 @@ var _ = Describe("Cache", func() {
 					c.HandleChaincodeInstalled(&persistence.ChaincodePackageMetadata{
 						Type: "some-type",
 						Path: "some-path",
-					}, ccintf.CCID("different-hash"))
+					}, p.PackageID("different-hash"))
 					Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(Equal(&lifecycle.ChaincodeInstallInfo{
 						Type:      "some-type",
 						Path:      "some-path",
-						PackageID: ccintf.CCID("different-hash"),
+						PackageID: p.PackageID("different-hash"),
 					}))
 				})
 			})
@@ -384,7 +384,7 @@ var _ = Describe("Cache", func() {
 				c.HandleChaincodeInstalled(&persistence.ChaincodePackageMetadata{
 					Type: "cc-type",
 					Path: "cc-path",
-				}, ccintf.CCID("hash"))
+				}, p.PackageID("hash"))
 			})
 
 			It("updates the install info", func() {
@@ -393,7 +393,7 @@ var _ = Describe("Cache", func() {
 				Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(Equal(&lifecycle.ChaincodeInstallInfo{
 					Type:      "cc-type",
 					Path:      "cc-path",
-					PackageID: ccintf.CCID("hash"),
+					PackageID: p.PackageID("hash"),
 				}))
 			})
 		})

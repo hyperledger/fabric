@@ -19,7 +19,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -181,7 +181,7 @@ var _ = Describe("SCC", func() {
 
 				fakeStub.GetArgsReturns([][]byte{[]byte("InstallChaincode"), marshaledArg})
 
-				fakeSCCFuncs.InstallChaincodeReturns(ccintf.CCID("fake-hash"), nil)
+				fakeSCCFuncs.InstallChaincodeReturns(persistence.PackageID("fake-hash"), nil)
 			})
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
@@ -231,12 +231,12 @@ var _ = Describe("SCC", func() {
 					{
 						Hash:      []byte("yellow"),
 						Name:      "label",
-						PackageID: ccintf.CCID("bro"),
+						PackageID: persistence.PackageID("bro"),
 					},
 					{
 						Hash:      []byte("talisker"),
 						Name:      "single malt",
-						PackageID: ccintf.CCID("mate"),
+						PackageID: persistence.PackageID("mate"),
 					},
 				}, nil)
 			})
@@ -384,7 +384,7 @@ var _ = Describe("SCC", func() {
 					},
 					Collections: arg.Collections,
 				}))
-				Expect(packageID).To(Equal(ccintf.CCID("hash")))
+				Expect(packageID).To(Equal(persistence.PackageID("hash")))
 				Expect(pubState).To(Equal(fakeStub))
 				Expect(privState).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
 				Expect(privState.(*lifecycle.ChaincodePrivateLedgerShim).Collection).To(Equal("_implicit_org_fake-mspid"))

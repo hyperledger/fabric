@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
@@ -44,7 +45,7 @@ type ContainerRuntime struct {
 
 // Start launches chaincode in a runtime environment.
 func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
-	packageID := string(ccci.PackageID)
+	packageID := ccci.PackageID.String()
 
 	lc, err := c.LaunchConfig(packageID, ccci.Type)
 	if err != nil {
@@ -67,7 +68,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 		Args:          lc.Args,
 		Env:           lc.Envs,
 		FilesToUpload: lc.Files,
-		CCID:          ccci.PackageID,
+		CCID:          ccintf.New(ccci.PackageID),
 	}
 
 	if err := c.Processor.Process(ccci.ContainerType, scr); err != nil {
@@ -80,7 +81,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 // Stop terminates chaincode and its container runtime environment.
 func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 	scr := container.StopContainerReq{
-		CCID:       ccci.PackageID,
+		CCID:       ccintf.New(ccci.PackageID),
 		Timeout:    0,
 		Dontremove: false,
 	}
@@ -101,7 +102,7 @@ func (c *ContainerRuntime) Wait(ccci *ccprovider.ChaincodeContainerInfo) (int, e
 
 	resultCh := make(chan result, 1)
 	wcr := container.WaitContainerReq{
-		CCID: ccci.PackageID,
+		CCID: ccintf.New(ccci.PackageID),
 		Exited: func(exitCode int, err error) {
 			resultCh <- result{exitCode: exitCode, err: err}
 			close(resultCh)

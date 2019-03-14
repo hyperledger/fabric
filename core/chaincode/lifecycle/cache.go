@@ -16,7 +16,7 @@ import (
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/pkg/errors"
 )
 
@@ -27,7 +27,7 @@ type LocalChaincodeInfo struct {
 }
 
 type ChaincodeInstallInfo struct {
-	PackageID ccintf.CCID
+	PackageID p.PackageID
 	Type      string
 	Path      string
 	Label     string
@@ -165,17 +165,17 @@ func (c *Cache) Initialize(channelID string, qe ledger.SimpleQueryExecutor) erro
 }
 
 // HandleChaincodeInstalled should be invoked whenever a new chaincode is installed
-func (c *Cache) HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID ccintf.CCID) {
+func (c *Cache) HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID p.PackageID) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	c.handleChaincodeInstalledWhileLocked(md, packageID)
 }
 
-func (c *Cache) handleChaincodeInstalledWhileLocked(md *persistence.ChaincodePackageMetadata, packageID ccintf.CCID) {
+func (c *Cache) handleChaincodeInstalledWhileLocked(md *persistence.ChaincodePackageMetadata, packageID p.PackageID) {
 	// it would be nice to get this value from the serialization package, but it was not obvious
 	// how to expose this in a nice way, so we manually compute it.
 	encodedCCHash := protoutil.MarshalOrPanic(&lb.StateData{
-		Type: &lb.StateData_String_{String_: string(packageID)},
+		Type: &lb.StateData_String_{String_: packageID.String()},
 	})
 	hashOfCCHash := string(util.ComputeSHA256(encodedCCHash))
 	localChaincode, ok := c.localChaincodes[hashOfCCHash]

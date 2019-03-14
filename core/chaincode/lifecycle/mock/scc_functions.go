@@ -6,16 +6,16 @@ import (
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 )
 
 type SCCFunctions struct {
-	ApproveChaincodeDefinitionForOrgStub        func(string, *lifecycle.ChaincodeDefinition, ccintf.CCID, lifecycle.ReadableState, lifecycle.ReadWritableState) error
+	ApproveChaincodeDefinitionForOrgStub        func(string, *lifecycle.ChaincodeDefinition, persistence.PackageID, lifecycle.ReadableState, lifecycle.ReadWritableState) error
 	approveChaincodeDefinitionForOrgMutex       sync.RWMutex
 	approveChaincodeDefinitionForOrgArgsForCall []struct {
 		arg1 string
 		arg2 *lifecycle.ChaincodeDefinition
-		arg3 ccintf.CCID
+		arg3 persistence.PackageID
 		arg4 lifecycle.ReadableState
 		arg5 lifecycle.ReadWritableState
 	}
@@ -41,17 +41,17 @@ type SCCFunctions struct {
 		result1 []bool
 		result2 error
 	}
-	InstallChaincodeStub        func([]byte) (ccintf.CCID, error)
+	InstallChaincodeStub        func([]byte) (persistence.PackageID, error)
 	installChaincodeMutex       sync.RWMutex
 	installChaincodeArgsForCall []struct {
 		arg1 []byte
 	}
 	installChaincodeReturns struct {
-		result1 ccintf.CCID
+		result1 persistence.PackageID
 		result2 error
 	}
 	installChaincodeReturnsOnCall map[int]struct {
-		result1 ccintf.CCID
+		result1 persistence.PackageID
 		result2 error
 	}
 	QueryChaincodeDefinitionStub        func(string, lifecycle.ReadableState) (*lifecycle.ChaincodeDefinition, error)
@@ -110,13 +110,13 @@ type SCCFunctions struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrg(arg1 string, arg2 *lifecycle.ChaincodeDefinition, arg3 ccintf.CCID, arg4 lifecycle.ReadableState, arg5 lifecycle.ReadWritableState) error {
+func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrg(arg1 string, arg2 *lifecycle.ChaincodeDefinition, arg3 persistence.PackageID, arg4 lifecycle.ReadableState, arg5 lifecycle.ReadWritableState) error {
 	fake.approveChaincodeDefinitionForOrgMutex.Lock()
 	ret, specificReturn := fake.approveChaincodeDefinitionForOrgReturnsOnCall[len(fake.approveChaincodeDefinitionForOrgArgsForCall)]
 	fake.approveChaincodeDefinitionForOrgArgsForCall = append(fake.approveChaincodeDefinitionForOrgArgsForCall, struct {
 		arg1 string
 		arg2 *lifecycle.ChaincodeDefinition
-		arg3 ccintf.CCID
+		arg3 persistence.PackageID
 		arg4 lifecycle.ReadableState
 		arg5 lifecycle.ReadWritableState
 	}{arg1, arg2, arg3, arg4, arg5})
@@ -138,13 +138,13 @@ func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrgCallCount() int {
 	return len(fake.approveChaincodeDefinitionForOrgArgsForCall)
 }
 
-func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrgCalls(stub func(string, *lifecycle.ChaincodeDefinition, ccintf.CCID, lifecycle.ReadableState, lifecycle.ReadWritableState) error) {
+func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrgCalls(stub func(string, *lifecycle.ChaincodeDefinition, persistence.PackageID, lifecycle.ReadableState, lifecycle.ReadWritableState) error) {
 	fake.approveChaincodeDefinitionForOrgMutex.Lock()
 	defer fake.approveChaincodeDefinitionForOrgMutex.Unlock()
 	fake.ApproveChaincodeDefinitionForOrgStub = stub
 }
 
-func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrgArgsForCall(i int) (string, *lifecycle.ChaincodeDefinition, ccintf.CCID, lifecycle.ReadableState, lifecycle.ReadWritableState) {
+func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrgArgsForCall(i int) (string, *lifecycle.ChaincodeDefinition, persistence.PackageID, lifecycle.ReadableState, lifecycle.ReadWritableState) {
 	fake.approveChaincodeDefinitionForOrgMutex.RLock()
 	defer fake.approveChaincodeDefinitionForOrgMutex.RUnlock()
 	argsForCall := fake.approveChaincodeDefinitionForOrgArgsForCall[i]
@@ -245,7 +245,7 @@ func (fake *SCCFunctions) CommitChaincodeDefinitionReturnsOnCall(i int, result1 
 	}{result1, result2}
 }
 
-func (fake *SCCFunctions) InstallChaincode(arg1 []byte) (ccintf.CCID, error) {
+func (fake *SCCFunctions) InstallChaincode(arg1 []byte) (persistence.PackageID, error) {
 	var arg1Copy []byte
 	if arg1 != nil {
 		arg1Copy = make([]byte, len(arg1))
@@ -274,7 +274,7 @@ func (fake *SCCFunctions) InstallChaincodeCallCount() int {
 	return len(fake.installChaincodeArgsForCall)
 }
 
-func (fake *SCCFunctions) InstallChaincodeCalls(stub func([]byte) (ccintf.CCID, error)) {
+func (fake *SCCFunctions) InstallChaincodeCalls(stub func([]byte) (persistence.PackageID, error)) {
 	fake.installChaincodeMutex.Lock()
 	defer fake.installChaincodeMutex.Unlock()
 	fake.InstallChaincodeStub = stub
@@ -287,28 +287,28 @@ func (fake *SCCFunctions) InstallChaincodeArgsForCall(i int) []byte {
 	return argsForCall.arg1
 }
 
-func (fake *SCCFunctions) InstallChaincodeReturns(result1 ccintf.CCID, result2 error) {
+func (fake *SCCFunctions) InstallChaincodeReturns(result1 persistence.PackageID, result2 error) {
 	fake.installChaincodeMutex.Lock()
 	defer fake.installChaincodeMutex.Unlock()
 	fake.InstallChaincodeStub = nil
 	fake.installChaincodeReturns = struct {
-		result1 ccintf.CCID
+		result1 persistence.PackageID
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *SCCFunctions) InstallChaincodeReturnsOnCall(i int, result1 ccintf.CCID, result2 error) {
+func (fake *SCCFunctions) InstallChaincodeReturnsOnCall(i int, result1 persistence.PackageID, result2 error) {
 	fake.installChaincodeMutex.Lock()
 	defer fake.installChaincodeMutex.Unlock()
 	fake.InstallChaincodeStub = nil
 	if fake.installChaincodeReturnsOnCall == nil {
 		fake.installChaincodeReturnsOnCall = make(map[int]struct {
-			result1 ccintf.CCID
+			result1 persistence.PackageID
 			result2 error
 		})
 	}
 	fake.installChaincodeReturnsOnCall[i] = struct {
-		result1 ccintf.CCID
+		result1 persistence.PackageID
 		result2 error
 	}{result1, result2}
 }

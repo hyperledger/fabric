@@ -20,7 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/pkg/errors"
 )
 
@@ -211,13 +211,13 @@ var _ = Describe("ExternalFunctions", func() {
 					Label: "cc-label",
 				},
 			}, nil)
-			fakeCCStore.SaveReturns(ccintf.CCID("fake-hash"), nil)
+			fakeCCStore.SaveReturns(p.PackageID("fake-hash"), nil)
 		})
 
 		It("saves the chaincode", func() {
 			hash, err := ef.InstallChaincode([]byte("cc-package"))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(hash).To(Equal(ccintf.CCID("fake-hash")))
+			Expect(hash).To(Equal(p.PackageID("fake-hash")))
 
 			Expect(fakeParser.ParseCallCount()).To(Equal(1))
 			Expect(fakeParser.ParseArgsForCall(0)).To(Equal([]byte("cc-package")))
@@ -234,7 +234,7 @@ var _ = Describe("ExternalFunctions", func() {
 				Path:  "cc-path",
 				Label: "cc-label",
 			}))
-			Expect(hash).To(Equal(ccintf.CCID("fake-hash")))
+			Expect(hash).To(Equal(p.PackageID("fake-hash")))
 		})
 
 		Context("when saving the chaincode fails", func() {
@@ -244,7 +244,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 			It("wraps and returns the error", func() {
 				hash, err := ef.InstallChaincode([]byte("cc-package"))
-				Expect(hash).To(Equal(ccintf.CCID("")))
+				Expect(hash).To(Equal(p.PackageID("")))
 				Expect(err).To(MatchError("could not save cc install package: fake-error"))
 			})
 		})
@@ -256,7 +256,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 			It("wraps and returns the error", func() {
 				hash, err := ef.InstallChaincode([]byte("fake-package"))
-				Expect(hash).To(Equal(ccintf.CCID("")))
+				Expect(hash).To(Equal(p.PackageID("")))
 				Expect(err).To(MatchError("could not parse as a chaincode install package: parse-error"))
 			})
 		})
@@ -366,7 +366,7 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 
 		It("serializes the chaincode parameters to the org scoped collection", func() {
-			err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, ccintf.CCID("hash"), fakePublicState, fakeOrgState)
+			err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, p.PackageID("hash"), fakePublicState, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
 
 			metadata, ok, err := resources.Serializer.DeserializeMetadata("namespaces", "cc-name#5", fakeOrgState)

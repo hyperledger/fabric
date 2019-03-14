@@ -19,7 +19,7 @@ import (
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/pkg/errors"
 )
 
@@ -57,7 +57,7 @@ const (
 // for each of the SCC functions
 type SCCFunctions interface {
 	// InstallChaincode persists a chaincode definition to disk
-	InstallChaincode([]byte) (ccintf.CCID, error)
+	InstallChaincode([]byte) (persistence.PackageID, error)
 
 	// QueryInstalledChaincode returns the hash for a given name and version of an installed chaincode
 	QueryInstalledChaincode(label string) ([]chaincode.InstalledChaincode, error)
@@ -66,7 +66,7 @@ type SCCFunctions interface {
 	QueryInstalledChaincodes() (chaincodes []chaincode.InstalledChaincode, err error)
 
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
-	ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, packageID ccintf.CCID, publicState ReadableState, orgState ReadWritableState) error
+	ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, packageID persistence.PackageID, publicState ReadableState, orgState ReadWritableState) error
 
 	// CommitChaincodeDefinition records a new chaincode definition into the public state and returns the orgs which agreed with that definition.
 	CommitChaincodeDefinition(name string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
@@ -217,7 +217,7 @@ func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Mes
 	}
 
 	return &lb.InstallChaincodeResult{
-		PackageId: string(packageID),
+		PackageId: packageID.String(),
 	}, nil
 }
 
@@ -270,11 +270,11 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 		collectionConfig = input.Collections.Config
 	}
 
-	var packageID ccintf.CCID
+	var packageID persistence.PackageID
 	if input.Source != nil {
 		switch source := input.Source.Type.(type) {
 		case *lb.ChaincodeSource_LocalPackage:
-			packageID = ccintf.CCID(source.LocalPackage.PackageId)
+			packageID = persistence.PackageID(source.LocalPackage.PackageId)
 		case *lb.ChaincodeSource_Unavailable:
 		default:
 		}

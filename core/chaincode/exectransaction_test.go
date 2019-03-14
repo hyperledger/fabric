@@ -39,13 +39,13 @@ import (
 	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	cm "github.com/hyperledger/fabric/core/chaincode/mock"
+	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -132,25 +132,25 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		&ccprovider.ChaincodeContainerInfo{
 			Name:      "lscc",
 			Version:   util.GetSysCCVersion(),
-			PackageID: ccintf.CCID("lscc:" + util.GetSysCCVersion()),
+			PackageID: persistence.PackageID("lscc:" + util.GetSysCCVersion()),
 		}, nil)
 	ml.On("ChaincodeContainerInfo", ma.Anything, "pthru", ma.Anything).Return(
 		&ccprovider.ChaincodeContainerInfo{
 			Name:      "pthru",
 			Version:   "0",
-			PackageID: ccintf.CCID("pthru:0"),
+			PackageID: persistence.PackageID("pthru:0"),
 		}, nil)
 	ml.On("ChaincodeContainerInfo", ma.Anything, "example02", ma.Anything).Return(
 		&ccprovider.ChaincodeContainerInfo{
 			Name:      "example02",
 			Version:   "0",
-			PackageID: ccintf.CCID("example02:0"),
+			PackageID: persistence.PackageID("example02:0"),
 		}, nil)
 	ml.On("ChaincodeContainerInfo", ma.Anything, "tmap", ma.Anything).Return(
 		&ccprovider.ChaincodeContainerInfo{
 			Name:      "tmap",
 			Version:   "0",
-			PackageID: ccintf.CCID("tmap:0"),
+			PackageID: persistence.PackageID("tmap:0"),
 		}, nil)
 	chaincodeSupport := NewChaincodeSupport(
 		config,
@@ -627,7 +627,7 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 		&ccprovider.ChaincodeContainerInfo{
 			Name:      chaincode2Name,
 			Version:   "0",
-			PackageID: ccintf.CCID(chaincode2Name + ":0"),
+			PackageID: persistence.PackageID(chaincode2Name + ":0"),
 		}, nil)
 	mcd := &cm.ChaincodeDefinition{}
 	mcd.On("CCName").Return(chaincode2Name)
@@ -809,7 +809,7 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 		&ccprovider.ChaincodeContainerInfo{
 			Name:      chaincode1Name,
 			Version:   "0",
-			PackageID: ccintf.CCID(chaincode1Name + ":0"),
+			PackageID: persistence.PackageID(chaincode1Name + ":0"),
 		}, nil)
 	mcd := &cm.ChaincodeDefinition{}
 	mcd.On("CCName").Return(chaincode1Name)

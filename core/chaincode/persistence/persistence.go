@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/pkg/errors"
 )
 
@@ -76,7 +76,7 @@ type Store struct {
 
 // Save persists chaincode install package bytes. It returns
 // the hash of the chaincode install package
-func (s *Store) Save(label string, ccInstallPkg []byte) (ccintf.CCID, error) {
+func (s *Store) Save(label string, ccInstallPkg []byte) (persistence.PackageID, error) {
 	hash := util.ComputeSHA256(ccInstallPkg)
 	packageID := PackageID(label, hash)
 	ccInstallPkgPath := PackagePath(s.Path, packageID)
@@ -98,7 +98,7 @@ func (s *Store) Save(label string, ccInstallPkg []byte) (ccintf.CCID, error) {
 // Load loads a persisted chaincode install package bytes with the given hash
 // and also returns the chaincode metadata (names and versions) of any chaincode
 // installed with a matching hash
-func (s *Store) Load(packageID ccintf.CCID) ([]byte, error) {
+func (s *Store) Load(packageID persistence.PackageID) ([]byte, error) {
 	ccInstallPkgPath := PackagePath(s.Path, packageID)
 
 	exists, err := s.ReadWriter.Exists(ccInstallPkgPath)
@@ -123,7 +123,7 @@ func (s *Store) Load(packageID ccintf.CCID) ([]byte, error) {
 // CodePackageNotFoundErr is the error returned when a code package cannot
 // be found in the persistence store
 type CodePackageNotFoundErr struct {
-	PackageID ccintf.CCID
+	PackageID persistence.PackageID
 }
 
 func (e CodePackageNotFoundErr) Error() string {

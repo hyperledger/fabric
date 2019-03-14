@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 )
 
 type StorePackageProvider struct {
@@ -29,10 +29,10 @@ type StorePackageProvider struct {
 		result1 []chaincode.InstalledChaincode
 		result2 error
 	}
-	LoadStub        func(packageID ccintf.CCID) ([]byte, error)
+	LoadStub        func(packageID persistence.PackageID) ([]byte, error)
 	loadMutex       sync.RWMutex
 	loadArgsForCall []struct {
-		packageID ccintf.CCID
+		packageID persistence.PackageID
 	}
 	loadReturns struct {
 		result1 []byte
@@ -129,11 +129,11 @@ func (fake *StorePackageProvider) ListInstalledChaincodesReturnsOnCall(i int, re
 	}{result1, result2}
 }
 
-func (fake *StorePackageProvider) Load(packageID ccintf.CCID) ([]byte, error) {
+func (fake *StorePackageProvider) Load(packageID persistence.PackageID) ([]byte, error) {
 	fake.loadMutex.Lock()
 	ret, specificReturn := fake.loadReturnsOnCall[len(fake.loadArgsForCall)]
 	fake.loadArgsForCall = append(fake.loadArgsForCall, struct {
-		packageID ccintf.CCID
+		packageID persistence.PackageID
 	}{packageID})
 	fake.recordInvocation("Load", []interface{}{packageID})
 	fake.loadMutex.Unlock()
@@ -152,7 +152,7 @@ func (fake *StorePackageProvider) LoadCallCount() int {
 	return len(fake.loadArgsForCall)
 }
 
-func (fake *StorePackageProvider) LoadArgsForCall(i int) ccintf.CCID {
+func (fake *StorePackageProvider) LoadArgsForCall(i int) persistence.PackageID {
 	fake.loadMutex.RLock()
 	defer fake.loadMutex.RUnlock()
 	return fake.loadArgsForCall[i].packageID

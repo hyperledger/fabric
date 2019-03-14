@@ -31,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
+	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -190,19 +191,19 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		&ccprovider.ChaincodeContainerInfo{
 			Name:      "shimTestCC",
 			Version:   "0",
-			PackageID: ccintf.CCID("shimTestCC:0"),
+			PackageID: persistence.PackageID("shimTestCC:0"),
 		}, nil)
 	ml.On("ChaincodeContainerInfo", ma.Anything, "calledCC", ma.Anything).Return(
 		&ccprovider.ChaincodeContainerInfo{
 			Name:      "calledCC",
 			Version:   "0",
-			PackageID: ccintf.CCID("calledCC:0"),
+			PackageID: persistence.PackageID("calledCC:0"),
 		}, nil)
 	ml.On("ChaincodeContainerInfo", ma.Anything, "lscc", ma.Anything).Return(
 		&ccprovider.ChaincodeContainerInfo{
 			Name:      "lscc",
 			Version:   util.GetSysCCVersion(),
-			PackageID: ccintf.CCID("lscc:" + util.GetSysCCVersion()),
+			PackageID: persistence.PackageID("lscc:" + util.GetSysCCVersion()),
 		}, nil)
 	ml.On("ChaincodeContainerInfo", ma.Anything, "badccname", ma.Anything).Return(nil, errors.New("get lost"))
 	mcd := &mock.ChaincodeDefinition{}
@@ -1044,7 +1045,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 		Name:          "testcc",
 		Version:       "0",
 		ContainerType: "DOCKER",
-		PackageID:     ccintf.CCID("testcc:0"),
+		PackageID:     persistence.PackageID("testcc:0"),
 	}
 
 	//actual test - everythings good

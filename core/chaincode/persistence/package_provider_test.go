@@ -11,9 +11,9 @@ import (
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/persistence/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -49,7 +49,7 @@ var _ = Describe("PackageProvider", func() {
 
 		It("gets the code package successfully", func() {
 			pkgBytes, err := packageProvider.GetChaincodeCodePackage(&ccprovider.ChaincodeContainerInfo{
-				PackageID: ccintf.CCID("testcc:1.0"),
+				PackageID: p.PackageID("testcc:1.0"),
 				Name:      "testcc",
 				Version:   "1.0",
 			})
@@ -57,7 +57,7 @@ var _ = Describe("PackageProvider", func() {
 
 			Expect(mockSPP.LoadCallCount()).To(Equal(1))
 			packageID := mockSPP.LoadArgsForCall(0)
-			Expect(packageID).To(Equal(ccintf.CCID("testcc:1.0")))
+			Expect(packageID).To(Equal(p.PackageID("testcc:1.0")))
 
 			Expect(mockParser.ParseCallCount()).To(Equal(1))
 			Expect(mockParser.ParseArgsForCall(0)).To(Equal([]byte("storeCode")))
@@ -72,7 +72,7 @@ var _ = Describe("PackageProvider", func() {
 
 			It("wraps and returns the error", func() {
 				_, err := packageProvider.GetChaincodeCodePackage(&ccprovider.ChaincodeContainerInfo{
-					PackageID: ccintf.CCID("testcc:1.0"),
+					PackageID: p.PackageID("testcc:1.0"),
 					Name:      "testcc",
 					Version:   "1.0",
 				})
@@ -87,7 +87,7 @@ var _ = Describe("PackageProvider", func() {
 
 			It("gets the code package successfully from the legacy package provider", func() {
 				pkgBytes, err := packageProvider.GetChaincodeCodePackage(&ccprovider.ChaincodeContainerInfo{
-					PackageID: ccintf.CCID("testcc:1.0"),
+					PackageID: p.PackageID("testcc:1.0"),
 					Name:      "testcc",
 					Version:   "1.0",
 				})
@@ -103,7 +103,7 @@ var _ = Describe("PackageProvider", func() {
 
 			It("returns an error", func() {
 				pkgBytes, err := packageProvider.GetChaincodeCodePackage(&ccprovider.ChaincodeContainerInfo{
-					PackageID: ccintf.CCID("testcc:1.0"),
+					PackageID: p.PackageID("testcc:1.0"),
 					Name:      "testcc",
 					Version:   "1.0",
 				})
@@ -120,7 +120,7 @@ var _ = Describe("PackageProvider", func() {
 
 			It("returns an error", func() {
 				pkgBytes, err := packageProvider.GetChaincodeCodePackage(&ccprovider.ChaincodeContainerInfo{
-					PackageID: ccintf.CCID("testcc:1.0"),
+					PackageID: p.PackageID("testcc:1.0"),
 					Name:      "testcc",
 					Version:   "1.0",
 				})
@@ -137,7 +137,7 @@ var _ = Describe("PackageProvider", func() {
 
 			It("returns an error", func() {
 				pkgBytes, err := packageProvider.GetChaincodeCodePackage(&ccprovider.ChaincodeContainerInfo{
-					PackageID: ccintf.CCID("testcc:1.0"),
+					PackageID: p.PackageID("testcc:1.0"),
 					Name:      "testcc",
 					Version:   "1.0",
 				})

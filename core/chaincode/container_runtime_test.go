@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
+	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -293,7 +294,7 @@ func TestContainerRuntimeWait(t *testing.T) {
 		Name:          "chaincode-id-name",
 		Version:       "chaincode-version",
 		ContainerType: "container-type",
-		PackageID:     ccintf.CCID("chaincode-id-name:chaincode-version"),
+		PackageID:     persistence.PackageID("chaincode-id-name:chaincode-version"),
 	}
 
 	exitCode, err := cr.Wait(ccci)

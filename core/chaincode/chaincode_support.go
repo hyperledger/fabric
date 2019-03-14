@@ -15,6 +15,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -136,7 +137,7 @@ func NewChaincodeSupport(
 // as in the case of v1.0-v1.2 lifecycle, the chaincode will not yet be
 // defined in the LSCC table
 func (cs *ChaincodeSupport) LaunchInit(ccci *ccprovider.ChaincodeContainerInfo) error {
-	if cs.HandlerRegistry.Handler(ccci.PackageID) != nil {
+	if cs.HandlerRegistry.Handler(ccintf.New(ccci.PackageID)) != nil {
 		return nil
 	}
 
@@ -147,7 +148,9 @@ func (cs *ChaincodeSupport) LaunchInit(ccci *ccprovider.ChaincodeContainerInfo) 
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
 func (cs *ChaincodeSupport) Launch(chainID string, ccci *ccprovider.ChaincodeContainerInfo) (*Handler, error) {
-	if h := cs.HandlerRegistry.Handler(ccci.PackageID); h != nil {
+	ccid := ccintf.New(ccci.PackageID)
+
+	if h := cs.HandlerRegistry.Handler(ccid); h != nil {
 		return h, nil
 	}
 
@@ -155,7 +158,7 @@ func (cs *ChaincodeSupport) Launch(chainID string, ccci *ccprovider.ChaincodeCon
 		return nil, errors.Wrapf(err, "[channel %s] could not launch chaincode %s", chainID, ccci.PackageID)
 	}
 
-	h := cs.HandlerRegistry.Handler(ccci.PackageID)
+	h := cs.HandlerRegistry.Handler(ccid)
 	if h == nil {
 		return nil, errors.Errorf("[channel %s] claimed to start chaincode container for %s but could not find handler", chainID, ccci.PackageID)
 	}
@@ -223,14 +226,14 @@ func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionPa
 	// packageID manually but rather let lifecycle construct it
 	// for us. However this is legacy code that will disappear
 	// so it is acceptable for now
-	ccci.PackageID = ccintf.CCID(ccci.Name + ":" + ccci.Version)
+	ccci.PackageID = persistence.PackageID(ccci.Name + ":" + ccci.Version)
 
 	err := cs.LaunchInit(ccci)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	h := cs.HandlerRegistry.Handler(ccci.PackageID)
+	h := cs.HandlerRegistry.Handler(ccintf.New(ccci.PackageID))
 	if h == nil {
 		return nil, nil, errors.Wrapf(err, "[channel %s] claimed to start chaincode container for %s but could not find handler", txParams.ChannelID, ccci.PackageID)
 	}
@@ -299,7 +302,7 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 		ccci = &ccprovider.ChaincodeContainerInfo{
 			Version:   util.GetSysCCVersion(),
 			Name:      cccid.Name,
-			PackageID: ccintf.CCID(cccid.Name + ":" + util.GetSysCCVersion()),
+			PackageID: persistence.PackageID(cccid.Name + ":" + util.GetSysCCVersion()),
 		}
 	}
 

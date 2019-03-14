@@ -18,8 +18,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/privdata"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -499,7 +499,7 @@ func (*ChaincodeData) ProtoMessage() {}
 
 // ChaincodeContainerInfo is yet another synonym for the data required to start/stop a chaincode.
 type ChaincodeContainerInfo struct {
-	PackageID ccintf.CCID
+	PackageID persistence.PackageID
 	Path      string
 	Type      string
 
@@ -548,6 +548,6 @@ func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec) *Ch
 		Path:          cds.ChaincodeSpec.ChaincodeId.Path,
 		Type:          cds.ChaincodeSpec.Type.String(),
 		ContainerType: cds.ExecEnv.String(),
-		PackageID:     ccintf.CCID(cds.ChaincodeSpec.ChaincodeId.Name + ":" + cds.ChaincodeSpec.ChaincodeId.Version),
+		PackageID:     persistence.PackageID(cds.ChaincodeSpec.ChaincodeId.Name + ":" + cds.ChaincodeSpec.ChaincodeId.Version),
 	}
 }

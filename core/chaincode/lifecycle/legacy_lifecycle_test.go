@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -68,7 +68,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			InstallInfo: &lifecycle.ChaincodeInstallInfo{
 				Path:      "fake-path",
 				Type:      "fake-type",
-				PackageID: ccintf.CCID("hash"),
+				PackageID: persistence.PackageID("hash"),
 			},
 			Approved: true,
 		}
@@ -104,7 +104,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 				InstallInfo: &lifecycle.ChaincodeInstallInfo{
 					Type:      "fake-type",
 					Path:      "fake-path",
-					PackageID: ccintf.CCID("hash"),
+					PackageID: persistence.PackageID("hash"),
 				},
 				Approved: true,
 			}))

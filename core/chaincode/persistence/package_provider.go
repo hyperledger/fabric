@@ -10,8 +10,8 @@ import (
 	"io/ioutil"
 
 	"github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +20,7 @@ import (
 type StorePackageProvider interface {
 	GetChaincodeInstallPath() string
 	ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error)
-	Load(packageID ccintf.CCID) ([]byte, error)
+	Load(packageID persistence.PackageID) ([]byte, error)
 }
 
 // LegacyPackageProvider is the interface needed to retrieve
@@ -69,7 +69,7 @@ func (p *PackageProvider) GetChaincodeCodePackage(ccci *ccprovider.ChaincodeCont
 
 // GetCodePackageFromStore gets the code package bytes from the package
 // provider's Store, which persists ChaincodeInstallPackages
-func (p *PackageProvider) getCodePackageFromStore(packageID ccintf.CCID) ([]byte, error) {
+func (p *PackageProvider) getCodePackageFromStore(packageID persistence.PackageID) ([]byte, error) {
 	fsBytes, err := p.Store.Load(packageID)
 	if _, ok := err.(*CodePackageNotFoundErr); ok {
 		return nil, err

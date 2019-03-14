@@ -17,7 +17,7 @@ import (
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/pkg/errors"
 )
 
@@ -135,9 +135,9 @@ func (cd *ChaincodeDefinition) Parameters() *ChaincodeParameters {
 
 // ChaincodeStore provides a way to persist chaincodes
 type ChaincodeStore interface {
-	Save(label string, ccInstallPkg []byte) (ccintf.CCID, error)
+	Save(label string, ccInstallPkg []byte) (p.PackageID, error)
 	ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error)
-	Load(packageID ccintf.CCID) (ccInstallPkg []byte, err error)
+	Load(packageID p.PackageID) (ccInstallPkg []byte, err error)
 }
 
 type PackageParser interface {
@@ -146,7 +146,7 @@ type PackageParser interface {
 
 //go:generate counterfeiter -o mock/install_listener.go --fake-name InstallListener . InstallListener
 type InstallListener interface {
-	HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID ccintf.CCID)
+	HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID p.PackageID)
 }
 
 // Resources stores the common functions needed by all components of the lifecycle
@@ -235,7 +235,7 @@ func (ef *ExternalFunctions) CommitChaincodeDefinition(name string, cd *Chaincod
 // ApproveChaincodeDefinitionForOrg adds a chaincode definition entry into the passed in Org state.  The definition must be
 // for either the currently defined sequence number or the next sequence number.  If the definition is
 // for the current sequence number, then it must match exactly the current definition or it will be rejected.
-func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, packageID ccintf.CCID, publicState ReadableState, orgState ReadWritableState) error {
+func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, packageID p.PackageID, publicState ReadableState, orgState ReadWritableState) error {
 	// Get the current sequence from the public state
 	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, name, "Sequence", publicState)
 	if err != nil {
@@ -282,7 +282,7 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *C
 
 	if packageID != "" {
 		if err := ef.Resources.Serializer.Serialize(ChaincodeSourcesName, privateName, &ChaincodeLocalPackage{
-			PackageID: string(packageID),
+			PackageID: packageID.String(),
 		}, orgState); err != nil {
 			return errors.WithMessage(err, "could not serialize chaincode package info to state")
 		}
@@ -312,16 +312,16 @@ func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState R
 
 // InstallChaincode installs a given chaincode to the peer's chaincode store.
 // It returns the hash to reference the chaincode by or an error on failure.
-func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (ccintf.CCID, error) {
+func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (p.PackageID, error) {
 	// Let's validate that the chaincodeInstallPackage is at least well formed before writing it
 	pkg, err := ef.Resources.PackageParser.Parse(chaincodeInstallPackage)
 	if err != nil {
-		return ccintf.CCID(""), errors.WithMessage(err, "could not parse as a chaincode install package")
+		return p.PackageID(""), errors.WithMessage(err, "could not parse as a chaincode install package")
 	}
 
 	packageID, err := ef.Resources.ChaincodeStore.Save(pkg.Metadata.Label, chaincodeInstallPackage)
 	if err != nil {
-		return ccintf.CCID(""), errors.WithMessage(err, "could not save cc install package")
+		return p.PackageID(""), errors.WithMessage(err, "could not save cc install package")
 	}
 
 	if ef.InstallListener != nil {

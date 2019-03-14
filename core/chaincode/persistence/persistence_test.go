@@ -14,8 +14,8 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/persistence/mock"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -156,7 +156,7 @@ var _ = Describe("Persistence", func() {
 
 			It("returns an error", func() {
 				packageID, err := store.Save("testcc", pkgBytes)
-				Expect(packageID).To(Equal(ccintf.CCID("")))
+				Expect(packageID).To(Equal(p.PackageID("")))
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error writing chaincode install package to testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.bin: soccer"))
 			})
@@ -179,7 +179,7 @@ var _ = Describe("Persistence", func() {
 		})
 
 		It("loads successfully and returns the chaincode names/versions", func() {
-			ccInstallPkgBytes, err := store.Load(ccintf.CCID("hash"))
+			ccInstallPkgBytes, err := store.Load(p.PackageID("hash"))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ccInstallPkgBytes).To(Equal([]byte("cornerkick")))
 		})
@@ -190,9 +190,9 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				ccInstallPkgBytes, err := store.Load(ccintf.CCID("hash"))
+				ccInstallPkgBytes, err := store.Load(p.PackageID("hash"))
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(Equal(&persistence.CodePackageNotFoundErr{PackageID: ccintf.CCID("hash")}))
+				Expect(err).To(Equal(&persistence.CodePackageNotFoundErr{PackageID: p.PackageID("hash")}))
 				Expect(err.Error()).To(Equal("chaincode install package 'hash' not found"))
 				Expect(len(ccInstallPkgBytes)).To(Equal(0))
 			})
@@ -204,7 +204,7 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				ccInstallPkgBytes, err := store.Load(ccintf.CCID("hash"))
+				ccInstallPkgBytes, err := store.Load(p.PackageID("hash"))
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("could not determine whether chaincode install package 'hash' exists: goodness me!"))
 				Expect(len(ccInstallPkgBytes)).To(Equal(0))
@@ -217,7 +217,7 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				ccInstallPkgBytes, err := store.Load(ccintf.CCID("hash"))
+				ccInstallPkgBytes, err := store.Load(p.PackageID("hash"))
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error reading chaincode install package"))
 				Expect(len(ccInstallPkgBytes)).To(Equal(0))
