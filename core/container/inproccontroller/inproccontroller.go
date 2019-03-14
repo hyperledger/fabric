@@ -53,7 +53,7 @@ func (s SysCCRegisteredErr) Error() string {
 // It implements container.VMProvider and scc.Registrar
 type Registry struct {
 	mutex        sync.Mutex
-	typeRegistry map[string]*inprocContainer
+	typeRegistry map[ccintf.CCID]*inprocContainer
 	instRegistry map[string]*inprocContainer
 
 	ChaincodeSupport ccintf.CCSupport
@@ -66,7 +66,7 @@ type Registry struct {
 // it is being made an explicit part of the startup.
 func NewRegistry() *Registry {
 	return &Registry{
-		typeRegistry: make(map[string]*inprocContainer),
+		typeRegistry: make(map[ccintf.CCID]*inprocContainer),
 		instRegistry: make(map[string]*inprocContainer),
 	}
 }
@@ -77,24 +77,24 @@ func (r *Registry) NewVM() container.VM {
 }
 
 // Register registers system chaincode with given path. The deploy should be called to initialize
-func (r *Registry) Register(ccid *ccintf.CCID, cc shim.Chaincode) error {
+func (r *Registry) Register(ccid ccintf.CCID, cc shim.Chaincode) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
 	inprocLogger.Debugf("Registering chaincode instance: %s", ccid)
-	tmp := r.typeRegistry[ccid.String()]
+	tmp := r.typeRegistry[ccid]
 	if tmp != nil {
 		return SysCCRegisteredErr(ccid.String())
 	}
 
-	r.typeRegistry[ccid.String()] = &inprocContainer{chaincode: cc}
+	r.typeRegistry[ccid] = &inprocContainer{chaincode: cc}
 	return nil
 }
 
-func (r *Registry) getType(name string) *inprocContainer {
+func (r *Registry) getType(ccid ccintf.CCID) *inprocContainer {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	return r.typeRegistry[name]
+	return r.typeRegistry[ccid]
 }
 
 func (r *Registry) getInstance(name string) *inprocContainer {
@@ -204,7 +204,7 @@ func (ipc *inprocContainer) launchInProc(id string, args []string, env []string)
 
 //Start starts a previously registered system codechain
 func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
-	ipctemplate := vm.registry.getType(ccid.String())
+	ipctemplate := vm.registry.getType(ccid)
 	if ipctemplate == nil {
 		return fmt.Errorf(fmt.Sprintf("%s not registered", ccid))
 	}
@@ -237,7 +237,7 @@ func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesTo
 
 //Stop stops a system codechain
 func (vm *InprocVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
-	ipctemplate := vm.registry.getType(ccid.String())
+	ipctemplate := vm.registry.getType(ccid)
 	if ipctemplate == nil {
 		return fmt.Errorf("%s not registered", ccid)
 	}

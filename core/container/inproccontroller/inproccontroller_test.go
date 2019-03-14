@@ -37,8 +37,7 @@ func TestRegisterSuccess(t *testing.T) {
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
 	shim := MockShim{}
-	cccid := ccintf.CCID("name")
-	err := r.Register(&cccid, shim)
+	err := r.Register(ccintf.CCID("name"), shim)
 
 	assert.Nil(t, err, "err should be nil")
 	assert.Equal(t, r.typeRegistry["name"].chaincode, shim, "shim should be correct")
@@ -49,8 +48,7 @@ func TestRegisterError(t *testing.T) {
 	r.ChaincodeSupport = MockCCSupport{}
 	r.typeRegistry["name"] = &inprocContainer{}
 	shim := MockShim{}
-	ccid := ccintf.CCID("name")
-	err := r.Register(&ccid, shim)
+	err := r.Register(ccintf.CCID("name"), shim)
 
 	assert.NotNil(t, err, "err should not be nil")
 }
