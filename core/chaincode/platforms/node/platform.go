@@ -190,6 +190,7 @@ func (nodePlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *
 	codepackage := bytes.NewReader(code)
 	binpackage := bytes.NewBuffer(nil)
 	err := util.DockerBuild(util.DockerBuildOptions{
+		Image:        cutil.GetDockerfileFromConfig("chaincode.node.runtime"),
 		Cmd:          fmt.Sprint("cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production"),
 		InputStream:  codepackage,
 		OutputStream: binpackage,
