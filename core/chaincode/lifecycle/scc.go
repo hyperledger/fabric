@@ -66,10 +66,10 @@ type SCCFunctions interface {
 	QueryInstalledChaincodes() (chaincodes []chaincode.InstalledChaincode, err error)
 
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
-	ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, packageID persistence.PackageID, publicState ReadableState, orgState ReadWritableState) error
+	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID persistence.PackageID, publicState ReadableState, orgState ReadWritableState) error
 
 	// CommitChaincodeDefinition records a new chaincode definition into the public state and returns the orgs which agreed with that definition.
-	CommitChaincodeDefinition(name string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
+	CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
 
 	// QueryChaincodeDefinition reads a chaincode definition from the public state.
 	QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error)
@@ -281,6 +281,7 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 	}
 
 	if err := i.SCC.Functions.ApproveChaincodeDefinitionForOrg(
+		i.Stub.GetChannelID(),
 		input.Name,
 		&ChaincodeDefinition{
 			Sequence: input.Sequence,
@@ -332,6 +333,7 @@ func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefiniti
 	}
 
 	agreement, err := i.SCC.Functions.CommitChaincodeDefinition(
+		i.Stub.GetChannelID(),
 		input.Name,
 		&ChaincodeDefinition{
 			Sequence: input.Sequence,

@@ -14,7 +14,9 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	cb "github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
+	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/golang/protobuf/proto"
 	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
@@ -40,6 +42,17 @@ const (
 
 	// FriendlyChaincodeDefinitionType is the name exposed to the outside world for the chaincode namespace
 	FriendlyChaincodeDefinitionType = "Chaincode"
+
+	// DefaultEndorsementPolicyRef is the name of the default endorsement policy for this channel
+	DefaultEndorsementPolicyRef = "/Channel/Application/Endorsement"
+)
+
+var (
+	DefaultEndorsementPolicyBytes = protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
+		Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+			ChannelConfigPolicyReference: DefaultEndorsementPolicyRef,
+		},
+	})
 )
 
 // Sequences are the underpinning of the definition framework for lifecycle.  All definitions
@@ -208,8 +221,8 @@ type ExternalFunctions struct {
 // checks which organizations agree with the definition, and applies the definition to the public world state.
 // It is the responsibility of the caller to check the agreement to determine if the result is valid (typically
 // this means checking that the peer's own org is in agreement.)
-func (ef *ExternalFunctions) CommitChaincodeDefinition(name string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
-	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, name, "Sequence", publicState)
+func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
+	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, ccname, "Sequence", publicState)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get current sequence")
 	}
@@ -218,26 +231,79 @@ func (ef *ExternalFunctions) CommitChaincodeDefinition(name string, cd *Chaincod
 		return nil, errors.Errorf("requested sequence is %d, but new definition must be sequence %d", cd.Sequence, currentSequence+1)
 	}
 
+	if err := ef.SetChaincodeDefinitionDefaults(chname, cd); err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not set defaults for chaincode definition in channel %s", chname))
+	}
+
 	agreement := make([]bool, len(orgStates))
-	privateName := fmt.Sprintf("%s#%d", name, cd.Sequence)
+	privateName := fmt.Sprintf("%s#%d", ccname, cd.Sequence)
 	for i, orgState := range orgStates {
 		match, err := ef.Resources.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters(), orgState)
 		agreement[i] = (err == nil && match)
 	}
 
-	if err = ef.Resources.Serializer.Serialize(NamespacesName, name, cd, publicState); err != nil {
+	if err = ef.Resources.Serializer.Serialize(NamespacesName, ccname, cd, publicState); err != nil {
 		return nil, errors.WithMessage(err, "could not serialize chaincode definition")
 	}
 
 	return agreement, nil
 }
 
+// DefaultEndorsementPolicyAsBytes returns a marshalled version
+// of the default chaincode endorsement policy in the supplied channel
+func (ef *ExternalFunctions) DefaultEndorsementPolicyAsBytes(channelID string) ([]byte, error) {
+	channelConfig := ef.Resources.ChannelConfigSource.GetStableChannelConfig(channelID)
+	if channelConfig == nil {
+		return nil, errors.Errorf("could not get channel config for channel '%s'", channelID)
+	}
+
+	// see if the channel defines a default
+	if _, ok := channelConfig.PolicyManager().GetPolicy(DefaultEndorsementPolicyRef); ok {
+		return DefaultEndorsementPolicyBytes, nil
+	}
+
+	return nil, errors.Errorf(
+		"Policy '%s' must be defined for channel '%s' before chaincode operations can be attempted",
+		DefaultEndorsementPolicyRef,
+		channelID,
+	)
+}
+
+// SetChaincodeDefinitionDefaults fills any empty fields in the
+// supplied ChaincodeDefinition with the supplied channel's defaults
+func (ef *ExternalFunctions) SetChaincodeDefinitionDefaults(chname string, cd *ChaincodeDefinition) error {
+	if cd.EndorsementInfo.EndorsementPlugin == "" {
+		// TODO:
+		// 1) rename to "default" or "builtin"
+		// 2) retrieve from channel config
+		cd.EndorsementInfo.EndorsementPlugin = "escc"
+	}
+
+	if cd.ValidationInfo.ValidationPlugin == "" {
+		// TODO:
+		// 1) rename to "default" or "builtin"
+		// 2) retrieve from channel config
+		cd.ValidationInfo.ValidationPlugin = "vscc"
+	}
+
+	if len(cd.ValidationInfo.ValidationParameter) == 0 {
+		policyBytes, err := ef.DefaultEndorsementPolicyAsBytes(chname)
+		if err != nil {
+			return err
+		}
+
+		cd.ValidationInfo.ValidationParameter = policyBytes
+	}
+
+	return nil
+}
+
 // ApproveChaincodeDefinitionForOrg adds a chaincode definition entry into the passed in Org state.  The definition must be
 // for either the currently defined sequence number or the next sequence number.  If the definition is
 // for the current sequence number, then it must match exactly the current definition or it will be rejected.
-func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *ChaincodeDefinition, packageID p.PackageID, publicState ReadableState, orgState ReadWritableState) error {
+func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID p.PackageID, publicState ReadableState, orgState ReadWritableState) error {
 	// Get the current sequence from the public state
-	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, name, "Sequence", publicState)
+	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, ccname, "Sequence", publicState)
 	if err != nil {
 		return errors.WithMessage(err, "could not get current sequence")
 	}
@@ -256,8 +322,12 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *C
 		return errors.Errorf("requested sequence %d is larger than the next available sequence number %d", requestedSequence, currentSequence+1)
 	}
 
+	if err := ef.SetChaincodeDefinitionDefaults(chname, cd); err != nil {
+		return errors.WithMessage(err, fmt.Sprintf("could not set defaults for chaincode definition in channel %s", chname))
+	}
+
 	if requestedSequence == currentSequence {
-		metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, name, publicState)
+		metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, ccname, publicState)
 		if err != nil {
 			return errors.WithMessage(err, "could not fetch metadata for current definition")
 		}
@@ -266,8 +336,8 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *C
 		}
 
 		definedChaincode := &ChaincodeDefinition{}
-		if err := ef.Resources.Serializer.Deserialize(NamespacesName, name, metadata, definedChaincode, publicState); err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", name))
+		if err := ef.Resources.Serializer.Deserialize(NamespacesName, ccname, metadata, definedChaincode, publicState); err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", ccname))
 		}
 
 		if err := definedChaincode.Parameters().Equal(cd.Parameters()); err != nil {
@@ -275,7 +345,7 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(name string, cd *C
 		}
 	}
 
-	privateName := fmt.Sprintf("%s#%d", name, requestedSequence)
+	privateName := fmt.Sprintf("%s#%d", ccname, requestedSequence)
 	if err := ef.Resources.Serializer.Serialize(NamespacesName, privateName, cd.Parameters(), orgState); err != nil {
 		return errors.WithMessage(err, "could not serialize chaincode parameters to state")
 	}
