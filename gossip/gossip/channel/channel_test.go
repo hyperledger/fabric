@@ -187,6 +187,13 @@ func (m *receivedMsg) GetConnectionInfo() *protoext.ConnectionInfo {
 
 type gossipAdapterMock struct {
 	mock.Mock
+	sync.RWMutex
+}
+
+func (ga *gossipAdapterMock) On(methodName string, arguments ...interface{}) *mock.Call {
+	ga.Lock()
+	defer ga.Unlock()
+	return ga.Mock.On(methodName, arguments...)
 }
 
 func (ga *gossipAdapterMock) Sign(msg *proto.GossipMessage) (*protoext.SignedGossipMessage, error) {
@@ -212,9 +219,12 @@ func (ga *gossipAdapterMock) DeMultiplex(msg interface{}) {
 
 func (ga *gossipAdapterMock) GetMembership() []discovery.NetworkMember {
 	args := ga.Called()
-	members := args.Get(0).([]discovery.NetworkMember)
-
-	return members
+	arg := args.Get(0)
+	if f, isFunc := arg.(func() []discovery.NetworkMember); isFunc {
+		return f()
+	} else {
+		return arg.([]discovery.NetworkMember)
+	}
 }
 
 // Lookup returns a network member, or nil if not found
@@ -262,9 +272,8 @@ func (ga *gossipAdapterMock) GetIdentityByPKIID(pkiID common.PKIidType) api.Peer
 }
 
 func (ga *gossipAdapterMock) wasMocked(methodName string) bool {
-	// The following On call is just to synchronize the ExpectedCalls
-	// access with 'On' calls from the test goroutine
-	ga.On("bla", mock.Anything)
+	ga.RLock()
+	defer ga.RUnlock()
 	for _, ec := range ga.ExpectedCalls {
 		if ec.Method == methodName {
 			return true
@@ -1728,19 +1737,34 @@ func TestOnDemandGossip(t *testing.T) {
 	// takes place when membership is not empty
 
 	cs := &cryptoService{}
+
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
 
-	gossipedEvents := make(chan struct{})
+	adapter.ExpectedCalls = append(adapter.ExpectedCalls[:1], adapter.ExpectedCalls[2:]...)
+	var lock sync.RWMutex
+	var membershipKnown bool
+	var signal bool
+	adapter.On("GetMembership").Return(func() []discovery.NetworkMember {
+		lock.RLock()
+		defer lock.RUnlock()
+		if !membershipKnown {
+			return []discovery.NetworkMember{}
+		}
+		return []discovery.NetworkMember{{}}
+	})
 
-	conf := conf
-	conf.PublishStateInfoInterval = time.Millisecond * 200
-	adapter.On("GetConf").Return(conf)
-	adapter.On("GetMembership").Return([]discovery.NetworkMember{})
+	gossipedEvents := make(chan struct{})
 	adapter.On("Gossip", mock.Anything).Run(func(mock.Arguments) {
+		lock.Lock()
+		defer lock.Unlock()
+		if signal {
+			membershipKnown = true
+		}
 		gossipedEvents <- struct{}{}
 	})
 	adapter.On("Forward", mock.Anything)
+
 	gc := NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, api.JoinChannelMessage(&joinChanMsg{}),
 		disabledMetrics, nil)
 	defer gc.Stop()
@@ -1760,13 +1784,11 @@ func TestOnDemandGossip(t *testing.T) {
 	case <-time.After(time.Second):
 		assert.Fail(t, "Should have gossiped a second time, because membership is empty")
 	}
-	adapter = new(gossipAdapterMock)
-	configureAdapter(adapter, []discovery.NetworkMember{{}}...)
-	adapter.On("Gossip", mock.Anything).Run(func(mock.Arguments) {
-		gossipedEvents <- struct{}{}
-	})
-	adapter.On("Forward", mock.Anything)
-	gc.(*gossipChannel).Adapter = adapter
+
+	lock.Lock()
+	signal = true
+	lock.Unlock()
+
 	select {
 	case <-gossipedEvents:
 	case <-time.After(time.Second):
