@@ -7,15 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package persistence
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"regexp"
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-
 	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+
 	"github.com/pkg/errors"
 )
 
@@ -78,8 +81,8 @@ type Store struct {
 // the hash of the chaincode install package
 func (s *Store) Save(label string, ccInstallPkg []byte) (persistence.PackageID, error) {
 	hash := util.ComputeSHA256(ccInstallPkg)
-	packageID := PackageID(label, hash)
-	ccInstallPkgPath := PackagePath(s.Path, packageID)
+	packageID := packageID(label, hash)
+	ccInstallPkgPath := packagePath(s.Path, packageID)
 
 	if exists, _ := s.ReadWriter.Exists(ccInstallPkgPath); exists {
 		// chaincode install package was already installed
@@ -99,7 +102,7 @@ func (s *Store) Save(label string, ccInstallPkg []byte) (persistence.PackageID, 
 // and also returns the chaincode metadata (names and versions) of any chaincode
 // installed with a matching hash
 func (s *Store) Load(packageID persistence.PackageID) ([]byte, error) {
-	ccInstallPkgPath := PackagePath(s.Path, packageID)
+	ccInstallPkgPath := packagePath(s.Path, packageID)
 
 	exists, err := s.ReadWriter.Exists(ccInstallPkgPath)
 	if err != nil {
@@ -140,8 +143,8 @@ func (s *Store) ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error
 
 	installedChaincodes := []chaincode.InstalledChaincode{}
 	for _, file := range files {
-		if isInstalledChaincode, installedChaincode := InstalledChaincodeFromFilename(file.Name()); isInstalledChaincode {
-			installedChaincodes = append(installedChaincodes, installedChaincode)
+		if instCC, isInstCC := installedChaincodeFromFilename(file.Name()); isInstCC {
+			installedChaincodes = append(installedChaincodes, instCC)
 		}
 	}
 	return installedChaincodes, nil
@@ -151,4 +154,31 @@ func (s *Store) ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error
 // are installed
 func (s *Store) GetChaincodeInstallPath() string {
 	return s.Path
+}
+
+func packageID(label string, hash []byte) persistence.PackageID {
+	return persistence.PackageID(fmt.Sprintf("%s:%x", label, hash))
+}
+
+var packageFileMatcher = regexp.MustCompile("^(.+):([0-9abcdef]+)[.]bin$")
+
+func packagePath(path string, packageID persistence.PackageID) string {
+	return filepath.Join(path, packageID.String()+".bin")
+}
+
+func installedChaincodeFromFilename(fileName string) (chaincode.InstalledChaincode, bool) {
+	matches := packageFileMatcher.FindStringSubmatch(fileName)
+	if len(matches) == 3 {
+		label := matches[1]
+		hash, _ := hex.DecodeString(matches[2])
+		packageID := packageID(label, hash)
+
+		return chaincode.InstalledChaincode{
+			Label:     label,
+			Hash:      hash,
+			PackageID: packageID,
+		}, true
+	}
+
+	return chaincode.InstalledChaincode{}, false
 }

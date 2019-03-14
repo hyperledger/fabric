@@ -7,12 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package persistence_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/persistence/mock"
@@ -59,7 +59,7 @@ var _ = Describe("Persistence", func() {
 			Expect(exists).To(BeTrue())
 		})
 
-		It("stats a no-existent file", func() {
+		It("stats a non-existent file", func() {
 			exists, err := filesystemIO.Exists("not quite")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeFalse())
@@ -129,10 +129,10 @@ var _ = Describe("Persistence", func() {
 		It("saves a new code package successfully", func() {
 			packageID, err := store.Save("testcc", pkgBytes)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(packageID).To(Equal(persistence.PackageID("testcc", util.ComputeSHA256([]byte("testpkg")))))
+			Expect(packageID).To(Equal(p.PackageID("testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d")))
 			Expect(mockReadWriter.WriteFileCallCount()).To(Equal(1))
 			pkgDataFile, pkgData, _ := mockReadWriter.WriteFileArgsForCall(0)
-			Expect(pkgDataFile).To(Equal(persistence.PackagePath("", persistence.PackageID("testcc", util.ComputeSHA256([]byte("testpkg"))))))
+			Expect(pkgDataFile).To(Equal("testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.bin"))
 			Expect(pkgData).To(Equal([]byte("testpkg")))
 		})
 
@@ -144,7 +144,7 @@ var _ = Describe("Persistence", func() {
 			It("does nothing and returns the packageID", func() {
 				packageID, err := store.Save("testcc", pkgBytes)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(packageID).To(Equal(persistence.PackageID("testcc", util.ComputeSHA256([]byte("testpkg")))))
+				Expect(packageID).To(Equal(p.PackageID("testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d")))
 				Expect(mockReadWriter.WriteFileCallCount()).To(Equal(0))
 			})
 		})
@@ -234,9 +234,9 @@ var _ = Describe("Persistence", func() {
 		BeforeEach(func() {
 			mockReadWriter = &mock.IOReadWriter{}
 			mockFileInfo := &mock.OSFileInfo{}
-			mockFileInfo.NameReturns(persistence.PackagePath("", persistence.PackageID("label1", []byte("hash1"))))
+			mockFileInfo.NameReturns(fmt.Sprintf("%s:%x.bin", "label1", []byte("hash1")))
 			mockFileInfo2 := &mock.OSFileInfo{}
-			mockFileInfo2.NameReturns(persistence.PackagePath("", persistence.PackageID("label2", []byte("hash2"))))
+			mockFileInfo2.NameReturns(fmt.Sprintf("%s:%x.bin", "label2", []byte("hash2")))
 			mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo, mockFileInfo2}, nil)
 			store = &persistence.Store{
 				ReadWriter: mockReadWriter,
@@ -250,25 +250,25 @@ var _ = Describe("Persistence", func() {
 			Expect(installedChaincodes[0]).To(Equal(chaincode.InstalledChaincode{
 				Hash:      []byte("hash1"),
 				Label:     "label1",
-				PackageID: persistence.PackageID("label1", []byte("hash1")),
+				PackageID: p.PackageID("label1:6861736831"),
 			}))
 			Expect(installedChaincodes[1]).To(Equal(chaincode.InstalledChaincode{
 				Hash:      []byte("hash2"),
 				Label:     "label2",
-				PackageID: persistence.PackageID("label2", []byte("hash2")),
+				PackageID: p.PackageID("label2:6861736832"),
 			}))
 		})
 
 		Context("when extraneous files are present", func() {
 			BeforeEach(func() {
 				mockFileInfo := &mock.OSFileInfo{}
-				mockFileInfo.NameReturns(persistence.PackagePath("", persistence.PackageID("label1", []byte("hash1"))))
+				mockFileInfo.NameReturns(fmt.Sprintf("%s:%x.bin", "label1", []byte("hash1")))
 				mockFileInfo2 := &mock.OSFileInfo{}
-				mockFileInfo2.NameReturns(persistence.PackagePath("", persistence.PackageID("label2", []byte("hash2"))))
+				mockFileInfo2.NameReturns(fmt.Sprintf("%s:%x.bin", "label2", []byte("hash2")))
 				mockFileInfo3 := &mock.OSFileInfo{}
-				mockFileInfo3.NameReturns(persistence.PackagePath("", "Musha rain dum a doo, dum a da"))
+				mockFileInfo3.NameReturns(fmt.Sprintf("%s:%x.bin", "", "Musha rain dum a doo, dum a da"))
 				mockFileInfo4 := &mock.OSFileInfo{}
-				mockFileInfo4.NameReturns(persistence.PackagePath("", "barfity:barf.bin"))
+				mockFileInfo4.NameReturns(fmt.Sprintf("%s:%x.bin", "", "barfity:barf.bin"))
 				mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo, mockFileInfo2, mockFileInfo3}, nil)
 			})
 
@@ -279,12 +279,12 @@ var _ = Describe("Persistence", func() {
 				Expect(installedChaincodes[0]).To(Equal(chaincode.InstalledChaincode{
 					Hash:      []byte("hash1"),
 					Label:     "label1",
-					PackageID: persistence.PackageID("label1", []byte("hash1")),
+					PackageID: p.PackageID("label1:6861736831"),
 				}))
 				Expect(installedChaincodes[1]).To(Equal(chaincode.InstalledChaincode{
 					Hash:      []byte("hash2"),
 					Label:     "label2",
-					PackageID: persistence.PackageID("label2", []byte("hash2")),
+					PackageID: p.PackageID("label2:6861736832"),
 				}))
 			})
 		})
