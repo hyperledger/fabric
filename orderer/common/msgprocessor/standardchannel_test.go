@@ -69,6 +69,16 @@ func TestProcessNormalMsg(t *testing.T) {
 }
 
 func TestConfigUpdateMsg(t *testing.T) {
+	t.Run("BadUpdate", func(t *testing.T) {
+		ms := &mockSystemChannelFilterSupport{
+			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+			ProposeConfigUpdateErr: fmt.Errorf("An error"),
+		}
+		config, cs, err := NewStandardChannel(ms, NewRuleSet(nil)).ProcessConfigUpdateMsg(&cb.Envelope{})
+		assert.Nil(t, config)
+		assert.Equal(t, uint64(0), cs)
+		assert.EqualError(t, err, "error applying config update to existing channel 'foo': An error")
+	})
 	t.Run("BadMsg", func(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
