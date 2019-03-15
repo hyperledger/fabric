@@ -47,7 +47,7 @@ func (mc *MembershipChanges) String() string {
 // updates to be applied to the raft  cluster configuration in addition updates mapping between
 // consenter and its id within metadata. Adding and removing a node at the same time is considered
 // to be certificate rotation, and the ID of rotated node is returned.
-func (mc *MembershipChanges) UpdateRaftMetadataAndConfChange(raftMetadata *etcdraft.RaftMetadata) (cc *raftpb.ConfChange, rotate uint64) {
+func (mc *MembershipChanges) UpdateRaftMetadataAndConfChange(raftMetadata *etcdraft.BlockMetadata) (cc *raftpb.ConfChange, rotate uint64) {
 	if mc == nil || mc.TotalChanges == 0 {
 		return nil, 0
 	}
@@ -231,7 +231,7 @@ func ComputeMembershipChanges(oldConsenters map[uint64]*etcdraft.Consenter, newC
 // MetadataHasDuplication returns an error if the metadata has duplication of consenters.
 // A duplication is defined by having a server or a client TLS certificate that is found
 // in two different consenters, regardless of the type of certificate (client/server).
-func MetadataHasDuplication(md *etcdraft.Metadata) error {
+func MetadataHasDuplication(md *etcdraft.ConfigMetadata) error {
 	if md == nil {
 		return errors.New("nil metadata")
 	}
@@ -259,13 +259,13 @@ func MetadataHasDuplication(md *etcdraft.Metadata) error {
 }
 
 // MetadataFromConfigValue reads and translates configuration updates from config value into raft metadata
-func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.Metadata, error) {
+func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigMetadata, error) {
 	consensusTypeValue := &orderer.ConsensusType{}
 	if err := proto.Unmarshal(configValue.Value, consensusTypeValue); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal consensusType config update")
 	}
 
-	updatedMetadata := &etcdraft.Metadata{}
+	updatedMetadata := &etcdraft.ConfigMetadata{}
 	if err := proto.Unmarshal(consensusTypeValue.Metadata, updatedMetadata); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal updated (new) etcdraft metadata configuration")
 	}
@@ -274,7 +274,7 @@ func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.Metadat
 }
 
 // MetadataFromConfigUpdate extracts consensus metadata from config update
-func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.Metadata, error) {
+func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.ConfigMetadata, error) {
 	if ordererConfigGroup, ok := update.WriteSet.Groups["Orderer"]; ok {
 		if val, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
 			return MetadataFromConfigValue(val)
@@ -336,7 +336,7 @@ func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 }
 
 // ConsensusMetadataFromConfigBlock reads consensus metadata updates from the configuration block
-func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.Metadata, error) {
+func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMetadata, error) {
 	if block == nil {
 		return nil, errors.New("nil block")
 	}
@@ -385,7 +385,7 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 	if !exists {
 		return errors.New("no orderer config in bundle")
 	}
-	m := &etcdraft.Metadata{}
+	m := &etcdraft.ConfigMetadata{}
 	if err := proto.Unmarshal(oc.ConsensusMetadata(), m); err != nil {
 		return err
 	}
@@ -421,7 +421,7 @@ func NodeExists(id uint64, nodes []uint64) bool {
 
 // ConfChange computes Raft configuration changes based on current Raft configuration state and
 // consenters mapping stored in RaftMetadata
-func ConfChange(raftMetadata *etcdraft.RaftMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
+func ConfChange(raftMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
 	raftConfChange := &raftpb.ConfChange{}
 
 	// need to compute conf changes to propose

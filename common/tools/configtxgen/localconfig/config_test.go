@@ -132,7 +132,7 @@ func TestConsensusSpecificInit(t *testing.T) {
 			return &Profile{
 				Orderer: &Orderer{
 					OrdererType: "etcdraft",
-					EtcdRaft: &etcdraft.Metadata{
+					EtcdRaft: &etcdraft.ConfigMetadata{
 						Consenters: consenters,
 						Options:    options,
 					},

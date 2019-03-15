@@ -258,7 +258,7 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			Expect(filepath.Join(network.RootDir, tlsPath)).To(Equal(network.OrdererLocalTLSDir(orderer)))
 			certBytes, err := ioutil.ReadFile(filepath.Join(network.RootDir, tlsPath, "server.crt"))
 			Expect(err).NotTo(HaveOccurred())
-			raft_metadata := &protosraft.Metadata{
+			raft_metadata := &protosraft.ConfigMetadata{
 				Consenters: []*protosraft.Consenter{
 					{
 						ClientTlsCert: certBytes,
@@ -277,7 +277,7 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 				}}
 
 			raft_metadata_bytes := utils.MarshalOrPanic(raft_metadata)
-			raft_metadata2 := &protosraft.Metadata{}
+			raft_metadata2 := &protosraft.ConfigMetadata{}
 			errUnma := proto.Unmarshal(raft_metadata_bytes, raft_metadata2)
 			Expect(errUnma).NotTo(HaveOccurred())
 

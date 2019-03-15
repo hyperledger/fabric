@@ -130,7 +130,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		}
 	}
 
-	m := &etcdraft.Metadata{}
+	m := &etcdraft.ConfigMetadata{}
 	if err := proto.Unmarshal(support.SharedConfig().ConsensusMetadata(), m); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal consensus metadata")
 	}
@@ -151,12 +151,12 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	// In case chain has been restarted we restore raft metadata
 	// information from the recently committed block meta data
 	// field.
-	raftMetadata, err := ReadRaftMetadata(metadata, m)
+	blockMetadata, err := ReadBlockMetadata(metadata, m)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read Raft metadata")
 	}
 
-	id, err := c.detectSelfID(raftMetadata.Consenters)
+	id, err := c.detectSelfID(blockMetadata.Consenters)
 	if err != nil {
 		c.InactiveChainRegistry.TrackChain(support.ChainID(), support.Block(0), func() {
 			c.CreateChain(support.ChainID())
@@ -193,7 +193,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		MaxSizePerMsg:   m.Options.MaxSizePerMsg,
 		SnapInterval:    m.Options.SnapshotInterval,
 
-		RaftMetadata: raftMetadata,
+		BlockMetadata: blockMetadata,
 
 		WALDir:            path.Join(c.EtcdRaftConfig.WALDir, support.ChainID()),
 		SnapDir:           path.Join(c.EtcdRaftConfig.SnapDir, support.ChainID()),
@@ -219,10 +219,10 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	)
 }
 
-// ReadRaftMetadata attempts to read raft metadata from block metadata, if available.
+// ReadBlockMetadata attempts to read raft metadata from block metadata, if available.
 // otherwise, it reads raft metadata from config metadata supplied.
-func ReadRaftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {
-	m := &etcdraft.RaftMetadata{
+func ReadBlockMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.ConfigMetadata) (*etcdraft.BlockMetadata, error) {
+	m := &etcdraft.BlockMetadata{
 		Consenters:      map[uint64]*etcdraft.Consenter{},
 		NextConsenterId: 1,
 	}

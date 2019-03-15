@@ -289,7 +289,7 @@ var _ = Describe("EndToEnd", func() {
 			numOfSnaps := len(files)
 
 			nwo.UpdateConsensusMetadata(network, peer, orderer, channel, func(originalMetadata []byte) []byte {
-				metadata := &etcdraft.Metadata{}
+				metadata := &etcdraft.ConfigMetadata{}
 				err := proto.Unmarshal(originalMetadata, metadata)
 				Expect(err).NotTo(HaveOccurred())
 

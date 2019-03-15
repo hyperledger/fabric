@@ -41,7 +41,7 @@ type node struct {
 	tickInterval time.Duration
 	clock        clock.Clock
 
-	metadata *etcdraft.RaftMetadata
+	metadata *etcdraft.BlockMetadata
 
 	raft.Node
 }

@@ -155,16 +155,16 @@ type AnchorPeer struct {
 // Orderer contains configuration which is used for the
 // bootstrapping of an orderer by the provisional bootstrapper.
 type Orderer struct {
-	OrdererType   string             `yaml:"OrdererType"`
-	Addresses     []string           `yaml:"Addresses"`
-	BatchTimeout  time.Duration      `yaml:"BatchTimeout"`
-	BatchSize     BatchSize          `yaml:"BatchSize"`
-	Kafka         Kafka              `yaml:"Kafka"`
-	EtcdRaft      *etcdraft.Metadata `yaml:"EtcdRaft"`
-	Organizations []*Organization    `yaml:"Organizations"`
-	MaxChannels   uint64             `yaml:"MaxChannels"`
-	Capabilities  map[string]bool    `yaml:"Capabilities"`
-	Policies      map[string]*Policy `yaml:"Policies"`
+	OrdererType   string                   `yaml:"OrdererType"`
+	Addresses     []string                 `yaml:"Addresses"`
+	BatchTimeout  time.Duration            `yaml:"BatchTimeout"`
+	BatchSize     BatchSize                `yaml:"BatchSize"`
+	Kafka         Kafka                    `yaml:"Kafka"`
+	EtcdRaft      *etcdraft.ConfigMetadata `yaml:"EtcdRaft"`
+	Organizations []*Organization          `yaml:"Organizations"`
+	MaxChannels   uint64                   `yaml:"MaxChannels"`
+	Capabilities  map[string]bool          `yaml:"Capabilities"`
+	Policies      map[string]*Policy       `yaml:"Policies"`
 }
 
 // BatchSize contains configuration affecting the size of batches.
@@ -192,7 +192,7 @@ var genesisDefaults = TopLevel{
 		Kafka: Kafka{
 			Brokers: []string{"127.0.0.1:9092"},
 		},
-		EtcdRaft: &etcdraft.Metadata{
+		EtcdRaft: &etcdraft.ConfigMetadata{
 			Options: &etcdraft.Options{
 				TickInterval:     "500ms",
 				ElectionTick:     10,
