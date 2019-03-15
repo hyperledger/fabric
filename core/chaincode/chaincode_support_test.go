@@ -37,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -185,9 +186,24 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	pr := platforms.NewRegistry(&golang.Platform{})
 	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
 	ml := &mock.Lifecycle{}
-	ml.On("ChaincodeContainerInfo", ma.Anything, "shimTestCC", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "shimTestCC", Version: "0"}, nil)
-	ml.On("ChaincodeContainerInfo", ma.Anything, "calledCC", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "calledCC", Version: "0"}, nil)
-	ml.On("ChaincodeContainerInfo", ma.Anything, "lscc", ma.Anything).Return(&ccprovider.ChaincodeContainerInfo{Name: "lscc", Version: util.GetSysCCVersion()}, nil)
+	ml.On("ChaincodeContainerInfo", ma.Anything, "shimTestCC", ma.Anything).Return(
+		&ccprovider.ChaincodeContainerInfo{
+			Name:      "shimTestCC",
+			Version:   "0",
+			PackageID: ccintf.CCID("shimTestCC:0"),
+		}, nil)
+	ml.On("ChaincodeContainerInfo", ma.Anything, "calledCC", ma.Anything).Return(
+		&ccprovider.ChaincodeContainerInfo{
+			Name:      "calledCC",
+			Version:   "0",
+			PackageID: ccintf.CCID("calledCC:0"),
+		}, nil)
+	ml.On("ChaincodeContainerInfo", ma.Anything, "lscc", ma.Anything).Return(
+		&ccprovider.ChaincodeContainerInfo{
+			Name:      "lscc",
+			Version:   util.GetSysCCVersion(),
+			PackageID: ccintf.CCID("lscc:" + util.GetSysCCVersion()),
+		}, nil)
 	ml.On("ChaincodeContainerInfo", ma.Anything, "badccname", ma.Anything).Return(nil, errors.New("get lost"))
 	mcd := &mock.ChaincodeDefinition{}
 	mcd.On("CCVersion").Return("0")
@@ -1007,7 +1023,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
 	fakeRuntime := &mock.Runtime{}
 	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo, _ []byte) error {
-		handlerRegistry.Ready("testcc:0")
+		handlerRegistry.Ready(ccintf.CCID("testcc:0"))
 		return nil
 	}
 
@@ -1028,6 +1044,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 		Name:          "testcc",
 		Version:       "0",
 		ContainerType: "DOCKER",
+		PackageID:     ccintf.CCID("testcc:0"),
 	}
 
 	//actual test - everythings good

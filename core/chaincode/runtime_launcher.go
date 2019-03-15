@@ -18,8 +18,8 @@ import (
 
 // LaunchRegistry tracks launching chaincode instances.
 type LaunchRegistry interface {
-	Launching(cname string) (launchState *LaunchState, started bool)
-	Deregister(cname string) error
+	Launching(packageID ccintf.CCID) (launchState *LaunchState, started bool)
+	Deregister(packageID ccintf.CCID) error
 }
 
 // PackageProvider gets chaincode packages from the filesystem.
@@ -41,14 +41,10 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 	var timeoutCh <-chan time.Time
 
 	startTime := time.Now()
-	cname := ccci.Name + ":" + ccci.Version
-	launchState, alreadyStarted := r.Registry.Launching(cname)
+	launchState, alreadyStarted := r.Registry.Launching(ccci.PackageID)
 	if !alreadyStarted {
 		startFailCh = make(chan error, 1)
 		timeoutCh = time.NewTimer(r.StartupTimeout).C
-
-		// FIXME: the package ID should be set by our caller; this will take place in the upcoming CRs
-		ccci.PackageID = ccintf.CCID(ccci.Name + ":" + ccci.Version)
 
 		codePackage, err := r.getCodePackage(ccci)
 		if err != nil {
@@ -74,25 +70,25 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 		err = errors.WithMessage(launchState.Err(), "chaincode registration failed")
 	case err = <-startFailCh:
 		launchState.Notify(err)
-		r.Metrics.LaunchFailures.With("chaincode", cname).Add(1)
+		r.Metrics.LaunchFailures.With("chaincode", string(ccci.PackageID)).Add(1)
 	case <-timeoutCh:
-		err = errors.Errorf("timeout expired while starting chaincode %s for transaction", cname)
+		err = errors.Errorf("timeout expired while starting chaincode %s for transaction", ccci.PackageID)
 		launchState.Notify(err)
-		r.Metrics.LaunchTimeouts.With("chaincode", cname).Add(1)
+		r.Metrics.LaunchTimeouts.With("chaincode", string(ccci.PackageID)).Add(1)
 	}
 
 	success := true
 	if err != nil && !alreadyStarted {
 		success = false
 		chaincodeLogger.Debugf("stopping due to error while launching: %+v", err)
-		defer r.Registry.Deregister(cname)
+		defer r.Registry.Deregister(ccci.PackageID)
 		if err := r.Runtime.Stop(ccci); err != nil {
 			chaincodeLogger.Debugf("stop failed: %+v", err)
 		}
 	}
 
 	r.Metrics.LaunchDuration.With(
-		"chaincode", cname,
+		"chaincode", string(ccci.PackageID),
 		"success", strconv.FormatBool(success),
 	).Observe(time.Since(startTime).Seconds())
 
