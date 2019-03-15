@@ -32,10 +32,9 @@ message Options {
 	string tick_interval = 1; // time duration format, e.g. 500ms
 	uint32 election_tick = 2;
 	uint32 heartbeat_tick = 3;
-	uint32 max_inflight_msgs = 4;
-	uint64 max_size_per_msg = 5;
+	uint32 max_inflight_blocks = 4;
 	// Take snapshot when cumulative data exceeds certain size in bytes.
-	uint32 snapshot_interval = 6;
+	uint32 snapshot_interval_size = 5;
 }
 
 // BlockMetadata stores data used by the Raft OSNs when

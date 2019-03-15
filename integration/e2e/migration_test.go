@@ -705,12 +705,11 @@ func prepareRaftMetadata(network *nwo.Network) []byte {
 	raftMetadata := &protosraft.ConfigMetadata{
 		Consenters: consenters,
 		Options: &protosraft.Options{
-			TickInterval:     "500ms",
-			ElectionTick:     10,
-			HeartbeatTick:    1,
-			MaxInflightMsgs:  256,
-			MaxSizePerMsg:    1048576,
-			SnapshotInterval: 8388608,
+			TickInterval:         "500ms",
+			ElectionTick:         10,
+			HeartbeatTick:        1,
+			MaxInflightBlocks:    5,
+			SnapshotIntervalSize: 10 * 1024 * 1024,
 		}}
 
 	raftMetadataBytes := protoutil.MarshalOrPanic(raftMetadata)

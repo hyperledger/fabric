@@ -147,11 +147,10 @@ var _ = Describe("Consenter", func() {
 				{ServerTlsCert: certBytes},
 			},
 			Options: &etcdraftproto.Options{
-				TickInterval:    "500ms",
-				ElectionTick:    10,
-				HeartbeatTick:   1,
-				MaxInflightMsgs: 256,
-				MaxSizePerMsg:   1048576,
+				TickInterval:      "500ms",
+				ElectionTick:      10,
+				HeartbeatTick:     1,
+				MaxInflightBlocks: 5,
 			},
 		}
 		metadata := protoutil.MarshalOrPanic(m)
@@ -160,6 +159,7 @@ var _ = Describe("Consenter", func() {
 			CapabilitiesVal: &mockconfig.OrdererCapabilities{
 				Kafka2RaftMigVal: false,
 			},
+			BatchSizeVal: &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
 		})
 
 		consenter := newConsenter(chainGetter)
@@ -189,11 +189,10 @@ var _ = Describe("Consenter", func() {
 				{ServerTlsCert: []byte("cert.orderer1.org1")},
 			},
 			Options: &etcdraftproto.Options{
-				TickInterval:    "500ms",
-				ElectionTick:    10,
-				HeartbeatTick:   1,
-				MaxInflightMsgs: 256,
-				MaxSizePerMsg:   1048576,
+				TickInterval:      "500ms",
+				ElectionTick:      10,
+				HeartbeatTick:     1,
+				MaxInflightBlocks: 5,
 			},
 		}
 		metadata := protoutil.MarshalOrPanic(m)
@@ -203,6 +202,7 @@ var _ = Describe("Consenter", func() {
 			CapabilitiesVal: &mockconfig.OrdererCapabilities{
 				Kafka2RaftMigVal: false,
 			},
+			BatchSizeVal: &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
 		})
 		support.ChainIDReturns("foo")
 
@@ -227,6 +227,7 @@ var _ = Describe("Consenter", func() {
 			CapabilitiesVal: &mockconfig.OrdererCapabilities{
 				Kafka2RaftMigVal: false,
 			},
+			BatchSizeVal: &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
 		})
 
 		consenter := newConsenter(chainGetter)
@@ -243,11 +244,10 @@ var _ = Describe("Consenter", func() {
 				{ServerTlsCert: certBytes},
 			},
 			Options: &etcdraftproto.Options{
-				TickInterval:    "500",
-				ElectionTick:    10,
-				HeartbeatTick:   1,
-				MaxInflightMsgs: 256,
-				MaxSizePerMsg:   1048576,
+				TickInterval:      "500",
+				ElectionTick:      10,
+				HeartbeatTick:     1,
+				MaxInflightBlocks: 5,
 			},
 		}
 		metadata := protoutil.MarshalOrPanic(m)
@@ -256,6 +256,7 @@ var _ = Describe("Consenter", func() {
 			CapabilitiesVal: &mockconfig.OrdererCapabilities{
 				Kafka2RaftMigVal: false,
 			},
+			BatchSizeVal: &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
 		})
 
 		consenter := newConsenter(chainGetter)

@@ -355,18 +355,12 @@ Orderer: &OrdererDefaults
             # messages to maintain its leadership every HeartbeatTick ticks.
             HeartbeatTick: 1
 
-            # MaxInflightMsgs limits the max number of in-flight append messages
+            # MaxInflightBlocks limits the max number of in-flight append messages
             # during optimistic replication phase.
-            MaxInflightMsgs: 5
+            MaxInflightBlocks: 5
 
-            # MaxSizePerMsg limits the max size of each append message. Smaller
-            # value lowers the raft recovery cost(initial probing and message
-            # lost during normal operation). On the other side, it might affect
-            # the throughput during normal replication.
-            MaxSizePerMsg: 1048576
-
-            # SnapshotInterval defines number of bytes per which a snapshot is taken
-            SnapshotInterval: 100 MB
+            # SnapshotIntervalSize defines number of bytes per which a snapshot is taken
+            SnapshotIntervalSize: 20 MB
 
     # Organizations lists the orgs participating on the orderer side of the
     # network.

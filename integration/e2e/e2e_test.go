@@ -294,9 +294,8 @@ var _ = Describe("EndToEnd", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				// update max in flight messages
-				metadata.Options.MaxInflightMsgs = 1000
-				metadata.Options.MaxSizePerMsg = 512
-				metadata.Options.SnapshotInterval = 100 * 1024 * 1024 // 100 MB
+				metadata.Options.MaxInflightBlocks = 1000
+				metadata.Options.SnapshotIntervalSize = 10 * 1024 * 1024 // 10 MB
 
 				// write metadata back
 				newMetadata, err := proto.Marshal(metadata)
@@ -304,7 +303,7 @@ var _ = Describe("EndToEnd", func() {
 				return newMetadata
 			})
 
-			// assert that no new snapshot is taken because SnapshotInterval has just enlarged
+			// assert that no new snapshot is taken because SnapshotIntervalSize has just enlarged
 			files, err = ioutil.ReadDir(snapDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(files)).To(Equal(numOfSnaps))

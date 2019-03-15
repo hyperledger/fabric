@@ -88,7 +88,7 @@ Profiles:{{ range .Profiles }}
       EtcdRaft:
         Options:
           TickInterval: 500ms
-          SnapshotInterval: 1 KB
+          SnapshotIntervalSize: 1 KB
         Consenters:{{ range .Orderers }}{{ with $w.Orderer . }}
         - Host: 127.0.0.1
           Port: {{ $w.OrdererPort . "Listen" }}

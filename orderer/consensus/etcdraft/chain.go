@@ -45,10 +45,10 @@ const (
 	// slow followers to catch up.
 	DefaultSnapshotCatchUpEntries = uint64(20)
 
-	// DefaultSnapshotInterval is the default snapshot interval. It is
-	// used if SnapshotInterval is not provided in channel config options.
+	// DefaultSnapshotIntervalSize is the default snapshot interval. It is
+	// used if SnapshotIntervalSize is not provided in channel config options.
 	// It is needed to enforce snapshot being set.
-	DefaultSnapshotInterval = 100 * MEGABYTE // 100MB
+	DefaultSnapshotIntervalSize = 20 * MEGABYTE // 20 MB
 
 	// DefaultEvictionSuspicion is the threshold that a node will start
 	// suspecting its own eviction if it has been leaderless for this
@@ -95,9 +95,9 @@ type Options struct {
 
 	Clock clock.Clock
 
-	WALDir       string
-	SnapDir      string
-	SnapInterval uint32
+	WALDir               string
+	SnapDir              string
+	SnapshotIntervalSize uint32
 
 	// This is configurable mainly for testing purpose. Users are not
 	// expected to alter this. Instead, DefaultSnapshotCatchUpEntries is used.
@@ -106,11 +106,11 @@ type Options struct {
 	MemoryStorage MemoryStorage
 	Logger        *flogging.FabricLogger
 
-	TickInterval    time.Duration
-	ElectionTick    int
-	HeartbeatTick   int
-	MaxSizePerMsg   uint64
-	MaxInflightMsgs int
+	TickInterval      time.Duration
+	ElectionTick      int
+	HeartbeatTick     int
+	MaxSizePerMsg     uint64
+	MaxInflightBlocks int
 
 	// BlockMetdata and Consenters should only be modified while under lock
 	// of raftMetadataLock
@@ -172,7 +172,7 @@ type Chain struct {
 	appliedIndex uint64
 
 	// needed by snapshotting
-	sizeLimit        uint32 // SnapshotInterval in bytes
+	sizeLimit        uint32 // SnapshotIntervalSize in bytes
 	accDataSize      uint32 // accumulative data size since last snapshot
 	lastSnapBlockNum uint64
 	confState        raftpb.ConfState // Etcdraft requires ConfState to be persisted within snapshot
@@ -216,9 +216,9 @@ func NewChain(
 		storage.SnapshotCatchUpEntries = opts.SnapshotCatchUpEntries
 	}
 
-	sizeLimit := opts.SnapInterval
+	sizeLimit := opts.SnapshotIntervalSize
 	if sizeLimit == 0 {
-		sizeLimit = DefaultSnapshotInterval
+		sizeLimit = DefaultSnapshotIntervalSize
 	}
 
 	// get block number in last snapshot, if exists
@@ -281,7 +281,7 @@ func NewChain(
 		ElectionTick:    c.opts.ElectionTick,
 		HeartbeatTick:   c.opts.HeartbeatTick,
 		MaxSizePerMsg:   c.opts.MaxSizePerMsg,
-		MaxInflightMsgs: c.opts.MaxInflightMsgs,
+		MaxInflightMsgs: c.opts.MaxInflightBlocks,
 		Logger:          c.logger,
 		Storage:         c.opts.MemoryStorage,
 		// PreVote prevents reconnected node from disturbing network.
@@ -600,7 +600,7 @@ func (c *Chain) serveRequest() {
 		c.blockInflight = 0
 		c.justElected = true
 		submitC = nil
-		ch := make(chan *common.Block, c.opts.MaxInflightMsgs)
+		ch := make(chan *common.Block, c.opts.MaxInflightBlocks)
 
 		// if there is unfinished ConfChange, we should resume the effort to propose it as
 		// new leader, and wait for it to be committed before start serving new requests.
@@ -685,9 +685,9 @@ func (c *Chain) serveRequest() {
 			if c.configInflight {
 				c.logger.Info("Received config block, pause accepting transaction till it is committed")
 				submitC = nil
-			} else if c.blockInflight >= c.opts.MaxInflightMsgs {
+			} else if c.blockInflight >= c.opts.MaxInflightBlocks {
 				c.logger.Debugf("Number of in-flight blocks (%d) reaches limit (%d), pause accepting transaction",
-					c.blockInflight, c.opts.MaxInflightMsgs)
+					c.blockInflight, c.opts.MaxInflightBlocks)
 				submitC = nil
 			}
 
@@ -768,7 +768,7 @@ func (c *Chain) serveRequest() {
 			} else if c.configInflight {
 				c.logger.Info("Config block or ConfChange in flight, pause accepting transaction")
 				submitC = nil
-			} else if c.blockInflight < c.opts.MaxInflightMsgs {
+			} else if c.blockInflight < c.opts.MaxInflightBlocks {
 				submitC = c.submitC
 			}
 
@@ -977,10 +977,12 @@ func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 		return nil
 	}
 
-	if configMetadata.Options != nil && configMetadata.Options.SnapshotInterval != 0 {
-		old := c.sizeLimit
-		c.sizeLimit = configMetadata.Options.SnapshotInterval
-		c.logger.Infof("Snapshot interval is updated to %d bytes (was %d)", c.sizeLimit, old)
+	if configMetadata.Options != nil &&
+		configMetadata.Options.SnapshotIntervalSize != 0 &&
+		configMetadata.Options.SnapshotIntervalSize != c.sizeLimit {
+		c.logger.Infof("Update snapshot interval size to %d bytes (was %d)",
+			configMetadata.Options.SnapshotIntervalSize, c.sizeLimit)
+		c.sizeLimit = configMetadata.Options.SnapshotIntervalSize
 	}
 
 	changes, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMetadata.Consenters)
@@ -1090,7 +1092,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 			c.lastSnapBlockNum = appliedb
 			c.Metrics.SnapshotBlockNumber.Set(float64(appliedb))
 		default:
-			c.logger.Warnf("Snapshotting is in progress, it is very likely that SnapshotInterval is too small")
+			c.logger.Warnf("Snapshotting is in progress, it is very likely that SnapshotIntervalSize is too small")
 		}
 	}
 

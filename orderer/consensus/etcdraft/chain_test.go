@@ -152,20 +152,20 @@ var _ = Describe("Chain", func() {
 			fakeFields = newFakeMetricsFields()
 
 			opts = etcdraft.Options{
-				RaftID:          1,
-				Clock:           clock,
-				TickInterval:    interval,
-				ElectionTick:    ELECTION_TICK,
-				HeartbeatTick:   HEARTBEAT_TICK,
-				MaxSizePerMsg:   1024 * 1024,
-				MaxInflightMsgs: 256,
-				BlockMetadata:   meta,
-				Consenters:      consenters,
-				Logger:          logger,
-				MemoryStorage:   storage,
-				WALDir:          walDir,
-				SnapDir:         snapDir,
-				Metrics:         newFakeMetrics(fakeFields),
+				RaftID:            1,
+				Clock:             clock,
+				TickInterval:      interval,
+				ElectionTick:      ELECTION_TICK,
+				HeartbeatTick:     HEARTBEAT_TICK,
+				MaxSizePerMsg:     1024 * 1024,
+				MaxInflightBlocks: 256,
+				BlockMetadata:     meta,
+				Consenters:        consenters,
+				Logger:            logger,
+				MemoryStorage:     storage,
+				WALDir:            walDir,
+				SnapDir:           snapDir,
+				Metrics:           newFakeMetrics(fakeFields),
 			}
 		})
 
@@ -895,7 +895,7 @@ var _ = Describe("Chain", func() {
 
 					Context("Small SnapshotInterval", func() {
 						BeforeEach(func() {
-							opts.SnapInterval = 1
+							opts.SnapshotIntervalSize = 1
 						})
 
 						It("writes snapshot file to snapDir", func() {
@@ -1012,7 +1012,7 @@ var _ = Describe("Chain", func() {
 
 							raftMetadata.RaftIndex = m.RaftIndex
 							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters)
-							c.opts.SnapInterval = 1
+							c.opts.SnapshotIntervalSize = 1
 
 							c.init()
 							c.Start()
@@ -1056,7 +1056,7 @@ var _ = Describe("Chain", func() {
 
 					Context("Large SnapshotInterval", func() {
 						BeforeEach(func() {
-							opts.SnapInterval = 1024
+							opts.SnapshotIntervalSize = 1024
 						})
 
 						It("restores snapshot w/ extra entries", func() {
@@ -1167,7 +1167,7 @@ var _ = Describe("Chain", func() {
 								c.support.WriteBlock(support.WriteBlockArgsForCall(0))
 								c.support.WriteBlock(support.WriteBlockArgsForCall(1))
 
-								c.opts.SnapInterval = 1024
+								c.opts.SnapshotIntervalSize = 1024
 
 								By("Restarting node at block 2")
 								c.init()
@@ -1368,7 +1368,7 @@ var _ = Describe("Chain", func() {
 			})
 
 			It("late node receives snapshot from leader", func() {
-				c1.opts.SnapInterval = 1
+				c1.opts.SnapshotIntervalSize = 1
 				c1.opts.SnapshotCatchUpEntries = 1
 
 				c1.cutter.CutNext = true
@@ -2188,9 +2188,9 @@ var _ = Describe("Chain", func() {
 					})
 			})
 
-			When("MaxInflightMsgs is reached", func() {
+			When("MaxInflightBlocks is reached", func() {
 				BeforeEach(func() {
-					network.exec(func(c *chain) { c.opts.MaxInflightMsgs = 1 })
+					network.exec(func(c *chain) { c.opts.MaxInflightBlocks = 1 })
 				})
 
 				It("waits for in flight blocks to be committed", func() {
@@ -2579,7 +2579,7 @@ var _ = Describe("Chain", func() {
 
 			When("Snapshotting is enabled", func() {
 				BeforeEach(func() {
-					c1.opts.SnapInterval = 1
+					c1.opts.SnapshotIntervalSize = 1
 					c1.opts.SnapshotCatchUpEntries = 1
 				})
 
@@ -2964,20 +2964,20 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 	fakeFields := newFakeMetricsFields()
 
 	opts := etcdraft.Options{
-		RaftID:          uint64(id),
-		Clock:           clock,
-		TickInterval:    interval,
-		ElectionTick:    ELECTION_TICK,
-		HeartbeatTick:   HEARTBEAT_TICK,
-		MaxSizePerMsg:   1024 * 1024,
-		MaxInflightMsgs: 256,
-		BlockMetadata:   raftMetadata,
-		Consenters:      consenters,
-		Logger:          flogging.NewFabricLogger(zap.NewExample()),
-		MemoryStorage:   storage,
-		WALDir:          path.Join(dataDir, "wal"),
-		SnapDir:         path.Join(dataDir, "snapshot"),
-		Metrics:         newFakeMetrics(fakeFields),
+		RaftID:            uint64(id),
+		Clock:             clock,
+		TickInterval:      interval,
+		ElectionTick:      ELECTION_TICK,
+		HeartbeatTick:     HEARTBEAT_TICK,
+		MaxSizePerMsg:     1024 * 1024,
+		MaxInflightBlocks: 256,
+		BlockMetadata:     raftMetadata,
+		Consenters:        consenters,
+		Logger:            flogging.NewFabricLogger(zap.NewExample()),
+		MemoryStorage:     storage,
+		WALDir:            path.Join(dataDir, "wal"),
+		SnapDir:           path.Join(dataDir, "snapshot"),
+		Metrics:           newFakeMetrics(fakeFields),
 	}
 
 	support := &consensusmocks.FakeConsenterSupport{}
