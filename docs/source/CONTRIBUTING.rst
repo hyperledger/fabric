@@ -236,6 +236,36 @@ will gain from it.
 Just browse through `the open CRs on Gerrit
 <https://gerrit.hyperledger.org/r/#/q/status:open>`__ to get started.
 
+CR Aging
+~~~~~~~~
+
+As the Fabric project has grown, so too has the backlog of open CRs. One
+problem that nearly all projects face is effectively managing that backlog
+and Fabric is no exception. In an effort to keep the backlog of Fabric and
+related project CRs manageable, we are introducing an aging policy which
+will be enforced by bots.  This is consistent with how other large projects
+manage their CR backlog.
+
+CR Aging Policy
+~~~~~~~~~~~~~~~
+
+The Fabric project maintainers will automatically monitor all CR activity for
+delinquency. If a CR has not been updated in 2 weeks, a reminder comment will be
+added requesting that the CR either be updated to address any outstanding
+comments or abandoned if it is to be withdrawn. If a delinquent CR goes another
+2 weeks without an update, it will be automatically abandoned. If a CR has aged
+more than 2 months since it was originally submitted, even if it has activity,
+it will be flagged for maintainer review.
+
+If a submitted CR has passed all validation but has not been reviewed in 72
+hours (3 days), it will be flagged to the #fabric-pr-review channel daily until
+it receives a review comment(s).
+
+This policy applies to all official Fabric projects (fabric, fabric-ca,
+fabric-samples, fabric-test, fabric-sdk-node, fabric-sdk-java,
+fabric-chaincode-node, fabric-chaincode-java, fabric-chaincode-evm,
+fabric-baseimage, and fabric-amcl).
+
 Setting up development environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
