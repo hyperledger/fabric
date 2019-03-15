@@ -194,12 +194,11 @@ var genesisDefaults = TopLevel{
 		},
 		EtcdRaft: &etcdraft.ConfigMetadata{
 			Options: &etcdraft.Options{
-				TickInterval:     "500ms",
-				ElectionTick:     10,
-				HeartbeatTick:    1,
-				MaxInflightMsgs:  5,
-				MaxSizePerMsg:    1048576,
-				SnapshotInterval: 100 * 1024 * 1024, // 100MB
+				TickInterval:         "500ms",
+				ElectionTick:         10,
+				HeartbeatTick:        1,
+				MaxInflightBlocks:    5,
+				SnapshotIntervalSize: 20 * 1024 * 1024, // 20 MB
 			},
 		},
 	},
@@ -416,17 +415,13 @@ loop:
 				logger.Infof("Orderer.EtcdRaft.Options.HeartbeatTick unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.HeartbeatTick)
 				ord.EtcdRaft.Options.HeartbeatTick = genesisDefaults.Orderer.EtcdRaft.Options.HeartbeatTick
 
-			case ord.EtcdRaft.Options.MaxInflightMsgs == 0:
-				logger.Infof("Orderer.EtcdRaft.Options.MaxInflightMsgs unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.MaxInflightMsgs)
-				ord.EtcdRaft.Options.MaxInflightMsgs = genesisDefaults.Orderer.EtcdRaft.Options.MaxInflightMsgs
+			case ord.EtcdRaft.Options.MaxInflightBlocks == 0:
+				logger.Infof("Orderer.EtcdRaft.Options.MaxInflightBlocks unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.MaxInflightBlocks)
+				ord.EtcdRaft.Options.MaxInflightBlocks = genesisDefaults.Orderer.EtcdRaft.Options.MaxInflightBlocks
 
-			case ord.EtcdRaft.Options.MaxSizePerMsg == 0:
-				logger.Infof("Orderer.EtcdRaft.Options.MaxSizePerMsg unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.MaxSizePerMsg)
-				ord.EtcdRaft.Options.MaxSizePerMsg = genesisDefaults.Orderer.EtcdRaft.Options.MaxSizePerMsg
-
-			case ord.EtcdRaft.Options.SnapshotInterval == 0:
-				logger.Infof("Orderer.EtcdRaft.Options.SnapshotInterval unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.SnapshotInterval)
-				ord.EtcdRaft.Options.SnapshotInterval = genesisDefaults.Orderer.EtcdRaft.Options.SnapshotInterval
+			case ord.EtcdRaft.Options.SnapshotIntervalSize == 0:
+				logger.Infof("Orderer.EtcdRaft.Options.SnapshotIntervalSize unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.SnapshotIntervalSize)
+				ord.EtcdRaft.Options.SnapshotIntervalSize = genesisDefaults.Orderer.EtcdRaft.Options.SnapshotIntervalSize
 
 			case len(ord.EtcdRaft.Consenters) == 0:
 				logger.Panicf("%s configuration did not specify any consenter", etcdraft.TypeKey)
