@@ -53,16 +53,44 @@ func (c *ChannelPolicyReferenceProviderImpl) NewPolicy(channelConfigPolicyRefere
 	return p, nil
 }
 
+// dynamicPolicyManager implements a policy manager that
+// always acts on the latest config for this channel
+type dynamicPolicyManager struct {
+	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter
+	channelID                  string
+}
+
+func (d *dynamicPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
+	mgr, ok := d.channelPolicyManagerGetter.Manager(d.channelID)
+	if !ok {
+		// this will never happen - if we are here we
+		// managed to retrieve the policy manager for
+		// this channel once, and so by the way the
+		// channel config is managed, we cannot fail.
+		panic("programming error")
+	}
+
+	return mgr.GetPolicy(id)
+}
+
+func (d *dynamicPolicyManager) Manager(path []string) (policies.Manager, bool) {
+	// we don't use this function
+	panic("programming error")
+}
+
 // New returns an evaluator for application policies
 func New(deserializer msp.IdentityDeserializer, channel string, channelPolicyManagerGetter policies.ChannelPolicyManagerGetter) (*ApplicationPolicyEvaluator, error) {
-	cpp, ok := channelPolicyManagerGetter.Manager(channel)
+	_, ok := channelPolicyManagerGetter.Manager(channel)
 	if !ok {
 		return nil, errors.Errorf("failed to retrieve policy manager for channel %s", channel)
 	}
 
 	return &ApplicationPolicyEvaluator{
-		signaturePolicyProvider:        &cauthdsl.ProviderFromStruct{Deserializer: deserializer},
-		channelPolicyReferenceProvider: &ChannelPolicyReferenceProviderImpl{Manager: cpp},
+		signaturePolicyProvider: &cauthdsl.ProviderFromStruct{Deserializer: deserializer},
+		channelPolicyReferenceProvider: &ChannelPolicyReferenceProviderImpl{Manager: &dynamicPolicyManager{
+			channelID:                  channel,
+			channelPolicyManagerGetter: channelPolicyManagerGetter,
+		}},
 	}, nil
 }
 

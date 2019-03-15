@@ -134,6 +134,8 @@ func TestChannelPolicyReference(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, ape)
 
+	mcpmg.On("Manager", "channel").Return(mm, true)
+
 	mp := &mocks.Policy{}
 	mp.On("Evaluate", mock.Anything).Return(nil)
 	mm.On("GetPolicy", "As the sun breaks above the ground").Return(mp, true)
