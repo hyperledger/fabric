@@ -25,18 +25,31 @@ and walk through the purpose of each method in the Chaincode Shim API.
 Chaincode API
 -------------
 
-Every chaincode program must implement the ``Chaincode`` interface:
+Every chaincode program must implement the ``Chaincode`` interface whose methods
+are called in response to received transactions. You can find the reference
+documentation of the Chaincode Shim API for different languages below:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#Chaincode>`__
   - `node.js <https://fabric-shim.github.io/ChaincodeInterface.html>`__
   - `Java <https://fabric-chaincode-java.github.io/org/hyperledger/fabric/shim/Chaincode.html>`_
 
-whose methods are called in response to received transactions.
-In particular the ``Init`` method is called when a
-chaincode receives an ``instantiate`` or ``upgrade`` transaction so that the
-chaincode may perform any necessary initialization, including initialization of
-application state. The ``Invoke`` method is called in response to receiving an
-``invoke`` transaction to process transaction proposals.
+In each language, the ``Invoke`` method is called by clients to submit transaction
+proposals. This method allows you to use the chaincode to read and write data on
+the channel ledger.
+
+You also need to include an ``Init`` method that will serve as the initialization
+function for your chaincode. This method will be called in order to initialize
+the chaincode when it is started or upgraded. By default, this function is never 
+executed. However, you can use the chaincode definition to request that the ``Init``
+function be executed. If execution of ``Init`` is requested, fabric will ensure
+that ``Init`` is invoked before any other function and is only invoked once.
+This option provides you additional control over which users can initialize the
+chaincode and the ability to add initial data to the ledger. If you are using
+the peer CLI to approve the chaincode definition, use the ``--init-required``
+flag to request the execution of the ``Init`` function. Then call the ``Init``
+function by using the `peer chaincode invoke` command and passing the
+``--isInit`` flag. If you are using the Fabric SDK for Node.js, visit
+[How to install and start your chaincode](https://fabric-sdk-node.github.io/master/tutorial-chaincode-lifecycle.html). For more information, see :doc:`chaincode4noah`.
 
 The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface``:
 
