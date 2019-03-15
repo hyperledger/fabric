@@ -269,6 +269,8 @@ func (rs *RaftStorage) Store(entries []raftpb.Entry, hardstate raftpb.HardState,
 }
 
 func (rs *RaftStorage) saveSnap(snap raftpb.Snapshot) error {
+	rs.lg.Infof("Persisting snapshot (term: %d, index: %d) to WAL and disk", snap.Metadata.Term, snap.Metadata.Index)
+
 	// must save the snapshot index to the WAL before saving the
 	// snapshot to maintain the invariant that we only Open the
 	// wal at previously-saved snapshot indexes.
@@ -277,12 +279,10 @@ func (rs *RaftStorage) saveSnap(snap raftpb.Snapshot) error {
 		Term:  snap.Metadata.Term,
 	}
 
-	rs.lg.Debugf("Saving snapshot to WAL")
 	if err := rs.wal.SaveSnapshot(walsnap); err != nil {
 		return errors.Errorf("failed to save snapshot to WAL: %s", err)
 	}
 
-	rs.lg.Debugf("Saving snapshot to disk")
 	if err := rs.snap.SaveSnap(snap); err != nil {
 		return errors.Errorf("failed to save snapshot to disk: %s", err)
 	}

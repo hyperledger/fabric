@@ -274,8 +274,14 @@ func NewChain(
 		migrationStatus: migration.NewStatusStepper(support.IsSystemChannel(), support.ChainID()), // Needed by consensus-type migration
 	}
 
+	// Sets initial values for metrics
+	c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.ConsenterIds)))
+	c.Metrics.IsLeader.Set(float64(0)) // all nodes start out as followers
+	c.Metrics.CommittedBlockNumber.Set(float64(c.lastBlock.Header.Number))
+	c.Metrics.SnapshotBlockNumber.Set(float64(c.lastSnapBlockNum))
+
 	// DO NOT use Applied option in config, see https://github.com/etcd-io/etcd/issues/10217
-	// We guard against replay of written blocks in `entriesToApply` instead.
+	// We guard against replay of written blocks with `appliedIndex` instead.
 	config := &raft.Config{
 		ID:              c.raftID,
 		ElectionTick:    c.opts.ElectionTick,
@@ -317,9 +323,6 @@ func (c *Chain) MigrationStatus() migration.Status {
 func (c *Chain) Start() {
 	c.logger.Infof("Starting Raft node")
 
-	c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.ConsenterIds)))
-	// all nodes start out as followers
-	c.Metrics.IsLeader.Set(float64(0))
 	if err := c.configureComm(); err != nil {
 		c.logger.Errorf("Failed to start chain, aborting: +%v", err)
 		close(c.doneC)
@@ -831,7 +834,7 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 	}
 	c.lastBlock = block
 
-	c.logger.Debugf("Writing block %d to ledger", block.Header.Number)
+	c.logger.Infof("Writing block %d (Raft index: %d) to ledger", block.Header.Number, index)
 
 	if protoutil.IsConfigBlock(block) {
 		c.writeConfigBlock(block, index)
@@ -894,7 +897,7 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]*common.Envelope) {
 	for _, batch := range batches {
 		b := bc.createNextBlock(batch)
-		c.logger.Debugf("Created block %d, there are %d blocks in flight", b.Header.Number, c.blockInflight)
+		c.logger.Infof("Created block %d, there are %d blocks in flight", b.Header.Number, c.blockInflight)
 
 		select {
 		case ch <- b:
@@ -1006,7 +1009,6 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		c.logger.Panicf("first index of committed entry[%d] should <= appliedIndex[%d]+1", ents[0].Index, c.appliedIndex)
 	}
 
-	var appliedb uint64
 	var position int
 	for i := range ents {
 		switch ents[i].Type {
@@ -1014,6 +1016,9 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 			if len(ents[i].Data) == 0 {
 				break
 			}
+
+			position = i
+			c.accDataSize += uint32(len(ents[i].Data))
 
 			// We need to strictly avoid re-applying normal entries,
 			// otherwise we are writing the same block twice.
@@ -1024,11 +1029,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 
 			block := protoutil.UnmarshalBlockOrPanic(ents[i].Data)
 			c.writeBlock(block, ents[i].Index)
-
-			appliedb = block.Header.Number
-			c.Metrics.CommittedBlockNumber.Set(float64(appliedb))
-			position = i
-			c.accDataSize += uint32(len(ents[i].Data))
+			c.Metrics.CommittedBlockNumber.Set(float64(block.Header.Number))
 
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
@@ -1077,20 +1078,17 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		}
 	}
 
-	if appliedb == 0 {
-		// no block has been written (appliedb == 0) in this round
-		return
-	}
-
 	if c.accDataSize >= c.sizeLimit {
+		b := protoutil.UnmarshalBlockOrPanic(ents[position].Data)
+
 		select {
 		case c.gcC <- &gc{index: c.appliedIndex, state: c.confState, data: ents[position].Data}:
 			c.logger.Infof("Accumulated %d bytes since last snapshot, exceeding size limit (%d bytes), "+
-				"taking snapshot at block %d, last snapshotted block number is %d, nodes: %+v",
-				c.accDataSize, c.sizeLimit, appliedb, c.lastSnapBlockNum, c.confState.Nodes)
+				"taking snapshot at block %d (index: %d), last snapshotted block number is %d, current nodes: %+v",
+				c.accDataSize, c.sizeLimit, b.Header.Number, c.appliedIndex, c.lastSnapBlockNum, c.confState.Nodes)
 			c.accDataSize = 0
-			c.lastSnapBlockNum = appliedb
-			c.Metrics.SnapshotBlockNumber.Set(float64(appliedb))
+			c.lastSnapBlockNum = b.Header.Number
+			c.Metrics.SnapshotBlockNumber.Set(float64(b.Header.Number))
 		default:
 			c.logger.Warnf("Snapshotting is in progress, it is very likely that SnapshotIntervalSize is too small")
 		}
