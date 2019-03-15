@@ -49,6 +49,10 @@ func ToHex(q uint64) string {
 	return "0x" + strconv.FormatUint(q, 16)
 }
 
+func ToDecimal(q uint64) string {
+	return strconv.FormatUint(q, 10)
+}
+
 func BasicSoloV20() *nwo.Config {
 	basicSolo := nwo.BasicSolo()
 	for _, profile := range basicSolo.Profiles {

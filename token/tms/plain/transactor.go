@@ -258,10 +258,15 @@ func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 			if err != nil {
 				return nil, err
 			}
+			// Convert quantity to decimal
+			q, err := ToQuantity(output.Quantity, Precision)
+			if err != nil {
+				return nil, err
+			}
 			tokens = append(tokens,
 				&token.UnspentToken{
 					Type:     output.Type,
-					Quantity: output.Quantity,
+					Quantity: q.Decimal(),
 					Id:       id,
 				})
 		}

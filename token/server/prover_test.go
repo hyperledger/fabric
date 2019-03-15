@@ -1173,7 +1173,7 @@ var _ = Describe("ProverListUnspentTokens", func() {
 
 		queryResult = &queryresult.KV{Key: key, Value: outputToken}
 
-		unspentTokens := &token.UnspentTokens{Tokens: []*token.UnspentToken{{Type: "XYZ", Quantity: ToHex(100), Id: &token.TokenId{TxId: "1", Index: 0}}}}
+		unspentTokens := &token.UnspentTokens{Tokens: []*token.UnspentToken{{Type: "XYZ", Quantity: ToDecimal(100), Id: &token.TokenId{TxId: "1", Index: 0}}}}
 		expectedResponse = &token.CommandResponse_UnspentTokens{UnspentTokens: unspentTokens}
 	})
 

@@ -52,6 +52,18 @@ func TestToQuantity(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestDecimal(t *testing.T) {
+	q, err := ToQuantity("10231", 64)
+	assert.NoError(t, err)
+	assert.Equal(t, "10231", q.Decimal())
+}
+
+func TestHex(t *testing.T) {
+	q, err := ToQuantity("0xabc", 64)
+	assert.NoError(t, err)
+	assert.Equal(t, "0xabc", q.Hex())
+}
+
 func TestOverflow(t *testing.T) {
 	half := uint64(math.MaxUint64 / 2)
 	assert.Equal(t, uint64(math.MaxUint64), uint64(half+half+1))

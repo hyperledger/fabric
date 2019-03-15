@@ -114,7 +114,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 		expectedUnspentTokens = &token.UnspentTokens{
 			Tokens: []*token.UnspentToken{
 				{
-					Quantity: ToHex(119),
+					Quantity: ToDecimal(119),
 					Type:     "ABC123",
 					Id:       &token.TokenId{TxId: "ledger-id", Index: 1},
 				},
@@ -176,7 +176,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			Expect(len(outputs)).To(BeEquivalentTo(1))
 			fmt.Println(outputs[0].Quantity)
 			fmt.Println(ToHex(100))
-			Expect(outputs[0].Quantity).To(BeEquivalentTo(ToHex(100)))
+			Expect(outputs[0].Quantity).To(BeEquivalentTo(ToDecimal(100)))
 			Expect(outputs[0].Type).To(BeEquivalentTo("ABC123"))
 
 			// User2 transfers back the tokens to User1
@@ -199,14 +199,14 @@ var _ bool = Describe("Token EndToEnd", func() {
 			outputs = ListTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
 				"testchannel", "User2", "Org1MSP")
 			Expect(len(outputs)).To(BeEquivalentTo(1))
-			Expect(outputs[0].Quantity).To(BeEquivalentTo(ToHex(50)))
+			Expect(outputs[0].Quantity).To(BeEquivalentTo(ToDecimal(50)))
 			Expect(outputs[0].Type).To(BeEquivalentTo("ABC123"))
 
 			// User1 lists her tokens and verify
 			outputs = ListTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
 				"testchannel", "User2", "Org1MSP")
 			Expect(len(outputs)).To(BeEquivalentTo(1))
-			Expect(outputs[0].Quantity).To(BeEquivalentTo(ToHex(50)))
+			Expect(outputs[0].Quantity).To(BeEquivalentTo(ToDecimal(50)))
 			Expect(outputs[0].Type).To(BeEquivalentTo("ABC123"))
 
 			// User1 redeems 25 of her tokens
@@ -218,7 +218,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			outputs = ListTokens(network, network.Peer("Org1", "peer1"), network.Orderer("orderer"),
 				"testchannel", "User2", "Org1MSP")
 			Expect(len(outputs)).To(BeEquivalentTo(1))
-			Expect(outputs[0].Quantity).To(BeEquivalentTo(ToHex(25)))
+			Expect(outputs[0].Quantity).To(BeEquivalentTo(ToDecimal(25)))
 			Expect(outputs[0].Type).To(BeEquivalentTo("ABC123"))
 		})
 
@@ -313,7 +313,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			expectedUnspentTokens = &token.UnspentTokens{
 				Tokens: []*token.UnspentToken{
 					{
-						Quantity: ToHex(119 - 50),
+						Quantity: ToDecimal(119 - 50),
 						Type:     "ABC123",
 						Id:       &token.TokenId{TxId: "ledger-id", Index: 0},
 					},
@@ -1079,7 +1079,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			expectedTokens := &token.UnspentTokens{
 				Tokens: []*token.UnspentToken{
 					{
-						Quantity: ToHex(119),
+						Quantity: ToDecimal(119),
 						Type:     "ABC123",
 						Id:       &token.TokenId{TxId: txId1, Index: 1},
 					},
@@ -1208,7 +1208,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			expectedTokens := &token.UnspentTokens{
 				Tokens: []*token.UnspentToken{
 					{
-						Quantity: ToHex(119),
+						Quantity: ToDecimal(119),
 						Type:     "ABC123",
 						Id:       &token.TokenId{TxId: txId1, Index: 1},
 					},

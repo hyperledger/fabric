@@ -119,7 +119,8 @@ message Token {
     // Type is the type of the token
     string type = 2;
 
-    // Quantity is the number of units of Type carried in the token, in hex format
+    // Quantity is the number of units of Type carried in the token.
+    // It is encoded as a string containing a number in base 16. The string has prefix ``0x''.
     string quantity = 3;
 }
 
