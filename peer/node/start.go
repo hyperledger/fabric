@@ -844,10 +844,6 @@ func initGossipService(
 	signer msp.SigningIdentity,
 	peerAddr string,
 ) error {
-	serializedIdentity, err := signer.Serialize()
-	if err != nil {
-		return errors.WithMessage(err, "failed to start gossip service")
-	}
 
 	var certs *gossipcommon.TLSCertificates
 	if peerServer.TLSEnabled() {
@@ -870,7 +866,7 @@ func initGossipService(
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
 
 	return service.InitGossipService(
-		serializedIdentity,
+		signer,
 		metricsProvider,
 		peerAddr,
 		peerServer.Server(),

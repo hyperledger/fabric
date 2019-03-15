@@ -24,6 +24,7 @@ import (
 	privdata2 "github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	gproto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protoutil"
@@ -61,16 +62,18 @@ type DeliveryServiceFactory interface {
 }
 
 type deliveryFactoryImpl struct {
+	signer identity.SignerSerializer
 }
 
 // Returns an instance of delivery client
-func (*deliveryFactoryImpl) Service(g GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
+func (df *deliveryFactoryImpl) Service(g GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
 	return deliverclient.NewDeliverService(&deliverclient.Config{
 		CryptoSvc:   mcs,
 		Gossip:      g,
 		Endpoints:   endpoints,
 		ConnFactory: deliverclient.DefaultConnectionFactory,
 		ABCFactory:  deliverclient.DefaultABCFactory,
+		Signer:      df.signer,
 	})
 }
 
@@ -129,24 +132,50 @@ func (jcm *joinChannelMessage) AnchorPeersOf(org api.OrgIdentityType) []api.Anch
 var logger = util.GetLogger(util.ServiceLogger, "")
 
 // InitGossipService initialize gossip service
-func InitGossipService(peerIdentity []byte, metricsProvider metrics.Provider, endpoint string, s *grpc.Server,
+func InitGossipService(peerIdentity identity.SignerSerializer, metricsProvider metrics.Provider, endpoint string, s *grpc.Server,
 	certs *gossipCommon.TLSCertificates, mcs api.MessageCryptoService, secAdv api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts, bootPeers ...string) error {
 	// TODO: Remove this.
 	// TODO: This is a temporary work-around to make the gossip leader election module load its logger at startup
 	// TODO: in order for the flogging package to register this logger in time so it can set the log levels as requested in the config
 	util.GetLogger(util.ElectionLogger, "")
-	return InitGossipServiceCustomDeliveryFactory(peerIdentity, metricsProvider, endpoint, s, certs, &deliveryFactoryImpl{},
-		mcs, secAdv, secureDialOpts, bootPeers...)
+
+	return InitGossipServiceCustomDeliveryFactory(
+		peerIdentity,
+		metricsProvider,
+		endpoint,
+		s,
+		certs,
+		&deliveryFactoryImpl{
+			signer: peerIdentity,
+		},
+		mcs,
+		secAdv,
+		secureDialOpts,
+		bootPeers...,
+	)
 }
 
 // InitGossipServiceCustomDeliveryFactory initialize gossip service with customize delivery factory
 // implementation, might be useful for testing and mocking purposes
-func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, metricsProvider metrics.Provider, endpoint string,
-	s *grpc.Server, certs *gossipCommon.TLSCertificates, factory DeliveryServiceFactory, mcs api.MessageCryptoService,
-	secAdv api.SecurityAdvisor, secureDialOpts api.PeerSecureDialOpts, bootPeers ...string) error {
+func InitGossipServiceCustomDeliveryFactory(
+	peerIdentity identity.SignerSerializer,
+	metricsProvider metrics.Provider,
+	endpoint string,
+	s *grpc.Server,
+	certs *gossipCommon.TLSCertificates,
+	factory DeliveryServiceFactory,
+	mcs api.MessageCryptoService,
+	secAdv api.SecurityAdvisor,
+	secureDialOpts api.PeerSecureDialOpts,
+	bootPeers ...string,
+) error {
 	var err error
 	var gossip gossip.Gossip
+	serializedIdentity, err := peerIdentity.Serialize()
+	if err != nil {
+		return err
+	}
 	once.Do(func() {
 		if overrideEndpoint := viper.GetString("peer.gossip.endpoint"); overrideEndpoint != "" {
 			endpoint = overrideEndpoint
@@ -156,7 +185,7 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, metricsProvider
 
 		gossipMetrics := gossipMetrics.NewGossipMetrics(metricsProvider)
 
-		gossip, err = integration.NewGossipComponent(peerIdentity, endpoint, s, secAdv,
+		gossip, err = integration.NewGossipComponent(serializedIdentity, endpoint, s, secAdv,
 			mcs, secureDialOpts, certs, gossipMetrics, bootPeers...)
 		gossipServiceInstance = &gossipServiceImpl{
 			mcs:             mcs,
@@ -166,7 +195,7 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, metricsProvider
 			leaderElection:  make(map[string]election.LeaderElectionService),
 			deliveryService: make(map[string]deliverclient.DeliverService),
 			deliveryFactory: factory,
-			peerIdentity:    peerIdentity,
+			peerIdentity:    serializedIdentity,
 			secAdv:          secAdv,
 			metrics:         gossipMetrics,
 		}

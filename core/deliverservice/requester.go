@@ -9,10 +9,10 @@ package deliverclient
 import (
 	"math"
 
-	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -22,6 +22,7 @@ type blocksRequester struct {
 	tls     bool
 	chainID string
 	client  blocksprovider.BlocksDeliverer
+	signer  identity.SignerSerializer
 }
 
 func (b *blocksRequester) RequestBlocks(ledgerInfoProvider blocksprovider.LedgerInfo) error {
@@ -64,7 +65,15 @@ func (b *blocksRequester) seekOldest() error {
 	msgVersion := int32(0)
 	epoch := uint64(0)
 	tlsCertHash := b.getTLSCertHash()
-	env, err := protoutil.CreateSignedEnvelopeWithTLSBinding(common.HeaderType_DELIVER_SEEK_INFO, b.chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch, tlsCertHash)
+	env, err := protoutil.CreateSignedEnvelopeWithTLSBinding(
+		common.HeaderType_DELIVER_SEEK_INFO,
+		b.chainID,
+		b.signer,
+		seekInfo,
+		msgVersion,
+		epoch,
+		tlsCertHash,
+	)
 	if err != nil {
 		return err
 	}
@@ -82,7 +91,15 @@ func (b *blocksRequester) seekLatestFromCommitter(height uint64) error {
 	msgVersion := int32(0)
 	epoch := uint64(0)
 	tlsCertHash := b.getTLSCertHash()
-	env, err := protoutil.CreateSignedEnvelopeWithTLSBinding(common.HeaderType_DELIVER_SEEK_INFO, b.chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch, tlsCertHash)
+	env, err := protoutil.CreateSignedEnvelopeWithTLSBinding(
+		common.HeaderType_DELIVER_SEEK_INFO,
+		b.chainID,
+		b.signer,
+		seekInfo,
+		msgVersion,
+		epoch,
+		tlsCertHash,
+	)
 	if err != nil {
 		return err
 	}

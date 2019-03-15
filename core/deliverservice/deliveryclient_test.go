@@ -21,16 +21,11 @@ import (
 	"github.com/hyperledger/fabric/core/deliverservice/mocks"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
-
-func init() {
-	msptesttools.LoadMSPSetupForTesting()
-}
 
 const (
 	goRoutineTestWaitTimeout = time.Second * 15
@@ -109,6 +104,7 @@ func TestNewDeliverService(t *testing.T) {
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  abcf,
 		ConnFactory: connFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
 	assert.NoError(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{Height: 0}, func() {}))
@@ -150,6 +146,7 @@ func TestDeliverServiceRestart(t *testing.T) {
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
 		ConnFactory: DefaultConnectionFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
 
@@ -196,6 +193,7 @@ func TestDeliverServiceFailover(t *testing.T) {
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
 		ConnFactory: DefaultConnectionFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
 	li := &mocks.MockLedgerInfo{Height: uint64(100)}
@@ -268,6 +266,7 @@ func TestDeliverServiceUpdateEndpoints(t *testing.T) {
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
 		ConnFactory: DefaultConnectionFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	defer service.Stop()
 
@@ -320,6 +319,7 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
 		ConnFactory: DefaultConnectionFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
 	li := &mocks.MockLedgerInfo{Height: 100}
@@ -450,6 +450,7 @@ func TestDeliverServiceAbruptStop(t *testing.T) {
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
 		ConnFactory: DefaultConnectionFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
 
@@ -473,6 +474,7 @@ func TestDeliverServiceShutdown(t *testing.T) {
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
 		ConnFactory: DefaultConnectionFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
 
@@ -519,6 +521,7 @@ func TestDeliverServiceShutdownRespawn(t *testing.T) {
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
 		ConnFactory: DefaultConnectionFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
 
@@ -572,6 +575,7 @@ func TestDeliverServiceDisconnectReconnect(t *testing.T) {
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
 		ConnFactory: DefaultConnectionFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
 
@@ -615,6 +619,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
 		ConnFactory: DefaultConnectionFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
@@ -626,6 +631,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
 		ConnFactory: DefaultConnectionFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
@@ -637,6 +643,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		CryptoSvc:   nil,
 		ABCFactory:  DefaultABCFactory,
 		ConnFactory: DefaultConnectionFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
@@ -648,6 +655,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  nil,
 		ConnFactory: DefaultConnectionFactory,
+		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
@@ -658,6 +666,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		Gossip:     &mocks.MockGossipServiceAdapter{},
 		CryptoSvc:  &mockMCS{},
 		ABCFactory: DefaultABCFactory,
+		Signer:     &mocks.SignerSerializer{},
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)

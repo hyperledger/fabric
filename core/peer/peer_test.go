@@ -127,8 +127,6 @@ func TestCreateChainFromBlock(t *testing.T) {
 	msptesttools.LoadMSPSetupForTesting()
 
 	signer := mgmt.GetLocalSigningIdentityOrPanic()
-	identity, err := signer.Serialize()
-	assert.NoError(t, err)
 	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager())
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 	var defaultSecureDialOpts = func() []grpc.DialOption {
@@ -137,8 +135,16 @@ func TestCreateChainFromBlock(t *testing.T) {
 		return dialOpts
 	}
 	err = service.InitGossipServiceCustomDeliveryFactory(
-		identity, &disabled.Provider{}, socket.Addr().String(), grpcServer, nil, &mockDeliveryClientFactory{},
-		messageCryptoService, secAdv, defaultSecureDialOpts)
+		signer,
+		&disabled.Provider{},
+		socket.Addr().String(),
+		grpcServer,
+		nil,
+		&mockDeliveryClientFactory{},
+		messageCryptoService,
+		secAdv,
+		defaultSecureDialOpts,
+	)
 
 	assert.NoError(t, err)
 

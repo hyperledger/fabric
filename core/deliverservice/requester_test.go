@@ -18,6 +18,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
+	"github.com/hyperledger/fabric/core/deliverservice/mocks"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -26,12 +28,19 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
+}
+
 func TestTLSBinding(t *testing.T) {
 	defer ensureNoGoroutineLeak(t)()
 
 	requester := blocksRequester{
 		tls:     true,
 		chainID: "testchainid",
+		signer:  &mocks.SignerSerializer{},
 	}
 
 	// Create an AtomicBroadcastServer

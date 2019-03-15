@@ -32,6 +32,7 @@ import (
 	gossipMetrics "github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
@@ -46,6 +47,12 @@ import (
 
 func init() {
 	util.SetupTestLogging()
+}
+
+//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
 }
 
 type mockTransientStore struct {
@@ -78,8 +85,6 @@ func TestInitGossipService(t *testing.T) {
 
 	msptesttools.LoadMSPSetupForTesting()
 	signer := mgmt.GetLocalSigningIdentityOrPanic()
-	identity, err := signer.Serialize()
-	assert.NoError(t, err)
 
 	wg := sync.WaitGroup{}
 	wg.Add(10)
@@ -88,7 +93,7 @@ func TestInitGossipService(t *testing.T) {
 			defer wg.Done()
 			messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager())
 			secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-			err := InitGossipService(identity, &disabled.Provider{}, endpoint, grpcServer, nil,
+			err := InitGossipService(signer, &disabled.Provider{}, endpoint, grpcServer, nil,
 				messageCryptoService, secAdv, nil)
 			assert.NoError(t, err)
 		}()
@@ -824,7 +829,7 @@ func TestInvalidInitialization(t *testing.T) {
 	endpoint, socket := getAvailablePort(t)
 
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	err := InitGossipService(api.PeerIdentityType("IDENTITY"), &disabled.Provider{}, endpoint, grpcServer, nil,
+	err := InitGossipService(&mocks.SignerSerializer{}, &disabled.Provider{}, endpoint, grpcServer, nil,
 		&naiveCryptoService{}, secAdv, nil)
 	assert.NoError(t, err)
 	gService := GetGossipService().(*gossipServiceImpl)
@@ -851,7 +856,7 @@ func TestChannelConfig(t *testing.T) {
 	endpoint, socket := getAvailablePort(t)
 
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	error := InitGossipService(api.PeerIdentityType("IDENTITY"), &disabled.Provider{}, endpoint, grpcServer, nil,
+	error := InitGossipService(&mocks.SignerSerializer{}, &disabled.Provider{}, endpoint, grpcServer, nil,
 		&naiveCryptoService{}, secAdv, nil)
 	assert.NoError(t, error)
 	gService := GetGossipService().(*gossipServiceImpl)
