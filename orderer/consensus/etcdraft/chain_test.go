@@ -1567,6 +1567,29 @@ var _ = Describe("Chain", func() {
 					Expect(err).To(MatchError("update of more than one consenter at a time is not supported, requested changes: add 0 node(s), remove 2 node(s)"))
 				})
 
+				It("rejects invalid certificates", func() {
+					configMetadata := &raftprotos.ConfigMetadata{}
+					for _, consenter := range consenters {
+						configMetadata.Consenters = append(configMetadata.Consenters, consenter)
+					}
+					configMetadata.Consenters[0].ServerTlsCert = []byte("hello")
+					value := map[string]*common.ConfigValue{
+						"ConsensusType": {
+							Version: 1,
+							Value: marshalOrPanic(&orderer.ConsensusType{
+								Metadata: marshalOrPanic(configMetadata),
+							}),
+						},
+					}
+
+					By("creating new configuration with invalid certificate")
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, value))
+					c1.cutter.CutNext = true
+
+					By("sending config transaction")
+					Expect(c1.Configure(configEnv, 0)).To(MatchError("Invalid server TLS cert: hello"))
+				})
+
 				It("can rotate certificate by adding and removing 1 node in one config update", func() {
 					metadata := &raftprotos.ConfigMetadata{}
 					for id, consenter := range consenters {
