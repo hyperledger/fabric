@@ -31,11 +31,13 @@ func TestTLSClient(t *testing.T) {
 	assert.NoError(t, err)
 	go srv.Start()
 	defer srv.Stop()
-	conf := Config{}
+	conf := Config{
+		PeerCACertPath: filepath.Join("testdata", "server", "ca.pem"),
+	}
 	cl, err := NewClient(conf)
 	assert.NoError(t, err)
 	_, port, _ := net.SplitHostPort(srv.Address())
-	dial := cl.NewDialer(net.JoinHostPort("127.0.0.1", port))
+	dial := cl.NewDialer(net.JoinHostPort("localhost", port))
 	conn, err := dial()
 	require.NoError(t, err)
 	conn.Close()

@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -87,6 +88,12 @@ func TestPeerClient(t *testing.T) {
 		t.Fatalf("error creating server for test: %v", err)
 	}
 	defer lis.Close()
+	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{})
+	if err != nil {
+		t.Fatalf("error creating gRPC server for test: %v", err)
+	}
+	go srv.Start()
+	defer srv.Stop()
 	viper.Set("peer.address", lis.Addr().String())
 	pClient1, err := common.NewPeerClientFromEnv()
 	if err != nil {
