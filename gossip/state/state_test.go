@@ -1692,21 +1692,21 @@ func TestStateRequestValidator(t *testing.T) {
 	err := validator.validate(&proto.RemoteStateRequest{
 		StartSeqNum: 10,
 		EndSeqNum:   5,
-	})
+	}, defAntiEntropyBatchSize)
 	assert.Contains(t, err.Error(), "Invalid sequence interval [10...5).")
 	assert.Error(t, err)
 
 	err = validator.validate(&proto.RemoteStateRequest{
 		StartSeqNum: 10,
 		EndSeqNum:   30,
-	})
+	}, defAntiEntropyBatchSize)
 	assert.Contains(t, err.Error(), "Requesting blocks range [10-30) greater than configured")
 	assert.Error(t, err)
 
 	err = validator.validate(&proto.RemoteStateRequest{
 		StartSeqNum: 10,
 		EndSeqNum:   20,
-	})
+	}, defAntiEntropyBatchSize)
 	assert.NoError(t, err)
 }
 
