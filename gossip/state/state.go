@@ -606,6 +606,7 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 						payload.SeqNum, rawBlock.Header, rawBlock.Data)
 					continue
 				}
+				logger.Debugf("[%s] Popped block [%d] with %d remaining blocks", s.chainID, rawBlock.Header.Number, s.payloads.Size())
 				logger.Debugf("[%s] Transferring block [%d] with %d transaction(s) to the ledger", s.chainID, payload.SeqNum, len(rawBlock.Data.Data))
 
 				// Read all private data into slice
@@ -817,11 +818,13 @@ func (s *GossipStateProviderImpl) addPayload(payload *proto.Payload, blockingMod
 	if payload == nil {
 		return errors.New("Given payload is nil")
 	}
-	logger.Debugf("[%s] Adding payload to local buffer, blockNum = [%d]", s.chainID, payload.SeqNum)
 	height, err := s.ledger.LedgerHeight()
 	if err != nil {
 		return errors.Wrap(err, "Failed obtaining ledger height")
 	}
+
+	logger.Debugf("[%s] Adding payload to local buffer, blockNum = [%d], height = (%d), storing {%d} blocks",
+		s.chainID, payload.SeqNum, height, s.payloads.Size())
 
 	if !blockingMode && payload.SeqNum-height >= uint64(s.config.MaxBlockDistance) {
 		return errors.Errorf("Ledger height is at %d, cannot enqueue block with sequence of %d", height, payload.SeqNum)
@@ -832,6 +835,7 @@ func (s *GossipStateProviderImpl) addPayload(payload *proto.Payload, blockingMod
 	}
 
 	s.payloads.Push(payload)
+	logger.Debugf("[%s] Pushed payload [%d] to the local buffer, storing {%d} blocks", s.chainID, payload.SeqNum, s.payloads.Size())
 
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Blocks payloads buffer size for channel [%s] is %d blocks", s.chainID, s.payloads.Size())
