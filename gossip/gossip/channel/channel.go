@@ -483,8 +483,10 @@ func (gc *gossipChannel) EligibleForChannel(member discovery.NetworkMember) bool
 // AddToMsgStore adds a given GossipMessage to the message store
 func (gc *gossipChannel) AddToMsgStore(msg *proto.SignedGossipMessage) {
 	if msg.IsDataMsg() {
-		gc.blockMsgStore.Add(msg)
-		gc.blocksPuller.Add(msg)
+		added := gc.blockMsgStore.Add(msg)
+		if added {
+			gc.blocksPuller.Add(msg)
+		}
 	}
 
 	if msg.IsStateInfoMsg() {
