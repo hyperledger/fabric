@@ -491,7 +491,7 @@ func (stream *Stream) sendOrDrop(request *orderer.StepRequest, allowDrop bool) e
 
 	select {
 	case <-stream.abortChan:
-		return errors.New("stream aborted")
+		return errors.Errorf("stream %d aborted", stream.ID)
 	case stream.sendBuff <- request:
 		return nil
 	case <-stream.commShutdown:
@@ -586,11 +586,11 @@ func (stream *Stream) operateWithTimeout(invoke StreamOperation) (*orderer.StepR
 		}
 		return r.res, r.err
 	case <-timer.C:
+		stream.Logger.Warningf("Stream %d to %s(%s) was forcibly terminated because timeout (%v) expired",
+			stream.ID, stream.NodeName, stream.Endpoint, stream.Timeout)
 		stream.Cancel(errTimeout)
 		// Wait for the operation goroutine to end
 		operationEnded.Wait()
-		stream.Logger.Warningf("Stream %d to %s(%s) was forcibly terminated because timeout (%v) expired",
-			stream.ID, stream.NodeName, stream.Endpoint, stream.Timeout)
 		return nil, errTimeout
 	}
 }
