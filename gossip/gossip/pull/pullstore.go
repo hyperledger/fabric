@@ -198,6 +198,7 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 			items[i] = msg
 			p.Lock()
 			p.itemID2Msg[itemIDs[i]] = msg
+			p.logger.Debugf("Added %s to the in memory item map, total items: %d", itemIDs[i], len(p.itemID2Msg))
 			p.Unlock()
 		}
 		p.engine.OnRes(itemIDs, res.Nonce)
@@ -228,6 +229,7 @@ func (p *pullMediatorImpl) Add(msg *proto.SignedGossipMessage) {
 	itemID := p.IdExtractor(msg)
 	p.itemID2Msg[itemID] = msg
 	p.engine.Add(itemID)
+	p.logger.Debugf("Added %s, total items: %d", itemID, len(p.itemID2Msg))
 }
 
 // Remove removes a GossipMessage from the Mediator with a matching digest,
@@ -237,6 +239,7 @@ func (p *pullMediatorImpl) Remove(digest string) {
 	defer p.Unlock()
 	delete(p.itemID2Msg, digest)
 	p.engine.Remove(digest)
+	p.logger.Debugf("Removed %s, total items: %d", digest, len(p.itemID2Msg))
 }
 
 // SelectPeers returns a slice of peers which the engine will initiate the protocol with
