@@ -199,8 +199,10 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 		return fmt.Sprintf("%d", m.(*proto.SignedGossipMessage).GetDataMsg().Payload.SeqNum)
 	}
 	gc.blockMsgStore = msgstore.NewMessageStoreExpirable(comparator, func(m interface{}) {
+		gc.logger.Debugf("Removing %s from the message store", seqNumFromMsg(m))
 		gc.blocksPuller.Remove(seqNumFromMsg(m))
 	}, gc.GetConf().BlockExpirationInterval, nil, nil, func(m interface{}) {
+		gc.logger.Debugf("Removing %s from the message store", seqNumFromMsg(m))
 		gc.blocksPuller.Remove(seqNumFromMsg(m))
 	})
 
@@ -484,6 +486,7 @@ func (gc *gossipChannel) AddToMsgStore(msg *proto.SignedGossipMessage) {
 	if msg.IsDataMsg() {
 		added := gc.blockMsgStore.Add(msg)
 		if added {
+			gc.logger.Debugf("Adding %v to the block puller", msg)
 			gc.blocksPuller.Add(msg)
 		}
 	}
@@ -579,6 +582,7 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 			gc.DeMultiplex(m)
 
 			if m.IsDataMsg() {
+				gc.logger.Debugf("Adding %v to the block puller", msg.GetGossipMessage())
 				gc.blocksPuller.Add(msg.GetGossipMessage())
 			}
 		}
