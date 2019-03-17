@@ -44,7 +44,7 @@ message Options {
 message BlockMetadata {
     // Maintains a mapping between the cluster's OSNs
     // and their Raft IDs.
-    map<uint64, Consenter> consenters = 1;
+    repeated uint64 consenter_ids = 1;
     // Carries the Raft ID value that will be assigned
     // to the next OSN that will join this cluster.
     uint64 next_consenter_id = 2;

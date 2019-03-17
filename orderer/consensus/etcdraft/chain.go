@@ -112,9 +112,13 @@ type Options struct {
 	MaxSizePerMsg   uint64
 	MaxInflightMsgs int
 
+	// BlockMetdata and Consenters should only be modified while under lock
+	// of raftMetadataLock
 	BlockMetadata *etcdraft.BlockMetadata
-	Metrics       *Metrics
-	Cert          []byte
+	Consenters    map[uint64]*etcdraft.Consenter
+
+	Metrics *Metrics
+	Cert    []byte
 
 	EvictionSuspicion   time.Duration
 	LeaderCheckInterval time.Duration
@@ -313,7 +317,7 @@ func (c *Chain) MigrationStatus() migration.Status {
 func (c *Chain) Start() {
 	c.logger.Infof("Starting Raft node")
 
-	c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.Consenters)))
+	c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.ConsenterIds)))
 	// all nodes start out as followers
 	c.Metrics.IsLeader.Set(float64(0))
 	if err := c.configureComm(); err != nil {
@@ -719,7 +723,7 @@ func (c *Chain) serveRequest() {
 					select {
 					case <-c.errorC:
 					default:
-						nodeCount := len(c.opts.BlockMetadata.Consenters)
+						nodeCount := len(c.opts.BlockMetadata.ConsenterIds)
 						// Only close the error channel (to signal the broadcast/deliver front-end a consensus backend error)
 						// If we are a cluster of size 3 or more, otherwise we can't expand a cluster of size 1 to 2 nodes.
 						if nodeCount > 2 {
@@ -945,6 +949,7 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 
 				c.raftMetadataLock.Lock()
 				c.opts.BlockMetadata = configMembership.NewBlockMetadata
+				c.opts.Consenters = configMembership.NewConsenters
 				c.raftMetadataLock.Unlock()
 
 				if err := c.configureComm(); err != nil {
@@ -978,7 +983,7 @@ func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 		c.logger.Infof("Snapshot interval is updated to %d bytes (was %d)", c.sizeLimit, old)
 	}
 
-	changes, err := ComputeMembershipChanges(c.opts.BlockMetadata, configMetadata.Consenters)
+	changes, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMetadata.Consenters)
 	if err != nil {
 		c.logger.Panicf("illegal configuration change detected: %s", err)
 	}
@@ -1054,7 +1059,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				c.confChangeInProgress = nil
 				c.configInflight = false
 				// report the new cluster size
-				c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.Consenters)))
+				c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.ConsenterIds)))
 			}
 
 			if cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == c.raftID {
@@ -1130,7 +1135,7 @@ func (c *Chain) configureComm() error {
 
 func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 	var nodes []cluster.RemoteNode
-	for raftID, consenter := range c.opts.BlockMetadata.Consenters {
+	for raftID, consenter := range c.opts.Consenters {
 		// No need to know yourself
 		if raftID == c.raftID {
 			continue
@@ -1175,7 +1180,7 @@ func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
 	}
 
 	c.raftMetadataLock.RLock()
-	_, err = ComputeMembershipChanges(c.opts.BlockMetadata, updatedMetadata.Consenters)
+	_, err = ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, updatedMetadata.Consenters)
 	c.raftMetadataLock.RUnlock()
 
 	return err
@@ -1196,11 +1201,12 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 	case common.HeaderType_CONFIG:
 		configMembership := c.detectConfChange(block)
 
+		c.opts.BlockMetadata.RaftIndex = index
 		c.raftMetadataLock.Lock()
 		if configMembership != nil {
 			c.opts.BlockMetadata = configMembership.NewBlockMetadata
+			c.opts.Consenters = configMembership.NewConsenters
 		}
-		c.opts.BlockMetadata.RaftIndex = index
 		c.raftMetadataLock.Unlock()
 
 		blockMetadataBytes := utils.MarshalOrPanic(c.opts.BlockMetadata)
@@ -1284,7 +1290,7 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 	// extracting current Raft configuration state
 	confState := c.Node.ApplyConfChange(raftpb.ConfChange{})
 
-	if len(confState.Nodes) == len(c.opts.BlockMetadata.Consenters) {
+	if len(confState.Nodes) == len(c.opts.BlockMetadata.ConsenterIds) {
 		// since configuration change could only add one node or
 		// remove one node at a time, if raft nodes state size
 		// equal to membership stored in block metadata field,
