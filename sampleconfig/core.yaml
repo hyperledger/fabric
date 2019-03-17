@@ -203,6 +203,30 @@ peer:
             # reconciliationEnabled is a flag that indicates whether private data reconciliation is enable or not.
             reconciliationEnabled: true
 
+        # Gossip state transfer related configuration
+        state:
+            # indicates whenever state transfer is enabled or not
+            # default value is true, i.e. state transfer is active
+            # and takes care to sync up missing blocks allowing
+            # lagging peer to catch up to speed with rest network
+            enabled: true
+            # checkInterval interval to check whether peer is lagging behind enough to
+            # request blocks via state transfer from another peer.
+            checkInterval: 10s
+            # responseTimeout amount of time to wait for state transfer response from
+            # other peers
+            responseTimeout: 3s
+            # batchSize the number of blocks to request via state transfer from another peer
+            batchSize: 10
+            # blockBufferSize reflects the size of the re-ordering buffer
+            # which captures blocks and takes care to deliver them in order
+            # down to the ledger layer. The actually buffer size is bounded between
+            # 0 and 2*blockBufferSize, each channel maintains its own buffer
+            blockBufferSize: 100
+            # maxRetries maximum number of re-tries to ask
+            # for single state transfer request
+            maxRetries: 3
+
     # TLS Settings
     # Note that peer-chaincode connections through chaincodeListenAddress is
     # not mutual TLS auth. See comments on chaincodeListenAddress for more info
