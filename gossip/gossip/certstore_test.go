@@ -72,9 +72,12 @@ func (s *sentMsg) GetConnectionInfo() *protoext.ConnectionInfo {
 
 type senderMock struct {
 	mock.Mock
+	sync.Mutex
 }
 
 func (s *senderMock) Send(msg *protoext.SignedGossipMessage, peers ...*comm.RemotePeer) {
+	s.Lock()
+	defer s.Unlock()
 	s.Called(msg, peers)
 }
 
@@ -145,6 +148,7 @@ func TestCertRevocation(t *testing.T) {
 
 	sentHello := false
 	l := sync.Mutex{}
+	sender.Lock()
 	sender.Mock = mock.Mock{}
 	sender.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
 		msg := arg.Get(0).(*protoext.SignedGossipMessage)
@@ -171,6 +175,7 @@ func TestCertRevocation(t *testing.T) {
 			askedForIdentity <- struct{}{}
 		}
 	})
+	sender.Unlock()
 	testCertificateUpdate(t, true, cStore)
 	// Shouldn't have asked, because already got identity
 	select {
