@@ -865,7 +865,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				err := proto.Unmarshal(originalMetadata, metadata)
 				Expect(err).NotTo(HaveOccurred())
 
-				metadata.Options.SnapshotInterval = 2 * 1024 // 100 MB
+				metadata.Options.SnapshotIntervalSize = 2 * 1024 // 2 KB
 
 				// write metadata back
 				newMetadata, err := proto.Marshal(metadata)

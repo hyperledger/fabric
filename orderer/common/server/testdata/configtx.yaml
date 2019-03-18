@@ -93,8 +93,7 @@ Orderer: &OrdererDefaults
             TickInterval: 500
             ElectionTick: 10
             HeartbeatTick: 1
-            MaxInflightMsgs: 256
-            MaxSizePerMsg: 1048576
+            MaxInflightBlocks: 5
     Organizations:
     Policies:
         Readers:

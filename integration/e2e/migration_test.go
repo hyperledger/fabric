@@ -268,12 +268,11 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 					},
 				},
 				Options: &protosraft.Options{
-					TickInterval:     "500ms",
-					ElectionTick:     10,
-					HeartbeatTick:    1,
-					MaxInflightMsgs:  256,
-					MaxSizePerMsg:    1048576,
-					SnapshotInterval: 8388608,
+					TickInterval:         "500ms",
+					ElectionTick:         10,
+					HeartbeatTick:        1,
+					MaxInflightBlocks:    5,
+					SnapshotIntervalSize: 20 * 1024 * 1024,
 				}}
 
 			raft_metadata_bytes := utils.MarshalOrPanic(raft_metadata)
