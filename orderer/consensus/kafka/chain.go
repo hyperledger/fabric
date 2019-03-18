@@ -79,7 +79,7 @@ func newChain(
 		haltChan:                    make(chan struct{}),
 		startChan:                   make(chan struct{}),
 		doneReprocessingMsgInFlight: doneReprocessingMsgInFlight,
-		migrationStatusStepper:      migration.NewStatusStepper(support.IsSystemChannel(), support.ChainID()),
+		migrationManager:            migration.NewManager(support.IsSystemChannel(), support.ChainID()),
 	}, nil
 }
 
@@ -128,12 +128,12 @@ type chainImpl struct {
 
 	// provides access to the consensus-type migration status of the chain,
 	// and allows stepping through the state machine.
-	migrationStatusStepper migration.StatusStepper
+	migrationManager migration.Manager
 }
 
 // MigrationStatus provides access to the consensus-type migration status of the chain.
 func (chain *chainImpl) MigrationStatus() migration.Status {
-	return chain.migrationStatusStepper
+	return chain.migrationManager
 }
 
 // Errored returns a channel which will close when a partition consumer error
@@ -226,9 +226,10 @@ func (chain *chainImpl) Order(env *cb.Envelope, configSeq uint64) error {
 }
 
 func (chain *chainImpl) order(env *cb.Envelope, configSeq uint64, originalOffset int64) error {
-	// During consensus-type migration: stop all normal txs on the system-channel and standard-channels.
-	if chain.migrationStatusStepper.IsPending() || chain.migrationStatusStepper.IsCommitted() {
-		return errors.Errorf("cannot enqueue, consensus-type migration pending")
+	// During consensus-type migration: stop all normal txs on the system-channel and standard-channels. This
+	// happens in the broadcast-phase, and will prevent new transactions from entering Kafka.
+	if chain.migrationManager.IsPending() || chain.migrationManager.IsCommitted() {
+		return fmt.Errorf("[channel: %s] cannot enqueue, consensus-type migration pending", chain.ChainID())
 	}
 
 	marshaledEnv, err := utils.Marshal(env)
@@ -248,7 +249,7 @@ func (chain *chainImpl) Configure(config *cb.Envelope, configSeq uint64) error {
 
 func (chain *chainImpl) configure(config *cb.Envelope, configSeq uint64, originalOffset int64) error {
 	// During consensus-type migration, stop channel creation
-	if chain.ConsenterSupport.IsSystemChannel() && chain.migrationStatusStepper.IsPending() {
+	if chain.ConsenterSupport.IsSystemChannel() && chain.migrationManager.IsPending() {
 		ordererTx, err := isOrdererTx(config)
 		if err != nil {
 			err = errors.Wrap(err, "cannot determine if config-tx is of type ORDERER_TX, on system channel")
@@ -272,7 +273,7 @@ func (chain *chainImpl) configure(config *cb.Envelope, configSeq uint64, origina
 	return nil
 }
 
-// enqueue accepts a message and returns true on acceptance, or false otheriwse.
+// enqueue accepts a message and returns true on acceptance, or false otherwise.
 func (chain *chainImpl) enqueue(kafkaMsg *ab.KafkaMessage) bool {
 	logger.Debugf("[channel: %s] Enqueueing envelope...", chain.ChainID())
 	select {
@@ -855,8 +856,8 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			offset = chain.lastOriginalOffsetProcessed
 		}
 
-		// During consensus-type migration, drop normal messages that managed to sneak in past Order, possibly from other orderers
-		if chain.migrationStatusStepper.IsPending() || chain.migrationStatusStepper.IsCommitted() {
+		// During consensus-type migration, drop normal messages on the channel.
+		if chain.migrationManager.IsPending() || chain.migrationManager.IsCommitted() {
 			logger.Warningf("[channel: %s] Normal message is dropped, consensus-type migration pending", chain.ChainID())
 			return nil
 		}
@@ -935,7 +936,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		if doCommit {
 			commitConfigMsg(env, offset)
 		} else {
-			logger.Infof("[channel: %s] Dropping config message with offset %d, because of consensus-type migration step", chain.ChainID(), receivedOffset)
+			logger.Warningf("[channel: %s] Dropping config message with offset %d, because of consensus-type migration step", chain.ChainID(), receivedOffset)
 		}
 
 	default:
@@ -968,10 +969,10 @@ func (chain *chainImpl) processMigrationStep(configTx *cb.Envelope) (commitBlock
 	switch chdr.Type {
 
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		if chain.migrationStatusStepper.IsPending() || chain.migrationStatusStepper.IsCommitted() {
+		if chain.migrationManager.IsPending() || chain.migrationManager.IsCommitted() {
 			commitBlock = false
 			logger.Debugf("[channel: %s] Consensus-type migration: Dropping ORDERER_TRANSACTION because consensus-type migration pending; Status: %s",
-				chain.ChainID(), chain.migrationStatusStepper)
+				chain.ChainID(), chain.migrationManager)
 		} else {
 			commitBlock = true
 		}
@@ -999,8 +1000,8 @@ func (chain *chainImpl) processMigrationStep(configTx *cb.Envelope) (commitBlock
 		logger.Infof("[channel: %s] Consensus-type migration: Processing config tx: type: %s, state: %s, context: %d",
 			chain.ChainID(), nextConsensusType, nextMigState.String(), nextMigContext)
 
-		commitMigration := false                                          // Prevent shadowing of commitBlock
-		commitBlock, commitMigration = chain.migrationStatusStepper.Step( // Evaluate the migration state machine
+		commitMigration := false                                    // Prevent shadowing of commitBlock
+		commitBlock, commitMigration = chain.migrationManager.Step( // Evaluate the migration state machine
 			chain.ChainID(), nextConsensusType, nextMigState, nextMigContext, chain.lastCutBlockNumber, chain.consenter.migrationController())
 		logger.Debugf("[channel: %s] Consensus-type migration: commitBlock=%v, commitMigration=%v", chain.ChainID(), commitBlock, commitMigration)
 
@@ -1017,15 +1018,15 @@ func (chain *chainImpl) processMigrationStep(configTx *cb.Envelope) (commitBlock
 			block := chain.CreateNextBlock([]*cb.Envelope{configTx})
 			replacer := file.NewReplacer(chain.consenter.bootstrapFile())
 			if err = replacer.ReplaceGenesisBlockFile(block); err != nil {
-				_, context := chain.migrationStatusStepper.StateContext()
-				chain.migrationStatusStepper.SetStateContext(ab.ConsensusType_MIG_STATE_START, context) //Undo the commit
+				_, context := chain.migrationManager.StateContext()
+				chain.migrationManager.SetStateContext(ab.ConsensusType_MIG_STATE_START, context) //Undo the commit
 				logger.Warningf("[channel: %s] Consensus-type migration: Reject Config tx on system channel, cannot replace bootstrap file; Status: %s",
-					chain.ChainID(), chain.migrationStatusStepper.String())
+					chain.ChainID(), chain.migrationManager.String())
 				return false, err
 			}
 
 			logger.Infof("[channel: %s] Consensus-type migration: committed; Replaced bootstrap file: %s; Status: %s",
-				chain.ChainID(), chain.consenter.bootstrapFile(), chain.migrationStatusStepper.String())
+				chain.ChainID(), chain.consenter.bootstrapFile(), chain.migrationManager.String())
 		}
 
 	default:

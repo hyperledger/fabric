@@ -271,7 +271,7 @@ func NewChain(
 		},
 		logger:          lg,
 		opts:            opts,
-		migrationStatus: migration.NewStatusStepper(support.IsSystemChannel(), support.ChainID()), // Needed by consensus-type migration
+		migrationStatus: migration.NewManager(support.IsSystemChannel(), support.ChainID()), // Needed by consensus-type migration
 	}
 
 	// Sets initial values for metrics
