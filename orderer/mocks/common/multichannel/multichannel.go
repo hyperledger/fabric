@@ -22,6 +22,9 @@ type ConsenterSupport struct {
 	// SharedConfigVal is the value returned by SharedConfig()
 	SharedConfigVal *mockconfig.Orderer
 
+	// SharedConfigVal is the value returned by ChannelConfig()
+	ChannelConfigVal *mockconfig.Channel
+
 	// BlockCutterVal is the value returned by BlockCutter()
 	BlockCutterVal *mockblockcutter.Receiver
 
@@ -83,6 +86,11 @@ func (mcs *ConsenterSupport) BlockCutter() blockcutter.Receiver {
 // SharedConfig returns SharedConfigVal
 func (mcs *ConsenterSupport) SharedConfig() channelconfig.Orderer {
 	return mcs.SharedConfigVal
+}
+
+// ChannelConfig returns ChannelConfigVal
+func (mcs *ConsenterSupport) ChannelConfig() channelconfig.Channel {
+	return mcs.ChannelConfigVal
 }
 
 // CreateNextBlock creates a simple block structure with the given data
