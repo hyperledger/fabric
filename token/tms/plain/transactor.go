@@ -146,11 +146,18 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 // read token data from ledger for each token ids and calculate the sum of quantities for all token ids
 // Returns TokenIds, token type, sum of token quantities, and error in the case of failure
 func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, Quantity, error) {
+	// create token owner based on t.PublicCredential
+	tokenOwner := &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}
+	ownerString, err := GetTokenOwnerString(tokenOwner)
+	if err != nil {
+		return "", nil, err
+	}
+
 	var tokenType = ""
 	var sum = NewZeroQuantity(Precision)
 	for _, tokenId := range tokenIds {
 		// create the composite key from tokenId
-		inKey, err := createCompositeKey(tokenIdPrefix, []string{tokenId.TxId, strconv.Itoa(int(tokenId.Index))})
+		inKey, err := createTokenKey(ownerString, tokenId.TxId, int(tokenId.Index))
 		if err != nil {
 			verifierLogger.Errorf("error getting creating input key: %s", err)
 			return "", nil, err
@@ -165,7 +172,7 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, Q
 			return "", nil, err
 		}
 		if len(inBytes) == 0 {
-			return "", nil, errors.New(fmt.Sprintf("input '%s' does not exist", inKey))
+			return "", nil, errors.New(fmt.Sprintf("input TokenId (%s, %d) does not exist or not owned by the user", tokenId.TxId, tokenId.Index))
 		}
 		input := &token.Token{}
 		err = proto.Unmarshal(inBytes, input)
@@ -200,10 +207,23 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId) (string, Q
 	return tokenType, sum, nil
 }
 
-// ListTokens creates a TokenTransaction that lists the unspent tokens owned by owner.
+// ListTokens queries the ledger and returns the unspent tokens owned by the user.
+// It does not allow to query unspent tokens owned by other users.
 func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
+	// The type is always MSP_IDENTIFIER in current use cases
+	tokenOwner := &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}
+	ownerString, err := GetTokenOwnerString(tokenOwner)
+	if err != nil {
+		return nil, err
+	}
 
-	iterator, err := t.Ledger.GetStateRangeScanIterator(tokenNameSpace, "", "")
+	startKey, err := createCompositeKey(tokenKeyPrefix, []string{ownerString})
+	if err != nil {
+		return nil, err
+	}
+	endKey := startKey + string(maxUnicodeRuneValue)
+
+	iterator, err := t.Ledger.GetStateRangeScanIterator(tokenNameSpace, startKey, endKey)
 	if err != nil {
 		return nil, err
 	}
@@ -233,19 +253,17 @@ func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 			}
 
 			// show only tokens which are owned by transactor
-			if bytes.Equal(output.Owner.Raw, t.PublicCredential) {
-				verifierLogger.Debugf("adding token with ID '%s' to list of unspent tokens", result.GetKey())
-				id, err := getTokenIdFromKey(result.Key)
-				if err != nil {
-					return nil, err
-				}
-				tokens = append(tokens,
-					&token.UnspentToken{
-						Type:     output.Type,
-						Quantity: output.Quantity,
-						Id:       id,
-					})
+			verifierLogger.Debugf("adding token with ID '%s' to list of unspent tokens", result.GetKey())
+			id, err := getTokenIdFromKey(result.Key)
+			if err != nil {
+				return nil, err
 			}
+			tokens = append(tokens,
+				&token.UnspentToken{
+					Type:     output.Type,
+					Quantity: output.Quantity,
+					Id:       id,
+				})
 		}
 	}
 }
@@ -335,7 +353,8 @@ func splitCompositeKey(compositeKey string) (string, []string, error) {
 			componentIndex = i + 1
 		}
 	}
-	if len(components) < 2 {
+	// there is an extra tokenIdPrefix component in the beginning, trim it off
+	if len(components) < numComponentsInKey+1 {
 		return "", nil, errors.Errorf("invalid composite key - not enough components found in key '%s'", compositeKey)
 	}
 	return components[0], components[1:], nil
@@ -375,14 +394,16 @@ func getTokenIdFromKey(key string) (*token.TokenId, error) {
 		return nil, errors.New(fmt.Sprintf("error splitting input composite key: '%s'", err))
 	}
 
-	if len(components) != 2 {
-		return nil, errors.New(fmt.Sprintf("not enough components in output ID composite key; expected 2, received '%s'", components))
+	// 4 components in key: ownerType, ownerRaw, txid, index
+	if len(components) != numComponentsInKey {
+		return nil, errors.New(fmt.Sprintf("not enough components in output ID composite key; expected 4, received '%s'", components))
 	}
 
-	txID := components[0]
-	index, err := strconv.Atoi(components[1])
+	// txid and index are the last 2 components
+	txID := components[numComponentsInKey-2]
+	index, err := strconv.Atoi(components[numComponentsInKey-1])
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error parsing output index '%s': '%s'", components[1], err))
+		return nil, errors.New(fmt.Sprintf("error parsing output index '%s': '%s'", components[numComponentsInKey-1], err))
 	}
 	return &token.TokenId{TxId: txID, Index: uint32(index)}, nil
 }

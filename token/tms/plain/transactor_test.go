@@ -43,10 +43,13 @@ var _ = Describe("RequestListTokens", func() {
 		outputs[3], err = proto.Marshal(&token.Token{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK4", Quantity: ToHex(400)})
 		Expect(err).NotTo(HaveOccurred())
 
-		keys[0] = generateKey("1", "0", tokenIdPrefix)
-		keys[1] = generateKey("1", "1", tokenIdPrefix)
-		keys[2] = generateKey("2", "0", tokenIdPrefix)
-		keys[3] = generateKey("3", "0", tokenIdPrefix)
+		// owner should be the same credential for transactor
+		ownerString := buildTokenOwnerString([]byte("Alice"))
+
+		keys[0] = generateKey(ownerString, "1", "0", tokenKeyPrefix)
+		keys[1] = generateKey(ownerString, "1", "1", tokenKeyPrefix)
+		keys[2] = generateKey(ownerString, "2", "0", tokenKeyPrefix)
+		keys[3] = generateKey(ownerString, "3", "0", tokenKeyPrefix)
 
 		results[0] = &queryresult.KV{Key: keys[0], Value: outputs[0]}
 		results[1] = &queryresult.KV{Key: keys[1], Value: outputs[1]}
@@ -78,10 +81,8 @@ var _ = Describe("RequestListTokens", func() {
 			It("returns unspent tokens", func() {
 				fakeLedger.GetStateRangeScanIteratorReturns(fakeIterator, nil)
 				fakeIterator.NextReturnsOnCall(0, results[0], nil)
-				fakeIterator.NextReturnsOnCall(1, results[1], nil)
-				//note that we mimic that token output[2] has been spent already
-				fakeIterator.NextReturnsOnCall(2, results[3], nil)
-				fakeIterator.NextReturnsOnCall(4, nil, nil)
+				fakeIterator.NextReturnsOnCall(1, results[3], nil)
+				fakeIterator.NextReturnsOnCall(2, nil, nil)
 
 				tokens, err := transactor.ListTokens()
 				Expect(err).NotTo(HaveOccurred())
@@ -234,7 +235,7 @@ var _ = Describe("Transactor", func() {
 				Shares:     recipientTransferShares,
 			}
 			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err.Error()).To(Equal(fmt.Sprintf("input '%s' does not exist", string("\x00")+tokenIdPrefix+string("\x00")+"george"+string("\x00")+"0"+string("\x00"))))
+			Expect(err.Error()).To(Equal(fmt.Sprintf("input TokenId (%s, %d) does not exist or not owned by the user", "george", 0)))
 		})
 	})
 
@@ -534,6 +535,6 @@ var _ = Describe("Transactor", func() {
 	})
 })
 
-func generateKey(txID, index, namespace string) string {
-	return "\x00" + namespace + "\x00" + txID + "\x00" + index + "\x00"
+func generateKey(owner, txID, index, namespace string) string {
+	return "\x00" + namespace + "\x00" + owner + "\x00" + txID + "\x00" + index + "\x00"
 }
