@@ -54,6 +54,16 @@ type FakeConsenterSupport struct {
 	chainIDReturnsOnCall map[int]struct {
 		result1 string
 	}
+	ChannelConfigStub        func() channelconfig.Channel
+	channelConfigMutex       sync.RWMutex
+	channelConfigArgsForCall []struct {
+	}
+	channelConfigReturns struct {
+		result1 channelconfig.Channel
+	}
+	channelConfigReturnsOnCall map[int]struct {
+		result1 channelconfig.Channel
+	}
 	ClassifyMsgStub        func(*common.ChannelHeader) msgprocessor.Classification
 	classifyMsgMutex       sync.RWMutex
 	classifyMsgArgsForCall []struct {
@@ -433,6 +443,58 @@ func (fake *FakeConsenterSupport) ChainIDReturnsOnCall(i int, result1 string) {
 	}
 	fake.chainIDReturnsOnCall[i] = struct {
 		result1 string
+	}{result1}
+}
+
+func (fake *FakeConsenterSupport) ChannelConfig() channelconfig.Channel {
+	fake.channelConfigMutex.Lock()
+	ret, specificReturn := fake.channelConfigReturnsOnCall[len(fake.channelConfigArgsForCall)]
+	fake.channelConfigArgsForCall = append(fake.channelConfigArgsForCall, struct {
+	}{})
+	fake.recordInvocation("ChannelConfig", []interface{}{})
+	fake.channelConfigMutex.Unlock()
+	if fake.ChannelConfigStub != nil {
+		return fake.ChannelConfigStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.channelConfigReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeConsenterSupport) ChannelConfigCallCount() int {
+	fake.channelConfigMutex.RLock()
+	defer fake.channelConfigMutex.RUnlock()
+	return len(fake.channelConfigArgsForCall)
+}
+
+func (fake *FakeConsenterSupport) ChannelConfigCalls(stub func() channelconfig.Channel) {
+	fake.channelConfigMutex.Lock()
+	defer fake.channelConfigMutex.Unlock()
+	fake.ChannelConfigStub = stub
+}
+
+func (fake *FakeConsenterSupport) ChannelConfigReturns(result1 channelconfig.Channel) {
+	fake.channelConfigMutex.Lock()
+	defer fake.channelConfigMutex.Unlock()
+	fake.ChannelConfigStub = nil
+	fake.channelConfigReturns = struct {
+		result1 channelconfig.Channel
+	}{result1}
+}
+
+func (fake *FakeConsenterSupport) ChannelConfigReturnsOnCall(i int, result1 channelconfig.Channel) {
+	fake.channelConfigMutex.Lock()
+	defer fake.channelConfigMutex.Unlock()
+	fake.ChannelConfigStub = nil
+	if fake.channelConfigReturnsOnCall == nil {
+		fake.channelConfigReturnsOnCall = make(map[int]struct {
+			result1 channelconfig.Channel
+		})
+	}
+	fake.channelConfigReturnsOnCall[i] = struct {
+		result1 channelconfig.Channel
 	}{result1}
 }
 
@@ -1238,6 +1300,8 @@ func (fake *FakeConsenterSupport) Invocations() map[string][][]interface{} {
 	defer fake.blockCutterMutex.RUnlock()
 	fake.chainIDMutex.RLock()
 	defer fake.chainIDMutex.RUnlock()
+	fake.channelConfigMutex.RLock()
+	defer fake.channelConfigMutex.RUnlock()
 	fake.classifyMsgMutex.RLock()
 	defer fake.classifyMsgMutex.RUnlock()
 	fake.createNextBlockMutex.RLock()

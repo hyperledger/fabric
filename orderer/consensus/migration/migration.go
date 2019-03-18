@@ -31,6 +31,9 @@ type Status interface {
 	// The definition of "committed" differs between the system and standard channels.
 	// Returns true when: COMMIT on system channel; always false on standard channel.
 	IsCommitted() bool
+
+	// IsStartedOrCommitted returns true if consensus-type migration is started or committed on the underlying chain.
+	IsStartedOrCommitted() bool
 }
 
 // ConsensusTypeInfo carries the fields of protos/orderer/ConsensusType that are contained in a proposed or ordered
@@ -145,6 +148,18 @@ func (sm *statusManager) SetStateContext(state orderer.ConsensusType_MigrationSt
 	defer sm.mutex.Unlock()
 	sm.state = state
 	sm.context = context
+}
+
+// IsStartedOrCommitted returns true if migration is started or committed.
+func (sm *statusManager) IsStartedOrCommitted() bool {
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
+
+	if sm.systemChannel {
+		return sm.state == orderer.ConsensusType_MIG_STATE_START || sm.state == orderer.ConsensusType_MIG_STATE_COMMIT
+	}
+
+	return sm.state == orderer.ConsensusType_MIG_STATE_START || sm.state == orderer.ConsensusType_MIG_STATE_CONTEXT
 }
 
 // IsPending returns true if migration is pending.
@@ -378,6 +393,5 @@ func (sm *statusManager) VerifyRaftMetadata(metadataBytes []byte) error {
 // Validate checks the validity of the state transitions of a possible migration config update tx by comparing the
 // current ConsensusTypeInfo config with the next (proposed) ConsensusTypeInfo.
 func (sm *statusManager) Validate(current, next *ConsensusTypeInfo) error {
-	//TODO
-	return nil
+	return Validate(sm.systemChannel, current, next)
 }

@@ -7,7 +7,7 @@ import (
 	migration "github.com/hyperledger/fabric/orderer/consensus/migration"
 )
 
-type FakeMigrationController struct {
+type FakeController struct {
 	ConsensusMigrationAbortStub        func() error
 	consensusMigrationAbortMutex       sync.RWMutex
 	consensusMigrationAbortArgsForCall []struct {
@@ -53,7 +53,7 @@ type FakeMigrationController struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationAbort() error {
+func (fake *FakeController) ConsensusMigrationAbort() error {
 	fake.consensusMigrationAbortMutex.Lock()
 	ret, specificReturn := fake.consensusMigrationAbortReturnsOnCall[len(fake.consensusMigrationAbortArgsForCall)]
 	fake.consensusMigrationAbortArgsForCall = append(fake.consensusMigrationAbortArgsForCall, struct {
@@ -70,19 +70,19 @@ func (fake *FakeMigrationController) ConsensusMigrationAbort() error {
 	return fakeReturns.result1
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationAbortCallCount() int {
+func (fake *FakeController) ConsensusMigrationAbortCallCount() int {
 	fake.consensusMigrationAbortMutex.RLock()
 	defer fake.consensusMigrationAbortMutex.RUnlock()
 	return len(fake.consensusMigrationAbortArgsForCall)
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationAbortCalls(stub func() error) {
+func (fake *FakeController) ConsensusMigrationAbortCalls(stub func() error) {
 	fake.consensusMigrationAbortMutex.Lock()
 	defer fake.consensusMigrationAbortMutex.Unlock()
 	fake.ConsensusMigrationAbortStub = stub
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationAbortReturns(result1 error) {
+func (fake *FakeController) ConsensusMigrationAbortReturns(result1 error) {
 	fake.consensusMigrationAbortMutex.Lock()
 	defer fake.consensusMigrationAbortMutex.Unlock()
 	fake.ConsensusMigrationAbortStub = nil
@@ -91,7 +91,7 @@ func (fake *FakeMigrationController) ConsensusMigrationAbortReturns(result1 erro
 	}{result1}
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationAbortReturnsOnCall(i int, result1 error) {
+func (fake *FakeController) ConsensusMigrationAbortReturnsOnCall(i int, result1 error) {
 	fake.consensusMigrationAbortMutex.Lock()
 	defer fake.consensusMigrationAbortMutex.Unlock()
 	fake.ConsensusMigrationAbortStub = nil
@@ -105,7 +105,7 @@ func (fake *FakeMigrationController) ConsensusMigrationAbortReturnsOnCall(i int,
 	}{result1}
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationCommit() error {
+func (fake *FakeController) ConsensusMigrationCommit() error {
 	fake.consensusMigrationCommitMutex.Lock()
 	ret, specificReturn := fake.consensusMigrationCommitReturnsOnCall[len(fake.consensusMigrationCommitArgsForCall)]
 	fake.consensusMigrationCommitArgsForCall = append(fake.consensusMigrationCommitArgsForCall, struct {
@@ -122,19 +122,19 @@ func (fake *FakeMigrationController) ConsensusMigrationCommit() error {
 	return fakeReturns.result1
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationCommitCallCount() int {
+func (fake *FakeController) ConsensusMigrationCommitCallCount() int {
 	fake.consensusMigrationCommitMutex.RLock()
 	defer fake.consensusMigrationCommitMutex.RUnlock()
 	return len(fake.consensusMigrationCommitArgsForCall)
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationCommitCalls(stub func() error) {
+func (fake *FakeController) ConsensusMigrationCommitCalls(stub func() error) {
 	fake.consensusMigrationCommitMutex.Lock()
 	defer fake.consensusMigrationCommitMutex.Unlock()
 	fake.ConsensusMigrationCommitStub = stub
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationCommitReturns(result1 error) {
+func (fake *FakeController) ConsensusMigrationCommitReturns(result1 error) {
 	fake.consensusMigrationCommitMutex.Lock()
 	defer fake.consensusMigrationCommitMutex.Unlock()
 	fake.ConsensusMigrationCommitStub = nil
@@ -143,7 +143,7 @@ func (fake *FakeMigrationController) ConsensusMigrationCommitReturns(result1 err
 	}{result1}
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationCommitReturnsOnCall(i int, result1 error) {
+func (fake *FakeController) ConsensusMigrationCommitReturnsOnCall(i int, result1 error) {
 	fake.consensusMigrationCommitMutex.Lock()
 	defer fake.consensusMigrationCommitMutex.Unlock()
 	fake.ConsensusMigrationCommitStub = nil
@@ -157,7 +157,7 @@ func (fake *FakeMigrationController) ConsensusMigrationCommitReturnsOnCall(i int
 	}{result1}
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationPending() bool {
+func (fake *FakeController) ConsensusMigrationPending() bool {
 	fake.consensusMigrationPendingMutex.Lock()
 	ret, specificReturn := fake.consensusMigrationPendingReturnsOnCall[len(fake.consensusMigrationPendingArgsForCall)]
 	fake.consensusMigrationPendingArgsForCall = append(fake.consensusMigrationPendingArgsForCall, struct {
@@ -174,19 +174,19 @@ func (fake *FakeMigrationController) ConsensusMigrationPending() bool {
 	return fakeReturns.result1
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationPendingCallCount() int {
+func (fake *FakeController) ConsensusMigrationPendingCallCount() int {
 	fake.consensusMigrationPendingMutex.RLock()
 	defer fake.consensusMigrationPendingMutex.RUnlock()
 	return len(fake.consensusMigrationPendingArgsForCall)
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationPendingCalls(stub func() bool) {
+func (fake *FakeController) ConsensusMigrationPendingCalls(stub func() bool) {
 	fake.consensusMigrationPendingMutex.Lock()
 	defer fake.consensusMigrationPendingMutex.Unlock()
 	fake.ConsensusMigrationPendingStub = stub
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationPendingReturns(result1 bool) {
+func (fake *FakeController) ConsensusMigrationPendingReturns(result1 bool) {
 	fake.consensusMigrationPendingMutex.Lock()
 	defer fake.consensusMigrationPendingMutex.Unlock()
 	fake.ConsensusMigrationPendingStub = nil
@@ -195,7 +195,7 @@ func (fake *FakeMigrationController) ConsensusMigrationPendingReturns(result1 bo
 	}{result1}
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationPendingReturnsOnCall(i int, result1 bool) {
+func (fake *FakeController) ConsensusMigrationPendingReturnsOnCall(i int, result1 bool) {
 	fake.consensusMigrationPendingMutex.Lock()
 	defer fake.consensusMigrationPendingMutex.Unlock()
 	fake.ConsensusMigrationPendingStub = nil
@@ -209,7 +209,7 @@ func (fake *FakeMigrationController) ConsensusMigrationPendingReturnsOnCall(i in
 	}{result1}
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationStart(arg1 uint64) error {
+func (fake *FakeController) ConsensusMigrationStart(arg1 uint64) error {
 	fake.consensusMigrationStartMutex.Lock()
 	ret, specificReturn := fake.consensusMigrationStartReturnsOnCall[len(fake.consensusMigrationStartArgsForCall)]
 	fake.consensusMigrationStartArgsForCall = append(fake.consensusMigrationStartArgsForCall, struct {
@@ -227,26 +227,26 @@ func (fake *FakeMigrationController) ConsensusMigrationStart(arg1 uint64) error 
 	return fakeReturns.result1
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationStartCallCount() int {
+func (fake *FakeController) ConsensusMigrationStartCallCount() int {
 	fake.consensusMigrationStartMutex.RLock()
 	defer fake.consensusMigrationStartMutex.RUnlock()
 	return len(fake.consensusMigrationStartArgsForCall)
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationStartCalls(stub func(uint64) error) {
+func (fake *FakeController) ConsensusMigrationStartCalls(stub func(uint64) error) {
 	fake.consensusMigrationStartMutex.Lock()
 	defer fake.consensusMigrationStartMutex.Unlock()
 	fake.ConsensusMigrationStartStub = stub
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationStartArgsForCall(i int) uint64 {
+func (fake *FakeController) ConsensusMigrationStartArgsForCall(i int) uint64 {
 	fake.consensusMigrationStartMutex.RLock()
 	defer fake.consensusMigrationStartMutex.RUnlock()
 	argsForCall := fake.consensusMigrationStartArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationStartReturns(result1 error) {
+func (fake *FakeController) ConsensusMigrationStartReturns(result1 error) {
 	fake.consensusMigrationStartMutex.Lock()
 	defer fake.consensusMigrationStartMutex.Unlock()
 	fake.ConsensusMigrationStartStub = nil
@@ -255,7 +255,7 @@ func (fake *FakeMigrationController) ConsensusMigrationStartReturns(result1 erro
 	}{result1}
 }
 
-func (fake *FakeMigrationController) ConsensusMigrationStartReturnsOnCall(i int, result1 error) {
+func (fake *FakeController) ConsensusMigrationStartReturnsOnCall(i int, result1 error) {
 	fake.consensusMigrationStartMutex.Lock()
 	defer fake.consensusMigrationStartMutex.Unlock()
 	fake.ConsensusMigrationStartStub = nil
@@ -269,7 +269,7 @@ func (fake *FakeMigrationController) ConsensusMigrationStartReturnsOnCall(i int,
 	}{result1}
 }
 
-func (fake *FakeMigrationController) Invocations() map[string][][]interface{} {
+func (fake *FakeController) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.consensusMigrationAbortMutex.RLock()
@@ -287,7 +287,7 @@ func (fake *FakeMigrationController) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *FakeMigrationController) recordInvocation(key string, args []interface{}) {
+func (fake *FakeController) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -299,4 +299,4 @@ func (fake *FakeMigrationController) recordInvocation(key string, args []interfa
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ migration.Controller = new(FakeMigrationController)
+var _ migration.Controller = new(FakeController)

@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	"github.com/hyperledger/fabric/orderer/consensus/mocks"
 	"github.com/hyperledger/fabric/protos/orderer"
+	protosraft "github.com/hyperledger/fabric/protos/orderer/etcdraft"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -90,7 +93,7 @@ func TestStateContextStandard(t *testing.T) {
 
 func TestStepSysFromNone(t *testing.T) {
 	sysChan := true
-	migController := mocks.FakeMigrationController{}
+	migController := mocks.FakeController{}
 	status := migration.NewManager(sysChan, "test")
 
 	t.Run("None-None", func(t *testing.T) {
@@ -144,7 +147,7 @@ func TestStepSysFromNone(t *testing.T) {
 
 func TestStepSysFromStart(t *testing.T) {
 	sysChan := true
-	migController := mocks.FakeMigrationController{}
+	migController := mocks.FakeController{}
 	status := migration.NewManager(sysChan, "test")
 	lastBlockCut := uint64(6)
 	context := lastBlockCut + 1
@@ -205,7 +208,7 @@ func TestStepSysFromStart(t *testing.T) {
 
 func TestStepSysFromCommit(t *testing.T) {
 	sysChan := true
-	migController := mocks.FakeMigrationController{}
+	migController := mocks.FakeController{}
 	status := migration.NewManager(sysChan, "test")
 	lastBlockCut := uint64(6)
 	context := lastBlockCut + 1
@@ -265,7 +268,7 @@ func TestStepSysFromAbort(t *testing.T) {
 
 func TestStepSysFromContext(t *testing.T) {
 	sysChan := true
-	migController := mocks.FakeMigrationController{}
+	migController := mocks.FakeController{}
 	status := migration.NewManager(sysChan, "test")
 	lastBlockCut := uint64(6)
 	context := lastBlockCut + 1
@@ -300,7 +303,7 @@ func TestStepSysFromContext(t *testing.T) {
 
 func TestStepStdFromNone(t *testing.T) {
 	sysChan := false
-	migController := mocks.FakeMigrationController{}
+	migController := mocks.FakeController{}
 	status := migration.NewManager(sysChan, "test")
 
 	t.Run("None-None", func(t *testing.T) {
@@ -342,7 +345,7 @@ func TestStepStdFromNone(t *testing.T) {
 
 func TestStepStdFromStart(t *testing.T) {
 	sysChan := false
-	migController := mocks.FakeMigrationController{}
+	migController := mocks.FakeController{}
 	status := migration.NewManager(sysChan, "test")
 	lastBlockCut := uint64(6)
 	context := lastBlockCut + 1
@@ -391,7 +394,7 @@ func TestStepStdFromStart(t *testing.T) {
 
 func TestStepStdFromContext(t *testing.T) {
 	sysChan := false
-	migController := mocks.FakeMigrationController{}
+	migController := mocks.FakeController{}
 	status := migration.NewManager(sysChan, "test")
 	lastBlockCut := uint64(6)
 	context := lastBlockCut + 1
@@ -433,7 +436,7 @@ func TestStepStdFromContext(t *testing.T) {
 
 func TestStepStdFromCommit(t *testing.T) {
 	sysChan := false
-	migController := mocks.FakeMigrationController{}
+	migController := mocks.FakeController{}
 	status := migration.NewManager(sysChan, "test")
 	lastBlockCut := uint64(6)
 	context := lastBlockCut + 1
@@ -453,4 +456,35 @@ func TestStepStdFromCommit(t *testing.T) {
 			}, "Expected Step() call to panic")
 		}
 	})
+}
+
+func prepareRaftMetadata() *protosraft.ConfigMetadata {
+	raftMetadata := &protosraft.ConfigMetadata{
+		Consenters: []*protosraft.Consenter{
+			{
+				ClientTlsCert: []byte{1, 2, 3, 4},
+				ServerTlsCert: []byte{5, 6, 7, 8},
+				Host:          "127.0.0.1",
+				Port:          uint32(31001),
+			},
+		},
+		Options: &protosraft.Options{
+			TickInterval:         "500ms",
+			ElectionTick:         10,
+			HeartbeatTick:        1,
+			MaxInflightBlocks:    256,
+			SnapshotIntervalSize: 8388608,
+		}}
+
+	return raftMetadata
+}
+
+func prepareRaftMetadataBytes(t *testing.T) []byte {
+	raftMetadata := prepareRaftMetadata()
+	raftMetadataBytes := utils.MarshalOrPanic(raftMetadata)
+	raftMetadata2 := &protosraft.ConfigMetadata{}
+	errUnma := proto.Unmarshal(raftMetadataBytes, raftMetadata2)
+	assert.NoError(t, errUnma)
+
+	return raftMetadataBytes
 }

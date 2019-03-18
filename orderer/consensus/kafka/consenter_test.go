@@ -73,12 +73,12 @@ func init() {
 }
 
 func TestNew(t *testing.T) {
-	c, _ := New(mockLocalConfig, &mock.MetricsProvider{}, &mock.HealthChecker{}, &mockconsensus.FakeMigrationController{})
+	c, _ := New(mockLocalConfig, &mock.MetricsProvider{}, &mock.HealthChecker{}, &mockconsensus.FakeController{})
 	_ = consensus.Consenter(c)
 }
 
 func TestHandleChain(t *testing.T) {
-	consenter, _ := New(mockLocalConfig, &mock.MetricsProvider{}, &mock.HealthChecker{}, &mockconsensus.FakeMigrationController{})
+	consenter, _ := New(mockLocalConfig, &mock.MetricsProvider{}, &mock.HealthChecker{}, &mockconsensus.FakeController{})
 
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
@@ -113,7 +113,7 @@ func TestHandleChain(t *testing.T) {
 }
 
 func TestMigration(t *testing.T) {
-	consenter, _ := New(mockLocalConfig, &mock.MetricsProvider{}, &mock.HealthChecker{}, &mockconsensus.FakeMigrationController{})
+	consenter, _ := New(mockLocalConfig, &mock.MetricsProvider{}, &mock.HealthChecker{}, &mockconsensus.FakeController{})
 	consenterimpl := consenter.(*consenterImpl)
 	require.NotNil(t, consenterimpl.migrationController())
 	assert.NoError(t, consenterimpl.migrationController().ConsensusMigrationStart(111))
@@ -122,7 +122,7 @@ func TestMigration(t *testing.T) {
 
 	mockLocalConfig.General.GenesisFile = "abc.genesis.block"
 	mockLocalConfig.General.GenesisMethod = "file"
-	consenter, _ = New(mockLocalConfig, &mock.MetricsProvider{}, &mock.HealthChecker{}, &mockconsensus.FakeMigrationController{})
+	consenter, _ = New(mockLocalConfig, &mock.MetricsProvider{}, &mock.HealthChecker{}, &mockconsensus.FakeController{})
 	consenterimpl = consenter.(*consenterImpl)
 	assert.Equal(t, mockLocalConfig.General.GenesisFile, consenterimpl.bootstrapFile())
 }

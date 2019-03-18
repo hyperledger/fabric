@@ -248,19 +248,8 @@ func (chain *chainImpl) Configure(config *cb.Envelope, configSeq uint64) error {
 }
 
 func (chain *chainImpl) configure(config *cb.Envelope, configSeq uint64, originalOffset int64) error {
-	// During consensus-type migration, stop channel creation
-	if chain.ConsenterSupport.IsSystemChannel() && chain.migrationManager.IsPending() {
-		ordererTx, err := isOrdererTx(config)
-		if err != nil {
-			err = errors.Wrap(err, "cannot determine if config-tx is of type ORDERER_TX, on system channel")
-			logger.Warning(err)
-			return err
-		}
-		if ordererTx {
-			str := "cannot enqueue, consensus-type migration pending: ORDERER_TX on system channel, blocking channel creation"
-			logger.Info(str)
-			return errors.Errorf(str)
-		}
+	if err := chain.filterMigration(config); err != nil {
+		return errors.Wrap(err, "cannot enqueue")
 	}
 
 	marshaledConfig, err := utils.Marshal(config)
@@ -271,6 +260,57 @@ func (chain *chainImpl) configure(config *cb.Envelope, configSeq uint64, origina
 		return fmt.Errorf("cannot enqueue")
 	}
 	return nil
+}
+
+// filterMigration filters out config transactions that should be rejected during consensus-type migration.
+// Filtering takes into account the global state of migration, not just the state of the current channel.
+func (chain *chainImpl) filterMigration(config *cb.Envelope) error {
+	migEnabled := chain.ChannelConfig().Capabilities().ConsensusTypeMigration() && chain.SharedConfig().Capabilities().Kafka2RaftMigration()
+	isOrdTx, isOrdConf, ordConf := chain.getOrdererConfig(config)
+
+	if chain.ConsenterSupport.IsSystemChannel() && isOrdTx {
+		if migEnabled && chain.migrationManager.IsStartedOrCommitted() {
+			return errors.Errorf("consensus-type migration pending: ORDERER_TX on system channel, blocking channel creation")
+		} else {
+			return nil
+		}
+	}
+
+	if !isOrdConf {
+		return nil
+	}
+
+	if !migEnabled {
+		if chain.SharedConfig().ConsensusType() != ordConf.ConsensusType() {
+			return errors.Errorf("attempted to change consensus type from %s to %s",
+				chain.SharedConfig().ConsensusType(), ordConf.ConsensusType())
+		}
+		if ordConf.ConsensusMigrationState() != ab.ConsensusType_MIG_STATE_NONE || ordConf.ConsensusMigrationContext() != 0 {
+			return errors.Errorf("new config has unexpected consensus-migration state or context: (%s/%d) should be (MIG_STATE_NONE/0)",
+				ordConf.ConsensusMigrationState(), ordConf.ConsensusMigrationContext())
+		}
+
+		return nil
+	}
+
+	currentInfo := &migration.ConsensusTypeInfo{
+		Type:    chain.SharedConfig().ConsensusType(),
+		State:   chain.SharedConfig().ConsensusMigrationState(),
+		Context: chain.SharedConfig().ConsensusMigrationContext(),
+	}
+
+	nextInfo := &migration.ConsensusTypeInfo{
+		Type:     ordConf.ConsensusType(),
+		Metadata: ordConf.ConsensusMetadata(),
+		State:    ordConf.ConsensusMigrationState(),
+		Context:  ordConf.ConsensusMigrationContext(),
+	}
+
+	if valErr := chain.migrationManager.Validate(currentInfo, nextInfo); valErr != nil {
+		return valErr
+	}
+
+	return chain.migrationManager.CheckAllowed(nextInfo, chain.consenter.migrationController())
 }
 
 // enqueue accepts a message and returns true on acceptance, or false otherwise.
@@ -1304,27 +1344,55 @@ func getHealthyClusterReplicaInfo(retryOptions localconfig.Retry, haltChan chan 
 	return replicaIDs, getReplicaInfo.retry()
 }
 
-// isOrdererTx detects if the config envelope is holding an ORDERER_TX.
-// This is only called during consensus-type migration, so the extra work
-// (unmarshaling the envelope again) is not that important.
-func isOrdererTx(env *cb.Envelope) (bool, error) {
-	payload, err := utils.UnmarshalPayload(env.Payload)
+// getOrdererConfig parses the incoming config envelope, classifies it, and returns the  OrdererConfig if it exists.
+//
+// isOrdererTx is true if the config envelope is holding an ORDERER_TRANSACTION.
+// isOrdConf is true if the config envelope is holding a CONFIG, and the OrdererConfig exists.
+// ordConf carries the OrdererConfig, if it exists.
+func (chain *chainImpl) getOrdererConfig(configTx *cb.Envelope) (
+	isOrdererTx bool, isOrdConf bool, ordConf channelconfig.Orderer) {
+	payload, err := utils.UnmarshalPayload(configTx.Payload)
 	if err != nil {
-		return false, err
+		logger.Errorf("Consensus-type migration: Told to process a config tx, but configtx payload is invalid: %s", err)
+		return false, false, nil
 	}
 
 	if payload.Header == nil {
-		return false, errors.Errorf("Abort processing config msg because no head was set")
+		logger.Errorf("Consensus-type migration: Told to process a config tx, but configtx payload header is missing")
+		return false, false, nil
 	}
 
-	if payload.Header.ChannelHeader == nil {
-		return false, errors.Errorf("Abort processing config msg because no channel header was set")
-	}
-
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	channelHeader, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
-		return false, errors.Errorf("Abort processing config msg because channel header unmarshalling error: %s", err)
+		logger.Errorf("Consensus-type migration: Told to process a config tx with an invalid channel header: %s", err)
+		return false, false, nil
 	}
 
-	return chdr.Type == int32(cb.HeaderType_ORDERER_TRANSACTION), nil
+	logger.Debugf("[channel: %s] Consensus-type migration: Processing, header: %s", chain.ChainID(), channelHeader.String())
+
+	switch channelHeader.Type {
+
+	case int32(cb.HeaderType_ORDERER_TRANSACTION):
+		isOrdererTx = true
+
+	case int32(cb.HeaderType_CONFIG):
+		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+		if err != nil {
+			logger.Errorf("Consensus-type migration: Cannot unmarshal config envelope form payload data: %s", err)
+			return false, false, nil
+		}
+		config := configEnvelope.Config
+		bundle, err := channelconfig.NewBundle(chain.ChainID(), config)
+		if err != nil {
+			logger.Errorf("Consensus-type migration: Cannot create new bundle from Config: %s", err)
+			return false, false, nil
+		}
+
+		ordConf, isOrdConf = bundle.OrdererConfig()
+		if !isOrdConf {
+			logger.Debugf("[channel: %s]  Consensus-type migration: Config tx does not have OrdererConfig, ignoring", chain.ChainID())
+		}
+	}
+
+	return isOrdererTx, isOrdConf, ordConf
 }

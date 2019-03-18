@@ -71,6 +71,10 @@ func TestChain(t *testing.T) {
 			ChainIDVal:      mockChannel.topic(),
 			HeightVal:       uint64(3),
 			SharedConfigVal: &mockconfig.Orderer{KafkaBrokersVal: []string{mockBroker.Addr()}},
+			ChannelConfigVal: &mockconfig.Channel{
+				CapabilitiesVal: &mockconfig.ChannelCapabilities{
+					ConsensusTypeMigrationVal: false},
+			},
 		}
 		return
 	}
@@ -3037,6 +3041,10 @@ func TestResubmission(t *testing.T) {
 						ResubmissionVal: true,
 					},
 				},
+				ChannelConfigVal: &mockconfig.Channel{
+					CapabilitiesVal: &mockconfig.ChannelCapabilities{
+						ConsensusTypeMigrationVal: false},
+				},
 				SequenceVal:         uint64(2),
 				ProcessConfigMsgVal: newMockConfigEnvelope(),
 			}
@@ -3193,6 +3201,10 @@ func TestResubmission(t *testing.T) {
 					CapabilitiesVal: &mockconfig.OrdererCapabilities{
 						ResubmissionVal: true,
 					},
+				},
+				ChannelConfigVal: &mockconfig.Channel{
+					CapabilitiesVal: &mockconfig.ChannelCapabilities{
+						ConsensusTypeMigrationVal: false},
 				},
 				SequenceVal:         uint64(1),
 				ConfigSeqVal:        uint64(1),
@@ -3440,7 +3452,7 @@ func TestDeliverSession(t *testing.T) {
 		defer env.broker2.Close()
 
 		// initialize consenter
-		consenter, _ := New(mockLocalConfig, &mockkafka.MetricsProvider{}, &mockkafka.HealthChecker{}, &mockconsensus.FakeMigrationController{})
+		consenter, _ := New(mockLocalConfig, &mockkafka.MetricsProvider{}, &mockkafka.HealthChecker{}, &mockconsensus.FakeController{})
 
 		// initialize chain
 		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
@@ -3529,7 +3541,7 @@ func TestDeliverSession(t *testing.T) {
 		defer env.broker0.Close()
 
 		// initialize consenter
-		consenter, _ := New(mockLocalConfig, &mockkafka.MetricsProvider{}, &mockkafka.HealthChecker{}, &mockconsensus.FakeMigrationController{})
+		consenter, _ := New(mockLocalConfig, &mockkafka.MetricsProvider{}, &mockkafka.HealthChecker{}, &mockconsensus.FakeController{})
 
 		// initialize chain
 		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
@@ -3591,7 +3603,7 @@ func TestDeliverSession(t *testing.T) {
 		defer env.broker0.Close()
 
 		// initialize consenter
-		consenter, _ := New(mockLocalConfig, &mockkafka.MetricsProvider{}, &mockkafka.HealthChecker{}, &mockconsensus.FakeMigrationController{})
+		consenter, _ := New(mockLocalConfig, &mockkafka.MetricsProvider{}, &mockkafka.HealthChecker{}, &mockconsensus.FakeController{})
 
 		// initialize chain
 		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
@@ -3752,6 +3764,11 @@ func (c *mockConsenterSupport) BlockCutter() blockcutter.Receiver {
 func (c *mockConsenterSupport) SharedConfig() channelconfig.Orderer {
 	args := c.Called()
 	return args.Get(0).(channelconfig.Orderer)
+}
+
+func (c *mockConsenterSupport) ChannelConfig() channelconfig.Channel {
+	args := c.Called()
+	return args.Get(0).(channelconfig.Channel)
 }
 
 func (c *mockConsenterSupport) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
