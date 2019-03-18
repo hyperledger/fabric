@@ -267,7 +267,7 @@ func NewChain(
 		},
 		logger:          lg,
 		opts:            opts,
-		migrationStatus: migration.NewStatusStepper(support.IsSystemChannel(), support.ChainID()), // Needed by consensus-type migration
+		migrationStatus: migration.NewManager(support.IsSystemChannel(), support.ChainID()), // Needed by consensus-type migration
 	}
 
 	// DO NOT use Applied option in config, see https://github.com/etcd-io/etcd/issues/10217

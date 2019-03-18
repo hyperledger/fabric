@@ -45,5 +45,5 @@ func (c *Chain) Halt() {
 }
 
 func (c *Chain) MigrationStatus() migration.Status {
-	return &migration.StatusImpl{}
+	return migration.NewManager(false, "inactive")
 }
