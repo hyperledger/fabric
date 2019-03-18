@@ -187,7 +187,7 @@ func (r *Resources) ChaincodeDefinitionIfDefined(chaincodeName string, state Rea
 
 	metadata, ok, err := r.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state)
 	if err != nil {
-		return false, nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize metadata for chaincode %s", chaincodeName))
+		return false, nil, errors.WithMessagef(err, "could not deserialize metadata for chaincode %s", chaincodeName)
 	}
 
 	if !ok {
@@ -201,7 +201,7 @@ func (r *Resources) ChaincodeDefinitionIfDefined(chaincodeName string, state Rea
 	definedChaincode := &ChaincodeDefinition{}
 	err = r.Serializer.Deserialize(NamespacesName, chaincodeName, metadata, definedChaincode, state)
 	if err != nil {
-		return false, nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))
+		return false, nil, errors.WithMessagef(err, "could not deserialize chaincode definition for chaincode %s", chaincodeName)
 	}
 
 	return true, definedChaincode, nil
@@ -232,7 +232,7 @@ func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd
 	}
 
 	if err := ef.SetChaincodeDefinitionDefaults(chname, cd); err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not set defaults for chaincode definition in channel %s", chname))
+		return nil, errors.WithMessagef(err, "could not set defaults for chaincode definition in channel %s", chname)
 	}
 
 	agreement := make([]bool, len(orgStates))
@@ -323,7 +323,7 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 	}
 
 	if err := ef.SetChaincodeDefinitionDefaults(chname, cd); err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("could not set defaults for chaincode definition in channel %s", chname))
+		return errors.WithMessagef(err, "could not set defaults for chaincode definition in channel %s", chname)
 	}
 
 	if requestedSequence == currentSequence {
@@ -337,7 +337,7 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 
 		definedChaincode := &ChaincodeDefinition{}
 		if err := ef.Resources.Serializer.Deserialize(NamespacesName, ccname, metadata, definedChaincode, publicState); err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", ccname))
+			return errors.WithMessagef(err, "could not deserialize namespace %s as chaincode", ccname)
 		}
 
 		if err := definedChaincode.Parameters().Equal(cd.Parameters()); err != nil {
@@ -366,7 +366,7 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error) {
 	metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, name, publicState)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not fetch metadata for namespace %s", name))
+		return nil, errors.WithMessagef(err, "could not fetch metadata for namespace %s", name)
 	}
 	if !ok {
 		return nil, errors.Errorf("namespace %s is not defined", name)
@@ -374,7 +374,7 @@ func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState R
 
 	definedChaincode := &ChaincodeDefinition{}
 	if err := ef.Resources.Serializer.Deserialize(NamespacesName, name, metadata, definedChaincode, publicState); err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize namespace %s as chaincode", name))
+		return nil, errors.WithMessagef(err, "could not deserialize namespace %s as chaincode", name)
 	}
 
 	return definedChaincode, nil
@@ -382,23 +382,26 @@ func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState R
 
 // InstallChaincode installs a given chaincode to the peer's chaincode store.
 // It returns the hash to reference the chaincode by or an error on failure.
-func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (p.PackageID, error) {
+func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*chaincode.InstalledChaincode, error) {
 	// Let's validate that the chaincodeInstallPackage is at least well formed before writing it
 	pkg, err := ef.Resources.PackageParser.Parse(chaincodeInstallPackage)
 	if err != nil {
-		return p.PackageID(""), errors.WithMessage(err, "could not parse as a chaincode install package")
+		return nil, errors.WithMessage(err, "could not parse as a chaincode install package")
 	}
 
 	packageID, err := ef.Resources.ChaincodeStore.Save(pkg.Metadata.Label, chaincodeInstallPackage)
 	if err != nil {
-		return p.PackageID(""), errors.WithMessage(err, "could not save cc install package")
+		return nil, errors.WithMessage(err, "could not save cc install package")
 	}
 
 	if ef.InstallListener != nil {
 		ef.InstallListener.HandleChaincodeInstalled(pkg.Metadata, packageID)
 	}
 
-	return packageID, nil
+	return &chaincode.InstalledChaincode{
+		PackageID: packageID,
+		Label:     pkg.Metadata.Label,
+	}, nil
 }
 
 // QueryNamespaceDefinitions lists the publicly defined namespaces in a channel.  Today it should only ever
@@ -424,19 +427,25 @@ func (ef *ExternalFunctions) QueryNamespaceDefinitions(publicState RangeableStat
 }
 
 // QueryInstalledChaincode returns the hash of an installed chaincode of a given name and version.
-func (ef *ExternalFunctions) QueryInstalledChaincode(label string) ([]chaincode.InstalledChaincode, error) {
-	chaincodes, err := ef.Resources.ChaincodeStore.ListInstalledChaincodes()
+func (ef *ExternalFunctions) QueryInstalledChaincode(packageID p.PackageID) (*chaincode.InstalledChaincode, error) {
+	ccPackageBytes, err := ef.Resources.ChaincodeStore.Load(packageID)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve chaincode info for label '%s'", label))
+		return nil, errors.WithMessagef(err, "could not load chaincode with package id '%s'", packageID)
 	}
 
-	for i, chaincode := range chaincodes {
-		if chaincode.Label != label {
-			chaincodes = append(chaincodes[:i], chaincodes[i+1:]...)
-		}
+	parsedCCPackage, err := ef.Resources.PackageParser.Parse(ccPackageBytes)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not parse chaincode with package id '%s'", packageID)
 	}
 
-	return chaincodes, nil
+	if parsedCCPackage.Metadata == nil {
+		return nil, errors.Errorf("empty metadata for chaincode with package id '%s'", packageID)
+	}
+
+	return &chaincode.InstalledChaincode{
+		PackageID: packageID,
+		Label:     parsedCCPackage.Metadata.Label,
+	}, nil
 }
 
 // QueryInstalledChaincodes returns a list of installed chaincodes

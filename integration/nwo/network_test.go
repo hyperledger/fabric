@@ -271,12 +271,10 @@ var _ = Describe("Network", func() {
 			}
 			nwo.PackageChaincodeNewLifecycle(network, chaincode, testPeers[0])
 
-			// we set the hash of the package - this is only used to validate the response from the peer
+			// we set the PackageID so that we can pass it to the approve step
 			filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
 			Expect(err).NotTo(HaveOccurred())
 			hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
-			chaincode.Hash = hashStr
-			// we set the PackageID so that we can pass it to the approve step
 			chaincode.PackageID = chaincode.Label + ":" + hashStr
 
 			nwo.InstallChaincodeNewLifecycle(network, chaincode, testPeers...)

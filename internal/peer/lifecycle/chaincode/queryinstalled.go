@@ -102,7 +102,7 @@ func printQueryInstalledResponse(proposalResponse *pb.ProposalResponse) error {
 	}
 	fmt.Println("Get installed chaincodes on peer:")
 	for _, chaincode := range qicr.InstalledChaincodes {
-		fmt.Printf("Package ID: %s, Label: %s, Hash: %x\n", chaincode.PackageId, chaincode.Label, chaincode.Hash)
+		fmt.Printf("Package ID: %s, Label: %s\n", chaincode.PackageId, chaincode.Label)
 	}
 	return nil
 

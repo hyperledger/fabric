@@ -57,10 +57,10 @@ const (
 // for each of the SCC functions
 type SCCFunctions interface {
 	// InstallChaincode persists a chaincode definition to disk
-	InstallChaincode([]byte) (persistence.PackageID, error)
+	InstallChaincode([]byte) (*chaincode.InstalledChaincode, error)
 
 	// QueryInstalledChaincode returns the hash for a given name and version of an installed chaincode
-	QueryInstalledChaincode(label string) ([]chaincode.InstalledChaincode, error)
+	QueryInstalledChaincode(packageID persistence.PackageID) (*chaincode.InstalledChaincode, error)
 
 	// QueryInstalledChaincodes returns the currently installed chaincodes
 	QueryInstalledChaincodes() (chaincodes []chaincode.InstalledChaincode, err error)
@@ -211,32 +211,28 @@ type Invocation struct {
 // InstallChaincode is a SCC function that may be dispatched to which routes to the underlying
 // lifecycle implementation.
 func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Message, error) {
-	packageID, err := i.SCC.Functions.InstallChaincode(input.ChaincodeInstallPackage)
+	installedCC, err := i.SCC.Functions.InstallChaincode(input.ChaincodeInstallPackage)
 	if err != nil {
 		return nil, err
 	}
 
 	return &lb.InstallChaincodeResult{
-		PackageId: packageID.String(),
+		Label:     installedCC.Label,
+		PackageId: installedCC.PackageID.String(),
 	}, nil
 }
 
 // QueryInstalledChaincode is a SCC function that may be dispatched to which routes to the underlying
 // lifecycle implementation.
 func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeArgs) (proto.Message, error) {
-	chaincodes, err := i.SCC.Functions.QueryInstalledChaincode(input.Name)
+	chaincode, err := i.SCC.Functions.QueryInstalledChaincode(persistence.PackageID(input.PackageId))
 	if err != nil {
 		return nil, err
 	}
 
-	// fixme
-	hash := []byte{}
-	if len(chaincodes) != 0 {
-		hash = []byte(chaincodes[0].PackageID)
-	}
-
 	return &lb.QueryInstalledChaincodeResult{
-		Hash: hash, // fixme
+		Label:     chaincode.Label,
+		PackageId: chaincode.PackageID.String(),
 	}, nil
 }
 
@@ -254,7 +250,6 @@ func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodes
 			result.InstalledChaincodes,
 			&lb.QueryInstalledChaincodesResult_InstalledChaincode{
 				Label:     chaincode.Label,
-				Hash:      chaincode.Hash,
 				PackageId: chaincode.PackageID.String(),
 			})
 	}

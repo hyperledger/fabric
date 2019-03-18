@@ -181,7 +181,10 @@ var _ = Describe("SCC", func() {
 
 				fakeStub.GetArgsReturns([][]byte{[]byte("InstallChaincode"), marshaledArg})
 
-				fakeSCCFuncs.InstallChaincodeReturns(persistence.PackageID("fake-hash"), nil)
+				fakeSCCFuncs.InstallChaincodeReturns(&chaincode.InstalledChaincode{
+					Label:     "label",
+					PackageID: persistence.PackageID("packageid"),
+				}, nil)
 			})
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
@@ -190,7 +193,7 @@ var _ = Describe("SCC", func() {
 				payload := &lb.InstallChaincodeResult{}
 				err := proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(payload.PackageId).To(Equal("fake-hash"))
+				Expect(payload.PackageId).To(Equal("packageid"))
 
 				Expect(fakeSCCFuncs.InstallChaincodeCallCount()).To(Equal(1))
 				ccInstallPackage := fakeSCCFuncs.InstallChaincodeArgsForCall(0)
@@ -199,7 +202,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.InstallChaincodeReturns("", fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.InstallChaincodeReturns(nil, fmt.Errorf("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -218,7 +221,7 @@ var _ = Describe("SCC", func() {
 
 			BeforeEach(func() {
 				arg = &lb.QueryInstalledChaincodeArgs{
-					Name: "label",
+					PackageId: "awesome_package",
 				}
 
 				var err error
@@ -227,17 +230,9 @@ var _ = Describe("SCC", func() {
 
 				fakeStub.GetArgsReturns([][]byte{[]byte("QueryInstalledChaincode"), marshaledArg})
 
-				fakeSCCFuncs.QueryInstalledChaincodeReturns([]chaincode.InstalledChaincode{
-					{
-						Hash:      []byte("yellow"),
-						Name:      "label",
-						PackageID: persistence.PackageID("bro"),
-					},
-					{
-						Hash:      []byte("talisker"),
-						Name:      "single malt",
-						PackageID: persistence.PackageID("mate"),
-					},
+				fakeSCCFuncs.QueryInstalledChaincodeReturns(&chaincode.InstalledChaincode{
+					PackageID: persistence.PackageID("awesome_package"),
+					Label:     "awesome_package_label",
 				}, nil)
 			})
 
@@ -247,11 +242,11 @@ var _ = Describe("SCC", func() {
 				payload := &lb.QueryInstalledChaincodeResult{}
 				err := proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(payload.Hash).To(Equal([]byte("bro")))
+				Expect(payload.Label).To(Equal("awesome_package_label"))
 
 				Expect(fakeSCCFuncs.QueryInstalledChaincodeCallCount()).To(Equal(1))
 				name := fakeSCCFuncs.QueryInstalledChaincodeArgsForCall(0)
-				Expect(name).To(Equal("label"))
+				Expect(name).To(Equal(persistence.PackageID("awesome_package")))
 			})
 
 			Context("when the underlying function implementation fails", func() {
@@ -307,11 +302,9 @@ var _ = Describe("SCC", func() {
 
 				Expect(payload.InstalledChaincodes[0].Label).To(Equal("cc0-label"))
 				Expect(payload.InstalledChaincodes[0].PackageId).To(Equal("cc0-package-id"))
-				Expect(payload.InstalledChaincodes[0].Hash).To(Equal([]byte(fmt.Sprintf("cc0-hash"))))
 
 				Expect(payload.InstalledChaincodes[1].Label).To(Equal("cc1-label"))
 				Expect(payload.InstalledChaincodes[1].PackageId).To(Equal("cc1-package-id"))
-				Expect(payload.InstalledChaincodes[1].Hash).To(Equal([]byte(fmt.Sprintf("cc1-hash"))))
 
 				Expect(fakeSCCFuncs.QueryInstalledChaincodesCallCount()).To(Equal(1))
 			})

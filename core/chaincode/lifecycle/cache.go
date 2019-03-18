@@ -102,11 +102,11 @@ func (c *Cache) InitializeLocalChaincodes() error {
 	for _, ccPackage := range ccPackages {
 		ccPackageBytes, err := c.Resources.ChaincodeStore.Load(ccPackage.PackageID)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("could not load chaincode with hash '%x'", ccPackage.Hash))
+			return errors.WithMessagef(err, "could not load chaincode with hash '%x'", ccPackage.Hash)
 		}
 		parsedCCPackage, err := c.Resources.PackageParser.Parse(ccPackageBytes)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("could not parse chaincode package with hash '%x'", ccPackage.Hash))
+			return errors.WithMessagef(err, "could not parse chaincode package with hash '%x'", ccPackage.Hash)
 		}
 		c.handleChaincodeInstalledWhileLocked(parsedCCPackage.Metadata, ccPackage.PackageID)
 	}
@@ -329,7 +329,7 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 
 		exists, chaincodeDefinition, err := c.Resources.ChaincodeDefinitionIfDefined(name, publicState)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("could not get chaincode definition for '%s' on channel '%s'", name, channelID))
+			return errors.WithMessagef(err, "could not get chaincode definition for '%s' on channel '%s'", name, channelID)
 		}
 
 		if !exists {
@@ -358,7 +358,7 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 		ok, err = c.Resources.Serializer.IsSerialized(NamespacesName, privateName, chaincodeDefinition.Parameters(), orgState)
 
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("could not check opaque org state for '%s' on channel '%s'", name, channelID))
+			return errors.WithMessagef(err, "could not check opaque org state for '%s' on channel '%s'", name, channelID)
 		}
 		if !ok {
 			logger.Debugf("Channel %s for chaincode definition %s:%s does not have our org's approval", channelID, name, chaincodeDefinition.EndorsementInfo.Version)
@@ -369,7 +369,7 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 
 		isLocalPackage, err := c.Resources.Serializer.IsMetadataSerialized(ChaincodeSourcesName, privateName, &ChaincodeLocalPackage{}, orgState)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("could not check opaque org state for chaincode source for '%s' on channel '%s'", name, channelID))
+			return errors.WithMessagef(err, "could not check opaque org state for chaincode source for '%s' on channel '%s'", name, channelID)
 		}
 
 		if !isLocalPackage {
@@ -380,7 +380,7 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 		hashKey := FieldKey(ChaincodeSourcesName, privateName, "PackageID")
 		hashOfCCHash, err := orgState.GetStateHash(hashKey)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("could not check opaque org state for chaincode source hash for '%s' on channel '%s'", name, channelID))
+			return errors.WithMessagef(err, "could not check opaque org state for chaincode source hash for '%s' on channel '%s'", name, channelID)
 		}
 
 		localChaincode, ok := c.localChaincodes[string(hashOfCCHash)]

@@ -23,19 +23,20 @@ message InstallChaincodeArgs {
 // '_lifecycle.InstallChaincode'
 message InstallChaincodeResult {
     string package_id = 1;
+    string label = 2;
 }
 
 // QueryInstalledChaincodeArgs is the message used as arguments
 // '_lifecycle.QueryInstalledChaincode'
 message QueryInstalledChaincodeArgs {
-    string name = 1;
-    string version = 2;
+    string package_id = 1;
 }
 
 // QueryInstalledChaincodeResult is the message returned by
 // '_lifecycle.QueryInstalledChaincode'
 message QueryInstalledChaincodeResult {
-    bytes hash = 1;
+    string package_id = 1;
+    string label = 2;
 }
 
 // QueryInstalledChaincodesArgs currently is an empty argument to
@@ -51,7 +52,6 @@ message QueryInstalledChaincodesResult {
     message InstalledChaincode {
         string package_id = 1;
         string label = 2;
-        bytes hash = 3;
     }
     repeated InstalledChaincode installed_chaincodes = 1;
 }
