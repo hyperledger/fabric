@@ -3,7 +3,7 @@ Upgrading Your Network Components
 
 .. note:: When we use the term “upgrade” in this documentation, we’re primarily
           referring to changing the version of a component (for example, going
-          from a v1.3 binary to a v1.4 binary). The term “update,” on the other
+          from a v1.3 binary to a v1.4.x binary). The term “update,” on the other
           hand, refers not to versions but to configuration changes, such as
           updating a channel configuration or a deployment script. As there is
           no data migration, technically speaking, in Fabric, we will not use
@@ -12,33 +12,36 @@ Upgrading Your Network Components
 .. note:: Also, if your network is not yet at Fabric v1.3, follow the instructions for
           `Upgrading Your Network to v1.3 <http://hyperledger-fabric.readthedocs.io/en/release-1.3/upgrading_your_network_tutorial.html>`_.
           The instructions in this documentation only cover moving from v1.3 to
-          v1.4, not from any other version to v1.4.
+          v1.4.x, not from any other version to v1.4.x.
 
 Overview
 --------
 
 Because the :doc:`build_network` (BYFN) tutorial defaults to the “latest” binaries,
-if you have run it since the release of v1.4, your machine will have v1.4 binaries
+if you have run it since the release of v1.4.x, your machine will have v1.4.x binaries
 and tools installed on it and you will not be able to upgrade them.
 
 As a result, this tutorial will provide a network based on Hyperledger Fabric
-v1.3 binaries as well as the v1.4 binaries you will be upgrading to.
+v1.3 binaries as well as the v1.4.x binaries you will be upgrading to.
 
 At a high level, our upgrade tutorial will perform the following steps:
 
 1. Backup the ledger and MSPs.
-2. Upgrade the orderer binaries to Fabric v1.4.
-3. Upgrade the peer binaries to Fabric v1.4.
+2. Upgrade the orderer binaries to Fabric v1.4.x **Because migration from Solo to
+   Raft is not supported, and the 1.4.1 release of Fabric is the first to support
+   Raft, this tutorial will not cover the process for upgrading to a Raft ordering
+   service**.
+3. Upgrade the peer binaries to Fabric v1.4.x.
 
-.. note:: There are no new :doc:`capability_requirements` in v1.4. As a result,
+.. note:: There are no new :doc:`capability_requirements` in v1.4.x As a result,
           we do not have to update any channel configurations as part of an
-          upgrade to v1.4.
+          upgrade to v1.4.x.
 
 This tutorial will demonstrate how to perform each of these steps individually
 with CLI commands. We will also describe how the CLI ``tools`` image can be
 updated.
 
-.. note:: Because BYFN uses a "SOLO" ordering service (one orderer), our script
+.. note:: Because BYFN uses a "Solo" ordering service (one orderer), our script
           brings down the entire network. However, in production environments,
           the orderers and peers can be upgraded simultaneously and on a rolling
           basis. In other words, you can upgrade the binaries in any order without
@@ -114,7 +117,7 @@ If BYFN has launched properly, you will see:
 
   ===================== All GOOD, BYFN execution completed =====================
 
-We are now ready to upgrade our network to Hyperledger Fabric v1.4.
+We are now ready to upgrade our network to Hyperledger Fabric v1.4.x.
 
 Get the newest samples
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -126,7 +129,7 @@ Get the newest samples
           release.
 
 Before completing the rest of the tutorial, it's important to get the v1.4.x
-version of the samples, you can do this by issuing:
+(for example, 1.4.1) version of the samples, you can do this by issuing:
 
 .. code:: bash
 
@@ -150,7 +153,7 @@ To run the script, issue these commands:
 
 .. code:: bash
 
-  # Note, replace '1.4.x' with a specific version, for example '1.4.0'.
+  # Note, replace '1.4.x' with a specific version, for example '1.4.1'.
   # Don't pass the image flag '-i 1.4.x' if you prefer to default to 'latest' images.
 
   ./byfn.sh upgrade -i 1.4.x
@@ -179,7 +182,7 @@ high level, the orderer upgrade process goes as follows:
 3. Restart the orderer with the latest images.
 4. Verify upgrade completion.
 
-As a consequence of leveraging BYFN, we have a solo orderer setup, therefore, we
+As a consequence of leveraging BYFN, we have a Solo orderer setup, therefore, we
 will only perform this process once. In a Kafka setup, however, this process will
 have to be repeated on each orderer.
 
@@ -198,7 +201,7 @@ Let’s begin the upgrade process by **bringing down the orderer**:
 
   export LEDGERS_BACKUP=./ledgers-backup
 
-  # Note, replace '1.4.x' with a specific version, for example '1.4.0'.
+  # Note, replace '1.4.x' with a specific version, for example '1.4.1'.
   # Set IMAGE_TAG to 'latest' if you prefer to default to the images tagged 'latest' on your system.
 
   export IMAGE_TAG=$(go env GOARCH)-1.4.x
@@ -223,7 +226,7 @@ Now **download and restart the orderer** with our new fabric image:
 
   docker-compose -f docker-compose-cli.yaml up -d --no-deps orderer.example.com
 
-Because our sample uses a "solo" ordering service, there are no other orderers in the
+Because our sample uses a "Solo" ordering service, there are no other orderers in the
 network that the restarted orderer must sync up to. However, in a production network
 leveraging Kafka, it will be a best practice to issue ``peer channel fetch <blocknumber>``
 after restarting the orderer to verify that it has caught up to the other orderers.
@@ -231,7 +234,7 @@ after restarting the orderer to verify that it has caught up to the other ordere
 Upgrade the peer containers
 ---------------------------
 
-Next, let's look at how to upgrade peer containers to Fabric v1.4. Peer containers should,
+Next, let's look at how to upgrade peer containers to Fabric v1.4.x. Peer containers should,
 like the orderers, be upgraded in a rolling fashion (one at a time). As mentioned
 during the orderer upgrade, orderers and peers may be upgraded in parallel, but for
 the purposes of this tutorial we’ve separated the processes out. At a high level,
@@ -284,7 +287,7 @@ And the peer chaincode images:
   CC_IMAGES=$(docker images | grep dev-$PEER | awk '{print $1}')
   if [ -n "$CC_IMAGES" ] ; then docker rmi -f $CC_IMAGES ; fi
 
-Now we'll re-launch the peer using the v1.4 image tag:
+Now we'll re-launch the peer using the v1.4.x image tag:
 
 .. code:: bash
 
@@ -444,7 +447,7 @@ Upgrading CouchDB
 
 If you are using CouchDB as state database, you should upgrade the peer's
 CouchDB at the same time the peer is being upgraded. CouchDB v2.2.0 has
-been tested with Fabric v1.4.
+been tested with Fabric v1.4.x.
 
 To upgrade CouchDB:
 
@@ -460,18 +463,18 @@ Upgrade Node chaincode shim
 To move to the new version of the Node chaincode shim a developer would need to:
 
 1. Change the level of ``fabric-shim`` in their chaincode ``package.json`` from
-   1.3 to 1.4.
+   1.3 to 1.4.x.
 2. Repackage this new chaincode package and install it on all the endorsing peers
    in the channel.
 3. Perform an upgrade to this new chaincode. To see how to do this, check out :doc:`commands/peerchaincode`.
 
-.. note:: This flow isn't specific to moving from 1.3 to 1.4. It is also how
+.. note:: This flow isn't specific to moving from 1.3 to 1.4.x It is also how
           one would upgrade from any incremental version of the node fabric shim.
 
 Upgrade Chaincodes with vendored shim
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. note:: The v1.3.0 shim is compatible with the v1.4 peer, but, it is still
+.. note:: The v1.3.0 shim is compatible with the v1.4.x peer, but, it is still
           best practice to upgrade the chaincode shim to match the current level
           of the peer.
 
