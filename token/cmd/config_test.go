@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/token"
 	. "github.com/hyperledger/fabric/token/cmd"
 	"github.com/stretchr/testify/assert"
@@ -58,41 +59,40 @@ func TestLoadTokenIDs(t *testing.T) {
 }
 
 func TestShares(t *testing.T) {
-	shares := []*token.RecipientShare{
+	shellShares := []*ShellRecipientShare{
 		{
 			Quantity:  ToHex(10),
-			Recipient: &token.TokenOwner{Raw: []byte{0, 1, 2, 3, 4}},
+			Recipient: "alice",
 		},
 		{
 			Quantity:  ToHex(20),
-			Recipient: &token.TokenOwner{Raw: []byte{5, 6, 7, 8, 9}},
+			Recipient: "bob",
 		},
 	}
-	jsonBytes, err := json.Marshal(shares)
+	jsonBytes, err := json.Marshal(shellShares)
 	assert.NoError(t, err)
 
-	shares, err = LoadShares(string(jsonBytes))
+	shares, err := LoadShares(string(jsonBytes))
 	assert.NoError(t, err)
-	jsonBytes2, err := json.Marshal(shares)
-	assert.NoError(t, err)
-	assert.Equal(t, jsonBytes, jsonBytes2)
 
-	_, err = LoadSharesFromFile("./testdata/not_a_file.json")
+	_, err = LoadShares("./testdata/not_a_file.json")
 	assert.Error(t, err)
 
-	shares, err = LoadSharesFromFile("./testdata/shares.json")
+	shares2, err := LoadShares("./testdata/shares.json")
 	assert.NoError(t, err)
-	jsonBytes2, err = json.Marshal(shares)
-	assert.NoError(t, err)
-	assert.Equal(t, jsonBytes, jsonBytes2)
+	assert.Len(t, shares2, len(shares))
+	for i, share := range shares {
+		assert.True(t, proto.Equal(share, shares2[i]))
+	}
 
 	jsonLoader := &JsonLoader{}
-	shares, err = jsonLoader.Shares("./testdata/shares.json")
-	assert.NoError(t, err)
-	jsonBytes2, err = json.Marshal(shares)
+	shares3, err := jsonLoader.Shares("./testdata/shares.json")
 	assert.NoError(t, err)
 
-	assert.Equal(t, jsonBytes, jsonBytes2)
+	assert.Len(t, shares3, len(shares))
+	for i, share := range shares {
+		assert.True(t, proto.Equal(share, shares3[i]))
+	}
 }
 
 func TestGetSigningIdentity(t *testing.T) {
@@ -104,13 +104,13 @@ func TestGetSigningIdentity(t *testing.T) {
 }
 
 func TestLoadLocalMspRecipient(t *testing.T) {
-	owner, err := LoadLocalMspRecipient("./testdata/mspid", "MSP_ID")
+	owner, err := LoadLocalMspRecipient("MSP_ID:./testdata/mspid")
 	assert.NoError(t, err)
 
 	assert.Equal(t, token.TokenOwner_MSP_IDENTIFIER, owner.Type)
 
 	jsonLoader := &JsonLoader{}
-	owner2, err := jsonLoader.TokenOwner("./testdata/mspid")
+	owner2, err := jsonLoader.TokenOwner("MSP_ID:./testdata/mspid")
 	assert.NoError(t, err)
 	assert.Equal(t, owner, owner2)
 }

@@ -62,7 +62,7 @@ func TestTransferCmd(t *testing.T) {
 
 		loader.On("TokenIDs", "token_ids").Return(nil, errors.New("invalid token ids"))
 		err := cmd.Execute(common.Config{})
-		assert.Equal(t, err.Error(), "invalid token ids")
+		assert.Equal(t, err.Error(), "transfer: failed loading token ids [token_ids]: invalid token ids")
 	})
 
 }
@@ -80,10 +80,10 @@ func TestTestTransferCmd_InvalidShares(t *testing.T) {
 	cmd.SetTokenIDs(&tokenIDs)
 	cmd.SetShares(&shares)
 
-	loader.On("TokenIDs", "token_ids").Return([]*ptoken.TokenId{}, nil)
+	loader.On("TokenIDs", "token_ids").Return([]*ptoken.TokenId{{TxId: "0"}}, nil)
 	loader.On("Shares", "shares").Return(nil, errors.New("invalid shares"))
 	err := cmd.Execute(common.Config{})
-	assert.Equal(t, err.Error(), "invalid shares")
+	assert.Equal(t, err.Error(), "transfer: failed loading shares [shares]: invalid shares")
 }
 
 func TestTestTransferCmd_FailedStubSetup(t *testing.T) {
@@ -99,11 +99,11 @@ func TestTestTransferCmd_FailedStubSetup(t *testing.T) {
 	cmd.SetTokenIDs(&tokenIDs)
 	cmd.SetShares(&shares)
 
-	loader.On("TokenIDs", "token_ids").Return([]*ptoken.TokenId{}, nil)
-	loader.On("Shares", "shares").Return([]*ptoken.RecipientShare{}, nil)
+	loader.On("TokenIDs", "token_ids").Return([]*ptoken.TokenId{{TxId: "0"}}, nil)
+	loader.On("Shares", "shares").Return([]*ptoken.RecipientShare{{Quantity: "10"}}, nil)
 	stub.On("Setup", "configuration", "", "", "").Return(errors.New("failed setup"))
 	err := cmd.Execute(common.Config{})
-	assert.Equal(t, err.Error(), "failed setup")
+	assert.Equal(t, err.Error(), "transfer: failed invoking setup [][][]: failed setup")
 }
 
 func TestTestTransferCmd_FailedStubTransfer(t *testing.T) {
@@ -132,5 +132,5 @@ func TestTestTransferCmd_FailedStubTransfer(t *testing.T) {
 	stub.On("Setup", "configuration", "", "", "").Return(nil)
 	stub.On("Transfer", tokenIDs, shares, mock.Anything).Return(nil, errors.New("failed transfer"))
 	err := cmd.Execute(common.Config{})
-	assert.Equal(t, err.Error(), "failed transfer")
+	assert.Equal(t, err.Error(), "transfer: failed invoking transfer [][][][token_ids][shares]: failed transfer")
 }

@@ -7,9 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package token
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -127,8 +129,8 @@ func (parser *OperationResponseParser) ParseResponse(response StubResponse) erro
 		return errors.Errorf("got different transaction ids [%s], [%s]", resp.TxID, tokenTxid)
 	}
 
-	fmt.Fprintf(parser.Writer, "Orderer Status [%s]", resp.Status)
-	fmt.Fprintf(parser.Writer, "Committed [%v]", resp.Committed)
+	fmt.Fprintf(parser.Writer, "Orderer Status [%s]\n", resp.Status)
+	fmt.Fprintf(parser.Writer, "Committed [%v]\n", resp.Committed)
 
 	return nil
 }
@@ -143,8 +145,43 @@ func (parser *UnspentTokenResponseParser) ParseResponse(response StubResponse) e
 	resp := response.(*UnspentTokenResponse)
 
 	for _, token := range resp.Tokens {
-		out, _ := json.Marshal(token)
-		fmt.Fprintf(parser.Writer, "Token = %s", string(out))
+		id, _ := json.Marshal(token.Id)
+		fmt.Fprintf(parser.Writer, "%s\n", string(id))
+		fmt.Fprintf(parser.Writer, "[%s,%s]\n", token.Type, token.Quantity)
 	}
 	return nil
+}
+
+// ExtractUnspentTokensFromOutput extracts token.UnspentToken from the output
+// produced by UnspentTokenResponseParser
+func ExtractUnspentTokensFromOutput(output string) ([]*token.UnspentToken, error) {
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	var tokens []*token.UnspentToken
+	i := 0
+	var tokenId *token.TokenId
+	for scanner.Scan() {
+		text := scanner.Text()
+		if i%2 == 0 {
+			// parse id
+			tokenId = &token.TokenId{}
+			err := json.Unmarshal([]byte(text), tokenId)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// parse [<type>,<quantity>]
+			text = strings.TrimPrefix(text, "[")
+			text = strings.TrimSuffix(text, "]")
+			strs := strings.Split(text, ",")
+
+			tokens = append(tokens, &token.UnspentToken{
+				Id:       tokenId,
+				Type:     strs[0],
+				Quantity: strs[1],
+			})
+		}
+		i++
+	}
+
+	return tokens, nil
 }

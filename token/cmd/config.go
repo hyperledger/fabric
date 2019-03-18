@@ -20,6 +20,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+// RecipientShare describes how much a recipient will receive in a token transfer
+type ShellRecipientShare struct {
+	Recipient string
+	Quantity  string
+}
+
 // LoadConfig converts tha passed string to a ClientConfig.
 // The string can be a json string representing the ClientConfig or a path to
 // a file containing a ClientConfig in json format
@@ -65,10 +71,11 @@ func GetSigningIdentity(mspConfigPath, mspID, mspType string) (msp.SigningIdenti
 }
 
 // LoadTokenOwner converts the passed string to a TokenOwner.
-// The string can be the path of the msp configuration, or
-// the path to a file that contains a serialised identity.
+// The string can be the path of the msp configuration, in this case
+// the expected format of the string is <msp_id>:<path>,
+// or the path to a file that contains a serialised identity.
 func LoadTokenOwner(s string) (*token.TokenOwner, error) {
-	res, err := LoadLocalMspRecipient(s, "MSP_ID")
+	res, err := LoadLocalMspRecipient(s)
 	if err == nil {
 		return res, nil
 	}
@@ -82,8 +89,15 @@ func LoadTokenOwner(s string) (*token.TokenOwner, error) {
 }
 
 // LoadLocalMspRecipient constructs a TokenOwner from the signing identity
-// at the passed msp location.
-func LoadLocalMspRecipient(mspPath, mspID string) (*token.TokenOwner, error) {
+// at the passed msp location. Expected format of the string is <msp_id>:<path>.
+func LoadLocalMspRecipient(s string) (*token.TokenOwner, error) {
+	strs := strings.Split(s, ":")
+	if len(strs) < 2 {
+		return nil, errors.Errorf("invalid input '%s', expected <msp_id>:<path>", s)
+	}
+
+	mspID := strs[0]
+	mspPath := strings.TrimPrefix(s, mspID+":")
 	localMSP, err := LoadLocalMSPAt(mspPath, mspID, "bccsp")
 	if err != nil {
 		return nil, err
@@ -181,20 +195,22 @@ func LoadShares(s string) ([]*token.RecipientShare, error) {
 	// s can be a
 	// - json string representing the shares
 	// - a path containing a json string representing the shares
-	res, err := LoadSharesFromJson(s)
-	if err == nil {
+	var err1, err2 error
+
+	res, err1 := LoadSharesFromJson(s)
+	if err1 != nil {
+		res, err2 = LoadSharesFromFile(s)
+	}
+
+	if err1 == nil || err2 == nil {
 		return SubstituteShareRecipient(res)
 	}
-	res, err = LoadSharesFromFile(s)
-	if err == nil {
-		return SubstituteShareRecipient(res)
-	}
-	return nil, errors.New("failed loading shares")
+	return nil, errors.Errorf("failed loading shares [%s][%s]", err1, err2)
 }
 
 // LoadSharesFromJson converts the passed json string to shares
-func LoadSharesFromJson(s string) ([]*token.RecipientShare, error) {
-	var shares []*token.RecipientShare
+func LoadSharesFromJson(s string) ([]*ShellRecipientShare, error) {
+	var shares []*ShellRecipientShare
 	err := json.Unmarshal([]byte(s), &shares)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed unmarshalling json")
@@ -204,7 +220,7 @@ func LoadSharesFromJson(s string) ([]*token.RecipientShare, error) {
 }
 
 // LoadSharesFromFile loads from file shares in json representation.
-func LoadSharesFromFile(s string) ([]*token.RecipientShare, error) {
+func LoadSharesFromFile(s string) ([]*ShellRecipientShare, error) {
 	fileCont, err := ioutil.ReadFile(s)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not read file %s", s)
@@ -216,22 +232,27 @@ func LoadSharesFromFile(s string) ([]*token.RecipientShare, error) {
 // SubstituteShareRecipient scans the recipients to see if they need additional
 // post-processing. For example, a recipient can contain the path of a file containing
 // the serialised identity to be loaded.
-func SubstituteShareRecipient(shares []*token.RecipientShare) ([]*token.RecipientShare, error) {
+func SubstituteShareRecipient(shares []*ShellRecipientShare) ([]*token.RecipientShare, error) {
+	if len(shares) == 0 {
+		return nil, errors.New("SubstituteShareRecipient: empty input passed")
+	}
+
+	var outputs []*token.RecipientShare
 	for _, share := range shares {
 		if share == nil {
 			continue
 		}
-		if share.Recipient == nil {
-			return nil, errors.New("invalid recipient share")
+		if len(share.Recipient) == 0 {
+			return nil, errors.New("SubstituteShareRecipient: invalid recipient share")
 		}
-		recipient, err := LoadTokenOwner(string(share.Recipient.Raw))
+		recipient, err := LoadTokenOwner(share.Recipient)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "SubstituteShareRecipient: failed loading token owner")
 		}
-		share.Recipient = recipient
+		outputs = append(outputs, &token.RecipientShare{Recipient: recipient, Quantity: share.Quantity})
 	}
 
-	return shares, nil
+	return outputs, nil
 }
 
 // JsonLoader implements the Loader interface
