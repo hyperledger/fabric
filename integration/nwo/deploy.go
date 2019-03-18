@@ -196,7 +196,7 @@ func ApproveChaincodeForMyOrgNewLifecycle(n *Network, channel string, orderer *O
 		pkgBytes, err := ioutil.ReadFile(chaincode.PackageFile)
 		Expect(err).NotTo(HaveOccurred())
 		hash := util.ComputeSHA256(pkgBytes)
-		chaincode.PackageID = fmt.Sprintf("labellissima:%x", hash)
+		chaincode.PackageID = fmt.Sprintf("%s:%x", chaincode.Label, hash)
 	}
 
 	// used to ensure we only approve once per org
@@ -214,6 +214,7 @@ func ApproveChaincodeForMyOrgNewLifecycle(n *Network, channel string, orderer *O
 				ValidationPlugin:  chaincode.ValidationPlugin,
 				Policy:            chaincode.Policy,
 				InitRequired:      chaincode.InitRequired,
+				CollectionsConfig: chaincode.CollectionsConfig,
 				WaitForEvent:      true,
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -245,6 +246,7 @@ func CommitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 		ValidationPlugin:  chaincode.ValidationPlugin,
 		Policy:            chaincode.Policy,
 		InitRequired:      chaincode.InitRequired,
+		CollectionsConfig: chaincode.CollectionsConfig,
 		PeerAddresses:     peerAddresses,
 		WaitForEvent:      true,
 	})
