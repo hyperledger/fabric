@@ -369,8 +369,9 @@ var _ = Describe("SCC", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeSCCFuncs.ApproveChaincodeDefinitionForOrgCallCount()).To(Equal(1))
-				name, cd, packageID, pubState, privState := fakeSCCFuncs.ApproveChaincodeDefinitionForOrgArgsForCall(0)
-				Expect(name).To(Equal("name"))
+				chname, ccname, cd, packageID, pubState, privState := fakeSCCFuncs.ApproveChaincodeDefinitionForOrgArgsForCall(0)
+				Expect(chname).To(Equal("test-channel"))
+				Expect(ccname).To(Equal("name"))
 				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
 					Sequence: 7,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
@@ -459,8 +460,9 @@ var _ = Describe("SCC", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeSCCFuncs.CommitChaincodeDefinitionCallCount()).To(Equal(1))
-				name, cd, pubState, orgStates := fakeSCCFuncs.CommitChaincodeDefinitionArgsForCall(0)
-				Expect(name).To(Equal("name"))
+				chname, ccname, cd, pubState, orgStates := fakeSCCFuncs.CommitChaincodeDefinitionArgsForCall(0)
+				Expect(chname).To(Equal("test-channel"))
+				Expect(ccname).To(Equal("name"))
 				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
 					Sequence: 7,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{

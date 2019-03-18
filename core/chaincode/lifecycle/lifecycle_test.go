@@ -10,17 +10,19 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	cb "github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/golang/protobuf/proto"
-	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 )
 
@@ -178,22 +180,44 @@ var _ = Describe("Resources", func() {
 
 var _ = Describe("ExternalFunctions", func() {
 	var (
-		resources    *lifecycle.Resources
-		ef           *lifecycle.ExternalFunctions
-		fakeCCStore  *mock.ChaincodeStore
-		fakeParser   *mock.PackageParser
-		fakeListener *mock.InstallListener
+		resources               *lifecycle.Resources
+		ef                      *lifecycle.ExternalFunctions
+		fakeCCStore             *mock.ChaincodeStore
+		fakeParser              *mock.PackageParser
+		fakeListener            *mock.InstallListener
+		fakeChannelConfigSource *mock.ChannelConfigSource
+		fakeChannelConfig       *mock.ChannelConfig
+		fakeApplicationConfig   *mock.ApplicationConfig
+		fakeOrgConfigs          []*mock.ApplicationOrgConfig
+		fakePolicyManager       *mock.PolicyManager
 	)
 
 	BeforeEach(func() {
 		fakeCCStore = &mock.ChaincodeStore{}
 		fakeParser = &mock.PackageParser{}
 		fakeListener = &mock.InstallListener{}
+		fakeChannelConfigSource = &mock.ChannelConfigSource{}
+		fakeChannelConfig = &mock.ChannelConfig{}
+		fakeChannelConfigSource.GetStableChannelConfigReturns(fakeChannelConfig)
+		fakeApplicationConfig = &mock.ApplicationConfig{}
+		fakeChannelConfig.ApplicationConfigReturns(fakeApplicationConfig, true)
+		fakeOrgConfigs = []*mock.ApplicationOrgConfig{{}, {}}
+		fakeOrgConfigs[0].MSPIDReturns("first-mspid")
+		fakeOrgConfigs[1].MSPIDReturns("second-mspid")
+		fakePolicyManager = &mock.PolicyManager{}
+		fakePolicyManager.GetPolicyReturns(nil, true)
+		fakeChannelConfig.PolicyManagerReturns(fakePolicyManager)
+
+		fakeApplicationConfig.OrganizationsReturns(map[string]channelconfig.ApplicationOrg{
+			"org0": fakeOrgConfigs[0],
+			"org1": fakeOrgConfigs[1],
+		})
 
 		resources = &lifecycle.Resources{
-			PackageParser:  fakeParser,
-			ChaincodeStore: fakeCCStore,
-			Serializer:     &lifecycle.Serializer{},
+			PackageParser:       fakeParser,
+			ChaincodeStore:      fakeCCStore,
+			Serializer:          &lifecycle.Serializer{},
+			ChannelConfigSource: fakeChannelConfigSource,
 		}
 
 		ef = &lifecycle.ExternalFunctions{
@@ -342,10 +366,14 @@ var _ = Describe("ExternalFunctions", func() {
 			testDefinition = &lifecycle.ChaincodeDefinition{
 				Sequence: 5,
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-					Version: "version",
+					Version:           "version",
+					EndorsementPlugin: "my endorsement plugin",
 				},
-				ValidationInfo: &lb.ChaincodeValidationInfo{},
-				Collections:    &cb.CollectionConfigPackage{},
+				ValidationInfo: &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "my validation plugin",
+					ValidationParameter: []byte("some awesome policy"),
+				},
+				Collections: &cb.CollectionConfigPackage{},
 			}
 
 			fakePublicState = &mock.ReadWritableState{}
@@ -366,7 +394,7 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 
 		It("serializes the chaincode parameters to the org scoped collection", func() {
-			err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, p.PackageID("hash"), fakePublicState, fakeOrgState)
+			err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, p.PackageID("hash"), fakePublicState, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
 
 			metadata, ok, err := resources.Serializer.DeserializeMetadata("namespaces", "cc-name#5", fakeOrgState)
@@ -376,7 +404,11 @@ var _ = Describe("ExternalFunctions", func() {
 			err = resources.Serializer.Deserialize("namespaces", "cc-name#5", metadata, committedDefinition, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(committedDefinition.EndorsementInfo.Version).To(Equal("version"))
-			Expect(proto.Equal(committedDefinition.ValidationInfo, &lb.ChaincodeValidationInfo{})).To(BeTrue())
+			Expect(committedDefinition.EndorsementInfo.EndorsementPlugin).To(Equal("my endorsement plugin"))
+			Expect(proto.Equal(committedDefinition.ValidationInfo, &lb.ChaincodeValidationInfo{
+				ValidationPlugin:    "my validation plugin",
+				ValidationParameter: []byte("some awesome policy"),
+			})).To(BeTrue())
 			Expect(proto.Equal(committedDefinition.Collections, &cb.CollectionConfigPackage{})).To(BeTrue())
 
 			metadata, ok, err = resources.Serializer.DeserializeMetadata("chaincode-sources", "cc-name#5", fakeOrgState)
@@ -390,13 +422,69 @@ var _ = Describe("ExternalFunctions", func() {
 			}))
 		})
 
+		Context("when the peer sets defaults", func() {
+			BeforeEach(func() {
+				testDefinition.EndorsementInfo.EndorsementPlugin = ""
+				testDefinition.ValidationInfo.ValidationPlugin = ""
+				testDefinition.ValidationInfo.ValidationParameter = nil
+			})
+
+			It("uses appropriate defaults", func() {
+				err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, p.PackageID("hash"), fakePublicState, fakeOrgState)
+				Expect(err).NotTo(HaveOccurred())
+
+				metadata, ok, err := resources.Serializer.DeserializeMetadata("namespaces", "cc-name#5", fakeOrgState)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ok).To(BeTrue())
+				committedDefinition := &lifecycle.ChaincodeParameters{}
+				err = resources.Serializer.Deserialize("namespaces", "cc-name#5", metadata, committedDefinition, fakeOrgState)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(committedDefinition.EndorsementInfo.Version).To(Equal("version"))
+				Expect(committedDefinition.EndorsementInfo.EndorsementPlugin).To(Equal("escc"))
+				Expect(proto.Equal(committedDefinition.ValidationInfo, &lb.ChaincodeValidationInfo{
+					ValidationPlugin: "vscc",
+					ValidationParameter: protoutil.MarshalOrPanic(
+						&pb.ApplicationPolicy{
+							Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+								ChannelConfigPolicyReference: "/Channel/Application/Endorsement",
+							},
+						}),
+				})).To(BeTrue())
+				Expect(proto.Equal(committedDefinition.Collections, &cb.CollectionConfigPackage{})).To(BeTrue())
+			})
+
+			Context("when no default endorsement policy is defined on thc channel", func() {
+				BeforeEach(func() {
+					fakePolicyManager.GetPolicyReturns(nil, false)
+				})
+
+				It("returns an error", func() {
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, p.PackageID("hash"), fakePublicState, fakeOrgState)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("could not set defaults for chaincode definition in channel my-channel: Policy '/Channel/Application/Endorsement' must be defined for channel 'my-channel' before chaincode operations can be attempted"))
+				})
+			})
+
+			Context("when obtaining a stable channel config fails", func() {
+				BeforeEach(func() {
+					fakeChannelConfigSource.GetStableChannelConfigReturns(nil)
+				})
+
+				It("returns an error", func() {
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, p.PackageID("hash"), fakePublicState, fakeOrgState)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("could not get channel config for channel 'my-channel'"))
+				})
+			})
+		})
+
 		Context("when the current sequence is undefined and the requested sequence is 0", func() {
 			BeforeEach(func() {
 				fakePublicKVStore = map[string][]byte{}
 			})
 
 			It("returns an error", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("unknown-name", &lifecycle.ChaincodeDefinition{}, "hash", fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "unknown-name", &lifecycle.ChaincodeDefinition{}, "hash", fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("requested sequence is 0, but first definable sequence number is 1"))
 			})
 		})
@@ -406,14 +494,19 @@ var _ = Describe("ExternalFunctions", func() {
 				err := resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
 					Sequence: 5,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-						Version: "version",
+						Version:           "version",
+						EndorsementPlugin: "my endorsement plugin",
+					},
+					ValidationInfo: &lb.ChaincodeValidationInfo{
+						ValidationPlugin:    "my validation plugin",
+						ValidationParameter: []byte("some awesome policy"),
 					},
 				}, fakePublicState)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("verifies that the definition matches before writing", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -423,7 +516,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("missing metadata for currently committed sequence number (5)"))
 				})
 			})
@@ -434,7 +527,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("could not fetch metadata for current definition: could not unmarshal metadata for namespace namespaces/cc-name: proto: can't skip unknown wire type 7"))
 				})
 			})
@@ -452,7 +545,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: type name mismatch 'ChaincodeDefinition' != 'OtherStruct'"))
 				})
 			})
@@ -471,7 +564,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("attempted to define the current sequence (%d) for namespace %s, but: Version 'other-version' != 'version'"))
 				})
 			})
@@ -483,7 +576,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("fails", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("currently defined sequence 4 is larger than requested sequence 3"))
 			})
 		})
@@ -494,7 +587,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("fails", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("requested sequence 9 is larger than the next available sequence number 5"))
 			})
 		})
@@ -505,7 +598,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("could not get current sequence: could not get state for key namespaces/fields/cc-name/Sequence: get-state-error"))
 			})
 		})
@@ -516,7 +609,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("could not serialize chaincode parameters to state: could not write key into state: put-state-error"))
 			})
 		})
@@ -527,7 +620,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("could not serialize chaincode package info to state: could not write key into state: put-state-error"))
 			})
 		})
@@ -588,9 +681,71 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 
 		It("applies the chaincode definition and returns the agreements", func() {
-			agreements, err := ef.CommitChaincodeDefinition("cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+			agreements, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(agreements).To(Equal([]bool{true, false}))
+		})
+
+		Context("when the peer sets defaults", func() {
+			BeforeEach(func() {
+				testDefinition.EndorsementInfo.EndorsementPlugin = "escc"
+				testDefinition.ValidationInfo.ValidationPlugin = "vscc"
+				testDefinition.ValidationInfo.ValidationParameter = protoutil.MarshalOrPanic(
+					&pb.ApplicationPolicy{
+						Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+							ChannelConfigPolicyReference: "/Channel/Application/Endorsement",
+						},
+					})
+
+				fakeOrgStates = []*mock.ReadWritableState{{}, {}}
+				for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
+					kvs := kvs
+					fakeOrgStates[i].GetStateStub = kvs.GetState
+					fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
+					fakeOrgStates[i].PutStateStub = kvs.PutState
+				}
+
+				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[0])
+
+				testDefinition.EndorsementInfo.EndorsementPlugin = ""
+				testDefinition.ValidationInfo.ValidationPlugin = ""
+				testDefinition.ValidationInfo.ValidationParameter = nil
+
+				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[1])
+			})
+
+			It("applies the chaincode definition and returns the agreements", func() {
+				agreements, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(agreements).To(Equal([]bool{true, false}))
+			})
+
+			Context("when no default endorsement policy is defined on thc channel", func() {
+				BeforeEach(func() {
+					fakePolicyManager.GetPolicyReturns(nil, false)
+				})
+
+				It("returns an error", func() {
+					_, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("could not set defaults for chaincode definition in " +
+						"channel my-channel: Policy '/Channel/Application/Endorsement' must be defined " +
+						"for channel 'my-channel' before chaincode operations can be attempted"))
+				})
+			})
+
+			Context("when obtaining a stable channel config fails", func() {
+				BeforeEach(func() {
+					fakeChannelConfigSource.GetStableChannelConfigReturns(nil)
+				})
+
+				It("returns an error", func() {
+					_, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("could not get channel config for channel 'my-channel'"))
+
+				})
+			})
 		})
 
 		Context("when the public state is not readable", func() {
@@ -599,7 +754,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := ef.CommitChaincodeDefinition("cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				_, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).To(MatchError("could not get current sequence: could not get state for key namespaces/fields/cc-name/Sequence: getstate-error"))
 			})
 		})
@@ -610,7 +765,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := ef.CommitChaincodeDefinition("cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				_, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).To(MatchError("could not serialize chaincode definition: could not write key into state: putstate-error"))
 			})
 		})
@@ -631,7 +786,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := ef.CommitChaincodeDefinition("cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				_, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).To(MatchError("requested sequence is 5, but new definition must be sequence 4"))
 			})
 		})
