@@ -175,3 +175,9 @@ message BlockData {
 message BlockMetadata {
     repeated bytes metadata = 1;
 }
+
+// OrdererBlockMetadata defines metadata that is set by the ordering service.
+message OrdererBlockMetadata {
+    LastConfig last_config = 1;
+    bytes consenter_metadata = 2;
+}
