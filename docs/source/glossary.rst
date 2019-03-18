@@ -1,4 +1,3 @@
-
 Glossary
 ===========================
 
@@ -22,13 +21,13 @@ communication is constant, and because peers always ask to be told about the exi
 of any peer they don't know about, a common view of membership can be established for
 a channel.
 
-For example, let's assume we have three organizations---`A`, `B`, `C`--- in the channel
-and a single anchor peer---`peer0.orgC`--- defined for organization `C`. When `peer1.orgA`
-(from organization `A`) contacts `peer0.orgC`, it will tell it about `peer0.orgA`. And
-when at a later time `peer1.orgB` contacts `peer0.orgC`, the latter would tell the
-former about `peer0.orgA`. From that point forward, organizations `A` and `B` would
-start exchanging membership information directly without any assistance from
-`peer0.orgC`.
+For example, let's assume we have three organizations --- ``A``, ``B``, ``C`` --- in the channel
+and a single anchor peer --- ``peer0.orgC`` --- defined for organization ``C``.
+When ``peer1.orgA`` (from organization ``A``) contacts ``peer0.orgC``, it will
+tell ``peer0.orgC`` about ``peer0.orgA``. And when at a later time ``peer1.orgB``
+contacts ``peer0.orgC``, the latter would tell the former about ``peer0.orgA``.
+From that point forward, organizations ``A`` and ``B`` would start exchanging
+membership information directly without any assistance from ``peer0.orgC``.
 
 As communication across organizations depends on gossip in order to work, there must
 be at least one anchor peer defined in the channel configuration. It is strongly
@@ -61,7 +60,6 @@ in the top level "Application" section of ``configtx.yaml`` or overridden
 on a per profile basis in the "Profiles" section.
 
 .. _Block:
-
 
 Block
 -----
@@ -168,7 +166,7 @@ channel or overall network (e.g. a member leaving or joining) will result
 in a new configuration block being appended to the appropriate chain. This
 block will contain the contents of the genesis block, plus the delta.
 
-.. Consensus
+.. _Consensus:
 
 Consensus
 ---------
@@ -177,7 +175,17 @@ A broader term overarching the entire transactional flow, which serves to genera
 an agreement on the order and to confirm the correctness of the set of transactions
 constituting a block.
 
-.. Consortium
+.. _Consortium:
+
+Consenter set
+-------------
+
+In a Raft ordering service, these are the ordering nodes actively participating
+in the consensus mechanism on a channel. If other ordering nodes exist on the
+system channel, but are not a part of a channel, they are not part of that
+channel's consenter set.
+
+.. _Consenter-Set:
 
 Consortium
 ----------
@@ -189,12 +197,14 @@ networks have a single consortium. At channel creation time, all organizations
 added to the channel must be part of a consortium. However, an organization
 that is not defined in a consortium may be added to an existing channel.
 
-.. _Current-State:
+.. _Consortium:
 
 Current State
 -------------
 
 See World-State_.
+
+.. _Current-State:
 
 .. _Dynamic-Membership:
 
@@ -233,15 +243,16 @@ misbehavior (deliberate or not) by the endorsing peers. A transaction that is su
 must satisfy the endorsement policy before being marked as valid by committing peers.
 A distinct endorsement policy for install and instantiate transactions is also required.
 
-.. _Fabric-ca:
+.. _Follower:
 
-Hyperledger Fabric CA
----------------------
+Follower
+--------
 
-Hyperledger Fabric CA is the default Certificate Authority component, which
-issues PKI-based certificates to network member organizations and their users.
-The CA issues one root certificate (rootCert) to each member and one enrollment
-certificate (ECert) to each authorized user.
+In a leader based consensus protocol, such as Raft, these are the nodes which
+replicate log entries produced by the leader. In Raft, the followers also receive
+"heartbeat" messages from the leader. In the event that the leader stops sending
+those message for a configurable amount of time, the followers will initiate a
+leader election and one of them will be elected leader.
 
 .. _Genesis-Block:
 
@@ -261,6 +272,16 @@ The gossip data dissemination protocol performs three functions:
 2) disseminates ledger data across all peers on the channel;
 3) syncs ledger state across all peers on the channel.
 Refer to the :doc:`Gossip <gossip>` topic for more details.
+
+.. _Fabric-ca:
+
+Hyperledger Fabric CA
+---------------------
+
+Hyperledger Fabric CA is the default Certificate Authority component, which
+issues PKI-based certificates to network member organizations and their users.
+The CA issues one root certificate (rootCert) to each member and one enrollment
+certificate (ECert) to each authorized user.
 
 .. _Initialize:
 
@@ -297,6 +318,17 @@ submit the read-only transaction, unless there is desire to log the read on the 
 for audit purpose. The invoke includes a channel identifier, the chaincode function to
 invoke, and an array of arguments.
 
+.. _Leader
+
+Leader
+------
+
+In a leader based consensus protocol, like Raft, the leader is responsible for
+ingesting new log entries, replicating them to follower ordering nodes, and
+managing when an entry is considered committed. This is not a special **type**
+of orderer. It is only a role that an orderer may have at certain times, and
+then not others, as circumstances determine.
+
 .. _Leading-Peer:
 
 Leading Peer
@@ -310,7 +342,6 @@ leading peer(s) on a channel, who then distribute them to other peers within
 the same organization.
 
 .. _Ledger:
-
 
 Ledger
 ------
@@ -339,6 +370,16 @@ process called **consensus**. The term **Distributed Ledger Technology**
 (**DLT**) is often associated with this kind of ledger -- one that is logically
 singular, but has many identical copies distributed across a set of network
 nodes (peers and the ordering service).
+
+.. _Log-entry
+
+Log entry
+---------
+
+The primary unit of work in a Raft ordering service, log entries are distributed
+from the leader orderer to the followers. The full sequence of such entries known
+as the "log". The log is considered to be consistent if all members agree on the
+entries and their order.
 
 .. _Member:
 
@@ -497,6 +538,32 @@ validation, and commit. Although not typical, the client application can choose 
 submit the read-only transaction for ordering, validation, and commit, for example if the
 client wants auditable proof on the ledger chain that it had knowledge of specific ledger
 state at a certain point in time.
+
+.. _Quorum:
+
+Quorum
+------
+
+This describes the minimum number of members of the cluster that need to
+affirm a proposal so that transactions can be ordered. For every consenter set,
+this is a **majority** of nodes. In a cluster with five nodes, three must be
+available for there to be a quorum. If a quorum of nodes is unavailable for any
+reason, the cluster becomes unavailable for both read and write operations and
+no new logs can be committed.
+
+.. _Raft:
+
+Raft
+----
+
+New for v1.4.1, Raft is a crash fault tolerant (CFT) ordering service
+implementation based on the `etcd library <https://coreos.com/etcd/>`_
+of the `Raft protocol` <https://raft.github.io/raft.pdf>`_. Raft follows a
+"leader and follower" model, where a leader node is elected (per channel) and
+its decisions are replicated by the followers. Raft ordering services should
+be easier to set up and manage than Kafka-based ordering services, and their
+design allows organizations to contribute nodes to a distributed ordering
+service.
 
 .. _SDK:
 
