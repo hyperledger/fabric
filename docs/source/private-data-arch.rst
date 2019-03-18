@@ -12,12 +12,16 @@ definition listing the organizations in the collection, as well as properties
 used to control dissemination of private data at endorsement time and,
 optionally, whether the data will be purged.
 
-The collection definition gets deployed to the channel at the time of chaincode
-instantiation (or upgrade). If using the peer CLI to instantiate the chaincode, the
-collection definition file is passed to the chaincode instantiation
-using the ``--collections-config`` flag. If using a client SDK, check the `SDK
-documentation <https://fabric-sdk-node.github.io/>`_ for information on providing the collection
-definition.
+Beginning with the Fabric chaincode lifecycle introduced with the Fabric v2.0
+Alpha, the collection definition is part of the chaincode definition. The
+collection is approved by channel members, and then deployed when the chaincode
+definition is committed to the channel. The collection file needs to be the same
+for all channel members. If you are using the peer CLI to approve and commit the
+chaincode definition, use the ``--collections-config`` flag to specify the path
+to the collection definition file. If you are using the Fabric SDK for Node.js,
+visit `How to install and start your chaincode <https://fabric-sdk-node.github.io/master/tutorial-chaincode-lifecycle.html>`_.
+To use the `previous lifecycle process <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`_ to deploy a private data collection,
+use the ``--collections-config`` flag when `instantiating your chaincode <https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerchaincode.html#peer-chaincode-instantiate>`_.
 
 Collection definitions are composed of the following properties:
 
@@ -242,6 +246,11 @@ Limitations:
 
 Using Indexes with collections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note:: The Fabric chaincode lifecycle being introduced in the Fabric v2.0
+         alpha does not support using couchDB indexes with your chaincode. To use
+         the previous lifecycle model to deploy couchDB indexes with private data
+         collections, visit the v1.4 version of the `Private Data Architecture Guide <https://hyperledger-fabric.readthedocs.io/en/release-1.4/private-data-arch.html>`_.
 
 The topic :doc:`couchdb_as_state_database` describes indexes that can be
 applied to the channel’s state database to enable JSON content queries, by
