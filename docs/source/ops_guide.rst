@@ -5,6 +5,7 @@ Operations Guides
    :maxdepth: 1
 
    upgrade_to_newest_version
+   orderer_deploy
    config_update
    msp
    configtx
