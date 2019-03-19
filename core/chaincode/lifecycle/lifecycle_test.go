@@ -265,6 +265,18 @@ var _ = Describe("ExternalFunctions", func() {
 			Expect(packageID).To(Equal(p.PackageID("fake-hash")))
 		})
 
+		Context("when the package does not have metadata", func() {
+			BeforeEach(func() {
+				fakeParser.ParseReturns(&persistence.ChaincodePackage{}, nil)
+			})
+
+			It("wraps and returns the error", func() {
+				hash, err := ef.InstallChaincode([]byte("fake-package"))
+				Expect(hash).To(BeNil())
+				Expect(err.Error()).To(ContainSubstring("empty metadata for supplied chaincode"))
+			})
+		})
+
 		Context("when saving the chaincode fails", func() {
 			BeforeEach(func() {
 				fakeCCStore.SaveReturns("", fmt.Errorf("fake-error"))

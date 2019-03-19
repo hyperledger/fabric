@@ -389,6 +389,10 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 		return nil, errors.WithMessage(err, "could not parse as a chaincode install package")
 	}
 
+	if pkg.Metadata == nil {
+		return nil, errors.New("empty metadata for supplied chaincode")
+	}
+
 	packageID, err := ef.Resources.ChaincodeStore.Save(pkg.Metadata.Label, chaincodeInstallPackage)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not save cc install package")

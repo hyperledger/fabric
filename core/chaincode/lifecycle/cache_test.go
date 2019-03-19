@@ -197,7 +197,7 @@ var _ = Describe("Cache", func() {
 
 			It("wraps and returns the error", func() {
 				err := c.InitializeLocalChaincodes()
-				Expect(err).To(MatchError("could not load chaincode with hash '68617368': load-error"))
+				Expect(err.Error()).To(ContainSubstring("could not load chaincode with pakcage ID 'packageID'"))
 			})
 		})
 
@@ -208,7 +208,7 @@ var _ = Describe("Cache", func() {
 
 			It("wraps and returns the error", func() {
 				err := c.InitializeLocalChaincodes()
-				Expect(err).To(MatchError("could not parse chaincode package with hash '68617368': parse-error"))
+				Expect(err.Error()).To(ContainSubstring("could not parse chaincode with pakcage ID 'packageID'"))
 			})
 		})
 	})
