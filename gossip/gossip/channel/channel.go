@@ -621,8 +621,8 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 					return
 				}
 				// Would this block go into the message store if it was verified?
-				if !gc.blockMsgStore.CheckValid(msg.GetGossipMessage()) {
-					return
+				if !gc.blockMsgStore.CheckValid(gMsg) {
+					continue
 				}
 				if !gc.verifyBlock(gMsg.GossipMessage, msg.GetConnectionInfo().ID) {
 					return
