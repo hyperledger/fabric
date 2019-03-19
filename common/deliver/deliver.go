@@ -297,7 +297,9 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 			logger.Debugf("Context canceled, aborting wait for next block")
 			return cb.Status_INTERNAL_SERVER_ERROR, errors.Wrapf(ctx.Err(), "context finished before block retrieved")
 		case <-erroredChan:
-			logger.Warningf("Aborting deliver for request because of background error")
+			// TODO, today, the only user of the errorChan is the orderer consensus implementations.  If the peer ever reports
+			// this error, we will need to update this error message, possibly finding a way to signal what error text to return.
+			logger.Warningf("Aborting deliver for request because the backing consensus implementation indicates an error")
 			return cb.Status_SERVICE_UNAVAILABLE, nil
 		case <-iterCh:
 			// Iterator has set the block and status vars
