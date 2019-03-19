@@ -311,10 +311,23 @@ func newPeerClientConnection() (*grpc.ClientConn, error) {
 		ClientTimeout:  time.Duration(20) * time.Second,
 	}
 	if viper.GetBool("peer.tls.enabled") {
-		return comm.NewClientConnectionWithAddress(peerAddress, true, true,
-			comm.InitTLSForShim(key, cert), kaOpts)
+		return comm.NewClientConnectionWithAddress(
+			peerAddress,
+			true,
+			3*time.Second,
+			true,
+			comm.InitTLSForShim(key, cert),
+			kaOpts,
+		)
 	}
-	return comm.NewClientConnectionWithAddress(peerAddress, true, false, nil, kaOpts)
+	return comm.NewClientConnectionWithAddress(
+		peerAddress,
+		true,
+		3*time.Second,
+		false,
+		nil,
+		kaOpts,
+	)
 }
 
 func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {

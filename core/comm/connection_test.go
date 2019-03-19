@@ -48,7 +48,6 @@ VQQLDAtIeXBlcmxlZGdlcjESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0C
 
 func TestClientConnections(t *testing.T) {
 	t.Parallel()
-
 	//use Org1 test crypto material
 	fileBase := "Org1"
 	certPEMBlock, _ := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-cert.pem"))
@@ -121,8 +120,14 @@ func TestClientConnections(t *testing.T) {
 			//start the server
 			go srv.Start()
 			defer srv.Stop()
-			testConn, err := NewClientConnectionWithAddress(clientAddress,
-				true, test.sc.SecOpts.UseTLS, test.creds, nil)
+			testConn, err := NewClientConnectionWithAddress(
+				clientAddress,
+				true,
+				100*time.Millisecond,
+				test.sc.SecOpts.UseTLS,
+				test.creds,
+				nil,
+			)
 			if test.fail {
 				assert.Error(t, err)
 			} else {
@@ -274,9 +279,7 @@ func TestImpersonation(t *testing.T) {
 	// 4) Invocation with GetDeliverServiceCredentials("B") to srvA fails
 
 	osA := newServer("orgA")
-	defer osA.Stop()
 	osB := newServer("orgB")
-	defer osB.Stop()
 	time.Sleep(time.Second)
 
 	cs := &CredentialSupport{
@@ -289,11 +292,50 @@ func TestImpersonation(t *testing.T) {
 	cs.OrdererRootCAsByChain["A"] = [][]byte{osA.caCert}
 	cs.OrdererRootCAsByChain["B"] = [][]byte{osB.caCert}
 
-	testInvoke(t, "A", osA, cs, true)
-	testInvoke(t, "B", osB, cs, true)
-	testInvoke(t, "A", osB, cs, false)
-	testInvoke(t, "B", osA, cs, false)
-
+	var tests = []struct {
+		channel string
+		server  *srv
+		creds   *CredentialSupport
+		success bool
+	}{
+		{
+			channel: "A",
+			server:  osA,
+			creds:   cs,
+			success: true,
+		},
+		{
+			channel: "B",
+			server:  osB,
+			creds:   cs,
+			success: true,
+		},
+		{
+			channel: "A",
+			server:  osB,
+			creds:   cs,
+			success: false,
+		},
+		{
+			channel: "B",
+			server:  osA,
+			creds:   cs,
+			success: false,
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			testInvoke(
+				t,
+				test.channel,
+				test.server,
+				test.creds,
+				test.success,
+			)
+		})
+	}
 }
 
 func testInvoke(
@@ -307,7 +349,7 @@ func testInvoke(
 	assert.NoError(t, err)
 
 	endpoint := s.address
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 	defer cancel()
 	conn, err := grpc.DialContext(ctx, endpoint, grpc.WithTransportCredentials(creds), grpc.WithBlock())
 	if shouldSucceed {
