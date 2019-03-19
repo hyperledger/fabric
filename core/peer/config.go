@@ -60,7 +60,11 @@ func CacheConfiguration() (err error) {
 			return "", errors.Errorf("peer.address isn't in host:port format: %s", peerAddress)
 		}
 
-		autoDetectedIPAndPort := net.JoinHostPort(GetLocalIP(), port)
+		localIP, err := GetLocalIP()
+		if err != nil {
+			peerLogger.Errorf("Local ip address not auto-detectable: %s", err)
+		}
+		autoDetectedIPAndPort := net.JoinHostPort(localIP, port)
 		peerLogger.Info("Auto-detected peer address:", autoDetectedIPAndPort)
 		// If host is the IPv4 address "0.0.0.0" or the IPv6 address "::",
 		// then fallback to auto-detected address
