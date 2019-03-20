@@ -184,6 +184,62 @@ func (n *node) send(msgs []raftpb.Message) {
 	}
 }
 
+// If this is called on leader, it picks a node that is
+// recently active, and attempt to transfer leadership to it.
+// If this is called on follower, it simply waits for a
+// leader change till timeout (ElectionTimeout).
+func (n *node) abdicateLeader(currentLead uint64) {
+	status := n.Status()
+
+	if status.Lead != raft.None && status.Lead != currentLead {
+		n.logger.Warn("Leader has changed since asked to transfer leadership")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(n.config.ElectionTick)*n.tickInterval)
+	defer cancel()
+
+	// Leader initiates leader transfer
+	if status.RaftState == raft.StateLeader {
+		var transferee uint64
+		for id, pr := range status.Progress {
+			if id == status.ID {
+				continue // skip self
+			}
+
+			if pr.RecentActive && !pr.Paused {
+				transferee = id
+				break
+			}
+
+			n.logger.Debugf("Node %d is not qualified as transferee because it's either paused or not active", id)
+		}
+
+		if transferee == raft.None {
+			n.logger.Errorf("No follower is qualified as transferee, abort leader transfer")
+			return
+		}
+
+		n.logger.Infof("Transferring leadership to %d", transferee)
+		n.TransferLeadership(ctx, status.ID, transferee)
+	}
+
+	// Periodically check leader has changed till ElectionTimeout elapsed
+	var newLeader uint64
+	for newLeader = n.Status().Lead; newLeader == status.Lead || newLeader == raft.None; newLeader = n.Status().Lead {
+		select {
+		case <-ctx.Done():
+			n.logger.Warn("Leader transfer timeout")
+			return
+		case <-time.After(n.tickInterval):
+		case <-n.chain.doneC:
+			return
+		}
+	}
+
+	n.logger.Infof("Leader has been transferred from %d to %d", currentLead, newLeader)
+}
+
 func (n *node) logSendFailure(dest uint64, err error) {
 	if _, ok := n.unreachable[dest]; ok {
 		n.logger.Debugf("Failed to send StepRequest to %d, because: %s", dest, err)
