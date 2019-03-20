@@ -266,7 +266,7 @@ $(BUILD_DIR)/images/baseos/$(DUMMY):
 	@touch $@
 
 $(BUILD_DIR)/images/ccenv/$(DUMMY): BUILD_ARGS=--build-arg CHAINTOOL_RELEASE=${CHAINTOOL_RELEASE} \
-	--build-arg JAVA_VER=${JAVA_VER} --build-arg NODE_VER=${NODE_VER}
+	--build-arg JAVA_VER=${JAVA_VER}
 
 $(BUILD_DIR)/images/%/$(DUMMY):
 	@mkdir -p $(@D)
