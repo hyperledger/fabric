@@ -619,8 +619,10 @@ func ChannelCreationBlockToGenesisBlock(block *common.Block) (*common.Block, err
 		Metadata: make([][]byte, 4),
 	}
 	block.Metadata = metadata
-	metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.LastConfig{
-		Index: 0,
+	metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.Metadata{
+		Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 0}),
+		// This is a genesis block, peer never verify this signature because we can't bootstrap
+		// trust from an earlier block, hence there are no signatures here.
 	})
 	return block, nil
 }
