@@ -167,8 +167,9 @@ func (bw *BlockWriter) commitBlock(encodedMetadataValue []byte) {
 	if encodedMetadataValue != nil {
 		bw.lastBlock.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = protoutil.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
 	}
-	bw.addBlockSignature(bw.lastBlock)
+
 	bw.addLastConfigSignature(bw.lastBlock)
+	bw.addBlockSignature(bw.lastBlock)
 
 	err := bw.support.Append(bw.lastBlock)
 	if err != nil {
@@ -182,9 +183,10 @@ func (bw *BlockWriter) addBlockSignature(block *cb.Block) {
 		SignatureHeader: protoutil.MarshalOrPanic(protoutil.NewSignatureHeaderOrPanic(bw.support)),
 	}
 
-	// Note, this value is intentionally nil, as this metadata is only about the signature, there is no additional metadata
-	// information required beyond the fact that the metadata item is signed.
-	blockSignatureValue := []byte(nil)
+	blockSignatureValue := protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
+		LastConfig:        &cb.LastConfig{Index: bw.lastConfigBlockNum},
+		ConsenterMetadata: bw.lastBlock.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER],
+	})
 
 	blockSignature.Signature = protoutil.SignOrPanic(
 		bw.support,
@@ -207,22 +209,10 @@ func (bw *BlockWriter) addLastConfigSignature(block *cb.Block) {
 		bw.lastConfigSeq = configSeq
 	}
 
-	lastConfigSignature := &cb.MetadataSignature{
-		SignatureHeader: protoutil.MarshalOrPanic(protoutil.NewSignatureHeaderOrPanic(bw.support)),
-	}
-
 	lastConfigValue := protoutil.MarshalOrPanic(&cb.LastConfig{Index: bw.lastConfigBlockNum})
 	logger.Debugf("[channel: %s] About to write block, setting its LAST_CONFIG to %d", bw.support.ChainID(), bw.lastConfigBlockNum)
 
-	lastConfigSignature.Signature = protoutil.SignOrPanic(
-		bw.support,
-		util.ConcatenateBytes(lastConfigValue, lastConfigSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
-	)
-
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&cb.Metadata{
 		Value: lastConfigValue,
-		Signatures: []*cb.MetadataSignature{
-			lastConfigSignature,
-		},
 	})
 }

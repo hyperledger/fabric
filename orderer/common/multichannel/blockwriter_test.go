@@ -11,12 +11,14 @@ import (
 
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -50,17 +52,38 @@ func TestCreateBlock(t *testing.T) {
 }
 
 func TestBlockSignature(t *testing.T) {
+	rlf := ramledger.New(2)
+	l, err := rlf.GetOrCreate("mychannel")
+	assert.NoError(t, err)
+	lastBlock := protoutil.NewBlock(0, nil)
+	l.Append(lastBlock)
+
 	bw := &BlockWriter{
+		lastConfigBlockNum: 42,
 		support: &mockBlockWriterSupport{
 			SignerSerializer: mockCrypto(),
+			Validator:        &mockconfigtx.Validator{},
+			ReadWriter:       l,
 		},
+		lastBlock: protoutil.NewBlock(1, protoutil.BlockHeaderHash(lastBlock.Header)),
 	}
 
-	block := protoutil.NewBlock(7, []byte("foo"))
-	bw.addBlockSignature(block)
+	consensusMetadata := []byte("bar")
+	bw.commitBlock(consensusMetadata)
 
-	md := protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_SIGNATURES)
-	assert.Nil(t, md.Value, "Value is empty in this case")
+	it, seq := l.Iterator(&orderer.SeekPosition{Type: &orderer.SeekPosition_Newest{}})
+	assert.Equal(t, uint64(1), seq)
+	committedBlock, status := it.Next()
+	assert.Equal(t, cb.Status_SUCCESS, status)
+
+	md := protoutil.GetMetadataFromBlockOrPanic(committedBlock, cb.BlockMetadataIndex_SIGNATURES)
+
+	expectedMetadataValue := protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
+		LastConfig:        &cb.LastConfig{Index: 42},
+		ConsenterMetadata: protoutil.MarshalOrPanic(&cb.Metadata{Value: consensusMetadata}),
+	})
+
+	assert.Equal(t, expectedMetadataValue, md.Value, "Value contains the consensus metadata and the last config")
 	assert.NotNil(t, md.Signatures, "Should have signature")
 }
 
@@ -87,7 +110,7 @@ func TestBlockLastConfig(t *testing.T) {
 
 	md := protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_LAST_CONFIG)
 	assert.NotNil(t, md.Value, "Value not be empty in this case")
-	assert.NotNil(t, md.Signatures, "Should have signature")
+	assert.Nil(t, md.Signatures, "Should not have signature")
 
 	lc := protoutil.GetLastConfigIndexFromBlockOrPanic(block)
 	assert.Equal(t, newBlockNum, lc)
