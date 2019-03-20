@@ -24,8 +24,6 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-const defaultTimeout = time.Second * 3
-
 var commLogger = flogging.MustGetLogger("comm")
 var credSupport *CredentialSupport
 var once sync.Once
@@ -136,8 +134,14 @@ func getEnv(key, def string) string {
 }
 
 // NewClientConnectionWithAddress Returns a new grpc.ClientConn to the given address
-func NewClientConnectionWithAddress(peerAddress string, block bool, tslEnabled bool,
-	creds credentials.TransportCredentials, ka *KeepaliveOptions) (*grpc.ClientConn, error) {
+func NewClientConnectionWithAddress(
+	peerAddress string,
+	block bool,
+	dialTimeout time.Duration,
+	tslEnabled bool,
+	creds credentials.TransportCredentials,
+	ka *KeepaliveOptions,
+) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 
 	if ka != nil {
@@ -159,7 +163,7 @@ func NewClientConnectionWithAddress(peerAddress string, block bool, tslEnabled b
 		grpc.MaxCallRecvMsgSize(MaxRecvMsgSize),
 		grpc.MaxCallSendMsgSize(MaxSendMsgSize),
 	))
-	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
 	defer cancel()
 	conn, err := grpc.DialContext(ctx, peerAddress, opts...)
 	if err != nil {

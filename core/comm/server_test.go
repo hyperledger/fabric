@@ -30,7 +30,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 )
 
@@ -82,7 +81,7 @@ A4QaL2VU6i4=
 -----END NOCERT-----
 `
 
-var timeout = time.Second * 1
+var timeout = time.Millisecond * 200
 var testOrgs = []testOrg{}
 
 func init() {
@@ -1501,96 +1500,6 @@ func TestSetClientRootCAs(t *testing.T) {
 
 }
 
-func TestKeepaliveNoClientResponse(t *testing.T) {
-	t.Parallel()
-	// set up GRPCServer instance
-	kap := &comm.KeepaliveOptions{
-		ServerInterval: 2 * time.Second,
-		ServerTimeout:  1 * time.Second,
-	}
-	// create our listener
-	lis, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("Failed to create listener: %v", err)
-	}
-	testAddress := lis.Addr().String()
-	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{KaOpts: kap})
-	assert.NoError(t, err, "Unexpected error starting GRPCServer")
-	go srv.Start()
-	defer srv.Stop()
-
-	// test connection close if client does not response to ping
-	// net client will not response to keepalive
-	client, err := net.Dial("tcp", testAddress)
-	assert.NoError(t, err, "Unexpected error dialing GRPCServer")
-	defer client.Close()
-	// sleep past keepalive timeout
-	time.Sleep(4 * time.Second)
-	data := make([]byte, 24)
-	for {
-		_, err = client.Read(data)
-		if err == nil {
-			continue
-		}
-		assert.EqualError(t, err, io.EOF.Error(), "Expected io.EOF")
-		break
-	}
-}
-
-func TestKeepaliveClientResponse(t *testing.T) {
-	t.Parallel()
-	// set up GRPCServer instance
-	kap := &comm.KeepaliveOptions{
-		ServerInterval: 1 * time.Second,
-		ServerTimeout:  1 * time.Second,
-	}
-	// create our listener
-	lis, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("Failed to create listener: %v", err)
-	}
-	testAddress := lis.Addr().String()
-	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{KaOpts: kap})
-	if err != nil {
-		t.Fatalf("Failed to create GRPCServer [%s]", err)
-	}
-	testpb.RegisterEmptyServiceServer(srv.Server(), &emptyServiceServer{})
-	go srv.Start()
-	defer srv.Stop()
-
-	//create GRPC client conn
-	clientCtx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	clientConn, err := grpc.DialContext(
-		clientCtx,
-		testAddress,
-		grpc.WithBlock(),
-		grpc.WithInsecure(),
-		grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			PermitWithoutStream: true,
-		}),
-	)
-	if err != nil {
-		t.Fatalf("Failed to create gRPC client conn [%s]", err)
-	}
-	defer clientConn.Close()
-
-	stream, err := testpb.NewEmptyServiceClient(clientConn).EmptyStream(
-		context.Background(),
-	)
-	if err != nil {
-		t.Fatalf("Failed to create EmptyServiceClient [%s]", err)
-	}
-	err = stream.Send(new(testpb.Empty))
-	assert.NoError(t, err, "failed to send message")
-
-	// sleep past keepalive timeout
-	time.Sleep(1500 * time.Millisecond)
-	err = stream.Send(new(testpb.Empty))
-	assert.NoError(t, err, "failed to send message")
-
-}
-
 func TestUpdateTLSCert(t *testing.T) {
 	t.Parallel()
 
@@ -1739,21 +1648,22 @@ func TestCipherSuites(t *testing.T) {
 		},
 	}
 
+	// create our listener
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+	testAddress := lis.Addr().String()
+	srv, err := comm.NewGRPCServerFromListener(lis, serverConfig)
+	assert.NoError(t, err)
+	go srv.Start()
+
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			t.Logf("Running test %s ...", test.name)
-			// create our listener
-			lis, err := net.Listen("tcp", "127.0.0.1:0")
-			if err != nil {
-				t.Fatalf("Failed to create listener: %v", err)
-			}
-			testAddress := lis.Addr().String()
-			srv, err := comm.NewGRPCServerFromListener(lis, serverConfig)
-			assert.NoError(t, err)
-			go srv.Start()
-			defer srv.Stop()
+
 			tlsConfig := &tls.Config{
 				RootCAs:      certPool,
 				CipherSuites: test.clientCiphers,
