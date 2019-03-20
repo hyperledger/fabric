@@ -524,6 +524,8 @@ func (gc *gossipChannel) EligibleForChannel(member discovery.NetworkMember) bool
 // AddToMsgStore adds a given GossipMessage to the message store
 func (gc *gossipChannel) AddToMsgStore(msg *protoext.SignedGossipMessage) {
 	if protoext.IsDataMsg(msg.GossipMessage) {
+		gc.Lock()
+		defer gc.Unlock()
 		added := gc.blockMsgStore.Add(msg)
 		if added {
 			gc.logger.Debugf("Adding %v to the block puller", msg)
@@ -609,7 +611,13 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 				gc.logger.Warning("Failed verifying block", m.GetDataMsg().Payload.SeqNum)
 				return
 			}
+			gc.Lock()
 			added = gc.blockMsgStore.Add(msg.GetGossipMessage())
+			if added {
+				gc.logger.Debugf("Adding %v to the block puller", msg.GetGossipMessage())
+				gc.blocksPuller.Add(msg.GetGossipMessage())
+			}
+			gc.Unlock()
 		} else { // StateInfoMsg verification should be handled in a layer above
 			//  since we don't have access to the id mapper here
 			added = gc.stateInfoMsgStore.Add(msg.GetGossipMessage())
@@ -620,11 +628,6 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 			gc.Forward(msg)
 			// DeMultiplex to local subscribers
 			gc.DeMultiplex(m)
-
-			if protoext.IsDataMsg(m.GossipMessage) {
-				gc.logger.Debugf("Adding %v to the block puller", msg.GetGossipMessage())
-				gc.blocksPuller.Add(msg.GetGossipMessage())
-			}
 		}
 		return
 	}
@@ -648,6 +651,8 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 			// Iterate over the envelopes, and filter out blocks
 			// that we already have in the blockMsgStore, or blocks that
 			// are too far in the past.
+			var msgs []*protoext.SignedGossipMessage
+			var items []*proto.Envelope
 			filteredEnvelopes := []*proto.Envelope{}
 			for _, item := range m.GetDataUpdate().Data {
 				gMsg, err := protoext.EnvelopeToGossipMessage(item)
@@ -666,6 +671,15 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 				if !gc.verifyBlock(gMsg.GossipMessage, msg.GetConnectionInfo().ID) {
 					return
 				}
+				msgs = append(msgs, gMsg)
+				items = append(items, item)
+			}
+
+			gc.Lock()
+			defer gc.Unlock()
+
+			for i, gMsg := range msgs {
+				item := items[i]
 				added := gc.blockMsgStore.Add(gMsg)
 				if !added {
 					// If this block doesn't need to be added, it means it either already
@@ -674,6 +688,7 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 				}
 				filteredEnvelopes = append(filteredEnvelopes, item)
 			}
+
 			// Replace the update message with just the blocks that should be processed
 			m.GetDataUpdate().Data = filteredEnvelopes
 		}
