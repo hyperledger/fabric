@@ -296,8 +296,8 @@ var _ = Describe("Chain", func() {
 				Expect(fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
 				Expect(fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
-				Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(1))
-				Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(0)).Should(Equal(float64(1)))
+				Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(2)) // incl. initial call
+				Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(1)).Should(Equal(float64(1)))
 
 				// There are three calls to DataPersistDuration by now corresponding to the following three
 				// arriving on the Ready channel:
@@ -321,8 +321,8 @@ var _ = Describe("Chain", func() {
 
 				clock.WaitForNWatchersAndIncrement(timeout, 2)
 				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-				Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(2))
-				Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(1)).Should(Equal(float64(2)))
+				Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(3)) // incl. initial call
+				Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(2)).Should(Equal(float64(2)))
 				Expect(fakeFields.fakeDataPersistDuration.ObserveCallCount()).Should(Equal(4))
 				Expect(fakeFields.fakeDataPersistDuration.ObserveArgsForCall(3)).Should(Equal(float64(0)))
 			})
@@ -511,8 +511,8 @@ var _ = Describe("Chain", func() {
 									Expect(fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 									Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 									Consistently(support.WriteBlockCallCount).Should(Equal(0))
-									Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(1))
-									Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(0)).Should(Equal(float64(1)))
+									Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(2)) // incl. initial call
+									Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(1)).Should(Equal(float64(1)))
 								})
 							})
 
@@ -538,8 +538,8 @@ var _ = Describe("Chain", func() {
 
 									Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 									Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-									Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(2))
-									Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(1)).Should(Equal(float64(2)))
+									Expect(fakeFields.fakeCommittedBlockNumber.SetCallCount()).Should(Equal(3)) // incl. initial call
+									Expect(fakeFields.fakeCommittedBlockNumber.SetArgsForCall(2)).Should(Equal(float64(2)))
 								})
 							})
 						})
@@ -908,10 +908,10 @@ var _ = Describe("Chain", func() {
 							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 							Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
 							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
-							Expect(fakeFields.fakeSnapshotBlockNumber.SetCallCount()).To(Equal(1))
+							Expect(fakeFields.fakeSnapshotBlockNumber.SetCallCount()).To(Equal(2)) // incl. initial call
 							s, _ := opts.MemoryStorage.Snapshot()
 							b := utils.UnmarshalBlockOrPanic(s.Data)
-							Expect(fakeFields.fakeSnapshotBlockNumber.SetArgsForCall(0)).To(Equal(float64(b.Header.Number)))
+							Expect(fakeFields.fakeSnapshotBlockNumber.SetArgsForCall(1)).To(Equal(float64(b.Header.Number)))
 
 							i, _ = opts.MemoryStorage.FirstIndex()
 
@@ -920,10 +920,10 @@ var _ = Describe("Chain", func() {
 
 							Eventually(countFiles, LongEventualTimeout).Should(Equal(2))
 							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
-							Expect(fakeFields.fakeSnapshotBlockNumber.SetCallCount()).To(Equal(2))
+							Expect(fakeFields.fakeSnapshotBlockNumber.SetCallCount()).To(Equal(3)) // incl. initial call
 							s, _ = opts.MemoryStorage.Snapshot()
 							b = utils.UnmarshalBlockOrPanic(s.Data)
-							Expect(fakeFields.fakeSnapshotBlockNumber.SetArgsForCall(1)).To(Equal(float64(b.Header.Number)))
+							Expect(fakeFields.fakeSnapshotBlockNumber.SetArgsForCall(2)).To(Equal(float64(b.Header.Number)))
 						})
 
 						It("pauses chain if sync is in progress", func() {
@@ -1187,6 +1187,46 @@ var _ = Describe("Chain", func() {
 								// old snapshot file is retained
 								Eventually(countFiles, LongEventualTimeout).Should(Equal(2))
 							})
+						})
+
+						It("respects snapshot interval after reboot", func() {
+							largeEnv := &common.Envelope{
+								Payload: marshalOrPanic(&common.Payload{
+									Header: &common.Header{ChannelHeader: marshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_MESSAGE), ChannelId: channelID})},
+									Data:   make([]byte, 500),
+								}),
+							}
+
+							Expect(chain.Order(largeEnv, uint64(0))).To(Succeed())
+							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+							// check no snapshot is taken
+							Consistently(countFiles).Should(Equal(0))
+
+							_, metadata := support.WriteBlockArgsForCall(0)
+							m := &raftprotos.BlockMetadata{}
+							proto.Unmarshal(metadata, m)
+
+							chain.Halt()
+
+							raftMetadata.RaftIndex = m.RaftIndex
+							c1 := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters)
+							cnt := support.WriteBlockCallCount()
+							for i := 0; i < cnt; i++ {
+								c1.support.WriteBlock(support.WriteBlockArgsForCall(i))
+							}
+							c1.cutter.CutNext = true
+							c1.opts.SnapshotIntervalSize = 1024
+
+							By("Restarting chain")
+							c1.init()
+							c1.Start()
+							// chain keeps functioning
+							campaign(c1.Chain, c1.observe)
+
+							Expect(c1.Order(largeEnv, uint64(0))).To(Succeed())
+							Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+							// check snapshot does exit
+							Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
 						})
 					})
 				})
