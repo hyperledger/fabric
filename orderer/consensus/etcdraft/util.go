@@ -278,9 +278,25 @@ func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigM
 
 // MetadataFromConfigUpdate extracts consensus metadata from config update
 func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.ConfigMetadata, error) {
-	if ordererConfigGroup, ok := update.WriteSet.Groups["Orderer"]; ok {
-		if val, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
-			return MetadataFromConfigValue(val)
+	var baseVersion uint64
+	if update.ReadSet != nil && update.ReadSet.Groups != nil {
+		if ordererConfigGroup, ok := update.ReadSet.Groups["Orderer"]; ok {
+			if val, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
+				baseVersion = val.Version
+			}
+		}
+	}
+
+	if update.WriteSet != nil && update.WriteSet.Groups != nil {
+		if ordererConfigGroup, ok := update.WriteSet.Groups["Orderer"]; ok {
+			if val, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
+				if baseVersion == val.Version {
+					// Only if the version in the write set differs from the read-set
+					// should we consider this to be an update to the consensus type
+					return nil, nil
+				}
+				return MetadataFromConfigValue(val)
+			}
 		}
 	}
 	return nil, nil
