@@ -432,7 +432,7 @@ func (c *Chain) checkConfigUpdateValidity(ctx *common.Envelope) error {
 			return err
 		}
 
-		// Check that only the ConsensusType is updated in the write-set
+		// Validate consenter set if it is updated in the write-set
 		if ordererConfigGroup, ok := configUpdate.WriteSet.Groups["Orderer"]; ok {
 			if val, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
 				return c.checkConsentersSet(val)
@@ -1176,6 +1176,17 @@ func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
 	updatedMetadata, err := MetadataFromConfigValue(configValue)
 	if err != nil {
 		return err
+	}
+
+	// sanity check of certificates
+	for _, consenter := range updatedMetadata.Consenters {
+		if bl, _ := pem.Decode(consenter.ServerTlsCert); bl == nil {
+			return errors.Errorf("Invalid server TLS cert: %s", string(consenter.ServerTlsCert))
+		}
+
+		if bl, _ := pem.Decode(consenter.ClientTlsCert); bl == nil {
+			return errors.Errorf("Invalid client TLS cert: %s", string(consenter.ClientTlsCert))
+		}
 	}
 
 	if err := MetadataHasDuplication(updatedMetadata); err != nil {
