@@ -59,8 +59,8 @@ var _ = Describe("RequestListTokens", func() {
 
 		unspentTokens = &token.UnspentTokens{
 			Tokens: []*token.UnspentToken{
-				{Id: &token.TokenId{TxId: "1", Index: uint32(0)}, Type: "TOK1", Quantity: ToHex(100)},
-				{Id: &token.TokenId{TxId: "3", Index: uint32(0)}, Type: "TOK4", Quantity: ToHex(400)},
+				{Id: &token.TokenId{TxId: "1", Index: uint32(0)}, Type: "TOK1", Quantity: ToDecimal(100)},
+				{Id: &token.TokenId{TxId: "3", Index: uint32(0)}, Type: "TOK4", Quantity: ToDecimal(400)},
 			},
 		}
 	})

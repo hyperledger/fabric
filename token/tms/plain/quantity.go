@@ -28,6 +28,9 @@ type Quantity interface {
 
 	// Hex returns the hexadecimal representation of this quantity
 	Hex() string
+
+	// Decimal returns the decimal representation of this quantity
+	Decimal() string
 }
 
 type BigQuantity struct {
@@ -109,4 +112,8 @@ func (q *BigQuantity) Cmp(b Quantity) (int, error) {
 
 func (q *BigQuantity) Hex() string {
 	return "0x" + q.Int.Text(16)
+}
+
+func (q *BigQuantity) Decimal() string {
+	return q.Int.Text(10)
 }

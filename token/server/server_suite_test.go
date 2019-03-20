@@ -29,3 +29,7 @@ func ProtoMarshal(m proto.Message) []byte {
 func ToHex(q uint64) string {
 	return "0x" + strconv.FormatUint(q, 16)
 }
+
+func ToDecimal(q uint64) string {
+	return strconv.FormatUint(q, 10)
+}

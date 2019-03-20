@@ -40,7 +40,7 @@ func (m *IssueRequest) Reset()         { *m = IssueRequest{} }
 func (m *IssueRequest) String() string { return proto.CompactTextString(m) }
 func (*IssueRequest) ProtoMessage()    {}
 func (*IssueRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{0}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{0}
 }
 func (m *IssueRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IssueRequest.Unmarshal(m, b)
@@ -78,7 +78,10 @@ func (m *IssueRequest) GetTokensToIssue() []*Token {
 type RecipientShare struct {
 	// Recipient refers to the prospective owner of a transferred token
 	Recipient *TokenOwner `protobuf:"bytes,1,opt,name=recipient,proto3" json:"recipient,omitempty"`
-	// Quantity refers to the number of token units to be transferred to the recipient, in hex format
+	// Quantity refers to the number of token units to be transferred to the recipient.
+	// It is encoded as a string whose prefix determines the actual conversion base. A prefix of
+	// ``0x'' or ``0X'' selects base 16; the ``0'' prefix selects base 8, and a
+	// ``0b'' or ``0B'' prefix selects base 2. Otherwise the selected base is 10.
 	Quantity             string   `protobuf:"bytes,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -89,7 +92,7 @@ func (m *RecipientShare) Reset()         { *m = RecipientShare{} }
 func (m *RecipientShare) String() string { return proto.CompactTextString(m) }
 func (*RecipientShare) ProtoMessage()    {}
 func (*RecipientShare) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{1}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{1}
 }
 func (m *RecipientShare) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RecipientShare.Unmarshal(m, b)
@@ -141,7 +144,7 @@ func (m *TransferRequest) Reset()         { *m = TransferRequest{} }
 func (m *TransferRequest) String() string { return proto.CompactTextString(m) }
 func (*TransferRequest) ProtoMessage()    {}
 func (*TransferRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{2}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{2}
 }
 func (m *TransferRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TransferRequest.Unmarshal(m, b)
@@ -189,7 +192,10 @@ type RedeemRequest struct {
 	Credential []byte `protobuf:"bytes,1,opt,name=credential,proto3" json:"credential,omitempty"`
 	// TokenIds identifies the tokens to be redeemed
 	TokenIds []*TokenId `protobuf:"bytes,2,rep,name=token_ids,json=tokenIds,proto3" json:"token_ids,omitempty"`
-	// Quantity refers to the number of units of a given token needs to be redeemed, in hex format
+	// Quantity refers to the number of units of a given token needs to be redeemed.
+	// It is encoded as a string whose prefix determines the actual conversion base. A prefix of
+	// ``0x'' or ``0X'' selects base 16; the ``0'' prefix selects base 8, and a
+	// ``0b'' or ``0B'' prefix selects base 2. Otherwise the selected base is 10.
 	Quantity             string   `protobuf:"bytes,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -200,7 +206,7 @@ func (m *RedeemRequest) Reset()         { *m = RedeemRequest{} }
 func (m *RedeemRequest) String() string { return proto.CompactTextString(m) }
 func (*RedeemRequest) ProtoMessage()    {}
 func (*RedeemRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{3}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{3}
 }
 func (m *RedeemRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RedeemRequest.Unmarshal(m, b)
@@ -247,7 +253,8 @@ type UnspentToken struct {
 	Id *TokenId `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Type is the type of the token
 	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	// Quantity represents the number of units of Type that this unspent token holds
+	// Quantity represents the number of units of Type that this unspent token holds.
+	// It is formatted in decimal representation
 	Quantity             string   `protobuf:"bytes,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -258,7 +265,7 @@ func (m *UnspentToken) Reset()         { *m = UnspentToken{} }
 func (m *UnspentToken) String() string { return proto.CompactTextString(m) }
 func (*UnspentToken) ProtoMessage()    {}
 func (*UnspentToken) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{4}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{4}
 }
 func (m *UnspentToken) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UnspentToken.Unmarshal(m, b)
@@ -312,7 +319,7 @@ func (m *UnspentTokens) Reset()         { *m = UnspentTokens{} }
 func (m *UnspentTokens) String() string { return proto.CompactTextString(m) }
 func (*UnspentTokens) ProtoMessage()    {}
 func (*UnspentTokens) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{5}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{5}
 }
 func (m *UnspentTokens) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UnspentTokens.Unmarshal(m, b)
@@ -352,7 +359,7 @@ func (m *ListRequest) Reset()         { *m = ListRequest{} }
 func (m *ListRequest) String() string { return proto.CompactTextString(m) }
 func (*ListRequest) ProtoMessage()    {}
 func (*ListRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{6}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{6}
 }
 func (m *ListRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListRequest.Unmarshal(m, b)
@@ -397,7 +404,7 @@ func (m *ExpectationRequest) Reset()         { *m = ExpectationRequest{} }
 func (m *ExpectationRequest) String() string { return proto.CompactTextString(m) }
 func (*ExpectationRequest) ProtoMessage()    {}
 func (*ExpectationRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{7}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{7}
 }
 func (m *ExpectationRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ExpectationRequest.Unmarshal(m, b)
@@ -463,7 +470,7 @@ func (m *Header) Reset()         { *m = Header{} }
 func (m *Header) String() string { return proto.CompactTextString(m) }
 func (*Header) ProtoMessage()    {}
 func (*Header) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{8}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{8}
 }
 func (m *Header) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Header.Unmarshal(m, b)
@@ -540,7 +547,7 @@ func (m *Command) Reset()         { *m = Command{} }
 func (m *Command) String() string { return proto.CompactTextString(m) }
 func (*Command) ProtoMessage()    {}
 func (*Command) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{9}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{9}
 }
 func (m *Command) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Command.Unmarshal(m, b)
@@ -789,7 +796,7 @@ func (m *SignedCommand) Reset()         { *m = SignedCommand{} }
 func (m *SignedCommand) String() string { return proto.CompactTextString(m) }
 func (*SignedCommand) ProtoMessage()    {}
 func (*SignedCommand) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{10}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{10}
 }
 func (m *SignedCommand) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SignedCommand.Unmarshal(m, b)
@@ -843,7 +850,7 @@ func (m *CommandResponseHeader) Reset()         { *m = CommandResponseHeader{} }
 func (m *CommandResponseHeader) String() string { return proto.CompactTextString(m) }
 func (*CommandResponseHeader) ProtoMessage()    {}
 func (*CommandResponseHeader) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{11}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{11}
 }
 func (m *CommandResponseHeader) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CommandResponseHeader.Unmarshal(m, b)
@@ -899,7 +906,7 @@ func (m *Error) Reset()         { *m = Error{} }
 func (m *Error) String() string { return proto.CompactTextString(m) }
 func (*Error) ProtoMessage()    {}
 func (*Error) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{12}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{12}
 }
 func (m *Error) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Error.Unmarshal(m, b)
@@ -953,7 +960,7 @@ func (m *CommandResponse) Reset()         { *m = CommandResponse{} }
 func (m *CommandResponse) String() string { return proto.CompactTextString(m) }
 func (*CommandResponse) ProtoMessage()    {}
 func (*CommandResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{13}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{13}
 }
 func (m *CommandResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CommandResponse.Unmarshal(m, b)
@@ -1138,7 +1145,7 @@ func (m *SignedCommandResponse) Reset()         { *m = SignedCommandResponse{} }
 func (m *SignedCommandResponse) String() string { return proto.CompactTextString(m) }
 func (*SignedCommandResponse) ProtoMessage()    {}
 func (*SignedCommandResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prover_5a982e65939248e3, []int{14}
+	return fileDescriptor_prover_8ca9dd65e86ffd51, []int{14}
 }
 func (m *SignedCommandResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SignedCommandResponse.Unmarshal(m, b)
@@ -1270,9 +1277,9 @@ var _Prover_serviceDesc = grpc.ServiceDesc{
 	Metadata: "token/prover.proto",
 }
 
-func init() { proto.RegisterFile("token/prover.proto", fileDescriptor_prover_5a982e65939248e3) }
+func init() { proto.RegisterFile("token/prover.proto", fileDescriptor_prover_8ca9dd65e86ffd51) }
 
-var fileDescriptor_prover_5a982e65939248e3 = []byte{
+var fileDescriptor_prover_8ca9dd65e86ffd51 = []byte{
 	// 916 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x56, 0xdd, 0x6e, 0xdb, 0x36,
 	0x14, 0xb6, 0xe3, 0xc4, 0x89, 0x8f, 0xe5, 0xa4, 0x65, 0x9b, 0x55, 0x33, 0xb2, 0x2e, 0xd3, 0x30,

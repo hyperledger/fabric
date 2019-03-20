@@ -32,7 +32,10 @@ message RecipientShare {
     // Recipient refers to the prospective owner of a transferred token
     TokenOwner recipient = 1;
 
-    // Quantity refers to the number of token units to be transferred to the recipient, in hex format
+    // Quantity refers to the number of token units to be transferred to the recipient.
+    // It is encoded as a string whose prefix determines the actual conversion base. A prefix of
+    // ``0x'' or ``0X'' selects base 16; the ``0'' prefix selects base 8, and a
+    // ``0b'' or ``0B'' prefix selects base 2. Otherwise the selected base is 10.
     string quantity = 2;
 }
 
@@ -58,7 +61,10 @@ message RedeemRequest {
     // TokenIds identifies the tokens to be redeemed
     repeated TokenId token_ids = 2;
 
-    // Quantity refers to the number of units of a given token needs to be redeemed, in hex format
+    // Quantity refers to the number of units of a given token needs to be redeemed.
+    // It is encoded as a string whose prefix determines the actual conversion base. A prefix of
+    // ``0x'' or ``0X'' selects base 16; the ``0'' prefix selects base 8, and a
+    // ``0b'' or ``0B'' prefix selects base 2. Otherwise the selected base is 10.
     string quantity = 3;
 }
 
@@ -70,7 +76,8 @@ message UnspentToken {
     // Type is the type of the token
     string type = 2;
 
-    // Quantity represents the number of units of Type that this unspent token holds
+    // Quantity represents the number of units of Type that this unspent token holds.
+    // It is formatted in decimal representation
     string quantity = 3;
 }
 
