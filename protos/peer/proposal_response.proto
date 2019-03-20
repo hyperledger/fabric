@@ -111,9 +111,9 @@ message ProposalResponsePayload {
 message Endorsement {
 
 	// Identity of the endorser (e.g. its certificate)
-	bytes endorser = 1;
+	bytes endorser = 1; //replace with hash
 
 	// Signature of the payload included in ProposalResponse concatenated with
 	// the endorser's certificate; ie, sign(ProposalResponse.payload + endorser)
-	bytes signature = 2;
+	bytes signature = 2; //need to rehash
 }

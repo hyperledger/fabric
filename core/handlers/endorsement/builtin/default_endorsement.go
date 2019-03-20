@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package builtin
 
 import (
+	"github.com/hyperledger/fabric/common/util"
 	. "github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	. "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -44,12 +45,14 @@ func (e *DefaultEndorsement) Endorse(prpBytes []byte, sp *peer.SignedProposal) (
 		return nil, nil, errors.Wrapf(err, "could not serialize the signing identity")
 	}
 
+	idHash := util.ComputeSHA256(identityBytes)
+
 	// sign the concatenation of the proposal response and the serialized endorser identity with this endorser's key
-	signature, err := signer.Sign(append(prpBytes, identityBytes...))
+	signature, err := signer.Sign(append(prpBytes, idHash...))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "could not sign the proposal response payload")
 	}
-	endorsement := &peer.Endorsement{Signature: signature, Endorser: identityBytes}
+	endorsement := &peer.Endorsement{Signature: signature, Endorser: idHash}
 	return endorsement, prpBytes, nil
 }
 
