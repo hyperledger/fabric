@@ -40,8 +40,14 @@ type ApplicationPolicyEvaluator struct {
 	channelPolicyReferenceProvider ChannelPolicyReferenceProvider
 }
 
+// Manager defines functions to interface with the policy manager of a channel
+type Manager interface {
+	// GetPolicy returns a policy and true if it was the policy requested, or false if it is the default policy
+	GetPolicy(id string) (policies.Policy, bool)
+}
+
 type ChannelPolicyReferenceProviderImpl struct {
-	policies.Manager
+	Manager
 }
 
 func (c *ChannelPolicyReferenceProviderImpl) NewPolicy(channelConfigPolicyReference string) (policies.Policy, error) {
@@ -71,11 +77,6 @@ func (d *dynamicPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
 	}
 
 	return mgr.GetPolicy(id)
-}
-
-func (d *dynamicPolicyManager) Manager(path []string) (policies.Manager, bool) {
-	// we don't use this function
-	panic("programming error")
 }
 
 // New returns an evaluator for application policies
