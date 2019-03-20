@@ -5,7 +5,6 @@
 ARG GO_VER
 ARG ALPINE_VER
 ARG JAVA_VER
-ARG NODE_VER
 FROM golang:${GO_VER}-alpine${ALPINE_VER} as golang
 ARG CHAINTOOL_RELEASE
 ARG CHAINTOOL_URL=https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric/hyperledger-fabric/chaintool-${CHAINTOOL_RELEASE}/hyperledger-fabric-chaintool-${CHAINTOOL_RELEASE}.jar
@@ -30,13 +29,9 @@ RUN make gotool.protoc-gen-go \
 	&& curl -fL ${CHAINTOOL_URL} > /usr/local/bin/chaintool \
 	&& chmod +x /usr/local/bin/chaintool
 
-FROM node:${NODE_VER}-alpine as node
-
 FROM openjdk:${JAVA_VER}-jdk-alpine${ALPINE_VER}
 RUN apk add --no-cache \
-	make \
 	g++ \
-	python \
 	gcc \
 	musl-dev \
 	libtool \
@@ -49,9 +44,6 @@ RUN mkdir -p /chaincode/output \
 	&& mkdir -p /go/src \
 	&& mkdir -p /go/bin \
 	&& mkdir -p /go/pkg
-COPY --from=node /usr/local/bin /usr/local/bin
-COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
-COPY --from=node /usr/local/include/node /usr/local/include/node
 COPY --from=golang /usr/local/go /usr/local/go
 COPY --from=golang /usr/local/bin/chaintool /usr/local/bin/chaintool
 COPY --from=golang /go/bin /usr/local/bin
