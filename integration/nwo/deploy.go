@@ -215,7 +215,6 @@ func ApproveChaincodeForMyOrgNewLifecycle(n *Network, channel string, orderer *O
 				ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
 				InitRequired:        chaincode.InitRequired,
 				CollectionsConfig:   chaincode.CollectionsConfig,
-				WaitForEvent:        true,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -249,7 +248,6 @@ func CommitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 		InitRequired:        chaincode.InitRequired,
 		CollectionsConfig:   chaincode.CollectionsConfig,
 		PeerAddresses:       peerAddresses,
-		WaitForEvent:        true,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))

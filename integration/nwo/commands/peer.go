@@ -240,10 +240,6 @@ func (c ChaincodeApproveForMyOrgLifecycle) Args() []string {
 		args = append(args, "--peerAddresses", p)
 	}
 
-	if c.WaitForEvent {
-		args = append(args, "--waitForEvent")
-	}
-
 	return args
 }
 
@@ -285,9 +281,6 @@ func (c ChaincodeCommitLifecycle) Args() []string {
 	}
 	for _, p := range c.PeerAddresses {
 		args = append(args, "--peerAddresses", p)
-	}
-	if c.WaitForEvent {
-		args = append(args, "--waitForEvent")
 	}
 	if c.CollectionsConfig != "" {
 		args = append(args, "--collections-config", c.CollectionsConfig)
