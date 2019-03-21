@@ -93,7 +93,7 @@ section of ``orderer.yaml``:
       Certificate: tls/server.crt
 
       # Paths to PEM encoded ca certificates to trust for client authentication
-      RootCAs: []
+      ClientRootCAs: []
 
       # Most operations service endpoints require client authentication when TLS
       # is enabled. ClientAuthRequired requires client certificate authentication

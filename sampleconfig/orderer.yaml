@@ -326,7 +326,7 @@ Operations:
         ClientAuthRequired: false
 
         # Paths to PEM encoded ca certificates to trust for client authentication
-        RootCAs: []
+        ClientRootCAs: []
 
 ################################################################################
 #
