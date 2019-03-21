@@ -56,15 +56,13 @@ type DBOperationResponse struct {
 
 // DBInfo is body for database information.
 type DBInfo struct {
-	DbName    string `json:"db_name"`
-	UpdateSeq string `json:"update_seq"`
-	Sizes     struct {
+	DbName string `json:"db_name"`
+	Sizes  struct {
 		File     int `json:"file"`
 		External int `json:"external"`
 		Active   int `json:"active"`
 	} `json:"sizes"`
-	PurgeSeq int `json:"purge_seq"`
-	Other    struct {
+	Other struct {
 		DataSize int `json:"data_size"`
 	} `json:"other"`
 	DocDelCount       int    `json:"doc_del_count"`
