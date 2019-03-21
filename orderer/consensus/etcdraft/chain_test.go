@@ -486,17 +486,25 @@ var _ = Describe("Chain", func() {
 
 						// use to prepare the Orderer Values
 						BeforeEach(func() {
-							values := map[string]*common.ConfigValue{
+							newValues := map[string]*common.ConfigValue{
 								"BatchTimeout": {
 									Version: 1,
 									Value: marshalOrPanic(&orderer.BatchTimeout{
 										Timeout: "3ms",
 									}),
 								},
+								"ConsensusType": {
+									Version: 4,
+								},
+							}
+							oldValues := map[string]*common.ConfigValue{
+								"ConsensusType": {
+									Version: 4,
+								},
 							}
 							configEnv = newConfigEnv(channelID,
 								common.HeaderType_CONFIG,
-								newConfigUpdateEnv(channelID, values),
+								newConfigUpdateEnv(channelID, oldValues, newValues),
 							)
 							configSeq = 0
 						}) // BeforeEach block
@@ -597,7 +605,7 @@ var _ = Describe("Chain", func() {
 							values := make(map[string]*common.ConfigValue)
 							configEnv = newConfigEnv(chainID,
 								common.HeaderType_CONFIG,
-								newConfigUpdateEnv(chainID, values),
+								newConfigUpdateEnv(chainID, nil, values),
 							)
 							configSeq = 0
 						}) // BeforeEach block
@@ -624,7 +632,7 @@ var _ = Describe("Chain", func() {
 							}
 							configEnv = newConfigEnv(channelID,
 								common.HeaderType_CONFIG,
-								newConfigUpdateEnv(channelID, values))
+								newConfigUpdateEnv(channelID, nil, values))
 							configSeq = 0
 
 						}) // BeforeEach block
@@ -650,7 +658,7 @@ var _ = Describe("Chain", func() {
 							}
 							configEnv = newConfigEnv(channelID,
 								common.HeaderType_CONFIG,
-								newConfigUpdateEnv(channelID, values))
+								newConfigUpdateEnv(channelID, nil, values))
 							configSeq = 0
 
 						}) // BeforeEach block
@@ -685,7 +693,7 @@ var _ = Describe("Chain", func() {
 							}
 							configEnv = newConfigEnv(channelID,
 								common.HeaderType_CONFIG,
-								newConfigUpdateEnv(channelID, values))
+								newConfigUpdateEnv(channelID, nil, values))
 							configSeq = 0
 
 							err := chain.Configure(configEnv, configSeq)
@@ -706,7 +714,7 @@ var _ = Describe("Chain", func() {
 							}
 							configEnv = newConfigEnv(channelID,
 								common.HeaderType_CONFIG,
-								newConfigUpdateEnv(channelID, values))
+								newConfigUpdateEnv(channelID, nil, values))
 							configSeq = 0
 
 							err := chain.Configure(configEnv, configSeq)
@@ -1559,7 +1567,7 @@ var _ = Describe("Chain", func() {
 					}
 
 					By("creating new configuration with removed node and new one")
-					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, value))
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
 					c1.cutter.CutNext = true
 
 					By("sending config transaction")
@@ -1619,7 +1627,7 @@ var _ = Describe("Chain", func() {
 					}
 
 					By("creating new configuration with removed node and new one")
-					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, value))
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
 					c1.cutter.CutNext = true
 
 					By("sending config transaction")
@@ -1806,10 +1814,10 @@ var _ = Describe("Chain", func() {
 						c1.cutter.CutNext = true
 						configEnvAdd := newConfigEnv(channelID,
 							common.HeaderType_CONFIG,
-							newConfigUpdateEnv(channelID, addConsenterConfigValue()))
+							newConfigUpdateEnv(channelID, nil, addConsenterConfigValue()))
 						configEnvRm := newConfigEnv(channelID,
 							common.HeaderType_CONFIG,
-							newConfigUpdateEnv(channelID, removeConsenterConfigValue(3)))
+							newConfigUpdateEnv(channelID, nil, removeConsenterConfigValue(3)))
 
 						By("Submitting two config tx back-to-back")
 						c1.support.SequenceReturnsOnCall(1, 0)
@@ -1827,7 +1835,7 @@ var _ = Describe("Chain", func() {
 
 				It("adding node to the cluster", func() {
 					addConsenterUpdate := addConsenterConfigValue()
-					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterUpdate))
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterUpdate))
 					c1.cutter.CutNext = true
 
 					By("sending config transaction")
@@ -1887,7 +1895,7 @@ var _ = Describe("Chain", func() {
 					duplicatedMetadata := &raftprotos.ConfigMetadata{}
 					proto.Unmarshal(consensusType.Metadata, duplicatedMetadata)
 					duplicatedMetadata.Consenters = append(duplicatedMetadata.Consenters, duplicatedMetadata.Consenters[1])
-					configEnv = newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, map[string]*common.ConfigValue{
+					configEnv = newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, map[string]*common.ConfigValue{
 						"ConsensusType": {
 							Version: 1,
 							Value: marshalOrPanic(&orderer.ConsensusType{
@@ -1907,7 +1915,7 @@ var _ = Describe("Chain", func() {
 				It("does not reconfigure raft cluster if it's a channel creation tx", func() {
 					configEnv := newConfigEnv("another-channel",
 						common.HeaderType_CONFIG,
-						newConfigUpdateEnv(channelID, removeConsenterConfigValue(2)))
+						newConfigUpdateEnv(channelID, nil, removeConsenterConfigValue(2)))
 
 					// Wrap config env in Orderer transaction
 					channelCreationEnv := &common.Envelope{
@@ -1947,7 +1955,7 @@ var _ = Describe("Chain", func() {
 					// disconnect second node
 					network.disconnect(2)
 
-					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterConfigValue()))
 					c1.cutter.CutNext = true
 
 					By("sending config transaction")
@@ -2022,7 +2030,7 @@ var _ = Describe("Chain", func() {
 					// re-configuration. Later we connecting c1 back and making sure it capable of catching up with
 					// new configuration and successfully rejoins replica set.
 
-					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterConfigValue()))
 					c1.cutter.CutNext = true
 
 					step1 := c1.getStepFunc()
@@ -2097,7 +2105,7 @@ var _ = Describe("Chain", func() {
 					// configure chain support mock to stop cluster after config block is committed.
 					// Restart the cluster and ensure it picks up updates and capable to finish reconfiguration.
 
-					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterConfigValue()))
 					c1.cutter.CutNext = true
 
 					step1 := c1.getStepFunc()
@@ -2177,7 +2185,7 @@ var _ = Describe("Chain", func() {
 
 					configEnv := newConfigEnv(channelID,
 						common.HeaderType_CONFIG,
-						newConfigUpdateEnv(channelID, removeConsenterConfigValue(1))) // remove nodeID == 1
+						newConfigUpdateEnv(channelID, nil, removeConsenterConfigValue(1))) // remove nodeID == 1
 
 					c1.cutter.CutNext = true
 
@@ -2225,7 +2233,7 @@ var _ = Describe("Chain", func() {
 
 					configEnv := newConfigEnv(channelID,
 						common.HeaderType_CONFIG,
-						newConfigUpdateEnv(channelID, removeConsenterConfigValue(1))) // remove nodeID == 1
+						newConfigUpdateEnv(channelID, nil, removeConsenterConfigValue(1))) // remove nodeID == 1
 
 					c1.cutter.CutNext = true
 
@@ -2272,7 +2280,7 @@ var _ = Describe("Chain", func() {
 				})
 
 				It("does not deadlock if leader steps down while config block is in-flight", func() {
-					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterConfigValue()))
 					c1.cutter.CutNext = true
 
 					signal := make(chan struct{})
@@ -2746,7 +2754,7 @@ var _ = Describe("Chain", func() {
 					}
 					configEnv = newConfigEnv(channelID,
 						common.HeaderType_CONFIG,
-						newConfigUpdateEnv(channelID, values),
+						newConfigUpdateEnv(channelID, nil, values),
 					)
 				})
 
@@ -3689,15 +3697,21 @@ func newConfigEnv(chainID string, headerType common.HeaderType, configUpdateEnv 
 	}
 }
 
-func newConfigUpdateEnv(chainID string, values map[string]*common.ConfigValue) *common.ConfigUpdateEnvelope {
+func newConfigUpdateEnv(chainID string, oldValues, newValues map[string]*common.ConfigValue) *common.ConfigUpdateEnvelope {
 	return &common.ConfigUpdateEnvelope{
 		ConfigUpdate: marshalOrPanic(&common.ConfigUpdate{
 			ChannelId: chainID,
-			ReadSet:   &common.ConfigGroup{},
+			ReadSet: &common.ConfigGroup{
+				Groups: map[string]*common.ConfigGroup{
+					"Orderer": {
+						Values: oldValues,
+					},
+				},
+			},
 			WriteSet: &common.ConfigGroup{
 				Groups: map[string]*common.ConfigGroup{
 					"Orderer": {
-						Values: values,
+						Values: newValues,
 					},
 				},
 			}, // WriteSet
