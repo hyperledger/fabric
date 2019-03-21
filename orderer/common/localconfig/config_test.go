@@ -24,6 +24,27 @@ func TestLoadGoodConfig(t *testing.T) {
 	assert.Nil(t, err, "Load good config returned unexpected error")
 }
 
+func TestMissingConfigValueOverridden(t *testing.T) {
+	t.Run("when the value is missing and not overridden", func(t *testing.T) {
+		cleanup := configtest.SetDevFabricConfigPath(t)
+		defer cleanup()
+		cfg, err := Load()
+		assert.NotNil(t, cfg, "Could not load config")
+		assert.NoError(t, err, "Load good config returned unexpected error")
+		assert.Nil(t, cfg.Kafka.TLS.ClientRootCAs)
+	})
+
+	t.Run("when the value is missing and is overridden", func(t *testing.T) {
+		os.Setenv("ORDERER_KAFKA_TLS_CLIENTROOTCAS", "msp/tlscacerts/tlsroot.pem")
+		cleanup := configtest.SetDevFabricConfigPath(t)
+		defer cleanup()
+		cfg, err := Load()
+		assert.NotNil(t, cfg, "Could not load config")
+		assert.NoError(t, err, "Load good config returned unexpected error")
+		assert.NotNil(t, cfg.Kafka.TLS.ClientRootCAs)
+	})
+}
+
 func TestLoadMissingConfigFile(t *testing.T) {
 	envVar1 := "FABRIC_CFG_PATH"
 	envVal1 := "invalid fabric cfg path"
