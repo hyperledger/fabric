@@ -188,7 +188,8 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 		WaitForEvent: true,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, time.Minute).Should(gexec.Exit(1))
+	Expect(sess.Err).To(gbytes.Say(`\Qcommitted with status (ENDORSEMENT_POLICY_FAILURE)\E`))
 
 	By("org2 checks that setting the value was not successful by reading it")
 	sess, err = n.PeerUserSession(peerOrg2, "User1", commands.ChaincodeQuery{
@@ -243,7 +244,8 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 		WaitForEvent: true,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, time.Minute).Should(gexec.Exit(1))
+	Expect(sess.Err).To(gbytes.Say(`\Qcommitted with status (ENDORSEMENT_POLICY_FAILURE)\E`))
 
 	By("org2 checks that seting the value was not successful by reading it")
 	sess, err = n.PeerUserSession(peerOrg2, "User1", commands.ChaincodeQuery{
@@ -296,7 +298,8 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 		WaitForEvent: true,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, time.Minute).Should(gexec.Exit(1))
+	Expect(sess.Err).To(gbytes.Say(`\Qcommitted with status (ENDORSEMENT_POLICY_FAILURE)\E`))
 
 	By("org2 lists the orgs of the key to check that deleting org1 did not succeed")
 	sess, err = n.PeerUserSession(peerOrg2, "User1", commands.ChaincodeQuery{
@@ -373,7 +376,8 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 		WaitForEvent: true,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
+	Expect(sess.Err).To(gbytes.Say(`\Qcommitted with status (ENDORSEMENT_POLICY_FAILURE)\E`))
 
 	By("org1 reads the value of the key to check that setting it was not successful")
 	sess, err = n.PeerUserSession(peerOrg1, "User1", commands.ChaincodeQuery{

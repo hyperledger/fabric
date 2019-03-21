@@ -687,8 +687,7 @@ func (dg *DeliverGroup) Wait(ctx context.Context) error {
 	select {
 	case <-readyCh:
 		if dg.Error != nil {
-			err := errors.WithMessage(dg.Error, "failed to receive txid on all peers")
-			return err
+			return dg.Error
 		}
 	case <-ctx.Done():
 		err := errors.New("timed out waiting for txid on all peers")
@@ -715,6 +714,10 @@ func (dg *DeliverGroup) ClientWait(dc *DeliverClient) {
 			for _, tx := range filteredTransactions {
 				if tx.Txid == dg.TxID {
 					logger.Infof("txid [%s] committed with status (%s) at %s", dg.TxID, tx.TxValidationCode, dc.Address)
+					if tx.TxValidationCode != pb.TxValidationCode_VALID {
+						err = errors.Errorf("transaction invalidated with status (%s)", tx.TxValidationCode)
+						dg.setError(err)
+					}
 					return
 				}
 			}

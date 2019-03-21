@@ -234,7 +234,7 @@ func getMockChaincodeCmdFactory() (*ChaincodeCmdFactory, error) {
 	}
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockResponse, nil), common.GetMockEndorserClient(mockResponse, nil)}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-	mockDC := getMockDeliverClientResponseWithTxID("txid0")
+	mockDC := getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_VALID, "txid0")
 	mockDeliverClients := []api.PeerDeliverClient{mockDC, mockDC}
 	mockCF := &ChaincodeCmdFactory{
 		EndorserClients: mockEndorserClients,
@@ -256,7 +256,7 @@ func getMockChaincodeCmdFactoryWithErr() (*ChaincodeCmdFactory, error) {
 	errMsg := "invoke error"
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(nil, errors.New(errMsg))}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-	mockDeliverClients := []api.PeerDeliverClient{getMockDeliverClientResponseWithTxID("txid0")}
+	mockDeliverClients := []api.PeerDeliverClient{getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_INVALID_OTHER_REASON, "txid0")}
 	mockCF := &ChaincodeCmdFactory{
 		EndorserClients: mockEndorserClients,
 		Signer:          signer,
@@ -292,7 +292,7 @@ func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayl
 
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockRespFailure, nil)}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-	mockDeliverClients := []api.PeerDeliverClient{getMockDeliverClientResponseWithTxID("txid0")}
+	mockDeliverClients := []api.PeerDeliverClient{getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode(mockRespFailure.Response.Status), "txid0")}
 	mockCF := &ChaincodeCmdFactory{
 		EndorserClients: mockEndorserClients,
 		Signer:          signer,
@@ -310,19 +310,19 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
 }
 
-func getMockDeliverClientResponseWithTxID(txID string) *cmock.PeerDeliverClient {
+func getMockDeliverClientResponseWithTxStatusAndID(txStatus pb.TxValidationCode, txID string) *cmock.PeerDeliverClient {
 	mockDC := &cmock.PeerDeliverClient{}
 	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
-		return getMockDeliverConnectionResponseWithTxID(txID), nil
+		return getMockDeliverConnectionResponseWithTxStatusAndID(txStatus, txID), nil
 	}
 	return mockDC
 }
 
-func getMockDeliverConnectionResponseWithTxID(txID string) *mock.Deliver {
+func getMockDeliverConnectionResponseWithTxStatusAndID(txStatus pb.TxValidationCode, txID string) *mock.Deliver {
 	mockDF := &mock.Deliver{}
 	resp := &pb.DeliverResponse{
 		Type: &pb.DeliverResponse_FilteredBlock{
-			FilteredBlock: createFilteredBlock(txID),
+			FilteredBlock: createFilteredBlock(txStatus, txID),
 		},
 	}
 	mockDF.RecvReturns(resp, nil)
@@ -359,7 +359,7 @@ func getMockDeliverClientRegisterAfterDelay(delayChan chan struct{}) *cmock.Peer
 	return mockDC
 }
 
-func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}, txID string) *cmock.PeerDeliverClient {
+func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}, txStatus pb.TxValidationCode, txID string) *cmock.PeerDeliverClient {
 	mockDC := &cmock.PeerDeliverClient{}
 	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
 		mockDF := &mock.Deliver{}
@@ -367,7 +367,7 @@ func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}, txID string)
 			<-delayChan
 			resp := &pb.DeliverResponse{
 				Type: &pb.DeliverResponse_FilteredBlock{
-					FilteredBlock: createFilteredBlock(txID),
+					FilteredBlock: createFilteredBlock(txStatus, txID),
 				},
 			}
 			return resp, nil
@@ -385,12 +385,12 @@ func getMockDeliverClientWithErr(errMsg string) *cmock.PeerDeliverClient {
 	return mockDC
 }
 
-func createFilteredBlock(txIDs ...string) *pb.FilteredBlock {
+func createFilteredBlock(txStatus pb.TxValidationCode, txIDs ...string) *pb.FilteredBlock {
 	var filteredTransactions []*pb.FilteredTransaction
 	for _, txID := range txIDs {
 		ft := &pb.FilteredTransaction{
 			Txid:             txID,
-			TxValidationCode: pb.TxValidationCode_VALID,
+			TxValidationCode: txStatus,
 		}
 		filteredTransactions = append(filteredTransactions, ft)
 	}
