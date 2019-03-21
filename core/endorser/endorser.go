@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -496,6 +497,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		SignedProp:           signedProp,
 		Proposal:             prop,
 		TXSimulator:          txsim,
+		TokenOperations:      make(map[string][]*token.TokenOperation),
 		HistoryQueryExecutor: historyQueryExecutor,
 	}
 	// this could be a request to a chainless SysCC

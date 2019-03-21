@@ -15,6 +15,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/hyperledger/fabric/protos/token"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -516,6 +518,7 @@ type TransactionParams struct {
 	SignedProp           *pb.SignedProposal
 	Proposal             *pb.Proposal
 	TXSimulator          ledger.TxSimulator
+	TokenOperations      map[string][]*token.TokenOperation
 	HistoryQueryExecutor ledger.HistoryQueryExecutor
 	CollectionStore      privdata.CollectionStore
 	IsInitTransaction    bool

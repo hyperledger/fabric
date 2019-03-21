@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/token"
 )
 
 // Chaincode interface must be implemented by all chaincodes. The fabric runs
@@ -385,4 +386,10 @@ type HistoryQueryIteratorInterface interface {
 // we need to update this interface
 type MockQueryIteratorInterface interface {
 	StateQueryIteratorInterface
+}
+
+// TokenStubInterface is used by deployable chaincode apps to interact with fabtoken
+type TokenStubInterface interface {
+	// PutTokenOperation puts a new token operation
+	PutTokenOperation(op *token.TokenOperation) error
 }

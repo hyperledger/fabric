@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/token"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -77,6 +78,7 @@ var _ = Describe("Handler", func() {
 			CollectionStore:      fakeCollectionStore,
 		}
 		txContext.InitializeCollectionACLCache()
+		txContext.InitializeTokenOperations()
 
 		fakeACLProvider = &mock.ACLProvider{}
 		fakeDefinitionGetter = &mock.ChaincodeDefinitionGetter{}
@@ -2486,6 +2488,57 @@ var _ = Describe("Handler", func() {
 				Expect(err).To(MatchError("marshal failed: proto: Marshal called with nil"))
 			})
 		})
+	})
+
+	Describe("HandlePutTokenOperation", func() {
+		var incomingMessage *pb.ChaincodeMessage
+		var request *token.TokenOperation
+
+		BeforeEach(func() {
+			request = &token.TokenOperation{
+				Operation: &token.TokenOperation_Action{
+					Action: &token.TokenOperationAction{
+						Payload: &token.TokenOperationAction_Issue{
+							Issue: &token.TokenActionTerms{},
+						},
+					},
+				},
+			}
+			payload, err := proto.Marshal(request)
+			Expect(err).NotTo(HaveOccurred())
+
+			incomingMessage = &pb.ChaincodeMessage{
+				Type:      pb.ChaincodeMessage_PUT_TOKEN_OPERATION,
+				Payload:   payload,
+				Txid:      "tx-id",
+				ChannelId: "channel-id",
+			}
+		})
+
+		It("returns a response message", func() {
+			resp, err := handler.HandlePutTokenOperation(incomingMessage, txContext)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(&pb.ChaincodeMessage{
+				Type:      pb.ChaincodeMessage_RESPONSE,
+				Txid:      "tx-id",
+				ChannelId: "channel-id",
+			}))
+			Expect(len(handler.TXContexts.Get("channel-id", "tx-id").TokenOperations)).To(BeEquivalentTo(1))
+			Expect(len(handler.TXContexts.Get("channel-id", "tx-id").TokenOperations["cc-instance-name"])).To(BeEquivalentTo(1))
+			Expect(proto.Equal(handler.TXContexts.Get("channel-id", "tx-id").TokenOperations["cc-instance-name"][0], request)).To(BeTrue())
+		})
+
+		Context("when unmarshaling the request fails", func() {
+			BeforeEach(func() {
+				incomingMessage.Payload = []byte("this-is-a-bogus-payload")
+			})
+
+			It("returns an error", func() {
+				_, err := handler.HandlePutTokenOperation(incomingMessage, txContext)
+				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+			})
+		})
+
 	})
 
 	Describe("Execute", func() {
