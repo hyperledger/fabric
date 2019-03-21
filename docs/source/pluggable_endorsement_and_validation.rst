@@ -30,12 +30,11 @@ pluggable manner. This logic can be either compiled into the peer as built in
 selectable logic, or compiled and deployed alongside the peer as a
 `Golang plugin <https://golang.org/pkg/plugin/>`_.
 
-Recall that every chaincode is associated with its own endorsement and validation
-logic at the time of chaincode instantiation. If the user doesn't select one, the
-default built-in logic is selected implicitly. A peer administrator may alter the
-endorsement/validation logic that is selected by extending the peer's local
-configuration with the customization of the endorsement/validation logic which is
-loaded and applied at peer startup.
+By default, A chaincode will use the built in endorsement and validation logic.
+However, users have the option of selecting custom endorsement and validation
+plugins as part of the chaincode definition. An administrator can extend the
+endorsement/validation logic available to the peer by customizing the peer's
+local configuration.
 
 Configuration
 -------------
@@ -92,6 +91,13 @@ in ``core.yaml``:
             library: /etc/hyperledger/fabric/plugins/customValidation.so
 
 And we'd have to place the ``.so`` plugin files in the peer's local file system.
+
+The name of the custom plugin needs to be referenced by the chaincode definition
+to be used by the chaincode. If you are using the peer CLI to approve the
+chaincode definition, use the ``--escc`` and ``--vscc`` flag to select the name
+of the custom endorsement or validation library. If you are using the
+Fabric SDK for Node.js, visit [How to install and start your chaincode](https://fabric-sdk-node.github.io/master/tutorial-chaincode-lifecycle.html).
+For more information, see :doc:`chaincode4noah`.
 
 .. note:: Hereafter, custom endorsement or validation logic implementation is
           going to be referred to as "plugins", even if they are compiled into
