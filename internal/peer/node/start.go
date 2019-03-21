@@ -31,7 +31,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/admin"
-	"github.com/hyperledger/fabric/core/cclifecycle"
+	cc "github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
@@ -50,7 +50,7 @@ import (
 	endorsement2 "github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	endorsement3 "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/core/handlers/library"
-	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -377,7 +377,10 @@ func serve(args []string) error {
 	}
 
 	csccInst := cscc.New(sccp, aclProvider, lifecycleValidatorCommitter, lsccInst, lifecycleValidatorCommitter)
-	qsccInst := qscc.New(aclProvider)
+	qsccInst := scc.SelfDescribingSysCC(qscc.New(aclProvider))
+	if maxConcurrency := viper.GetInt("peer.limits.concurrency.qscc"); maxConcurrency != 0 {
+		qsccInst = scc.Throttle(maxConcurrency, qsccInst)
+	}
 
 	//Now that chaincode is initialized, register all system chaincodes.
 	sccs := scc.CreatePluginSysCCs(sccp)

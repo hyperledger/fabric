@@ -421,6 +421,14 @@ peer:
         # Whether to allow non-admins to perform non channel scoped queries.
         # When this is false, it means that only peer admins can perform non channel scoped queries.
         orgMembersAllowedAccess: false
+
+    # Limits is used to configure some internal resource limits.
+    limits:
+      # Concurrency limits the number of concurrently running system chaincode requests.
+      # This option is only supported for qscc at this time.
+      concurrency:
+        qscc: 5000
+
 ###############################################################################
 #
 #    VM section

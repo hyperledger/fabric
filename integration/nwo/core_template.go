@@ -122,6 +122,9 @@ peer:
     authCacheMaxSize: 1000
     authCachePurgeRetentionRatio: 0.75
     orgMembersAllowedAccess: false
+  limits:
+    concurrency:
+      qscc: 500
 
 vm:
   endpoint: unix:///var/run/docker.sock
