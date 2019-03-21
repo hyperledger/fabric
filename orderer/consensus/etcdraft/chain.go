@@ -112,9 +112,13 @@ type Options struct {
 	MaxSizePerMsg   uint64
 	MaxInflightMsgs int
 
-	RaftMetadata *etcdraft.RaftMetadata
-	Metrics      *Metrics
-	Cert         []byte
+	// BlockMetdata and Consenters should only be modified while under lock
+	// of raftMetadataLock
+	BlockMetadata *etcdraft.BlockMetadata
+	Consenters    map[uint64]*etcdraft.Consenter
+
+	Metrics *Metrics
+	Cert    []byte
 
 	EvictionSuspicion   time.Duration
 	LeaderCheckInterval time.Duration
@@ -247,7 +251,7 @@ func NewChain(
 		observeC:         observeC,
 		support:          support,
 		fresh:            fresh,
-		appliedIndex:     opts.RaftMetadata.RaftIndex,
+		appliedIndex:     opts.BlockMetadata.RaftIndex,
 		lastBlock:        b,
 		sizeLimit:        sizeLimit,
 		lastSnapBlockNum: snapBlkNum,
@@ -297,7 +301,7 @@ func NewChain(
 		config:       config,
 		tickInterval: c.opts.TickInterval,
 		clock:        c.clock,
-		metadata:     c.opts.RaftMetadata,
+		metadata:     c.opts.BlockMetadata,
 	}
 
 	return c, nil
@@ -313,7 +317,7 @@ func (c *Chain) MigrationStatus() migration.Status {
 func (c *Chain) Start() {
 	c.logger.Infof("Starting Raft node")
 
-	c.Metrics.ClusterSize.Set(float64(len(c.opts.RaftMetadata.Consenters)))
+	c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.ConsenterIds)))
 	// all nodes start out as followers
 	c.Metrics.IsLeader.Set(float64(0))
 	if err := c.configureComm(); err != nil {
@@ -719,7 +723,7 @@ func (c *Chain) serveRequest() {
 					select {
 					case <-c.errorC:
 					default:
-						nodeCount := len(c.opts.RaftMetadata.Consenters)
+						nodeCount := len(c.opts.BlockMetadata.ConsenterIds)
 						// Only close the error channel (to signal the broadcast/deliver front-end a consensus backend error)
 						// If we are a cluster of size 3 or more, otherwise we can't expand a cluster of size 1 to 2 nodes.
 						if nodeCount > 2 {
@@ -835,8 +839,8 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 	}
 
 	c.raftMetadataLock.Lock()
-	c.opts.RaftMetadata.RaftIndex = index
-	m := protoutil.MarshalOrPanic(c.opts.RaftMetadata)
+	c.opts.BlockMetadata.RaftIndex = index
+	m := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
 	c.raftMetadataLock.Unlock()
 
 	c.support.WriteBlock(block, m)
@@ -938,13 +942,14 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 		if protoutil.IsConfigBlock(block) {
 			c.support.WriteConfigBlock(block, nil)
 
-			cc, raftMetadata, rotate := c.detectConfChange(block)
+			configMembership := c.detectConfChange(block)
 
-			if cc != nil || rotate != 0 {
+			if configMembership != nil && configMembership.Changed() {
 				c.logger.Infof("Config block %d changes consenter set, communication should be reconfigured", block.Header.Number)
 
 				c.raftMetadataLock.Lock()
-				c.opts.RaftMetadata = raftMetadata
+				c.opts.BlockMetadata = configMembership.NewBlockMetadata
+				c.opts.Consenters = configMembership.NewConsenters
 				c.raftMetadataLock.Unlock()
 
 				if err := c.configureComm(); err != nil {
@@ -963,28 +968,31 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 	return nil
 }
 
-func (c *Chain) detectConfChange(block *common.Block) (*raftpb.ConfChange, *etcdraft.RaftMetadata, uint64) {
+func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 	// If config is targeting THIS channel, inspect consenter set and
 	// propose raft ConfChange if it adds/removes node.
-	metadata, raftMetadata := c.newRaftMetadata(block)
+	configMetadata := c.newConfigMetadata(block)
 
-	if metadata != nil && metadata.Options != nil && metadata.Options.SnapshotInterval != 0 {
+	if configMetadata == nil {
+		return nil
+	}
+
+	if configMetadata.Options != nil && configMetadata.Options.SnapshotInterval != 0 {
 		old := c.sizeLimit
-		c.sizeLimit = metadata.Options.SnapshotInterval
+		c.sizeLimit = configMetadata.Options.SnapshotInterval
 		c.logger.Infof("Snapshot interval is updated to %d bytes (was %d)", c.sizeLimit, old)
 	}
 
-	var changes *MembershipChanges
-	if metadata != nil {
-		changes = ComputeMembershipChanges(raftMetadata.Consenters, metadata.Consenters)
+	changes, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMetadata.Consenters)
+	if err != nil {
+		c.logger.Panicf("illegal configuration change detected: %s", err)
 	}
 
-	confChange, rotate := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
-	if rotate != 0 {
-		c.logger.Infof("Config block %d rotates TLS certificate of node %d", block.Header.Number, rotate)
+	if changes.Rotated() {
+		c.logger.Infof("Config block %d rotates TLS certificate of node %d", block.Header.Number, changes.RotatedNode)
 	}
 
-	return confChange, raftMetadata, rotate
+	return changes
 }
 
 func (c *Chain) apply(ents []raftpb.Entry) {
@@ -1051,7 +1059,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				c.confChangeInProgress = nil
 				c.configInflight = false
 				// report the new cluster size
-				c.Metrics.ClusterSize.Set(float64(len(c.opts.RaftMetadata.Consenters)))
+				c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.ConsenterIds)))
 			}
 
 			if cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == c.raftID {
@@ -1127,7 +1135,7 @@ func (c *Chain) configureComm() error {
 
 func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 	var nodes []cluster.RemoteNode
-	for raftID, consenter := range c.opts.RaftMetadata.Consenters {
+	for raftID, consenter := range c.opts.Consenters {
 		// No need to know yourself
 		if raftID == c.raftID {
 			continue
@@ -1172,19 +1180,10 @@ func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
 	}
 
 	c.raftMetadataLock.RLock()
-	changes := ComputeMembershipChanges(c.opts.RaftMetadata.Consenters, updatedMetadata.Consenters)
+	_, err = ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, updatedMetadata.Consenters)
 	c.raftMetadataLock.RUnlock()
 
-	// Adding and removing 1 node is considered as certificate rotation, which is allowed.
-	if len(changes.AddedNodes) == 1 && len(changes.RemovedNodes) == 1 {
-		return nil
-	}
-
-	if changes.TotalChanges > 1 {
-		return errors.Errorf("update of more than one consenter at a time is not supported, requested changes: %s", changes)
-	}
-
-	return nil
+	return err
 }
 
 // writeConfigBlock writes configuration blocks into the ledger in
@@ -1200,42 +1199,51 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 
 	switch common.HeaderType(hdr.Type) {
 	case common.HeaderType_CONFIG:
-		confChange, raftMetadata, rotate := c.detectConfChange(block)
-		raftMetadata.RaftIndex = index
-		raftMetadataBytes := protoutil.MarshalOrPanic(raftMetadata)
-		// write block with metadata
-		c.support.WriteConfigBlock(block, raftMetadataBytes)
+		configMembership := c.detectConfChange(block)
 
+		c.opts.BlockMetadata.RaftIndex = index
 		c.raftMetadataLock.Lock()
-		c.opts.RaftMetadata = raftMetadata
+		if configMembership != nil {
+			c.opts.BlockMetadata = configMembership.NewBlockMetadata
+			c.opts.Consenters = configMembership.NewConsenters
+		}
 		c.raftMetadataLock.Unlock()
 
+		blockMetadataBytes := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
+
+		// write block with metadata
+		c.support.WriteConfigBlock(block, blockMetadataBytes)
+
+		if configMembership == nil {
+			return
+		}
+
 		// update membership
-		if confChange != nil {
+		if configMembership.ConfChange != nil {
 			// We need to propose conf change in a go routine, because it may be blocked if raft node
 			// becomes leaderless, and we should not block `serveRequest` so it can keep consuming applyC,
 			// otherwise we have a deadlock.
 			go func() {
 				// ProposeConfChange returns error only if node being stopped.
 				// This proposal is dropped by followers because DisableProposalForwarding is enabled.
-				if err := c.Node.ProposeConfChange(context.TODO(), *confChange); err != nil {
+				if err := c.Node.ProposeConfChange(context.TODO(), *configMembership.ConfChange); err != nil {
 					c.logger.Warnf("Failed to propose configuration update to Raft node: %s", err)
 				}
 			}()
 
-			c.confChangeInProgress = confChange
+			c.confChangeInProgress = configMembership.ConfChange
 
-			switch confChange.Type {
+			switch configMembership.ConfChange.Type {
 			case raftpb.ConfChangeAddNode:
-				c.logger.Infof("Config block just committed adds node %d, pause accepting transactions till config change is applied", confChange.NodeID)
+				c.logger.Infof("Config block just committed adds node %d, pause accepting transactions till config change is applied", configMembership.ConfChange.NodeID)
 			case raftpb.ConfChangeRemoveNode:
-				c.logger.Infof("Config block just committed removes node %d, pause accepting transactions till config change is applied", confChange.NodeID)
+				c.logger.Infof("Config block just committed removes node %d, pause accepting transactions till config change is applied", configMembership.ConfChange.NodeID)
 			default:
 				c.logger.Panic("Programming error, encountered unsupported raft config change")
 			}
 
 			c.configInflight = true
-		} else if rotate != 0 {
+		} else if configMembership.Rotated() {
 			if err := c.configureComm(); err != nil {
 				c.logger.Panicf("Failed to configure communication: %s", err)
 			}
@@ -1244,8 +1252,8 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 	case common.HeaderType_ORDERER_TRANSACTION:
 		// If this config is channel creation, no extra inspection is needed
 		c.raftMetadataLock.Lock()
-		c.opts.RaftMetadata.RaftIndex = index
-		m := protoutil.MarshalOrPanic(c.opts.RaftMetadata)
+		c.opts.BlockMetadata.RaftIndex = index
+		m := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
 		c.raftMetadataLock.Unlock()
 
 		c.support.WriteConfigBlock(block, m)
@@ -1272,8 +1280,8 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 	}
 
 	// Detect if it is a restart right after consensus-type migration. If yes, return early in order to avoid using
-	// the block metadata as etcdraft.RaftMetadata (see below). Right after migration the block metadata will carry
-	// Kafka metadata. The etcdraft.RaftMetadata should be extracted from the ConsensusType.Metadata, instead.
+	// the block metadata as etcdraft.BlockMetadata (see below). Right after migration the block metadata will carry
+	// Kafka metadata. The etcdraft.BlockMetadata should be extracted from the ConsensusType.Metadata, instead.
 	if c.detectMigration() {
 		c.logger.Infof("[channel: %s], Restarting after consensus-type migration. Type: %s, just starting the chain.",
 			c.support.ChainID(), c.support.SharedConfig().ConsensusType())
@@ -1283,7 +1291,7 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 	// extracting current Raft configuration state
 	confState := c.Node.ApplyConfChange(raftpb.ConfChange{})
 
-	if len(confState.Nodes) == len(c.opts.RaftMetadata.Consenters) {
+	if len(confState.Nodes) == len(c.opts.BlockMetadata.ConsenterIds) {
 		// since configuration change could only add one node or
 		// remove one node at a time, if raft nodes state size
 		// equal to membership stored in block metadata field,
@@ -1292,22 +1300,16 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 		return nil
 	}
 
-	return ConfChange(c.opts.RaftMetadata, confState)
+	return ConfChange(c.opts.BlockMetadata, confState)
 }
 
-// newRaftMetadata extract raft metadata from the configuration block
-func (c *Chain) newRaftMetadata(block *common.Block) (*etcdraft.Metadata, *etcdraft.RaftMetadata) {
+// newMetadata extract config metadata from the configuration block
+func (c *Chain) newConfigMetadata(block *common.Block) *etcdraft.ConfigMetadata {
 	metadata, err := ConsensusMetadataFromConfigBlock(block)
 	if err != nil {
 		c.logger.Panicf("error reading consensus metadata: %s", err)
 	}
-	raftMetadata := proto.Clone(c.opts.RaftMetadata).(*etcdraft.RaftMetadata)
-	// proto.Clone doesn't copy an empty map, hence need to initialize it after
-	// cloning
-	if raftMetadata.Consenters == nil {
-		raftMetadata.Consenters = map[uint64]*etcdraft.Consenter{}
-	}
-	return metadata, raftMetadata
+	return metadata
 }
 
 func (c *Chain) suspectEviction() bool {

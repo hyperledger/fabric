@@ -33,9 +33,12 @@ import (
 // MembershipChanges keeps information about membership
 // changes introduced during configuration update
 type MembershipChanges struct {
-	AddedNodes   []*etcdraft.Consenter
-	RemovedNodes []*etcdraft.Consenter
-	TotalChanges uint32
+	NewBlockMetadata *etcdraft.BlockMetadata
+	NewConsenters    map[uint64]*etcdraft.Consenter
+	AddedNodes       []*etcdraft.Consenter
+	RemovedNodes     []*etcdraft.Consenter
+	ConfChange       *raftpb.ConfChange
+	RotatedNode      uint64
 }
 
 // Stringer implements fmt.Stringer interface
@@ -43,58 +46,14 @@ func (mc *MembershipChanges) String() string {
 	return fmt.Sprintf("add %d node(s), remove %d node(s)", len(mc.AddedNodes), len(mc.RemovedNodes))
 }
 
-// UpdateRaftMetadataAndConfChange given the membership changes and RaftMetadata method calculates
-// updates to be applied to the raft  cluster configuration in addition updates mapping between
-// consenter and its id within metadata. Adding and removing a node at the same time is considered
-// to be certificate rotation, and the ID of rotated node is returned.
-func (mc *MembershipChanges) UpdateRaftMetadataAndConfChange(raftMetadata *etcdraft.RaftMetadata) (cc *raftpb.ConfChange, rotate uint64) {
-	if mc == nil || mc.TotalChanges == 0 {
-		return nil, 0
-	}
+// Changed indicates whether these changes actually do anything
+func (mc *MembershipChanges) Changed() bool {
+	return len(mc.AddedNodes) > 0 || len(mc.RemovedNodes) > 0
+}
 
-	var confChange *raftpb.ConfChange
-
-	if len(mc.AddedNodes) == 1 && len(mc.RemovedNodes) == 1 {
-		for id, node := range raftMetadata.Consenters {
-			if bytes.Equal(mc.RemovedNodes[0].ClientTlsCert, node.ClientTlsCert) {
-				raftMetadata.Consenters[id] = mc.AddedNodes[0]
-				return nil, id
-			}
-		}
-	}
-
-	// producing corresponding raft configuration changes
-	if len(mc.AddedNodes) > 0 {
-		nodeID := raftMetadata.NextConsenterId
-		raftMetadata.Consenters[nodeID] = mc.AddedNodes[0]
-		raftMetadata.NextConsenterId++
-		confChange = &raftpb.ConfChange{
-			ID:     raftMetadata.ConfChangeCounts,
-			NodeID: nodeID,
-			Type:   raftpb.ConfChangeAddNode,
-		}
-		raftMetadata.ConfChangeCounts++
-		return confChange, 0
-	}
-
-	if len(mc.RemovedNodes) > 0 {
-		for _, c := range mc.RemovedNodes {
-			for nodeID, node := range raftMetadata.Consenters {
-				if bytes.Equal(c.ClientTlsCert, node.ClientTlsCert) {
-					delete(raftMetadata.Consenters, nodeID)
-					confChange = &raftpb.ConfChange{
-						ID:     raftMetadata.ConfChangeCounts,
-						NodeID: nodeID,
-						Type:   raftpb.ConfChangeRemoveNode,
-					}
-					raftMetadata.ConfChangeCounts++
-					break
-				}
-			}
-		}
-	}
-
-	return confChange, 0
+// Rotated indicates whether the change was a rotation
+func (mc *MembershipChanges) Rotated() bool {
+	return len(mc.AddedNodes) == 1 && len(mc.RemovedNodes) == 1
 }
 
 // EndpointconfigFromFromSupport extracts TLS CA certificates and endpoints from the ConsenterSupport
@@ -177,10 +136,10 @@ func newBlockPuller(support consensus.ConsenterSupport,
 }
 
 // RaftPeers maps consenters to slice of raft.Peer
-func RaftPeers(consenters map[uint64]*etcdraft.Consenter) []raft.Peer {
+func RaftPeers(consenterIDs []uint64) []raft.Peer {
 	var peers []raft.Peer
 
-	for raftID := range consenters {
+	for _, raftID := range consenterIDs {
 		peers = append(peers, raft.Peer{ID: raftID})
 	}
 	return peers
@@ -197,45 +156,85 @@ func ConsentersToMap(consenters []*etcdraft.Consenter) map[string]struct{} {
 
 // MembershipByCert convert consenters map into set encapsulated by map
 // where key is client TLS certificate
-func MembershipByCert(consenters map[uint64]*etcdraft.Consenter) map[string]struct{} {
-	set := map[string]struct{}{}
-	for _, c := range consenters {
-		set[string(c.ClientTlsCert)] = struct{}{}
+func MembershipByCert(consenters map[uint64]*etcdraft.Consenter) map[string]uint64 {
+	set := map[string]uint64{}
+	for nodeID, c := range consenters {
+		set[string(c.ClientTlsCert)] = nodeID
 	}
 	return set
 }
 
 // ComputeMembershipChanges computes membership update based on information about new conseters, returns
 // two slices: a slice of added consenters and a slice of consenters to be removed
-func ComputeMembershipChanges(oldConsenters map[uint64]*etcdraft.Consenter, newConsenters []*etcdraft.Consenter) *MembershipChanges {
+func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters map[uint64]*etcdraft.Consenter, newConsenters []*etcdraft.Consenter) (mc *MembershipChanges, err error) {
 	result := &MembershipChanges{
-		AddedNodes:   []*etcdraft.Consenter{},
-		RemovedNodes: []*etcdraft.Consenter{},
+		NewConsenters:    map[uint64]*etcdraft.Consenter{},
+		NewBlockMetadata: proto.Clone(oldMetadata).(*etcdraft.BlockMetadata),
+		AddedNodes:       []*etcdraft.Consenter{},
+		RemovedNodes:     []*etcdraft.Consenter{},
 	}
 
+	result.NewBlockMetadata.ConsenterIds = make([]uint64, len(newConsenters))
+
+	var addedNodeIndex int
 	currentConsentersSet := MembershipByCert(oldConsenters)
-	for _, c := range newConsenters {
-		if _, exists := currentConsentersSet[string(c.ClientTlsCert)]; !exists {
-			result.AddedNodes = append(result.AddedNodes, c)
-			result.TotalChanges++
+	for i, c := range newConsenters {
+		if nodeID, exists := currentConsentersSet[string(c.ClientTlsCert)]; exists {
+			result.NewBlockMetadata.ConsenterIds[i] = nodeID
+			result.NewConsenters[nodeID] = c
+			continue
 		}
+		addedNodeIndex = i
+		result.AddedNodes = append(result.AddedNodes, c)
 	}
 
+	var deletedNodeID uint64
 	newConsentersSet := ConsentersToMap(newConsenters)
-	for _, c := range oldConsenters {
+	for nodeID, c := range oldConsenters {
 		if _, exists := newConsentersSet[string(c.ClientTlsCert)]; !exists {
 			result.RemovedNodes = append(result.RemovedNodes, c)
-			result.TotalChanges++
+			deletedNodeID = nodeID
 		}
 	}
 
-	return result
+	switch {
+	case len(result.AddedNodes) == 1 && len(result.RemovedNodes) == 1:
+		// cert rotation
+		result.RotatedNode = deletedNodeID
+		result.NewBlockMetadata.ConsenterIds[addedNodeIndex] = deletedNodeID
+		result.NewConsenters[deletedNodeID] = result.AddedNodes[0]
+	case len(result.AddedNodes) == 1 && len(result.RemovedNodes) == 0:
+		// new node
+		nodeID := result.NewBlockMetadata.NextConsenterId
+		result.NewConsenters[nodeID] = result.AddedNodes[0]
+		result.NewBlockMetadata.ConsenterIds[addedNodeIndex] = nodeID
+		result.NewBlockMetadata.NextConsenterId++
+		result.ConfChange = &raftpb.ConfChange{
+			NodeID: nodeID,
+			Type:   raftpb.ConfChangeAddNode,
+		}
+	case len(result.AddedNodes) == 0 && len(result.RemovedNodes) == 1:
+		// removed node
+		nodeID := deletedNodeID
+		result.ConfChange = &raftpb.ConfChange{
+			Type:   raftpb.ConfChangeRemoveNode,
+			NodeID: nodeID,
+		}
+		delete(result.NewConsenters, nodeID)
+	case len(result.AddedNodes) == 0 && len(result.RemovedNodes) == 0:
+		// no change
+	default:
+		// len(result.AddedNodes) > 1 || len(result.RemovedNodes) > 1 {
+		return nil, errors.Errorf("update of more than one consenter at a time is not supported, requested changes: %s", result)
+	}
+
+	return result, nil
 }
 
 // MetadataHasDuplication returns an error if the metadata has duplication of consenters.
 // A duplication is defined by having a server or a client TLS certificate that is found
 // in two different consenters, regardless of the type of certificate (client/server).
-func MetadataHasDuplication(md *etcdraft.Metadata) error {
+func MetadataHasDuplication(md *etcdraft.ConfigMetadata) error {
 	if md == nil {
 		return errors.New("nil metadata")
 	}
@@ -263,13 +262,13 @@ func MetadataHasDuplication(md *etcdraft.Metadata) error {
 }
 
 // MetadataFromConfigValue reads and translates configuration updates from config value into raft metadata
-func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.Metadata, error) {
+func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigMetadata, error) {
 	consensusTypeValue := &orderer.ConsensusType{}
 	if err := proto.Unmarshal(configValue.Value, consensusTypeValue); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal consensusType config update")
 	}
 
-	updatedMetadata := &etcdraft.Metadata{}
+	updatedMetadata := &etcdraft.ConfigMetadata{}
 	if err := proto.Unmarshal(consensusTypeValue.Metadata, updatedMetadata); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal updated (new) etcdraft metadata configuration")
 	}
@@ -278,7 +277,7 @@ func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.Metadat
 }
 
 // MetadataFromConfigUpdate extracts consensus metadata from config update
-func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.Metadata, error) {
+func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.ConfigMetadata, error) {
 	if ordererConfigGroup, ok := update.WriteSet.Groups["Orderer"]; ok {
 		if val, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
 			return MetadataFromConfigValue(val)
@@ -340,7 +339,7 @@ func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 }
 
 // ConsensusMetadataFromConfigBlock reads consensus metadata updates from the configuration block
-func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.Metadata, error) {
+func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMetadata, error) {
 	if block == nil {
 		return nil, errors.New("nil block")
 	}
@@ -389,7 +388,7 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 	if !exists {
 		return errors.New("no orderer config in bundle")
 	}
-	m := &etcdraft.Metadata{}
+	m := &etcdraft.ConfigMetadata{}
 	if err := proto.Unmarshal(oc.ConsensusMetadata(), m); err != nil {
 		return err
 	}
@@ -425,15 +424,14 @@ func NodeExists(id uint64, nodes []uint64) bool {
 
 // ConfChange computes Raft configuration changes based on current Raft configuration state and
 // consenters mapping stored in RaftMetadata
-func ConfChange(raftMetadata *etcdraft.RaftMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
+func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
 	raftConfChange := &raftpb.ConfChange{}
 
-	raftConfChange.ID = raftMetadata.ConfChangeCounts
 	// need to compute conf changes to propose
-	if len(confState.Nodes) < len(raftMetadata.Consenters) {
+	if len(confState.Nodes) < len(blockMetadata.ConsenterIds) {
 		// adding new node
 		raftConfChange.Type = raftpb.ConfChangeAddNode
-		for consenterID := range raftMetadata.Consenters {
+		for _, consenterID := range blockMetadata.ConsenterIds {
 			if NodeExists(consenterID, confState.Nodes) {
 				continue
 			}
@@ -442,9 +440,8 @@ func ConfChange(raftMetadata *etcdraft.RaftMetadata, confState *raftpb.ConfState
 	} else {
 		// removing node
 		raftConfChange.Type = raftpb.ConfChangeRemoveNode
-		consentersIDs := SliceOfConsentersIDs(raftMetadata.Consenters)
 		for _, nodeID := range confState.Nodes {
-			if NodeExists(nodeID, consentersIDs) {
+			if NodeExists(nodeID, blockMetadata.ConsenterIds) {
 				continue
 			}
 			raftConfChange.NodeID = nodeID

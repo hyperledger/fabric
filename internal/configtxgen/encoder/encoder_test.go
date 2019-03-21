@@ -308,7 +308,7 @@ var _ = Describe("Encoder", func() {
 		Context("when the consensus type is etcd/raft", func() {
 			BeforeEach(func() {
 				conf.OrdererType = "etcdraft"
-				conf.EtcdRaft = &etcdraft.Metadata{
+				conf.EtcdRaft = &etcdraft.ConfigMetadata{
 					Options: &etcdraft.Options{
 						TickInterval: "500ms",
 					},
@@ -323,7 +323,7 @@ var _ = Describe("Encoder", func() {
 				err = proto.Unmarshal(cg.Values["ConsensusType"].Value, consensusType)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(consensusType.Type).To(Equal("etcdraft"))
-				metadata := &etcdraft.Metadata{}
+				metadata := &etcdraft.ConfigMetadata{}
 				err = proto.Unmarshal(consensusType.Metadata, metadata)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(metadata.Options.TickInterval).To(Equal("500ms"))
@@ -331,7 +331,7 @@ var _ = Describe("Encoder", func() {
 
 			Context("when the raft configuration is bad", func() {
 				BeforeEach(func() {
-					conf.EtcdRaft = &etcdraft.Metadata{
+					conf.EtcdRaft = &etcdraft.ConfigMetadata{
 						Consenters: []*etcdraft.Consenter{
 							{},
 						},

@@ -41,13 +41,13 @@ type node struct {
 	tickInterval time.Duration
 	clock        clock.Clock
 
-	metadata *etcdraft.RaftMetadata
+	metadata *etcdraft.BlockMetadata
 
 	raft.Node
 }
 
 func (n *node) start(fresh, join, migration bool) {
-	raftPeers := RaftPeers(n.metadata.Consenters)
+	raftPeers := RaftPeers(n.metadata.ConsenterIds)
 	n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
 
 	var campaign bool

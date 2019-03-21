@@ -79,7 +79,7 @@ func (ct *ConsensusType) VariablyOpaqueFieldProto(name string) (proto.Message, e
 	}
 	switch ct.Type {
 	case "etcdraft":
-		return &etcdraft.Metadata{}, nil
+		return &etcdraft.ConfigMetadata{}, nil
 	default:
 		return &empty.Empty{}, nil
 	}

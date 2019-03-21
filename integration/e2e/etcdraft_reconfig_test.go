@@ -202,7 +202,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			certificateRotations := refreshOrdererPEMs(network)
 
 			swap := func(o *nwo.Orderer, certificate []byte, c etcdraft.Consenter) {
-				nwo.UpdateEtcdRaftMetadata(network, peer, o, network.SystemChannel.Name, func(metadata *etcdraft.Metadata) {
+				nwo.UpdateEtcdRaftMetadata(network, peer, o, network.SystemChannel.Name, func(metadata *etcdraft.ConfigMetadata) {
 					var newConsenters []*etcdraft.Consenter
 					for _, consenter := range metadata.Consenters {
 						if bytes.Equal(consenter.ClientTlsCert, certificate) || bytes.Equal(consenter.ServerTlsCert, certificate) {
@@ -863,7 +863,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Submitting another tx to increment Raft index on alive orderers")
 			nwo.UpdateConsensusMetadata(network, peer, orderers[4], network.SystemChannel.Name, func(originalMetadata []byte) []byte {
-				metadata := &etcdraft.Metadata{}
+				metadata := &etcdraft.ConfigMetadata{}
 				err := proto.Unmarshal(originalMetadata, metadata)
 				Expect(err).NotTo(HaveOccurred())
 

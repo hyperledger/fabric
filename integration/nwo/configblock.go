@@ -278,14 +278,14 @@ func UnmarshalBlockFromFile(blockFile string) *common.Block {
 
 // AddConsenter adds a new consenter to the given channel
 func AddConsenter(n *Network, peer *Peer, orderer *Orderer, channel string, consenter ectdraft_protos.Consenter) {
-	UpdateEtcdRaftMetadata(n, peer, orderer, channel, func(metadata *ectdraft_protos.Metadata) {
+	UpdateEtcdRaftMetadata(n, peer, orderer, channel, func(metadata *ectdraft_protos.ConfigMetadata) {
 		metadata.Consenters = append(metadata.Consenters, &consenter)
 	})
 }
 
 // RemoveConsenter removes a consenter with the given certificate in PEM format from the given channel
 func RemoveConsenter(n *Network, peer *Peer, orderer *Orderer, channel string, certificate []byte) {
-	UpdateEtcdRaftMetadata(n, peer, orderer, channel, func(metadata *ectdraft_protos.Metadata) {
+	UpdateEtcdRaftMetadata(n, peer, orderer, channel, func(metadata *ectdraft_protos.ConfigMetadata) {
 		var newConsenters []*ectdraft_protos.Consenter
 		for _, consenter := range metadata.Consenters {
 			if bytes.Equal(consenter.ClientTlsCert, certificate) || bytes.Equal(consenter.ServerTlsCert, certificate) {
@@ -322,9 +322,9 @@ func UpdateConsensusMetadata(network *Network, peer *Peer, orderer *Orderer, cha
 }
 
 // UpdateEtcdRaftMetadata executes a config update that updates the etcdraft metadata according to the given function f
-func UpdateEtcdRaftMetadata(network *Network, peer *Peer, orderer *Orderer, channel string, f func(md *ectdraft_protos.Metadata)) {
+func UpdateEtcdRaftMetadata(network *Network, peer *Peer, orderer *Orderer, channel string, f func(md *ectdraft_protos.ConfigMetadata)) {
 	UpdateConsensusMetadata(network, peer, orderer, channel, func(originalMetadata []byte) []byte {
-		metadata := &ectdraft_protos.Metadata{}
+		metadata := &ectdraft_protos.ConfigMetadata{}
 		err := proto.Unmarshal(originalMetadata, metadata)
 		Expect(err).NotTo(HaveOccurred())
 

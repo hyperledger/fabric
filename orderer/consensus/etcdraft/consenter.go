@@ -130,7 +130,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		}
 	}
 
-	m := &etcdraft.Metadata{}
+	m := &etcdraft.ConfigMetadata{}
 	if err := proto.Unmarshal(support.SharedConfig().ConsensusMetadata(), m); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal consensus metadata")
 	}
@@ -151,12 +151,17 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	// In case chain has been restarted we restore raft metadata
 	// information from the recently committed block meta data
 	// field.
-	raftMetadata, err := ReadRaftMetadata(metadata, m)
+	blockMetadata, err := ReadBlockMetadata(metadata, m)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read Raft metadata")
 	}
 
-	id, err := c.detectSelfID(raftMetadata.Consenters)
+	consenters := map[uint64]*etcdraft.Consenter{}
+	for i, consenter := range m.Consenters {
+		consenters[blockMetadata.ConsenterIds[i]] = consenter
+	}
+
+	id, err := c.detectSelfID(consenters)
 	if err != nil {
 		c.InactiveChainRegistry.TrackChain(support.ChainID(), support.Block(0), func() {
 			c.CreateChain(support.ChainID())
@@ -193,7 +198,8 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		MaxSizePerMsg:   m.Options.MaxSizePerMsg,
 		SnapInterval:    m.Options.SnapshotInterval,
 
-		RaftMetadata: raftMetadata,
+		BlockMetadata: blockMetadata,
+		Consenters:    consenters,
 
 		WALDir:            path.Join(c.EtcdRaftConfig.WALDir, support.ChainID()),
 		SnapDir:           path.Join(c.EtcdRaftConfig.SnapDir, support.ChainID()),
@@ -219,23 +225,24 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	)
 }
 
-// ReadRaftMetadata attempts to read raft metadata from block metadata, if available.
+// ReadBlockMetadata attempts to read raft metadata from block metadata, if available.
 // otherwise, it reads raft metadata from config metadata supplied.
-func ReadRaftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {
-	m := &etcdraft.RaftMetadata{
-		Consenters:      map[uint64]*etcdraft.Consenter{},
-		NextConsenterId: 1,
-	}
+func ReadBlockMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.ConfigMetadata) (*etcdraft.BlockMetadata, error) {
 	if blockMetadata != nil && len(blockMetadata.Value) != 0 { // we have consenters mapping from block
+		m := &etcdraft.BlockMetadata{}
 		if err := proto.Unmarshal(blockMetadata.Value, m); err != nil {
 			return nil, errors.Wrap(err, "failed to unmarshal block's metadata")
 		}
 		return m, nil
 	}
 
+	m := &etcdraft.BlockMetadata{
+		NextConsenterId: 1,
+		ConsenterIds:    make([]uint64, len(configMetadata.Consenters)),
+	}
 	// need to read consenters from the configuration
-	for _, consenter := range configMetadata.Consenters {
-		m.Consenters[m.NextConsenterId] = consenter
+	for i := range m.ConsenterIds {
+		m.ConsenterIds[i] = m.NextConsenterId
 		m.NextConsenterId++
 	}
 

@@ -11,9 +11,9 @@ option java_package = "org.hyperledger.fabric.protos.orderer.etcdraft";
 
 package etcdraft;
 
-// Metadata is serialized and set as the value of ConsensusType.Metadata in
+// ConfigMetadata is serialized and set as the value of ConsensusType.Metadata in
 // a channel configuration when the ConsensusType.Type is set "etcdraft".
-message Metadata {
+message ConfigMetadata {
     repeated Consenter consenters = 1;
     Options options = 2;
 }
@@ -38,18 +38,16 @@ message Options {
 	uint32 snapshot_interval = 6;
 }
 
-// RaftMetadata stores data used by the Raft OSNs when
+// BlockMetadata stores data used by the Raft OSNs when
 // coordinating with each other, to be serialized into
 // block meta dta field and used after failres and restarts.
-message RaftMetadata {
+message BlockMetadata {
     // Maintains a mapping between the cluster's OSNs
     // and their Raft IDs.
-    map<uint64, Consenter> consenters = 1;
+    repeated uint64 consenter_ids = 1;
     // Carries the Raft ID value that will be assigned
     // to the next OSN that will join this cluster.
     uint64 next_consenter_id = 2;
     // Raft cluster configurations count
-    uint64 conf_change_counts = 3;
-    // Index of etcd/raft entry for current block.
-    uint64 raft_index = 4;
+    uint64 raft_index = 3;
 }
