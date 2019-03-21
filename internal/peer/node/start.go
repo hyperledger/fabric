@@ -91,7 +91,6 @@ const (
 	chaincodeAddrKey       = "peer.chaincodeAddress"
 	chaincodeListenAddrKey = "peer.chaincodeListenAddress"
 	defaultChaincodePort   = 7052
-	grpcMaxConcurrency     = 2500
 )
 
 var chaincodeDevMode bool
@@ -249,20 +248,17 @@ func serve(args []string) error {
 		logger.Fatalf("Error loading secure config for peer (%s)", err)
 	}
 
-	throttle := comm.NewThrottle(grpcMaxConcurrency)
 	serverConfig.Logger = flogging.MustGetLogger("core.comm").With("server", "PeerServer")
 	serverConfig.MetricsProvider = metricsProvider
 	serverConfig.UnaryInterceptors = append(
 		serverConfig.UnaryInterceptors,
 		grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
 		grpclogging.UnaryServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
-		throttle.UnaryServerIntercptor,
 	)
 	serverConfig.StreamInterceptors = append(
 		serverConfig.StreamInterceptors,
 		grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
 		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
-		throttle.StreamServerInterceptor,
 	)
 
 	peerServer, err := peer.NewPeerServer(listenAddr, serverConfig)
@@ -777,20 +773,17 @@ func startAdminServer(peerListenAddr string, peerServer *grpc.Server, metricsPro
 		if err != nil {
 			logger.Fatalf("Error loading secure config for admin service (%s)", err)
 		}
-		throttle := comm.NewThrottle(grpcMaxConcurrency)
 		serverConfig.Logger = flogging.MustGetLogger("core.comm").With("server", "AdminServer")
 		serverConfig.MetricsProvider = metricsProvider
 		serverConfig.UnaryInterceptors = append(
 			serverConfig.UnaryInterceptors,
 			grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
 			grpclogging.UnaryServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
-			throttle.UnaryServerIntercptor,
 		)
 		serverConfig.StreamInterceptors = append(
 			serverConfig.StreamInterceptors,
 			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
 			grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
-			throttle.StreamServerInterceptor,
 		)
 		adminServer, err := peer.NewPeerServer(adminListenAddress, serverConfig)
 		if err != nil {
