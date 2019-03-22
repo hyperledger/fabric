@@ -211,7 +211,7 @@ configuration definitions and how to set them, refer back to the
 Querying Private Data
 ~~~~~~~~~~~~~~~~~~~~~
 
-Private collection data can be queried just like normal channel data, using
+Private data collection can be queried just like normal channel data, using
 shim APIs:
 
 * ``GetPrivateDataByRange(collection, startKey, endKey string)``
