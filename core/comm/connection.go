@@ -7,17 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -128,43 +125,4 @@ func getEnv(key, def string) string {
 	} else {
 		return def
 	}
-}
-
-// NewClientConnectionWithAddress Returns a new grpc.ClientConn to the given address
-func NewClientConnectionWithAddress(
-	peerAddress string,
-	block bool,
-	dialTimeout time.Duration,
-	tslEnabled bool,
-	creds credentials.TransportCredentials,
-	ka *KeepaliveOptions,
-) (*grpc.ClientConn, error) {
-	var opts []grpc.DialOption
-
-	if ka != nil {
-		opts = ClientKeepaliveOptions(ka)
-	} else {
-		// set to the default options
-		opts = ClientKeepaliveOptions(DefaultKeepaliveOptions)
-	}
-
-	if tslEnabled {
-		opts = append(opts, grpc.WithTransportCredentials(creds))
-	} else {
-		opts = append(opts, grpc.WithInsecure())
-	}
-	if block {
-		opts = append(opts, grpc.WithBlock())
-	}
-	opts = append(opts, grpc.WithDefaultCallOptions(
-		grpc.MaxCallRecvMsgSize(MaxRecvMsgSize),
-		grpc.MaxCallSendMsgSize(MaxSendMsgSize),
-	))
-	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
-	defer cancel()
-	conn, err := grpc.DialContext(ctx, peerAddress, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return conn, err
 }

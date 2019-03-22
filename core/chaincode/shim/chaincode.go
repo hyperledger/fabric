@@ -10,8 +10,6 @@ package shim
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/base64"
 	"flag"
 	"fmt"
@@ -28,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/comm"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -36,7 +33,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 // Logger for the shim package.
@@ -88,7 +84,7 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 	chaincodeLogger.Debugf("Peer address: %s", getPeerAddress())
 
 	// Establish connection with validating peer
-	clientConn, err := newPeerClientConnection()
+	clientConn, err := newPeerClientConnection(getPeerAddress())
 	if err != nil {
 		err = errors.Wrap(err, "error trying to connect to local peer")
 		chaincodeLogger.Errorf("%+v", err)
@@ -285,88 +281,67 @@ func getPeerAddress() string {
 	return peerAddress
 }
 
-func newPeerClientConnection() (*grpc.ClientConn, error) {
-	var peerAddress = getPeerAddress()
+func newPeerClientConnection(address string) (*grpc.ClientConn, error) {
+
 	// set the keepalive options to match static settings for chaincode server
 	kaOpts := &comm.KeepaliveOptions{
 		ClientInterval: time.Duration(1) * time.Minute,
 		ClientTimeout:  time.Duration(20) * time.Second,
 	}
-	if viper.GetBool("peer.tls.enabled") {
-		return comm.NewClientConnectionWithAddress(
-			peerAddress,
-			true,
-			3*time.Second,
-			true,
-			tlsCreds(),
-			kaOpts,
-		)
+	secOpts, err := secureOptions()
+	if err != nil {
+		return nil, err
 	}
-	return comm.NewClientConnectionWithAddress(
-		peerAddress,
-		true,
-		3*time.Second,
-		false,
-		nil,
-		kaOpts,
-	)
+	config := comm.ClientConfig{
+		KaOpts:  kaOpts,
+		SecOpts: secOpts,
+		Timeout: 3 * time.Second,
+	}
+
+	client, err := comm.NewGRPCClient(config)
+	if err != nil {
+		return nil, err
+	}
+	return client.NewConnection(address, "")
 }
 
-func tlsCreds() credentials.TransportCredentials {
+func secureOptions() (*comm.SecureOptions, error) {
+	if viper.GetBool("peer.tls.enabled") {
+		keyPath := viper.GetString("tls.client.key.path")
+		certPath := viper.GetString("tls.client.cert.path")
+		caPath := viper.GetString("peer.tls.rootcert.file")
 
-	keyPath := viper.GetString("tls.client.key.path")
-	certPath := viper.GetString("tls.client.cert.path")
+		data, err := ioutil.ReadFile(keyPath)
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed to read private key file")
+		}
+		key, err := base64.StdEncoding.DecodeString(string(data))
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed to decode private key file")
+		}
+		data, err = ioutil.ReadFile(certPath)
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed to read public key file")
+		}
+		cert, err := base64.StdEncoding.DecodeString(string(data))
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed to decode public key file")
+		}
+		root, err := ioutil.ReadFile(caPath)
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed to read root cert file")
+		}
 
-	data, err := ioutil.ReadFile(keyPath)
-	if err != nil {
-		chaincodeLogger.Panicf(
-			"error trying to read file content %s: %s",
-			keyPath,
-			err,
-		)
-
+		return &comm.SecureOptions{
+				UseTLS:            true,
+				Certificate:       []byte(cert),
+				Key:               []byte(key),
+				ServerRootCAs:     [][]byte{root},
+				RequireClientCert: true,
+			},
+			nil
 	}
-	priv, err := base64.StdEncoding.DecodeString(string(data))
-	if err != nil {
-		chaincodeLogger.Panicf(
-			"failed decoding private key from base64, string: %s, error: %v",
-			string(data),
-			err,
-		)
-	}
-	data, err = ioutil.ReadFile(certPath)
-	if err != nil {
-		chaincodeLogger.Panicf(
-			"error trying to read file content %s: %s",
-			certPath,
-			err,
-		)
-	}
-	pub, err := base64.StdEncoding.DecodeString(string(data))
-	if err != nil {
-		chaincodeLogger.Panicf(
-			"failed decoding public key from base64, string: %s, error: %v",
-			string(data),
-			err,
-		)
-	}
-
-	cert, err := tls.X509KeyPair(pub, priv)
-	if err != nil {
-		chaincodeLogger.Panicf("failed loading certificate: %v", err)
-	}
-	b, err := ioutil.ReadFile(config.GetPath("peer.tls.rootcert.file"))
-	if err != nil {
-		chaincodeLogger.Panicf("failed loading root ca cert: %v", err)
-	}
-	cp := x509.NewCertPool()
-	if !cp.AppendCertsFromPEM(b) {
-		chaincodeLogger.Panicf("failed to append certificates")
-	}
-	return credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      cp,
-	})
+	return &comm.SecureOptions{}, nil
 }
 
 func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {

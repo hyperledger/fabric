@@ -9,7 +9,6 @@ package comm
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -21,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/comm/testpb"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -45,98 +43,6 @@ BwwNU2FuIEZyYW5jaXNjbzEYMBYGA1UECgwPTGludXhGb3VuZGF0aW9uMRQwEgYD
 VQQLDAtIeXBlcmxlZGdlcjESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0C
 -----END CERTIFICATE-----
 `
-
-func TestClientConnections(t *testing.T) {
-	t.Parallel()
-	//use Org1 test crypto material
-	fileBase := "Org1"
-	certPEMBlock, _ := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-cert.pem"))
-	keyPEMBlock, _ := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-key.pem"))
-	caPEMBlock, _ := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-cert.pem"))
-	certPool := x509.NewCertPool()
-	certPool.AppendCertsFromPEM(caPEMBlock)
-
-	var tests = []struct {
-		name       string
-		sc         ServerConfig
-		creds      credentials.TransportCredentials
-		clientPort int
-		fail       bool
-	}{
-		{
-			name: "ValidConnection",
-			sc: ServerConfig{
-				SecOpts: &SecureOptions{
-					UseTLS: false}},
-		},
-		{
-			name: "InvalidConnection",
-			sc: ServerConfig{
-				SecOpts: &SecureOptions{
-					UseTLS: false}},
-			clientPort: 20040,
-			fail:       true,
-		},
-		{
-			name: "ValidConnectionTLS",
-			sc: ServerConfig{
-				SecOpts: &SecureOptions{
-					UseTLS:      true,
-					Certificate: certPEMBlock,
-					Key:         keyPEMBlock}},
-			creds: credentials.NewClientTLSFromCert(certPool, ""),
-		},
-		{
-			name: "InvalidConnectionTLS",
-			sc: ServerConfig{
-				SecOpts: &SecureOptions{
-					UseTLS:      true,
-					Certificate: certPEMBlock,
-					Key:         keyPEMBlock}},
-			creds: credentials.NewClientTLSFromCert(nil, ""),
-			fail:  true,
-		},
-	}
-
-	for _, test := range tests {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			t.Logf("Running test %s ...", test.name)
-			lis, err := net.Listen("tcp", "127.0.0.1:0")
-			if err != nil {
-				t.Fatalf("failed to create listener for test server: %v", err)
-			}
-			clientAddress := lis.Addr().String()
-			if test.clientPort > 0 {
-				clientAddress = fmt.Sprintf("127.0.0.1:%d", test.clientPort)
-			}
-			srv, err := NewGRPCServerFromListener(lis, test.sc)
-			//check for error
-			if err != nil {
-				t.Fatalf("Error [%s] creating test server for address [%s]",
-					err, lis.Addr().String())
-			}
-			//start the server
-			go srv.Start()
-			defer srv.Stop()
-			testConn, err := NewClientConnectionWithAddress(
-				clientAddress,
-				true,
-				100*time.Millisecond,
-				test.sc.SecOpts.UseTLS,
-				test.creds,
-				nil,
-			)
-			if test.fail {
-				assert.Error(t, err)
-			} else {
-				testConn.Close()
-				assert.NoError(t, err)
-			}
-		})
-	}
-}
 
 // utility function to load up our test root certificates from testdata/certs
 func loadRootCAs() [][]byte {
