@@ -1591,7 +1591,7 @@ var _ = Describe("Chain", func() {
 					}
 
 					By("creating new configuration with invalid certificate")
-					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, value))
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
 					c1.cutter.CutNext = true
 
 					By("sending config transaction")
@@ -1667,7 +1667,7 @@ var _ = Describe("Chain", func() {
 					}
 
 					By("creating new configuration with removed node and new one")
-					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, value))
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
 					c1.cutter.CutNext = true
 
 					By("sending config transaction")
@@ -1709,7 +1709,7 @@ var _ = Describe("Chain", func() {
 						}
 
 						By("creating new configuration with removed node and new one")
-						configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, value))
+						configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
 						c1.cutter.CutNext = true
 
 						step1 := c1.getStepFunc()
@@ -1776,7 +1776,7 @@ var _ = Describe("Chain", func() {
 						}, LongEventualTimeout).Should(BeNumerically(">=", cnt+5))
 
 						By("creating new configuration with removed node and new one")
-						configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, value))
+						configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
 						c1.cutter.CutNext = true
 
 						By("sending config transaction")
