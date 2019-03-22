@@ -17,11 +17,12 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
@@ -1011,6 +1012,58 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 		By("Creating another channel via the orderer that is in system channel but not app channel")
 		network.CreateChannel("three-orderer-channel", network.Orderers[2], peer)
+	})
+
+	It("can add a new orderer organization", func() {
+		network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
+		o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+		orderers := []*nwo.Orderer{o1, o2, o3}
+
+		network.GenerateConfigTree()
+		network.Bootstrap()
+
+		By("Launching the orderers")
+		for _, o := range orderers {
+			runner := network.OrdererRunner(o)
+			ordererRunners = append(ordererRunners, runner)
+			process := ifrit.Invoke(runner)
+			ordererProcesses = append(ordererProcesses, process)
+		}
+
+		for _, ordererProc := range ordererProcesses {
+			Eventually(ordererProc.Ready()).Should(BeClosed())
+		}
+
+		By("Waiting for system channel to be ready")
+		findLeader(ordererRunners)
+
+		peer := network.Peer("Org1", "peer1")
+		channel := "systemchannel"
+
+		config := nwo.GetConfig(network, peer, o1, channel)
+		updatedConfig := proto.Clone(config).(*common.Config)
+
+		ordererOrg := updatedConfig.ChannelGroup.Groups["Orderer"].Groups["OrdererOrg"]
+		mspConfig := &msp.MSPConfig{}
+		proto.Unmarshal(ordererOrg.Values["MSP"].Value, mspConfig)
+
+		fabMSPConfig := &msp.FabricMSPConfig{}
+		proto.Unmarshal(mspConfig.Config, fabMSPConfig)
+
+		fabMSPConfig.Name = "OrdererMSP2"
+
+		mspConfig.Config, _ = proto.Marshal(fabMSPConfig)
+		updatedConfig.ChannelGroup.Groups["Orderer"].Groups["OrdererMSP2"] = &common.ConfigGroup{
+			Values: map[string]*common.ConfigValue{
+				"MSP": {
+					Value:     protoutil.MarshalOrPanic(mspConfig),
+					ModPolicy: "Admins",
+				},
+			},
+			ModPolicy: "Admins",
+		}
+
+		nwo.UpdateOrdererConfig(network, o1, channel, config, updatedConfig, peer, o1)
 	})
 })
 
