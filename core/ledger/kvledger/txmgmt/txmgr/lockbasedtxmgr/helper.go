@@ -31,9 +31,9 @@ type queryHelper struct {
 	doneInvoked       bool
 }
 
-func newQueryHelper(txmgr *LockBasedTxMgr, rwsetBuilder *rwsetutil.RWSetBuilder) *queryHelper {
+func newQueryHelper(txmgr *LockBasedTxMgr, rwsetBuilder *rwsetutil.RWSetBuilder, performCollCheck bool) *queryHelper {
 	helper := &queryHelper{txmgr: txmgr, rwsetBuilder: rwsetBuilder}
-	validator := newCollNameValidator(txmgr.ledgerid, txmgr.ccInfoProvider, &lockBasedQueryExecutor{helper: helper})
+	validator := newCollNameValidator(txmgr.ledgerid, txmgr.ccInfoProvider, &lockBasedQueryExecutor{helper: helper}, !performCollCheck)
 	helper.collNameValidator = validator
 	return helper
 }

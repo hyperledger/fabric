@@ -56,14 +56,13 @@ func TestPvtGetNoCollection(t *testing.T) {
 	testEnv.init(t, "test-pvtdata-get-no-collection", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
-	queryHelper := newQueryHelper(txMgr, nil)
+	queryHelper := newQueryHelper(txMgr, nil, true)
 	valueHash, metadataBytes, err := queryHelper.getPrivateDataValueHash("cc", "coll", "key")
 	assert.Nil(t, valueHash)
 	assert.Nil(t, metadataBytes)
 	assert.Error(t, err)
 	assert.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
 }
-
 func TestPvtPutNoCollection(t *testing.T) {
 	testEnv := testEnvs[0]
 	testEnv.init(t, "test-pvtdata-put-no-collection", nil)
@@ -74,4 +73,16 @@ func TestPvtPutNoCollection(t *testing.T) {
 	err = txsim.SetPrivateDataMetadata("cc", "coll", "key", map[string][]byte{})
 	assert.Error(t, err)
 	assert.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
+}
+
+func TestNoCollectionValidationCheck(t *testing.T) {
+	testEnv := testEnvs[0]
+	testEnv.init(t, "test-no-collection-validation-check", nil)
+	defer testEnv.cleanup()
+	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	qe, err := txMgr.NewQueryExecutorNoCollChecks()
+	assert.NoError(t, err)
+	valueHash, err := qe.GetPrivateDataHash("cc", "coll", "key")
+	assert.Nil(t, valueHash)
+	assert.NoError(t, err)
 }
