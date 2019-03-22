@@ -665,7 +665,7 @@ var _ = Describe("Chain", func() {
 
 						It("should fail, since consenters set change is not supported", func() {
 							err := chain.Configure(configEnv, configSeq)
-							Expect(err).To(MatchError("update of more than one consenter at a time is not supported, requested changes: add 3 node(s), remove 1 node(s)"))
+							Expect(err).To(MatchError(ContainSubstring("update of more than one consenter at a time is not supported, requested changes: add 3 node(s), remove 1 node(s)")))
 							Expect(fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
 							Expect(fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 							Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
@@ -1334,10 +1334,113 @@ var _ = Describe("Chain", func() {
 				})
 			})
 		})
-
 	})
 
-	Describe("Multiple Raft nodes", func() {
+	Describe("2-node Raft cluster", func() {
+		var (
+			network      *network
+			channelID    string
+			timeout      time.Duration
+			dataDir      string
+			c1, c2       *chain
+			raftMetadata *raftprotos.BlockMetadata
+			consenters   map[uint64]*raftprotos.Consenter
+			configEnv    *common.Envelope
+		)
+		BeforeEach(func() {
+			var err error
+
+			channelID = "multi-node-channel"
+			timeout = 10 * time.Second
+
+			dataDir, err = ioutil.TempDir("", "raft-test-")
+			Expect(err).NotTo(HaveOccurred())
+
+			raftMetadata = &raftprotos.BlockMetadata{
+				ConsenterIds:    []uint64{1, 2},
+				NextConsenterId: 3,
+			}
+
+			consenters = map[uint64]*raftprotos.Consenter{
+				1: {
+					Host:          "localhost",
+					Port:          7051,
+					ClientTlsCert: clientTLSCert(tlsCA),
+					ServerTlsCert: serverTLSCert(tlsCA),
+				},
+				2: {
+					Host:          "localhost",
+					Port:          7051,
+					ClientTlsCert: clientTLSCert(tlsCA),
+					ServerTlsCert: serverTLSCert(tlsCA),
+				},
+			}
+
+			metadata := &raftprotos.ConfigMetadata{Consenters: []*raftprotos.Consenter{consenters[2]}}
+			value := map[string]*common.ConfigValue{
+				"ConsensusType": {
+					Version: 1,
+					Value: marshalOrPanic(&orderer.ConsensusType{
+						Metadata: marshalOrPanic(metadata),
+					}),
+				},
+			}
+			// prepare config update to remove 1
+			configEnv = newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
+
+			network = createNetwork(timeout, channelID, dataDir, raftMetadata, consenters)
+			c1, c2 = network.chains[1], network.chains[2]
+			c1.cutter.CutNext = true
+			network.init()
+			network.start()
+		})
+
+		AfterEach(func() {
+			network.stop()
+			os.RemoveAll(dataDir)
+		})
+
+		It("can remove leader by reconfiguring cluster", func() {
+			network.elect(1)
+
+			Expect(c1.Configure(configEnv, 0)).To(Succeed())
+			network.exec(func(c *chain) {
+				Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+				Eventually(c.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
+			})
+
+			Consistently(c1.Chain.Errored).ShouldNot(BeClosed())
+			c1.clock.WaitForNWatchersAndIncrement(ELECTION_TICK*interval, 2)
+			Eventually(c1.Chain.Errored, LongEventualTimeout).Should(BeClosed())
+			close(c1.stopped) // mark c1 stopped in network
+
+			By("Electing 2 as new leader")
+			network.elect(2)
+
+			By("Asserting leader can still serve requests as single-node cluster")
+			c2.cutter.CutNext = true
+			Expect(c2.Order(env, 0)).To(Succeed())
+			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+		})
+
+		It("can remove follower by reconfiguring cluster", func() {
+			network.elect(2)
+
+			Expect(c1.Configure(configEnv, 0)).To(Succeed())
+			network.exec(func(c *chain) {
+				Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+				Eventually(c.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
+			})
+			Eventually(c1.Chain.Errored, LongEventualTimeout).Should(BeClosed())
+
+			By("Asserting leader can still serve requests as single-node cluster")
+			c2.cutter.CutNext = true
+			Expect(c2.Order(env, 0)).To(Succeed())
+			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+		})
+	})
+
+	Describe("3-node Raft cluster", func() {
 		var (
 			network      *network
 			channelID    string
@@ -1572,7 +1675,7 @@ var _ = Describe("Chain", func() {
 
 					By("sending config transaction")
 					err := c1.Configure(configEnv, 0)
-					Expect(err).To(MatchError("update of more than one consenter at a time is not supported, requested changes: add 0 node(s), remove 2 node(s)"))
+					Expect(err).To(MatchError(ContainSubstring("update of more than one consenter at a time is not supported, requested changes: add 0 node(s), remove 2 node(s)")))
 				})
 
 				It("rejects invalid certificates", func() {
@@ -1595,7 +1698,7 @@ var _ = Describe("Chain", func() {
 					c1.cutter.CutNext = true
 
 					By("sending config transaction")
-					Expect(c1.Configure(configEnv, 0)).To(MatchError("Invalid server TLS cert: hello"))
+					Expect(c1.Configure(configEnv, 0)).To(MatchError("invalid server TLS cert: hello"))
 				})
 
 				It("can rotate certificate by adding and removing 1 node in one config update", func() {
@@ -2250,6 +2353,7 @@ var _ = Describe("Chain", func() {
 						})
 
 					// Assert c1 has exited
+					c1.clock.WaitForNWatchersAndIncrement(ELECTION_TICK*interval, 2)
 					Eventually(c1.Errored, LongEventualTimeout).Should(BeClosed())
 					close(c1.stopped)
 

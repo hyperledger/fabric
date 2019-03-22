@@ -686,27 +686,56 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			orderers := []*nwo.Orderer{o1, o2, o3}
 
 			By("Waiting for them to elect a leader")
-			evictedNode := findLeader(ordererRunners) - 1
+			firstEvictedNode := findLeader(ordererRunners) - 1
 
-			By("Removing the leader from system channel")
-			serverCertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(network.Orderers[evictedNode]), "server.crt"))
+			By("Removing the leader from 3-node channel")
+			serverCertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[firstEvictedNode]), "server.crt"))
 			Expect(err).To(Not(HaveOccurred()))
 
-			By("Removing the leader from both system channel and application channel")
-			nwo.RemoveConsenter(network, peer, network.Orderers[(evictedNode+1)%3], "systemchannel", serverCertBytes)
+			nwo.RemoveConsenter(network, peer, network.Orderers[(firstEvictedNode+1)%3], "systemchannel", serverCertBytes)
 			fmt.Fprintln(GinkgoWriter, "Ensuring the other orderers detect the eviction of the node on channel", "systemchannel")
-			Eventually(ordererRunners[(evictedNode+1)%3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Deactivated node"))
-			Eventually(ordererRunners[(evictedNode+2)%3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Deactivated node"))
+			Eventually(ordererRunners[(firstEvictedNode+1)%3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Deactivated node"))
+			Eventually(ordererRunners[(firstEvictedNode+2)%3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Deactivated node"))
 
 			fmt.Fprintln(GinkgoWriter, "Ensuring the evicted orderer stops rafting on channel", "systemchannel")
 			stopMSg := fmt.Sprintf("Raft node stopped channel=%s", "systemchannel")
-			Eventually(ordererRunners[evictedNode].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(stopMSg))
+			Eventually(ordererRunners[firstEvictedNode].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(stopMSg))
 
 			By("Ensuring the evicted orderer now doesn't serve clients")
-			ensureEvicted(orderers[evictedNode], peer, network, "systemchannel")
+			ensureEvicted(orderers[firstEvictedNode], peer, network, "systemchannel")
 
-			By("Ensuring that all orderers don't log errors to the log")
-			assertNoErrorsAreLogged(ordererRunners)
+			var survivedOrdererRunners []*ginkgomon.Runner
+			for i := range orderers {
+				if i == firstEvictedNode {
+					continue
+				}
+
+				survivedOrdererRunners = append(survivedOrdererRunners, ordererRunners[i])
+			}
+
+			secondEvictedNode := findLeader(survivedOrdererRunners) - 1
+
+			var surviver int
+			for i := range orderers {
+				if i != firstEvictedNode && i != secondEvictedNode {
+					surviver = i
+					break
+				}
+			}
+
+			By("Removing the leader from 2-node channel")
+			serverCertBytes, err = ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[secondEvictedNode]), "server.crt"))
+			Expect(err).To(Not(HaveOccurred()))
+
+			nwo.RemoveConsenter(network, peer, orderers[surviver], "systemchannel", serverCertBytes)
+			fmt.Fprintln(GinkgoWriter, "Ensuring the other orderer detect the eviction of the node on channel", "systemchannel")
+			Eventually(ordererRunners[secondEvictedNode].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(stopMSg))
+
+			By("Ensuring the evicted orderer now doesn't serve clients")
+			ensureEvicted(orderers[secondEvictedNode], peer, network, "systemchannel")
+
+			By("Asserting the only remaining node elects itself")
+			findLeader([]*ginkgomon.Runner{ordererRunners[surviver]})
 		})
 
 		It("notices it even if it is down at the time of its eviction", func() {

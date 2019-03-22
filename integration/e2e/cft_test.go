@@ -382,7 +382,7 @@ func findLeader(ordererRunners []*ginkgomon.Runner) int {
 	wg.Add(len(ordererRunners))
 
 	findLeader := func(runner *ginkgomon.Runner) int {
-		Eventually(runner.Err(), time.Minute, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+		Eventually(runner.Err(), time.Minute, time.Second).Should(gbytes.Say("Raft leader changed: [0-9] -> "))
 
 		idBuff := make([]byte, 1)
 		runner.Err().Read(idBuff)
@@ -399,8 +399,13 @@ func findLeader(ordererRunners []*ginkgomon.Runner) int {
 			defer GinkgoRecover()
 			defer wg.Done()
 
-			leader := findLeader(runner)
-			leaders <- leader
+			for {
+				leader := findLeader(runner)
+				if leader != 0 {
+					leaders <- leader
+					break
+				}
+			}
 		}(runner)
 	}
 
