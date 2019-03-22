@@ -10,16 +10,13 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/config"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -170,33 +167,4 @@ func NewClientConnectionWithAddress(
 		return nil, err
 	}
 	return conn, err
-}
-
-func InitTLSForShim(key, certStr string) credentials.TransportCredentials {
-	var sn string
-	priv, err := base64.StdEncoding.DecodeString(key)
-	if err != nil {
-		commLogger.Panicf("failed decoding private key from base64, string: %s, error: %v", key, err)
-	}
-	pub, err := base64.StdEncoding.DecodeString(certStr)
-	if err != nil {
-		commLogger.Panicf("failed decoding public key from base64, string: %s, error: %v", certStr, err)
-	}
-	cert, err := tls.X509KeyPair(pub, priv)
-	if err != nil {
-		commLogger.Panicf("failed loading certificate: %v", err)
-	}
-	b, err := ioutil.ReadFile(config.GetPath("peer.tls.rootcert.file"))
-	if err != nil {
-		commLogger.Panicf("failed loading root ca cert: %v", err)
-	}
-	cp := x509.NewCertPool()
-	if !cp.AppendCertsFromPEM(b) {
-		commLogger.Panicf("failed to append certificates")
-	}
-	return credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      cp,
-		ServerName:   sn,
-	})
 }

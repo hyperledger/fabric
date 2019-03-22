@@ -10,6 +10,9 @@ package shim
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
@@ -25,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -32,6 +36,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // Logger for the shim package.
@@ -316,7 +321,7 @@ func newPeerClientConnection() (*grpc.ClientConn, error) {
 			true,
 			3*time.Second,
 			true,
-			comm.InitTLSForShim(key, cert),
+			tlsCreds(key, cert),
 			kaOpts,
 		)
 	}
@@ -328,6 +333,35 @@ func newPeerClientConnection() (*grpc.ClientConn, error) {
 		nil,
 		kaOpts,
 	)
+}
+
+func tlsCreds(key, certStr string) credentials.TransportCredentials {
+	var sn string
+	priv, err := base64.StdEncoding.DecodeString(key)
+	if err != nil {
+		chaincodeLogger.Panicf("failed decoding private key from base64, string: %s, error: %v", key, err)
+	}
+	pub, err := base64.StdEncoding.DecodeString(certStr)
+	if err != nil {
+		chaincodeLogger.Panicf("failed decoding public key from base64, string: %s, error: %v", certStr, err)
+	}
+	cert, err := tls.X509KeyPair(pub, priv)
+	if err != nil {
+		chaincodeLogger.Panicf("failed loading certificate: %v", err)
+	}
+	b, err := ioutil.ReadFile(config.GetPath("peer.tls.rootcert.file"))
+	if err != nil {
+		chaincodeLogger.Panicf("failed loading root ca cert: %v", err)
+	}
+	cp := x509.NewCertPool()
+	if !cp.AppendCertsFromPEM(b) {
+		chaincodeLogger.Panicf("failed to append certificates")
+	}
+	return credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      cp,
+		ServerName:   sn,
+	})
 }
 
 func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {
