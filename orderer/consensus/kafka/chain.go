@@ -51,7 +51,7 @@ func newChain(
 	lastResubmittedConfigOffset int64,
 ) (*chainImpl, error) {
 	lastCutBlockNumber := getLastCutBlockNumber(support.Height())
-	logger.Infof("[channel: %s] Starting chain with last persisted offset %d and last recorded block %d",
+	logger.Infof("[channel: %s] Starting chain with last persisted offset %d and last recorded block [%d]",
 		support.ChainID(), lastOffsetPersisted, lastCutBlockNumber)
 
 	doneReprocessingMsgInFlight := make(chan struct{})
@@ -228,15 +228,15 @@ func (chain *chainImpl) Order(env *cb.Envelope, configSeq uint64) error {
 func (chain *chainImpl) order(env *cb.Envelope, configSeq uint64, originalOffset int64) error {
 	// During consensus-type migration: stop all normal txs on the system-channel and standard-channels.
 	if chain.migrationStatusStepper.IsPending() || chain.migrationStatusStepper.IsCommitted() {
-		return fmt.Errorf("[channel: %s] cannot enqueue, consensus-type migration pending", chain.ChainID())
+		return errors.Errorf("cannot enqueue, consensus-type migration pending")
 	}
 
 	marshaledEnv, err := utils.Marshal(env)
 	if err != nil {
-		return fmt.Errorf("[channel: %s] cannot enqueue, unable to marshal envelope because = %s", chain.ChainID(), err)
+		return errors.Errorf("cannot enqueue, unable to marshal envelope: %s", err)
 	}
 	if !chain.enqueue(newNormalMessage(marshaledEnv, configSeq, originalOffset)) {
-		return fmt.Errorf("[channel: %s] cannot enqueue", chain.ChainID())
+		return errors.Errorf("cannot enqueue")
 	}
 	return nil
 }
@@ -694,7 +694,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		})
 		chain.WriteBlock(block, metadata)
 		chain.lastCutBlockNumber++
-		logger.Debugf("[channel: %s] Batch filled, just cut block %d - last persisted offset is now %d", chain.ChainID(), chain.lastCutBlockNumber, offset)
+		logger.Debugf("[channel: %s] Batch filled, just cut block [%d] - last persisted offset is now %d", chain.ChainID(), chain.lastCutBlockNumber, offset)
 
 		// Commit the second block if exists
 		if len(batches) == 2 {
@@ -709,7 +709,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			})
 			chain.WriteBlock(block, metadata)
 			chain.lastCutBlockNumber++
-			logger.Debugf("[channel: %s] Batch filled, just cut block %d - last persisted offset is now %d", chain.ChainID(), chain.lastCutBlockNumber, offset)
+			logger.Debugf("[channel: %s] Batch filled, just cut block [%d] - last persisted offset is now %d", chain.ChainID(), chain.lastCutBlockNumber, offset)
 		}
 	}
 
@@ -929,7 +929,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		// Evaluate a potential consensus-type migration step
 		doCommit, err := chain.processMigrationStep(env)
 		if err != nil {
-			return errors.Wrapf(err, "[channel: %s] error processing config message for possible migration step", chain.ChainID())
+			return errors.Wrapf(err, "error processing config message for possible migration step")
 		}
 
 		if doCommit {
@@ -939,7 +939,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		}
 
 	default:
-		return fmt.Errorf("unsupported regular kafka message type: %v", regularMessage.Class.String())
+		return errors.Errorf("unsupported regular kafka message type: %v", regularMessage.Class.String())
 	}
 
 	return nil
@@ -1037,13 +1037,13 @@ func (chain *chainImpl) processMigrationStep(configTx *cb.Envelope) (commitBlock
 
 func (chain *chainImpl) processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, receivedOffset int64) error {
 	ttcNumber := ttcMessage.GetBlockNumber()
-	logger.Debugf("[channel: %s] It's a time-to-cut message for block %d", chain.ChainID(), ttcNumber)
+	logger.Debugf("[channel: %s] It's a time-to-cut message for block [%d]", chain.ChainID(), ttcNumber)
 	if ttcNumber == chain.lastCutBlockNumber+1 {
 		chain.timer = nil
 		logger.Debugf("[channel: %s] Nil'd the timer", chain.ChainID())
 		batch := chain.BlockCutter().Cut()
 		if len(batch) == 0 {
-			return fmt.Errorf("got right time-to-cut message (for block %d),"+
+			return fmt.Errorf("got right time-to-cut message (for block [%d]),"+
 				" no pending requests though; this might indicate a bug", chain.lastCutBlockNumber+1)
 		}
 		block := chain.CreateNextBlock(batch)
@@ -1053,13 +1053,13 @@ func (chain *chainImpl) processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, r
 		})
 		chain.WriteBlock(block, metadata)
 		chain.lastCutBlockNumber++
-		logger.Debugf("[channel: %s] Proper time-to-cut received, just cut block %d", chain.ChainID(), chain.lastCutBlockNumber)
+		logger.Debugf("[channel: %s] Proper time-to-cut received, just cut block [%d]", chain.ChainID(), chain.lastCutBlockNumber)
 		return nil
 	} else if ttcNumber > chain.lastCutBlockNumber+1 {
 		return fmt.Errorf("got larger time-to-cut message (%d) than allowed/expected (%d)"+
 			" - this might indicate a bug", ttcNumber, chain.lastCutBlockNumber+1)
 	}
-	logger.Debugf("[channel: %s] Ignoring stale time-to-cut-message for block %d", chain.ChainID(), ttcNumber)
+	logger.Debugf("[channel: %s] Ignoring stale time-to-cut-message for block [%d]", chain.ChainID(), ttcNumber)
 	return nil
 }
 
@@ -1088,7 +1088,7 @@ func sendConnectMessage(retryOptions localconfig.Retry, exitChan chan struct{}, 
 }
 
 func sendTimeToCut(producer sarama.SyncProducer, channel channel, timeToCutBlockNumber uint64, timer *<-chan time.Time) error {
-	logger.Debugf("[channel: %s] Time-to-cut block %d timer expired", channel.topic(), timeToCutBlockNumber)
+	logger.Debugf("[channel: %s] Time-to-cut block [%d] timer expired", channel.topic(), timeToCutBlockNumber)
 	*timer = nil
 	payload := utils.MarshalOrPanic(newTimeToCutMessage(timeToCutBlockNumber))
 	message := newProducerMessage(channel, payload)

@@ -156,7 +156,7 @@ func TestReplicateChainsFailures(t *testing.T) {
 			name:                    "failure in appending a block to the ledger",
 			latestBlockSeqInOrderer: 21,
 			appendBlockError:        errors.New("IO error"),
-			expectedPanic:           "Failed to write block 0: IO error",
+			expectedPanic:           "Failed to write block [0]: IO error",
 		},
 		{
 			name:                    "failure pulling the system chain",
@@ -1057,7 +1057,7 @@ func TestBlockPullerFromConfigBlockGreenPath(t *testing.T) {
 		{
 			description:        "Success",
 			blockVerifiers:     []cluster.BlockVerifier{&cluster.NoopBlockVerifier{}},
-			expectedLogMessage: "Got block 0 of size",
+			expectedLogMessage: "Got block [0] of size",
 			iterations:         1,
 		},
 		{
@@ -1452,7 +1452,7 @@ func TestChannels(t *testing.T) {
 			},
 			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
 				panicValue := "System channel pulled doesn't match the boot last config block:" +
-					" block 2's hash (bc4ef5cc8a61ac0747cc82df58bac9ad3278622c1cfc7a119b9b1068e422c9f1)" +
+					" block [2]'s hash (bc4ef5cc8a61ac0747cc82df58bac9ad3278622c1cfc7a119b9b1068e422c9f1)" +
 					" mismatches 3's prev block hash ()"
 				assert.PanicsWithValue(t, panicValue, func() {
 					ci.Channels()
@@ -1466,7 +1466,7 @@ func TestChannels(t *testing.T) {
 				systemChain[len(systemChain)-2].Header.PreviousHash = nil
 			},
 			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
-				panicValue := "Claimed previous hash of block 2 is  but actual previous " +
+				panicValue := "Claimed previous hash of block [2] is  but actual previous " +
 					"hash is 920faeb0bd8a02b3f2553247359fb3b684819c75c6e5487bc7eed632841ddc5f"
 				assert.PanicsWithValue(t, panicValue, func() {
 					ci.Channels()
@@ -1480,7 +1480,7 @@ func TestChannels(t *testing.T) {
 				systemChain[len(systemChain)-2].Data.Data = [][]byte{{1, 2, 3}}
 			},
 			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
-				panicValue := "Failed classifying block 2 : block data does not carry" +
+				panicValue := "Failed classifying block [2]: block data does not carry" +
 					" an envelope at index 0: error unmarshaling Envelope: " +
 					"proto: common.Envelope: illegal tag 0 (wire type 1)"
 				assert.PanicsWithValue(t, panicValue, func() {
@@ -1497,7 +1497,7 @@ func TestChannels(t *testing.T) {
 				systemChain[len(systemChain)/2] = nil
 			},
 			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
-				panicValue := "Failed pulling block 2 from the system channel"
+				panicValue := "Failed pulling block [2] from the system channel"
 				assert.PanicsWithValue(t, panicValue, func() {
 					ci.Channels()
 				})

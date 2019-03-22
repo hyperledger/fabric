@@ -307,24 +307,24 @@ func (vl *verifierLoader) loadVerifier(chain string) cluster.BlockVerifier {
 	lastBlockIndex := height - 1
 	lastBlock := blockRetriever.Block(lastBlockIndex)
 	if lastBlock == nil {
-		vl.logger.Panicf("Failed retrieving block %d for channel %s", lastBlockIndex, chain)
+		vl.logger.Panicf("Failed retrieving block [%d] for channel %s", lastBlockIndex, chain)
 	}
 
 	lastConfigBlock, err := cluster.LastConfigBlock(lastBlock, blockRetriever)
 	if err != nil {
-		vl.logger.Panicf("Failed retrieving config block %d for channel %s", lastBlockIndex, chain)
+		vl.logger.Panicf("Failed retrieving config block [%d] for channel %s", lastBlockIndex, chain)
 	}
 	conf, err := cluster.ConfigFromBlock(lastConfigBlock)
 	if err != nil {
 		vl.onFailure(lastConfigBlock)
-		vl.logger.Panicf("Failed extracting configuration for channel %s from block %d: %v",
+		vl.logger.Panicf("Failed extracting configuration for channel %s from block [%d]: %v",
 			chain, lastConfigBlock.Header.Number, err)
 	}
 
 	verifier, err := vl.verifierFactory.VerifierFromConfig(conf, chain)
 	if err != nil {
 		vl.onFailure(lastConfigBlock)
-		vl.logger.Panicf("Failed creating verifier for channel %s from block %d: %v", chain, lastBlockIndex, err)
+		vl.logger.Panicf("Failed creating verifier for channel %s from block [%d]: %v", chain, lastBlockIndex, err)
 	}
 	vl.logger.Infof("Loaded verifier for channel %s from config block at index %d", chain, lastBlockIndex)
 	return verifier

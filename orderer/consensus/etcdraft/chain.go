@@ -388,8 +388,7 @@ func (c *Chain) detectMigration() bool {
 		}
 
 		if startOfChain {
-			c.logger.Infof("[channel: %s], Restarting after consensus-type migration. Type: %s, just starting the channel.",
-				c.support.ChainID(), c.support.SharedConfig().ConsensusType())
+			c.logger.Infof("Restarting after consensus-type migration. Type: %s, just starting the channel.", c.support.SharedConfig().ConsensusType())
 		}
 	}
 	return startOfChain
@@ -631,10 +630,10 @@ func (c *Chain) serveRequest() {
 				case b := <-ch:
 					data := utils.MarshalOrPanic(b)
 					if err := c.Node.Propose(ctx, data); err != nil {
-						c.logger.Errorf("Failed to propose block %d to raft and discard %d blocks in queue: %s", b.Header.Number, len(ch), err)
+						c.logger.Errorf("Failed to propose block [%d] to raft and discard %d blocks in queue: %s", b.Header.Number, len(ch), err)
 						return
 					}
-					c.logger.Debugf("Proposed block %d to raft consensus", b.Header.Number)
+					c.logger.Debugf("Proposed block [%d] to raft consensus", b.Header.Number)
 
 				case <-ctx.Done():
 					c.logger.Debugf("Quit proposing blocks, discarded %d blocks in the queue", len(ch))
@@ -762,7 +761,7 @@ func (c *Chain) serveRequest() {
 					continue
 				}
 
-				c.logger.Infof("Start accepting requests as Raft leader at block %d", c.lastBlock.Header.Number)
+				c.logger.Infof("Start accepting requests as Raft leader at block [%d]", c.lastBlock.Header.Number)
 				bc = &blockCreator{
 					hash:   c.lastBlock.Header.Hash(),
 					number: c.lastBlock.Header.Number,
@@ -825,9 +824,9 @@ func (c *Chain) serveRequest() {
 
 func (c *Chain) writeBlock(block *common.Block, index uint64) {
 	if block.Header.Number > c.lastBlock.Header.Number+1 {
-		c.logger.Panicf("Got block %d, expect block %d", block.Header.Number, c.lastBlock.Header.Number+1)
+		c.logger.Panicf("Got block [%d], expect block [%d]", block.Header.Number, c.lastBlock.Header.Number+1)
 	} else if block.Header.Number < c.lastBlock.Header.Number+1 {
-		c.logger.Infof("Got block %d, expect block %d, this node was forced to catch up", block.Header.Number, c.lastBlock.Header.Number+1)
+		c.logger.Infof("Got block [%d], expect block [%d], this node was forced to catch up", block.Header.Number, c.lastBlock.Header.Number+1)
 		return
 	}
 
@@ -836,7 +835,7 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 	}
 	c.lastBlock = block
 
-	c.logger.Infof("Writing block %d (Raft index: %d) to ledger", block.Header.Number, index)
+	c.logger.Infof("Writing block [%d] (Raft index: %d) to ledger", block.Header.Number, index)
 
 	if utils.IsConfigBlock(block) {
 		c.writeConfigBlock(block, index)
@@ -899,7 +898,7 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]*common.Envelope) {
 	for _, batch := range batches {
 		b := bc.createNextBlock(batch)
-		c.logger.Infof("Created block %d, there are %d blocks in flight", b.Header.Number, c.blockInflight)
+		c.logger.Infof("Created block [%d], there are %d blocks in flight", b.Header.Number, c.blockInflight)
 
 		select {
 		case ch <- b:
@@ -925,7 +924,7 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 	}
 
 	if c.lastBlock.Header.Number >= b.Header.Number {
-		c.logger.Warnf("Snapshot is at block %d, local block number is %d, no sync needed", b.Header.Number, c.lastBlock.Header.Number)
+		c.logger.Warnf("Snapshot is at block [%d], local block number is %d, no sync needed", b.Header.Number, c.lastBlock.Header.Number)
 		return nil
 	}
 
@@ -937,12 +936,12 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 
 	next := c.lastBlock.Header.Number + 1
 
-	c.logger.Infof("Catching up with snapshot taken at block %d, starting from block %d", b.Header.Number, next)
+	c.logger.Infof("Catching up with snapshot taken at block [%d], starting from block [%d]", b.Header.Number, next)
 
 	for next <= b.Header.Number {
 		block := puller.PullBlock(next)
 		if block == nil {
-			return errors.Errorf("failed to fetch block %d from cluster", next)
+			return errors.Errorf("failed to fetch block [%d] from cluster", next)
 		}
 		if utils.IsConfigBlock(block) {
 			c.support.WriteConfigBlock(block, nil)
@@ -950,7 +949,7 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 			configMembership := c.detectConfChange(block)
 
 			if configMembership != nil && configMembership.Changed() {
-				c.logger.Infof("Config block %d changes consenter set, communication should be reconfigured", block.Header.Number)
+				c.logger.Infof("Config block [%d] changes consenter set, communication should be reconfigured", block.Header.Number)
 
 				c.raftMetadataLock.Lock()
 				c.opts.BlockMetadata = configMembership.NewBlockMetadata
@@ -969,7 +968,7 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 		next++
 	}
 
-	c.logger.Infof("Finished syncing with cluster up to block %d (incl.)", b.Header.Number)
+	c.logger.Infof("Finished syncing with cluster up to and including block [%d]", b.Header.Number)
 	return nil
 }
 
@@ -996,7 +995,7 @@ func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 	}
 
 	if changes.Rotated() {
-		c.logger.Infof("Config block %d rotates TLS certificate of node %d", block.Header.Number, changes.RotatedNode)
+		c.logger.Infof("Config block [%d] rotates TLS certificate of node %d", block.Header.Number, changes.RotatedNode)
 	}
 
 	return changes
@@ -1100,7 +1099,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		select {
 		case c.gcC <- &gc{index: c.appliedIndex, state: c.confState, data: ents[position].Data}:
 			c.logger.Infof("Accumulated %d bytes since last snapshot, exceeding size limit (%d bytes), "+
-				"taking snapshot at block %d (index: %d), last snapshotted block number is %d, current nodes: %+v",
+				"taking snapshot at block [%d] (index: %d), last snapshotted block number is %d, current nodes: %+v",
 				c.accDataSize, c.sizeLimit, b.Header.Number, c.appliedIndex, c.lastSnapBlockNum, c.confState.Nodes)
 			c.accDataSize = 0
 			c.lastSnapBlockNum = b.Header.Number
@@ -1318,8 +1317,7 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 	// the block metadata as etcdraft.BlockMetadata (see below). Right after migration the block metadata will carry
 	// Kafka metadata. The etcdraft.BlockMetadata should be extracted from the ConsensusType.Metadata, instead.
 	if c.detectMigration() {
-		c.logger.Infof("[channel: %s], Restarting after consensus-type migration. Type: %s, just starting the chain.",
-			c.support.ChainID(), c.support.SharedConfig().ConsensusType())
+		c.logger.Infof("Restarting after consensus-type migration. Type: %s, just starting the chain.", c.support.SharedConfig().ConsensusType())
 		return nil
 	}
 

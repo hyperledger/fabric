@@ -788,7 +788,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Eventually(ordererRunners[2].Err(), time.Minute, time.Second).Should(gbytes.Say("certificate extracted from TLS connection isn't authorized"))
 
 			By("Ensuring it detects its eviction")
-			evictionDetection := gbytes.Say("Detected our own eviction from the chain in block 1 channel=testchannel")
+			evictionDetection := gbytes.Say(`Detected our own eviction from the channel in block \[1\] channel=testchannel`)
 			Eventually(ordererRunner.Err(), time.Minute, time.Second).Should(evictionDetection)
 
 			By("Ensuring all blocks are pulled up to the block that evicts the OSN")
