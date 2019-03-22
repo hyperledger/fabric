@@ -243,13 +243,13 @@ func (r *Replicator) pullChannelBlocks(channel string, puller *BlockPuller, late
 func (r *Replicator) appendBlock(block *common.Block, ledger LedgerWriter, channel string) {
 	height := ledger.Height()
 	if height > block.Header.Number {
-		r.Logger.Infof("Skipping commit of block %d for channel %s because height is at %d", block.Header.Number, channel, height)
+		r.Logger.Infof("Skipping commit of block [%d] for channel %s because height is at %d", block.Header.Number, channel, height)
 		return
 	}
 	if err := ledger.Append(block); err != nil {
-		r.Logger.Panicf("Failed to write block %d: %v", block.Header.Number, err)
+		r.Logger.Panicf("Failed to write block [%d]: %v", block.Header.Number, err)
 	}
-	r.Logger.Infof("Committed block %d for channel %s", block.Header.Number, channel)
+	r.Logger.Infof("Committed block [%d] for channel %s", block.Header.Number, channel)
 }
 
 func (r *Replicator) compareBootBlockWithSystemChannelLastConfigBlock(block *common.Block) {
@@ -544,14 +544,14 @@ func (ci *ChainInspector) Channels() []ChannelGenesisBlock {
 	for seq := uint64(0); seq < lastConfigBlockNum; seq++ {
 		block = ci.Puller.PullBlock(seq)
 		if block == nil {
-			ci.Logger.Panicf("Failed pulling block %d from the system channel", seq)
+			ci.Logger.Panicf("Failed pulling block [%d] from the system channel", seq)
 		}
 		ci.validateHashPointer(block, prevHash)
 		channel, err := IsNewChannelBlock(block)
 		if err != nil {
 			// If we failed to classify a block, something is wrong in the system chain
 			// we're trying to pull, so abort.
-			ci.Logger.Panic("Failed classifying block", seq, ":", err)
+			ci.Logger.Panicf("Failed classifying block [%d]: %s", seq, err)
 			continue
 		}
 		// Set the previous hash for the next iteration
@@ -586,7 +586,7 @@ func (ci *ChainInspector) validateHashPointer(block *common.Block, prevHash []by
 	if bytes.Equal(block.Header.PreviousHash, prevHash) {
 		return
 	}
-	ci.Logger.Panicf("Claimed previous hash of block %d is %x but actual previous hash is %x",
+	ci.Logger.Panicf("Claimed previous hash of block [%d] is %x but actual previous hash is %x",
 		block.Header.Number, block.Header.PreviousHash, prevHash)
 }
 

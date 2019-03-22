@@ -1161,7 +1161,7 @@ var _ = Describe("Chain", func() {
 								m := &raftprotos.BlockMetadata{}
 								proto.Unmarshal(metadata, m)
 
-								By("Cutting block 3")
+								By("Cutting block [3]")
 								// order another envelope. this should not trigger snapshot
 								err = chain.Order(largeEnv, uint64(0))
 								Expect(err).NotTo(HaveOccurred())
@@ -1177,7 +1177,7 @@ var _ = Describe("Chain", func() {
 
 								c.opts.SnapshotIntervalSize = 1024
 
-								By("Restarting node at block 2")
+								By("Restarting node at block [2]")
 								c.init()
 								c.Start()
 								defer c.Halt()

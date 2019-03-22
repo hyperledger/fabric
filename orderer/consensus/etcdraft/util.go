@@ -73,7 +73,7 @@ func lastConfigBlockFromSupport(support consensus.ConsenterSupport) (*common.Blo
 	lastBlockSeq := support.Height() - 1
 	lastBlock := support.Block(lastBlockSeq)
 	if lastBlock == nil {
-		return nil, errors.Errorf("unable to retrieve block %d", lastBlockSeq)
+		return nil, errors.Errorf("unable to retrieve block [%d]", lastBlockSeq)
 	}
 	lastConfigBlock, err := cluster.LastConfigBlock(lastBlock, support)
 	if err != nil {
@@ -563,7 +563,7 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 		return
 	}
 
-	es.logger.Infof("Last config block was found to be block %d", lastConfigBlock.Header.Number)
+	es.logger.Infof("Last config block was found to be block [%d]", lastConfigBlock.Header.Number)
 
 	height := es.height()
 
@@ -584,7 +584,7 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 		return
 	}
 
-	es.logger.Warningf("Detected our own eviction from the chain in block %d", lastConfigBlock.Header.Number)
+	es.logger.Warningf("Detected our own eviction from the channel in block [%d]", lastConfigBlock.Header.Number)
 
 	es.logger.Infof("Waiting for chain to halt")
 	es.halt()
@@ -594,11 +594,11 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 	nextBlock := height
 	es.logger.Infof("Will now pull blocks %d to %d", nextBlock, lastConfigBlock.Header.Number)
 	for seq := nextBlock; seq <= lastConfigBlock.Header.Number; seq++ {
-		es.logger.Infof("Pulling block %d", seq)
+		es.logger.Infof("Pulling block [%d]", seq)
 		block := puller.PullBlock(seq)
 		err := es.writeBlock(block)
 		if err != nil {
-			es.logger.Panicf("Failed writing block %d to the ledger: %v", block.Header.Number, err)
+			es.logger.Panicf("Failed writing block [%d] to the ledger: %v", block.Header.Number, err)
 		}
 	}
 
