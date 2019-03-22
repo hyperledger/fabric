@@ -42,9 +42,6 @@ import (
 // Logger for the shim package.
 var chaincodeLogger = logging.MustGetLogger("shim")
 
-var key string
-var cert string
-
 const (
 	minUnicodeRuneValue   = 0            //U+0000
 	maxUnicodeRuneValue   = utf8.MaxRune //U+10FFFF - maximum (and unallocated) code point
@@ -85,26 +82,6 @@ var streamGetter peerStreamGetter
 //the non-mock user CC stream establishment func
 func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 	flag.StringVar(&peerAddress, "peer.address", "", "peer address")
-	if viper.GetBool("peer.tls.enabled") {
-		keyPath := viper.GetString("tls.client.key.path")
-		certPath := viper.GetString("tls.client.cert.path")
-
-		data, err1 := ioutil.ReadFile(keyPath)
-		if err1 != nil {
-			err1 = errors.Wrap(err1, fmt.Sprintf("error trying to read file content %s", keyPath))
-			chaincodeLogger.Errorf("%+v", err1)
-			return nil, err1
-		}
-		key = string(data)
-
-		data, err1 = ioutil.ReadFile(certPath)
-		if err1 != nil {
-			err1 = errors.Wrap(err1, fmt.Sprintf("error trying to read file content %s", certPath))
-			chaincodeLogger.Errorf("%+v", err1)
-			return nil, err1
-		}
-		cert = string(data)
-	}
 
 	flag.Parse()
 
@@ -321,7 +298,7 @@ func newPeerClientConnection() (*grpc.ClientConn, error) {
 			true,
 			3*time.Second,
 			true,
-			tlsCreds(key, cert),
+			tlsCreds(),
 			kaOpts,
 		)
 	}
@@ -335,16 +312,45 @@ func newPeerClientConnection() (*grpc.ClientConn, error) {
 	)
 }
 
-func tlsCreds(key, certStr string) credentials.TransportCredentials {
-	var sn string
-	priv, err := base64.StdEncoding.DecodeString(key)
+func tlsCreds() credentials.TransportCredentials {
+
+	keyPath := viper.GetString("tls.client.key.path")
+	certPath := viper.GetString("tls.client.cert.path")
+
+	data, err := ioutil.ReadFile(keyPath)
 	if err != nil {
-		chaincodeLogger.Panicf("failed decoding private key from base64, string: %s, error: %v", key, err)
+		chaincodeLogger.Panicf(
+			"error trying to read file content %s: %s",
+			keyPath,
+			err,
+		)
+
 	}
-	pub, err := base64.StdEncoding.DecodeString(certStr)
+	priv, err := base64.StdEncoding.DecodeString(string(data))
 	if err != nil {
-		chaincodeLogger.Panicf("failed decoding public key from base64, string: %s, error: %v", certStr, err)
+		chaincodeLogger.Panicf(
+			"failed decoding private key from base64, string: %s, error: %v",
+			string(data),
+			err,
+		)
 	}
+	data, err = ioutil.ReadFile(certPath)
+	if err != nil {
+		chaincodeLogger.Panicf(
+			"error trying to read file content %s: %s",
+			certPath,
+			err,
+		)
+	}
+	pub, err := base64.StdEncoding.DecodeString(string(data))
+	if err != nil {
+		chaincodeLogger.Panicf(
+			"failed decoding public key from base64, string: %s, error: %v",
+			string(data),
+			err,
+		)
+	}
+
 	cert, err := tls.X509KeyPair(pub, priv)
 	if err != nil {
 		chaincodeLogger.Panicf("failed loading certificate: %v", err)
@@ -360,7 +366,6 @@ func tlsCreds(key, certStr string) credentials.TransportCredentials {
 	return credentials.NewTLS(&tls.Config{
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      cp,
-		ServerName:   sn,
 	})
 }
 
