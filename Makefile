@@ -86,10 +86,6 @@ GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
 
 GO_TAGS ?=
 
-CHAINTOOL_URL ?= https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric/hyperledger-fabric/chaintool-$(CHAINTOOL_RELEASE)/hyperledger-fabric-chaintool-$(CHAINTOOL_RELEASE).jar
-
-export GO_LDFLAGS GO_TAGS
-
 EXECUTABLES ?= go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
@@ -257,12 +253,11 @@ $(BUILD_DIR)/images/baseos/$(DUMMY):
 	@echo "Docker:  building $(TARGET) image"
 	$(DBUILD) -f images/peer/Dockerfile \
 		--target base \
-		--build-arg GO_VER=${GO_VER} --build-arg ALPINE_VER=${ALPINE_VER} \
+		--build-arg GO_VER=${GO_VER} \
+		--build-arg ALPINE_VER=${ALPINE_VER} \
 		-t $(DOCKER_NS)/fabric-$(TARGET) images/peer
-	docker tag $(DOCKER_NS)/fabric-$(TARGET) \
-		$(DOCKER_NS)/fabric-$(TARGET):$(BASE_VERSION)
-	docker tag $(DOCKER_NS)/fabric-$(TARGET) \
-		$(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(BASE_VERSION)
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 	@touch $@
 
 $(BUILD_DIR)/images/ccenv/$(DUMMY): BUILD_ARGS=--build-arg CHAINTOOL_RELEASE=${CHAINTOOL_RELEASE} \
@@ -273,13 +268,12 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 	$(eval TARGET = ${patsubst $(BUILD_DIR)/images/%/$(DUMMY),%,${@}})
 	@echo "Docker:  building $(TARGET) image"
 	$(DBUILD) -f images/$(TARGET)/Dockerfile \
-		--build-arg GO_VER=${GO_VER} --build-arg ALPINE_VER=${ALPINE_VER} \
+		--build-arg GO_VER=${GO_VER} \
+		--build-arg ALPINE_VER=${ALPINE_VER} \
 		${BUILD_ARGS} \
 		-t $(DOCKER_NS)/fabric-$(TARGET) .
-	docker tag $(DOCKER_NS)/fabric-$(TARGET) \
-		$(DOCKER_NS)/fabric-$(TARGET):$(BASE_VERSION)
-	docker tag $(DOCKER_NS)/fabric-$(TARGET) \
-		$(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(BASE_VERSION)
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 	@touch $@
 
 # builds release packages for the host platform
