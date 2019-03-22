@@ -1071,7 +1071,21 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				c.logger.Infof("Current node removed from replica set for channel %s", c.channelID)
 				// calling goroutine, since otherwise it will be blocked
 				// trying to write into haltC
-				go c.Halt()
+				lead := atomic.LoadUint64(&c.lastKnownLeader)
+				if lead == c.raftID {
+					c.logger.Info("This node is being removed as current leader, halt with delay")
+					c.configInflight = true // toggle the flag so this node does not accept further tx
+					go func() {
+						select {
+						case <-c.clock.After(time.Duration(c.opts.ElectionTick) * c.opts.TickInterval):
+						case <-c.doneC:
+						}
+
+						c.Halt()
+					}()
+				} else {
+					go c.Halt()
+				}
 			}
 		}
 
@@ -1177,11 +1191,11 @@ func (c *Chain) checkConsentersSet(updatedMetadata *etcdraft.ConfigMetadata) err
 	// sanity check of certificates
 	for _, consenter := range updatedMetadata.Consenters {
 		if bl, _ := pem.Decode(consenter.ServerTlsCert); bl == nil {
-			return errors.Errorf("Invalid server TLS cert: %s", string(consenter.ServerTlsCert))
+			return errors.Errorf("invalid server TLS cert: %s", string(consenter.ServerTlsCert))
 		}
 
 		if bl, _ := pem.Decode(consenter.ClientTlsCert); bl == nil {
-			return errors.Errorf("Invalid client TLS cert: %s", string(consenter.ClientTlsCert))
+			return errors.Errorf("invalid client TLS cert: %s", string(consenter.ClientTlsCert))
 		}
 	}
 
