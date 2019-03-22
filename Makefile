@@ -90,13 +90,9 @@ EXECUTABLES ?= go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
 
-GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim)
 PROTOS = $(shell git ls-files *.proto | grep -Ev 'vendor/|testdata/')
 # No sense rebuilding when non production code is changed
-PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
-	grep -v ^.git | grep -v ^examples | grep -v ^devenv | grep -v .png$ | \
-	grep -v ^LICENSE | grep -v ^vendor )
-RELEASE_TEMPLATES = $(shell git ls-files | grep "release/templates")
+PROJECT_FILES = $(shell git ls-files  | grep -Ev '^integration/|^vagrant/|.png$|^LICENSE|^vendor/')
 IMAGES = peer orderer baseos ccenv buildenv tools
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-s390x linux-ppc64le
 RELEASE_PKGS = configtxgen cryptogen idemixgen discover token configtxlator peer orderer
@@ -108,7 +104,6 @@ pkgmap.configtxgen    := $(PKGNAME)/cmd/configtxgen
 pkgmap.configtxlator  := $(PKGNAME)/cmd/configtxlator
 pkgmap.peer           := $(PKGNAME)/cmd/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
-pkgmap.block-listener := $(PKGNAME)/examples/events/block-listener
 pkgmap.discover       := $(PKGNAME)/cmd/discover
 pkgmap.token          := $(PKGNAME)/cmd/token
 
