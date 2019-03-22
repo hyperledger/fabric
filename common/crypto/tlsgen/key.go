@@ -72,7 +72,10 @@ func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Sig
 		template.NotAfter = tenYearsFromNow
 		template.IsCA = true
 		template.KeyUsage |= x509.KeyUsageCertSign | x509.KeyUsageCRLSign
-		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny}
+		template.ExtKeyUsage = []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+			x509.ExtKeyUsageServerAuth,
+		}
 		template.BasicConstraintsValid = true
 	} else {
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
