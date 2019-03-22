@@ -57,10 +57,6 @@ General:
         ClientCertificate:
         # ClientPrivateKey governs the file location of the private key of the client TLS certificate.
         ClientPrivateKey:
-        # RootCAs governs the file locations of certificates of the Certificate Authorities
-        # which authorize connections to remote ordering service nodes.
-        RootCAs:
-          - tls/ca.crt
         # The below 4 properties should be either set together, or be unset together.
         # If they are set, then the orderer node uses a separate listener for intra-cluster
         # communication. If they are unset, then the general orderer listener is used.
