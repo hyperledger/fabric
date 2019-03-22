@@ -428,15 +428,17 @@ func (c *Chain) checkConfigUpdateValidity(ctx *common.Envelope) error {
 		return nil
 	case int32(common.HeaderType_CONFIG):
 		configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
+
+		if err != nil {
+			return err
+		}
+		metadata, err := MetadataFromConfigUpdate(configUpdate)
 		if err != nil {
 			return err
 		}
 
-		// Validate consenter set if it is updated in the write-set
-		if ordererConfigGroup, ok := configUpdate.WriteSet.Groups["Orderer"]; ok {
-			if val, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
-				return c.checkConsentersSet(val)
-			}
+		if metadata != nil {
+			return c.checkConsentersSet(metadata)
 		}
 		return nil
 
@@ -1171,13 +1173,7 @@ func (c *Chain) pemToDER(pemBytes []byte, id uint64, certType string) ([]byte, e
 }
 
 // checkConsentersSet validates correctness of the consenters set provided within configuration value
-func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
-	// read metadata update from configuration
-	updatedMetadata, err := MetadataFromConfigValue(configValue)
-	if err != nil {
-		return err
-	}
-
+func (c *Chain) checkConsentersSet(updatedMetadata *etcdraft.ConfigMetadata) error {
 	// sanity check of certificates
 	for _, consenter := range updatedMetadata.Consenters {
 		if bl, _ := pem.Decode(consenter.ServerTlsCert); bl == nil {
@@ -1189,7 +1185,8 @@ func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
 		}
 	}
 
-	if err := MetadataHasDuplication(updatedMetadata); err != nil {
+	var err error
+	if err = MetadataHasDuplication(updatedMetadata); err != nil {
 		return err
 	}
 
