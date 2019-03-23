@@ -21,7 +21,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/comm"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	logging "github.com/op/go-logging"
@@ -88,11 +87,6 @@ func Start(cc Chaincode) error {
 	chaincodename := viper.GetString("chaincode.id.name")
 	if chaincodename == "" {
 		return errors.New("error chaincode id not provided")
-	}
-
-	err := factory.InitFactories(factory.GetDefaultOpts())
-	if err != nil {
-		return errors.WithMessage(err, "internal error, BCCSP could not be initialized with default options")
 	}
 
 	//mock stream not set up ... get real stream
