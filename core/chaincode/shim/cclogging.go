@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	logging "github.com/op/go-logging"
-	"github.com/spf13/viper"
 )
 
 // IsEnabledForLogLevel checks to see if the chaincodeLogger is enabled for a specific logging level
@@ -35,13 +34,8 @@ func setupChaincodeLogging() {
 	const defaultLogFormat = "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
 	const defaultLevel = logging.INFO
 
-	viper.SetEnvPrefix("CORE")
-	viper.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
-
 	// setup process-wide logging backend
-	logFormat := viper.GetString("chaincode.logging.format")
+	logFormat := os.Getenv("CORE_CHAINCODE_LOGGING_FORMAT")
 	if logFormat == "" {
 		logFormat = defaultLogFormat
 	}
@@ -52,7 +46,7 @@ func setupChaincodeLogging() {
 	logging.SetBackend(backendFormatter).SetLevel(defaultLevel, "")
 
 	// set default log level for all loggers
-	chaincodeLogLevelString := viper.GetString("chaincode.logging.level")
+	chaincodeLogLevelString := os.Getenv("CORE_CHAINCODE_LOGGING_LEVEL")
 	if chaincodeLogLevelString == "" {
 		chaincodeLogger.Infof("Chaincode log level not provided; defaulting to: %s", defaultLevel.String())
 		chaincodeLogLevelString = defaultLevel.String()
@@ -70,7 +64,7 @@ func setupChaincodeLogging() {
 	// blank or an invalid log level, then the above call to
 	// `initFromSpec` already set the default log level so no action
 	// is required here.
-	shimLogLevelString := viper.GetString("chaincode.logging.shim")
+	shimLogLevelString := os.Getenv("CORE_CHAINCODE_LOGGING_SHIM")
 	if shimLogLevelString != "" {
 		shimLogLevel, err := LogLevel(shimLogLevelString)
 		if err == nil {
@@ -82,7 +76,7 @@ func setupChaincodeLogging() {
 
 	//now that logging is setup, print build level. This will help making sure
 	//chaincode is matched with peer.
-	buildLevel := viper.GetString("chaincode.buildlevel")
+	buildLevel := os.Getenv("CORE_CHAINCODE_BUILDLEVEL")
 	chaincodeLogger.Infof("Chaincode (build level: %s) starting up ...", buildLevel)
 }
 

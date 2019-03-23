@@ -12,10 +12,10 @@ import (
 	"context"
 	"encoding/base64"
 	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -25,7 +25,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
 
@@ -39,9 +38,6 @@ const (
 	emptyKeySubstitute    = "\x01"
 )
 
-// Peer address derived from command line or env var
-var peerAddress string
-
 //this separates the chaincode stream interface establishment
 //so we can replace it with a mock peer stream
 type peerStreamGetter func(name string) (PeerChaincodeStream, error)
@@ -51,30 +47,32 @@ var streamGetter peerStreamGetter
 
 //the non-mock user CC stream establishment func
 func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
-	flag.StringVar(&peerAddress, "peer.address", "", "peer address")
-
+	chaincodeLogger.Debugf("os.Args returns: %s", os.Args)
+	peerAddress := flag.String("peer.address", "", "peer address")
 	flag.Parse()
-
-	chaincodeLogger.Debugf("Peer address: %s", getPeerAddress())
+	if *peerAddress == "" {
+		return nil, errors.New("flag 'peer.address' must be set")
+	}
+	chaincodeLogger.Debugf("Peer address: %s", *peerAddress)
 
 	// Establish connection with validating peer
-	clientConn, err := newPeerClientConnection(getPeerAddress())
+	clientConn, err := newPeerClientConnection(*peerAddress)
 	if err != nil {
 		err = errors.Wrap(err, "error trying to connect to local peer")
 		chaincodeLogger.Errorf("%+v", err)
 		return nil, err
 	}
 
-	chaincodeLogger.Debugf("os.Args returns: %s", os.Args)
-
+	// establish stream with peer
 	chaincodeSupportClient := pb.NewChaincodeSupportClient(clientConn)
-
-	// Establish stream with validating peer
 	stream, err := chaincodeSupportClient.Register(context.Background())
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error chatting with leader at address=%s", getPeerAddress()))
+		return nil, errors.WithMessagef(
+			err,
+			"error connecting to peer address %s",
+			*peerAddress,
+		)
 	}
-
 	return stream, nil
 }
 
@@ -84,9 +82,9 @@ func Start(cc Chaincode) error {
 	// up formatted logging.
 	SetupChaincodeLogging()
 
-	chaincodename := viper.GetString("chaincode.id.name")
+	chaincodename := os.Getenv("CORE_CHAINCODE_ID_NAME")
 	if chaincodename == "" {
-		return errors.New("error chaincode id not provided")
+		return errors.New("'CORE_CHAINCODE_ID_NAME' must be set")
 	}
 
 	//mock stream not set up ... get real stream
@@ -118,25 +116,13 @@ func StartInProc(env []string, args []string, cc Chaincode, recv <-chan *pb.Chai
 		}
 	}
 	if chaincodename == "" {
-		return errors.New("error chaincode id not provided")
+		return errors.New("'CORE_CHAINCODE_ID_NAME' must be set")
 	}
 
 	stream := newInProcStream(recv, send)
 	chaincodeLogger.Debugf("starting chat with peer using name=%s", chaincodename)
 	err := chatWithPeer(chaincodename, stream, cc)
 	return err
-}
-
-func getPeerAddress() string {
-	if peerAddress != "" {
-		return peerAddress
-	}
-
-	if peerAddress = viper.GetString("peer.address"); peerAddress == "" {
-		chaincodeLogger.Fatalf("peer.address not configured, can't connect to peer")
-	}
-
-	return peerAddress
 }
 
 func newPeerClientConnection(address string) (*grpc.ClientConn, error) {
@@ -164,12 +150,16 @@ func newPeerClientConnection(address string) (*grpc.ClientConn, error) {
 }
 
 func secureOptions() (*comm.SecureOptions, error) {
-	if viper.GetBool("peer.tls.enabled") {
-		keyPath := viper.GetString("tls.client.key.path")
-		certPath := viper.GetString("tls.client.cert.path")
-		caPath := viper.GetString("peer.tls.rootcert.file")
 
-		data, err := ioutil.ReadFile(keyPath)
+	tlsEnabled, err := strconv.ParseBool(os.Getenv("CORE_PEER_TLS_ENABLED"))
+	if err != nil {
+		return nil, errors.WithMessage(
+			err,
+			"'CORE_PEER_TLS_ENABLED' must be set to 'true' or 'false'",
+		)
+	}
+	if tlsEnabled {
+		data, err := ioutil.ReadFile(os.Getenv("CORE_TLS_CLIENT_KEY_PATH"))
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed to read private key file")
 		}
@@ -177,7 +167,7 @@ func secureOptions() (*comm.SecureOptions, error) {
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed to decode private key file")
 		}
-		data, err = ioutil.ReadFile(certPath)
+		data, err = ioutil.ReadFile(os.Getenv("CORE_TLS_CLIENT_CERT_PATH"))
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed to read public key file")
 		}
@@ -185,11 +175,10 @@ func secureOptions() (*comm.SecureOptions, error) {
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed to decode public key file")
 		}
-		root, err := ioutil.ReadFile(caPath)
+		root, err := ioutil.ReadFile(os.Getenv("CORE_PEER_TLS_ROOTCERT_FILE"))
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed to read root cert file")
 		}
-
 		return &comm.SecureOptions{
 				UseTLS:            true,
 				Certificate:       []byte(cert),

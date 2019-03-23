@@ -20,7 +20,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	logging "github.com/op/go-logging"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -496,8 +495,8 @@ func TestSetupChaincodeLogging_shim(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			viper.Set("chaincode.logging.level", tc.ccLogLevel)
-			viper.Set("chaincode.logging.shim", tc.shimLogLevel)
+			os.Setenv("CORE_CHAINCODE_LOGGING_LEVEL", tc.ccLogLevel)
+			os.Setenv("CORE_CHAINCODE_LOGGING_SHIM", tc.shimLogLevel)
 
 			setupChaincodeLogging()
 
@@ -530,7 +529,7 @@ func mockChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 }
 
 func setupcc(name string) *mockpeer.MockCCComm {
-	viper.Set("chaincode.id.name", name)
+	os.Setenv("CORE_CHAINCODE_ID_NAME", name)
 	send := make(chan *pb.ChaincodeMessage)
 	recv := make(chan *pb.ChaincodeMessage)
 	ccSide, _ := mockPeerCCSupport.AddCC(name, recv, send)
@@ -559,7 +558,6 @@ func processDone(t *testing.T, done chan error, expecterr bool) {
 func TestInvoke(t *testing.T) {
 	streamGetter = mockChaincodeStreamGetter
 	cc := &shimTestCC{}
-	//viper.Set("chaincode.logging.shim", "debug")
 	ccname := "shimTestCC"
 	peerSide := setupcc(ccname)
 	defer mockPeerCCSupport.RemoveCC(ccname)
@@ -1063,7 +1061,6 @@ func TestStartInProc(t *testing.T) {
 func TestCC2CC(t *testing.T) {
 	streamGetter = mockChaincodeStreamGetter
 	cc := &shimTestCC{}
-	//viper.Set("chaincode.logging.shim", "debug")
 	ccname := "shimTestCC"
 	peerSide := setupcc(ccname)
 	defer mockPeerCCSupport.RemoveCC(ccname)
@@ -1158,7 +1155,7 @@ func TestCC2CC(t *testing.T) {
 }
 
 func TestRealPeerStream(t *testing.T) {
-	viper.Set("peer.address", "127.0.0.1:12345")
+	os.Args = []string{"chaincode", "peer.address", "127.0.0.1:12345"}
 	_, err := userChaincodeStreamGetter("fake")
 	assert.Error(t, err)
 }
