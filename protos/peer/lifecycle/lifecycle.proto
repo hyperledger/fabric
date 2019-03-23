@@ -108,6 +108,27 @@ message CommitChaincodeDefinitionArgs {
 message CommitChaincodeDefinitionResult {
 }
 
+// QueryApprovalStatusArgs is the message used as arguments to
+// `_lifecycle.QueryApprovalStatus`
+message QueryApprovalStatusArgs {
+    int64 sequence = 1;
+    string name = 2;
+    string version = 3;
+    string endorsement_plugin = 4;
+    string validation_plugin = 5;
+    bytes validation_parameter = 6;
+    common.CollectionConfigPackage collections = 7;
+    bool init_required = 8;
+}
+
+// QueryApprovalStatusResults is the message returned by
+// `_lifecycle.QueryApprovalStatus`. It returns a map of
+// orgs to their approval (true/false) for the definition
+// supplied as args
+message QueryApprovalStatusResults {
+    map<string, bool> approved = 1;
+}
+
 // QueryChaincodeDefinition is the message used as arguments to
 // `_lifecycle.QueryChaincodeDefinition`.
 message QueryChaincodeDefinitionArgs {

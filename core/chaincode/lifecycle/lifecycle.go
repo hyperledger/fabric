@@ -13,13 +13,13 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/golang/protobuf/proto"
-	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/pkg/errors"
 )
 
@@ -217,11 +217,9 @@ type ExternalFunctions struct {
 	InstallListener InstallListener
 }
 
-// CommitChaincodeDefinition takes a chaincode definition, checks that its sequence number is the next allowable sequence number,
-// checks which organizations agree with the definition, and applies the definition to the public world state.
-// It is the responsibility of the caller to check the agreement to determine if the result is valid (typically
-// this means checking that the peer's own org is in agreement.)
-func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
+// QueryApprovalStatus takes a chaincode definition, checks that its sequence number is the next allowable sequence number
+// and checks which organizations agree with the definition
+func (ef *ExternalFunctions) QueryApprovalStatus(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
 	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, ccname, "Sequence", publicState)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get current sequence")
@@ -239,7 +237,24 @@ func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd
 	privateName := fmt.Sprintf("%s#%d", ccname, cd.Sequence)
 	for i, orgState := range orgStates {
 		match, err := ef.Resources.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters(), orgState)
-		agreement[i] = (err == nil && match)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "serialization check failed for key %s", privateName)
+		}
+
+		agreement[i] = match
+	}
+
+	return agreement, nil
+}
+
+// CommitChaincodeDefinition takes a chaincode definition, checks that its sequence number is the next allowable sequence number,
+// checks which organizations agree with the definition, and applies the definition to the public world state.
+// It is the responsibility of the caller to check the agreement to determine if the result is valid (typically
+// this means checking that the peer's own org is in agreement.)
+func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
+	agreement, err := ef.QueryApprovalStatus(chname, ccname, cd, publicState, orgStates)
+	if err != nil {
+		return nil, err
 	}
 
 	if err = ef.Resources.Serializer.Serialize(NamespacesName, ccname, cd, publicState); err != nil {

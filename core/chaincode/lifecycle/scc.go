@@ -40,6 +40,10 @@ const (
 	// execution by the user's own org
 	ApproveChaincodeDefinitionForMyOrgFuncName = "ApproveChaincodeDefinitionForMyOrg"
 
+	// QueryApprovalStatusFuncName is the chaincode function name used to query the approval status for a given
+	// definition over a given set of orgs
+	QueryApprovalStatusFuncName = "QueryApprovalStatus"
+
 	// CommitChaincodeDefinitionFuncName is the chaincode function name used to 'define' (previously 'instantiate')
 	// a chaincode in a channel.
 	CommitChaincodeDefinitionFuncName = "CommitChaincodeDefinition"
@@ -67,6 +71,10 @@ type SCCFunctions interface {
 
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
 	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID persistence.PackageID, publicState ReadableState, orgState ReadWritableState) error
+
+	// QueryApprovalStatus returns an array of boolean to signal whether the orgs
+	// whose orgStates was supplied as argument have approveed the specified definition
+	QueryApprovalStatus(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
 
 	// CommitChaincodeDefinition records a new chaincode definition into the public state and returns the orgs which agreed with that definition.
 	CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
@@ -303,6 +311,57 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 		return nil, err
 	}
 	return &lb.ApproveChaincodeDefinitionForMyOrgResult{}, nil
+}
+
+// QueryApprovalStatus is a SCC function that may be dispatched to the underlying
+// lifecycle implementation
+func (i *Invocation) QueryApprovalStatus(input *lb.QueryApprovalStatusArgs) (proto.Message, error) {
+	if i.ApplicationConfig == nil {
+		return nil, errors.Errorf("no application config for channel '%s'", i.Stub.GetChannelID())
+	}
+
+	orgs := i.ApplicationConfig.Organizations()
+	opaqueStates := make([]OpaqueState, 0, len(orgs))
+	orgNames := make([]string, 0, len(orgs))
+	for _, org := range orgs {
+		orgNames = append(orgNames, org.MSPID())
+		opaqueStates = append(opaqueStates, &ChaincodePrivateLedgerShim{
+			Collection: ImplicitCollectionNameForOrg(org.MSPID()),
+			Stub:       i.Stub,
+		})
+	}
+
+	approved, err := i.SCC.Functions.QueryApprovalStatus(
+		i.Stub.GetChannelID(),
+		input.Name,
+		&ChaincodeDefinition{
+			Sequence: input.Sequence,
+			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+				Version:           input.Version,
+				EndorsementPlugin: input.EndorsementPlugin,
+				InitRequired:      input.InitRequired,
+			},
+			ValidationInfo: &lb.ChaincodeValidationInfo{
+				ValidationPlugin:    input.ValidationPlugin,
+				ValidationParameter: input.ValidationParameter,
+			},
+			Collections: input.Collections,
+		},
+		i.Stub,
+		opaqueStates,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	orgApproval := make(map[string]bool)
+	for i, org := range orgNames {
+		orgApproval[org] = approved[i]
+	}
+
+	return &lb.QueryApprovalStatusResults{
+		Approved: orgApproval,
+	}, nil
 }
 
 func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefinitionArgs) (proto.Message, error) {
