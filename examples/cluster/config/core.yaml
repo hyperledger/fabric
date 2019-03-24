@@ -124,6 +124,30 @@ peer:
             # Time between peer sends propose message and declare itself as a leader (sends declaration message) (unit: second)
             leaderElectionDuration: 5s
 
+        # Gossip state transfer related configuration
+        state:
+            # indicates whenever state transfer is enabled or not
+            # default value is true, i.e. state transfer is active
+            # and takes care to sync up missing blocks allowing
+            # lagging peer to catch up to speed with rest network
+            enabled: true
+            # checkInterval interval to check whether peer is lagging behind enough to
+            # request blocks via state transfer from another peer.
+            checkInterval: 10s
+            # responseTimeout amount of time to wait for state transfer response from
+            # other peers
+            responseTimeout: 3s
+            # batchSize the number of blocks to request via state transfer from another peer
+            batchSize: 10
+            # blockBufferSize reflect the maximum distance between lowest and
+            # highest block sequence number state buffer to avoid holes.
+            # In order to ensure absence of the holes actual buffer size
+            # is twice of this distance
+            blockBufferSize: 100
+            # maxRetries maximum number of re-tries to ask
+            # for single state transfer request
+            maxRetries: 3
+
     # Sync related configuration
     sync:
         blocks:
