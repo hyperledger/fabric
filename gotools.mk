@@ -9,7 +9,6 @@ GOTOOLS_GOPATH ?= $(BUILD_DIR)/gotools
 GOTOOLS_BINDIR ?= $(GOPATH)/bin
 
 # go tool->path mapping
-go.fqp.counterfeiter := github.com/maxbrunsfeld/counterfeiter
 go.fqp.gocov         := github.com/axw/gocov/gocov
 go.fqp.gocov-xml     := github.com/AlekSi/gocov-xml
 go.fqp.goimports     := golang.org/x/tools/cmd/goimports
@@ -47,6 +46,17 @@ gotool.dep:
 	@echo "Building github.com/golang/dep $(DEP_VERSION) -> dep"
 	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install -ldflags="-X main.version=$(DEP_VERSION) -X main.buildDate=$$(date '+%Y-%m-%d')" github.com/golang/dep/cmd/dep
 	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/golang/dep checkout -q master
+
+# Lock to pre module version of counterfeiter
+gotool.counterfeiter: COMMIT ?= "d7285d544cff1ff5c7c5503bd39656276c06d133"
+gotool.counterfeiter:
+	@echo "Building github.com/maxbrunsfeld/counterfeiter $(COMMIT) -> counterfeiter"
+	@mkdir -p $(GOTOOLS_GOPATH)/src/github.com/maxbrunsfeld
+	@git clone https://github.com/maxbrunsfeld/counterfeiter $(GOTOOLS_GOPATH)/src/github.com/maxbrunsfeld/counterfeiter
+	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/maxbrunsfeld/counterfeiter checkout -q $(COMMIT)
+	cd $(GOTOOLS_GOPATH)/src/github.com/maxbrunsfeld/counterfeiter && GOPATH=$(abspath $(GOTOOLS_GOPATH)) go get -d ./...
+	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install github.com/maxbrunsfeld/counterfeiter
+	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/maxbrunsfeld/counterfeiter checkout -q master
 
 # Default rule for gotools uses the name->path map for a generic 'go get' style build
 gotool.%:
