@@ -133,11 +133,9 @@ func (h *Handler) sendReceive(msg *pb.ChaincodeMessage, c <-chan pb.ChaincodeMes
 	for {
 		select {
 		case err := <-errc:
-			if err == nil {
-				continue
+			if err != nil {
+				return pb.ChaincodeMessage{}, err
 			}
-			//would have been logged, return false
-			return pb.ChaincodeMessage{}, err
 		case outmsg, val := <-c:
 			if !val {
 				return pb.ChaincodeMessage{}, errors.New("unexpected failure on receive")
@@ -785,27 +783,30 @@ func (h *Handler) handleReady(msg *pb.ChaincodeMessage, errc chan error) error {
 		// Call the chaincode's Run function to invoke transaction
 		h.handleTransaction(msg, errc)
 		return nil
-	}
 
-	return errors.Errorf("[%s] Chaincode h cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), h.state)
+	default:
+		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), h.state)
+	}
 }
 
 //handle established state
 func (h *Handler) handleEstablished(msg *pb.ChaincodeMessage, errc chan error) error {
-	if msg.Type == pb.ChaincodeMessage_READY {
-		h.state = ready
-		return nil
+	if msg.Type != pb.ChaincodeMessage_READY {
+		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), h.state)
 	}
-	return errors.Errorf("[%s] Chaincode h cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), h.state)
+
+	h.state = ready
+	return nil
 }
 
 //handle created state
 func (h *Handler) handleCreated(msg *pb.ChaincodeMessage, errc chan error) error {
-	if msg.Type == pb.ChaincodeMessage_REGISTERED {
-		h.state = established
-		return nil
+	if msg.Type != pb.ChaincodeMessage_REGISTERED {
+		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), h.state)
 	}
-	return errors.Errorf("[%s] Chaincode h cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), h.state)
+
+	h.state = established
+	return nil
 }
 
 // handleMessage message handles loop for shim side of chaincode/peer stream.
