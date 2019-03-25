@@ -45,7 +45,7 @@ var (
 		Namespace:    "consensus",
 		Subsystem:    "etcdraft",
 		Name:         "leader_changes",
-		Help:         "The number of leader changes.",
+		Help:         "The number of leader changes since process start.",
 		LabelNames:   []string{"channel"},
 		StatsdFormat: "%{#fqname}.%{channel}",
 	}

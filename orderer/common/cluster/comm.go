@@ -66,7 +66,7 @@ type RemoteNode struct {
 
 // String returns a string representation of this RemoteNode
 func (rm RemoteNode) String() string {
-	return fmt.Sprintf("ID: %d\nEndpoint: %s\nServerTLSCert:%s ClientTLSCert:%s",
+	return fmt.Sprintf("ID: %d,\nEndpoint: %s,\nServerTLSCert:%s, ClientTLSCert:%s",
 		rm.ID, rm.Endpoint, DERtoPEM(rm.ServerTLSCert), DERtoPEM(rm.ClientTLSCert))
 }
 
