@@ -10,7 +10,7 @@ Building Your First Network
 
 The build your first network (BYFN) scenario provisions a sample Hyperledger
 Fabric network consisting of two organizations, each maintaining two peer
-nodes, and a "solo" ordering service.
+nodes, and a "Solo" ordering service.
 
 Install prerequisites
 ---------------------
@@ -39,7 +39,7 @@ Want to run it now?
 -------------------
 
 We provide a fully annotated script - ``byfn.sh`` - that leverages these Docker
-images to quickly bootstrap a Hyperledger Fabric network comprised of 4 peers
+images to quickly bootstrap a Hyperledger Fabric network comprised of four peers
 representing two different organizations, and an orderer node. It will also
 launch a container to run a scripted execution that will join peers to a
 channel, deploy and instantiate chaincode and drive execution of transactions
@@ -50,43 +50,46 @@ Here's the help text for the ``byfn.sh`` script:
 .. code:: bash
 
   Usage:
-    byfn.sh <mode> [-c <channel name>] [-t <timeout>] [-d <delay>] [-f <docker-compose-file>] [-s <dbtype>] [-l <language>] [-i <imagetag>] [-v]
-      <mode> - one of 'up', 'down', 'restart', 'generate' or 'upgrade'
-        - 'up' - bring up the network with docker-compose up
-        - 'down' - clear the network with docker-compose down
-        - 'restart' - restart the network
-        - 'generate' - generate required certificates and genesis block
-        - 'upgrade'  - upgrade the network from v1.0.x to v1.1
-      -c <channel name> - channel name to use (defaults to "mychannel")
-      -t <timeout> - CLI timeout duration in seconds (defaults to 10)
-      -d <delay> - delay duration in seconds (defaults to 3)
-      -f <docker-compose-file> - specify which docker-compose file use (defaults to docker-compose-cli.yaml)
-      -s <dbtype> - the database backend to use: goleveldb (default) or couchdb
-      -l <language> - the chaincode language: golang (default), node or java
-      -i <imagetag> - the tag to be used to launch the network (defaults to "latest")
-      -v - verbose mode
-    byfn.sh -h (print this message)
+  byfn.sh <mode> [-c <channel name>] [-t <timeout>] [-d <delay>] [-f <docker-compose-file>] [-s <dbtype>] [-l <language>] [-o <consensus-type>] [-i <imagetag>] [-v]"
+    <mode> - one of 'up', 'down', 'restart', 'generate' or 'upgrade'"
+      - 'up' - bring up the network with docker-compose up"
+      - 'down' - clear the network with docker-compose down"
+      - 'restart' - restart the network"
+      - 'generate' - generate required certificates and genesis block"
+      - 'upgrade'  - upgrade the network from version 1.3.x to 1.4.0"
+    -c <channel name> - channel name to use (defaults to \"mychannel\")"
+    -t <timeout> - CLI timeout duration in seconds (defaults to 10)"
+    -d <delay> - delay duration in seconds (defaults to 3)"
+    -f <docker-compose-file> - specify which docker-compose file use (defaults to docker-compose-cli.yaml)"
+    -s <dbtype> - the database backend to use: goleveldb (default) or couchdb"
+    -l <language> - the chaincode language: golang (default), node, or java"
+    -o <consensus-type> - the consensus-type of the ordering service: solo (default), kafka, or etcdraft"
+    -i <imagetag> - the tag to be used to launch the network (defaults to \"latest\")"
+    -v - verbose mode"
+  byfn.sh -h (print this message)"
 
   Typically, one would first generate the required certificates and
-  genesis block, then bring up the network. e.g.:
+  genesis block, then bring up the network. e.g.:"
 
-	  byfn.sh generate -c mychannel
-	  byfn.sh up -c mychannel -s couchdb
-          byfn.sh up -c mychannel -s couchdb -i 1.1.0-alpha
-	  byfn.sh up -l node
-	  byfn.sh down -c mychannel
-          byfn.sh upgrade -c mychannel
+    byfn.sh generate -c mychannel"
+    byfn.sh up -c mychannel -s couchdb"
+    byfn.sh up -c mychannel -s couchdb -i 1.4.0"
+    byfn.sh up -l node"
+    byfn.sh down -c mychannel"
+    byfn.sh upgrade -c mychannel"
 
-  Taking all defaults:
-	  byfn.sh generate
-	  byfn.sh up
-	  byfn.sh down
+  Taking all defaults:"
+  	byfn.sh generate"
+  	byfn.sh up"
+  	byfn.sh down"
 
-If you choose not to supply a channel name, then the
-script will use a default name of ``mychannel``.  The CLI timeout parameter
-(specified with the -t flag) is an optional value; if you choose not to set
-it, then the CLI will give up on query requests made after the default
-setting of 10 seconds.
+If you choose not to supply a flag, the script will use default values.
+
+For more information about using a "Raft" ordering service with BYFN, check out
+our :doc:`raft_configuration_tutorial`, which features different commands for
+generating the crypto material and running the script. If you want to learn more
+about the ordering service implementations that are currently available, check
+our conceptual documentation on :doc:`orderer/ordering_service`.
 
 Generate Network Artifacts
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
