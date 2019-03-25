@@ -21,7 +21,6 @@ const (
 	created     state = "created"     //start state
 	established state = "established" //connection established
 	ready       state = "ready"       //ready for requests
-
 )
 
 // PeerChaincodeStream interface for stream between Peer and chaincode instance.
@@ -38,19 +37,19 @@ func (h *Handler) triggerNextState(msg *pb.ChaincodeMessage, errc chan error) {
 
 // Handler handler implementation for shim side of chaincode.
 type Handler struct {
-	// need lock to protect chaincode from attempting
-	// concurrent requests to the peer
-	mutex sync.Mutex
-
 	//shim to peer grpc serializer. User only in serialSend
 	serialLock sync.Mutex
 
 	ChatStream PeerChaincodeStream
 	cc         Chaincode
 	state      state
+
 	// Multiple queries (and one transaction) with different txids can be executing in parallel for this chaincode
-	// responseChannel is the channel on which responses are communicated by the shim to the chaincodeStub.
-	responseChannel map[string]chan pb.ChaincodeMessage
+	// responseChannels is the channel on which responses are communicated by the shim to the chaincodeStub.
+	// need lock to protect chaincode from attempting
+	// concurrent requests to the peer
+	responseChannelsMutex sync.Mutex
+	responseChannels      map[string]chan pb.ChaincodeMessage
 }
 
 func shorttxid(txid string) string {
@@ -91,41 +90,47 @@ func (h *Handler) getTxCtxId(chainID string, txid string) string {
 	return chainID + txid
 }
 
-func (h *Handler) createChannel(channelID, txid string) (chan pb.ChaincodeMessage, error) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-	if h.responseChannel == nil {
+func (h *Handler) createChannel(channelID, txid string) (<-chan pb.ChaincodeMessage, error) {
+	h.responseChannelsMutex.Lock()
+	defer h.responseChannelsMutex.Unlock()
+
+	if h.responseChannels == nil {
 		return nil, errors.Errorf("[%s] cannot create response channel", shorttxid(txid))
 	}
+
 	txCtxID := h.getTxCtxId(channelID, txid)
-	if h.responseChannel[txCtxID] != nil {
+	if h.responseChannels[txCtxID] != nil {
 		return nil, errors.Errorf("[%s] channel exists", shorttxid(txCtxID))
 	}
+
 	c := make(chan pb.ChaincodeMessage)
-	h.responseChannel[txCtxID] = c
+	h.responseChannels[txCtxID] = c
 	return c, nil
 }
 
 func (h *Handler) sendChannel(msg *pb.ChaincodeMessage) error {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-	if h.responseChannel == nil {
+	h.responseChannelsMutex.Lock()
+	defer h.responseChannelsMutex.Unlock()
+
+	if h.responseChannels == nil {
 		return errors.Errorf("[%s] Cannot send message response channel", shorttxid(msg.Txid))
 	}
+
 	txCtxID := h.getTxCtxId(msg.ChannelId, msg.Txid)
-	if h.responseChannel[txCtxID] == nil {
+	responseCh := h.responseChannels[txCtxID]
+	if responseCh == nil {
 		return errors.Errorf("[%s] sendChannel does not exist", shorttxid(msg.Txid))
 	}
 
 	chaincodeLogger.Debugf("[%s] before send", shorttxid(msg.Txid))
-	h.responseChannel[txCtxID] <- *msg
+	responseCh <- *msg
 	chaincodeLogger.Debugf("[%s] after send", shorttxid(msg.Txid))
 
 	return nil
 }
 
 //sends a message and selects
-func (h *Handler) sendReceive(msg *pb.ChaincodeMessage, c chan pb.ChaincodeMessage) (pb.ChaincodeMessage, error) {
+func (h *Handler) sendReceive(msg *pb.ChaincodeMessage, c <-chan pb.ChaincodeMessage) (pb.ChaincodeMessage, error) {
 	errc := make(chan error, 1)
 	h.serialSendAsync(msg, errc)
 
@@ -153,11 +158,11 @@ func (h *Handler) sendReceive(msg *pb.ChaincodeMessage, c chan pb.ChaincodeMessa
 }
 
 func (h *Handler) deleteChannel(channelID, txid string) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-	if h.responseChannel != nil {
+	h.responseChannelsMutex.Lock()
+	defer h.responseChannelsMutex.Unlock()
+	if h.responseChannels != nil {
 		txCtxID := h.getTxCtxId(channelID, txid)
-		delete(h.responseChannel, txCtxID)
+		delete(h.responseChannels, txCtxID)
 	}
 }
 
@@ -167,7 +172,7 @@ func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode
 		ChatStream: peerChatStream,
 		cc:         chaincode,
 	}
-	v.responseChannel = make(map[string]chan pb.ChaincodeMessage)
+	v.responseChannels = map[string]chan pb.ChaincodeMessage{}
 	v.state = created
 	return v
 }
@@ -287,12 +292,10 @@ func (h *Handler) handleTransaction(msg *pb.ChaincodeMessage, errc chan error) {
 // and receives the response.
 func (h *Handler) callPeerWithChaincodeMsg(msg *pb.ChaincodeMessage, channelID, txid string) (pb.ChaincodeMessage, error) {
 	// Create the channel on which to communicate the response from the peer
-	var respChan chan pb.ChaincodeMessage
-	var err error
-	if respChan, err = h.createChannel(channelID, txid); err != nil {
+	respChan, err := h.createChannel(channelID, txid)
+	if err != nil {
 		return pb.ChaincodeMessage{}, err
 	}
-
 	defer h.deleteChannel(channelID, txid)
 
 	return h.sendReceive(msg, respChan)
@@ -528,13 +531,11 @@ func (h *Handler) handleGetStateByRange(collection, startKey, endKey string, met
 
 func (h *Handler) handleQueryStateNext(id, channelId, txid string) (*pb.QueryResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
-	var respChan chan pb.ChaincodeMessage
-	var err error
-	if respChan, err = h.createChannel(channelId, txid); err != nil {
+	respChan, err := h.createChannel(channelId, txid)
+	if err != nil {
 		chaincodeLogger.Errorf("[%s] Another state request pending for this Txid. Cannot process.", shorttxid(txid))
 		return nil, err
 	}
-
 	defer h.deleteChannel(channelId, txid)
 
 	// Send QUERY_STATE_NEXT message to peer chaincode support
@@ -576,13 +577,11 @@ func (h *Handler) handleQueryStateNext(id, channelId, txid string) (*pb.QueryRes
 
 func (h *Handler) handleQueryStateClose(id, channelId, txid string) (*pb.QueryResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
-	var respChan chan pb.ChaincodeMessage
-	var err error
-	if respChan, err = h.createChannel(channelId, txid); err != nil {
+	respChan, err := h.createChannel(channelId, txid)
+	if err != nil {
 		chaincodeLogger.Errorf("[%s] Another state request pending for this Txid. Cannot process.", shorttxid(txid))
 		return nil, err
 	}
-
 	defer h.deleteChannel(channelId, txid)
 
 	// Send QUERY_STATE_CLOSE message to peer chaincode support
@@ -661,13 +660,11 @@ func (h *Handler) handleGetQueryResult(collection string, query string, metadata
 
 func (h *Handler) handleGetHistoryForKey(key string, channelId string, txid string) (*pb.QueryResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
-	var respChan chan pb.ChaincodeMessage
-	var err error
-	if respChan, err = h.createChannel(channelId, txid); err != nil {
+	respChan, err := h.createChannel(channelId, txid)
+	if err != nil {
 		chaincodeLogger.Errorf("[%s] Another state request pending for this Txid. Cannot process.", shorttxid(txid))
 		return nil, err
 	}
-
 	defer h.deleteChannel(channelId, txid)
 
 	// Send GET_HISTORY_FOR_KEY message to peer chaincode support
@@ -717,12 +714,10 @@ func (h *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, cha
 	payloadBytes, _ := proto.Marshal(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: chaincodeName}, Input: &pb.ChaincodeInput{Args: args}})
 
 	// Create the channel on which to communicate the response from validating peer
-	var respChan chan pb.ChaincodeMessage
-	var err error
-	if respChan, err = h.createChannel(channelId, txid); err != nil {
+	respChan, err := h.createChannel(channelId, txid)
+	if err != nil {
 		return h.createResponse(ERROR, []byte(err.Error()))
 	}
-
 	defer h.deleteChannel(channelId, txid)
 
 	// Send INVOKE_CHAINCODE message to peer chaincode support
