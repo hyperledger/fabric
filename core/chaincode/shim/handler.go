@@ -45,7 +45,6 @@ type Handler struct {
 	//shim to peer grpc serializer. User only in serialSend
 	serialLock sync.Mutex
 
-	To         string
 	ChatStream PeerChaincodeStream
 	cc         Chaincode
 	state      state
