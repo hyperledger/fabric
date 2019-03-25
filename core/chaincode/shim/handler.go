@@ -40,7 +40,7 @@ type Handler struct {
 	//shim to peer grpc serializer. User only in serialSend
 	serialLock sync.Mutex
 
-	ChatStream PeerChaincodeStream
+	chatStream PeerChaincodeStream
 	cc         Chaincode
 	state      state
 
@@ -64,7 +64,7 @@ func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	h.serialLock.Lock()
 	defer h.serialLock.Unlock()
 
-	err := h.ChatStream.Send(msg)
+	err := h.chatStream.Send(msg)
 
 	return err
 }
@@ -168,13 +168,12 @@ func (h *Handler) deleteChannel(channelID, txid string) {
 
 // NewChaincodeHandler returns a new instance of the shim side handler.
 func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode) *Handler {
-	v := &Handler{
-		ChatStream: peerChatStream,
-		cc:         chaincode,
+	return &Handler{
+		chatStream:       peerChatStream,
+		cc:               chaincode,
+		responseChannels: map[string]chan pb.ChaincodeMessage{},
+		state:            created,
 	}
-	v.responseChannels = map[string]chan pb.ChaincodeMessage{}
-	v.state = created
-	return v
 }
 
 // handleInit handles request to initialize chaincode.
