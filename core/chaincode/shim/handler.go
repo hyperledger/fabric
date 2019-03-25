@@ -93,12 +93,12 @@ func (h *Handler) createChannel(channelID, txid string) (<-chan pb.ChaincodeMess
 		return nil, errors.Errorf("[%s] channel exists", shorttxid(txCtxID))
 	}
 
-	c := make(chan pb.ChaincodeMessage)
-	h.responseChannels[txCtxID] = c
-	return c, nil
+	responseChan := make(chan pb.ChaincodeMessage)
+	h.responseChannels[txCtxID] = responseChan
+	return responseChan, nil
 }
 
-func (h *Handler) sendChannel(msg *pb.ChaincodeMessage) error {
+func (h *Handler) handleResponse(msg *pb.ChaincodeMessage) error {
 	h.responseChannelsMutex.Lock()
 	defer h.responseChannelsMutex.Unlock()
 
@@ -109,7 +109,7 @@ func (h *Handler) sendChannel(msg *pb.ChaincodeMessage) error {
 	txCtxID := h.getTxCtxId(msg.ChannelId, msg.Txid)
 	responseCh := h.responseChannels[txCtxID]
 	if responseCh == nil {
-		return errors.Errorf("[%s] sendChannel does not exist", shorttxid(msg.Txid))
+		return errors.Errorf("[%s] responseChannel does not exist", shorttxid(msg.Txid))
 	}
 
 	chaincodeLogger.Debugf("[%s] before send", shorttxid(msg.Txid))
@@ -120,7 +120,7 @@ func (h *Handler) sendChannel(msg *pb.ChaincodeMessage) error {
 }
 
 //sends a message and selects
-func (h *Handler) sendReceive(msg *pb.ChaincodeMessage, c <-chan pb.ChaincodeMessage) (pb.ChaincodeMessage, error) {
+func (h *Handler) sendReceive(msg *pb.ChaincodeMessage, responseChan <-chan pb.ChaincodeMessage) (pb.ChaincodeMessage, error) {
 	errc := make(chan error, 1)
 	h.serialSendAsync(msg, errc)
 
@@ -136,7 +136,7 @@ func (h *Handler) sendReceive(msg *pb.ChaincodeMessage, c <-chan pb.ChaincodeMes
 			if err != nil {
 				return pb.ChaincodeMessage{}, err
 			}
-		case outmsg, val := <-c:
+		case outmsg, val := <-responseChan:
 			if !val {
 				return pb.ChaincodeMessage{}, errors.New("unexpected failure on receive")
 			}
@@ -749,7 +749,7 @@ func (h *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, cha
 func (h *Handler) handleReady(msg *pb.ChaincodeMessage, errc chan error) error {
 	switch msg.Type {
 	case pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR:
-		if err := h.sendChannel(msg); err != nil {
+		if err := h.handleResponse(msg); err != nil {
 			chaincodeLogger.Errorf("[%s] error sending %s (state:%s): %s", shorttxid(msg.Txid), msg.Type, h.state, err)
 			return err
 		}
