@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"reflect"
 	"sync/atomic"
+	"time"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -607,4 +608,31 @@ func (scr *StreamCountReporter) Increment() {
 func (scr *StreamCountReporter) Decrement() {
 	count := atomic.AddUint32(&scr.count, ^uint32(0))
 	scr.Metrics.reportStreamCount(count)
+}
+
+type certificateExpirationCheck struct {
+	minimumExpirationWarningInterval time.Duration
+	expiresAt                        time.Time
+	expirationWarningThreshold       time.Duration
+	lastWarning                      time.Time
+	nodeName                         string
+	endpoint                         string
+	channel                          string
+	alert                            func(string, ...interface{})
+}
+
+func (exp *certificateExpirationCheck) checkExpiration(currentTime time.Time) {
+	timeLeft := exp.expiresAt.Sub(currentTime)
+	if timeLeft > exp.expirationWarningThreshold {
+		return
+	}
+
+	timeSinceLastWarning := currentTime.Sub(exp.lastWarning)
+	if timeSinceLastWarning < exp.minimumExpirationWarningInterval {
+		return
+	}
+
+	exp.alert("Certificate of %s from %s for channel %s expires in less than %v",
+		exp.nodeName, exp.endpoint, exp.channel, timeLeft)
+	exp.lastWarning = currentTime
 }

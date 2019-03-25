@@ -9,6 +9,8 @@ package cluster
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -22,6 +24,12 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+)
+
+const (
+	// MinimumExpirationWarningInterval is the default minimum time interval
+	// between consecutive warnings about certificate expiration.
+	MinimumExpirationWarningInterval = time.Minute * 5
 )
 
 var (
@@ -84,16 +92,18 @@ type MembersByChannel map[string]MemberMapping
 
 // Comm implements Communicator
 type Comm struct {
-	shutdownSignal chan struct{}
-	shutdown       bool
-	SendBufferSize int
-	Lock           sync.RWMutex
-	Logger         *flogging.FabricLogger
-	ChanExt        ChannelExtractor
-	H              Handler
-	Connections    *ConnectionStore
-	Chan2Members   MembersByChannel
-	Metrics        *Metrics
+	MinimumExpirationWarningInterval time.Duration
+	CertExpWarningThreshold          time.Duration
+	shutdownSignal                   chan struct{}
+	shutdown                         bool
+	SendBufferSize                   int
+	Lock                             sync.RWMutex
+	Logger                           *flogging.FabricLogger
+	ChanExt                          ChannelExtractor
+	H                                Handler
+	Connections                      *ConnectionStore
+	Chan2Members                     MembersByChannel
+	Metrics                          *Metrics
 }
 
 type requestContext struct {
@@ -310,6 +320,13 @@ func (c *Comm) updateStubInMapping(channel string, mapping MemberMapping, node R
 // a stub atomically.
 func (c *Comm) createRemoteContext(stub *Stub, channel string) func() (*RemoteContext, error) {
 	return func() (*RemoteContext, error) {
+		cert, err := x509.ParseCertificate(stub.ServerTLSCert)
+		if err != nil {
+			pemString := string(pem.EncodeToMemory(&pem.Block{Bytes: stub.ServerTLSCert}))
+			c.Logger.Errorf("Invalid DER for channel %s, endpoint %s, ID %d: %v", channel, stub.Endpoint, stub.ID, pemString)
+			return nil, errors.Wrap(err, "invalid certificate DER")
+		}
+
 		c.Logger.Debug("Connecting to", stub.RemoteNode, "for channel", channel)
 
 		conn, err := c.Connections.Connection(stub.Endpoint, stub.ServerTLSCert)
@@ -333,16 +350,19 @@ func (c *Comm) createRemoteContext(stub *Stub, channel string) func() (*RemoteCo
 		}
 
 		rc := &RemoteContext{
-			workerCountReporter: workerCountReporter,
-			Channel:             channel,
-			Metrics:             c.Metrics,
-			SendBuffSize:        c.SendBufferSize,
-			shutdownSignal:      c.shutdownSignal,
-			endpoint:            stub.Endpoint,
-			Logger:              c.Logger,
-			ProbeConn:           probeConnection,
-			conn:                conn,
-			Client:              clusterClient,
+			expiresAt:                        cert.NotAfter,
+			minimumExpirationWarningInterval: c.MinimumExpirationWarningInterval,
+			certExpWarningThreshold:          c.CertExpWarningThreshold,
+			workerCountReporter:              workerCountReporter,
+			Channel:                          channel,
+			Metrics:                          c.Metrics,
+			SendBuffSize:                     c.SendBufferSize,
+			shutdownSignal:                   c.shutdownSignal,
+			endpoint:                         stub.Endpoint,
+			Logger:                           c.Logger,
+			ProbeConn:                        probeConnection,
+			conn:                             conn,
+			Client:                           clusterClient,
 		}
 		return rc, nil
 	}
@@ -418,18 +438,21 @@ func (stub *Stub) Activate(createRemoteContext func() (*RemoteContext, error)) e
 // RemoteContext interacts with remote cluster
 // nodes. Every call can be aborted via call to Abort()
 type RemoteContext struct {
-	Metrics             *Metrics
-	Channel             string
-	SendBuffSize        int
-	shutdownSignal      chan struct{}
-	Logger              *flogging.FabricLogger
-	endpoint            string
-	Client              orderer.ClusterClient
-	ProbeConn           func(conn *grpc.ClientConn) error
-	conn                *grpc.ClientConn
-	nextStreamID        uint64
-	streamsByID         streamsMapperReporter
-	workerCountReporter workerCountReporter
+	expiresAt                        time.Time
+	minimumExpirationWarningInterval time.Duration
+	certExpWarningThreshold          time.Duration
+	Metrics                          *Metrics
+	Channel                          string
+	SendBuffSize                     int
+	shutdownSignal                   chan struct{}
+	Logger                           *flogging.FabricLogger
+	endpoint                         string
+	Client                           orderer.ClusterClient
+	ProbeConn                        func(conn *grpc.ClientConn) error
+	conn                             *grpc.ClientConn
+	nextStreamID                     uint64
+	streamsByID                      streamsMapperReporter
+	workerCountReporter              workerCountReporter
 }
 
 // Stream is used to send/receive messages to/from the remote cluster member.
@@ -448,6 +471,7 @@ type Stream struct {
 	orderer.Cluster_StepClient
 	Cancel   func(error)
 	canceled *uint32
+	expCheck *certificateExpirationCheck
 }
 
 // StreamOperation denotes an operation done by a stream, such a Send or Receive.
@@ -517,6 +541,7 @@ func (stream *Stream) sendMessage(request *orderer.StepRequest) {
 
 	f := func() (*orderer.StepResponse, error) {
 		startSend := time.Now()
+		stream.expCheck.checkExpiration(startSend)
 		err := stream.Cluster_StepClient.Send(request)
 		stream.metrics.reportMsgSendTime(stream.Endpoint, stream.Channel, time.Since(startSend))
 		return nil, err
@@ -666,6 +691,18 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 		Cluster_StepClient: stream,
 		Cancel:             cancelWithReason,
 		canceled:           &canceled,
+	}
+
+	s.expCheck = &certificateExpirationCheck{
+		minimumExpirationWarningInterval: rc.minimumExpirationWarningInterval,
+		expirationWarningThreshold:       rc.certExpWarningThreshold,
+		expiresAt:                        rc.expiresAt,
+		channel:                          s.Channel,
+		endpoint:                         s.Endpoint,
+		nodeName:                         s.NodeName,
+		alert: func(template string, args ...interface{}) {
+			s.Logger.Warningf(template, args)
+		},
 	}
 
 	rc.Logger.Debugf("Created new stream to %s with ID of %d and buffer size of %d",

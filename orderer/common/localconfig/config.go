@@ -73,6 +73,7 @@ type Cluster struct {
 	ReplicationBackgroundRefreshInterval time.Duration
 	ReplicationMaxRetries                int
 	SendBufferSize                       int
+	CertExpirationWarningThreshold       time.Duration
 }
 
 // Keepalive contains configuration for gRPC servers.
@@ -229,6 +230,7 @@ var Defaults = TopLevel{
 			ReplicationBackgroundRefreshInterval: time.Minute * 5,
 			ReplicationRetryTimeout:              time.Second * 5,
 			ReplicationPullTimeout:               time.Second * 5,
+			CertExpirationWarningThreshold:       time.Hour * 24 * 7,
 		},
 		LocalMSPDir: "msp",
 		LocalMSPID:  "SampleOrg",
@@ -367,6 +369,8 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			c.General.Cluster.ReplicationRetryTimeout = Defaults.General.Cluster.ReplicationRetryTimeout
 		case c.General.Cluster.ReplicationBackgroundRefreshInterval == 0:
 			c.General.Cluster.ReplicationBackgroundRefreshInterval = Defaults.General.Cluster.ReplicationBackgroundRefreshInterval
+		case c.General.Cluster.CertExpirationWarningThreshold == 0:
+			c.General.Cluster.CertExpirationWarningThreshold = Defaults.General.Cluster.CertExpirationWarningThreshold
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.Certificate == "":
 			logger.Panicf("General.Kafka.TLS.Certificate must be set if General.Kafka.TLS.Enabled is set to true.")
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.PrivateKey == "":
