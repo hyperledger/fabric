@@ -30,11 +30,6 @@ type PeerChaincodeStream interface {
 	CloseSend() error
 }
 
-func (h *Handler) triggerNextState(msg *pb.ChaincodeMessage, errc chan error) {
-	chaincodeLogger.Debugf("[%s] send state message %s", shorttxid(msg.Txid), msg.Type)
-	h.serialSendAsync(msg, errc)
-}
-
 // Handler handler implementation for shim side of chaincode.
 type Handler struct {
 	//shim to peer grpc serializer. User only in serialSend
@@ -180,7 +175,7 @@ func (h *Handler) handleInit(msg *pb.ChaincodeMessage, errc chan error) {
 		var nextStateMsg *pb.ChaincodeMessage
 
 		defer func() {
-			h.triggerNextState(nextStateMsg, errc)
+			h.serialSendAsync(nextStateMsg, errc)
 		}()
 
 		errFunc := func(err error, payload []byte, ce *pb.ChaincodeEvent, errFmt string, args ...interface{}) *pb.ChaincodeMessage {
@@ -242,7 +237,7 @@ func (h *Handler) handleTransaction(msg *pb.ChaincodeMessage, errc chan error) {
 		var nextStateMsg *pb.ChaincodeMessage
 
 		defer func() {
-			h.triggerNextState(nextStateMsg, errc)
+			h.serialSendAsync(nextStateMsg, errc)
 		}()
 
 		errFunc := func(err error, ce *pb.ChaincodeEvent, errStr string, args ...interface{}) *pb.ChaincodeMessage {
