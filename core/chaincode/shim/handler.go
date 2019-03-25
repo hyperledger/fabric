@@ -80,7 +80,7 @@ func transactionContextID(chainID, txid string) string {
 	return chainID + txid
 }
 
-func (h *Handler) createChannel(channelID, txid string) (<-chan pb.ChaincodeMessage, error) {
+func (h *Handler) createResponseChannel(channelID, txid string) (<-chan pb.ChaincodeMessage, error) {
 	h.responseChannelsMutex.Lock()
 	defer h.responseChannelsMutex.Unlock()
 
@@ -98,7 +98,7 @@ func (h *Handler) createChannel(channelID, txid string) (<-chan pb.ChaincodeMess
 	return responseChan, nil
 }
 
-func (h *Handler) deleteChannel(channelID, txid string) {
+func (h *Handler) deleteResponseChannel(channelID, txid string) {
 	h.responseChannelsMutex.Lock()
 	defer h.responseChannelsMutex.Unlock()
 	if h.responseChannels != nil {
@@ -266,11 +266,11 @@ func (h *Handler) handleTransaction(msg *pb.ChaincodeMessage, errc chan error) {
 // txid and channel and receives the response.
 func (h *Handler) callPeerWithChaincodeMsg(msg *pb.ChaincodeMessage, channelID, txid string) (pb.ChaincodeMessage, error) {
 	// Create the channel on which to communicate the response from the peer
-	respChan, err := h.createChannel(channelID, txid)
+	respChan, err := h.createResponseChannel(channelID, txid)
 	if err != nil {
 		return pb.ChaincodeMessage{}, err
 	}
-	defer h.deleteChannel(channelID, txid)
+	defer h.deleteResponseChannel(channelID, txid)
 
 	return h.sendReceive(msg, respChan)
 }
@@ -501,12 +501,12 @@ func (h *Handler) handleGetStateByRange(collection, startKey, endKey string, met
 
 func (h *Handler) handleQueryStateNext(id, channelId, txid string) (*pb.QueryResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
-	respChan, err := h.createChannel(channelId, txid)
+	respChan, err := h.createResponseChannel(channelId, txid)
 	if err != nil {
 		chaincodeLogger.Errorf("[%s] Another state request pending for this Txid. Cannot process.", shorttxid(txid))
 		return nil, err
 	}
-	defer h.deleteChannel(channelId, txid)
+	defer h.deleteResponseChannel(channelId, txid)
 
 	// Send QUERY_STATE_NEXT message to peer chaincode support
 	payloadBytes := marshalOrPanic(&pb.QueryStateNext{Id: id})
@@ -546,12 +546,12 @@ func (h *Handler) handleQueryStateNext(id, channelId, txid string) (*pb.QueryRes
 
 func (h *Handler) handleQueryStateClose(id, channelId, txid string) (*pb.QueryResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
-	respChan, err := h.createChannel(channelId, txid)
+	respChan, err := h.createResponseChannel(channelId, txid)
 	if err != nil {
 		chaincodeLogger.Errorf("[%s] Another state request pending for this Txid. Cannot process.", shorttxid(txid))
 		return nil, err
 	}
-	defer h.deleteChannel(channelId, txid)
+	defer h.deleteResponseChannel(channelId, txid)
 
 	// Send QUERY_STATE_CLOSE message to peer chaincode support
 	payloadBytes := marshalOrPanic(&pb.QueryStateClose{Id: id})
@@ -627,12 +627,12 @@ func (h *Handler) handleGetQueryResult(collection string, query string, metadata
 
 func (h *Handler) handleGetHistoryForKey(key string, channelId string, txid string) (*pb.QueryResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
-	respChan, err := h.createChannel(channelId, txid)
+	respChan, err := h.createResponseChannel(channelId, txid)
 	if err != nil {
 		chaincodeLogger.Errorf("[%s] Another state request pending for this Txid. Cannot process.", shorttxid(txid))
 		return nil, err
 	}
-	defer h.deleteChannel(channelId, txid)
+	defer h.deleteResponseChannel(channelId, txid)
 
 	// Send GET_HISTORY_FOR_KEY message to peer chaincode support
 	payloadBytes := marshalOrPanic(&pb.GetHistoryForKey{Key: key})
@@ -679,11 +679,11 @@ func (h *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, cha
 	payloadBytes := marshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: chaincodeName}, Input: &pb.ChaincodeInput{Args: args}})
 
 	// Create the channel on which to communicate the response from validating peer
-	respChan, err := h.createChannel(channelId, txid)
+	respChan, err := h.createResponseChannel(channelId, txid)
 	if err != nil {
 		return h.createResponse(ERROR, []byte(err.Error()))
 	}
-	defer h.deleteChannel(channelId, txid)
+	defer h.deleteResponseChannel(channelId, txid)
 
 	// Send INVOKE_CHAINCODE message to peer chaincode support
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
