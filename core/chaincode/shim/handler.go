@@ -203,7 +203,7 @@ func (h *Handler) handleInit(msg *pb.ChaincodeMessage, errc chan error) {
 		// Get the function and args from Payload
 		input := &pb.ChaincodeInput{}
 		unmarshalErr := proto.Unmarshal(msg.Payload, input)
-		if nextStateMsg = errFunc(unmarshalErr, nil, nil, "[%s] Incorrect payload format. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR.String()); nextStateMsg != nil {
+		if nextStateMsg = errFunc(unmarshalErr, nil, nil, "[%s] Incorrect payload format. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
 			return
 		}
 
@@ -211,7 +211,7 @@ func (h *Handler) handleInit(msg *pb.ChaincodeMessage, errc chan error) {
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
 		err := stub.init(h, msg.ChannelId, msg.Txid, input, msg.Proposal)
-		if nextStateMsg = errFunc(err, nil, stub.chaincodeEvent, "[%s] Init get error response. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR.String()); nextStateMsg != nil {
+		if nextStateMsg = errFunc(err, nil, stub.chaincodeEvent, "[%s] Init get error response. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
 			return
 		}
 		res := h.cc.Init(stub)
@@ -219,7 +219,7 @@ func (h *Handler) handleInit(msg *pb.ChaincodeMessage, errc chan error) {
 
 		if res.Status >= ERROR {
 			err = errors.New(res.Message)
-			if nextStateMsg = errFunc(err, []byte(res.Message), stub.chaincodeEvent, "[%s] Init get error response. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR.String()); nextStateMsg != nil {
+			if nextStateMsg = errFunc(err, []byte(res.Message), stub.chaincodeEvent, "[%s] Init get error response. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
 				return
 			}
 		}
@@ -263,7 +263,7 @@ func (h *Handler) handleTransaction(msg *pb.ChaincodeMessage, errc chan error) {
 		// Get the function and args from Payload
 		input := &pb.ChaincodeInput{}
 		unmarshalErr := proto.Unmarshal(msg.Payload, input)
-		if nextStateMsg = errFunc(unmarshalErr, nil, "[%s] Incorrect payload format. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR.String()); nextStateMsg != nil {
+		if nextStateMsg = errFunc(unmarshalErr, nil, "[%s] Incorrect payload format. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
 			return
 		}
 
@@ -271,14 +271,14 @@ func (h *Handler) handleTransaction(msg *pb.ChaincodeMessage, errc chan error) {
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
 		err := stub.init(h, msg.ChannelId, msg.Txid, input, msg.Proposal)
-		if nextStateMsg = errFunc(err, stub.chaincodeEvent, "[%s] Transaction execution failed. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR.String()); nextStateMsg != nil {
+		if nextStateMsg = errFunc(err, stub.chaincodeEvent, "[%s] Transaction execution failed. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
 			return
 		}
 		res := h.cc.Invoke(stub)
 
 		// Endorser will handle error contained in Response.
 		resBytes, err := proto.Marshal(&res)
-		if nextStateMsg = errFunc(err, stub.chaincodeEvent, "[%s] Transaction execution failed. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR.String()); nextStateMsg != nil {
+		if nextStateMsg = errFunc(err, stub.chaincodeEvent, "[%s] Transaction execution failed. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
 			return
 		}
 
@@ -315,12 +315,12 @@ func (h *Handler) handleGetState(collection string, key string, channelId string
 		return nil, errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", shorttxid(txid), pb.ChaincodeMessage_GET_STATE))
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		chaincodeLogger.Debugf("[%s] GetState received payload %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 		return responseMsg.Payload, nil
 	}
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
 		chaincodeLogger.Errorf("[%s] GetState received error %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR)
 		return nil, errors.New(string(responseMsg.Payload[:]))
@@ -343,12 +343,12 @@ func (h *Handler) handleGetPrivateDataHash(collection string, key string, channe
 		return nil, errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", shorttxid(txid), pb.ChaincodeMessage_GET_PRIVATE_DATA_HASH))
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		chaincodeLogger.Debugf("[%s] GetPrivateDataHash received payload %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 		return responseMsg.Payload, nil
 	}
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
 		chaincodeLogger.Errorf("[%s] GetPrivateDataHash received error %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR)
 		return nil, errors.New(string(responseMsg.Payload[:]))
@@ -371,7 +371,7 @@ func (h *Handler) handleGetStateMetadata(collection string, key string, channelI
 		return nil, errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", shorttxid(txID), pb.ChaincodeMessage_GET_STATE_METADATA))
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		chaincodeLogger.Debugf("[%s]GetStateMetadata received payload %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 		var mdResult pb.StateMetadataResult
@@ -387,7 +387,7 @@ func (h *Handler) handleGetStateMetadata(collection string, key string, channelI
 
 		return metadata, nil
 	}
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
 		chaincodeLogger.Errorf("[%s]GetStateMetadata received error %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR)
 		return nil, errors.New(string(responseMsg.Payload[:]))
@@ -413,13 +413,13 @@ func (h *Handler) handlePutState(collection string, key string, value []byte, ch
 		return errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", msg.Txid, pb.ChaincodeMessage_PUT_STATE))
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		chaincodeLogger.Debugf("[%s] Received %s. Successfully updated state", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 		return nil
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
 		chaincodeLogger.Errorf("[%s] Received %s. Payload: %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR, responseMsg.Payload)
 		return errors.New(string(responseMsg.Payload[:]))
@@ -444,13 +444,13 @@ func (h *Handler) handlePutStateMetadataEntry(collection string, key string, met
 		return errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", msg.Txid, pb.ChaincodeMessage_PUT_STATE_METADATA))
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		chaincodeLogger.Debugf("[%s]Received %s. Successfully updated state metadata", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 		return nil
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
 		chaincodeLogger.Errorf("[%s]Received %s. Payload: %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR, responseMsg.Payload)
 		return errors.New(string(responseMsg.Payload[:]))
@@ -475,12 +475,12 @@ func (h *Handler) handleDelState(collection string, key string, channelId string
 		return errors.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_DEL_STATE)
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		chaincodeLogger.Debugf("[%s] Received %s. Successfully deleted state", msg.Txid, pb.ChaincodeMessage_RESPONSE)
 		return nil
 	}
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
 		chaincodeLogger.Errorf("[%s] Received %s. Payload: %s", msg.Txid, pb.ChaincodeMessage_ERROR, responseMsg.Payload)
 		return errors.New(string(responseMsg.Payload[:]))
@@ -505,7 +505,7 @@ func (h *Handler) handleGetStateByRange(collection, startKey, endKey string, met
 		return nil, errors.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE_BY_RANGE)
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		chaincodeLogger.Debugf("[%s] Received %s. Successfully got range", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 
@@ -518,7 +518,7 @@ func (h *Handler) handleGetStateByRange(collection, startKey, endKey string, met
 
 		return rangeQueryResponse, nil
 	}
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
 		chaincodeLogger.Errorf("[%s] Received %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR)
 		return nil, errors.New(string(responseMsg.Payload[:]))
@@ -552,7 +552,7 @@ func (h *Handler) handleQueryStateNext(id, channelId, txid string) (*pb.QueryRes
 		return nil, errors.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_NEXT)
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		chaincodeLogger.Debugf("[%s] Received %s. Successfully got range", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 
@@ -564,7 +564,7 @@ func (h *Handler) handleQueryStateNext(id, channelId, txid string) (*pb.QueryRes
 
 		return queryResponse, nil
 	}
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
 		chaincodeLogger.Errorf("[%s] Received %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR)
 		return nil, errors.New(string(responseMsg.Payload[:]))
@@ -598,7 +598,7 @@ func (h *Handler) handleQueryStateClose(id, channelId, txid string) (*pb.QueryRe
 		return nil, errors.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_CLOSE)
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		chaincodeLogger.Debugf("[%s] Received %s. Successfully got range", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 
@@ -610,7 +610,7 @@ func (h *Handler) handleQueryStateClose(id, channelId, txid string) (*pb.QueryRe
 
 		return queryResponse, nil
 	}
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
 		chaincodeLogger.Errorf("[%s] Received %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR)
 		return nil, errors.New(string(responseMsg.Payload[:]))
@@ -635,7 +635,7 @@ func (h *Handler) handleGetQueryResult(collection string, query string, metadata
 		return nil, errors.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_QUERY_RESULT)
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		chaincodeLogger.Debugf("[%s] Received %s. Successfully got range", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 
@@ -647,7 +647,7 @@ func (h *Handler) handleGetQueryResult(collection string, query string, metadata
 
 		return executeQueryResponse, nil
 	}
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
 		chaincodeLogger.Errorf("[%s] Received %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR)
 		return nil, errors.New(string(responseMsg.Payload[:]))
@@ -681,7 +681,7 @@ func (h *Handler) handleGetHistoryForKey(key string, channelId string, txid stri
 		return nil, errors.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_HISTORY_FOR_KEY)
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		chaincodeLogger.Debugf("[%s] Received %s. Successfully got range", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 
@@ -693,7 +693,7 @@ func (h *Handler) handleGetHistoryForKey(key string, channelId string, txid stri
 
 		return getHistoryForKeyResponse, nil
 	}
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
 		chaincodeLogger.Errorf("[%s] Received %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR)
 		return nil, errors.New(string(responseMsg.Payload[:]))
@@ -732,7 +732,7 @@ func (h *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, cha
 		return h.createResponse(ERROR, []byte(errStr))
 	}
 
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		chaincodeLogger.Debugf("[%s] Received %s. Successfully invoked chaincode", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 		respMsg := &pb.ChaincodeMessage{}
@@ -753,7 +753,7 @@ func (h *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, cha
 		chaincodeLogger.Errorf("[%s] Received %s. Error from chaincode", shorttxid(responseMsg.Txid), respMsg.Type)
 		return h.createResponse(ERROR, responseMsg.Payload)
 	}
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
 		chaincodeLogger.Errorf("[%s] Received %s.", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR)
 		return h.createResponse(ERROR, responseMsg.Payload)
