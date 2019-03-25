@@ -17,7 +17,7 @@ var (
 		Namespace:    "cluster",
 		Subsystem:    "comm",
 		Name:         "egress_queue_length",
-		Help:         "Length of the egress queue",
+		Help:         "Length of the egress queue.",
 		LabelNames:   []string{"host", "msg_type", "channel"},
 		StatsdFormat: "%{#fqname}.%{host}.%{msg_type}.%{channel}",
 	}
@@ -26,7 +26,7 @@ var (
 		Namespace:    "cluster",
 		Subsystem:    "comm",
 		Name:         "egress_queue_capacity",
-		Help:         "Capacity of the egress queue",
+		Help:         "Capacity of the egress queue.",
 		LabelNames:   []string{"host", "msg_type", "channel"},
 		StatsdFormat: "%{#fqname}.%{host}.%{msg_type}.%{channel}",
 	}
@@ -35,7 +35,7 @@ var (
 		Namespace:    "cluster",
 		Subsystem:    "comm",
 		Name:         "egress_queue_workers",
-		Help:         "Count of egress queue workers",
+		Help:         "Count of egress queue workers.",
 		LabelNames:   []string{"channel"},
 		StatsdFormat: "%{#fqname}.%{channel}",
 	}
@@ -44,7 +44,7 @@ var (
 		Namespace:    "cluster",
 		Subsystem:    "comm",
 		Name:         "ingress_stream_count",
-		Help:         "Count of streams from other nodes",
+		Help:         "Count of streams from other nodes.",
 		StatsdFormat: "%{#fqname}",
 	}
 
@@ -52,7 +52,7 @@ var (
 		Namespace:    "cluster",
 		Subsystem:    "comm",
 		Name:         "egress_stream_count",
-		Help:         "Count of streams to other nodes",
+		Help:         "Count of streams to other nodes.",
 		LabelNames:   []string{"channel"},
 		StatsdFormat: "%{#fqname}.%{channel}",
 	}
@@ -61,7 +61,7 @@ var (
 		Namespace:    "cluster",
 		Subsystem:    "comm",
 		Name:         "egress_tls_connection_count",
-		Help:         "Count of TLS connections to other nodes",
+		Help:         "Count of TLS connections to other nodes.",
 		StatsdFormat: "%{#fqname}",
 	}
 
@@ -69,7 +69,7 @@ var (
 		Namespace:    "cluster",
 		Subsystem:    "comm",
 		Name:         "msg_send_time",
-		Help:         "Time it takes to send a message down the stream",
+		Help:         "The time it takes to send a message in seconds.",
 		LabelNames:   []string{"host", "channel"},
 		StatsdFormat: "%{#fqname}.%{host}.%{channel}",
 	}
@@ -78,7 +78,7 @@ var (
 		Namespace:    "cluster",
 		Subsystem:    "comm",
 		Name:         "msg_dropped_count",
-		Help:         "Count of messages dropped",
+		Help:         "Count of messages dropped.",
 		LabelNames:   []string{"host", "channel"},
 		StatsdFormat: "%{#fqname}.%{host}.%{channel}",
 	}
@@ -137,7 +137,7 @@ func (m *Metrics) reportWorkerCount(channel string, count uint32) {
 }
 
 func (m *Metrics) reportMsgSendTime(host string, channel string, duration time.Duration) {
-	m.MessageSendTime.With("host", host, "channel", channel).Observe(float64(duration))
+	m.MessageSendTime.With("host", host, "channel", channel).Observe(float64(duration.Seconds()))
 }
 
 func (m *Metrics) reportEgressStreamCount(channel string, count uint32) {
