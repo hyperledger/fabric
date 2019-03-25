@@ -38,9 +38,9 @@ func (handler *Handler) triggerNextState(msg *pb.ChaincodeMessage, errc chan err
 
 // Handler handler implementation for shim side of chaincode.
 type Handler struct {
-	//need lock to protect chaincode from attempting
-	//concurrent requests to the peer
-	sync.Mutex
+	// need lock to protect chaincode from attempting
+	// concurrent requests to the peer
+	mutex sync.Mutex
 
 	//shim to peer grpc serializer. User only in serialSend
 	serialLock sync.Mutex
@@ -93,8 +93,8 @@ func (handler *Handler) getTxCtxId(chainID string, txid string) string {
 }
 
 func (handler *Handler) createChannel(channelID, txid string) (chan pb.ChaincodeMessage, error) {
-	handler.Lock()
-	defer handler.Unlock()
+	handler.mutex.Lock()
+	defer handler.mutex.Unlock()
 	if handler.responseChannel == nil {
 		return nil, errors.Errorf("[%s] cannot create response channel", shorttxid(txid))
 	}
@@ -108,8 +108,8 @@ func (handler *Handler) createChannel(channelID, txid string) (chan pb.Chaincode
 }
 
 func (handler *Handler) sendChannel(msg *pb.ChaincodeMessage) error {
-	handler.Lock()
-	defer handler.Unlock()
+	handler.mutex.Lock()
+	defer handler.mutex.Unlock()
 	if handler.responseChannel == nil {
 		return errors.Errorf("[%s] Cannot send message response channel", shorttxid(msg.Txid))
 	}
@@ -154,8 +154,8 @@ func (handler *Handler) sendReceive(msg *pb.ChaincodeMessage, c chan pb.Chaincod
 }
 
 func (handler *Handler) deleteChannel(channelID, txid string) {
-	handler.Lock()
-	defer handler.Unlock()
+	handler.mutex.Lock()
+	defer handler.mutex.Unlock()
 	if handler.responseChannel != nil {
 		txCtxID := handler.getTxCtxId(channelID, txid)
 		delete(handler.responseChannel, txCtxID)
