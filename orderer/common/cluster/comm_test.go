@@ -9,8 +9,10 @@ package cluster_test
 import (
 	"context"
 	"crypto/rand"
+	"crypto/x509"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -31,6 +33,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 )
 
@@ -242,13 +246,14 @@ func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsCo
 	}
 
 	tstSrv.c = &cluster.Comm{
-		SendBufferSize: 1,
-		Logger:         flogging.MustGetLogger("test"),
-		Chan2Members:   make(cluster.MembersByChannel),
-		H:              handler,
-		ChanExt:        channelExtractor,
-		Connections:    cluster.NewConnectionStore(dialer, tlsConnGauge),
-		Metrics:        cluster.NewMetrics(metrics),
+		CertExpWarningThreshold: time.Hour,
+		SendBufferSize:          1,
+		Logger:                  flogging.MustGetLogger("test"),
+		Chan2Members:            make(cluster.MembersByChannel),
+		H:                       handler,
+		ChanExt:                 channelExtractor,
+		Connections:             cluster.NewConnectionStore(dialer, tlsConnGauge),
+		Metrics:                 cluster.NewMetrics(metrics),
 	}
 
 	orderer.RegisterClusterServer(gRPCServer.Server(), tstSrv)
@@ -1267,6 +1272,81 @@ func TestMetrics(t *testing.T) {
 
 			testCase.runTest(node1, node2, testCase.testMetrics)
 		})
+	}
+}
+
+func TestCertExpirationWarningEgress(t *testing.T) {
+	t.Parallel()
+	// Scenario: Ensures that when certificates are due to expire,
+	// a warning is logged to the log.
+
+	node1 := newTestNode(t)
+	node2 := newTestNode(t)
+
+	cert, err := x509.ParseCertificate(node2.nodeInfo.ServerTLSCert)
+	assert.NoError(t, err)
+	assert.NotNil(t, cert)
+
+	// Let the NotAfter time of the certificate be T1, the current time be T0.
+	// So time.Until is (T1 - T0), which means we have (T1 - T0) time left.
+	// We want to trigger a warning, so we set the warning threshold to be 20 seconds above
+	// the time left, so the time left would be smaller than the threshold.
+	node1.c.CertExpWarningThreshold = time.Until(cert.NotAfter) + time.Second*20
+	// We only alert once in 3 seconds
+	node1.c.MinimumExpirationWarningInterval = time.Second * 3
+
+	defer node1.stop()
+	defer node2.stop()
+
+	config := []cluster.RemoteNode{node1.nodeInfo, node2.nodeInfo}
+	node1.c.Configure(testChannel, config)
+	node2.c.Configure(testChannel, config)
+
+	stub, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
+	assert.NoError(t, err)
+
+	mockgRPC := &mocks.StepClient{}
+	mockgRPC.On("Send", mock.Anything).Return(nil)
+	mockgRPC.On("Context").Return(context.Background())
+	mockClient := &mocks.ClusterClient{}
+	mockClient.On("Step", mock.Anything).Return(mockgRPC, nil)
+
+	stub.Client = mockClient
+
+	stream := assertEventualEstablishStream(t, stub)
+
+	alerts := make(chan struct{}, 100)
+
+	stream.Logger = stream.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		if strings.Contains(entry.Message, "expires in less than") {
+			alerts <- struct{}{}
+		}
+		return nil
+	}))
+
+	// Send a message to the node and expert an alert to be logged.
+	stream.Send(wrapSubmitReq(testReq))
+	select {
+	case <-alerts:
+	case <-time.After(time.Second * 5):
+		t.Fatal("Should have logged an alert")
+	}
+	// Send another message, and ensure we don't log anything to the log, because the
+	// alerts should be suppressed before the minimum interval timeout expires.
+	stream.Send(wrapSubmitReq(testReq))
+	select {
+	case <-alerts:
+		t.Fatal("Should not have logged an alert")
+	case <-time.After(time.Millisecond * 500):
+	}
+	// Wait enough time for the alert interval to clear.
+	time.Sleep(node1.c.MinimumExpirationWarningInterval + time.Second)
+	// Send again a message, and this time it should be logged again.
+	stream.Send(wrapSubmitReq(testReq))
+	select {
+	case <-alerts:
+	case <-time.After(time.Second * 5):
+		t.Fatal("Should have logged an alert")
 	}
 }
 
