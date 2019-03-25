@@ -50,7 +50,7 @@ func newChain(support consensus.ConsenterSupport) *chain {
 		support:         support,
 		sendChan:        make(chan *message),
 		exitChan:        make(chan struct{}),
-		migrationStatus: migration.NewStatusStepper(support.IsSystemChannel(), support.ChainID()),
+		migrationStatus: migration.NewManager(support.IsSystemChannel(), support.ChainID()),
 	}
 }
 

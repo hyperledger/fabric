@@ -2581,7 +2581,7 @@ func TestResubmission(t *testing.T) {
 				errorChan:                      errorChan,
 				haltChan:                       haltChan,
 				doneProcessingMessagesToBlocks: make(chan struct{}),
-				migrationStatusStepper:         migration.NewStatusStepper(mockSupport.IsSystemChannel(), mockSupport.ChainID()),
+				migrationManager:               migration.NewManager(mockSupport.IsSystemChannel(), mockSupport.ChainID()),
 			}
 
 			var counts []uint64
@@ -2771,7 +2771,7 @@ func TestResubmission(t *testing.T) {
 				haltChan:                       haltChan,
 				doneProcessingMessagesToBlocks: make(chan struct{}),
 				doneReprocessingMsgInFlight:    doneReprocessing,
-				migrationStatusStepper:         migration.NewStatusStepper(mockSupport.IsSystemChannel(), mockSupport.ChainID()),
+				migrationManager:               migration.NewManager(mockSupport.IsSystemChannel(), mockSupport.ChainID()),
 			}
 
 			var counts []uint64
