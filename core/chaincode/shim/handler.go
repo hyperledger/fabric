@@ -64,9 +64,7 @@ func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	h.serialLock.Lock()
 	defer h.serialLock.Unlock()
 
-	err := h.chatStream.Send(msg)
-
-	return err
+	return h.chatStream.Send(msg)
 }
 
 //serialSendAsync serves the same purpose as serialSend (serialize msgs so gRPC will
@@ -74,12 +72,9 @@ func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 //can be nonblocking. Only errors need to be handled and these are handled by
 //communication on supplied error channel. A typical use will be a non-blocking or
 //nil channel
-func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage, errc chan error) {
+func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage, errc chan<- error) {
 	go func() {
-		err := h.serialSend(msg)
-		if errc != nil {
-			errc <- err
-		}
+		errc <- h.serialSend(msg)
 	}()
 }
 
@@ -822,7 +817,7 @@ func (h *Handler) handleCreated(msg *pb.ChaincodeMessage, errc chan error) error
 func (h *Handler) handleMessage(msg *pb.ChaincodeMessage, errc chan error) error {
 	if msg.Type == pb.ChaincodeMessage_KEEPALIVE {
 		chaincodeLogger.Debug("Sending KEEPALIVE response")
-		h.serialSendAsync(msg, nil) // ignore errors, maybe next KEEPALIVE will work
+		h.serialSendAsync(msg, errc)
 		return nil
 	}
 	chaincodeLogger.Debugf("[%s] Handling ChaincodeMessage of type: %s(state:%s)", shorttxid(msg.Txid), msg.Type, h.state)
