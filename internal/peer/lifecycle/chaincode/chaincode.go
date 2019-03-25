@@ -43,6 +43,7 @@ func Cmd(cf *CmdFactory) *cobra.Command {
 	chaincodeCmd.AddCommand(approveForMyOrgCmd(cf, nil))
 	chaincodeCmd.AddCommand(commitCmd(cf, nil))
 	chaincodeCmd.AddCommand(queryCommittedCmd(cf))
+	chaincodeCmd.AddCommand(queryApprovalStatusCmd(cf, nil))
 
 	return chaincodeCmd
 }
