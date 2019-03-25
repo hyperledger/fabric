@@ -133,21 +133,13 @@ func (h *Handler) handleResponse(msg *pb.ChaincodeMessage) error {
 // returned. An error will be returned msg cwas not successfully send to the
 // peer.
 func (h *Handler) sendReceive(msg *pb.ChaincodeMessage, responseChan <-chan pb.ChaincodeMessage) (pb.ChaincodeMessage, error) {
-	errc := make(chan error, 1)
-	h.serialSendAsync(msg, errc)
-
-	for {
-		select {
-		case err := <-errc:
-			if err != nil {
-				return pb.ChaincodeMessage{}, err
-			}
-			// Do not return; a nil means send was successful
-
-		case outmsg := <-responseChan:
-			return outmsg, nil
-		}
+	err := h.serialSend(msg)
+	if err != nil {
+		return pb.ChaincodeMessage{}, err
 	}
+
+	outmsg := <-responseChan
+	return outmsg, nil
 }
 
 // NewChaincodeHandler returns a new instance of the shim side handler.
