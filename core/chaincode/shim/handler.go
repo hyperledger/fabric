@@ -246,7 +246,7 @@ func (h *Handler) handleGetState(collection string, key string, channelId string
 
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", shorttxid(txid), pb.ChaincodeMessage_GET_STATE))
+		return nil, errors.WithMessagef(err, "[%s] error sending %s", shorttxid(txid), pb.ChaincodeMessage_GET_STATE)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
@@ -274,7 +274,7 @@ func (h *Handler) handleGetPrivateDataHash(collection string, key string, channe
 
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", shorttxid(txid), pb.ChaincodeMessage_GET_PRIVATE_DATA_HASH))
+		return nil, errors.WithMessagef(err, "[%s] error sending %s", shorttxid(txid), pb.ChaincodeMessage_GET_PRIVATE_DATA_HASH)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
@@ -302,7 +302,7 @@ func (h *Handler) handleGetStateMetadata(collection string, key string, channelI
 
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelID, txID)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", shorttxid(txID), pb.ChaincodeMessage_GET_STATE_METADATA))
+		return nil, errors.WithMessagef(err, "[%s] error sending %s", shorttxid(txID), pb.ChaincodeMessage_GET_STATE_METADATA)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
@@ -343,7 +343,7 @@ func (h *Handler) handlePutState(collection string, key string, value []byte, ch
 	// Execute the request and get response
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", msg.Txid, pb.ChaincodeMessage_PUT_STATE))
+		return errors.WithMessagef(err, "[%s] error sending %s", msg.Txid, pb.ChaincodeMessage_PUT_STATE)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
@@ -374,7 +374,7 @@ func (h *Handler) handlePutStateMetadataEntry(collection string, key string, met
 	// Execute the request and get response
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelID, txID)
 	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", msg.Txid, pb.ChaincodeMessage_PUT_STATE_METADATA))
+		return errors.WithMessagef(err, "[%s] error sending %s", msg.Txid, pb.ChaincodeMessage_PUT_STATE_METADATA)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
