@@ -81,7 +81,6 @@ A4QaL2VU6i4=
 -----END NOCERT-----
 `
 
-var timeout = time.Millisecond * 200
 var testOrgs = []testOrg{}
 
 func init() {
@@ -120,7 +119,7 @@ func (esss *emptyServiceServer) EmptyStream(stream testpb.EmptyService_EmptyStre
 
 // invoke the EmptyCall RPC
 func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Empty, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 	//create GRPC client conn
 	clientConn, err := grpc.DialContext(ctx, address, dialOptions...)
@@ -143,7 +142,7 @@ func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Emp
 
 // invoke the EmptyStream RPC
 func invokeEmptyStream(address string, dialOptions []grpc.DialOption) (*testpb.Empty, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 	//create GRPC client conn
 	clientConn, err := grpc.DialContext(ctx, address, dialOptions...)
