@@ -140,12 +140,15 @@ func (s *ChaincodeStub) PutState(key string, value []byte) error {
 }
 
 func (s *ChaincodeStub) createStateQueryIterator(response *pb.QueryResponse) *StateQueryIterator {
-	return &StateQueryIterator{CommonIterator: &CommonIterator{
-		handler:    s.handler,
-		channelId:  s.ChannelId,
-		txid:       s.TxID,
-		response:   response,
-		currentLoc: 0}}
+	return &StateQueryIterator{
+		CommonIterator: &CommonIterator{
+			handler:    s.handler,
+			channelId:  s.ChannelId,
+			txid:       s.TxID,
+			response:   response,
+			currentLoc: 0,
+		},
+	}
 }
 
 // GetQueryResult documentation can be found in interfaces.go
@@ -680,7 +683,7 @@ func (s *ChaincodeStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
 // SetEvent documentation can be found in interfaces.go
 func (s *ChaincodeStub) SetEvent(name string, payload []byte) error {
 	if name == "" {
-		return errors.New("event name can not be nil string")
+		return errors.New("event name can not be empty string")
 	}
 	s.chaincodeEvent = &pb.ChaincodeEvent{EventName: name, Payload: payload}
 	return nil

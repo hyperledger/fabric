@@ -356,13 +356,6 @@ func (t *shimTestCC) getEP(stub ChaincodeStubInterface) pb.Response {
 	return Success(ep)
 }
 
-func TestNilEventName(t *testing.T) {
-	stub := ChaincodeStub{}
-	if err := stub.SetEvent("", []byte("event payload")); err == nil {
-		t.Error("Event name can not be nil string.")
-	}
-}
-
 //store the stream CC mappings here
 var mockPeerCCSupport = mockpeer.NewMockPeerSupport()
 

@@ -183,7 +183,7 @@ func (h *Handler) handleInit(msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, er
 	}
 
 	res := h.cc.Init(stub)
-	chaincodeLogger.Debugf("[%s] Init get response status: %d", shorttxid(msg.Txid), res.Status)
+	chaincodeLogger.Debugf("[%s] Init response status: %d", shorttxid(msg.Txid), res.Status)
 
 	if res.Status >= ERROR {
 		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(res.Message), Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent, ChannelId: msg.ChannelId}, nil
