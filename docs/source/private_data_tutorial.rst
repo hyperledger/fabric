@@ -347,7 +347,7 @@ Use the `peer chaincode install <http://hyperledger-fabric.readthedocs.io/en/mas
 
     .. code:: bash
 
-       export CORE_PEER_ADDRESS=peer1.org1.example.com:7051
+       export CORE_PEER_ADDRESS=peer1.org1.example.com:8051
        peer chaincode install -n marblesp -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/
 
  3. Use the CLI to switch to Org2. Copy and paste the following block of
@@ -364,14 +364,14 @@ Use the `peer chaincode install <http://hyperledger-fabric.readthedocs.io/en/mas
 
     .. code:: bash
 
-       export CORE_PEER_ADDRESS=peer0.org2.example.com:7051
+       export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
        peer chaincode install -n marblesp -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/
 
  5. Switch the active peer to the second peer in org2 and install the chaincode:
 
     .. code:: bash
 
-       export CORE_PEER_ADDRESS=peer1.org2.example.com:7051
+       export CORE_PEER_ADDRESS=peer1.org2.example.com:10051
        peer chaincode install -n marblesp -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/
 
 Instantiate the chaincode on the channel
@@ -565,7 +565,7 @@ the peer which is unauthorized to access the marbles ``price`` private data.
 
  .. code:: bash
 
-    export CORE_PEER_ADDRESS=peer0.org2.example.com:7051
+    export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
     export CORE_PEER_LOCALMSPID=Org2MSP
     export PEER0_ORG2_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
     export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG2_CA

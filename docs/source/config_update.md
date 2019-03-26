@@ -280,7 +280,7 @@ Visual Studio).
                   "anchor_peers": [
                     {
                       "host": "peer0.org2.example.com",
-                      "port": 7051
+                      "port": 9051
                     }
                   ]
                 },
@@ -830,7 +830,7 @@ each Org.
   ```
   {
     "host": "peer0.org2.example.com",
-      "port": 7051
+      "port": 9051
   }
   ```
 
