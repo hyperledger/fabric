@@ -46,7 +46,7 @@ gotool.golint:
 	GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install ./vendor/golang.org/x/lint/golint
 
 # Lock to a versioned dep
-gotool.dep: DEP_VERSION ?= "v0.5.0"
+gotool.dep: DEP_VERSION ?= "v0.5.1"
 gotool.dep:
 	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) go get -d -u github.com/golang/dep
 	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/golang/dep checkout -q $(DEP_VERSION)
