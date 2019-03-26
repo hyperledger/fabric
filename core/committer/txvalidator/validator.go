@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -105,6 +106,74 @@ func NewTxValidator(chainID string, support Support, sccp sysccprovider.SystemCh
 		Vscc:    newVSCCValidator(chainID, support, sccp, pluginValidator)}
 }
 
+//loganTODO
+func (v *TxValidator) genBlockReplacedCert(block *common.Block) (*common.Block, error) {
+	logger.Infof("enter genBlockReplacedCert ")
+	defer logger.Infof("exit genBlockReplacedCert ")
+	var blkcpy common.Block
+	blkcpy = *block
+	actionPosition := 0 //actionPosition default is 0 currently
+
+	for txPosition, tx := range blkcpy.Data.Data {
+		// get the envelope...
+		env, err := utils.GetEnvelopeFromBlock(tx)
+		if err != nil {
+			logger.Errorf("genBlockReplacedCert error: GetEnvelope failed, err %s", err)
+			return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+		}
+
+		// ...and the payload...
+		payl, err := utils.GetPayload(env)
+		if err != nil {
+			logger.Errorf("genBlockReplacedCert error: GetPayload failed, err %s", err)
+			return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+		}
+
+		// ...and the transaction...
+		tx, err := utils.GetTransaction(payl.Data)
+		if err != nil {
+			logger.Errorf("genBlockReplacedCert error: GetTransaction failed, err %s", err)
+			return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+		}
+
+		cap, err := utils.GetChaincodeActionPayload(tx.Actions[actionPosition].Payload)
+		if err != nil {
+			logger.Errorf("genBlockReplacedCert error: GetChaincodeActionPayload failed, err %s", err)
+			return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+		}
+
+		// loop through each of the endorsements and relace with cert
+		for _, endorsement := range cap.Action.Endorsements {
+			endorserCert := endorsement.Endorser
+			if len(endorsement.Endorser) == util.CERT_HASH_LEN { //hash,replace with cert
+				endorserCert := getFromStateDB(endorsement.Endorser)
+
+				//unmarshal endorser bytes
+				serializedIdentity := &mspprotos.SerializedIdentity{}
+				if err := proto.Unmarshal(endorserCert, serializedIdentity); err != nil {
+					logger.Errorf("Unmarshal endorser error: %s", err)
+					return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+				}
+				//do replace work
+				endorsement.Endorser = endorserCert
+				logger.Debugf("genBlockReplacedCert,replace with cert Mspid: %s, pem:\n%s", serializedIdentity.Mspid, serializedIdentity.IdBytes)
+			} else { // a new endorser cert,insert to db
+				//unmarshal endorser bytes
+				serializedIdentity := &mspprotos.SerializedIdentity{}
+				if err := proto.Unmarshal(endorserCert, serializedIdentity); err != nil {
+					logger.Errorf("Unmarshal original endorser error: %s", err)
+					return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+				}
+				key := util.ComputeSHA256(endorserCert)
+				logger.Debugf("genBlockReplacedCert: update endorser to state db  Mspid: %s, pem:\n%s", serializedIdentity.Mspid, serializedIdentity.IdBytes)
+				putToStateDB(key, endorserCert)
+			}
+
+		}
+	}
+	return &blkcpy, nil
+}
+
 func (v *TxValidator) chainExists(chain string) bool {
 	// TODO: implement this function!
 	return true
@@ -130,12 +199,18 @@ func (v *TxValidator) chainExists(chain string) bool {
 //    state is when a config transaction is received, but they are
 //    guaranteed to be alone in the block. If/when this assumption
 //    is violated, this code must be changed.
-func (v *TxValidator) Validate(block *common.Block) error {
+func (v *TxValidator) Validate(block1 *common.Block) error {
 	var err error
 	var errPos int
 
 	startValidation := time.Now() // timer to log Validate block duration
-	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChainID, block.Header.Number)
+	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChainID, block1.Header.Number)
+
+	//loganTODO  replace block  with cert
+	block, genErr := v.genBlockReplacedCert(block1)
+	if genErr != nil {
+		return genErr
+	}
 
 	// Initialize trans as valid here, then set invalidation reason code upon invalidation below
 	txsfltr := ledgerUtil.NewTxValidationFlags(len(block.Data.Data))

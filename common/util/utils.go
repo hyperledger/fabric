@@ -31,6 +31,8 @@ import (
 	"github.com/hyperledger/fabric/common/metadata"
 )
 
+const CERT_HASH_LEN int = 32
+
 type alg struct {
 	hashFun func([]byte) string
 }

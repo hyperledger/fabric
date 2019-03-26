@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/util"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
@@ -31,6 +32,25 @@ import (
 )
 
 var putilsLogger = flogging.MustGetLogger("protoutils")
+
+//loganTODO
+func preProcIdenity(hashPem []byte) ([]byte, error) {
+	putilsLogger.Debugf("preProcIdenity start")
+	defer putilsLogger.Debugf("preProcIdenity end")
+
+	if false { // tmp disable TODO
+		if len(hashPem) == util.CERT_HASH_LEN { //hash
+			putilsLogger.Debugf("this is a  hash")
+			return getFromStateDB(hashPem)
+		} else { // cert
+			key := util.ComputeSHA256(hashPem)
+			putilsLogger.Debugf("this is a cert,update db")
+			putToStateDB(key, hashPem)
+		}
+	}
+
+	return hashPem, nil
+}
 
 // validateChaincodeProposalMessage checks the validity of a Proposal message of type CHAINCODE
 func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*pb.ChaincodeHeaderExtension, error) {
@@ -163,8 +183,14 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, Chai
 		return errors.Errorf("could not get msp for channel [%s]", ChainID)
 	}
 
+	//loganTODO replace creator with cert
+	validcreator, err := preProcIdenity(creatorBytes)
+	if err != nil {
+		return errors.WithMessage(err, "preProcIdenity error maybe creator invalid")
+	}
+
 	// get the identity of the creator
-	creator, err := mspObj.DeserializeIdentity(creatorBytes)
+	creator, err := mspObj.DeserializeIdentity(validcreator)
 	if err != nil {
 		return errors.WithMessage(err, "MSP error")
 	}
