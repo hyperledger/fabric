@@ -285,6 +285,8 @@ func New(
 	comm := createComm(clusterDialer, consenter, conf.General.Cluster, metricsProvider)
 	consenter.Communication = comm
 	svc := &cluster.Service{
+		CertExpWarningThreshold:          conf.General.Cluster.CertExpirationWarningThreshold,
+		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
 		StreamCountReporter: &cluster.StreamCountReporter{
 			Metrics: comm.Metrics,
 		},
