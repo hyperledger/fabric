@@ -617,11 +617,10 @@ type certificateExpirationCheck struct {
 	lastWarning                      time.Time
 	nodeName                         string
 	endpoint                         string
-	channel                          string
 	alert                            func(string, ...interface{})
 }
 
-func (exp *certificateExpirationCheck) checkExpiration(currentTime time.Time) {
+func (exp *certificateExpirationCheck) checkExpiration(currentTime time.Time, channel string) {
 	timeLeft := exp.expiresAt.Sub(currentTime)
 	if timeLeft > exp.expirationWarningThreshold {
 		return
@@ -633,6 +632,6 @@ func (exp *certificateExpirationCheck) checkExpiration(currentTime time.Time) {
 	}
 
 	exp.alert("Certificate of %s from %s for channel %s expires in less than %v",
-		exp.nodeName, exp.endpoint, exp.channel, timeLeft)
+		exp.nodeName, exp.endpoint, channel, timeLeft)
 	exp.lastWarning = currentTime
 }

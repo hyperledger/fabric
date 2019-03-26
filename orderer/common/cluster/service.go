@@ -9,9 +9,11 @@ package cluster
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -37,10 +39,12 @@ type StepStream interface {
 
 // Service defines the raft Service
 type Service struct {
-	StreamCountReporter *StreamCountReporter
-	Dispatcher          Dispatcher
-	Logger              *flogging.FabricLogger
-	StepLogger          *flogging.FabricLogger
+	StreamCountReporter              *StreamCountReporter
+	Dispatcher                       Dispatcher
+	Logger                           *flogging.FabricLogger
+	StepLogger                       *flogging.FabricLogger
+	MinimumExpirationWarningInterval time.Duration
+	CertExpWarningThreshold          time.Duration
 }
 
 // Step passes an implementation-specific message to another cluster member.
@@ -50,10 +54,11 @@ func (s *Service) Step(stream orderer.Cluster_StepServer) error {
 
 	addr := util.ExtractRemoteAddress(stream.Context())
 	commonName := commonNameFromContext(stream.Context())
+	exp := s.initializeExpirationCheck(stream, addr, commonName)
 	s.Logger.Debugf("Connection from %s(%s)", commonName, addr)
 	defer s.Logger.Debugf("Closing connection from %s(%s)", commonName, addr)
 	for {
-		err := s.handleMessage(stream, addr)
+		err := s.handleMessage(stream, addr, exp)
 		if err == io.EOF {
 			s.Logger.Debugf("%s(%s) disconnected", commonName, addr)
 			return nil
@@ -65,7 +70,7 @@ func (s *Service) Step(stream orderer.Cluster_StepServer) error {
 	}
 }
 
-func (s *Service) handleMessage(stream StepStream, addr string) error {
+func (s *Service) handleMessage(stream StepStream, addr string, exp *certificateExpirationCheck) error {
 	request, err := stream.Recv()
 	if err == io.EOF {
 		return err
@@ -74,6 +79,8 @@ func (s *Service) handleMessage(stream StepStream, addr string) error {
 		s.Logger.Warningf("Stream read from %s failed: %v", addr, err)
 		return err
 	}
+
+	exp.checkExpiration(time.Now(), extractChannel(request))
 
 	if s.StepLogger.IsEnabledFor(zap.DebugLevel) {
 		nodeName := commonNameFromContext(stream.Context())
@@ -97,4 +104,37 @@ func (s *Service) handleSubmit(request *orderer.SubmitRequest, stream StepStream
 		return err
 	}
 	return err
+}
+
+func (s *Service) initializeExpirationCheck(stream orderer.Cluster_StepServer, endpoint, nodeName string) *certificateExpirationCheck {
+	return &certificateExpirationCheck{
+		minimumExpirationWarningInterval: s.MinimumExpirationWarningInterval,
+		expirationWarningThreshold:       s.CertExpWarningThreshold,
+		expiresAt:                        expiresAt(stream),
+		endpoint:                         endpoint,
+		nodeName:                         nodeName,
+		alert: func(template string, args ...interface{}) {
+			s.Logger.Warningf(template, args...)
+		},
+	}
+}
+
+func expiresAt(stream orderer.Cluster_StepServer) time.Time {
+	cert := comm.ExtractCertificateFromContext(stream.Context())
+	if cert == nil {
+		return time.Time{}
+	}
+	return cert.NotAfter
+}
+
+func extractChannel(msg *orderer.StepRequest) string {
+	if consReq := msg.GetConsensusRequest(); consReq != nil {
+		return consReq.Channel
+	}
+
+	if submitReq := msg.GetSubmitRequest(); submitReq != nil {
+		return submitReq.Channel
+	}
+
+	return ""
 }

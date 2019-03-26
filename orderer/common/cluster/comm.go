@@ -541,7 +541,7 @@ func (stream *Stream) sendMessage(request *orderer.StepRequest) {
 
 	f := func() (*orderer.StepResponse, error) {
 		startSend := time.Now()
-		stream.expCheck.checkExpiration(startSend)
+		stream.expCheck.checkExpiration(startSend, stream.Channel)
 		err := stream.Cluster_StepClient.Send(request)
 		stream.metrics.reportMsgSendTime(stream.Endpoint, stream.Channel, time.Since(startSend))
 		return nil, err
@@ -697,11 +697,10 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 		minimumExpirationWarningInterval: rc.minimumExpirationWarningInterval,
 		expirationWarningThreshold:       rc.certExpWarningThreshold,
 		expiresAt:                        rc.expiresAt,
-		channel:                          s.Channel,
 		endpoint:                         s.Endpoint,
 		nodeName:                         s.NodeName,
 		alert: func(template string, args ...interface{}) {
-			s.Logger.Warningf(template, args)
+			s.Logger.Warningf(template, args...)
 		},
 	}
 

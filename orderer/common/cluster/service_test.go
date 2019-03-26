@@ -9,8 +9,11 @@ package cluster_test
 import (
 	"context"
 	"io"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/comm"
@@ -20,6 +23,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -236,4 +241,109 @@ func TestServiceGRPC(t *testing.T) {
 		Logger:     flogging.MustGetLogger("test"),
 		StepLogger: flogging.MustGetLogger("test"),
 	})
+}
+
+func TestExpirationWarningIngress(t *testing.T) {
+	t.Parallel()
+
+	ca, err := tlsgen.NewCA()
+	assert.NoError(t, err)
+
+	serverCert, err := ca.NewServerCertKeyPair("127.0.0.1")
+	assert.NoError(t, err)
+
+	clientCert, err := ca.NewClientCertKeyPair()
+	assert.NoError(t, err)
+
+	dispatcher := &mocks.Dispatcher{}
+	dispatcher.On("DispatchConsensus", mock.Anything, mock.Anything).Return(nil)
+
+	svc := &cluster.Service{
+		CertExpWarningThreshold:          time.Until(clientCert.TLSCert.NotAfter),
+		MinimumExpirationWarningInterval: time.Second * 2,
+		StreamCountReporter: &cluster.StreamCountReporter{
+			Metrics: cluster.NewMetrics(&disabled.Provider{}),
+		},
+		Logger:     flogging.MustGetLogger("test"),
+		StepLogger: flogging.MustGetLogger("test"),
+		Dispatcher: dispatcher,
+	}
+
+	alerts := make(chan struct{}, 10)
+	svc.Logger = svc.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		if strings.Contains(entry.Message, "expires in less than 23h59m") {
+			alerts <- struct{}{}
+		}
+		return nil
+	}))
+
+	srvConf := comm.ServerConfig{
+		SecOpts: &comm.SecureOptions{
+			Certificate:       serverCert.Cert,
+			Key:               serverCert.Key,
+			UseTLS:            true,
+			ClientRootCAs:     [][]byte{ca.CertBytes()},
+			RequireClientCert: true,
+		},
+	}
+
+	srv, err := comm.NewGRPCServer("127.0.0.1:0", srvConf)
+	assert.NoError(t, err)
+	orderer.RegisterClusterServer(srv.Server(), svc)
+	go srv.Start()
+	defer srv.Stop()
+
+	clientConf := comm.ClientConfig{
+		Timeout: time.Second * 3,
+		SecOpts: &comm.SecureOptions{
+			ServerRootCAs:     [][]byte{ca.CertBytes()},
+			UseTLS:            true,
+			Key:               clientCert.Key,
+			Certificate:       clientCert.Cert,
+			RequireClientCert: true,
+		},
+	}
+
+	client, err := comm.NewGRPCClient(clientConf)
+	assert.NoError(t, err)
+
+	conn, err := client.NewConnection(srv.Address(), "")
+	assert.NoError(t, err)
+
+	cl := orderer.NewClusterClient(conn)
+	stream, err := cl.Step(context.Background())
+	assert.NoError(t, err)
+
+	err = stream.Send(consensusRequest)
+	assert.NoError(t, err)
+
+	// An alert is logged at the first time.
+	select {
+	case <-alerts:
+	case <-time.After(time.Second * 5):
+		t.Fatal("Should have received an alert")
+	}
+
+	err = stream.Send(consensusRequest)
+	assert.NoError(t, err)
+
+	// No alerts in a consecutive time.
+	select {
+	case <-alerts:
+		t.Fatal("Should have not received an alert")
+	case <-time.After(time.Millisecond * 500):
+	}
+
+	// Wait for alert expiration interval to expire.
+	time.Sleep(svc.MinimumExpirationWarningInterval + time.Second)
+
+	err = stream.Send(consensusRequest)
+	assert.NoError(t, err)
+
+	// An alert should be logged now after the timeout expired.
+	select {
+	case <-alerts:
+	case <-time.After(time.Second * 5):
+		t.Fatal("Should have received an alert")
+	}
 }
