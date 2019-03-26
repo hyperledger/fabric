@@ -1668,7 +1668,7 @@ func TestCipherSuites(t *testing.T) {
 				RootCAs:      certPool,
 				CipherSuites: test.clientCiphers,
 			}
-			_, err = tls.Dial("tcp", testAddress, tlsConfig)
+			_, err := tls.Dial("tcp", testAddress, tlsConfig)
 			if test.success {
 				assert.NoError(t, err)
 			} else {
