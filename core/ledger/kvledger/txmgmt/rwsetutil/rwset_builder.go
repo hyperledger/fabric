@@ -150,7 +150,7 @@ func (b *RWSetBuilder) GetTxSimulationResults() (*ledger.TxSimulationResults, er
 	// Compute the proto bytes for pub rwset
 	pubSet := b.GetTxReadWriteSet()
 	if pubSet != nil {
-		if pubDataProto, err = b.GetTxReadWriteSet().toProtoMsg(); err != nil {
+		if pubDataProto, err = pubSet.toProtoMsg(); err != nil {
 			return nil, err
 		}
 	}
