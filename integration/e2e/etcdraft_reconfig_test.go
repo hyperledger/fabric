@@ -17,12 +17,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
@@ -1012,53 +1011,6 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 		By("Creating another channel via the orderer that is in system channel but not app channel")
 		network.CreateChannel("three-orderer-channel", network.Orderers[2], peer)
-	})
-
-	When("Adding new orderer organization", func() {
-		It("it will be added successfully", func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
-			network.GenerateConfigTree()
-			network.Bootstrap()
-
-			networkRunner := network.NetworkGroupRunner()
-			process := ifrit.Invoke(networkRunner)
-			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
-
-			peer := network.Peer("Org1", "peer1")
-			orderer := network.Orderer("orderer1")
-			channel := "systemchannel"
-
-			config := nwo.GetConfig(network, peer, orderer, channel)
-			updatedConfig := proto.Clone(config).(*common.Config)
-
-			ordererOrg := updatedConfig.ChannelGroup.Groups["Orderer"].Groups["OrdererOrg"]
-			mspConfig := &msp.MSPConfig{}
-			proto.Unmarshal(ordererOrg.Values["MSP"].Value, mspConfig)
-
-			fabMSPConfig := &msp.FabricMSPConfig{}
-			proto.Unmarshal(mspConfig.Config, fabMSPConfig)
-
-			fabMSPConfig.Name = "OrdererMSP2"
-
-			mspConfig.Config, _ = proto.Marshal(fabMSPConfig)
-			updatedConfig.ChannelGroup.Groups["Orderer"].Groups["OrdererMSP2"] = &common.ConfigGroup{
-				Values: map[string]*common.ConfigValue{
-					"MSP": {
-						Value:     protoutil.MarshalOrPanic(mspConfig),
-						ModPolicy: "Admins",
-					},
-				},
-				ModPolicy: "Admins",
-			}
-
-			nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
-
-			if process != nil {
-				process.Signal(syscall.SIGTERM)
-				Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
-			}
-			os.RemoveAll(testDir)
-		})
 	})
 })
 
