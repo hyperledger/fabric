@@ -24,15 +24,21 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/protos/common"
+	protosorderer "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
+	"github.com/hyperledger/fabric/protos/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
 var _ = Describe("EndToEnd", func() {
@@ -260,6 +266,95 @@ var _ = Describe("EndToEnd", func() {
 			sess, err := network.PeerAdminSession(org1Peer0, invokeChaincode)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say(`\Qdeliver completed with status (FORBIDDEN)\E`))
+		})
+	})
+
+	Describe("Invalid Raft config metadata", func() {
+		It("refuses to start orderer or rejects config update", func() {
+			By("Creating malformed genesis block")
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, BasePort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			sysProfile := localconfig.Load(network.SystemChannel.Profile, network.RootDir)
+			Expect(sysProfile.Orderer).NotTo(BeNil())
+			sysProfile.Orderer.EtcdRaft.Options.ElectionTick = sysProfile.Orderer.EtcdRaft.Options.HeartbeatTick
+			pgen := encoder.New(sysProfile)
+			genesisBlock := pgen.GenesisBlockForChannel(network.SystemChannel.Name)
+			data, err := proto.Marshal(genesisBlock)
+			Expect(err).NotTo(HaveOccurred())
+			ioutil.WriteFile(network.OutputBlockPath(network.SystemChannel.Name), data, 0644)
+
+			By("Starting orderer with malformed genesis block")
+			ordererRunner := network.OrdererGroupRunner()
+			process = ifrit.Invoke(ordererRunner)
+			Eventually(process.Wait, network.EventuallyTimeout).Should(Receive()) // orderer process should exit
+			os.RemoveAll(testDir)
+
+			By("Starting orderer with correct genesis block")
+			testDir, err = ioutil.TempDir("", "e2e")
+			Expect(err).NotTo(HaveOccurred())
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, BasePort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			orderer := network.Orderer("orderer")
+			runner := network.OrdererRunner(orderer)
+			process = ifrit.Invoke(runner)
+			Eventually(process.Ready, network.EventuallyTimeout).Should(BeClosed())
+
+			By("Waiting for system channel to be ready")
+			findLeader([]*ginkgomon.Runner{runner})
+
+			By("Creating malformed channel creation config tx")
+			channel := "testchannel"
+			sysProfile = localconfig.Load(network.SystemChannel.Profile, network.RootDir)
+			Expect(sysProfile.Orderer).NotTo(BeNil())
+			appProfile := localconfig.Load(network.ProfileForChannel(channel), network.RootDir)
+			Expect(appProfile).NotTo(BeNil())
+			o := *sysProfile.Orderer
+			appProfile.Orderer = &o
+			appProfile.Orderer.EtcdRaft = proto.Clone(sysProfile.Orderer.EtcdRaft).(*etcdraft.ConfigMetadata)
+			appProfile.Orderer.EtcdRaft.Options.HeartbeatTick = appProfile.Orderer.EtcdRaft.Options.ElectionTick
+			configtx, err := encoder.MakeChannelCreationTransactionWithSystemChannelContext(channel, nil, appProfile, sysProfile)
+			Expect(err).NotTo(HaveOccurred())
+			data, err = proto.Marshal(configtx)
+			Expect(err).NotTo(HaveOccurred())
+			ioutil.WriteFile(network.CreateChannelTxPath(channel), data, 0644)
+
+			By("Submitting malformed channel creation config tx to orderer")
+			peer1org1 := network.Peer("Org1", "peer1")
+			peer1org2 := network.Peer("Org2", "peer1")
+
+			network.CreateChannelFail(channel, orderer, peer1org1, peer1org1, peer1org2, orderer)
+			Consistently(process.Wait).ShouldNot(Receive()) // malformed tx should not crash orderer
+			Expect(runner.Err()).To(gbytes.Say(`rejected by Configure: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
+
+			By("Submitting channel config update with illegal value")
+			channel = network.SystemChannel.Name
+			config := nwo.GetConfig(network, peer1org1, orderer, channel)
+			updatedConfig := proto.Clone(config).(*common.Config)
+
+			consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+			consensusTypeValue := &protosorderer.ConsensusType{}
+			Expect(proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)).To(Succeed())
+
+			metadata := &etcdraft.ConfigMetadata{}
+			Expect(proto.Unmarshal(consensusTypeValue.Metadata, metadata)).To(Succeed())
+
+			metadata.Options.HeartbeatTick = 10
+			metadata.Options.ElectionTick = 10
+
+			newMetadata, err := proto.Marshal(metadata)
+			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue.Metadata = newMetadata
+
+			updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
+				ModPolicy: "Admins",
+				Value:     utils.MarshalOrPanic(consensusTypeValue),
+			}
+
+			nwo.UpdateOrdererConfigFail(network, orderer, channel, config, updatedConfig, peer1org1, orderer)
 		})
 	})
 
