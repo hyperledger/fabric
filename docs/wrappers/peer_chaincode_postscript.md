@@ -36,12 +36,12 @@ instantiates the chaincode named `mycc` at version `1.0` on channel
 Here is an example of the `peer chaincode invoke` command:
 
   * Invoke the chaincode named `mycc` at version `1.0` on channel `mychannel`
-    on `peer0.org1.example.com:7051` and `peer0.org2.example.com:7051` (the
+    on `peer0.org1.example.com:7051` and `peer0.org2.example.com:9051` (the
     peers defined by `--peerAddresses`), requesting to move 10 units from
     variable `a` to variable `b`:
 
     ```
-    peer chaincode invoke -o orderer.example.com:7050 -C mychannel -n mycc --peerAddresses peer0.org1.example.com:7051 --peerAddresses peer0.org2.example.com:7051 -c '{"Args":["invoke","a","b","10"]}'
+    peer chaincode invoke -o orderer.example.com:7050 -C mychannel -n mycc --peerAddresses peer0.org1.example.com:7051 --peerAddresses peer0.org2.example.com:9051 -c '{"Args":["invoke","a","b","10"]}'
 
     2018-02-22 16:34:27.069 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
     2018-02-22 16:34:27.069 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default vscc
