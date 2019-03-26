@@ -382,6 +382,60 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMeta
 	return MetadataFromConfigUpdate(configUpdate)
 }
 
+// CheckConfigMetadata validates Raft config metadata
+func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata, consenters map[string]uint64) error {
+	if metadata == nil {
+		// defensive check. this should not happen as CheckConfigMetadata
+		// should always be called with non-nil config metadata
+		return errors.Errorf("nil Raft config metadata")
+	}
+
+	if metadata.Options.HeartbeatTick == 0 ||
+		metadata.Options.ElectionTick == 0 ||
+		metadata.Options.MaxInflightBlocks == 0 {
+		return errors.Errorf("none of the fields in Raft config option can be zero")
+	}
+
+	// check Raft options
+	if metadata.Options.ElectionTick <= metadata.Options.HeartbeatTick {
+		return errors.Errorf("ElectionTick (%d) must be greater than HeartbeatTick (%d)",
+			metadata.Options.HeartbeatTick, metadata.Options.HeartbeatTick)
+	}
+
+	if d, err := time.ParseDuration(metadata.Options.TickInterval); err != nil {
+		return errors.Errorf("failed to parse TickInterval (%s) to time duration: %s", metadata.Options.TickInterval, err)
+	} else if d == 0 {
+		return errors.Errorf("TickInterval cannot be zero")
+	}
+
+	if len(metadata.Consenters) == 0 {
+		return errors.Errorf("cannot create channel with empty consenter set")
+	}
+
+	// sanity check of certificates
+	for _, consenter := range metadata.Consenters {
+		if bl, _ := pem.Decode(consenter.ServerTlsCert); bl == nil {
+			return errors.Errorf("invalid server TLS cert: %s", string(consenter.ServerTlsCert))
+		}
+
+		if bl, _ := pem.Decode(consenter.ClientTlsCert); bl == nil {
+			return errors.Errorf("invalid client TLS cert: %s", string(consenter.ClientTlsCert))
+		}
+	}
+
+	if err := MetadataHasDuplication(metadata); err != nil {
+		return err
+	}
+
+	for _, c := range metadata.Consenters {
+		if _, exits := consenters[string(c.ClientTlsCert)]; !exits {
+			return errors.Errorf("new channel has consenter that is not part of system consenter set")
+		}
+	}
+
+	return nil
+}
+
 // ConsenterCertificate denotes a TLS certificate of a consenter
 type ConsenterCertificate []byte
 
