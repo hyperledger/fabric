@@ -458,8 +458,8 @@ func TestStepStdFromCommit(t *testing.T) {
 	})
 }
 
-func prepareRaftMetadata() *protosraft.Metadata {
-	raftMetadata := &protosraft.Metadata{
+func prepareRaftMetadata() *protosraft.ConfigMetadata {
+	raftMetadata := &protosraft.ConfigMetadata{
 		Consenters: []*protosraft.Consenter{
 			{
 				ClientTlsCert: []byte{1, 2, 3, 4},
@@ -469,12 +469,11 @@ func prepareRaftMetadata() *protosraft.Metadata {
 			},
 		},
 		Options: &protosraft.Options{
-			TickInterval:     "500ms",
-			ElectionTick:     10,
-			HeartbeatTick:    1,
-			MaxInflightMsgs:  256,
-			MaxSizePerMsg:    1048576,
-			SnapshotInterval: 8388608,
+			TickInterval:         "500ms",
+			ElectionTick:         10,
+			HeartbeatTick:        1,
+			MaxInflightBlocks:    256,
+			SnapshotIntervalSize: 8388608,
 		}}
 
 	return raftMetadata
@@ -483,7 +482,7 @@ func prepareRaftMetadata() *protosraft.Metadata {
 func prepareRaftMetadataBytes(t *testing.T) []byte {
 	raftMetadata := prepareRaftMetadata()
 	raftMetadataBytes := protoutil.MarshalOrPanic(raftMetadata)
-	raftMetadata2 := &protosraft.Metadata{}
+	raftMetadata2 := &protosraft.ConfigMetadata{}
 	errUnma := proto.Unmarshal(raftMetadataBytes, raftMetadata2)
 	assert.NoError(t, errUnma)
 
