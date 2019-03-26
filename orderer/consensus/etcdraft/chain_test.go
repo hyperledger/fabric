@@ -1579,8 +1579,25 @@ var _ = Describe("Chain", func() {
 				defaultTimeout = 5 * time.Second
 			)
 			var (
+				options = &raftprotos.Options{
+					TickInterval:         "500ms",
+					ElectionTick:         10,
+					HeartbeatTick:        1,
+					MaxInflightBlocks:    5,
+					SnapshotIntervalSize: 200,
+				}
+				updateRaftConfigValue = func(metadata *raftprotos.ConfigMetadata) map[string]*common.ConfigValue {
+					return map[string]*common.ConfigValue{
+						"ConsensusType": {
+							Version: 1,
+							Value: marshalOrPanic(&orderer.ConsensusType{
+								Metadata: marshalOrPanic(metadata),
+							}),
+						},
+					}
+				}
 				addConsenterConfigValue = func() map[string]*common.ConfigValue {
-					metadata := &raftprotos.ConfigMetadata{}
+					metadata := &raftprotos.ConfigMetadata{Options: options}
 					for _, consenter := range consenters {
 						metadata.Consenters = append(metadata.Consenters, consenter)
 					}
@@ -1592,32 +1609,34 @@ var _ = Describe("Chain", func() {
 						ClientTlsCert: clientTLSCert(tlsCA),
 					}
 					metadata.Consenters = append(metadata.Consenters, newConsenter)
-
-					return map[string]*common.ConfigValue{
-						"ConsensusType": {
-							Version: 1,
-							Value: marshalOrPanic(&orderer.ConsensusType{
-								Metadata: marshalOrPanic(metadata),
-							}),
-						},
-					}
+					return updateRaftConfigValue(metadata)
 				}
 				removeConsenterConfigValue = func(id uint64) map[string]*common.ConfigValue {
-					metadata := &raftprotos.ConfigMetadata{}
+					metadata := &raftprotos.ConfigMetadata{Options: options}
 					for nodeID, consenter := range consenters {
 						if nodeID == id {
 							continue
 						}
 						metadata.Consenters = append(metadata.Consenters, consenter)
 					}
+					return updateRaftConfigValue(metadata)
+				}
+				createChannelEnv = func(metadata *raftprotos.ConfigMetadata) *common.Envelope {
+					configEnv := newConfigEnv("another-channel",
+						common.HeaderType_CONFIG,
+						newConfigUpdateEnv(channelID, nil, updateRaftConfigValue(metadata)))
 
-					return map[string]*common.ConfigValue{
-						"ConsensusType": {
-							Version: 1,
-							Value: marshalOrPanic(&orderer.ConsensusType{
-								Metadata: marshalOrPanic(metadata),
-							}),
-						},
+					// Wrap config env in Orderer transaction
+					return &common.Envelope{
+						Payload: marshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: marshalOrPanic(&common.ChannelHeader{
+									Type:      int32(common.HeaderType_ORDERER_TRANSACTION),
+									ChannelId: channelID,
+								}),
+							},
+							Data: marshalOrPanic(configEnv),
+						}),
 					}
 				}
 			)
@@ -1647,6 +1666,111 @@ var _ = Describe("Chain", func() {
 
 			AfterEach(func() {
 				network.stop()
+			})
+
+			Context("channel creation", func() {
+				It("succeeds with valid config metadata", func() {
+					metadata := &raftprotos.ConfigMetadata{Options: options}
+					for _, consenter := range consenters {
+						metadata.Consenters = append(metadata.Consenters, consenter)
+					}
+
+					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(Succeed())
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					})
+				})
+
+				It("fails with invalid timeout", func() {
+					metadata := &raftprotos.ConfigMetadata{Options: proto.Clone(options).(*raftprotos.Options)}
+					metadata.Options.ElectionTick = metadata.Options.HeartbeatTick
+					for _, consenter := range consenters {
+						metadata.Consenters = append(metadata.Consenters, consenter)
+					}
+
+					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
+						"ElectionTick (1) must be greater than HeartbeatTick (1)"))
+				})
+
+				It("fails with zero ElectionTick", func() {
+					metadata := &raftprotos.ConfigMetadata{Options: proto.Clone(options).(*raftprotos.Options)}
+					metadata.Options.ElectionTick = 0
+					for _, consenter := range consenters {
+						metadata.Consenters = append(metadata.Consenters, consenter)
+					}
+
+					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
+						"none of the fields in Raft config option can be zero"))
+				})
+
+				It("fails with zero max inflgith blocks", func() {
+					metadata := &raftprotos.ConfigMetadata{Options: proto.Clone(options).(*raftprotos.Options)}
+					metadata.Options.MaxInflightBlocks = 0
+					for _, consenter := range consenters {
+						metadata.Consenters = append(metadata.Consenters, consenter)
+					}
+
+					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
+						"none of the fields in Raft config option can be zero"))
+				})
+
+				It("fails with invalid tick interval", func() {
+					metadata := &raftprotos.ConfigMetadata{Options: proto.Clone(options).(*raftprotos.Options)}
+					metadata.Options.TickInterval = "invalid"
+					for _, consenter := range consenters {
+						metadata.Consenters = append(metadata.Consenters, consenter)
+					}
+
+					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(ContainSubstring(
+						"failed to parse TickInterval (invalid) to time duration")))
+				})
+
+				It("fails with zero tick interval", func() {
+					metadata := &raftprotos.ConfigMetadata{Options: proto.Clone(options).(*raftprotos.Options)}
+					metadata.Options.TickInterval = "0"
+					for _, consenter := range consenters {
+						metadata.Consenters = append(metadata.Consenters, consenter)
+					}
+
+					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(ContainSubstring(
+						"TickInterval cannot be zero")))
+				})
+
+				It("fails with empty consenter set", func() {
+					metadata := &raftprotos.ConfigMetadata{Options: options}
+
+					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
+						"cannot create channel with empty consenter set"))
+				})
+
+				It("fails with invalid certificate", func() {
+					metadata := &raftprotos.ConfigMetadata{Options: options}
+					for _, consenter := range consenters {
+						metadata.Consenters = append(metadata.Consenters, consenter)
+					}
+					metadata.Consenters[0].ClientTlsCert = []byte("Hello")
+
+					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
+						"invalid client TLS cert: Hello"))
+				})
+
+				It("fails with extra consenter", func() {
+					metadata := &raftprotos.ConfigMetadata{Options: options}
+					for _, consenter := range consenters {
+						metadata.Consenters = append(metadata.Consenters, consenter)
+					}
+					metadata.Consenters = append(
+						metadata.Consenters,
+						&raftprotos.Consenter{
+							Host:          "localhost",
+							Port:          7050,
+							ServerTlsCert: serverTLSCert(tlsCA),
+							ClientTlsCert: clientTLSCert(tlsCA),
+						})
+
+					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
+						"new channel has consenter that is not part of system consenter set"))
+				})
 			})
 
 			Context("reconfiguration", func() {

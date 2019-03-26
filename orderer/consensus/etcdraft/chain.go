@@ -404,6 +404,7 @@ func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
 func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 	c.Metrics.ConfigProposalsReceived.Add(1)
 	if err := c.checkConfigUpdateValidity(env); err != nil {
+		c.logger.Warnf("Rejected config: %s", err)
 		c.Metrics.ProposalFailures.Add(1)
 		return err
 	}
@@ -424,7 +425,36 @@ func (c *Chain) checkConfigUpdateValidity(ctx *common.Envelope) error {
 
 	switch chdr.Type {
 	case int32(common.HeaderType_ORDERER_TRANSACTION):
-		return nil
+		newChannelConfig, err := protoutil.UnmarshalEnvelope(payload.Data)
+		if err != nil {
+			return err
+		}
+
+		payload, err = protoutil.UnmarshalPayload(newChannelConfig.Payload)
+		if err != nil {
+			return err
+		}
+
+		configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
+		if err != nil {
+			return err
+		}
+
+		metadata, err := MetadataFromConfigUpdate(configUpdate)
+		if err != nil {
+			return err
+		}
+
+		if metadata == nil {
+			return nil // ConsensusType is not updated
+		}
+
+		c.raftMetadataLock.RLock()
+		set := MembershipByCert(c.opts.Consenters)
+		c.raftMetadataLock.RUnlock()
+
+		return CheckConfigMetadata(metadata, set)
+
 	case int32(common.HeaderType_CONFIG):
 		configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
 
