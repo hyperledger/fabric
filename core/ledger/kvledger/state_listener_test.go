@@ -131,6 +131,10 @@ type mockStateListener struct {
 }
 
 func (l *mockStateListener) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
+	_, err := qe.GetPrivateDataHash(l.namespace, "random-coll", "random-key")
+	if err != nil {
+		return err
+	}
 	l.channelName = ledgerID
 	itr, err := qe.GetStateRangeScanIterator(l.namespace, "", "")
 	if err != nil {

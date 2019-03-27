@@ -84,7 +84,23 @@ func (txmgr *LockBasedTxMgr) GetLastSavepoint() (*version.Height, error) {
 
 // NewQueryExecutor implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor, error) {
-	qe := newQueryExecutor(txmgr, txid)
+	qe := newQueryExecutor(txmgr, txid, true)
+	txmgr.commitRWLock.RLock()
+	return qe, nil
+}
+
+// NewQueryExecutorWithNoCollChecks is a workaround to make the initilization of lifecycle cache
+// work. The issue is that in the current lifecycle code the cache is initialized via Initialize
+// function of a statelistener which gets invoked during ledger opening. This invovation eventually
+// leads to a call to DeployedChaincodeInfoProvider which inturn needs the channel config in order
+// to varify the name of the implicit collection. And the channelconfig is loaded only after the
+// ledger is opened. So, as a workaround, we skip the check of collection name in this function
+// by supplying a relaxed query executor - This is perfectly safe otherwise.
+// As a proper fix, the initialization of other components should take place outside ledger by explicit
+// querying the ledger state so that the sequence of initialization is explicitly controlled.
+// However that needs a bigger refactoring of code.
+func (txmgr *LockBasedTxMgr) NewQueryExecutorNoCollChecks() (ledger.QueryExecutor, error) {
+	qe := newQueryExecutor(txmgr, "", false)
 	txmgr.commitRWLock.RLock()
 	return qe, nil
 }

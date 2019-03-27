@@ -92,8 +92,14 @@ func newKVLedger(
 func (l *kvLedger) initTxMgr(versionedDB privacyenabledstate.DB, stateListeners []ledger.StateListener,
 	btlPolicy pvtdatapolicy.BTLPolicy, bookkeeperProvider bookkeeping.Provider, ccInfoProvider ledger.DeployedChaincodeInfoProvider) error {
 	var err error
-	l.txtmgmt, err = lockbasedtxmgr.NewLockBasedTxMgr(l.ledgerID, versionedDB, stateListeners, btlPolicy, bookkeeperProvider, ccInfoProvider)
-	qe, err := l.NewQueryExecutor()
+	txmgr, err := lockbasedtxmgr.NewLockBasedTxMgr(l.ledgerID, versionedDB, stateListeners, btlPolicy, bookkeeperProvider, ccInfoProvider)
+	if err != nil {
+		return err
+	}
+	l.txtmgmt = txmgr
+	// This is a workaround for populating lifecycle cache.
+	// See comments on this function for deatils
+	qe, err := txmgr.NewQueryExecutorNoCollChecks()
 	if err != nil {
 		return err
 	}

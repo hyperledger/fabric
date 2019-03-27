@@ -17,13 +17,17 @@ type collNameValidator struct {
 	ccInfoProvider ledger.DeployedChaincodeInfoProvider
 	queryExecutor  *lockBasedQueryExecutor
 	cache          collConfigCache
+	noop           bool
 }
 
-func newCollNameValidator(ledgerID string, ccInfoProvider ledger.DeployedChaincodeInfoProvider, qe *lockBasedQueryExecutor) *collNameValidator {
-	return &collNameValidator{ledgerID, ccInfoProvider, qe, make(collConfigCache)}
+func newCollNameValidator(ledgerID string, ccInfoProvider ledger.DeployedChaincodeInfoProvider, qe *lockBasedQueryExecutor, noop bool) *collNameValidator {
+	return &collNameValidator{ledgerID, ccInfoProvider, qe, make(collConfigCache), noop}
 }
 
 func (v *collNameValidator) validateCollName(ns, coll string) error {
+	if v.noop {
+		return nil
+	}
 	if !v.cache.isPopulatedFor(ns) {
 		conf, err := v.retrieveCollConfigFromStateDB(ns)
 		if err != nil {
