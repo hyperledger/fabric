@@ -1012,52 +1012,57 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		network.CreateChannel("three-orderer-channel", network.Orderers[2], peer)
 	})
 
-	When("Adding new orderer organization", func() {
-		It("it will be added successfully", func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, BasePort(), components)
-			network.GenerateConfigTree()
-			network.Bootstrap()
+	It("can add a new orderer organization", func() {
+		network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, BasePort(), components)
+		o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+		orderers := []*nwo.Orderer{o1, o2, o3}
+		peer = network.Peer("Org1", "peer1")
 
-			networkRunner := network.NetworkGroupRunner()
-			process := ifrit.Invoke(networkRunner)
-			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		network.GenerateConfigTree()
+		network.Bootstrap()
 
-			peer := network.Peer("Org1", "peer1")
-			orderer := network.Orderer("orderer1")
-			channel := "systemchannel"
+		By("Launching the orderers")
+		for _, o := range orderers {
+			runner := network.OrdererRunner(o)
+			ordererRunners = append(ordererRunners, runner)
+			process := ifrit.Invoke(runner)
+			ordererProcesses = append(ordererProcesses, process)
+		}
 
-			config := nwo.GetConfig(network, peer, orderer, channel)
-			updatedConfig := proto.Clone(config).(*common.Config)
+		for _, ordererProc := range ordererProcesses {
+			Eventually(ordererProc.Ready()).Should(BeClosed())
+		}
 
-			ordererOrg := updatedConfig.ChannelGroup.Groups["Orderer"].Groups["OrdererOrg"]
-			mspConfig := &msp.MSPConfig{}
-			proto.Unmarshal(ordererOrg.Values["MSP"].Value, mspConfig)
+		By("Waiting for system channel to be ready")
+		findLeader(ordererRunners)
 
-			fabMSPConfig := &msp.FabricMSPConfig{}
-			proto.Unmarshal(mspConfig.Config, fabMSPConfig)
+		channel := "systemchannel"
+		config := nwo.GetConfig(network, peer, o1, channel)
+		updatedConfig := proto.Clone(config).(*common.Config)
 
-			fabMSPConfig.Name = "OrdererMSP2"
+		ordererOrg := updatedConfig.ChannelGroup.Groups["Orderer"].Groups["OrdererOrg"]
+		mspConfig := &msp.MSPConfig{}
+		proto.Unmarshal(ordererOrg.Values["MSP"].Value, mspConfig)
 
-			mspConfig.Config, _ = proto.Marshal(fabMSPConfig)
-			updatedConfig.ChannelGroup.Groups["Orderer"].Groups["OrdererMSP2"] = &common.ConfigGroup{
-				Values: map[string]*common.ConfigValue{
-					"MSP": {
-						Value:     utils.MarshalOrPanic(mspConfig),
-						ModPolicy: "Admins",
-					},
+		fabMSPConfig := &msp.FabricMSPConfig{}
+		proto.Unmarshal(mspConfig.Config, fabMSPConfig)
+
+		fabMSPConfig.Name = "OrdererMSP2"
+
+		mspConfig.Config, _ = proto.Marshal(fabMSPConfig)
+		updatedConfig.ChannelGroup.Groups["Orderer"].Groups["OrdererMSP2"] = &common.ConfigGroup{
+			Values: map[string]*common.ConfigValue{
+				"MSP": {
+					Value:     utils.MarshalOrPanic(mspConfig),
+					ModPolicy: "Admins",
 				},
-				ModPolicy: "Admins",
-			}
+			},
+			ModPolicy: "Admins",
+		}
 
-			nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
-
-			if process != nil {
-				process.Signal(syscall.SIGTERM)
-				Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
-			}
-			os.RemoveAll(testDir)
-		})
+		nwo.UpdateOrdererConfig(network, o1, channel, config, updatedConfig, peer, o1)
 	})
+
 })
 
 func ensureEvicted(evictedOrderer *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channel string) {
