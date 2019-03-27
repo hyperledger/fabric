@@ -14,21 +14,49 @@ recent major or minor release until the next major or minor release has been
 published. We plan to continue this policy for subsequent releases. However,
 for Hyperledger Fabric v1.4, the Fabric maintainers are pledging to provide
 bug fixes for a period of one year from the date of release. This will likely
-result in a series of patch releases (v1.4.1, v1.4.2, …), where multiple fixes
-are bundled into a patch release.
+result in a series of patch releases (v1.4.1, v1.4.2, and so on), where multiple
+fixes are bundled into a patch release.
 
 If you are running with Hyperledger Fabric v1.4, you can be assured that
 you will be able to safely upgrade to any of the subsequent patch releases.
 In the advent that there is need of some upgrade process to remedy a defect,
 we will provide that process with the patch release.
 
+Raft ordering service
+---------------------
+
+Introduced in v1.4.1, `Raft <https://raft.github.io/raft.pdf>`_ is a crash fault
+tolerant (CFT) ordering service based on an implementation of Raft protocol in
+`etcd` <https://coreos.com/etcd/>`_. Raft follows a "leader and follower" model,
+where a leader node is elected (per channel) and its decisions are replicated to
+the followers. Raft ordering services should be easier to set up and manage than
+Kafka-based ordering services, and their design allows organizations spread out
+across the world to contribute nodes to a decentralized ordering service.
+
+* :doc:`ordering_service`:
+  Describes the role of an ordering service in Fabric and an overview of the
+  three ordering service implementations currently available: Solo, Kafka, and
+  Raft.
+
+* :doc:`raft_configuration`:
+  Shows the configuration parameters and considerations when deploying a Raft
+  ordering service.
+
+* :doc:`raft_configuration_tutorial`:
+  Shows the process for configuring and deploying a Raft ordering service and
+  for selecting a subset of available nodes to create the ordering service for a
+  channel. Uses the network from the :doc:`build_network` tutorial.
+
+* :doc:`orderer_deploy`:
+  Describes the process for deploying an ordering node, independent of what the
+  ordering service implementation will be.
+
 Serviceability and operations improvements
 ------------------------------------------
 
-As more Hyperledger Fabric networks get
-deployed and enter a production state, serviceability and operational aspects
-are critical. Fabric v1.4 takes a giant leap forward with logging improvements,
-health checks, and operational metrics. As such, Fabric v1.4
+As more Hyperledger Fabric networks enter a production state, serviceability and
+operational aspects are critical. Fabric v1.4 takes a giant leap forward with
+logging improvements, health checks, and operational metrics. As such, Fabric v1.4
 is the recommended release for production operations.
 
 * :doc:`operations_service`:
@@ -103,7 +131,7 @@ New tutorials
 
 * :doc:`upgrade_to_newest_version`:
   Leverages the network from :doc:`build_network` to demonstrate an upgrade from
-  v1.3 to v1.4. Includes both a script (which can serve as a template for upgrades),
+  v1.3 to v1.4.x. Includes both a script (which can serve as a template for upgrades),
   as well as the individual commands so that you can understand every step of an
   upgrade.
 
@@ -128,7 +156,8 @@ Release notes
 The release notes provide more details for users moving to the new release, along
 with a link to the full release change log.
 
-* `Fabric release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.0>`_.
+* `Fabric v1.4.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.0>`_.
+* `Fabric v1.4.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.1>`_.
 * `Fabric CA release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.0>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
