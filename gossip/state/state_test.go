@@ -1148,23 +1148,12 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
-	go func() {
-		msg := <-bootCh
-		t.Log("Bootstrap node got message, ", msg)
-		assert.True(t, msg.GetGossipMessage().GetStateRequest() != nil)
-		msg.Respond(&proto.GossipMessage{
-			Content: &proto.GossipMessage_StateResponse{StateResponse: &proto.RemoteStateResponse{Payloads: nil}},
-		})
-		wg.Done()
-	}()
-
-	go func() {
-		msg, ok := <-peerCh
+	readMessageFromChannel := func(ch <-chan protoext.ReceivedMessage) protoext.ReceivedMessage {
+		msg, ok := <-ch
 		if !ok {
 			t.Log("Peer receiving channel was closed before getting response from bootstrap peer")
 			t.FailNow()
 		}
-		t.Log("Peer node got an answer, ", msg)
 		if msg.GetGossipMessage() == nil {
 			t.Log("Peer got nil GossipMessage")
 			if msg.GetConnectionInfo() != nil {
@@ -1172,8 +1161,24 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 			}
 			t.FailNow()
 		}
+		return msg
+	}
+
+	go func() {
+		defer wg.Done()
+		msg := readMessageFromChannel(bootCh)
+		t.Log("Bootstrap node got message, ", msg)
+		assert.True(t, msg.GetGossipMessage().GetStateRequest() != nil)
+		msg.Respond(&proto.GossipMessage{
+			Content: &proto.GossipMessage_StateResponse{StateResponse: &proto.RemoteStateResponse{Payloads: nil}},
+		})
+	}()
+
+	go func() {
+		defer wg.Done()
+		msg := readMessageFromChannel(peerCh)
+		t.Log("Peer node got message, ", msg)
 		assert.True(t, msg.GetGossipMessage().GetStateResponse() != nil)
-		wg.Done()
 	}()
 
 	chainID := common.ChainID(util.GetTestChainID())
