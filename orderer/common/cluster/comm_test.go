@@ -128,6 +128,7 @@ func (*mockChannelExtractor) TargetChannel(msg proto.Message) string {
 }
 
 type clusterNode struct {
+	lock         sync.Mutex
 	freezeWG     sync.WaitGroup
 	dialer       *cluster.PredicateDialer
 	handler      *mocks.Handler
@@ -140,7 +141,7 @@ type clusterNode struct {
 }
 
 func (cn *clusterNode) Step(stream orderer.Cluster_StepServer) error {
-	cn.freezeWG.Wait()
+	cn.waitIfFrozen()
 	req, err := stream.Recv()
 	if err != nil {
 		return err
@@ -154,11 +155,21 @@ func (cn *clusterNode) Step(stream orderer.Cluster_StepServer) error {
 	return stream.Send(&orderer.StepResponse{})
 }
 
+func (cn *clusterNode) waitIfFrozen() {
+	cn.lock.Lock()
+	defer cn.lock.Unlock()
+	cn.freezeWG.Wait()
+}
+
 func (cn *clusterNode) freeze() {
+	cn.lock.Lock()
+	defer cn.lock.Unlock()
 	cn.freezeWG.Add(1)
 }
 
 func (cn *clusterNode) unfreeze() {
+	cn.lock.Lock()
+	defer cn.lock.Unlock()
 	cn.freezeWG.Done()
 }
 
