@@ -38,10 +38,9 @@ type ChaincodeStub struct {
 	decorations map[string][]byte
 }
 
-// -- init stub ---
 // ChaincodeInvocation functionality
 
-func newChaincodeStub(handler *Handler, channelId string, txid string, input *pb.ChaincodeInput, signedProposal *pb.SignedProposal) (*ChaincodeStub, error) {
+func newChaincodeStub(handler *Handler, channelId, txid string, input *pb.ChaincodeInput, signedProposal *pb.SignedProposal) (*ChaincodeStub, error) {
 	stub := &ChaincodeStub{
 		TxID:                       txid,
 		ChannelId:                  channelId,

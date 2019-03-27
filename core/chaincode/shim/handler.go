@@ -35,12 +35,13 @@ type Handler struct {
 	// serialLock is used to prevent concurrent calls to Send on the
 	// PeerChaincodeStream. This is required by gRPC.
 	serialLock sync.Mutex
-	// chatStream is a referenced to the client side of the chaincode support server.
+	// chatStream is the client used to access the chaincode support server on
+	// the peer.
 	chatStream PeerChaincodeStream
 
 	// cc is the chaincode associated with this handler.
 	cc Chaincode
-	// state holds the currnet state of this handdler.
+	// state holds the current state of this handler.
 	state state
 
 	// Multiple queries (and one transaction) with different txids can be executing in parallel for this chaincode
@@ -66,8 +67,9 @@ func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	return h.chatStream.Send(msg)
 }
 
-// serialSendAsync sends the provided message asynchronously in a separate go
-// routine. The result of the send is communicated back to the caller via errc.
+// serialSendAsync sends the provided message asynchronously in a separate
+// goroutine. The result of the send is communicated back to the caller via
+// errc.
 func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage, errc chan<- error) {
 	go func() {
 		errc <- h.serialSend(msg)
@@ -130,7 +132,7 @@ func (h *Handler) handleResponse(msg *pb.ChaincodeMessage) error {
 
 // sendReceive sends msg to the peer and waits for the response to arrive on
 // the provided responseChan. On success, the response message will be
-// returned. An error will be returned msg cwas not successfully send to the
+// returned. An error will be returned msg was not successfully sent to the
 // peer.
 func (h *Handler) sendReceive(msg *pb.ChaincodeMessage, responseChan <-chan pb.ChaincodeMessage) (pb.ChaincodeMessage, error) {
 	err := h.serialSend(msg)
@@ -167,7 +169,7 @@ func (h *Handler) handleStubInteraction(handler stubHandlerFunc, msg *pb.Chainco
 	h.serialSendAsync(resp, errc)
 }
 
-// handleInit calls the Init function of the associted chaincode.
+// handleInit calls the Init function of the associated chaincode.
 func (h *Handler) handleInit(msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, error) {
 	// Get the function and args from Payload
 	input := &pb.ChaincodeInput{}
@@ -197,7 +199,7 @@ func (h *Handler) handleInit(msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, er
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: resBytes, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent, ChannelId: stub.ChannelId}, nil
 }
 
-// handleTransaction calls Invoke on the associted chaincode.
+// handleTransaction calls Invoke on the associated chaincode.
 func (h *Handler) handleTransaction(msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, error) {
 	// Get the function and args from Payload
 	input := &pb.ChaincodeInput{}
@@ -690,7 +692,7 @@ func (h *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, cha
 	return h.createResponse(ERROR, []byte(fmt.Sprintf("[%s] Incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)))
 }
 
-// handleReady handles mesages received from the peer when the handler is in the "ready" state.
+// handleReady handles messages received from the peer when the handler is in the "ready" state.
 func (h *Handler) handleReady(msg *pb.ChaincodeMessage, errc chan error) error {
 	switch msg.Type {
 	case pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR:
@@ -716,7 +718,7 @@ func (h *Handler) handleReady(msg *pb.ChaincodeMessage, errc chan error) error {
 	}
 }
 
-// handleEstablished handles mesages received from the peer when the handler is in the "established" state.
+// handleEstablished handles messages received from the peer when the handler is in the "established" state.
 func (h *Handler) handleEstablished(msg *pb.ChaincodeMessage, errc chan error) error {
 	if msg.Type != pb.ChaincodeMessage_READY {
 		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) while in state: %s", msg.Txid, msg.Type, h.state)
@@ -726,7 +728,7 @@ func (h *Handler) handleEstablished(msg *pb.ChaincodeMessage, errc chan error) e
 	return nil
 }
 
-// hanndleCreated handles mesages received from the peer when the handler is in the "created" state.
+// hanndleCreated handles messages received from the peer when the handler is in the "created" state.
 func (h *Handler) handleCreated(msg *pb.ChaincodeMessage, errc chan error) error {
 	if msg.Type != pb.ChaincodeMessage_REGISTERED {
 		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) while in state: %s", msg.Txid, msg.Type, h.state)
@@ -755,7 +757,7 @@ func (h *Handler) handleMessage(msg *pb.ChaincodeMessage, errc chan error) error
 	case created:
 		err = h.handleCreated(msg, errc)
 	default:
-		panic(fmt.Sprintf("invalid handler state: %s", h.state))
+		chaincodeLogger.Panicf("invalid handler state: %s", h.state)
 	}
 
 	if err != nil {
@@ -773,7 +775,7 @@ func (h *Handler) handleMessage(msg *pb.ChaincodeMessage, errc chan error) error
 func marshalOrPanic(msg proto.Message) []byte {
 	bytes, err := proto.Marshal(msg)
 	if err != nil {
-		panic(err)
+		chaincodeLogger.Panicf("failed to marshal message: %s", err)
 	}
 	return bytes
 }
