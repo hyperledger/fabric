@@ -9,11 +9,9 @@ package shim
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -69,47 +67,6 @@ func TestMockStateRangeQueryIterator_openEnded(t *testing.T) {
 	}
 
 	if count != rqi.Stub.Keys.Len() {
-		t.FailNow()
-	}
-}
-
-// TestSetupChaincodeLogging uses the utlity function defined in chaincode.go to
-// set the chaincodeLogger's logging format and level
-func TestSetupChaincodeLogging_blankLevel(t *testing.T) {
-	// set log level to a non-default level
-	testLogLevelString := ""
-	testLogFormat := "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
-
-	os.Setenv("CORE_CHAINCODE_LOGGING_LEVEL", testLogLevelString)
-	defer os.Unsetenv("CORE_CHAINCODE_LOGGING_LEVEL")
-	os.Setenv("CORE_CHAINCODE_LOGGING_FORMAT", testLogFormat)
-	defer os.Unsetenv("CORE_CHAINCODE_LOGGING_FORMAT")
-
-	SetupChaincodeLogging()
-
-	if !IsEnabledForLogLevel(flogging.DefaultLevel()) {
-		t.FailNow()
-	}
-}
-
-// TestSetupChaincodeLogging uses the utlity function defined in chaincode.go to
-// set the chaincodeLogger's logging format and level
-func TestSetupChaincodeLogging(t *testing.T) {
-	// set log level to a non-default level
-	testLogLevel := "debug"
-	testShimLogLevel := "warning"
-	testLogFormat := "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
-
-	os.Setenv("CORE_CHAINCODE_LOGGING_LEVEL", testLogLevel)
-	defer os.Unsetenv("CORE_CHAINCODE_LOGGING_LEVEL")
-	os.Setenv("CORE_CHAINCODE_LOGGING_FORMAT", testLogFormat)
-	defer os.Unsetenv("CORE_CHAINCODE_LOGGING_FORMAT")
-	os.Setenv("CORE_CHAINCODE_LOGGING_SHIM", testShimLogLevel)
-	defer os.Unsetenv("CORE_CHAINCODE_LOGGING_SHIM")
-
-	SetupChaincodeLogging()
-
-	if !IsEnabledForLogLevel(testShimLogLevel) {
 		t.FailNow()
 	}
 }
