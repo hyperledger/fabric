@@ -19,6 +19,7 @@ const (
 	Lifecycle_CommitChaincodeDefinition          = "_lifecycle/CommitChaincodeDefinition"
 	Lifecycle_QueryChaincodeDefinition           = "_lifecycle/QueryChaincodeDefinition"
 	Lifecycle_QueryNamespaceDefinitions          = "_lifecycle/QueryNamespaceDefinitions"
+	Lifecycle_QueryApprovalStatus                = "_lifecycle/QueryApprovalStatus"
 
 	//Lscc resources
 	Lscc_Install                   = "lscc/Install"

@@ -551,6 +551,120 @@ var _ = Describe("SCC", func() {
 			})
 		})
 
+		Describe("QueryApprovalStatus", func() {
+			var (
+				err            error
+				arg            *lb.QueryApprovalStatusArgs
+				marshaledArg   []byte
+				fakeOrgConfigs []*mock.ApplicationOrgConfig
+			)
+
+			BeforeEach(func() {
+				arg = &lb.QueryApprovalStatusArgs{
+					Sequence:            7,
+					Name:                "name",
+					Version:             "version",
+					EndorsementPlugin:   "endorsement-plugin",
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+					Collections:         &cb.CollectionConfigPackage{},
+					InitRequired:        true,
+				}
+
+				marshaledArg, err = proto.Marshal(arg)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeStub.GetArgsReturns([][]byte{[]byte("QueryApprovalStatus"), marshaledArg})
+
+				fakeOrgConfigs = []*mock.ApplicationOrgConfig{{}, {}}
+				fakeOrgConfigs[0].MSPIDReturns("fake-mspid")
+				fakeOrgConfigs[1].MSPIDReturns("other-mspid")
+
+				fakeApplicationConfig.OrganizationsReturns(map[string]channelconfig.ApplicationOrg{
+					"org0": fakeOrgConfigs[0],
+					"org1": fakeOrgConfigs[1],
+				})
+
+				fakeSCCFuncs.QueryApprovalStatusReturns([]bool{true, true}, nil)
+			})
+
+			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
+				res := scc.Invoke(fakeStub)
+				Expect(res.Message).To(Equal(""))
+				Expect(res.Status).To(Equal(int32(200)))
+				payload := &lb.QueryApprovalStatusResults{}
+				err = proto.Unmarshal(res.Payload, payload)
+				Expect(err).NotTo(HaveOccurred())
+
+				orgApprovals := payload.GetApproved()
+				Expect(orgApprovals).NotTo(BeNil())
+				Expect(len(orgApprovals)).To(Equal(2))
+				Expect(orgApprovals["fake-mspid"]).To(BeTrue())
+				Expect(orgApprovals["other-mspid"]).To(BeTrue())
+
+				Expect(fakeSCCFuncs.QueryApprovalStatusCallCount()).To(Equal(1))
+				chname, ccname, cd, pubState, orgStates := fakeSCCFuncs.QueryApprovalStatusArgsForCall(0)
+				Expect(chname).To(Equal("test-channel"))
+				Expect(ccname).To(Equal("name"))
+				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
+					Sequence: 7,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Version:           "version",
+						EndorsementPlugin: "endorsement-plugin",
+						InitRequired:      true,
+					},
+					ValidationInfo: &lb.ChaincodeValidationInfo{
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+					},
+					Collections: arg.Collections,
+				}))
+				Expect(pubState).To(Equal(fakeStub))
+				Expect(len(orgStates)).To(Equal(2))
+				Expect(orgStates[0]).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
+				Expect(orgStates[1]).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
+				collection0 := orgStates[0].(*lifecycle.ChaincodePrivateLedgerShim).Collection
+				collection1 := orgStates[1].(*lifecycle.ChaincodePrivateLedgerShim).Collection
+				Expect([]string{collection0, collection1}).To(ConsistOf("_implicit_org_fake-mspid", "_implicit_org_other-mspid"))
+			})
+
+			Context("when there is no application config", func() {
+				BeforeEach(func() {
+					fakeChannelConfig.ApplicationConfigReturns(nil, false)
+				})
+
+				It("returns an error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("could not get application config for channel 'test-channel'"))
+				})
+
+				Context("when there is no application config because there is no channel", func() {
+					BeforeEach(func() {
+						fakeStub.GetChannelIDReturns("")
+					})
+
+					It("returns an error", func() {
+						res := scc.Invoke(fakeStub)
+						Expect(res.Status).To(Equal(int32(500)))
+						Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovalStatus': no application config for channel ''"))
+					})
+				})
+			})
+
+			Context("when the underlying function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryApprovalStatusReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovalStatus': underlying-error"))
+				})
+			})
+		})
+
 		Describe("QueryChaincodeDefinition", func() {
 			var (
 				arg          *lb.QueryChaincodeDefinitionArgs

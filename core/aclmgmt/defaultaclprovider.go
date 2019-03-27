@@ -67,6 +67,7 @@ func (d *defaultACLProviderImpl) initialize() {
 	d.cResourcePolicyMap[resources.Lifecycle_CommitChaincodeDefinition] = CHANNELWRITERS
 	d.cResourcePolicyMap[resources.Lifecycle_QueryChaincodeDefinition] = CHANNELWRITERS
 	d.cResourcePolicyMap[resources.Lifecycle_QueryNamespaceDefinitions] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.Lifecycle_QueryApprovalStatus] = CHANNELWRITERS
 
 	//-------------- LSCC --------------
 	//p resources (implemented by the chaincode currently)

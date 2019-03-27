@@ -664,6 +664,173 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 	})
 
+	Describe("QueryApprovalStatus", func() {
+		var (
+			fakePublicState *mock.ReadWritableState
+			fakeOrgStates   []*mock.ReadWritableState
+
+			testDefinition *lifecycle.ChaincodeDefinition
+
+			publicKVS, org0KVS, org1KVS MapLedgerShim
+		)
+
+		BeforeEach(func() {
+			testDefinition = &lifecycle.ChaincodeDefinition{
+				Sequence: 5,
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Version:           "version",
+					EndorsementPlugin: "endorsement-plugin",
+				},
+				ValidationInfo: &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				},
+			}
+
+			publicKVS = MapLedgerShim(map[string][]byte{})
+			fakePublicState = &mock.ReadWritableState{}
+			fakePublicState.GetStateStub = publicKVS.GetState
+			fakePublicState.PutStateStub = publicKVS.PutState
+
+			resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
+				Sequence: 4,
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Version:           "version",
+					EndorsementPlugin: "endorsement-plugin",
+				},
+				ValidationInfo: &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				},
+			}, publicKVS)
+
+			org0KVS = MapLedgerShim(map[string][]byte{})
+			org1KVS = MapLedgerShim(map[string][]byte{})
+			fakeOrgStates = []*mock.ReadWritableState{{}, {}}
+			for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
+				kvs := kvs
+				fakeOrgStates[i].GetStateStub = kvs.GetState
+				fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
+				fakeOrgStates[i].PutStateStub = kvs.PutState
+			}
+
+			resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[0])
+			resources.Serializer.Serialize("namespaces", "cc-name#5", &lifecycle.ChaincodeParameters{}, fakeOrgStates[1])
+		})
+
+		It("applies the chaincode definition and returns the agreements", func() {
+			agreements, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(agreements).To(Equal([]bool{true, false}))
+		})
+
+		Context("when IsSerialized fails", func() {
+			BeforeEach(func() {
+				fakeOrgStates[0].GetStateHashReturns(nil, errors.New("bad bad failure"))
+			})
+
+			It("wraps and returns an error", func() {
+				_, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("serialization check failed for key cc-name#5: could not get value for key namespaces/metadata/cc-name#5: bad bad failure"))
+			})
+		})
+
+		Context("when the peer sets defaults", func() {
+			BeforeEach(func() {
+				testDefinition.EndorsementInfo.EndorsementPlugin = "escc"
+				testDefinition.ValidationInfo.ValidationPlugin = "vscc"
+				testDefinition.ValidationInfo.ValidationParameter = protoutil.MarshalOrPanic(
+					&pb.ApplicationPolicy{
+						Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+							ChannelConfigPolicyReference: "/Channel/Application/Endorsement",
+						},
+					})
+
+				fakeOrgStates = []*mock.ReadWritableState{{}, {}}
+				for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
+					kvs := kvs
+					fakeOrgStates[i].GetStateStub = kvs.GetState
+					fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
+					fakeOrgStates[i].PutStateStub = kvs.PutState
+				}
+
+				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[0])
+
+				testDefinition.EndorsementInfo.EndorsementPlugin = ""
+				testDefinition.ValidationInfo.ValidationPlugin = ""
+				testDefinition.ValidationInfo.ValidationParameter = nil
+
+				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[1])
+			})
+
+			It("applies the chaincode definition and returns the agreements", func() {
+				agreements, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(agreements).To(Equal([]bool{true, false}))
+			})
+
+			Context("when no default endorsement policy is defined on thc channel", func() {
+				BeforeEach(func() {
+					fakePolicyManager.GetPolicyReturns(nil, false)
+				})
+
+				It("returns an error", func() {
+					_, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("could not set defaults for chaincode definition in " +
+						"channel my-channel: Policy '/Channel/Application/Endorsement' must be defined " +
+						"for channel 'my-channel' before chaincode operations can be attempted"))
+				})
+			})
+
+			Context("when obtaining a stable channel config fails", func() {
+				BeforeEach(func() {
+					fakeChannelConfigSource.GetStableChannelConfigReturns(nil)
+				})
+
+				It("returns an error", func() {
+					_, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("could not get channel config for channel 'my-channel'"))
+
+				})
+			})
+
+			Context("when the public state is not readable", func() {
+				BeforeEach(func() {
+					fakePublicState.GetStateReturns(nil, fmt.Errorf("getstate-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					Expect(err).To(MatchError("could not get current sequence: could not get state for key namespaces/fields/cc-name/Sequence: getstate-error"))
+				})
+			})
+
+			Context("when the current sequence is not immediately prior to the new", func() {
+				BeforeEach(func() {
+					resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
+						Sequence: 3,
+						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+							Version:           "version",
+							EndorsementPlugin: "endorsement-plugin",
+						},
+						ValidationInfo: &lb.ChaincodeValidationInfo{
+							ValidationPlugin:    "validation-plugin",
+							ValidationParameter: []byte("validation-parameter"),
+						},
+					}, fakePublicState)
+				})
+
+				It("returns an error", func() {
+					_, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					Expect(err).To(MatchError("requested sequence is 5, but new definition must be sequence 4"))
+				})
+			})
+		})
+	})
+
 	Describe("CommitChaincodeDefinition", func() {
 		var (
 			fakePublicState *mock.ReadWritableState
@@ -722,6 +889,18 @@ var _ = Describe("ExternalFunctions", func() {
 			agreements, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(agreements).To(Equal([]bool{true, false}))
+		})
+
+		Context("when IsSerialized fails", func() {
+			BeforeEach(func() {
+				fakeOrgStates[0].GetStateHashReturns(nil, errors.New("bad bad failure"))
+			})
+
+			It("wraps and returns an error", func() {
+				_, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("serialization check failed for key cc-name#5: could not get value for key namespaces/metadata/cc-name#5: bad bad failure"))
+			})
 		})
 
 		Context("when the peer sets defaults", func() {

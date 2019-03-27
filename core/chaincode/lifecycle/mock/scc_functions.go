@@ -56,6 +56,23 @@ type SCCFunctions struct {
 		result1 *chaincode.InstalledChaincode
 		result2 error
 	}
+	QueryApprovalStatusStub        func(string, string, *lifecycle.ChaincodeDefinition, lifecycle.ReadWritableState, []lifecycle.OpaqueState) ([]bool, error)
+	queryApprovalStatusMutex       sync.RWMutex
+	queryApprovalStatusArgsForCall []struct {
+		arg1 string
+		arg2 string
+		arg3 *lifecycle.ChaincodeDefinition
+		arg4 lifecycle.ReadWritableState
+		arg5 []lifecycle.OpaqueState
+	}
+	queryApprovalStatusReturns struct {
+		result1 []bool
+		result2 error
+	}
+	queryApprovalStatusReturnsOnCall map[int]struct {
+		result1 []bool
+		result2 error
+	}
 	QueryChaincodeDefinitionStub        func(string, lifecycle.ReadableState) (*lifecycle.ChaincodeDefinition, error)
 	queryChaincodeDefinitionMutex       sync.RWMutex
 	queryChaincodeDefinitionArgsForCall []struct {
@@ -317,6 +334,78 @@ func (fake *SCCFunctions) InstallChaincodeReturnsOnCall(i int, result1 *chaincod
 	}{result1, result2}
 }
 
+func (fake *SCCFunctions) QueryApprovalStatus(arg1 string, arg2 string, arg3 *lifecycle.ChaincodeDefinition, arg4 lifecycle.ReadWritableState, arg5 []lifecycle.OpaqueState) ([]bool, error) {
+	var arg5Copy []lifecycle.OpaqueState
+	if arg5 != nil {
+		arg5Copy = make([]lifecycle.OpaqueState, len(arg5))
+		copy(arg5Copy, arg5)
+	}
+	fake.queryApprovalStatusMutex.Lock()
+	ret, specificReturn := fake.queryApprovalStatusReturnsOnCall[len(fake.queryApprovalStatusArgsForCall)]
+	fake.queryApprovalStatusArgsForCall = append(fake.queryApprovalStatusArgsForCall, struct {
+		arg1 string
+		arg2 string
+		arg3 *lifecycle.ChaincodeDefinition
+		arg4 lifecycle.ReadWritableState
+		arg5 []lifecycle.OpaqueState
+	}{arg1, arg2, arg3, arg4, arg5Copy})
+	fake.recordInvocation("QueryApprovalStatus", []interface{}{arg1, arg2, arg3, arg4, arg5Copy})
+	fake.queryApprovalStatusMutex.Unlock()
+	if fake.QueryApprovalStatusStub != nil {
+		return fake.QueryApprovalStatusStub(arg1, arg2, arg3, arg4, arg5)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.queryApprovalStatusReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *SCCFunctions) QueryApprovalStatusCallCount() int {
+	fake.queryApprovalStatusMutex.RLock()
+	defer fake.queryApprovalStatusMutex.RUnlock()
+	return len(fake.queryApprovalStatusArgsForCall)
+}
+
+func (fake *SCCFunctions) QueryApprovalStatusCalls(stub func(string, string, *lifecycle.ChaincodeDefinition, lifecycle.ReadWritableState, []lifecycle.OpaqueState) ([]bool, error)) {
+	fake.queryApprovalStatusMutex.Lock()
+	defer fake.queryApprovalStatusMutex.Unlock()
+	fake.QueryApprovalStatusStub = stub
+}
+
+func (fake *SCCFunctions) QueryApprovalStatusArgsForCall(i int) (string, string, *lifecycle.ChaincodeDefinition, lifecycle.ReadWritableState, []lifecycle.OpaqueState) {
+	fake.queryApprovalStatusMutex.RLock()
+	defer fake.queryApprovalStatusMutex.RUnlock()
+	argsForCall := fake.queryApprovalStatusArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
+}
+
+func (fake *SCCFunctions) QueryApprovalStatusReturns(result1 []bool, result2 error) {
+	fake.queryApprovalStatusMutex.Lock()
+	defer fake.queryApprovalStatusMutex.Unlock()
+	fake.QueryApprovalStatusStub = nil
+	fake.queryApprovalStatusReturns = struct {
+		result1 []bool
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *SCCFunctions) QueryApprovalStatusReturnsOnCall(i int, result1 []bool, result2 error) {
+	fake.queryApprovalStatusMutex.Lock()
+	defer fake.queryApprovalStatusMutex.Unlock()
+	fake.QueryApprovalStatusStub = nil
+	if fake.queryApprovalStatusReturnsOnCall == nil {
+		fake.queryApprovalStatusReturnsOnCall = make(map[int]struct {
+			result1 []bool
+			result2 error
+		})
+	}
+	fake.queryApprovalStatusReturnsOnCall[i] = struct {
+		result1 []bool
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *SCCFunctions) QueryChaincodeDefinition(arg1 string, arg2 lifecycle.ReadableState) (*lifecycle.ChaincodeDefinition, error) {
 	fake.queryChaincodeDefinitionMutex.Lock()
 	ret, specificReturn := fake.queryChaincodeDefinitionReturnsOnCall[len(fake.queryChaincodeDefinitionArgsForCall)]
@@ -571,6 +660,8 @@ func (fake *SCCFunctions) Invocations() map[string][][]interface{} {
 	defer fake.commitChaincodeDefinitionMutex.RUnlock()
 	fake.installChaincodeMutex.RLock()
 	defer fake.installChaincodeMutex.RUnlock()
+	fake.queryApprovalStatusMutex.RLock()
+	defer fake.queryApprovalStatusMutex.RUnlock()
 	fake.queryChaincodeDefinitionMutex.RLock()
 	defer fake.queryChaincodeDefinitionMutex.RUnlock()
 	fake.queryInstalledChaincodeMutex.RLock()
