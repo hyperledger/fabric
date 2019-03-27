@@ -39,7 +39,7 @@ import (
 	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	cm "github.com/hyperledger/fabric/core/chaincode/mock"
-	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
