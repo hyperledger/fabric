@@ -423,8 +423,12 @@ func (c *Chain) checkConfigUpdateValidity(ctx *common.Envelope) error {
 		return err
 	}
 
-	switch chdr.Type {
-	case int32(common.HeaderType_ORDERER_TRANSACTION):
+	if chdr.Type != int32(common.HeaderType_ORDERER_TRANSACTION) &&
+		chdr.Type != int32(common.HeaderType_CONFIG) {
+		return errors.Errorf("config transaction has unknown header type: %s", common.HeaderType(chdr.Type))
+	}
+
+	if chdr.Type == int32(common.HeaderType_ORDERER_TRANSACTION) {
 		newChannelConfig, err := protoutil.UnmarshalEnvelope(payload.Data)
 		if err != nil {
 			return err
@@ -434,46 +438,53 @@ func (c *Chain) checkConfigUpdateValidity(ctx *common.Envelope) error {
 		if err != nil {
 			return err
 		}
+	}
 
-		configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
-		if err != nil {
-			return err
-		}
+	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
+	if err != nil {
+		return err
+	}
 
-		metadata, err := MetadataFromConfigUpdate(configUpdate)
-		if err != nil {
-			return err
-		}
+	metadata, err := MetadataFromConfigUpdate(configUpdate)
+	if err != nil {
+		return err
+	}
 
-		if metadata == nil {
-			return nil // ConsensusType is not updated
-		}
+	if metadata == nil {
+		return nil // ConsensusType is not updated
+	}
 
+	if err = CheckConfigMetadata(metadata); err != nil {
+		return err
+	}
+
+	switch chdr.Type {
+	case int32(common.HeaderType_ORDERER_TRANSACTION):
 		c.raftMetadataLock.RLock()
 		set := MembershipByCert(c.opts.Consenters)
 		c.raftMetadataLock.RUnlock()
 
-		return CheckConfigMetadata(metadata, set)
-
-	case int32(common.HeaderType_CONFIG):
-		configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
-
-		if err != nil {
-			return err
-		}
-		metadata, err := MetadataFromConfigUpdate(configUpdate)
-		if err != nil {
-			return err
+		for _, c := range metadata.Consenters {
+			if _, exits := set[string(c.ClientTlsCert)]; !exits {
+				return errors.Errorf("new channel has consenter that is not part of system consenter set")
+			}
 		}
 
-		if metadata != nil {
-			return c.checkConsentersSet(metadata)
-		}
 		return nil
 
+	case int32(common.HeaderType_CONFIG):
+		c.raftMetadataLock.RLock()
+		_, err = ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, metadata.Consenters)
+		c.raftMetadataLock.RUnlock()
+
+		return err
+
 	default:
-		return errors.Errorf("config transaction has unknown header type")
+		// panic here because we have just check header type and return early
+		c.logger.Panicf("Programming error, unknown header type")
 	}
+
+	return nil
 }
 
 // WaitReady blocks when the chain:
@@ -1213,31 +1224,6 @@ func (c *Chain) pemToDER(pemBytes []byte, id uint64, certType string) ([]byte, e
 		return nil, errors.Errorf("invalid PEM block")
 	}
 	return bl.Bytes, nil
-}
-
-// checkConsentersSet validates correctness of the consenters set provided within configuration value
-func (c *Chain) checkConsentersSet(updatedMetadata *etcdraft.ConfigMetadata) error {
-	// sanity check of certificates
-	for _, consenter := range updatedMetadata.Consenters {
-		if bl, _ := pem.Decode(consenter.ServerTlsCert); bl == nil {
-			return errors.Errorf("invalid server TLS cert: %s", string(consenter.ServerTlsCert))
-		}
-
-		if bl, _ := pem.Decode(consenter.ClientTlsCert); bl == nil {
-			return errors.Errorf("invalid client TLS cert: %s", string(consenter.ClientTlsCert))
-		}
-	}
-
-	var err error
-	if err = MetadataHasDuplication(updatedMetadata); err != nil {
-		return err
-	}
-
-	c.raftMetadataLock.RLock()
-	_, err = ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, updatedMetadata.Consenters)
-	c.raftMetadataLock.RUnlock()
-
-	return err
 }
 
 // writeConfigBlock writes configuration blocks into the ledger in

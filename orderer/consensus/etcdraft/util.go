@@ -383,7 +383,7 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMeta
 }
 
 // CheckConfigMetadata validates Raft config metadata
-func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata, consenters map[string]uint64) error {
+func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata) error {
 	if metadata == nil {
 		// defensive check. this should not happen as CheckConfigMetadata
 		// should always be called with non-nil config metadata
@@ -393,7 +393,9 @@ func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata, consenters map[strin
 	if metadata.Options.HeartbeatTick == 0 ||
 		metadata.Options.ElectionTick == 0 ||
 		metadata.Options.MaxInflightBlocks == 0 {
-		return errors.Errorf("none of the fields in Raft config option can be zero")
+		// if SnapshotIntervalSize is zero, DefaultSnapshotIntervalSize is used
+		return errors.Errorf("none of HeartbeatTick (%d), ElectionTick (%d) and MaxInflightBlocks (%d) can be zero",
+			metadata.Options.HeartbeatTick, metadata.Options.ElectionTick, metadata.Options.MaxInflightBlocks)
 	}
 
 	// check Raft options
@@ -409,7 +411,7 @@ func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata, consenters map[strin
 	}
 
 	if len(metadata.Consenters) == 0 {
-		return errors.Errorf("cannot create channel with empty consenter set")
+		return errors.Errorf("empty consenter set")
 	}
 
 	// sanity check of certificates
@@ -425,12 +427,6 @@ func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata, consenters map[strin
 
 	if err := MetadataHasDuplication(metadata); err != nil {
 		return err
-	}
-
-	for _, c := range metadata.Consenters {
-		if _, exits := consenters[string(c.ClientTlsCert)]; !exits {
-			return errors.Errorf("new channel has consenter that is not part of system consenter set")
-		}
 	}
 
 	return nil

@@ -472,7 +472,7 @@ var _ = Describe("Chain", func() {
 
 					It("should throw an error", func() {
 						err := chain.Configure(configEnv, configSeq)
-						Expect(err).To(MatchError("config transaction has unknown header type"))
+						Expect(err).To(MatchError("config transaction has unknown header type: CONFIG_UPDATE"))
 						Expect(fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
 						Expect(fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 						Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
@@ -700,7 +700,7 @@ var _ = Describe("Chain", func() {
 							Expect(err).NotTo(HaveOccurred())
 						})
 
-						It("should be able to process config update removing single node", func() {
+						It("should not be able to remove node from single node cluster", func() {
 							metadata := proto.Clone(consenterMetadata).(*raftprotos.ConfigMetadata)
 							// Remove one of the consenters
 							metadata.Consenters = metadata.Consenters[1:]
@@ -717,8 +717,7 @@ var _ = Describe("Chain", func() {
 								newConfigUpdateEnv(channelID, nil, values))
 							configSeq = 0
 
-							err := chain.Configure(configEnv, configSeq)
-							Expect(err).NotTo(HaveOccurred())
+							Expect(chain.Configure(configEnv, configSeq)).To(MatchError("empty consenter set"))
 						})
 					})
 				})
@@ -1376,7 +1375,16 @@ var _ = Describe("Chain", func() {
 				},
 			}
 
-			metadata := &raftprotos.ConfigMetadata{Consenters: []*raftprotos.Consenter{consenters[2]}}
+			metadata := &raftprotos.ConfigMetadata{
+				Options: &raftprotos.Options{
+					TickInterval:         "500ms",
+					ElectionTick:         10,
+					HeartbeatTick:        1,
+					MaxInflightBlocks:    5,
+					SnapshotIntervalSize: 200,
+				},
+				Consenters: []*raftprotos.Consenter{consenters[2]},
+			}
 			value := map[string]*common.ConfigValue{
 				"ConsensusType": {
 					Version: 1,
@@ -1700,7 +1708,7 @@ var _ = Describe("Chain", func() {
 					}
 
 					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
-						"none of the fields in Raft config option can be zero"))
+						"none of HeartbeatTick (1), ElectionTick (0) and MaxInflightBlocks (5) can be zero"))
 				})
 
 				It("fails with zero max inflgith blocks", func() {
@@ -1711,7 +1719,7 @@ var _ = Describe("Chain", func() {
 					}
 
 					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
-						"none of the fields in Raft config option can be zero"))
+						"none of HeartbeatTick (1), ElectionTick (10) and MaxInflightBlocks (0) can be zero"))
 				})
 
 				It("fails with invalid tick interval", func() {
@@ -1740,7 +1748,7 @@ var _ = Describe("Chain", func() {
 					metadata := &raftprotos.ConfigMetadata{Options: options}
 
 					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
-						"cannot create channel with empty consenter set"))
+						"empty consenter set"))
 				})
 
 				It("fails with invalid certificate", func() {
@@ -1775,7 +1783,7 @@ var _ = Describe("Chain", func() {
 
 			Context("reconfiguration", func() {
 				It("cannot change consenter set by more than 1 node", func() {
-					metadata := &raftprotos.ConfigMetadata{}
+					metadata := &raftprotos.ConfigMetadata{Options: options}
 					for id, consenter := range consenters {
 						if id == 2 || id == 3 {
 							// remove second & third consenter
@@ -1803,7 +1811,7 @@ var _ = Describe("Chain", func() {
 				})
 
 				It("rejects invalid certificates", func() {
-					configMetadata := &raftprotos.ConfigMetadata{}
+					configMetadata := &raftprotos.ConfigMetadata{Options: options}
 					for _, consenter := range consenters {
 						configMetadata.Consenters = append(configMetadata.Consenters, consenter)
 					}
@@ -1826,7 +1834,7 @@ var _ = Describe("Chain", func() {
 				})
 
 				It("can rotate certificate by adding and removing 1 node in one config update", func() {
-					metadata := &raftprotos.ConfigMetadata{}
+					metadata := &raftprotos.ConfigMetadata{Options: options}
 					for id, consenter := range consenters {
 						if id == 2 {
 							// remove second consenter
@@ -1866,7 +1874,7 @@ var _ = Describe("Chain", func() {
 				})
 
 				It("rotates leader certificate and triggers leadership transfer", func() {
-					metadata := &raftprotos.ConfigMetadata{}
+					metadata := &raftprotos.ConfigMetadata{Options: options}
 					for id, consenter := range consenters {
 						if id == 1 {
 							// remove second consenter
@@ -1908,7 +1916,7 @@ var _ = Describe("Chain", func() {
 
 				When("Leader is disconnected after cert rotation", func() {
 					It("still configures communication after failed leader transfer attempt", func() {
-						metadata := &raftprotos.ConfigMetadata{}
+						metadata := &raftprotos.ConfigMetadata{Options: options}
 						for id, consenter := range consenters {
 							if id == 1 {
 								// remove second consenter
@@ -1964,7 +1972,7 @@ var _ = Describe("Chain", func() {
 
 				When("Follower is disconnected while leader cert is being rotated", func() {
 					It("still configures communication and transfer leader", func() {
-						metadata := &raftprotos.ConfigMetadata{}
+						metadata := &raftprotos.ConfigMetadata{Options: options}
 						for id, consenter := range consenters {
 							if id == 1 {
 								// remove second consenter
@@ -2119,7 +2127,7 @@ var _ = Describe("Chain", func() {
 					c1.cutter.CutNext = true
 					consensusType := &orderer.ConsensusType{}
 					proto.Unmarshal(addConsenterUpdate["ConsensusType"].Value, consensusType)
-					duplicatedMetadata := &raftprotos.ConfigMetadata{}
+					duplicatedMetadata := &raftprotos.ConfigMetadata{Options: options}
 					proto.Unmarshal(consensusType.Metadata, duplicatedMetadata)
 					duplicatedMetadata.Consenters = append(duplicatedMetadata.Consenters, duplicatedMetadata.Consenters[1])
 					configEnv = newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, map[string]*common.ConfigValue{
@@ -3356,7 +3364,12 @@ func nodeConfigFromMetadata(consenterMetadata *raftprotos.ConfigMetadata) []clus
 }
 
 func createMetadata(nodeCount int, tlsCA tlsgen.CA) *raftprotos.ConfigMetadata {
-	md := &raftprotos.ConfigMetadata{}
+	md := &raftprotos.ConfigMetadata{Options: &raftprotos.Options{
+		TickInterval:      time.Duration(interval).String(),
+		ElectionTick:      ELECTION_TICK,
+		HeartbeatTick:     HEARTBEAT_TICK,
+		MaxInflightBlocks: 5,
+	}}
 	for i := 0; i < nodeCount; i++ {
 		md.Consenters = append(md.Consenters, &raftprotos.Consenter{
 			Host:          "localhost",
