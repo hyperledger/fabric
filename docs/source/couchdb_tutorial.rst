@@ -247,13 +247,13 @@ deployment by being placed alongside it in the appropriate metadata folder.
 If your chaincode installation and instantiation uses the Hyperledger
 Fabric Node SDK, the JSON index files can be located in any folder as long
 as it conforms to this `directory structure <https://fabric-sdk-node.github.io/tutorial-metadata-chaincode.html>`__.
-During the chaincode installation using the client.installChaincode() API,
+During the chaincode installation using the ``client.installChaincode()`` API,
 include the attribute (``metadataPath``) in the `installation request <https://fabric-sdk-node.github.io/global.html#ChaincodeInstallRequest>`__.
 The value of the metadataPath is a string representing the absolute path to the
 directory structure containing the JSON index file(s).
 
 Alternatively, if you are using the
-:doc:`peer-commands` to install and instantiate the chaincode, then the JSON
+:doc:`commands/peercommand` command to install and instantiate the chaincode, then the JSON
 index files must be located under the path ``META-INF/statedb/couchdb/indexes``
 which is located inside the directory where the chaincode resides.
 
@@ -312,7 +312,7 @@ channel. In the previous section, we demonstrated how to package the chaincode
 so they should be ready for deployment.
 
 Chaincode is installed onto a peer and then instantiated onto the channel using
-:doc:`peer-commands`.
+:doc:`commands/peercommand`.
 
 
 1. Use the `peer chaincode install <http://hyperledger-fabric.readthedocs.io/en/master/commands/peerchaincode.html?%20chaincode%20instantiate#peer-chaincode-install>`__ command to install the Marbles chaincode on a peer.
@@ -459,6 +459,7 @@ by "tom" using the ``queryMarbles`` function.
 Delving into the query command above, there are three arguments of interest:
 
 *  ``queryMarbles``
+
   Name of the function in the Marbles chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim>`__
   ``shim.ChaincodeStubInterface`` is used to access and modify the ledger. The
   ``getQueryResultForQueryString()`` passes the queryString to the shim API ``getQueryResult()``.
@@ -483,11 +484,13 @@ Delving into the query command above, there are three arguments of interest:
   }
 
 *  ``{"selector":{"docType":"marble","owner":"tom"}``
+
   This is an example of an **ad hoc selector** string which finds all documents
   of type ``marble`` where the ``owner`` attribute has a value of ``tom``.
 
 
 *  ``"use_index":["_design/indexOwnerDoc", "indexOwner"]``
+
   Specifies both the design doc name  ``indexOwnerDoc`` and index name
   ``indexOwner``. In this example the selector query explicitly includes the
   index name, specified by using the ``use_index`` keyword. Recalling the
@@ -665,10 +668,11 @@ specifies the number of records to return per query.  The ``bookmark`` is an
 a unique bookmark.)
 
 *  ``queryMarblesWithPagination``
+
   Name of the function in the Marbles chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim>`__
   ``shim.ChaincodeStubInterface`` is used to access and modify the ledger. The
   ``getQueryResultForQueryStringWithPagination()`` passes the queryString along
-    with the pagesize and bookmark to the shim API ``GetQueryResultWithPagination()``.
+  with the pagesize and bookmark to the shim API ``GetQueryResultWithPagination()``.
 
 .. code:: bash
 

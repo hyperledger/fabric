@@ -40,7 +40,7 @@ no "master list" of loggers, and logging control constructs can not check
 whether logging loggers actually do or will exist.
 
 Logging specification
-----
+---------------------
 
 The logging levels of the ``peer`` and ``orderer`` commands are controlled
 by a logging specification, which is set via the ``FABRIC_LOGGING_SPEC``
@@ -76,7 +76,7 @@ syntax. Examples of specifications:
     chaincode=info:msp,gossip=warning:warning   - Same as above
 
 Logging format
-----
+--------------
 
 The logging format of the ``peer`` and ``orderer`` commands is controlled
 via the ``FABRIC_LOGGING_FORMAT`` environment variable. This can be set to
