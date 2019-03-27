@@ -275,7 +275,7 @@ identity ``user1`` from ``wallet``. See how the ``ccp`` has been loaded from
 
 If you'd like to understand more about the structure of a connection profile,
 and how it defines the network, check out
-`the connection profile topic <./developapps/connectionprofile.html>`_. 
+`the connection profile topic <./developapps/connectionprofile.html>`_.
 
 A network can be divided into multiple channels, and the next important line of
 code connects the application to a particular channel within the network,
@@ -467,6 +467,13 @@ collects and sequences transactions from every application into a block of
 transactions. It then distributes these blocks to every peer in the network,
 where every transaction is validated and committed. Finally, the SDK is
 notified, allowing it to return control to the application.
+
+.. note:: ``submitTransaction`` also includes a listener that checks to make
+          sure the transaction has been validated and committed to the ledger.
+          Applications should either utilize a commit listener, or
+          leverage an API like ``submitTransaction`` that does this for you.
+          Without doing this, your transaction may not have been successfully
+          orderered, validated, and committed to the ledger.
 
 ``submitTransaction`` does all this for the application! The process by which
 the application, smart contract, peers and ordering service work together to
