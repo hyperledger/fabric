@@ -52,7 +52,6 @@ func (c *TransactionContexts) Create(txParams *ccprovider.TransactionParams) (*T
 		Proposal:             txParams.Proposal,
 		ResponseNotifier:     make(chan *pb.ChaincodeMessage, 1),
 		TXSimulator:          txParams.TXSimulator,
-		TokenOperations:      txParams.TokenOperations,
 		HistoryQueryExecutor: txParams.HistoryQueryExecutor,
 		CollectionStore:      txParams.CollectionStore,
 		IsInitTransaction:    txParams.IsInitTransaction,

@@ -14,8 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric/protos/token"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -228,8 +226,6 @@ func (h *Handler) handleMessageReadyState(msg *pb.ChaincodeMessage) error {
 		go h.HandleTransaction(msg, h.HandleGetStateMetadata)
 	case pb.ChaincodeMessage_PUT_STATE_METADATA:
 		go h.HandleTransaction(msg, h.HandlePutStateMetadata)
-	case pb.ChaincodeMessage_PUT_TOKEN_OPERATION:
-		go h.HandleTransaction(msg, h.HandlePutTokenOperation)
 	default:
 		return fmt.Errorf("[%s] Fabric side handler cannot handle message (%s) while in ready state", msg.Txid, msg.Type)
 	}
@@ -1243,22 +1239,6 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	}
 
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
-}
-
-// HandlePutTokenOperation extracts a token operation from the chaincode message payload and append it to the context's namespace
-func (h *Handler) HandlePutTokenOperation(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
-	tokenOp := &token.TokenOperation{}
-	err := proto.Unmarshal(msg.Payload, tokenOp)
-	if err != nil {
-		return nil, errors.Wrap(err, "unmarshal failed")
-	}
-
-	namespaceID := txContext.NamespaceID
-	tokenOps := txContext.TokenOperations[namespaceID]
-	tokenOps = append(tokenOps, tokenOp)
-	txContext.TokenOperations[namespaceID] = tokenOps
-
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
 }
 
 func (h *Handler) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {

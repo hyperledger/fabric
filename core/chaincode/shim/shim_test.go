@@ -13,8 +13,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hyperledger/fabric/protos/token"
-
 	"github.com/hyperledger/fabric/common/flogging"
 	mockpeer "github.com/hyperledger/fabric/common/mocks/peer"
 	"github.com/hyperledger/fabric/common/util"
@@ -27,7 +25,6 @@ import (
 
 // shimTestCC example simple Chaincode implementation
 type shimTestCC struct {
-	tokenOperation *token.TokenOperation
 }
 
 func (t *shimTestCC) Init(stub ChaincodeStubInterface) pb.Response {
@@ -89,8 +86,6 @@ func (t *shimTestCC) Invoke(stub ChaincodeStubInterface) pb.Response {
 		return t.putEP(stub)
 	} else if function == "getep" {
 		return t.getEP(stub)
-	} else if function == "token" {
-		return t.token(stub)
 	}
 
 	return Error("Invalid invoke function name. Expecting \"invoke\" \"delete\" \"query\"")
@@ -362,24 +357,6 @@ func (t *shimTestCC) getEP(stub ChaincodeStubInterface) pb.Response {
 		return Error(err.Error())
 	}
 	return Success(ep)
-}
-
-func (t *shimTestCC) token(stub ChaincodeStubInterface) pb.Response {
-	tokenStub, ok := stub.(TokenStubInterface)
-	if !ok {
-		return Error("token stub interface not supported")
-	}
-
-	err := stub.PutState("hello", []byte("hello world!!!"))
-	if err != nil {
-		return Error(err.Error())
-	}
-
-	err = tokenStub.PutTokenOperation(t.tokenOperation)
-	if err != nil {
-		return Error(err.Error())
-	}
-	return Success(nil)
 }
 
 // Test Go shim functionality that can be tested outside of a real chaincode
@@ -1200,91 +1177,4 @@ func TestSend(t *testing.T) {
 	//bad send, should panic, unblock and return error
 	err := stream.Send(msg)
 	assert.NotNil(t, err, "should have errored on panic")
-}
-
-func TestPutTokenOperation(t *testing.T) {
-	streamGetter = mockChaincodeStreamGetter
-	cc := &shimTestCC{
-		tokenOperation: &token.TokenOperation{
-			Operation: &token.TokenOperation_Action{
-				Action: &token.TokenOperationAction{
-					Payload: &token.TokenOperationAction_Issue{
-						Issue: &token.TokenActionTerms{},
-					},
-				},
-			},
-		},
-	}
-	ccname := "shimTestCC"
-	peerSide := setupcc(ccname)
-	defer mockPeerCCSupport.RemoveCC(ccname)
-	//start the shim+chaincode
-	go Start(cc)
-
-	done := setuperror()
-
-	errorFunc := func(ind int, err error) {
-		done <- err
-	}
-
-	peerDone := make(chan struct{})
-	defer close(peerDone)
-
-	//start the mock peer
-	go func() {
-		respSet := &mockpeer.MockResponseSet{
-			DoneFunc:  errorFunc,
-			ErrorFunc: nil,
-			Responses: []*mockpeer.MockResponse{
-				{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}},
-			},
-		}
-		peerSide.SetResponses(respSet)
-		peerSide.SetKeepAlive(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE})
-		err := peerSide.Run(peerDone)
-		assert.NoError(t, err, "peer side run failed")
-	}()
-
-	//wait for init
-	processDone(t, done, false)
-
-	channelID := "testchannel"
-
-	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY, Txid: "1", ChannelId: channelID})
-
-	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("A"), []byte("100"), []byte("B"), []byte("200")}, Decorations: nil}
-	payload := protoutil.MarshalOrPanic(ci)
-	respSet := &mockpeer.MockResponseSet{
-		DoneFunc:  errorFunc,
-		ErrorFunc: errorFunc,
-		Responses: []*mockpeer.MockResponse{
-			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelID}},
-			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelID}},
-			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "2", ChannelId: channelID}, RespMsg: nil},
-		},
-	}
-	peerSide.SetResponses(respSet)
-
-	//use the payload computed from prev init
-	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INIT, Payload: payload, Txid: "2", ChannelId: channelID})
-	//wait for done
-	processDone(t, done, false)
-
-	// Invoke token command that puts token operation
-	respSet = &mockpeer.MockResponseSet{
-		DoneFunc:  errorFunc,
-		ErrorFunc: errorFunc,
-		Responses: []*mockpeer.MockResponse{
-			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3"}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "3", ChannelId: channelID}},
-			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_TOKEN_OPERATION, Txid: "3", ChannelId: channelID}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "3", ChannelId: channelID}},
-			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3", ChannelId: channelID}, RespMsg: nil},
-		},
-	}
-	peerSide.SetResponses(respSet)
-
-	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("token")}, Decorations: nil}
-	payload = protoutil.MarshalOrPanic(ci)
-	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "3", ChannelId: channelID})
-	//wait for done
-	processDone(t, done, false)
 }

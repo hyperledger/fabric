@@ -9,8 +9,6 @@ package chaincode
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/protos/token"
-
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -27,7 +25,6 @@ type TransactionContext struct {
 	HistoryQueryExecutor ledger.HistoryQueryExecutor
 	CollectionStore      privdata.CollectionStore
 	IsInitTransaction    bool
-	TokenOperations      map[string][]*token.TokenOperation
 
 	// tracks open iterators used for range queries
 	queryMutex          sync.Mutex
@@ -57,10 +54,6 @@ func (c CollectionACLCache) put(collection string, rwPermission *readWritePermis
 
 func (c CollectionACLCache) get(collection string) *readWritePermission {
 	return c[collection]
-}
-
-func (t *TransactionContext) InitializeTokenOperations() {
-	t.TokenOperations = make(map[string][]*token.TokenOperation)
 }
 
 func (t *TransactionContext) InitializeCollectionACLCache() {

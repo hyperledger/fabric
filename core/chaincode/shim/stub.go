@@ -14,7 +14,6 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -37,9 +36,6 @@ type ChaincodeStub struct {
 	binding   []byte
 
 	decorations map[string][]byte
-
-	// Token related fields
-	tokenOperations []*token.TokenOperation
 }
 
 // -- init stub ---
@@ -686,20 +682,4 @@ func (stub *ChaincodeStub) SetEvent(name string, payload []byte) error {
 	}
 	stub.chaincodeEvent = &pb.ChaincodeEvent{EventName: name, Payload: payload}
 	return nil
-}
-
-// ------------- Token API ----------------------
-
-func (stub *ChaincodeStub) PutTokenOperation(op *token.TokenOperation) error {
-	if op == nil {
-		return errors.New("token operation can not be nil")
-	}
-
-	err := stub.handler.handlePutTokenOperation(op, stub.ChannelId, stub.TxID)
-	if err == nil {
-		// Keep also a local reference for this chaincode
-		stub.tokenOperations = append(stub.tokenOperations, op)
-	}
-
-	return err
 }

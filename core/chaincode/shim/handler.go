@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric/protos/token"
-
 	"github.com/golang/protobuf/proto"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -857,38 +855,4 @@ func (handler *Handler) handleMessage(msg *pb.ChaincodeMessage, errc chan error)
 	}
 
 	return nil
-}
-
-// handlePutState communicates with the peer to put state information into the ledger.
-func (handler *Handler) handlePutTokenOperation(tokenOp *token.TokenOperation, channelId string, txid string) error {
-	// Construct payload for PUT_TOKEN_OPERATION
-	payloadBytes, err := proto.Marshal(tokenOp)
-	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("[%s] error marshalling token operations %s", txid, pb.ChaincodeMessage_PUT_TOKEN_OPERATION))
-	}
-
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_TOKEN_OPERATION, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
-	chaincodeLogger.Debugf("[%s] Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_PUT_TOKEN_OPERATION)
-
-	// Execute the request and get response
-	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, channelId, txid)
-	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", msg.Txid, pb.ChaincodeMessage_PUT_TOKEN_OPERATION))
-	}
-
-	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
-		// Success response
-		chaincodeLogger.Debugf("[%s] Received %s. Successfully appended token operation", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
-		return nil
-	}
-
-	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
-		// Error response
-		chaincodeLogger.Errorf("[%s] Received %s. Payload: %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR, responseMsg.Payload)
-		return errors.New(string(responseMsg.Payload[:]))
-	}
-
-	// Incorrect chaincode message received
-	chaincodeLogger.Errorf("[%s] Incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
-	return errors.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
