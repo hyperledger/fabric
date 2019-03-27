@@ -80,7 +80,7 @@ func TestConnMetricsGRPCServer(t *testing.T) {
 	defer srv.Stop()
 
 	// test grpc connection counts
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
 	gt.Expect(openConn.AddCallCount()).To(Equal(0))
