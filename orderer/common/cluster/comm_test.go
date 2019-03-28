@@ -437,7 +437,11 @@ func TestBlockingSend(t *testing.T) {
 
 			var unBlock sync.WaitGroup
 			unBlock.Add(1)
+			var sendInvoked sync.WaitGroup
+			sendInvoked.Add(1)
+			var once sync.Once
 			fakeStream.On("Send", mock.Anything).Run(func(_ mock.Arguments) {
+				once.Do(sendInvoked.Done)
 				unBlock.Wait()
 			}).Return(errors.New("oops"))
 
@@ -449,14 +453,11 @@ func TestBlockingSend(t *testing.T) {
 			assert.NoError(t, err)
 
 			// The second once doesn't either.
-			// At this point, we have 1 goroutine which is blocked on Send(),
+			// After this point, we have 1 goroutine which is blocked on Send(),
 			// and one message in the buffer.
+			sendInvoked.Wait()
 			err = stream.Send(testCase.messageToSend)
-			if testCase.overflowErr == "" {
-				assert.NoError(t, err)
-			} else {
-				assert.EqualError(t, err, testCase.overflowErr)
-			}
+			assert.NoError(t, err)
 
 			// The third blocks, so we need to unblock it ourselves
 			// in order for it to go through, unless the operation
@@ -469,7 +470,12 @@ func TestBlockingSend(t *testing.T) {
 			}()
 
 			t1 := time.Now()
-			stream.Send(testCase.messageToSend)
+			err = stream.Send(testCase.messageToSend)
+			// The third send always overflows or blocks.
+			// If we expect to receive an overflow error - assert it.
+			if testCase.overflowErr != "" {
+				assert.EqualError(t, err, testCase.overflowErr)
+			}
 			elapsed := time.Since(t1)
 			t.Log("Elapsed time:", elapsed)
 			assert.True(t, elapsed > testCase.elapsedGreaterThan)
