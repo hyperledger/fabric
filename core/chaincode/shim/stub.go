@@ -41,14 +41,16 @@ type ChaincodeStub struct {
 // -- init stub ---
 // ChaincodeInvocation functionality
 
-func (stub *ChaincodeStub) init(handler *Handler, channelId string, txid string, input *pb.ChaincodeInput, signedProposal *pb.SignedProposal) error {
-	stub.TxID = txid
-	stub.ChannelId = channelId
-	stub.args = input.Args
-	stub.handler = handler
-	stub.signedProposal = signedProposal
-	stub.decorations = input.Decorations
-	stub.validationParameterMetakey = pb.MetaDataKeys_VALIDATION_PARAMETER.String()
+func newChaincodeStub(handler *Handler, channelId string, txid string, input *pb.ChaincodeInput, signedProposal *pb.SignedProposal) (*ChaincodeStub, error) {
+	stub := &ChaincodeStub{
+		TxID:                       txid,
+		ChannelId:                  channelId,
+		args:                       input.Args,
+		handler:                    handler,
+		signedProposal:             signedProposal,
+		decorations:                input.Decorations,
+		validationParameterMetakey: pb.MetaDataKeys_VALIDATION_PARAMETER.String(),
+	}
 
 	// TODO: sanity check: verify that every call to init with a nil
 	// signedProposal is a legitimate one, meaning it is an internal call
@@ -58,22 +60,22 @@ func (stub *ChaincodeStub) init(handler *Handler, channelId string, txid string,
 
 		stub.proposal, err = protoutil.GetProposal(signedProposal.ProposalBytes)
 		if err != nil {
-			return errors.WithMessage(err, "failed extracting signedProposal from signed signedProposal")
+			return nil, errors.WithMessage(err, "failed extracting signedProposal from signed signedProposal")
 		}
 
 		// Extract creator, transient, binding...
 		stub.creator, stub.transient, err = protoutil.GetChaincodeProposalContext(stub.proposal)
 		if err != nil {
-			return errors.WithMessage(err, "failed extracting signedProposal fields")
+			return nil, errors.WithMessage(err, "failed extracting signedProposal fields")
 		}
 
 		stub.binding, err = protoutil.ComputeProposalBinding(stub.proposal)
 		if err != nil {
-			return errors.WithMessage(err, "failed computing binding from signedProposal")
+			return nil, errors.WithMessage(err, "failed computing binding from signedProposal")
 		}
 	}
 
-	return nil
+	return stub, nil
 }
 
 // GetTxID returns the transaction ID for the proposal

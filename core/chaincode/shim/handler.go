@@ -195,8 +195,7 @@ func (h *Handler) handleInit(msg *pb.ChaincodeMessage, errc chan error) {
 
 	// Call chaincode's Run
 	// Create the ChaincodeStub which the chaincode can use to callback
-	stub := new(ChaincodeStub)
-	err := stub.init(h, msg.ChannelId, msg.Txid, input, msg.Proposal)
+	stub, err := newChaincodeStub(h, msg.ChannelId, msg.Txid, input, msg.Proposal)
 	if nextStateMsg = errFunc(err, nil, stub.chaincodeEvent, "[%s] Init get error response. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
 		return
 	}
@@ -253,8 +252,7 @@ func (h *Handler) handleTransaction(msg *pb.ChaincodeMessage, errc chan error) {
 
 	// Call chaincode's Run
 	// Create the ChaincodeStub which the chaincode can use to callback
-	stub := new(ChaincodeStub)
-	err := stub.init(h, msg.ChannelId, msg.Txid, input, msg.Proposal)
+	stub, err := newChaincodeStub(h, msg.ChannelId, msg.Txid, input, msg.Proposal)
 	if nextStateMsg = errFunc(err, stub.chaincodeEvent, "[%s] Transaction execution failed. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
 		return
 	}
