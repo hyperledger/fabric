@@ -8,6 +8,7 @@ package etcdraft
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"sync"
@@ -416,12 +417,11 @@ func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata) error {
 
 	// sanity check of certificates
 	for _, consenter := range metadata.Consenters {
-		if bl, _ := pem.Decode(consenter.ServerTlsCert); bl == nil {
-			return errors.Errorf("invalid server TLS cert: %s", string(consenter.ServerTlsCert))
+		if err := validateCert(consenter.ServerTlsCert, "server"); err != nil {
+			return err
 		}
-
-		if bl, _ := pem.Decode(consenter.ClientTlsCert); bl == nil {
-			return errors.Errorf("invalid client TLS cert: %s", string(consenter.ClientTlsCert))
+		if err := validateCert(consenter.ClientTlsCert, "client"); err != nil {
+			return err
 		}
 	}
 
@@ -429,6 +429,19 @@ func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata) error {
 		return err
 	}
 
+	return nil
+}
+
+func validateCert(pemData []byte, certRole string) error {
+	bl, _ := pem.Decode(pemData)
+
+	if bl == nil {
+		return errors.Errorf("%s TLS certificate is not PEM encoded: %s", certRole, string(pemData))
+	}
+
+	if _, err := x509.ParseCertificate(bl.Bytes); err != nil {
+		return errors.Errorf("%s TLS certificate has invalid ASN1 structure, %v: %s", certRole, err, string(pemData))
+	}
 	return nil
 }
 
@@ -465,16 +478,6 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 		}
 	}
 	return cluster.ErrNotInChannel
-}
-
-// SliceOfConsentersIDs converts maps of consenters into slice of consenters ids
-func SliceOfConsentersIDs(consenters map[uint64]*etcdraft.Consenter) []uint64 {
-	result := make([]uint64, 0)
-	for id := range consenters {
-		result = append(result, id)
-	}
-
-	return result
 }
 
 // NodeExists returns trues if node id exists in the slice
