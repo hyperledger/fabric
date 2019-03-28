@@ -85,12 +85,6 @@ Here's the help text for the ``byfn.sh`` script:
 
 If you choose not to supply a flag, the script will use default values.
 
-For more information about using a "Raft" ordering service with BYFN, check out
-our :doc:`raft_configuration_tutorial`, which features different commands for
-generating the crypto material and running the script. If you want to learn more
-about the ordering service implementations that are currently available, check
-our conceptual documentation on :doc:`orderer/ordering_service`.
-
 Generate Network Artifacts
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -163,10 +157,10 @@ Next, you can bring the network up with one of the following commands:
   ./byfn.sh up
 
 The above command will compile Golang chaincode images and spin up the corresponding
-containers.  Go is the default chaincode language, however there is also support
+containers. Go is the default chaincode language, however there is also support
 for `Node.js <https://fabric-shim.github.io/>`_ and `Java <https://fabric-chaincode-java.github.io/>`_
-chaincode.  If you'd like to run through this tutorial with node
-chaincode, pass the following command instead:
+chaincode.  If you'd like to run through this tutorial with node chaincode, pass
+the following command instead:
 
 .. code:: bash
 
@@ -190,6 +184,23 @@ chaincode, pass the following command instead:
 
 .. note:: Do not run both of these commands. Only one language can be tried unless
           you bring down and recreate the network between.
+
+In addition to support for multiple chaincode languages, you can also issue a
+flag that will bring up a five node Raft ordering service or a Kafka ordering
+service instead of the one node Solo orderer. For more information about the
+currently supported ordering service implementations, check out :doc:`orderer/ordering_service`.
+
+To bring up the network with a Raft ordering service, issue:
+
+.. code:: bash
+
+  ./byfn.sh up -o etcdraft
+
+To bring up the network with a Kafka ordering service, issue:
+
+.. code:: bash
+
+  ./byfn.sh up -o kafka
 
 Once again, you will be prompted as to whether you wish to continue or abort.
 Respond with a ``y`` or hit the return key:
@@ -317,50 +328,13 @@ We won't delve into the minutiae of `x.509 certificates and public key
 infrastructure <https://en.wikipedia.org/wiki/Public_key_infrastructure>`__
 right now. If you're interested, you can peruse these topics on your own time.
 
-Before running the tool, let's take a quick look at a snippet from the
-``crypto-config.yaml``. Pay specific attention to the "Name", "Domain"
-and "Specs" parameters under the ``OrdererOrgs`` header:
-
-.. code:: bash
-
-  OrdererOrgs:
-  #---------------------------------------------------------
-  # Orderer
-  # --------------------------------------------------------
-  - Name: Orderer
-    Domain: example.com
-    CA:
-        Country: US
-        Province: California
-        Locality: San Francisco
-    #   OrganizationalUnit: Hyperledger Fabric
-    #   StreetAddress: address for org # default nil
-    #   PostalCode: postalCode for org # default nil
-    # ------------------------------------------------------
-    # "Specs" - See PeerOrgs below for complete description
-  # -----------------------------------------------------
-    Specs:
-      - Hostname: orderer
-  # -------------------------------------------------------
-  # "PeerOrgs" - Definition of organizations managing peer nodes
-   # ------------------------------------------------------
-  PeerOrgs:
-  # -----------------------------------------------------
-  # Org1
-  # ----------------------------------------------------
-  - Name: Org1
-    Domain: org1.example.com
-    EnableNodeOUs: true
-
-The naming convention for a network entity is as follows -
-"{{.Hostname}}.{{.Domain}}".  So using our ordering node as a
-reference point, we are left with an ordering node named -
-``orderer.example.com`` that is tied to an MSP ID of ``Orderer``.  This file
-contains extensive documentation on the definitions and syntax.  You can also
-refer to the :doc:`msp` documentation for a deeper dive on MSP.
-
 After we run the ``cryptogen`` tool, the generated certificates and keys will be
-saved to a folder titled ``crypto-config``.
+saved to a folder titled ``crypto-config``. Note that the ``crypto-config.yaml``
+file lists five orderers as being tied to the orderer organization. While the
+``cryptogen`` tool will create certificates for all five of these orderers, unless
+the Raft or Kafka ordering services are being used, only one of these orderers
+will be used in a Solo ordering service implementation and be used to create the
+system channel and ``mychannel``.
 
 Configuration Transaction Generator
 -----------------------------------
@@ -385,9 +359,20 @@ Configtxgen consumes a file - ``configtx.yaml`` - that contains the definitions
 for the sample network. There are three members - one Orderer Org (``OrdererOrg``)
 and two Peer Orgs (``Org1`` & ``Org2``) each managing and maintaining two peer nodes.
 This file also specifies a consortium - ``SampleConsortium`` - consisting of our
-two Peer Orgs.  Pay specific attention to the "Profiles" section at the top of
-this file.  You will notice that we have two unique headers. One for the orderer genesis
-block - ``TwoOrgsOrdererGenesis`` - and one for our channel - ``TwoOrgsChannel``.
+two Peer Orgs.  Pay specific attention to the "Profiles" section at the bottom of
+this file. You will notice that we have several unique profiles. A few are worth
+noting:
+
+* ``TwoOrgsOrdererGenesis``: generates the genesis block for a Solo ordering
+  service.
+
+* ``SampleMultiNodeEtcdRaft``: generates the genesis block for a Raft ordering
+  service. Only used if you issue the ``-o`` flag and specify ``etcdraft``.
+
+* ``SampleDevModeKafka``: generates the genesis block for a Kafka ordering
+  service. Only used if you issue the ``-o`` flag and specify ``kafka``.
+
+* ``TwoOrgsChannel``: generates the genesis block for our channel, ``mychannel``.
 
 These headers are important, as we will pass them in as arguments when we create
 our artifacts.
@@ -453,7 +438,22 @@ Then, we'll invoke the ``configtxgen`` tool to create the orderer genesis block:
 
     ../bin/configtxgen -profile TwoOrgsOrdererGenesis -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
 
-You should see an output similar to the following in your terminal:
+To output a genesis block for a Raft ordering service, this command should be:
+
+.. code:: bash
+
+  ../bin/configtxgen -profile SampleMultiNodeEtcdRaft -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
+
+Note the ``SampleMultiNodeEtcdRaft`` profile being used here.
+
+To output a genesis block for a Kafka ordering service, issue:
+
+.. code:: bash
+
+  ../bin/configtxgen -profile SampleDevModeKafka -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
+
+If you are not using Raft or Kafka, you should see an output similar to the
+following:
 
 .. code:: bash
 
@@ -479,7 +479,13 @@ set ``CHANNEL_NAME`` as an environment variable that can be used throughout thes
 
     export CHANNEL_NAME=mychannel  && ../bin/configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID $CHANNEL_NAME
 
-You should see an output similar to the following in your terminal:
+Note that you don't have to issue a special command for the channel if you are
+using a Raft or Kafka ordering service. The ``TwoOrgsChannel`` profile will use
+the ordering service configuration you specified when creating the genesis block
+for the network.
+
+If you are not using a Raft or Kafka ordering service, you should see an output
+similar to the following in your terminal:
 
 .. code:: bash
 
@@ -488,8 +494,9 @@ You should see an output similar to the following in your terminal:
   2017-10-26 19:24:05.329 EDT [common/tools/configtxgen] doOutputChannelCreateTx -> INFO 003 Writing new channel tx
 
 Next, we will define the anchor peer for Org1 on the channel that we are
-constructing. Again, be sure to replace ``$CHANNEL_NAME`` or set the environment variable
-for the following commands.  The terminal output will mimic that of the channel transaction artifact:
+constructing. Again, be sure to replace ``$CHANNEL_NAME`` or set the environment
+variable for the following commands.  The terminal output will mimic that of the
+channel transaction artifact:
 
 .. code:: bash
 
@@ -543,7 +550,7 @@ peer and org.
     # Environment variables for PEER0
 
     CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+    CORE_PEER_ADDRESS=peer0.org1.example.com:9051
     CORE_PEER_LOCALMSPID="Org1MSP"
     CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 
@@ -580,7 +587,7 @@ four environment variables and run the commands:
     # Environment variables for PEER0
 
     export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    export CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+    export CORE_PEER_ADDRESS=peer0.org1.example.com:9051
     export CORE_PEER_LOCALMSPID="Org1MSP"
     export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 
@@ -845,7 +852,7 @@ update the state DB. The syntax for invoke is as follows:
 
     # be sure to set the -C and -n flags appropriately
 
-    peer chaincode invoke -o orderer.example.com:7050 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["invoke","a","b","10"]}'
+    peer chaincode invoke -o orderer.example.com:7050 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc --peerAddresses peer0.org1.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["invoke","a","b","10"]}'
 
 Query
 ^^^^^
