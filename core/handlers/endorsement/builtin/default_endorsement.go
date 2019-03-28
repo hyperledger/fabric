@@ -10,6 +10,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	. "github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	. "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
@@ -45,14 +46,25 @@ func (e *DefaultEndorsement) Endorse(prpBytes []byte, sp *peer.SignedProposal) (
 		return nil, nil, errors.Wrapf(err, "could not serialize the signing identity")
 	}
 
+	endorser := identityBytes
 	idHash := util.ComputeSHA256(identityBytes)
+	exists, err := kvledger.GlbCertStore.CertExists(idHash)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "get cert error when endorsing")
+	} else if exists { // cert already exists
+		endorser = idHash
+	} else {
+		if err := kvledger.GlbCertStore.PutCert(idHash, identityBytes); err != nil {
+			return nil, nil, errors.Wrap(err, "put endorser cert into db failed")
+		}
+	}
 
 	// sign the concatenation of the proposal response and the serialized endorser identity with this endorser's key
-	signature, err := signer.Sign(append(prpBytes, idHash...))
+	signature, err := signer.Sign(append(prpBytes, identityBytes...))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "could not sign the proposal response payload")
 	}
-	endorsement := &peer.Endorsement{Signature: signature, Endorser: idHash}
+	endorsement := &peer.Endorsement{Signature: signature, Endorser: endorser}
 	return endorsement, prpBytes, nil
 }
 

@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -114,7 +115,7 @@ func (v *TxValidator) genBlockReplacedCert(block *common.Block) (*common.Block, 
 	blkcpy = *block
 	actionPosition := 0 //actionPosition default is 0 currently
 
-	for txPosition, tx := range blkcpy.Data.Data {
+	for _, tx := range blkcpy.Data.Data {
 		// get the envelope...
 		env, err := utils.GetEnvelopeFromBlock(tx)
 		if err != nil {
@@ -146,7 +147,9 @@ func (v *TxValidator) genBlockReplacedCert(block *common.Block) (*common.Block, 
 		for _, endorsement := range cap.Action.Endorsements {
 			endorserCert := endorsement.Endorser
 			if len(endorsement.Endorser) == util.CERT_HASH_LEN { //hash,replace with cert
-				endorserCert := getFromStateDB(endorsement.Endorser)
+				if endorserCert, err = kvledger.GlbCertStore.GetCert(endorsement.Endorser); err != nil {
+					return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+				}
 
 				//unmarshal endorser bytes
 				serializedIdentity := &mspprotos.SerializedIdentity{}
@@ -158,15 +161,18 @@ func (v *TxValidator) genBlockReplacedCert(block *common.Block) (*common.Block, 
 				endorsement.Endorser = endorserCert
 				logger.Debugf("genBlockReplacedCert,replace with cert Mspid: %s, pem:\n%s", serializedIdentity.Mspid, serializedIdentity.IdBytes)
 			} else { // a new endorser cert,insert to db
-				//unmarshal endorser bytes
+				// TODOlogan to be removed after verify
 				serializedIdentity := &mspprotos.SerializedIdentity{}
 				if err := proto.Unmarshal(endorserCert, serializedIdentity); err != nil {
 					logger.Errorf("Unmarshal original endorser error: %s", err)
 					return nil, errors.Wrap(err, "genBlockReplacedCert failed")
 				}
 				key := util.ComputeSHA256(endorserCert)
-				logger.Debugf("genBlockReplacedCert: update endorser to state db  Mspid: %s, pem:\n%s", serializedIdentity.Mspid, serializedIdentity.IdBytes)
-				putToStateDB(key, endorserCert)
+				logger.Debugf("genBlockReplacedCert: update endorser to state db key len: %d Mspid: %s, pem:\n%s", len(key), serializedIdentity.Mspid, serializedIdentity.IdBytes)
+				if err := kvledger.GlbCertStore.PutCert(key, endorserCert); err != nil {
+					logger.Errorf("update endorser cert error: %s", err)
+					return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+				}
 			}
 
 		}

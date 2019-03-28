@@ -23,6 +23,7 @@ func IsCouchDBEnabled() bool {
 }
 
 const confPeerFileSystemPath = "peer.fileSystemPath"
+const confCertsData = "certsData"
 const confLedgersData = "ledgersData"
 const confLedgerProvider = "ledgerProvider"
 const confStateleveldb = "stateLeveldb"
@@ -46,6 +47,11 @@ var confCollElgProcDbBatchesInterval = &conf{"ledger.pvtdataStore.collElgProcDbB
 func GetRootPath() string {
 	sysPath := config.GetPath(confPeerFileSystemPath)
 	return filepath.Join(sysPath, confLedgersData)
+}
+
+// GetCertsDataPath returns the filesystem path for storing hash(cert) :cert
+func GetCertsDataPath() string {
+	return filepath.Join(GetRootPath(), confCertsData)
 }
 
 // GetLedgerProviderPath returns the filesystem path for storing ledger ledgerProvider contents

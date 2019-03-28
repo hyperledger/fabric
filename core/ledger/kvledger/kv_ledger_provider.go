@@ -36,6 +36,8 @@ var (
 
 	underConstructionLedgerKey = []byte("underConstructionLedgerKey")
 	ledgerKeyPrefix            = []byte("l")
+	//GlbCertStore handler for rd/wr cert/hash
+	GlbCertStore *certStore
 )
 
 // Provider implements interface ledger.PeerLedgerProvider
@@ -58,6 +60,7 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	logger.Info("Initializing ledger provider")
 	// Initialize the ID store (inventory of chainIds/ledgerIds)
 	idStore := openIDStore(ledgerconfig.GetLedgerProviderPath())
+	GlbCertStore = openCertStore(ledgerconfig.GetCertsDataPath())
 	ledgerStoreProvider := ledgerstorage.NewProvider()
 	// Initialize the history database (index for history of values by key)
 	historydbProvider := historyleveldb.NewHistoryDBProvider()
@@ -192,6 +195,7 @@ func (provider *Provider) List() ([]string, error) {
 // Close implements the corresponding method from interface ledger.PeerLedgerProvider
 func (provider *Provider) Close() {
 	provider.idStore.close()
+	GlbCertStore.close()
 	provider.ledgerStoreProvider.Close()
 	provider.vdbProvider.Close()
 	provider.historydbProvider.Close()
@@ -339,4 +343,43 @@ func (s *idStore) encodeLedgerKey(ledgerID string) []byte {
 
 func (s *idStore) decodeLedgerID(key []byte) string {
 	return string(key[len(ledgerKeyPrefix):])
+}
+
+//////////////////////////////////////////////////////////////////////
+// Ledger certs persistence related code
+///////////////////////////////////////////////////////////////////////
+
+type certStore struct {
+	db *leveldbhelper.DB
+}
+
+func openCertStore(path string) *certStore {
+	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: path})
+	db.Open()
+	return &certStore{db}
+}
+
+func (s *certStore) PutCert(hash []byte, cert []byte) error {
+	return s.db.Put(hash, cert, true)
+}
+
+func (s *certStore) GetCert(hash []byte) ([]byte, error) {
+	val, err := s.db.Get(hash)
+	if err != nil {
+		return nil, err
+	}
+	return val, nil
+}
+
+func (s *certStore) CertExists(hash []byte) (bool, error) {
+	val := []byte{}
+	err := error(nil)
+	if val, err = s.db.Get(hash); err != nil {
+		return false, err
+	}
+	return val != nil, nil
+}
+
+func (s *certStore) close() {
+	s.db.Close()
 }

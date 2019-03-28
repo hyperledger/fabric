@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
@@ -33,23 +34,21 @@ import (
 
 var putilsLogger = flogging.MustGetLogger("protoutils")
 
-//loganTODO
-func preProcIdenity(hashPem []byte) ([]byte, error) {
+func preProcIdenity(hashOrCert []byte) ([]byte, error) {
 	putilsLogger.Debugf("preProcIdenity start")
 	defer putilsLogger.Debugf("preProcIdenity end")
+	//tmp code loganTODO
+	return hashOrCert, nil
 
-	if false { // tmp disable TODO
-		if len(hashPem) == util.CERT_HASH_LEN { //hash
-			putilsLogger.Debugf("this is a  hash")
-			return getFromStateDB(hashPem)
-		} else { // cert
-			key := util.ComputeSHA256(hashPem)
-			putilsLogger.Debugf("this is a cert,update db")
-			putToStateDB(key, hashPem)
-		}
+	if len(hashOrCert) == util.CERT_HASH_LEN { //hash
+		putilsLogger.Debugf("this is a  hash")
+		return kvledger.GlbCertStore.GetCert(hashOrCert)
 	}
+	key := util.ComputeSHA256(hashOrCert)
+	putilsLogger.Debugf("this is a cert,update db")
+	err := kvledger.GlbCertStore.PutCert(key, hashOrCert)
 
-	return hashPem, nil
+	return hashOrCert, err
 }
 
 // validateChaincodeProposalMessage checks the validity of a Proposal message of type CHAINCODE
