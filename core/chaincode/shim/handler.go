@@ -136,10 +136,7 @@ func (h *Handler) sendReceive(msg *pb.ChaincodeMessage, responseChan <-chan pb.C
 			if err != nil {
 				return pb.ChaincodeMessage{}, err
 			}
-		case outmsg, val := <-responseChan:
-			if !val {
-				return pb.ChaincodeMessage{}, errors.New("unexpected failure on receive")
-			}
+		case outmsg := <-responseChan:
 			return outmsg, nil
 		}
 	}
