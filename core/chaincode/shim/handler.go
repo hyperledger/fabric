@@ -278,7 +278,7 @@ func (h *Handler) callPeerWithChaincodeMsg(msg *pb.ChaincodeMessage, channelID, 
 // handleGetState communicates with the peer to fetch the requested state information from the ledger.
 func (h *Handler) handleGetState(collection string, key string, channelId string, txid string) ([]byte, error) {
 	// Construct payload for GET_STATE
-	payloadBytes, _ := proto.Marshal(&pb.GetState{Collection: collection, Key: key})
+	payloadBytes := marshalOrPanic(&pb.GetState{Collection: collection, Key: key})
 
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s] Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE)
@@ -306,7 +306,7 @@ func (h *Handler) handleGetState(collection string, key string, channelId string
 
 func (h *Handler) handleGetPrivateDataHash(collection string, key string, channelId string, txid string) ([]byte, error) {
 	// Construct payload for GET_PRIVATE_DATA_HASH
-	payloadBytes, _ := proto.Marshal(&pb.GetState{Collection: collection, Key: key})
+	payloadBytes := marshalOrPanic(&pb.GetState{Collection: collection, Key: key})
 
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_PRIVATE_DATA_HASH, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s] Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_PRIVATE_DATA_HASH)
@@ -334,7 +334,7 @@ func (h *Handler) handleGetPrivateDataHash(collection string, key string, channe
 
 func (h *Handler) handleGetStateMetadata(collection string, key string, channelID string, txID string) (map[string][]byte, error) {
 	// Construct payload for GET_STATE_METADATA
-	payloadBytes, _ := proto.Marshal(&pb.GetStateMetadata{Collection: collection, Key: key})
+	payloadBytes := marshalOrPanic(&pb.GetStateMetadata{Collection: collection, Key: key})
 
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_METADATA, Payload: payloadBytes, Txid: txID, ChannelId: channelID}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE_METADATA)
@@ -374,7 +374,7 @@ func (h *Handler) handleGetStateMetadata(collection string, key string, channelI
 // handlePutState communicates with the peer to put state information into the ledger.
 func (h *Handler) handlePutState(collection string, key string, value []byte, channelId string, txid string) error {
 	// Construct payload for PUT_STATE
-	payloadBytes, _ := proto.Marshal(&pb.PutState{Collection: collection, Key: key, Value: value})
+	payloadBytes := marshalOrPanic(&pb.PutState{Collection: collection, Key: key, Value: value})
 
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s] Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_PUT_STATE)
@@ -405,7 +405,7 @@ func (h *Handler) handlePutState(collection string, key string, value []byte, ch
 func (h *Handler) handlePutStateMetadataEntry(collection string, key string, metakey string, metadata []byte, channelID string, txID string) error {
 	// Construct payload for PUT_STATE_METADATA
 	md := &pb.StateMetadata{Metakey: metakey, Value: metadata}
-	payloadBytes, _ := proto.Marshal(&pb.PutStateMetadata{Collection: collection, Key: key, Metadata: md})
+	payloadBytes := marshalOrPanic(&pb.PutStateMetadata{Collection: collection, Key: key, Metadata: md})
 
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE_METADATA, Payload: payloadBytes, Txid: txID, ChannelId: channelID}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_PUT_STATE_METADATA)
@@ -435,7 +435,7 @@ func (h *Handler) handlePutStateMetadataEntry(collection string, key string, met
 
 // handleDelState communicates with the peer to delete a key from the state in the ledger.
 func (h *Handler) handleDelState(collection string, key string, channelId string, txid string) error {
-	payloadBytes, _ := proto.Marshal(&pb.DelState{Collection: collection, Key: key})
+	payloadBytes := marshalOrPanic(&pb.DelState{Collection: collection, Key: key})
 
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s] Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_DEL_STATE)
@@ -465,8 +465,7 @@ func (h *Handler) handleDelState(collection string, key string, channelId string
 func (h *Handler) handleGetStateByRange(collection, startKey, endKey string, metadata []byte,
 	channelId string, txid string) (*pb.QueryResponse, error) {
 	// Send GET_STATE_BY_RANGE message to peer chaincode support
-	// we constructed a valid object. No need to check for error
-	payloadBytes, _ := proto.Marshal(&pb.GetStateByRange{Collection: collection, StartKey: startKey, EndKey: endKey, Metadata: metadata})
+	payloadBytes := marshalOrPanic(&pb.GetStateByRange{Collection: collection, StartKey: startKey, EndKey: endKey, Metadata: metadata})
 
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s] Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE_BY_RANGE)
@@ -510,8 +509,7 @@ func (h *Handler) handleQueryStateNext(id, channelId, txid string) (*pb.QueryRes
 	defer h.deleteChannel(channelId, txid)
 
 	// Send QUERY_STATE_NEXT message to peer chaincode support
-	// we constructed a valid object. No need to check for error
-	payloadBytes, _ := proto.Marshal(&pb.QueryStateNext{Id: id})
+	payloadBytes := marshalOrPanic(&pb.QueryStateNext{Id: id})
 
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s] Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_NEXT)
@@ -556,8 +554,7 @@ func (h *Handler) handleQueryStateClose(id, channelId, txid string) (*pb.QueryRe
 	defer h.deleteChannel(channelId, txid)
 
 	// Send QUERY_STATE_CLOSE message to peer chaincode support
-	// we constructed a valid object. No need to check for error
-	payloadBytes, _ := proto.Marshal(&pb.QueryStateClose{Id: id})
+	payloadBytes := marshalOrPanic(&pb.QueryStateClose{Id: id})
 
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s] Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_CLOSE)
@@ -595,8 +592,7 @@ func (h *Handler) handleQueryStateClose(id, channelId, txid string) (*pb.QueryRe
 func (h *Handler) handleGetQueryResult(collection string, query string, metadata []byte,
 	channelId string, txid string) (*pb.QueryResponse, error) {
 	// Send GET_QUERY_RESULT message to peer chaincode support
-	// we constructed a valid object. No need to check for error
-	payloadBytes, _ := proto.Marshal(&pb.GetQueryResult{Collection: collection, Query: query, Metadata: metadata})
+	payloadBytes := marshalOrPanic(&pb.GetQueryResult{Collection: collection, Query: query, Metadata: metadata})
 
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s] Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_QUERY_RESULT)
@@ -639,8 +635,7 @@ func (h *Handler) handleGetHistoryForKey(key string, channelId string, txid stri
 	defer h.deleteChannel(channelId, txid)
 
 	// Send GET_HISTORY_FOR_KEY message to peer chaincode support
-	// we constructed a valid object. No need to check for error
-	payloadBytes, _ := proto.Marshal(&pb.GetHistoryForKey{Key: key})
+	payloadBytes := marshalOrPanic(&pb.GetHistoryForKey{Key: key})
 
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s] Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_HISTORY_FOR_KEY)
@@ -681,8 +676,7 @@ func (h *Handler) createResponse(status int32, payload []byte) pb.Response {
 
 // handleInvokeChaincode communicates with the peer to invoke another chaincode.
 func (h *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, channelId string, txid string) pb.Response {
-	// we constructed a valid object. No need to check for error
-	payloadBytes, _ := proto.Marshal(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: chaincodeName}, Input: &pb.ChaincodeInput{Args: args}})
+	payloadBytes := marshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: chaincodeName}, Input: &pb.ChaincodeInput{Args: args}})
 
 	// Create the channel on which to communicate the response from validating peer
 	respChan, err := h.createChannel(channelId, txid)
@@ -811,4 +805,14 @@ func (h *Handler) handleMessage(msg *pb.ChaincodeMessage, errc chan error) error
 	}
 
 	return nil
+}
+
+// marshalOrPanic attempts to marshal the provided protobbuf message but will panic
+// when marshaling fails instead of returning an error.
+func marshalOrPanic(msg proto.Message) []byte {
+	bytes, err := proto.Marshal(msg)
+	if err != nil {
+		panic(err)
+	}
+	return bytes
 }
