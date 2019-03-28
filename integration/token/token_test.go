@@ -1037,10 +1037,31 @@ var _ bool = Describe("Token EndToEnd", func() {
 			waitForBlockReception(orderer, peer, network, "testchannel", 1)
 		})
 
-		It("double spending with resend transfer results in INVALID_OTHER_REASON", func() {
+		// This test sends the same envelope twice. Expected behavior:
+		// 1st send should be committed and 2nd send should fail with TxValidationCode_DUPLICATE_TXID.
+		// Because underlying token/client package only listens to the 1st event for a txid,
+		// we cannot verify that 2nd send fails with TxValidationCode_DUPLICATE_TXID.
+		// However, we can verify no double spending by listing tokens for user1 and user2.
+		It("transfers without double spending when resending same transfer envelope", func() {
+			By("User2 lists tokens before transfer, 1 token with quantity 119")
+			expectedTokens := &token.UnspentTokens{
+				Tokens: []*token.UnspentToken{
+					{
+						Quantity: ToDecimal(119),
+						Type:     "ABC123",
+					},
+				},
+			}
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			RunListTokens(tClient, expectedTokens)
 
-			By("Prepare token transfer")
+			By("User1 lists tokens before transfer, no token")
+			expectedTokens = nil
+			tClient = GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
+			RunListTokens(tClient, expectedTokens)
+
+			By("Prepare token transfer, transfer 20 out of 119")
+			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			expectedTransferTransaction.GetTokenAction().GetTransfer().Inputs = []*token.TokenId{{TxId: txId, Index: 0}}
 			inputTokenIDs := make([]*token.TokenId, len(issuedTokens))
 			for i, inToken := range issuedTokens {
@@ -1073,19 +1094,32 @@ var _ bool = Describe("Token EndToEnd", func() {
 
 			By("Waiting for committing")
 			Eventually(<-done1, 30*time.Second, time.Second).Should(BeTrue())
-			Expect(<-cErr1).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: INVALID_OTHER_REASON", txId1)))
+			Expect(<-cErr1).NotTo(HaveOccurred())
 
-			By("User2 lists tokens as sanity check to make sure no tx has been performed")
-			expectedTokens := &token.UnspentTokens{
+			By("User2 lists tokens to make sure no double spending, 1 token with quantity 99")
+			expectedTokens = &token.UnspentTokens{
 				Tokens: []*token.UnspentToken{
 					{
-						Quantity: ToDecimal(119),
+						Quantity: ToDecimal(119 - 20),
 						Type:     "ABC123",
 						Id:       &token.TokenId{TxId: txId1, Index: 1},
 					},
 				},
 			}
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
+			RunListTokens(tClient, expectedTokens)
+
+			By("User1 lists tokens to make sure no double spending, 1 token with quantity 20")
+			expectedTokens = &token.UnspentTokens{
+				Tokens: []*token.UnspentToken{
+					{
+						Quantity: ToDecimal(20),
+						Type:     "ABC123",
+						Id:       &token.TokenId{TxId: txId1, Index: 0},
+					},
+				},
+			}
+			tClient = GetTokenClient(network, peer, orderer, "User1", "Org1MSP")
 			RunListTokens(tClient, expectedTokens)
 
 			By("check that transactions have been processed in the same block")

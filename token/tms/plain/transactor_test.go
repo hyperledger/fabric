@@ -167,48 +167,125 @@ var _ = Describe("Transactor", func() {
 			inputBytes      []byte
 		)
 
-		BeforeEach(func() {
-			input := &token.Token{
-				Owner:    &token.TokenOwner{Raw: []byte("Alice")},
-				Type:     "TOK1",
-				Quantity: ToHex(99),
-			}
-			var err error
-			inputBytes, err = proto.Marshal(input)
-			Expect(err).ToNot(HaveOccurred())
-			fakeLedger = &mock.LedgerWriter{}
-			fakeLedger.SetStateReturns(nil)
-			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
-			transactor.Ledger = fakeLedger
-			transactor.TokenOwnerValidator = &TestTokenOwnerValidator{}
-		})
+		When("transferred quantity is same as quantity in token ids", func() {
+			BeforeEach(func() {
+				input := &token.Token{
+					Owner:    &token.TokenOwner{Raw: []byte("Alice")},
+					Type:     "TOK1",
+					Quantity: ToHex(3006),
+				}
+				var err error
+				inputBytes, err = proto.Marshal(input)
+				Expect(err).ToNot(HaveOccurred())
+				fakeLedger = &mock.LedgerWriter{}
+				fakeLedger.SetStateReturns(nil)
+				fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
+				transactor.Ledger = fakeLedger
+				transactor.TokenOwnerValidator = &TestTokenOwnerValidator{}
+			})
 
-		It("creates a valid transfer request", func() {
-			transferRequest = &token.TransferRequest{
-				Credential: []byte("credential"),
-				TokenIds:   []*token.TokenId{{TxId: "george", Index: 0}},
-				Shares:     recipientTransferShares,
-			}
-			tt, err := transactor.RequestTransfer(transferRequest)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(tt).To(Equal(&token.TokenTransaction{
-				Action: &token.TokenTransaction_TokenAction{
-					TokenAction: &token.TokenAction{
-						Data: &token.TokenAction_Transfer{
-							Transfer: &token.Transfer{
-								Inputs: []*token.TokenId{
-									{TxId: "george", Index: uint32(0)},
-								},
-								Outputs: []*token.Token{
-									{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: ToHex(1001)},
-									{Owner: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK1", Quantity: ToHex(1002)},
-									{Owner: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK1", Quantity: ToHex(1003)},
+			It("creates a valid transfer request", func() {
+				transferRequest = &token.TransferRequest{
+					Credential: []byte("credential"),
+					TokenIds:   []*token.TokenId{{TxId: "george", Index: 0}},
+					Shares:     recipientTransferShares,
+				}
+				tt, err := transactor.RequestTransfer(transferRequest)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(tt).To(Equal(&token.TokenTransaction{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Transfer{
+								Transfer: &token.Transfer{
+									Inputs: []*token.TokenId{
+										{TxId: "george", Index: uint32(0)},
+									},
+									Outputs: []*token.Token{
+										{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: ToHex(1001)},
+										{Owner: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK1", Quantity: ToHex(1002)},
+										{Owner: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK1", Quantity: ToHex(1003)},
+									},
 								},
 							},
 						},
 					},
-				},
-			}))
+				}))
+			})
+		})
+
+		When("quantity in token ids is more than quantity for transfer", func() {
+			BeforeEach(func() {
+				input := &token.Token{
+					Owner:    &token.TokenOwner{Raw: []byte("Alice")},
+					Type:     "TOK1",
+					Quantity: ToHex(3106),
+				}
+				var err error
+				inputBytes, err = proto.Marshal(input)
+				Expect(err).ToNot(HaveOccurred())
+				fakeLedger = &mock.LedgerWriter{}
+				fakeLedger.SetStateReturns(nil)
+				fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
+				transactor.Ledger = fakeLedger
+				transactor.TokenOwnerValidator = &TestTokenOwnerValidator{}
+			})
+
+			It("creates a valid transfer request with an output for remaining quantity", func() {
+				transferRequest = &token.TransferRequest{
+					Credential: []byte("credential"),
+					TokenIds:   []*token.TokenId{{TxId: "george", Index: 0}},
+					Shares:     recipientTransferShares,
+				}
+				tt, err := transactor.RequestTransfer(transferRequest)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(tt).To(Equal(&token.TokenTransaction{
+					Action: &token.TokenTransaction_TokenAction{
+						TokenAction: &token.TokenAction{
+							Data: &token.TokenAction_Transfer{
+								Transfer: &token.Transfer{
+									Inputs: []*token.TokenId{
+										{TxId: "george", Index: uint32(0)},
+									},
+									Outputs: []*token.Token{
+										{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: ToHex(1001)},
+										{Owner: &token.TokenOwner{Raw: []byte("R2")}, Type: "TOK1", Quantity: ToHex(1002)},
+										{Owner: &token.TokenOwner{Raw: []byte("R3")}, Type: "TOK1", Quantity: ToHex(1003)},
+										{Owner: &token.TokenOwner{Raw: []byte("Alice")}, Type: "TOK1", Quantity: ToHex(100)},
+									},
+								},
+							},
+						},
+					},
+				}))
+			})
+		})
+
+		When("quantity in token ids is less than quantity for transfer", func() {
+			BeforeEach(func() {
+				input := &token.Token{
+					Owner:    &token.TokenOwner{Raw: []byte("Alice")},
+					Type:     "TOK1",
+					Quantity: ToHex(3000),
+				}
+				var err error
+				inputBytes, err = proto.Marshal(input)
+				Expect(err).ToNot(HaveOccurred())
+				fakeLedger = &mock.LedgerWriter{}
+				fakeLedger.SetStateReturns(nil)
+				fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
+				transactor.Ledger = fakeLedger
+				transactor.TokenOwnerValidator = &TestTokenOwnerValidator{}
+			})
+
+			It("returns an error ", func() {
+				transferRequest = &token.TransferRequest{
+					Credential: []byte("credential"),
+					TokenIds:   []*token.TokenId{{TxId: "george", Index: 0}},
+					Shares:     recipientTransferShares,
+				}
+				_, err := transactor.RequestTransfer(transferRequest)
+				Expect(err).To(MatchError("total quantity [3000] from TokenIds is less than total quantity [3006] for transfer"))
+			})
 		})
 	})
 

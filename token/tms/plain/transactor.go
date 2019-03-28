@@ -33,6 +33,7 @@ type Transactor struct {
 // RequestTransfer creates a TokenTransaction of type transfer request
 func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.TokenTransaction, error) {
 	var outputs []*token.Token
+	var outputSum = NewZeroQuantity(Precision)
 
 	if len(request.GetTokenIds()) == 0 {
 		return nil, errors.New("no token IDs in transfer request")
@@ -41,7 +42,7 @@ func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.Tok
 		return nil, errors.New("no shares in transfer request")
 	}
 
-	tokenType, _, _, err := t.getInputsFromTokenIds(request.GetTokenIds(), nil)
+	tokenType, inputSum, _, err := t.getInputsFromTokenIds(request.GetTokenIds(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +57,39 @@ func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.Tok
 			return nil, errors.Errorf("invalid quantity in transfer request '%s'", err)
 		}
 
+		outputSum, err = outputSum.Add(q)
+		if err != nil {
+			return nil, errors.Errorf("failed adding up output quantities, err '%s'", err)
+		}
+
 		outputs = append(outputs, &token.Token{
 			Owner:    ttt.Recipient,
 			Type:     tokenType,
 			Quantity: q.Hex(),
+		})
+	}
+
+	// compare outputSum and inputSum
+	cmp, err := inputSum.Cmp(outputSum)
+	if err != nil {
+		return nil, errors.Errorf("cannot compare quantities '%s'", err)
+	}
+	if cmp < 0 {
+		return nil, errors.Errorf("total quantity [%d] from TokenIds is less than total quantity [%s] for transfer", inputSum, outputSum)
+	}
+
+	// add a new output for the owner if there is remaining quantity after transfer
+	if cmp > 0 {
+		change, err := inputSum.Sub(outputSum)
+		if err != nil {
+			return nil, errors.Errorf("failed computing change, err '%s'", err)
+		}
+
+		outputs = append(outputs, &token.Token{
+			// note that tokenOwner type may change in the future depending on creator type
+			Owner:    &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential},
+			Type:     tokenType,
+			Quantity: change.Hex(),
 		})
 	}
 
