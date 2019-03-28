@@ -105,6 +105,16 @@ An example using pagination is included in the :doc:`couchdb_tutorial` tutorial.
 CouchDB indexes
 ~~~~~~~~~~~~~~~
 
+.. note:: The Fabric chaincode lifecycle that is being introduced as an Alpha
+          feature in Fabric v2.0 does not support using indexes with CouchDB. As
+          a result, the `previous lifecycle process <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`_  is required to
+          install and instantiate a chaincode that includes CouchDB indexes. You 
+          can only use CouchDB indexes with the Fabric v2.0 Alpha if the channel
+          capabilities are set with V1_4 as the highest version enabled in the
+          Application Capabilities section of the `configtx.yaml file <https://github.com/hyperledger/fabric/blob/release-2.0/sampleconfig/configtx.yaml>`_. 
+          CouchDB indexes will not work on channels with v2_0 capabilities
+          enabled.
+
 Indexes in CouchDB are required in order to make JSON queries efficient and are required for
 any JSON query with a sort. Indexes can be packaged alongside chaincode in a
 ``/META-INF/statedb/couchdb/indexes`` directory. Each index must be defined in its own
