@@ -144,24 +144,6 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDirs []strin
 	return nil
 }
 
-//Package Java project to tar file from the source path
-func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
-
-	vmLogger.Debugf("Packaging Java project from path %s", srcPath)
-
-	if err := WriteFolderToTarPackage(tw, srcPath, []string{"target", "build", "out"}, nil, javaExcludeFileTypes); err != nil {
-
-		vmLogger.Errorf("Error writing folder to tar package %s", err)
-		return err
-	}
-	// Write the tar file out
-	if err := tw.Close(); err != nil {
-		return err
-	}
-	return nil
-
-}
-
 //WriteFileToPackage writes a file to the tarball
 func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) error {
 	vmLogger.Debug("Writing file to tarball:", packagepath)

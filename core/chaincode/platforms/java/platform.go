@@ -3,6 +3,7 @@ Copyright DTCC 2016 All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package java
 
 import (
@@ -26,8 +27,7 @@ import (
 var logger = flogging.MustGetLogger("chaincode.platform.java")
 
 // Platform for java chaincodes in java
-type Platform struct {
-}
+type Platform struct{}
 
 // Name returns the name of this platform
 func (javaPlatform *Platform) Name() string {
@@ -63,13 +63,11 @@ func (javaPlatform *Platform) ValidateCodePackage(code []byte) error {
 
 	for {
 		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			if err == io.EOF {
-				// We only get here if there are no more entries to scan
-				break
-			} else {
-				return err
-			}
+			return err
 		}
 
 		// --------------------------------------------------------------------------------------
@@ -97,38 +95,34 @@ func (javaPlatform *Platform) ValidateCodePackage(code []byte) error {
 
 // WritePackage writes the java chaincode package
 func (javaPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
-
 	logger.Debugf("Packaging java project from path %s", path)
-	var err error
 
-	// --------------------------------------------------------------------------------------
-	// Write out our tar package
-	// --------------------------------------------------------------------------------------
-	payload := bytes.NewBuffer(nil)
-	gw := gzip.NewWriter(payload)
-	tw := tar.NewWriter(gw)
-
-	folder := path
-	if folder == "" {
+	if path == "" {
 		logger.Error("ChaincodeSpec's path cannot be empty")
 		return nil, errors.New("ChaincodeSpec's path cannot be empty")
 	}
 
 	// trim trailing slash if it exists
-	if folder[len(folder)-1] == '/' {
-		folder = folder[:len(folder)-1]
+	if path[len(path)-1] == '/' {
+		path = path[:len(path)-1]
 	}
 
-	if err = cutil.WriteJavaProjectToPackage(tw, folder); err != nil {
+	buf := &bytes.Buffer{}
+	gw := gzip.NewWriter(buf)
+	tw := tar.NewWriter(gw)
 
+	excludedDirs := []string{"target", "build", "out"}
+	excludedFileTypes := map[string]bool{".class": true}
+	err := cutil.WriteFolderToTarPackage(tw, path, excludedDirs, nil, excludedFileTypes)
+	if err != nil {
 		logger.Errorf("Error writing java project to tar package %s", err)
-		return nil, fmt.Errorf("Error writing Chaincode package contents: %s", err)
+		return nil, fmt.Errorf("failed to create chaincode package: %s", err)
 	}
 
 	tw.Close()
 	gw.Close()
 
-	return payload.Bytes(), nil
+	return buf.Bytes(), nil
 }
 
 func (javaPlatform *Platform) GenerateDockerfile() (string, error) {
