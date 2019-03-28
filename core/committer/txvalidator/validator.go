@@ -147,14 +147,15 @@ func (v *TxValidator) genBlockReplacedCert(block *common.Block) (*common.Block, 
 		for _, endorsement := range cap.Action.Endorsements {
 			endorserCert := endorsement.Endorser
 			if len(endorsement.Endorser) == util.CERT_HASH_LEN { //hash,replace with cert
-				if endorserCert, err = kvledger.GlbCertStore.GetCert(endorsement.Endorser); err != nil {
+				if endorserCert, err = kvledger.GlbCertStore.GetCert(endorsement.Endorser); err != nil || endorserCert == nil {
+					logger.Errorf("Get endorser cert error: %s cert len %d: pem: \n%s", err, len(endorsement.Endorser), endorserCert)
 					return nil, errors.Wrap(err, "genBlockReplacedCert failed")
 				}
 
 				//unmarshal endorser bytes
 				serializedIdentity := &mspprotos.SerializedIdentity{}
 				if err := proto.Unmarshal(endorserCert, serializedIdentity); err != nil {
-					logger.Errorf("Unmarshal endorser error: %s", err)
+					logger.Errorf("Unmarshal endorser  error: %s cert len %d: pem: \n%s", err, len(endorsement.Endorser), endorserCert)
 					return nil, errors.Wrap(err, "genBlockReplacedCert failed")
 				}
 				//do replace work

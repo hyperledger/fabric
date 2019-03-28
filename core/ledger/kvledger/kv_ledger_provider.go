@@ -360,10 +360,12 @@ func openCertStore(path string) *certStore {
 }
 
 func (s *certStore) PutCert(hash []byte, cert []byte) error {
+	logger.Debugf("Put Cert len is: %d hash:\n%s", len(hash), hash)
 	return s.db.Put(hash, cert, true)
 }
 
 func (s *certStore) GetCert(hash []byte) ([]byte, error) {
+	logger.Debugf("Get Cert len is: %d hash:\n%s", len(hash), hash)
 	val, err := s.db.Get(hash)
 	if err != nil {
 		return nil, err
@@ -372,6 +374,7 @@ func (s *certStore) GetCert(hash []byte) ([]byte, error) {
 }
 
 func (s *certStore) CertExists(hash []byte) (bool, error) {
+	logger.Debugf("CertExists len is: %d hash:\n%s", len(hash), hash)
 	val := []byte{}
 	err := error(nil)
 	if val, err = s.db.Get(hash); err != nil {
