@@ -14,12 +14,13 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	persistenceintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	cb "github.com/hyperledger/fabric/protos/common"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
-	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -183,7 +184,7 @@ var _ = Describe("SCC", func() {
 
 				fakeSCCFuncs.InstallChaincodeReturns(&chaincode.InstalledChaincode{
 					Label:     "label",
-					PackageID: persistence.PackageID("packageid"),
+					PackageID: persistenceintf.PackageID("packageid"),
 				}, nil)
 			})
 
@@ -231,7 +232,7 @@ var _ = Describe("SCC", func() {
 				fakeStub.GetArgsReturns([][]byte{[]byte("QueryInstalledChaincode"), marshaledArg})
 
 				fakeSCCFuncs.QueryInstalledChaincodeReturns(&chaincode.InstalledChaincode{
-					PackageID: persistence.PackageID("awesome_package"),
+					PackageID: persistenceintf.PackageID("awesome_package"),
 					Label:     "awesome_package_label",
 				}, nil)
 			})
@@ -246,7 +247,19 @@ var _ = Describe("SCC", func() {
 
 				Expect(fakeSCCFuncs.QueryInstalledChaincodeCallCount()).To(Equal(1))
 				name := fakeSCCFuncs.QueryInstalledChaincodeArgsForCall(0)
-				Expect(name).To(Equal(persistence.PackageID("awesome_package")))
+				Expect(name).To(Equal(persistenceintf.PackageID("awesome_package")))
+			})
+
+			Context("when the code package cannot be found", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryInstalledChaincodeReturns(nil, persistence.CodePackageNotFoundErr{PackageID: persistenceintf.PackageID("less_awesome_package")})
+				})
+
+				It("returns 404 Not Found", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(404)))
+					Expect(res.Message).To(Equal("chaincode install package 'less_awesome_package' not found"))
+				})
 			})
 
 			Context("when the underlying function implementation fails", func() {
@@ -281,12 +294,12 @@ var _ = Describe("SCC", func() {
 					{
 						Hash:      []byte("cc0-hash"),
 						Label:     "cc0-label",
-						PackageID: persistence.PackageID("cc0-package-id"),
+						PackageID: persistenceintf.PackageID("cc0-package-id"),
 					},
 					{
 						Hash:      []byte("cc1-hash"),
 						Label:     "cc1-label",
-						PackageID: persistence.PackageID("cc1-package-id"),
+						PackageID: persistenceintf.PackageID("cc1-package-id"),
 					},
 				}, nil)
 			})
@@ -378,7 +391,7 @@ var _ = Describe("SCC", func() {
 					},
 					Collections: arg.Collections,
 				}))
-				Expect(packageID).To(Equal(persistence.PackageID("hash")))
+				Expect(packageID).To(Equal(persistenceintf.PackageID("hash")))
 				Expect(pubState).To(Equal(fakeStub))
 				Expect(privState).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
 				Expect(privState.(*lifecycle.ChaincodePrivateLedgerShim).Collection).To(Equal("_implicit_org_fake-mspid"))
@@ -725,6 +738,18 @@ var _ = Describe("SCC", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
 					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinition': underlying-error"))
+				})
+			})
+
+			Context("when the namespace cannot be found", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, lifecycle.ErrNamespaceNotDefined{Namespace: "nicetry"})
+				})
+
+				It("returns 404 Not Found", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(404)))
+					Expect(res.Message).To(Equal("namespace nicetry is not defined"))
 				})
 			})
 		})

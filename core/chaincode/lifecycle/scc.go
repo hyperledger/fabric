@@ -9,17 +9,17 @@ package lifecycle
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
+	persistence "github.com/hyperledger/fabric/core/chaincode/persistence"
+	persistenceintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/pkg/errors"
 )
 
@@ -64,13 +64,13 @@ type SCCFunctions interface {
 	InstallChaincode([]byte) (*chaincode.InstalledChaincode, error)
 
 	// QueryInstalledChaincode returns the hash for a given name and version of an installed chaincode
-	QueryInstalledChaincode(packageID persistence.PackageID) (*chaincode.InstalledChaincode, error)
+	QueryInstalledChaincode(packageID persistenceintf.PackageID) (*chaincode.InstalledChaincode, error)
 
 	// QueryInstalledChaincodes returns the currently installed chaincodes
 	QueryInstalledChaincodes() (chaincodes []chaincode.InstalledChaincode, err error)
 
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
-	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID persistence.PackageID, publicState ReadableState, orgState ReadWritableState) error
+	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID persistenceintf.PackageID, publicState ReadableState, orgState ReadWritableState) error
 
 	// QueryApprovalStatus returns an array of boolean to signal whether the orgs
 	// whose orgStates was supplied as argument have approveed the specified definition
@@ -204,7 +204,15 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		},
 	)
 	if err != nil {
-		return shim.Error(fmt.Sprintf("failed to invoke backing implementation of '%s': %s", string(args[0]), err.Error()))
+		switch err.(type) {
+		case ErrNamespaceNotDefined, persistence.CodePackageNotFoundErr:
+			return pb.Response{
+				Status:  404,
+				Message: err.Error(),
+			}
+		default:
+			return shim.Error(fmt.Sprintf("failed to invoke backing implementation of '%s': %s", string(args[0]), err.Error()))
+		}
 	}
 
 	return shim.Success(outputBytes)
@@ -233,7 +241,7 @@ func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Mes
 // QueryInstalledChaincode is a SCC function that may be dispatched to which routes to the underlying
 // lifecycle implementation.
 func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeArgs) (proto.Message, error) {
-	chaincode, err := i.SCC.Functions.QueryInstalledChaincode(persistence.PackageID(input.PackageId))
+	chaincode, err := i.SCC.Functions.QueryInstalledChaincode(persistenceintf.PackageID(input.PackageId))
 	if err != nil {
 		return nil, err
 	}
@@ -273,11 +281,11 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 		collectionConfig = input.Collections.Config
 	}
 
-	var packageID persistence.PackageID
+	var packageID persistenceintf.PackageID
 	if input.Source != nil {
 		switch source := input.Source.Type.(type) {
 		case *lb.ChaincodeSource_LocalPackage:
-			packageID = persistence.PackageID(source.LocalPackage.PackageId)
+			packageID = persistenceintf.PackageID(source.LocalPackage.PackageId)
 		case *lb.ChaincodeSource_Unavailable:
 		default:
 		}
