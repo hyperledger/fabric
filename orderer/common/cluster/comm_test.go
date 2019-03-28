@@ -129,7 +129,8 @@ func (*mockChannelExtractor) TargetChannel(msg proto.Message) string {
 
 type clusterNode struct {
 	lock         sync.Mutex
-	freezeWG     sync.WaitGroup
+	frozen       bool
+	freezeCond   sync.Cond
 	dialer       *cluster.PredicateDialer
 	handler      *mocks.Handler
 	nodeInfo     cluster.RemoteNode
@@ -157,20 +158,26 @@ func (cn *clusterNode) Step(stream orderer.Cluster_StepServer) error {
 
 func (cn *clusterNode) waitIfFrozen() {
 	cn.lock.Lock()
-	defer cn.lock.Unlock()
-	cn.freezeWG.Wait()
+	// There is no freeze after an unfreeze so no need
+	// for a for loop.
+	if cn.frozen {
+		cn.freezeCond.Wait()
+		return
+	}
+	cn.lock.Unlock()
 }
 
 func (cn *clusterNode) freeze() {
 	cn.lock.Lock()
 	defer cn.lock.Unlock()
-	cn.freezeWG.Add(1)
+	cn.frozen = true
 }
 
 func (cn *clusterNode) unfreeze() {
 	cn.lock.Lock()
-	defer cn.lock.Unlock()
-	cn.freezeWG.Done()
+	cn.frozen = false
+	cn.lock.Unlock()
+	cn.freezeCond.Broadcast()
 }
 
 func (cn *clusterNode) resurrect() {
@@ -255,6 +262,8 @@ func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsCo
 		},
 		srv: gRPCServer,
 	}
+
+	tstSrv.freezeCond.L = &tstSrv.lock
 
 	tstSrv.c = &cluster.Comm{
 		CertExpWarningThreshold: time.Hour,
@@ -341,6 +350,11 @@ func TestSendBigMessage(t *testing.T) {
 	streams := map[uint64]*cluster.Stream{}
 
 	for _, node := range []*clusterNode{node2, node3, node4, node5} {
+		// Freeze the node, in order to block its Recv
+		node.freeze()
+	}
+
+	for _, node := range []*clusterNode{node2, node3, node4, node5} {
 		rm, err := node1.c.Remote(testChannel, node.nodeInfo.ID)
 		assert.NoError(t, err)
 
@@ -351,8 +365,6 @@ func TestSendBigMessage(t *testing.T) {
 	t0 := time.Now()
 	for _, node := range []*clusterNode{node2, node3, node4, node5} {
 		stream := streams[node.nodeInfo.ID]
-		// Freeze the node, in order to block its Recv
-		node.freeze()
 
 		t1 := time.Now()
 		err = stream.Send(wrappedMsg)
