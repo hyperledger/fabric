@@ -264,6 +264,16 @@ that allows users to issue, transfer, and redeem tokens on channels. FabToken
 uses the membership services of Fabric to authenticate the identity of token
 owners and manage their public and private keys.
 
+.. _FabToken:
+
+FabToken
+--------
+
+FabToken is an Unspent Transaction Output (UTXO) based token management system
+that allows users to issue, transfer, and redeem tokens on channels. FabToken
+uses the membership services of Fabric to authenticate the identity of token
+owners and manage their public and private keys.
+
 .. _Follower:
 
 Follower
@@ -325,8 +335,8 @@ Instantiate
 The process of starting and initializing a chaincode application on a specific
 channel. After instantiation, peers that have the chaincode installed can accept
 chaincode invocations. This method was used in the previous version of the chaincode
-lifecycle. For the current procedure used to start a chaincode on a channel in
-the new Fabric chaincode lifecycle introduced in the v2.0 Alpha release,
+lifecycle. For the current procedure used to start a chaincode on a channel with
+the new Fabric chaincode lifecycle introduced as part of the Fabric v2.0 Alpha,
 see Chaincode-definition_.
 
 .. _Invoke:
@@ -557,6 +567,14 @@ proposal is either an Init or an invoke (read/write) request.
 Prover peer
 -----------
 
+A trusted peer used by the FabToken client to assemble a token transaction and
+list the unspent tokens owned by a given authorized party.
+
+.. _Prover-peer:
+
+Prover peer
+-----------
+
 A trusted peer used by the FabToken client to assemble a token transaction.
 
 .. _Query:
@@ -669,8 +687,8 @@ write to data from the ledger. If you are invoking a chaincode, application
 clients gather the responses from endorsing peers and then package the results
 and endorsements into a transaction that is submitted for ordering, validation,
 and commit. If using FabToken to create a token transaction, the FabToken client
-must use a prover peer to create a transaction that is submitted to the
-ordering service and then validated by committing peers.
+uses a prover peer to create a transaction that is submitted to the ordering
+service and then validated by committing peers.
 
 .. _World-State:
 
