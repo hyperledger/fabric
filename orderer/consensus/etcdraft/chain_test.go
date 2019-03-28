@@ -1751,15 +1751,26 @@ var _ = Describe("Chain", func() {
 						"empty consenter set"))
 				})
 
-				It("fails with invalid certificate", func() {
+				It("fails with invalid certificate for non PEM certificates", func() {
 					metadata := &raftprotos.ConfigMetadata{Options: options}
 					for _, consenter := range consenters {
 						metadata.Consenters = append(metadata.Consenters, consenter)
 					}
-					metadata.Consenters[0].ClientTlsCert = []byte("Hello")
+					metadata.Consenters[0].ClientTlsCert = []byte("hello")
 
 					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
-						"invalid client TLS cert: Hello"))
+						"client TLS certificate is not PEM encoded: hello"))
+				})
+
+				It("fails with invalid certificate for malformed certificates", func() {
+					metadata := &raftprotos.ConfigMetadata{Options: options}
+					for _, consenter := range consenters {
+						metadata.Consenters = append(metadata.Consenters, consenter)
+					}
+					metadata.Consenters[0].ServerTlsCert = pem.EncodeToMemory(&pem.Block{Bytes: []byte("hello")})
+
+					Expect(c1.Configure(createChannelEnv(metadata), 0).Error()).To(ContainSubstring(
+						"server TLS certificate has invalid ASN1 structure"))
 				})
 
 				It("fails with extra consenter", func() {
@@ -1830,7 +1841,7 @@ var _ = Describe("Chain", func() {
 					c1.cutter.CutNext = true
 
 					By("sending config transaction")
-					Expect(c1.Configure(configEnv, 0)).To(MatchError("invalid server TLS cert: hello"))
+					Expect(c1.Configure(configEnv, 0)).To(MatchError("server TLS certificate is not PEM encoded: hello"))
 				})
 
 				It("can rotate certificate by adding and removing 1 node in one config update", func() {
