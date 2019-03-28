@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	persistenceintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
@@ -334,6 +335,17 @@ var _ = Describe("ExternalFunctions", func() {
 				_, err := ef.QueryInstalledChaincode("packageid")
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("could not load chaincode with package id 'packageid': take a hike"))
+			})
+		})
+
+		Context("when the code package cannot be found", func() {
+			BeforeEach(func() {
+				fakeCCStore.LoadReturns(nil, persistence.CodePackageNotFoundErr{PackageID: persistenceintf.PackageID("try hitchhiking")})
+			})
+
+			It("returns an error", func() {
+				_, err := ef.QueryInstalledChaincode("packageid")
+				Expect(err).To(MatchError("chaincode install package 'try hitchhiking' not found"))
 			})
 		})
 

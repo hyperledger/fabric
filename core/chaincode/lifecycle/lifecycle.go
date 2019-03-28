@@ -376,7 +376,18 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 	return nil
 }
 
-// QueryChaincodeDefinition returns the defined chaincode by the given name (if it is defined, and a chaincode)
+// ErrNamespaceNotDefined is the error returned when a namespace
+// is not defined. This indicates that the chaincode definition
+// has not been committed.
+type ErrNamespaceNotDefined struct {
+	Namespace string
+}
+
+func (e ErrNamespaceNotDefined) Error() string {
+	return fmt.Sprintf("namespace %s is not defined", e.Namespace)
+}
+
+// QueryChaincodeDefinition returns the defined chaincode by the given name (if it is committed, and a chaincode)
 // or otherwise returns an error.
 func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error) {
 	metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, name, publicState)
@@ -384,7 +395,7 @@ func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState R
 		return nil, errors.WithMessagef(err, "could not fetch metadata for namespace %s", name)
 	}
 	if !ok {
-		return nil, errors.Errorf("namespace %s is not defined", name)
+		return nil, ErrNamespaceNotDefined{Namespace: name}
 	}
 
 	definedChaincode := &ChaincodeDefinition{}
@@ -449,6 +460,9 @@ func (ef *ExternalFunctions) QueryNamespaceDefinitions(publicState RangeableStat
 func (ef *ExternalFunctions) QueryInstalledChaincode(packageID p.PackageID) (*chaincode.InstalledChaincode, error) {
 	ccPackageBytes, err := ef.Resources.ChaincodeStore.Load(packageID)
 	if err != nil {
+		if _, ok := err.(persistence.CodePackageNotFoundErr); ok {
+			return nil, err
+		}
 		return nil, errors.WithMessagef(err, "could not load chaincode with package id '%s'", packageID)
 	}
 
