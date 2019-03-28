@@ -10,6 +10,7 @@ Commands Reference
    commands/peerversion.md
    commands/peerlogging.md
    commands/peernode.md
+   commands/token.md
    commands/configtxgen.md
    commands/configtxlator.md
    commands/cryptogen.md
