@@ -160,106 +160,75 @@ func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode
 	}
 }
 
-// handleInit calls the Init function of the associted chaincode.
-func (h *Handler) handleInit(msg *pb.ChaincodeMessage, errc chan error) {
-	// The defer followed by triggering a go routine dance is needed to ensure that the previous state transition
-	// is completed before the next one is triggered. The previous state transition is deemed complete only when
-	// the beforeInit function is exited. Interesting bug fix!!
-	var nextStateMsg *pb.ChaincodeMessage
+type stubHandlerFunc func(*pb.ChaincodeMessage) (*pb.ChaincodeMessage, error)
 
-	defer func() {
-		h.serialSendAsync(nextStateMsg, errc)
-	}()
+func (h *Handler) handleStubInteraction(handler stubHandlerFunc, msg *pb.ChaincodeMessage, errc chan<- error) {
+	chaincodeLogger.Debugf("[%s] handling %s from peer", shorttxid(msg.Txid), msg.Type)
 
-	errFunc := func(err error, payload []byte, ce *pb.ChaincodeEvent, errFmt string, args ...interface{}) *pb.ChaincodeMessage {
-		if err != nil {
-			// Send ERROR message to chaincode support and change state
-			if payload == nil {
-				payload = []byte(err.Error())
-			}
-			chaincodeLogger.Errorf(errFmt, args...)
-			return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChaincodeEvent: ce, ChannelId: msg.ChannelId}
-		}
-		return nil
+	resp, err := handler(msg)
+	if err != nil {
+		chaincodeLogger.Errorf("[%s] handling %s failed: %s", shorttxid(msg.Txid), err.Error())
+		resp = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(err.Error()), Txid: msg.Txid, ChannelId: msg.ChannelId}
 	}
+
+	chaincodeLogger.Debugf("[%s] sending response %s to peer", shorttxid(msg.Txid), resp.Type)
+	h.serialSendAsync(resp, errc)
+}
+
+// handleInit calls the Init function of the associted chaincode.
+func (h *Handler) handleInit(msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, error) {
 	// Get the function and args from Payload
 	input := &pb.ChaincodeInput{}
-	unmarshalErr := proto.Unmarshal(msg.Payload, input)
-	if nextStateMsg = errFunc(unmarshalErr, nil, nil, "[%s] Incorrect payload format. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
-		return
+	err := proto.Unmarshal(msg.Payload, input)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal input")
 	}
 
 	// Create the ChaincodeStub which the chaincode can use to callback
 	stub, err := newChaincodeStub(h, msg.ChannelId, msg.Txid, input, msg.Proposal)
-	if nextStateMsg = errFunc(err, nil, stub.chaincodeEvent, "[%s] Init get error response. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
-		return
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create new ChaincodeStub")
 	}
+
 	res := h.cc.Init(stub)
 	chaincodeLogger.Debugf("[%s] Init get response status: %d", shorttxid(msg.Txid), res.Status)
 
 	if res.Status >= ERROR {
-		err = errors.New(res.Message)
-		if nextStateMsg = errFunc(err, []byte(res.Message), stub.chaincodeEvent, "[%s] Init get error response. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
-			return
-		}
+		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(res.Message), Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent, ChannelId: msg.ChannelId}, nil
 	}
 
 	resBytes, err := proto.Marshal(&res)
 	if err != nil {
-		payload := []byte(err.Error())
-		chaincodeLogger.Errorf("[%s] Init marshal response error [%s]. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
-		nextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent}
-		return
+		return nil, errors.Wrap(err, "failed to marshal response")
 	}
 
-	// Send COMPLETED message to chaincode support and change state
-	nextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: resBytes, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent, ChannelId: stub.ChannelId}
-	chaincodeLogger.Debugf("[%s] Init succeeded. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_COMPLETED)
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: resBytes, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent, ChannelId: stub.ChannelId}, nil
 }
 
 // handleTransaction calls Invoke on the associted chaincode.
-func (h *Handler) handleTransaction(msg *pb.ChaincodeMessage, errc chan error) {
-	// The defer followed by triggering a go routine dance is needed to ensure that the previous state transition
-	// is completed before the next one is triggered. The previous state transition is deemed complete only when
-	// the beforeInit function is exited. Interesting bug fix!!
-	var nextStateMsg *pb.ChaincodeMessage
-
-	defer func() {
-		h.serialSendAsync(nextStateMsg, errc)
-	}()
-
-	errFunc := func(err error, ce *pb.ChaincodeEvent, errStr string, args ...interface{}) *pb.ChaincodeMessage {
-		if err != nil {
-			payload := []byte(err.Error())
-			chaincodeLogger.Errorf(errStr, args...)
-			return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChaincodeEvent: ce, ChannelId: msg.ChannelId}
-		}
-		return nil
-	}
-
+func (h *Handler) handleTransaction(msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, error) {
 	// Get the function and args from Payload
 	input := &pb.ChaincodeInput{}
-	unmarshalErr := proto.Unmarshal(msg.Payload, input)
-	if nextStateMsg = errFunc(unmarshalErr, nil, "[%s] Incorrect payload format. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
-		return
+	err := proto.Unmarshal(msg.Payload, input)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal input")
 	}
 
 	// Create the ChaincodeStub which the chaincode can use to callback
 	stub, err := newChaincodeStub(h, msg.ChannelId, msg.Txid, input, msg.Proposal)
-	if nextStateMsg = errFunc(err, stub.chaincodeEvent, "[%s] Transaction execution failed. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
-		return
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create new ChaincodeStub")
 	}
+
 	res := h.cc.Invoke(stub)
 
 	// Endorser will handle error contained in Response.
 	resBytes, err := proto.Marshal(&res)
-	if nextStateMsg = errFunc(err, stub.chaincodeEvent, "[%s] Transaction execution failed. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR); nextStateMsg != nil {
-		return
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal response")
 	}
 
-	// Send COMPLETED message to chaincode support and change state
-	chaincodeLogger.Debugf("[%s] Transaction completed. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_COMPLETED)
-	nextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: resBytes, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent, ChannelId: stub.ChannelId}
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: resBytes, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent, ChannelId: stub.ChannelId}, nil
 }
 
 // callPeerWithChaincodeMsg sends a chaincode message to the peer for the given
@@ -742,12 +711,12 @@ func (h *Handler) handleReady(msg *pb.ChaincodeMessage, errc chan error) error {
 
 	case pb.ChaincodeMessage_INIT:
 		chaincodeLogger.Debugf("[%s] Received %s, initializing chaincode", shorttxid(msg.Txid), msg.Type)
-		go h.handleInit(msg, errc)
+		go h.handleStubInteraction(h.handleInit, msg, errc)
 		return nil
 
 	case pb.ChaincodeMessage_TRANSACTION:
 		chaincodeLogger.Debugf("[%s] Received %s, invoking transaction on chaincode(state:%s)", shorttxid(msg.Txid), msg.Type, h.state)
-		go h.handleTransaction(msg, errc)
+		go h.handleStubInteraction(h.handleTransaction, msg, errc)
 		return nil
 
 	default:
