@@ -16,7 +16,11 @@ limitations under the License.
 
 package version
 
-import "github.com/hyperledger/fabric/common/ledger/util"
+import (
+	"fmt"
+
+	"github.com/hyperledger/fabric/common/ledger/util"
+)
 
 // Height represents the height of a transaction in blockchain
 type Height struct {
@@ -61,6 +65,11 @@ func (h *Height) Compare(h1 *Height) int {
 		return 1
 	}
 	return -1
+}
+
+// String returns string for printing
+func (h *Height) String() string {
+	return fmt.Sprintf("{BlockNum: %d, TxNum: %d}", h.BlockNum, h.TxNum)
 }
 
 // AreSame returns true if both the heights are either nil or equal
