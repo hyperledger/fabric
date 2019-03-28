@@ -748,7 +748,7 @@ func (h *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, cha
 //handle ready state
 func (h *Handler) handleReady(msg *pb.ChaincodeMessage, errc chan error) error {
 	switch msg.Type {
-	case pb.ChaincodeMessage_RESPONSE:
+	case pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR:
 		if err := h.sendChannel(msg); err != nil {
 			chaincodeLogger.Errorf("[%s] error sending %s (state:%s): %s", shorttxid(msg.Txid), msg.Type, h.state, err)
 			return err
@@ -756,25 +756,13 @@ func (h *Handler) handleReady(msg *pb.ChaincodeMessage, errc chan error) error {
 		chaincodeLogger.Debugf("[%s] Received %s, communicated (state:%s)", shorttxid(msg.Txid), msg.Type, h.state)
 		return nil
 
-	case pb.ChaincodeMessage_ERROR:
-		if err := h.sendChannel(msg); err != nil {
-			chaincodeLogger.Errorf("[%s] error sending %s (state:%s): %s", shorttxid(msg.Txid), msg.Type, h.state, err)
-		}
-
-		chaincodeLogger.Debugf("[%s] Error Received %s, communicated (state:%s)", shorttxid(msg.Txid), msg.Type, h.state)
-
-		//we don't return error on ERROR
-		return nil
-
 	case pb.ChaincodeMessage_INIT:
 		chaincodeLogger.Debugf("[%s] Received %s, initializing chaincode", shorttxid(msg.Txid), msg.Type)
-		// Call the chaincode's Run function to initialize
 		go h.handleInit(msg, errc)
 		return nil
 
 	case pb.ChaincodeMessage_TRANSACTION:
 		chaincodeLogger.Debugf("[%s] Received %s, invoking transaction on chaincode(state:%s)", shorttxid(msg.Txid), msg.Type, h.state)
-		// Call the chaincode's Run function to invoke transaction
 		go h.handleTransaction(msg, errc)
 		return nil
 
