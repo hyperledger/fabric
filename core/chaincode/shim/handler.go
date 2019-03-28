@@ -767,14 +767,14 @@ func (h *Handler) handleReady(msg *pb.ChaincodeMessage, errc chan error) error {
 		return nil
 
 	default:
-		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), h.state)
+		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) while in state: %s", msg.Txid, msg.Type, h.state)
 	}
 }
 
 //handle established state
 func (h *Handler) handleEstablished(msg *pb.ChaincodeMessage, errc chan error) error {
 	if msg.Type != pb.ChaincodeMessage_READY {
-		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), h.state)
+		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) while in state: %s", msg.Txid, msg.Type, h.state)
 	}
 
 	h.state = ready
@@ -784,7 +784,7 @@ func (h *Handler) handleEstablished(msg *pb.ChaincodeMessage, errc chan error) e
 //handle created state
 func (h *Handler) handleCreated(msg *pb.ChaincodeMessage, errc chan error) error {
 	if msg.Type != pb.ChaincodeMessage_REGISTERED {
-		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), h.state)
+		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) while in state: %s", msg.Txid, msg.Type, h.state)
 	}
 
 	h.state = established
@@ -810,7 +810,7 @@ func (h *Handler) handleMessage(msg *pb.ChaincodeMessage, errc chan error) error
 	case created:
 		err = h.handleCreated(msg, errc)
 	default:
-		err = errors.Errorf("[%s] Chaincode h cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), h.state)
+		panic(fmt.Sprintf("invalid handler state: %s", h.state))
 	}
 
 	if err != nil {
