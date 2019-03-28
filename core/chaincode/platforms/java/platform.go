@@ -46,11 +46,6 @@ func (javaPlatform *Platform) ValidatePath(rawPath string) error {
 }
 
 func (javaPlatform *Platform) ValidateCodePackage(code []byte) error {
-	if len(code) == 0 {
-		// Nothing to validate if no CodePackage was included
-		return nil
-	}
-
 	// File to be valid should match first RegExp and not match second one.
 	filesToMatch := regexp.MustCompile(`^(/)?src/((src|META-INF)/.*|(build\.gradle|settings\.gradle|pom\.xml))`)
 	filesToIgnore := regexp.MustCompile(`.*\.class$`)

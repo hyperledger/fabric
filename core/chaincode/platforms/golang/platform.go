@@ -120,12 +120,6 @@ func (goPlatform *Platform) ValidatePath(rawPath string) error {
 }
 
 func (goPlatform *Platform) ValidateCodePackage(code []byte) error {
-
-	if len(code) == 0 {
-		// Nothing to validate if no CodePackage was included
-		return nil
-	}
-
 	// FAB-2122: Scan the provided tarball to ensure it only contains source-code under
 	// /src/$packagename.  We do not want to allow something like ./pkg/shady.a to be installed under
 	// $GOPATH within the container.  Note, we do not look deeper than the path at this time

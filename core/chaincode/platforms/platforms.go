@@ -84,6 +84,12 @@ func (r *Registry) ValidateDeploymentSpec(ccType string, codePackage []byte) err
 	if !ok {
 		return fmt.Errorf("Unknown chaincodeType: %s", ccType)
 	}
+
+	// ignore empty packages
+	if len(codePackage) == 0 {
+		return nil
+	}
+
 	return platform.ValidateCodePackage(codePackage)
 }
 
