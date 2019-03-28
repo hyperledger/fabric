@@ -198,6 +198,9 @@ func (l *kvLedger) syncStateDBWithPvtdatastore() error {
 	// breaks that assumption. The knowledge of what blocks have been consumed for the purpose
 	// of state update should not lie with the source (i.e., pvtdatastorage). A potential fix
 	// is mentioned in FAB-12731
+
+	// TODO: GetLastUpdatedOldBlocksPvtData would give the pvtData of both valid and
+	// invalid transactions. We would need only the valid transaction's pvtData. FAB-14861
 	blocksPvtData, err := l.blockStore.GetLastUpdatedOldBlocksPvtData()
 	if err != nil {
 		return err
@@ -465,6 +468,10 @@ func (l *kvLedger) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, e
 func (l *kvLedger) CommitPvtDataOfOldBlocks(pvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
 	logger.Debugf("[%s:] Comparing pvtData of [%d] old blocks against the hashes in transaction's rwset to find valid and invalid data",
 		l.ledgerID, len(pvtData))
+	// TODO: validPvtData consists of pvtData that is matching the hashed pvtData present in the
+	// block. Now, we store pvtData of both committed and failed transactions. Hence, we need to
+	// separate validPvtData into pvtData associated with committed tx (i.e., valid tx) and
+	// failed tx (i.e,. invalid tx). FAB-14861
 	validPvtData, hashMismatches, err := ConstructValidAndInvalidPvtData(pvtData, l.blockStore)
 	if err != nil {
 		return nil, err
@@ -477,6 +484,8 @@ func (l *kvLedger) CommitPvtDataOfOldBlocks(pvtData []*ledger.BlockPvtData) ([]*
 	}
 
 	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the stateDB", l.ledgerID, len(pvtData))
+	// TODO: As the validPvtData will be consisting of both committed and failed tx's pvtData,
+	// we need to pass only the pvtData of committed tx. FAB-14861
 	err = l.txtmgmt.RemoveStaleAndCommitPvtDataOfOldBlocks(validPvtData)
 	if err != nil {
 		return nil, err

@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
-	lutil "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
@@ -127,26 +126,16 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 		// when re-processing blocks (rejoin the channel or re-fetching last few block),
 		// skip the pvt data commit to the pvtdata blockstore
 		logger.Debugf("Writing block [%d] to pvt block store", blockNum)
-		// as the ledger has already validated all txs in this block, we need to
-		// use the validated info to commit only the pvtData of valid tx.
-		// TODO: FAB-12924 Having said the above, there is a corner case that we
-		// need to think about. If a state fork occurs during a regular block commit,
+		// If a state fork occurs during a regular block commit,
 		// we have a mechanism to drop all blocks followed by refetching of blocks
 		// and re-processing them. In the current way of doing this, we only drop
 		// the block files (and related artifacts) but we do not drop/overwrite the
-		// pvtdatastorage - because the assumption so far was to store full data
-		// (for valid and invalid transactions). Now, we will have to allow dropping
-		// of pvtdatastorage as well. However, the issue is that its shared across
-		// channels (unlike block files).
-		// The side effect of not dropping pvtdatastorage is that we may actually
-		// have some missing data entries sitting in the pvtdatastore for the invalid
-		// transactions which break our goal of storing only the pvtdata of valid tx.
-		// We might also miss pvtData of a valid transaction. Note that the
-		// RemoveStaleAndCommitPvtDataOfOldBlocks() in stateDB txmgr expects only
-		// valid transactions' pvtdata. Hence, it is necessary to rebuild pvtdatastore
-		// along with the blockstore to keep only valid tx data in the pvtdatastore.
-		validTxPvtData, validTxMissingPvtData := constructValidTxPvtDataAndMissingData(blockAndPvtdata)
-		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, validTxPvtData, validTxMissingPvtData); err != nil {
+		// pvtdatastorage as it might leads to data loss.
+		// During block reprocessing, as there is a possibility of an invalid pvtdata
+		// transaction to become valid, we store the pvtdata of invalid transactions
+		// too in the pvtdataStore as we do for the publicdata in the case of blockStore.
+		pvtData, missingPvtData := constructPvtDataAndMissingData(blockAndPvtdata)
+		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, pvtData, missingPvtData); err != nil {
 			return err
 		}
 		writtenToPvtStore = true
@@ -169,33 +158,28 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 	return nil
 }
 
-func constructValidTxPvtDataAndMissingData(blockAndPvtData *ledger.BlockAndPvtData) ([]*ledger.TxPvtData,
+func constructPvtDataAndMissingData(blockAndPvtData *ledger.BlockAndPvtData) ([]*ledger.TxPvtData,
 	ledger.TxMissingPvtDataMap) {
 
-	var validTxPvtData []*ledger.TxPvtData
-	validTxMissingPvtData := make(ledger.TxMissingPvtDataMap)
+	var pvtData []*ledger.TxPvtData
+	missingPvtData := make(ledger.TxMissingPvtDataMap)
 
-	txsFilter := lutil.TxValidationFlags(blockAndPvtData.Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	numTxs := uint64(len(blockAndPvtData.Block.Data.Data))
 
-	// for all valid tx, construct pvtdata and missing pvtdata list
+	// for all tx, construct pvtdata and missing pvtdata list
 	for txNum := uint64(0); txNum < numTxs; txNum++ {
-		if txsFilter.IsInvalid(int(txNum)) {
-			continue
-		}
-
 		if pvtdata, ok := blockAndPvtData.PvtData[txNum]; ok {
-			validTxPvtData = append(validTxPvtData, pvtdata)
+			pvtData = append(pvtData, pvtdata)
 		}
 
-		if missingPvtData, ok := blockAndPvtData.MissingPvtData[txNum]; ok {
-			for _, missing := range missingPvtData {
-				validTxMissingPvtData.Add(txNum, missing.Namespace,
+		if missingData, ok := blockAndPvtData.MissingPvtData[txNum]; ok {
+			for _, missing := range missingData {
+				missingPvtData.Add(txNum, missing.Namespace,
 					missing.Collection, missing.IsEligible)
 			}
 		}
 	}
-	return validTxPvtData, validTxMissingPvtData
+	return pvtData, missingPvtData
 }
 
 // CommitPvtDataOfOldBlocks commits the pvtData of old blocks

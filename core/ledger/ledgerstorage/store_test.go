@@ -62,14 +62,15 @@ func TestStore(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, pvtdata)
 
-	// block 2 has pvt data for tx 3, 5 and 6. However, tx 6
-	// is marked as invalid in the block and hence should not
+	// block 2 has pvt data for tx 3, 5 and 6. Though the tx 6
+	// is marked as invalid in the block, the pvtData should
 	// have been stored
 	pvtdata, err = store.GetPvtDataByNum(2, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(pvtdata))
+	assert.Equal(t, 3, len(pvtdata))
 	assert.Equal(t, uint64(3), pvtdata[0].SeqInBlock)
 	assert.Equal(t, uint64(5), pvtdata[1].SeqInBlock)
+	assert.Equal(t, uint64(6), pvtdata[2].SeqInBlock)
 
 	// block 3 has pvt data for tx 4 and 6 only
 	pvtdata, err = store.GetPvtDataByNum(3, nil)
@@ -101,10 +102,11 @@ func TestStore(t *testing.T) {
 	assert.Nil(t, blockAndPvtdata.PvtData[2])
 
 	// test missing data retrieval in the presence of invalid tx. Block 5 had
-	// missing data (for tx4 and tx5). However, tx5 was marked as invalid tx.
-	// Hence, only tx4's missing data should be returned
+	// missing data (for tx4 and tx5). Though tx5 was marked as invalid tx,
+	// both tx4 and tx5 missing data should be returned
 	expectedMissingDataInfo := make(ledger.MissingPvtDataInfo)
 	expectedMissingDataInfo.Add(5, 4, "ns-4", "coll-4")
+	expectedMissingDataInfo.Add(5, 5, "ns-5", "coll-5")
 	missingDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(1)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedMissingDataInfo, missingDataInfo)
@@ -360,7 +362,7 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	lastBlkAndPvtData := sampleData[9]
 	// Add the last block directly to the pvtdataStore but not to blockstore. This would make
 	// the pvtdatastore height greater than the block store height.
-	validTxPvtData, validTxMissingPvtData := constructValidTxPvtDataAndMissingData(lastBlkAndPvtData)
+	validTxPvtData, validTxMissingPvtData := constructPvtDataAndMissingData(lastBlkAndPvtData)
 	err = store.pvtdataStore.Prepare(lastBlkAndPvtData.Block.Header.Number, validTxPvtData, validTxMissingPvtData)
 	assert.NoError(t, err)
 	err = store.pvtdataStore.Commit()
