@@ -6,7 +6,7 @@
 
 For a high level overview of the concept of ordering and how the supported
 ordering service implementations (including Raft) work at a high level, check
-out our conceptual documentation on the [Ordering Service](../orderer/ordering_service.html).
+out our conceptual documentation on the [Ordering Service](./orderer/ordering_service.html).
 
 To learn about the process of setting up an ordering node --- including the
 creation of a local MSP and the creation of a genesis block --- check out our
@@ -70,7 +70,11 @@ the certificates.
 The `orderer.yaml` has two configuration sections that are relevant for Raft
 orderers:
 
-* **Cluster**. This determines the TLS communication configuration.
+**Cluster**, which determines the TLS communication configuration. And
+**consensus**, which determines where Write Ahead Logs and Snapshots are
+stored.
+
+**Cluster parameters:**
 
 By default, the Raft service is running on the same gRPC server as the client
 facing server (which is used to send transactions or pull blocks), but it can be
@@ -111,7 +115,8 @@ used to further fine tune the cluster communication or replication mechanisms:
   channels that this node failed to replicate in the past. Defaults to five
   minutes.
 
-* **Consensus**.
+
+**Consensus parameters:**
 
   * `WALDir`: the location at which Write Ahead Logs for `etcd/raft` are stored.
   Each channel will have its own subdirectory named after the channel ID.
