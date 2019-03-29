@@ -13,13 +13,12 @@ import (
 
 // Cmd returns the cobra command for lifecycle
 func Cmd() *cobra.Command {
-	lifecycleCmd.AddCommand(chaincode.Cmd(nil))
+	lifecycleCmd := &cobra.Command{
+		Use:   "lifecycle",
+		Short: "Perform _lifecycle operations",
+		Long:  "Perform _lifecycle operations",
+	}
+	lifecycleCmd.AddCommand(chaincode.Cmd())
 
 	return lifecycleCmd
-}
-
-var lifecycleCmd = &cobra.Command{
-	Use:   "lifecycle",
-	Short: "Perform _lifecycle operations",
-	Long:  "Perform _lifecycle operations",
 }

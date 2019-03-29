@@ -80,10 +80,10 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 	chaincodeVersion = ""
 	sequence = 0
 
-	cmd := queryApprovalStatusCmd(&CmdFactory{
-		Signer:          &mockSigner{},
-		EndorserClients: []peer.EndorserClient{me},
-	}, nil)
+	cmd := queryApprovalStatusCmd(&QueryApprovalStatus{
+		Signer:         &mockSigner{},
+		EndorserClient: me,
+	})
 	assert.NotNil(t, cmd)
 	err := cmd.RunE(&cobra.Command{
 		Use: "barf",
@@ -92,10 +92,10 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 	assert.Contains(t, err.Error(), "The required parameter 'channelID' is empty. Rerun the command with -C flag")
 
 	channelID = "my-channel"
-	cmd = queryApprovalStatusCmd(&CmdFactory{
-		Signer:          &mockSigner{},
-		EndorserClients: []peer.EndorserClient{me},
-	}, nil)
+	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
+		Signer:         &mockSigner{},
+		EndorserClient: me,
+	})
 	assert.NotNil(t, cmd)
 	err = cmd.RunE(&cobra.Command{
 		Use: "barf",
@@ -104,10 +104,10 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 	assert.Contains(t, err.Error(), "The required parameter 'name' is empty. Rerun the command with -n flag")
 
 	chaincodeName = "my-chaincode"
-	cmd = queryApprovalStatusCmd(&CmdFactory{
-		Signer:          &mockSigner{},
-		EndorserClients: []peer.EndorserClient{me},
-	}, nil)
+	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
+		Signer:         &mockSigner{},
+		EndorserClient: me,
+	})
 	assert.NotNil(t, cmd)
 	err = cmd.RunE(&cobra.Command{
 		Use: "barf",
@@ -116,10 +116,10 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 	assert.Contains(t, err.Error(), "The required parameter 'version' is empty. Rerun the command with -v flag")
 
 	chaincodeVersion = "my-version"
-	cmd = queryApprovalStatusCmd(&CmdFactory{
-		Signer:          &mockSigner{},
-		EndorserClients: []peer.EndorserClient{me},
-	}, nil)
+	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
+		Signer:         &mockSigner{},
+		EndorserClient: me,
+	})
 	assert.NotNil(t, cmd)
 	err = cmd.RunE(&cobra.Command{
 		Use: "barf",
@@ -129,10 +129,10 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 
 	sequence = 35
 	policy = "MAD"
-	cmd = queryApprovalStatusCmd(&CmdFactory{
-		Signer:          &mockSigner{},
-		EndorserClients: []peer.EndorserClient{me},
-	}, nil)
+	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
+		Signer:         &mockSigner{},
+		EndorserClient: me,
+	})
 	assert.NotNil(t, cmd)
 	err = cmd.RunE(&cobra.Command{
 		Use: "barf",
@@ -141,9 +141,9 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid signature policy: MAD")
 
 	policy = "AND('A.member', 'B.member')"
-	cmd = queryApprovalStatusCmd(&CmdFactory{
-		EndorserClients: []peer.EndorserClient{me},
-	}, nil)
+	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
+		EndorserClient: me,
+	})
 	assert.NotNil(t, cmd)
 	err = cmd.RunE(&cobra.Command{
 		Use: "barf",
@@ -153,10 +153,10 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 
 	policy = "AND('A.member', 'B.member')"
 	collectionsConfigFile = "not.there"
-	cmd = queryApprovalStatusCmd(&CmdFactory{
-		Signer:          &mockSigner{},
-		EndorserClients: []peer.EndorserClient{me},
-	}, nil)
+	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
+		Signer:         &mockSigner{},
+		EndorserClient: me,
+	})
 	assert.NotNil(t, cmd)
 	err = cmd.RunE(&cobra.Command{
 		Use: "barf",
@@ -166,10 +166,10 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 
 	collectionsConfigFile = ""
 	me.ProcessProposalError = errors.New("nopes")
-	cmd = queryApprovalStatusCmd(&CmdFactory{
-		Signer:          &mockSigner{},
-		EndorserClients: []peer.EndorserClient{me},
-	}, nil)
+	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
+		Signer:         &mockSigner{},
+		EndorserClient: me,
+	})
 	assert.NotNil(t, cmd)
 	err = cmd.RunE(&cobra.Command{
 		Use: "barf",
@@ -208,12 +208,12 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 			Status: int32(common.Status_SUCCESS),
 		},
 	}
-	cmd = queryApprovalStatusCmd(&CmdFactory{
+	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
 		Signer: &mockSigner{
 			SignErr: errors.New("I can't sign"),
 		},
-		EndorserClients: []peer.EndorserClient{me},
-	}, nil)
+		EndorserClient: me,
+	})
 	assert.NotNil(t, cmd)
 	err = cmd.RunE(&cobra.Command{
 		Use: "barf",
@@ -226,12 +226,12 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 			Status: int32(common.Status_SUCCESS),
 		},
 	}
-	cmd = queryApprovalStatusCmd(&CmdFactory{
+	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
 		Signer: &mockSigner{
 			SerializeErr: errors.New("I can't serialize"),
 		},
-		EndorserClients: []peer.EndorserClient{me},
-	}, nil)
+		EndorserClient: me,
+	})
 	assert.NotNil(t, cmd)
 	err = cmd.RunE(&cobra.Command{
 		Use: "barf",
@@ -244,10 +244,10 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 			Status: int32(common.Status_SUCCESS),
 		},
 	}
-	cmd = queryApprovalStatusCmd(&CmdFactory{
-		Signer:          &mockSigner{},
-		EndorserClients: []peer.EndorserClient{me},
-	}, nil)
+	cmd = queryApprovalStatusCmd(&QueryApprovalStatus{
+		Signer:         &mockSigner{},
+		EndorserClient: me,
+	})
 	assert.NotNil(t, cmd)
 	err = cmd.RunE(&cobra.Command{
 		Use: "barf",

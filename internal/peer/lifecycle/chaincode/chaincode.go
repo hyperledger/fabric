@@ -18,7 +18,9 @@ import (
 )
 
 const (
-	lifecycleName = "_lifecycle"
+	lifecycleName   = "_lifecycle"
+	approveFuncName = "ApproveChaincodeDefinitionForMyOrg"
+	commitFuncName  = "CommitChaincodeDefinition"
 )
 
 var logger = flogging.MustGetLogger("cli.lifecycle.chaincode")
@@ -34,15 +36,15 @@ func addFlags(cmd *cobra.Command) {
 }
 
 // Cmd returns the cobra command for Chaincode
-func Cmd(cf *CmdFactory) *cobra.Command {
+func Cmd() *cobra.Command {
 	addFlags(chaincodeCmd)
 
 	chaincodeCmd.AddCommand(PackageCmd(nil))
 	chaincodeCmd.AddCommand(InstallCmd(nil))
 	chaincodeCmd.AddCommand(QueryInstalledCmd(nil))
-	chaincodeCmd.AddCommand(approveForMyOrgCmd(cf, nil))
-	chaincodeCmd.AddCommand(commitCmd(cf, nil))
-	chaincodeCmd.AddCommand(queryApprovalStatusCmd(cf, nil))
+	chaincodeCmd.AddCommand(ApproveForMyOrgCmd(nil))
+	chaincodeCmd.AddCommand(queryApprovalStatusCmd(nil))
+	chaincodeCmd.AddCommand(CommitCmd(nil))
 	chaincodeCmd.AddCommand(QueryCommittedCmd(nil))
 
 	return chaincodeCmd

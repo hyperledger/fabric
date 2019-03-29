@@ -17,16 +17,14 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/common/api"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
-
-var chaincodeApproveForMyOrgCmd *cobra.Command
 
 // ApproverForMyOrg holds the dependencies needed to approve
 // a chaincode definition for an organization
@@ -35,21 +33,23 @@ type ApproverForMyOrg struct {
 	Command         *cobra.Command
 	BroadcastClient common.BroadcastClient
 	DeliverClients  []api.PeerDeliverClient
-	EndorserClients []pb.EndorserClient
+	EndorserClients []EndorserClient
 	Input           *ApproveForMyOrgInput
-	Signer          identity.SignerSerializer
+	Signer          Signer
 }
 
+// ApproveForMyOrgInput holds all of the input parameters for approving a
+// chaincode definition for an organization. ValidationParameter bytes is
+// the (marshalled) endorsement policy when using the default endorsement
+// and validation plugins
 type ApproveForMyOrgInput struct {
-	ChannelID         string
-	Name              string
-	Version           string
-	PackageID         string
-	Sequence          int64
-	EndorsementPlugin string
-	ValidationPlugin  string
-	// ValidationParameterBytes is the (marshalled) endorsement policy
-	// when using default escc/vscc
+	ChannelID                string
+	Name                     string
+	Version                  string
+	PackageID                string
+	Sequence                 int64
+	EndorsementPlugin        string
+	ValidationPlugin         string
 	ValidationParameterBytes []byte
 	CollectionConfigPackage  *cb.CollectionConfigPackage
 	InitRequired             bool
@@ -59,11 +59,8 @@ type ApproveForMyOrgInput struct {
 	TxID                     string
 }
 
+// Validate the input for an ApproveChaincodeDefinitionForMyOrg proposal
 func (a *ApproveForMyOrgInput) Validate() error {
-	if a == nil {
-		return errors.New("nil input")
-	}
-
 	if a.ChannelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
@@ -91,29 +88,49 @@ func (a *ApproveForMyOrgInput) Validate() error {
 	return nil
 }
 
-// approveForMyOrgCmd returns the cobra command for chaincode ApproveForMyOrg
-func approveForMyOrgCmd(cf *CmdFactory, a *ApproverForMyOrg) *cobra.Command {
-	chaincodeApproveForMyOrgCmd = &cobra.Command{
+// ApproveForMyOrgCmd returns the cobra command for chaincode ApproveForMyOrg
+func ApproveForMyOrgCmd(a *ApproverForMyOrg) *cobra.Command {
+	chaincodeApproveForMyOrgCmd := &cobra.Command{
 		Use:   "approveformyorg",
 		Short: fmt.Sprintf("Approve the chaincode definition for my org."),
 		Long:  fmt.Sprintf("Approve the chaincode definition for my organization."),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if a == nil {
-				var err error
-				if cf == nil {
-					cf, err = InitCmdFactory(cmd.Name(), true, true)
-					if err != nil {
-						return err
-					}
-					defer cf.BroadcastClient.Close()
+				// set input from CLI flags
+				input, err := a.createInput()
+				if err != nil {
+					return err
 				}
+
+				ccInput := &ClientConnectionsInput{
+					CommandName:           cmd.Name(),
+					EndorserRequired:      true,
+					OrdererRequired:       true,
+					ChannelID:             channelID,
+					PeerAddresses:         peerAddresses,
+					TLSRootCertFiles:      tlsRootCertFiles,
+					ConnectionProfilePath: connectionProfilePath,
+					TLSEnabled:            viper.GetBool("peer.tls.enabled"),
+				}
+
+				cc, err := NewClientConnections(ccInput)
+				if err != nil {
+					return err
+				}
+
+				endorserClients := make([]EndorserClient, len(cc.EndorserClients))
+				for i, e := range cc.EndorserClients {
+					endorserClients[i] = e
+				}
+
 				a = &ApproverForMyOrg{
 					Command:         cmd,
-					Certificate:     cf.Certificate,
-					BroadcastClient: cf.BroadcastClient,
-					DeliverClients:  cf.DeliverClients,
-					EndorserClients: cf.EndorserClients,
-					Signer:          cf.Signer,
+					Input:           input,
+					Certificate:     cc.Certificate,
+					BroadcastClient: cc.BroadcastClient,
+					DeliverClients:  cc.DeliverClients,
+					EndorserClients: endorserClients,
+					Signer:          cc.Signer,
 				}
 			}
 			return a.Approve()
@@ -141,15 +158,9 @@ func approveForMyOrgCmd(cf *CmdFactory, a *ApproverForMyOrg) *cobra.Command {
 	return chaincodeApproveForMyOrgCmd
 }
 
+// Approve submits a ApproveChaincodeDefinitionForMyOrg
+// proposal
 func (a *ApproverForMyOrg) Approve() error {
-	if a.Input == nil {
-		// set input from CLI flags
-		err := a.setInput()
-		if err != nil {
-			return err
-		}
-	}
-
 	err := a.Input.Validate()
 	if err != nil {
 		return err
@@ -160,23 +171,28 @@ func (a *ApproverForMyOrg) Approve() error {
 		a.Command.SilenceUsage = true
 	}
 
-	proposal, signedProposal, txID, err := a.createProposals(a.Input.TxID)
+	proposal, txID, err := a.createProposal(a.Input.TxID)
 	if err != nil {
-		return errors.WithMessage(err, "error creating signed proposal")
+		return errors.WithMessage(err, "failed to create proposal")
+	}
+
+	signedProposal, err := signProposal(proposal, a.Signer)
+	if err != nil {
+		return errors.WithMessage(err, "failed to create signed proposal")
 	}
 
 	var responses []*pb.ProposalResponse
 	for _, endorser := range a.EndorserClients {
 		proposalResponse, err := endorser.ProcessProposal(context.Background(), signedProposal)
 		if err != nil {
-			return errors.WithMessage(err, "error endorsing proposal")
+			return errors.WithMessage(err, "failed to endorse proposal")
 		}
 		responses = append(responses, proposalResponse)
 	}
 
 	if len(responses) == 0 {
-		// this should only happen if some new code has introduced a bug
-		return errors.New("no proposal responses received - this might indicate a bug")
+		// this should only be empty due to a programming bug
+		return errors.New("no proposal responses received")
 	}
 
 	// all responses will be checked when the signed transaction is created.
@@ -188,16 +204,16 @@ func (a *ApproverForMyOrg) Approve() error {
 	}
 
 	if proposalResponse.Response == nil {
-		return errors.Errorf("proposal response had nil response")
+		return errors.Errorf("received proposal response with nil response")
 	}
 
 	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("bad response: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+		return errors.Errorf("proposal failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
 	}
 	// assemble a signed transaction (it's an Envelope message)
 	env, err := protoutil.CreateSignedTx(proposal, a.Signer, responses...)
 	if err != nil {
-		return errors.WithMessage(err, "could not assemble transaction")
+		return errors.WithMessage(err, "failed to create signed transaction")
 	}
 	var dg *chaincode.DeliverGroup
 	var ctx context.Context
@@ -222,7 +238,7 @@ func (a *ApproverForMyOrg) Approve() error {
 	}
 
 	if err = a.BroadcastClient.Send(env); err != nil {
-		return errors.WithMessage(err, "error sending transaction for approveformyorg")
+		return errors.WithMessage(err, "failed to send transaction")
 	}
 
 	if dg != nil && ctx != nil {
@@ -232,11 +248,12 @@ func (a *ApproverForMyOrg) Approve() error {
 			return err
 		}
 	}
+
 	return err
 }
 
-// setInput sets the input struct based on the CLI flags
-func (a *ApproverForMyOrg) setInput() error {
+// createInput creates the input struct based on the CLI flags
+func (a *ApproverForMyOrg) createInput() (*ApproveForMyOrgInput, error) {
 	var (
 		policyBytes []byte
 		ccp         *cb.CollectionConfigPackage
@@ -245,7 +262,7 @@ func (a *ApproverForMyOrg) setInput() error {
 	if policy != "" {
 		signaturePolicyEnvelope, err := cauthdsl.FromString(policy)
 		if err != nil {
-			return errors.Errorf("invalid signature policy: %s", policy)
+			return nil, errors.Errorf("invalid signature policy: %s", policy)
 		}
 
 		applicationPolicy := &pb.ApplicationPolicy{
@@ -260,11 +277,11 @@ func (a *ApproverForMyOrg) setInput() error {
 		var err error
 		ccp, _, err = chaincode.GetCollectionConfigFromFile(collectionsConfigFile)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
+			return nil, errors.WithMessagef(err, "invalid collection configuration in file %s", collectionsConfigFile)
 		}
 	}
 
-	a.Input = &ApproveForMyOrgInput{
+	input := &ApproveForMyOrgInput{
 		ChannelID:                channelID,
 		Name:                     chaincodeName,
 		Version:                  chaincodeVersion,
@@ -280,12 +297,12 @@ func (a *ApproverForMyOrg) setInput() error {
 		WaitForEventTimeout:      waitForEventTimeout,
 	}
 
-	return nil
+	return input, nil
 }
 
-func (a *ApproverForMyOrg) createProposals(inputTxID string) (proposal *pb.Proposal, signedProposal *pb.SignedProposal, txID string, err error) {
+func (a *ApproverForMyOrg) createProposal(inputTxID string) (proposal *pb.Proposal, txID string, err error) {
 	if a.Signer == nil {
-		return nil, nil, "", errors.New("nil signer provided")
+		return nil, "", errors.New("nil signer provided")
 	}
 
 	var ccsrc *lb.ChaincodeSource
@@ -319,9 +336,9 @@ func (a *ApproverForMyOrg) createProposals(inputTxID string) (proposal *pb.Propo
 
 	argsBytes, err := proto.Marshal(args)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, "", err
 	}
-	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte("ApproveChaincodeDefinitionForMyOrg"), argsBytes}}
+	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte(approveFuncName), argsBytes}}
 
 	cis := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{
@@ -332,18 +349,13 @@ func (a *ApproverForMyOrg) createProposals(inputTxID string) (proposal *pb.Propo
 
 	creatorBytes, err := a.Signer.Serialize()
 	if err != nil {
-		return nil, nil, "", errors.WithMessage(err, "error serializing identity")
+		return nil, "", errors.WithMessage(err, "failed to serialize identity")
 	}
 
 	proposal, txID, err = protoutil.CreateChaincodeProposalWithTxIDAndTransient(cb.HeaderType_ENDORSER_TRANSACTION, a.Input.ChannelID, cis, creatorBytes, inputTxID, nil)
 	if err != nil {
-		return nil, nil, "", errors.WithMessage(err, "error creating proposal for ChaincodeInvocationSpec")
+		return nil, "", errors.WithMessage(err, "failed to create ChaincodeInvocationSpec proposal")
 	}
 
-	signedProposal, err = protoutil.GetSignedProposal(proposal, a.Signer)
-	if err != nil {
-		return nil, nil, "", errors.WithMessage(err, "error signing proposal")
-	}
-
-	return proposal, signedProposal, txID, nil
+	return proposal, txID, nil
 }
