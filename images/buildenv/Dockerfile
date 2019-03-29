@@ -28,8 +28,6 @@ RUN apk add --no-cache \
 	make;
 COPY --from=golang /go/bin /usr/local/bin
 ENV GOCACHE "/tmp"
-RUN addgroup chaincode && adduser -D -h /home/chaincode -G chaincode chaincode
-USER chaincode
 
 
 
