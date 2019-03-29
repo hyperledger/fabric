@@ -12,12 +12,14 @@ import (
 
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	. "github.com/hyperledger/fabric/core/common/validation/statebased"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -127,6 +129,19 @@ func (vscc *Validator) extractValidationArtifacts(
 	if err != nil {
 		err = fmt.Errorf("GetChaincodeAction error %s", err)
 		return nil, err
+	}
+
+	// loop through each of the endorsements and build the signature set
+	for _, endorsement := range cap.Action.Endorsements {
+		if len(endorsement.Endorser) == util.CERT_HASH_LEN { //hash,replace with cert
+			endorserCert, err := kvledger.GlbCertStore.GetCert(endorsement.Endorser)
+			if err != nil || endorserCert == nil {
+				logger.Errorf("Get endorser cert error: %s cert len %d: pem: \n%s", err, len(endorsement.Endorser), endorserCert)
+				return nil, err
+			}
+			logger.Debugf("Do the endorse replace work, hash:\n%v\ncert:\n%v", endorsement.Endorser, endorserCert)
+			endorsement.Endorser = endorserCert
+		}
 	}
 
 	return &validationArtifacts{
