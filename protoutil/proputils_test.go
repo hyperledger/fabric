@@ -16,8 +16,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -166,9 +164,7 @@ func TestGetNonce(t *testing.T) {
 }
 
 func TestGetChaincodeDeploymentSpec(t *testing.T) {
-	pr := platforms.NewRegistry(&golang.Platform{})
-
-	_, err := protoutil.GetChaincodeDeploymentSpec([]byte("bad spec"), pr)
+	_, err := protoutil.GetChaincodeDeploymentSpec([]byte("bad spec"))
 	assert.Error(t, err, "Expected error with malformed spec")
 
 	cds, _ := proto.Marshal(&pb.ChaincodeDeploymentSpec{
@@ -176,17 +172,8 @@ func TestGetChaincodeDeploymentSpec(t *testing.T) {
 			Type: pb.ChaincodeSpec_GOLANG,
 		},
 	})
-	_, err = protoutil.GetChaincodeDeploymentSpec(cds, pr)
+	_, err = protoutil.GetChaincodeDeploymentSpec(cds)
 	assert.NoError(t, err, "Unexpected error getting deployment spec")
-
-	cds, _ = proto.Marshal(&pb.ChaincodeDeploymentSpec{
-		ChaincodeSpec: &pb.ChaincodeSpec{
-			Type: pb.ChaincodeSpec_UNDEFINED,
-		},
-	})
-	_, err = protoutil.GetChaincodeDeploymentSpec(cds, pr)
-	assert.Error(t, err, "Expected error with invalid spec type")
-
 }
 
 func TestCDSProposals(t *testing.T) {

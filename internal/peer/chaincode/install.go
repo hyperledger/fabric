@@ -261,9 +261,14 @@ func getPackageFromFile(ccPkgFile string) (proto.Message, *pb.ChaincodeDeploymen
 		}
 
 		// ...and get the CDS at last
-		cds, err = protoutil.GetChaincodeDeploymentSpec(sCDS.ChaincodeDeploymentSpec, platformRegistry)
+		cds, err = protoutil.GetChaincodeDeploymentSpec(sCDS.ChaincodeDeploymentSpec)
 		if err != nil {
 			return nil, nil, errors.WithMessage(err, "error extracting chaincode deployment spec")
+		}
+
+		err = platformRegistry.ValidateDeploymentSpec(cds.ChaincodeSpec.Type.String(), cds.CodePackage)
+		if err != nil {
+			return nil, nil, errors.WithMessage(err, "chaincode deployment spec validation failed")
 		}
 	}
 

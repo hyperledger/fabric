@@ -167,7 +167,12 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, idBytes
 	// NOTE that if there's an error all simulation, including the chaincode
 	// table changes in lscc will be thrown away
 	if cid.Name == "lscc" && len(input.Args) >= 3 && (string(input.Args[0]) == "deploy" || string(input.Args[0]) == "upgrade") {
-		userCDS, err := protoutil.GetChaincodeDeploymentSpec(input.Args[2], e.PlatformRegistry)
+		userCDS, err := protoutil.GetChaincodeDeploymentSpec(input.Args[2])
+		if err != nil {
+			return nil, nil, err
+		}
+
+		err = e.PlatformRegistry.ValidateDeploymentSpec(userCDS.ChaincodeSpec.Type.String(), userCDS.CodePackage)
 		if err != nil {
 			return nil, nil, err
 		}
