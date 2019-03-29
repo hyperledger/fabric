@@ -616,14 +616,14 @@ func (c *Chain) serveRequest() {
 	}
 
 	// if timer is already started, this is a no-op
-	start := func() {
+	startTimer := func() {
 		if !ticking {
 			ticking = true
 			timer.Reset(c.support.SharedConfig().BatchTimeout())
 		}
 	}
 
-	stop := func() {
+	stopTimer := func() {
 		if !timer.Stop() && ticking {
 			// we only need to drain the channel if the timer expired (not explicitly stopped)
 			<-timer.C()
@@ -690,7 +690,7 @@ func (c *Chain) serveRequest() {
 		cancelProp()
 		c.blockInflight = 0
 		_ = c.support.BlockCutter().Cut()
-		stop()
+		stopTimer()
 		submitC = c.submitC
 		bc = nil
 		c.Metrics.IsLeader.Set(0)
@@ -720,9 +720,9 @@ func (c *Chain) serveRequest() {
 				continue
 			}
 			if pending {
-				start() // no-op if timer is already started
+				startTimer() // no-op if timer is already started
 			} else {
-				stop()
+				stopTimer()
 			}
 
 			c.propose(propC, bc, batches...)
@@ -1314,8 +1314,8 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 }
 
 // getInFlightConfChange returns ConfChange in-flight if any.
-// It either returns confChangeInProgress if it is not nil, or
-// attempts to read ConfChange from last committed block.
+// It returns confChangeInProgress if it is not nil. Otherwise
+// it returns ConfChange from the last committed block (might be nil).
 func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 	if c.confChangeInProgress != nil {
 		return c.confChangeInProgress
@@ -1341,11 +1341,11 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 	confState := c.Node.ApplyConfChange(raftpb.ConfChange{})
 
 	if len(confState.Nodes) == len(c.opts.BlockMetadata.ConsenterIds) {
-		// since configuration change could only add one node or
-		// remove one node at a time, if raft nodes state size
+		// Raft configuration change could only add one node or
+		// remove one node at a time, if raft conf state size is
 		// equal to membership stored in block metadata field,
 		// that means everything is in sync and no need to propose
-		// update
+		// config update.
 		return nil
 	}
 
