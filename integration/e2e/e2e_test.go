@@ -386,6 +386,7 @@ func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 		Name:      "mycc",
 		Ctor:      `{"Args":["respond","300","response-message","response-payload"]}`,
 		PeerAddresses: []string{
+			n.PeerAddress(n.Peer("Org1", "peer1"), nwo.ListenPort),
 			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
 		},
 		WaitForEvent: true,
@@ -401,6 +402,7 @@ func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 		Name:      "mycc",
 		Ctor:      `{"Args":["respond","400","response-message","response-payload"]}`,
 		PeerAddresses: []string{
+			n.PeerAddress(n.Peer("Org1", "peer1"), nwo.ListenPort),
 			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
 		},
 		WaitForEvent: true,

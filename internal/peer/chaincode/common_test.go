@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/common/api"
 	cmock "github.com/hyperledger/fabric/internal/peer/common/mock"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
@@ -354,11 +355,11 @@ func TestDeliverGroupConnect(t *testing.T) {
 	// success
 	mockDeliverClients := []*DeliverClient{
 		{
-			Client:  getMockDeliverClientResponseWithTxID("txid0"),
+			Client:  getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_VALID, "txid0"),
 			Address: "peer0",
 		},
 		{
-			Client:  getMockDeliverClientResponseWithTxID("txid0"),
+			Client:  getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_VALID, "txid0"),
 			Address: "peer1",
 		},
 	}
@@ -451,7 +452,7 @@ func TestDeliverGroupWait(t *testing.T) {
 	// success
 	mockConn := &mock.Deliver{}
 	filteredResp := &pb.DeliverResponse{
-		Type: &pb.DeliverResponse_FilteredBlock{FilteredBlock: createFilteredBlock("txid0")},
+		Type: &pb.DeliverResponse_FilteredBlock{FilteredBlock: createFilteredBlock(pb.TxValidationCode_VALID, "txid0")},
 	}
 	mockConn.RecvReturns(filteredResp, nil)
 	mockDeliverClients := []*DeliverClient{
@@ -575,11 +576,11 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 
 	t.Run("success - one deliver client first receives block without txid and then one with txid", func(t *testing.T) {
 		filteredBlocks := []*pb.FilteredBlock{
-			createFilteredBlock("theseare", "notthetxidsyouarelookingfor"),
-			createFilteredBlock("txid0"),
+			createFilteredBlock(pb.TxValidationCode_VALID, "theseare", "notthetxidsyouarelookingfor"),
+			createFilteredBlock(pb.TxValidationCode_VALID, "txid0"),
 		}
 		mockDCTwoBlocks := getMockDeliverClientRespondsWithFilteredBlocks(filteredBlocks)
-		mockDC := getMockDeliverClientResponseWithTxID("txid0")
+		mockDC := getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_VALID, "txid0")
 		mockDeliverClients := []api.PeerDeliverClient{mockDCTwoBlocks, mockDC}
 
 		_, err = ChaincodeInvokeOrQuery(
@@ -598,7 +599,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 
 	t.Run("failure - one of the deliver clients returns error", func(t *testing.T) {
 		mockDCErr := getMockDeliverClientWithErr("moist")
-		mockDC := getMockDeliverClientResponseWithTxID("txid0")
+		mockDC := getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_VALID, "txid0")
 		mockDeliverClients := []api.PeerDeliverClient{mockDCErr, mockDC}
 
 		_, err = ChaincodeInvokeOrQuery(
@@ -616,9 +617,55 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 		assert.Contains(t, err.Error(), "moist")
 	})
 
+	t.Run("failure - transaction committed with non-success validation code", func(t *testing.T) {
+		mockDC := getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_VALID, "txid0")
+		mockDCFail := getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_ENDORSEMENT_POLICY_FAILURE, "txid0")
+		mockDeliverClients := []api.PeerDeliverClient{mockDCFail, mockDC}
+
+		_, err = ChaincodeInvokeOrQuery(
+			&pb.ChaincodeSpec{},
+			channelID,
+			txID,
+			true,
+			mockCF.Signer,
+			mockCF.Certificate,
+			mockCF.EndorserClients,
+			mockDeliverClients,
+			mockCF.BroadcastClient,
+		)
+		assert.Error(t, err)
+		assert.Equal(t, err.Error(), "transaction invalidated with status (ENDORSEMENT_POLICY_FAILURE)")
+	})
+
+	t.Run("failure - deliver returns response status instead of block", func(t *testing.T) {
+		mockDC := &cmock.PeerDeliverClient{}
+		mockDF := &mock.Deliver{}
+		resp := &pb.DeliverResponse{
+			Type: &pb.DeliverResponse_Status{
+				Status: cb.Status_FORBIDDEN,
+			},
+		}
+		mockDF.RecvReturns(resp, nil)
+		mockDC.DeliverFilteredReturns(mockDF, nil)
+		mockDeliverClients := []api.PeerDeliverClient{mockDC}
+		_, err = ChaincodeInvokeOrQuery(
+			&pb.ChaincodeSpec{},
+			channelID,
+			txID,
+			true,
+			mockCF.Signer,
+			mockCF.Certificate,
+			mockCF.EndorserClients,
+			mockDeliverClients,
+			mockCF.BroadcastClient,
+		)
+		assert.Error(t, err)
+		assert.Equal(t, err.Error(), "deliver completed with status (FORBIDDEN) before txid received")
+	})
+
 	t.Run(" failure - timeout occurs - both deliver clients don't return an event with the expected txid before timeout", func(t *testing.T) {
 		delayChan := make(chan struct{})
-		mockDCDelay := getMockDeliverClientRespondAfterDelay(delayChan, "txid0")
+		mockDCDelay := getMockDeliverClientRespondAfterDelay(delayChan, pb.TxValidationCode_VALID, "txid0")
 		mockDeliverClients := []api.PeerDeliverClient{mockDCDelay, mockDCDelay}
 		waitForEventTimeout = 10 * time.Millisecond
 
