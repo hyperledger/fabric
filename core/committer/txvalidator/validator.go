@@ -160,7 +160,7 @@ func (v *TxValidator) genBlockReplacedCert(block *common.Block) (*common.Block, 
 				}
 				//do replace work
 				endorsement.Endorser = endorserCert
-				logger.Debugf("genBlockReplacedCert,replace with cert Mspid: %s, pem:\n%s", serializedIdentity.Mspid, serializedIdentity.IdBytes)
+				logger.Debugf("genBlockReplacedCert,replace with cert Mspid: %s, pem:\n%s\n len:%d bytes:\n%v", serializedIdentity.Mspid, serializedIdentity.IdBytes, len(endorserCert), endorserCert)
 			} else { // a new endorser cert,insert to db
 				// TODOlogan to be removed after verify
 				serializedIdentity := &mspprotos.SerializedIdentity{}

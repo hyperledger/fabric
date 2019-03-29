@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
@@ -27,6 +28,7 @@ import (
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/protos/common"
@@ -743,11 +745,20 @@ func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*c
 	signatureMap := make(map[string]struct{})
 	// loop through each of the endorsements and build the signature set
 	for _, endorsement := range cap.Action.Endorsements {
+		if len(endorsement.Endorser) == util.CERT_HASH_LEN { //hash,replace with cert
+			endorserCert, err := kvledger.GlbCertStore.GetCert(endorsement.Endorser)
+			if err != nil || endorserCert == nil {
+				logger.Errorf("Get endorser cert error: %s cert len %d: pem: \n%s", err, len(endorsement.Endorser), endorserCert)
+				return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+			}
+			logger.Errorf("Do the endorse replace work, hash:\n%v\ncert:\n%v", endorsement.Endorser, endorserCert)
+			endorsement.Endorser = endorserCert
+		}
 		//unmarshal endorser bytes
 		serializedIdentity := &msp.SerializedIdentity{}
 		if err := proto.Unmarshal(endorsement.Endorser, serializedIdentity); err != nil {
-			logger.Errorf("Unmarshal endorser error: %s", err)
-			return nil, policyErr(fmt.Errorf("Unmarshal endorser error: %s", err))
+			logger.Errorf("Unmarshal endorser error: %s len:%d endorser: \n%v", err, len(endorsement.Endorser), endorsement.Endorser)
+			return nil, policyErr(fmt.Errorf("Unmarshal endorser error: %s len:%d endorser: \n%v", err, len(endorsement.Endorser), endorsement.Endorser))
 		}
 		identity := serializedIdentity.Mspid + string(serializedIdentity.IdBytes)
 		if _, ok := signatureMap[identity]; ok {

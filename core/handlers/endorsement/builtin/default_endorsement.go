@@ -53,10 +53,8 @@ func (e *DefaultEndorsement) Endorse(prpBytes []byte, sp *peer.SignedProposal) (
 		return nil, nil, errors.Wrapf(err, "get cert error when endorsing")
 	} else if exists { // cert already exists
 		endorser = idHash
-	} else {
-		if err := kvledger.GlbCertStore.PutCert(idHash, identityBytes); err != nil {
-			return nil, nil, errors.Wrap(err, "put endorser cert into db failed")
-		}
+	} else { // wo  shouldn't replace here
+
 	}
 
 	// sign the concatenation of the proposal response and the serialized endorser identity with this endorser's key
