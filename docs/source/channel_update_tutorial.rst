@@ -601,82 +601,94 @@ and reissue the ``peer channel join command``:
 
 .. _upgrade-and-invoke:
 
-Upgrade and Invoke Chaincode
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Install, define, and invoke chaincode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The final piece of the puzzle is to increment the chaincode version and update
-the endorsement policy to include Org3. Since we know that an upgrade is coming,
-we can forgo the futile exercise of installing version 1 of the chaincode. We
-are solely concerned with the new version where Org3 will be part of the
-endorsement policy, therefore we'll jump directly to version 2 of the chaincode.
+Once you have joined the channel, you can package and install a chaincode on a
+peer of Org3. You then need to approve the chaincode definition as org3.
+Because the chaincode definition has already been committed to the channel
+you have joined, you can start using the chaincode after you approve the
+definition.
 
-From the Org3 CLI:
+.. note:: These instructions use the Fabric chaincode lifecycle introduced as
+          an Alpha feature in Fabric v2.0. If you would like to use the previous
+          lifecycle to install and instantiate a chaincode, visit the v1.4
+          version of the `Adding an org to a channel tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/channel_update_tutorial.html>`__.
 
-.. code:: bash
-
-  peer chaincode install -n mycc -v 2.0 -p github.com/hyperledger/fabric-samples/chaincode/abstore/go/
-
-Modify the environment variables accordingly and reissue the command if you want to
-install the chaincode on the second peer of Org3. Note that a second installation is
-not mandated, as you only need to install chaincode on peers that are going to serve as
-endorsers or otherwise interface with the ledger (i.e. query only). Peers will
-still run the validation logic and serve as committers without a running chaincode
-container.
-
-Now jump back to the **original** CLI container and install the new version on the
-Org1 and Org2 peers. We submitted the channel update call with the Org2 admin
-identity, so the container is still acting on behalf of ``peer0.org2``:
+The first step is to package the chaincode from the Org3 CLI:
 
 .. code:: bash
 
-  peer chaincode install -n mycc -v 2.0 -p github.com/hyperledger/fabric-samples/chaincode/abstore/go/
+    peer lifecycle chaincode package mycc.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/abstore/go/ --lang golang --label mycc_1
 
-Flip to the ``peer0.org1`` identity:
+This command will create a chaincode package named ``mycc.tar.gz``, which we can
+use to install the chaincode on our peer. In this command, you need to provide a
+chaincode package label as a description of the chaincode. Modify the command
+accordingly if the channel is running a chaincode written in Java or Node.js.
+Issue the following command to install the package on peer0 of Org3:
 
-.. code:: bash
+  .. code:: bash
 
-  export CORE_PEER_LOCALMSPID="Org1MSP"
+      # this command installs a chaincode package on your peer
+      peer lifecycle chaincode install mycc.tar.gz
 
-  export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+You can also modify the environment variables and reissue the command if you
+want to install the chaincode on the second peer of Org3. Note that a second
+installation is not mandated, as you only need to install chaincode on peers
+that are going to serve as endorsers or otherwise interface with the ledger
+(i.e. query only). Peers will still run the validation logic and serve as
+committers without a running chaincode container.
 
-  export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-
-  export CORE_PEER_ADDRESS=peer0.org1.example.com:7051
-
-And install again:
-
-.. code:: bash
-
-  peer chaincode install -n mycc -v 2.0 -p github.com/hyperledger/fabric-samples/chaincode/abstore/go/
-
-Now we're ready to upgrade the chaincode. There have been no modifications to
-the underlying source code, we are simply adding Org3 to the endorsement policy for
-a chaincode -- ``mycc`` -- on ``mychannel``.
-
-.. note:: Any identity satisfying the chaincode's instantiation policy can issue
-          the upgrade call. By default, these identities are the channel Admins.
-
-Send the call:
+The next step is to approve the chaincode definition of ``mycc`` as Org3. Org3
+needs to approve the same definition that Org1 and Org2 approved and committed
+to the channel. The chaincode definition also needs to include the chaincode
+package identifier. You can find the package identifier by querying your peer:
 
 .. code:: bash
 
-  peer chaincode upgrade -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -v 2.0 -c '{"Args":["init","a","90","b","210"]}' -P "OR ('Org1MSP.peer','Org2MSP.peer','Org3MSP.peer')"
+    # this returns the details of the packages installed on your peers
+    peer lifecycle chaincode queryinstalled
 
-You can see in the above command that we are specifying our new version by means
-of the ``v`` flag. You can also see that the endorsement policy has been modified to
-``-P "OR ('Org1MSP.peer','Org2MSP.peer','Org3MSP.peer')"``, reflecting the
-addition of Org3 to the policy. The final area of interest is our constructor
-request (specified with the ``c`` flag).
+You should see output similar to the following:
 
-As with an instantiate call, a chaincode upgrade requires usage of the ``init``
-method. **If** your chaincode requires arguments be passed to the ``init`` method,
-then you will need to do so here.
+.. code:: bash
 
-The upgrade call adds a new block -- block 6 -- to the channel's ledger and allows
-for the Org3 peers to execute transactions during the endorsement phase. Hop
-back to the Org3 CLI container and issue a query for the value of ``a``. This will
-take a bit of time because a chaincode image needs to be built for the targeted peer,
-and the container needs to start:
+      Get installed chaincodes on peer:
+      Package ID: mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173, Label: mycc_1
+
+We are going to need the package ID in a future command, so lets go ahead and
+save it as an environment variable. Paste the package ID returned by the
+`peer lifecycle chaincode queryinstalled` into the command below. The package ID
+may not be the same for all users, so you need to complete this step using the
+package ID returned from your console.
+
+.. code:: bash
+
+   # Save the package ID as an environment variable.
+
+   CC_PACKAGE_ID=mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173
+
+Use the following command to approve a definition of the  ``mycc`` chaincode
+for Org3:
+
+.. code:: bash
+
+    # this approves a chaincode definition for your org
+    # use the --package-id flag to provide the package identifier
+    # use the --init-required flag to request the ``Init`` function be invoked to initialize the chaincode
+    peer lifecycle chaincode approveformyorg --channelID $CHANNEL_NAME --name mycc --version 1.0 --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
+
+Since the chaincode definition has already been committed to the channel, you
+are ready to use the ``mycc`` chaincode after you approve the definition.
+The chaincode definition uses the default endorsement policy, which requires a
+majority of organizations on the channel endorse a transaction. This implies
+that if an organization is added to or removed from the channel, the endorsement
+policy is updated automatically. We previously needed endorsements from Org1 and
+Org2 (2 out of 2). Now we need endorsements from two organizations out of Org1,
+Org2, and Org3 (2 out of 3).
+
+Query the chaincode to ensure that it has started. Note that you may need to
+wait for the chaincode container to start.
 
 .. code:: bash
 
@@ -684,11 +696,13 @@ and the container needs to start:
 
 We should see a response of ``Query Result: 90``.
 
-Now issue an invocation to move ``10`` from ``a`` to ``b``:
+Now issue an invocation to move ``10`` from ``a`` to ``b``. In the command
+below, we target a peer in Org1 and Org3 to collect a sufficient number of
+endorsements.
 
 .. code:: bash
 
-    peer chaincode invoke -o orderer.example.com:7050  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}'
+    peer chaincode invoke -o orderer.example.com:7050  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}' --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org3.example.com:11051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt
 
 Query one final time:
 
