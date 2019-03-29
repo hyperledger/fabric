@@ -108,77 +108,79 @@ func NewTxValidator(chainID string, support Support, sccp sysccprovider.SystemCh
 }
 
 //loganTODO
-func (v *TxValidator) genBlockReplacedCert(block *common.Block) (*common.Block, error) {
-	logger.Infof("enter genBlockReplacedCert ")
-	defer logger.Infof("exit genBlockReplacedCert ")
-	var blkcpy common.Block
-	blkcpy = *block
+func (v *TxValidator) updateEndorseCertToDB(block *common.Block) error {
+	logger.Infof("enter updateEndorseCertToDB ")
+	defer logger.Infof("exit updateEndorseCertToDB ")
+
 	actionPosition := 0 //actionPosition default is 0 currently
 
-	for _, tx := range blkcpy.Data.Data {
+	for _, tx := range block.Data.Data {
 		// get the envelope...
 		env, err := utils.GetEnvelopeFromBlock(tx)
 		if err != nil {
-			logger.Errorf("genBlockReplacedCert error: GetEnvelope failed, err %s", err)
-			return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+			logger.Errorf("updateEndorseCertToDB error: GetEnvelope failed, err %s", err)
+			return errors.Wrap(err, "updateEndorseCertToDB failed")
 		}
 
 		// ...and the payload...
 		payl, err := utils.GetPayload(env)
 		if err != nil {
-			logger.Errorf("genBlockReplacedCert error: GetPayload failed, err %s", err)
-			return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+			logger.Errorf("updateEndorseCertToDB error: GetPayload failed, err %s", err)
+			return errors.Wrap(err, "updateEndorseCertToDB failed")
 		}
 
 		// ...and the transaction...
 		tx, err := utils.GetTransaction(payl.Data)
 		if err != nil {
-			logger.Errorf("genBlockReplacedCert error: GetTransaction failed, err %s", err)
-			return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+			logger.Errorf("updateEndorseCertToDB error: GetTransaction failed, err %s", err)
+			return errors.Wrap(err, "updateEndorseCertToDB failed")
 		}
 
 		cap, err := utils.GetChaincodeActionPayload(tx.Actions[actionPosition].Payload)
 		if err != nil {
-			logger.Errorf("genBlockReplacedCert error: GetChaincodeActionPayload failed, err %s", err)
-			return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+			logger.Errorf("updateEndorseCertToDB error: GetChaincodeActionPayload failed, err %s", err)
+			return errors.Wrap(err, "updateEndorseCertToDB failed")
 		}
 
 		// loop through each of the endorsements and relace with cert
 		for _, endorsement := range cap.Action.Endorsements {
 			endorserCert := endorsement.Endorser
 			if len(endorsement.Endorser) == util.CERT_HASH_LEN { //hash,replace with cert
-				if endorserCert, err = kvledger.GlbCertStore.GetCert(endorsement.Endorser); err != nil || endorserCert == nil {
-					logger.Errorf("Get endorser cert error: %s cert len %d: pem: \n%s", err, len(endorsement.Endorser), endorserCert)
-					return nil, errors.Wrap(err, "genBlockReplacedCert failed")
-				}
+				/*
+					if endorserCert, err = kvledger.GlbCertStore.GetCert(endorsement.Endorser); err != nil || endorserCert == nil {
+						logger.Errorf("Get endorser cert error: %s cert len %d: pem: \n%s", err, len(endorsement.Endorser), endorserCert)
+						return errors.Wrap(err, "updateEndorseCertToDB failed")
+					}
 
-				//unmarshal endorser bytes
-				serializedIdentity := &mspprotos.SerializedIdentity{}
-				if err := proto.Unmarshal(endorserCert, serializedIdentity); err != nil {
-					logger.Errorf("Unmarshal endorser  error: %s cert len %d: pem: \n%s", err, len(endorsement.Endorser), endorserCert)
-					return nil, errors.Wrap(err, "genBlockReplacedCert failed")
-				}
-				//do replace work
-				endorsement.Endorser = endorserCert
-				logger.Debugf("genBlockReplacedCert,replace with cert Mspid: %s, pem:\n%s\n len:%d bytes:\n%v", serializedIdentity.Mspid, serializedIdentity.IdBytes, len(endorserCert), endorserCert)
+					//unmarshal endorser bytes
+					serializedIdentity := &mspprotos.SerializedIdentity{}
+					if err := proto.Unmarshal(endorserCert, serializedIdentity); err != nil {
+						logger.Errorf("Unmarshal endorser  error: %s cert len %d: pem: \n%s", err, len(endorsement.Endorser), endorserCert)
+						return errors.Wrap(err, "updateEndorseCertToDB failed")
+					}
+					//do replace work
+					endorsement.Endorser = endorserCert
+					logger.Debugf("updateEndorseCertToDB,replace with cert Mspid: %s, pem:\n%s\n len:%d bytes:\n%v", serializedIdentity.Mspid, serializedIdentity.IdBytes, len(endorserCert), endorserCert)
+				*/
+				logger.Debugf("This is a hash of endorser:\n%v", endorsement.Endorser)
 			} else { // a new endorser cert,insert to db
 				// TODOlogan to be removed after verify
 				serializedIdentity := &mspprotos.SerializedIdentity{}
 				if err := proto.Unmarshal(endorserCert, serializedIdentity); err != nil {
 					logger.Errorf("Unmarshal original endorser error: %s", err)
-					return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+					return errors.Wrap(err, "updateEndorseCertToDB failed")
 				}
 				key := util.ComputeSHA256(endorserCert)
-				logger.Debugf("genBlockReplacedCert: update endorser to state db key len: %d Mspid: %s, pem:\n%s", len(key), serializedIdentity.Mspid, serializedIdentity.IdBytes)
+				logger.Debugf("updateEndorseCertToDB: update endorser to  db key len: %d Mspid: %s, pem:\n%s", len(key), serializedIdentity.Mspid, serializedIdentity.IdBytes)
 				if err := kvledger.GlbCertStore.PutCert(key, endorserCert); err != nil {
 					logger.Errorf("update endorser cert error: %s", err)
-					return nil, errors.Wrap(err, "genBlockReplacedCert failed")
+					return errors.Wrap(err, "updateEndorseCertToDB failed")
 				}
 			}
 
 		}
 	}
-	return &blkcpy, nil
+	return nil
 }
 
 func (v *TxValidator) chainExists(chain string) bool {
@@ -206,7 +208,7 @@ func (v *TxValidator) chainExists(chain string) bool {
 //    state is when a config transaction is received, but they are
 //    guaranteed to be alone in the block. If/when this assumption
 //    is violated, this code must be changed.
-func (v *TxValidator) Validate(block1 *common.Block) error {
+func (v *TxValidator) Validate(block *common.Block) error {
 	var err error
 	var errPos int
 
@@ -214,7 +216,7 @@ func (v *TxValidator) Validate(block1 *common.Block) error {
 	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChainID, block1.Header.Number)
 
 	//loganTODO  replace block  with cert
-	block, genErr := v.genBlockReplacedCert(block1)
+	genErr := v.updateEndorseCertToDB(block)
 	if genErr != nil {
 		return genErr
 	}
