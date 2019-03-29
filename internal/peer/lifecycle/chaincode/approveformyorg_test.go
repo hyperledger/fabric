@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -18,12 +19,22 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/common/api"
 	cmock "github.com/hyperledger/fabric/internal/peer/common/mock"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
+
+func TestMain(m *testing.M) {
+	err := msptesttools.LoadMSPSetupForTesting()
+	if err != nil {
+		panic(fmt.Sprintf("Fatal error when reading MSP config: %s", err))
+	}
+
+	os.Exit(m.Run())
+}
 
 func TestApproverForMyOrg(t *testing.T) {
 	assert := assert.New(t)

@@ -37,7 +37,7 @@ func addFlags(cmd *cobra.Command) {
 func Cmd(cf *CmdFactory) *cobra.Command {
 	addFlags(chaincodeCmd)
 
-	chaincodeCmd.AddCommand(packageCmd(cf, nil))
+	chaincodeCmd.AddCommand(PackageCmd(nil))
 	chaincodeCmd.AddCommand(InstallCmd(nil))
 	chaincodeCmd.AddCommand(queryInstalledCmd(cf))
 	chaincodeCmd.AddCommand(approveForMyOrgCmd(cf, nil))
