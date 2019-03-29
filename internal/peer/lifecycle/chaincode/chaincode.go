@@ -39,11 +39,11 @@ func Cmd(cf *CmdFactory) *cobra.Command {
 
 	chaincodeCmd.AddCommand(PackageCmd(nil))
 	chaincodeCmd.AddCommand(InstallCmd(nil))
-	chaincodeCmd.AddCommand(queryInstalledCmd(cf))
+	chaincodeCmd.AddCommand(QueryInstalledCmd(nil))
 	chaincodeCmd.AddCommand(approveForMyOrgCmd(cf, nil))
 	chaincodeCmd.AddCommand(commitCmd(cf, nil))
-	chaincodeCmd.AddCommand(queryCommittedCmd(cf))
 	chaincodeCmd.AddCommand(queryApprovalStatusCmd(cf, nil))
+	chaincodeCmd.AddCommand(QueryCommittedCmd(nil))
 
 	return chaincodeCmd
 }

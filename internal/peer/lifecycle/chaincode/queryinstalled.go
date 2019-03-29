@@ -17,21 +17,51 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-var (
-	chaincodeQueryInstalledCmd *cobra.Command
-)
-
-// queryInstalledCmd returns the cobra command for listing
+// InstalledQuerier holds the dependencies needed to query
 // the installed chaincodes
-func queryInstalledCmd(cf *CmdFactory) *cobra.Command {
-	chaincodeQueryInstalledCmd = &cobra.Command{
+type InstalledQuerier struct {
+	Command        *cobra.Command
+	EndorserClient EndorserClient
+	Signer         Signer
+}
+
+// QueryInstalledCmd returns the cobra command for listing
+// the installed chaincodes
+func QueryInstalledCmd(i *InstalledQuerier) *cobra.Command {
+	chaincodeQueryInstalledCmd := &cobra.Command{
 		Use:   "queryinstalled",
 		Short: "Query the installed chaincodes on a peer.",
 		Long:  "Query the installed chaincodes on a peer.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return getChaincodes(cmd, cf)
+			if i == nil {
+				ccInput := &ClientConnectionsInput{
+					CommandName:           cmd.Name(),
+					EndorserRequired:      true,
+					ChannelID:             channelID,
+					PeerAddresses:         peerAddresses,
+					TLSRootCertFiles:      tlsRootCertFiles,
+					ConnectionProfilePath: connectionProfilePath,
+					TLSEnabled:            viper.GetBool("peer.tls.enabled"),
+				}
+
+				cc, err := NewClientConnections(ccInput)
+				if err != nil {
+					return err
+				}
+
+				// queryinstalled only supports one peer connection,
+				// which is why we only wire in the first endorser
+				// client
+				i = &InstalledQuerier{
+					Command:        cmd,
+					EndorserClient: cc.EndorserClients[0],
+					Signer:         cc.Signer,
+				}
+			}
+			return i.Query()
 		},
 	}
 
@@ -45,62 +75,52 @@ func queryInstalledCmd(cf *CmdFactory) *cobra.Command {
 	return chaincodeQueryInstalledCmd
 }
 
-func getChaincodes(cmd *cobra.Command, cf *CmdFactory) error {
-	// Parsing of the command line is done so silence cmd usage
-	cmd.SilenceUsage = true
-
-	var err error
-	if cf == nil {
-		cf, err = InitCmdFactory(cmd.Name(), true, false)
-		if err != nil {
-			return err
-		}
+// Query returns the chaincodes installed on a peer
+func (i *InstalledQuerier) Query() error {
+	if i.Command != nil {
+		// Parsing of the command line is done so silence cmd usage
+		i.Command.SilenceUsage = true
 	}
 
-	creator, err := cf.Signer.Serialize()
+	proposal, err := i.createProposal()
 	if err != nil {
-		return fmt.Errorf("Error serializing identity: %s", err)
+		return errors.WithMessage(err, "failed to create proposal")
 	}
 
-	var prop *pb.Proposal
-
-	prop, err = createQueryInstalledChaincodeProposal(creator)
+	signedProposal, err := signProposal(proposal, i.Signer)
 	if err != nil {
-		return errors.WithMessage(err, "error creating proposal")
+		return errors.WithMessage(err, "failed to create signed proposal")
 	}
 
-	var signedProp *pb.SignedProposal
-	signedProp, err = protoutil.GetSignedProposal(prop, cf.Signer)
+	proposalResponse, err := i.EndorserClient.ProcessProposal(context.Background(), signedProposal)
 	if err != nil {
-		return errors.WithMessage(err, "error creating signed proposal")
+		return errors.WithMessage(err, "failed to endorse proposal")
 	}
 
-	// list is currently only supported for one peer
-	proposalResponse, err := cf.EndorserClients[0].ProcessProposal(context.Background(), signedProp)
-	if err != nil {
-		return errors.WithMessage(err, "error endorsing proposal")
+	if proposalResponse == nil {
+		return errors.New("received nil proposal response")
 	}
 
 	if proposalResponse.Response == nil {
-		return errors.Errorf("proposal response had nil response")
+		return errors.New("received proposal response with nil response")
 	}
 
 	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("bad response: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+		return errors.Errorf("query failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
 	}
 
-	return printQueryInstalledResponse(proposalResponse)
+	return i.printResponse(proposalResponse)
 }
 
 // printResponse prints the information included in the response
 // from the server.
-func printQueryInstalledResponse(proposalResponse *pb.ProposalResponse) error {
+func (i *InstalledQuerier) printResponse(proposalResponse *pb.ProposalResponse) error {
 	qicr := &lb.QueryInstalledChaincodesResult{}
 	err := proto.Unmarshal(proposalResponse.Response.Payload, qicr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
-	fmt.Println("Get installed chaincodes on peer:")
+	fmt.Println("Installed chaincodes on peer:")
 	for _, chaincode := range qicr.InstalledChaincodes {
 		fmt.Printf("Package ID: %s, Label: %s\n", chaincode.PackageId, chaincode.Label)
 	}
@@ -108,14 +128,17 @@ func printQueryInstalledResponse(proposalResponse *pb.ProposalResponse) error {
 
 }
 
-func createQueryInstalledChaincodeProposal(creatorBytes []byte) (*pb.Proposal, error) {
+func (i *InstalledQuerier) createProposal() (*pb.Proposal, error) {
 	args := &lb.QueryInstalledChaincodesArgs{}
 
 	argsBytes, err := proto.Marshal(args)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to marshal args")
 	}
-	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte("QueryInstalledChaincodes"), argsBytes}}
+
+	ccInput := &pb.ChaincodeInput{
+		Args: [][]byte{[]byte("QueryInstalledChaincodes"), argsBytes},
+	}
 
 	cis := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{
@@ -124,9 +147,14 @@ func createQueryInstalledChaincodeProposal(creatorBytes []byte) (*pb.Proposal, e
 		},
 	}
 
-	proposal, _, err := protoutil.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, creatorBytes)
+	signerSerialized, err := i.Signer.Serialize()
 	if err != nil {
-		return nil, errors.WithMessage(err, "error creating proposal for ChaincodeInvocationSpec")
+		return nil, errors.WithMessage(err, "failed to serialize identity")
+	}
+
+	proposal, _, err := protoutil.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, signerSerialized)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to create ChaincodeInvocationSpec proposal")
 	}
 
 	return proposal, nil

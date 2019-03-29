@@ -17,22 +17,61 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-var (
-	chaincodeQueryCommittedCmd *cobra.Command
-)
+// CommittedQuerier holds the dependencies needed to query
+// the committed chaincode definitions
+type CommittedQuerier struct {
+	Command        *cobra.Command
+	Input          *CommittedQueryInput
+	EndorserClient EndorserClient
+	Signer         Signer
+}
 
-// queryCommittedCmd returns the cobra command for
+type CommittedQueryInput struct {
+	ChannelID string
+	Name      string
+}
+
+// QueryCommittedCmd returns the cobra command for
 // querying a committed chaincode definition given
 // the chaincode name
-func queryCommittedCmd(cf *CmdFactory) *cobra.Command {
-	chaincodeQueryCommittedCmd = &cobra.Command{
+func QueryCommittedCmd(c *CommittedQuerier) *cobra.Command {
+	chaincodeQueryCommittedCmd := &cobra.Command{
 		Use:   "querycommitted",
-		Short: "Query a committed chaincode definition by name on a peer.",
-		Long:  "Query a committed chaincode definition by name on a peer.",
+		Short: "Query a committed chaincode definition by channel and name on a peer.",
+		Long:  "Query a committed chaincode definition by channel and name on a peer.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return queryCommitted(cmd, cf)
+			if c == nil {
+				ccInput := &ClientConnectionsInput{
+					CommandName:           cmd.Name(),
+					EndorserRequired:      true,
+					ChannelID:             channelID,
+					PeerAddresses:         peerAddresses,
+					TLSRootCertFiles:      tlsRootCertFiles,
+					ConnectionProfilePath: connectionProfilePath,
+					TLSEnabled:            viper.GetBool("peer.tls.enabled"),
+				}
+
+				cc, err := NewClientConnections(ccInput)
+				if err != nil {
+					return err
+				}
+
+				cqInput := &CommittedQueryInput{
+					ChannelID: channelID,
+					Name:      chaincodeName,
+				}
+
+				c = &CommittedQuerier{
+					Command:        cmd,
+					EndorserClient: cc.EndorserClients[0],
+					Input:          cqInput,
+					Signer:         cc.Signer,
+				}
+			}
+			return c.Query()
 		},
 	}
 
@@ -48,72 +87,84 @@ func queryCommittedCmd(cf *CmdFactory) *cobra.Command {
 	return chaincodeQueryCommittedCmd
 }
 
-func queryCommitted(cmd *cobra.Command, cf *CmdFactory) error {
-	// Parsing of the command line is done so silence cmd usage
-	cmd.SilenceUsage = true
-
-	var err error
-	if cf == nil {
-		cf, err = InitCmdFactory(cmd.Name(), true, false)
-		if err != nil {
-			return err
-		}
+// Query returns the committed chaincode definition
+// for a given channel and chaincode name
+func (c *CommittedQuerier) Query() error {
+	if c.Command != nil {
+		// Parsing of the command line is done so silence cmd usage
+		c.Command.SilenceUsage = true
 	}
 
-	creator, err := cf.Signer.Serialize()
+	err := c.validateInput()
 	if err != nil {
-		return fmt.Errorf("Error serializing identity: %s", err)
+		return err
 	}
 
-	proposal, err := createQueryCommittedChaincodeDefinitionProposal(channelID, chaincodeName, creator)
+	proposal, err := c.createProposal()
 	if err != nil {
-		return errors.WithMessage(err, "error creating proposal")
+		return errors.WithMessage(err, "failed to create proposal")
 	}
 
-	signedProposal, err := protoutil.GetSignedProposal(proposal, cf.Signer)
+	signedProposal, err := signProposal(proposal, c.Signer)
 	if err != nil {
-		return errors.WithMessage(err, "error creating signed proposal")
+		return errors.WithMessage(err, "failed to create signed proposal")
 	}
 
-	// QueryCommittedChaincodeDefinition is currently only supported for one peer
-	proposalResponse, err := cf.EndorserClients[0].ProcessProposal(context.Background(), signedProposal)
+	proposalResponse, err := c.EndorserClient.ProcessProposal(context.Background(), signedProposal)
 	if err != nil {
-		return errors.WithMessage(err, "error endorsing proposal")
+		return errors.WithMessage(err, "failed to endorse proposal")
+	}
+
+	if proposalResponse == nil {
+		return errors.New("received nil proposal response")
 	}
 
 	if proposalResponse.Response == nil {
-		return errors.Errorf("proposal response had nil response")
+		return errors.New("received proposal response with nil response")
 	}
 
 	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("bad response: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+		return errors.Errorf("query failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
 	}
 
-	return printQueryCommittedResponse(proposalResponse)
+	return c.printResponse(proposalResponse)
 }
 
 // printResponse prints the information included in the response
 // from the server.
-func printQueryCommittedResponse(proposalResponse *pb.ProposalResponse) error {
+func (c *CommittedQuerier) printResponse(proposalResponse *pb.ProposalResponse) error {
 	qdcr := &lb.QueryChaincodeDefinitionResult{}
 	err := proto.Unmarshal(proposalResponse.Response.Payload, qdcr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
 	fmt.Printf("Committed chaincode definition for chaincode '%s' on channel '%s':\n", chaincodeName, channelID)
 	fmt.Printf("Version: %s, Sequence: %d, Endorsement Plugin: %s, Validation Plugin: %s\n", qdcr.Version, qdcr.Sequence, qdcr.EndorsementPlugin, qdcr.ValidationPlugin)
+
 	return nil
 
 }
 
-func createQueryCommittedChaincodeDefinitionProposal(channelID, chaincodeName string, creatorBytes []byte) (*pb.Proposal, error) {
+func (c *CommittedQuerier) validateInput() error {
+	if c.Input.ChannelID == "" {
+		return errors.New("channel name must be specified")
+	}
+
+	if c.Input.Name == "" {
+		return errors.New("chaincode name must be specified")
+	}
+
+	return nil
+}
+
+func (c *CommittedQuerier) createProposal() (*pb.Proposal, error) {
 	args := &lb.QueryChaincodeDefinitionArgs{
-		Name: chaincodeName,
+		Name: c.Input.Name,
 	}
 
 	argsBytes, err := proto.Marshal(args)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to marshal args")
 	}
 	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte("QueryChaincodeDefinition"), argsBytes}}
 
@@ -124,9 +175,14 @@ func createQueryCommittedChaincodeDefinitionProposal(channelID, chaincodeName st
 		},
 	}
 
-	proposal, _, err := protoutil.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, channelID, cis, creatorBytes)
+	signerSerialized, err := c.Signer.Serialize()
 	if err != nil {
-		return nil, errors.WithMessage(err, "error creating proposal for ChaincodeInvocationSpec")
+		return nil, errors.WithMessage(err, "failed to serialize identity")
+	}
+
+	proposal, _, err := protoutil.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, c.Input.ChannelID, cis, signerSerialized)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to create ChaincodeInvocationSpec proposal")
 	}
 
 	return proposal, nil
