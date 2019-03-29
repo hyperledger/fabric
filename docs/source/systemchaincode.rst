@@ -7,7 +7,9 @@ such they have more access to resources in the peer and can be used for
 implementing features that are difficult or impossible to be implemented through
 user chaincodes. Examples of System Chaincodes include QSCC (Query System Chaincode)
 for ledger and other Fabric-related queries, CSCC (Configuration System Chaincode)
-which helps regulate access control, and LSCC (Lifecycle System Chaincode).
+which helps regulate access control, ``_lifecycle`` (which regulates the Fabric
+chaincode lifecycle), and the legacy LSCC (Lifecycle System Chaincode) which
+regulated the previous chaincode lifecycle.
 
 Unlike a user chaincode, a system chaincode is not installed and instantiated
 using proposals from SDKs or CLI. It is registered and deployed by the peer at
