@@ -213,7 +213,7 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	var errPos int
 
 	startValidation := time.Now() // timer to log Validate block duration
-	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChainID, block1.Header.Number)
+	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChainID, block.Header.Number)
 
 	//loganTODO  replace block  with cert
 	genErr := v.updateEndorseCertToDB(block)
