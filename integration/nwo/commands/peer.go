@@ -193,19 +193,20 @@ func (c ChaincodeInstall) Args() []string {
 }
 
 type ChaincodeApproveForMyOrgLifecycle struct {
-	ChannelID         string
-	Orderer           string
-	Name              string
-	Version           string
-	PackageID         string
-	Sequence          string
-	EndorsementPlugin string
-	ValidationPlugin  string
-	Policy            string
-	InitRequired      bool
-	CollectionsConfig string
-	PeerAddresses     []string
-	WaitForEvent      bool
+	ChannelID           string
+	Orderer             string
+	Name                string
+	Version             string
+	PackageID           string
+	Sequence            string
+	EndorsementPlugin   string
+	ValidationPlugin    string
+	SignaturePolicy     string
+	ChannelConfigPolicy string
+	InitRequired        bool
+	CollectionsConfig   string
+	PeerAddresses       []string
+	WaitForEvent        bool
 }
 
 func (c ChaincodeApproveForMyOrgLifecycle) SessionName() string {
@@ -223,7 +224,8 @@ func (c ChaincodeApproveForMyOrgLifecycle) Args() []string {
 		"--sequence", c.Sequence,
 		"--escc", c.EndorsementPlugin,
 		"--vscc", c.ValidationPlugin,
-		"--policy", c.Policy,
+		"--signature-policy", c.SignaturePolicy,
+		"--channel-config-policy", c.ChannelConfigPolicy,
 	}
 
 	if c.InitRequired {
@@ -246,18 +248,19 @@ func (c ChaincodeApproveForMyOrgLifecycle) Args() []string {
 }
 
 type ChaincodeCommitLifecycle struct {
-	ChannelID         string
-	Orderer           string
-	Name              string
-	Version           string
-	Sequence          string
-	EndorsementPlugin string
-	ValidationPlugin  string
-	Policy            string
-	InitRequired      bool
-	CollectionsConfig string
-	PeerAddresses     []string
-	WaitForEvent      bool
+	ChannelID           string
+	Orderer             string
+	Name                string
+	Version             string
+	Sequence            string
+	EndorsementPlugin   string
+	ValidationPlugin    string
+	SignaturePolicy     string
+	ChannelConfigPolicy string
+	InitRequired        bool
+	CollectionsConfig   string
+	PeerAddresses       []string
+	WaitForEvent        bool
 }
 
 func (c ChaincodeCommitLifecycle) SessionName() string {
@@ -274,7 +277,8 @@ func (c ChaincodeCommitLifecycle) Args() []string {
 		"--sequence", c.Sequence,
 		"--escc", c.EndorsementPlugin,
 		"--vscc", c.ValidationPlugin,
-		"--policy", c.Policy,
+		"--signature-policy", c.SignaturePolicy,
+		"--channel-config-policy", c.ChannelConfigPolicy,
 	}
 	if c.InitRequired {
 		args = append(args, "--init-required")

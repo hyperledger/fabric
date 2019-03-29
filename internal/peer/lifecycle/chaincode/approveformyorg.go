@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/common/api"
@@ -77,14 +76,6 @@ func (a *ApproveForMyOrgInput) Validate() error {
 		return errors.New("The required parameter 'sequence' is empty. Rerun the command with --sequence flag")
 	}
 
-	if a.EndorsementPlugin == "" {
-		a.EndorsementPlugin = "escc"
-	}
-
-	if a.ValidationPlugin == "" {
-		a.ValidationPlugin = "vscc"
-	}
-
 	return nil
 }
 
@@ -144,7 +135,8 @@ func ApproveForMyOrgCmd(a *ApproverForMyOrg) *cobra.Command {
 		"sequence",
 		"escc",
 		"vscc",
-		"policy",
+		"signature-policy",
+		"channel-config-policy",
 		"init-required",
 		"collections-config",
 		"peerAddresses",
@@ -254,31 +246,14 @@ func (a *ApproverForMyOrg) Approve() error {
 
 // createInput creates the input struct based on the CLI flags
 func (a *ApproverForMyOrg) createInput() (*ApproveForMyOrgInput, error) {
-	var (
-		policyBytes []byte
-		ccp         *cb.CollectionConfigPackage
-	)
-
-	if policy != "" {
-		signaturePolicyEnvelope, err := cauthdsl.FromString(policy)
-		if err != nil {
-			return nil, errors.Errorf("invalid signature policy: %s", policy)
-		}
-
-		applicationPolicy := &pb.ApplicationPolicy{
-			Type: &pb.ApplicationPolicy_SignaturePolicy{
-				SignaturePolicy: signaturePolicyEnvelope,
-			},
-		}
-		policyBytes = protoutil.MarshalOrPanic(applicationPolicy)
+	policyBytes, err := createPolicyBytes(signaturePolicy, channelConfigPolicy)
+	if err != nil {
+		return nil, err
 	}
 
-	if collectionsConfigFile != "" {
-		var err error
-		ccp, _, err = chaincode.GetCollectionConfigFromFile(collectionsConfigFile)
-		if err != nil {
-			return nil, errors.WithMessagef(err, "invalid collection configuration in file %s", collectionsConfigFile)
-		}
+	ccp, err := createCollectionConfigPackage(collectionsConfigFile)
+	if err != nil {
+		return nil, err
 	}
 
 	input := &ApproveForMyOrgInput{

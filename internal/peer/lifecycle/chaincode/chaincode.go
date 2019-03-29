@@ -58,12 +58,11 @@ var (
 	channelID             string
 	chaincodeVersion      string
 	packageLabel          string
-	policy                string
+	signaturePolicy       string
+	channelConfigPolicy   string
 	escc                  string
 	vscc                  string
-	policyMarshalled      []byte
 	collectionsConfigFile string
-	collectionConfigBytes []byte
 	peerAddresses         []string
 	tlsRootCertFiles      []string
 	connectionProfilePath string
@@ -100,7 +99,8 @@ func ResetFlags() {
 	flags.StringVarP(&chaincodeVersion, "version", "v", "", "Version of the chaincode")
 	flags.StringVarP(&packageLabel, "label", "", "", "The package label contains a human-readable description of the package")
 	flags.StringVarP(&channelID, "channelID", "C", "", "The channel on which this command should be executed")
-	flags.StringVarP(&policy, "policy", "P", "", "The endorsement policy associated to this chaincode")
+	flags.StringVarP(&signaturePolicy, "signature-policy", "", "", "The endorsement policy associated to this chaincode specified as a signature policy")
+	flags.StringVarP(&channelConfigPolicy, "channel-config-policy", "", "", "The endorsement policy associated to this chaincode specified as a channel config policy reference")
 	flags.StringVarP(&escc, "escc", "E", common.UndefinedParamValue,
 		fmt.Sprint("The name of the endorsement system chaincode to be used for this chaincode"))
 	flags.StringVarP(&vscc, "vscc", "V", common.UndefinedParamValue,

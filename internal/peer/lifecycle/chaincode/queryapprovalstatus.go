@@ -14,8 +14,6 @@ import (
 	"os"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -111,11 +109,11 @@ func queryApprovalStatusCmd(a *QueryApprovalStatus) *cobra.Command {
 		"channelID",
 		"name",
 		"version",
-		"package-id",
 		"sequence",
 		"escc",
 		"vscc",
-		"policy",
+		"signature-policy",
+		"channel-config-policy",
 		"init-required",
 		"collections-config",
 		"peerAddresses",
@@ -199,31 +197,14 @@ func printQueryApprovalStatusResponse(proposalResponse *pb.ProposalResponse, out
 
 // setInput sets the input struct based on the CLI flags
 func (a *QueryApprovalStatus) setInput() error {
-	var (
-		policyBytes []byte
-		ccp         *cb.CollectionConfigPackage
-	)
-
-	if policy != "" {
-		signaturePolicyEnvelope, err := cauthdsl.FromString(policy)
-		if err != nil {
-			return errors.Errorf("invalid signature policy: %s", policy)
-		}
-
-		applicationPolicy := &pb.ApplicationPolicy{
-			Type: &pb.ApplicationPolicy_SignaturePolicy{
-				SignaturePolicy: signaturePolicyEnvelope,
-			},
-		}
-		policyBytes = protoutil.MarshalOrPanic(applicationPolicy)
+	policyBytes, err := createPolicyBytes(signaturePolicy, channelConfigPolicy)
+	if err != nil {
+		return err
 	}
 
-	if collectionsConfigFile != "" {
-		var err error
-		ccp, _, err = chaincode.GetCollectionConfigFromFile(collectionsConfigFile)
-		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
-		}
+	ccp, err := createCollectionConfigPackage(collectionsConfigFile)
+	if err != nil {
+		return err
 	}
 
 	a.Input = &QueryApprovalStatusInput{

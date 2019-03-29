@@ -24,20 +24,22 @@ import (
 )
 
 type Chaincode struct {
-	Name              string
-	Version           string
-	Path              string
-	Ctor              string
-	Policy            string
-	Lang              string
-	CollectionsConfig string // optional
-	PackageFile       string
-	PackageID         string // if unspecified, chaincode won't be executable
-	Sequence          string
-	EndorsementPlugin string
-	ValidationPlugin  string
-	InitRequired      bool
-	Label             string
+	Name                string
+	Version             string
+	Path                string
+	Ctor                string
+	Policy              string
+	Lang                string
+	CollectionsConfig   string // optional
+	PackageFile         string
+	PackageID           string // if unspecified, chaincode won't be executable
+	Sequence            string
+	EndorsementPlugin   string
+	ValidationPlugin    string
+	InitRequired        bool
+	Label               string
+	SignaturePolicy     string
+	ChannelConfigPolicy string
 }
 
 // DeployChaincodeNewLifecycle is a helper that will install chaincode to all
@@ -201,18 +203,19 @@ func ApproveChaincodeForMyOrgNewLifecycle(n *Network, channel string, orderer *O
 	for _, p := range peers {
 		if _, ok := approvedOrgs[p.Organization]; !ok {
 			sess, err := n.PeerAdminSession(p, commands.ChaincodeApproveForMyOrgLifecycle{
-				ChannelID:         channel,
-				Orderer:           n.OrdererAddress(orderer, ListenPort),
-				Name:              chaincode.Name,
-				Version:           chaincode.Version,
-				PackageID:         chaincode.PackageID,
-				Sequence:          chaincode.Sequence,
-				EndorsementPlugin: chaincode.EndorsementPlugin,
-				ValidationPlugin:  chaincode.ValidationPlugin,
-				Policy:            chaincode.Policy,
-				InitRequired:      chaincode.InitRequired,
-				CollectionsConfig: chaincode.CollectionsConfig,
-				WaitForEvent:      true,
+				ChannelID:           channel,
+				Orderer:             n.OrdererAddress(orderer, ListenPort),
+				Name:                chaincode.Name,
+				Version:             chaincode.Version,
+				PackageID:           chaincode.PackageID,
+				Sequence:            chaincode.Sequence,
+				EndorsementPlugin:   chaincode.EndorsementPlugin,
+				ValidationPlugin:    chaincode.ValidationPlugin,
+				SignaturePolicy:     chaincode.SignaturePolicy,
+				ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+				InitRequired:        chaincode.InitRequired,
+				CollectionsConfig:   chaincode.CollectionsConfig,
+				WaitForEvent:        true,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -234,18 +237,19 @@ func CommitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 	}
 
 	sess, err := n.PeerAdminSession(peer, commands.ChaincodeCommitLifecycle{
-		ChannelID:         channel,
-		Orderer:           n.OrdererAddress(orderer, ListenPort),
-		Name:              chaincode.Name,
-		Version:           chaincode.Version,
-		Sequence:          chaincode.Sequence,
-		EndorsementPlugin: chaincode.EndorsementPlugin,
-		ValidationPlugin:  chaincode.ValidationPlugin,
-		Policy:            chaincode.Policy,
-		InitRequired:      chaincode.InitRequired,
-		CollectionsConfig: chaincode.CollectionsConfig,
-		PeerAddresses:     peerAddresses,
-		WaitForEvent:      true,
+		ChannelID:           channel,
+		Orderer:             n.OrdererAddress(orderer, ListenPort),
+		Name:                chaincode.Name,
+		Version:             chaincode.Version,
+		Sequence:            chaincode.Sequence,
+		EndorsementPlugin:   chaincode.EndorsementPlugin,
+		ValidationPlugin:    chaincode.ValidationPlugin,
+		SignaturePolicy:     chaincode.SignaturePolicy,
+		ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+		InitRequired:        chaincode.InitRequired,
+		CollectionsConfig:   chaincode.CollectionsConfig,
+		PeerAddresses:       peerAddresses,
+		WaitForEvent:        true,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))

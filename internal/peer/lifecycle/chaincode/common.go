@@ -8,10 +8,15 @@ package chaincode
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/internal/peer/chaincode"
 	ccapi "github.com/hyperledger/fabric/internal/peer/chaincode/api"
+	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -58,4 +63,53 @@ func signProposal(proposal *pb.Proposal, signer Signer) (*pb.SignedProposal, err
 		ProposalBytes: proposalBytes,
 		Signature:     signature,
 	}, nil
+}
+
+func createPolicyBytes(signaturePolicy, channelConfigPolicy string) ([]byte, error) {
+	if signaturePolicy == "" && channelConfigPolicy == "" {
+		// no policy, no problem
+		return nil, nil
+	}
+
+	if signaturePolicy != "" && channelConfigPolicy != "" {
+		// mo policies, mo problems
+		return nil, errors.New("cannot specify both \"--signature-policy\" and \"--channel-config-policy\"")
+	}
+
+	var applicationPolicy *pb.ApplicationPolicy
+	if signaturePolicy != "" {
+		signaturePolicyEnvelope, err := cauthdsl.FromString(signaturePolicy)
+		if err != nil {
+			return nil, errors.Errorf("invalid signature policy: %s", signaturePolicy)
+		}
+
+		applicationPolicy = &pb.ApplicationPolicy{
+			Type: &pb.ApplicationPolicy_SignaturePolicy{
+				SignaturePolicy: signaturePolicyEnvelope,
+			},
+		}
+	}
+
+	if channelConfigPolicy != "" {
+		applicationPolicy = &pb.ApplicationPolicy{
+			Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+				ChannelConfigPolicyReference: channelConfigPolicy,
+			},
+		}
+	}
+
+	policyBytes := protoutil.MarshalOrPanic(applicationPolicy)
+	return policyBytes, nil
+}
+
+func createCollectionConfigPackage(collectionsConfigFile string) (*cb.CollectionConfigPackage, error) {
+	var ccp *cb.CollectionConfigPackage
+	if collectionsConfigFile != "" {
+		var err error
+		ccp, _, err = chaincode.GetCollectionConfigFromFile(collectionsConfigFile)
+		if err != nil {
+			return nil, errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
+		}
+	}
+	return ccp, nil
 }
