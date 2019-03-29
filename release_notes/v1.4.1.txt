@@ -1,8 +1,8 @@
-v1.4.1 Release Notes - April XX, 2019
---------------------------------------
+v1.4.1-rc1 Release Notes - March 29, 2019
+-----------------------------------------
 
 What's New in Hyperledger Fabric v1.4.1
--------------------------------------
+---------------------------------------
 
 The following features are included in this release:
 
@@ -10,6 +10,14 @@ FAB-6135 - Raft Consensus
 The ordering service now provides an option to use the Raft Consensus
 algorithm.
 See https://raft.github.io/ for details on the Raft algorithm.
+
+Additional operational metrics and health checks
+FAB-13088 Endorser metrics
+FAB-14077 Orderer communication metrics
+FAB-11937 Raft metrics
+FAB-13237 Metrics for log records
+FAB-13341 Kafka health check
+FAB-12908 CouchDB health check
 
 Changes, Known Issues, and Workarounds
 --------------------------------------
@@ -38,10 +46,14 @@ Resolved Vulnerabilities
 ------------------------
 None.
 
-Other improvements and fixes
-----------------------------
+Other noteworthy improvements and fixes
+---------------------------------------
+FAB-14420 - Allow statically configured CAs for TLS communication with orderers
+FAB-13471 - Fix for multiple chaincode upgrades in a single block
+FAB-14687 - Fix memory leak in gossip message store
+
 Updated to Go version 1.11.5
-Updated baseimage version to 0.4.14
+Updated baseimage version to 0.4.15
 
 For the full list of improvements and fixes, refer to the release change log:
-https://github.com/hyperledger/fabric/blob/release-1.4/CHANGELOG.md#v141
+https://github.com/hyperledger/fabric/blob/release-1.4/CHANGELOG.md#v141-rc1

@@ -156,7 +156,7 @@ The release notes provide more details for users moving to the new release, alon
 with a link to the full release change log.
 
 * `Fabric v1.4.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.0>`_.
-* `Fabric v1.4.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.1>`_.
+* `Fabric v1.4.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.1-rc1>`_.
 * `Fabric CA release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.0>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
