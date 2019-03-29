@@ -20,7 +20,7 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
@@ -211,6 +211,11 @@ var _ = Describe("EndToEnd", func() {
 			blockFile1 := filepath.Join(testDir, "newest_orderer1_block.pb")
 			blockFile2 := filepath.Join(testDir, "newest_orderer2_block.pb")
 			blockFile3 := filepath.Join(testDir, "newest_orderer3_block.pb")
+
+			By("Ordering service system channel is ready")
+			assertBlockReception(map[string]int{
+				"systemchannel": 0,
+			}, []*nwo.Orderer{orderer1, orderer2, orderer3}, peer, network)
 
 			fetchLatestBlock := func(targetOrderer *nwo.Orderer, blockFile string) {
 				c := commands.ChannelFetch{
