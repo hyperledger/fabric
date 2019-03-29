@@ -294,7 +294,7 @@ Fabric currently offers two CFT ordering service implementations. The first is
 based on the [`etcd` library](https://coreos.com/etcd/) of the [Raft protocol](https://raft.github.io/raft.pdf).
 The other is [Kafka](https://kafka.apache.org/) (which uses [Zookeeper](https://zookeeper.apache.org/)
 internally). For information about currently available ordering services, check
-out our [conceptual documentation about ordering](../orderer/ordering_service.html).
+out our [conceptual documentation about ordering](./orderer/ordering_service.html).
 
 Note also that these are not mutually exclusive. A Fabric network can have
 multiple ordering services supporting different applications or application
