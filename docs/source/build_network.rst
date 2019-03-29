@@ -1131,7 +1131,7 @@ capabilities you will need to use a chaincode that has data modeled as JSON,
 ``fabric/examples/chaincode/go`` directory.
 
 We will follow the same process to create and join the channel as outlined in the
-:ref:`createandjoin` section above.  Once you have joined your peer(s) to the
+:ref:`peerenvvars` section above.  Once you have joined your peer(s) to the
 channel, use the following steps to interact with the **marbles02** chaincode:
 
 -  Install and instantiate the chaincode on ``peer0.org1.example.com``:

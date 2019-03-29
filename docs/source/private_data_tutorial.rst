@@ -299,7 +299,7 @@ Install and instantiate chaincode with a collection
 Client applications interact with the blockchain ledger through chaincode. As
 such we need to install and instantiate the chaincode on every peer that will
 execute and endorse our transactions. Chaincode is installed onto a peer and
-then instantiated onto the channel using :doc:`peer-commands`.
+then instantiated onto the channel using :doc:`commands/peercommand`.
 
 Install chaincode on all peers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
