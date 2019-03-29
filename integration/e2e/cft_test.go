@@ -379,11 +379,10 @@ func RunQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel stri
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
-	buf := sess.Out.Contents()
-	buf = buf[:len(buf)-1] // remove last /n
-
-	result, err := strconv.ParseInt(string(buf), 10, 32)
+	var result int
+	i, err := fmt.Sscanf(string(sess.Out.Contents()), "%d", &result)
 	Expect(err).NotTo(HaveOccurred())
+	Expect(i).To(Equal(1))
 	return int(result)
 }
 
