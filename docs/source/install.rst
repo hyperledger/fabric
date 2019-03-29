@@ -49,7 +49,7 @@ Fabric Samples and binaries, go ahead and execute the following command:
 .. code:: bash
 
   curl -sSL http://bit.ly/2ysbOFE | bash -s -- <fabric> <fabric-ca> <thirdparty>
-  curl -sSL http://bit.ly/2ysbOFE | bash -s -- 1.4.0 1.4.0 0.4.14
+  curl -sSL http://bit.ly/2ysbOFE | bash -s -- 1.4.0 1.4.0 0.4.15
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle
