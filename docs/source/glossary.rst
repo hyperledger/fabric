@@ -111,7 +111,6 @@ See Smart-Contract_.
 
 .. _Channel:
 
-
 Channel
 -------
 
@@ -175,7 +174,7 @@ A broader term overarching the entire transactional flow, which serves to genera
 an agreement on the order and to confirm the correctness of the set of transactions
 constituting a block.
 
-.. _Consortium:
+.. _Consenter-Set:
 
 Consenter set
 -------------
@@ -185,7 +184,7 @@ in the consensus mechanism on a channel. If other ordering nodes exist on the
 system channel, but are not a part of a channel, they are not part of that
 channel's consenter set.
 
-.. _Consenter-Set:
+.. _Consortium:
 
 Consortium
 ----------
@@ -197,14 +196,27 @@ networks have a single consortium. At channel creation time, all organizations
 added to the channel must be part of a consortium. However, an organization
 that is not defined in a consortium may be added to an existing channel.
 
-.. _Consortium:
+.. _Chaincode-definition:
+
+Chaincode definition
+--------------------
+
+A chaincode definition is used by organizations to agree on the parameters of a
+chaincode before it can be used on a channel. Each channel member that wants to
+use the chaincode to endorse transactions or query the ledger needs to approve
+a chaincode definition for their organization. Once enough channel members have
+approved a chaincode definition to meet the Lifecycle Endorsement policy (which
+is set to a majority of organizations in the channel by default), the chaincode
+definition can be committed to the channel. After the definition is committed,
+the first invoke of the chaincode (or, if requested, the execution of the Init
+function) will start the chaincode on the channel.
+
+.. _Current-State:
 
 Current State
 -------------
 
 See World-State_.
-
-.. _Current-State:
 
 .. _Dynamic-Membership:
 
@@ -241,7 +253,16 @@ peers that are assigned to a specific chaincode application. Policies can be
 curated based on the application and the desired level of resilience against
 misbehavior (deliberate or not) by the endorsing peers. A transaction that is submitted
 must satisfy the endorsement policy before being marked as valid by committing peers.
-A distinct endorsement policy for install and instantiate transactions is also required.
+
+.. _FabToken:
+
+FabToken
+--------
+
+FabToken is an Unspent Transaction Output (UTXO) based token management system
+that allows users to issue, transfer, and redeem tokens on channels. FabToken
+uses the membership services of Fabric to authenticate the identity of token
+owners and manage their public and private keys.
 
 .. _Follower:
 
@@ -283,12 +304,15 @@ issues PKI-based certificates to network member organizations and their users.
 The CA issues one root certificate (rootCert) to each member and one enrollment
 certificate (ECert) to each authorized user.
 
-.. _Initialize:
+.. _Init:
 
-Initialize
-----------
+Init
+----
 
-A method to initialize a chaincode application.
+A method to initialize a chaincode application. All chaincodes need to have an
+an Init function. By default, this function is never executed. However you can
+use the chaincode definition to request the execution of the Init function in
+order to initialize the chaincode.
 
 Install
 -------
@@ -298,9 +322,12 @@ The process of placing a chaincode on a peer's file system.
 Instantiate
 -----------
 
-The process of starting and initializing a chaincode application on a specific channel.
-After instantiation, peers that have the chaincode installed can accept chaincode
-invocations.
+The process of starting and initializing a chaincode application on a specific
+channel. After instantiation, peers that have the chaincode installed can accept
+chaincode invocations. This method was used in the previous version of the chaincode
+lifecycle. For the current procedure used to start a chaincode on a channel in
+the new Fabric chaincode lifecycle introduced as an Alpha feature in Fabric v2.0,
+see Chaincode-definition_.
 
 .. _Invoke:
 
@@ -523,7 +550,14 @@ Proposal
 --------
 
 A request for endorsement that is aimed at specific peers on a channel. Each
-proposal is either an instantiate or an invoke (read/write) request.
+proposal is either an Init or an invoke (read/write) request.
+
+.. _Prover-peer:
+
+Prover peer
+-----------
+
+A trusted peer used by the FabToken client to assemble a token transaction.
 
 .. _Query:
 
@@ -590,7 +624,7 @@ A smart contract is code -- invoked by a client application external to the
 blockchain network -- that manages access and modifications to a set of
 key-value pairs in the :ref:`World-State`. In Hyperledger Fabric, smart
 contracts are referred to as chaincode. Smart contract chaincode is installed
-onto peer nodes and instantiated to one or more channels.
+onto peer nodes and then defined and used on one or more channels.
 
 .. _State-DB:
 
@@ -630,11 +664,13 @@ Transaction
 
    A transaction, 'T'
 
-Invoke or instantiate results that are submitted for ordering, validation, and commit.
-Invokes are requests to read/write data from the ledger. Instantiate is a request to
-start and initialize a chaincode on a channel. Application clients gather invoke or
-instantiate responses from endorsing peers and package the results and endorsements
-into a transaction that is submitted for ordering, validation, and commit.
+Transactions are created when a chaincode or FabToken client is used to read or
+write to data from the ledger. If you are invoking a chaincode, application
+clients gather the responses from endorsing peers and then package the results
+and endorsements into a transaction that is submitted for ordering, validation,
+and commit. If using FabToken to create a token transaction, the FabToken client
+must use a prover peer to create a transaction that is submitted to the
+ordering service and then validated by committing peers.
 
 .. _World-State:
 
