@@ -88,7 +88,7 @@ func TestPackageCC(t *testing.T) {
 	assert := assert.New(t)
 
 	t.Run("success", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 
 		p := newPackagerForTest(t, nil, nil, false)
 		args := []string{"output"}
@@ -101,7 +101,7 @@ func TestPackageCC(t *testing.T) {
 	})
 
 	t.Run("input validation failure", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 
 		p := newPackagerForTest(t, nil, nil, false)
 		args := []string{"output"}
@@ -114,7 +114,7 @@ func TestPackageCC(t *testing.T) {
 	})
 
 	t.Run("getting the chaincode bytes fails", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 
 		mockPlatformRegistry := &mock.PlatformRegistry{}
 		mockPlatformRegistry.GetDeploymentPayloadReturns(nil, errors.New("seitan"))
@@ -145,12 +145,12 @@ func TestPackageCC(t *testing.T) {
 }
 
 func TestPackagerValidateInput(t *testing.T) {
-	defer resetFlags()
+	defer ResetFlags()
 	assert := assert.New(t)
 	p := newPackagerForTest(t, nil, nil, false)
 
 	t.Run("success - no unsupported flags set", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 		chaincodePath = "testPath"
 		chaincodeLang = "golang"
 		packageLabel = "label"
@@ -161,7 +161,7 @@ func TestPackagerValidateInput(t *testing.T) {
 	})
 
 	t.Run("path not set", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 		chaincodePath = ""
 		chaincodeLang = "golang"
 		p.setInput("outputFile")
@@ -172,7 +172,7 @@ func TestPackagerValidateInput(t *testing.T) {
 	})
 
 	t.Run("language not set", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 		chaincodeLang = ""
 		chaincodePath = "testPath"
 		p.setInput("outputFile")
@@ -185,11 +185,11 @@ func TestPackagerValidateInput(t *testing.T) {
 }
 
 func TestPackageCmd(t *testing.T) {
-	defer resetFlags()
+	defer ResetFlags()
 	assert := assert.New(t)
 
 	t.Run("success", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 		chaincodePath = "testPath"
 		chaincodeLang = "golang"
 		packageLabel = "label"
@@ -203,7 +203,7 @@ func TestPackageCmd(t *testing.T) {
 	})
 
 	t.Run("invalid number of args", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 		outputFile := "testFile"
 
 		p := newPackagerForTest(t, nil, nil, false)

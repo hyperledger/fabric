@@ -229,7 +229,7 @@ func TestApproverForMyOrg(t *testing.T) {
 
 func TestApproveForMyOrgCmd(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 		a := newApproverForMyOrgForTest(t, nil, nil)
 		cmd := approveForMyOrgCmd(nil, a)
 		a.Command = cmd
@@ -248,7 +248,7 @@ func TestApproveForMyOrgCmd(t *testing.T) {
 	})
 
 	t.Run("failure - invalid signature policy", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 		a := newApproverForMyOrgForTest(t, nil, nil)
 		cmd := approveForMyOrgCmd(nil, a)
 		a.Command = cmd
@@ -267,7 +267,7 @@ func TestApproveForMyOrgCmd(t *testing.T) {
 	})
 
 	t.Run("failure - invalid collection config file", func(t *testing.T) {
-		resetFlags()
+		ResetFlags()
 		a := newApproverForMyOrgForTest(t, nil, nil)
 		cmd := approveForMyOrgCmd(nil, a)
 		a.Command = cmd
@@ -287,7 +287,7 @@ func TestApproveForMyOrgCmd(t *testing.T) {
 }
 
 func TestValidateApproveForMyOrgInput(t *testing.T) {
-	defer resetFlags()
+	defer ResetFlags()
 	assert := assert.New(t)
 
 	t.Run("success - all required parameters provided", func(t *testing.T) {
