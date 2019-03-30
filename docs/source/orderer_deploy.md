@@ -3,27 +3,18 @@
 In this topic, we'll describe the process for bootstrapping an ordering node.
 If you want more information about the different ordering service implementations
 and their relative strengths and weaknesses, check out our
-[conceptual documentation about ordering](../orderer/ordering_service.html).
+[conceptual documentation about ordering](./orderer/ordering_service.html).
 
 Broadly, this topic will involve a few interrelated steps:
 
-1. Compiling the binary
-2. Creating the organization your ordering node belongs to (if you have not already
-  done so)
-3. Configuring your node (using `orderer.yaml`)
-4. Creating the genesis block for the orderer system channel
-5. Bootstrapping the orderer
+1. Creating the organization your ordering node belongs to (if you have not already
+   done so)
+2. Configuring your node (using `orderer.yaml`)
+3. Creating the genesis block for the orderer system channel
+4. Bootstrapping the orderer
 
-## Prerequisites
-
-This topic assumes you have already cloned Hyperledger Fabric. If you have not,
-check out our documentation on [Prerequisites](prereqs.html). Then, navigate to
-the [Hyperledger Fabric github repo](https://github.com/hyperledger/fabric) and
-clone it. After you have cloned Fabric, make sure to check out the
-[Ordering Service README](https://github.com/hyperledger/fabric/tree/master/orderer/#experimenting-with-the-orderer-service).
-
-After you have completed these steps, your orderer is ready to be configured and
-bootstrapped.
+Note: this topic assumes you have already pulled the Hyperledger Fabric orderer
+images from docker hub.
 
 ## Create an organization definition
 
