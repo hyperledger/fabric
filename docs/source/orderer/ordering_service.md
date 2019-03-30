@@ -201,6 +201,9 @@ configuration updates the same way, there are nevertheless several different
 implementations for achieving consensus on the strict ordering of transactions
 between ordering service nodes.
 
+For information about how to stand up an ordering node (regardless of the
+implementation the node will be used in), check out [our documentation on standing up an ordering node](../orderer_deploy.html).
+
 * **Solo**
 
   The Solo implementation of the ordering service is aptly named: it features
@@ -248,7 +251,7 @@ cluster is a better option.
 ## Raft
 
 For information on how to configure a Raft ordering service, check out our
-[documentation on configuring a Raft ordering service](../raft_configuration.md).
+[documentation on configuring a Raft ordering service](../raft_configuration.html).
 
 The go-to ordering service choice for production networks, the Fabric
 implementation of the established Raft protocol uses a "leader and follower"
