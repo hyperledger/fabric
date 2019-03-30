@@ -27,13 +27,13 @@ Raft ordering service
 
 Introduced in v1.4.1, `Raft <https://raft.github.io/raft.pdf>`_ is a crash fault
 tolerant (CFT) ordering service based on an implementation of Raft protocol in
-`etcd` <https://coreos.com/etcd/>`_. Raft follows a "leader and follower" model,
+`etcd <https://coreos.com/etcd/>`_. Raft follows a "leader and follower" model,
 where a leader node is elected (per channel) and its decisions are replicated to
 the followers. Raft ordering services should be easier to set up and manage than
 Kafka-based ordering services, and their design allows organizations spread out
 across the world to contribute nodes to a decentralized ordering service.
 
-* :doc:`ordering_service`:
+* :doc:`orderer/ordering_service`:
   Describes the role of an ordering service in Fabric and an overview of the
   three ordering service implementations currently available: Solo, Kafka, and
   Raft.
@@ -42,14 +42,13 @@ across the world to contribute nodes to a decentralized ordering service.
   Shows the configuration parameters and considerations when deploying a Raft
   ordering service.
 
-* :doc:`raft_configuration_tutorial`:
-  Shows the process for configuring and deploying a Raft ordering service and
-  for selecting a subset of available nodes to create the ordering service for a
-  channel. Uses the network from the :doc:`build_network` tutorial.
-
 * :doc:`orderer_deploy`:
   Describes the process for deploying an ordering node, independent of what the
   ordering service implementation will be.
+
+* :doc:`build_network`:
+  The ability to stand up a sample network using a Raft ordering service has been
+  added to this tutorial.
 
 Serviceability and operations improvements
 ------------------------------------------
