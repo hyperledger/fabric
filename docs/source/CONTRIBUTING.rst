@@ -397,7 +397,7 @@ Related Topics
    Gerrit/reviewing
    Gerrit/best-practices
    testing
-   Style-guides/go-style
+   style-guides/go-style
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
