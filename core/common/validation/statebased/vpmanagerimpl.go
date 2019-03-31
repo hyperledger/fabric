@@ -10,10 +10,13 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -233,9 +236,40 @@ func (c *validationContext) waitForValidationResults(kid *ledgerKeyID, blockNum 
 /**********************************************************************************************************/
 /**********************************************************************************************************/
 
+type Translator interface {
+	Translate([]byte) ([]byte, error)
+}
+
+type NoopTranslator struct{}
+
+func (n *NoopTranslator) Translate(b []byte) ([]byte, error) {
+	return b, nil
+}
+
+type ToApplicationPolicyTranslator struct{}
+
+func (n *ToApplicationPolicyTranslator) Translate(b []byte) ([]byte, error) {
+	if len(b) == 0 {
+		return b, nil
+	}
+
+	spe := &common.SignaturePolicyEnvelope{}
+	err := proto.Unmarshal(b, spe)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not unmarshal signature policy envelope")
+	}
+
+	return protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
+		Type: &pb.ApplicationPolicy_SignaturePolicy{
+			SignaturePolicy: spe,
+		},
+	}), nil
+}
+
 type KeyLevelValidationParameterManagerImpl struct {
 	StateFetcher  validation.StateFetcher
 	validationCtx validationContext
+	Translator    Translator
 }
 
 // ExtractValidationParameterDependency implements the method of
@@ -326,7 +360,16 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 		}
 	}
 
-	return mdMap[pb.MetaDataKeys_VALIDATION_PARAMETER.String()], nil
+	policy, err := m.Translator.Translate(mdMap[pb.MetaDataKeys_VALIDATION_PARAMETER.String()])
+	if err != nil {
+		if coll == "" {
+			return nil, errors.WithMessagef(err, "could not translate policy for %s:%s", cc, key)
+		} else {
+			return nil, errors.WithMessagef(err, "could not translate policy for %s:%s:%x", cc, coll, []byte(key))
+		}
+	}
+
+	return policy, nil
 }
 
 // SetTxValidationCode implements the method of the same name of

@@ -90,7 +90,7 @@ func TestKeylevelValidation(t *testing.T) {
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
-	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+	pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
 	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
@@ -131,7 +131,7 @@ func TestKeylevelValidationPvtData(t *testing.T) {
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
-	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+	pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
 	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
@@ -169,7 +169,7 @@ func TestKeylevelValidationMetaUpdate(t *testing.T) {
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
-	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+	pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
 	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
@@ -207,7 +207,7 @@ func TestKeylevelValidationPvtMetaUpdate(t *testing.T) {
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
-	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+	pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
 	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
@@ -245,7 +245,7 @@ func TestKeylevelValidationPolicyRetrievalFailure(t *testing.T) {
 
 	mr := &mockState{GetStateMetadataErr: fmt.Errorf("metadata retrieval failure")}
 	ms := &mockStateFetcher{FetchStateRv: mr}
-	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+	pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 	validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 	rwsb := rwsetBytes(t, "cc")
@@ -276,7 +276,7 @@ func TestKeylevelValidationLedgerFailures(t *testing.T) {
 	t.Run("CollConfigNotDefinedError", func(t *testing.T) {
 		mr := &mockState{GetStateMetadataErr: &ledger.CollConfigNotDefinedError{Ns: "mycc"}}
 		ms := &mockStateFetcher{FetchStateRv: mr}
-		pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+		pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 		validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
@@ -286,7 +286,7 @@ func TestKeylevelValidationLedgerFailures(t *testing.T) {
 	t.Run("InvalidCollNameError", func(t *testing.T) {
 		mr := &mockState{GetStateMetadataErr: &ledger.InvalidCollNameError{Ns: "mycc", Coll: "mycoll"}}
 		ms := &mockStateFetcher{FetchStateRv: mr}
-		pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+		pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 		validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
@@ -296,7 +296,7 @@ func TestKeylevelValidationLedgerFailures(t *testing.T) {
 	t.Run("I/O error", func(t *testing.T) {
 		mr := &mockState{GetStateMetadataErr: fmt.Errorf("some I/O error")}
 		ms := &mockStateFetcher{FetchStateRv: mr}
-		pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+		pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 		validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
@@ -314,7 +314,7 @@ func TestCCEPValidation(t *testing.T) {
 
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{}, GetPrivateDataMetadataByHashRv: map[string][]byte{}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
-	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+	pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
 	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
@@ -354,7 +354,7 @@ func TestCCEPValidationReads(t *testing.T) {
 
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{}, GetPrivateDataMetadataByHashRv: map[string][]byte{}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
-	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+	pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
 	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
@@ -394,7 +394,7 @@ func TestOnlySBEPChecked(t *testing.T) {
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("SBEP")}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
-	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+	pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
 	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
@@ -436,7 +436,7 @@ func TestCCEPValidationPvtReads(t *testing.T) {
 
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{}, GetPrivateDataMetadataByHashRv: map[string][]byte{}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
-	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+	pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
 	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
@@ -476,7 +476,7 @@ func TestKeylevelValidationFailure(t *testing.T) {
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
-	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+	pm := &KeyLevelValidationParameterManagerImpl{Translator: &NoopTranslator{}, StateFetcher: ms}
 	validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 	rwsb := rwsetBytes(t, "cc")
