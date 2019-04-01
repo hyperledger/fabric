@@ -91,16 +91,10 @@ func ToChaincodeArgs(args ...string) [][]byte {
 }
 
 const testchainid = "testchainid"
-const testorgid = "**TEST_ORGID**"
 
 //GetTestChainID returns the CHAINID constant in use by orderer
 func GetTestChainID() string {
 	return testchainid
-}
-
-//GetTestOrgID returns the ORGID constant in use by gossip join message
-func GetTestOrgID() string {
-	return testorgid
 }
 
 //GetSysCCVersion returns the version of all system chaincodes
