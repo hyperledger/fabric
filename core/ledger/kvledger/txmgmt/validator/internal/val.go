@@ -32,10 +32,11 @@ type Block struct {
 // Transaction is used to hold the information from its proto format to a structure
 // that is more suitable/friendly for validation
 type Transaction struct {
-	IndexInBlock   int
-	ID             string
-	RWSet          *rwsetutil.TxRwSet
-	ValidationCode peer.TxValidationCode
+	IndexInBlock            int
+	ID                      string
+	RWSet                   *rwsetutil.TxRwSet
+	ValidationCode          peer.TxValidationCode
+	ContainsPostOrderWrites bool
 }
 
 // PubAndHashUpdates encapsulates public and hash updates. The intended use of this to hold the updates
@@ -86,7 +87,14 @@ func (t *Transaction) RetrieveHash(ns string, coll string) []byte {
 }
 
 // ApplyWriteSet adds (or deletes) the key/values present in the write set to the PubAndHashUpdates
-func (u *PubAndHashUpdates) ApplyWriteSet(txRWSet *rwsetutil.TxRwSet, txHeight *version.Height, db privacyenabledstate.DB) error {
+func (u *PubAndHashUpdates) ApplyWriteSet(
+	txRWSet *rwsetutil.TxRwSet,
+	txHeight *version.Height,
+	db privacyenabledstate.DB,
+	containsPostOrderWrites bool,
+) error {
+	u.PubUpdates.ContainsPostOrderWrites =
+		u.PubUpdates.ContainsPostOrderWrites || containsPostOrderWrites
 	txops, err := prepareTxOps(txRWSet, txHeight, u, db)
 	logger.Debugf("txops=%#v", txops)
 	if err != nil {

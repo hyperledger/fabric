@@ -555,7 +555,7 @@ func validateQueryMetadata(metadata map[string]interface{}) error {
 
 // ApplyUpdates implements method in VersionedDB interface
 func (vdb *VersionedDB) ApplyUpdates(updates *statedb.UpdateBatch, height *version.Height) error {
-	if height != nil {
+	if height != nil && updates.ContainsPostOrderWrites {
 		// height is passed nil when commiting missing private data for previously committed blocks
 		r := &redoRecord{
 			UpdateBatch: updates,

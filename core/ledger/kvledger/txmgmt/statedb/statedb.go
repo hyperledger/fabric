@@ -137,12 +137,13 @@ func newNsUpdates() *nsUpdates {
 
 // UpdateBatch encloses the details of multiple `updates`
 type UpdateBatch struct {
-	Updates map[string]*nsUpdates
+	ContainsPostOrderWrites bool
+	Updates                 map[string]*nsUpdates
 }
 
 // NewUpdateBatch constructs an instance of a Batch
 func NewUpdateBatch() *UpdateBatch {
-	return &UpdateBatch{make(map[string]*nsUpdates)}
+	return &UpdateBatch{false, make(map[string]*nsUpdates)}
 }
 
 // Get returns the VersionedValue for the given namespace and key

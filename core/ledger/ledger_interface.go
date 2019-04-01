@@ -536,6 +536,7 @@ type HealthCheckRegistry interface {
 
 //go:generate counterfeiter -o mock/state_listener.go -fake-name StateListener . StateListener
 //go:generate counterfeiter -o mock/query_executor.go -fake-name QueryExecutor . QueryExecutor
+//go:generate counterfeiter -o mock/tx_simulator.go -fake-name TxSimulator . TxSimulator
 //go:generate counterfeiter -o mock/deployed_ccinfo_provider.go -fake-name DeployedChaincodeInfoProvider . DeployedChaincodeInfoProvider
 //go:generate counterfeiter -o mock/membership_info_provider.go -fake-name MembershipInfoProvider . MembershipInfoProvider
 //go:generate counterfeiter -o mock/health_check_registry.go -fake-name HealthCheckRegistry . HealthCheckRegistry

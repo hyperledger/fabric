@@ -64,3 +64,5 @@ type ErrPvtdataNotAvailable struct {
 func (e *ErrPvtdataNotAvailable) Error() string {
 	return e.Msg
 }
+
+//go:generate counterfeiter -o mock/tx_mgr.go -fake-name TxMgr . TxMgr
