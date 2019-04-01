@@ -20,7 +20,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"math/big"
 	"reflect"
 	"strings"
 	"time"
@@ -74,13 +73,6 @@ func GenerateBytesUUID() []byte {
 	uuid[6] = uuid[6]&^0xf0 | 0x40
 
 	return uuid
-}
-
-// GenerateIntUUID returns a UUID based on RFC 4122 returning a big.Int
-func GenerateIntUUID() *big.Int {
-	uuid := GenerateBytesUUID()
-	z := big.NewInt(0)
-	return z.SetBytes(uuid)
 }
 
 // GenerateUUID returns a UUID based on RFC 4122
