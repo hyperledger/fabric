@@ -79,11 +79,6 @@ func CreateUtcTimestamp() *timestamp.Timestamp {
 	return &(timestamp.Timestamp{Seconds: secs, Nanos: nanos})
 }
 
-// GenerateIDfromTxSHAHash generates SHA256 hash using Tx payload
-func GenerateIDfromTxSHAHash(payload []byte) string {
-	return fmt.Sprintf("%x", ComputeSHA256(payload))
-}
-
 func idBytesToStr(id []byte) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", id[0:4], id[4:6], id[6:8], id[8:10], id[10:])
 }

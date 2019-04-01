@@ -63,14 +63,6 @@ func TestTimestamp(t *testing.T) {
 	}
 }
 
-func TestGeneratIDfromTxSHAHash(t *testing.T) {
-	txid := GenerateIDfromTxSHAHash([]byte("foobar"))
-	txid2 := GenerateIDfromTxSHAHash([]byte("foobar1"))
-	if txid == txid2 {
-		t.Fatalf("Two TxIDs are equal. This should never occur")
-	}
-}
-
 func TestFindMissingElements(t *testing.T) {
 	all := []string{"a", "b", "c", "d"}
 	some := []string{"b", "c"}
