@@ -10,39 +10,37 @@ Building Your First Network
 
 The build your first network (BYFN) scenario provisions a sample Hyperledger
 Fabric network consisting of two organizations, each maintaining two peer
-nodes, and a "Solo" ordering service.
+nodes. It also will deploy a "Solo" ordering service by default, though other
+ordering service implementations are available.
 
 Install prerequisites
 ---------------------
 
 Before we begin, if you haven't already done so, you may wish to check that
-you have all the :doc:`prereqs` installed on the platform(s)
-on which you'll be developing blockchain applications and/or operating
-Hyperledger Fabric.
+you have all the :doc:`prereqs` installed on the platform(s) on which you'll be
+developing blockchain applications and/or operating Hyperledger Fabric.
 
-You will also need to :doc:`install`. You will notice
-that there are a number of samples included in the ``fabric-samples``
-repository. We will be using the ``first-network`` sample. Let's open that
-sub-directory now.
+You will also need to :doc:`install`. You will notice that there are a number of
+samples included in the ``fabric-samples`` repository. We will be using the
+``first-network`` sample. Let's open that sub-directory now.
 
 .. code:: bash
 
   cd fabric-samples/first-network
 
-.. note:: The supplied commands in this documentation
-          **MUST** be run from your ``first-network`` sub-directory
-          of the ``fabric-samples`` repository clone.  If you elect to run the
-          commands from a different location, the various provided scripts
-          will be unable to find the binaries.
+.. note:: The supplied commands in this documentation **MUST** be run from your
+          ``first-network`` sub-directory of the ``fabric-samples`` repository
+          clone.  If you elect to run the commands from a different location,
+          the various provided scripts will be unable to find the binaries.
 
 Want to run it now?
 -------------------
 
-We provide a fully annotated script - ``byfn.sh`` - that leverages these Docker
-images to quickly bootstrap a Hyperledger Fabric network comprised of four peers
-representing two different organizations, and an orderer node. It will also
-launch a container to run a scripted execution that will join peers to a
-channel, deploy and instantiate chaincode and drive execution of transactions
+We provide a fully annotated script --- ``byfn.sh`` --- that leverages these Docker
+images to quickly bootstrap a Hyperledger Fabric network that by default is
+comprised of four peers representing two different organizations, and an orderer
+node. It will also launch a container to run a scripted execution that will join
+peers to a channel, deploy a chaincode and drive execution of transactions
 against the deployed chaincode.
 
 Here's the help text for the ``byfn.sh`` script:
@@ -99,7 +97,7 @@ prompt. Respond with a ``y`` or hit the return key to execute the described acti
 
 .. code:: bash
 
-  Generating certs and genesis block for with channel 'mychannel' and CLI timeout of '10'
+  Generating certs and genesis block for channel 'mychannel' with CLI timeout of '10' seconds and CLI delay of '3' seconds
   Continue? [Y/n] y
   proceeding ...
   /Users/xxx/dev/fabric-samples/bin/cryptogen
@@ -159,7 +157,7 @@ Next, you can bring the network up with one of the following commands:
 The above command will compile Golang chaincode images and spin up the corresponding
 containers. Go is the default chaincode language, however there is also support
 for `Node.js <https://fabric-shim.github.io/>`_ and `Java <https://fabric-chaincode-java.github.io/>`_
-chaincode.  If you'd like to run through this tutorial with node chaincode, pass
+chaincode. If you'd like to run through this tutorial with node chaincode, pass
 the following command instead:
 
 .. code:: bash
@@ -171,7 +169,6 @@ the following command instead:
 
 .. note:: For more information on the Node.js shim, please refer to its
           `documentation <https://fabric-shim.github.io/ChaincodeInterface.html>`_.
-
 
 .. note:: For more information on the Java shim, please refer to its
           `documentation <https://fabric-chaincode-java.github.io/org/hyperledger/fabric/shim/Chaincode.html>`_.
@@ -207,7 +204,7 @@ Respond with a ``y`` or hit the return key:
 
 .. code:: bash
 
-  Starting with channel 'mychannel' and CLI timeout of '10'
+  Starting for channel 'mychannel' with CLI timeout of '10' seconds and CLI delay of '3' seconds
   Continue? [Y/n]
   proceeding ...
   Creating network "net_byfn" with the default driver
@@ -311,7 +308,7 @@ take place as our entities communicate and transact.
 How does it work?
 ^^^^^^^^^^^^^^^^^
 
-Cryptogen consumes a file - ``crypto-config.yaml`` - that contains the network
+Cryptogen consumes a file --- ``crypto-config.yaml`` --- that contains the network
 topology and allows us to generate a set of certificates and keys for both the
 Organizations and the components that belong to those Organizations.  Each
 Organization is provisioned a unique root certificate (``ca-cert``) that binds
@@ -322,10 +319,10 @@ Transactions and communications within Hyperledger Fabric are signed by an
 entity's private key (``keystore``), and then verified by means of a public
 key (``signcerts``).
 
-You will notice a ``count`` variable within this file.  We use this to specify
+You will notice a ``count`` variable within this file. We use this to specify
 the number of peers per Organization; in our case there are two peers per Org.
 We won't delve into the minutiae of `x.509 certificates and public key
-infrastructure <https://en.wikipedia.org/wiki/Public_key_infrastructure>`__
+infrastructure <https://en.wikipedia.org/wiki/Public_key_infrastructure>`_
 right now. If you're interested, you can peruse these topics on your own time.
 
 After we run the ``cryptogen`` tool, the generated certificates and keys will be
@@ -531,30 +528,9 @@ First let's start our network:
 If you want to see the realtime logs for your network, then do not supply the ``-d`` flag.
 If you let the logs stream, then you will need to open a second terminal to execute the CLI calls.
 
-.. _peerenvvars:
-
-Environment variables
-^^^^^^^^^^^^^^^^^^^^^
-
-For the following CLI commands against ``peer0.org1.example.com`` to work, we need
-to preface our commands with the four environment variables given below.  These
-variables for ``peer0.org1.example.com`` are baked into the CLI container,
-therefore we can operate without passing them.  **HOWEVER**, if you want to send
-calls to other peers or the orderer, then you can provide these
-values accordingly by editing the  ``docker-compose-base.yaml`` before starting the
-container. Modify the following four environment variables to use a different
-peer and org.
-
-.. code:: bash
-
-    # Environment variables for PEER0
-
-    CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    CORE_PEER_ADDRESS=peer0.org1.example.com:9051
-    CORE_PEER_LOCALMSPID="Org1MSP"
-    CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-
 .. _createandjoin:
+
+.. _peerenvvars:
 
 Create & Join Channel
 ^^^^^^^^^^^^^^^^^^^^^
@@ -578,18 +554,23 @@ If successful you should see the following:
 
         root@0d78bb69300d:/opt/gopath/src/github.com/hyperledger/fabric/peer#
 
-If you do not want to run the CLI commands against the default peer
-``peer0.org1.example.com``, replace the values of ``peer0`` or ``org1`` in the
-four environment variables and run the commands:
+For the following CLI commands to work, we need to preface our commands with the
+four environment variables given below.  These variables for
+``peer0.org1.example.com`` are baked into the CLI container, therefore we can
+operate without passing them. **HOWEVER**, if you want to send calls to other peers
+or the orderer, override the environment variables as seen in the example below
+when you make any CLI calls:
 
 .. code:: bash
 
     # Environment variables for PEER0
 
-    export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    export CORE_PEER_ADDRESS=peer0.org1.example.com:9051
-    export CORE_PEER_LOCALMSPID="Org1MSP"
-    export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+    CORE_PEER_LOCALMSPID="Org1MSP"
+    CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+
+.. _createandjoin:
 
 Next, we are going to pass in the generated channel configuration transaction
 artifact that we created in the :ref:`createchanneltx` section (we called
@@ -602,7 +583,6 @@ we will set the ``CHANNEL_NAME`` environment variable within our CLI container s
 we don't have to explicitly pass this argument. Channel names must be all lower
 case, less than 250 characters long and match the regular expression
 ``[a-z][a-z0-9.-]*``.
-
 
 .. code:: bash
 
@@ -652,6 +632,7 @@ command will be the following:
 .. code:: bash
 
   CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp CORE_PEER_ADDRESS=peer0.org2.example.com:9051 CORE_PEER_LOCALMSPID="Org2MSP" CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt peer channel join -b mychannel.block
+
 
 .. note:: Prior to v1.4.1 all peers within the docker network used port ``7051``.
           If using a version of fabric-samples prior to v1.4.1, modify all
