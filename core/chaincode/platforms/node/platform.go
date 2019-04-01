@@ -28,8 +28,7 @@ import (
 var logger = flogging.MustGetLogger("chaincode.platform.node")
 
 // Platform for chaincodes written in Go
-type Platform struct {
-}
+type Platform struct{}
 
 // Returns whether the given file or directory exists or not
 func pathExists(path string) (bool, error) {
@@ -44,12 +43,12 @@ func pathExists(path string) (bool, error) {
 }
 
 // Name returns the name of this platform
-func (nodePlatform *Platform) Name() string {
+func (p *Platform) Name() string {
 	return pb.ChaincodeSpec_NODE.String()
 }
 
 // ValidateSpec validates Go chaincodes
-func (nodePlatform *Platform) ValidatePath(rawPath string) error {
+func (p *Platform) ValidatePath(rawPath string) error {
 	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
@@ -73,7 +72,7 @@ func (nodePlatform *Platform) ValidatePath(rawPath string) error {
 	return nil
 }
 
-func (nodePlatform *Platform) ValidateCodePackage(code []byte) error {
+func (p *Platform) ValidateCodePackage(code []byte) error {
 	// FAB-2122: Scan the provided tarball to ensure it only contains source-code under
 	// the src folder.
 	//
@@ -127,7 +126,7 @@ func (nodePlatform *Platform) ValidateCodePackage(code []byte) error {
 }
 
 // Generates a deployment payload by putting source files in src/$file entries in .tar.gz format
-func (nodePlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
+func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
 	var err error
 
@@ -167,7 +166,7 @@ func (nodePlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) 
 	return payload.Bytes(), nil
 }
 
-func (nodePlatform *Platform) GenerateDockerfile() (string, error) {
+func (p *Platform) GenerateDockerfile() (string, error) {
 
 	var buf []string
 
@@ -179,7 +178,7 @@ func (nodePlatform *Platform) GenerateDockerfile() (string, error) {
 	return dockerFileContents, nil
 }
 
-func (nodePlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
+func (p *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
 
 	codepackage := bytes.NewReader(code)
 	binpackage := bytes.NewBuffer(nil)
@@ -197,7 +196,7 @@ func (nodePlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *
 }
 
 // GetMetadataProvider fetches metadata provider given deployment spec
-func (nodePlatform *Platform) GetMetadataAsTarEntries(code []byte) ([]byte, error) {
+func (p *Platform) GetMetadataAsTarEntries(code []byte) ([]byte, error) {
 	metadataProvider := &ccmetadata.TargzMetadataProvider{Code: code}
 	return metadataProvider.GetMetadataAsTarEntries()
 }

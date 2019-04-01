@@ -28,8 +28,7 @@ import (
 )
 
 // Platform for chaincodes written in Go
-type Platform struct {
-}
+type Platform struct{}
 
 // Returns whether the given file or directory exists or not
 func pathExists(path string) (bool, error) {
@@ -88,12 +87,12 @@ func filter(vs []string, f func(string) bool) []string {
 }
 
 // Name returns the name of this platform
-func (goPlatform *Platform) Name() string {
+func (p *Platform) Name() string {
 	return pb.ChaincodeSpec_GOLANG.String()
 }
 
 // ValidateSpec validates Go chaincodes
-func (goPlatform *Platform) ValidatePath(rawPath string) error {
+func (p *Platform) ValidatePath(rawPath string) error {
 	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
@@ -119,7 +118,7 @@ func (goPlatform *Platform) ValidatePath(rawPath string) error {
 	return nil
 }
 
-func (goPlatform *Platform) ValidateCodePackage(code []byte) error {
+func (p *Platform) ValidateCodePackage(code []byte) error {
 	// FAB-2122: Scan the provided tarball to ensure it only contains source-code under
 	// /src/$packagename.  We do not want to allow something like ./pkg/shady.a to be installed under
 	// $GOPATH within the container.  Note, we do not look deeper than the path at this time
@@ -238,7 +237,7 @@ func vendorDependencies(pkg string, files Sources) {
 }
 
 // Generates a deployment payload for GOLANG as a series of src/$pkg entries in .tar.gz format
-func (goPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
+func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
 	var err error
 
@@ -469,7 +468,7 @@ func (goPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 	return payload.Bytes(), nil
 }
 
-func (goPlatform *Platform) GenerateDockerfile() (string, error) {
+func (p *Platform) GenerateDockerfile() (string, error) {
 
 	var buf []string
 
@@ -491,7 +490,7 @@ func getLDFlagsOpts() string {
 	return staticLDFlagsOpts
 }
 
-func (goPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
+func (p *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
 	pkgname, err := decodeUrl(path)
 	if err != nil {
 		return fmt.Errorf("could not decode url: %s", err)
@@ -515,7 +514,7 @@ func (goPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *ta
 }
 
 // GetMetadataProvider fetches metadata provider given deployment spec
-func (goPlatform *Platform) GetMetadataAsTarEntries(code []byte) ([]byte, error) {
+func (p *Platform) GetMetadataAsTarEntries(code []byte) ([]byte, error) {
 	metadataProvider := ccmetadata.TargzMetadataProvider{Code: code}
 	return metadataProvider.GetMetadataAsTarEntries()
 }

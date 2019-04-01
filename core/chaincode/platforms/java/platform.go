@@ -30,12 +30,12 @@ var logger = flogging.MustGetLogger("chaincode.platform.java")
 type Platform struct{}
 
 // Name returns the name of this platform
-func (javaPlatform *Platform) Name() string {
+func (p *Platform) Name() string {
 	return pb.ChaincodeSpec_JAVA.String()
 }
 
 //ValidatePath validates the java chaincode paths
-func (javaPlatform *Platform) ValidatePath(rawPath string) error {
+func (p *Platform) ValidatePath(rawPath string) error {
 	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
 		logger.Errorf("invalid chaincode path %s %v", rawPath, err)
@@ -45,7 +45,7 @@ func (javaPlatform *Platform) ValidatePath(rawPath string) error {
 	return nil
 }
 
-func (javaPlatform *Platform) ValidateCodePackage(code []byte) error {
+func (p *Platform) ValidateCodePackage(code []byte) error {
 	// File to be valid should match first RegExp and not match second one.
 	filesToMatch := regexp.MustCompile(`^(/)?src/((src|META-INF)/.*|(build\.gradle|settings\.gradle|pom\.xml))`)
 	filesToIgnore := regexp.MustCompile(`.*\.class$`)
@@ -89,7 +89,7 @@ func (javaPlatform *Platform) ValidateCodePackage(code []byte) error {
 }
 
 // WritePackage writes the java chaincode package
-func (javaPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
+func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 	logger.Debugf("Packaging java project from path %s", path)
 
 	if path == "" {
@@ -120,7 +120,7 @@ func (javaPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) 
 	return buf.Bytes(), nil
 }
 
-func (javaPlatform *Platform) GenerateDockerfile() (string, error) {
+func (p *Platform) GenerateDockerfile() (string, error) {
 	var buf []string
 
 	buf = append(buf, "FROM "+cutil.GetDockerfileFromConfig("chaincode.java.runtime"))
@@ -131,7 +131,7 @@ func (javaPlatform *Platform) GenerateDockerfile() (string, error) {
 	return dockerFileContents, nil
 }
 
-func (javaPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
+func (p *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
 	codepackage := bytes.NewReader(code)
 	binpackage := bytes.NewBuffer(nil)
 	buildOptions := util.DockerBuildOptions{
@@ -152,7 +152,7 @@ func (javaPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *
 }
 
 // GetMetadataProvider fetches metadata provider given deployment spec
-func (javaPlatform *Platform) GetMetadataAsTarEntries(code []byte) ([]byte, error) {
+func (p *Platform) GetMetadataAsTarEntries(code []byte) ([]byte, error) {
 	metadataProvider := &ccmetadata.TargzMetadataProvider{Code: code}
 	return metadataProvider.GetMetadataAsTarEntries()
 }
