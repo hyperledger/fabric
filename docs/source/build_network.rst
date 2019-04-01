@@ -828,16 +828,37 @@ have multiple peers.
 
     # this defines a chaincode for your org
     # make note of the --package-id flag that provides the package ID
-    # use the --init-required flag to request the ``Init`` function be invoked to initialize the chaincode
+    # use the --init-required flag to request the Init function be invoked to initialize the chaincode
     peer lifecycle chaincode approveformyorg --channelID $CHANNEL_NAME --name mycc --version 1.0 --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
 
 Once a sufficient number of channel members have approved a chaincode definition,
 one member can commit the definition to the channel. By default a majority of
-channel members need to approve a definition before it can be committed. Since
-two out of two channel members have approved the definition, we can now commit
-the definition to the channel using the following command. You can issue this
-command as either Org1 or Org2. Note that the transaction targets peers in Org1
-and Org2 to collect endorsements.
+channel members need to approve a definition before it can be committed. It is
+possible to discover the approval status for the chanincode definition across all
+organizations by issuing the following query
+
+.. code:: bash
+    # the flags used for this command are identical to those used for approveformyorg
+    # except for --package-id which is not required since it is not stored as part of
+    # the definition
+    peer lifecycle chaincode queryapprovalstatus --channelID $CHANNEL_NAME --name mycc --version 1.0 --init-required --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+The command will produce as output a JSON map showing if the organizations in the
+channel have approved the chaincode definition provided in the queryapprovalstatus
+command. In this case, given that both organizations have approved, we obtain
+
+.. code:: bash
+    {
+            "Approved": {
+                    "Org1MSP": true,
+                    "Org2MSP": true
+            }
+    }
+
+Since both channel members have approved the definition, we can now commit it to
+the channel using the following command. You can issue this command as either
+Org1 or Org2. Note that the transaction targets peers in Org1 and Org2 to
+collect endorsements.
 
 .. code:: bash
 
