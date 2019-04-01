@@ -269,6 +269,7 @@ var _ = Describe("Cache", func() {
 				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#7/EndorsementInfo"))),
 				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#7/ValidationInfo"))),
 				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#7/Collections"))),
+				string(util.ComputeSHA256([]byte("chaincode-sources/fields/chaincode-name#7/PackageID"))),
 			}))
 			for _, hash := range channelCache.Chaincodes["chaincode-name"].Hashes {
 				Expect(channelCache.InterestingHashes[hash]).To(Equal("chaincode-name"))

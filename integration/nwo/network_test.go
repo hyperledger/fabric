@@ -121,6 +121,40 @@ var _ = Describe("Network", func() {
 			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
 
 			RunQueryInvokeQuery(network, orderer, peer, 100)
+
+			By("setting a bad package ID to temporarily disable endorsements on org1")
+			savedPackageID := chaincode.PackageID
+			// note that in theory it should be sufficient to set it to an
+			// empty string, but the ApproveChaincodeForMyOrgNewLifecycle
+			// function fills the packageID field if empty
+			chaincode.PackageID = "bad"
+			nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, peer)
+
+			By("querying the chaincode and expecting the invocation to fail")
+			sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+				ChannelID: "testchannel",
+				Name:      "mycc",
+				Ctor:      `{"Args":["query","a"]}`,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+			Expect(sess.Err).To(gbytes.Say("Error: endorsement failure during query. response: status:500 " +
+				"message:\"make sure the chaincode mycc has been successfully instantiated and try " +
+				"again: chaincode definition for 'mycc' exists, but chaincode is not installed\""))
+
+			By("setting the correct package ID to restore the chaincode")
+			chaincode.PackageID = savedPackageID
+			nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, peer)
+
+			By("querying the chaincode and expecting the invocation to succeed")
+			sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+				ChannelID: "testchannel",
+				Name:      "mycc",
+				Ctor:      `{"Args":["query","a"]}`,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+			Expect(sess).To(gbytes.Say("90"))
 		})
 	})
 

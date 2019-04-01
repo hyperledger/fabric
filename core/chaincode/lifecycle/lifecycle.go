@@ -365,12 +365,16 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 		return errors.WithMessage(err, "could not serialize chaincode parameters to state")
 	}
 
-	if packageID != "" {
-		if err := ef.Resources.Serializer.Serialize(ChaincodeSourcesName, privateName, &ChaincodeLocalPackage{
-			PackageID: packageID.String(),
-		}, orgState); err != nil {
-			return errors.WithMessage(err, "could not serialize chaincode package info to state")
-		}
+	// set the package id - whether empty or not. Setting
+	// an empty package ID means that the chaincode won't
+	// be invokable. The package might be set empty after
+	// the definition commits as a way of instructing the
+	// peers of an org no longer to endorse invocations
+	// for this chaincode
+	if err := ef.Resources.Serializer.Serialize(ChaincodeSourcesName, privateName, &ChaincodeLocalPackage{
+		PackageID: packageID.String(),
+	}, orgState); err != nil {
+		return errors.WithMessage(err, "could not serialize chaincode package info to state")
 	}
 
 	return nil
