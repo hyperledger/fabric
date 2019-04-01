@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -81,21 +80,6 @@ func CreateUtcTimestamp() *timestamp.Timestamp {
 
 func idBytesToStr(id []byte) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", id[0:4], id[4:6], id[6:8], id[8:10], id[10:])
-}
-
-// FindMissingElements identifies the elements of the first slice that are not present in the second
-// The second slice is expected to be a subset of the first slice
-func FindMissingElements(all []string, some []string) (delta []string) {
-all:
-	for _, v1 := range all {
-		for _, v2 := range some {
-			if strings.Compare(v1, v2) == 0 {
-				continue all
-			}
-		}
-		delta = append(delta, v1)
-	}
-	return
 }
 
 // ToChaincodeArgs converts string args to []byte args

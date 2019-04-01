@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
@@ -60,21 +59,6 @@ func TestTimestamp(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		t.Logf("timestamp now: %v", CreateUtcTimestamp())
 		time.Sleep(200 * time.Millisecond)
-	}
-}
-
-func TestFindMissingElements(t *testing.T) {
-	all := []string{"a", "b", "c", "d"}
-	some := []string{"b", "c"}
-	expectedDelta := []string{"a", "d"}
-	actualDelta := FindMissingElements(all, some)
-	if len(expectedDelta) != len(actualDelta) {
-		t.Fatalf("Got %v, expected %v", actualDelta, expectedDelta)
-	}
-	for i := range expectedDelta {
-		if strings.Compare(expectedDelta[i], actualDelta[i]) != 0 {
-			t.Fatalf("Got %v, expected %v", actualDelta, expectedDelta)
-		}
 	}
 }
 
