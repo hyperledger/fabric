@@ -48,10 +48,7 @@
 ALPINE_VER ?= 3.9
 BASE_VERSION = 2.0.0
 PREV_VERSION = 1.4.0
-CHAINTOOL_RELEASE ?= 1.1.3
 BASEIMAGE_RELEASE = 0.4.15
-JAVA_VER ?= 8
-NODE_VER ?= 10
 
 # Allow to build as a submodule setting the main project to
 # the PROJECT_NAME env variable, for example,
@@ -254,9 +251,6 @@ $(BUILD_DIR)/images/baseos/$(DUMMY):
 	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(BASE_VERSION)
 	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 	@touch $@
-
-$(BUILD_DIR)/images/ccenv/$(DUMMY): BUILD_ARGS=--build-arg CHAINTOOL_RELEASE=${CHAINTOOL_RELEASE} \
-	--build-arg JAVA_VER=${JAVA_VER}
 
 $(BUILD_DIR)/images/%/$(DUMMY):
 	@mkdir -p $(@D)
