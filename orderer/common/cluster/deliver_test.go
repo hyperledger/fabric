@@ -601,7 +601,7 @@ func TestBlockPullerFailover(t *testing.T) {
 	pulledBlock1.Add(1)
 	var once sync.Once
 	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
-		if strings.Contains(entry.Message, "Got block 1 of size") {
+		if strings.Contains(entry.Message, "Got block [1] of size") {
 			once.Do(pulledBlock1.Done)
 		}
 		return nil
@@ -653,11 +653,11 @@ func TestBlockPullerNoneResponsiveOrderer(t *testing.T) {
 	waitForConnection.Add(1)
 	var once sync.Once
 	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
-		if !strings.Contains(entry.Message, "Sending request for block 1") {
+		if !strings.Contains(entry.Message, "Sending request for block [1]") {
 			return nil
 		}
 		defer once.Do(waitForConnection.Done)
-		s := entry.Message[len("Sending request for block 1 to 127.0.0.1:"):]
+		s := entry.Message[len("Sending request for block [1] to 127.0.0.1:"):]
 		port, err := strconv.ParseInt(s, 10, 32)
 		assert.NoError(t, err)
 		// If osn2 is the current orderer we're connected to,
@@ -819,7 +819,7 @@ func TestBlockPullerFailures(t *testing.T) {
 		},
 		{
 			name:       "failure at pull",
-			logTrigger: "Sending request for block 1",
+			logTrigger: "Sending request for block [1]",
 			beforeFunc: func(osn *deliverServer, bp *cluster.BlockPuller) {
 				// The first seek request asks for the latest block and succeeds
 				osn.addExpectProbeAssert()
@@ -834,7 +834,7 @@ func TestBlockPullerFailures(t *testing.T) {
 		},
 		{
 			name:       "failure at verifying pulled block",
-			logTrigger: "Sending request for block 1",
+			logTrigger: "Sending request for block [1]",
 			beforeFunc: func(osn *deliverServer, bp *cluster.BlockPuller) {
 				// The first seek request asks for the latest block and succeeds
 				osn.addExpectProbeAssert()
@@ -1089,7 +1089,7 @@ func TestBlockPullerMaxRetriesExhausted(t *testing.T) {
 	var exhaustedRetryAttemptsLogged bool
 
 	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
-		if entry.Message == "Failed pulling block 3: retry count exhausted(2)" {
+		if entry.Message == "Failed pulling block [3]: retry count exhausted(2)" {
 			exhaustedRetryAttemptsLogged = true
 		}
 		return nil

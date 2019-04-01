@@ -330,7 +330,7 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 		if !bytes.Equal(block.Header.PreviousHash, protoutil.BlockHeaderHash(prevBlock.Header)) {
 			claimedPrevHash := hex.EncodeToString(block.Header.PreviousHash)
 			actualPrevHash := hex.EncodeToString(protoutil.BlockHeaderHash(prevBlock.Header))
-			return errors.Errorf("block %d's hash (%s) mismatches %d's prev block hash (%s)",
+			return errors.Errorf("block [%d]'s hash (%s) mismatches block [%d]'s prev block hash (%s)",
 				prevSeq, actualPrevHash, currSeq, claimedPrevHash)
 		}
 	}
@@ -467,7 +467,7 @@ func (vr *VerificationRegistry) BlockCommitted(block *common.Block, channel stri
 	conf, err := ConfigFromBlock(block)
 	// The block doesn't contain a config block, but is a valid block
 	if err == errNotAConfig {
-		vr.Logger.Debugf("Committed block %d for channel %s that is not a config block",
+		vr.Logger.Debugf("Committed block [%d] for channel %s that is not a config block",
 			block.Header.Number, channel)
 		return
 	}
@@ -488,7 +488,7 @@ func (vr *VerificationRegistry) BlockCommitted(block *common.Block, channel stri
 
 	vr.VerifiersByChannel[channel] = verifier
 
-	vr.Logger.Debugf("Committed config block %d for channel %s", block.Header.Number, channel)
+	vr.Logger.Debugf("Committed config block [%d] for channel %s", block.Header.Number, channel)
 }
 
 // BlockToString returns a string representation of this block.
@@ -589,7 +589,7 @@ func LastConfigBlock(block *common.Block, blockRetriever BlockRetriever) (*commo
 	}
 	lastConfigBlock := blockRetriever.Block(lastConfigBlockNum)
 	if lastConfigBlock == nil {
-		return nil, errors.Errorf("unable to retrieve last config block %d", lastConfigBlockNum)
+		return nil, errors.Errorf("unable to retrieve last config block [%d]", lastConfigBlockNum)
 	}
 	return lastConfigBlock, nil
 }

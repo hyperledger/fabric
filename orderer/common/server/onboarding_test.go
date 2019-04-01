@@ -952,13 +952,13 @@ func TestVerifierLoader(t *testing.T) {
 		{
 			description:   "block retrieval fails",
 			ledgerHeight:  100,
-			expectedPanic: "Failed retrieving block 99 for channel mychannel",
+			expectedPanic: "Failed retrieving block [99] for channel mychannel",
 		},
 		{
 			description:   "block retrieval succeeds but the block is bad",
 			ledgerHeight:  100,
 			lastBlock:     &common.Block{},
-			expectedPanic: "Failed retrieving config block 99 for channel mychannel",
+			expectedPanic: "Failed retrieving config block [99] for channel mychannel",
 		},
 		{
 			description:  "config block retrieved is bad",
@@ -971,7 +971,7 @@ func TestVerifierLoader(t *testing.T) {
 				},
 			},
 			lastConfigBlock:  &common.Block{Header: &common.BlockHeader{Number: 21}},
-			expectedPanic:    "Failed extracting configuration for channel mychannel from block 21: empty block",
+			expectedPanic:    "Failed extracting configuration for channel mychannel from block [21]: empty block",
 			onFailureInvoked: true,
 		},
 		{
@@ -986,7 +986,7 @@ func TestVerifierLoader(t *testing.T) {
 			},
 			lastConfigBlock:       configBlock,
 			verifierFromConfigErr: errors.New("failed initializing MSP"),
-			expectedPanic:         "Failed creating verifier for channel mychannel from block 99: failed initializing MSP",
+			expectedPanic:         "Failed creating verifier for channel mychannel from block [99]: failed initializing MSP",
 			onFailureInvoked:      true,
 		},
 		{

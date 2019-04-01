@@ -93,7 +93,7 @@ func (p *BlockPuller) PullBlock(seq uint64) *common.Block {
 		}
 		retriesLeft--
 		if retriesLeft == 0 && p.MaxPullBlockRetries > 0 {
-			p.Logger.Errorf("Failed pulling block %d: retry count exhausted(%d)", seq, p.MaxPullBlockRetries)
+			p.Logger.Errorf("Failed pulling block [%d]: retry count exhausted(%d)", seq, p.MaxPullBlockRetries)
 			return nil
 		}
 		time.Sleep(p.RetryTimeout)
@@ -189,7 +189,7 @@ func (p *BlockPuller) pullBlocks(seq uint64, reConnected bool) error {
 		totalSize += size
 		p.blockBuff = append(p.blockBuff, block)
 		nextExpectedSequence++
-		p.Logger.Infof("Got block %d of size %dKB from %s", seq, size/1024, p.endpoint)
+		p.Logger.Infof("Got block [%d] of size %d KB from %s", seq, size/1024, p.endpoint)
 	}
 	return nil
 }
@@ -198,7 +198,7 @@ func (p *BlockPuller) obtainStream(reConnected bool, env *common.Envelope, seq u
 	var stream *ImpatientStream
 	var err error
 	if reConnected {
-		p.Logger.Infof("Sending request for block %d to %s", seq, p.endpoint)
+		p.Logger.Infof("Sending request for block [%d] to %s", seq, p.endpoint)
 		stream, err = p.requestBlocks(p.endpoint, NewImpatientStream(p.conn, p.FetchTimeout), env)
 		if err != nil {
 			return nil, err

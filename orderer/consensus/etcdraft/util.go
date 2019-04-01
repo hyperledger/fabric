@@ -8,6 +8,7 @@ package etcdraft
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"sync"
@@ -73,7 +74,7 @@ func lastConfigBlockFromSupport(support consensus.ConsenterSupport) (*common.Blo
 	lastBlockSeq := support.Height() - 1
 	lastBlock := support.Block(lastBlockSeq)
 	if lastBlock == nil {
-		return nil, errors.Errorf("unable to retrieve block %d", lastBlockSeq)
+		return nil, errors.Errorf("unable to retrieve block [%d]", lastBlockSeq)
 	}
 	lastConfigBlock, err := cluster.LastConfigBlock(lastBlock, support)
 	if err != nil {
@@ -382,6 +383,68 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMeta
 	return MetadataFromConfigUpdate(configUpdate)
 }
 
+// CheckConfigMetadata validates Raft config metadata
+func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata) error {
+	if metadata == nil {
+		// defensive check. this should not happen as CheckConfigMetadata
+		// should always be called with non-nil config metadata
+		return errors.Errorf("nil Raft config metadata")
+	}
+
+	if metadata.Options.HeartbeatTick == 0 ||
+		metadata.Options.ElectionTick == 0 ||
+		metadata.Options.MaxInflightBlocks == 0 {
+		// if SnapshotIntervalSize is zero, DefaultSnapshotIntervalSize is used
+		return errors.Errorf("none of HeartbeatTick (%d), ElectionTick (%d) and MaxInflightBlocks (%d) can be zero",
+			metadata.Options.HeartbeatTick, metadata.Options.ElectionTick, metadata.Options.MaxInflightBlocks)
+	}
+
+	// check Raft options
+	if metadata.Options.ElectionTick <= metadata.Options.HeartbeatTick {
+		return errors.Errorf("ElectionTick (%d) must be greater than HeartbeatTick (%d)",
+			metadata.Options.HeartbeatTick, metadata.Options.HeartbeatTick)
+	}
+
+	if d, err := time.ParseDuration(metadata.Options.TickInterval); err != nil {
+		return errors.Errorf("failed to parse TickInterval (%s) to time duration: %s", metadata.Options.TickInterval, err)
+	} else if d == 0 {
+		return errors.Errorf("TickInterval cannot be zero")
+	}
+
+	if len(metadata.Consenters) == 0 {
+		return errors.Errorf("empty consenter set")
+	}
+
+	// sanity check of certificates
+	for _, consenter := range metadata.Consenters {
+		if err := validateCert(consenter.ServerTlsCert, "server"); err != nil {
+			return err
+		}
+		if err := validateCert(consenter.ClientTlsCert, "client"); err != nil {
+			return err
+		}
+	}
+
+	if err := MetadataHasDuplication(metadata); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateCert(pemData []byte, certRole string) error {
+	bl, _ := pem.Decode(pemData)
+
+	if bl == nil {
+		return errors.Errorf("%s TLS certificate is not PEM encoded: %s", certRole, string(pemData))
+	}
+
+	if _, err := x509.ParseCertificate(bl.Bytes); err != nil {
+		return errors.Errorf("%s TLS certificate has invalid ASN1 structure, %v: %s", certRole, err, string(pemData))
+	}
+	return nil
+}
+
 // ConsenterCertificate denotes a TLS certificate of a consenter
 type ConsenterCertificate []byte
 
@@ -417,16 +480,6 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 	return cluster.ErrNotInChannel
 }
 
-// SliceOfConsentersIDs converts maps of consenters into slice of consenters ids
-func SliceOfConsentersIDs(consenters map[uint64]*etcdraft.Consenter) []uint64 {
-	result := make([]uint64, 0)
-	for id := range consenters {
-		result = append(result, id)
-	}
-
-	return result
-}
-
 // NodeExists returns trues if node id exists in the slice
 // and false otherwise
 func NodeExists(id uint64, nodes []uint64) bool {
@@ -438,8 +491,8 @@ func NodeExists(id uint64, nodes []uint64) bool {
 	return false
 }
 
-// ConfChange computes Raft configuration changes based on current Raft configuration state and
-// consenters mapping stored in RaftMetadata
+// ConfChange computes Raft configuration changes based on current Raft
+// configuration state and consenters IDs stored in RaftMetadata.
 func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
 	raftConfChange := &raftpb.ConfChange{}
 
@@ -563,7 +616,7 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 		return
 	}
 
-	es.logger.Infof("Last config block was found to be block %d", lastConfigBlock.Header.Number)
+	es.logger.Infof("Last config block was found to be block [%d]", lastConfigBlock.Header.Number)
 
 	height := es.height()
 
@@ -584,7 +637,7 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 		return
 	}
 
-	es.logger.Warningf("Detected our own eviction from the chain in block %d", lastConfigBlock.Header.Number)
+	es.logger.Warningf("Detected our own eviction from the channel in block [%d]", lastConfigBlock.Header.Number)
 
 	es.logger.Infof("Waiting for chain to halt")
 	es.halt()
@@ -594,11 +647,11 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 	nextBlock := height
 	es.logger.Infof("Will now pull blocks %d to %d", nextBlock, lastConfigBlock.Header.Number)
 	for seq := nextBlock; seq <= lastConfigBlock.Header.Number; seq++ {
-		es.logger.Infof("Pulling block %d", seq)
+		es.logger.Infof("Pulling block [%d]", seq)
 		block := puller.PullBlock(seq)
 		err := es.writeBlock(block)
 		if err != nil {
-			es.logger.Panicf("Failed writing block %d to the ledger: %v", block.Header.Number, err)
+			es.logger.Panicf("Failed writing block [%d] to the ledger: %v", block.Header.Number, err)
 		}
 	}
 

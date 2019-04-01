@@ -124,7 +124,7 @@ func TestEndpointconfigFromFromSupport(t *testing.T) {
 	}{
 		{
 			name:          "Block returns nil",
-			expectedError: "unable to retrieve block 99",
+			expectedError: "unable to retrieve block [99]",
 			height:        100,
 		},
 		{
@@ -142,7 +142,7 @@ func TestEndpointconfigFromFromSupport(t *testing.T) {
 					})},
 				},
 			},
-			expectedError: "unable to retrieve last config block 42",
+			expectedError: "unable to retrieve last config block [42]",
 			height:        100,
 		},
 		{
@@ -249,7 +249,7 @@ func TestNewBlockPuller(t *testing.T) {
 				HeightVal: 100,
 			},
 			certificate:   ca.CertBytes(),
-			expectedError: "unable to retrieve block 99",
+			expectedError: "unable to retrieve block [99]",
 			dialer:        dialer,
 		},
 		{
@@ -425,7 +425,7 @@ func TestEvictionSuspector(t *testing.T) {
 		},
 		{
 			description:                 "we are not in the channel",
-			expectedLog:                 "Detected our own eviction from the chain in block 9",
+			expectedLog:                 "Detected our own eviction from the channel in block [9]",
 			evictionSuspicionThreshold:  10*time.Minute - time.Second,
 			amIInChannelReturns:         cluster.ErrNotInChannel,
 			blockPuller:                 puller,
