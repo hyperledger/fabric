@@ -286,7 +286,7 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 		switch source := input.Source.Type.(type) {
 		case *lb.ChaincodeSource_LocalPackage:
 			packageID = persistenceintf.PackageID(source.LocalPackage.PackageId)
-		case *lb.ChaincodeSource_Unavailable:
+		case *lb.ChaincodeSource_Unavailable_:
 		default:
 		}
 	}
