@@ -71,19 +71,6 @@ func TestToChaincodeArgs(t *testing.T) {
 	}
 }
 
-func TestArrayToChaincodeArgs(t *testing.T) {
-	expected := [][]byte{[]byte("foo"), []byte("bar")}
-	actual := ArrayToChaincodeArgs([]string{"foo", "bar"})
-	if len(expected) != len(actual) {
-		t.Fatalf("Got %v, expected %v", actual, expected)
-	}
-	for i := range expected {
-		if bytes.Compare(expected[i], actual[i]) != 0 {
-			t.Fatalf("Got %v, expected %v", actual, expected)
-		}
-	}
-}
-
 func TestMetadataSignatureBytesNormal(t *testing.T) {
 	first := []byte("first")
 	second := []byte("second")

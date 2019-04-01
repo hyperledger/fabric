@@ -90,15 +90,6 @@ func ToChaincodeArgs(args ...string) [][]byte {
 	return bargs
 }
 
-// ArrayToChaincodeArgs converts array of string args to array of []byte args
-func ArrayToChaincodeArgs(args []string) [][]byte {
-	bargs := make([][]byte, len(args))
-	for i, arg := range args {
-		bargs[i] = []byte(arg)
-	}
-	return bargs
-}
-
 const testchainid = "testchainid"
 const testorgid = "**TEST_ORGID**"
 
