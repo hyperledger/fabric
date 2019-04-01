@@ -30,16 +30,6 @@ import (
 	"github.com/hyperledger/fabric/common/metadata"
 )
 
-type alg struct {
-	hashFun func([]byte) string
-}
-
-const defaultAlg = "sha256"
-
-var availableIDgenAlgs = map[string]alg{
-	defaultAlg: {GenerateIDfromTxSHAHash},
-}
-
 // ComputeSHA256 returns SHA2-256 on data
 func ComputeSHA256(data []byte) (hash []byte) {
 	hash, err := factory.GetDefault().Hash(data, &bccsp.SHA256Opts{})
@@ -92,18 +82,6 @@ func CreateUtcTimestamp() *timestamp.Timestamp {
 // GenerateIDfromTxSHAHash generates SHA256 hash using Tx payload
 func GenerateIDfromTxSHAHash(payload []byte) string {
 	return fmt.Sprintf("%x", ComputeSHA256(payload))
-}
-
-// GenerateIDWithAlg generates an ID using a custom algorithm
-func GenerateIDWithAlg(customIDgenAlg string, payload []byte) (string, error) {
-	if customIDgenAlg == "" {
-		customIDgenAlg = defaultAlg
-	}
-	var alg = availableIDgenAlgs[customIDgenAlg]
-	if alg.hashFun != nil {
-		return alg.hashFun(payload), nil
-	}
-	return "", fmt.Errorf("Wrong ID generation algorithm was given: %s", customIDgenAlg)
 }
 
 func idBytesToStr(id []byte) string {

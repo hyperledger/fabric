@@ -71,27 +71,6 @@ func TestGeneratIDfromTxSHAHash(t *testing.T) {
 	}
 }
 
-func TestGenerateIDWithAlg(t *testing.T) {
-	_, err := GenerateIDWithAlg("sha256", []byte{1, 1, 1, 1})
-	if err != nil {
-		t.Fatalf("Generator failure: %v", err)
-	}
-}
-
-func TestGenerateIDWithDefaultAlg(t *testing.T) {
-	_, err := GenerateIDWithAlg("", []byte{1, 1, 1, 1})
-	if err != nil {
-		t.Fatalf("Generator failure: %v", err)
-	}
-}
-
-func TestGenerateIDWithWrongAlg(t *testing.T) {
-	_, err := GenerateIDWithAlg("foobar", []byte{1, 1, 1, 1})
-	if err == nil {
-		t.Fatalf("Expected error")
-	}
-}
-
 func TestFindMissingElements(t *testing.T) {
 	all := []string{"a", "b", "c", "d"}
 	some := []string{"b", "c"}
