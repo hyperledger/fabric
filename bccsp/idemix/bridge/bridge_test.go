@@ -1156,7 +1156,12 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 
 			It("fails when the credential is invalid", func() {
-				credential[4] = 0
+				if credential[4] != 0 {
+					credential[4] = 0
+				} else {
+					credential[4] = 1
+				}
+
 				signature, err := Signer.Sign(
 					UserKey,
 					[]byte("a message"),
