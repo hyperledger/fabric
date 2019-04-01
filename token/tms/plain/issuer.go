@@ -19,6 +19,11 @@ type Issuer struct {
 
 // RequestIssue creates an issue request with the token owners, types, and quantities specified in tokensToIssue.
 func (i *Issuer) RequestIssue(tokensToIssue []*token.Token) (*token.TokenTransaction, error) {
+
+	if len(tokensToIssue) == 0 {
+		return nil, errors.Errorf("invalid tokensToIssue")
+	}
+
 	var outputs []*token.Token
 	for _, tti := range tokensToIssue {
 		err := i.TokenOwnerValidator.Validate(tti.Owner)

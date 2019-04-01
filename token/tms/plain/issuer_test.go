@@ -28,7 +28,7 @@ var _ = Describe("Issuer", func() {
 		issuer = &plain.Issuer{TokenOwnerValidator: &TestTokenOwnerValidator{}}
 	})
 
-	It("converts an import request to a token transaction", func() {
+	It("converts an issue request to a token transaction", func() {
 		tt, err := issuer.RequestIssue(tokensToIssue)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(tt).To(Equal(&token.TokenTransaction{
@@ -49,32 +49,46 @@ var _ = Describe("Issuer", func() {
 	})
 
 	Context("when tokens to issue is nil", func() {
-		It("creates a token transaction with no outputs", func() {
+		It("should return an error", func() {
 			tt, err := issuer.RequestIssue(nil)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(tt).To(Equal(&token.TokenTransaction{
-				Action: &token.TokenTransaction_TokenAction{
-					TokenAction: &token.TokenAction{
-						Data: &token.TokenAction_Issue{Issue: &token.Issue{}},
-					},
-				},
-			}))
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("invalid tokensToIssue"))
+			Expect(tt).To(BeNil())
 		})
 	})
 
 	Context("when tokens to issue is empty", func() {
-		It("creates a token transaction with no outputs", func() {
+		It("should return an error", func() {
 			tt, err := issuer.RequestIssue([]*token.Token{})
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("invalid tokensToIssue"))
+			Expect(tt).To(BeNil())
+		})
+	})
 
-			Expect(tt).To(Equal(&token.TokenTransaction{
-				Action: &token.TokenTransaction_TokenAction{
-					TokenAction: &token.TokenAction{
-						Data: &token.TokenAction_Issue{Issue: &token.Issue{}},
-					},
-				},
-			}))
+	Context("when tokens to issue have invalid owner", func() {
+		It("creates a token transaction with no outputs", func() {
+			tokensToIssue = []*token.Token{
+				{Owner: nil, Type: "TOK1", Quantity: ToHex(1001)},
+			}
+
+			tt, err := issuer.RequestIssue(tokensToIssue)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("invalid recipient in issue request 'owner is nil'"))
+			Expect(tt).To(BeNil())
+		})
+	})
+
+	Context("when tokens to issue have invalid quantity", func() {
+		It("creates a token transaction with no outputs", func() {
+			tokensToIssue = []*token.Token{
+				{Owner: &token.TokenOwner{Raw: []byte("R1")}, Type: "TOK1", Quantity: "INVALID_QUANTITY"},
+			}
+
+			tt, err := issuer.RequestIssue(tokensToIssue)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("invalid quantity in issue request 'invalid input'"))
+			Expect(tt).To(BeNil())
 		})
 	})
 
