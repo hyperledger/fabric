@@ -349,6 +349,7 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 			string(util.ComputeSHA256([]byte(FieldKey(NamespacesName, privateName, "EndorsementInfo")))),
 			string(util.ComputeSHA256([]byte(FieldKey(NamespacesName, privateName, "ValidationInfo")))),
 			string(util.ComputeSHA256([]byte(FieldKey(NamespacesName, privateName, "Collections")))),
+			string(util.ComputeSHA256([]byte(FieldKey(ChaincodeSourcesName, privateName, "PackageID")))),
 		}
 
 		for _, hash := range cachedChaincode.Hashes {
