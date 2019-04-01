@@ -291,8 +291,8 @@ func (a *ApproverForMyOrg) createProposal(inputTxID string) (proposal *pb.Propos
 		}
 	} else {
 		ccsrc = &lb.ChaincodeSource{
-			Type: &lb.ChaincodeSource_Unavailable{
-				Unavailable: &lb.ChaincodeSource_None{},
+			Type: &lb.ChaincodeSource_Unavailable_{
+				Unavailable: &lb.ChaincodeSource_Unavailable{},
 			},
 		}
 	}

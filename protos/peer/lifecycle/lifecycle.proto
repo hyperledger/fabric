@@ -71,14 +71,14 @@ message ApproveChaincodeDefinitionForMyOrgArgs {
 }
 
 message ChaincodeSource {
-    message None {}
+    message Unavailable {}
 
     message Local {
         string package_id = 1;
     }
 
     oneof Type {
-        None unavailable = 1;
+        Unavailable unavailable = 1;
         Local local_package = 2;
     }
 }
