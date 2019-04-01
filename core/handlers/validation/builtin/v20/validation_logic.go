@@ -8,11 +8,10 @@ package v20
 
 import (
 	"fmt"
-	"regexp"
 
+	"github.com/golang/protobuf/proto"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	. "github.com/hyperledger/fabric/core/common/validation/statebased"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
@@ -21,22 +20,45 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("vscc")
-
-var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollectionName)
 
 //go:generate mockery -dir ../../api/identities/ -name IdentityDeserializer -case underscore -output mocks/
 //go:generate mockery -dir . -name StateBasedValidator -case underscore -output mocks/
 //go:generate mockery -dir ../../../../common/validation/statebased/ -name CollectionResources -case underscore -output mocks/
 
+// toApplicationPolicyTranslator implements statebased.PolicyTranslator
+// by translating SignaturePolicyEnvelope policies into ApplicationPolicy
+// ones; this is required because the 2.0 validator is supplied with a
+// policy evaluator that can only understand ApplicationPolicy policies.
+type toApplicationPolicyTranslator struct{}
+
+func (n *toApplicationPolicyTranslator) Translate(b []byte) ([]byte, error) {
+	if len(b) == 0 {
+		return b, nil
+	}
+
+	spe := &common.SignaturePolicyEnvelope{}
+	err := proto.Unmarshal(b, spe)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not unmarshal signature policy envelope")
+	}
+
+	return protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
+		Type: &peer.ApplicationPolicy_SignaturePolicy{
+			SignaturePolicy: spe,
+		},
+	}), nil
+}
+
 // New creates a new instance of the default VSCC
 // Typically this will only be invoked once per peer
 func New(c Capabilities, s StateFetcher, d IdentityDeserializer, pe PolicyEvaluator, cor CollectionResources) *Validator {
 	vpmgr := &KeyLevelValidationParameterManagerImpl{
-		StateFetcher: s,
-		Translator:   &ToApplicationPolicyTranslator{},
+		StateFetcher:     s,
+		PolicyTranslator: &toApplicationPolicyTranslator{},
 	}
 	eval := NewV20Evaluator(vpmgr, pe, cor, s)
 	sbv := NewKeyLevelValidator(eval, vpmgr)
