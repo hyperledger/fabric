@@ -2013,3 +2013,10 @@ func TestInValidCollectionName(t *testing.T) {
 		assert.Error(t, validateCollectionName(name), "Testing for name = "+name)
 	}
 }
+
+func TestNoopTranslator_Translate(t *testing.T) {
+	tr := &noopTranslator{}
+	res, err := tr.Translate([]byte("Nel mezzo del cammin di nostra vita"))
+	assert.NoError(t, err)
+	assert.Equal(t, res, []byte("Nel mezzo del cammin di nostra vita"))
+}

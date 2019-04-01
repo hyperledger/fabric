@@ -33,12 +33,23 @@ var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollect
 //go:generate mockery -dir ../../api/policies/ -name PolicyEvaluator -case underscore -output mocks/
 //go:generate mockery -dir . -name StateBasedValidator -case underscore -output mocks/
 
+// noopTranslator implements statebased.PolicyTranslator
+// by performing no policy translation; this is okay because
+// the implementation of the 1.3 validator has a policy
+// evaluator that sirectly consumes SignaturePolicyEnvelope
+// policies directly
+type noopTranslator struct{}
+
+func (n *noopTranslator) Translate(b []byte) ([]byte, error) {
+	return b, nil
+}
+
 // New creates a new instance of the default VSCC
 // Typically this will only be invoked once per peer
 func New(c Capabilities, s StateFetcher, d IdentityDeserializer, pe PolicyEvaluator) *Validator {
 	vpmgr := &KeyLevelValidationParameterManagerImpl{
-		StateFetcher: s,
-		Translator:   &NoopTranslator{},
+		StateFetcher:     s,
+		PolicyTranslator: &noopTranslator{},
 	}
 	eval := NewV13Evaluator(pe, vpmgr)
 	sbv := NewKeyLevelValidator(eval, vpmgr)

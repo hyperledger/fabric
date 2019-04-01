@@ -204,6 +204,26 @@ func TestInvoke(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToApplicationPolicyTranslator_Translate(t *testing.T) {
+	tr := &toApplicationPolicyTranslator{}
+	res, err := tr.Translate(nil)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+
+	res, err = tr.Translate([]byte("barf"))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "could not unmarshal signature policy envelope: unexpected EOF")
+	assert.Nil(t, res)
+
+	res, err = tr.Translate(protoutil.MarshalOrPanic(cauthdsl.SignedByMspMember("the right honourable member for Ipswich")))
+	assert.NoError(t, err)
+	assert.Equal(t, res, protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
+		Type: &peer.ApplicationPolicy_SignaturePolicy{
+			SignaturePolicy: cauthdsl.SignedByMspMember("the right honourable member for Ipswich"),
+		},
+	}))
+}
+
 var id msp.SigningIdentity
 var sid []byte
 var mspid string
