@@ -18,12 +18,8 @@ package util
 
 import (
 	"bytes"
-	"fmt"
-	"reflect"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestComputeSHA256(t *testing.T) {
@@ -110,46 +106,4 @@ func TestMetadataSignatureBytesNil(t *testing.T) {
 	if !bytes.Equal(result, expected) {
 		t.Errorf("Did not concatenate bytes correctly, expected %s, got %s", expected, result)
 	}
-}
-
-type A struct {
-	s string
-}
-
-type B struct {
-	A A
-	i int
-	X string
-}
-
-type C struct{}
-
-type D struct {
-	B B
-	c *C
-}
-
-func (a A) String() string {
-	return fmt.Sprintf("I'm '%s'", a.s)
-}
-
-func TestFlattenStruct(t *testing.T) {
-	d := &D{
-		B: B{
-			A: A{
-				s: "foo",
-			},
-			i: 42,
-			X: "bar ",
-		},
-		c: nil,
-	}
-
-	var x []string
-	flatten("", &x, reflect.ValueOf(d))
-	assert.Equal(t, 4, len(x), "expect 3 items")
-	assert.Equal(t, x[0], "B.A = I'm 'foo'")
-	assert.Equal(t, x[1], "B.i = 42")
-	assert.Equal(t, x[2], "B.X = \"bar \"")
-	assert.Equal(t, x[3], "c =")
 }

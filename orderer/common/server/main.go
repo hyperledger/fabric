@@ -31,7 +31,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/tools/protolator"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -799,7 +798,7 @@ func (mgr *caManager) updateClusterDialer(
 }
 
 func prettyPrintStruct(i interface{}) {
-	params := util.Flatten(i)
+	params := localconfig.Flatten(i)
 	var buffer bytes.Buffer
 	for i := range params {
 		buffer.WriteString("\n\t")
