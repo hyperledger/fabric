@@ -89,11 +89,6 @@ func CreateUtcTimestamp() *timestamp.Timestamp {
 	return &(timestamp.Timestamp{Seconds: secs, Nanos: nanos})
 }
 
-//GenerateHashFromSignature returns a hash of the combined parameters
-func GenerateHashFromSignature(path string, args []byte) []byte {
-	return ComputeSHA256(args)
-}
-
 // GenerateIDfromTxSHAHash generates SHA256 hash using Tx payload
 func GenerateIDfromTxSHAHash(payload []byte) string {
 	return fmt.Sprintf("%x", ComputeSHA256(payload))
