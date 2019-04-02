@@ -26,18 +26,15 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	coreutil "github.com/hyperledger/fabric/core/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // This test used to be part of an integration style test in core/container, moved to here
 func TestIntegrationPath(t *testing.T) {
-	coreutil.SetupTestConfig()
 	client, err := docker.NewClientFromEnv()
 	assert.NoError(t, err)
 	provider := Provider{
@@ -61,32 +58,6 @@ func TestIntegrationPath(t *testing.T) {
 
 	// Stop, killing, but not deleting
 	_ = dc.Stop(ccid, 0, false, true)
-}
-
-func TestHostConfig(t *testing.T) {
-	coreutil.SetupTestConfig()
-	var hostConfig = new(docker.HostConfig)
-	err := viper.UnmarshalKey("vm.docker.hostConfig", hostConfig)
-	if err != nil {
-		t.Fatalf("Load docker HostConfig wrong, error: %s", err.Error())
-	}
-	assert.NotNil(t, hostConfig.LogConfig)
-	assert.Equal(t, "json-file", hostConfig.LogConfig.Type)
-	assert.Equal(t, "50m", hostConfig.LogConfig.Config["max-size"])
-	assert.Equal(t, "5", hostConfig.LogConfig.Config["max-file"])
-}
-
-func TestGetDockerHostConfig(t *testing.T) {
-	coreutil.SetupTestConfig()
-	hostConfig = nil // There is a cached global singleton for docker host config, the other tests can collide with
-	hostConfig := getDockerHostConfig()
-	assert.NotNil(t, hostConfig)
-	assert.Equal(t, "host", hostConfig.NetworkMode)
-	assert.Equal(t, "json-file", hostConfig.LogConfig.Type)
-	assert.Equal(t, "50m", hostConfig.LogConfig.Config["max-size"])
-	assert.Equal(t, "5", hostConfig.LogConfig.Config["max-file"])
-	assert.Equal(t, int64(1024*1024*1024*2), hostConfig.Memory)
-	assert.Equal(t, int64(0), hostConfig.CPUShares)
 }
 
 func Test_Start(t *testing.T) {
@@ -146,7 +117,7 @@ func Test_Start(t *testing.T) {
 
 	// case 4: start called and dockerClient.CreateContainer returns
 	// docker.noSuchImgErr and dockerClient.Start returns error
-	viper.Set("vm.docker.attachStdout", true)
+	dvm.AttachStdOut = true
 	startErr = true
 	err = dvm.Start(ccid, args, env, files, bldr)
 	gt.Expect(err).To(HaveOccurred())

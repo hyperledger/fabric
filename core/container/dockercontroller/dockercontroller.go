@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 )
 
 // ContainerType is the string which the docker container type
@@ -36,18 +35,9 @@ const ContainerType = "DOCKER"
 
 var (
 	dockerLogger = flogging.MustGetLogger("dockercontroller")
-	hostConfig   *docker.HostConfig
 	vmRegExp     = regexp.MustCompile("[^a-zA-Z0-9-_.]")
 	imageRegExp  = regexp.MustCompile("^[a-z0-9]+(([._-][a-z0-9]+)+)?$")
 )
-
-// DockerVM is a vm. It is identified by an image id
-type DockerVM struct {
-	Client       dockerClient
-	PeerID       string
-	NetworkID    string
-	BuildMetrics *BuildMetrics
-}
 
 // dockerClient represents a docker client
 type dockerClient interface {
@@ -85,72 +75,40 @@ type dockerClient interface {
 
 // Provider implements container.VMProvider
 type Provider struct {
-	PeerID       string
-	NetworkID    string
-	BuildMetrics *BuildMetrics
-	Client       dockerClient
+	PeerID        string
+	NetworkID     string
+	BuildMetrics  *BuildMetrics
+	HostConfig    *docker.HostConfig
+	Client        dockerClient
+	AttachStdOut  bool
+	ChaincodePull bool
+}
+
+// DockerVM is a vm. It is identified by an image id
+type DockerVM struct {
+	PeerID        string
+	NetworkID     string
+	BuildMetrics  *BuildMetrics
+	HostConfig    *docker.HostConfig
+	Client        dockerClient
+	AttachStdOut  bool
+	ChaincodePull bool
 }
 
 // NewVM creates a new DockerVM instance
 func (p *Provider) NewVM() container.VM {
 	return &DockerVM{
-		PeerID:       p.PeerID,
-		NetworkID:    p.NetworkID,
-		Client:       p.Client,
-		BuildMetrics: p.BuildMetrics,
+		PeerID:        p.PeerID,
+		NetworkID:     p.NetworkID,
+		Client:        p.Client,
+		BuildMetrics:  p.BuildMetrics,
+		AttachStdOut:  p.AttachStdOut,
+		HostConfig:    p.HostConfig,
+		ChaincodePull: p.ChaincodePull,
 	}
 }
 
-func getDockerHostConfig() *docker.HostConfig {
-	if hostConfig != nil {
-		return hostConfig
-	}
-
-	dockerKey := func(key string) string { return "vm.docker.hostConfig." + key }
-	getInt64 := func(key string) int64 { return int64(viper.GetInt(dockerKey(key))) }
-
-	var logConfig docker.LogConfig
-	err := viper.UnmarshalKey(dockerKey("LogConfig"), &logConfig)
-	if err != nil {
-		dockerLogger.Warningf("load docker HostConfig.LogConfig failed, error: %s", err.Error())
-	}
-	networkMode := viper.GetString(dockerKey("NetworkMode"))
-	if networkMode == "" {
-		networkMode = "host"
-	}
-	dockerLogger.Debugf("docker container hostconfig NetworkMode: %s", networkMode)
-
-	return &docker.HostConfig{
-		CapAdd:  viper.GetStringSlice(dockerKey("CapAdd")),
-		CapDrop: viper.GetStringSlice(dockerKey("CapDrop")),
-
-		DNS:         viper.GetStringSlice(dockerKey("Dns")),
-		DNSSearch:   viper.GetStringSlice(dockerKey("DnsSearch")),
-		ExtraHosts:  viper.GetStringSlice(dockerKey("ExtraHosts")),
-		NetworkMode: networkMode,
-		IpcMode:     viper.GetString(dockerKey("IpcMode")),
-		PidMode:     viper.GetString(dockerKey("PidMode")),
-		UTSMode:     viper.GetString(dockerKey("UTSMode")),
-		LogConfig:   logConfig,
-
-		ReadonlyRootfs:   viper.GetBool(dockerKey("ReadonlyRootfs")),
-		SecurityOpt:      viper.GetStringSlice(dockerKey("SecurityOpt")),
-		CgroupParent:     viper.GetString(dockerKey("CgroupParent")),
-		Memory:           getInt64("Memory"),
-		MemorySwap:       getInt64("MemorySwap"),
-		MemorySwappiness: getInt64("MemorySwappiness"),
-		OOMKillDisable:   viper.GetBool(dockerKey("OomKillDisable")),
-		CPUShares:        getInt64("CpuShares"),
-		CPUSet:           viper.GetString(dockerKey("Cpuset")),
-		CPUSetCPUs:       viper.GetString(dockerKey("CpusetCPUs")),
-		CPUSetMEMs:       viper.GetString(dockerKey("CpusetMEMs")),
-		CPUQuota:         getInt64("CpuQuota"),
-		CPUPeriod:        getInt64("CpuPeriod"),
-		BlkioWeight:      getInt64("BlkioWeight"),
-	}
-}
-
-func (vm *DockerVM) createContainer(imageID, containerID string, args, env []string, attachStdout bool) error {
+func (vm *DockerVM) createContainer(imageID, containerID string, args, env []string) error {
 	logger := dockerLogger.With("imageID", imageID, "containerID", containerID)
 	logger.Debugw("create container")
 	_, err := vm.Client.CreateContainer(docker.CreateContainerOptions{
@@ -159,10 +117,10 @@ func (vm *DockerVM) createContainer(imageID, containerID string, args, env []str
 			Cmd:          args,
 			Image:        imageID,
 			Env:          env,
-			AttachStdout: attachStdout,
-			AttachStderr: attachStdout,
+			AttachStdout: vm.AttachStdOut,
+			AttachStderr: vm.AttachStdOut,
 		},
-		HostConfig: getDockerHostConfig(),
+		HostConfig: vm.HostConfig,
 	})
 	if err != nil {
 		return err
@@ -180,7 +138,7 @@ func (vm *DockerVM) deployImage(ccid ccintf.CCID, reader io.Reader) error {
 	outputbuf := bytes.NewBuffer(nil)
 	opts := docker.BuildImageOptions{
 		Name:         id,
-		Pull:         viper.GetBool("chaincode.pull"),
+		Pull:         vm.ChaincodePull,
 		InputStream:  reader,
 		OutputStream: outputbuf,
 	}
@@ -210,13 +168,12 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 		return err
 	}
 
-	attachStdout := viper.GetBool("vm.docker.attachStdout")
 	containerName := vm.GetVMName(ccid)
 	logger := dockerLogger.With("imageName", imageName, "containerName", containerName)
 
 	vm.stopInternal(containerName, 0, false, false)
 
-	err = vm.createContainer(imageName, containerName, args, env, attachStdout)
+	err = vm.createContainer(imageName, containerName, args, env)
 	if err == docker.ErrNoSuchImage {
 		reader, err := builder.Build()
 		if err != nil {
@@ -228,7 +185,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 			return err
 		}
 
-		err = vm.createContainer(imageName, containerName, args, env, attachStdout)
+		err = vm.createContainer(imageName, containerName, args, env)
 		if err != nil {
 			logger.Errorf("failed to create container: %s", err)
 			return err
@@ -239,7 +196,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 	}
 
 	// stream stdout and stderr to chaincode logger
-	if attachStdout {
+	if vm.AttachStdOut {
 		containerLogger := flogging.MustGetLogger("peer.chaincode." + containerName)
 		streamOutput(dockerLogger, vm.Client, containerName, containerLogger)
 	}
