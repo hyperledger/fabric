@@ -171,3 +171,14 @@ type PrivateQueryExecutorShim struct {
 func (pqes *PrivateQueryExecutorShim) GetStateHash(key string) ([]byte, error) {
 	return pqes.State.GetPrivateDataHash(pqes.Namespace, pqes.Collection, key)
 }
+
+// DummyQueryExecutorShim implements the ReadableState interface. It is
+// used to ensure channel-less system chaincode calls don't panic and return
+// and error when an invalid operation is attempted (i.e. an InstallChaincode
+// invocation against a chaincode other than _lifecycle)
+type DummyQueryExecutorShim struct {
+}
+
+func (*DummyQueryExecutorShim) GetState(key string) ([]byte, error) {
+	return nil, errors.New("invalid channel-less operation")
+}

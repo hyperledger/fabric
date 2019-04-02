@@ -84,12 +84,22 @@ type ChaincodeEndorsementInfo struct {
 }
 
 func (cei *ChaincodeEndorsementInfo) CachedChaincodeInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*LocalChaincodeInfo, bool, error) {
-	currentSequence, err := cei.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, chaincodeName, "Sequence", &SimpleQueryExecutorShim{
+	var qes ReadableState = &SimpleQueryExecutorShim{
 		Namespace:           LifecycleNamespace,
 		SimpleQueryExecutor: qe,
-	})
+	}
+
+	if qe == nil {
+		// NOTE: the core/chaincode package inconsistently sets the
+		// query executor depending on whether the call has a channel
+		// context or not. We use this dummy shim which always returns
+		// an error for GetState calls to avoid a peer panic.
+		qes = &DummyQueryExecutorShim{}
+	}
+
+	currentSequence, err := cei.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, chaincodeName, "Sequence", qes)
 	if err != nil {
-		return nil, false, errors.WithMessage(err, "could not get current sequence")
+		return nil, false, errors.WithMessagef(err, "could not get current sequence for chaincode '%s' on channel '%s'", chaincodeName, channelID)
 	}
 
 	// Committed sequences begin at 1
