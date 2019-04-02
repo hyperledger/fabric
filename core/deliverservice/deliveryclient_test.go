@@ -16,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/deliverservice/mocks"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -295,9 +294,6 @@ func TestDeliverServiceUpdateEndpoints(t *testing.T) {
 }
 
 func TestDeliverServiceServiceUnavailable(t *testing.T) {
-	orgEndpointDisableInterval := comm.EndpointDisableInterval
-	comm.EndpointDisableInterval = time.Millisecond * 1500
-	defer func() { comm.EndpointDisableInterval = orgEndpointDisableInterval }()
 	defer ensureNoGoroutineLeak(t)()
 	// Scenario: bring up 2 ordering service instances,
 	// Make the instance the client connects to fail after a delivery of a block and send SERVICE_UNAVAILABLE

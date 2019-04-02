@@ -9,7 +9,6 @@ package comm
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -99,36 +98,34 @@ func TestUpdateEndpoints(t *testing.T) {
 	assert.Equal(t, "b", conn2Endpoint[fmt.Sprintf("%p", conn)])
 }
 
-func TestDisableEndpoint(t *testing.T) {
-	orgEndpointDisableInterval := EndpointDisableInterval
-	EndpointDisableInterval = time.Millisecond * 100
-	defer func() { EndpointDisableInterval = orgEndpointDisableInterval }()
+func TestNewConnectionRoundRobin(t *testing.T) {
+	t.Parallel()
 
+	// This test ensures that we iterate over all connections in a round robin fashion.
+
+	totalEndpoints := []string{"a", "b", "c", "d"}
 	conn2Endpoint := make(map[string]string)
 	connFactory := func(endpoint string) (*grpc.ClientConn, error) {
 		conn := &grpc.ClientConn{}
 		conn2Endpoint[fmt.Sprintf("%p", conn)] = endpoint
 		return conn, nil
 	}
-	// Create producer with single endpoint
-	producer := NewConnectionProducer(connFactory, []string{"a"})
-	conn, a, err := producer.NewConnection()
-	assert.NoError(t, err)
-	assert.Equal(t, "a", conn2Endpoint[fmt.Sprintf("%p", conn)])
-	assert.Equal(t, "a", a)
-	// Now disable endpoint for 100 milliseconds
-	producer.DisableEndpoint("a")
-	_, _, err = producer.NewConnection()
-	// Make sure if only 1 endpoint remains, we don't black-list it
-	assert.NoError(t, err)
-	// Update endpoints - add endpoint 'b'
-	producer.UpdateEndpoints([]string{"a", "b"})
-	// Disable again
-	producer.DisableEndpoint("a")
-	conn, a, err = producer.NewConnection()
-	assert.NoError(t, err)
-	// Ensure that only b is returned because 'a' is disabled
-	assert.Equal(t, "b", conn2Endpoint[fmt.Sprintf("%p", conn)])
-	assert.Equal(t, "b", a)
 
+	producer := NewConnectionProducer(connFactory, totalEndpoints)
+	connectedEndpoints := make(map[string]struct{})
+
+	assertAllEndpointsUsed := func() {
+		for i := 0; i < len(totalEndpoints); i++ {
+			_, endpoint, err := producer.NewConnection()
+			assert.NoError(t, err)
+			connectedEndpoints[endpoint] = struct{}{}
+		}
+		assert.Len(t, connectedEndpoints, 4)
+	}
+
+	assertAllEndpointsUsed()
+	// Clear the connected endpoints
+	connectedEndpoints = make(map[string]struct{})
+	// Assert that we try all of them once again.
+	assertAllEndpointsUsed()
 }

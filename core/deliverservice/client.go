@@ -143,7 +143,7 @@ func (bc *broadcastClient) doAction(action func() (interface{}, error), actionOn
 	}
 	resp, err := action()
 	if err != nil {
-		bc.Disconnect(false)
+		bc.Disconnect()
 		return nil, err
 	}
 	return resp, nil
@@ -182,7 +182,7 @@ func (bc *broadcastClient) connect() error {
 	logger.Warning("Failed running post-connection procedures:", err)
 	// If we reached here, lets make sure connection is closed
 	// and nullified before we return
-	bc.Disconnect(false)
+	bc.Disconnect()
 	return err
 }
 
@@ -244,14 +244,11 @@ func (bc *broadcastClient) Close() {
 }
 
 // Disconnect makes the client close the existing connection and makes current endpoint unavailable for time interval, if disableEndpoint set to true
-func (bc *broadcastClient) Disconnect(disableEndpoint bool) {
+func (bc *broadcastClient) Disconnect() {
 	logger.Debug("Entering")
 	defer logger.Debug("Exiting")
 	bc.mutex.Lock()
 	defer bc.mutex.Unlock()
-	if disableEndpoint && bc.endpoint != "" {
-		bc.prod.DisableEndpoint(bc.endpoint)
-	}
 	bc.endpoint = ""
 	if bc.conn == nil {
 		return

@@ -80,8 +80,8 @@ type streamClient interface {
 	// Close closes the stream and its underlying connection
 	Close()
 
-	// Disconnect disconnects from the remote node and disable reconnect to current endpoint for predefined period of time
-	Disconnect(disableEndpoint bool)
+	// Disconnect disconnects from the remote node.
+	Disconnect()
 }
 
 // blocksProviderImpl the actual implementation for BlocksProvider interface
@@ -150,11 +150,7 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 			if currDelay < maxDelay {
 				statusCounter++
 			}
-			if t.Status == common.Status_BAD_REQUEST {
-				b.client.Disconnect(false)
-			} else {
-				b.client.Disconnect(true)
-			}
+			b.client.Disconnect()
 			continue
 		case *orderer.DeliverResponse_Block:
 			errorStatusCounter = 0
@@ -203,7 +199,7 @@ func (b *blocksProviderImpl) Stop() {
 
 // UpdateOrderingEndpoints update endpoints of ordering service
 func (b *blocksProviderImpl) UpdateOrderingEndpoints(endpoints []string) {
-	if !b.isEndpointsUpdated(endpoints) {
+	if !b.areEndpointsUpdated(endpoints) {
 		// No new endpoints for ordering service were provided
 		return
 	}
@@ -213,9 +209,10 @@ func (b *blocksProviderImpl) UpdateOrderingEndpoints(endpoints []string) {
 	logger.Debug("Disconnecting so endpoints update will take effect")
 	// We need to disconnect the client to make it reconnect back
 	// to newly updated endpoints
-	b.client.Disconnect(false)
+	b.client.Disconnect()
 }
-func (b *blocksProviderImpl) isEndpointsUpdated(endpoints []string) bool {
+
+func (b *blocksProviderImpl) areEndpointsUpdated(endpoints []string) bool {
 	if len(endpoints) != len(b.client.GetEndpoints()) {
 		return true
 	}
