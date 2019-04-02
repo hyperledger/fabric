@@ -433,11 +433,9 @@ func testSyncStateDBWithPvtdatastore(t *testing.T) {
 	provider := testutilNewProviderWithCollectionConfig(t,
 		"ns", map[string]uint64{"coll": 0},
 	)
-	defer provider.Close()
 	testLedgerid := "testLedger"
 	bg, gb := testutil.NewBlockGenerator(t, testLedgerid, false)
 	ledger, _ := provider.Create(gb)
-	defer ledger.Close()
 
 	// create and commit two data block (both with missing pvtdata)
 	blockAndPvtdata1, pvtdata1 := prepareNextBlockWithMissingPvtDataForTest(t, ledger, bg, "SimulateForBlk1",
@@ -452,10 +450,39 @@ func testSyncStateDBWithPvtdatastore(t *testing.T) {
 
 	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata2, &lgr.CommitOptions{}))
 
+	blockAndPvtdata3, pvtdata3 := prepareNextBlockWithMissingPvtDataForTest(t, ledger, bg, "SimulateForBlk3",
+		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
+		map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"})
+
+	blockAndPvtdata3.Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER][0] = byte(peer.TxValidationCode_PHANTOM_READ_CONFLICT)
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata3, &lgr.CommitOptions{}))
+
+	blockAndPvtdata4, pvtdata4 := prepareNextBlockWithMissingPvtDataForTest(t, ledger, bg, "SimulateForBlk4",
+		map[string]string{"key4": "value4"},
+		map[string]string{"key4": "pvtValue4"})
+
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata4, &lgr.CommitOptions{}))
+
+	blockAndPvtdata5, pvtdata5 := prepareNextBlockWithMissingPvtDataForTest(t, ledger, bg, "SimulateForBlk5",
+		map[string]string{"key5": "value4"},
+		map[string]string{"key5": "pvtValue5"})
+
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata5, &lgr.CommitOptions{}))
+
 	txSim, err := ledger.NewTxSimulator("test")
 	assert.NoError(t, err)
 	value, err := txSim.GetPrivateData("ns", "coll", "key1")
 	_, ok := err.(*txmgr.ErrPvtdataNotAvailable)
+	assert.True(t, ok)
+	assert.Nil(t, value)
+
+	value, err = txSim.GetPrivateData("ns", "coll", "key4")
+	_, ok = err.(*txmgr.ErrPvtdataNotAvailable)
+	assert.True(t, ok)
+	assert.Nil(t, value)
+
+	value, err = txSim.GetPrivateData("ns", "coll", "key5")
+	_, ok = err.(*txmgr.ErrPvtdataNotAvailable)
 	assert.True(t, ok)
 	assert.Nil(t, value)
 
@@ -466,26 +493,75 @@ func testSyncStateDBWithPvtdatastore(t *testing.T) {
 		2: {
 			pvtdata2,
 		},
+		3: {
+			pvtdata3,
+		},
+		4: {
+			pvtdata4,
+		},
+		5: {
+			pvtdata5,
+		},
 	}
 
 	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitPvtDataOfOldBlocks(blocksPvtData))
+	// ensure that the pvtdata of the invalid transaction in block 3 got stored in the
+	// pvtdataStore
+	pvtdata, _ := ledger.GetPvtDataByNum(3, nil)
+	assert.NotNil(t, pvtdata)
+	assert.Equal(t, 1, len(pvtdata))
+	assert.True(t, pvtdata[0].Has("ns", "coll"))
 
 	// Now, assume that peer fails here before committing the pvtData to stateDB
 	ledger.Close()
 	provider.Close()
+
+	// Rollback to block 3
+	RollbackKVLedger(testLedgerid, 3)
 
 	// Here the peer comes online and calls NewKVLedger to get a handler for the ledger
 	// StateDB and HistoryDB should be recovered before returning from NewKVLedger call
 	provider = testutilNewProviderWithCollectionConfig(t,
 		"ns", map[string]uint64{"coll": 0},
 	)
-	ledger, _ = provider.Open(testLedgerid)
+	defer provider.Close()
+
+	ledger, err = provider.Open(testLedgerid)
+	assert.NoError(t, err)
+	defer ledger.Close()
 
 	txSim, err = ledger.NewTxSimulator("test")
 	assert.NoError(t, err)
 	value, err = txSim.GetPrivateData("ns", "coll", "key1")
 	assert.NoError(t, err)
+	// the value should match the string provided in the block 2 (i.e., pvtValue1.2)
+	// rather than block 3 (i.e., pvtValue1.3)
 	assert.Equal(t, value, []byte("pvtValue1.2"))
+
+	// block 4 is not committed yet
+	value, err = txSim.GetPrivateData("ns", "coll", "key4")
+	assert.Nil(t, err)
+	assert.Nil(t, value)
+
+	// block 5 is not committed yet
+	value, err = txSim.GetPrivateData("ns", "coll", "key5")
+	assert.Nil(t, err)
+	assert.Nil(t, value)
+	txSim.Done()
+
+	// recommit block 4 & 5
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata4, &lgr.CommitOptions{FetchPvtDataFromLedger: true}))
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata5, &lgr.CommitOptions{FetchPvtDataFromLedger: true}))
+
+	txSim, err = ledger.NewTxSimulator("test")
+	assert.NoError(t, err)
+	value, err = txSim.GetPrivateData("ns", "coll", "key4")
+	assert.NoError(t, err)
+	assert.Equal(t, value, []byte("pvtValue4"))
+
+	value, err = txSim.GetPrivateData("ns", "coll", "key5")
+	assert.NoError(t, err)
+	assert.Equal(t, value, []byte("pvtValue5"))
 }
 
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
@@ -632,7 +708,7 @@ func prepareNextBlockForTest(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockG
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
-	block := bg.NextBlock([][]byte{pubSimBytes})
+	block := bg.NextBlockWithTxid([][]byte{pubSimBytes}, []string{txid})
 	return &lgr.BlockAndPvtData{Block: block,
 		PvtData: lgr.TxPvtDataMap{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
 	}

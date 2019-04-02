@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+	lutil "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -199,19 +200,35 @@ func (l *kvLedger) syncStateDBWithPvtdatastore() error {
 	// of state update should not lie with the source (i.e., pvtdatastorage). A potential fix
 	// is mentioned in FAB-12731
 
-	// TODO: GetLastUpdatedOldBlocksPvtData would give the pvtData of both valid and
-	// invalid transactions. We would need only the valid transaction's pvtData. FAB-14861
 	blocksPvtData, err := l.blockStore.GetLastUpdatedOldBlocksPvtData()
 	if err != nil {
 		return err
 	}
-	if err := l.txtmgmt.RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtData); err != nil {
-		return err
+
+	if l.blockStore.IsPvtStoreAheadOfBlockStore() {
+		if err := l.filterYetToCommitBlocks(blocksPvtData); err != nil {
+			return err
+		}
 	}
-	if err := l.blockStore.ResetLastUpdatedOldBlocksList(); err != nil {
+
+	if err = l.applyValidTxPvtDataOfOldBlocks(blocksPvtData); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func (l *kvLedger) filterYetToCommitBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error {
+	info, err := l.blockStore.GetBlockchainInfo()
+	if err != nil {
+		return err
+	}
+	for blkNum := range blocksPvtData {
+		if blkNum > info.Height-1 {
+			logger.Infof("found pvtdata associated with yet to be committed block [%d]", blkNum)
+			delete(blocksPvtData, blkNum)
+		}
+	}
 	return nil
 }
 
@@ -505,35 +522,44 @@ func (l *kvLedger) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, e
 func (l *kvLedger) CommitPvtDataOfOldBlocks(pvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
 	logger.Debugf("[%s:] Comparing pvtData of [%d] old blocks against the hashes in transaction's rwset to find valid and invalid data",
 		l.ledgerID, len(pvtData))
-	// TODO: validPvtData consists of pvtData that is matching the hashed pvtData present in the
-	// block. Now, we store pvtData of both committed and failed transactions. Hence, we need to
-	// separate validPvtData into pvtData associated with committed tx (i.e., valid tx) and
-	// failed tx (i.e,. invalid tx). FAB-14861
-	validPvtData, hashMismatches, err := ConstructValidAndInvalidPvtData(pvtData, l.blockStore)
+
+	hashVerifiedPvtData, hashMismatches, err := constructValidAndInvalidPvtData(pvtData, l.blockStore)
 	if err != nil {
 		return nil, err
 	}
 
 	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the pvtdatastore", l.ledgerID, len(pvtData))
-	err = l.blockStore.CommitPvtDataOfOldBlocks(validPvtData)
+	err = l.blockStore.CommitPvtDataOfOldBlocks(hashVerifiedPvtData)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the stateDB", l.ledgerID, len(pvtData))
-	// TODO: As the validPvtData will be consisting of both committed and failed tx's pvtData,
-	// we need to pass only the pvtData of committed tx. FAB-14861
-	err = l.txtmgmt.RemoveStaleAndCommitPvtDataOfOldBlocks(validPvtData)
+	err = l.applyValidTxPvtDataOfOldBlocks(hashVerifiedPvtData)
 	if err != nil {
-		return nil, err
-	}
-
-	logger.Debugf("[%s:] Clearing the bookkeeping information from pvtdatastore", l.ledgerID)
-	if err := l.blockStore.ResetLastUpdatedOldBlocksList(); err != nil {
 		return nil, err
 	}
 
 	return hashMismatches, nil
+}
+
+func (l *kvLedger) applyValidTxPvtDataOfOldBlocks(hashVerifiedPvtData map[uint64][]*ledger.TxPvtData) error {
+	logger.Debugf("[%s:] Filtering pvtData of invalidation transactions", l.ledgerID)
+	committedPvtData, err := filterPvtDataOfInvalidTx(hashVerifiedPvtData, l.blockStore)
+	if err != nil {
+		return err
+	}
+
+	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the stateDB", l.ledgerID, len(hashVerifiedPvtData))
+	err = l.txtmgmt.RemoveStaleAndCommitPvtDataOfOldBlocks(committedPvtData)
+	if err != nil {
+		return err
+	}
+
+	logger.Debugf("[%s:] Clearing the bookkeeping information from pvtdatastore", l.ledgerID)
+	if err := l.blockStore.ResetLastUpdatedOldBlocksList(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (l *kvLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
@@ -577,4 +603,28 @@ func (r *collectionInfoRetriever) CollectionInfo(chaincodeName, collectionName s
 	}
 	defer qe.Done()
 	return r.infoProvider.CollectionInfo(chaincodeName, collectionName, qe)
+}
+
+func filterPvtDataOfInvalidTx(hashVerifiedPvtData map[uint64][]*ledger.TxPvtData, blockStore *ledgerstorage.Store) (map[uint64][]*ledger.TxPvtData, error) {
+	committedPvtData := make(map[uint64][]*ledger.TxPvtData)
+	for blkNum, txsPvtData := range hashVerifiedPvtData {
+
+		// TODO: Instead of retrieving the whole block, we need to retireve only
+		// the TxValidationFlags from the block metadata. For that, we would need
+		// to add a new index for the block metadata. FAB- FAB-15808
+		block, err := blockStore.RetrieveBlockByNumber(blkNum)
+		if err != nil {
+			return nil, err
+		}
+		blockValidationFlags := lutil.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+
+		var blksPvtData []*ledger.TxPvtData
+		for _, pvtData := range txsPvtData {
+			if blockValidationFlags.IsValid(int(pvtData.SeqInBlock)) {
+				blksPvtData = append(blksPvtData, pvtData)
+			}
+		}
+		committedPvtData[blkNum] = blksPvtData
+	}
+	return committedPvtData, nil
 }
