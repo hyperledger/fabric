@@ -312,7 +312,7 @@ abbreviations:
 
 * Validation system chaincode (VSCC) validates a transaction, including checking
   endorsement policy and read-write set versioning. You can read more about the
-  LSCC implements this [process](../peers/peers.html#phase-3-validation).
+  VSCC implements this [process](../peers/peers.html#phase-3-validation).
 
 It is possible for low level Fabric developers and administrators to modify
 these system chaincodes for their own uses. However, the development and
