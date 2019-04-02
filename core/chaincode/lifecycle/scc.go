@@ -9,18 +9,20 @@ package lifecycle
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
-	persistence "github.com/hyperledger/fabric/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	persistenceintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -227,6 +229,23 @@ type Invocation struct {
 // InstallChaincode is a SCC function that may be dispatched to which routes to the underlying
 // lifecycle implementation.
 func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Message, error) {
+
+	if logger.IsEnabledFor(zapcore.DebugLevel) {
+		end := 35
+		if len(input.ChaincodeInstallPackage) < end {
+			end = len(input.ChaincodeInstallPackage)
+		}
+
+		// the first tens of bytes contain the (compressed) portion
+		// of the package metadata and so they'll be different across
+		// different packages, acting as a package fingerprint useful
+		// to identify various packages from the content
+		packageFingerprint := input.ChaincodeInstallPackage[0:end]
+		logger.Debugf("received invocation of InstallChaincode for install package %x...",
+			packageFingerprint,
+		)
+	}
+
 	installedCC, err := i.SCC.Functions.InstallChaincode(input.ChaincodeInstallPackage)
 	if err != nil {
 		return nil, err
@@ -241,6 +260,11 @@ func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Mes
 // QueryInstalledChaincode is a SCC function that may be dispatched to which routes to the underlying
 // lifecycle implementation.
 func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeArgs) (proto.Message, error) {
+
+	logger.Debugf("received invocation of QueryInstalledChaincode for install package ID '%s'",
+		input.PackageId,
+	)
+
 	chaincode, err := i.SCC.Functions.QueryInstalledChaincode(persistenceintf.PackageID(input.PackageId))
 	if err != nil {
 		return nil, err
@@ -255,6 +279,9 @@ func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeAr
 // QueryInstalledChaincodes is a SCC function that may be dispatch to which routes to the underlying
 // lifecycle implementation.
 func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodesArgs) (proto.Message, error) {
+
+	logger.Debugf("received invocation of QueryInstalledChaincodes")
+
 	chaincodes, err := i.SCC.Functions.QueryInstalledChaincodes()
 	if err != nil {
 		return nil, err
@@ -291,24 +318,31 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 		}
 	}
 
+	cd := &ChaincodeDefinition{
+		Sequence: input.Sequence,
+		EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+			Version:           input.Version,
+			EndorsementPlugin: input.EndorsementPlugin,
+			InitRequired:      input.InitRequired,
+		},
+		ValidationInfo: &lb.ChaincodeValidationInfo{
+			ValidationPlugin:    input.ValidationPlugin,
+			ValidationParameter: input.ValidationParameter,
+		},
+		Collections: &cb.CollectionConfigPackage{
+			Config: collectionConfig,
+		},
+	}
+
+	logger.Debugf("received invocation of ApproveChaincodeDefinitionForMyOrg on channel '%s' for definition '%s'",
+		i.Stub.GetChannelID(),
+		cd,
+	)
+
 	if err := i.SCC.Functions.ApproveChaincodeDefinitionForOrg(
 		i.Stub.GetChannelID(),
 		input.Name,
-		&ChaincodeDefinition{
-			Sequence: input.Sequence,
-			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-				Version:           input.Version,
-				EndorsementPlugin: input.EndorsementPlugin,
-				InitRequired:      input.InitRequired,
-			},
-			ValidationInfo: &lb.ChaincodeValidationInfo{
-				ValidationPlugin:    input.ValidationPlugin,
-				ValidationParameter: input.ValidationParameter,
-			},
-			Collections: &cb.CollectionConfigPackage{
-				Config: collectionConfig,
-			},
-		},
+		cd,
 		packageID,
 		i.Stub,
 		&ChaincodePrivateLedgerShim{
@@ -339,22 +373,29 @@ func (i *Invocation) QueryApprovalStatus(input *lb.QueryApprovalStatusArgs) (pro
 		})
 	}
 
+	cd := &ChaincodeDefinition{
+		Sequence: input.Sequence,
+		EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+			Version:           input.Version,
+			EndorsementPlugin: input.EndorsementPlugin,
+			InitRequired:      input.InitRequired,
+		},
+		ValidationInfo: &lb.ChaincodeValidationInfo{
+			ValidationPlugin:    input.ValidationPlugin,
+			ValidationParameter: input.ValidationParameter,
+		},
+		Collections: input.Collections,
+	}
+
+	logger.Debugf("received invocation of QueryApprovalStatus on channel '%s' for definition '%s'",
+		i.Stub.GetChannelID(),
+		cd,
+	)
+
 	approved, err := i.SCC.Functions.QueryApprovalStatus(
 		i.Stub.GetChannelID(),
 		input.Name,
-		&ChaincodeDefinition{
-			Sequence: input.Sequence,
-			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-				Version:           input.Version,
-				EndorsementPlugin: input.EndorsementPlugin,
-				InitRequired:      input.InitRequired,
-			},
-			ValidationInfo: &lb.ChaincodeValidationInfo{
-				ValidationPlugin:    input.ValidationPlugin,
-				ValidationParameter: input.ValidationParameter,
-			},
-			Collections: input.Collections,
-		},
+		cd,
 		i.Stub,
 		opaqueStates,
 	)
@@ -394,22 +435,29 @@ func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefiniti
 		return nil, errors.Errorf("impossibly, this peer's org is processing requests for a channel it is not a member of")
 	}
 
+	cd := &ChaincodeDefinition{
+		Sequence: input.Sequence,
+		EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+			Version:           input.Version,
+			EndorsementPlugin: input.EndorsementPlugin,
+			InitRequired:      input.InitRequired,
+		},
+		ValidationInfo: &lb.ChaincodeValidationInfo{
+			ValidationPlugin:    input.ValidationPlugin,
+			ValidationParameter: input.ValidationParameter,
+		},
+		Collections: input.Collections,
+	}
+
+	logger.Debugf("received invocation of CommitChaincodeDefinition on channel '%s' for definition '%s'",
+		i.Stub.GetChannelID(),
+		cd,
+	)
+
 	agreement, err := i.SCC.Functions.CommitChaincodeDefinition(
 		i.Stub.GetChannelID(),
 		input.Name,
-		&ChaincodeDefinition{
-			Sequence: input.Sequence,
-			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-				Version:           input.Version,
-				EndorsementPlugin: input.EndorsementPlugin,
-				InitRequired:      input.InitRequired,
-			},
-			ValidationInfo: &lb.ChaincodeValidationInfo{
-				ValidationPlugin:    input.ValidationPlugin,
-				ValidationParameter: input.ValidationParameter,
-			},
-			Collections: input.Collections,
-		},
+		cd,
 		i.Stub,
 		opaqueStates,
 	)
@@ -426,6 +474,12 @@ func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefiniti
 }
 
 func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinitionArgs) (proto.Message, error) {
+
+	logger.Debugf("received invocation of QueryChaincodeDefinition on channel '%s' for chaincode '%s'",
+		i.Stub.GetChannelID(),
+		input.Name,
+	)
+
 	definedChaincode, err := i.SCC.Functions.QueryChaincodeDefinition(input.Name, i.Stub)
 	if err != nil {
 		return nil, err
@@ -443,6 +497,11 @@ func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinition
 }
 
 func (i *Invocation) QueryNamespaceDefinitions(input *lb.QueryNamespaceDefinitionsArgs) (proto.Message, error) {
+
+	logger.Debugf("received invocation of QueryNamespaceDefinitions on channel '%s'",
+		i.Stub.GetChannelID(),
+	)
+
 	namespaces, err := i.SCC.Functions.QueryNamespaceDefinitions(&ChaincodePublicLedgerShim{ChaincodeStubInterface: i.Stub})
 	if err != nil {
 		return nil, err

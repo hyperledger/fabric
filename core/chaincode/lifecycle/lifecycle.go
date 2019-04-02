@@ -146,6 +146,32 @@ func (cd *ChaincodeDefinition) Parameters() *ChaincodeParameters {
 	}
 }
 
+func (cd *ChaincodeDefinition) String() string {
+	endorsementInfo := "endorsement info: <EMPTY>"
+	if cd.EndorsementInfo != nil {
+		endorsementInfo = fmt.Sprintf("endorsement info: (version: '%s', plugin: '%s', init required: %t)",
+			cd.EndorsementInfo.Version,
+			cd.EndorsementInfo.EndorsementPlugin,
+			cd.EndorsementInfo.InitRequired,
+		)
+	}
+
+	validationInfo := "validation info: <EMPTY>"
+	if cd.ValidationInfo != nil {
+		validationInfo = fmt.Sprintf("validation info: (plugin: '%s', policy: '%x')",
+			cd.ValidationInfo.ValidationPlugin,
+			cd.ValidationInfo.ValidationParameter,
+		)
+	}
+
+	return fmt.Sprintf("sequence: %d, %s, %s, collections: (%+v)",
+		cd.Sequence,
+		endorsementInfo,
+		validationInfo,
+		cd.Collections,
+	)
+}
+
 // ChaincodeStore provides a way to persist chaincodes
 type ChaincodeStore interface {
 	Save(label string, ccInstallPkg []byte) (p.PackageID, error)
@@ -244,6 +270,8 @@ func (ef *ExternalFunctions) QueryApprovalStatus(chname, ccname string, cd *Chai
 		agreement[i] = match
 	}
 
+	logger.Infof("successfully queried approval status for definition %s, name '%s' on channel '%s'", cd, ccname, chname)
+
 	return agreement, nil
 }
 
@@ -260,6 +288,8 @@ func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd
 	if err = ef.Resources.Serializer.Serialize(NamespacesName, ccname, cd, publicState); err != nil {
 		return nil, errors.WithMessage(err, "could not serialize chaincode definition")
 	}
+
+	logger.Infof("successfully committed definition %s, name '%s' on channel '%s'", cd, ccname, chname)
 
 	return agreement, nil
 }
@@ -377,6 +407,8 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 		return errors.WithMessage(err, "could not serialize chaincode package info to state")
 	}
 
+	logger.Infof("successfully approved definition %s, name '%s' on channel '%s'", cd, ccname, chname)
+
 	return nil
 }
 
@@ -406,6 +438,8 @@ func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState R
 	if err := ef.Resources.Serializer.Deserialize(NamespacesName, name, metadata, definedChaincode, publicState); err != nil {
 		return nil, errors.WithMessagef(err, "could not deserialize namespace %s as chaincode", name)
 	}
+
+	logger.Infof("successfully queried definition %s, name '%s'", definedChaincode, name)
 
 	return definedChaincode, nil
 }
