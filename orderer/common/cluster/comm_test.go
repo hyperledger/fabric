@@ -435,14 +435,13 @@ func TestBlockingSend(t *testing.T) {
 			fakeStream.On("Context", mock.Anything).Return(context.Background())
 			client.On("Step", mock.Anything).Return(fakeStream, nil).Once()
 
-			var unBlock sync.WaitGroup
-			unBlock.Add(1)
+			unBlock := make(chan struct{})
 			var sendInvoked sync.WaitGroup
 			sendInvoked.Add(1)
 			var once sync.Once
 			fakeStream.On("Send", mock.Anything).Run(func(_ mock.Arguments) {
 				once.Do(sendInvoked.Done)
-				unBlock.Wait()
+				<-unBlock
 			}).Return(errors.New("oops"))
 
 			stream, err := rm.NewStream(time.Hour)
@@ -465,7 +464,7 @@ func TestBlockingSend(t *testing.T) {
 			go func() {
 				time.Sleep(time.Second)
 				if testCase.streamUnblocks {
-					unBlock.Done()
+					close(unBlock)
 				}
 			}()
 
@@ -479,6 +478,10 @@ func TestBlockingSend(t *testing.T) {
 			elapsed := time.Since(t1)
 			t.Log("Elapsed time:", elapsed)
 			assert.True(t, elapsed > testCase.elapsedGreaterThan)
+
+			if !testCase.streamUnblocks {
+				close(unBlock)
+			}
 		})
 	}
 }
