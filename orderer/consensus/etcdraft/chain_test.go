@@ -1919,7 +1919,7 @@ var _ = Describe("Chain", func() {
 					By("sending config transaction")
 					Expect(c1.Configure(configEnv, 0)).To(Succeed())
 
-					Eventually(c1.observe, LongEventualTimeout).Should(Receive(StateEqual(0, raft.StateFollower)))
+					Eventually(c1.observe, LongEventualTimeout).Should(Receive(BeFollower()))
 					network.exec(func(c *chain) {
 						Eventually(c.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
 					})
@@ -3980,6 +3980,45 @@ func getSeedBlock() *common.Block {
 
 func StateEqual(lead uint64, state raft.StateType) types.GomegaMatcher {
 	return Equal(raft.SoftState{Lead: lead, RaftState: state})
+}
+
+func BeLeader() types.GomegaMatcher {
+	return &StateMatcher{expect: raft.StateLeader}
+}
+
+func BeFollower() types.GomegaMatcher {
+	return &StateMatcher{expect: raft.StateFollower}
+}
+
+type StateMatcher struct {
+	expect raft.StateType
+}
+
+func (stmatcher *StateMatcher) Match(actual interface{}) (success bool, err error) {
+	state, ok := actual.(raft.SoftState)
+	if !ok {
+		return false, errors.Errorf("StateMatcher expects a raft SoftState")
+	}
+
+	return state.RaftState == stmatcher.expect, nil
+}
+
+func (stmatcher *StateMatcher) FailureMessage(actual interface{}) (message string) {
+	state, ok := actual.(raft.SoftState)
+	if !ok {
+		return "StateMatcher expects a raft SoftState"
+	}
+
+	return fmt.Sprintf("Expected %s to be %s", state.RaftState, stmatcher.expect)
+}
+
+func (stmatcher *StateMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+	state, ok := actual.(raft.SoftState)
+	if !ok {
+		return "StateMatcher expects a raft SoftState"
+	}
+
+	return fmt.Sprintf("Expected %s not to be %s", state.RaftState, stmatcher.expect)
 }
 
 func noOpBlockPuller() (etcdraft.BlockPuller, error) {
