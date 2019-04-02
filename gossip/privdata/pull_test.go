@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	pb "github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -20,6 +21,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/filter"
+	"github.com/hyperledger/fabric/gossip/metrics"
+	gmetricsmocks "github.com/hyperledger/fabric/gossip/metrics/mocks"
 	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/privdata/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -270,14 +273,21 @@ type gossipNetwork struct {
 	peers []*mockGossip
 }
 
-func (gn *gossipNetwork) newPuller(id string, ps privdata.CollectionStore, factory CollectionAccessFactory, knownMembers ...discovery.NetworkMember) *puller {
+func (gn *gossipNetwork) newPullerWithMetrics(metrics *metrics.PrivdataMetrics, id string, ps privdata.CollectionStore,
+	factory CollectionAccessFactory, knownMembers ...discovery.NetworkMember) *puller {
 	g := newMockGossip(&comm.RemotePeer{PKIID: common.PKIidType(id), Endpoint: id})
 	g.network = gn
 	g.On("PeersOfChannel", mock.Anything).Return(knownMembers)
 
-	p := NewPuller(ps, g, &dataRetrieverMock{}, factory, "A")
+	p := NewPuller(metrics, ps, g, &dataRetrieverMock{}, factory, "A")
 	gn.peers = append(gn.peers, g)
 	return p
+}
+
+func (gn *gossipNetwork) newPuller(id string, ps privdata.CollectionStore, factory CollectionAccessFactory,
+	knownMembers ...discovery.NetworkMember) *puller {
+	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
+	return gn.newPullerWithMetrics(metrics, id, ps, factory, knownMembers...)
 }
 
 func newPRWSet() []util.PrivateRWSet {
@@ -1126,4 +1136,79 @@ func toDigKey(dig *proto.PvtDataDigest) *privdatacommon.DigKey {
 		Namespace:  dig.Namespace,
 		Collection: dig.Collection,
 	}
+}
+
+func TestPullerMetrics(t *testing.T) {
+	t.Parallel()
+	// Scenario: p1 pulls from p2 and sends metric reports
+	gn := &gossipNetwork{}
+	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2")
+	factoryMock1 := &collectionAccessFactoryMock{}
+	policyMock1 := &collectionAccessPolicyMock{}
+	policyMock1.Setup(1, 2, func(data fcommon.SignedData) bool {
+		return bytes.Equal(data.Identity, []byte("p2"))
+	}, []string{"org1", "org2"}, false)
+	factoryMock1.On("AccessPolicy", mock.Anything, mock.Anything).Return(policyMock1, nil)
+
+	testMetricProvider := gmetricsmocks.TestUtilConstructMetricProvider()
+	metrics := metrics.NewGossipMetrics(testMetricProvider.FakeProvider).PrivdataMetrics
+
+	p1 := gn.newPullerWithMetrics(metrics, "p1", policyStore, factoryMock1, membership(peerData{"p2", uint64(1)})...)
+
+	p2TransientStore := &util.PrivateRWSetWithConfig{
+		RWSet: newPRWSet(),
+		CollectionConfig: &fcommon.CollectionConfig{
+			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+					Name: "col1",
+				},
+			},
+		},
+	}
+	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p1")
+	factoryMock2 := &collectionAccessFactoryMock{}
+	policyMock2 := &collectionAccessPolicyMock{}
+	policyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
+		return bytes.Equal(data.Identity, []byte("p1"))
+	}, []string{"org1", "org2"}, false)
+	factoryMock2.On("AccessPolicy", mock.Anything, mock.Anything).Return(policyMock2, nil)
+
+	p2 := gn.newPullerWithMetrics(metrics, "p2", policyStore, factoryMock2)
+
+	dig := &proto.PvtDataDigest{
+		TxId:       "txID1",
+		Collection: "col1",
+		Namespace:  "ns1",
+	}
+
+	store := Dig2PvtRWSetWithConfig{
+		privdatacommon.DigKey{
+			TxId:       "txID1",
+			Collection: "col1",
+			Namespace:  "ns1",
+		}: p2TransientStore,
+	}
+
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig)),
+		uint64(0)).Return(store, true, nil)
+
+	dasf := &digestsAndSourceFactory{}
+
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create())
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[1])
+	fetched := []util.PrivateRWSet{rws1, rws2}
+	assert.NoError(t, err)
+	assert.Equal(t, p2TransientStore.RWSet, fetched)
+
+	assert.Equal(t,
+		[]string{"channel", "A"},
+		testMetricProvider.FakePullDuration.WithArgsForCall(0),
+	)
+	assert.True(t, testMetricProvider.FakePullDuration.ObserveArgsForCall(0) > 0)
+	assert.Equal(t,
+		[]string{"channel", "A"},
+		testMetricProvider.FakeRetrieveDuration.WithArgsForCall(0),
+	)
+	assert.True(t, testMetricProvider.FakeRetrieveDuration.ObserveArgsForCall(0) > 0)
 }

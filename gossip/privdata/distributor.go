@@ -7,16 +7,21 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
+	"bytes"
 	"fmt"
+	"math/rand"
 	"sync"
 	"sync/atomic"
+	"time"
 
+	proto2 "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/filter"
 	gossip2 "github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -35,6 +40,13 @@ type gossipAdapter interface {
 	// PeerFilter receives a SubChannelSelectionCriteria and returns a RoutingFilter that selects
 	// only peer identities that match the given criteria, and that they published their channel participation
 	PeerFilter(channel gossipCommon.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error)
+
+	// IdentityInfo returns information known peer identities
+	IdentityInfo() api.PeerIdentitySet
+
+	// PeersOfChannel returns the NetworkMembers considered alive
+	// and also subscribed to the channel given
+	PeersOfChannel(gossipCommon.ChainID) []discovery.NetworkMember
 }
 
 // PvtDataDistributor interface to defines API of distributing private data
@@ -56,6 +68,8 @@ type distributorImpl struct {
 	chainID string
 	gossipAdapter
 	CollectionAccessFactory
+	pushAckTimeout time.Duration
+	metrics        *metrics.PrivdataMetrics
 }
 
 // CollectionAccessFactory an interface to generate collection access policy
@@ -92,11 +106,14 @@ func NewCollectionAccessFactory(factory IdentityDeserializerFactory) CollectionA
 
 // NewDistributor a constructor for private data distributor capable to send
 // private read write sets for underlying collection
-func NewDistributor(chainID string, gossip gossipAdapter, factory CollectionAccessFactory) PvtDataDistributor {
+func NewDistributor(chainID string, gossip gossipAdapter, factory CollectionAccessFactory,
+	metrics *metrics.PrivdataMetrics) PvtDataDistributor {
 	return &distributorImpl{
 		chainID:                 chainID,
 		gossipAdapter:           gossip,
 		CollectionAccessFactory: factory,
+		pushAckTimeout:          viper.GetDuration("peer.gossip.pvtData.pushAckTimeout"),
+		metrics:                 metrics,
 	}
 }
 
@@ -175,6 +192,7 @@ func (d *distributorImpl) getCollectionConfig(config *common.CollectionConfigPac
 
 func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAccessPolicy, colFilter privdata.Filter, pvtDataMsg *proto.SignedGossipMessage) ([]*dissemination, error) {
 	var disseminationPlan []*dissemination
+
 	routingFilter, err := d.gossipAdapter.PeerFilter(gossipCommon.ChainID(d.chainID), func(signature api.PeerSignature) bool {
 		return colFilter(common.SignedData{
 			Data:      signature.Message,
@@ -188,29 +206,110 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 		return nil, err
 	}
 
+	pushAckTimeout := viper.GetDuration("peer.gossip.pvtData.pushAckTimeout")
+
+	eligiblePeers := d.eligiblePeersOfChannel(routingFilter)
+	identitySets := d.identitiesOfEligiblePeers(eligiblePeers, colAP)
+
+	// Select one representative from each org
+	maximumPeerCount := colAP.MaximumPeerCount()
+	requiredPeerCount := colAP.RequiredPeerCount()
+
+	if maximumPeerCount > 0 {
+		for _, selectionPeers := range identitySets {
+			required := 1
+			if requiredPeerCount == 0 {
+				required = 0
+			}
+			peer2SendPerOrg := selectionPeers[rand.Intn(len(selectionPeers))]
+			sc := gossip2.SendCriteria{
+				Timeout:  pushAckTimeout,
+				Channel:  gossipCommon.ChainID(d.chainID),
+				MaxPeers: 1,
+				MinAck:   required,
+				IsEligible: func(member discovery.NetworkMember) bool {
+					return bytes.Equal(member.PKIid, peer2SendPerOrg.PKIId)
+				},
+			}
+			disseminationPlan = append(disseminationPlan, &dissemination{
+				criteria: sc,
+				msg: &proto.SignedGossipMessage{
+					Envelope:      proto2.Clone(pvtDataMsg.Envelope).(*proto.Envelope),
+					GossipMessage: proto2.Clone(pvtDataMsg.GossipMessage).(*proto.GossipMessage),
+				},
+			})
+
+			if requiredPeerCount > 0 {
+				requiredPeerCount--
+			}
+
+			maximumPeerCount--
+			if maximumPeerCount == 0 {
+				return disseminationPlan, nil
+			}
+		}
+	}
+
+	// criteria to select remaining peers to satisfy colAP.MaximumPeerCount()
+	// collection policy parameters
 	sc := gossip2.SendCriteria{
-		Timeout:  viper.GetDuration("peer.gossip.pvtData.pushAckTimeout"),
+		Timeout:  pushAckTimeout,
 		Channel:  gossipCommon.ChainID(d.chainID),
-		MaxPeers: colAP.MaximumPeerCount(),
-		MinAck:   colAP.RequiredPeerCount(),
+		MaxPeers: maximumPeerCount,
+		MinAck:   requiredPeerCount,
 		IsEligible: func(member discovery.NetworkMember) bool {
 			return routingFilter(member)
 		},
 	}
+
 	disseminationPlan = append(disseminationPlan, &dissemination{
 		criteria: sc,
 		msg:      pvtDataMsg,
 	})
+
 	return disseminationPlan, nil
+}
+
+func (d *distributorImpl) identitiesOfEligiblePeers(eligiblePeers []discovery.NetworkMember, colAP privdata.CollectionAccessPolicy) map[string]api.PeerIdentitySet {
+	return d.gossipAdapter.IdentityInfo().
+		Filter(func(info api.PeerIdentityInfo) bool {
+			for _, orgID := range colAP.MemberOrgs() {
+				if bytes.Equal(info.Organization, []byte(orgID)) {
+					return true
+				}
+			}
+			// peer not in the org
+			return false
+		}).Filter(func(info api.PeerIdentityInfo) bool {
+		for _, peer := range eligiblePeers {
+			if bytes.Equal(info.PKIId, peer.PKIid) {
+				return true
+			}
+		}
+		// peer not in the channel
+		return false
+	}).ByOrg()
+}
+
+func (d *distributorImpl) eligiblePeersOfChannel(routingFilter filter.RoutingFilter) []discovery.NetworkMember {
+	var eligiblePeers []discovery.NetworkMember
+	for _, peer := range d.gossipAdapter.PeersOfChannel(gossipCommon.ChainID(d.chainID)) {
+		if routingFilter(peer) {
+			eligiblePeers = append(eligiblePeers, peer)
+		}
+	}
+	return eligiblePeers
 }
 
 func (d *distributorImpl) disseminate(disseminationPlan []*dissemination) error {
 	var failures uint32
 	var wg sync.WaitGroup
 	wg.Add(len(disseminationPlan))
+	start := time.Now()
 	for _, dis := range disseminationPlan {
 		go func(dis *dissemination) {
 			defer wg.Done()
+			defer d.reportSendDuration(start)
 			err := d.SendByCriteria(dis.msg, dis.criteria)
 			if err != nil {
 				atomic.AddUint32(&failures, 1)
@@ -222,9 +321,13 @@ func (d *distributorImpl) disseminate(disseminationPlan []*dissemination) error 
 	wg.Wait()
 	failureCount := atomic.LoadUint32(&failures)
 	if failureCount != 0 {
-		return errors.Errorf("Failed disseminating %d out of %d private RWSets", failureCount, len(disseminationPlan))
+		return errors.Errorf("Failed disseminating %d out of %d private dissemination plans", failureCount, len(disseminationPlan))
 	}
 	return nil
+}
+
+func (d *distributorImpl) reportSendDuration(startTime time.Time) {
+	d.metrics.SendDuration.With("channel", d.chainID).Observe(time.Since(startTime).Seconds())
 }
 
 func (d *distributorImpl) createPrivateDataMessage(txID, namespace string,

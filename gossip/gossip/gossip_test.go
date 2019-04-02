@@ -21,11 +21,14 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
+	"github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/metrics/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -222,7 +225,15 @@ func bootPeers(portPrefix int, ids ...int) []string {
 	return peers
 }
 
-func newGossipInstanceWithCustomMCS(portPrefix int, id int, maxMsgCount int, mcs api.MessageCryptoService, boot ...int) Gossip {
+func newGossipInstanceWithCustomMCS(portPrefix int, id int, maxMsgCount int,
+	mcs api.MessageCryptoService, boot ...int) Gossip {
+	return newGossipInstanceWithCustomMCSWithMetrics(metrics.NewGossipMetrics(&disabled.Provider{}),
+		portPrefix, id, maxMsgCount, mcs, boot...)
+}
+
+func newGossipInstanceWithCustomMCSWithMetrics(metrics *metrics.GossipMetrics,
+	portPrefix int, id int, maxMsgCount int,
+	mcs api.MessageCryptoService, boot ...int) Gossip {
 	port := id + portPrefix
 	conf := &Config{
 		BindPort:                   port,
@@ -244,13 +255,19 @@ func newGossipInstanceWithCustomMCS(portPrefix int, id int, maxMsgCount int, mcs
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, mcs,
-		selfID, nil)
+		selfID, nil, metrics)
 
 	return g
 }
 
 func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) Gossip {
 	return newGossipInstanceWithCustomMCS(portPrefix, id, maxMsgCount, &naiveCryptoService{}, boot...)
+}
+
+func newGossipInstanceWithMetrics(metrics *metrics.GossipMetrics,
+	portPrefix int, id int, maxMsgCount int, boot ...int) Gossip {
+	return newGossipInstanceWithCustomMCSWithMetrics(metrics,
+		portPrefix, id, maxMsgCount, &naiveCryptoService{}, boot...)
 }
 
 func newGossipInstanceWithOnlyPull(portPrefix int, id int, maxMsgCount int, boot ...int) Gossip {
@@ -277,7 +294,7 @@ func newGossipInstanceWithOnlyPull(portPrefix int, id int, maxMsgCount int, boot
 	cryptoService := &naiveCryptoService{}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService,
-		selfID, nil)
+		selfID, nil, metrics.NewGossipMetrics(&disabled.Provider{}))
 	return g
 }
 
@@ -1361,6 +1378,7 @@ func TestIdentityExpiration(t *testing.T) {
 }
 
 func TestEndedGoroutines(t *testing.T) {
+	t.Skip("flaky test which need to be fixed with FAB-12067")
 	t.Parallel()
 	testWG.Wait()
 	ensureGoroutineExit(t)
@@ -1629,4 +1647,70 @@ func checkPeersMembership(t *testing.T, peers []Gossip, n int) func() bool {
 		}
 		return true
 	}
+}
+
+func TestMembershipMetrics(t *testing.T) {
+	t.Parallel()
+	portPrefix := 7687
+
+	wg0 := sync.WaitGroup{}
+	wg0.Add(1)
+	once0 := sync.Once{}
+	wg1 := sync.WaitGroup{}
+	wg1.Add(1)
+	once1 := sync.Once{}
+
+	testMetricProvider := mocks.TestUtilConstructMetricProvider()
+
+	testMetricProvider.FakeTotalGauge.SetStub = func(delta float64) {
+		if delta == 0 {
+			once0.Do(func() {
+				wg0.Done()
+			})
+		}
+		if delta == 1 {
+			once1.Do(func() {
+				wg1.Done()
+			})
+		}
+	}
+
+	gmetrics := metrics.NewGossipMetrics(testMetricProvider.FakeProvider)
+
+	pI0 := newGossipInstanceWithCustomMCSWithMetrics(gmetrics, portPrefix, 0, 100,
+		&naiveCryptoService{}, 0, 1)
+	pI0.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+	pI0.UpdateLedgerHeight(1, common.ChainID("A"))
+
+	// assert channel membership metrics reported with 0 as value
+	wg0.Wait()
+	assert.Equal(t,
+		[]string{"channel", "A"},
+		testMetricProvider.FakeTotalGauge.WithArgsForCall(0),
+	)
+	assert.EqualValues(t, 0,
+		testMetricProvider.FakeTotalGauge.SetArgsForCall(0),
+	)
+
+	pI1 := newGossipInstanceWithMetrics(metrics.NewGossipMetrics(&disabled.Provider{}), portPrefix, 1, 100, 0)
+	pI1.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+	pI1.UpdateLedgerHeight(1, common.ChainID("A"))
+
+	waitForMembership := func(n int) func() bool {
+		return func() bool {
+			if len(pI0.PeersOfChannel(common.ChainID("A"))) != n || len(pI1.PeersOfChannel(common.ChainID("A"))) != n {
+				return false
+			}
+			return true
+		}
+	}
+	waitUntilOrFail(t, waitForMembership(1))
+
+	// assert channel membership metrics reported with 1 as value
+	wg1.Wait()
+
+	pI1.Stop()
+	waitUntilOrFail(t, waitForMembership(0))
+	pI0.Stop()
+
 }

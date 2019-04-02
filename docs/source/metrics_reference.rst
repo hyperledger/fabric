@@ -163,6 +163,46 @@ The following metrics are currently exported for consumption by Prometheus.
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | fabric_version                                      | gauge     | The active version of Fabric.                              | version            |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_comm_messages_received                       | counter   | Number of messages received                                |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_comm_messages_sent                           | counter   | Number of messages sent                                    |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_comm_overflow_count                          | counter   | Number of outgoing queue buffer overflows                  |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_leader_election_leader                       | gauge     | Peer is leader (1) or follower (0)                         | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_membership_total_peers_known                 | gauge     | Total known peers                                          | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_payload_buffer_size                          | gauge     | Size of the payload buffer                                 | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_privdata_commit_block_duration               | histogram | Time it takes to commit private data and the corresponding | channel            |
+|                                                     |           | block (in seconds)                                         |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_privdata_fetch_duration                      | histogram | Time it takes to fetch missing private data from peers (in | channel            |
+|                                                     |           | seconds)                                                   |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_privdata_list_missing_duration               | histogram | Time it takes to list the missing private data (in         | channel            |
+|                                                     |           | seconds)                                                   |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_privdata_pull_duration                       | histogram | Time it takes to pull a missing private data element (in   | channel            |
+|                                                     |           | seconds)                                                   |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_privdata_purge_duration                      | histogram | Time it takes to purge private data (in seconds)           | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_privdata_reconciliation_duration             | histogram | Time it takes for reconciliation to complete (in seconds)  | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_privdata_retrieve_duration                   | histogram | Time it takes to retrieve missing private data elements    | channel            |
+|                                                     |           | from the ledger (in seconds)                               |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_privdata_send_duration                       | histogram | Time it takes to send a missing private data element (in   | channel            |
+|                                                     |           | seconds)                                                   |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_privdata_validation_duration                 | histogram | Time it takes to validate a block (in seconds)             | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_state_commit_duration                        | histogram | Time it takes to commit a block in seconds                 | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| gossip_state_height                                 | gauge     | Current ledger height                                      | channel            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | grpc_comm_conn_closed                               | counter   | gRPC connections closed. Open minus closed is the active   |                    |
 |                                                     |           | number of connections.                                     |                    |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
@@ -353,6 +393,46 @@ associated with the metric.
 | endorser.successful_proposals                                                           | counter   | The number of successful proposals.                        |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | fabric_version.%{version}                                                               | gauge     | The active version of Fabric.                              |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.comm.messages_received                                                           | counter   | Number of messages received                                |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.comm.messages_sent                                                               | counter   | Number of messages sent                                    |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.comm.overflow_count                                                              | counter   | Number of outgoing queue buffer overflows                  |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.leader_election.leader.%{channel}                                                | gauge     | Peer is leader (1) or follower (0)                         |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.membership.total_peers_known.%{channel}                                          | gauge     | Total known peers                                          |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.payload_buffer.size.%{channel}                                                   | gauge     | Size of the payload buffer                                 |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.privdata.commit_block_duration.%{channel}                                        | histogram | Time it takes to commit private data and the corresponding |
+|                                                                                         |           | block (in seconds)                                         |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.privdata.fetch_duration.%{channel}                                               | histogram | Time it takes to fetch missing private data from peers (in |
+|                                                                                         |           | seconds)                                                   |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.privdata.list_missing_duration.%{channel}                                        | histogram | Time it takes to list the missing private data (in         |
+|                                                                                         |           | seconds)                                                   |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.privdata.pull_duration.%{channel}                                                | histogram | Time it takes to pull a missing private data element (in   |
+|                                                                                         |           | seconds)                                                   |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.privdata.purge_duration.%{channel}                                               | histogram | Time it takes to purge private data (in seconds)           |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.privdata.reconciliation_duration.%{channel}                                      | histogram | Time it takes for reconciliation to complete (in seconds)  |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.privdata.retrieve_duration.%{channel}                                            | histogram | Time it takes to retrieve missing private data elements    |
+|                                                                                         |           | from the ledger (in seconds)                               |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.privdata.send_duration.%{channel}                                                | histogram | Time it takes to send a missing private data element (in   |
+|                                                                                         |           | seconds)                                                   |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.privdata.validation_duration.%{channel}                                          | histogram | Time it takes to validate a block (in seconds)             |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.state.commit_duration.%{channel}                                                 | histogram | Time it takes to commit a block in seconds                 |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.state.height.%{channel}                                                          | gauge     | Current ledger height                                      |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | grpc.comm.conn_closed                                                                   | counter   | gRPC connections closed. Open minus closed is the active   |
 |                                                                                         |           | number of connections.                                     |

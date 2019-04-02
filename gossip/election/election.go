@@ -82,6 +82,9 @@ type LeaderElectionAdapter interface {
 
 	// Peers returns a list of peers considered alive
 	Peers() []Peer
+
+	// ReportMetrics sends a report to the metrics server about a leadership status
+	ReportMetrics(isLeader bool)
 }
 
 type leadershipCallback func(isLeader bool)
@@ -319,6 +322,7 @@ func (le *leaderElectionSvcImpl) follower() {
 
 	le.proposals.Clear()
 	atomic.StoreInt32(&le.leaderExists, int32(0))
+	le.adapter.ReportMetrics(false)
 	select {
 	case <-time.After(getLeaderAliveThreshold()):
 	case <-le.stopChan:
@@ -329,6 +333,7 @@ func (le *leaderElectionSvcImpl) follower() {
 func (le *leaderElectionSvcImpl) leader() {
 	leaderDeclaration := le.adapter.CreateMessage(true)
 	le.adapter.Gossip(leaderDeclaration)
+	le.adapter.ReportMetrics(true)
 	le.waitForInterrupt(getLeadershipDeclarationInterval())
 }
 
