@@ -13,6 +13,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
@@ -108,7 +109,11 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		return nil, nil, nil, nil, fmt.Errorf("Error starting peer listener %s", err)
 	}
 
-	ccprovider.SetChaincodesPath(ccprovider.GetChaincodeInstallPathFromViper())
+	tempdir, err := ioutil.TempDir("", "chaincode")
+	if err != nil {
+		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
+	}
+	ccprovider.SetChaincodesPath(tempdir)
 	ca, _ := tlsgen.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	config := GlobalConfig()
@@ -186,7 +191,10 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	go grpcServer.Serve(lis)
 
 	// was passing nil nis at top
-	return ml, lis, chaincodeSupport, func() { finitPeer(lis, chainIDs...) }, nil
+	return ml, lis, chaincodeSupport, func() {
+		finitPeer(lis, chainIDs...)
+		os.RemoveAll(tempdir)
+	}, nil
 }
 
 func finitPeer(lis net.Listener, chainIDs ...string) {

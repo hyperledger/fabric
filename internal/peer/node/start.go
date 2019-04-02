@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -41,6 +42,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
+	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
@@ -164,7 +166,7 @@ func serve(args []string) error {
 
 	mspID := viper.GetString("peer.localMspId")
 
-	chaincodeInstallPath := ccprovider.GetChaincodeInstallPathFromViper()
+	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "chaincodes")
 	ccPackageParser := &persistence.ChaincodePackageParser{}
 	ccStore := &persistence.Store{
 		Path:       chaincodeInstallPath,
