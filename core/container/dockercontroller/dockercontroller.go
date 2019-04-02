@@ -20,10 +20,11 @@ import (
 	"strings"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
@@ -119,7 +120,16 @@ func NewDockerVM(peerID, networkID string, buildMetrics *BuildMetrics) *DockerVM
 }
 
 func getDockerClient() (dockerClient, error) {
-	return cutil.NewDockerClient()
+	endpoint := viper.GetString("vm.endpoint")
+	tlsEnabled := viper.GetBool("vm.docker.tls.enabled")
+	if tlsEnabled {
+		cert := config.GetPath("vm.docker.tls.cert.file")
+		key := config.GetPath("vm.docker.tls.key.file")
+		ca := config.GetPath("vm.docker.tls.ca.file")
+		return docker.NewTLSClient(endpoint, cert, key, ca)
+	} else {
+		return docker.NewClient(endpoint)
+	}
 }
 
 func getDockerHostConfig() *docker.HostConfig {

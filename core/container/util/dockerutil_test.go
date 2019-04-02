@@ -30,9 +30,3 @@ func TestUtil_GetDockerfileFromConfig(t *testing.T) {
 	assert.Equal(t, expected, actual, "Error parsing Dockerfile Template. Expected \"%s\", got \"%s\"",
 		expected, actual)
 }
-
-func TestUtil_GetDockertClient(t *testing.T) {
-	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
-	_, err := NewDockerClient()
-	assert.NoError(t, err, "Error getting docker client")
-}

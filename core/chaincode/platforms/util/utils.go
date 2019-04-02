@@ -25,10 +25,12 @@ import (
 	"os"
 	"path/filepath"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/config"
 	cutil "github.com/hyperledger/fabric/core/container/util"
+	"github.com/spf13/viper"
 )
 
 var logger = flogging.MustGetLogger("chaincode.platform.util")
@@ -142,7 +144,19 @@ type DockerBuildOptions struct {
 //                      after successful execution of Cmd.
 //-------------------------------------------------------------------------------------------
 func DockerBuild(opts DockerBuildOptions) error {
-	client, err := cutil.NewDockerClient()
+	var client *docker.Client
+	var err error
+	endpoint := viper.GetString("vm.endpoint")
+	tlsEnabled := viper.GetBool("vm.docker.tls.enabled")
+	if tlsEnabled {
+		cert := config.GetPath("vm.docker.tls.cert.file")
+		key := config.GetPath("vm.docker.tls.key.file")
+		ca := config.GetPath("vm.docker.tls.ca.file")
+		client, err = docker.NewTLSClient(endpoint, cert, key, ca)
+	} else {
+		client, err = docker.NewClient(endpoint)
+	}
+
 	if err != nil {
 		return fmt.Errorf("Error creating docker client: %s", err)
 	}
