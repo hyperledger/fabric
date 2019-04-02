@@ -24,9 +24,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config"
 	cutil "github.com/hyperledger/fabric/core/container/util"
@@ -161,7 +164,7 @@ func DockerBuild(opts DockerBuildOptions) error {
 		return fmt.Errorf("Error creating docker client: %s", err)
 	}
 	if opts.Image == "" {
-		opts.Image = cutil.GetDockerfileFromConfig("chaincode.builder")
+		opts.Image = GetDockerfileFromConfig("chaincode.builder")
 		if opts.Image == "" {
 			return fmt.Errorf("No image provided and \"chaincode.builder\" default does not exist")
 		}
@@ -269,4 +272,14 @@ func DockerBuild(opts DockerBuildOptions) error {
 	}
 
 	return nil
+}
+
+func GetDockerfileFromConfig(path string) string {
+	r := strings.NewReplacer(
+		"$(ARCH)", runtime.GOARCH,
+		"$(PROJECT_VERSION)", metadata.Version,
+		"$(DOCKER_NS)", metadata.DockerNamespace,
+		"$(BASE_DOCKER_NS)", metadata.BaseDockerNamespace)
+
+	return r.Replace(viper.GetString(path))
 }

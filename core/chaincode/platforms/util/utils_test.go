@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/spf13/viper"
@@ -362,6 +363,15 @@ func TestDockerPull(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error during build: %s", err)
 	}
+}
+
+func TestUtil_GetDockerfileFromConfig(t *testing.T) {
+	expected := "FROM " + metadata.DockerNamespace + ":" + runtime.GOARCH + "-" + metadata.Version
+	path := "dt"
+	viper.Set(path, "FROM $(DOCKER_NS):$(ARCH)-$(PROJECT_VERSION)")
+	actual := GetDockerfileFromConfig(path)
+	assert.Equal(t, expected, actual, "Error parsing Dockerfile Template. Expected \"%s\", got \"%s\"",
+		expected, actual)
 }
 
 func TestMain(m *testing.M) {

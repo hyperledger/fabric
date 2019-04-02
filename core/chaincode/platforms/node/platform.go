@@ -170,7 +170,7 @@ func (p *Platform) GenerateDockerfile() (string, error) {
 
 	var buf []string
 
-	buf = append(buf, "FROM "+cutil.GetDockerfileFromConfig("chaincode.node.runtime"))
+	buf = append(buf, "FROM "+util.GetDockerfileFromConfig("chaincode.node.runtime"))
 	buf = append(buf, "ADD binpackage.tar /usr/local/src")
 
 	dockerFileContents := strings.Join(buf, "\n")
@@ -183,7 +183,7 @@ func (p *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer)
 	codepackage := bytes.NewReader(code)
 	binpackage := bytes.NewBuffer(nil)
 	err := util.DockerBuild(util.DockerBuildOptions{
-		Image:        cutil.GetDockerfileFromConfig("chaincode.node.runtime"),
+		Image:        util.GetDockerfileFromConfig("chaincode.node.runtime"),
 		Cmd:          fmt.Sprint("cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production"),
 		InputStream:  codepackage,
 		OutputStream: binpackage,
