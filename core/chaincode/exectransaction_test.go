@@ -19,7 +19,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -1317,10 +1316,6 @@ func setupTestConfig() {
 	if err != nil {                      // Handle errors reading the config file
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}
-
-	// Set the number of maxprocs
-	var numProcsDesired = viper.GetInt("peer.gomaxprocs")
-	chaincodeLogger.Debugf("setting Number of procs to %d, was %d\n", numProcsDesired, runtime.GOMAXPROCS(numProcsDesired))
 
 	// Init the BCCSP
 	err = factory.InitFactories(nil)
