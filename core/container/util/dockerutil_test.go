@@ -15,13 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUtil_DockerfileTemplateParser(t *testing.T) {
-	expected := "FROM foo:" + runtime.GOARCH + "-" + metadata.Version
-	actual := ParseDockerfileTemplate("FROM foo:$(ARCH)-$(PROJECT_VERSION)")
-	assert.Equal(t, expected, actual, "Error parsing Dockerfile Template. Expected \"%s\", got \"%s\"",
-		expected, actual)
-}
-
 func TestUtil_GetDockerfileFromConfig(t *testing.T) {
 	expected := "FROM " + metadata.DockerNamespace + ":" + runtime.GOARCH + "-" + metadata.Version
 	path := "dt"

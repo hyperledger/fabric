@@ -14,16 +14,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-func ParseDockerfileTemplate(template string) string {
+func GetDockerfileFromConfig(path string) string {
 	r := strings.NewReplacer(
 		"$(ARCH)", runtime.GOARCH,
 		"$(PROJECT_VERSION)", metadata.Version,
 		"$(DOCKER_NS)", metadata.DockerNamespace,
 		"$(BASE_DOCKER_NS)", metadata.BaseDockerNamespace)
 
-	return r.Replace(template)
-}
-
-func GetDockerfileFromConfig(path string) string {
-	return ParseDockerfileTemplate(viper.GetString(path))
+	return r.Replace(viper.GetString(path))
 }
