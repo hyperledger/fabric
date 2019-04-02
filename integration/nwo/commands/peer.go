@@ -222,8 +222,8 @@ func (c ChaincodeApproveForMyOrgLifecycle) Args() []string {
 		"--version", c.Version,
 		"--package-id", c.PackageID,
 		"--sequence", c.Sequence,
-		"--escc", c.EndorsementPlugin,
-		"--vscc", c.ValidationPlugin,
+		"--endorsement-plugin", c.EndorsementPlugin,
+		"--validation-plugin", c.ValidationPlugin,
 		"--signature-policy", c.SignaturePolicy,
 		"--channel-config-policy", c.ChannelConfigPolicy,
 	}
@@ -271,8 +271,8 @@ func (c ChaincodeCommitLifecycle) Args() []string {
 		"--name", c.Name,
 		"--version", c.Version,
 		"--sequence", c.Sequence,
-		"--escc", c.EndorsementPlugin,
-		"--vscc", c.ValidationPlugin,
+		"--endorsement-plugin", c.EndorsementPlugin,
+		"--validation-plugin", c.ValidationPlugin,
 		"--signature-policy", c.SignaturePolicy,
 		"--channel-config-policy", c.ChannelConfigPolicy,
 	}

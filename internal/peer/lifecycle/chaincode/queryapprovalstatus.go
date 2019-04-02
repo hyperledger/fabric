@@ -35,16 +35,18 @@ type QueryApprovalStatus struct {
 	Signer         identity.SignerSerializer
 }
 
+// QueryApprovalStatusInput holds all of the input parameters for committing
+// a chaincode definition. ValidationParameter bytes is the (marshalled)
+// endorsement policy when using the default endorsement and validation
+// plugins
 type QueryApprovalStatusInput struct {
-	ChannelID         string
-	Name              string
-	Version           string
-	PackageID         string
-	Sequence          int64
-	EndorsementPlugin string
-	ValidationPlugin  string
-	// ValidationParameterBytes is the (marshalled) endorsement policy
-	// when using default escc/vscc
+	ChannelID                string
+	Name                     string
+	Version                  string
+	PackageID                string
+	Sequence                 int64
+	EndorsementPlugin        string
+	ValidationPlugin         string
 	ValidationParameterBytes []byte
 	CollectionConfigPackage  *cb.CollectionConfigPackage
 	InitRequired             bool
@@ -110,8 +112,8 @@ func queryApprovalStatusCmd(a *QueryApprovalStatus) *cobra.Command {
 		"name",
 		"version",
 		"sequence",
-		"escc",
-		"vscc",
+		"endorsement-plugin",
+		"validation-plugin",
 		"signature-policy",
 		"channel-config-policy",
 		"init-required",
@@ -213,8 +215,8 @@ func (a *QueryApprovalStatus) setInput() error {
 		Version:                  chaincodeVersion,
 		PackageID:                packageID,
 		Sequence:                 int64(sequence),
-		EndorsementPlugin:        escc,
-		ValidationPlugin:         vscc,
+		EndorsementPlugin:        endorsementPlugin,
+		ValidationPlugin:         validationPlugin,
 		ValidationParameterBytes: policyBytes,
 		InitRequired:             initRequired,
 		CollectionConfigPackage:  ccp,

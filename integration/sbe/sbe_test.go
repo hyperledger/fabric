@@ -106,8 +106,6 @@ var _ = Describe("SBE_E2E", func() {
 				Lang:              "golang",
 				PackageFile:       filepath.Join(tempDir, "simplecc.tar.gz"),
 				Ctor:              `{"Args":["init"]}`,
-				EndorsementPlugin: "escc",
-				ValidationPlugin:  "vscc",
 				SignaturePolicy:   `OR('Org1MSP.member','Org2MSP.member')`,
 				Sequence:          "1",
 				InitRequired:      true,
