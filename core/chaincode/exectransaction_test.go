@@ -99,10 +99,11 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	viper.Set("peer.tls.enabled", false)
 	grpcServer := grpc.NewServer()
 
-	peerAddress, err := peer.GetLocalAddress()
+	peerEndpoint, err := peer.GetPeerEndpoint()
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("Error obtaining peer address: %s", err)
+		return nil, nil, nil, nil, fmt.Errorf("Error obtaining peer endpoint: %s", err)
 	}
+	peerAddress := peerEndpoint.Address
 	lis, err := net.Listen("tcp", peerAddress)
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("Error starting peer listener %s", err)

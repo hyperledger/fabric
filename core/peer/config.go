@@ -36,10 +36,8 @@ import (
 // Is the configuration cached?
 var configurationCached = false
 
-// Cached values and error values of the computed constants getLocalAddress(),
-// getValidatorStreamAddress(), and getPeerEndpoint()
-var localAddress string
-var localAddressError error
+// Cached values and error values of the computed getValidatorStreamAddress()
+// and getPeerEndpoint()
 var peerEndpoint *pb.PeerEndpoint
 var peerEndpointError error
 
@@ -49,15 +47,12 @@ var peerEndpointError error
 // computed constants as package variables. Routines which were previously
 // global have been embedded here to preserve the original abstraction.
 func CacheConfiguration() error {
-	localAddress, localAddressError = getLocalAddress()
 	peerEndpoint, peerEndpointError = getPeerEndpoint()
-
-	configurationCached = true
-
-	if localAddressError != nil {
-		return localAddressError
+	if peerEndpointError != nil {
+		return peerEndpointError
 	}
 
+	configurationCached = true
 	return nil
 }
 
@@ -113,14 +108,6 @@ func cacheConfiguration() {
 }
 
 //Functional forms
-
-// GetLocalAddress returns the peer.address property
-func GetLocalAddress() (string, error) {
-	if !configurationCached {
-		cacheConfiguration()
-	}
-	return localAddress, localAddressError
-}
 
 // GetPeerEndpoint returns peerEndpoint from cached configuration
 func GetPeerEndpoint() (*pb.PeerEndpoint, error) {

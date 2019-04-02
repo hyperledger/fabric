@@ -48,10 +48,11 @@ func TestConfiguration(t *testing.T) {
 	assert.NoError(t, err)
 
 	var tests = []struct {
-		name             string
-		settings         map[string]interface{}
-		validAddresses   []string
-		invalidAddresses []string
+		name                string
+		settings            map[string]interface{}
+		validAddresses      []string
+		invalidAddresses    []string
+		expectedPeerAddress string
 	}{
 		{
 			name: "test1",
@@ -60,8 +61,9 @@ func TestConfiguration(t *testing.T) {
 				"peer.address":           "testing.com:7051",
 				"peer.id":                "testPeer",
 			},
-			validAddresses:   []string{"testing.com:7051"},
-			invalidAddresses: ips,
+			validAddresses:      []string{"testing.com:7051"},
+			invalidAddresses:    ips,
+			expectedPeerAddress: "testing.com:7051",
 		},
 		{
 			name: "test2",
@@ -70,8 +72,9 @@ func TestConfiguration(t *testing.T) {
 				"peer.address":           "testing.com:7051",
 				"peer.id":                "testPeer",
 			},
-			validAddresses:   ips,
-			invalidAddresses: []string{"testing.com:7051"},
+			validAddresses:      ips,
+			invalidAddresses:    []string{"testing.com:7051"},
+			expectedPeerAddress: net.JoinHostPort(localIP, "7051"),
 		},
 		{
 			name: "test3",
@@ -80,8 +83,9 @@ func TestConfiguration(t *testing.T) {
 				"peer.address":           "0.0.0.0:7051",
 				"peer.id":                "testPeer",
 			},
-			validAddresses:   []string{fmt.Sprintf("%s:7051", localIP)},
-			invalidAddresses: []string{"0.0.0.0:7051"},
+			validAddresses:      []string{fmt.Sprintf("%s:7051", localIP)},
+			invalidAddresses:    []string{"0.0.0.0:7051"},
+			expectedPeerAddress: net.JoinHostPort(localIP, "7051"),
 		},
 	}
 
@@ -93,33 +97,21 @@ func TestConfiguration(t *testing.T) {
 			}
 			// reset the cache
 			configurationCached = false
-			// GetLocalAddress
-			address, err := GetLocalAddress()
-			assert.NoError(t, err, "GetLocalAddress returned unexpected error")
-			assert.Contains(t, test.validAddresses, address, "GetLocalAddress returned unexpected address")
-			assert.NotContains(t, test.invalidAddresses, address, "GetLocalAddress returned invalid address")
-			// reset the cache
-			configurationCached = false
 			// GetPeerEndpoint
 			pe, err := GetPeerEndpoint()
 			assert.NoError(t, err, "GetPeerEndpoint returned unexpected error")
 			assert.Equal(t, test.settings["peer.id"], pe.Id.Name, "GetPeerEndpoint returned the wrong peer ID")
-			assert.Equal(t, address, pe.Address, "GetPeerEndpoint returned the wrong peer address")
+			assert.Equal(t, test.expectedPeerAddress, pe.Address, "GetPeerEndpoint returned the wrong peer address")
 
 			// now check with cached configuration
 			err = CacheConfiguration()
 			assert.NoError(t, err, "CacheConfiguration should not have returned an err")
 			// check functions again
-			// GetLocalAddress
-			address, err = GetLocalAddress()
-			assert.NoError(t, err, "GetLocalAddress should not have returned error")
-			assert.Contains(t, test.validAddresses, address, "GetLocalAddress returned unexpected address")
-			assert.NotContains(t, test.invalidAddresses, address, "GetLocalAddress returned invalid address")
 			// GetPeerEndpoint
 			pe, err = GetPeerEndpoint()
 			assert.NoError(t, err, "GetPeerEndpoint returned unexpected error")
 			assert.Equal(t, test.settings["peer.id"], pe.Id.Name, "GetPeerEndpoint returned the wrong peer ID")
-			assert.Equal(t, address, pe.Address, "GetPeerEndpoint returned the wrong peer address")
+			assert.Equal(t, test.expectedPeerAddress, pe.Address, "GetPeerEndpoint returned the wrong peer address")
 		})
 	}
 }
