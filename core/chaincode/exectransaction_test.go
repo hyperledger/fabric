@@ -39,7 +39,7 @@ import (
 	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	cm "github.com/hyperledger/fabric/core/chaincode/mock"
-	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -49,11 +49,9 @@ import (
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	cut "github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	cmp "github.com/hyperledger/fabric/core/mocks/peer"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
@@ -214,26 +212,6 @@ func finitPeer(lis net.Listener, chainIDs ...string) {
 	ledgerPath := config.GetPath("peer.fileSystemPath")
 	os.RemoveAll(ledgerPath)
 	os.RemoveAll(filepath.Join(os.TempDir(), "hyperledger"))
-
-	//if couchdb is enabled, then cleanup the test couchdb
-	if ledgerconfig.IsCouchDBEnabled() == true {
-
-		chainID := util.GetTestChainID()
-
-		connectURL := viper.GetString("ledger.state.couchDBConfig.couchDBAddress")
-		username := viper.GetString("ledger.state.couchDBConfig.username")
-		password := viper.GetString("ledger.state.couchDBConfig.password")
-		maxRetries := viper.GetInt("ledger.state.couchDBConfig.maxRetries")
-		maxRetriesOnStartup := viper.GetInt("ledger.state.couchDBConfig.maxRetriesOnStartup")
-		requestTimeout := viper.GetDuration("ledger.state.couchDBConfig.requestTimeout")
-		createGlobalChangesDB := viper.GetBool("ledger.state.couchDBConfig.createGlobalChangesDB")
-
-		couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password, maxRetries, maxRetriesOnStartup, requestTimeout, createGlobalChangesDB, &disabled.Provider{})
-		db := couchdb.CouchDatabase{CouchInstance: couchInstance, DBName: chainID}
-		//drop the test database
-		db.DropDatabase()
-
-	}
 }
 
 func startTxSimulation(chainID string, txid string) (ledger.TxSimulator, ledger.HistoryQueryExecutor, error) {
@@ -1265,164 +1243,6 @@ func TestQueries(t *testing.T) {
 		t.Fail()
 		t.Logf("Error detected with the paginated range query second page. Returned: %v  should have returned: %v    %v", queryPage.Keys, expectedResult, queryPage.Bookmark)
 		return
-	}
-
-	// ExecuteQuery supported only for CouchDB and
-	// query limits apply for CouchDB range and rich queries only
-	if ledgerconfig.IsCouchDBEnabled() == true {
-
-		// corner cases for shim batching. currnt shim batch size is 100
-		// this query should return exactly 100 results (no call to Next())
-		f = "query"
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"color\":\"blue\"}}")
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
-
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-
-		//check to see if there are 100 values
-		if len(keys) != 100 {
-			t.Fail()
-			t.Logf("Error detected with the rich query, should have returned 100 but returned %v %s", len(keys), keys)
-			return
-		}
-		//Reset the query limit to 5
-		viper.Set("ledger.state.queryLimit", 5)
-
-		//The following range query for "marble01" to "marble11" should return 5 marbles due to the queryLimit
-		f = "keys"
-		args = util.ToChaincodeArgs(f, "marble001", "marble011")
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err := invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
-
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-		//check to see if there are 5 values
-		if len(keys) != 5 {
-			t.Fail()
-			t.Logf("Error detected with the range query, should have returned 5 but returned %v", len(keys))
-			return
-		}
-
-		//Reset the query limit to 10000
-		viper.Set("ledger.state.queryLimit", 10000)
-
-		//The following rich query for should return 50 marbles
-		f = "query"
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}")
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
-
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-
-		//check to see if there are 50 values
-		//default query limit of 10000 is used, this query is effectively unlimited
-		if len(keys) != 50 {
-			t.Fail()
-			t.Logf("Error detected with the rich query, should have returned 50 but returned %v", len(keys))
-			return
-		}
-
-		//Reset the query limit to 5
-		viper.Set("ledger.state.queryLimit", 5)
-
-		//The following rich query should return 5 marbles due to the queryLimit
-		f = "query"
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}")
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
-
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-
-		//check to see if there are 5 values
-		if len(keys) != 5 {
-			t.Fail()
-			t.Logf("Error detected with the rich query, should have returned 5 but returned %v", len(keys))
-			return
-		}
-
-		//The following rich query should return 2 marbles due to the pagesize
-		f = "queryByPage"
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}", "2", "")
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
-
-		queryPage := &PageResponse{}
-
-		json.Unmarshal(retval, &queryPage)
-
-		expectedResult := []string{"marble001", "marble003"}
-
-		if !reflect.DeepEqual(expectedResult, queryPage.Keys) {
-			t.Fail()
-			t.Logf("Error detected with the paginated range query. Returned: %v  should have returned: %v", queryPage.Keys, expectedResult)
-			return
-		}
-
-		// set args for the next page
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}", "2", queryPage.Bookmark)
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
-
-		queryPage = &PageResponse{}
-
-		json.Unmarshal(retval, &queryPage)
-
-		expectedResult = []string{"marble005", "marble007"}
-
-		if !reflect.DeepEqual(expectedResult, queryPage.Keys) {
-			t.Fail()
-			t.Logf("Error detected with the paginated range query. Returned: %v  should have returned: %v", queryPage.Keys, expectedResult)
-			return
-		}
-
 	}
 
 	// modifications for history query
