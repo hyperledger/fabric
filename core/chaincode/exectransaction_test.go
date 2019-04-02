@@ -69,7 +69,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	ma "github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 //initialize peer and start up. If security==enabled, login as vp
@@ -98,16 +97,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 
 	// For unit-test, tls is not required.
 	viper.Set("peer.tls.enabled", false)
-
-	var opts []grpc.ServerOption
-	if viper.GetBool("peer.tls.enabled") {
-		creds, err := credentials.NewServerTLSFromFile(config.GetPath("peer.tls.cert.file"), config.GetPath("peer.tls.key.file"))
-		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("Failed to generate credentials %v", err)
-		}
-		opts = []grpc.ServerOption{grpc.Creds(creds)}
-	}
-	grpcServer := grpc.NewServer(opts...)
+	grpcServer := grpc.NewServer()
 
 	peerAddress, err := peer.GetLocalAddress()
 	if err != nil {
