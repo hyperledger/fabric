@@ -38,7 +38,12 @@ import (
 // This test used to be part of an integration style test in core/container, moved to here
 func TestIntegrationPath(t *testing.T) {
 	coreutil.SetupTestConfig()
-	dc := NewDockerVM("", util.GenerateUUID(), NewBuildMetrics(&disabled.Provider{}))
+	provider := Provider{
+		PeerID:       "",
+		NetworkID:    util.GenerateUUID(),
+		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
+	}
+	dc := provider.NewVM()
 	ccid := ccintf.CCID("simple")
 
 	err := dc.Start(ccid, nil, nil, nil, InMemBuilder{})

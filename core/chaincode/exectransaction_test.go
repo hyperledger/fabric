@@ -156,6 +156,11 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 			Version:   "0",
 			PackageID: persistence.PackageID("tmap:0"),
 		}, nil)
+	provider := &dockercontroller.Provider{
+		PeerID:       "",
+		NetworkID:    "",
+		BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
+	}
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		peerAddress,
@@ -167,7 +172,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		aclmgmt.NewACLProvider(func(string) channelconfig.Resources { return nil }),
 		container.NewVMController(
 			map[string]container.VMProvider{
-				dockercontroller.ContainerType: dockercontroller.NewProvider("", "", &disabled.Provider{}),
+				dockercontroller.ContainerType: provider,
 				inproccontroller.ContainerType: ipRegistry,
 			},
 		),

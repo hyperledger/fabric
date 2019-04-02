@@ -22,7 +22,6 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
@@ -95,27 +94,13 @@ type Provider struct {
 	BuildMetrics *BuildMetrics
 }
 
-// NewProvider creates a new instance of Provider
-func NewProvider(peerID, networkID string, metricsProvider metrics.Provider) *Provider {
-	return &Provider{
-		PeerID:       peerID,
-		NetworkID:    networkID,
-		BuildMetrics: NewBuildMetrics(metricsProvider),
-	}
-}
-
 // NewVM creates a new DockerVM instance
 func (p *Provider) NewVM() container.VM {
-	return NewDockerVM(p.PeerID, p.NetworkID, p.BuildMetrics)
-}
-
-// NewDockerVM returns a new DockerVM instance
-func NewDockerVM(peerID, networkID string, buildMetrics *BuildMetrics) *DockerVM {
 	return &DockerVM{
-		PeerID:       peerID,
-		NetworkID:    networkID,
+		PeerID:       p.PeerID,
+		NetworkID:    p.NetworkID,
 		getClientFnc: getDockerClient,
-		BuildMetrics: buildMetrics,
+		BuildMetrics: p.BuildMetrics,
 	}
 }
 

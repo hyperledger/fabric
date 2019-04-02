@@ -334,16 +334,12 @@ func serve(args []string) error {
 		ACLProvider:         aclProvider,
 	}
 
-	dockerProvider := dockercontroller.NewProvider(
-		viper.GetString("peer.id"),
-		viper.GetString("peer.networkId"),
-		opsSystem.Provider,
-	)
-	dockerVM := dockercontroller.NewDockerVM(
-		dockerProvider.PeerID,
-		dockerProvider.NetworkID,
-		dockerProvider.BuildMetrics,
-	)
+	dockerProvider := &dockercontroller.Provider{
+		PeerID:       viper.GetString("peer.id"),
+		NetworkID:    viper.GetString("peer.networkId"),
+		BuildMetrics: dockercontroller.NewBuildMetrics(opsSystem.Provider),
+	}
+	dockerVM := dockerProvider.NewVM()
 
 	err = opsSystem.RegisterChecker("docker", dockerVM)
 	if err != nil {
