@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -156,10 +157,15 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 			Version:   "0",
 			PackageID: persistence.PackageID("tmap:0"),
 		}, nil)
+	client, err := docker.NewClientFromEnv()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
 	provider := &dockercontroller.Provider{
 		PeerID:       "",
 		NetworkID:    "",
 		BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
+		Client:       client,
 	}
 	chaincodeSupport := NewChaincodeSupport(
 		config,

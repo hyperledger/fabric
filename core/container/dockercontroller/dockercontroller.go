@@ -23,7 +23,6 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
@@ -42,12 +41,9 @@ var (
 	imageRegExp  = regexp.MustCompile("^[a-z0-9]+(([._-][a-z0-9]+)+)?$")
 )
 
-// getClient returns an instance that implements dockerClient interface
-type getClient func() (dockerClient, error)
-
 // DockerVM is a vm. It is identified by an image id
 type DockerVM struct {
-	getClientFnc getClient
+	Client       dockerClient
 	PeerID       string
 	NetworkID    string
 	BuildMetrics *BuildMetrics
@@ -92,6 +88,7 @@ type Provider struct {
 	PeerID       string
 	NetworkID    string
 	BuildMetrics *BuildMetrics
+	Client       dockerClient
 }
 
 // NewVM creates a new DockerVM instance
@@ -99,21 +96,8 @@ func (p *Provider) NewVM() container.VM {
 	return &DockerVM{
 		PeerID:       p.PeerID,
 		NetworkID:    p.NetworkID,
-		getClientFnc: getDockerClient,
+		Client:       p.Client,
 		BuildMetrics: p.BuildMetrics,
-	}
-}
-
-func getDockerClient() (dockerClient, error) {
-	endpoint := viper.GetString("vm.endpoint")
-	tlsEnabled := viper.GetBool("vm.docker.tls.enabled")
-	if tlsEnabled {
-		cert := config.GetPath("vm.docker.tls.cert.file")
-		key := config.GetPath("vm.docker.tls.key.file")
-		ca := config.GetPath("vm.docker.tls.ca.file")
-		return docker.NewTLSClient(endpoint, cert, key, ca)
-	} else {
-		return docker.NewClient(endpoint)
 	}
 }
 
@@ -166,10 +150,10 @@ func getDockerHostConfig() *docker.HostConfig {
 	}
 }
 
-func (vm *DockerVM) createContainer(client dockerClient, imageID, containerID string, args, env []string, attachStdout bool) error {
+func (vm *DockerVM) createContainer(imageID, containerID string, args, env []string, attachStdout bool) error {
 	logger := dockerLogger.With("imageID", imageID, "containerID", containerID)
 	logger.Debugw("create container")
-	_, err := client.CreateContainer(docker.CreateContainerOptions{
+	_, err := vm.Client.CreateContainer(docker.CreateContainerOptions{
 		Name: containerID,
 		Config: &docker.Config{
 			Cmd:          args,
@@ -187,7 +171,7 @@ func (vm *DockerVM) createContainer(client dockerClient, imageID, containerID st
 	return nil
 }
 
-func (vm *DockerVM) deployImage(client dockerClient, ccid ccintf.CCID, reader io.Reader) error {
+func (vm *DockerVM) deployImage(ccid ccintf.CCID, reader io.Reader) error {
 	id, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
@@ -202,7 +186,7 @@ func (vm *DockerVM) deployImage(client dockerClient, ccid ccintf.CCID, reader io
 	}
 
 	startTime := time.Now()
-	err = client.BuildImage(opts)
+	err = vm.Client.BuildImage(opts)
 
 	vm.BuildMetrics.ChaincodeImageBuildDuration.With(
 		"chaincode", ccid.String(),
@@ -230,27 +214,21 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 	containerName := vm.GetVMName(ccid)
 	logger := dockerLogger.With("imageName", imageName, "containerName", containerName)
 
-	client, err := vm.getClientFnc()
-	if err != nil {
-		logger.Debugf("failed to get docker client", "error", err)
-		return err
-	}
+	vm.stopInternal(containerName, 0, false, false)
 
-	vm.stopInternal(client, containerName, 0, false, false)
-
-	err = vm.createContainer(client, imageName, containerName, args, env, attachStdout)
+	err = vm.createContainer(imageName, containerName, args, env, attachStdout)
 	if err == docker.ErrNoSuchImage {
 		reader, err := builder.Build()
 		if err != nil {
 			return errors.Wrapf(err, "failed to generate Dockerfile to build %s", containerName)
 		}
 
-		err = vm.deployImage(client, ccid, reader)
+		err = vm.deployImage(ccid, reader)
 		if err != nil {
 			return err
 		}
 
-		err = vm.createContainer(client, imageName, containerName, args, env, attachStdout)
+		err = vm.createContainer(imageName, containerName, args, env, attachStdout)
 		if err != nil {
 			logger.Errorf("failed to create container: %s", err)
 			return err
@@ -263,7 +241,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 	// stream stdout and stderr to chaincode logger
 	if attachStdout {
 		containerLogger := flogging.MustGetLogger("peer.chaincode." + containerName)
-		streamOutput(dockerLogger, client, containerName, containerLogger)
+		streamOutput(dockerLogger, vm.Client, containerName, containerLogger)
 	}
 
 	// upload specified files to the container before starting it
@@ -286,7 +264,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 
 		gw.Close()
 
-		err := client.UploadToContainer(containerName, docker.UploadToContainerOptions{
+		err := vm.Client.UploadToContainer(containerName, docker.UploadToContainerOptions{
 			InputStream:          bytes.NewReader(payload.Bytes()),
 			Path:                 "/",
 			NoOverwriteDirNonDir: false,
@@ -297,7 +275,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 	}
 
 	// start container with HostConfig was deprecated since v1.10 and removed in v1.2
-	err = client.StartContainer(containerName, nil)
+	err = vm.Client.StartContainer(containerName, nil)
 	if err != nil {
 		dockerLogger.Errorf("start-could not start container: %s", err)
 		return err
@@ -369,26 +347,14 @@ func streamOutput(logger *flogging.FabricLogger, client dockerClient, containerN
 
 // Stop stops a running chaincode
 func (vm *DockerVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
-	client, err := vm.getClientFnc()
-	if err != nil {
-		dockerLogger.Debugf("stop - cannot create client %s", err)
-		return err
-	}
 	id := vm.ccidToContainerID(ccid)
-
-	return vm.stopInternal(client, id, timeout, dontkill, dontremove)
+	return vm.stopInternal(id, timeout, dontkill, dontremove)
 }
 
 // Wait blocks until the container stops and returns the exit code of the container.
 func (vm *DockerVM) Wait(ccid ccintf.CCID) (int, error) {
-	client, err := vm.getClientFnc()
-	if err != nil {
-		dockerLogger.Debugf("stop - cannot create client %s", err)
-		return 0, err
-	}
 	id := vm.ccidToContainerID(ccid)
-
-	return client.WaitContainer(id)
+	return vm.Client.WaitContainer(id)
 }
 
 func (vm *DockerVM) ccidToContainerID(ccid ccintf.CCID) string {
@@ -398,32 +364,28 @@ func (vm *DockerVM) ccidToContainerID(ccid ccintf.CCID) string {
 // HealthCheck checks if the DockerVM is able to communicate with the Docker
 // daemon.
 func (vm *DockerVM) HealthCheck(ctx context.Context) error {
-	client, err := vm.getClientFnc()
-	if err != nil {
-		return errors.Wrap(err, "failed to connect to Docker daemon")
-	}
-	if err := client.PingWithContext(ctx); err != nil {
+	if err := vm.Client.PingWithContext(ctx); err != nil {
 		return errors.Wrap(err, "failed to ping to Docker daemon")
 	}
 	return nil
 }
 
-func (vm *DockerVM) stopInternal(client dockerClient, id string, timeout uint, dontkill, dontremove bool) error {
+func (vm *DockerVM) stopInternal(id string, timeout uint, dontkill, dontremove bool) error {
 	logger := dockerLogger.With("id", id)
 
 	logger.Debugw("stopping container")
-	err := client.StopContainer(id, timeout)
+	err := vm.Client.StopContainer(id, timeout)
 	dockerLogger.Debugw("stop container result", "error", err)
 
 	if !dontkill {
 		logger.Debugw("killing container")
-		err = client.KillContainer(docker.KillContainerOptions{ID: id})
+		err = vm.Client.KillContainer(docker.KillContainerOptions{ID: id})
 		logger.Debugw("kill container result", "error", err)
 	}
 
 	if !dontremove {
 		logger.Debugw("removing container")
-		err = client.RemoveContainer(docker.RemoveContainerOptions{ID: id, Force: true})
+		err = vm.Client.RemoveContainer(docker.RemoveContainerOptions{ID: id, Force: true})
 		logger.Debugw("remove container result", "error", err)
 	}
 

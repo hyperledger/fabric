@@ -60,28 +60,6 @@ var _ = Describe("Health", func() {
 		os.RemoveAll(testDir)
 	})
 
-	Context("when the docker config is bad", func() {
-		It("fails the health check", func() {
-			peer := network.Peer("Org1", "peer0")
-			core := network.ReadPeerConfig(peer)
-			core.VM.Endpoint = "127.0.0.1:0" // bad endpoint
-			network.WritePeerConfig(peer, core)
-
-			peerRunner := network.PeerRunner(peer)
-			process = ginkgomon.Invoke(peerRunner)
-			Eventually(process.Ready()).Should(BeClosed())
-
-			authClient, _ := PeerOperationalClients(network, peer)
-			healthURL := fmt.Sprintf("https://127.0.0.1:%d/healthz", network.PeerPort(peer, nwo.OperationsPort))
-			statusCode, status := DoHealthCheck(authClient, healthURL)
-			Expect(statusCode).To(Equal(http.StatusServiceUnavailable))
-			Expect(status.Status).To(Equal("Service Unavailable"))
-			Expect(status.FailedChecks).To(ConsistOf(
-				healthz.FailedCheck{Component: "docker", Reason: "failed to connect to Docker daemon: invalid endpoint"},
-			))
-		})
-	})
-
 	Describe("CouchDB health checks", func() {
 		var (
 			couchAddr    string

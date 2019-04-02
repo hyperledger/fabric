@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ccdef "github.com/hyperledger/fabric/common/chaincode"
@@ -334,10 +335,25 @@ func serve(args []string) error {
 		ACLProvider:         aclProvider,
 	}
 
+	var client *docker.Client
+	endpoint := viper.GetString("vm.endpoint")
+	if viper.GetBool("vm.docker.tls.enabled") {
+		cert := coreconfig.GetPath("vm.docker.tls.cert.file")
+		key := coreconfig.GetPath("vm.docker.tls.key.file")
+		ca := coreconfig.GetPath("vm.docker.tls.ca.file")
+		client, err = docker.NewTLSClient(endpoint, cert, key, ca)
+	} else {
+		client, err = docker.NewClient(endpoint)
+	}
+	if err != nil {
+		logger.Panicf("cannot create docker client: %s", err)
+	}
+
 	dockerProvider := &dockercontroller.Provider{
 		PeerID:       viper.GetString("peer.id"),
 		NetworkID:    viper.GetString("peer.networkId"),
 		BuildMetrics: dockercontroller.NewBuildMetrics(opsSystem.Provider),
+		Client:       client,
 	}
 	dockerVM := dockerProvider.NewVM()
 
