@@ -627,10 +627,10 @@ chaincode package label as a description of the chaincode. Modify the command
 accordingly if the channel is running a chaincode written in Java or Node.js.
 Issue the following command to install the package on peer0 of Org3:
 
-  .. code:: bash
+.. code:: bash
 
-      # this command installs a chaincode package on your peer
-      peer lifecycle chaincode install mycc.tar.gz
+    # this command installs a chaincode package on your peer
+    peer lifecycle chaincode install mycc.tar.gz
 
 You can also modify the environment variables and reissue the command if you
 want to install the chaincode on the second peer of Org3. Note that a second
@@ -678,14 +678,30 @@ for Org3:
     # use the --init-required flag to request the ``Init`` function be invoked to initialize the chaincode
     peer lifecycle chaincode approveformyorg --channelID $CHANNEL_NAME --name mycc --version 1.0 --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
 
-Since the chaincode definition has already been committed to the channel, you
-are ready to use the ``mycc`` chaincode after you approve the definition.
-The chaincode definition uses the default endorsement policy, which requires a
-majority of organizations on the channel endorse a transaction. This implies
-that if an organization is added to or removed from the channel, the endorsement
-policy is updated automatically. We previously needed endorsements from Org1 and
-Org2 (2 out of 2). Now we need endorsements from two organizations out of Org1,
-Org2, and Org3 (2 out of 3).
+You can use the ``peer lifecycle chaincode querycommitted`` command to check if
+the chaincode definition you have approved has already been committed to the
+channel.
+
+.. code:: bash
+
+    # use the --name flag to select the chaincode whose definition you want to query
+    peer lifecycle chaincode querycommitted --channelID $CHANNEL_NAME --name mycc --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+A successful command will return information about the committed definition:
+
+.. code:: bash
+
+    Committed chaincode definition for chaincode 'mycc' on channel 'mychannel':
+    Version: 1, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc
+
+Since the chaincode definition has already been committed, you are ready to use
+the ``mycc`` chaincode after you approve the definition. The chaincode definition
+uses the default endorsement policy, which requires a majority of organizations
+on the channel endorse a transaction. This implies that if an organization is
+added to or removed from the channel, the endorsement policy is updated
+automatically. We previously needed endorsements from Org1 and Org2 (2 out of 2).
+Now we need endorsements from two organizations out of Org1, Org2, and Org3 (2
+out of 3).
 
 Query the chaincode to ensure that it has started. Note that you may need to
 wait for the chaincode container to start.

@@ -39,7 +39,7 @@ the channel ledger.
 
 You also need to include an ``Init`` method that will serve as the initialization
 function for your chaincode. This method will be called in order to initialize
-the chaincode when it is started or upgraded. By default, this function is never 
+the chaincode when it is started or upgraded. By default, this function is never
 executed. However, you can use the chaincode definition to request that the ``Init``
 function be executed. If execution of ``Init`` is requested, fabric will ensure
 that ``Init`` is invoked before any other function and is only invoked once.
@@ -49,7 +49,7 @@ the peer CLI to approve the chaincode definition, use the ``--init-required``
 flag to request the execution of the ``Init`` function. Then call the ``Init``
 function by using the `peer chaincode invoke` command and passing the
 ``--isInit`` flag. If you are using the Fabric SDK for Node.js, visit
-[How to install and start your chaincode](https://fabric-sdk-node.github.io/master/tutorial-chaincode-lifecycle.html). For more information, see :doc:`chaincode4noah`.
+`How to install and start your chaincode <https://fabric-sdk-node.github.io/master/tutorial-chaincode-lifecycle.html>`__. For more information, see :doc:`chaincode4noah`.
 
 The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface``:
 
