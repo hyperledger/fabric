@@ -1,5 +1,11 @@
 # Blockchain network
 
+_Note: This tutorial describes a network that uses the
+[previous lifecycle process](https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html)
+in which a chaincode is instantiated on a channel. This topic will be updated
+to reflect the [Fabric chaincode lifecycle](../chaincode4noah.html) feature
+that is first introduced in the alpha release of v2.0.0._
+
 This topic will describe, **at a conceptual level**, how Hyperledger Fabric
 allows organizations to collaborate in the formation of blockchain networks.  If
 you're an architect, administrator or developer, you can use this topic to get a
