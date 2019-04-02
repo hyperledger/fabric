@@ -574,9 +574,39 @@ type HealthCheckRegistry interface {
 	RegisterChecker(string, healthz.HealthChecker) error
 }
 
+// ChaincodeLifecycleEventListener interface enables ledger components (mainly, intended for statedb)
+// to be able to listen to chaincode lifecycle events. 'dbArtifactsTar' represents db specific artifacts
+// (such as index specs) packaged in a tar. Note that this interface is redefined here (in addition to
+// the one defined in ledger/cceventmgmt package). Using the same interface for the new lifecycle path causes
+// a cyclic import dependency. Moreover, eventually the whole package ledger/cceventmgmt is intented to
+// be removed when migration to new lifecycle is mandated.
+type ChaincodeLifecycleEventListener interface {
+	// HandleChaincodeDeploy is invoked when chaincode installed + defined becomes true.
+	// The expected usage are to creates all the necessary statedb structures (such as indexes) and update
+	// service discovery info. This function is invoked immediately before the committing the state changes
+	// that contain chaincode definition or when a chaincode install happens
+	HandleChaincodeDeploy(chaincodeDefinition *ChaincodeDefinition, dbArtifactsTar []byte) error
+	// ChaincodeDeployDone is invoked after the chaincode deployment is finished - `succeeded` indicates
+	// whether the deploy finished successfully
+	ChaincodeDeployDone(succeeded bool)
+}
+
+// ChaincodeDefinition captures the info about chaincode
+type ChaincodeDefinition struct {
+	Name              string
+	Hash              []byte
+	Version           string
+	CollectionConfigs *common.CollectionConfigPackage
+}
+
+func (cdef *ChaincodeDefinition) String() string {
+	return fmt.Sprintf("Name=%s, Version=%s, Hash=%#v", cdef.Name, cdef.Version, cdef.Hash)
+}
+
 //go:generate counterfeiter -o mock/state_listener.go -fake-name StateListener . StateListener
 //go:generate counterfeiter -o mock/query_executor.go -fake-name QueryExecutor . QueryExecutor
 //go:generate counterfeiter -o mock/tx_simulator.go -fake-name TxSimulator . TxSimulator
 //go:generate counterfeiter -o mock/deployed_ccinfo_provider.go -fake-name DeployedChaincodeInfoProvider . DeployedChaincodeInfoProvider
 //go:generate counterfeiter -o mock/membership_info_provider.go -fake-name MembershipInfoProvider . MembershipInfoProvider
 //go:generate counterfeiter -o mock/health_check_registry.go -fake-name HealthCheckRegistry . HealthCheckRegistry
+//go:generate counterfeiter -o mock/cc_event_listener.go -fake-name ChaincodeLifecycleEventListener . ChaincodeLifecycleEventListener
