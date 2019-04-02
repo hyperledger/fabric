@@ -43,6 +43,7 @@ func (c ChannelCreate) Args() []string {
 		"--orderer", c.Orderer,
 		"--file", c.File,
 		"--outputBlock", c.OutputBlock,
+		"--timeout", "15s",
 	}
 }
 
