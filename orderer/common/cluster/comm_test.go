@@ -555,12 +555,12 @@ func TestStreamAbort(t *testing.T) {
 		{
 			testName:      "Evicted from membership",
 			membership:    nil,
-			expectedError: "rpc error",
+			expectedError: "rpc error: code = Canceled desc = context canceled",
 		},
 		{
 			testName:      "Changed TLS certificate",
 			membership:    []cluster.RemoteNode{invalidNodeInfo},
-			expectedError: "rpc error",
+			expectedError: "rpc error: code = Canceled desc = context canceled",
 		},
 	} {
 		t.Run(tst.testName, func(t *testing.T) {
@@ -579,33 +579,29 @@ func testStreamAbort(t *testing.T, node2 *clusterNode, newMembership []cluster.R
 	node1.c.Configure(testChannel2, []cluster.RemoteNode{node2.nodeInfo})
 	node2.c.Configure(testChannel2, []cluster.RemoteNode{node1.nodeInfo})
 
-	var waitForReconfigWG sync.WaitGroup
-	waitForReconfigWG.Add(1)
-
 	var streamCreated sync.WaitGroup
 	streamCreated.Add(1)
+
+	stopChan := make(chan struct{})
 
 	node2.handler.On("OnSubmit", testChannel, node1.nodeInfo.ID, mock.Anything).Once().Run(func(_ mock.Arguments) {
 		// Notify the stream was created
 		streamCreated.Done()
-		// Wait for reconfiguration to take place before returning, so that
-		// the Recv() would happen after reconfiguration
-		waitForReconfigWG.Wait()
+		// Wait for the test to finish
+		<-stopChan
 	}).Return(nil).Once()
 
 	rm1, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
 	assert.NoError(t, err)
-
-	errorChan := make(chan error)
 
 	go func() {
 		stream := assertEventualEstablishStream(t, rm1)
 		// Signal the reconfiguration
 		err = stream.Send(wrapSubmitReq(testReq))
 		assert.NoError(t, err)
-		_, err = stream.Recv()
+		_, err := stream.Recv()
 		assert.Contains(t, err.Error(), expectedError)
-		errorChan <- err
+		close(stopChan)
 	}()
 
 	go func() {
@@ -613,10 +609,9 @@ func testStreamAbort(t *testing.T, node2 *clusterNode, newMembership []cluster.R
 		streamCreated.Wait()
 		// Reconfigure the channel membership
 		node1.c.Configure(testChannel, newMembership)
-		waitForReconfigWG.Done()
 	}()
 
-	<-errorChan
+	<-stopChan
 }
 
 func TestDoubleReconfigure(t *testing.T) {
