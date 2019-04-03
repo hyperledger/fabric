@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 // Test the invocation of a transaction for private data.
@@ -151,6 +152,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 	var val string
 	err = json.Unmarshal(retval, &val)
+	assert.NoError(t, err)
 	expectedValue := fmt.Sprintf("value_c%d", 3)
 	if val != expectedValue {
 		t.Fail()
@@ -163,7 +165,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "c3", "pmarble001")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 
 	if err != nil {
@@ -177,7 +179,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "c4", "pmarble001")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 
 	if err != nil {
@@ -201,6 +203,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	}
 
 	err = json.Unmarshal(retval, &val)
+	assert.NoError(t, err)
 	if val != "" {
 		t.Fail()
 		t.Logf("Error detected with the GetPrivateData")
@@ -223,6 +226,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	}
 
 	err = json.Unmarshal(retval, &val)
+	assert.NoError(t, err)
 	if val != "" {
 		t.Fail()
 		t.Logf("Error detected with the GetState: %s", val)
@@ -242,6 +246,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	}
 	var keys []interface{}
 	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 	if len(keys) != 10 {
 		t.Fail()
 		t.Logf("Error detected with the range query, should have returned 10 but returned %v", len(keys))
@@ -262,6 +267,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	}
 
 	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 	if len(keys) != 10 {
 		t.Fail()
 		t.Logf("Error detected with the range query, should have returned 10 but returned %v", len(keys))
@@ -279,7 +285,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "marble001", "marble002", "2000")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	if err == nil {
 		t.Fail()
 		t.Logf("expected timeout error but succeeded")
@@ -306,6 +312,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 	//unmarshal the results
 	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 
 	//check to see if there are 101 values
 	//default query limit of 10000 is used, this query is effectively unlimited
@@ -332,6 +339,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 	//unmarshal the results
 	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 
 	//check to see if there are 101 values
 	//default query limit of 10000 is used, this query is effectively unlimited
@@ -362,6 +370,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 		//unmarshal the results
 		err = json.Unmarshal(retval, &keys)
+		assert.NoError(t, err)
 
 		//check to see if there are 100 values
 		if len(keys) != 100 {
@@ -383,6 +392,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 		//unmarshal the results
 		err = json.Unmarshal(retval, &keys)
+		assert.NoError(t, err)
 
 		//check to see if there are 100 values
 		if len(keys) != 100 {
@@ -408,6 +418,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 		//unmarshal the results
 		err = json.Unmarshal(retval, &keys)
+		assert.NoError(t, err)
 		//check to see if there are 5 values
 		if len(keys) != 5 {
 			t.Fail()
@@ -434,6 +445,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 		//unmarshal the results
 		err = json.Unmarshal(retval, &keys)
+		assert.NoError(t, err)
 
 		//check to see if there are 50 values
 		//default query limit of 10000 is used, this query is effectively unlimited
@@ -461,6 +473,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 		//unmarshal the results
 		err = json.Unmarshal(retval, &keys)
+		assert.NoError(t, err)
 
 		//check to see if there are 5 values
 		if len(keys) != 5 {
@@ -508,6 +521,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 	var history []interface{}
 	err = json.Unmarshal(retval, &history)
+	assert.NoError(t, err)
 	if len(history) != 3 {
 		t.Fail()
 		t.Logf("Error detected with the history query, should have returned 3 but returned %v", len(history))

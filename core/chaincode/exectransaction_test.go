@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -972,7 +972,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 		return
 	}
 
-	if strings.Index(err.Error(), "Incorrect number of arguments. Expecting 3") < 0 {
+	if !strings.Contains(err.Error(), "Incorrect number of arguments. Expecting 3") {
 		t.Fail()
 		t.Logf("Unexpected error %s", err)
 		return
@@ -1136,6 +1136,7 @@ func TestQueries(t *testing.T) {
 	}
 
 	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 	if len(keys) != 10 {
 		t.Fail()
 		t.Logf("Error detected with the range query, should have returned 10 but returned %v", len(keys))
@@ -1153,7 +1154,7 @@ func TestQueries(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "marble001", "marble002", "2000")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	if err == nil {
 		t.Fail()
 		t.Logf("expected timeout error but succeeded")
@@ -1180,6 +1181,7 @@ func TestQueries(t *testing.T) {
 
 	//unmarshal the results
 	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 
 	//check to see if there are 101 values
 	//default query limit of 10000 is used, this query is effectively unlimited
@@ -1206,6 +1208,7 @@ func TestQueries(t *testing.T) {
 
 	//unmarshal the results
 	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 
 	//check to see if there are 101 values
 	//default query limit of 10000 is used, this query is effectively unlimited
@@ -1302,6 +1305,7 @@ func TestQueries(t *testing.T) {
 
 	var history []interface{}
 	err = json.Unmarshal(retval, &history)
+	assert.NoError(t, err)
 	if len(history) != 3 {
 		t.Fail()
 		t.Logf("Error detected with the history query, should have returned 3 but returned %v", len(history))
@@ -1396,7 +1400,7 @@ type CreatorPolicy struct {
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
 func (c *CreatorPolicy) Evaluate(signatureSet []*protoutil.SignedData) error {
 	for _, value := range c.Creators {
-		if bytes.Compare(signatureSet[0].Identity, value) == 0 {
+		if bytes.Equal(signatureSet[0].Identity, value) {
 			return nil
 		}
 	}
