@@ -52,7 +52,6 @@ func NewOrdererClient(config *ConnectionConfig) (OrdererClient, error) {
 	grpcClient, err := CreateGRPCClient(config)
 	if err != nil {
 		err = errors.WithMessage(err, fmt.Sprintf("failed to create a GRPCClient to orderer %s", config.Address))
-		logger.Errorf("%s", err)
 		return nil, err
 	}
 	conn, err := grpcClient.NewConnection(config.Address, config.ServerNameOverride)
@@ -109,7 +108,6 @@ func BroadcastSend(broadcast Broadcast, addr string, envelope *common.Envelope) 
 
 // broadReceive waits until it receives the response from broadcast stream
 func BroadcastReceive(broadcast Broadcast, addr string, responses chan common.Status, errs chan error) {
-	logger.Infof("calling OrdererClient.broadcastReceive")
 	for {
 		broadcastResponse, err := broadcast.Recv()
 		if err == io.EOF {

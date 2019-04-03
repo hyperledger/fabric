@@ -54,7 +54,6 @@ func NewDeliverClient(config *ConnectionConfig) (DeliverClient, error) {
 	grpcClient, err := CreateGRPCClient(config)
 	if err != nil {
 		err = errors.WithMessage(err, fmt.Sprintf("failed to create a GRPCClient to peer %s", config.Address))
-		logger.Errorf("%s", err)
 		return nil, err
 	}
 	conn, err := grpcClient.NewConnection(config.Address, config.ServerNameOverride)
@@ -171,7 +170,6 @@ read:
 		case *pb.DeliverResponse_FilteredBlock:
 			filteredTransactions := r.FilteredBlock.FilteredTransactions
 			for _, tx := range filteredTransactions {
-				logger.Debugf("deliverReceive got filteredTransaction for transaction [%s], status [%s]", tx.Txid, tx.TxValidationCode)
 				if tx.Txid == txid {
 					if tx.TxValidationCode == pb.TxValidationCode_VALID {
 						event.Committed = true
@@ -190,14 +188,9 @@ read:
 		}
 	}
 
-	if event.Err != nil {
-		logger.Errorf("Error: %s", event.Err)
-	}
 	select {
 	case eventCh <- event:
-		logger.Debugf("Received transaction deliver event %+v", event)
 	default:
-		logger.Errorf("Event channel full. Discarding event %+v", event)
 	}
 
 	return event.Err
@@ -216,8 +209,6 @@ func DeliverWaitForResponse(ctx context.Context, eventCh <-chan TxEvent, txid st
 			return false, errors.Errorf("no event received for txid %s", txid)
 		}
 	case <-ctx.Done():
-		err := errors.Errorf("timed out waiting for committing txid %s", txid)
-		logger.Errorf("%s", err)
-		return false, err
+		return false, errors.Errorf("timed out waiting for committing txid %s", txid)
 	}
 }

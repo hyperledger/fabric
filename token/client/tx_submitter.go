@@ -13,14 +13,11 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	tk "github.com/hyperledger/fabric/token"
 	"github.com/pkg/errors"
 )
-
-var logger = flogging.MustGetLogger("token.client")
 
 // TxSubmitter will submit token transactions to the orderer
 // and create a channel to write/read transaction completion event
