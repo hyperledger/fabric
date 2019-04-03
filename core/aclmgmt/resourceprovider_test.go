@@ -108,9 +108,8 @@ func TestForceDefaultsForPType(t *testing.T) {
 }
 
 func init() {
-	var err error
 	// setup the MSP manager so that we can sign/verify
-	err = msptesttools.LoadMSPSetupForTesting()
+	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
 		fmt.Printf("Could not load msp config, err %s", err)
 		os.Exit(-1)

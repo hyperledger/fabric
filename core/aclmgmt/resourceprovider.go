@@ -95,11 +95,9 @@ func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}
 
 	//we will implement other identifiers. In the end we just need a SignedData
 	var sd []*protoutil.SignedData
-	var err error
-	switch idinfo.(type) {
+	switch idinfo := idinfo.(type) {
 	case *pb.SignedProposal:
-		signedProp, _ := idinfo.(*pb.SignedProposal)
-		// Prepare SignedData
+		signedProp := idinfo
 		proposal, err := protoutil.GetProposal(signedProp.ProposalBytes)
 		if err != nil {
 			return fmt.Errorf("Failing extracting proposal during check policy with policy [%s]: [%s]", polName, err)
@@ -120,17 +118,19 @@ func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}
 			Identity:  shdr.Creator,
 			Signature: signedProp.Signature,
 		}}
+
 	case *common.Envelope:
-		env := idinfo.(*common.Envelope)
-		sd, err = protoutil.EnvelopeAsSignedData(env)
+		var err error
+		sd, err = protoutil.EnvelopeAsSignedData(idinfo)
 		if err != nil {
 			return err
 		}
+
 	default:
 		return InvalidIdInfo(polName)
 	}
 
-	err = rp.pEvaluator.Evaluate(polName, sd)
+	err := rp.pEvaluator.Evaluate(polName, sd)
 	if err != nil {
 		return fmt.Errorf("failed evaluating policy on signed data during check policy [%s]: [%s]", polName, err)
 	}
