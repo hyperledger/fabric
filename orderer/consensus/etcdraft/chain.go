@@ -330,11 +330,7 @@ func (c *Chain) Start() {
 	}
 
 	isJoin := c.support.Height() > 1
-	isMigration := false
-	if isJoin {
-		isMigration = c.detectMigration()
-	}
-	c.Node.start(c.fresh, isJoin, isMigration)
+	c.Node.start(c.fresh, isJoin)
 
 	close(c.startC)
 	close(c.errorC)
@@ -356,42 +352,6 @@ func (c *Chain) Start() {
 		Condition:     c.suspectEviction,
 	}
 	c.periodicChecker.Run()
-}
-
-// detectMigration detects if the orderer restarts right after consensus-type migration,
-// in which the Height>1 but previous blocks were created by Kafka.
-// If this is the case, Raft should be started like it is joining a new channel.
-func (c *Chain) detectMigration() bool {
-	startOfChain := false
-	if c.support.SharedConfig().Capabilities().Kafka2RaftMigration() {
-		lastConfigIndex, err := utils.GetLastConfigIndexFromBlock(c.lastBlock)
-		if err != nil {
-			c.logger.Panicf("Chain did not have appropriately encoded last config in its latest block: %s", err)
-		}
-
-		c.logger.Debugf("Detecting if consensus-type migration, sysChan=%v, lastConfigIndex=%d, Height=%d, mig-state: %s",
-			c.support.IsSystemChannel(), lastConfigIndex, c.lastBlock.Header.Number+1, c.support.SharedConfig().ConsensusMigrationState().String())
-
-		if lastConfigIndex != c.lastBlock.Header.Number { // The last block is not a config-tx
-			return startOfChain
-		}
-
-		// The last block was a config-tx
-		if c.support.IsSystemChannel() {
-			if c.support.SharedConfig().ConsensusMigrationState() == orderer.ConsensusType_MIG_STATE_COMMIT {
-				startOfChain = true
-			}
-		} else {
-			if c.support.SharedConfig().ConsensusMigrationState() == orderer.ConsensusType_MIG_STATE_CONTEXT {
-				startOfChain = true
-			}
-		}
-
-		if startOfChain {
-			c.logger.Infof("Restarting after consensus-type migration. Type: %s, just starting the channel.", c.support.SharedConfig().ConsensusType())
-		}
-	}
-	return startOfChain
 }
 
 // Order submits normal type transactions for ordering.
@@ -1326,14 +1286,6 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 	}
 
 	if !utils.IsConfigBlock(c.lastBlock) {
-		return nil
-	}
-
-	// Detect if it is a restart right after consensus-type migration. If yes, return early in order to avoid using
-	// the block metadata as etcdraft.BlockMetadata (see below). Right after migration the block metadata will carry
-	// Kafka metadata. The etcdraft.BlockMetadata should be extracted from the ConsensusType.Metadata, instead.
-	if c.detectMigration() {
-		c.logger.Infof("Restarting after consensus-type migration. Type: %s, just starting the chain.", c.support.SharedConfig().ConsensusType())
 		return nil
 	}
 

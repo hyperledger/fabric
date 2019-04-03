@@ -156,10 +156,7 @@ var _ = Describe("Consenter", func() {
 		metadata := utils.MarshalOrPanic(m)
 		support.SharedConfigReturns(&mockconfig.Orderer{
 			ConsensusMetadataVal: metadata,
-			CapabilitiesVal: &mockconfig.OrdererCapabilities{
-				Kafka2RaftMigVal: false,
-			},
-			BatchSizeVal: &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
+			BatchSizeVal:         &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
 		})
 
 		consenter := newConsenter(chainGetter)
@@ -199,10 +196,7 @@ var _ = Describe("Consenter", func() {
 		support := &consensusmocks.FakeConsenterSupport{}
 		support.SharedConfigReturns(&mockconfig.Orderer{
 			ConsensusMetadataVal: metadata,
-			CapabilitiesVal: &mockconfig.OrdererCapabilities{
-				Kafka2RaftMigVal: false,
-			},
-			BatchSizeVal: &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
+			BatchSizeVal:         &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
 		})
 		support.ChainIDReturns("foo")
 
@@ -224,10 +218,7 @@ var _ = Describe("Consenter", func() {
 		metadata := utils.MarshalOrPanic(m)
 		support.SharedConfigReturns(&mockconfig.Orderer{
 			ConsensusMetadataVal: metadata,
-			CapabilitiesVal: &mockconfig.OrdererCapabilities{
-				Kafka2RaftMigVal: false,
-			},
-			BatchSizeVal: &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
+			BatchSizeVal:         &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
 		})
 
 		consenter := newConsenter(chainGetter)

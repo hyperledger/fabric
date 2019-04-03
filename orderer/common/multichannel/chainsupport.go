@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
@@ -69,14 +68,6 @@ func newChainSupport(
 	// Set up the block writer
 	cs.BlockWriter = newBlockWriter(lastBlock, registrar, cs)
 
-	// TODO Identify recovery after crash in the middle of consensus-type migration
-	if cs.detectMigration(lastBlock) {
-		// We do this because the last block after migration (COMMIT/CONTEXT) carries Kafka metadata.
-		// This prevents the code down the line from unmarshaling it as Raft, and panicking.
-		metadata.Value = nil
-		logger.Debugf("[channel: %s] Consensus-type migration: restart on to Raft, resetting Kafka block metadata", cs.ChainID())
-	}
-
 	// Set up the consenter
 	consenterType := ledgerResources.SharedConfig().ConsensusType()
 	consenter, ok := consenters[consenterType]
@@ -92,53 +83,6 @@ func newChainSupport(
 	logger.Debugf("[channel: %s] Done creating channel support resources", cs.ChainID())
 
 	return cs
-}
-
-// detectMigration identifies restart after consensus-type migration was committed (green path).
-// Restart after migration is detected by:
-// 1. The Kafka2RaftMigration capability in on
-// 2. The last block carries a config-tx
-// 3. In the config-tx, you have:
-//    - (system-channel && state=COMMIT), OR
-//    - (standard-channel && state=CONTEXT)
-// This assumes that migration was successful (green path). When migration ends successfully,
-// every channel will have a config block as the last block. On the system channel, containing state=COMMIT;
-// on standard channels, containing state=CONTEXT.
-func (cs *ChainSupport) detectMigration(lastBlock *cb.Block) bool {
-	isMigration := false
-
-	if !cs.ledgerResources.SharedConfig().Capabilities().Kafka2RaftMigration() {
-		return isMigration
-	}
-
-	lastConfigIndex, err := utils.GetLastConfigIndexFromBlock(lastBlock)
-	if err != nil {
-		logger.Panicf("Chain did not have appropriately encoded last config in its latest block: %s", err)
-	}
-
-	logger.Debugf("[channel: %s], sysChan=%v, lastConfigIndex=%d, H=%d, mig-state: %s",
-		cs.ChainID(), cs.systemChannel, lastConfigIndex, cs.ledgerResources.Height(),
-		cs.ledgerResources.SharedConfig().ConsensusMigrationState())
-
-	if lastConfigIndex == lastBlock.Header.Number { //The last block was a config-tx
-		state := cs.ledgerResources.SharedConfig().ConsensusMigrationState()
-		if cs.systemChannel {
-			if state == orderer.ConsensusType_MIG_STATE_COMMIT {
-				isMigration = true
-			}
-		} else {
-			if state == orderer.ConsensusType_MIG_STATE_CONTEXT {
-				isMigration = true
-			}
-		}
-
-		if isMigration {
-			logger.Infof("[channel: %s], Restarting after consensus-type migration. New consensus-type is: %s",
-				cs.ChainID(), cs.ledgerResources.SharedConfig().ConsensusType())
-		}
-	}
-
-	return isMigration
 }
 
 // Block returns a block with the following number,
