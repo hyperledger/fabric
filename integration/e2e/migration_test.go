@@ -194,7 +194,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("Step 1, Verify: system channel config changed, get migration context")
 			migrationContext := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(migrationContext).ToNot(Equal(0))
+			Expect(migrationContext).NotTo(Equal(0))
 
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
@@ -292,7 +292,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("Step 1, Verify: system channel config changed, get context")
 			migrationContext := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(migrationContext).ToNot(Equal(0))
+			Expect(migrationContext).NotTo(Equal(0))
 
 			//=== Step 2: Config update on standard channel, CONTEXT ===
 			By("Step 2: Config update on standard channel, MigrationState=CONTEXT")
@@ -425,7 +425,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("Step 1, Verify: system channel config changed, get context")
 			migrationContext := nwo.CurrentConfigBlockNumber(network, peer, o1, syschannel)
-			Expect(migrationContext).ToNot(Equal(0))
+			Expect(migrationContext).NotTo(Equal(0))
 
 			//=== Step 2: Config update on standard channel, CONTEXT ===
 			By("Step 2: Config update on standard channel, MigrationState=CONTEXT")

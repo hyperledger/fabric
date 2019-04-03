@@ -190,18 +190,18 @@ var _ = Describe("Idemix Bridge", func() {
 		Context("secret key import", func() {
 			It("success", func() {
 				key, err := User.NewKey()
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				raw, err := key.Bytes()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(raw).ToNot(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(raw).NotTo(BeNil())
 
 				key2, err := User.NewKeyFromBytes(raw)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				raw2, err := key2.Bytes()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(raw2).ToNot(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(raw2).NotTo(BeNil())
 
 				Expect(raw2).To(BeEquivalentTo(raw))
 			})
@@ -265,13 +265,15 @@ var _ = Describe("Idemix Bridge", func() {
 					E: FP256BN.NewECPbigs(FP256BN.NewBIGint(10), FP256BN.NewBIGint(20)),
 				})
 				raw, err := npk.Bytes()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(raw).ToNot(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(raw).NotTo(BeNil())
 
 				npk2, err := User.NewPublicNymFromBytes(raw)
+				Expect(err).NotTo(HaveOccurred())
+
 				raw2, err := npk2.Bytes()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(raw2).ToNot(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(raw2).NotTo(BeNil())
 
 				Expect(raw2).To(BeEquivalentTo(raw))
 			})
@@ -757,7 +759,7 @@ var _ = Describe("Idemix Bridge", func() {
 					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: []byte("pine-apple-pine-apple-pine-apple")},
 				)
 				Expect(err.Error()).To(BeEquivalentTo(fmt.Sprintf("invalid nonce, expected [%v], got [%v]", []byte("pine-apple-pine-apple-pine-apple"), IssuerNonce)))
-				Expect(valid).ToNot(BeTrue())
+				Expect(valid).NotTo(BeTrue())
 			})
 
 			It("invalid credential request nonce, too short", func() {
@@ -768,7 +770,7 @@ var _ = Describe("Idemix Bridge", func() {
 					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: []byte("pine-aple-pine-apple-pinapple")},
 				)
 				Expect(err.Error()).To(BeEquivalentTo("invalid issuer nonce, expected length 32, got 29"))
-				Expect(valid).ToNot(BeTrue())
+				Expect(valid).NotTo(BeTrue())
 			})
 
 			It("invalid credential request", func() {
@@ -784,7 +786,7 @@ var _ = Describe("Idemix Bridge", func() {
 					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 				)
 				Expect(err.Error()).To(BeEquivalentTo("zero knowledge proof is invalid"))
-				Expect(valid).ToNot(BeTrue())
+				Expect(valid).NotTo(BeTrue())
 			})
 
 			It("invalid credential request in verifying credential", func() {
@@ -1175,8 +1177,8 @@ var _ = Describe("Idemix Bridge", func() {
 						CRI:        cri,
 					},
 				)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(signature).ToNot(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(signature).NotTo(BeNil())
 
 				valid, err := Verifier.Verify(
 					IssuerPublicKey,

@@ -546,7 +546,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, []*nwo.Orderer{o4}, peer, network)
 
 			By("Ensuring orderer4 doesn't have any errors in the logs")
-			Expect(orderer4Runner.Err()).ToNot(gbytes.Say("ERRO"))
+			Expect(orderer4Runner.Err()).NotTo(gbytes.Say("ERRO"))
 
 			By("Ensuring that all orderers don't log errors to the log")
 			assertNoErrorsAreLogged(ordererRunners)
