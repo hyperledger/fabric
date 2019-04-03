@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
@@ -188,8 +187,6 @@ type Chain struct {
 	Metrics *Metrics
 	logger  *flogging.FabricLogger
 
-	migrationStatus migration.Status // The consensus-type migration status
-
 	periodicChecker *PeriodicCheck
 }
 
@@ -269,9 +266,8 @@ func NewChain(
 			NormalProposalsReceived: opts.Metrics.NormalProposalsReceived.With("channel", support.ChainID()),
 			ConfigProposalsReceived: opts.Metrics.ConfigProposalsReceived.With("channel", support.ChainID()),
 		},
-		logger:          lg,
-		opts:            opts,
-		migrationStatus: migration.NewManager(support.IsSystemChannel(), support.ChainID()), // Needed by consensus-type migration
+		logger: lg,
+		opts:   opts,
 	}
 
 	// Sets initial values for metrics
@@ -311,12 +307,6 @@ func NewChain(
 	}
 
 	return c, nil
-}
-
-// MigrationStatus provides access to the consensus-type migration status of the chain.
-// (Added to the Chain interface mainly for the Kafka chains)
-func (c *Chain) MigrationStatus() migration.Status {
-	return c.migrationStatus
 }
 
 // Start instructs the orderer to begin serving the chain and keep it current.

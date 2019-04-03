@@ -11,7 +11,6 @@ import (
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -66,9 +65,6 @@ type Chain interface {
 
 	// Halt frees the resources which were allocated for this Chain.
 	Halt()
-
-	// Status provides access to the consensus-type migration status of the underlying chain.
-	MigrationStatus() migration.Status
 }
 
 //go:generate counterfeiter -o mocks/mock_consenter_support.go . ConsenterSupport
@@ -113,10 +109,6 @@ type ConsenterSupport interface {
 
 	// Height returns the number of blocks in the chain this channel is associated with.
 	Height() uint64
-
-	// IsSystemChannel returns true if this is the system channel.
-	// The chain needs to know if it is system or standard for consensus-type migration.
-	IsSystemChannel() bool
 
 	// Append appends a new block to the ledger in its raw form,
 	// unlike WriteBlock that also mutates its metadata.

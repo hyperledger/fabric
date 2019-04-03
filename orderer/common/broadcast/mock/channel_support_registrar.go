@@ -26,16 +26,6 @@ type ChannelSupportRegistrar struct {
 		result3 broadcast.ChannelSupport
 		result4 error
 	}
-	ConsensusMigrationPendingStub        func() bool
-	consensusMigrationPendingMutex       sync.RWMutex
-	consensusMigrationPendingArgsForCall []struct {
-	}
-	consensusMigrationPendingReturns struct {
-		result1 bool
-	}
-	consensusMigrationPendingReturnsOnCall map[int]struct {
-		result1 bool
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -109,65 +99,11 @@ func (fake *ChannelSupportRegistrar) BroadcastChannelSupportReturnsOnCall(i int,
 	}{result1, result2, result3, result4}
 }
 
-func (fake *ChannelSupportRegistrar) ConsensusMigrationPending() bool {
-	fake.consensusMigrationPendingMutex.Lock()
-	ret, specificReturn := fake.consensusMigrationPendingReturnsOnCall[len(fake.consensusMigrationPendingArgsForCall)]
-	fake.consensusMigrationPendingArgsForCall = append(fake.consensusMigrationPendingArgsForCall, struct {
-	}{})
-	fake.recordInvocation("ConsensusMigrationPending", []interface{}{})
-	fake.consensusMigrationPendingMutex.Unlock()
-	if fake.ConsensusMigrationPendingStub != nil {
-		return fake.ConsensusMigrationPendingStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.consensusMigrationPendingReturns
-	return fakeReturns.result1
-}
-
-func (fake *ChannelSupportRegistrar) ConsensusMigrationPendingCallCount() int {
-	fake.consensusMigrationPendingMutex.RLock()
-	defer fake.consensusMigrationPendingMutex.RUnlock()
-	return len(fake.consensusMigrationPendingArgsForCall)
-}
-
-func (fake *ChannelSupportRegistrar) ConsensusMigrationPendingCalls(stub func() bool) {
-	fake.consensusMigrationPendingMutex.Lock()
-	defer fake.consensusMigrationPendingMutex.Unlock()
-	fake.ConsensusMigrationPendingStub = stub
-}
-
-func (fake *ChannelSupportRegistrar) ConsensusMigrationPendingReturns(result1 bool) {
-	fake.consensusMigrationPendingMutex.Lock()
-	defer fake.consensusMigrationPendingMutex.Unlock()
-	fake.ConsensusMigrationPendingStub = nil
-	fake.consensusMigrationPendingReturns = struct {
-		result1 bool
-	}{result1}
-}
-
-func (fake *ChannelSupportRegistrar) ConsensusMigrationPendingReturnsOnCall(i int, result1 bool) {
-	fake.consensusMigrationPendingMutex.Lock()
-	defer fake.consensusMigrationPendingMutex.Unlock()
-	fake.ConsensusMigrationPendingStub = nil
-	if fake.consensusMigrationPendingReturnsOnCall == nil {
-		fake.consensusMigrationPendingReturnsOnCall = make(map[int]struct {
-			result1 bool
-		})
-	}
-	fake.consensusMigrationPendingReturnsOnCall[i] = struct {
-		result1 bool
-	}{result1}
-}
-
 func (fake *ChannelSupportRegistrar) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.broadcastChannelSupportMutex.RLock()
 	defer fake.broadcastChannelSupportMutex.RUnlock()
-	fake.consensusMigrationPendingMutex.RLock()
-	defer fake.consensusMigrationPendingMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

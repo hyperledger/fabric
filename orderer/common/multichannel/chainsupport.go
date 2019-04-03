@@ -27,9 +27,6 @@ type ChainSupport struct {
 	consensus.Chain
 	cutter blockcutter.Receiver
 	crypto.LocalSigner
-	// Needed for consensus-type migration: to execute the migration state machine correctly,
-	// chains need to know if they are system or standard channel.
-	systemChannel bool
 }
 
 func newChainSupport(
@@ -58,9 +55,6 @@ func newChainSupport(
 			blockcutterMetrics,
 		),
 	}
-
-	// When ConsortiumsConfig exists, it is the system channel
-	_, cs.systemChannel = ledgerResources.ConsortiumsConfig()
 
 	// Set up the msgprocessor
 	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs))
@@ -182,9 +176,4 @@ func (cs *ChainSupport) VerifyBlockSignature(sd []*cb.SignedData, envelope *cb.C
 		return errors.Wrap(err, "block verification failed")
 	}
 	return nil
-}
-
-// IsSystemChannel returns true if this is the system channel.
-func (cs *ChainSupport) IsSystemChannel() bool {
-	return cs.systemChannel
 }
