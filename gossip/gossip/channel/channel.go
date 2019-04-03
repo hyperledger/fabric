@@ -304,8 +304,8 @@ func (gc *gossipChannel) reportMembershipChanges(input ...interface{}) {
 
 // Stop stop the channel operations
 func (gc *gossipChannel) Stop() {
-	gc.stopChan <- struct{}{}
-	gc.membershipTracker.stopChan <- struct{}{}
+	close(gc.stopChan)
+	close(gc.membershipTracker.stopChan)
 	gc.blocksPuller.Stop()
 	gc.stateInfoPublishScheduler.Stop()
 	gc.stateInfoRequestScheduler.Stop()
@@ -320,7 +320,6 @@ func (gc *gossipChannel) periodicalInvocation(fn func(), c <-chan time.Time) {
 		case <-c:
 			fn()
 		case <-gc.stopChan:
-			gc.stopChan <- struct{}{}
 			return
 		}
 	}

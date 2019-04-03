@@ -2190,7 +2190,7 @@ func TestMembershiptrackerStopWhenGCStops(t *testing.T) {
 	// membershipTracker does not print after gossip channel was stopped
 	// membershipTracker stops running after gossip channel was stopped
 	t.Parallel()
-	checkIfStopedChan := make(chan struct{}, 1)
+	membershipReported := make(chan struct{}, 1)
 	cs := &cryptoService{}
 	pkiID1 := common.PKIidType("1")
 	adapter := new(gossipAdapterMock)
@@ -2236,7 +2236,7 @@ func TestMembershiptrackerStopWhenGCStops(t *testing.T) {
 			if !strings.Contains(entry.Message, "Membership view has changed. peers went offline:  [[a]] , peers went online:  [[b]] , current view:  [[b]]") {
 				return nil
 			}
-			checkIfStopedChan <- struct{}{}
+			close(membershipReported)
 			return nil
 		}
 		return nil
@@ -2248,15 +2248,21 @@ func TestMembershiptrackerStopWhenGCStops(t *testing.T) {
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDinOrg2, msg: createStateInfoMsg(1, pkiIDinOrg2, channelA)})
 	<-waitForHandleMsgChan
 
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	adapter.On("GetMembership").Return([]discovery.NetworkMember{peerB}).Run(func(args mock.Arguments) {
+		defer wg.Done()
 		gc.(*gossipChannel).Stop()
 	}).Once()
 
 	flogging.Global.ActivateSpec("info")
 	atomic.StoreUint32(&check, 1)
-	<-checkIfStopedChan
+	<-membershipReported
+
+	wg.Wait()
+	adapter.On("GetMembership").Return([]discovery.NetworkMember{peerB}).Run(func(args mock.Arguments) {
+		t.Fatalf("Membership tracker should have been stopped already.")
+	})
 
 	time.Sleep(conf.TimeForMembershipTracker * 2)
-	adapter.AssertNumberOfCalls(t, "GetMembership", 2)
-
 }
