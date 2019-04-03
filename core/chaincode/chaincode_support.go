@@ -8,14 +8,13 @@ package chaincode
 
 import (
 	"bytes"
-	"fmt"
 	"time"
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -385,7 +384,7 @@ func (cs *ChaincodeSupport) execute(cctyp pb.ChaincodeMessage_Type, txParams *cc
 
 	ccresp, err := h.Execute(txParams, cccid, ccMsg, cs.ExecuteTimeout)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error sending"))
+		return nil, errors.WithMessage(err, "error sending")
 	}
 
 	return ccresp, nil

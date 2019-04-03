@@ -234,8 +234,7 @@ func (vdb *VersionedDB) ProcessIndexesForChaincodeDeploy(namespace string, fileE
 		filename := fileEntry.FileHeader.Name
 		_, err = db.CreateIndex(string(indexData))
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf(
-				"error creating index from file [%s] for channel [%s]", filename, namespace))
+			return errors.WithMessagef(err, "error creating index from file [%s] for channel [%s]", filename, namespace)
 		}
 	}
 	return nil

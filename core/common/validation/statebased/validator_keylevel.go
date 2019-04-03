@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package statebased
 
 import (
-	"fmt"
 	"sync"
 
 	commonerrors "github.com/hyperledger/fabric/common/errors"
@@ -270,7 +269,7 @@ func (klv *KeyLevelValidator) Validate(cc string, blockNum, txNum uint64, rwsetB
 	// unpack the rwset
 	rwset := &rwsetutil.TxRwSet{}
 	if err := rwset.FromProtoBytes(rwsetBytes); err != nil {
-		return policyErr(errors.WithMessage(err, fmt.Sprintf("txRWSet.FromProtoBytes failed on tx (%d,%d)", blockNum, txNum)))
+		return policyErr(errors.WithMessagef(err, "txRWSet.FromProtoBytes failed on tx (%d,%d)", blockNum, txNum))
 	}
 
 	// return the decision of the policy evaluator

@@ -242,7 +242,7 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid 
 	if !e.s.IsSysCC(cid.Name) {
 		cdLedger, err = e.s.GetChaincodeDefinition(txParams.ChannelID, cid.Name, txParams.TXSimulator)
 		if err != nil {
-			return nil, nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("make sure the chaincode %s has been successfully instantiated and try again", cid.Name))
+			return nil, nil, nil, nil, errors.WithMessagef(err, "make sure the chaincode %s has been successfully instantiated and try again", cid.Name)
 		}
 		idBytes = cdLedger.Hash()
 

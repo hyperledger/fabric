@@ -317,7 +317,7 @@ func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	defer h.serialLock.Unlock()
 
 	if err := h.chatStream.Send(msg); err != nil {
-		err = errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", shorttxid(msg.Txid), msg.Type))
+		err = errors.WithMessagef(err, "[%s] error sending %s", shorttxid(msg.Txid), msg.Type)
 		chaincodeLogger.Errorf("%+v", err)
 		return err
 	}

@@ -111,7 +111,7 @@ func InitConfig(cmdRoot string) error {
 				"Please make sure that FABRIC_CFG_PATH is set to a path "+
 				"which contains %s.yaml", cmdRoot))
 		} else {
-			return errors.WithMessage(err, fmt.Sprintf("error when reading %s config file", cmdRoot))
+			return errors.WithMessagef(err, "error when reading %s config file", cmdRoot)
 		}
 	}
 
@@ -142,7 +142,7 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 
 	err = mspmgmt.LoadLocalMspWithType(mspMgrConfigDir, bccspConfig, localMSPID, localMSPType)
 	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("error when setting up MSP of type %s from directory %s", localMSPType, mspMgrConfigDir))
+		return errors.WithMessagef(err, "error when setting up MSP of type %s from directory %s", localMSPType, mspMgrConfigDir)
 	}
 
 	return nil

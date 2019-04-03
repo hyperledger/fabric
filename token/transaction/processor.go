@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package transaction
 
 import (
-	"fmt"
-
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/common"
@@ -44,7 +42,7 @@ func (p *Processor) GenerateSimulationResults(txEnv *common.Envelope, simulator 
 		if _, ok := err.(*customtx.InvalidTxError); ok {
 			return err
 		}
-		return errors.WithMessage(err, fmt.Sprintf("failed committing transaction for channel %s", ch.ChannelId))
+		return errors.WithMessagef(err, "failed committing transaction for channel %s", ch.ChannelId)
 	}
 
 	return err

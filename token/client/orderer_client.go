@@ -51,12 +51,12 @@ type ordererClient struct {
 func NewOrdererClient(config *ConnectionConfig) (OrdererClient, error) {
 	grpcClient, err := CreateGRPCClient(config)
 	if err != nil {
-		err = errors.WithMessage(err, fmt.Sprintf("failed to create a GRPCClient to orderer %s", config.Address))
+		err = errors.WithMessagef(err, "failed to create a GRPCClient to orderer %s", config.Address)
 		return nil, err
 	}
 	conn, err := grpcClient.NewConnection(config.Address, config.ServerNameOverride)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("failed to connect to orderer %s", config.Address))
+		return nil, errors.WithMessagef(err, "failed to connect to orderer %s", config.Address)
 	}
 
 	return &ordererClient{
@@ -78,7 +78,7 @@ func (oc *ordererClient) NewBroadcast(ctx context.Context, opts ...grpc.CallOpti
 	// error occurred with the existing connection, so create a new connection to orderer
 	oc.conn, err = oc.grpcClient.NewConnection(oc.ordererAddr, oc.serverNameOverride)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("failed to connect to orderer %s", oc.ordererAddr))
+		return nil, errors.WithMessagef(err, "failed to connect to orderer %s", oc.ordererAddr)
 	}
 
 	// create a new Broadcast

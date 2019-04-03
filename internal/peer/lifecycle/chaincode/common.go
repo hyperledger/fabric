@@ -8,7 +8,6 @@ package chaincode
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -108,7 +107,7 @@ func createCollectionConfigPackage(collectionsConfigFile string) (*cb.Collection
 		var err error
 		ccp, _, err = chaincode.GetCollectionConfigFromFile(collectionsConfigFile)
 		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
+			return nil, errors.WithMessagef(err, "invalid collection configuration in file %s", collectionsConfigFile)
 		}
 	}
 	return ccp, nil

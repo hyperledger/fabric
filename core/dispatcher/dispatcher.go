@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package dispatcher
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/golang/protobuf/proto"
@@ -61,7 +60,7 @@ func (d *Dispatcher) Dispatch(inputBytes []byte, methodName string, receiver int
 
 	err := d.Protobuf.Unmarshal(inputBytes, inputMsg)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not decode input arg for %T.%s", receiver, methodName))
+		return nil, errors.WithMessagef(err, "could not decode input arg for %T.%s", receiver, methodName)
 	}
 
 	outputVals := method.Call([]reflect.Value{inputValue})
@@ -78,7 +77,7 @@ func (d *Dispatcher) Dispatch(inputBytes []byte, methodName string, receiver int
 
 	resultBytes, err := d.Protobuf.Marshal(outputMsg)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("failed to marshal result for %T.%s", receiver, methodName))
+		return nil, errors.WithMessagef(err, "failed to marshal result for %T.%s", receiver, methodName)
 	}
 
 	return resultBytes, nil

@@ -171,7 +171,7 @@ func (c *ContainerRuntime) LaunchConfig(packageID string, ccType string) (*Launc
 	if c.CertGenerator != nil {
 		certKeyPair, err := c.CertGenerator.Generate(packageID)
 		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("failed to generate TLS certificates for %s", packageID))
+			return nil, errors.WithMessagef(err, "failed to generate TLS certificates for %s", packageID)
 		}
 		lc.Files = c.getTLSFiles(certKeyPair)
 		if lc.Files == nil {

@@ -90,7 +90,7 @@ func (p *policyAccessFactory) AccessPolicy(config *common.CollectionConfig, chai
 	case *common.CollectionConfig_StaticCollectionConfig:
 		err := colAP.Setup(cconf.StaticCollectionConfig, p.GetIdentityDeserializer(chainID))
 		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("error setting up collection  %#v", cconf.StaticCollectionConfig.Name))
+			return nil, errors.WithMessagef(err, "error setting up collection  %#v", cconf.StaticCollectionConfig.Name)
 		}
 	default:
 		return nil, errors.New("unexpected collection type")

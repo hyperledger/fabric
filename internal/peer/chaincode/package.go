@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
-	"fmt"
 	"io/ioutil"
 
 	"github.com/golang/protobuf/proto"
@@ -147,7 +146,7 @@ func (p *Packager) packageCC() error {
 
 	cds, err := p.CDSFactory(spec)
 	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("error getting chaincode code %s", p.Input.Name))
+		return errors.WithMessagef(err, "error getting chaincode code %s", p.Input.Name)
 	}
 
 	var bytesToWrite []byte
@@ -173,7 +172,7 @@ func (p *Packager) packageCC() error {
 func getInstantiationPolicy(policy string) (*pcommon.SignaturePolicyEnvelope, error) {
 	p, err := cauthdsl.FromString(policy)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("invalid policy %s", policy))
+		return nil, errors.WithMessagef(err, "invalid policy %s", policy)
 	}
 	return p, nil
 }

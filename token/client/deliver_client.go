@@ -8,7 +8,6 @@ package client
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"math"
 
 	"github.com/golang/protobuf/proto"
@@ -53,12 +52,12 @@ type deliverClient struct {
 func NewDeliverClient(config *ConnectionConfig) (DeliverClient, error) {
 	grpcClient, err := CreateGRPCClient(config)
 	if err != nil {
-		err = errors.WithMessage(err, fmt.Sprintf("failed to create a GRPCClient to peer %s", config.Address))
+		err = errors.WithMessagef(err, "failed to create a GRPCClient to peer %s", config.Address)
 		return nil, err
 	}
 	conn, err := grpcClient.NewConnection(config.Address, config.ServerNameOverride)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("failed to connect to commit peer %s", config.Address))
+		return nil, errors.WithMessagef(err, "failed to connect to commit peer %s", config.Address)
 	}
 
 	return &deliverClient{
@@ -80,7 +79,7 @@ func (d *deliverClient) NewDeliverFiltered(ctx context.Context, opts ...grpc.Cal
 	var err error
 	d.conn, err = d.grpcClient.NewConnection(d.peerAddr, d.serverNameOverride)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("failed to connect to commit peer %s", d.peerAddr))
+		return nil, errors.WithMessagef(err, "failed to connect to commit peer %s", d.peerAddr)
 	}
 
 	// create a new DeliverFiltered
@@ -163,7 +162,7 @@ read:
 	for {
 		resp, err := df.Recv()
 		if err != nil {
-			event.Err = errors.WithMessage(err, fmt.Sprintf("error receiving deliver response from peer %s", address))
+			event.Err = errors.WithMessagef(err, "error receiving deliver response from peer %s", address)
 			break read
 		}
 		switch r := resp.Type.(type) {

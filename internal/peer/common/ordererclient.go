@@ -8,7 +8,6 @@ package common
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 
 	"github.com/hyperledger/fabric/core/comm"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -44,7 +43,7 @@ func NewOrdererClientFromEnv() (*OrdererClient, error) {
 func (oc *OrdererClient) Broadcast() (ab.AtomicBroadcast_BroadcastClient, error) {
 	conn, err := oc.commonClient.NewConnection(oc.address, oc.sn)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("orderer client failed to connect to %s", oc.address))
+		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.address)
 	}
 	// TODO: check to see if we should actually handle error before returning
 	return ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
@@ -54,7 +53,7 @@ func (oc *OrdererClient) Broadcast() (ab.AtomicBroadcast_BroadcastClient, error)
 func (oc *OrdererClient) Deliver() (ab.AtomicBroadcast_DeliverClient, error) {
 	conn, err := oc.commonClient.NewConnection(oc.address, oc.sn)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("orderer client failed to connect to %s", oc.address))
+		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.address)
 	}
 	// TODO: check to see if we should actually handle error before returning
 	return ab.NewAtomicBroadcastClient(conn).Deliver(context.TODO())
