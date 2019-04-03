@@ -93,6 +93,7 @@ func TestRSAPublicKey(t *testing.T) {
 	bytes, err := k.Bytes()
 	assert.NoError(t, err)
 	bytes2, err := x509.MarshalPKIXPublicKey(k.pubKey)
+	assert.NoError(t, err)
 	assert.Equal(t, bytes2, bytes, "bytes are not computed in the right way.")
 }
 
@@ -136,15 +137,15 @@ func TestRSASignerSign(t *testing.T) {
 	err = rsa.VerifyPSS(&lowLevelKey.PublicKey, crypto.SHA256, digest, sigma, opts)
 	assert.NoError(t, err)
 
-	valid, err := verifierPrivateKey.Verify(k, sigma, msg, opts)
+	_, err = verifierPrivateKey.Verify(k, sigma, msg, opts)
 	assert.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "crypto/rsa: verification error"))
 
-	valid, err = verifierPrivateKey.Verify(k, sigma, digest, opts)
+	valid, err := verifierPrivateKey.Verify(k, sigma, digest, opts)
 	assert.NoError(t, err)
 	assert.True(t, valid)
 
-	valid, err = verifierPublicKey.Verify(pk, sigma, msg, opts)
+	_, err = verifierPublicKey.Verify(pk, sigma, msg, opts)
 	assert.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "crypto/rsa: verification error"))
 

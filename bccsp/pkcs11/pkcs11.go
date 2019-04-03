@@ -124,13 +124,13 @@ func (csp *impl) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool, err
 	session := csp.getSession()
 	defer csp.returnSession(session)
 	isPriv = true
-	_, err = findKeyPairFromSKI(p11lib, session, ski, privateKeyFlag)
+	_, err = findKeyPairFromSKI(p11lib, session, ski, privateKeyType)
 	if err != nil {
 		isPriv = false
 		logger.Debugf("Private key not found [%s] for SKI [%s], looking for Public key", err, hex.EncodeToString(ski))
 	}
 
-	publicKey, err := findKeyPairFromSKI(p11lib, session, ski, publicKeyFlag)
+	publicKey, err := findKeyPairFromSKI(p11lib, session, ski, publicKeyType)
 	if err != nil {
 		return nil, false, fmt.Errorf("Public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
 	}
@@ -314,7 +314,7 @@ func (csp *impl) signP11ECDSA(ski []byte, msg []byte) (R, S *big.Int, err error)
 	session := csp.getSession()
 	defer csp.returnSession(session)
 
-	privateKey, err := findKeyPairFromSKI(p11lib, session, ski, privateKeyFlag)
+	privateKey, err := findKeyPairFromSKI(p11lib, session, ski, privateKeyType)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Private key not found [%s]", err)
 	}
@@ -346,7 +346,7 @@ func (csp *impl) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize 
 
 	logger.Debugf("Verify ECDSA\n")
 
-	publicKey, err := findKeyPairFromSKI(p11lib, session, ski, publicKeyFlag)
+	publicKey, err := findKeyPairFromSKI(p11lib, session, ski, publicKeyType)
 	if err != nil {
 		return false, fmt.Errorf("Public key not found [%s]", err)
 	}
@@ -375,14 +375,16 @@ func (csp *impl) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize 
 	return true, nil
 }
 
+type keyType int8
+
 const (
-	privateKeyFlag = true
-	publicKeyFlag  = false
+	publicKeyType keyType = iota
+	privateKeyType
 )
 
-func findKeyPairFromSKI(mod *pkcs11.Ctx, session pkcs11.SessionHandle, ski []byte, keyType bool) (*pkcs11.ObjectHandle, error) {
+func findKeyPairFromSKI(mod *pkcs11.Ctx, session pkcs11.SessionHandle, ski []byte, keyType keyType) (*pkcs11.ObjectHandle, error) {
 	ktype := pkcs11.CKO_PUBLIC_KEY
-	if keyType == privateKeyFlag {
+	if keyType == privateKeyType {
 		ktype = pkcs11.CKO_PRIVATE_KEY
 	}
 
@@ -467,7 +469,7 @@ func ecPoint(p11lib *pkcs11.Ctx, session pkcs11.SessionHandle, key pkcs11.Object
 			logger.Debugf("EC point: attr type %d/0x%x, len %d\n%s\n", a.Type, a.Type, len(a.Value), hex.Dump(a.Value))
 
 			// workarounds, see above
-			if (0 == (len(a.Value) % 2)) &&
+			if ((len(a.Value) % 2) == 0) &&
 				(byte(0x04) == a.Value[0]) &&
 				(byte(0x04) == a.Value[len(a.Value)-1]) {
 				logger.Debugf("Detected opencryptoki bug, trimming trailing 0x04")

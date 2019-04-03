@@ -30,5 +30,5 @@ func (r *IdemixIssuerPublicKeyImporterError) Error() string {
 		return fmt.Sprintf("%s: %s", r.ErrorMsg, r.Cause)
 	}
 
-	return fmt.Sprintf("%s", r.ErrorMsg)
+	return r.ErrorMsg
 }
