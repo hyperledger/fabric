@@ -170,9 +170,9 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	Describe("basic single node etcdraft network with 2 orgs", func() {
+	Describe("basic single node etcdraft network", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, BasePort(), components)
+			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -181,13 +181,46 @@ var _ = Describe("EndToEnd", func() {
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
-		It("executes a basic etcdraft network with 2 orgs and a single node", func() {
+		It("creates two channels with two orgs trying to reconfigure and update metadata", func() {
 			orderer := network.Orderer("orderer")
 			peer := network.Peer("Org1", "peer1")
 
-			network.CreateAndJoinChannel(orderer, "testchannel")
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
-			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
+			By("Create first channel and deploy the chaincode")
+			network.CreateAndJoinChannel(orderer, "testchannel1")
+			nwo.DeployChaincode(network, "testchannel1", orderer, chaincode)
+			RunQueryInvokeQuery(network, orderer, peer, "testchannel1")
+
+			By("Create second channel and deploy chaincode")
+			network.CreateAndJoinChannel(orderer, "testchannel2")
+			nwo.InstantiateChaincode(network, "testchannel2", orderer, chaincode, peer, network.PeersWithChannel("testchannel2")...)
+			RunQueryInvokeQuery(network, orderer, peer, "testchannel2")
+
+			By("Update consensus metadata to increase snapshot interval")
+			snapDir := path.Join(network.RootDir, "orderers", orderer.ID(), "etcdraft", "snapshot", "testchannel1")
+			files, err := ioutil.ReadDir(snapDir)
+			Expect(err).NotTo(HaveOccurred())
+			numOfSnaps := len(files)
+
+			nwo.UpdateConsensusMetadata(network, peer, orderer, "testchannel1", func(originalMetadata []byte) []byte {
+				metadata := &etcdraft.ConfigMetadata{}
+				err := proto.Unmarshal(originalMetadata, metadata)
+				Expect(err).NotTo(HaveOccurred())
+
+				// update max in flight messages
+				metadata.Options.MaxInflightBlocks = 1000
+				metadata.Options.SnapshotIntervalSize = 10 * 1024 * 1024 // 10 MB
+
+				// write metadata back
+				newMetadata, err := proto.Marshal(metadata)
+				Expect(err).NotTo(HaveOccurred())
+				return newMetadata
+			})
+
+			// assert that no new snapshot is taken because SnapshotIntervalSize has just enlarged
+			files, err = ioutil.ReadDir(snapDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(files)).To(Equal(numOfSnaps))
+
 		})
 	})
 
