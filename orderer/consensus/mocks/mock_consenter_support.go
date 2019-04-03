@@ -2,14 +2,14 @@
 package mocks
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protoutil"
+	channelconfig "github.com/hyperledger/fabric/common/channelconfig"
+	blockcutter "github.com/hyperledger/fabric/orderer/common/blockcutter"
+	msgprocessor "github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	consensus "github.com/hyperledger/fabric/orderer/consensus"
+	common "github.com/hyperledger/fabric/protos/common"
+	protoutil "github.com/hyperledger/fabric/protoutil"
 )
 
 type FakeConsenterSupport struct {
@@ -96,16 +96,6 @@ type FakeConsenterSupport struct {
 	}
 	heightReturnsOnCall map[int]struct {
 		result1 uint64
-	}
-	IsSystemChannelStub        func() bool
-	isSystemChannelMutex       sync.RWMutex
-	isSystemChannelArgsForCall []struct {
-	}
-	isSystemChannelReturns struct {
-		result1 bool
-	}
-	isSystemChannelReturnsOnCall map[int]struct {
-		result1 bool
 	}
 	ProcessConfigMsgStub        func(*common.Envelope) (*common.Envelope, uint64, error)
 	processConfigMsgMutex       sync.RWMutex
@@ -673,58 +663,6 @@ func (fake *FakeConsenterSupport) HeightReturnsOnCall(i int, result1 uint64) {
 	}
 	fake.heightReturnsOnCall[i] = struct {
 		result1 uint64
-	}{result1}
-}
-
-func (fake *FakeConsenterSupport) IsSystemChannel() bool {
-	fake.isSystemChannelMutex.Lock()
-	ret, specificReturn := fake.isSystemChannelReturnsOnCall[len(fake.isSystemChannelArgsForCall)]
-	fake.isSystemChannelArgsForCall = append(fake.isSystemChannelArgsForCall, struct {
-	}{})
-	fake.recordInvocation("IsSystemChannel", []interface{}{})
-	fake.isSystemChannelMutex.Unlock()
-	if fake.IsSystemChannelStub != nil {
-		return fake.IsSystemChannelStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.isSystemChannelReturns
-	return fakeReturns.result1
-}
-
-func (fake *FakeConsenterSupport) IsSystemChannelCallCount() int {
-	fake.isSystemChannelMutex.RLock()
-	defer fake.isSystemChannelMutex.RUnlock()
-	return len(fake.isSystemChannelArgsForCall)
-}
-
-func (fake *FakeConsenterSupport) IsSystemChannelCalls(stub func() bool) {
-	fake.isSystemChannelMutex.Lock()
-	defer fake.isSystemChannelMutex.Unlock()
-	fake.IsSystemChannelStub = stub
-}
-
-func (fake *FakeConsenterSupport) IsSystemChannelReturns(result1 bool) {
-	fake.isSystemChannelMutex.Lock()
-	defer fake.isSystemChannelMutex.Unlock()
-	fake.IsSystemChannelStub = nil
-	fake.isSystemChannelReturns = struct {
-		result1 bool
-	}{result1}
-}
-
-func (fake *FakeConsenterSupport) IsSystemChannelReturnsOnCall(i int, result1 bool) {
-	fake.isSystemChannelMutex.Lock()
-	defer fake.isSystemChannelMutex.Unlock()
-	fake.IsSystemChannelStub = nil
-	if fake.isSystemChannelReturnsOnCall == nil {
-		fake.isSystemChannelReturnsOnCall = make(map[int]struct {
-			result1 bool
-		})
-	}
-	fake.isSystemChannelReturnsOnCall[i] = struct {
-		result1 bool
 	}{result1}
 }
 
@@ -1309,8 +1247,6 @@ func (fake *FakeConsenterSupport) Invocations() map[string][][]interface{} {
 	defer fake.createNextBlockMutex.RUnlock()
 	fake.heightMutex.RLock()
 	defer fake.heightMutex.RUnlock()
-	fake.isSystemChannelMutex.RLock()
-	defer fake.isSystemChannelMutex.RUnlock()
 	fake.processConfigMsgMutex.RLock()
 	defer fake.processConfigMsgMutex.RUnlock()
 	fake.processConfigUpdateMsgMutex.RLock()

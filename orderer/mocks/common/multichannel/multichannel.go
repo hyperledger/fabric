@@ -69,8 +69,6 @@ type ConsenterSupport struct {
 
 	// BlockVerificationErr is returned by VerifyBlockSignature
 	BlockVerificationErr error
-
-	SystemChannelVal bool
 }
 
 // Block returns the block with the given number or nil if not found
@@ -171,11 +169,6 @@ func (mcs *ConsenterSupport) Sequence() uint64 {
 // VerifyBlockSignature verifies a signature of a block
 func (mcs *ConsenterSupport) VerifyBlockSignature(_ []*protoutil.SignedData, _ *cb.ConfigEnvelope) error {
 	return mcs.BlockVerificationErr
-}
-
-// IsSystemChannel returns true if this is the system channel
-func (mcs *ConsenterSupport) IsSystemChannel() bool {
-	return mcs.SystemChannelVal
 }
 
 // Append appends a new block to the ledger in its raw form,
