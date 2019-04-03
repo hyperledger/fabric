@@ -95,29 +95,40 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 
 	peer.MockSetMSPIDGetter(mspGetter)
 
-	// For unit-test, tls is not required.
-	viper.Set("peer.tls.enabled", false)
 	grpcServer := grpc.NewServer()
 
-	peerEndpoint, err := peer.GetPeerEndpoint()
+	lis, err := net.Listen("tcp", ":0")
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("Error obtaining peer endpoint: %s", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to start peer listener %s", err)
 	}
-	peerAddress := peerEndpoint.Address
-	lis, err := net.Listen("tcp", peerAddress)
+	_, localPort, err := net.SplitHostPort(lis.Addr().String())
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("Error starting peer listener %s", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to get port: %s", err)
 	}
+	localIP, err := peer.GetLocalIP()
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to get local IP: %s", err)
+	}
+
+	peerAddress := net.JoinHostPort(localIP, localPort)
 
 	tempdir, err := ioutil.TempDir("", "chaincode")
 	if err != nil {
 		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
 	}
+
 	ccprovider.SetChaincodesPath(tempdir)
 	ca, _ := tlsgen.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	config := GlobalConfig()
-	config.StartupTimeout = 3 * time.Minute
+	config := &Config{
+		TLSEnabled:     false,
+		Keepalive:      time.Second,
+		StartupTimeout: 3 * time.Minute,
+		ExecuteTimeout: 30 * time.Second,
+		LogLevel:       "info",
+		ShimLogLevel:   "warning",
+		LogFormat:      "TEST: [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}",
+	}
 	pr := platforms.NewRegistry(&golang.Platform{})
 	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
 	ml := &cm.Lifecycle{}
