@@ -165,7 +165,7 @@ func (v *TxValidator) updateEndorseCertToDB(block *common.Block) error {
 				logger.Debugf("This is a hash of endorser:\n%v", endorsement.Endorser)
 			} else { // a new endorser cert,insert to db
 				key := util.ComputeSHA256(endorserCert)
-				logger.Debugf("updateEndorseCertToDB: update endorser to  db key len: %d Mspid: %s, pem:\n%s", len(key), serializedIdentity.Mspid, serializedIdentity.IdBytes)
+				logger.Debugf("updateEndorseCertToDB: update endorser to  db key len: %d endorserCert:\n%x", len(key), endorserCert)
 				if err := kvledger.GlbCertStore.PutCert(key, endorserCert); err != nil {
 					logger.Errorf("update endorser cert error: %s", err)
 					return errors.Wrap(err, "updateEndorseCertToDB failed")
