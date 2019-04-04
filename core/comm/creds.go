@@ -17,13 +17,9 @@ import (
 )
 
 var (
-	ClientHandshakeNotImplError = errors.New("core/comm: Client handshakes" +
-		"are not implemented with serverCreds")
-	OverrrideHostnameNotSupportedError = errors.New(
-		"core/comm: OverrideServerName is " +
-			"not supported")
-	MissingServerConfigError = errors.New(
-		"core/comm: `serverConfig` cannot be nil")
+	ErrClientHandshakeNotImplemented = errors.New("core/comm: client handshakes are not implemented with serverCreds")
+	ErrOverrideHostnameNotSupported  = errors.New("core/comm: OverrideServerName is not supported")
+
 	// alpnProtoStr are the specified application level protocols for gRPC.
 	alpnProtoStr = []string{"h2"}
 )
@@ -54,7 +50,7 @@ type serverCreds struct {
 // ClientHandShake is not implemented for `serverCreds`.
 func (sc *serverCreds) ClientHandshake(context.Context,
 	string, net.Conn) (net.Conn, credentials.AuthInfo, error) {
-	return nil, nil, ClientHandshakeNotImplError
+	return nil, nil, ErrClientHandshakeNotImplemented
 }
 
 // ServerHandshake does the authentication handshake for servers.
@@ -87,5 +83,5 @@ func (sc *serverCreds) Clone() credentials.TransportCredentials {
 // OverrideServerName overrides the server name used to verify the hostname
 // on the returned certificates from the server.
 func (sc *serverCreds) OverrideServerName(string) error {
-	return OverrrideHostnameNotSupportedError
+	return ErrOverrideHostnameNotSupported
 }

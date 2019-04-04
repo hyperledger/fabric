@@ -47,9 +47,9 @@ func TestCreds(t *testing.T) {
 
 	creds := comm.NewServerTransportCredentials(tlsConfig, logger)
 	_, _, err = creds.ClientHandshake(nil, "", nil)
-	assert.EqualError(t, err, comm.ClientHandshakeNotImplError.Error())
+	assert.EqualError(t, err, comm.ErrClientHandshakeNotImplemented.Error())
 	err = creds.OverrideServerName("")
-	assert.EqualError(t, err, comm.OverrrideHostnameNotSupportedError.Error())
+	assert.EqualError(t, err, comm.ErrOverrideHostnameNotSupported.Error())
 	clone := creds.Clone()
 	assert.Equal(t, creds, clone)
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion)
