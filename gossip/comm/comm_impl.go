@@ -699,7 +699,7 @@ func createGRPCLayer(port int) (*grpc.Server, net.Listener, api.PeerSecureDialOp
 	})
 	dialOpts = append(dialOpts, grpc.WithTransportCredentials(ta))
 
-	listenAddress := fmt.Sprintf("%s:%d", "", port)
+	listenAddress := net.JoinHostPort("", fmt.Sprintf("%d", port))
 	ll, err = net.Listen("tcp", listenAddress)
 	if err != nil {
 		panic(err)
