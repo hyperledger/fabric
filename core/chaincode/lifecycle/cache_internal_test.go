@@ -19,7 +19,3 @@ func GetChaincodeMap(c *Cache, channelID string) *ChannelCache {
 func SetLocalChaincodesMap(c *Cache, localChaincodes map[string]*LocalChaincode) {
 	c.localChaincodes = localChaincodes
 }
-
-func GetLocalChaincodeMap(c *Cache) map[string]*LocalChaincode {
-	return c.localChaincodes
-}
