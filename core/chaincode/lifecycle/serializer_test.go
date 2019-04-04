@@ -196,6 +196,9 @@ var _ = Describe("Serializer", func() {
 					Expect(key).To(Equal("namespaces/fields/fake/Int"))
 					key, value = fakeState.PutStateArgsForCall(1)
 					Expect(key).To(Equal("namespaces/fields/fake/String"))
+					Expect(value).To(Equal(protoutil.MarshalOrPanic(&lb.StateData{
+						Type: &lb.StateData_String_{String_: "theory"},
+					})))
 					key, value = fakeState.PutStateArgsForCall(2)
 					Expect(key).To(Equal("namespaces/metadata/fake"))
 					Expect(value).To(Equal(protoutil.MarshalOrPanic(&lb.StateMetadata{
