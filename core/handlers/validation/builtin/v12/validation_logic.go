@@ -751,7 +751,7 @@ func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*c
 				logger.Errorf("Get endorser cert error: %s cert len %d: pem: \n%s", err, len(endorsement.Endorser), endorserCert)
 				return nil, errors.Wrap(err, "genBlockReplacedCert failed")
 			}
-			logger.Debugf("Do the endorse replace work, hash:\n%v\ncert:\n%v", endorsement.Endorser, endorserCert)
+			logger.Debugf("Do the endorse replace work, hash:\n%x\ncert:\n%x", endorsement.Endorser, endorserCert)
 			endorsement.Endorser = endorserCert
 		}
 		//unmarshal endorser bytes
