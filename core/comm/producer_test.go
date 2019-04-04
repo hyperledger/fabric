@@ -95,6 +95,7 @@ func TestUpdateEndpoints(t *testing.T) {
 	// Next, ensure an empty update is ignored
 	producer.UpdateEndpoints([]string{})
 	conn, _, err = producer.NewConnection()
+	assert.NoError(t, err)
 	assert.Equal(t, "b", conn2Endpoint[fmt.Sprintf("%p", conn)])
 }
 

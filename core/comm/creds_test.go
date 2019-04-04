@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package comm_test
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
@@ -46,7 +47,7 @@ func TestCreds(t *testing.T) {
 	logger, recorder := floggingtest.NewTestLogger(t)
 
 	creds := comm.NewServerTransportCredentials(tlsConfig, logger)
-	_, _, err = creds.ClientHandshake(nil, "", nil)
+	_, _, err = creds.ClientHandshake(context.Background(), "", nil)
 	assert.EqualError(t, err, comm.ErrClientHandshakeNotImplemented.Error())
 	err = creds.OverrideServerName("")
 	assert.EqualError(t, err, comm.ErrOverrideHostnameNotSupported.Error())

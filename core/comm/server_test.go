@@ -11,14 +11,12 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"path/filepath"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -26,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/comm/testpb"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -193,7 +192,6 @@ func invokeEmptyStream(address string, dialOptions []grpc.DialOption) (*testpb.E
 const (
 	numOrgs        = 2
 	numChildOrgs   = 2
-	numClientCerts = 2
 	numServerCerts = 2
 )
 
@@ -479,8 +477,7 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 		},
 	)
 	// check for error
-	msg = "serverConfig.SecOpts must contain both Key and " +
-		"Certificate when UseTLS is true"
+	msg = "serverConfig.SecOpts must contain both Key and Certificate when UseTLS is true"
 	assert.EqualError(t, err, msg)
 	if err != nil {
 		t.Log(err.Error())
@@ -546,11 +543,11 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 				RequireClientCert: true},
 		},
 	)
+	assert.NoError(t, err)
 	badRootCAs := [][]byte{[]byte(badPEM)}
 	err = srv.SetClientRootCAs(badRootCAs)
 	// check for error
-	msg = "Failed to set client root certificate(s): " +
-		"asn1: syntax error: data truncated"
+	msg = "Failed to set client root certificate(s): asn1: syntax error: data truncated"
 	assert.EqualError(t, err, msg)
 	if err != nil {
 		t.Log(err.Error())
@@ -558,8 +555,8 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 }
 
 func TestNewGRPCServer(t *testing.T) {
-
 	t.Parallel()
+
 	testAddress := "localhost:9053"
 	srv, err := comm.NewGRPCServer(
 		testAddress,
@@ -573,6 +570,7 @@ func TestNewGRPCServer(t *testing.T) {
 	// make sure our properties are as expected
 	// resolve the address
 	addr, err := net.ResolveTCPAddr("tcp", testAddress)
+	assert.NoError(t, err)
 	assert.Equal(t, srv.Address(), addr.String())
 	assert.Equal(t, srv.Listener().Addr().String(), addr.String())
 
@@ -599,16 +597,13 @@ func TestNewGRPCServer(t *testing.T) {
 	_, err = invokeEmptyCall(testAddress, dialOptions)
 
 	if err != nil {
-		t.Fatalf("GRPC client failed to invoke the EmptyCall service on %s: %v",
-			testAddress, err)
+		t.Fatalf("GRPC client failed to invoke the EmptyCall service on %s: %v", testAddress, err)
 	} else {
 		t.Log("GRPC client successfully invoked the EmptyCall service: " + testAddress)
 	}
-
 }
 
 func TestNewGRPCServerFromListener(t *testing.T) {
-
 	t.Parallel()
 
 	// create our listener
@@ -631,6 +626,7 @@ func TestNewGRPCServerFromListener(t *testing.T) {
 	// make sure our properties are as expected
 	// resolve the address
 	addr, err := net.ResolveTCPAddr("tcp", testAddress)
+	assert.NoError(t, err)
 	assert.Equal(t, srv.Address(), addr.String())
 	assert.Equal(t, srv.Listener().Addr().String(), addr.String())
 
@@ -686,6 +682,7 @@ func TestNewSecureGRPCServer(t *testing.T) {
 	// make sure our properties are as expected
 	// resolve the address
 	addr, err := net.ResolveTCPAddr("tcp", testAddress)
+	assert.NoError(t, err)
 	assert.Equal(t, srv.Address(), addr.String())
 	assert.Equal(t, srv.Listener().Addr().String(), addr.String())
 
@@ -908,27 +905,27 @@ func TestWithSignedRootCertificates(t *testing.T) {
 
 // here we'll use certificates signed by intermediate certificate authorities
 func TestWithSignedIntermediateCertificates(t *testing.T) {
-
 	t.Parallel()
+
 	// use Org1 testdata
 	fileBase := "Org1"
 	certPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-server1-cert.pem"))
-	keyPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-server1-key.pem"))
-	intermediatePEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-cert.pem"))
+	assert.NoError(t, err)
 
+	keyPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-server1-key.pem"))
+	assert.NoError(t, err)
+
+	intermediatePEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-cert.pem"))
 	if err != nil {
 		t.Fatalf("Failed to load test certificates: %v", err)
 	}
+
 	// create our listener
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Failed to create listener: %v", err)
 	}
 	testAddress := lis.Addr().String()
-
-	if err != nil {
-		t.Fatalf("Failed to create listener: %v", err)
-	}
 
 	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{
 		SecOpts: &comm.SecureOptions{
@@ -1306,14 +1303,11 @@ func TestRemoveClientRootCAs(t *testing.T) {
 
 // test for race conditions - test locally using "go test -race -run TestConcurrentAppendRemoveSet"
 func TestConcurrentAppendRemoveSet(t *testing.T) {
-
 	t.Parallel()
+
 	// get the config for one of our Org1 test servers and include client CAs from
 	// Org2 child orgs
-	testServers := testOrgs[0].testServers(
-		[][]byte{testOrgs[1].childOrgs[0].rootCA,
-			testOrgs[1].childOrgs[1].rootCA},
-	)
+	testServers := testOrgs[0].testServers([][]byte{testOrgs[1].childOrgs[0].rootCA, testOrgs[1].childOrgs[1].rootCA})
 	serverConfig := testServers[0].config
 	lis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
@@ -1332,62 +1326,44 @@ func TestConcurrentAppendRemoveSet(t *testing.T) {
 	go srv.Start()
 	defer srv.Stop()
 
-	// need to wait for the following go routines to finish
-	var wg sync.WaitGroup
-
-	wg.Add(1)
+	errCh := make(chan error, 4)
 	go func() {
-		defer wg.Done()
-		//now remove the root CAs for the untrusted clients
-		err := srv.RemoveClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA,
-			testOrgs[1].childOrgs[1].rootCA})
-		if err != nil {
-			t.Fatal("Failed to remove client root CAs")
-		}
-
+		// remove the root CAs for the untrusted clients
+		err := srv.RemoveClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA, testOrgs[1].childOrgs[1].rootCA})
+		errCh <- errors.WithMessage(err, "failed to remove client root CAs")
 	}()
 
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		// set client root CAs
-		err := srv.SetClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA,
-			testOrgs[1].childOrgs[1].rootCA})
-		if err != nil {
-			t.Fatal("Failed to set client root CAs")
-		}
-
+		err := srv.SetClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA, testOrgs[1].childOrgs[1].rootCA})
+		errCh <- errors.WithMessage(err, "failed to set client root CAs")
 	}()
 
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		// now append the root CAs for the untrusted clients
-		err := srv.AppendClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA,
-			testOrgs[1].childOrgs[1].rootCA})
-		if err != nil {
-			t.Fatal("Failed to append client root CAs")
-		}
+		err := srv.AppendClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA, testOrgs[1].childOrgs[1].rootCA})
+		errCh <- errors.WithMessage(err, "failed to append client root CAs")
 	}()
 
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		// set client root CAs
-		err := srv.SetClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA,
-			testOrgs[1].childOrgs[1].rootCA})
-		if err != nil {
-			t.Fatal("Failed to set client root CAs")
-		}
-
+		err := srv.SetClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA, testOrgs[1].childOrgs[1].rootCA})
+		errCh <- errors.WithMessage(err, "failed to set client root CAs")
 	}()
 
-	wg.Wait()
-
+	for i := 0; i < 4; i++ {
+		timer := time.NewTimer(5 * time.Second)
+		select {
+		case <-timer.C:
+			t.Fatal("go routine did not complete within timeout")
+		case err := <-errCh:
+			assert.NoError(t, err, "unexpected error from concurrent routine")
+		}
+		timer.Stop()
+	}
 }
 
 func TestSetClientRootCAs(t *testing.T) {
-
 	t.Parallel()
 
 	// get the config for one of our Org1 test servers
@@ -1412,19 +1388,17 @@ func TestSetClientRootCAs(t *testing.T) {
 	// should not be needed but just in case
 	time.Sleep(10 * time.Millisecond)
 
-	// set up out test clients
+	// set up our test clients
 	// Org1
 	clientConfigOrg1Child1 := testOrgs[0].childOrgs[0].trustedClients([][]byte{testOrgs[0].rootCA})[0]
 	clientConfigOrg1Child2 := testOrgs[0].childOrgs[1].trustedClients([][]byte{testOrgs[0].rootCA})[0]
 	clientConfigsOrg1Children := []*tls.Config{clientConfigOrg1Child1, clientConfigOrg1Child2}
-	org1ChildRootCAs := [][]byte{testOrgs[0].childOrgs[0].rootCA,
-		testOrgs[0].childOrgs[1].rootCA}
+	org1ChildRootCAs := [][]byte{testOrgs[0].childOrgs[0].rootCA, testOrgs[0].childOrgs[1].rootCA}
 	// Org2
 	clientConfigOrg2Child1 := testOrgs[1].childOrgs[0].trustedClients([][]byte{testOrgs[0].rootCA})[0]
 	clientConfigOrg2Child2 := testOrgs[1].childOrgs[1].trustedClients([][]byte{testOrgs[0].rootCA})[0]
 	clientConfigsOrg2Children := []*tls.Config{clientConfigOrg2Child1, clientConfigOrg2Child2}
-	org2ChildRootCAs := [][]byte{testOrgs[1].childOrgs[0].rootCA,
-		testOrgs[1].childOrgs[1].rootCA}
+	org2ChildRootCAs := [][]byte{testOrgs[1].childOrgs[0].rootCA, testOrgs[1].childOrgs[1].rootCA}
 
 	// initially set client CAs to Org1 children
 	err = srv.SetClientRootCAs(org1ChildRootCAs)
@@ -1744,13 +1718,15 @@ func TestServerInterceptors(t *testing.T) {
 		[]grpc.DialOption{
 			grpc.WithBlock(),
 			grpc.WithInsecure()})
-	assert.Equal(t, grpc.ErrorDesc(err), msg, "Expected error from second usi")
+	assert.Error(t, err)
+	assert.Equal(t, status.Convert(err).Message(), msg, "Expected error from second usi")
 	assert.Equal(t, uint32(2), atomic.LoadUint32(&usiCount), "Expected both usi handlers to be invoked")
 
 	_, err = invokeEmptyStream(lis.Addr().String(),
 		[]grpc.DialOption{
 			grpc.WithBlock(),
 			grpc.WithInsecure()})
-	assert.Equal(t, grpc.ErrorDesc(err), msg, "Expected error from second ssi")
+	assert.Error(t, err)
+	assert.Equal(t, status.Convert(err).Message(), msg, "Expected error from second ssi")
 	assert.Equal(t, uint32(2), atomic.LoadUint32(&ssiCount), "Expected both ssi handlers to be invoked")
 }

@@ -15,7 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -31,8 +31,6 @@ type GRPCServer struct {
 	// Certificate presented by the server for TLS communication
 	// stored as an atomic reference
 	serverCertificate atomic.Value
-	// Key used by the server for TLS communication
-	serverKeyPEM []byte
 	// lock to protect concurrent access to append / remove
 	lock *sync.Mutex
 	// Set of PEM-encoded X509 certificate authorities used to populate
