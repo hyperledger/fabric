@@ -10,7 +10,7 @@ import (
 	"io/ioutil"
 
 	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/pkg/errors"
 )
@@ -101,7 +101,6 @@ func (p *PackageProvider) getCodePackageFromLegacyPP(name, version string) ([]by
 func (p *PackageProvider) ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error) {
 	// first look through ChaincodeInstallPackages
 	installedChaincodes, err := p.Store.ListInstalledChaincodes()
-
 	if err != nil {
 		// log the error and continue
 		logger.Debugf("error getting installed chaincodes from persistence store: %s", err)
@@ -109,15 +108,11 @@ func (p *PackageProvider) ListInstalledChaincodes() ([]chaincode.InstalledChainc
 
 	// then look through CDS/SCDS
 	installedChaincodesLegacy, err := p.LegacyPP.ListInstalledChaincodes(p.Store.GetChaincodeInstallPath(), ioutil.ReadDir, ccprovider.LoadPackage)
-
 	if err != nil {
 		// log the error and continue
 		logger.Debugf("error getting installed chaincodes from ccprovider: %s", err)
 	}
 
-	for _, cc := range installedChaincodesLegacy {
-		installedChaincodes = append(installedChaincodes, cc)
-	}
-
+	installedChaincodes = append(installedChaincodes, installedChaincodesLegacy...)
 	return installedChaincodes, nil
 }
