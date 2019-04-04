@@ -115,7 +115,6 @@ func TestCredentialSupport(t *testing.T) {
 }
 
 type srv struct {
-	port    int
 	address string
 	*GRPCServer
 	caCert   []byte

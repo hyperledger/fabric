@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -116,13 +115,4 @@ func (cs *CredentialSupport) GetPeerCredentials() credentials.TransportCredentia
 
 	tlsConfig.RootCAs = certPool
 	return credentials.NewTLS(tlsConfig)
-}
-
-func getEnv(key, def string) string {
-	val := os.Getenv(key)
-	if len(val) > 0 {
-		return val
-	} else {
-		return def
-	}
 }

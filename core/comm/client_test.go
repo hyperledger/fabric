@@ -524,8 +524,6 @@ type testCerts struct {
 	caPEM      []byte
 	certPEM    []byte
 	keyPEM     []byte
-	serverKey  []byte
-	serverPEM  []byte
 	clientCert tls.Certificate
 	serverCert tls.Certificate
 }
