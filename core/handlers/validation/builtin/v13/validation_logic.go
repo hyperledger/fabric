@@ -139,7 +139,7 @@ func (vscc *Validator) extractValidationArtifacts(
 				logger.Errorf("Get endorser cert error: %s cert len %d: pem: \n%s", err, len(endorsement.Endorser), endorserCert)
 				return nil, err
 			}
-			logger.Debugf("Do the endorse replace work, hash:\n%v\ncert:\n%v", endorsement.Endorser, endorserCert)
+			logger.Debugf("Do the endorse replace work, hash:\n%x\ncert:\n%x", endorsement.Endorser, endorserCert)
 			endorsement.Endorser = endorserCert
 		}
 	}
