@@ -35,7 +35,7 @@ Usage:
   peer lifecycle [command]
 
 Available Commands:
-  chaincode   Perform chaincode operations: package|install|queryinstalled|approveformyorg|commit|querycommitted
+  chaincode   Perform chaincode operations: package|install|queryinstalled|approveformyorg|queryapprovalstatus|commit|querycommitted
 
 Flags:
   -h, --help   help for lifecycle
@@ -46,7 +46,7 @@ Use "peer lifecycle [command] --help" for more information about a command.
 
 ## peer lifecycle chaincode
 ```
-Perform _lifecycle operations: package|install|queryinstalled|approveformyorg|commit|querycommitted
+Perform _lifecycle operations: package|install|queryinstalled|approveformyorg|queryapprovalstatus|commit|querycommitted
 
 Usage:
   peer lifecycle chaincode [command]
@@ -165,7 +165,7 @@ Flags:
   -C, --channelID string               The channel on which this command should be executed
       --collections-config string      The fully qualified path to the collection JSON file including the file name
       --connectionProfile string       The fully qualified path to the connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
-  -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
+  -E, --endorsement-plugin string      The name of the endorsement plugin to be used for this chaincode
   -h, --help                           help for approveformyorg
       --init-required                  Whether the chaincode requires invoking 'init'
   -n, --name string                    Name of the chaincode
@@ -174,8 +174,8 @@ Flags:
       --sequence int                   The sequence number of the chaincode definition for the channel (default 1)
       --signature-policy string        The endorsement policy associated to this chaincode specified as a signature policy
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
+  -V, --validation-plugin string       The name of the validation plugin to be used for this chaincode
   -v, --version string                 Version of the chaincode
-  -V, --vscc string                    The name of the verification system chaincode to be used for this chaincode
       --waitForEvent                   Whether to wait for the event from each peer's deliver filtered service signifying that the transaction has been committed successfully (default true)
       --waitForEventTimeout duration   Time to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully (default 30s)
 
@@ -203,7 +203,7 @@ Flags:
   -C, --channelID string               The channel on which this command should be executed
       --collections-config string      The fully qualified path to the collection JSON file including the file name
       --connectionProfile string       The fully qualified path to the connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
-  -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
+  -E, --endorsement-plugin string      The name of the endorsement plugin to be used for this chaincode
   -h, --help                           help for queryapprovalstatus
       --init-required                  Whether the chaincode requires invoking 'init'
   -n, --name string                    Name of the chaincode
@@ -211,8 +211,8 @@ Flags:
       --sequence int                   The sequence number of the chaincode definition for the channel (default 1)
       --signature-policy string        The endorsement policy associated to this chaincode specified as a signature policy
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
+  -V, --validation-plugin string       The name of the validation plugin to be used for this chaincode
   -v, --version string                 Version of the chaincode
-  -V, --vscc string                    The name of the verification system chaincode to be used for this chaincode
 
 Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
@@ -238,7 +238,7 @@ Flags:
   -C, --channelID string               The channel on which this command should be executed
       --collections-config string      The fully qualified path to the collection JSON file including the file name
       --connectionProfile string       The fully qualified path to the connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
-  -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
+  -E, --endorsement-plugin string      The name of the endorsement plugin to be used for this chaincode
   -h, --help                           help for commit
       --init-required                  Whether the chaincode requires invoking 'init'
   -n, --name string                    Name of the chaincode
@@ -246,8 +246,8 @@ Flags:
       --sequence int                   The sequence number of the chaincode definition for the channel (default 1)
       --signature-policy string        The endorsement policy associated to this chaincode specified as a signature policy
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
+  -V, --validation-plugin string       The name of the validation plugin to be used for this chaincode
   -v, --version string                 Version of the chaincode
-  -V, --vscc string                    The name of the verification system chaincode to be used for this chaincode
       --waitForEvent                   Whether to wait for the event from each peer's deliver filtered service signifying that the transaction has been committed successfully (default true)
       --waitForEventTimeout duration   Time to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully (default 30s)
 

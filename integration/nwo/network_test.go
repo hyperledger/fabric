@@ -103,8 +103,6 @@ var _ = Describe("Network", func() {
 				Lang:                "golang",
 				PackageFile:         filepath.Join(tempDir, "simplecc.tar.gz"),
 				Ctor:                `{"Args":["init","a","100","b","200"]}`,
-				EndorsementPlugin:   "escc",
-				ValidationPlugin:    "vscc",
 				Policy:              `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
 				ChannelConfigPolicy: "/Channel/Application/Endorsement",
 				Sequence:            "1",
