@@ -3622,32 +3622,31 @@ type network struct {
 	leader uint64
 	chains map[uint64]*chain
 
-	// links simulates the configuration of comm layer. if links[left][right] == true,
-	// the link between left and right is open on *left* side. A link must be open on
-	// both sides to allow message pass through.
+	// links simulates the configuration of comm layer (link is bi-directional).
+	// if links[left][right] == true, right can send msg to left.
 	links map[uint64]map[uint64]bool
 	// connectivity determines if a node is connected to network. This is used for tests
 	// to simulate network partition.
 	connectivity map[uint64]bool
 }
 
-func (n *network) link(from uint64, to []uint64) {
+func (n *network) link(from []uint64, to uint64) {
 	links := make(map[uint64]bool)
-	for _, id := range to {
+	for _, id := range from {
 		links[id] = true
 	}
 
 	n.Lock()
 	defer n.Unlock()
 
-	n.links[from] = links
+	n.links[to] = links
 }
 
 func (n *network) linked(from, to uint64) bool {
 	n.RLock()
 	defer n.RUnlock()
 
-	return n.links[from][to] && n.links[to][from]
+	return n.links[to][from]
 }
 
 func (n *network) connect(id uint64) {
@@ -3748,7 +3747,7 @@ func (n *network) addChain(c *chain) {
 		for _, node := range nodes {
 			ids = append(ids, node.ID)
 		}
-		n.link(c.id, ids)
+		n.link(ids, c.id)
 	})
 
 	n.Lock()
