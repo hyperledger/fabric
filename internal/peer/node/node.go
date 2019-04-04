@@ -15,7 +15,7 @@ import (
 
 const (
 	nodeFuncName = "node"
-	nodeCmdDes   = "Operate a peer node: start|status|reset."
+	nodeCmdDes   = "Operate a peer node: start|reset|rollback."
 )
 
 var logger = flogging.MustGetLogger("nodeCmd")
@@ -24,6 +24,7 @@ var logger = flogging.MustGetLogger("nodeCmd")
 func Cmd() *cobra.Command {
 	nodeCmd.AddCommand(startCmd())
 	nodeCmd.AddCommand(resetCmd())
+	nodeCmd.AddCommand(rollbackCmd())
 	return nodeCmd
 }
 
