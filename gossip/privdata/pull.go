@@ -530,7 +530,7 @@ func (p *puller) getLatestCollectionConfigRoutingFilter(chaincode string, collec
 
 	latestCollectionConfig, err := p.cs.RetrieveCollectionAccessPolicy(cc)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("failed obtaining collection policy for channel %s, chaincode %s, config %s", p.channel, chaincode, collection))
+		return nil, errors.WithMessagef(err, "failed obtaining collection policy for channel %s, chaincode %s, config %s", p.channel, chaincode, collection)
 	}
 
 	filt := latestCollectionConfig.AccessFilter()

@@ -116,17 +116,6 @@ func (d *defaultACLProviderImpl) initialize() {
 	d.cResourcePolicyMap[resources.Event_FilteredBlock] = CHANNELREADERS
 }
 
-//this should cover an exhaustive list of everything called from the peer
-func (d *defaultACLProviderImpl) defaultPolicy(resName string, cprovider bool) string {
-	var pol string
-	if cprovider {
-		pol = d.cResourcePolicyMap[resName]
-	} else {
-		pol = d.pResourcePolicyMap[resName]
-	}
-	return pol
-}
-
 func (d *defaultACLProviderImpl) IsPtypePolicy(resName string) bool {
 	_, ok := d.pResourcePolicyMap[resName]
 	return ok

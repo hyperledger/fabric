@@ -8,7 +8,6 @@ package client
 
 import (
 	"crypto/tls"
-	"fmt"
 	"io/ioutil"
 	"time"
 
@@ -34,7 +33,7 @@ func CreateGRPCClient(config *ConnectionConfig) (*comm.GRPCClient, error) {
 		}
 		caPEM, err := ioutil.ReadFile(config.TLSRootCertFile)
 		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("unable to load TLS cert from %s", config.TLSRootCertFile))
+			return nil, errors.WithMessagef(err, "unable to load TLS cert from %s", config.TLSRootCertFile)
 		}
 		secOpts := &comm.SecureOptions{
 			UseTLS:            true,

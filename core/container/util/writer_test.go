@@ -237,32 +237,6 @@ func Test_WriteFolderToTarPackageFailure3(t *testing.T) {
 	gw.Close()
 }
 
-func Test_WriteJavaProjectToPackage(t *testing.T) {
-	inputbuf := bytes.NewBuffer(nil)
-	gw := gzip.NewWriter(inputbuf)
-	tw := tar.NewWriter(gw)
-
-	srcPath := filepath.Join("testdata", "sourcefiles")
-	assert.FileExists(t, filepath.Join(srcPath, "src", "Hello.class"))
-
-	err := WriteJavaProjectToPackage(tw, srcPath)
-	assert.NoError(t, err, "Error writing java project to package")
-
-	// Close the tar writer and call WriteFileToPackage again, this should
-	// return an error
-	tw.Close()
-	gw.Close()
-
-	entries := tarContents(t, inputbuf.Bytes())
-	assert.Contains(t, entries, "META-INF/statedb/couchdb/indexes/indexOwner.json")
-	assert.Contains(t, entries, "src/artifact.xml")
-	assert.Contains(t, entries, "src/src/Hello.java")
-	assert.NotContains(t, entries, "src/src/Hello.class")
-
-	err = WriteJavaProjectToPackage(tw, srcPath)
-	assert.Error(t, err, "WriteJavaProjectToPackage was called with closed writer, should have failed")
-}
-
 func Test_WriteBytesToPackage(t *testing.T) {
 	inputbuf := bytes.NewBuffer(nil)
 	tw := tar.NewWriter(inputbuf)

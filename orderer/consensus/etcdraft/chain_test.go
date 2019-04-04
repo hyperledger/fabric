@@ -1300,7 +1300,7 @@ var _ = Describe("Chain", func() {
 							noOpBlockPuller,
 							nil)
 						Expect(chain).NotTo(BeNil())
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 					})
 				})
 
@@ -1512,7 +1512,7 @@ var _ = Describe("Chain", func() {
 
 				c1.cutter.CutNext = true
 				err := c1.Order(env, 0)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(func() int { return c1.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
 				Eventually(func() int { return c2.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
@@ -1560,14 +1560,14 @@ var _ = Describe("Chain", func() {
 				network.elect(1)
 
 				err := c1.Order(env, 0)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(func() int { return c1.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
 				Eventually(func() int { return c2.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
 				Eventually(func() int { return c3.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(0))
 
 				err = c1.Order(env, 0)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(func() int { return c1.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(2))
 				Eventually(func() int { return c2.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(2))
@@ -1662,7 +1662,7 @@ var _ = Describe("Chain", func() {
 				By("Submitting first tx to cut the block")
 				c1.cutter.CutNext = true
 				err := c1.Order(env, 0)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				c1.clock.Increment(interval)
 
@@ -2086,7 +2086,7 @@ var _ = Describe("Chain", func() {
 
 					By("sending config transaction")
 					err := c1.Configure(configEnv, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 					Expect(c1.fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
 					Expect(c1.fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 
@@ -2126,7 +2126,7 @@ var _ = Describe("Chain", func() {
 					By("submitting new transaction to follower")
 					c1.cutter.CutNext = true
 					err = c4.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 					Expect(c4.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
 					Expect(c4.fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 
@@ -2206,7 +2206,7 @@ var _ = Describe("Chain", func() {
 
 					By("sending config transaction")
 					err := c1.Configure(configEnv, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(c1.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
 					// second node is disconnected hence should not be able to get the config block
@@ -2237,7 +2237,7 @@ var _ = Describe("Chain", func() {
 					By("submitting new transaction to follower")
 					c1.cutter.CutNext = true
 					err = c4.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 					Eventually(c4.support.WriteBlockCallCount, defaultTimeout).Should(Equal(2))
 
 					// elect newly added node to be the leader
@@ -2258,7 +2258,7 @@ var _ = Describe("Chain", func() {
 					By("submitting new transaction to re-connected node")
 					c4.cutter.CutNext = true
 					err = c2.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					network.exec(func(c *chain) {
 						Eventually(c.support.WriteBlockCallCount, defaultTimeout).Should(Equal(3))
@@ -2294,7 +2294,7 @@ var _ = Describe("Chain", func() {
 
 					By("sending config transaction")
 					err := c1.Configure(configEnv, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					// every node has written config block to the OSN ledger
 					network.exec(
@@ -2327,7 +2327,7 @@ var _ = Describe("Chain", func() {
 					By("submitting new transaction to follower")
 					c2.cutter.CutNext = true
 					err = c4.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					// rest nodes are alive include a newly added, hence should write 2 blocks
 					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
@@ -2373,7 +2373,7 @@ var _ = Describe("Chain", func() {
 
 					By("sending config transaction")
 					err := c1.Configure(configEnv, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					// every node has written config block to the OSN ledger
 					network.exec(
@@ -2413,7 +2413,7 @@ var _ = Describe("Chain", func() {
 					By("submitting new transaction to follower")
 					c2.cutter.CutNext = true
 					err = c4.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					c2.clock.Increment(interval)
 
@@ -2450,7 +2450,7 @@ var _ = Describe("Chain", func() {
 
 					By("sending config transaction")
 					err := c1.Configure(configEnv, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					network.exec(func(c *chain) {
 						Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
@@ -2462,7 +2462,7 @@ var _ = Describe("Chain", func() {
 					By("submitting new transaction to follower")
 					c2.cutter.CutNext = true
 					err = c3.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					// rest nodes are alive include a newly added, hence should write 2 blocks
 					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
@@ -2485,7 +2485,7 @@ var _ = Describe("Chain", func() {
 
 					By("sending config transaction")
 					err := c1.Configure(configEnv, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					// every node has written config block to the OSN ledger
 					network.exec(
@@ -2508,7 +2508,7 @@ var _ = Describe("Chain", func() {
 					By("submitting transaction to new leader")
 					c2.cutter.CutNext = true
 					err = c2.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
@@ -2622,7 +2622,7 @@ var _ = Describe("Chain", func() {
 				By("instructed to cut next block")
 				c1.cutter.CutNext = true
 				err := c1.Order(env, 0)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
 				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 
@@ -2635,7 +2635,7 @@ var _ = Describe("Chain", func() {
 				c1.cutter.CutNext = false
 
 				err = c1.Order(env, 0)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(2))
 				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddArgsForCall(1)).To(Equal(float64(1)))
 				Eventually(c1.cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
@@ -2651,7 +2651,7 @@ var _ = Describe("Chain", func() {
 				By("instructed to cut next block")
 				c1.cutter.CutNext = true
 				err := c2.Order(env, 0)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				Expect(c2.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
 				Expect(c2.fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(0))
@@ -2665,7 +2665,7 @@ var _ = Describe("Chain", func() {
 				c1.cutter.CutNext = false
 
 				err = c2.Order(env, 0)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				Expect(c2.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(2))
 				Expect(c2.fakeFields.fakeNormalProposalsReceived.AddArgsForCall(1)).To(Equal(float64(1)))
 				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(0))
@@ -2861,7 +2861,7 @@ var _ = Describe("Chain", func() {
 				network.disconnect(1) // drop MsgApp
 
 				err := c1.Order(env, 0)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				network.exec(
 					func(c *chain) {
@@ -3059,7 +3059,7 @@ var _ = Describe("Chain", func() {
 
 					// normal block following config block
 					err = c1.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 					network.exec(
 						func(c *chain) {
 							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
@@ -3084,7 +3084,7 @@ var _ = Describe("Chain", func() {
 					c1.cutter.CutNext = true
 
 					err = c1.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					network.exec(
 						func(c *chain) {
@@ -3096,7 +3096,7 @@ var _ = Describe("Chain", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					err = c1.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					network.exec(
 						func(c *chain) {
@@ -3108,7 +3108,7 @@ var _ = Describe("Chain", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					err = c1.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					network.exec(
 						func(c *chain) {
@@ -3167,7 +3167,7 @@ var _ = Describe("Chain", func() {
 					By("order envelope on new leader")
 					c2.cutter.CutNext = true
 					err := c2.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					// block should not be produced on chain 1
 					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
@@ -3178,7 +3178,7 @@ var _ = Describe("Chain", func() {
 
 					By("order envelope on follower")
 					err = c3.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					// block should not be produced on chain 1
 					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
@@ -3261,7 +3261,7 @@ var _ = Describe("Chain", func() {
 					// enqueue one transaction into 1's blockcutter to test for purging of block cutter
 					c1.cutter.CutNext = false
 					err := c1.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 					Eventually(c1.cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 					// no block should be written because env is not cut into block yet
@@ -3281,7 +3281,7 @@ var _ = Describe("Chain", func() {
 					network.elect(1)
 
 					err = c1.Order(env, 0)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					// The following group of assertions is redundant - it's here for completeness.
 					// If the blockcutter has not been reset, fast-forwarding 1's clock to 'timeout', should result in the blockcutter firing.

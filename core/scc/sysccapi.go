@@ -201,8 +201,11 @@ func deDeploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Se
 }
 
 func isWhitelisted(syscc SelfDescribingSysCC) bool {
-	chaincodes := viper.GetStringMapString("chaincode.system")
-	val, ok := chaincodes[syscc.Name()]
-	enabled := val == "enable" || val == "true" || val == "yes"
-	return ok && enabled
+	key := "chaincode.system." + syscc.Name()
+	if !viper.IsSet(key) {
+		return false
+	}
+
+	val := viper.GetString(key)
+	return val == "enable" || val == "true" || val == "yes"
 }

@@ -150,7 +150,7 @@ func ExtractEnvelope(block *cb.Block, index int) (*cb.Envelope, error) {
 	}
 	marshaledEnvelope := block.Data.Data[index]
 	envelope, err := GetEnvelopeFromBlock(marshaledEnvelope)
-	err = errors.WithMessage(err, fmt.Sprintf("block data does not carry an envelope at index %d", index))
+	err = errors.WithMessagef(err, "block data does not carry an envelope at index %d", index)
 	return envelope, err
 }
 

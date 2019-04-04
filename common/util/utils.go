@@ -20,9 +20,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"math/big"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -30,16 +27,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metadata"
 )
-
-type alg struct {
-	hashFun func([]byte) string
-}
-
-const defaultAlg = "sha256"
-
-var availableIDgenAlgs = map[string]alg{
-	defaultAlg: {GenerateIDfromTxSHAHash},
-}
 
 // ComputeSHA256 returns SHA2-256 on data
 func ComputeSHA256(data []byte) (hash []byte) {
@@ -76,13 +63,6 @@ func GenerateBytesUUID() []byte {
 	return uuid
 }
 
-// GenerateIntUUID returns a UUID based on RFC 4122 returning a big.Int
-func GenerateIntUUID() *big.Int {
-	uuid := GenerateBytesUUID()
-	z := big.NewInt(0)
-	return z.SetBytes(uuid)
-}
-
 // GenerateUUID returns a UUID based on RFC 4122
 func GenerateUUID() string {
 	uuid := GenerateBytesUUID()
@@ -97,45 +77,8 @@ func CreateUtcTimestamp() *timestamp.Timestamp {
 	return &(timestamp.Timestamp{Seconds: secs, Nanos: nanos})
 }
 
-//GenerateHashFromSignature returns a hash of the combined parameters
-func GenerateHashFromSignature(path string, args []byte) []byte {
-	return ComputeSHA256(args)
-}
-
-// GenerateIDfromTxSHAHash generates SHA256 hash using Tx payload
-func GenerateIDfromTxSHAHash(payload []byte) string {
-	return fmt.Sprintf("%x", ComputeSHA256(payload))
-}
-
-// GenerateIDWithAlg generates an ID using a custom algorithm
-func GenerateIDWithAlg(customIDgenAlg string, payload []byte) (string, error) {
-	if customIDgenAlg == "" {
-		customIDgenAlg = defaultAlg
-	}
-	var alg = availableIDgenAlgs[customIDgenAlg]
-	if alg.hashFun != nil {
-		return alg.hashFun(payload), nil
-	}
-	return "", fmt.Errorf("Wrong ID generation algorithm was given: %s", customIDgenAlg)
-}
-
 func idBytesToStr(id []byte) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", id[0:4], id[4:6], id[6:8], id[8:10], id[10:])
-}
-
-// FindMissingElements identifies the elements of the first slice that are not present in the second
-// The second slice is expected to be a subset of the first slice
-func FindMissingElements(all []string, some []string) (delta []string) {
-all:
-	for _, v1 := range all {
-		for _, v2 := range some {
-			if strings.Compare(v1, v2) == 0 {
-				continue all
-			}
-		}
-		delta = append(delta, v1)
-	}
-	return
 }
 
 // ToChaincodeArgs converts string args to []byte args
@@ -147,26 +90,11 @@ func ToChaincodeArgs(args ...string) [][]byte {
 	return bargs
 }
 
-// ArrayToChaincodeArgs converts array of string args to array of []byte args
-func ArrayToChaincodeArgs(args []string) [][]byte {
-	bargs := make([][]byte, len(args))
-	for i, arg := range args {
-		bargs[i] = []byte(arg)
-	}
-	return bargs
-}
-
 const testchainid = "testchainid"
-const testorgid = "**TEST_ORGID**"
 
 //GetTestChainID returns the CHAINID constant in use by orderer
 func GetTestChainID() string {
 	return testchainid
-}
-
-//GetTestOrgID returns the ORGID constant in use by gossip join message
-func GetTestOrgID() string {
-	return testorgid
 }
 
 //GetSysCCVersion returns the version of all system chaincodes
@@ -193,60 +121,4 @@ func ConcatenateBytes(data ...[]byte) []byte {
 		last += len(slice)
 	}
 	return result
-}
-
-// `flatten` recursively retrieves every leaf node in a struct in depth-first fashion
-// and aggregate the results into given string slice with format: "path.to.leaf = value"
-// in the order of definition. Root name is ignored in the path. This helper function is
-// useful to pretty-print a struct, such as configs.
-// for example, given data structure:
-// A{
-//   B{
-//     C: "foo",
-//     D: 42,
-//   },
-//   E: nil,
-// }
-// it should yield a slice of string containing following items:
-// [
-//   "B.C = \"foo\"",
-//   "B.D = 42",
-//   "E =",
-// ]
-func Flatten(i interface{}) []string {
-	var res []string
-	flatten("", &res, reflect.ValueOf(i))
-	return res
-}
-
-const DELIMITER = "."
-
-func flatten(k string, m *[]string, v reflect.Value) {
-	delimiter := DELIMITER
-	if k == "" {
-		delimiter = ""
-	}
-
-	switch v.Kind() {
-	case reflect.Ptr:
-		if v.IsNil() {
-			*m = append(*m, fmt.Sprintf("%s =", k))
-			return
-		}
-		flatten(k, m, v.Elem())
-	case reflect.Struct:
-		if x, ok := v.Interface().(fmt.Stringer); ok {
-			*m = append(*m, fmt.Sprintf("%s = %v", k, x))
-			return
-		}
-
-		for i := 0; i < v.NumField(); i++ {
-			flatten(k+delimiter+v.Type().Field(i).Name, m, v.Field(i))
-		}
-	case reflect.String:
-		// It is useful to quote string values
-		*m = append(*m, fmt.Sprintf("%s = \"%s\"", k, v))
-	default:
-		*m = append(*m, fmt.Sprintf("%s = %v", k, v))
-	}
 }

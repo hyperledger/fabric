@@ -24,11 +24,16 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/config"
 	cutil "github.com/hyperledger/fabric/core/container/util"
+	"github.com/spf13/viper"
 )
 
 var logger = flogging.MustGetLogger("chaincode.platform.util")
@@ -142,12 +147,24 @@ type DockerBuildOptions struct {
 //                      after successful execution of Cmd.
 //-------------------------------------------------------------------------------------------
 func DockerBuild(opts DockerBuildOptions) error {
-	client, err := cutil.NewDockerClient()
+	var client *docker.Client
+	var err error
+	endpoint := viper.GetString("vm.endpoint")
+	tlsEnabled := viper.GetBool("vm.docker.tls.enabled")
+	if tlsEnabled {
+		cert := config.GetPath("vm.docker.tls.cert.file")
+		key := config.GetPath("vm.docker.tls.key.file")
+		ca := config.GetPath("vm.docker.tls.ca.file")
+		client, err = docker.NewTLSClient(endpoint, cert, key, ca)
+	} else {
+		client, err = docker.NewClient(endpoint)
+	}
+
 	if err != nil {
 		return fmt.Errorf("Error creating docker client: %s", err)
 	}
 	if opts.Image == "" {
-		opts.Image = cutil.GetDockerfileFromConfig("chaincode.builder")
+		opts.Image = GetDockerfileFromConfig("chaincode.builder")
 		if opts.Image == "" {
 			return fmt.Errorf("No image provided and \"chaincode.builder\" default does not exist")
 		}
@@ -255,4 +272,14 @@ func DockerBuild(opts DockerBuildOptions) error {
 	}
 
 	return nil
+}
+
+func GetDockerfileFromConfig(path string) string {
+	r := strings.NewReplacer(
+		"$(ARCH)", runtime.GOARCH,
+		"$(PROJECT_VERSION)", metadata.Version,
+		"$(DOCKER_NS)", metadata.DockerNamespace,
+		"$(BASE_DOCKER_NS)", metadata.BaseDockerNamespace)
+
+	return r.Replace(viper.GetString(path))
 }

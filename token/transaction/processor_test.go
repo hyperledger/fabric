@@ -45,18 +45,18 @@ var _ = Describe("Processor", func() {
 			TxId: "tx0",
 		}
 		marshaledChannelHeader, err := proto.Marshal(ch)
-		Expect(err).ToNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 		hdr := &common.Header{
 			ChannelHeader: marshaledChannelHeader,
 		}
 		marshaledData, err := proto.Marshal(validTtx)
-		Expect(err).ToNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 		payload := &common.Payload{
 			Header: hdr,
 			Data:   marshaledData,
 		}
 		marshaledPayload, err := proto.Marshal(payload)
-		Expect(err).ToNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 		validEnvelope = &common.Envelope{
 			Payload:   marshaledPayload,
 			Signature: nil,
@@ -140,7 +140,7 @@ var _ = Describe("Processor", func() {
 			})
 			It("succeeds", func() {
 				err := txProcessor.GenerateSimulationResults(validEnvelope, nil, false)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeManager.GetTxProcessorCallCount()).To(Equal(1))
 				Expect(fakeManager.GetTxProcessorArgsForCall(0)).To(Equal("wild_channel"))
 				Expect(verifier.ProcessTxCallCount()).To(Equal(1))

@@ -68,6 +68,7 @@ func (cs *ccSrv) stop() {
 
 func createTLSService(t *testing.T, ca tlsgen.CA, host string) *grpc.Server {
 	keyPair, err := ca.NewServerCertKeyPair(host)
+	assert.NoError(t, err)
 	cert, err := tls.X509KeyPair(keyPair.Cert, keyPair.Key)
 	assert.NoError(t, err)
 	tlsConf := &tls.Config{
@@ -165,6 +166,7 @@ func TestAccessControl(t *testing.T) {
 
 	chaincodeID := &pb.ChaincodeID{Name: "example02"}
 	payload, err := proto.Marshal(chaincodeID)
+	assert.NoError(t, err)
 	registerMsg := &pb.ChaincodeMessage{
 		Type:    pb.ChaincodeMessage_REGISTER,
 		Payload: payload,
@@ -188,6 +190,7 @@ func TestAccessControl(t *testing.T) {
 	// Create an attacker with its own TLS certificate
 	maliciousCA, _ := tlsgen.NewCA()
 	keyPair, err := maliciousCA.NewClientCertKeyPair()
+	assert.NoError(t, err)
 	cert, err := tls.X509KeyPair(keyPair.Cert, keyPair.Key)
 	assert.NoError(t, err)
 	_, err = newClient(t, 7052, &cert, ca.CertBytes())

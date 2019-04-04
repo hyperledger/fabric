@@ -12,9 +12,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ccdef "github.com/hyperledger/fabric/common/chaincode"
@@ -41,6 +43,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
+	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
@@ -164,7 +167,7 @@ func serve(args []string) error {
 
 	mspID := viper.GetString("peer.localMspId")
 
-	chaincodeInstallPath := ccprovider.GetChaincodeInstallPathFromViper()
+	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "chaincodes")
 	ccPackageParser := &persistence.ChaincodePackageParser{}
 	ccStore := &persistence.Store{
 		Path:       chaincodeInstallPath,
@@ -332,16 +335,30 @@ func serve(args []string) error {
 		ACLProvider:         aclProvider,
 	}
 
-	dockerProvider := dockercontroller.NewProvider(
-		viper.GetString("peer.id"),
-		viper.GetString("peer.networkId"),
-		opsSystem.Provider,
-	)
-	dockerVM := dockercontroller.NewDockerVM(
-		dockerProvider.PeerID,
-		dockerProvider.NetworkID,
-		dockerProvider.BuildMetrics,
-	)
+	var client *docker.Client
+	endpoint := viper.GetString("vm.endpoint")
+	if viper.GetBool("vm.docker.tls.enabled") {
+		cert := coreconfig.GetPath("vm.docker.tls.cert.file")
+		key := coreconfig.GetPath("vm.docker.tls.key.file")
+		ca := coreconfig.GetPath("vm.docker.tls.ca.file")
+		client, err = docker.NewTLSClient(endpoint, cert, key, ca)
+	} else {
+		client, err = docker.NewClient(endpoint)
+	}
+	if err != nil {
+		logger.Panicf("cannot create docker client: %s", err)
+	}
+
+	dockerProvider := &dockercontroller.Provider{
+		PeerID:        viper.GetString("peer.id"),
+		NetworkID:     viper.GetString("peer.networkId"),
+		BuildMetrics:  dockercontroller.NewBuildMetrics(opsSystem.Provider),
+		Client:        client,
+		AttachStdOut:  viper.GetBool("vm.docker.attachStdout"),
+		HostConfig:    getDockerHostConfig(),
+		ChaincodePull: viper.GetBool("chaincode.pull"),
+	}
+	dockerVM := dockerProvider.NewVM()
 
 	err = opsSystem.RegisterChecker("docker", dockerVM)
 	if err != nil {
@@ -929,4 +946,49 @@ func registerProverService(peerServer *comm.GRPCServer, aclProvider aclmgmt.ACLP
 	}
 	token.RegisterProverServer(peerServer.Server(), prover)
 	return nil
+}
+
+func getDockerHostConfig() *docker.HostConfig {
+	dockerKey := func(key string) string { return "vm.docker.hostConfig." + key }
+	getInt64 := func(key string) int64 { return int64(viper.GetInt(dockerKey(key))) }
+
+	var logConfig docker.LogConfig
+	err := viper.UnmarshalKey(dockerKey("LogConfig"), &logConfig)
+	if err != nil {
+		logger.Panicf("unable to parse Docker LogConfig: %s", err)
+	}
+
+	networkMode := viper.GetString(dockerKey("NetworkMode"))
+	if networkMode == "" {
+		networkMode = "host"
+	}
+
+	return &docker.HostConfig{
+		CapAdd:  viper.GetStringSlice(dockerKey("CapAdd")),
+		CapDrop: viper.GetStringSlice(dockerKey("CapDrop")),
+
+		DNS:         viper.GetStringSlice(dockerKey("Dns")),
+		DNSSearch:   viper.GetStringSlice(dockerKey("DnsSearch")),
+		ExtraHosts:  viper.GetStringSlice(dockerKey("ExtraHosts")),
+		NetworkMode: networkMode,
+		IpcMode:     viper.GetString(dockerKey("IpcMode")),
+		PidMode:     viper.GetString(dockerKey("PidMode")),
+		UTSMode:     viper.GetString(dockerKey("UTSMode")),
+		LogConfig:   logConfig,
+
+		ReadonlyRootfs:   viper.GetBool(dockerKey("ReadonlyRootfs")),
+		SecurityOpt:      viper.GetStringSlice(dockerKey("SecurityOpt")),
+		CgroupParent:     viper.GetString(dockerKey("CgroupParent")),
+		Memory:           getInt64("Memory"),
+		MemorySwap:       getInt64("MemorySwap"),
+		MemorySwappiness: getInt64("MemorySwappiness"),
+		OOMKillDisable:   viper.GetBool(dockerKey("OomKillDisable")),
+		CPUShares:        getInt64("CpuShares"),
+		CPUSet:           viper.GetString(dockerKey("Cpuset")),
+		CPUSetCPUs:       viper.GetString(dockerKey("CpusetCPUs")),
+		CPUSetMEMs:       viper.GetString(dockerKey("CpusetMEMs")),
+		CPUQuota:         getInt64("CpuQuota"),
+		CPUPeriod:        getInt64("CpuPeriod"),
+		BlkioWeight:      getInt64("BlkioWeight"),
+	}
 }

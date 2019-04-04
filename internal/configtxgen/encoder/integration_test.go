@@ -41,7 +41,7 @@ func hasModPolicySet(groupName string, cg *cb.ConfigGroup) error {
 	for groupName, group := range cg.Groups {
 		err := hasModPolicySet(groupName, group)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("missing sub-mod_policy for group %s", groupName))
+			return errors.WithMessagef(err, "missing sub-mod_policy for group %s", groupName)
 		}
 	}
 

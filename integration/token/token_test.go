@@ -281,7 +281,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			tClient, err = tokenclient.NewClient(*config, signingIdentity)
 			Expect(err).NotTo(HaveOccurred())
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("transferring tokens to user1")
@@ -373,7 +373,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("User2 lists tokens as sanity check")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User2 transfers his token to User1")
@@ -415,7 +415,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("User2 lists tokens as sanity check")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User1 attempts to spend User2's tokens using the prover peer")
@@ -453,7 +453,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("User2 lists tokens as sanity check")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User2 attempts to spend to a nil recipient by using the prover peer")
@@ -466,7 +466,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("Check that nothing changed")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User2 attempts to spend to a nil recipient by assembling a faulty token transaction")
@@ -490,7 +490,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("Check that nothing changed")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User2 attempts to spend to an invalid recipient by using the prover peer")
@@ -503,7 +503,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("Check that nothing changed")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User2 attempts to spend to an invalid recipient by assembling a faulty token transaction")
@@ -527,7 +527,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("Check that nothing changed")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User2 attempts to transfer zero amount by assembling a faulty token transaction by using the prover peer")
@@ -541,7 +541,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("Check that nothing changed")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User2 attempts to transfer zero amount by assembling a faulty token transaction")
@@ -565,7 +565,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("Check that nothing changed")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User2 attempts to transfer an over supported precision amount by assembling a faulty token transaction by using the prover peer")
@@ -579,7 +579,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("Check that nothing changed")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User2 attempts to transfer an over supported precision amount by assembling a faulty token transaction")
@@ -603,7 +603,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("Check that nothing changed")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User2 attempts to transfer a negative amount by assembling a faulty token transaction by using the prover peer")
@@ -617,7 +617,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("Check that nothing changed")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			By("User2 attempts to transfer a negative amount by assembling a faulty token transaction")
@@ -641,7 +641,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("Check that nothing changed")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 		})
 
@@ -657,7 +657,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 				It("should fail with BAD_PAYLOAD", func() {
 					var serializedTokenTx []byte
 					txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -672,7 +672,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 				It("should fail with  BAD_PAYLOAD", func() {
 					serializedTokenTx := []byte("I am not a token transaction")
 					txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -687,9 +687,9 @@ var _ bool = Describe("Token EndToEnd", func() {
 				It("Should fail with BAD_PAYLOAD", func() {
 					tokenTx := &token.TokenTransaction{}
 					serializedTokenTx, err := proto.Marshal(tokenTx)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 					txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -704,9 +704,9 @@ var _ bool = Describe("Token EndToEnd", func() {
 				It("Should fail with INVALID_OTHER_REASON", func() {
 					tokenTx := &token.TokenTransaction{Action: &token.TokenTransaction_TokenAction{TokenAction: &token.TokenAction{}}}
 					serializedTokenTx, err := proto.Marshal(tokenTx)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 					txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -729,9 +729,9 @@ var _ bool = Describe("Token EndToEnd", func() {
 										}}}}}
 
 						serializedTokenTx, err := proto.Marshal(tokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -753,9 +753,9 @@ var _ bool = Describe("Token EndToEnd", func() {
 										}}}}}
 
 						serializedTokenTx, err := proto.Marshal(tokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -785,9 +785,9 @@ var _ bool = Describe("Token EndToEnd", func() {
 											}}}}}}}
 
 						serializedTokenTx, err := proto.Marshal(tokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -815,9 +815,9 @@ var _ bool = Describe("Token EndToEnd", func() {
 											}}}}}}}
 
 						serializedTokenTx, err := proto.Marshal(tokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -842,9 +842,9 @@ var _ bool = Describe("Token EndToEnd", func() {
 										}}}}}
 
 						serializedTokenTx, err := proto.Marshal(tokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -869,9 +869,9 @@ var _ bool = Describe("Token EndToEnd", func() {
 										}}}}}
 
 						serializedTokenTx, err := proto.Marshal(tokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -900,9 +900,9 @@ var _ bool = Describe("Token EndToEnd", func() {
 											}}}}}}}
 
 						serializedTokenTx, err := proto.Marshal(tokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -927,9 +927,9 @@ var _ bool = Describe("Token EndToEnd", func() {
 										}}}}}
 
 						serializedTokenTx, err := proto.Marshal(tokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -957,9 +957,9 @@ var _ bool = Describe("Token EndToEnd", func() {
 											}}}}}}
 
 						serializedTokenTx, err := proto.Marshal(tokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 						txEnvelope, txId, err := tClient.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-						Expect(err).ToNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						ordererStatus, committed, err := tClient.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 
@@ -1031,7 +1031,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("User2 lists tokens as sanity check")
 			tClient = GetTokenClient(network, peer, orderer, "User2", "Org1MSP")
 			issuedTokens = RunListTokens(tClient, expectedUnspentTokens)
-			Expect(issuedTokens).ToNot(BeNil())
+			Expect(issuedTokens).NotTo(BeNil())
 			Expect(len(issuedTokens)).To(Equal(1))
 
 			waitForBlockReception(orderer, peer, network, "testchannel", 1)
@@ -1173,7 +1173,7 @@ var _ bool = Describe("Token EndToEnd", func() {
 			By("Waiting for committing")
 			Eventually(<-done1, 30*time.Second, time.Second).Should(BeTrue())
 			Eventually(<-done2, 30*time.Second, time.Second).Should(BeTrue())
-			Expect(<-cErr1).ToNot(HaveOccurred())
+			Expect(<-cErr1).NotTo(HaveOccurred())
 			Expect(<-cErr2).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: MVCC_READ_CONFLICT", txId2)))
 
 			By("User2 lists tokens as sanity check")
@@ -1401,9 +1401,9 @@ func RunTransferRequest(c *tokenclient.Client, inputTokens []*token.UnspentToken
 	Expect(tokenTxid).To(Equal(txid))
 
 	// Verify the result
-	Expect(tokenTx.GetTokenAction().GetTransfer().GetInputs()).ToNot(BeNil())
+	Expect(tokenTx.GetTokenAction().GetTransfer().GetInputs()).NotTo(BeNil())
 	Expect(len(tokenTx.GetTokenAction().GetTransfer().GetInputs())).To(Equal(1))
-	Expect(tokenTx.GetTokenAction().GetTransfer().GetOutputs()).ToNot(BeNil())
+	Expect(tokenTx.GetTokenAction().GetTransfer().GetOutputs()).NotTo(BeNil())
 
 	return txid
 }
@@ -1469,10 +1469,10 @@ func RunTransferRequestWithSharesAddFailure(c *tokenclient.Client, inputTokens [
 
 func SubmitTokenTx(c *tokenclient.Client, tokenTx *token.TokenTransaction) (string, *common.Status, bool, error) {
 	serializedTokenTx, err := proto.Marshal(tokenTx)
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	txEnvelope, txid, err := c.TxSubmitter.CreateTxEnvelope(serializedTokenTx)
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	ordererStatus, committed, err := c.TxSubmitter.Submit(txEnvelope, 30*time.Second)
 	return txid, ordererStatus, committed, err

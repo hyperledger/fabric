@@ -11,29 +11,48 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-const chaincodePathFolder = "testdata"
-const chaincodePathFolderGradle = chaincodePathFolder + "/gradle"
+const chaincodePathFolderGradle = "testdata/gradle"
 
 var spec = &pb.ChaincodeSpec{
 	Type: pb.ChaincodeSpec_JAVA,
 	ChaincodeId: &pb.ChaincodeID{
 		Name: "ssample",
-		Path: chaincodePathFolderGradle},
+		Path: chaincodePathFolderGradle,
+	},
 	Input: &pb.ChaincodeInput{
-		Args: [][]byte{[]byte("f")}}}
+		Args: [][]byte{
+			[]byte("f"),
+		},
+	},
+}
+
+func TestMain(m *testing.M) {
+	viper.SetConfigName("core")
+	viper.SetEnvPrefix("CORE")
+	configtest.AddDevConfigPath(nil)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Printf("could not read config %s\n", err)
+		os.Exit(-1)
+	}
+	os.Exit(m.Run())
+}
 
 func TestValidatePath(t *testing.T) {
 	platform := java.Platform{}
@@ -84,25 +103,20 @@ func TestGetDeploymentPayload(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotZero(t, len(payload))
 
-	buildFileFound := false
-	settingsFileFound := false
-	pomFileFound := false
-	srcFileFound := false
-
 	is := bytes.NewReader(payload)
 	gr, err := gzip.NewReader(is)
-	if err != nil {
-		assert.Failf(t, "Can't open zip stream %s", err.Error())
-	}
+	require.NoError(t, err, "failed to open zip stream")
 	defer gr.Close()
 
 	tr := tar.NewReader(gr)
 
+	contents := map[string]bool{}
 	for {
 		header, err := tr.Next()
-		if err != nil {
+		if err == io.EOF {
 			break
 		}
+		assert.NoError(t, err)
 
 		if strings.Contains(header.Name, ".class") {
 			assert.Fail(t, "Result package can't contain class file")
@@ -113,24 +127,14 @@ func TestGetDeploymentPayload(t *testing.T) {
 		if strings.Contains(header.Name, "build/") {
 			assert.Fail(t, "Result package can't contain build folder")
 		}
-		if strings.Contains(header.Name, "src/build.gradle") {
-			buildFileFound = true
-		}
-		if strings.Contains(header.Name, "src/settings.gradle") {
-			settingsFileFound = true
-		}
-		if strings.Contains(header.Name, "src/pom.xml") {
-			pomFileFound = true
-		}
-		if strings.Contains(header.Name, "src/main/java/example/ExampleCC.java") {
-			srcFileFound = true
-		}
+		contents[header.Name] = true
 	}
-	assert.True(t, buildFileFound, "Can't find build.gradle file in tar")
-	assert.True(t, settingsFileFound, "Can't find settings.gradle file in tar")
-	assert.True(t, pomFileFound, "Can't find pom.xml file in tar")
-	assert.True(t, srcFileFound, "Can't find example.cc file in tar")
-	assert.NoError(t, err, "Error while scanning tar file")
+
+	// generated from observed behavior
+	assert.Contains(t, contents, "src/build.gradle")
+	assert.Contains(t, contents, "src/pom.xml")
+	assert.Contains(t, contents, "src/settings.gradle")
+	assert.Contains(t, contents, "src/src/main/java/example/ExampleCC.java")
 }
 
 func TestGenerateDockerfile(t *testing.T) {
@@ -175,19 +179,6 @@ func TestGenerateDockerBuild(t *testing.T) {
 
 	err := platform.GenerateDockerBuild(cds.ChaincodeSpec.ChaincodeId.Path, cds.CodePackage, tw)
 	assert.NoError(t, err)
-}
-
-func TestMain(m *testing.M) {
-	viper.SetConfigName("core")
-	viper.SetEnvPrefix("CORE")
-	configtest.AddDevConfigPath(nil)
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-	if err := viper.ReadInConfig(); err != nil {
-		fmt.Printf("could not read config %s\n", err)
-		os.Exit(-1)
-	}
-	os.Exit(m.Run())
 }
 
 func generateMockPackegeBytes(fileName string, mode int64) ([]byte, error) {

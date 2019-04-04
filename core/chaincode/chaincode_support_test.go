@@ -31,7 +31,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
-	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -158,7 +158,7 @@ func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.Chainc
 }
 
 //initialize peer and start up. If security==enabled, login as vp
-func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
+func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 	msi := &cmp.MockSupportImpl{
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetApplicationConfigBoolRv: true,
@@ -178,7 +178,13 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 
 	peer.MockSetMSPIDGetter(mspGetter)
 
-	ccprovider.SetChaincodesPath(ccprovider.GetChaincodeInstallPathFromViper())
+	tempdir, err := ioutil.TempDir("", "cc-support-test")
+	if err != nil {
+		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
+	}
+	cleanup := func() { os.RemoveAll(tempdir) }
+
+	ccprovider.SetChaincodesPath(tempdir)
 	ca, _ := tlsgen.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	config := GlobalConfig()
@@ -222,7 +228,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		mockAclProvider,
 		container.NewVMController(
 			map[string]container.VMProvider{
-				dockercontroller.ContainerType: dockercontroller.NewProvider("", "", &disabled.Provider{}),
+				dockercontroller.ContainerType: &dockercontroller.Provider{},
 				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
@@ -244,7 +250,8 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	globalBlockNum = make(map[string]uint64, len(chainIDs))
 	for _, id := range chainIDs {
 		if err := peer.MockCreateChain(id); err != nil {
-			return nil, err
+			cleanup()
+			return nil, func() {}, err
 		}
 		sccp.DeploySysCCs(id, ccp)
 		// any chain other than the default testchainid does not have a MSP set up -> create one
@@ -254,7 +261,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		globalBlockNum[id] = 1
 	}
 
-	return chaincodeSupport, nil
+	return chaincodeSupport, cleanup, nil
 }
 
 func finitMockPeer(chainIDs ...string) {
@@ -1322,10 +1329,11 @@ func TestCCFramework(t *testing.T) {
 	//register 2 channels
 	chainID := "mockchainid"
 	chainID2 := "secondchain"
-	chaincodeSupport, err := initMockPeer(chainID, chainID2)
+	chaincodeSupport, cleanup, err := initMockPeer(chainID, chainID2)
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
+	defer cleanup()
 	defer finitMockPeer(chainID, chainID2)
 	//create a chaincode
 	ccname := "shimTestCC"

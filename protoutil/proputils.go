@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -150,15 +149,14 @@ func GetProposalResponse(prBytes []byte) (*peer.ProposalResponse, error) {
 }
 
 // GetChaincodeDeploymentSpec returns a ChaincodeDeploymentSpec given args
-func GetChaincodeDeploymentSpec(code []byte, pr *platforms.Registry) (*peer.ChaincodeDeploymentSpec, error) {
+func GetChaincodeDeploymentSpec(code []byte) (*peer.ChaincodeDeploymentSpec, error) {
 	cds := &peer.ChaincodeDeploymentSpec{}
 	err := proto.Unmarshal(code, cds)
 	if err != nil {
 		return nil, errors.Wrap(err, "error unmarshaling ChaincodeDeploymentSpec")
 	}
 
-	// FAB-2122: Validate the CDS according to platform specific requirements
-	return cds, pr.ValidateDeploymentSpec(cds.ChaincodeSpec.Type.String(), cds.CodePackage)
+	return cds, nil
 }
 
 // GetChaincodeAction gets the ChaincodeAction given chaicnode action bytes

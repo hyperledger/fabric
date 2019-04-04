@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/handlers/library"
+	"github.com/hyperledger/fabric/core/testutil"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
@@ -35,6 +36,7 @@ func TestStartCmd(t *testing.T) {
 	viper.Set("peer.fileSystemPath", tempDir)
 	viper.Set("chaincode.executetimeout", "30s")
 	viper.Set("chaincode.mode", "dev")
+	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 
 	msptesttools.LoadMSPSetupForTesting()
 
@@ -172,4 +174,16 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 
 	/*** Scenario 4: set up both chaincodeAddress and chaincodeListenAddress ***/
 	// This scenario will be the same to scenarios 3: set up chaincodeAddress only.
+}
+
+func TestGetDockerHostConfig(t *testing.T) {
+	testutil.SetupTestConfig()
+	hostConfig := getDockerHostConfig()
+	assert.NotNil(t, hostConfig)
+	assert.Equal(t, "host", hostConfig.NetworkMode)
+	assert.Equal(t, "json-file", hostConfig.LogConfig.Type)
+	assert.Equal(t, "50m", hostConfig.LogConfig.Config["max-size"])
+	assert.Equal(t, "5", hostConfig.LogConfig.Config["max-file"])
+	assert.Equal(t, int64(1024*1024*1024*2), hostConfig.Memory)
+	assert.Equal(t, int64(0), hostConfig.CPUShares)
 }

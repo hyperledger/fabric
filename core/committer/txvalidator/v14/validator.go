@@ -608,7 +608,12 @@ func (v *TxValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 }
 
 func (v *TxValidator) getUpgradeTxInstance(chainID string, cdsBytes []byte) (*sysccprovider.ChaincodeInstance, error) {
-	cds, err := protoutil.GetChaincodeDeploymentSpec(cdsBytes, platforms.NewRegistry(&golang.Platform{}))
+	cds, err := protoutil.GetChaincodeDeploymentSpec(cdsBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	err = platforms.NewRegistry(&golang.Platform{}).ValidateDeploymentSpec(cds.ChaincodeSpec.Type.String(), cds.CodePackage)
 	if err != nil {
 		return nil, err
 	}

@@ -366,7 +366,7 @@ func (lscc *LifeCycleSysCC) putChaincodeCollectionData(stub shim.ChaincodeStubIn
 
 	err = stub.PutState(key, collectionConfigBytes)
 	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("error putting collection for chaincode %s:%s", cd.Name, cd.Version))
+		return errors.WithMessagef(err, "error putting collection for chaincode %s:%s", cd.Name, cd.Version)
 	}
 
 	return nil

@@ -10,14 +10,6 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 )
 
-var supportFactory SupportFactory
-
-// SupportFactory is a factory of Support interfaces
-type SupportFactory interface {
-	// NewSupport returns a Support interface
-	NewSupport() Support
-}
-
 // Support gives access to peer resources and avoids calls to static methods
 type Support interface {
 	// GetApplicationConfig returns the configtxapplication.SharedConfig for the channel

@@ -60,7 +60,7 @@ func (c *simpleCollectionStore) retrieveCollectionConfigPackage(cc common.Collec
 	if qe == nil {
 		qe, err = c.s.GetQueryExecutorForLedger(cc.Channel)
 		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve query executor for collection criteria %#v", cc))
+			return nil, errors.WithMessagef(err, "could not retrieve query executor for collection criteria %#v", cc)
 		}
 		defer qe.Done()
 	}
@@ -79,7 +79,7 @@ func RetrieveCollectionConfigPackageFromState(cc common.CollectionCriteria, stat
 
 	cb, err := state.GetState("lscc", BuildCollectionKVSKey(cc.Namespace))
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error while retrieving collection for collection criteria %#v", cc))
+		return nil, errors.WithMessagef(err, "error while retrieving collection for collection criteria %#v", cc)
 	}
 	if cb == nil {
 		return nil, NoSuchCollectionError(cc)
@@ -107,7 +107,7 @@ func (c *simpleCollectionStore) retrieveCollectionConfig(cc common.CollectionCri
 	if qe == nil {
 		qe, err = c.s.GetQueryExecutorForLedger(cc.Channel)
 		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve query executor for collection criteria %#v", cc))
+			return nil, errors.WithMessagef(err, "could not retrieve query executor for collection criteria %#v", cc)
 		}
 		defer qe.Done()
 	}
@@ -129,7 +129,7 @@ func (c *simpleCollectionStore) retrieveSimpleCollection(cc common.CollectionCri
 	sc := &SimpleCollection{}
 	err = sc.Setup(staticCollectionConfig, c.s.GetIdentityDeserializer(cc.Channel))
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error setting up collection for collection criteria %#v", cc))
+		return nil, errors.WithMessagef(err, "error setting up collection for collection criteria %#v", cc)
 	}
 	return sc, nil
 }

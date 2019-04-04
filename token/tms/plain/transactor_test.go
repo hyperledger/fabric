@@ -176,7 +176,7 @@ var _ = Describe("Transactor", func() {
 				}
 				var err error
 				inputBytes, err = proto.Marshal(input)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				fakeLedger = &mock.LedgerWriter{}
 				fakeLedger.SetStateReturns(nil)
 				fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
@@ -222,7 +222,7 @@ var _ = Describe("Transactor", func() {
 				}
 				var err error
 				inputBytes, err = proto.Marshal(input)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				fakeLedger = &mock.LedgerWriter{}
 				fakeLedger.SetStateReturns(nil)
 				fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
@@ -269,7 +269,7 @@ var _ = Describe("Transactor", func() {
 				}
 				var err error
 				inputBytes, err = proto.Marshal(input)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				fakeLedger = &mock.LedgerWriter{}
 				fakeLedger.SetStateReturns(nil)
 				fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
@@ -339,9 +339,9 @@ var _ = Describe("Transactor", func() {
 			}
 			var err error
 			inputBytes1, err = proto.Marshal(input1)
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			inputBytes2, err = proto.Marshal(input2)
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			fakeLedger = &mock.LedgerWriter{}
 			fakeLedger.SetStateReturns(nil)
 			fakeLedger.GetStateReturnsOnCall(0, inputBytes1, nil)
@@ -380,7 +380,7 @@ var _ = Describe("Transactor", func() {
 			}
 			var err error
 			inputBytes, err = proto.Marshal(input)
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			fakeLedger = &mock.LedgerWriter{}
 			fakeLedger.SetStateReturns(nil)
 			fakeLedger.GetStateReturns(inputBytes, nil)
@@ -475,7 +475,7 @@ var _ = Describe("Transactor", func() {
 				Quantity: ToHex(inputQuantity),
 			}
 			inputBytes, err := proto.Marshal(input)
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			fakeLedger = &mock.LedgerWriter{}
 			fakeLedger.GetStateReturns(inputBytes, nil)
 			transactor.Ledger = fakeLedger

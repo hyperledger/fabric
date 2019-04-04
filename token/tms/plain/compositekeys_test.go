@@ -33,9 +33,9 @@ var _ = Describe("Composite keys", func() {
 		Context("when a composite key for an output is generated", func() {
 			It("the output is the same as from the function in the chaincode shim", func() {
 				verifierKey, err := createCompositeKey(namespace, []string{txID, strconv.Itoa(index)})
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				shimKey, err := chaincode.CreateCompositeKey(namespace, []string{txID, strconv.Itoa(index)})
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				Expect(verifierKey).To(Equal(shimKey))
 			})
 		})
@@ -43,9 +43,9 @@ var _ = Describe("Composite keys", func() {
 		Context("when a composite key for a transaction is generated", func() {
 			It("the output is the same as from the function in the chaincode shim", func() {
 				verifierKey, err := createCompositeKey(namespace, []string{txID})
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				shimKey, err := chaincode.CreateCompositeKey(namespace, []string{txID})
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				Expect(verifierKey).To(Equal(shimKey))
 			})
 		})

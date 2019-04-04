@@ -668,7 +668,7 @@ func (msp *bccspmsp) getValidationChain(cert *x509.Certificate, isIntermediateCh
 func (msp *bccspmsp) getCertificationChainIdentifier(id Identity) ([]byte, error) {
 	chain, err := msp.getCertificationChain(id)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("failed getting certification chain for [%v]", id))
+		return nil, errors.WithMessagef(err, "failed getting certification chain for [%v]", id)
 	}
 
 	// chain[0] is the certificate representing the identity.

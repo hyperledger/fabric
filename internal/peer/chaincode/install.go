@@ -8,7 +8,6 @@ package chaincode
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 
 	"github.com/golang/protobuf/proto"
@@ -128,7 +127,7 @@ func (i *Installer) install() error {
 
 	signedProposal, err := protoutil.GetSignedProposal(proposal, i.Signer)
 	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", chainFuncName))
+		return errors.WithMessagef(err, "error creating signed proposal for %s", chainFuncName)
 	}
 
 	return i.submitInstallProposal(signedProposal)
@@ -204,7 +203,7 @@ func (i *Installer) createInstallProposal(msg proto.Message) (*pb.Proposal, erro
 
 	prop, _, err := protoutil.CreateInstallProposalFromCDS(msg, creator)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error creating proposal for %s", chainFuncName))
+		return nil, errors.WithMessagef(err, "error creating proposal for %s", chainFuncName)
 	}
 
 	return prop, nil
@@ -223,7 +222,7 @@ func genChaincodeDeploymentSpec(cmd *cobra.Command, chaincodeName, chaincodeVers
 
 	cds, err := getChaincodeDeploymentSpec(spec, true)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error getting chaincode deployment spec for %s", chaincodeName))
+		return nil, errors.WithMessagef(err, "error getting chaincode deployment spec for %s", chaincodeName)
 	}
 
 	return cds, nil
@@ -261,9 +260,14 @@ func getPackageFromFile(ccPkgFile string) (proto.Message, *pb.ChaincodeDeploymen
 		}
 
 		// ...and get the CDS at last
-		cds, err = protoutil.GetChaincodeDeploymentSpec(sCDS.ChaincodeDeploymentSpec, platformRegistry)
+		cds, err = protoutil.GetChaincodeDeploymentSpec(sCDS.ChaincodeDeploymentSpec)
 		if err != nil {
 			return nil, nil, errors.WithMessage(err, "error extracting chaincode deployment spec")
+		}
+
+		err = platformRegistry.ValidateDeploymentSpec(cds.ChaincodeSpec.Type.String(), cds.CodePackage)
+		if err != nil {
+			return nil, nil, errors.WithMessage(err, "chaincode deployment spec validation failed")
 		}
 	}
 

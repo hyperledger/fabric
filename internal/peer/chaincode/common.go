@@ -216,7 +216,7 @@ func getCollectionConfigFromBytes(cconfBytes []byte) (*pcommon.CollectionConfigP
 	for _, cconfitem := range *cconf {
 		p, err := cauthdsl.FromString(cconfitem.Policy)
 		if err != nil {
-			return nil, nil, errors.WithMessage(err, fmt.Sprintf("invalid policy %s", cconfitem.Policy))
+			return nil, nil, errors.WithMessagef(err, "invalid policy %s", cconfitem.Policy)
 		}
 
 		cpc := &pcommon.CollectionPolicyConfig{
@@ -285,7 +285,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 			var err error
 			_, collectionConfigBytes, err = GetCollectionConfigFromFile(collectionsConfigFile)
 			if err != nil {
-				return errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
+				return errors.WithMessagef(err, "invalid collection configuration in file %s", collectionsConfigFile)
 			}
 		}
 	}
@@ -391,12 +391,12 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) 
 			}
 			endorserClient, err := common.GetEndorserClientFnc(address, tlsRootCertFile)
 			if err != nil {
-				return nil, errors.WithMessage(err, fmt.Sprintf("error getting endorser client for %s", cmdName))
+				return nil, errors.WithMessagef(err, "error getting endorser client for %s", cmdName)
 			}
 			endorserClients = append(endorserClients, endorserClient)
 			deliverClient, err := common.GetPeerDeliverClientFnc(address, tlsRootCertFile)
 			if err != nil {
-				return nil, errors.WithMessage(err, fmt.Sprintf("error getting deliver client for %s", cmdName))
+				return nil, errors.WithMessagef(err, "error getting deliver client for %s", cmdName)
 			}
 			deliverClients = append(deliverClients, deliverClient)
 		}
@@ -424,7 +424,7 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) 
 
 			orderingEndpoints, err := common.GetOrdererEndpointOfChainFnc(channelID, signer, endorserClient)
 			if err != nil {
-				return nil, errors.WithMessage(err, fmt.Sprintf("error getting channel (%s) orderer endpoint", channelID))
+				return nil, errors.WithMessagef(err, "error getting channel (%s) orderer endpoint", channelID)
 			}
 			if len(orderingEndpoints) == 0 {
 				return nil, errors.Errorf("no orderer endpoints retrieved for channel %s", channelID)
@@ -492,18 +492,18 @@ func ChaincodeInvokeOrQuery(
 
 	prop, txid, err := protoutil.CreateChaincodeProposalWithTxIDAndTransient(pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator, txID, tMap)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error creating proposal for %s", funcName))
+		return nil, errors.WithMessagef(err, "error creating proposal for %s", funcName)
 	}
 
 	signedProp, err := protoutil.GetSignedProposal(prop, signer)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", funcName))
+		return nil, errors.WithMessagef(err, "error creating signed proposal for %s", funcName)
 	}
 	var responses []*pb.ProposalResponse
 	for _, endorser := range endorserClients {
 		proposalResp, err := endorser.ProcessProposal(context.Background(), signedProp)
 		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("error endorsing %s", funcName))
+			return nil, errors.WithMessagef(err, "error endorsing %s", funcName)
 		}
 		responses = append(responses, proposalResp)
 	}
@@ -550,7 +550,7 @@ func ChaincodeInvokeOrQuery(
 
 			// send the envelope for ordering
 			if err = bc.Send(env); err != nil {
-				return proposalResp, errors.WithMessage(err, fmt.Sprintf("error sending transaction for %s", funcName))
+				return proposalResp, errors.WithMessagef(err, "error sending transaction for %s", funcName)
 			}
 
 			if dg != nil && ctx != nil {
@@ -653,7 +653,7 @@ func (dg *DeliverGroup) ClientConnect(ctx context.Context, dc *DeliverClient) {
 	defer dg.wg.Done()
 	df, err := dc.Client.DeliverFiltered(ctx)
 	if err != nil {
-		err = errors.WithMessage(err, fmt.Sprintf("error connecting to deliver filtered at %s", dc.Address))
+		err = errors.WithMessagef(err, "error connecting to deliver filtered at %s", dc.Address)
 		dg.setError(err)
 		return
 	}
@@ -663,7 +663,7 @@ func (dg *DeliverGroup) ClientConnect(ctx context.Context, dc *DeliverClient) {
 	envelope := createDeliverEnvelope(dg.ChannelID, dg.Certificate, dg.Signer)
 	err = df.Send(envelope)
 	if err != nil {
-		err = errors.WithMessage(err, fmt.Sprintf("error sending deliver seek info envelope to %s", dc.Address))
+		err = errors.WithMessagef(err, "error sending deliver seek info envelope to %s", dc.Address)
 		dg.setError(err)
 		return
 	}
@@ -704,7 +704,7 @@ func (dg *DeliverGroup) ClientWait(dc *DeliverClient) {
 	for {
 		resp, err := dc.Connection.Recv()
 		if err != nil {
-			err = errors.WithMessage(err, fmt.Sprintf("error receiving from deliver filtered at %s", dc.Address))
+			err = errors.WithMessagef(err, "error receiving from deliver filtered at %s", dc.Address)
 			dg.setError(err)
 			return
 		}

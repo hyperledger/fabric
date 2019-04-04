@@ -13,18 +13,19 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -39,7 +40,7 @@ import (
 	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	cm "github.com/hyperledger/fabric/core/chaincode/mock"
-	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -49,11 +50,9 @@ import (
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	cut "github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	cmp "github.com/hyperledger/fabric/core/mocks/peer"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
@@ -71,7 +70,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	ma "github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 //initialize peer and start up. If security==enabled, login as vp
@@ -98,33 +96,40 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 
 	peer.MockSetMSPIDGetter(mspGetter)
 
-	// For unit-test, tls is not required.
-	viper.Set("peer.tls.enabled", false)
+	grpcServer := grpc.NewServer()
 
-	var opts []grpc.ServerOption
-	if viper.GetBool("peer.tls.enabled") {
-		creds, err := credentials.NewServerTLSFromFile(config.GetPath("peer.tls.cert.file"), config.GetPath("peer.tls.key.file"))
-		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("Failed to generate credentials %v", err)
-		}
-		opts = []grpc.ServerOption{grpc.Creds(creds)}
-	}
-	grpcServer := grpc.NewServer(opts...)
-
-	peerAddress, err := peer.GetLocalAddress()
+	lis, err := net.Listen("tcp", ":0")
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("Error obtaining peer address: %s", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to start peer listener %s", err)
 	}
-	lis, err := net.Listen("tcp", peerAddress)
+	_, localPort, err := net.SplitHostPort(lis.Addr().String())
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("Error starting peer listener %s", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to get port: %s", err)
+	}
+	localIP, err := peer.GetLocalIP()
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to get local IP: %s", err)
 	}
 
-	ccprovider.SetChaincodesPath(ccprovider.GetChaincodeInstallPathFromViper())
+	peerAddress := net.JoinHostPort(localIP, localPort)
+
+	tempdir, err := ioutil.TempDir("", "chaincode")
+	if err != nil {
+		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
+	}
+
+	ccprovider.SetChaincodesPath(tempdir)
 	ca, _ := tlsgen.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	config := GlobalConfig()
-	config.StartupTimeout = 3 * time.Minute
+	config := &Config{
+		TLSEnabled:     false,
+		Keepalive:      time.Second,
+		StartupTimeout: 3 * time.Minute,
+		ExecuteTimeout: 30 * time.Second,
+		LogLevel:       "info",
+		ShimLogLevel:   "warning",
+		LogFormat:      "TEST: [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}",
+	}
 	pr := platforms.NewRegistry(&golang.Platform{})
 	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
 	ml := &cm.Lifecycle{}
@@ -152,6 +157,16 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 			Version:   "0",
 			PackageID: persistence.PackageID("tmap:0"),
 		}, nil)
+	client, err := docker.NewClientFromEnv()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	provider := &dockercontroller.Provider{
+		PeerID:       "",
+		NetworkID:    "",
+		BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
+		Client:       client,
+	}
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		peerAddress,
@@ -163,7 +178,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		aclmgmt.NewACLProvider(func(string) channelconfig.Resources { return nil }),
 		container.NewVMController(
 			map[string]container.VMProvider{
-				dockercontroller.ContainerType: dockercontroller.NewProvider("", "", &disabled.Provider{}),
+				dockercontroller.ContainerType: provider,
 				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
@@ -198,7 +213,10 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	go grpcServer.Serve(lis)
 
 	// was passing nil nis at top
-	return ml, lis, chaincodeSupport, func() { finitPeer(lis, chainIDs...) }, nil
+	return ml, lis, chaincodeSupport, func() {
+		finitPeer(lis, chainIDs...)
+		os.RemoveAll(tempdir)
+	}, nil
 }
 
 func finitPeer(lis net.Listener, chainIDs ...string) {
@@ -214,26 +232,6 @@ func finitPeer(lis net.Listener, chainIDs ...string) {
 	ledgerPath := config.GetPath("peer.fileSystemPath")
 	os.RemoveAll(ledgerPath)
 	os.RemoveAll(filepath.Join(os.TempDir(), "hyperledger"))
-
-	//if couchdb is enabled, then cleanup the test couchdb
-	if ledgerconfig.IsCouchDBEnabled() == true {
-
-		chainID := util.GetTestChainID()
-
-		connectURL := viper.GetString("ledger.state.couchDBConfig.couchDBAddress")
-		username := viper.GetString("ledger.state.couchDBConfig.username")
-		password := viper.GetString("ledger.state.couchDBConfig.password")
-		maxRetries := viper.GetInt("ledger.state.couchDBConfig.maxRetries")
-		maxRetriesOnStartup := viper.GetInt("ledger.state.couchDBConfig.maxRetriesOnStartup")
-		requestTimeout := viper.GetDuration("ledger.state.couchDBConfig.requestTimeout")
-		createGlobalChangesDB := viper.GetBool("ledger.state.couchDBConfig.createGlobalChangesDB")
-
-		couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password, maxRetries, maxRetriesOnStartup, requestTimeout, createGlobalChangesDB, &disabled.Provider{})
-		db := couchdb.CouchDatabase{CouchInstance: couchInstance, DBName: chainID}
-		//drop the test database
-		db.DropDatabase()
-
-	}
 }
 
 func startTxSimulation(chainID string, txid string) (ledger.TxSimulator, ledger.HistoryQueryExecutor, error) {
@@ -974,7 +972,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 		return
 	}
 
-	if strings.Index(err.Error(), "Incorrect number of arguments. Expecting 3") < 0 {
+	if !strings.Contains(err.Error(), "Incorrect number of arguments. Expecting 3") {
 		t.Fail()
 		t.Logf("Unexpected error %s", err)
 		return
@@ -1138,6 +1136,7 @@ func TestQueries(t *testing.T) {
 	}
 
 	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 	if len(keys) != 10 {
 		t.Fail()
 		t.Logf("Error detected with the range query, should have returned 10 but returned %v", len(keys))
@@ -1155,7 +1154,7 @@ func TestQueries(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "marble001", "marble002", "2000")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	if err == nil {
 		t.Fail()
 		t.Logf("expected timeout error but succeeded")
@@ -1182,6 +1181,7 @@ func TestQueries(t *testing.T) {
 
 	//unmarshal the results
 	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 
 	//check to see if there are 101 values
 	//default query limit of 10000 is used, this query is effectively unlimited
@@ -1208,6 +1208,7 @@ func TestQueries(t *testing.T) {
 
 	//unmarshal the results
 	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 
 	//check to see if there are 101 values
 	//default query limit of 10000 is used, this query is effectively unlimited
@@ -1267,164 +1268,6 @@ func TestQueries(t *testing.T) {
 		return
 	}
 
-	// ExecuteQuery supported only for CouchDB and
-	// query limits apply for CouchDB range and rich queries only
-	if ledgerconfig.IsCouchDBEnabled() == true {
-
-		// corner cases for shim batching. currnt shim batch size is 100
-		// this query should return exactly 100 results (no call to Next())
-		f = "query"
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"color\":\"blue\"}}")
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
-
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-
-		//check to see if there are 100 values
-		if len(keys) != 100 {
-			t.Fail()
-			t.Logf("Error detected with the rich query, should have returned 100 but returned %v %s", len(keys), keys)
-			return
-		}
-		//Reset the query limit to 5
-		viper.Set("ledger.state.queryLimit", 5)
-
-		//The following range query for "marble01" to "marble11" should return 5 marbles due to the queryLimit
-		f = "keys"
-		args = util.ToChaincodeArgs(f, "marble001", "marble011")
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err := invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
-
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-		//check to see if there are 5 values
-		if len(keys) != 5 {
-			t.Fail()
-			t.Logf("Error detected with the range query, should have returned 5 but returned %v", len(keys))
-			return
-		}
-
-		//Reset the query limit to 10000
-		viper.Set("ledger.state.queryLimit", 10000)
-
-		//The following rich query for should return 50 marbles
-		f = "query"
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}")
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
-
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-
-		//check to see if there are 50 values
-		//default query limit of 10000 is used, this query is effectively unlimited
-		if len(keys) != 50 {
-			t.Fail()
-			t.Logf("Error detected with the rich query, should have returned 50 but returned %v", len(keys))
-			return
-		}
-
-		//Reset the query limit to 5
-		viper.Set("ledger.state.queryLimit", 5)
-
-		//The following rich query should return 5 marbles due to the queryLimit
-		f = "query"
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}")
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
-
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-
-		//check to see if there are 5 values
-		if len(keys) != 5 {
-			t.Fail()
-			t.Logf("Error detected with the rich query, should have returned 5 but returned %v", len(keys))
-			return
-		}
-
-		//The following rich query should return 2 marbles due to the pagesize
-		f = "queryByPage"
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}", "2", "")
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
-
-		queryPage := &PageResponse{}
-
-		json.Unmarshal(retval, &queryPage)
-
-		expectedResult := []string{"marble001", "marble003"}
-
-		if !reflect.DeepEqual(expectedResult, queryPage.Keys) {
-			t.Fail()
-			t.Logf("Error detected with the paginated range query. Returned: %v  should have returned: %v", queryPage.Keys, expectedResult)
-			return
-		}
-
-		// set args for the next page
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}", "2", queryPage.Bookmark)
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
-
-		queryPage = &PageResponse{}
-
-		json.Unmarshal(retval, &queryPage)
-
-		expectedResult = []string{"marble005", "marble007"}
-
-		if !reflect.DeepEqual(expectedResult, queryPage.Keys) {
-			t.Fail()
-			t.Logf("Error detected with the paginated range query. Returned: %v  should have returned: %v", queryPage.Keys, expectedResult)
-			return
-		}
-
-	}
-
 	// modifications for history query
 	f = "put"
 	args = util.ToChaincodeArgs(f, "marble012", "{\"docType\":\"marble\",\"name\":\"marble012\",\"color\":\"red\",\"size\":30,\"owner\":\"jerry\"}")
@@ -1462,6 +1305,7 @@ func TestQueries(t *testing.T) {
 
 	var history []interface{}
 	err = json.Unmarshal(retval, &history)
+	assert.NoError(t, err)
 	if len(history) != 3 {
 		t.Fail()
 		t.Logf("Error detected with the history query, should have returned 3 but returned %v", len(history))
@@ -1499,10 +1343,6 @@ func setupTestConfig() {
 	if err != nil {                      // Handle errors reading the config file
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}
-
-	// Set the number of maxprocs
-	var numProcsDesired = viper.GetInt("peer.gomaxprocs")
-	chaincodeLogger.Debugf("setting Number of procs to %d, was %d\n", numProcsDesired, runtime.GOMAXPROCS(numProcsDesired))
 
 	// Init the BCCSP
 	err = factory.InitFactories(nil)
@@ -1560,7 +1400,7 @@ type CreatorPolicy struct {
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
 func (c *CreatorPolicy) Evaluate(signatureSet []*protoutil.SignedData) error {
 	for _, value := range c.Creators {
-		if bytes.Compare(signatureSet[0].Identity, value) == 0 {
+		if bytes.Equal(signatureSet[0].Identity, value) {
 			return nil
 		}
 	}

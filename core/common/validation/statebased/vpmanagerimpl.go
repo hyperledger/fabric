@@ -7,11 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package statebased
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/handlers/validation/api/state"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -323,14 +322,14 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 	if coll == "" {
 		mdMap, err = state.GetStateMetadata(cc, key)
 		if err != nil {
-			err = errors.WithMessage(err, fmt.Sprintf("could not retrieve metadata for %s:%s", cc, key))
+			err = errors.WithMessagef(err, "could not retrieve metadata for %s:%s", cc, key)
 			logger.Errorf(err.Error())
 			return nil, err
 		}
 	} else {
 		mdMap, err = state.GetPrivateDataMetadataByHash(cc, coll, []byte(key))
 		if err != nil {
-			err = errors.WithMessage(err, fmt.Sprintf("could not retrieve metadata for %s:%s:%x", cc, coll, []byte(key)))
+			err = errors.WithMessagef(err, "could not retrieve metadata for %s:%s:%x", cc, coll, []byte(key))
 			logger.Errorf(err.Error())
 			return nil, err
 		}

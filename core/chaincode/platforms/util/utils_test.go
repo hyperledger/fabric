@@ -16,13 +16,14 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
-	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -352,8 +353,9 @@ func TestDockerPull(t *testing.T) {
 	//
 	// Future considerations: publish a known dummy image that is multi-arch and free to randomly
 	// delete, and use that here instead.
+	image := fmt.Sprintf("hyperledger/fabric-ccenv:%s-1.1.0", runtime.GOARCH)
 	err := DockerBuild(DockerBuildOptions{
-		Image:        cutil.ParseDockerfileTemplate("hyperledger/fabric-ccenv:$(ARCH)-1.1.0"),
+		Image:        image,
 		Cmd:          "/bin/true",
 		InputStream:  codepackage,
 		OutputStream: binpackage,
@@ -361,6 +363,15 @@ func TestDockerPull(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error during build: %s", err)
 	}
+}
+
+func TestUtil_GetDockerfileFromConfig(t *testing.T) {
+	expected := "FROM " + metadata.DockerNamespace + ":" + runtime.GOARCH + "-" + metadata.Version
+	path := "dt"
+	viper.Set(path, "FROM $(DOCKER_NS):$(ARCH)-$(PROJECT_VERSION)")
+	actual := GetDockerfileFromConfig(path)
+	assert.Equal(t, expected, actual, "Error parsing Dockerfile Template. Expected \"%s\", got \"%s\"",
+		expected, actual)
 }
 
 func TestMain(m *testing.M) {

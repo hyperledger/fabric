@@ -90,7 +90,7 @@ var _ = Describe("AllIssuingValidator", func() {
 			})
 			It("returns nil", func() {
 				err := tokenOwnerValidator.Validate(&token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: []byte{0, 1, 2, 3}})
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 

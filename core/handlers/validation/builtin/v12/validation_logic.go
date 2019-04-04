@@ -208,7 +208,7 @@ func validateNewCollectionConfigs(newCollectionConfigs []*common.CollectionConfi
 		// make sure that the signature policy is meaningful (only consists of ORs)
 		err := validateSpOrConcat(newCollection.MemberOrgsPolicy.GetSignaturePolicy().Rule)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("collection-name: %s -- error in member org policy", collectionName))
+			return errors.WithMessagef(err, "collection-name: %s -- error in member org policy", collectionName)
 		}
 	}
 	return nil
@@ -495,7 +495,12 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			return policyErr(fmt.Errorf("Wrong number of arguments for invocation lscc(%s): received %d", lsccFunc, len(lsccArgs)))
 		}
 
-		cdsArgs, err := protoutil.GetChaincodeDeploymentSpec(lsccArgs[1], platforms.NewRegistry(
+		cdsArgs, err := protoutil.GetChaincodeDeploymentSpec(lsccArgs[1])
+		if err != nil {
+			return policyErr(fmt.Errorf("GetChaincodeDeploymentSpec error %s", err))
+		}
+
+		err = platforms.NewRegistry(
 			// XXX We should definitely _not_ have this external dependency in VSCC
 			// as adding a platform could cause non-determinism.  This is yet another
 			// reason why all of this custom LSCC validation at commit time has no
@@ -504,10 +509,9 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			&node.Platform{},
 			&java.Platform{},
 			&car.Platform{},
-		))
-
+		).ValidateDeploymentSpec(cdsArgs.ChaincodeSpec.Type.String(), cdsArgs.CodePackage)
 		if err != nil {
-			return policyErr(fmt.Errorf("GetChaincodeDeploymentSpec error %s", err))
+			return policyErr(fmt.Errorf("failed to validate deployment spec: %s", err))
 		}
 
 		if cdsArgs == nil || cdsArgs.ChaincodeSpec == nil || cdsArgs.ChaincodeSpec.ChaincodeId == nil ||
