@@ -10,10 +10,11 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -298,7 +299,10 @@ func CreateChaincodeProposalWithTxIDNonceAndTransient(txid string, typ common.He
 	// get a more appropriate mechanism to handle it in.
 	var epoch uint64
 
-	timestamp := util.CreateUtcTimestamp()
+	timestamp, err := ptypes.TimestampProto(time.Now().UTC())
+	if err != nil {
+		return nil, "", errors.Wrap(err, "error validating Timestamp")
+	}
 
 	hdr := &common.Header{
 		ChannelHeader: MarshalOrPanic(
