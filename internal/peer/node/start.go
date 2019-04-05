@@ -146,7 +146,7 @@ func serve(args []string) error {
 		aclmgmt.ResourceGetter(peer.GetStableChannelConfig),
 	)
 
-	pr := platforms.NewRegistry(platforms.SupportedPlatforms...)
+	platformRegistry := platforms.NewRegistry(platforms.SupportedPlatforms...)
 
 	identityDeserializerFactory := func(chainID string) msp.IdentityDeserializer {
 		return mgmt.GetManagerForChain(chainID)
@@ -199,7 +199,7 @@ func serve(args []string) error {
 	ledgermgmt.Initialize(
 		&ledgermgmt.Initializer{
 			CustomTxProcessors:            peer.ConfigTxProcessors,
-			PlatformRegistry:              pr,
+			PlatformRegistry:              platformRegistry,
 			DeployedChaincodeInfoProvider: lifecycleValidatorCommitter,
 			MembershipInfoProvider:        membershipInfoProvider,
 			MetricsProvider:               metricsProvider,
@@ -312,7 +312,7 @@ func serve(args []string) error {
 	ipRegistry := inproccontroller.NewRegistry()
 
 	sccp := scc.NewProvider(peer.Default, peer.DefaultSupport, ipRegistry)
-	lsccInst := lscc.New(sccp, aclProvider, pr)
+	lsccInst := lscc.New(sccp, aclProvider, platformRegistry)
 
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{
 		LegacyImpl: lsccInst,
@@ -381,7 +381,7 @@ func serve(args []string) error {
 			},
 		),
 		sccp,
-		pr,
+		platformRegistry,
 		peer.DefaultSupport,
 		opsSystem.Provider,
 		lifecycleValidatorCommitter,
@@ -447,7 +447,7 @@ func serve(args []string) error {
 		SigningIdentityFetcher:  signingIdentityFetcher,
 	})
 	endorserSupport.PluginEndorser = pluginEndorser
-	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport, pr, metricsProvider)
+	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport, platformRegistry, metricsProvider)
 	auth := authHandler.ChainFilters(serverEndorser, authFilters...)
 	// Register the Endorser server
 	pb.RegisterEndorserServer(peerServer.Server(), auth)
@@ -487,18 +487,27 @@ func serve(args []string) error {
 	lifecycle.AddListener(onUpdate)
 
 	// this brings up all the channels
-	peer.Initialize(func(cid string) {
-		logger.Debugf("Deploying system CC, for channel <%s>", cid)
-		sccp.DeploySysCCs(cid, ccp)
-		sub, err := lifecycle.NewChannelSubscription(cid, cc.QueryCreatorFunc(func() (cc.Query, error) {
-			return peer.GetLedger(cid).NewQueryExecutor()
-		}))
-		if err != nil {
-			logger.Panicf("Failed subscribing to chaincode lifecycle updates")
-		}
-		cceventmgmt.GetMgr().Register(cid, sub)
-	}, sccp, plugin.MapBasedMapper(validationPluginsByName),
-		pr, lifecycleValidatorCommitter, membershipInfoProvider, metricsProvider, lsccInst, lifecycleValidatorCommitter)
+	peer.Initialize(
+		func(cid string) {
+			logger.Debugf("Deploying system CC, for channel <%s>", cid)
+			sccp.DeploySysCCs(cid, ccp)
+			sub, err := lifecycle.NewChannelSubscription(cid, cc.QueryCreatorFunc(func() (cc.Query, error) {
+				return peer.GetLedger(cid).NewQueryExecutor()
+			}))
+			if err != nil {
+				logger.Panicf("Failed subscribing to chaincode lifecycle updates")
+			}
+			cceventmgmt.GetMgr().Register(cid, sub)
+		},
+		sccp,
+		plugin.MapBasedMapper(validationPluginsByName),
+		platformRegistry,
+		lifecycleValidatorCommitter,
+		membershipInfoProvider,
+		metricsProvider,
+		lsccInst,
+		lifecycleValidatorCommitter,
+	)
 
 	if viper.GetBool("peer.discovery.enabled") {
 		registerDiscoveryService(peerServer, policyMgr, lifecycle)
