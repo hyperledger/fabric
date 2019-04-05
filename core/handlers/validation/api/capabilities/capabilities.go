@@ -43,6 +43,10 @@ type Capabilities interface {
 	//  - new chaincode lifecycle, as described in FAB-11237
 	V1_3Validation() bool
 
+	// StorePvtDataOfInvalidTx returns true if the peer needs to store
+	// the pvtData of invalid transactions (as introduced in v142).
+	StorePvtDataOfInvalidTx() bool
+
 	// V2_0Validation returns true if this channel supports transaction validation
 	// as introduced in v2.0. This includes:
 	//  - new chaincode lifecycle

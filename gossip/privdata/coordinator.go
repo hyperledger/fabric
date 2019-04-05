@@ -116,6 +116,14 @@ type Fetcher interface {
 	fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtDataContainer, error)
 }
 
+//go:generate mockery -dir ./ -name AppCapabilities -case underscore -output mocks/
+// AppCapabilities defines the capabilities for the application portion of a channel
+type AppCapabilities interface {
+	// StorePvtDataOfInvalidTx() returns true if the peer needs to store the pvtData of
+	// invalid transactions.
+	StorePvtDataOfInvalidTx() bool
+}
+
 // Support encapsulates set of interfaces to
 // aggregate required functionality by single struct
 type Support struct {
@@ -125,6 +133,7 @@ type Support struct {
 	committer.Committer
 	TransientStore
 	Fetcher
+	AppCapabilities
 }
 
 type coordinator struct {
@@ -592,7 +601,7 @@ type txns []string
 type blockData [][]byte
 type blockConsumer func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, endorsers []*peer.Endorsement) error
 
-func (data blockData) forEachTxn(consumer blockConsumer) (txns, error) {
+func (data blockData) forEachTxn(storePvtDataOfInvalidTx bool, txsFilter txValidationFlags, consumer blockConsumer) (txns, error) {
 	var txList []string
 	for seqInBlock, envBytes := range data {
 		env, err := protoutil.GetEnvelopeFromBlock(envBytes)
@@ -618,6 +627,11 @@ func (data blockData) forEachTxn(consumer blockConsumer) (txns, error) {
 		}
 
 		txList = append(txList, chdr.TxId)
+
+		if txsFilter[seqInBlock] != uint8(peer.TxValidationCode_VALID) && !storePvtDataOfInvalidTx {
+			logger.Debugf("Skipping Tx", seqInBlock, "because it's invalid. Status is", txsFilter[seqInBlock])
+			continue
+		}
 
 		respPayload, err := protoutil.GetActionFromEnvelope(envBytes)
 		if err != nil {
@@ -702,7 +716,7 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 		privateRWsetsInBlock: privateRWsetsInBlock,
 		coordinator:          c,
 	}
-	txList, err := data.forEachTxn(bi.inspectTransaction)
+	txList, err := data.forEachTxn(c.Support.StorePvtDataOfInvalidTx(), txsFilter, bi.inspectTransaction)
 	if err != nil {
 		return nil, err
 	}
@@ -879,39 +893,40 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protou
 
 	seqs2Namespaces := aggregatedCollections(make(map[seqAndDataModel]map[string][]*rwset.CollectionPvtReadWriteSet))
 	data := blockData(blockAndPvtData.Block.Data.Data)
-	data.forEachTxn(func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, endorsers []*peer.Endorsement) error {
-		item, exists := blockAndPvtData.PvtData[seqInBlock]
-		if !exists {
-			return nil
-		}
-
-		for _, ns := range item.WriteSet.NsPvtRwset {
-			for _, col := range ns.CollectionPvtRwset {
-				cc := common.CollectionCriteria{
-					Channel:    chdr.ChannelId,
-					TxId:       chdr.TxId,
-					Namespace:  ns.Namespace,
-					Collection: col.CollectionName,
-				}
-				sp, err := c.CollectionStore.RetrieveCollectionAccessPolicy(cc)
-				if err != nil {
-					logger.Warning("Failed obtaining policy for", cc, ":", err)
-					continue
-				}
-				isAuthorized := sp.AccessFilter()
-				if isAuthorized == nil {
-					logger.Warning("Failed obtaining filter for", cc)
-					continue
-				}
-				if !isAuthorized(peerAuthInfo) {
-					logger.Debug("Skipping", cc, "because peer isn't authorized")
-					continue
-				}
-				seqs2Namespaces.addCollection(seqInBlock, item.WriteSet.DataModel, ns.Namespace, col)
+	data.forEachTxn(c.Support.StorePvtDataOfInvalidTx(), make(txValidationFlags, len(data)),
+		func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, _ []*peer.Endorsement) error {
+			item, exists := blockAndPvtData.PvtData[seqInBlock]
+			if !exists {
+				return nil
 			}
-		}
-		return nil
-	})
+
+			for _, ns := range item.WriteSet.NsPvtRwset {
+				for _, col := range ns.CollectionPvtRwset {
+					cc := common.CollectionCriteria{
+						Channel:    chdr.ChannelId,
+						TxId:       chdr.TxId,
+						Namespace:  ns.Namespace,
+						Collection: col.CollectionName,
+					}
+					sp, err := c.CollectionStore.RetrieveCollectionAccessPolicy(cc)
+					if err != nil {
+						logger.Warning("Failed obtaining policy for", cc, ":", err)
+						continue
+					}
+					isAuthorized := sp.AccessFilter()
+					if isAuthorized == nil {
+						logger.Warning("Failed obtaining filter for", cc)
+						continue
+					}
+					if !isAuthorized(peerAuthInfo) {
+						logger.Debug("Skipping", cc, "because peer isn't authorized")
+						continue
+					}
+					seqs2Namespaces.addCollection(seqInBlock, item.WriteSet.DataModel, ns.Namespace, col)
+				}
+			}
+			return nil
+		})
 
 	return blockAndPvtData.Block, seqs2Namespaces.asPrivateData(), nil
 }

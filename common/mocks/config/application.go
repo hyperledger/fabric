@@ -48,6 +48,8 @@ type MockApplicationCapabilities struct {
 	V1_3ValidationRv             bool
 	V2_0ValidationRv             bool
 	FabTokenRv                   bool
+	RollbackRv                   bool
+	StorePvtDataOfInvalidTxRv    bool
 }
 
 func (mac *MockApplicationCapabilities) Supported() error {
@@ -100,4 +102,12 @@ func (mac *MockApplicationCapabilities) V2_0Validation() bool {
 
 func (mac *MockApplicationCapabilities) FabToken() bool {
 	return mac.FabTokenRv
+}
+
+func (mac *MockApplicationCapabilities) Rollback() bool {
+	return mac.RollbackRv
+}
+
+func (mac *MockApplicationCapabilities) StorePvtDataOfInvalidTx() bool {
+	return mac.StorePvtDataOfInvalidTxRv
 }

@@ -360,6 +360,10 @@ func (p *Peer) createChannel(
 	channel.store = store
 
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider)
+	ac, exist := bundle.ApplicationConfig()
+	if !exist {
+		return errors.Wrapf(err, "application config does not exist for [channel %s]", bundle.ConfigtxValidator().ChainID())
+	}
 	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, gossipservice.Support{
 		Validator:       validator,
 		Committer:       committer,
@@ -368,6 +372,7 @@ func (p *Peer) createChannel(
 		IdDeserializeFactory: gossipprivdata.IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
 			return mspmgmt.GetManagerForChain(chainID)
 		}),
+		Capabilities: ac.Capabilities(),
 	})
 
 	p.mutex.Lock()

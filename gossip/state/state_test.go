@@ -40,6 +40,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/privdata"
+	appcapabilitymock "github.com/hyperledger/fabric/gossip/privdata/mocks"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/state/mocks"
 	gossiputil "github.com/hyperledger/fabric/gossip/util"
@@ -418,10 +419,13 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 		TransientBlockRetention:        1000,
 		SkipPullingInvalidTransactions: false,
 	}
+	capability := &appcapabilitymock.AppCapabilities{}
+	capability.On("StorePvtDataOfInvalidTx").Return(true)
 	coord := privdata.NewCoordinator(privdata.Support{
-		Validator:      v,
-		TransientStore: &mockTransientStore{},
-		Committer:      committer,
+		Validator:       v,
+		TransientStore:  &mockTransientStore{},
+		Committer:       committer,
+		AppCapabilities: capability,
 	}, protoutil.SignedData{}, gossipMetrics.PrivdataMetrics, coordConfig)
 	stateConfig := &StateConfig{
 		StateCheckInterval:   DefStateCheckInterval,
