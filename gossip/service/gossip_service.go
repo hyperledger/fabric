@@ -224,6 +224,7 @@ type Support struct {
 	Store                privdata2.TransientStore
 	Cs                   privdata.CollectionStore
 	IdDeserializeFactory privdata2.IdentityDeserializerFactory
+	Capabilities         privdata2.AppCapabilities
 }
 
 // DataStoreSupport aggregates interfaces capable
@@ -266,6 +267,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, oac OrdererAddress
 		TransientStore:  support.Store,
 		Committer:       support.Committer,
 		Fetcher:         fetcher,
+		AppCapabilities: support.Capabilities,
 	}, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig)
 
 	reconcilerConfig := privdata2.GetReconcilerConfig()

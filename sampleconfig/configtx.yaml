@@ -108,9 +108,12 @@ Capabilities:
     # used with prior release orderers.
     # Set the value of the capability to true to require it.
     Application: &ApplicationCapabilities
+        # V1.4.2 for Application enables the new non-backwards compatible
+        # features and fixes of fabric v1.4.2
+        V1_4_2: true
         # V1.3 for Application enables the new non-backwards compatible
         # features and fixes of fabric v1.3.
-        V1_3: true
+        V1_3: false
         # V1.2 for Application enables the new non-backwards compatible
         # features and fixes of fabric v1.2 (note, this need not be set if
         # later version capabilities are set)

@@ -169,6 +169,10 @@ type ApplicationCapabilities interface {
 	//  - new chaincode lifecycle, as described in FAB-11237
 	V1_3Validation() bool
 
+	// StorePvtDataOfInvalidTx() returns true if the peer needs to store the pvtData of
+	// invalid transactions.
+	StorePvtDataOfInvalidTx() bool
+
 	// MetadataLifecycle indicates whether the peer should use the deprecated and problematic
 	// v1.0/v1.1 lifecycle, or whether it should use the newer per channel peer local chaincode
 	// metadata package approach planned for release with Fabric v1.2

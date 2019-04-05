@@ -656,6 +656,10 @@ func (ds *dynamicCapabilities) CollectionUpgrade() bool {
 	return ds.support.Capabilities().CollectionUpgrade()
 }
 
+func (ds *dynamicCapabilities) StorePvtDataOfInvalidTx() bool {
+	return ds.support.Capabilities().StorePvtDataOfInvalidTx()
+}
+
 // FabToken returns true if fabric token function is supported.
 func (ds *dynamicCapabilities) FabToken() bool {
 	return ds.support.Capabilities().FabToken()

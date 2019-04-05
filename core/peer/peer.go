@@ -476,6 +476,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 		Store:                store,
 		Cs:                   simpleCollectionStore,
 		IdDeserializeFactory: csStoreSupport,
+		Capabilities:         cs.Application.Capabilities(),
 	})
 
 	chains.Lock()
