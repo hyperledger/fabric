@@ -21,8 +21,7 @@ func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 	cleanup(database)
 	defer cleanup(database)
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB, &disabled.Provider{})
+	couchInstance, err := CreateCouchInstance(couchDBDef, &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to CreateCouchInstance")
 
 	_, err = CreateCouchDatabase(couchInstance, database)
@@ -40,8 +39,7 @@ func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
 	defer cleanup(database)
 
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB, &disabled.Provider{})
+	couchInstance, err := CreateCouchInstance(couchDBDef, &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to CreateCouchInstance")
 
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
@@ -63,8 +61,7 @@ func TestCreateCouchDBSystemDBs(t *testing.T) {
 	defer cleanup(database)
 
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB, &disabled.Provider{})
+	couchInstance, err := CreateCouchInstance(couchDBDef, &disabled.Provider{})
 
 	assert.NoError(t, err, "Error when trying to CreateCouchInstance")
 

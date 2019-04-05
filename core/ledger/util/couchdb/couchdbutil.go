@@ -33,21 +33,26 @@ var chainNameAllowedLength = 50
 var namespaceNameAllowedLength = 50
 var collectionNameAllowedLength = 50
 
-//CreateCouchInstance creates a CouchDB instance
-func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries,
-	maxRetriesOnStartup int, connectionTimeout time.Duration, createGlobalChangesDB bool, metricsProvider metrics.Provider) (*CouchInstance, error) {
+func CreateCouchInstance(config Config, metricsProvider metrics.Provider) (*CouchInstance, error) {
 
-	couchConf, err := CreateConnectionDefinition(couchDBConnectURL,
-		id, pw, maxRetries, maxRetriesOnStartup, connectionTimeout, createGlobalChangesDB)
+	// make sure the address is valid
+	connectURL := &url.URL{
+		Host:   config.Address,
+		Scheme: "http",
+	}
+	_, err := url.Parse(connectURL.String())
 	if err != nil {
-		logger.Errorf("Error calling CouchDB CreateConnectionDefinition(): %s", err)
-		return nil, err
+		return nil, errors.WithMessagef(
+			err,
+			"failed to parse CouchDB address '%s'",
+			config.Address,
+		)
 	}
 
 	// Create the http client once
 	// Clients and Transports are safe for concurrent use by multiple goroutines
 	// and for efficiency should only be created once and re-used.
-	client := &http.Client{Timeout: couchConf.RequestTimeout}
+	client := &http.Client{Timeout: config.RequestTimeout}
 
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -61,8 +66,11 @@ func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries,
 	client.Transport = transport
 
 	//Create the CouchDB instance
-	couchInstance := &CouchInstance{conf: *couchConf, client: client}
-	couchInstance.stats = newStats(metricsProvider)
+	couchInstance := &CouchInstance{
+		conf:   config,
+		client: client,
+		stats:  newStats(metricsProvider),
+	}
 	connectInfo, retVal, verifyErr := couchInstance.VerifyCouchConfig()
 	if verifyErr != nil {
 		return nil, verifyErr
