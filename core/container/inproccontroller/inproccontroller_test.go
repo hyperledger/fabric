@@ -60,7 +60,7 @@ func TestGetInstanceChaincodeDoesntExist(t *testing.T) {
 
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
-	vm := NewInprocVM(r)
+	vm := InprocVM{registry: r}
 	args := []string{"a", "b"}
 	env := []string{"a", "b"}
 	container, err := vm.getInstance(mockInprocContainer, "instName", args, env)
@@ -79,7 +79,7 @@ func TestGetInstaceChaincodeExists(t *testing.T) {
 
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
-	vm := NewInprocVM(r)
+	vm := InprocVM{registry: r}
 	args := []string{"a", "b"}
 	env := []string{"a", "b"}
 
@@ -294,7 +294,7 @@ func TestLaunchprocCCSupportHandleChaincodeStreamError(t *testing.T) {
 func TestStart(t *testing.T) {
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
-	vm := NewInprocVM(r)
+	vm := InprocVM{registry: r}
 
 	ccid := ccintf.CCID("name")
 	mockInprocContainer := &inprocContainer{}
@@ -322,7 +322,7 @@ func TestStart(t *testing.T) {
 func TestStop(t *testing.T) {
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
-	vm := NewInprocVM(r)
+	vm := InprocVM{registry: r}
 
 	ccid := ccintf.CCID("name:1")
 
@@ -352,7 +352,7 @@ func TestStop(t *testing.T) {
 func TestStopNoIPCTemplate(t *testing.T) {
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
-	vm := NewInprocVM(r)
+	vm := InprocVM{registry: r}
 
 	ccid := ccintf.CCID("name:1")
 
@@ -364,7 +364,7 @@ func TestStopNoIPCTemplate(t *testing.T) {
 func TestStopNoIPC(t *testing.T) {
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
-	vm := NewInprocVM(r)
+	vm := InprocVM{registry: r}
 
 	ccid := ccintf.CCID("name:1")
 
@@ -388,7 +388,7 @@ func TestStopNoIPC(t *testing.T) {
 func TestStopIPCNotRunning(t *testing.T) {
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
-	vm := NewInprocVM(r)
+	vm := InprocVM{registry: r}
 
 	ccid := ccintf.CCID("name:1")
 
@@ -413,7 +413,7 @@ func TestStopIPCNotRunning(t *testing.T) {
 func TestWait(t *testing.T) {
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
-	vm := NewInprocVM(r)
+	vm := InprocVM{registry: r}
 
 	closed := make(chan struct{})
 	close(closed)
