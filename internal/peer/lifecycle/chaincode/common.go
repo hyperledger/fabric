@@ -12,7 +12,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/internal/peer/chaincode"
-	ccapi "github.com/hyperledger/fabric/internal/peer/chaincode/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -28,8 +27,8 @@ type EndorserClient interface {
 
 // PeerDeliverClient defines the interface for a peer deliver client
 type PeerDeliverClient interface {
-	Deliver(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error)
-	DeliverFiltered(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error)
+	Deliver(ctx context.Context, opts ...grpc.CallOption) (pb.Deliver_DeliverClient, error)
+	DeliverFiltered(ctx context.Context, opts ...grpc.CallOption) (pb.Deliver_DeliverClient, error)
 }
 
 // Signer defines the interface needed for signing messages

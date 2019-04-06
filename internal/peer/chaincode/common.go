@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container"
-	ccapi "github.com/hyperledger/fabric/internal/peer/chaincode/api"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/common/api"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -588,7 +587,7 @@ type DeliverGroup struct {
 // peer. The address is included for logging purposes
 type DeliverClient struct {
 	Client     api.PeerDeliverClient
-	Connection ccapi.Deliver
+	Connection pb.Deliver_DeliverClient
 	Address    string
 }
 

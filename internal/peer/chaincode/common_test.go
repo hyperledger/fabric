@@ -26,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/common/api"
-	cmock "github.com/hyperledger/fabric/internal/peer/common/mock"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -42,6 +41,18 @@ import (
 
 type signerSerializer interface {
 	identity.SignerSerializer
+}
+
+//go:generate counterfeiter -o mock/deliver.go --fake-name Deliver . deliver
+
+type deliver interface {
+	pb.Deliver_DeliverClient
+}
+
+//go:generate counterfeiter -o mock/deliver_client.go --fake-name PeerDeliverClient . peerDeliverClient
+
+type peerDeliverClient interface {
+	pb.DeliverClient
 }
 
 func TestCheckChaincodeCmdParamsWithNewCallingSchema(t *testing.T) {
@@ -376,7 +387,7 @@ func TestDeliverGroupConnect(t *testing.T) {
 	g.Expect(err).To(BeNil())
 
 	// failure - DeliverFiltered returns error
-	mockDC := &cmock.PeerDeliverClient{}
+	mockDC := &mock.PeerDeliverClient{}
 	mockDC.DeliverFilteredReturns(nil, errors.New("icecream"))
 	mockDeliverClients = []*DeliverClient{
 		{
@@ -638,7 +649,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 	})
 
 	t.Run("failure - deliver returns response status instead of block", func(t *testing.T) {
-		mockDC := &cmock.PeerDeliverClient{}
+		mockDC := &mock.PeerDeliverClient{}
 		mockDF := &mock.Deliver{}
 		resp := &pb.DeliverResponse{
 			Type: &pb.DeliverResponse_Status{

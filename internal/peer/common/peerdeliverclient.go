@@ -9,7 +9,6 @@ package common
 import (
 	"context"
 
-	ccapi "github.com/hyperledger/fabric/internal/peer/chaincode/api"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	grpc "google.golang.org/grpc"
 )
@@ -21,13 +20,16 @@ type PeerDeliverClient struct {
 }
 
 // Deliver connects the client to the Deliver RPC
-func (dc PeerDeliverClient) Deliver(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
+func (dc PeerDeliverClient) Deliver(ctx context.Context, opts ...grpc.CallOption) (pb.Deliver_DeliverClient, error) {
 	d, err := dc.Client.Deliver(ctx, opts...)
 	return d, err
 }
 
 // DeliverFiltered connects the client to the DeliverFiltered RPC
-func (dc PeerDeliverClient) DeliverFiltered(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
+func (dc PeerDeliverClient) DeliverFiltered(
+	ctx context.Context,
+	opts ...grpc.CallOption,
+) (pb.Deliver_DeliverFilteredClient, error) {
 	df, err := dc.Client.DeliverFiltered(ctx, opts...)
 	return df, err
 }

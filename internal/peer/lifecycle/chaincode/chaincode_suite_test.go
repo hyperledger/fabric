@@ -11,10 +11,10 @@ import (
 	"os"
 	"testing"
 
-	ccapi "github.com/hyperledger/fabric/internal/peer/chaincode/api"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -51,12 +51,12 @@ type broadcastClient interface {
 
 //go:generate counterfeiter -o mock/peer_deliver_client.go -fake-name PeerDeliverClient . peerDeliverClient
 type peerDeliverClient interface {
-	chaincode.PeerDeliverClient
+	pb.DeliverClient
 }
 
 //go:generate counterfeiter -o mock/deliver.go -fake-name Deliver . deliver
 type deliver interface {
-	ccapi.Deliver
+	pb.Deliver_DeliverClient
 }
 
 func TestChaincode(t *testing.T) {

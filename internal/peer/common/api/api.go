@@ -9,9 +9,9 @@ package api
 import (
 	"context"
 
-	"github.com/hyperledger/fabric/internal/peer/chaincode/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"google.golang.org/grpc"
 )
 
@@ -35,6 +35,6 @@ type DeliverService interface {
 
 // PeerDeliverClient defines the interface for a peer deliver client
 type PeerDeliverClient interface {
-	Deliver(ctx context.Context, opts ...grpc.CallOption) (api.Deliver, error)
-	DeliverFiltered(ctx context.Context, opts ...grpc.CallOption) (api.Deliver, error)
+	Deliver(ctx context.Context, opts ...grpc.CallOption) (pb.Deliver_DeliverClient, error)
+	DeliverFiltered(ctx context.Context, opts ...grpc.CallOption) (pb.Deliver_DeliverFilteredClient, error)
 }
