@@ -21,6 +21,7 @@ import (
 	deliverclient "github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	ledgermocks "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -94,7 +95,9 @@ func TestInitialize(t *testing.T) {
 		&ledgermocks.DeployedChaincodeInfoProvider{},
 		nil,
 		&disabled.Provider{},
-		nil, nil,
+		nil,
+		nil,
+		&ledger.Config{},
 	)
 }
 
@@ -110,7 +113,9 @@ func TestCreateChainFromBlock(t *testing.T) {
 		&ledgermocks.DeployedChaincodeInfoProvider{},
 		nil,
 		&disabled.Provider{},
-		nil, nil,
+		nil,
+		nil,
+		&ledger.Config{},
 	)
 	testChainID := fmt.Sprintf("mytestchainid-%d", rand.Int())
 	block, err := configtxtest.MakeGenesisBlock(testChainID)

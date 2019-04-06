@@ -218,11 +218,18 @@ var validationWorkersSemaphore semaphore.Semaphore
 // Initialize sets up any chains that the peer has from the persistence. This
 // function should be called at the start up when the ledger and gossip
 // ready
-func Initialize(init func(string), sccp sysccprovider.SystemChaincodeProvider,
-	pm plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-	membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider,
+func Initialize(
+	init func(string),
+	sccp sysccprovider.SystemChaincodeProvider,
+	pm plugin.Mapper,
+	pr *platforms.Registry,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	membershipProvider ledger.MembershipInfoProvider,
+	metricsProvider metrics.Provider,
 	legacyLifecycleValidation plugindispatcher.LifecycleResources,
-	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources) {
+	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
+	ledgerConfig *ledger.Config,
+) {
 	nWorkers := viper.GetInt("peer.validatorPoolSize")
 	if nWorkers <= 0 {
 		nWorkers = runtime.NumCPU()
@@ -240,6 +247,7 @@ func Initialize(init func(string), sccp sysccprovider.SystemChaincodeProvider,
 		DeployedChaincodeInfoProvider: deployedCCInfoProvider,
 		MembershipInfoProvider:        membershipProvider,
 		MetricsProvider:               metricsProvider,
+		Config:                        ledgerConfig,
 	})
 	ledgerIds, err := ledgermgmt.GetLedgerIDs()
 	if err != nil {

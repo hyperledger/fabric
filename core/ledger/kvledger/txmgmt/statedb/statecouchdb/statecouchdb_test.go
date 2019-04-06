@@ -35,23 +35,20 @@ func testMain(m *testing.M) int {
 	// Read the core.yaml file for default config.
 	ledgertestutil.SetupCoreYAMLConfig()
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/statedb/statecouchdb")
+	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
 
 	// Switch to CouchDB
 	couchAddress, cleanup := couchDBSetup()
 	defer cleanup()
-	viper.Set("ledger.state.stateDatabase", "CouchDB")
-	defer viper.Set("ledger.state.stateDatabase", "goleveldb")
 
-	viper.Set("ledger.state.couchDBConfig.couchDBAddress", couchAddress)
-	// Replace with correct username/password such as
-	// admin/admin if user security is enabled on couchdb.
-	viper.Set("ledger.state.couchDBConfig.username", "")
-	viper.Set("ledger.state.couchDBConfig.password", "")
-	viper.Set("ledger.state.couchDBConfig.maxRetries", 3)
-	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 20)
-	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*35)
-	// Disable auto warm to avoid error logs when the couchdb database has been dropped
-	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
+	testConfig = &couchdb.Config{
+		Address:             couchAddress,
+		Username:            "",
+		Password:            "",
+		MaxRetries:          3,
+		MaxRetriesOnStartup: 20,
+		RequestTimeout:      35 * time.Second,
+	}
 
 	flogging.ActivateSpec("statecouchdb=debug")
 	//run the actual test

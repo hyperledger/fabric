@@ -31,6 +31,7 @@ func TestStateListener(t *testing.T) {
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 		StateListeners:                []ledger.StateListener{mockListener},
 		MetricsProvider:               &disabled.Provider{},
+		Config:                        &ledger.Config{},
 	})
 
 	bg, gb := testutil.NewBlockGenerator(t, channelid, false)
@@ -95,6 +96,7 @@ func TestStateListener(t *testing.T) {
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 		StateListeners:                []ledger.StateListener{mockListener},
 		MetricsProvider:               &disabled.Provider{},
+		Config:                        &ledger.Config{},
 	})
 	defer provider.Close()
 	lgr, err = provider.Open(channelid)

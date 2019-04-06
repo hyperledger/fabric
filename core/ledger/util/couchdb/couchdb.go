@@ -147,7 +147,7 @@ type Config struct {
 
 //CouchInstance represents a CouchDB instance
 type CouchInstance struct {
-	conf   Config
+	conf   *Config
 	client *http.Client // a client to connect to this instance
 	stats  *stats
 }

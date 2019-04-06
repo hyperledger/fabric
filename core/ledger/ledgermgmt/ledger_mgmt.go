@@ -46,6 +46,7 @@ type Initializer struct {
 	MembershipInfoProvider        ledger.MembershipInfoProvider
 	MetricsProvider               metrics.Provider
 	HealthCheckRegistry           ledger.HealthCheckRegistry
+	Config                        *ledger.Config
 }
 
 // Initialize initializes ledgermgmt
@@ -77,6 +78,7 @@ func initialize(initializer *Initializer) {
 		MembershipInfoProvider:        initializer.MembershipInfoProvider,
 		MetricsProvider:               initializer.MetricsProvider,
 		HealthCheckRegistry:           initializer.HealthCheckRegistry,
+		Config:                        initializer.Config,
 	})
 	if err != nil {
 		panic(errors.WithMessage(err, "Error initializing ledger provider"))

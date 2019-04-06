@@ -205,6 +205,7 @@ func serve(args []string) error {
 			MetricsProvider:               metricsProvider,
 			HealthCheckRegistry:           opsSystem,
 			StateListeners:                []ledger.StateListener{lifecycleCache},
+			Config:                        ledgerConfig(),
 		},
 	)
 
@@ -507,6 +508,7 @@ func serve(args []string) error {
 		metricsProvider,
 		lsccInst,
 		lifecycleValidatorCommitter,
+		ledgerConfig(),
 	)
 
 	if viper.GetBool("peer.discovery.enabled") {

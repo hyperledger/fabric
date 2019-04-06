@@ -21,7 +21,7 @@ func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 	cleanup(database)
 	defer cleanup(database)
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(couchDBDef, &disabled.Provider{})
+	couchInstance, err := CreateCouchInstance(testConfig(""), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to CreateCouchInstance")
 
 	_, err = CreateCouchDatabase(couchInstance, database)
@@ -31,15 +31,14 @@ func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 
 //Unit test of couch db util functionality
 func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
-	value := couchDBDef.CreateGlobalChangesDB
-	couchDBDef.CreateGlobalChangesDB = false
-	defer resetCreateGlobalChangesDBValue(value)
+	config := testConfig("")
+	config.CreateGlobalChangesDB = false
 	database := "_global_changes"
 	cleanup(database)
 	defer cleanup(database)
 
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(couchDBDef, &disabled.Provider{})
+	couchInstance, err := CreateCouchInstance(config, &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to CreateCouchInstance")
 
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
@@ -47,10 +46,6 @@ func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
 	//Retrieve the info for the new database and make sure the name matches
 	_, _, errdb := db.GetDatabaseInfo()
 	assert.NotNil(t, errdb)
-}
-
-func resetCreateGlobalChangesDBValue(value bool) {
-	couchDBDef.CreateGlobalChangesDB = value
 }
 
 //Unit test of couch db util functionality
@@ -61,7 +56,7 @@ func TestCreateCouchDBSystemDBs(t *testing.T) {
 	defer cleanup(database)
 
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(couchDBDef, &disabled.Provider{})
+	couchInstance, err := CreateCouchInstance(testConfig(""), &disabled.Provider{})
 
 	assert.NoError(t, err, "Error when trying to CreateCouchInstance")
 
