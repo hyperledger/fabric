@@ -8,6 +8,7 @@ package gossip
 
 import (
 	"bytes"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -27,10 +28,6 @@ import (
 
 func init() {
 	util.SetupTestLogging()
-	shortenedWaitTime := time.Millisecond * 300
-	algo.SetDigestWaitTime(shortenedWaitTime / 2)
-	algo.SetRequestWaitTime(shortenedWaitTime)
-	algo.SetResponseWaitTime(shortenedWaitTime)
 }
 
 var (
@@ -220,10 +217,12 @@ func TestCertExpiration(t *testing.T) {
 	// Restore original usageThreshold value
 	defer identity.SetIdentityUsageThreshold(idUsageThreshold)
 
-	g1 := newGossipInstance(4321, 0, 0, 1)
+	port0, grpc0, certs0, secDialOpts0, _ := util.CreateGRPCLayer()
+	port1, grpc1, certs1, secDialOpts1, _ := util.CreateGRPCLayer()
+	g1 := newGossipInstanceWithGRPC(0, port0, grpc0, certs0, secDialOpts0, 0, port1)
 	defer g1.Stop()
 	time.Sleep(identity.GetIdentityUsageThreshold() * 2)
-	g2 := newGossipInstance(4322, 0, 0)
+	g2 := newGossipInstanceWithGRPC(0, port1, grpc1, certs1, secDialOpts1, 0)
 	defer g2.Stop()
 
 	identities2Detect := 3
@@ -233,7 +232,7 @@ func TestCertExpiration(t *testing.T) {
 		m := o.(proto.ReceivedMessage).GetGossipMessage()
 		if m.IsPullMsg() && m.IsDigestMsg() {
 			for _, dig := range m.GetDataDig().Digests {
-				if bytes.Equal(dig, []byte("localhost:4321")) {
+				if bytes.Equal(dig, []byte(fmt.Sprintf("127.0.0.1:%d", port0))) {
 					identitiesGotViaPull <- struct{}{}
 				}
 			}
@@ -400,6 +399,7 @@ func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons pro
 	if msgCons == nil {
 		msgCons = func(_ *proto.SignedGossipMessage) {}
 	}
+	shortenedWaitTime := time.Millisecond * 300
 	config := pull.Config{
 		MsgType:           proto.PullMsgType_IDENTITY_MSG,
 		PeerCountToSelect: 1,
@@ -407,10 +407,15 @@ func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons pro
 		Tag:               proto.GossipMessage_EMPTY,
 		Channel:           nil,
 		ID:                "id1",
+		PullEngineConfig: algo.PullEngineConfig{
+			DigestWaitTime:   shortenedWaitTime / 2,
+			RequestWaitTime:  shortenedWaitTime,
+			ResponseWaitTime: shortenedWaitTime,
+		},
 	}
 	sender := &senderMock{}
 	memberSvc := &membershipSvcMock{}
-	memberSvc.On("GetMembership").Return([]discovery.NetworkMember{{PKIid: []byte("bla bla"), Endpoint: "localhost:5611"}})
+	memberSvc.On("GetMembership").Return([]discovery.NetworkMember{{PKIid: []byte("bla bla"), Endpoint: "127.0.0.1:5611"}})
 
 	var certStore *certStore
 	adapter := &pull.PullAdapter{

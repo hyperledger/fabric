@@ -23,32 +23,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-const defaultHelloInterval = time.Duration(5) * time.Second
+const DefAliveTimeInterval = 5 * time.Second
+const DefAliveExpirationTimeout = 5 * DefAliveTimeInterval
+const DefAliveExpirationCheckInterval = DefAliveExpirationTimeout / 10
+const DefReconnectInterval = DefAliveExpirationTimeout
 const msgExpirationFactor = 20
 
-var aliveExpirationCheckInterval time.Duration
 var maxConnectionAttempts = 120
-
-// SetAliveTimeInterval sets the alive time interval
-func SetAliveTimeInterval(interval time.Duration) {
-	util.SetVal("peer.gossip.aliveTimeInterval", interval)
-}
-
-// SetAliveExpirationTimeout sets the expiration timeout
-func SetAliveExpirationTimeout(timeout time.Duration) {
-	util.SetVal("peer.gossip.aliveExpirationTimeout", timeout)
-	aliveExpirationCheckInterval = time.Duration(timeout / 10)
-}
-
-// SetAliveExpirationCheckInterval sets the expiration check interval
-func SetAliveExpirationCheckInterval(interval time.Duration) {
-	aliveExpirationCheckInterval = interval
-}
-
-// SetReconnectInterval sets the reconnect interval
-func SetReconnectInterval(interval time.Duration) {
-	util.SetVal("peer.gossip.reconnectInterval", interval)
-}
 
 // SetMaxConnAttempts sets the maximum number of connection
 // attempts the peer would perform when invoking Connect()
@@ -96,8 +77,16 @@ type gossipDiscoveryImpl struct {
 	reconnectInterval            time.Duration
 }
 
+type DiscoveryConfig struct {
+	AliveTimeInterval            time.Duration
+	AliveExpirationTimeout       time.Duration
+	AliveExpirationCheckInterval time.Duration
+	ReconnectInterval            time.Duration
+}
+
 // NewDiscoveryService returns a new discovery service with the comm module passed and the crypto service passed
-func NewDiscoveryService(self NetworkMember, comm CommService, crypt CryptoService, disPol DisclosurePolicy) Discovery {
+func NewDiscoveryService(self NetworkMember, comm CommService, crypt CryptoService, disPol DisclosurePolicy,
+	config DiscoveryConfig) Discovery {
 	d := &gossipDiscoveryImpl{
 		self:             self,
 		incTime:          uint64(time.Now().UnixNano()),
@@ -116,10 +105,10 @@ func NewDiscoveryService(self NetworkMember, comm CommService, crypt CryptoServi
 		disclosurePolicy: disPol,
 		pubsub:           util.NewPubSub(),
 
-		aliveTimeInterval:            getAliveTimeInterval(),
-		aliveExpirationTimeout:       getAliveExpirationTimeout(),
-		aliveExpirationCheckInterval: getAliveExpirationCheckInterval(),
-		reconnectInterval:            getReconnectInterval(),
+		aliveTimeInterval:            config.AliveTimeInterval,
+		aliveExpirationTimeout:       config.AliveExpirationTimeout,
+		aliveExpirationCheckInterval: config.AliveExpirationCheckInterval,
+		reconnectInterval:            config.ReconnectInterval,
 	}
 
 	d.validateSelfConfig()
@@ -1015,26 +1004,6 @@ func same(a *timestamp, b *proto.PeerTime) bool {
 func before(a *timestamp, b *proto.PeerTime) bool {
 	return (uint64(a.incTime.UnixNano()) == b.IncNum && a.seqNum < b.SeqNum) ||
 		uint64(a.incTime.UnixNano()) < b.IncNum
-}
-
-func getAliveTimeInterval() time.Duration {
-	return util.GetDurationOrDefault("peer.gossip.aliveTimeInterval", defaultHelloInterval)
-}
-
-func getAliveExpirationTimeout() time.Duration {
-	return util.GetDurationOrDefault("peer.gossip.aliveExpirationTimeout", 5*getAliveTimeInterval())
-}
-
-func getAliveExpirationCheckInterval() time.Duration {
-	if aliveExpirationCheckInterval != 0 {
-		return aliveExpirationCheckInterval
-	}
-
-	return time.Duration(getAliveExpirationTimeout() / 10)
-}
-
-func getReconnectInterval() time.Duration {
-	return util.GetDurationOrDefault("peer.gossip.reconnectInterval", getAliveExpirationTimeout())
 }
 
 type aliveMsgStore struct {

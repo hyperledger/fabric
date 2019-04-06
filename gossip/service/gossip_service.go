@@ -242,8 +242,12 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	dataRetriever := privdata2.NewDataRetriever(storeSupport)
 	collectionAccessFactory := privdata2.NewCollectionAccessFactory(support.IdDeserializeFactory)
 	fetcher := privdata2.NewPuller(g.metrics.PrivdataMetrics, support.Cs, g.gossipSvc, dataRetriever,
-		collectionAccessFactory, chainID)
+		collectionAccessFactory, chainID, privdata2.GetBtlPullMargin())
 
+	coordinatorConfig := privdata2.CoordinatorConfig{
+		TransientBlockRetention: privdata2.GetTransientBlockRetention(),
+		PullRetryThreshold:      viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold"),
+	}
 	coordinator := privdata2.NewCoordinator(privdata2.Support{
 		ChainID:         chainID,
 		CollectionStore: support.Cs,
@@ -251,7 +255,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		TransientStore:  support.Store,
 		Committer:       support.Committer,
 		Fetcher:         fetcher,
-	}, g.createSelfSignedData(), g.metrics.PrivdataMetrics)
+	}, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig)
 
 	reconcilerConfig := privdata2.GetReconcilerConfig()
 	var reconciler privdata2.PvtDataReconciler
@@ -263,15 +267,17 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		reconciler = &privdata2.NoOpReconciler{}
 	}
 
+	pushAckTimeout := viper.GetDuration("peer.gossip.pvtData.pushAckTimeout")
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
-		distributor: privdata2.NewDistributor(chainID, g, collectionAccessFactory, g.metrics.PrivdataMetrics),
+		distributor: privdata2.NewDistributor(chainID, g, collectionAccessFactory, g.metrics.PrivdataMetrics, pushAckTimeout),
 		reconciler:  reconciler,
 	}
 	g.privateHandlers[chainID].reconciler.Start()
 
-	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapter, coordinator, g.metrics.StateMetrics)
+	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapter, coordinator,
+		g.metrics.StateMetrics, getStateConfiguration())
 	if g.deliveryService[chainID] == nil {
 		var err error
 		g.deliveryService[chainID], err = g.deliveryFactory.Service(g, endpoints, g.mcs)
@@ -393,7 +399,13 @@ func (g *gossipServiceImpl) newLeaderElectionComponent(chainID string, callback 
 	electionMetrics *gossipMetrics.ElectionMetrics) election.LeaderElectionService {
 	PKIid := g.mcs.GetPKIidOfCert(g.peerIdentity)
 	adapter := election.NewAdapter(g, PKIid, gossipCommon.ChainID(chainID), electionMetrics)
-	return election.NewLeaderElectionService(adapter, string(PKIid), callback)
+	config := election.ElectionConfig{
+		StartupGracePeriod:       util.GetDurationOrDefault("peer.gossip.election.startupGracePeriod", election.DefStartupGracePeriod),
+		MembershipSampleInterval: util.GetDurationOrDefault("peer.gossip.election.membershipSampleInterval", election.DefMembershipSampleInterval),
+		LeaderAliveThreshold:     util.GetDurationOrDefault("peer.gossip.election.leaderAliveThreshold", election.DefLeaderAliveThreshold),
+		LeaderElectionDuration:   util.GetDurationOrDefault("peer.gossip.election.leaderElectionDuration", election.DefLeaderElectionDuration),
+	}
+	return election.NewLeaderElectionService(adapter, string(PKIid), callback, config)
 }
 
 func (g *gossipServiceImpl) amIinChannel(myOrg string, config Config) bool {
@@ -435,4 +447,51 @@ func orgListFromConfig(config Config) []string {
 		orgList = append(orgList, appOrg.MSPID())
 	}
 	return orgList
+}
+
+func getStateConfiguration() *state.Configuration {
+	config := &state.Configuration{
+		AntiEntropyInterval:             state.DefAntiEntropyInterval,
+		AntiEntropyStateResponseTimeout: state.DefAntiEntropyStateResponseTimeout,
+		AntiEntropyBatchSize:            state.DefAntiEntropyBatchSize,
+		MaxBlockDistance:                state.DefMaxBlockDistance,
+		AntiEntropyMaxRetries:           state.DefAntiEntropyMaxRetries,
+		ChannelBufferSize:               state.DefChannelBufferSize,
+		EnableStateTransfer:             true,
+		BlockingMode:                    state.Blocking,
+	}
+
+	if viper.IsSet("peer.gossip.state.checkInterval") {
+		config.AntiEntropyInterval = viper.GetDuration("peer.gossip.state.checkInterval")
+	}
+
+	if viper.IsSet("peer.gossip.state.responseTimeout") {
+		config.AntiEntropyStateResponseTimeout = viper.GetDuration("peer.gossip.state.responseTimeout")
+	}
+
+	if viper.IsSet("peer.gossip.state.batchSize") {
+		config.AntiEntropyBatchSize = uint64(viper.GetInt("peer.gossip.state.batchSize"))
+	}
+
+	if viper.IsSet("peer.gossip.state.blockBufferSize") {
+		config.MaxBlockDistance = viper.GetInt("peer.gossip.state.blockBufferSize")
+	}
+
+	if viper.IsSet("peer.gossip.state.maxRetries") {
+		config.AntiEntropyMaxRetries = viper.GetInt("peer.gossip.state.maxRetries")
+	}
+
+	if viper.IsSet("peer.gossip.state.channelSize") {
+		config.ChannelBufferSize = viper.GetInt("peer.gossip.state.channelSize")
+	}
+
+	if viper.IsSet("peer.gossip.state.enabled") {
+		config.EnableStateTransfer = viper.GetBool("peer.gossip.state.enabled")
+	}
+
+	if viper.GetBool("peer.gossip.nonBlockingCommitMode") {
+		config.BlockingMode = state.NonBlocking
+	}
+
+	return config
 }

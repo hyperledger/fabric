@@ -34,20 +34,20 @@ func init() {
 	util.SetupTestLogging()
 }
 
-func createTestServer(t *testing.T, cert *tls.Certificate) *gossipTestServer {
+func createTestServer(t *testing.T, cert *tls.Certificate) (srv *gossipTestServer, ll net.Listener) {
 	tlsConf := &tls.Config{
 		Certificates:       []tls.Certificate{*cert},
 		ClientAuth:         tls.RequestClientCert,
 		InsecureSkipVerify: true,
 	}
 	s := grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConf)))
-	ll, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5611))
+	ll, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:0"))
 	assert.NoError(t, err, "%v", err)
 
-	srv := &gossipTestServer{s: s, ll: ll, selfCertHash: certHashFromRawCert(cert.Certificate[0])}
+	srv = &gossipTestServer{s: s, ll: ll, selfCertHash: certHashFromRawCert(cert.Certificate[0])}
 	proto.RegisterGossipServer(s, srv)
 	go s.Serve(ll)
-	return srv
+	return srv, ll
 }
 
 func (s *gossipTestServer) stop() {
@@ -74,7 +74,7 @@ func (s *gossipTestServer) Ping(context.Context, *proto.Empty) (*proto.Empty, er
 
 func TestCertificateExtraction(t *testing.T) {
 	cert := GenerateCertificatesOrPanic()
-	srv := createTestServer(t, &cert)
+	srv, ll := createTestServer(t, &cert)
 	defer srv.stop()
 
 	clientCert := GenerateCertificatesOrPanic()
@@ -85,7 +85,7 @@ func TestCertificateExtraction(t *testing.T) {
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, "localhost:5611", grpc.WithTransportCredentials(ta), grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, ll.Addr().String(), grpc.WithTransportCredentials(ta), grpc.WithBlock())
 	assert.NoError(t, err, "%v", err)
 
 	cl := proto.NewGossipClient(conn)

@@ -41,7 +41,7 @@ func TestNoItemsToReconcile(t *testing.T) {
 	fetcher.On("FetchReconciledItems", mock.Anything).Return(nil, errors.New("this function shouldn't be called"))
 
 	r := &Reconciler{channel: "", metrics: metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics,
-		config:                &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, IsEnabled: true},
+		config:                &ReconcilerConfig{SleepInterval: time.Minute, BatchSize: 1, IsEnabled: true},
 		ReconciliationFetcher: fetcher, Committer: committer}
 	err := r.reconcile()
 
@@ -79,7 +79,7 @@ func TestNotReconcilingWhenCollectionConfigNotAvailable(t *testing.T) {
 	}).Return(nil, errors.New("called with no digests"))
 
 	r := &Reconciler{channel: "", metrics: metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics,
-		config:                &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, IsEnabled: true},
+		config:                &ReconcilerConfig{SleepInterval: time.Minute, BatchSize: 1, IsEnabled: true},
 		ReconciliationFetcher: fetcher, Committer: committer}
 	err := r.reconcile()
 
@@ -161,7 +161,7 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 	metrics := metrics.NewGossipMetrics(testMetricProvider.FakeProvider).PrivdataMetrics
 
 	r := &Reconciler{channel: "mychannel", metrics: metrics,
-		config:                &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, IsEnabled: true},
+		config:                &ReconcilerConfig{SleepInterval: time.Minute, BatchSize: 1, IsEnabled: true},
 		ReconciliationFetcher: fetcher, Committer: committer}
 	err := r.reconcile()
 
@@ -248,7 +248,7 @@ func TestReconciliationHappyPathWithScheduler(t *testing.T) {
 	}).Return([]*ledger.PvtdataHashMismatch{}, nil)
 
 	r := NewReconciler("", metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics, committer, fetcher,
-		&ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1, IsEnabled: true})
+		&ReconcilerConfig{SleepInterval: time.Millisecond * 100, BatchSize: 1, IsEnabled: true})
 	r.Start()
 	wg.Wait()
 	r.Stop()
@@ -358,7 +358,7 @@ func TestReconciliationPullingMissingPrivateDataAtOnePass(t *testing.T) {
 	}).Return([]*ledger.PvtdataHashMismatch{}, nil)
 
 	r := NewReconciler("", metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics, committer, fetcher,
-		&ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1, IsEnabled: true})
+		&ReconcilerConfig{SleepInterval: time.Millisecond * 100, BatchSize: 1, IsEnabled: true})
 	r.Start()
 	<-stopC
 	r.Stop()
@@ -438,7 +438,7 @@ func TestReconciliationFailedToCommit(t *testing.T) {
 	committer.On("CommitPvtDataOfOldBlocks", mock.Anything).Return(nil, errors.New("failed to commit"))
 
 	r := &Reconciler{channel: "", metrics: metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics,
-		config:                &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, IsEnabled: true},
+		config:                &ReconcilerConfig{SleepInterval: time.Minute, BatchSize: 1, IsEnabled: true},
 		ReconciliationFetcher: fetcher, Committer: committer}
 	err := r.reconcile()
 
@@ -453,7 +453,7 @@ func TestFailuresWhileReconcilingMissingPvtData(t *testing.T) {
 	committer.On("GetMissingPvtDataTracker").Return(nil, errors.New("failed to obtain missing pvt data tracker"))
 
 	r := NewReconciler("", metrics, committer, fetcher,
-		&ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1, IsEnabled: true})
+		&ReconcilerConfig{SleepInterval: time.Millisecond * 100, BatchSize: 1, IsEnabled: true})
 	err := r.reconcile()
 	assert.Error(t, err)
 	assert.Contains(t, "failed to obtain missing pvt data tracker", err.Error())
@@ -461,7 +461,7 @@ func TestFailuresWhileReconcilingMissingPvtData(t *testing.T) {
 	committer.Mock = mock.Mock{}
 	committer.On("GetMissingPvtDataTracker").Return(nil, nil)
 	r = NewReconciler("", metrics, committer, fetcher,
-		&ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1, IsEnabled: true})
+		&ReconcilerConfig{SleepInterval: time.Millisecond * 100, BatchSize: 1, IsEnabled: true})
 	err = r.reconcile()
 	assert.Error(t, err)
 	assert.Contains(t, "got nil as MissingPvtDataTracker, exiting...", err.Error())
@@ -472,7 +472,7 @@ func TestFailuresWhileReconcilingMissingPvtData(t *testing.T) {
 	committer.Mock = mock.Mock{}
 	committer.On("GetMissingPvtDataTracker").Return(missingPvtDataTracker, nil)
 	r = NewReconciler("", metrics, committer, fetcher,
-		&ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1, IsEnabled: true})
+		&ReconcilerConfig{SleepInterval: time.Millisecond * 100, BatchSize: 1, IsEnabled: true})
 	err = r.reconcile()
 	assert.Error(t, err)
 	assert.Contains(t, "failed get missing pvt data for recent blocks", err.Error())

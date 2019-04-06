@@ -12,23 +12,18 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"math/rand"
 	"net"
-	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/comm"
-	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/identity"
@@ -36,7 +31,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
@@ -48,6 +42,13 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 	factory.InitFactories(nil)
 	naiveSec.On("OrgByPeerIdentity", mock.Anything).Return(api.OrgIdentityType{})
+}
+
+var testCommConfig = CommConfig{
+	DialTimeout:  300 * time.Millisecond,
+	ConnTimeout:  DefConnTimeout,
+	RecvBuffSize: DefRecvBuffSize,
+	SendBuffSize: DefSendBuffSize,
 }
 
 func acceptAll(msg interface{}) bool {
@@ -118,69 +119,6 @@ func (*naiveSecProvider) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityTyp
 	return nil
 }
 
-// CA that generates TLS key-pairs.
-// We use only one CA because the authentication is based on TLS pinning
-var ca = createCAOrPanic()
-
-func createCAOrPanic() tlsgen.CA {
-	ca, err := tlsgen.NewCA()
-	if err != nil {
-		panic(fmt.Sprintf("failed creating CA: %+v", err))
-	}
-	return ca
-}
-
-func prepareForNewComm(t *testing.T) (port int, gRPCServer *comm.GRPCServer, certs *common.TLSCertificates,
-	secureDialOpts api.PeerSecureDialOpts, dialOpts []grpc.DialOption) {
-
-	serverKeyPair, err := ca.NewServerCertKeyPair("127.0.0.1")
-	assert.NoError(t, err)
-	clientKeyPair, err := ca.NewClientCertKeyPair()
-	assert.NoError(t, err)
-
-	tlsServerCert, err := tls.X509KeyPair(serverKeyPair.Cert, serverKeyPair.Key)
-	assert.NoError(t, err)
-	tlsClientCert, err := tls.X509KeyPair(clientKeyPair.Cert, clientKeyPair.Key)
-	assert.NoError(t, err)
-
-	tlsConf := &tls.Config{
-		Certificates: []tls.Certificate{tlsClientCert},
-		ClientAuth:   tls.RequestClientCert,
-		RootCAs:      x509.NewCertPool(),
-	}
-
-	tlsConf.RootCAs.AppendCertsFromPEM(ca.CertBytes())
-
-	ta := credentials.NewTLS(tlsConf)
-	dialOpts = append(dialOpts, grpc.WithTransportCredentials(ta))
-
-	secureDialOpts = func() []grpc.DialOption {
-		return dialOpts
-	}
-
-	certs = &common.TLSCertificates{}
-	certs.TLSServerCert.Store(&tlsServerCert)
-	certs.TLSClientCert.Store(&tlsClientCert)
-
-	srvConfig := comm.ServerConfig{
-		ConnectionTimeout: time.Second,
-		SecOpts: &comm.SecureOptions{
-			Key:         serverKeyPair.Key,
-			Certificate: serverKeyPair.Cert,
-			UseTLS:      true,
-		},
-	}
-	gRPCServer, err = comm.NewGRPCServer("127.0.0.1:", srvConfig)
-	assert.NoError(t, err)
-
-	_, portString, err := net.SplitHostPort(gRPCServer.Address())
-	assert.NoError(t, err)
-	portInt, err := strconv.Atoi(portString)
-	assert.NoError(t, err)
-
-	return portInt, gRPCServer, certs, secureDialOpts, dialOpts
-}
-
 func newCommInstanceOnlyWithMetrics(t *testing.T, commMetrics *metrics.CommMetrics, sec *naiveSecProvider,
 	gRPCServer *comm.GRPCServer, certs *common.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, dialOpts ...grpc.DialOption) Comm {
@@ -193,7 +131,7 @@ func newCommInstanceOnlyWithMetrics(t *testing.T, commMetrics *metrics.CommMetri
 	identityMapper := identity.NewIdentityMapper(sec, id, noopPurgeIdentity, sec)
 
 	commInst, err := NewCommInstance(gRPCServer.Server(), certs, identityMapper, id, secureDialOpts,
-		sec, commMetrics, dialOpts...)
+		sec, commMetrics, testCommConfig, dialOpts...)
 	assert.NoError(t, err)
 
 	go func() {
@@ -201,9 +139,17 @@ func newCommInstanceOnlyWithMetrics(t *testing.T, commMetrics *metrics.CommMetri
 		assert.NoError(t, err)
 	}()
 
-	commInst.(*commImpl).gSrv = gRPCServer.Server()
+	return &commGRPC{commInst.(*commImpl), gRPCServer}
+}
 
-	return commInst
+type commGRPC struct {
+	*commImpl
+	gRPCServer *comm.GRPCServer
+}
+
+func (c *commGRPC) Stop() {
+	c.commImpl.Stop()
+	c.gRPCServer.Stop()
 }
 
 func newCommInstanceOnly(t *testing.T, sec *naiveSecProvider,
@@ -213,7 +159,7 @@ func newCommInstanceOnly(t *testing.T, sec *naiveSecProvider,
 }
 
 func newCommInstance(t *testing.T, sec *naiveSecProvider) (c Comm, port int) {
-	port, gRPCServer, certs, secureDialOpts, dialOpts := prepareForNewComm(t)
+	port, gRPCServer, certs, secureDialOpts, dialOpts := util.CreateGRPCLayer()
 	comm := newCommInstanceOnly(t, sec, gRPCServer, certs, secureDialOpts, dialOpts...)
 	return comm, port
 }
@@ -289,23 +235,6 @@ func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator 
 	msg2Send.Nonce = nonce
 	go stream.Send(msg2Send.Envelope)
 	return acceptChan
-}
-
-func TestViperConfig(t *testing.T) {
-	viper.SetConfigName("core")
-	viper.SetEnvPrefix("CORE")
-	configtest.AddDevConfigPath(nil)
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-	err := viper.ReadInConfig()
-	if err != nil { // Handle errors reading the config file
-		panic(fmt.Errorf("fatal error config file: %s", err))
-	}
-
-	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.connTimeout", 0))
-	assert.Equal(t, time.Duration(300)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.dialTimeout", 0))
-	assert.Equal(t, 20, util.GetIntOrDefault("peer.gossip.recvBuffSize", 0))
-	assert.Equal(t, 200, util.GetIntOrDefault("peer.gossip.sendBuffSize", 0))
 }
 
 func TestMutualParallelSendWithAck(t *testing.T) {
@@ -389,7 +318,7 @@ func TestHandshake(t *testing.T) {
 	idMapper := identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity, naiveSec)
 	inst, err := NewCommInstance(s, nil, idMapper, api.PeerIdentityType(endpoint), func() []grpc.DialOption {
 		return []grpc.DialOption{grpc.WithInsecure()}
-	}, naiveSec, disabledMetrics)
+	}, naiveSec, disabledMetrics, testCommConfig)
 	go s.Serve(ll)
 	assert.NoError(t, err)
 	var msg proto.ReceivedMessage
@@ -513,8 +442,6 @@ func TestBasic(t *testing.T) {
 	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, port2 := newCommInstance(t, naiveSec)
-	comm1.(*commImpl).SetDialOpts()
-	comm2.(*commImpl).SetDialOpts()
 	defer comm1.Stop()
 	defer comm2.Stop()
 	m1 := comm1.Accept(acceptAll)
@@ -545,10 +472,10 @@ func TestConnectUnexpectedPeer(t *testing.T) {
 
 	customNaiveSec := &naiveSecProvider{}
 
-	comm1Port, gRPCServer1, certs1, secureDialOpts1, dialOpts1 := prepareForNewComm(t)
-	comm2Port, gRPCServer2, certs2, secureDialOpts2, dialOpts2 := prepareForNewComm(t)
-	comm3Port, gRPCServer3, certs3, secureDialOpts3, dialOpts3 := prepareForNewComm(t)
-	comm4Port, gRPCServer4, certs4, secureDialOpts4, dialOpts4 := prepareForNewComm(t)
+	comm1Port, gRPCServer1, certs1, secureDialOpts1, dialOpts1 := util.CreateGRPCLayer()
+	comm2Port, gRPCServer2, certs2, secureDialOpts2, dialOpts2 := util.CreateGRPCLayer()
+	comm3Port, gRPCServer3, certs3, secureDialOpts3, dialOpts3 := util.CreateGRPCLayer()
+	comm4Port, gRPCServer4, certs4, secureDialOpts4, dialOpts4 := util.CreateGRPCLayer()
 
 	customNaiveSec.On("OrgByPeerIdentity", identityByPort(comm1Port)).Return(api.OrgIdentityType("O"))
 	customNaiveSec.On("OrgByPeerIdentity", identityByPort(comm2Port)).Return(api.OrgIdentityType("A"))
@@ -682,7 +609,7 @@ func TestCloseConn(t *testing.T) {
 		Data: make([]byte, 1024*1024),
 	}
 	msg2Send.NoopSign()
-	for i := 0; i < defRecvBuffSize; i++ {
+	for i := 0; i < DefRecvBuffSize; i++ {
 		err := stream.Send(msg2Send.Envelope)
 		if err != nil {
 			gotErr = true
@@ -699,7 +626,7 @@ func TestParallelSend(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
-	messages2Send := util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize)
+	messages2Send := DefRecvBuffSize
 
 	wg := sync.WaitGroup{}
 	wg.Add(messages2Send)
@@ -740,7 +667,7 @@ type nonResponsivePeer struct {
 }
 
 func newNonResponsivePeer(t *testing.T) *nonResponsivePeer {
-	port, gRPCServer, _, _, _ := prepareForNewComm(t)
+	port, gRPCServer, _, _, _ := util.CreateGRPCLayer()
 	nrp := &nonResponsivePeer{
 		Server: gRPCServer.Server(),
 		port:   port,
@@ -839,7 +766,7 @@ func TestAccept(t *testing.T) {
 	var evenResults []uint64
 	var oddResults []uint64
 
-	out := make(chan uint64, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize))
+	out := make(chan uint64, DefRecvBuffSize)
 	sem := make(chan struct{}, 0)
 
 	readIntoSlice := func(a *[]uint64, ch <-chan proto.ReceivedMessage) {
@@ -853,11 +780,11 @@ func TestAccept(t *testing.T) {
 	go readIntoSlice(&evenResults, evenNONCES)
 	go readIntoSlice(&oddResults, oddNONCES)
 
-	for i := 0; i < util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize); i++ {
+	for i := 0; i < DefRecvBuffSize; i++ {
 		comm2.Send(createGossipMsg(), remotePeer(port1))
 	}
 
-	waitForMessages(t, out, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize), "Didn't receive all messages sent")
+	waitForMessages(t, out, DefRecvBuffSize, "Didn't receive all messages sent")
 
 	comm1.Stop()
 	comm2.Stop()
@@ -1033,13 +960,6 @@ func waitForMessages(t *testing.T, msgChan chan uint64, count int, errMsg string
 		}
 	}
 	assert.Equal(t, count, c, errMsg)
-}
-
-func TestMain(m *testing.M) {
-	SetDialTimeout(time.Duration(300) * time.Millisecond)
-
-	ret := m.Run()
-	os.Exit(ret)
 }
 
 func TestConcurrentCloseSend(t *testing.T) {

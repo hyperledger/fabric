@@ -127,6 +127,10 @@ func (ga *gossipAdapterImpl) GetConf() channel.Config {
 		BlockExpirationInterval:     ga.conf.PullInterval * 100,
 		StateInfoCacheSweepInterval: ga.conf.PullInterval * 5,
 		TimeForMembershipTracker:    ga.conf.TimeForMembershipTracker,
+		DigestWaitTime:              ga.conf.DigestWaitTime,
+		RequestWaitTime:             ga.conf.RequestWaitTime,
+		ResponseWaitTime:            ga.conf.ResponseWaitTime,
+		MsgExpirationTimeout:        ga.conf.MsgExpirationTimeout,
 	}
 }
 
