@@ -9,12 +9,17 @@ of organizations.
 The information in this tutorial assumes knowledge of private data
 stores and their use cases. For more information, check out :doc:`private-data/private-data`.
 
+.. note:: These instructions use the Fabric chaincode lifecycle introduced as
+          an Alpha feature in Fabric v2.0. If you would like to use the previous
+          lifecycle model to use private data with chaincode, visit the v1.4
+          version of the `Using Private Data in Fabric tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/private_data_tutorial.html>`__.
+
 The tutorial will take you through the following steps to practice defining,
 configuring and using private data with Fabric:
 
 #. :ref:`pd-build-json`
 #. :ref:`pd-read-write-private-data`
-#. :ref:`pd-install-instantiate_cc`
+#. :ref:`pd-install-define_cc`
 #. :ref:`pd-store-private-data`
 #. :ref:`pd-query-authorized`
 #. :ref:`pd-query-unauthorized`
@@ -111,8 +116,8 @@ topic.
 The data to be secured by these policies is mapped in chaincode and will be
 shown later in the tutorial.
 
-This collection definition file is deployed on the channel when its associated
-chaincode is instantiated on the channel using the `peer chaincode instantiate command <http://hyperledger-fabric.readthedocs.io/en/latest/commands/peerchaincode.html#peer-chaincode-instantiate>`__.
+This collection definition file is deployed when the chaincode definition is
+committed to the channel using the `peer lifecycle chaincode commit command <http://hyperledger-fabric.readthedocs.io/en/latest/commands/peerchaincode.html#peer-chaincode-instantiate>`__.
 More details on this process are provided in Section 3 below.
 
 .. _pd-read-write-private-data:
@@ -121,7 +126,7 @@ Read and Write private data using chaincode APIs
 ------------------------------------------------
 
 The next step in understanding how to privatize data on a channel is to build
-the data definition in the chaincode.  The marbles private data sample divides
+the data definition in the chaincode. The marbles private data sample divides
 the private data into two separate data definitions according to how the data will
 be accessed.
 
@@ -245,12 +250,12 @@ keeping private data confidential from orderer.
 Start the network
 -----------------
 
-Now we are ready to step through some commands which demonstrate using private
-data.
+Now we are ready to step through some commands which demonstrate how to use
+private data.
 
  :guilabel:`Try it yourself`
 
- Before installing and instantiating the marbles private data chaincode below,
+ Before installing, defining, and using the marbles private data chaincode below,
  we need to start the BYFN network. For the sake of this tutorial, we want to
  operate from a known initial state. The following command will kill any active
  or stale docker containers and remove previously generated artifacts.
@@ -291,118 +296,259 @@ data.
            but when configuring a channel, the gossip anchors peers are critical to
            configure for collections to work properly.
 
-.. _pd-install-instantiate_cc:
+.. _pd-install-define_cc:
 
-Install and instantiate chaincode with a collection
----------------------------------------------------
+Install and define a chaincode with a collection
+-------------------------------------------------
 
-Client applications interact with the blockchain ledger through chaincode. As
-such we need to install and instantiate the chaincode on every peer that will
-execute and endorse our transactions. Chaincode is installed onto a peer and
-then instantiated onto the channel using :doc:`commands/peercommand`.
+Client applications interact with the blockchain ledger through chaincode.
+Therefore we need to install a chaincode on every peer that will execute and
+endorse our transactions. However, before we can interact with our chaincode,
+the members of the channel need to agree on a chaincode definition that
+establishes chaincode governance, including the private data collection
+configuration. We are going to package, install, and then define the chaincode
+on the channel using :doc:`commands/peerlifecycle`.
 
 Install chaincode on all peers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As discussed above, the BYFN network includes two organizations, Org1 and Org2,
-with two peers each. Therefore the chaincode has to be installed on four peers:
+The chaincode needs to be packaged before it can be installed on our peers.
+We can use the `peer lifecycle chaincode package <http://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html#peer-lifecycle-chaincode-package>`__ command
+to package the marbles chaincode.
+
+The BYFN network includes two organizations, Org1 and Org2, with two peers each.
+Therefore, the chaincode package has to be installed on four peers:
 
 - peer0.org1.example.com
 - peer1.org1.example.com
 - peer0.org2.example.com
 - peer1.org2.example.com
 
-Use the `peer chaincode install <http://hyperledger-fabric.readthedocs.io/en/master/commands/peerchaincode.html?%20chaincode%20instantiate#peer-chaincode-install>`__ command to install the Marbles chaincode on each peer.
+After the chaincode is packaged, we can use the `peer lifecycle chaincode install <http://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html#peer-lifecycle-chaincode-install>`__
+command to install the Marbles chaincode on each peer.
 
- :guilabel:`Try it yourself`
+  :guilabel:`Try it yourself`
 
- Assuming you have started the BYFN network, enter the CLI container.
+  Assuming you have started the BYFN network, enter the CLI container.
 
- .. code:: bash
+  .. code:: bash
 
-    docker exec -it cli bash
+     docker exec -it cli bash
 
- Your command prompt will change to something similar to:
+  Your command prompt will change to something similar to:
 
- ``root@81eac8493633:/opt/gopath/src/github.com/hyperledger/fabric/peer#``
+  .. code:: bash
 
- 1. Use the following command to install the Marbles chaincode from the git
-    repository onto the peer ``peer0.org1.example.com`` in your BYFN network.
-    (By default, after starting the BYFN network, the active peer is set to:
-    ``CORE_PEER_ADDRESS=peer0.org1.example.com:7051``):
+     bash-4.4#
+
+  1. Use the following command to package the Marbles private data chaincode from
+     the git repository inside your local container.
+
+     .. code:: bash
+
+        peer lifecycle chaincode package marblesp.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/ --lang golang --label marblespv1
+
+     This command will create a chaincode package named marblesp.tar.gz.
+
+  2. Use the following command to install the chaincode package onto the peer
+     ``peer0.org1.example.com`` in your BYFN network. By default, after starting
+     the BYFN network, the active peer is set to:
+     ``CORE_PEER_ADDRESS=peer0.org1.example.com:7051``:
+
+     .. code:: bash
+
+        peer lifecycle chaincode install marblesp.tar.gz
+
+     A successful install command will return the chaincode identifier, similar to
+     the response below:
+
+     .. code:: bash
+
+        2019-03-13 13:48:53.691 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 001 Installed remotely: response:<status:200 payload:"\nEmycc:ebd89878c2bbccf62f68c36072626359376aa83c36435a058d453e8dbfd894cc" >
+        2019-03-13 13:48:53.691 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 002 Chaincode code package identifier: mycc:ebd89878c2bbccf62f68c36072626359376aa83c36435a058d453e8dbfd894cc
+
+  3. Use the CLI to switch the active peer to the second peer in Org1 and install
+     the chaincode. Copy and paste the following entire block of commands into the
+     CLI container and run them:
+
+     .. code:: bash
+
+        export CORE_PEER_ADDRESS=peer1.org1.example.com:8051
+        peer lifecycle chaincode install marblesp.tar.gz
+
+  4. Use the CLI to switch to Org2. Copy and paste the following block of commands
+     as a group into the peer container and run them all at once:
+
+     .. code:: bash
+
+        export CORE_PEER_LOCALMSPID=Org2MSP
+        export PEER0_ORG2_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+        export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG2_CA
+        export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+
+  5. Switch the active peer to the first peer in Org2 and install the chaincode:
+
+     .. code:: bash
+
+        export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
+        peer lifecycle chaincode install marblesp.tar.gz
+
+  6. Switch the active peer to the second peer in org2 and install the chaincode:
+
+     .. code:: bash
+
+        export CORE_PEER_ADDRESS=peer1.org2.example.com:10051
+        peer lifecycle chaincode install marblesp.tar.gz
+
+
+Approve the chaincode definition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each channel member that wants to use the chaincode needs to approve a chaincode
+definition for their organization. Since both organizations are going to use the
+chaincode in this tutorial, we need to approve the chaincode definition for both
+Org1 and Org2.
+
+The chaincode definition includes the package identifier that was returned by
+the install command. This packege ID is used to associate the chaincode package
+installed on your peers with the chaincode definition approved by your
+organization. We can also use the `peer lifecycle chaincode queryinstalled <http://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html#peer-lifecycle-chaincode-queryinstalled>`__
+command to find the package ID of ``marblesp.tar.gz``.
+
+Once we have the package ID, we can then use the `peer lifecycle chaincode approveformyorg <http://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html#peer-lifecycle-chaincode-approveformyorg>`__
+command to approve a definition of the marbles chaincode for Org1 and Org2. To approve
+the private data collection definition that accompanies the ``marbles02_private``,
+sample, provide the path to the collections JSON file using the
+``--collections-config`` flag.
+
+  :guilabel:`Try it yourself`
+
+  Run the following commands inside the CLI container to approve a definition for
+  Org1 and Org2.
+
+  1. Use the following command to query your peer for the package ID of the
+     installed chaincode.
+
+     .. code:: bash
+
+        peer lifecycle chaincode queryinstalled
+
+    The command will return the same package identifier as the install command.
+    You should see output similar to the following:
 
     .. code:: bash
 
-       peer chaincode install -n marblesp -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/
+       Get installed chaincodes on peer:
+       Package ID: marblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd, Label: marblespv1
+       Package ID: mycc_1:27ef99cb3cbd1b545063f018f3670eddc0d54f40b2660b8f853ad2854c49a0d8, Label: mycc_1
 
-    When it is complete you should see something similar to:
+  2. Declare the package ID as an environment variable. Paste the package ID of
+     marblespv1 returned by the ``peer lifecycle chaincode queryinstalled`` into
+     the command below. The package ID may not be the same for all users, so you
+     need to complete this step using the package ID returned from your console.
+
+     .. code:: bash
+
+         export CC_PACKAGE_ID=marblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd
+
+  3. Make sure we are running the CLI as Org1. Copy and paste the following block
+     of commands as a group into the peer container and run them all at once:
+
+     .. code :: bash
+
+        export CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+        export CORE_PEER_LOCALMSPID=Org1MSP
+        export PEER0_ORG1_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+        export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG1_CA
+        export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+
+  4. Use the following command to approve a definition of the Marbles private data
+     chaincode for Org2. This command includes a path to the collection definition
+     file. The approval is distributed within each organization using gossip, so
+     the command does not need to target every peer within an organization.
+
+     .. code:: bash
+
+        export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+        peer lifecycle chaincode approveformyorg --channelID mychannel --name marblesp --version 1.0 --collections-config $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile $ORDERER_CA --waitForEvent
+
+     When the command completes successfully you should see something similar to:
+
+     .. code:: bash
+
+        2019-03-18 16:04:09.046 UTC [cli.lifecycle.chaincode] InitCmdFactory -> INFO 001 Retrieved channel (mychannel) orderer endpoint: orderer.example.com:7050
+        2019-03-18 16:04:11.253 UTC [chaincodeCmd] ClientWait -> INFO 002 txid [efba188ca77889cc1c328fc98e0bb12d3ad0abcda3f84da3714471c7c1e6c13c] committed with status (VALID) at
+
+  5. Use the CLI to switch to Org2. Copy and paste the following block of commands
+     as a group into the peer container and run them all at once.
+
+     .. code:: bash
+
+        export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
+        export CORE_PEER_LOCALMSPID=Org2MSP
+        export PEER0_ORG2_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+        export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG2_CA
+        export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+
+  6. You can now approve the chaincode definition for Org2:
+
+     .. code:: bash
+
+        peer lifecycle chaincode approveformyorg --channelID mychannel --name marblesp --version 1.0 --collections-config $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile $ORDERER_CA --waitForEvent
+
+Commit the chaincode definition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once a sufficient number of organizations (in this case, a majority) have
+approved a chaincode definition, one organization commit the definition to the
+channel.
+
+Use the `peer lifecycle chaincode commit <http://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html#peer-lifecycle-chaincode-commit>`__
+command to commit the chaincode definition. This command needs to target the
+peers in Org1 and Org2 to collect endorsements for the commit transaction. The
+peers will endorse the transaction only if their organizations have approved the
+chaincode definition. This command will also deploy the collection definition to
+the channel.
+
+We are ready to use the chaincode after the chaincode definition has been
+committed to the channel. Because the marbles private data chaincode contains an
+initiation function, we need to use the `peer chaincode invoke <http://hyperledger-fabric.readthedocs.io/en/master/commands/peerchaincode.html?%20chaincode%20instantiate#peer-chaincode-instantiate>`__ command
+to invoke ``Init()`` before we can use other functions in the chaincode.
+
+  :guilabel:`Try it yourself`
+
+  1. Run the following commands to commit the definition of the marbles private
+     data chaincode to the BYFN channel ``mychannel``.
 
     .. code:: bash
 
-       install -> INFO 003 Installed remotely response:<status:200 payload:"OK" >
+       export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+       export ORG1_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+       export ORG2_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+       peer lifecycle chaincode commit -o orderer.example.com:7050 --channelID mychannel --name marblesp --version 1.0 --sequence 1 --collections-config $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --tls true --cafile $ORDERER_CA --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles $ORG1_CA --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles $ORG2_CA --waitForEvent
 
- 2. Use the CLI to switch the active peer to the second peer in Org1 and
-    install the chaincode. Copy and paste the following entire block of
-    commands into the CLI container and run them.
+    .. note:: When specifying the value of the ``--collections-config`` flag, you will
+              need to specify the fully qualified path to the collections_config.json file.
+              For example:
 
-    .. code:: bash
+              .. code:: bash
 
-       export CORE_PEER_ADDRESS=peer1.org1.example.com:8051
-       peer chaincode install -n marblesp -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/
+                 --collections-config  $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json
 
- 3. Use the CLI to switch to Org2. Copy and paste the following block of
-    commands as a group into the peer container and run them all at once.
+    When the commit transaction completes successfully you should see something
+    similar to:
 
-    .. code:: bash
+      .. code:: bash
 
-       export CORE_PEER_LOCALMSPID=Org2MSP
-       export PEER0_ORG2_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
-       export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG2_CA
-       export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+         [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
+         [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default vscc
 
- 4. Switch the active peer to the first peer in Org2 and install the chaincode:
+  2. Use the following command to invoke the ``Init`` function to initialize
+     the chaincode:
 
-    .. code:: bash
+     .. code:: bash
 
-       export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
-       peer chaincode install -n marblesp -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/
-
- 5. Switch the active peer to the second peer in org2 and install the chaincode:
-
-    .. code:: bash
-
-       export CORE_PEER_ADDRESS=peer1.org2.example.com:10051
-       peer chaincode install -n marblesp -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/
-
-Instantiate the chaincode on the channel
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Use the `peer chaincode instantiate <http://hyperledger-fabric.readthedocs.io/en/master/commands/peerchaincode.html?%20chaincode%20instantiate#peer-chaincode-instantiate>`__
-command to instantiate the marbles chaincode on a channel. To configure
-the chaincode collections on the channel, specify the flag ``--collections-config``
-along with the name of the collections JSON file, ``collections_config.json`` in our
-example.
-
- :guilabel:`Try it yourself`
-
- Run the following commands to instantiate the marbles private data
- chaincode on the BYFN channel ``mychannel``.
-
- .. code:: bash
-
-   export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-   peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile $ORDERER_CA -C mychannel -n marblesp -v 1.0 -c '{"Args":["init"]}' -P "OR('Org1MSP.member','Org2MSP.member')" --collections-config  $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json
-
- .. note:: When specifying the value of the ``--collections-config`` flag, you will
-           need to specify the fully qualified path to the collections_config.json file.
-           For example: ``--collections-config  $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json``
-
- When the instantiation completes successfully you should see something similar to:
-
- .. code:: bash
-
-    [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
-    [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default vscc
+        peer chaincode invoke -o orderer.example.com:7050 --channelID mychannel --name marblesp --isInit --tls true --cafile $ORDERER_CA --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles $ORG1_CA -c '{"Args":["Init"]}'
 
  .. _pd-store-private-data:
 
@@ -815,6 +961,11 @@ price private data is purged.
 
 Using indexes with private data
 -------------------------------
+
+note:: The Fabric chaincode lifecycle that is being introduced in the Fabric v2.0
+       alpha does not support using couchDB indexes with your chaincode. To
+       use the old lifecycle model to deploy couchDB indexes with private data
+       collections, visit the v1.4 version of the `Using Private Data in Fabric tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/private_data_tutorial.html>`_
 
 Indexes can also be applied to private data collections, by packaging indexes in
 the ``META-INF/statedb/couchdb/collections/<collection_name>/indexes`` directory
