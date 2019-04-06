@@ -25,7 +25,6 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/internal/peer/common/api"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -592,7 +591,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 		}
 		mockDCTwoBlocks := getMockDeliverClientRespondsWithFilteredBlocks(filteredBlocks)
 		mockDC := getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_VALID, "txid0")
-		mockDeliverClients := []api.PeerDeliverClient{mockDCTwoBlocks, mockDC}
+		mockDeliverClients := []pb.DeliverClient{mockDCTwoBlocks, mockDC}
 
 		_, err = ChaincodeInvokeOrQuery(
 			&pb.ChaincodeSpec{},
@@ -611,7 +610,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 	t.Run("failure - one of the deliver clients returns error", func(t *testing.T) {
 		mockDCErr := getMockDeliverClientWithErr("moist")
 		mockDC := getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_VALID, "txid0")
-		mockDeliverClients := []api.PeerDeliverClient{mockDCErr, mockDC}
+		mockDeliverClients := []pb.DeliverClient{mockDCErr, mockDC}
 
 		_, err = ChaincodeInvokeOrQuery(
 			&pb.ChaincodeSpec{},
@@ -631,7 +630,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 	t.Run("failure - transaction committed with non-success validation code", func(t *testing.T) {
 		mockDC := getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_VALID, "txid0")
 		mockDCFail := getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_ENDORSEMENT_POLICY_FAILURE, "txid0")
-		mockDeliverClients := []api.PeerDeliverClient{mockDCFail, mockDC}
+		mockDeliverClients := []pb.DeliverClient{mockDCFail, mockDC}
 
 		_, err = ChaincodeInvokeOrQuery(
 			&pb.ChaincodeSpec{},
@@ -658,7 +657,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 		}
 		mockDF.RecvReturns(resp, nil)
 		mockDC.DeliverFilteredReturns(mockDF, nil)
-		mockDeliverClients := []api.PeerDeliverClient{mockDC}
+		mockDeliverClients := []pb.DeliverClient{mockDC}
 		_, err = ChaincodeInvokeOrQuery(
 			&pb.ChaincodeSpec{},
 			channelID,
@@ -677,7 +676,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 	t.Run(" failure - timeout occurs - both deliver clients don't return an event with the expected txid before timeout", func(t *testing.T) {
 		delayChan := make(chan struct{})
 		mockDCDelay := getMockDeliverClientRespondAfterDelay(delayChan, pb.TxValidationCode_VALID, "txid0")
-		mockDeliverClients := []api.PeerDeliverClient{mockDCDelay, mockDCDelay}
+		mockDeliverClients := []pb.DeliverClient{mockDCDelay, mockDCDelay}
 		waitForEventTimeout = 10 * time.Millisecond
 
 		_, err = ChaincodeInvokeOrQuery(

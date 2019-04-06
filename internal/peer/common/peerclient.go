@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 
 	"github.com/hyperledger/fabric/core/comm"
-	"github.com/hyperledger/fabric/internal/peer/common/api"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
@@ -87,13 +86,12 @@ func (pc *PeerClient) Deliver() (pb.Deliver_DeliverClient, error) {
 
 // PeerDeliver returns a client for the Deliver service for peer-specific use
 // cases (i.e. DeliverFiltered)
-func (pc *PeerClient) PeerDeliver() (api.PeerDeliverClient, error) {
+func (pc *PeerClient) PeerDeliver() (pb.DeliverClient, error) {
 	conn, err := pc.commonClient.NewConnection(pc.address, pc.sn)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.address)
 	}
-	pbClient := pb.NewDeliverClient(conn)
-	return &PeerDeliverClient{Client: pbClient}, nil
+	return pb.NewDeliverClient(conn), nil
 }
 
 // Admin returns a client for the Admin service
@@ -169,7 +167,7 @@ func GetDeliverClient(address, tlsRootCertFile string) (pb.Deliver_DeliverClient
 // tlsRootCertFile are not provided, the target values for the client are taken
 // from the configuration settings for "peer.address" and
 // "peer.tls.rootcert.file"
-func GetPeerDeliverClient(address, tlsRootCertFile string) (api.PeerDeliverClient, error) {
+func GetPeerDeliverClient(address, tlsRootCertFile string) (pb.DeliverClient, error) {
 	var peerClient *PeerClient
 	var err error
 	if address != "" {

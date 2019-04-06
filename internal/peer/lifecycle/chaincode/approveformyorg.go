@@ -15,7 +15,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/internal/peer/common/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
@@ -31,7 +30,7 @@ type ApproverForMyOrg struct {
 	Certificate     tls.Certificate
 	Command         *cobra.Command
 	BroadcastClient common.BroadcastClient
-	DeliverClients  []api.PeerDeliverClient
+	DeliverClients  []pb.DeliverClient
 	EndorserClients []EndorserClient
 	Input           *ApproveForMyOrgInput
 	Signer          Signer

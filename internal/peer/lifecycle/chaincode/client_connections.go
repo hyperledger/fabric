@@ -10,7 +10,6 @@ import (
 	"crypto/tls"
 
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/internal/peer/common/api"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -21,7 +20,7 @@ import (
 // endpoints in a Fabric network.
 type ClientConnections struct {
 	BroadcastClient common.BroadcastClient
-	DeliverClients  []api.PeerDeliverClient
+	DeliverClients  []pb.DeliverClient
 	EndorserClients []pb.EndorserClient
 	Certificate     tls.Certificate
 	Signer          identity.SignerSerializer
@@ -70,7 +69,7 @@ func NewClientConnections(input *ClientConnectionsInput) (*ClientConnections, er
 
 func (c *ClientConnections) setPeerClients(input *ClientConnectionsInput) error {
 	var endorserClients []pb.EndorserClient
-	var deliverClients []api.PeerDeliverClient
+	var deliverClients []pb.DeliverClient
 
 	if err := c.validatePeerConnectionParameters(input); err != nil {
 		return errors.WithMessage(err, "failed to validate peer connection parameters")

@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/internal/peer/common/api"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -101,7 +100,7 @@ func TestInvokeCmd(t *testing.T) {
 
 	// Error case 4 : getPeerDeliverClient returns error
 	t.Logf("Start error case 4: getPeerDeliverClient returns error")
-	common.GetPeerDeliverClientFnc = func(string, string) (api.PeerDeliverClient, error) {
+	common.GetPeerDeliverClientFnc = func(string, string) (pb.DeliverClient, error) {
 		return nil, errors.New("error")
 	}
 	err = cmd.Execute()
@@ -112,7 +111,7 @@ func TestInvokeCmd(t *testing.T) {
 	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
 		return mockCF.EndorserClients[0], nil
 	}
-	common.GetPeerDeliverClientFnc = func(string, string) (api.PeerDeliverClient, error) {
+	common.GetPeerDeliverClientFnc = func(string, string) (pb.DeliverClient, error) {
 		return mockCF.DeliverClients[0], nil
 	}
 	common.GetDefaultSignerFnc = func() (msp.SigningIdentity, error) {
@@ -233,7 +232,7 @@ func getMockChaincodeCmdFactory() (*ChaincodeCmdFactory, error) {
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockResponse, nil), common.GetMockEndorserClient(mockResponse, nil)}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
 	mockDC := getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_VALID, "txid0")
-	mockDeliverClients := []api.PeerDeliverClient{mockDC, mockDC}
+	mockDeliverClients := []pb.DeliverClient{mockDC, mockDC}
 	mockCF := &ChaincodeCmdFactory{
 		EndorserClients: mockEndorserClients,
 		Signer:          signer,
@@ -254,7 +253,7 @@ func getMockChaincodeCmdFactoryWithErr() (*ChaincodeCmdFactory, error) {
 	errMsg := "invoke error"
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(nil, errors.New(errMsg))}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-	mockDeliverClients := []api.PeerDeliverClient{getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_INVALID_OTHER_REASON, "txid0")}
+	mockDeliverClients := []pb.DeliverClient{getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode_INVALID_OTHER_REASON, "txid0")}
 	mockCF := &ChaincodeCmdFactory{
 		EndorserClients: mockEndorserClients,
 		Signer:          signer,
@@ -290,7 +289,7 @@ func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayl
 
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockRespFailure, nil)}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-	mockDeliverClients := []api.PeerDeliverClient{getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode(mockRespFailure.Response.Status), "txid0")}
+	mockDeliverClients := []pb.DeliverClient{getMockDeliverClientResponseWithTxStatusAndID(pb.TxValidationCode(mockRespFailure.Response.Status), "txid0")}
 	mockCF := &ChaincodeCmdFactory{
 		EndorserClients: mockEndorserClients,
 		Signer:          signer,

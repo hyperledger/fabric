@@ -11,7 +11,6 @@ import (
 	"crypto/tls"
 	"time"
 
-	"github.com/hyperledger/fabric/internal/peer/common/api"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -65,7 +64,7 @@ var _ = Describe("Commit", func() {
 			committer = &chaincode.Committer{
 				Certificate:     certificate,
 				BroadcastClient: mockBroadcastClient,
-				DeliverClients:  []api.PeerDeliverClient{mockDeliverClient},
+				DeliverClients:  []pb.DeliverClient{mockDeliverClient},
 				EndorserClients: mockEndorserClients,
 				Input:           input,
 				Signer:          mockSigner,
