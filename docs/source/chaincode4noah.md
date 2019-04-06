@@ -27,17 +27,18 @@ to agree on how a chaincode will be operated before it can be used on a channel.
 The tutorial will discuss how a chaincode operator would use the Fabric
 lifecycle perform the following tasks:
 
-- [Install and define a chaincode](#install-and-define-a-chaincode).
-- [Upgrade a chaincode](#upgrade-a-chaincode).
-- [Migrate to the new Fabric lifecycle](#migrate-to-the-new-fabric-lifecycle).
+- [Install and define a chaincode](#install-and-define-a-chaincode)
+- [Upgrade a chaincode](#upgrade-a-chaincode)
+- [Migrate to the new Fabric lifecycle](#migrate-to-the-new-fabric-lifecycle)
 
-_Note: The Fabric chaincode lifecycle is being introduced as an Alpha feature in
-Fabric v2.0. As a result, some Fabric features cannot be used with chainode that
-uses the new Fabric lifecycle:
-- *Service Discovery is not supported
-- *CouchDB indexes are not supported
+_Note: The new Fabric chaincode lifecycle has limitations in the v2.0.0 alpha 
+release. As a result, some Fabric features cannot be used with chainodes that
+use the new Fabric lifecycle:
+- Service Discovery is not supported
+- CouchDB indexes are not supported_
+
 *To use the old lifecycle model to install and instantiate a chaincode, visit the
-v1.4 version of the [Chaincode for Operators tutorial](https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html)_
+v1.4 version of the [Chaincode for Operators tutorial](https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html)*
 
 ## Install and define a chaincode
 
@@ -62,7 +63,7 @@ every organization on a channel needs to complete each step.
 This tutorial provides a detailed overview of the operations of the Fabric
 chaincode lifecycle rather than the specific commands. To learn more about how
 to use the Fabric lifecycle using the Peer CLI, see [Install and define a chaincode](build_network.html#install-define-chaincode)
-in the Building your First Network Tutorial or the [peer lifecycle command reference](../commands/peerlifecycle.html).
+in the Building your First Network Tutorial or the [peer lifecycle command reference](commands/peerlifecycle.html).
 To learn more about how to use the Fabric lifecycle using the Fabric SDK for
 Node.js, visit [How to install and start your chaincode](https://fabric-sdk-node.github.io/master/tutorial-chaincode-lifecycle.html).
 
@@ -161,15 +162,16 @@ chaincode for your organization once, even if you have multiple peers.
 ### Step Four: Commit the chaincode definition to the channel
 
 Once a sufficient number of channel members have approved a chaincode definition,
-one organization can commit the definition to the channel. The channel members
-need to communicate that they have approved the definition out of band. The
-commit transaction is first submitted to the peers of channel members, who query
-the chaincode definition approved for their organizations and endorse the
-definition if their organization has approved it. The transaction is then sent
-to the ordering service, which then commits the chaincode definition to the
-channel. The commit definition transaction needs to be submitted as the
-**Organization Administrator**, whose signing certificate is listed as an admin
-cert in the MSP of your organization definition.
+one organization can commit the definition to the channel. You can use the
+``queryapprovalstatus`` command to find which channel members have approved a
+definition before committing it to the channel using the peer CLI. The commit
+transaction is first submitted to the peers of channel members, who query the
+chaincode definition approved for their organizations and endorse the definition
+if their organization has approved it. The transaction is then sent to the
+ordering service, which then commits the chaincode definition to the channel.
+The commit definition transaction needs to be submitted as the **Organization**
+**Administrator**, whose signing certificate is listed as an admin cert in the
+MSP of your organization definition.
 
 The number of organizations that need to approve a definition before it can be
 successfully committed to the channel is governed by the
@@ -234,13 +236,13 @@ number by one and approve a new definition to upgrade the chaincode. The version
 parameter is used to track the chaincode binaries, and needs to be changed only
 when you upgrade the chaincode binaries.
 
-## Migrating to the new Fabric lifecycle
+## Migrate to the new Fabric lifecycle
 
-You can use the Fabric chaincode lifecycle my creating a new channel and setting
-the channel capabilities to `V2_0`. You will not be able to use the old lifecycle
-to install, instantiate, or update a chaincode on a channels with `V2_0` capabilities
-enabled. Migration from the old lifecycle to the new lifecycle is not supported
-for the Fabric v2.0 Alpha.
+You can use the Fabric chaincode lifecycle by creating a new channel and setting
+the channel capabilities to `V2_0`. You will not be able to use the previous
+lifecycle to install, instantiate, or update a chaincode on a channels with
+`V2_0` capabilities enabled. Migration from the old lifecycle to the new
+lifecycle is not supported for the Fabric v2.0 Alpha.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->
