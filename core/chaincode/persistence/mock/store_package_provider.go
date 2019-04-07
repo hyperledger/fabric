@@ -5,14 +5,15 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 )
 
 type StorePackageProvider struct {
 	GetChaincodeInstallPathStub        func() string
 	getChaincodeInstallPathMutex       sync.RWMutex
-	getChaincodeInstallPathArgsForCall []struct{}
-	getChaincodeInstallPathReturns     struct {
+	getChaincodeInstallPathArgsForCall []struct {
+	}
+	getChaincodeInstallPathReturns struct {
 		result1 string
 	}
 	getChaincodeInstallPathReturnsOnCall map[int]struct {
@@ -20,8 +21,9 @@ type StorePackageProvider struct {
 	}
 	ListInstalledChaincodesStub        func() ([]chaincode.InstalledChaincode, error)
 	listInstalledChaincodesMutex       sync.RWMutex
-	listInstalledChaincodesArgsForCall []struct{}
-	listInstalledChaincodesReturns     struct {
+	listInstalledChaincodesArgsForCall []struct {
+	}
+	listInstalledChaincodesReturns struct {
 		result1 []chaincode.InstalledChaincode
 		result2 error
 	}
@@ -29,10 +31,10 @@ type StorePackageProvider struct {
 		result1 []chaincode.InstalledChaincode
 		result2 error
 	}
-	LoadStub        func(packageID persistence.PackageID) ([]byte, error)
+	LoadStub        func(persistence.PackageID) ([]byte, error)
 	loadMutex       sync.RWMutex
 	loadArgsForCall []struct {
-		packageID persistence.PackageID
+		arg1 persistence.PackageID
 	}
 	loadReturns struct {
 		result1 []byte
@@ -49,7 +51,8 @@ type StorePackageProvider struct {
 func (fake *StorePackageProvider) GetChaincodeInstallPath() string {
 	fake.getChaincodeInstallPathMutex.Lock()
 	ret, specificReturn := fake.getChaincodeInstallPathReturnsOnCall[len(fake.getChaincodeInstallPathArgsForCall)]
-	fake.getChaincodeInstallPathArgsForCall = append(fake.getChaincodeInstallPathArgsForCall, struct{}{})
+	fake.getChaincodeInstallPathArgsForCall = append(fake.getChaincodeInstallPathArgsForCall, struct {
+	}{})
 	fake.recordInvocation("GetChaincodeInstallPath", []interface{}{})
 	fake.getChaincodeInstallPathMutex.Unlock()
 	if fake.GetChaincodeInstallPathStub != nil {
@@ -58,7 +61,8 @@ func (fake *StorePackageProvider) GetChaincodeInstallPath() string {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getChaincodeInstallPathReturns.result1
+	fakeReturns := fake.getChaincodeInstallPathReturns
+	return fakeReturns.result1
 }
 
 func (fake *StorePackageProvider) GetChaincodeInstallPathCallCount() int {
@@ -67,7 +71,15 @@ func (fake *StorePackageProvider) GetChaincodeInstallPathCallCount() int {
 	return len(fake.getChaincodeInstallPathArgsForCall)
 }
 
+func (fake *StorePackageProvider) GetChaincodeInstallPathCalls(stub func() string) {
+	fake.getChaincodeInstallPathMutex.Lock()
+	defer fake.getChaincodeInstallPathMutex.Unlock()
+	fake.GetChaincodeInstallPathStub = stub
+}
+
 func (fake *StorePackageProvider) GetChaincodeInstallPathReturns(result1 string) {
+	fake.getChaincodeInstallPathMutex.Lock()
+	defer fake.getChaincodeInstallPathMutex.Unlock()
 	fake.GetChaincodeInstallPathStub = nil
 	fake.getChaincodeInstallPathReturns = struct {
 		result1 string
@@ -75,6 +87,8 @@ func (fake *StorePackageProvider) GetChaincodeInstallPathReturns(result1 string)
 }
 
 func (fake *StorePackageProvider) GetChaincodeInstallPathReturnsOnCall(i int, result1 string) {
+	fake.getChaincodeInstallPathMutex.Lock()
+	defer fake.getChaincodeInstallPathMutex.Unlock()
 	fake.GetChaincodeInstallPathStub = nil
 	if fake.getChaincodeInstallPathReturnsOnCall == nil {
 		fake.getChaincodeInstallPathReturnsOnCall = make(map[int]struct {
@@ -89,7 +103,8 @@ func (fake *StorePackageProvider) GetChaincodeInstallPathReturnsOnCall(i int, re
 func (fake *StorePackageProvider) ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error) {
 	fake.listInstalledChaincodesMutex.Lock()
 	ret, specificReturn := fake.listInstalledChaincodesReturnsOnCall[len(fake.listInstalledChaincodesArgsForCall)]
-	fake.listInstalledChaincodesArgsForCall = append(fake.listInstalledChaincodesArgsForCall, struct{}{})
+	fake.listInstalledChaincodesArgsForCall = append(fake.listInstalledChaincodesArgsForCall, struct {
+	}{})
 	fake.recordInvocation("ListInstalledChaincodes", []interface{}{})
 	fake.listInstalledChaincodesMutex.Unlock()
 	if fake.ListInstalledChaincodesStub != nil {
@@ -98,7 +113,8 @@ func (fake *StorePackageProvider) ListInstalledChaincodes() ([]chaincode.Install
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.listInstalledChaincodesReturns.result1, fake.listInstalledChaincodesReturns.result2
+	fakeReturns := fake.listInstalledChaincodesReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *StorePackageProvider) ListInstalledChaincodesCallCount() int {
@@ -107,7 +123,15 @@ func (fake *StorePackageProvider) ListInstalledChaincodesCallCount() int {
 	return len(fake.listInstalledChaincodesArgsForCall)
 }
 
+func (fake *StorePackageProvider) ListInstalledChaincodesCalls(stub func() ([]chaincode.InstalledChaincode, error)) {
+	fake.listInstalledChaincodesMutex.Lock()
+	defer fake.listInstalledChaincodesMutex.Unlock()
+	fake.ListInstalledChaincodesStub = stub
+}
+
 func (fake *StorePackageProvider) ListInstalledChaincodesReturns(result1 []chaincode.InstalledChaincode, result2 error) {
+	fake.listInstalledChaincodesMutex.Lock()
+	defer fake.listInstalledChaincodesMutex.Unlock()
 	fake.ListInstalledChaincodesStub = nil
 	fake.listInstalledChaincodesReturns = struct {
 		result1 []chaincode.InstalledChaincode
@@ -116,6 +140,8 @@ func (fake *StorePackageProvider) ListInstalledChaincodesReturns(result1 []chain
 }
 
 func (fake *StorePackageProvider) ListInstalledChaincodesReturnsOnCall(i int, result1 []chaincode.InstalledChaincode, result2 error) {
+	fake.listInstalledChaincodesMutex.Lock()
+	defer fake.listInstalledChaincodesMutex.Unlock()
 	fake.ListInstalledChaincodesStub = nil
 	if fake.listInstalledChaincodesReturnsOnCall == nil {
 		fake.listInstalledChaincodesReturnsOnCall = make(map[int]struct {
@@ -129,21 +155,22 @@ func (fake *StorePackageProvider) ListInstalledChaincodesReturnsOnCall(i int, re
 	}{result1, result2}
 }
 
-func (fake *StorePackageProvider) Load(packageID persistence.PackageID) ([]byte, error) {
+func (fake *StorePackageProvider) Load(arg1 persistence.PackageID) ([]byte, error) {
 	fake.loadMutex.Lock()
 	ret, specificReturn := fake.loadReturnsOnCall[len(fake.loadArgsForCall)]
 	fake.loadArgsForCall = append(fake.loadArgsForCall, struct {
-		packageID persistence.PackageID
-	}{packageID})
-	fake.recordInvocation("Load", []interface{}{packageID})
+		arg1 persistence.PackageID
+	}{arg1})
+	fake.recordInvocation("Load", []interface{}{arg1})
 	fake.loadMutex.Unlock()
 	if fake.LoadStub != nil {
-		return fake.LoadStub(packageID)
+		return fake.LoadStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.loadReturns.result1, fake.loadReturns.result2
+	fakeReturns := fake.loadReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *StorePackageProvider) LoadCallCount() int {
@@ -152,13 +179,22 @@ func (fake *StorePackageProvider) LoadCallCount() int {
 	return len(fake.loadArgsForCall)
 }
 
+func (fake *StorePackageProvider) LoadCalls(stub func(persistence.PackageID) ([]byte, error)) {
+	fake.loadMutex.Lock()
+	defer fake.loadMutex.Unlock()
+	fake.LoadStub = stub
+}
+
 func (fake *StorePackageProvider) LoadArgsForCall(i int) persistence.PackageID {
 	fake.loadMutex.RLock()
 	defer fake.loadMutex.RUnlock()
-	return fake.loadArgsForCall[i].packageID
+	argsForCall := fake.loadArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *StorePackageProvider) LoadReturns(result1 []byte, result2 error) {
+	fake.loadMutex.Lock()
+	defer fake.loadMutex.Unlock()
 	fake.LoadStub = nil
 	fake.loadReturns = struct {
 		result1 []byte
@@ -167,6 +203,8 @@ func (fake *StorePackageProvider) LoadReturns(result1 []byte, result2 error) {
 }
 
 func (fake *StorePackageProvider) LoadReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.loadMutex.Lock()
+	defer fake.loadMutex.Unlock()
 	fake.LoadStub = nil
 	if fake.loadReturnsOnCall == nil {
 		fake.loadReturnsOnCall = make(map[int]struct {

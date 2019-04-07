@@ -2,17 +2,16 @@
 package mock
 
 import (
-	"os"
 	"sync"
 )
 
 type Writer struct {
-	WriteFileStub        func(string, []byte, os.FileMode) error
+	WriteFileStub        func(string, string, []byte) error
 	writeFileMutex       sync.RWMutex
 	writeFileArgsForCall []struct {
 		arg1 string
-		arg2 []byte
-		arg3 os.FileMode
+		arg2 string
+		arg3 []byte
 	}
 	writeFileReturns struct {
 		result1 error
@@ -24,20 +23,20 @@ type Writer struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Writer) WriteFile(arg1 string, arg2 []byte, arg3 os.FileMode) error {
-	var arg2Copy []byte
-	if arg2 != nil {
-		arg2Copy = make([]byte, len(arg2))
-		copy(arg2Copy, arg2)
+func (fake *Writer) WriteFile(arg1 string, arg2 string, arg3 []byte) error {
+	var arg3Copy []byte
+	if arg3 != nil {
+		arg3Copy = make([]byte, len(arg3))
+		copy(arg3Copy, arg3)
 	}
 	fake.writeFileMutex.Lock()
 	ret, specificReturn := fake.writeFileReturnsOnCall[len(fake.writeFileArgsForCall)]
 	fake.writeFileArgsForCall = append(fake.writeFileArgsForCall, struct {
 		arg1 string
-		arg2 []byte
-		arg3 os.FileMode
-	}{arg1, arg2Copy, arg3})
-	fake.recordInvocation("WriteFile", []interface{}{arg1, arg2Copy, arg3})
+		arg2 string
+		arg3 []byte
+	}{arg1, arg2, arg3Copy})
+	fake.recordInvocation("WriteFile", []interface{}{arg1, arg2, arg3Copy})
 	fake.writeFileMutex.Unlock()
 	if fake.WriteFileStub != nil {
 		return fake.WriteFileStub(arg1, arg2, arg3)
@@ -55,13 +54,13 @@ func (fake *Writer) WriteFileCallCount() int {
 	return len(fake.writeFileArgsForCall)
 }
 
-func (fake *Writer) WriteFileCalls(stub func(string, []byte, os.FileMode) error) {
+func (fake *Writer) WriteFileCalls(stub func(string, string, []byte) error) {
 	fake.writeFileMutex.Lock()
 	defer fake.writeFileMutex.Unlock()
 	fake.WriteFileStub = stub
 }
 
-func (fake *Writer) WriteFileArgsForCall(i int) (string, []byte, os.FileMode) {
+func (fake *Writer) WriteFileArgsForCall(i int) (string, string, []byte) {
 	fake.writeFileMutex.RLock()
 	defer fake.writeFileMutex.RUnlock()
 	argsForCall := fake.writeFileArgsForCall[i]
