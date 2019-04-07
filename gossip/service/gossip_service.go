@@ -458,12 +458,12 @@ func (g *gossipServiceImpl) onStatusChangeFactory(chainID string, committer bloc
 			}
 			logger.Info("Elected as a leader, starting delivery service for channel", chainID)
 			if err := g.deliveryService[chainID].StartDeliverForChannel(chainID, committer, yield); err != nil {
-				logger.Errorf("Delivery service is not able to start blocks delivery for chain, due to %+v", errors.WithStack(err))
+				logger.Errorf("Delivery service is not able to start blocks delivery for chain, due to %+v", err)
 			}
 		} else {
 			logger.Info("Renounced leadership, stopping delivery service for channel", chainID)
 			if err := g.deliveryService[chainID].StopDeliverForChannel(chainID); err != nil {
-				logger.Errorf("Delivery service is not able to stop blocks delivery for chain, due to %+v", errors.WithStack(err))
+				logger.Errorf("Delivery service is not able to stop blocks delivery for chain, due to %+v", err)
 			}
 
 		}
