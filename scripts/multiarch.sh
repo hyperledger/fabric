@@ -67,14 +67,14 @@ for image in ${IMAGES}; do
   docker pull ${NS_PULL}/${image}:s390x-${VERSION} || missing
 done
 
-# push the multiarch manifest and tag with just $VERSION and 'latest'
+# push the multiarch manifest and tag with just $VERSION
 for image in ${IMAGES}; do
   manifest-tool --username ${USER} --password ${PASSWORD} push from-args\
    --platforms linux/amd64,linux/s390x --template "${NS_PULL}/${image}:ARCH-${VERSION}"\
    --target "${NS_PUSH}/${image}:${VERSION}"
-  manifest-tool --username ${USER} --password ${PASSWORD} push from-args\
-   --platforms linux/amd64,linux/s390x --template "${NS_PULL}/${image}:ARCH-${VERSION}"\
-   --target "${NS_PUSH}/${image}:latest"
+ # manifest-tool --username ${USER} --password ${PASSWORD} push from-args\
+ #  --platforms linux/amd64,linux/s390x --template "${NS_PULL}/${image}:ARCH-${VERSION}"\
+ #  --target "${NS_PUSH}/${image}:latest"
   manifest-tool --username ${USER} --password ${PASSWORD} push from-args\
    --platforms linux/amd64,linux/s390x --template "${NS_PULL}/${image}:ARCH-${VERSION}"\
    --target "${NS_PUSH}/${image}:${TWO_DIGIT_VERSION}"
@@ -84,7 +84,7 @@ done
 for image in ${IMAGES}; do
   docker pull ${NS_PULL}/${image}:${VERSION} || failed
   docker pull ${NS_PULL}/${image}:${TWO_DIGIT_VERSION} || failed
-  docker pull ${NS_PULL}/${image}:latest || failed
+#  docker pull ${NS_PULL}/${image}:latest || failed
 done
 
 echo "Successfully pushed multiarch manifest"
