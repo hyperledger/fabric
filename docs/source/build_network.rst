@@ -835,9 +835,10 @@ Once a sufficient number of channel members have approved a chaincode definition
 one member can commit the definition to the channel. By default a majority of
 channel members need to approve a definition before it can be committed. It is
 possible to discover the approval status for the chanincode definition across all
-organizations by issuing the following query
+organizations by issuing the following query:
 
 .. code:: bash
+
     # the flags used for this command are identical to those used for approveformyorg
     # except for --package-id which is not required since it is not stored as part of
     # the definition
@@ -845,9 +846,10 @@ organizations by issuing the following query
 
 The command will produce as output a JSON map showing if the organizations in the
 channel have approved the chaincode definition provided in the queryapprovalstatus
-command. In this case, given that both organizations have approved, we obtain
+command. In this case, given that both organizations have approved, we obtain:
 
 .. code:: bash
+
     {
             "Approved": {
                     "Org1MSP": true,
@@ -880,7 +882,7 @@ ledger.
 
     # be sure to set the -C and -n flags appropriately
     # use the --isInit flag if you are invoking an Init function
-    peer chaincode invoke -o orderer.example.com:7050 --isInit --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["Init","a","100","b","100"]}'
+    peer chaincode invoke -o orderer.example.com:7050 --isInit --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["Init","a","100","b","100"]}' --waitForEvent
 
 The first invoke will start the chaincode container. We may need to wait for the
 container to start. Node.js images will take longer.
@@ -906,7 +908,7 @@ and update the state DB. The syntax for invoke is as follows:
 .. code:: bash
 
   # be sure to set the -C and -n flags appropriately
-  peer chaincode invoke -o orderer.example.com:7050 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["invoke","a","b","10"]}'
+  peer chaincode invoke -o orderer.example.com:7050 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["invoke","a","b","10"]}' --waitForEvent
 
 Query
 ^^^^^
@@ -928,9 +930,6 @@ We should see the following:
 
    Query Result: 90
 
-Feel free to start over and manipulate the key value pairs and subsequent
-invocations.
-
 Install the chaincode on an additional peer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -939,7 +938,7 @@ join them to the channel and install the same chaincode package on the peers.
 You only need to approve the chaincode definition once from your organization.
 A chaincode container will be launched for each peer as soon as they try to
 interact with that specific chaincode. Again, be cognizant of the fact that the
-Node.js images will be slower to compile.
+Node.js images will be slower to build and start upon the first invoke.
 
 We will install the chaincode on a third peer, peer1 in Org2. Modify the
 following four environment variables to issue the install command against peer1
@@ -990,6 +989,9 @@ We should see the following:
 
    Query Result: 90
 
+If you received an error, it may be because it takes a few seconds for the
+peer to join and catch up to the current blockchain height. You may
+re-query as needed. Feel free to perform additional invokes as well.
 
 .. _behind-scenes:
 
@@ -1028,19 +1030,18 @@ What's happening behind the scenes?
    the ``Org1MSPanchors.tx`` and ``Org2MSPanchors.tx`` artifacts to the ordering
    service along with the name of our channel.
 
--  A chaincode - **abstore** - is installed on ``peer0.org1.example.com`` and
-   ``peer0.org2.example.com``
+-  A chaincode - **abstore** - is packaged and installed on ``peer0.org1.example.com``
+   and ``peer0.org2.example.com``
 
--  The chaincode is then "instantiated" on ``mychannel``. Instantiation
-   adds the chaincode to the channel, starts the container for the target peer,
+-  The chaincode is then separately approved by Org1 and Org2, and then committed
+   on the channel. Since an endorsement policy was not specified, the channel's
+   default endorsement policy of a majority of organizations will get utilized,
+   meaning that any transaction must be endorsed by a peer tied to Org1 and Org2.
+
+-  The chaincode Init is then called which starts the container for the target peer,
    and initializes the key value pairs associated with the chaincode.  The initial
-   values for this example are ["a","100" "b","200"]. This "instantiation" results
+   values for this example are ["a","100" "b","200"]. This first invoke results
    in a container by the name of ``dev-peer0.org2.example.com-mycc-1.0`` starting.
-
--  The instantiation also passes in an argument for the endorsement
-   policy. The policy is defined as
-   ``-P "AND ('Org1MSP.peer','Org2MSP.peer')"``, meaning that any
-   transaction must be endorsed by a peer tied to Org1 and Org2.
 
 -  A query against the value of "a" is issued to ``peer0.org2.example.com``.
    A container for Org2 peer0 by the name of ``dev-peer0.org2.example.com-mycc-1.0``
@@ -1075,8 +1076,8 @@ comprises the blockchain to store the immutable, sequenced record in
 blocks, as well as a state database to maintain a snapshot of the current state.
 This includes those peers that do not have chaincode installed on them
 (like ``peer1.org1.example.com`` in the above example) . Finally, the chaincode is accessible
-after it is installed (like ``peer1.org2.example.com`` in the above example) because it
-has already been instantiated.
+after it is installed (like ``peer1.org2.example.com`` in the above example) because its
+definition has already been committed on the channel.
 
 How do I see these transactions?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1135,6 +1136,13 @@ output from each container:
         04:31:30.420 [BCCSP_FACTORY] DEBU : Initialize BCCSP [SW]
         ex02 Invoke
         Query Response:{"Name":"a","Amount":"90"}
+
+You can also see the peer logs to view chaincode invoke messages
+and block commit messages:
+
+.. code:: bash
+
+          $ docker logs peer0.org1.example.com
 
 Understanding the Docker Compose topology
 -----------------------------------------
