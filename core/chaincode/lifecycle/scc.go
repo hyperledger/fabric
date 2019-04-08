@@ -308,7 +308,7 @@ func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodes
 // ApproveChaincodeDefinitionForMyOrg is a SCC function that may be dispatched
 // to which routes to the underlying lifecycle implementation.
 func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChaincodeDefinitionForMyOrgArgs) (proto.Message, error) {
-	if err := validateNameVersion(input.Name, input.Version); err != nil {
+	if err := validateInput(input.Name, input.Version, input.Collections); err != nil {
 		return nil, err
 	}
 
@@ -426,7 +426,7 @@ func (i *Invocation) QueryApprovalStatus(input *lb.QueryApprovalStatusArgs) (pro
 // CommitChaincodeDefinition is a SCC function that may be dispatched
 // to which routes to the underlying lifecycle implementation.
 func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefinitionArgs) (proto.Message, error) {
-	if err := validateNameVersion(input.Name, input.Version); err != nil {
+	if err := validateInput(input.Name, input.Version, input.Collections); err != nil {
 		return nil, err
 	}
 
@@ -492,7 +492,6 @@ func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefiniti
 // QueryChaincodeDefinition is a SCC function that may be dispatched
 // to which routes to the underlying lifecycle implementation.
 func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinitionArgs) (proto.Message, error) {
-
 	logger.Debugf("received invocation of QueryChaincodeDefinition on channel '%s' for chaincode '%s'",
 		i.Stub.GetChannelID(),
 		input.Name,
@@ -538,29 +537,51 @@ func (i *Invocation) QueryNamespaceDefinitions(input *lb.QueryNamespaceDefinitio
 }
 
 var (
-	// NOTE these regular expressions should stay in sync with those defined in
-	// core/scc/lscc/lscc.go until LSCC has been removed.
-	chaincodeNameRegExp    = regexp.MustCompile("^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$")
-	chaincodeVersionRegExp = regexp.MustCompile("^[A-Za-z0-9_.+-]+$")
-)
+	// NOTE the chaincode name/version regular expressions should stay in sync
+	// with those defined in core/scc/lscc/lscc.go until LSCC has been removed.
+	ChaincodeNameRegExp    = regexp.MustCompile("^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$")
+	ChaincodeVersionRegExp = regexp.MustCompile("^[A-Za-z0-9_.+-]+$")
 
-func validateNameVersion(name, version string) error {
-	if !chaincodeNameRegExp.MatchString(name) {
-		return errors.Errorf("invalid chaincode name '%s'. Names can only consist of alphanumerics, '_', and '-'", name)
-	}
-	if !chaincodeVersionRegExp.MatchString(version) {
-		return errors.Errorf("invalid chaincode version '%s'. Versions can only consist of alphanumerics, '_', '-', '+', and '.'", version)
-	}
+	collectionNameRegExp = regexp.MustCompile("^[A-Za-z0-9-]+([A-Za-z0-9_-]+)*$")
 
-	systemChaincodeNames := map[string]struct{}{
+	// currently defined system chaincode names that shouldn't
+	// be allowed as user-defined chaincode names
+	systemChaincodeNames = map[string]struct{}{
 		"cscc": {},
 		"escc": {},
 		"lscc": {},
 		"qscc": {},
 		"vscc": {},
 	}
+)
+
+func validateInput(name, version string, collections *cb.CollectionConfigPackage) error {
+	if !ChaincodeNameRegExp.MatchString(name) {
+		return errors.Errorf("invalid chaincode name '%s'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'", name)
+	}
 	if _, ok := systemChaincodeNames[name]; ok {
 		return errors.Errorf("chaincode name '%s' is the name of a system chaincode", name)
+	}
+
+	if !ChaincodeVersionRegExp.MatchString(version) {
+		return errors.Errorf("invalid chaincode version '%s'. Versions can only consist of alphanumerics, '_', '-', '+', and '.'", version)
+	}
+
+	if collections == nil {
+		return nil
+	}
+
+	for _, c := range collections.Config {
+		switch t := c.Payload.(type) {
+		case *cb.CollectionConfig_StaticCollectionConfig:
+			if !collectionNameRegExp.MatchString(t.StaticCollectionConfig.Name) {
+				return errors.Errorf("invalid collection name '%s'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'", t.StaticCollectionConfig.Name)
+			}
+		default:
+			// this should only occur if a developer has added a new
+			// collection config type
+			return errors.Errorf("collection config contains unexpected payload type: %T", t)
+		}
 	}
 
 	return nil
