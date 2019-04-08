@@ -22,7 +22,7 @@ func TestAPIProcessTimeMetric(t *testing.T) {
 	fakeHistogram.WithReturns(fakeHistogram)
 
 	// create a new couch instance
-	config := testConfig("")
+	config := testConfig()
 	config.MaxRetries = 0
 	couchInstance, err := CreateCouchInstance(config, &disabled.Provider{})
 	gt.Expect(err).NotTo(HaveOccurred(), "Error when trying to create couch instance")

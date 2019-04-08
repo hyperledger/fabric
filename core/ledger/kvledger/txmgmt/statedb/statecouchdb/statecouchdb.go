@@ -379,7 +379,7 @@ const optionLimit = "limit"
 func (vdb *VersionedDB) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
 	logger.Debugf("Entering GetStateRangeScanIteratorWithMetadata  namespace: %s  startKey: %s  endKey: %s  metadata: %v", namespace, startKey, endKey, metadata)
 	// Get the internalQueryLimit from core.yaml
-	internalQueryLimit := int32(ledgerconfig.GetInternalQueryLimit())
+	internalQueryLimit := vdb.couchInstance.InternalQueryLimit()
 	requestedLimit := int32(0)
 	// if metadata is provided, validate and apply options
 	if metadata != nil {
@@ -472,7 +472,7 @@ func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIt
 func (vdb *VersionedDB) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
 	logger.Debugf("Entering ExecuteQueryWithMetadata  namespace: %s,  query: %s,  metadata: %v", namespace, query, metadata)
 	// Get the querylimit from core.yaml
-	internalQueryLimit := int32(ledgerconfig.GetInternalQueryLimit())
+	internalQueryLimit := vdb.couchInstance.InternalQueryLimit()
 	bookmark := ""
 	requestedLimit := int32(0)
 	// if metadata is provided, then validate and set provided options

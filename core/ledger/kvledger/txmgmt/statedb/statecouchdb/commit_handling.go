@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/pkg/errors"
 )
@@ -64,7 +63,7 @@ func (builder *nsCommittersBuilder) execute() error {
 	if err := addRevisionsForMissingKeys(builder.revisions, builder.db, builder.updates); err != nil {
 		return err
 	}
-	maxBacthSize := ledgerconfig.GetMaxBatchUpdateSize()
+	maxBatchSize := builder.db.CouchInstance.MaxBatchUpdateSize()
 	batchUpdateMap := make(map[string]*batchableDocument)
 	for key, vv := range builder.updates {
 		couchDoc, err := keyValToCouchDoc(&keyValue{key: key, VersionedValue: vv}, builder.revisions[key])
@@ -72,7 +71,7 @@ func (builder *nsCommittersBuilder) execute() error {
 			return err
 		}
 		batchUpdateMap[key] = &batchableDocument{CouchDoc: *couchDoc, Deleted: vv.Value == nil}
-		if len(batchUpdateMap) == maxBacthSize {
+		if len(batchUpdateMap) == maxBatchSize {
 			builder.subNsCommitters = append(builder.subNsCommitters, &subNsCommitter{builder.db, batchUpdateMap})
 			batchUpdateMap = make(map[string]*batchableDocument)
 		}

@@ -19,6 +19,15 @@ func ledgerConfig() *ledger.Config {
 	if viper.IsSet("ledger.state.couchDBConfig.warmIndexesAfterNBlocks") {
 		warmAfterNBlocks = viper.GetInt("ledger.state.couchDBConfig.warmIndexesAfterNBlocks")
 	}
+	internalQueryLimit := 1000
+	if viper.IsSet("ledger.state.couchDBConfig.internalQueryLimit") {
+		internalQueryLimit = viper.GetInt("ledger.state.couchDBConfig.internalQueryLimit")
+	}
+	maxBatchUpdateSize := 1000
+	if viper.IsSet("ledger.state.couchDBConfig.maxBatchUpdateSize") {
+		maxBatchUpdateSize = viper.GetInt("ledger.state.couchDBConfig.maxBatchUpdateSize")
+	}
+
 	config := &ledger.Config{
 		StateDB: &ledger.StateDB{
 			StateDatabase: viper.GetString("ledger.state.stateDatabase"),
@@ -34,6 +43,8 @@ func ledgerConfig() *ledger.Config {
 			MaxRetries:              viper.GetInt("ledger.state.couchDBConfig.maxRetries"),
 			MaxRetriesOnStartup:     viper.GetInt("ledger.state.couchDBConfig.maxRetriesOnStartup"),
 			RequestTimeout:          viper.GetDuration("ledger.state.couchDBConfig.requestTimeout"),
+			InternalQueryLimit:      internalQueryLimit,
+			MaxBatchUpdateSize:      maxBatchUpdateSize,
 			WarmIndexesAfterNBlocks: warmAfterNBlocks,
 			CreateGlobalChangesDB:   viper.GetBool("ledger.state.couchDBConfig.createGlobalChangesDB"),
 		}

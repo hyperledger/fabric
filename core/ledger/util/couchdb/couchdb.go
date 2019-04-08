@@ -441,6 +441,18 @@ func (couchInstance *CouchInstance) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
+// InternalQueryLimit returns the maximum number of records to return internally
+// when querying CouchDB.
+func (couchInstance *CouchInstance) InternalQueryLimit() int32 {
+	return int32(couchInstance.conf.InternalQueryLimit)
+}
+
+// MaxBatchUpdateSize returns the maximum number of records to include in a
+// bulk update operation.
+func (couchInstance *CouchInstance) MaxBatchUpdateSize() int {
+	return couchInstance.conf.MaxBatchUpdateSize
+}
+
 // URL returns the URL for the CouchDB instance.
 func (couchInstance *CouchInstance) URL() string {
 	URL := &url.URL{

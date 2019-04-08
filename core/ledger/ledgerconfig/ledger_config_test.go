@@ -90,26 +90,6 @@ func TestGetTotalLimit(t *testing.T) {
 	assert.Equal(t, 5000, updatedValue) //test config returns 5000
 }
 
-func TestGetQueryLimitDefault(t *testing.T) {
-	setUpCoreYAMLConfig()
-	defaultValue := GetInternalQueryLimit()
-	assert.Equal(t, 1000, defaultValue) //test default config is 1000
-}
-
-func TestGetQueryLimitUnset(t *testing.T) {
-	viper.Reset()
-	defaultValue := GetInternalQueryLimit()
-	assert.Equal(t, 1000, defaultValue) //test default config is 1000
-}
-
-func TestGetQueryLimit(t *testing.T) {
-	setUpCoreYAMLConfig()
-	defer ledgertestutil.ResetConfigToDefaultValues()
-	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 5000)
-	updatedValue := GetInternalQueryLimit()
-	assert.Equal(t, 5000, updatedValue) //test config returns 5000
-}
-
 func TestMaxBatchUpdateSizeDefault(t *testing.T) {
 	setUpCoreYAMLConfig()
 	defaultValue := GetMaxBatchUpdateSize()

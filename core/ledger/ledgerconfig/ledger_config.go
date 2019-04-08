@@ -33,7 +33,6 @@ const couchdbRedoLogPath = "couchdbRedoLogs"
 const confChains = "chains"
 const confPvtdataStore = "pvtdataStore"
 const confTotalQueryLimit = "ledger.state.totalQueryLimit"
-const confInternalQueryLimit = "ledger.state.couchDBConfig.internalQueryLimit"
 const confEnableHistoryDatabase = "ledger.history.enableHistoryDatabase"
 const confMaxBatchSize = "ledger.state.couchDBConfig.maxBatchUpdateSize"
 
@@ -99,16 +98,6 @@ func GetTotalQueryLimit() int {
 		totalQueryLimit = 10000
 	}
 	return totalQueryLimit
-}
-
-// GetInternalQueryLimit exposes the queryLimit variable
-func GetInternalQueryLimit() int {
-	internalQueryLimit := viper.GetInt(confInternalQueryLimit)
-	// if queryLimit was unset, default to 1000
-	if !viper.IsSet(confInternalQueryLimit) {
-		internalQueryLimit = 1000
-	}
-	return internalQueryLimit
 }
 
 //GetMaxBatchUpdateSize exposes the maxBatchUpdateSize variable

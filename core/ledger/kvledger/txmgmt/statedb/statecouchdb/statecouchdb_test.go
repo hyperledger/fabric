@@ -45,6 +45,8 @@ func testMain(m *testing.M) int {
 		Address:             couchAddress,
 		Username:            "",
 		Password:            "",
+		InternalQueryLimit:  1000,
+		MaxBatchUpdateSize:  1000,
 		MaxRetries:          3,
 		MaxRetriesOnStartup: 20,
 		RequestTimeout:      35 * time.Second,

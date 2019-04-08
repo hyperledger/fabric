@@ -123,6 +123,8 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 			MaxRetries:          3,
 			MaxRetriesOnStartup: 20,
 			RequestTimeout:      35 * time.Second,
+			InternalQueryLimit:  1000,
+			MaxBatchUpdateSize:  1000,
 		},
 	}
 
