@@ -27,6 +27,11 @@ type ChainSupport struct {
 	consensus.Chain
 	cutter blockcutter.Receiver
 	identity.SignerSerializer
+
+	// NOTE: It makes sense to add this to the ChainSupport since the design of Registrar does not assume
+	// that there is a single consensus type at this orderer node and therefore the resolution of
+	// the consensus type too happens only at the ChainSupport level.
+	consensus.MetadataValidator
 }
 
 func newChainSupport(
@@ -73,6 +78,12 @@ func newChainSupport(
 	if err != nil {
 		logger.Panicf("[channel: %s] Error creating consenter: %s", cs.ChainID(), err)
 	}
+	mv, ok := consenter.(consensus.MetadataValidator)
+	if ok {
+		cs.MetadataValidator = mv
+	} else {
+		cs.MetadataValidator = consensus.NoOpMetadataValidator{}
+	}
 
 	logger.Debugf("[channel: %s] Done creating channel support resources", cs.ChainID())
 
@@ -111,7 +122,8 @@ func (cs *ChainSupport) Validate(configEnv *cb.ConfigEnvelope) error {
 	return cs.ConfigtxValidator().Validate(configEnv)
 }
 
-// ProposeConfigUpdate passes through to the underlying configtx.Validator
+// ProposeConfigUpdate validates a config update using the underlying configtx.Validator
+// and the consensus.MetadataValidator.
 func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
 	env, err := cs.ConfigtxValidator().ProposeConfigUpdate(configtx)
 	if err != nil {
@@ -127,7 +139,27 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 		return nil, errors.Wrap(err, "config update is not compatible")
 	}
 
-	return env, cs.ValidateNew(bundle)
+	if err = cs.ValidateNew(bundle); err != nil {
+		return nil, err
+	}
+
+	oldOrdererConfig, ok := cs.OrdererConfig()
+	if !ok {
+		logger.Panic("old config is missing orderer group")
+	}
+	oldMetadata := oldOrdererConfig.ConsensusMetadata()
+
+	// we can remove this check since this is being validated in checkResources earlier
+	newOrdererConfig, ok := bundle.OrdererConfig()
+	if !ok {
+		return nil, errors.New("new config is missing orderer group")
+	}
+	newMetadata := newOrdererConfig.ConsensusMetadata()
+
+	if err = cs.ValidateConsensusMetadata(oldMetadata, newMetadata, false); err != nil {
+		return nil, errors.Wrap(err, "consensus metadata update for channel config update is invalid")
+	}
+	return env, nil
 }
 
 // ChainID passes through to the underlying configtx.Validator

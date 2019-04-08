@@ -171,7 +171,11 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 				r.blockcutterMetrics,
 			)
 			r.templator = msgprocessor.NewDefaultTemplator(chain)
-			chain.Processor = msgprocessor.NewSystemChannel(chain, r.templator, msgprocessor.CreateSystemChannelFilters(r, chain))
+			chain.Processor = msgprocessor.NewSystemChannel(
+				chain,
+				r.templator,
+				msgprocessor.CreateSystemChannelFilters(r, chain, chain.MetadataValidator),
+			)
 
 			// Retrieve genesis block to log its hash. See FAB-5450 for the purpose
 			iter, pos := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}})

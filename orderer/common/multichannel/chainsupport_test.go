@@ -9,6 +9,7 @@ package multichannel
 import (
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
@@ -19,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/localconfig"
+	msgprocessormocks "github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -44,10 +46,20 @@ func TestChainSupportBlock(t *testing.T) {
 
 type mutableResourcesMock struct {
 	config.Resources
+	newConsensusMetadataVal []byte
 }
 
 func (*mutableResourcesMock) Update(*channelconfig.Bundle) {
 	panic("implement me")
+}
+
+func (mrm *mutableResourcesMock) CreateBundle(channelID string, c *common.Config) (channelconfig.Resources, error) {
+	return &config.Resources{
+		OrdererConfigVal: &config.Orderer{
+			ConsensusMetadataVal: mrm.newConsensusMetadataVal,
+		},
+	}, nil
+
 }
 
 func TestVerifyBlockSignature(t *testing.T) {
@@ -96,9 +108,55 @@ func TestVerifyBlockSignature(t *testing.T) {
 
 }
 
+func TestConsensusMetadataValidation(t *testing.T) {
+	oldConsensusMetadata := []byte("old consensus metadata")
+	newConsensusMetadata := []byte("new consensus metadata")
+	ms := &mutableResourcesMock{
+		Resources: config.Resources{
+			ConfigtxValidatorVal: &mockconfigtx.Validator{
+				ChainIDVal:             "mychannel",
+				ProposeConfigUpdateVal: testConfigEnvelope(t),
+			},
+			OrdererConfigVal: &config.Orderer{
+				ConsensusMetadataVal: oldConsensusMetadata,
+			},
+		},
+		newConsensusMetadataVal: newConsensusMetadata,
+	}
+	mv := &msgprocessormocks.FakeMetadataValidator{}
+	cs := &ChainSupport{
+		ledgerResources: &ledgerResources{
+			configResources: &configResources{
+				mutableResources: ms,
+			},
+		},
+		MetadataValidator: mv,
+	}
+
+	// case 1: valid consensus metadata update
+	_, err := cs.ProposeConfigUpdate(&common.Envelope{})
+	assert.NoError(t, err)
+
+	// validate arguments to ValidateConsensusMetadata
+	assert.Equal(t, 1, mv.ValidateConsensusMetadataCallCount())
+	om, nm, nc := mv.ValidateConsensusMetadataArgsForCall(0)
+	assert.False(t, nc)
+	assert.Equal(t, oldConsensusMetadata, om)
+	assert.Equal(t, newConsensusMetadata, nm)
+
+	// case 2: invalid consensus metadata update
+	mv.ValidateConsensusMetadataReturns(errors.New("bananas"))
+	_, err = cs.ProposeConfigUpdate(&common.Envelope{})
+	assert.EqualError(t, err, "consensus metadata update for channel config update is invalid: bananas")
+}
+
 func testConfigEnvelope(t *testing.T) *common.ConfigEnvelope {
-	config := configtxgentest.Load(localconfig.SampleInsecureSoloProfile)
-	group, err := encoder.NewChannelGroup(config)
+	conf := configtxgentest.Load(localconfig.SampleInsecureSoloProfile)
+	group, err := encoder.NewChannelGroup(conf)
+	assert.NoError(t, err)
+	group.Groups["Orderer"].Values["ConsensusType"].Value, err = proto.Marshal(&orderer.ConsensusType{
+		Metadata: []byte("new consensus metadata"),
+	})
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
 	return &common.ConfigEnvelope{

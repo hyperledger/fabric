@@ -26,6 +26,11 @@ type ChannelConfigTemplator interface {
 	NewChannelConfig(env *cb.Envelope) (channelconfig.Resources, error)
 }
 
+// MetadataValidator can be used to validate updates to the consensus-specific metadata.
+type MetadataValidator interface {
+	ValidateConsensusMetadata(oldMetadata, newMetadata []byte, newChannel bool) error
+}
+
 // SystemChannel implements the Processor interface for the system channel.
 type SystemChannel struct {
 	*StandardChannel
@@ -45,13 +50,17 @@ func NewSystemChannel(support StandardChannelSupport, templator ChannelConfigTem
 //
 // In maintenance mode, require the signature of /Channel/Orderer/Writers. This will filter out configuration
 // changes that are not related to consensus-type migration (e.g on /Channel/Application).
-func CreateSystemChannelFilters(chainCreator ChainCreator, ledgerResources channelconfig.Resources) *RuleSet {
+func CreateSystemChannelFilters(
+	chainCreator ChainCreator,
+	ledgerResources channelconfig.Resources,
+	validator MetadataValidator,
+) *RuleSet {
 	return NewRuleSet([]Rule{
 		EmptyRejectRule,
 		NewExpirationRejectRule(ledgerResources),
 		NewSizeFilter(ledgerResources),
 		NewSigFilter(policies.ChannelWriters, policies.ChannelOrdererWriters, ledgerResources),
-		NewSystemChannelFilter(ledgerResources, chainCreator),
+		NewSystemChannelFilter(ledgerResources, chainCreator, validator),
 	})
 }
 
