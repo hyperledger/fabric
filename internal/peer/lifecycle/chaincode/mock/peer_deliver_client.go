@@ -5,44 +5,44 @@ import (
 	"context"
 	"sync"
 
-	"github.com/hyperledger/fabric/internal/peer/chaincode/api"
+	"github.com/hyperledger/fabric/protos/peer"
 	"google.golang.org/grpc"
 )
 
 type PeerDeliverClient struct {
-	DeliverStub        func(context.Context, ...grpc.CallOption) (api.Deliver, error)
+	DeliverStub        func(context.Context, ...grpc.CallOption) (peer.Deliver_DeliverClient, error)
 	deliverMutex       sync.RWMutex
 	deliverArgsForCall []struct {
 		arg1 context.Context
 		arg2 []grpc.CallOption
 	}
 	deliverReturns struct {
-		result1 api.Deliver
+		result1 peer.Deliver_DeliverClient
 		result2 error
 	}
 	deliverReturnsOnCall map[int]struct {
-		result1 api.Deliver
+		result1 peer.Deliver_DeliverClient
 		result2 error
 	}
-	DeliverFilteredStub        func(context.Context, ...grpc.CallOption) (api.Deliver, error)
+	DeliverFilteredStub        func(context.Context, ...grpc.CallOption) (peer.Deliver_DeliverFilteredClient, error)
 	deliverFilteredMutex       sync.RWMutex
 	deliverFilteredArgsForCall []struct {
 		arg1 context.Context
 		arg2 []grpc.CallOption
 	}
 	deliverFilteredReturns struct {
-		result1 api.Deliver
+		result1 peer.Deliver_DeliverFilteredClient
 		result2 error
 	}
 	deliverFilteredReturnsOnCall map[int]struct {
-		result1 api.Deliver
+		result1 peer.Deliver_DeliverFilteredClient
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PeerDeliverClient) Deliver(arg1 context.Context, arg2 ...grpc.CallOption) (api.Deliver, error) {
+func (fake *PeerDeliverClient) Deliver(arg1 context.Context, arg2 ...grpc.CallOption) (peer.Deliver_DeliverClient, error) {
 	fake.deliverMutex.Lock()
 	ret, specificReturn := fake.deliverReturnsOnCall[len(fake.deliverArgsForCall)]
 	fake.deliverArgsForCall = append(fake.deliverArgsForCall, struct {
@@ -67,7 +67,7 @@ func (fake *PeerDeliverClient) DeliverCallCount() int {
 	return len(fake.deliverArgsForCall)
 }
 
-func (fake *PeerDeliverClient) DeliverCalls(stub func(context.Context, ...grpc.CallOption) (api.Deliver, error)) {
+func (fake *PeerDeliverClient) DeliverCalls(stub func(context.Context, ...grpc.CallOption) (peer.Deliver_DeliverClient, error)) {
 	fake.deliverMutex.Lock()
 	defer fake.deliverMutex.Unlock()
 	fake.DeliverStub = stub
@@ -80,33 +80,33 @@ func (fake *PeerDeliverClient) DeliverArgsForCall(i int) (context.Context, []grp
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *PeerDeliverClient) DeliverReturns(result1 api.Deliver, result2 error) {
+func (fake *PeerDeliverClient) DeliverReturns(result1 peer.Deliver_DeliverClient, result2 error) {
 	fake.deliverMutex.Lock()
 	defer fake.deliverMutex.Unlock()
 	fake.DeliverStub = nil
 	fake.deliverReturns = struct {
-		result1 api.Deliver
+		result1 peer.Deliver_DeliverClient
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *PeerDeliverClient) DeliverReturnsOnCall(i int, result1 api.Deliver, result2 error) {
+func (fake *PeerDeliverClient) DeliverReturnsOnCall(i int, result1 peer.Deliver_DeliverClient, result2 error) {
 	fake.deliverMutex.Lock()
 	defer fake.deliverMutex.Unlock()
 	fake.DeliverStub = nil
 	if fake.deliverReturnsOnCall == nil {
 		fake.deliverReturnsOnCall = make(map[int]struct {
-			result1 api.Deliver
+			result1 peer.Deliver_DeliverClient
 			result2 error
 		})
 	}
 	fake.deliverReturnsOnCall[i] = struct {
-		result1 api.Deliver
+		result1 peer.Deliver_DeliverClient
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *PeerDeliverClient) DeliverFiltered(arg1 context.Context, arg2 ...grpc.CallOption) (api.Deliver, error) {
+func (fake *PeerDeliverClient) DeliverFiltered(arg1 context.Context, arg2 ...grpc.CallOption) (peer.Deliver_DeliverFilteredClient, error) {
 	fake.deliverFilteredMutex.Lock()
 	ret, specificReturn := fake.deliverFilteredReturnsOnCall[len(fake.deliverFilteredArgsForCall)]
 	fake.deliverFilteredArgsForCall = append(fake.deliverFilteredArgsForCall, struct {
@@ -131,7 +131,7 @@ func (fake *PeerDeliverClient) DeliverFilteredCallCount() int {
 	return len(fake.deliverFilteredArgsForCall)
 }
 
-func (fake *PeerDeliverClient) DeliverFilteredCalls(stub func(context.Context, ...grpc.CallOption) (api.Deliver, error)) {
+func (fake *PeerDeliverClient) DeliverFilteredCalls(stub func(context.Context, ...grpc.CallOption) (peer.Deliver_DeliverFilteredClient, error)) {
 	fake.deliverFilteredMutex.Lock()
 	defer fake.deliverFilteredMutex.Unlock()
 	fake.DeliverFilteredStub = stub
@@ -144,28 +144,28 @@ func (fake *PeerDeliverClient) DeliverFilteredArgsForCall(i int) (context.Contex
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *PeerDeliverClient) DeliverFilteredReturns(result1 api.Deliver, result2 error) {
+func (fake *PeerDeliverClient) DeliverFilteredReturns(result1 peer.Deliver_DeliverFilteredClient, result2 error) {
 	fake.deliverFilteredMutex.Lock()
 	defer fake.deliverFilteredMutex.Unlock()
 	fake.DeliverFilteredStub = nil
 	fake.deliverFilteredReturns = struct {
-		result1 api.Deliver
+		result1 peer.Deliver_DeliverFilteredClient
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *PeerDeliverClient) DeliverFilteredReturnsOnCall(i int, result1 api.Deliver, result2 error) {
+func (fake *PeerDeliverClient) DeliverFilteredReturnsOnCall(i int, result1 peer.Deliver_DeliverFilteredClient, result2 error) {
 	fake.deliverFilteredMutex.Lock()
 	defer fake.deliverFilteredMutex.Unlock()
 	fake.DeliverFilteredStub = nil
 	if fake.deliverFilteredReturnsOnCall == nil {
 		fake.deliverFilteredReturnsOnCall = make(map[int]struct {
-			result1 api.Deliver
+			result1 peer.Deliver_DeliverFilteredClient
 			result2 error
 		})
 	}
 	fake.deliverFilteredReturnsOnCall[i] = struct {
-		result1 api.Deliver
+		result1 peer.Deliver_DeliverFilteredClient
 		result2 error
 	}{result1, result2}
 }

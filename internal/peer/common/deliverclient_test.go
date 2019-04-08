@@ -28,6 +28,12 @@ type signerSerializer interface {
 	identity.SignerSerializer
 }
 
+//go:generate counterfeiter -o mock/deliverservice.go --fake-name DeliverService . deliverService
+
+type deliverService interface {
+	ab.AtomicBroadcast_DeliverClient
+}
+
 var once sync.Once
 
 // InitMSP init MSP

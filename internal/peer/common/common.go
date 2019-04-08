@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/scc/cscc"
-	"github.com/hyperledger/fabric/internal/peer/common/api"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	pcommon "github.com/hyperledger/fabric/protos/common"
@@ -54,7 +53,7 @@ var (
 	// GetPeerDeliverClientFnc is a function that returns a new deliver client connection
 	// to the provided peer address using the TLS root cert file,
 	// by default it is set to GetDeliverClient function
-	GetPeerDeliverClientFnc func(address, tlsRootCertFile string) (api.PeerDeliverClient, error)
+	GetPeerDeliverClientFnc func(address, tlsRootCertFile string) (pb.DeliverClient, error)
 
 	// GetDeliverClientFnc is a function that returns a new deliver client connection
 	// to the provided peer address using the TLS root cert file,

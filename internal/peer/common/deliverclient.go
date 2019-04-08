@@ -9,7 +9,6 @@ package common
 import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/internal/peer/common/api"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -37,7 +36,7 @@ var (
 // to an orderer/peer deliver service
 type DeliverClient struct {
 	Signer      identity.SignerSerializer
-	Service     api.DeliverService
+	Service     ab.AtomicBroadcast_DeliverClient
 	ChannelID   string
 	TLSCertHash []byte
 }

@@ -11,8 +11,6 @@ import (
 	"crypto/tls"
 	"time"
 
-	ccapi "github.com/hyperledger/fabric/internal/peer/chaincode/api"
-	"github.com/hyperledger/fabric/internal/peer/common/api"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -66,7 +64,7 @@ var _ = Describe("Commit", func() {
 			committer = &chaincode.Committer{
 				Certificate:     certificate,
 				BroadcastClient: mockBroadcastClient,
-				DeliverClients:  []api.PeerDeliverClient{mockDeliverClient},
+				DeliverClients:  []pb.DeliverClient{mockDeliverClient},
 				EndorserClients: mockEndorserClients,
 				Input:           input,
 				Signer:          mockSigner,
@@ -247,7 +245,7 @@ var _ = Describe("Commit", func() {
 				input.WaitForEventTimeout = 3 * time.Second
 				input.TxID = "testtx"
 				input.PeerAddresses = []string{"commitpeer0"}
-				mockDeliverClient.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
+				mockDeliverClient.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (pb.Deliver_DeliverFilteredClient, error) {
 					mockDF := &mock.Deliver{}
 					resp := &pb.DeliverResponse{
 						Type: &pb.DeliverResponse_FilteredBlock{
@@ -288,7 +286,7 @@ var _ = Describe("Commit", func() {
 				input.TxID = "testtx"
 				input.PeerAddresses = []string{"commitpeer0"}
 				delayChan := make(chan struct{})
-				mockDeliverClient.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
+				mockDeliverClient.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (pb.Deliver_DeliverFilteredClient, error) {
 					mockDF := &mock.Deliver{}
 					mockDF.RecvStub = func() (*pb.DeliverResponse, error) {
 						<-delayChan

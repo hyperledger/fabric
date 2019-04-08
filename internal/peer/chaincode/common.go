@@ -21,9 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container"
-	ccapi "github.com/hyperledger/fabric/internal/peer/chaincode/api"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/internal/peer/common/api"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -369,7 +367,7 @@ func validatePeerConnectionParameters(cmdName string) error {
 // ChaincodeCmdFactory holds the clients used by ChaincodeCmd
 type ChaincodeCmdFactory struct {
 	EndorserClients []pb.EndorserClient
-	DeliverClients  []api.PeerDeliverClient
+	DeliverClients  []pb.DeliverClient
 	Certificate     tls.Certificate
 	Signer          identity.SignerSerializer
 	BroadcastClient common.BroadcastClient
@@ -379,7 +377,7 @@ type ChaincodeCmdFactory struct {
 func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFactory, error) {
 	var err error
 	var endorserClients []pb.EndorserClient
-	var deliverClients []api.PeerDeliverClient
+	var deliverClients []pb.DeliverClient
 	if isEndorserRequired {
 		if err = validatePeerConnectionParameters(cmdName); err != nil {
 			return nil, errors.WithMessage(err, "error validating peer connection parameters")
@@ -466,7 +464,7 @@ func ChaincodeInvokeOrQuery(
 	signer identity.SignerSerializer,
 	certificate tls.Certificate,
 	endorserClients []pb.EndorserClient,
-	deliverClients []api.PeerDeliverClient,
+	deliverClients []pb.DeliverClient,
 	bc common.BroadcastClient,
 ) (*pb.ProposalResponse, error) {
 	// Build the ChaincodeInvocationSpec message
@@ -587,13 +585,13 @@ type DeliverGroup struct {
 // DeliverClient holds the client/connection related to a specific
 // peer. The address is included for logging purposes
 type DeliverClient struct {
-	Client     api.PeerDeliverClient
-	Connection ccapi.Deliver
+	Client     pb.DeliverClient
+	Connection pb.Deliver_DeliverClient
 	Address    string
 }
 
 func NewDeliverGroup(
-	deliverClients []api.PeerDeliverClient,
+	deliverClients []pb.DeliverClient,
 	peerAddresses []string,
 	signer identity.SignerSerializer,
 	certificate tls.Certificate,
