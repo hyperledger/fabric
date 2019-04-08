@@ -36,8 +36,6 @@ const confTotalQueryLimit = "ledger.state.totalQueryLimit"
 const confInternalQueryLimit = "ledger.state.couchDBConfig.internalQueryLimit"
 const confEnableHistoryDatabase = "ledger.history.enableHistoryDatabase"
 const confMaxBatchSize = "ledger.state.couchDBConfig.maxBatchUpdateSize"
-const confAutoWarmIndexes = "ledger.state.couchDBConfig.autoWarmIndexes"
-const confWarmIndexesAfterNBlocks = "ledger.state.couchDBConfig.warmIndexesAfterNBlocks"
 
 var confCollElgProcMaxDbBatchSize = &conf{"ledger.pvtdataStore.collElgProcMaxDbBatchSize", 5000}
 var confCollElgProcDbBatchesInterval = &conf{"ledger.pvtdataStore.collElgProcDbBatchesInterval", 1000}
@@ -169,26 +167,6 @@ func IsQueryReadsHashingEnabled() bool {
 // For more details - see description in kvledger/txmgmt/rwset/query_results_helper.go
 func GetMaxDegreeQueryReadsHashing() uint32 {
 	return 50
-}
-
-//IsAutoWarmIndexesEnabled exposes the autoWarmIndexes variable
-func IsAutoWarmIndexesEnabled() bool {
-	//Return the value set in core.yaml, if not set, the return true
-	if viper.IsSet(confAutoWarmIndexes) {
-		return viper.GetBool(confAutoWarmIndexes)
-	}
-	return true
-
-}
-
-//GetWarmIndexesAfterNBlocks exposes the warmIndexesAfterNBlocks variable
-func GetWarmIndexesAfterNBlocks() int {
-	warmAfterNBlocks := viper.GetInt(confWarmIndexesAfterNBlocks)
-	// if warmIndexesAfterNBlocks was unset, default to 1
-	if !viper.IsSet(confWarmIndexesAfterNBlocks) {
-		warmAfterNBlocks = 1
-	}
-	return warmAfterNBlocks
 }
 
 type conf struct {

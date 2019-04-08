@@ -28,7 +28,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
 )
@@ -522,19 +521,15 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 		return nil, errors.Wrap(decodeErr, "error decoding response body")
 	}
 
-	//Check to see if autoWarmIndexes is enabled
-	//If autoWarmIndexes is enabled, indexes will be refreshed after the number of blocks
-	//in GetWarmIndexesAfterNBlocks() have been committed to the state database
-	//Check to see if the number of blocks committed exceeds the threshold for index warming
-	//Use a go routine to launch WarmIndexAllIndexes(), this will execute as a background process
-	if ledgerconfig.IsAutoWarmIndexesEnabled() {
-
-		if dbclient.IndexWarmCounter >= ledgerconfig.GetWarmIndexesAfterNBlocks() {
+	// check if we should warm indexes
+	if dbclient.CouchInstance.conf.WarmIndexesAfterNBlocks > 0 {
+		// check to see if the number of blocks committed exceeds the threshold for index warming
+		if dbclient.IndexWarmCounter >= dbclient.CouchInstance.conf.WarmIndexesAfterNBlocks {
+			// use a go routine to launch WarmIndexAllIndexes()
 			go dbclient.runWarmIndexAllIndexes()
 			dbclient.IndexWarmCounter = 0
 		}
 		dbclient.IndexWarmCounter++
-
 	}
 
 	logger.Debugf("[%s] Exiting EnsureFullCommit()", dbclient.DBName)

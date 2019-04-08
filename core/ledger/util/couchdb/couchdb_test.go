@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/integration/runner"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -84,8 +83,6 @@ func testMain(m *testing.M) int {
 	address, cleanup := couchDBSetup()
 	testAddress = address
 	defer cleanup()
-	viper.Set("ledger.state.stateDatabase", "CouchDB")
-	defer viper.Set("ledger.state.stateDatabase", "goleveldb")
 
 	//set the logging level to DEBUG to test debug only code
 	flogging.ActivateSpec("couchdb=debug")

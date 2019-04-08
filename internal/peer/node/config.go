@@ -14,18 +14,29 @@ import (
 )
 
 func ledgerConfig() *ledger.Config {
-	return &ledger.Config{
+	// set defaults
+	warmAfterNBlocks := 1
+	if viper.IsSet("ledger.state.couchDBConfig.warmIndexesAfterNBlocks") {
+		warmAfterNBlocks = viper.GetInt("ledger.state.couchDBConfig.warmIndexesAfterNBlocks")
+	}
+	config := &ledger.Config{
 		StateDB: &ledger.StateDB{
 			StateDatabase: viper.GetString("ledger.state.stateDatabase"),
-			CouchDB: &couchdb.Config{
-				Address:               viper.GetString("ledger.state.couchDBConfig.couchDBAddress"),
-				Username:              viper.GetString("ledger.state.couchDBConfig.username"),
-				Password:              viper.GetString("ledger.state.couchDBConfig.password"),
-				MaxRetries:            viper.GetInt("ledger.state.couchDBConfig.maxRetries"),
-				MaxRetriesOnStartup:   viper.GetInt("ledger.state.couchDBConfig.maxRetriesOnStartup"),
-				RequestTimeout:        viper.GetDuration("ledger.state.couchDBConfig.requestTimeout"),
-				CreateGlobalChangesDB: viper.GetBool("ledger.state.couchDBConfig.createGlobalChangesDB"),
-			},
+			CouchDB:       &couchdb.Config{},
 		},
 	}
+
+	if config.StateDB.StateDatabase == "CouchDB" {
+		config.StateDB.CouchDB = &couchdb.Config{
+			Address:                 viper.GetString("ledger.state.couchDBConfig.couchDBAddress"),
+			Username:                viper.GetString("ledger.state.couchDBConfig.username"),
+			Password:                viper.GetString("ledger.state.couchDBConfig.password"),
+			MaxRetries:              viper.GetInt("ledger.state.couchDBConfig.maxRetries"),
+			MaxRetriesOnStartup:     viper.GetInt("ledger.state.couchDBConfig.maxRetriesOnStartup"),
+			RequestTimeout:          viper.GetDuration("ledger.state.couchDBConfig.requestTimeout"),
+			WarmIndexesAfterNBlocks: warmAfterNBlocks,
+			CreateGlobalChangesDB:   viper.GetBool("ledger.state.couchDBConfig.createGlobalChangesDB"),
+		}
+	}
+	return config
 }
