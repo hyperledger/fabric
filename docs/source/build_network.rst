@@ -660,8 +660,8 @@ Install and define a chaincode
 .. note:: We will utilize a simple existing chaincode. To learn how to write
           your own chaincode, see the :doc:`chaincode4ade` tutorial.
 
-.. note:: These instructions use the Fabric chaincode lifecycle introduced as an
-          Alpha feature in Fabric v2.0. If you would like to use the previous
+.. note:: These instructions use the Fabric chaincode lifecycle introduced in
+          the v2.0 Alpha release. If you would like to use the previous
           lifecycle to install and instantiate a chaincode, visit the v1.4
           version of the `Building your first network tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/build_network.html>`__.
 

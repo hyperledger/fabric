@@ -31,11 +31,10 @@ application.
 Fabric Chaincode Lifecycle
 --------------------------
 
-The new Fabric chaincode lifecycle is being introduced as an alpha feature in
-Fabric version 2.0. The Fabric chaincode lifecycle is a process that allows
-multiple organizations to agree on the parameters of a chaincode before it can
-be used to transact on a channel. The new Fabric lifecycle offers several
-advantages over the old model.
+The new Fabric chaincode lifecycle is being introduced as part of the v2.0 Alpha.
+The Fabric chaincode lifecycle is a process that allows multiple organizations
+to agree on the parameters of a chaincode before it can be used to transact on a
+channel. The new Fabric lifecycle offers several advantages over the old model.
 
 * **Multiple organizations must agree to a chaincode endorsement policy:** In
   the release 1.x versions of Fabric, one organization had the ability to set a
@@ -67,15 +66,17 @@ advantages over the old model.
 To learn how more about how to use the new Fabric Lifecycle, visit
 :doc:`chaincode4noah`
 
-.. note:: The Fabric chaincode lifecycle is being introduced as an alpha feature
-          in Fabric version 2.0. As a result, some fabric features cannot be
-          used with chainodes that use the new Fabric lifecycle:
+.. note:: The new Fabric chaincode lifecycle in the v2.0 Alpha release is not
+          yet feature complete. Specifically, be aware of the following
+          limitations in the Alpha release:
 
-          - Service Discovery is not supported
-          - CouchDB indexes are not supported
+          - CouchDB indexes are not yet supported
+          - Chaincodes defined with the new lifecycle are not yet discoverable
+            via service discovery
 
-          To use the old lifecycle model to install and instantiate a chaincode,
-          visit the v1.4 version of the `Chaincode for Operators tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`_
+          These limitations will be resolved after the Alpha release. To use the
+          old lifecycle model to install and instantiate a chaincode, visit the
+          v1.4 version of the `Chaincode for Operators tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`_
 
 You can use the Fabric chaincode lifecycle by creating a new channel and setting
 the channel capabilities to V2_0. You will not be able to use the old lifecycle

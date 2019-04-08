@@ -610,8 +610,8 @@ Because the chaincode definition has already been committed to the channel
 you have joined, you can start using the chaincode after you approve the
 definition.
 
-.. note:: These instructions use the Fabric chaincode lifecycle introduced as
-          an Alpha feature in Fabric v2.0. If you would like to use the previous
+.. note:: These instructions use the Fabric chaincode lifecycle introduced in
+          the v2.0 Alpha release. If you would like to use the previous
           lifecycle to install and instantiate a chaincode, visit the v1.4
           version of the `Adding an org to a channel tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/channel_update_tutorial.html>`__.
 

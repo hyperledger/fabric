@@ -105,9 +105,9 @@ An example using pagination is included in the :doc:`couchdb_tutorial` tutorial.
 CouchDB indexes
 ~~~~~~~~~~~~~~~
 
-.. note:: The Fabric chaincode lifecycle that is being introduced as an Alpha
-          feature in Fabric v2.0 does not support using indexes with CouchDB. As
-          a result, the `previous lifecycle process <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`_  is required to
+.. note:: The Fabric chaincode lifecycle that is being introduced in the v2.0
+          Alpha release does not support using indexes with CouchDB. As a
+          result, the `previous lifecycle process <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`_  is required to
           install and instantiate a chaincode that includes CouchDB indexes. You
           can only use CouchDB indexes with the Fabric v2.0 Alpha if the channel
           capabilities are set with V1_4 as the highest version enabled in the

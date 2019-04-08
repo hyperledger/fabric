@@ -7,10 +7,10 @@ definition to a channel. The chaincode is ready to be used after the definition
 has been successfully committed to the channel. For more information, visit
 [Chaincode for Operators](../chaincode4noah.html).
 
-_note: These instructions use the Fabric chaincode lifecycle introduced as an
-alpha feature in Fabric v2.0. If you would like to use the old lifecycle to
-install and instantiate a chaincode, visit the [peer chaincode](peerchaincode.html)
-command reference._
+*Note: These instructions use the Fabric chaincode lifecycle introduced in the
+v2.0 Alpha release. If you would like to use the old lifecycle to install and
+instantiate a chaincode, visit the [peer chaincode](peerchaincode.html) command
+reference.*
 
 ## Syntax
 
