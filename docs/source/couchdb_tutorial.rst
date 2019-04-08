@@ -6,9 +6,9 @@ This tutorial will describe the steps required to use the CouchDB as the state
 database with Hyperledger Fabric. By now, you should be familiar with Fabric
 concepts and have explored some of the samples and tutorials.
 
-.. note:: The Fabric chaincode lifecycle that is being introduced as an Alpha
-          feature in Fabric v2.0 does not support using indexes with CouchDB. As
-          a result, this tutorial requires the `previous lifecycle process <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`_ to
+.. note:: The Fabric chaincode lifecycle that is being introduced in the v2.0
+          Alpha release does not support using indexes with CouchDB. As a
+          result, this tutorial requires the `previous lifecycle process <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`_ to
           install and instantiate a chaincode that includes CouchDB indexes.
           Download the `release-1.4 version of the Fabric Samples <https://github.com/hyperledger/fabric-samples/tree/release-1.4/>`_ to
           use this tutorial. For more information, see :ref:`cdb-add-index`.
@@ -534,7 +534,7 @@ of data or blocks on your network.
 It is also important to plan the indexes you install with your chaincode. You
 should install only a few indexes per chaincode that support most of your queries.
 Adding too many indexes, or using an excessive number of fields in an index, will
-degrade the performance of your network. This is because the indexes are updated 
+degrade the performance of your network. This is because the indexes are updated
 after each block is committed. The more indexes need to be updated through
 "index warming", the longer it will take for transactions to complete.
 
@@ -634,7 +634,7 @@ You can use block or chaincode events from your application to write transaction
 data to an off-chain database or analytics engine. For each block received, the block
 listener application would iterate through the block transactions and build a data
 store using the key/value writes from each valid transaction's ``rwset``. The
-:doc:`peer_event_services` provide replayable events to ensure the integrity of 
+:doc:`peer_event_services` provide replayable events to ensure the integrity of
 downstream data stores.
 
 .. _cdb-pagination:

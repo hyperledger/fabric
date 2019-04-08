@@ -9,8 +9,8 @@ of organizations.
 The information in this tutorial assumes knowledge of private data
 stores and their use cases. For more information, check out :doc:`private-data/private-data`.
 
-.. note:: These instructions use the Fabric chaincode lifecycle introduced as
-          an Alpha feature in Fabric v2.0. If you would like to use the previous
+.. note:: These instructions use the new Fabric chaincode lifecycle introduced
+          in the Fabric v2.0 Alpha release. If you would like to use the previous
           lifecycle model to use private data with chaincode, visit the v1.4
           version of the `Using Private Data in Fabric tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/private_data_tutorial.html>`__.
 
@@ -963,8 +963,8 @@ Using indexes with private data
 -------------------------------
 
 note:: The Fabric chaincode lifecycle that is being introduced in the Fabric v2.0
-       alpha does not support using couchDB indexes with your chaincode. To
-       use the old lifecycle model to deploy couchDB indexes with private data
+       Alpha does not support using couchDB indexes with your chaincode. To
+       use the previous lifecycle model to deploy couchDB indexes with private data
        collections, visit the v1.4 version of the `Using Private Data in Fabric tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/private_data_tutorial.html>`_
 
 Indexes can also be applied to private data collections, by packaging indexes in
@@ -986,6 +986,9 @@ Additional resources
 --------------------
 
 For additional private data education, a video tutorial has been created.
+
+.. note:: The video uses the previous lifecycle model to install private data
+          collections with chaincode.
 
 .. raw:: html
 

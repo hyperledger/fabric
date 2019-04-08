@@ -248,7 +248,7 @@ Using Indexes with collections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note:: The Fabric chaincode lifecycle being introduced in the Fabric v2.0
-         alpha does not support using couchDB indexes with your chaincode. To use
+         Alpha does not support using couchDB indexes with your chaincode. To use
          the previous lifecycle model to deploy couchDB indexes with private data
          collections, visit the v1.4 version of the `Private Data Architecture Guide <https://hyperledger-fabric.readthedocs.io/en/release-1.4/private-data-arch.html>`_.
 

@@ -1,6 +1,6 @@
 # Chaincode for Operators
 
-# What is Chaincode?
+## What is Chaincode?
 
 Chaincode is a program, written in [Go](https://golang.org), [Node.js](https://nodejs.org),
 or [Java](https://java.com/en/) that implements a prescribed interface.
@@ -20,7 +20,7 @@ blockchain network operator rather than an application developer. Chaincode
 operators can use this tutorial to learn how to use the Fabric chainode
 lifecycle to deploy and manage chaincode on their network.
 
-# Chaincode lifecycle
+## Chaincode lifecycle
 
 The Fabric chaincode lifecycle is a process that allows multiple organizations
 to agree on how a chaincode will be operated before it can be used on a channel.
@@ -31,14 +31,17 @@ lifecycle to perform the following tasks:
 - [Upgrade a chaincode](#upgrade-a-chaincode)
 - [Migrate to the new Fabric lifecycle](#migrate-to-the-new-fabric-lifecycle)
 
-*Note: The new Fabric chaincode lifecycle has limitations in the v2.0.0 alpha
-release. As a result, some Fabric features are not yet supported when using
-the new Fabric lifecycle:*
-- *Service Discovery is not yet supported*
-- *CouchDB indexes are not yet supported*
+*Note: The new Fabric chaincode lifecycle in the v2.0 Alpha release is not yet
+feature complete. Specifically, be aware of the following limitations in the
+Alpha release:*
 
-*To use the old lifecycle model to install and instantiate a chaincode, visit the
-v1.4 version of the [Chaincode for Operators tutorial](https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html)*
+- *Service Discovery is not yet supported*
+- *Chaincodes defined with the new lifecycle are not yet discoverable
+  via service discovery*
+
+*These limitations will be resolved after the Alpha release. To use the old
+lifecycle model to install and instantiate a chaincode, visit the v1.4 version
+of the [Chaincode for Operators tutorial](https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html).*
 
 ## Install and define a chaincode
 
@@ -244,8 +247,9 @@ when you upgrade the chaincode binaries.
 You can use the Fabric chaincode lifecycle by creating a new channel and setting
 the channel capabilities to `V2_0`. You will not be able to use the previous
 lifecycle to install, instantiate, or update a chaincode on a channels with
-`V2_0` capabilities enabled. Migration from the old lifecycle to the new
-lifecycle is not supported for the Fabric v2.0 Alpha.
+`V2_0` capabilities enabled. There is no upgrade support to the v2.0 Alpha
+release, and no intended upgrade support from the the Alpha release to future
+versions of v2.x.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->

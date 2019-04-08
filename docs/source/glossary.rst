@@ -326,7 +326,7 @@ The process of starting and initializing a chaincode application on a specific
 channel. After instantiation, peers that have the chaincode installed can accept
 chaincode invocations. This method was used in the previous version of the chaincode
 lifecycle. For the current procedure used to start a chaincode on a channel in
-the new Fabric chaincode lifecycle introduced as an Alpha feature in Fabric v2.0,
+the new Fabric chaincode lifecycle introduced in the v2.0 Alpha release,
 see Chaincode-definition_.
 
 .. _Invoke:
