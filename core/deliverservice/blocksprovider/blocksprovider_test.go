@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/mocks"
 	"github.com/hyperledger/fabric/gossip/api"
 	common2 "github.com/hyperledger/fabric/gossip/common"
@@ -200,10 +199,6 @@ func TestBlocksProvider_CheckTerminationDeliveryResponseStatus(t *testing.T) {
 }
 
 func TestBlocksProvider_DeliveryWrongStatus(t *testing.T) {
-	orgEndpointDisableInterval := comm.EndpointDisableInterval
-	comm.EndpointDisableInterval = 0
-	defer func() { comm.EndpointDisableInterval = orgEndpointDisableInterval }()
-
 	sendBlock := func(seqNum uint64) *orderer.DeliverResponse {
 		return &orderer.DeliverResponse{
 			Type: &orderer.DeliverResponse_Block{
@@ -227,7 +222,7 @@ func TestBlocksProvider_DeliveryWrongStatus(t *testing.T) {
 		}
 	}
 
-	bd := mocks.MockBlocksDeliverer{DisconnectCalled: make(chan struct{}, 10), DisconnectAndDisableCalled: make(chan struct{}, 10)}
+	bd := mocks.MockBlocksDeliverer{DisconnectCalled: make(chan struct{}, 10)}
 	mcs := &mockMCS{}
 	mcs.On("VerifyBlock", mock.Anything).Return(nil)
 	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64, 2)}
@@ -272,9 +267,7 @@ func TestBlocksProvider_DeliveryWrongStatus(t *testing.T) {
 		}
 	}
 	// Make sure disconnect was called in between the deliveries
-	assert.Len(t, bd.DisconnectCalled, 1)
-	assert.Len(t, bd.DisconnectAndDisableCalled, 3)
-
+	assert.Len(t, bd.DisconnectCalled, 4)
 }
 
 func TestBlocksProvider_DeliveryWrongStatusClose(t *testing.T) {
@@ -288,10 +281,6 @@ func TestBlocksProvider_DeliveryWrongStatusClose(t *testing.T) {
 	// blocks deliver still running
 	// At the end, it send 2 FORBIDDEN or BAD_REQUEST statuses and check is blocks deliver stopped
 
-	orgEndpointDisableInterval := comm.EndpointDisableInterval
-	comm.EndpointDisableInterval = 0
-	defer func() { comm.EndpointDisableInterval = orgEndpointDisableInterval }()
-
 	sendStatus := func(status common.Status) *orderer.DeliverResponse {
 		return &orderer.DeliverResponse{
 			Type: &orderer.DeliverResponse_Status{
@@ -301,9 +290,8 @@ func TestBlocksProvider_DeliveryWrongStatusClose(t *testing.T) {
 	}
 
 	bd := mocks.MockBlocksDeliverer{
-		DisconnectCalled:           make(chan struct{}, 100),
-		DisconnectAndDisableCalled: make(chan struct{}, 100),
-		CloseCalled:                make(chan struct{}, 1),
+		DisconnectCalled: make(chan struct{}, 100),
+		CloseCalled:      make(chan struct{}, 1),
 	}
 	mcs := &mockMCS{}
 	mcs.On("VerifyBlock", mock.Anything).Return(nil)
@@ -316,7 +304,7 @@ func TestBlocksProvider_DeliveryWrongStatusClose(t *testing.T) {
 		wrongStatusThreshold: 5,
 	}
 
-	incomingMsgs := make(chan *orderer.DeliverResponse)
+	incomingMsgs := make(chan *orderer.DeliverResponse, 12)
 
 	bd.MockRecv = func(mock *mocks.MockBlocksDeliverer) (*orderer.DeliverResponse, error) {
 		inMsg := <-incomingMsgs
@@ -332,11 +320,7 @@ func TestBlocksProvider_DeliveryWrongStatusClose(t *testing.T) {
 	incomingMsgs <- sendStatus(common.Status_INTERNAL_SERVER_ERROR)
 
 	waitUntilOrFail(t, func() bool {
-		return len(bd.DisconnectCalled) == 1
-	})
-
-	waitUntilOrFail(t, func() bool {
-		return len(bd.DisconnectAndDisableCalled) == 4
+		return len(bd.DisconnectCalled) == 5
 	})
 
 	waitUntilOrFail(t, func() bool {
@@ -352,11 +336,7 @@ func TestBlocksProvider_DeliveryWrongStatusClose(t *testing.T) {
 	incomingMsgs <- sendStatus(common.Status_BAD_REQUEST)
 
 	waitUntilOrFail(t, func() bool {
-		return len(bd.DisconnectCalled) == 4
-	})
-
-	waitUntilOrFail(t, func() bool {
-		return len(bd.DisconnectAndDisableCalled) == 8
+		return len(bd.DisconnectCalled) == cap(incomingMsgs)
 	})
 
 	waitUntilOrFail(t, func() bool {
@@ -369,48 +349,6 @@ func TestBlocksProvider_DeliveryWrongStatusClose(t *testing.T) {
 	waitUntilOrFail(t, func() bool {
 		return len(bd.CloseCalled) == 1
 	})
-}
-
-func TestBlocksProvider_DeliveryServiceDisableEndpoints(t *testing.T) {
-	sendStatus := func(status common.Status) *orderer.DeliverResponse {
-		return &orderer.DeliverResponse{
-			Type: &orderer.DeliverResponse_Status{
-				Status: status,
-			},
-		}
-	}
-
-	bd := mocks.MockBlocksDeliverer{
-		DisconnectCalled:           make(chan struct{}, 100),
-		DisconnectAndDisableCalled: make(chan struct{}, 100),
-		CloseCalled:                make(chan struct{}, 1),
-	}
-	mcs := &mockMCS{}
-	mcs.On("VerifyBlock", mock.Anything).Return(nil)
-	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64, 2)}
-	provider := &blocksProviderImpl{
-		chainID:              "***TEST_CHAINID***",
-		gossip:               gossipServiceAdapter,
-		client:               &bd,
-		mcs:                  mcs,
-		wrongStatusThreshold: 5,
-	}
-
-	incomingMsgs := make(chan *orderer.DeliverResponse)
-
-	bd.MockRecv = func(mock *mocks.MockBlocksDeliverer) (*orderer.DeliverResponse, error) {
-		inMsg := <-incomingMsgs
-		return inMsg, nil
-	}
-
-	go provider.DeliverBlocks()
-
-	incomingMsgs <- sendStatus(common.Status_SERVICE_UNAVAILABLE)
-
-	waitUntilOrFail(t, func() bool {
-		return len(bd.DisconnectAndDisableCalled) == 1
-	})
-
 }
 
 func TestBlockFetchFailure(t *testing.T) {
