@@ -83,6 +83,20 @@ for x in "peer node start" "peer node status"; do
 done
 cat docs/wrappers/peer_node_postscript.md >> $DOC
 
+DOC=${PWD}/docs/source/commands/token.md
+cat docs/wrappers/token_preamble.md > $DOC
+
+for x in "token issue" "token list" "token transfer" "token redeem" "token saveConfig"; do
+ echo "" >> $DOC
+ echo "##" $x >> $DOC
+ echo "\`\`\`" >> $DOC
+ (cd .build/bin && PATH=./:${PATH} ${x} --help 2>> $DOC)
+ echo "\`\`\`" >> $DOC
+ echo "" >> $DOC
+done
+
+cat docs/wrappers/token_postscript.md >> $DOC
+
 DOC=${PWD}/docs/source/commands/configtxgen.md
 cat docs/wrappers/configtxgen_preamble.md > $DOC
 
