@@ -31,27 +31,35 @@ application.
 Fabric Chaincode Lifecycle
 --------------------------
 
-The new Fabric chaincode lifecycle is being introduced as part of the v2.0 Alpha.
-The Fabric chaincode lifecycle is a process that allows multiple organizations
-to agree on the parameters of a chaincode before it can be used to transact on a
-channel. The new Fabric lifecycle offers several advantages over the old model.
+The Fabric Chaincode Lifecycle is responsible for managing the installation
+of chaincodes and the definition of their parameters before a chaincode is
+used on a channel. Starting from the Fabric 2.0 Alpha, governance for
+chaincodes is fully decentralized: multiple organizations can use the Fabric
+Chaincode Lifecycle to come to agreement on the parameters of a chaincode,
+such as the chaincode endorsement policy, before the chaincode is used to
+interact with the ledger.
 
-* **Multiple organizations must agree to a chaincode endorsement policy:** In
-  the release 1.x versions of Fabric, one organization had the ability to set a
-  chaincode endorsement policy for all other channel members. The new Fabric
-  chaincode lifecycle requires a sufficient number of organizations to agree on
-  an endorsement policy before it goes into effect. In summary, the chaincode is
-  now managed in the scope a of channel.
+The new model offers several improvements over the previous lifecycle:
 
-* **Safer chaincode upgrade process:** The original chaincode lifecycle required
-  extensive coordination between organizations to upgrade a chaincode. The
-  upgrade transaction was issued by one organization, creating a risk for an
-  organization that had not yet installed the new chaincode. The new model
-  allows for a chaincode to be upgraded only after a sufficient number of
-  organizations approved the upgrade.
+* **Multiple organizations must agree to the parameters of a chaincode:** In
+  the release 1.x versions of Fabric, one organization had the ability to set
+  parameters of a chaincode (for instance the endorsement policy) for all other
+  channel members. The new Fabric chaincode lifecycle is more flexible since
+  it supports both centralized trust models (such as that of the previous
+  lifecycle model) as well as decentralized models requiring a sufficient number
+  of organizations to agree on an endorsement policy before it goes into effect.
+
+* **Safer chaincode upgrade process:** In the previous chaincode lifecycle,
+  the upgrade transaction could be issued by a single organization, creating a
+  risk for a channel member that had not yet installed the new chaincode. The
+  new model allows for a chaincode to be upgraded only after a sufficient
+  number of organizations have approved the upgrade.
 
 * **Easier endorsement policy updates:** Fabric lifecycle allows you to change
   an endorsement policy without having to repackage or reinstall the chaincode.
+  Users can also take advantage of a new default policy that requires endorsement
+  from a majority of members on the channel. This policy is updated automatically
+  when organizations are added or removed from the channel.
 
 * **Inspectable chaincode packages:** The Fabric lifecycle packages chaincode in
   easily readable tar files. This makes it easier to inspect the chaincode
@@ -59,12 +67,11 @@ channel. The new Fabric lifecycle offers several advantages over the old model.
 
 * **Start multiple chaincodes on a channel using one package:** The previous
   lifecycle defined each chaincode on the channel using a name and version that
-  was specified when the chaincode package was installed. You can now use one
-  chaincode package to deploy multiple chaincodes on a channel with different
-  names.
+  was specified when the chaincode package was installed. You can now use a
+  single chaincode package and deploy it multiple times with different names
+  on the same or different channel.
 
-To learn how more about how to use the new Fabric Lifecycle, visit
-:doc:`chaincode4noah`
+To learn how more about the new Fabric Lifecycle, visit :doc:`chaincode4noah`.
 
 .. note:: The new Fabric chaincode lifecycle in the v2.0 Alpha release is not
           yet feature complete. Specifically, be aware of the following
