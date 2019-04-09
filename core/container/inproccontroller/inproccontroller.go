@@ -73,7 +73,7 @@ func NewRegistry() *Registry {
 
 // NewVM creates an inproc VM instance
 func (r *Registry) NewVM() container.VM {
-	return NewInprocVM(r)
+	return &InprocVM{registry: r}
 }
 
 // Register registers system chaincode with given path. The deploy should be called to initialize
@@ -118,13 +118,6 @@ func (r *Registry) removeInstance(name string) {
 // InprocVM is a vm. It is identified by a executable name
 type InprocVM struct {
 	registry *Registry
-}
-
-// NewInprocVM creates a new InprocVM
-func NewInprocVM(r *Registry) *InprocVM {
-	return &InprocVM{
-		registry: r,
-	}
 }
 
 func (vm *InprocVM) getInstance(ipctemplate *inprocContainer, instName string, args []string, env []string) (*inprocContainer, error) {
