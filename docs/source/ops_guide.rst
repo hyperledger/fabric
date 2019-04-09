@@ -10,6 +10,7 @@ Operations Guides
    msp
    configtx
    endorsement-policies
+   token/FabToken
    pluggable_endorsement_and_validation
    access_control.md
    idemix
