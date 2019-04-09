@@ -291,7 +291,8 @@ func serve(args []string) error {
 		}
 	}
 
-	abServer := peer.NewDeliverEventsServer(mutualTLS, policyCheckerProvider, &peer.DeliverChainManager{}, metricsProvider)
+	timeWindow := viper.GetDuration("peer.authentication.timewindow")
+	abServer := peer.NewDeliverEventsServer(timeWindow, mutualTLS, policyCheckerProvider, &peer.DeliverChainManager{}, metricsProvider)
 	pb.RegisterDeliverServer(peerServer.Server(), abServer)
 
 	// Create a self-signed CA for chaincode service
