@@ -27,6 +27,7 @@ open source architecture; Hyperledger Fabric is your starting point.
 
 ## Releases
 
+- [v2.0.0-alpha - April 9, 2019](https://github.com/hyperledger/fabric/releases/tag/v2.0.0-alpha)
 - [v1.4.1-rc1 - March 29, 2019](https://github.com/hyperledger/fabric/releases/tag/v1.4.1-rc1)
 - [v1.4.0 - January 9, 2019](https://github.com/hyperledger/fabric/releases/tag/v1.4.0)
 - [v1.4.0-rc2 - December 20, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.4.0-rc2)
@@ -89,13 +90,13 @@ Check [the documentation](testingInfo.rst) for information on the testing struct
 
 [Hyperledger Fabric Issue Tracking (JIRA)](https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104)
 
-[Hyperledger Fabric Wiki](https://wiki.hyperledger.org/projects/Fabric)
+[Hyperledger Fabric Wiki](https://wiki.hyperledger.org/display/Fabric)
 
 [Hyperledger Wiki](https://wiki.hyperledger.org/)
 
-[Hyperledger Code of Conduct](https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct)
+[Hyperledger Code of Conduct](https://wiki.hyperledger.org/display/HYP/Hyperledger+Code+of+Conduct)
 
-[Community Calendar](https://wiki.hyperledger.org/community/calendar-public-meetings)
+[Community Calendar](https://wiki.hyperledger.org/display/HYP/Calendar+of+Public+Meetings)
 
 ## License <a name="license"></a>
 

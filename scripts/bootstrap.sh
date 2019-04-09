@@ -27,9 +27,12 @@ printHelp() {
   echo "would download docker images and binaries for version 1.4.0"
 }
 
+# dockerFabricPull() pulls docker images from fabric and chaincode repositories
+# note, if a docker image doesn't exist for a requested release, it will simply
+# be skipped, since this script doesn't terminate upon errors.
 dockerFabricPull() {
   local FABRIC_TAG=$1
-  for IMAGES in peer orderer ccenv javaenv tools; do
+  for IMAGES in peer orderer ccenv tools baseos nodeenv javaenv; do
       echo "==> FABRIC IMAGE: $IMAGES"
       echo
       docker pull hyperledger/fabric-$IMAGES:$FABRIC_TAG
