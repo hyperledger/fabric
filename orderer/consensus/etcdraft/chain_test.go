@@ -461,25 +461,6 @@ var _ = Describe("Chain", func() {
 					configSeq uint64
 				)
 
-				Context("when a config update with invalid header comes", func() {
-
-					BeforeEach(func() {
-						configEnv = newConfigEnv(channelID,
-							common.HeaderType_CONFIG_UPDATE, // invalid header; envelopes with CONFIG_UPDATE header never reach chain
-							&common.ConfigUpdateEnvelope{ConfigUpdate: []byte("test invalid envelope")})
-						configSeq = 0
-					})
-
-					It("should throw an error", func() {
-						err := chain.Configure(configEnv, configSeq)
-						Expect(err).To(MatchError("config transaction has unknown header type: CONFIG_UPDATE"))
-						Expect(fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
-						Expect(fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
-						Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
-						Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
-					})
-				})
-
 				Context("when a type A config update comes", func() {
 
 					Context("for existing channel", func() {
@@ -642,34 +623,7 @@ var _ = Describe("Chain", func() {
 							Expect(err).NotTo(HaveOccurred())
 							Expect(fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
 							Expect(fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
-						})
-					})
-
-					Context("updating consenters set by more than one node", func() {
-						// use to prepare the Orderer Values
-						BeforeEach(func() {
-							values := map[string]*common.ConfigValue{
-								"ConsensusType": {
-									Version: 1,
-									Value: marshalOrPanic(&orderer.ConsensusType{
-										Metadata: marshalOrPanic(createMetadata(3, tlsCA)),
-									}),
-								},
-							}
-							configEnv = newConfigEnv(channelID,
-								common.HeaderType_CONFIG,
-								newConfigUpdateEnv(channelID, nil, values))
-							configSeq = 0
-
-						}) // BeforeEach block
-
-						It("should fail, since consenters set change is not supported", func() {
-							err := chain.Configure(configEnv, configSeq)
-							Expect(err).To(MatchError(ContainSubstring("update of more than one consenter at a time is not supported, requested changes: add 3 node(s), remove 1 node(s)")))
-							Expect(fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
-							Expect(fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
-							Expect(fakeFields.fakeProposalFailures.AddCallCount()).To(Equal(1))
-							Expect(fakeFields.fakeProposalFailures.AddArgsForCall(0)).To(Equal(float64(1)))
+							Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 						})
 					})
 
@@ -698,27 +652,9 @@ var _ = Describe("Chain", func() {
 
 							err := chain.Configure(configEnv, configSeq)
 							Expect(err).NotTo(HaveOccurred())
+							Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 						})
 
-						It("should not be able to remove node from single node cluster", func() {
-							metadata := proto.Clone(consenterMetadata).(*raftprotos.ConfigMetadata)
-							// Remove one of the consenters
-							metadata.Consenters = metadata.Consenters[1:]
-							values := map[string]*common.ConfigValue{
-								"ConsensusType": {
-									Version: 1,
-									Value: marshalOrPanic(&orderer.ConsensusType{
-										Metadata: marshalOrPanic(metadata),
-									}),
-								},
-							}
-							configEnv = newConfigEnv(channelID,
-								common.HeaderType_CONFIG,
-								newConfigUpdateEnv(channelID, nil, values))
-							configSeq = 0
-
-							Expect(chain.Configure(configEnv, configSeq)).To(MatchError("empty consenter set"))
-						})
 					})
 				})
 			})
@@ -1689,161 +1625,9 @@ var _ = Describe("Chain", func() {
 					})
 				})
 
-				It("fails with invalid timeout", func() {
-					metadata := &raftprotos.ConfigMetadata{Options: proto.Clone(options).(*raftprotos.Options)}
-					metadata.Options.ElectionTick = metadata.Options.HeartbeatTick
-					for _, consenter := range consenters {
-						metadata.Consenters = append(metadata.Consenters, consenter)
-					}
-
-					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
-						"ElectionTick (1) must be greater than HeartbeatTick (1)"))
-				})
-
-				It("fails with zero ElectionTick", func() {
-					metadata := &raftprotos.ConfigMetadata{Options: proto.Clone(options).(*raftprotos.Options)}
-					metadata.Options.ElectionTick = 0
-					for _, consenter := range consenters {
-						metadata.Consenters = append(metadata.Consenters, consenter)
-					}
-
-					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
-						"none of HeartbeatTick (1), ElectionTick (0) and MaxInflightBlocks (5) can be zero"))
-				})
-
-				It("fails with zero max inflgith blocks", func() {
-					metadata := &raftprotos.ConfigMetadata{Options: proto.Clone(options).(*raftprotos.Options)}
-					metadata.Options.MaxInflightBlocks = 0
-					for _, consenter := range consenters {
-						metadata.Consenters = append(metadata.Consenters, consenter)
-					}
-
-					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
-						"none of HeartbeatTick (1), ElectionTick (10) and MaxInflightBlocks (0) can be zero"))
-				})
-
-				It("fails with invalid tick interval", func() {
-					metadata := &raftprotos.ConfigMetadata{Options: proto.Clone(options).(*raftprotos.Options)}
-					metadata.Options.TickInterval = "invalid"
-					for _, consenter := range consenters {
-						metadata.Consenters = append(metadata.Consenters, consenter)
-					}
-
-					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(ContainSubstring(
-						"failed to parse TickInterval (invalid) to time duration")))
-				})
-
-				It("fails with zero tick interval", func() {
-					metadata := &raftprotos.ConfigMetadata{Options: proto.Clone(options).(*raftprotos.Options)}
-					metadata.Options.TickInterval = "0"
-					for _, consenter := range consenters {
-						metadata.Consenters = append(metadata.Consenters, consenter)
-					}
-
-					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(ContainSubstring(
-						"TickInterval cannot be zero")))
-				})
-
-				It("fails with empty consenter set", func() {
-					metadata := &raftprotos.ConfigMetadata{Options: options}
-
-					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
-						"empty consenter set"))
-				})
-
-				It("fails with invalid certificate for non PEM certificates", func() {
-					metadata := &raftprotos.ConfigMetadata{Options: options}
-					for _, consenter := range consenters {
-						metadata.Consenters = append(metadata.Consenters, consenter)
-					}
-					metadata.Consenters[0].ClientTlsCert = []byte("hello")
-
-					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
-						"client TLS certificate is not PEM encoded: hello"))
-				})
-
-				It("fails with invalid certificate for malformed certificates", func() {
-					metadata := &raftprotos.ConfigMetadata{Options: options}
-					for _, consenter := range consenters {
-						metadata.Consenters = append(metadata.Consenters, consenter)
-					}
-					metadata.Consenters[0].ServerTlsCert = pem.EncodeToMemory(&pem.Block{Bytes: []byte("hello")})
-
-					Expect(c1.Configure(createChannelEnv(metadata), 0).Error()).To(ContainSubstring(
-						"server TLS certificate has invalid ASN1 structure"))
-				})
-
-				It("fails with extra consenter", func() {
-					metadata := &raftprotos.ConfigMetadata{Options: options}
-					for _, consenter := range consenters {
-						metadata.Consenters = append(metadata.Consenters, consenter)
-					}
-					metadata.Consenters = append(
-						metadata.Consenters,
-						&raftprotos.Consenter{
-							Host:          "localhost",
-							Port:          7050,
-							ServerTlsCert: serverTLSCert(tlsCA),
-							ClientTlsCert: clientTLSCert(tlsCA),
-						})
-
-					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(MatchError(
-						"new channel has consenter that is not part of system consenter set"))
-				})
 			})
 
 			Context("reconfiguration", func() {
-				It("cannot change consenter set by more than 1 node", func() {
-					metadata := &raftprotos.ConfigMetadata{Options: options}
-					for id, consenter := range consenters {
-						if id == 2 || id == 3 {
-							// remove second & third consenter
-							continue
-						}
-						metadata.Consenters = append(metadata.Consenters, consenter)
-					}
-
-					value := map[string]*common.ConfigValue{
-						"ConsensusType": {
-							Version: 1,
-							Value: marshalOrPanic(&orderer.ConsensusType{
-								Metadata: marshalOrPanic(metadata),
-							}),
-						},
-					}
-
-					By("creating new configuration with removed node and new one")
-					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
-					c1.cutter.CutNext = true
-
-					By("sending config transaction")
-					err := c1.Configure(configEnv, 0)
-					Expect(err).To(MatchError(ContainSubstring("update of more than one consenter at a time is not supported, requested changes: add 0 node(s), remove 2 node(s)")))
-				})
-
-				It("rejects invalid certificates", func() {
-					configMetadata := &raftprotos.ConfigMetadata{Options: options}
-					for _, consenter := range consenters {
-						configMetadata.Consenters = append(configMetadata.Consenters, consenter)
-					}
-					configMetadata.Consenters[0].ServerTlsCert = []byte("hello")
-					value := map[string]*common.ConfigValue{
-						"ConsensusType": {
-							Version: 1,
-							Value: marshalOrPanic(&orderer.ConsensusType{
-								Metadata: marshalOrPanic(configMetadata),
-							}),
-						},
-					}
-
-					By("creating new configuration with invalid certificate")
-					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
-					c1.cutter.CutNext = true
-
-					By("sending config transaction")
-					Expect(c1.Configure(configEnv, 0)).To(MatchError("server TLS certificate is not PEM encoded: hello"))
-				})
-
 				It("can rotate certificate by adding and removing 1 node in one config update", func() {
 					metadata := &raftprotos.ConfigMetadata{Options: options}
 					for id, consenter := range consenters {
@@ -2052,41 +1836,6 @@ var _ = Describe("Chain", func() {
 					})
 				})
 
-				When("two type B config are sent back-to-back", func() {
-					It("discards or rejects the second", func() {
-						// initial state: <1, 2, 3>
-						// first config: <1, 2, 3, 4>
-						// second config: <1, 2>
-						c1.cutter.CutNext = true
-						configEnvAdd := newConfigEnv(channelID,
-							common.HeaderType_CONFIG,
-							newConfigUpdateEnv(channelID, nil, addConsenterConfigValue()))
-						configEnvRm := newConfigEnv(channelID,
-							common.HeaderType_CONFIG,
-							newConfigUpdateEnv(channelID, nil, removeConsenterConfigValue(3)))
-
-						By("Submitting two config tx back-to-back")
-						c1.support.SequenceReturnsOnCall(1, 0)
-						c1.support.SequenceReturnsOnCall(2, 1)
-						c1.support.ProcessConfigMsgReturns(configEnvRm, 1, nil)
-
-						Expect(c1.Configure(configEnvAdd, 0)).To(Succeed())
-						// If the first config tx is processed too quickly, consenter set is already altered and
-						// the second config tx would be rejected with error. Otherwise, the second config tx is
-						// going to be discarded during revalidation, instead of being explicitly rejected by
-						// `Configure`. Either way, there is only one config block being committed, which is the
-						// whole point of this test.
-						Expect(c1.Configure(configEnvRm, 0)).To(Or(
-							Succeed(),
-							MatchError("update of more than one consenter at a time is not supported, requested changes: add 0 node(s), remove 2 node(s)"),
-						))
-						network.exec(func(c *chain) {
-							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-							Consistently(c.support.WriteConfigBlockCallCount).Should(Equal(1))
-						})
-					})
-				})
-
 				It("adding node to the cluster", func() {
 					addConsenterUpdate := addConsenterConfigValue()
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterUpdate))
@@ -2141,29 +1890,6 @@ var _ = Describe("Chain", func() {
 					network.exec(func(c *chain) {
 						Eventually(c.support.WriteBlockCallCount, defaultTimeout).Should(Equal(2))
 					})
-
-					By("resubmitting the config update by mistake")
-					c1.cutter.CutNext = true
-					consensusType := &orderer.ConsensusType{}
-					proto.Unmarshal(addConsenterUpdate["ConsensusType"].Value, consensusType)
-					duplicatedMetadata := &raftprotos.ConfigMetadata{Options: options}
-					proto.Unmarshal(consensusType.Metadata, duplicatedMetadata)
-					duplicatedMetadata.Consenters = append(duplicatedMetadata.Consenters, duplicatedMetadata.Consenters[1])
-					configEnv = newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, map[string]*common.ConfigValue{
-						"ConsensusType": {
-							Version: 1,
-							Value: marshalOrPanic(&orderer.ConsensusType{
-								Metadata: marshalOrPanic(duplicatedMetadata),
-							}),
-						},
-					}))
-
-					err = c1.Configure(configEnv, 1)
-					By("Expecting it to be rejected")
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("duplicate consenter"))
-					Expect(err.Error()).To(ContainSubstring(string(duplicatedMetadata.Consenters[1].ServerTlsCert)))
-					Expect(err.Error()).To(ContainSubstring(string(duplicatedMetadata.Consenters[1].ClientTlsCert)))
 				})
 
 				It("does not reconfigure raft cluster if it's a channel creation tx", func() {

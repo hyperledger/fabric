@@ -16,7 +16,6 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -360,88 +359,7 @@ func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
 // Configure submits config type transactions for ordering.
 func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 	c.Metrics.ConfigProposalsReceived.Add(1)
-	if err := c.checkConfigUpdateValidity(env); err != nil {
-		c.logger.Warnf("Rejected config: %s", err)
-		c.Metrics.ProposalFailures.Add(1)
-		return err
-	}
 	return c.Submit(&orderer.SubmitRequest{LastValidationSeq: configSeq, Payload: env, Channel: c.channelID}, 0)
-}
-
-// Validate the config update for being of Type A or Type B as described in the design doc.
-func (c *Chain) checkConfigUpdateValidity(ctx *common.Envelope) error {
-	var err error
-	payload, err := protoutil.UnmarshalPayload(ctx.Payload)
-	if err != nil {
-		return err
-	}
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
-	if err != nil {
-		return err
-	}
-
-	if chdr.Type != int32(common.HeaderType_ORDERER_TRANSACTION) &&
-		chdr.Type != int32(common.HeaderType_CONFIG) {
-		return errors.Errorf("config transaction has unknown header type: %s", common.HeaderType(chdr.Type))
-	}
-
-	if chdr.Type == int32(common.HeaderType_ORDERER_TRANSACTION) {
-		newChannelConfig, err := protoutil.UnmarshalEnvelope(payload.Data)
-		if err != nil {
-			return err
-		}
-
-		payload, err = protoutil.UnmarshalPayload(newChannelConfig.Payload)
-		if err != nil {
-			return err
-		}
-	}
-
-	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
-	if err != nil {
-		return err
-	}
-
-	metadata, err := MetadataFromConfigUpdate(configUpdate)
-	if err != nil {
-		return err
-	}
-
-	if metadata == nil {
-		return nil // ConsensusType is not updated
-	}
-
-	if err = CheckConfigMetadata(metadata); err != nil {
-		return err
-	}
-
-	switch chdr.Type {
-	case int32(common.HeaderType_ORDERER_TRANSACTION):
-		c.raftMetadataLock.RLock()
-		set := MembershipByCert(c.opts.Consenters)
-		c.raftMetadataLock.RUnlock()
-
-		for _, c := range metadata.Consenters {
-			if _, exits := set[string(c.ClientTlsCert)]; !exits {
-				return errors.Errorf("new channel has consenter that is not part of system consenter set")
-			}
-		}
-
-		return nil
-
-	case int32(common.HeaderType_CONFIG):
-		c.raftMetadataLock.RLock()
-		_, err = ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, metadata.Consenters)
-		c.raftMetadataLock.RUnlock()
-
-		return err
-
-	default:
-		// panic here because we have just check header type and return early
-		c.logger.Panicf("Programming error, unknown header type")
-	}
-
-	return nil
 }
 
 // WaitReady blocks when the chain:
@@ -866,12 +784,8 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 				c.Metrics.ProposalFailures.Add(1)
 				return nil, true, errors.Errorf("bad config message: %s", err)
 			}
-
-			if err = c.checkConfigUpdateValidity(msg.Payload); err != nil {
-				c.Metrics.ProposalFailures.Add(1)
-				return nil, true, errors.Errorf("bad config message: %s", err)
-			}
 		}
+
 		batch := c.support.BlockCutter().Cut()
 		batches = [][]*common.Envelope{}
 		if len(batch) != 0 {

@@ -159,7 +159,7 @@ func MembershipByCert(consenters map[uint64]*etcdraft.Consenter) map[string]uint
 	return set
 }
 
-// ComputeMembershipChanges computes membership update based on information about new conseters, returns
+// ComputeMembershipChanges computes membership update based on information about new consenters, returns
 // two slices: a slice of added consenters and a slice of consenters to be removed
 func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters map[uint64]*etcdraft.Consenter, newConsenters []*etcdraft.Consenter) (mc *MembershipChanges, err error) {
 	result := &MembershipChanges{
@@ -411,6 +411,9 @@ func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata) error {
 
 	// sanity check of certificates
 	for _, consenter := range metadata.Consenters {
+		if consenter == nil {
+			return errors.Errorf("metadata has nil consenter")
+		}
 		if err := validateCert(consenter.ServerTlsCert, "server"); err != nil {
 			return err
 		}
@@ -650,4 +653,13 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 	}
 
 	es.logger.Infof("Pulled all blocks up to eviction block.")
+}
+
+// CreateConsentersMap creates a map of Raft Node IDs to Consenter given the block metadata and the config metadata.
+func CreateConsentersMap(blockMetadata *etcdraft.BlockMetadata, configMetadata *etcdraft.ConfigMetadata) map[uint64]*etcdraft.Consenter {
+	consenters := map[uint64]*etcdraft.Consenter{}
+	for i, consenter := range configMetadata.Consenters {
+		consenters[blockMetadata.ConsenterIds[i]] = consenter
+	}
+	return consenters
 }
