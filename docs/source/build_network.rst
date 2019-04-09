@@ -1050,9 +1050,9 @@ What's happening behind the scenes?
 
 -  A query against the value of "a" is issued to ``peer0.org2.example.com``.
    A container for Org2 peer0 by the name of ``dev-peer0.org2.example.com-mycc-1.0``
-   was started when the chaincode was instantiated. The result
-   of the query is returned. No write operations have occurred, so
-   a query against "a" will still return a value of "100".
+   was started when the chaincode was initialized. The result of the query is
+   returned. No write operations have occurred, so a query against "a" will
+   still return a value of "100".
 
 -  An invoke is sent to ``peer0.org1.example.com`` and ``peer0.org2.example.com``
    to move "10" from "a" to "b"
@@ -1188,6 +1188,11 @@ The same chaincode functions are available with CouchDB, however, there is the
 added ability to perform rich and complex queries against the state database
 data content contingent upon the chaincode data being modeled as JSON.
 
+.. note:: The Fabric chaincode lifecycle that is being introduced in the v2.0
+          Alpha release does not support using indexes with CouchDB. However,
+          you can still use CouchDB as the state database and follow the steps
+          below.
+
 To use CouchDB instead of the default database (goleveldb), follow the same
 procedures outlined earlier for generating the artifacts, except when starting
 the network pass ``docker-compose-couch.yaml`` as well:
@@ -1208,35 +1213,88 @@ the network pass ``docker-compose-couch.yaml`` as well:
 
 You can use **abstore** chaincode against the CouchDB state database
 using the steps outlined above, however in order to exercise the CouchDB query
-capabilities you will need to use a chaincode that has data modeled as JSON,
-(e.g. **marbles02**). You can locate the **marbles02** chaincode in the
-``fabric/examples/chaincode/go`` directory.
+capabilities you will need to use a chaincode that has data modeled as JSON.
+The sample chaincode **marbles02** has been written to demostrate the queries
+you can issue from your chaincode if you are using a CouchDB database. You can
+locate the **marbles02** chaincode in the ``fabric/examples/chaincode/go``
+directory.
 
 We will follow the same process to create and join the channel as outlined in the
 :ref:`peerenvvars` section above.  Once you have joined your peer(s) to the
 channel, use the following steps to interact with the **marbles02** chaincode:
 
--  Install and instantiate the chaincode on ``peer0.org1.example.com``:
+
+- Package and install the chaincode on ``peer0.org1.example.com``:
+
+.. code:: bash
+
+      peer lifecycle chaincode package marbles.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/marbles02/go/ --lang golang --label marbles_1
+      peer lifecycle chaincode install marbles.tar.gz
+
+ The install command will return a chaincode packageID that you will use to
+ approve a chaincode definition.
+
+.. code:: bash
+
+      2019-04-08 20:10:32.568 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 001 Installed remotely: response:<status:200 payload:"\nJmarbles_1:cfb623954827aef3f35868764991cc7571b445a45cfd3325f7002f14156d61ae\022\tmarbles_1" >
+      2019-04-08 20:10:32.568 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 002 Chaincode code package identifier: marbles_1:cfb623954827aef3f35868764991cc7571b445a45cfd3325f7002f14156d61ae
+
+- Save the packageID as an environment variable so you can pass it to future
+  commands:
+
+  .. code:: bash
+
+      CC_PACKAGE_ID=marbles_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173
+
+- Approve a chaincode definition as Org1:
 
 .. code:: bash
 
        # be sure to modify the $CHANNEL_NAME variable accordingly for the instantiate command
 
-       peer chaincode install -n marbles -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02/go
-       peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -v 1.0 -c '{"Args":["init"]}' -P "OR ('Org0MSP.peer','Org1MSP.peer')"
+       peer lifecycle chaincode approveformyorg --channelID $CHANNEL_NAME --name marbles --version 1.0 --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
 
--  Create some marbles and move them around:
+- Install the chaincode on ``peer0.org2.example.com``:
+
+.. code:: bash
+
+      CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+      CORE_PEER_ADDRESS=peer0.org2.example.com:9051
+      CORE_PEER_LOCALMSPID="Org2MSP"
+      CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+      peer lifecycle chaincode install marbles.tar.gz
+
+- Approve a chaincode definition as Org2, and then commit the definition to the
+  channel:
+
+.. code:: bash
+
+       # be sure to modify the $CHANNEL_NAME variable accordingly for the instantiate command
+
+       peer lifecycle chaincode approveformyorg --channelID $CHANNEL_NAME --name marbles --version 1.0 --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
+       peer lifecycle chaincode commit -o orderer.example.com:7050 --channelID $CHANNEL_NAME --name marbles --version 1.0 --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt --waitForEvent
+
+- We can now create some marbles. The first invoke of the chaincode will start
+  the chaincode container. You may need to wait for the container to start.
+
+.. code:: bash
+
+       # be sure to modify the $CHANNEL_NAME variable accordingly
+
+       peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["initMarble","marble1","blue","35","tom"]}'
+
+Once the container has started, you can issue additional commands to create
+some marbles and move them around:
 
 .. code:: bash
 
         # be sure to modify the $CHANNEL_NAME variable accordingly
 
-        peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["initMarble","marble1","blue","35","tom"]}'
-        peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["initMarble","marble2","red","50","tom"]}'
-        peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["initMarble","marble3","blue","70","tom"]}'
-        peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["transferMarble","marble2","jerry"]}'
-        peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["transferMarblesBasedOnColor","blue","jerry"]}'
-        peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["delete","marble1"]}'
+        peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["initMarble","marble2","red","50","tom"]}'
+        peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["initMarble","marble3","blue","70","tom"]}'
+        peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["transferMarble","marble2","jerry"]}'
+        peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["transferMarblesBasedOnColor","blue","jerry"]}'
+        peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["delete","marble1"]}'
 
 -  If you chose to map the CouchDB ports in docker-compose, you can now view
    the state database through the CouchDB web interface (Fauxton) by opening
@@ -1352,10 +1410,9 @@ Troubleshooting
        docker rm -f $(docker ps -aq)
        docker rmi -f $(docker images -q)
 
--  If you see errors on your create, instantiate, invoke or query commands, make
-   sure you have properly updated the channel name and chaincode name.  There
-   are placeholder values in the supplied sample commands.
-
+-  If you see errors on your create, approve, commit, invoke or query commands,
+   make sure you have properly updated the channel name and chaincode name.
+   There are placeholder values in the supplied sample commands.
 
 -  If you see the below error:
 
