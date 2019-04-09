@@ -7,12 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package protoutil
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/common"
@@ -578,13 +577,8 @@ func createProposalFromCDS(chainID string, msg proto.Message, creator []byte, pr
 func ComputeTxID(nonce, creator []byte) (string, error) {
 	// TODO: Get the Hash function to be used from
 	// channel configuration
-	digest, err := factory.GetDefault().Hash(
-		append(nonce, creator...),
-		&bccsp.SHA256Opts{})
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(digest), nil
+	digest := sha256.Sum256(append(nonce, creator...))
+	return hex.EncodeToString(digest[:]), nil
 }
 
 // CheckTxID checks that txid is equal to the Hash computed
@@ -634,7 +628,6 @@ func computeProposalBindingInternal(nonce, creator []byte, epoch uint64) ([]byte
 
 	// TODO: add to genesis block the hash function used for
 	// the binding computation
-	return factory.GetDefault().Hash(
-		append(append(nonce, creator...), epochBytes...),
-		&bccsp.SHA256Opts{})
+	digest := sha256.Sum256(append(append(nonce, creator...), epochBytes...))
+	return digest[:], nil
 }
