@@ -66,11 +66,11 @@ Use the following tutorials to get started with the new chaincode lifecycle:
   been updated to use the :doc:`commands/peerlifecycle` CLI to install and
   define chaincode on a sample network.
 
-* :doc:`private_data_tutorial`
+* :doc:`private_data_tutorial`:
   Has been updated to demonstrate how to use :doc:`private-data/private-data`
   collections with the new chaincode lifecycle.
 
-* :doc:`endorsement-policies`
+* :doc:`endorsement-policies`:
   Learn how the new lifecycle allows you to use policies in the channel
   configuration as chaincode endorsement policies.
 
@@ -95,7 +95,7 @@ uses an Unspent Transaction Output (UTXO) model to issue, transfer, and redeem
 tokens using the identity and membership infrastructure provided by Hyperledger
 Fabric.
 
-* :doc:`tokens/fabtoken`
+* :doc:`token/FabToken`:
   This operations guide provides a detailed overview of how to use tokens on a
   Fabric network. The guide also includes an example on how to create and
   transfer tokens using the :doc:`commands/token` CLI.
@@ -145,9 +145,8 @@ Release notes
 The release notes provide more details for users moving to the new release, along
 with a link to the full release change log.
 
-* `Fabric v2.0.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.0.0-alpha>`_.
-* `Fabric v1.4.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.1>`_.
-* `Fabric CA release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v2.0.0-alpha>`_.
+* `Fabric v2.0.0-alpha release notes <https://github.com/hyperledger/fabric/releases/tag/v2.0.0-alpha>`_.
+* `Fabric CA v2.0.0-alpha release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v2.0.0-alpha>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
