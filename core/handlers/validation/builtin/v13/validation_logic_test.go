@@ -897,7 +897,7 @@ func TestValidateDeployOK(t *testing.T) {
 	}
 
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
-	err = v.Validate(b, "foo", 0, 0, policy)
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.NoError(t, err)
 }
 
@@ -971,7 +971,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	}
 
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
-	err = v.Validate(b, "foo", 0, 0, policy)
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.NoError(t, err)
 
 	// Test 2: Deploy the chaincode with duplicate collection configs --> no error as the
@@ -995,7 +995,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	}
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
-	err = v.Validate(b, "foo", 0, 0, policy)
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.NoError(t, err)
 
 	// Test 3: Once the V1_2Validation is enabled, validation should fail due to duplicate collection configs
@@ -1022,7 +1022,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	}
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
-	err = v.Validate(b, "foo", 0, 0, policy)
+	err = v.Validate(b, "lscc", 0, 0, policy)
 }
 
 func TestValidateDeployWithPolicies(t *testing.T) {
@@ -1067,7 +1067,7 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 	}
 
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
-	err = v.Validate(b, "foo", 0, 0, policy)
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.NoError(t, err)
 
 	/********************************************/
@@ -1199,7 +1199,7 @@ func TestValidateUpgradeOK(t *testing.T) {
 	}
 
 	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
-	err = v.Validate(bl, "foo", 0, 0, policy)
+	err = v.Validate(bl, "lscc", 0, 0, policy)
 	assert.NoError(t, err)
 }
 
@@ -1521,7 +1521,7 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
 	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
-	err = v.Validate(bl, "foo", 0, 0, policy)
+	err = v.Validate(bl, "lscc", 0, 0, policy)
 	assert.NoError(t, err)
 }
 
