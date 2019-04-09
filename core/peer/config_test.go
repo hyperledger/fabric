@@ -230,3 +230,54 @@ func TestGetClientCertificate(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, cert)
 }
+
+func TestGlobalConfig(t *testing.T) {
+	//Capture the configuration from viper
+	viper.Set("peer.addressAutoDetect", "false")
+	viper.Set("peer.address", "localhost:8080")
+	viper.Set("peer.id", "testPeerID")
+	viper.Set("peer.localMspId", "SampleOrg")
+	viper.Set("peer.listenAddress", "0.0.0.0:7051")
+	viper.Set("peer.authentication.timewindow", "15m")
+	viper.Set("peer.tls.enabled", "false")
+	viper.Set("peer.networkId", "testNetwork")
+	viper.Set("peer.limits.concurrency.qscc", 5000)
+	viper.Set("peer.discovery.enabled", true)
+	viper.Set("peer.profile.enabled", false)
+	viper.Set("peer.profile.listenAddress", "peer.authentication.timewindow")
+
+	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
+	viper.Set("vm.docker.tls.enabled", false)
+	viper.Set("vm.docker.attachStdout", false)
+
+	viper.Set("chaincode.pull", false)
+
+	coreConfig := GlobalConfig()
+
+	assert.Equal(t, coreConfig.LocalMspID, "SampleOrg")
+	assert.Equal(t, coreConfig.ListenAddress, "0.0.0.0:7051")
+	assert.Equal(t, coreConfig.AuthenticationTimeWindow, 15*time.Minute)
+	assert.Equal(t, coreConfig.PeerTLSEnabled, false)
+	assert.Equal(t, coreConfig.NetworkID, "testNetwork")
+	assert.Equal(t, coreConfig.LimitsConcurrencyQSCC, 5000)
+	assert.Equal(t, coreConfig.DiscoveryEnabled, true)
+	assert.Equal(t, coreConfig.ProfileEnabled, false)
+	assert.Equal(t, coreConfig.ProfileListenAddress, "peer.authentication.timewindow")
+
+	assert.Equal(t, coreConfig.VMEndpoint, "unix:///var/run/docker.sock")
+	assert.Equal(t, coreConfig.VMDockerTLSEnabled, false)
+	assert.Equal(t, coreConfig.VMDockerAttachStdout, false)
+
+	assert.Equal(t, coreConfig.ChaincodePull, false)
+
+	assert.Equal(t, coreConfig.PeerAddress, "localhost:8080")
+	assert.Equal(t, coreConfig.PeerID, "testPeerID")
+	assert.Equal(t, coreConfig.PeerEndpoint.Id.Name, "testPeerID")
+	assert.Equal(t, coreConfig.PeerEndpoint.Address, "localhost:8080")
+
+	//bad peer address
+	viper.Set("peer.address", "")
+	assert.Panics(t, func() { GlobalConfig() }, "The code did not panic")
+	viper.Set("peer.address", "wrongAddress")
+	assert.Panics(t, func() { GlobalConfig() }, "The code did not panic")
+}

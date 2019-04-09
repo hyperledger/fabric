@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"net"
 	"path/filepath"
+	"time"
 
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config"
@@ -32,6 +33,63 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
+
+type Config struct {
+	LocalMspID               string
+	ListenAddress            string
+	AuthenticationTimeWindow time.Duration
+	PeerTLSEnabled           bool
+	PeerID                   string
+	PeerAddress              string
+	PeerEndpoint             *pb.PeerEndpoint
+	NetworkID                string
+	LimitsConcurrencyQSCC    int
+	DiscoveryEnabled         bool
+	ProfileEnabled           bool
+	ProfileListenAddress     string
+
+	VMEndpoint           string
+	VMDockerTLSEnabled   bool
+	VMDockerAttachStdout bool
+
+	ChaincodePull bool
+}
+
+func GlobalConfig() *Config {
+	c := &Config{}
+	c.load()
+	return c
+}
+
+func (c *Config) load() {
+	preeAddress, err := getLocalAddress()
+	if err != nil {
+		panic(err)
+	}
+	c.PeerAddress = preeAddress
+	c.PeerID = viper.GetString("peer.id")
+	c.PeerEndpoint = &pb.PeerEndpoint{
+		Id: &pb.PeerID{
+			Name: c.PeerID,
+		},
+		Address: c.PeerAddress,
+	}
+	c.LocalMspID = viper.GetString("peer.localMspId")
+	c.ListenAddress = viper.GetString("peer.listenAddress")
+	c.AuthenticationTimeWindow = viper.GetDuration("peer.authentication.timewindow")
+	c.PeerTLSEnabled = viper.GetBool("peer.tls.enabled")
+	c.NetworkID = viper.GetString("peer.networkId")
+	c.LimitsConcurrencyQSCC = viper.GetInt("peer.limits.concurrency.qscc")
+	c.DiscoveryEnabled = viper.GetBool("peer.discovery.enabled")
+	c.ProfileEnabled = viper.GetBool("peer.profile.enabled")
+	c.ProfileListenAddress = viper.GetString("peer.profile.listenAddress")
+
+	c.VMEndpoint = viper.GetString("vm.endpoint")
+	c.VMDockerTLSEnabled = viper.GetBool("vm.docker.tls.enabled")
+	c.VMDockerAttachStdout = viper.GetBool("vm.docker.attachStdout")
+
+	c.ChaincodePull = viper.GetBool("chaincode.pull")
+}
 
 // Is the configuration cached?
 var configurationCached = false
