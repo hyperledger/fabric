@@ -248,29 +248,6 @@ func TestHashNonExistentDir(t *testing.T) {
 	assert.Error(t, err, "Expected an error for non existent directory idontexist")
 }
 
-// TestIsCodeExist tests isCodeExist function
-func TestIsCodeExist(t *testing.T) {
-	assert := assert.New(t)
-	path := os.TempDir()
-	err := IsCodeExist(path)
-	assert.NoError(err,
-		"%s directory exists, IsCodeExist should not have returned error: %v",
-		path, err)
-
-	dir, err := ioutil.TempDir(os.TempDir(), "iscodeexist")
-	assert.NoError(err)
-	defer os.RemoveAll(dir)
-	path = dir + "/blah"
-	err = IsCodeExist(path)
-	assert.Error(err,
-		fmt.Sprintf("%s directory does not exist, IsCodeExist should have returned error", path))
-
-	f := createTempFile(t)
-	defer os.Remove(f)
-	err = IsCodeExist(f)
-	assert.Error(err, fmt.Sprintf("%s is a file, IsCodeExist should have returned error", f))
-}
-
 // TestDockerBuild tests DockerBuild function
 func TestDockerBuild(t *testing.T) {
 	assert := assert.New(t)
@@ -370,8 +347,7 @@ func TestUtil_GetDockerfileFromConfig(t *testing.T) {
 	path := "dt"
 	viper.Set(path, "FROM $(DOCKER_NS):$(ARCH)-$(PROJECT_VERSION)")
 	actual := GetDockerfileFromConfig(path)
-	assert.Equal(t, expected, actual, "Error parsing Dockerfile Template. Expected \"%s\", got \"%s\"",
-		expected, actual)
+	assert.Equal(t, expected, actual, `Error parsing Dockerfile Template. Expected "%s", got "%s"`, expected, actual)
 }
 
 func TestMain(m *testing.M) {

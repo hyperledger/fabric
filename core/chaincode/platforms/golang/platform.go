@@ -168,6 +168,20 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 	return nil
 }
 
+type Sources []SourceDescriptor
+
+func (s Sources) Len() int {
+	return len(s)
+}
+
+func (s Sources) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s Sources) Less(i, j int) bool {
+	return strings.Compare(s[i].Name, s[j].Name) < 0
+}
+
 // Vendor any packages that are not already within our chaincode's primary package
 // or vendored by it.  We take the name of the primary package and a list of files
 // that have been previously determined to comprise the package's dependencies.

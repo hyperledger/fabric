@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package util
@@ -22,12 +12,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/util"
@@ -40,18 +29,8 @@ var logger = flogging.MustGetLogger("chaincode.platform.util")
 
 //ComputeHash computes contents hash based on previous hash
 func ComputeHash(contents []byte, hash []byte) []byte {
-	newSlice := make([]byte, len(hash)+len(contents))
-
-	//copy the contents
-	copy(newSlice[0:len(contents)], contents[:])
-
-	//add the previous hash
-	copy(newSlice[len(contents):], hash[:])
-
-	//compute new hash
-	hash = util.ComputeSHA256(newSlice)
-
-	return hash
+	data := util.ConcatenateBytes(contents, hash)
+	return util.ComputeSHA256(data)
 }
 
 //HashFilesInDir computes h=hash(h,file bytes) for each file in a directory
@@ -93,25 +72,6 @@ func HashFilesInDir(rootDir string, dir string, hash []byte, tw *tar.Writer) ([]
 		}
 	}
 	return hash, nil
-}
-
-//IsCodeExist checks the chaincode if exists
-func IsCodeExist(tmppath string) error {
-	file, err := os.Open(tmppath)
-	if err != nil {
-		return fmt.Errorf("Could not open file %s", err)
-	}
-
-	fi, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("Could not stat file %s", err)
-	}
-
-	if !fi.IsDir() {
-		return fmt.Errorf("File %s is not dir\n", file.Name())
-	}
-
-	return nil
 }
 
 type DockerBuildOptions struct {
