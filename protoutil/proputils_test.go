@@ -15,7 +15,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -236,7 +235,7 @@ func TestProposal(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
 	prop, _, err := protoutil.CreateChaincodeProposalWithTransient(
 		common.HeaderType_ENDORSER_TRANSACTION,
-		util.GetTestChainID(), createCIS(),
+		testChainID, createCIS(),
 		[]byte("creator"),
 		map[string][]byte{"certx": []byte("transient")})
 	if err != nil {
@@ -350,7 +349,7 @@ func TestProposalWithTxID(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
 	prop, txid, err := protoutil.CreateChaincodeProposalWithTxIDAndTransient(
 		common.HeaderType_ENDORSER_TRANSACTION,
-		util.GetTestChainID(),
+		testChainID,
 		createCIS(),
 		[]byte("creator"),
 		"testtx",
@@ -362,7 +361,7 @@ func TestProposalWithTxID(t *testing.T) {
 
 	prop, txid, err = protoutil.CreateChaincodeProposalWithTxIDAndTransient(
 		common.HeaderType_ENDORSER_TRANSACTION,
-		util.GetTestChainID(),
+		testChainID,
 		createCIS(),
 		[]byte("creator"),
 		"",
@@ -478,7 +477,7 @@ func TestProposalResponse(t *testing.T) {
 
 func TestEnvelope(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), signerSerialized)
+	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, testChainID, createCIS(), signerSerialized)
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return

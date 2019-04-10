@@ -14,7 +14,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	mockmsp "github.com/hyperledger/fabric/common/mocks/msp"
-	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -471,7 +470,7 @@ func TestGetProposalHash1(t *testing.T) {
 
 func TestCreateProposalResponseFailure(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), signerSerialized)
+	prop, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, testChainID, createCIS(), signerSerialized)
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return

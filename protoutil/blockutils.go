@@ -7,12 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package protoutil
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/asn1"
 	"fmt"
 	"math"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
@@ -60,11 +61,13 @@ func BlockHeaderBytes(b *cb.BlockHeader) []byte {
 }
 
 func BlockHeaderHash(b *cb.BlockHeader) []byte {
-	return util.ComputeSHA256(BlockHeaderBytes(b))
+	sum := sha256.Sum256(BlockHeaderBytes(b))
+	return sum[:]
 }
 
 func BlockDataHash(b *cb.BlockData) []byte {
-	return util.ComputeSHA256(util.ConcatenateBytes(b.Data...))
+	sum := sha256.Sum256(bytes.Join(b.Data, nil))
+	return sum[:]
 }
 
 // GetChainIDFromBlockBytes returns chain ID given byte array which represents
