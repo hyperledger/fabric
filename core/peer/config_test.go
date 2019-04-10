@@ -245,6 +245,10 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.discovery.enabled", true)
 	viper.Set("peer.profile.enabled", false)
 	viper.Set("peer.profile.listenAddress", "peer.authentication.timewindow")
+	viper.Set("peer.discovery.orgMembersAllowedAccess", false)
+	viper.Set("peer.discovery.authCacheEnabled", true)
+	viper.Set("peer.discovery.authCacheMaxSize", 1000)
+	viper.Set("peer.discovery.authCachePurgeRetentionRatio", 0.75)
 
 	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 	viper.Set("vm.docker.tls.enabled", false)
@@ -263,6 +267,10 @@ func TestGlobalConfig(t *testing.T) {
 	assert.Equal(t, coreConfig.DiscoveryEnabled, true)
 	assert.Equal(t, coreConfig.ProfileEnabled, false)
 	assert.Equal(t, coreConfig.ProfileListenAddress, "peer.authentication.timewindow")
+	assert.Equal(t, coreConfig.DiscoveryOrgMembersAllowed, false)
+	assert.Equal(t, coreConfig.DiscoveryAuthCacheEnabled, true)
+	assert.Equal(t, coreConfig.DiscoveryAuthCacheMaxSize, 1000)
+	assert.Equal(t, coreConfig.DiscoveryAuthCachePurgeRetentionRatio, 0.75)
 
 	assert.Equal(t, coreConfig.VMEndpoint, "unix:///var/run/docker.sock")
 	assert.Equal(t, coreConfig.VMDockerTLSEnabled, false)

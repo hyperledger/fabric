@@ -516,7 +516,7 @@ func serve(args []string) error {
 	)
 
 	if coreConfig.DiscoveryEnabled {
-		registerDiscoveryService(peerServer, policyMgr, lifecycle)
+		registerDiscoveryService(coreConfig, peerServer, policyMgr, lifecycle)
 	}
 
 	networkID := coreConfig.NetworkID
@@ -589,13 +589,13 @@ func localPolicy(policyObject proto.Message) policies.Policy {
 }
 
 func createSelfSignedData() protoutil.SignedData {
-	sId := mgmt.GetLocalSigningIdentityOrPanic()
+	sID := mgmt.GetLocalSigningIdentityOrPanic()
 	msg := make([]byte, 32)
-	sig, err := sId.Sign(msg)
+	sig, err := sID.Sign(msg)
 	if err != nil {
 		logger.Panicf("Failed creating self signed data because message signing failed: %v", err)
 	}
-	peerIdentity, err := sId.Serialize()
+	peerIdentity, err := sID.Serialize()
 	if err != nil {
 		logger.Panicf("Failed creating self signed data because peer identity couldn't be serialized: %v", err)
 	}
@@ -606,10 +606,10 @@ func createSelfSignedData() protoutil.SignedData {
 	}
 }
 
-func registerDiscoveryService(peerServer *comm.GRPCServer, polMgr policies.ChannelPolicyManagerGetter, lc *cc.Lifecycle) {
-	mspID := viper.GetString("peer.localMspId")
+func registerDiscoveryService(coreConfig *peer.Config, peerServer *comm.GRPCServer, polMgr policies.ChannelPolicyManagerGetter, lc *cc.Lifecycle) {
+	mspID := coreConfig.LocalMspID
 	localAccessPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
-	if viper.GetBool("peer.discovery.orgMembersAllowedAccess") {
+	if coreConfig.DiscoveryOrgMembersAllowed {
 		localAccessPolicy = localPolicy(cauthdsl.SignedByAnyMember([]string{mspID}))
 	}
 	channelVerifier := discacl.NewChannelVerifier(policies.ChannelApplicationWriters, polMgr)
@@ -621,9 +621,9 @@ func registerDiscoveryService(peerServer *comm.GRPCServer, polMgr policies.Chann
 	support := discsupport.NewDiscoverySupport(acl, gSup, ea, confSup, acl)
 	svc := discovery.NewService(discovery.Config{
 		TLS:                          peerServer.TLSEnabled(),
-		AuthCacheEnabled:             viper.GetBool("peer.discovery.authCacheEnabled"),
-		AuthCacheMaxSize:             viper.GetInt("peer.discovery.authCacheMaxSize"),
-		AuthCachePurgeRetentionRatio: viper.GetFloat64("peer.discovery.authCachePurgeRetentionRatio"),
+		AuthCacheEnabled:             coreConfig.DiscoveryAuthCacheEnabled,
+		AuthCacheMaxSize:             coreConfig.DiscoveryAuthCacheMaxSize,
+		AuthCachePurgeRetentionRatio: coreConfig.DiscoveryAuthCachePurgeRetentionRatio,
 	}, support)
 	logger.Info("Discovery service activated")
 	discprotos.RegisterDiscoveryServer(peerServer.Server(), svc)

@@ -35,23 +35,30 @@ import (
 )
 
 type Config struct {
-	LocalMspID               string
-	ListenAddress            string
-	AuthenticationTimeWindow time.Duration
-	PeerTLSEnabled           bool
-	PeerID                   string
-	PeerAddress              string
-	PeerEndpoint             *pb.PeerEndpoint
-	NetworkID                string
-	LimitsConcurrencyQSCC    int
-	DiscoveryEnabled         bool
-	ProfileEnabled           bool
-	ProfileListenAddress     string
+	//Peer config
+	LocalMspID                            string
+	ListenAddress                         string
+	AuthenticationTimeWindow              time.Duration
+	PeerTLSEnabled                        bool
+	PeerID                                string
+	PeerAddress                           string
+	PeerEndpoint                          *pb.PeerEndpoint
+	NetworkID                             string
+	LimitsConcurrencyQSCC                 int
+	DiscoveryEnabled                      bool
+	ProfileEnabled                        bool
+	ProfileListenAddress                  string
+	DiscoveryOrgMembersAllowed            bool
+	DiscoveryAuthCacheEnabled             bool
+	DiscoveryAuthCacheMaxSize             int
+	DiscoveryAuthCachePurgeRetentionRatio float64
 
+	//VM config
 	VMEndpoint           string
 	VMDockerTLSEnabled   bool
 	VMDockerAttachStdout bool
 
+	//Chaincode config
 	ChaincodePull bool
 }
 
@@ -83,6 +90,10 @@ func (c *Config) load() {
 	c.DiscoveryEnabled = viper.GetBool("peer.discovery.enabled")
 	c.ProfileEnabled = viper.GetBool("peer.profile.enabled")
 	c.ProfileListenAddress = viper.GetString("peer.profile.listenAddress")
+	c.DiscoveryOrgMembersAllowed = viper.GetBool("peer.discovery.orgMembersAllowedAccess")
+	c.DiscoveryAuthCacheEnabled = viper.GetBool("peer.discovery.authCacheEnabled")
+	c.DiscoveryAuthCacheMaxSize = viper.GetInt("peer.discovery.authCacheMaxSize")
+	c.DiscoveryAuthCachePurgeRetentionRatio = viper.GetFloat64("peer.discovery.authCachePurgeRetentionRatio")
 
 	c.VMEndpoint = viper.GetString("vm.endpoint")
 	c.VMDockerTLSEnabled = viper.GetBool("vm.docker.tls.enabled")
