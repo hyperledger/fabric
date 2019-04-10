@@ -8,10 +8,9 @@ package protoutil
 
 import (
 	"bytes"
+	"crypto/sha256"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -456,10 +455,7 @@ func GetProposalHash2(header *common.Header, ccPropPayl []byte) ([]byte, error) 
 		return nil, errors.New("nil arguments")
 	}
 
-	hash, err := factory.GetDefault().GetHash(&bccsp.SHA256Opts{})
-	if err != nil {
-		return nil, errors.WithMessage(err, "error instantiating hash function")
-	}
+	hash := sha256.New()
 	// hash the serialized Channel Header object
 	hash.Write(header.ChannelHeader)
 	// hash the serialized Signature Header object
@@ -491,10 +487,7 @@ func GetProposalHash1(header *common.Header, ccPropPayl []byte, visibility []byt
 		return nil, err
 	}
 
-	hash2, err := factory.GetDefault().GetHash(&bccsp.SHA256Opts{})
-	if err != nil {
-		return nil, errors.WithMessage(err, "error instantiating hash function")
-	}
+	hash2 := sha256.New()
 	// hash the serialized Channel Header object
 	hash2.Write(header.ChannelHeader)
 	// hash the serialized Signature Header object
