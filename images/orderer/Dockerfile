@@ -12,6 +12,7 @@ RUN apk add --no-cache \
 	gcc \
 	musl-dev \
 	git \
+	libtool \
 	bash \
 	make;
 ADD . $GOPATH/src/github.com/hyperledger/fabric
@@ -19,7 +20,8 @@ WORKDIR $GOPATH/src/github.com/hyperledger/fabric
 ENV EXECUTABLES go git
 
 FROM golang as orderer
-RUN make orderer
+ARG GO_TAGS
+RUN make orderer GO_TAGS=${GO_TAGS}
 
 FROM base
 ENV FABRIC_CFG_PATH /etc/hyperledger/fabric

@@ -252,6 +252,10 @@ $(BUILD_DIR)/images/baseos/$(DUMMY):
 	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 	@touch $@
 
+$(BUILD_DIR)/images/peer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
+
+$(BUILD_DIR)/images/orderer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
+
 $(BUILD_DIR)/images/%/$(DUMMY):
 	@mkdir -p $(@D)
 	$(eval TARGET = ${patsubst $(BUILD_DIR)/images/%/$(DUMMY),%,${@}})
