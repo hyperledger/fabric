@@ -60,22 +60,14 @@ func TestGoodBlockHeaderBytes(t *testing.T) {
 	}
 
 	_ = protoutil.BlockHeaderBytes(goodBlockHeader) // Should not panic
-}
 
-func TestBadBlockHeaderBytes(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatalf("Should have panicked on block number too high to encode as int64")
-		}
-	}()
-
-	badBlockHeader := &common.BlockHeader{
+	goodBlockHeaderMaxNumber := &common.BlockHeader{
 		Number:       math.MaxUint64,
 		PreviousHash: []byte("foo"),
 		DataHash:     []byte("bar"),
 	}
 
-	_ = protoutil.BlockHeaderBytes(badBlockHeader) // Should panic
+	_ = protoutil.BlockHeaderBytes(goodBlockHeaderMaxNumber) // Should not panic
 }
 
 func TestGetChainIDFromBlockBytes(t *testing.T) {

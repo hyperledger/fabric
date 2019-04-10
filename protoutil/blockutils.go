@@ -10,8 +10,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/asn1"
-	"fmt"
-	"math"
+	"math/big"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -36,19 +35,16 @@ func NewBlock(seqNum uint64, previousHash []byte) *cb.Block {
 }
 
 type asn1Header struct {
-	Number       int64
+	Number       *big.Int
 	PreviousHash []byte
 	DataHash     []byte
 }
 
 func BlockHeaderBytes(b *cb.BlockHeader) []byte {
-	if b.Number > uint64(math.MaxInt64) {
-		panic(fmt.Errorf("Golang does not currently support encoding uint64 to asn1"))
-	}
 	asn1Header := asn1Header{
 		PreviousHash: b.PreviousHash,
 		DataHash:     b.DataHash,
-		Number:       int64(b.Number),
+		Number:       new(big.Int).SetUint64(b.Number),
 	}
 	result, err := asn1.Marshal(asn1Header)
 	if err != nil {
