@@ -7,72 +7,20 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
-	"archive/tar"
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"path/filepath"
 	"runtime"
 	"strings"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metadata"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config"
-	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/spf13/viper"
 )
 
 var logger = flogging.MustGetLogger("chaincode.platform.util")
-
-//ComputeHash computes contents hash based on previous hash
-func ComputeHash(contents []byte, hash []byte) []byte {
-	data := util.ConcatenateBytes(contents, hash)
-	return util.ComputeSHA256(data)
-}
-
-//HashFilesInDir computes h=hash(h,file bytes) for each file in a directory
-//Directory entries are traversed recursively. In the end a single
-//hash value is returned for the entire directory structure
-func HashFilesInDir(rootDir string, dir string, hash []byte, tw *tar.Writer) ([]byte, error) {
-	currentDir := filepath.Join(rootDir, dir)
-	logger.Debugf("hashFiles %s", currentDir)
-	//ReadDir returns sorted list of files in dir
-	fis, err := ioutil.ReadDir(currentDir)
-	if err != nil {
-		return hash, fmt.Errorf("ReadDir failed %s\n", err)
-	}
-	for _, fi := range fis {
-		name := filepath.Join(dir, fi.Name())
-		if fi.IsDir() {
-			var err error
-			hash, err = HashFilesInDir(rootDir, name, hash, tw)
-			if err != nil {
-				return hash, err
-			}
-			continue
-		}
-		fqp := filepath.Join(rootDir, name)
-		buf, err := ioutil.ReadFile(fqp)
-		if err != nil {
-			logger.Errorf("Error reading %s\n", err)
-			return hash, err
-		}
-
-		//get the new hash from file contents
-		hash = ComputeHash(buf, hash)
-
-		if tw != nil {
-			is := bytes.NewReader(buf)
-			if err = cutil.WriteStreamToPackage(is, fqp, filepath.Join("src", name), tw); err != nil {
-				return hash, fmt.Errorf("Error adding file to tar %s", err)
-			}
-		}
-	}
-	return hash, nil
-}
 
 type DockerBuildOptions struct {
 	Image        string
