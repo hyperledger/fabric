@@ -8,17 +8,23 @@ package platforms
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"fmt"
 	"io"
 	"strings"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
+	"github.com/hyperledger/fabric/core/config"
 	cutil "github.com/hyperledger/fabric/core/container/util"
+	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
 // SupportedPlatforms is the canonical list of platforms Fabric supports
@@ -36,7 +42,7 @@ type Platform interface {
 	ValidateCodePackage(code []byte) error
 	GetDeploymentPayload(path string) ([]byte, error)
 	GenerateDockerfile() (string, error)
-	GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error
+	DockerBuildOptions(path string) (util.DockerBuildOptions, error)
 	GetMetadataAsTarEntries(code []byte) ([]byte, error)
 }
 
@@ -173,19 +179,29 @@ func (r *Registry) StreamDockerBuild(ccType, path string, codePackage []byte, in
 		}
 	}
 
-	// ----------------------------------------------------------------------------------------------------
-	// Now give the platform an opportunity to contribute its own context to the build
-	// ----------------------------------------------------------------------------------------------------
-	err = platform.GenerateDockerBuild(path, codePackage, tw)
+	buildOptions, err := platform.DockerBuildOptions(path)
 	if err != nil {
-		return fmt.Errorf("Failed to generate platform-specific docker build: %s", err)
+		return errors.Wrap(err, "platform failed to create docker build options")
 	}
 
-	return nil
+	output := &bytes.Buffer{}
+	buildOptions.InputStream = bytes.NewReader(codePackage)
+	buildOptions.OutputStream = output
+
+	client, err := dockerClient()
+	if err != nil {
+		return errors.Wrap(err, "failed to acquire docker client")
+	}
+
+	err = util.DockerBuild(buildOptions, client)
+	if err != nil {
+		return errors.Wrap(err, "docker build failed")
+	}
+
+	return cutil.WriteBytesToPackage("binpackage.tar", output.Bytes(), tw)
 }
 
 func (r *Registry) GenerateDockerBuild(ccType, path, name, version string, codePackage []byte) (io.Reader, error) {
-
 	inputFiles := make(map[string][]byte)
 
 	// ----------------------------------------------------------------------------------------------------
@@ -217,4 +233,17 @@ func (r *Registry) GenerateDockerBuild(ccType, path, name, version string, codeP
 	}()
 
 	return input, nil
+}
+
+func dockerClient() (*docker.Client, error) {
+	endpoint := viper.GetString("vm.endpoint")
+	tlsEnabled := viper.GetBool("vm.docker.tls.enabled")
+	if tlsEnabled {
+		cert := config.GetPath("vm.docker.tls.cert.file")
+		key := config.GetPath("vm.docker.tls.key.file")
+		ca := config.GetPath("vm.docker.tls.ca.file")
+		return docker.NewTLSClient(endpoint, cert, key, ca)
+	}
+
+	return docker.NewClient(endpoint)
 }

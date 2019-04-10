@@ -16,7 +16,6 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metadata"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/spf13/viper"
 )
 
@@ -54,23 +53,7 @@ type DockerBuildOptions struct {
 //      - OutputStream: A tarball of files that will be gathered from /chaincode/output
 //                      after successful execution of Cmd.
 //-------------------------------------------------------------------------------------------
-func DockerBuild(opts DockerBuildOptions) error {
-	var client *docker.Client
-	var err error
-	endpoint := viper.GetString("vm.endpoint")
-	tlsEnabled := viper.GetBool("vm.docker.tls.enabled")
-	if tlsEnabled {
-		cert := config.GetPath("vm.docker.tls.cert.file")
-		key := config.GetPath("vm.docker.tls.key.file")
-		ca := config.GetPath("vm.docker.tls.ca.file")
-		client, err = docker.NewTLSClient(endpoint, cert, key, ca)
-	} else {
-		client, err = docker.NewClient(endpoint)
-	}
-
-	if err != nil {
-		return fmt.Errorf("Error creating docker client: %s", err)
-	}
+func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 	if opts.Image == "" {
 		opts.Image = GetDockerfileFromConfig("chaincode.builder")
 		if opts.Image == "" {
@@ -83,7 +66,7 @@ func DockerBuild(opts DockerBuildOptions) error {
 	//-----------------------------------------------------------------------------------
 	// Ensure the image exists locally, or pull it from a registry if it doesn't
 	//-----------------------------------------------------------------------------------
-	_, err = client.InspectImage(opts.Image)
+	_, err := client.InspectImage(opts.Image)
 	if err != nil {
 		logger.Debugf("Image %s does not exist locally, attempt pull", opts.Image)
 

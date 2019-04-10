@@ -167,7 +167,6 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 }
 
 func (p *Platform) GenerateDockerfile() (string, error) {
-
 	var buf []string
 
 	buf = append(buf, "FROM "+util.GetDockerfileFromConfig("chaincode.node.runtime"))
@@ -178,21 +177,11 @@ func (p *Platform) GenerateDockerfile() (string, error) {
 	return dockerFileContents, nil
 }
 
-func (p *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
-
-	codepackage := bytes.NewReader(code)
-	binpackage := bytes.NewBuffer(nil)
-	err := util.DockerBuild(util.DockerBuildOptions{
-		Image:        util.GetDockerfileFromConfig("chaincode.node.runtime"),
-		Cmd:          fmt.Sprint("cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production"),
-		InputStream:  codepackage,
-		OutputStream: binpackage,
-	})
-	if err != nil {
-		return err
-	}
-
-	return cutil.WriteBytesToPackage("binpackage.tar", binpackage.Bytes(), tw)
+func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
+	return util.DockerBuildOptions{
+		Image: util.GetDockerfileFromConfig("chaincode.node.runtime"),
+		Cmd:   fmt.Sprint("cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production"),
+	}, nil
 }
 
 // GetMetadataProvider fetches metadata provider given deployment spec

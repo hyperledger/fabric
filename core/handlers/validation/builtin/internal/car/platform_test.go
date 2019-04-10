@@ -9,6 +9,7 @@ package car
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,8 +24,7 @@ func TestPlatform(t *testing.T) {
 	df, err := p.GenerateDockerfile()
 	assert.Empty(t, df)
 	assert.EqualError(t, err, errMsg)
-	assert.EqualError(t, p.GenerateDockerBuild("", nil, nil), errMsg)
-	md, err := p.GetMetadataAsTarEntries([]byte{})
-	assert.Nil(t, md)
-	assert.NoError(t, err)
+	opts, err := p.DockerBuildOptions("ignored-path")
+	assert.EqualError(t, err, "CAR packages are no longer supported.  You must upgrade your chaincode and use a supported type.")
+	assert.Equal(t, opts, util.DockerBuildOptions{})
 }

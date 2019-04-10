@@ -371,7 +371,6 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 	// from the filtered list
 	// --------------------------------------------------------------------------------------
 	for dep := range deps {
-
 		logger.Debugf("processing dep: %s", dep)
 
 		// Each dependency should either be in our GOPATH or GOROOT.  We are not interested in packaging
@@ -428,15 +427,10 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 	tw := tar.NewWriter(gw)
 
 	for _, file := range files {
-
-		// file.Path represents os localpath
-		// file.Name represents tar packagepath
-
 		// If the file is metadata rather than golang code, remove the leading go code path, for example:
 		// original file.Name:  src/github.com/hyperledger/fabric/examples/chaincode/go/marbles02/META-INF/statedb/couchdb/indexes/indexOwner.json
 		// updated file.Name:   META-INF/statedb/couchdb/indexes/indexOwner.json
 		if file.IsMetadata {
-
 			file.Name, err = filepath.Rel(filepath.Join("src", code.Pkg), file.Name)
 			if err != nil {
 				return nil, fmt.Errorf("This error was caused by bad packaging of the metadata.  The file [%s] is marked as MetaFile, however not located under META-INF   Error:[%s]", file.Name, err)
@@ -483,15 +477,11 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 }
 
 func (p *Platform) GenerateDockerfile() (string, error) {
-
 	var buf []string
-
 	buf = append(buf, "FROM "+util.GetDockerfileFromConfig("chaincode.golang.runtime"))
 	buf = append(buf, "ADD binpackage.tar /usr/local/bin")
 
-	dockerFileContents := strings.Join(buf, "\n")
-
-	return dockerFileContents, nil
+	return strings.Join(buf, "\n"), nil
 }
 
 const staticLDFlagsOpts = "-ldflags \"-linkmode external -extldflags '-static'\""
@@ -504,27 +494,16 @@ func getLDFlagsOpts() string {
 	return staticLDFlagsOpts
 }
 
-func (p *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
+func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
 	pkgname, err := decodeUrl(path)
 	if err != nil {
-		return fmt.Errorf("could not decode url: %s", err)
+		return util.DockerBuildOptions{}, fmt.Errorf("could not decode url: %s", err)
 	}
 
 	ldflagsOpt := getLDFlagsOpts()
-	logger.Infof("building chaincode with ldflagsOpt: '%s'", ldflagsOpt)
-
-	codepackage := bytes.NewReader(code)
-	binpackage := bytes.NewBuffer(nil)
-	err = util.DockerBuild(util.DockerBuildOptions{
-		Cmd:          fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build  %s -o /chaincode/output/chaincode %s", ldflagsOpt, pkgname),
-		InputStream:  codepackage,
-		OutputStream: binpackage,
-	})
-	if err != nil {
-		return err
-	}
-
-	return cutil.WriteBytesToPackage("binpackage.tar", binpackage.Bytes(), tw)
+	return util.DockerBuildOptions{
+		Cmd: fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build  %s -o /chaincode/output/chaincode %s", ldflagsOpt, pkgname),
+	}, nil
 }
 
 // GetMetadataProvider fetches metadata provider given deployment spec

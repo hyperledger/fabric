@@ -16,8 +16,10 @@ import (
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/mock"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/viper"
 )
 
 var _ = Describe("Platforms", func() {
@@ -33,6 +35,8 @@ var _ = Describe("Platforms", func() {
 				"fakeType": fakePlatform,
 			},
 		}
+		viper.Set("chaincode.builder", "$(DOCKER_NS)/fabric-ccenv:$(PROJECT_VERSION)")
+		viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 	})
 
 	Describe("pass through functions", func() {
@@ -164,8 +168,8 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 			pw = &mock.PackageWriter{}
 			registry.PackageWriter = pw
 		})
-		Describe("StreamDockerBuild", func() {
 
+		Describe("StreamDockerBuild", func() {
 			AfterEach(func() {
 				tw.Close()
 			})
@@ -181,7 +185,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 				Expect(name).To(Equal("foo"))
 				Expect(data).To(Equal([]byte("foo-bytes")))
 				Expect(writer).To(Equal(tw))
-				Expect(fakePlatform.GenerateDockerBuildCallCount()).To(Equal(1))
+				Expect(fakePlatform.DockerBuildOptionsCallCount()).To(Equal(1))
 			})
 
 			Context("when the platform is unknown", func() {
@@ -206,9 +210,9 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 
 			Context("when the underlying platform fails", func() {
 				It("returns an error", func() {
-					fakePlatform.GenerateDockerBuildReturns(errors.New("fake-error"))
+					fakePlatform.DockerBuildOptionsReturns(util.DockerBuildOptions{}, errors.New("fake-error"))
 					err := registry.StreamDockerBuild("fakeType", "", nil, nil, tw)
-					Expect(err).To(MatchError("Failed to generate platform-specific docker build: fake-error"))
+					Expect(err).To(MatchError("platform failed to create docker build options: fake-error"))
 				})
 			})
 		})

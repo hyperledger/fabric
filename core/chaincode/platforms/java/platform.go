@@ -131,24 +131,11 @@ func (p *Platform) GenerateDockerfile() (string, error) {
 	return dockerFileContents, nil
 }
 
-func (p *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
-	codepackage := bytes.NewReader(code)
-	binpackage := bytes.NewBuffer(nil)
-	buildOptions := util.DockerBuildOptions{
-		Image:        util.GetDockerfileFromConfig("chaincode.java.runtime"),
-		Cmd:          "./build.sh",
-		InputStream:  codepackage,
-		OutputStream: binpackage,
-	}
-	logger.Debugf("Executing docker build %v, %v", buildOptions.Image, buildOptions.Cmd)
-	err := util.DockerBuild(buildOptions)
-	if err != nil {
-		logger.Errorf("Can't build java chaincode %v", err)
-		return err
-	}
-
-	resultBytes := binpackage.Bytes()
-	return cutil.WriteBytesToPackage("binpackage.tar", resultBytes, tw)
+func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
+	return util.DockerBuildOptions{
+		Image: util.GetDockerfileFromConfig("chaincode.java.runtime"),
+		Cmd:   "./build.sh",
+	}, nil
 }
 
 // GetMetadataProvider fetches metadata provider given deployment spec
