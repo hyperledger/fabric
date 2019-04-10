@@ -52,6 +52,9 @@ type Config struct {
 	DiscoveryAuthCacheEnabled             bool
 	DiscoveryAuthCacheMaxSize             int
 	DiscoveryAuthCachePurgeRetentionRatio float64
+	ChaincodeListenAddr                   string
+	ChaincodeAddr                         string
+	AdminListenAddr                       string
 
 	//VM config
 	VMEndpoint           string
@@ -94,6 +97,9 @@ func (c *Config) load() {
 	c.DiscoveryAuthCacheEnabled = viper.GetBool("peer.discovery.authCacheEnabled")
 	c.DiscoveryAuthCacheMaxSize = viper.GetInt("peer.discovery.authCacheMaxSize")
 	c.DiscoveryAuthCachePurgeRetentionRatio = viper.GetFloat64("peer.discovery.authCachePurgeRetentionRatio")
+	c.ChaincodeListenAddr = viper.GetString("peer.chaincodeListenAddress")
+	c.ChaincodeAddr = viper.GetString("peer.chaincodeAddress")
+	c.AdminListenAddr = viper.GetString("peer.adminService.listenAddress")
 
 	c.VMEndpoint = viper.GetString("vm.endpoint")
 	c.VMDockerTLSEnabled = viper.GetBool("vm.docker.tls.enabled")

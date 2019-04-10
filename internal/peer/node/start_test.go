@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/handlers/library"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/testutil"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	. "github.com/onsi/gomega"
@@ -97,18 +98,17 @@ func TestHandlerMap(t *testing.T) {
 
 func TestComputeChaincodeEndpoint(t *testing.T) {
 	/*** Scenario 1: chaincodeAddress and chaincodeListenAddress are not set ***/
-	viper.Set(chaincodeAddrKey, nil)
-	viper.Set(chaincodeListenAddrKey, nil)
+	coreConfig := &peer.Config{}
 	// Scenario 1.1: peer address is 0.0.0.0
 	// computeChaincodeEndpoint will return error
 	peerAddress0 := "0.0.0.0"
-	ccEndpoint, err := computeChaincodeEndpoint(peerAddress0)
+	ccEndpoint, err := computeChaincodeEndpoint(coreConfig, peerAddress0)
 	assert.Error(t, err)
 	assert.Equal(t, "", ccEndpoint)
 	// Scenario 1.2: peer address is not 0.0.0.0
 	// chaincodeEndpoint will be peerAddress:7052
 	peerAddress := "127.0.0.1"
-	ccEndpoint, err = computeChaincodeEndpoint(peerAddress)
+	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
 	assert.NoError(t, err)
 	assert.Equal(t, peerAddress+":7052", ccEndpoint)
 
@@ -116,32 +116,33 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 	// Scenario 2.1: chaincodeListenAddress is 0.0.0.0
 	chaincodeListenPort := "8052"
 	settingChaincodeListenAddress0 := "0.0.0.0:" + chaincodeListenPort
-	viper.Set(chaincodeListenAddrKey, settingChaincodeListenAddress0)
-	viper.Set(chaincodeAddrKey, nil)
+	coreConfig.ChaincodeListenAddr = settingChaincodeListenAddress0
+	coreConfig.ChaincodeAddr = ""
 	// Scenario 2.1.1: peer address is 0.0.0.0
 	// computeChaincodeEndpoint will return error
-	ccEndpoint, err = computeChaincodeEndpoint(peerAddress0)
+	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress0)
 	assert.Error(t, err)
 	assert.Equal(t, "", ccEndpoint)
 	// Scenario 2.1.2: peer address is not 0.0.0.0
 	// chaincodeEndpoint will be peerAddress:chaincodeListenPort
-	ccEndpoint, err = computeChaincodeEndpoint(peerAddress)
+	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
 	assert.NoError(t, err)
 	assert.Equal(t, peerAddress+":"+chaincodeListenPort, ccEndpoint)
 	// Scenario 2.2: chaincodeListenAddress is not 0.0.0.0
 	// chaincodeEndpoint will be chaincodeListenAddress
 	settingChaincodeListenAddress := "127.0.0.1:" + chaincodeListenPort
-	viper.Set(chaincodeListenAddrKey, settingChaincodeListenAddress)
-	viper.Set(chaincodeAddrKey, nil)
-	ccEndpoint, err = computeChaincodeEndpoint(peerAddress)
+	coreConfig.ChaincodeListenAddr = settingChaincodeListenAddress
+	coreConfig.ChaincodeAddr = ""
+	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
 	assert.NoError(t, err)
 	assert.Equal(t, settingChaincodeListenAddress, ccEndpoint)
 	// Scenario 2.3: chaincodeListenAddress is invalid
 	// computeChaincodeEndpoint will return error
 	settingChaincodeListenAddressInvalid := "abc"
-	viper.Set(chaincodeListenAddrKey, settingChaincodeListenAddressInvalid)
-	viper.Set(chaincodeAddrKey, nil)
-	ccEndpoint, err = computeChaincodeEndpoint(peerAddress)
+	coreConfig.ChaincodeListenAddr = settingChaincodeListenAddressInvalid
+	coreConfig.ChaincodeAddr = ""
+	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
+
 	assert.Error(t, err)
 	assert.Equal(t, "", ccEndpoint)
 
@@ -150,25 +151,26 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 	// computeChaincodeEndpoint will return error
 	chaincodeAddressPort := "9052"
 	settingChaincodeAddress0 := "0.0.0.0:" + chaincodeAddressPort
-	viper.Set(chaincodeListenAddrKey, nil)
-	viper.Set(chaincodeAddrKey, settingChaincodeAddress0)
-	ccEndpoint, err = computeChaincodeEndpoint(peerAddress)
+	coreConfig.ChaincodeListenAddr = ""
+	coreConfig.ChaincodeAddr = settingChaincodeAddress0
+	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
+
 	assert.Error(t, err)
 	assert.Equal(t, "", ccEndpoint)
 	// Scenario 3.2: chaincodeAddress is not 0.0.0.0
 	// chaincodeEndpoint will be chaincodeAddress
 	settingChaincodeAddress := "127.0.0.2:" + chaincodeAddressPort
-	viper.Set(chaincodeListenAddrKey, nil)
-	viper.Set(chaincodeAddrKey, settingChaincodeAddress)
-	ccEndpoint, err = computeChaincodeEndpoint(peerAddress)
+	coreConfig.ChaincodeListenAddr = ""
+	coreConfig.ChaincodeAddr = settingChaincodeAddress
+	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
 	assert.NoError(t, err)
 	assert.Equal(t, settingChaincodeAddress, ccEndpoint)
 	// Scenario 3.3: chaincodeAddress is invalid
 	// computeChaincodeEndpoint will return error
 	settingChaincodeAddressInvalid := "bcd"
-	viper.Set(chaincodeListenAddrKey, nil)
-	viper.Set(chaincodeAddrKey, settingChaincodeAddressInvalid)
-	ccEndpoint, err = computeChaincodeEndpoint(peerAddress)
+	coreConfig.ChaincodeListenAddr = ""
+	coreConfig.ChaincodeAddr = settingChaincodeAddressInvalid
+	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
 	assert.Error(t, err)
 	assert.Equal(t, "", ccEndpoint)
 

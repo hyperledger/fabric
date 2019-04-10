@@ -303,7 +303,7 @@ func serve(args []string) error {
 	if err != nil {
 		logger.Panic("Failed creating authentication layer:", err)
 	}
-	ccSrv, ccEndpoint, err := createChaincodeServer(ca, peerHost)
+	ccSrv, ccEndpoint, err := createChaincodeServer(coreConfig, ca, peerHost)
 	if err != nil {
 		logger.Panicf("Failed to create chaincode server: %s", err)
 	}
@@ -417,7 +417,7 @@ func serve(args []string) error {
 	logger.Debugf("Running peer")
 
 	// Start the Admin server
-	startAdminServer(listenAddr, peerServer.Server(), metricsProvider)
+	startAdminServer(coreConfig, listenAddr, peerServer.Server(), metricsProvider)
 
 	privDataDist := func(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData, blkHt)
@@ -630,9 +630,9 @@ func registerDiscoveryService(coreConfig *peer.Config, peerServer *comm.GRPCServ
 }
 
 //create a CC listener using peer.chaincodeListenAddress (and if that's not set use peer.peerAddress)
-func createChaincodeServer(ca tlsgen.CA, peerHostname string) (srv *comm.GRPCServer, ccEndpoint string, err error) {
+func createChaincodeServer(coreConfig *peer.Config, ca tlsgen.CA, peerHostname string) (srv *comm.GRPCServer, ccEndpoint string, err error) {
 	// before potentially setting chaincodeListenAddress, compute chaincode endpoint at first
-	ccEndpoint, err = computeChaincodeEndpoint(peerHostname)
+	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerHostname)
 	if err != nil {
 		if chaincode.IsDevMode() {
 			// if any error for dev mode, we use 0.0.0.0:7052
@@ -650,11 +650,11 @@ func createChaincodeServer(ca tlsgen.CA, peerHostname string) (srv *comm.GRPCSer
 		logger.Panic("Chaincode service host", ccEndpoint, "isn't a valid hostname:", err)
 	}
 
-	cclistenAddress := viper.GetString(chaincodeListenAddrKey)
+	cclistenAddress := coreConfig.ChaincodeListenAddr
 	if cclistenAddress == "" {
 		cclistenAddress = fmt.Sprintf("%s:%d", peerHostname, defaultChaincodePort)
 		logger.Warningf("%s is not set, using %s", chaincodeListenAddrKey, cclistenAddress)
-		viper.Set(chaincodeListenAddrKey, cclistenAddress)
+		coreConfig.ChaincodeListenAddr = cclistenAddress
 	}
 
 	config, err := peer.GetServerConfig()
@@ -713,22 +713,22 @@ func createChaincodeServer(ca tlsgen.CA, peerHostname string) (srv *comm.GRPCSer
 // Case B: else if chaincodeListenAddrKey is set and not "0.0.0.0" or ("::"), use it
 // Case C: else use peer address if not "0.0.0.0" (or "::")
 // Case D: else return error
-func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error) {
+func computeChaincodeEndpoint(coreConfig *peer.Config, peerHostname string) (ccEndpoint string, err error) {
 	logger.Infof("Entering computeChaincodeEndpoint with peerHostname: %s", peerHostname)
 	// set this to the host/ip the chaincode will resolve to. It could be
 	// the same address as the peer (such as in the sample docker env using
 	// the container name as the host name across the board)
-	ccEndpoint = viper.GetString(chaincodeAddrKey)
+	ccEndpoint = coreConfig.ChaincodeAddr
 	if ccEndpoint == "" {
 		// the chaincodeAddrKey is not set, try to get the address from listener
 		// (may finally use the peer address)
-		ccEndpoint = viper.GetString(chaincodeListenAddrKey)
+		ccEndpoint = coreConfig.ChaincodeListenAddr
 		if ccEndpoint == "" {
 			// Case C: chaincodeListenAddrKey is not set, use peer address
-			peerIp := net.ParseIP(peerHostname)
-			if peerIp != nil && peerIp.IsUnspecified() {
+			peerIP := net.ParseIP(peerHostname)
+			if peerIP != nil && peerIP.IsUnspecified() {
 				// Case D: all we have is "0.0.0.0" or "::" which chaincode cannot connect to
-				logger.Errorf("ChaincodeAddress and chaincodeListenAddress are nil and peerIP is %s", peerIp)
+				logger.Errorf("ChaincodeAddress and chaincodeListenAddress are nil and peerIP is %s", peerIP)
 				return "", errors.New("invalid endpoint for chaincode to connect")
 			}
 
@@ -743,13 +743,13 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 				return "", err
 			}
 
-			ccListenerIp := net.ParseIP(host)
+			ccListenerIP := net.ParseIP(host)
 			// ignoring other values such as Multicast address etc ...as the server
 			// wouldn't start up with this address anyway
-			if ccListenerIp != nil && ccListenerIp.IsUnspecified() {
+			if ccListenerIP != nil && ccListenerIP.IsUnspecified() {
 				// Case C: if "0.0.0.0" or "::", we have to use peer address with the listen port
-				peerIp := net.ParseIP(peerHostname)
-				if peerIp != nil && peerIp.IsUnspecified() {
+				peerIP := net.ParseIP(peerHostname)
+				if peerIP != nil && peerIP.IsUnspecified() {
 					// Case D: all we have is "0.0.0.0" or "::" which chaincode cannot connect to
 					logger.Error("ChaincodeAddress is nil while both chaincodeListenAddressIP and peerIP are 0.0.0.0")
 					return "", errors.New("invalid endpoint for chaincode to connect")
@@ -761,15 +761,15 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 
 	} else {
 		// Case A: the chaincodeAddrKey is set
-		if host, _, err := net.SplitHostPort(ccEndpoint); err != nil {
+		host, _, err := net.SplitHostPort(ccEndpoint)
+		if err != nil {
 			logger.Errorf("Fail to split chaincodeAddress: %s", err)
 			return "", err
-		} else {
-			ccIP := net.ParseIP(host)
-			if ccIP != nil && ccIP.IsUnspecified() {
-				logger.Errorf("ChaincodeAddress' IP cannot be %s in non-dev mode", ccIP)
-				return "", errors.New("invalid endpoint for chaincode to connect")
-			}
+		}
+		ccIP := net.ParseIP(host)
+		if ccIP != nil && ccIP.IsUnspecified() {
+			logger.Errorf("ChaincodeAddress' IP cannot be %s in non-dev mode", ccIP)
+			return "", errors.New("invalid endpoint for chaincode to connect")
 		}
 	}
 
@@ -796,10 +796,10 @@ func adminHasSeparateListener(peerListenAddr string, adminListenAddress string) 
 	return adminPort != peerPort
 }
 
-func startAdminServer(peerListenAddr string, peerServer *grpc.Server, metricsProvider metrics.Provider) {
-	adminListenAddress := viper.GetString("peer.adminService.listenAddress")
+func startAdminServer(coreConfig *peer.Config, peerListenAddr string, peerServer *grpc.Server, metricsProvider metrics.Provider) {
+	adminListenAddress := coreConfig.AdminListenAddr
 	separateLsnrForAdmin := adminHasSeparateListener(peerListenAddr, adminListenAddress)
-	mspID := viper.GetString("peer.localMspId")
+	mspID := coreConfig.LocalMspID
 	adminPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
 	gRPCService := peerServer
 	if separateLsnrForAdmin {

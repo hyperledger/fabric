@@ -249,6 +249,9 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.discovery.authCacheEnabled", true)
 	viper.Set("peer.discovery.authCacheMaxSize", 1000)
 	viper.Set("peer.discovery.authCachePurgeRetentionRatio", 0.75)
+	viper.Set("peer.chaincodeListenAddress", "0.0.0.0:7052")
+	viper.Set("peer.chaincodeAddress", "0.0.0.0:7052")
+	viper.Set("peer.adminService.listenAddress", "0.0.0.0:7055")
 
 	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 	viper.Set("vm.docker.tls.enabled", false)
@@ -271,6 +274,9 @@ func TestGlobalConfig(t *testing.T) {
 	assert.Equal(t, coreConfig.DiscoveryAuthCacheEnabled, true)
 	assert.Equal(t, coreConfig.DiscoveryAuthCacheMaxSize, 1000)
 	assert.Equal(t, coreConfig.DiscoveryAuthCachePurgeRetentionRatio, 0.75)
+	assert.Equal(t, coreConfig.ChaincodeListenAddr, "0.0.0.0:7052")
+	assert.Equal(t, coreConfig.ChaincodeAddr, "0.0.0.0:7052")
+	assert.Equal(t, coreConfig.AdminListenAddr, "0.0.0.0:7055")
 
 	assert.Equal(t, coreConfig.VMEndpoint, "unix:///var/run/docker.sock")
 	assert.Equal(t, coreConfig.VMDockerTLSEnabled, false)
