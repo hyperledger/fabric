@@ -158,7 +158,7 @@ func serve(args []string) error {
 		return mgmt.GetManagerForChain(chainID)
 	}
 
-	opsSystem := newOperationsSystem()
+	opsSystem := newOperationsSystem(coreConfig)
 	err = opsSystem.Start()
 	if err != nil {
 		return errors.WithMessage(err, "failed to initialize operations subystems")
@@ -645,11 +645,11 @@ func createChaincodeServer(coreConfig *peer.Config, ca tlsgen.CA, peerHostname s
 		logger.Panic("Chaincode service host", ccEndpoint, "isn't a valid hostname:", err)
 	}
 
-	cclistenAddress := coreConfig.ChaincodeListenAddr
+	cclistenAddress := coreConfig.ChaincodeListenAddress
 	if cclistenAddress == "" {
 		cclistenAddress = fmt.Sprintf("%s:%d", peerHostname, defaultChaincodePort)
 		logger.Warningf("%s is not set, using %s", chaincodeListenAddrKey, cclistenAddress)
-		coreConfig.ChaincodeListenAddr = cclistenAddress
+		coreConfig.ChaincodeListenAddress = cclistenAddress
 	}
 
 	config, err := peer.GetServerConfig()
@@ -705,7 +705,7 @@ func createChaincodeServer(coreConfig *peer.Config, ca tlsgen.CA, peerHostname s
 // address (these two are from viper) and peer address to compute chaincode endpoint.
 // There could be following cases of computing chaincode endpoint:
 // Case A: if chaincodeAddrKey is set, use it if not "0.0.0.0" (or "::")
-// Case B: else if chaincodeListenAddrKey is set and not "0.0.0.0" or ("::"), use it
+// Case B: else if chaincodeListenAddressKey is set and not "0.0.0.0" or ("::"), use it
 // Case C: else use peer address if not "0.0.0.0" (or "::")
 // Case D: else return error
 func computeChaincodeEndpoint(coreConfig *peer.Config, peerHostname string) (ccEndpoint string, err error) {
@@ -713,13 +713,13 @@ func computeChaincodeEndpoint(coreConfig *peer.Config, peerHostname string) (ccE
 	// set this to the host/ip the chaincode will resolve to. It could be
 	// the same address as the peer (such as in the sample docker env using
 	// the container name as the host name across the board)
-	ccEndpoint = coreConfig.ChaincodeAddr
+	ccEndpoint = coreConfig.ChaincodeAddress
 	if ccEndpoint == "" {
 		// the chaincodeAddrKey is not set, try to get the address from listener
 		// (may finally use the peer address)
-		ccEndpoint = coreConfig.ChaincodeListenAddr
+		ccEndpoint = coreConfig.ChaincodeListenAddress
 		if ccEndpoint == "" {
-			// Case C: chaincodeListenAddrKey is not set, use peer address
+			// Case C: chaincodeListenAddressKey is not set, use peer address
 			peerIP := net.ParseIP(peerHostname)
 			if peerIP != nil && peerIP.IsUnspecified() {
 				// Case D: all we have is "0.0.0.0" or "::" which chaincode cannot connect to
@@ -731,7 +731,7 @@ func computeChaincodeEndpoint(coreConfig *peer.Config, peerHostname string) (ccE
 			ccEndpoint = fmt.Sprintf("%s:%d", peerHostname, defaultChaincodePort)
 
 		} else {
-			// Case B: chaincodeListenAddrKey is set
+			// Case B: chaincodeListenAddressKey is set
 			host, port, err := net.SplitHostPort(ccEndpoint)
 			if err != nil {
 				logger.Errorf("ChaincodeAddress is nil and fail to split chaincodeListenAddress: %s", err)
@@ -792,7 +792,7 @@ func adminHasSeparateListener(peerListenAddr string, adminListenAddress string) 
 }
 
 func startAdminServer(coreConfig *peer.Config, peerListenAddr string, peerServer *grpc.Server, metricsProvider metrics.Provider) {
-	adminListenAddress := coreConfig.AdminListenAddr
+	adminListenAddress := coreConfig.AdminListenAddress
 	separateLsnrForAdmin := adminHasSeparateListener(peerListenAddr, adminListenAddress)
 	mspID := coreConfig.LocalMspID
 	adminPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
@@ -901,25 +901,25 @@ func initGossipService(
 	)
 }
 
-func newOperationsSystem() *operations.System {
+func newOperationsSystem(coreConfig *peer.Config) *operations.System {
 	return operations.NewSystem(operations.Options{
 		Logger:        flogging.MustGetLogger("peer.operations"),
-		ListenAddress: viper.GetString("operations.listenAddress"),
+		ListenAddress: coreConfig.OperationsListenAddress,
 		Metrics: operations.MetricsOptions{
-			Provider: viper.GetString("metrics.provider"),
+			Provider: coreConfig.MetricsProvider,
 			Statsd: &operations.Statsd{
-				Network:       viper.GetString("metrics.statsd.network"),
-				Address:       viper.GetString("metrics.statsd.address"),
-				WriteInterval: viper.GetDuration("metrics.statsd.writeInterval"),
-				Prefix:        viper.GetString("metrics.statsd.prefix"),
+				Network:       coreConfig.StatsdNetwork,
+				Address:       coreConfig.StatsdAaddress,
+				WriteInterval: coreConfig.StatsdWriteInterval,
+				Prefix:        coreConfig.StatsdPrefix,
 			},
 		},
 		TLS: operations.TLS{
-			Enabled:            viper.GetBool("operations.tls.enabled"),
-			CertFile:           viper.GetString("operations.tls.cert.file"),
-			KeyFile:            viper.GetString("operations.tls.key.file"),
-			ClientCertRequired: viper.GetBool("operations.tls.clientAuthRequired"),
-			ClientCACertFiles:  viper.GetStringSlice("operations.tls.clientRootCAs.files"),
+			Enabled:            coreConfig.OperationsTLSEnabled,
+			CertFile:           coreConfig.OperationsTLSCertFile,
+			KeyFile:            coreConfig.OperationsTLSKeyFile,
+			ClientCertRequired: coreConfig.OperationsTLSClientAuthRequired,
+			ClientCACertFiles:  coreConfig.OperationsTLSClientRootCAs,
 		},
 		Version: metadata.Version,
 	})

@@ -254,6 +254,19 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("vm.docker.tls.enabled", false)
 	viper.Set("vm.docker.attachStdout", false)
 
+	viper.Set("operations.listenAddress", "127.0.0.1:9443")
+	viper.Set("operations.tls.enabled", false)
+	viper.Set("operations.tls.cert.file", "test/tls/cert/file")
+	viper.Set("operations.tls.key.file", "test/tls/key/file")
+	viper.Set("operations.tls.clientAuthRequired", false)
+	viper.Set("operations.tls.clientRootCAs.files", []string{"file1, file2"})
+
+	viper.Set("metrics.provider", "disabled")
+	viper.Set("metrics.statsd.network", "udp")
+	viper.Set("metrics.statsd.address", "127.0.0.1:8125")
+	viper.Set("metrics.statsd.writeInterval", "10s")
+	viper.Set("metrics.statsd.prefix", "testPrefix")
+
 	viper.Set("chaincode.pull", false)
 
 	coreConfig, err := GlobalConfig()
@@ -272,9 +285,9 @@ func TestGlobalConfig(t *testing.T) {
 	assert.Equal(t, coreConfig.DiscoveryAuthCacheEnabled, true)
 	assert.Equal(t, coreConfig.DiscoveryAuthCacheMaxSize, 1000)
 	assert.Equal(t, coreConfig.DiscoveryAuthCachePurgeRetentionRatio, 0.75)
-	assert.Equal(t, coreConfig.ChaincodeListenAddr, "0.0.0.0:7052")
-	assert.Equal(t, coreConfig.ChaincodeAddr, "0.0.0.0:7052")
-	assert.Equal(t, coreConfig.AdminListenAddr, "0.0.0.0:7055")
+	assert.Equal(t, coreConfig.ChaincodeListenAddress, "0.0.0.0:7052")
+	assert.Equal(t, coreConfig.ChaincodeAddress, "0.0.0.0:7052")
+	assert.Equal(t, coreConfig.AdminListenAddress, "0.0.0.0:7055")
 
 	assert.Equal(t, coreConfig.VMEndpoint, "unix:///var/run/docker.sock")
 	assert.Equal(t, coreConfig.VMDockerTLSEnabled, false)
@@ -287,4 +300,16 @@ func TestGlobalConfig(t *testing.T) {
 	assert.Equal(t, coreConfig.PeerEndpoint.Id.Name, "testPeerID")
 	assert.Equal(t, coreConfig.PeerEndpoint.Address, "localhost:8080")
 
+	assert.Equal(t, coreConfig.OperationsListenAddress, "127.0.0.1:9443")
+	assert.Equal(t, coreConfig.OperationsTLSEnabled, false)
+	assert.Equal(t, coreConfig.OperationsTLSCertFile, "test/tls/cert/file")
+	assert.Equal(t, coreConfig.OperationsTLSKeyFile, "test/tls/key/file")
+	assert.Equal(t, coreConfig.OperationsTLSClientAuthRequired, false)
+	assert.Equal(t, coreConfig.OperationsTLSClientRootCAs, []string{"file1, file2"})
+
+	assert.Equal(t, coreConfig.MetricsProvider, "disabled")
+	assert.Equal(t, coreConfig.StatsdNetwork, "udp")
+	assert.Equal(t, coreConfig.StatsdAaddress, "127.0.0.1:8125")
+	assert.Equal(t, coreConfig.StatsdWriteInterval, 10*time.Second)
+	assert.Equal(t, coreConfig.StatsdPrefix, "testPrefix")
 }

@@ -52,9 +52,9 @@ type Config struct {
 	DiscoveryAuthCacheEnabled             bool
 	DiscoveryAuthCacheMaxSize             int
 	DiscoveryAuthCachePurgeRetentionRatio float64
-	ChaincodeListenAddr                   string
-	ChaincodeAddr                         string
-	AdminListenAddr                       string
+	ChaincodeListenAddress                string
+	ChaincodeAddress                      string
+	AdminListenAddress                    string
 
 	//VM config
 	VMEndpoint           string
@@ -63,6 +63,21 @@ type Config struct {
 
 	//Chaincode config
 	ChaincodePull bool
+
+	//Operations config
+	OperationsListenAddress         string
+	OperationsTLSEnabled            bool
+	OperationsTLSCertFile           string
+	OperationsTLSKeyFile            string
+	OperationsTLSClientAuthRequired bool
+	OperationsTLSClientRootCAs      []string
+
+	//Metrics config
+	MetricsProvider     string
+	StatsdNetwork       string
+	StatsdAaddress      string
+	StatsdWriteInterval time.Duration
+	StatsdPrefix        string
 }
 
 func GlobalConfig() (*Config, error) {
@@ -99,15 +114,28 @@ func (c *Config) load() error {
 	c.DiscoveryAuthCacheEnabled = viper.GetBool("peer.discovery.authCacheEnabled")
 	c.DiscoveryAuthCacheMaxSize = viper.GetInt("peer.discovery.authCacheMaxSize")
 	c.DiscoveryAuthCachePurgeRetentionRatio = viper.GetFloat64("peer.discovery.authCachePurgeRetentionRatio")
-	c.ChaincodeListenAddr = viper.GetString("peer.chaincodeListenAddress")
-	c.ChaincodeAddr = viper.GetString("peer.chaincodeAddress")
-	c.AdminListenAddr = viper.GetString("peer.adminService.listenAddress")
+	c.ChaincodeListenAddress = viper.GetString("peer.chaincodeListenAddress")
+	c.ChaincodeAddress = viper.GetString("peer.chaincodeAddress")
+	c.AdminListenAddress = viper.GetString("peer.adminService.listenAddress")
 
 	c.VMEndpoint = viper.GetString("vm.endpoint")
 	c.VMDockerTLSEnabled = viper.GetBool("vm.docker.tls.enabled")
 	c.VMDockerAttachStdout = viper.GetBool("vm.docker.attachStdout")
 
 	c.ChaincodePull = viper.GetBool("chaincode.pull")
+
+	c.OperationsListenAddress = viper.GetString("operations.listenAddress")
+	c.OperationsTLSEnabled = viper.GetBool("operations.tls.enabled")
+	c.OperationsTLSCertFile = viper.GetString("operations.tls.cert.file")
+	c.OperationsTLSKeyFile = viper.GetString("operations.tls.key.file")
+	c.OperationsTLSClientAuthRequired = viper.GetBool("operations.tls.clientAuthRequired")
+	c.OperationsTLSClientRootCAs = viper.GetStringSlice("operations.tls.clientRootCAs.files")
+
+	c.MetricsProvider = viper.GetString("metrics.provider")
+	c.StatsdNetwork = viper.GetString("metrics.statsd.network")
+	c.StatsdAaddress = viper.GetString("metrics.statsd.address")
+	c.StatsdWriteInterval = viper.GetDuration("metrics.statsd.writeInterval")
+	c.StatsdPrefix = viper.GetString("metrics.statsd.prefix")
 
 	return nil
 }

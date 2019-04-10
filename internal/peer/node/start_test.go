@@ -116,8 +116,8 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 	// Scenario 2.1: chaincodeListenAddress is 0.0.0.0
 	chaincodeListenPort := "8052"
 	settingChaincodeListenAddress0 := "0.0.0.0:" + chaincodeListenPort
-	coreConfig.ChaincodeListenAddr = settingChaincodeListenAddress0
-	coreConfig.ChaincodeAddr = ""
+	coreConfig.ChaincodeListenAddress = settingChaincodeListenAddress0
+	coreConfig.ChaincodeAddress = ""
 	// Scenario 2.1.1: peer address is 0.0.0.0
 	// computeChaincodeEndpoint will return error
 	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress0)
@@ -131,16 +131,16 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 	// Scenario 2.2: chaincodeListenAddress is not 0.0.0.0
 	// chaincodeEndpoint will be chaincodeListenAddress
 	settingChaincodeListenAddress := "127.0.0.1:" + chaincodeListenPort
-	coreConfig.ChaincodeListenAddr = settingChaincodeListenAddress
-	coreConfig.ChaincodeAddr = ""
+	coreConfig.ChaincodeListenAddress = settingChaincodeListenAddress
+	coreConfig.ChaincodeAddress = ""
 	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
 	assert.NoError(t, err)
 	assert.Equal(t, settingChaincodeListenAddress, ccEndpoint)
 	// Scenario 2.3: chaincodeListenAddress is invalid
 	// computeChaincodeEndpoint will return error
 	settingChaincodeListenAddressInvalid := "abc"
-	coreConfig.ChaincodeListenAddr = settingChaincodeListenAddressInvalid
-	coreConfig.ChaincodeAddr = ""
+	coreConfig.ChaincodeListenAddress = settingChaincodeListenAddressInvalid
+	coreConfig.ChaincodeAddress = ""
 	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
 
 	assert.Error(t, err)
@@ -151,8 +151,8 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 	// computeChaincodeEndpoint will return error
 	chaincodeAddressPort := "9052"
 	settingChaincodeAddress0 := "0.0.0.0:" + chaincodeAddressPort
-	coreConfig.ChaincodeListenAddr = ""
-	coreConfig.ChaincodeAddr = settingChaincodeAddress0
+	coreConfig.ChaincodeListenAddress = ""
+	coreConfig.ChaincodeAddress = settingChaincodeAddress0
 	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
 
 	assert.Error(t, err)
@@ -160,16 +160,16 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 	// Scenario 3.2: chaincodeAddress is not 0.0.0.0
 	// chaincodeEndpoint will be chaincodeAddress
 	settingChaincodeAddress := "127.0.0.2:" + chaincodeAddressPort
-	coreConfig.ChaincodeListenAddr = ""
-	coreConfig.ChaincodeAddr = settingChaincodeAddress
+	coreConfig.ChaincodeListenAddress = ""
+	coreConfig.ChaincodeAddress = settingChaincodeAddress
 	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
 	assert.NoError(t, err)
 	assert.Equal(t, settingChaincodeAddress, ccEndpoint)
 	// Scenario 3.3: chaincodeAddress is invalid
 	// computeChaincodeEndpoint will return error
 	settingChaincodeAddressInvalid := "bcd"
-	coreConfig.ChaincodeListenAddr = ""
-	coreConfig.ChaincodeAddr = settingChaincodeAddressInvalid
+	coreConfig.ChaincodeListenAddress = ""
+	coreConfig.ChaincodeAddress = settingChaincodeAddressInvalid
 	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
 	assert.Error(t, err)
 	assert.Equal(t, "", ccEndpoint)
