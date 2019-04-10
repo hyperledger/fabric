@@ -147,7 +147,10 @@ func serve(args []string) error {
 	)
 
 	//obtain coreConfiguration
-	coreConfig := peer.GlobalConfig()
+	coreConfig, err := peer.GlobalConfig()
+	if err != nil {
+		return err
+	}
 
 	platformRegistry := platforms.NewRegistry(platforms.SupportedPlatforms...)
 
@@ -156,7 +159,7 @@ func serve(args []string) error {
 	}
 
 	opsSystem := newOperationsSystem()
-	err := opsSystem.Start()
+	err = opsSystem.Start()
 	if err != nil {
 		return errors.WithMessage(err, "failed to initialize operations subystems")
 	}
@@ -234,15 +237,7 @@ func serve(args []string) error {
 		viper.Set("chaincode.mode", chaincode.DevModeUserRunsChaincode)
 	}
 
-	if err := peer.CacheConfiguration(); err != nil {
-		return err
-	}
-
-	peerEndpoint, err := peer.GetPeerEndpoint()
-	if err != nil {
-		err = fmt.Errorf("Failed to get Peer Endpoint: %s", err)
-		return err
-	}
+	peerEndpoint := coreConfig.PeerEndpoint
 
 	peerHost, _, err := net.SplitHostPort(peerEndpoint.Address)
 	if err != nil {
