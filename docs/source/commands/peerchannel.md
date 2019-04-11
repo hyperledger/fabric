@@ -81,6 +81,7 @@ Usage:
   peer channel fetch <newest|oldest|config|(number)> [outputfile] [flags]
 
 Flags:
+      --bestEffort         Whether fetch requests should ignore errors and return blocks on a best effort basis
   -c, --channelID string   In case of a newChain command, the channel ID to create. It must be all lower case, less than 250 characters long and match the regular expression: [a-z][a-z0-9.-]*
   -h, --help               help for fetch
 
