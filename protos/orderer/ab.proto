@@ -49,19 +49,33 @@ message SeekPosition {
 // SeekInfo specifies the range of requested blocks to return
 // If the start position is not found, an error is immediately returned
 // Otherwise, blocks are returned until a missing block is encountered, then behavior is dictated
-// by the SeekBehavior specified.  If BLOCK_UNTIL_READY is specified, the reply will block until
-// the requested blocks are available, if FAIL_IF_NOT_READY is specified, the reply will return an
-// error indicating that the block is not found.  To request that all blocks be returned indefinitely
-// as they are created, behavior should be set to BLOCK_UNTIL_READY and the stop should be set to
-// specified with a number of MAX_UINT64
+// by the SeekBehavior specified.
 message SeekInfo {
+   // If BLOCK_UNTIL_READY is specified, the reply will block until the requested blocks are available,
+   // if FAIL_IF_NOT_READY is specified, the reply will return an error indicating that the block is not
+   // found.  To request that all blocks be returned indefinitely as they are created, behavior should be
+   // set to BLOCK_UNTIL_READY and the stop should be set to specified with a number of MAX_UINT64
     enum SeekBehavior {
         BLOCK_UNTIL_READY = 0;
         FAIL_IF_NOT_READY = 1;
     }
-    SeekPosition start = 1;    // The position to start the deliver from
-    SeekPosition stop = 2;     // The position to stop the deliver
-    SeekBehavior behavior = 3; // The behavior when a missing block is encountered
+
+    // SeekErrorTolerance indicates to the server how block provider errors should be tolerated.  By default,
+    // if the deliver service detects a problem in the underlying block source (typically, in the orderer,
+    // a consenter error), it will begin to reject deliver requests.  This is to prevent a client from waiting
+    // for blocks from an orderer which is stuck in an errored state.  This is almost always the desired behavior
+    // and clients should stick with the default STRICT checking behavior.  However, in some scenarios, particularly
+    // when attempting to recover from a crash or other corruption, it's desirable to force an orderer to respond
+    // with blocks on a best effort basis, even if the backing consensus implementation is in an errored state.
+    // In this case, set the SeekErrorResponse to BEST_EFFORT to ignore the consenter errors.
+    enum SeekErrorResponse {
+        STRICT = 0;
+        BEST_EFFORT = 1;
+    }
+    SeekPosition start = 1;               // The position to start the deliver from
+    SeekPosition stop = 2;                // The position to stop the deliver
+    SeekBehavior behavior = 3;            // The behavior when a missing block is encountered
+    SeekErrorResponse error_response = 4; // How to respond to errors reported to the deliver service
 }
 
 message DeliverResponse {
