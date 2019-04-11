@@ -197,13 +197,11 @@ const (
 
 // string for cert filenames
 var (
-	orgCAKey        = filepath.Join("testdata", "certs", "Org%d-key.pem")
 	orgCACert       = filepath.Join("testdata", "certs", "Org%d-cert.pem")
 	orgServerKey    = filepath.Join("testdata", "certs", "Org%d-server%d-key.pem")
 	orgServerCert   = filepath.Join("testdata", "certs", "Org%d-server%d-cert.pem")
 	orgClientKey    = filepath.Join("testdata", "certs", "Org%d-client%d-key.pem")
 	orgClientCert   = filepath.Join("testdata", "certs", "Org%d-client%d-cert.pem")
-	childCAKey      = filepath.Join("testdata", "certs", "Org%d-child%d-key.pem")
 	childCACert     = filepath.Join("testdata", "certs", "Org%d-child%d-cert.pem")
 	childServerKey  = filepath.Join("testdata", "certs", "Org%d-child%d-server%d-key.pem")
 	childServerCert = filepath.Join("testdata", "certs", "Org%d-child%d-server%d-cert.pem")
@@ -402,7 +400,7 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 		"",
 		comm.ServerConfig{SecOpts: &comm.SecureOptions{UseTLS: false}},
 	)
-	assert.EqualError(t, err, "Missing address parameter")
+	assert.EqualError(t, err, "missing address parameter")
 
 	// missing port
 	_, err = comm.NewGRPCServer(
@@ -515,7 +513,7 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 
 	badRootCAs := [][]byte{[]byte(badPEM)}
 	err = srv.SetClientRootCAs(badRootCAs)
-	assert.EqualError(t, err, "Failed to set client root certificate(s): asn1: syntax error: data truncated")
+	assert.EqualError(t, err, "failed to set client root certificate(s): asn1: syntax error: data truncated")
 }
 
 func TestNewGRPCServer(t *testing.T) {

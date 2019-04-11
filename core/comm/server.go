@@ -9,13 +9,12 @@ package comm
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -46,7 +45,7 @@ type GRPCServer struct {
 // listen address
 func NewGRPCServer(address string, serverConfig ServerConfig) (*GRPCServer, error) {
 	if address == "" {
-		return nil, errors.New("Missing address parameter")
+		return nil, errors.New("missing address parameter")
 	}
 	//create our listener
 	lis, err := net.Listen("tcp", address)
@@ -244,15 +243,13 @@ func (gServer *GRPCServer) AppendClientRootCAs(clientRoots [][]byte) error {
 // internal function to add a PEM-encoded clientRootCA
 func (gServer *GRPCServer) appendClientRootCA(clientRoot []byte) error {
 
-	errMsg := "Failed to append client root certificate(s): %s"
-	//convert to x509
 	certs, subjects, err := pemToX509Certs(clientRoot)
 	if err != nil {
-		return fmt.Errorf(errMsg, err.Error())
+		return errors.WithMessage(err, "failed to append client root certificate(s)")
 	}
 
 	if len(certs) < 1 {
-		return fmt.Errorf(errMsg, "No client root certificates found")
+		return errors.New("no client root certificates found")
 	}
 
 	for i, cert := range certs {
@@ -291,15 +288,13 @@ func (gServer *GRPCServer) RemoveClientRootCAs(clientRoots [][]byte) error {
 // internal function to remove a PEM-encoded clientRootCA
 func (gServer *GRPCServer) removeClientRootCA(clientRoot []byte) error {
 
-	errMsg := "Failed to remove client root certificate(s): %s"
-	//convert to x509
 	certs, subjects, err := pemToX509Certs(clientRoot)
 	if err != nil {
-		return fmt.Errorf(errMsg, err.Error())
+		return errors.WithMessage(err, "failed to remove client root certificate(s)")
 	}
 
 	if len(certs) < 1 {
-		return fmt.Errorf(errMsg, "No client root certificates found")
+		return errors.New("No client root certificates found")
 	}
 
 	for i, subject := range subjects {
@@ -318,14 +313,12 @@ func (gServer *GRPCServer) SetClientRootCAs(clientRoots [][]byte) error {
 	gServer.lock.Lock()
 	defer gServer.lock.Unlock()
 
-	errMsg := "Failed to set client root certificate(s): %s"
-
 	//create a new map and CertPool
 	clientRootCAs := make(map[string]*x509.Certificate)
 	for _, clientRoot := range clientRoots {
 		certs, subjects, err := pemToX509Certs(clientRoot)
 		if err != nil {
-			return fmt.Errorf(errMsg, err.Error())
+			return errors.WithMessage(err, "failed to set client root certificate(s)")
 		}
 		if len(certs) >= 1 {
 			for i, cert := range certs {
