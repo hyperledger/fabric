@@ -11,9 +11,11 @@ import (
 	"strconv"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -48,6 +50,7 @@ var qscclogger = flogging.MustGetLogger("qscc")
 
 // These are function names from Invoke first parameter
 const (
+	GetIdentityByHash  string = "GetIdentityByHash"
 	GetChainInfo       string = "GetChainInfo"
 	GetBlockByNumber   string = "GetBlockByNumber"
 	GetBlockByHash     string = "GetBlockByHash"
@@ -105,6 +108,8 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 
 	switch fname {
+	case GetIdentityByHash:
+		return getIdentityByHash(targetLedger, args[2])
 	case GetTransactionByID:
 		return getTransactionByID(targetLedger, args[2])
 	case GetBlockByNumber:
@@ -118,6 +123,19 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 
 	return shim.Error(fmt.Sprintf("Requested function %s not found.", fname))
+}
+
+func getIdentityByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
+	if len(hash) != util.CERT_HASH_LEN {
+		return shim.Error(fmt.Sprintf("Identity hash must not be %d.", util.CERT_HASH_LEN))
+	}
+
+	cert, err := kvledger.GlbCertStore.GetCert(hash)
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed to get Identity hash %s, error %s", string(hash), err))
+	}
+
+	return shim.Success(cert)
 }
 
 func getTransactionByID(vledger ledger.PeerLedger, tid []byte) pb.Response {
