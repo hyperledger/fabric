@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -76,7 +77,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestHandleChain(t *testing.T) {
-	consenter, _ := New(mockLocalConfig.Kafka, &mock.MetricsProvider{}, &mock.HealthChecker{})
+	consenter, _ := New(mockLocalConfig.Kafka, &disabled.Provider{}, &mock.HealthChecker{})
 
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
@@ -147,6 +148,7 @@ func newMockConsenter(brokerConfig *sarama.Config, tlsConfig localconfig.TLS, re
 		tlsConfigVal:    tlsConfig,
 		retryOptionsVal: retryOptions,
 		kafkaVersionVal: kafkaVersion,
+		metrics:         NewMetrics(&disabled.Provider{}, nil),
 	}
 }
 
