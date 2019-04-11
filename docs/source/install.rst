@@ -37,20 +37,23 @@ command that follows will perform the following steps:
 #. Download the Hyperledger Fabric docker images for the version specified
 
 Once you are ready, and in the directory into which you will install the
-Fabric Samples and binaries, go ahead and execute the following command:
+Fabric Samples and binaries, go ahead and execute the command to pull down
+the binaries and images.
+
+.. note:: If you want the latest production release, omit all version identifiers.
 
 .. code:: bash
 
-  curl -sSL http://bit.ly/2ysbOFE | bash -s 1.4.0
+  curl -sSL http://bit.ly/2ysbOFE | bash -s
 
-.. note:: If you want to download different versions for Fabric, Fabric-ca and thirdparty
-          Docker images, you must pass the version identifier for each.
-          The command below demonstrates how to download **Fabric v1.4.1 release candidate v1.4.1-rc1**.
+.. note:: If you want a specific release, pass a version identifier for Fabric,
+          Fabric-ca and thirdparty Docker images.
+          The command below demonstrates how to download **Fabric v1.4.1**
 
 .. code:: bash
 
-  curl -sSL http://bit.ly/2ysbOFE | bash -s <fabric_version> <fabric-ca_version> <thirdparty_version>
-  curl -sSL http://bit.ly/2ysbOFE | bash -s 1.4.1-rc1 1.4.0 0.4.15
+  curl -sSL http://bit.ly/2ysbOFE | bash -s -- <fabric_version> <fabric-ca_version> <thirdparty_version>
+  curl -sSL http://bit.ly/2ysbOFE | bash -s -- 1.4.1 1.4.1 0.4.15
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle
@@ -61,10 +64,6 @@ Fabric Samples and binaries, go ahead and execute the following command:
 	  get the right environment. Alternately, you can substitute
 	  the un-shortened URL:
 	  https://raw.githubusercontent.com/hyperledger/fabric/master/scripts/bootstrap.sh
-
-.. note:: You can use the command above for any published version of Hyperledger
-          Fabric. Simply replace `1.4.0` with the version identifier
-          of the version you wish to install.
 
 The command above downloads and executes a bash script
 that will download and extract all of the platform-specific binaries you
