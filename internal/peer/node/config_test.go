@@ -58,7 +58,7 @@ func TestLedgerConfig(t *testing.T) {
 						MaxRetriesOnStartup:     10,
 						RequestTimeout:          30 * time.Second,
 						InternalQueryLimit:      1000,
-						MaxBatchUpdateSize:      1000,
+						MaxBatchUpdateSize:      500,
 						WarmIndexesAfterNBlocks: 1,
 						CreateGlobalChangesDB:   true,
 					},

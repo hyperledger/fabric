@@ -34,7 +34,6 @@ const confChains = "chains"
 const confPvtdataStore = "pvtdataStore"
 const confTotalQueryLimit = "ledger.state.totalQueryLimit"
 const confEnableHistoryDatabase = "ledger.history.enableHistoryDatabase"
-const confMaxBatchSize = "ledger.state.couchDBConfig.maxBatchUpdateSize"
 
 var confCollElgProcMaxDbBatchSize = &conf{"ledger.pvtdataStore.collElgProcMaxDbBatchSize", 5000}
 var confCollElgProcDbBatchesInterval = &conf{"ledger.pvtdataStore.collElgProcDbBatchesInterval", 1000}
@@ -98,16 +97,6 @@ func GetTotalQueryLimit() int {
 		totalQueryLimit = 10000
 	}
 	return totalQueryLimit
-}
-
-//GetMaxBatchUpdateSize exposes the maxBatchUpdateSize variable
-func GetMaxBatchUpdateSize() int {
-	maxBatchUpdateSize := viper.GetInt(confMaxBatchSize)
-	// if maxBatchUpdateSize was unset, default to 500
-	if !viper.IsSet(confMaxBatchSize) {
-		maxBatchUpdateSize = 500
-	}
-	return maxBatchUpdateSize
 }
 
 // GetPvtdataStorePurgeInterval returns the interval in the terms of number of blocks
