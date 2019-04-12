@@ -29,6 +29,7 @@ func TestStatsBlockchainHeight(t *testing.T) {
 	provider.Initialize(&lgr.Initializer{
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 		MetricsProvider:               testMetricProvider.fakeProvider,
+		Config:                        &lgr.Config{},
 	})
 	defer provider.Close()
 
@@ -72,6 +73,7 @@ func TestStatsBlockCommit(t *testing.T) {
 	provider.Initialize(&lgr.Initializer{
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 		MetricsProvider:               testMetricProvider.fakeProvider,
+		Config:                        &lgr.Config{},
 	})
 	defer provider.Close()
 

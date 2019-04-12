@@ -300,6 +300,7 @@ func testutilNewProvider(t *testing.T) lgr.PeerLedgerProvider {
 	provider.Initialize(&lgr.Initializer{
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 		MetricsProvider:               &disabled.Provider{},
+		Config:                        &lgr.Config{},
 	})
 	return provider
 }

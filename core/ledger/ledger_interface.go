@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
@@ -26,6 +27,23 @@ type Initializer struct {
 	MembershipInfoProvider        MembershipInfoProvider
 	MetricsProvider               metrics.Provider
 	HealthCheckRegistry           HealthCheckRegistry
+	Config                        *Config
+}
+
+// Config is a structure used to configure a ledger provider.
+type Config struct {
+	// StateDB represents the configuration for the state database.
+	StateDB *StateDB
+}
+
+// State is a structure used to configure the state parameters for the ledger.
+type StateDB struct {
+	// StateDatabase is the of database to use for storing last known state.  The
+	// two supported options are "goleveldb" and "CouchDB"
+	StateDatabase string
+	// CouchDB is the configuration for CouchDB.  It is used when StateDatabase
+	// is set to "CouchDB".
+	CouchDB *couchdb.Config
 }
 
 // PeerLedgerProvider provides handle to ledger instances

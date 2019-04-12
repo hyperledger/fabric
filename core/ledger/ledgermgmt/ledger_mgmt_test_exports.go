@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 )
@@ -43,6 +44,9 @@ func InitializeExistingTestEnvWithInitializer(initializer *Initializer) {
 	}
 	if initializer.PlatformRegistry == nil {
 		initializer.PlatformRegistry = platforms.NewRegistry(&golang.Platform{})
+	}
+	if initializer.Config == nil {
+		initializer.Config = &ledger.Config{}
 	}
 	initialize(initializer)
 }

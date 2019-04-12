@@ -97,7 +97,10 @@ func TestCouchdbRedoLogger(t *testing.T) {
 	}
 
 	// initialize statedb with initial set of writes
-	db, _ := testEnv.DBProvider.GetDBHandle("testcouchdbredologger")
+	db, err := testEnv.DBProvider.GetDBHandle("testcouchdbredologger")
+	if err != nil {
+		t.Fatalf("Failed to get database handle: %s", err)
+	}
 	vdb := db.(*VersionedDB)
 	batch1 := statedb.NewUpdateBatch()
 	batch1.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))

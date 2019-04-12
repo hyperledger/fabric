@@ -13,10 +13,12 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -49,7 +51,12 @@ func (env *LevelDBCommonStorageTestEnv) Init(t testing.TB) {
 	viper.Set("ledger.state.stateDatabase", "")
 	removeDBPath(t)
 	env.bookkeeperTestEnv = bookkeeping.NewTestEnv(t)
-	dbProvider, err := NewCommonStorageDBProvider(env.bookkeeperTestEnv.TestProvider, &disabled.Provider{}, &mock.HealthCheckRegistry{})
+	dbProvider, err := NewCommonStorageDBProvider(
+		env.bookkeeperTestEnv.TestProvider,
+		&disabled.Provider{},
+		&mock.HealthCheckRegistry{},
+		nil,
+	)
 	assert.NoError(t, err)
 	env.t = t
 	env.provider = dbProvider
@@ -105,18 +112,27 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 	redologsPath := ledgerconfig.GetCouchdbRedologsPath()
 	assert.NoError(t, os.RemoveAll(redologsPath))
 	viper.Set("ledger.state.stateDatabase", "CouchDB")
-	couchAddr := env.setupCouch()
-	viper.Set("ledger.state.couchDBConfig.couchDBAddress", couchAddr)
-	// Replace with correct username/password such as
-	// admin/admin if user security is enabled on couchdb.
-	viper.Set("ledger.state.couchDBConfig.username", "")
-	viper.Set("ledger.state.couchDBConfig.password", "")
-	viper.Set("ledger.state.couchDBConfig.maxRetries", 3)
-	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 20)
-	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*35)
+	couchAddress := env.setupCouch()
+
+	stateDBConfig := &ledger.StateDB{
+		StateDatabase: "CouchDB",
+		CouchDB: &couchdb.Config{
+			Address:             couchAddress,
+			Username:            "",
+			Password:            "",
+			MaxRetries:          3,
+			MaxRetriesOnStartup: 20,
+			RequestTimeout:      35 * time.Second,
+		},
+	}
 
 	env.bookkeeperTestEnv = bookkeeping.NewTestEnv(t)
-	dbProvider, err := NewCommonStorageDBProvider(env.bookkeeperTestEnv.TestProvider, &disabled.Provider{}, &mock.HealthCheckRegistry{})
+	dbProvider, err := NewCommonStorageDBProvider(
+		env.bookkeeperTestEnv.TestProvider,
+		&disabled.Provider{},
+		&mock.HealthCheckRegistry{},
+		stateDBConfig,
+	)
 	assert.NoError(t, err)
 	env.t = t
 	env.provider = dbProvider

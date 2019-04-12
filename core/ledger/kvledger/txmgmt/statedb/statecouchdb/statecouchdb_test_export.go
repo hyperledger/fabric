@@ -12,8 +12,11 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/stretchr/testify/assert"
 )
+
+var testConfig *couchdb.Config
 
 // TestVDBEnv provides a couch db backed versioned db for testing
 type TestVDBEnv struct {
@@ -26,7 +29,10 @@ func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
 	t.Logf("Creating new TestVDBEnv")
 	dbPath := ledgerconfig.GetCouchdbRedologsPath()
 	assert.NoError(t, os.RemoveAll(dbPath))
-	dbProvider, _ := NewVersionedDBProvider(&disabled.Provider{})
+	dbProvider, err := NewVersionedDBProvider(testConfig, &disabled.Provider{})
+	if err != nil {
+		t.Fatalf("Error creating CouchDB Provider: %s", err)
+	}
 	testVDBEnv := &TestVDBEnv{t, dbProvider}
 	// No cleanup for new test environment.  Need to cleanup per test for each DB used in the test.
 	return testVDBEnv
@@ -34,7 +40,7 @@ func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
 
 func (env *TestVDBEnv) CloseAndReopen() {
 	env.DBProvider.Close()
-	dbProvider, _ := NewVersionedDBProvider(&disabled.Provider{})
+	dbProvider, _ := NewVersionedDBProvider(testConfig, &disabled.Provider{})
 	env.DBProvider = dbProvider
 }
 

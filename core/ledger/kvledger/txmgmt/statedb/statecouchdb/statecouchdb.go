@@ -37,10 +37,9 @@ type VersionedDBProvider struct {
 }
 
 // NewVersionedDBProvider instantiates VersionedDBProvider
-func NewVersionedDBProvider(metricsProvider metrics.Provider) (*VersionedDBProvider, error) {
+func NewVersionedDBProvider(config *couchdb.Config, metricsProvider metrics.Provider) (*VersionedDBProvider, error) {
 	logger.Debugf("constructing CouchDB VersionedDBProvider")
-	couchDBDef := couchdb.GetCouchDBDefinition()
-	couchInstance, err := couchdb.CreateCouchInstance(couchDBDef, metricsProvider)
+	couchInstance, err := couchdb.CreateCouchInstance(config, metricsProvider)
 	if err != nil {
 		return nil, err
 	}

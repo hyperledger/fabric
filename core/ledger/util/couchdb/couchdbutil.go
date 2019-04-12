@@ -33,7 +33,7 @@ var chainNameAllowedLength = 50
 var namespaceNameAllowedLength = 50
 var collectionNameAllowedLength = 50
 
-func CreateCouchInstance(config Config, metricsProvider metrics.Provider) (*CouchInstance, error) {
+func CreateCouchInstance(config *Config, metricsProvider metrics.Provider) (*CouchInstance, error) {
 
 	// make sure the address is valid
 	connectURL := &url.URL{
