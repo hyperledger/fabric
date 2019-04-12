@@ -1241,8 +1241,8 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 	case common.HeaderType_CONFIG:
 		configMembership := c.detectConfChange(block)
 
-		c.opts.BlockMetadata.RaftIndex = index
 		c.raftMetadataLock.Lock()
+		c.opts.BlockMetadata.RaftIndex = index
 		if configMembership != nil {
 			c.opts.BlockMetadata = configMembership.NewBlockMetadata
 			c.opts.Consenters = configMembership.NewConsenters
