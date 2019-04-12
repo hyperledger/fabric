@@ -228,7 +228,18 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		h.Metrics.RequestsCompleted.With(labels...).Add(1)
 	}()
 
+	seekInfo := &ab.SeekInfo{}
+	if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {
+		logger.Warningf("[channel: %s] Received a signed deliver request from %s with malformed seekInfo payload: %s", chdr.ChannelId, addr, err)
+		return cb.Status_BAD_REQUEST, nil
+	}
+
 	erroredChan := chain.Errored()
+	if seekInfo.ErrorResponse == ab.SeekInfo_BEST_EFFORT {
+		// In a 'best effort' delivery of blocks, we should ignore consenter errors
+		// and continue to deliver blocks according to the client's request.
+		erroredChan = nil
+	}
 	select {
 	case <-erroredChan:
 		logger.Warningf("[channel: %s] Rejecting deliver request for %s because of consenter error", chdr.ChannelId, addr)
@@ -245,12 +256,6 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	if err := accessControl.Evaluate(); err != nil {
 		logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.ChannelId, addr, err)
 		return cb.Status_FORBIDDEN, nil
-	}
-
-	seekInfo := &ab.SeekInfo{}
-	if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {
-		logger.Warningf("[channel: %s] Received a signed deliver request from %s with malformed seekInfo payload: %s", chdr.ChannelId, addr, err)
-		return cb.Status_BAD_REQUEST, nil
 	}
 
 	if seekInfo.Start == nil || seekInfo.Stop == nil {
