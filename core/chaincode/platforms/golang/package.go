@@ -7,14 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package golang
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	ccutil "github.com/hyperledger/fabric/core/chaincode/platforms/util"
+	"github.com/pkg/errors"
 )
 
 var includeFileTypes = map[string]bool{
@@ -36,11 +34,30 @@ func getCodeFromFS(path string) (codegopath string, err error) {
 	}
 
 	tmppath := filepath.Join(gopath, "src", path)
-	if err := ccutil.IsCodeExist(tmppath); err != nil {
-		return "", fmt.Errorf("code does not exist %s", err)
+	if err := isCodeExist(tmppath); err != nil {
+		return "", errors.Wrap(err, "code does not exist")
 	}
 
 	return gopath, nil
+}
+
+// isCodeExist checks the chaincode if exists
+func isCodeExist(tmppath string) error {
+	file, err := os.Open(tmppath)
+	if err != nil {
+		return errors.Wrap(err, "open failed")
+	}
+
+	fi, err := file.Stat()
+	if err != nil {
+		return errors.Wrap(err, "stat failed")
+	}
+
+	if !fi.IsDir() {
+		return errors.Errorf("%s is not a directory", file.Name())
+	}
+
+	return nil
 }
 
 type CodeDescriptor struct {
@@ -55,14 +72,14 @@ type CodeDescriptor struct {
 //by the user is equivalent to the path.
 func getCode(path string) (*CodeDescriptor, error) {
 	if path == "" {
-		return nil, errors.New("Cannot collect files from empty chaincode path")
+		return nil, errors.New("cannot collect files from empty chaincode path")
 	}
 
 	// code root will point to the directory where the code exists
 	var gopath string
 	gopath, err := getCodeFromFS(path)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting code %s", err)
+		return nil, errors.WithMessage(err, "failed to get code")
 	}
 
 	return &CodeDescriptor{Gopath: gopath, Pkg: path, Cleanup: nil}, nil
@@ -73,33 +90,18 @@ type SourceDescriptor struct {
 	IsMetadata bool
 	Info       os.FileInfo
 }
+
 type SourceMap map[string]SourceDescriptor
-
-type Sources []SourceDescriptor
-
-func (s Sources) Len() int {
-	return len(s)
-}
-
-func (s Sources) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s Sources) Less(i, j int) bool {
-	return strings.Compare(s[i].Name, s[j].Name) < 0
-}
 
 func findSource(gopath, pkg string) (SourceMap, error) {
 	sources := make(SourceMap)
 	tld := filepath.Join(gopath, "src", pkg)
 	walkFn := func(path string, info os.FileInfo, err error) error {
-
 		if err != nil {
 			return err
 		}
 
 		if info.IsDir() {
-
 			// Allow import of the top level chaincode directory into chaincode code package
 			if path == tld {
 				return nil
@@ -125,7 +127,7 @@ func findSource(gopath, pkg string) (SourceMap, error) {
 
 		name, err := filepath.Rel(gopath, path)
 		if err != nil {
-			return fmt.Errorf("error obtaining relative path for %s: %s", path, err)
+			return errors.Wrapf(err, "failed to calculate relative path for %s", path)
 		}
 
 		sources[name] = SourceDescriptor{Name: name, Path: path, IsMetadata: isMetadataDir(path, tld), Info: info}
@@ -134,7 +136,7 @@ func findSource(gopath, pkg string) (SourceMap, error) {
 	}
 
 	if err := filepath.Walk(tld, walkFn); err != nil {
-		return nil, fmt.Errorf("Error walking directory: %s", err)
+		return nil, errors.Wrap(err, "walk failed")
 	}
 
 	return sources, nil
