@@ -170,7 +170,7 @@ func TestInitializeServerConfig(t *testing.T) {
 				if tc.clusterCert == "" {
 					initializeServerConfig(conf, nil)
 				} else {
-					initializeClusterClientConfig(conf)
+					initializeClusterClientConfig(conf, false, nil)
 				}
 			},
 			)
@@ -368,7 +368,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	}
 
 	predDialer := &cluster.PredicateDialer{}
-	clusterConf := initializeClusterClientConfig(conf)
+	clusterConf := initializeClusterClientConfig(conf, true, nil)
 	predDialer.SetConfig(clusterConf)
 
 	callback = func(bundle *channelconfig.Bundle) {
