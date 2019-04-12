@@ -45,8 +45,12 @@ func TestSpawnEtcdRaft(t *testing.T) {
 
 	defer gexec.CleanupBuildArtifacts()
 
-	t.Run("EtcdRaft launch failure", func(t *testing.T) {
-		testEtcdRaftOSNFailure(gt, tempDir, orderer, fabricRootDir)
+	t.Run("Invalid bootstrap block", func(t *testing.T) {
+		testEtcdRaftOSNFailureInvalidBootstrapBlock(gt, tempDir, orderer, fabricRootDir)
+	})
+
+	t.Run("No TLS", func(t *testing.T) {
+		testEtcdRaftOSNNoTLS(gt, tempDir, orderer, fabricRootDir, configtxgen)
 	})
 
 	t.Run("EtcdRaft launch success", func(t *testing.T) {
@@ -54,7 +58,7 @@ func TestSpawnEtcdRaft(t *testing.T) {
 	})
 }
 
-func testEtcdRaftOSNSuccess(gt *GomegaWithT, tempDir, configtxgen, cwd, orderer, fabricRootDir string) {
+func createBootstrapBlock(gt *GomegaWithT, tempDir, configtxgen, cwd string) string {
 	// Create the genesis block for the system channel
 	genesisBlockPath := filepath.Join(tempDir, "genesis.block")
 	cmd := exec.Command(configtxgen, "-channelID", "system", "-profile", "SampleDevModeEtcdRaft",
@@ -62,9 +66,14 @@ func testEtcdRaftOSNSuccess(gt *GomegaWithT, tempDir, configtxgen, cwd, orderer,
 	cmd.Env = append(cmd.Env, fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(cwd, "testdata")))
 	configtxgenProcess, err := gexec.Start(cmd, nil, nil)
 	gt.Expect(err).NotTo(HaveOccurred())
-
 	gt.Eventually(configtxgenProcess, time.Minute).Should(gexec.Exit(0))
 	gt.Expect(configtxgenProcess.Err).To(gbytes.Say("Writing genesis block"))
+
+	return genesisBlockPath
+}
+
+func testEtcdRaftOSNSuccess(gt *GomegaWithT, tempDir, configtxgen, cwd, orderer, fabricRootDir string) {
+	genesisBlockPath := createBootstrapBlock(gt, tempDir, configtxgen, cwd)
 
 	// Launch the OSN
 	ordererProcess := launchOrderer(gt, orderer, tempDir, genesisBlockPath, fabricRootDir)
@@ -90,7 +99,7 @@ func testEtcdRaftOSNSuccess(gt *GomegaWithT, tempDir, configtxgen, cwd, orderer,
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("becomeLeader"))
 }
 
-func testEtcdRaftOSNFailure(gt *GomegaWithT, tempDir, orderer, fabricRootDir string) {
+func testEtcdRaftOSNFailureInvalidBootstrapBlock(gt *GomegaWithT, tempDir, orderer, fabricRootDir string) {
 	// Grab an application channel genesis block
 	genesisBlockPath := filepath.Join(filepath.Join("testdata", "mychannel.block"))
 	genesisBlockBytes, err := ioutil.ReadFile(genesisBlockPath)
@@ -106,6 +115,29 @@ func testEtcdRaftOSNFailure(gt *GomegaWithT, tempDir, orderer, fabricRootDir str
 	defer ordererProcess.Kill()
 
 	expectedErr := "Failed validating bootstrap block: the block isn't a system channel block because it lacks ConsortiumsConfig"
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say(expectedErr))
+}
+
+func testEtcdRaftOSNNoTLS(gt *GomegaWithT, tempDir, orderer, fabricRootDir string, configtxgen string) {
+	cwd, err := filepath.Abs(".")
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	genesisBlockPath := createBootstrapBlock(gt, tempDir, configtxgen, cwd)
+
+	cmd := exec.Command(orderer)
+	cmd.Env = []string{
+		"ORDERER_GENERAL_LISTENPORT=5611",
+		"ORDERER_GENERAL_GENESISMETHOD=file",
+		"ORDERER_GENERAL_SYSTEMCHANNEL=system",
+		fmt.Sprintf("ORDERER_FILELEDGER_LOCATION=%s", filepath.Join(tempDir, "ledger")),
+		fmt.Sprintf("ORDERER_GENERAL_GENESISFILE=%s", genesisBlockPath),
+		fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(fabricRootDir, "sampleconfig")),
+	}
+	ordererProcess, err := gexec.Start(cmd, nil, nil)
+	gt.Expect(err).NotTo(HaveOccurred())
+	defer ordererProcess.Kill()
+
+	expectedErr := "TLS is required for running ordering nodes of type etcdraft."
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say(expectedErr))
 }
 
