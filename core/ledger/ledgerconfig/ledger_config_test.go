@@ -90,26 +90,6 @@ func TestGetTotalLimit(t *testing.T) {
 	assert.Equal(t, 5000, updatedValue) //test config returns 5000
 }
 
-func TestMaxBatchUpdateSizeDefault(t *testing.T) {
-	setUpCoreYAMLConfig()
-	defaultValue := GetMaxBatchUpdateSize()
-	assert.Equal(t, 1000, defaultValue) //test default config is 1000
-}
-
-func TestMaxBatchUpdateSizeUnset(t *testing.T) {
-	viper.Reset()
-	defaultValue := GetMaxBatchUpdateSize()
-	assert.Equal(t, 500, defaultValue) // 500 if maxBatchUpdateSize is not set
-}
-
-func TestMaxBatchUpdateSize(t *testing.T) {
-	setUpCoreYAMLConfig()
-	defer ledgertestutil.ResetConfigToDefaultValues()
-	viper.Set("ledger.state.couchDBConfig.maxBatchUpdateSize", 2000)
-	updatedValue := GetMaxBatchUpdateSize()
-	assert.Equal(t, 2000, updatedValue) //test config returns 2000
-}
-
 func TestPvtdataStorePurgeIntervalDefault(t *testing.T) {
 	setUpCoreYAMLConfig()
 	defaultValue := GetPvtdataStorePurgeInterval()

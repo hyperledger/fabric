@@ -23,7 +23,7 @@ func ledgerConfig() *ledger.Config {
 	if viper.IsSet("ledger.state.couchDBConfig.internalQueryLimit") {
 		internalQueryLimit = viper.GetInt("ledger.state.couchDBConfig.internalQueryLimit")
 	}
-	maxBatchUpdateSize := 1000
+	maxBatchUpdateSize := 500
 	if viper.IsSet("ledger.state.couchDBConfig.maxBatchUpdateSize") {
 		maxBatchUpdateSize = viper.GetInt("ledger.state.couchDBConfig.maxBatchUpdateSize")
 	}
