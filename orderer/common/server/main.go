@@ -104,7 +104,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	lf, _ := createLedgerFactory(conf)
 
 	clusterDialer := &cluster.PredicateDialer{}
-	clusterClientConfig := initializeClusterClientConfig(conf)
+	clusterClientConfig := initializeClusterClientConfig(conf, clusterType, bootstrapBlock)
 	clusterDialer.SetConfig(clusterClientConfig)
 
 	r := createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer)
@@ -334,7 +334,10 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 	return serverConf, srv
 }
 
-func initializeClusterClientConfig(conf *localconfig.TopLevel) comm.ClientConfig {
+func initializeClusterClientConfig(conf *localconfig.TopLevel, clusterType bool, bootstrapBlock *cb.Block) comm.ClientConfig {
+	if clusterType && !conf.General.TLS.Enabled {
+		logger.Panicf("TLS is required for running ordering nodes of type %s.", consensusType(bootstrapBlock))
+	}
 	cc := comm.ClientConfig{
 		AsyncConnect: true,
 		KaOpts:       comm.DefaultKeepaliveOptions,
@@ -499,6 +502,11 @@ func initializeBootstrapChannel(genesisBlock *cb.Block, lf blockledger.Factory) 
 }
 
 func isClusterType(genesisBlock *cb.Block) bool {
+	_, exists := clusterTypes[consensusType(genesisBlock)]
+	return exists
+}
+
+func consensusType(genesisBlock *cb.Block) string {
 	if genesisBlock.Data == nil || len(genesisBlock.Data.Data) == 0 {
 		logger.Fatalf("Empty genesis block")
 	}
@@ -514,8 +522,7 @@ func isClusterType(genesisBlock *cb.Block) bool {
 	if !exists {
 		logger.Fatalf("Orderer config doesn't exist in bundle derived from genesis block")
 	}
-	_, exists = clusterTypes[ordConf.ConsensusType()]
-	return exists
+	return ordConf.ConsensusType()
 }
 
 func initializeGrpcServer(conf *localconfig.TopLevel, serverConfig comm.ServerConfig) *comm.GRPCServer {
