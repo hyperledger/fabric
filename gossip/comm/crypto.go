@@ -51,9 +51,6 @@ func GenerateCertificatesOrPanic() tls.Certificate {
 	if err != nil {
 		panic(err)
 	}
-	if len(cert.Certificate) == 0 {
-		panic("Certificate chain is empty")
-	}
 	return cert
 }
 
