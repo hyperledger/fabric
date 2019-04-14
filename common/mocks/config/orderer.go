@@ -102,7 +102,9 @@ type OrdererCapabilities struct {
 	// ExpirationVal is returned by ExpirationCheck()
 	ExpirationVal bool
 
-	Kafka2RaftMigVal bool
+	ConsensusTypeMigrationVal bool
+
+	UseChannelCreationPolicyAsAdminsVal bool
 }
 
 // Supported returns SupportedErr
@@ -126,7 +128,11 @@ func (oc *OrdererCapabilities) ExpirationCheck() bool {
 	return oc.ExpirationVal
 }
 
-// Kafka2RaftMigration checks whether the orderer permits a kafka to raft migration.
-func (oc *OrdererCapabilities) Kafka2RaftMigration() bool {
-	return oc.Kafka2RaftMigVal
+// ConsensusTypeMigration checks whether the orderer permits a consensus-type migration.
+func (oc *OrdererCapabilities) ConsensusTypeMigration() bool {
+	return oc.ConsensusTypeMigrationVal
+}
+
+func (oc *OrdererCapabilities) UseChannelCreationPolicyAsAdmins() bool {
+	return oc.UseChannelCreationPolicyAsAdminsVal
 }

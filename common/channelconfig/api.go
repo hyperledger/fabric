@@ -202,8 +202,13 @@ type OrdererCapabilities interface {
 	// when validating messages
 	ExpirationCheck() bool
 
-	// Kafka2RaftMigration checks whether the orderer permits a Kafka to Raft migration.
-	Kafka2RaftMigration() bool
+	// ConsensusTypeMigration checks whether the orderer permits a consensus-type migration.
+	ConsensusTypeMigration() bool
+
+	// UseChannelCreationPolicyAsAdmins checks whether the orderer should use more sophisticated
+	// channel creation logic using channel creation policy as the Admins policy if
+	// the creation transaction appears to support it.
+	UseChannelCreationPolicyAsAdmins() bool
 }
 
 // PolicyMapper is an interface for
