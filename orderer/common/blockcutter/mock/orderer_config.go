@@ -50,25 +50,15 @@ type OrdererConfig struct {
 	consensusMetadataReturnsOnCall map[int]struct {
 		result1 []byte
 	}
-	ConsensusMigrationContextStub        func() uint64
-	consensusMigrationContextMutex       sync.RWMutex
-	consensusMigrationContextArgsForCall []struct {
+	ConsensusStateStub        func() orderer.ConsensusType_State
+	consensusStateMutex       sync.RWMutex
+	consensusStateArgsForCall []struct {
 	}
-	consensusMigrationContextReturns struct {
-		result1 uint64
+	consensusStateReturns struct {
+		result1 orderer.ConsensusType_State
 	}
-	consensusMigrationContextReturnsOnCall map[int]struct {
-		result1 uint64
-	}
-	ConsensusMigrationStateStub        func() orderer.ConsensusType_MigrationState
-	consensusMigrationStateMutex       sync.RWMutex
-	consensusMigrationStateArgsForCall []struct {
-	}
-	consensusMigrationStateReturns struct {
-		result1 orderer.ConsensusType_MigrationState
-	}
-	consensusMigrationStateReturnsOnCall map[int]struct {
-		result1 orderer.ConsensusType_MigrationState
+	consensusStateReturnsOnCall map[int]struct {
+		result1 orderer.ConsensusType_State
 	}
 	ConsensusTypeStub        func() string
 	consensusTypeMutex       sync.RWMutex
@@ -322,107 +312,55 @@ func (fake *OrdererConfig) ConsensusMetadataReturnsOnCall(i int, result1 []byte)
 	}{result1}
 }
 
-func (fake *OrdererConfig) ConsensusMigrationContext() uint64 {
-	fake.consensusMigrationContextMutex.Lock()
-	ret, specificReturn := fake.consensusMigrationContextReturnsOnCall[len(fake.consensusMigrationContextArgsForCall)]
-	fake.consensusMigrationContextArgsForCall = append(fake.consensusMigrationContextArgsForCall, struct {
+func (fake *OrdererConfig) ConsensusState() orderer.ConsensusType_State {
+	fake.consensusStateMutex.Lock()
+	ret, specificReturn := fake.consensusStateReturnsOnCall[len(fake.consensusStateArgsForCall)]
+	fake.consensusStateArgsForCall = append(fake.consensusStateArgsForCall, struct {
 	}{})
-	fake.recordInvocation("ConsensusMigrationContext", []interface{}{})
-	fake.consensusMigrationContextMutex.Unlock()
-	if fake.ConsensusMigrationContextStub != nil {
-		return fake.ConsensusMigrationContextStub()
+	fake.recordInvocation("ConsensusState", []interface{}{})
+	fake.consensusStateMutex.Unlock()
+	if fake.ConsensusStateStub != nil {
+		return fake.ConsensusStateStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.consensusMigrationContextReturns
+	fakeReturns := fake.consensusStateReturns
 	return fakeReturns.result1
 }
 
-func (fake *OrdererConfig) ConsensusMigrationContextCallCount() int {
-	fake.consensusMigrationContextMutex.RLock()
-	defer fake.consensusMigrationContextMutex.RUnlock()
-	return len(fake.consensusMigrationContextArgsForCall)
+func (fake *OrdererConfig) ConsensusStateCallCount() int {
+	fake.consensusStateMutex.RLock()
+	defer fake.consensusStateMutex.RUnlock()
+	return len(fake.consensusStateArgsForCall)
 }
 
-func (fake *OrdererConfig) ConsensusMigrationContextCalls(stub func() uint64) {
-	fake.consensusMigrationContextMutex.Lock()
-	defer fake.consensusMigrationContextMutex.Unlock()
-	fake.ConsensusMigrationContextStub = stub
+func (fake *OrdererConfig) ConsensusStateCalls(stub func() orderer.ConsensusType_State) {
+	fake.consensusStateMutex.Lock()
+	defer fake.consensusStateMutex.Unlock()
+	fake.ConsensusStateStub = stub
 }
 
-func (fake *OrdererConfig) ConsensusMigrationContextReturns(result1 uint64) {
-	fake.consensusMigrationContextMutex.Lock()
-	defer fake.consensusMigrationContextMutex.Unlock()
-	fake.ConsensusMigrationContextStub = nil
-	fake.consensusMigrationContextReturns = struct {
-		result1 uint64
+func (fake *OrdererConfig) ConsensusStateReturns(result1 orderer.ConsensusType_State) {
+	fake.consensusStateMutex.Lock()
+	defer fake.consensusStateMutex.Unlock()
+	fake.ConsensusStateStub = nil
+	fake.consensusStateReturns = struct {
+		result1 orderer.ConsensusType_State
 	}{result1}
 }
 
-func (fake *OrdererConfig) ConsensusMigrationContextReturnsOnCall(i int, result1 uint64) {
-	fake.consensusMigrationContextMutex.Lock()
-	defer fake.consensusMigrationContextMutex.Unlock()
-	fake.ConsensusMigrationContextStub = nil
-	if fake.consensusMigrationContextReturnsOnCall == nil {
-		fake.consensusMigrationContextReturnsOnCall = make(map[int]struct {
-			result1 uint64
+func (fake *OrdererConfig) ConsensusStateReturnsOnCall(i int, result1 orderer.ConsensusType_State) {
+	fake.consensusStateMutex.Lock()
+	defer fake.consensusStateMutex.Unlock()
+	fake.ConsensusStateStub = nil
+	if fake.consensusStateReturnsOnCall == nil {
+		fake.consensusStateReturnsOnCall = make(map[int]struct {
+			result1 orderer.ConsensusType_State
 		})
 	}
-	fake.consensusMigrationContextReturnsOnCall[i] = struct {
-		result1 uint64
-	}{result1}
-}
-
-func (fake *OrdererConfig) ConsensusMigrationState() orderer.ConsensusType_MigrationState {
-	fake.consensusMigrationStateMutex.Lock()
-	ret, specificReturn := fake.consensusMigrationStateReturnsOnCall[len(fake.consensusMigrationStateArgsForCall)]
-	fake.consensusMigrationStateArgsForCall = append(fake.consensusMigrationStateArgsForCall, struct {
-	}{})
-	fake.recordInvocation("ConsensusMigrationState", []interface{}{})
-	fake.consensusMigrationStateMutex.Unlock()
-	if fake.ConsensusMigrationStateStub != nil {
-		return fake.ConsensusMigrationStateStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.consensusMigrationStateReturns
-	return fakeReturns.result1
-}
-
-func (fake *OrdererConfig) ConsensusMigrationStateCallCount() int {
-	fake.consensusMigrationStateMutex.RLock()
-	defer fake.consensusMigrationStateMutex.RUnlock()
-	return len(fake.consensusMigrationStateArgsForCall)
-}
-
-func (fake *OrdererConfig) ConsensusMigrationStateCalls(stub func() orderer.ConsensusType_MigrationState) {
-	fake.consensusMigrationStateMutex.Lock()
-	defer fake.consensusMigrationStateMutex.Unlock()
-	fake.ConsensusMigrationStateStub = stub
-}
-
-func (fake *OrdererConfig) ConsensusMigrationStateReturns(result1 orderer.ConsensusType_MigrationState) {
-	fake.consensusMigrationStateMutex.Lock()
-	defer fake.consensusMigrationStateMutex.Unlock()
-	fake.ConsensusMigrationStateStub = nil
-	fake.consensusMigrationStateReturns = struct {
-		result1 orderer.ConsensusType_MigrationState
-	}{result1}
-}
-
-func (fake *OrdererConfig) ConsensusMigrationStateReturnsOnCall(i int, result1 orderer.ConsensusType_MigrationState) {
-	fake.consensusMigrationStateMutex.Lock()
-	defer fake.consensusMigrationStateMutex.Unlock()
-	fake.ConsensusMigrationStateStub = nil
-	if fake.consensusMigrationStateReturnsOnCall == nil {
-		fake.consensusMigrationStateReturnsOnCall = make(map[int]struct {
-			result1 orderer.ConsensusType_MigrationState
-		})
-	}
-	fake.consensusMigrationStateReturnsOnCall[i] = struct {
-		result1 orderer.ConsensusType_MigrationState
+	fake.consensusStateReturnsOnCall[i] = struct {
+		result1 orderer.ConsensusType_State
 	}{result1}
 }
 
@@ -645,10 +583,8 @@ func (fake *OrdererConfig) Invocations() map[string][][]interface{} {
 	defer fake.capabilitiesMutex.RUnlock()
 	fake.consensusMetadataMutex.RLock()
 	defer fake.consensusMetadataMutex.RUnlock()
-	fake.consensusMigrationContextMutex.RLock()
-	defer fake.consensusMigrationContextMutex.RUnlock()
-	fake.consensusMigrationStateMutex.RLock()
-	defer fake.consensusMigrationStateMutex.RUnlock()
+	fake.consensusStateMutex.RLock()
+	defer fake.consensusStateMutex.RUnlock()
 	fake.consensusTypeMutex.RLock()
 	defer fake.consensusTypeMutex.RUnlock()
 	fake.kafkaBrokersMutex.RLock()
