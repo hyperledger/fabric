@@ -153,14 +153,9 @@ func (oc *OrdererConfig) ConsensusMetadata() []byte {
 	return oc.protos.ConsensusType.Metadata
 }
 
-// ConsensusMigrationState return the consensus type migration state.
-func (oc *OrdererConfig) ConsensusMigrationState() ab.ConsensusType_MigrationState {
-	return oc.protos.ConsensusType.MigrationState
-}
-
-// ConsensusMigrationContext return the consensus type migration context.
-func (oc *OrdererConfig) ConsensusMigrationContext() uint64 {
-	return oc.protos.ConsensusType.MigrationContext
+// ConsensusState return the consensus type state.
+func (oc *OrdererConfig) ConsensusState() ab.ConsensusType_State {
+	return oc.protos.ConsensusType.State
 }
 
 // BatchSize returns the maximum number of messages to include in a block.
