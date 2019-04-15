@@ -10,6 +10,7 @@
 package gossip
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"syscall"
@@ -149,7 +150,9 @@ var _ = Describe("Gossip Test", func() {
 
 			By("wait for rest of the peers to join and startup")
 			for _, peer := range []*nwo.Peer{peer1Org1, peer0Org2, peer1Org2} {
-				runner := network.PeerRunner(peer)
+				runner := network.PeerRunner(peer, fmt.Sprint("CORE_PEER_GOSSIP_STATE_CHECKINTERVAL=200ms"),
+					fmt.Sprint("FABRIC_LOGGING_SPEC=info:gossip.state=debug"),
+				)
 				peerProcesses[peer.ID()] = ifrit.Invoke(runner)
 			}
 
