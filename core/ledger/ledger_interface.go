@@ -32,6 +32,8 @@ type Initializer struct {
 
 // Config is a structure used to configure a ledger provider.
 type Config struct {
+	// RootFSPath is the top-level directory where ledger files are stored.
+	RootFSPath string
 	// StateDB represents the configuration for the state database.
 	StateDB *StateDB
 }

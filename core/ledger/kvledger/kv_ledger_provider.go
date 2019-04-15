@@ -9,6 +9,7 @@ package kvledger
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
@@ -18,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb/historyleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
@@ -56,13 +56,11 @@ type Provider struct {
 // This is not thread-safe and assumed to be synchronized be the caller
 func NewProvider() (ledger.PeerLedgerProvider, error) {
 	logger.Info("Initializing ledger provider")
-	// Initialize the ID store (inventory of chainIds/ledgerIds)
-	idStore := openIDStore(ledgerconfig.GetLedgerProviderPath())
 	ledgerStoreProvider := ledgerstorage.NewProvider()
 	// Initialize the history database (index for history of values by key)
 	historydbProvider := historyleveldb.NewHistoryDBProvider()
 	logger.Info("ledger provider Initialized")
-	p := &Provider{idStore, ledgerStoreProvider,
+	p := &Provider{nil, ledgerStoreProvider,
 		nil, historydbProvider, nil, nil, nil, nil, nil, nil}
 	return p, nil
 }
@@ -70,17 +68,24 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 // Initialize implements the corresponding method from interface ledger.PeerLedgerProvider
 func (p *Provider) Initialize(initializer *ledger.Initializer) error {
 	var err error
+
+	p.initializer = initializer
+	// initialize the ID store (inventory of chainIds/ledgerIds)
+	idStore := openIDStore(filepath.Join(p.initializer.Config.RootFSPath, "ledgerProvider"))
+	// initialize config history for chaincode
 	configHistoryMgr := confighistory.NewMgr(initializer.DeployedChaincodeInfoProvider)
+	// initialize the collection eligibility notifier
 	collElgNotifier := &collElgNotifier{
 		initializer.DeployedChaincodeInfoProvider,
 		initializer.MembershipInfoProvider,
 		make(map[string]collElgListener),
 	}
+	// initialize the state listeners
 	stateListeners := initializer.StateListeners
 	stateListeners = append(stateListeners, collElgNotifier)
 	stateListeners = append(stateListeners, configHistoryMgr)
 
-	p.initializer = initializer
+	p.idStore = idStore
 	p.configHistoryMgr = configHistoryMgr
 	p.stateListeners = stateListeners
 	p.collElgNotifier = collElgNotifier

@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package node
 
 import (
+	"path/filepath"
+
+	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 
@@ -28,15 +31,16 @@ func ledgerConfig() *ledger.Config {
 		maxBatchUpdateSize = viper.GetInt("ledger.state.couchDBConfig.maxBatchUpdateSize")
 	}
 
-	config := &ledger.Config{
+	conf := &ledger.Config{
+		RootFSPath: filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "ledgersData"),
 		StateDB: &ledger.StateDB{
 			StateDatabase: viper.GetString("ledger.state.stateDatabase"),
 			CouchDB:       &couchdb.Config{},
 		},
 	}
 
-	if config.StateDB.StateDatabase == "CouchDB" {
-		config.StateDB.CouchDB = &couchdb.Config{
+	if conf.StateDB.StateDatabase == "CouchDB" {
+		conf.StateDB.CouchDB = &couchdb.Config{
 			Address:                 viper.GetString("ledger.state.couchDBConfig.couchDBAddress"),
 			Username:                viper.GetString("ledger.state.couchDBConfig.username"),
 			Password:                viper.GetString("ledger.state.couchDBConfig.password"),
@@ -49,5 +53,5 @@ func ledgerConfig() *ledger.Config {
 			CreateGlobalChangesDB:   viper.GetBool("ledger.state.couchDBConfig.createGlobalChangesDB"),
 		}
 	}
-	return config
+	return conf
 }
