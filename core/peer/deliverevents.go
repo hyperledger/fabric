@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 )
 
 var logger = flogging.MustGetLogger("common.deliverevents")
@@ -129,8 +128,7 @@ func (s *server) Deliver(srv peer.Deliver_DeliverServer) (err error) {
 
 // NewDeliverEventsServer creates a peer.Deliver server to deliver block and
 // filtered block events
-func NewDeliverEventsServer(mutualTLS bool, policyCheckerProvider PolicyCheckerProvider, chainManager deliver.ChainManager, metricsProvider metrics.Provider) peer.DeliverServer {
-	timeWindow := viper.GetDuration("peer.authentication.timewindow")
+func NewDeliverEventsServer(timeWindow time.Duration, mutualTLS bool, policyCheckerProvider PolicyCheckerProvider, chainManager deliver.ChainManager, metricsProvider metrics.Provider) peer.DeliverServer {
 	if timeWindow == 0 {
 		defaultTimeWindow := 15 * time.Minute
 		logger.Warningf("`peer.authentication.timewindow` not set; defaulting to %s", defaultTimeWindow)

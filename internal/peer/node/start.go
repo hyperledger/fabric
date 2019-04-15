@@ -146,6 +146,9 @@ func serve(args []string) error {
 		aclmgmt.ResourceGetter(peer.GetStableChannelConfig),
 	)
 
+	//obtain coreConfiguration
+	coreConfig := peer.GlobalConfig()
+
 	platformRegistry := platforms.NewRegistry(platforms.SupportedPlatforms...)
 
 	identityDeserializerFactory := func(chainID string) msp.IdentityDeserializer {
@@ -165,7 +168,7 @@ func serve(args []string) error {
 
 	membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(), identityDeserializerFactory)
 
-	mspID := viper.GetString("peer.localMspId")
+	mspID := coreConfig.LocalMspID
 
 	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "chaincodes")
 	ccPackageParser := &persistence.ChaincodePackageParser{}
@@ -246,7 +249,7 @@ func serve(args []string) error {
 		return fmt.Errorf("peer address is not in the format of host:port: %v", err)
 	}
 
-	listenAddr := viper.GetString("peer.listenAddress")
+	listenAddr := coreConfig.ListenAddress
 	serverConfig, err := peer.GetServerConfig()
 	if err != nil {
 		logger.Fatalf("Error loading secure config for peer (%s)", err)
@@ -291,7 +294,8 @@ func serve(args []string) error {
 		}
 	}
 
-	abServer := peer.NewDeliverEventsServer(mutualTLS, policyCheckerProvider, &peer.DeliverChainManager{}, metricsProvider)
+	timeWindow := coreConfig.AuthenticationTimeWindow
+	abServer := peer.NewDeliverEventsServer(timeWindow, mutualTLS, policyCheckerProvider, &peer.DeliverChainManager{}, metricsProvider)
 	pb.RegisterDeliverServer(peerServer.Server(), abServer)
 
 	// Create a self-signed CA for chaincode service
@@ -306,7 +310,7 @@ func serve(args []string) error {
 
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
-	tlsEnabled := viper.GetBool("peer.tls.enabled")
+	tlsEnabled := coreConfig.PeerTLSEnabled
 
 	// create chaincode specific tls CA
 	authenticator := accesscontrol.NewAuthenticator(ca)
@@ -337,8 +341,8 @@ func serve(args []string) error {
 	}
 
 	var client *docker.Client
-	endpoint := viper.GetString("vm.endpoint")
-	if viper.GetBool("vm.docker.tls.enabled") {
+	endpoint := coreConfig.VMEndpoint
+	if coreConfig.VMDockerTLSEnabled {
 		cert := coreconfig.GetPath("vm.docker.tls.cert.file")
 		key := coreconfig.GetPath("vm.docker.tls.key.file")
 		ca := coreconfig.GetPath("vm.docker.tls.ca.file")
@@ -351,13 +355,13 @@ func serve(args []string) error {
 	}
 
 	dockerProvider := &dockercontroller.Provider{
-		PeerID:        viper.GetString("peer.id"),
-		NetworkID:     viper.GetString("peer.networkId"),
+		PeerID:        coreConfig.PeerID,
+		NetworkID:     coreConfig.NetworkID,
 		BuildMetrics:  dockercontroller.NewBuildMetrics(opsSystem.Provider),
 		Client:        client,
-		AttachStdOut:  viper.GetBool("vm.docker.attachStdout"),
+		AttachStdOut:  coreConfig.VMDockerAttachStdout,
 		HostConfig:    getDockerHostConfig(),
-		ChaincodePull: viper.GetBool("chaincode.pull"),
+		ChaincodePull: coreConfig.ChaincodePull,
 	}
 	dockerVM := dockerProvider.NewVM()
 
@@ -396,7 +400,7 @@ func serve(args []string) error {
 
 	csccInst := cscc.New(sccp, aclProvider, lifecycleValidatorCommitter, lsccInst, lifecycleValidatorCommitter)
 	qsccInst := scc.SelfDescribingSysCC(qscc.New(aclProvider))
-	if maxConcurrency := viper.GetInt("peer.limits.concurrency.qscc"); maxConcurrency != 0 {
+	if maxConcurrency := coreConfig.LimitsConcurrencyQSCC; maxConcurrency != 0 {
 		qsccInst = scc.Throttle(maxConcurrency, qsccInst)
 	}
 
@@ -511,18 +515,18 @@ func serve(args []string) error {
 		ledgerConfig(),
 	)
 
-	if viper.GetBool("peer.discovery.enabled") {
-		registerDiscoveryService(peerServer, policyMgr, lifecycle)
+	if coreConfig.DiscoveryEnabled {
+		registerDiscoveryService(coreConfig, peerServer, policyMgr, lifecycle)
 	}
 
-	networkID := viper.GetString("peer.networkId")
+	networkID := coreConfig.NetworkID
 
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", peerEndpoint.Id, networkID, peerEndpoint.Address)
 
 	// Get configuration before starting go routines to avoid
 	// racing in tests
-	profileEnabled := viper.GetBool("peer.profile.enabled")
-	profileListenAddress := viper.GetString("peer.profile.listenAddress")
+	profileEnabled := coreConfig.ProfileEnabled
+	profileListenAddress := coreConfig.ProfileListenAddress
 
 	// Start the grpc server. Done in a goroutine so we can deploy the
 	// genesis block if needed.
@@ -585,13 +589,13 @@ func localPolicy(policyObject proto.Message) policies.Policy {
 }
 
 func createSelfSignedData() protoutil.SignedData {
-	sId := mgmt.GetLocalSigningIdentityOrPanic()
+	sID := mgmt.GetLocalSigningIdentityOrPanic()
 	msg := make([]byte, 32)
-	sig, err := sId.Sign(msg)
+	sig, err := sID.Sign(msg)
 	if err != nil {
 		logger.Panicf("Failed creating self signed data because message signing failed: %v", err)
 	}
-	peerIdentity, err := sId.Serialize()
+	peerIdentity, err := sID.Serialize()
 	if err != nil {
 		logger.Panicf("Failed creating self signed data because peer identity couldn't be serialized: %v", err)
 	}
@@ -602,10 +606,10 @@ func createSelfSignedData() protoutil.SignedData {
 	}
 }
 
-func registerDiscoveryService(peerServer *comm.GRPCServer, polMgr policies.ChannelPolicyManagerGetter, lc *cc.Lifecycle) {
-	mspID := viper.GetString("peer.localMspId")
+func registerDiscoveryService(coreConfig *peer.Config, peerServer *comm.GRPCServer, polMgr policies.ChannelPolicyManagerGetter, lc *cc.Lifecycle) {
+	mspID := coreConfig.LocalMspID
 	localAccessPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
-	if viper.GetBool("peer.discovery.orgMembersAllowedAccess") {
+	if coreConfig.DiscoveryOrgMembersAllowed {
 		localAccessPolicy = localPolicy(cauthdsl.SignedByAnyMember([]string{mspID}))
 	}
 	channelVerifier := discacl.NewChannelVerifier(policies.ChannelApplicationWriters, polMgr)
@@ -617,9 +621,9 @@ func registerDiscoveryService(peerServer *comm.GRPCServer, polMgr policies.Chann
 	support := discsupport.NewDiscoverySupport(acl, gSup, ea, confSup, acl)
 	svc := discovery.NewService(discovery.Config{
 		TLS:                          peerServer.TLSEnabled(),
-		AuthCacheEnabled:             viper.GetBool("peer.discovery.authCacheEnabled"),
-		AuthCacheMaxSize:             viper.GetInt("peer.discovery.authCacheMaxSize"),
-		AuthCachePurgeRetentionRatio: viper.GetFloat64("peer.discovery.authCachePurgeRetentionRatio"),
+		AuthCacheEnabled:             coreConfig.DiscoveryAuthCacheEnabled,
+		AuthCacheMaxSize:             coreConfig.DiscoveryAuthCacheMaxSize,
+		AuthCachePurgeRetentionRatio: coreConfig.DiscoveryAuthCachePurgeRetentionRatio,
 	}, support)
 	logger.Info("Discovery service activated")
 	discprotos.RegisterDiscoveryServer(peerServer.Server(), svc)
