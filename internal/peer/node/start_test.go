@@ -15,7 +15,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/handlers/library"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/testutil"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	. "github.com/onsi/gomega"
@@ -99,67 +98,73 @@ func TestHandlerMap(t *testing.T) {
 
 func TestComputeChaincodeEndpoint(t *testing.T) {
 	var tests = []struct {
-		peerAddress      string
-		coreConfig       *peer.Config
-		expectedError    string
-		expectedEndpoint string
+		peerAddress            string
+		chaincodeAddress       string
+		chaincodeListenAddress string
+		expectedError          string
+		expectedEndpoint       string
 	}{
 		{
 			peerAddress:   "0.0.0.0",
-			coreConfig:    &peer.Config{},
 			expectedError: "invalid endpoint for chaincode to connect",
 		},
 		{
 			peerAddress:      "127.0.0.1",
-			coreConfig:       &peer.Config{},
 			expectedEndpoint: "127.0.0.1:7052",
 		},
 		{
-			peerAddress:   "0.0.0.0",
-			coreConfig:    &peer.Config{ChaincodeListenAddress: "0.0.0.0:8052"},
-			expectedError: "invalid endpoint for chaincode to connect",
+			peerAddress:            "0.0.0.0",
+			chaincodeListenAddress: "0.0.0.0:8052",
+			expectedError:          "invalid endpoint for chaincode to connect",
+		},
+		{
+			peerAddress:            "127.0.0.1",
+			chaincodeListenAddress: "0.0.0.0:8052",
+			expectedEndpoint:       "127.0.0.1:8052",
+		},
+		{
+			peerAddress:            "127.0.0.1",
+			chaincodeListenAddress: "127.0.0.1:8052",
+			expectedEndpoint:       "127.0.0.1:8052",
+		},
+		{
+			peerAddress:            "127.0.0.1",
+			chaincodeListenAddress: "abc",
+			expectedError:          "address abc: missing port in address",
 		},
 		{
 			peerAddress:      "127.0.0.1",
-			coreConfig:       &peer.Config{ChaincodeListenAddress: "0.0.0.0:8052"},
-			expectedEndpoint: "127.0.0.1:8052",
+			chaincodeAddress: "0.0.0.0:9052",
+			expectedError:    "invalid endpoint for chaincode to connect",
 		},
 		{
 			peerAddress:      "127.0.0.1",
-			coreConfig:       &peer.Config{ChaincodeListenAddress: "127.0.0.1:8052"},
-			expectedEndpoint: "127.0.0.1:8052",
-		},
-		{
-			peerAddress:   "127.0.0.1",
-			coreConfig:    &peer.Config{ChaincodeListenAddress: "abc"},
-			expectedError: "address abc: missing port in address",
-		},
-		{
-			peerAddress:   "127.0.0.1",
-			coreConfig:    &peer.Config{ChaincodeAddress: "0.0.0.0:9052"},
-			expectedError: "invalid endpoint for chaincode to connect",
-		},
-		{
-			peerAddress:      "127.0.0.1",
-			coreConfig:       &peer.Config{ChaincodeAddress: "127.0.0.2:9052"},
+			chaincodeAddress: "127.0.0.2:9052",
 			expectedEndpoint: "127.0.0.2:9052",
 		},
 		{
-			peerAddress:   "127.0.0.1",
-			coreConfig:    &peer.Config{ChaincodeAddress: "bcd"},
-			expectedError: "address bcd: missing port in address",
+			peerAddress:            "127.0.0.1",
+			chaincodeAddress:       "bcd",
+			chaincodeListenAddress: "ignored",
+			expectedError:          "address bcd: missing port in address",
+		},
+		{
+			peerAddress:            "127.0.0.1",
+			chaincodeAddress:       "127.0.0.2:9052",
+			chaincodeListenAddress: "ignored",
+			expectedEndpoint:       "127.0.0.2:9052",
 		},
 	}
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			ccEndpoint, err := computeChaincodeEndpoint(tt.coreConfig, tt.peerAddress)
+			ccEndpoint, err := computeChaincodeEndpoint(tt.chaincodeAddress, tt.chaincodeListenAddress, tt.peerAddress)
 			if tt.expectedError != "" {
-				assert.EqualErrorf(t, err, tt.expectedError, "peerAddress: %q, chaincodeListenAddress: %q", tt.peerAddress, tt.coreConfig.ChaincodeListenAddress)
+				assert.EqualErrorf(t, err, tt.expectedError, "peerAddress: %q, ccListenAddr: %q, ccAddr: %q", tt.peerAddress, tt.chaincodeListenAddress, tt.chaincodeAddress)
 				return
 			}
-			assert.NoErrorf(t, err, "peerAddress: %q, chaincodeListenAddress: %q", tt.peerAddress, tt.coreConfig.ChaincodeListenAddress)
-			assert.Equalf(t, tt.expectedEndpoint, ccEndpoint, "peerAddress: %q, chaincodeListenAddress: %q", tt.peerAddress, tt.coreConfig.ChaincodeListenAddress)
+			assert.NoErrorf(t, err, "peerAddress: %q, ccListenAddr: %q, ccAddr: %q", tt.peerAddress, tt.chaincodeListenAddress, tt.chaincodeAddress)
+			assert.Equalf(t, tt.expectedEndpoint, ccEndpoint, "peerAddress: %q, ccListenAddr: %q, ccAddr: %q", tt.peerAddress, tt.chaincodeListenAddress, tt.chaincodeAddress)
 		})
 	}
 }

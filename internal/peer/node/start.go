@@ -630,7 +630,7 @@ func registerDiscoveryService(coreConfig *peer.Config, peerServer *comm.GRPCServ
 //create a CC listener using peer.chaincodeListenAddress (and if that's not set use peer.peerAddress)
 func createChaincodeServer(coreConfig *peer.Config, ca tlsgen.CA, peerHostname string) (srv *comm.GRPCServer, ccEndpoint string, err error) {
 	// before potentially setting chaincodeListenAddress, compute chaincode endpoint at first
-	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerHostname)
+	ccEndpoint, err = computeChaincodeEndpoint(coreConfig.ChaincodeAddress, coreConfig.ChaincodeListenAddress, peerHostname)
 	if err != nil {
 		if chaincode.IsDevMode() {
 			// if any error for dev mode, we use 0.0.0.0:7052
@@ -711,55 +711,11 @@ func createChaincodeServer(coreConfig *peer.Config, ca tlsgen.CA, peerHostname s
 // Case B: else if chaincodeListenAddressKey is set and not "0.0.0.0" or ("::"), use it
 // Case C: else use peer address if not "0.0.0.0" (or "::")
 // Case D: else return error
-func computeChaincodeEndpoint(coreConfig *peer.Config, peerHostname string) (ccEndpoint string, err error) {
+func computeChaincodeEndpoint(chaincodeAddress string, chaincodeListenAddress string, peerHostname string) (ccEndpoint string, err error) {
 	logger.Infof("Entering computeChaincodeEndpoint with peerHostname: %s", peerHostname)
-	// set this to the host/ip the chaincode will resolve to. It could be
-	// the same address as the peer (such as in the sample docker env using
-	// the container name as the host name across the board)
-	ccEndpoint = coreConfig.ChaincodeAddress
-	if ccEndpoint == "" {
-		// the chaincodeAddrKey is not set, try to get the address from listener
-		// (may finally use the peer address)
-		ccEndpoint = coreConfig.ChaincodeListenAddress
-		if ccEndpoint == "" {
-			// Case C: chaincodeListenAddressKey is not set, use peer address
-			peerIP := net.ParseIP(peerHostname)
-			if peerIP != nil && peerIP.IsUnspecified() {
-				// Case D: all we have is "0.0.0.0" or "::" which chaincode cannot connect to
-				logger.Errorf("ChaincodeAddress and chaincodeListenAddress are nil and peerIP is %s", peerIP)
-				return "", errors.New("invalid endpoint for chaincode to connect")
-			}
-
-			// use peerAddress:defaultChaincodePort
-			ccEndpoint = fmt.Sprintf("%s:%d", peerHostname, defaultChaincodePort)
-
-		} else {
-			// Case B: chaincodeListenAddressKey is set
-			host, port, err := net.SplitHostPort(ccEndpoint)
-			if err != nil {
-				logger.Errorf("ChaincodeAddress is nil and fail to split chaincodeListenAddress: %s", err)
-				return "", err
-			}
-
-			ccListenerIP := net.ParseIP(host)
-			// ignoring other values such as Multicast address etc ...as the server
-			// wouldn't start up with this address anyway
-			if ccListenerIP != nil && ccListenerIP.IsUnspecified() {
-				// Case C: if "0.0.0.0" or "::", we have to use peer address with the listen port
-				peerIP := net.ParseIP(peerHostname)
-				if peerIP != nil && peerIP.IsUnspecified() {
-					// Case D: all we have is "0.0.0.0" or "::" which chaincode cannot connect to
-					logger.Error("ChaincodeAddress is nil while both chaincodeListenAddressIP and peerIP are 0.0.0.0")
-					return "", errors.New("invalid endpoint for chaincode to connect")
-				}
-				ccEndpoint = fmt.Sprintf("%s:%s", peerHostname, port)
-			}
-
-		}
-
-	} else {
-		// Case A: the chaincodeAddrKey is set
-		host, _, err := net.SplitHostPort(ccEndpoint)
+	// Case A: the chaincodeAddrKey is set
+	if chaincodeAddress != "" {
+		host, _, err := net.SplitHostPort(chaincodeAddress)
 		if err != nil {
 			logger.Errorf("Fail to split chaincodeAddress: %s", err)
 			return "", err
@@ -769,7 +725,46 @@ func computeChaincodeEndpoint(coreConfig *peer.Config, peerHostname string) (ccE
 			logger.Errorf("ChaincodeAddress' IP cannot be %s in non-dev mode", ccIP)
 			return "", errors.New("invalid endpoint for chaincode to connect")
 		}
+		logger.Infof("Exit with ccEndpoint: %s", chaincodeAddress)
+		return chaincodeAddress, nil
 	}
+
+	// Case B: chaincodeListenAddrKey is set
+	if chaincodeListenAddress != "" {
+		ccEndpoint = chaincodeListenAddress
+		host, port, err := net.SplitHostPort(ccEndpoint)
+		if err != nil {
+			logger.Errorf("ChaincodeAddress is nil and fail to split chaincodeListenAddress: %s", err)
+			return "", err
+		}
+
+		ccListenerIP := net.ParseIP(host)
+		// ignoring other values such as Multicast address etc ...as the server
+		// wouldn't start up with this address anyway
+		if ccListenerIP != nil && ccListenerIP.IsUnspecified() {
+			// Case C: if "0.0.0.0" or "::", we have to use peer address with the listen port
+			peerIP := net.ParseIP(peerHostname)
+			if peerIP != nil && peerIP.IsUnspecified() {
+				// Case D: all we have is "0.0.0.0" or "::" which chaincode cannot connect to
+				logger.Error("ChaincodeAddress is nil while both chaincodeListenAddressIP and peerIP are 0.0.0.0")
+				return "", errors.New("invalid endpoint for chaincode to connect")
+			}
+			ccEndpoint = fmt.Sprintf("%s:%s", peerHostname, port)
+		}
+		logger.Infof("Exit with ccEndpoint: %s", ccEndpoint)
+		return ccEndpoint, nil
+	}
+
+	// Case C: chaincodeListenAddrKey is not set, use peer address
+	peerIP := net.ParseIP(peerHostname)
+	if peerIP != nil && peerIP.IsUnspecified() {
+		// Case D: all we have is "0.0.0.0" or "::" which chaincode cannot connect to
+		logger.Errorf("ChaincodeAddress and chaincodeListenAddress are nil and peerIP is %s", peerIP)
+		return "", errors.New("invalid endpoint for chaincode to connect")
+	}
+
+	// use peerAddress:defaultChaincodePort
+	ccEndpoint = fmt.Sprintf("%s:%d", peerHostname, defaultChaincodePort)
 
 	logger.Infof("Exit with ccEndpoint: %s", ccEndpoint)
 	return ccEndpoint, nil
