@@ -289,8 +289,11 @@ func serve(args []string) error {
 		}
 	}
 
-	timeWindow := coreConfig.AuthenticationTimeWindow
-	abServer := peer.NewDeliverEventsServer(timeWindow, mutualTLS, policyCheckerProvider, &peer.DeliverChainManager{}, metricsProvider)
+	metrics := deliver.NewMetrics(metricsProvider)
+	abServer := &peer.Server{
+		DH:                    deliver.NewHandler(&peer.DeliverChainManager{}, coreConfig.AuthenticationTimeWindow, mutualTLS, metrics),
+		PolicyCheckerProvider: policyCheckerProvider,
+	}
 	pb.RegisterDeliverServer(peerServer.Server(), abServer)
 
 	// Create a self-signed CA for chaincode service

@@ -103,7 +103,14 @@ func (c *Config) load() error {
 	}
 	c.LocalMspID = viper.GetString("peer.localMspId")
 	c.ListenAddress = viper.GetString("peer.listenAddress")
+
 	c.AuthenticationTimeWindow = viper.GetDuration("peer.authentication.timewindow")
+	if c.AuthenticationTimeWindow == 0 {
+		defaultTimeWindow := 15 * time.Minute
+		logger.Warningf("`peer.authentication.timewindow` not set; defaulting to %s", defaultTimeWindow)
+		c.AuthenticationTimeWindow = defaultTimeWindow
+	}
+
 	c.PeerTLSEnabled = viper.GetBool("peer.tls.enabled")
 	c.NetworkID = viper.GetString("peer.networkId")
 	c.LimitsConcurrencyQSCC = viper.GetInt("peer.limits.concurrency.qscc")

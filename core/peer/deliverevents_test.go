@@ -168,8 +168,6 @@ func TestFilteredBlockResponseSenderIsFiltered(t *testing.T) {
 }
 
 func TestEventsServer_DeliverFiltered(t *testing.T) {
-	//setting acceptable difference between current server and client time to 1 sec
-	timeWindow := time.Duration(time.Second)
 	tests := []testCase{
 		{
 			name: "Testing deliver of the filtered block events",
@@ -380,13 +378,12 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 			wg := &sync.WaitGroup{}
 			chainManager, deliverServer := test.prepare(wg)
 
-			server := NewDeliverEventsServer(
-				timeWindow,
-				false,
-				defaultPolicyCheckerProvider,
-				chainManager,
-				&disabled.Provider{},
-			)
+			metrics := deliver.NewMetrics(&disabled.Provider{})
+			server := &Server{
+				DH:                    deliver.NewHandler(chainManager, time.Second, false, metrics),
+				PolicyCheckerProvider: defaultPolicyCheckerProvider,
+			}
+
 			err := server.DeliverFiltered(deliverServer)
 			wg.Wait()
 			// no error expected
