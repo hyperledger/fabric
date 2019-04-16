@@ -127,7 +127,7 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 func getIdentityByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
 	if len(hash) != util.CERT_HASH_LEN {
-		return shim.Error(fmt.Sprintf("Identity hash must not be %d.", util.CERT_HASH_LEN))
+		return shim.Error(fmt.Sprintf("Identity hash len should be %d.", util.CERT_HASH_LEN))
 	}
 
 	cert, err := kvledger.GlbCertStore.GetCert(hash)
