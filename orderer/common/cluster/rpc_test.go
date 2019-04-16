@@ -144,8 +144,8 @@ func TestSend(t *testing.T) {
 	stream.On("Send", mock.Anything).Return(func(*orderer.StepRequest) error {
 		l.Lock()
 		defer l.Unlock()
-		sent <- struct{}{}
 		atomic.AddUint32(&sendCalls, 1)
+		sent <- struct{}{}
 		return tst.sendReturns
 	})
 
@@ -241,12 +241,10 @@ func TestSend(t *testing.T) {
 				// Ensure that if we succeeded - only 1 stream was created despite 2 calls
 				// to Send() were made
 				err := testCase.method(rpc)
-				if testCase.expectedErr == "" {
-					<-sent
-				}
+				<-sent
 
 				assert.NoError(t, err)
-				assert.Equal(t, int(atomic.LoadUint32(&sendCalls)), 2)
+				assert.Equal(t, 2, int(atomic.LoadUint32(&sendCalls)))
 				client.AssertNumberOfCalls(t, "Step", 1)
 			}
 		})
