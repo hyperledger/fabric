@@ -26,6 +26,19 @@ const (
 //logger used by this package
 var logger = flogging.MustGetLogger("chaincode.platform.metadata")
 
+// PersistenceMetadataProvider implements persistence.MetadataProvider
+// and internally uses a TargzMetadataProvider to extract DB artefacts
+// from a code package.
+type PersistenceMetadataProvider struct{}
+
+// GetDBArtifacts returns the database artifacts (if any) from the
+// supplied package.
+func (t *PersistenceMetadataProvider) GetDBArtifacts(codePackage []byte) ([]byte, error) {
+	return (&TargzMetadataProvider{
+		Code: codePackage,
+	}).GetMetadataAsTarEntries()
+}
+
 //TargzMetadataProvider provides Metadata from chaincode packaged in Targz format
 //(go, java and node platforms)
 type TargzMetadataProvider struct {

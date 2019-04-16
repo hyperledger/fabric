@@ -96,3 +96,15 @@ func TestMetadata(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, count, 2)
 }
+
+func TestPersistenceMetadataProvider(t *testing.T) {
+	entries := []tarEntry{{"path/to/a/file", []byte("somdata")}, {ccPackageStatedbDir + "/m1", []byte("m1data")}, {ccPackageStatedbDir + "/m2", []byte("m2data")}}
+	cds := getCodePackage([]byte("cc code"), entries)
+	pmp := &PersistenceMetadataProvider{}
+	metadata, err := pmp.GetDBArtifacts(cds)
+	assert.Nil(t, err)
+	assert.NotNil(t, metadata)
+	count, err := getNumEntries(metadata)
+	assert.Nil(t, err)
+	assert.Equal(t, count, 2)
+}

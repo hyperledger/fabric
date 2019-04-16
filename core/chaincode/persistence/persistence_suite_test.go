@@ -40,6 +40,8 @@ type packageParser interface {
 	persistence.PackageParser
 }
 
+//go:generate mockery -dir . -name MetadataProvider -case underscore -output mock/ -outpkg mock
+
 func TestPersistence(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")
