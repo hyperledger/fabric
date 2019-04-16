@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/handlers/validation/api/state"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -98,6 +98,26 @@ type applicationCapabilities interface {
 //go:generate counterfeiter -o mock/validation_state.go --fake-name ValidationState . validationState
 type validationState interface {
 	validation.State
+}
+
+//go:generate counterfeiter -o mock/metadata_update_listener.go --fake-name MetadataUpdateListener . metadataUpdateListener
+type metadataUpdateListener interface {
+	lifecycle.MetadataUpdateListener
+}
+
+//go:generate counterfeiter -o mock/chaincode_info_provider.go --fake-name ChaincodeInfoProvider . chaincodeInfoProvider
+type chaincodeInfoProvider interface {
+	lifecycle.ChaincodeInfoProvider
+}
+
+//go:generate counterfeiter -o mock/legacy_metadata_provider.go --fake-name LegacyMetadataProvider . legacyMetadataProvider
+type legacyMetadataProvider interface {
+	lifecycle.LegacyMetadataProvider
+}
+
+//go:generate counterfeiter -o mock/metadata_handler.go --fake-name MetadataHandler . metadataHandler
+type metadataHandler interface {
+	lifecycle.MetadataHandler
 }
 
 func TestLifecycle(t *testing.T) {

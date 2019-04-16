@@ -180,13 +180,14 @@ func serve(args []string) error {
 		MetadataProvider: &ccmetadata.PersistenceMetadataProvider{},
 	}
 
-	// TODO, unfortunately, the lifecycle initialization is very unclean at the moment.
-	// This is because ccprovider.SetChaincodePath only works after ledgermgmt.Initialize,
-	// but ledgermgmt.Initialize requires a reference to lifecycle.  Finally,
-	// lscc requires a reference to the system chaincode provider in order to be created,
-	// which requires chaincode support to be up, which also requires, you guessed it, lifecycle.
-	// Once we remove the v1.0 lifecycle, we should be good to collapse all of the init
-	// of lifecycle to this point
+	// TODO, unfortunately, the lifecycle initialization is very unclean at the
+	// moment. This is because ccprovider.SetChaincodePath only works after
+	// ledgermgmt.Initialize, but ledgermgmt.Initialize requires a reference to
+	// lifecycle.  Finally, lscc requires a reference to the system chaincode
+	// provider in order to be created, which requires chaincode support to be
+	// up, which also requires, you guessed it, lifecycle. Once we remove the
+	// v1.0 lifecycle, we should be good to collapse all of the init of lifecycle
+	// to this point.
 	lifecycleResources := &lifecycle.Resources{
 		Serializer:          &lifecycle.Serializer{},
 		ChannelConfigSource: peer.Default,
@@ -199,9 +200,48 @@ func serve(args []string) error {
 		LegacyDeployedCCInfoProvider: &lscc.DeployedCCInfoProvider{},
 	}
 
-	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID)
+	packageProvider := &persistence.PackageProvider{
+		LegacyPP: &ccprovider.CCInfoFSImpl{},
+		Store:    ccStore,
+		Parser:   ccPackageParser,
+	}
 
-	// initialize ledger management
+	// legacyMetadataManager collects metadata information from the legacy
+	// lifecycle (lscc). This is expected to disappear with FAB-15061.
+	legacyMetadataManager, err := cclifecycle.NewMetadataManager(
+		cclifecycle.EnumerateFunc(
+			func() ([]ccdef.InstalledChaincode, error) {
+				return packageProvider.ListInstalledChaincodesLegacy()
+			},
+		),
+	)
+	if err != nil {
+		logger.Panicf("Failed creating LegacyMetadataManager: +%v", err)
+	}
+
+	// metadataManager aggregates metadata information from _lifecycle and
+	// the legacy lifecycle (lscc).
+	metadataManager := lifecycle.NewMetadataManager()
+
+	// the purpose of these two managers is to feed per-channel chaincode data
+	// into gossip owing to the fact that we are transitioning from lscc to
+	// _lifecycle, we still have two providers of such information until v2.1,
+	// in which we will remove the legacy.
+	//
+	// the flow of information is the following
+	//
+	// gossip <-- metadataManager <-- lifecycleCache  (for _lifecycle)
+	//                             \
+	//                              - legacyMetadataManager (for lscc)
+	//
+	// FAB-15061 tracks the work necessary to remove LSCC, at which point we
+	// will be able to simplify the flow to simply be
+	//
+	// gossip <-- lifecycleCache
+
+	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID, metadataManager)
+
+	// initialize resource management exit
 	ledgermgmt.Initialize(
 		&ledgermgmt.Initializer{
 			CustomTxProcessors:              peer.ConfigTxProcessors,
@@ -222,12 +262,6 @@ func serve(args []string) error {
 
 	if err := lifecycleCache.InitializeLocalChaincodes(); err != nil {
 		return errors.WithMessage(err, "could not initialize local chaincodes")
-	}
-
-	packageProvider := &persistence.PackageProvider{
-		LegacyPP: &ccprovider.CCInfoFSImpl{},
-		Store:    ccStore,
-		Parser:   ccPackageParser,
 	}
 
 	// Parameter overrides must be processed before any parameters are
@@ -504,36 +538,48 @@ func serve(args []string) error {
 		return err
 	}
 
-	// initialize system chaincodes
-
 	// deploy system chaincodes
 	ccp := chaincode.NewProvider(chaincodeSupport)
 	sccp.DeploySysCCs("", ccp)
 	logger.Infof("Deployed system chaincodes")
 
-	installedCCs := func() ([]ccdef.InstalledChaincode, error) {
-		return packageProvider.ListInstalledChaincodes()
-	}
-	legacyMetadataManager, err := cclifecycle.NewMetadataManager(cclifecycle.EnumerateFunc(installedCCs))
-	if err != nil {
-		logger.Panicf("Failed creating lifecycle: +%v", err)
-	}
-	onUpdate := cclifecycle.HandleMetadataUpdateFunc(func(channel string, chaincodes ccdef.MetadataSet) {
+	// register the lifecycleMetadataManager to get updates from the legacy
+	// chaincode; lifecycleMetadataManager will aggregate these updates with
+	// the ones from the new lifecycle and deliver both
+	// this is expected to disappear with FAB-15061
+	legacyMetadataManager.AddListener(metadataManager)
+
+	// register gossip as a listener for updates from lifecycleMetadataManager
+	metadataManager.AddListener(lifecycle.HandleMetadataUpdateFunc(func(channel string, chaincodes ccdef.MetadataSet) {
 		service.GetGossipService().UpdateChaincodes(chaincodes.AsChaincodes(), gossipcommon.ChainID(channel))
-	})
-	legacyMetadataManager.AddListener(onUpdate)
+	}))
 
 	// this brings up all the channels
 	peer.Initialize(
 		func(cid string) {
 			logger.Debugf("Deploying system CC, for channel <%s>", cid)
 			sccp.DeploySysCCs(cid, ccp)
+
+			// initialize the metadata for this channel.
+			// This call will pre-populate chaincode information for this
+			// channel but it won't fire any updates to its listeners
+			lifecycleCache.InitializeMetadata(cid)
+
+			// initialize the legacyMetadataManager for this channel.
+			// This call will pre-populate chaincode information from
+			// the legacy lifecycle for this channel; it will also fire
+			// the listener, which will cascade to metadataManager
+			// and eventually to gossip to pre-populate data structures.
+			// this is expected to disappear with FAB-15061
 			sub, err := legacyMetadataManager.NewChannelSubscription(cid, cclifecycle.QueryCreatorFunc(func() (cclifecycle.Query, error) {
 				return peer.GetLedger(cid).NewQueryExecutor()
 			}))
 			if err != nil {
 				logger.Panicf("Failed subscribing to chaincode lifecycle updates")
 			}
+
+			// register this channel's legacyMetadataManager (sub) to get ledger updates
+			// this is expected to disappear with FAB-15061
 			cceventmgmt.GetMgr().Register(cid, sub)
 		},
 		sccp,
@@ -549,7 +595,10 @@ func serve(args []string) error {
 	)
 
 	if coreConfig.DiscoveryEnabled {
-		registerDiscoveryService(coreConfig, peerServer, policyMgr, legacyMetadataManager)
+		registerDiscoveryService(coreConfig, peerServer, policyMgr, &lifecycle.MetadataProvider{
+			ChaincodeInfoProvider:  lifecycleCache,
+			LegacyMetadataProvider: legacyMetadataManager,
+		})
 	}
 
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
@@ -637,7 +686,7 @@ func createSelfSignedData() protoutil.SignedData {
 	}
 }
 
-func registerDiscoveryService(coreConfig *peer.Config, peerServer *comm.GRPCServer, polMgr policies.ChannelPolicyManagerGetter, metadataManager *cclifecycle.MetadataManager) {
+func registerDiscoveryService(coreConfig *peer.Config, peerServer *comm.GRPCServer, polMgr policies.ChannelPolicyManagerGetter, metadataProvider *lifecycle.MetadataProvider) {
 	mspID := coreConfig.LocalMSPID
 	localAccessPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
 	if coreConfig.DiscoveryOrgMembersAllowed {
@@ -646,8 +695,8 @@ func registerDiscoveryService(coreConfig *peer.Config, peerServer *comm.GRPCServ
 	channelVerifier := discacl.NewChannelVerifier(policies.ChannelApplicationWriters, polMgr)
 	acl := discacl.NewDiscoverySupport(channelVerifier, localAccessPolicy, discacl.ChannelConfigGetterFunc(peer.GetStableChannelConfig))
 	gSup := gossip.NewDiscoverySupport(service.GetGossipService())
-	ccSup := ccsupport.NewDiscoverySupport(metadataManager)
-	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, metadataManager)
+	ccSup := ccsupport.NewDiscoverySupport(metadataProvider)
+	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, metadataProvider)
 	confSup := config.NewDiscoverySupport(config.CurrentConfigBlockGetterFunc(peer.GetCurrConfigBlock))
 	support := discsupport.NewDiscoverySupport(acl, gSup, ea, confSup, acl)
 	svc := discovery.NewService(discovery.Config{

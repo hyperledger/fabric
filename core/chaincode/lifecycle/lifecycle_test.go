@@ -615,7 +615,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("returns an error", func() {
 					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError("attempted to define the current sequence (%d) for namespace %s, but: Version 'other-version' != 'version'"))
+					Expect(err).To(MatchError("attempted to define the current sequence (5) for namespace cc-name, but: Version 'other-version' != 'version'"))
 				})
 			})
 		})

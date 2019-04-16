@@ -46,12 +46,6 @@ func TestPrincipalsFromCollectionConfig(t *testing.T) {
 }
 
 func TestNewCollectionFilterInvalidInput(t *testing.T) {
-	t.Run("Invalid collection", func(t *testing.T) {
-		filter, err := principalsFromCollectionConfig([]byte{1, 2, 3})
-		assert.Nil(t, filter)
-		assert.Contains(t, err.Error(), "invalid collection bytes")
-	})
-
 	t.Run("Invalid collection type", func(t *testing.T) {
 		collections := &common.CollectionConfigPackage{}
 		collections.Config = []*common.CollectionConfig{
@@ -59,7 +53,7 @@ func TestNewCollectionFilterInvalidInput(t *testing.T) {
 				Payload: nil,
 			},
 		}
-		filter, err := principalsFromCollectionConfig(protoutil.MarshalOrPanic(collections))
+		filter, err := principalsFromCollectionConfig(collections)
 		assert.Nil(t, filter)
 		assert.Contains(t, err.Error(), "expected a static collection")
 	})
@@ -75,7 +69,7 @@ func TestNewCollectionFilterInvalidInput(t *testing.T) {
 				},
 			},
 		}
-		filter, err := principalsFromCollectionConfig(protoutil.MarshalOrPanic(collections))
+		filter, err := principalsFromCollectionConfig(collections)
 		assert.Nil(t, filter)
 		assert.Contains(t, err.Error(), "MemberOrgsPolicy of foo is nil")
 	})
@@ -92,7 +86,7 @@ func TestNewCollectionFilterInvalidInput(t *testing.T) {
 				},
 			},
 		}
-		filter, err := principalsFromCollectionConfig(protoutil.MarshalOrPanic(collections))
+		filter, err := principalsFromCollectionConfig(collections)
 		assert.Nil(t, filter)
 		assert.Contains(t, err.Error(), "policy of foo is nil")
 	})
@@ -220,7 +214,7 @@ func TestFilterForPrincipalSets(t *testing.T) {
 	})
 }
 
-func buildCollectionConfig(col2principals map[string][]*msp.MSPPrincipal) []byte {
+func buildCollectionConfig(col2principals map[string][]*msp.MSPPrincipal) *common.CollectionConfigPackage {
 	collections := &common.CollectionConfigPackage{}
 	for col, principals := range col2principals {
 		collections.Config = append(collections.Config, &common.CollectionConfig{
@@ -238,7 +232,8 @@ func buildCollectionConfig(col2principals map[string][]*msp.MSPPrincipal) []byte
 			},
 		})
 	}
-	return protoutil.MarshalOrPanic(collections)
+
+	return collections
 }
 
 func orgPrincipal(mspID string) *msp.MSPPrincipal {
