@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/viperutil"
@@ -97,85 +98,70 @@ func TestHandlerMap(t *testing.T) {
 }
 
 func TestComputeChaincodeEndpoint(t *testing.T) {
-	/*** Scenario 1: chaincodeAddress and chaincodeListenAddress are not set ***/
-	coreConfig := &peer.Config{}
-	// Scenario 1.1: peer address is 0.0.0.0
-	// computeChaincodeEndpoint will return error
-	peerAddress0 := "0.0.0.0"
-	ccEndpoint, err := computeChaincodeEndpoint(coreConfig, peerAddress0)
-	assert.Error(t, err)
-	assert.Equal(t, "", ccEndpoint)
-	// Scenario 1.2: peer address is not 0.0.0.0
-	// chaincodeEndpoint will be peerAddress:7052
-	peerAddress := "127.0.0.1"
-	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
-	assert.NoError(t, err)
-	assert.Equal(t, peerAddress+":7052", ccEndpoint)
+	var tests = []struct {
+		peerAddress      string
+		coreConfig       *peer.Config
+		expectedError    string
+		expectedEndpoint string
+	}{
+		{
+			peerAddress:   "0.0.0.0",
+			coreConfig:    &peer.Config{},
+			expectedError: "invalid endpoint for chaincode to connect",
+		},
+		{
+			peerAddress:      "127.0.0.1",
+			coreConfig:       &peer.Config{},
+			expectedEndpoint: "127.0.0.1:7052",
+		},
+		{
+			peerAddress:   "0.0.0.0",
+			coreConfig:    &peer.Config{ChaincodeListenAddress: "0.0.0.0:8052"},
+			expectedError: "invalid endpoint for chaincode to connect",
+		},
+		{
+			peerAddress:      "127.0.0.1",
+			coreConfig:       &peer.Config{ChaincodeListenAddress: "0.0.0.0:8052"},
+			expectedEndpoint: "127.0.0.1:8052",
+		},
+		{
+			peerAddress:      "127.0.0.1",
+			coreConfig:       &peer.Config{ChaincodeListenAddress: "127.0.0.1:8052"},
+			expectedEndpoint: "127.0.0.1:8052",
+		},
+		{
+			peerAddress:   "127.0.0.1",
+			coreConfig:    &peer.Config{ChaincodeListenAddress: "abc"},
+			expectedError: "address abc: missing port in address",
+		},
+		{
+			peerAddress:   "127.0.0.1",
+			coreConfig:    &peer.Config{ChaincodeAddress: "0.0.0.0:9052"},
+			expectedError: "invalid endpoint for chaincode to connect",
+		},
+		{
+			peerAddress:      "127.0.0.1",
+			coreConfig:       &peer.Config{ChaincodeAddress: "127.0.0.2:9052"},
+			expectedEndpoint: "127.0.0.2:9052",
+		},
+		{
+			peerAddress:   "127.0.0.1",
+			coreConfig:    &peer.Config{ChaincodeAddress: "bcd"},
+			expectedError: "address bcd: missing port in address",
+		},
+	}
 
-	/*** Scenario 2: set up chaincodeListenAddress only ***/
-	// Scenario 2.1: chaincodeListenAddress is 0.0.0.0
-	chaincodeListenPort := "8052"
-	settingChaincodeListenAddress0 := "0.0.0.0:" + chaincodeListenPort
-	coreConfig.ChaincodeListenAddress = settingChaincodeListenAddress0
-	coreConfig.ChaincodeAddress = ""
-	// Scenario 2.1.1: peer address is 0.0.0.0
-	// computeChaincodeEndpoint will return error
-	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress0)
-	assert.Error(t, err)
-	assert.Equal(t, "", ccEndpoint)
-	// Scenario 2.1.2: peer address is not 0.0.0.0
-	// chaincodeEndpoint will be peerAddress:chaincodeListenPort
-	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
-	assert.NoError(t, err)
-	assert.Equal(t, peerAddress+":"+chaincodeListenPort, ccEndpoint)
-	// Scenario 2.2: chaincodeListenAddress is not 0.0.0.0
-	// chaincodeEndpoint will be chaincodeListenAddress
-	settingChaincodeListenAddress := "127.0.0.1:" + chaincodeListenPort
-	coreConfig.ChaincodeListenAddress = settingChaincodeListenAddress
-	coreConfig.ChaincodeAddress = ""
-	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
-	assert.NoError(t, err)
-	assert.Equal(t, settingChaincodeListenAddress, ccEndpoint)
-	// Scenario 2.3: chaincodeListenAddress is invalid
-	// computeChaincodeEndpoint will return error
-	settingChaincodeListenAddressInvalid := "abc"
-	coreConfig.ChaincodeListenAddress = settingChaincodeListenAddressInvalid
-	coreConfig.ChaincodeAddress = ""
-	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
-
-	assert.Error(t, err)
-	assert.Equal(t, "", ccEndpoint)
-
-	/*** Scenario 3: set up chaincodeAddress only ***/
-	// Scenario 3.1: chaincodeAddress is 0.0.0.0
-	// computeChaincodeEndpoint will return error
-	chaincodeAddressPort := "9052"
-	settingChaincodeAddress0 := "0.0.0.0:" + chaincodeAddressPort
-	coreConfig.ChaincodeListenAddress = ""
-	coreConfig.ChaincodeAddress = settingChaincodeAddress0
-	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
-
-	assert.Error(t, err)
-	assert.Equal(t, "", ccEndpoint)
-	// Scenario 3.2: chaincodeAddress is not 0.0.0.0
-	// chaincodeEndpoint will be chaincodeAddress
-	settingChaincodeAddress := "127.0.0.2:" + chaincodeAddressPort
-	coreConfig.ChaincodeListenAddress = ""
-	coreConfig.ChaincodeAddress = settingChaincodeAddress
-	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
-	assert.NoError(t, err)
-	assert.Equal(t, settingChaincodeAddress, ccEndpoint)
-	// Scenario 3.3: chaincodeAddress is invalid
-	// computeChaincodeEndpoint will return error
-	settingChaincodeAddressInvalid := "bcd"
-	coreConfig.ChaincodeListenAddress = ""
-	coreConfig.ChaincodeAddress = settingChaincodeAddressInvalid
-	ccEndpoint, err = computeChaincodeEndpoint(coreConfig, peerAddress)
-	assert.Error(t, err)
-	assert.Equal(t, "", ccEndpoint)
-
-	/*** Scenario 4: set up both chaincodeAddress and chaincodeListenAddress ***/
-	// This scenario will be the same to scenarios 3: set up chaincodeAddress only.
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			ccEndpoint, err := computeChaincodeEndpoint(tt.coreConfig, tt.peerAddress)
+			if tt.expectedError != "" {
+				assert.EqualErrorf(t, err, tt.expectedError, "peerAddress: %q, chaincodeListenAddress: %q", tt.peerAddress, tt.coreConfig.ChaincodeListenAddress)
+				return
+			}
+			assert.NoErrorf(t, err, "peerAddress: %q, chaincodeListenAddress: %q", tt.peerAddress, tt.coreConfig.ChaincodeListenAddress)
+			assert.Equalf(t, tt.expectedEndpoint, ccEndpoint, "peerAddress: %q, chaincodeListenAddress: %q", tt.peerAddress, tt.coreConfig.ChaincodeListenAddress)
+		})
+	}
 }
 
 func TestGetDockerHostConfig(t *testing.T) {
