@@ -22,9 +22,18 @@ func TestCacheConfigurationNegative(t *testing.T) {
 	// set a bad peer.address
 	viper.Set("peer.addressAutoDetect", true)
 	viper.Set("peer.address", "testing.com")
-	cacheConfiguration()
-	err := CacheConfiguration()
+	_, err := GlobalConfig()
 	assert.Error(t, err, "Expected error for bad configuration")
+
+	viper.Set("peer.addressAutoDetect", false)
+	viper.Set("peer.address", "")
+	_, err = GlobalConfig()
+	assert.Error(t, err, "Expected error for bad configuration")
+
+	viper.Set("peer.address", "wrongAddress")
+	_, err = GlobalConfig()
+	assert.Error(t, err, "Expected error for bad configuration")
+
 }
 
 func TestConfiguration(t *testing.T) {
@@ -95,23 +104,11 @@ func TestConfiguration(t *testing.T) {
 			for k, v := range test.settings {
 				viper.Set(k, v)
 			}
-			// reset the cache
-			configurationCached = false
-			// GetPeerEndpoint
-			pe, err := GetPeerEndpoint()
+			// load Config file
+			coreConfig, err := GlobalConfig()
 			assert.NoError(t, err, "GetPeerEndpoint returned unexpected error")
-			assert.Equal(t, test.settings["peer.id"], pe.Id.Name, "GetPeerEndpoint returned the wrong peer ID")
-			assert.Equal(t, test.expectedPeerAddress, pe.Address, "GetPeerEndpoint returned the wrong peer address")
-
-			// now check with cached configuration
-			err = CacheConfiguration()
-			assert.NoError(t, err, "CacheConfiguration should not have returned an err")
-			// check functions again
-			// GetPeerEndpoint
-			pe, err = GetPeerEndpoint()
-			assert.NoError(t, err, "GetPeerEndpoint returned unexpected error")
-			assert.Equal(t, test.settings["peer.id"], pe.Id.Name, "GetPeerEndpoint returned the wrong peer ID")
-			assert.Equal(t, test.expectedPeerAddress, pe.Address, "GetPeerEndpoint returned the wrong peer address")
+			assert.Equal(t, test.settings["peer.id"], coreConfig.PeerEndpoint.Id.Name, "GetPeerEndpoint returned the wrong peer ID")
+			assert.Equal(t, test.expectedPeerAddress, coreConfig.PeerEndpoint.Address, "GetPeerEndpoint returned the wrong peer address")
 		})
 	}
 }
@@ -233,7 +230,7 @@ func TestGetClientCertificate(t *testing.T) {
 
 func TestGlobalConfig(t *testing.T) {
 	//Capture the configuration from viper
-	viper.Set("peer.addressAutoDetect", "false")
+	viper.Set("peer.addressAutoDetect", false)
 	viper.Set("peer.address", "localhost:8080")
 	viper.Set("peer.id", "testPeerID")
 	viper.Set("peer.localMspId", "SampleOrg")
@@ -249,6 +246,9 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.discovery.authCacheEnabled", true)
 	viper.Set("peer.discovery.authCacheMaxSize", 1000)
 	viper.Set("peer.discovery.authCachePurgeRetentionRatio", 0.75)
+	viper.Set("peer.chaincodeListenAddress", "0.0.0.0:7052")
+	viper.Set("peer.chaincodeAddress", "0.0.0.0:7052")
+	viper.Set("peer.adminService.listenAddress", "0.0.0.0:7055")
 
 	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 	viper.Set("vm.docker.tls.enabled", false)
@@ -256,7 +256,8 @@ func TestGlobalConfig(t *testing.T) {
 
 	viper.Set("chaincode.pull", false)
 
-	coreConfig := GlobalConfig()
+	coreConfig, err := GlobalConfig()
+	assert.NoError(t, err)
 
 	assert.Equal(t, coreConfig.LocalMspID, "SampleOrg")
 	assert.Equal(t, coreConfig.ListenAddress, "0.0.0.0:7051")
@@ -271,6 +272,9 @@ func TestGlobalConfig(t *testing.T) {
 	assert.Equal(t, coreConfig.DiscoveryAuthCacheEnabled, true)
 	assert.Equal(t, coreConfig.DiscoveryAuthCacheMaxSize, 1000)
 	assert.Equal(t, coreConfig.DiscoveryAuthCachePurgeRetentionRatio, 0.75)
+	assert.Equal(t, coreConfig.ChaincodeListenAddr, "0.0.0.0:7052")
+	assert.Equal(t, coreConfig.ChaincodeAddr, "0.0.0.0:7052")
+	assert.Equal(t, coreConfig.AdminListenAddr, "0.0.0.0:7055")
 
 	assert.Equal(t, coreConfig.VMEndpoint, "unix:///var/run/docker.sock")
 	assert.Equal(t, coreConfig.VMDockerTLSEnabled, false)
@@ -283,9 +287,4 @@ func TestGlobalConfig(t *testing.T) {
 	assert.Equal(t, coreConfig.PeerEndpoint.Id.Name, "testPeerID")
 	assert.Equal(t, coreConfig.PeerEndpoint.Address, "localhost:8080")
 
-	//bad peer address
-	viper.Set("peer.address", "")
-	assert.Panics(t, func() { GlobalConfig() }, "The code did not panic")
-	viper.Set("peer.address", "wrongAddress")
-	assert.Panics(t, func() { GlobalConfig() }, "The code did not panic")
 }

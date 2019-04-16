@@ -52,6 +52,9 @@ type Config struct {
 	DiscoveryAuthCacheEnabled             bool
 	DiscoveryAuthCacheMaxSize             int
 	DiscoveryAuthCachePurgeRetentionRatio float64
+	ChaincodeListenAddr                   string
+	ChaincodeAddr                         string
+	AdminListenAddr                       string
 
 	//VM config
 	VMEndpoint           string
@@ -62,16 +65,18 @@ type Config struct {
 	ChaincodePull bool
 }
 
-func GlobalConfig() *Config {
+func GlobalConfig() (*Config, error) {
 	c := &Config{}
-	c.load()
-	return c
+	if err := c.load(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
-func (c *Config) load() {
+func (c *Config) load() error {
 	preeAddress, err := getLocalAddress()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	c.PeerAddress = preeAddress
 	c.PeerID = viper.GetString("peer.id")
@@ -94,34 +99,16 @@ func (c *Config) load() {
 	c.DiscoveryAuthCacheEnabled = viper.GetBool("peer.discovery.authCacheEnabled")
 	c.DiscoveryAuthCacheMaxSize = viper.GetInt("peer.discovery.authCacheMaxSize")
 	c.DiscoveryAuthCachePurgeRetentionRatio = viper.GetFloat64("peer.discovery.authCachePurgeRetentionRatio")
+	c.ChaincodeListenAddr = viper.GetString("peer.chaincodeListenAddress")
+	c.ChaincodeAddr = viper.GetString("peer.chaincodeAddress")
+	c.AdminListenAddr = viper.GetString("peer.adminService.listenAddress")
 
 	c.VMEndpoint = viper.GetString("vm.endpoint")
 	c.VMDockerTLSEnabled = viper.GetBool("vm.docker.tls.enabled")
 	c.VMDockerAttachStdout = viper.GetBool("vm.docker.attachStdout")
 
 	c.ChaincodePull = viper.GetBool("chaincode.pull")
-}
 
-// Is the configuration cached?
-var configurationCached = false
-
-// Cached values and error values of the computed getValidatorStreamAddress()
-// and getPeerEndpoint()
-var peerEndpoint *pb.PeerEndpoint
-var peerEndpointError error
-
-// Cached values of commonly used configuration constants.
-
-// CacheConfiguration computes and caches commonly-used constants and
-// computed constants as package variables. Routines which were previously
-// global have been embedded here to preserve the original abstraction.
-func CacheConfiguration() error {
-	peerEndpoint, peerEndpointError = getPeerEndpoint()
-	if peerEndpointError != nil {
-		return peerEndpointError
-	}
-
-	configurationCached = true
 	return nil
 }
 
@@ -157,33 +144,6 @@ func getLocalAddress() (string, error) {
 	peerLogger.Info("Returning", peerAddress)
 	return peerAddress, nil
 
-}
-
-// getPeerEndpoint returns the PeerEndpoint for this Peer instance.  Affected by env:peer.addressAutoDetect
-func getPeerEndpoint() (*pb.PeerEndpoint, error) {
-	var peerAddress string
-	peerAddress, err := getLocalAddress()
-	if err != nil {
-		return nil, err
-	}
-	return &pb.PeerEndpoint{Id: &pb.PeerID{Name: viper.GetString("peer.id")}, Address: peerAddress}, nil
-}
-
-// cacheConfiguration logs an error if error checks have failed.
-func cacheConfiguration() {
-	if err := CacheConfiguration(); err != nil {
-		peerLogger.Errorf("Execution continues after CacheConfiguration() failure : %s", err)
-	}
-}
-
-//Functional forms
-
-// GetPeerEndpoint returns peerEndpoint from cached configuration
-func GetPeerEndpoint() (*pb.PeerEndpoint, error) {
-	if !configurationCached {
-		cacheConfiguration()
-	}
-	return peerEndpoint, peerEndpointError
 }
 
 // GetServerConfig returns the gRPC server configuration for the peer
