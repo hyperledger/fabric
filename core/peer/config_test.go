@@ -272,7 +272,7 @@ func TestGlobalConfig(t *testing.T) {
 	coreConfig, err := GlobalConfig()
 	assert.NoError(t, err)
 
-	assert.Equal(t, coreConfig.LocalMspID, "SampleOrg")
+	assert.Equal(t, coreConfig.LocalMSPID, "SampleOrg")
 	assert.Equal(t, coreConfig.ListenAddress, "0.0.0.0:7051")
 	assert.Equal(t, coreConfig.AuthenticationTimeWindow, 15*time.Minute)
 	assert.Equal(t, coreConfig.PeerTLSEnabled, false)

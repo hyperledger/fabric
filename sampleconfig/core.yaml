@@ -228,8 +228,6 @@ peer:
             maxRetries: 3
 
     # TLS Settings
-    # Note that peer-chaincode connections through chaincodeListenAddress is
-    # not mutual TLS auth. See comments on chaincodeListenAddress for more info
     tls:
         # Require server-side TLS
         enabled:  false

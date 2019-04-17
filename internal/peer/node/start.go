@@ -171,7 +171,7 @@ func serve(args []string) error {
 
 	membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(), identityDeserializerFactory)
 
-	mspID := coreConfig.LocalMspID
+	mspID := coreConfig.LocalMSPID
 
 	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "chaincodes")
 	ccPackageParser := &persistence.ChaincodePackageParser{}
@@ -605,7 +605,7 @@ func createSelfSignedData() protoutil.SignedData {
 }
 
 func registerDiscoveryService(coreConfig *peer.Config, peerServer *comm.GRPCServer, polMgr policies.ChannelPolicyManagerGetter, lc *cclifecycle.Lifecycle) {
-	mspID := coreConfig.LocalMspID
+	mspID := coreConfig.LocalMSPID
 	localAccessPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
 	if coreConfig.DiscoveryOrgMembersAllowed {
 		localAccessPolicy = localPolicy(cauthdsl.SignedByAnyMember([]string{mspID}))
@@ -792,7 +792,7 @@ func adminHasSeparateListener(peerListenAddr string, adminListenAddress string) 
 func startAdminServer(coreConfig *peer.Config, peerListenAddr string, peerServer *grpc.Server, metricsProvider metrics.Provider) {
 	adminListenAddress := coreConfig.AdminListenAddress
 	separateLsnrForAdmin := adminHasSeparateListener(peerListenAddr, adminListenAddress)
-	mspID := coreConfig.LocalMspID
+	mspID := coreConfig.LocalMSPID
 	adminPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
 	gRPCService := peerServer
 	if separateLsnrForAdmin {

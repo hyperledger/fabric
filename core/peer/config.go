@@ -34,34 +34,108 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Config is the global struct which holds all configurations for Peer.
+// config struct is defined and populated at the first place when it's
+// being initiated.
+// TODO: Currently all Config struct is still being populated from viper.
+// 		 We do intent to move away from viper in the future.
 type Config struct {
-	//Peer config
-	LocalMspID                            string
-	ListenAddress                         string
-	AuthenticationTimeWindow              time.Duration
-	PeerTLSEnabled                        bool
-	PeerID                                string
-	PeerAddress                           string
-	PeerEndpoint                          *pb.PeerEndpoint
-	NetworkID                             string
-	LimitsConcurrencyQSCC                 int
-	DiscoveryEnabled                      bool
-	ProfileEnabled                        bool
-	ProfileListenAddress                  string
-	DiscoveryOrgMembersAllowed            bool
-	DiscoveryAuthCacheEnabled             bool
-	DiscoveryAuthCacheMaxSize             int
-	DiscoveryAuthCachePurgeRetentionRatio float64
-	ChaincodeListenAddress                string
-	ChaincodeAddress                      string
-	AdminListenAddress                    string
+	// Identifier of the local MSP
+	// !!!!! IMPORTANT !!!!!!
+	// Deployers need to change the value of the localMSPID string. In particular,
+	// the name of the local MSP ID of a peer needs to match the name of one of
+	// the MSPs in each of the channels that this peer is a member of. Otherwise
+	// this peer's messages will not be identified as valid by other nodes.
+	LocalMSPID string
+	// The address at local network interface this Peer will listen on.
+	// By default, it will listen on all network interfaces
+	ListenAddress string
+	// The Peer id is used for identifying this Peer instance
+	PeerID string
+	// When used as peer config, this represents the endpoint to other peers in
+	// the same organization. For peers in other organization, see
+	// gossip.externalEndpoint for more info.
+	// When used as CLI config, this means the peer's endpoint to interact with.
+	PeerAddress  string
+	PeerEndpoint *pb.PeerEndpoint
+	// The networkId allows for logical separation of networks
+	NetworkID string
+	// The endpoint this peer uses to listen for inbound chaincode connections. If
+	// this is not set, the listen address is selected to be the peer's address with
+	// port 7052
+	ChaincodeListenAddress string
+	// The endpoint the chaincode for this peer uses to connect to the peer. If this
+	// is not specified, the chaincodeListenAddress address is selected. And if
+	// chaincodeListenAddress is not specified, address is selected from peer listenAddress.
+	ChaincodeAddress string
 
-	//VM config
-	VMEndpoint           string
+	// ----- Profile -----
+	// Used with Go profiling tools only in none production environment. In production,
+	// it should be disabled (eg enabled : false)
+	ProfileEnabled       bool
+	ProfileListenAddress string
+
+	// ----- Discovery -----
+	// The discovery service is used by clients to query information about peers,
+	// such as - which peers have joined a certain channel, what is the latest
+	// channel config, and most importantly - given a chaincode and a channel, what
+	// possible sets of peers satisfy the endorsement policy.
+
+	// Enable discovery service
+	DiscoveryEnabled bool
+	// Whether to allow non-admins to perform non channel scoped queries.
+	// When this is false, it means that only peer admins can perform non channel scoped queries.
+	DiscoveryOrgMembersAllowed bool
+	// Whether the authentication cache is enabled or not
+	DiscoveryAuthCacheEnabled bool
+	// The maximum size of the cache, after which a purge takes place
+	DiscoveryAuthCacheMaxSize int
+	// The proportion (0 to 1) of entries that remain in the cache after the cache is
+	// purged due to overpopulation
+	DiscoveryAuthCachePurgeRetentionRatio float64
+
+	// ----- Limits -----
+	// Limits is used to configure some internal resource limits
+
+	// Concurrency limits the number of concurrently running system chaincode requests.
+	// This option is only supported for qscc at this time.
+	LimitsConcurrencyQSCC int
+
+	// ----- TLS -----
+	// Require server-side TLS
+	PeerTLSEnabled bool
+
+	// ----- Authentication -----
+	// Authentication contains configuration parameters related to authenticating
+	// client messages.
+
+	// The acceptable difference between current server time and client's time as
+	// specified in a client request message
+	AuthenticationTimeWindow time.Duration
+
+	// ----- AdminService -----
+	// The admin service is used for adminstrative operations such as control over logger
+	// levels, etc. Only peer administrators can use the service.
+
+	// The interface and port on which the admin server will listen on. If this is
+	// not set, or the port number is equal to the port of the peer listen address -
+	// the admin service is attached to the peer's service (defaults to 7051)
+	AdminListenAddress string
+
+	// Endpoint of the vm management system. For docker can be one of the following in general
+	// unix:///var/run/docker.sock
+	// http://localhost:2375
+	// https://localhost:2376
+	VMEndpoint string
+
+	// ----- vm.docker.tls -----
+	// settings for docker vms
 	VMDockerTLSEnabled   bool
 	VMDockerAttachStdout bool
 
-	//Chaincode config
+	// Enables/disables force pulling of the base docker images (listed below)
+	// during user chaincode instantiation.
+	// Useful when using moving image tags (such as :latest)
 	ChaincodePull bool
 
 	//Operations config
@@ -101,7 +175,7 @@ func (c *Config) load() error {
 		},
 		Address: c.PeerAddress,
 	}
-	c.LocalMspID = viper.GetString("peer.localMspId")
+	c.LocalMSPID = viper.GetString("peer.localMspId")
 	c.ListenAddress = viper.GetString("peer.listenAddress")
 
 	c.AuthenticationTimeWindow = viper.GetDuration("peer.authentication.timewindow")
