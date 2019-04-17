@@ -98,10 +98,12 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		logger.Panicf("Failed validating bootstrap block: %v", err)
 	}
 
-	clusterType := isClusterType(bootstrapBlock)
-	signer := localmsp.NewSigner()
-
 	lf, _ := createLedgerFactory(conf)
+	sysChanLastConfigBlock := extractSysChanLastConfig(lf, bootstrapBlock)
+	clusterBootBlock := selectClusterBootBlock(bootstrapBlock, sysChanLastConfigBlock)
+
+	clusterType := isClusterType(clusterBootBlock)
+	signer := localmsp.NewSigner()
 
 	clusterClientConfig := initializeClusterClientConfig(conf, clusterType, bootstrapBlock)
 	clusterDialer := &cluster.PredicateDialer{
@@ -156,7 +158,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		}
 	}
 
-	manager := initializeMultichannelRegistrar(bootstrapBlock, r, clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, opsSystem, lf, tlsCallback)
+	manager := initializeMultichannelRegistrar(clusterBootBlock, r, clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, opsSystem, lf, tlsCallback)
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	server := NewServer(manager, metricsProvider, &conf.Debug, conf.General.Authentication.TimeWindow, mutualTLS)
 
@@ -179,6 +181,49 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
 	logger.Info("Beginning to serve requests")
 	grpcServer.Start()
+}
+
+// Extract system channel last config block
+func extractSysChanLastConfig(lf blockledger.Factory, bootstrapBlock *cb.Block) *cb.Block {
+	// Are we bootstrapping?
+	num := len(lf.ChainIDs())
+	if num == 0 {
+		logger.Info("Bootstrapping because no existing chains")
+		return nil
+	}
+	logger.Infof("Not bootstrapping because of %d existing chains", num)
+
+	systemChannelName, err := utils.GetChainIDFromBlock(bootstrapBlock)
+	if err != nil {
+		logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
+	}
+	systemChannelLedger, err := lf.GetOrCreate(systemChannelName)
+	if err != nil {
+		logger.Panicf("Failed getting system channel ledger: %v", err)
+	}
+	height := systemChannelLedger.Height()
+	lastConfigBlock := multichannel.ConfigBlock(systemChannelLedger)
+	logger.Infof("System channel: name=%s, height=%d, last config block number=%d",
+		systemChannelName, height, lastConfigBlock.Header.Number)
+	return lastConfigBlock
+}
+
+// Select cluster boot block
+func selectClusterBootBlock(bootstrapBlock, sysChanLastConfig *cb.Block) *cb.Block {
+	if sysChanLastConfig == nil {
+		logger.Debug("Selected bootstrap block, because system channel last config block is nil")
+		return bootstrapBlock
+	}
+
+	if sysChanLastConfig.Header.Number > bootstrapBlock.Header.Number {
+		logger.Infof("Cluster boot block is system channel last config block; Blocks Header.Number system-channel=%d, bootstrap=%d",
+			sysChanLastConfig.Header.Number, bootstrapBlock.Header.Number)
+		return sysChanLastConfig
+	}
+
+	logger.Infof("Cluster boot block is bootstrap (genesis) block; Blocks Header.Number system-channel=%d, bootstrap=%d",
+		sysChanLastConfig.Header.Number, bootstrapBlock.Header.Number)
+	return bootstrapBlock
 }
 
 func createReplicator(
