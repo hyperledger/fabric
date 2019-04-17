@@ -237,7 +237,12 @@ func serve(args []string) error {
 		viper.Set("chaincode.mode", chaincode.DevModeUserRunsChaincode)
 	}
 
-	peerEndpoint := coreConfig.PeerEndpoint
+	peerEndpoint := &pb.PeerEndpoint{
+		Id: &pb.PeerID{
+			Name: coreConfig.PeerID,
+		},
+		Address: coreConfig.PeerAddress,
+	}
 
 	peerHost, _, err := net.SplitHostPort(peerEndpoint.Address)
 	if err != nil {

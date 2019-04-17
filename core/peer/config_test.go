@@ -105,10 +105,8 @@ func TestConfiguration(t *testing.T) {
 				viper.Set(k, v)
 			}
 			// load Config file
-			coreConfig, err := GlobalConfig()
+			_, err := GlobalConfig()
 			assert.NoError(t, err, "GetPeerEndpoint returned unexpected error")
-			assert.Equal(t, test.settings["peer.id"], coreConfig.PeerEndpoint.Id.Name, "GetPeerEndpoint returned the wrong peer ID")
-			assert.Equal(t, test.expectedPeerAddress, coreConfig.PeerEndpoint.Address, "GetPeerEndpoint returned the wrong peer address")
 		})
 	}
 }
@@ -272,44 +270,45 @@ func TestGlobalConfig(t *testing.T) {
 	coreConfig, err := GlobalConfig()
 	assert.NoError(t, err)
 
-	assert.Equal(t, coreConfig.LocalMSPID, "SampleOrg")
-	assert.Equal(t, coreConfig.ListenAddress, "0.0.0.0:7051")
-	assert.Equal(t, coreConfig.AuthenticationTimeWindow, 15*time.Minute)
-	assert.Equal(t, coreConfig.PeerTLSEnabled, false)
-	assert.Equal(t, coreConfig.NetworkID, "testNetwork")
-	assert.Equal(t, coreConfig.LimitsConcurrencyQSCC, 5000)
-	assert.Equal(t, coreConfig.DiscoveryEnabled, true)
-	assert.Equal(t, coreConfig.ProfileEnabled, false)
-	assert.Equal(t, coreConfig.ProfileListenAddress, "peer.authentication.timewindow")
-	assert.Equal(t, coreConfig.DiscoveryOrgMembersAllowed, false)
-	assert.Equal(t, coreConfig.DiscoveryAuthCacheEnabled, true)
-	assert.Equal(t, coreConfig.DiscoveryAuthCacheMaxSize, 1000)
-	assert.Equal(t, coreConfig.DiscoveryAuthCachePurgeRetentionRatio, 0.75)
-	assert.Equal(t, coreConfig.ChaincodeListenAddress, "0.0.0.0:7052")
-	assert.Equal(t, coreConfig.ChaincodeAddress, "0.0.0.0:7052")
-	assert.Equal(t, coreConfig.AdminListenAddress, "0.0.0.0:7055")
+	expectedConfig := &Config{
+		LocalMSPID:                            "SampleOrg",
+		ListenAddress:                         "0.0.0.0:7051",
+		AuthenticationTimeWindow:              15 * time.Minute,
+		PeerTLSEnabled:                        false,
+		PeerAddress:                           "localhost:8080",
+		PeerID:                                "testPeerID",
+		NetworkID:                             "testNetwork",
+		LimitsConcurrencyQSCC:                 5000,
+		DiscoveryEnabled:                      true,
+		ProfileEnabled:                        false,
+		ProfileListenAddress:                  "peer.authentication.timewindow",
+		DiscoveryOrgMembersAllowed:            false,
+		DiscoveryAuthCacheEnabled:             true,
+		DiscoveryAuthCacheMaxSize:             1000,
+		DiscoveryAuthCachePurgeRetentionRatio: 0.75,
+		ChaincodeListenAddress:                "0.0.0.0:7052",
+		ChaincodeAddress:                      "0.0.0.0:7052",
+		AdminListenAddress:                    "0.0.0.0:7055",
 
-	assert.Equal(t, coreConfig.VMEndpoint, "unix:///var/run/docker.sock")
-	assert.Equal(t, coreConfig.VMDockerTLSEnabled, false)
-	assert.Equal(t, coreConfig.VMDockerAttachStdout, false)
+		VMEndpoint:           "unix:///var/run/docker.sock",
+		VMDockerTLSEnabled:   false,
+		VMDockerAttachStdout: false,
 
-	assert.Equal(t, coreConfig.ChaincodePull, false)
+		ChaincodePull: false,
 
-	assert.Equal(t, coreConfig.PeerAddress, "localhost:8080")
-	assert.Equal(t, coreConfig.PeerID, "testPeerID")
-	assert.Equal(t, coreConfig.PeerEndpoint.Id.Name, "testPeerID")
-	assert.Equal(t, coreConfig.PeerEndpoint.Address, "localhost:8080")
+		OperationsListenAddress:         "127.0.0.1:9443",
+		OperationsTLSEnabled:            false,
+		OperationsTLSCertFile:           "test/tls/cert/file",
+		OperationsTLSKeyFile:            "test/tls/key/file",
+		OperationsTLSClientAuthRequired: false,
+		OperationsTLSClientRootCAs:      []string{"file1, file2"},
 
-	assert.Equal(t, coreConfig.OperationsListenAddress, "127.0.0.1:9443")
-	assert.Equal(t, coreConfig.OperationsTLSEnabled, false)
-	assert.Equal(t, coreConfig.OperationsTLSCertFile, "test/tls/cert/file")
-	assert.Equal(t, coreConfig.OperationsTLSKeyFile, "test/tls/key/file")
-	assert.Equal(t, coreConfig.OperationsTLSClientAuthRequired, false)
-	assert.Equal(t, coreConfig.OperationsTLSClientRootCAs, []string{"file1, file2"})
+		MetricsProvider:     "disabled",
+		StatsdNetwork:       "udp",
+		StatsdAaddress:      "127.0.0.1:8125",
+		StatsdWriteInterval: 10 * time.Second,
+		StatsdPrefix:        "testPrefix",
+	}
 
-	assert.Equal(t, coreConfig.MetricsProvider, "disabled")
-	assert.Equal(t, coreConfig.StatsdNetwork, "udp")
-	assert.Equal(t, coreConfig.StatsdAaddress, "127.0.0.1:8125")
-	assert.Equal(t, coreConfig.StatsdWriteInterval, 10*time.Second)
-	assert.Equal(t, coreConfig.StatsdPrefix, "testPrefix")
+	assert.Equal(t, coreConfig, expectedConfig)
 }

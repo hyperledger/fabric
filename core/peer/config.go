@@ -29,7 +29,6 @@ import (
 
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
@@ -56,8 +55,7 @@ type Config struct {
 	// the same organization. For peers in other organization, see
 	// gossip.externalEndpoint for more info.
 	// When used as CLI config, this means the peer's endpoint to interact with.
-	PeerAddress  string
-	PeerEndpoint *pb.PeerEndpoint
+	PeerAddress string
 	// The networkId allows for logical separation of networks
 	NetworkID string
 	// The endpoint this peer uses to listen for inbound chaincode connections. If
@@ -169,12 +167,6 @@ func (c *Config) load() error {
 	}
 	c.PeerAddress = preeAddress
 	c.PeerID = viper.GetString("peer.id")
-	c.PeerEndpoint = &pb.PeerEndpoint{
-		Id: &pb.PeerID{
-			Name: c.PeerID,
-		},
-		Address: c.PeerAddress,
-	}
 	c.LocalMSPID = viper.GetString("peer.localMspId")
 	c.ListenAddress = viper.GetString("peer.listenAddress")
 
