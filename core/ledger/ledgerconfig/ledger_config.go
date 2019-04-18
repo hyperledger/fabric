@@ -53,11 +53,6 @@ func GetStateLevelDBPath() string {
 	return filepath.Join(GetRootPath(), confStateleveldb)
 }
 
-// GetHistoryLevelDBPath returns the filesystem path that is used to maintain the history level db
-func GetHistoryLevelDBPath() string {
-	return filepath.Join(GetRootPath(), confHistoryLeveldb)
-}
-
 // GetInternalBookkeeperPath returns the filesystem path that is used for bookkeeping the internal stuff by by KVledger (such as expiration time for pvt)
 func GetInternalBookkeeperPath() string {
 	return filepath.Join(GetRootPath(), confBookkeeper)

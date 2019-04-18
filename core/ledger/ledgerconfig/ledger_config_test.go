@@ -51,7 +51,6 @@ func TestLedgerConfigPathDefault(t *testing.T) {
 	assert.Equal(t, "/var/hyperledger/production/ledgersData", GetRootPath())
 	assert.Equal(t, "/var/hyperledger/production/ledgersData/ledgerProvider", GetLedgerProviderPath())
 	assert.Equal(t, "/var/hyperledger/production/ledgersData/stateLeveldb", GetStateLevelDBPath())
-	assert.Equal(t, "/var/hyperledger/production/ledgersData/historyLeveldb", GetHistoryLevelDBPath())
 	assert.Equal(t, "/var/hyperledger/production/ledgersData/bookkeeper", GetInternalBookkeeperPath())
 }
 
@@ -62,7 +61,6 @@ func TestLedgerConfigPath(t *testing.T) {
 	assert.Equal(t, "/tmp/hyperledger/production/ledgersData", GetRootPath())
 	assert.Equal(t, "/tmp/hyperledger/production/ledgersData/ledgerProvider", GetLedgerProviderPath())
 	assert.Equal(t, "/tmp/hyperledger/production/ledgersData/stateLeveldb", GetStateLevelDBPath())
-	assert.Equal(t, "/tmp/hyperledger/production/ledgersData/historyLeveldb", GetHistoryLevelDBPath())
 	assert.Equal(t, "/tmp/hyperledger/production/ledgersData/bookkeeper", GetInternalBookkeeperPath())
 }
 
