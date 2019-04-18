@@ -149,7 +149,7 @@ func getLevelstateDBPath() string {
 }
 
 func getBlockIndexDBPath() string {
-	return filepath.Join(ledgerconfig.GetBlockStorePath(), fsblkstorage.IndexDir)
+	return filepath.Join(getLedgerRootPath(), "chains", fsblkstorage.IndexDir)
 }
 
 func getConfigHistoryDBPath() string {

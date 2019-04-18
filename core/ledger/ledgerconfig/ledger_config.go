@@ -30,8 +30,6 @@ const confHistoryLeveldb = "historyLeveldb"
 const confBookkeeper = "bookkeeper"
 const confConfigHistory = "configHistory"
 const couchdbRedoLogPath = "couchdbRedoLogs"
-const confChains = "chains"
-const confPvtdataStore = "pvtdataStore"
 const confTotalQueryLimit = "ledger.state.totalQueryLimit"
 const confEnableHistoryDatabase = "ledger.history.enableHistoryDatabase"
 
@@ -58,16 +56,6 @@ func GetStateLevelDBPath() string {
 // GetHistoryLevelDBPath returns the filesystem path that is used to maintain the history level db
 func GetHistoryLevelDBPath() string {
 	return filepath.Join(GetRootPath(), confHistoryLeveldb)
-}
-
-// GetBlockStorePath returns the filesystem path that is used for the chain block stores
-func GetBlockStorePath() string {
-	return filepath.Join(GetRootPath(), confChains)
-}
-
-// GetPvtdataStorePath returns the filesystem path that is used for permanent storage of private write-sets
-func GetPvtdataStorePath() string {
-	return filepath.Join(GetRootPath(), confPvtdataStore)
 }
 
 // GetInternalBookkeeperPath returns the filesystem path that is used for bookkeeping the internal stuff by by KVledger (such as expiration time for pvt)

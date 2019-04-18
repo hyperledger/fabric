@@ -106,9 +106,8 @@ type entriesForPvtDataOfOldBlocks struct {
 //////////////////////////////////////////
 
 // NewProvider instantiates a StoreProvider
-func NewProvider() Provider {
-	dbPath := ledgerconfig.GetPvtdataStorePath()
-	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: dbPath})
+func NewProvider(storeDir string) Provider {
+	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: storeDir})
 	return &provider{dbProvider: dbProvider}
 }
 

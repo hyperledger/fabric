@@ -56,11 +56,10 @@ type Provider struct {
 // This is not thread-safe and assumed to be synchronized be the caller
 func NewProvider() (ledger.PeerLedgerProvider, error) {
 	logger.Info("Initializing ledger provider")
-	ledgerStoreProvider := ledgerstorage.NewProvider()
 	// Initialize the history database (index for history of values by key)
 	historydbProvider := historyleveldb.NewHistoryDBProvider()
 	logger.Info("ledger provider Initialized")
-	p := &Provider{nil, ledgerStoreProvider,
+	p := &Provider{nil, nil,
 		nil, historydbProvider, nil, nil, nil, nil, nil, nil}
 	return p, nil
 }
@@ -72,6 +71,8 @@ func (p *Provider) Initialize(initializer *ledger.Initializer) error {
 	p.initializer = initializer
 	// initialize the ID store (inventory of chainIds/ledgerIds)
 	idStore := openIDStore(filepath.Join(p.initializer.Config.RootFSPath, "ledgerProvider"))
+	// initialize ledger storage
+	ledgerStoreProvider := ledgerstorage.NewProvider(p.initializer.Config.RootFSPath)
 	// initialize config history for chaincode
 	configHistoryMgr := confighistory.NewMgr(initializer.DeployedChaincodeInfoProvider)
 	// initialize the collection eligibility notifier
@@ -86,6 +87,7 @@ func (p *Provider) Initialize(initializer *ledger.Initializer) error {
 	stateListeners = append(stateListeners, configHistoryMgr)
 
 	p.idStore = idStore
+	p.ledgerStoreProvider = ledgerStoreProvider
 	p.configHistoryMgr = configHistoryMgr
 	p.stateListeners = stateListeners
 	p.collElgNotifier = collElgNotifier

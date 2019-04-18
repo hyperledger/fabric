@@ -228,7 +228,8 @@ func TestLedgerBackup(t *testing.T) {
 	// and rename the originalPath to restorePath
 	assert.NoError(t, os.RemoveAll(ledgerconfig.GetStateLevelDBPath()))
 	assert.NoError(t, os.RemoveAll(ledgerconfig.GetHistoryLevelDBPath()))
-	assert.NoError(t, os.RemoveAll(filepath.Join(ledgerconfig.GetBlockStorePath(), fsblkstorage.IndexDir)))
+	//TODO: revisit once all paths are derived from Config
+	assert.NoError(t, os.RemoveAll(filepath.Join(originalPath, "chains", fsblkstorage.IndexDir)))
 	assert.NoError(t, os.Rename(originalPath, restorePath))
 	defer env.cleanup()
 

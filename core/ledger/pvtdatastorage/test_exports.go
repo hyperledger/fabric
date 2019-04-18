@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,24 +22,28 @@ type StoreEnv struct {
 	TestStore         Store
 	ledgerid          string
 	btlPolicy         pvtdatapolicy.BTLPolicy
+	storeDir          string
 }
 
 // NewTestStoreEnv construct a StoreEnv for testing
 func NewTestStoreEnv(t *testing.T, ledgerid string, btlPolicy pvtdatapolicy.BTLPolicy) *StoreEnv {
-	removeStorePath(t)
+	storeDir, err := ioutil.TempDir("", "pdstore")
+	if err != nil {
+		t.Fatalf("Failed to create private data storage directory: %s", err)
+	}
 	assert := assert.New(t)
-	testStoreProvider := NewProvider()
+	testStoreProvider := NewProvider(storeDir)
 	testStore, err := testStoreProvider.OpenStore(ledgerid)
 	testStore.Init(btlPolicy)
 	assert.NoError(err)
-	return &StoreEnv{t, testStoreProvider, testStore, ledgerid, btlPolicy}
+	return &StoreEnv{t, testStoreProvider, testStore, ledgerid, btlPolicy, storeDir}
 }
 
 // CloseAndReopen closes and opens the store provider
 func (env *StoreEnv) CloseAndReopen() {
 	var err error
 	env.TestStoreProvider.Close()
-	env.TestStoreProvider = NewProvider()
+	env.TestStoreProvider = NewProvider(env.storeDir)
 	env.TestStore, err = env.TestStoreProvider.OpenStore(env.ledgerid)
 	env.TestStore.Init(env.btlPolicy)
 	assert.NoError(env.t, err)
@@ -47,14 +51,5 @@ func (env *StoreEnv) CloseAndReopen() {
 
 // Cleanup cleansup the  store env after testing
 func (env *StoreEnv) Cleanup() {
-	//env.TestStoreProvider.Close()
-	removeStorePath(env.t)
-}
-
-func removeStorePath(t testing.TB) {
-	dbPath := ledgerconfig.GetPvtdataStorePath()
-	if err := os.RemoveAll(dbPath); err != nil {
-		t.Fatalf("Err: %s", err)
-		t.FailNow()
-	}
+	os.RemoveAll(env.storeDir)
 }
