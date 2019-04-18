@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -120,6 +121,7 @@ func TestInitialize(t *testing.T) {
 				Enabled: true,
 			},
 		},
+		runtime.NumCPU(),
 	)
 }
 
@@ -156,6 +158,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 				Enabled: true,
 			},
 		},
+		runtime.NumCPU(),
 	)
 	testChainID := fmt.Sprintf("mytestchainid-%d", rand.Int())
 	block, err := configtxtest.MakeGenesisBlock(testChainID)

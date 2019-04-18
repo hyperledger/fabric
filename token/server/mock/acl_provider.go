@@ -2,9 +2,9 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	server "github.com/hyperledger/fabric/token/server"
+	"github.com/hyperledger/fabric/token/server"
 )
 
 type ACLProvider struct {

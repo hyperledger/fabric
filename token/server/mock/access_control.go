@@ -2,10 +2,10 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	token "github.com/hyperledger/fabric/protos/token"
-	server "github.com/hyperledger/fabric/token/server"
+	"github.com/hyperledger/fabric/protos/token"
+	"github.com/hyperledger/fabric/token/server"
 )
 
 type PolicyChecker struct {

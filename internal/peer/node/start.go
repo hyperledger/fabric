@@ -516,6 +516,7 @@ func serve(args []string) error {
 		lsccInst,
 		lifecycleValidatorCommitter,
 		ledgerConfig(),
+		coreConfig.ValidatorPoolSize,
 	)
 
 	if coreConfig.DiscoveryEnabled {

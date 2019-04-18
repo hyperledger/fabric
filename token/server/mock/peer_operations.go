@@ -113,7 +113,7 @@ type PeerOperations struct {
 	initChainArgsForCall []struct {
 		arg1 string
 	}
-	InitializeStub        func(func(string), sysccprovider.SystemChaincodeProvider, plugin.Mapper, *platforms.Registry, ledger.DeployedChaincodeInfoProvider, ledger.MembershipInfoProvider, metrics.Provider, plugindispatcher.LifecycleResources, plugindispatcher.CollectionAndLifecycleResources, *ledger.Config)
+	InitializeStub        func(func(string), sysccprovider.SystemChaincodeProvider, plugin.Mapper, *platforms.Registry, ledger.DeployedChaincodeInfoProvider, ledger.MembershipInfoProvider, metrics.Provider, plugindispatcher.LifecycleResources, plugindispatcher.CollectionAndLifecycleResources, *ledger.Config, int)
 	initializeMutex       sync.RWMutex
 	initializeArgsForCall []struct {
 		arg1  func(string)
@@ -126,6 +126,7 @@ type PeerOperations struct {
 		arg8  plugindispatcher.LifecycleResources
 		arg9  plugindispatcher.CollectionAndLifecycleResources
 		arg10 *ledger.Config
+		arg11 int
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -638,7 +639,7 @@ func (fake *PeerOperations) InitChainArgsForCall(i int) string {
 	return argsForCall.arg1
 }
 
-func (fake *PeerOperations) Initialize(arg1 func(string), arg2 sysccprovider.SystemChaincodeProvider, arg3 plugin.Mapper, arg4 *platforms.Registry, arg5 ledger.DeployedChaincodeInfoProvider, arg6 ledger.MembershipInfoProvider, arg7 metrics.Provider, arg8 plugindispatcher.LifecycleResources, arg9 plugindispatcher.CollectionAndLifecycleResources, arg10 *ledger.Config) {
+func (fake *PeerOperations) Initialize(arg1 func(string), arg2 sysccprovider.SystemChaincodeProvider, arg3 plugin.Mapper, arg4 *platforms.Registry, arg5 ledger.DeployedChaincodeInfoProvider, arg6 ledger.MembershipInfoProvider, arg7 metrics.Provider, arg8 plugindispatcher.LifecycleResources, arg9 plugindispatcher.CollectionAndLifecycleResources, arg10 *ledger.Config, arg11 int) {
 	fake.initializeMutex.Lock()
 	fake.initializeArgsForCall = append(fake.initializeArgsForCall, struct {
 		arg1  func(string)
@@ -651,11 +652,12 @@ func (fake *PeerOperations) Initialize(arg1 func(string), arg2 sysccprovider.Sys
 		arg8  plugindispatcher.LifecycleResources
 		arg9  plugindispatcher.CollectionAndLifecycleResources
 		arg10 *ledger.Config
-	}{arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10})
-	fake.recordInvocation("Initialize", []interface{}{arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10})
+		arg11 int
+	}{arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11})
+	fake.recordInvocation("Initialize", []interface{}{arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11})
 	fake.initializeMutex.Unlock()
 	if fake.InitializeStub != nil {
-		fake.InitializeStub(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10)
+		fake.InitializeStub(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
 	}
 }
 
@@ -665,17 +667,17 @@ func (fake *PeerOperations) InitializeCallCount() int {
 	return len(fake.initializeArgsForCall)
 }
 
-func (fake *PeerOperations) InitializeCalls(stub func(func(string), sysccprovider.SystemChaincodeProvider, plugin.Mapper, *platforms.Registry, ledger.DeployedChaincodeInfoProvider, ledger.MembershipInfoProvider, metrics.Provider, plugindispatcher.LifecycleResources, plugindispatcher.CollectionAndLifecycleResources, *ledger.Config)) {
+func (fake *PeerOperations) InitializeCalls(stub func(func(string), sysccprovider.SystemChaincodeProvider, plugin.Mapper, *platforms.Registry, ledger.DeployedChaincodeInfoProvider, ledger.MembershipInfoProvider, metrics.Provider, plugindispatcher.LifecycleResources, plugindispatcher.CollectionAndLifecycleResources, *ledger.Config, int)) {
 	fake.initializeMutex.Lock()
 	defer fake.initializeMutex.Unlock()
 	fake.InitializeStub = stub
 }
 
-func (fake *PeerOperations) InitializeArgsForCall(i int) (func(string), sysccprovider.SystemChaincodeProvider, plugin.Mapper, *platforms.Registry, ledger.DeployedChaincodeInfoProvider, ledger.MembershipInfoProvider, metrics.Provider, plugindispatcher.LifecycleResources, plugindispatcher.CollectionAndLifecycleResources, *ledger.Config) {
+func (fake *PeerOperations) InitializeArgsForCall(i int) (func(string), sysccprovider.SystemChaincodeProvider, plugin.Mapper, *platforms.Registry, ledger.DeployedChaincodeInfoProvider, ledger.MembershipInfoProvider, metrics.Provider, plugindispatcher.LifecycleResources, plugindispatcher.CollectionAndLifecycleResources, *ledger.Config, int) {
 	fake.initializeMutex.RLock()
 	defer fake.initializeMutex.RUnlock()
 	argsForCall := fake.initializeArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5, argsForCall.arg6, argsForCall.arg7, argsForCall.arg8, argsForCall.arg9, argsForCall.arg10
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5, argsForCall.arg6, argsForCall.arg7, argsForCall.arg8, argsForCall.arg9, argsForCall.arg10, argsForCall.arg11
 }
 
 func (fake *PeerOperations) Invocations() map[string][][]interface{} {

@@ -9,10 +9,10 @@ import (
 )
 
 type Issuer struct {
-	RequestIssueStub        func(tokensToIssue []*token.Token) (*token.TokenTransaction, error)
+	RequestIssueStub        func([]*token.Token) (*token.TokenTransaction, error)
 	requestIssueMutex       sync.RWMutex
 	requestIssueArgsForCall []struct {
-		tokensToIssue []*token.Token
+		arg1 []*token.Token
 	}
 	requestIssueReturns struct {
 		result1 *token.TokenTransaction
@@ -22,10 +22,10 @@ type Issuer struct {
 		result1 *token.TokenTransaction
 		result2 error
 	}
-	RequestTokenOperationStub        func(op *token.TokenOperation) (*token.TokenTransaction, error)
+	RequestTokenOperationStub        func(*token.TokenOperation) (*token.TokenTransaction, error)
 	requestTokenOperationMutex       sync.RWMutex
 	requestTokenOperationArgsForCall []struct {
-		op *token.TokenOperation
+		arg1 *token.TokenOperation
 	}
 	requestTokenOperationReturns struct {
 		result1 *token.TokenTransaction
@@ -39,26 +39,27 @@ type Issuer struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Issuer) RequestIssue(tokensToIssue []*token.Token) (*token.TokenTransaction, error) {
-	var tokensToIssueCopy []*token.Token
-	if tokensToIssue != nil {
-		tokensToIssueCopy = make([]*token.Token, len(tokensToIssue))
-		copy(tokensToIssueCopy, tokensToIssue)
+func (fake *Issuer) RequestIssue(arg1 []*token.Token) (*token.TokenTransaction, error) {
+	var arg1Copy []*token.Token
+	if arg1 != nil {
+		arg1Copy = make([]*token.Token, len(arg1))
+		copy(arg1Copy, arg1)
 	}
 	fake.requestIssueMutex.Lock()
 	ret, specificReturn := fake.requestIssueReturnsOnCall[len(fake.requestIssueArgsForCall)]
 	fake.requestIssueArgsForCall = append(fake.requestIssueArgsForCall, struct {
-		tokensToIssue []*token.Token
-	}{tokensToIssueCopy})
-	fake.recordInvocation("RequestIssue", []interface{}{tokensToIssueCopy})
+		arg1 []*token.Token
+	}{arg1Copy})
+	fake.recordInvocation("RequestIssue", []interface{}{arg1Copy})
 	fake.requestIssueMutex.Unlock()
 	if fake.RequestIssueStub != nil {
-		return fake.RequestIssueStub(tokensToIssue)
+		return fake.RequestIssueStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.requestIssueReturns.result1, fake.requestIssueReturns.result2
+	fakeReturns := fake.requestIssueReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Issuer) RequestIssueCallCount() int {
@@ -67,13 +68,22 @@ func (fake *Issuer) RequestIssueCallCount() int {
 	return len(fake.requestIssueArgsForCall)
 }
 
+func (fake *Issuer) RequestIssueCalls(stub func([]*token.Token) (*token.TokenTransaction, error)) {
+	fake.requestIssueMutex.Lock()
+	defer fake.requestIssueMutex.Unlock()
+	fake.RequestIssueStub = stub
+}
+
 func (fake *Issuer) RequestIssueArgsForCall(i int) []*token.Token {
 	fake.requestIssueMutex.RLock()
 	defer fake.requestIssueMutex.RUnlock()
-	return fake.requestIssueArgsForCall[i].tokensToIssue
+	argsForCall := fake.requestIssueArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *Issuer) RequestIssueReturns(result1 *token.TokenTransaction, result2 error) {
+	fake.requestIssueMutex.Lock()
+	defer fake.requestIssueMutex.Unlock()
 	fake.RequestIssueStub = nil
 	fake.requestIssueReturns = struct {
 		result1 *token.TokenTransaction
@@ -82,6 +92,8 @@ func (fake *Issuer) RequestIssueReturns(result1 *token.TokenTransaction, result2
 }
 
 func (fake *Issuer) RequestIssueReturnsOnCall(i int, result1 *token.TokenTransaction, result2 error) {
+	fake.requestIssueMutex.Lock()
+	defer fake.requestIssueMutex.Unlock()
 	fake.RequestIssueStub = nil
 	if fake.requestIssueReturnsOnCall == nil {
 		fake.requestIssueReturnsOnCall = make(map[int]struct {
@@ -95,21 +107,22 @@ func (fake *Issuer) RequestIssueReturnsOnCall(i int, result1 *token.TokenTransac
 	}{result1, result2}
 }
 
-func (fake *Issuer) RequestTokenOperation(op *token.TokenOperation) (*token.TokenTransaction, error) {
+func (fake *Issuer) RequestTokenOperation(arg1 *token.TokenOperation) (*token.TokenTransaction, error) {
 	fake.requestTokenOperationMutex.Lock()
 	ret, specificReturn := fake.requestTokenOperationReturnsOnCall[len(fake.requestTokenOperationArgsForCall)]
 	fake.requestTokenOperationArgsForCall = append(fake.requestTokenOperationArgsForCall, struct {
-		op *token.TokenOperation
-	}{op})
-	fake.recordInvocation("RequestTokenOperation", []interface{}{op})
+		arg1 *token.TokenOperation
+	}{arg1})
+	fake.recordInvocation("RequestTokenOperation", []interface{}{arg1})
 	fake.requestTokenOperationMutex.Unlock()
 	if fake.RequestTokenOperationStub != nil {
-		return fake.RequestTokenOperationStub(op)
+		return fake.RequestTokenOperationStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.requestTokenOperationReturns.result1, fake.requestTokenOperationReturns.result2
+	fakeReturns := fake.requestTokenOperationReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Issuer) RequestTokenOperationCallCount() int {
@@ -118,13 +131,22 @@ func (fake *Issuer) RequestTokenOperationCallCount() int {
 	return len(fake.requestTokenOperationArgsForCall)
 }
 
+func (fake *Issuer) RequestTokenOperationCalls(stub func(*token.TokenOperation) (*token.TokenTransaction, error)) {
+	fake.requestTokenOperationMutex.Lock()
+	defer fake.requestTokenOperationMutex.Unlock()
+	fake.RequestTokenOperationStub = stub
+}
+
 func (fake *Issuer) RequestTokenOperationArgsForCall(i int) *token.TokenOperation {
 	fake.requestTokenOperationMutex.RLock()
 	defer fake.requestTokenOperationMutex.RUnlock()
-	return fake.requestTokenOperationArgsForCall[i].op
+	argsForCall := fake.requestTokenOperationArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *Issuer) RequestTokenOperationReturns(result1 *token.TokenTransaction, result2 error) {
+	fake.requestTokenOperationMutex.Lock()
+	defer fake.requestTokenOperationMutex.Unlock()
 	fake.RequestTokenOperationStub = nil
 	fake.requestTokenOperationReturns = struct {
 		result1 *token.TokenTransaction
@@ -133,6 +155,8 @@ func (fake *Issuer) RequestTokenOperationReturns(result1 *token.TokenTransaction
 }
 
 func (fake *Issuer) RequestTokenOperationReturnsOnCall(i int, result1 *token.TokenTransaction, result2 error) {
+	fake.requestTokenOperationMutex.Lock()
+	defer fake.requestTokenOperationMutex.Unlock()
 	fake.RequestTokenOperationStub = nil
 	if fake.requestTokenOperationReturnsOnCall == nil {
 		fake.requestTokenOperationReturnsOnCall = make(map[int]struct {

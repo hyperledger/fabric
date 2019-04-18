@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"net"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/hyperledger/fabric/core/comm"
@@ -66,6 +67,12 @@ type Config struct {
 	// is not specified, the chaincodeListenAddress address is selected. And if
 	// chaincodeListenAddress is not specified, address is selected from peer listenAddress.
 	ChaincodeAddress string
+	// Number of goroutines that will execute transaction validation in parallel.
+	// By default, the peer chooses the number of CPUs on the machine. Set this
+	// variable to override that choice.
+	// NOTE: overriding this value might negatively influence the performance of
+	// the peer so please change this value only if you know what you're doing!
+	ValidatorPoolSize int
 
 	// ----- Profile -----
 	// Used with Go profiling tools only in none production environment. In production,
@@ -190,6 +197,11 @@ func (c *Config) load() error {
 	c.ChaincodeListenAddress = viper.GetString("peer.chaincodeListenAddress")
 	c.ChaincodeAddress = viper.GetString("peer.chaincodeAddress")
 	c.AdminListenAddress = viper.GetString("peer.adminService.listenAddress")
+
+	c.ValidatorPoolSize = viper.GetInt("peer.validatorPoolSize")
+	if c.ValidatorPoolSize <= 0 {
+		c.ValidatorPoolSize = runtime.NumCPU()
+	}
 
 	c.VMEndpoint = viper.GetString("vm.endpoint")
 	c.VMDockerTLSEnabled = viper.GetBool("vm.docker.tls.enabled")

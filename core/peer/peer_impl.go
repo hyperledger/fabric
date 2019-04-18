@@ -43,6 +43,7 @@ type Operations interface {
 		lr plugindispatcher.LifecycleResources,
 		nr plugindispatcher.CollectionAndLifecycleResources,
 		ledgerConfig *ledger.Config,
+		nWorkers int,
 	)
 }
 
@@ -67,6 +68,7 @@ type peerImpl struct {
 		lr plugindispatcher.LifecycleResources,
 		nr plugindispatcher.CollectionAndLifecycleResources,
 		ledgerConfig *ledger.Config,
+		nWorkers int,
 	)
 }
 
@@ -113,6 +115,7 @@ func (p *peerImpl) Initialize(
 	lr plugindispatcher.LifecycleResources,
 	nr plugindispatcher.CollectionAndLifecycleResources,
 	ledgerConfig *ledger.Config,
+	nWorkers int,
 ) {
 	p.initialize(
 		init,
@@ -125,5 +128,6 @@ func (p *peerImpl) Initialize(
 		lr,
 		nr,
 		ledgerConfig,
+		nWorkers,
 	)
 }
