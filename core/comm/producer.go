@@ -9,6 +9,7 @@ package comm
 import (
 	"fmt"
 	"math/rand"
+	"reflect"
 	"sync"
 	"time"
 
@@ -22,6 +23,35 @@ var EndpointDisableInterval = time.Second * 10
 
 // ConnectionFactory creates a connection to a certain endpoint
 type ConnectionFactory func(endpoint string) (*grpc.ClientConn, error)
+
+// EndpointCriteria defines an endpoint, and a list of trusted
+// organizations it corresponds to.
+type EndpointCriteria struct {
+	Endpoint      string
+	Organizations []string
+}
+
+// Equals returns whether this EndpointCriteria is equivalent to the given other EndpointCriteria
+func (ec EndpointCriteria) Equals(other EndpointCriteria) bool {
+	return ec.Endpoint == other.Endpoint && equalStringSets(ec.Organizations, other.Organizations)
+}
+
+func equalStringSets(s1, s2 []string) bool {
+	// If the sets are of different sizes, they are different.
+	if len(s1) != len(s2) {
+		return false
+	}
+
+	return reflect.DeepEqual(stringSliceToSet(s1), stringSliceToSet(s2))
+}
+
+func stringSliceToSet(set []string) map[string]struct{} {
+	m := make(map[string]struct{})
+	for _, s := range set {
+		m[s] = struct{}{}
+	}
+	return m
+}
 
 // ConnectionProducer produces connections out of a set of predefined
 // endpoints
