@@ -60,6 +60,11 @@ Organizations:
                 Type: Signature
                 Rule: "OR('SampleOrg.member')"
 
+        # OrdererEndpoints is a list of all orderers this org runs which clients
+        # and peers may to connect to to push transactions and receive blocks respectively.
+        OrdererEndpoints:
+            - "127.0.0.1:7050"
+
         # AnchorPeers defines the location of peers which can be used for
         # cross-org gossip communication. Note, this value is only encoded in
         # the genesis block in the Application section context.
@@ -91,13 +96,13 @@ Capabilities:
     # supported by both.
     # Set the value of the capability to true to require it.
     Channel: &ChannelCapabilities
-        # V1.3 for Channel is a catchall flag for behavior which has been
-        # determined to be desired for all orderers and peers running at the v1.3.x
+        # V2.0 for Channel is a catchall flag for behavior which has been
+        # determined to be desired for all orderers and peers running at the v2.0.0
         # level, but which would be incompatible with orderers and peers from
         # prior releases.
-        # Prior to enabling V1.3 channel capabilities, ensure that all
-        # orderers and peers on a channel are at v1.3.0 or later.
-        V1_3: true
+        # Prior to enabling V2.0 channel capabilities, ensure that all
+        # orderers and peers on a channel are at v2.0.0 or later.
+        V2_0: true
 
     # Orderer capabilities apply only to the orderers, and may be safely
     # used with prior release peers.
@@ -262,12 +267,13 @@ Orderer: &OrdererDefaults
     # Available types are "solo" and "kafka".
     OrdererType: solo
 
-    # Addresses here is a nonexhaustive list of orderers the peers and clients can
-    # connect to. Adding/removing nodes from this list has no impact on their
-    # participation in ordering.
-    # NOTE: In the solo case, this should be a one-item list.
+    # Addresses used to be the list of orderer addresses that clients and peers
+    # could connect to.  However, this does not allow clients to associate orderer
+    # addresses and orderer organizations which can be useful for things such
+    # as TLS validation.  The preferred way to specify orderer addresses is now
+    # to include the OrdererEndpoints item in your org definition
     Addresses:
-        - 127.0.0.1:7050
+        # - 127.0.0.1:7050
 
     # Batch Timeout: The amount of time to wait before creating a batch.
     BatchTimeout: 2s

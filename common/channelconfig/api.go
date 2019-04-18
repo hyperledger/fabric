@@ -132,6 +132,9 @@ type ChannelCapabilities interface {
 
 	// ConsensusTypeMigration return true if consensus-type migration is permitted in both orderer and peer.
 	ConsensusTypeMigration() bool
+
+	// OrgSpecificOrdererEndpoints return true if the channel config processing allows orderer orgs to specify their own endpoints
+	OrgSpecificOrdererEndpoints() bool
 }
 
 // ApplicationCapabilities defines the capabilities for the application portion of a channel
