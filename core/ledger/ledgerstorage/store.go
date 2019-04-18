@@ -21,6 +21,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const maxBlockFileSize = 64 * 1024 * 1024
+
 var logger = flogging.MustGetLogger("ledgerstorage")
 
 // Provider encapusaltes two providers 1) block store provider and 2) and pvt data store provider
@@ -49,7 +51,7 @@ func NewProvider() *Provider {
 	}
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 	blockStoreProvider := fsblkstorage.NewProvider(
-		fsblkstorage.NewConf(ledgerconfig.GetBlockStorePath(), ledgerconfig.GetMaxBlockfileSize()),
+		fsblkstorage.NewConf(ledgerconfig.GetBlockStorePath(), maxBlockFileSize),
 		indexConfig)
 
 	pvtStoreProvider := pvtdatastorage.NewProvider()

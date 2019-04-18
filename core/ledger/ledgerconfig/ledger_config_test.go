@@ -156,10 +156,6 @@ func TestIsHistoryDBEnabledFalse(t *testing.T) {
 	assert.False(t, updatedValue) //test config returns false
 }
 
-func TestGetMaxBlockfileSize(t *testing.T) {
-	assert.Equal(t, 67108864, GetMaxBlockfileSize())
-}
-
 func setUpCoreYAMLConfig() {
 	//call a helper method to load the core.yaml
 	ledgertestutil.SetupCoreYAMLConfig()
