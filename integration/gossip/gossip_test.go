@@ -63,7 +63,7 @@ var _ = Describe("Gossip Test", func() {
 		os.RemoveAll(testDir)
 	})
 
-	Describe("State transfer test", func() {
+	PDescribe("State transfer test", func() {
 		var (
 			ordererProcess ifrit.Process
 			peerProcesses  = map[string]ifrit.Process{}
