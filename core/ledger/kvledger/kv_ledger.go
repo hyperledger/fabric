@@ -52,12 +52,20 @@ func newKVLedger(
 	stateListeners []ledger.StateListener,
 	bookkeeperProvider bookkeeping.Provider,
 	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
+	ccLifecycleEventProvider ledger.ChaincodeLifecycleEventProvider,
 	stats *ledgerStats,
 ) (*kvLedger, error) {
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying
 	// id store, blockstore, txmgr (state database), history database
 	l := &kvLedger{ledgerID: ledgerID, blockStore: blockStore, historyDB: historyDB, blockAPIsRWLock: &sync.RWMutex{}}
+
+	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{ledgerID, l, ccInfoProvider})
+	if err := l.initTxMgr(versionedDB, stateListeners, btlPolicy, bookkeeperProvider, ccInfoProvider); err != nil {
+		return nil, err
+	}
+
+	l.initBlockStore(btlPolicy)
 
 	// TODO Move the function `GetChaincodeEventListener` to ledger interface and
 	// this functionality of regiserting for events to ledgermgmt package so that this
@@ -66,12 +74,9 @@ func newKVLedger(
 	logger.Debugf("Register state db for chaincode lifecycle events: %t", ccEventListener != nil)
 	if ccEventListener != nil {
 		cceventmgmt.GetMgr().Register(ledgerID, ccEventListener)
+		ccLifecycleEventProvider.RegisterListener(l.ledgerID, &ccEventListenerAdaptor{ccEventListener})
 	}
-	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{ledgerID, l, ccInfoProvider})
-	if err := l.initTxMgr(versionedDB, stateListeners, btlPolicy, bookkeeperProvider, ccInfoProvider); err != nil {
-		return nil, err
-	}
-	l.initBlockStore(btlPolicy)
+
 	//Recover both state DB and history DB if they are out of sync with block storage
 	if err := l.recoverDBs(); err != nil {
 		panic(errors.WithMessage(err, "error during state DB recovery"))
@@ -476,4 +481,23 @@ func (r *collectionInfoRetriever) CollectionInfo(chaincodeName, collectionName s
 	}
 	defer qe.Done()
 	return r.infoProvider.CollectionInfo(r.ledgerID, chaincodeName, collectionName, qe)
+}
+
+type ccEventListenerAdaptor struct {
+	legacyEventListener cceventmgmt.ChaincodeLifecycleEventListener
+}
+
+func (a *ccEventListenerAdaptor) HandleChaincodeDeploy(chaincodeDefinition *ledger.ChaincodeDefinition, dbArtifactsTar []byte) error {
+	return a.legacyEventListener.HandleChaincodeDeploy(&cceventmgmt.ChaincodeDefinition{
+		Name:              chaincodeDefinition.Name,
+		Hash:              chaincodeDefinition.Hash,
+		Version:           chaincodeDefinition.Version,
+		CollectionConfigs: chaincodeDefinition.CollectionConfigs,
+	},
+		dbArtifactsTar,
+	)
+}
+
+func (a *ccEventListenerAdaptor) ChaincodeDeployDone(succeeded bool) {
+	a.legacyEventListener.ChaincodeDeployDone(succeeded)
 }
