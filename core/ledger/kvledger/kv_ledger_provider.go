@@ -97,7 +97,9 @@ func (p *Provider) Initialize(initializer *ledger.Initializer) error {
 	p.configHistoryMgr = configHistoryMgr
 	p.stateListeners = stateListeners
 	p.collElgNotifier = collElgNotifier
-	p.bookkeepingProvider = bookkeeping.NewProvider()
+	p.bookkeepingProvider = bookkeeping.NewProvider(
+		filepath.Join(p.initializer.Config.RootFSPath, "bookkeeper"),
+	)
 	p.vdbProvider, err = privacyenabledstate.NewCommonStorageDBProvider(
 		p.bookkeepingProvider,
 		initializer.MetricsProvider,

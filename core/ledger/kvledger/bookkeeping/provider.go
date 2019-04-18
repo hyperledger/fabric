@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 )
 
 // Category is an enum type for representing the bookkeeping of different type
@@ -36,8 +35,8 @@ type provider struct {
 }
 
 // NewProvider instantiates a new provider
-func NewProvider() Provider {
-	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: getInternalBookkeeperPath()})
+func NewProvider(dbPath string) Provider {
+	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: dbPath})
 	return &provider{dbProvider: dbProvider}
 }
 
@@ -49,8 +48,4 @@ func (provider *provider) GetDBHandle(ledgerID string, cat Category) *leveldbhel
 // Close implements the function in the interface 'BookKeeperProvider'
 func (provider *provider) Close() {
 	provider.dbProvider.Close()
-}
-
-func getInternalBookkeeperPath() string {
-	return ledgerconfig.GetInternalBookkeeperPath()
 }
