@@ -70,6 +70,7 @@ func (d *defaultACLProvider) initialize() {
 	//p resources (none)
 
 	//c resources
+	d.cResourcePolicyMap[resources.Qscc_GetIdentityByHash] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Qscc_GetChainInfo] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Qscc_GetBlockByNumber] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Qscc_GetBlockByHash] = CHANNELREADERS

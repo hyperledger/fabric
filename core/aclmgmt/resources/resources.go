@@ -23,6 +23,7 @@ const (
 	Lscc_GetCollectionsConfig      = "lscc/GetCollectionsConfig"
 
 	//Qscc resources
+	Qscc_GetIdentityByHash  = "qscc/GetIdentityByHash"
 	Qscc_GetChainInfo       = "qscc/GetChainInfo"
 	Qscc_GetBlockByNumber   = "qscc/GetBlockByNumber"
 	Qscc_GetBlockByHash     = "qscc/GetBlockByHash"
