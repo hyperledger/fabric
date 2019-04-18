@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
-	"github.com/hyperledger/fabric/core/deliverservice"
+	deliverclient "github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
@@ -339,7 +339,7 @@ func (g *gossipServiceImpl) updateAnchors(config Config) {
 		return
 	}
 	jcm := &joinChannelMessage{seqNum: config.Sequence(), members2AnchorPeers: map[string][]api.AnchorPeer{}}
-	for _, appOrg := range config.Organizations() {
+	for _, appOrg := range config.ApplicationOrgs() {
 		logger.Debug(appOrg.MSPID(), "anchor peers:", appOrg.AnchorPeers())
 		jcm.members2AnchorPeers[appOrg.MSPID()] = []api.AnchorPeer{}
 		for _, ap := range appOrg.AnchorPeers() {
@@ -356,10 +356,10 @@ func (g *gossipServiceImpl) updateAnchors(config Config) {
 	g.JoinChan(jcm, gossipCommon.ChainID(config.ChainID()))
 }
 
-func (g *gossipServiceImpl) updateEndpoints(chainID string, endpoints []string) {
+func (g *gossipServiceImpl) updateEndpoints(chainID string, criteria deliverclient.ConnectionCriteria) {
 	if ds, ok := g.deliveryService[chainID]; ok {
 		logger.Debugf("Updating endpoints for chainID", chainID)
-		if err := ds.UpdateEndpoints(chainID, endpoints); err != nil {
+		if err := ds.UpdateEndpoints(chainID, criteria.OrdererEndpoints); err != nil {
 			// The only reason to fail is because of absence of block provider
 			// for given channel id, hence printing a warning will be enough
 			logger.Warningf("Failed to update ordering service endpoints, due to %s", err)
@@ -443,7 +443,7 @@ func (g *gossipServiceImpl) onStatusChangeFactory(chainID string, committer bloc
 
 func orgListFromConfig(config Config) []string {
 	var orgList []string
-	for _, appOrg := range config.Organizations() {
+	for _, appOrg := range config.ApplicationOrgs() {
 		orgList = append(orgList, appOrg.MSPID())
 	}
 	return orgList

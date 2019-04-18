@@ -63,10 +63,44 @@ var ConfigTxProcessors = customtx.Processors{
 // singleton instance to manage credentials for the peer across channel config changes
 var credSupport = comm.GetCredentialSupport()
 
-type gossipSupport struct {
-	channelconfig.Application
+//go:generate mockery -dir . -name OrdererOrg -case underscore -output mocks/
+
+// OrdererOrg stores the per org orderer config.
+type OrdererOrg interface {
+	channelconfig.Org
+
+	// Endpoints returns the endpoints of orderer nodes.
+	Endpoints() []string
+}
+
+type gossipChannelConfig struct {
+	ac channelconfig.Application
+	oc channelconfig.Orderer
 	configtx.Validator
 	channelconfig.Channel
+}
+
+func (gcp *gossipChannelConfig) ApplicationOrgs() service.ApplicationOrgs {
+	return gcp.ac.Organizations()
+}
+
+func (gcp *gossipChannelConfig) OrdererOrgs() []string {
+	var res []string
+	for _, org := range gcp.oc.Organizations() {
+		res = append(res, org.MSPID())
+	}
+	return res
+}
+
+func (gcp *gossipChannelConfig) OrdererAddressesByOrgs() map[string][]string {
+	res := make(map[string][]string)
+	for _, ordererOrg := range gcp.oc.Organizations() {
+		if len(ordererOrg.Endpoints()) == 0 {
+			continue
+		}
+		res[ordererOrg.MSPID()] = ordererOrg.Endpoints()
+	}
+	return res
 }
 
 type chainSupport struct {
@@ -330,10 +364,18 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 			// TODO, handle a missing ApplicationConfig more gracefully
 			ac = nil
 		}
-		gossipEventer.ProcessConfigUpdate(&gossipSupport{
-			Validator:   bundle.ConfigtxValidator(),
-			Application: ac,
-			Channel:     bundle.ChannelConfig(),
+
+		oc, ok := bundle.OrdererConfig()
+		if !ok {
+			// TODO: handle a missing OrdererConfig more gracefully
+			oc = nil
+		}
+
+		gossipEventer.ProcessConfigUpdate(&gossipChannelConfig{
+			Validator: bundle.ConfigtxValidator(),
+			ac:        ac,
+			oc:        oc,
+			Channel:   bundle.ChannelConfig(),
 		})
 		service.GetGossipService().SuspectPeers(func(identity api.PeerIdentityType) bool {
 			// TODO: this is a place-holder that would somehow make the MSP layer suspect
