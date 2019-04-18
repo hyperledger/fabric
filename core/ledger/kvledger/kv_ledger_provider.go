@@ -76,7 +76,10 @@ func (p *Provider) Initialize(initializer *ledger.Initializer) error {
 		filepath.Join(p.initializer.Config.RootFSPath, "historyLeveldb"),
 	)
 	// initialize config history for chaincode
-	configHistoryMgr := confighistory.NewMgr(initializer.DeployedChaincodeInfoProvider)
+	configHistoryMgr := confighistory.NewMgr(
+		filepath.Join(p.initializer.Config.RootFSPath, "configHistory"),
+		initializer.DeployedChaincodeInfoProvider,
+	)
 	// initialize the collection eligibility notifier
 	collElgNotifier := &collElgNotifier{
 		initializer.DeployedChaincodeInfoProvider,

@@ -12,7 +12,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/pkg/errors"
@@ -37,11 +36,7 @@ type mgr struct {
 }
 
 // NewMgr constructs an instance that implements interface `Mgr`
-func NewMgr(ccInfoProvider ledger.DeployedChaincodeInfoProvider) Mgr {
-	return newMgr(ccInfoProvider, dbPath())
-}
-
-func newMgr(ccInfoProvider ledger.DeployedChaincodeInfoProvider, dbPath string) Mgr {
+func NewMgr(dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider) Mgr {
 	return &mgr{ccInfoProvider, newDBProvider(dbPath)}
 }
 
@@ -191,10 +186,6 @@ func compositeKVToCollectionConfig(compositeKV *compositeKV) (*ledger.Collection
 
 func constructCollectionConfigKey(chaincodeName string) string {
 	return chaincodeName + "~collection" // collection config key as in version 1.2 and we continue to use this in order to be compatible with existing data
-}
-
-func dbPath() string {
-	return ledgerconfig.GetConfigHistoryPath()
 }
 
 func extractPublicUpdates(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.KVWrite {

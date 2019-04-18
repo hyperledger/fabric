@@ -153,5 +153,5 @@ func getBlockIndexDBPath() string {
 }
 
 func getConfigHistoryDBPath() string {
-	return ledgerconfig.GetConfigHistoryPath()
+	return filepath.Join(getLedgerRootPath(), "configHistory")
 }
