@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"path/filepath"
 	"testing"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
@@ -84,7 +85,8 @@ func TestInitChain(t *testing.T) {
 }
 
 func TestInitialize(t *testing.T) {
-	cleanup := setupPeerFS(t)
+	peerFSPath, cleanup := setupPeerFS(t)
+	rootFSPath := filepath.Join(peerFSPath, "ledgersData")
 	defer cleanup()
 
 	Initialize(
@@ -97,12 +99,18 @@ func TestInitialize(t *testing.T) {
 		&disabled.Provider{},
 		nil,
 		nil,
-		&ledger.Config{},
+		&ledger.Config{
+			RootFSPath: rootFSPath,
+			StateDB: &ledger.StateDB{
+				LevelDBPath: filepath.Join(rootFSPath, "stateleveldb"),
+			},
+		},
 	)
 }
 
 func TestCreateChainFromBlock(t *testing.T) {
-	cleanup := setupPeerFS(t)
+	peerFSPath, cleanup := setupPeerFS(t)
+	rootFSPath := filepath.Join(peerFSPath, "ledgersData")
 	defer cleanup()
 
 	Initialize(
@@ -115,7 +123,12 @@ func TestCreateChainFromBlock(t *testing.T) {
 		&disabled.Provider{},
 		nil,
 		nil,
-		&ledger.Config{},
+		&ledger.Config{
+			RootFSPath: rootFSPath,
+			StateDB: &ledger.StateDB{
+				LevelDBPath: filepath.Join(rootFSPath, "stateleveldb"),
+			},
+		},
 	)
 	testChainID := fmt.Sprintf("mytestchainid-%d", rand.Int())
 	block, err := configtxtest.MakeGenesisBlock(testChainID)

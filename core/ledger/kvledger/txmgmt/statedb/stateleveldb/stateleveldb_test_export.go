@@ -17,39 +17,34 @@ limitations under the License.
 package stateleveldb
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 )
 
 // TestVDBEnv provides a level db backed versioned db for testing
 type TestVDBEnv struct {
 	t          testing.TB
 	DBProvider statedb.VersionedDBProvider
+	dbPath     string
 }
 
 // NewTestVDBEnv instantiates and new level db backed TestVDB
 func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
 	t.Logf("Creating new TestVDBEnv")
-	removeDBPath(t, "NewTestVDBEnv")
-	dbProvider := NewVersionedDBProvider()
-	return &TestVDBEnv{t, dbProvider}
+	dbPath, err := ioutil.TempDir("", "statelvldb")
+	if err != nil {
+		t.Fatalf("Failed to create leveldb directory: %s", err)
+	}
+	dbProvider := NewVersionedDBProvider(dbPath)
+	return &TestVDBEnv{t, dbProvider, dbPath}
 }
 
 // Cleanup closes the db and removes the db folder
 func (env *TestVDBEnv) Cleanup() {
 	env.t.Logf("Cleaningup TestVDBEnv")
 	env.DBProvider.Close()
-	removeDBPath(env.t, "Cleanup")
-}
-
-func removeDBPath(t testing.TB, caller string) {
-	dbPath := ledgerconfig.GetStateLevelDBPath()
-	if err := os.RemoveAll(dbPath); err != nil {
-		t.Fatalf("Err: %s", err)
-		t.FailNow()
-	}
-	logger.Debugf("Removed folder [%s] for test environment for %s", dbPath, caller)
+	os.RemoveAll(env.dbPath)
 }

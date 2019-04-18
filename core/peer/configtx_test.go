@@ -35,17 +35,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupPeerFS(t *testing.T) (cleanup func()) {
+func setupPeerFS(t *testing.T) (path string, cleanup func()) {
 	tempDir, err := ioutil.TempDir("", "peer-fs")
 	require.NoError(t, err)
 
 	viper.Set("peer.fileSystemPath", tempDir)
-	return func() { os.RemoveAll(tempDir) }
+	return tempDir, func() { os.RemoveAll(tempDir) }
 }
 
 func TestConfigTxCreateLedger(t *testing.T) {
 	helper := &testHelper{t: t}
-	cleanup := setupPeerFS(t)
+	_, cleanup := setupPeerFS(t)
 	defer cleanup()
 
 	chainid := "testchain1"
@@ -70,7 +70,7 @@ func TestConfigTxCreateLedger(t *testing.T) {
 
 func TestConfigTxUpdateChanConfig(t *testing.T) {
 	helper := &testHelper{t: t}
-	cleanup := setupPeerFS(t)
+	_, cleanup := setupPeerFS(t)
 	defer cleanup()
 	chainid := "testchain1"
 	ledgermgmt.InitializeTestEnvWithInitializer(
@@ -109,7 +109,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 }
 
 func TestGenesisBlockCreateLedger(t *testing.T) {
-	cleanup := setupPeerFS(t)
+	_, cleanup := setupPeerFS(t)
 	defer cleanup()
 
 	b, err := configtxtest.MakeGenesisBlock("testchain")
@@ -132,7 +132,7 @@ func TestGenesisBlockCreateLedger(t *testing.T) {
 }
 
 func TestCustomTxProcessors(t *testing.T) {
-	cleanup := setupPeerFS(t)
+	_, cleanup := setupPeerFS(t)
 	defer cleanup()
 
 	ledgermgmt.InitializeExistingTestEnvWithInitializer(&ledgermgmt.Initializer{

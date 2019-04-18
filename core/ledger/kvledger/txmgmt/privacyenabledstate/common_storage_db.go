@@ -55,7 +55,7 @@ func NewCommonStorageDBProvider(
 			return nil, err
 		}
 	} else {
-		vdbProvider = stateleveldb.NewVersionedDBProvider()
+		vdbProvider = stateleveldb.NewVersionedDBProvider(stateDBConf.LevelDBPath)
 	}
 
 	dbProvider := &CommonStorageDBProvider{vdbProvider, healthCheckRegistry, bookkeeperProvider}

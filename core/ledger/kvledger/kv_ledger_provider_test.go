@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
 	lgr "github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
@@ -190,6 +189,9 @@ func TestLedgerBackup(t *testing.T) {
 	env := createTestEnv(t, originalPath)
 	origConf := &lgr.Config{
 		RootFSPath: originalPath,
+		StateDB: &lgr.StateDB{
+			LevelDBPath: filepath.Join(originalPath, "stateLeveldb"),
+		},
 	}
 	provider := testutilNewProvider(origConf, t)
 	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
@@ -226,8 +228,7 @@ func TestLedgerBackup(t *testing.T) {
 
 	// remove the statedb, historydb, and block indexes (they are supposed to be auto created during opening of an existing ledger)
 	// and rename the originalPath to restorePath
-	assert.NoError(t, os.RemoveAll(ledgerconfig.GetStateLevelDBPath()))
-	//TODO: revisit once all paths are derived from Config
+	assert.NoError(t, os.RemoveAll(filepath.Join(originalPath, "stateLeveldb")))
 	assert.NoError(t, os.RemoveAll(filepath.Join(originalPath, "historyLeveldb")))
 	assert.NoError(t, os.RemoveAll(filepath.Join(originalPath, "chains", fsblkstorage.IndexDir)))
 	assert.NoError(t, os.Rename(originalPath, restorePath))
@@ -236,6 +237,9 @@ func TestLedgerBackup(t *testing.T) {
 	// Instantiate the ledger from restore environment and this should behave exactly as it would have in the original environment
 	restoreConf := &lgr.Config{
 		RootFSPath: restorePath,
+		StateDB: &lgr.StateDB{
+			LevelDBPath: filepath.Join(restorePath, "stateLeveldb"),
+		},
 	}
 	provider = testutilNewProvider(restoreConf, t)
 	defer provider.Close()
@@ -315,6 +319,9 @@ func testConfig(t *testing.T) (conf *lgr.Config, cleanup func()) {
 	}
 	conf = &lgr.Config{
 		RootFSPath: path,
+		StateDB: &lgr.StateDB{
+			LevelDBPath: filepath.Join(path, "stateLeveldb"),
+		},
 	}
 	cleanup = func() {
 		os.RemoveAll(path)

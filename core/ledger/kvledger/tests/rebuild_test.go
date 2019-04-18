@@ -11,8 +11,9 @@ import (
 )
 
 func TestRebuildComponents(t *testing.T) {
-	env := newEnv(defaultConfig, t)
+	env := newEnv(t)
 	defer env.cleanup()
+	env.initLedgerMgmt()
 
 	h1, h2 := newTestHelperCreateLgr("ledger1", t), newTestHelperCreateLgr("ledger2", t)
 	dataHelper := newSampleDataHelper(t)

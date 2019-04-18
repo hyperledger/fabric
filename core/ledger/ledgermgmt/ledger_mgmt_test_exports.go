@@ -8,6 +8,7 @@ package ledgermgmt
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
@@ -51,6 +52,9 @@ func InitializeExistingTestEnvWithInitializer(initializer *Initializer) {
 			// NOTE: this package infects a lot of other code so hard-coding for now
 			// to contain the scope of this change
 			RootFSPath: ledgerconfig.GetRootPath(),
+			StateDB: &ledger.StateDB{
+				LevelDBPath: filepath.Join(ledgerconfig.GetRootPath(), "stateleveldb"),
+			},
 		}
 	}
 	initialize(initializer)

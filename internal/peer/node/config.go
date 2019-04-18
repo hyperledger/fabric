@@ -31,10 +31,12 @@ func ledgerConfig() *ledger.Config {
 		maxBatchUpdateSize = viper.GetInt("ledger.state.couchDBConfig.maxBatchUpdateSize")
 	}
 
+	rootFSPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "ledgersData")
 	conf := &ledger.Config{
-		RootFSPath: filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "ledgersData"),
+		RootFSPath: rootFSPath,
 		StateDB: &ledger.StateDB{
 			StateDatabase: viper.GetString("ledger.state.stateDatabase"),
+			LevelDBPath:   filepath.Join(rootFSPath, "stateLeveldb"),
 			CouchDB:       &couchdb.Config{},
 		},
 	}

@@ -11,8 +11,9 @@ import (
 )
 
 func TestMissingCollConfig(t *testing.T) {
-	env := newEnv(defaultConfig, t)
+	env := newEnv(t)
 	defer env.cleanup()
+	env.initLedgerMgmt()
 	h := newTestHelperCreateLgr("ledger1", t)
 
 	collConf := []*collConf{{name: "coll1", btl: 5}}
@@ -45,8 +46,9 @@ func TestMissingCollConfig(t *testing.T) {
 }
 
 func TestTxWithMissingPvtdata(t *testing.T) {
-	env := newEnv(defaultConfig, t)
+	env := newEnv(t)
 	defer env.cleanup()
+	env.initLedgerMgmt()
 	h := newTestHelperCreateLgr("ledger1", t)
 
 	collConf := []*collConf{{name: "coll1", btl: 5}}
@@ -82,8 +84,9 @@ func TestTxWithMissingPvtdata(t *testing.T) {
 }
 
 func TestTxWithWrongPvtdata(t *testing.T) {
-	env := newEnv(defaultConfig, t)
+	env := newEnv(t)
 	defer env.cleanup()
+	env.initLedgerMgmt()
 	h := newTestHelperCreateLgr("ledger1", t)
 
 	collConf := []*collConf{{name: "coll1", btl: 5}}
@@ -107,8 +110,9 @@ func TestTxWithWrongPvtdata(t *testing.T) {
 }
 
 func TestBTL(t *testing.T) {
-	env := newEnv(defaultConfig, t)
+	env := newEnv(t)
 	defer env.cleanup()
+	env.initLedgerMgmt()
 	h := newTestHelperCreateLgr("ledger1", t)
 	collConf := []*collConf{{name: "coll1", btl: 0}, {name: "coll2", btl: 5}}
 

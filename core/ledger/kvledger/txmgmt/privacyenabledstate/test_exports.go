@@ -8,6 +8,7 @@ package privacyenabledstate
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -44,22 +45,29 @@ type LevelDBCommonStorageTestEnv struct {
 	t                 testing.TB
 	provider          DBProvider
 	bookkeeperTestEnv *bookkeeping.TestEnv
+	dbPath            string
 }
 
 // Init implements corresponding function from interface TestEnv
 func (env *LevelDBCommonStorageTestEnv) Init(t testing.TB) {
 	viper.Set("ledger.state.stateDatabase", "")
-	removeDBPath(t)
+	dbPath, err := ioutil.TempDir("", "cstestenv")
+	if err != nil {
+		t.Fatalf("Failed to create level db storage directory: %s", err)
+	}
 	env.bookkeeperTestEnv = bookkeeping.NewTestEnv(t)
 	dbProvider, err := NewCommonStorageDBProvider(
 		env.bookkeeperTestEnv.TestProvider,
 		&disabled.Provider{},
 		&mock.HealthCheckRegistry{},
-		nil,
+		&ledger.StateDB{
+			LevelDBPath: dbPath,
+		},
 	)
 	assert.NoError(t, err)
 	env.t = t
 	env.provider = dbProvider
+	env.dbPath = dbPath
 }
 
 // GetDBHandle implements corresponding function from interface TestEnv
@@ -78,7 +86,7 @@ func (env *LevelDBCommonStorageTestEnv) GetName() string {
 func (env *LevelDBCommonStorageTestEnv) Cleanup() {
 	env.provider.Close()
 	env.bookkeeperTestEnv.Cleanup()
-	removeDBPath(env.t)
+	os.RemoveAll(env.dbPath)
 }
 
 ///////////// CouchDB Environment //////////////
@@ -161,12 +169,4 @@ func (env *CouchDBCommonStorageTestEnv) Cleanup() {
 	env.bookkeeperTestEnv.Cleanup()
 	env.provider.Close()
 	env.couchCleanup()
-}
-
-func removeDBPath(t testing.TB) {
-	dbPath := ledgerconfig.GetStateLevelDBPath()
-	if err := os.RemoveAll(dbPath); err != nil {
-		t.Fatalf("Err: %s", err)
-		t.FailNow()
-	}
 }

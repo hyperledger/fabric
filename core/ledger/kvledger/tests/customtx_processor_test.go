@@ -19,8 +19,9 @@ import (
 
 func TestReadWriteCustomTxProcessor(t *testing.T) {
 	fakeTxProcessor := &mock.Processor{}
-	env := newEnv(defaultConfig, t)
+	env := newEnv(t)
 	defer env.cleanup()
+	env.initLedgerMgmt()
 	customtx.InitializeTestEnv(
 		customtx.Processors{
 			100: fakeTxProcessor,
@@ -61,8 +62,9 @@ func TestRangeReadAndWriteCustomTxProcessor(t *testing.T) {
 	fakeTxProcessor1 := &mock.Processor{}
 	fakeTxProcessor2 := &mock.Processor{}
 	fakeTxProcessor3 := &mock.Processor{}
-	env := newEnv(defaultConfig, t)
+	env := newEnv(t)
 	defer env.cleanup()
+	env.initLedgerMgmt()
 	customtx.InitializeTestEnv(
 		customtx.Processors{
 			101: fakeTxProcessor1,

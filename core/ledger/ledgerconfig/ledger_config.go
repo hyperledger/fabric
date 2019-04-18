@@ -47,11 +47,6 @@ func GetLedgerProviderPath() string {
 	return filepath.Join(GetRootPath(), confLedgerProvider)
 }
 
-// GetStateLevelDBPath returns the filesystem path that is used to maintain the state level db
-func GetStateLevelDBPath() string {
-	return filepath.Join(GetRootPath(), confStateleveldb)
-}
-
 // GetInternalBookkeeperPath returns the filesystem path that is used for bookkeeping the internal stuff by by KVledger (such as expiration time for pvt)
 func GetInternalBookkeeperPath() string {
 	return filepath.Join(GetRootPath(), confBookkeeper)

@@ -33,6 +33,7 @@ func TestLedgerConfig(t *testing.T) {
 				RootFSPath: "/peerfs/ledgersData",
 				StateDB: &ledger.StateDB{
 					StateDatabase: "goleveldb",
+					LevelDBPath:   "/peerfs/ledgersData/stateLeveldb",
 					CouchDB:       &couchdb.Config{},
 				},
 			},
@@ -54,6 +55,7 @@ func TestLedgerConfig(t *testing.T) {
 				RootFSPath: "/peerfs/ledgersData",
 				StateDB: &ledger.StateDB{
 					StateDatabase: "CouchDB",
+					LevelDBPath:   "/peerfs/ledgersData/stateLeveldb",
 					CouchDB: &couchdb.Config{
 						Address:                 "localhost:5984",
 						Username:                "username",
@@ -89,6 +91,7 @@ func TestLedgerConfig(t *testing.T) {
 				RootFSPath: "/peerfs/ledgersData",
 				StateDB: &ledger.StateDB{
 					StateDatabase: "CouchDB",
+					LevelDBPath:   "/peerfs/ledgersData/stateLeveldb",
 					CouchDB: &couchdb.Config{
 						Address:                 "localhost:5984",
 						Username:                "username",

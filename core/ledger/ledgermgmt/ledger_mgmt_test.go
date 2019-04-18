@@ -8,6 +8,7 @@ package ledgermgmt
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx/test"
@@ -85,6 +86,9 @@ func TestLedgerMgmt(t *testing.T) {
 		Config: &ledger.Config{
 			// TODO: remove ledgerconfig once exported test functions are changed
 			RootFSPath: ledgerconfig.GetRootPath(),
+			StateDB: &ledger.StateDB{
+				LevelDBPath: filepath.Join(ledgerconfig.GetRootPath(), "stateleveldb"),
+			},
 		},
 	})
 	l, err = OpenLedger(ledgerID)

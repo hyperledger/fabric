@@ -41,8 +41,11 @@ type Config struct {
 // State is a structure used to configure the state parameters for the ledger.
 type StateDB struct {
 	// StateDatabase is the of database to use for storing last known state.  The
-	// two supported options are "goleveldb" and "CouchDB"
+	// two supported options are "goleveldb" and "CouchDB".
 	StateDatabase string
+	// LevelDBPath is filesystem path that is used when StateDatabase is set
+	// to "goleveldb".
+	LevelDBPath string
 	// CouchDB is the configuration for CouchDB.  It is used when StateDatabase
 	// is set to "CouchDB".
 	CouchDB *couchdb.Config

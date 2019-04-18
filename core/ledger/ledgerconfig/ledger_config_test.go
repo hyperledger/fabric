@@ -50,7 +50,6 @@ func TestLedgerConfigPathDefault(t *testing.T) {
 	setUpCoreYAMLConfig()
 	assert.Equal(t, "/var/hyperledger/production/ledgersData", GetRootPath())
 	assert.Equal(t, "/var/hyperledger/production/ledgersData/ledgerProvider", GetLedgerProviderPath())
-	assert.Equal(t, "/var/hyperledger/production/ledgersData/stateLeveldb", GetStateLevelDBPath())
 	assert.Equal(t, "/var/hyperledger/production/ledgersData/bookkeeper", GetInternalBookkeeperPath())
 }
 
@@ -60,7 +59,6 @@ func TestLedgerConfigPath(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/tmp/hyperledger/production")
 	assert.Equal(t, "/tmp/hyperledger/production/ledgersData", GetRootPath())
 	assert.Equal(t, "/tmp/hyperledger/production/ledgersData/ledgerProvider", GetLedgerProviderPath())
-	assert.Equal(t, "/tmp/hyperledger/production/ledgersData/stateLeveldb", GetStateLevelDBPath())
 	assert.Equal(t, "/tmp/hyperledger/production/ledgersData/bookkeeper", GetInternalBookkeeperPath())
 }
 
