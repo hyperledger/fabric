@@ -72,6 +72,12 @@ type ChannelCapabilities struct {
 	ConsensusTypeMigrationVal bool
 }
 
+func (cc *ChannelCapabilities) OrgSpecificOrdererEndpoints() bool {
+	// refusing to extend this bespoke mock
+	// If you want to override this return value, generate your own mock..
+	return false
+}
+
 // Supported returns SupportedErr
 func (cc *ChannelCapabilities) Supported() error {
 	return cc.SupportedErr
