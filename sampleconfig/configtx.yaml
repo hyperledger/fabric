@@ -80,13 +80,13 @@ Capabilities:
     # supported by both.
     # Set the value of the capability to true to require it.
     Channel: &ChannelCapabilities
-        # V1.3 for Channel is a catchall flag for behavior which has been
-        # determined to be desired for all orderers and peers running at the v1.3.x
+        # V1.4.2 for Channel is a catchall flag for behavior which has been
+        # determined to be desired for all orderers and peers running at the v1.4.2
         # level, but which would be incompatible with orderers and peers from
         # prior releases.
-        # Prior to enabling V1.3 channel capabilities, ensure that all
-        # orderers and peers on a channel are at v1.3.0 or later.
-        V1_3: true
+        # Prior to enabling V1.4.2 channel capabilities, ensure that all
+        # orderers and peers on a channel are at v1.4.2 or later.
+        V1_4_2: true
 
     # Orderer capabilities apply only to the orderers, and may be safely
     # used with prior release peers.

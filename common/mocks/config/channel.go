@@ -70,6 +70,18 @@ type ChannelCapabilities struct {
 	MSPVersionVal msp.MSPVersion
 }
 
+func (cc *ChannelCapabilities) OrgSpecificOrdererEndpoints() bool {
+	// refusing to extend this bespoke mock
+	// If you want to override this return value, generate your own mock..
+	return false
+}
+
+func (cc *ChannelCapabilities) ConsensusTypeMigration() bool {
+	// refusing to extend this bespoke mock
+	// If you want to override this return value, generate your own mock..
+	return false
+}
+
 // Supported returns SupportedErr
 func (cc *ChannelCapabilities) Supported() error {
 	return cc.SupportedErr
