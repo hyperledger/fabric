@@ -141,6 +141,8 @@ func (doocv *DynamicOrdererOrgConfigValue) VariablyOpaqueFieldProto(name string)
 	switch doocv.name {
 	case "MSP":
 		return &msp.MSPConfig{}, nil
+	case "Endpoints":
+		return &common.OrdererAddresses{}, nil
 	default:
 		return nil, fmt.Errorf("unknown Orderer Org ConfigValue name: %s", doocv.name)
 	}
