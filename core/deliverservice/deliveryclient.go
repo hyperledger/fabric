@@ -96,6 +96,50 @@ type Config struct {
 	Endpoints []string
 }
 
+// ConnectionCriteria defines how to connect to ordering service nodes.
+type ConnectionCriteria struct {
+	// Endpoints specifies the endpoints of the ordering service.
+	OrdererEndpoints []string
+	// Organizations denotes a list of organizations
+	Organizations []string
+	// OrdererEndpointsByOrg specifies the endpoints of the ordering service grouped by orgs.
+	OrdererEndpointsByOrg map[string][]string
+}
+
+func (cc ConnectionCriteria) toEndpointCriteria() []comm.EndpointCriteria {
+	var res []comm.EndpointCriteria
+
+	// Iterate over per org criteria
+	for _, org := range cc.Organizations {
+		endpoints := cc.OrdererEndpointsByOrg[org]
+		if len(endpoints) == 0 {
+			// No endpoints for that org
+			continue
+		}
+
+		for _, endpoint := range endpoints {
+			res = append(res, comm.EndpointCriteria{
+				Organizations: []string{org},
+				Endpoint:      endpoint,
+			})
+		}
+	}
+
+	// If we have some per organization endpoint, don't continue further.
+	if len(res) > 0 {
+		return res
+	}
+
+	for _, endpoint := range cc.OrdererEndpoints {
+		res = append(res, comm.EndpointCriteria{
+			Organizations: cc.Organizations,
+			Endpoint:      endpoint,
+		})
+	}
+
+	return res
+}
+
 // NewDeliverService construction function to create and initialize
 // delivery service instance. It tries to establish connection to
 // the specified in the configuration ordering service, in case it
