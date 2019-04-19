@@ -38,19 +38,9 @@ func testMain(m *testing.M) int {
 	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
 
 	// Switch to CouchDB
-	couchAddress, cleanup := couchDBSetup()
+	address, cleanup := couchDBSetup()
+	couchAddress = address
 	defer cleanup()
-
-	testConfig = &couchdb.Config{
-		Address:             couchAddress,
-		Username:            "",
-		Password:            "",
-		InternalQueryLimit:  1000,
-		MaxBatchUpdateSize:  1000,
-		MaxRetries:          3,
-		MaxRetriesOnStartup: 20,
-		RequestTimeout:      35 * time.Second,
-	}
 
 	flogging.ActivateSpec("statecouchdb=debug")
 	//run the actual test

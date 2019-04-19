@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/integration/runner"
@@ -96,6 +95,7 @@ type CouchDBCommonStorageTestEnv struct {
 	t                 testing.TB
 	provider          DBProvider
 	bookkeeperTestEnv *bookkeeping.TestEnv
+	redoPath          string
 	couchCleanup      func()
 }
 
@@ -117,9 +117,10 @@ func (env *CouchDBCommonStorageTestEnv) setupCouch() string {
 
 // Init implements corresponding function from interface TestEnv
 func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
-	redologsPath := ledgerconfig.GetCouchdbRedologsPath()
-	assert.NoError(t, os.RemoveAll(redologsPath))
-	viper.Set("ledger.state.stateDatabase", "CouchDB")
+	redoPath, err := ioutil.TempDir("", "pestate")
+	if err != nil {
+		t.Fatalf("Failed to create redo log directory: %s", err)
+	}
 	couchAddress := env.setupCouch()
 
 	stateDBConfig := &ledger.StateDB{
@@ -133,6 +134,7 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 			RequestTimeout:      35 * time.Second,
 			InternalQueryLimit:  1000,
 			MaxBatchUpdateSize:  1000,
+			RedoLogPath:         redoPath,
 		},
 	}
 
@@ -146,6 +148,7 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 	assert.NoError(t, err)
 	env.t = t
 	env.provider = dbProvider
+	env.redoPath = redoPath
 }
 
 // GetDBHandle implements corresponding function from interface TestEnv
@@ -164,8 +167,7 @@ func (env *CouchDBCommonStorageTestEnv) GetName() string {
 func (env *CouchDBCommonStorageTestEnv) Cleanup() {
 	csdbProvider, _ := env.provider.(*CommonStorageDBProvider)
 	statecouchdb.CleanupDB(env.t, csdbProvider.VersionedDBProvider)
-	redologsPath := ledgerconfig.GetCouchdbRedologsPath()
-	assert.NoError(env.t, os.RemoveAll(redologsPath))
+	os.RemoveAll(env.redoPath)
 	env.bookkeeperTestEnv.Cleanup()
 	env.provider.Close()
 	env.couchCleanup()

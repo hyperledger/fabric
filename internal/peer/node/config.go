@@ -53,6 +53,7 @@ func ledgerConfig() *ledger.Config {
 			MaxBatchUpdateSize:      maxBatchUpdateSize,
 			WarmIndexesAfterNBlocks: warmAfterNBlocks,
 			CreateGlobalChangesDB:   viper.GetBool("ledger.state.couchDBConfig.createGlobalChangesDB"),
+			RedoLogPath:             filepath.Join(rootFSPath, "couchdbRedoLogs"),
 		}
 	}
 	return conf

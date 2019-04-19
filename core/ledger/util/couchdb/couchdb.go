@@ -142,6 +142,8 @@ type Config struct {
 	// CreateGlobalChangesDB determines whether or not to create the "_global_changes"
 	// system database.
 	CreateGlobalChangesDB bool
+	// RedoLogPath is the directory where the CouchDB redo log files are stored.
+	RedoLogPath string
 }
 
 //CouchInstance represents a CouchDB instance

@@ -24,7 +24,6 @@ func IsCouchDBEnabled() bool {
 
 const confPeerFileSystemPath = "peer.fileSystemPath"
 const confLedgersData = "ledgersData"
-const couchdbRedoLogPath = "couchdbRedoLogs"
 const confTotalQueryLimit = "ledger.state.totalQueryLimit"
 const confEnableHistoryDatabase = "ledger.history.enableHistoryDatabase"
 
@@ -36,10 +35,6 @@ var confCollElgProcDbBatchesInterval = &conf{"ledger.pvtdataStore.collElgProcDbB
 func GetRootPath() string {
 	sysPath := config.GetPath(confPeerFileSystemPath)
 	return filepath.Join(sysPath, confLedgersData)
-}
-
-func GetCouchdbRedologsPath() string {
-	return filepath.Join(GetRootPath(), couchdbRedoLogPath)
 }
 
 // GetTotalQueryLimit exposes the totalLimit variable

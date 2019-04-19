@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/pkg/errors"
 )
@@ -48,7 +47,7 @@ func NewVersionedDBProvider(config *couchdb.Config, metricsProvider metrics.Prov
 			databases:          make(map[string]*VersionedDB),
 			mux:                sync.Mutex{},
 			openCounts:         0,
-			redoLoggerProvider: newRedoLoggerProvider(ledgerconfig.GetCouchdbRedologsPath()),
+			redoLoggerProvider: newRedoLoggerProvider(config.RedoLogPath),
 		},
 		nil
 }
