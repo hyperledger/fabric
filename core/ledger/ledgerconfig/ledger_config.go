@@ -24,10 +24,6 @@ func IsCouchDBEnabled() bool {
 
 const confPeerFileSystemPath = "peer.fileSystemPath"
 const confLedgersData = "ledgersData"
-const confLedgerProvider = "ledgerProvider"
-const confStateleveldb = "stateLeveldb"
-const confHistoryLeveldb = "historyLeveldb"
-const confBookkeeper = "bookkeeper"
 const couchdbRedoLogPath = "couchdbRedoLogs"
 const confTotalQueryLimit = "ledger.state.totalQueryLimit"
 const confEnableHistoryDatabase = "ledger.history.enableHistoryDatabase"
@@ -40,11 +36,6 @@ var confCollElgProcDbBatchesInterval = &conf{"ledger.pvtdataStore.collElgProcDbB
 func GetRootPath() string {
 	sysPath := config.GetPath(confPeerFileSystemPath)
 	return filepath.Join(sysPath, confLedgersData)
-}
-
-// GetLedgerProviderPath returns the filesystem path for storing ledger ledgerProvider contents
-func GetLedgerProviderPath() string {
-	return filepath.Join(GetRootPath(), confLedgerProvider)
 }
 
 func GetCouchdbRedologsPath() string {
