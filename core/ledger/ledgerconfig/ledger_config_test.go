@@ -92,14 +92,6 @@ func TestPvtdataStorePurgeIntervalUnset(t *testing.T) {
 	assert.Equal(t, uint64(100), defaultValue) // 100 if purgeInterval is not set
 }
 
-func TestIsQueryReadHasingEnabled(t *testing.T) {
-	assert.True(t, IsQueryReadsHashingEnabled())
-}
-
-func TestGetMaxDegreeQueryReadsHashing(t *testing.T) {
-	assert.Equal(t, uint32(50), GetMaxDegreeQueryReadsHashing())
-}
-
 func TestPvtdataStorePurgeInterval(t *testing.T) {
 	setUpCoreYAMLConfig()
 	defer ledgertestutil.ResetConfigToDefaultValues()

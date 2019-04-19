@@ -15,11 +15,15 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/storageutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/pkg/errors"
+)
+
+const (
+	queryReadsHashingEnabled   = true
+	maxDegreeQueryReadsHashing = uint32(50)
 )
 
 type queryHelper struct {
@@ -76,8 +80,16 @@ func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey strin
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
-	itr, err := newResultsItr(namespace, startKey, endKey, nil, h.txmgr.db, h.rwsetBuilder,
-		ledgerconfig.IsQueryReadsHashingEnabled(), ledgerconfig.GetMaxDegreeQueryReadsHashing())
+	itr, err := newResultsItr(
+		namespace,
+		startKey,
+		endKey,
+		nil,
+		h.txmgr.db,
+		h.rwsetBuilder,
+		queryReadsHashingEnabled,
+		maxDegreeQueryReadsHashing,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -89,8 +101,16 @@ func (h *queryHelper) getStateRangeScanIteratorWithMetadata(namespace string, st
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
-	itr, err := newResultsItr(namespace, startKey, endKey, metadata, h.txmgr.db, h.rwsetBuilder,
-		ledgerconfig.IsQueryReadsHashingEnabled(), ledgerconfig.GetMaxDegreeQueryReadsHashing())
+	itr, err := newResultsItr(
+		namespace,
+		startKey,
+		endKey,
+		metadata,
+		h.txmgr.db,
+		h.rwsetBuilder,
+		queryReadsHashingEnabled,
+		maxDegreeQueryReadsHashing,
+	)
 	if err != nil {
 		return nil, err
 	}
