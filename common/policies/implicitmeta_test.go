@@ -19,12 +19,12 @@ const TestPolicyName = "TestPolicyName"
 
 type acceptPolicy struct{}
 
-func (rp acceptPolicy) Evaluate(signedData []*protoutil.SignedData) error {
+func (ap acceptPolicy) Evaluate(signedData []*protoutil.SignedData) error {
 	return nil
 }
 
 func TestImplicitMarshalError(t *testing.T) {
-	_, err := newImplicitMetaPolicy([]byte("GARBAGE"), nil)
+	_, err := NewImplicitMetaPolicy([]byte("GARBAGE"), nil)
 	assert.Error(t, err, "Should have errored unmarshaling garbage")
 }
 
@@ -39,7 +39,7 @@ func makeManagers(count, passing int) map[string]*ManagerImpl {
 		remaining--
 
 		result[fmt.Sprintf("%d", i)] = &ManagerImpl{
-			policies: policyMap,
+			Policies: policyMap,
 		}
 	}
 	return result
@@ -47,7 +47,7 @@ func makeManagers(count, passing int) map[string]*ManagerImpl {
 
 // makePolicyTest creates an implicitMetaPolicy with a set of
 func runPolicyTest(rule cb.ImplicitMetaPolicy_Rule, managerCount int, passingCount int) error {
-	imp, err := newImplicitMetaPolicy(protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+	imp, err := NewImplicitMetaPolicy(protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 		Rule:      rule,
 		SubPolicy: TestPolicyName,
 	}), makeManagers(managerCount, passingCount))

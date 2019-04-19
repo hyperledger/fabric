@@ -52,7 +52,7 @@ func TestUnnestedManager(t *testing.T) {
 	assert.True(t, ok, "Should have found the root manager")
 	assert.Equal(t, m, r)
 
-	assert.Len(t, m.policies, len(config.Policies))
+	assert.Len(t, m.Policies, len(config.Policies))
 
 	for policyName := range config.Policies {
 		_, ok := m.GetPolicy(policyName)

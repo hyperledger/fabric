@@ -138,3 +138,19 @@ func TestProviderFromStruct(t *testing.T) {
 	assert.NotNil(t, p)
 	assert.NoError(t, err)
 }
+
+func TestConverter(t *testing.T) {
+	p := policy{}
+
+	cp, err := p.Convert()
+	assert.Nil(t, cp)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "nil policy field")
+
+	p.signaturePolicyEnvelope = RejectAllPolicy
+
+	cp, err = p.Convert()
+	assert.NotNil(t, cp)
+	assert.NoError(t, err)
+	assert.Equal(t, cp, RejectAllPolicy)
+}

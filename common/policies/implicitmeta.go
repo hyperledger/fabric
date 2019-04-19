@@ -16,17 +16,17 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type implicitMetaPolicy struct {
-	threshold   int
-	subPolicies []Policy
+type ImplicitMetaPolicy struct {
+	Threshold   int
+	SubPolicies []Policy
 
 	// Only used for logging
 	managers      map[string]*ManagerImpl
-	subPolicyName string
+	SubPolicyName string
 }
 
 // NewPolicy creates a new policy based on the policy bytes
-func newImplicitMetaPolicy(data []byte, managers map[string]*ManagerImpl) (*implicitMetaPolicy, error) {
+func NewImplicitMetaPolicy(data []byte, managers map[string]*ManagerImpl) (*ImplicitMetaPolicy, error) {
 	definition := &cb.ImplicitMetaPolicy{}
 	if err := proto.Unmarshal(data, definition); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling to ImplicitMetaPolicy: %s", err)
@@ -56,29 +56,29 @@ func newImplicitMetaPolicy(data []byte, managers map[string]*ManagerImpl) (*impl
 		threshold = 0
 	}
 
-	return &implicitMetaPolicy{
-		subPolicies:   subPolicies,
-		threshold:     threshold,
+	return &ImplicitMetaPolicy{
+		SubPolicies:   subPolicies,
+		Threshold:     threshold,
 		managers:      managers,
-		subPolicyName: definition.SubPolicy,
+		SubPolicyName: definition.SubPolicy,
 	}, nil
 }
 
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (imp *implicitMetaPolicy) Evaluate(signatureSet []*protoutil.SignedData) error {
+func (imp *ImplicitMetaPolicy) Evaluate(signatureSet []*protoutil.SignedData) error {
 	logger.Debugf("This is an implicit meta policy, it will trigger other policy evaluations, whose failures may be benign")
-	remaining := imp.threshold
+	remaining := imp.Threshold
 
 	defer func() {
 		if remaining != 0 {
 			// This log message may be large and expensive to construct, so worth checking the log level
 			if logger.IsEnabledFor(zapcore.DebugLevel) {
 				var b bytes.Buffer
-				b.WriteString(fmt.Sprintf("Evaluation Failed: Only %d policies were satisfied, but needed %d of [ ", imp.threshold-remaining, imp.threshold))
+				b.WriteString(fmt.Sprintf("Evaluation Failed: Only %d policies were satisfied, but needed %d of [ ", imp.Threshold-remaining, imp.Threshold))
 				for m := range imp.managers {
 					b.WriteString(m)
 					b.WriteString("/")
-					b.WriteString(imp.subPolicyName)
+					b.WriteString(imp.SubPolicyName)
 					b.WriteString(" ")
 				}
 				b.WriteString("]")
@@ -87,7 +87,7 @@ func (imp *implicitMetaPolicy) Evaluate(signatureSet []*protoutil.SignedData) er
 		}
 	}()
 
-	for _, policy := range imp.subPolicies {
+	for _, policy := range imp.SubPolicies {
 		if policy.Evaluate(signatureSet) == nil {
 			remaining--
 			if remaining == 0 {
@@ -98,5 +98,5 @@ func (imp *implicitMetaPolicy) Evaluate(signatureSet []*protoutil.SignedData) er
 	if remaining == 0 {
 		return nil
 	}
-	return fmt.Errorf("implicit policy evaluation failed - %d sub-policies were satisfied, but this policy requires %d of the '%s' sub-policies to be satisfied", (imp.threshold - remaining), imp.threshold, imp.subPolicyName)
+	return fmt.Errorf("implicit policy evaluation failed - %d sub-policies were satisfied, but this policy requires %d of the '%s' sub-policies to be satisfied", (imp.Threshold - remaining), imp.Threshold, imp.SubPolicyName)
 }
