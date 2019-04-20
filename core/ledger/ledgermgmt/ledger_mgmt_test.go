@@ -7,6 +7,7 @@ package ledgermgmt
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -46,8 +46,28 @@ func TestLedgerMgmt(t *testing.T) {
 
 	Close()
 
-	InitializeTestEnv()
-	defer CleanupTestEnv()
+	rootPath, err := ioutil.TempDir("", "lgrmgmt")
+	if err != nil {
+		t.Fatalf("Failed to create ledger directory: %s", err)
+	}
+
+	initializer := &Initializer{
+		PlatformRegistry: platforms.NewRegistry(&golang.Platform{}),
+		MetricsProvider:  &disabled.Provider{},
+		Config: &ledger.Config{
+			// TODO: remove ledgerconfig once exported test functions are changed
+			RootFSPath: rootPath,
+			StateDB: &ledger.StateDB{
+				LevelDBPath: filepath.Join(rootPath, "stateleveldb"),
+			},
+		},
+	}
+
+	cleanup, err := InitializeTestEnvWithInitializer(initializer)
+	if err != nil {
+		t.Fatalf("Failed to initialize test environment: %s", err)
+	}
+	defer cleanup()
 
 	numLedgers := 10
 	ledgers := make([]ledger.PeerLedger, numLedgers)
@@ -80,25 +100,18 @@ func TestLedgerMgmt(t *testing.T) {
 	Close()
 
 	// Restart ledger mgmt with existing ledgers
-	Initialize(&Initializer{
-		PlatformRegistry: platforms.NewRegistry(&golang.Platform{}),
-		MetricsProvider:  &disabled.Provider{},
-		Config: &ledger.Config{
-			// TODO: remove ledgerconfig once exported test functions are changed
-			RootFSPath: ledgerconfig.GetRootPath(),
-			StateDB: &ledger.StateDB{
-				LevelDBPath: filepath.Join(ledgerconfig.GetRootPath(), "stateleveldb"),
-			},
-		},
-	})
+	Initialize(initializer)
 	l, err = OpenLedger(ledgerID)
 	assert.NoError(t, err)
 	Close()
 }
 
 func TestChaincodeInfoProvider(t *testing.T) {
-	InitializeTestEnv()
-	defer CleanupTestEnv()
+	cleanup, err := InitializeTestEnv()
+	if err != nil {
+		t.Fatalf("Failed to initialize test environment: %s", err)
+	}
+	defer cleanup()
 	gb, _ := test.MakeGenesisBlock("ledger1")
 	CreateLedger(gb)
 
@@ -111,7 +124,7 @@ func TestChaincodeInfoProvider(t *testing.T) {
 		platforms.NewRegistry(&golang.Platform{}),
 		mockDeployedCCInfoProvider,
 	}
-	_, err := ccInfoProvider.GetDeployedChaincodeInfo("ledger2", constructTestCCDef("cc2", "1.0", "cc2Hash"))
+	_, err = ccInfoProvider.GetDeployedChaincodeInfo("ledger2", constructTestCCDef("cc2", "1.0", "cc2Hash"))
 	t.Logf("Expected error received = %s", err)
 	assert.Error(t, err)
 

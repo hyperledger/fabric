@@ -46,18 +46,6 @@ func TestIsCouchDBEnabled(t *testing.T) {
 	assert.True(t, updatedValue) //test config returns true
 }
 
-func TestLedgerConfigPathDefault(t *testing.T) {
-	setUpCoreYAMLConfig()
-	assert.Equal(t, "/var/hyperledger/production/ledgersData", GetRootPath())
-}
-
-func TestLedgerConfigPath(t *testing.T) {
-	setUpCoreYAMLConfig()
-	defer ledgertestutil.ResetConfigToDefaultValues()
-	viper.Set("peer.fileSystemPath", "/tmp/hyperledger/production")
-	assert.Equal(t, "/tmp/hyperledger/production/ledgersData", GetRootPath())
-}
-
 func TestGetTotalLimitDefault(t *testing.T) {
 	setUpCoreYAMLConfig()
 	defaultValue := GetTotalQueryLimit()

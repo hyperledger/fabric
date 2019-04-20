@@ -65,9 +65,12 @@ func TestDeploy(t *testing.T) {
 		p.DeploySysCCs("a", ccp)
 	}
 	assert.Panics(t, f)
-	ledgermgmt.InitializeTestEnv()
-	defer ledgermgmt.CleanupTestEnv()
-	err := peer.MockCreateChain("a")
+	cleanup, err := ledgermgmt.InitializeTestEnv()
+	if err != nil {
+		t.Fatalf("Failed to initialize test environment: %s", err)
+	}
+	defer cleanup()
+	err = peer.MockCreateChain("a")
 	fmt.Println(err)
 	deploySysCC("a", ccp, &SysCCWrapper{SCC: &SystemChaincode{
 		Enabled: true,

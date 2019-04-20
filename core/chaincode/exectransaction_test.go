@@ -50,7 +50,6 @@ import (
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	cut "github.com/hyperledger/fabric/core/ledger/util"
 	cmp "github.com/hyperledger/fabric/core/mocks/peer"
@@ -88,7 +87,10 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	mockAclProvider = &aclmocks.MockACLProvider{}
 	mockAclProvider.Reset()
 
-	peer.MockInitialize()
+	ledgerCleanup, err := peer.MockInitialize()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
 
 	mspGetter := func(cid string) []string {
 		return []string{"SampleOrg"}
@@ -216,6 +218,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	return ml, lis, chaincodeSupport, func() {
 		finitPeer(lis, chainIDs...)
 		os.RemoveAll(tempdir)
+		ledgerCleanup()
 	}, nil
 }
 
@@ -228,7 +231,6 @@ func finitPeer(lis net.Listener, chainIDs ...string) {
 		}
 		closeListenerAndSleep(lis)
 	}
-	ledgermgmt.CleanupTestEnv()
 	ledgerPath := config.GetPath("peer.fileSystemPath")
 	os.RemoveAll(ledgerPath)
 	os.RemoveAll(filepath.Join(os.TempDir(), "hyperledger"))

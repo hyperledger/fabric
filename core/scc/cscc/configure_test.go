@@ -35,7 +35,6 @@ import (
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	deliverclient "github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
@@ -218,14 +217,13 @@ func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.Chainc
 func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 
-	viper.Set("peer.fileSystemPath", "/tmp/hyperledgertest/")
 	viper.Set("chaincode.executetimeout", "3s")
-	os.Mkdir("/tmp/hyperledgertest", 0755)
 
-	peer.MockInitialize()
-	ledgermgmt.InitializeTestEnv()
-	defer ledgermgmt.CleanupTestEnv()
-	defer os.RemoveAll("/tmp/hyperledgertest/")
+	cleanup, err := peer.MockInitialize()
+	if err != nil {
+		t.Fatalf("Failed to initialize peer: %s", err)
+	}
+	defer cleanup()
 
 	e := New(mp, mockAclProvider, nil, nil, nil)
 	stub := shim.NewMockStub("PeerConfiger", e)

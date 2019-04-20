@@ -8,10 +8,14 @@ package peer
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
+	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/spf13/viper"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
@@ -85,9 +89,11 @@ func TestInitChain(t *testing.T) {
 }
 
 func TestInitialize(t *testing.T) {
-	peerFSPath, cleanup := setupPeerFS(t)
-	rootFSPath := filepath.Join(peerFSPath, "ledgersData")
-	defer cleanup()
+	rootFSPath, err := ioutil.TempDir("", "ledgersData")
+	if err != nil {
+		t.Fatalf("Failed to create ledger directory: %s", err)
+	}
+	defer os.RemoveAll(rootFSPath)
 
 	Initialize(
 		nil,
@@ -109,9 +115,12 @@ func TestInitialize(t *testing.T) {
 }
 
 func TestCreateChainFromBlock(t *testing.T) {
-	peerFSPath, cleanup := setupPeerFS(t)
-	rootFSPath := filepath.Join(peerFSPath, "ledgersData")
-	defer cleanup()
+	peerFSPath, err := ioutil.TempDir("", "ledgersData")
+	if err != nil {
+		t.Fatalf("Failed to create peer directory: %s", err)
+	}
+	defer os.RemoveAll(peerFSPath)
+	viper.Set("peer.fileSystemPath", peerFSPath)
 
 	Initialize(
 		nil,
@@ -124,9 +133,9 @@ func TestCreateChainFromBlock(t *testing.T) {
 		nil,
 		nil,
 		&ledger.Config{
-			RootFSPath: rootFSPath,
+			RootFSPath: filepath.Join(peerFSPath, "ledgersData"),
 			StateDB: &ledger.StateDB{
-				LevelDBPath: filepath.Join(rootFSPath, "stateleveldb"),
+				LevelDBPath: filepath.Join(peerFSPath, "ledgersData", "stateleveldb"),
 			},
 		},
 	)

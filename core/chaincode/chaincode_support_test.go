@@ -42,7 +42,6 @@ import (
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	cmp "github.com/hyperledger/fabric/core/mocks/peer"
 	"github.com/hyperledger/fabric/core/peer"
@@ -170,7 +169,10 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 	mockAclProvider = &mocks.MockACLProvider{}
 	mockAclProvider.Reset()
 
-	peer.MockInitialize()
+	ledgerCleanup, err := peer.MockInitialize()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	mspGetter := func(cid string) []string {
 		return []string{"SampleOrg"}
@@ -182,7 +184,10 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 	if err != nil {
 		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
 	}
-	cleanup := func() { os.RemoveAll(tempdir) }
+	cleanup := func() {
+		os.RemoveAll(tempdir)
+		ledgerCleanup()
+	}
 
 	ccprovider.SetChaincodesPath(tempdir)
 	ca, _ := tlsgen.NewCA()
@@ -270,7 +275,6 @@ func finitMockPeer(chainIDs ...string) {
 			lgr.Close()
 		}
 	}
-	ledgermgmt.CleanupTestEnv()
 	ledgerPath := config.GetPath("peer.fileSystemPath")
 	os.RemoveAll(ledgerPath)
 	os.RemoveAll(filepath.Join(os.TempDir(), "hyperledger"))
@@ -1139,9 +1143,13 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	}
 
 	// mock a peer ldger for our channel
-	peer.MockInitialize()
+	cleanup, err := peer.MockInitialize()
+	if err != nil {
+		t.Fatalf("Failed to initialize ledger: %s", err)
+	}
+	defer cleanup()
 
-	err := peer.MockCreateChain(chnl)
+	err = peer.MockCreateChain(chnl)
 	if err != nil {
 		t.Fatalf("failed to create Peer Ledger %s", err)
 	}

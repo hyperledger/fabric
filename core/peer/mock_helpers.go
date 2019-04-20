@@ -16,14 +16,15 @@ import (
 )
 
 //MockInitialize resets chains for test env
-func MockInitialize() {
-	ledgermgmt.InitializeTestEnvWithInitializer(
+func MockInitialize() (cleanup func(), err error) {
+	cleanup, err = ledgermgmt.InitializeTestEnvWithInitializer(
 		&ledgermgmt.Initializer{
 			CustomTxProcessors: ConfigTxProcessors,
 		},
 	)
 	chains.list = make(map[string]*chain)
 	chainInitializer = func(string) { return }
+	return cleanup, err
 }
 
 // MockCreateChain used for creating a ledger for a chain for tests

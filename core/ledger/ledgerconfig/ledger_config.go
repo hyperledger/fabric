@@ -7,9 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package ledgerconfig
 
 import (
-	"path/filepath"
-
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/spf13/viper"
 )
 
@@ -22,20 +19,11 @@ func IsCouchDBEnabled() bool {
 	return false
 }
 
-const confPeerFileSystemPath = "peer.fileSystemPath"
-const confLedgersData = "ledgersData"
 const confTotalQueryLimit = "ledger.state.totalQueryLimit"
 const confEnableHistoryDatabase = "ledger.history.enableHistoryDatabase"
 
 var confCollElgProcMaxDbBatchSize = &conf{"ledger.pvtdataStore.collElgProcMaxDbBatchSize", 5000}
 var confCollElgProcDbBatchesInterval = &conf{"ledger.pvtdataStore.collElgProcDbBatchesInterval", 1000}
-
-// GetRootPath returns the filesystem path.
-// All ledger related contents are expected to be stored under this path
-func GetRootPath() string {
-	sysPath := config.GetPath(confPeerFileSystemPath)
-	return filepath.Join(sysPath, confLedgersData)
-}
 
 // GetTotalQueryLimit exposes the totalLimit variable
 func GetTotalQueryLimit() int {
