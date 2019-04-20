@@ -476,9 +476,12 @@ func (cd *ChaincodeData) Endorsement() string {
 	return cd.Escc
 }
 
-// RequiresInit always returns true as this is the legacy form of chaincode.
+// RequiresInit always returns false because chaincodes
+// defined using the legacy lifecycle do not require an
+// explicit initialisation step since Init is invoked as
+// part of the LSCC invocation
 func (cd *ChaincodeData) RequiresInit() bool {
-	return true
+	return false
 }
 
 // implement functions needed from proto.Message for proto's mar/unmarshal functions
