@@ -595,10 +595,16 @@ func serve(args []string) error {
 	)
 
 	if coreConfig.DiscoveryEnabled {
-		registerDiscoveryService(coreConfig, peerServer, policyMgr, &lifecycle.MetadataProvider{
-			ChaincodeInfoProvider:  lifecycleCache,
-			LegacyMetadataProvider: legacyMetadataManager,
-		})
+		registerDiscoveryService(
+			coreConfig,
+			peerServer,
+			policyMgr,
+			lifecycle.NewMetadataProvider(
+				lifecycleCache,
+				legacyMetadataManager,
+				peer.Default,
+			),
+		)
 	}
 
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)

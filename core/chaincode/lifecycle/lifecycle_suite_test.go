@@ -23,6 +23,19 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+//go:generate counterfeiter -o mock/channel_policy_reference_provider.go --fake-name ChannelPolicyReferenceProvider . ChannelPolicyReferenceProvider
+
+//go:generate counterfeiter -o mock/convertible_policy.go --fake-name ConvertiblePolicy . convertiblePolicy
+type convertiblePolicy interface {
+	policies.Policy
+	policies.Converter
+}
+
+//go:generate counterfeiter -o mock/inconvertible_policy.go --fake-name InconvertiblePolicy . inconvertiblePolicy
+type inconvertiblePolicy interface {
+	policies.Policy
+}
+
 //go:generate counterfeiter -o mock/aclprovider.go --fake-name ACLProvider . aclProvider
 type aclProvider interface {
 	aclmgmt.ACLProvider

@@ -14,26 +14,36 @@ import (
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/pkg/errors"
 
+	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("MetadataProvider", func() {
 	var (
-		fakeChaincodeInfoProvider  *mock.ChaincodeInfoProvider
-		fakeLegacyMetadataProvider *mock.LegacyMetadataProvider
-		metadataProvider           *lifecycle.MetadataProvider
+		fakeChaincodeInfoProvider          *mock.ChaincodeInfoProvider
+		fakeLegacyMetadataProvider         *mock.LegacyMetadataProvider
+		fakeChannelPolicyReferenceProvider *mock.ChannelPolicyReferenceProvider
+		fakeConvertedPolicy                *mock.ConvertiblePolicy
+		metadataProvider                   *lifecycle.MetadataProvider
+		ccInfo                             *lifecycle.LocalChaincodeInfo
 	)
 
 	BeforeEach(func() {
 		fakeChaincodeInfoProvider = &mock.ChaincodeInfoProvider{}
-		ccInfo := &lifecycle.LocalChaincodeInfo{
+		ccInfo = &lifecycle.LocalChaincodeInfo{
 			Definition: &lifecycle.ChaincodeDefinition{
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 					Version: "cc-version",
 				},
 				ValidationInfo: &lb.ChaincodeValidationInfo{
-					ValidationParameter: []byte("validation-parameter"),
+					ValidationParameter: protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
+						Type: &peer.ApplicationPolicy_SignaturePolicy{
+							SignaturePolicy: cauthdsl.AcceptAllPolicy,
+						},
+					}),
 				},
 				Collections: &cb.CollectionConfigPackage{},
 			},
@@ -48,19 +58,17 @@ var _ = Describe("MetadataProvider", func() {
 		}
 		fakeLegacyMetadataProvider = &mock.LegacyMetadataProvider{}
 		fakeLegacyMetadataProvider.MetadataReturns(legacyCCMetadata)
-		metadataProvider = &lifecycle.MetadataProvider{
-			ChaincodeInfoProvider:  fakeChaincodeInfoProvider,
-			LegacyMetadataProvider: fakeLegacyMetadataProvider,
-		}
+
+		metadataProvider = lifecycle.NewMetadataProvider(fakeChaincodeInfoProvider, fakeLegacyMetadataProvider, nil)
 	})
 
-	It("returns metadata using the ChaincodeInfoProvider", func() {
+	It("returns metadata using the ChaincodeInfoProvider (SignaturePolicyEnvelope case)", func() {
 		metadata := metadataProvider.Metadata("testchannel", "cc-name", true)
 		Expect(metadata).To(Equal(
 			&chaincode.Metadata{
 				Name:              "cc-name",
 				Version:           "cc-version",
-				Policy:            []byte("validation-parameter"),
+				Policy:            cauthdsl.MarshaledAcceptAllPolicy,
 				CollectionsConfig: &cb.CollectionConfigPackage{},
 			},
 		))
@@ -81,6 +89,119 @@ var _ = Describe("MetadataProvider", func() {
 					CollectionsConfig: &cb.CollectionConfigPackage{},
 				},
 			))
+		})
+	})
+
+	Context("when the policy is bad", func() {
+		BeforeEach(func() {
+			ccInfo.Definition.ValidationInfo.ValidationParameter = []byte{0, 1, 2}
+			fakeChaincodeInfoProvider.ChaincodeInfoReturns(ccInfo, nil)
+		})
+
+		It("returns metadata after providing a reject-all policy", func() {
+			metadata := metadataProvider.Metadata("testchannel", "cc-name", true)
+			Expect(metadata).To(Equal(
+				&chaincode.Metadata{
+					Name:              "cc-name",
+					Version:           "cc-version",
+					Policy:            cauthdsl.MarshaledRejectAllPolicy,
+					CollectionsConfig: &cb.CollectionConfigPackage{},
+				},
+			))
+		})
+	})
+
+	Context("when the policy is of the channel reference type", func() {
+		BeforeEach(func() {
+			ccInfo.Definition.ValidationInfo.ValidationParameter = protoutil.MarshalOrPanic(
+				&peer.ApplicationPolicy{
+					Type: &peer.ApplicationPolicy_ChannelConfigPolicyReference{
+						ChannelConfigPolicyReference: "barf",
+					},
+				})
+			fakeChaincodeInfoProvider.ChaincodeInfoReturns(ccInfo, nil)
+
+			fakeConvertedPolicy = &mock.ConvertiblePolicy{}
+			fakeConvertedPolicy.ConvertReturns(cauthdsl.AcceptAllPolicy, nil)
+
+			fakeChannelPolicyReferenceProvider = &mock.ChannelPolicyReferenceProvider{}
+			fakeChannelPolicyReferenceProvider.NewPolicyReturns(fakeConvertedPolicy, nil)
+			metadataProvider.ChannelPolicyReferenceProvider = fakeChannelPolicyReferenceProvider
+		})
+
+		It("returns metadata after translating the policy", func() {
+			metadata := metadataProvider.Metadata("testchannel", "cc-name", true)
+			Expect(metadata).To(Equal(
+				&chaincode.Metadata{
+					Name:              "cc-name",
+					Version:           "cc-version",
+					Policy:            cauthdsl.MarshaledAcceptAllPolicy,
+					CollectionsConfig: &cb.CollectionConfigPackage{},
+				},
+			))
+		})
+
+		Context("when NewPolicy returns an error", func() {
+			BeforeEach(func() {
+				fakeChannelPolicyReferenceProvider = &mock.ChannelPolicyReferenceProvider{}
+				fakeChannelPolicyReferenceProvider.NewPolicyReturns(nil, errors.New("go away"))
+				metadataProvider.ChannelPolicyReferenceProvider = fakeChannelPolicyReferenceProvider
+			})
+
+			It("returns metadata after providing a reject-all policy", func() {
+				metadata := metadataProvider.Metadata("testchannel", "cc-name", true)
+				Expect(metadata).To(Equal(
+					&chaincode.Metadata{
+						Name:              "cc-name",
+						Version:           "cc-version",
+						Policy:            cauthdsl.MarshaledRejectAllPolicy,
+						CollectionsConfig: &cb.CollectionConfigPackage{},
+					},
+				))
+			})
+		})
+
+		Context("when the policy is not convertible", func() {
+			BeforeEach(func() {
+				fakeChannelPolicyReferenceProvider = &mock.ChannelPolicyReferenceProvider{}
+				fakeChannelPolicyReferenceProvider.NewPolicyReturns(&mock.InconvertiblePolicy{}, nil)
+				metadataProvider.ChannelPolicyReferenceProvider = fakeChannelPolicyReferenceProvider
+			})
+
+			It("returns metadata after providing a reject-all policy", func() {
+				metadata := metadataProvider.Metadata("testchannel", "cc-name", true)
+				Expect(metadata).To(Equal(
+					&chaincode.Metadata{
+						Name:              "cc-name",
+						Version:           "cc-version",
+						Policy:            cauthdsl.MarshaledRejectAllPolicy,
+						CollectionsConfig: &cb.CollectionConfigPackage{},
+					},
+				))
+			})
+		})
+
+		Context("when conversion fails", func() {
+			BeforeEach(func() {
+				fakeConvertedPolicy = &mock.ConvertiblePolicy{}
+				fakeConvertedPolicy.ConvertReturns(nil, errors.New("go away"))
+
+				fakeChannelPolicyReferenceProvider = &mock.ChannelPolicyReferenceProvider{}
+				fakeChannelPolicyReferenceProvider.NewPolicyReturns(fakeConvertedPolicy, nil)
+				metadataProvider.ChannelPolicyReferenceProvider = fakeChannelPolicyReferenceProvider
+			})
+
+			It("returns metadata after providing a reject-all policy", func() {
+				metadata := metadataProvider.Metadata("testchannel", "cc-name", true)
+				Expect(metadata).To(Equal(
+					&chaincode.Metadata{
+						Name:              "cc-name",
+						Version:           "cc-version",
+						Policy:            cauthdsl.MarshaledRejectAllPolicy,
+						CollectionsConfig: &cb.CollectionConfigPackage{},
+					},
+				))
+			})
 		})
 	})
 })
