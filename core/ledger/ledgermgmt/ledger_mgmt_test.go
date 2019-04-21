@@ -8,7 +8,6 @@ package ledgermgmt
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -19,14 +18,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestMain(m *testing.M) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/ledgermgmt")
-	os.Exit(m.Run())
-}
 
 func TestLedgerMgmt(t *testing.T) {
 	// Check for error when creating/opening ledger without initialization.

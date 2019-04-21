@@ -23,7 +23,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/privacyenabledstate")
 	// Disable auto warm to avoid error logs when the couchdb database has been dropped
 	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
 	os.Exit(m.Run())

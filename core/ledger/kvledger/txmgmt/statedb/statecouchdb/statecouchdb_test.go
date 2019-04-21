@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/spf13/viper"
@@ -28,13 +27,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	os.Exit(testMain(m))
-}
-
-func testMain(m *testing.M) int {
-	// Read the core.yaml file for default config.
-	ledgertestutil.SetupCoreYAMLConfig()
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/statedb/statecouchdb")
 	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
 
 	// Switch to CouchDB
@@ -44,7 +36,7 @@ func testMain(m *testing.M) int {
 
 	flogging.ActivateSpec("statecouchdb=debug")
 	//run the actual test
-	return m.Run()
+	os.Exit(m.Run())
 }
 
 func couchDBSetup() (addr string, cleanup func()) {

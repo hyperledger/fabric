@@ -80,7 +80,6 @@ func ResetConfigToDefaultValues() {
 	viper.Set("ledger.history.enableHistoryDatabase", false)
 	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", true)
 	viper.Set("ledger.state.couchDBConfig.warmIndexesAfterNBlocks", 1)
-	viper.Set("peer.fileSystemPath", "/var/hyperledger/production")
 }
 
 // ParseTestParams parses tests params

@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc/lscc"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,8 +45,6 @@ func newEnv(t *testing.T) *env {
 	if err != nil {
 		t.Fatalf("Failed to create root directory: %s", err)
 	}
-	//TODO: remove once last path is set uisng config
-	viper.Set("peer.fileSystemPath", rootPath)
 	env := &env{
 		assert:   assert.New(t),
 		rootPath: rootPath,

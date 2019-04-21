@@ -25,13 +25,11 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("ledgerstorage,pvtdatastorage=debug")
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/core/ledger/ledgerstorage")
 	os.Exit(m.Run())
 }
 

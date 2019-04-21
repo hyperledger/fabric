@@ -17,13 +17,9 @@ limitations under the License.
 package kvledger
 
 import (
-	"math/rand"
+	"io/ioutil"
 	"os"
-	"path/filepath"
-	"strconv"
 	"testing"
-
-	"github.com/spf13/viper"
 )
 
 type testEnv struct {
@@ -32,12 +28,10 @@ type testEnv struct {
 }
 
 func newTestEnv(t testing.TB) *testEnv {
-	path := filepath.Join(
-		os.TempDir(),
-		"fabric",
-		"ledgertests",
-		"kvledger",
-		strconv.Itoa(rand.Int()))
+	path, err := ioutil.TempDir("", "kvtestenv")
+	if err != nil {
+		t.Fatalf("Failed to create ledger directory: %s", err)
+	}
 	return createTestEnv(t, path)
 }
 
@@ -46,7 +40,6 @@ func createTestEnv(t testing.TB, path string) *testEnv {
 		t:    t,
 		path: path}
 	env.cleanup()
-	viper.Set("peer.fileSystemPath", env.path)
 	return env
 }
 

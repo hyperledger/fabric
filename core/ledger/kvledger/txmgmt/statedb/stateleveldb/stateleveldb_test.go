@@ -17,20 +17,13 @@ limitations under the License.
 package stateleveldb
 
 import (
-	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestMain(m *testing.M) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/statedb/stateleveldb")
-	os.Exit(m.Run())
-}
 
 func TestBasicRW(t *testing.T) {
 	env := NewTestVDBEnv(t)
