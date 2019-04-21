@@ -22,13 +22,10 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/integration/runner"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
-	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
-
 	// Switch to CouchDB
 	address, cleanup := couchDBSetup()
 	couchAddress = address
@@ -101,10 +98,8 @@ func TestGetVersion(t *testing.T) {
 }
 
 func TestSmallBatchSize(t *testing.T) {
-	viper.Set("ledger.state.couchDBConfig.maxBatchUpdateSize", 2)
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	defer viper.Set("ledger.state.couchDBConfig.maxBatchUpdateSize", 1000)
 	commontests.TestSmallBatchSize(t, env.DBProvider)
 }
 
@@ -555,9 +550,6 @@ func TestPaginatedQuery(t *testing.T) {
 	_, err = executeQuery(t, db, "ns1", queryString, "", int32(50), returnKeys)
 	assert.NoError(t, err)
 
-	//Set queryLimit to 50
-	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 50)
-
 	// Test explicit paging
 	// Pagesize is 10, so all 28 records should be return in 3 "pages"
 	returnKeys = []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15", "key16"}
@@ -570,9 +562,6 @@ func TestPaginatedQuery(t *testing.T) {
 	_, err = executeQuery(t, db, "ns1", queryString, bookmark, int32(10), returnKeys)
 	assert.NoError(t, err)
 
-	// Set queryLimit to 10
-	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 10)
-
 	// Test implicit paging
 	returnKeys = []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15",
 		"key16", "key17", "key18", "key19", "key20", "key22", "key24", "key25", "key26", "key28", "key29",
@@ -580,16 +569,10 @@ func TestPaginatedQuery(t *testing.T) {
 	_, err = executeQuery(t, db, "ns1", queryString, "", int32(0), returnKeys)
 	assert.NoError(t, err)
 
-	//Set queryLimit to 5
-	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 5)
-
 	// pagesize greater than querysize will execute with implicit paging
 	returnKeys = []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15", "key16"}
 	_, err = executeQuery(t, db, "ns1", queryString, "", int32(10), returnKeys)
 	assert.NoError(t, err)
-
-	// Set queryLimit to 1000
-	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 1000)
 }
 
 func executeQuery(t *testing.T, db statedb.VersionedDB, namespace, query, bookmark string, limit int32, returnKeys []string) (string, error) {

@@ -14,7 +14,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
@@ -351,137 +350,133 @@ func TestQueriesPrivateData(t *testing.T) {
 
 	// ExecuteQuery supported only for CouchDB and
 	// query limits apply for CouchDB range and rich queries only
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	// corner cases for shim batching. currnt shim batch size is 100
+	// this query should return exactly 100 results (no call to Next())
+	f = "query"
+	args = util.ToChaincodeArgs(f, "{\"selector\":{\"color\":\"blue\"}}")
 
-		// corner cases for shim batching. currnt shim batch size is 100
-		// this query should return exactly 100 results (no call to Next())
-		f = "query"
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"color\":\"blue\"}}")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	nextBlockNumber++
 
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", ccID, err)
+		return
+	}
 
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
+	//unmarshal the results
+	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-		assert.NoError(t, err)
+	//check to see if there are 100 values
+	if len(keys) != 100 {
+		t.Fail()
+		t.Logf("Error detected with the rich query, should have returned 100 but returned %v %s", len(keys), keys)
+		return
+	}
+	f = "queryPrivate"
+	args = util.ToChaincodeArgs(f, "c1", "{\"selector\":{\"color\":\"blue\"}}")
 
-		//check to see if there are 100 values
-		if len(keys) != 100 {
-			t.Fail()
-			t.Logf("Error detected with the rich query, should have returned 100 but returned %v %s", len(keys), keys)
-			return
-		}
-		f = "queryPrivate"
-		args = util.ToChaincodeArgs(f, "c1", "{\"selector\":{\"color\":\"blue\"}}")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	nextBlockNumber++
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", ccID, err)
+		return
+	}
 
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
+	//unmarshal the results
+	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-		assert.NoError(t, err)
+	//check to see if there are 100 values
+	if len(keys) != 100 {
+		t.Fail()
+		t.Logf("Error detected with the rich query, should have returned 100 but returned %v %s", len(keys), keys)
+		return
+	}
+	//Reset the query limit to 5
+	viper.Set("ledger.state.queryLimit", 5)
 
-		//check to see if there are 100 values
-		if len(keys) != 100 {
-			t.Fail()
-			t.Logf("Error detected with the rich query, should have returned 100 but returned %v %s", len(keys), keys)
-			return
-		}
-		//Reset the query limit to 5
-		viper.Set("ledger.state.queryLimit", 5)
+	//The following range query for "marble01" to "marble11" should return 5 marbles due to the queryLimit
+	f = "keys"
+	args = util.ToChaincodeArgs(f, "marble001", "marble011")
 
-		//The following range query for "marble01" to "marble11" should return 5 marbles due to the queryLimit
-		f = "keys"
-		args = util.ToChaincodeArgs(f, "marble001", "marble011")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	nextBlockNumber++
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", ccID, err)
+		return
+	}
 
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err := invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
+	//unmarshal the results
+	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
+	//check to see if there are 5 values
+	if len(keys) != 5 {
+		t.Fail()
+		t.Logf("Error detected with the range query, should have returned 5 but returned %v", len(keys))
+		return
+	}
 
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-		assert.NoError(t, err)
-		//check to see if there are 5 values
-		if len(keys) != 5 {
-			t.Fail()
-			t.Logf("Error detected with the range query, should have returned 5 but returned %v", len(keys))
-			return
-		}
+	//Reset the query limit to 10000
+	viper.Set("ledger.state.queryLimit", 10000)
 
-		//Reset the query limit to 10000
-		viper.Set("ledger.state.queryLimit", 10000)
+	//The following rich query for should return 50 marbles
+	f = "query"
+	args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}")
 
-		//The following rich query for should return 50 marbles
-		f = "query"
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	nextBlockNumber++
 
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", ccID, err)
+		return
+	}
 
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
+	//unmarshal the results
+	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-		assert.NoError(t, err)
+	//check to see if there are 50 values
+	//default query limit of 10000 is used, this query is effectively unlimited
+	if len(keys) != 50 {
+		t.Fail()
+		t.Logf("Error detected with the rich query, should have returned 50 but returned %v", len(keys))
+		return
+	}
 
-		//check to see if there are 50 values
-		//default query limit of 10000 is used, this query is effectively unlimited
-		if len(keys) != 50 {
-			t.Fail()
-			t.Logf("Error detected with the rich query, should have returned 50 but returned %v", len(keys))
-			return
-		}
+	//Reset the query limit to 5
+	viper.Set("ledger.state.queryLimit", 5)
 
-		//Reset the query limit to 5
-		viper.Set("ledger.state.queryLimit", 5)
+	//The following rich query should return 5 marbles due to the queryLimit
+	f = "query"
+	args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}")
 
-		//The following rich query should return 5 marbles due to the queryLimit
-		f = "query"
-		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	nextBlockNumber++
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", ccID, err)
+		return
+	}
 
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
-		nextBlockNumber++
-		if err != nil {
-			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
-			return
-		}
+	//unmarshal the results
+	err = json.Unmarshal(retval, &keys)
+	assert.NoError(t, err)
 
-		//unmarshal the results
-		err = json.Unmarshal(retval, &keys)
-		assert.NoError(t, err)
-
-		//check to see if there are 5 values
-		if len(keys) != 5 {
-			t.Fail()
-			t.Logf("Error detected with the rich query, should have returned 5 but returned %v", len(keys))
-			return
-		}
-
+	//check to see if there are 5 values
+	if len(keys) != 5 {
+		t.Fail()
+		t.Logf("Error detected with the rich query, should have returned 5 but returned %v", len(keys))
+		return
 	}
 
 	// modifications for history query

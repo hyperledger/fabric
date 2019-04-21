@@ -10,15 +10,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-//IsCouchDBEnabled exposes the useCouchDB variable
-func IsCouchDBEnabled() bool {
-	stateDatabase := viper.GetString("ledger.state.stateDatabase")
-	if stateDatabase == "CouchDB" {
-		return true
-	}
-	return false
-}
-
 const confTotalQueryLimit = "ledger.state.totalQueryLimit"
 const confEnableHistoryDatabase = "ledger.history.enableHistoryDatabase"
 

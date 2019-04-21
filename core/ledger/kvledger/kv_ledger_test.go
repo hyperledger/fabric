@@ -461,12 +461,10 @@ func testSyncStateDBWithPvtdatastore(t *testing.T) {
 }
 
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
-
-	//call a helper method to load the core.yaml
-	ledgertestutil.SetupCoreYAMLConfig()
-
-	logger.Debugf("TestLedgerWithCouchDbEnabledWithBinaryAndJSONData  IsCouchDBEnabled()value: %v , IsHistoryDBEnabled()value: %v\n",
-		ledgerconfig.IsCouchDBEnabled(), ledgerconfig.IsHistoryDBEnabled())
+	logger.Debugf(
+		"TestLedgerWithCouchDbEnabledWithBinaryAndJSONData  IsHistoryDBEnabled()value: %v\n",
+		ledgerconfig.IsHistoryDBEnabled(),
+	)
 
 	conf, cleanup := testConfig(t)
 	defer cleanup()

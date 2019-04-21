@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/integration/runner"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,7 +48,6 @@ type LevelDBCommonStorageTestEnv struct {
 
 // Init implements corresponding function from interface TestEnv
 func (env *LevelDBCommonStorageTestEnv) Init(t testing.TB) {
-	viper.Set("ledger.state.stateDatabase", "")
 	dbPath, err := ioutil.TempDir("", "cstestenv")
 	if err != nil {
 		t.Fatalf("Failed to create level db storage directory: %s", err)
