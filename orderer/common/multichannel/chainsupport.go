@@ -213,6 +213,16 @@ func (cs *ChainSupport) Append(block *cb.Block) error {
 	return cs.ledgerResources.ReadWriter.Append(block)
 }
 
+//GetCert
+func (cs *ChainSupport) GetCert(hash []byte) ([]byte, error) {
+	return cs.ledgerResources.ReadWriter.GetCert(hash)
+}
+
+//CertExists
+func (cs *ChainSupport) CertExists(hash []byte) (bool, error) {
+	return cs.ledgerResources.ReadWriter.CertExists(hash)
+}
+
 // VerifyBlockSignature verifies a signature of a block.
 // It has an optional argument of a configuration envelope
 // which would make the block verification to use validation rules

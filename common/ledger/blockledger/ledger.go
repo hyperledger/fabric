@@ -40,6 +40,10 @@ type Reader interface {
 	Iterator(startType *ab.SeekPosition) (Iterator, uint64)
 	// Height returns the number of blocks on the ledger
 	Height() uint64
+	//GetCert
+	GetCert(hash []byte) ([]byte, error)
+	//CertExists
+	CertExists(hash []byte) (bool, error)
 }
 
 // Writer allows the caller to modify the ledger

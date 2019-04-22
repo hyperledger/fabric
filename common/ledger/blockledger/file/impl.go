@@ -25,6 +25,11 @@ type FileLedger struct {
 // FileLedgerBlockStore defines the interface to interact with deliver when using a
 // file ledger
 type FileLedgerBlockStore interface {
+	//GetCert getcert from index
+	GetCert(hash []byte) ([]byte, error)
+
+	//CertExists
+	CertExists(hash []byte) (bool, error)
 	AddBlock(block *cb.Block) error
 	GetBlockchainInfo() (*cb.BlockchainInfo, error)
 	RetrieveBlocks(startBlockNumber uint64) (ledger.ResultsIterator, error)
@@ -110,4 +115,14 @@ func (fl *FileLedger) Append(block *cb.Block) error {
 		fl.signal = make(chan struct{})
 	}
 	return err
+}
+
+//GetCert
+func (fl *FileLedger) GetCert(hash []byte) ([]byte, error) {
+	return fl.blockStore.GetCert(hash)
+}
+
+//CertExists
+func (fl *FileLedger) CertExists(hash []byte) (bool, error) {
+	return fl.blockStore.CertExists(hash)
 }

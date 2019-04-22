@@ -54,6 +54,9 @@ type Processor interface {
 	// ClassifyMsg inspects the message header to determine which type of processing is necessary
 	ClassifyMsg(chdr *cb.ChannelHeader) Classification
 
+	// PruneNormalMsg will prune endorser and creator cert with hash
+	PruneNormalMsg(env *cb.Envelope) (pruneEnv *cb.Envelope, err error)
+
 	// ProcessNormalMsg will check the validity of a message based on the current configuration.  It returns the current
 	// configuration sequence number and nil on success, or an error if the message is not valid
 	ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, err error)

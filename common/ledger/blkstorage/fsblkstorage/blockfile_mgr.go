@@ -314,7 +314,8 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 	}
 	//save the index in the database
 	if err = mgr.index.indexBlock(&blockIdxInfo{
-		blockNum: block.Header.Number, blockHash: blockHash,
+		blockData: block.Data,
+		blockNum:  block.Header.Number, blockHash: blockHash,
 		flp: blockFLP, txOffsets: txOffsets, metadata: block.Metadata}); err != nil {
 		return err
 	}
@@ -408,6 +409,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 		}
 
 		//Update the blockIndexInfo with what was actually stored in file system
+		blockIdxInfo.blockData = info.blockData
 		blockIdxInfo.blockHash = info.blockHeader.Hash()
 		blockIdxInfo.blockNum = info.blockHeader.Number
 		blockIdxInfo.flp = &fileLocPointer{fileSuffixNum: blockPlacementInfo.fileNum,
@@ -425,6 +427,25 @@ func (mgr *blockfileMgr) syncIndex() error {
 	}
 	logger.Infof("Finished building index. Last block indexed [%d]", blockIdxInfo.blockNum)
 	return nil
+}
+
+func (mgr *blockfileMgr) GetCert(hash []byte) ([]byte, error) {
+	logger.Debugf("Get Cert len is: %d hash:\n%x", len(hash), hash)
+	val, err := mgr.index.getCert(hash)
+	if err != nil {
+		return nil, err
+	}
+	return val, nil
+}
+
+func (mgr *blockfileMgr) CertExists(hash []byte) (bool, error) {
+	logger.Debugf("CertExists len is: %d hash:\n%x", len(hash), hash)
+	val := []byte{}
+	err := error(nil)
+	if val, err = mgr.GetCert(hash); err != nil {
+		return false, err
+	}
+	return val != nil, nil
 }
 
 func (mgr *blockfileMgr) getBlockchainInfo() *common.BlockchainInfo {

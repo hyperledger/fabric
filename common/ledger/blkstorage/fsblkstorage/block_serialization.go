@@ -24,6 +24,7 @@ import (
 )
 
 type serializedBlockInfo struct {
+	blockData   *common.BlockData
 	blockHeader *common.BlockHeader
 	txOffsets   []*txindexInfo
 	metadata    *common.BlockMetadata
@@ -78,7 +79,7 @@ func extractSerializedBlockInfo(serializedBlockBytes []byte) (*serializedBlockIn
 	if err != nil {
 		return nil, err
 	}
-	_, info.txOffsets, err = extractData(b)
+	info.blockData, info.txOffsets, err = extractData(b)
 	if err != nil {
 		return nil, err
 	}

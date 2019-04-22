@@ -748,16 +748,6 @@ type fileLedgerBlockStore struct {
 	ledger.PeerLedger
 }
 
-//TODO logan whether to add if in peerLedger
-func (flbs fileLedgerBlockStore) GetCert(hash []byte) ([]byte, error) {
-	return nil, nil
-}
-
-//TODO logan whether to add if in peerLedger
-func (flbs fileLedgerBlockStore) CertExists(hash []byte) (bool, error) {
-	return false, nil
-}
-
 func (flbs fileLedgerBlockStore) AddBlock(*common.Block) error {
 	return nil
 }

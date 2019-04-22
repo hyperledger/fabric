@@ -56,6 +56,25 @@ func CreateSystemChannelFilters(chainCreator ChainCreator, ledgerResources chann
 	})
 }
 
+// PruneNormalMsg handles normal messages, rejecting them if they are not bound for the system channel ID
+// with ErrChannelDoesNotExist.
+func (s *SystemChannel) PruneNormalMsg(msg *cb.Envelope) (pruneMsg *cb.Envelope, err error) {
+	channelID, err := utils.ChannelID(msg)
+	if err != nil {
+		return msg, err
+	}
+
+	// For the StandardChannel message processing, we would not check the channel ID,
+	// because the message processor is looked up by channel ID.
+	// However, the system channel message processor is the catch all for messages
+	// which do not correspond to an extant channel, so we must check it here.
+	if channelID != s.support.ChainID() {
+		return msg, ErrChannelDoesNotExist
+	}
+
+	return s.StandardChannel.PruneNormalMsg(msg)
+}
+
 // ProcessNormalMsg handles normal messages, rejecting them if they are not bound for the system channel ID
 // with ErrChannelDoesNotExist.
 func (s *SystemChannel) ProcessNormalMsg(msg *cb.Envelope) (configSeq uint64, err error) {

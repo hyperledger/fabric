@@ -22,6 +22,10 @@ import (
 
 // Ledger captures the methods that are common across the 'PeerLedger', 'OrdererLedger', and 'ValidatedLedger'
 type Ledger interface {
+	//GetCert
+	GetCert(hash []byte) ([]byte, error)
+	//CertExists
+	CertExists(hash []byte) (bool, error)
 	// GetBlockchainInfo returns basic info about blockchain
 	GetBlockchainInfo() (*common.BlockchainInfo, error)
 	// GetBlockByNumber returns block at a given height

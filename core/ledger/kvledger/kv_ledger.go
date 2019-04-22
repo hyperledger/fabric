@@ -215,6 +215,22 @@ func (l *kvLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, 
 	return processedTran, nil
 }
 
+//GetCert
+func (l *kvLedger) GetCert(hash []byte) ([]byte, error) {
+	cert, err := l.blockStore.GetCert(hash)
+	l.blockAPIsRWLock.RLock()
+	defer l.blockAPIsRWLock.RUnlock()
+	return cert, err
+}
+
+//CertExists
+func (l *kvLedger) CertExists(hash []byte) (bool, error) {
+	exist, err := l.blockStore.CertExists(hash)
+	l.blockAPIsRWLock.RLock()
+	defer l.blockAPIsRWLock.RUnlock()
+	return exist, err
+}
+
 // GetBlockchainInfo returns basic info about blockchain
 func (l *kvLedger) GetBlockchainInfo() (*common.BlockchainInfo, error) {
 	bcInfo, err := l.blockStore.GetBlockchainInfo()

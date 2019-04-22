@@ -37,6 +37,16 @@ func newFsBlockStore(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
 	return &fsBlockStore{id, conf, newBlockfileMgr(id, conf, indexConfig, dbHandle)}
 }
 
+// GetCert
+func (store *fsBlockStore) GetCert(hash []byte) ([]byte, error) {
+	return store.fileMgr.GetCert(hash)
+}
+
+// CertExists
+func (store *fsBlockStore) CertExists(hash []byte) (bool, error) {
+	return store.fileMgr.CertExists(hash)
+}
+
 // AddBlock adds a new block
 func (store *fsBlockStore) AddBlock(block *common.Block) error {
 	return store.fileMgr.addBlock(block)

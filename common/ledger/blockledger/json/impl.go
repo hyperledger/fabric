@@ -171,3 +171,15 @@ func (jl *jsonLedger) writeBlock(block *cb.Block) {
 func (jl *jsonLedger) blockFilename(number uint64) string {
 	return filepath.Join(jl.directory, fmt.Sprintf(blockFileFormatString, number))
 }
+
+//GetCert
+func (jl *jsonLedger) GetCert(hash []byte) ([]byte, error) {
+	logger.Errorf("Don't support jsonledger")
+	return nil, nil
+}
+
+//CertExists
+func (jl *jsonLedger) CertExists(hash []byte) (bool, error) {
+	logger.Errorf("Don't support jsonledger")
+	return false, nil
+}

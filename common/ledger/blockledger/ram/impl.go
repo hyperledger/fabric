@@ -182,3 +182,15 @@ func (rl *ramLedger) appendBlock(block *cb.Block) {
 		rl.size--
 	}
 }
+
+//GetCert
+func (rl *ramLedger) GetCert(hash []byte) ([]byte, error) {
+	logger.Errorf("Don't support ramLedger")
+	return nil, nil
+}
+
+//CertExists
+func (rl *ramLedger) CertExists(hash []byte) (bool, error) {
+	logger.Errorf("Don't support ramLedger")
+	return false, nil
+}

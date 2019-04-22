@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package qscc
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strconv"
 
@@ -130,7 +131,13 @@ func getIdentityByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
 		return shim.Error(fmt.Sprintf("Identity hash len should be %d.", util.CERT_HASH_LEN))
 	}
 
-	cert, err := kvledger.GlbCertStore.GetCert(hash)
+	//TODO logan, only for test, remove laterly
+	decoded, err := hex.DecodeString(string(hash))
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Identity hash decode failed len %d.", util.CERT_HASH_LEN))
+	}
+
+	cert, err := kvledger.GlbCertStore.GetCert(decoded)
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to get Identity hash %s, error %s", string(hash), err))
 	}

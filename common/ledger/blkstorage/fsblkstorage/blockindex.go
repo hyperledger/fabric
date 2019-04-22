@@ -14,13 +14,16 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	commonUtil "github.com/hyperledger/fabric/common/util"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
 
 const (
+	txCertHashKeyPrefix            = 'c'
 	blockNumIdxKeyPrefix           = 'n'
 	blockHashIdxKeyPrefix          = 'h'
 	txIDIdxKeyPrefix               = 't'
@@ -34,6 +37,7 @@ var indexCheckpointKey = []byte(indexCheckpointKeyStr)
 var errIndexEmpty = errors.New("NoBlockIndexed")
 
 type index interface {
+	getCert(hash []byte) ([]byte, error)
 	getLastBlockIndexed() (uint64, error)
 	indexBlock(blockIdxInfo *blockIdxInfo) error
 	getBlockLocByHash(blockHash []byte) (*fileLocPointer, error)
@@ -45,6 +49,7 @@ type index interface {
 }
 
 type blockIdxInfo struct {
+	blockData *common.BlockData
 	blockNum  uint64
 	blockHash []byte
 	flp       *fileLocPointer
@@ -167,12 +172,32 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 		}
 	}
 
+	//Store Certs
+	hashCerts, err := exactCertFromBlockData(blockIdxInfo.blockData)
+	if err != nil {
+		logger.Errorf("exactCertFromBlockData encouters err!!")
+		return err
+	}
+	for k, v := range hashCerts {
+		batch.Put([]byte(k), v)
+	}
+
 	batch.Put(indexCheckpointKey, encodeBlockNum(blockIdxInfo.blockNum))
 	// Setting snyc to true as a precaution, false may be an ok optimization after further testing.
 	if err := index.db.WriteBatch(batch, true); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (index *blockIndex) getCert(hash []byte) ([]byte, error) {
+	logger.Debugf("get Cert len is: %d hash:\n%x", len(hash), hash)
+	val, err := index.db.Get(constructCertHashKey(hash))
+	if err != nil {
+		return nil, err
+	}
+
+	return val, nil
 }
 
 func (index *blockIndex) markDuplicateTxids(blockIdxInfo *blockIdxInfo) error {
@@ -295,6 +320,105 @@ func (index *blockIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidati
 	result := peer.TxValidationCode(int32(raw[0]))
 
 	return result, nil
+}
+
+func exactCertFromBlockData(blockData *common.BlockData) (map[string][]byte, error) {
+	hashCert := make(map[string][]byte)
+	for _, tx := range blockData.Data {
+		// get the envelope...
+		env, err := utils.GetEnvelopeFromBlock(tx)
+		if err != nil {
+			logger.Errorf("exactCertFromBlockData error: GetEnvelope failed, err %s", err)
+			return nil, err
+		}
+
+		// ...and the payload...
+		payl, err := utils.GetPayload(env)
+		if err != nil {
+			logger.Errorf("exactCertFromBlockData error: GetPayload failed, err %s", err)
+			return nil, err
+		}
+
+		/*go through env.payload creator  */
+		shdr, err := utils.GetSignatureHeader(payl.Header.SignatureHeader)
+		if err != nil {
+			return nil, err
+		}
+		if len(shdr.Creator) == commonUtil.CERT_HASH_LEN {
+			logger.Debugf("This is a hash of creator:\n%x", shdr.Creator)
+		} else {
+			certHash := commonUtil.ComputeSHA256(shdr.Creator)
+			key := constructCertHashKey(certHash)
+			if _, ok := hashCert[string(key)]; ok {
+				//with the same creator has already been added
+				logger.Debugf("Ignoring duplicated creator,key: %x\n creator:\n%x", key, shdr.Creator)
+			} else {
+				hashCert[string(key)] = shdr.Creator
+				logger.Debugf("This is a creator, key: %x\n creator:\n%x", key, shdr.Creator)
+			}
+		}
+
+		// ...and the transaction...
+		tx, err := utils.GetTransaction(payl.Data)
+		if err != nil {
+			logger.Errorf("exactCertFromBlockData error: GetTransaction failed, err %s", err)
+			return nil, err
+		}
+
+		for _, txPayl := range tx.Actions {
+			/*go through actions creator, currently only one action*/
+			ashdr, err := utils.GetSignatureHeader(txPayl.Header)
+			if err != nil {
+				logger.Errorf("exactCertFromBlockData error: GetSignatureHeader failed, err %s", err)
+				return nil, err
+			}
+			if len(ashdr.Creator) == commonUtil.CERT_HASH_LEN {
+				logger.Debugf("This is a hash of creator:\n%x", ashdr.Creator)
+			} else {
+				certHash := commonUtil.ComputeSHA256(ashdr.Creator)
+				key := constructCertHashKey(certHash)
+				if _, ok := hashCert[string(key)]; ok {
+					//with the same creator has already been added
+					logger.Debugf("Ignoring duplicated creator,key: %x\n creator:\n%x", key, ashdr.Creator)
+				} else {
+					hashCert[string(key)] = ashdr.Creator
+					logger.Debugf("This is a creator, key: %x\n creator:\n%x", key, ashdr.Creator)
+				}
+			}
+
+			/*go through actions endorsers, currently only one action*/
+			cap, err := utils.GetChaincodeActionPayload(txPayl.Payload)
+			if err != nil {
+				logger.Errorf("exactCertFromBlockData error: GetChaincodeActionPayload failed, err %s", err)
+				return nil, err
+			}
+			// loop through each of the endorsements and relace with cert
+			for _, endorsement := range cap.Action.Endorsements {
+
+				if len(endorsement.Endorser) == commonUtil.CERT_HASH_LEN { //hash
+					logger.Debugf("This is a hash of endorser:\n%x", endorsement.Endorser)
+				} else { // a new endorser cert,insert to db
+					certHash := commonUtil.ComputeSHA256(endorsement.Endorser)
+					key := constructCertHashKey(certHash)
+					if _, ok := hashCert[string(key)]; ok {
+						//with the same endorser has already been added
+						logger.Debugf("Ignoring duplicated endorser,key: %x\n endorser:\n%x", key, endorsement.Endorser)
+					} else {
+						hashCert[string(key)] = endorsement.Endorser
+						logger.Debugf("This is a endorser, key: %x\n endorser:\n%x", key, endorsement.Endorser)
+					}
+				}
+			} //end for Action.Endorsements
+
+		} //end for tx.Actions
+
+	} //end for blockData.Data
+
+	return hashCert, nil
+}
+
+func constructCertHashKey(certHash []byte) []byte {
+	return append([]byte{txCertHashKeyPrefix}, certHash...)
 }
 
 func constructBlockNumKey(blockNum uint64) []byte {
