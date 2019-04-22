@@ -80,6 +80,7 @@ func (p *DeployedCCInfoProvider) ChaincodeInfo(channelName, chaincodeName string
 		Hash:                        chaincodeData.Id,
 		Version:                     chaincodeData.Version,
 		ExplicitCollectionConfigPkg: collConfigPkg,
+		IsLegacy:                    true,
 	}, nil
 }
 

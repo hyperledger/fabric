@@ -45,7 +45,9 @@ func TestChaincodeInfo(t *testing.T) {
 
 	ccInfo1, err := ccInfoProvdier.ChaincodeInfo("", "cc1", mockQE)
 	assert.NoError(t, err)
-	assert.Equal(t, cc1, ccInfo1)
+	expectedCCInfo1 := cc1
+	expectedCCInfo1.IsLegacy = true
+	assert.Equal(t, expectedCCInfo1, ccInfo1)
 
 	ccInfo2, err := ccInfoProvdier.ChaincodeInfo("", "cc2", mockQE)
 	assert.NoError(t, err)

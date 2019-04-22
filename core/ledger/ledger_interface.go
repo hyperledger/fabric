@@ -525,6 +525,7 @@ type DeployedChaincodeInfo struct {
 	Version                     string
 	ExplicitCollectionConfigPkg *common.CollectionConfigPackage
 	ImplicitCollections         []*common.StaticCollectionConfig
+	IsLegacy                    bool
 }
 
 // GetAllCollectionsConfigPkg returns a combined collection config pkg that contains both explicit and implicit collections

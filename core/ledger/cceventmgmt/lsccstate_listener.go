@@ -44,6 +44,11 @@ func (listener *KVLedgerLSCCStateListener) HandleStateUpdates(trigger *ledger.St
 		if err != nil {
 			return err
 		}
+		if !deployedCCInfo.IsLegacy {
+			// chaincode defined via new lifecycle, the legacy event mgr should not try to process that
+			// event by trying to match this with a legacy package installed. So, ignoring this event
+			continue
+		}
 		chaincodeDefs = append(chaincodeDefs, &ChaincodeDefinition{
 			Name:              deployedCCInfo.Name,
 			Hash:              deployedCCInfo.Hash,
