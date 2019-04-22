@@ -25,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
@@ -35,23 +34,6 @@ import (
 )
 
 var putilsLogger = flogging.MustGetLogger("protoutils")
-
-func preProcIdenity(hashOrCert []byte) ([]byte, error) {
-	putilsLogger.Debugf("preProcIdenity start")
-	defer putilsLogger.Debugf("preProcIdenity end")
-	//tmp code loganTODO
-	return hashOrCert, nil
-
-	if len(hashOrCert) == util.CERT_HASH_LEN { //hash
-		putilsLogger.Debugf("this is a  hash")
-		return kvledger.GlbCertStore.GetCert(hashOrCert)
-	}
-	key := util.ComputeSHA256(hashOrCert)
-	putilsLogger.Debugf("this is a cert,update db")
-	err := kvledger.GlbCertStore.PutCert(key, hashOrCert)
-
-	return hashOrCert, err
-}
 
 // validateChaincodeProposalMessage checks the validity of a Proposal message of type CHAINCODE
 func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*pb.ChaincodeHeaderExtension, error) {
@@ -184,14 +166,8 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, Chai
 		return errors.Errorf("could not get msp for channel [%s]", ChainID)
 	}
 
-	//loganTODO replace creator with cert
-	validcreator, err := preProcIdenity(creatorBytes)
-	if err != nil {
-		return errors.WithMessage(err, "preProcIdenity error maybe creator invalid")
-	}
-
 	// get the identity of the creator
-	creator, err := mspObj.DeserializeIdentity(validcreator)
+	creator, err := mspObj.DeserializeIdentity(creatorBytes)
 	if err != nil {
 		return errors.WithMessage(err, "MSP error")
 	}
