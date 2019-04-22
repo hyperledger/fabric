@@ -253,43 +253,43 @@ Start the network
 Now we are ready to step through some commands which demonstrate how to use
 private data.
 
- :guilabel:`Try it yourself`
+:guilabel:`Try it yourself`
 
- Before installing, defining, and using the marbles private data chaincode below,
- we need to start the BYFN network. For the sake of this tutorial, we want to
- operate from a known initial state. The following command will kill any active
- or stale docker containers and remove previously generated artifacts.
- Therefore let's run the following command to clean up any previous
- environments:
+Before installing, defining, and using the marbles private data chaincode below,
+we need to start the BYFN network. For the sake of this tutorial, we want to
+operate from a known initial state. The following command will kill any active
+or stale docker containers and remove previously generated artifacts.
+Therefore let's run the following command to clean up any previous
+environments:
 
- .. code:: bash
+.. code:: bash
 
-    cd fabric-samples/first-network
-    ./byfn.sh down
+   cd fabric-samples/first-network
+   ./byfn.sh down
 
 
- If you've already run through this tutorial, you'll also want to delete the
- underlying docker containers for the marbles private data chaincode. Let's
- run the following commands to clean up previous environments:
+If you've already run through this tutorial, you'll also want to delete the
+underlying docker containers for the marbles private data chaincode. Let's run
+the following commands to clean up previous environments:
 
- .. code:: bash
+.. code:: bash
 
-    docker rm -f $(docker ps -a | awk '($2 ~ /dev-peer.*.marblesp.*/) {print $1}')
-    docker rmi -f $(docker images | awk '($1 ~ /dev-peer.*.marblesp.*/) {print $3}')
+   docker rm -f $(docker ps -a | awk '($2 ~ /dev-peer.*.marblesp.*/) {print $1}')
+   docker rmi -f $(docker images | awk '($1 ~ /dev-peer.*.marblesp.*/) {print $3}')
 
- Start up the BYFN network with CouchDB by running the following command:
+Start up the BYFN network with CouchDB by running the following command:
 
- .. code:: bash
+.. code:: bash
 
-    ./byfn.sh up -c mychannel -s couchdb
+   ./byfn.sh up -c mychannel -s couchdb
 
- This will create a simple Fabric network consisting of a single channel named
- ``mychannel`` with two organizations (each maintaining two peer nodes) and an
- ordering service while using CouchDB as the state database. Either LevelDB
- or CouchDB may be used with collections. CouchDB was chosen to demonstrate
- how to use indexes with private data.
+This will create a simple Fabric network consisting of a single channel named
+``mychannel`` with two organizations (each maintaining two peer nodes) and an
+ordering service while using CouchDB as the state database. Either LevelDB or
+CouchDB may be used with collections. CouchDB was chosen to demonstrate how to
+use indexes with private data.
 
- .. note:: For collections to work, it is important to have cross organizational
+.. note:: For collections to work, it is important to have cross organizational
            gossip configured correctly. Refer to our documentation on :doc:`gossip`,
            paying particular attention to the section on "anchor peers". Our tutorial
            does not focus on gossip given it is already configured in the BYFN sample,
@@ -327,78 +327,78 @@ Therefore, the chaincode package has to be installed on four peers:
 After the chaincode is packaged, we can use the `peer lifecycle chaincode install <http://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html#peer-lifecycle-chaincode-install>`__
 command to install the Marbles chaincode on each peer.
 
-  :guilabel:`Try it yourself`
+:guilabel:`Try it yourself`
 
-  Assuming you have started the BYFN network, enter the CLI container.
+Assuming you have started the BYFN network, enter the CLI container:
 
-  .. code:: bash
+.. code:: bash
 
-     docker exec -it cli bash
+    docker exec -it cli bash
 
-  Your command prompt will change to something similar to:
+Your command prompt will change to something similar to:
 
-  .. code:: bash
+.. code:: bash
 
-     bash-4.4#
+    bash-4.4#
 
-  1. Use the following command to package the Marbles private data chaincode from
-     the git repository inside your local container.
+1. Use the following command to package the marbles private data chaincode from
+the git repository inside your local container.
 
-     .. code:: bash
+.. code:: bash
 
-        peer lifecycle chaincode package marblesp.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/ --lang golang --label marblespv1
+    peer lifecycle chaincode package marblesp.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/ --lang golang --label marblespv1
 
-     This command will create a chaincode package named marblesp.tar.gz.
+This command will create a chaincode package named marblesp.tar.gz.
 
-  2. Use the following command to install the chaincode package onto the peer
-     ``peer0.org1.example.com`` in your BYFN network. By default, after starting
-     the BYFN network, the active peer is set to:
-     ``CORE_PEER_ADDRESS=peer0.org1.example.com:7051``:
+2. Use the following command to install the chaincode package onto the peer
+``peer0.org1.example.com`` in your BYFN network. By default, after starting the
+BYFN network, the active peer is set to
+``CORE_PEER_ADDRESS=peer0.org1.example.com:7051``:
 
-     .. code:: bash
+.. code:: bash
 
-        peer lifecycle chaincode install marblesp.tar.gz
+    peer lifecycle chaincode install marblesp.tar.gz
 
-     A successful install command will return the chaincode identifier, similar to
-     the response below:
+A successful install command will return the chaincode identifier, similar to
+the response below:
 
-     .. code:: bash
+.. code:: bash
 
-        2019-03-13 13:48:53.691 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 001 Installed remotely: response:<status:200 payload:"\nEmycc:ebd89878c2bbccf62f68c36072626359376aa83c36435a058d453e8dbfd894cc" >
-        2019-03-13 13:48:53.691 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 002 Chaincode code package identifier: mycc:ebd89878c2bbccf62f68c36072626359376aa83c36435a058d453e8dbfd894cc
+    2019-04-22 19:09:04.336 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 001 Installed remotely: response:<status:200 payload:"\nKmarblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd\022\nmarblespv1" >
+    2019-04-22 19:09:04.336 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 002 Chaincode code package identifier: marblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd
 
-  3. Use the CLI to switch the active peer to the second peer in Org1 and install
-     the chaincode. Copy and paste the following entire block of commands into the
-     CLI container and run them:
+3. Use the CLI to switch the active peer to the second peer in Org1 and install
+the chaincode. Copy and paste the following entire block of commands into the
+CLI container and run them:
 
-     .. code:: bash
+.. code:: bash
 
-        export CORE_PEER_ADDRESS=peer1.org1.example.com:8051
-        peer lifecycle chaincode install marblesp.tar.gz
+    export CORE_PEER_ADDRESS=peer1.org1.example.com:8051
+    peer lifecycle chaincode install marblesp.tar.gz
 
-  4. Use the CLI to switch to Org2. Copy and paste the following block of commands
-     as a group into the peer container and run them all at once:
+4. Use the CLI to switch to Org2. Copy and paste the following block of commands
+as a group into the peer container and run them all at once:
 
-     .. code:: bash
+.. code:: bash
 
-        export CORE_PEER_LOCALMSPID=Org2MSP
-        export PEER0_ORG2_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
-        export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG2_CA
-        export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+    export CORE_PEER_LOCALMSPID=Org2MSP
+    export PEER0_ORG2_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+    export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG2_CA
+    export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
 
-  5. Switch the active peer to the first peer in Org2 and install the chaincode:
+5. Switch the active peer to the first peer in Org2 and install the chaincode:
 
-     .. code:: bash
+.. code:: bash
 
-        export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
-        peer lifecycle chaincode install marblesp.tar.gz
+    export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
+    peer lifecycle chaincode install marblesp.tar.gz
 
-  6. Switch the active peer to the second peer in org2 and install the chaincode:
+6. Switch the active peer to the second peer in org2 and install the chaincode:
 
-     .. code:: bash
+.. code:: bash
 
-        export CORE_PEER_ADDRESS=peer1.org2.example.com:10051
-        peer lifecycle chaincode install marblesp.tar.gz
+    export CORE_PEER_ADDRESS=peer1.org2.example.com:10051
+    peer lifecycle chaincode install marblesp.tar.gz
 
 
 Approve the chaincode definition
@@ -421,80 +421,80 @@ the private data collection definition that accompanies the ``marbles02_private`
 sample, provide the path to the collections JSON file using the
 ``--collections-config`` flag.
 
-  :guilabel:`Try it yourself`
+:guilabel:`Try it yourself`
 
-  Run the following commands inside the CLI container to approve a definition for
-  Org1 and Org2.
+Run the following commands inside the CLI container to approve a definition for
+Org1 and Org2.
 
-  1. Use the following command to query your peer for the package ID of the
-     installed chaincode.
+1. Use the following command to query your peer for the package ID of the
+installed chaincode.
 
-     .. code:: bash
+.. code:: bash
 
-        peer lifecycle chaincode queryinstalled
+    peer lifecycle chaincode queryinstalled
 
-    The command will return the same package identifier as the install command.
-    You should see output similar to the following:
+The command will return the same package identifier as the install command.
+You should see output similar to the following:
 
-    .. code:: bash
+.. code:: bash
 
-       Get installed chaincodes on peer:
-       Package ID: marblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd, Label: marblespv1
-       Package ID: mycc_1:27ef99cb3cbd1b545063f018f3670eddc0d54f40b2660b8f853ad2854c49a0d8, Label: mycc_1
+    Installed chaincodes on peer:
+    Package ID: marblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd, Label: marblespv1
+    Package ID: mycc_1:27ef99cb3cbd1b545063f018f3670eddc0d54f40b2660b8f853ad2854c49a0d8, Label: mycc_1
 
-  2. Declare the package ID as an environment variable. Paste the package ID of
-     marblespv1 returned by the ``peer lifecycle chaincode queryinstalled`` into
-     the command below. The package ID may not be the same for all users, so you
-     need to complete this step using the package ID returned from your console.
+2. Declare the package ID as an environment variable. Paste the package ID of
+marblespv1 returned by the ``peer lifecycle chaincode queryinstalled`` into
+the command below. The package ID may not be the same for all users, so you
+need to complete this step using the package ID returned from your console.
 
-     .. code:: bash
+.. code:: bash
 
-         export CC_PACKAGE_ID=marblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd
+    export CC_PACKAGE_ID=marblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd
 
-  3. Make sure we are running the CLI as Org1. Copy and paste the following block
-     of commands as a group into the peer container and run them all at once:
+3. Make sure we are running the CLI as Org1. Copy and paste the following block
+of commands as a group into the peer container and run them all at once:
 
-     .. code :: bash
+.. code :: bash
 
-        export CORE_PEER_ADDRESS=peer0.org1.example.com:7051
-        export CORE_PEER_LOCALMSPID=Org1MSP
-        export PEER0_ORG1_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-        export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG1_CA
-        export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    export CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+    export CORE_PEER_LOCALMSPID=Org1MSP
+    export PEER0_ORG1_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG1_CA
+    export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 
-  4. Use the following command to approve a definition of the Marbles private data
-     chaincode for Org2. This command includes a path to the collection definition
-     file. The approval is distributed within each organization using gossip, so
-     the command does not need to target every peer within an organization.
+4. Use the following command to approve a definition of the marbles private data
+chaincode for Org1. This command includes a path to the collection definition
+file. The approval is distributed within each organization using gossip, so
+the command does not need to target every peer within an organization.
 
-     .. code:: bash
+.. code:: bash
 
-        export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-        peer lifecycle chaincode approveformyorg --channelID mychannel --name marblesp --version 1.0 --collections-config $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile $ORDERER_CA --waitForEvent
+    export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+    peer lifecycle chaincode approveformyorg --channelID mychannel --name marblesp --version 1.0 --collections-config $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile $ORDERER_CA
 
-     When the command completes successfully you should see something similar to:
+When the command completes successfully you should see something similar to:
 
-     .. code:: bash
+.. code:: bash
 
-        2019-03-18 16:04:09.046 UTC [cli.lifecycle.chaincode] InitCmdFactory -> INFO 001 Retrieved channel (mychannel) orderer endpoint: orderer.example.com:7050
-        2019-03-18 16:04:11.253 UTC [chaincodeCmd] ClientWait -> INFO 002 txid [efba188ca77889cc1c328fc98e0bb12d3ad0abcda3f84da3714471c7c1e6c13c] committed with status (VALID) at
+    2019-03-18 16:04:09.046 UTC [cli.lifecycle.chaincode] InitCmdFactory -> INFO 001 Retrieved channel (mychannel) orderer endpoint: orderer.example.com:7050
+    2019-03-18 16:04:11.253 UTC [chaincodeCmd] ClientWait -> INFO 002 txid [efba188ca77889cc1c328fc98e0bb12d3ad0abcda3f84da3714471c7c1e6c13c] committed with status (VALID) at
 
-  5. Use the CLI to switch to Org2. Copy and paste the following block of commands
-     as a group into the peer container and run them all at once.
+5. Use the CLI to switch to Org2. Copy and paste the following block of commands
+as a group into the peer container and run them all at once.
 
-     .. code:: bash
+.. code:: bash
 
-        export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
-        export CORE_PEER_LOCALMSPID=Org2MSP
-        export PEER0_ORG2_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
-        export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG2_CA
-        export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+    export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
+    export CORE_PEER_LOCALMSPID=Org2MSP
+    export PEER0_ORG2_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+    export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG2_CA
+    export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
 
-  6. You can now approve the chaincode definition for Org2:
+6. You can now approve the chaincode definition for Org2:
 
-     .. code:: bash
+.. code:: bash
 
-        peer lifecycle chaincode approveformyorg --channelID mychannel --name marblesp --version 1.0 --collections-config $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile $ORDERER_CA --waitForEvent
+    peer lifecycle chaincode approveformyorg --channelID mychannel --name marblesp --version 1.0 --collections-config $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile $ORDERER_CA
 
 Commit the chaincode definition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -515,42 +515,42 @@ committed to the channel. Because the marbles private data chaincode contains an
 initiation function, we need to use the `peer chaincode invoke <http://hyperledger-fabric.readthedocs.io/en/master/commands/peerchaincode.html?%20chaincode%20instantiate#peer-chaincode-instantiate>`__ command
 to invoke ``Init()`` before we can use other functions in the chaincode.
 
-  :guilabel:`Try it yourself`
+:guilabel:`Try it yourself`
 
-  1. Run the following commands to commit the definition of the marbles private
-     data chaincode to the BYFN channel ``mychannel``.
+1. Run the following commands to commit the definition of the marbles private
+data chaincode to the BYFN channel ``mychannel``.
 
-    .. code:: bash
+.. code:: bash
 
-       export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-       export ORG1_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-       export ORG2_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
-       peer lifecycle chaincode commit -o orderer.example.com:7050 --channelID mychannel --name marblesp --version 1.0 --sequence 1 --collections-config $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --tls true --cafile $ORDERER_CA --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles $ORG1_CA --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles $ORG2_CA --waitForEvent
+    export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+    export ORG1_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    export ORG2_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+    peer lifecycle chaincode commit -o orderer.example.com:7050 --channelID mychannel --name marblesp --version 1.0 --sequence 1 --collections-config $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --tls true --cafile $ORDERER_CA --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles $ORG1_CA --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles $ORG2_CA
 
-    .. note:: When specifying the value of the ``--collections-config`` flag, you will
-              need to specify the fully qualified path to the collections_config.json file.
-              For example:
+  .. note:: When specifying the value of the ``--collections-config`` flag, you will
+            need to specify the fully qualified path to the collections_config.json file.
+            For example:
 
-              .. code:: bash
+            .. code:: bash
 
                  --collections-config  $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json
 
-    When the commit transaction completes successfully you should see something
-    similar to:
+  When the commit transaction completes successfully you should see something
+  similar to:
 
-      .. code:: bash
+  .. code:: bash
 
-         [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
-         [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default vscc
+      [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
+      [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default vscc
 
-  2. Use the following command to invoke the ``Init`` function to initialize
-     the chaincode:
+2. Use the following command to invoke the ``Init`` function to initialize the
+chaincode:
 
-     .. code:: bash
+.. code:: bash
 
-        peer chaincode invoke -o orderer.example.com:7050 --channelID mychannel --name marblesp --isInit --tls true --cafile $ORDERER_CA --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles $ORG1_CA -c '{"Args":["Init"]}'
+    peer chaincode invoke -o orderer.example.com:7050 --channelID mychannel --name marblesp --isInit --tls true --cafile $ORDERER_CA --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles $ORG1_CA -c '{"Args":["Init"]}'
 
- .. _pd-store-private-data:
+.. _pd-store-private-data:
 
 Store private data
 ------------------
@@ -559,11 +559,11 @@ Acting as a member of Org1, who is authorized to transact with all of the privat
 in the marbles private data sample, switch back to an Org1 peer and
 submit a request to add a marble:
 
- :guilabel:`Try it yourself`
+:guilabel:`Try it yourself`
 
- Copy and paste the following set of commands to the CLI command line.
+Copy and paste the following set of commands to the CLI command line.
 
- .. code:: bash
+.. code:: bash
 
     export CORE_PEER_ADDRESS=peer0.org1.example.com:7051
     export CORE_PEER_LOCALMSPID=Org1MSP
@@ -571,25 +571,25 @@ submit a request to add a marble:
     export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     export PEER0_ORG1_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 
- Invoke the marbles ``initMarble`` function which
- creates a marble with private data ---  name ``marble1`` owned by ``tom`` with a color
- ``blue``, size ``35`` and price of ``99``. Recall that private data **price**
- will be stored separately from the private data **name, owner, color, size**.
- For this reason, the ``initMarble`` function calls the ``PutPrivateData()`` API
- twice to persist the private data, once for each collection. Also note that
- the private data is passed using the ``--transient`` flag. Inputs passed
- as transient data will not be persisted in the transaction in order to keep
- the data private. Transient data is passed as binary data and therefore when
- using CLI it must be base64 encoded. We use an environment variable
- to capture the base64 encoded value, and use ``tr`` command to strip off the
- problematic newline characters that linux base64 command adds.
+Invoke the marbles ``initMarble`` function which
+creates a marble with private data ---  name ``marble1`` owned by ``tom`` with a color
+``blue``, size ``35`` and price of ``99``. Recall that private data **price**
+will be stored separately from the private data **name, owner, color, size**.
+For this reason, the ``initMarble`` function calls the ``PutPrivateData()`` API
+twice to persist the private data, once for each collection. Also note that
+the private data is passed using the ``--transient`` flag. Inputs passed
+as transient data will not be persisted in the transaction in order to keep
+the data private. Transient data is passed as binary data and therefore when
+using CLI it must be base64 encoded. We use an environment variable
+to capture the base64 encoded value, and use ``tr`` command to strip off the
+problematic newline characters that linux base64 command adds.
 
- .. code:: bash
+.. code:: bash
 
    export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
    peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["initMarble"]}'  --transient "{\"marble\":\"$MARBLE\"}"
 
- You should see results similar to:
+You should see results similar to:
 
  ``[chaincodeCmd] chaincodeInvokeOrQuery->INFO 001 Chaincode invoke successful. result: status:200``
 
@@ -665,29 +665,29 @@ function which passes ``collectionMarblePrivateDetails`` as an argument.
 
 Now :guilabel:`Try it yourself`
 
- Query for the ``name, color, size and owner`` private data of ``marble1`` as a member of Org1.
- Note that since queries do not get recorded on the ledger, there is no need to pass
- the marble name as a transient input.
+Query for the ``name, color, size and owner`` private data of ``marble1`` as a member of Org1.
+Note that since queries do not get recorded on the ledger, there is no need to pass
+the marble name as a transient input.
 
- .. code:: bash
+.. code:: bash
 
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarble","marble1"]}'
 
- You should see the following result:
+You should see the following result:
 
- .. code:: bash
+.. code:: bash
 
     {"color":"blue","docType":"marble","name":"marble1","owner":"tom","size":35}
 
- Query for the ``price`` private data of ``marble1`` as a member of Org1.
+Query for the ``price`` private data of ``marble1`` as a member of Org1.
 
- .. code:: bash
+.. code:: bash
 
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarblePrivateDetails","marble1"]}'
 
- You should see the following result:
+You should see the following result:
 
- .. code:: bash
+.. code:: bash
 
     {"docType":"marblePrivateDetails","name":"marble1","price":99}
 
@@ -707,9 +707,9 @@ Switch to a peer in Org2
 From inside the docker container, run the following commands to switch to
 the peer which is unauthorized to access the marbles ``price`` private data.
 
- :guilabel:`Try it yourself`
+:guilabel:`Try it yourself`
 
- .. code:: bash
+.. code:: bash
 
     export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
     export CORE_PEER_LOCALMSPID=Org2MSP
@@ -725,15 +725,15 @@ color, size and owner``) in their side database and can access it using the
 ``readMarble()`` function which is called with the ``collectionMarbles``
 argument.
 
- :guilabel:`Try it yourself`
+:guilabel:`Try it yourself`
 
- .. code:: bash
+.. code:: bash
 
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarble","marble1"]}'
 
- You should see something similar to the following result:
+You should see something similar to the following result:
 
- .. code:: json
+.. code:: json
 
     {"docType":"marble","name":"marble1","color":"blue","size":35,"owner":"tom"}
 
@@ -744,15 +744,15 @@ Peers in Org2 do not have the marbles ``price`` private data in their side datab
 When they try to query for this data, they get back a hash of the key matching
 the public state but will not have the private state.
 
- :guilabel:`Try it yourself`
+:guilabel:`Try it yourself`
 
- .. code:: bash
+.. code:: bash
 
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarblePrivateDetails","marble1"]}'
 
- You should see a result similar to:
+You should see a result similar to:
 
- .. code:: json
+.. code:: json
 
     {"Error":"Failed to get private details for marble1: GET_STATE failed:
     transaction ID: b04adebbf165ddc90b4ab897171e1daa7d360079ac18e65fa15d84ddfebfae90:
@@ -793,12 +793,12 @@ followed by three marble transfers) which adds four new blocks to the chain.
 After the fourth transaction (third marble transfer), we will verify that the
 price private data is purged.
 
- :guilabel:`Try it yourself`
+:guilabel:`Try it yourself`
 
- Switch back to peer0 in Org1 using the following commands. Copy and paste the
- following code block and run it inside your peer container:
+Switch back to peer0 in Org1 using the following commands. Copy and paste the
+following code block and run it inside your peer container:
 
- .. code:: bash
+.. code:: bash
 
     export CORE_PEER_ADDRESS=peer0.org1.example.com:7051
     export CORE_PEER_LOCALMSPID=Org1MSP
@@ -806,17 +806,17 @@ price private data is purged.
     export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     export PEER0_ORG1_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 
- Open a new terminal window and view the private data logs for this peer by
- running the following command:
+Open a new terminal window and view the private data logs for this peer by
+running the following command:
 
- .. code:: bash
+.. code:: bash
 
     docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
 
- You should see results similar to the following. Note the highest block number
- in the list. In the example below, the highest block height is ``4``.
+You should see results similar to the following. Note the highest block number
+in the list. In the example below, the highest block height is ``4``.
 
- .. code:: bash
+.. code:: bash
 
     [pvtdatastorage] func1 -> INFO 023 Purger started: Purging expired private data till block number [0]
     [pvtdatastorage] func1 -> INFO 024 Purger finished
@@ -826,133 +826,133 @@ price private data is purged.
     [kvledger] CommitWithPvtData -> INFO 036 Channel [mychannel]: Committed block [3] with 1 transaction(s)
     [kvledger] CommitWithPvtData -> INFO 03e Channel [mychannel]: Committed block [4] with 1 transaction(s)
 
- Back in the peer container, query for the **marble1** price data by running the
- following command. (A Query does not create a new transaction on the ledger
- since no data is transacted).
+Back in the peer container, query for the **marble1** price data by running the
+following command. (A Query does not create a new transaction on the ledger
+since no data is transacted).
 
- .. code:: bash
+.. code:: bash
 
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarblePrivateDetails","marble1"]}'
 
- You should see results similar to:
+You should see results similar to:
 
- .. code:: bash
+.. code:: bash
 
     {"docType":"marblePrivateDetails","name":"marble1","price":99}
 
- The ``price`` data is still in the private data ledger.
+The ``price`` data is still in the private data ledger.
 
- Create a new **marble2** by issuing the following command. This transaction
- creates a new block on the chain.
+Create a new **marble2** by issuing the following command. This transaction
+creates a new block on the chain.
 
- .. code:: bash
+.. code:: bash
 
     export MARBLE=$(echo -n "{\"name\":\"marble2\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
     peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
 
- Switch back to the Terminal window and view the private data logs for this peer
- again. You should see the block height increase by 1.
+Switch back to the Terminal window and view the private data logs for this peer
+again. You should see the block height increase by 1.
 
- .. code:: bash
+.. code:: bash
 
     docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
 
- Back in the peer container, query for the **marble1** price data again by
- running the following command:
+Back in the peer container, query for the **marble1** price data again by
+running the following command:
 
- .. code:: bash
+.. code:: bash
 
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarblePrivateDetails","marble1"]}'
 
- The private data has not been purged, therefore the results are unchanged from
- previous query:
+The private data has not been purged, therefore the results are unchanged from
+previous query:
 
- .. code:: bash
+.. code:: bash
 
     {"docType":"marblePrivateDetails","name":"marble1","price":99}
 
- Transfer marble2 to "joe" by running the following command. This transaction
- will add a second new block on the chain.
+Transfer marble2 to "joe" by running the following command. This transaction
+will add a second new block on the chain.
 
- .. code:: bash
+.. code:: bash
 
     export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"joe\"}" | base64 | tr -d \\n)
     peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["transferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
 
- Switch back to the Terminal window and view the private data logs for this peer
- again. You should see the block height increase by 1.
+Switch back to the Terminal window and view the private data logs for this peer
+again. You should see the block height increase by 1.
 
- .. code:: bash
+.. code:: bash
 
     docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
 
- Back in the peer container, query for the marble1 price data by running
- the following command:
+Back in the peer container, query for the marble1 price data by running the
+following command:
 
- .. code:: bash
+.. code:: bash
 
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarblePrivateDetails","marble1"]}'
 
- You should still be able to see the price private data.
+You should still be able to see the price private data.
 
- .. code:: bash
+.. code:: bash
 
     {"docType":"marblePrivateDetails","name":"marble1","price":99}
 
- Transfer marble2 to "tom" by running the following command. This transaction
- will create a third new block on the chain.
+Transfer marble2 to "tom" by running the following command. This transaction
+will create a third new block on the chain.
 
- .. code:: bash
+.. code:: bash
 
     export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"tom\"}" | base64 | tr -d \\n)
     peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["transferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
 
- Switch back to the Terminal window and view the private data logs for this peer
- again. You should see the block height increase by 1.
+Switch back to the Terminal window and view the private data logs for this peer
+again. You should see the block height increase by 1.
 
- .. code:: bash
+.. code:: bash
 
     docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
 
- Back in the peer container, query for the marble1 price data by running
- the following command:
+Back in the peer container, query for the marble1 price data by running the
+following command:
 
- .. code:: bash
+.. code:: bash
 
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarblePrivateDetails","marble1"]}'
 
- You should still be able to see the price data.
+You should still be able to see the price data.
 
- .. code:: bash
+.. code:: bash
 
     {"docType":"marblePrivateDetails","name":"marble1","price":99}
 
- Finally, transfer marble2 to "jerry" by running the following command. This
- transaction will create a fourth new block on the chain. The ``price`` private
- data should be purged after this transaction.
+Finally, transfer marble2 to "jerry" by running the following command. This
+transaction will create a fourth new block on the chain. The ``price`` private
+data should be purged after this transaction.
 
- .. code:: bash
+.. code:: bash
 
     export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"jerry\"}" | base64 | tr -d \\n)
     peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["transferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
 
- Switch back to the Terminal window and view the private data logs for this peer
- again. You should see the block height increase by 1.
+Switch back to the Terminal window and view the private data logs for this peer
+again. You should see the block height increase by 1.
 
- .. code:: bash
+.. code:: bash
 
     docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
 
- Back in the peer container, query for the marble1 price data by running the following command:
+Back in the peer container, query for the marble1 price data by running the following command:
 
- .. code:: bash
+.. code:: bash
 
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarblePrivateDetails","marble1"]}'
 
- Because the price data has been purged, you should no longer be able to see
- it. You should see something similar to:
+Because the price data has been purged, you should no longer be able to see it.
+You should see something similar to:
 
- .. code:: bash
+.. code:: bash
 
     Error: endorsement failure during query. response: status:500
     message:"{\"Error\":\"Marble private details does not exist: marble1\"}"
