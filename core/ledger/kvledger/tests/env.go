@@ -113,6 +113,12 @@ func (e *env) initLedgerMgmt() {
 					StateDatabase: "goleveldb",
 					LevelDBPath:   filepath.Join(ledgerPath, "stateLeveldb"),
 				},
+				PrivateData: &ledger.PrivateData{
+					StorePath:       filepath.Join(ledgerPath, "pvtdataStore"),
+					MaxBatchSize:    5000,
+					BatchesInterval: 1000,
+					PurgeInterval:   100,
+				},
 			},
 		},
 	)

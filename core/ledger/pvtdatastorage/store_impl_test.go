@@ -17,9 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +27,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestEmptyStore(t *testing.T) {
-	env := NewTestStoreEnv(t, "TestEmptyStore", nil)
+	env := NewTestStoreEnv(t, "TestEmptyStore", nil, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -50,7 +48,7 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 		},
 	)
 
-	env := NewTestStoreEnv(t, "TestStoreBasicCommitAndRetrieval", btlPolicy)
+	env := NewTestStoreEnv(t, "TestStoreBasicCommitAndRetrieval", btlPolicy, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -164,7 +162,6 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 }
 
 func TestCommitPvtDataOfOldBlocks(t *testing.T) {
-	viper.Set("ledger.pvtdataStore.purgeInterval", 2)
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
 			{"ns-1", "coll-1"}: 3,
@@ -177,7 +174,7 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 			{"ns-4", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, "TestCommitPvtDataOfOldBlocks", btlPolicy)
+	env := NewTestStoreEnv(t, "TestCommitPvtDataOfOldBlocks", btlPolicy, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -394,7 +391,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 			{"ns-3", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, ledgerid, btlPolicy)
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -515,7 +512,6 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 
 func TestStorePurge(t *testing.T) {
 	ledgerid := "TestStorePurge"
-	viper.Set("ledger.pvtdataStore.purgeInterval", 2)
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
 			{"ns-1", "coll-1"}: 1,
@@ -526,7 +522,7 @@ func TestStorePurge(t *testing.T) {
 			{"ns-3", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, ledgerid, btlPolicy)
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	s := env.TestStore
@@ -633,7 +629,7 @@ func TestStoreState(t *testing.T) {
 			{"ns-1", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, "TestStoreState", btlPolicy)
+	env := NewTestStoreEnv(t, "TestStoreState", btlPolicy, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -652,7 +648,7 @@ func TestStoreState(t *testing.T) {
 }
 
 func TestInitLastCommittedBlock(t *testing.T) {
-	env := NewTestStoreEnv(t, "TestStoreState", nil)
+	env := NewTestStoreEnv(t, "TestStoreState", nil, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -674,19 +670,14 @@ func TestInitLastCommittedBlock(t *testing.T) {
 }
 
 func TestCollElgEnabled(t *testing.T) {
-	testCollElgEnabled(t)
-	defaultValBatchSize := ledgerconfig.GetPvtdataStoreCollElgProcMaxDbBatchSize()
-	defaultValInterval := ledgerconfig.GetPvtdataStoreCollElgProcDbBatchesInterval()
-	defer func() {
-		viper.Set("ledger.pvtdataStore.collElgProcMaxDbBatchSize", defaultValBatchSize)
-		viper.Set("ledger.pvtdataStore.collElgProcMaxDbBatchSize", defaultValInterval)
-	}()
-	viper.Set("ledger.pvtdataStore.collElgProcMaxDbBatchSize", 1)
-	viper.Set("ledger.pvtdataStore.collElgProcDbBatchesInterval", 1)
-	testCollElgEnabled(t)
+	conf := pvtDataConf()
+	testCollElgEnabled(t, conf)
+	conf.BatchesInterval = 1
+	conf.MaxBatchSize = 1
+	testCollElgEnabled(t, conf)
 }
 
-func testCollElgEnabled(t *testing.T) {
+func testCollElgEnabled(t *testing.T, conf *ledger.PrivateData) {
 	ledgerid := "TestCollElgEnabled"
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
@@ -696,16 +687,16 @@ func testCollElgEnabled(t *testing.T) {
 			{"ns-2", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, ledgerid, btlPolicy)
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, conf)
 	defer env.Cleanup()
 	assert := assert.New(t)
-	store := env.TestStore
+	testStore := env.TestStore
 
 	// Initial state: eligible for {ns-1:coll-1 and ns-2:coll-1 }
 
 	// no pvt data with block 0
-	assert.NoError(store.Prepare(0, nil, nil))
-	assert.NoError(store.Commit())
+	assert.NoError(testStore.Prepare(0, nil, nil))
+	assert.NoError(testStore.Commit())
 
 	// construct and commit block 1
 	blk1MissingData := make(ledger.TxMissingPvtDataMap)
@@ -716,8 +707,8 @@ func testCollElgEnabled(t *testing.T) {
 	testDataForBlk1 := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1"}),
 	}
-	assert.NoError(store.Prepare(1, testDataForBlk1, blk1MissingData))
-	assert.NoError(store.Commit())
+	assert.NoError(testStore.Prepare(1, testDataForBlk1, blk1MissingData))
+	assert.NoError(testStore.Commit())
 
 	// construct and commit block 2
 	blk2MissingData := make(ledger.TxMissingPvtDataMap)
@@ -727,48 +718,48 @@ func testCollElgEnabled(t *testing.T) {
 	testDataForBlk2 := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 3, []string{"ns-1:coll-1"}),
 	}
-	assert.NoError(store.Prepare(2, testDataForBlk2, blk2MissingData))
-	assert.NoError(store.Commit())
+	assert.NoError(testStore.Prepare(2, testDataForBlk2, blk2MissingData))
+	assert.NoError(testStore.Commit())
 
 	// Retrieve and verify missing data reported
 	// Expected missing data should be only blk1-tx1 (because, the other missing data is marked as ineliigible)
 	expectedMissingPvtDataInfo := make(ledger.MissingPvtDataInfo)
 	expectedMissingPvtDataInfo.Add(1, 1, "ns-1", "coll-1")
 	expectedMissingPvtDataInfo.Add(1, 1, "ns-2", "coll-1")
-	missingPvtDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err := testStore.GetMissingPvtDataInfoForMostRecentBlocks(10)
 	assert.NoError(err)
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
 
 	// Enable eligibility for {ns-1:coll2}
-	store.ProcessCollsEligibilityEnabled(
+	testStore.ProcessCollsEligibilityEnabled(
 		5,
 		map[string][]string{
 			"ns-1": {"coll-2"},
 		},
 	)
-	testutilWaitForCollElgProcToFinish(store)
+	testutilWaitForCollElgProcToFinish(testStore)
 
 	// Retrieve and verify missing data reported
 	// Expected missing data should include newly eiligible collections
 	expectedMissingPvtDataInfo.Add(1, 4, "ns-1", "coll-2")
 	expectedMissingPvtDataInfo.Add(2, 1, "ns-1", "coll-2")
-	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err = testStore.GetMissingPvtDataInfoForMostRecentBlocks(10)
 	assert.NoError(err)
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
 
 	// Enable eligibility for {ns-2:coll2}
-	store.ProcessCollsEligibilityEnabled(6,
+	testStore.ProcessCollsEligibilityEnabled(6,
 		map[string][]string{
 			"ns-2": {"coll-2"},
 		},
 	)
-	testutilWaitForCollElgProcToFinish(store)
+	testutilWaitForCollElgProcToFinish(testStore)
 
 	// Retrieve and verify missing data reported
 	// Expected missing data should include newly eiligible collections
 	expectedMissingPvtDataInfo.Add(1, 4, "ns-2", "coll-2")
 	expectedMissingPvtDataInfo.Add(2, 1, "ns-2", "coll-2")
-	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err = testStore.GetMissingPvtDataInfoForMostRecentBlocks(10)
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
 }
 
@@ -779,7 +770,7 @@ func TestRollBack(t *testing.T) {
 			{"ns-1", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, "TestRollBack", btlPolicy)
+	env := NewTestStoreEnv(t, "TestRollBack", btlPolicy, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore

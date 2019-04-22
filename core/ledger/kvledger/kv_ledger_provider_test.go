@@ -192,6 +192,12 @@ func TestLedgerBackup(t *testing.T) {
 		StateDB: &lgr.StateDB{
 			LevelDBPath: filepath.Join(originalPath, "stateLeveldb"),
 		},
+		PrivateData: &lgr.PrivateData{
+			StorePath:       filepath.Join(originalPath, "pvtdataStore"),
+			MaxBatchSize:    5000,
+			BatchesInterval: 1000,
+			PurgeInterval:   100,
+		},
 	}
 	provider := testutilNewProvider(origConf, t)
 	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
@@ -239,6 +245,12 @@ func TestLedgerBackup(t *testing.T) {
 		RootFSPath: restorePath,
 		StateDB: &lgr.StateDB{
 			LevelDBPath: filepath.Join(restorePath, "stateLeveldb"),
+		},
+		PrivateData: &lgr.PrivateData{
+			StorePath:       filepath.Join(restorePath, "pvtdataStore"),
+			MaxBatchSize:    5000,
+			BatchesInterval: 1000,
+			PurgeInterval:   100,
 		},
 	}
 	provider = testutilNewProvider(restoreConf, t)
@@ -321,6 +333,12 @@ func testConfig(t *testing.T) (conf *lgr.Config, cleanup func()) {
 		RootFSPath: path,
 		StateDB: &lgr.StateDB{
 			LevelDBPath: filepath.Join(path, "stateLeveldb"),
+		},
+		PrivateData: &lgr.PrivateData{
+			StorePath:       filepath.Join(path, "pvtdataStore"),
+			MaxBatchSize:    5000,
+			BatchesInterval: 1000,
+			PurgeInterval:   100,
 		},
 	}
 	cleanup = func() {

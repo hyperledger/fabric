@@ -26,36 +26,6 @@ func GetTotalQueryLimit() int {
 	return totalQueryLimit
 }
 
-// GetPvtdataStorePurgeInterval returns the interval in the terms of number of blocks
-// when the purge for the expired data would be performed
-func GetPvtdataStorePurgeInterval() uint64 {
-	purgeInterval := viper.GetInt("ledger.pvtdataStore.purgeInterval")
-	if purgeInterval <= 0 {
-		purgeInterval = 100
-	}
-	return uint64(purgeInterval)
-}
-
-// GetPvtdataStoreCollElgProcMaxDbBatchSize returns the maximum db batch size for converting
-// the ineligible missing data entries to eligible missing data entries
-func GetPvtdataStoreCollElgProcMaxDbBatchSize() int {
-	collElgProcMaxDbBatchSize := viper.GetInt(confCollElgProcMaxDbBatchSize.Name)
-	if collElgProcMaxDbBatchSize <= 0 {
-		collElgProcMaxDbBatchSize = confCollElgProcMaxDbBatchSize.DefaultVal
-	}
-	return collElgProcMaxDbBatchSize
-}
-
-// GetPvtdataStoreCollElgProcDbBatchesInterval returns the minimum duration (in milliseconds) between writing
-// two consecutive db batches for converting the ineligible missing data entries to eligible missing data entries
-func GetPvtdataStoreCollElgProcDbBatchesInterval() int {
-	collElgProcDbBatchesInterval := viper.GetInt(confCollElgProcDbBatchesInterval.Name)
-	if collElgProcDbBatchesInterval <= 0 {
-		collElgProcDbBatchesInterval = confCollElgProcDbBatchesInterval.DefaultVal
-	}
-	return collElgProcDbBatchesInterval
-}
-
 //IsHistoryDBEnabled exposes the historyDatabase variable
 func IsHistoryDBEnabled() bool {
 	return viper.GetBool(confEnableHistoryDatabase)

@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/willf/bitset"
@@ -27,12 +26,16 @@ var logger = flogging.MustGetLogger("pvtdatastorage")
 
 type provider struct {
 	dbProvider *leveldbhelper.Provider
+	pvtData    *ledger.PrivateData
 }
 
 type store struct {
-	db        *leveldbhelper.DBHandle
-	ledgerid  string
-	btlPolicy pvtdatapolicy.BTLPolicy
+	db              *leveldbhelper.DBHandle
+	ledgerid        string
+	btlPolicy       pvtdatapolicy.BTLPolicy
+	batchesInterval int
+	maxBatchSize    int
+	purgeInterval   uint64
 
 	isEmpty            bool
 	lastCommittedBlock uint64
@@ -106,15 +109,23 @@ type entriesForPvtDataOfOldBlocks struct {
 //////////////////////////////////////////
 
 // NewProvider instantiates a StoreProvider
-func NewProvider(storeDir string) Provider {
-	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: storeDir})
-	return &provider{dbProvider: dbProvider}
+func NewProvider(conf *ledger.PrivateData) Provider {
+	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: conf.StorePath})
+	return &provider{
+		dbProvider: dbProvider,
+		pvtData:    conf,
+	}
 }
 
 // OpenStore returns a handle to a store
 func (p *provider) OpenStore(ledgerid string) (Store, error) {
 	dbHandle := p.dbProvider.GetDBHandle(ledgerid)
-	s := &store{db: dbHandle, ledgerid: ledgerid,
+	s := &store{
+		db:              dbHandle,
+		ledgerid:        ledgerid,
+		batchesInterval: p.pvtData.BatchesInterval,
+		maxBatchSize:    p.pvtData.MaxBatchSize,
+		purgeInterval:   uint64(p.pvtData.PurgeInterval),
 		collElgProcSync: &collElgProcSync{
 			notification: make(chan bool, 1),
 			procComplete: make(chan bool, 1),
@@ -771,7 +782,7 @@ func (s *store) ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap m
 }
 
 func (s *store) performPurgeIfScheduled(latestCommittedBlk uint64) {
-	if latestCommittedBlk%ledgerconfig.GetPvtdataStorePurgeInterval() != 0 {
+	if latestCommittedBlk%s.purgeInterval != 0 {
 		return
 	}
 	go func() {
@@ -830,20 +841,18 @@ func (s *store) retrieveExpiryEntries(minBlkNum, maxBlkNum uint64) ([]*expiryEnt
 }
 
 func (s *store) launchCollElgProc() {
-	maxBatchSize := ledgerconfig.GetPvtdataStoreCollElgProcMaxDbBatchSize()
-	batchesInterval := ledgerconfig.GetPvtdataStoreCollElgProcDbBatchesInterval()
 	go func() {
-		s.processCollElgEvents(maxBatchSize, batchesInterval) // process collection eligibility events when store is opened - in case there is an unprocessed events from previous run
+		s.processCollElgEvents() // process collection eligibility events when store is opened - in case there is an unprocessed events from previous run
 		for {
 			logger.Debugf("Waiting for collection eligibility event")
 			s.collElgProcSync.waitForNotification()
-			s.processCollElgEvents(maxBatchSize, batchesInterval)
+			s.processCollElgEvents()
 			s.collElgProcSync.done()
 		}
 	}()
 }
 
-func (s *store) processCollElgEvents(maxBatchSize, batchesInterval int) {
+func (s *store) processCollElgEvents() {
 	logger.Debugf("Starting to process collection eligibility events")
 	s.purgerLock.Lock()
 	defer s.purgerLock.Unlock()
@@ -879,10 +888,10 @@ func (s *store) processCollElgEvents(maxBatchSize, batchesInterval int) {
 					copy(copyVal, originalVal)
 					batch.Put(encodeMissingDataKey(modifiedKey), copyVal)
 					collEntriesConverted++
-					if batch.Len() > maxBatchSize {
+					if batch.Len() > s.maxBatchSize {
 						s.db.WriteBatch(batch, true)
 						batch = leveldbhelper.NewUpdateBatch()
-						sleepTime := time.Duration(batchesInterval)
+						sleepTime := time.Duration(s.batchesInterval)
 						logger.Infof("Going to sleep for %d milliseconds between batches. Entries for [ns=%s, coll=%s] converted so far = %d",
 							sleepTime, ns, coll, collEntriesConverted)
 						s.purgerLock.Unlock()

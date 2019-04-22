@@ -30,6 +30,18 @@ func ledgerConfig() *ledger.Config {
 	if viper.IsSet("ledger.state.couchDBConfig.maxBatchUpdateSize") {
 		maxBatchUpdateSize = viper.GetInt("ledger.state.couchDBConfig.maxBatchUpdateSize")
 	}
+	collElgProcMaxDbBatchSize := 5000
+	if viper.IsSet("ledger.pvtdataStore.collElgProcMaxDbBatchSize") {
+		collElgProcMaxDbBatchSize = viper.GetInt("ledger.pvtdataStore.collElgProcMaxDbBatchSize")
+	}
+	collElgProcDbBatchesInterval := 1000
+	if viper.IsSet("ledger.pvtdataStore.collElgProcDbBatchesInterval") {
+		collElgProcDbBatchesInterval = viper.GetInt("ledger.pvtdataStore.collElgProcDbBatchesInterval")
+	}
+	purgeInterval := 100
+	if viper.IsSet("ledger.pvtdataStore.purgeInterval") {
+		purgeInterval = viper.GetInt("ledger.pvtdataStore.purgeInterval")
+	}
 
 	rootFSPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "ledgersData")
 	conf := &ledger.Config{
@@ -38,6 +50,12 @@ func ledgerConfig() *ledger.Config {
 			StateDatabase: viper.GetString("ledger.state.stateDatabase"),
 			LevelDBPath:   filepath.Join(rootFSPath, "stateLeveldb"),
 			CouchDB:       &couchdb.Config{},
+		},
+		PrivateData: &ledger.PrivateData{
+			StorePath:       filepath.Join(rootFSPath, "pvtdataStore"),
+			MaxBatchSize:    collElgProcMaxDbBatchSize,
+			BatchesInterval: collElgProcDbBatchesInterval,
+			PurgeInterval:   purgeInterval,
 		},
 	}
 

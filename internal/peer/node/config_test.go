@@ -36,6 +36,12 @@ func TestLedgerConfig(t *testing.T) {
 					LevelDBPath:   "/peerfs/ledgersData/stateLeveldb",
 					CouchDB:       &couchdb.Config{},
 				},
+				PrivateData: &ledger.PrivateData{
+					StorePath:       "/peerfs/ledgersData/pvtdataStore",
+					MaxBatchSize:    5000,
+					BatchesInterval: 1000,
+					PurgeInterval:   100,
+				},
 			},
 		},
 		{
@@ -70,6 +76,12 @@ func TestLedgerConfig(t *testing.T) {
 						RedoLogPath:             "/peerfs/ledgersData/couchdbRedoLogs",
 					},
 				},
+				PrivateData: &ledger.PrivateData{
+					StorePath:       "/peerfs/ledgersData/pvtdataStore",
+					MaxBatchSize:    5000,
+					BatchesInterval: 1000,
+					PurgeInterval:   100,
+				},
 			},
 		},
 		{
@@ -87,6 +99,9 @@ func TestLedgerConfig(t *testing.T) {
 				"ledger.state.couchDBConfig.maxBatchUpdateSize":      600,
 				"ledger.state.couchDBConfig.warmIndexesAfterNBlocks": 5,
 				"ledger.state.couchDBConfig.createGlobalChangesDB":   true,
+				"ledger.pvtdataStore.collElgProcMaxDbBatchSize":      50000,
+				"ledger.pvtdataStore.collElgProcDbBatchesInterval":   10000,
+				"ledger.pvtdataStore.purgeInterval":                  1000,
 			},
 			expected: &ledger.Config{
 				RootFSPath: "/peerfs/ledgersData",
@@ -106,6 +121,12 @@ func TestLedgerConfig(t *testing.T) {
 						CreateGlobalChangesDB:   true,
 						RedoLogPath:             "/peerfs/ledgersData/couchdbRedoLogs",
 					},
+				},
+				PrivateData: &ledger.PrivateData{
+					StorePath:       "/peerfs/ledgersData/pvtdataStore",
+					MaxBatchSize:    50000,
+					BatchesInterval: 10000,
+					PurgeInterval:   1000,
 				},
 			},
 		},

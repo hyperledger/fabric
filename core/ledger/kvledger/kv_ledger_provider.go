@@ -70,7 +70,10 @@ func (p *Provider) Initialize(initializer *ledger.Initializer) error {
 	// initialize the ID store (inventory of chainIds/ledgerIds)
 	idStore := openIDStore(filepath.Join(p.initializer.Config.RootFSPath, "ledgerProvider"))
 	// initialize ledger storage
-	ledgerStoreProvider := ledgerstorage.NewProvider(p.initializer.Config.RootFSPath)
+	ledgerStoreProvider := ledgerstorage.NewProvider(
+		p.initializer.Config.RootFSPath,
+		p.initializer.Config.PrivateData,
+	)
 	// Initialize the history database (index for history of values by key)
 	historydbProvider := historyleveldb.NewHistoryDBProvider(
 		filepath.Join(p.initializer.Config.RootFSPath, "historyLeveldb"),

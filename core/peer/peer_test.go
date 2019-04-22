@@ -110,6 +110,12 @@ func TestInitialize(t *testing.T) {
 			StateDB: &ledger.StateDB{
 				LevelDBPath: filepath.Join(rootFSPath, "stateleveldb"),
 			},
+			PrivateData: &ledger.PrivateData{
+				StorePath:       filepath.Join(rootFSPath, "pvtdataStore"),
+				MaxBatchSize:    5000,
+				BatchesInterval: 1000,
+				PurgeInterval:   100,
+			},
 		},
 	)
 }
@@ -136,6 +142,12 @@ func TestCreateChainFromBlock(t *testing.T) {
 			RootFSPath: filepath.Join(peerFSPath, "ledgersData"),
 			StateDB: &ledger.StateDB{
 				LevelDBPath: filepath.Join(peerFSPath, "ledgersData", "stateleveldb"),
+			},
+			PrivateData: &ledger.PrivateData{
+				StorePath:       filepath.Join(peerFSPath, "ledgersData", "pvtdataStore"),
+				MaxBatchSize:    5000,
+				BatchesInterval: 1000,
+				PurgeInterval:   100,
 			},
 		},
 	)

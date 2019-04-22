@@ -45,8 +45,8 @@ func InitializeExistingTestEnvWithInitializer(initializer *Initializer) (cleanup
 	if initializer.PlatformRegistry == nil {
 		initializer.PlatformRegistry = platforms.NewRegistry(&golang.Platform{})
 	}
+	rootPath, err := ioutil.TempDir("", "ltestenv")
 	if initializer.Config == nil {
-		rootPath, err := ioutil.TempDir("", "ltestenv")
 		if err != nil {
 			return nil, err
 		}
@@ -55,6 +55,17 @@ func InitializeExistingTestEnvWithInitializer(initializer *Initializer) (cleanup
 			StateDB: &ledger.StateDB{
 				LevelDBPath: filepath.Join(rootPath, "stateleveldb"),
 			},
+		}
+	}
+	if initializer.Config.PrivateData == nil {
+		if err != nil {
+			return nil, err
+		}
+		initializer.Config.PrivateData = &ledger.PrivateData{
+			StorePath:       filepath.Join(rootPath, "pvtdataStore"),
+			MaxBatchSize:    5000,
+			BatchesInterval: 1000,
+			PurgeInterval:   100,
 		}
 	}
 	initialize(initializer)

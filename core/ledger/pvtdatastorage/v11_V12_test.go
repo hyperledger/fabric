@@ -15,6 +15,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -39,7 +40,13 @@ func TestV11v12(t *testing.T) {
 			{"marbles_private", "collectionMarblePrivateDetails"}: 0,
 		},
 	)
-	p := NewProvider(filepath.Join(testWorkingDir, "pvtdataStore"))
+	conf := &ledger.PrivateData{
+		StorePath:       filepath.Join(testWorkingDir, "pvtdataStore"),
+		BatchesInterval: 1000,
+		MaxBatchSize:    5000,
+		PurgeInterval:   100,
+	}
+	p := NewProvider(conf)
 	defer p.Close()
 	s, err := p.OpenStore(ledgerid)
 	assert.NoError(t, err)

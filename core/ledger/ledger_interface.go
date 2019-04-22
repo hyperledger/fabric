@@ -34,8 +34,10 @@ type Initializer struct {
 type Config struct {
 	// RootFSPath is the top-level directory where ledger files are stored.
 	RootFSPath string
-	// StateDB represents the configuration for the state database.
+	// StateDB holds the configuration parameters for the state database.
 	StateDB *StateDB
+	// PrivateData holds the configuration parameters for the private data store.
+	PrivateData *PrivateData
 }
 
 // State is a structure used to configure the state parameters for the ledger.
@@ -49,6 +51,21 @@ type StateDB struct {
 	// CouchDB is the configuration for CouchDB.  It is used when StateDatabase
 	// is set to "CouchDB".
 	CouchDB *couchdb.Config
+}
+
+// PrivateData is a structure used to configure a private data storage provider.
+type PrivateData struct {
+	// StorePath is the filesystem path used by the private data store.
+	StorePath string
+	// BatchesInterval is the minimum duration (milliseconds) between batches
+	// for converting ineligible missing data entries into eligible entries.
+	BatchesInterval int
+	// MatchBatchSize is the maximum size of batches when converting ineligible
+	// missing data entries into eligible entries.
+	MaxBatchSize int
+	// PurgeInterval is the number of blocks to wait until purging expired
+	// private data entries.
+	PurgeInterval int
 }
 
 // PeerLedgerProvider provides handle to ledger instances
