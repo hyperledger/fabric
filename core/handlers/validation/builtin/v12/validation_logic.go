@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
@@ -28,6 +29,7 @@ import (
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
@@ -123,6 +125,11 @@ func (vscc *Validator) Validate(
 	if err != nil {
 		return policyErr(err)
 	}
+	signatureSet, err = recoverSigWithEndorser(signatureSet, chdr.ChannelId)
+	if err != nil {
+		logger.Errorf("VSCC error: recoverSigWithEndorser failed, err %s", err)
+		return policyErr(err)
+	}
 
 	// evaluate the signature set against the policy
 	err = vscc.policyEvaluator.Evaluate(policyBytes, signatureSet)
@@ -146,6 +153,27 @@ func (vscc *Validator) Validate(
 	}
 
 	return nil
+}
+
+func recoverSigWithEndorser(sigSets []*common.SignedData, chainID string) ([]*common.SignedData, error) {
+	ledger := peer.GetLedger(chainID)
+	if ledger == nil {
+		return sigSets, errors.Errorf("Invalid chain ID, %s", chainID)
+	}
+
+	for _, sig := range sigSets {
+		if len(sig.Identity) == util.CERT_HASH_LEN { //hash,replace with cert
+			endorserCert, err := ledger.GetCert(sig.Identity)
+			if err != nil || endorserCert == nil {
+				logger.Errorf("Get endorser cert error: %s hash  %x: cert: \n%x", err, sig.Identity, endorserCert)
+				return sigSets, err
+			}
+			logger.Debugf("Do the endorse replace work, hash:\n%x\ncert:\n%x", sig.Identity, endorserCert)
+			sig.Identity = endorserCert
+		}
+	}
+
+	return sigSets, nil
 }
 
 // checkInstantiationPolicy evaluates an instantiation policy against a signed proposal

@@ -221,10 +221,12 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChainID, block.Header.Number)
 
 	//loganTODO  replace block  with cert
-	genErr := v.updateEndorseCertToDB(block)
-	if genErr != nil {
-		return genErr
-	}
+	/*
+		genErr := v.updateEndorseCertToDB(block)
+		if genErr != nil {
+			return genErr
+		}
+	*/
 
 	// Initialize trans as valid here, then set invalidation reason code upon invalidation below
 	txsfltr := ledgerUtil.NewTxValidationFlags(len(block.Data.Data))

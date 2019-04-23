@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/handlers/endorsement/api"
+	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	endorsement3 "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/transientstore"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -187,6 +189,11 @@ func (pe *PluginEndorser) EndorseWithPlugin(ctx Context) (*pb.ProposalResponse, 
 		endorserLogger.Warning("Endorsement with plugin for", ctx, " failed:", err)
 		return nil, errors.WithStack(err)
 	}
+	endorsement, err = pruneEndorser(endorsement, ctx.Channel)
+	if err != nil {
+		endorserLogger.Warning("Endorsement with plugin for ", ctx, " failed:", err)
+		return nil, errors.WithStack(err)
+	}
 
 	resp := &pb.ProposalResponse{
 		Version:     1,
@@ -222,6 +229,27 @@ func (pe *PluginEndorser) getOrCreatePluginChannelMapping(plugin PluginName, pf 
 		pe.pluginChannelMapping[PluginName(plugin)] = endorserChannelMapping
 	}
 	return endorserChannelMapping
+}
+
+func pruneEndorser(endorsement *pb.Endorsement, channel string) (*pb.Endorsement, error) {
+	ledger := peer.GetLedger(channel)
+	if ledger == nil {
+		return endorsement, errors.Errorf("Invalid chain ID, %s", channel)
+	}
+	endorser := endorsement.Endorser
+	idHash := util.ComputeSHA256(endorser)
+	exists, err := ledger.CertExists(idHash)
+	if err != nil {
+		return endorsement, errors.Wrapf(err, "get cert error when endorsing")
+	} else if exists { // cert already exists
+		endorser = idHash
+		endorserLogger.Debugf("prune endorser with hash: %x", idHash)
+	} else { // wo  shouldn't replace here
+		endorserLogger.Debugf("skip prune endorser with hash: %x", idHash)
+	}
+
+	endorsement.Endorser = endorser
+	return endorsement, nil
 }
 
 func proposalResponsePayloadFromContext(ctx Context) ([]byte, error) {

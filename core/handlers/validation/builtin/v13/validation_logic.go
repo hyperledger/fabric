@@ -12,15 +12,18 @@ import (
 
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	. "github.com/hyperledger/fabric/core/common/validation/statebased"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
+	corepeer "github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("vscc")
@@ -127,6 +130,23 @@ func (vscc *Validator) extractValidationArtifacts(
 	if err != nil {
 		err = fmt.Errorf("GetChaincodeAction error %s", err)
 		return nil, err
+	}
+
+	ledger := corepeer.GetLedger(chdr.ChannelId)
+	if ledger == nil {
+		return nil, errors.Errorf("Invalid chain ID, %s", chdr.ChannelId)
+	}
+	// loop through each of the endorsements and build the signature set
+	for _, endorsement := range cap.Action.Endorsements {
+		if len(endorsement.Endorser) == util.CERT_HASH_LEN { //hash,replace with cert
+			endorserCert, err := ledger.GetCert(endorsement.Endorser)
+			if err != nil || endorserCert == nil {
+				logger.Errorf("Get endorser cert error: %s hash %x: cert: \n%x", err, endorsement.Endorser, endorserCert)
+				return nil, err
+			}
+			logger.Debugf("Do the endorse replace work, hash:\n%x\ncert:\n%x", endorsement.Endorser, endorserCert)
+			endorsement.Endorser = endorserCert
+		}
 	}
 
 	return &validationArtifacts{
