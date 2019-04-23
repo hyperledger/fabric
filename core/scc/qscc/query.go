@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -128,7 +127,6 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 func getIdentityByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
 
-	//TODO logan, only for test, remove laterly
 	decoded, err := hex.DecodeString(string(hash))
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Identity hash decode failed len %d.", util.CERT_HASH_LEN))
@@ -138,19 +136,19 @@ func getIdentityByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
 		return shim.Error(fmt.Sprintf("Identity hash len should be %d.", util.CERT_HASH_LEN))
 	}
 
-	cert, err := kvledger.GlbCertStore.GetCert(decoded)
-	if err != nil {
-		return shim.Error(fmt.Sprintf("Failed to get Identity hash %s, error %s", string(hash), err))
-	}
+	/*
+		cert, err := kvledger.GlbCertStore.GetCert(decoded)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("Failed to get Identity hash %s, error %s", string(hash), err))
+		}
+	*/
 
-	fmt.Printf("glb Identity is %x\n", cert)
-
-	cert1, err := vledger.GetCert(decoded)
+	cert, err := vledger.GetCert(decoded)
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to get block Identity hash %s, error %s", string(hash), err))
 	}
 
-	fmt.Printf("block Identity is %x\n", cert1)
+	//fmt.Printf("block Identity is %x\n", cert1)
 
 	return shim.Success(cert)
 }
