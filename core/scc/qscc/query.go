@@ -127,9 +127,6 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 func getIdentityByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
-	if len(hash) != util.CERT_HASH_LEN {
-		return shim.Error(fmt.Sprintf("Identity hash len should be %d.", util.CERT_HASH_LEN))
-	}
 
 	//TODO logan, only for test, remove laterly
 	decoded, err := hex.DecodeString(string(hash))
@@ -137,10 +134,23 @@ func getIdentityByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
 		return shim.Error(fmt.Sprintf("Identity hash decode failed len %d.", util.CERT_HASH_LEN))
 	}
 
+	if len(decoded) != util.CERT_HASH_LEN {
+		return shim.Error(fmt.Sprintf("Identity hash len should be %d.", util.CERT_HASH_LEN))
+	}
+
 	cert, err := kvledger.GlbCertStore.GetCert(decoded)
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to get Identity hash %s, error %s", string(hash), err))
 	}
+
+	fmt.Printf("glb Identity is %x\n", cert)
+
+	cert1, err := vledger.GetCert(decoded)
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed to get block Identity hash %s, error %s", string(hash), err))
+	}
+
+	fmt.Printf("block Identity is %x\n", cert1)
 
 	return shim.Success(cert)
 }
