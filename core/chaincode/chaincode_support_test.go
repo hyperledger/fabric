@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	mc "github.com/hyperledger/fabric/common/mocks/config"
 	mocklgr "github.com/hyperledger/fabric/common/mocks/ledger"
 	mockpeer "github.com/hyperledger/fabric/common/mocks/peer"
 	"github.com/hyperledger/fabric/common/util"
@@ -158,8 +157,12 @@ func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.Chainc
 
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
+	fakeApplicationConfig := &mock.ApplicationConfig{}
+	capabilities := &mock.ApplicationCapabilities{}
+	capabilities.LifecycleV20Returns(false)
+	fakeApplicationConfig.CapabilitiesReturns(capabilities)
 	msi := &cmp.MockSupportImpl{
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     fakeApplicationConfig,
 		GetApplicationConfigBoolRv: true,
 	}
 
@@ -192,9 +195,9 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 	ccprovider.SetChaincodesPath(tempdir)
 	ca, _ := tlsgen.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	config := GlobalConfig()
-	config.StartupTimeout = 10 * time.Second
-	config.ExecuteTimeout = 1 * time.Second
+	globalConfig := GlobalConfig()
+	globalConfig.StartupTimeout = 10 * time.Second
+	globalConfig.ExecuteTimeout = 1 * time.Second
 	pr := platforms.NewRegistry(&golang.Platform{})
 	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
 	ml := &mock.Lifecycle{}
@@ -223,7 +226,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 	mcd.On("RequiresInit").Return(false)
 	ml.On("ChaincodeDefinition", ma.Anything, "calledCC", ma.Anything).Return(mcd, nil)
 	chaincodeSupport := NewChaincodeSupport(
-		config,
+		globalConfig,
 		"0.0.0.0:7052",
 		true,
 		ca.CertBytes(),
