@@ -38,6 +38,8 @@ type Config struct {
 	StateDB *StateDB
 	// PrivateData holds the configuration parameters for the private data store.
 	PrivateData *PrivateData
+	// HistoryDB holds the configuration parameters for the transaction history database.
+	HistoryDB *HistoryDB
 }
 
 // State is a structure used to configure the state parameters for the ledger.
@@ -66,6 +68,11 @@ type PrivateData struct {
 	// PurgeInterval is the number of blocks to wait until purging expired
 	// private data entries.
 	PurgeInterval int
+}
+
+// HistoryDB is a structure used to configure the transaction history database.
+type HistoryDB struct {
+	Enabled bool
 }
 
 // PeerLedgerProvider provides handle to ledger instances

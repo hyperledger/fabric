@@ -70,6 +70,11 @@ func InitializeExistingTestEnvWithInitializer(initializer *Initializer) (cleanup
 			PurgeInterval:   100,
 		}
 	}
+	if initializer.Config.HistoryDB == nil {
+		initializer.Config.HistoryDB = &ledger.HistoryDB{
+			Enabled: true,
+		}
+	}
 	initialize(initializer)
 	cleanup = func() {
 		Close()

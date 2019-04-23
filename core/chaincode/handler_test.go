@@ -2034,102 +2034,112 @@ var _ = Describe("Handler", func() {
 			fakeHistoryQueryExecutor.GetHistoryForKeyReturns(fakeIterator, nil)
 		})
 
-		It("calls GetHistoryForKey on the history query executor", func() {
-			_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
-			Expect(err).NotTo(HaveOccurred())
+		Context("when HistoryQueryExecutor is not nil", func() {
 
-			Expect(fakeHistoryQueryExecutor.GetHistoryForKeyCallCount()).To(Equal(1))
-			ccname, key := fakeHistoryQueryExecutor.GetHistoryForKeyArgsForCall(0)
-			Expect(ccname).To(Equal("cc-instance-name"))
-			Expect(key).To(Equal("history-key"))
-		})
-
-		It("initializes a query context", func() {
-			_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
-			Expect(err).NotTo(HaveOccurred())
-
-			pqr := txContext.GetPendingQueryResult("generated-query-id")
-			Expect(pqr).To(Equal(&chaincode.PendingQueryResult{}))
-			iter := txContext.GetQueryIterator("generated-query-id")
-			Expect(iter).To(Equal(fakeIterator))
-			retCount := txContext.GetTotalReturnCount("generated-query-id")
-			Expect(*retCount).To(Equal(int32(0)))
-		})
-
-		It("builds a query response", func() {
-			_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(fakeQueryResponseBuilder.BuildQueryResponseCallCount()).To(Equal(1))
-			tctx, iter, iterID, _, _ := fakeQueryResponseBuilder.BuildQueryResponseArgsForCall(0)
-			Expect(tctx).To(Equal(txContext))
-			Expect(iter).To(Equal(fakeIterator))
-			Expect(iterID).To(Equal("generated-query-id"))
-		})
-
-		Context("when unmarshalling the request fails", func() {
-			BeforeEach(func() {
-				incomingMessage.Payload = []byte("this-is-a-bogus-payload")
-			})
-
-			It("returns an error", func() {
+			It("calls GetHistoryForKey on the history query executor", func() {
 				_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
-			})
-		})
+				Expect(err).NotTo(HaveOccurred())
 
-		Context("when the history query executor fails", func() {
-			BeforeEach(func() {
-				fakeHistoryQueryExecutor.GetHistoryForKeyReturns(nil, errors.New("pepperoni"))
+				Expect(fakeHistoryQueryExecutor.GetHistoryForKeyCallCount()).To(Equal(1))
+				ccname, key := fakeHistoryQueryExecutor.GetHistoryForKeyArgsForCall(0)
+				Expect(ccname).To(Equal("cc-instance-name"))
+				Expect(key).To(Equal("history-key"))
 			})
 
-			It("returns an error", func() {
+			It("initializes a query context", func() {
 				_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
-				Expect(err).To(MatchError("pepperoni"))
-			})
-		})
-
-		Context("when building the query response fails", func() {
-			BeforeEach(func() {
-				fakeQueryResponseBuilder.BuildQueryResponseReturns(nil, errors.New("mushrooms"))
-			})
-
-			It("returns an error", func() {
-				_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
-				Expect(err).To(MatchError("mushrooms"))
-			})
-
-			It("cleans up the query context", func() {
-				handler.HandleGetHistoryForKey(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
 
 				pqr := txContext.GetPendingQueryResult("generated-query-id")
-				Expect(pqr).To(BeNil())
+				Expect(pqr).To(Equal(&chaincode.PendingQueryResult{}))
 				iter := txContext.GetQueryIterator("generated-query-id")
-				Expect(iter).To(BeNil())
+				Expect(iter).To(Equal(fakeIterator))
 				retCount := txContext.GetTotalReturnCount("generated-query-id")
-				Expect(retCount).To(BeNil())
+				Expect(*retCount).To(Equal(int32(0)))
+			})
+
+			It("builds a query response", func() {
+				_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeQueryResponseBuilder.BuildQueryResponseCallCount()).To(Equal(1))
+				tctx, iter, iterID, _, _ := fakeQueryResponseBuilder.BuildQueryResponseArgsForCall(0)
+				Expect(tctx).To(Equal(txContext))
+				Expect(iter).To(Equal(fakeIterator))
+				Expect(iterID).To(Equal("generated-query-id"))
+			})
+
+			Context("when unmarshalling the request fails", func() {
+				BeforeEach(func() {
+					incomingMessage.Payload = []byte("this-is-a-bogus-payload")
+				})
+
+				It("returns an error", func() {
+					_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
+					Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				})
+			})
+
+			Context("when the history query executor fails", func() {
+				BeforeEach(func() {
+					fakeHistoryQueryExecutor.GetHistoryForKeyReturns(nil, errors.New("pepperoni"))
+				})
+
+				It("returns an error", func() {
+					_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
+					Expect(err).To(MatchError("pepperoni"))
+				})
+			})
+
+			Context("when building the query response fails", func() {
+				BeforeEach(func() {
+					fakeQueryResponseBuilder.BuildQueryResponseReturns(nil, errors.New("mushrooms"))
+				})
+
+				It("returns an error", func() {
+					_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
+					Expect(err).To(MatchError("mushrooms"))
+				})
+
+				It("cleans up the query context", func() {
+					handler.HandleGetHistoryForKey(incomingMessage, txContext)
+
+					pqr := txContext.GetPendingQueryResult("generated-query-id")
+					Expect(pqr).To(BeNil())
+					iter := txContext.GetQueryIterator("generated-query-id")
+					Expect(iter).To(BeNil())
+					retCount := txContext.GetTotalReturnCount("generated-query-id")
+					Expect(retCount).To(BeNil())
+				})
+			})
+
+			Context("when marshaling the query response fails", func() {
+				BeforeEach(func() {
+					fakeQueryResponseBuilder.BuildQueryResponseReturns(nil, nil)
+				})
+
+				It("returns an error", func() {
+					_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
+					Expect(err).To(MatchError("marshal failed: proto: Marshal called with nil"))
+				})
+
+				It("cleans up the query context", func() {
+					handler.HandleGetHistoryForKey(incomingMessage, txContext)
+
+					pqr := txContext.GetPendingQueryResult("generated-query-id")
+					Expect(pqr).To(BeNil())
+					iter := txContext.GetQueryIterator("generated-query-id")
+					Expect(iter).To(BeNil())
+					retCount := txContext.GetTotalReturnCount("generated-query-id")
+					Expect(retCount).To(BeNil())
+				})
 			})
 		})
 
-		Context("when marshaling the query response fails", func() {
-			BeforeEach(func() {
-				fakeQueryResponseBuilder.BuildQueryResponseReturns(nil, nil)
-			})
-
+		Context("when HistoryQueryExecutor is nil", func() {
 			It("returns an error", func() {
-				_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
-				Expect(err).To(MatchError("marshal failed: proto: Marshal called with nil"))
-			})
-
-			It("cleans up the query context", func() {
-				handler.HandleGetHistoryForKey(incomingMessage, txContext)
-
-				pqr := txContext.GetPendingQueryResult("generated-query-id")
-				Expect(pqr).To(BeNil())
-				iter := txContext.GetQueryIterator("generated-query-id")
-				Expect(iter).To(BeNil())
-				retCount := txContext.GetTotalReturnCount("generated-query-id")
-				Expect(retCount).To(BeNil())
+				_, err := handler.HandleGetHistoryForKey(incomingMessage, &chaincode.TransactionContext{})
+				Expect(err).To(MatchError("history database is not enabled"))
 			})
 		})
 	})

@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,7 +46,6 @@ type levelDBLockBasedHistoryEnv struct {
 }
 
 func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
-	viper.Set("ledger.history.enableHistoryDatabase", "true")
 	testLedgerID := "TestLedger"
 
 	blockStorageTestEnv := newBlockStorageTestEnv(t)

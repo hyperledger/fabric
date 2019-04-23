@@ -16,21 +16,33 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
 	ledgertestutil.SetupCoreYAMLConfig()
 	flogging.ActivateSpec("lockbasedtxmgr,statevalidator,valimpl,confighistory,pvtstatepurgemgmt=debug")
-	viper.Set("ledger.history.enableHistoryDatabase", true)
 	os.Exit(m.Run())
+}
+
+func TestKVLedgerNilHistoryDBProvider(t *testing.T) {
+	kvl := &kvLedger{}
+	qe, err := kvl.NewHistoryQueryExecutor()
+	assert.Nil(
+		t,
+		qe,
+		"NewHistoryQueryExecutor should return nil when history db provider is nil",
+	)
+	assert.NoError(
+		t,
+		err,
+		"NewHistoryQueryExecutor should return an error when history db provider is nil",
+	)
 }
 
 func TestKVLedgerBlockStorage(t *testing.T) {
@@ -461,11 +473,6 @@ func testSyncStateDBWithPvtdatastore(t *testing.T) {
 }
 
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
-	logger.Debugf(
-		"TestLedgerWithCouchDbEnabledWithBinaryAndJSONData  IsHistoryDBEnabled()value: %v\n",
-		ledgerconfig.IsHistoryDBEnabled(),
-	)
-
 	conf, cleanup := testConfig(t)
 	defer cleanup()
 	//TODO: remove once config wiring is complete
@@ -550,7 +557,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	assert.True(t, proto.Equal(b2, block2), "proto messages are not equal")
 
 	//Similar test has been pushed down to historyleveldb_test.go as well
-	if ledgerconfig.IsHistoryDBEnabled() == true {
+	if conf.HistoryDB.Enabled {
 		logger.Debugf("History is enabled\n")
 		qhistory, err := ledger.NewHistoryQueryExecutor()
 		assert.NoError(t, err, "Error when trying to retrieve history database executor")

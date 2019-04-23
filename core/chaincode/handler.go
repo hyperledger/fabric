@@ -912,6 +912,9 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 
 // Handles query to ledger history db
 func (h *Handler) HandleGetHistoryForKey(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	if txContext.HistoryQueryExecutor == nil {
+		return nil, errors.New("history database is not enabled")
+	}
 	iterID := h.UUIDGenerator.New()
 	namespaceID := txContext.NamespaceID
 

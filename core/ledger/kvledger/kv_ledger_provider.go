@@ -69,37 +69,39 @@ func (p *Provider) Initialize(initializer *ledger.Initializer) error {
 	p.initializer = initializer
 	// initialize the ID store (inventory of chainIds/ledgerIds)
 	idStore := openIDStore(filepath.Join(p.initializer.Config.RootFSPath, "ledgerProvider"))
+	p.idStore = idStore
 	// initialize ledger storage
 	ledgerStoreProvider := ledgerstorage.NewProvider(
 		p.initializer.Config.RootFSPath,
 		p.initializer.Config.PrivateData,
 	)
-	// Initialize the history database (index for history of values by key)
-	historydbProvider := historyleveldb.NewHistoryDBProvider(
-		filepath.Join(p.initializer.Config.RootFSPath, "historyLeveldb"),
-	)
+	p.ledgerStoreProvider = ledgerStoreProvider
+	if initializer.Config.HistoryDB.Enabled {
+		// Initialize the history database (index for history of values by key)
+		historydbProvider := historyleveldb.NewHistoryDBProvider(
+			filepath.Join(p.initializer.Config.RootFSPath, "historyLeveldb"),
+		)
+		p.historydbProvider = historydbProvider
+	}
 	// initialize config history for chaincode
 	configHistoryMgr := confighistory.NewMgr(
 		filepath.Join(p.initializer.Config.RootFSPath, "configHistory"),
 		initializer.DeployedChaincodeInfoProvider,
 	)
+	p.configHistoryMgr = configHistoryMgr
 	// initialize the collection eligibility notifier
 	collElgNotifier := &collElgNotifier{
 		initializer.DeployedChaincodeInfoProvider,
 		initializer.MembershipInfoProvider,
 		make(map[string]collElgListener),
 	}
+	p.collElgNotifier = collElgNotifier
 	// initialize the state listeners
 	stateListeners := initializer.StateListeners
 	stateListeners = append(stateListeners, collElgNotifier)
 	stateListeners = append(stateListeners, configHistoryMgr)
-
-	p.idStore = idStore
-	p.ledgerStoreProvider = ledgerStoreProvider
-	p.historydbProvider = historydbProvider
-	p.configHistoryMgr = configHistoryMgr
 	p.stateListeners = stateListeners
-	p.collElgNotifier = collElgNotifier
+
 	p.bookkeepingProvider = bookkeeping.NewProvider(
 		filepath.Join(p.initializer.Config.RootFSPath, "bookkeeper"),
 	)
@@ -183,16 +185,24 @@ func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 	}
 
 	// Get the history database (index for history of values by key) for a chain/ledger
-	historyDB, err := p.historydbProvider.GetDBHandle(ledgerID)
-	if err != nil {
-		return nil, err
+	var historyDB historydb.HistoryDB
+	if p.historydbProvider != nil {
+		historyDB, err = p.historydbProvider.GetDBHandle(ledgerID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying data stores
 	// (id store, blockstore, state database, history database)
 	l, err := newKVLedger(
-		ledgerID, blockStore, vDB, historyDB, p.configHistoryMgr,
-		p.stateListeners, p.bookkeepingProvider,
+		ledgerID,
+		blockStore,
+		vDB,
+		historyDB,
+		p.configHistoryMgr,
+		p.stateListeners,
+		p.bookkeepingProvider,
 		p.initializer.DeployedChaincodeInfoProvider,
 		p.stats.ledgerStats(ledgerID),
 	)
@@ -217,9 +227,11 @@ func (p *Provider) Close() {
 	p.idStore.close()
 	p.ledgerStoreProvider.Close()
 	p.vdbProvider.Close()
-	p.historydbProvider.Close()
 	p.bookkeepingProvider.Close()
 	p.configHistoryMgr.Close()
+	if p.historydbProvider != nil {
+		p.historydbProvider.Close()
+	}
 }
 
 // recoverUnderConstructionLedger checks whether the under construction flag is set - this would be the case
