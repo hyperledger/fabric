@@ -406,6 +406,7 @@ func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabili
 			putilsLogger.Errorf("GetCert from db with hash:%s\n returns err %s", hex.EncodeToString(shdr.Creator), err)
 			return nil, pb.TxValidationCode_BAD_CREATOR_SIGNATURE
 		}
+		putilsLogger.Errorf("GetCert from db with hash:%s\n cert: %s", hex.EncodeToString(shdr.Creator), hex.EncodeToString(cert))
 		shdr.Creator = cert
 		payloadHeader := utils.MakePayloadHeader(chdr, shdr)
 		payload = &common.Payload{Header: payloadHeader, Data: payload.Data}

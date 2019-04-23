@@ -103,25 +103,28 @@ func (s *StandardChannel) PruneNormalMsg(msg *cb.Envelope) (*cb.Envelope, error)
 
 	//we only prune normal endorse msg
 	if cb.HeaderType(chdr.Type) != cb.HeaderType_ENDORSER_TRANSACTION {
+		logger.Debugf("skip prune this tx with type: %d", chdr.Type)
 		return msg, nil
 	}
 
 	shdr, err := utils.GetSignatureHeader(payload.Header.SignatureHeader)
-	if err != nil {
+	if err != nil || shdr.Creator == nil {
 		return msg, err
 	}
 
 	if len(shdr.Creator) == util.CERT_HASH_LEN { //already hash,no need prune
-		logger.Debugf("this is a  hash of creator")
+		logger.Debugf("this is a  hash of creator, no need prune")
 		return msg, nil
 	}
 	hash := util.ComputeSHA256(shdr.Creator)
 	exists, err := s.support.CertExists(hash)
-	if err != nil || !exists {
+	if err != nil {
 		return msg, err
-	} else if exists { // cert already exists
+	} else if !exists {
+		logger.Debugf("this is a  creator, but cert does not exist")
+	} else { // cert already exists
 		//do replace work
-		logger.Debugf("replace transaction  with creator hash: %s\n", hex.EncodeToString(hash))
+		logger.Debugf("replace transaction  with creator hash: %s", hex.EncodeToString(hash))
 		newShdr := shdr
 		newShdr.Creator = hash
 		payloadHeader := utils.MakePayloadHeader(chdr, newShdr)
