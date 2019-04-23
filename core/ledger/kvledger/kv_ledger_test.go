@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -25,7 +24,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	ledgertestutil.SetupCoreYAMLConfig()
 	flogging.ActivateSpec("lockbasedtxmgr,statevalidator,valimpl,confighistory,pvtstatepurgemgmt=debug")
 	os.Exit(m.Run())
 }

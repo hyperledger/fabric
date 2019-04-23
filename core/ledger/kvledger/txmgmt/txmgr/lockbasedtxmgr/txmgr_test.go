@@ -24,7 +24,6 @@ import (
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -1400,7 +1399,6 @@ func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 	txMgr := testEnv.getTxMgr()
 	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr), []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
 
-	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns.coll", ledgerid), 1)
 	bg, _ := testutil.NewBlockGenerator(t, ledgerid, false)
 
 	blkAndPvtdata := prepareNextBlockForTest(t, txMgr, bg, "txid-1",
