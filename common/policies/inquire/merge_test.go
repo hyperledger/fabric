@@ -131,6 +131,14 @@ func TestMergeWithPlurality(t *testing.T) {
 	assert.Equal(t, expected, merged)
 }
 
+func TestMergeSubsetPrincipalSets(t *testing.T) {
+	member1And2 := ComparablePrincipalSets{ComparablePrincipalSet{member1, member2}}
+	member1Or2 := ComparablePrincipalSets{ComparablePrincipalSet{member1}, ComparablePrincipalSet{member2}}
+	merged := Merge(member1And2, member1Or2)
+	expected := member1And2
+	assert.True(t, expected.IsEqual(merged))
+}
+
 func TestIsSubset(t *testing.T) {
 	members12 := ComparablePrincipalSet{member1, member2, member2}
 	members321 := ComparablePrincipalSet{member3, member2, member1}
