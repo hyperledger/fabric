@@ -121,13 +121,8 @@ func (vscc *Validator) Validate(
 		return policyErr(err)
 	}
 
-	signatureSet, err := vscc.deduplicateIdentity(cap)
+	signatureSet, err := vscc.deduplicateIdentity(cap, chdr.ChannelId)
 	if err != nil {
-		return policyErr(err)
-	}
-	signatureSet, err = recoverSigWithEndorser(signatureSet, chdr.ChannelId)
-	if err != nil {
-		logger.Errorf("VSCC error: recoverSigWithEndorser failed, err %s", err)
 		return policyErr(err)
 	}
 
@@ -153,27 +148,6 @@ func (vscc *Validator) Validate(
 	}
 
 	return nil
-}
-
-func recoverSigWithEndorser(sigSets []*common.SignedData, chainID string) ([]*common.SignedData, error) {
-	ledger := peer.GetLedger(chainID)
-	if ledger == nil {
-		return sigSets, errors.Errorf("Invalid chain ID, %s", chainID)
-	}
-
-	for _, sig := range sigSets {
-		if len(sig.Identity) == util.CERT_HASH_LEN { //hash,replace with cert
-			endorserCert, err := ledger.GetCert(sig.Identity)
-			if err != nil || endorserCert == nil {
-				logger.Errorf("Get endorser cert error: %s hash  %x: cert: \n%x", err, sig.Identity, endorserCert)
-				return sigSets, err
-			}
-			logger.Debugf("Do the endorse replace work, hash:\n%x\ncert:\n%x", sig.Identity, endorserCert)
-			sig.Identity = endorserCert
-		}
-	}
-
-	return sigSets, nil
 }
 
 // checkInstantiationPolicy evaluates an instantiation policy against a signed proposal
@@ -762,15 +736,28 @@ func (vscc *Validator) getInstantiatedCC(chid, ccid string) (cd *ccprovider.Chai
 	return
 }
 
-func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*common.SignedData, error) {
+func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload, chainID string) ([]*common.SignedData, error) {
 	// this is the first part of the signed message
 	prespBytes := cap.Action.ProposalResponsePayload
 
 	// build the signature set for the evaluation
 	signatureSet := []*common.SignedData{}
 	signatureMap := make(map[string]struct{})
+	ledger := peer.GetLedger(chainID)
+	if ledger == nil {
+		return nil, errors.Errorf("Invalid chain ID, %s", chainID)
+	}
 	// loop through each of the endorsements and build the signature set
 	for _, endorsement := range cap.Action.Endorsements {
+		if len(endorsement.Endorser) == util.CERT_HASH_LEN { //hash,replace with cert
+			endorserCert, err := ledger.GetCert(endorsement.Endorser)
+			if err != nil || endorserCert == nil {
+				logger.Errorf("Get endorser cert error: %s hash %x: cert: \n%x", err, endorsement.Endorser, endorserCert)
+				return nil, err
+			}
+			logger.Debugf("Do the endorse replace work, hash:\n%x\ncert:\n%x", endorsement.Endorser, endorserCert)
+			endorsement.Endorser = endorserCert
+		}
 		//unmarshal endorser bytes
 		serializedIdentity := &msp.SerializedIdentity{}
 		if err := proto.Unmarshal(endorsement.Endorser, serializedIdentity); err != nil {
