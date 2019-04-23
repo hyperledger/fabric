@@ -47,6 +47,6 @@ message BlockMetadata {
     // Carries the Raft ID value that will be assigned
     // to the next OSN that will join this cluster.
     uint64 next_consenter_id = 2;
-    // Raft cluster configurations count
+    // Index of etcd/raft entry for current block.
     uint64 raft_index = 3;
 }
