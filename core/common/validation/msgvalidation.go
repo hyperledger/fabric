@@ -412,7 +412,7 @@ func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabili
 	}
 
 	// validate the signature in the envelope
-	err = checkSignatureFromCreator(shdr.Creator, e.Signature, e.Payload, chdr.ChannelId)
+	err = checkSignatureFromCreator(shdr.Creator, e.Signature, utils.MarshalOrPanic(payload), chdr.ChannelId)
 	if err != nil {
 		putilsLogger.Errorf("checkSignatureFromCreator returns err %s", err)
 		return nil, pb.TxValidationCode_BAD_CREATOR_SIGNATURE
