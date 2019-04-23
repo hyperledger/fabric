@@ -175,7 +175,7 @@ func (bh *Handler) ProcessMessage(msg *cb.Envelope, addr string) (resp *ab.Broad
 
 		pruneMsg, err := processor.PruneNormalMsg(msg)
 		if err != nil {
-			logger.Warningf("[channel: %s] Could not get message processor for serving %s: %s", tracker.ChannelID, addr, err)
+			logger.Warningf("[channel: %s] Could not PruneNormalMsg for serving %s: %s", tracker.ChannelID, addr, err)
 			return &ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST, Info: err.Error()}
 		}
 		err = processor.Order(pruneMsg, configSeq)

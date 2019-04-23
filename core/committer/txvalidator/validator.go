@@ -129,6 +129,17 @@ func (v *TxValidator) updateEndorseCertToDB(block *common.Block) error {
 			return errors.Wrap(err, "updateEndorseCertToDB failed")
 		}
 
+		//..channel header...
+		chdr, err := utils.UnmarshalChannelHeader(payl.Header.ChannelHeader)
+		if err != nil {
+			logger.Errorf("updateEndorseCertToDB error: UnmarshalChannelHeader failed, err %s", err)
+			return err
+		}
+		if common.HeaderType(chdr.Type) != common.HeaderType_ENDORSER_TRANSACTION {
+			logger.Debugf("Skip this block, as tx type is:%d", chdr.Type)
+			return nil
+		}
+
 		// ...and the transaction...
 		tx, err := utils.GetTransaction(payl.Data)
 		if err != nil {

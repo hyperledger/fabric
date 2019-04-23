@@ -339,12 +339,26 @@ func exactCertFromBlockData(blockData *common.BlockData) (map[string][]byte, err
 			return nil, err
 		}
 
+		//..channel header...
+		chdr, err := utils.UnmarshalChannelHeader(payl.Header.ChannelHeader)
+		if err != nil {
+			logger.Errorf("exactCertFromBlockData error: UnmarshalChannelHeader failed, err %s", err)
+			return nil, err
+		}
+		if common.HeaderType(chdr.Type) != common.HeaderType_ENDORSER_TRANSACTION {
+			logger.Debugf("Skip this block, as tx type is:%d", chdr.Type)
+			return nil, nil
+		}
+
 		/*go through env.payload creator  */
 		shdr, err := utils.GetSignatureHeader(payl.Header.SignatureHeader)
 		if err != nil {
 			return nil, err
 		}
-		if len(shdr.Creator) == commonUtil.CERT_HASH_LEN {
+
+		if shdr.Creator == nil {
+			continue
+		} else if len(shdr.Creator) == commonUtil.CERT_HASH_LEN {
 			logger.Debugf("This is a hash of creator:\n%x", shdr.Creator)
 		} else {
 			certHash := commonUtil.ComputeSHA256(shdr.Creator)
@@ -382,7 +396,7 @@ func exactCertFromBlockData(blockData *common.BlockData) (map[string][]byte, err
 					logger.Debugf("Ignoring duplicated creator,key: %x\n creator:\n%x", key, ashdr.Creator)
 				} else {
 					hashCert[string(key)] = ashdr.Creator
-					logger.Debugf("This is a creator, key: %x\n creator:\n%x", key, ashdr.Creator)
+					logger.Debugf("This is a action creator, key: %x\n creator:\n%x", key, ashdr.Creator)
 				}
 			}
 

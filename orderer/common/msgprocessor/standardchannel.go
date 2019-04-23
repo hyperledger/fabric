@@ -101,6 +101,11 @@ func (s *StandardChannel) PruneNormalMsg(msg *cb.Envelope) (*cb.Envelope, error)
 		return nil, err
 	}
 
+	//we only prune normal endorse msg
+	if cb.HeaderType(chdr.Type) != cb.HeaderType_ENDORSER_TRANSACTION {
+		return msg, nil
+	}
+
 	shdr, err := utils.GetSignatureHeader(payload.Header.SignatureHeader)
 	if err != nil {
 		return msg, err

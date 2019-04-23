@@ -748,6 +748,7 @@ type fileLedgerBlockStore struct {
 	ledger.PeerLedger
 }
 
+/*
 func (flbs fileLedgerBlockStore) GetCert(hash []byte) ([]byte, error) {
 	peerLogger.Warningf("Should not invoke here")
 	return nil, nil
@@ -757,6 +758,7 @@ func (flbs fileLedgerBlockStore) CertExists(hash []byte) (bool, error) {
 	peerLogger.Warningf("Should not invoke here")
 	return false, nil
 }
+*/
 
 func (flbs fileLedgerBlockStore) AddBlock(*common.Block) error {
 	return nil
