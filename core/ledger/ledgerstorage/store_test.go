@@ -123,7 +123,7 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 	}
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 	blockStoreProvider := fsblkstorage.NewProvider(
-		fsblkstorage.NewConf(ledgerconfig.GetBlockStorePath(), ledgerconfig.GetMaxBlockfileSize()),
+		fsblkstorage.NewConf(ledgerconfig.GetBlockStorePath(), maxBlockFileSize),
 		indexConfig)
 
 	blkStore, err := blockStoreProvider.OpenBlockStore(testLedgerid)

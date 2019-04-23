@@ -21,9 +21,11 @@ import (
 )
 
 func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
-	env := newTestEnv(t)
-	defer env.cleanup()
-	provider := testutilNewProvider(t)
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	//TODO: remove once config wiring is complete
+	_ = createTestEnv(t, conf.RootFSPath)
+	provider := testutilNewProvider(conf, t)
 	defer provider.Close()
 
 	_, gb := testutil.NewBlockGenerator(t, "testLedger", false)

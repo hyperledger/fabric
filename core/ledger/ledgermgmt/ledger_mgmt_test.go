@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -81,7 +82,10 @@ func TestLedgerMgmt(t *testing.T) {
 	Initialize(&Initializer{
 		PlatformRegistry: platforms.NewRegistry(&golang.Platform{}),
 		MetricsProvider:  &disabled.Provider{},
-		Config:           &ledger.Config{},
+		Config: &ledger.Config{
+			// TODO: remove ledgerconfig once exported test functions are changed
+			RootFSPath: ledgerconfig.GetRootPath(),
+		},
 	})
 	l, err = OpenLedger(ledgerID)
 	assert.NoError(t, err)

@@ -46,7 +46,12 @@ func InitializeExistingTestEnvWithInitializer(initializer *Initializer) {
 		initializer.PlatformRegistry = platforms.NewRegistry(&golang.Platform{})
 	}
 	if initializer.Config == nil {
-		initializer.Config = &ledger.Config{}
+		initializer.Config = &ledger.Config{
+			// TODO: remove once all callers pass this in the initializer.
+			// NOTE: this package infects a lot of other code so hard-coding for now
+			// to contain the scope of this change
+			RootFSPath: ledgerconfig.GetRootPath(),
+		}
 	}
 	initialize(initializer)
 }

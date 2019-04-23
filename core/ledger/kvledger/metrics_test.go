@@ -21,15 +21,17 @@ import (
 )
 
 func TestStatsBlockchainHeight(t *testing.T) {
-	env := newTestEnv(t)
-	defer env.cleanup()
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	//TODO: remove once config wiring is complete
+	_ = createTestEnv(t, conf.RootFSPath)
 	testMetricProvider := testutilConstructMetricProvider()
 	provider, err := NewProvider()
 	assert.NoError(t, err)
 	provider.Initialize(&lgr.Initializer{
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 		MetricsProvider:               testMetricProvider.fakeProvider,
-		Config:                        &lgr.Config{},
+		Config:                        conf,
 	})
 	defer provider.Close()
 
@@ -65,15 +67,17 @@ func TestStatsBlockchainHeight(t *testing.T) {
 }
 
 func TestStatsBlockCommit(t *testing.T) {
-	env := newTestEnv(t)
-	defer env.cleanup()
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	//TODO: remove once config wiring is complete
+	_ = createTestEnv(t, conf.RootFSPath)
 	testMetricProvider := testutilConstructMetricProvider()
 	provider, err := NewProvider()
 	assert.NoError(t, err)
 	provider.Initialize(&lgr.Initializer{
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 		MetricsProvider:               testMetricProvider.fakeProvider,
-		Config:                        &lgr.Config{},
+		Config:                        conf,
 	})
 	defer provider.Close()
 

@@ -26,9 +26,11 @@ func TestLedgerConfig(t *testing.T) {
 		{
 			name: "goleveldb",
 			config: map[string]interface{}{
+				"peer.fileSystemPath":        "/peerfs",
 				"ledger.state.stateDatabase": "goleveldb",
 			},
 			expected: &ledger.Config{
+				RootFSPath: "/peerfs/ledgersData",
 				StateDB: &ledger.StateDB{
 					StateDatabase: "goleveldb",
 					CouchDB:       &couchdb.Config{},
@@ -38,6 +40,7 @@ func TestLedgerConfig(t *testing.T) {
 		{
 			name: "CouchDB Defaults",
 			config: map[string]interface{}{
+				"peer.fileSystemPath":                              "/peerfs",
 				"ledger.state.stateDatabase":                       "CouchDB",
 				"ledger.state.couchDBConfig.couchDBAddress":        "localhost:5984",
 				"ledger.state.couchDBConfig.username":              "username",
@@ -48,6 +51,7 @@ func TestLedgerConfig(t *testing.T) {
 				"ledger.state.couchDBConfig.createGlobalChangesDB": true,
 			},
 			expected: &ledger.Config{
+				RootFSPath: "/peerfs/ledgersData",
 				StateDB: &ledger.StateDB{
 					StateDatabase: "CouchDB",
 					CouchDB: &couchdb.Config{
@@ -68,6 +72,7 @@ func TestLedgerConfig(t *testing.T) {
 		{
 			name: "CouchDB Explicit",
 			config: map[string]interface{}{
+				"peer.fileSystemPath":                                "/peerfs",
 				"ledger.state.stateDatabase":                         "CouchDB",
 				"ledger.state.couchDBConfig.couchDBAddress":          "localhost:5984",
 				"ledger.state.couchDBConfig.username":                "username",
@@ -81,6 +86,7 @@ func TestLedgerConfig(t *testing.T) {
 				"ledger.state.couchDBConfig.createGlobalChangesDB":   true,
 			},
 			expected: &ledger.Config{
+				RootFSPath: "/peerfs/ledgersData",
 				StateDB: &ledger.StateDB{
 					StateDatabase: "CouchDB",
 					CouchDB: &couchdb.Config{

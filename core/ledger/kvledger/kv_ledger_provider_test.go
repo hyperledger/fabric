@@ -8,6 +8,7 @@ package kvledger
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,10 +30,12 @@ import (
 )
 
 func TestLedgerProvider(t *testing.T) {
-	env := newTestEnv(t)
-	defer env.cleanup()
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	//TODO: remove once config wiring is complete
+	_ = createTestEnv(t, conf.RootFSPath)
+	provider := testutilNewProvider(conf, t)
 	numLedgers := 10
-	provider := testutilNewProvider(t)
 	existingLedgerIDs, err := provider.List()
 	assert.NoError(t, err)
 	assert.Len(t, existingLedgerIDs, 0)
@@ -48,7 +51,7 @@ func TestLedgerProvider(t *testing.T) {
 
 	provider.Close()
 
-	provider = testutilNewProvider(t)
+	provider = testutilNewProvider(conf, t)
 	defer provider.Close()
 	ledgerIds, _ := provider.List()
 	assert.Len(t, ledgerIds, numLedgers)
@@ -88,9 +91,11 @@ func TestLedgerProvider(t *testing.T) {
 }
 
 func TestRecovery(t *testing.T) {
-	env := newTestEnv(t)
-	defer env.cleanup()
-	provider := testutilNewProvider(t)
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	//TODO: remove once config wiring is complete
+	_ = createTestEnv(t, conf.RootFSPath)
+	provider := testutilNewProvider(conf, t)
 
 	// now create the genesis block
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
@@ -104,7 +109,7 @@ func TestRecovery(t *testing.T) {
 	provider.Close()
 
 	// construct a new provider to invoke recovery
-	provider = testutilNewProvider(t)
+	provider = testutilNewProvider(conf, t)
 	// verify the underecoveryflag and open the ledger
 	flag, err := provider.(*Provider).idStore.getUnderConstructionFlag()
 	assert.NoError(t, err, "Failed to read the underconstruction flag")
@@ -119,7 +124,7 @@ func TestRecovery(t *testing.T) {
 	provider.Close()
 
 	// construct a new provider to invoke recovery
-	provider = testutilNewProvider(t)
+	provider = testutilNewProvider(conf, t)
 	assert.NoError(t, err, "Provider failed to recover an underConstructionLedger")
 	flag, err = provider.(*Provider).idStore.getUnderConstructionFlag()
 	assert.NoError(t, err, "Failed to read the underconstruction flag")
@@ -128,10 +133,12 @@ func TestRecovery(t *testing.T) {
 }
 
 func TestMultipleLedgerBasicRW(t *testing.T) {
-	env := newTestEnv(t)
-	defer env.cleanup()
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	//TODO: remove once config wiring is complete
+	_ = createTestEnv(t, conf.RootFSPath)
+	provider := testutilNewProvider(conf, t)
 	numLedgers := 10
-	provider := testutilNewProvider(t)
 	ledgers := make([]lgr.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		bg, gb := testutil.NewBlockGenerator(t, constructTestLedgerID(i), false)
@@ -154,7 +161,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 
 	provider.Close()
 
-	provider = testutilNewProvider(t)
+	provider = testutilNewProvider(conf, t)
 	defer provider.Close()
 	ledgers = make([]lgr.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
@@ -181,7 +188,10 @@ func TestLedgerBackup(t *testing.T) {
 
 	// create and populate a ledger in the original environment
 	env := createTestEnv(t, originalPath)
-	provider := testutilNewProvider(t)
+	origConf := &lgr.Config{
+		RootFSPath: originalPath,
+	}
+	provider := testutilNewProvider(origConf, t)
 	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
 	gbHash := protoutil.BlockHeaderHash(gb.Header)
 	ledger, _ := provider.Create(gb)
@@ -223,7 +233,10 @@ func TestLedgerBackup(t *testing.T) {
 	defer env.cleanup()
 
 	// Instantiate the ledger from restore environment and this should behave exactly as it would have in the original environment
-	provider = testutilNewProvider(t)
+	restoreConf := &lgr.Config{
+		RootFSPath: restorePath,
+	}
+	provider = testutilNewProvider(restoreConf, t)
 	defer provider.Close()
 
 	_, err := provider.Create(gb)
@@ -294,30 +307,50 @@ func constructTestLedgerID(i int) string {
 	return fmt.Sprintf("ledger_%06d", i)
 }
 
-func testutilNewProvider(t *testing.T) lgr.PeerLedgerProvider {
+func testConfig(t *testing.T) (conf *lgr.Config, cleanup func()) {
+	path, err := ioutil.TempDir("", "kvledger")
+	if err != nil {
+		t.Fatalf("Failed to create test ledger directory: %s", err)
+	}
+	conf = &lgr.Config{
+		RootFSPath: path,
+	}
+	cleanup = func() {
+		os.RemoveAll(path)
+	}
+
+	return conf, cleanup
+}
+
+func testutilNewProvider(conf *lgr.Config, t *testing.T) lgr.PeerLedgerProvider {
 	provider, err := NewProvider()
 	assert.NoError(t, err)
 	provider.Initialize(&lgr.Initializer{
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 		MetricsProvider:               &disabled.Provider{},
-		Config:                        &lgr.Config{},
+		Config:                        conf,
 	})
 	return provider
 }
 
-func testutilNewProviderWithCollectionConfig(t *testing.T, namespace string, btlConfigs map[string]uint64) lgr.PeerLedgerProvider {
-	provider := testutilNewProvider(t)
+func testutilNewProviderWithCollectionConfig(
+	t *testing.T,
+	namespace string,
+	btlConfigs map[string]uint64,
+	conf *lgr.Config,
+) lgr.PeerLedgerProvider {
+	provider := testutilNewProvider(conf, t)
 	mockCCInfoProvider := provider.(*Provider).initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
 	collMap := map[string]*common.StaticCollectionConfig{}
-	var conf []*common.CollectionConfig
+	var collConf []*common.CollectionConfig
 	for collName, btl := range btlConfigs {
 		staticConf := &common.StaticCollectionConfig{Name: collName, BlockToLive: btl}
 		collMap[collName] = staticConf
 		collectionConf := &common.CollectionConfig{}
 		collectionConf.Payload = &common.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: staticConf}
-		conf = append(conf, collectionConf)
+		collConf = append(collConf, collectionConf)
 	}
-	collectionConfPkg := &common.CollectionConfigPackage{Config: conf}
+	collectionConfPkg := &common.CollectionConfigPackage{Config: collConf}
 
 	mockCCInfoProvider.ChaincodeInfoStub = func(channelName, ccName string, qe lgr.SimpleQueryExecutor) (*lgr.DeployedChaincodeInfo, error) {
 		if ccName == namespace {
