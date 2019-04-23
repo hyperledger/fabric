@@ -98,10 +98,7 @@ func constructDeploymentSpec(name string, path string, version string, initArgs 
 // TestInstall tests the install function with various inputs
 func TestInstall(t *testing.T) {
 	// Initialize ledgermgmt that inturn initializes internal components (such as cceventmgmt on which this test depends)
-	cleanup, err := ledgermgmt.InitializeTestEnv()
-	if err != nil {
-		t.Fatalf("Failed to initialize test environment: %s", err)
-	}
+	cleanup := ledgermgmt.InitializeTestEnv(t)
 	defer cleanup()
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
 	scc.Support = &lscc.MockSupport{}

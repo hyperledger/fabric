@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"testing"
 
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
@@ -20,8 +21,12 @@ import (
 //TODO:  Remove all of these functions and create ledger provider instances
 
 // InitializeTestEnv initializes ledgermgmt for tests
-func InitializeTestEnv() (cleanup func(), err error) {
-	return InitializeTestEnvWithInitializer(nil)
+func InitializeTestEnv(t *testing.T) (cleanup func()) {
+	cleanup, err := InitializeTestEnvWithInitializer(nil)
+	if err != nil {
+		t.Fatalf("Failed to initialize test environment: %s", err)
+	}
+	return cleanup
 }
 
 // InitializeTestEnvWithInitializer initializes ledgermgmt for tests with the supplied Initializer
@@ -45,8 +50,8 @@ func InitializeExistingTestEnvWithInitializer(initializer *Initializer) (cleanup
 	if initializer.PlatformRegistry == nil {
 		initializer.PlatformRegistry = platforms.NewRegistry(&golang.Platform{})
 	}
-	rootPath, err := ioutil.TempDir("", "ltestenv")
 	if initializer.Config == nil {
+		rootPath, err := ioutil.TempDir("", "ltestenv")
 		if err != nil {
 			return nil, err
 		}
@@ -58,11 +63,8 @@ func InitializeExistingTestEnvWithInitializer(initializer *Initializer) (cleanup
 		}
 	}
 	if initializer.Config.PrivateData == nil {
-		if err != nil {
-			return nil, err
-		}
 		initializer.Config.PrivateData = &ledger.PrivateData{
-			StorePath:       filepath.Join(rootPath, "pvtdataStore"),
+			StorePath:       filepath.Join(initializer.Config.RootFSPath, "pvtdataStore"),
 			MaxBatchSize:    5000,
 			BatchesInterval: 1000,
 			PurgeInterval:   100,

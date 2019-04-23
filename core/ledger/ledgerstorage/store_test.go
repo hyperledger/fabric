@@ -119,7 +119,7 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create ledger storage directory: %s", err)
 	}
-	//defer os.RemoveAll(storeDir)
+	defer os.RemoveAll(storeDir)
 
 	// Construct a block storage
 	attrsToIndex := []blkstorage.IndexableAttr{

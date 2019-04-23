@@ -48,7 +48,6 @@ func TestLedgerMgmt(t *testing.T) {
 		PlatformRegistry: platforms.NewRegistry(&golang.Platform{}),
 		MetricsProvider:  &disabled.Provider{},
 		Config: &ledger.Config{
-			// TODO: remove ledgerconfig once exported test functions are changed
 			RootFSPath: rootPath,
 			StateDB: &ledger.StateDB{
 				LevelDBPath: filepath.Join(rootPath, "stateleveldb"),
@@ -100,10 +99,7 @@ func TestLedgerMgmt(t *testing.T) {
 }
 
 func TestChaincodeInfoProvider(t *testing.T) {
-	cleanup, err := InitializeTestEnv()
-	if err != nil {
-		t.Fatalf("Failed to initialize test environment: %s", err)
-	}
+	cleanup := InitializeTestEnv(t)
 	defer cleanup()
 	gb, _ := test.MakeGenesisBlock("ledger1")
 	CreateLedger(gb)
@@ -117,7 +113,7 @@ func TestChaincodeInfoProvider(t *testing.T) {
 		platforms.NewRegistry(&golang.Platform{}),
 		mockDeployedCCInfoProvider,
 	}
-	_, err = ccInfoProvider.GetDeployedChaincodeInfo("ledger2", constructTestCCDef("cc2", "1.0", "cc2Hash"))
+	_, err := ccInfoProvider.GetDeployedChaincodeInfo("ledger2", constructTestCCDef("cc2", "1.0", "cc2Hash"))
 	t.Logf("Expected error received = %s", err)
 	assert.Error(t, err)
 

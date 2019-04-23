@@ -99,10 +99,7 @@ func TestDetectTXIdDuplicates(t *testing.T) {
 }
 
 func TestBlockValidationDuplicateTXId(t *testing.T) {
-	cleanup, err := ledgermgmt.InitializeTestEnv()
-	if err != nil {
-		t.Fatalf("Failed to initialize test environment: %s", err)
-	}
+	cleanup := ledgermgmt.InitializeTestEnv(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -119,7 +116,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimulationResBytes, _ := simRes.GetPubSimulationBytes()
-	_, err = testutil.ConstructBytesProposalResponsePayload("v1", pubSimulationResBytes)
+	_, err := testutil.ConstructBytesProposalResponsePayload("v1", pubSimulationResBytes)
 	if err != nil {
 		t.Fatalf("Could not construct ProposalResponsePayload bytes, err: %s", err)
 	}
@@ -162,10 +159,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 }
 
 func TestBlockValidation(t *testing.T) {
-	cleanup, err := ledgermgmt.InitializeTestEnv()
-	if err != nil {
-		t.Fatalf("Failed to initialize test environment: %s", err)
-	}
+	cleanup := ledgermgmt.InitializeTestEnv(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -178,10 +172,7 @@ func TestBlockValidation(t *testing.T) {
 }
 
 func TestParallelBlockValidation(t *testing.T) {
-	cleanup, err := ledgermgmt.InitializeTestEnv()
-	if err != nil {
-		t.Fatalf("Failed to initialize test environment: %s", err)
-	}
+	cleanup := ledgermgmt.InitializeTestEnv(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -194,10 +185,7 @@ func TestParallelBlockValidation(t *testing.T) {
 }
 
 func TestVeryLargeParallelBlockValidation(t *testing.T) {
-	cleanup, err := ledgermgmt.InitializeTestEnv()
-	if err != nil {
-		t.Fatalf("Failed to initialize test environment: %s", err)
-	}
+	cleanup := ledgermgmt.InitializeTestEnv(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -212,10 +200,7 @@ func TestVeryLargeParallelBlockValidation(t *testing.T) {
 }
 
 func TestTxValidationFailure_InvalidTxid(t *testing.T) {
-	cleanup, err := ledgermgmt.InitializeTestEnv()
-	if err != nil {
-		t.Fatalf("Failed to initialize test environment: %s", err)
-	}
+	cleanup := ledgermgmt.InitializeTestEnv(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
