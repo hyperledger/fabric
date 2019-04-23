@@ -124,13 +124,14 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	ca, _ := tlsgen.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	config := &Config{
-		TLSEnabled:     false,
-		Keepalive:      time.Second,
-		StartupTimeout: 3 * time.Minute,
-		ExecuteTimeout: 30 * time.Second,
-		LogLevel:       "info",
-		ShimLogLevel:   "warning",
-		LogFormat:      "TEST: [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}",
+		TLSEnabled:      false,
+		Keepalive:       time.Second,
+		StartupTimeout:  3 * time.Minute,
+		ExecuteTimeout:  30 * time.Second,
+		LogLevel:        "info",
+		ShimLogLevel:    "warning",
+		LogFormat:       "TEST: [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}",
+		TotalQueryLimit: 10000,
 	}
 	pr := platforms.NewRegistry(&golang.Platform{})
 	lsccImpl := lscc.New(sccp, mockAclProvider, pr)

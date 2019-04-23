@@ -70,6 +70,7 @@ type ChaincodeSupport struct {
 	HandlerMetrics         *HandlerMetrics
 	LaunchMetrics          *LaunchMetrics
 	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
+	TotalQueryLimit        int
 }
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance.
@@ -101,6 +102,7 @@ func NewChaincodeSupport(
 		HandlerMetrics:         NewHandlerMetrics(metricsProvider),
 		LaunchMetrics:          NewLaunchMetrics(metricsProvider),
 		DeployedCCInfoProvider: deployedCCInfoProvider,
+		TotalQueryLimit:        config.TotalQueryLimit,
 	}
 
 	// Keep TestQueries working
@@ -189,6 +191,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream)
 		DeployedCCInfoProvider:     cs.DeployedCCInfoProvider,
 		AppConfig:                  cs.AppConfig,
 		Metrics:                    cs.HandlerMetrics,
+		TotalQueryLimit:            cs.TotalQueryLimit,
 	}
 
 	return handler.ProcessStream(stream)
