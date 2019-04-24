@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
@@ -23,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/privdata"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
@@ -38,10 +40,31 @@ func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.En
 	if err != nil {
 		return policyErr(err)
 	}
+	chdr, err := utils.UnmarshalChannelHeader(payl.Header.ChannelHeader)
+	if err != nil {
+		return policyErr(err)
+	}
+
+	ledger := peer.GetLedger(chainName)
+	if ledger == nil {
+		return policyErr(fmt.Errorf("Invalid chain ID, %s", chainName))
+	}
+	payload := payl
+	if len(shdr.Creator) == util.CERT_HASH_LEN { //hash,replace with cert
+		creatorCert, err := ledger.GetCert(shdr.Creator)
+		if err != nil || creatorCert == nil {
+			logger.Errorf("Get creatorCert cert error: %s hash %x: cert: \n%x", err, shdr.Creator, creatorCert)
+			return policyErr(err)
+		}
+		logger.Infof("Do the creatorCert replace work, hash:\n%x\ncert:\n%x", shdr.Creator, creatorCert)
+		shdr.Creator = creatorCert
+		payloadHeader := utils.MakePayloadHeader(chdr, shdr)
+		payload = &common.Payload{Header: payloadHeader, Data: payload.Data}
+	}
 
 	// construct signed data we can evaluate the instantiation policy against
 	sd := []*common.SignedData{{
-		Data:      env.Payload,
+		Data:      utils.MarshalOrPanic(payload),
 		Identity:  shdr.Creator,
 		Signature: env.Signature,
 	}}
