@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -1148,6 +1149,11 @@ func TestCheckChaincodeName(t *testing.T) {
 	err = lscc.isValidChaincodeName("a-_b")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid chaincode name 'a-_b'")
+}
+
+func TestLifecycleChaincodeRegularExpressionsMatch(t *testing.T) {
+	assert.Equal(t, chaincodeNameRegExp.String(), lifecycle.ChaincodeNameRegExp.String())
+	assert.Equal(t, chaincodeVersionRegExp.String(), lifecycle.ChaincodeVersionRegExp.String())
 }
 
 var id msp.SigningIdentity
