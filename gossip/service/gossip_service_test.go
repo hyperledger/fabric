@@ -36,7 +36,7 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -319,7 +319,7 @@ type mockDeliverServiceFactory struct {
 	service *mockDeliverService
 }
 
-func (mf *mockDeliverServiceFactory) Service(g GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
+func (mf *mockDeliverServiceFactory) Service(g GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
 	return mf.service, nil
 }
 
@@ -727,7 +727,7 @@ func newGossipInstance(port int, id int, gRPCServer *comm.GRPCServer, certs *gos
 		chains:          make(map[string]state.GossipStateProvider),
 		leaderElection:  make(map[string]election.LeaderElectionService),
 		privateHandlers: make(map[string]privateHandler),
-		deliveryService: make(map[string]deliverclient.DeliverService),
+		deliveryService: make(map[string]deliverservice.DeliverService),
 		deliveryFactory: &deliveryFactoryImpl{},
 		peerIdentity:    api.PeerIdentityType(conf.InternalEndpoint),
 		metrics:         metrics,
