@@ -57,6 +57,9 @@ func ledgerConfig() *ledger.Config {
 			BatchesInterval: collElgProcDbBatchesInterval,
 			PurgeInterval:   purgeInterval,
 		},
+		HistoryDB: &ledger.HistoryDB{
+			Enabled: viper.GetBool("ledger.history.enableHistoryDatabase"),
+		},
 	}
 
 	if conf.StateDB.StateDatabase == "CouchDB" {

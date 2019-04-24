@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/protos/common"
@@ -137,7 +136,10 @@ func (l *kvLedger) syncStateAndHistoryDBWithBlockstore() error {
 		return nil
 	}
 	lastAvailableBlockNum := info.Height - 1
-	recoverables := []recoverable{l.txtmgmt, l.historyDB}
+	recoverables := []recoverable{l.txtmgmt}
+	if l.historyDB != nil {
+		recoverables = append(recoverables, l.historyDB)
+	}
 	recoverers := []*recoverer{}
 	for _, recoverable := range recoverables {
 		recoverFlag, firstBlockNum, err := recoverable.ShouldRecover(lastAvailableBlockNum)
@@ -299,7 +301,10 @@ func (l *kvLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
 // Any synchronization should be performed at the implementation level if required
 // Pass the ledger blockstore so that historical values can be looked up from the chain
 func (l *kvLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
-	return l.historyDB.NewHistoryQueryExecutor(l.blockStore)
+	if l.historyDB != nil {
+		return l.historyDB.NewHistoryQueryExecutor(l.blockStore)
+	}
+	return nil, nil
 }
 
 // CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation
@@ -334,7 +339,7 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 
 	// History database could be written in parallel with state and/or async as a future optimization,
 	// although it has not been a bottleneck...no need to clutter the log with elapsed duration.
-	if ledgerconfig.IsHistoryDBEnabled() {
+	if l.historyDB != nil {
 		logger.Debugf("[%s] Committing block [%d] transactions to history database", l.ledgerID, blockNo)
 		if err := l.historyDB.Commit(block); err != nil {
 			panic(errors.WithMessage(err, "Error during commit to history db"))

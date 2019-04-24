@@ -42,6 +42,9 @@ func TestLedgerConfig(t *testing.T) {
 					BatchesInterval: 1000,
 					PurgeInterval:   100,
 				},
+				HistoryDB: &ledger.HistoryDB{
+					Enabled: false,
+				},
 			},
 		},
 		{
@@ -82,6 +85,9 @@ func TestLedgerConfig(t *testing.T) {
 					BatchesInterval: 1000,
 					PurgeInterval:   100,
 				},
+				HistoryDB: &ledger.HistoryDB{
+					Enabled: false,
+				},
 			},
 		},
 		{
@@ -102,6 +108,7 @@ func TestLedgerConfig(t *testing.T) {
 				"ledger.pvtdataStore.collElgProcMaxDbBatchSize":      50000,
 				"ledger.pvtdataStore.collElgProcDbBatchesInterval":   10000,
 				"ledger.pvtdataStore.purgeInterval":                  1000,
+				"ledger.history.enableHistoryDatabase":               true,
 			},
 			expected: &ledger.Config{
 				RootFSPath: "/peerfs/ledgersData",
@@ -127,6 +134,9 @@ func TestLedgerConfig(t *testing.T) {
 					MaxBatchSize:    50000,
 					BatchesInterval: 10000,
 					PurgeInterval:   1000,
+				},
+				HistoryDB: &ledger.HistoryDB{
+					Enabled: true,
 				},
 			},
 		},

@@ -20,7 +20,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/stretchr/testify/assert"
 )
@@ -73,9 +72,6 @@ func TestMain(m *testing.M) {
 }
 
 func testMain(m *testing.M) int {
-	// Read the core.yaml file for default config.
-	ledgertestutil.SetupCoreYAMLConfig()
-
 	// Switch to CouchDB
 	address, cleanup := couchDBSetup()
 	testAddress = address

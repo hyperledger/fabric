@@ -22,13 +22,14 @@ const (
 )
 
 type Config struct {
-	TLSEnabled     bool
-	Keepalive      time.Duration
-	ExecuteTimeout time.Duration
-	StartupTimeout time.Duration
-	LogFormat      string
-	LogLevel       string
-	ShimLogLevel   string
+	TLSEnabled      bool
+	Keepalive       time.Duration
+	ExecuteTimeout  time.Duration
+	StartupTimeout  time.Duration
+	LogFormat       string
+	LogLevel        string
+	ShimLogLevel    string
+	TotalQueryLimit int
 }
 
 func GlobalConfig() *Config {
@@ -58,6 +59,11 @@ func (c *Config) load() {
 	c.LogFormat = viper.GetString("chaincode.logging.format")
 	c.LogLevel = getLogLevelFromViper("chaincode.logging.level")
 	c.ShimLogLevel = getLogLevelFromViper("chaincode.logging.shim")
+
+	c.TotalQueryLimit = 10000 // need a default just in case it's not set
+	if viper.IsSet("ledger.state.totalQueryLimit") {
+		c.TotalQueryLimit = viper.GetInt("ledger.state.totalQueryLimit")
+	}
 }
 
 func toSeconds(s string, def int) time.Duration {

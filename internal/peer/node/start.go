@@ -201,7 +201,7 @@ func serve(args []string) error {
 
 	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID)
 
-	//initialize resource management exit
+	// initialize ledger management
 	ledgermgmt.Initialize(
 		&ledgermgmt.Initializer{
 			CustomTxProcessors:            peer.ConfigTxProcessors,

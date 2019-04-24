@@ -116,6 +116,9 @@ func TestInitialize(t *testing.T) {
 				BatchesInterval: 1000,
 				PurgeInterval:   100,
 			},
+			HistoryDB: &ledger.HistoryDB{
+				Enabled: true,
+			},
 		},
 	)
 }
@@ -148,6 +151,9 @@ func TestCreateChainFromBlock(t *testing.T) {
 				MaxBatchSize:    5000,
 				BatchesInterval: 1000,
 				PurgeInterval:   100,
+			},
+			HistoryDB: &ledger.HistoryDB{
+				Enabled: true,
 			},
 		},
 	)

@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	protoutil "github.com/hyperledger/fabric/protoutil"
@@ -30,11 +29,6 @@ type LevelHistoryDBQueryExecutor struct {
 
 // GetHistoryForKey implements method in interface `ledger.HistoryQueryExecutor`
 func (q *LevelHistoryDBQueryExecutor) GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error) {
-
-	if ledgerconfig.IsHistoryDBEnabled() == false {
-		return nil, errors.New("history database not enabled")
-	}
-
 	var compositeStartKey []byte
 	var compositeEndKey []byte
 	compositeStartKey = historydb.ConstructPartialCompositeHistoryKey(namespace, key, false)
