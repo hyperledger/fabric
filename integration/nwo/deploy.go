@@ -184,3 +184,36 @@ func EnableCapabilities(network *Network, channel, capabilitiesGroup, capabiliti
 
 	UpdateConfig(network, orderer, channel, config, updatedConfig, peers[0], peers...)
 }
+
+// EnableCapabilitiesOrdererAdmin enables a specific capabilities flag for a running network,
+// using an Orderer Admin Session. This is required to make changes on the system channel, for example.
+func EnableCapabilitiesOrdererAdmin(network *Network, channel, capabilitiesGroup, capabilitiesVersion string, orderer *Orderer, peer *Peer, additionalSigners ...*Orderer) {
+	config := GetConfig(network, peer, orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	if capabilitiesGroup == "Channel" {
+		updatedConfig.ChannelGroup.Values["Capabilities"] = &common.ConfigValue{
+			ModPolicy: "Admins",
+			Value: utils.MarshalOrPanic(
+				&common.Capabilities{
+					Capabilities: map[string]*common.Capability{
+						capabilitiesVersion: {},
+					},
+				},
+			),
+		}
+	} else {
+		updatedConfig.ChannelGroup.Groups[capabilitiesGroup].Values["Capabilities"] = &common.ConfigValue{
+			ModPolicy: "Admins",
+			Value: utils.MarshalOrPanic(
+				&common.Capabilities{
+					Capabilities: map[string]*common.Capability{
+						capabilitiesVersion: {},
+					},
+				},
+			),
+		}
+	}
+
+	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, additionalSigners...)
+}
