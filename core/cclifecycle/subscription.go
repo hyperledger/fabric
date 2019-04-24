@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package cc
+package cclifecycle
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 )
 
 // Subscription channels information flow
-// about a specific channel into the Lifecycle
+// about a specific channel into the Lifecycle.
 type Subscription struct {
 	sync.Mutex
 	lc             *Lifecycle
@@ -24,10 +24,12 @@ type Subscription struct {
 	pendingUpdates []*cceventmgmt.ChaincodeDefinition
 }
 
-type depCCsRetriever func(Query, ChaincodePredicate, bool, ...string) (chaincode.MetadataSet, error)
+type deployedCCsRetrieverFunc func(Query, ChaincodePredicate, bool, ...string) (chaincode.MetadataSet, error)
 
-// HandleChaincodeDeploy is expected to be invoked when a chaincode is deployed via a deploy transaction and the chaicndoe was already
-// installed on the peer. This also gets invoked when an already deployed chaincode is installed on the peer
+// HandleChaincodeDeploy is expected to be invoked when a chaincode is
+// deployed via a deploy transaction and the chaincode was already installed
+// on the peer. This also gets invoked when an already deployed chaincode is
+// installed on the peer.
 func (sub *Subscription) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDefinition, dbArtifactsTar []byte) error {
 	Logger.Debug("Channel", sub.channel, "got a new deployment:", chaincodeDefinition)
 	sub.Lock()
@@ -57,8 +59,8 @@ func (sub *Subscription) processPendingUpdate(ccDef *cceventmgmt.ChaincodeDefini
 	sub.lc.fireChangeListeners(sub.channel)
 }
 
-// ChaincodeDeployDone gets invoked when the chaincode deploy transaction or chaincode install
-// (the context in which the above function was invoked)
+// ChaincodeDeployDone gets invoked when the chaincode deploy transaction or
+// chaincode install (the context in which the above function was invoked).
 func (sub *Subscription) ChaincodeDeployDone(succeeded bool) {
 	// Run a new goroutine which would dispatch a single pending update.
 	// This is to prevent any ledger locks being obtained during the state query
@@ -81,11 +83,11 @@ func (sub *Subscription) ChaincodeDeployDone(succeeded bool) {
 	}()
 }
 
-func queryChaincodeDefinitions(query Query, ccs []chaincode.InstalledChaincode, deployedCCs depCCsRetriever) (chaincode.MetadataSet, error) {
+func queryChaincodeDefinitions(query Query, installedCCs []chaincode.InstalledChaincode, deployedCCs deployedCCsRetrieverFunc) (chaincode.MetadataSet, error) {
 	// map from string and version to chaincode ID
-	installedCCsToIDs := make(map[nameVersion][]byte)
+	installedCCsToIDs := map[nameVersion][]byte{}
 	// Populate the map
-	for _, cc := range ccs {
+	for _, cc := range installedCCs {
 		Logger.Debug("Chaincode", cc, "'s version is", cc.Version, "and Id is", cc.Hash)
 		installedCCsToIDs[installedCCToNameVersion(cc)] = cc.Hash
 	}
@@ -103,5 +105,5 @@ func queryChaincodeDefinitions(query Query, ccs []chaincode.InstalledChaincode, 
 		return true
 	}
 
-	return deployedCCs(query, filter, false, names(ccs)...)
+	return deployedCCs(query, filter, false, names(installedCCs)...)
 }

@@ -337,15 +337,15 @@ func (w *mspWrapper) DeserializeIdentity(serializedIdentity []byte) (msp.Identit
 	return w.MSPManager.DeserializeIdentity(serializedIdentity)
 }
 
-type lifeCycle struct {
+type lifecycle struct {
 	*cc.Lifecycle
 	query *lifecyclemocks.Query
 }
 
-func newLifeCycle() *lifeCycle {
+func newLifecycle() *lifecycle {
 	enumerator := &lifecyclemocks.Enumerator{}
 	enumerator.On("Enumerate").Return(nil, nil)
-	lc, err := cc.NewLifeCycle(enumerator)
+	lc, err := cc.NewLifecycle(enumerator)
 	if err != nil {
 		panic(err)
 	}
@@ -357,7 +357,7 @@ func newLifeCycle() *lifeCycle {
 	if err != nil {
 		panic(err)
 	}
-	return &lifeCycle{
+	return &lifecycle{
 		Lifecycle: lc,
 		query:     query,
 	}
@@ -370,7 +370,7 @@ type principalEvaluator struct {
 
 type service struct {
 	*grpc.Server
-	lc  *lifeCycle
+	lc  *lifecycle
 	sup *support
 }
 
@@ -389,7 +389,7 @@ func (s *sequenceWrapper) Sequence() uint64 {
 	return s.instance.Load().(*mocks.ConfigtxValidator).Sequence()
 }
 
-func createSupport(t *testing.T, dir string, lc *lifeCycle) *support {
+func createSupport(t *testing.T, dir string, lc *lifecycle) *support {
 	configs := make(map[string]*msprotos.FabricMSPConfig)
 	mspMgr := createMSPManager(t, dir, configs)
 	mspManagerWrapper := &mspWrapper{
@@ -456,7 +456,7 @@ func createClientAndService(t *testing.T, testdir string) (*client, *service) {
 		},
 	})
 
-	lc := newLifeCycle()
+	lc := newLifecycle()
 	sup := createSupport(t, testdir, lc)
 	svc := discovery.NewService(discovery.Config{
 		TLS:                          gRPCServer.TLSEnabled(),

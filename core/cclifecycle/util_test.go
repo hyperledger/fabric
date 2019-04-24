@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package cc_test
+package cclifecycle_test
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/core/cclifecycle"
+	cc "github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/cclifecycle/mocks"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/protos/common"
