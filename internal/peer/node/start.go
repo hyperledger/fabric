@@ -173,12 +173,9 @@ func serve(args []string) error {
 
 	mspID := coreConfig.LocalMSPID
 
-	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "chaincodes")
+	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "lifecycle", "chaincodes")
+	ccStore := persistence.NewStore(chaincodeInstallPath)
 	ccPackageParser := &persistence.ChaincodePackageParser{}
-	ccStore := &persistence.Store{
-		Path:       chaincodeInstallPath,
-		ReadWriter: &persistence.FilesystemIO{},
-	}
 
 	// TODO, unfortunately, the lifecycle initialization is very unclean at the moment.
 	// This is because ccprovider.SetChaincodePath only works after ledgermgmt.Initialize,
@@ -216,7 +213,8 @@ func serve(args []string) error {
 	)
 
 	// Configure CC package storage
-	ccprovider.SetChaincodesPath(chaincodeInstallPath)
+	lsccInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "chaincodes")
+	ccprovider.SetChaincodesPath(lsccInstallPath)
 
 	if err := lifecycleCache.InitializeLocalChaincodes(); err != nil {
 		return errors.WithMessage(err, "could not initialize local chaincodes")
