@@ -30,8 +30,6 @@ import (
 func TestLedgerProvider(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	provider := testutilNewProvider(conf, t)
 	numLedgers := 10
 	existingLedgerIDs, err := provider.List()
@@ -93,8 +91,6 @@ func TestLedgerProviderHistoryDBDisabled(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	conf.HistoryDB.Enabled = false
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	provider := testutilNewProvider(conf, t)
 	numLedgers := 10
 	existingLedgerIDs, err := provider.List()
@@ -155,8 +151,6 @@ func TestLedgerProviderHistoryDBDisabled(t *testing.T) {
 func TestRecovery(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	provider := testutilNewProvider(conf, t)
 
 	// now create the genesis block
@@ -198,8 +192,6 @@ func TestRecoveryHistoryDBDisabled(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	conf.HistoryDB.Enabled = false
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	provider := testutilNewProvider(conf, t)
 
 	// now create the genesis block
@@ -240,8 +232,6 @@ func TestRecoveryHistoryDBDisabled(t *testing.T) {
 func TestMultipleLedgerBasicRW(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	provider := testutilNewProvider(conf, t)
 	numLedgers := 10
 	ledgers := make([]lgr.PeerLedger, numLedgers)
@@ -287,11 +277,15 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 
 func TestLedgerBackup(t *testing.T) {
 	ledgerid := "TestLedger"
-	originalPath := "/tmp/fabric/ledgertests/kvledger1"
-	restorePath := "/tmp/fabric/ledgertests/kvledger2"
+	basePath, err := ioutil.TempDir("", "kvledger")
+	if err != nil {
+		t.Fatalf("Failed to create ledger directory: %s", err)
+	}
+	defer os.RemoveAll(basePath)
+	originalPath := filepath.Join(basePath, "kvledger1")
+	restorePath := filepath.Join(basePath, "kvledger2")
 
 	// create and populate a ledger in the original environment
-	env := createTestEnv(t, originalPath)
 	origConf := &lgr.Config{
 		RootFSPath: originalPath,
 		StateDB: &lgr.StateDB{
@@ -337,16 +331,12 @@ func TestLedgerBackup(t *testing.T) {
 	ledger.Close()
 	provider.Close()
 
-	// Create restore environment
-	env = createTestEnv(t, restorePath)
-
 	// remove the statedb, historydb, and block indexes (they are supposed to be auto created during opening of an existing ledger)
 	// and rename the originalPath to restorePath
 	assert.NoError(t, os.RemoveAll(filepath.Join(originalPath, "stateLeveldb")))
 	assert.NoError(t, os.RemoveAll(filepath.Join(originalPath, "historyLeveldb")))
 	assert.NoError(t, os.RemoveAll(filepath.Join(originalPath, "chains", fsblkstorage.IndexDir)))
 	assert.NoError(t, os.Rename(originalPath, restorePath))
-	defer env.cleanup()
 
 	// Instantiate the ledger from restore environment and this should behave exactly as it would have in the original environment
 	restoreConf := &lgr.Config{
@@ -367,7 +357,7 @@ func TestLedgerBackup(t *testing.T) {
 	provider = testutilNewProvider(restoreConf, t)
 	defer provider.Close()
 
-	_, err := provider.Create(gb)
+	_, err = provider.Create(gb)
 	assert.Equal(t, ErrLedgerIDExists, err)
 
 	ledger, _ = provider.Open(ledgerid)

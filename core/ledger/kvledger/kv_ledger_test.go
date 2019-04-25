@@ -46,8 +46,6 @@ func TestKVLedgerNilHistoryDBProvider(t *testing.T) {
 func TestKVLedgerBlockStorage(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	provider := testutilNewProvider(conf, t)
 	defer provider.Close()
 
@@ -134,8 +132,6 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	t.Skip()
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	provider := testutilNewProvider(conf, t)
 	defer provider.Close()
 
@@ -206,8 +202,6 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	provider := testutilNewProviderWithCollectionConfig(
 		t,
 		"ns",
@@ -404,8 +398,6 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 func testSyncStateDBWithPvtdatastore(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	provider := testutilNewProviderWithCollectionConfig(
 		t,
 		"ns",
@@ -473,8 +465,6 @@ func testSyncStateDBWithPvtdatastore(t *testing.T) {
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	provider := testutilNewProvider(conf, t)
 	defer provider.Close()
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)

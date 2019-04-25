@@ -23,8 +23,6 @@ import (
 func TestStatsBlockchainHeight(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	testMetricProvider := testutilConstructMetricProvider()
 	provider, err := NewProvider()
 	assert.NoError(t, err)
@@ -69,8 +67,6 @@ func TestStatsBlockchainHeight(t *testing.T) {
 func TestStatsBlockCommit(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	testMetricProvider := testutilConstructMetricProvider()
 	provider, err := NewProvider()
 	assert.NoError(t, err)

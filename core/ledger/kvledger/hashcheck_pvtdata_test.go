@@ -23,8 +23,6 @@ import (
 func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	provider := testutilNewProvider(conf, t)
 	defer provider.Close()
 

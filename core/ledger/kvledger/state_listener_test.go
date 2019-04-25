@@ -21,8 +21,6 @@ import (
 func TestStateListener(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	//TODO: remove once config wiring is complete
-	_ = createTestEnv(t, conf.RootFSPath)
 	provider, _ := NewProvider()
 
 	// create a listener and register it to listen to state change in a namespace
