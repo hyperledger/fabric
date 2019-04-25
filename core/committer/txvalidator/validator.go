@@ -140,7 +140,7 @@ func (v *TxValidator) preProcessBlock(block *common.Block) (*common.Block, error
 				logger.Errorf("GetCert from db with hash:%s\n returns err %s", hex.EncodeToString(shdr.Creator), err)
 				return nil, err
 			}
-			logger.Infof("GetCert from db with hash:%s\n cert: %s", hex.EncodeToString(shdr.Creator), hex.EncodeToString(cert))
+			logger.Infof("Do the creator replace work for hash:%s blockNum:%d env index:%d", hex.EncodeToString(shdr.Creator), block.Header.Number, index)
 			shdr.Creator = cert
 			payloadHeader := utils.MakePayloadHeader(chdr, shdr)
 			payload = &common.Payload{Header: payloadHeader, Data: payload.Data}

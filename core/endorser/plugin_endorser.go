@@ -243,9 +243,9 @@ func pruneEndorser(endorsement *pb.Endorsement, channel string) (*pb.Endorsement
 		return endorsement, errors.Wrapf(err, "get cert error when endorsing")
 	} else if exists { // cert already exists
 		endorser = idHash
-		endorserLogger.Debugf("prune endorser with hash: %x", idHash)
+		endorserLogger.Infof("prune endorser with hash: %x", idHash)
 	} else { // wo  shouldn't replace here
-		endorserLogger.Debugf("skip prune endorser with hash: %x", idHash)
+		endorserLogger.Infof("skip prune endorser with hash: %x", idHash)
 	}
 
 	endorsement.Endorser = endorser

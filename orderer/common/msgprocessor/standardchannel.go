@@ -124,7 +124,7 @@ func (s *StandardChannel) PruneNormalMsg(msg *cb.Envelope) (*cb.Envelope, error)
 		logger.Debugf("this is a  creator, but cert does not exist")
 	} else { // cert already exists
 		//do replace work
-		logger.Debugf("replace transaction  with creator hash: %s", hex.EncodeToString(hash))
+		logger.Infof("replace transaction  with creator hash: %s", hex.EncodeToString(hash))
 		newShdr := shdr
 		newShdr.Creator = hash
 		payloadHeader := utils.MakePayloadHeader(chdr, newShdr)

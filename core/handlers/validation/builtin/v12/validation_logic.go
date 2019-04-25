@@ -157,31 +157,10 @@ func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.En
 	if err != nil {
 		return policyErr(err)
 	}
-	chdr, err := utils.UnmarshalChannelHeader(payl.Header.ChannelHeader)
-	if err != nil {
-		return policyErr(err)
-	}
-
-	ledger := peer.GetLedger(chainName)
-	if ledger == nil {
-		return policyErr(fmt.Errorf("Invalid chain ID, %s", chainName))
-	}
-	payload := payl
-	if len(shdr.Creator) == util.CERT_HASH_LEN { //hash,replace with cert
-		creatorCert, err := ledger.GetCert(shdr.Creator)
-		if err != nil || creatorCert == nil {
-			logger.Errorf("Get creatorCert cert error: %s hash %x: cert: \n%x", err, shdr.Creator, creatorCert)
-			return policyErr(err)
-		}
-		logger.Infof("Do the creatorCert replace work, hash:\n%x\ncert:\n%x", shdr.Creator, creatorCert)
-		shdr.Creator = creatorCert
-		payloadHeader := utils.MakePayloadHeader(chdr, shdr)
-		payload = &common.Payload{Header: payloadHeader, Data: payload.Data}
-	}
 
 	// construct signed data we can evaluate the instantiation policy against
 	sd := []*common.SignedData{{
-		Data:      utils.MarshalOrPanic(payload),
+		Data:      env.Payload,
 		Identity:  shdr.Creator,
 		Signature: env.Signature,
 	}}
