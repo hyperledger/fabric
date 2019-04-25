@@ -7,6 +7,19 @@ import (
 )
 
 type IOReadWriter struct {
+	ExistsStub        func(string) (bool, error)
+	existsMutex       sync.RWMutex
+	existsArgsForCall []struct {
+		arg1 string
+	}
+	existsReturns struct {
+		result1 bool
+		result2 error
+	}
+	existsReturnsOnCall map[int]struct {
+		result1 bool
+		result2 error
+	}
 	ReadDirStub        func(string) ([]os.FileInfo, error)
 	readDirMutex       sync.RWMutex
 	readDirArgsForCall []struct {
@@ -33,10 +46,10 @@ type IOReadWriter struct {
 		result1 []byte
 		result2 error
 	}
-	RemoveStub        func(name string) error
+	RemoveStub        func(string) error
 	removeMutex       sync.RWMutex
 	removeArgsForCall []struct {
-		name string
+		arg1 string
 	}
 	removeReturns struct {
 		result1 error
@@ -44,12 +57,12 @@ type IOReadWriter struct {
 	removeReturnsOnCall map[int]struct {
 		result1 error
 	}
-	WriteFileStub        func(string, []byte, os.FileMode) error
+	WriteFileStub        func(string, string, []byte) error
 	writeFileMutex       sync.RWMutex
 	writeFileArgsForCall []struct {
 		arg1 string
-		arg2 []byte
-		arg3 os.FileMode
+		arg2 string
+		arg3 []byte
 	}
 	writeFileReturns struct {
 		result1 error
@@ -57,21 +70,71 @@ type IOReadWriter struct {
 	writeFileReturnsOnCall map[int]struct {
 		result1 error
 	}
-	ExistsStub        func(path string) (bool, error)
-	existsMutex       sync.RWMutex
-	existsArgsForCall []struct {
-		path string
-	}
-	existsReturns struct {
-		result1 bool
-		result2 error
-	}
-	existsReturnsOnCall map[int]struct {
-		result1 bool
-		result2 error
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *IOReadWriter) Exists(arg1 string) (bool, error) {
+	fake.existsMutex.Lock()
+	ret, specificReturn := fake.existsReturnsOnCall[len(fake.existsArgsForCall)]
+	fake.existsArgsForCall = append(fake.existsArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("Exists", []interface{}{arg1})
+	fake.existsMutex.Unlock()
+	if fake.ExistsStub != nil {
+		return fake.ExistsStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.existsReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *IOReadWriter) ExistsCallCount() int {
+	fake.existsMutex.RLock()
+	defer fake.existsMutex.RUnlock()
+	return len(fake.existsArgsForCall)
+}
+
+func (fake *IOReadWriter) ExistsCalls(stub func(string) (bool, error)) {
+	fake.existsMutex.Lock()
+	defer fake.existsMutex.Unlock()
+	fake.ExistsStub = stub
+}
+
+func (fake *IOReadWriter) ExistsArgsForCall(i int) string {
+	fake.existsMutex.RLock()
+	defer fake.existsMutex.RUnlock()
+	argsForCall := fake.existsArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *IOReadWriter) ExistsReturns(result1 bool, result2 error) {
+	fake.existsMutex.Lock()
+	defer fake.existsMutex.Unlock()
+	fake.ExistsStub = nil
+	fake.existsReturns = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *IOReadWriter) ExistsReturnsOnCall(i int, result1 bool, result2 error) {
+	fake.existsMutex.Lock()
+	defer fake.existsMutex.Unlock()
+	fake.ExistsStub = nil
+	if fake.existsReturnsOnCall == nil {
+		fake.existsReturnsOnCall = make(map[int]struct {
+			result1 bool
+			result2 error
+		})
+	}
+	fake.existsReturnsOnCall[i] = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *IOReadWriter) ReadDir(arg1 string) ([]os.FileInfo, error) {
@@ -88,7 +151,8 @@ func (fake *IOReadWriter) ReadDir(arg1 string) ([]os.FileInfo, error) {
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.readDirReturns.result1, fake.readDirReturns.result2
+	fakeReturns := fake.readDirReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *IOReadWriter) ReadDirCallCount() int {
@@ -97,13 +161,22 @@ func (fake *IOReadWriter) ReadDirCallCount() int {
 	return len(fake.readDirArgsForCall)
 }
 
+func (fake *IOReadWriter) ReadDirCalls(stub func(string) ([]os.FileInfo, error)) {
+	fake.readDirMutex.Lock()
+	defer fake.readDirMutex.Unlock()
+	fake.ReadDirStub = stub
+}
+
 func (fake *IOReadWriter) ReadDirArgsForCall(i int) string {
 	fake.readDirMutex.RLock()
 	defer fake.readDirMutex.RUnlock()
-	return fake.readDirArgsForCall[i].arg1
+	argsForCall := fake.readDirArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *IOReadWriter) ReadDirReturns(result1 []os.FileInfo, result2 error) {
+	fake.readDirMutex.Lock()
+	defer fake.readDirMutex.Unlock()
 	fake.ReadDirStub = nil
 	fake.readDirReturns = struct {
 		result1 []os.FileInfo
@@ -112,6 +185,8 @@ func (fake *IOReadWriter) ReadDirReturns(result1 []os.FileInfo, result2 error) {
 }
 
 func (fake *IOReadWriter) ReadDirReturnsOnCall(i int, result1 []os.FileInfo, result2 error) {
+	fake.readDirMutex.Lock()
+	defer fake.readDirMutex.Unlock()
 	fake.ReadDirStub = nil
 	if fake.readDirReturnsOnCall == nil {
 		fake.readDirReturnsOnCall = make(map[int]struct {
@@ -139,7 +214,8 @@ func (fake *IOReadWriter) ReadFile(arg1 string) ([]byte, error) {
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.readFileReturns.result1, fake.readFileReturns.result2
+	fakeReturns := fake.readFileReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *IOReadWriter) ReadFileCallCount() int {
@@ -148,13 +224,22 @@ func (fake *IOReadWriter) ReadFileCallCount() int {
 	return len(fake.readFileArgsForCall)
 }
 
+func (fake *IOReadWriter) ReadFileCalls(stub func(string) ([]byte, error)) {
+	fake.readFileMutex.Lock()
+	defer fake.readFileMutex.Unlock()
+	fake.ReadFileStub = stub
+}
+
 func (fake *IOReadWriter) ReadFileArgsForCall(i int) string {
 	fake.readFileMutex.RLock()
 	defer fake.readFileMutex.RUnlock()
-	return fake.readFileArgsForCall[i].arg1
+	argsForCall := fake.readFileArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *IOReadWriter) ReadFileReturns(result1 []byte, result2 error) {
+	fake.readFileMutex.Lock()
+	defer fake.readFileMutex.Unlock()
 	fake.ReadFileStub = nil
 	fake.readFileReturns = struct {
 		result1 []byte
@@ -163,6 +248,8 @@ func (fake *IOReadWriter) ReadFileReturns(result1 []byte, result2 error) {
 }
 
 func (fake *IOReadWriter) ReadFileReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.readFileMutex.Lock()
+	defer fake.readFileMutex.Unlock()
 	fake.ReadFileStub = nil
 	if fake.readFileReturnsOnCall == nil {
 		fake.readFileReturnsOnCall = make(map[int]struct {
@@ -176,21 +263,22 @@ func (fake *IOReadWriter) ReadFileReturnsOnCall(i int, result1 []byte, result2 e
 	}{result1, result2}
 }
 
-func (fake *IOReadWriter) Remove(name string) error {
+func (fake *IOReadWriter) Remove(arg1 string) error {
 	fake.removeMutex.Lock()
 	ret, specificReturn := fake.removeReturnsOnCall[len(fake.removeArgsForCall)]
 	fake.removeArgsForCall = append(fake.removeArgsForCall, struct {
-		name string
-	}{name})
-	fake.recordInvocation("Remove", []interface{}{name})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("Remove", []interface{}{arg1})
 	fake.removeMutex.Unlock()
 	if fake.RemoveStub != nil {
-		return fake.RemoveStub(name)
+		return fake.RemoveStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.removeReturns.result1
+	fakeReturns := fake.removeReturns
+	return fakeReturns.result1
 }
 
 func (fake *IOReadWriter) RemoveCallCount() int {
@@ -199,13 +287,22 @@ func (fake *IOReadWriter) RemoveCallCount() int {
 	return len(fake.removeArgsForCall)
 }
 
+func (fake *IOReadWriter) RemoveCalls(stub func(string) error) {
+	fake.removeMutex.Lock()
+	defer fake.removeMutex.Unlock()
+	fake.RemoveStub = stub
+}
+
 func (fake *IOReadWriter) RemoveArgsForCall(i int) string {
 	fake.removeMutex.RLock()
 	defer fake.removeMutex.RUnlock()
-	return fake.removeArgsForCall[i].name
+	argsForCall := fake.removeArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *IOReadWriter) RemoveReturns(result1 error) {
+	fake.removeMutex.Lock()
+	defer fake.removeMutex.Unlock()
 	fake.RemoveStub = nil
 	fake.removeReturns = struct {
 		result1 error
@@ -213,6 +310,8 @@ func (fake *IOReadWriter) RemoveReturns(result1 error) {
 }
 
 func (fake *IOReadWriter) RemoveReturnsOnCall(i int, result1 error) {
+	fake.removeMutex.Lock()
+	defer fake.removeMutex.Unlock()
 	fake.RemoveStub = nil
 	if fake.removeReturnsOnCall == nil {
 		fake.removeReturnsOnCall = make(map[int]struct {
@@ -224,20 +323,20 @@ func (fake *IOReadWriter) RemoveReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *IOReadWriter) WriteFile(arg1 string, arg2 []byte, arg3 os.FileMode) error {
-	var arg2Copy []byte
-	if arg2 != nil {
-		arg2Copy = make([]byte, len(arg2))
-		copy(arg2Copy, arg2)
+func (fake *IOReadWriter) WriteFile(arg1 string, arg2 string, arg3 []byte) error {
+	var arg3Copy []byte
+	if arg3 != nil {
+		arg3Copy = make([]byte, len(arg3))
+		copy(arg3Copy, arg3)
 	}
 	fake.writeFileMutex.Lock()
 	ret, specificReturn := fake.writeFileReturnsOnCall[len(fake.writeFileArgsForCall)]
 	fake.writeFileArgsForCall = append(fake.writeFileArgsForCall, struct {
 		arg1 string
-		arg2 []byte
-		arg3 os.FileMode
-	}{arg1, arg2Copy, arg3})
-	fake.recordInvocation("WriteFile", []interface{}{arg1, arg2Copy, arg3})
+		arg2 string
+		arg3 []byte
+	}{arg1, arg2, arg3Copy})
+	fake.recordInvocation("WriteFile", []interface{}{arg1, arg2, arg3Copy})
 	fake.writeFileMutex.Unlock()
 	if fake.WriteFileStub != nil {
 		return fake.WriteFileStub(arg1, arg2, arg3)
@@ -245,7 +344,8 @@ func (fake *IOReadWriter) WriteFile(arg1 string, arg2 []byte, arg3 os.FileMode) 
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.writeFileReturns.result1
+	fakeReturns := fake.writeFileReturns
+	return fakeReturns.result1
 }
 
 func (fake *IOReadWriter) WriteFileCallCount() int {
@@ -254,13 +354,22 @@ func (fake *IOReadWriter) WriteFileCallCount() int {
 	return len(fake.writeFileArgsForCall)
 }
 
-func (fake *IOReadWriter) WriteFileArgsForCall(i int) (string, []byte, os.FileMode) {
+func (fake *IOReadWriter) WriteFileCalls(stub func(string, string, []byte) error) {
+	fake.writeFileMutex.Lock()
+	defer fake.writeFileMutex.Unlock()
+	fake.WriteFileStub = stub
+}
+
+func (fake *IOReadWriter) WriteFileArgsForCall(i int) (string, string, []byte) {
 	fake.writeFileMutex.RLock()
 	defer fake.writeFileMutex.RUnlock()
-	return fake.writeFileArgsForCall[i].arg1, fake.writeFileArgsForCall[i].arg2, fake.writeFileArgsForCall[i].arg3
+	argsForCall := fake.writeFileArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *IOReadWriter) WriteFileReturns(result1 error) {
+	fake.writeFileMutex.Lock()
+	defer fake.writeFileMutex.Unlock()
 	fake.WriteFileStub = nil
 	fake.writeFileReturns = struct {
 		result1 error
@@ -268,6 +377,8 @@ func (fake *IOReadWriter) WriteFileReturns(result1 error) {
 }
 
 func (fake *IOReadWriter) WriteFileReturnsOnCall(i int, result1 error) {
+	fake.writeFileMutex.Lock()
+	defer fake.writeFileMutex.Unlock()
 	fake.WriteFileStub = nil
 	if fake.writeFileReturnsOnCall == nil {
 		fake.writeFileReturnsOnCall = make(map[int]struct {
@@ -279,60 +390,11 @@ func (fake *IOReadWriter) WriteFileReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *IOReadWriter) Exists(path string) (bool, error) {
-	fake.existsMutex.Lock()
-	ret, specificReturn := fake.existsReturnsOnCall[len(fake.existsArgsForCall)]
-	fake.existsArgsForCall = append(fake.existsArgsForCall, struct {
-		path string
-	}{path})
-	fake.recordInvocation("Exists", []interface{}{path})
-	fake.existsMutex.Unlock()
-	if fake.ExistsStub != nil {
-		return fake.ExistsStub(path)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.existsReturns.result1, fake.existsReturns.result2
-}
-
-func (fake *IOReadWriter) ExistsCallCount() int {
-	fake.existsMutex.RLock()
-	defer fake.existsMutex.RUnlock()
-	return len(fake.existsArgsForCall)
-}
-
-func (fake *IOReadWriter) ExistsArgsForCall(i int) string {
-	fake.existsMutex.RLock()
-	defer fake.existsMutex.RUnlock()
-	return fake.existsArgsForCall[i].path
-}
-
-func (fake *IOReadWriter) ExistsReturns(result1 bool, result2 error) {
-	fake.ExistsStub = nil
-	fake.existsReturns = struct {
-		result1 bool
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *IOReadWriter) ExistsReturnsOnCall(i int, result1 bool, result2 error) {
-	fake.ExistsStub = nil
-	if fake.existsReturnsOnCall == nil {
-		fake.existsReturnsOnCall = make(map[int]struct {
-			result1 bool
-			result2 error
-		})
-	}
-	fake.existsReturnsOnCall[i] = struct {
-		result1 bool
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *IOReadWriter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.existsMutex.RLock()
+	defer fake.existsMutex.RUnlock()
 	fake.readDirMutex.RLock()
 	defer fake.readDirMutex.RUnlock()
 	fake.readFileMutex.RLock()
@@ -341,8 +403,6 @@ func (fake *IOReadWriter) Invocations() map[string][][]interface{} {
 	defer fake.removeMutex.RUnlock()
 	fake.writeFileMutex.RLock()
 	defer fake.writeFileMutex.RUnlock()
-	fake.existsMutex.RLock()
-	defer fake.existsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

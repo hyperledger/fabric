@@ -30,7 +30,7 @@ type IOReadWriter interface {
 	ReadDir(string) ([]os.FileInfo, error)
 	ReadFile(string) ([]byte, error)
 	Remove(name string) error
-	WriteFile(string, []byte, os.FileMode) error
+	WriteFile(string, string, []byte) error
 	Exists(path string) (bool, error)
 }
 
@@ -38,9 +38,34 @@ type IOReadWriter interface {
 type FilesystemIO struct {
 }
 
-// WriteFile writes a file to the filesystem
-func (f *FilesystemIO) WriteFile(filename string, data []byte, perm os.FileMode) error {
-	return ioutil.WriteFile(filename, data, perm)
+// WriteFile writes a file to the filesystem; it does so atomically
+// by first writing to a temp file and then renaming the file so that
+// if the operation crashes midway we're not stuck with a bad package
+func (f *FilesystemIO) WriteFile(path, name string, data []byte) error {
+	tmpFile, err := ioutil.TempFile(path, ".ccpackage.")
+	if err != nil {
+		return errors.Wrapf(err, "error creating temp file in directory '%s'", path)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if n, err := tmpFile.Write(data); err != nil || n != len(data) {
+		if err == nil {
+			err = errors.Errorf(
+				"failed to write the entire content of the file, expected %d, wrote %d",
+				len(data), n)
+		}
+		return errors.Wrapf(err, "error writing to temp file '%s'", tmpFile.Name())
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return errors.Wrapf(err, "error closing temp file '%s'", tmpFile.Name())
+	}
+
+	if err := os.Rename(tmpFile.Name(), filepath.Join(path, name)); err != nil {
+		return errors.Wrapf(err, "error renaming temp file '%s'", tmpFile.Name())
+	}
+
+	return nil
 }
 
 // Remove removes a file from the filesystem - used for rolling back an in-flight
@@ -82,15 +107,17 @@ type Store struct {
 func (s *Store) Save(label string, ccInstallPkg []byte) (persistence.PackageID, error) {
 	hash := util.ComputeSHA256(ccInstallPkg)
 	packageID := packageID(label, hash)
-	ccInstallPkgPath := packagePath(s.Path, packageID)
 
-	if exists, _ := s.ReadWriter.Exists(ccInstallPkgPath); exists {
+	ccInstallPkgFileName := packageID.String() + ".bin"
+	ccInstallPkgFilePath := filepath.Join(s.Path, ccInstallPkgFileName)
+
+	if exists, _ := s.ReadWriter.Exists(ccInstallPkgFilePath); exists {
 		// chaincode install package was already installed
 		return packageID, nil
 	}
 
-	if err := s.ReadWriter.WriteFile(ccInstallPkgPath, ccInstallPkg, 0600); err != nil {
-		err = errors.Wrapf(err, "error writing chaincode install package to %s", ccInstallPkgPath)
+	if err := s.ReadWriter.WriteFile(s.Path, ccInstallPkgFileName, ccInstallPkg); err != nil {
+		err = errors.Wrapf(err, "error writing chaincode install package to %s", ccInstallPkgFilePath)
 		logger.Error(err.Error())
 		return "", err
 	}
@@ -102,7 +129,7 @@ func (s *Store) Save(label string, ccInstallPkg []byte) (persistence.PackageID, 
 // and also returns the chaincode metadata (names and versions) of any chaincode
 // installed with a matching hash
 func (s *Store) Load(packageID persistence.PackageID) ([]byte, error) {
-	ccInstallPkgPath := packagePath(s.Path, packageID)
+	ccInstallPkgPath := filepath.Join(s.Path, packageID.String()+".bin")
 
 	exists, err := s.ReadWriter.Exists(ccInstallPkgPath)
 	if err != nil {
@@ -161,10 +188,6 @@ func packageID(label string, hash []byte) persistence.PackageID {
 }
 
 var packageFileMatcher = regexp.MustCompile("^(.+):([0-9abcdef]+)[.]bin$")
-
-func packagePath(path string, packageID persistence.PackageID) string {
-	return filepath.Join(path, packageID.String()+".bin")
-}
 
 func installedChaincodeFromFilename(fileName string) (chaincode.InstalledChaincode, bool) {
 	matches := packageFileMatcher.FindStringSubmatch(fileName)

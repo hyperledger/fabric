@@ -42,7 +42,7 @@ var _ = Describe("Persistence", func() {
 
 		It("writes a file", func() {
 			path := filepath.Join(testDir, "write")
-			err := filesystemIO.WriteFile(path, []byte("test"), 0600)
+			err := filesystemIO.WriteFile(testDir, "write", []byte("test"))
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = os.Stat(path)
@@ -131,8 +131,9 @@ var _ = Describe("Persistence", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(packageID).To(Equal(p.PackageID("testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d")))
 			Expect(mockReadWriter.WriteFileCallCount()).To(Equal(1))
-			pkgDataFile, pkgData, _ := mockReadWriter.WriteFileArgsForCall(0)
-			Expect(pkgDataFile).To(Equal("testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.bin"))
+			pkgDataFilePath, pkgDataFileName, pkgData := mockReadWriter.WriteFileArgsForCall(0)
+			Expect(pkgDataFilePath).To(Equal(""))
+			Expect(pkgDataFileName).To(Equal("testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.bin"))
 			Expect(pkgData).To(Equal([]byte("testpkg")))
 		})
 
