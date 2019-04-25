@@ -18,13 +18,10 @@ package validation
 
 import (
 	"bytes"
-	"encoding/hex"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/ledger"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
@@ -96,7 +93,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 	}
 
 	// validate the header
-	chdr, shdr, err := validateCommonHeader(hdr)
+	chdr, shdr, err := ValidateCommonHeader(hdr)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -246,7 +243,7 @@ func validateChannelHeader(cHdr *common.ChannelHeader) error {
 }
 
 // checks for a valid Header
-func validateCommonHeader(hdr *common.Header) (*common.ChannelHeader, *common.SignatureHeader, error) {
+func ValidateCommonHeader(hdr *common.Header) (*common.ChannelHeader, *common.SignatureHeader, error) {
 	if hdr == nil {
 		return nil, nil, errors.New("nil header")
 	}
@@ -374,7 +371,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 }
 
 // ValidateTransaction checks that the transaction envelope is properly formed
-func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabilities, l ledger.PeerLedger) (*common.Payload, pb.TxValidationCode) {
+func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabilities) (*common.Payload, pb.TxValidationCode) {
 	putilsLogger.Debugf("ValidateTransactionEnvelope starts for envelope %p", e)
 
 	// check for nil argument
@@ -393,27 +390,14 @@ func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabili
 	putilsLogger.Debugf("Header is %s", payload.Header)
 
 	// validate the header
-	chdr, shdr, err := validateCommonHeader(payload.Header)
+	chdr, shdr, err := ValidateCommonHeader(payload.Header)
 	if err != nil {
-		putilsLogger.Errorf("validateCommonHeader returns err %s", err)
+		putilsLogger.Errorf("ValidateCommonHeader returns err %s", err)
 		return nil, pb.TxValidationCode_BAD_COMMON_HEADER
 	}
 
-	//recover cert for creator
-	if len(shdr.Creator) == util.CERT_HASH_LEN {
-		cert, err := l.GetCert(shdr.Creator)
-		if err != nil {
-			putilsLogger.Errorf("GetCert from db with hash:%s\n returns err %s", hex.EncodeToString(shdr.Creator), err)
-			return nil, pb.TxValidationCode_BAD_CREATOR_SIGNATURE
-		}
-		putilsLogger.Debugf("GetCert from db with hash:%s\n cert: %s", hex.EncodeToString(shdr.Creator), hex.EncodeToString(cert))
-		shdr.Creator = cert
-		payloadHeader := utils.MakePayloadHeader(chdr, shdr)
-		payload = &common.Payload{Header: payloadHeader, Data: payload.Data}
-	}
-
 	// validate the signature in the envelope
-	err = checkSignatureFromCreator(shdr.Creator, e.Signature, utils.MarshalOrPanic(payload), chdr.ChannelId)
+	err = checkSignatureFromCreator(shdr.Creator, e.Signature, e.Payload, chdr.ChannelId)
 	if err != nil {
 		putilsLogger.Errorf("checkSignatureFromCreator returns err %s", err)
 		return nil, pb.TxValidationCode_BAD_CREATOR_SIGNATURE

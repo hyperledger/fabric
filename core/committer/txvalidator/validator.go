@@ -8,6 +8,7 @@ package txvalidator
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -22,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -107,85 +107,48 @@ func NewTxValidator(chainID string, support Support, sccp sysccprovider.SystemCh
 		Vscc:    newVSCCValidator(chainID, support, sccp, pluginValidator)}
 }
 
-//loganTODO
-func (v *TxValidator) updateEndorseCertToDB(block *common.Block) error {
-	logger.Infof("enter updateEndorseCertToDB ")
-	defer logger.Infof("exit updateEndorseCertToDB ")
+func (v *TxValidator) preProcessBlock(block *common.Block) (*common.Block, error) {
+	logger.Infof("enter preProcessBlock ")
+	defer logger.Infof("exit preProcessBlock ")
+	blkcpy := *block
 
-	actionPosition := 0 //actionPosition default is 0 currently
-
-	for _, tx := range block.Data.Data {
+	for index, data := range blkcpy.Data.Data {
 		// get the envelope...
-		env, err := utils.GetEnvelopeFromBlock(tx)
+		env, err := utils.GetEnvelopeFromBlock(data)
 		if err != nil {
-			logger.Errorf("updateEndorseCertToDB error: GetEnvelope failed, err %s", err)
-			return errors.Wrap(err, "updateEndorseCertToDB failed")
+			logger.Errorf("preProcessBlock error: GetEnvelope failed, err %s", err)
+			return nil, errors.Wrap(err, "preProcessBlock failed")
 		}
 
 		// ...and the payload...
-		payl, err := utils.GetPayload(env)
+		payload, err := utils.GetPayload(env)
 		if err != nil {
-			logger.Errorf("updateEndorseCertToDB error: GetPayload failed, err %s", err)
-			return errors.Wrap(err, "updateEndorseCertToDB failed")
+			logger.Errorf("preProcessBlock error: GetPayload failed, err %s", err)
+			return nil, errors.Wrap(err, "preProcessBlock failed")
 		}
-
-		//..channel header...
-		chdr, err := utils.UnmarshalChannelHeader(payl.Header.ChannelHeader)
+		// validate the header
+		chdr, shdr, err := validation.ValidateCommonHeader(payload.Header)
 		if err != nil {
-			logger.Errorf("updateEndorseCertToDB error: UnmarshalChannelHeader failed, err %s", err)
-			return err
-		}
-		if common.HeaderType(chdr.Type) != common.HeaderType_ENDORSER_TRANSACTION {
-			logger.Debugf("Skip this block, as tx type is:%d", chdr.Type)
-			return nil
+			logger.Errorf("ValidateCommonHeader returns err %s", err)
+			return nil, err
 		}
 
-		// ...and the transaction...
-		tx, err := utils.GetTransaction(payl.Data)
-		if err != nil {
-			logger.Errorf("updateEndorseCertToDB error: GetTransaction failed, err %s", err)
-			return errors.Wrap(err, "updateEndorseCertToDB failed")
-		}
-
-		cap, err := utils.GetChaincodeActionPayload(tx.Actions[actionPosition].Payload)
-		if err != nil {
-			logger.Errorf("updateEndorseCertToDB error: GetChaincodeActionPayload failed, err %s", err)
-			return errors.Wrap(err, "updateEndorseCertToDB failed")
-		}
-
-		// loop through each of the endorsements and relace with cert
-		for _, endorsement := range cap.Action.Endorsements {
-			endorserCert := endorsement.Endorser
-			if len(endorsement.Endorser) == util.CERT_HASH_LEN { //hash,replace with cert
-				/*
-					if endorserCert, err = kvledger.GlbCertStore.GetCert(endorsement.Endorser); err != nil || endorserCert == nil {
-						logger.Errorf("Get endorser cert error: %s cert len %d: pem: \n%s", err, len(endorsement.Endorser), endorserCert)
-						return errors.Wrap(err, "updateEndorseCertToDB failed")
-					}
-
-					//unmarshal endorser bytes
-					serializedIdentity := &mspprotos.SerializedIdentity{}
-					if err := proto.Unmarshal(endorserCert, serializedIdentity); err != nil {
-						logger.Errorf("Unmarshal endorser  error: %s cert len %d: pem: \n%s", err, len(endorsement.Endorser), endorserCert)
-						return errors.Wrap(err, "updateEndorseCertToDB failed")
-					}
-					//do replace work
-					endorsement.Endorser = endorserCert
-					logger.Debugf("updateEndorseCertToDB,replace with cert Mspid: %s, pem:\n%s\n len:%d bytes:\n%v", serializedIdentity.Mspid, serializedIdentity.IdBytes, len(endorserCert), endorserCert)
-				*/
-				logger.Debugf("This is a hash of endorser:\n%v", endorsement.Endorser)
-			} else { // a new endorser cert,insert to db
-				key := util.ComputeSHA256(endorserCert)
-				logger.Debugf("updateEndorseCertToDB: update endorser to  db key: \n%x\n endorserCert:\n%x", key, endorserCert)
-				if err := kvledger.GlbCertStore.PutCert(key, endorserCert); err != nil {
-					logger.Errorf("update endorser cert error: %s", err)
-					return errors.Wrap(err, "updateEndorseCertToDB failed")
-				}
+		//recover cert for creator
+		if len(shdr.Creator) == util.CERT_HASH_LEN {
+			cert, err := v.Support.Ledger().GetCert(shdr.Creator)
+			if err != nil {
+				logger.Errorf("GetCert from db with hash:%s\n returns err %s", hex.EncodeToString(shdr.Creator), err)
+				return nil, err
 			}
-
+			logger.Infof("GetCert from db with hash:%s\n cert: %s", hex.EncodeToString(shdr.Creator), hex.EncodeToString(cert))
+			shdr.Creator = cert
+			payloadHeader := utils.MakePayloadHeader(chdr, shdr)
+			payload = &common.Payload{Header: payloadHeader, Data: payload.Data}
+			env.Payload = utils.MarshalOrPanic(payload)
 		}
+		blkcpy.Data.Data[index] = utils.MarshalOrPanic(env)
 	}
-	return nil
+	return &blkcpy, nil
 }
 
 func (v *TxValidator) chainExists(chain string) bool {
@@ -220,13 +183,11 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	startValidation := time.Now() // timer to log Validate block duration
 	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChainID, block.Header.Number)
 
-	//loganTODO  replace block  with cert
-	/*
-		genErr := v.updateEndorseCertToDB(block)
-		if genErr != nil {
-			return genErr
-		}
-	*/
+	block, err = v.preProcessBlock(block)
+	if err != nil {
+		logger.Errorf("[%s] preProcessBlock for block [%d] err: %s", v.ChainID, block.Header.Number, err)
+		return err
+	}
 
 	// Initialize trans as valid here, then set invalidation reason code upon invalidation below
 	txsfltr := ledgerUtil.NewTxValidationFlags(len(block.Data.Data))
@@ -389,7 +350,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		var txsChaincodeName *sysccprovider.ChaincodeInstance
 		var txsUpgradedChaincode *sysccprovider.ChaincodeInstance
 
-		if payload, txResult = validation.ValidateTransaction(env, v.Support.Capabilities(), v.Support.Ledger()); txResult != peer.TxValidationCode_VALID {
+		if payload, txResult = validation.ValidateTransaction(env, v.Support.Capabilities()); txResult != peer.TxValidationCode_VALID {
 			logger.Errorf("Invalid transaction with index %d", tIdx)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,
