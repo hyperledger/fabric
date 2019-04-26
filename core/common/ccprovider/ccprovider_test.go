@@ -105,6 +105,29 @@ func TestInstalledCCs(t *testing.T) {
 	}
 }
 
+func TestChaincodeData(t *testing.T) {
+	var cd ccprovider.ChaincodeDefinition
+	cd = &ccprovider.ChaincodeData{
+		Data:                []byte("Data"),
+		Escc:                "Escc",
+		Id:                  []byte("Id"),
+		InstantiationPolicy: []byte("InstantiationPolicy"),
+		Name:                "Name",
+		Policy:              []byte("Policy"),
+		Version:             "Version",
+		Vscc:                "Vscc",
+	}
+
+	assert.Equal(t, cd.CCName(), "Name")
+	assert.Equal(t, cd.CCVersion(), "Version")
+	assert.Equal(t, cd.Endorsement(), "Escc")
+	assert.Equal(t, cd.Hash(), []byte("Id"))
+	assert.Equal(t, cd.RequiresInit(), false)
+	pl, po := cd.Validation()
+	assert.Equal(t, pl, "Vscc")
+	assert.Equal(t, po, []byte("Policy"))
+}
+
 func setupDirectoryStructure(t *testing.T) (string, map[string][]byte) {
 	files := []string{
 		"example02.1.0", // Version contains the delimiter '.' is a valid case
