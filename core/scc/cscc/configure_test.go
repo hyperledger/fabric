@@ -33,7 +33,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
-	deliverclient "github.com/hyperledger/fabric/core/deliverservice"
+	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/peer"
@@ -104,7 +104,7 @@ func (*mockDeliveryClient) Stop() {
 type mockDeliveryClientFactory struct {
 }
 
-func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
+func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
 	return &mockDeliveryClient{}, nil
 }
 

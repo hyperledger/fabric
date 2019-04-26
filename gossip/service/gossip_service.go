@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
-	deliverclient "github.com/hyperledger/fabric/core/deliverservice"
+	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
@@ -58,7 +58,7 @@ type GossipService interface {
 // DeliveryServiceFactory factory to create and initialize delivery service instance
 type DeliveryServiceFactory interface {
 	// Returns an instance of delivery client
-	Service(g GossipService, endpoints []string, msc api.MessageCryptoService) (deliverclient.DeliverService, error)
+	Service(g GossipService, endpoints []string, msc api.MessageCryptoService) (deliverservice.DeliverService, error)
 }
 
 type deliveryFactoryImpl struct {
@@ -66,13 +66,13 @@ type deliveryFactoryImpl struct {
 }
 
 // Returns an instance of delivery client
-func (df *deliveryFactoryImpl) Service(g GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
-	return deliverclient.NewDeliverService(&deliverclient.Config{
+func (df *deliveryFactoryImpl) Service(g GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
+	return deliverservice.NewDeliverService(&deliverservice.Config{
 		CryptoSvc:   mcs,
 		Gossip:      g,
 		Endpoints:   endpoints,
-		ConnFactory: deliverclient.DefaultConnectionFactory,
-		ABCFactory:  deliverclient.DefaultABCFactory,
+		ConnFactory: deliverservice.DefaultConnectionFactory,
+		ABCFactory:  deliverservice.DefaultABCFactory,
 		Signer:      df.signer,
 	})
 }
@@ -94,7 +94,7 @@ type gossipServiceImpl struct {
 	privateHandlers map[string]privateHandler
 	chains          map[string]state.GossipStateProvider
 	leaderElection  map[string]election.LeaderElectionService
-	deliveryService map[string]deliverclient.DeliverService
+	deliveryService map[string]deliverservice.DeliverService
 	deliveryFactory DeliveryServiceFactory
 	lock            sync.RWMutex
 	mcs             api.MessageCryptoService
@@ -193,7 +193,7 @@ func InitGossipServiceCustomDeliveryFactory(
 			privateHandlers: make(map[string]privateHandler),
 			chains:          make(map[string]state.GossipStateProvider),
 			leaderElection:  make(map[string]election.LeaderElectionService),
-			deliveryService: make(map[string]deliverclient.DeliverService),
+			deliveryService: make(map[string]deliverservice.DeliverService),
 			deliveryFactory: factory,
 			peerIdentity:    serializedIdentity,
 			secAdv:          secAdv,
