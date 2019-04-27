@@ -67,7 +67,7 @@ func TestLedgerProvider(t *testing.T) {
 		assert.Equal(t, uint64(1), bcInfo.Height)
 
 		// check that the genesis block was persisted in the provider's db
-		s := provider.(*Provider).idStore
+		s := provider.idStore
 		gbBytesInProviderStore, err := s.db.Get(s.encodeLedgerKey(ledgerid))
 		assert.NoError(t, err)
 		gb := &common.Block{}
@@ -128,7 +128,7 @@ func TestLedgerProviderHistoryDBDisabled(t *testing.T) {
 		assert.Equal(t, uint64(1), bcInfo.Height)
 
 		// check that the genesis block was persisted in the provider's db
-		s := provider.(*Provider).idStore
+		s := provider.idStore
 		gbBytesInProviderStore, err := s.db.Get(s.encodeLedgerKey(ledgerid))
 		assert.NoError(t, err)
 		gb := &common.Block{}
@@ -155,19 +155,19 @@ func TestRecovery(t *testing.T) {
 
 	// now create the genesis block
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
-	ledger, err := provider.(*Provider).openInternal(constructTestLedgerID(1))
+	ledger, err := provider.openInternal(constructTestLedgerID(1))
 	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: genesisBlock})
 	ledger.Close()
 
 	// Case 1: assume a crash happens, force underconstruction flag to be set to simulate
 	// a failure where ledgerid is being created - ie., block is written but flag is not unset
-	provider.(*Provider).idStore.setUnderConstructionFlag(constructTestLedgerID(1))
+	provider.idStore.setUnderConstructionFlag(constructTestLedgerID(1))
 	provider.Close()
 
 	// construct a new provider to invoke recovery
 	provider = testutilNewProvider(conf, t)
 	// verify the underecoveryflag and open the ledger
-	flag, err := provider.(*Provider).idStore.getUnderConstructionFlag()
+	flag, err := provider.idStore.getUnderConstructionFlag()
 	assert.NoError(t, err, "Failed to read the underconstruction flag")
 	assert.Equal(t, "", flag)
 	ledger, err = provider.Open(constructTestLedgerID(1))
@@ -176,13 +176,13 @@ func TestRecovery(t *testing.T) {
 
 	// Case 0: assume a crash happens before the genesis block of ledger 2 is committed
 	// Open the ID store (inventory of chainIds/ledgerIds)
-	provider.(*Provider).idStore.setUnderConstructionFlag(constructTestLedgerID(2))
+	provider.idStore.setUnderConstructionFlag(constructTestLedgerID(2))
 	provider.Close()
 
 	// construct a new provider to invoke recovery
 	provider = testutilNewProvider(conf, t)
 	assert.NoError(t, err, "Provider failed to recover an underConstructionLedger")
-	flag, err = provider.(*Provider).idStore.getUnderConstructionFlag()
+	flag, err = provider.idStore.getUnderConstructionFlag()
 	assert.NoError(t, err, "Failed to read the underconstruction flag")
 	assert.Equal(t, "", flag)
 
@@ -196,19 +196,19 @@ func TestRecoveryHistoryDBDisabled(t *testing.T) {
 
 	// now create the genesis block
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
-	ledger, err := provider.(*Provider).openInternal(constructTestLedgerID(1))
+	ledger, err := provider.openInternal(constructTestLedgerID(1))
 	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: genesisBlock})
 	ledger.Close()
 
 	// Case 1: assume a crash happens, force underconstruction flag to be set to simulate
 	// a failure where ledgerid is being created - ie., block is written but flag is not unset
-	provider.(*Provider).idStore.setUnderConstructionFlag(constructTestLedgerID(1))
+	provider.idStore.setUnderConstructionFlag(constructTestLedgerID(1))
 	provider.Close()
 
 	// construct a new provider to invoke recovery
 	provider = testutilNewProvider(conf, t)
 	// verify the underecoveryflag and open the ledger
-	flag, err := provider.(*Provider).idStore.getUnderConstructionFlag()
+	flag, err := provider.idStore.getUnderConstructionFlag()
 	assert.NoError(t, err, "Failed to read the underconstruction flag")
 	assert.Equal(t, "", flag)
 	ledger, err = provider.Open(constructTestLedgerID(1))
@@ -217,13 +217,13 @@ func TestRecoveryHistoryDBDisabled(t *testing.T) {
 
 	// Case 0: assume a crash happens before the genesis block of ledger 2 is committed
 	// Open the ID store (inventory of chainIds/ledgerIds)
-	provider.(*Provider).idStore.setUnderConstructionFlag(constructTestLedgerID(2))
+	provider.idStore.setUnderConstructionFlag(constructTestLedgerID(2))
 	provider.Close()
 
 	// construct a new provider to invoke recovery
 	provider = testutilNewProvider(conf, t)
 	assert.NoError(t, err, "Provider failed to recover an underConstructionLedger")
-	flag, err = provider.(*Provider).idStore.getUnderConstructionFlag()
+	flag, err = provider.idStore.getUnderConstructionFlag()
 	assert.NoError(t, err, "Failed to read the underconstruction flag")
 	assert.Equal(t, "", flag)
 
@@ -452,14 +452,17 @@ func testConfig(t *testing.T) (conf *lgr.Config, cleanup func()) {
 	return conf, cleanup
 }
 
-func testutilNewProvider(conf *lgr.Config, t *testing.T) lgr.PeerLedgerProvider {
-	provider, err := NewProvider()
-	assert.NoError(t, err)
-	provider.Initialize(&lgr.Initializer{
-		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
-		MetricsProvider:               &disabled.Provider{},
-		Config:                        conf,
-	})
+func testutilNewProvider(conf *lgr.Config, t *testing.T) *Provider {
+	provider, err := NewProvider(
+		&lgr.Initializer{
+			DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
+			MetricsProvider:               &disabled.Provider{},
+			Config:                        conf,
+		},
+	)
+	if err != nil {
+		t.Fatalf("Failed to create new Provider: %s", err)
+	}
 	return provider
 }
 
@@ -468,9 +471,9 @@ func testutilNewProviderWithCollectionConfig(
 	namespace string,
 	btlConfigs map[string]uint64,
 	conf *lgr.Config,
-) lgr.PeerLedgerProvider {
+) *Provider {
 	provider := testutilNewProvider(conf, t)
-	mockCCInfoProvider := provider.(*Provider).initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
+	mockCCInfoProvider := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
 	collMap := map[string]*common.StaticCollectionConfig{}
 	var collConf []*common.CollectionConfig
 	for collName, btl := range btlConfigs {

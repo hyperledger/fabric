@@ -54,18 +54,8 @@ type Provider struct {
 
 // NewProvider instantiates a new Provider.
 // This is not thread-safe and assumed to be synchronized be the caller
-func NewProvider() (ledger.PeerLedgerProvider, error) {
-	logger.Info("Initializing ledger provider")
-
-	logger.Info("ledger provider Initialized")
+func NewProvider(initializer *ledger.Initializer) (*Provider, error) {
 	p := &Provider{}
-	return p, nil
-}
-
-// Initialize implements the corresponding method from interface ledger.PeerLedgerProvider
-func (p *Provider) Initialize(initializer *ledger.Initializer) error {
-	var err error
-
 	p.initializer = initializer
 	// initialize the ID store (inventory of chainIds/ledgerIds)
 	idStore := openIDStore(filepath.Join(p.initializer.Config.RootFSPath, "ledgerProvider"))
@@ -105,6 +95,7 @@ func (p *Provider) Initialize(initializer *ledger.Initializer) error {
 	p.bookkeepingProvider = bookkeeping.NewProvider(
 		filepath.Join(p.initializer.Config.RootFSPath, "bookkeeper"),
 	)
+	var err error
 	p.vdbProvider, err = privacyenabledstate.NewCommonStorageDBProvider(
 		p.bookkeepingProvider,
 		initializer.MetricsProvider,
@@ -112,11 +103,11 @@ func (p *Provider) Initialize(initializer *ledger.Initializer) error {
 		initializer.Config.StateDB,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	p.stats = newStats(initializer.MetricsProvider)
 	p.recoverUnderConstructionLedger()
-	return nil
+	return p, nil
 }
 
 // Create implements the corresponding method from interface ledger.PeerLedgerProvider
