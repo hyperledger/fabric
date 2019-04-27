@@ -54,6 +54,7 @@ type signerSerializer interface {
 
 type wrappedBalancer struct {
 	balancer.Balancer
+	balancer.V2Balancer
 	cd *countingDialer
 }
 
@@ -89,7 +90,12 @@ func newCountingDialer() *countingDialer {
 
 func (d *countingDialer) Build(cc balancer.ClientConn, opts balancer.BuildOptions) balancer.Balancer {
 	defer atomic.AddUint32(&d.connectionCount, 1)
-	return &wrappedBalancer{Balancer: d.baseBuilder.Build(cc, opts), cd: d}
+	lb := d.baseBuilder.Build(cc, opts)
+	return &wrappedBalancer{
+		Balancer:   lb,
+		V2Balancer: lb.(balancer.V2Balancer),
+		cd:         d,
+	}
 }
 
 func (d *countingDialer) Name() string {
