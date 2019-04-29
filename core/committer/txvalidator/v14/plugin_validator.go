@@ -31,7 +31,13 @@ type Mapper interface {
 	vp.Mapper
 }
 
-//go:generate mockery -dir ../../../handlers/validation/api/ -name PluginFactory -case underscore -output mocks/
+//go:generate mockery -dir . -name PluginFactory -case underscore -output mocks/
+
+// PluginFactory local interface used to generate mock for foreign interface.
+type PluginFactory interface {
+	validation.PluginFactory
+}
+
 //go:generate mockery -dir ../../../handlers/validation/api/ -name Plugin -case underscore -output mocks/
 //go:generate mockery -dir . -name QueryExecutorCreator -case underscore -output mocks/
 
