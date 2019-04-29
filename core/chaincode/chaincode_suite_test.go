@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -65,7 +66,11 @@ type packageProvider interface {
 }
 
 //go:generate mockery -dir . -name Lifecycle -case underscore -output mock/ -outpkg mock
-//go:generate mockery -dir ../common/ccprovider/ -name ChaincodeDefinition -case underscore -output mock/ -outpkg mock
+
+//go:generate counterfeiter -o mock/chaincode_definition.go --fake-name ChaincodeDefinition . chaincodeDefinition
+type chaincodeDefinition interface {
+	ccprovider.ChaincodeDefinition
+}
 
 //go:generate counterfeiter -o mock/chaincode_stream.go --fake-name ChaincodeStream . chaincodeStream
 type chaincodeStream interface {
