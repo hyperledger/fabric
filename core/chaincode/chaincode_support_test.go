@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	mocklgr "github.com/hyperledger/fabric/common/mocks/ledger"
 	mockpeer "github.com/hyperledger/fabric/common/mocks/peer"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
@@ -79,8 +78,7 @@ func (mri *mockResultsIterator) Close() {
 }
 
 type mockExecQuerySimulator struct {
-	txsim ledger.TxSimulator
-	mocklgr.MockQueryExecutor
+	txsim       ledger.TxSimulator
 	resultsIter map[string]map[string]*mockResultsIterator
 }
 
@@ -223,8 +221,6 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 	ml.On("ChaincodeContainerInfo", ma.Anything, "badccname", ma.Anything).Return(nil, errors.New("get lost"))
 	fakeCCDefinition := &mock.ChaincodeDefinition{}
 	ml.On("ChaincodeDefinition", ma.Anything, "calledCC", ma.Anything).Return(fakeCCDefinition, nil)
-	mcd := &mock.ChaincodeDefinition{}
-	ml.On("ChaincodeDefinition", ma.Anything, "calledCC", ma.Anything).Return(mcd, nil)
 	client, err := docker.NewClientFromEnv()
 	if err != nil {
 		panic(err)

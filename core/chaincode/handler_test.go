@@ -12,7 +12,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
-	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -49,6 +48,7 @@ var _ = Describe("Handler", func() {
 		fakeShimRequestsCompleted      *metricsfakes.Counter
 		fakeShimRequestDuration        *metricsfakes.Histogram
 		fakeExecuteTimeouts            *metricsfakes.Counter
+		fakeCapabilites                *mock.ApplicationCapabilities
 
 		responseNotifier chan *pb.ChaincodeMessage
 		txContext        *chaincode.TransactionContext
@@ -90,11 +90,12 @@ var _ = Describe("Handler", func() {
 		fakeContextRegistry.GetReturns(txContext)
 		fakeContextRegistry.CreateReturns(txContext, nil)
 
+		fakeApplicationConfig := &mock.ApplicationConfig{}
+		fakeCapabilites = &mock.ApplicationCapabilities{}
+		fakeCapabilites.KeyLevelEndorsementReturns(true)
+		fakeApplicationConfig.CapabilitiesReturns(fakeCapabilites)
 		fakeApplicationConfigRetriever = &fake.ApplicationConfigRetriever{}
-		applicationCapability := &config.MockApplication{
-			CapabilitiesRv: &config.MockApplicationCapabilities{KeyLevelEndorsementRv: true},
-		}
-		fakeApplicationConfigRetriever.GetApplicationConfigReturns(applicationCapability, true)
+		fakeApplicationConfigRetriever.GetApplicationConfigReturns(fakeApplicationConfig, true)
 
 		fakeShimRequestsReceived = &metricsfakes.Counter{}
 		fakeShimRequestsReceived.WithReturns(fakeShimRequestsReceived)
@@ -690,10 +691,7 @@ var _ = Describe("Handler", func() {
 
 		Context("when key level endorsement is not supported", func() {
 			BeforeEach(func() {
-				applicationCapability := &config.MockApplication{
-					CapabilitiesRv: &config.MockApplicationCapabilities{KeyLevelEndorsementRv: false},
-				}
-				fakeApplicationConfigRetriever.GetApplicationConfigReturns(applicationCapability, true)
+				fakeCapabilites.KeyLevelEndorsementReturns(false)
 			})
 
 			It("returns an error", func() {
@@ -1237,10 +1235,7 @@ var _ = Describe("Handler", func() {
 
 		Context("when key level endorsement is not supported", func() {
 			BeforeEach(func() {
-				applicationCapability := &config.MockApplication{
-					CapabilitiesRv: &config.MockApplicationCapabilities{KeyLevelEndorsementRv: false},
-				}
-				fakeApplicationConfigRetriever.GetApplicationConfigReturns(applicationCapability, true)
+				fakeCapabilites.KeyLevelEndorsementReturns(false)
 			})
 
 			It("returns an error", func() {
@@ -2873,7 +2868,7 @@ var _ = Describe("Handler", func() {
 			})
 
 			It("returns an error", func() {
-				err := handler.ProcessStream((fakeChatStream))
+				err := handler.ProcessStream(fakeChatStream)
 				Expect(err).To(MatchError("receive failed: chocolate"))
 			})
 		})
