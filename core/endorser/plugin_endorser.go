@@ -19,8 +19,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+//go:generate mockery -dir . -name Store -case underscore -output mocks/
+
+// Store is local defined interface for mocking foreign interface transientstore.Store.
+type Store interface {
+	transientstore.Store
+}
+
 //go:generate mockery -dir . -name TransientStoreRetriever -case underscore -output mocks/
-//go:generate mockery -dir ../transientstore/ -name Store -case underscore -output mocks/
 
 // TransientStoreRetriever retrieves transient stores
 type TransientStoreRetriever interface {
