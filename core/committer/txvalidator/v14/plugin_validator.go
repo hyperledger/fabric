@@ -14,7 +14,7 @@ import (
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	vp "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
+	vc "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -77,14 +77,20 @@ type PluginValidator struct {
 	vp.Mapper
 	QueryExecutorCreator
 	msp.IdentityDeserializer
-	capabilities Capabilities
+	capabilities vc.Capabilities
 }
 
-//go:generate mockery -dir ../../../handlers/validation/api/capabilities/ -name Capabilities -case underscore -output mocks/
+//go:generate mockery -dir . -name Capabilities -case underscore -output mocks/
+
+// Capabilities local interface used to generate mock for foreign interface.
+type Capabilities interface {
+	vc.Capabilities
+}
+
 //go:generate mockery -dir ../../../../msp/ -name IdentityDeserializer -case underscore -output mocks/
 
 // NewPluginValidator creates a new PluginValidator
-func NewPluginValidator(pm vp.Mapper, qec QueryExecutorCreator, deserializer msp.IdentityDeserializer, capabilities Capabilities) *PluginValidator {
+func NewPluginValidator(pm vp.Mapper, qec QueryExecutorCreator, deserializer msp.IdentityDeserializer, capabilities vc.Capabilities) *PluginValidator {
 	return &PluginValidator{
 		capabilities:         capabilities,
 		pluginChannelMapping: make(map[vp.Name]*pluginsByChannel),
