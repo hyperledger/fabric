@@ -28,7 +28,7 @@ type PolicyCheckerProvider func(resourceName string) deliver.PolicyCheckerFunc
 
 // Server holds the dependencies necessary to create a deliver server
 type Server struct {
-	DH                    *deliver.Handler
+	DeliverHandler        *deliver.Handler
 	PolicyCheckerProvider PolicyCheckerProvider
 }
 
@@ -106,7 +106,7 @@ func (s *Server) DeliverFiltered(srv peer.Deliver_DeliverFilteredServer) error {
 			Deliver_DeliverFilteredServer: srv,
 		},
 	}
-	return s.DH.Handle(srv.Context(), deliverServer)
+	return s.DeliverHandler.Handle(srv.Context(), deliverServer)
 }
 
 // Deliver sends a stream of blocks to a client after commitment
@@ -121,7 +121,7 @@ func (s *Server) Deliver(srv peer.Deliver_DeliverServer) (err error) {
 			Deliver_DeliverServer: srv,
 		},
 	}
-	return s.DH.Handle(srv.Context(), deliverServer)
+	return s.DeliverHandler.Handle(srv.Context(), deliverServer)
 }
 
 func (s *Server) sendProducer(srv peer.Deliver_DeliverFilteredServer) func(msg proto.Message) error {
@@ -146,8 +146,7 @@ func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
 		var err error
 
 		if ebytes == nil {
-			logger.Debugf("got nil data bytes for tx index %d, "+
-				"block num %d", txIndex, block.Header.Number)
+			logger.Debugf("got nil data bytes for tx index %d, block num %d", txIndex, block.Header.Number)
 			continue
 		}
 
@@ -164,8 +163,7 @@ func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
 		}
 
 		if payload.Header == nil {
-			logger.Debugf("transaction payload header is nil, %d, block num %d",
-				txIndex, block.Header.Number)
+			logger.Debugf("transaction payload header is nil, %d, block num %d", txIndex, block.Header.Number)
 			continue
 		}
 		chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
