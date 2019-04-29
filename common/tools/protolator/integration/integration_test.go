@@ -236,8 +236,10 @@ func TestChannelCreationPolicy(t *testing.T) {
 
 func TestStaticMarshal(t *testing.T) {
 	// To generate artifacts:
-	// 	configtxgen -channelID test -outputBlock block.pb -profile SampleSingleMSPSolo
-	// 	configtxgen -inspectBlock block.pb > block.json
+	// e.g.
+	//  FABRICPATH=$GOPATH/src/github.com/hyperledger/fabric
+	// 	configtxgen -channelID test -outputBlock block.pb -profile SampleSingleMSPSolo -configPath FABRICPATH/sampleconfig
+	// 	configtxgen -configPath FABRICPATH/sampleconfig -inspectBlock block.pb > block.json
 
 	blockBin, err := ioutil.ReadFile("testdata/block.pb")
 	require.NoError(t, err)

@@ -338,6 +338,15 @@
 													}
 												},
 												"values": {
+													"Endpoints": {
+														"mod_policy": "Admins",
+														"value": {
+															"addresses": [
+																"127.0.0.1:7050"
+															]
+														},
+														"version": "0"
+													},
 													"MSP": {
 														"mod_policy": "Admins",
 														"value": {
@@ -430,8 +439,8 @@
 												"mod_policy": "Admins",
 												"value": {
 													"absolute_max_bytes": 10485760,
-													"max_message_count": 10,
-													"preferred_max_bytes": 524288
+													"max_message_count": 500,
+													"preferred_max_bytes": 2097152
 												},
 												"version": "0"
 											},
@@ -460,8 +469,7 @@
 												"mod_policy": "Admins",
 												"value": {
 													"metadata": null,
-													"migration_context": "0",
-													"migration_state": "MIG_STATE_NONE",
+													"state": "STATE_NORMAL",
 													"type": "solo"
 												},
 												"version": "0"
@@ -518,7 +526,7 @@
 										"mod_policy": "Admins",
 										"value": {
 											"capabilities": {
-												"V1_3": {}
+												"V2_0": {}
 											}
 										},
 										"version": "0"
@@ -551,15 +559,15 @@
 							"channel_id": "test",
 							"epoch": "0",
 							"extension": null,
-							"timestamp": "2019-03-07T21:55:56Z",
+							"timestamp": "2019-04-21T19:35:42Z",
 							"tls_cert_hash": null,
-							"tx_id": "18514084734328ec76fdd5ff9050e39acb4620590e6e81bac895127a5b76e574",
+							"tx_id": "7c179b7100bb0c0b33dad5114f0294e2509e9be9fbfa0ac9d38b43703ea57138",
 							"type": 1,
 							"version": 1
 						},
 						"signature_header": {
 							"creator": null,
-							"nonce": "VgS6myLORUTNIWdapPsvpSr3mnv2Fw8r"
+							"nonce": "1gQF896QI8wgNZSwJ73vaPUcuOugIvB/"
 						}
 					}
 				},
@@ -568,7 +576,7 @@
 		]
 	},
 	"header": {
-		"data_hash": "tJXefMRTbqWC1IfvQLyH8ISz0IUb3biTCiVkyxr90xY=",
+		"data_hash": "idkpZn9B0jX9nL0kASTuPnA1PJDeXToBquHOas7f3Kk=",
 		"number": "0",
 		"previous_hash": null
 	},
