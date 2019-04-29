@@ -24,7 +24,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-//go:generate mockery -dir ../plugin/ -name Mapper -case underscore -output mocks/
+//go:generate mockery -dir . -name Mapper -case underscore -output mocks/
+
+// Mapper local interface use to generate mock for foreign interface.
+type Mapper interface {
+	vp.Mapper
+}
+
 //go:generate mockery -dir ../../../handlers/validation/api/ -name PluginFactory -case underscore -output mocks/
 //go:generate mockery -dir ../../../handlers/validation/api/ -name Plugin -case underscore -output mocks/
 //go:generate mockery -dir . -name QueryExecutorCreator -case underscore -output mocks/
