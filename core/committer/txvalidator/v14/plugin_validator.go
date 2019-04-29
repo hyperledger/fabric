@@ -38,7 +38,13 @@ type PluginFactory interface {
 	validation.PluginFactory
 }
 
-//go:generate mockery -dir ../../../handlers/validation/api/ -name Plugin -case underscore -output mocks/
+//go:generate mockery -dir . -name Plugin -case underscore -output mocks/
+
+// Plugin local interface used to generate mock for foreign interface.
+type Plugin interface {
+	validation.Plugin
+}
+
 //go:generate mockery -dir . -name QueryExecutorCreator -case underscore -output mocks/
 
 // QueryExecutorCreator creates new query executors
