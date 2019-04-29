@@ -9,14 +9,12 @@ package msp
 import (
 	"bytes"
 	"crypto/x509"
-
-	"time"
-
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"math/big"
 	"reflect"
-
+	"time"
+	
 	"github.com/pkg/errors"
 )
 
