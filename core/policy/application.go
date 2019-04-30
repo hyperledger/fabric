@@ -17,23 +17,55 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Provider provides the backing implementation of a policy
+//go:generate mockery -dir . -name Policy -case underscore -output mocks/
+
+// Policy is the local interface that used to generate mocks for foreign interface.
+type Policy interface {
+	policies.Policy
+}
+
+//go:generate mockery -dir . -name ChannelPolicyManagerGetter -case underscore -output mocks/
+
+// ChannelPolicyManagerGetter is the local interface that used to generate mocks for foreign interface.
+type ChannelPolicyManagerGetter interface {
+	policies.ChannelPolicyManagerGetter
+}
+
+//go:generate mockery -dir . -name PolicyManager -case underscore -output mocks/
+
+// PolicyManager is the local interface that used to generate mocks for foreign interface.
+type PolicyManager interface {
+	policies.Manager
+}
+
+//go:generate mockery -dir . -name IdentityDeserializer -case underscore -output mocks/
+
+// IdentityDeserializer is the local interface that used to generate mocks for foreign interface.
+type IdentityDeserializer interface {
+	msp.IdentityDeserializer
+}
+
+//go:generate mockery -dir . -name Identity -case underscore -output mocks/
+
+// Identity is the local interface that used to generate mocks for foreign interface.
+type Identity interface {
+	msp.Identity
+}
+
+//go:generate mockery -dir . -name ChannelPolicyReferenceProvider -case underscore -output mocks/
+//go:generate mockery -dir . -name SignaturePolicyProvider -case underscore -output mocks/
+
+// SignaturePolicyProvider provides the backing implementation of a policy.
 type SignaturePolicyProvider interface {
-	// NewPolicy creates a new policy based on the policy bytes
+	// NewPolicy creates a new policy based on the policy bytes.
 	NewPolicy(signaturePolicy *common.SignaturePolicyEnvelope) (policies.Policy, error)
 }
 
-// ChannelPolicyReference is used to determine if a set of signature is valid and complies with a policy
+// ChannelPolicyReferenceProvider is used to determine if a set of signature is valid and complies with a policy.
 type ChannelPolicyReferenceProvider interface {
-	// NewPolicy creates a new policy based on the policy bytes
+	// NewPolicy creates a new policy based on the policy bytes.
 	NewPolicy(channelConfigPolicyReference string) (policies.Policy, error)
 }
-
-//go:generate mockery -dir ../../common/policies/ -name Policy -case underscore -output mocks/
-//go:generate mockery -dir ../../common/policies/ -name ChannelPolicyManagerGetter -case underscore -output mocks/
-//go:generate mockery -dir ../../common/policies/ -name Manager -case underscore -output mocks/
-//go:generate mockery -dir . -name ChannelPolicyReferenceProvider -case underscore -output mocks/
-//go:generate mockery -dir . -name SignaturePolicyProvider -case underscore -output mocks/
 
 type ApplicationPolicyEvaluator struct {
 	signaturePolicyProvider        SignaturePolicyProvider

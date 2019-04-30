@@ -20,9 +20,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-//go:generate mockery -dir ../../msp/ -name IdentityDeserializer -case underscore -output mocks/
-//go:generate mockery -dir ../../msp/ -name Identity -case underscore -output mocks/
-
 func TestComponentIntegrationSignaturePolicyEnv(t *testing.T) {
 	idds := &mocks.IdentityDeserializer{}
 	id := &mocks.Identity{}
@@ -128,7 +125,7 @@ func TestChannelPolicyReference(t *testing.T) {
 	assert.Nil(t, ape)
 	assert.Contains(t, err.Error(), "failed to retrieve policy manager for channel")
 
-	mm := &mocks.Manager{}
+	mm := &mocks.PolicyManager{}
 	mcpmg.On("Manager", "channel").Return(mm, true).Once()
 	ape, err = New(nil, "channel", mcpmg)
 	assert.NoError(t, err)
