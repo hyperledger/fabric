@@ -10,11 +10,13 @@
 ###############################################################################
 peer:
 
-    # The Peer id is used for identifying this Peer instance.
+    # The peer id provides a name for this peer instance and is used when
+    # naming docker resources.
     id: jdoe
 
-    # The networkId allows for logical separation of networks
-    networkId: dev
+    # The networkId allows for logical separation of networks and is used when
+    # naming docker resources.
+    networkID: dev
 
     # The Address at local network interface this Peer will listen on.
     # By default, it will listen on all network interfaces

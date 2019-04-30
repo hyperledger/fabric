@@ -23,15 +23,6 @@ package protos;
 import "peer/proposal.proto";
 import "peer/proposal_response.proto";
 
-message PeerID {
-    string name = 1;
-}
-
-message PeerEndpoint {
-    PeerID id = 1;
-    string address = 2;
-}
-
 service Endorser {
 	rpc ProcessProposal(SignedProposal) returns (ProposalResponse) {}
 }

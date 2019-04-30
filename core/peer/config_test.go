@@ -106,7 +106,7 @@ func TestConfiguration(t *testing.T) {
 			}
 			// load Config file
 			_, err := GlobalConfig()
-			assert.NoError(t, err, "GetPeerEndpoint returned unexpected error")
+			assert.NoError(t, err, "GlobalConfig returned unexpected error")
 		})
 	}
 }

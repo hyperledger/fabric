@@ -50,14 +50,16 @@ type Config struct {
 	// The address at local network interface this Peer will listen on.
 	// By default, it will listen on all network interfaces
 	ListenAddress string
-	// The Peer id is used for identifying this Peer instance
+	// PeerID provides a name for this peer instance and is used when
+	// naming docker resources.
 	PeerID string
 	// When used as peer config, this represents the endpoint to other peers in
 	// the same organization. For peers in other organization, see
 	// gossip.externalEndpoint for more info.
 	// When used as CLI config, this means the peer's endpoint to interact with.
 	PeerAddress string
-	// The networkId allows for logical separation of networks
+	// NetworkID allows for logical separation of networks and is used when
+	// naming docker resources.
 	NetworkID string
 	// The endpoint this peer uses to listen for inbound chaincode connections. If
 	// this is not set, the listen address is selected to be the peer's address with

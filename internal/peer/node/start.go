@@ -237,14 +237,7 @@ func serve(args []string) error {
 		viper.Set("chaincode.mode", chaincode.DevModeUserRunsChaincode)
 	}
 
-	peerEndpoint := &pb.PeerEndpoint{
-		Id: &pb.PeerID{
-			Name: coreConfig.PeerID,
-		},
-		Address: coreConfig.PeerAddress,
-	}
-
-	peerHost, _, err := net.SplitHostPort(peerEndpoint.Address)
+	peerHost, _, err := net.SplitHostPort(coreConfig.PeerAddress)
 	if err != nil {
 		return fmt.Errorf("peer address is not in the format of host:port: %v", err)
 	}
@@ -463,7 +456,7 @@ func serve(args []string) error {
 	policyMgr := peer.NewChannelPolicyManagerGetter()
 
 	// Initialize gossip component
-	err = initGossipService(policyMgr, metricsProvider, peerServer, signingIdentity, peerEndpoint.Address)
+	err = initGossipService(policyMgr, metricsProvider, peerServer, signingIdentity, coreConfig.PeerAddress)
 	if err != nil {
 		return err
 	}
@@ -523,9 +516,7 @@ func serve(args []string) error {
 		registerDiscoveryService(coreConfig, peerServer, policyMgr, lifecycle)
 	}
 
-	networkID := coreConfig.NetworkID
-
-	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", peerEndpoint.Id, networkID, peerEndpoint.Address)
+	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
 
 	// Get configuration before starting go routines to avoid
 	// racing in tests
@@ -561,7 +552,7 @@ func serve(args []string) error {
 		syscall.SIGTERM: func() { serve <- nil },
 	}))
 
-	logger.Infof("Started peer with ID=[%s], network ID=[%s], address=[%s]", peerEndpoint.Id, networkID, peerEndpoint.Address)
+	logger.Infof("Started peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
 
 	// Block until grpc server exits
 	return <-serve
