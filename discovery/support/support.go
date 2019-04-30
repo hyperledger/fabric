@@ -8,6 +8,13 @@ package support
 
 import "github.com/hyperledger/fabric/discovery"
 
+//go:generate mockery -dir . -name GossipSupport -case underscore -output mocks/
+
+// GossipSupport is the local interface used to generate mocks for foreign interface.
+type GossipSupport interface {
+	discovery.GossipSupport
+}
+
 // DiscoverySupport aggregates all the support needed for the discovery service
 type DiscoverySupport struct {
 	discovery.AccessControlSupport
