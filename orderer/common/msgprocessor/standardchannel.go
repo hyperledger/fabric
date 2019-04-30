@@ -111,12 +111,16 @@ func (s *StandardChannel) PruneNormalMsg(msg *cb.Envelope) (*cb.Envelope, error)
 	if err != nil || shdr.Creator == nil {
 		return msg, err
 	}
+	sID, err := utils.GetIdentity(shdr.Creator)
+	if err != nil {
+		return msg, err
+	}
 
-	if len(shdr.Creator) == util.CERT_HASH_LEN { //already hash,no need prune
+	if len(sID.IdBytes) == util.CERT_HASH_LEN { //already hash,no need prune
 		logger.Debugf("this is a  hash of creator, no need prune")
 		return msg, nil
 	}
-	hash := util.ComputeSHA256(shdr.Creator)
+	hash := util.ComputeSHA256(sID.IdBytes)
 	exists, err := s.support.CertExists(hash)
 	if err != nil {
 		return msg, err
@@ -126,7 +130,8 @@ func (s *StandardChannel) PruneNormalMsg(msg *cb.Envelope) (*cb.Envelope, error)
 		//do replace work
 		logger.Infof("replace transaction  with creator hash: %s", hex.EncodeToString(hash))
 		newShdr := shdr
-		newShdr.Creator = hash
+		sID.IdBytes = hash
+		newShdr.Creator = utils.MarshalOrPanic(sID)
 		payloadHeader := utils.MakePayloadHeader(chdr, newShdr)
 		newPayload := &cb.Payload{Header: payloadHeader, Data: payload.Data}
 		pruneMsg = &cb.Envelope{Payload: utils.MarshalOrPanic(newPayload), Signature: msg.Signature}

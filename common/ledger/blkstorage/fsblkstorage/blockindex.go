@@ -355,20 +355,24 @@ func exactCertFromBlockData(blockData *common.BlockData) (map[string][]byte, err
 		if err != nil {
 			return nil, err
 		}
+		sID, err := utils.GetIdentity(shdr.Creator)
+		if err != nil {
+			return nil, err
+		}
 
-		if shdr.Creator == nil {
+		if sID.IdBytes == nil {
 			continue
-		} else if len(shdr.Creator) == commonUtil.CERT_HASH_LEN {
-			logger.Debugf("This is a hash of creator:\n%x", shdr.Creator)
+		} else if len(sID.IdBytes) == commonUtil.CERT_HASH_LEN {
+			logger.Debugf("This is a hash of creator:\n%x", sID.IdBytes)
 		} else {
-			certHash := commonUtil.ComputeSHA256(shdr.Creator)
+			certHash := commonUtil.ComputeSHA256(sID.IdBytes)
 			key := constructCertHashKey(certHash)
 			if _, ok := hashCert[string(key)]; ok {
 				//with the same creator has already been added
-				logger.Debugf("Ignoring duplicated creator,key: %x\n creator:\n%x", key, shdr.Creator)
+				logger.Debugf("Ignoring duplicated creator,key: %x\n creator:\n%x", key, sID.IdBytes)
 			} else {
-				hashCert[string(key)] = shdr.Creator
-				logger.Debugf("This is a creator, key: %x\n creator:\n%x", key, shdr.Creator)
+				hashCert[string(key)] = sID.IdBytes
+				logger.Debugf("This is a creator, key: %x\n creator:\n%x", key, sID.IdBytes)
 			}
 		}
 

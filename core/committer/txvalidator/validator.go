@@ -133,15 +133,22 @@ func (v *TxValidator) preProcessBlock(block *common.Block) (*common.Block, error
 			return nil, err
 		}
 
+		sID, err := utils.GetIdentity(shdr.Creator)
+		if err != nil {
+			return nil, err
+		}
+
 		//recover cert for creator
-		if len(shdr.Creator) == util.CERT_HASH_LEN {
-			cert, err := v.Support.Ledger().GetCert(shdr.Creator)
+		if len(sID.IdBytes) == util.CERT_HASH_LEN {
+			//cache cert TODOlogan
+			cert, err := v.Support.Ledger().GetCert(sID.IdBytes)
 			if err != nil {
-				logger.Errorf("GetCert from db with hash:%s\n returns err %s", hex.EncodeToString(shdr.Creator), err)
+				logger.Errorf("GetCert from db with hash:%s\n returns err %s", hex.EncodeToString(sID.IdBytes), err)
 				return nil, err
 			}
-			logger.Infof("Do the creator replace work for hash:%s blockNum:%d env index:%d", hex.EncodeToString(shdr.Creator), block.Header.Number, index)
-			shdr.Creator = cert
+			logger.Infof("Do the creator replace work for hash:%s blockNum:%d env index:%d", hex.EncodeToString(sID.IdBytes), block.Header.Number, index)
+			sID.IdBytes = cert
+			shdr.Creator = utils.MarshalOrPanic(sID)
 			payloadHeader := utils.MakePayloadHeader(chdr, shdr)
 			payload = &common.Payload{Header: payloadHeader, Data: payload.Data}
 			env.Payload = utils.MarshalOrPanic(payload)

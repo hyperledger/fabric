@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
@@ -223,6 +224,13 @@ func GetChaincodeProposalPayload(bytes []byte) (*peer.ChaincodeProposalPayload, 
 	cpp := &peer.ChaincodeProposalPayload{}
 	err := proto.Unmarshal(bytes, cpp)
 	return cpp, errors.Wrap(err, "error unmarshaling ChaincodeProposalPayload")
+}
+
+// GetIdentity Get Identity bytes from bytes
+func GetIdentity(bytes []byte) (*msp.SerializedIdentity, error) {
+	sID := &msp.SerializedIdentity{}
+	err := proto.Unmarshal(bytes, sID)
+	return sID, errors.Wrap(err, "error unmarshaling SignatureHeader")
 }
 
 // GetSignatureHeader Get SignatureHeader from bytes
