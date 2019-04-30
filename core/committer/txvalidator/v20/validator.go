@@ -86,7 +86,13 @@ type QueryExecutor interface {
 	ledger.QueryExecutor
 }
 
-//go:generate mockery -dir ../../../../common/policies/ -name ChannelPolicyManagerGetter -case underscore -output mocks/
+//go:generate mockery -dir . -name ChannelPolicyManagerGetter -case underscore -output mocks/
+
+// ChannelPolicyManagerGetter is the local interface that used to generate mocks for foreign interface.
+type ChannelPolicyManagerGetter interface {
+	policies.ChannelPolicyManagerGetter
+}
+
 //go:generate mockery -dir plugindispatcher/ -name CollectionResources -case underscore -output mocks/
 
 // TxValidator is the implementation of Validator interface, keeps
