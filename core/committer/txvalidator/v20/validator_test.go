@@ -22,26 +22,26 @@ import (
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
-	vp "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
+	txvalidatorplugin "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	txvalidatorv20 "github.com/hyperledger/fabric/core/committer/txvalidator/v20"
-	mocks3 "github.com/hyperledger/fabric/core/committer/txvalidator/v20/mocks"
-	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher/mocks"
+	txvalidatormocks "github.com/hyperledger/fabric/core/committer/txvalidator/v20/mocks"
+	plugindispatchermocks "github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher/mocks"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	lutils "github.com/hyperledger/fabric/core/ledger/util"
+	ledgerutils "github.com/hyperledger/fabric/core/ledger/util"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	"github.com/hyperledger/fabric/core/scc/lscc"
-	mocks2 "github.com/hyperledger/fabric/discovery/support/mocks"
+	supportmocks "github.com/hyperledger/fabric/discovery/support/mocks"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
-	mb "github.com/hyperledger/fabric/protos/msp"
+	protosmsp "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	protospeer "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
@@ -50,7 +50,7 @@ import (
 
 func signedByAnyMember(ids []string) []byte {
 	p := cauthdsl.SignedByAnyMember(ids)
-	return protoutil.MarshalOrPanic(&pb.ApplicationPolicy{Type: &pb.ApplicationPolicy_SignaturePolicy{SignaturePolicy: p}})
+	return protoutil.MarshalOrPanic(&protospeer.ApplicationPolicy{Type: &protospeer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: p}})
 }
 
 func v20Capabilities() *mockconfig.MockApplicationCapabilities {
@@ -202,19 +202,19 @@ func getTokenTx(t *testing.T) *common.Envelope {
 }
 
 func assertInvalid(block *common.Block, t *testing.T, code peer.TxValidationCode) {
-	txsFilter := lutils.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := ledgerutils.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assert.True(t, txsFilter.IsInvalid(0))
 	assert.True(t, txsFilter.IsSetTo(0, code))
 }
 
 func assertValid(block *common.Block, t *testing.T) {
-	txsFilter := lutils.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := ledgerutils.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assert.False(t, txsFilter.IsInvalid(0))
 }
 
-func setupValidator() (*txvalidatorv20.TxValidator, *mocks3.QueryExecutor, *mocks2.Identity, *mocks3.CollectionResources) {
-	mspmgr := &mocks2.MSPManager{}
-	mockID := &mocks2.Identity{}
+func setupValidator() (*txvalidatorv20.TxValidator, *txvalidatormocks.QueryExecutor, *supportmocks.Identity, *txvalidatormocks.CollectionResources) {
+	mspmgr := &supportmocks.MSPManager{}
+	mockID := &supportmocks.Identity{}
 	mockID.SatisfiesPrincipalReturns(nil)
 	mockID.GetIdentifierReturns(&msp.IdentityIdentifier{})
 	mspmgr.DeserializeIdentityReturns(mockID, nil)
@@ -222,25 +222,25 @@ func setupValidator() (*txvalidatorv20.TxValidator, *mocks3.QueryExecutor, *mock
 	return setupValidatorWithMspMgr(mspmgr, mockID)
 }
 
-func setupValidatorWithMspMgr(mspmgr msp.MSPManager, mockID *mocks2.Identity) (*txvalidatorv20.TxValidator, *mocks3.QueryExecutor, *mocks2.Identity, *mocks3.CollectionResources) {
-	pm := &mocks.Mapper{}
-	factory := &mocks.PluginFactory{}
-	pm.On("FactoryByName", vp.Name("vscc")).Return(factory)
+func setupValidatorWithMspMgr(mspmgr msp.MSPManager, mockID *supportmocks.Identity) (*txvalidatorv20.TxValidator, *txvalidatormocks.QueryExecutor, *supportmocks.Identity, *txvalidatormocks.CollectionResources) {
+	pm := &plugindispatchermocks.Mapper{}
+	factory := &plugindispatchermocks.PluginFactory{}
+	pm.On("FactoryByName", txvalidatorplugin.Name("vscc")).Return(factory)
 	factory.On("New").Return(&builtin.DefaultValidation{})
 
-	mockQE := &mocks3.QueryExecutor{}
+	mockQE := &txvalidatormocks.QueryExecutor{}
 	mockQE.On("Done").Return(nil)
 	mockQE.On("GetState", "lscc", "lscc").Return(nil, nil)
 	mockQE.On("GetState", "lscc", "escc").Return(nil, nil)
 
-	mockLedger := &mocks3.LedgerResources{}
+	mockLedger := &txvalidatormocks.LedgerResources{}
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
-	mockCpmg := &mocks.ChannelPolicyManagerGetter{}
+	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
 	mockCpmg.On("Manager", mock.Anything).Return(nil, true)
 
-	mockCR := &mocks3.CollectionResources{}
+	mockCR := &txvalidatormocks.CollectionResources{}
 
 	v := txvalidatorv20.NewTxValidator(
 		"",
@@ -371,7 +371,7 @@ func (msi *mockSI) Verify(msg []byte, sig []byte) error {
 }
 
 func (msi *mockSI) Serialize() ([]byte, error) {
-	sid := &mb.SerializedIdentity{
+	sid := &protosmsp.SerializedIdentity{
 		Mspid:   msi.MspID,
 		IdBytes: msi.SerializedID,
 	}
@@ -379,7 +379,7 @@ func (msi *mockSI) Serialize() ([]byte, error) {
 	return sidBytes, nil
 }
 
-func (msi *mockSI) SatisfiesPrincipal(principal *mb.MSPPrincipal) error {
+func (msi *mockSI) SatisfiesPrincipal(principal *protosmsp.MSPPrincipal) error {
 	return msi.SatPrinError
 }
 
@@ -402,10 +402,10 @@ func (fake *mockMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identit
 	return fake.ID, nil
 }
 
-func (fake *mockMSP) IsWellFormed(identity *mb.SerializedIdentity) error {
+func (fake *mockMSP) IsWellFormed(identity *protosmsp.SerializedIdentity) error {
 	return nil
 }
-func (fake *mockMSP) Setup(config *mb.MSPConfig) error {
+func (fake *mockMSP) Setup(config *protosmsp.MSPConfig) error {
 	return nil
 }
 
@@ -441,7 +441,7 @@ func (fake *mockMSP) Validate(id msp.Identity) error {
 	return nil
 }
 
-func (fake *mockMSP) SatisfiesPrincipal(id msp.Identity, principal *mb.MSPPrincipal) error {
+func (fake *mockMSP) SatisfiesPrincipal(id msp.Identity, principal *protosmsp.MSPPrincipal) error {
 	return fake.SatPrinError
 }
 
@@ -473,7 +473,7 @@ func TestParallelValidation(t *testing.T) {
 	mgr := mgmt.GetManagerForChain("foochain")
 	mgr.Setup([]msp.MSP{msp1, msp2})
 
-	vpKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
+	vpKey := protospeer.MetaDataKeys_VALIDATION_PARAMETER.String()
 	ccID := "mycc"
 
 	v, mockQE, _, mockCR := setupValidatorWithMspMgr(mgr, nil)
@@ -481,7 +481,7 @@ func TestParallelValidation(t *testing.T) {
 	mockCR.On("CollectionValidationInfo", ccID, "col1", mock.Anything).Return(nil, nil, nil)
 
 	policy := cauthdsl.SignedByMspPeer("Org1")
-	polBytes := protoutil.MarshalOrPanic(&pb.ApplicationPolicy{Type: &pb.ApplicationPolicy_SignaturePolicy{SignaturePolicy: policy}})
+	polBytes := protoutil.MarshalOrPanic(&protospeer.ApplicationPolicy{Type: &protospeer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: policy}})
 	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,
@@ -577,7 +577,7 @@ func TestParallelValidation(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Block metadata array position to store serialized bit array filter of invalid transactions
-	txsFilter := lutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := ledgerutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	// tx validity
 	for txNum := 0; txNum < txCnt; txNum += 1 {
 		switch uint(txNum / 10) {
@@ -939,7 +939,7 @@ func TestValidateTxWithStateBasedEndorsement(t *testing.T) {
 		Vscc:    "vscc",
 		Policy:  signedByAnyMember([]string{"SampleOrg"}),
 	}), nil)
-	mockQE.On("GetStateMetadata", ccID, "key").Return(map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): protoutil.MarshalOrPanic(&pb.ApplicationPolicy{Type: &pb.ApplicationPolicy_SignaturePolicy{SignaturePolicy: cauthdsl.RejectAllPolicy}})}, nil)
+	mockQE.On("GetStateMetadata", ccID, "key").Return(map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): protoutil.MarshalOrPanic(&protospeer.ApplicationPolicy{Type: &protospeer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: cauthdsl.RejectAllPolicy}})}, nil)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 3}}
@@ -974,7 +974,7 @@ func TestTokenCapabilityNotEnabled(t *testing.T) {
 	assertion.NoError(err)
 
 	// We expect the tx to be invalid because of a duplicate txid
-	txsfltr := lutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := ledgerutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assertion.True(txsfltr.IsInvalid(0))
 	assertion.True(txsfltr.Flag(0) == peer.TxValidationCode_UNKNOWN_TX_TYPE)
 }
@@ -983,7 +983,7 @@ func TestTokenDuplicateTxId(t *testing.T) {
 	v, _, _, _ := setupValidator()
 	v.ChannelResources.(*mocktxvalidator.Support).ACVal = fabTokenCapabilities()
 
-	mockLedger := &mocks3.LedgerResources{}
+	mockLedger := &txvalidatormocks.LedgerResources{}
 	v.LedgerResources = mockLedger
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, nil)
 
@@ -998,7 +998,7 @@ func TestTokenDuplicateTxId(t *testing.T) {
 	assertion.NoError(err)
 
 	// We expect the tx to be invalid because of a duplicate txid
-	txsfltr := lutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := ledgerutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assertion.True(txsfltr.IsInvalid(0))
 	assertion.True(txsfltr.Flag(0) == peer.TxValidationCode_DUPLICATE_TXID)
 }
@@ -1079,7 +1079,7 @@ func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
-	mockLedger := &mocks3.LedgerResources{}
+	mockLedger := &txvalidatormocks.LedgerResources{}
 	v.LedgerResources = mockLedger
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, errors.New("uh, oh"))
 
@@ -1100,7 +1100,7 @@ func TestDuplicateTxId(t *testing.T) {
 
 	v, _, _, _ := setupValidator()
 
-	mockLedger := &mocks3.LedgerResources{}
+	mockLedger := &txvalidatormocks.LedgerResources{}
 	v.LedgerResources = mockLedger
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, nil)
 
@@ -1118,7 +1118,7 @@ func TestDuplicateTxId(t *testing.T) {
 	assertion.NoError(err)
 
 	// We expect the tx to be invalid because of a duplicate txid
-	txsfltr := lutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := ledgerutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assertion.True(txsfltr.IsInvalid(0))
 	assertion.True(txsfltr.Flag(0) == peer.TxValidationCode_DUPLICATE_TXID)
 }
@@ -1126,28 +1126,28 @@ func TestDuplicateTxId(t *testing.T) {
 func TestValidationInvalidEndorsing(t *testing.T) {
 	ccID := "mycc"
 
-	mspmgr := &mocks2.MSPManager{}
-	mockID := &mocks2.Identity{}
+	mspmgr := &supportmocks.MSPManager{}
+	mockID := &supportmocks.Identity{}
 	mockID.SatisfiesPrincipalReturns(nil)
 	mockID.GetIdentifierReturns(&msp.IdentityIdentifier{})
 	mspmgr.DeserializeIdentityReturns(mockID, nil)
 
-	pm := &mocks.Mapper{}
-	factory := &mocks.PluginFactory{}
-	pm.On("FactoryByName", vp.Name("vscc")).Return(factory)
-	plugin := &mocks.Plugin{}
+	pm := &plugindispatchermocks.Mapper{}
+	factory := &plugindispatchermocks.PluginFactory{}
+	pm.On("FactoryByName", txvalidatorplugin.Name("vscc")).Return(factory)
+	plugin := &plugindispatchermocks.Plugin{}
 	factory.On("New").Return(plugin)
 	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("invalid tx"))
 
-	mockQE := &mocks3.QueryExecutor{}
+	mockQE := &txvalidatormocks.QueryExecutor{}
 	mockQE.On("Done").Return(nil)
 
-	mockLedger := &mocks3.LedgerResources{}
+	mockLedger := &txvalidatormocks.LedgerResources{}
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
-	mockCpmg := &mocks.ChannelPolicyManagerGetter{}
+	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
 	mockCpmg.On("Manager", mock.Anything).Return(nil, true)
 
 	v := txvalidatorv20.NewTxValidator(
@@ -1156,7 +1156,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 		&mocktxvalidator.Support{ACVal: v20Capabilities(), MSPManagerVal: mspmgr},
 		mockLedger,
 		&lscc.LifeCycleSysCC{},
-		&mocks3.CollectionResources{},
+		&txvalidatormocks.CollectionResources{},
 		pm,
 		mockCpmg,
 	)
@@ -1189,23 +1189,23 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 func TestValidationPluginExecutionError(t *testing.T) {
 	ccID := "mycc"
 
-	mspmgr := &mocks2.MSPManager{}
-	mockID := &mocks2.Identity{}
+	mspmgr := &supportmocks.MSPManager{}
+	mockID := &supportmocks.Identity{}
 	mockID.SatisfiesPrincipalReturns(nil)
 	mockID.GetIdentifierReturns(&msp.IdentityIdentifier{})
 	mspmgr.DeserializeIdentityReturns(mockID, nil)
 
-	pm := &mocks.Mapper{}
-	factory := &mocks.PluginFactory{}
-	pm.On("FactoryByName", vp.Name("vscc")).Return(factory)
-	plugin := &mocks.Plugin{}
+	pm := &plugindispatchermocks.Mapper{}
+	factory := &plugindispatchermocks.PluginFactory{}
+	pm.On("FactoryByName", txvalidatorplugin.Name("vscc")).Return(factory)
+	plugin := &plugindispatchermocks.Plugin{}
 	factory.On("New").Return(plugin)
 	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&validation.ExecutionFailureError{
 		Reason: "I/O error",
 	})
 
-	mockQE := &mocks3.QueryExecutor{}
+	mockQE := &txvalidatormocks.QueryExecutor{}
 	mockQE.On("Done").Return(nil)
 	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
@@ -1214,11 +1214,11 @@ func TestValidationPluginExecutionError(t *testing.T) {
 		Policy:  signedByAnyMember([]string{"SampleOrg"}),
 	}), nil)
 
-	mockLedger := &mocks3.LedgerResources{}
+	mockLedger := &txvalidatormocks.LedgerResources{}
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
-	mockCpmg := &mocks.ChannelPolicyManagerGetter{}
+	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
 	mockCpmg.On("Manager", mock.Anything).Return(nil, true)
 
 	v := txvalidatorv20.NewTxValidator(
@@ -1227,7 +1227,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 		&mocktxvalidator.Support{ACVal: v20Capabilities(), MSPManagerVal: mspmgr},
 		mockLedger,
 		&lscc.LifeCycleSysCC{},
-		&mocks3.CollectionResources{},
+		&txvalidatormocks.CollectionResources{},
 		pm,
 		mockCpmg,
 	)
@@ -1246,16 +1246,16 @@ func TestValidationPluginExecutionError(t *testing.T) {
 func TestValidationPluginNotFound(t *testing.T) {
 	ccID := "mycc"
 
-	mspmgr := &mocks2.MSPManager{}
-	mockID := &mocks2.Identity{}
+	mspmgr := &supportmocks.MSPManager{}
+	mockID := &supportmocks.Identity{}
 	mockID.SatisfiesPrincipalReturns(nil)
 	mockID.GetIdentifierReturns(&msp.IdentityIdentifier{})
 	mspmgr.DeserializeIdentityReturns(mockID, nil)
 
-	pm := &mocks.Mapper{}
-	pm.On("FactoryByName", vp.Name("vscc")).Return(nil)
+	pm := &plugindispatchermocks.Mapper{}
+	pm.On("FactoryByName", txvalidatorplugin.Name("vscc")).Return(nil)
 
-	mockQE := &mocks3.QueryExecutor{}
+	mockQE := &txvalidatormocks.QueryExecutor{}
 	mockQE.On("Done").Return(nil)
 	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
@@ -1264,11 +1264,11 @@ func TestValidationPluginNotFound(t *testing.T) {
 		Policy:  signedByAnyMember([]string{"SampleOrg"}),
 	}), nil)
 
-	mockLedger := &mocks3.LedgerResources{}
+	mockLedger := &txvalidatormocks.LedgerResources{}
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
-	mockCpmg := &mocks.ChannelPolicyManagerGetter{}
+	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
 	mockCpmg.On("Manager", mock.Anything).Return(nil, true)
 
 	v := txvalidatorv20.NewTxValidator(
@@ -1277,7 +1277,7 @@ func TestValidationPluginNotFound(t *testing.T) {
 		&mocktxvalidator.Support{ACVal: v20Capabilities(), MSPManagerVal: mspmgr},
 		mockLedger,
 		&lscc.LifeCycleSysCC{},
-		&mocks3.CollectionResources{},
+		&txvalidatormocks.CollectionResources{},
 		pm,
 		mockCpmg,
 	)
