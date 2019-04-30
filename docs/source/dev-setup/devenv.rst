@@ -17,7 +17,14 @@ Prerequisites
 
 ::
 
-    brew install gnu-tar --with-default-names
+    brew install gnu-tar
+
+-  (macOS) If you install gnutar, you should prepend the "gnubin"
+   directory to the $PATH environment variable with something like:
+
+::
+
+    export PATH=/usr/local/opt/gnu-tar/libexec/gnubin:$PATH
 
 -  (macOS) `Libtool <https://www.gnu.org/software/libtool/>`__. You can use
    Homebrew to install it as follows:
