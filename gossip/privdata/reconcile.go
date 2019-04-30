@@ -19,21 +19,33 @@ import (
 	"github.com/hyperledger/fabric/gossip/metrics"
 	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/protos/common"
-	gossip2 "github.com/hyperledger/fabric/protos/gossip"
+	protosgossip "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
 )
 
+//go:generate mockery -dir . -name ReconciliationFetcher -case underscore -output mocks/
+
+//go:generate mockery -dir . -name MissingPvtDataTracker -case underscore -output mocks/
+
+// MissingPvtDataTracker is the local interface used to generate mocks for foreign interface.
+type MissingPvtDataTracker interface {
+	ledger.MissingPvtDataTracker
+}
+
+//go:generate mockery -dir . -name ConfigHistoryRetriever -case underscore -output mocks/
+
+// ConfigHistoryRetriever is the local interface used to generate mocks for foreign interface.
+type ConfigHistoryRetriever interface {
+	ledger.ConfigHistoryRetriever
+}
+
 // ReconciliationFetcher interface which defines API to fetch
-// private data elements that have to be reconciled
+// private data elements that have to be reconciled.
 type ReconciliationFetcher interface {
 	FetchReconciledItems(dig2collectionConfig privdatacommon.Dig2CollectionConfig) (*privdatacommon.FetchedPvtDataContainer, error)
 }
 
-//go:generate mockery -dir . -name ReconciliationFetcher -case underscore -output mocks/
-//go:generate mockery -dir ../../core/ledger/ -name MissingPvtDataTracker -case underscore -output mocks/
-//go:generate mockery -dir ../../core/ledger/ -name ConfigHistoryRetriever -case underscore -output mocks/
-
-// Reconciler completes missing parts of private data that weren't available during commit time.
+// PvtDataReconciler completes missing parts of private data that weren't available during commit time.
 // this is done by getting from the ledger a list of missing private data and pulling it from the other peers.
 type PvtDataReconciler interface {
 	// Start function start the reconciler based on a scheduler, as was configured in reconciler creation
@@ -252,7 +264,7 @@ func (r *Reconciler) getMostRecentCollectionConfig(chaincodeName string, collect
 	return staticCollectionConfig.StaticCollectionConfig, nil
 }
 
-func (r *Reconciler) preparePvtDataToCommit(elements []*gossip2.PvtDataElement) []*ledger.BlockPvtData {
+func (r *Reconciler) preparePvtDataToCommit(elements []*protosgossip.PvtDataElement) []*ledger.BlockPvtData {
 	rwSetByBlockByKeys := r.groupRwsetByBlock(elements)
 
 	// populate the private RWSets passed to the ledger
@@ -286,7 +298,7 @@ func (r *Reconciler) logMismatched(pvtdataMismatched []*ledger.PvtdataHashMismat
 }
 
 // return a mapping from block num to rwsetByKeys
-func (r *Reconciler) groupRwsetByBlock(elements []*gossip2.PvtDataElement) map[uint64]rwsetByKeys {
+func (r *Reconciler) groupRwsetByBlock(elements []*protosgossip.PvtDataElement) map[uint64]rwsetByKeys {
 	rwSetByBlockByKeys := make(map[uint64]rwsetByKeys) // map from block num to rwsetByKeys
 
 	// Iterate over data fetched from peers
