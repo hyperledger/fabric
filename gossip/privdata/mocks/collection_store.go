@@ -3,6 +3,7 @@
 package mocks
 
 import common "github.com/hyperledger/fabric/protos/common"
+
 import ledger "github.com/hyperledger/fabric/core/ledger"
 import mock "github.com/stretchr/testify/mock"
 import peer "github.com/hyperledger/fabric/protos/peer"

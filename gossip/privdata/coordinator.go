@@ -37,10 +37,21 @@ const pullRetrySleepInterval = time.Second
 
 var logger = util.GetLogger(util.PrivateDataLogger, "")
 
-//go:generate mockery -dir ../../core/common/privdata/ -name CollectionStore -case underscore -output mocks/
-//go:generate mockery -dir ../../core/committer/ -name Committer -case underscore -output mocks/
+//go:generate mockery -dir . -name CollectionStore -case underscore -output mocks/
 
-// TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger
+// CollectionStore is the local interface used to generate mocks for foreign interface.
+type CollectionStore interface {
+	privdata.CollectionStore
+}
+
+//go:generate mockery -dir . -name Committer -case underscore -output mocks/
+
+// Committer is the local interface used to generate mocks for foreign interface.
+type Committer interface {
+	committer.Committer
+}
+
+// TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger.
 type TransientStore interface {
 	// PersistWithConfig stores the private write set of a transaction along with the collection config
 	// in the transient store based on txid and the block height the private data was received at
