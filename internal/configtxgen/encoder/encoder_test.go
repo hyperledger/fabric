@@ -17,13 +17,17 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder/fakes"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
-//go:generate counterfeiter -o fakes/signer_serializer.go --fake-name SignerSerializer ../../pkg/identity SignerSerializer
+//go:generate counterfeiter -o fakes/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+type signerSerializer interface {
+	identity.SignerSerializer
+}
 
 func CreateStandardPolicies() map[string]*genesisconfig.Policy {
 	return map[string]*genesisconfig.Policy{
