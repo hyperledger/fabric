@@ -16,19 +16,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// StorageDataRetriever defines an API to retrieve private date from the storage
-type StorageDataRetriever interface {
-	// CollectionRWSet retrieves for give digest relevant private data if
-	// available otherwise returns nil, bool which is true if data fetched from ledger and false if was fetched from transient store, and an error
-	CollectionRWSet(dig []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, bool, error)
-}
-
 //go:generate mockery -dir . -name DataStore -case underscore -output mocks/
-//go:generate mockery -dir ../../core/transientstore/ -name RWSetScanner -case underscore -output mocks/
-//go:generate mockery -dir ../../core/ledger/ -name ConfigHistoryRetriever -case underscore -output mocks/
 
 // DataStore defines set of APIs need to get private data
-// from underlined data store
+// from underlined data store.
 type DataStore interface {
 	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 	// RWSets persisted from different endorsers (via Gossip)
@@ -44,6 +35,20 @@ type DataStore interface {
 
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)
+}
+
+//go:generate mockery -dir . -name RWSetScanner -case underscore -output mocks/
+
+// RWSetScanner is the local interface used to generate mocks for foreign interface.
+type RWSetScanner interface {
+	transientstore.RWSetScanner
+}
+
+// StorageDataRetriever defines an API to retrieve private date from the storage.
+type StorageDataRetriever interface {
+	// CollectionRWSet retrieves for give digest relevant private data if
+	// available otherwise returns nil, bool which is true if data fetched from ledger and false if was fetched from transient store, and an error
+	CollectionRWSet(dig []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, bool, error)
 }
 
 type dataRetriever struct {
