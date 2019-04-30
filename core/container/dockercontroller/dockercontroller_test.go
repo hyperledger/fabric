@@ -103,6 +103,8 @@ func Test_Start(t *testing.T) {
 		t.Fatal()
 	}
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackage}
+	client, err := docker.NewClientFromEnv()
+	assert.NoError(t, err)
 	bldr := &mockBuilder{
 		buildFunc: func() (io.Reader, error) {
 			return platforms.NewRegistry(&golang.Platform{}).GenerateDockerBuild(
@@ -111,6 +113,7 @@ func Test_Start(t *testing.T) {
 				cds.ChaincodeSpec.ChaincodeId.Name,
 				cds.ChaincodeSpec.ChaincodeId.Version,
 				cds.CodePackage,
+				client,
 			)
 		},
 	}

@@ -12,13 +12,16 @@ import (
 	"sort"
 	"strings"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
 // Processor processes vm and container requests.
@@ -56,6 +59,11 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 	chaincodeLogger.Debugf("start container with args: %s", strings.Join(lc.Args, " "))
 	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(lc.Envs, "\n\t"))
 
+	client, err := dockerClient()
+	if err != nil {
+		return errors.Wrap(err, "failed to acquire docker client")
+	}
+
 	scr := container.StartContainerReq{
 		Builder: &container.PlatformBuilder{
 			Type:             ccci.Type,
@@ -64,6 +72,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 			Path:             ccci.Path,
 			CodePackage:      codePackage,
 			PlatformRegistry: c.PlatformRegistry,
+			Client:           client,
 		},
 		Args:          lc.Args,
 		Env:           lc.Envs,
@@ -207,4 +216,17 @@ func (lc *LaunchConfig) String() string {
 	fmt.Fprintf(buf, "Envs:[%s],", strings.Join(lc.Envs, ","))
 	fmt.Fprintf(buf, "Files:%v", fileNames)
 	return buf.String()
+}
+
+func dockerClient() (*docker.Client, error) {
+	endpoint := viper.GetString("vm.endpoint")
+	tlsEnabled := viper.GetBool("vm.docker.tls.enabled")
+	if tlsEnabled {
+		cert := config.GetPath("vm.docker.tls.cert.file")
+		key := config.GetPath("vm.docker.tls.key.file")
+		ca := config.GetPath("vm.docker.tls.ca.file")
+		return docker.NewTLSClient(endpoint, cert, key, ca)
+	}
+
+	return docker.NewClient(endpoint)
 }
