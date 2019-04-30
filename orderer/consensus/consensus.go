@@ -113,4 +113,7 @@ type ConsenterSupport interface {
 	// Append appends a new block to the ledger in its raw form,
 	// unlike WriteBlock that also mutates its metadata.
 	Append(block *cb.Block) error
+
+	// DetectConsensusMigration identifies restart after consensus-type migration.
+	DetectConsensusMigration() bool
 }
