@@ -15,8 +15,8 @@ import (
 	vp "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	vc "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
+	vi "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
+	vs "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -87,7 +87,12 @@ type Capabilities interface {
 	vc.Capabilities
 }
 
-//go:generate mockery -dir ../../../../msp/ -name IdentityDeserializer -case underscore -output mocks/
+//go:generate mockery -dir . -name IdentityDeserializer -case underscore -output mocks/
+
+// IdentityDeserializer local interface used to generate mock for foreign interface.
+type IdentityDeserializer interface {
+	msp.IdentityDeserializer
+}
 
 // NewPluginValidator creates a new PluginValidator
 func NewPluginValidator(pm vp.Mapper, qec QueryExecutorCreator, deserializer msp.IdentityDeserializer, capabilities vc.Capabilities) *PluginValidator {
@@ -189,7 +194,7 @@ func (pbc *pluginsByChannel) initPlugin(plugin validation.Plugin, channel string
 type legacyCollectionInfoProvider struct {
 }
 
-func (*legacyCollectionInfoProvider) CollectionValidationInfo(chaincodeName, collectionName string, state State) ([]byte, error, error) {
+func (*legacyCollectionInfoProvider) CollectionValidationInfo(chaincodeName, collectionName string, state vs.State) ([]byte, error, error) {
 	panic("programming error")
 }
 
@@ -208,7 +213,7 @@ func (id *PolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*protouti
 }
 
 // DeserializeIdentity unmarshals the given identity to msp.Identity
-func (id *PolicyEvaluator) DeserializeIdentity(serializedIdentity []byte) (Identity, error) {
+func (id *PolicyEvaluator) DeserializeIdentity(serializedIdentity []byte) (vi.Identity, error) {
 	mspIdentity, err := id.IdentityDeserializer.DeserializeIdentity(serializedIdentity)
 	if err != nil {
 		return nil, err
@@ -220,9 +225,9 @@ type identity struct {
 	msp.Identity
 }
 
-func (i *identity) GetIdentityIdentifier() *IdentityIdentifier {
+func (i *identity) GetIdentityIdentifier() *vi.IdentityIdentifier {
 	identifier := i.Identity.GetIdentifier()
-	return &IdentityIdentifier{
+	return &vi.IdentityIdentifier{
 		Id:    identifier.Id,
 		Mspid: identifier.Mspid,
 	}
@@ -232,7 +237,7 @@ type StateFetcherImpl struct {
 	QueryExecutorCreator
 }
 
-func (sf *StateFetcherImpl) FetchState() (State, error) {
+func (sf *StateFetcherImpl) FetchState() (vs.State, error) {
 	qe, err := sf.NewQueryExecutor()
 	if err != nil {
 		return nil, err
@@ -244,7 +249,7 @@ type StateImpl struct {
 	ledger.QueryExecutor
 }
 
-func (s *StateImpl) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ResultsIterator, error) {
+func (s *StateImpl) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (vs.ResultsIterator, error) {
 	it, err := s.QueryExecutor.GetStateRangeScanIterator(namespace, startKey, endKey)
 	if err != nil {
 		return nil, err
@@ -256,6 +261,6 @@ type ResultsIteratorImpl struct {
 	ledger2.ResultsIterator
 }
 
-func (it *ResultsIteratorImpl) Next() (QueryResult, error) {
+func (it *ResultsIteratorImpl) Next() (vs.QueryResult, error) {
 	return it.ResultsIterator.Next()
 }
