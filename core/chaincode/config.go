@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	logging "github.com/op/go-logging"
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
@@ -22,6 +22,7 @@ const (
 )
 
 type Config struct {
+	TotalQueryLimit int
 	TLSEnabled      bool
 	Keepalive       time.Duration
 	ExecuteTimeout  time.Duration
@@ -29,7 +30,6 @@ type Config struct {
 	LogFormat       string
 	LogLevel        string
 	ShimLogLevel    string
-	TotalQueryLimit int
 }
 
 func GlobalConfig() *Config {

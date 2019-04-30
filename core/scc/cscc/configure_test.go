@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -234,22 +235,30 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	config := chaincode.GlobalConfig()
 	config.StartupTimeout = 30 * time.Second
-	chaincode.NewChaincodeSupport(
-		config,
-		peerEndpoint,
-		false,
-		ca.CertBytes(),
-		certGenerator,
-		&PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
-		nil,
-		mockAclProvider,
-		container.NewVMController(
+
+	client, err := docker.NewClientFromEnv()
+	require.NoError(t, err, "failed to acquire Docker client")
+	containerRuntime := &chaincode.ContainerRuntime{
+		CACert:        ca.CertBytes(),
+		CertGenerator: certGenerator,
+		DockerClient:  client,
+		PeerAddress:   peerEndpoint,
+		Processor: container.NewVMController(
 			map[string]container.VMProvider{
 				inproccontroller.ContainerType: inproccontroller.NewRegistry(),
 			},
 		),
+		PlatformRegistry: platforms.NewRegistry(&golang.Platform{}),
+	}
+
+	chaincode.NewChaincodeSupport(
+		config,
+		false,
+		containerRuntime,
+		&PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
+		nil,
+		mockAclProvider,
 		mp,
-		platforms.NewRegistry(&golang.Platform{}),
 		peer.DefaultSupport,
 		&disabled.Provider{},
 		&ledgermock.DeployedChaincodeInfoProvider{},
