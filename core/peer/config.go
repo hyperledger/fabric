@@ -34,138 +34,161 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Config is the global struct which holds all configurations for Peer.
-// config struct is defined and populated at the first place when it's
-// being initiated.
-// TODO: Currently all Config struct is still being populated from viper.
-// 		 We do intent to move away from viper in the future.
+// Config is the struct that defines the Peer configurations.
 type Config struct {
-	// Identifier of the local MSP
-	// !!!!! IMPORTANT !!!!!!
-	// Deployers need to change the value of the localMSPID string. In particular,
-	// the name of the local MSP ID of a peer needs to match the name of one of
-	// the MSPs in each of the channels that this peer is a member of. Otherwise
-	// this peer's messages will not be identified as valid by other nodes.
+	// LocalMSPID is the identifier of the local MSP.
 	LocalMSPID string
-	// The address at local network interface this Peer will listen on.
-	// By default, it will listen on all network interfaces
+	// ListenAddress is the local address the peer will listen on. It must be
+	// formatted as [host | ipaddr]:port.
 	ListenAddress string
-	// PeerID provides a name for this peer instance and is used when
-	// naming docker resources.
+	// PeerID provides a name for this peer instance. It is used when naming
+	// docker resources to segregate fabric networks and peers.
 	PeerID string
-	// When used as peer config, this represents the endpoint to other peers in
-	// the same organization. For peers in other organization, see
-	// gossip.externalEndpoint for more info.
-	// When used as CLI config, this means the peer's endpoint to interact with.
+	// PeerAddress is the address other peers and clients should use to
+	// communicate with the peer. It must be formatted as [host | ipaddr]:port.
+	// When used by the CLI, it represents the target peer endpoint.
 	PeerAddress string
-	// NetworkID allows for logical separation of networks and is used when
-	// naming docker resources.
+	// NetworkID specifies a name to use for logical separation of networks. It
+	// is used when naming docker resources to segregate fabric networks and
+	// peers.
 	NetworkID string
-	// The endpoint this peer uses to listen for inbound chaincode connections. If
-	// this is not set, the listen address is selected to be the peer's address with
-	// port 7052
+	// ChaincodeListenAddress is the endpoint on which this peer will listen for
+	// chaincode connections. If omitted, it defaults to the host portion of
+	// PeerAddress and port 7052.
 	ChaincodeListenAddress string
-	// The endpoint the chaincode for this peer uses to connect to the peer. If this
-	// is not specified, the chaincodeListenAddress address is selected. And if
-	// chaincodeListenAddress is not specified, address is selected from peer listenAddress.
+	// ChaincodeAddress specifies the endpoint chaincode launched by the peer
+	// should use to connect to the peer. If omitted, it defaults to
+	// ChaincodeListenAddress and falls back to ListenAddress.
 	ChaincodeAddress string
-	// Number of goroutines that will execute transaction validation in parallel.
-	// By default, the peer chooses the number of CPUs on the machine. Set this
-	// variable to override that choice.
-	// NOTE: overriding this value might negatively influence the performance of
-	// the peer so please change this value only if you know what you're doing!
+	// ValidatorPoolSize indicates the number of goroutines that will execute
+	// transaction validation in parallel. If omitted, it defaults to number of
+	// hardware threads on the machine.
 	ValidatorPoolSize int
 
 	// ----- Profile -----
-	// Used with Go profiling tools only in none production environment. In production,
-	// it should be disabled (eg enabled : false)
-	ProfileEnabled       bool
+	// TODO: create separate sub-struct for Profile config.
+
+	// ProfileEnabled determines if the go pprof endpoint is enabled in the peer.
+	ProfileEnabled bool
+	// ProfileListenAddress is the address the pprof server should accept
+	// connections on.
 	ProfileListenAddress string
 
 	// ----- Discovery -----
+
 	// The discovery service is used by clients to query information about peers,
 	// such as - which peers have joined a certain channel, what is the latest
 	// channel config, and most importantly - given a chaincode and a channel, what
 	// possible sets of peers satisfy the endorsement policy.
+	// TODO: create separate sub-struct for Discovery config.
 
-	// Enable discovery service
+	// DiscoveryEnabled is used to enable the discovery service.
 	DiscoveryEnabled bool
-	// Whether to allow non-admins to perform non channel scoped queries.
-	// When this is false, it means that only peer admins can perform non channel scoped queries.
+	// DiscoveryOrgMembersAllowed allows non-admins to perform non channel-scoped queries.
 	DiscoveryOrgMembersAllowed bool
-	// Whether the authentication cache is enabled or not
+	// DiscoveryAuthCacheEnabled is used to enable the authentication cache.
 	DiscoveryAuthCacheEnabled bool
-	// The maximum size of the cache, after which a purge takes place
+	// DiscoveryAuthCacheMaxSize sets the maximum size of authentication cache.
 	DiscoveryAuthCacheMaxSize int
-	// The proportion (0 to 1) of entries that remain in the cache after the cache is
-	// purged due to overpopulation
+	// DiscoveryAuthCachePurgeRetentionRatio set the proportion of entries remains in cache
+	// after overpopulation purge.
 	DiscoveryAuthCachePurgeRetentionRatio float64
 
 	// ----- Limits -----
-	// Limits is used to configure some internal resource limits
+	// Limits is used to configure some internal resource limits.
+	// TODO: create separate sub-struct for Limits config.
 
-	// Concurrency limits the number of concurrently running system chaincode requests.
-	// This option is only supported for qscc at this time.
+	// LimitsConcurrencyQSCC sets the limits for number of concurrently running
+	// qscc system chaincode requests.
 	LimitsConcurrencyQSCC int
 
 	// ----- TLS -----
-	// Require server-side TLS
+	// Require server-side TLS.
+	// TODO: create separate sub-struct for PeerTLS config.
+
+	// PeerTLSEnabled enables/disables Peer TLS.
 	PeerTLSEnabled bool
 
 	// ----- Authentication -----
 	// Authentication contains configuration parameters related to authenticating
 	// client messages.
+	// TODO: create separate sub-struct for Authentication config.
 
-	// The acceptable difference between current server time and client's time as
-	// specified in a client request message
+	// AuthenticationTimeWindow sets the acceptable time duration for current
+	// server time and client's time as specified in a client request message.
 	AuthenticationTimeWindow time.Duration
 
 	// ----- AdminService -----
 	// The admin service is used for adminstrative operations such as control over logger
 	// levels, etc. Only peer administrators can use the service.
+	// TODO: create separate sub-struct for AdminService config.
 
-	// The interface and port on which the admin server will listen on. If this is
-	// not set, or the port number is equal to the port of the peer listen address -
-	// the admin service is attached to the peer's service (defaults to 7051)
+	// AdminListenAddress provides a interface and port for admin server to listen on.
+	// Default to peer listen address.
 	AdminListenAddress string
 
-	// Endpoint of the vm management system. For docker can be one of the following in general
-	// unix:///var/run/docker.sock
-	// http://localhost:2375
-	// https://localhost:2376
+	// VMEndpoint sets the endpoint of the vm management systems.
 	VMEndpoint string
 
 	// ----- vm.docker.tls -----
-	// settings for docker vms
+	// TODO: create separate sub-struct for VM.Docker.TLS config.
+
+	// VMDockerTLSEnabled enables/disables TLS for dockers.
 	VMDockerTLSEnabled   bool
 	VMDockerAttachStdout bool
 
-	// Enables/disables force pulling of the base docker images (listed below)
-	// during user chaincode instantiation.
-	// Useful when using moving image tags (such as :latest)
+	// ChaincodePull enables/disables force pulling of the base docker image.
 	ChaincodePull bool
 
-	// Operations config
-	OperationsListenAddress         string
-	OperationsTLSEnabled            bool
-	OperationsTLSCertFile           string
-	OperationsTLSKeyFile            string
+	// ----- Operations config -----
+	// TODO: create separate sub-struct for Operations config.
+
+	// OperationsListenAddress provides the host and port for the operations server
+	OperationsListenAddress string
+	// OperationsTLSEnabled enables/disables TLS for operations.
+	OperationsTLSEnabled bool
+	// OperationsTLSCertFile provides the path to PEM encoded server certificate for
+	// the operations server.
+	OperationsTLSCertFile string
+	// OperationsTLSKeyFile provides the path to PEM encoded server key for the
+	// operations server.
+	OperationsTLSKeyFile string
+	// OperationsTLSClientAuthRequired enables/disables the requirements for client
+	// certificate authentication at the TLS layer to access all resource.
 	OperationsTLSClientAuthRequired bool
-	OperationsTLSClientRootCAs      []string
+	// OperationsTLSClientRootCAs provides the path to PEM encoded ca certiricates to
+	// trust for client authentication.
+	OperationsTLSClientRootCAs []string
 
-	// Metrics config
-	MetricsProvider     string
-	StatsdNetwork       string
-	StatsdAaddress      string
+	// ----- Metrics config -----
+	// TODO: create separate sub-struct for Metrics config.
+
+	// MetricsProvider provides the categories of metrics providers, which is one of
+	// statsd, prometheus, or disabled.
+	MetricsProvider string
+	// StatsdNetwork indicate the network type used by statsd metrics. (tcp or udp).
+	StatsdNetwork string
+	// StatsdAaddress provides the address for statsd server.
+	StatsdAaddress string
+	// StatsdWriteInterval set the time interval at which locally cached counters and
+	// gauges are pushed.
 	StatsdWriteInterval time.Duration
-	StatsdPrefix        string
+	// StatsdPrefix provides the prefix that prepended to all emitted statsd metrics.
+	StatsdPrefix string
 
-	// Docker Configuration
+	// ----- Docker config ------
+
+	// DockerCert is the path to the PEM encoded TLS client certificate required to access
+	// the docker daemon.
 	DockerCert string
-	DockerKey  string
-	DockerCA   string
+	// DockerKey is the path to the PEM encoded key required to access the docker daemon.
+	DockerKey string
+	// DockerCA is the path to the PEM encoded CA certificate for the docker daemon.
+	DockerCA string
 }
 
+// GlobalConfig obtains a set of configuration from viper, build and returns
+// the config struct.
 func GlobalConfig() (*Config, error) {
 	c := &Config{}
 	if err := c.load(); err != nil {
