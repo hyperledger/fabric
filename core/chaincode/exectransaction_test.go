@@ -630,12 +630,8 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 			Version:   "0",
 			PackageID: persistence.PackageID(chaincode2Name + ":0"),
 		}, nil)
-	mcd := &cm.ChaincodeDefinition{}
-	mcd.On("CCName").Return(chaincode2Name)
-	mcd.On("CCVersion").Return("0")
-	mcd.On("Hash").Return([]byte("Hulk, (sm)hash"))
-	mcd.On("RequiresInit").Return(false)
-	ml.On("ChaincodeDefinition", ma.Anything, chaincode2Name, ma.Anything).Return(mcd, nil)
+	fakeCCDefinition := &cm.ChaincodeDefinition{}
+	ml.On("ChaincodeDefinition", ma.Anything, chaincode2Name, ma.Anything).Return(fakeCCDefinition, nil)
 	chaincode2Version := "0"
 	chaincode2Type := tc.chaincodeType
 	chaincode2Path := tc.chaincodePath
@@ -812,12 +808,8 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 			Version:   "0",
 			PackageID: persistence.PackageID(chaincode1Name + ":0"),
 		}, nil)
-	mcd := &cm.ChaincodeDefinition{}
-	mcd.On("CCName").Return(chaincode1Name)
-	mcd.On("CCVersion").Return("0")
-	mcd.On("Hash").Return([]byte("Hulk, (sm)hash"))
-	mcd.On("RequiresInit").Return(false)
-	ml.On("ChaincodeDefinition", ma.Anything, chaincode1Name, ma.Anything).Return(mcd, nil)
+	fakeCCDefinition := &cm.ChaincodeDefinition{}
+	ml.On("ChaincodeDefinition", ma.Anything, chaincode1Name, ma.Anything).Return(fakeCCDefinition, nil)
 	chaincode1Version := "0"
 	chaincode1Type := pb.ChaincodeSpec_GOLANG
 	chaincode1Path := chaincodeExample02GolangPath
@@ -892,12 +884,8 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	defer cleanup()
 
 	mockAclProvider.On("CheckACL", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	mcd := &cm.ChaincodeDefinition{}
-	mcd.On("CCName").Return("example02")
-	mcd.On("CCVersion").Return("0")
-	mcd.On("Hash").Return([]byte("Hulk, (sm)hash"))
-	mcd.On("RequiresInit").Return(false)
-	ml.On("ChaincodeDefinition", ma.Anything, "example02", ma.Anything).Return(mcd, nil)
+	fakeCCDefinition := &cm.ChaincodeDefinition{}
+	ml.On("ChaincodeDefinition", ma.Anything, "example02", ma.Anything).Return(fakeCCDefinition, nil)
 
 	// Deploy first chaincode
 	cID1 := &pb.ChaincodeID{Name: "example02", Path: chaincodeExample02GolangPath, Version: "0"}

@@ -4,28 +4,15 @@ package fake
 import (
 	"sync"
 
-	chaincode_test "github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 type LaunchRegistry struct {
-	LaunchingStub        func(packageID ccintf.CCID) (launchState *chaincode_test.LaunchState, started bool)
-	launchingMutex       sync.RWMutex
-	launchingArgsForCall []struct {
-		packageID ccintf.CCID
-	}
-	launchingReturns struct {
-		result1 *chaincode_test.LaunchState
-		result2 bool
-	}
-	launchingReturnsOnCall map[int]struct {
-		result1 *chaincode_test.LaunchState
-		result2 bool
-	}
-	DeregisterStub        func(packageID ccintf.CCID) error
+	DeregisterStub        func(ccintf.CCID) error
 	deregisterMutex       sync.RWMutex
 	deregisterArgsForCall []struct {
-		packageID ccintf.CCID
+		arg1 ccintf.CCID
 	}
 	deregisterReturns struct {
 		result1 error
@@ -33,76 +20,39 @@ type LaunchRegistry struct {
 	deregisterReturnsOnCall map[int]struct {
 		result1 error
 	}
+	LaunchingStub        func(ccintf.CCID) (*chaincode.LaunchState, bool)
+	launchingMutex       sync.RWMutex
+	launchingArgsForCall []struct {
+		arg1 ccintf.CCID
+	}
+	launchingReturns struct {
+		result1 *chaincode.LaunchState
+		result2 bool
+	}
+	launchingReturnsOnCall map[int]struct {
+		result1 *chaincode.LaunchState
+		result2 bool
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *LaunchRegistry) Launching(packageID ccintf.CCID) (launchState *chaincode_test.LaunchState, started bool) {
-	fake.launchingMutex.Lock()
-	ret, specificReturn := fake.launchingReturnsOnCall[len(fake.launchingArgsForCall)]
-	fake.launchingArgsForCall = append(fake.launchingArgsForCall, struct {
-		packageID ccintf.CCID
-	}{packageID})
-	fake.recordInvocation("Launching", []interface{}{packageID})
-	fake.launchingMutex.Unlock()
-	if fake.LaunchingStub != nil {
-		return fake.LaunchingStub(packageID)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.launchingReturns.result1, fake.launchingReturns.result2
-}
-
-func (fake *LaunchRegistry) LaunchingCallCount() int {
-	fake.launchingMutex.RLock()
-	defer fake.launchingMutex.RUnlock()
-	return len(fake.launchingArgsForCall)
-}
-
-func (fake *LaunchRegistry) LaunchingArgsForCall(i int) ccintf.CCID {
-	fake.launchingMutex.RLock()
-	defer fake.launchingMutex.RUnlock()
-	return fake.launchingArgsForCall[i].packageID
-}
-
-func (fake *LaunchRegistry) LaunchingReturns(result1 *chaincode_test.LaunchState, result2 bool) {
-	fake.LaunchingStub = nil
-	fake.launchingReturns = struct {
-		result1 *chaincode_test.LaunchState
-		result2 bool
-	}{result1, result2}
-}
-
-func (fake *LaunchRegistry) LaunchingReturnsOnCall(i int, result1 *chaincode_test.LaunchState, result2 bool) {
-	fake.LaunchingStub = nil
-	if fake.launchingReturnsOnCall == nil {
-		fake.launchingReturnsOnCall = make(map[int]struct {
-			result1 *chaincode_test.LaunchState
-			result2 bool
-		})
-	}
-	fake.launchingReturnsOnCall[i] = struct {
-		result1 *chaincode_test.LaunchState
-		result2 bool
-	}{result1, result2}
-}
-
-func (fake *LaunchRegistry) Deregister(packageID ccintf.CCID) error {
+func (fake *LaunchRegistry) Deregister(arg1 ccintf.CCID) error {
 	fake.deregisterMutex.Lock()
 	ret, specificReturn := fake.deregisterReturnsOnCall[len(fake.deregisterArgsForCall)]
 	fake.deregisterArgsForCall = append(fake.deregisterArgsForCall, struct {
-		packageID ccintf.CCID
-	}{packageID})
-	fake.recordInvocation("Deregister", []interface{}{packageID})
+		arg1 ccintf.CCID
+	}{arg1})
+	fake.recordInvocation("Deregister", []interface{}{arg1})
 	fake.deregisterMutex.Unlock()
 	if fake.DeregisterStub != nil {
-		return fake.DeregisterStub(packageID)
+		return fake.DeregisterStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.deregisterReturns.result1
+	fakeReturns := fake.deregisterReturns
+	return fakeReturns.result1
 }
 
 func (fake *LaunchRegistry) DeregisterCallCount() int {
@@ -111,13 +61,22 @@ func (fake *LaunchRegistry) DeregisterCallCount() int {
 	return len(fake.deregisterArgsForCall)
 }
 
+func (fake *LaunchRegistry) DeregisterCalls(stub func(ccintf.CCID) error) {
+	fake.deregisterMutex.Lock()
+	defer fake.deregisterMutex.Unlock()
+	fake.DeregisterStub = stub
+}
+
 func (fake *LaunchRegistry) DeregisterArgsForCall(i int) ccintf.CCID {
 	fake.deregisterMutex.RLock()
 	defer fake.deregisterMutex.RUnlock()
-	return fake.deregisterArgsForCall[i].packageID
+	argsForCall := fake.deregisterArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *LaunchRegistry) DeregisterReturns(result1 error) {
+	fake.deregisterMutex.Lock()
+	defer fake.deregisterMutex.Unlock()
 	fake.DeregisterStub = nil
 	fake.deregisterReturns = struct {
 		result1 error
@@ -125,6 +84,8 @@ func (fake *LaunchRegistry) DeregisterReturns(result1 error) {
 }
 
 func (fake *LaunchRegistry) DeregisterReturnsOnCall(i int, result1 error) {
+	fake.deregisterMutex.Lock()
+	defer fake.deregisterMutex.Unlock()
 	fake.DeregisterStub = nil
 	if fake.deregisterReturnsOnCall == nil {
 		fake.deregisterReturnsOnCall = make(map[int]struct {
@@ -136,13 +97,76 @@ func (fake *LaunchRegistry) DeregisterReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *LaunchRegistry) Launching(arg1 ccintf.CCID) (*chaincode.LaunchState, bool) {
+	fake.launchingMutex.Lock()
+	ret, specificReturn := fake.launchingReturnsOnCall[len(fake.launchingArgsForCall)]
+	fake.launchingArgsForCall = append(fake.launchingArgsForCall, struct {
+		arg1 ccintf.CCID
+	}{arg1})
+	fake.recordInvocation("Launching", []interface{}{arg1})
+	fake.launchingMutex.Unlock()
+	if fake.LaunchingStub != nil {
+		return fake.LaunchingStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.launchingReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *LaunchRegistry) LaunchingCallCount() int {
+	fake.launchingMutex.RLock()
+	defer fake.launchingMutex.RUnlock()
+	return len(fake.launchingArgsForCall)
+}
+
+func (fake *LaunchRegistry) LaunchingCalls(stub func(ccintf.CCID) (*chaincode.LaunchState, bool)) {
+	fake.launchingMutex.Lock()
+	defer fake.launchingMutex.Unlock()
+	fake.LaunchingStub = stub
+}
+
+func (fake *LaunchRegistry) LaunchingArgsForCall(i int) ccintf.CCID {
+	fake.launchingMutex.RLock()
+	defer fake.launchingMutex.RUnlock()
+	argsForCall := fake.launchingArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *LaunchRegistry) LaunchingReturns(result1 *chaincode.LaunchState, result2 bool) {
+	fake.launchingMutex.Lock()
+	defer fake.launchingMutex.Unlock()
+	fake.LaunchingStub = nil
+	fake.launchingReturns = struct {
+		result1 *chaincode.LaunchState
+		result2 bool
+	}{result1, result2}
+}
+
+func (fake *LaunchRegistry) LaunchingReturnsOnCall(i int, result1 *chaincode.LaunchState, result2 bool) {
+	fake.launchingMutex.Lock()
+	defer fake.launchingMutex.Unlock()
+	fake.LaunchingStub = nil
+	if fake.launchingReturnsOnCall == nil {
+		fake.launchingReturnsOnCall = make(map[int]struct {
+			result1 *chaincode.LaunchState
+			result2 bool
+		})
+	}
+	fake.launchingReturnsOnCall[i] = struct {
+		result1 *chaincode.LaunchState
+		result2 bool
+	}{result1, result2}
+}
+
 func (fake *LaunchRegistry) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.launchingMutex.RLock()
-	defer fake.launchingMutex.RUnlock()
 	fake.deregisterMutex.RLock()
 	defer fake.deregisterMutex.RUnlock()
+	fake.launchingMutex.RLock()
+	defer fake.launchingMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

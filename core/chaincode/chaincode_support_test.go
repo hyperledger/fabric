@@ -220,11 +220,8 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 			PackageID: persistence.PackageID("lscc:" + util.GetSysCCVersion()),
 		}, nil)
 	ml.On("ChaincodeContainerInfo", ma.Anything, "badccname", ma.Anything).Return(nil, errors.New("get lost"))
-	mcd := &mock.ChaincodeDefinition{}
-	mcd.On("CCVersion").Return("0")
-	mcd.On("Hash").Return([]byte("Hulk, (sm)hash"))
-	mcd.On("RequiresInit").Return(false)
-	ml.On("ChaincodeDefinition", ma.Anything, "calledCC", ma.Anything).Return(mcd, nil)
+	fakeCCDefinition := &mock.ChaincodeDefinition{}
+	ml.On("ChaincodeDefinition", ma.Anything, "calledCC", ma.Anything).Return(fakeCCDefinition, nil)
 	chaincodeSupport := NewChaincodeSupport(
 		globalConfig,
 		"0.0.0.0:7052",
