@@ -28,6 +28,7 @@ below, the loggers ``ledgermgmt``, ``kvledger``, and ``peer`` are
 generating logs.
 
 ::
+
    2018-11-01 15:32:38.268 UTC [ledgermgmt] initialize -> INFO 002 Initializing ledger mgmt
    2018-11-01 15:32:38.268 UTC [kvledger] NewProvider -> INFO 003 Initializing ledger provider
    2018-11-01 15:32:38.342 UTC [kvledger] NewProvider -> INFO 004 ledger provider Initialized
