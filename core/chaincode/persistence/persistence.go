@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 
 	"github.com/pkg/errors"
 )
@@ -31,6 +31,7 @@ type IOReadWriter interface {
 	ReadFile(string) ([]byte, error)
 	Remove(name string) error
 	WriteFile(string, string, []byte) error
+	MakeDir(string, os.FileMode) error
 	Exists(path string) (bool, error)
 }
 
@@ -84,12 +85,19 @@ func (f *FilesystemIO) ReadDir(dirname string) ([]os.FileInfo, error) {
 	return ioutil.ReadDir(dirname)
 }
 
+// MakeDir makes a directory on the filesystem (and any
+// necessary parent directories).
+func (f *FilesystemIO) MakeDir(dirname string, mode os.FileMode) error {
+	return os.MkdirAll(dirname, mode)
+}
+
 // Exists checks whether a file exists
 func (*FilesystemIO) Exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
-	} else if os.IsNotExist(err) {
+	}
+	if os.IsNotExist(err) {
 		return false, nil
 	}
 
@@ -100,6 +108,35 @@ func (*FilesystemIO) Exists(path string) (bool, error) {
 type Store struct {
 	Path       string
 	ReadWriter IOReadWriter
+}
+
+// NewStore creates a new chaincode persistence store using
+// the provided path on the filesystem.
+func NewStore(path string) *Store {
+	store := &Store{
+		Path:       path,
+		ReadWriter: &FilesystemIO{},
+	}
+	store.Initialize()
+	return store
+}
+
+// Initialize checks for the existence of the _lifecycle chaincodes
+// directory and creates it if it has not yet been created.
+func (s *Store) Initialize() {
+	var (
+		exists bool
+		err    error
+	)
+	if exists, err = s.ReadWriter.Exists(s.Path); exists {
+		return
+	}
+	if err != nil {
+		panic(fmt.Sprintf("Initialization of chaincode store failed: %s", err))
+	}
+	if err = s.ReadWriter.MakeDir(s.Path, 0750); err != nil {
+		panic(fmt.Sprintf("Could not create _lifecycle chaincodes install path: %s", err))
+	}
 }
 
 // Save persists chaincode install package bytes. It returns

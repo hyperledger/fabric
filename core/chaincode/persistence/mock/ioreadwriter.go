@@ -20,6 +20,18 @@ type IOReadWriter struct {
 		result1 bool
 		result2 error
 	}
+	MakeDirStub        func(string, os.FileMode) error
+	makeDirMutex       sync.RWMutex
+	makeDirArgsForCall []struct {
+		arg1 string
+		arg2 os.FileMode
+	}
+	makeDirReturns struct {
+		result1 error
+	}
+	makeDirReturnsOnCall map[int]struct {
+		result1 error
+	}
 	ReadDirStub        func(string) ([]os.FileInfo, error)
 	readDirMutex       sync.RWMutex
 	readDirArgsForCall []struct {
@@ -135,6 +147,67 @@ func (fake *IOReadWriter) ExistsReturnsOnCall(i int, result1 bool, result2 error
 		result1 bool
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *IOReadWriter) MakeDir(arg1 string, arg2 os.FileMode) error {
+	fake.makeDirMutex.Lock()
+	ret, specificReturn := fake.makeDirReturnsOnCall[len(fake.makeDirArgsForCall)]
+	fake.makeDirArgsForCall = append(fake.makeDirArgsForCall, struct {
+		arg1 string
+		arg2 os.FileMode
+	}{arg1, arg2})
+	fake.recordInvocation("MakeDir", []interface{}{arg1, arg2})
+	fake.makeDirMutex.Unlock()
+	if fake.MakeDirStub != nil {
+		return fake.MakeDirStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.makeDirReturns
+	return fakeReturns.result1
+}
+
+func (fake *IOReadWriter) MakeDirCallCount() int {
+	fake.makeDirMutex.RLock()
+	defer fake.makeDirMutex.RUnlock()
+	return len(fake.makeDirArgsForCall)
+}
+
+func (fake *IOReadWriter) MakeDirCalls(stub func(string, os.FileMode) error) {
+	fake.makeDirMutex.Lock()
+	defer fake.makeDirMutex.Unlock()
+	fake.MakeDirStub = stub
+}
+
+func (fake *IOReadWriter) MakeDirArgsForCall(i int) (string, os.FileMode) {
+	fake.makeDirMutex.RLock()
+	defer fake.makeDirMutex.RUnlock()
+	argsForCall := fake.makeDirArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *IOReadWriter) MakeDirReturns(result1 error) {
+	fake.makeDirMutex.Lock()
+	defer fake.makeDirMutex.Unlock()
+	fake.MakeDirStub = nil
+	fake.makeDirReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *IOReadWriter) MakeDirReturnsOnCall(i int, result1 error) {
+	fake.makeDirMutex.Lock()
+	defer fake.makeDirMutex.Unlock()
+	fake.MakeDirStub = nil
+	if fake.makeDirReturnsOnCall == nil {
+		fake.makeDirReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.makeDirReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *IOReadWriter) ReadDir(arg1 string) ([]os.FileInfo, error) {
@@ -395,6 +468,8 @@ func (fake *IOReadWriter) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.existsMutex.RLock()
 	defer fake.existsMutex.RUnlock()
+	fake.makeDirMutex.RLock()
+	defer fake.makeDirMutex.RUnlock()
 	fake.readDirMutex.RLock()
 	defer fake.readDirMutex.RUnlock()
 	fake.readFileMutex.RLock()
