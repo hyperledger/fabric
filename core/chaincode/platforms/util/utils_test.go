@@ -16,13 +16,13 @@ import (
 	"strings"
 	"testing"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
-// TODO restore this test once multi-arch has been established
 func TestDockerPull(t *testing.T) {
 	codepackage, output := io.Pipe()
 	go func() {
@@ -46,12 +46,20 @@ func TestDockerPull(t *testing.T) {
 	// Future considerations: publish a known dummy image that is multi-arch and free to randomly
 	// delete, and use that here instead.
 	image := fmt.Sprintf("hyperledger/fabric-ccenv:%s-1.1.0", runtime.GOARCH)
-	err := DockerBuild(DockerBuildOptions{
-		Image:        image,
-		Cmd:          "/bin/true",
-		InputStream:  codepackage,
-		OutputStream: binpackage,
-	})
+	client, err := docker.NewClientFromEnv()
+	if err != nil {
+		t.Errorf("failed to get docker client: %s", err)
+	}
+
+	err = DockerBuild(
+		DockerBuildOptions{
+			Image:        image,
+			Cmd:          "/bin/true",
+			InputStream:  codepackage,
+			OutputStream: binpackage,
+		},
+		client,
+	)
 	if err != nil {
 		t.Errorf("Error during build: %s", err)
 	}

@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
 	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -76,16 +75,12 @@ type ChaincodeSupport struct {
 // NewChaincodeSupport creates a new ChaincodeSupport instance.
 func NewChaincodeSupport(
 	config *Config,
-	peerAddress string,
 	userRunsCC bool,
-	caCert []byte,
-	certGenerator CertGenerator,
+	containerRuntime *ContainerRuntime,
 	packageProvider PackageProvider,
 	lifecycle Lifecycle,
 	aclProvider ACLProvider,
-	processor Processor,
 	SystemCCProvider sysccprovider.SystemChaincodeProvider,
-	platformRegistry *platforms.Registry,
 	appConfig ApplicationConfigRetriever,
 	metricsProvider metrics.Provider,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
@@ -105,23 +100,7 @@ func NewChaincodeSupport(
 		TotalQueryLimit:        config.TotalQueryLimit,
 	}
 
-	// Keep TestQueries working
-	if !config.TLSEnabled {
-		certGenerator = nil
-	}
-
-	cs.Runtime = &ContainerRuntime{
-		CertGenerator:    certGenerator,
-		Processor:        processor,
-		CACert:           caCert,
-		PeerAddress:      peerAddress,
-		PlatformRegistry: platformRegistry,
-		CommonEnv: []string{
-			"CORE_CHAINCODE_LOGGING_LEVEL=" + config.LogLevel,
-			"CORE_CHAINCODE_LOGGING_SHIM=" + config.ShimLogLevel,
-			"CORE_CHAINCODE_LOGGING_FORMAT=" + config.LogFormat,
-		},
-	}
+	cs.Runtime = containerRuntime
 
 	cs.Launcher = &RuntimeLauncher{
 		Runtime:         cs.Runtime,

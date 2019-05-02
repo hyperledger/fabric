@@ -159,26 +159,17 @@ func TestGenerateDockerfile(t *testing.T) {
 	assert.Equal(t, dockerFileContents, dockerfile)
 }
 
-func TestGenerateDockerBuild(t *testing.T) {
-	t.Skip()
+func TestDockerBuildOptions(t *testing.T) {
 	platform := java.Platform{}
-	ccSpec := &pb.ChaincodeSpec{
-		Type:        pb.ChaincodeSpec_JAVA,
-		ChaincodeId: &pb.ChaincodeID{Path: chaincodePathFolderGradle},
-		Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("init")}}}
 
-	cp, _ := platform.GetDeploymentPayload(ccSpec.ChaincodeId.Path)
+	opts, err := platform.DockerBuildOptions("path")
+	assert.NoError(t, err, "unexpected error from DockerBuildOptions")
 
-	cds := &pb.ChaincodeDeploymentSpec{
-		ChaincodeSpec: ccSpec,
-		CodePackage:   cp}
-
-	payload := bytes.NewBuffer(nil)
-	gw := gzip.NewWriter(payload)
-	tw := tar.NewWriter(gw)
-
-	err := platform.GenerateDockerBuild(cds.ChaincodeSpec.ChaincodeId.Path, cds.CodePackage, tw)
-	assert.NoError(t, err)
+	expectedOpts := util.DockerBuildOptions{
+		Image: "hyperledger/fabric-javaenv:latest",
+		Cmd:   "./build.sh",
+	}
+	assert.Equal(t, expectedOpts, opts)
 }
 
 func generateMockPackegeBytes(fileName string, mode int64) ([]byte, error) {

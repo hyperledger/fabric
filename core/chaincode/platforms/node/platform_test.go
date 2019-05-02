@@ -11,15 +11,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 var platform = &Platform{}
@@ -132,78 +131,15 @@ func TestGenerateDockerfile(t *testing.T) {
 	}
 }
 
-func TestGenerateDockerBuild(t *testing.T) {
-	t.Skip() // not needed but will fail since we don't publish nodeenv yet
-	dir, err := ioutil.TempDir("", "nodejs-chaincode-test")
-	if err != nil {
-		t.Fatal(err)
+func TestGenerateBuildOptions(t *testing.T) {
+	opts, err := platform.DockerBuildOptions("pathname")
+	assert.NoError(t, err)
+
+	expectedOpts := util.DockerBuildOptions{
+		Image: "hyperledger/fabric-nodeenv:latest",
+		Cmd:   "cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production",
 	}
-
-	content := []byte(`
-		{
-		  "name": "fabric-shim-test",
-		  "version": "1.0.0-snapshot",
-	      "script": {
-	        "start": "node chaincode.js"
-	      },
-		  "dependencies": {
-		    "is-sorted": "*"
-		  }
-		}`)
-
-	defer os.RemoveAll(dir) // clean up
-
-	tmpfn := filepath.Join(dir, "package.json")
-	if err := ioutil.WriteFile(tmpfn, content, 0666); err != nil {
-		t.Fatal(err)
-	}
-
-	content = []byte(`
-		const shim = require('fabric-shim');
-
-		var chaincode = {};
-		chaincode.Init = function(stub) {
-			return Promise.resolve(shim.success());
-		};
-
-		chaincode.Invoke = function(stub) {
-			console.log('Transaction ID: ' + stub.getTxID());
-
-			return stub.getState('dummy')
-			.then(() => {
-				return shim.success();
-			}, () => {
-				return shim.error();
-			});
-		};
-
-		shim.start(chaincode);`)
-
-	tmpfn = filepath.Join(dir, "chaincode.js")
-	if err := ioutil.WriteFile(tmpfn, content, 0666); err != nil {
-		t.Fatal(err)
-	}
-
-	ccSpec := &peer.ChaincodeSpec{
-		Type:        peer.ChaincodeSpec_NODE,
-		ChaincodeId: &peer.ChaincodeID{Path: dir},
-		Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("init")}}}
-
-	cp, _ := platform.GetDeploymentPayload(ccSpec.ChaincodeId.Path)
-
-	cds := &peer.ChaincodeDeploymentSpec{
-		ChaincodeSpec: ccSpec,
-		CodePackage:   cp,
-	}
-
-	payload := bytes.NewBuffer(nil)
-	gw := gzip.NewWriter(payload)
-	tw := tar.NewWriter(gw)
-
-	err = platform.GenerateDockerBuild(cds.ChaincodeSpec.ChaincodeId.Path, cds.CodePackage, tw)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Equal(t, expectedOpts, opts)
 }
 
 func makeCodePackage(pfiles []*packageFile) ([]byte, error) {

@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -41,6 +42,7 @@ type ContainerRuntime struct {
 	CommonEnv        []string
 	PeerAddress      string
 	PlatformRegistry *platforms.Registry
+	DockerClient     *docker.Client
 }
 
 // Start launches chaincode in a runtime environment.
@@ -64,6 +66,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 			Path:             ccci.Path,
 			CodePackage:      codePackage,
 			PlatformRegistry: c.PlatformRegistry,
+			Client:           c.DockerClient,
 		},
 		Args:          lc.Args,
 		Env:           lc.Envs,

@@ -12,6 +12,7 @@ import (
 	"io"
 	"sync"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -134,6 +135,7 @@ type PlatformBuilder struct {
 	Version          string
 	CodePackage      []byte
 	PlatformRegistry *platforms.Registry
+	Client           *docker.Client
 }
 
 // Build a tar stream based on the CDS
@@ -144,6 +146,7 @@ func (b *PlatformBuilder) Build() (io.Reader, error) {
 		b.Name,
 		b.Version,
 		b.CodePackage,
+		b.Client,
 	)
 }
 

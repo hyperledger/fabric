@@ -164,29 +164,40 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	provider := &dockercontroller.Provider{
-		PeerID:       "",
-		NetworkID:    "",
-		BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
-		Client:       client,
-	}
-	chaincodeSupport := NewChaincodeSupport(
-		config,
-		peerAddress,
-		false,
-		ca.CertBytes(),
-		certGenerator,
-		&PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
-		ml,
-		aclmgmt.NewACLProvider(func(string) channelconfig.Resources { return nil }),
-		container.NewVMController(
+	containerRuntime := &ContainerRuntime{
+		CACert:           ca.CertBytes(),
+		CertGenerator:    certGenerator,
+		DockerClient:     client,
+		PeerAddress:      peerAddress,
+		PlatformRegistry: pr,
+		Processor: container.NewVMController(
 			map[string]container.VMProvider{
-				dockercontroller.ContainerType: provider,
+				dockercontroller.ContainerType: &dockercontroller.Provider{
+					PeerID:       "",
+					NetworkID:    "",
+					BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
+					Client:       client,
+				},
 				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
+		CommonEnv: []string{
+			"CORE_CHAINCODE_LOGGING_LEVEL=" + config.LogLevel,
+			"CORE_CHAINCODE_LOGGING_SHIM=" + config.ShimLogLevel,
+			"CORE_CHAINCODE_LOGGING_FORMAT=" + config.LogFormat,
+		},
+	}
+	if !config.TLSEnabled {
+		containerRuntime.CertGenerator = nil
+	}
+	chaincodeSupport := NewChaincodeSupport(
+		config,
+		false,
+		containerRuntime,
+		&PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
+		ml,
+		aclmgmt.NewACLProvider(func(string) channelconfig.Resources { return nil }),
 		sccp,
-		pr,
 		peer.DefaultSupport,
 		&disabled.Provider{},
 		&ledgermock.DeployedChaincodeInfoProvider{},

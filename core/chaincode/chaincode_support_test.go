@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
@@ -222,23 +223,42 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 	ml.On("ChaincodeContainerInfo", ma.Anything, "badccname", ma.Anything).Return(nil, errors.New("get lost"))
 	fakeCCDefinition := &mock.ChaincodeDefinition{}
 	ml.On("ChaincodeDefinition", ma.Anything, "calledCC", ma.Anything).Return(fakeCCDefinition, nil)
-	chaincodeSupport := NewChaincodeSupport(
-		globalConfig,
-		"0.0.0.0:7052",
-		true,
-		ca.CertBytes(),
-		certGenerator,
-		&PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
-		ml,
-		mockAclProvider,
-		container.NewVMController(
+	mcd := &mock.ChaincodeDefinition{}
+	ml.On("ChaincodeDefinition", ma.Anything, "calledCC", ma.Anything).Return(mcd, nil)
+	client, err := docker.NewClientFromEnv()
+	if err != nil {
+		panic(err)
+	}
+	containerRuntime := &ContainerRuntime{
+		CACert:        ca.CertBytes(),
+		CertGenerator: certGenerator,
+		PeerAddress:   "0.0.0.0:7052",
+		DockerClient:  client,
+		Processor: container.NewVMController(
 			map[string]container.VMProvider{
 				dockercontroller.ContainerType: &dockercontroller.Provider{},
 				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
+		CommonEnv: []string{
+			"CORE_CHAINCODE_LOGGING_LEVEL=" + globalConfig.LogLevel,
+			"CORE_CHAINCODE_LOGGING_SHIM=" + globalConfig.ShimLogLevel,
+			"CORE_CHAINCODE_LOGGING_FORMAT=" + globalConfig.LogFormat,
+		},
+		PlatformRegistry: pr,
+	}
+	if !globalConfig.TLSEnabled {
+		containerRuntime.CertGenerator = nil
+	}
+
+	chaincodeSupport := NewChaincodeSupport(
+		globalConfig,
+		true,
+		containerRuntime,
+		&PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
+		ml,
+		mockAclProvider,
 		sccp,
-		pr,
 		peer.DefaultSupport,
 		&disabled.Provider{},
 		&ledgermock.DeployedChaincodeInfoProvider{},

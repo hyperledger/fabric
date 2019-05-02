@@ -364,23 +364,42 @@ func serve(args []string) error {
 		logger.Panicf("failed to register docker health check: %s", err)
 	}
 
+	chaincodeConfig := chaincode.GlobalConfig()
+
+	chaincodeVMController := container.NewVMController(
+		map[string]container.VMProvider{
+			dockercontroller.ContainerType: dockerProvider,
+			inproccontroller.ContainerType: ipRegistry,
+		},
+	)
+
+	containerRuntime := &chaincode.ContainerRuntime{
+		CACert:        ca.CertBytes(),
+		CertGenerator: authenticator,
+		CommonEnv: []string{
+			"CORE_CHAINCODE_LOGGING_LEVEL=" + chaincodeConfig.LogLevel,
+			"CORE_CHAINCODE_LOGGING_SHIM=" + chaincodeConfig.ShimLogLevel,
+			"CORE_CHAINCODE_LOGGING_FORMAT=" + chaincodeConfig.LogFormat,
+		},
+		DockerClient:     client,
+		PeerAddress:      ccEndpoint,
+		Processor:        chaincodeVMController,
+		PlatformRegistry: platformRegistry,
+	}
+
+	// Keep TestQueries working
+	if !chaincodeConfig.TLSEnabled {
+		containerRuntime.CertGenerator = nil
+	}
+
 	chaincodeSupport := chaincode.NewChaincodeSupport(
 		chaincode.GlobalConfig(),
-		ccEndpoint,
 		userRunsCC,
-		ca.CertBytes(),
-		authenticator,
+		containerRuntime,
 		packageProvider,
 		chaincodeEndorsementInfo,
 		aclProvider,
-		container.NewVMController(
-			map[string]container.VMProvider{
-				dockercontroller.ContainerType: dockerProvider,
-				inproccontroller.ContainerType: ipRegistry,
-			},
-		),
 		sccp,
-		platformRegistry,
 		peer.DefaultSupport,
 		opsSystem.Provider,
 		lifecycleValidatorCommitter,

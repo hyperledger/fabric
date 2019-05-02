@@ -13,11 +13,14 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/mock"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/viper"
 )
 
 var _ = Describe("Platforms", func() {
@@ -33,6 +36,8 @@ var _ = Describe("Platforms", func() {
 				"fakeType": fakePlatform,
 			},
 		}
+		viper.Set("chaincode.builder", "$(DOCKER_NS)/fabric-ccenv:$(PROJECT_VERSION)")
+		viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 	})
 
 	Describe("pass through functions", func() {
@@ -153,9 +158,10 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 
 	Describe("the pieces which deal with packaging", func() {
 		var (
-			buf *bytes.Buffer
-			tw  *tar.Writer
-			pw  *mock.PackageWriter
+			buf    *bytes.Buffer
+			tw     *tar.Writer
+			pw     *mock.PackageWriter
+			client *docker.Client
 		)
 
 		BeforeEach(func() {
@@ -163,9 +169,12 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 			tw = tar.NewWriter(buf)
 			pw = &mock.PackageWriter{}
 			registry.PackageWriter = pw
+			dockerClient, err := docker.NewClientFromEnv()
+			Expect(err).NotTo(HaveOccurred())
+			client = dockerClient
 		})
-		Describe("StreamDockerBuild", func() {
 
+		Describe("StreamDockerBuild", func() {
 			AfterEach(func() {
 				tw.Close()
 			})
@@ -174,19 +183,19 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 				fileMap := map[string][]byte{
 					"foo": []byte("foo-bytes"),
 				}
-				err := registry.StreamDockerBuild("fakeType", "", nil, fileMap, tw)
+				err := registry.StreamDockerBuild("fakeType", "", nil, fileMap, tw, client)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pw.WriteCallCount()).To(Equal(1))
 				name, data, writer := pw.WriteArgsForCall(0)
 				Expect(name).To(Equal("foo"))
 				Expect(data).To(Equal([]byte("foo-bytes")))
 				Expect(writer).To(Equal(tw))
-				Expect(fakePlatform.GenerateDockerBuildCallCount()).To(Equal(1))
+				Expect(fakePlatform.DockerBuildOptionsCallCount()).To(Equal(1))
 			})
 
 			Context("when the platform is unknown", func() {
 				It("returns an error", func() {
-					err := registry.StreamDockerBuild("badType", "", nil, nil, tw)
+					err := registry.StreamDockerBuild("badType", "", nil, nil, tw, client)
 					Expect(err).To(MatchError("could not find platform of type: badType"))
 				})
 			})
@@ -198,7 +207,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 					}
 
 					pw.WriteReturns(errors.New("fake-error"))
-					err := registry.StreamDockerBuild("fakeType", "", nil, fileMap, tw)
+					err := registry.StreamDockerBuild("fakeType", "", nil, fileMap, tw, client)
 					Expect(err).To(MatchError("Failed to inject \"foo\": fake-error"))
 					Expect(pw.WriteCallCount()).To(Equal(1))
 				})
@@ -206,16 +215,16 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 
 			Context("when the underlying platform fails", func() {
 				It("returns an error", func() {
-					fakePlatform.GenerateDockerBuildReturns(errors.New("fake-error"))
-					err := registry.StreamDockerBuild("fakeType", "", nil, nil, tw)
-					Expect(err).To(MatchError("Failed to generate platform-specific docker build: fake-error"))
+					fakePlatform.DockerBuildOptionsReturns(util.DockerBuildOptions{}, errors.New("fake-error"))
+					err := registry.StreamDockerBuild("fakeType", "", nil, nil, tw, client)
+					Expect(err).To(MatchError("platform failed to create docker build options: fake-error"))
 				})
 			})
 		})
 
 		Describe("GenerateDockerBuild", func() {
 			It("creates a stream for the package", func() {
-				reader, err := registry.GenerateDockerBuild("fakeType", "", "", "", nil)
+				reader, err := registry.GenerateDockerBuild("fakeType", "", "", "", nil, client)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = ioutil.ReadAll(reader)
 				Expect(err).NotTo(HaveOccurred())
@@ -224,7 +233,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 			Context("when there is a problem generating the dockerfile", func() {
 				It("returns an error", func() {
 					fakePlatform.GenerateDockerfileReturns("docker-header", errors.New("fake-error"))
-					_, err := registry.GenerateDockerBuild("fakeType", "", "", "", nil)
+					_, err := registry.GenerateDockerBuild("fakeType", "", "", "", nil, client)
 					Expect(err).To(MatchError("Failed to generate a Dockerfile: Failed to generate platform-specific Dockerfile: fake-error"))
 				})
 			})
@@ -232,7 +241,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 			Context("when there is a problem streaming the dockerbuild", func() {
 				It("closes the reader with an error", func() {
 					pw.WriteReturns(errors.New("fake-error"))
-					reader, err := registry.GenerateDockerBuild("fakeType", "", "", "", nil)
+					reader, err := registry.GenerateDockerBuild("fakeType", "", "", "", nil, client)
 					Expect(err).NotTo(HaveOccurred())
 					_, err = ioutil.ReadAll(reader)
 					Expect(err).To(MatchError("Failed to inject \"Dockerfile\": fake-error"))
