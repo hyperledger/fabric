@@ -427,7 +427,7 @@ PKI-based implementation of the Membership Services Provider (MSP) abstraction.
 Ordering Service
 ----------------
 
-A defined collective of nodes that orders transactions into a block.  The ordering
+Also known as **orderer**. A defined collective of nodes that orders transactions into a block.  The ordering
 service exists independent of the peer processes and orders transactions on a
 first-come-first-serve basis for all channel's on the network.  The ordering service is
 designed to support pluggable implementations beyond the out-of-the-box SOLO and Kafka varieties.
