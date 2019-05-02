@@ -14,7 +14,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	vsccErrors "github.com/hyperledger/fabric/common/errors"
-	util2 "github.com/hyperledger/fabric/common/util"
+	commonutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
-	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
+	protostransientstore "github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -55,7 +55,7 @@ type Committer interface {
 type TransientStore interface {
 	// PersistWithConfig stores the private write set of a transaction along with the collection config
 	// in the transient store based on txid and the block height the private data was received at
-	PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error
+	PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *protostransientstore.TxPvtReadWriteSetWithConfigInfo) error
 
 	// Persist stores the private write set of a transaction in the transient store
 	Persist(txid string, blockHeight uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error
@@ -85,7 +85,7 @@ type Coordinator interface {
 	StoreBlock(block *common.Block, data util.PvtDataCollections) error
 
 	// StorePvtData used to persist private data into transient store
-	StorePvtData(txid string, privData *transientstore2.TxPvtReadWriteSetWithConfigInfo, blckHeight uint64) error
+	StorePvtData(txid string, privData *protostransientstore.TxPvtReadWriteSetWithConfigInfo, blckHeight uint64) error
 
 	// GetPvtDataAndBlockByNum get block by number and returns also all related private data
 	// the order of private data in slice of PvtDataCollections doesn't implies the order of
@@ -149,7 +149,7 @@ func NewCoordinator(support Support, selfSignedData protoutil.SignedData, metric
 }
 
 // StorePvtData used to persist private date into transient store
-func (c *coordinator) StorePvtData(txID string, privData *transientstore2.TxPvtReadWriteSetWithConfigInfo, blkHeight uint64) error {
+func (c *coordinator) StorePvtData(txID string, privData *protostransientstore.TxPvtReadWriteSetWithConfigInfo, blkHeight uint64) error {
 	return c.TransientStore.PersistWithConfig(txID, blkHeight, privData)
 }
 
@@ -302,7 +302,7 @@ func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][
 	for _, element := range fetchedData.AvailableElements {
 		dig := element.Digest
 		for _, rws := range element.Payload {
-			hash := hex.EncodeToString(util2.ComputeSHA256(rws))
+			hash := hex.EncodeToString(commonutil.ComputeSHA256(rws))
 			key := rwSetKey{
 				txID:       dig.TxId,
 				namespace:  dig.Namespace,
@@ -377,7 +377,7 @@ func (c *coordinator) fetchFromTransientStore(txAndSeq txAndSeqInBlock, filter l
 					seqInBlock: txAndSeq.seqInBlock,
 					collection: col.CollectionName,
 					namespace:  ns.Namespace,
-					hash:       hex.EncodeToString(util2.ComputeSHA256(col.Rwset)),
+					hash:       hex.EncodeToString(commonutil.ComputeSHA256(col.Rwset)),
 				}
 				// populate the ownedRWsets with the RW set from the transient store
 				ownedRWsets[key] = col.Rwset
@@ -411,7 +411,7 @@ func computeOwnedRWsets(block *common.Block, blockPvtData util.PvtDataCollection
 		}
 		for _, ns := range txPvtData.WriteSet.NsPvtRwset {
 			for _, col := range ns.CollectionPvtRwset {
-				computedHash := hex.EncodeToString(util2.ComputeSHA256(col.Rwset))
+				computedHash := hex.EncodeToString(commonutil.ComputeSHA256(col.Rwset))
 				ownedRWsets[rwSetKey{
 					txID:       chdr.TxId,
 					seqInBlock: txPvtData.SeqInBlock,

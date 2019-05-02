@@ -11,24 +11,15 @@ import (
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/util"
-	gossip2 "github.com/hyperledger/fabric/protos/gossip"
+	protosgossip "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/pkg/errors"
 )
 
-// StorageDataRetriever defines an API to retrieve private date from the storage
-type StorageDataRetriever interface {
-	// CollectionRWSet retrieves for give digest relevant private data if
-	// available otherwise returns nil, bool which is true if data fetched from ledger and false if was fetched from transient store, and an error
-	CollectionRWSet(dig []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, bool, error)
-}
-
 //go:generate mockery -dir . -name DataStore -case underscore -output mocks/
-//go:generate mockery -dir ../../core/transientstore/ -name RWSetScanner -case underscore -output mocks/
-//go:generate mockery -dir ../../core/ledger/ -name ConfigHistoryRetriever -case underscore -output mocks/
 
 // DataStore defines set of APIs need to get private data
-// from underlined data store
+// from underlined data store.
 type DataStore interface {
 	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 	// RWSets persisted from different endorsers (via Gossip)
@@ -46,6 +37,20 @@ type DataStore interface {
 	LedgerHeight() (uint64, error)
 }
 
+//go:generate mockery -dir . -name RWSetScanner -case underscore -output mocks/
+
+// RWSetScanner is the local interface used to generate mocks for foreign interface.
+type RWSetScanner interface {
+	transientstore.RWSetScanner
+}
+
+// StorageDataRetriever defines an API to retrieve private date from the storage.
+type StorageDataRetriever interface {
+	// CollectionRWSet retrieves for give digest relevant private data if
+	// available otherwise returns nil, bool which is true if data fetched from ledger and false if was fetched from transient store, and an error
+	CollectionRWSet(dig []*protosgossip.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, bool, error)
+}
+
 type dataRetriever struct {
 	store DataStore
 }
@@ -58,7 +63,7 @@ func NewDataRetriever(store DataStore) StorageDataRetriever {
 
 // CollectionRWSet retrieves for give digest relevant private data if
 // available otherwise returns nil, bool which is true if data fetched from ledger and false if was fetched from transient store, and an error
-func (dr *dataRetriever) CollectionRWSet(digests []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, bool, error) {
+func (dr *dataRetriever) CollectionRWSet(digests []*protosgossip.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, bool, error) {
 	height, err := dr.store.LedgerHeight()
 	if err != nil {
 		// if there is an error getting info from the ledger, we need to try to read from transient store
@@ -99,7 +104,7 @@ func (dr *dataRetriever) CollectionRWSet(digests []*gossip2.PvtDataDigest, block
 	return results, true, err
 }
 
-func (dr *dataRetriever) fromLedger(digests []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, error) {
+func (dr *dataRetriever) fromLedger(digests []*protosgossip.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, error) {
 	filter := make(map[string]ledger.PvtCollFilter)
 	for _, dig := range digests {
 		if _, ok := filter[dig.Namespace]; !ok {
@@ -167,7 +172,7 @@ func (dr *dataRetriever) fromLedger(digests []*gossip2.PvtDataDigest, blockNum u
 	return results, nil
 }
 
-func (dr *dataRetriever) fromTransientStore(dig *gossip2.PvtDataDigest, filter map[string]ledger.PvtCollFilter) (*util.PrivateRWSetWithConfig, error) {
+func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, filter map[string]ledger.PvtCollFilter) (*util.PrivateRWSetWithConfig, error) {
 	results := &util.PrivateRWSetWithConfig{}
 	it, err := dr.store.GetTxPvtRWSetByTxid(dig.TxId, filter)
 	if err != nil {
