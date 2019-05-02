@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/container"
@@ -38,6 +38,8 @@ var (
 	vmRegExp     = regexp.MustCompile("[^a-zA-Z0-9-_.]")
 	imageRegExp  = regexp.MustCompile("^[a-z0-9]+(([._-][a-z0-9]+)+)?$")
 )
+
+//go:generate counterfeiter -o mock/dockerclient.go --fake-name DockerClient dockerClient
 
 // dockerClient represents a docker client
 type dockerClient interface {
