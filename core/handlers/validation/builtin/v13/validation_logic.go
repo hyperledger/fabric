@@ -13,11 +13,11 @@ import (
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
-	. "github.com/hyperledger/fabric/core/common/validation/statebased"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
+	"github.com/hyperledger/fabric/core/common/validation/statebased"
+	vc "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
+	vi "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
+	vp "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
+	vs "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -27,10 +27,34 @@ var logger = flogging.MustGetLogger("vscc")
 
 var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollectionName)
 
-//go:generate mockery -dir ../../api/capabilities/ -name Capabilities -case underscore -output mocks/
-//go:generate mockery -dir ../../api/state/ -name StateFetcher -case underscore -output mocks/
-//go:generate mockery -dir ../../api/identities/ -name IdentityDeserializer -case underscore -output mocks/
-//go:generate mockery -dir ../../api/policies/ -name PolicyEvaluator -case underscore -output mocks/
+//go:generate mockery -dir . -name Capabilities -case underscore -output mocks/
+
+// Capabilities is the local interface that used to generate mocks for foreign interface.
+type Capabilities interface {
+	vc.Capabilities
+}
+
+//go:generate mockery -dir . -name StateFetcher -case underscore -output mocks/
+
+// StateFetcher is the local interface that used to generate mocks for foreign interface.
+type StateFetcher interface {
+	vs.StateFetcher
+}
+
+//go:generate mockery -dir . -name IdentityDeserializer -case underscore -output mocks/
+
+// IdentityDeserializer is the local interface that used to generate mocks for foreign interface.
+type IdentityDeserializer interface {
+	vi.IdentityDeserializer
+}
+
+//go:generate mockery -dir . -name PolicyEvaluator -case underscore -output mocks/
+
+// PolicyEvaluator is the local interface that used to generate mocks for foreign interface.
+type PolicyEvaluator interface {
+	vp.PolicyEvaluator
+}
+
 //go:generate mockery -dir . -name StateBasedValidator -case underscore -output mocks/
 
 // noopTranslator implements statebased.PolicyTranslator
@@ -46,13 +70,13 @@ func (n *noopTranslator) Translate(b []byte) ([]byte, error) {
 
 // New creates a new instance of the default VSCC
 // Typically this will only be invoked once per peer
-func New(c Capabilities, s StateFetcher, d IdentityDeserializer, pe PolicyEvaluator) *Validator {
-	vpmgr := &KeyLevelValidationParameterManagerImpl{
+func New(c vc.Capabilities, s vs.StateFetcher, d vi.IdentityDeserializer, pe vp.PolicyEvaluator) *Validator {
+	vpmgr := &statebased.KeyLevelValidationParameterManagerImpl{
 		StateFetcher:     s,
 		PolicyTranslator: &noopTranslator{},
 	}
-	eval := NewV13Evaluator(pe, vpmgr)
-	sbv := NewKeyLevelValidator(eval, vpmgr)
+	eval := statebased.NewV13Evaluator(pe, vpmgr)
+	sbv := statebased.NewKeyLevelValidator(eval, vpmgr)
 
 	return &Validator{
 		capabilities:        c,
@@ -68,10 +92,10 @@ func New(c Capabilities, s StateFetcher, d IdentityDeserializer, pe PolicyEvalua
 // signatures against an endorsement policy that is supplied as argument to
 // every invoke
 type Validator struct {
-	deserializer        IdentityDeserializer
-	capabilities        Capabilities
-	stateFetcher        StateFetcher
-	policyEvaluator     PolicyEvaluator
+	deserializer        vi.IdentityDeserializer
+	capabilities        vc.Capabilities
+	stateFetcher        vs.StateFetcher
+	policyEvaluator     vp.PolicyEvaluator
 	stateBasedValidator StateBasedValidator
 }
 

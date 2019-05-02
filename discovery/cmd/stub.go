@@ -12,34 +12,46 @@ import (
 	"github.com/hyperledger/fabric/cmd/common"
 	"github.com/hyperledger/fabric/cmd/common/comm"
 	"github.com/hyperledger/fabric/cmd/common/signer"
-	discovery "github.com/hyperledger/fabric/discovery/client"
-	. "github.com/hyperledger/fabric/protos/discovery"
+	discoveryclient "github.com/hyperledger/fabric/discovery/client"
+	"github.com/hyperledger/fabric/protos/discovery"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
-//go:generate mockery -dir ../client/ -name LocalResponse -case underscore -output mocks/
-//go:generate mockery -dir ../client/ -name ChannelResponse -case underscore -output mocks/
+//go:generate mockery -dir . -name LocalResponse -case underscore -output mocks/
+
+// LocalResponse is the local interface used to generate mocks for foreign interface.
+type LocalResponse interface {
+	discoveryclient.LocalResponse
+}
+
+//go:generate mockery -dir . -name ChannelResponse -case underscore -output mocks/
+
+// ChannelResponse is the local interface used to generate mocks for foreign interface.
+type ChannelResponse interface {
+	discoveryclient.ChannelResponse
+}
+
 //go:generate mockery -dir . -name ServiceResponse -case underscore -output mocks/
 
 // ServiceResponse represents a response sent from the discovery service
 type ServiceResponse interface {
 	// ForChannel returns a ChannelResponse in the context of a given channel
-	ForChannel(string) discovery.ChannelResponse
+	ForChannel(string) discoveryclient.ChannelResponse
 
 	// ForLocal returns a LocalResponse in the context of no channel
-	ForLocal() discovery.LocalResponse
+	ForLocal() discoveryclient.LocalResponse
 
 	// Raw returns the raw response from the server
-	Raw() *Response
+	Raw() *discovery.Response
 }
 
 type response struct {
-	raw *Response
-	discovery.Response
+	raw *discovery.Response
+	discoveryclient.Response
 }
 
-func (r *response) Raw() *Response {
+func (r *response) Raw() *discovery.Response {
 	return r.raw
 }
 
@@ -49,7 +61,7 @@ type ClientStub struct {
 }
 
 // Send sends the request, and receives a response
-func (stub *ClientStub) Send(server string, conf common.Config, req *discovery.Request) (ServiceResponse, error) {
+func (stub *ClientStub) Send(server string, conf common.Config, req *discoveryclient.Request) (ServiceResponse, error) {
 	comm, err := comm.NewClient(conf.TLSConfig)
 	if err != nil {
 		return nil, err
@@ -61,9 +73,9 @@ func (stub *ClientStub) Send(server string, conf common.Config, req *discovery.R
 	timeout, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
-	disc := discovery.NewClient(comm.NewDialer(server), signer.Sign, 0)
+	disc := discoveryclient.NewClient(comm.NewDialer(server), signer.Sign, 0)
 
-	resp, err := disc.Send(timeout, req, &AuthInfo{
+	resp, err := disc.Send(timeout, req, &discovery.AuthInfo{
 		ClientIdentity:    signer.Creator,
 		ClientTlsCertHash: comm.TLSCertHash,
 	})
@@ -81,7 +93,7 @@ type RawStub struct {
 }
 
 // Send sends the request, and receives a response
-func (stub *RawStub) Send(server string, conf common.Config, req *discovery.Request) (ServiceResponse, error) {
+func (stub *RawStub) Send(server string, conf common.Config, req *discoveryclient.Request) (ServiceResponse, error) {
 	comm, err := comm.NewClient(conf.TLSConfig)
 	if err != nil {
 		return nil, err
@@ -93,7 +105,7 @@ func (stub *RawStub) Send(server string, conf common.Config, req *discovery.Requ
 	timeout, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
-	req.Authentication = &AuthInfo{
+	req.Authentication = &discovery.AuthInfo{
 		ClientIdentity:    signer.Creator,
 		ClientTlsCertHash: comm.TLSCertHash,
 	}
@@ -108,7 +120,7 @@ func (stub *RawStub) Send(server string, conf common.Config, req *discovery.Requ
 	if err != nil {
 		return nil, err
 	}
-	resp, err := NewDiscoveryClient(cc).Discover(timeout, &SignedRequest{
+	resp, err := discovery.NewDiscoveryClient(cc).Discover(timeout, &discovery.SignedRequest{
 		Payload:   payload,
 		Signature: sig,
 	})

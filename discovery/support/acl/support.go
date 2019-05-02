@@ -104,8 +104,6 @@ func (s *DiscoverySupport) SatisfiesPrincipal(channel string, rawIdentity []byte
 	return identity.SatisfiesPrincipal(principal)
 }
 
-//go:generate mockery -name ChannelPolicyManagerGetter -case underscore  -output ../mocks/
-
 // ChannelPolicyManagerGetter is a support interface
 // to get access to the policy manager of a given channel
 type ChannelPolicyManagerGetter interface {

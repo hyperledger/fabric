@@ -19,8 +19,8 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
+	vc "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
+	vs "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/internal/car"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/scc/lscc"
@@ -219,7 +219,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 	cdRWSet *ccprovider.ChaincodeData,
 	lsccArgs [][]byte,
 	lsccFunc string,
-	ac Capabilities,
+	ac vc.Capabilities,
 	channelName string,
 ) commonerrors.TxValidationError {
 	/********************************************/
@@ -339,7 +339,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 	env *common.Envelope,
 	cap *pb.ChaincodeActionPayload,
 	payl *common.Payload,
-	ac Capabilities,
+	ac vc.Capabilities,
 ) commonerrors.TxValidationError {
 	cpp, err := protoutil.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
 	if err != nil {
@@ -622,7 +622,7 @@ func (vscc *Validator) getInstantiatedCC(chid, ccid string) (cd *ccprovider.Chai
 }
 
 type state struct {
-	State
+	vs.State
 }
 
 // GetState retrieves the value for the given key in the given namespace

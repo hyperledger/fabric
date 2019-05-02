@@ -27,8 +27,6 @@ type ConfigSequenceSupport interface {
 	ConfigSequence(channel string) uint64
 }
 
-//go:generate mockery -name GossipSupport -case underscore -output ../support/mocks/
-
 // GossipSupport aggregates abilities that the gossip module
 // provides to the discovery service, such as knowing information about peers
 type GossipSupport interface {

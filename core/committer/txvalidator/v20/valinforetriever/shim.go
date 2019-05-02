@@ -11,7 +11,12 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
-//go:generate mockery -dir ../plugindispatcher/ -name LifecycleResources -case underscore -output mocks/
+//go:generate mockery -dir . -name LifecycleResources -case underscore -output mocks/
+
+// LifecycleResources is the local interface that used to generate mocks for foreign interface.
+type LifecycleResources interface {
+	plugindispatcher.LifecycleResources
+}
 
 // ValidationInfoRetrieveShim implements plugindispatcher.LifecycleResource
 // by attempting to retrieve validation information from the two
