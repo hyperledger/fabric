@@ -143,7 +143,7 @@ noverify = [
 
 [[constraint]]
   name = "github.com/onsi/gomega"
-  version = "1.4.2"
+  version = "1.5.0"
 
 [[constraint]]
   name = "go.etcd.io/etcd"
