@@ -140,6 +140,11 @@ func (p *Packager) Package() error {
 	}
 
 	dir, name := filepath.Split(p.Input.OutputFile)
+	// if p.Input.OutputFile is only file name, dir becomes an empty string that creates problem
+	// while invoking 'WriteFile' function below. So, irrespective, translate dir into absolute path
+	if dir, err = filepath.Abs(dir); err != nil {
+		return err
+	}
 	err = p.Writer.WriteFile(dir, name, pkgTarGzBytes)
 	if err != nil {
 		err = errors.Wrapf(err, "error writing chaincode package to %s", p.Input.OutputFile)

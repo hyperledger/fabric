@@ -49,6 +49,13 @@ var _ = Describe("Persistence", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		When("an empty path is supplied to WriteFile", func() {
+			It("returns error", func() {
+				err := filesystemIO.WriteFile("", "write", []byte("test"))
+				Expect(err.Error()).To(Equal("empty path not allowed"))
+			})
+		})
+
 		It("stats a file", func() {
 			path := filepath.Join(testDir, "stat")
 			err := ioutil.WriteFile(path, []byte("test"), 0600)

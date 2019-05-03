@@ -43,6 +43,9 @@ type FilesystemIO struct {
 // by first writing to a temp file and then renaming the file so that
 // if the operation crashes midway we're not stuck with a bad package
 func (f *FilesystemIO) WriteFile(path, name string, data []byte) error {
+	if path == "" {
+		return errors.New("empty path not allowed")
+	}
 	tmpFile, err := ioutil.TempFile(path, ".ccpackage.")
 	if err != nil {
 		return errors.Wrapf(err, "error creating temp file in directory '%s'", path)
