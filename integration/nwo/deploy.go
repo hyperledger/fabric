@@ -18,9 +18,11 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
-	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+
+	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 type Chaincode struct {
@@ -77,17 +79,9 @@ func DeployChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 	// install on all peers
 	InstallChaincodeNewLifecycle(n, chaincode, peers...)
 
-	// get the max ledger height before approving the
-	// chaincode definition for each org
-	maxLedgerHeight := GetMaxLedgerHeight(n, channel, peers...)
-
 	// approve for each org
 	ApproveChaincodeForMyOrgNewLifecycle(n, channel, orderer, chaincode, peers...)
-
-	// wait for all peers to have same ledger height (to ensure the
-	// ApproveChaincodeDefinitionForMyOrg blocks have been gossiped
-	// to the other peers in each org)
-	WaitUntilEqualLedgerHeight(n, channel, maxLedgerHeight+len(n.PeerOrgs()), peers...)
+	EnsureApproved(n, channel, chaincode, n.PeerOrgs(), peers...)
 
 	// commit definition
 	CommitChaincodeNewLifecycle(n, channel, orderer, chaincode, peers[0], peers...)
@@ -224,6 +218,18 @@ func ApproveChaincodeForMyOrgNewLifecycle(n *Network, channel string, orderer *O
 	}
 }
 
+func EnsureApproved(n *Network, channel string, chaincode Chaincode, checkOrgs []*Organization, peers ...*Peer) {
+	for _, p := range peers {
+		keys := Keys{}
+		for _, org := range checkOrgs {
+			keys[org.MSPID] = BeTrue()
+		}
+		Eventually(queryApprovalStatus(n, p, channel, chaincode), n.EventuallyTimeout).Should(
+			MatchKeys(IgnoreExtras, keys),
+		)
+	}
+}
+
 func CommitChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peer *Peer, checkPeers ...*Peer) {
 	// commit using one peer per org
 	commitOrgs := map[string]bool{}
@@ -343,6 +349,33 @@ func UpgradeChaincode(n *Network, channel string, orderer *Orderer, chaincode Ch
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	EnsureInstantiated(n, channel, chaincode.Name, chaincode.Version, peers...)
+}
+
+type queryApprovalOutput struct {
+	Approved map[string]bool
+}
+
+func queryApprovalStatus(n *Network, peer *Peer, channel string, chaincode Chaincode) func() map[string]bool {
+	return func() map[string]bool {
+		sess, err := n.PeerAdminSession(peer, commands.ChaincodeQueryApprovalStatusLifecycle{
+			ChannelID:           channel,
+			Name:                chaincode.Name,
+			Version:             chaincode.Version,
+			Sequence:            chaincode.Sequence,
+			EndorsementPlugin:   chaincode.EndorsementPlugin,
+			ValidationPlugin:    chaincode.ValidationPlugin,
+			SignaturePolicy:     chaincode.SignaturePolicy,
+			ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+			InitRequired:        chaincode.InitRequired,
+			CollectionsConfig:   chaincode.CollectionsConfig,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		output := &queryApprovalOutput{}
+		err = json.Unmarshal(sess.Out.Contents(), output)
+		Expect(err).NotTo(HaveOccurred())
+		return output.Approved
+	}
 }
 
 func listCommitted(n *Network, peer *Peer, channel, name string) func() *gbytes.Buffer {
