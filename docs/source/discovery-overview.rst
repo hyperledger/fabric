@@ -1,18 +1,6 @@
 Service Discovery
 =================
 
-.. note:: The new Fabric chaincode lifecycle has limitations in the v2.0 alpha
-          release: in particular, it does not support using service discovery to
-          discover a chaincode endorsement policy. Chaincodes that are installed
-          and instantiated with the `previous lifecycle process <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`
-          are still discoverable with the Fabric v2.0 Alpha if the channel
-          capabilities are set with V1_4 as the highest version enabled in the
-          Application Capabilities section of the `configtx.yaml file <https://github.com/hyperledger/fabric/blob/release-2.0/sampleconfig/configtx.yaml>`_.
-          The chaincode defined after enabling V2_0 capability on a channel
-          will not be discoverable via service discovery while the existing
-          chaincode will continue to work as before.
-
-
 Why do we need service discovery?
 ---------------------------------
 
