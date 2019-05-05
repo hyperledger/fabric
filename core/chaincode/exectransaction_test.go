@@ -63,6 +63,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -365,7 +366,6 @@ func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimula
 			seqInBlock := uint64(0)
 
 			if txSimulationResults.PvtSimulationResults != nil {
-
 				blockAndPvtData.PvtData[seqInBlock] = &ledger.TxPvtData{
 					SeqInBlock: seqInBlock,
 					WriteSet:   txSimulationResults.PvtSimulationResults,
@@ -615,37 +615,65 @@ const (
 	chaincodePassthruGolangPath  = "github.com/hyperledger/fabric/core/chaincode/testdata/src/chaincodes/passthru"
 )
 
-func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string, tc tcicTc, cccid1 *ccprovider.CCContext, expectedA int, expectedB int, nextBlockNumber1, nextBlockNumber2 uint64, chaincodeSupport *ChaincodeSupport, ml *cm.Lifecycle) (uint64, uint64) {
+// Test the execution of a chaincode that invokes another chaincode.
+func TestChaincodeInvokeChaincode(t *testing.T) {
+	channel := util.GetTestChainID()
+	channel2 := channel + "2"
+	ml, lis, chaincodeSupport, cleanup, err := initPeer(channel, channel2)
+	if err != nil {
+		t.Fail()
+		t.Logf("Error creating peer: %s", err)
+	}
+	defer cleanup()
+	defer closeListenerAndSleep(lis)
+
+	// TODO: remove global
+	mockAclProvider.On("CheckACL", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	var nextBlockNumber1 uint64 = 1
+	var nextBlockNumber2 uint64 = 1
+
+	chaincode1Name := "cc_go_" + util.GenerateUUID()
+	chaincode2Name := "cc_go_" + util.GenerateUUID()
+
+	initialA, initialB := 100, 200
+
+	// Deploy first chaincode
+	ml.ChaincodeDefinitionReturns(&cm.ChaincodeDefinition{}, nil)
+	_, cccid1, err := deployChaincode(
+		chaincode1Name,
+		"0",
+		pb.ChaincodeSpec_GOLANG,
+		chaincodeExample02GolangPath,
+		util.ToChaincodeArgs("init", "a", strconv.Itoa(initialA), "b", strconv.Itoa(initialB)),
+		channel,
+		nextBlockNumber1,
+		chaincodeSupport,
+	)
+	defer stopChaincode(cccid1, chaincodeSupport)
+	require.NoErrorf(t, err, "error initializing chaincode %s: %s", chaincode1Name, err)
+	nextBlockNumber1++
+	time.Sleep(time.Second)
 
 	// chaincode2: the chaincode that will call by chaincode1
-	chaincode2Name := "cc_go_" + util.GenerateUUID()
-	ml.ChaincodeDefinitionReturns(&cm.ChaincodeDefinition{}, nil)
 	chaincode2Version := "0"
-	chaincode2Type := tc.chaincodeType
-	chaincode2Path := tc.chaincodePath
-	chaincode2InitArgs := util.ToChaincodeArgs("init")
+	chaincode2Type := pb.ChaincodeSpec_GOLANG
+	chaincode2Path := chaincodePassthruGolangPath
 
-	// deploy second chaincode on channel1
+	// deploy second chaincode on channel
 	_, cccid2, err := deployChaincode(
-
 		chaincode2Name,
 		chaincode2Version,
 		chaincode2Type,
 		chaincode2Path,
-		chaincode2InitArgs,
-
-		channel1,
+		util.ToChaincodeArgs("init"),
+		channel,
 		nextBlockNumber1,
 		chaincodeSupport,
 	)
-	if err != nil {
-		stopChaincode(cccid1, chaincodeSupport)
-		stopChaincode(cccid2, chaincodeSupport)
-		t.Fatalf("Error initializing chaincode %s(%+v)", chaincode2Name, err)
-		return nextBlockNumber1, nextBlockNumber2
-	}
+	defer stopChaincode(cccid2, chaincodeSupport)
+	require.NoErrorf(t, err, "Error initializing chaincode %s: %s", chaincode2Name, err)
 	nextBlockNumber1++
-
 	time.Sleep(time.Second)
 
 	// Invoke second chaincode passing the first chaincode's name as first param,
@@ -660,30 +688,19 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 			Args: util.ToChaincodeArgs(cccid1.Name, "invoke", "a", "b", "10", ""),
 		},
 	}
-	// Invoke chaincode
-	_, _, _, err = invoke(channel1, chaincode2InvokeSpec, nextBlockNumber1, []byte("Alice"), chaincodeSupport)
-	if err != nil {
-		stopChaincode(cccid1, chaincodeSupport)
-		stopChaincode(cccid2, chaincodeSupport)
-		t.Fatalf("Error invoking <%s>: %s", chaincode2Name, err)
-		return nextBlockNumber1, nextBlockNumber2
-	}
+	_, _, _, err = invoke(channel, chaincode2InvokeSpec, nextBlockNumber1, []byte("Alice"), chaincodeSupport)
+	require.NoErrorf(t, err, "error invoking %s: %s", chaincode2Name, err)
 	nextBlockNumber1++
 
 	// Check the state in the ledger
-	err = checkFinalState(channel1, cccid1, expectedA, expectedB)
-	if err != nil {
-		stopChaincode(cccid1, chaincodeSupport)
-		stopChaincode(cccid2, chaincodeSupport)
-		t.Fatalf("Incorrect final state after transaction for <%s>: %s", cccid1.Name, err)
-		return nextBlockNumber1, nextBlockNumber2
-	}
+	err = checkFinalState(channel, cccid1, initialA-10, initialB+10)
+	require.NoErrorf(t, err, "incorrect final state after transaction for %s: %s", chaincode1Name, err)
 
 	// Change the policies of the two channels in such a way:
 	// 1. Alice has reader access to both the channels.
 	// 2. Bob has access only to chainID2.
 	// Therefore the chaincode invocation should fail.
-	pm := peer.GetPolicyManager(channel1)
+	pm := peer.GetPolicyManager(channel)
 	pm.(*mockpolicies.Manager).PolicyMap = map[string]policies.Policy{
 		policies.ChannelApplicationWriters: &CreatorPolicy{Creators: [][]byte{[]byte("Alice")}},
 	}
@@ -695,24 +712,17 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 
 	// deploy chaincode2 on channel2
 	_, cccid3, err := deployChaincode(
-
 		chaincode2Name,
 		chaincode2Version,
 		chaincode2Type,
 		chaincode2Path,
-		chaincode2InitArgs,
+		util.ToChaincodeArgs("init"),
 		channel2,
 		nextBlockNumber2,
 		chaincodeSupport,
 	)
-
-	if err != nil {
-		stopChaincode(cccid1, chaincodeSupport)
-		stopChaincode(cccid2, chaincodeSupport)
-		stopChaincode(cccid3, chaincodeSupport)
-		t.Fatalf("Error initializing chaincode %s/%s: %s", chaincode2Name, channel2, err)
-		return nextBlockNumber1, nextBlockNumber2
-	}
+	defer stopChaincode(cccid3, chaincodeSupport)
+	require.NoErrorf(t, err, "error initializing chaincode %s/%s: %s", chaincode2Name, channel2, err)
 	nextBlockNumber2++
 	time.Sleep(time.Second)
 
@@ -723,117 +733,19 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 			Version: chaincode2Version,
 		},
 		Input: &pb.ChaincodeInput{
-			Args: util.ToChaincodeArgs(cccid1.Name, "invoke", "a", "b", "10", channel1),
+			Args: util.ToChaincodeArgs(cccid1.Name, "invoke", "a", "b", "10", channel),
 		},
 	}
 
-	// as Bob, invoke chaincode2 on channel2 so that it invokes chaincode1 on channel1
+	// as Bob, invoke chaincode2 on channel2 so that it invokes chaincode1 on channel
 	_, _, _, err = invoke(channel2, chaincode2InvokeSpec, nextBlockNumber2, []byte("Bob"), chaincodeSupport)
-	if err == nil {
-		// Bob should not be able to call
-		stopChaincode(cccid1, chaincodeSupport)
-		stopChaincode(cccid2, chaincodeSupport)
-		stopChaincode(cccid3, chaincodeSupport)
-		nextBlockNumber2++
-		t.Fatalf("As Bob, invoking <%s/%s> via <%s/%s> should fail, but it succeeded.", cccid1.Name, channel1, chaincode2Name, channel2)
-		return nextBlockNumber1, nextBlockNumber2
-	}
+	require.Errorf(t, err, "as Bob, invoking <%s/%s> via <%s/%s> should fail, but it succeeded.", cccid1.Name, channel, chaincode2Name, channel2)
 	assert.True(t, strings.Contains(err.Error(), "[Creator not recognized [Bob]]"))
 
-	// as Alice, invoke chaincode2 on channel2 so that it invokes chaincode1 on channel1
+	// as Alice, invoke chaincode2 on channel2 so that it invokes chaincode1 on channel
 	_, _, _, err = invoke(channel2, chaincode2InvokeSpec, nextBlockNumber2, []byte("Alice"), chaincodeSupport)
-	if err != nil {
-		// Alice should be able to call
-		stopChaincode(cccid1, chaincodeSupport)
-		stopChaincode(cccid2, chaincodeSupport)
-		stopChaincode(cccid3, chaincodeSupport)
-		t.Fatalf("As Alice, invoking <%s/%s> via <%s/%s> should should of succeeded, but it failed: %s", cccid1.Name, channel1, chaincode2Name, channel2, err)
-		return nextBlockNumber1, nextBlockNumber2
-	}
+	require.NoError(t, err, "as Alice, invoking <%s/%s> via <%s/%s> should should of succeeded, but it failed: %s", cccid1.Name, channel, chaincode2Name, channel2, err)
 	nextBlockNumber2++
-
-	stopChaincode(cccid1, chaincodeSupport)
-	stopChaincode(cccid2, chaincodeSupport)
-	stopChaincode(cccid3, chaincodeSupport)
-
-	return nextBlockNumber1, nextBlockNumber2
-}
-
-// Test the execution of an invalid transaction.
-// testcase parameters for TestChaincodeInvokeChaincode
-type tcicTc struct {
-	chaincodeType pb.ChaincodeSpec_Type
-	chaincodePath string
-}
-
-// Test the execution of a chaincode that invokes another chaincode.
-func TestChaincodeInvokeChaincode(t *testing.T) {
-	channel := util.GetTestChainID()
-	channel2 := channel + "2"
-	ml, lis, chaincodeSupport, cleanup, err := initPeer(channel, channel2)
-	if err != nil {
-		t.Fail()
-		t.Logf("Error creating peer: %s", err)
-	}
-	defer cleanup()
-
-	mockAclProvider.On("CheckACL", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-
-	testCase := tcicTc{pb.ChaincodeSpec_GOLANG, chaincodePassthruGolangPath}
-
-	var nextBlockNumber1 uint64 = 1
-	var nextBlockNumber2 uint64 = 1
-
-	// deploy the chaincode that will be called by the second chaincode
-	chaincode1Name := "cc_go_" + util.GenerateUUID()
-	ml.ChaincodeDefinitionReturns(&cm.ChaincodeDefinition{}, nil)
-	chaincode1Version := "0"
-	chaincode1Type := pb.ChaincodeSpec_GOLANG
-	chaincode1Path := chaincodeExample02GolangPath
-	initialA := 100
-	initialB := 200
-	chaincode1InitArgs := util.ToChaincodeArgs("init", "a", strconv.Itoa(initialA), "b", strconv.Itoa(initialB))
-
-	// Deploy first chaincode
-	_, chaincodeCtx, err := deployChaincode(
-		chaincode1Name,
-		chaincode1Version,
-		chaincode1Type,
-		chaincode1Path,
-		chaincode1InitArgs,
-		channel,
-		nextBlockNumber1,
-		chaincodeSupport,
-	)
-	if err != nil {
-		stopChaincode(chaincodeCtx, chaincodeSupport)
-		t.Fatalf("Error initializing chaincode %s: %s", chaincodeCtx.Name, err)
-	}
-	nextBlockNumber1++
-	time.Sleep(time.Second)
-
-	expectedA := initialA
-	expectedB := initialB
-
-	t.Run(testCase.chaincodeType.String(), func(t *testing.T) {
-		expectedA = expectedA - 10
-		expectedB = expectedB + 10
-		nextBlockNumber1, nextBlockNumber2 = runChaincodeInvokeChaincode(
-			t,
-			channel,
-			channel2,
-			testCase,
-			chaincodeCtx,
-			expectedA,
-			expectedB,
-			nextBlockNumber1,
-			nextBlockNumber2,
-			chaincodeSupport,
-			ml,
-		)
-	})
-
-	closeListenerAndSleep(lis)
 }
 
 func stopChaincode(chaincodeCtx *ccprovider.CCContext, chaincodeSupport *ChaincodeSupport) {
