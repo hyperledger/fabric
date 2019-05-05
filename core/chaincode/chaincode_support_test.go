@@ -53,7 +53,6 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
-	ma "github.com/stretchr/testify/mock"
 )
 
 var globalBlockNum map[string]uint64
@@ -200,27 +199,27 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 	pr := platforms.NewRegistry(&golang.Platform{})
 	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
 	ml := &mock.Lifecycle{}
-	ml.On("ChaincodeContainerInfo", ma.Anything, "shimTestCC", ma.Anything).Return(
-		&ccprovider.ChaincodeContainerInfo{
-			Name:      "shimTestCC",
-			Version:   "0",
-			PackageID: persistence.PackageID("shimTestCC:0"),
-		}, nil)
-	ml.On("ChaincodeContainerInfo", ma.Anything, "calledCC", ma.Anything).Return(
-		&ccprovider.ChaincodeContainerInfo{
-			Name:      "calledCC",
-			Version:   "0",
-			PackageID: persistence.PackageID("calledCC:0"),
-		}, nil)
-	ml.On("ChaincodeContainerInfo", ma.Anything, "lscc", ma.Anything).Return(
-		&ccprovider.ChaincodeContainerInfo{
-			Name:      "lscc",
-			Version:   util.GetSysCCVersion(),
-			PackageID: persistence.PackageID("lscc:" + util.GetSysCCVersion()),
-		}, nil)
-	ml.On("ChaincodeContainerInfo", ma.Anything, "badccname", ma.Anything).Return(nil, errors.New("get lost"))
+	ml.ChaincodeContainerInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
+		switch name {
+		case "shimTestCC", "calledCC":
+			return &ccprovider.ChaincodeContainerInfo{
+				Name:      name,
+				Version:   "0",
+				PackageID: persistence.PackageID(name + ":0"),
+			}, nil
+		case "lscc":
+			return &ccprovider.ChaincodeContainerInfo{
+				Name:      "lscc",
+				Version:   util.GetSysCCVersion(),
+				PackageID: persistence.PackageID("lscc:" + util.GetSysCCVersion()),
+			}, nil
+		default:
+			return nil, errors.New("oh-bother-no-chaincode-info")
+		}
+	}
+
 	fakeCCDefinition := &mock.ChaincodeDefinition{}
-	ml.On("ChaincodeDefinition", ma.Anything, "calledCC", ma.Anything).Return(fakeCCDefinition, nil)
+	ml.ChaincodeDefinitionReturns(fakeCCDefinition, nil)
 	client, err := docker.NewClientFromEnv()
 	if err != nil {
 		panic(err)

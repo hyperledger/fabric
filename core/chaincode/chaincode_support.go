@@ -98,9 +98,8 @@ func NewChaincodeSupport(
 		LaunchMetrics:          NewLaunchMetrics(metricsProvider),
 		DeployedCCInfoProvider: deployedCCInfoProvider,
 		TotalQueryLimit:        config.TotalQueryLimit,
+		Runtime:                containerRuntime,
 	}
-
-	cs.Runtime = containerRuntime
 
 	cs.Launcher = &RuntimeLauncher{
 		Runtime:         cs.Runtime,

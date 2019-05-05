@@ -65,7 +65,10 @@ type packageProvider interface {
 	chaincode.PackageProvider
 }
 
-//go:generate mockery -dir . -name Lifecycle -case underscore -output mock/ -outpkg mock
+//go:generate counterfeiter -o mock/lifecycle.go --fake-name Lifecycle . lifecycle
+type lifecycle interface {
+	chaincode.Lifecycle
+}
 
 //go:generate counterfeiter -o mock/chaincode_definition.go --fake-name ChaincodeDefinition . chaincodeDefinition
 type chaincodeDefinition interface {

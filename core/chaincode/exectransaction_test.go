@@ -124,30 +124,22 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	pr := platforms.NewRegistry(&golang.Platform{})
 	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
 	ml := &cm.Lifecycle{}
-	ml.On("ChaincodeContainerInfo", mock.Anything, "lscc", mock.Anything).Return(
-		&ccprovider.ChaincodeContainerInfo{
-			Name:      "lscc",
-			Version:   util.GetSysCCVersion(),
-			PackageID: persistence.PackageID("lscc:" + util.GetSysCCVersion()),
-		}, nil)
-	ml.On("ChaincodeContainerInfo", mock.Anything, "pthru", mock.Anything).Return(
-		&ccprovider.ChaincodeContainerInfo{
-			Name:      "pthru",
-			Version:   "0",
-			PackageID: persistence.PackageID("pthru:0"),
-		}, nil)
-	ml.On("ChaincodeContainerInfo", mock.Anything, "example02", mock.Anything).Return(
-		&ccprovider.ChaincodeContainerInfo{
-			Name:      "example02",
-			Version:   "0",
-			PackageID: persistence.PackageID("example02:0"),
-		}, nil)
-	ml.On("ChaincodeContainerInfo", mock.Anything, "tmap", mock.Anything).Return(
-		&ccprovider.ChaincodeContainerInfo{
-			Name:      "tmap",
-			Version:   "0",
-			PackageID: persistence.PackageID("tmap:0"),
-		}, nil)
+	ml.ChaincodeContainerInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
+		switch name {
+		case "lscc":
+			return &ccprovider.ChaincodeContainerInfo{
+				Name:      "lscc",
+				Version:   util.GetSysCCVersion(),
+				PackageID: persistence.PackageID("lscc:" + util.GetSysCCVersion()),
+			}, nil
+		default:
+			return &ccprovider.ChaincodeContainerInfo{
+				Name:      name,
+				Version:   "0",
+				PackageID: persistence.PackageID(name + ":0"),
+			}, nil
+		}
+	}
 	client, err := docker.NewClientFromEnv()
 	if err != nil {
 		return nil, nil, nil, nil, err
@@ -593,7 +585,6 @@ func checkFinalState(chainID string, cccid *ccprovider.CCContext, a int, b int) 
 	if resErr != nil {
 		return fmt.Errorf("Error retrieving state from ledger for <%s>: %s", cName, resErr)
 	}
-	fmt.Printf("Got string: %s\n", string(resbytes))
 	Aval, resErr = strconv.Atoi(string(resbytes))
 	if resErr != nil {
 		return fmt.Errorf("Error retrieving state from ledger for <%s>: %s", cName, resErr)
@@ -628,14 +619,7 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 
 	// chaincode2: the chaincode that will call by chaincode1
 	chaincode2Name := "cc_go_" + util.GenerateUUID()
-	ml.On("ChaincodeContainerInfo", mock.Anything, chaincode2Name, mock.Anything).Return(
-		&ccprovider.ChaincodeContainerInfo{
-			Name:      chaincode2Name,
-			Version:   "0",
-			PackageID: persistence.PackageID(chaincode2Name + ":0"),
-		}, nil)
-	fakeCCDefinition := &cm.ChaincodeDefinition{}
-	ml.On("ChaincodeDefinition", mock.Anything, chaincode2Name, mock.Anything).Return(fakeCCDefinition, nil)
+	ml.ChaincodeDefinitionReturns(&cm.ChaincodeDefinition{}, nil)
 	chaincode2Version := "0"
 	chaincode2Type := tc.chaincodeType
 	chaincode2Path := tc.chaincodePath
@@ -802,14 +786,7 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 
 	// deploy the chaincode that will be called by the second chaincode
 	chaincode1Name := "cc_go_" + util.GenerateUUID()
-	ml.On("ChaincodeContainerInfo", mock.Anything, chaincode1Name, mock.Anything).Return(
-		&ccprovider.ChaincodeContainerInfo{
-			Name:      chaincode1Name,
-			Version:   "0",
-			PackageID: persistence.PackageID(chaincode1Name + ":0"),
-		}, nil)
-	fakeCCDefinition := &cm.ChaincodeDefinition{}
-	ml.On("ChaincodeDefinition", mock.Anything, chaincode1Name, mock.Anything).Return(fakeCCDefinition, nil)
+	ml.ChaincodeDefinitionReturns(&cm.ChaincodeDefinition{}, nil)
 	chaincode1Version := "0"
 	chaincode1Type := pb.ChaincodeSpec_GOLANG
 	chaincode1Path := chaincodeExample02GolangPath
@@ -881,8 +858,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	defer cleanup()
 
 	mockAclProvider.On("CheckACL", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	fakeCCDefinition := &cm.ChaincodeDefinition{}
-	ml.On("ChaincodeDefinition", mock.Anything, "example02", mock.Anything).Return(fakeCCDefinition, nil)
+	ml.ChaincodeDefinitionReturns(&cm.ChaincodeDefinition{}, nil)
 
 	// Deploy first chaincode
 	cID1 := &pb.ChaincodeID{Name: "example02", Path: chaincodeExample02GolangPath, Version: "0"}
