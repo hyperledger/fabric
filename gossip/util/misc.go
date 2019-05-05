@@ -141,8 +141,8 @@ func (s *Set) Remove(item interface{}) {
 // all goroutines
 func PrintStackTrace() {
 	buf := make([]byte, 1<<16)
-	runtime.Stack(buf, true)
-	fmt.Printf("%s", buf)
+	l := runtime.Stack(buf, true)
+	fmt.Printf("%s", buf[:l])
 }
 
 // GetIntOrDefault returns the int value from config if present otherwise default value
