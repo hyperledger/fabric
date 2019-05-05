@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	fileledger "github.com/hyperledger/fabric/common/ledger/blockledger/file"
-	jsonledger "github.com/hyperledger/fabric/common/ledger/blockledger/json"
 	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	config "github.com/hyperledger/fabric/orderer/common/localconfig"
 )
@@ -35,13 +34,6 @@ func createLedgerFactory(conf *config.TopLevel) (blockledger.Factory, string) {
 		// to create separately. Otherwise the call to the ledger
 		// Factory's ChainIDs below will fail (dir won't exist).
 		createSubDir(ld, fsblkstorage.ChainsDir)
-	case "json":
-		ld = conf.FileLedger.Location
-		if ld == "" {
-			ld = createTempDir(conf.FileLedger.Prefix)
-		}
-		logger.Debug("Ledger dir:", ld)
-		lf = jsonledger.New(ld)
 	case "ram":
 		fallthrough
 	default:

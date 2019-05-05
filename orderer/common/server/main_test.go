@@ -200,7 +200,6 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 	}{
 		{"provisional", "ram", false},
 		{"provisional", "file", false},
-		{"provisional", "json", false},
 		{"invalid", "ram", true},
 		{"file", "ram", true},
 	}

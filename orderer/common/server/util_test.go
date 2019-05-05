@@ -27,8 +27,6 @@ func TestCreateLedgerFactory(t *testing.T) {
 		expectPanic     bool
 	}{
 		{"RAM", "ram", "", "", false},
-		{"JSONwithPathSet", "json", "test-dir", "", false},
-		{"JSONwithPathUnset", "json", "", "test-prefix", false},
 		{"FilewithPathSet", "file", filepath.Join(os.TempDir(), "test-dir"), "", false},
 		{"FilewithPathUnset", "file", "", "test-prefix", false},
 	}
