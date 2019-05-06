@@ -335,14 +335,10 @@ func serve(args []string) error {
 	}
 
 	var client *docker.Client
-	endpoint := coreConfig.VMEndpoint
 	if coreConfig.VMDockerTLSEnabled {
-		cert := coreconfig.GetPath("vm.docker.tls.cert.file")
-		key := coreconfig.GetPath("vm.docker.tls.key.file")
-		ca := coreconfig.GetPath("vm.docker.tls.ca.file")
-		client, err = docker.NewTLSClient(endpoint, cert, key, ca)
+		client, err = docker.NewTLSClient(coreConfig.VMEndpoint, coreConfig.DockerCert, coreConfig.DockerKey, coreConfig.DockerCA)
 	} else {
-		client, err = docker.NewClient(endpoint)
+		client, err = docker.NewClient(coreConfig.VMEndpoint)
 	}
 	if err != nil {
 		logger.Panicf("cannot create docker client: %s", err)
