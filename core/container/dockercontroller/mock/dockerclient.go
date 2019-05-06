@@ -77,18 +77,6 @@ type DockerClient struct {
 	removeContainerReturnsOnCall map[int]struct {
 		result1 error
 	}
-	RemoveImageExtendedStub        func(string, docker.RemoveImageOptions) error
-	removeImageExtendedMutex       sync.RWMutex
-	removeImageExtendedArgsForCall []struct {
-		arg1 string
-		arg2 docker.RemoveImageOptions
-	}
-	removeImageExtendedReturns struct {
-		result1 error
-	}
-	removeImageExtendedReturnsOnCall map[int]struct {
-		result1 error
-	}
 	StartContainerStub        func(string, *docker.HostConfig) error
 	startContainerMutex       sync.RWMutex
 	startContainerArgsForCall []struct {
@@ -505,67 +493,6 @@ func (fake *DockerClient) RemoveContainerReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *DockerClient) RemoveImageExtended(arg1 string, arg2 docker.RemoveImageOptions) error {
-	fake.removeImageExtendedMutex.Lock()
-	ret, specificReturn := fake.removeImageExtendedReturnsOnCall[len(fake.removeImageExtendedArgsForCall)]
-	fake.removeImageExtendedArgsForCall = append(fake.removeImageExtendedArgsForCall, struct {
-		arg1 string
-		arg2 docker.RemoveImageOptions
-	}{arg1, arg2})
-	fake.recordInvocation("RemoveImageExtended", []interface{}{arg1, arg2})
-	fake.removeImageExtendedMutex.Unlock()
-	if fake.RemoveImageExtendedStub != nil {
-		return fake.RemoveImageExtendedStub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.removeImageExtendedReturns
-	return fakeReturns.result1
-}
-
-func (fake *DockerClient) RemoveImageExtendedCallCount() int {
-	fake.removeImageExtendedMutex.RLock()
-	defer fake.removeImageExtendedMutex.RUnlock()
-	return len(fake.removeImageExtendedArgsForCall)
-}
-
-func (fake *DockerClient) RemoveImageExtendedCalls(stub func(string, docker.RemoveImageOptions) error) {
-	fake.removeImageExtendedMutex.Lock()
-	defer fake.removeImageExtendedMutex.Unlock()
-	fake.RemoveImageExtendedStub = stub
-}
-
-func (fake *DockerClient) RemoveImageExtendedArgsForCall(i int) (string, docker.RemoveImageOptions) {
-	fake.removeImageExtendedMutex.RLock()
-	defer fake.removeImageExtendedMutex.RUnlock()
-	argsForCall := fake.removeImageExtendedArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *DockerClient) RemoveImageExtendedReturns(result1 error) {
-	fake.removeImageExtendedMutex.Lock()
-	defer fake.removeImageExtendedMutex.Unlock()
-	fake.RemoveImageExtendedStub = nil
-	fake.removeImageExtendedReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) RemoveImageExtendedReturnsOnCall(i int, result1 error) {
-	fake.removeImageExtendedMutex.Lock()
-	defer fake.removeImageExtendedMutex.Unlock()
-	fake.RemoveImageExtendedStub = nil
-	if fake.removeImageExtendedReturnsOnCall == nil {
-		fake.removeImageExtendedReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.removeImageExtendedReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
 func (fake *DockerClient) StartContainer(arg1 string, arg2 *docker.HostConfig) error {
 	fake.startContainerMutex.Lock()
 	ret, specificReturn := fake.startContainerReturnsOnCall[len(fake.startContainerArgsForCall)]
@@ -827,8 +754,6 @@ func (fake *DockerClient) Invocations() map[string][][]interface{} {
 	defer fake.pingWithContextMutex.RUnlock()
 	fake.removeContainerMutex.RLock()
 	defer fake.removeContainerMutex.RUnlock()
-	fake.removeImageExtendedMutex.RLock()
-	defer fake.removeImageExtendedMutex.RUnlock()
 	fake.startContainerMutex.RLock()
 	defer fake.startContainerMutex.RUnlock()
 	fake.stopContainerMutex.RLock()

@@ -56,9 +56,6 @@ type dockerClient interface {
 	// BuildImage builds an image from a tarball's url or a Dockerfile in the input
 	// stream, returns an error in case of failure
 	BuildImage(opts docker.BuildImageOptions) error
-	// RemoveImageExtended removes a docker image by its name or ID, returns an
-	// error in case of failure
-	RemoveImageExtended(id string, opts docker.RemoveImageOptions) error
 	// StopContainer stops a docker container, killing it after the given timeout
 	// (in seconds). Returns an error in case of failure
 	StopContainer(id string, timeout uint) error
