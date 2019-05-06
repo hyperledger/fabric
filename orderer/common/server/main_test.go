@@ -489,9 +489,10 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		ordererRootCAsByChain: make(map[string][][]byte),
 	}
 
-	predDialer := &cluster.PredicateDialer{}
 	clusterConf := initializeClusterClientConfig(conf, true, nil)
-	predDialer.SetConfig(clusterConf)
+	predDialer := &cluster.PredicateDialer{
+		ClientConfig: clusterConf,
+	}
 
 	callback = func(bundle *channelconfig.Bundle) {
 		if grpcServer.MutualTLSRequired() {
@@ -503,7 +504,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	initializeMultichannelRegistrar(
 		bootBlock,
 		&replicationInitiator{},
-		&cluster.PredicateDialer{},
+		predDialer,
 		comm.ServerConfig{},
 		nil,
 		genesisConfig(t),
@@ -519,7 +520,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	// we expect an intermediate and root CA for apps and orderers
 	assert.Equal(t, 2, len(caMgr.appRootCAsByChain[genesisconfig.TestChainID]))
 	assert.Equal(t, 2, len(caMgr.ordererRootCAsByChain[genesisconfig.TestChainID]))
-	assert.Len(t, predDialer.Config.Load().(comm.ClientConfig).SecOpts.ServerRootCAs, 2)
+	assert.Len(t, predDialer.ClientConfig.SecOpts.ServerRootCAs, 2)
 	grpcServer.Listener().Close()
 }
 

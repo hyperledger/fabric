@@ -354,22 +354,24 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 		return nil, errors.New("nil block")
 	}
 
-	endpointconfig, err := EndpointconfigFromConfigBlock(block)
+	endpoints, err := EndpointconfigFromConfigBlock(block)
 	if err != nil {
 		return nil, err
 	}
 
+	clientConf := comm.ClientConfig{
+		Timeout: conf.Timeout,
+		SecOpts: &comm.SecureOptions{
+			Certificate:       conf.TLSCert,
+			Key:               conf.TLSKey,
+			RequireClientCert: true,
+			UseTLS:            true,
+		},
+	}
+
 	dialer := &StandardDialer{
-		Dialer: NewTLSPinningDialer(comm.ClientConfig{
-			Timeout: conf.Timeout,
-			SecOpts: &comm.SecureOptions{
-				ServerRootCAs:     endpointconfig.TLSRootCAs,
-				Certificate:       conf.TLSCert,
-				Key:               conf.TLSKey,
-				RequireClientCert: true,
-				UseTLS:            true,
-			},
-		})}
+		ClientConfig: clientConf.Clone(),
+	}
 
 	tlsCertAsDER, _ := pem.Decode(conf.TLSCert)
 	if tlsCertAsDER == nil {
@@ -388,7 +390,7 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 			return VerifyBlocks(blocks, verifier)
 		},
 		MaxTotalBufferBytes: conf.MaxTotalBufferBytes,
-		Endpoints:           endpointconfig.Endpoints,
+		Endpoints:           endpoints,
 		RetryTimeout:        RetryTimeout,
 		FetchTimeout:        conf.Timeout,
 		Channel:             conf.Channel,
