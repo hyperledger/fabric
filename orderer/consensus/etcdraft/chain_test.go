@@ -2053,7 +2053,7 @@ var _ = Describe("Chain", func() {
 				})
 
 				When("two type B config are sent back-to-back", func() {
-					It("discards the second", func() {
+					It("discards or rejects the second", func() {
 						// initial state: <1, 2, 3>
 						// first config: <1, 2, 3, 4>
 						// second config: <1, 2>
@@ -2071,7 +2071,15 @@ var _ = Describe("Chain", func() {
 						c1.support.ProcessConfigMsgReturns(configEnvRm, 1, nil)
 
 						Expect(c1.Configure(configEnvAdd, 0)).To(Succeed())
-						Expect(c1.Configure(configEnvRm, 0)).To(Succeed())
+						// If the first config tx is processed too quickly, consenter set is already altered and
+						// the second config tx would be rejected with error. Otherwise, the second config tx is
+						// going to be discarded during revalidation, instead of being explicitly rejected by
+						// `Configure`. Either way, there is only one config block being committed, which is the
+						// whole point of this test.
+						Expect(c1.Configure(configEnvRm, 0)).To(Or(
+							Succeed(),
+							MatchError("update of more than one consenter at a time is not supported, requested changes: add 0 node(s), remove 2 node(s)"),
+						))
 						network.exec(func(c *chain) {
 							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 							Consistently(c.support.WriteConfigBlockCallCount).Should(Equal(1))
