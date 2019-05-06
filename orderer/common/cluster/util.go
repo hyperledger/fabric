@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/pem"
-	"reflect"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -106,67 +106,23 @@ func (ss StringSet) subtract(set StringSet) {
 // that are only established if the given predicate
 // is fulfilled
 type PredicateDialer struct {
-	Config atomic.Value
+	lock sync.RWMutex
+	comm.ClientConfig
 }
 
-// NewTLSPinningDialer creates a new PredicateDialer
-func NewTLSPinningDialer(config comm.ClientConfig) *PredicateDialer {
-	d := &PredicateDialer{}
-	d.SetConfig(config)
-	return d
-}
-
-// ClientConfig returns the comm.ClientConfig, or an error
-// if they cannot be extracted.
-func (dialer *PredicateDialer) ClientConfig() (comm.ClientConfig, error) {
-	val := dialer.Config.Load()
-	if val == nil {
-		return comm.ClientConfig{}, errors.New("client config not initialized")
-	}
-	cc, isClientConfig := val.(comm.ClientConfig)
-	if !isClientConfig {
-		err := errors.Errorf("value stored is %v, not comm.ClientConfig",
-			reflect.TypeOf(val))
-		return comm.ClientConfig{}, err
-	}
-	if cc.SecOpts == nil {
-		return comm.ClientConfig{}, errors.New("SecOpts is nil")
-	}
-	// Copy by value the secure options
-	secOpts := *cc.SecOpts
-	return comm.ClientConfig{
-		AsyncConnect: cc.AsyncConnect,
-		Timeout:      cc.Timeout,
-		SecOpts:      &secOpts,
-		KaOpts:       cc.KaOpts,
-	}, nil
-}
-
-// SetConfig sets the configuration of the PredicateDialer
-func (dialer *PredicateDialer) SetConfig(config comm.ClientConfig) {
-	configCopy := comm.ClientConfig{
-		AsyncConnect: config.AsyncConnect,
-		Timeout:      config.Timeout,
-		SecOpts:      &comm.SecureOptions{},
-		KaOpts:       &comm.KeepaliveOptions{},
-	}
-	// Explicitly copy configuration
-	if config.SecOpts != nil {
-		*configCopy.SecOpts = *config.SecOpts
-	}
-	if config.KaOpts != nil {
-		*configCopy.KaOpts = *config.KaOpts
-	} else {
-		configCopy.KaOpts = nil
-	}
-
-	dialer.Config.Store(configCopy)
+func (dialer *PredicateDialer) UpdateRootCAs(serverRootCAs [][]byte) {
+	dialer.lock.Lock()
+	defer dialer.lock.Unlock()
+	dialer.ClientConfig.SecOpts.ServerRootCAs = serverRootCAs
 }
 
 // Dial creates a new gRPC connection that can only be established, if the remote node's
 // certificate chain satisfy verifyFunc
 func (dialer *PredicateDialer) Dial(address string, verifyFunc RemoteVerifier) (*grpc.ClientConn, error) {
-	cfg := dialer.Config.Load().(comm.ClientConfig)
+	dialer.lock.RLock()
+	cfg := dialer.ClientConfig.Clone()
+	dialer.lock.RUnlock()
+
 	cfg.SecOpts.VerifyCertificate = verifyFunc
 	client, err := comm.NewGRPCClient(cfg)
 	if err != nil {
@@ -184,15 +140,23 @@ func DERtoPEM(der []byte) string {
 	}))
 }
 
-// StandardDialer wraps a PredicateDialer
-// to a standard cluster.Dialer that passes in a nil verify function
+// StandardDialer wraps an AtomicClientConfig,
+// and provides a means to connect according to given EndpointCriteria.
 type StandardDialer struct {
-	Dialer *PredicateDialer
+	comm.ClientConfig
 }
 
-// Dial dials to the given address
-func (bdp *StandardDialer) Dial(address string) (*grpc.ClientConn, error) {
-	return bdp.Dialer.Dial(address, nil)
+// Dial dials an address according to the given EndpointCriteria
+func (dialer *StandardDialer) Dial(endpointCriteria EndpointCriteria) (*grpc.ClientConn, error) {
+	cfg := dialer.ClientConfig.Clone()
+	cfg.SecOpts.ServerRootCAs = endpointCriteria.TLSRootCAs
+
+	client, err := comm.NewGRPCClient(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed creating gRPC client")
+	}
+
+	return client.NewConnection(endpointCriteria.Endpoint, "")
 }
 
 //go:generate mockery -dir . -name BlockVerifier -case underscore -output ./mocks/
@@ -214,7 +178,7 @@ type BlockSequenceVerifier func(blocks []*common.Block, channel string) error
 
 // Dialer creates a gRPC connection to a remote address
 type Dialer interface {
-	Dial(address string) (*grpc.ClientConn, error)
+	Dial(endpointCriteria EndpointCriteria) (*grpc.ClientConn, error)
 }
 
 // VerifyBlocks verifies the given consecutive sequence of blocks is valid,
@@ -375,16 +339,15 @@ func VerifyBlockSignature(block *common.Block, verifier BlockVerifier, config *c
 	return verifier.VerifyBlockSignature(signatureSet, config)
 }
 
-// EndpointConfig defines a configuration
-// of endpoints of ordering service nodes
-type EndpointConfig struct {
-	TLSRootCAs [][]byte
-	Endpoints  []string
+// EndpointCriteria defines criteria of how to connect to a remote orderer node.
+type EndpointCriteria struct {
+	Endpoint   string   // Endpoint of the form host:port
+	TLSRootCAs [][]byte // PEM encoded TLS root CA certificates
 }
 
 // EndpointconfigFromConfigBlock retrieves TLS CA certificates and endpoints
 // from a config block.
-func EndpointconfigFromConfigBlock(block *common.Block) (*EndpointConfig, error) {
+func EndpointconfigFromConfigBlock(block *common.Block) ([]EndpointCriteria, error) {
 	if block == nil {
 		return nil, errors.New("nil block")
 	}
@@ -392,7 +355,7 @@ func EndpointconfigFromConfigBlock(block *common.Block) (*EndpointConfig, error)
 	if err != nil {
 		return nil, err
 	}
-	var tlsCACerts [][]byte
+
 	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed extracting bundle from envelope")
@@ -405,17 +368,57 @@ func EndpointconfigFromConfigBlock(block *common.Block) (*EndpointConfig, error)
 	if !ok {
 		return nil, errors.New("failed obtaining orderer config from bundle")
 	}
+
+	mspIDsToCACerts := make(map[string][][]byte)
+	var aggregatedTLSCerts [][]byte
 	for _, org := range ordererConfig.Organizations() {
-		msp := msps[org.MSPID()]
-		if msp == nil {
+		// Validate that every orderer org has a corresponding MSP instance in the MSP Manager.
+		msp, exists := msps[org.MSPID()]
+		if !exists {
 			return nil, errors.Errorf("no MSP found for MSP with ID of %s", org.MSPID())
 		}
-		tlsCACerts = append(tlsCACerts, msp.GetTLSRootCerts()...)
+
+		// Build a per org mapping of the TLS CA certs for this org,
+		// and aggregate all TLS CA certs into aggregatedTLSCerts to be used later on.
+		var caCerts [][]byte
+		caCerts = append(caCerts, msp.GetTLSIntermediateCerts()...)
+		caCerts = append(caCerts, msp.GetTLSRootCerts()...)
+		mspIDsToCACerts[org.MSPID()] = caCerts
+		aggregatedTLSCerts = append(aggregatedTLSCerts, caCerts...)
 	}
-	return &EndpointConfig{
-		Endpoints:  bundle.ChannelConfig().OrdererAddresses(),
-		TLSRootCAs: tlsCACerts,
-	}, nil
+
+	endpointsPerOrg := perOrgEndpoints(ordererConfig, mspIDsToCACerts)
+	if len(endpointsPerOrg) > 0 {
+		return endpointsPerOrg, nil
+	}
+
+	return globalEndpointsFromConfig(aggregatedTLSCerts, bundle), nil
+}
+
+func perOrgEndpoints(ordererConfig channelconfig.Orderer, mspIDsToCerts map[string][][]byte) []EndpointCriteria {
+	var endpointsPerOrg []EndpointCriteria
+
+	for _, org := range ordererConfig.Organizations() {
+		for _, endpoint := range org.Endpoints() {
+			endpointsPerOrg = append(endpointsPerOrg, EndpointCriteria{
+				TLSRootCAs: mspIDsToCerts[org.MSPID()],
+				Endpoint:   endpoint,
+			})
+		}
+	}
+
+	return endpointsPerOrg
+}
+
+func globalEndpointsFromConfig(aggregatedTLSCerts [][]byte, bundle *channelconfig.Bundle) []EndpointCriteria {
+	var globalEndpoints []EndpointCriteria
+	for _, endpoint := range bundle.ChannelConfig().OrdererAddresses() {
+		globalEndpoints = append(globalEndpoints, EndpointCriteria{
+			Endpoint:   endpoint,
+			TLSRootCAs: aggregatedTLSCerts,
+		})
+	}
+	return globalEndpoints
 }
 
 //go:generate mockery -dir . -name VerifierFactory -case underscore -output ./mocks/

@@ -217,11 +217,13 @@ func TestNewBlockPuller(t *testing.T) {
 		},
 	}
 
-	dialer := cluster.NewTLSPinningDialer(comm.ClientConfig{
-		SecOpts: &comm.SecureOptions{
-			Certificate: ca.CertBytes(),
+	dialer := &cluster.PredicateDialer{
+		ClientConfig: comm.ClientConfig{
+			SecOpts: &comm.SecureOptions{
+				Certificate: ca.CertBytes(),
+			},
 		},
-	})
+	}
 
 	bp, err := newBlockPuller(cs, dialer, localconfig.Cluster{})
 	assert.NoError(t, err)
@@ -236,15 +238,7 @@ func TestNewBlockPuller(t *testing.T) {
 		certificate   []byte
 	}{
 		{
-			name:          "UnInitialized dialer",
-			certificate:   ca.CertBytes(),
-			cs:            cs,
-			expectedError: "client config not initialized",
-			dialer:        &cluster.PredicateDialer{},
-		},
-		{
-			name: "UnInitialized dialer",
-
+			name: "Unable to retrieve block",
 			cs: &multichannel.ConsenterSupport{
 				HeightVal: 100,
 			},
@@ -261,11 +255,8 @@ func TestNewBlockPuller(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			cc, err := testCase.dialer.ClientConfig()
-			if err == nil {
-				cc.SecOpts.Certificate = testCase.certificate
-				testCase.dialer.SetConfig(cc)
-			}
+			cc := testCase.dialer.ClientConfig
+			cc.SecOpts.Certificate = testCase.certificate
 			bp, err := newBlockPuller(testCase.cs, testCase.dialer, localconfig.Cluster{})
 			assert.Nil(t, bp)
 			assert.EqualError(t, err, testCase.expectedError)

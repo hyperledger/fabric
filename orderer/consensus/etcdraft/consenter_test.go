@@ -289,11 +289,13 @@ func newConsenter(chainGetter *mocks.ChainGetter) *consenter {
 			Logger:        flogging.MustGetLogger("test"),
 			ChainSelector: &mocks.ReceiverGetter{},
 		},
-		Dialer: cluster.NewTLSPinningDialer(comm.ClientConfig{
-			SecOpts: &comm.SecureOptions{
-				Certificate: ca.CertBytes(),
+		Dialer: &cluster.PredicateDialer{
+			ClientConfig: comm.ClientConfig{
+				SecOpts: &comm.SecureOptions{
+					Certificate: ca.CertBytes(),
+				},
 			},
-		}),
+		},
 	}
 	return &consenter{
 		Consenter: c,

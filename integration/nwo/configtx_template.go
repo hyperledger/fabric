@@ -43,11 +43,14 @@ Organizations:{{ range .PeerOrgs }}
     Admins:
       Type: Signature
       Rule: OR('{{.MSPID}}.admin')
+  OrdererEndpoints:{{ range $w.OrderersInOrg .Name }}
+  - 127.0.0.1:{{ $w.OrdererPort . "Listen" }}
+  {{- end }}
 {{ end }}
 
 Channel: &ChannelDefaults
   Capabilities:
-    V1_3: true
+    V1_4_2: true
   Policies:
     Readers:
       Type: ImplicitMeta
