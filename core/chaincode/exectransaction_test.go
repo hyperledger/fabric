@@ -150,7 +150,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	config := &Config{
+	globalConfig := &Config{
 		TLSEnabled:      false,
 		Keepalive:       time.Second,
 		StartupTimeout:  3 * time.Minute,
@@ -177,23 +177,36 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 			},
 		),
 		CommonEnv: []string{
-			"CORE_CHAINCODE_LOGGING_LEVEL=" + config.LogLevel,
-			"CORE_CHAINCODE_LOGGING_SHIM=" + config.ShimLogLevel,
-			"CORE_CHAINCODE_LOGGING_FORMAT=" + config.LogFormat,
+			"CORE_CHAINCODE_LOGGING_LEVEL=" + globalConfig.LogLevel,
+			"CORE_CHAINCODE_LOGGING_SHIM=" + globalConfig.ShimLogLevel,
+			"CORE_CHAINCODE_LOGGING_FORMAT=" + globalConfig.LogFormat,
 		},
 	}
-	chaincodeSupport := NewChaincodeSupport(
-		config,
-		false,
-		containerRuntime,
-		&PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
-		ml,
-		aclmgmt.NewACLProvider(func(string) channelconfig.Resources { return nil }),
-		sccp,
-		peer.DefaultSupport,
-		&disabled.Provider{},
-		&ledgermock.DeployedChaincodeInfoProvider{},
-	)
+	userRunsCC := false
+	metricsProviders := &disabled.Provider{}
+	chaincodeHandlerRegistry := NewHandlerRegistry(userRunsCC)
+	chaincodeLauncher := &RuntimeLauncher{
+		Metrics:         NewLaunchMetrics(metricsProviders),
+		PackageProvider: &PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
+		Registry:        chaincodeHandlerRegistry,
+		Runtime:         containerRuntime,
+		StartupTimeout:  globalConfig.StartupTimeout,
+	}
+	chaincodeSupport := &ChaincodeSupport{
+		ACLProvider:            aclmgmt.NewACLProvider(func(string) channelconfig.Resources { return nil }),
+		AppConfig:              peer.DefaultSupport,
+		DeployedCCInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
+		ExecuteTimeout:         globalConfig.ExecuteTimeout,
+		HandlerMetrics:         NewHandlerMetrics(metricsProviders),
+		HandlerRegistry:        chaincodeHandlerRegistry,
+		Keepalive:              globalConfig.Keepalive,
+		Launcher:               chaincodeLauncher,
+		Lifecycle:              ml,
+		Runtime:                containerRuntime,
+		SystemCCProvider:       sccp,
+		TotalQueryLimit:        globalConfig.TotalQueryLimit,
+		UserRunsCC:             userRunsCC,
+	}
 	ipRegistry.ChaincodeSupport = chaincodeSupport
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 

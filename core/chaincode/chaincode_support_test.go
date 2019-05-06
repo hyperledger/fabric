@@ -250,19 +250,31 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 	if !globalConfig.TLSEnabled {
 		containerRuntime.CertGenerator = nil
 	}
-
-	chaincodeSupport := NewChaincodeSupport(
-		globalConfig,
-		true,
-		containerRuntime,
-		&PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
-		ml,
-		mockAclProvider,
-		sccp,
-		peer.DefaultSupport,
-		&disabled.Provider{},
-		&ledgermock.DeployedChaincodeInfoProvider{},
-	)
+	userRunsCC := true
+	metricsProviders := &disabled.Provider{}
+	chaincodeHandlerRegistry := NewHandlerRegistry(userRunsCC)
+	chaincodeLauncher := &RuntimeLauncher{
+		Metrics:         NewLaunchMetrics(metricsProviders),
+		PackageProvider: &PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
+		Runtime:         containerRuntime,
+		Registry:        chaincodeHandlerRegistry,
+		StartupTimeout:  globalConfig.StartupTimeout,
+	}
+	chaincodeSupport := &ChaincodeSupport{
+		ACLProvider:            mockAclProvider,
+		AppConfig:              peer.DefaultSupport,
+		DeployedCCInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
+		ExecuteTimeout:         globalConfig.ExecuteTimeout,
+		HandlerMetrics:         NewHandlerMetrics(metricsProviders),
+		HandlerRegistry:        chaincodeHandlerRegistry,
+		Keepalive:              globalConfig.Keepalive,
+		Launcher:               chaincodeLauncher,
+		Lifecycle:              ml,
+		Runtime:                containerRuntime,
+		SystemCCProvider:       sccp,
+		TotalQueryLimit:        globalConfig.TotalQueryLimit,
+		UserRunsCC:             userRunsCC,
+	}
 	ipRegistry.ChaincodeSupport = chaincodeSupport
 
 	// Mock policy checker

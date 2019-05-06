@@ -13,12 +13,10 @@ import (
 	"testing"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/mocks/scc"
@@ -27,16 +25,10 @@ import (
 	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
-	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
-	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
@@ -231,38 +223,8 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 
 	peerEndpoint := "127.0.0.1:13611"
 
-	ca, _ := tlsgen.NewCA()
-	certGenerator := accesscontrol.NewAuthenticator(ca)
 	config := chaincode.GlobalConfig()
 	config.StartupTimeout = 30 * time.Second
-
-	client, err := docker.NewClientFromEnv()
-	require.NoError(t, err, "failed to acquire Docker client")
-	containerRuntime := &chaincode.ContainerRuntime{
-		CACert:        ca.CertBytes(),
-		CertGenerator: certGenerator,
-		DockerClient:  client,
-		PeerAddress:   peerEndpoint,
-		Processor: container.NewVMController(
-			map[string]container.VMProvider{
-				inproccontroller.ContainerType: inproccontroller.NewRegistry(),
-			},
-		),
-		PlatformRegistry: platforms.NewRegistry(&golang.Platform{}),
-	}
-
-	chaincode.NewChaincodeSupport(
-		config,
-		false,
-		containerRuntime,
-		&PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
-		nil,
-		mockAclProvider,
-		mp,
-		peer.DefaultSupport,
-		&disabled.Provider{},
-		&ledgermock.DeployedChaincodeInfoProvider{},
-	)
 
 	// Init the policy checker
 	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
