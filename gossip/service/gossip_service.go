@@ -388,7 +388,7 @@ func (g *gossipServiceImpl) updateAnchors(config Config) {
 
 func (g *gossipServiceImpl) updateEndpoints(chainID string, endpoints []string) {
 	if ds, ok := g.deliveryService[chainID]; ok {
-		logger.Debugf("Updating endpoints for chainID", chainID)
+		logger.Debugf("Updating endpoints for chainID %s", chainID)
 		if err := ds.UpdateEndpoints(chainID, endpoints); err != nil {
 			// The only reason to fail is because of absence of block provider
 			// for given channel id, hence printing a warning will be enough
