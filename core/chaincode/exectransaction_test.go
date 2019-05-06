@@ -82,7 +82,12 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	}
 
 	ipRegistry := inproccontroller.NewRegistry()
-	sccp := &scc.Provider{Peer: peer.Default, PeerSupport: msi, Registrar: ipRegistry}
+	sccp := &scc.Provider{
+		Peer:        peer.Default,
+		PeerSupport: msi,
+		Registrar:   ipRegistry,
+		Whitelist:   scc.GlobalWhitelist(),
+	}
 
 	mockAclProvider = &aclmocks.MockACLProvider{}
 	mockAclProvider.Reset()

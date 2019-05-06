@@ -310,7 +310,12 @@ func serve(args []string) error {
 	authenticator := accesscontrol.NewAuthenticator(ca)
 	ipRegistry := inproccontroller.NewRegistry()
 
-	sccp := scc.NewProvider(peer.Default, peer.DefaultSupport, ipRegistry)
+	sccp := &scc.Provider{
+		Peer:        peer.Default,
+		PeerSupport: peer.DefaultSupport,
+		Registrar:   ipRegistry,
+		Whitelist:   scc.GlobalWhitelist(),
+	}
 	lsccInst := lscc.New(sccp, aclProvider, platformRegistry)
 
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{

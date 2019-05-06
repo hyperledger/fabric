@@ -14,7 +14,7 @@ import (
 //note the chaincode must still be deployed and launched like a user chaincode will be
 func (p *Provider) DeploySysCCs(chainID string, ccp ccprovider.ChaincodeProvider) {
 	for _, sysCC := range p.SysCCs {
-		deploySysCC(chainID, ccp, sysCC)
+		p.deploySysCC(chainID, ccp, sysCC)
 	}
 }
 
