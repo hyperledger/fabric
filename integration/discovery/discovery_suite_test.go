@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -21,7 +22,7 @@ func TestEndToEnd(t *testing.T) {
 }
 
 var components *nwo.Components
-var suiteBase = 34000
+var suiteBase = integration.DiscoveryBasePort
 
 var _ = SynchronizedBeforeSuite(func() []byte {
 	components = &nwo.Components{}
