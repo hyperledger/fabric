@@ -286,7 +286,7 @@ func serve(args []string) error {
 	}
 
 	metrics := deliver.NewMetrics(metricsProvider)
-	abServer := &peer.Server{
+	abServer := &peer.DeliverServer{
 		DeliverHandler:        deliver.NewHandler(&peer.DeliverChainManager{}, coreConfig.AuthenticationTimeWindow, mutualTLS, metrics),
 		PolicyCheckerProvider: policyCheckerProvider,
 	}
