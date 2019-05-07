@@ -304,6 +304,7 @@ chaincode:
     golang:
         # golang will never need more than baseos
         runtime: $(DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
+        dynamicLink: true
 
     car:
         # car may need more facilities (JVM, etc) in the future as the catalog
