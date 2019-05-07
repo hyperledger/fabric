@@ -113,7 +113,7 @@ all: native docker checks
 
 checks: basic-checks unit-test integration-test
 
-basic-checks: license spelling trailing-spaces linter check-metrics-doc
+basic-checks: license spelling references trailing-spaces linter check-metrics-doc
 
 desk-check: checks verify
 
@@ -132,6 +132,10 @@ docker-thirdparty:
 .PHONY: spelling
 spelling:
 	@scripts/check_spelling.sh
+
+.PHONY: references
+references:
+	@scripts/check_references.sh
 
 .PHONY: license
 license:
