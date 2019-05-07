@@ -18,10 +18,10 @@ import (
 // about a specific channel into the Lifecycle.
 type Subscription struct {
 	sync.Mutex
-	lc             *Lifecycle
-	channel        string
-	queryCreator   QueryCreator
-	pendingUpdates []*cceventmgmt.ChaincodeDefinition
+	metadataManager *MetadataManager
+	channel         string
+	queryCreator    QueryCreator
+	pendingUpdates  []*cceventmgmt.ChaincodeDefinition
 }
 
 type deployedCCsRetrieverFunc func(Query, ChaincodePredicate, bool, ...string) (chaincode.MetadataSet, error)
@@ -55,8 +55,8 @@ func (sub *Subscription) processPendingUpdate(ccDef *cceventmgmt.ChaincodeDefini
 		return
 	}
 	Logger.Debug("Updating channel", sub.channel, "with", ccs.AsChaincodes())
-	sub.lc.updateState(sub.channel, ccs)
-	sub.lc.fireChangeListeners(sub.channel)
+	sub.metadataManager.updateState(sub.channel, ccs)
+	sub.metadataManager.fireChangeListeners(sub.channel)
 }
 
 // ChaincodeDeployDone gets invoked when the chaincode deploy transaction or

@@ -30,7 +30,7 @@ import (
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
-	cc "github.com/hyperledger/fabric/core/cclifecycle"
+	"github.com/hyperledger/fabric/core/cclifecycle"
 	lifecyclemocks "github.com/hyperledger/fabric/core/cclifecycle/mocks"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -121,9 +121,9 @@ func TestGreenPath(t *testing.T) {
 	defer service.Stop()
 	defer client.conn.Close()
 
-	service.lc.query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil)
-	service.lc.query.On("GetState", "lscc", "cc2").Return(cc2Bytes, nil)
-	service.lc.query.On("GetState", "lscc", "cc2~collection").Return(collectionConfigBytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc2").Return(cc2Bytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc2~collection").Return(collectionConfigBytes, nil)
 
 	ccWithCollection := &ChaincodeInterest{
 		Chaincodes: []*ChaincodeCall{
@@ -220,9 +220,9 @@ func TestEndorsementComputationFailure(t *testing.T) {
 	defer service.Stop()
 	defer client.conn.Close()
 
-	service.lc.query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil)
-	service.lc.query.On("GetState", "lscc", "cc2").Return(cc2Bytes, nil)
-	service.lc.query.On("GetState", "lscc", "cc2~collection").Return(collectionConfigBytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc2").Return(cc2Bytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc2~collection").Return(collectionConfigBytes, nil)
 
 	// Now test a collection query that should fail because cc2's endorsement policy is Org1MSP AND org2MSP
 	// but the collection is configured only to have peers from Org1MSP
@@ -247,9 +247,9 @@ func TestLedgerFailure(t *testing.T) {
 	defer service.Stop()
 	defer client.conn.Close()
 
-	service.lc.query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil)
-	service.lc.query.On("GetState", "lscc", "cc2").Return(nil, errors.New("IO error"))
-	service.lc.query.On("GetState", "lscc", "cc12~collection").Return(collectionConfigBytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc2").Return(nil, errors.New("IO error"))
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc12~collection").Return(collectionConfigBytes, nil)
 
 	ccWithCollection := &ChaincodeInterest{
 		Chaincodes: []*ChaincodeCall{
@@ -339,15 +339,15 @@ func (w *mspWrapper) DeserializeIdentity(serializedIdentity []byte) (msp.Identit
 	return w.MSPManager.DeserializeIdentity(serializedIdentity)
 }
 
-type lifecycle struct {
-	*cc.Lifecycle
+type lsccMetadataManager struct {
+	*cclifecycle.MetadataManager
 	query *lifecyclemocks.Query
 }
 
-func newLifecycle() *lifecycle {
+func newLSCCMetadataManager() *lsccMetadataManager {
 	enumerator := &lifecyclemocks.Enumerator{}
 	enumerator.On("Enumerate").Return(nil, nil)
-	lc, err := cc.NewLifecycle(enumerator)
+	m, err := cclifecycle.NewMetadataManager(enumerator)
 	if err != nil {
 		panic(err)
 	}
@@ -355,13 +355,13 @@ func newLifecycle() *lifecycle {
 	query := &lifecyclemocks.Query{}
 	query.On("Done").Return()
 	qc.On("NewQuery").Return(query, nil)
-	_, err = lc.NewChannelSubscription("mychannel", qc)
+	_, err = m.NewChannelSubscription("mychannel", qc)
 	if err != nil {
 		panic(err)
 	}
-	return &lifecycle{
-		Lifecycle: lc,
-		query:     query,
+	return &lsccMetadataManager{
+		MetadataManager: m,
+		query:           query,
 	}
 }
 
@@ -372,8 +372,8 @@ type principalEvaluator struct {
 
 type service struct {
 	*grpc.Server
-	lc  *lifecycle
-	sup *support
+	lsccMetadataManager *lsccMetadataManager
+	sup                 *support
 }
 
 type support struct {
@@ -391,7 +391,7 @@ func (s *sequenceWrapper) Sequence() uint64 {
 	return s.instance.Load().(*mocks.ConfigtxValidator).Sequence()
 }
 
-func createSupport(t *testing.T, dir string, lc *lifecycle) *support {
+func createSupport(t *testing.T, dir string, lsccMetadataManager *lsccMetadataManager) *support {
 	configs := make(map[string]*msprotos.FabricMSPConfig)
 	mspMgr := createMSPManager(t, dir, configs)
 	mspManagerWrapper := &mspWrapper{
@@ -429,8 +429,8 @@ func createSupport(t *testing.T, dir string, lc *lifecycle) *support {
 		},
 	}
 
-	ccSup := ccsupport.NewDiscoverySupport(lc)
-	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, pe, lc)
+	ccSup := ccsupport.NewDiscoverySupport(lsccMetadataManager)
+	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, pe, lsccMetadataManager)
 
 	fakeBlockGetter := &mocks.ConfigBlockGetter{}
 	fakeBlockGetter.GetCurrConfigBlockReturns(createGenesisBlock(filepath.Join(dir, "crypto-config")))
@@ -458,8 +458,8 @@ func createClientAndService(t *testing.T, testdir string) (*client, *service) {
 		},
 	})
 
-	lc := newLifecycle()
-	sup := createSupport(t, testdir, lc)
+	l := newLSCCMetadataManager()
+	sup := createSupport(t, testdir, l)
 	svc := discovery.NewService(discovery.Config{
 		TLS:                          gRPCServer.TLSEnabled(),
 		AuthCacheEnabled:             true,
@@ -500,7 +500,7 @@ func createClientAndService(t *testing.T, testdir string) (*client, *service) {
 	var signerCacheSize uint = 10
 	c := disc.NewClient(wrapperClient.newConnection, signer.Sign, signerCacheSize)
 	wrapperClient.Client = c
-	service := &service{Server: gRPCServer.Server(), lc: lc, sup: sup}
+	service := &service{Server: gRPCServer.Server(), lsccMetadataManager: l, sup: sup}
 	return wrapperClient, service
 }
 
