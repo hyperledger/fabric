@@ -27,7 +27,7 @@ var logger = flogging.MustGetLogger("common.deliverevents")
 type PolicyCheckerProvider func(resourceName string) deliver.PolicyCheckerFunc
 
 // Server holds the dependencies necessary to create a deliver server
-type Server struct {
+type DeliverServer struct {
 	DeliverHandler        *deliver.Handler
 	PolicyCheckerProvider PolicyCheckerProvider
 }
@@ -95,7 +95,7 @@ type transactionActions []*peer.TransactionAction
 type blockEvent common.Block
 
 // DeliverFiltered sends a stream of blocks to a client after commitment
-func (s *Server) DeliverFiltered(srv peer.Deliver_DeliverFilteredServer) error {
+func (s *DeliverServer) DeliverFiltered(srv peer.Deliver_DeliverFilteredServer) error {
 	logger.Debugf("Starting new DeliverFiltered handler")
 	defer dumpStacktraceOnPanic()
 	// getting policy checker based on resources.Event_FilteredBlock resource name
@@ -110,7 +110,7 @@ func (s *Server) DeliverFiltered(srv peer.Deliver_DeliverFilteredServer) error {
 }
 
 // Deliver sends a stream of blocks to a client after commitment
-func (s *Server) Deliver(srv peer.Deliver_DeliverServer) (err error) {
+func (s *DeliverServer) Deliver(srv peer.Deliver_DeliverServer) (err error) {
 	logger.Debugf("Starting new Deliver handler")
 	defer dumpStacktraceOnPanic()
 	// getting policy checker based on resources.Event_Block resource name
@@ -124,7 +124,7 @@ func (s *Server) Deliver(srv peer.Deliver_DeliverServer) (err error) {
 	return s.DeliverHandler.Handle(srv.Context(), deliverServer)
 }
 
-func (s *Server) sendProducer(srv peer.Deliver_DeliverFilteredServer) func(msg proto.Message) error {
+func (s *DeliverServer) sendProducer(srv peer.Deliver_DeliverFilteredServer) func(msg proto.Message) error {
 	return func(msg proto.Message) error {
 		response, ok := msg.(*peer.DeliverResponse)
 		if !ok {
