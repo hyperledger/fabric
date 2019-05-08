@@ -50,6 +50,9 @@ BASE_VERSION = 2.0.0
 PREV_VERSION = 2.0.0-alpha
 BASEIMAGE_RELEASE = 0.4.15
 
+# 3rd party image version
+COUCHDB_VER ?= 2.3
+
 # Allow to build as a submodule setting the main project to
 # the PROJECT_NAME env variable, for example,
 # export PROJECT_NAME=hyperledger/fabric-test
@@ -120,8 +123,7 @@ help-docs: native
 # Pull thirdparty docker images based on the latest baseimage release version
 .PHONY: docker-thirdparty
 docker-thirdparty:
-	docker pull $(BASE_DOCKER_NS)/fabric-couchdb:$(BASE_DOCKER_TAG)
-	docker tag $(BASE_DOCKER_NS)/fabric-couchdb:$(BASE_DOCKER_TAG) $(DOCKER_NS)/fabric-couchdb
+	docker pull couchdb:${COUCHDB_VER}
 	docker pull $(BASE_DOCKER_NS)/fabric-zookeeper:$(BASE_DOCKER_TAG)
 	docker tag $(BASE_DOCKER_NS)/fabric-zookeeper:$(BASE_DOCKER_TAG) $(DOCKER_NS)/fabric-zookeeper
 	docker pull $(BASE_DOCKER_NS)/fabric-kafka:$(BASE_DOCKER_TAG)
