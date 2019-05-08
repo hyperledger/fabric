@@ -357,9 +357,37 @@ var _ = Describe("EndToEndACL", func() {
 		// when the ACL policy for _lifecycle/ApproveChaincodeDefinitionForOrg is satisfied
 		//
 		By("approving a chaincode definition for org1 and org2")
-		maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", org1Peer0, org2Peer0)
 		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, org1Peer0, org2Peer0)
-		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight+2, org1Peer0, org2Peer0)
+
+		//
+		// when the ACL policy for QueryApprovalStatus is not satisified
+		//
+		By("setting the query approval status ACL policy to Org1/Admins")
+		policyName = resources.Lifecycle_QueryApprovalStatus
+		policy = "/Channel/Application/Org1/Admins"
+		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
+
+		By("querying the approval status as a forbidden Org2 Admin identity")
+		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeQueryApprovalStatusLifecycle{
+			ChannelID:           "testchannel",
+			Name:                chaincode.Name,
+			Version:             chaincode.Version,
+			Sequence:            chaincode.Sequence,
+			EndorsementPlugin:   chaincode.EndorsementPlugin,
+			ValidationPlugin:    chaincode.ValidationPlugin,
+			SignaturePolicy:     chaincode.SignaturePolicy,
+			ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+			InitRequired:        chaincode.InitRequired,
+			CollectionsConfig:   chaincode.CollectionsConfig,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+		Expect(sess.Err).To(gbytes.Say(`\QError: query failed with status: 500 - Failed to authorize invocation due to failed ACL check: failed evaluating policy on signed data during check policy [/Channel/Application/Org1/Admins]: [signature set did not satisfy policy]\E`))
+
+		//
+		// when the ACL policy for QueryApprovalStatus is satisified
+		//
+		nwo.EnsureApproved(network, "testchannel", chaincode, network.PeerOrgs(), org1Peer0)
 
 		//
 		// when the ACL policy for CommitChaincodeDefinition is not satisified

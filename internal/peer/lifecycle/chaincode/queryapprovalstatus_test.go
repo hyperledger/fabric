@@ -201,7 +201,7 @@ func TestQueryApprovalStatusCmd(t *testing.T) {
 		Use: "barf",
 	}, nil)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "bad response: 35 - ho-ho-ho")
+	assert.Contains(t, err.Error(), "query failed with status: 35 - ho-ho-ho")
 
 	me.ProcessProposalRv = &peer.ProposalResponse{
 		Response: &peer.Response{
