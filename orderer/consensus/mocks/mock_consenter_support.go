@@ -2,14 +2,14 @@
 package mocks
 
 import (
-	sync "sync"
+	"sync"
 
-	channelconfig "github.com/hyperledger/fabric/common/channelconfig"
-	blockcutter "github.com/hyperledger/fabric/orderer/common/blockcutter"
-	msgprocessor "github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	consensus "github.com/hyperledger/fabric/orderer/consensus"
-	common "github.com/hyperledger/fabric/protos/common"
-	protoutil "github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 type FakeConsenterSupport struct {
@@ -86,6 +86,16 @@ type FakeConsenterSupport struct {
 	}
 	createNextBlockReturnsOnCall map[int]struct {
 		result1 *common.Block
+	}
+	DetectConsensusMigrationStub        func() bool
+	detectConsensusMigrationMutex       sync.RWMutex
+	detectConsensusMigrationArgsForCall []struct {
+	}
+	detectConsensusMigrationReturns struct {
+		result1 bool
+	}
+	detectConsensusMigrationReturnsOnCall map[int]struct {
+		result1 bool
 	}
 	HeightStub        func() uint64
 	heightMutex       sync.RWMutex
@@ -611,6 +621,58 @@ func (fake *FakeConsenterSupport) CreateNextBlockReturnsOnCall(i int, result1 *c
 	}
 	fake.createNextBlockReturnsOnCall[i] = struct {
 		result1 *common.Block
+	}{result1}
+}
+
+func (fake *FakeConsenterSupport) DetectConsensusMigration() bool {
+	fake.detectConsensusMigrationMutex.Lock()
+	ret, specificReturn := fake.detectConsensusMigrationReturnsOnCall[len(fake.detectConsensusMigrationArgsForCall)]
+	fake.detectConsensusMigrationArgsForCall = append(fake.detectConsensusMigrationArgsForCall, struct {
+	}{})
+	fake.recordInvocation("DetectConsensusMigration", []interface{}{})
+	fake.detectConsensusMigrationMutex.Unlock()
+	if fake.DetectConsensusMigrationStub != nil {
+		return fake.DetectConsensusMigrationStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.detectConsensusMigrationReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeConsenterSupport) DetectConsensusMigrationCallCount() int {
+	fake.detectConsensusMigrationMutex.RLock()
+	defer fake.detectConsensusMigrationMutex.RUnlock()
+	return len(fake.detectConsensusMigrationArgsForCall)
+}
+
+func (fake *FakeConsenterSupport) DetectConsensusMigrationCalls(stub func() bool) {
+	fake.detectConsensusMigrationMutex.Lock()
+	defer fake.detectConsensusMigrationMutex.Unlock()
+	fake.DetectConsensusMigrationStub = stub
+}
+
+func (fake *FakeConsenterSupport) DetectConsensusMigrationReturns(result1 bool) {
+	fake.detectConsensusMigrationMutex.Lock()
+	defer fake.detectConsensusMigrationMutex.Unlock()
+	fake.DetectConsensusMigrationStub = nil
+	fake.detectConsensusMigrationReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *FakeConsenterSupport) DetectConsensusMigrationReturnsOnCall(i int, result1 bool) {
+	fake.detectConsensusMigrationMutex.Lock()
+	defer fake.detectConsensusMigrationMutex.Unlock()
+	fake.DetectConsensusMigrationStub = nil
+	if fake.detectConsensusMigrationReturnsOnCall == nil {
+		fake.detectConsensusMigrationReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.detectConsensusMigrationReturnsOnCall[i] = struct {
+		result1 bool
 	}{result1}
 }
 
@@ -1245,6 +1307,8 @@ func (fake *FakeConsenterSupport) Invocations() map[string][][]interface{} {
 	defer fake.classifyMsgMutex.RUnlock()
 	fake.createNextBlockMutex.RLock()
 	defer fake.createNextBlockMutex.RUnlock()
+	fake.detectConsensusMigrationMutex.RLock()
+	defer fake.detectConsensusMigrationMutex.RUnlock()
 	fake.heightMutex.RLock()
 	defer fake.heightMutex.RUnlock()
 	fake.processConfigMsgMutex.RLock()
