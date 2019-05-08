@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
-	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 )
 
@@ -272,7 +271,7 @@ func (conn *connection) toDie() bool {
 
 func (conn *connection) send(msg *protoext.SignedGossipMessage, onErr func(error), shouldBlock blockingBehavior) {
 	if conn.toDie() {
-		conn.logger.Debug("Aborting send() to ", conn.info.Endpoint, "because connection is closing")
+		conn.logger.Debugf("Aborting send() to %s because connection is closing", conn.info.Endpoint)
 		return
 	}
 
@@ -281,17 +280,17 @@ func (conn *connection) send(msg *protoext.SignedGossipMessage, onErr func(error
 		onErr:    onErr,
 	}
 
-	if len(conn.outBuff) == cap(conn.outBuff) {
-		if conn.logger.IsEnabledFor(zapcore.DebugLevel) {
-			conn.logger.Debug("Buffer to", conn.info.Endpoint, "overflowed, dropping message", msg.String())
+	select {
+	case conn.outBuff <- m:
+		// room in channel, successfully sent message, nothing to do
+	default: // did not send
+		if shouldBlock {
+			conn.outBuff <- m // try again, and wait to send
+		} else {
 			conn.metrics.BufferOverflow.Add(1)
-		}
-		if !shouldBlock {
-			return
+			conn.logger.Debugf("Buffer to %s overflowed, dropping message %s", conn.info.Endpoint, msg)
 		}
 	}
-
-	conn.outBuff <- m
 }
 
 func (conn *connection) serviceConnection() error {
@@ -348,9 +347,14 @@ func (conn *connection) writeToStream() {
 }
 
 func (conn *connection) drainOutputBuffer() {
-	// Drain the output buffer
-	for len(conn.outBuff) > 0 {
-		<-conn.outBuff
+	// Read from the buffer until it is empty.
+	// There may be multiple concurrent readers.
+	for {
+		select {
+		case <-conn.outBuff:
+		default:
+			return
+		}
 	}
 }
 
