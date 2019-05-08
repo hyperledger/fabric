@@ -79,6 +79,20 @@ type ClientConfig struct {
 	AsyncConnect bool
 }
 
+// Clone clones this ClientConfig
+func (cc ClientConfig) Clone() ClientConfig {
+	shallowClone := cc
+	if shallowClone.SecOpts != nil {
+		secOptsClone := *cc.SecOpts
+		shallowClone.SecOpts = &secOptsClone
+	}
+	if shallowClone.KaOpts != nil {
+		kaOptsClone := *cc.KaOpts
+		shallowClone.KaOpts = &kaOptsClone
+	}
+	return shallowClone
+}
+
 // SecureOptions defines the security parameters (e.g. TLS) for a
 // GRPCServer or GRPCClient instance
 type SecureOptions struct {

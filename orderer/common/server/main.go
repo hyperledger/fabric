@@ -108,9 +108,10 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		logger.Panicf("Failed to get local MSP identity: %s", signErr)
 	}
 
-	clusterDialer := &cluster.PredicateDialer{}
 	clusterClientConfig := initializeClusterClientConfig(conf, clusterType, bootstrapBlock)
-	clusterDialer.SetConfig(clusterClientConfig)
+	clusterDialer := &cluster.PredicateDialer{
+		ClientConfig: clusterClientConfig,
+	}
 
 	r := createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer)
 	// Only clusters that are equipped with a recent config block can replicate.
@@ -845,9 +846,7 @@ func (mgr *caManager) updateClusterDialer(
 	// Add the local root CAs too
 	clusterRootCAs = append(clusterRootCAs, localClusterRootCAs...)
 	// Update the cluster config with the new root CAs
-	clusterConfig := clusterDialer.Config.Load().(comm.ClientConfig)
-	clusterConfig.SecOpts.ServerRootCAs = clusterRootCAs
-	clusterDialer.SetConfig(clusterConfig)
+	clusterDialer.UpdateRootCAs(clusterRootCAs)
 }
 
 func prettyPrintStruct(i interface{}) {
