@@ -14,7 +14,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -240,7 +239,7 @@ func CreateChaincodeProposal(typ common.HeaderType, chainID string, cis *peer.Ch
 // It returns the proposal and the transaction id associated to the proposal
 func CreateChaincodeProposalWithTransient(typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte, transientMap map[string][]byte) (*peer.Proposal, string, error) {
 	// generate a random nonce
-	nonce, err := crypto.GetRandomNonce()
+	nonce, err := getRandomNonce()
 	if err != nil {
 		return nil, "", err
 	}
@@ -259,7 +258,7 @@ func CreateChaincodeProposalWithTransient(typ common.HeaderType, chainID string,
 // proposal
 func CreateChaincodeProposalWithTxIDAndTransient(typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte, txid string, transientMap map[string][]byte) (*peer.Proposal, string, error) {
 	// generate a random nonce
-	nonce, err := crypto.GetRandomNonce()
+	nonce, err := getRandomNonce()
 	if err != nil {
 		return nil, "", err
 	}
@@ -455,7 +454,7 @@ func GetActionFromEnvelopeMsg(env *common.Envelope) (*peer.ChaincodeAction, erro
 // CreateProposalFromCISAndTxid returns a proposal given a serialized identity
 // and a ChaincodeInvocationSpec
 func CreateProposalFromCISAndTxid(txid string, typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, string, error) {
-	nonce, err := crypto.GetRandomNonce()
+	nonce, err := getRandomNonce()
 	if err != nil {
 		return nil, "", err
 	}

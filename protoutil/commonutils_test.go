@@ -239,6 +239,7 @@ func TestUnmarshalChaincodeID(t *testing.T) {
 		Version: ccversion,
 	})
 	ccid, err := UnmarshalChaincodeID(ccidbytes)
+	assert.NoError(t, err)
 	assert.Equal(t, ccname, ccid.Name, "Expected ccid names to match")
 	assert.Equal(t, ccversion, ccid.Version, "Expected ccid versions to match")
 
@@ -403,7 +404,6 @@ func TestIsConfigBlock(t *testing.T) {
 }
 
 func TestEnvelopeToConfigUpdate(t *testing.T) {
-
 	makeEnv := func(data []byte) *cb.Envelope {
 		return &cb.Envelope{
 			Payload: MarshalOrPanic(&cb.Payload{
@@ -431,4 +431,10 @@ func TestEnvelopeToConfigUpdate(t *testing.T) {
 	_, err = EnvelopeToConfigUpdate(env)
 
 	assert.Error(t, err, "EnvelopeToConfigUpdate fails with error for invalid CONFIG_UPDATE envelope")
+}
+
+func TestGetRandomNonce(t *testing.T) {
+	key1, err := getRandomNonce()
+	assert.NoErrorf(t, err, "error getting random bytes")
+	assert.Len(t, key1, crypto.NonceSize)
 }
