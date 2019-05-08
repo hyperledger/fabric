@@ -24,7 +24,6 @@ var logger = flogging.MustGetLogger("nodeCmd")
 // Cmd returns the cobra command for Node
 func Cmd() *cobra.Command {
 	nodeCmd.AddCommand(startCmd())
-	nodeCmd.AddCommand(statusCmd())
 
 	return nodeCmd
 }

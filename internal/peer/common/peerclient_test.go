@@ -106,13 +106,6 @@ func TestPeerClient(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, eClient)
 
-	aClient, err := pClient1.Admin()
-	assert.NoError(t, err)
-	assert.NotNil(t, aClient)
-	aClient, err = common.GetAdminClient()
-	assert.NoError(t, err)
-	assert.NotNil(t, aClient)
-
 	dClient, err := pClient1.Deliver()
 	assert.NoError(t, err)
 	assert.NotNil(t, dClient)
@@ -139,24 +132,6 @@ func TestPeerClientTimeout(t *testing.T) {
 		defer cleanup()
 		_, err := common.GetEndorserClient("", "")
 		assert.Contains(t, err.Error(), "endorser client failed to connect")
-	})
-	t.Run("PeerClient.GetAdmin() timeout", func(t *testing.T) {
-		cleanup := initPeerTestEnv(t)
-		viper.Set("peer.client.connTimeout", 10*time.Millisecond)
-		defer cleanup()
-		pClient, err := common.NewPeerClientFromEnv()
-		if err != nil {
-			t.Fatalf("failed to create PeerClient for test: %v", err)
-		}
-		_, err = pClient.Admin()
-		assert.Contains(t, err.Error(), "admin client failed to connect")
-	})
-	t.Run("GetAdminClient() timeout", func(t *testing.T) {
-		cleanup := initPeerTestEnv(t)
-		viper.Set("peer.client.connTimeout", 10*time.Millisecond)
-		defer cleanup()
-		_, err := common.GetAdminClient()
-		assert.Contains(t, err.Error(), "admin client failed to connect")
 	})
 	t.Run("PeerClient.Deliver() timeout", func(t *testing.T) {
 		cleanup := initPeerTestEnv(t)

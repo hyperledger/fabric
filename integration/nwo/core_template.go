@@ -102,7 +102,6 @@ peer:
   profile:
     enabled:     false
     listenAddress: 127.0.0.1:{{ .PeerPort Peer "ProfilePort" }}
-  adminService:
   handlers:
     authFilters:
     - name: DefaultAuth

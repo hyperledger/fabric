@@ -32,7 +32,6 @@ import (
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
-	"github.com/hyperledger/fabric/core/admin"
 	"github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
@@ -482,9 +481,6 @@ func serve(args []string) error {
 
 	logger.Debugf("Running peer")
 
-	// Start the Admin server
-	startAdminServer(coreConfig, listenAddr, peerServer.Server(), metricsProvider)
-
 	privDataDist := func(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData, blkHt)
 	}
@@ -869,43 +865,6 @@ func adminHasSeparateListener(peerListenAddr string, adminListenAddress string) 
 	// Admin service has a separate listener in case it doesn't match the peer's
 	// configured service
 	return adminPort != peerPort
-}
-
-func startAdminServer(coreConfig *peer.Config, peerListenAddr string, peerServer *grpc.Server, metricsProvider metrics.Provider) {
-	adminListenAddress := coreConfig.AdminListenAddress
-	separateLsnrForAdmin := adminHasSeparateListener(peerListenAddr, adminListenAddress)
-	mspID := coreConfig.LocalMSPID
-	adminPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
-	gRPCService := peerServer
-	if separateLsnrForAdmin {
-		logger.Info("Creating gRPC server for admin service on", adminListenAddress)
-		serverConfig, err := peer.GetServerConfig()
-		if err != nil {
-			logger.Fatalf("Error loading secure config for admin service (%s)", err)
-		}
-		serverConfig.Logger = flogging.MustGetLogger("core.comm").With("server", "AdminServer")
-		serverConfig.MetricsProvider = metricsProvider
-		serverConfig.UnaryInterceptors = append(
-			serverConfig.UnaryInterceptors,
-			grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
-			grpclogging.UnaryServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
-		)
-		serverConfig.StreamInterceptors = append(
-			serverConfig.StreamInterceptors,
-			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
-			grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
-		)
-		adminServer, err := peer.NewPeerServer(adminListenAddress, serverConfig)
-		if err != nil {
-			logger.Fatalf("Failed to create admin server (%s)", err)
-		}
-		gRPCService = adminServer.Server()
-		defer func() {
-			go adminServer.Start()
-		}()
-	}
-
-	pb.RegisterAdminServer(gRPCService, admin.NewAdminServer(adminPolicy))
 }
 
 // secureDialOpts is the callback function for secure dial options for gossip service

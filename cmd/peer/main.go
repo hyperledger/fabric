@@ -13,7 +13,6 @@ import (
 
 	"github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/channel"
-	"github.com/hyperledger/fabric/internal/peer/clilogging"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle"
 	"github.com/hyperledger/fabric/internal/peer/node"
@@ -44,7 +43,6 @@ func main() {
 	mainCmd.AddCommand(version.Cmd())
 	mainCmd.AddCommand(node.Cmd())
 	mainCmd.AddCommand(chaincode.Cmd(nil))
-	mainCmd.AddCommand(clilogging.Cmd(nil))
 	mainCmd.AddCommand(channel.Cmd(nil))
 	mainCmd.AddCommand(lifecycle.Cmd())
 

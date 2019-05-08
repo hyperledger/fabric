@@ -246,7 +246,6 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.discovery.authCachePurgeRetentionRatio", 0.75)
 	viper.Set("peer.chaincodeListenAddress", "0.0.0.0:7052")
 	viper.Set("peer.chaincodeAddress", "0.0.0.0:7052")
-	viper.Set("peer.adminService.listenAddress", "0.0.0.0:7055")
 	viper.Set("peer.validatorPoolSize", 1)
 
 	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
@@ -289,7 +288,6 @@ func TestGlobalConfig(t *testing.T) {
 		DiscoveryAuthCachePurgeRetentionRatio: 0.75,
 		ChaincodeListenAddress:                "0.0.0.0:7052",
 		ChaincodeAddress:                      "0.0.0.0:7052",
-		AdminListenAddress:                    "0.0.0.0:7055",
 		ValidatorPoolSize:                     1,
 
 		VMEndpoint:           "unix:///var/run/docker.sock",
