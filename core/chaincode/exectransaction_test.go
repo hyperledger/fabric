@@ -34,7 +34,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt"
-	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
+	"github.com/hyperledger/fabric/core/chaincode/mock"
 	cm "github.com/hyperledger/fabric/core/chaincode/mock"
 	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
@@ -62,7 +62,6 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
@@ -88,9 +87,6 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		Registrar:   ipRegistry,
 		Whitelist:   scc.GlobalWhitelist(),
 	}
-
-	mockAclProvider = &aclmocks.MockACLProvider{}
-	mockAclProvider.Reset()
 
 	ledgerCleanup, err := peer.MockInitialize()
 	if err != nil {
@@ -128,6 +124,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	ccprovider.SetChaincodesPath(tempdir)
 	ca, _ := tlsgen.NewCA()
 	pr := platforms.NewRegistry(&golang.Platform{})
+	mockAclProvider := &mock.ACLProvider{}
 	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
 	ml := &cm.Lifecycle{}
 	ml.ChaincodeContainerInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
@@ -645,9 +642,6 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 	defer cleanup()
 	defer closeListenerAndSleep(lis)
 
-	// TODO: remove global
-	mockAclProvider.On("CheckACL", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-
 	var nextBlockNumber1 uint64 = 1
 	var nextBlockNumber2 uint64 = 1
 
@@ -787,7 +781,6 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	}
 	defer cleanup()
 
-	mockAclProvider.On("CheckACL", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	ml.ChaincodeDefinitionReturns(&cm.ChaincodeDefinition{}, nil)
 
 	// Deploy first chaincode
