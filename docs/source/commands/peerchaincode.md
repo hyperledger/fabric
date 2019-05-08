@@ -469,8 +469,8 @@ appended to it.
 ### peer chaincode upgrade example
 
 Here is an example of the `peer chaincode upgrade` command, which
-upgrades the chaincode named `mycc` at version `1.0` on channel
-`mychannel` to version `1.1`, which contains a new variable `c`:
+upgrades the chaincode named `mycc` at version `1.1` on channel
+`mychannel` to version `1.2`, which contains a new variable `c`:
 
   * Using the `--tls` and `--cafile` global flags to upgrade the chaincode
     in a network with TLS enabled:
