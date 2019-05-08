@@ -92,8 +92,8 @@ func TestDialerCustomKeepAliveOptions(t *testing.T) {
 		},
 	}
 
-	dialer := &cluster.PredicateDialer{ClientConfig: clientConfig}
-	timeout := dialer.ClientConfig.KaOpts.ClientTimeout
+	dialer := &cluster.PredicateDialer{Config: clientConfig}
+	timeout := dialer.Config.KaOpts.ClientTimeout
 	assert.Equal(t, time.Second*12345, timeout)
 }
 
@@ -107,11 +107,11 @@ func TestPredicateDialerUpdateRootCAs(t *testing.T) {
 	assert.NoError(t, err)
 
 	dialer := &cluster.PredicateDialer{
-		ClientConfig: node1.clientConfig.Clone(),
+		Config: node1.clientConfig.Clone(),
 	}
-	dialer.ClientConfig.SecOpts.ServerRootCAs = [][]byte{anotherTLSCA.CertBytes()}
-	dialer.Timeout = time.Second
-	dialer.ClientConfig.AsyncConnect = false
+	dialer.Config.SecOpts.ServerRootCAs = [][]byte{anotherTLSCA.CertBytes()}
+	dialer.Config.Timeout = time.Second
+	dialer.Config.AsyncConnect = false
 
 	_, err = dialer.Dial(node1.srv.Address(), nil)
 	assert.Error(t, err)
@@ -137,7 +137,7 @@ func TestDialerBadConfig(t *testing.T) {
 	t.Parallel()
 	emptyCertificate := []byte("-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----")
 	dialer := &cluster.PredicateDialer{
-		ClientConfig: comm.ClientConfig{
+		Config: comm.ClientConfig{
 			SecOpts: &comm.SecureOptions{
 				UseTLS:        true,
 				ServerRootCAs: [][]byte{emptyCertificate},
@@ -165,7 +165,7 @@ func TestStandardDialer(t *testing.T) {
 	certPool := [][]byte{emptyCertificate}
 	config := comm.ClientConfig{SecOpts: &comm.SecureOptions{UseTLS: true, ServerRootCAs: certPool}}
 	standardDialer := &cluster.StandardDialer{
-		ClientConfig: config,
+		Config: config,
 	}
 	_, err := standardDialer.Dial(cluster.EndpointCriteria{Endpoint: "127.0.0.1:8080", TLSRootCAs: certPool})
 	assert.EqualError(t,

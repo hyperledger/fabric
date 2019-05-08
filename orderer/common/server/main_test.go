@@ -491,7 +491,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 
 	clusterConf := initializeClusterClientConfig(conf, true, nil)
 	predDialer := &cluster.PredicateDialer{
-		ClientConfig: clusterConf,
+		Config: clusterConf,
 	}
 
 	callback = func(bundle *channelconfig.Bundle) {
@@ -520,7 +520,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	// we expect an intermediate and root CA for apps and orderers
 	assert.Equal(t, 2, len(caMgr.appRootCAsByChain[genesisconfig.TestChainID]))
 	assert.Equal(t, 2, len(caMgr.ordererRootCAsByChain[genesisconfig.TestChainID]))
-	assert.Len(t, predDialer.ClientConfig.SecOpts.ServerRootCAs, 2)
+	assert.Len(t, predDialer.Config.SecOpts.ServerRootCAs, 2)
 	grpcServer.Listener().Close()
 }
 

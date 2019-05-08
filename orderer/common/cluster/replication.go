@@ -370,7 +370,7 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 	}
 
 	dialer := &StandardDialer{
-		ClientConfig: clientConf.Clone(),
+		Config: clientConf.Clone(),
 	}
 
 	tlsCertAsDER, _ := pem.Decode(conf.TLSCert)

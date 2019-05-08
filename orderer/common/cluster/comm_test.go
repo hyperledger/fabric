@@ -211,8 +211,8 @@ func (cn *clusterNode) renewCertificates() {
 	cn.serverConfig.SecOpts.Certificate = serverKeyPair.Cert
 	cn.serverConfig.SecOpts.Key = serverKeyPair.Key
 
-	cn.dialer.ClientConfig.SecOpts.Key = clientKeyPair.Key
-	cn.dialer.ClientConfig.SecOpts.Certificate = clientKeyPair.Cert
+	cn.dialer.Config.SecOpts.Key = clientKeyPair.Key
+	cn.dialer.Config.SecOpts.Certificate = clientKeyPair.Cert
 }
 
 func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsConnGauge metrics.Gauge) *clusterNode {
@@ -236,7 +236,7 @@ func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsCo
 	}
 
 	dialer := &cluster.PredicateDialer{
-		ClientConfig: clientConfig,
+		Config: clientConfig,
 	}
 
 	srvConfig := comm_utils.ServerConfig{
@@ -511,7 +511,7 @@ func TestUnavailableHosts(t *testing.T) {
 	// to a host that is down
 	node1 := newTestNode(t)
 
-	clientConfig := node1.dialer.ClientConfig
+	clientConfig := node1.dialer.Config
 	// The below timeout makes sure that connection establishment is done
 	// asynchronously. Had it been synchronous, the Remote() call would be
 	// blocked for an hour.
@@ -818,7 +818,7 @@ func TestReconnect(t *testing.T) {
 
 	node1 := newTestNode(t)
 	defer node1.stop()
-	conf := node1.dialer.ClientConfig
+	conf := node1.dialer.Config
 	conf.Timeout = time.Hour
 
 	node2 := newTestNode(t)

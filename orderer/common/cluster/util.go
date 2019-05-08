@@ -106,21 +106,21 @@ func (ss StringSet) subtract(set StringSet) {
 // that are only established if the given predicate
 // is fulfilled
 type PredicateDialer struct {
-	lock sync.RWMutex
-	comm.ClientConfig
+	lock   sync.RWMutex
+	Config comm.ClientConfig
 }
 
 func (dialer *PredicateDialer) UpdateRootCAs(serverRootCAs [][]byte) {
 	dialer.lock.Lock()
 	defer dialer.lock.Unlock()
-	dialer.ClientConfig.SecOpts.ServerRootCAs = serverRootCAs
+	dialer.Config.SecOpts.ServerRootCAs = serverRootCAs
 }
 
 // Dial creates a new gRPC connection that can only be established, if the remote node's
 // certificate chain satisfy verifyFunc
 func (dialer *PredicateDialer) Dial(address string, verifyFunc RemoteVerifier) (*grpc.ClientConn, error) {
 	dialer.lock.RLock()
-	cfg := dialer.ClientConfig.Clone()
+	cfg := dialer.Config.Clone()
 	dialer.lock.RUnlock()
 
 	cfg.SecOpts.VerifyCertificate = verifyFunc
@@ -140,15 +140,15 @@ func DERtoPEM(der []byte) string {
 	}))
 }
 
-// StandardDialer wraps an AtomicClientConfig,
-// and provides a means to connect according to given EndpointCriteria.
+// StandardDialer wraps an ClientConfig, and provides
+// a means to connect according to given EndpointCriteria.
 type StandardDialer struct {
-	comm.ClientConfig
+	Config comm.ClientConfig
 }
 
 // Dial dials an address according to the given EndpointCriteria
 func (dialer *StandardDialer) Dial(endpointCriteria EndpointCriteria) (*grpc.ClientConn, error) {
-	cfg := dialer.ClientConfig.Clone()
+	cfg := dialer.Config.Clone()
 	cfg.SecOpts.ServerRootCAs = endpointCriteria.TLSRootCAs
 
 	client, err := comm.NewGRPCClient(cfg)

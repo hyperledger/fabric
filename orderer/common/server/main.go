@@ -110,7 +110,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 
 	clusterClientConfig := initializeClusterClientConfig(conf, clusterType, bootstrapBlock)
 	clusterDialer := &cluster.PredicateDialer{
-		ClientConfig: clusterClientConfig,
+		Config: clusterClientConfig,
 	}
 
 	r := createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer)

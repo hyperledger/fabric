@@ -93,10 +93,10 @@ func newBlockPuller(support consensus.ConsenterSupport,
 	}
 
 	stdDialer := &cluster.StandardDialer{
-		ClientConfig: baseDialer.ClientConfig.Clone(),
+		Config: baseDialer.Config.Clone(),
 	}
-	stdDialer.ClientConfig.AsyncConnect = false
-	stdDialer.ClientConfig.SecOpts.VerifyCertificate = nil
+	stdDialer.Config.AsyncConnect = false
+	stdDialer.Config.SecOpts.VerifyCertificate = nil
 
 	// Extract the TLS CA certs and endpoints from the configuration,
 	endpoints, err := EndpointconfigFromFromSupport(support)
@@ -104,10 +104,10 @@ func newBlockPuller(support consensus.ConsenterSupport,
 		return nil, err
 	}
 
-	der, _ := pem.Decode(stdDialer.ClientConfig.SecOpts.Certificate)
+	der, _ := pem.Decode(stdDialer.Config.SecOpts.Certificate)
 	if der == nil {
 		return nil, errors.Errorf("client certificate isn't in PEM format: %v",
-			string(stdDialer.ClientConfig.SecOpts.Certificate))
+			string(stdDialer.Config.SecOpts.Certificate))
 	}
 
 	bp := &cluster.BlockPuller{
