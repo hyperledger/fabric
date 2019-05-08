@@ -12,7 +12,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
 	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -56,60 +55,19 @@ type Lifecycle interface {
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
-	Keepalive              time.Duration
-	ExecuteTimeout         time.Duration
-	UserRunsCC             bool
-	Runtime                Runtime
 	ACLProvider            ACLProvider
-	HandlerRegistry        *HandlerRegistry
-	Launcher               Launcher
-	SystemCCProvider       sysccprovider.SystemChaincodeProvider
-	Lifecycle              Lifecycle
 	AppConfig              ApplicationConfigRetriever
-	HandlerMetrics         *HandlerMetrics
-	LaunchMetrics          *LaunchMetrics
 	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
+	ExecuteTimeout         time.Duration
+	HandlerMetrics         *HandlerMetrics
+	HandlerRegistry        *HandlerRegistry
+	Keepalive              time.Duration
+	Launcher               Launcher
+	Lifecycle              Lifecycle
+	Runtime                Runtime
+	SystemCCProvider       sysccprovider.SystemChaincodeProvider
 	TotalQueryLimit        int
-}
-
-// NewChaincodeSupport creates a new ChaincodeSupport instance.
-func NewChaincodeSupport(
-	config *Config,
-	userRunsCC bool,
-	containerRuntime *ContainerRuntime,
-	packageProvider PackageProvider,
-	lifecycle Lifecycle,
-	aclProvider ACLProvider,
-	SystemCCProvider sysccprovider.SystemChaincodeProvider,
-	appConfig ApplicationConfigRetriever,
-	metricsProvider metrics.Provider,
-	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-) *ChaincodeSupport {
-	cs := &ChaincodeSupport{
-		UserRunsCC:             userRunsCC,
-		Keepalive:              config.Keepalive,
-		ExecuteTimeout:         config.ExecuteTimeout,
-		HandlerRegistry:        NewHandlerRegistry(userRunsCC),
-		ACLProvider:            aclProvider,
-		SystemCCProvider:       SystemCCProvider,
-		Lifecycle:              lifecycle,
-		AppConfig:              appConfig,
-		HandlerMetrics:         NewHandlerMetrics(metricsProvider),
-		LaunchMetrics:          NewLaunchMetrics(metricsProvider),
-		DeployedCCInfoProvider: deployedCCInfoProvider,
-		TotalQueryLimit:        config.TotalQueryLimit,
-		Runtime:                containerRuntime,
-	}
-
-	cs.Launcher = &RuntimeLauncher{
-		Runtime:         cs.Runtime,
-		Registry:        cs.HandlerRegistry,
-		PackageProvider: packageProvider,
-		StartupTimeout:  config.StartupTimeout,
-		Metrics:         cs.LaunchMetrics,
-	}
-
-	return cs
+	UserRunsCC             bool
 }
 
 // LaunchInit bypasses getting the chaincode spec from the LSCC table

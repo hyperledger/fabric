@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/spf13/viper"
 )
 
 var sysccLogger = flogging.MustGetLogger("sccapi")
@@ -104,7 +103,7 @@ type SelfDescribingSysCC interface {
 
 // registerSysCC registers the given system chaincode with the peer
 func (p *Provider) registerSysCC(syscc SelfDescribingSysCC) (bool, error) {
-	if !syscc.Enabled() || !isWhitelisted(syscc) {
+	if !syscc.Enabled() || !p.isWhitelisted(syscc) {
 		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s,%t) disabled", syscc.Name(), syscc.Path(), syscc.Enabled()))
 		return false, nil
 	}
@@ -128,8 +127,8 @@ func (p *Provider) registerSysCC(syscc SelfDescribingSysCC) (bool, error) {
 }
 
 // deploySysCC deploys the given system chaincode on a chain
-func deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc SelfDescribingSysCC) error {
-	if !syscc.Enabled() || !isWhitelisted(syscc) {
+func (p *Provider) deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc SelfDescribingSysCC) error {
+	if !syscc.Enabled() || !p.isWhitelisted(syscc) {
 		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s) disabled", syscc.Name(), syscc.Path()))
 		return nil
 	}
@@ -200,12 +199,7 @@ func deDeploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Se
 	return err
 }
 
-func isWhitelisted(syscc SelfDescribingSysCC) bool {
-	key := "chaincode.system." + syscc.Name()
-	if !viper.IsSet(key) {
-		return false
-	}
-
-	val := viper.GetString(key)
-	return val == "enable" || val == "true" || val == "yes"
+func (p *Provider) isWhitelisted(syscc SelfDescribingSysCC) bool {
+	enabled, ok := p.Whitelist[syscc.Name()]
+	return ok && enabled
 }

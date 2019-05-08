@@ -10,14 +10,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 )
 
-func init() {
-	// This is just to satisfy the code coverage tool
-	// miss any methods
-	switch true {
-
-	}
-}
-
 //go:generate mockery -dir . -name SecurityAdvisor -case underscore -output ../mocks/
 
 // SecurityAdvisor defines an external auxiliary object

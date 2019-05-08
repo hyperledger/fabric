@@ -310,7 +310,12 @@ func serve(args []string) error {
 	authenticator := accesscontrol.NewAuthenticator(ca)
 	ipRegistry := inproccontroller.NewRegistry()
 
-	sccp := scc.NewProvider(peer.Default, peer.DefaultSupport, ipRegistry)
+	sccp := &scc.Provider{
+		Peer:        peer.Default,
+		PeerSupport: peer.DefaultSupport,
+		Registrar:   ipRegistry,
+		Whitelist:   scc.GlobalWhitelist(),
+	}
 	lsccInst := lscc.New(sccp, aclProvider, platformRegistry)
 
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{
@@ -388,18 +393,32 @@ func serve(args []string) error {
 		containerRuntime.CertGenerator = nil
 	}
 
-	chaincodeSupport := chaincode.NewChaincodeSupport(
-		chaincode.GlobalConfig(),
-		userRunsCC,
-		containerRuntime,
-		packageProvider,
-		chaincodeEndorsementInfo,
-		aclProvider,
-		sccp,
-		peer.DefaultSupport,
-		opsSystem.Provider,
-		lifecycleValidatorCommitter,
-	)
+	globalConfig := chaincode.GlobalConfig()
+	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
+	chaincodeLauncher := &chaincode.RuntimeLauncher{
+		Metrics:         chaincode.NewLaunchMetrics(opsSystem.Provider),
+		PackageProvider: packageProvider,
+		Registry:        chaincodeHandlerRegistry,
+		Runtime:         containerRuntime,
+		StartupTimeout:  globalConfig.StartupTimeout,
+	}
+
+	chaincodeSupport := &chaincode.ChaincodeSupport{
+		ACLProvider:            aclProvider,
+		AppConfig:              peer.DefaultSupport,
+		DeployedCCInfoProvider: lifecycleValidatorCommitter,
+		ExecuteTimeout:         globalConfig.ExecuteTimeout,
+		HandlerRegistry:        chaincodeHandlerRegistry,
+		HandlerMetrics:         chaincode.NewHandlerMetrics(opsSystem.Provider),
+		Keepalive:              globalConfig.Keepalive,
+		Launcher:               chaincodeLauncher,
+		Lifecycle:              chaincodeEndorsementInfo,
+		Runtime:                containerRuntime,
+		SystemCCProvider:       sccp,
+		TotalQueryLimit:        globalConfig.TotalQueryLimit,
+		UserRunsCC:             userRunsCC,
+	}
+
 	ipRegistry.ChaincodeSupport = chaincodeSupport
 
 	ccSupSrv := pb.ChaincodeSupportServer(chaincodeSupport)

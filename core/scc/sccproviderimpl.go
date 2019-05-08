@@ -15,21 +15,13 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 )
 
-// NewProvider creates a new Provider instance
-func NewProvider(pOps peer.Operations, pSup peer.Support, r Registrar) *Provider {
-	return &Provider{
-		Peer:        pOps,
-		PeerSupport: pSup,
-		Registrar:   r,
-	}
-}
-
 // Provider implements sysccprovider.SystemChaincodeProvider
 type Provider struct {
 	Peer        peer.Operations
 	PeerSupport peer.Support
 	Registrar   Registrar
 	SysCCs      []SelfDescribingSysCC
+	Whitelist   Whitelist
 }
 
 // RegisterSysCC registers a system chaincode with the syscc provider.
