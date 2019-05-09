@@ -297,7 +297,7 @@ func newBlockPuller(dialer *countingDialer, orderers ...string) *cluster.BlockPu
 		Channel:             "mychannel",
 		Signer:              &mocks.SignerSerializer{},
 		Endpoints:           endpointCriteriaFromEndpoints(orderers...),
-		FetchTimeout:        time.Second,
+		FetchTimeout:        time.Second * 10,
 		MaxTotalBufferBytes: 1024 * 1024, // 1MB
 		RetryTimeout:        time.Millisecond * 10,
 		VerifyBlockSequence: noopBlockVerifierf,
