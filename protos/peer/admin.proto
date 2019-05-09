@@ -17,13 +17,13 @@ import "common/common.proto";
 
 // Interface exported by the server.
 service Admin {
-    rpc GetStatus(common.Envelope) returns (ServerStatus) {}
-    rpc StartServer(common.Envelope) returns (ServerStatus) {}
-    rpc GetModuleLogLevel(common.Envelope) returns (LogLevelResponse) {}
-    rpc SetModuleLogLevel(common.Envelope) returns (LogLevelResponse) {}
-    rpc RevertLogLevels(common.Envelope) returns (google.protobuf.Empty) {}
-    rpc GetLogSpec(common.Envelope) returns (LogSpecResponse) {}
-    rpc SetLogSpec(common.Envelope) returns (LogSpecResponse) {}
+    rpc GetStatus(common.Envelope) returns (ServerStatus);
+    rpc StartServer(common.Envelope) returns (ServerStatus);
+    rpc GetModuleLogLevel(common.Envelope) returns (LogLevelResponse);
+    rpc SetModuleLogLevel(common.Envelope) returns (LogLevelResponse);
+    rpc RevertLogLevels(common.Envelope) returns (google.protobuf.Empty);
+    rpc GetLogSpec(common.Envelope) returns (LogSpecResponse);
+    rpc SetLogSpec(common.Envelope) returns (LogSpecResponse);
 }
 
 message ServerStatus {
