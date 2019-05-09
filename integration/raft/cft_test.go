@@ -4,7 +4,7 @@ Copyright IBM Corp All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package e2e
+package raft
 
 import (
 	"fmt"
@@ -352,39 +352,6 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 		})
 	})
 })
-
-func RunInvoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
-		ChannelID: channel,
-		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
-		Name:      "mycc",
-		Ctor:      `{"Args":["invoke","a","b","10"]}`,
-		PeerAddresses: []string{
-			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
-			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
-		},
-		WaitForEvent: true,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
-}
-
-func RunQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) int {
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
-		ChannelID: channel,
-		Name:      "mycc",
-		Ctor:      `{"Args":["query","a"]}`,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-
-	var result int
-	i, err := fmt.Sscanf(string(sess.Out.Contents()), "%d", &result)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(i).To(Equal(1))
-	return int(result)
-}
 
 func findLeader(ordererRunners []*ginkgomon.Runner) int {
 	var wg sync.WaitGroup
