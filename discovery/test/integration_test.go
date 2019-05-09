@@ -28,7 +28,6 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	policiesmocks "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	cc "github.com/hyperledger/fabric/core/cclifecycle"
@@ -577,13 +576,10 @@ func createPolicyManagerGetter(t *testing.T, mspMgr msp.MSPManager) *mocks.Chann
 	assert.NoError(t, err)
 	org1Org2MembersPolicy, _, err := cauthdsl.NewPolicyProvider(mspMgr).NewPolicy(protoutil.MarshalOrPanic(org1Org2Members))
 	assert.NoError(t, err)
-	_ = org1Org2MembersPolicy
+
 	polMgr := &mocks.ChannelPolicyManagerGetter{}
-	policyMgr := &policiesmocks.Manager{
-		PolicyMap: map[string]policies.Policy{
-			policies.ChannelApplicationWriters: org1Org2MembersPolicy,
-		},
-	}
+	policyMgr := &mocks.PolicyManager{}
+	policyMgr.On("GetPolicy", policies.ChannelApplicationWriters).Return(org1Org2MembersPolicy, true)
 	polMgr.On("Manager", "mychannel").Return(policyMgr, false)
 	return polMgr
 }

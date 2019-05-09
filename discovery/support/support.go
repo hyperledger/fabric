@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package support
 
 import (
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/discovery"
 	"github.com/hyperledger/fabric/discovery/support/acl"
 )
@@ -23,6 +24,12 @@ type GossipSupport interface {
 // ChannelPolicyManagerGetter is the local interface used to generate mocks for foreign interface.
 type ChannelPolicyManagerGetter interface {
 	acl.ChannelPolicyManagerGetter
+}
+
+//go:generate mockery -dir . -name PolicyManager -case underscore  -output mocks/
+
+type PolicyManager interface {
+	policies.Manager
 }
 
 // DiscoverySupport aggregates all the support needed for the discovery service
