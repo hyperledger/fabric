@@ -653,13 +653,13 @@ func TestGetHealthyClusterReplicaInfo(t *testing.T) {
 		metadataResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), mockBroker.BrokerID(), ids, nil, sarama.ErrNoError)
 		mockBroker.Returns(metadataResponse)
 
-		replicaIDs, err := getHealthyClusterReplicaInfo(mockConsenter.retryOptions(), haltChan, []string{mockBroker.Addr()}, mockChannel)
+		replicaIDs, err := getHealthyClusterReplicaInfo(mockConsenter.retryOptions(), haltChan, []string{mockBroker.Addr()}, mockBrokerConfig, mockChannel)
 		assert.NoError(t, err, "Expected the getHealthyClusterReplicaInfo call to return without errors")
 		assert.Equal(t, replicaIDs, ids)
 	})
 
 	t.Run("WithError", func(t *testing.T) {
-		_, err := getHealthyClusterReplicaInfo(mockConsenter.retryOptions(), haltChan, []string{}, mockChannel)
+		_, err := getHealthyClusterReplicaInfo(mockConsenter.retryOptions(), haltChan, []string{}, mockBrokerConfig, mockChannel)
 		assert.Error(t, err, "Expected the getHealthyClusterReplicaInfo call to return an error")
 	})
 }

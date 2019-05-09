@@ -356,7 +356,7 @@ func startThread(chain *chainImpl) {
 	}
 	logger.Infof("[channel: %s] Channel consumer set up successfully", chain.channel.topic())
 
-	chain.replicaIDs, err = getHealthyClusterReplicaInfo(chain.consenter.retryOptions(), chain.haltChan, chain.SharedConfig().KafkaBrokers(), chain.channel)
+	chain.replicaIDs, err = getHealthyClusterReplicaInfo(chain.consenter.retryOptions(), chain.haltChan, chain.SharedConfig().KafkaBrokers(), chain.consenter.brokerConfig(), chain.channel)
 	if err != nil {
 		logger.Panicf("[channel: %s] failed to get replica IDs = %s", chain.channel.topic(), err)
 	}
@@ -1282,12 +1282,12 @@ func setupTopicForChannel(retryOptions localconfig.Retry, haltChan chan struct{}
 // is healthy. Otherwise, the replica request does not return the full set
 // of initial replicas. This information is needed to provide context when
 // a health check returns an error.
-func getHealthyClusterReplicaInfo(retryOptions localconfig.Retry, haltChan chan struct{}, brokers []string, channel channel) ([]int32, error) {
+func getHealthyClusterReplicaInfo(retryOptions localconfig.Retry, haltChan chan struct{}, brokers []string, brokerConfig *sarama.Config, channel channel) ([]int32, error) {
 	var replicaIDs []int32
 
 	retryMsg := "Getting list of Kafka brokers replicating the channel"
 	getReplicaInfo := newRetryProcess(retryOptions, haltChan, channel, retryMsg, func() error {
-		client, err := sarama.NewClient(brokers, nil)
+		client, err := sarama.NewClient(brokers, brokerConfig)
 		if err != nil {
 			return err
 		}
