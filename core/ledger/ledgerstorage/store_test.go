@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
@@ -28,6 +29,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var metricsProvider = &disabled.Provider{}
+
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("ledgerstorage,pvtdatastorage=debug")
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/core/ledger/ledgerstorage")
@@ -37,7 +40,7 @@ func TestMain(m *testing.M) {
 func TestStore(t *testing.T) {
 	testEnv := newTestEnv(t)
 	defer testEnv.cleanup()
-	provider := NewProvider()
+	provider := NewProvider(metricsProvider)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
 	store.Init(btlPolicyForSampleData())
@@ -124,7 +127,8 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 	blockStoreProvider := fsblkstorage.NewProvider(
 		fsblkstorage.NewConf(ledgerconfig.GetBlockStorePath(), ledgerconfig.GetMaxBlockfileSize()),
-		indexConfig)
+		indexConfig,
+		metricsProvider)
 
 	blkStore, err := blockStoreProvider.OpenBlockStore(testLedgerid)
 	assert.NoError(t, err)
@@ -141,7 +145,7 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 
 	// Simulating the upgrade from 1.0 situation:
 	// Open the ledger storage - pvtdata store is opened for the first time with an existing block storage
-	provider := NewProvider()
+	provider := NewProvider(metricsProvider)
 	defer provider.Close()
 	store, err := provider.Open(testLedgerid)
 	store.Init(btlPolicyForSampleData())
@@ -163,7 +167,7 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 func TestCrashAfterPvtdataStorePreparation(t *testing.T) {
 	testEnv := newTestEnv(t)
 	defer testEnv.cleanup()
-	provider := NewProvider()
+	provider := NewProvider(metricsProvider)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
 	store.Init(btlPolicyForSampleData())
@@ -186,7 +190,7 @@ func TestCrashAfterPvtdataStorePreparation(t *testing.T) {
 	store.pvtdataStore.Prepare(blokNumAtCrash, pvtdataAtCrash, nil)
 	store.Shutdown()
 	provider.Close()
-	provider = NewProvider()
+	provider = NewProvider(metricsProvider)
 	store, err = provider.Open("testLedger")
 	assert.NoError(t, err)
 	store.Init(btlPolicyForSampleData())
@@ -218,7 +222,7 @@ func TestCrashAfterPvtdataStorePreparation(t *testing.T) {
 func TestCrashBeforePvtdataStoreCommit(t *testing.T) {
 	testEnv := newTestEnv(t)
 	defer testEnv.cleanup()
-	provider := NewProvider()
+	provider := NewProvider(metricsProvider)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
 	store.Init(btlPolicyForSampleData())
@@ -244,7 +248,7 @@ func TestCrashBeforePvtdataStoreCommit(t *testing.T) {
 	store.BlockStore.AddBlock(dataAtCrash.Block)
 	store.Shutdown()
 	provider.Close()
-	provider = NewProvider()
+	provider = NewProvider(metricsProvider)
 	store, err = provider.Open("testLedger")
 	assert.NoError(t, err)
 	store.Init(btlPolicyForSampleData())
@@ -257,7 +261,7 @@ func TestCrashBeforePvtdataStoreCommit(t *testing.T) {
 func TestAddAfterPvtdataStoreError(t *testing.T) {
 	testEnv := newTestEnv(t)
 	defer testEnv.cleanup()
-	provider := NewProvider()
+	provider := NewProvider(metricsProvider)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
 	store.Init(btlPolicyForSampleData())
@@ -294,7 +298,7 @@ func TestAddAfterPvtdataStoreError(t *testing.T) {
 func TestAddAfterBlkStoreError(t *testing.T) {
 	testEnv := newTestEnv(t)
 	defer testEnv.cleanup()
-	provider := NewProvider()
+	provider := NewProvider(metricsProvider)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
 	store.Init(btlPolicyForSampleData())

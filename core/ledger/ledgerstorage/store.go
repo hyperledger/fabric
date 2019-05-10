@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
@@ -37,7 +38,7 @@ type Store struct {
 }
 
 // NewProvider returns the handle to the provider
-func NewProvider() *Provider {
+func NewProvider(metricsProvider metrics.Provider) *Provider {
 	// Initialize the block storage
 	attrsToIndex := []blkstorage.IndexableAttr{
 		blkstorage.IndexableAttrBlockHash,
@@ -50,7 +51,8 @@ func NewProvider() *Provider {
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 	blockStoreProvider := fsblkstorage.NewProvider(
 		fsblkstorage.NewConf(ledgerconfig.GetBlockStorePath(), ledgerconfig.GetMaxBlockfileSize()),
-		indexConfig)
+		indexConfig,
+		metricsProvider)
 
 	pvtStoreProvider := pvtdatastorage.NewProvider()
 	return &Provider{blockStoreProvider, pvtStoreProvider}

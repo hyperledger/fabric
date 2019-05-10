@@ -98,7 +98,15 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		logger.Panicf("Failed validating bootstrap block: %v", err)
 	}
 
-	lf, _ := createLedgerFactory(conf)
+	opsSystem := newOperationsSystem(conf.Operations, conf.Metrics)
+	err := opsSystem.Start()
+	if err != nil {
+		logger.Panicf("failed to initialize operations subsystem: %s", err)
+	}
+	defer opsSystem.Stop()
+	metricsProvider := opsSystem.Provider
+
+	lf, _ := createLedgerFactory(conf, metricsProvider)
 	sysChanLastConfigBlock := extractSysChanLastConfig(lf, bootstrapBlock)
 	clusterBootBlock := selectClusterBootBlock(bootstrapBlock, sysChanLastConfigBlock)
 
@@ -116,13 +124,6 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		r.replicateIfNeeded(bootstrapBlock)
 	}
 
-	opsSystem := newOperationsSystem(conf.Operations, conf.Metrics)
-	err := opsSystem.Start()
-	if err != nil {
-		logger.Panicf("failed to initialize operations subsystem: %s", err)
-	}
-	defer opsSystem.Stop()
-	metricsProvider := opsSystem.Provider
 	logObserver := floggingmetrics.NewObserver(metricsProvider)
 	flogging.Global.SetObserver(logObserver)
 

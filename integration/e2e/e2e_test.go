@@ -541,6 +541,9 @@ func CheckPeerStatsdMetrics(contents, prefix string) {
 	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.unary_requests_received.protos_Endorser.ProcessProposal:"))
 	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.unary_requests_completed.protos_Endorser.ProcessProposal.OK:"))
 	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.unary_request_duration.protos_Endorser.ProcessProposal.OK:"))
+	Expect(contents).To(ContainSubstring(prefix + ".ledger.blockchain_height"))
+	Expect(contents).To(ContainSubstring(prefix + ".ledger.blockstorage_commit_time"))
+	Expect(contents).To(ContainSubstring(prefix + ".ledger.blockstorage_and_pvtdata_commit_time"))
 }
 
 func CheckPeerStatsdStreamMetrics(contents string) {
@@ -565,6 +568,8 @@ func CheckOrdererStatsdMetrics(contents, prefix string) {
 	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_requests_completed.orderer_AtomicBroadcast.Deliver."))
 	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_messages_received.orderer_AtomicBroadcast.Deliver"))
 	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_messages_sent.orderer_AtomicBroadcast.Deliver"))
+	Expect(contents).To(ContainSubstring(prefix + ".ledger.blockchain_height"))
+	Expect(contents).To(ContainSubstring(prefix + ".ledger.blockstorage_commit_time"))
 }
 
 func OrdererOperationalClients(network *nwo.Network, orderer *nwo.Orderer) (authClient, unauthClient *http.Client) {
@@ -662,6 +667,9 @@ func CheckPeerPrometheusMetrics(client *http.Client, url string) {
 	Expect(body).To(ContainSubstring(`grpc_server_stream_messages_sent{method="DeliverFiltered",service="protos_Deliver"}`))
 	Expect(body).To(ContainSubstring(`# TYPE grpc_comm_conn_closed counter`))
 	Expect(body).To(ContainSubstring(`# TYPE grpc_comm_conn_opened counter`))
+	Expect(body).To(ContainSubstring(`ledger_blockchain_height`))
+	Expect(body).To(ContainSubstring(`ledger_blockstorage_commit_time_bucket`))
+	Expect(body).To(ContainSubstring(`ledger_blockstorage_and_pvtdata_commit_time_bucket`))
 }
 
 func CheckOrdererPrometheusMetrics(client *http.Client, url string) {
@@ -681,6 +689,8 @@ func CheckOrdererPrometheusMetrics(client *http.Client, url string) {
 	Expect(body).To(ContainSubstring(`grpc_server_stream_request_duration_sum{code="OK",method="Broadcast",service="orderer_AtomicBroadcast"`))
 	Expect(body).To(ContainSubstring(`# TYPE grpc_comm_conn_closed counter`))
 	Expect(body).To(ContainSubstring(`# TYPE grpc_comm_conn_opened counter`))
+	Expect(body).To(ContainSubstring(`ledger_blockchain_height`))
+	Expect(body).To(ContainSubstring(`ledger_blockstorage_commit_time_bucket`))
 }
 
 func CheckLogspecOperations(client *http.Client, logspecURL string) {
