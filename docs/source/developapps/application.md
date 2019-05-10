@@ -2,7 +2,7 @@
 
 **Audience**: Architects, Application and smart contract developers
 
-An application can interact with a blockhain network by submitting transactions
+An application can interact with a blockchain network by submitting transactions
 to a ledger or querying ledger content. This topic covers the mechanics of how
 an application does this; in our scenario, organizations access PaperNet using
 applications which invoke **issue**, **sell** and **redeem** transactions
