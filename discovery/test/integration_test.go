@@ -87,16 +87,19 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	var err error
 	if err := buildBinaries(); err != nil {
-		fmt.Printf("failed generating artifacts: +%v", err)
-		return
+		fmt.Printf("failed to build binaries: +%v", err)
+		gexec.CleanupBuildArtifacts()
+		os.Exit(1)
 	}
 
+	var err error
 	testdir, err = generateChannelArtifacts()
 	if err != nil {
-		fmt.Printf("failed generating artifacts: +%v", err)
-		return
+		fmt.Printf("failed to generate channel artifacts: +%v", err)
+		os.RemoveAll(testdir)
+		gexec.CleanupBuildArtifacts()
+		os.Exit(1)
 	}
 
 	peerDirPrefix := filepath.Join(testdir, "crypto-config", "peerOrganizations")
@@ -608,7 +611,7 @@ func generateChannelArtifacts() (string, error) {
 	args := []string{
 		"generate",
 		fmt.Sprintf("--output=%s", cryptoConfigDir),
-		fmt.Sprintf("--config=%s", filepath.Join("..", "..", "examples", "e2e_cli", "crypto-config.yaml")),
+		fmt.Sprintf("--config=%s", filepath.Join("testdata", "crypto-config.yaml")),
 	}
 	b, err := exec.Command(cryptogen, args...).CombinedOutput()
 	if err != nil {
@@ -624,8 +627,8 @@ func generateChannelArtifacts() (string, error) {
 }
 
 func createGenesisBlock(cryptoConfigDir string) *common.Block {
-	appConfig := genesisconfig.Load("TwoOrgsChannel", filepath.Join("..", "..", "examples", "e2e_cli"))
-	ordererConfig := genesisconfig.Load("TwoOrgsOrdererGenesis", filepath.Join("..", "..", "examples", "e2e_cli"))
+	appConfig := genesisconfig.Load("TwoOrgsChannel", "testdata")
+	ordererConfig := genesisconfig.Load("TwoOrgsOrdererGenesis", "testdata")
 	// Glue the two parts together, without loss of generality - to the application parts
 	appConfig.Orderer = ordererConfig.Orderer
 	channelConfig := appConfig
