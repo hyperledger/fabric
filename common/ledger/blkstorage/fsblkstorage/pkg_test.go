@@ -24,6 +24,8 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
@@ -48,6 +50,10 @@ type testEnv struct {
 }
 
 func newTestEnv(t testing.TB, conf *Conf) *testEnv {
+	return newTestEnvWithMetricsProvider(t, conf, &disabled.Provider{})
+}
+
+func newTestEnvWithMetricsProvider(t testing.TB, conf *Conf, metricsProvider metrics.Provider) *testEnv {
 	attrsToIndex := []blkstorage.IndexableAttr{
 		blkstorage.IndexableAttrBlockHash,
 		blkstorage.IndexableAttrBlockNum,
@@ -56,12 +62,12 @@ func newTestEnv(t testing.TB, conf *Conf) *testEnv {
 		blkstorage.IndexableAttrBlockTxID,
 		blkstorage.IndexableAttrTxValidationCode,
 	}
-	return newTestEnvSelectiveIndexing(t, conf, attrsToIndex)
+	return newTestEnvSelectiveIndexing(t, conf, attrsToIndex, metricsProvider)
 }
 
-func newTestEnvSelectiveIndexing(t testing.TB, conf *Conf, attrsToIndex []blkstorage.IndexableAttr) *testEnv {
+func newTestEnvSelectiveIndexing(t testing.TB, conf *Conf, attrsToIndex []blkstorage.IndexableAttr, metricsProvider metrics.Provider) *testEnv {
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-	return &testEnv{t, NewProvider(conf, indexConfig).(*FsBlockstoreProvider)}
+	return &testEnv{t, NewProvider(conf, indexConfig, metricsProvider).(*FsBlockstoreProvider)}
 }
 
 func (env *testEnv) Cleanup() {

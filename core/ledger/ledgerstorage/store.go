@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
@@ -39,7 +40,7 @@ type Store struct {
 }
 
 // NewProvider returns the handle to the provider
-func NewProvider(storeDir string, conf *pvtdatastorage.PrivateDataConfig) *Provider {
+func NewProvider(storeDir string, conf *pvtdatastorage.PrivateDataConfig, metricsProvider metrics.Provider) *Provider {
 	// Initialize the block storage
 	attrsToIndex := []blkstorage.IndexableAttr{
 		blkstorage.IndexableAttrBlockHash,
@@ -56,6 +57,7 @@ func NewProvider(storeDir string, conf *pvtdatastorage.PrivateDataConfig) *Provi
 			maxBlockFileSize,
 		),
 		indexConfig,
+		metricsProvider,
 	)
 
 	pvtStoreProvider := pvtdatastorage.NewProvider(conf)
