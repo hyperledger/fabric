@@ -246,7 +246,7 @@ func (conn *connection) close() {
 		return
 	}
 
-	conn.stopChan <- struct{}{}
+	close(conn.stopChan)
 
 	conn.drainOutputBuffer()
 	conn.Lock()
@@ -296,22 +296,20 @@ func (conn *connection) send(msg *protoext.SignedGossipMessage, onErr func(error
 func (conn *connection) serviceConnection() error {
 	errChan := make(chan error, 1)
 	msgChan := make(chan *protoext.SignedGossipMessage, conn.recvBuffSize)
-	quit := make(chan struct{})
 	// Call stream.Recv() asynchronously in readFromStream(),
 	// and wait for either the Recv() call to end,
 	// or a signal to close the connection, which exits
 	// the method and makes the Recv() call to fail in the
 	// readFromStream() method
-	go conn.readFromStream(errChan, quit, msgChan)
+	go conn.readFromStream(errChan, msgChan)
 
 	conn.stopWG.Add(1) // wait for write to finish before closing it
 	go conn.writeToStream()
 
 	for !conn.toDie() {
 		select {
-		case stop := <-conn.stopChan:
+		case <-conn.stopChan:
 			conn.logger.Debug("Closing reading from stream")
-			conn.stopChan <- stop
 			return nil
 		case err := <-errChan:
 			return err
@@ -338,9 +336,8 @@ func (conn *connection) writeToStream() {
 				return
 			}
 			conn.metrics.SentMessages.Add(1)
-		case stop := <-conn.stopChan:
+		case <-conn.stopChan:
 			conn.logger.Debug("Closing writing to stream")
-			conn.stopChan <- stop
 			return
 		}
 	}
@@ -358,7 +355,7 @@ func (conn *connection) drainOutputBuffer() {
 	}
 }
 
-func (conn *connection) readFromStream(errChan chan error, quit chan struct{}, msgChan chan *protoext.SignedGossipMessage) {
+func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoext.SignedGossipMessage) {
 	for !conn.toDie() {
 		stream := conn.getStream()
 		if stream == nil {
@@ -367,10 +364,6 @@ func (conn *connection) readFromStream(errChan chan error, quit chan struct{}, m
 			return
 		}
 		envelope, err := stream.Recv()
-		if conn.toDie() {
-			conn.logger.Debug(conn.pkiID, "canceling read because closing")
-			return
-		}
 		if err != nil {
 			errChan <- err
 			conn.logger.Debugf("Got error, aborting: %v", err)
@@ -382,11 +375,7 @@ func (conn *connection) readFromStream(errChan chan error, quit chan struct{}, m
 			errChan <- err
 			conn.logger.Warningf("Got error, aborting: %v", err)
 		}
-		select {
-		case msgChan <- msg:
-		case <-quit:
-			return
-		}
+		msgChan <- msg
 	}
 }
 
