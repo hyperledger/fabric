@@ -550,7 +550,9 @@ func (d *gossipDiscoveryImpl) isSentByMe(m *protoext.SignedGossipMessage) bool {
 		return false
 	}
 	d.logger.Debug("Got alive message about ourselves,", m)
+	d.lock.RLock()
 	diffExternalEndpoint := d.self.Endpoint != m.GetAliveMsg().Membership.Endpoint
+	d.lock.RUnlock()
 	var diffInternalEndpoint bool
 	secretEnvelope := m.GetSecretEnvelope()
 	if secretEnvelope != nil {
