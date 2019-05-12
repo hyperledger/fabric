@@ -48,6 +48,15 @@ const (
 
 	// BlockValidation is the label for the policy which should validate the block signatures for the channel
 	BlockValidation = PathSeparator + ChannelPrefix + PathSeparator + OrdererPrefix + PathSeparator + "BlockValidation"
+
+	// ChannelOrdererAdmins is the label for the channel's orderer admin policy
+	ChannelOrdererAdmins = PathSeparator + ChannelPrefix + PathSeparator + OrdererPrefix + PathSeparator + "Admins"
+
+	// ChannelOrdererWriters is the label for the channel's orderer writers policy
+	ChannelOrdererWriters = PathSeparator + ChannelPrefix + PathSeparator + OrdererPrefix + PathSeparator + "Writers"
+
+	// ChannelOrdererReaders is the label for the channel's orderer readers policy
+	ChannelOrdererReaders = PathSeparator + ChannelPrefix + PathSeparator + OrdererPrefix + PathSeparator + "Readers"
 )
 
 var logger = flogging.MustGetLogger("policies")
