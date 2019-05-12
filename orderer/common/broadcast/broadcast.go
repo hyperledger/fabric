@@ -213,6 +213,8 @@ func ClassifyError(err error) cb.Status {
 		return cb.Status_NOT_FOUND
 	case msgprocessor.ErrPermissionDenied:
 		return cb.Status_FORBIDDEN
+	case msgprocessor.ErrMaintenanceMode:
+		return cb.Status_SERVICE_UNAVAILABLE
 	default:
 		return cb.Status_BAD_REQUEST
 	}
