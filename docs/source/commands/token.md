@@ -44,7 +44,6 @@ Flags:
   --type=TYPE              Sets the token type to issue
   --quantity=QUANTITY      Sets the quantity of tokens to issue
   --recipient=RECIPIENT    Sets the recipient of tokens to issue
-
 ```
 
 
@@ -76,7 +75,6 @@ Flags:
   --mspPath=MSPPATH        Overrides msp path configuration
   --mspId=MSPID            Overrides msp id configuration
   --config=CONFIG          Sets the client configuration path
-
 ```
 
 
@@ -110,7 +108,6 @@ Flags:
   --config=CONFIG          Sets the client configuration path
   --tokenIDs=TOKENIDS      Sets the token IDs to transfer
   --shares=SHARES          Sets the shares of the recipients
-
 ```
 
 
@@ -144,7 +141,6 @@ Flags:
   --config=CONFIG          Sets the client configuration path
   --tokenIDs=TOKENIDS      Sets the token IDs to redeem
   --quantity=QUANTITY      Sets the quantity of tokens to redeem
-
 ```
 
 
@@ -172,7 +168,6 @@ Flags:
                            authenticate the messages sent to the peer
   --MSP=MSP                Sets the MSP ID of the user, which represents the
                            CA(s) that issued its user certificate
-
 ```
 
 ## Example Usage

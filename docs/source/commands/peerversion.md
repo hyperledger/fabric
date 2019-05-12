@@ -19,6 +19,9 @@ information. For example:
 
 ## Syntax
 
+The `peer version` command takes no arguments.
+
+## peer version
 ```
 Print current version of the fabric peer server.
 
