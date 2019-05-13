@@ -172,7 +172,7 @@ func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
 	}
 
 	// Make sure that the identity has only one of the special OUs
-	// used to tell apart clients, peers and orderers.
+	// used to tell apart clients or peers.
 	counter := 0
 	for _, OU := range id.GetOrganizationalUnits() {
 		// Is OU.OrganizationalUnitIdentifier one of the special OUs?
@@ -197,7 +197,54 @@ func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
 		}
 	}
 	if counter != 1 {
-		return errors.Errorf("the identity must be a client, a peer or an orderer identity to be valid, not a combination of them. OUs: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
+		return errors.Errorf("the identity must be a client or a peer identity to be valid, not a combination of them. OUs: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) validateIdentityOUsV143(id *identity) error {
+	// Run the same checks as per V1
+	err := msp.validateIdentityOUsV1(id)
+	if err != nil {
+		return err
+	}
+
+	// -- Check for OU enforcement
+	if !msp.ouEnforcement {
+		// No enforcement required
+		return nil
+	}
+
+	// Make sure that the identity has only one of the special OUs
+	// used to tell apart clients, peers and admins.
+	counter := 0
+	for _, OU := range id.GetOrganizationalUnits() {
+		// Is OU.OrganizationalUnitIdentifier one of the special OUs?
+		var nodeOU *OUIdentifier
+		switch OU.OrganizationalUnitIdentifier {
+		case msp.clientOU.OrganizationalUnitIdentifier:
+			nodeOU = msp.clientOU
+		case msp.peerOU.OrganizationalUnitIdentifier:
+			nodeOU = msp.peerOU
+		case msp.adminOU.OrganizationalUnitIdentifier:
+			nodeOU = msp.adminOU
+		default:
+			continue
+		}
+
+		// Yes. Then, enforce the certifiers identifier in this is specified.
+		// If is not specified, it means that any certification path is fine.
+		if len(nodeOU.CertifiersIdentifier) != 0 && !bytes.Equal(nodeOU.CertifiersIdentifier, OU.CertifiersIdentifier) {
+			return errors.Errorf("certifiersIdentifier does not match: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
+		}
+		counter++
+		if counter > 1 {
+			break
+		}
+	}
+	if counter != 1 {
+		return errors.Errorf("the identity must be a client, a peer or an admin identity to be valid, not a combination of them. OUs: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
 	}
 
 	return nil

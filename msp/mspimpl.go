@@ -31,6 +31,9 @@ type validateIdentityOUsFuncType func(id *identity) error
 // satisfiesPrincipalInternalFuncType is the prototype of the function to check if principals are satisfied
 type satisfiesPrincipalInternalFuncType func(id Identity, principal *m.MSPPrincipal) error
 
+//setupAdminInternalFuncType is a prototype of the function to setup the admins
+type setupAdminInternalFuncType func(conf *m.FabricMSPConfig) error
+
 // This is an instantiation of an MSP that
 // uses BCCSP for its cryptographic primitives.
 type bccspmsp struct {
@@ -46,6 +49,9 @@ type bccspmsp struct {
 
 	// internalSatisfiesPrincipalInternalFunc is the pointer to the function to check if principals are satisfied
 	internalSatisfiesPrincipalInternalFunc satisfiesPrincipalInternalFuncType
+
+	// internalSetupAdmin is the pointer to the function that setup the administrators of this msp
+	internalSetupAdmin setupAdminInternalFuncType
 
 	// list of CA certs we trust
 	rootCerts []Identity
@@ -93,7 +99,7 @@ type bccspmsp struct {
 	ouEnforcement bool
 	// These are the OUIdentifiers of the clients, peers and orderers.
 	// They are used to tell apart these entities
-	clientOU, peerOU *OUIdentifier
+	clientOU, peerOU, adminOU *OUIdentifier
 }
 
 // newBccspMsp returns an MSP instance backed up by a BCCSP
@@ -112,14 +118,22 @@ func newBccspMsp(version MSPVersion) (MSP, error) {
 		theMsp.internalSetupFunc = theMsp.setupV1
 		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV1
 		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalPreV13
+		theMsp.internalSetupAdmin = theMsp.setupAdminsPreV143
 	case MSPv1_1:
 		theMsp.internalSetupFunc = theMsp.setupV11
 		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV11
 		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalPreV13
+		theMsp.internalSetupAdmin = theMsp.setupAdminsPreV143
 	case MSPv1_3:
 		theMsp.internalSetupFunc = theMsp.setupV11
 		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV11
 		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalV13
+		theMsp.internalSetupAdmin = theMsp.setupAdminsPreV143
+	case MSPv1_4_3:
+		theMsp.internalSetupFunc = theMsp.setupV143
+		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV143
+		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalV143
+		theMsp.internalSetupAdmin = theMsp.setupAdminsV143
 	default:
 		return nil, errors.Errorf("Invalid MSP version [%v]", version)
 	}
@@ -318,8 +332,10 @@ func (msp *bccspmsp) hasOURoleInternal(id *identity, mspRole m.MSPRole_MSPRoleTy
 		nodeOUValue = msp.clientOU.OrganizationalUnitIdentifier
 	case m.MSPRole_PEER:
 		nodeOUValue = msp.peerOU.OrganizationalUnitIdentifier
+	case m.MSPRole_ADMIN:
+		nodeOUValue = msp.adminOU.OrganizationalUnitIdentifier
 	default:
-		return fmt.Errorf("Invalid MSPRoleType. It must be CLIENT, PEER or ORDERER")
+		return errors.New("Invalid MSPRoleType. It must be CLIENT, PEER or ADMIN")
 	}
 
 	for _, OU := range id.GetOrganizationalUnits() {
@@ -328,7 +344,7 @@ func (msp *bccspmsp) hasOURoleInternal(id *identity, mspRole m.MSPRole_MSPRoleTy
 		}
 	}
 
-	return fmt.Errorf("The identity does not contain OU [%s], MSP: [%s]", mspRole, msp.name)
+	return errors.Errorf("The identity does not contain OU [%s], MSP: [%s]", mspRole, msp.name)
 }
 
 // DeserializeIdentity returns an Identity given the byte-level
@@ -459,13 +475,8 @@ func (msp *bccspmsp) satisfiesPrincipalInternalPreV13(id Identity, principal *m.
 			mspLogger.Debugf("Checking if identity satisfies ADMIN role for %s", msp.name)
 			// in the case of admin, we check that the
 			// id is exactly one of our admins
-			for _, admincert := range msp.admins {
-				if bytes.Equal(id.(*identity).cert.Raw, admincert.(*identity).cert.Raw) {
-					// we do not need to check whether the admin is a valid identity
-					// according to this MSP, since we already check this at Setup time
-					// if there is a match, we can just return
-					return nil
-				}
+			if msp.isInAdmins(id.(*identity)) {
+				return nil
 			}
 			return errors.New("This identity is not an admin")
 		case m.MSPRole_CLIENT:
@@ -559,6 +570,75 @@ func (msp *bccspmsp) satisfiesPrincipalInternalV13(id Identity, principal *m.MSP
 		// Use the pre-v1.3 function to check other principal types
 		return msp.satisfiesPrincipalInternalPreV13(id, principal)
 	}
+}
+
+// satisfiesPrincipalInternalV143 takes as arguments the identity and the principal.
+// The function returns an error if one occurred.
+// The function implements the additional behavior expected of an MSP starting from v2.0.
+// For v1.3 functionality, the function calls the satisfiesPrincipalInternalPreV13.
+func (msp *bccspmsp) satisfiesPrincipalInternalV143(id Identity, principal *m.MSPPrincipal) error {
+	_, okay := id.(*identity)
+	if !okay {
+		return errors.New("invalid identity type, expected *identity")
+	}
+
+	switch principal.PrincipalClassification {
+	case m.MSPPrincipal_ROLE:
+		if !msp.ouEnforcement {
+			break
+		}
+
+		// Principal contains the msp role
+		mspRole := &m.MSPRole{}
+		err := proto.Unmarshal(principal.Principal, mspRole)
+		if err != nil {
+			return errors.Wrap(err, "could not unmarshal MSPRole from principal")
+		}
+
+		// at first, we check whether the MSP
+		// identifier is the same as that of the identity
+		if mspRole.MspIdentifier != msp.name {
+			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", mspRole.MspIdentifier, id.GetMSPIdentifier())
+		}
+
+		// now we validate the admin role only, the other roles are left to the v1.3 function
+		switch mspRole.Role {
+		case m.MSPRole_ADMIN:
+			mspLogger.Debugf("Checking if identity has been named explicitly as an admin for %s", msp.name)
+			// in the case of admin, we check that the
+			// id is exactly one of our admins
+			if msp.isInAdmins(id.(*identity)) {
+				return nil
+			}
+
+			// or it carries the Admin OU, in this case check that the identity is valid as well.
+			mspLogger.Debugf("Checking if identity carries the admin ou for %s", msp.name)
+			if err := msp.Validate(id); err != nil {
+				return errors.Wrapf(err, "The identity is not valid under this MSP [%s]", msp.name)
+			}
+
+			if err := msp.hasOURole(id, m.MSPRole_ADMIN); err != nil {
+				return errors.Wrapf(err, "The identity is not an admin under this MSP [%s]", msp.name)
+			}
+
+			return nil
+		}
+	}
+
+	// Use the v1.3 function to check other principal types
+	return msp.satisfiesPrincipalInternalV13(id, principal)
+}
+
+func (msp *bccspmsp) isInAdmins(id *identity) bool {
+	for _, admincert := range msp.admins {
+		if bytes.Equal(id.cert.Raw, admincert.(*identity).cert.Raw) {
+			// we do not need to check whether the admin is a valid identity
+			// according to this MSP, since we already check this at Setup time
+			// if there is a match, we can just return
+			return true
+		}
+	}
+	return false
 }
 
 // getCertificationChain returns the certification chain of the passed identity within this msp

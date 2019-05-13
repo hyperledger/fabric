@@ -237,3 +237,34 @@ func TestSatisfiesPrincipalClient(t *testing.T) {
 		assert.Contains(t, err.Error(), "The identity is not a [PEER] under this MSP [SampleOrg]")
 	}))
 }
+
+func TestSatisfiesPrincipalAdmin(t *testing.T) {
+	// testdata/nodeouadmin:
+	// the configuration enables NodeOUs (with adminOU) and admin and signing identity are valid
+	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeouadmin", MSPv1_4_3)
+	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
+
+	cert, err := readFile("testdata/nodeouadmin/adm/testadmincert.pem")
+	assert.NoError(t, err)
+
+	id, _, err := thisMSP.(*bccspmsp).getIdentityFromConf(cert)
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+	err = id.SatisfiesPrincipal(principal)
+	assert.NoError(t, err)
+}
+
+func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
+	// testdata/nodeouadmin2:
+	// the configuration enables NodeOUs (with adminOU) but no valid identifier for the AdminOU
+	getLocalMSPWithVersionErr(t, "testdata/nodeouadmin2", MSPv1_4_3, "invalid admin ou configuration, nil.")
+
+	// testdata/nodeouadmin3:
+	// the configuration enables NodeOUs (with adminOU) but no valid identifier for the AdminOU
+	getLocalMSPWithVersionErr(t, "testdata/nodeouadmin3", MSPv1_4_3, "invalid admin ou configuration, nil.")
+}

@@ -163,6 +163,10 @@ func (msp *bccspmsp) setupCAs(conf *m.FabricMSPConfig) error {
 }
 
 func (msp *bccspmsp) setupAdmins(conf *m.FabricMSPConfig) error {
+	return msp.internalSetupAdmin(conf)
+}
+
+func (msp *bccspmsp) setupAdminsPreV143(conf *m.FabricMSPConfig) error {
 	// make and fill the set of admin certs (if present)
 	msp.admins = make([]Identity, len(conf.Admins))
 	for i, admCert := range conf.Admins {
@@ -172,6 +176,19 @@ func (msp *bccspmsp) setupAdmins(conf *m.FabricMSPConfig) error {
 		}
 
 		msp.admins[i] = id
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) setupAdminsV143(conf *m.FabricMSPConfig) error {
+	// make and fill the set of admin certs (if present)
+	if err := msp.setupAdminsPreV143(conf); err != nil {
+		return err
+	}
+
+	if len(msp.admins) == 0 && !msp.ouEnforcement {
+		return errors.New("administrators must be declared when no ou enforcement is set")
 	}
 
 	return nil
@@ -257,6 +274,32 @@ func (msp *bccspmsp) setupNodeOUs(config *m.FabricMSPConfig) error {
 
 	} else {
 		msp.ouEnforcement = false
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) setupNodeOUsV143(config *m.FabricMSPConfig) error {
+	if err := msp.setupNodeOUs(config); err != nil {
+		return err
+	}
+
+	if config.FabricNodeOus == nil {
+		return nil
+	}
+
+	// AdminOU
+	if config.FabricNodeOus.AdminOuIdentifier == nil {
+		return errors.New("invalid admin ou configuration, nil.")
+	}
+
+	msp.adminOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOus.AdminOuIdentifier.OrganizationalUnitIdentifier}
+	if len(config.FabricNodeOus.AdminOuIdentifier.Certificate) != 0 {
+		certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOus.AdminOuIdentifier.Certificate)
+		if err != nil {
+			return err
+		}
+		msp.adminOU.CertifiersIdentifier = certifiersIdentifier
 	}
 
 	return nil
@@ -427,6 +470,55 @@ func (msp *bccspmsp) preSetupV1(conf *m.FabricMSPConfig) error {
 	return nil
 }
 
+func (msp *bccspmsp) preSetupV143(conf *m.FabricMSPConfig) error {
+	// setup crypto config
+	if err := msp.setupCrypto(conf); err != nil {
+		return err
+	}
+
+	// Setup CAs
+	if err := msp.setupCAs(conf); err != nil {
+		return err
+	}
+
+	// Setup CRLs
+	if err := msp.setupCRLs(conf); err != nil {
+		return err
+	}
+
+	// Finalize setup of the CAs
+	if err := msp.finalizeSetupCAs(); err != nil {
+		return err
+	}
+
+	// setup the signer (if present)
+	if err := msp.setupSigningIdentity(conf); err != nil {
+		return err
+	}
+
+	// setup TLS CAs
+	if err := msp.setupTLSCAs(conf); err != nil {
+		return err
+	}
+
+	// setup the OUs
+	if err := msp.setupOUs(conf); err != nil {
+		return err
+	}
+
+	// setup NodeOUs
+	if err := msp.setupNodeOUsV143(conf); err != nil {
+		return err
+	}
+
+	// Setup Admins
+	if err := msp.setupAdmins(conf); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (msp *bccspmsp) postSetupV1(conf *m.FabricMSPConfig) error {
 	// make sure that admins are valid members as well
 	// this way, when we validate an admin MSP principal
@@ -460,6 +552,20 @@ func (msp *bccspmsp) setupV11(conf *m.FabricMSPConfig) error {
 	return nil
 }
 
+func (msp *bccspmsp) setupV143(conf *m.FabricMSPConfig) error {
+	err := msp.preSetupV143(conf)
+	if err != nil {
+		return err
+	}
+
+	err = msp.postSetupV143(conf)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (msp *bccspmsp) postSetupV11(conf *m.FabricMSPConfig) error {
 	// Check for OU enforcement
 	if !msp.ouEnforcement {
@@ -479,6 +585,23 @@ func (msp *bccspmsp) postSetupV11(conf *m.FabricMSPConfig) error {
 		err = admin.SatisfiesPrincipal(principal)
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("admin %d is invalid", i))
+		}
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) postSetupV143(conf *m.FabricMSPConfig) error {
+	// Check for OU enforcement
+	if !msp.ouEnforcement {
+		// No enforcement required. Call post setup as per V1
+		return msp.postSetupV1(conf)
+	}
+
+	// Check that admins are clients or admins
+	for i, admin := range msp.admins {
+		if msp.hasOURole(admin, m.MSPRole_CLIENT) != nil && msp.hasOURole(admin, m.MSPRole_ADMIN) != nil {
+			return errors.Errorf("admin %d is invalid", i)
 		}
 	}
 

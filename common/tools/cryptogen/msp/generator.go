@@ -24,16 +24,19 @@ const (
 	CLIENT = iota
 	ORDERER
 	PEER
+	ADMIN
 )
 
 const (
 	CLIENTOU = "client"
 	PEEROU   = "peer"
+	ADMINOU  = "admin"
 )
 
 var nodeOUMap = map[int]string{
 	CLIENT: CLIENTOU,
 	PEER:   PEEROU,
+	ADMIN:  ADMINOU,
 }
 
 func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
@@ -259,6 +262,10 @@ func exportConfig(mspDir, caFile string, enable bool) error {
 			PeerOUIdentifier: &fabricmsp.OrganizationalUnitIdentifiersConfiguration{
 				Certificate:                  caFile,
 				OrganizationalUnitIdentifier: PEEROU,
+			},
+			AdminOUIdentifier: &fabricmsp.OrganizationalUnitIdentifiersConfiguration{
+				Certificate:                  caFile,
+				OrganizationalUnitIdentifier: ADMINOU,
 			},
 		},
 	}
