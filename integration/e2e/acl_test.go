@@ -360,6 +360,69 @@ var _ = Describe("EndToEndACL", func() {
 		maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", org1Peer0, org2Peer0)
 		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, org1Peer0, org2Peer0)
 		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight+2, org1Peer0, org2Peer0)
+
+		//
+		// when the ACL policy for CommitChaincodeDefinition is not satisified
+		//
+		By("setting the commit chaincode definition ACL policy to Org1/Admins")
+		policyName = resources.Lifecycle_CommitChaincodeDefinition
+		policy = "/Channel/Application/Org1/Admins"
+		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
+
+		By("committing the chaincode definition as a forbidden Org2 Admin identity")
+		peerAddresses := []string{
+			network.PeerAddress(org1Peer0, nwo.ListenPort),
+			network.PeerAddress(org2Peer0, nwo.ListenPort),
+		}
+		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeCommitLifecycle{
+			ChannelID:           "testchannel",
+			Orderer:             network.OrdererAddress(orderer, nwo.ListenPort),
+			Name:                chaincode.Name,
+			Version:             chaincode.Version,
+			Sequence:            chaincode.Sequence,
+			EndorsementPlugin:   chaincode.EndorsementPlugin,
+			ValidationPlugin:    chaincode.ValidationPlugin,
+			SignaturePolicy:     chaincode.SignaturePolicy,
+			ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+			InitRequired:        chaincode.InitRequired,
+			CollectionsConfig:   chaincode.CollectionsConfig,
+			PeerAddresses:       peerAddresses,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+		Expect(sess.Err).To(gbytes.Say(`\QError: proposal failed with status: 500 - Failed to authorize invocation due to failed ACL check: failed evaluating policy on signed data during check policy [/Channel/Application/Org1/Admins]: [signature set did not satisfy policy]\E`))
+
+		//
+		// when the ACL policy for CommitChaincodeDefinition is satisified
+		//
+		nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, org1Peer0, org1Peer0, org2Peer0)
+
+		//
+		// when the ACL policy for QueryChaincodeDefinition is satisified
+		//
+		By("setting the query chaincode definition ACL policy to Org1/Admins")
+		policyName = resources.Lifecycle_QueryChaincodeDefinition
+		policy = "/Channel/Application/Org1/Admins"
+		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
+
+		By("querying the chaincode definition as a permitted Org1 Admin identity")
+		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeListCommittedLifecycle{
+			ChannelID: "testchannel",
+			Name:      "mycc",
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+		Expect(sess.Out).To(gbytes.Say(fmt.Sprint("Committed chaincode definition for chaincode 'mycc' on channel 'testchannel':\nVersion: 0.0, Sequence: 1")))
+
+		By("querying the chaincode definition as a forbidden Org2 Admin identity")
+		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeListCommittedLifecycle{
+			ChannelID: "testchannel",
+			Name:      "mycc",
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+		Expect(sess.Out).NotTo(gbytes.Say(fmt.Sprint("Committed chaincode definition for chaincode 'mycc' on channel 'testchannel':\nVersion: 0.0, Sequence: 1")))
+		Expect(sess.Err).To(gbytes.Say(`\QError: query failed with status: 500 - Failed to authorize invocation due to failed ACL check: failed evaluating policy on signed data during check policy [/Channel/Application/Org1/Admins]: [signature set did not satisfy policy]\E`))
 	})
 })
 
