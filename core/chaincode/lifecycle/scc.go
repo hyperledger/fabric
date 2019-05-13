@@ -17,7 +17,11 @@ import (
 	persistenceintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/protos/common"
 	cb "github.com/hyperledger/fabric/protos/common"
+	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
@@ -105,6 +109,13 @@ type ChannelConfigSource interface {
 	GetStableChannelConfig(channelID string) channelconfig.Resources
 }
 
+//go:generate counterfeiter -o mock/queryexecutor_provider.go --fake-name QueryExecutorProvider . QueryExecutorProvider
+
+// QueryExecutorProvider provides a way to retrieve the query executor assosciated with an invocation
+type QueryExecutorProvider interface {
+	TxQueryExecutor(channelID, txID string) ledger.SimpleQueryExecutor
+}
+
 // SCC implements the required methods to satisfy the chaincode interface.
 // It routes the invocation calls to the backing implementations.
 type SCC struct {
@@ -113,6 +124,9 @@ type SCC struct {
 	ACLProvider aclmgmt.ACLProvider
 
 	ChannelConfigSource ChannelConfigSource
+
+	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
+	QueryExecutorProvider  QueryExecutorProvider
 
 	// Functions provides the backing implementation of lifecycle.
 	Functions SCCFunctions
@@ -176,7 +190,8 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 
 	var ac channelconfig.Application
-	if channelID := stub.GetChannelID(); channelID != "" {
+	var channelID string
+	if channelID = stub.GetChannelID(); channelID != "" {
 		channelConfig := scc.ChannelConfigSource.GetStableChannelConfig(channelID)
 		if channelConfig == nil {
 			return shim.Error(fmt.Sprintf("could not get channelconfig for channel '%s'", channelID))
@@ -206,6 +221,7 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		args[1],
 		string(args[0]),
 		&Invocation{
+			ChannelID:         channelID,
 			ApplicationConfig: ac,
 			SCC:               scc,
 			Stub:              stub,
@@ -227,6 +243,7 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 type Invocation struct {
+	ChannelID         string
 	ApplicationConfig channelconfig.Application // Note this may be nil
 	Stub              shim.ChaincodeStubInterface
 	SCC               *SCC
@@ -308,10 +325,9 @@ func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodes
 // ApproveChaincodeDefinitionForMyOrg is a SCC function that may be dispatched
 // to which routes to the underlying lifecycle implementation.
 func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChaincodeDefinitionForMyOrgArgs) (proto.Message, error) {
-	if err := validateInput(input.Name, input.Version, input.Collections); err != nil {
+	if err := i.validateInput(input.Name, input.Version, input.Collections); err != nil {
 		return nil, err
 	}
-
 	collectionName := ImplicitCollectionNameForOrg(i.SCC.OrgMSPID)
 	var collectionConfig []*cb.CollectionConfig
 	if input.Collections != nil {
@@ -426,7 +442,7 @@ func (i *Invocation) QueryApprovalStatus(input *lb.QueryApprovalStatusArgs) (pro
 // CommitChaincodeDefinition is a SCC function that may be dispatched
 // to which routes to the underlying lifecycle implementation.
 func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefinitionArgs) (proto.Message, error) {
-	if err := validateInput(input.Name, input.Version, input.Collections); err != nil {
+	if err := i.validateInput(input.Name, input.Version, input.Collections); err != nil {
 		return nil, err
 	}
 
@@ -555,7 +571,7 @@ var (
 	}
 )
 
-func validateInput(name, version string, collections *cb.CollectionConfigPackage) error {
+func (i *Invocation) validateInput(name, version string, collections *cb.CollectionConfigPackage) error {
 	if !ChaincodeNameRegExp.MatchString(name) {
 		return errors.Errorf("invalid chaincode name '%s'. Names can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics", name)
 	}
@@ -567,22 +583,211 @@ func validateInput(name, version string, collections *cb.CollectionConfigPackage
 		return errors.Errorf("invalid chaincode version '%s'. Versions can only consist of alphanumerics, '_', '-', '+', and '.'", version)
 	}
 
-	if collections == nil {
-		return nil
+	collConfigs, err := extractStaticCollectionConfigs(collections)
+	if err != nil {
+		return err
+	}
+	channelConfig := i.SCC.ChannelConfigSource.GetStableChannelConfig(i.ChannelID)
+	if channelConfig == nil {
+		return errors.Errorf("could not get channelconfig for channel '%s'", i.ChannelID)
+	}
+	mspMgr := channelConfig.MSPManager()
+	if mspMgr == nil {
+		return errors.Errorf(fmt.Sprintf("could not get MSP manager for channel '%s'", i.ChannelID))
 	}
 
-	for _, c := range collections.Config {
+	if err := validateCollectionConfigs(collConfigs, mspMgr); err != nil {
+		return err
+	}
+
+	// validate against collection configs in the committed definition
+	qe := i.SCC.QueryExecutorProvider.TxQueryExecutor(i.Stub.GetChannelID(), i.Stub.GetTxID())
+	committedCCDef, err := i.SCC.DeployedCCInfoProvider.ChaincodeInfo(i.ChannelID, name, qe)
+	if err != nil {
+		return errors.Wrapf(err, "could not retrieve committed definition for chaincode '%s'", name)
+	}
+	if committedCCDef == nil {
+		return nil
+	}
+	if err := validateCollConfigsAgainstCommittedDef(collConfigs, committedCCDef.ExplicitCollectionConfigPkg); err != nil {
+		return err
+	}
+	return nil
+}
+
+func extractStaticCollectionConfigs(collConfigPkg *common.CollectionConfigPackage) ([]*common.StaticCollectionConfig, error) {
+	if collConfigPkg == nil || len(collConfigPkg.Config) == 0 {
+		return nil, nil
+	}
+	collConfigs := make([]*common.StaticCollectionConfig, len(collConfigPkg.Config))
+	for i, c := range collConfigPkg.Config {
 		switch t := c.Payload.(type) {
 		case *cb.CollectionConfig_StaticCollectionConfig:
-			if !collectionNameRegExp.MatchString(t.StaticCollectionConfig.Name) {
-				return errors.Errorf("invalid collection name '%s'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'", t.StaticCollectionConfig.Name)
+			collConfig := t.StaticCollectionConfig
+			if collConfig == nil {
+				return nil, errors.Errorf("collection configuration is empty")
 			}
+			collConfigs[i] = collConfig
 		default:
 			// this should only occur if a developer has added a new
 			// collection config type
-			return errors.Errorf("collection config contains unexpected payload type: %T", t)
+			return nil, errors.Errorf("collection config contains unexpected payload type: %T", t)
 		}
 	}
+	return collConfigs, nil
+}
 
+func validateCollectionConfigs(collConfigs []*common.StaticCollectionConfig, mspMgr msp.MSPManager) error {
+	if len(collConfigs) == 0 {
+		return nil
+	}
+	collNamesMap := map[string]struct{}{}
+	// Process each collection config from a set of collection configs
+	for _, c := range collConfigs {
+		if !collectionNameRegExp.MatchString(c.Name) {
+			return errors.Errorf("invalid collection name '%s'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'",
+				c.Name)
+		}
+		// Ensure that there are no duplicate collection names
+		if _, ok := collNamesMap[c.Name]; ok {
+			return fmt.Errorf("collection-name: %s -- found duplicate in collection configuration",
+				c.Name)
+		}
+		collNamesMap[c.Name] = struct{}{}
+		// Validate gossip related parameters present in the collection config
+		if c.MaximumPeerCount < c.RequiredPeerCount {
+			return fmt.Errorf("collection-name: %s -- maximum peer count (%d) cannot be greater than the required peer count (%d)",
+				c.Name, c.MaximumPeerCount, c.RequiredPeerCount)
+		}
+		if c.RequiredPeerCount < 0 {
+			return fmt.Errorf("collection-name: %s -- requiredPeerCount (%d) cannot be less than zero",
+				c.Name, c.RequiredPeerCount)
+		}
+		if err := validateCollectionConfigMemberOrgsPolicy(c, mspMgr); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateCollectionConfigAgainstMsp checks whether the supplied collection configuration
+// complies to the given msp configuration
+func validateCollectionConfigMemberOrgsPolicy(coll *common.StaticCollectionConfig, mspMgr msp.MSPManager) error {
+	if coll.MemberOrgsPolicy == nil {
+		return fmt.Errorf("collection member policy is not set for collection '%s'", coll.Name)
+	}
+	if coll.MemberOrgsPolicy.GetSignaturePolicy() == nil {
+		return fmt.Errorf("collection member org policy is empty for collection '%s'", coll.Name)
+	}
+
+	// make sure that the signature policy is meaningful (only consists of ORs)
+	if err := validateSpOrConcat(coll.MemberOrgsPolicy.GetSignaturePolicy().Rule); err != nil {
+		return errors.WithMessagef(err, "collection-name: %s -- error in member org policy", coll.Name)
+	}
+
+	msps, err := mspMgr.GetMSPs()
+	if err != nil {
+		return errors.Wrapf(err, "could not get MSPs")
+	}
+
+	// make sure that the orgs listed are actually part of the channel
+	// check all principals in the signature policy
+	for _, principal := range coll.MemberOrgsPolicy.GetSignaturePolicy().Identities {
+		var orgID string
+		// the member org policy only supports certain principal types
+		switch principal.PrincipalClassification {
+
+		case mspprotos.MSPPrincipal_ROLE:
+			msprole := &mspprotos.MSPRole{}
+			err := proto.Unmarshal(principal.Principal, msprole)
+			if err != nil {
+				return errors.Wrapf(err, "collection-name: %s -- cannot unmarshal identity bytes into MSPRole", coll.GetName())
+			}
+			orgID = msprole.MspIdentifier
+			// the msp map is indexed using msp IDs - this behavior is implementation specific, making the following check a bit of a hack
+			_, ok := msps[orgID]
+			if !ok {
+				return errors.Errorf("collection-name: %s -- collection member '%s' is not part of the channel", coll.GetName(), orgID)
+			}
+
+		case mspprotos.MSPPrincipal_ORGANIZATION_UNIT:
+			mspou := &mspprotos.OrganizationUnit{}
+			err := proto.Unmarshal(principal.Principal, mspou)
+			if err != nil {
+				return errors.Wrapf(err, "collection-name: %s -- cannot unmarshal identity bytes into OrganizationUnit", coll.GetName())
+			}
+			orgID = mspou.MspIdentifier
+			// the msp map is indexed using msp IDs - this behavior is implementation specific, making the following check a bit of a hack
+			_, ok := msps[orgID]
+			if !ok {
+				return errors.Errorf("collection-name: %s -- collection member '%s' is not part of the channel", coll.GetName(), orgID)
+			}
+
+		case mspprotos.MSPPrincipal_IDENTITY:
+			if _, err := mspMgr.DeserializeIdentity(principal.Principal); err != nil {
+				return errors.Errorf("collection-name: %s -- contains an identity that is not part of the channel", coll.GetName())
+			}
+
+		default:
+			return errors.Errorf("collection-name: %s -- principal type %v is not supported", coll.GetName(), principal.PrincipalClassification)
+		}
+	}
+	return nil
+}
+
+// validateSpOrConcat checks if the supplied signature policy is just an OR-concatenation of identities
+func validateSpOrConcat(sp *common.SignaturePolicy) error {
+	if sp.GetNOutOf() == nil {
+		return nil
+	}
+	// check if N == 1 (OR concatenation)
+	if sp.GetNOutOf().N != 1 {
+		return errors.New(fmt.Sprintf("signature policy is not an OR concatenation, NOutOf %d", sp.GetNOutOf().N))
+	}
+	// recurse into all sub-rules
+	for _, rule := range sp.GetNOutOf().Rules {
+		err := validateSpOrConcat(rule)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateCollConfigsAgainstCommittedDef(
+	proposedCollConfs []*common.StaticCollectionConfig,
+	committedCollConfPkg *common.CollectionConfigPackage,
+) error {
+	if committedCollConfPkg == nil || len(committedCollConfPkg.Config) == 0 {
+		return nil
+	}
+
+	if len(proposedCollConfs) == 0 {
+		return errors.Errorf("the proposed collection config does not contain previously defined collections")
+	}
+
+	proposedCollsMap := map[string]*common.StaticCollectionConfig{}
+	for _, c := range proposedCollConfs {
+		proposedCollsMap[c.Name] = c
+	}
+
+	// In the new collection config package, ensure that there is one entry per old collection. Any
+	// number of new collections are allowed.
+	for _, committedCollConfig := range committedCollConfPkg.Config {
+		committedColl := committedCollConfig.GetStaticCollectionConfig()
+		// It cannot be nil
+		if committedColl == nil {
+			return errors.Errorf("unknown collection configuration type")
+		}
+
+		newCollection, ok := proposedCollsMap[committedColl.Name]
+		if !ok {
+			return errors.Errorf("existing collection [%s] missing in the proposed collection configuration", committedColl.Name)
+		}
+
+		if newCollection.BlockToLive != committedColl.BlockToLive {
+			return errors.Errorf("the BlockToLive in an existing collection [%s] modified. Existing value [%d]", committedColl.Name, committedColl.BlockToLive)
+		}
+	}
 	return nil
 }

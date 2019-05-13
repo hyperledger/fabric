@@ -30,13 +30,17 @@ var _ = Describe("Integration", func() {
 		ef        *lifecycle.ExternalFunctions
 		scc       *lifecycle.SCC
 
-		fakeChannelConfigSource *mock.ChannelConfigSource
-		fakeChannelConfig       *mock.ChannelConfig
-		fakeApplicationConfig   *mock.ApplicationConfig
-		fakeCapabilities        *mock.ApplicationCapabilities
-		fakeOrgConfig           *mock.ApplicationOrgConfig
-		fakeStub                *mock.ChaincodeStub
-		fakeACLProvider         *mock.ACLProvider
+		fakeChannelConfigSource    *mock.ChannelConfigSource
+		fakeChannelConfig          *mock.ChannelConfig
+		fakeApplicationConfig      *mock.ApplicationConfig
+		fakeCapabilities           *mock.ApplicationCapabilities
+		fakeOrgConfig              *mock.ApplicationOrgConfig
+		fakeStub                   *mock.ChaincodeStub
+		fakeACLProvider            *mock.ACLProvider
+		fakeMSPManager             *mock.MSPManager
+		fakeQueryExecutorProvider  *mock.QueryExecutorProvider
+		fakeQueryExecutor          *mock.SimpleQueryExecutor
+		fakeDeployedCCInfoProvider *mock.LegacyDeployedCCInfoProvider
 
 		fakeOrgKVStore    map[string][]byte
 		fakePublicKVStore map[string][]byte
@@ -64,6 +68,13 @@ var _ = Describe("Integration", func() {
 		fakeOrgConfig = &mock.ApplicationOrgConfig{}
 		fakeOrgConfig.MSPIDReturns("fake-mspid")
 
+		fakeMSPManager = &mock.MSPManager{}
+		fakeChannelConfig.MSPManagerReturns(fakeMSPManager)
+		fakeQueryExecutorProvider = &mock.QueryExecutorProvider{}
+		fakeQueryExecutor = &mock.SimpleQueryExecutor{}
+		fakeQueryExecutorProvider.TxQueryExecutorReturns(fakeQueryExecutor)
+		fakeDeployedCCInfoProvider = &mock.LegacyDeployedCCInfoProvider{}
+
 		fakeApplicationConfig.OrganizationsReturns(map[string]channelconfig.ApplicationOrg{
 			"fakeOrg": fakeOrgConfig,
 		})
@@ -72,10 +83,12 @@ var _ = Describe("Integration", func() {
 			Dispatcher: &dispatcher.Dispatcher{
 				Protobuf: &dispatcher.ProtobufImpl{},
 			},
-			Functions:           ef,
-			OrgMSPID:            "fake-mspid",
-			ChannelConfigSource: fakeChannelConfigSource,
-			ACLProvider:         fakeACLProvider,
+			Functions:              ef,
+			OrgMSPID:               "fake-mspid",
+			ChannelConfigSource:    fakeChannelConfigSource,
+			ACLProvider:            fakeACLProvider,
+			QueryExecutorProvider:  fakeQueryExecutorProvider,
+			DeployedCCInfoProvider: fakeDeployedCCInfoProvider,
 		}
 
 		fakePublicKVStore = map[string][]byte{}

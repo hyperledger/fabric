@@ -280,3 +280,59 @@ var _ = Describe("LaunchState", func() {
 		Expect(launchState.Err()).To(MatchError("mango"))
 	})
 })
+
+var _ = Describe("TxSimulatorGetter", func() {
+	var (
+		hr              *chaincode.HandlerRegistry
+		handler         *chaincode.Handler
+		txQEGetter      *chaincode.TxQueryExecutorGetter
+		fakeTxSimulator *mock.TxSimulator
+	)
+
+	BeforeEach(func() {
+		hr = chaincode.NewHandlerRegistry(true)
+		handler = &chaincode.Handler{
+			TXContexts: chaincode.NewTransactionContexts(),
+		}
+		fakeTxSimulator = &mock.TxSimulator{}
+		txQEGetter = &chaincode.TxQueryExecutorGetter{
+			HandlerRegistry: hr,
+			PackageID:       "package-ID",
+		}
+	})
+
+	When("No Handler is created for package-ID", func() {
+		It("returns a nil TxSimulator", func() {
+			sim := txQEGetter.TxQueryExecutor("channel-ID", "tx-ID")
+			Expect(sim).To(BeNil())
+		})
+	})
+
+	When("No TxContext is created", func() {
+		BeforeEach(func() {
+			chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "package-ID"})
+			hr.Register(handler)
+		})
+
+		It("returns a nil TxSimulator", func() {
+			sim := txQEGetter.TxQueryExecutor("channel-ID", "tx-ID")
+			Expect(sim).To(BeNil())
+		})
+	})
+
+	When("Handler is created for package-ID and TxContext is created for channel-ID/tx-ID", func() {
+		BeforeEach(func() {
+			chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "package-ID"})
+			hr.Register(handler)
+			handler.TXContexts.Create(&ccprovider.TransactionParams{
+				ChannelID:   "channel-ID",
+				TxID:        "tx-ID",
+				TXSimulator: fakeTxSimulator,
+			})
+		})
+		It("returns associated TxSimulator", func() {
+			sim := txQEGetter.TxQueryExecutor("channel-ID", "tx-ID")
+			Expect(sim).To(Equal(fakeTxSimulator))
+		})
+	})
+})

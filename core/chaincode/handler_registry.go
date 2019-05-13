@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
 )
 
@@ -175,4 +176,21 @@ func (r *HandlerRegistry) Deregister(packageID ccintf.CCID) error {
 
 	chaincodeLogger.Debugf("deregistered handler with key: %s", packageID)
 	return nil
+}
+
+type TxQueryExecutorGetter struct {
+	HandlerRegistry *HandlerRegistry
+	PackageID       ccintf.CCID
+}
+
+func (g *TxQueryExecutorGetter) TxQueryExecutor(chainID, txID string) ledger.SimpleQueryExecutor {
+	handler := g.HandlerRegistry.Handler(g.PackageID)
+	if handler == nil {
+		return nil
+	}
+	txContext := handler.TXContexts.Get(chainID, txID)
+	if txContext == nil {
+		return nil
+	}
+	return txContext.TXSimulator
 }
