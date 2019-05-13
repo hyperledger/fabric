@@ -10,7 +10,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 )
 
-//go:generate mockery -dir . -name SecurityAdvisor -case underscore -output ../mocks/
+//go:generate mockery -dir . -name SecurityAdvisor -case underscore -output mocks/
 
 // SecurityAdvisor defines an external auxiliary object
 // that provides security and identity related capabilities
