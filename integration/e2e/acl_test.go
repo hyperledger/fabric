@@ -326,6 +326,40 @@ var _ = Describe("EndToEndACL", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
 		Expect(sess.Err).To(gbytes.Say("Error: proposal failed with status: 500 - cannot use new lifecycle for channel 'testchannel' as it does not have the required capabilities enabled"))
+
+		// enable V2_0 Capabilities on the channel
+		By("enabling V2_0 capabilities")
+		nwo.EnableV2_0Capabilities(network, "testchannel", orderer, org1Peer0, org2Peer0)
+
+		//
+		// when the ACL policy for _lifecycle/ApproveChaincodeDefinitionForOrg is not satisfied
+		//
+		By("approving a chaincode definition for org1 as an org2 admin")
+		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeApproveForMyOrgLifecycle{
+			ChannelID:           "testchannel",
+			Orderer:             network.OrdererAddress(orderer, nwo.ListenPort),
+			Name:                chaincode.Name,
+			Version:             chaincode.Version,
+			Sequence:            chaincode.Sequence,
+			EndorsementPlugin:   chaincode.EndorsementPlugin,
+			ValidationPlugin:    chaincode.ValidationPlugin,
+			SignaturePolicy:     chaincode.SignaturePolicy,
+			ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+			InitRequired:        chaincode.InitRequired,
+			CollectionsConfig:   chaincode.CollectionsConfig,
+			PeerAddresses:       []string{network.PeerAddress(org1Peer0, nwo.ListenPort)},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+		Expect(sess.Err).To(gbytes.Say(`Error: proposal failed with status: 500 - Failed to authorize invocation due to failed ACL check: Failed deserializing proposal creator during channelless check policy with policy \[Admins\]: \[expected MSP ID Org1MSP, received Org2MSP\]`))
+
+		//
+		// when the ACL policy for _lifecycle/ApproveChaincodeDefinitionForOrg is satisfied
+		//
+		By("approving a chaincode definition for org1 and org2")
+		maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", org1Peer0, org2Peer0)
+		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, org1Peer0, org2Peer0)
+		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight+2, org1Peer0, org2Peer0)
 	})
 })
 
