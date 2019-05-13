@@ -205,4 +205,6 @@ message FabricNodeOUs {
     // OU Identifier of the peers
     FabricOUIdentifier peer_ou_identifier = 3;
 
+    // OU Identifier of the admins
+    FabricOUIdentifier admin_ou_identifier = 4;
 }

@@ -17,9 +17,11 @@ limitations under the License.
 package msp
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
 )
@@ -236,4 +238,55 @@ func TestSatisfiesPrincipalClient(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "The identity is not a [PEER] under this MSP [SampleOrg]")
 	}))
+}
+
+func TestSatisfiesPrincipalAdmin(t *testing.T) {
+	// testdata/nodeouadmin:
+	// the configuration enables NodeOUs (with adminOU) and admin and signing identity are valid
+	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeouadmin", MSPv1_4_2)
+	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
+
+	cert, err := readFile("testdata/nodeouadmin/adm/testadmincert.pem")
+	assert.NoError(t, err)
+
+	id, _, err := thisMSP.(*bccspmsp).getIdentityFromConf(cert)
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+	err = id.SatisfiesPrincipal(principal)
+	assert.NoError(t, err)
+}
+
+func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
+	// testdata/nodeouadmin2:
+	// the configuration enables NodeOUs (with adminOU) but no valid identifier for the AdminOU
+	conf, err := GetLocalMspConfig("testdata/nodeouadmin2", nil, "SampleOrg")
+	assert.NoError(t, err)
+
+	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/nodeouadmin2", "keystore"), true)
+	assert.NoError(t, err)
+	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_4_2, ks)
+	assert.NoError(t, err)
+
+	err = thisMSP.Setup(conf)
+	assert.Error(t, err)
+	assert.Equal(t, "invalid admin ou configuration, nil.", err.Error())
+
+	// testdata/nodeouadmin3:
+	// the configuration enables NodeOUs (with adminOU) but no valid identifier for the AdminOU
+	conf, err = GetLocalMspConfig("testdata/nodeouadmin3", nil, "SampleOrg")
+	assert.NoError(t, err)
+
+	ks, err = sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/nodeouadmin3", "keystore"), true)
+	assert.NoError(t, err)
+	thisMSP, err = NewBccspMspWithKeyStore(MSPv1_4_2, ks)
+	assert.NoError(t, err)
+
+	err = thisMSP.Setup(conf)
+	assert.Error(t, err)
+	assert.Equal(t, "invalid admin ou configuration, nil.", err.Error())
 }
