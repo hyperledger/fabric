@@ -18,7 +18,7 @@ pipeline {
       environment {
         ARCH="amd64"
         GOVER="1.11.5"
-        GOROOT="/usr/bin/go1.11.5/go"
+        GOROOT="/usr/bin/go"
         GOPATH="${env.WORKSPACE}/go"
         PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${env.GOROOT}/bin:${env.GOPATH}/bin"
       }
