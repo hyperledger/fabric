@@ -21,7 +21,7 @@ pipeline {
         GOROOT="/usr/bin/go"
         GOPATH="${env.WORKSPACE}/go"
         PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${env.GOROOT}/bin:${env.GOPATH}/bin"
-        BASE_WD=${WORKSPACE}/go/src/github.com/Vijaypunugubati
+        BASE_WD="${WORKSPACE}/go/src/github.com/Vijaypunugubati"
       }
         
       stages
