@@ -40,7 +40,7 @@ pipeline {
             //when { branch 'master'}          
                 steps {
                   dir('go/src/github.com/Vijaypunugubati/fabric') {
-                    sh label: 'Running Fabric Unit Tests', script: 'make unit-test'
+                    sh label: 'Running Fabric Unit Tests', script: 'make integration-test'
                     //build job: 'code_merge_develop_QA'
                       // sh '''git --version
                       //     git checkout QA
