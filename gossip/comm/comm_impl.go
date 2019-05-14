@@ -355,7 +355,7 @@ func (c *commImpl) PresumedDead() <-chan common.PKIidType {
 
 func (c *commImpl) CloseConn(peer *RemotePeer) {
 	c.logger.Debug("Closing connection for", peer)
-	c.connStore.closeConn(peer)
+	c.connStore.closeConnByPKIid(peer.PKIID)
 }
 
 func (c *commImpl) closeSubscriptions() {
@@ -569,7 +569,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 
 	defer func() {
 		c.logger.Debug("Client", extractRemoteAddress(stream), " disconnected")
-		c.connStore.closeByPKIid(connInfo.ID)
+		c.connStore.closeConnByPKIid(connInfo.ID)
 		conn.close()
 	}()
 
@@ -585,7 +585,7 @@ func (c *commImpl) disconnect(pkiID common.PKIidType) {
 		return
 	}
 	c.deadEndpoints <- pkiID
-	c.connStore.closeByPKIid(pkiID)
+	c.connStore.closeConnByPKIid(pkiID)
 }
 
 func readWithTimeout(stream interface{}, timeout time.Duration, address string) (*protoext.SignedGossipMessage, error) {

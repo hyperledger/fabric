@@ -132,16 +132,6 @@ func (cs *connectionStore) connNum() int {
 	return len(cs.pki2Conn)
 }
 
-func (cs *connectionStore) closeConn(peer *RemotePeer) {
-	cs.Lock()
-	defer cs.Unlock()
-
-	if conn, exists := cs.pki2Conn[string(peer.PKIID)]; exists {
-		conn.close()
-		delete(cs.pki2Conn, string(conn.pkiID))
-	}
-}
-
 func (cs *connectionStore) shutdown() {
 	cs.Lock()
 	cs.isClosing = true
@@ -157,7 +147,7 @@ func (cs *connectionStore) shutdown() {
 	for _, conn := range connections2Close {
 		wg.Add(1)
 		go func(conn *connection) {
-			cs.closeByPKIid(conn.pkiID)
+			cs.closeConnByPKIid(conn.pkiID)
 			wg.Done()
 		}(conn)
 	}
@@ -182,11 +172,12 @@ func (cs *connectionStore) registerConn(connInfo *protoext.ConnectionInfo,
 	conn.pkiID = connInfo.ID
 	conn.info = connInfo
 	conn.logger = cs.logger
+	// Assuming that cs.Lock has already been taken by the caller of this method
 	cs.pki2Conn[string(connInfo.ID)] = conn
 	return conn
 }
 
-func (cs *connectionStore) closeByPKIid(pkiID common.PKIidType) {
+func (cs *connectionStore) closeConnByPKIid(pkiID common.PKIidType) {
 	cs.Lock()
 	defer cs.Unlock()
 	if conn, exists := cs.pki2Conn[string(pkiID)]; exists {
