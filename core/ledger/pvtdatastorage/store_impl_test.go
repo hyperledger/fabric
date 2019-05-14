@@ -677,7 +677,7 @@ func TestCollElgEnabled(t *testing.T) {
 	testCollElgEnabled(t, conf)
 }
 
-func testCollElgEnabled(t *testing.T, conf *ledger.PrivateData) {
+func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	ledgerid := "TestCollElgEnabled"
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{

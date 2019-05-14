@@ -93,17 +93,14 @@ func TestInitialize(t *testing.T) {
 		nil,
 		nil,
 		&ledger.Config{
-			RootFSPath: rootFSPath,
-			StateDB: &ledger.StateDB{
-				LevelDBPath: filepath.Join(rootFSPath, "stateleveldb"),
-			},
-			PrivateData: &ledger.PrivateData{
-				StorePath:       filepath.Join(rootFSPath, "pvtdataStore"),
+			RootFSPath:    rootFSPath,
+			StateDBConfig: &ledger.StateDBConfig{},
+			PrivateDataConfig: &ledger.PrivateDataConfig{
 				MaxBatchSize:    5000,
 				BatchesInterval: 1000,
 				PurgeInterval:   100,
 			},
-			HistoryDB: &ledger.HistoryDB{
+			HistoryDBConfig: &ledger.HistoryDBConfig{
 				Enabled: true,
 			},
 		},
@@ -131,17 +128,14 @@ func TestCreateChainFromBlock(t *testing.T) {
 		nil,
 		nil,
 		&ledger.Config{
-			RootFSPath: filepath.Join(peerFSPath, "ledgersData"),
-			StateDB: &ledger.StateDB{
-				LevelDBPath: filepath.Join(peerFSPath, "ledgersData", "stateleveldb"),
-			},
-			PrivateData: &ledger.PrivateData{
-				StorePath:       filepath.Join(peerFSPath, "ledgersData", "pvtdataStore"),
+			RootFSPath:    filepath.Join(peerFSPath, "ledgersData"),
+			StateDBConfig: &ledger.StateDBConfig{},
+			PrivateDataConfig: &ledger.PrivateDataConfig{
 				MaxBatchSize:    5000,
 				BatchesInterval: 1000,
 				PurgeInterval:   100,
 			},
-			HistoryDB: &ledger.HistoryDB{
+			HistoryDBConfig: &ledger.HistoryDBConfig{
 				Enabled: true,
 			},
 		},

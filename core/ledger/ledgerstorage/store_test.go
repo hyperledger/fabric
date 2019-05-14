@@ -39,10 +39,7 @@ func TestStore(t *testing.T) {
 		t.Fatalf("Failed to create ledger storage directory: %s", err)
 	}
 	defer os.RemoveAll(storeDir)
-	conf := &ledger.PrivateData{
-		StorePath:     filepath.Join(storeDir, "pvtdataStore"),
-		PurgeInterval: 1,
-	}
+	conf := buildPrivateDataConfig(storeDir)
 	provider := NewProvider(storeDir, conf)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
@@ -151,10 +148,7 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 
 	// Simulating the upgrade from 1.0 situation:
 	// Open the ledger storage - pvtdata store is opened for the first time with an existing block storage
-	conf := &ledger.PrivateData{
-		StorePath:     filepath.Join(storeDir, "pvtdataStore"),
-		PurgeInterval: 1,
-	}
+	conf := buildPrivateDataConfig(storeDir)
 	provider := NewProvider(storeDir, conf)
 	defer provider.Close()
 	store, err := provider.Open(testLedgerid)
@@ -180,10 +174,7 @@ func TestCrashAfterPvtdataStorePreparation(t *testing.T) {
 		t.Fatalf("Failed to create ledger storage directory: %s", err)
 	}
 	defer os.RemoveAll(storeDir)
-	conf := &ledger.PrivateData{
-		StorePath:     filepath.Join(storeDir, "pvtdataStore"),
-		PurgeInterval: 1,
-	}
+	conf := buildPrivateDataConfig(storeDir)
 	provider := NewProvider(storeDir, conf)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
@@ -242,10 +233,7 @@ func TestCrashBeforePvtdataStoreCommit(t *testing.T) {
 		t.Fatalf("Failed to create ledger storage directory: %s", err)
 	}
 	defer os.RemoveAll(storeDir)
-	conf := &ledger.PrivateData{
-		StorePath:     filepath.Join(storeDir, "pvtdataStore"),
-		PurgeInterval: 1,
-	}
+	conf := buildPrivateDataConfig(storeDir)
 	provider := NewProvider(storeDir, conf)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
@@ -288,10 +276,7 @@ func TestAddAfterPvtdataStoreError(t *testing.T) {
 		t.Fatalf("Failed to create ledger storage directory: %s", err)
 	}
 	defer os.RemoveAll(storeDir)
-	conf := &ledger.PrivateData{
-		StorePath:     filepath.Join(storeDir, "pvtdataStore"),
-		PurgeInterval: 1,
-	}
+	conf := buildPrivateDataConfig(storeDir)
 	provider := NewProvider(storeDir, conf)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
@@ -332,10 +317,7 @@ func TestAddAfterBlkStoreError(t *testing.T) {
 		t.Fatalf("Failed to create ledger storage directory: %s", err)
 	}
 	defer os.RemoveAll(storeDir)
-	conf := &ledger.PrivateData{
-		StorePath:     filepath.Join(storeDir, "pvtdataStore"),
-		PurgeInterval: 1,
-	}
+	conf := buildPrivateDataConfig(storeDir)
 	provider := NewProvider(storeDir, conf)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
@@ -439,4 +421,13 @@ func btlPolicyForSampleData() pvtdatapolicy.BTLPolicy {
 			{"ns-1", "coll-2"}: 0,
 		},
 	)
+}
+
+func buildPrivateDataConfig(rootFSPath string) *pvtdatastorage.PrivateDataConfig {
+	return &pvtdatastorage.PrivateDataConfig{
+		PrivateDataConfig: &ledger.PrivateDataConfig{
+			PurgeInterval: 1,
+		},
+		StorePath: filepath.Join(rootFSPath, "pvtdataStore"),
+	}
 }

@@ -89,7 +89,7 @@ func TestLedgerProvider(t *testing.T) {
 
 func TestLedgerProviderHistoryDBDisabled(t *testing.T) {
 	conf, cleanup := testConfig(t)
-	conf.HistoryDB.Enabled = false
+	conf.HistoryDBConfig.Enabled = false
 	defer cleanup()
 	provider := testutilNewProvider(conf, t)
 	numLedgers := 10
@@ -190,7 +190,7 @@ func TestRecovery(t *testing.T) {
 
 func TestRecoveryHistoryDBDisabled(t *testing.T) {
 	conf, cleanup := testConfig(t)
-	conf.HistoryDB.Enabled = false
+	conf.HistoryDBConfig.Enabled = false
 	defer cleanup()
 	provider := testutilNewProvider(conf, t)
 
@@ -287,17 +287,14 @@ func TestLedgerBackup(t *testing.T) {
 
 	// create and populate a ledger in the original environment
 	origConf := &lgr.Config{
-		RootFSPath: originalPath,
-		StateDB: &lgr.StateDB{
-			LevelDBPath: filepath.Join(originalPath, "stateLeveldb"),
-		},
-		PrivateData: &lgr.PrivateData{
-			StorePath:       filepath.Join(originalPath, "pvtdataStore"),
+		RootFSPath:    originalPath,
+		StateDBConfig: &lgr.StateDBConfig{},
+		PrivateDataConfig: &lgr.PrivateDataConfig{
 			MaxBatchSize:    5000,
 			BatchesInterval: 1000,
 			PurgeInterval:   100,
 		},
-		HistoryDB: &lgr.HistoryDB{
+		HistoryDBConfig: &lgr.HistoryDBConfig{
 			Enabled: true,
 		},
 	}
@@ -340,17 +337,14 @@ func TestLedgerBackup(t *testing.T) {
 
 	// Instantiate the ledger from restore environment and this should behave exactly as it would have in the original environment
 	restoreConf := &lgr.Config{
-		RootFSPath: restorePath,
-		StateDB: &lgr.StateDB{
-			LevelDBPath: filepath.Join(restorePath, "stateLeveldb"),
-		},
-		PrivateData: &lgr.PrivateData{
-			StorePath:       filepath.Join(restorePath, "pvtdataStore"),
+		RootFSPath:    restorePath,
+		StateDBConfig: &lgr.StateDBConfig{},
+		PrivateDataConfig: &lgr.PrivateDataConfig{
 			MaxBatchSize:    5000,
 			BatchesInterval: 1000,
 			PurgeInterval:   100,
 		},
-		HistoryDB: &lgr.HistoryDB{
+		HistoryDBConfig: &lgr.HistoryDBConfig{
 			Enabled: true,
 		},
 	}
@@ -431,17 +425,14 @@ func testConfig(t *testing.T) (conf *lgr.Config, cleanup func()) {
 		t.Fatalf("Failed to create test ledger directory: %s", err)
 	}
 	conf = &lgr.Config{
-		RootFSPath: path,
-		StateDB: &lgr.StateDB{
-			LevelDBPath: filepath.Join(path, "stateLeveldb"),
-		},
-		PrivateData: &lgr.PrivateData{
-			StorePath:       filepath.Join(path, "pvtdataStore"),
+		RootFSPath:    path,
+		StateDBConfig: &lgr.StateDBConfig{},
+		PrivateDataConfig: &lgr.PrivateDataConfig{
 			MaxBatchSize:    5000,
 			BatchesInterval: 1000,
 			PurgeInterval:   100,
 		},
-		HistoryDB: &lgr.HistoryDB{
+		HistoryDBConfig: &lgr.HistoryDBConfig{
 			Enabled: true,
 		},
 	}

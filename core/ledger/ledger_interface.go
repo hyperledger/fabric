@@ -35,31 +35,26 @@ type Initializer struct {
 type Config struct {
 	// RootFSPath is the top-level directory where ledger files are stored.
 	RootFSPath string
-	// StateDB holds the configuration parameters for the state database.
-	StateDB *StateDB
-	// PrivateData holds the configuration parameters for the private data store.
-	PrivateData *PrivateData
-	// HistoryDB holds the configuration parameters for the transaction history database.
-	HistoryDB *HistoryDB
+	// StateDBConfig holds the configuration parameters for the state database.
+	StateDBConfig *StateDBConfig
+	// PrivateDataConfig holds the configuration parameters for the private data store.
+	PrivateDataConfig *PrivateDataConfig
+	// HistoryDBConfig holds the configuration parameters for the transaction history database.
+	HistoryDBConfig *HistoryDBConfig
 }
 
-// State is a structure used to configure the state parameters for the ledger.
-type StateDB struct {
-	// StateDatabase is the of database to use for storing last known state.  The
+// StateDBConfig is a structure used to configure the state parameters for the ledger.
+type StateDBConfig struct {
+	// StateDatabase is the database to use for storing last known state.  The
 	// two supported options are "goleveldb" and "CouchDB".
 	StateDatabase string
-	// LevelDBPath is filesystem path that is used when StateDatabase is set
-	// to "goleveldb".
-	LevelDBPath string
 	// CouchDB is the configuration for CouchDB.  It is used when StateDatabase
 	// is set to "CouchDB".
 	CouchDB *couchdb.Config
 }
 
-// PrivateData is a structure used to configure a private data storage provider.
-type PrivateData struct {
-	// StorePath is the filesystem path used by the private data store.
-	StorePath string
+// PrivateDataConfig is a structure used to configure a private data storage provider.
+type PrivateDataConfig struct {
 	// BatchesInterval is the minimum duration (milliseconds) between batches
 	// for converting ineligible missing data entries into eligible entries.
 	BatchesInterval int
@@ -71,8 +66,8 @@ type PrivateData struct {
 	PurgeInterval int
 }
 
-// HistoryDB is a structure used to configure the transaction history database.
-type HistoryDB struct {
+// HistoryDBConfig is a structure used to configure the transaction history database.
+type HistoryDBConfig struct {
 	Enabled bool
 }
 

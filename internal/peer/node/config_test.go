@@ -31,18 +31,16 @@ func TestLedgerConfig(t *testing.T) {
 			},
 			expected: &ledger.Config{
 				RootFSPath: "/peerfs/ledgersData",
-				StateDB: &ledger.StateDB{
+				StateDBConfig: &ledger.StateDBConfig{
 					StateDatabase: "goleveldb",
-					LevelDBPath:   "/peerfs/ledgersData/stateLeveldb",
 					CouchDB:       &couchdb.Config{},
 				},
-				PrivateData: &ledger.PrivateData{
-					StorePath:       "/peerfs/ledgersData/pvtdataStore",
+				PrivateDataConfig: &ledger.PrivateDataConfig{
 					MaxBatchSize:    5000,
 					BatchesInterval: 1000,
 					PurgeInterval:   100,
 				},
-				HistoryDB: &ledger.HistoryDB{
+				HistoryDBConfig: &ledger.HistoryDBConfig{
 					Enabled: false,
 				},
 			},
@@ -62,9 +60,8 @@ func TestLedgerConfig(t *testing.T) {
 			},
 			expected: &ledger.Config{
 				RootFSPath: "/peerfs/ledgersData",
-				StateDB: &ledger.StateDB{
+				StateDBConfig: &ledger.StateDBConfig{
 					StateDatabase: "CouchDB",
-					LevelDBPath:   "/peerfs/ledgersData/stateLeveldb",
 					CouchDB: &couchdb.Config{
 						Address:                 "localhost:5984",
 						Username:                "username",
@@ -79,13 +76,12 @@ func TestLedgerConfig(t *testing.T) {
 						RedoLogPath:             "/peerfs/ledgersData/couchdbRedoLogs",
 					},
 				},
-				PrivateData: &ledger.PrivateData{
-					StorePath:       "/peerfs/ledgersData/pvtdataStore",
+				PrivateDataConfig: &ledger.PrivateDataConfig{
 					MaxBatchSize:    5000,
 					BatchesInterval: 1000,
 					PurgeInterval:   100,
 				},
-				HistoryDB: &ledger.HistoryDB{
+				HistoryDBConfig: &ledger.HistoryDBConfig{
 					Enabled: false,
 				},
 			},
@@ -112,9 +108,8 @@ func TestLedgerConfig(t *testing.T) {
 			},
 			expected: &ledger.Config{
 				RootFSPath: "/peerfs/ledgersData",
-				StateDB: &ledger.StateDB{
+				StateDBConfig: &ledger.StateDBConfig{
 					StateDatabase: "CouchDB",
-					LevelDBPath:   "/peerfs/ledgersData/stateLeveldb",
 					CouchDB: &couchdb.Config{
 						Address:                 "localhost:5984",
 						Username:                "username",
@@ -129,13 +124,12 @@ func TestLedgerConfig(t *testing.T) {
 						RedoLogPath:             "/peerfs/ledgersData/couchdbRedoLogs",
 					},
 				},
-				PrivateData: &ledger.PrivateData{
-					StorePath:       "/peerfs/ledgersData/pvtdataStore",
+				PrivateDataConfig: &ledger.PrivateDataConfig{
 					MaxBatchSize:    50000,
 					BatchesInterval: 10000,
 					PurgeInterval:   1000,
 				},
-				HistoryDB: &ledger.HistoryDB{
+				HistoryDBConfig: &ledger.HistoryDBConfig{
 					Enabled: true,
 				},
 			},

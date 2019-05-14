@@ -34,6 +34,16 @@ const (
 	couchDB        = "CouchDB"
 )
 
+// StateDBConfig encapsulates the configuration for stateDB on the ledger.
+type StateDBConfig struct {
+	// ledger.StateDBConfig is used to configure the stateDB for the ledger.
+	*ledger.StateDBConfig
+	// LevelDBPath is the filesystem path when statedb type is "goleveldb".
+	// It is internally computed by the ledger component,
+	// so it is not in ledger.StateDBConfig and not exposed to other components.
+	LevelDBPath string
+}
+
 // CommonStorageDBProvider implements interface DBProvider
 type CommonStorageDBProvider struct {
 	statedb.VersionedDBProvider
@@ -46,7 +56,7 @@ func NewCommonStorageDBProvider(
 	bookkeeperProvider bookkeeping.Provider,
 	metricsProvider metrics.Provider,
 	healthCheckRegistry ledger.HealthCheckRegistry,
-	stateDBConf *ledger.StateDB,
+	stateDBConf *StateDBConfig,
 ) (DBProvider, error) {
 	var vdbProvider statedb.VersionedDBProvider
 	var err error
@@ -234,7 +244,7 @@ func (s *CommonStorageDB) ApplyPrivacyAwareUpdates(updates *UpdateBatch, height 
 
 // GetStateMetadata implements corresponding function in interface DB. This implementation provides
 // an optimization such that it keeps track if a namespaces has never stored metadata for any of
-// its items, the value 'nil' is returned without going to the db. This is intented to be invoked
+// its items, the value 'nil' is returned without going to the db. This is intended to be invoked
 // in the validation and commit path. This saves the chaincodes from paying unnecessary performance
 // penality if they do not use features that leverage metadata (such as key-level endorsement),
 func (s *CommonStorageDB) GetStateMetadata(namespace, key string) ([]byte, error) {

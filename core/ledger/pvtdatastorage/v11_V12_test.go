@@ -40,11 +40,13 @@ func TestV11v12(t *testing.T) {
 			{"marbles_private", "collectionMarblePrivateDetails"}: 0,
 		},
 	)
-	conf := &ledger.PrivateData{
-		StorePath:       filepath.Join(testWorkingDir, "pvtdataStore"),
-		BatchesInterval: 1000,
-		MaxBatchSize:    5000,
-		PurgeInterval:   100,
+	conf := &PrivateDataConfig{
+		PrivateDataConfig: &ledger.PrivateDataConfig{
+			BatchesInterval: 1000,
+			MaxBatchSize:    5000,
+			PurgeInterval:   100,
+		},
+		StorePath: filepath.Join(testWorkingDir, "pvtdataStore"),
 	}
 	p := NewProvider(conf)
 	defer p.Close()

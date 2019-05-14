@@ -8,7 +8,6 @@ package ledgermgmt
 import (
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/metrics/disabled"
@@ -56,22 +55,19 @@ func InitializeExistingTestEnvWithInitializer(initializer *Initializer) (cleanup
 			return nil, err
 		}
 		initializer.Config = &ledger.Config{
-			RootFSPath: rootPath,
-			StateDB: &ledger.StateDB{
-				LevelDBPath: filepath.Join(rootPath, "stateleveldb"),
-			},
+			RootFSPath:    rootPath,
+			StateDBConfig: &ledger.StateDBConfig{},
 		}
 	}
-	if initializer.Config.PrivateData == nil {
-		initializer.Config.PrivateData = &ledger.PrivateData{
-			StorePath:       filepath.Join(initializer.Config.RootFSPath, "pvtdataStore"),
+	if initializer.Config.PrivateDataConfig == nil {
+		initializer.Config.PrivateDataConfig = &ledger.PrivateDataConfig{
 			MaxBatchSize:    5000,
 			BatchesInterval: 1000,
 			PurgeInterval:   100,
 		}
 	}
-	if initializer.Config.HistoryDB == nil {
-		initializer.Config.HistoryDB = &ledger.HistoryDB{
+	if initializer.Config.HistoryDBConfig == nil {
+		initializer.Config.HistoryDBConfig = &ledger.HistoryDBConfig{
 			Enabled: true,
 		}
 	}

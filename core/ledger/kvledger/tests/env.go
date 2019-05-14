@@ -109,12 +109,10 @@ func (e *env) initLedgerMgmt() {
 			MetricsProvider:               &disabled.Provider{},
 			Config: &ledger.Config{
 				RootFSPath: ledgerPath,
-				StateDB: &ledger.StateDB{
+				StateDBConfig: &ledger.StateDBConfig{
 					StateDatabase: "goleveldb",
-					LevelDBPath:   filepath.Join(ledgerPath, "stateLeveldb"),
 				},
-				PrivateData: &ledger.PrivateData{
-					StorePath:       filepath.Join(ledgerPath, "pvtdataStore"),
+				PrivateDataConfig: &ledger.PrivateDataConfig{
 					MaxBatchSize:    5000,
 					BatchesInterval: 1000,
 					PurgeInterval:   100,

@@ -24,19 +24,19 @@ type Provider interface {
 // to accomplish this, an implementation of this store should provide
 // support for a two-phase like commit/rollback capability.
 // The expected use is such that - first the private data will be given to
-// this store (via `Prepare` funtion) and then the block is appended to the block storage.
+// this store (via `Prepare` function) and then the block is appended to the block storage.
 // Finally, one of the functions `Commit` or `Rollback` is invoked on this store based
 // on whether the block was written successfully or not. The store implementation
 // is expected to survive a server crash between the call to `Prepare` and `Commit`/`Rollback`
 type Store interface {
 	// Init initializes the store. This function is expected to be invoked before using the store
 	Init(btlPolicy pvtdatapolicy.BTLPolicy)
-	// InitLastCommittedBlockHeight sets the last commited block height into the pvt data store
+	// InitLastCommittedBlockHeight sets the last committed block height into the pvt data store
 	// This function is used in a special case where the peer is started up with the blockchain
 	// from an earlier version of a peer when the pvt data feature (and hence this store) was not
 	// available. This function is expected to be called only this situation and hence is
 	// expected to throw an error if the store is not empty. On a successful return from this
-	// fucntion the state of the store is expected to be same as of calling the prepare/commit
+	// function the state of the store is expected to be same as of calling the prepare/commit
 	// function for block `0` through `blockNum` with no pvt data
 	InitLastCommittedBlock(blockNum uint64) error
 	// GetPvtDataByBlockNum returns only the pvt data  corresponding to the given block number
@@ -46,7 +46,7 @@ type Store interface {
 	// GetMissingPvtDataInfoForMostRecentBlocks returns the missing private data information for the
 	// most recent `maxBlock` blocks which miss at least a private data of a eligible collection.
 	GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error)
-	// Prepare prepares the Store for commiting the pvt data and storing both eligible and ineligible
+	// Prepare prepares the Store for committing the pvt data and storing both eligible and ineligible
 	// missing private data --- `eligible` denotes that the missing private data belongs to a collection
 	// for which this peer is a member; `ineligible` denotes that the missing private data belong to a
 	// collection for which this peer is not a member.
@@ -60,10 +60,10 @@ type Store interface {
 	Commit() error
 	// Rollback rolls back the pvt data passed in the previous invoke to the `Prepare` function
 	Rollback() error
-	// ProcessCollsEligibilityEnabled notifies the store when the peer becomes eligible to recieve data for an
+	// ProcessCollsEligibilityEnabled notifies the store when the peer becomes eligible to receive data for an
 	// existing collection. Parameter 'committingBlk' refers to the block number that contains the corresponding
 	// collection upgrade transaction and the parameter 'nsCollMap' contains the collections for which the peer
-	// is now eligible to recieve pvt data
+	// is now eligible to receive pvt data
 	ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap map[string][]string) error
 	// CommitPvtDataOfOldBlocks commits the pvtData (i.e., previously missing data) of old blocks.
 	// The parameter `blocksPvtData` refers a list of old block's pvtdata which are missing in the pvtstore.
@@ -84,6 +84,16 @@ type Store interface {
 	HasPendingBatch() (bool, error)
 	// Shutdown stops the store
 	Shutdown()
+}
+
+// PrivateDataConfig encapsulates the configuration for private data storage on the ledger
+type PrivateDataConfig struct {
+	// PrivateDataConfig is used to configure a private data storage provider
+	*ledger.PrivateDataConfig
+	// StorePath is the filesystem path for private data storage.
+	// It is internally computed by the ledger component,
+	// so it is not in ledger.PrivateDataConfig and not exposed to other components.
+	StorePath string
 }
 
 // ErrIllegalCall is to be thrown by a store impl if the store does not expect a call to Prepare/Commit/Rollback/InitLastCommittedBlock

@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb/historyleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -53,7 +54,7 @@ type Provider struct {
 }
 
 // NewProvider instantiates a new Provider.
-// This is not thread-safe and assumed to be synchronized be the caller
+// This is not thread-safe and assumed to be synchronized by the caller
 func NewProvider(initializer *ledger.Initializer) (*Provider, error) {
 	p := &Provider{}
 	p.initializer = initializer
@@ -61,12 +62,16 @@ func NewProvider(initializer *ledger.Initializer) (*Provider, error) {
 	idStore := openIDStore(filepath.Join(p.initializer.Config.RootFSPath, "ledgerProvider"))
 	p.idStore = idStore
 	// initialize ledger storage
+	privateData := &pvtdatastorage.PrivateDataConfig{
+		PrivateDataConfig: initializer.Config.PrivateDataConfig,
+		StorePath:         filepath.Join(initializer.Config.RootFSPath, "pvtdataStore"),
+	}
 	ledgerStoreProvider := ledgerstorage.NewProvider(
 		p.initializer.Config.RootFSPath,
-		p.initializer.Config.PrivateData,
+		privateData,
 	)
 	p.ledgerStoreProvider = ledgerStoreProvider
-	if initializer.Config.HistoryDB.Enabled {
+	if initializer.Config.HistoryDBConfig.Enabled {
 		// Initialize the history database (index for history of values by key)
 		historydbProvider := historyleveldb.NewHistoryDBProvider(
 			filepath.Join(p.initializer.Config.RootFSPath, "historyLeveldb"),
@@ -96,11 +101,15 @@ func NewProvider(initializer *ledger.Initializer) (*Provider, error) {
 		filepath.Join(p.initializer.Config.RootFSPath, "bookkeeper"),
 	)
 	var err error
+	stateDB := &privacyenabledstate.StateDBConfig{
+		StateDBConfig: initializer.Config.StateDBConfig,
+		LevelDBPath:   filepath.Join(initializer.Config.RootFSPath, "stateLeveldb"),
+	}
 	p.vdbProvider, err = privacyenabledstate.NewCommonStorageDBProvider(
 		p.bookkeepingProvider,
 		initializer.MetricsProvider,
 		initializer.HealthCheckRegistry,
-		initializer.Config.StateDB,
+		stateDB,
 	)
 	if err != nil {
 		return nil, err

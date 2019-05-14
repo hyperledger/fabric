@@ -39,7 +39,7 @@ type Store struct {
 }
 
 // NewProvider returns the handle to the provider
-func NewProvider(storeDir string, conf *ledger.PrivateData) *Provider {
+func NewProvider(storeDir string, conf *pvtdatastorage.PrivateDataConfig) *Provider {
 	// Initialize the block storage
 	attrsToIndex := []blkstorage.IndexableAttr{
 		blkstorage.IndexableAttrBlockHash,

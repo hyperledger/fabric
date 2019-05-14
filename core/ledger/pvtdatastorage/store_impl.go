@@ -26,7 +26,7 @@ var logger = flogging.MustGetLogger("pvtdatastorage")
 
 type provider struct {
 	dbProvider *leveldbhelper.Provider
-	pvtData    *ledger.PrivateData
+	pvtData    *PrivateDataConfig
 }
 
 type store struct {
@@ -109,7 +109,7 @@ type entriesForPvtDataOfOldBlocks struct {
 //////////////////////////////////////////
 
 // NewProvider instantiates a StoreProvider
-func NewProvider(conf *ledger.PrivateData) Provider {
+func NewProvider(conf *PrivateDataConfig) Provider {
 	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: conf.StorePath})
 	return &provider{
 		dbProvider: dbProvider,
@@ -251,7 +251,7 @@ func (s *store) Commit() error {
 // would have exact same entries and will overwrite those. This also leaves the
 // existing expiry entires as is because, most likely they will also get overwritten
 // per new data entries. Even if some of the expiry entries does not get overwritten,
-// (beacuse of some data may be missing next time), the additional expiry entries are just
+// (because of some data may be missing next time), the additional expiry entries are just
 // a Noop
 func (s *store) Rollback() error {
 	if !s.batchPending {

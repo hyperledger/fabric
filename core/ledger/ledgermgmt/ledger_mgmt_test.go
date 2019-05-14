@@ -8,7 +8,6 @@ package ledgermgmt
 import (
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx/test"
@@ -48,10 +47,8 @@ func TestLedgerMgmt(t *testing.T) {
 		PlatformRegistry: platforms.NewRegistry(&golang.Platform{}),
 		MetricsProvider:  &disabled.Provider{},
 		Config: &ledger.Config{
-			RootFSPath: rootPath,
-			StateDB: &ledger.StateDB{
-				LevelDBPath: filepath.Join(rootPath, "stateleveldb"),
-			},
+			RootFSPath:    rootPath,
+			StateDBConfig: &ledger.StateDBConfig{},
 		},
 	}
 

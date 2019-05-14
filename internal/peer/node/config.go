@@ -46,24 +46,22 @@ func ledgerConfig() *ledger.Config {
 	rootFSPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "ledgersData")
 	conf := &ledger.Config{
 		RootFSPath: rootFSPath,
-		StateDB: &ledger.StateDB{
+		StateDBConfig: &ledger.StateDBConfig{
 			StateDatabase: viper.GetString("ledger.state.stateDatabase"),
-			LevelDBPath:   filepath.Join(rootFSPath, "stateLeveldb"),
 			CouchDB:       &couchdb.Config{},
 		},
-		PrivateData: &ledger.PrivateData{
-			StorePath:       filepath.Join(rootFSPath, "pvtdataStore"),
+		PrivateDataConfig: &ledger.PrivateDataConfig{
 			MaxBatchSize:    collElgProcMaxDbBatchSize,
 			BatchesInterval: collElgProcDbBatchesInterval,
 			PurgeInterval:   purgeInterval,
 		},
-		HistoryDB: &ledger.HistoryDB{
+		HistoryDBConfig: &ledger.HistoryDBConfig{
 			Enabled: viper.GetBool("ledger.history.enableHistoryDatabase"),
 		},
 	}
 
-	if conf.StateDB.StateDatabase == "CouchDB" {
-		conf.StateDB.CouchDB = &couchdb.Config{
+	if conf.StateDBConfig.StateDatabase == "CouchDB" {
+		conf.StateDBConfig.CouchDB = &couchdb.Config{
 			Address:                 viper.GetString("ledger.state.couchDBConfig.couchDBAddress"),
 			Username:                viper.GetString("ledger.state.couchDBConfig.username"),
 			Password:                viper.GetString("ledger.state.couchDBConfig.password"),
