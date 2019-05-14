@@ -53,7 +53,7 @@ pipeline {
                   dir('go/src/github.com/Vijaypunugubati') {
                     //Run e2e tests on PR from develop branch
                     sh label: 'Running e2e Tests', script: 'echo "Running the e2e Tests"'
-                    sh ''''''
+                    sh '''
                       echo "B U I L D - F A B R I C"
                       # Print last two commits
                       git -C $BASE_WD/fabric log -n2
@@ -85,7 +85,7 @@ pipeline {
                       cd $WD/src/test
                       chmod +x cirun.sh
                       source cirun.sh
-                    ''''''
+                    '''
                     //build job: 'code_merge_QA_Master'
                   }
                 }  
