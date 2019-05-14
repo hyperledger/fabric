@@ -54,7 +54,7 @@ pipeline {
                     //Run e2e tests on PR from develop branch
                     sh label: 'Running e2e Tests', script: 'echo "Running the e2e Tests"'
                     sh ''''''
-                      echo -e "\033[1m B U I L D - F A B R I C\033[0m"
+                      echo "B U I L D - F A B R I C"
                       # Print last two commits
                       git -C $BASE_WD/fabric log -n2
                       for IMAGES in docker release-clean release docker-thirdparty; do
@@ -62,7 +62,7 @@ pipeline {
                         make -C $BASE_WD/fabric $IMAGES
                       done
 
-                      echo -e "\033[1m B U I L D - F A B R I C-C A\033[0m"
+                      echo "B U I L D - F A B R I C-CA"
                       rm -rf $BASE_WD/fabric-ca
                       git clone --single-branch -b master https://github.com/hyperledger/fabric-ca $BASE_WD/fabric-ca
                       # Print last two commits
@@ -73,8 +73,8 @@ pipeline {
                       docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/$REPO-javaenv:amd64-latest
                       docker images | grep hyperledger
 
-                      echo -e "\033[1m S D K - J A V A\033[0m"
-                      echo -e "\033[1;32m STARTING fabric-sdk-java tests \033[0m"
+                      echo "S D K - J A V A"
+                      echo "STARTING fabric-sdk-java tests"
                       WD="${WORKSPACE}/go/src/github.com/Vijaypunugubati/fabric-sdk-java"
                       rm -rf $WD
                       # Clone fabric-sdk-java repository
