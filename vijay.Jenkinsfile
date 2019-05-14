@@ -35,9 +35,9 @@ pipeline {
                 }
             }      
         }
-        stage ('Run Tests on Merge') {
+        stage ('Run Tests') {
         // condition should pass then only next step would run else it will skip but won't fail.
-            when { branch 'master'}          
+            //when { branch 'master'}          
                 steps {
                   dir('go/src/github.com/Vijaypunugubati/fabric') {
                     sh label: 'Running Fabric Unit Tests', script: 'make unit-test'
