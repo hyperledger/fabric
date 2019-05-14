@@ -57,9 +57,9 @@ COUCHDB_VER ?= 2.3
 # the PROJECT_NAME env variable, for example,
 # export PROJECT_NAME=hyperledger/fabric-test
 ifeq ($(PROJECT_NAME),true)
-PROJECT_NAME = Vijaypunugubati/fab
+PROJECT_NAME = hyperledger/fabric
 else
-PROJECT_NAME = Vijaypunugubati/fab
+PROJECT_NAME = hyperledger/fabric
 endif
 
 BUILD_DIR ?= .build
