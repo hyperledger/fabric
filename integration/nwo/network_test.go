@@ -137,7 +137,7 @@ var _ = Describe("Network", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
 			Expect(sess.Err).To(gbytes.Say("Error: endorsement failure during query. response: status:500 " +
-				"message:\"make sure the chaincode mycc has been successfully instantiated and try " +
+				"message:\"make sure the chaincode mycc has been successfully defined on channel testchannel and try " +
 				"again: chaincode definition for 'mycc' exists, but chaincode is not installed\""))
 
 			By("setting the correct package ID to restore the chaincode")
