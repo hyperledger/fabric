@@ -42,6 +42,9 @@ pipeline {
                 steps {
                   dir('go/src/github.com/Vijaypunugubati/fab') {
                     sh label: 'Running Fabric Unit Tests', script: 'make unit-tests'
+		    sh '''
+		        docker images | grep hyperledger
+		    '''
                     //build job: 'code_merge_develop_QA' 
                   }  
                 }
