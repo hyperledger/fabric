@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
 
@@ -101,6 +100,7 @@ type gossipServiceImpl struct {
 	peerIdentity    []byte
 	secAdv          api.SecurityAdvisor
 	metrics         *gossipMetrics.GossipMetrics
+	serviceConfig   *ServiceConfig
 }
 
 // This is an implementation of api.JoinChannelMessage.
@@ -177,8 +177,10 @@ func InitGossipServiceCustomDeliveryFactory(
 		return err
 	}
 	once.Do(func() {
-		if overrideEndpoint := viper.GetString("peer.gossip.endpoint"); overrideEndpoint != "" {
-			endpoint = overrideEndpoint
+		serviceConfig := GlobalConfig()
+
+		if serviceConfig.Endpoint != "" {
+			endpoint = serviceConfig.Endpoint
 		}
 
 		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
@@ -198,6 +200,7 @@ func InitGossipServiceCustomDeliveryFactory(
 			peerIdentity:    serializedIdentity,
 			secAdv:          secAdv,
 			metrics:         gossipMetrics,
+			serviceConfig:   serviceConfig,
 		}
 	})
 	return errors.WithStack(err)
@@ -275,7 +278,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 
 	coordinatorConfig := privdata2.CoordinatorConfig{
 		TransientBlockRetention: privdata2.GetTransientBlockRetention(),
-		PullRetryThreshold:      viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold"),
+		PullRetryThreshold:      g.serviceConfig.PvtDataPullRetryThreshold,
 	}
 	coordinator := privdata2.NewCoordinator(privdata2.Support{
 		ChainID:         chainID,
@@ -296,7 +299,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		reconciler = &privdata2.NoOpReconciler{}
 	}
 
-	pushAckTimeout := viper.GetDuration("peer.gossip.pvtData.pushAckTimeout")
+	pushAckTimeout := g.serviceConfig.PvtDataPushAckTimeout
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
@@ -305,7 +308,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	}
 	g.privateHandlers[chainID].reconciler.Start()
 
-	blockingMode := !viper.GetBool("peer.gossip.nonBlockingCommitMode")
+	blockingMode := !g.serviceConfig.NonBlockingCommitMode
 	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapter, coordinator,
 		g.metrics.StateMetrics, blockingMode)
 	if g.deliveryService[chainID] == nil {
@@ -325,8 +328,8 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		//
 		// are mutual exclusive, setting both to true is not defined, hence
 		// peer will panic and terminate
-		leaderElection := viper.GetBool("peer.gossip.useLeaderElection")
-		isStaticOrgLeader := viper.GetBool("peer.gossip.orgLeader")
+		leaderElection := g.serviceConfig.UseLeaderElection
+		isStaticOrgLeader := g.serviceConfig.OrgLeader
 
 		if leaderElection && isStaticOrgLeader {
 			logger.Panic("Setting both orgLeader and useLeaderElection to true isn't supported, aborting execution")
@@ -430,10 +433,10 @@ func (g *gossipServiceImpl) newLeaderElectionComponent(chainID string, callback 
 	PKIid := g.mcs.GetPKIidOfCert(g.peerIdentity)
 	adapter := election.NewAdapter(g, PKIid, gossipCommon.ChainID(chainID), electionMetrics)
 	config := election.ElectionConfig{
-		StartupGracePeriod:       util.GetDurationOrDefault("peer.gossip.election.startupGracePeriod", election.DefStartupGracePeriod),
-		MembershipSampleInterval: util.GetDurationOrDefault("peer.gossip.election.membershipSampleInterval", election.DefMembershipSampleInterval),
-		LeaderAliveThreshold:     util.GetDurationOrDefault("peer.gossip.election.leaderAliveThreshold", election.DefLeaderAliveThreshold),
-		LeaderElectionDuration:   util.GetDurationOrDefault("peer.gossip.election.leaderElectionDuration", election.DefLeaderElectionDuration),
+		StartupGracePeriod:       g.serviceConfig.ElectionStartupGracePeriod,
+		MembershipSampleInterval: g.serviceConfig.ElectionMembershipSampleInterval,
+		LeaderAliveThreshold:     g.serviceConfig.ElectionLeaderAliveThreshold,
+		LeaderElectionDuration:   g.serviceConfig.ElectionLeaderElectionDuration,
 	}
 	return election.NewLeaderElectionService(adapter, string(PKIid), callback, config)
 }

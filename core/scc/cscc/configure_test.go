@@ -263,8 +263,18 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 		return dialOpts
 	}
-	err = service.InitGossipServiceCustomDeliveryFactory(signer, &disabled.Provider{}, peerEndpoint, grpcServer, nil,
-		&mockDeliveryClientFactory{}, messageCryptoService, secAdv, defaultSecureDialOpts)
+
+	err = service.InitGossipServiceCustomDeliveryFactory(
+		signer,
+		&disabled.Provider{},
+		peerEndpoint,
+		grpcServer,
+		nil,
+		&mockDeliveryClientFactory{},
+		messageCryptoService,
+		secAdv,
+		defaultSecureDialOpts,
+	)
 	assert.NoError(t, err)
 
 	go grpcServer.Serve(socket)

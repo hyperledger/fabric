@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
+	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
@@ -104,22 +105,25 @@ func TestLeaderYield(t *testing.T) {
 	// connect to the orderer, and should relinquish its leadership after a while.
 	// Make sure the other peer declares itself as the leader soon after.
 	takeOverMaxTimeout := time.Minute
-	viper.Set("peer.gossip.election.leaderAliveThreshold", time.Second*5)
-	// Test case has only two instance + making assertions only after membership view
-	// is stable, hence election duration could be shorter
-	viper.Set("peer.gossip.election.leaderElectionDuration", time.Millisecond*500)
 	// It's enough to make single re-try
 	viper.Set("peer.deliveryclient.reconnectTotalTimeThreshold", time.Second*1)
-	// Since we ensuring gossip has stable membership, there is no need for
-	// leader election to wait for stabilization
-	viper.Set("peer.gossip.election.membershipSampleInterval", time.Millisecond*100)
 	// There is no ordering service available anyway, hence connection timeout
 	// could be shorter
 	viper.Set("peer.deliveryclient.connTimeout", time.Millisecond*100)
-	viper.Set("peer.gossip.useLeaderElection", true)
-	viper.Set("peer.gossip.orgLeader", false)
+	serviceConfig := &ServiceConfig{
+		UseLeaderElection:          true,
+		OrgLeader:                  false,
+		ElectionStartupGracePeriod: election.DefStartupGracePeriod,
+		// Since we ensuring gossip has stable membership, there is no need for
+		// leader election to wait for stabilization
+		ElectionMembershipSampleInterval: time.Millisecond * 100,
+		ElectionLeaderAliveThreshold:     time.Second * 5,
+		// Test case has only two instance + making assertions only after membership view
+		// is stable, hence election duration could be shorter
+		ElectionLeaderElectionDuration: time.Millisecond * 500,
+	}
 	n := 2
-	gossips := startPeers(t, n, 0, 1)
+	gossips := startPeers(t, serviceConfig, n, 0, 1)
 	defer stopPeers(gossips)
 	channelName := "channelA"
 	peerIndexes := []int{0, 1}
