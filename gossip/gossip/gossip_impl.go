@@ -85,7 +85,7 @@ func NewGossipService(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 		conf:                  conf,
 		ChannelDeMultiplexer:  comm.NewChannelDemultiplexer(),
 		logger:                lgr,
-		toDieChan:             make(chan struct{}, 1),
+		toDieChan:             make(chan struct{}),
 		stopFlag:              int32(0),
 		stopSignal:            &sync.WaitGroup{},
 		includeIdentityPeriod: time.Now().Add(conf.PublishCertPeriod),
@@ -264,8 +264,7 @@ func (g *gossipServiceImpl) handlePresumedDead() {
 	defer g.stopSignal.Done()
 	for {
 		select {
-		case s := <-g.toDieChan:
-			g.toDieChan <- s
+		case <-g.toDieChan:
 			return
 		case deadEndpoint := <-g.comm.PresumedDead():
 			g.presumedDead <- deadEndpoint
@@ -311,8 +310,7 @@ func (g *gossipServiceImpl) acceptMessages(incMsgs <-chan protoext.ReceivedMessa
 	defer g.stopSignal.Done()
 	for {
 		select {
-		case s := <-g.toDieChan:
-			g.toDieChan <- s
+		case <-g.toDieChan:
 			return
 		case msg := <-incMsgs:
 			g.handleMessage(msg)
@@ -747,7 +745,7 @@ func (g *gossipServiceImpl) Stop() {
 	}
 	atomic.StoreInt32(&g.stopFlag, int32(1))
 	g.logger.Info("Stopping gossip")
-	g.toDieChan <- struct{}{}
+	close(g.toDieChan)
 	g.stopSignal.Wait()
 	g.chanState.stop()
 	g.discAdapter.close()
@@ -809,14 +807,17 @@ func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor, passThrough 
 	go func() {
 		for {
 			select {
-			case s := <-g.toDieChan:
-				g.toDieChan <- s
+			case <-g.toDieChan:
 				return
-			case m := <-inCh:
-				if m == nil {
+			case m, channelOpen := <-inCh:
+				if !channelOpen {
 					return
 				}
-				outCh <- m.(*protoext.SignedGossipMessage).GossipMessage
+				select {
+				case <-g.toDieChan:
+					return
+				case outCh <- m.(*protoext.SignedGossipMessage).GossipMessage:
+				}
 			}
 		}
 	}()

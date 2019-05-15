@@ -332,8 +332,8 @@ func (c *commImpl) Accept(acceptor common.MessageAcceptor) <-chan protoext.Recei
 
 		for {
 			select {
-			case msg := <-genericChan:
-				if msg == nil {
+			case msg, channelOpen := <-genericChan:
+				if !channelOpen {
 					return
 				}
 				select {
