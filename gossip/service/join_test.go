@@ -105,6 +105,10 @@ func (g *gossipMock) IdentityInfo() api.PeerIdentitySet {
 	panic("implement me")
 }
 
+func (*gossipMock) IsInMyOrg(member discovery.NetworkMember) bool {
+	panic("implement me")
+}
+
 func (*gossipMock) Stop() {
 	panic("implement me")
 }

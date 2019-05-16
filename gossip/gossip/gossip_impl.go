@@ -343,7 +343,7 @@ func (g *gossipServiceImpl) handleMessage(m protoext.ReceivedMessage) {
 		if gc := g.chanState.lookupChannelForMsg(m); gc == nil {
 			// If we're not in the channel, we should still forward to peers of our org
 			// in case it's a StateInfo message
-			if g.isInMyorg(discovery.NetworkMember{PKIid: m.GetConnectionInfo().ID}) && protoext.IsStateInfoMsg(msg.GossipMessage) {
+			if g.IsInMyOrg(discovery.NetworkMember{PKIid: m.GetConnectionInfo().ID}) && protoext.IsStateInfoMsg(msg.GossipMessage) {
 				if g.stateInfoMsgStore.Add(msg) {
 					g.emitter.Add(&emittedGossipMessage{
 						SignedGossipMessage: msg,
@@ -456,7 +456,7 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*emittedGossipMessage) {
 			return false
 		}
 		member := msg.GetAliveMsg().Membership
-		return member.Endpoint == "" && g.isInMyorg(discovery.NetworkMember{PKIid: member.PkiId})
+		return member.Endpoint == "" && g.IsInMyOrg(discovery.NetworkMember{PKIid: member.PkiId})
 	}
 	isOrgRestricted := func(o interface{}) bool {
 		return aliveMsgsWithNoEndpointAndInOurOrg(o) || protoext.IsOrgRestricted(o.(*emittedGossipMessage).GossipMessage)
@@ -468,19 +468,19 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*emittedGossipMessage) {
 	// Gossip blocks
 	blocks, msgs = partitionMessages(isABlock, msgs)
 	g.gossipInChan(blocks, func(gc channel.GossipChannel) filter.RoutingFilter {
-		return filter.CombineRoutingFilters(gc.EligibleForChannel, gc.IsMemberInChan, g.isInMyorg)
+		return filter.CombineRoutingFilters(gc.EligibleForChannel, gc.IsMemberInChan, g.IsInMyOrg)
 	})
 
 	// Gossip Leadership messages
 	leadershipMsgs, msgs = partitionMessages(isLeadershipMsg, msgs)
 	g.gossipInChan(leadershipMsgs, func(gc channel.GossipChannel) filter.RoutingFilter {
-		return filter.CombineRoutingFilters(gc.EligibleForChannel, gc.IsMemberInChan, g.isInMyorg)
+		return filter.CombineRoutingFilters(gc.EligibleForChannel, gc.IsMemberInChan, g.IsInMyOrg)
 	})
 
 	// Gossip StateInfo messages
 	stateInfoMsgs, msgs = partitionMessages(isAStateInfoMsg, msgs)
 	for _, stateInfMsg := range stateInfoMsgs {
-		peerSelector := g.isInMyorg
+		peerSelector := g.IsInMyOrg
 		gc := g.chanState.lookupChannelForGossipMsg(stateInfMsg.GossipMessage)
 		if gc != nil && g.hasExternalEndpoint(stateInfMsg.GossipMessage.GetStateInfo().PkiId) {
 			peerSelector = gc.IsMemberInChan
@@ -496,7 +496,7 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*emittedGossipMessage) {
 
 	// Gossip messages restricted to our org
 	orgMsgs, msgs = partitionMessages(isOrgRestricted, msgs)
-	peers2Send := filter.SelectPeers(g.conf.PropagatePeerNum, g.disc.GetMembership(), g.isInMyorg)
+	peers2Send := filter.SelectPeers(g.conf.PropagatePeerNum, g.disc.GetMembership(), g.IsInMyOrg)
 	for _, msg := range orgMsgs {
 		g.comm.Send(msg.SignedGossipMessage, g.removeSelfLoop(msg, peers2Send)...)
 	}
@@ -520,7 +520,7 @@ func (g *gossipServiceImpl) sendAndFilterSecrets(msg *protoext.SignedGossipMessa
 	for _, peer := range peers {
 		// Prevent forwarding alive messages of external organizations
 		// to peers that have no external endpoints
-		aliveMsgFromDiffOrg := protoext.IsAliveMsg(msg.GossipMessage) && !g.isInMyorg(discovery.NetworkMember{PKIid: msg.GetAliveMsg().Membership.PkiId})
+		aliveMsgFromDiffOrg := protoext.IsAliveMsg(msg.GossipMessage) && !g.IsInMyOrg(discovery.NetworkMember{PKIid: msg.GetAliveMsg().Membership.PkiId})
 		if aliveMsgFromDiffOrg && !g.hasExternalEndpoint(peer.PKIID) {
 			continue
 		}
@@ -531,7 +531,7 @@ func (g *gossipServiceImpl) sendAndFilterSecrets(msg *protoext.SignedGossipMessa
 		clonedMsg.Envelope = msg.Envelope
 
 		// Don't gossip secrets
-		if !g.isInMyorg(discovery.NetworkMember{PKIid: peer.PKIID}) {
+		if !g.IsInMyOrg(discovery.NetworkMember{PKIid: peer.PKIID}) {
 			clonedMsg.Envelope = protoG.Clone(msg.Envelope).(*proto.Envelope) // clone the envelope
 			clonedMsg.Envelope.SecretEnvelope = nil
 		}
@@ -1171,7 +1171,8 @@ func (g *gossipServiceImpl) hasExternalEndpoint(PKIID common.PKIidType) bool {
 	return false
 }
 
-func (g *gossipServiceImpl) isInMyorg(member discovery.NetworkMember) bool {
+// IsInMyOrg checks whether a network member is in this peer's org
+func (g *gossipServiceImpl) IsInMyOrg(member discovery.NetworkMember) bool {
 	if member.PKIid == nil {
 		return false
 	}

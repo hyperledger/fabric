@@ -11,52 +11,80 @@ import (
 	"github.com/hyperledger/fabric/gossip/filter"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/protoext"
-	proto "github.com/hyperledger/fabric/protos/gossip"
+	gossipa "github.com/hyperledger/fabric/protos/gossip"
 )
 
 type Gossip struct {
-	SelfMembershipInfoStub        func() discovery.NetworkMember
-	selfMembershipInfoMutex       sync.RWMutex
-	selfMembershipInfoArgsForCall []struct{}
-	selfMembershipInfoReturns     struct {
-		result1 discovery.NetworkMember
+	AcceptStub        func(common.MessageAcceptor, bool) (<-chan *gossipa.GossipMessage, <-chan protoext.ReceivedMessage)
+	acceptMutex       sync.RWMutex
+	acceptArgsForCall []struct {
+		arg1 common.MessageAcceptor
+		arg2 bool
 	}
-	selfMembershipInfoReturnsOnCall map[int]struct {
-		result1 discovery.NetworkMember
+	acceptReturns struct {
+		result1 <-chan *gossipa.GossipMessage
+		result2 <-chan protoext.ReceivedMessage
 	}
-	SelfChannelInfoStub        func(common.ChainID) *protoext.SignedGossipMessage
-	selfChannelInfoMutex       sync.RWMutex
-	selfChannelInfoArgsForCall []struct {
+	acceptReturnsOnCall map[int]struct {
+		result1 <-chan *gossipa.GossipMessage
+		result2 <-chan protoext.ReceivedMessage
+	}
+	GossipStub        func(*gossipa.GossipMessage)
+	gossipMutex       sync.RWMutex
+	gossipArgsForCall []struct {
+		arg1 *gossipa.GossipMessage
+	}
+	IdentityInfoStub        func() api.PeerIdentitySet
+	identityInfoMutex       sync.RWMutex
+	identityInfoArgsForCall []struct {
+	}
+	identityInfoReturns struct {
+		result1 api.PeerIdentitySet
+	}
+	identityInfoReturnsOnCall map[int]struct {
+		result1 api.PeerIdentitySet
+	}
+	IsInMyOrgStub        func(discovery.NetworkMember) bool
+	isInMyOrgMutex       sync.RWMutex
+	isInMyOrgArgsForCall []struct {
+		arg1 discovery.NetworkMember
+	}
+	isInMyOrgReturns struct {
+		result1 bool
+	}
+	isInMyOrgReturnsOnCall map[int]struct {
+		result1 bool
+	}
+	JoinChanStub        func(api.JoinChannelMessage, common.ChainID)
+	joinChanMutex       sync.RWMutex
+	joinChanArgsForCall []struct {
+		arg1 api.JoinChannelMessage
+		arg2 common.ChainID
+	}
+	LeaveChanStub        func(common.ChainID)
+	leaveChanMutex       sync.RWMutex
+	leaveChanArgsForCall []struct {
 		arg1 common.ChainID
 	}
-	selfChannelInfoReturns struct {
-		result1 *protoext.SignedGossipMessage
+	PeerFilterStub        func(common.ChainID, api.SubChannelSelectionCriteria) (filter.RoutingFilter, error)
+	peerFilterMutex       sync.RWMutex
+	peerFilterArgsForCall []struct {
+		arg1 common.ChainID
+		arg2 api.SubChannelSelectionCriteria
 	}
-	selfChannelInfoReturnsOnCall map[int]struct {
-		result1 *protoext.SignedGossipMessage
+	peerFilterReturns struct {
+		result1 filter.RoutingFilter
+		result2 error
 	}
-	SendStub        func(msg *proto.GossipMessage, peers ...*comm.RemotePeer)
-	sendMutex       sync.RWMutex
-	sendArgsForCall []struct {
-		msg   *proto.GossipMessage
-		peers []*comm.RemotePeer
-	}
-	SendByCriteriaStub        func(*protoext.SignedGossipMessage, gossip.SendCriteria) error
-	sendByCriteriaMutex       sync.RWMutex
-	sendByCriteriaArgsForCall []struct {
-		arg1 *protoext.SignedGossipMessage
-		arg2 gossip.SendCriteria
-	}
-	sendByCriteriaReturns struct {
-		result1 error
-	}
-	sendByCriteriaReturnsOnCall map[int]struct {
-		result1 error
+	peerFilterReturnsOnCall map[int]struct {
+		result1 filter.RoutingFilter
+		result2 error
 	}
 	PeersStub        func() []discovery.NetworkMember
 	peersMutex       sync.RWMutex
-	peersArgsForCall []struct{}
-	peersReturns     struct {
+	peersArgsForCall []struct {
+	}
+	peersReturns struct {
 		result1 []discovery.NetworkMember
 	}
 	peersReturnsOnCall map[int]struct {
@@ -73,254 +101,414 @@ type Gossip struct {
 	peersOfChannelReturnsOnCall map[int]struct {
 		result1 []discovery.NetworkMember
 	}
-	UpdateMetadataStub        func(metadata []byte)
-	updateMetadataMutex       sync.RWMutex
-	updateMetadataArgsForCall []struct {
-		metadata []byte
+	SelfChannelInfoStub        func(common.ChainID) *protoext.SignedGossipMessage
+	selfChannelInfoMutex       sync.RWMutex
+	selfChannelInfoArgsForCall []struct {
+		arg1 common.ChainID
 	}
-	UpdateLedgerHeightStub        func(height uint64, chainID common.ChainID)
-	updateLedgerHeightMutex       sync.RWMutex
-	updateLedgerHeightArgsForCall []struct {
-		height  uint64
-		chainID common.ChainID
+	selfChannelInfoReturns struct {
+		result1 *protoext.SignedGossipMessage
 	}
-	UpdateChaincodesStub        func(chaincode []*proto.Chaincode, chainID common.ChainID)
-	updateChaincodesMutex       sync.RWMutex
-	updateChaincodesArgsForCall []struct {
-		chaincode []*proto.Chaincode
-		chainID   common.ChainID
+	selfChannelInfoReturnsOnCall map[int]struct {
+		result1 *protoext.SignedGossipMessage
 	}
-	GossipStub        func(msg *proto.GossipMessage)
-	gossipMutex       sync.RWMutex
-	gossipArgsForCall []struct {
-		msg *proto.GossipMessage
+	SelfMembershipInfoStub        func() discovery.NetworkMember
+	selfMembershipInfoMutex       sync.RWMutex
+	selfMembershipInfoArgsForCall []struct {
 	}
-	PeerFilterStub        func(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error)
-	peerFilterMutex       sync.RWMutex
-	peerFilterArgsForCall []struct {
-		channel          common.ChainID
-		messagePredicate api.SubChannelSelectionCriteria
+	selfMembershipInfoReturns struct {
+		result1 discovery.NetworkMember
 	}
-	peerFilterReturns struct {
-		result1 filter.RoutingFilter
-		result2 error
+	selfMembershipInfoReturnsOnCall map[int]struct {
+		result1 discovery.NetworkMember
 	}
-	peerFilterReturnsOnCall map[int]struct {
-		result1 filter.RoutingFilter
-		result2 error
+	SendStub        func(*gossipa.GossipMessage, ...*comm.RemotePeer)
+	sendMutex       sync.RWMutex
+	sendArgsForCall []struct {
+		arg1 *gossipa.GossipMessage
+		arg2 []*comm.RemotePeer
 	}
-	AcceptStub        func(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan protoext.ReceivedMessage)
-	acceptMutex       sync.RWMutex
-	acceptArgsForCall []struct {
-		acceptor    common.MessageAcceptor
-		passThrough bool
+	SendByCriteriaStub        func(*protoext.SignedGossipMessage, gossip.SendCriteria) error
+	sendByCriteriaMutex       sync.RWMutex
+	sendByCriteriaArgsForCall []struct {
+		arg1 *protoext.SignedGossipMessage
+		arg2 gossip.SendCriteria
 	}
-	acceptReturns struct {
-		result1 <-chan *proto.GossipMessage
-		result2 <-chan protoext.ReceivedMessage
+	sendByCriteriaReturns struct {
+		result1 error
 	}
-	acceptReturnsOnCall map[int]struct {
-		result1 <-chan *proto.GossipMessage
-		result2 <-chan protoext.ReceivedMessage
+	sendByCriteriaReturnsOnCall map[int]struct {
+		result1 error
 	}
-	JoinChanStub        func(joinMsg api.JoinChannelMessage, chainID common.ChainID)
-	joinChanMutex       sync.RWMutex
-	joinChanArgsForCall []struct {
-		joinMsg api.JoinChannelMessage
-		chainID common.ChainID
+	StopStub        func()
+	stopMutex       sync.RWMutex
+	stopArgsForCall []struct {
 	}
-	LeaveChanStub        func(chainID common.ChainID)
-	leaveChanMutex       sync.RWMutex
-	leaveChanArgsForCall []struct {
-		chainID common.ChainID
-	}
-	SuspectPeersStub        func(s api.PeerSuspector)
+	SuspectPeersStub        func(api.PeerSuspector)
 	suspectPeersMutex       sync.RWMutex
 	suspectPeersArgsForCall []struct {
-		s api.PeerSuspector
+		arg1 api.PeerSuspector
 	}
-	IdentityInfoStub        func() api.PeerIdentitySet
-	identityInfoMutex       sync.RWMutex
-	identityInfoArgsForCall []struct{}
-	identityInfoReturns     struct {
-		result1 api.PeerIdentitySet
+	UpdateChaincodesStub        func([]*gossipa.Chaincode, common.ChainID)
+	updateChaincodesMutex       sync.RWMutex
+	updateChaincodesArgsForCall []struct {
+		arg1 []*gossipa.Chaincode
+		arg2 common.ChainID
 	}
-	identityInfoReturnsOnCall map[int]struct {
-		result1 api.PeerIdentitySet
+	UpdateLedgerHeightStub        func(uint64, common.ChainID)
+	updateLedgerHeightMutex       sync.RWMutex
+	updateLedgerHeightArgsForCall []struct {
+		arg1 uint64
+		arg2 common.ChainID
 	}
-	StopStub         func()
-	stopMutex        sync.RWMutex
-	stopArgsForCall  []struct{}
+	UpdateMetadataStub        func([]byte)
+	updateMetadataMutex       sync.RWMutex
+	updateMetadataArgsForCall []struct {
+		arg1 []byte
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Gossip) SelfMembershipInfo() discovery.NetworkMember {
-	fake.selfMembershipInfoMutex.Lock()
-	ret, specificReturn := fake.selfMembershipInfoReturnsOnCall[len(fake.selfMembershipInfoArgsForCall)]
-	fake.selfMembershipInfoArgsForCall = append(fake.selfMembershipInfoArgsForCall, struct{}{})
-	fake.recordInvocation("SelfMembershipInfo", []interface{}{})
-	fake.selfMembershipInfoMutex.Unlock()
-	if fake.SelfMembershipInfoStub != nil {
-		return fake.SelfMembershipInfoStub()
+func (fake *Gossip) Accept(arg1 common.MessageAcceptor, arg2 bool) (<-chan *gossipa.GossipMessage, <-chan protoext.ReceivedMessage) {
+	fake.acceptMutex.Lock()
+	ret, specificReturn := fake.acceptReturnsOnCall[len(fake.acceptArgsForCall)]
+	fake.acceptArgsForCall = append(fake.acceptArgsForCall, struct {
+		arg1 common.MessageAcceptor
+		arg2 bool
+	}{arg1, arg2})
+	fake.recordInvocation("Accept", []interface{}{arg1, arg2})
+	fake.acceptMutex.Unlock()
+	if fake.AcceptStub != nil {
+		return fake.AcceptStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.acceptReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Gossip) AcceptCallCount() int {
+	fake.acceptMutex.RLock()
+	defer fake.acceptMutex.RUnlock()
+	return len(fake.acceptArgsForCall)
+}
+
+func (fake *Gossip) AcceptCalls(stub func(common.MessageAcceptor, bool) (<-chan *gossipa.GossipMessage, <-chan protoext.ReceivedMessage)) {
+	fake.acceptMutex.Lock()
+	defer fake.acceptMutex.Unlock()
+	fake.AcceptStub = stub
+}
+
+func (fake *Gossip) AcceptArgsForCall(i int) (common.MessageAcceptor, bool) {
+	fake.acceptMutex.RLock()
+	defer fake.acceptMutex.RUnlock()
+	argsForCall := fake.acceptArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Gossip) AcceptReturns(result1 <-chan *gossipa.GossipMessage, result2 <-chan protoext.ReceivedMessage) {
+	fake.acceptMutex.Lock()
+	defer fake.acceptMutex.Unlock()
+	fake.AcceptStub = nil
+	fake.acceptReturns = struct {
+		result1 <-chan *gossipa.GossipMessage
+		result2 <-chan protoext.ReceivedMessage
+	}{result1, result2}
+}
+
+func (fake *Gossip) AcceptReturnsOnCall(i int, result1 <-chan *gossipa.GossipMessage, result2 <-chan protoext.ReceivedMessage) {
+	fake.acceptMutex.Lock()
+	defer fake.acceptMutex.Unlock()
+	fake.AcceptStub = nil
+	if fake.acceptReturnsOnCall == nil {
+		fake.acceptReturnsOnCall = make(map[int]struct {
+			result1 <-chan *gossipa.GossipMessage
+			result2 <-chan protoext.ReceivedMessage
+		})
+	}
+	fake.acceptReturnsOnCall[i] = struct {
+		result1 <-chan *gossipa.GossipMessage
+		result2 <-chan protoext.ReceivedMessage
+	}{result1, result2}
+}
+
+func (fake *Gossip) Gossip(arg1 *gossipa.GossipMessage) {
+	fake.gossipMutex.Lock()
+	fake.gossipArgsForCall = append(fake.gossipArgsForCall, struct {
+		arg1 *gossipa.GossipMessage
+	}{arg1})
+	fake.recordInvocation("Gossip", []interface{}{arg1})
+	fake.gossipMutex.Unlock()
+	if fake.GossipStub != nil {
+		fake.GossipStub(arg1)
+	}
+}
+
+func (fake *Gossip) GossipCallCount() int {
+	fake.gossipMutex.RLock()
+	defer fake.gossipMutex.RUnlock()
+	return len(fake.gossipArgsForCall)
+}
+
+func (fake *Gossip) GossipCalls(stub func(*gossipa.GossipMessage)) {
+	fake.gossipMutex.Lock()
+	defer fake.gossipMutex.Unlock()
+	fake.GossipStub = stub
+}
+
+func (fake *Gossip) GossipArgsForCall(i int) *gossipa.GossipMessage {
+	fake.gossipMutex.RLock()
+	defer fake.gossipMutex.RUnlock()
+	argsForCall := fake.gossipArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Gossip) IdentityInfo() api.PeerIdentitySet {
+	fake.identityInfoMutex.Lock()
+	ret, specificReturn := fake.identityInfoReturnsOnCall[len(fake.identityInfoArgsForCall)]
+	fake.identityInfoArgsForCall = append(fake.identityInfoArgsForCall, struct {
+	}{})
+	fake.recordInvocation("IdentityInfo", []interface{}{})
+	fake.identityInfoMutex.Unlock()
+	if fake.IdentityInfoStub != nil {
+		return fake.IdentityInfoStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.selfMembershipInfoReturns.result1
+	fakeReturns := fake.identityInfoReturns
+	return fakeReturns.result1
 }
 
-func (fake *Gossip) SelfMembershipInfoCallCount() int {
-	fake.selfMembershipInfoMutex.RLock()
-	defer fake.selfMembershipInfoMutex.RUnlock()
-	return len(fake.selfMembershipInfoArgsForCall)
+func (fake *Gossip) IdentityInfoCallCount() int {
+	fake.identityInfoMutex.RLock()
+	defer fake.identityInfoMutex.RUnlock()
+	return len(fake.identityInfoArgsForCall)
 }
 
-func (fake *Gossip) SelfMembershipInfoReturns(result1 discovery.NetworkMember) {
-	fake.SelfMembershipInfoStub = nil
-	fake.selfMembershipInfoReturns = struct {
-		result1 discovery.NetworkMember
+func (fake *Gossip) IdentityInfoCalls(stub func() api.PeerIdentitySet) {
+	fake.identityInfoMutex.Lock()
+	defer fake.identityInfoMutex.Unlock()
+	fake.IdentityInfoStub = stub
+}
+
+func (fake *Gossip) IdentityInfoReturns(result1 api.PeerIdentitySet) {
+	fake.identityInfoMutex.Lock()
+	defer fake.identityInfoMutex.Unlock()
+	fake.IdentityInfoStub = nil
+	fake.identityInfoReturns = struct {
+		result1 api.PeerIdentitySet
 	}{result1}
 }
 
-func (fake *Gossip) SelfMembershipInfoReturnsOnCall(i int, result1 discovery.NetworkMember) {
-	fake.SelfMembershipInfoStub = nil
-	if fake.selfMembershipInfoReturnsOnCall == nil {
-		fake.selfMembershipInfoReturnsOnCall = make(map[int]struct {
-			result1 discovery.NetworkMember
+func (fake *Gossip) IdentityInfoReturnsOnCall(i int, result1 api.PeerIdentitySet) {
+	fake.identityInfoMutex.Lock()
+	defer fake.identityInfoMutex.Unlock()
+	fake.IdentityInfoStub = nil
+	if fake.identityInfoReturnsOnCall == nil {
+		fake.identityInfoReturnsOnCall = make(map[int]struct {
+			result1 api.PeerIdentitySet
 		})
 	}
-	fake.selfMembershipInfoReturnsOnCall[i] = struct {
-		result1 discovery.NetworkMember
+	fake.identityInfoReturnsOnCall[i] = struct {
+		result1 api.PeerIdentitySet
 	}{result1}
 }
 
-func (fake *Gossip) SelfChannelInfo(arg1 common.ChainID) *protoext.SignedGossipMessage {
-	fake.selfChannelInfoMutex.Lock()
-	ret, specificReturn := fake.selfChannelInfoReturnsOnCall[len(fake.selfChannelInfoArgsForCall)]
-	fake.selfChannelInfoArgsForCall = append(fake.selfChannelInfoArgsForCall, struct {
+func (fake *Gossip) IsInMyOrg(arg1 discovery.NetworkMember) bool {
+	fake.isInMyOrgMutex.Lock()
+	ret, specificReturn := fake.isInMyOrgReturnsOnCall[len(fake.isInMyOrgArgsForCall)]
+	fake.isInMyOrgArgsForCall = append(fake.isInMyOrgArgsForCall, struct {
+		arg1 discovery.NetworkMember
+	}{arg1})
+	fake.recordInvocation("IsInMyOrg", []interface{}{arg1})
+	fake.isInMyOrgMutex.Unlock()
+	if fake.IsInMyOrgStub != nil {
+		return fake.IsInMyOrgStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.isInMyOrgReturns
+	return fakeReturns.result1
+}
+
+func (fake *Gossip) IsInMyOrgCallCount() int {
+	fake.isInMyOrgMutex.RLock()
+	defer fake.isInMyOrgMutex.RUnlock()
+	return len(fake.isInMyOrgArgsForCall)
+}
+
+func (fake *Gossip) IsInMyOrgCalls(stub func(discovery.NetworkMember) bool) {
+	fake.isInMyOrgMutex.Lock()
+	defer fake.isInMyOrgMutex.Unlock()
+	fake.IsInMyOrgStub = stub
+}
+
+func (fake *Gossip) IsInMyOrgArgsForCall(i int) discovery.NetworkMember {
+	fake.isInMyOrgMutex.RLock()
+	defer fake.isInMyOrgMutex.RUnlock()
+	argsForCall := fake.isInMyOrgArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Gossip) IsInMyOrgReturns(result1 bool) {
+	fake.isInMyOrgMutex.Lock()
+	defer fake.isInMyOrgMutex.Unlock()
+	fake.IsInMyOrgStub = nil
+	fake.isInMyOrgReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *Gossip) IsInMyOrgReturnsOnCall(i int, result1 bool) {
+	fake.isInMyOrgMutex.Lock()
+	defer fake.isInMyOrgMutex.Unlock()
+	fake.IsInMyOrgStub = nil
+	if fake.isInMyOrgReturnsOnCall == nil {
+		fake.isInMyOrgReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.isInMyOrgReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *Gossip) JoinChan(arg1 api.JoinChannelMessage, arg2 common.ChainID) {
+	fake.joinChanMutex.Lock()
+	fake.joinChanArgsForCall = append(fake.joinChanArgsForCall, struct {
+		arg1 api.JoinChannelMessage
+		arg2 common.ChainID
+	}{arg1, arg2})
+	fake.recordInvocation("JoinChan", []interface{}{arg1, arg2})
+	fake.joinChanMutex.Unlock()
+	if fake.JoinChanStub != nil {
+		fake.JoinChanStub(arg1, arg2)
+	}
+}
+
+func (fake *Gossip) JoinChanCallCount() int {
+	fake.joinChanMutex.RLock()
+	defer fake.joinChanMutex.RUnlock()
+	return len(fake.joinChanArgsForCall)
+}
+
+func (fake *Gossip) JoinChanCalls(stub func(api.JoinChannelMessage, common.ChainID)) {
+	fake.joinChanMutex.Lock()
+	defer fake.joinChanMutex.Unlock()
+	fake.JoinChanStub = stub
+}
+
+func (fake *Gossip) JoinChanArgsForCall(i int) (api.JoinChannelMessage, common.ChainID) {
+	fake.joinChanMutex.RLock()
+	defer fake.joinChanMutex.RUnlock()
+	argsForCall := fake.joinChanArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Gossip) LeaveChan(arg1 common.ChainID) {
+	fake.leaveChanMutex.Lock()
+	fake.leaveChanArgsForCall = append(fake.leaveChanArgsForCall, struct {
 		arg1 common.ChainID
 	}{arg1})
-	fake.recordInvocation("SelfChannelInfo", []interface{}{arg1})
-	fake.selfChannelInfoMutex.Unlock()
-	if fake.SelfChannelInfoStub != nil {
-		return fake.SelfChannelInfoStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.selfChannelInfoReturns.result1
-}
-
-func (fake *Gossip) SelfChannelInfoCallCount() int {
-	fake.selfChannelInfoMutex.RLock()
-	defer fake.selfChannelInfoMutex.RUnlock()
-	return len(fake.selfChannelInfoArgsForCall)
-}
-
-func (fake *Gossip) SelfChannelInfoArgsForCall(i int) common.ChainID {
-	fake.selfChannelInfoMutex.RLock()
-	defer fake.selfChannelInfoMutex.RUnlock()
-	return fake.selfChannelInfoArgsForCall[i].arg1
-}
-
-func (fake *Gossip) SelfChannelInfoReturns(result1 *protoext.SignedGossipMessage) {
-	fake.SelfChannelInfoStub = nil
-	fake.selfChannelInfoReturns = struct {
-		result1 *protoext.SignedGossipMessage
-	}{result1}
-}
-
-func (fake *Gossip) SelfChannelInfoReturnsOnCall(i int, result1 *protoext.SignedGossipMessage) {
-	fake.SelfChannelInfoStub = nil
-	if fake.selfChannelInfoReturnsOnCall == nil {
-		fake.selfChannelInfoReturnsOnCall = make(map[int]struct {
-			result1 *protoext.SignedGossipMessage
-		})
-	}
-	fake.selfChannelInfoReturnsOnCall[i] = struct {
-		result1 *protoext.SignedGossipMessage
-	}{result1}
-}
-
-func (fake *Gossip) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
-	fake.sendMutex.Lock()
-	fake.sendArgsForCall = append(fake.sendArgsForCall, struct {
-		msg   *proto.GossipMessage
-		peers []*comm.RemotePeer
-	}{msg, peers})
-	fake.recordInvocation("Send", []interface{}{msg, peers})
-	fake.sendMutex.Unlock()
-	if fake.SendStub != nil {
-		fake.SendStub(msg, peers...)
+	fake.recordInvocation("LeaveChan", []interface{}{arg1})
+	fake.leaveChanMutex.Unlock()
+	if fake.LeaveChanStub != nil {
+		fake.LeaveChanStub(arg1)
 	}
 }
 
-func (fake *Gossip) SendCallCount() int {
-	fake.sendMutex.RLock()
-	defer fake.sendMutex.RUnlock()
-	return len(fake.sendArgsForCall)
+func (fake *Gossip) LeaveChanCallCount() int {
+	fake.leaveChanMutex.RLock()
+	defer fake.leaveChanMutex.RUnlock()
+	return len(fake.leaveChanArgsForCall)
 }
 
-func (fake *Gossip) SendArgsForCall(i int) (*proto.GossipMessage, []*comm.RemotePeer) {
-	fake.sendMutex.RLock()
-	defer fake.sendMutex.RUnlock()
-	return fake.sendArgsForCall[i].msg, fake.sendArgsForCall[i].peers
+func (fake *Gossip) LeaveChanCalls(stub func(common.ChainID)) {
+	fake.leaveChanMutex.Lock()
+	defer fake.leaveChanMutex.Unlock()
+	fake.LeaveChanStub = stub
 }
 
-func (fake *Gossip) SendByCriteria(arg1 *protoext.SignedGossipMessage, arg2 gossip.SendCriteria) error {
-	fake.sendByCriteriaMutex.Lock()
-	ret, specificReturn := fake.sendByCriteriaReturnsOnCall[len(fake.sendByCriteriaArgsForCall)]
-	fake.sendByCriteriaArgsForCall = append(fake.sendByCriteriaArgsForCall, struct {
-		arg1 *protoext.SignedGossipMessage
-		arg2 gossip.SendCriteria
+func (fake *Gossip) LeaveChanArgsForCall(i int) common.ChainID {
+	fake.leaveChanMutex.RLock()
+	defer fake.leaveChanMutex.RUnlock()
+	argsForCall := fake.leaveChanArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Gossip) PeerFilter(arg1 common.ChainID, arg2 api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
+	fake.peerFilterMutex.Lock()
+	ret, specificReturn := fake.peerFilterReturnsOnCall[len(fake.peerFilterArgsForCall)]
+	fake.peerFilterArgsForCall = append(fake.peerFilterArgsForCall, struct {
+		arg1 common.ChainID
+		arg2 api.SubChannelSelectionCriteria
 	}{arg1, arg2})
-	fake.recordInvocation("SendByCriteria", []interface{}{arg1, arg2})
-	fake.sendByCriteriaMutex.Unlock()
-	if fake.SendByCriteriaStub != nil {
-		return fake.SendByCriteriaStub(arg1, arg2)
+	fake.recordInvocation("PeerFilter", []interface{}{arg1, arg2})
+	fake.peerFilterMutex.Unlock()
+	if fake.PeerFilterStub != nil {
+		return fake.PeerFilterStub(arg1, arg2)
 	}
 	if specificReturn {
-		return ret.result1
+		return ret.result1, ret.result2
 	}
-	return fake.sendByCriteriaReturns.result1
+	fakeReturns := fake.peerFilterReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *Gossip) SendByCriteriaCallCount() int {
-	fake.sendByCriteriaMutex.RLock()
-	defer fake.sendByCriteriaMutex.RUnlock()
-	return len(fake.sendByCriteriaArgsForCall)
+func (fake *Gossip) PeerFilterCallCount() int {
+	fake.peerFilterMutex.RLock()
+	defer fake.peerFilterMutex.RUnlock()
+	return len(fake.peerFilterArgsForCall)
 }
 
-func (fake *Gossip) SendByCriteriaArgsForCall(i int) (*protoext.SignedGossipMessage, gossip.SendCriteria) {
-	fake.sendByCriteriaMutex.RLock()
-	defer fake.sendByCriteriaMutex.RUnlock()
-	return fake.sendByCriteriaArgsForCall[i].arg1, fake.sendByCriteriaArgsForCall[i].arg2
+func (fake *Gossip) PeerFilterCalls(stub func(common.ChainID, api.SubChannelSelectionCriteria) (filter.RoutingFilter, error)) {
+	fake.peerFilterMutex.Lock()
+	defer fake.peerFilterMutex.Unlock()
+	fake.PeerFilterStub = stub
 }
 
-func (fake *Gossip) SendByCriteriaReturns(result1 error) {
-	fake.SendByCriteriaStub = nil
-	fake.sendByCriteriaReturns = struct {
-		result1 error
-	}{result1}
+func (fake *Gossip) PeerFilterArgsForCall(i int) (common.ChainID, api.SubChannelSelectionCriteria) {
+	fake.peerFilterMutex.RLock()
+	defer fake.peerFilterMutex.RUnlock()
+	argsForCall := fake.peerFilterArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *Gossip) SendByCriteriaReturnsOnCall(i int, result1 error) {
-	fake.SendByCriteriaStub = nil
-	if fake.sendByCriteriaReturnsOnCall == nil {
-		fake.sendByCriteriaReturnsOnCall = make(map[int]struct {
-			result1 error
+func (fake *Gossip) PeerFilterReturns(result1 filter.RoutingFilter, result2 error) {
+	fake.peerFilterMutex.Lock()
+	defer fake.peerFilterMutex.Unlock()
+	fake.PeerFilterStub = nil
+	fake.peerFilterReturns = struct {
+		result1 filter.RoutingFilter
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Gossip) PeerFilterReturnsOnCall(i int, result1 filter.RoutingFilter, result2 error) {
+	fake.peerFilterMutex.Lock()
+	defer fake.peerFilterMutex.Unlock()
+	fake.PeerFilterStub = nil
+	if fake.peerFilterReturnsOnCall == nil {
+		fake.peerFilterReturnsOnCall = make(map[int]struct {
+			result1 filter.RoutingFilter
+			result2 error
 		})
 	}
-	fake.sendByCriteriaReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
+	fake.peerFilterReturnsOnCall[i] = struct {
+		result1 filter.RoutingFilter
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *Gossip) Peers() []discovery.NetworkMember {
 	fake.peersMutex.Lock()
 	ret, specificReturn := fake.peersReturnsOnCall[len(fake.peersArgsForCall)]
-	fake.peersArgsForCall = append(fake.peersArgsForCall, struct{}{})
+	fake.peersArgsForCall = append(fake.peersArgsForCall, struct {
+	}{})
 	fake.recordInvocation("Peers", []interface{}{})
 	fake.peersMutex.Unlock()
 	if fake.PeersStub != nil {
@@ -329,7 +517,8 @@ func (fake *Gossip) Peers() []discovery.NetworkMember {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.peersReturns.result1
+	fakeReturns := fake.peersReturns
+	return fakeReturns.result1
 }
 
 func (fake *Gossip) PeersCallCount() int {
@@ -338,7 +527,15 @@ func (fake *Gossip) PeersCallCount() int {
 	return len(fake.peersArgsForCall)
 }
 
+func (fake *Gossip) PeersCalls(stub func() []discovery.NetworkMember) {
+	fake.peersMutex.Lock()
+	defer fake.peersMutex.Unlock()
+	fake.PeersStub = stub
+}
+
 func (fake *Gossip) PeersReturns(result1 []discovery.NetworkMember) {
+	fake.peersMutex.Lock()
+	defer fake.peersMutex.Unlock()
 	fake.PeersStub = nil
 	fake.peersReturns = struct {
 		result1 []discovery.NetworkMember
@@ -346,6 +543,8 @@ func (fake *Gossip) PeersReturns(result1 []discovery.NetworkMember) {
 }
 
 func (fake *Gossip) PeersReturnsOnCall(i int, result1 []discovery.NetworkMember) {
+	fake.peersMutex.Lock()
+	defer fake.peersMutex.Unlock()
 	fake.PeersStub = nil
 	if fake.peersReturnsOnCall == nil {
 		fake.peersReturnsOnCall = make(map[int]struct {
@@ -371,7 +570,8 @@ func (fake *Gossip) PeersOfChannel(arg1 common.ChainID) []discovery.NetworkMembe
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.peersOfChannelReturns.result1
+	fakeReturns := fake.peersOfChannelReturns
+	return fakeReturns.result1
 }
 
 func (fake *Gossip) PeersOfChannelCallCount() int {
@@ -380,13 +580,22 @@ func (fake *Gossip) PeersOfChannelCallCount() int {
 	return len(fake.peersOfChannelArgsForCall)
 }
 
+func (fake *Gossip) PeersOfChannelCalls(stub func(common.ChainID) []discovery.NetworkMember) {
+	fake.peersOfChannelMutex.Lock()
+	defer fake.peersOfChannelMutex.Unlock()
+	fake.PeersOfChannelStub = stub
+}
+
 func (fake *Gossip) PeersOfChannelArgsForCall(i int) common.ChainID {
 	fake.peersOfChannelMutex.RLock()
 	defer fake.peersOfChannelMutex.RUnlock()
-	return fake.peersOfChannelArgsForCall[i].arg1
+	argsForCall := fake.peersOfChannelArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *Gossip) PeersOfChannelReturns(result1 []discovery.NetworkMember) {
+	fake.peersOfChannelMutex.Lock()
+	defer fake.peersOfChannelMutex.Unlock()
 	fake.PeersOfChannelStub = nil
 	fake.peersOfChannelReturns = struct {
 		result1 []discovery.NetworkMember
@@ -394,6 +603,8 @@ func (fake *Gossip) PeersOfChannelReturns(result1 []discovery.NetworkMember) {
 }
 
 func (fake *Gossip) PeersOfChannelReturnsOnCall(i int, result1 []discovery.NetworkMember) {
+	fake.peersOfChannelMutex.Lock()
+	defer fake.peersOfChannelMutex.Unlock()
 	fake.PeersOfChannelStub = nil
 	if fake.peersOfChannelReturnsOnCall == nil {
 		fake.peersOfChannelReturnsOnCall = make(map[int]struct {
@@ -405,334 +616,215 @@ func (fake *Gossip) PeersOfChannelReturnsOnCall(i int, result1 []discovery.Netwo
 	}{result1}
 }
 
-func (fake *Gossip) UpdateMetadata(metadata []byte) {
-	var metadataCopy []byte
-	if metadata != nil {
-		metadataCopy = make([]byte, len(metadata))
-		copy(metadataCopy, metadata)
-	}
-	fake.updateMetadataMutex.Lock()
-	fake.updateMetadataArgsForCall = append(fake.updateMetadataArgsForCall, struct {
-		metadata []byte
-	}{metadataCopy})
-	fake.recordInvocation("UpdateMetadata", []interface{}{metadataCopy})
-	fake.updateMetadataMutex.Unlock()
-	if fake.UpdateMetadataStub != nil {
-		fake.UpdateMetadataStub(metadata)
-	}
-}
-
-func (fake *Gossip) UpdateMetadataCallCount() int {
-	fake.updateMetadataMutex.RLock()
-	defer fake.updateMetadataMutex.RUnlock()
-	return len(fake.updateMetadataArgsForCall)
-}
-
-func (fake *Gossip) UpdateMetadataArgsForCall(i int) []byte {
-	fake.updateMetadataMutex.RLock()
-	defer fake.updateMetadataMutex.RUnlock()
-	return fake.updateMetadataArgsForCall[i].metadata
-}
-
-func (fake *Gossip) UpdateLedgerHeight(height uint64, chainID common.ChainID) {
-	fake.updateLedgerHeightMutex.Lock()
-	fake.updateLedgerHeightArgsForCall = append(fake.updateLedgerHeightArgsForCall, struct {
-		height  uint64
-		chainID common.ChainID
-	}{height, chainID})
-	fake.recordInvocation("UpdateLedgerHeight", []interface{}{height, chainID})
-	fake.updateLedgerHeightMutex.Unlock()
-	if fake.UpdateLedgerHeightStub != nil {
-		fake.UpdateLedgerHeightStub(height, chainID)
-	}
-}
-
-func (fake *Gossip) UpdateLedgerHeightCallCount() int {
-	fake.updateLedgerHeightMutex.RLock()
-	defer fake.updateLedgerHeightMutex.RUnlock()
-	return len(fake.updateLedgerHeightArgsForCall)
-}
-
-func (fake *Gossip) UpdateLedgerHeightArgsForCall(i int) (uint64, common.ChainID) {
-	fake.updateLedgerHeightMutex.RLock()
-	defer fake.updateLedgerHeightMutex.RUnlock()
-	return fake.updateLedgerHeightArgsForCall[i].height, fake.updateLedgerHeightArgsForCall[i].chainID
-}
-
-func (fake *Gossip) UpdateChaincodes(chaincode []*proto.Chaincode, chainID common.ChainID) {
-	var chaincodeCopy []*proto.Chaincode
-	if chaincode != nil {
-		chaincodeCopy = make([]*proto.Chaincode, len(chaincode))
-		copy(chaincodeCopy, chaincode)
-	}
-	fake.updateChaincodesMutex.Lock()
-	fake.updateChaincodesArgsForCall = append(fake.updateChaincodesArgsForCall, struct {
-		chaincode []*proto.Chaincode
-		chainID   common.ChainID
-	}{chaincodeCopy, chainID})
-	fake.recordInvocation("UpdateChaincodes", []interface{}{chaincodeCopy, chainID})
-	fake.updateChaincodesMutex.Unlock()
-	if fake.UpdateChaincodesStub != nil {
-		fake.UpdateChaincodesStub(chaincode, chainID)
-	}
-}
-
-func (fake *Gossip) UpdateChaincodesCallCount() int {
-	fake.updateChaincodesMutex.RLock()
-	defer fake.updateChaincodesMutex.RUnlock()
-	return len(fake.updateChaincodesArgsForCall)
-}
-
-func (fake *Gossip) UpdateChaincodesArgsForCall(i int) ([]*proto.Chaincode, common.ChainID) {
-	fake.updateChaincodesMutex.RLock()
-	defer fake.updateChaincodesMutex.RUnlock()
-	return fake.updateChaincodesArgsForCall[i].chaincode, fake.updateChaincodesArgsForCall[i].chainID
-}
-
-func (fake *Gossip) Gossip(msg *proto.GossipMessage) {
-	fake.gossipMutex.Lock()
-	fake.gossipArgsForCall = append(fake.gossipArgsForCall, struct {
-		msg *proto.GossipMessage
-	}{msg})
-	fake.recordInvocation("Gossip", []interface{}{msg})
-	fake.gossipMutex.Unlock()
-	if fake.GossipStub != nil {
-		fake.GossipStub(msg)
-	}
-}
-
-func (fake *Gossip) GossipCallCount() int {
-	fake.gossipMutex.RLock()
-	defer fake.gossipMutex.RUnlock()
-	return len(fake.gossipArgsForCall)
-}
-
-func (fake *Gossip) GossipArgsForCall(i int) *proto.GossipMessage {
-	fake.gossipMutex.RLock()
-	defer fake.gossipMutex.RUnlock()
-	return fake.gossipArgsForCall[i].msg
-}
-
-func (fake *Gossip) PeerFilter(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
-	fake.peerFilterMutex.Lock()
-	ret, specificReturn := fake.peerFilterReturnsOnCall[len(fake.peerFilterArgsForCall)]
-	fake.peerFilterArgsForCall = append(fake.peerFilterArgsForCall, struct {
-		channel          common.ChainID
-		messagePredicate api.SubChannelSelectionCriteria
-	}{channel, messagePredicate})
-	fake.recordInvocation("PeerFilter", []interface{}{channel, messagePredicate})
-	fake.peerFilterMutex.Unlock()
-	if fake.PeerFilterStub != nil {
-		return fake.PeerFilterStub(channel, messagePredicate)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.peerFilterReturns.result1, fake.peerFilterReturns.result2
-}
-
-func (fake *Gossip) PeerFilterCallCount() int {
-	fake.peerFilterMutex.RLock()
-	defer fake.peerFilterMutex.RUnlock()
-	return len(fake.peerFilterArgsForCall)
-}
-
-func (fake *Gossip) PeerFilterArgsForCall(i int) (common.ChainID, api.SubChannelSelectionCriteria) {
-	fake.peerFilterMutex.RLock()
-	defer fake.peerFilterMutex.RUnlock()
-	return fake.peerFilterArgsForCall[i].channel, fake.peerFilterArgsForCall[i].messagePredicate
-}
-
-func (fake *Gossip) PeerFilterReturns(result1 filter.RoutingFilter, result2 error) {
-	fake.PeerFilterStub = nil
-	fake.peerFilterReturns = struct {
-		result1 filter.RoutingFilter
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *Gossip) PeerFilterReturnsOnCall(i int, result1 filter.RoutingFilter, result2 error) {
-	fake.PeerFilterStub = nil
-	if fake.peerFilterReturnsOnCall == nil {
-		fake.peerFilterReturnsOnCall = make(map[int]struct {
-			result1 filter.RoutingFilter
-			result2 error
-		})
-	}
-	fake.peerFilterReturnsOnCall[i] = struct {
-		result1 filter.RoutingFilter
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *Gossip) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan protoext.ReceivedMessage) {
-	fake.acceptMutex.Lock()
-	ret, specificReturn := fake.acceptReturnsOnCall[len(fake.acceptArgsForCall)]
-	fake.acceptArgsForCall = append(fake.acceptArgsForCall, struct {
-		acceptor    common.MessageAcceptor
-		passThrough bool
-	}{acceptor, passThrough})
-	fake.recordInvocation("Accept", []interface{}{acceptor, passThrough})
-	fake.acceptMutex.Unlock()
-	if fake.AcceptStub != nil {
-		return fake.AcceptStub(acceptor, passThrough)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.acceptReturns.result1, fake.acceptReturns.result2
-}
-
-func (fake *Gossip) AcceptCallCount() int {
-	fake.acceptMutex.RLock()
-	defer fake.acceptMutex.RUnlock()
-	return len(fake.acceptArgsForCall)
-}
-
-func (fake *Gossip) AcceptArgsForCall(i int) (common.MessageAcceptor, bool) {
-	fake.acceptMutex.RLock()
-	defer fake.acceptMutex.RUnlock()
-	return fake.acceptArgsForCall[i].acceptor, fake.acceptArgsForCall[i].passThrough
-}
-
-func (fake *Gossip) AcceptReturns(result1 <-chan *proto.GossipMessage, result2 <-chan protoext.ReceivedMessage) {
-	fake.AcceptStub = nil
-	fake.acceptReturns = struct {
-		result1 <-chan *proto.GossipMessage
-		result2 <-chan protoext.ReceivedMessage
-	}{result1, result2}
-}
-
-func (fake *Gossip) AcceptReturnsOnCall(i int, result1 <-chan *proto.GossipMessage, result2 <-chan protoext.ReceivedMessage) {
-	fake.AcceptStub = nil
-	if fake.acceptReturnsOnCall == nil {
-		fake.acceptReturnsOnCall = make(map[int]struct {
-			result1 <-chan *proto.GossipMessage
-			result2 <-chan protoext.ReceivedMessage
-		})
-	}
-	fake.acceptReturnsOnCall[i] = struct {
-		result1 <-chan *proto.GossipMessage
-		result2 <-chan protoext.ReceivedMessage
-	}{result1, result2}
-}
-
-func (fake *Gossip) JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID) {
-	fake.joinChanMutex.Lock()
-	fake.joinChanArgsForCall = append(fake.joinChanArgsForCall, struct {
-		joinMsg api.JoinChannelMessage
-		chainID common.ChainID
-	}{joinMsg, chainID})
-	fake.recordInvocation("JoinChan", []interface{}{joinMsg, chainID})
-	fake.joinChanMutex.Unlock()
-	if fake.JoinChanStub != nil {
-		fake.JoinChanStub(joinMsg, chainID)
-	}
-}
-
-func (fake *Gossip) JoinChanCallCount() int {
-	fake.joinChanMutex.RLock()
-	defer fake.joinChanMutex.RUnlock()
-	return len(fake.joinChanArgsForCall)
-}
-
-func (fake *Gossip) JoinChanArgsForCall(i int) (api.JoinChannelMessage, common.ChainID) {
-	fake.joinChanMutex.RLock()
-	defer fake.joinChanMutex.RUnlock()
-	return fake.joinChanArgsForCall[i].joinMsg, fake.joinChanArgsForCall[i].chainID
-}
-
-func (fake *Gossip) LeaveChan(chainID common.ChainID) {
-	fake.leaveChanMutex.Lock()
-	fake.leaveChanArgsForCall = append(fake.leaveChanArgsForCall, struct {
-		chainID common.ChainID
-	}{chainID})
-	fake.recordInvocation("LeaveChan", []interface{}{chainID})
-	fake.leaveChanMutex.Unlock()
-	if fake.LeaveChanStub != nil {
-		fake.LeaveChanStub(chainID)
-	}
-}
-
-func (fake *Gossip) LeaveChanCallCount() int {
-	fake.leaveChanMutex.RLock()
-	defer fake.leaveChanMutex.RUnlock()
-	return len(fake.leaveChanArgsForCall)
-}
-
-func (fake *Gossip) LeaveChanArgsForCall(i int) common.ChainID {
-	fake.leaveChanMutex.RLock()
-	defer fake.leaveChanMutex.RUnlock()
-	return fake.leaveChanArgsForCall[i].chainID
-}
-
-func (fake *Gossip) SuspectPeers(s api.PeerSuspector) {
-	fake.suspectPeersMutex.Lock()
-	fake.suspectPeersArgsForCall = append(fake.suspectPeersArgsForCall, struct {
-		s api.PeerSuspector
-	}{s})
-	fake.recordInvocation("SuspectPeers", []interface{}{s})
-	fake.suspectPeersMutex.Unlock()
-	if fake.SuspectPeersStub != nil {
-		fake.SuspectPeersStub(s)
-	}
-}
-
-func (fake *Gossip) SuspectPeersCallCount() int {
-	fake.suspectPeersMutex.RLock()
-	defer fake.suspectPeersMutex.RUnlock()
-	return len(fake.suspectPeersArgsForCall)
-}
-
-func (fake *Gossip) SuspectPeersArgsForCall(i int) api.PeerSuspector {
-	fake.suspectPeersMutex.RLock()
-	defer fake.suspectPeersMutex.RUnlock()
-	return fake.suspectPeersArgsForCall[i].s
-}
-
-func (fake *Gossip) IdentityInfo() api.PeerIdentitySet {
-	fake.identityInfoMutex.Lock()
-	ret, specificReturn := fake.identityInfoReturnsOnCall[len(fake.identityInfoArgsForCall)]
-	fake.identityInfoArgsForCall = append(fake.identityInfoArgsForCall, struct{}{})
-	fake.recordInvocation("IdentityInfo", []interface{}{})
-	fake.identityInfoMutex.Unlock()
-	if fake.IdentityInfoStub != nil {
-		return fake.IdentityInfoStub()
+func (fake *Gossip) SelfChannelInfo(arg1 common.ChainID) *protoext.SignedGossipMessage {
+	fake.selfChannelInfoMutex.Lock()
+	ret, specificReturn := fake.selfChannelInfoReturnsOnCall[len(fake.selfChannelInfoArgsForCall)]
+	fake.selfChannelInfoArgsForCall = append(fake.selfChannelInfoArgsForCall, struct {
+		arg1 common.ChainID
+	}{arg1})
+	fake.recordInvocation("SelfChannelInfo", []interface{}{arg1})
+	fake.selfChannelInfoMutex.Unlock()
+	if fake.SelfChannelInfoStub != nil {
+		return fake.SelfChannelInfoStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.identityInfoReturns.result1
+	fakeReturns := fake.selfChannelInfoReturns
+	return fakeReturns.result1
 }
 
-func (fake *Gossip) IdentityInfoCallCount() int {
-	fake.identityInfoMutex.RLock()
-	defer fake.identityInfoMutex.RUnlock()
-	return len(fake.identityInfoArgsForCall)
+func (fake *Gossip) SelfChannelInfoCallCount() int {
+	fake.selfChannelInfoMutex.RLock()
+	defer fake.selfChannelInfoMutex.RUnlock()
+	return len(fake.selfChannelInfoArgsForCall)
 }
 
-func (fake *Gossip) IdentityInfoReturns(result1 api.PeerIdentitySet) {
-	fake.IdentityInfoStub = nil
-	fake.identityInfoReturns = struct {
-		result1 api.PeerIdentitySet
+func (fake *Gossip) SelfChannelInfoCalls(stub func(common.ChainID) *protoext.SignedGossipMessage) {
+	fake.selfChannelInfoMutex.Lock()
+	defer fake.selfChannelInfoMutex.Unlock()
+	fake.SelfChannelInfoStub = stub
+}
+
+func (fake *Gossip) SelfChannelInfoArgsForCall(i int) common.ChainID {
+	fake.selfChannelInfoMutex.RLock()
+	defer fake.selfChannelInfoMutex.RUnlock()
+	argsForCall := fake.selfChannelInfoArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Gossip) SelfChannelInfoReturns(result1 *protoext.SignedGossipMessage) {
+	fake.selfChannelInfoMutex.Lock()
+	defer fake.selfChannelInfoMutex.Unlock()
+	fake.SelfChannelInfoStub = nil
+	fake.selfChannelInfoReturns = struct {
+		result1 *protoext.SignedGossipMessage
 	}{result1}
 }
 
-func (fake *Gossip) IdentityInfoReturnsOnCall(i int, result1 api.PeerIdentitySet) {
-	fake.IdentityInfoStub = nil
-	if fake.identityInfoReturnsOnCall == nil {
-		fake.identityInfoReturnsOnCall = make(map[int]struct {
-			result1 api.PeerIdentitySet
+func (fake *Gossip) SelfChannelInfoReturnsOnCall(i int, result1 *protoext.SignedGossipMessage) {
+	fake.selfChannelInfoMutex.Lock()
+	defer fake.selfChannelInfoMutex.Unlock()
+	fake.SelfChannelInfoStub = nil
+	if fake.selfChannelInfoReturnsOnCall == nil {
+		fake.selfChannelInfoReturnsOnCall = make(map[int]struct {
+			result1 *protoext.SignedGossipMessage
 		})
 	}
-	fake.identityInfoReturnsOnCall[i] = struct {
-		result1 api.PeerIdentitySet
+	fake.selfChannelInfoReturnsOnCall[i] = struct {
+		result1 *protoext.SignedGossipMessage
+	}{result1}
+}
+
+func (fake *Gossip) SelfMembershipInfo() discovery.NetworkMember {
+	fake.selfMembershipInfoMutex.Lock()
+	ret, specificReturn := fake.selfMembershipInfoReturnsOnCall[len(fake.selfMembershipInfoArgsForCall)]
+	fake.selfMembershipInfoArgsForCall = append(fake.selfMembershipInfoArgsForCall, struct {
+	}{})
+	fake.recordInvocation("SelfMembershipInfo", []interface{}{})
+	fake.selfMembershipInfoMutex.Unlock()
+	if fake.SelfMembershipInfoStub != nil {
+		return fake.SelfMembershipInfoStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.selfMembershipInfoReturns
+	return fakeReturns.result1
+}
+
+func (fake *Gossip) SelfMembershipInfoCallCount() int {
+	fake.selfMembershipInfoMutex.RLock()
+	defer fake.selfMembershipInfoMutex.RUnlock()
+	return len(fake.selfMembershipInfoArgsForCall)
+}
+
+func (fake *Gossip) SelfMembershipInfoCalls(stub func() discovery.NetworkMember) {
+	fake.selfMembershipInfoMutex.Lock()
+	defer fake.selfMembershipInfoMutex.Unlock()
+	fake.SelfMembershipInfoStub = stub
+}
+
+func (fake *Gossip) SelfMembershipInfoReturns(result1 discovery.NetworkMember) {
+	fake.selfMembershipInfoMutex.Lock()
+	defer fake.selfMembershipInfoMutex.Unlock()
+	fake.SelfMembershipInfoStub = nil
+	fake.selfMembershipInfoReturns = struct {
+		result1 discovery.NetworkMember
+	}{result1}
+}
+
+func (fake *Gossip) SelfMembershipInfoReturnsOnCall(i int, result1 discovery.NetworkMember) {
+	fake.selfMembershipInfoMutex.Lock()
+	defer fake.selfMembershipInfoMutex.Unlock()
+	fake.SelfMembershipInfoStub = nil
+	if fake.selfMembershipInfoReturnsOnCall == nil {
+		fake.selfMembershipInfoReturnsOnCall = make(map[int]struct {
+			result1 discovery.NetworkMember
+		})
+	}
+	fake.selfMembershipInfoReturnsOnCall[i] = struct {
+		result1 discovery.NetworkMember
+	}{result1}
+}
+
+func (fake *Gossip) Send(arg1 *gossipa.GossipMessage, arg2 ...*comm.RemotePeer) {
+	fake.sendMutex.Lock()
+	fake.sendArgsForCall = append(fake.sendArgsForCall, struct {
+		arg1 *gossipa.GossipMessage
+		arg2 []*comm.RemotePeer
+	}{arg1, arg2})
+	fake.recordInvocation("Send", []interface{}{arg1, arg2})
+	fake.sendMutex.Unlock()
+	if fake.SendStub != nil {
+		fake.SendStub(arg1, arg2...)
+	}
+}
+
+func (fake *Gossip) SendCallCount() int {
+	fake.sendMutex.RLock()
+	defer fake.sendMutex.RUnlock()
+	return len(fake.sendArgsForCall)
+}
+
+func (fake *Gossip) SendCalls(stub func(*gossipa.GossipMessage, ...*comm.RemotePeer)) {
+	fake.sendMutex.Lock()
+	defer fake.sendMutex.Unlock()
+	fake.SendStub = stub
+}
+
+func (fake *Gossip) SendArgsForCall(i int) (*gossipa.GossipMessage, []*comm.RemotePeer) {
+	fake.sendMutex.RLock()
+	defer fake.sendMutex.RUnlock()
+	argsForCall := fake.sendArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Gossip) SendByCriteria(arg1 *protoext.SignedGossipMessage, arg2 gossip.SendCriteria) error {
+	fake.sendByCriteriaMutex.Lock()
+	ret, specificReturn := fake.sendByCriteriaReturnsOnCall[len(fake.sendByCriteriaArgsForCall)]
+	fake.sendByCriteriaArgsForCall = append(fake.sendByCriteriaArgsForCall, struct {
+		arg1 *protoext.SignedGossipMessage
+		arg2 gossip.SendCriteria
+	}{arg1, arg2})
+	fake.recordInvocation("SendByCriteria", []interface{}{arg1, arg2})
+	fake.sendByCriteriaMutex.Unlock()
+	if fake.SendByCriteriaStub != nil {
+		return fake.SendByCriteriaStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.sendByCriteriaReturns
+	return fakeReturns.result1
+}
+
+func (fake *Gossip) SendByCriteriaCallCount() int {
+	fake.sendByCriteriaMutex.RLock()
+	defer fake.sendByCriteriaMutex.RUnlock()
+	return len(fake.sendByCriteriaArgsForCall)
+}
+
+func (fake *Gossip) SendByCriteriaCalls(stub func(*protoext.SignedGossipMessage, gossip.SendCriteria) error) {
+	fake.sendByCriteriaMutex.Lock()
+	defer fake.sendByCriteriaMutex.Unlock()
+	fake.SendByCriteriaStub = stub
+}
+
+func (fake *Gossip) SendByCriteriaArgsForCall(i int) (*protoext.SignedGossipMessage, gossip.SendCriteria) {
+	fake.sendByCriteriaMutex.RLock()
+	defer fake.sendByCriteriaMutex.RUnlock()
+	argsForCall := fake.sendByCriteriaArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Gossip) SendByCriteriaReturns(result1 error) {
+	fake.sendByCriteriaMutex.Lock()
+	defer fake.sendByCriteriaMutex.Unlock()
+	fake.SendByCriteriaStub = nil
+	fake.sendByCriteriaReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Gossip) SendByCriteriaReturnsOnCall(i int, result1 error) {
+	fake.sendByCriteriaMutex.Lock()
+	defer fake.sendByCriteriaMutex.Unlock()
+	fake.SendByCriteriaStub = nil
+	if fake.sendByCriteriaReturnsOnCall == nil {
+		fake.sendByCriteriaReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.sendByCriteriaReturnsOnCall[i] = struct {
+		result1 error
 	}{result1}
 }
 
 func (fake *Gossip) Stop() {
 	fake.stopMutex.Lock()
-	fake.stopArgsForCall = append(fake.stopArgsForCall, struct{}{})
+	fake.stopArgsForCall = append(fake.stopArgsForCall, struct {
+	}{})
 	fake.recordInvocation("Stop", []interface{}{})
 	fake.stopMutex.Unlock()
 	if fake.StopStub != nil {
@@ -746,43 +838,187 @@ func (fake *Gossip) StopCallCount() int {
 	return len(fake.stopArgsForCall)
 }
 
+func (fake *Gossip) StopCalls(stub func()) {
+	fake.stopMutex.Lock()
+	defer fake.stopMutex.Unlock()
+	fake.StopStub = stub
+}
+
+func (fake *Gossip) SuspectPeers(arg1 api.PeerSuspector) {
+	fake.suspectPeersMutex.Lock()
+	fake.suspectPeersArgsForCall = append(fake.suspectPeersArgsForCall, struct {
+		arg1 api.PeerSuspector
+	}{arg1})
+	fake.recordInvocation("SuspectPeers", []interface{}{arg1})
+	fake.suspectPeersMutex.Unlock()
+	if fake.SuspectPeersStub != nil {
+		fake.SuspectPeersStub(arg1)
+	}
+}
+
+func (fake *Gossip) SuspectPeersCallCount() int {
+	fake.suspectPeersMutex.RLock()
+	defer fake.suspectPeersMutex.RUnlock()
+	return len(fake.suspectPeersArgsForCall)
+}
+
+func (fake *Gossip) SuspectPeersCalls(stub func(api.PeerSuspector)) {
+	fake.suspectPeersMutex.Lock()
+	defer fake.suspectPeersMutex.Unlock()
+	fake.SuspectPeersStub = stub
+}
+
+func (fake *Gossip) SuspectPeersArgsForCall(i int) api.PeerSuspector {
+	fake.suspectPeersMutex.RLock()
+	defer fake.suspectPeersMutex.RUnlock()
+	argsForCall := fake.suspectPeersArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Gossip) UpdateChaincodes(arg1 []*gossipa.Chaincode, arg2 common.ChainID) {
+	var arg1Copy []*gossipa.Chaincode
+	if arg1 != nil {
+		arg1Copy = make([]*gossipa.Chaincode, len(arg1))
+		copy(arg1Copy, arg1)
+	}
+	fake.updateChaincodesMutex.Lock()
+	fake.updateChaincodesArgsForCall = append(fake.updateChaincodesArgsForCall, struct {
+		arg1 []*gossipa.Chaincode
+		arg2 common.ChainID
+	}{arg1Copy, arg2})
+	fake.recordInvocation("UpdateChaincodes", []interface{}{arg1Copy, arg2})
+	fake.updateChaincodesMutex.Unlock()
+	if fake.UpdateChaincodesStub != nil {
+		fake.UpdateChaincodesStub(arg1, arg2)
+	}
+}
+
+func (fake *Gossip) UpdateChaincodesCallCount() int {
+	fake.updateChaincodesMutex.RLock()
+	defer fake.updateChaincodesMutex.RUnlock()
+	return len(fake.updateChaincodesArgsForCall)
+}
+
+func (fake *Gossip) UpdateChaincodesCalls(stub func([]*gossipa.Chaincode, common.ChainID)) {
+	fake.updateChaincodesMutex.Lock()
+	defer fake.updateChaincodesMutex.Unlock()
+	fake.UpdateChaincodesStub = stub
+}
+
+func (fake *Gossip) UpdateChaincodesArgsForCall(i int) ([]*gossipa.Chaincode, common.ChainID) {
+	fake.updateChaincodesMutex.RLock()
+	defer fake.updateChaincodesMutex.RUnlock()
+	argsForCall := fake.updateChaincodesArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Gossip) UpdateLedgerHeight(arg1 uint64, arg2 common.ChainID) {
+	fake.updateLedgerHeightMutex.Lock()
+	fake.updateLedgerHeightArgsForCall = append(fake.updateLedgerHeightArgsForCall, struct {
+		arg1 uint64
+		arg2 common.ChainID
+	}{arg1, arg2})
+	fake.recordInvocation("UpdateLedgerHeight", []interface{}{arg1, arg2})
+	fake.updateLedgerHeightMutex.Unlock()
+	if fake.UpdateLedgerHeightStub != nil {
+		fake.UpdateLedgerHeightStub(arg1, arg2)
+	}
+}
+
+func (fake *Gossip) UpdateLedgerHeightCallCount() int {
+	fake.updateLedgerHeightMutex.RLock()
+	defer fake.updateLedgerHeightMutex.RUnlock()
+	return len(fake.updateLedgerHeightArgsForCall)
+}
+
+func (fake *Gossip) UpdateLedgerHeightCalls(stub func(uint64, common.ChainID)) {
+	fake.updateLedgerHeightMutex.Lock()
+	defer fake.updateLedgerHeightMutex.Unlock()
+	fake.UpdateLedgerHeightStub = stub
+}
+
+func (fake *Gossip) UpdateLedgerHeightArgsForCall(i int) (uint64, common.ChainID) {
+	fake.updateLedgerHeightMutex.RLock()
+	defer fake.updateLedgerHeightMutex.RUnlock()
+	argsForCall := fake.updateLedgerHeightArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Gossip) UpdateMetadata(arg1 []byte) {
+	var arg1Copy []byte
+	if arg1 != nil {
+		arg1Copy = make([]byte, len(arg1))
+		copy(arg1Copy, arg1)
+	}
+	fake.updateMetadataMutex.Lock()
+	fake.updateMetadataArgsForCall = append(fake.updateMetadataArgsForCall, struct {
+		arg1 []byte
+	}{arg1Copy})
+	fake.recordInvocation("UpdateMetadata", []interface{}{arg1Copy})
+	fake.updateMetadataMutex.Unlock()
+	if fake.UpdateMetadataStub != nil {
+		fake.UpdateMetadataStub(arg1)
+	}
+}
+
+func (fake *Gossip) UpdateMetadataCallCount() int {
+	fake.updateMetadataMutex.RLock()
+	defer fake.updateMetadataMutex.RUnlock()
+	return len(fake.updateMetadataArgsForCall)
+}
+
+func (fake *Gossip) UpdateMetadataCalls(stub func([]byte)) {
+	fake.updateMetadataMutex.Lock()
+	defer fake.updateMetadataMutex.Unlock()
+	fake.UpdateMetadataStub = stub
+}
+
+func (fake *Gossip) UpdateMetadataArgsForCall(i int) []byte {
+	fake.updateMetadataMutex.RLock()
+	defer fake.updateMetadataMutex.RUnlock()
+	argsForCall := fake.updateMetadataArgsForCall[i]
+	return argsForCall.arg1
+}
+
 func (fake *Gossip) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.selfMembershipInfoMutex.RLock()
-	defer fake.selfMembershipInfoMutex.RUnlock()
-	fake.selfChannelInfoMutex.RLock()
-	defer fake.selfChannelInfoMutex.RUnlock()
-	fake.sendMutex.RLock()
-	defer fake.sendMutex.RUnlock()
-	fake.sendByCriteriaMutex.RLock()
-	defer fake.sendByCriteriaMutex.RUnlock()
-	fake.peersMutex.RLock()
-	defer fake.peersMutex.RUnlock()
-	fake.peersOfChannelMutex.RLock()
-	defer fake.peersOfChannelMutex.RUnlock()
-	fake.updateMetadataMutex.RLock()
-	defer fake.updateMetadataMutex.RUnlock()
-	fake.updateLedgerHeightMutex.RLock()
-	defer fake.updateLedgerHeightMutex.RUnlock()
-	fake.updateChaincodesMutex.RLock()
-	defer fake.updateChaincodesMutex.RUnlock()
-	fake.gossipMutex.RLock()
-	defer fake.gossipMutex.RUnlock()
-	fake.peerFilterMutex.RLock()
-	defer fake.peerFilterMutex.RUnlock()
 	fake.acceptMutex.RLock()
 	defer fake.acceptMutex.RUnlock()
+	fake.gossipMutex.RLock()
+	defer fake.gossipMutex.RUnlock()
+	fake.identityInfoMutex.RLock()
+	defer fake.identityInfoMutex.RUnlock()
+	fake.isInMyOrgMutex.RLock()
+	defer fake.isInMyOrgMutex.RUnlock()
 	fake.joinChanMutex.RLock()
 	defer fake.joinChanMutex.RUnlock()
 	fake.leaveChanMutex.RLock()
 	defer fake.leaveChanMutex.RUnlock()
-	fake.suspectPeersMutex.RLock()
-	defer fake.suspectPeersMutex.RUnlock()
-	fake.identityInfoMutex.RLock()
-	defer fake.identityInfoMutex.RUnlock()
+	fake.peerFilterMutex.RLock()
+	defer fake.peerFilterMutex.RUnlock()
+	fake.peersMutex.RLock()
+	defer fake.peersMutex.RUnlock()
+	fake.peersOfChannelMutex.RLock()
+	defer fake.peersOfChannelMutex.RUnlock()
+	fake.selfChannelInfoMutex.RLock()
+	defer fake.selfChannelInfoMutex.RUnlock()
+	fake.selfMembershipInfoMutex.RLock()
+	defer fake.selfMembershipInfoMutex.RUnlock()
+	fake.sendMutex.RLock()
+	defer fake.sendMutex.RUnlock()
+	fake.sendByCriteriaMutex.RLock()
+	defer fake.sendByCriteriaMutex.RUnlock()
 	fake.stopMutex.RLock()
 	defer fake.stopMutex.RUnlock()
+	fake.suspectPeersMutex.RLock()
+	defer fake.suspectPeersMutex.RUnlock()
+	fake.updateChaincodesMutex.RLock()
+	defer fake.updateChaincodesMutex.RUnlock()
+	fake.updateLedgerHeightMutex.RLock()
+	defer fake.updateLedgerHeightMutex.RUnlock()
+	fake.updateMetadataMutex.RLock()
+	defer fake.updateMetadataMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

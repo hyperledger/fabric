@@ -44,8 +44,8 @@ func (pi *peerImpl) ID() peerID {
 }
 
 type gossip interface {
-	// Peers returns the NetworkMembers considered alive
-	Peers() []discovery.NetworkMember
+	// PeersOfChannel returns the NetworkMembers considered alive in a channel
+	PeersOfChannel(channel common.ChainID) []discovery.NetworkMember
 
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 	// If passThrough is false, the messages are processed by the gossip layer beforehand.
@@ -55,6 +55,9 @@ type gossip interface {
 
 	// Gossip sends a message to other peers to the network
 	Gossip(msg *proto.GossipMessage)
+
+	// IsInMyOrg checks whether a network member is in this peer's org
+	IsInMyOrg(member discovery.NetworkMember) bool
 }
 
 type adapterImpl struct {
@@ -147,11 +150,13 @@ func (ai *adapterImpl) CreateMessage(isDeclaration bool) Msg {
 }
 
 func (ai *adapterImpl) Peers() []Peer {
-	peers := ai.gossip.Peers()
+	peers := ai.gossip.PeersOfChannel(ai.channel)
 
 	var res []Peer
 	for _, peer := range peers {
-		res = append(res, &peerImpl{peer})
+		if ai.gossip.IsInMyOrg(peer) {
+			res = append(res, &peerImpl{peer})
+		}
 	}
 
 	return res

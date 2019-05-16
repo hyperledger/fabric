@@ -82,6 +82,9 @@ type Gossip interface {
 	// IdentityInfo returns information known peer identities
 	IdentityInfo() api.PeerIdentitySet
 
+	// IsInMyOrg checks whether a network member is in this peer's org
+	IsInMyOrg(member discovery.NetworkMember) bool
+
 	// Stop stops the gossip component
 	Stop()
 }
