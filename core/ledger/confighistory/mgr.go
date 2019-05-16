@@ -64,9 +64,9 @@ func (m *mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	if err != nil {
 		return err
 	}
+	// updated chaincodes can be empty if the invocation to this function is triggered
+	// because of state updates that contains only chaincode approval transaction output
 	if len(updatedCCs) == 0 {
-		logger.Errorf("Config history manager is expected to recieve events only if at least one chaincode is updated stateUpdates = %#v",
-			trigger.StateUpdates)
 		return nil
 	}
 	updatedCollConfigs := map[string]*common.CollectionConfigPackage{}
@@ -75,7 +75,10 @@ func (m *mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 		if err != nil {
 			return err
 		}
-		if ccInfo.ExplicitCollectionConfigPkg == nil {
+
+		// DeployedChaincodeInfoProvider implementation in new lifecycle return an empty 'CollectionConfigPackage'
+		// (instead of a nil) to indicate the absence of collection config, so check for both conditions
+		if ccInfo.ExplicitCollectionConfigPkg == nil || len(ccInfo.ExplicitCollectionConfigPkg.Config) == 0 {
 			continue
 		}
 		updatedCollConfigs[ccInfo.Name] = ccInfo.ExplicitCollectionConfigPkg

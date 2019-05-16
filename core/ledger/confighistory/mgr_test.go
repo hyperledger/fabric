@@ -50,6 +50,34 @@ func TestWithNoCollectionConfig(t *testing.T) {
 	assert.Nil(t, collConfig)
 }
 
+func TestWithEmptyCollectionConfig(t *testing.T) {
+	dbPath, err := ioutil.TempDir("", "confighistory")
+	if err != nil {
+		t.Fatalf("Failed to create config history directory: %s", err)
+	}
+	defer os.RemoveAll(dbPath)
+	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	mgr := NewMgr(dbPath, mockCCInfoProvider)
+	testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(
+		mockCCInfoProvider,
+		"chaincode1",
+		&common.CollectionConfigPackage{},
+	)
+	err = mgr.HandleStateUpdates(&ledger.StateUpdateTrigger{
+		LedgerID:           "ledger1",
+		CommittingBlockNum: 50},
+	)
+	assert.NoError(t, err)
+	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{
+		info: &common.BlockchainInfo{Height: 100},
+		qe:   &mock.QueryExecutor{},
+	}
+	retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+	collConfig, err := retriever.MostRecentCollectionConfigBelow(90, "chaincode1")
+	assert.NoError(t, err)
+	assert.Nil(t, collConfig)
+}
+
 func TestMgr(t *testing.T) {
 	dbPath, err := ioutil.TempDir("", "confighistory")
 	if err != nil {
