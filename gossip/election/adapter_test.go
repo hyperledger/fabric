@@ -34,7 +34,7 @@ func TestNewAdapter(t *testing.T) {
 		Metadata: []byte{},
 		PKIid:    []byte{byte(0)},
 	}
-	mockGossip := newGossip("peer0", selfNetworkMember)
+	mockGossip := newGossip("peer0", selfNetworkMember, nil)
 
 	peersCluster := newClusterOfPeers("0")
 	peersCluster.addPeer("peer0", mockGossip)
@@ -49,7 +49,7 @@ func TestAdapterImpl_CreateMessage(t *testing.T) {
 		Metadata: []byte{},
 		PKIid:    []byte{byte(0)},
 	}
-	mockGossip := newGossip("peer0", selfNetworkMember)
+	mockGossip := newGossip("peer0", selfNetworkMember, nil)
 
 	adapter := NewAdapter(mockGossip, selfNetworkMember.PKIid, []byte("channel0"),
 		metrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics)
@@ -75,24 +75,44 @@ func TestAdapterImpl_CreateMessage(t *testing.T) {
 }
 
 func TestAdapterImpl_Peers(t *testing.T) {
-	_, adapters := createCluster(0, 1, 2, 3, 4, 5)
+	peersOrgA := map[string]struct{}{
+		"Peer0": {},
+		"Peer1": {},
+		"Peer2": {},
+		"Peer3": {},
+		"Peer4": {},
+		"Peer5": {},
+	}
+	peersOrgB := map[string]struct{}{
+		"Peer6": {},
+		"Peer7": {},
+		"Peer8": {},
+	}
 
-	peersPKIDs := make(map[string]string)
-	peersPKIDs[string([]byte{0})] = string([]byte{0})
-	peersPKIDs[string([]byte{1})] = string([]byte{1})
-	peersPKIDs[string([]byte{2})] = string([]byte{2})
-	peersPKIDs[string([]byte{3})] = string([]byte{2})
-	peersPKIDs[string([]byte{4})] = string([]byte{4})
-	peersPKIDs[string([]byte{5})] = string([]byte{5})
+	pki2org := make(map[string]string)
+	for id := range peersOrgA {
+		pki2org[id] = "A"
+	}
+	for id := range peersOrgB {
+		pki2org[id] = "B"
+	}
 
-	for _, adapter := range adapters {
+	_, adapters := createCluster(pki2org, 0, 1, 2, 3, 4, 5, 6, 7, 8)
+
+	for id, adapter := range adapters {
+		var myPeersOrg map[string]struct{}
+		if pki2org[id] == "A" {
+			myPeersOrg = peersOrgA
+		} else {
+			myPeersOrg = peersOrgB
+		}
 		peers := adapter.Peers()
-		if len(peers) != 6 {
-			t.Errorf("Should return 6 peers, not %d", len(peers))
+		if len(peers) != len(myPeersOrg) {
+			t.Errorf("Should return %d peers, not %d", len(myPeersOrg), len(peers))
 		}
 
 		for _, peer := range peers {
-			if _, exist := peersPKIDs[string(peer.ID())]; !exist {
+			if _, exist := myPeersOrg[peer.(*peerImpl).member.Endpoint]; !exist {
 				t.Errorf("Peer %s PKID not found", peer.(*peerImpl).member.Endpoint)
 			}
 		}
@@ -101,7 +121,7 @@ func TestAdapterImpl_Peers(t *testing.T) {
 }
 
 func TestAdapterImpl_Stop(t *testing.T) {
-	_, adapters := createCluster(0, 1, 2, 3, 4, 5)
+	_, adapters := createCluster(nil, 0, 1, 2, 3, 4, 5)
 
 	for _, adapter := range adapters {
 		adapter.Accept()
@@ -113,7 +133,7 @@ func TestAdapterImpl_Stop(t *testing.T) {
 }
 
 func TestAdapterImpl_Gossip(t *testing.T) {
-	_, adapters := createCluster(0, 1, 2)
+	_, adapters := createCluster(nil, 0, 1, 2)
 
 	channels := make(map[string]<-chan Msg)
 
@@ -172,12 +192,13 @@ type peerMockGossip struct {
 	acceptorLock *sync.RWMutex
 	clusterLock  *sync.RWMutex
 	id           string
+	pki2org      map[string]string
 }
 
-func (g *peerMockGossip) Peers() []discovery.NetworkMember {
-
+func (g *peerMockGossip) PeersOfChannel(channel common.ChainID) []discovery.NetworkMember {
 	g.clusterLock.RLock()
 	if g.cluster == nil {
+		g.clusterLock.RUnlock()
 		return []discovery.NetworkMember{*g.member}
 	}
 	peerLock := g.cluster.peersLock
@@ -188,7 +209,6 @@ func (g *peerMockGossip) Peers() []discovery.NetworkMember {
 	g.clusterLock.RLock()
 	for _, val := range g.cluster.peersGossip {
 		res = append(res, *val.member)
-
 	}
 	g.clusterLock.RUnlock()
 	peerLock.RUnlock()
@@ -209,6 +229,7 @@ func (g *peerMockGossip) Accept(acceptor common.MessageAcceptor, passThrough boo
 func (g *peerMockGossip) Gossip(msg *proto.GossipMessage) {
 	g.clusterLock.RLock()
 	if g.cluster == nil {
+		g.clusterLock.RUnlock()
 		return
 	}
 	peersLock := g.cluster.peersLock
@@ -239,13 +260,26 @@ func (g *peerMockGossip) putToAcceptors(msg *proto.GossipMessage) {
 
 }
 
-func newGossip(peerID string, member *discovery.NetworkMember) *peerMockGossip {
+func (g *peerMockGossip) IsInMyOrg(member discovery.NetworkMember) bool {
+	var myOrg, memberOrg string
+	var exists bool
+	if myOrg, exists = g.pki2org[g.id]; !exists {
+		return false
+	}
+	if memberOrg, exists = g.pki2org[member.Endpoint]; !exists {
+		return false
+	}
+	return myOrg == memberOrg
+}
+
+func newGossip(peerID string, member *discovery.NetworkMember, pki2org map[string]string) *peerMockGossip {
 	return &peerMockGossip{
 		id:           peerID,
 		member:       member,
 		acceptorLock: &sync.RWMutex{},
 		clusterLock:  &sync.RWMutex{},
 		acceptors:    make([]*mockAcceptor, 0),
+		pki2org:      pki2org,
 	}
 }
 
@@ -274,7 +308,7 @@ func newClusterOfPeers(id string) *clusterOfPeers {
 
 }
 
-func createCluster(peers ...int) (*clusterOfPeers, map[string]*adapterImpl) {
+func createCluster(pki2org map[string]string, peers ...int) (*clusterOfPeers, map[string]*adapterImpl) {
 	adapters := make(map[string]*adapterImpl)
 	cluster := newClusterOfPeers("0")
 	for _, peer := range peers {
@@ -286,7 +320,7 @@ func createCluster(peers ...int) (*clusterOfPeers, map[string]*adapterImpl) {
 			PKIid:    peerPKID,
 		}
 
-		mockGossip := newGossip(peerEndpoint, peerMember)
+		mockGossip := newGossip(peerEndpoint, peerMember, pki2org)
 		adapter := NewAdapter(mockGossip, peerMember.PKIid, []byte("channel0"),
 			metrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics)
 		adapters[peerEndpoint] = adapter.(*adapterImpl)
@@ -301,7 +335,7 @@ func TestReportMetrics(t *testing.T) {
 	testMetricProvider := mocks.TestUtilConstructMetricProvider()
 	electionMetrics := metrics.NewGossipMetrics(testMetricProvider.FakeProvider).ElectionMetrics
 
-	mockGossip := newGossip("", &discovery.NetworkMember{})
+	mockGossip := newGossip("", &discovery.NetworkMember{}, nil)
 	adapter := NewAdapter(mockGossip, nil, []byte("channel0"), electionMetrics)
 
 	adapter.ReportMetrics(true)

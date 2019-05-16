@@ -90,6 +90,10 @@ func (g *GossipMock) IdentityInfo() api.PeerIdentitySet {
 	panic("not implemented")
 }
 
+func (g *GossipMock) IsInMyOrg(member discovery.NetworkMember) bool {
+	panic("not implemented")
+}
+
 func (g *GossipMock) Stop() {
 
 }
