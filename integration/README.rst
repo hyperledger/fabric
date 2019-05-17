@@ -119,7 +119,7 @@ To execute the integration tests using the Makefile, execute the following:
 
 ::
 
-    make integration-tests
+    make integration-test
 
 
 ============
