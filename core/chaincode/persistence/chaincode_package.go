@@ -33,6 +33,7 @@ const (
 type ChaincodePackage struct {
 	Metadata    *ChaincodePackageMetadata
 	CodePackage []byte
+	DBArtifacts []byte
 }
 
 // ChaincodePackageMetadata contains the information necessary to understand

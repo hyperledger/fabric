@@ -16,7 +16,7 @@ import (
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 
-	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	ccpersistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/pkg/errors"
 )
 
@@ -27,7 +27,7 @@ type LocalChaincodeInfo struct {
 }
 
 type ChaincodeInstallInfo struct {
-	PackageID p.PackageID
+	PackageID ccpersistence.PackageID
 	Type      string
 	Path      string
 	Label     string
@@ -71,6 +71,7 @@ type Cache struct {
 	// encoded hash (yes, the hash of the hash), to a set of channels, to a set of chaincode
 	// definitions which reference this local installed chaincode hash.
 	localChaincodes map[string]*LocalChaincode
+	eventBroker     *EventBroker
 }
 
 type LocalChaincode struct {
@@ -84,6 +85,7 @@ func NewCache(resources *Resources, myOrgMSPID string) *Cache {
 		localChaincodes:   map[string]*LocalChaincode{},
 		Resources:         resources,
 		MyOrgMSPID:        myOrgMSPID,
+		eventBroker:       NewEventBroker(resources.ChaincodeStore, resources.PackageParser),
 	}
 }
 
@@ -108,7 +110,7 @@ func (c *Cache) InitializeLocalChaincodes() error {
 		if err != nil {
 			return errors.WithMessagef(err, "could not parse chaincode with pakcage ID '%s'", ccPackage.PackageID.String())
 		}
-		c.handleChaincodeInstalledWhileLocked(parsedCCPackage.Metadata, ccPackage.PackageID)
+		c.handleChaincodeInstalledWhileLocked(true, parsedCCPackage.Metadata, ccPackage.PackageID)
 	}
 
 	logger.Infof("Initialized lifecycle cache with %d already installed chaincodes", len(c.localChaincodes))
@@ -161,17 +163,17 @@ func (c *Cache) Initialize(channelID string, qe ledger.SimpleQueryExecutor) erro
 		}
 	}
 
-	return c.update(channelID, dirtyChaincodes, qe)
+	return c.update(true, channelID, dirtyChaincodes, qe)
 }
 
 // HandleChaincodeInstalled should be invoked whenever a new chaincode is installed
-func (c *Cache) HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID p.PackageID) {
+func (c *Cache) HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID ccpersistence.PackageID) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	c.handleChaincodeInstalledWhileLocked(md, packageID)
+	c.handleChaincodeInstalledWhileLocked(false, md, packageID)
 }
 
-func (c *Cache) handleChaincodeInstalledWhileLocked(md *persistence.ChaincodePackageMetadata, packageID p.PackageID) {
+func (c *Cache) handleChaincodeInstalledWhileLocked(initializing bool, md *persistence.ChaincodePackageMetadata, packageID ccpersistence.PackageID) {
 	// it would be nice to get this value from the serialization package, but it was not obvious
 	// how to expose this in a nice way, so we manually compute it.
 	encodedCCHash := protoutil.MarshalOrPanic(&lb.StateData{
@@ -197,6 +199,11 @@ func (c *Cache) handleChaincodeInstalledWhileLocked(md *persistence.ChaincodePac
 			logger.Infof("Installed chaincode with package ID '%s' now available on channel %s for chaincode definition %s:%s", packageID, channelID, chaincodeName, cachedChaincode.Definition.EndorsementInfo.Version)
 		}
 	}
+
+	if !initializing {
+		c.eventBroker.ProcessInstallEvent(localChaincode)
+	}
+	return
 }
 
 // HandleStateUpdates is required to implement the ledger state listener interface.  It applies
@@ -246,7 +253,7 @@ func (c *Cache) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 		}
 	}
 
-	err := c.update(channelID, dirtyChaincodes, trigger.PostCommitQueryExecutor)
+	err := c.update(false, channelID, dirtyChaincodes, trigger.PostCommitQueryExecutor)
 	if err != nil {
 		return errors.WithMessage(err, "error updating cache")
 	}
@@ -270,6 +277,7 @@ func (c *Cache) StateCommitDone(channelName string) {
 	// potential inconsistenty between the cache and the world state which the callers
 	// must detect and cope with as necessary.  Note, the cache will always be _at least_
 	// as current as the committed state.
+	c.eventBroker.ApproveOrDefineCommitted(channelName)
 }
 
 // ChaincodeInfo returns the chaincode definition and its install info.
@@ -294,7 +302,7 @@ func (c *Cache) ChaincodeInfo(channelID, name string) (*LocalChaincodeInfo, erro
 }
 
 // update should only be called with the write lock already held
-func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe ledger.SimpleQueryExecutor) error {
+func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[string]struct{}, qe ledger.SimpleQueryExecutor) error {
 	channelCache, ok := c.definedChaincodes[channelID]
 	if !ok {
 		channelCache = &ChannelCache{
@@ -406,7 +414,14 @@ func (c *Cache) update(channelID string, dirtyChaincodes map[string]struct{}, qe
 		}
 
 		channelReferences[name] = cachedChaincode
+		if !initializing {
+			c.eventBroker.ProcessApproveOrDefineEvent(channelID, name, cachedChaincode)
+		}
 	}
-
 	return nil
+}
+
+// RegisterListener registers an event listener for recieving an event when a chaincode becomes invokable
+func (c *Cache) RegisterListener(channelID string, listener ledger.ChaincodeLifecycleEventListener) {
+	c.eventBroker.RegisterListener(channelID, listener)
 }
