@@ -168,12 +168,12 @@ func TestEndorserUninvokableSysCC(t *testing.T) {
 		IsSysCCAndNotInvokableExternalRv: true,
 	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.Error(t, err)
 	assert.EqualValues(t, 500, pResp.Response.Status)
-	assert.Equal(t, "chaincode ccid cannot be invoked through a proposal", pResp.Response.Message)
+	assert.Equal(t, "chaincode test-chaincode cannot be invoked through a proposal", pResp.Response.Message)
 }
 
 func TestEndorserCCInvocationFailed(t *testing.T) {
@@ -182,7 +182,7 @@ func TestEndorserCCInvocationFailed(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 1000, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}}), Message: "Chaincode Error"},
+		ExecuteResp:                &pb.Response{Status: 1000, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}}), Message: "achoo"},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
 				PubSimulationResults: &rwset.TxReadWriteSet{},
@@ -190,12 +190,12 @@ func TestEndorserCCInvocationFailed(t *testing.T) {
 		},
 	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1000, pResp.Response.Status)
-	assert.Regexp(t, "Chaincode Error", pResp.Response.Message)
+	assert.Equal(t, "achoo", pResp.Response.Message)
 }
 
 func TestEndorserNoCCDef(t *testing.T) {
@@ -203,7 +203,7 @@ func TestEndorserNoCCDef(t *testing.T) {
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionError:   errors.New(""),
+		ChaincodeDefinitionError:   errors.New("gesundheit"),
 		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv: &mockccprovider.MockTxSim{
 			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
@@ -212,12 +212,12 @@ func TestEndorserNoCCDef(t *testing.T) {
 		},
 	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 500, pResp.Response.Status)
-	assert.Regexp(t, "make sure the chaincode", pResp.Response.Message)
+	assert.Equal(t, "make sure the chaincode test-chaincode has been successfully defined on channel testchainid and try again: gesundheit", pResp.Response.Message)
 }
 
 func TestEndorserBadInstPolicy(t *testing.T) {
@@ -235,7 +235,7 @@ func TestEndorserBadInstPolicy(t *testing.T) {
 		},
 	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -259,7 +259,7 @@ func TestEndorserSysCC(t *testing.T) {
 	attachPluginEndorser(support, nil)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -280,7 +280,7 @@ func TestEndorserCCInvocationError(t *testing.T) {
 		},
 	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -332,7 +332,7 @@ func TestEndorserDupTXId(t *testing.T) {
 
 	fakeMetrics := initFakeMetrics(es)
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.Error(t, err)
@@ -342,7 +342,7 @@ func TestEndorserDupTXId(t *testing.T) {
 	// test for triggering of duplicate TX metric
 	assert.EqualValues(t, 1, fakeMetrics.duplicateTxsFailure.WithCallCount())
 	labelValues := fakeMetrics.duplicateTxsFailure.WithArgsForCall(0)
-	assert.EqualValues(t, labelValues, []string{"channel", util.GetTestChainID(), "chaincode", "ccid:0"})
+	assert.EqualValues(t, labelValues, []string{"channel", "testchainid", "chaincode", "test-chaincode:test-version"})
 	assert.EqualValues(t, 1, fakeMetrics.duplicateTxsFailure.AddCallCount())
 	assert.EqualValues(t, 1, fakeMetrics.duplicateTxsFailure.AddArgsForCall(0))
 }
@@ -364,7 +364,7 @@ func TestEndorserBadACL(t *testing.T) {
 
 	fakeMetrics := initFakeMetrics(es)
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.Error(t, err)
@@ -373,7 +373,7 @@ func TestEndorserBadACL(t *testing.T) {
 	// test for triggering of ACL check failure metric
 	assert.EqualValues(t, 1, fakeMetrics.proposalACLCheckFailed.WithCallCount())
 	labelValues := fakeMetrics.proposalACLCheckFailed.WithArgsForCall(0)
-	assert.EqualValues(t, labelValues, []string{"channel", util.GetTestChainID(), "chaincode", "ccid:0"})
+	assert.EqualValues(t, labelValues, []string{"channel", "testchainid", "chaincode", "test-chaincode:test-version"})
 	assert.EqualValues(t, 1, fakeMetrics.proposalACLCheckFailed.AddCallCount())
 	assert.EqualValues(t, 1, fakeMetrics.proposalACLCheckFailed.AddArgsForCall(0))
 }
@@ -394,14 +394,14 @@ func TestEndorserGoodPathEmptyChannel(t *testing.T) {
 
 	fakeMetrics := initFakeMetrics(es)
 
-	signedProp := getSignedPropWithCHIdAndArgs("", "ccid", "0", [][]byte{[]byte("args")}, t)
+	signedProp := getSignedPropWithCHIdAndArgs("", "test-chaincode", "test-version", [][]byte{[]byte("test-args")}, t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 200, pResp.Response.Status)
 
 	// test for triggering of successful TX metric
-	testEndorsementCompletedMetric(t, fakeMetrics, 1, "", "ccid:0", "true")
+	testEndorsementCompletedMetric(t, fakeMetrics, 1, "", "test-chaincode:test-version", "true")
 }
 
 func TestEndorserLSCCInitFails(t *testing.T) {
