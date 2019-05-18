@@ -690,6 +690,18 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 	}
 
 	if m.IsLeadershipMsg() {
+		connInfo := msg.GetConnectionInfo()
+		senderOrg := gc.GetOrgOfPeer(connInfo.ID)
+		if !bytes.Equal(gc.selfOrg, senderOrg) {
+			gc.logger.Warningf("Received leadership message from %s that belongs to a foreign organization %s",
+				connInfo.Endpoint, string(senderOrg))
+			return
+		}
+		msgCreatorOrg := gc.GetOrgOfPeer(m.GetLeadershipMsg().PkiId)
+		if !bytes.Equal(gc.selfOrg, msgCreatorOrg) {
+			gc.logger.Warningf("Received leadership message created by a foreign organization %s", string(msgCreatorOrg))
+			return
+		}
 		// Handling leadership message
 		added := gc.leaderMsgStore.Add(m)
 		if added {

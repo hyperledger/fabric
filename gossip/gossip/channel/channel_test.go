@@ -1823,6 +1823,78 @@ func TestChannelPullWithDigestsFilter(t *testing.T) {
 
 }
 
+func TestFilterForeignOrgLeadershipMessages(t *testing.T) {
+	t.Parallel()
+
+	org1 := api.OrgIdentityType("org1")
+	org2 := api.OrgIdentityType("org2")
+
+	p1 := common.PKIidType("p1")
+	p2 := common.PKIidType("p2")
+
+	cs := &cryptoService{}
+	adapter := &gossipAdapterMock{}
+
+	relayedLeadershipMsgs := make(chan interface{}, 2)
+
+	adapter.On("GetOrgOfPeer", p1).Return(org1)
+	adapter.On("GetOrgOfPeer", p2).Return(org2)
+
+	adapter.On("GetMembership").Return([]discovery.NetworkMember{})
+	adapter.On("GetConf").Return(conf)
+	adapter.On("DeMultiplex", mock.Anything).Run(func(args mock.Arguments) {
+		relayedLeadershipMsgs <- args.Get(0)
+	})
+
+	joinMsg := &joinChanMsg{
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(org1): {},
+			string(org2): {},
+		},
+	}
+
+	loggedEntries := make(chan string, 1)
+	logger := flogging.MustGetLogger("test").WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		loggedEntries <- entry.Message
+		return nil
+	}))
+	assertLogged := func(s string) {
+		assert.Len(t, loggedEntries, 1)
+		loggedEntry := <-loggedEntries
+		assert.Contains(t, loggedEntry, s)
+	}
+
+	gc := NewGossipChannel(pkiIDInOrg1, org1, cs, channelA, adapter, joinMsg, disabledMetrics)
+	gc.(*gossipChannel).logger = logger
+
+	leadershipMsg := func(sender common.PKIidType, creator common.PKIidType) proto.ReceivedMessage {
+		return &receivedMsg{PKIID: sender,
+			msg: &proto.SignedGossipMessage{
+				GossipMessage: &proto.GossipMessage{
+					Channel: common.ChainID("A"),
+					Tag:     proto.GossipMessage_CHAN_AND_ORG,
+					Content: &proto.GossipMessage_LeadershipMsg{
+						LeadershipMsg: &proto.LeadershipMessage{
+							PkiId: creator,
+						}},
+				},
+			},
+		}
+	}
+
+	gc.HandleMessage(leadershipMsg(p1, p1))
+	assert.Len(t, relayedLeadershipMsgs, 1, "should have relayed a message from p1 (same org)")
+	assert.Len(t, loggedEntries, 0)
+
+	gc.HandleMessage(leadershipMsg(p2, p1))
+	assert.Len(t, relayedLeadershipMsgs, 1, "should not have relayed a message from p2 (foreign org)")
+	assertLogged("Received leadership message from  that belongs to a foreign organization org2")
+
+	gc.HandleMessage(leadershipMsg(p1, p2))
+	assert.Len(t, relayedLeadershipMsgs, 1, "should not have relayed a message from p2 (foreign org)")
+	assertLogged("Received leadership message created by a foreign organization org2")
+}
+
 func createDataUpdateMsg(nonce uint64, seqs ...uint64) *proto.SignedGossipMessage {
 	msg := &proto.GossipMessage{
 		Nonce:   0,
