@@ -22,12 +22,13 @@ import (
 
 // Initializer encapsulates dependencies for PeerLedgerProvider
 type Initializer struct {
-	StateListeners                []StateListener
-	DeployedChaincodeInfoProvider DeployedChaincodeInfoProvider
-	MembershipInfoProvider        MembershipInfoProvider
-	MetricsProvider               metrics.Provider
-	HealthCheckRegistry           HealthCheckRegistry
-	Config                        *Config
+	StateListeners                  []StateListener
+	DeployedChaincodeInfoProvider   DeployedChaincodeInfoProvider
+	MembershipInfoProvider          MembershipInfoProvider
+	ChaincodeLifecycleEventProvider ChaincodeLifecycleEventProvider
+	MetricsProvider                 metrics.Provider
+	HealthCheckRegistry             HealthCheckRegistry
+	Config                          *Config
 }
 
 // Config is a structure used to configure a ledger provider.
@@ -601,6 +602,10 @@ type ChaincodeDefinition struct {
 
 func (cdef *ChaincodeDefinition) String() string {
 	return fmt.Sprintf("Name=%s, Version=%s, Hash=%#v", cdef.Name, cdef.Version, cdef.Hash)
+}
+
+type ChaincodeLifecycleEventProvider interface {
+	RegisterListener(channelID string, listener ChaincodeLifecycleEventListener)
 }
 
 //go:generate counterfeiter -o mock/state_listener.go -fake-name StateListener . StateListener

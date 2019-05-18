@@ -201,14 +201,15 @@ func serve(args []string) error {
 	// initialize ledger management
 	ledgermgmt.Initialize(
 		&ledgermgmt.Initializer{
-			CustomTxProcessors:            peer.ConfigTxProcessors,
-			PlatformRegistry:              platformRegistry,
-			DeployedChaincodeInfoProvider: lifecycleValidatorCommitter,
-			MembershipInfoProvider:        membershipInfoProvider,
-			MetricsProvider:               metricsProvider,
-			HealthCheckRegistry:           opsSystem,
-			StateListeners:                []ledger.StateListener{lifecycleCache},
-			Config:                        ledgerConfig(),
+			CustomTxProcessors:              peer.ConfigTxProcessors,
+			PlatformRegistry:                platformRegistry,
+			DeployedChaincodeInfoProvider:   lifecycleValidatorCommitter,
+			MembershipInfoProvider:          membershipInfoProvider,
+			ChaincodeLifecycleEventProvider: lifecycleCache,
+			MetricsProvider:                 metricsProvider,
+			HealthCheckRegistry:             opsSystem,
+			StateListeners:                  []ledger.StateListener{lifecycleCache},
+			Config:                          ledgerConfig(),
 		},
 	)
 
