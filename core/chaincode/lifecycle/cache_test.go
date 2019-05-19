@@ -18,26 +18,28 @@ import (
 	ccpersistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
+	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Cache", func() {
-
 	var (
-		c                 *lifecycle.Cache
-		resources         *lifecycle.Resources
-		fakeCCStore       *mock.ChaincodeStore
-		fakeParser        *mock.PackageParser
-		channelCache      *lifecycle.ChannelCache
-		localChaincodes   map[string]*lifecycle.LocalChaincode
-		fakePublicState   MapLedgerShim
-		fakePrivateState  MapLedgerShim
-		fakeQueryExecutor *mock.SimpleQueryExecutor
+		c                   *lifecycle.Cache
+		resources           *lifecycle.Resources
+		fakeCCStore         *mock.ChaincodeStore
+		fakeParser          *mock.PackageParser
+		fakeMetadataHandler *mock.MetadataHandler
+		channelCache        *lifecycle.ChannelCache
+		localChaincodes     map[string]*lifecycle.LocalChaincode
+		fakePublicState     MapLedgerShim
+		fakePrivateState    MapLedgerShim
+		fakeQueryExecutor   *mock.SimpleQueryExecutor
 	)
 
 	BeforeEach(func() {
@@ -67,16 +69,24 @@ var _ = Describe("Cache", func() {
 			DBArtifacts: []byte("db-artifacts"),
 		}, nil)
 
+		fakeMetadataHandler = &mock.MetadataHandler{}
+
 		var err error
-		c = lifecycle.NewCache(resources, "my-mspid")
+		c = lifecycle.NewCache(resources, "my-mspid", fakeMetadataHandler)
 		Expect(err).NotTo(HaveOccurred())
 
 		channelCache = &lifecycle.ChannelCache{
 			Chaincodes: map[string]*lifecycle.CachedChaincodeDefinition{
 				"chaincode-name": {
 					Definition: &lifecycle.ChaincodeDefinition{
-						Sequence:        3,
-						EndorsementInfo: &lb.ChaincodeEndorsementInfo{Version: "version"},
+						Sequence: 3,
+						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+							Version: "chaincode-version",
+						},
+						ValidationInfo: &lb.ChaincodeValidationInfo{
+							ValidationParameter: []byte("validation-parameter"),
+						},
+						Collections: &cb.CollectionConfigPackage{},
 					},
 					Approved: true,
 					Hashes: []string{
@@ -139,7 +149,7 @@ var _ = Describe("Cache", func() {
 		}
 	})
 
-	Describe("ChaincodInfo", func() {
+	Describe("ChaincodeInfo", func() {
 		BeforeEach(func() {
 			channelCache.Chaincodes["chaincode-name"].InstallInfo = &lifecycle.ChaincodeInstallInfo{
 				Type:      "cc-type",
@@ -153,8 +163,14 @@ var _ = Describe("Cache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(localInfo).To(Equal(&lifecycle.LocalChaincodeInfo{
 				Definition: &lifecycle.ChaincodeDefinition{
-					Sequence:        3,
-					EndorsementInfo: &lb.ChaincodeEndorsementInfo{Version: "version"},
+					Sequence: 3,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Version: "chaincode-version",
+					},
+					ValidationInfo: &lb.ChaincodeValidationInfo{
+						ValidationParameter: []byte("validation-parameter"),
+					},
+					Collections: &cb.CollectionConfigPackage{},
 				},
 				InstallInfo: &lifecycle.ChaincodeInstallInfo{
 					Type:      "cc-type",
@@ -468,6 +484,111 @@ var _ = Describe("Cache", func() {
 				err := c.Initialize("channel-id", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(BeNil())
+			})
+		})
+	})
+
+	Describe("InitializeMetadata", func() {
+		BeforeEach(func() {
+			channelCache = &lifecycle.ChannelCache{
+				Chaincodes: map[string]*lifecycle.CachedChaincodeDefinition{
+					"installedAndApprovedCC": {
+						Definition: &lifecycle.ChaincodeDefinition{
+							Sequence: 3,
+							EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+								Version: "chaincode-version",
+							},
+							ValidationInfo: &lb.ChaincodeValidationInfo{
+								ValidationParameter: []byte("validation-parameter"),
+							},
+							Collections: &cb.CollectionConfigPackage{},
+						},
+						Approved: true,
+					},
+					"idontapprove": {
+						Definition: &lifecycle.ChaincodeDefinition{
+							Sequence: 3,
+							EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+								Version: "chaincode-version",
+							},
+							ValidationInfo: &lb.ChaincodeValidationInfo{
+								ValidationParameter: []byte("validation-parameter"),
+							},
+							Collections: &cb.CollectionConfigPackage{},
+						},
+						Approved: false,
+					},
+					"ididntinstall": {
+						Definition: &lifecycle.ChaincodeDefinition{
+							Sequence: 3,
+							EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+								Version: "chaincode-version",
+							},
+							ValidationInfo: &lb.ChaincodeValidationInfo{
+								ValidationParameter: []byte("validation-parameter"),
+							},
+							Collections: &cb.CollectionConfigPackage{},
+						},
+						Approved: true,
+					},
+				},
+			}
+
+			localChaincodes = map[string]*lifecycle.LocalChaincode{
+				string(util.ComputeSHA256(protoutil.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_String_{String_: "packageID"},
+				}))): {
+					References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{
+						"channel-id": {
+							"installedAndApprovedCC": channelCache.Chaincodes["installedAndApprovedCC"],
+							"idontapprove":           channelCache.Chaincodes["idontapprove"],
+						},
+					},
+				},
+			}
+
+			lifecycle.SetChaincodeMap(c, "channel-id", channelCache)
+			lifecycle.SetLocalChaincodesMap(c, localChaincodes)
+			err := c.InitializeLocalChaincodes()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("initializes the chaincode metadata from the cache", func() {
+			c.InitializeMetadata("channel-id")
+			channel, metadata := fakeMetadataHandler.InitializeMetadataArgsForCall(0)
+			Expect(channel).To(Equal("channel-id"))
+			Expect(metadata).To(ConsistOf(
+				chaincode.Metadata{
+					Name:              "installedAndApprovedCC",
+					Version:           "chaincode-version",
+					Policy:            []byte("validation-parameter"),
+					CollectionsConfig: &cb.CollectionConfigPackage{},
+					Approved:          true,
+					Installed:         true,
+				},
+				chaincode.Metadata{
+					Name:              "ididntinstall",
+					Version:           "chaincode-version",
+					Policy:            []byte("validation-parameter"),
+					CollectionsConfig: &cb.CollectionConfigPackage{},
+					Approved:          true,
+					Installed:         false,
+				},
+				chaincode.Metadata{
+					Name:              "idontapprove",
+					Version:           "chaincode-version",
+					Policy:            []byte("validation-parameter"),
+					CollectionsConfig: &cb.CollectionConfigPackage{},
+					Approved:          false,
+					Installed:         true,
+				},
+			))
+		})
+
+		Context("when the channel is unknown", func() {
+			It("returns without initializing metadata", func() {
+				c.InitializeMetadata("slurm")
+				Expect(fakeMetadataHandler.InitializeMetadataCallCount()).To(Equal(0))
 			})
 		})
 	})

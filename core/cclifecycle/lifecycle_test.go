@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -445,14 +446,14 @@ func TestMetadata(t *testing.T) {
 	// and go straight into the stateDB.
 	queryCreator.On("NewQuery").Return(query, nil).Once()
 	query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil).Once()
-	query.On("GetState", "lscc", privdata.BuildCollectionKVSKey("cc1")).Return([]byte{10, 10, 10}, nil).Once()
+	query.On("GetState", "lscc", privdata.BuildCollectionKVSKey("cc1")).Return(protoutil.MarshalOrPanic(&common.CollectionConfigPackage{}), nil).Once()
 	md = m.Metadata("mychannel", "cc1", true)
 	assert.Equal(t, &chaincode.Metadata{
 		Name:              "cc1",
 		Version:           "1.0",
 		Id:                []byte{42},
 		Policy:            []byte{1, 2, 3, 4, 5},
-		CollectionsConfig: []byte{10, 10, 10},
+		CollectionsConfig: &common.CollectionConfigPackage{},
 	}, md)
 	assertLogged(t, recorder, "Retrieved collection config for cc1 from cc1~collection")
 

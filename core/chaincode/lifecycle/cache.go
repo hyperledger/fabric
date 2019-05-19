@@ -8,8 +8,10 @@ package lifecycle
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 
+	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -54,6 +56,13 @@ type ChannelCache struct {
 	InterestingHashes map[string]string
 }
 
+// MetadataHandler is the interface through which the cache drives
+// metadata updates for listeners such as gossip and service discovery
+type MetadataHandler interface {
+	InitializeMetadata(channel string, chaincodes chaincode.MetadataSet)
+	UpdateMetadata(channel string, chaincodes chaincode.MetadataSet)
+}
+
 type Cache struct {
 	definedChaincodes map[string]*ChannelCache
 	Resources         *Resources
@@ -72,6 +81,7 @@ type Cache struct {
 	// definitions which reference this local installed chaincode hash.
 	localChaincodes map[string]*LocalChaincode
 	eventBroker     *EventBroker
+	MetadataHandler MetadataHandler
 }
 
 type LocalChaincode struct {
@@ -79,13 +89,14 @@ type LocalChaincode struct {
 	References map[string]map[string]*CachedChaincodeDefinition
 }
 
-func NewCache(resources *Resources, myOrgMSPID string) *Cache {
+func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataHandler) *Cache {
 	return &Cache{
 		definedChaincodes: map[string]*ChannelCache{},
 		localChaincodes:   map[string]*LocalChaincode{},
 		Resources:         resources,
 		MyOrgMSPID:        myOrgMSPID,
 		eventBroker:       NewEventBroker(resources.ChaincodeStore, resources.PackageParser),
+		MetadataHandler:   metadataManager,
 	}
 }
 
@@ -202,8 +213,8 @@ func (c *Cache) handleChaincodeInstalledWhileLocked(initializing bool, md *persi
 
 	if !initializing {
 		c.eventBroker.ProcessInstallEvent(localChaincode)
+		c.handleMetadataUpdates(localChaincode)
 	}
-	return
 }
 
 // HandleStateUpdates is required to implement the ledger state listener interface.  It applies
@@ -281,6 +292,7 @@ func (c *Cache) StateCommitDone(channelName string) {
 }
 
 // ChaincodeInfo returns the chaincode definition and its install info.
+// An error is returned only if either the channel or the chaincode do not exist.
 func (c *Cache) ChaincodeInfo(channelID, name string) (*LocalChaincodeInfo, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -418,10 +430,75 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 			c.eventBroker.ProcessApproveOrDefineEvent(channelID, name, cachedChaincode)
 		}
 	}
+
+	if !initializing {
+		c.handleMetadataUpdatesForChannel(channelID)
+	}
+
 	return nil
 }
 
 // RegisterListener registers an event listener for recieving an event when a chaincode becomes invokable
 func (c *Cache) RegisterListener(channelID string, listener ledger.ChaincodeLifecycleEventListener) {
 	c.eventBroker.RegisterListener(channelID, listener)
+}
+
+func (c *Cache) InitializeMetadata(channel string) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	ms, err := c.retrieveChaincodesMetadataSetWhileLocked(channel)
+	if err != nil {
+		logger.Warningf("no metadata found on channel '%s', err %s", channel, err)
+		return
+	}
+
+	c.MetadataHandler.InitializeMetadata(channel, ms)
+}
+
+func (c *Cache) retrieveChaincodesMetadataSetWhileLocked(channelID string) (chaincode.MetadataSet, error) {
+	channelChaincodes, ok := c.definedChaincodes[channelID]
+	if !ok {
+		return nil, errors.Errorf("unknown channel '%s'", channelID)
+	}
+
+	keys := make([]string, 0, len(channelChaincodes.Chaincodes))
+	for name := range channelChaincodes.Chaincodes {
+		keys = append(keys, name)
+	}
+	sort.Strings(keys)
+
+	metadataSet := chaincode.MetadataSet{}
+	for _, name := range keys {
+		def := channelChaincodes.Chaincodes[name]
+
+		metadataSet = append(metadataSet,
+			chaincode.Metadata{
+				Name:              name,
+				Version:           def.Definition.EndorsementInfo.Version,
+				Policy:            def.Definition.ValidationInfo.ValidationParameter,
+				CollectionsConfig: def.Definition.Collections,
+				Approved:          def.Approved,
+				Installed:         def.InstallInfo != nil,
+			},
+		)
+	}
+
+	return metadataSet, nil
+}
+
+func (c *Cache) handleMetadataUpdates(localChaincode *LocalChaincode) {
+	for channelID := range localChaincode.References {
+		c.handleMetadataUpdatesForChannel(channelID)
+	}
+}
+
+func (c *Cache) handleMetadataUpdatesForChannel(channelID string) {
+	ms, err := c.retrieveChaincodesMetadataSetWhileLocked(channelID)
+	if err != nil {
+		logger.Warningf("no metadata found on channel '%s': %s", channelID, err)
+		return
+	}
+
+	c.MetadataHandler.UpdateMetadata(channelID, ms)
 }

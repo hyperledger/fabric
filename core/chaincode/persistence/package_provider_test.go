@@ -148,7 +148,7 @@ var _ = Describe("PackageProvider", func() {
 		})
 	})
 
-	var _ = Describe("ListInstalledChaincodes", func() {
+	Describe("ListInstalledChaincodesLegacy", func() {
 		var (
 			mockSPP         *mock.StorePackageProvider
 			mockLPP         *mock.LegacyPackageProvider
@@ -157,20 +157,6 @@ var _ = Describe("PackageProvider", func() {
 
 		BeforeEach(func() {
 			mockSPP = &mock.StorePackageProvider{}
-			installedChaincodes := []chaincode.InstalledChaincode{
-				{
-					Name:    "test1",
-					Version: "1.0",
-					Hash:    []byte("hash1"),
-				},
-				{
-					Name:    "cc1",
-					Version: "2.0",
-					Hash:    []byte("hash2"),
-				},
-			}
-			mockSPP.ListInstalledChaincodesReturns(installedChaincodes, nil)
-
 			mockLPP = &mock.LegacyPackageProvider{}
 			installedChaincodesLegacy := []chaincode.InstalledChaincode{
 				{
@@ -188,21 +174,9 @@ var _ = Describe("PackageProvider", func() {
 		})
 
 		It("lists the installed chaincodes successfully", func() {
-			installedChaincodes, err := packageProvider.ListInstalledChaincodes()
+			installedChaincodes, err := packageProvider.ListInstalledChaincodesLegacy()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(installedChaincodes)).To(Equal(3))
-		})
-
-		Context("when listing the installed chaincodes from the persistence store fails", func() {
-			BeforeEach(func() {
-				mockSPP.ListInstalledChaincodesReturns(nil, errors.New("football"))
-			})
-
-			It("falls back to listing the chaincodes from the legacy package provider", func() {
-				installedChaincodes, err := packageProvider.ListInstalledChaincodes()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(len(installedChaincodes)).To(Equal(1))
-			})
+			Expect(len(installedChaincodes)).To(Equal(1))
 		})
 
 		Context("when listing the installed chaincodes from the legacy package provider fails", func() {
@@ -211,9 +185,10 @@ var _ = Describe("PackageProvider", func() {
 			})
 
 			It("lists the chaincodes from only the persistence store package provider ", func() {
-				installedChaincodes, err := packageProvider.ListInstalledChaincodes()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(len(installedChaincodes)).To(Equal(2))
+				installedChaincodes, err := packageProvider.ListInstalledChaincodesLegacy()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("football"))
+				Expect(len(installedChaincodes)).To(Equal(0))
 			})
 		})
 	})

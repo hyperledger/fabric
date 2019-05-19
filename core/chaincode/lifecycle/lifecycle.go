@@ -386,7 +386,7 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 		}
 
 		if err := definedChaincode.Parameters().Equal(cd.Parameters()); err != nil {
-			return errors.WithMessage(err, "attempted to define the current sequence (%d) for namespace %s, but")
+			return errors.WithMessagef(err, "attempted to define the current sequence (%d) for namespace %s, but", currentSequence, ccname)
 		}
 	}
 

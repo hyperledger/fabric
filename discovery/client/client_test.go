@@ -1038,7 +1038,7 @@ func interest(ccNames ...string) *discovery.ChaincodeInterest {
 	return interest
 }
 
-func buildCollectionConfig(col2principals map[string][]*msp.MSPPrincipal) []byte {
+func buildCollectionConfig(col2principals map[string][]*msp.MSPPrincipal) *common.CollectionConfigPackage {
 	collections := &common.CollectionConfigPackage{}
 	for col, principals := range col2principals {
 		collections.Config = append(collections.Config, &common.CollectionConfig{
@@ -1056,7 +1056,7 @@ func buildCollectionConfig(col2principals map[string][]*msp.MSPPrincipal) []byte
 			},
 		})
 	}
-	return protoutil.MarshalOrPanic(collections)
+	return collections
 }
 
 func memberPrincipal(mspID string) *msp.MSPPrincipal {

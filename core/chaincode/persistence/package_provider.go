@@ -96,23 +96,13 @@ func (p *PackageProvider) getCodePackageFromLegacyPP(name, version string) ([]by
 	return codePackage, nil
 }
 
-// ListInstalledChaincodes returns metadata (name, version, and ID) for
-// each chaincode installed on a peer
-func (p *PackageProvider) ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error) {
-	// first look through ChaincodeInstallPackages
-	installedChaincodes, err := p.Store.ListInstalledChaincodes()
-	if err != nil {
-		// log the error and continue
-		logger.Debugf("error getting installed chaincodes from persistence store: %s", err)
-	}
-
-	// then look through CDS/SCDS
+// ListInstalledChaincodesLegacy returns metadata (name, version, and ID) for
+// each chaincode installed on a peer with the legacy lifecycle
+func (p *PackageProvider) ListInstalledChaincodesLegacy() ([]chaincode.InstalledChaincode, error) {
 	installedChaincodesLegacy, err := p.LegacyPP.ListInstalledChaincodes(p.Store.GetChaincodeInstallPath(), ioutil.ReadDir, ccprovider.LoadPackage)
 	if err != nil {
-		// log the error and continue
-		logger.Debugf("error getting installed chaincodes from ccprovider: %s", err)
+		return nil, err
 	}
 
-	installedChaincodes = append(installedChaincodes, installedChaincodesLegacy...)
-	return installedChaincodes, nil
+	return installedChaincodesLegacy, nil
 }

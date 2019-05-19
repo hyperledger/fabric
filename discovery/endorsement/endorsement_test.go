@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	cb "github.com/hyperledger/fabric/protos/common"
 	discoveryprotos "github.com/hyperledger/fabric/protos/discovery"
 	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/msp"
@@ -567,7 +568,7 @@ func TestLoadMetadataAndFiltersInvalidCollectionData(t *testing.T) {
 	mdf := &metadataFetcher{}
 	mdf.On("Metadata").Return(&chaincode.Metadata{
 		Name:              "mycc",
-		CollectionsConfig: []byte{1, 2, 3},
+		CollectionsConfig: &cb.CollectionConfigPackage{},
 		Policy:            []byte{1, 2, 3},
 	})
 
@@ -579,7 +580,7 @@ func TestLoadMetadataAndFiltersInvalidCollectionData(t *testing.T) {
 		interest:         interest,
 	})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid collection bytes")
+	assert.Contains(t, err.Error(), "collection col1 doesn't exist in collection config for chaincode mycc")
 }
 
 type peerSet []*peerInfo
