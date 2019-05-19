@@ -7,9 +7,11 @@ package lockbasedtxmgr
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
@@ -26,12 +28,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestMain(m *testing.M) {
+	flogging.ActivateSpec(
+		"lockbasedtxmgr,statevalidator,statebasedval,statecouchdb,valimpl,pvtstatepurgemgmt,valinternal=debug",
+	)
+	exitCode := m.Run()
+	for _, testEnv := range testEnvs {
+		testEnv.cleanup()
+	}
+	os.Exit(exitCode)
+}
+
 type testEnv interface {
-	init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy)
+	cleanup()
 	getName() string
 	getTxMgr() txmgr.TxMgr
 	getVDB() privacyenabledstate.DB
-	cleanup()
+	init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy)
 }
 
 const (
@@ -54,15 +67,13 @@ var testEnvsMap = map[string]testEnv{
 ///////////// LevelDB Environment //////////////
 
 type lockBasedEnv struct {
-	t    testing.TB
-	name string
-
-	testDBEnv privacyenabledstate.TestEnv
-	testDB    privacyenabledstate.DB
-
+	dbInitialized      bool
+	name               string
+	t                  testing.TB
 	testBookkeepingEnv *bookkeeping.TestEnv
-
-	txmgr txmgr.TxMgr
+	testDB             privacyenabledstate.DB
+	testDBEnv          privacyenabledstate.TestEnv
+	txmgr              txmgr.TxMgr
 }
 
 func (env *lockBasedEnv) getName() string {
@@ -72,7 +83,10 @@ func (env *lockBasedEnv) getName() string {
 func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy) {
 	var err error
 	env.t = t
-	env.testDBEnv.Init(t)
+	if env.dbInitialized == false {
+		env.testDBEnv.Init(t)
+		env.dbInitialized = true
+	}
 	env.testDB = env.testDBEnv.GetDBHandle(testLedgerID)
 	assert.NoError(t, err)
 	if btlPolicy == nil {
@@ -98,9 +112,11 @@ func (env *lockBasedEnv) getVDB() privacyenabledstate.DB {
 }
 
 func (env *lockBasedEnv) cleanup() {
-	env.txmgr.Shutdown()
-	env.testDBEnv.Cleanup()
-	env.testBookkeepingEnv.Cleanup()
+	if env.dbInitialized {
+		env.txmgr.Shutdown()
+		env.testDBEnv.Cleanup()
+		env.testBookkeepingEnv.Cleanup()
+	}
 }
 
 //////////// txMgrTestHelper /////////////

@@ -33,7 +33,6 @@ func TestStateListener(t *testing.T) {
 
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, testLedgerid, nil)
-	defer testEnv.cleanup()
 	txmgr := testEnv.getTxMgr().(*LockBasedTxMgr)
 	txmgr.stateListeners = []ledger.StateListener{ml1, ml2, ml3}
 
@@ -135,7 +134,6 @@ func TestStateListener(t *testing.T) {
 func TestStateListenerQueryExecutor(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "testLedger", nil)
-	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
 
 	namespace := "ns"
