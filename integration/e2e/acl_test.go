@@ -17,6 +17,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -236,6 +237,95 @@ var _ = Describe("EndToEndACL", func() {
 		//
 		ItEnforcesPolicy("cscc", "GetConfigBlock", "testchannel")
 		ItEnforcesPolicy("cscc", "GetConfigTree", "testchannel")
+
+		//
+		// _lifecycle ACL policies
+		//
+
+		chaincode = nwo.Chaincode{
+			Name:                "mycc",
+			Version:             "0.0",
+			Path:                "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Lang:                "golang",
+			PackageFile:         filepath.Join(testDir, "simplecc.tar.gz"),
+			Ctor:                `{"Args":["init","a","100","b","200"]}`,
+			ChannelConfigPolicy: "/Channel/Application/Endorsement",
+			Sequence:            "1",
+			InitRequired:        true,
+			Label:               "my_simple_chaincode",
+		}
+
+		nwo.PackageChaincodeNewLifecycle(network, chaincode, org1Peer0)
+
+		// we set the PackageID so that we can pass it to the approve step
+		filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
+		Expect(err).NotTo(HaveOccurred())
+		hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
+		chaincode.PackageID = chaincode.Label + ":" + hashStr
+
+		//
+		// when the ACL policy for _lifecycle/InstallChaincode is not satisfied
+		//
+		By("installing the chaincode to an org1 peer as an org2 admin")
+		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeInstallLifecycle{
+			PackageFile:   chaincode.PackageFile,
+			PeerAddresses: []string{network.PeerAddress(org1Peer0, nwo.ListenPort)},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+		Expect(sess.Err).To(gbytes.Say(`access denied: channel \[\] creator org \[Org2MSP\]`))
+
+		By("installing the chaincode to an org1 peer as a non-admin org1 identity")
+		sess, err = network.PeerUserSession(org1Peer0, "User1", commands.ChaincodeInstallLifecycle{
+			PackageFile: chaincode.PackageFile,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+		Expect(sess.Err).To(gbytes.Say(`Error: chaincode install failed with status: 500 - Failed to authorize invocation due to failed ACL check: Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy with policy \[Admins\]: \[This identity is not an admin\]`))
+
+		//
+		// when the ACL policy for _lifecycle/InstallChaincode is satisfied
+		//
+		nwo.InstallChaincodeNewLifecycle(network, chaincode, org1Peer0, org2Peer0)
+
+		//
+		// when the V2_0 capabilities flag has not yet been enabled
+		//
+		By("approving a chaincode definition on a channel without V2_0 capabilities enabled")
+		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeApproveForMyOrgLifecycle{
+			ChannelID:           "testchannel",
+			Orderer:             network.OrdererAddress(orderer, nwo.ListenPort),
+			Name:                chaincode.Name,
+			Version:             chaincode.Version,
+			Sequence:            chaincode.Sequence,
+			EndorsementPlugin:   chaincode.EndorsementPlugin,
+			ValidationPlugin:    chaincode.ValidationPlugin,
+			SignaturePolicy:     chaincode.SignaturePolicy,
+			ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+			InitRequired:        chaincode.InitRequired,
+			CollectionsConfig:   chaincode.CollectionsConfig,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+		Expect(sess.Err).To(gbytes.Say("Error: proposal failed with status: 500 - cannot use new lifecycle for channel 'testchannel' as it does not have the required capabilities enabled"))
+
+		By("committing a chaincode definition on a channel without V2_0 capabilities enabled")
+		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeCommitLifecycle{
+			ChannelID:           "testchannel",
+			Orderer:             network.OrdererAddress(orderer, nwo.ListenPort),
+			Name:                chaincode.Name,
+			Version:             chaincode.Version,
+			Sequence:            chaincode.Sequence,
+			EndorsementPlugin:   chaincode.EndorsementPlugin,
+			ValidationPlugin:    chaincode.ValidationPlugin,
+			SignaturePolicy:     chaincode.SignaturePolicy,
+			ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+			InitRequired:        chaincode.InitRequired,
+			CollectionsConfig:   chaincode.CollectionsConfig,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+		Expect(sess.Err).To(gbytes.Say("Error: proposal failed with status: 500 - cannot use new lifecycle for channel 'testchannel' as it does not have the required capabilities enabled"))
 	})
 })
 

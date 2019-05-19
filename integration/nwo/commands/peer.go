@@ -141,7 +141,8 @@ func (c ChaincodePackage) Args() []string {
 }
 
 type ChaincodeInstallLifecycle struct {
-	PackageFile string
+	PackageFile   string
+	PeerAddresses []string
 }
 
 func (c ChaincodeInstallLifecycle) SessionName() string {
@@ -152,6 +153,10 @@ func (c ChaincodeInstallLifecycle) Args() []string {
 	args := []string{
 		"lifecycle", "chaincode", "install",
 		c.PackageFile,
+	}
+
+	for _, p := range c.PeerAddresses {
+		args = append(args, "--peerAddresses", p)
 	}
 
 	return args
