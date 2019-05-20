@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package validation
 
-import "github.com/hyperledger/fabric/core/handlers/validation/api"
+import validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 
 // Capabilities defines what capabilities the validation
 // should take into account when validating a transaction
