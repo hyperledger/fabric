@@ -82,7 +82,7 @@ pipeline {
                   }
                 }
                 catch (err) {
-                  failure_stage = "byfn_eyfn_Tests"
+                  failure_stage = "e2e sdk-java Tests"
                   currentBuild.result = 'FAILURE'
                   throw err
                   }
