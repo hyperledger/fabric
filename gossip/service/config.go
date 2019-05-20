@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const btlPullMarginDefault = 10
+
 // ServiceConfig is the config struct for gossip services
 type ServiceConfig struct {
 	Endpoint                         string
@@ -25,6 +27,7 @@ type ServiceConfig struct {
 	ElectionMembershipSampleInterval time.Duration
 	ElectionLeaderAliveThreshold     time.Duration
 	ElectionLeaderElectionDuration   time.Duration
+	BtlPullMargin                    uint64
 }
 
 func GlobalConfig() *ServiceConfig {
@@ -46,4 +49,12 @@ func (c *ServiceConfig) loadGossipConfig() {
 	c.ElectionMembershipSampleInterval = util.GetDurationOrDefault("peer.gossip.election.membershipSampleInterval", election.DefMembershipSampleInterval)
 	c.ElectionLeaderAliveThreshold = util.GetDurationOrDefault("peer.gossip.election.leaderAliveThreshold", election.DefLeaderAliveThreshold)
 	c.ElectionLeaderElectionDuration = util.GetDurationOrDefault("peer.gossip.election.leaderElectionDuration", election.DefLeaderElectionDuration)
+
+	c.BtlPullMargin = btlPullMarginDefault
+	if viper.IsSet("peer.gossip.pvtData.btlPullMargin") {
+		btlMarginVal := viper.GetInt("peer.gossip.pvtData.btlPullMargin")
+		if btlMarginVal >= 0 {
+			c.BtlPullMargin = uint64(btlMarginVal)
+		}
+	}
 }

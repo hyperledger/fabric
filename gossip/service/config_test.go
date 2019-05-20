@@ -27,6 +27,7 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.gossip.orgLeader", true)
 	viper.Set("peer.gossip.election.leaderAliveThreshold", "10m")
 	viper.Set("peer.gossip.election.leaderElectionDuration", "5s")
+	viper.Set("peer.gossip.pvtData.btlPullMargin", 15)
 
 	coreConfig := service.GlobalConfig()
 
@@ -41,6 +42,7 @@ func TestGlobalConfig(t *testing.T) {
 		ElectionLeaderElectionDuration:   5 * time.Second,
 		ElectionStartupGracePeriod:       election.DefStartupGracePeriod,
 		ElectionMembershipSampleInterval: election.DefMembershipSampleInterval,
+		BtlPullMargin:                    15,
 	}
 
 	assert.Equal(t, coreConfig, expectedConfig)

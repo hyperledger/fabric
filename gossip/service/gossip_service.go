@@ -274,7 +274,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	dataRetriever := privdata2.NewDataRetriever(storeSupport)
 	collectionAccessFactory := privdata2.NewCollectionAccessFactory(support.IdDeserializeFactory)
 	fetcher := privdata2.NewPuller(g.metrics.PrivdataMetrics, support.Cs, g.gossipSvc, dataRetriever,
-		collectionAccessFactory, chainID, privdata2.GetBtlPullMargin())
+		collectionAccessFactory, chainID, g.serviceConfig.BtlPullMargin)
 
 	coordinatorConfig := privdata2.CoordinatorConfig{
 		TransientBlockRetention: privdata2.GetTransientBlockRetention(),
