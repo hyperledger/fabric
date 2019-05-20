@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/cmd/common"
-	"github.com/hyperledger/fabric/token/cmd"
+	token "github.com/hyperledger/fabric/token/cmd"
 	"github.com/hyperledger/fabric/token/cmd/mocks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"

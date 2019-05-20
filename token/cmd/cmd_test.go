@@ -9,7 +9,7 @@ package token_test
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/token/cmd"
+	token "github.com/hyperledger/fabric/token/cmd"
 	"github.com/hyperledger/fabric/token/cmd/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
