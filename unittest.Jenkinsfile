@@ -85,7 +85,7 @@ pipeline {
         always {
             // Archiving the .log files and ignore if empty
           archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
-	      cleanWs notFailBuild: true
+	  //cleanWs notFailBuild: true
         }
 		} //post
 } // pipeline
