@@ -62,7 +62,7 @@ pipeline {
                       make $BASE_WD/fabric-ca docker
                       docker pull nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable
                       docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/$REPO-javaenv:2.0.0
-                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/$REPO-javaenv:amd64-latest
+                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/$REPO-javaenv:2.0.0-latest
                       docker images | grep hyperledger
 
                       echo "S D K - J A V A"
