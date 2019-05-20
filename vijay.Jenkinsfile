@@ -33,7 +33,7 @@ pipeline {
             }
           }      
         }
-        stage ('Run e2e sdk-java Tests') {
+        stage ('Run sdk-java') {
         // condition should pass then only next step would run else it will skip but won't fail.          
           //when { branch 'QA'}            
             steps {
@@ -62,7 +62,7 @@ pipeline {
                       make $BASE_WD/fabric-ca docker
                       docker pull nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable
                       docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/$REPO-javaenv:2.0.0
-                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/$REPO-javaenv:2.0.0-latest
+                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/$REPO-javaenv:amd64-latest
                       docker images | grep hyperledger
 
                       echo "S D K - J A V A"
@@ -82,7 +82,7 @@ pipeline {
                   }
                 }
                 catch (err) {
-                  failure_stage = "e2e sdk-java Tests"
+                  failure_stage = "sdk-java"
                   currentBuild.result = 'FAILURE'
                   throw err
                   }
@@ -102,9 +102,11 @@ pipeline {
               }  
         }
         stage('Archive') {     
-      steps {
-        echo "Archive Logs"
-      }
+          steps {
+            echo "Archive Logs"
+          }
+        }
+    } //stages
       post {
         success {
           echo "Success"
@@ -115,6 +117,5 @@ pipeline {
           cleanWs()
         }
 		} //post
-      } // stages
-    }  
+      //} // stages  
 } // pipeline
