@@ -11,7 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/cmd/common"
-	"github.com/hyperledger/fabric/token/cmd"
+	token "github.com/hyperledger/fabric/token/cmd"
 )
 
 func main() {
