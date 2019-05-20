@@ -5,6 +5,7 @@ pipeline {
        }
       tools {
         nodejs 'nodejs-8.11.3'
+        maven 'maven-3.3.9'
       }
       options 
       {
@@ -35,18 +36,8 @@ pipeline {
                     checkout scm
                 }
             }      
-        }
-        stage ('Run Tests') {
-        // condition should pass then only next step would run else it will skip but won't fail.
-            //when { branch 'master'}          
-                steps {
-                  dir('go/src/github.com/Vijaypunugubati/fab') {
-                    sh label: 'Running Fabric Unit Tests', script: 'echo "make unit-tests"'
-                    //build job: 'code_merge_develop_QA' 
-                  }  
-                }
-        }          
-        stage ('Run e2e Tests') {
+        }  
+        stage ('Run e2e sdkjava Tests') {
         // condition should pass then only next step would run else it will skip but won't fail.          
             //when { branch 'QA'}            
                 steps {
@@ -54,23 +45,25 @@ pipeline {
                     //Run e2e tests on PR from develop branch
                     sh label: 'Running e2e Tests', script: 'echo "Running the e2e Tests"'
                     sh '''
+                      set -e
                       echo "B U I L D - F A B R I C"
+                      cd $BASE_WD/fab
                       # Print last two commits
-                      git -C $BASE_WD/fabric log -n2
+                      git log -n2
                       for IMAGES in docker release-clean release docker-thirdparty; do
-                        echo -e "\033[1m----------> $IMAGES\033[0m"
-                        make -C $BASE_WD/fabric $IMAGES
+                        echo "----------> $IMAGES"
+                        make $IMAGES
                       done
 
                       echo "B U I L D - F A B R I C-CA"
                       rm -rf $BASE_WD/fabric-ca
-                      git clone --single-branch -b master https://github.com/hyperledger/fabric-ca $BASE_WD/fabric-ca
+                      git clone --single-branch -b master --depth=1 https://github.com/hyperledger/fabric-ca $BASE_WD/fabric-ca
                       # Print last two commits
-                      git -C $BASE_WD/fabric-ca log -n2
-                      make -C $BASE_WD/fabric-ca docker
+                      git log -n2
+                      make $BASE_WD/fabric-ca docker
                       docker pull nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable
-                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/$REPO-javaenv:2.0.0
-                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/$REPO-javaenv:amd64-latest
+                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/fabric-javaenv:2.0.0
+                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/fabric-javaenv:amd64-latest
                       docker images | grep hyperledger
 
                       echo "S D K - J A V A"
@@ -78,13 +71,13 @@ pipeline {
                       WD="${WORKSPACE}/go/src/github.com/Vijaypunugubati/fabric-sdk-java"
                       rm -rf $WD
                       # Clone fabric-sdk-java repository
-                      git clone https://github.com/hyperledger/fabric-sdk-java $WD
+                      git clone --single-branch -b master --depth=1 https://github.com/hyperledger/fabric-sdk-java $WD
                       cd $WD
                       git checkout master
                       export GOPATH=$WD/src/test/fixture
                       cd $WD/src/test
                       chmod +x cirun.sh
-                      source cirun.sh
+                      . ./cirun.sh
                     '''
                     //build job: 'code_merge_QA_Master'
                   }
