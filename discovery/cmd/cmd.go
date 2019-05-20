@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/cmd/common"
-	"github.com/hyperledger/fabric/discovery/client"
+	discovery "github.com/hyperledger/fabric/discovery/client"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
