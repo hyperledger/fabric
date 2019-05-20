@@ -11,7 +11,7 @@ package ccintf
 //Currently inproccontroller uses it. dockercontroller does not.
 
 import (
-	"github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
