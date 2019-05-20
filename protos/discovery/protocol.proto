@@ -16,7 +16,7 @@ package discovery;
 // like which peers, orderers, chaincodes, etc.
 service Discovery {
     // Discover receives a signed request, and returns a response.
-    rpc Discover (SignedRequest) returns (Response) {}
+    rpc Discover (SignedRequest) returns (Response);
 }
 
 // SignedRequest contains a serialized Request in the payload field

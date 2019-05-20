@@ -14,10 +14,10 @@ import "common/collection.proto";
 service Gossip {
 
     // GossipStream is the gRPC stream used for sending and receiving messages
-    rpc GossipStream (stream Envelope) returns (stream Envelope) {}
+    rpc GossipStream (stream Envelope) returns (stream Envelope);
 
     // Ping is used to probe a remote peer's aliveness
-    rpc Ping (Empty) returns (Empty) {}
+    rpc Ping (Empty) returns (Empty);
 }
 
 

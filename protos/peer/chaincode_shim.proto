@@ -178,7 +178,7 @@ message StateMetadataResult {
 // provides the context necessary for the server to respond appropriately.
 service ChaincodeSupport {
 
-	rpc Register(stream ChaincodeMessage) returns (stream ChaincodeMessage) {}
+	rpc Register(stream ChaincodeMessage) returns (stream ChaincodeMessage);
 
 
 }

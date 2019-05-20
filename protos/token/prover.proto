@@ -215,5 +215,5 @@ service Prover {
     // The returned response allows the client to understand if the
     // operation was succeffully executed and if not, the response
     // reports the reason of the failure.
-    rpc ProcessCommand(SignedCommand) returns (SignedCommandResponse) {}
+    rpc ProcessCommand(SignedCommand) returns (SignedCommandResponse);
 }
