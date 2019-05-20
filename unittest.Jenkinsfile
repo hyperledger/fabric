@@ -61,7 +61,7 @@ pipeline {
               }
             }      
         }
-        //stage ('Build and Publish on Master') {
+        stage ('Build and Publish on Master') {
         // condition should pass then only next step would run else it will skip but won't fail.            
             //when { branch 'master'}            
                 steps {
@@ -70,12 +70,14 @@ pipeline {
                     sh label: 'Build Images', script: 'echo "Building Images"'
                     sh label: 'Publish Images', script: 'echo "Publish Images"'
                   }
-                }  
-        }
+                }
+        }          
         stage('Archive') {     
       steps {
         echo "Archive Logs"
       }
+        }
+      } //stages  
       post {
         success {
           echo "Success"
@@ -83,9 +85,7 @@ pipeline {
         always {
             // Archiving the .log files and ignore if empty
           archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
-	        cleanWs()
+	      cleanWs notFailBuild: true
         }
 		} //post
-      } // stages
-    }  
 } // pipeline
