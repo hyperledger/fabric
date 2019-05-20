@@ -11,7 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/ram"
+	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
