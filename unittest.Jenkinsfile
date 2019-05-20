@@ -36,20 +36,32 @@ pipeline {
                 }
             }      
         }
-        stage ('Run Tests') {
+        stage ('Run Unit-Tests') {
         // condition should pass then only next step would run else it will skip but won't fail.
-            //when { branch 'master'}          
-                steps {
-                  dir('go/src/github.com/Vijaypunugubati/fab') {
+          //when { branch 'master'}          
+            steps {
+              script {
+                // making the output color coded
+                wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
+                  try {
+                    dir('go/src/github.com/Vijaypunugubati/fab') {
                     sh label: 'Running Fabric Unit Tests', script: 'make unit-tests'
-		    sh '''
-		        docker images | grep hyperledger
-		    '''
+		                sh '''
+		                docker images | grep hyperledger
+		                '''
                     //build job: 'code_merge_develop_QA' 
-                  }  
+                    }  
+                  }
+                  catch (err) {
+                  failure_stage = "Unit-Tests"
+                  currentBuild.result = 'FAILURE'
+                  throw err
+                  }
                 }
+              }
+            }      
         }
-        stage ('Build and Publish on Master') {
+        //stage ('Build and Publish on Master') {
         // condition should pass then only next step would run else it will skip but won't fail.            
             //when { branch 'master'}            
                 steps {
@@ -71,6 +83,7 @@ pipeline {
         always {
             // Archiving the .log files and ignore if empty
           archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
+	        cleanWs()
         }
 		} //post
       } // stages
