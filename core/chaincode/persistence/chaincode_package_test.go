@@ -97,7 +97,17 @@ var _ = Describe("ChaincodePackageParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
-				Expect(err.Error()).To(ContainSubstring("empty label in package metadata"))
+				Expect(err.Error()).To(ContainSubstring("invalid label ''. Label must be non-empty, can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics"))
+			})
+		})
+
+		Context("when the label contains forbidden characters", func() {
+			It("fails", func() {
+				data, err := ioutil.ReadFile("testdata/bad-label.tar.gz")
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = ccpp.Parse(data)
+				Expect(err.Error()).To(ContainSubstring("invalid label 'Bad-Label!'. Label must be non-empty, can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics"))
 			})
 		})
 

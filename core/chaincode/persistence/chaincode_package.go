@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
+	"regexp"
 
 	"github.com/pkg/errors"
 )
@@ -26,6 +27,8 @@ import (
 // seems like a good step.
 
 const (
+	// ChaincodePackageMetadataFile contains the name
+	// of the file that contains metadata for a chaincode pacakge.
 	ChaincodePackageMetadataFile = "Chaincode-Package-Metadata.json"
 )
 
@@ -53,6 +56,20 @@ type MetadataProvider interface {
 // ChaincodePackageParser provides the ability to parse chaincode packages.
 type ChaincodePackageParser struct {
 	MetadataProvider MetadataProvider
+}
+
+var (
+	// LabelRegexp is the regular expression controlling
+	// the allowed characters for the package label
+	LabelRegexp = regexp.MustCompile("^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$")
+)
+
+func validateLabel(label string) error {
+	if !LabelRegexp.MatchString(label) {
+		return errors.Errorf("invalid label '%s'. Label must be non-empty, can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics", label)
+	}
+
+	return nil
 }
 
 // Parse parses a set of bytes as a chaincode package
@@ -111,8 +128,8 @@ func (ccpp ChaincodePackageParser) Parse(source []byte) (*ChaincodePackage, erro
 		return nil, errors.Errorf("did not find any package metadata (missing %s)", ChaincodePackageMetadataFile)
 	}
 
-	if ccPackageMetadata.Label == "" {
-		return nil, errors.New("empty label in package metadata")
+	if err := validateLabel(ccPackageMetadata.Label); err != nil {
+		return nil, err
 	}
 
 	dbArtifacts, err := ccpp.MetadataProvider.GetDBArtifacts(codePackage)
