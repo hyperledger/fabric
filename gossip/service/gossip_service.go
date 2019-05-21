@@ -16,11 +16,11 @@ import (
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/gossip/api"
-	gossipCommon "github.com/hyperledger/fabric/gossip/common"
+	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/gossip"
-	gossipMetrics "github.com/hyperledger/fabric/gossip/metrics"
-	privdata2 "github.com/hyperledger/fabric/gossip/privdata"
+	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
+	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -77,9 +77,9 @@ func (df *deliveryFactoryImpl) Service(g GossipService, endpoints []string, mcs 
 
 type privateHandler struct {
 	support     Support
-	coordinator privdata2.Coordinator
-	distributor privdata2.PvtDataDistributor
-	reconciler  privdata2.PvtDataReconciler
+	coordinator gossipprivdata.Coordinator
+	distributor gossipprivdata.PvtDataDistributor
+	reconciler  gossipprivdata.PvtDataReconciler
 }
 
 func (p privateHandler) close() {
@@ -98,7 +98,7 @@ type gossipServiceImpl struct {
 	mcs             api.MessageCryptoService
 	peerIdentity    []byte
 	secAdv          api.SecurityAdvisor
-	metrics         *gossipMetrics.GossipMetrics
+	metrics         *gossipmetrics.GossipMetrics
 	serviceConfig   *ServiceConfig
 }
 
@@ -132,7 +132,7 @@ var logger = util.GetLogger(util.ServiceLogger, "")
 
 // InitGossipService initialize gossip service
 func InitGossipService(peerIdentity identity.SignerSerializer, metricsProvider metrics.Provider, endpoint string, s *grpc.Server,
-	certs *gossipCommon.TLSCertificates, mcs api.MessageCryptoService, secAdv api.SecurityAdvisor,
+	certs *gossipcommon.TLSCertificates, mcs api.MessageCryptoService, secAdv api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts, bootPeers ...string) error {
 	// TODO: Remove this.
 	// TODO: This is a temporary work-around to make the gossip leader election module load its logger at startup
@@ -162,7 +162,7 @@ func InitGossipServiceCustomDeliveryFactory(
 	metricsProvider metrics.Provider,
 	endpoint string,
 	s *grpc.Server,
-	certs *gossipCommon.TLSCertificates,
+	certs *gossipcommon.TLSCertificates,
 	factory DeliveryServiceFactory,
 	mcs api.MessageCryptoService,
 	secAdv api.SecurityAdvisor,
@@ -186,7 +186,7 @@ func InitGossipServiceCustomDeliveryFactory(
 
 		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
 
-		gossipMetrics := gossipMetrics.NewGossipMetrics(metricsProvider)
+		gossipMetrics := gossipmetrics.NewGossipMetrics(metricsProvider)
 
 		gossipComponent = gossip.NewGossipService(gossipConfig, s, secAdv, mcs, serializedIdentity, secureDialOpts, gossipMetrics)
 
@@ -244,16 +244,16 @@ func (g *gossipServiceImpl) NewConfigEventer() ConfigProcessor {
 type Support struct {
 	Validator            txvalidator.Validator
 	Committer            committer.Committer
-	Store                privdata2.TransientStore
+	Store                gossipprivdata.TransientStore
 	Cs                   privdata.CollectionStore
-	IdDeserializeFactory privdata2.IdentityDeserializerFactory
+	IdDeserializeFactory gossipprivdata.IdentityDeserializerFactory
 }
 
 // DataStoreSupport aggregates interfaces capable
 // of handling either incoming blocks or private data
 type DataStoreSupport struct {
 	committer.Committer
-	privdata2.TransientStore
+	gossipprivdata.TransientStore
 }
 
 // InitializeChannel allocates the state provider and should be invoked once per channel per execution
@@ -272,16 +272,16 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		Committer:      support.Committer,
 	}
 	// Initialize private data fetcher
-	dataRetriever := privdata2.NewDataRetriever(storeSupport)
-	collectionAccessFactory := privdata2.NewCollectionAccessFactory(support.IdDeserializeFactory)
-	fetcher := privdata2.NewPuller(g.metrics.PrivdataMetrics, support.Cs, g.gossipSvc, dataRetriever,
+	dataRetriever := gossipprivdata.NewDataRetriever(storeSupport)
+	collectionAccessFactory := gossipprivdata.NewCollectionAccessFactory(support.IdDeserializeFactory)
+	fetcher := gossipprivdata.NewPuller(g.metrics.PrivdataMetrics, support.Cs, g.gossipSvc, dataRetriever,
 		collectionAccessFactory, chainID, g.serviceConfig.BtlPullMargin)
 
-	coordinatorConfig := privdata2.CoordinatorConfig{
-		TransientBlockRetention: privdata2.GetTransientBlockRetention(),
+	coordinatorConfig := gossipprivdata.CoordinatorConfig{
+		TransientBlockRetention: g.serviceConfig.TransientstoreMaxBlockRetention,
 		PullRetryThreshold:      g.serviceConfig.PvtDataPullRetryThreshold,
 	}
-	coordinator := privdata2.NewCoordinator(privdata2.Support{
+	coordinator := gossipprivdata.NewCoordinator(gossipprivdata.Support{
 		ChainID:         chainID,
 		CollectionStore: support.Cs,
 		Validator:       support.Validator,
@@ -290,21 +290,21 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		Fetcher:         fetcher,
 	}, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig)
 
-	reconcilerConfig := privdata2.GetReconcilerConfig()
-	var reconciler privdata2.PvtDataReconciler
+	privdataConfig := gossipprivdata.GlobalConfig()
+	var reconciler gossipprivdata.PvtDataReconciler
 
-	if reconcilerConfig.IsEnabled {
-		reconciler = privdata2.NewReconciler(chainID, g.metrics.PrivdataMetrics,
-			support.Committer, fetcher, reconcilerConfig)
+	if privdataConfig.ReconciliationEnabled {
+		reconciler = gossipprivdata.NewReconciler(chainID, g.metrics.PrivdataMetrics,
+			support.Committer, fetcher, privdataConfig)
 	} else {
-		reconciler = &privdata2.NoOpReconciler{}
+		reconciler = &gossipprivdata.NoOpReconciler{}
 	}
 
 	pushAckTimeout := g.serviceConfig.PvtDataPushAckTimeout
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
-		distributor: privdata2.NewDistributor(chainID, g, collectionAccessFactory, g.metrics.PrivdataMetrics, pushAckTimeout),
+		distributor: gossipprivdata.NewDistributor(chainID, g, collectionAccessFactory, g.metrics.PrivdataMetrics, pushAckTimeout),
 		reconciler:  reconciler,
 	}
 	g.privateHandlers[chainID].reconciler.Start()
@@ -387,7 +387,7 @@ func (g *gossipServiceImpl) updateAnchors(config Config) {
 
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for chainID", config.ChainID())
-	g.JoinChan(jcm, gossipCommon.ChainID(config.ChainID()))
+	g.JoinChan(jcm, gossipcommon.ChainID(config.ChainID()))
 }
 
 func (g *gossipServiceImpl) updateEndpoints(chainID string, endpoints []string) {
@@ -430,9 +430,9 @@ func (g *gossipServiceImpl) Stop() {
 }
 
 func (g *gossipServiceImpl) newLeaderElectionComponent(chainID string, callback func(bool),
-	electionMetrics *gossipMetrics.ElectionMetrics) election.LeaderElectionService {
+	electionMetrics *gossipmetrics.ElectionMetrics) election.LeaderElectionService {
 	PKIid := g.mcs.GetPKIidOfCert(g.peerIdentity)
-	adapter := election.NewAdapter(g, PKIid, gossipCommon.ChainID(chainID), electionMetrics)
+	adapter := election.NewAdapter(g, PKIid, gossipcommon.ChainID(chainID), electionMetrics)
 	config := election.ElectionConfig{
 		StartupGracePeriod:       g.serviceConfig.ElectionStartupGracePeriod,
 		MembershipSampleInterval: g.serviceConfig.ElectionMembershipSampleInterval,

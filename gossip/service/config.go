@@ -13,7 +13,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-const btlPullMarginDefault = 10
+const (
+	btlPullMarginDefault           = 10
+	transientBlockRetentionDefault = 1000
+)
 
 // ServiceConfig is the config struct for gossip services
 type ServiceConfig struct {
@@ -28,6 +31,8 @@ type ServiceConfig struct {
 	ElectionLeaderAliveThreshold     time.Duration
 	ElectionLeaderElectionDuration   time.Duration
 	BtlPullMargin                    uint64
+
+	TransientstoreMaxBlockRetention uint64
 }
 
 func GlobalConfig() *ServiceConfig {
@@ -56,5 +61,11 @@ func (c *ServiceConfig) loadGossipConfig() {
 		if btlMarginVal >= 0 {
 			c.BtlPullMargin = uint64(btlMarginVal)
 		}
+	}
+
+	c.TransientstoreMaxBlockRetention = uint64(viper.GetInt("peer.gossip.pvtData.transientstoreMaxBlockRetention"))
+	if c.TransientstoreMaxBlockRetention == 0 {
+		logger.Warning("Configuration key peer.gossip.pvtData.transientstoreMaxBlockRetention isn't set, defaulting to", transientBlockRetentionDefault)
+		c.TransientstoreMaxBlockRetention = transientBlockRetentionDefault
 	}
 }
