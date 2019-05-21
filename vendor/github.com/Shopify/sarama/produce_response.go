@@ -179,5 +179,11 @@ func (r *ProduceResponse) AddTopicPartition(topic string, partition int32, err K
 		byTopic = make(map[int32]*ProduceResponseBlock)
 		r.Blocks[topic] = byTopic
 	}
-	byTopic[partition] = &ProduceResponseBlock{Err: err}
+	block := &ProduceResponseBlock{
+		Err: err,
+	}
+	if r.Version >= 2 {
+		block.Timestamp = time.Now()
+	}
+	byTopic[partition] = block
 }

@@ -1,27 +1,22 @@
 package sarama
 
 import (
-	"bytes"
-	"compress/gzip"
 	"fmt"
-	"io/ioutil"
 	"time"
-
-	"github.com/eapache/go-xerial-snappy"
-	"github.com/pierrec/lz4"
 )
 
 // CompressionCodec represents the various compression codecs recognized by Kafka in messages.
 type CompressionCodec int8
 
-// only the last two bits are really used
-const compressionCodecMask int8 = 0x03
+// The lowest 3 bits contain the compression codec used for the message
+const compressionCodecMask int8 = 0x07
 
 const (
 	CompressionNone   CompressionCodec = 0
 	CompressionGZIP   CompressionCodec = 1
 	CompressionSnappy CompressionCodec = 2
 	CompressionLZ4    CompressionCodec = 3
+	CompressionZSTD   CompressionCodec = 4
 )
 
 func (cc CompressionCodec) String() string {
@@ -76,47 +71,12 @@ func (m *Message) encode(pe packetEncoder) error {
 		payload = m.compressedCache
 		m.compressedCache = nil
 	} else if m.Value != nil {
-		switch m.Codec {
-		case CompressionNone:
-			payload = m.Value
-		case CompressionGZIP:
-			var buf bytes.Buffer
-			var writer *gzip.Writer
-			if m.CompressionLevel != CompressionLevelDefault {
-				writer, err = gzip.NewWriterLevel(&buf, m.CompressionLevel)
-				if err != nil {
-					return err
-				}
-			} else {
-				writer = gzip.NewWriter(&buf)
-			}
-			if _, err = writer.Write(m.Value); err != nil {
-				return err
-			}
-			if err = writer.Close(); err != nil {
-				return err
-			}
-			m.compressedCache = buf.Bytes()
-			payload = m.compressedCache
-		case CompressionSnappy:
-			tmp := snappy.Encode(m.Value)
-			m.compressedCache = tmp
-			payload = m.compressedCache
-		case CompressionLZ4:
-			var buf bytes.Buffer
-			writer := lz4.NewWriter(&buf)
-			if _, err = writer.Write(m.Value); err != nil {
-				return err
-			}
-			if err = writer.Close(); err != nil {
-				return err
-			}
-			m.compressedCache = buf.Bytes()
-			payload = m.compressedCache
 
-		default:
-			return PacketEncodingError{fmt.Sprintf("unsupported compression codec (%d)", m.Codec)}
+		payload, err = compress(m.Codec, m.CompressionLevel, m.Value)
+		if err != nil {
+			return err
 		}
+		m.compressedCache = payload
 		// Keep in mind the compressed payload size for metric gathering
 		m.compressedSize = len(payload)
 	}
@@ -172,44 +132,18 @@ func (m *Message) decode(pd packetDecoder) (err error) {
 	switch m.Codec {
 	case CompressionNone:
 		// nothing to do
-	case CompressionGZIP:
+	default:
 		if m.Value == nil {
 			break
 		}
-		reader, err := gzip.NewReader(bytes.NewReader(m.Value))
+
+		m.Value, err = decompress(m.Codec, m.Value)
 		if err != nil {
 			return err
 		}
-		if m.Value, err = ioutil.ReadAll(reader); err != nil {
-			return err
-		}
 		if err := m.decodeSet(); err != nil {
 			return err
 		}
-	case CompressionSnappy:
-		if m.Value == nil {
-			break
-		}
-		if m.Value, err = snappy.Decode(m.Value); err != nil {
-			return err
-		}
-		if err := m.decodeSet(); err != nil {
-			return err
-		}
-	case CompressionLZ4:
-		if m.Value == nil {
-			break
-		}
-		reader := lz4.NewReader(bytes.NewReader(m.Value))
-		if m.Value, err = ioutil.ReadAll(reader); err != nil {
-			return err
-		}
-		if err := m.decodeSet(); err != nil {
-			return err
-		}
-
-	default:
-		return PacketDecodingError{fmt.Sprintf("invalid compression specified (%d)", m.Codec)}
 	}
 
 	return pd.pop()
