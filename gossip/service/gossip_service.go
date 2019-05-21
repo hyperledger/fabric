@@ -19,7 +19,6 @@ import (
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/gossip"
-	"github.com/hyperledger/fabric/gossip/integration"
 	gossipMetrics "github.com/hyperledger/fabric/gossip/metrics"
 	privdata2 "github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/state"
@@ -171,27 +170,29 @@ func InitGossipServiceCustomDeliveryFactory(
 	bootPeers ...string,
 ) error {
 	var err error
-	var gossip gossip.Gossip
+	var gossipComponent gossip.Gossip
 	serializedIdentity, err := peerIdentity.Serialize()
 	if err != nil {
 		return err
 	}
 	once.Do(func() {
-		serviceConfig := GlobalConfig()
+		var gossipConfig *gossip.Config
 
+		serviceConfig := GlobalConfig()
 		if serviceConfig.Endpoint != "" {
 			endpoint = serviceConfig.Endpoint
 		}
+		gossipConfig, err = gossip.GlobalConfig(endpoint, certs, bootPeers...)
 
 		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
 
 		gossipMetrics := gossipMetrics.NewGossipMetrics(metricsProvider)
 
-		gossip, err = integration.NewGossipComponent(serializedIdentity, endpoint, s, secAdv,
-			mcs, secureDialOpts, certs, gossipMetrics, bootPeers...)
+		gossipComponent = gossip.NewGossipService(gossipConfig, s, secAdv, mcs, serializedIdentity, secureDialOpts, gossipMetrics)
+
 		gossipServiceInstance = &gossipServiceImpl{
 			mcs:             mcs,
-			gossipSvc:       gossip,
+			gossipSvc:       gossipComponent,
 			privateHandlers: make(map[string]privateHandler),
 			chains:          make(map[string]state.GossipStateProvider),
 			leaderElection:  make(map[string]election.LeaderElectionService),
