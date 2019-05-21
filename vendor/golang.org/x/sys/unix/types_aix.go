@@ -59,14 +59,14 @@ struct sockaddr_any {
 */
 import "C"
 
-// Machine characteristics; for internal use.
+// Machine characteristics
 
 const (
-	sizeofPtr      = C.sizeofPtr
-	sizeofShort    = C.sizeof_short
-	sizeofInt      = C.sizeof_int
-	sizeofLong     = C.sizeof_long
-	sizeofLongLong = C.sizeof_longlong
+	SizeofPtr      = C.sizeofPtr
+	SizeofShort    = C.sizeof_short
+	SizeofInt      = C.sizeof_int
+	SizeofLong     = C.sizeof_long
+	SizeofLongLong = C.sizeof_longlong
 	PathMax        = C.PATH_MAX
 )
 
@@ -86,8 +86,6 @@ type Mode_t C.mode_t
 // Time
 
 type Timespec C.struct_timespec
-
-type StTimespec C.struct_st_timespec
 
 type Timeval C.struct_timeval
 

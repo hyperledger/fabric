@@ -6,11 +6,11 @@
 package unix
 
 const (
-	sizeofPtr      = 0x8
-	sizeofShort    = 0x2
-	sizeofInt      = 0x4
-	sizeofLong     = 0x8
-	sizeofLongLong = 0x8
+	SizeofPtr      = 0x8
+	SizeofShort    = 0x2
+	SizeofInt      = 0x4
+	SizeofLong     = 0x8
+	SizeofLongLong = 0x8
 	PathMax        = 0x3ff
 )
 
@@ -28,12 +28,6 @@ type Mode_t uint32
 type Timespec struct {
 	Sec  int64
 	Nsec int64
-}
-
-type StTimespec struct {
-	Sec  int64
-	Nsec int32
-	_    [4]byte
 }
 
 type Timeval struct {
@@ -103,10 +97,9 @@ type Stat_t struct {
 	Gid      uint32
 	Rdev     uint64
 	Ssize    int32
-	_        [4]byte
-	Atim     StTimespec
-	Mtim     StTimespec
-	Ctim     StTimespec
+	Atim     Timespec
+	Mtim     Timespec
+	Ctim     Timespec
 	Blksize  int64
 	Blocks   int64
 	Vfstype  int32
@@ -205,10 +198,8 @@ type Linger struct {
 type Msghdr struct {
 	Name       *byte
 	Namelen    uint32
-	_          [4]byte
 	Iov        *Iovec
 	Iovlen     int32
-	_          [4]byte
 	Control    *byte
 	Controllen uint32
 	Flags      int32
@@ -339,7 +330,6 @@ type Statfs_t struct {
 	Ffree     uint64
 	Fsid      Fsid64_t
 	Vfstype   int32
-	_         [4]byte
 	Fsize     uint64
 	Vfsnumber int32
 	Vfsoff    int32

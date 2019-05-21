@@ -21,7 +21,7 @@ import (
 // TODO(matloob): Delete this file once Go 1.12 is released.
 
 // This file provides backwards compatibility support for
-// loading for versions of Go earlier than 1.10.4. This support is meant to
+// loading for versions of Go earlier than 1.11. This support is meant to
 // assist with migration to the Package API until there's
 // widespread adoption of these newer Go versions.
 // This support will be removed once Go 1.12 is released
@@ -46,7 +46,7 @@ func golistDriverFallback(cfg *Config, words ...string) (*driverResponse, error)
 
 	var response driverResponse
 	allPkgs := make(map[string]bool)
-	addPackage := func(p *jsonPackage) {
+	addPackage := func(p *jsonPackage, isRoot bool) {
 		id := p.ImportPath
 
 		if allPkgs[id] {
@@ -54,7 +54,6 @@ func golistDriverFallback(cfg *Config, words ...string) (*driverResponse, error)
 		}
 		allPkgs[id] = true
 
-		isRoot := original[id] != nil
 		pkgpath := id
 
 		if pkgpath == "unsafe" {
@@ -90,11 +89,7 @@ func golistDriverFallback(cfg *Config, words ...string) (*driverResponse, error)
 					return "", err
 				}
 			}
-			// Add a "go-build" component to the path to make the tests think the files are in the cache.
-			// This allows the same test to test the pre- and post-Go 1.11 go list logic because the Go 1.11
-			// go list generates test mains in the cache, and the test code knows not to rely on paths in the
-			// cache to stay stable.
-			outdir = filepath.Join(tmpdir, "go-build", strings.Replace(p.ImportPath, "/", "_", -1))
+			outdir = filepath.Join(tmpdir, strings.Replace(p.ImportPath, "/", "_", -1))
 			if err := os.MkdirAll(outdir, 0755); err != nil {
 				outdir = ""
 				return "", err
@@ -201,7 +196,11 @@ func golistDriverFallback(cfg *Config, words ...string) (*driverResponse, error)
 					})
 					return
 				}
-				testmain := filepath.Join(outdir, "testmain.go")
+				// Don't use a .go extension on the file, so that the tests think the file is inside GOCACHE.
+				// This allows the same test to test the pre- and post-Go 1.11 go list logic because the Go 1.11
+				// go list generates test mains in the cache, and the test code knows not to rely on paths in the
+				// cache to stay stable.
+				testmain := filepath.Join(outdir, "testmain-go")
 				extraimports, extradeps, err := generateTestmain(testmain, testPkg, xtestPkg)
 				if err != nil {
 					testmainPkg.Errors = append(testmainPkg.Errors, Error{
@@ -221,7 +220,7 @@ func golistDriverFallback(cfg *Config, words ...string) (*driverResponse, error)
 	}
 
 	for _, pkg := range original {
-		addPackage(pkg)
+		addPackage(pkg, true)
 	}
 	if cfg.Mode < LoadImports || len(deps) == 0 {
 		return &response, nil
@@ -239,17 +238,12 @@ func golistDriverFallback(cfg *Config, words ...string) (*driverResponse, error)
 			return nil, fmt.Errorf("JSON decoding failed: %v", err)
 		}
 
-		addPackage(p)
+		addPackage(p, false)
 	}
 
 	for _, v := range needsTestVariant {
 		createTestVariants(&response, v.pkg, v.xtestPkg)
 	}
-
-	// TODO(matloob): Is this the right ordering?
-	sort.SliceStable(response.Packages, func(i, j int) bool {
-		return response.Packages[i].PkgPath < response.Packages[j].PkgPath
-	})
 
 	return &response, nil
 }
@@ -361,14 +355,13 @@ func vendorlessPath(ipath string) string {
 }
 
 // getDeps runs an initial go list to determine all the dependency packages.
-func getDeps(cfg *Config, words ...string) (originalSet map[string]*jsonPackage, deps []string, err error) {
+func getDeps(cfg *Config, words ...string) (initial []*jsonPackage, deps []string, err error) {
 	buf, err := invokeGo(cfg, golistArgsFallback(cfg, words)...)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	depsSet := make(map[string]bool)
-	originalSet = make(map[string]*jsonPackage)
 	var testImports []string
 
 	// Extract deps from the JSON.
@@ -378,7 +371,7 @@ func getDeps(cfg *Config, words ...string) (originalSet map[string]*jsonPackage,
 			return nil, nil, fmt.Errorf("JSON decoding failed: %v", err)
 		}
 
-		originalSet[p.ImportPath] = p
+		initial = append(initial, p)
 		for _, dep := range p.Deps {
 			depsSet[dep] = true
 		}
@@ -412,8 +405,8 @@ func getDeps(cfg *Config, words ...string) (originalSet map[string]*jsonPackage,
 		}
 	}
 
-	for orig := range originalSet {
-		delete(depsSet, orig)
+	for _, orig := range initial {
+		delete(depsSet, orig.ImportPath)
 	}
 
 	deps = make([]string, 0, len(depsSet))
@@ -421,7 +414,7 @@ func getDeps(cfg *Config, words ...string) (originalSet map[string]*jsonPackage,
 		deps = append(deps, dep)
 	}
 	sort.Strings(deps) // ensure output is deterministic
-	return originalSet, deps, nil
+	return initial, deps, nil
 }
 
 func golistArgsFallback(cfg *Config, words []string) []string {

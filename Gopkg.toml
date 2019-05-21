@@ -12,7 +12,8 @@ ignored = [
 ]
 
 noverify = [
-    "github.com/grpc-ecosystem/go-grpc-middleware"
+    "github.com/grpc-ecosystem/go-grpc-middleware",
+    "github.com/konsorten/go-windows-terminal-sequences",
 ]
 
 [[constraint]]
@@ -21,7 +22,7 @@ noverify = [
 
 [[constraint]]
   name = "github.com/Shopify/sarama"
-  version = "1.19.0"
+  version = "=1.19.0"
 
 [[constraint]]
   name = "github.com/davecgh/go-spew"
@@ -107,7 +108,7 @@ noverify = [
 
 [[constraint]]
   name = "golang.org/x/lint"
-  revision = "c67002cb31c3a748b7688c27f20d8358b4193582"
+  revision = "959b441ac422379a43da2230f62be024250818b0"
 
 [[constraint]]
   branch = "master"
@@ -115,11 +116,11 @@ noverify = [
 
 [[constraint]]
   name = "golang.org/x/tools"
-  revision = "f60e5f99f0816fc2d9ecb338008ea420248d2943"
+  branch = "release-branch.go1.12"
 
 [[constraint]]
   name = "google.golang.org/grpc"
-  version = "=1.20.1"
+  version = "1.20.0"
 
 [[constraint]]
   name = "gopkg.in/alecthomas/kingpin.v2"
@@ -139,11 +140,16 @@ noverify = [
 
 [[constraint]]
   name = "github.com/onsi/ginkgo"
-  revision = "a3b6351eb1ff8e1bfa30b2f55d7e282186ed8fee"
+  version = "1.8.0"
 
 [[constraint]]
   name = "github.com/onsi/gomega"
   version = "1.5.0"
+
+# https://github.com/golang/dep/issues/1799
+[[override]]
+  name = "gopkg.in/fsnotify.v1"
+  source = "gopkg.in/fsnotify/fsnotify.v1"
 
 [[constraint]]
   name = "go.etcd.io/etcd"

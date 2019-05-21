@@ -243,13 +243,13 @@ func NewMechanism(mech uint, x interface{}) *Mechanism {
 	}
 
 	switch p := x.(type) {
-	case *GCMParams, *OAEPParams:
+	case *GCMParams, *OAEPParams, *ECDH1DeriveParams:
 		// contains pointers; defer serialization until cMechanism
 		m.generator = p
 	case []byte:
 		m.Parameter = p
 	default:
-		panic("parameter must be one of type: []byte, *GCMParams, *OAEPParams")
+		panic("parameter must be one of type: []byte, *GCMParams, *OAEPParams, *ECDH1DeriveParams")
 	}
 
 	return m
@@ -270,6 +270,8 @@ func cMechanism(mechList []*Mechanism) (arena, *C.CK_MECHANISM) {
 		param = cGCMParams(p)
 	case *OAEPParams:
 		param, arena = cOAEPParams(p, arena)
+	case *ECDH1DeriveParams:
+		param, arena = cECDH1DeriveParams(p, arena)
 	}
 	if len(param) != 0 {
 		buf, len := arena.Allocate(param)

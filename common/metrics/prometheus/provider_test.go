@@ -238,7 +238,7 @@ var _ = Describe("Provider", func() {
 					counter.With("alpha", "a", "beta", "b", "charlie", "c").Add(1)
 					return
 				}()
-				Expect(panicMessage).To(MatchError("inconsistent label cardinality"))
+				Expect(panicMessage).To(MatchError(MatchRegexp(`inconsistent label cardinality: expected 2 label values but got 3 in prometheus.Labels\{.*\}`)))
 			})
 		})
 
@@ -250,7 +250,7 @@ var _ = Describe("Provider", func() {
 					counter.Add(1)
 					return
 				}()
-				Expect(panicMessage).To(MatchError("inconsistent label cardinality"))
+				Expect(panicMessage).To(MatchError(`inconsistent label cardinality: expected 2 label values but got 0 in prometheus.Labels{}`))
 			})
 		})
 	})
