@@ -98,12 +98,12 @@ and `cobra <https://github.com/spf13/cobra>`__ libraries.
 There is a **core.yaml** file that contains the configuration for the
 peer process. Many of the configuration settings can be overridden on
 the command line by setting ENV variables that match the configuration
-setting, but by prefixing with *'CORE\_'*. For example, logging level
-manipulation through the environment is shown below:
+setting, but by prefixing with *'CORE\_'*. For example, setting
+`peer.networkId` can be accomplished with:
 
 ::
 
-    CORE_PEER_LOGGING_LEVEL=CRITICAL peer
+    CORE_PEER_NETWORKID=custom-network-id peer
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
