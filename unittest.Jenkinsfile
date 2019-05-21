@@ -21,7 +21,7 @@ pipeline {
         GOROOT="/usr/bin/go"
         GOPATH="${env.WORKSPACE}/go"
         PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${env.GOROOT}/bin:${env.GOPATH}/bin"
-        BASE_WD="${WORKSPACE}/go/src/github.com/Vijaypunugubati"
+        BASE_WD="${WORKSPACE}/go/src/github.com/hyperledger"
       }
         
       stages
@@ -30,8 +30,8 @@ pipeline {
             steps {
                 cleanWs deleteDirs: true
                 sh label: "Create GOROOT Directory", script: "mkdir -p go${GOVER}"
-                sh label: "Create GOPATH Directory", script: "mkdir -p go/src/github.com/Vijaypunugubati/fab"
-                dir('go/src/github.com/Vijaypunugubati/fab') {
+                sh label: "Create GOPATH Directory", script: "mkdir -p go/src/github.com/hyperledger/fabric"
+                dir('go/src/github.com/hyperledger/fabric') {
                     checkout scm
                 }
             }      
@@ -44,7 +44,7 @@ pipeline {
                 // making the output color coded
                 wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
                   try {
-                    dir('go/src/github.com/Vijaypunugubati/fab') {
+                    dir('go/src/github.com/hyperledger/fabric') {
                     sh label: 'Running Fabric Unit Tests', script: 'make unit-tests'
 		                sh '''
 		                docker images | grep hyperledger
@@ -65,7 +65,7 @@ pipeline {
         // condition should pass then only next step would run else it will skip but won't fail.            
             //when { branch 'master'}            
                 steps {
-                  dir('go/src/github.com/Vijaypunugubati/fab') {
+                  dir('go/src/github.com/hyperledger/fabric') {
                     //Build artifacts and publish to nexus
                     sh label: 'Build Images', script: 'echo "Building Images"'
                     sh label: 'Publish Images', script: 'echo "Publish Images"'
