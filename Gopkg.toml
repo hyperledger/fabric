@@ -30,17 +30,7 @@ noverify = [
 
 [[constraint]]
   name = "github.com/fsouza/go-dockerclient"
-  version = "=1.3.0"
-
-# Pinned in support of go-dockerclient
-[[override]]
-  name = "github.com/docker/docker"
-  revision = "0c5f8d2b9b23ab8d23529b3effdcf53bb058298c"
-
-# Pinned in support of go-dockerclient
-[[override]]
-  name = "github.com/docker/libnetwork"
-  revision = "19279f0492417475b6bfbd0aa529f73e8f178fb5"
+  version = "1.3.0"
 
 [[constraint]]
   name = "github.com/golang/protobuf"

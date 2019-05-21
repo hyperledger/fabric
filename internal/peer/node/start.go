@@ -1053,6 +1053,9 @@ func getDockerHostConfig() *docker.HostConfig {
 		networkMode = "host"
 	}
 
+	memorySwappiness := getInt64("MemorySwappiness")
+	oomKillDisable := viper.GetBool(dockerKey("OomKillDisable"))
+
 	return &docker.HostConfig{
 		CapAdd:  viper.GetStringSlice(dockerKey("CapAdd")),
 		CapDrop: viper.GetStringSlice(dockerKey("CapDrop")),
@@ -1071,8 +1074,8 @@ func getDockerHostConfig() *docker.HostConfig {
 		CgroupParent:     viper.GetString(dockerKey("CgroupParent")),
 		Memory:           getInt64("Memory"),
 		MemorySwap:       getInt64("MemorySwap"),
-		MemorySwappiness: getInt64("MemorySwappiness"),
-		OOMKillDisable:   viper.GetBool(dockerKey("OomKillDisable")),
+		MemorySwappiness: &memorySwappiness,
+		OOMKillDisable:   &oomKillDisable,
 		CPUShares:        getInt64("CpuShares"),
 		CPUSet:           viper.GetString(dockerKey("Cpuset")),
 		CPUSetCPUs:       viper.GetString(dockerKey("CpusetCPUs")),
