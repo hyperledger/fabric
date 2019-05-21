@@ -36,19 +36,19 @@ pipeline {
                 }
             }      
         }    
-        stage ('Run sdk-node Tests') {
+        stage ('Run sdk-node') {
         // condition should pass then only next step would run else it will skip but won't fail.          
             //when { branch 'QA'}            
                 steps {
                   dir('go/src/github.com/Vijaypunugubati') {
                     //Run e2e tests on PR from develop branch
-                    sh label: 'Running e2e Tests', script: 'echo "Running the e2e Tests"'
+                    sh label: 'Running e2e Tests', script: 'echo "Running the sdk-node Tests"'
                     sh '''
                       echo "B U I L D - F A B R I C"
                       # Print last two commits
-                      git -C $BASE_WD/fabric log -n2
+                      git log -n2
                       for IMAGES in docker release-clean release docker-thirdparty; do
-                        echo -e "\033[1m----------> $IMAGES\033[0m"
+                        echo "----------> $IMAGES"
                         make -C $BASE_WD/fabric $IMAGES
                       done
 
@@ -56,11 +56,16 @@ pipeline {
                       rm -rf $BASE_WD/fabric-ca
                       git clone --single-branch -b master https://github.com/hyperledger/fabric-ca $BASE_WD/fabric-ca
                       # Print last two commits
-                      git -C $BASE_WD/fabric-ca log -n2
-                      make -C $BASE_WD/fabric-ca docker
+                      git log -n2
+                      make $BASE_WD/fabric-ca docker
+
                       docker pull nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable
-                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/$REPO-javaenv:2.0.0
-                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/$REPO-javaenv:amd64-latest
+                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/fabric-javaenv:2.0.0
+                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-javaenv:amd64-2.0.0-stable hyperledger/fabric-javaenv:amd64-latest
+                      
+                      docker pull nexus3.hyperledger.org:10001/hyperledger/fabric-nodeenv:amd64-2.0.0-stable
+                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-nodeenv:amd64-2.0.0-stable hyperledger/fabric-nodeenv:2.0.0
+                      docker tag nexus3.hyperledger.org:10001/hyperledger/fabric-nodeenv:amd64-2.0.0-stable hyperledger/fabric-nodeenv:amd64-latest
                       docker images | grep hyperledger
 
                       echo "S D K - N O D E"
@@ -69,8 +74,34 @@ pipeline {
                       rm -rf $WD
                       # Clone fabric-sdk-node repository
                       git clone https://github.com/hyperledger/fabric-sdk-node $WD
+                      # Print last two commits
+                      git log -n2
                       cd $WD
                       git checkout master
+
+
+                      # Generate crypto material before running the tests
+                      # Run the amd64 gulp task
+                      gulp install-and-generate-certs || err_check \
+                      "ERROR!!! gulp install and generation of test certificates failed"
+
+                      # Install nvm to install multi node versions
+                      wget -qO- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
+                      export NVM_DIR=$HOME/.nvm
+                      source $NVM_DIR/nvm.sh # Setup environment for running nvm
+                      node_ver10=10.15.3
+                      echo "Intalling Node $node_ver10"
+                      nvm install "$node_ver10"
+                      nvm use --delete-prefix v$node_ver10 --silent
+                      npm install || err_check "npm install failed"
+                      npm config set prefix ~/npm
+                      npm install -g gulp
+                      cd $WD
+                      npm install || err_check "npm install failed"
+                      npm config set prefix ~/npm
+                      npm install -g gulp
+                      echo " Run gulp tests"
+                      gulp run-end-to-end || err_check "ERROR!!! gulp end-2-end tests failed for node $node_ver10"
                     '''
                     //build job: 'code_merge_QA_Master'
                   }
