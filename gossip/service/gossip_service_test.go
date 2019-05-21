@@ -140,7 +140,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 	}
 	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
 
-	waitForFullMembershipOrFailNow(t, gossips, n, time.Second*20, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*20, time.Second*2)
 
 	services := make([]*electionService, n)
 
@@ -200,7 +200,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 
 	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
 
-	waitForFullMembershipOrFailNow(t, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
 
 	deliverServiceFactory := &mockDeliverServiceFactory{
 		service: &mockDeliverService{
@@ -254,7 +254,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 
 	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
 
-	waitForFullMembershipOrFailNow(t, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
 
 	deliverServiceFactory := &mockDeliverServiceFactory{
 		service: &mockDeliverService{
@@ -294,7 +294,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 
 	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
 
-	waitForFullMembershipOrFailNow(t, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
 
 	deliverServiceFactory := &mockDeliverServiceFactory{
 		service: &mockDeliverService{
@@ -412,7 +412,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	}
 	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
 
-	waitForFullMembershipOrFailNow(t, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
 
 	logger.Warning("Starting leader election services")
 
@@ -448,6 +448,12 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	secondChannelServices := make([]*electionService, len(secondChannelPeerIndexes))
 	addPeersToChannel(t, n, secondChannelName, gossips, secondChannelPeerIndexes)
 
+	secondChannelGossips := make([]GossipService, 0)
+	for _, i := range secondChannelPeerIndexes {
+		secondChannelGossips = append(secondChannelGossips, gossips[i])
+	}
+	waitForFullMembershipOrFailNow(t, secondChannelName, secondChannelGossips, len(secondChannelGossips), time.Second*30, time.Millisecond*100)
+
 	for idx, i := range secondChannelPeerIndexes {
 		secondChannelServices[idx] = &electionService{nil, false, 0}
 		secondChannelServices[idx].LeaderElectionService =
@@ -481,7 +487,8 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	stopPeers(gossips[:2])
 
-	waitForFullMembershipOrFailNow(t, gossips[2:], n-2, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips[2:], n-2, time.Second*30, time.Millisecond*100)
+	waitForFullMembershipOrFailNow(t, secondChannelName, secondChannelGossips[1:], len(secondChannelGossips)-1, time.Second*30, time.Millisecond*100)
 
 	assert.True(t, waitForLeaderElection(t, services[2:], time.Second*30, time.Second*2), "One leader should be selected after re-election - chanA")
 	assert.True(t, waitForLeaderElection(t, secondChannelServices[1:], time.Second*30, time.Second*2), "One leader should be selected after re-election - chanB")
@@ -537,13 +544,13 @@ func (jmc *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer 
 	return []api.AnchorPeer{}
 }
 
-func waitForFullMembershipOrFailNow(t *testing.T, gossips []GossipService, peersNum int, timeout time.Duration, testPollInterval time.Duration) {
+func waitForFullMembershipOrFailNow(t *testing.T, channel string, gossips []GossipService, peersNum int, timeout time.Duration, testPollInterval time.Duration) {
 	end := time.Now().Add(timeout)
 	var correctPeers int
 	for time.Now().Before(end) {
 		correctPeers = 0
 		for _, g := range gossips {
-			if len(g.Peers()) == (peersNum - 1) {
+			if len(g.PeersOfChannel(gossipCommon.ChainID(channel))) == (peersNum - 1) {
 				correctPeers++
 			}
 		}
@@ -552,7 +559,7 @@ func waitForFullMembershipOrFailNow(t *testing.T, gossips []GossipService, peers
 		}
 		time.Sleep(testPollInterval)
 	}
-	t.Fatalf("Failed to establish full membership. Only %d out of %d peers have full membership", correctPeers, peersNum)
+	t.Fatalf("Failed to establish full channel membership. Only %d out of %d peers have full membership", correctPeers, peersNum)
 }
 
 func waitForMultipleLeadersElection(t *testing.T, services []*electionService, leadersNum int, timeout time.Duration, testPollInterval time.Duration) bool {
