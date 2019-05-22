@@ -20,18 +20,37 @@ const (
 
 // ServiceConfig is the config struct for gossip services
 type ServiceConfig struct {
-	Endpoint                         string
-	PvtDataPullRetryThreshold        time.Duration
-	PvtDataPushAckTimeout            time.Duration
-	NonBlockingCommitMode            bool
-	UseLeaderElection                bool
-	OrgLeader                        bool
-	ElectionStartupGracePeriod       time.Duration
+	// PeerTLSEnabled enables/disables Peer TLS.
+	PeerTLSEnabled bool
+	// Endpoint which overrides the endpoint the peer publishes to peers in its organization.
+	Endpoint              string
+	NonBlockingCommitMode bool
+	// UseLeaderElection defines whenever peer will initialize dynamic algorithm for "leader" selection.
+	UseLeaderElection bool
+	// OrgLeader statically defines peer to be an organization "leader".
+	OrgLeader bool
+	// ElectionStartupGracePeriod is the longest time peer waits for stable membership during leader
+	// election startup (unit: second).
+	ElectionStartupGracePeriod time.Duration
+	// ElectionMembershipSampleInterval is the time interval for gossip membership samples to check its stability (unit: second).
 	ElectionMembershipSampleInterval time.Duration
-	ElectionLeaderAliveThreshold     time.Duration
-	ElectionLeaderElectionDuration   time.Duration
-	BtlPullMargin                    uint64
-
+	// ElectionLeaderAliveThreshold is the time passes since last declaration message before peer decides to
+	// perform leader election (unit: second).
+	ElectionLeaderAliveThreshold time.Duration
+	// ElectionLeaderElectionDuration is the time passes since last declaration message before peer decides to perform
+	// leader election (unit: second).
+	ElectionLeaderElectionDuration time.Duration
+	// PvtDataPullRetryThreshold determines the maximum duration of time private data corresponding for
+	// a given block.
+	PvtDataPullRetryThreshold time.Duration
+	// PvtDataPushAckTimeout is the maximum time to wait for the acknoledgement from each peer at private
+	// data push at endorsement time.
+	PvtDataPushAckTimeout time.Duration
+	// BtlPullMargin is the block to live pulling margin, used as a buffer to prevent peer from trying to pull private data
+	// from peers that is soon to be purged in next N blocks.
+	BtlPullMargin uint64
+	// TransientstoreMaxBlockRetention defines the maximum difference between the current ledger's height upon commit,
+	// and the private data residing inside the transient store that is guaranteed not to be purged.
 	TransientstoreMaxBlockRetention uint64
 }
 
@@ -43,9 +62,8 @@ func GlobalConfig() *ServiceConfig {
 
 func (c *ServiceConfig) loadGossipConfig() {
 
-	c.PvtDataPullRetryThreshold = viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold")
+	c.PeerTLSEnabled = viper.GetBool("peer.tls.enabled")
 	c.Endpoint = viper.GetString("peer.gossip.endpoint")
-	c.PvtDataPushAckTimeout = viper.GetDuration("peer.gossip.pvtData.pushAckTimeout")
 	c.NonBlockingCommitMode = viper.GetBool("peer.gossip.nonBlockingCommitMode")
 	c.UseLeaderElection = viper.GetBool("peer.gossip.useLeaderElection")
 	c.OrgLeader = viper.GetBool("peer.gossip.orgLeader")
@@ -54,6 +72,9 @@ func (c *ServiceConfig) loadGossipConfig() {
 	c.ElectionMembershipSampleInterval = util.GetDurationOrDefault("peer.gossip.election.membershipSampleInterval", election.DefMembershipSampleInterval)
 	c.ElectionLeaderAliveThreshold = util.GetDurationOrDefault("peer.gossip.election.leaderAliveThreshold", election.DefLeaderAliveThreshold)
 	c.ElectionLeaderElectionDuration = util.GetDurationOrDefault("peer.gossip.election.leaderElectionDuration", election.DefLeaderElectionDuration)
+
+	c.PvtDataPushAckTimeout = viper.GetDuration("peer.gossip.pvtData.pushAckTimeout")
+	c.PvtDataPullRetryThreshold = viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold")
 
 	c.BtlPullMargin = btlPullMarginDefault
 	if viper.IsSet("peer.gossip.pvtData.btlPullMargin") {

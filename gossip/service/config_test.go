@@ -19,6 +19,7 @@ import (
 func TestGlobalConfig(t *testing.T) {
 	viper.Reset()
 	// Capture the configuration from viper
+	viper.Set("peer.tls.enabled", true)
 	viper.Set("peer.gossip.pvtData.pullRetryThreshold", "10s")
 	viper.Set("peer.gossip.endpoint", "gossip_endpoint")
 	viper.Set("peer.gossip.pvtData.pushAckTimeout", "20s")
@@ -33,6 +34,7 @@ func TestGlobalConfig(t *testing.T) {
 	coreConfig := service.GlobalConfig()
 
 	expectedConfig := &service.ServiceConfig{
+		PeerTLSEnabled:                   true,
 		PvtDataPullRetryThreshold:        10 * time.Second,
 		Endpoint:                         "gossip_endpoint",
 		PvtDataPushAckTimeout:            20 * time.Second,
