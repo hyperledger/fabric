@@ -165,7 +165,7 @@ func (t *MarblesPrivateChaincode) readMarble(stub shim.ChaincodeStubInterface, a
 	name = args[0]
 	valAsbytes, err := stub.GetPrivateData("collectionMarbles", name) //get the marble from chaincode state
 	if err != nil {
-		jsonResp = "{\"Error\":\"Failed to get state for " + name + "\"}"
+		jsonResp = "{\"Error\":\"Failed to get state for " + name + ": " + err.Error() + "\"}"
 		return shim.Error(jsonResp)
 	} else if valAsbytes == nil {
 		jsonResp = "{\"Error\":\"Marble does not exist: " + name + "\"}"

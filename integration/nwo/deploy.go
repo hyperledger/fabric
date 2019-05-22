@@ -58,26 +58,7 @@ func DeployChaincodeNewLifecycle(n *Network, channel string, orderer *Orderer, c
 		return
 	}
 
-	// create temp file for chaincode package if not provided
-	if chaincode.PackageFile == "" {
-		tempFile, err := ioutil.TempFile("", "chaincode-package")
-		Expect(err).NotTo(HaveOccurred())
-		tempFile.Close()
-		defer os.Remove(tempFile.Name())
-		chaincode.PackageFile = tempFile.Name()
-	}
-
-	// package using the first peer
-	PackageChaincodeNewLifecycle(n, chaincode, peers[0])
-
-	// we set the PackageID so that we can pass it to the approve step
-	filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
-	Expect(err).NotTo(HaveOccurred())
-	hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
-	chaincode.PackageID = chaincode.Label + ":" + hashStr
-
-	// install on all peers
-	InstallChaincodeNewLifecycle(n, chaincode, peers...)
+	PackageAndInstallChaincodeNewLifecycle(n, chaincode, peers...)
 
 	// approve for each org
 	ApproveChaincodeForMyOrgNewLifecycle(n, channel, orderer, chaincode, peers...)
@@ -125,6 +106,29 @@ func DeployChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 
 	// instantiate on the first peer
 	InstantiateChaincode(n, channel, orderer, chaincode, peers[0], peers...)
+}
+
+func PackageAndInstallChaincodeNewLifecycle(n *Network, chaincode Chaincode, peers ...*Peer) {
+	// create temp file for chaincode package if not provided
+	if chaincode.PackageFile == "" {
+		tempFile, err := ioutil.TempFile("", "chaincode-package")
+		Expect(err).NotTo(HaveOccurred())
+		tempFile.Close()
+		defer os.Remove(tempFile.Name())
+		chaincode.PackageFile = tempFile.Name()
+	}
+
+	// package using the first peer
+	PackageChaincodeNewLifecycle(n, chaincode, peers[0])
+
+	// we set the PackageID so that we can pass it to the approve step
+	filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
+	Expect(err).NotTo(HaveOccurred())
+	hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
+	chaincode.PackageID = chaincode.Label + ":" + hashStr
+
+	// install on all peers
+	InstallChaincodeNewLifecycle(n, chaincode, peers...)
 }
 
 func PackageChaincodeNewLifecycle(n *Network, chaincode Chaincode, peer *Peer) {
