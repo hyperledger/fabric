@@ -736,25 +736,7 @@ func (n *Network) VerifyMembership(expectedPeers []*Peer, channel string, chainc
 // The orderer must be running when this is called.
 func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additionalSigners ...interface{}) {
 	channelCreateTxPath := n.CreateChannelTxPath(channelName)
-
-	for _, signer := range additionalSigners {
-		switch t := signer.(type) {
-		case *Peer:
-			sess, err := n.PeerAdminSession(t, commands.SignConfigTx{
-				File: channelCreateTxPath,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-		case *Orderer:
-			sess, err := n.OrdererAdminSession(t, p, commands.SignConfigTx{
-				File: channelCreateTxPath,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-		default:
-			panic("unknown signer type, expect Peer or Orderer")
-		}
-	}
+	n.signConfigTransaction(channelCreateTxPath, p, additionalSigners...)
 
 	createChannel := func() int {
 		sess, err := n.PeerAdminSession(p, commands.ChannelCreate{
@@ -769,45 +751,47 @@ func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additio
 	Eventually(createChannel, n.EventuallyTimeout).Should(Equal(0))
 }
 
-// CreateChannelFail will submit an existing create channel transaction to the
-// specified orderer, but expect to FAIL. The channel transaction must exist
-// at the location returned by CreateChannelTxPath.
+// CreateChannelExitCode will submit an existing create channel transaction to
+// the specified orderer, wait for the operation to complete, and return the
+// exit status of the "peer channel create" command.
 //
-// The orderer must be running when this is called.
-func (n *Network) CreateChannelFail(channelName string, o *Orderer, p *Peer, additionalSigners ...interface{}) {
+// The channel transaction must exist at the location returned by
+// CreateChannelTxPath and the orderer must be running when this is called.
+func (n *Network) CreateChannelExitCode(channelName string, o *Orderer, p *Peer, additionalSigners ...interface{}) int {
 	channelCreateTxPath := n.CreateChannelTxPath(channelName)
+	n.signConfigTransaction(channelCreateTxPath, p, additionalSigners...)
 
-	for _, signer := range additionalSigners {
-		switch t := signer.(type) {
+	sess, err := n.PeerAdminSession(p, commands.ChannelCreate{
+		ChannelID:   channelName,
+		Orderer:     n.OrdererAddress(o, ListenPort),
+		File:        channelCreateTxPath,
+		OutputBlock: "/dev/null",
+	})
+	Expect(err).NotTo(HaveOccurred())
+	return sess.Wait(n.EventuallyTimeout).ExitCode()
+}
+
+func (n *Network) signConfigTransaction(channelTxPath string, submittingPeer *Peer, signers ...interface{}) {
+	for _, signer := range signers {
+		switch signer := signer.(type) {
 		case *Peer:
-			sess, err := n.PeerAdminSession(t, commands.SignConfigTx{
-				File: channelCreateTxPath,
+			sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{
+				File: channelTxPath,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
 		case *Orderer:
-			sess, err := n.OrdererAdminSession(t, p, commands.SignConfigTx{
-				File: channelCreateTxPath,
+			sess, err := n.OrdererAdminSession(signer, submittingPeer, commands.SignConfigTx{
+				File: channelTxPath,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
 		default:
-			panic("unknown signer type, expect Peer or Orderer")
+			panic(fmt.Sprintf("unknown signer type %T, expect Peer or Orderer", signer))
 		}
 	}
-
-	createChannelFail := func() int {
-		sess, err := n.PeerAdminSession(p, commands.ChannelCreate{
-			ChannelID:   channelName,
-			Orderer:     n.OrdererAddress(o, ListenPort),
-			File:        channelCreateTxPath,
-			OutputBlock: "/dev/null",
-		})
-		Expect(err).NotTo(HaveOccurred())
-		return sess.Wait(n.EventuallyTimeout).ExitCode()
-	}
-
-	Eventually(createChannelFail, n.EventuallyTimeout).ShouldNot(Equal(0))
 }
 
 // JoinChannel will join peers to the specified channel. The orderer is used to
