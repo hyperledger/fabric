@@ -111,7 +111,7 @@ They allow an application to declare how it would like the gateway to use the
 connection profile. They are interpreted by the SDK to control interaction
 patterns with network components, for example to select which identity to
 connect with, or which peers to use for event notifications. Read
-[about](./connectoptions.html) the list of available connection options and
+[about(dead link)](./connectoptions.html) the list of available connection options and
 when to use them.
 
 ## Structure
