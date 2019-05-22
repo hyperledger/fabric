@@ -166,7 +166,7 @@ func (a *QueryApprovalStatus) Approve() error {
 	}
 
 	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("bad response: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+		return errors.Errorf("query failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
 	}
 
 	return printQueryApprovalStatusResponse(proposalResponse, os.Stdout)
