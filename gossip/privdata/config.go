@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	reconcileSleepIntervalDefault = time.Minute * 1
+	reconcileSleepIntervalDefault = time.Minute
 	reconcileBatchSizeDefault     = 10
 )
 
