@@ -234,6 +234,7 @@ func serve(args []string) error {
 
 	// FIXME: Creating the gossip service has the side effect of starting a bunch
 	// of go routines and registration with the grpc server.
+	deliverClientDialOpts := deliverClientDialOpts(coreConfig)
 	gossipService, err := initGossipService(
 		policyMgr,
 		metricsProvider,
@@ -241,6 +242,7 @@ func serve(args []string) error {
 		signingIdentity,
 		cs,
 		coreConfig.PeerAddress,
+		deliverClientDialOpts,
 	)
 	if err != nil {
 		return errors.WithMessage(err, "failed to initialize gossip service")
@@ -984,6 +986,22 @@ func secureDialOpts(credSupport *comm.CredentialSupport) func() []grpc.DialOptio
 	}
 }
 
+// deliverClientDialOpts creates GRPC dial options for deliver client service.
+func deliverClientDialOpts(coreConfig *peer.Config) []grpc.DialOption {
+	dialOpts := []grpc.DialOption{grpc.WithBlock()}
+	// set max send/recv msg sizes
+	dialOpts = append(
+		dialOpts,
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
+			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
+	// set the keepalive options
+	kaOpts := coreConfig.DeliverClientKeepaliveOptions
+	dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
+
+	return dialOpts
+}
+
 // initGossipService will initialize the gossip service by:
 // 1. Enable TLS if configured;
 // 2. Init the message crypto service;
@@ -996,6 +1014,7 @@ func initGossipService(
 	signer msp.SigningIdentity,
 	credSupport *comm.CredentialSupport,
 	peerAddr string,
+	deliverClientDialOpts []grpc.DialOption,
 ) (*gossipservice.GossipService, error) {
 
 	var certs *gossipcommon.TLSCertificates
@@ -1028,6 +1047,7 @@ func initGossipService(
 		secAdv,
 		secureDialOpts(credSupport),
 		credSupport,
+		deliverClientDialOpts,
 		bootstrap...,
 	)
 }

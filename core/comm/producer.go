@@ -72,18 +72,25 @@ type ConnectionProducer interface {
 
 type connProducer struct {
 	sync.RWMutex
-	endpoints         []string
-	connect           ConnectionFactory
-	nextEndpointIndex int
+	endpoints             []string
+	connect               ConnectionFactory
+	nextEndpointIndex     int
+	deliverClientDialOpts []grpc.DialOption
+	peerTLSEnabled        bool
 }
 
 // NewConnectionProducer creates a new ConnectionProducer with given endpoints and connection factory.
 // It returns nil, if the given endpoints slice is empty.
-func NewConnectionProducer(factory ConnectionFactory, endpoints []string) ConnectionProducer {
+func NewConnectionProducer(factory ConnectionFactory, endpoints []string, deliverClientDialOpts []grpc.DialOption, peerTLSEnabled bool) ConnectionProducer {
 	if len(endpoints) == 0 {
 		return nil
 	}
-	return &connProducer{endpoints: shuffle(endpoints), connect: factory}
+	return &connProducer{
+		endpoints:             shuffle(endpoints),
+		connect:               factory,
+		deliverClientDialOpts: deliverClientDialOpts,
+		peerTLSEnabled:        peerTLSEnabled,
+	}
 }
 
 // NewConnection creates a new connection.

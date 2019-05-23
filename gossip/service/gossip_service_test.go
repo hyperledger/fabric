@@ -87,6 +87,8 @@ func TestInitGossipService(t *testing.T) {
 
 	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager())
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	dialOpts := defaultDeliverClientDialOpts()
+
 	gossipService, err := New(
 		signer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
@@ -97,6 +99,7 @@ func TestInitGossipService(t *testing.T) {
 		secAdv,
 		nil,
 		comm.NewCredentialSupport(),
+		dialOpts,
 	)
 	assert.NoError(t, err)
 
@@ -863,6 +866,7 @@ func TestInvalidInitialization(t *testing.T) {
 	mockSignerSerializer := &mocks.SignerSerializer{}
 	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	dialOpts := defaultDeliverClientDialOpts()
 
 	gossipService, err := New(
 		mockSignerSerializer,
@@ -874,6 +878,7 @@ func TestInvalidInitialization(t *testing.T) {
 		secAdv,
 		nil,
 		comm.NewCredentialSupport(),
+		dialOpts,
 	)
 	assert.NoError(t, err)
 	gService := gossipService
@@ -902,6 +907,7 @@ func TestChannelConfig(t *testing.T) {
 	mockSignerSerializer := &mocks.SignerSerializer{}
 	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	dialOpts := defaultDeliverClientDialOpts()
 
 	gossipService, err := New(
 		mockSignerSerializer,
@@ -913,6 +919,7 @@ func TestChannelConfig(t *testing.T) {
 		secAdv,
 		nil,
 		nil,
+		dialOpts,
 	)
 	assert.NoError(t, err)
 	gService := gossipService
@@ -939,4 +946,17 @@ func TestChannelConfig(t *testing.T) {
 	gService.JoinChan(jcm, gossipcommon.ChannelID("A"))
 	gService.updateAnchors(mc)
 	assert.True(t, gService.amIinChannel(string(orgInChannelA), mc))
+}
+
+func defaultDeliverClientDialOpts() []grpc.DialOption {
+	dialOpts := []grpc.DialOption{grpc.WithBlock()}
+	dialOpts = append(
+		dialOpts,
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
+			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
+	kaOpts := comm.DefaultKeepaliveOptions
+	dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
+
+	return dialOpts
 }

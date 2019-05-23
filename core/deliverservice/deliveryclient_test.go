@@ -597,7 +597,7 @@ func TestDeliverServiceDisconnectReconnect(t *testing.T) {
 	assertBlockDissemination(101, gossipServiceAdapter.GossipBlockDisseminations, t)
 	atomic.StoreUint64(&li.Height, uint64(102))
 
-	for i := 0; i < 5; i += 1 {
+	for i := 0; i < 5; i++ {
 		// Shutdown orderer, simulate network disconnect
 		osn.Shutdown()
 		// Now wait for a disconnect to be discovered

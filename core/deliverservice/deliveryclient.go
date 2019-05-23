@@ -97,6 +97,8 @@ type Config struct {
 	CredentialSupport *comm.CredentialSupport
 	// PeerTLSEnabled enables/disables Peer TLS.
 	PeerTLSEnabled bool
+	// GRPC Dial Options
+	DeliverClientDialOpts []grpc.DialOption
 }
 
 // ConnectionCriteria defines how to connect to ordering service nodes.
@@ -282,7 +284,8 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 		attempt := float64(attemptNum)
 		return time.Duration(math.Min(math.Pow(2, attempt)*sleepIncrement, reconnectBackoffThreshold)), true
 	}
-	connProd := comm.NewConnectionProducer(d.conf.ConnFactory(chainID), d.conf.Endpoints)
+	connectionFactory := d.conf.ConnFactory(chainID)
+	connProd := comm.NewConnectionProducer(connectionFactory, d.conf.Endpoints, d.conf.DeliverClientDialOpts, d.conf.PeerTLSEnabled)
 	bClient := NewBroadcastClient(connProd, d.conf.ABCFactory, broadcastSetup, backoffPolicy)
 	requester.client = bClient
 	return bClient

@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mscc "github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -55,6 +56,16 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager())
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 	defaultSecureDialOpts := func() []grpc.DialOption { return []grpc.DialOption{grpc.WithInsecure()} }
+	defaultDeliverClientDialOpts := []grpc.DialOption{grpc.WithBlock()}
+	defaultDeliverClientDialOpts = append(
+		defaultDeliverClientDialOpts,
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
+			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
+	defaultDeliverClientDialOpts = append(
+		defaultDeliverClientDialOpts,
+		comm.ClientKeepaliveOptions(comm.DefaultKeepaliveOptions)...,
+	)
 
 	gossipService, err := gossipservice.New(
 		signer,
@@ -66,6 +77,7 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 		secAdv,
 		defaultSecureDialOpts,
 		nil,
+		defaultDeliverClientDialOpts,
 	)
 	require.NoError(t, err, "failed to create gossip service")
 

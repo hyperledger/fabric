@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
@@ -213,6 +214,16 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 		return dialOpts
 	}
+	defaultDeliverClientDialOpts := []grpc.DialOption{grpc.WithBlock()}
+	defaultDeliverClientDialOpts = append(
+		defaultDeliverClientDialOpts,
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
+			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
+	defaultDeliverClientDialOpts = append(
+		defaultDeliverClientDialOpts,
+		comm.ClientKeepaliveOptions(comm.DefaultKeepaliveOptions)...,
+	)
 
 	gossipService, err := service.New(
 		signer,
@@ -224,6 +235,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		secAdv,
 		defaultSecureDialOpts,
 		nil,
+		defaultDeliverClientDialOpts,
 	)
 	assert.NoError(t, err)
 

@@ -14,12 +14,14 @@ import (
 	"google.golang.org/grpc"
 )
 
+const peerTLSEnabled = false
+
 func TestEmptyEndpoints(t *testing.T) {
 	t.Parallel()
 	noopFactory := func(endpoint string) (*grpc.ClientConn, error) {
 		return nil, nil
 	}
-	assert.Nil(t, NewConnectionProducer(noopFactory, []string{}))
+	assert.Nil(t, NewConnectionProducer(noopFactory, []string{}, defDeliverClientDialOpts(), peerTLSEnabled))
 }
 
 func TestConnFailures(t *testing.T) {
@@ -39,7 +41,7 @@ func TestConnFailures(t *testing.T) {
 		return nil, fmt.Errorf("Failed connecting to %s", endpoint)
 	}
 	// Create a producer with some endpoints, and have the first one fail and all others not fail
-	producer := NewConnectionProducer(connFactory, []string{"a", "b", "c"})
+	producer := NewConnectionProducer(connFactory, []string{"a", "b", "c"}, defDeliverClientDialOpts(), peerTLSEnabled)
 	conn, _, err := producer.NewConnection()
 	assert.NoError(t, err)
 	// We should not return 'a' because connecting to 'a' fails
@@ -79,7 +81,7 @@ func TestUpdateEndpoints(t *testing.T) {
 		return conn, nil
 	}
 	// Create a producer with a single endpoint
-	producer := NewConnectionProducer(connFactory, []string{"a"})
+	producer := NewConnectionProducer(connFactory, []string{"a"}, defDeliverClientDialOpts(), peerTLSEnabled)
 	conn, a, err := producer.NewConnection()
 	assert.NoError(t, err)
 	assert.Equal(t, "a", conn2Endpoint[fmt.Sprintf("%p", conn)])
@@ -112,7 +114,7 @@ func TestNewConnectionRoundRobin(t *testing.T) {
 		return conn, nil
 	}
 
-	producer := NewConnectionProducer(connFactory, totalEndpoints)
+	producer := NewConnectionProducer(connFactory, totalEndpoints, defDeliverClientDialOpts(), peerTLSEnabled)
 	connectedEndpoints := make(map[string]struct{})
 
 	assertAllEndpointsUsed := func() {
@@ -183,4 +185,19 @@ func TestEndpointCriteria(t *testing.T) {
 			assert.Equal(t, testCase.expectedEqual, endpointCriteria.Equals(testCase.otherEndpointCriteria))
 		})
 	}
+}
+
+func defDeliverClientDialOpts() []grpc.DialOption {
+	dialOpts := []grpc.DialOption{grpc.WithBlock()}
+
+	dialOpts = append(
+		dialOpts,
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(MaxRecvMsgSize),
+			grpc.MaxCallSendMsgSize(MaxSendMsgSize)))
+
+	kaOpts := DefaultKeepaliveOptions
+	dialOpts = append(dialOpts, ClientKeepaliveOptions(kaOpts)...)
+
+	return dialOpts
 }
