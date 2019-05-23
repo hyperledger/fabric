@@ -6,7 +6,7 @@ A connection profile describes a set of components, including peers, orderers
 and certificate authorities in a Hyperledger Fabric blockchain network. It also
 contains channel and organization information relating to these components. A
 connection profile is primarily used by an application to configure a
-[gateway](./gateway.html) that handles all network interactions, allowing it it
+[gateway](./gateway.html) that handles all network interactions, allowing it
 to focus on business logic. A connection profile is normally created by an
 administrator who understands the network topology.
 
