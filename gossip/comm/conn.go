@@ -154,6 +154,8 @@ func (cs *connectionStore) shutdown() {
 	wg.Wait()
 }
 
+// onConnected closes any connection to the remote peer and creates a new connection object to it in order to have only
+// one single bi-directional connection between a pair of peers
 func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamServer,
 	connInfo *protoext.ConnectionInfo, metrics *metrics.CommMetrics) *connection {
 	cs.Lock()
@@ -163,16 +165,10 @@ func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamSer
 		c.close()
 	}
 
-	return cs.registerConn(connInfo, serverStream, metrics)
-}
-
-func (cs *connectionStore) registerConn(connInfo *protoext.ConnectionInfo,
-	serverStream proto.Gossip_GossipStreamServer, metrics *metrics.CommMetrics) *connection {
 	conn := newConnection(nil, nil, nil, serverStream, metrics, cs.config)
 	conn.pkiID = connInfo.ID
 	conn.info = connInfo
 	conn.logger = cs.logger
-	// Assuming that cs.Lock has already been taken by the caller of this method
 	cs.pki2Conn[string(connInfo.ID)] = conn
 	return conn
 }
