@@ -1188,11 +1188,6 @@ The same chaincode functions are available with CouchDB, however, there is the
 added ability to perform rich and complex queries against the state database
 data content contingent upon the chaincode data being modeled as JSON.
 
-.. note:: The Fabric chaincode lifecycle that is being introduced in the v2.0
-          Alpha release does not support using indexes with CouchDB. However,
-          you can still use CouchDB as the state database and follow the steps
-          below.
-
 To use CouchDB instead of the default database (goleveldb), follow the same
 procedures outlined earlier for generating the artifacts, except when starting
 the network pass ``docker-compose-couch.yaml`` as well:

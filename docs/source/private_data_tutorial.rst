@@ -962,11 +962,6 @@ price private data is purged.
 Using indexes with private data
 -------------------------------
 
-.. note:: The Fabric chaincode lifecycle that is being introduced in the Fabric v2.0
-          Alpha does not support using couchDB indexes with your chaincode. To
-          use the previous lifecycle model to deploy couchDB indexes with private data
-          collections, visit the v1.4 version of the `Using Private Data in Fabric tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/private_data_tutorial.html>`_
-
 Indexes can also be applied to private data collections, by packaging indexes in
 the ``META-INF/statedb/couchdb/collections/<collection_name>/indexes`` directory
 alongside the chaincode. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02_private/go/META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexOwner.json>`__ .
