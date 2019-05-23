@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
+	"strconv"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chaincode"
@@ -117,9 +119,12 @@ func (mp *MetadataProvider) Metadata(channel string, ccName string, includeColle
 		spe = cauthdsl.MarshaledRejectAllPolicy
 	}
 
+	// report the sequence as the version to service discovery since
+	// the version is no longer required to change when updating any
+	// part of the chaincode definition
 	ccMetadata := &chaincode.Metadata{
 		Name:              ccName,
-		Version:           ccInfo.Definition.EndorsementInfo.Version,
+		Version:           strconv.FormatInt(ccInfo.Definition.Sequence, 10),
 		Policy:            spe,
 		CollectionsConfig: ccInfo.Definition.Collections,
 	}

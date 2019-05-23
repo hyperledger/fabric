@@ -560,7 +560,7 @@ var _ = Describe("Cache", func() {
 			Expect(metadata).To(ConsistOf(
 				chaincode.Metadata{
 					Name:              "installedAndApprovedCC",
-					Version:           "chaincode-version",
+					Version:           "3",
 					Policy:            []byte("validation-parameter"),
 					CollectionsConfig: &cb.CollectionConfigPackage{},
 					Approved:          true,
@@ -568,7 +568,7 @@ var _ = Describe("Cache", func() {
 				},
 				chaincode.Metadata{
 					Name:              "ididntinstall",
-					Version:           "chaincode-version",
+					Version:           "3",
 					Policy:            []byte("validation-parameter"),
 					CollectionsConfig: &cb.CollectionConfigPackage{},
 					Approved:          true,
@@ -576,7 +576,7 @@ var _ = Describe("Cache", func() {
 				},
 				chaincode.Metadata{
 					Name:              "idontapprove",
-					Version:           "chaincode-version",
+					Version:           "3",
 					Policy:            []byte("validation-parameter"),
 					CollectionsConfig: &cb.CollectionConfigPackage{},
 					Approved:          false,

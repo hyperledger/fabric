@@ -9,6 +9,7 @@ package lifecycle
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/chaincode"
@@ -472,10 +473,13 @@ func (c *Cache) retrieveChaincodesMetadataSetWhileLocked(channelID string) (chai
 	for _, name := range keys {
 		def := channelChaincodes.Chaincodes[name]
 
+		// report the sequence as the version to service discovery since
+		// the version is no longer required to change when updating any
+		// part of the chaincode definition
 		metadataSet = append(metadataSet,
 			chaincode.Metadata{
 				Name:              name,
-				Version:           def.Definition.EndorsementInfo.Version,
+				Version:           strconv.FormatInt(def.Definition.Sequence, 10),
 				Policy:            def.Definition.ValidationInfo.ValidationParameter,
 				CollectionsConfig: def.Definition.Collections,
 				Approved:          def.Approved,

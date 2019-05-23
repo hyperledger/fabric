@@ -35,6 +35,7 @@ var _ = Describe("MetadataProvider", func() {
 		fakeChaincodeInfoProvider = &mock.ChaincodeInfoProvider{}
 		ccInfo = &lifecycle.LocalChaincodeInfo{
 			Definition: &lifecycle.ChaincodeDefinition{
+				Sequence: 1,
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 					Version: "cc-version",
 				},
@@ -67,7 +68,7 @@ var _ = Describe("MetadataProvider", func() {
 		Expect(metadata).To(Equal(
 			&chaincode.Metadata{
 				Name:              "cc-name",
-				Version:           "cc-version",
+				Version:           "1",
 				Policy:            cauthdsl.MarshaledAcceptAllPolicy,
 				CollectionsConfig: &cb.CollectionConfigPackage{},
 			},
@@ -103,7 +104,7 @@ var _ = Describe("MetadataProvider", func() {
 			Expect(metadata).To(Equal(
 				&chaincode.Metadata{
 					Name:              "cc-name",
-					Version:           "cc-version",
+					Version:           "1",
 					Policy:            cauthdsl.MarshaledRejectAllPolicy,
 					CollectionsConfig: &cb.CollectionConfigPackage{},
 				},
@@ -134,7 +135,7 @@ var _ = Describe("MetadataProvider", func() {
 			Expect(metadata).To(Equal(
 				&chaincode.Metadata{
 					Name:              "cc-name",
-					Version:           "cc-version",
+					Version:           "1",
 					Policy:            cauthdsl.MarshaledAcceptAllPolicy,
 					CollectionsConfig: &cb.CollectionConfigPackage{},
 				},
@@ -153,7 +154,7 @@ var _ = Describe("MetadataProvider", func() {
 				Expect(metadata).To(Equal(
 					&chaincode.Metadata{
 						Name:              "cc-name",
-						Version:           "cc-version",
+						Version:           "1",
 						Policy:            cauthdsl.MarshaledRejectAllPolicy,
 						CollectionsConfig: &cb.CollectionConfigPackage{},
 					},
@@ -173,7 +174,7 @@ var _ = Describe("MetadataProvider", func() {
 				Expect(metadata).To(Equal(
 					&chaincode.Metadata{
 						Name:              "cc-name",
-						Version:           "cc-version",
+						Version:           "1",
 						Policy:            cauthdsl.MarshaledRejectAllPolicy,
 						CollectionsConfig: &cb.CollectionConfigPackage{},
 					},
@@ -196,7 +197,7 @@ var _ = Describe("MetadataProvider", func() {
 				Expect(metadata).To(Equal(
 					&chaincode.Metadata{
 						Name:              "cc-name",
-						Version:           "cc-version",
+						Version:           "1",
 						Policy:            cauthdsl.MarshaledRejectAllPolicy,
 						CollectionsConfig: &cb.CollectionConfigPackage{},
 					},

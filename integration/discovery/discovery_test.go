@@ -287,17 +287,36 @@ var _ = Describe("DiscoveryService", func() {
 			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
 		))
 
-		By("updating the chaincode definition to add a collections config")
+		By("updating the chaincode definition to sequence 2 to add a collections config")
 		chaincode.Sequence = "2"
 		chaincode.CollectionsConfig = filepath.Join("testdata", "collections_config1.json")
-		maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", org1Peer0, org2Peer0, org3Peer0)
-		for _, org := range network.PeerOrgs() {
-			nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersInOrg(org.Name)...)
+		for _, org := range []string{"org1", "org2"} {
+			nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersInOrg(org)...)
 		}
-		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight+len(network.PeerOrgs()), org1Peer0, org2Peer0, org3Peer0)
+		nwo.EnsureApproved(network, "testchannel", chaincode, []*nwo.Organization{network.Organization("org1"), network.Organization("org2")}, org1Peer0, org2Peer0, org3Peer0)
 
-		By("committing the new chaincode definition using all orgs")
-		nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, org1Peer0, org1Peer0, org2Peer0, org3Peer0)
+		By("committing the new chaincode definition using org1 and org2")
+		nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, org1Peer0, org1Peer0, org2Peer0)
+
+		By("discovering endorsers for sequence 2 that has only been approved by org1 and org2")
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+		))
+
+		By("approving the chaincode definition at sequence 2 by org3")
+		maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", org1Peer0, org2Peer0, org3Peer0)
+		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersInOrg("org3")...)
+		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight+1, org1Peer0, org2Peer0, org3Peer0)
+
+		By("discovering endorsers for sequence 2 that has been approved by all orgs")
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
+		))
 
 		By("discovering endorsers for chaincode with a private collection")
 		endorsers.Collection = "mycc-lifecycle:collectionMarbles"
@@ -308,7 +327,7 @@ var _ = Describe("DiscoveryService", func() {
 		))
 		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
 
-		By("installing chaincode to all peers")
+		By("deploying a different chaincode to all peers")
 		nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, nwo.Chaincode{
 			Name:            "mycc-lifecycle2",
 			Version:         "1.0",
