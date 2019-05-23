@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package service
 
 import (
+	"bytes"
 	"sync"
 	"testing"
 	"time"
@@ -147,8 +148,20 @@ func TestLeaderYield(t *testing.T) {
 		return gs
 	}
 
-	p0 := newGossipService(0)
-	p1 := newGossipService(1)
+	// The first leader is determined by the peer with the lower PKIid (lower TCP port in this case).
+	// We set p0 to be the peer with the lower PKIid to ensure it'll be elected as leader before p1 and spare time.
+	pkiID0 := gossips[0].(*gossipGRPC).gossipServiceImpl.peerIdentity
+	pkiID1 := gossips[1].(*gossipGRPC).gossipServiceImpl.peerIdentity
+	var firstLeaderIdx, secondLeaderIdx int
+	if bytes.Compare(pkiID0, pkiID1) < 0 {
+		firstLeaderIdx = 0
+		secondLeaderIdx = 1
+	} else {
+		firstLeaderIdx = 1
+		secondLeaderIdx = 0
+	}
+	p0 := newGossipService(firstLeaderIdx)
+	p1 := newGossipService(secondLeaderIdx)
 
 	// Returns index of the leader or -1 if no leader elected
 	getLeader := func() int {
