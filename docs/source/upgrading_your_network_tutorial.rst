@@ -9,10 +9,8 @@ Upgrading Your Network Components
           no data migration, technically speaking, in Fabric, we will not use
           the term "migration" or "migrate" here.
 
-.. note:: Also, if your network is not yet at Fabric v1.3, follow the instructions for
-          `Upgrading Your Network to v1.3 <http://hyperledger-fabric.readthedocs.io/en/release-1.3/upgrading_your_network_tutorial.html>`_.
-          The instructions in this documentation only cover moving from v1.3 to
-          v1.4.x, not from any other version to v1.4.x.
+.. note:: Upgrading from Fabric v1.4 to the v2.0 Alpha release is not supported.
+          This tutorial will be updated after the 2.0 Alpha release.
 
 Overview
 --------
