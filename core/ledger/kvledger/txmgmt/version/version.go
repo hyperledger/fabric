@@ -31,8 +31,8 @@ func NewHeight(blockNum, txNum uint64) *Height {
 
 // NewHeightFromBytes constructs a new instance of Height from serialized bytes
 func NewHeightFromBytes(b []byte) (*Height, int) {
-	blockNum, n1 := util.DecodeOrderPreservingVarUint64(b)
-	txNum, n2 := util.DecodeOrderPreservingVarUint64(b[n1:])
+	blockNum, n1, _ := util.DecodeOrderPreservingVarUint64(b)
+	txNum, n2, _ := util.DecodeOrderPreservingVarUint64(b[n1:])
 	return NewHeight(blockNum, txNum), n1 + n2
 }
 
