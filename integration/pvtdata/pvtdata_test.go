@@ -664,7 +664,7 @@ var _ bool = Describe("PrivateData", func() {
 				Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
 				Lang:              "golang",
 				PackageFile:       filepath.Join(testDir, "marbles-pvtdata.tar.gz"),
-				Label:             "marbles-private-2.0",
+				Label:             "marbles-private-v20",
 				SignaturePolicy:   `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
 				CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config2.json"),
 				Sequence:          "1",

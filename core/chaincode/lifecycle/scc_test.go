@@ -429,7 +429,7 @@ var _ = Describe("SCC", func() {
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': invalid chaincode name '!nvalid'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'"))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': invalid chaincode name '!nvalid'. Names can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics"))
 				})
 			})
 
@@ -643,7 +643,7 @@ var _ = Describe("SCC", func() {
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': invalid chaincode name '_invalid'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'"))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': invalid chaincode name '_invalid'. Names can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics"))
 				})
 			})
 

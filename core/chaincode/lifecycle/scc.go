@@ -557,7 +557,7 @@ var (
 
 func validateInput(name, version string, collections *cb.CollectionConfigPackage) error {
 	if !ChaincodeNameRegExp.MatchString(name) {
-		return errors.Errorf("invalid chaincode name '%s'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'", name)
+		return errors.Errorf("invalid chaincode name '%s'. Names can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics", name)
 	}
 	if _, ok := systemChaincodeNames[name]; ok {
 		return errors.Errorf("chaincode name '%s' is the name of a system chaincode", name)
