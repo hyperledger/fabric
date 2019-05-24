@@ -12,20 +12,20 @@ PATH=.build/bin/:${PATH}
 # 3. Postscript File
 # 4. Array of commands
 generateHelpText(){
-  local DOC="$1"
-  local preamble="$2"
-  local postscript="$3"
-  # Shift three times to get to array
-  shift
-  shift
-  shift
+    local DOC="$1"
+    local preamble="$2"
+    local postscript="$3"
+    # Shift three times to get to array
+    shift
+    shift
+    shift
 
-  cat "$preamble" > "$DOC"
+    cat "$preamble" > "$DOC"
 
-  local commands=("$@")
-  for x in "${commands[@]}" ; do
+    local commands=("$@")
+    for x in "${commands[@]}" ; do
 
-cat <<EOF >> "$DOC"
+    cat <<EOF >> "$DOC"
 
 ## $x
 \`\`\`
@@ -33,8 +33,8 @@ $($x --help 2>&1)
 \`\`\`
 
 EOF
-  done
-  cat "$postscript" >> "$DOC"
+    done
+    cat "$postscript" >> "$DOC"
 }
 
 commands=("peer version")
