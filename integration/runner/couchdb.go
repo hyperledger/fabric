@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"sync"
 	"time"
@@ -38,6 +39,7 @@ type CouchDB struct {
 	ErrorStream  io.Writer
 	OutputStream io.Writer
 
+	creator          string
 	containerID      string
 	hostAddress      string
 	containerAddress string
@@ -89,8 +91,11 @@ func (c *CouchDB) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 
 	container, err := c.Client.CreateContainer(
 		docker.CreateContainerOptions{
-			Name:       c.Name,
-			Config:     &docker.Config{Image: c.Image},
+			Name: c.Name,
+			Config: &docker.Config{
+				Image: c.Image,
+				Env:   []string{"_creator=" + c.creator},
+			},
 			HostConfig: hostConfig,
 		},
 	)
@@ -244,6 +249,7 @@ func (c *CouchDB) ContainerID() string {
 
 // Start starts the CouchDB container using an ifrit runner
 func (c *CouchDB) Start() error {
+	c.creator = string(debug.Stack())
 	p := ifrit.Invoke(c)
 
 	select {
