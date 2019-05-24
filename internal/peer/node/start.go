@@ -75,7 +75,9 @@ import (
 	"github.com/hyperledger/fabric/discovery/support/config"
 	"github.com/hyperledger/fabric/discovery/support/gossip"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
+	gossipgossip "github.com/hyperledger/fabric/gossip/gossip"
 	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/service"
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/version"
@@ -1013,7 +1015,7 @@ func initGossipService(
 	peerServer *comm.GRPCServer,
 	signer msp.SigningIdentity,
 	credSupport *comm.CredentialSupport,
-	peerAddr string,
+	peerAddress string,
 	deliverClientDialOpts []grpc.DialOption,
 ) (*gossipservice.GossipService, error) {
 
@@ -1037,18 +1039,27 @@ func initGossipService(
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
 
+	serviceConfig := service.GlobalConfig()
+	if serviceConfig.Endpoint != "" {
+		peerAddress = serviceConfig.Endpoint
+	}
+	gossipConfig, err := gossipgossip.GlobalConfig(peerAddress, certs, bootstrap...)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed obtaining gossip config")
+	}
+
 	return gossipservice.New(
 		signer,
 		gossipmetrics.NewGossipMetrics(metricsProvider),
-		peerAddr,
+		peerAddress,
 		peerServer.Server(),
-		certs,
 		messageCryptoService,
 		secAdv,
 		secureDialOpts(credSupport),
 		credSupport,
 		deliverClientDialOpts,
-		bootstrap...,
+		gossipConfig,
+		serviceConfig,
 	)
 }
 

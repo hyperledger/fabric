@@ -209,30 +209,20 @@ func New(
 	gossipMetrics *gossipmetrics.GossipMetrics,
 	endpoint string,
 	s *grpc.Server,
-	certs *gossipcommon.TLSCertificates,
 	mcs api.MessageCryptoService,
 	secAdv api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts,
 	credSupport *corecomm.CredentialSupport,
 	deliverClientDialOpts []grpc.DialOption,
-	bootPeers ...string,
+	gossipConfig *gossip.Config,
+	serviceConfig *ServiceConfig,
 ) (*GossipService, error) {
 	serializedIdentity, err := peerIdentity.Serialize()
 	if err != nil {
 		return nil, err
 	}
 
-	serviceConfig := GlobalConfig()
-	if serviceConfig.Endpoint != "" {
-		endpoint = serviceConfig.Endpoint
-	}
-
-	gossipConfig, err := gossip.GlobalConfig(endpoint, certs, bootPeers...)
-	if err != nil {
-		return nil, err
-	}
-
-	logger.Infof("Initialize gossip with endpoint %s and bootstrap set %v", endpoint, bootPeers)
+	logger.Infof("Initialize gossip with endpoint %s", endpoint)
 
 	gossipComponent := gossip.New(
 		gossipConfig,

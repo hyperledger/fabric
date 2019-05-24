@@ -28,7 +28,9 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	ledgermocks "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/transientstore"
+	"github.com/hyperledger/fabric/gossip/gossip"
 	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/service"
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
@@ -66,18 +68,20 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 		defaultDeliverClientDialOpts,
 		comm.ClientKeepaliveOptions(comm.DefaultKeepaliveOptions)...,
 	)
+	gossipConfig, err := gossip.GlobalConfig("localhost:0", nil)
 
 	gossipService, err := gossipservice.New(
 		signer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
 		"localhost:0",
 		grpc.NewServer(),
-		nil,
 		messageCryptoService,
 		secAdv,
 		defaultSecureDialOpts,
 		nil,
 		defaultDeliverClientDialOpts,
+		gossipConfig,
+		&service.ServiceConfig{},
 	)
 	require.NoError(t, err, "failed to create gossip service")
 
