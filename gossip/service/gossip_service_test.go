@@ -128,10 +128,16 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 	//10 peers started, added to channel and at the end we check if only for one peer
 	//mockDeliverService.StartDeliverForChannel was invoked
 
-	util.SetVal("peer.gossip.useLeaderElection", true)
-	util.SetVal("peer.gossip.orgLeader", false)
 	n := 10
-	gossips := startPeers(t, n, 0, 1, 2, 3, 4)
+	serviceConfig := &ServiceConfig{
+		UseLeaderElection:                true,
+		OrgLeader:                        false,
+		ElectionStartupGracePeriod:       election.DefStartupGracePeriod,
+		ElectionMembershipSampleInterval: election.DefMembershipSampleInterval,
+		ElectionLeaderAliveThreshold:     election.DefLeaderAliveThreshold,
+		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
+	}
+	gossips := startPeers(t, serviceConfig, n, 0, 1, 2, 3, 4)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -186,12 +192,16 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	//Each peer is added to channel and should run mock delivery client
 	//After that each peer added to another client and it should run deliver client for this channel as well.
 
-	util.SetVal("peer.gossip.useLeaderElection", false)
-	util.SetVal("peer.gossip.orgLeader", true)
-
+	serviceConfig := &ServiceConfig{
+		UseLeaderElection:                false,
+		OrgLeader:                        true,
+		ElectionStartupGracePeriod:       election.DefStartupGracePeriod,
+		ElectionMembershipSampleInterval: election.DefMembershipSampleInterval,
+		ElectionLeaderAliveThreshold:     election.DefLeaderAliveThreshold,
+		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
+	}
 	n := 2
-	gossips := startPeers(t, n, 0, 1)
-
+	gossips := startPeers(t, serviceConfig, n, 0, 1)
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
 	for i := 0; i < n; i++ {
@@ -240,11 +250,17 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 }
 
 func TestWithStaticDeliverClientNotLeader(t *testing.T) {
-	util.SetVal("peer.gossip.useLeaderElection", false)
-	util.SetVal("peer.gossip.orgLeader", false)
 
+	serviceConfig := &ServiceConfig{
+		UseLeaderElection:                false,
+		OrgLeader:                        false,
+		ElectionStartupGracePeriod:       election.DefStartupGracePeriod,
+		ElectionMembershipSampleInterval: election.DefMembershipSampleInterval,
+		ElectionLeaderAliveThreshold:     election.DefLeaderAliveThreshold,
+		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
+	}
 	n := 2
-	gossips := startPeers(t, n, 0, 1)
+	gossips := startPeers(t, serviceConfig, n, 0, 1)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -280,11 +296,17 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 }
 
 func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
-	util.SetVal("peer.gossip.useLeaderElection", true)
-	util.SetVal("peer.gossip.orgLeader", true)
 
+	serviceConfig := &ServiceConfig{
+		UseLeaderElection:                true,
+		OrgLeader:                        true,
+		ElectionStartupGracePeriod:       election.DefStartupGracePeriod,
+		ElectionMembershipSampleInterval: election.DefMembershipSampleInterval,
+		ElectionLeaderAliveThreshold:     election.DefLeaderAliveThreshold,
+		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
+	}
 	n := 2
-	gossips := startPeers(t, n, 0, 1)
+	gossips := startPeers(t, serviceConfig, n, 0, 1)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -401,9 +423,17 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	// Stop gossip instances of leader peers for both channels and see that new leader chosen for both
 
 	// Creating gossip service instances for peers
-	n := 10
-	gossips := startPeers(t, n, 0, 1, 2, 3, 4)
+	serviceConfig := &ServiceConfig{
+		UseLeaderElection:                false,
+		OrgLeader:                        false,
+		ElectionStartupGracePeriod:       election.DefStartupGracePeriod,
+		ElectionMembershipSampleInterval: election.DefMembershipSampleInterval,
+		ElectionLeaderAliveThreshold:     election.DefLeaderAliveThreshold,
+		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
+	}
 
+	n := 10
+	gossips := startPeers(t, serviceConfig, n, 0, 1, 2, 3, 4)
 	// Joining all peers to first channel
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -645,7 +675,7 @@ func addPeersToChannel(t *testing.T, n int, channel string, peers []GossipServic
 	waitUntilOrFailBlocking(t, wg.Wait, time.Second*10)
 }
 
-func startPeers(t *testing.T, n int, boot ...int) []GossipService {
+func startPeers(t *testing.T, serviceConfig *ServiceConfig, n int, boot ...int) []GossipService {
 	var ports []int
 	var grpcs []*comm.GRPCServer
 	var certs []*gossipCommon.TLSCertificates
@@ -669,7 +699,7 @@ func startPeers(t *testing.T, n int, boot ...int) []GossipService {
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
-			peers[i] = newGossipInstance(ports[i], i, grpcs[i], certs[i], secDialOpts[i], 100, bootPorts...)
+			peers[i] = newGossipInstance(serviceConfig, ports[i], i, grpcs[i], certs[i], secDialOpts[i], 100, bootPorts...)
 			wg.Done()
 		}(i)
 	}
@@ -678,7 +708,7 @@ func startPeers(t *testing.T, n int, boot ...int) []GossipService {
 	return peers
 }
 
-func newGossipInstance(port int, id int, gRPCServer *comm.GRPCServer, certs *gossipCommon.TLSCertificates,
+func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServer *comm.GRPCServer, certs *gossipCommon.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int) GossipService {
 	conf := &gossip.Config{
 		BindPort:                     port,
@@ -730,6 +760,7 @@ func newGossipInstance(port int, id int, gRPCServer *comm.GRPCServer, certs *gos
 		deliveryFactory: &deliveryFactoryImpl{},
 		peerIdentity:    api.PeerIdentityType(conf.InternalEndpoint),
 		metrics:         metrics,
+		serviceConfig:   serviceConfig,
 	}
 
 	return &gossipGRPC{gossipServiceImpl: gossipService, grpc: gRPCServer}

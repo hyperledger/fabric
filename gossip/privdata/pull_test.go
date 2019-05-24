@@ -285,7 +285,7 @@ func (gn *gossipNetwork) newPullerWithMetrics(metrics *metrics.PrivdataMetrics, 
 	g.network = gn
 	g.On("PeersOfChannel", mock.Anything).Return(knownMembers)
 
-	p := NewPuller(metrics, ps, g, &dataRetrieverMock{}, factory, "A", btlPullMarginDefault)
+	p := NewPuller(metrics, ps, g, &dataRetrieverMock{}, factory, "A", 10)
 	gn.peers = append(gn.peers, g)
 	return p
 }

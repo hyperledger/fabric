@@ -304,23 +304,6 @@ func (f *digestsAndSourceFactory) create() dig2sources {
 	return f.d2s
 }
 
-const btlPullMarginDefault = 10
-
-func GetBtlPullMargin() uint64 {
-	var result uint64
-	if viper.IsSet("peer.gossip.pvtData.btlPullMargin") {
-		btlMarginVal := viper.GetInt("peer.gossip.pvtData.btlPullMargin")
-		if btlMarginVal < 0 {
-			result = btlPullMarginDefault
-		} else {
-			result = uint64(btlMarginVal)
-		}
-	} else {
-		result = btlPullMarginDefault
-	}
-	return result
-}
-
 const (
 	rreconcileSleepIntervalConfigKey = "peer.gossip.pvtData.reconcileSleepInterval"
 	reconcileSleepIntervalDefault    = time.Minute * 1

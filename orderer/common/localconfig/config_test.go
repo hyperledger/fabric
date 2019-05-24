@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -187,7 +187,7 @@ Consensus:
 			World int
 		}
 	}{}
-	err = viperutil.Decode(consensus, foo)
+	err = mapstructure.Decode(consensus, foo)
 	assert.NoError(t, err, "Failed to decode Consensus to struct")
 	assert.Equal(t, foo.Foo, "bar")
 	assert.Equal(t, foo.Hello.World, 42)

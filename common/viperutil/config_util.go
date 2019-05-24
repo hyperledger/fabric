@@ -335,8 +335,3 @@ func EnhancedExactUnmarshalKey(baseKey string, output interface{}) error {
 
 	return decoder.Decode(leafKeys[baseKey])
 }
-
-// Decode is used to decode opaque field in configuration
-func Decode(input interface{}, output interface{}) error {
-	return mapstructure.Decode(input, output)
-}

@@ -16,7 +16,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -26,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft"
 )
@@ -245,7 +245,8 @@ func New(
 	logger := flogging.MustGetLogger("orderer.consensus.etcdraft")
 
 	var cfg Config
-	if err := viperutil.Decode(conf.Consensus, &cfg); err != nil {
+	err := mapstructure.Decode(conf.Consensus, &cfg)
+	if err != nil {
 		logger.Panicf("Failed to decode etcdraft configuration: %s", err)
 	}
 
