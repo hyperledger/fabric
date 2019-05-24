@@ -90,6 +90,7 @@ func (env *LevelDBCommonStorageTestEnv) Cleanup() {
 
 // CouchDBCommonStorageTestEnv implements TestEnv interface for couchdb based storage
 type CouchDBCommonStorageTestEnv struct {
+	couchAddress      string
 	t                 testing.TB
 	provider          DBProvider
 	bookkeeperTestEnv *bookkeeping.TestEnv
@@ -119,12 +120,15 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 	if err != nil {
 		t.Fatalf("Failed to create redo log directory: %s", err)
 	}
-	couchAddress := env.setupCouch()
+
+	if env.couchAddress == "" {
+		env.couchAddress = env.setupCouch()
+	}
 
 	stateDBConfig := &ledger.StateDB{
 		StateDatabase: "CouchDB",
 		CouchDB: &couchdb.Config{
-			Address:             couchAddress,
+			Address:             env.couchAddress,
 			Username:            "",
 			Password:            "",
 			MaxRetries:          3,

@@ -7,7 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package privacyenabledstate
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
@@ -19,6 +23,14 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMain(m *testing.M) {
+	exitCode := m.Run()
+	for _, testEnv := range testEnvs {
+		testEnv.Cleanup()
+	}
+	os.Exit(exitCode)
+}
 
 func TestBatch(t *testing.T) {
 	batch := UpdateMap(make(map[string]nsBatch))
@@ -72,8 +84,7 @@ func TestDB(t *testing.T) {
 
 func testDB(t *testing.T, env TestEnv) {
 	env.Init(t)
-	defer env.Cleanup()
-	db := env.GetDBHandle("test-ledger-id")
+	db := env.GetDBHandle(generateLedgerID(t))
 
 	updates := NewUpdateBatch()
 
@@ -138,8 +149,7 @@ func TestGetStateMultipleKeys(t *testing.T) {
 
 func testGetStateMultipleKeys(t *testing.T, env TestEnv) {
 	env.Init(t)
-	defer env.Cleanup()
-	db := env.GetDBHandle("test-ledger-id")
+	db := env.GetDBHandle(generateLedgerID(t))
 
 	updates := NewUpdateBatch()
 
@@ -181,8 +191,7 @@ func TestGetStateRangeScanIterator(t *testing.T) {
 
 func testGetStateRangeScanIterator(t *testing.T, env TestEnv) {
 	env.Init(t)
-	defer env.Cleanup()
-	db := env.GetDBHandle("test-ledger-id")
+	db := env.GetDBHandle(generateLedgerID(t))
 
 	updates := NewUpdateBatch()
 
@@ -242,8 +251,7 @@ func TestQueryOnCouchDB(t *testing.T) {
 
 func testQueryOnCouchDB(t *testing.T, env TestEnv) {
 	env.Init(t)
-	defer env.Cleanup()
-	db := env.GetDBHandle("test-ledger-id")
+	db := env.GetDBHandle(generateLedgerID(t))
 	updates := NewUpdateBatch()
 
 	jsonValues := []string{
@@ -323,7 +331,6 @@ func TestLongDBNameOnCouchDB(t *testing.T) {
 
 func testLongDBNameOnCouchDB(t *testing.T, env TestEnv) {
 	env.Init(t)
-	defer env.Cleanup()
 
 	// Creates metadataDB (i.e., chainDB)
 	// Allowed pattern for chainName: [a-z][a-z0-9.-]
@@ -434,8 +441,7 @@ func createCollectionConfig(collectionName string) *common.CollectionConfig {
 
 func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	env.Init(t)
-	defer env.Cleanup()
-	db := env.GetDBHandle("test-handle-chaincode-deploy")
+	db := env.GetDBHandle(generateLedgerID(t))
 
 	coll1 := createCollectionConfig("collectionMarbles")
 	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
@@ -539,8 +545,7 @@ func TestMetadataRetrieval(t *testing.T) {
 
 func testMetadataRetrieval(t *testing.T, env TestEnv) {
 	env.Init(t)
-	defer env.Cleanup()
-	db := env.GetDBHandle("test-ledger-id")
+	db := env.GetDBHandle(generateLedgerID(t))
 
 	updates := NewUpdateBatch()
 	updates.PubUpdates.PutValAndMetadata("ns1", "key1", []byte("value1"), []byte("metadata1"), version.NewHeight(1, 1))
@@ -580,4 +585,11 @@ func putPvtUpdatesWithMetadata(t *testing.T, updates *UpdateBatch, ns, coll, key
 func deletePvtUpdates(t *testing.T, updates *UpdateBatch, ns, coll, key string, ver *version.Height) {
 	updates.PvtUpdates.Delete(ns, coll, key, ver)
 	updates.HashUpdates.Delete(ns, coll, util.ComputeStringHash(key), ver)
+}
+
+func generateLedgerID(t *testing.T) string {
+	bytes := make([]byte, 8)
+	_, err := io.ReadFull(rand.Reader, bytes)
+	assert.NoError(t, err)
+	return fmt.Sprintf("x%s", hex.EncodeToString(bytes))
 }
