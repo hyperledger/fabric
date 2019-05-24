@@ -452,7 +452,9 @@ func TestBasic(t *testing.T) {
 	out := make(chan uint64, 2)
 	reader := func(ch <-chan protoext.ReceivedMessage) {
 		m := <-ch
-		out <- m.GetGossipMessage().Nonce
+		if m != nil {
+			out <- m.GetGossipMessage().Nonce
+		}
 	}
 	go reader(m1)
 	go reader(m2)
