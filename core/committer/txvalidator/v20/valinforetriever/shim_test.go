@@ -9,6 +9,10 @@ package valinforetriever_test
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
+
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/valinforetriever"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/valinforetriever/mocks"
 	"github.com/pkg/errors"
@@ -22,34 +26,34 @@ func TestValidationInfoRetrieverFromNew(t *testing.T) {
 	uerr := errors.New("unexpected error")
 	verr := errors.New("validation error")
 
-	new := &mocks.LifecycleResources{}
-	legacy := &mocks.LifecycleResources{}
+	newResources := &mocks.LifecycleResources{}
+	legacyResources := &mocks.LifecycleResources{}
 	shim := valinforetriever.ValidationInfoRetrieveShim{
-		Legacy: legacy,
-		New:    new,
+		Legacy: legacyResources,
+		New:    newResources,
 	}
 
 	// successfully retrieve data from new source
-	new.On("ValidationInfo", "channel", cc, nil).Return(newPlugin, newArgs, nil, nil).Once()
+	newResources.On("ValidationInfo", "channel", cc, nil).Return(newPlugin, newArgs, nil, nil).Once()
 	plugin, args, unexpectedErr, validationErr := shim.ValidationInfo("channel", "cc", nil)
 	assert.NoError(t, unexpectedErr)
 	assert.NoError(t, validationErr)
 	assert.Equal(t, "new", plugin)
 	assert.Equal(t, []byte("new"), args)
-	legacy.AssertNotCalled(t, "ValidationInfo")
+	legacyResources.AssertNotCalled(t, "ValidationInfo")
 
 	// get validation error from new source
-	new.On("ValidationInfo", "channel", cc, nil).Return("", nil, nil, verr).Once()
+	newResources.On("ValidationInfo", "channel", cc, nil).Return("", nil, nil, verr).Once()
 	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("channel", "cc", nil)
 	assert.NoError(t, unexpectedErr)
 	assert.Error(t, validationErr)
 	assert.Contains(t, validationErr.Error(), "validation error")
 	assert.Equal(t, "", plugin)
 	assert.Equal(t, []byte(nil), args)
-	legacy.AssertNotCalled(t, "ValidationInfo")
+	legacyResources.AssertNotCalled(t, "ValidationInfo")
 
 	// get unexpected error from new source
-	new.On("ValidationInfo", "channel", cc, nil).Return("", nil, uerr, verr).Once()
+	newResources.On("ValidationInfo", "channel", cc, nil).Return("", nil, uerr, verr).Once()
 	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("channel", "cc", nil)
 	assert.Error(t, unexpectedErr)
 	assert.Error(t, validationErr)
@@ -57,7 +61,7 @@ func TestValidationInfoRetrieverFromNew(t *testing.T) {
 	assert.Contains(t, validationErr.Error(), "validation error")
 	assert.Equal(t, "", plugin)
 	assert.Equal(t, []byte(nil), args)
-	legacy.AssertNotCalled(t, "ValidationInfo")
+	legacyResources.AssertNotCalled(t, "ValidationInfo")
 }
 
 func TestValidationInfoRetrieverFromLegacy(t *testing.T) {
@@ -67,18 +71,18 @@ func TestValidationInfoRetrieverFromLegacy(t *testing.T) {
 	uerr := errors.New("unexpected error")
 	verr := errors.New("validation error")
 
-	new := &mocks.LifecycleResources{}
-	legacy := &mocks.LifecycleResources{}
+	newResources := &mocks.LifecycleResources{}
+	legacyResources := &mocks.LifecycleResources{}
 	shim := valinforetriever.ValidationInfoRetrieveShim{
-		Legacy: legacy,
-		New:    new,
+		Legacy: legacyResources,
+		New:    newResources,
 	}
 
 	// new source always returns no data
-	new.On("ValidationInfo", "channel", cc, nil).Return("", nil, nil, nil)
+	newResources.On("ValidationInfo", "channel", cc, nil).Return("", nil, nil, nil)
 
 	// successfully retrieve data from legacy source
-	legacy.On("ValidationInfo", "channel", cc, nil).Return(legacyPlugin, legacyArgs, nil, nil).Once()
+	legacyResources.On("ValidationInfo", "channel", cc, nil).Return(legacyPlugin, legacyArgs, nil, nil).Once()
 	plugin, args, unexpectedErr, validationErr := shim.ValidationInfo("channel", "cc", nil)
 	assert.NoError(t, unexpectedErr)
 	assert.NoError(t, validationErr)
@@ -86,7 +90,7 @@ func TestValidationInfoRetrieverFromLegacy(t *testing.T) {
 	assert.Equal(t, []byte("legacy"), args)
 
 	// get validation error from legacy source
-	legacy.On("ValidationInfo", "channel", cc, nil).Return("", nil, nil, verr).Once()
+	legacyResources.On("ValidationInfo", "channel", cc, nil).Return("", nil, nil, verr).Once()
 	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("channel", "cc", nil)
 	assert.NoError(t, unexpectedErr)
 	assert.Error(t, validationErr)
@@ -95,11 +99,54 @@ func TestValidationInfoRetrieverFromLegacy(t *testing.T) {
 	assert.Equal(t, []byte(nil), args)
 
 	// get unexpected error from legacy source
-	legacy.On("ValidationInfo", "channel", cc, nil).Return("", nil, uerr, nil).Once()
+	legacyResources.On("ValidationInfo", "channel", cc, nil).Return("", nil, uerr, nil).Once()
 	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("channel", "cc", nil)
 	assert.Error(t, unexpectedErr)
 	assert.NoError(t, validationErr)
 	assert.Contains(t, unexpectedErr.Error(), "unexpected error")
 	assert.Equal(t, "", plugin)
 	assert.Equal(t, []byte(nil), args)
+}
+
+func TestValidationInfoRetrieverFromLegacyWithConversion(t *testing.T) {
+	cc := "cc"
+	goodSPE := protoutil.MarshalOrPanic(&common.SignaturePolicyEnvelope{Version: 1})
+
+	newResources := &mocks.LifecycleResources{}
+	legacyResources := &mocks.LifecycleResources{}
+	shim := valinforetriever.ValidationInfoRetrieveShim{
+		Legacy: legacyResources,
+		New:    newResources,
+	}
+
+	// new source always returns no data
+	newResources.On("ValidationInfo", "channel", cc, nil).Return("", nil, nil, nil)
+
+	// no conversion if the plugin is not vscc
+	legacyResources.On("ValidationInfo", "channel", cc, nil).Return("not vscc", goodSPE, nil, nil).Once()
+	plugin, args, unexpectedErr, validationErr := shim.ValidationInfo("channel", "cc", nil)
+	assert.NoError(t, unexpectedErr)
+	assert.NoError(t, validationErr)
+	assert.Equal(t, "not vscc", plugin)
+	assert.Equal(t, protoutil.MarshalOrPanic(&common.SignaturePolicyEnvelope{Version: 1}), args)
+
+	// no conversion if the policy is not a signature policy envelope
+	legacyResources.On("ValidationInfo", "channel", cc, nil).Return("vscc", []byte("not a signature policy envelope"), nil, nil).Once()
+	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("channel", "cc", nil)
+	assert.NoError(t, unexpectedErr)
+	assert.NoError(t, validationErr)
+	assert.Equal(t, "vscc", plugin)
+	assert.Equal(t, []byte("not a signature policy envelope"), args)
+
+	// conversion if the policy is a signature policy envelope
+	legacyResources.On("ValidationInfo", "channel", cc, nil).Return("vscc", goodSPE, nil, nil).Once()
+	plugin, args, unexpectedErr, validationErr = shim.ValidationInfo("channel", "cc", nil)
+	assert.NoError(t, unexpectedErr)
+	assert.NoError(t, validationErr)
+	assert.Equal(t, "vscc", plugin)
+	assert.Equal(t, protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
+		Type: &peer.ApplicationPolicy_SignaturePolicy{
+			SignaturePolicy: &common.SignaturePolicyEnvelope{Version: 1},
+		},
+	}), args)
 }
