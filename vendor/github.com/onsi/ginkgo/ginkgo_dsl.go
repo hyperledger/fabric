@@ -494,7 +494,7 @@ func AfterSuite(body interface{}, timeout ...float64) bool {
 //until that node is done before running.
 //
 //SynchronizedBeforeSuite accomplishes this by taking *two* function arguments.  The first is only run on parallel node #1.  The second is
-//run on all nodes, but *only* after the first function completes succesfully.  Ginkgo also makes it possible to send data from the first function (on Node 1)
+//run on all nodes, but *only* after the first function completes successfully.  Ginkgo also makes it possible to send data from the first function (on Node 1)
 //to the second function (on all the other nodes).
 //
 //The functions have the following signatures.  The first function (which only runs on node 1) has the signature:
