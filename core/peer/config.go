@@ -118,16 +118,10 @@ type Config struct {
 	// server time and client's time as specified in a client request message.
 	AuthenticationTimeWindow time.Duration
 
-	// ----- AdminService -----
-	// The admin service is used for adminstrative operations such as control over logger
-	// levels, etc. Only peer administrators can use the service.
-	// TODO: create separate sub-struct for AdminService config.
-
-	// AdminListenAddress provides a interface and port for admin server to listen on.
-	// Default to peer listen address.
-	AdminListenAddress string
-
-	// VMEndpoint sets the endpoint of the vm management systems.
+	// Endpoint of the vm management system. For docker can be one of the following in general
+	// unix:///var/run/docker.sock
+	// http://localhost:2375
+	// https://localhost:2376
 	VMEndpoint string
 
 	// ----- vm.docker.tls -----
@@ -226,7 +220,6 @@ func (c *Config) load() error {
 	c.DiscoveryAuthCachePurgeRetentionRatio = viper.GetFloat64("peer.discovery.authCachePurgeRetentionRatio")
 	c.ChaincodeListenAddress = viper.GetString("peer.chaincodeListenAddress")
 	c.ChaincodeAddress = viper.GetString("peer.chaincodeAddress")
-	c.AdminListenAddress = viper.GetString("peer.adminService.listenAddress")
 
 	c.ValidatorPoolSize = viper.GetInt("peer.validatorPoolSize")
 	if c.ValidatorPoolSize <= 0 {

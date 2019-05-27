@@ -22,18 +22,6 @@ Flags:
       --peer-chaincodedev   Whether peer in chaincode development mode
 ```
 
-
-## peer node status
-```
-Returns the status of the running node.
-
-Usage:
-  peer node status [flags]
-
-Flags:
-  -h, --help   help for status
-```
-
 ## Example Usage
 
 ### peer node start example

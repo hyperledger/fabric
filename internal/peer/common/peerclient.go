@@ -94,15 +94,6 @@ func (pc *PeerClient) PeerDeliver() (pb.DeliverClient, error) {
 	return pb.NewDeliverClient(conn), nil
 }
 
-// Admin returns a client for the Admin service
-func (pc *PeerClient) Admin() (pb.AdminClient, error) {
-	conn, err := pc.commonClient.NewConnection(pc.address, pc.sn)
-	if err != nil {
-		return nil, errors.WithMessagef(err, "admin client failed to connect to %s", pc.address)
-	}
-	return pb.NewAdminClient(conn), nil
-}
-
 // Certificate returns the TLS client certificate (if available)
 func (pc *PeerClient) Certificate() tls.Certificate {
 	return pc.commonClient.Certificate()
@@ -133,16 +124,6 @@ func GetCertificate() (tls.Certificate, error) {
 		return tls.Certificate{}, err
 	}
 	return peerClient.Certificate(), nil
-}
-
-// GetAdminClient returns a new admin client.  The target address for
-// the client is taken from the configuration setting "peer.address"
-func GetAdminClient() (pb.AdminClient, error) {
-	peerClient, err := NewPeerClientFromEnv()
-	if err != nil {
-		return nil, err
-	}
-	return peerClient.Admin()
 }
 
 // GetDeliverClient returns a new deliver client. If both the address and

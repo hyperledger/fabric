@@ -338,16 +338,6 @@ peer:
         enabled:     false
         listenAddress: 0.0.0.0:6060
 
-    # The admin service is used for administrative operations such as
-    # control over logger levels, etc.
-    # Only peer administrators can use the service.
-    adminService:
-        # The interface and port on which the admin server will listen on.
-        # If this is commented out, or the port number is equal to the port
-        # of the peer listen address - the admin service is attached to the
-        # peer's service (defaults to 7051).
-        #listenAddress: 0.0.0.0:7055
-
     # Handlers defines custom handlers that can filter and mutate
     # objects passing within the peer, such as:
     #   Auth filter - reject or forward proposals from clients

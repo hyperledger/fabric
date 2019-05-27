@@ -9,7 +9,6 @@ Commands Reference
    commands/peerlifecycle.md
    commands/peerchannel.md
    commands/peerversion.md
-   commands/peerlogging.md
    commands/peernode.md
    commands/token.md
    commands/configtxgen.md

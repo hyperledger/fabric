@@ -46,7 +46,6 @@ type Peer struct {
 	LocalMSPID             string          `yaml:"localMspId,omitempty"`
 	Deliveryclient         *DeliveryClient `yaml:"deliveryclient,omitempty"`
 	LocalMspType           string          `yaml:"localMspType,omitempty"`
-	AdminService           *Service        `yaml:"adminService,omitempty"`
 	Handlers               *Handlers       `yaml:"handlers,omitempty"`
 	ValidatorPoolSize      int             `yaml:"validatorPoolSize,omitempty"`
 	Discovery              *Discovery      `yaml:"discovery,omitempty"`
