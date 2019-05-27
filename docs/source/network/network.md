@@ -923,7 +923,7 @@ organizations may have their permissions increased or decreased. Let's
 investigate a little more how change policy is implemented in Hyperledger
 Fabric.
 
-They key point of understanding is that policy change is managed by a
+The key point of understanding is that policy change is managed by a
 policy within the policy itself.  The **modification policy**, or
 **mod_policy** for short, is a first class policy within a network or channel
 configuration that manages change. Let's give two brief examples of how we've
