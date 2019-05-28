@@ -32,6 +32,19 @@ type PeerOperations struct {
 	createChainFromBlockReturnsOnCall map[int]struct {
 		result1 error
 	}
+	GetApplicationConfigStub        func(string) (channelconfig.Application, bool)
+	getApplicationConfigMutex       sync.RWMutex
+	getApplicationConfigArgsForCall []struct {
+		arg1 string
+	}
+	getApplicationConfigReturns struct {
+		result1 channelconfig.Application
+		result2 bool
+	}
+	getApplicationConfigReturnsOnCall map[int]struct {
+		result1 channelconfig.Application
+		result2 bool
+	}
 	GetChannelConfigStub        func(string) channelconfig.Resources
 	getChannelConfigMutex       sync.RWMutex
 	getChannelConfigArgsForCall []struct {
@@ -194,6 +207,69 @@ func (fake *PeerOperations) CreateChainFromBlockReturnsOnCall(i int, result1 err
 	fake.createChainFromBlockReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *PeerOperations) GetApplicationConfig(arg1 string) (channelconfig.Application, bool) {
+	fake.getApplicationConfigMutex.Lock()
+	ret, specificReturn := fake.getApplicationConfigReturnsOnCall[len(fake.getApplicationConfigArgsForCall)]
+	fake.getApplicationConfigArgsForCall = append(fake.getApplicationConfigArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetApplicationConfig", []interface{}{arg1})
+	fake.getApplicationConfigMutex.Unlock()
+	if fake.GetApplicationConfigStub != nil {
+		return fake.GetApplicationConfigStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.getApplicationConfigReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *PeerOperations) GetApplicationConfigCallCount() int {
+	fake.getApplicationConfigMutex.RLock()
+	defer fake.getApplicationConfigMutex.RUnlock()
+	return len(fake.getApplicationConfigArgsForCall)
+}
+
+func (fake *PeerOperations) GetApplicationConfigCalls(stub func(string) (channelconfig.Application, bool)) {
+	fake.getApplicationConfigMutex.Lock()
+	defer fake.getApplicationConfigMutex.Unlock()
+	fake.GetApplicationConfigStub = stub
+}
+
+func (fake *PeerOperations) GetApplicationConfigArgsForCall(i int) string {
+	fake.getApplicationConfigMutex.RLock()
+	defer fake.getApplicationConfigMutex.RUnlock()
+	argsForCall := fake.getApplicationConfigArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *PeerOperations) GetApplicationConfigReturns(result1 channelconfig.Application, result2 bool) {
+	fake.getApplicationConfigMutex.Lock()
+	defer fake.getApplicationConfigMutex.Unlock()
+	fake.GetApplicationConfigStub = nil
+	fake.getApplicationConfigReturns = struct {
+		result1 channelconfig.Application
+		result2 bool
+	}{result1, result2}
+}
+
+func (fake *PeerOperations) GetApplicationConfigReturnsOnCall(i int, result1 channelconfig.Application, result2 bool) {
+	fake.getApplicationConfigMutex.Lock()
+	defer fake.getApplicationConfigMutex.Unlock()
+	fake.GetApplicationConfigStub = nil
+	if fake.getApplicationConfigReturnsOnCall == nil {
+		fake.getApplicationConfigReturnsOnCall = make(map[int]struct {
+			result1 channelconfig.Application
+			result2 bool
+		})
+	}
+	fake.getApplicationConfigReturnsOnCall[i] = struct {
+		result1 channelconfig.Application
+		result2 bool
+	}{result1, result2}
 }
 
 func (fake *PeerOperations) GetChannelConfig(arg1 string) channelconfig.Resources {
@@ -685,6 +761,8 @@ func (fake *PeerOperations) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.createChainFromBlockMutex.RLock()
 	defer fake.createChainFromBlockMutex.RUnlock()
+	fake.getApplicationConfigMutex.RLock()
+	defer fake.getApplicationConfigMutex.RUnlock()
 	fake.getChannelConfigMutex.RLock()
 	defer fake.getChannelConfigMutex.RUnlock()
 	fake.getChannelsInfoMutex.RLock()

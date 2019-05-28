@@ -32,7 +32,6 @@ type SupportImpl struct {
 	*PluginEndorser
 	identity.SignerSerializer
 	Peer             peer.Operations
-	PeerSupport      peer.Support
 	ChaincodeSupport *chaincode.ChaincodeSupport
 	SysCCProvider    *scc.Provider
 	ACLProvider      aclmgmt.ACLProvider
@@ -184,7 +183,7 @@ func (s *SupportImpl) CheckInstantiationPolicy(name, version string, cd ccprovid
 // GetApplicationConfig returns the configtxapplication.SharedConfig for the Channel
 // and whether the Application config exists
 func (s *SupportImpl) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
-	return s.PeerSupport.GetApplicationConfig(cid)
+	return s.Peer.GetApplicationConfig(cid)
 }
 
 // GetDeployedCCInfoProvider returns ledger.DeployedChaincodeInfoProvider

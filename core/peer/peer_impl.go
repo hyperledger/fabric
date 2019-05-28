@@ -25,6 +25,7 @@ import (
 type Operations interface {
 	CreateChainFromBlock(cb *common.Block, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources, nr plugindispatcher.CollectionAndLifecycleResources) error
 	GetChannelConfig(cid string) channelconfig.Resources
+	GetApplicationConfig(cid string) (channelconfig.Application, bool)
 	GetChannelsInfo() []*pb.ChannelInfo
 	GetStableChannelConfig(cid string) channelconfig.Resources
 	GetCurrConfigBlock(cid string) *common.Block
@@ -87,23 +88,43 @@ var Default Operations = &peerImpl{
 	initialize:             Initialize,
 }
 
-var DefaultSupport Support = &supportImpl{operations: Default}
-
-func (p *peerImpl) CreateChainFromBlock(cb *common.Block, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources, nr plugindispatcher.CollectionAndLifecycleResources) error {
+func (p *peerImpl) CreateChainFromBlock(
+	cb *common.Block,
+	sccp sysccprovider.SystemChaincodeProvider,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	lr plugindispatcher.LifecycleResources,
+	nr plugindispatcher.CollectionAndLifecycleResources,
+) error {
 	return p.createChainFromBlock(cb, sccp, deployedCCInfoProvider, lr, nr)
 }
+
 func (p *peerImpl) GetChannelConfig(cid string) channelconfig.Resources {
 	return p.getChannelConfig(cid)
 }
-func (p *peerImpl) GetChannelsInfo() []*pb.ChannelInfo { return p.getChannelsInfo() }
+
+func (p *peerImpl) GetChannelsInfo() []*pb.ChannelInfo {
+	return p.getChannelsInfo()
+}
+
 func (p *peerImpl) GetStableChannelConfig(cid string) channelconfig.Resources {
 	return p.getStableChannelConfig(cid)
 }
+
 func (p *peerImpl) GetCurrConfigBlock(cid string) *common.Block  { return p.getCurrConfigBlock(cid) }
 func (p *peerImpl) GetLedger(cid string) ledger.PeerLedger       { return p.getLedger(cid) }
 func (p *peerImpl) GetMSPIDs(cid string) []string                { return p.getMSPIDs(cid) }
 func (p *peerImpl) GetPolicyManager(cid string) policies.Manager { return p.getPolicyManager(cid) }
 func (p *peerImpl) InitChain(cid string)                         { p.initChain(cid) }
+
+func (p *peerImpl) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
+	cc := p.GetChannelConfig(cid)
+	if cc == nil {
+		return nil, false
+	}
+
+	return cc.ApplicationConfig()
+}
+
 func (p *peerImpl) Initialize(
 	init func(string),
 	sccp sysccprovider.SystemChaincodeProvider,

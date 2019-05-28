@@ -350,10 +350,9 @@ func serve(args []string) error {
 	ipRegistry := inproccontroller.NewRegistry()
 
 	sccp := &scc.Provider{
-		Peer:        peer.Default,
-		PeerSupport: peer.DefaultSupport,
-		Registrar:   ipRegistry,
-		Whitelist:   scc.GlobalWhitelist(),
+		Peer:      peer.Default,
+		Registrar: ipRegistry,
+		Whitelist: scc.GlobalWhitelist(),
 	}
 	lsccInst := lscc.New(sccp, aclProvider, platformRegistry)
 
@@ -450,7 +449,7 @@ func serve(args []string) error {
 
 	chaincodeSupport := &chaincode.ChaincodeSupport{
 		ACLProvider:            aclProvider,
-		AppConfig:              peer.DefaultSupport,
+		AppConfig:              peer.Default,
 		DeployedCCInfoProvider: lifecycleValidatorCommitter,
 		ExecuteTimeout:         globalConfig.ExecuteTimeout,
 		HandlerRegistry:        chaincodeHandlerRegistry,
@@ -505,7 +504,6 @@ func serve(args []string) error {
 	endorserSupport := &endorser.SupportImpl{
 		SignerSerializer: signingIdentity,
 		Peer:             peer.Default,
-		PeerSupport:      peer.DefaultSupport,
 		ChaincodeSupport: chaincodeSupport,
 		SysCCProvider:    sccp,
 		ACLProvider:      aclProvider,

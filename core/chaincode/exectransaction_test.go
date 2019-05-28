@@ -48,7 +48,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	cut "github.com/hyperledger/fabric/core/ledger/util"
-	cmp "github.com/hyperledger/fabric/core/mocks/peer"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/policy/mocks"
@@ -71,21 +70,11 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	//start clean
 	finitPeer(nil, chainIDs...)
 
-	fakeApplicationConfig := &cm.ApplicationConfig{}
-	fakeCapabilites := &cm.ApplicationCapabilities{}
-	fakeApplicationConfig.CapabilitiesReturns(fakeCapabilites)
-
-	msi := &cmp.MockSupportImpl{
-		GetApplicationConfigRv:     fakeApplicationConfig,
-		GetApplicationConfigBoolRv: true,
-	}
-
 	ipRegistry := inproccontroller.NewRegistry()
 	sccp := &scc.Provider{
-		Peer:        peer.Default,
-		PeerSupport: msi,
-		Registrar:   ipRegistry,
-		Whitelist:   scc.GlobalWhitelist(),
+		Peer:      peer.Default,
+		Registrar: ipRegistry,
+		Whitelist: scc.GlobalWhitelist(),
 	}
 
 	ledgerCleanup, err := peer.MockInitialize()
@@ -191,7 +180,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	}
 	chaincodeSupport := &ChaincodeSupport{
 		ACLProvider:            aclmgmt.NewACLProvider(func(string) channelconfig.Resources { return nil }),
-		AppConfig:              peer.DefaultSupport,
+		AppConfig:              peer.Default,
 		DeployedCCInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
 		ExecuteTimeout:         globalConfig.ExecuteTimeout,
 		HandlerMetrics:         NewHandlerMetrics(metricsProviders),

@@ -17,11 +17,10 @@ import (
 
 // Provider implements sysccprovider.SystemChaincodeProvider
 type Provider struct {
-	Peer        peer.Operations
-	PeerSupport peer.Support
-	Registrar   Registrar
-	SysCCs      []SelfDescribingSysCC
-	Whitelist   Whitelist
+	Peer      peer.Operations
+	Registrar Registrar
+	SysCCs    []SelfDescribingSysCC
+	Whitelist Whitelist
 }
 
 // RegisterSysCC registers a system chaincode with the syscc provider.
@@ -93,7 +92,7 @@ func (p *Provider) IsSysCCAndNotInvokableExternal(name string) bool {
 // GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
 // and whether the Application config exists
 func (p *Provider) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
-	return p.PeerSupport.GetApplicationConfig(cid)
+	return p.Peer.GetApplicationConfig(cid)
 }
 
 // Returns the policy manager associated to the passed channel
