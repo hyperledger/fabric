@@ -140,7 +140,7 @@ func (mock *commMock) GetPKIid() common.PKIidType {
 	return common.PKIidType(mock.id)
 }
 
-// Send sends a message to remote peers
+// Send sends a message to remote peers asynchronously
 func (mock *commMock) Send(msg *protoext.SignedGossipMessage, peers ...*comm.RemotePeer) {
 	for _, peer := range peers {
 		logger.Debug("Sending message to peer ", peer.Endpoint, "from ", mock.id)

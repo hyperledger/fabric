@@ -23,7 +23,7 @@ type Comm interface {
 	// GetPKIid returns this instance's PKI id
 	GetPKIid() common.PKIidType
 
-	// Send sends a message to remote peers
+	// Send sends a message to remote peers asynchronously
 	Send(msg *protoext.SignedGossipMessage, peers ...*RemotePeer)
 
 	// SendWithAck sends a message to remote peers, waiting for acknowledgement from minAck of them, or until a certain timeout expires

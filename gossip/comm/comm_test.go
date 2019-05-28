@@ -631,19 +631,20 @@ func TestParallelSend(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
+	// Create the receive channel before sending the messages
+	ch := comm2.Accept(acceptAll)
+
 	messages2Send := DefRecvBuffSize
 
 	wg := sync.WaitGroup{}
 	wg.Add(messages2Send)
-	go func() {
-		for i := 0; i < messages2Send; i++ {
-			emptyMsg := createGossipMsg()
-			go func() {
-				defer wg.Done()
-				comm1.Send(emptyMsg, remotePeer(port2))
-			}()
-		}
-	}()
+	for i := 0; i < messages2Send; i++ {
+		emptyMsg := createGossipMsg()
+		go func() {
+			defer wg.Done()
+			comm1.Send(emptyMsg, remotePeer(port2))
+		}()
+	}
 
 	// Making sure all messages was indeed sent
 	wg.Wait()
@@ -651,7 +652,6 @@ func TestParallelSend(t *testing.T) {
 	c := 0
 	waiting := true
 	ticker := time.NewTicker(30 * time.Second)
-	ch := comm2.Accept(acceptAll)
 	for waiting {
 		select {
 		case <-ch:
