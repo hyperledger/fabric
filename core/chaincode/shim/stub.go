@@ -576,7 +576,6 @@ func (iter *CommonIterator) nextResult(rType resultType) (commonledger.QueryResu
 		// On valid access of an element from cached results
 		queryResult, err := iter.getResultFromBytes(iter.response.Results[iter.currentLoc], rType)
 		if err != nil {
-			chaincodeLogger.Errorf("Failed to decode query results: %+v", err)
 			return nil, err
 		}
 		iter.currentLoc++
@@ -584,7 +583,6 @@ func (iter *CommonIterator) nextResult(rType resultType) (commonledger.QueryResu
 		if iter.currentLoc == len(iter.response.Results) && iter.response.HasMore {
 			// On access of last item, pre-fetch to update HasMore flag
 			if err = iter.fetchNextQueryResult(); err != nil {
-				chaincodeLogger.Errorf("Failed to fetch next results: %+v", err)
 				return nil, err
 			}
 		}
