@@ -130,7 +130,7 @@ func TestLeaderYield(t *testing.T) {
 	// Add peers to the channel
 	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
 	// Prime the membership view of the peers
-	waitForFullMembershipOrFailNow(t, gossips, n, time.Second*30, time.Millisecond*100)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Millisecond*100)
 
 	endpoint, socket := getAvailablePort(t)
 	socket.Close()
