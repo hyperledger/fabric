@@ -52,13 +52,12 @@ type Operations interface {
 }
 
 type Peer struct {
-	getStableChannelConfig func(cid string) channelconfig.Resources
-	getCurrConfigBlock     func(cid string) *common.Block
-	getLedger              func(cid string) ledger.PeerLedger
-	getMSPIDs              func(cid string) []string
-	getPolicyManager       func(cid string) policies.Manager
-	initChain              func(cid string)
-	initialize             func(
+	getCurrConfigBlock func(cid string) *common.Block
+	getLedger          func(cid string) ledger.PeerLedger
+	getMSPIDs          func(cid string) []string
+	getPolicyManager   func(cid string) policies.Manager
+	initChain          func(cid string)
+	initialize         func(
 		init func(string),
 		sccp sysccprovider.SystemChaincodeProvider,
 		mapper plugin.Mapper,
@@ -76,13 +75,12 @@ type Peer struct {
 // Default provides in implementation of the Peer interface that provides
 // access to the package level state.
 var Default Operations = &Peer{
-	getStableChannelConfig: GetStableChannelConfig,
-	getCurrConfigBlock:     GetCurrConfigBlock,
-	getLedger:              GetLedger,
-	getMSPIDs:              GetMSPIDs,
-	getPolicyManager:       GetPolicyManager,
-	initChain:              InitChain,
-	initialize:             Initialize,
+	getCurrConfigBlock: GetCurrConfigBlock,
+	getLedger:          GetLedger,
+	getMSPIDs:          GetMSPIDs,
+	getPolicyManager:   GetPolicyManager,
+	initChain:          InitChain,
+	initialize:         Initialize,
 }
 
 func CreateChainFromBlock(
@@ -142,8 +140,18 @@ func (p *Peer) GetChannelsInfo() []*pb.ChannelInfo {
 	return channelInfos
 }
 
+// GetStableChannelConfig returns the stable channel configuration of the chain with channel ID.
+// Note that this call returns nil if chain cid has not been created.
+func GetStableChannelConfig(cid string) channelconfig.Resources {
+	return Default.GetStableChannelConfig(cid)
+}
 func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
-	return p.getStableChannelConfig(cid)
+	chains.RLock()
+	defer chains.RUnlock()
+	if c, ok := chains.list[cid]; ok {
+		return c.cs.bundleSource.StableBundle()
+	}
+	return nil
 }
 
 func (p *Peer) GetCurrConfigBlock(cid string) *common.Block  { return p.getCurrConfigBlock(cid) }

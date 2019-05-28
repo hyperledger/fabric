@@ -465,17 +465,6 @@ func GetLedger(cid string) ledger.PeerLedger {
 	return nil
 }
 
-// GetStableChannelConfig returns the stable channel configuration of the chain with channel ID.
-// Note that this call returns nil if chain cid has not been created.
-func GetStableChannelConfig(cid string) channelconfig.Resources {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
-		return c.cs.bundleSource.StableBundle()
-	}
-	return nil
-}
-
 // GetPolicyManager returns the policy manager of the chain with chain ID. Note that this
 // call returns nil if chain cid has not been created.
 func GetPolicyManager(cid string) policies.Manager {
