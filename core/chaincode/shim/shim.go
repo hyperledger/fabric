@@ -23,13 +23,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/comm"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
-
-// Logger for the shim package.
-var chaincodeLogger = logging.MustGetLogger("shim")
 
 const (
 	minUnicodeRuneValue   = 0            //U+0000
@@ -47,19 +43,16 @@ var streamGetter peerStreamGetter
 
 //the non-mock user CC stream establishment func
 func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
-	chaincodeLogger.Debugf("os.Args returns: %s", os.Args)
 	peerAddress := flag.String("peer.address", "", "peer address")
 	flag.Parse()
 	if *peerAddress == "" {
 		return nil, errors.New("flag 'peer.address' must be set")
 	}
-	chaincodeLogger.Debugf("Peer address: %s", *peerAddress)
 
 	// Establish connection with validating peer
 	clientConn, err := newPeerClientConnection(*peerAddress)
 	if err != nil {
 		err = errors.Wrap(err, "error trying to connect to local peer")
-		chaincodeLogger.Errorf("%+v", err)
 		return nil, err
 	}
 
@@ -101,8 +94,6 @@ func Start(cc Chaincode) error {
 // StartInProc is an entry point for system chaincodes bootstrap. It is not an
 // API for chaincodes.
 func StartInProc(env []string, args []string, cc Chaincode, recv <-chan *pb.ChaincodeMessage, send chan<- *pb.ChaincodeMessage) error {
-	chaincodeLogger.Debugf("in proc %v", args)
-
 	var chaincodename string
 	for _, v := range env {
 		if strings.Index(v, "CORE_CHAINCODE_ID_NAME=") == 0 {
@@ -116,7 +107,6 @@ func StartInProc(env []string, args []string, cc Chaincode, recv <-chan *pb.Chai
 	}
 
 	stream := newInProcStream(recv, send)
-	chaincodeLogger.Debugf("starting chat with peer using name=%s", chaincodename)
 	err := chatWithPeer(chaincodename, stream, cc)
 	return err
 }
@@ -200,7 +190,6 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 	}
 
 	// Register on the stream
-	chaincodeLogger.Debugf("Registering.. sending %s", pb.ChaincodeMessage_REGISTER)
 	if err = handler.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER, Payload: payload}); err != nil {
 		return errors.WithMessage(err, "error sending chaincode REGISTER")
 	}
@@ -225,18 +214,14 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 			switch {
 			case rmsg.err == io.EOF:
 				err = errors.Wrapf(rmsg.err, "received EOF, ending chaincode stream")
-				chaincodeLogger.Debugf("%+v", err)
 				return err
 			case rmsg.err != nil:
 				err := errors.Wrap(rmsg.err, "receive failed")
-				chaincodeLogger.Errorf("Received error from server, ending chaincode stream: %+v", err)
 				return err
 			case rmsg.msg == nil:
 				err := errors.New("received nil message, ending chaincode stream")
-				chaincodeLogger.Debugf("%+v", err)
 				return err
 			default:
-				chaincodeLogger.Debugf("[%s]Received message %s from peer", shorttxid(rmsg.msg.Txid), rmsg.msg.Type)
 				err := handler.handleMessage(rmsg.msg, errc)
 				if err != nil {
 					err = errors.WithMessage(err, "error handling message")
