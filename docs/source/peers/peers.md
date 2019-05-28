@@ -41,7 +41,7 @@ chaincode and smart contracts, check out our [documentation on smart contracts a
 Let's look at a peer in a little more detail. We can see that it's the peer that
 hosts both the ledger and chaincode. More accurately, the peer actually hosts
 *instances* of the ledger, and *instances* of chaincode. Note that this provides
-a deliberate redundancy in a Fabric network --- it avoids single points of
+a deliberate redundancy in a Fabric network --- it avoids single point of
 failure. We'll learn more about the distributed and decentralized nature of a
 blockchain network later in this section.
 
