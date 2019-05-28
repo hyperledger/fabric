@@ -75,6 +75,14 @@
   version = "v1.20.1"
 
 [[projects]]
+  digest = "1:29add35a36be0ef65639a201df2b86e4e3d3b3b2e5eac4e35e02642b23b22405"
+  name = "github.com/VictoriaMetrics/fastcache"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "4d94f266cd3cecbcd97eaebee9e3d6d8cf918643"
+  version = "v1.4.6"
+
+[[projects]]
   branch = "master"
   digest = "1:f3793f8a708522400cef1dba23385e901aede5519f68971fd69938ef330b07a1"
   name = "github.com/alecthomas/template"
@@ -100,6 +108,14 @@
   pruneopts = "NUT"
   revision = "4b2b341e8d7715fae06375aa633dbb6e91b3fb46"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:0c31fa2fb2c809d61d640e28cc400087fe205df6ec9623dd1eb91a7de8d4f5d6"
+  name = "github.com/cespare/xxhash"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "de209a9ffae3256185a6bb135d1a0ada7b2b5f09"
+  version = "v2.1.0"
 
 [[projects]]
   branch = "master"
@@ -1027,6 +1043,7 @@
     "github.com/Knetic/govaluate",
     "github.com/Shopify/sarama",
     "github.com/Shopify/sarama/mocks",
+    "github.com/VictoriaMetrics/fastcache",
     "github.com/davecgh/go-spew/spew",
     "github.com/fsouza/go-dockerclient",
     "github.com/go-kit/kit/metrics",
