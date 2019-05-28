@@ -52,9 +52,8 @@ type Operations interface {
 }
 
 type Peer struct {
-	getPolicyManager func(cid string) policies.Manager
-	initChain        func(cid string)
-	initialize       func(
+	initChain  func(cid string)
+	initialize func(
 		init func(string),
 		sccp sysccprovider.SystemChaincodeProvider,
 		mapper plugin.Mapper,
@@ -72,9 +71,8 @@ type Peer struct {
 // Default provides in implementation of the Peer interface that provides
 // access to the package level state.
 var Default Operations = &Peer{
-	getPolicyManager: GetPolicyManager,
-	initChain:        InitChain,
-	initialize:       Initialize,
+	initChain:  InitChain,
+	initialize: Initialize,
 }
 
 func CreateChainFromBlock(
@@ -205,8 +203,19 @@ func (p *Peer) GetMSPIDs(cid string) []string {
 	return nil
 }
 
-func (p *Peer) GetPolicyManager(cid string) policies.Manager { return p.getPolicyManager(cid) }
-func (p *Peer) InitChain(cid string)                         { p.initChain(cid) }
+// GetPolicyManager returns the policy manager of the chain with chain ID. Note that this
+// call returns nil if chain cid has not been created.
+func GetPolicyManager(cid string) policies.Manager { return Default.GetPolicyManager(cid) }
+func (p *Peer) GetPolicyManager(cid string) policies.Manager {
+	chains.RLock()
+	defer chains.RUnlock()
+	if c, ok := chains.list[cid]; ok {
+		return c.cs.PolicyManager()
+	}
+	return nil
+}
+
+func (p *Peer) InitChain(cid string) { p.initChain(cid) }
 
 func (p *Peer) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
 	cc := p.GetChannelConfig(cid)

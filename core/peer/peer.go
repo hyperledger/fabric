@@ -454,17 +454,6 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block,
 	return nil
 }
 
-// GetPolicyManager returns the policy manager of the chain with chain ID. Note that this
-// call returns nil if chain cid has not been created.
-func GetPolicyManager(cid string) policies.Manager {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
-		return c.cs.PolicyManager()
-	}
-	return nil
-}
-
 // updates the trusted roots for the peer based on updates to channels
 func updateTrustedRoots(cm channelconfig.Resources) {
 	// this is triggered on per channel basis so first update the roots for the channel
