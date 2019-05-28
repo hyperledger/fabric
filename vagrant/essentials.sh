@@ -4,6 +4,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+export DEBIAN_FRONTEND=noninteractive
+
 # ----------------------------------------------------------------
 # Update the entire system to the latest versions
 # ----------------------------------------------------------------

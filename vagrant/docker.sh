@@ -4,7 +4,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-COMPOSE_VERSION=1.23.2
+COMPOSE_VERSION=1.24.0
+
+export DEBIAN_FRONTEND=noninteractive
 
 # ----------------------------------------------------------------
 # Configure apt repository
