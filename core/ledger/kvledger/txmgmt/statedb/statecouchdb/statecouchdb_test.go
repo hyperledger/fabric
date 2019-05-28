@@ -26,14 +26,14 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// Switch to CouchDB
+	flogging.ActivateSpec("statecouchdb=debug")
+
 	address, cleanup := couchDBSetup()
 	couchAddress = address
-	defer cleanup()
 
-	flogging.ActivateSpec("statecouchdb=debug")
-	//run the actual test
-	os.Exit(m.Run())
+	rc := m.Run()
+	cleanup()
+	os.Exit(rc)
 }
 
 func couchDBSetup() (addr string, cleanup func()) {
