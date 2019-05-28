@@ -7,9 +7,12 @@
 package peer
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
@@ -51,29 +54,11 @@ type Operations interface {
 	)
 }
 
-type Peer struct {
-	initChain  func(cid string)
-	initialize func(
-		init func(string),
-		sccp sysccprovider.SystemChaincodeProvider,
-		mapper plugin.Mapper,
-		pr *platforms.Registry,
-		deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-		membershipProvider ledger.MembershipInfoProvider,
-		metricsProvider metrics.Provider,
-		lr plugindispatcher.LifecycleResources,
-		nr plugindispatcher.CollectionAndLifecycleResources,
-		ledgerConfig *ledger.Config,
-		nWorkers int,
-	)
-}
+type Peer struct{}
 
 // Default provides in implementation of the Peer interface that provides
 // access to the package level state.
-var Default Operations = &Peer{
-	initChain:  InitChain,
-	initialize: Initialize,
-}
+var Default Operations = &Peer{}
 
 func CreateChainFromBlock(
 	cb *common.Block,
@@ -215,7 +200,15 @@ func (p *Peer) GetPolicyManager(cid string) policies.Manager {
 	return nil
 }
 
-func (p *Peer) InitChain(cid string) { p.initChain(cid) }
+// InitChain takes care to initialize chain after peer joined, for example deploys system CCs
+func InitChain(cid string) { Default.InitChain(cid) }
+func (p *Peer) InitChain(cid string) {
+	if chainInitializer != nil {
+		// Initialize chaincode, namely deploy system CC
+		peerLogger.Debugf("Initializing channel %s", cid)
+		chainInitializer(cid)
+	}
+}
 
 func (p *Peer) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
 	cc := p.GetChannelConfig(cid)
@@ -226,7 +219,7 @@ func (p *Peer) GetApplicationConfig(cid string) (channelconfig.Application, bool
 	return cc.ApplicationConfig()
 }
 
-func (p *Peer) Initialize(
+func Initialize(
 	init func(string),
 	sccp sysccprovider.SystemChaincodeProvider,
 	mapper plugin.Mapper,
@@ -239,7 +232,7 @@ func (p *Peer) Initialize(
 	ledgerConfig *ledger.Config,
 	nWorkers int,
 ) {
-	p.initialize(
+	Default.Initialize(
 		init,
 		sccp,
 		mapper,
@@ -252,4 +245,62 @@ func (p *Peer) Initialize(
 		ledgerConfig,
 		nWorkers,
 	)
+}
+
+// Initialize sets up any chains that the peer has from the persistence. This
+// function should be called at the start up when the ledger and gossip
+// ready
+func (p *Peer) Initialize(
+	init func(string),
+	sccp sysccprovider.SystemChaincodeProvider,
+	pm plugin.Mapper,
+	pr *platforms.Registry,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	membershipProvider ledger.MembershipInfoProvider,
+	metricsProvider metrics.Provider,
+	legacyLifecycleValidation plugindispatcher.LifecycleResources,
+	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
+	ledgerConfig *ledger.Config,
+	nWorkers int,
+) {
+	validationWorkersSemaphore = semaphore.New(nWorkers)
+
+	pluginMapper = pm
+	chainInitializer = init
+
+	var cb *common.Block
+	var ledger ledger.PeerLedger
+	ledgermgmt.Initialize(&ledgermgmt.Initializer{
+		CustomTxProcessors:            ConfigTxProcessors,
+		PlatformRegistry:              pr,
+		DeployedChaincodeInfoProvider: deployedCCInfoProvider,
+		MembershipInfoProvider:        membershipProvider,
+		MetricsProvider:               metricsProvider,
+		Config:                        ledgerConfig,
+	})
+	ledgerIds, err := ledgermgmt.GetLedgerIDs()
+	if err != nil {
+		panic(fmt.Errorf("Error in initializing ledgermgmt: %s", err))
+	}
+	for _, cid := range ledgerIds {
+		peerLogger.Infof("Loading chain %s", cid)
+		if ledger, err = ledgermgmt.OpenLedger(cid); err != nil {
+			peerLogger.Errorf("Failed to load ledger %s(%s)", cid, err)
+			peerLogger.Debugf("Error while loading ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
+			continue
+		}
+		if cb, err = getCurrConfigBlockFromLedger(ledger); err != nil {
+			peerLogger.Errorf("Failed to find config block on ledger %s(%s)", cid, err)
+			peerLogger.Debugf("Error while looking for config block on ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
+			continue
+		}
+		// Create a chain if we get a valid ledger with config block
+		if err = createChain(cid, ledger, cb, sccp, pm, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation); err != nil {
+			peerLogger.Errorf("Failed to load chain %s(%s)", cid, err)
+			peerLogger.Debugf("Error reloading chain %s with message %s. We continue to the next chain rather than abort.", cid, err)
+			continue
+		}
+
+		InitChain(cid)
+	}
 }

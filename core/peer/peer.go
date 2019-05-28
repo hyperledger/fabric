@@ -19,10 +19,8 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	fileledger "github.com/hyperledger/fabric/common/ledger/blockledger/file"
-	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/semaphore"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -34,7 +32,6 @@ import (
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
@@ -212,73 +209,6 @@ func MockSetMSPIDGetter(mspIDGetter func(string) []string) {
 // validationWorkersSemaphore is the semaphore used to ensure that
 // there are not too many concurrent tx validation goroutines
 var validationWorkersSemaphore semaphore.Semaphore
-
-// Initialize sets up any chains that the peer has from the persistence. This
-// function should be called at the start up when the ledger and gossip
-// ready
-func Initialize(
-	init func(string),
-	sccp sysccprovider.SystemChaincodeProvider,
-	pm plugin.Mapper,
-	pr *platforms.Registry,
-	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-	membershipProvider ledger.MembershipInfoProvider,
-	metricsProvider metrics.Provider,
-	legacyLifecycleValidation plugindispatcher.LifecycleResources,
-	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
-	ledgerConfig *ledger.Config,
-	nWorkers int,
-) {
-	validationWorkersSemaphore = semaphore.New(nWorkers)
-
-	pluginMapper = pm
-	chainInitializer = init
-
-	var cb *common.Block
-	var ledger ledger.PeerLedger
-	ledgermgmt.Initialize(&ledgermgmt.Initializer{
-		CustomTxProcessors:            ConfigTxProcessors,
-		PlatformRegistry:              pr,
-		DeployedChaincodeInfoProvider: deployedCCInfoProvider,
-		MembershipInfoProvider:        membershipProvider,
-		MetricsProvider:               metricsProvider,
-		Config:                        ledgerConfig,
-	})
-	ledgerIds, err := ledgermgmt.GetLedgerIDs()
-	if err != nil {
-		panic(fmt.Errorf("Error in initializing ledgermgmt: %s", err))
-	}
-	for _, cid := range ledgerIds {
-		peerLogger.Infof("Loading chain %s", cid)
-		if ledger, err = ledgermgmt.OpenLedger(cid); err != nil {
-			peerLogger.Errorf("Failed to load ledger %s(%s)", cid, err)
-			peerLogger.Debugf("Error while loading ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
-			continue
-		}
-		if cb, err = getCurrConfigBlockFromLedger(ledger); err != nil {
-			peerLogger.Errorf("Failed to find config block on ledger %s(%s)", cid, err)
-			peerLogger.Debugf("Error while looking for config block on ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
-			continue
-		}
-		// Create a chain if we get a valid ledger with config block
-		if err = createChain(cid, ledger, cb, sccp, pm, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation); err != nil {
-			peerLogger.Errorf("Failed to load chain %s(%s)", cid, err)
-			peerLogger.Debugf("Error reloading chain %s with message %s. We continue to the next chain rather than abort.", cid, err)
-			continue
-		}
-
-		InitChain(cid)
-	}
-}
-
-// InitChain takes care to initialize chain after peer joined, for example deploys system CCs
-func InitChain(cid string) {
-	if chainInitializer != nil {
-		// Initialize chaincode, namely deploy system CC
-		peerLogger.Debugf("Initializing channel %s", cid)
-		chainInitializer(cid)
-	}
-}
 
 func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
 	peerLogger.Debugf("Getting config block")
