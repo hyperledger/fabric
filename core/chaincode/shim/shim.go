@@ -78,10 +78,6 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 
 // chaincodes.
 func Start(cc Chaincode) error {
-	// If Start() is called, we assume this is a standalone chaincode and set
-	// up formatted logging.
-	SetupChaincodeLogging()
-
 	chaincodename := os.Getenv("CORE_CHAINCODE_ID_NAME")
 	if chaincodename == "" {
 		return errors.New("'CORE_CHAINCODE_ID_NAME' must be set")
