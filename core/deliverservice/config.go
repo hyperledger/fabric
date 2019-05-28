@@ -15,6 +15,7 @@ import (
 const (
 	DefaultReConnectBackoffThreshold   = float64(time.Hour)
 	DefaultReConnectTotalTimeThreshold = time.Second * 60 * 60
+	DefaultConnectionTimeout           = time.Second * 3
 )
 
 // DeliverServiceConfig is the struct that defines the deliverservice configuration.
@@ -26,6 +27,8 @@ type DeliverServiceConfig struct {
 	// ReconnectTotalTimeThreshold sets the total time the delivery service may spend in reconnection attempts
 	// until its retry logic gives up and returns an error.
 	ReconnectTotalTimeThreshold time.Duration
+	// ConnectionTimeout sets the delivery service <-> ordering service node connection timeout
+	ConnectionTimeout time.Duration
 }
 
 // GlobalConfig obtains a set of configuration from viper, build and returns the config struct.
@@ -46,5 +49,10 @@ func (c *DeliverServiceConfig) loadDeliverServiceConfig() {
 	c.ReconnectTotalTimeThreshold = viper.GetDuration("peer.deliveryclient.reconnectTotalTimeThreshold")
 	if c.ReconnectTotalTimeThreshold == 0 {
 		c.ReconnectTotalTimeThreshold = DefaultReConnectTotalTimeThreshold
+	}
+
+	c.ConnectionTimeout = viper.GetDuration("peer.deliveryclient.connTimeout")
+	if c.ConnectionTimeout == 0 {
+		c.ConnectionTimeout = DefaultConnectionTimeout
 	}
 }

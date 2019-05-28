@@ -20,7 +20,7 @@ import (
 var logger = flogging.MustGetLogger("ConnProducer")
 
 // ConnectionFactory creates a connection to a certain endpoint
-type ConnectionFactory func(endpoint string) (*grpc.ClientConn, error)
+type ConnectionFactory func(endpoint string, connectionTimeout time.Duration) (*grpc.ClientConn, error)
 
 // EndpointCriteria defines an endpoint, and a list of trusted
 // organizations it corresponds to.
@@ -77,11 +77,18 @@ type connProducer struct {
 	nextEndpointIndex     int
 	deliverClientDialOpts []grpc.DialOption
 	peerTLSEnabled        bool
+	connectionTimeout     time.Duration
 }
 
 // NewConnectionProducer creates a new ConnectionProducer with given endpoints and connection factory.
 // It returns nil, if the given endpoints slice is empty.
-func NewConnectionProducer(factory ConnectionFactory, endpoints []string, deliverClientDialOpts []grpc.DialOption, peerTLSEnabled bool) ConnectionProducer {
+func NewConnectionProducer(
+	factory ConnectionFactory,
+	endpoints []string,
+	deliverClientDialOpts []grpc.DialOption,
+	peerTLSEnabled bool,
+	connectionTimeout time.Duration,
+) ConnectionProducer {
 	if len(endpoints) == 0 {
 		return nil
 	}
@@ -90,6 +97,7 @@ func NewConnectionProducer(factory ConnectionFactory, endpoints []string, delive
 		connect:               factory,
 		deliverClientDialOpts: deliverClientDialOpts,
 		peerTLSEnabled:        peerTLSEnabled,
+		connectionTimeout:     connectionTimeout,
 	}
 }
 
@@ -104,7 +112,7 @@ func (cp *connProducer) NewConnection() (*grpc.ClientConn, string, error) {
 
 	for i := 0; i < len(cp.endpoints); i++ {
 		currentEndpoint := cp.endpoints[cp.nextEndpointIndex]
-		conn, err := cp.connect(currentEndpoint)
+		conn, err := cp.connect(currentEndpoint, cp.connectionTimeout)
 		cp.nextEndpointIndex = (cp.nextEndpointIndex + 1) % len(cp.endpoints)
 		if err != nil {
 			logger.Error("Failed connecting to", currentEndpoint, ", error:", err)

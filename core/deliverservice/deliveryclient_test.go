@@ -91,8 +91,8 @@ func TestNewDeliverService(t *testing.T) {
 		}
 	}
 
-	connFactory := func(_ string) func(string) (*grpc.ClientConn, error) {
-		return func(endpoint string) (*grpc.ClientConn, error) {
+	connFactory := func(_ string) func(string, time.Duration) (*grpc.ClientConn, error) {
+		return func(endpoint string, connectionTimeout time.Duration) (*grpc.ClientConn, error) {
 			lock.Lock()
 			defer lock.Unlock()
 			return newConnection(), nil
@@ -109,6 +109,7 @@ func TestNewDeliverService(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.NoError(t, err)
@@ -156,6 +157,7 @@ func TestDeliverServiceRestart(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.NoError(t, err)
@@ -208,6 +210,7 @@ func TestDeliverServiceFailover(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.NoError(t, err)
@@ -286,6 +289,7 @@ func TestDeliverServiceUpdateEndpoints(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	defer service.Stop()
@@ -341,6 +345,7 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.NoError(t, err)
@@ -477,6 +482,7 @@ func TestDeliverServiceAbruptStop(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.NoError(t, err)
@@ -506,6 +512,7 @@ func TestDeliverServiceShutdown(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.NoError(t, err)
@@ -556,6 +563,7 @@ func TestDeliverServiceShutdownRespawn(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: time.Second,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.NoError(t, err)
@@ -613,6 +621,7 @@ func TestDeliverServiceDisconnectReconnect(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: time.Second * 2,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.NoError(t, err)
@@ -662,6 +671,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.Error(t, err)
@@ -679,6 +689,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.Error(t, err)
@@ -696,6 +707,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.Error(t, err)
@@ -713,6 +725,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.Error(t, err)
@@ -729,6 +742,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		DeliverServiceConfig: &DeliverServiceConfig{
 			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			ConnectionTimeout:           DefaultConnectionTimeout,
 		},
 	})
 	assert.Error(t, err)
@@ -749,8 +763,8 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 }
 
 func TestRetryPolicyOverflow(t *testing.T) {
-	connFactory := func(channelID string) func(endpoint string) (*grpc.ClientConn, error) {
-		return func(_ string) (*grpc.ClientConn, error) {
+	connFactory := func(channelID string) func(endpoint string, connectionTimeout time.Duration) (*grpc.ClientConn, error) {
+		return func(_ string, connectionTimeout time.Duration) (*grpc.ClientConn, error) {
 			return nil, errors.New("")
 		}
 	}
@@ -758,9 +772,9 @@ func TestRetryPolicyOverflow(t *testing.T) {
 		conf: &Config{
 			ConnFactory: connFactory,
 			DeliverServiceConfig: &DeliverServiceConfig{
-				PeerTLSEnabled:              false,
 				ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
 				ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+				ConnectionTimeout:           DefaultConnectionTimeout,
 			},
 		},
 	}).newClient("TEST", &mocks.MockLedgerInfo{Height: uint64(100)})

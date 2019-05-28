@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/spf13/viper"
@@ -26,14 +25,6 @@ import (
 )
 
 var logger = flogging.MustGetLogger("deliveryClient")
-
-const (
-	defaultConnectionTimeout = time.Second * 3
-)
-
-func getConnectionTimeout() time.Duration {
-	return util.GetDurationOrDefault("peer.deliveryclient.connTimeout", defaultConnectionTimeout)
-}
 
 // DeliverService used to communicate with orderers to obtain
 // new blocks and send them to the committer service
@@ -70,7 +61,7 @@ type deliverServiceImpl struct {
 // and how it disseminates the messages to other peers
 type Config struct {
 	// ConnFactory returns a function that creates a connection to an endpoint.
-	ConnFactory func(channelID string) func(endpoint string) (*grpc.ClientConn, error)
+	ConnFactory func(channelID string) func(endpoint string, connectionTimeout time.Duration) (*grpc.ClientConn, error)
 	// ABCFactory creates an AtomicBroadcastClient out of a connection.
 	ABCFactory func(*grpc.ClientConn) orderer.AtomicBroadcastClient
 	// CryptoSvc performs cryptographic actions like message verification and signing
@@ -276,7 +267,13 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 		return time.Duration(math.Min(math.Pow(2, attempt)*sleepIncrement, reconnectBackoffThreshold)), true
 	}
 	connectionFactory := d.conf.ConnFactory(chainID)
-	connProd := comm.NewConnectionProducer(connectionFactory, d.conf.Endpoints, d.conf.DeliverClientDialOpts, d.conf.DeliverServiceConfig.PeerTLSEnabled)
+	connProd := comm.NewConnectionProducer(
+		connectionFactory,
+		d.conf.Endpoints,
+		d.conf.DeliverClientDialOpts,
+		d.conf.DeliverServiceConfig.PeerTLSEnabled,
+		d.conf.DeliverServiceConfig.ConnectionTimeout,
+	)
 	bClient := NewBroadcastClient(connProd, d.conf.ABCFactory, broadcastSetup, backoffPolicy)
 	requester.client = bClient
 	return bClient
@@ -300,8 +297,8 @@ type CredSupportDialerFactory struct {
 	TLSEnabled        bool
 }
 
-func (c *CredSupportDialerFactory) Dialer(channelID string) func(endpoint string) (*grpc.ClientConn, error) {
-	return func(endpoint string) (*grpc.ClientConn, error) {
+func (c *CredSupportDialerFactory) Dialer(channelID string) func(endpoint string, connectionTimeout time.Duration) (*grpc.ClientConn, error) {
+	return func(endpoint string, connectionTimeout time.Duration) (*grpc.ClientConn, error) {
 		dialOpts := []grpc.DialOption{
 			grpc.WithBlock(),
 			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)),
@@ -317,8 +314,7 @@ func (c *CredSupportDialerFactory) Dialer(channelID string) func(endpoint string
 		} else {
 			dialOpts = append(dialOpts, grpc.WithInsecure())
 		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), getConnectionTimeout())
+		ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
 		defer cancel()
 		return grpc.DialContext(ctx, endpoint, dialOpts...)
 	}
