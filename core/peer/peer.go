@@ -454,17 +454,6 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block,
 	return nil
 }
 
-// GetLedger returns the ledger of the chain with chain ID. Note that this
-// call returns nil if chain cid has not been created.
-func GetLedger(cid string) ledger.PeerLedger {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
-		return c.cs.ledger
-	}
-	return nil
-}
-
 // GetPolicyManager returns the policy manager of the chain with chain ID. Note that this
 // call returns nil if chain cid has not been created.
 func GetPolicyManager(cid string) policies.Manager {

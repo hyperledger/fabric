@@ -52,7 +52,6 @@ type Operations interface {
 }
 
 type Peer struct {
-	getLedger        func(cid string) ledger.PeerLedger
 	getMSPIDs        func(cid string) []string
 	getPolicyManager func(cid string) policies.Manager
 	initChain        func(cid string)
@@ -74,7 +73,6 @@ type Peer struct {
 // Default provides in implementation of the Peer interface that provides
 // access to the package level state.
 var Default Operations = &Peer{
-	getLedger:        GetLedger,
 	getMSPIDs:        GetMSPIDs,
 	getPolicyManager: GetPolicyManager,
 	initChain:        InitChain,
@@ -164,7 +162,18 @@ func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
 	return nil
 }
 
-func (p *Peer) GetLedger(cid string) ledger.PeerLedger       { return p.getLedger(cid) }
+// GetLedger returns the ledger of the chain with chain ID. Note that this
+// call returns nil if chain cid has not been created.
+func GetLedger(cid string) ledger.PeerLedger { return Default.GetLedger(cid) }
+func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
+	chains.RLock()
+	defer chains.RUnlock()
+	if c, ok := chains.list[cid]; ok {
+		return c.cs.ledger
+	}
+	return nil
+}
+
 func (p *Peer) GetMSPIDs(cid string) []string                { return p.getMSPIDs(cid) }
 func (p *Peer) GetPolicyManager(cid string) policies.Manager { return p.getPolicyManager(cid) }
 func (p *Peer) InitChain(cid string)                         { p.initChain(cid) }
