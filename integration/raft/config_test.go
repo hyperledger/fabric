@@ -252,7 +252,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			peer1org1 := network.Peer("Org1", "peer1")
 			peer1org2 := network.Peer("Org2", "peer1")
 
-			network.CreateChannelFail(channel, orderer, peer1org1, peer1org1, peer1org2, orderer)
+			exitCode := network.CreateChannelExitCode(channel, orderer, peer1org1, peer1org1, peer1org2, orderer)
+			Expect(exitCode).NotTo(Equal(0))
 			Consistently(process.Wait).ShouldNot(Receive()) // malformed tx should not crash orderer
 			Expect(runner.Err()).To(gbytes.Say(`rejected by Configure: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 
@@ -280,7 +281,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Value:     protoutil.MarshalOrPanic(consensusTypeValue),
 			}
 
-			nwo.UpdateOrdererConfigFail(network, orderer, channel, config, updatedConfig, peer1org1, orderer)
+			sess := nwo.UpdateOrdererConfigSession(network, orderer, channel, config, updatedConfig, peer1org1, orderer)
+			Expect(sess.ExitCode()).NotTo(Equal(0))
+			Expect(sess.Err).NotTo(gbytes.Say("Successfully submitted channel update"))
 		})
 	})
 
