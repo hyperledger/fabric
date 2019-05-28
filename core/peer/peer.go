@@ -37,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
+	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -431,18 +432,16 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block,
 	if err != nil {
 		return errors.Wrapf(err, "[channel %s] failed opening transient store", bundle.ConfigtxValidator().ChainID())
 	}
-	csStoreSupport := &CollectionSupport{
-		PeerLedger:             ledger,
-		DeployedCCInfoProvider: deployedCCInfoProvider,
-	}
-	simpleCollectionStore := privdata.NewSimpleCollectionStore(csStoreSupport)
 
+	simpleCollectionStore := privdata.NewSimpleCollectionStore(ledger, deployedCCInfoProvider)
 	service.GetGossipService().InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, service.Support{
-		Validator:            validator,
-		Committer:            c,
-		Store:                store,
-		Cs:                   simpleCollectionStore,
-		IdDeserializeFactory: csStoreSupport,
+		Validator: validator,
+		Committer: c,
+		Store:     store,
+		Cs:        simpleCollectionStore,
+		IdDeserializeFactory: gossipprivdata.IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
+			return mspmgmt.GetManagerForChain(chainID)
+		}),
 	})
 
 	chains.Lock()
@@ -738,32 +737,6 @@ func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (*comm.
 		return nil, err
 	}
 	return peerServer, nil
-}
-
-// TODO: Remove CollectionSupport and respective methonds on them.
-// CollectionSupport is created per chain and is passed to the simple
-// collection store and the gossip. As it is created per chain, there
-// is no need to pass the channelID for both GetQueryExecutorForLedger()
-// and GetIdentityDeserializer(). Note that the cid passed to
-// GetQueryExecutorForLedger is never used. Instead, we can directly
-// pass the ledger.PeerLedger and msp.IdentityDeserializer to the
-// simpleCollectionStore and pass only the msp.IdentityDeserializer to
-// the gossip in createChain() -- FAB-13037
-type CollectionSupport struct {
-	ledger.PeerLedger
-	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
-}
-
-func (cs *CollectionSupport) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
-	return cs.NewQueryExecutor()
-}
-
-func (*CollectionSupport) GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
-	return mspmgmt.GetManagerForChain(chainID)
-}
-
-func (cs *CollectionSupport) GetCollectionInfoProvider() ledger.DeployedChaincodeInfoProvider {
-	return cs.DeployedCCInfoProvider
 }
 
 //

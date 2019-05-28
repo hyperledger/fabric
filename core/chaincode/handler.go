@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -1295,12 +1294,10 @@ func (h *Handler) setChaincodeProposal(signedProp *pb.SignedProposal, prop *pb.P
 }
 
 func (h *Handler) getCollectionStore(channelID string) privdata.CollectionStore {
-	csStoreSupport := &peer.CollectionSupport{
-		PeerLedger:             h.LedgerGetter.GetLedger(channelID),
-		DeployedCCInfoProvider: h.DeployedCCInfoProvider,
-	}
-	return privdata.NewSimpleCollectionStore(csStoreSupport)
-
+	return privdata.NewSimpleCollectionStore(
+		h.LedgerGetter.GetLedger(channelID),
+		h.DeployedCCInfoProvider,
+	)
 }
 
 func (h *Handler) State() State { return h.state }

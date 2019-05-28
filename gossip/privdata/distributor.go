@@ -64,6 +64,14 @@ type IdentityDeserializerFactory interface {
 	GetIdentityDeserializer(chainID string) msp.IdentityDeserializer
 }
 
+// IdentityDeserializerFactoryFunc is a function adapter for
+// IdentityDeserializerFactory.
+type IdentityDeserializerFactoryFunc func(chainID string) msp.IdentityDeserializer
+
+func (i IdentityDeserializerFactoryFunc) GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
+	return i(chainID)
+}
+
 // distributorImpl the implementation of the private data distributor interface
 type distributorImpl struct {
 	chainID string
