@@ -23,21 +23,13 @@ import (
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
-	vir "github.com/hyperledger/fabric/core/committer/txvalidator/v20/valinforetriever"
-	"github.com/hyperledger/fabric/core/common/privdata"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/transientstore"
-	"github.com/hyperledger/fabric/gossip/api"
-	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
-	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/token/tms/manager"
@@ -237,151 +229,6 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 
 	peerLogger.Debugf("Got config block[%d]", configBlockIndex)
 	return configBlock, nil
-}
-
-// createChain creates a new chain object and insert it into the chains
-func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block,
-	sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper,
-	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-	legacyLifecycleValidation plugindispatcher.LifecycleResources,
-	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
-) error {
-	chanConf, err := retrievePersistedChannelConfig(ledger)
-	if err != nil {
-		return err
-	}
-
-	var bundle *channelconfig.Bundle
-
-	if chanConf != nil {
-		bundle, err = channelconfig.NewBundle(cid, chanConf)
-		if err != nil {
-			return err
-		}
-	} else {
-		// Config was only stored in the statedb starting with v1.1 binaries
-		// so if the config is not found there, extract it manually from the config block
-		envelopeConfig, err := protoutil.ExtractEnvelope(cb, 0)
-		if err != nil {
-			return err
-		}
-
-		bundle, err = channelconfig.NewBundleFromEnvelope(envelopeConfig)
-		if err != nil {
-			return err
-		}
-	}
-
-	capabilitiesSupportedOrPanic(bundle)
-
-	channelconfig.LogSanityChecks(bundle)
-
-	gossipEventer := service.GetGossipService().NewConfigEventer()
-
-	gossipCallbackWrapper := func(bundle *channelconfig.Bundle) {
-		ac, ok := bundle.ApplicationConfig()
-		if !ok {
-			// TODO, handle a missing ApplicationConfig more gracefully
-			ac = nil
-		}
-		gossipEventer.ProcessConfigUpdate(&gossipSupport{
-			Validator:   bundle.ConfigtxValidator(),
-			Application: ac,
-			Channel:     bundle.ChannelConfig(),
-		})
-		service.GetGossipService().SuspectPeers(func(identity api.PeerIdentityType) bool {
-			// TODO: this is a place-holder that would somehow make the MSP layer suspect
-			// that a given certificate is revoked, or its intermediate CA is revoked.
-			// In the meantime, before we have such an ability, we return true in order
-			// to suspect ALL identities in order to validate all of them.
-			return true
-		})
-	}
-
-	trustedRootsCallbackWrapper := func(bundle *channelconfig.Bundle) {
-		updateTrustedRoots(bundle)
-	}
-
-	mspCallback := func(bundle *channelconfig.Bundle) {
-		// TODO remove once all references to mspmgmt are gone from peer code
-		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
-	}
-
-	ac, ok := bundle.ApplicationConfig()
-	if !ok {
-		ac = nil
-	}
-
-	cs := &chainSupport{
-		Application: ac, // TODO, refactor as this is accessible through Manager
-		ledger:      ledger,
-	}
-
-	peerSingletonCallback := func(bundle *channelconfig.Bundle) {
-		ac, ok := bundle.ApplicationConfig()
-		if !ok {
-			ac = nil
-		}
-		cs.Application = ac
-		cs.Resources = bundle
-	}
-
-	cs.bundleSource = channelconfig.NewBundleSource(
-		bundle,
-		gossipCallbackWrapper,
-		trustedRootsCallbackWrapper,
-		mspCallback,
-		peerSingletonCallback,
-	)
-
-	vInfoShim := &vir.ValidationInfoRetrieveShim{
-		New:    newLifecycleValidation,
-		Legacy: legacyLifecycleValidation,
-	}
-	validator := txvalidator.NewTxValidator(cid, validationWorkersSemaphore, cs, vInfoShim, &CollectionInfoShim{
-		CollectionAndLifecycleResources: newLifecycleValidation,
-		ChannelID:                       bundle.ConfigtxValidator().ChainID(),
-	}, sccp, pm, NewChannelPolicyManagerGetter())
-
-	c := committer.NewLedgerCommitterReactive(ledger, func(block *common.Block) error {
-		chainID, err := protoutil.GetChainIDFromBlock(block)
-		if err != nil {
-			return err
-		}
-		return SetCurrConfigBlock(block, chainID)
-	})
-
-	ordererAddresses := bundle.ChannelConfig().OrdererAddresses()
-	if len(ordererAddresses) == 0 {
-		return errors.New("no ordering service endpoint provided in configuration block")
-	}
-
-	// TODO: does someone need to call Close() on the transientStoreFactory at shutdown of the peer?
-	store, err := TransientStoreFactory.OpenStore(bundle.ConfigtxValidator().ChainID())
-	if err != nil {
-		return errors.Wrapf(err, "[channel %s] failed opening transient store", bundle.ConfigtxValidator().ChainID())
-	}
-
-	simpleCollectionStore := privdata.NewSimpleCollectionStore(ledger, deployedCCInfoProvider)
-	service.GetGossipService().InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, service.Support{
-		Validator: validator,
-		Committer: c,
-		Store:     store,
-		Cs:        simpleCollectionStore,
-		IdDeserializeFactory: gossipprivdata.IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-			return mspmgmt.GetManagerForChain(chainID)
-		}),
-	})
-
-	chains.Lock()
-	defer chains.Unlock()
-	chains.list[cid] = &chain{
-		cs:        cs,
-		cb:        cb,
-		committer: c,
-	}
-
-	return nil
 }
 
 // updates the trusted roots for the peer based on updates to channels
