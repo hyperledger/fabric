@@ -52,12 +52,11 @@ type Operations interface {
 }
 
 type Peer struct {
-	getCurrConfigBlock func(cid string) *common.Block
-	getLedger          func(cid string) ledger.PeerLedger
-	getMSPIDs          func(cid string) []string
-	getPolicyManager   func(cid string) policies.Manager
-	initChain          func(cid string)
-	initialize         func(
+	getLedger        func(cid string) ledger.PeerLedger
+	getMSPIDs        func(cid string) []string
+	getPolicyManager func(cid string) policies.Manager
+	initChain        func(cid string)
+	initialize       func(
 		init func(string),
 		sccp sysccprovider.SystemChaincodeProvider,
 		mapper plugin.Mapper,
@@ -75,12 +74,11 @@ type Peer struct {
 // Default provides in implementation of the Peer interface that provides
 // access to the package level state.
 var Default Operations = &Peer{
-	getCurrConfigBlock: GetCurrConfigBlock,
-	getLedger:          GetLedger,
-	getMSPIDs:          GetMSPIDs,
-	getPolicyManager:   GetPolicyManager,
-	initChain:          InitChain,
-	initialize:         Initialize,
+	getLedger:        GetLedger,
+	getMSPIDs:        GetMSPIDs,
+	getPolicyManager: GetPolicyManager,
+	initChain:        InitChain,
+	initialize:       Initialize,
 }
 
 func CreateChainFromBlock(
@@ -154,7 +152,18 @@ func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
 	return nil
 }
 
-func (p *Peer) GetCurrConfigBlock(cid string) *common.Block  { return p.getCurrConfigBlock(cid) }
+// GetCurrConfigBlock returns the cached config block of the specified chain.
+// Note that this call returns nil if chain cid has not been created.
+func GetCurrConfigBlock(cid string) *common.Block { return Default.GetCurrConfigBlock(cid) }
+func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
+	chains.RLock()
+	defer chains.RUnlock()
+	if c, ok := chains.list[cid]; ok {
+		return c.cb
+	}
+	return nil
+}
+
 func (p *Peer) GetLedger(cid string) ledger.PeerLedger       { return p.getLedger(cid) }
 func (p *Peer) GetMSPIDs(cid string) []string                { return p.getMSPIDs(cid) }
 func (p *Peer) GetPolicyManager(cid string) policies.Manager { return p.getPolicyManager(cid) }

@@ -476,17 +476,6 @@ func GetPolicyManager(cid string) policies.Manager {
 	return nil
 }
 
-// GetCurrConfigBlock returns the cached config block of the specified chain.
-// Note that this call returns nil if chain cid has not been created.
-func GetCurrConfigBlock(cid string) *common.Block {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
-		return c.cb
-	}
-	return nil
-}
-
 // updates the trusted roots for the peer based on updates to channels
 func updateTrustedRoots(cm channelconfig.Resources) {
 	// this is triggered on per channel basis so first update the roots for the channel
