@@ -145,6 +145,11 @@ type Config struct {
 	CreateGlobalChangesDB bool
 	// RedoLogPath is the directory where the CouchDB redo log files are stored.
 	RedoLogPath string
+	// UserCacheSizeMBs denotes the user specified maximum mega bytes (MB) to be allocated
+	// for the user state cache (i.e., all chaincodes deployed by the user). Note that
+	// UserCacheSizeMBs needs to be a multiple of 32 MB. If it is not a multiple of 32 MB,
+	// the peer would round the size to the next multiple of 32 MB.
+	UserCacheSizeMBs int
 }
 
 //CouchInstance represents a CouchDB instance

@@ -212,11 +212,13 @@ func (p *Provider) initStateDBProvider() error {
 		StateDBConfig: p.initializer.Config.StateDBConfig,
 		LevelDBPath:   StateDBPath(p.initializer.Config.RootFSPath),
 	}
+	sysNamespaces := p.initializer.DeployedChaincodeInfoProvider.Namespaces()
 	p.vdbProvider, err = privacyenabledstate.NewCommonStorageDBProvider(
 		p.bookkeepingProvider,
 		p.initializer.MetricsProvider,
 		p.initializer.HealthCheckRegistry,
 		stateDB,
+		sysNamespaces,
 	)
 	return err
 }
