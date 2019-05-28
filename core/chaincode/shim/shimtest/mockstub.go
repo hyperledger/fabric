@@ -4,19 +4,30 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-// Package shim provides APIs for the chaincode to access its state
-// variables, transaction context and call other chaincodes.
-package shim
+// Package shimtest provides a mock of the ChaincodeStubInterface for
+// unit testing chaincode.
+//
+// Deprecated: ShimTest will be  removed in a future release.
+// Future development should make use of the ChaincodeStub Interface
+// for generating mocks
+package shimtest
 
 import (
 	"container/list"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
+)
+
+const (
+	minUnicodeRuneValue   = 0 //U+0000
+	compositeKeyNamespace = "\x00"
 )
 
 // MockStub is an implementation of ChaincodeStubInterface for unit testing chaincode.
@@ -27,7 +38,7 @@ type MockStub struct {
 
 	// A pointer back to the chaincode that will invoke this, set by constructor.
 	// If a peer calls this stub, the chaincode will be invoked from here.
-	cc Chaincode
+	cc shim.Chaincode
 
 	// A nice name that can be used for logging
 	Name string
@@ -187,15 +198,15 @@ func (stub *MockStub) DelPrivateData(collection string, key string) error {
 	return errors.New("Not Implemented")
 }
 
-func (stub *MockStub) GetPrivateDataByRange(collection, startKey, endKey string) (StateQueryIteratorInterface, error) {
+func (stub *MockStub) GetPrivateDataByRange(collection, startKey, endKey string) (shim.StateQueryIteratorInterface, error) {
 	return nil, errors.New("Not Implemented")
 }
 
-func (stub *MockStub) GetPrivateDataByPartialCompositeKey(collection, objectType string, attributes []string) (StateQueryIteratorInterface, error) {
+func (stub *MockStub) GetPrivateDataByPartialCompositeKey(collection, objectType string, attributes []string) (shim.StateQueryIteratorInterface, error) {
 	return nil, errors.New("Not Implemented")
 }
 
-func (stub *MockStub) GetPrivateDataQueryResult(collection, query string) (StateQueryIteratorInterface, error) {
+func (stub *MockStub) GetPrivateDataQueryResult(collection, query string) (shim.StateQueryIteratorInterface, error) {
 	// Not implemented since the mock engine does not have a query engine.
 	// However, a very simple query engine that supports string matching
 	// could be implemented to test that the framework supports queries
@@ -262,11 +273,24 @@ func (stub *MockStub) DelState(key string) error {
 	return nil
 }
 
-func (stub *MockStub) GetStateByRange(startKey, endKey string) (StateQueryIteratorInterface, error) {
+func (stub *MockStub) GetStateByRange(startKey, endKey string) (shim.StateQueryIteratorInterface, error) {
 	if err := validateSimpleKeys(startKey, endKey); err != nil {
 		return nil, err
 	}
 	return NewMockStateRangeQueryIterator(stub, startKey, endKey), nil
+}
+
+//To ensure that simple keys do not go into composite key namespace,
+//we validate simplekey to check whether the key starts with 0x00 (which
+//is the namespace for compositeKey). This helps in avoding simple/composite
+//key collisions.
+func validateSimpleKeys(simpleKeys ...string) error {
+	for _, key := range simpleKeys {
+		if len(key) > 0 && key[0] == compositeKeyNamespace[0] {
+			return errors.Errorf(`first character of the key [%s] contains a null character which is not allowed`, key)
+		}
+	}
+	return nil
 }
 
 // GetQueryResult function can be invoked by a chaincode to perform a
@@ -274,7 +298,7 @@ func (stub *MockStub) GetStateByRange(startKey, endKey string) (StateQueryIterat
 // that support rich query.  The query string is in the syntax of the underlying
 // state database. An iterator is returned which can be used to iterate (next) over
 // the query result set
-func (stub *MockStub) GetQueryResult(query string) (StateQueryIteratorInterface, error) {
+func (stub *MockStub) GetQueryResult(query string) (shim.StateQueryIteratorInterface, error) {
 	// Not implemented since the mock engine does not have a query engine.
 	// However, a very simple query engine that supports string matching
 	// could be implemented to test that the framework supports queries
@@ -283,7 +307,7 @@ func (stub *MockStub) GetQueryResult(query string) (StateQueryIteratorInterface,
 
 // GetHistoryForKey function can be invoked by a chaincode to return a history of
 // key values across time. GetHistoryForKey is intended to be used for read-only queries.
-func (stub *MockStub) GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error) {
+func (stub *MockStub) GetHistoryForKey(key string) (shim.HistoryQueryIteratorInterface, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -293,18 +317,18 @@ func (stub *MockStub) GetHistoryForKey(key string) (HistoryQueryIteratorInterfac
 //matches the given partial composite key. This function should be used only for
 //a partial composite key. For a full composite key, an iter with empty response
 //would be returned.
-func (stub *MockStub) GetStateByPartialCompositeKey(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
+func (stub *MockStub) GetStateByPartialCompositeKey(objectType string, attributes []string) (shim.StateQueryIteratorInterface, error) {
 	partialCompositeKey, err := stub.CreateCompositeKey(objectType, attributes)
 	if err != nil {
 		return nil, err
 	}
-	return NewMockStateRangeQueryIterator(stub, partialCompositeKey, partialCompositeKey+string(maxUnicodeRuneValue)), nil
+	return NewMockStateRangeQueryIterator(stub, partialCompositeKey, partialCompositeKey+string(utf8.MaxRune)), nil
 }
 
 // CreateCompositeKey combines the list of attributes
 //to form a composite key.
 func (stub *MockStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
-	return createCompositeKey(objectType, attributes)
+	return shim.CreateCompositeKey(objectType, attributes)
 }
 
 // SplitCompositeKey splits the composite key into attributes
@@ -313,18 +337,30 @@ func (stub *MockStub) SplitCompositeKey(compositeKey string) (string, []string, 
 	return splitCompositeKey(compositeKey)
 }
 
+func splitCompositeKey(compositeKey string) (string, []string, error) {
+	componentIndex := 1
+	components := []string{}
+	for i := 1; i < len(compositeKey); i++ {
+		if compositeKey[i] == minUnicodeRuneValue {
+			components = append(components, compositeKey[componentIndex:i])
+			componentIndex = i + 1
+		}
+	}
+	return components[0], components[1:], nil
+}
+
 func (stub *MockStub) GetStateByRangeWithPagination(startKey, endKey string, pageSize int32,
-	bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	bookmark string) (shim.StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
 	return nil, nil, nil
 }
 
 func (stub *MockStub) GetStateByPartialCompositeKeyWithPagination(objectType string, keys []string,
-	pageSize int32, bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	pageSize int32, bookmark string) (shim.StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
 	return nil, nil, nil
 }
 
 func (stub *MockStub) GetQueryResultWithPagination(query string, pageSize int32,
-	bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	bookmark string) (shim.StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
 	return nil, nil, nil
 }
 
@@ -418,7 +454,7 @@ func (stub *MockStub) GetPrivateDataValidationParameter(collection, key string) 
 }
 
 // Constructor to initialise the internal State map
-func NewMockStub(name string, cc Chaincode) *MockStub {
+func NewMockStub(name string, cc shim.Chaincode) *MockStub {
 	s := new(MockStub)
 	s.Name = name
 	s.cc = cc
