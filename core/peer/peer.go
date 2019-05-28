@@ -571,38 +571,6 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 	}
 }
 
-// GetMSPIDs returns the ID of each application MSP defined on this chain
-func GetMSPIDs(cid string) []string {
-	chains.RLock()
-	defer chains.RUnlock()
-
-	//if mock is set, use it to return MSPIDs
-	//used for tests without a proper join
-	if mockMSPIDGetter != nil {
-		return mockMSPIDGetter(cid)
-	}
-	if c, ok := chains.list[cid]; ok {
-		if c == nil || c.cs == nil {
-			return nil
-		}
-		ac, ok := c.cs.ApplicationConfig()
-		if !ok || ac.Organizations() == nil {
-			return nil
-		}
-
-		orgs := ac.Organizations()
-		toret := make([]string, len(orgs))
-		i := 0
-		for _, org := range orgs {
-			toret[i] = org.MSPID()
-			i++
-		}
-
-		return toret
-	}
-	return nil
-}
-
 // SetCurrConfigBlock sets the current config block of the specified channel
 func SetCurrConfigBlock(block *common.Block, cid string) error {
 	chains.Lock()

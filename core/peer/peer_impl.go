@@ -52,7 +52,6 @@ type Operations interface {
 }
 
 type Peer struct {
-	getMSPIDs        func(cid string) []string
 	getPolicyManager func(cid string) policies.Manager
 	initChain        func(cid string)
 	initialize       func(
@@ -73,7 +72,6 @@ type Peer struct {
 // Default provides in implementation of the Peer interface that provides
 // access to the package level state.
 var Default Operations = &Peer{
-	getMSPIDs:        GetMSPIDs,
 	getPolicyManager: GetPolicyManager,
 	initChain:        InitChain,
 	initialize:       Initialize,
@@ -174,7 +172,39 @@ func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
 	return nil
 }
 
-func (p *Peer) GetMSPIDs(cid string) []string                { return p.getMSPIDs(cid) }
+// GetMSPIDs returns the ID of each application MSP defined on this chain
+func GetMSPIDs(cid string) []string { return Default.GetMSPIDs(cid) }
+func (p *Peer) GetMSPIDs(cid string) []string {
+	chains.RLock()
+	defer chains.RUnlock()
+
+	// if mock is set, use it to return MSPIDs
+	// used for tests without a proper join
+	if mockMSPIDGetter != nil {
+		return mockMSPIDGetter(cid)
+	}
+	if c, ok := chains.list[cid]; ok {
+		if c == nil || c.cs == nil {
+			return nil
+		}
+		ac, ok := c.cs.ApplicationConfig()
+		if !ok || ac.Organizations() == nil {
+			return nil
+		}
+
+		orgs := ac.Organizations()
+		toret := make([]string, len(orgs))
+		i := 0
+		for _, org := range orgs {
+			toret[i] = org.MSPID()
+			i++
+		}
+
+		return toret
+	}
+	return nil
+}
+
 func (p *Peer) GetPolicyManager(cid string) policies.Manager { return p.getPolicyManager(cid) }
 func (p *Peer) InitChain(cid string)                         { p.initChain(cid) }
 
