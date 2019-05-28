@@ -455,27 +455,6 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block,
 	return nil
 }
 
-// CreateChainFromBlock creates a new chain from config block
-func CreateChainFromBlock(
-	cb *common.Block,
-	sccp sysccprovider.SystemChaincodeProvider,
-	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-	legacyLifecycleValidation plugindispatcher.LifecycleResources,
-	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
-) error {
-	cid, err := protoutil.GetChainIDFromBlock(cb)
-	if err != nil {
-		return err
-	}
-
-	var l ledger.PeerLedger
-	if l, err = ledgermgmt.CreateLedger(cb); err != nil {
-		return errors.WithMessage(err, "cannot create ledger from genesis block")
-	}
-
-	return createChain(cid, l, cb, sccp, pluginMapper, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
-}
-
 // GetLedger returns the ledger of the chain with chain ID. Note that this
 // call returns nil if chain cid has not been created.
 func GetLedger(cid string) ledger.PeerLedger {

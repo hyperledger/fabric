@@ -15,8 +15,11 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 )
 
 // Operations exposes an interface to the package level functions that operated
@@ -49,7 +52,6 @@ type Operations interface {
 }
 
 type Peer struct {
-	createChainFromBlock   func(cb *common.Block, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources, nr plugindispatcher.CollectionAndLifecycleResources) error
 	getChannelConfig       func(cid string) channelconfig.Resources
 	getChannelsInfo        func() []*pb.ChannelInfo
 	getStableChannelConfig func(cid string) channelconfig.Resources
@@ -76,7 +78,6 @@ type Peer struct {
 // Default provides in implementation of the Peer interface that provides
 // access to the package level state.
 var Default Operations = &Peer{
-	createChainFromBlock:   CreateChainFromBlock,
 	getChannelConfig:       GetChannelConfig,
 	getChannelsInfo:        GetChannelsInfo,
 	getStableChannelConfig: GetStableChannelConfig,
@@ -88,14 +89,34 @@ var Default Operations = &Peer{
 	initialize:             Initialize,
 }
 
+func CreateChainFromBlock(
+	cb *common.Block,
+	sccp sysccprovider.SystemChaincodeProvider,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	legacyLifecycleValidation plugindispatcher.LifecycleResources,
+	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
+) error {
+	return Default.CreateChainFromBlock(cb, sccp, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
+}
+
 func (p *Peer) CreateChainFromBlock(
 	cb *common.Block,
 	sccp sysccprovider.SystemChaincodeProvider,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-	lr plugindispatcher.LifecycleResources,
-	nr plugindispatcher.CollectionAndLifecycleResources,
+	legacyLifecycleValidation plugindispatcher.LifecycleResources,
+	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
 ) error {
-	return p.createChainFromBlock(cb, sccp, deployedCCInfoProvider, lr, nr)
+	cid, err := protoutil.GetChainIDFromBlock(cb)
+	if err != nil {
+		return err
+	}
+
+	l, err := ledgermgmt.CreateLedger(cb)
+	if err != nil {
+		return errors.WithMessage(err, "cannot create ledger from genesis block")
+	}
+
+	return createChain(cid, l, cb, sccp, pluginMapper, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
 }
 
 func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
