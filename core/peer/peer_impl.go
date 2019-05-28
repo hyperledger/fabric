@@ -52,7 +52,6 @@ type Operations interface {
 }
 
 type Peer struct {
-	getChannelConfig       func(cid string) channelconfig.Resources
 	getChannelsInfo        func() []*pb.ChannelInfo
 	getStableChannelConfig func(cid string) channelconfig.Resources
 	getCurrConfigBlock     func(cid string) *common.Block
@@ -78,7 +77,6 @@ type Peer struct {
 // Default provides in implementation of the Peer interface that provides
 // access to the package level state.
 var Default Operations = &Peer{
-	getChannelConfig:       GetChannelConfig,
 	getChannelsInfo:        GetChannelsInfo,
 	getStableChannelConfig: GetStableChannelConfig,
 	getCurrConfigBlock:     GetCurrConfigBlock,
@@ -119,8 +117,19 @@ func (p *Peer) CreateChainFromBlock(
 	return createChain(cid, l, cb, sccp, pluginMapper, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
 }
 
+// GetChannelConfig returns the channel configuration of the chain with channel ID. Note that this
+// call returns nil if chain cid has not been created.
+func GetChannelConfig(cid string) channelconfig.Resources {
+	return Default.GetChannelConfig(cid)
+}
+
 func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
-	return p.getChannelConfig(cid)
+	chains.RLock()
+	defer chains.RUnlock()
+	if c, ok := chains.list[cid]; ok {
+		return c.cs
+	}
+	return nil
 }
 
 func (p *Peer) GetChannelsInfo() []*pb.ChannelInfo {

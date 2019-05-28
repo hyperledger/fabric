@@ -477,17 +477,6 @@ func GetStableChannelConfig(cid string) channelconfig.Resources {
 	return nil
 }
 
-// GetChannelConfig returns the channel configuration of the chain with channel ID. Note that this
-// call returns nil if chain cid has not been created.
-func GetChannelConfig(cid string) channelconfig.Resources {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
-		return c.cs
-	}
-	return nil
-}
-
 // GetPolicyManager returns the policy manager of the chain with chain ID. Note that this
 // call returns nil if chain cid has not been created.
 func GetPolicyManager(cid string) policies.Manager {
