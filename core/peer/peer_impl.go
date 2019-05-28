@@ -52,7 +52,6 @@ type Operations interface {
 }
 
 type Peer struct {
-	getChannelsInfo        func() []*pb.ChannelInfo
 	getStableChannelConfig func(cid string) channelconfig.Resources
 	getCurrConfigBlock     func(cid string) *common.Block
 	getLedger              func(cid string) ledger.PeerLedger
@@ -77,7 +76,6 @@ type Peer struct {
 // Default provides in implementation of the Peer interface that provides
 // access to the package level state.
 var Default Operations = &Peer{
-	getChannelsInfo:        GetChannelsInfo,
 	getStableChannelConfig: GetStableChannelConfig,
 	getCurrConfigBlock:     GetCurrConfigBlock,
 	getLedger:              GetLedger,
@@ -119,10 +117,7 @@ func (p *Peer) CreateChainFromBlock(
 
 // GetChannelConfig returns the channel configuration of the chain with channel ID. Note that this
 // call returns nil if chain cid has not been created.
-func GetChannelConfig(cid string) channelconfig.Resources {
-	return Default.GetChannelConfig(cid)
-}
-
+func GetChannelConfig(cid string) channelconfig.Resources { return Default.GetChannelConfig(cid) }
 func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
 	chains.RLock()
 	defer chains.RUnlock()
@@ -132,8 +127,19 @@ func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
 	return nil
 }
 
+// GetChannelsInfo returns an array with information about all channels for
+// this peer.
+func GetChannelsInfo() []*pb.ChannelInfo { return Default.GetChannelsInfo() }
 func (p *Peer) GetChannelsInfo() []*pb.ChannelInfo {
-	return p.getChannelsInfo()
+	chains.RLock()
+	defer chains.RUnlock()
+
+	var channelInfos []*pb.ChannelInfo
+	for key := range chains.list {
+		ci := &pb.ChannelInfo{ChannelId: key}
+		channelInfos = append(channelInfos, ci)
+	}
+	return channelInfos
 }
 
 func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
