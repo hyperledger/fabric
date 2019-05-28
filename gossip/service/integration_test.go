@@ -111,7 +111,6 @@ func TestLeaderYield(t *testing.T) {
 	// Make sure the other peer declares itself as the leader soon after.
 	takeOverMaxTimeout := time.Minute
 	// It's enough to make single re-try
-	viper.Set("peer.deliveryclient.reconnectTotalTimeThreshold", time.Second*1)
 	// There is no ordering service available anyway, hence connection timeout
 	// could be shorter
 	viper.Set("peer.deliveryclient.connTimeout", time.Millisecond*100)
@@ -145,6 +144,11 @@ func TestLeaderYield(t *testing.T) {
 		gs := gossips[i].GossipService
 		gs.deliveryFactory = &embeddingDeliveryServiceFactory{&deliveryFactoryImpl{
 			credentialSupport: comm.NewCredentialSupport(),
+			deliverServiceConfig: &deliverservice.DeliverServiceConfig{
+				PeerTLSEnabled:              false,
+				ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
+				ReconnectTotalTimeThreshold: time.Second,
+			},
 		}}
 		gs.InitializeChannel(channelName, []string{endpoint}, Support{
 			Committer: &mockLedgerInfo{1},

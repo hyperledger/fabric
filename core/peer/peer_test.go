@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
+	"github.com/hyperledger/fabric/core/deliverservice"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
@@ -82,6 +83,10 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 		defaultDeliverClientDialOpts,
 		gossipConfig,
 		&service.ServiceConfig{},
+		&deliverservice.DeliverServiceConfig{
+			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
+		},
 	)
 	require.NoError(t, err, "failed to create gossip service")
 

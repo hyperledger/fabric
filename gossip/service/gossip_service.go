@@ -127,8 +127,8 @@ type DeliveryServiceFactory interface {
 type deliveryFactoryImpl struct {
 	signer                identity.SignerSerializer
 	credentialSupport     *corecomm.CredentialSupport
-	peerTLSEnabled        bool
 	deliverClientDialOpts []grpc.DialOption
+	deliverServiceConfig  *deliverservice.DeliverServiceConfig
 }
 
 // Returns an instance of delivery client
@@ -141,12 +141,12 @@ func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, endpoints []strin
 		ConnFactory: (&deliverservice.CredSupportDialerFactory{
 			CredentialSupport: df.credentialSupport,
 			KeepaliveOptions:  deliverservice.KeepaliveOptions(),
-			TLSEnabled:        df.peerTLSEnabled,
+			TLSEnabled:        df.deliverServiceConfig.PeerTLSEnabled,
 		}).Dialer,
 		Gossip:                g,
 		Signer:                df.signer,
-		PeerTLSEnabled:        df.peerTLSEnabled,
 		DeliverClientDialOpts: df.deliverClientDialOpts,
+		DeliverServiceConfig:  df.deliverServiceConfig,
 	})
 }
 
@@ -216,6 +216,7 @@ func New(
 	deliverClientDialOpts []grpc.DialOption,
 	gossipConfig *gossip.Config,
 	serviceConfig *ServiceConfig,
+	deliverServiceConfig *deliverservice.DeliverServiceConfig,
 ) (*GossipService, error) {
 	serializedIdentity, err := peerIdentity.Serialize()
 	if err != nil {
@@ -244,8 +245,8 @@ func New(
 		deliveryFactory: &deliveryFactoryImpl{
 			signer:                peerIdentity,
 			credentialSupport:     credSupport,
-			peerTLSEnabled:        serviceConfig.PeerTLSEnabled,
 			deliverClientDialOpts: deliverClientDialOpts,
+			deliverServiceConfig:  deliverServiceConfig,
 		},
 		peerIdentity:  serializedIdentity,
 		secAdv:        secAdv,

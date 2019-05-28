@@ -16,6 +16,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric/core/deliverservice"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -237,6 +239,8 @@ func serve(args []string) error {
 	// FIXME: Creating the gossip service has the side effect of starting a bunch
 	// of go routines and registration with the grpc server.
 	deliverClientDialOpts := deliverClientDialOpts(coreConfig)
+	deliverServiceConfig := deliverservice.GlobalConfig()
+
 	gossipService, err := initGossipService(
 		policyMgr,
 		metricsProvider,
@@ -245,6 +249,7 @@ func serve(args []string) error {
 		cs,
 		coreConfig.PeerAddress,
 		deliverClientDialOpts,
+		deliverServiceConfig,
 	)
 	if err != nil {
 		return errors.WithMessage(err, "failed to initialize gossip service")
@@ -1017,6 +1022,7 @@ func initGossipService(
 	credSupport *comm.CredentialSupport,
 	peerAddress string,
 	deliverClientDialOpts []grpc.DialOption,
+	deliverServiceConfig *deliverservice.DeliverServiceConfig,
 ) (*gossipservice.GossipService, error) {
 
 	var certs *gossipcommon.TLSCertificates
@@ -1060,6 +1066,7 @@ func initGossipService(
 		deliverClientDialOpts,
 		gossipConfig,
 		serviceConfig,
+		deliverServiceConfig,
 	)
 }
 

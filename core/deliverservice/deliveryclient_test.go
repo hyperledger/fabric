@@ -106,6 +106,10 @@ func TestNewDeliverService(t *testing.T) {
 		ConnFactory:       connFactory,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+		},
 	})
 	assert.NoError(t, err)
 	assert.NoError(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{Height: 0}, func() {}))
@@ -149,6 +153,10 @@ func TestDeliverServiceRestart(t *testing.T) {
 		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+		},
 	})
 	assert.NoError(t, err)
 
@@ -197,6 +205,10 @@ func TestDeliverServiceFailover(t *testing.T) {
 		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+		},
 	})
 	assert.NoError(t, err)
 	li := &mocks.MockLedgerInfo{Height: uint64(100)}
@@ -271,6 +283,10 @@ func TestDeliverServiceUpdateEndpoints(t *testing.T) {
 		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+		},
 	})
 	defer service.Stop()
 
@@ -322,6 +338,10 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+		},
 	})
 	assert.NoError(t, err)
 	li := &mocks.MockLedgerInfo{Height: 100}
@@ -454,6 +474,10 @@ func TestDeliverServiceAbruptStop(t *testing.T) {
 		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+		},
 	})
 	assert.NoError(t, err)
 
@@ -479,6 +503,10 @@ func TestDeliverServiceShutdown(t *testing.T) {
 		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+		},
 	})
 	assert.NoError(t, err)
 
@@ -510,8 +538,6 @@ func TestDeliverServiceShutdownRespawn(t *testing.T) {
 	// Scenario: Launch an ordering service node and let the client pull some blocks.
 	// Then, wait a few seconds, and don't send any blocks.
 	// Afterwards - start a new instance and shut down the old instance.
-	viper.Set("peer.deliveryclient.reconnectTotalTimeThreshold", time.Second)
-	defer viper.Reset()
 	defer ensureNoGoroutineLeak(t)()
 
 	osn1 := mocks.NewOrderer(5614, t)
@@ -527,6 +553,10 @@ func TestDeliverServiceShutdownRespawn(t *testing.T) {
 		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: time.Second,
+		},
 	})
 	assert.NoError(t, err)
 
@@ -565,8 +595,6 @@ func TestDeliverServiceDisconnectReconnect(t *testing.T) {
 	// (0.5s + 1s + 2s + 4s) > 2s.
 	// Send new block and check that delivery client got it.
 	// So, we can see that waiting on recv in empty channel do reset total time spend in reconnection.
-	viper.Set("peer.deliveryclient.reconnectTotalTimeThreshold", time.Second*2)
-	defer viper.Reset()
 	defer ensureNoGoroutineLeak(t)()
 
 	osn := mocks.NewOrderer(5614, t)
@@ -582,6 +610,10 @@ func TestDeliverServiceDisconnectReconnect(t *testing.T) {
 		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: time.Second * 2,
+		},
 	})
 	assert.NoError(t, err)
 
@@ -627,6 +659,10 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+		},
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
@@ -640,6 +676,10 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+		},
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
@@ -653,6 +693,10 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+		},
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
@@ -666,6 +710,10 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+		},
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
@@ -678,6 +726,10 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		ABCFactory:        DefaultABCFactory,
 		Signer:            &mocks.SignerSerializer{},
 		CredentialSupport: comm.NewCredentialSupport(),
+		DeliverServiceConfig: &DeliverServiceConfig{
+			ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+		},
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
@@ -702,7 +754,16 @@ func TestRetryPolicyOverflow(t *testing.T) {
 			return nil, errors.New("")
 		}
 	}
-	client := (&deliverServiceImpl{conf: &Config{ConnFactory: connFactory}}).newClient("TEST", &mocks.MockLedgerInfo{Height: uint64(100)})
+	client := (&deliverServiceImpl{
+		conf: &Config{
+			ConnFactory: connFactory,
+			DeliverServiceConfig: &DeliverServiceConfig{
+				PeerTLSEnabled:              false,
+				ReConnectBackoffThreshold:   DefaultReConnectBackoffThreshold,
+				ReconnectTotalTimeThreshold: DefaultReConnectTotalTimeThreshold,
+			},
+		},
+	}).newClient("TEST", &mocks.MockLedgerInfo{Height: uint64(100)})
 	assert.NotNil(t, client.shouldRetry)
 	for i := 0; i < 100; i++ {
 		retryTime, _ := client.shouldRetry(i, time.Second)

@@ -103,6 +103,10 @@ func TestInitGossipService(t *testing.T) {
 		dialOpts,
 		gossipConfig,
 		&ServiceConfig{},
+		&deliverservice.DeliverServiceConfig{
+			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
+		},
 	)
 	assert.NoError(t, err)
 
@@ -885,6 +889,11 @@ func TestInvalidInitialization(t *testing.T) {
 		dialOpts,
 		gossipConfig,
 		&ServiceConfig{},
+		&deliverservice.DeliverServiceConfig{
+			PeerTLSEnabled:              false,
+			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
+		},
 	)
 	assert.NoError(t, err)
 	gService := gossipService
@@ -929,6 +938,10 @@ func TestChannelConfig(t *testing.T) {
 		dialOpts,
 		gossipConfig,
 		&ServiceConfig{},
+		&deliverservice.DeliverServiceConfig{
+			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
+		},
 	)
 	assert.NoError(t, err)
 	gService := gossipService
