@@ -321,8 +321,8 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 	}
 }
 
-// SetCurrConfigBlock sets the current config block of the specified channel
-func SetCurrConfigBlock(block *common.Block, cid string) error {
+// setCurrConfigBlock sets the current config block of the specified channel
+func (p *Peer) setCurrConfigBlock(block *common.Block, cid string) error {
 	chains.Lock()
 	defer chains.Unlock()
 	if c, ok := chains.list[cid]; ok {
@@ -617,7 +617,7 @@ func (p *Peer) createChain(
 		if err != nil {
 			return err
 		}
-		return SetCurrConfigBlock(block, chainID)
+		return p.setCurrConfigBlock(block, chainID)
 	})
 
 	ordererAddresses := bundle.ChannelConfig().OrdererAddresses()

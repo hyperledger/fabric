@@ -277,7 +277,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	assert.NotNil(t, pmgr, "PolicyManager should not be nil")
 	assert.Equal(t, true, ok, "expected Manage() to return true")
 
-	SetCurrConfigBlock(block, testChainID)
+	Default.setCurrConfigBlock(block, testChainID)
 
 	channels := GetChannelsInfo()
 	if len(channels) != 1 {
