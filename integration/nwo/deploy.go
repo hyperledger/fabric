@@ -401,11 +401,11 @@ func listInstantiated(n *Network, peer *Peer, channel string) func() *gbytes.Buf
 	}
 }
 
-// EnableV2_0Capabilities enables the V2_0 capabilities for a running network.
+// EnableCapabilities enables a specific capabilities flag for a running network.
 // It generates the config update using the first peer, signs the configuration
 // with the subsequent peers, and then submits the config update using the
 // first peer.
-func EnableV2_0Capabilities(network *Network, channel string, orderer *Orderer, peers ...*Peer) {
+func EnableCapabilities(network *Network, channel, capabilitiesGroup, capabilitiesVersion string, orderer *Orderer, peers ...*Peer) {
 	if len(peers) == 0 {
 		return
 	}
@@ -413,13 +413,12 @@ func EnableV2_0Capabilities(network *Network, channel string, orderer *Orderer, 
 	config := GetConfig(network, peers[0], orderer, channel)
 	updatedConfig := proto.Clone(config).(*common.Config)
 
-	// include the V2_0 capability in the config
-	updatedConfig.ChannelGroup.Groups["Application"].Values["Capabilities"] = &common.ConfigValue{
+	updatedConfig.ChannelGroup.Groups[capabilitiesGroup].Values["Capabilities"] = &common.ConfigValue{
 		ModPolicy: "Admins",
 		Value: protoutil.MarshalOrPanic(
 			&common.Capabilities{
 				Capabilities: map[string]*common.Capability{
-					"V2_0": {},
+					capabilitiesVersion: {},
 				},
 			},
 		),
