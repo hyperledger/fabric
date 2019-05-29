@@ -263,9 +263,9 @@ func getLocalAddress() (string, error) {
 		return "", errors.Errorf("peer.address isn't in host:port format: %s", peerAddress)
 	}
 
-	localIP, err := GetLocalIP()
+	localIP, err := comm.GetLocalIP()
 	if err != nil {
-		peerLogger.Errorf("Local ip address not auto-detectable: %s", err)
+		peerLogger.Errorf("local IP address not auto-detectable: %s", err)
 		return "", err
 	}
 	autoDetectedIPAndPort := net.JoinHostPort(localIP, port)

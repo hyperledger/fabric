@@ -8,7 +8,6 @@ package peer
 
 import (
 	"fmt"
-	"net"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -331,23 +330,6 @@ func SetCurrConfigBlock(block *common.Block, cid string) error {
 		return nil
 	}
 	return errors.Errorf("[channel %s] channel not associated with this peer", cid)
-}
-
-// GetLocalIP returns the non loopback local IP of the host
-func GetLocalIP() (string, error) {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return "", err
-	}
-	for _, address := range addrs {
-		// check the address type and if it is not a loopback then display it
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String(), nil
-			}
-		}
-	}
-	return "", fmt.Errorf("no non-loopback, IPv4 interface detected")
 }
 
 // NewChannelPolicyManagerGetter returns a new instance of ChannelPolicyManagerGetter

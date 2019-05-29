@@ -53,7 +53,7 @@ func TestConfiguration(t *testing.T) {
 	}
 
 	// There is a flake where sometimes this returns no IP address.
-	localIP, err := GetLocalIP()
+	localIP, err := comm.GetLocalIP()
 	assert.NoError(t, err)
 
 	var tests = []struct {

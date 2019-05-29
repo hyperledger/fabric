@@ -40,6 +40,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
@@ -98,7 +99,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("failed to get port: %s", err)
 	}
-	localIP, err := peer.GetLocalIP()
+	localIP, err := comm.GetLocalIP()
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("failed to get local IP: %s", err)
 	}

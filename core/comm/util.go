@@ -12,6 +12,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
+	"net"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
@@ -156,4 +157,21 @@ func ExtractRawCertificateFromContext(ctx context.Context) []byte {
 		return nil
 	}
 	return cert.Raw
+}
+
+// GetLocalIP returns the non loopback local IP of the host
+func GetLocalIP() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback then display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+	return "", errors.Errorf("no non-loopback, IPv4 interface detected")
 }

@@ -290,12 +290,6 @@ func TestCreateChainFromBlock(t *testing.T) {
 	chains.Unlock()
 }
 
-func TestGetLocalIP(t *testing.T) {
-	ip, err := GetLocalIP()
-	assert.NoError(t, err)
-	t.Log(ip)
-}
-
 func TestDeliverSupportManager(t *testing.T) {
 	// reset chains for testing
 	MockInitialize()
