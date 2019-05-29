@@ -8,6 +8,7 @@ package peer
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/metrics"
@@ -23,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/service"
@@ -47,27 +49,49 @@ type Operations interface {
 	GetLedger(cid string) ledger.PeerLedger
 	GetMSPIDs(cid string) []string
 	GetPolicyManager(cid string) policies.Manager
-	InitChain(cid string)
-	Initialize(
-		init func(string),
-		sccp sysccprovider.SystemChaincodeProvider,
-		pm plugin.Mapper,
-		pr *platforms.Registry,
-		deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-		membershipProvider ledger.MembershipInfoProvider,
-		metricsProvider metrics.Provider,
-		lr plugindispatcher.LifecycleResources,
-		nr plugindispatcher.CollectionAndLifecycleResources,
-		ledgerConfig *ledger.Config,
-		nWorkers int,
-	)
 }
 
-type Peer struct{}
+// extendedOperations is use to track functions that have
+// been added to the peer implementation. These need to be
+// reviewed and documented.
+//
+// TODO: remove when done with restructure
+type extendedOperations interface {
+	StoreForChannel(cid string) transientstore.Store
+}
+
+type Peer struct {
+	StoreProvider transientstore.StoreProvider
+	storesMutex   sync.RWMutex
+	stores        map[string]transientstore.Store
+}
 
 // Default provides in implementation of the Peer interface that provides
 // access to the package level state.
-var Default Operations = &Peer{}
+var Default *Peer = &Peer{}
+
+func (p *Peer) StoreForChannel(cid string) transientstore.Store {
+	p.storesMutex.RLock()
+	defer p.storesMutex.RUnlock()
+	return p.stores[cid]
+}
+
+func (p *Peer) OpenStore(cid string) (transientstore.Store, error) {
+	p.storesMutex.Lock()
+	defer p.storesMutex.Unlock()
+
+	store, err := p.StoreProvider.OpenStore(cid)
+	if err != nil {
+		return nil, err
+	}
+
+	if p.stores == nil {
+		p.stores = map[string]transientstore.Store{}
+	}
+
+	p.stores[cid] = store
+	return store, nil
+}
 
 func CreateChainFromBlock(
 	cb *common.Block,
@@ -221,7 +245,7 @@ func (p *Peer) createChain(
 	}
 
 	// TODO: does someone need to call Close() on the transientStoreFactory at shutdown of the peer?
-	store, err := TransientStoreFactory.OpenStore(bundle.ConfigtxValidator().ChainID())
+	store, err := p.OpenStore(bundle.ConfigtxValidator().ChainID())
 	if err != nil {
 		return errors.Wrapf(err, "[channel %s] failed opening transient store", bundle.ConfigtxValidator().ChainID())
 	}

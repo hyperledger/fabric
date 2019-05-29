@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	ledgermocks "github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
@@ -69,6 +70,24 @@ type mockDeliveryClientFactory struct {
 
 func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
 	return &mockDeliveryClient{}, nil
+}
+
+func TestMain(m *testing.M) {
+	// TODO: remove the transient store and peer setup once we've completed the
+	// transition to instances
+	tempdir, err := ioutil.TempDir("", "scc-configure")
+	if err != nil {
+		panic(err)
+	}
+	viper.Set("peer.fileSystemPath", filepath.Join(tempdir, "transientstore"))
+	Default = &Peer{
+		StoreProvider: transientstore.NewStoreProvider(),
+	}
+
+	rc := m.Run()
+
+	os.RemoveAll(tempdir)
+	os.Exit(rc)
 }
 
 func TestNewPeerServer(t *testing.T) {

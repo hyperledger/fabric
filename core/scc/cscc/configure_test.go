@@ -8,8 +8,10 @@ package cscc
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -32,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
@@ -103,12 +106,26 @@ func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []s
 var mockAclProvider *aclmocks.MockACLProvider
 
 func TestMain(m *testing.M) {
+	// TODO: remove the transient store and peer setup once we've completed the
+	// transition to instances
+	tempdir, err := ioutil.TempDir("", "scc-configure")
+	if err != nil {
+		panic(err)
+	}
+	viper.Set("peer.fileSystemPath", filepath.Join(tempdir, "transientstore"))
+	peer.Default = &peer.Peer{
+		StoreProvider: transientstore.NewStoreProvider(),
+	}
+
 	msptesttools.LoadMSPSetupForTesting()
 
 	mockAclProvider = &aclmocks.MockACLProvider{}
 	mockAclProvider.Reset()
 
-	os.Exit(m.Run())
+	rc := m.Run()
+
+	os.RemoveAll(tempdir)
+	os.Exit(rc)
 }
 
 func TestConfigerInit(t *testing.T) {

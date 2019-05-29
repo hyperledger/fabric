@@ -28,7 +28,6 @@ import (
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
-	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
@@ -75,33 +74,6 @@ type chainSupport struct {
 	channelconfig.Resources
 	channelconfig.Application
 	ledger ledger.PeerLedger
-}
-
-var TransientStoreFactory = &storeProvider{stores: make(map[string]transientstore.Store)}
-
-type storeProvider struct {
-	stores map[string]transientstore.Store
-	transientstore.StoreProvider
-	sync.RWMutex
-}
-
-func (sp *storeProvider) StoreForChannel(channel string) transientstore.Store {
-	sp.RLock()
-	defer sp.RUnlock()
-	return sp.stores[channel]
-}
-
-func (sp *storeProvider) OpenStore(ledgerID string) (transientstore.Store, error) {
-	sp.Lock()
-	defer sp.Unlock()
-	if sp.StoreProvider == nil {
-		sp.StoreProvider = transientstore.NewStoreProvider()
-	}
-	store, err := sp.StoreProvider.OpenStore(ledgerID)
-	if err == nil {
-		sp.stores[ledgerID] = store
-	}
-	return store, err
 }
 
 func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {

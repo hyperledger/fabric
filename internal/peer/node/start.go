@@ -65,6 +65,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/core/scc/qscc"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/discovery"
 	"github.com/hyperledger/fabric/discovery/endorsement"
 	discsupport "github.com/hyperledger/fabric/discovery/support"
@@ -82,7 +83,7 @@ import (
 	discprotos "github.com/hyperledger/fabric/protos/discovery"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/token"
-	"github.com/hyperledger/fabric/protos/transientstore"
+	pt "github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/token/server"
 	"github.com/hyperledger/fabric/token/tms/manager"
@@ -103,9 +104,7 @@ var chaincodeDevMode bool
 func startCmd() *cobra.Command {
 	// Set the flags on the node start command.
 	flags := nodeStartCmd.Flags()
-	flags.BoolVarP(&chaincodeDevMode, "peer-chaincodedev", "", false,
-		"Whether peer in chaincode development mode")
-
+	flags.BoolVarP(&chaincodeDevMode, "peer-chaincodedev", "", false, "start peer in chaincode development mode")
 	return nodeStartCmd
 }
 
@@ -180,6 +179,11 @@ func serve(args []string) error {
 	ccPackageParser := &persistence.ChaincodePackageParser{
 		MetadataProvider: &ccmetadata.PersistenceMetadataProvider{},
 	}
+
+	peerInstance := &peer.Peer{
+		StoreProvider: transientstore.NewStoreProvider(),
+	}
+	peer.Default = peerInstance
 
 	// TODO, unfortunately, the lifecycle initialization is very unclean at the
 	// moment. This is because ccprovider.SetChaincodePath only works after
@@ -488,7 +492,7 @@ func serve(args []string) error {
 
 	logger.Debugf("Running peer")
 
-	privDataDist := func(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
+	privDataDist := func(channel string, txID string, privateData *pt.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData, blkHt)
 	}
 
@@ -515,7 +519,7 @@ func serve(args []string) error {
 	pluginMapper := endorser.MapBasedPluginMapper(endorsementPluginsByName)
 	pluginEndorser := endorser.NewPluginEndorser(&endorser.PluginSupport{
 		ChannelStateRetriever:   channelStateRetriever,
-		TransientStoreRetriever: peer.TransientStoreFactory,
+		TransientStoreRetriever: peerInstance,
 		PluginMapper:            pluginMapper,
 		SigningIdentityFetcher:  signingIdentityFetcher,
 	})
