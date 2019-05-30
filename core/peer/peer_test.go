@@ -102,7 +102,7 @@ func TestNewPeerServer(t *testing.T) {
 
 func TestInitChain(t *testing.T) {
 	chainId := "testChain"
-	chainInitializer = func(cid string) {
+	Default.chainInitializer = func(cid string) {
 		assert.Equal(t, chainId, cid, "chainInitializer received unexpected cid")
 	}
 	InitChain(chainId)

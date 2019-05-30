@@ -21,7 +21,6 @@ func MockInitialize() (cleanup func(), err error) {
 		&ledgermgmt.Initializer{},
 	)
 	chains.list = make(map[string]*chain)
-	chainInitializer = func(string) { return }
 	return cleanup, err
 }
 

@@ -159,8 +159,6 @@ var chains = struct {
 	list map[string]*chain
 }{list: make(map[string]*chain)}
 
-var chainInitializer func(string)
-
 var mockMSPIDGetter func(string) []string
 
 func MockSetMSPIDGetter(mspIDGetter func(string) []string) {
@@ -423,7 +421,8 @@ type Peer struct {
 	// go routines.
 	validationWorkersSemaphore semaphore.Semaphore
 
-	pluginMapper plugin.Mapper
+	pluginMapper     plugin.Mapper
+	chainInitializer func(cid string)
 }
 
 // Default provides in implementation of the Peer interface that provides
@@ -753,10 +752,10 @@ func (p *Peer) GetPolicyManager(cid string) policies.Manager {
 // InitChain takes care to initialize chain after peer joined, for example deploys system CCs
 func InitChain(cid string) { Default.InitChain(cid) }
 func (p *Peer) InitChain(cid string) {
-	if chainInitializer != nil {
+	if p.chainInitializer != nil {
 		// Initialize chaincode, namely deploy system CC
 		peerLogger.Debugf("Initializing channel %s", cid)
-		chainInitializer(cid)
+		p.chainInitializer(cid)
 	}
 }
 
@@ -819,8 +818,7 @@ func (p *Peer) Initialize(
 	// TODO: exported dep fields or constructor
 	p.validationWorkersSemaphore = semaphore.New(nWorkers)
 	p.pluginMapper = pm
-
-	chainInitializer = init
+	p.chainInitializer = init
 
 	var cb *common.Block
 	var ledger ledger.PeerLedger
