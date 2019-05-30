@@ -131,25 +131,20 @@ func (c *chain) Apply(configtx *common.ConfigEnvelope) error {
 		return err
 	}
 
-	// If the chainSupport is being mocked, this field will be nil
-	if c.bundleSource != nil {
-		bundle, err := channelconfig.NewBundle(c.cs.ConfigtxValidator().ChainID(), configtx.Config)
-		if err != nil {
-			return err
-		}
-
-		channelconfig.LogSanityChecks(bundle)
-
-		err = c.bundleSource.ValidateNew(bundle)
-		if err != nil {
-			return err
-		}
-
-		capabilitiesSupportedOrPanic(bundle)
-
-		c.bundleSource.Update(bundle)
+	bundle, err := channelconfig.NewBundle(c.cs.ConfigtxValidator().ChainID(), configtx.Config)
+	if err != nil {
+		return err
 	}
 
+	channelconfig.LogSanityChecks(bundle)
+	err = c.bundleSource.ValidateNew(bundle)
+	if err != nil {
+		return err
+	}
+
+	capabilitiesSupportedOrPanic(bundle)
+
+	c.bundleSource.Update(bundle)
 	return nil
 }
 
