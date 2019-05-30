@@ -169,10 +169,6 @@ func MockSetMSPIDGetter(mspIDGetter func(string) []string) {
 	mockMSPIDGetter = mspIDGetter
 }
 
-// validationWorkersSemaphore is the semaphore used to ensure that
-// there are not too many concurrent tx validation goroutines
-var validationWorkersSemaphore semaphore.Semaphore
-
 func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
 	peerLogger.Debugf("Getting config block")
 
@@ -424,6 +420,10 @@ type Peer struct {
 	StoreProvider transientstore.StoreProvider
 	storesMutex   sync.RWMutex
 	stores        map[string]transientstore.Store
+
+	// validationWorkersSemaphore is used to limit the number of concurrent validation
+	// go routines.
+	validationWorkersSemaphore semaphore.Semaphore
 }
 
 // Default provides in implementation of the Peer interface that provides
@@ -584,7 +584,7 @@ func (p *Peer) createChain(
 
 	validator := txvalidator.NewTxValidator(
 		cid,
-		validationWorkersSemaphore,
+		p.validationWorkersSemaphore,
 		cs,
 		&vir.ValidationInfoRetrieveShim{
 			New:    newLifecycleValidation,
@@ -816,7 +816,7 @@ func (p *Peer) Initialize(
 	nWorkers int,
 	txProcessors customtx.Processors,
 ) {
-	validationWorkersSemaphore = semaphore.New(nWorkers)
+	p.validationWorkersSemaphore = semaphore.New(nWorkers)
 
 	pluginMapper = pm
 	chainInitializer = init
