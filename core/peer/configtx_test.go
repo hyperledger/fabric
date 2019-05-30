@@ -180,7 +180,8 @@ func (h *testHelper) mockCreateChain(t *testing.T, chainid string, ledger ledger
 	chains.list[chainid] = &chain{
 		cs: &chainSupport{
 			bundleSource: channelconfig.NewBundleSource(chanBundle),
-			ledger:       ledger},
+		},
+		ledger: ledger,
 	}
 }
 

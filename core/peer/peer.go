@@ -72,7 +72,6 @@ type chainSupport struct {
 	bundleSource *channelconfig.BundleSource
 	channelconfig.Resources
 	channelconfig.Application
-	ledger ledger.PeerLedger
 }
 
 func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {
@@ -117,33 +116,10 @@ func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 	}
 }
 
-func (cs *chainSupport) Ledger() ledger.PeerLedger {
-	return cs.ledger
-}
-
-func (cs *chainSupport) GetMSPIDs(cid string) []string {
-	return GetMSPIDs(cid)
-}
-
 // Sequence passes through to the underlying configtx.Validator
 func (cs *chainSupport) Sequence() uint64 {
 	sb := cs.bundleSource.StableBundle()
 	return sb.ConfigtxValidator().Sequence()
-}
-
-// Reader returns an iterator to read from the ledger
-func (cs *chainSupport) Reader() blockledger.Reader {
-	return fileledger.NewFileLedger(fileLedgerBlockStore{cs.ledger})
-}
-
-// Errored returns a channel that can be used to determine
-// if a backing resource has errored. At this point in time,
-// the peer does not have any error conditions that lead to
-// this function signaling that an error has occurred.
-func (cs *chainSupport) Errored() <-chan struct{} {
-	// If this is ever updated to return a real channel, the error message
-	// in deliver.go around this channel closing should be updated.
-	return nil
 }
 
 // chain is a local struct to manage objects in a chain
@@ -151,6 +127,49 @@ type chain struct {
 	cs        *chainSupport
 	cb        *common.Block
 	committer committer.Committer
+	ledger    ledger.PeerLedger
+}
+
+func (c *chain) Ledger() ledger.PeerLedger {
+	return c.ledger
+}
+
+func (c *chain) Reader() blockledger.Reader {
+	return fileledger.NewFileLedger(fileLedgerBlockStore{c.ledger})
+}
+
+// Errored returns a channel that can be used to determine
+// if a backing resource has errored. At this point in time,
+// the peer does not have any error conditions that lead to
+// this function signaling that an error has occurred.
+func (c *chain) Errored() <-chan struct{} {
+	// If this is ever updated to return a real channel, the error message
+	// in deliver.go around this channel closing should be updated.
+	return nil
+}
+
+func (c *chain) PolicyManager() policies.Manager {
+	return c.cs.PolicyManager()
+}
+
+func (c *chain) Sequence() uint64 {
+	return c.cs.Sequence()
+}
+
+func (c *chain) Apply(configtx *common.ConfigEnvelope) error {
+	return c.cs.Apply(configtx)
+}
+
+func (c *chain) Capabilities() channelconfig.ApplicationCapabilities {
+	return c.cs.Capabilities()
+}
+
+func (c *chain) GetMSPIDs(cid string) []string {
+	return GetMSPIDs(cid)
+}
+
+func (c *chain) MSPManager() msp.MSPManager {
+	return c.cs.MSPManager()
 }
 
 // chains is a local map of chainID->chainObject
@@ -192,10 +211,9 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 func updateTrustedRoots(cm channelconfig.Resources) {
 	// this is triggered on per channel basis so first update the roots for the channel
 	peerLogger.Debugf("Updating trusted root authorities for channel %s", cm.ConfigtxValidator().ChainID())
-	var serverConfig comm.ServerConfig
-	var err error
+
 	// only run is TLS is enabled
-	serverConfig, err = GetServerConfig()
+	serverConfig, err := GetServerConfig()
 	if err == nil && serverConfig.SecOpts.UseTLS {
 		buildTrustedRootsForChain(cm)
 
@@ -342,7 +360,7 @@ func (DeliverChainManager) GetChain(chainID string) deliver.Chain {
 	if !ok {
 		return nil
 	}
-	return channel.cs
+	return channel
 }
 
 // fileLedgerBlockStore implements the interface expected by
@@ -555,7 +573,21 @@ func (p *Peer) createChain(
 
 	cs := &chainSupport{
 		Application: ac, // TODO, refactor as this is accessible through Manager
-		ledger:      l,
+	}
+
+	c := committer.NewLedgerCommitterReactive(l, func(block *common.Block) error {
+		chainID, err := protoutil.GetChainIDFromBlock(block)
+		if err != nil {
+			return err
+		}
+		return p.setCurrConfigBlock(block, chainID)
+	})
+
+	chain := &chain{
+		cs:        cs,
+		cb:        cb,
+		committer: c,
+		ledger:    l,
 	}
 
 	peerSingletonCallback := func(bundle *channelconfig.Bundle) {
@@ -578,7 +610,7 @@ func (p *Peer) createChain(
 	validator := txvalidator.NewTxValidator(
 		cid,
 		p.validationWorkersSemaphore,
-		cs,
+		chain,
 		&vir.ValidationInfoRetrieveShim{
 			New:    newLifecycleValidation,
 			Legacy: legacyLifecycleValidation,
@@ -591,14 +623,6 @@ func (p *Peer) createChain(
 		p.pluginMapper,
 		NewChannelPolicyManagerGetter(),
 	)
-
-	c := committer.NewLedgerCommitterReactive(l, func(block *common.Block) error {
-		chainID, err := protoutil.GetChainIDFromBlock(block)
-		if err != nil {
-			return err
-		}
-		return p.setCurrConfigBlock(block, chainID)
-	})
 
 	ordererAddresses := bundle.ChannelConfig().OrdererAddresses()
 	if len(ordererAddresses) == 0 {
@@ -624,11 +648,7 @@ func (p *Peer) createChain(
 
 	chains.Lock()
 	defer chains.Unlock()
-	chains.list[cid] = &chain{
-		cs:        cs,
-		cb:        cb,
-		committer: c,
-	}
+	chains.list[cid] = chain
 
 	return nil
 }
@@ -693,7 +713,7 @@ func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
 	chains.RLock()
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
-		return c.cs.ledger
+		return c.ledger
 	}
 	return nil
 }

@@ -49,9 +49,8 @@ func MockCreateChain(cid string) error {
 				ConfigtxValidatorVal: &mockconfigtx.Validator{},
 				ApplicationConfigVal: &mockchannelconfig.MockApplication{CapabilitiesRv: &mockchannelconfig.MockApplicationCapabilities{}},
 			},
-
-			ledger: ledger,
 		},
+		ledger: ledger,
 	}
 
 	return nil
