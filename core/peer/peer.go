@@ -161,8 +161,6 @@ var chains = struct {
 
 var chainInitializer func(string)
 
-var pluginMapper plugin.Mapper
-
 var mockMSPIDGetter func(string) []string
 
 func MockSetMSPIDGetter(mspIDGetter func(string) []string) {
@@ -424,6 +422,8 @@ type Peer struct {
 	// validationWorkersSemaphore is used to limit the number of concurrent validation
 	// go routines.
 	validationWorkersSemaphore semaphore.Semaphore
+
+	pluginMapper plugin.Mapper
 }
 
 // Default provides in implementation of the Peer interface that provides
@@ -480,7 +480,7 @@ func (p *Peer) CreateChainFromBlock(
 		return errors.WithMessage(err, "cannot create ledger from genesis block")
 	}
 
-	return p.createChain(cid, l, cb, sccp, pluginMapper, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
+	return p.createChain(cid, l, cb, sccp, p.pluginMapper, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
 }
 
 // createChain creates a new chain object and insert it into the chains
@@ -595,7 +595,7 @@ func (p *Peer) createChain(
 			ChannelID:                       bundle.ConfigtxValidator().ChainID(),
 		},
 		sccp,
-		pluginMapper,
+		p.pluginMapper,
 		NewChannelPolicyManagerGetter(),
 	)
 
@@ -816,9 +816,10 @@ func (p *Peer) Initialize(
 	nWorkers int,
 	txProcessors customtx.Processors,
 ) {
+	// TODO: exported dep fields or constructor
 	p.validationWorkersSemaphore = semaphore.New(nWorkers)
+	p.pluginMapper = pm
 
-	pluginMapper = pm
 	chainInitializer = init
 
 	var cb *common.Block
