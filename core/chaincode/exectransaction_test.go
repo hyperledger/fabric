@@ -83,12 +83,6 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		return nil, nil, nil, nil, err
 	}
 
-	mspGetter := func(cid string) []string {
-		return []string{"SampleOrg"}
-	}
-
-	peer.MockSetMSPIDGetter(mspGetter)
-
 	grpcServer := grpc.NewServer()
 
 	lis, err := net.Listen("tcp", ":0")

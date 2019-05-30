@@ -9,7 +9,6 @@ package lscc
 import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -56,7 +55,7 @@ func (s *supportImpl) GetInstantiationPolicy(channel string, ccpack ccprovider.C
 	} else {
 		// the default instantiation policy allows any of the channel MSP admins
 		// to be able to instantiate
-		mspids := peer.GetMSPIDs(channel)
+		mspids := channelMSPIDs(channel)
 
 		p := cauthdsl.SignedByAnyAdmin(mspids)
 		ip, err = protoutil.Marshal(p)

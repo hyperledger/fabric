@@ -22,8 +22,8 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v20/mocks"
-	corepeer "github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
+	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -262,11 +262,9 @@ func TestMain(m *testing.M) {
 
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
-	mspGetter := func(cid string) []string {
+	lscc.MockMSPIDGetter = func(cid string) []string {
 		return []string{"SampleOrg"}
 	}
-
-	corepeer.MockSetMSPIDGetter(mspGetter)
 
 	// setup the MSP manager so that we can sign/verify
 	msptesttools.LoadMSPSetupForTesting()

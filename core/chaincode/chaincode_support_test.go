@@ -163,12 +163,6 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 		return nil, nil, err
 	}
 
-	mspGetter := func(cid string) []string {
-		return []string{"SampleOrg"}
-	}
-
-	peer.MockSetMSPIDGetter(mspGetter)
-
 	tempdir, err := ioutil.TempDir("", "cc-support-test")
 	if err != nil {
 		panic(fmt.Sprintf("failed to create temporary directory: %s", err))

@@ -904,7 +904,7 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		if len(args) > 3 && len(args[3]) > 0 {
 			EP = args[3]
 		} else {
-			p := cauthdsl.SignedByAnyMember(peer.GetMSPIDs(channel))
+			p := cauthdsl.SignedByAnyMember(channelMSPIDs(channel))
 			EP, err = protoutil.Marshal(p)
 			if err != nil {
 				return shim.Error(err.Error())
@@ -1025,4 +1025,16 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 	}
 
 	return shim.Error(InvalidFunctionErr(function).Error())
+}
+
+// MockMSPIDGetter was moved here from the peer package in support of
+// validation tests. When set, this function is used to obtain MSPIDs for a
+// channel.
+var MockMSPIDGetter func(string) []string
+
+func channelMSPIDs(channel string) []string {
+	if MockMSPIDGetter != nil {
+		return MockMSPIDGetter(channel)
+	}
+	return peer.GetMSPIDs(channel)
 }

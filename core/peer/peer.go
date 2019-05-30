@@ -159,12 +159,6 @@ var chains = struct {
 	list map[string]*chain
 }{list: make(map[string]*chain)}
 
-var mockMSPIDGetter func(string) []string
-
-func MockSetMSPIDGetter(mspIDGetter func(string) []string) {
-	mockMSPIDGetter = mspIDGetter
-}
-
 func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
 	peerLogger.Debugf("Getting config block")
 
@@ -710,11 +704,6 @@ func (p *Peer) GetMSPIDs(cid string) []string {
 	chains.RLock()
 	defer chains.RUnlock()
 
-	// if mock is set, use it to return MSPIDs
-	// used for tests without a proper join
-	if mockMSPIDGetter != nil {
-		return mockMSPIDGetter(cid)
-	}
 	if c, ok := chains.list[cid]; ok {
 		if c == nil || c.cs == nil {
 			return nil
