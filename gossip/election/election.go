@@ -152,7 +152,7 @@ func NewLeaderElectionService(adapter LeaderElectionAdapter, id string, callback
 		id:            peerID(id),
 		proposals:     util.NewSet(),
 		adapter:       adapter,
-		stopChan:      make(chan struct{}, 1),
+		stopChan:      make(chan struct{}),
 		interruptChan: make(chan struct{}, 1),
 		logger:        util.GetLogger(util.ElectionLogger, ""),
 		callback:      noopCallback,
@@ -176,7 +176,6 @@ type leaderElectionSvcImpl struct {
 	interruptChan chan struct{}
 	stopWG        sync.WaitGroup
 	isLeader      int32
-	toDie         int32
 	leaderExists  int32
 	yield         int32
 	sleeping      bool
@@ -202,7 +201,6 @@ func (le *leaderElectionSvcImpl) handleMessages() {
 	for {
 		select {
 		case <-le.stopChan:
-			le.stopChan <- struct{}{}
 			return
 		case msg := <-msgChan:
 			if !le.isAlive(msg.SenderID()) {
@@ -251,7 +249,6 @@ func (le *leaderElectionSvcImpl) waitForInterrupt(timeout time.Duration) {
 	select {
 	case <-le.interruptChan:
 	case <-le.stopChan:
-		le.stopChan <- struct{}{}
 	case <-time.After(timeout):
 	}
 
@@ -341,7 +338,6 @@ func (le *leaderElectionSvcImpl) follower() {
 	select {
 	case <-time.After(le.config.LeaderAliveThreshold):
 	case <-le.stopChan:
-		le.stopChan <- struct{}{}
 	}
 }
 
@@ -411,7 +407,12 @@ func (le *leaderElectionSvcImpl) stopBeingLeader() {
 }
 
 func (le *leaderElectionSvcImpl) shouldStop() bool {
-	return atomic.LoadInt32(&le.toDie) == int32(1)
+	select {
+	case <-le.stopChan:
+		return true
+	default:
+		return false
+	}
 }
 
 func (le *leaderElectionSvcImpl) isYielding() bool {
@@ -448,9 +449,12 @@ func (le *leaderElectionSvcImpl) Yield() {
 
 // Stop stops the LeaderElectionService
 func (le *leaderElectionSvcImpl) Stop() {
-	le.logger.Debug(le.id, ": Entering")
-	defer le.logger.Debug(le.id, ": Exiting")
-	atomic.StoreInt32(&le.toDie, int32(1))
-	le.stopChan <- struct{}{}
-	le.stopWG.Wait()
+	select {
+	case <-le.stopChan:
+	default:
+		close(le.stopChan)
+		le.logger.Debug(le.id, ": Entering")
+		defer le.logger.Debug(le.id, ": Exiting")
+		le.stopWG.Wait()
+	}
 }

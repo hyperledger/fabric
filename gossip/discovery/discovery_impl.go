@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/common"
@@ -66,7 +65,6 @@ type gossipDiscoveryImpl struct {
 	lock  *sync.RWMutex
 
 	toDieChan        chan struct{}
-	toDieFlag        int32
 	port             int
 	logger           util.Logger
 	disclosurePolicy DisclosurePolicy
@@ -100,8 +98,7 @@ func NewDiscoveryService(self NetworkMember, comm CommService, crypt CryptoServi
 		crypt:            crypt,
 		comm:             comm,
 		lock:             &sync.RWMutex{},
-		toDieChan:        make(chan struct{}, 1),
-		toDieFlag:        int32(0),
+		toDieChan:        make(chan struct{}),
 		logger:           util.GetLogger(util.DiscoveryLogger, self.InternalEndpoint),
 		disclosurePolicy: disPol,
 		pubsub:           util.NewPubSub(),
@@ -271,14 +268,13 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 func (d *gossipDiscoveryImpl) handlePresumedDeadPeers() {
 	defer d.logger.Debug("Stopped")
 
-	for !d.toDie() {
+	for {
 		select {
 		case deadPeer := <-d.comm.PresumedDead():
 			if d.isAlive(deadPeer) {
 				d.expireDeadMembers([]common.PKIidType{deadPeer})
 			}
-		case s := <-d.toDieChan:
-			d.toDieChan <- s
+		case <-d.toDieChan:
 			return
 		}
 	}
@@ -295,13 +291,12 @@ func (d *gossipDiscoveryImpl) handleMessages() {
 	defer d.logger.Debug("Stopped")
 
 	in := d.comm.Accept()
-	for !d.toDie() {
+	for {
 		select {
-		case s := <-d.toDieChan:
-			d.toDieChan <- s
-			return
 		case m := <-in:
 			d.handleMsgFromComm(m)
+		case <-d.toDieChan:
+			return
 		}
 	}
 }
@@ -977,16 +972,23 @@ func (d *gossipDiscoveryImpl) Self() NetworkMember {
 }
 
 func (d *gossipDiscoveryImpl) toDie() bool {
-	toDie := atomic.LoadInt32(&d.toDieFlag) == int32(1)
-	return toDie
+	select {
+	case <-d.toDieChan:
+		return true
+	default:
+		return false
+	}
 }
 
 func (d *gossipDiscoveryImpl) Stop() {
-	defer d.logger.Info("Stopped")
-	d.logger.Info("Stopping")
-	atomic.StoreInt32(&d.toDieFlag, int32(1))
-	d.msgStore.Stop()
-	d.toDieChan <- struct{}{}
+	select {
+	case <-d.toDieChan:
+	default:
+		close(d.toDieChan)
+		defer d.logger.Info("Stopped")
+		d.logger.Info("Stopping")
+		d.msgStore.Stop()
+	}
 }
 
 func copyNetworkMember(member *NetworkMember) *NetworkMember {
