@@ -52,15 +52,13 @@ var peerLogger = flogging.MustGetLogger("peer")
 
 var peerServer *comm.GRPCServer
 
-var configTxProcessor = newConfigTxProcessor()
-var tokenTxProcessor = &transaction.Processor{
-	TMSManager: &manager.Manager{
-		IdentityDeserializerManager: &manager.FabricIdentityDeserializerManager{},
-	},
-}
 var ConfigTxProcessors = customtx.Processors{
-	common.HeaderType_CONFIG:            configTxProcessor,
-	common.HeaderType_TOKEN_TRANSACTION: tokenTxProcessor,
+	common.HeaderType_CONFIG: newConfigTxProcessor(),
+	common.HeaderType_TOKEN_TRANSACTION: &transaction.Processor{
+		TMSManager: &manager.Manager{
+			IdentityDeserializerManager: &manager.FabricIdentityDeserializerManager{},
+		},
+	},
 }
 
 // singleton instance to manage credentials for the peer across channel config changes

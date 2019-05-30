@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -119,22 +118,6 @@ func TestGenesisBlockCreateLedger(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, chanConf)
 	t.Logf("chanConf = %s", chanConf)
-}
-
-func TestCustomTxProcessors(t *testing.T) {
-	cleanup, err := ledgermgmt.InitializeExistingTestEnvWithInitializer(&ledgermgmt.Initializer{
-		CustomTxProcessors: ConfigTxProcessors,
-	})
-	if err != nil {
-		t.Fatalf("Failed to create test environment: %s", err)
-	}
-
-	defer cleanup()
-
-	processor := customtx.GetProcessor(common.HeaderType_CONFIG)
-	assert.Equal(t, processor, configTxProcessor)
-	processor = customtx.GetProcessor(common.HeaderType_TOKEN_TRANSACTION)
-	assert.Equal(t, processor, tokenTxProcessor)
 }
 
 type testHelper struct {
