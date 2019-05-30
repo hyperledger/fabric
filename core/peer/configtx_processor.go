@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 )
@@ -20,14 +19,8 @@ const (
 	peerNamespace    = ""
 )
 
-// txProcessor implements the interface 'github.com/hyperledger/fabric/core/ledger/customtx/Processor'
-type configtxProcessor struct {
-}
-
-// newTxProcessor constructs a new instance of txProcessor
-func newConfigTxProcessor() customtx.Processor {
-	return &configtxProcessor{}
-}
+// ConfigTxProcessor implements the interface 'github.com/hyperledger/fabric/core/ledger/customtx/Processor'
+type ConfigTxProcessor struct{}
 
 // GenerateSimulationResults implements function in the interface 'github.com/hyperledger/fabric/core/ledger/customtx/Processor'
 // This implemantation processes following two types of transactions.
@@ -37,7 +30,7 @@ func newConfigTxProcessor() customtx.Processor {
 // However, if 'initializingLedger' is true (i.e., either the ledger is being created from the genesis block
 // or the ledger is synching the state with the blockchain, during start up), the full config is computed using
 // the most recent configs from statedb
-func (tp *configtxProcessor) GenerateSimulationResults(txEnv *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
+func (tp *ConfigTxProcessor) GenerateSimulationResults(txEnv *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
 	payload := protoutil.UnmarshalPayloadOrPanic(txEnv.Payload)
 	channelHdr := protoutil.UnmarshalChannelHeaderOrPanic(payload.Header.ChannelHeader)
 	txType := common.HeaderType(channelHdr.GetType())

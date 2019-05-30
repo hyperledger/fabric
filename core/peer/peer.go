@@ -43,23 +43,12 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/hyperledger/fabric/token/tms/manager"
-	"github.com/hyperledger/fabric/token/transaction"
 	"github.com/pkg/errors"
 )
 
 var peerLogger = flogging.MustGetLogger("peer")
 
 var peerServer *comm.GRPCServer
-
-var ConfigTxProcessors = customtx.Processors{
-	common.HeaderType_CONFIG: newConfigTxProcessor(),
-	common.HeaderType_TOKEN_TRANSACTION: &transaction.Processor{
-		TMSManager: &manager.Manager{
-			IdentityDeserializerManager: &manager.FabricIdentityDeserializerManager{},
-		},
-	},
-}
 
 // singleton instance to manage credentials for the peer across channel config changes
 var credSupport = comm.GetCredentialSupport()
@@ -792,6 +781,7 @@ func Initialize(
 	nr plugindispatcher.CollectionAndLifecycleResources,
 	ledgerConfig *ledger.Config,
 	nWorkers int,
+	txProcessors customtx.Processors,
 ) {
 	Default.Initialize(
 		init,
@@ -805,6 +795,7 @@ func Initialize(
 		nr,
 		ledgerConfig,
 		nWorkers,
+		txProcessors,
 	)
 }
 
@@ -823,6 +814,7 @@ func (p *Peer) Initialize(
 	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
 	ledgerConfig *ledger.Config,
 	nWorkers int,
+	txProcessors customtx.Processors,
 ) {
 	validationWorkersSemaphore = semaphore.New(nWorkers)
 
@@ -832,7 +824,7 @@ func (p *Peer) Initialize(
 	var cb *common.Block
 	var ledger ledger.PeerLedger
 	ledgermgmt.Initialize(&ledgermgmt.Initializer{
-		CustomTxProcessors:            ConfigTxProcessors,
+		CustomTxProcessors:            txProcessors,
 		PlatformRegistry:              pr,
 		DeployedChaincodeInfoProvider: deployedCCInfoProvider,
 		MembershipInfoProvider:        membershipProvider,

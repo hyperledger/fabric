@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -36,7 +37,9 @@ func TestConfigTxCreateLedger(t *testing.T) {
 	chainid := "testchain1"
 	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(
 		&ledgermgmt.Initializer{
-			CustomTxProcessors: ConfigTxProcessors,
+			CustomTxProcessors: customtx.Processors{
+				common.HeaderType_CONFIG: &ConfigTxProcessor{},
+			},
 		},
 	)
 	if err != nil {
@@ -61,7 +64,9 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 	chainid := "testchain1"
 	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(
 		&ledgermgmt.Initializer{
-			CustomTxProcessors: ConfigTxProcessors,
+			CustomTxProcessors: customtx.Processors{
+				common.HeaderType_CONFIG: &ConfigTxProcessor{},
+			},
 		},
 	)
 	if err != nil {
@@ -103,7 +108,9 @@ func TestGenesisBlockCreateLedger(t *testing.T) {
 
 	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(
 		&ledgermgmt.Initializer{
-			CustomTxProcessors: ConfigTxProcessors,
+			CustomTxProcessors: customtx.Processors{
+				common.HeaderType_CONFIG: &ConfigTxProcessor{},
+			},
 		},
 	)
 	if err != nil {

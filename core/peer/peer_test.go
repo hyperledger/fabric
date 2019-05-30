@@ -141,6 +141,7 @@ func TestInitialize(t *testing.T) {
 			},
 		},
 		runtime.NumCPU(),
+		nil,
 	)
 }
 
@@ -178,6 +179,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 			},
 		},
 		runtime.NumCPU(),
+		nil,
 	)
 	testChainID := fmt.Sprintf("mytestchainid-%d", rand.Int())
 	block, err := configtxtest.MakeGenesisBlock(testChainID)

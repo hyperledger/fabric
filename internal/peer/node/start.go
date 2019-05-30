@@ -58,6 +58,7 @@ import (
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/core/peer"
@@ -79,6 +80,7 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/protos/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	discprotos "github.com/hyperledger/fabric/protos/discovery"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -87,6 +89,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/token/server"
 	"github.com/hyperledger/fabric/token/tms/manager"
+	"github.com/hyperledger/fabric/token/transaction"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -246,10 +249,19 @@ func serve(args []string) error {
 
 	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID, metadataManager)
 
+	txProcessors := customtx.Processors{
+		common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
+		common.HeaderType_TOKEN_TRANSACTION: &transaction.Processor{
+			TMSManager: &manager.Manager{
+				IdentityDeserializerManager: &manager.FabricIdentityDeserializerManager{},
+			},
+		},
+	}
+
 	// initialize resource management exit
 	ledgermgmt.Initialize(
 		&ledgermgmt.Initializer{
-			CustomTxProcessors:              peer.ConfigTxProcessors,
+			CustomTxProcessors:              txProcessors,
 			PlatformRegistry:                platformRegistry,
 			DeployedChaincodeInfoProvider:   lifecycleValidatorCommitter,
 			MembershipInfoProvider:          membershipInfoProvider,
@@ -598,6 +610,7 @@ func serve(args []string) error {
 		lifecycleValidatorCommitter,
 		ledgerConfig(),
 		coreConfig.ValidatorPoolSize,
+		txProcessors,
 	)
 
 	if coreConfig.DiscoveryEnabled {

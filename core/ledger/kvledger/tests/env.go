@@ -21,8 +21,8 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/stretchr/testify/assert"
 )
@@ -103,7 +103,7 @@ func (e *env) initLedgerMgmt() {
 	ledgerPath := filepath.Join(e.rootPath, "ledgersData")
 	ledgermgmt.InitializeExistingTestEnvWithInitializer(
 		&ledgermgmt.Initializer{
-			CustomTxProcessors:            peer.ConfigTxProcessors,
+			CustomTxProcessors:            customtx.Processors{},
 			DeployedChaincodeInfoProvider: &lscc.DeployedCCInfoProvider{},
 			MembershipInfoProvider:        membershipInfoProvider,
 			MetricsProvider:               &disabled.Provider{},
