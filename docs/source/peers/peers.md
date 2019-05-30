@@ -202,6 +202,7 @@ than a single organization. Peers are central to how this kind of distributed
 network is built because they are owned by --- and are the connection points to
 the network for --- these organizations.
 
+<a name="Peer8"></a>
 ![Peer8](./peers.diagram.8.png)
 
 *Peers in a blockchain network with multiple organizations. The blockchain
