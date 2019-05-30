@@ -69,36 +69,8 @@ type gossipSupport struct {
 }
 
 type chainSupport struct {
-	bundleSource *channelconfig.BundleSource
 	channelconfig.Resources
 	channelconfig.Application
-}
-
-func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {
-	err := cs.ConfigtxValidator().Validate(configtx)
-	if err != nil {
-		return err
-	}
-
-	// If the chainSupport is being mocked, this field will be nil
-	if cs.bundleSource != nil {
-		bundle, err := channelconfig.NewBundle(cs.ConfigtxValidator().ChainID(), configtx.Config)
-		if err != nil {
-			return err
-		}
-
-		channelconfig.LogSanityChecks(bundle)
-
-		err = cs.bundleSource.ValidateNew(bundle)
-		if err != nil {
-			return err
-		}
-
-		capabilitiesSupportedOrPanic(bundle)
-
-		cs.bundleSource.Update(bundle)
-	}
-	return nil
 }
 
 func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
@@ -116,18 +88,13 @@ func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 	}
 }
 
-// Sequence passes through to the underlying configtx.Validator
-func (cs *chainSupport) Sequence() uint64 {
-	sb := cs.bundleSource.StableBundle()
-	return sb.ConfigtxValidator().Sequence()
-}
-
 // chain is a local struct to manage objects in a chain
 type chain struct {
-	cs        *chainSupport
-	cb        *common.Block
-	committer committer.Committer
-	ledger    ledger.PeerLedger
+	cs           *chainSupport
+	cb           *common.Block
+	committer    committer.Committer
+	ledger       ledger.PeerLedger
+	bundleSource *channelconfig.BundleSource
 }
 
 func (c *chain) Ledger() ledger.PeerLedger {
@@ -152,12 +119,38 @@ func (c *chain) PolicyManager() policies.Manager {
 	return c.cs.PolicyManager()
 }
 
+// Sequence passes through to the underlying configtx.Validator
 func (c *chain) Sequence() uint64 {
-	return c.cs.Sequence()
+	sb := c.bundleSource.StableBundle()
+	return sb.ConfigtxValidator().Sequence()
 }
 
 func (c *chain) Apply(configtx *common.ConfigEnvelope) error {
-	return c.cs.Apply(configtx)
+	err := c.cs.ConfigtxValidator().Validate(configtx)
+	if err != nil {
+		return err
+	}
+
+	// If the chainSupport is being mocked, this field will be nil
+	if c.bundleSource != nil {
+		bundle, err := channelconfig.NewBundle(c.cs.ConfigtxValidator().ChainID(), configtx.Config)
+		if err != nil {
+			return err
+		}
+
+		channelconfig.LogSanityChecks(bundle)
+
+		err = c.bundleSource.ValidateNew(bundle)
+		if err != nil {
+			return err
+		}
+
+		capabilitiesSupportedOrPanic(bundle)
+
+		c.bundleSource.Update(bundle)
+	}
+
+	return nil
 }
 
 func (c *chain) Capabilities() channelconfig.ApplicationCapabilities {
@@ -397,7 +390,7 @@ func (*configSupport) GetChannelConfig(channel string) cc.Config {
 		peerLogger.Errorf("[channel %s] channel not associated with this peer", channel)
 		return nil
 	}
-	return chain.cs.bundleSource.ConfigtxValidator()
+	return chain.bundleSource.ConfigtxValidator()
 }
 
 // Operations exposes an interface to the package level functions that operated
@@ -599,7 +592,7 @@ func (p *Peer) createChain(
 		cs.Resources = bundle
 	}
 
-	cs.bundleSource = channelconfig.NewBundleSource(
+	chain.bundleSource = channelconfig.NewBundleSource(
 		bundle,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
@@ -689,7 +682,7 @@ func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
 	chains.RLock()
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
-		return c.cs.bundleSource.StableBundle()
+		return c.bundleSource.StableBundle()
 	}
 	return nil
 }

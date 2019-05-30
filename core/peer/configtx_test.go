@@ -88,7 +88,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 	helper.mockCreateChain(t, chainid, lgr)
 	defer helper.clearMockChains()
 
-	bs := chains.list[chainid].cs.bundleSource
+	bs := chains.list[chainid].bundleSource
 	inMemoryChanConf := bs.ConfigtxValidator().ConfigProto()
 	assert.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(inMemoryChanConf))
 
@@ -178,10 +178,9 @@ func (h *testHelper) mockCreateChain(t *testing.T, chainid string, ledger ledger
 	chanBundle, err := h.constructChannelBundle(chainid, ledger)
 	assert.NoError(t, err)
 	chains.list[chainid] = &chain{
-		cs: &chainSupport{
-			bundleSource: channelconfig.NewBundleSource(chanBundle),
-		},
-		ledger: ledger,
+		cs:           &chainSupport{},
+		bundleSource: channelconfig.NewBundleSource(chanBundle),
+		ledger:       ledger,
 	}
 }
 
