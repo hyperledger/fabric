@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
@@ -45,6 +46,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/privdata"
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/dispatcher"
@@ -355,6 +357,11 @@ func serve(args []string) error {
 	}
 	lsccInst := lscc.New(sccp, aclProvider, platformRegistry)
 
+	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
+	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
+		PackageID:       ccintf.CCID(lifecycle.LifecycleNamespace + ":" + util.GetSysCCVersion()),
+		HandlerRegistry: chaincodeHandlerRegistry,
+	}
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{
 		LegacyImpl: lsccInst,
 		Resources:  lifecycleResources,
@@ -370,10 +377,12 @@ func serve(args []string) error {
 		Dispatcher: &dispatcher.Dispatcher{
 			Protobuf: &dispatcher.ProtobufImpl{},
 		},
-		Functions:           lifecycleFunctions,
-		OrgMSPID:            mspID,
-		ChannelConfigSource: peer.Default,
-		ACLProvider:         aclProvider,
+		DeployedCCInfoProvider: lifecycleValidatorCommitter,
+		QueryExecutorProvider:  lifecycleTxQueryExecutorGetter,
+		Functions:              lifecycleFunctions,
+		OrgMSPID:               mspID,
+		ChannelConfigSource:    peer.Default,
+		ACLProvider:            aclProvider,
 	}
 
 	var client *docker.Client
@@ -431,7 +440,6 @@ func serve(args []string) error {
 	}
 
 	globalConfig := chaincode.GlobalConfig()
-	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	chaincodeLauncher := &chaincode.RuntimeLauncher{
 		Metrics:         chaincode.NewLaunchMetrics(opsSystem.Provider),
 		PackageProvider: packageProvider,

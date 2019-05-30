@@ -19,6 +19,8 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/msp"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -131,6 +133,16 @@ type legacyMetadataProvider interface {
 //go:generate counterfeiter -o mock/metadata_handler.go --fake-name MetadataHandler . metadataHandler
 type metadataHandler interface {
 	lifecycle.MetadataHandler
+}
+
+//go:generate counterfeiter -o mock/msp_manager.go --fake-name MSPManager . mspManager
+type mspManager interface {
+	msp.MSPManager
+}
+
+//go:generate counterfeiter -o mock/msp.go --fake-name MSP . msp1
+type msp1 interface {
+	msp.MSP
 }
 
 func TestLifecycle(t *testing.T) {
