@@ -152,8 +152,18 @@ func (c *chain) Capabilities() channelconfig.ApplicationCapabilities {
 	return c.cs.Capabilities()
 }
 
-func (c *chain) GetMSPIDs(cid string) []string {
-	return GetMSPIDs(cid)
+func (c *chain) GetMSPIDs() []string {
+	ac, ok := c.cs.ApplicationConfig()
+	if !ok || ac.Organizations() == nil {
+		return nil
+	}
+
+	var mspIDs []string
+	for _, org := range ac.Organizations() {
+		mspIDs = append(mspIDs, org.MSPID())
+	}
+
+	return mspIDs
 }
 
 func (c *chain) MSPManager() msp.MSPManager {
@@ -712,26 +722,12 @@ func (p *Peer) GetMSPIDs(cid string) []string {
 	chains.RLock()
 	defer chains.RUnlock()
 
-	if c, ok := chains.list[cid]; ok {
-		if c == nil || c.cs == nil {
-			return nil
-		}
-		ac, ok := c.cs.ApplicationConfig()
-		if !ok || ac.Organizations() == nil {
-			return nil
-		}
-
-		orgs := ac.Organizations()
-		toret := make([]string, len(orgs))
-		i := 0
-		for _, org := range orgs {
-			toret[i] = org.MSPID()
-			i++
-		}
-
-		return toret
+	c, ok := chains.list[cid]
+	if !ok {
+		return nil
 	}
-	return nil
+
+	return c.GetMSPIDs()
 }
 
 // GetPolicyManager returns the policy manager of the chain with chain ID. Note that this

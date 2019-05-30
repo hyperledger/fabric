@@ -42,13 +42,13 @@ func (_m *ChannelResources) Capabilities() channelconfig.ApplicationCapabilities
 	return r0
 }
 
-// GetMSPIDs provides a mock function with given fields: cid
-func (_m *ChannelResources) GetMSPIDs(cid string) []string {
-	ret := _m.Called(cid)
+// GetMSPIDs provides a mock function with given fields:
+func (_m *ChannelResources) GetMSPIDs() []string {
+	ret := _m.Called()
 
 	var r0 []string
-	if rf, ok := ret.Get(0).(func(string) []string); ok {
-		r0 = rf(cid)
+	if rf, ok := ret.Get(0).(func() []string); ok {
+		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)

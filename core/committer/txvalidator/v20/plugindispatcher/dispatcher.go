@@ -27,7 +27,7 @@ import (
 type ChannelResources interface {
 	// GetMSPIDs returns the IDs for the application MSPs
 	// that have been defined in the channel
-	GetMSPIDs(cid string) []string
+	GetMSPIDs() []string
 }
 
 // LedgerResources provides access to ledger artefacts or

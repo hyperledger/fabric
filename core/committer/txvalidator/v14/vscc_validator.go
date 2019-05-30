@@ -343,7 +343,7 @@ func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID 
 		// when we are validating a system CC, we use the default
 		// VSCC and a default policy that requires one signature
 		// from any of the members of the channel
-		p := cauthdsl.SignedByAnyMember(v.cr.GetMSPIDs(chdr.ChannelId))
+		p := cauthdsl.SignedByAnyMember(v.cr.GetMSPIDs())
 		policy, err = protoutil.Marshal(p)
 		if err != nil {
 			return nil, nil, nil, err
