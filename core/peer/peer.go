@@ -575,15 +575,6 @@ func (p *Peer) createChain(
 		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
 	}
 
-	ac, ok := bundle.ApplicationConfig()
-	if !ok {
-		ac = nil
-	}
-
-	cs := &chainSupport{
-		Application: ac, // TODO, refactor as this is accessible through Manager
-	}
-
 	c := committer.NewLedgerCommitterReactive(l, func(block *common.Block) error {
 		chainID, err := protoutil.GetChainIDFromBlock(block)
 		if err != nil {
@@ -593,7 +584,7 @@ func (p *Peer) createChain(
 	})
 
 	chain := &chain{
-		cs:        cs,
+		cs:        &chainSupport{},
 		cb:        cb,
 		committer: c,
 		ledger:    l,
