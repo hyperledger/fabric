@@ -653,7 +653,7 @@ Create a modified channel config:
 
 .. code:: bash
 
-  jq -s '.[0] * {"channel_group":{"values": {"Capabilities": .[1]}}}' config.json ./scripts/capabilities.json > modified_config.json
+  jq -s '.[0] * {"channel_group":{"groups":{"Application":{"values": {"Capabilities": .[1]}}}}}' config.json ./scripts/capabilities.json > modified_config.json
 
 Note what we’re changing here: ``Capabilities`` are being added as a ``value``
 of the ``Application`` group under ``channel_group`` (in ``mychannel``).
