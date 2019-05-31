@@ -69,7 +69,6 @@ type gossipSupport struct {
 }
 
 type chainSupport struct {
-	channelconfig.Resources
 	channelconfig.Application
 }
 
@@ -95,6 +94,7 @@ type chain struct {
 	committer    committer.Committer
 	ledger       ledger.PeerLedger
 	bundleSource *channelconfig.BundleSource
+	resources    channelconfig.Resources
 }
 
 // bundleUpdate is called by the bundleSource when the channel configuration
@@ -105,7 +105,7 @@ func (c *chain) bundleUpdate(b *channelconfig.Bundle) {
 		ac = nil
 	}
 	c.cs.Application = ac
-	c.cs.Resources = b
+	c.resources = b
 }
 
 func (c *chain) Ledger() ledger.PeerLedger {
@@ -127,22 +127,22 @@ func (c *chain) Errored() <-chan struct{} {
 }
 
 func (c *chain) PolicyManager() policies.Manager {
-	return c.cs.PolicyManager()
+	return c.resources.PolicyManager()
 }
 
 // Sequence passes through to the underlying configtx.Validator
 func (c *chain) Sequence() uint64 {
-	sb := c.bundleSource.StableBundle()
-	return sb.ConfigtxValidator().Sequence()
+	return c.resources.ConfigtxValidator().Sequence()
 }
 
 func (c *chain) Apply(configtx *common.ConfigEnvelope) error {
-	err := c.cs.ConfigtxValidator().Validate(configtx)
+	configTxValidator := c.resources.ConfigtxValidator()
+	err := configTxValidator.Validate(configtx)
 	if err != nil {
 		return err
 	}
 
-	bundle, err := channelconfig.NewBundle(c.cs.ConfigtxValidator().ChainID(), configtx.Config)
+	bundle, err := channelconfig.NewBundle(configTxValidator.ChainID(), configtx.Config)
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (c *chain) Capabilities() channelconfig.ApplicationCapabilities {
 }
 
 func (c *chain) GetMSPIDs() []string {
-	ac, ok := c.cs.ApplicationConfig()
+	ac, ok := c.resources.ApplicationConfig()
 	if !ok || ac.Organizations() == nil {
 		return nil
 	}
@@ -178,7 +178,7 @@ func (c *chain) GetMSPIDs() []string {
 }
 
 func (c *chain) MSPManager() msp.MSPManager {
-	return c.cs.MSPManager()
+	return c.resources.MSPManager()
 }
 
 // chains is a local map of chainID->chainObject
@@ -651,7 +651,7 @@ func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
 	chains.RLock()
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
-		return c.cs
+		return c.resources
 	}
 	return nil
 }
@@ -730,7 +730,7 @@ func (p *Peer) GetPolicyManager(cid string) policies.Manager {
 	chains.RLock()
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
-		return c.cs.PolicyManager()
+		return c.resources.PolicyManager()
 	}
 	return nil
 }
