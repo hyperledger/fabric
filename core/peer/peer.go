@@ -68,10 +68,6 @@ type gossipSupport struct {
 	channelconfig.Channel
 }
 
-type chainSupport struct {
-	channelconfig.Application
-}
-
 func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 	ac, ok := res.ApplicationConfig()
 	if !ok {
@@ -89,7 +85,6 @@ func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 
 // chain is a local struct to manage objects in a chain
 type chain struct {
-	cs           *chainSupport
 	cb           *common.Block
 	committer    committer.Committer
 	ledger       ledger.PeerLedger
@@ -100,11 +95,6 @@ type chain struct {
 // bundleUpdate is called by the bundleSource when the channel configuration
 // changes.
 func (c *chain) bundleUpdate(b *channelconfig.Bundle) {
-	ac, ok := b.ApplicationConfig()
-	if !ok {
-		ac = nil
-	}
-	c.cs.Application = ac
 	c.resources = b
 }
 
@@ -160,7 +150,11 @@ func (c *chain) Apply(configtx *common.ConfigEnvelope) error {
 }
 
 func (c *chain) Capabilities() channelconfig.ApplicationCapabilities {
-	return c.cs.Capabilities()
+	ac, ok := c.resources.ApplicationConfig()
+	if !ok {
+		return nil
+	}
+	return ac.Capabilities()
 }
 
 func (c *chain) GetMSPIDs() []string {
@@ -584,10 +578,10 @@ func (p *Peer) createChain(
 	})
 
 	chain := &chain{
-		cs:        &chainSupport{},
 		cb:        cb,
 		committer: c,
 		ledger:    l,
+		resources: bundle,
 	}
 
 	chain.bundleSource = channelconfig.NewBundleSource(

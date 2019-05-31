@@ -178,7 +178,6 @@ func (h *testHelper) mockCreateChain(t *testing.T, chainid string, ledger ledger
 	chanBundle, err := h.constructChannelBundle(chainid, ledger)
 	assert.NoError(t, err)
 	chains.list[chainid] = &chain{
-		cs:           &chainSupport{},
 		bundleSource: channelconfig.NewBundleSource(chanBundle),
 		ledger:       ledger,
 	}

@@ -41,7 +41,6 @@ func MockCreateChain(cid string) error {
 	defer chains.Unlock()
 
 	chains.list[cid] = &chain{
-		cs:     &chainSupport{},
 		ledger: ledger,
 		resources: &mockchannelconfig.Resources{
 			PolicyManagerVal: &mockpolicies.Manager{
