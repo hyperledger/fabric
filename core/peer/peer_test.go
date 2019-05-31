@@ -105,7 +105,7 @@ func TestInitChain(t *testing.T) {
 	Default.chainInitializer = func(cid string) {
 		assert.Equal(t, chainId, cid, "chainInitializer received unexpected cid")
 	}
-	InitChain(chainId)
+	Default.InitChain(chainId)
 }
 
 func TestInitialize(t *testing.T) {

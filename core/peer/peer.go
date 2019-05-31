@@ -730,7 +730,6 @@ func (p *Peer) GetPolicyManager(cid string) policies.Manager {
 }
 
 // InitChain takes care to initialize chain after peer joined, for example deploys system CCs
-func InitChain(cid string) { Default.InitChain(cid) }
 func (p *Peer) InitChain(cid string) {
 	if p.chainInitializer != nil {
 		// Initialize chaincode, namely deploy system CC
