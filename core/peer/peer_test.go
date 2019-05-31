@@ -115,7 +115,7 @@ func TestInitialize(t *testing.T) {
 	}
 	defer os.RemoveAll(rootFSPath)
 
-	Initialize(
+	Default.Initialize(
 		nil,
 		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
@@ -153,7 +153,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	defer os.RemoveAll(peerFSPath)
 	viper.Set("peer.fileSystemPath", peerFSPath)
 
-	Initialize(
+	Default.Initialize(
 		nil,
 		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),

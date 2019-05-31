@@ -198,7 +198,7 @@ func serve(args []string) error {
 	// to this point.
 	lifecycleResources := &lifecycle.Resources{
 		Serializer:          &lifecycle.Serializer{},
-		ChannelConfigSource: peer.Default,
+		ChannelConfigSource: peerInstance,
 		ChaincodeStore:      ccStore,
 		PackageParser:       ccPackageParser,
 	}
@@ -366,7 +366,7 @@ func serve(args []string) error {
 	ipRegistry := inproccontroller.NewRegistry()
 
 	sccp := &scc.Provider{
-		Peer:      peer.Default,
+		Peer:      peerInstance,
 		Registrar: ipRegistry,
 		Whitelist: scc.GlobalWhitelist(),
 	}
@@ -396,7 +396,7 @@ func serve(args []string) error {
 		QueryExecutorProvider:  lifecycleTxQueryExecutorGetter,
 		Functions:              lifecycleFunctions,
 		OrgMSPID:               mspID,
-		ChannelConfigSource:    peer.Default,
+		ChannelConfigSource:    peerInstance,
 		ACLProvider:            aclProvider,
 	}
 
@@ -465,7 +465,7 @@ func serve(args []string) error {
 
 	chaincodeSupport := &chaincode.ChaincodeSupport{
 		ACLProvider:            aclProvider,
-		AppConfig:              peer.Default,
+		AppConfig:              peerInstance,
 		DeployedCCInfoProvider: lifecycleValidatorCommitter,
 		ExecuteTimeout:         globalConfig.ExecuteTimeout,
 		HandlerRegistry:        chaincodeHandlerRegistry,
@@ -519,7 +519,7 @@ func serve(args []string) error {
 	authFilters := reg.Lookup(library.Auth).([]authHandler.Filter)
 	endorserSupport := &endorser.SupportImpl{
 		SignerSerializer: signingIdentity,
-		Peer:             peer.Default,
+		Peer:             peerInstance,
 		ChaincodeSupport: chaincodeSupport,
 		SysCCProvider:    sccp,
 		ACLProvider:      aclProvider,
@@ -551,7 +551,7 @@ func serve(args []string) error {
 	defer service.GetGossipService().Stop()
 
 	// register prover grpc service
-	err = registerProverService(peerServer, aclProvider, signingIdentity)
+	err = registerProverService(peerInstance, peerServer, aclProvider, signingIdentity)
 	if err != nil {
 		return err
 	}
@@ -573,7 +573,7 @@ func serve(args []string) error {
 	}))
 
 	// this brings up all the channels
-	peer.Initialize(
+	peerInstance.Initialize(
 		func(cid string) {
 			logger.Debugf("Deploying system CC, for channel <%s>", cid)
 			sccp.DeploySysCCs(cid, ccp)
@@ -621,7 +621,7 @@ func serve(args []string) error {
 			lifecycle.NewMetadataProvider(
 				lifecycleCache,
 				legacyMetadataManager,
-				peer.Default,
+				peerInstance,
 			),
 		)
 	}
@@ -993,7 +993,7 @@ func newOperationsSystem(coreConfig *peer.Config) *operations.System {
 	})
 }
 
-func registerProverService(peerServer *comm.GRPCServer, aclProvider aclmgmt.ACLProvider, signingIdentity msp.SigningIdentity) error {
+func registerProverService(peerInstance *peer.Peer, peerServer *comm.GRPCServer, aclProvider aclmgmt.ACLProvider, signingIdentity msp.SigningIdentity) error {
 	policyChecker := &server.PolicyBasedAccessControl{
 		ACLProvider: aclProvider,
 		ACLResources: &server.ACLResources{
@@ -1011,7 +1011,7 @@ func registerProverService(peerServer *comm.GRPCServer, aclProvider aclmgmt.ACLP
 
 	prover := &server.Prover{
 		CapabilityChecker: &server.TokenCapabilityChecker{
-			PeerOps: peer.Default,
+			PeerOps: peerInstance,
 		},
 		Marshaler:     responseMarshaler,
 		PolicyChecker: policyChecker,

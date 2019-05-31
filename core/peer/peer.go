@@ -438,7 +438,7 @@ type Peer struct {
 	chains map[string]*chain
 }
 
-// Default provides in implementation of the Peer interface that provides
+// Default provides in implementation of the Peer that provides
 // access to the package level state.
 var Default *Peer = &Peer{}
 
@@ -512,7 +512,6 @@ func (p *Peer) createChain(
 	}
 
 	var bundle *channelconfig.Bundle
-
 	if chanConf != nil {
 		bundle, err = channelconfig.NewBundle(cid, chanConf)
 		if err != nil {
@@ -747,36 +746,6 @@ func (p *Peer) GetApplicationConfig(cid string) (channelconfig.Application, bool
 	}
 
 	return cc.ApplicationConfig()
-}
-
-func Initialize(
-	init func(string),
-	sccp sysccprovider.SystemChaincodeProvider,
-	mapper plugin.Mapper,
-	pr *platforms.Registry,
-	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-	membershipProvider ledger.MembershipInfoProvider,
-	metricsProvider metrics.Provider,
-	lr plugindispatcher.LifecycleResources,
-	nr plugindispatcher.CollectionAndLifecycleResources,
-	ledgerConfig *ledger.Config,
-	nWorkers int,
-	txProcessors customtx.Processors,
-) {
-	Default.Initialize(
-		init,
-		sccp,
-		mapper,
-		pr,
-		deployedCCInfoProvider,
-		membershipProvider,
-		metricsProvider,
-		lr,
-		nr,
-		ledgerConfig,
-		nWorkers,
-		txProcessors,
-	)
 }
 
 // Initialize sets up any chains that the peer has from the persistence. This
