@@ -97,6 +97,17 @@ type chain struct {
 	bundleSource *channelconfig.BundleSource
 }
 
+// bundleUpdate is called by the bundleSource when the channel configuration
+// changes.
+func (c *chain) bundleUpdate(b *channelconfig.Bundle) {
+	ac, ok := b.ApplicationConfig()
+	if !ok {
+		ac = nil
+	}
+	c.cs.Application = ac
+	c.cs.Resources = b
+}
+
 func (c *chain) Ledger() ledger.PeerLedger {
 	return c.ledger
 }
@@ -588,21 +599,12 @@ func (p *Peer) createChain(
 		ledger:    l,
 	}
 
-	peerSingletonCallback := func(bundle *channelconfig.Bundle) {
-		ac, ok := bundle.ApplicationConfig()
-		if !ok {
-			ac = nil
-		}
-		cs.Application = ac
-		cs.Resources = bundle
-	}
-
 	chain.bundleSource = channelconfig.NewBundleSource(
 		bundle,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
 		mspCallback,
-		peerSingletonCallback,
+		chain.bundleUpdate,
 	)
 
 	validator := txvalidator.NewTxValidator(
