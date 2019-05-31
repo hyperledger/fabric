@@ -542,6 +542,11 @@ instantiate `papercontract` on `mychannel`:
 2018-11-07 14:22:11.163 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 003 Using default vscc
 ```
 
+If you working on Windows, every command mentioned previously works well except the last one which can be executed as follows:
+```
+(magnetocorp admin)> docker exec cliMagnetoCorp peer chaincode instantiate -n papercontract -v 0 -l node -c {\"Args\":[\"org.papernet.commercialpaper:instantiate\"]} -C mychannel -P "AND ('Org1MSP.member')"
+```
+
 One of the most important parameters on `instantiate` is `-P`. It specifies the
 [endorsement policy](../endorsement-policies.html) for `papercontract`,
 describing the set of organizations that must endorse (execute and sign) a
@@ -571,6 +576,18 @@ CONTAINER ID        IMAGE                                              COMMAND  
 Notice that the container is named
 `dev-peer0.org1.example.com-papercontract-0-d96...` to indicate which peer
 started it, and the fact that it's running `papercontract` version `0`.
+
+To edit the contract and update it on the peer one must first install the newly saved contract on the peer through install command above with a version flag value different then the ones previously mentioned. To know all the versions of the contract present currently on the peers, run the foolowing command:
+```
+(magnetocorp admin)$ docker exec -it peer0.org1.example.com ls /var/hyperledger/production/chaincodes
+
+papercontract.0
+```
+
+Now use the upgrade command wih the new version flag mentioned in the install command in the previous step. 
+```
+(magnetocorp admin)> docker exec cliMagnetoCorp peer chaincode upgrade -n papercontract -v 1 -l node -c {\"Args\":[\"org.papernet.commercialpaper:instantiate\"]} -C mychannel -P "AND ('Org1MSP.member')"
+```
 
 Now that we've got a basic PaperNet up and running, and `papercontract`
 installed and instantiated, let's turn our attention to the MagnetoCorp
