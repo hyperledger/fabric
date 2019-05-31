@@ -287,9 +287,9 @@ func TestCreateChainFromBlock(t *testing.T) {
 	}
 
 	// cleanup the chain referenes to enable execution with -count n
-	chains.Lock()
-	chains.list = map[string]*chain{}
-	chains.Unlock()
+	Default.mutex.Lock()
+	Default.chains = map[string]*chain{}
+	Default.mutex.Unlock()
 }
 
 func TestDeliverSupportManager(t *testing.T) {

@@ -20,7 +20,9 @@ func MockInitialize() (cleanup func(), err error) {
 	cleanup, err = ledgermgmt.InitializeTestEnvWithInitializer(
 		&ledgermgmt.Initializer{},
 	)
-	chains.list = make(map[string]*chain)
+	Default.mutex.Lock()
+	Default.chains = make(map[string]*chain)
+	Default.mutex.Unlock()
 	return cleanup, err
 }
 
@@ -37,10 +39,14 @@ func MockCreateChain(cid string) error {
 		}
 	}
 
-	chains.Lock()
-	defer chains.Unlock()
+	Default.mutex.Lock()
+	defer Default.mutex.Unlock()
 
-	chains.list[cid] = &chain{
+	if Default.chains == nil {
+		Default.chains = map[string]*chain{}
+	}
+
+	Default.chains[cid] = &chain{
 		ledger: ledger,
 		resources: &mockchannelconfig.Resources{
 			PolicyManagerVal: &mockpolicies.Manager{

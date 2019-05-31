@@ -175,12 +175,6 @@ func (c *chain) MSPManager() msp.MSPManager {
 	return c.resources.MSPManager()
 }
 
-// chains is a local map of chainID->chainObject
-var chains = struct {
-	sync.RWMutex
-	list map[string]*chain
-}{list: make(map[string]*chain)}
-
 func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
 	peerLogger.Debugf("Getting config block")
 
@@ -317,9 +311,9 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 
 // setCurrConfigBlock sets the current config block of the specified channel
 func (p *Peer) setCurrConfigBlock(block *common.Block, cid string) error {
-	chains.Lock()
-	defer chains.Unlock()
-	if c, ok := chains.list[cid]; ok {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	if c, ok := p.chains[cid]; ok {
 		c.cb = block
 		return nil
 	}
@@ -355,11 +349,12 @@ func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (*comm.
 //
 
 // DeliverChainManager provides access to a channel for performing deliver
-type DeliverChainManager struct {
-}
+type DeliverChainManager struct{}
 
 func (DeliverChainManager) GetChain(chainID string) deliver.Chain {
-	channel, ok := chains.list[chainID]
+	Default.mutex.RLock()
+	defer Default.mutex.RUnlock()
+	channel, ok := Default.chains[chainID]
 	if !ok {
 		return nil
 	}
@@ -385,17 +380,16 @@ func NewConfigSupport() cc.Manager {
 	return &configSupport{}
 }
 
-type configSupport struct {
-}
+type configSupport struct{}
 
 // GetChannelConfig returns an instance of a object that represents
 // current channel configuration tree of the specified channel. The
 // ConfigProto method of the returned object can be used to get the
 // proto representing the channel configuration.
 func (*configSupport) GetChannelConfig(channel string) cc.Config {
-	chains.RLock()
-	defer chains.RUnlock()
-	chain := chains.list[channel]
+	Default.mutex.RLock()
+	defer Default.mutex.RUnlock()
+	chain := Default.chains[channel]
 	if chain == nil {
 		peerLogger.Errorf("[channel %s] channel not associated with this peer", channel)
 		return nil
@@ -438,6 +432,10 @@ type Peer struct {
 
 	pluginMapper     plugin.Mapper
 	chainInitializer func(cid string)
+
+	// chains is a map of chainID to chain
+	mutex  sync.RWMutex
+	chains map[string]*chain
 }
 
 // Default provides in implementation of the Peer interface that provides
@@ -569,7 +567,7 @@ func (p *Peer) createChain(
 		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
 	}
 
-	c := committer.NewLedgerCommitterReactive(l, func(block *common.Block) error {
+	committer := committer.NewLedgerCommitterReactive(l, func(block *common.Block) error {
 		chainID, err := protoutil.GetChainIDFromBlock(block)
 		if err != nil {
 			return err
@@ -577,25 +575,25 @@ func (p *Peer) createChain(
 		return p.setCurrConfigBlock(block, chainID)
 	})
 
-	chain := &chain{
+	c := &chain{
 		cb:        cb,
-		committer: c,
+		committer: committer,
 		ledger:    l,
 		resources: bundle,
 	}
 
-	chain.bundleSource = channelconfig.NewBundleSource(
+	c.bundleSource = channelconfig.NewBundleSource(
 		bundle,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
 		mspCallback,
-		chain.bundleUpdate,
+		c.bundleUpdate,
 	)
 
 	validator := txvalidator.NewTxValidator(
 		cid,
 		p.validationWorkersSemaphore,
-		chain,
+		c,
 		&vir.ValidationInfoRetrieveShim{
 			New:    newLifecycleValidation,
 			Legacy: legacyLifecycleValidation,
@@ -623,7 +621,7 @@ func (p *Peer) createChain(
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider)
 	service.GetGossipService().InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, service.Support{
 		Validator: validator,
-		Committer: c,
+		Committer: committer,
 		Store:     store,
 		Cs:        simpleCollectionStore,
 		IdDeserializeFactory: gossipprivdata.IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
@@ -631,9 +629,12 @@ func (p *Peer) createChain(
 		}),
 	})
 
-	chains.Lock()
-	defer chains.Unlock()
-	chains.list[cid] = chain
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	if p.chains == nil {
+		p.chains = map[string]*chain{}
+	}
+	p.chains[cid] = c
 
 	return nil
 }
@@ -642,9 +643,9 @@ func (p *Peer) createChain(
 // call returns nil if chain cid has not been created.
 func GetChannelConfig(cid string) channelconfig.Resources { return Default.GetChannelConfig(cid) }
 func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+	if c, ok := p.chains[cid]; ok {
 		return c.resources
 	}
 	return nil
@@ -654,11 +655,11 @@ func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
 // this peer.
 func GetChannelsInfo() []*pb.ChannelInfo { return Default.GetChannelsInfo() }
 func (p *Peer) GetChannelsInfo() []*pb.ChannelInfo {
-	chains.RLock()
-	defer chains.RUnlock()
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
 
 	var channelInfos []*pb.ChannelInfo
-	for key := range chains.list {
+	for key := range p.chains {
 		ci := &pb.ChannelInfo{ChannelId: key}
 		channelInfos = append(channelInfos, ci)
 	}
@@ -671,9 +672,9 @@ func GetStableChannelConfig(cid string) channelconfig.Resources {
 	return Default.GetStableChannelConfig(cid)
 }
 func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+	if c, ok := p.chains[cid]; ok {
 		return c.bundleSource.StableBundle()
 	}
 	return nil
@@ -683,9 +684,9 @@ func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
 // Note that this call returns nil if chain cid has not been created.
 func GetCurrConfigBlock(cid string) *common.Block { return Default.GetCurrConfigBlock(cid) }
 func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+	if c, ok := p.chains[cid]; ok {
 		return c.cb
 	}
 	return nil
@@ -695,9 +696,9 @@ func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
 // call returns nil if chain cid has not been created.
 func GetLedger(cid string) ledger.PeerLedger { return Default.GetLedger(cid) }
 func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+	if c, ok := p.chains[cid]; ok {
 		return c.ledger
 	}
 	return nil
@@ -706,10 +707,10 @@ func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
 // GetMSPIDs returns the ID of each application MSP defined on this chain
 func GetMSPIDs(cid string) []string { return Default.GetMSPIDs(cid) }
 func (p *Peer) GetMSPIDs(cid string) []string {
-	chains.RLock()
-	defer chains.RUnlock()
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
 
-	c, ok := chains.list[cid]
+	c, ok := p.chains[cid]
 	if !ok {
 		return nil
 	}
@@ -721,9 +722,9 @@ func (p *Peer) GetMSPIDs(cid string) []string {
 // call returns nil if chain cid has not been created.
 func GetPolicyManager(cid string) policies.Manager { return Default.GetPolicyManager(cid) }
 func (p *Peer) GetPolicyManager(cid string) policies.Manager {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+	if c, ok := p.chains[cid]; ok {
 		return c.resources.PolicyManager()
 	}
 	return nil

@@ -88,7 +88,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 	helper.mockCreateChain(t, chainid, lgr)
 	defer helper.clearMockChains()
 
-	bs := chains.list[chainid].bundleSource
+	bs := Default.chains[chainid].bundleSource
 	inMemoryChanConf := bs.ConfigtxValidator().ConfigProto()
 	assert.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(inMemoryChanConf))
 
@@ -177,14 +177,17 @@ func (h *testHelper) constructLastUpdateField(chainid string) *common.Envelope {
 func (h *testHelper) mockCreateChain(t *testing.T, chainid string, ledger ledger.PeerLedger) {
 	chanBundle, err := h.constructChannelBundle(chainid, ledger)
 	assert.NoError(t, err)
-	chains.list[chainid] = &chain{
+	if Default.chains == nil {
+		Default.chains = map[string]*chain{}
+	}
+	Default.chains[chainid] = &chain{
 		bundleSource: channelconfig.NewBundleSource(chanBundle),
 		ledger:       ledger,
 	}
 }
 
 func (h *testHelper) clearMockChains() {
-	chains.list = make(map[string]*chain)
+	Default.chains = make(map[string]*chain)
 }
 
 func (h *testHelper) constructChannelBundle(chainid string, ledger ledger.PeerLedger) (*channelconfig.Bundle, error) {
