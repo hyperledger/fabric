@@ -79,11 +79,9 @@ var cnflogger = flogging.MustGetLogger("cscc")
 
 // These are function names from Invoke first parameter
 const (
-	JoinChain                string = "JoinChain"
-	GetConfigBlock           string = "GetConfigBlock"
-	GetChannels              string = "GetChannels"
-	GetConfigTree            string = "GetConfigTree"
-	SimulateConfigTreeUpdate string = "SimulateConfigTreeUpdate"
+	JoinChain      string = "JoinChain"
+	GetConfigBlock string = "GetConfigBlock"
+	GetChannels    string = "GetChannels"
 )
 
 // Init is mostly useless from an SCC perspective
@@ -176,19 +174,6 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 		}
 
 		return getConfigBlock(args[1])
-	case GetConfigTree:
-		// 2. check policy
-		if err = e.aclProvider.CheckACL(resources.Cscc_GetConfigTree, string(args[1]), sp); err != nil {
-			return shim.Error(fmt.Sprintf("access denied for [%s][%s]: %s", fname, args[1], err))
-		}
-
-		return e.getConfigTree(args[1])
-	case SimulateConfigTreeUpdate:
-		// Check policy
-		if err = e.aclProvider.CheckACL(resources.Cscc_SimulateConfigTreeUpdate, string(args[1]), sp); err != nil {
-			return shim.Error(fmt.Sprintf("access denied for [%s][%s]: %s", fname, args[1], err))
-		}
-		return e.simulateConfigTreeUpdate(args[1], args[2])
 	case GetChannels:
 		// 2. check get channels policy
 		if err = e.aclProvider.CheckACL(resources.Cscc_GetChannels, "", sp); err != nil {
@@ -269,47 +254,6 @@ func getConfigBlock(chainID []byte) pb.Response {
 	}
 
 	return shim.Success(blockBytes)
-}
-
-// getConfigTree returns the current channel configuration for the specified chainID.
-// If the peer doesn't belong to the chain, returns error
-func (e *PeerConfiger) getConfigTree(chainID []byte) pb.Response {
-	if chainID == nil {
-		return shim.Error("Chain ID must not be nil")
-	}
-	channelCfg := e.configMgr.GetChannelConfig(string(chainID)).ConfigProto()
-	if channelCfg == nil {
-		return shim.Error(fmt.Sprintf("Unknown chain ID, %s", string(chainID)))
-	}
-	agCfg := &pb.ConfigTree{ChannelConfig: channelCfg}
-	configBytes, err := protoutil.Marshal(agCfg)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	return shim.Success(configBytes)
-}
-
-func (e *PeerConfiger) simulateConfigTreeUpdate(chainID []byte, envb []byte) pb.Response {
-	if chainID == nil {
-		return shim.Error("Chain ID must not be nil")
-	}
-	if envb == nil {
-		return shim.Error("Config delta bytes must not be nil")
-	}
-	env := &common.Envelope{}
-	err := proto.Unmarshal(envb, env)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	cfg, err := supportByType(e, chainID, env)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	_, err = cfg.ProposeConfigUpdate(env)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	return shim.Success([]byte("Simulation is successful"))
 }
 
 func supportByType(pc *PeerConfiger, chainID []byte, env *common.Envelope) (config.Config, error) {

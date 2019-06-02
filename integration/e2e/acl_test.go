@@ -236,7 +236,6 @@ var _ = Describe("EndToEndACL", func() {
 		// cscc
 		//
 		ItEnforcesPolicy("cscc", "GetConfigBlock", "testchannel")
-		ItEnforcesPolicy("cscc", "GetConfigTree", "testchannel")
 
 		//
 		// _lifecycle ACL policies

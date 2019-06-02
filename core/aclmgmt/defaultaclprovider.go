@@ -100,8 +100,6 @@ func (d *defaultACLProviderImpl) initialize() {
 
 	//c resources
 	d.cResourcePolicyMap[resources.Cscc_GetConfigBlock] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.Cscc_GetConfigTree] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.Cscc_SimulateConfigTreeUpdate] = CHANNELWRITERS
 
 	//---------------- non-scc resources ------------
 	//Peer resources
