@@ -723,3 +723,45 @@ func waitForConnectionCount(orderer *mocks.Orderer, connCount int) bool {
 		}
 	}
 }
+
+func TestToEndpointCriteria(t *testing.T) {
+	for _, testCase := range []struct {
+		description string
+		input       ConnectionCriteria
+		expectedOut []comm.EndpointCriteria
+	}{
+		{
+			description: "globally defined endpoints",
+			input: ConnectionCriteria{
+				Organizations:    []string{"foo", "bar"},
+				OrdererEndpoints: []string{"a", "b", "c"},
+			},
+			expectedOut: []comm.EndpointCriteria{
+				{Organizations: []string{"foo", "bar"}, Endpoint: "a"},
+				{Organizations: []string{"foo", "bar"}, Endpoint: "b"},
+				{Organizations: []string{"foo", "bar"}, Endpoint: "c"},
+			},
+		},
+		{
+			description: "per org defined endpoints",
+			input: ConnectionCriteria{
+				Organizations: []string{"foo", "bar"},
+				// Even if OrdererEndpoints are defined, the OrdererEndpointsByOrg take precedence.
+				OrdererEndpoints: []string{"a", "b", "c"},
+				OrdererEndpointsByOrg: map[string][]string{
+					"foo": {"a", "b"},
+					"bar": {"c"},
+				},
+			},
+			expectedOut: []comm.EndpointCriteria{
+				{Organizations: []string{"foo"}, Endpoint: "a"},
+				{Organizations: []string{"foo"}, Endpoint: "b"},
+				{Organizations: []string{"bar"}, Endpoint: "c"},
+			},
+		},
+	} {
+		t.Run(testCase.description, func(t *testing.T) {
+			assert.Equal(t, testCase.expectedOut, testCase.input.toEndpointCriteria())
+		})
+	}
+}
