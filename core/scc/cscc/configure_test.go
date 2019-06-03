@@ -29,13 +29,10 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/deliverservice"
-	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/core/transientstore"
-	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -70,37 +67,6 @@ type aclProvider interface {
 
 type configtxValidator interface {
 	configtx.Validator
-}
-
-type mockDeliveryClient struct {
-}
-
-func (ds *mockDeliveryClient) UpdateEndpoints(chainID string, endpoints []string) error {
-	return nil
-}
-
-// StartDeliverForChannel dynamically starts delivery of new blocks from ordering service
-// to channel peers.
-func (ds *mockDeliveryClient) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, f func()) error {
-	return nil
-}
-
-// StopDeliverForChannel dynamically stops delivery of new blocks from ordering service
-// to channel peers.
-func (ds *mockDeliveryClient) StopDeliverForChannel(chainID string) error {
-	return nil
-}
-
-// Stop terminates delivery service and closes the connection
-func (*mockDeliveryClient) Stop() {
-
-}
-
-type mockDeliveryClientFactory struct {
-}
-
-func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
-	return &mockDeliveryClient{}, nil
 }
 
 var mockAclProvider *aclmocks.MockACLProvider
@@ -280,13 +246,12 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		return dialOpts
 	}
 
-	err = service.InitGossipServiceCustomDeliveryFactory(
+	err = service.InitGossipService(
 		signer,
 		&disabled.Provider{},
 		peerEndpoint,
 		grpcServer,
 		nil,
-		&mockDeliveryClientFactory{},
 		messageCryptoService,
 		secAdv,
 		defaultSecureDialOpts,

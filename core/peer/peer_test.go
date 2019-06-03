@@ -24,14 +24,11 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
-	"github.com/hyperledger/fabric/core/deliverservice"
-	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	ledgermocks "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/transientstore"
-	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
@@ -41,36 +38,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
-
-type mockDeliveryClient struct {
-}
-
-func (ds *mockDeliveryClient) UpdateEndpoints(chainID string, endpoints []string) error {
-	return nil
-}
-
-// StartDeliverForChannel dynamically starts delivery of new blocks from ordering service
-// to channel peers.
-func (ds *mockDeliveryClient) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, f func()) error {
-	return nil
-}
-
-// StopDeliverForChannel dynamically stops delivery of new blocks from ordering service
-// to channel peers.
-func (ds *mockDeliveryClient) StopDeliverForChannel(chainID string) error {
-	return nil
-}
-
-// Stop terminates delivery service and closes the connection
-func (*mockDeliveryClient) Stop() {
-}
-
-type mockDeliveryClientFactory struct {
-}
-
-func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
-	return &mockDeliveryClient{}, nil
-}
 
 func TestMain(m *testing.M) {
 	// TODO: remove the transient store and peer setup once we've completed the
@@ -203,18 +170,17 @@ func TestCreateChainFromBlock(t *testing.T) {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 		return dialOpts
 	}
-	err = service.InitGossipServiceCustomDeliveryFactory(
+
+	err = service.InitGossipService(
 		signer,
 		&disabled.Provider{},
 		socket.Addr().String(),
 		grpcServer,
 		nil,
-		&mockDeliveryClientFactory{},
 		messageCryptoService,
 		secAdv,
 		defaultSecureDialOpts,
 	)
-
 	assert.NoError(t, err)
 
 	go grpcServer.Serve(socket)
