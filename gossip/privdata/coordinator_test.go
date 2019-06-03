@@ -46,7 +46,7 @@ func init() {
 
 var testConfig = CoordinatorConfig{
 	PullRetryThreshold:      time.Second * 3,
-	TransientBlockRetention: TransientBlockRetentionDefault,
+	TransientBlockRetention: 1000,
 }
 
 // CollectionCriteria aggregates criteria of

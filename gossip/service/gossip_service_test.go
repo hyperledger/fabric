@@ -23,13 +23,13 @@ import (
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
 	gcomm "github.com/hyperledger/fabric/gossip/comm"
-	gossipCommon "github.com/hyperledger/fabric/gossip/common"
+	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
-	gossipMetrics "github.com/hyperledger/fabric/gossip/metrics"
+	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
@@ -449,7 +449,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	//Starting leader election services
 	services := make([]*electionService, n)
 
-	electionMetrics := gossipMetrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics
+	electionMetrics := gossipmetrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics
 
 	for i := 0; i < n; i++ {
 		services[i] = &electionService{nil, false, 0}
@@ -580,7 +580,7 @@ func waitForFullMembershipOrFailNow(t *testing.T, channel string, gossips []Goss
 	for time.Now().Before(end) {
 		correctPeers = 0
 		for _, g := range gossips {
-			if len(g.PeersOfChannel(gossipCommon.ChainID(channel))) == (peersNum - 1) {
+			if len(g.PeersOfChannel(gossipcommon.ChainID(channel))) == (peersNum - 1) {
 				correctPeers++
 			}
 		}
@@ -674,8 +674,8 @@ func addPeersToChannel(t *testing.T, n int, channel string, peers []GossipServic
 	for _, i := range peerIndexes {
 		wg.Add(1)
 		go func(i int) {
-			peers[i].JoinChan(jcm, gossipCommon.ChainID(channel))
-			peers[i].UpdateLedgerHeight(0, gossipCommon.ChainID(channel))
+			peers[i].JoinChan(jcm, gossipcommon.ChainID(channel))
+			peers[i].UpdateLedgerHeight(0, gossipcommon.ChainID(channel))
 			wg.Done()
 		}(i)
 	}
@@ -685,7 +685,7 @@ func addPeersToChannel(t *testing.T, n int, channel string, peers []GossipServic
 func startPeers(t *testing.T, serviceConfig *ServiceConfig, n int, boot ...int) []GossipService {
 	var ports []int
 	var grpcs []*comm.GRPCServer
-	var certs []*gossipCommon.TLSCertificates
+	var certs []*gossipcommon.TLSCertificates
 	var secDialOpts []api.PeerSecureDialOpts
 
 	for i := 0; i < n; i++ {
@@ -715,7 +715,7 @@ func startPeers(t *testing.T, serviceConfig *ServiceConfig, n int, boot ...int) 
 	return peers
 }
 
-func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServer *comm.GRPCServer, certs *gossipCommon.TLSCertificates,
+func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServer *comm.GRPCServer, certs *gossipcommon.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int) GossipService {
 	conf := &gossip.Config{
 		BindPort:                     port,
@@ -750,7 +750,7 @@ func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServe
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	cryptoService := &naiveCryptoService{}
-	metrics := gossipMetrics.NewGossipMetrics(&disabled.Provider{})
+	metrics := gossipmetrics.NewGossipMetrics(&disabled.Provider{})
 	gossip := gossip.NewGossipService(conf, gRPCServer.Server(), &orgCryptoService{}, cryptoService, selfID,
 		secureDialOpts, metrics)
 	go func() {
@@ -822,7 +822,7 @@ func (naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Ti
 
 // VerifyByChannel verifies a peer's signature on a message in the context
 // of a specific channel
-func (*naiveCryptoService) VerifyByChannel(_ gossipCommon.ChainID, _ api.PeerIdentityType, _, _ []byte) error {
+func (*naiveCryptoService) VerifyByChannel(_ gossipcommon.ChainID, _ api.PeerIdentityType, _, _ []byte) error {
 	return nil
 }
 
@@ -831,13 +831,13 @@ func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) e
 }
 
 // GetPKIidOfCert returns the PKI-ID of a peer's identity
-func (*naiveCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) gossipCommon.PKIidType {
-	return gossipCommon.PKIidType(peerIdentity)
+func (*naiveCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) gossipcommon.PKIidType {
+	return gossipcommon.PKIidType(peerIdentity)
 }
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*naiveCryptoService) VerifyBlock(chainID gossipCommon.ChainID, seqNum uint64, signedBlock []byte) error {
+func (*naiveCryptoService) VerifyBlock(chainID gossipcommon.ChainID, seqNum uint64, signedBlock []byte) error {
 	return nil
 }
 
@@ -917,7 +917,7 @@ func TestChannelConfig(t *testing.T) {
 			},
 		},
 	}
-	gService.JoinChan(jcm, gossipCommon.ChainID("A"))
+	gService.JoinChan(jcm, gossipcommon.ChainID("A"))
 	gService.updateAnchors(mc)
 	assert.True(t, gService.amIinChannel(string(orgInChannelA), mc))
 }
