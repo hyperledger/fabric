@@ -28,7 +28,12 @@ func GetVersionInfo() string {
 		CommitSHA = "development build"
 	}
 
-	return fmt.Sprintf("%s:\n Version: %s\n Commit SHA: %s\n Go version: %s\n OS/Arch: %s",
-		ProgramName, Version, CommitSHA, runtime.Version(),
-		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH))
+	return fmt.Sprintf(
+		"%s:\n Version: %s\n Commit SHA: %s\n Go version: %s\n OS/Arch: %s",
+		ProgramName,
+		Version,
+		CommitSHA,
+		runtime.Version(),
+		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+	)
 }

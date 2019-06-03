@@ -7,133 +7,155 @@ package csp_test
 
 import (
 	"crypto/ecdsa"
-	"encoding/hex"
-	"errors"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/asn1"
+	"encoding/pem"
+	"fmt"
+	"io/ioutil"
+	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/internal/cryptogen/csp"
 	"github.com/stretchr/testify/assert"
 )
 
-// mock implementation of bccsp.Key interface
-type mockKey struct {
-	pubKeyErr error
-	bytesErr  error
-	pubKey    bccsp.Key
-}
-
-func (mk *mockKey) Bytes() ([]byte, error) {
-	if mk.bytesErr != nil {
-		return nil, mk.bytesErr
-	}
-	return []byte{1, 2, 3, 4}, nil
-}
-
-func (mk *mockKey) PublicKey() (bccsp.Key, error) {
-	if mk.pubKeyErr != nil {
-		return nil, mk.pubKeyErr
-	}
-	return mk.pubKey, nil
-}
-
-func (mk *mockKey) SKI() []byte { return []byte{1, 2, 3, 4} }
-
-func (mk *mockKey) Symmetric() bool { return false }
-
-func (mk *mockKey) Private() bool { return false }
-
-var testDir = filepath.Join(os.TempDir(), "csp-test")
-
 func TestLoadPrivateKey(t *testing.T) {
-	priv, _, _ := csp.GeneratePrivateKey(testDir)
-	pkFile := filepath.Join(testDir, hex.EncodeToString(priv.SKI())+"_sk")
+	testDir, err := ioutil.TempDir("", "csp-test")
+	if err != nil {
+		t.Fatalf("Failed to create test directory: %s", err)
+	}
+	defer os.RemoveAll(testDir)
+	priv, err := csp.GeneratePrivateKey(testDir)
+	if err != nil {
+		t.Fatalf("Failed to generate private key: %s", err)
+	}
+	pkFile := filepath.Join(testDir, "priv_sk")
 	assert.Equal(t, true, checkForFile(pkFile),
 		"Expected to find private key file")
-	loadedPriv, _, _ := csp.LoadPrivateKey(testDir)
-	assert.NotNil(t, loadedPriv, "Should have returned a bccsp.Key")
-	assert.Equal(t, priv.SKI(), loadedPriv.SKI(), "Should have same subject identifier")
-	cleanup(testDir)
+	loadedPriv, err := csp.LoadPrivateKey(testDir)
+	assert.NoError(t, err, "Failed to load private key")
+	assert.NotNil(t, loadedPriv, "Should have returned an *ecdsa.PrivateKey")
+	assert.Equal(t, priv, loadedPriv, "Expected private keys to match")
 }
 
-func TestLoadPrivateKey_wrongEncoding(t *testing.T) {
-	if err := os.Mkdir(testDir, 0755); err != nil {
-		panic("failed to create dir " + testDir + ":" + err.Error())
-	}
-	filename := testDir + "/wrong_encoding_sk"
-	file, err := os.Create(filename)
+func TestLoadPrivateKey_BadPEM(t *testing.T) {
+	testDir, err := ioutil.TempDir("", "csp-test")
 	if err != nil {
-		panic("failed to create tmpfile " + filename + ":" + err.Error())
+		t.Fatalf("Failed to create test directory: %s", err)
 	}
-	defer file.Close()
-	_, err = file.Write([]byte("wrong_encoding"))
+	defer os.RemoveAll(testDir)
+
+	badPEMFile := filepath.Join(testDir, "badpem_sk")
+
+	rsaKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
-		panic("failed to write to " + filename + ":" + err.Error())
+		t.Fatalf("Failed to generate RSA key: %s", err)
 	}
-	file.Close() // To flush test file content
-	_, _, err = csp.LoadPrivateKey(testDir)
-	assert.NotNil(t, err)
-	assert.EqualError(t, err, testDir+"/wrong_encoding_sk: wrong PEM encoding")
-	cleanup(testDir)
+
+	pkcs8Encoded, err := x509.MarshalPKCS8PrivateKey(rsaKey)
+	if err != nil {
+		t.Fatalf("Failed to PKCS8 encode RSA private key: %s", err)
+	}
+	pkcs8RSAPem := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pkcs8Encoded})
+
+	pkcs1Encoded := x509.MarshalPKCS1PrivateKey(rsaKey)
+	if pkcs1Encoded == nil {
+		t.Fatalf("Failed to PKCS1 encode RSA private key: %s", err)
+	}
+	pkcs1RSAPem := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pkcs1Encoded})
+
+	for _, test := range []struct {
+		name   string
+		data   []byte
+		errMsg string
+	}{
+		{
+			name:   "not pem encoded",
+			data:   []byte("wrong_encoding"),
+			errMsg: fmt.Sprintf("%s: bytes are not PEM encoded", badPEMFile),
+		},
+		{
+			name:   "not EC key",
+			data:   pkcs8RSAPem,
+			errMsg: fmt.Sprintf("%s: pem bytes do not contain an EC private key", badPEMFile),
+		},
+		{
+			name:   "not PKCS8 encoded",
+			data:   pkcs1RSAPem,
+			errMsg: fmt.Sprintf("%s: pem bytes are not PKCS8 encoded", badPEMFile),
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := ioutil.WriteFile(
+				badPEMFile,
+				test.data,
+				0755,
+			)
+			if err != nil {
+				t.Fatalf("failed to write to wrong encoding file: %s", err)
+			}
+			_, err = csp.LoadPrivateKey(badPEMFile)
+			assert.Contains(t, err.Error(), test.errMsg)
+			os.Remove(badPEMFile)
+		})
+	}
 }
 
 func TestGeneratePrivateKey(t *testing.T) {
+	testDir, err := ioutil.TempDir("", "csp-test")
+	if err != nil {
+		t.Fatalf("Failed to create test directory: %s", err)
+	}
+	defer os.RemoveAll(testDir)
 
-	priv, signer, err := csp.GeneratePrivateKey(testDir)
+	expectedFile := filepath.Join(testDir, "priv_sk")
+	priv, err := csp.GeneratePrivateKey(testDir)
 	assert.NoError(t, err, "Failed to generate private key")
-	assert.NotNil(t, priv, "Should have returned a bccsp.Key")
-	assert.Equal(t, true, priv.Private(), "Failed to return private key")
-	assert.NotNil(t, signer, "Should have returned a crypto.Signer")
-	pkFile := filepath.Join(testDir, hex.EncodeToString(priv.SKI())+"_sk")
-	t.Log(pkFile)
-	assert.Equal(t, true, checkForFile(pkFile),
+	assert.NotNil(t, priv, "Should have returned an *ecdsa.Key")
+	assert.Equal(t, true, checkForFile(expectedFile),
 		"Expected to find private key file")
-	cleanup(testDir)
 
+	priv, err = csp.GeneratePrivateKey("notExist")
+	assert.Contains(t, err.Error(), "no such file or directory")
 }
 
-func TestGetECPublicKey(t *testing.T) {
-
-	priv, _, err := csp.GeneratePrivateKey(testDir)
-	assert.NoError(t, err, "Failed to generate private key")
-
-	ecPubKey, err := csp.GetECPublicKey(priv)
-	assert.NoError(t, err, "Failed to get public key from private key")
-	assert.IsType(t, &ecdsa.PublicKey{}, ecPubKey,
-		"Failed to return an ecdsa.PublicKey")
-
-	// force errors using mockKey
-	priv = &mockKey{
-		pubKeyErr: nil,
-		bytesErr:  nil,
-		pubKey:    &mockKey{},
+func TestECDSASigner(t *testing.T) {
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to generate private key: %s", err)
 	}
-	_, err = csp.GetECPublicKey(priv)
-	assert.Error(t, err, "Expected an error with a invalid pubKey bytes")
-	priv = &mockKey{
-		pubKeyErr: nil,
-		bytesErr:  nil,
-		pubKey: &mockKey{
-			bytesErr: errors.New("bytesErr"),
-		},
-	}
-	_, err = csp.GetECPublicKey(priv)
-	assert.EqualError(t, err, "bytesErr", "Expected bytesErr")
-	priv = &mockKey{
-		pubKeyErr: errors.New("pubKeyErr"),
-		bytesErr:  nil,
-		pubKey:    &mockKey{},
-	}
-	_, err = csp.GetECPublicKey(priv)
-	assert.EqualError(t, err, "pubKeyErr", "Expected pubKeyErr")
 
-	cleanup(testDir)
-}
+	signer := csp.ECDSASigner{
+		PrivateKey: priv,
+	}
+	assert.Equal(t, priv.Public(), signer.Public().(*ecdsa.PublicKey))
+	digest := []byte{1}
+	sig, err := signer.Sign(rand.Reader, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed to create signature: %s", err)
+	}
 
-func cleanup(dir string) {
-	os.RemoveAll(dir)
+	// unmarshal signature
+	ecdsaSig := &csp.ECDSASignature{}
+	_, err = asn1.Unmarshal(sig, ecdsaSig)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal signature: %s", err)
+	}
+	// s should not be greater than half order of curve
+	halfOrder := new(big.Int).Div(priv.PublicKey.Curve.Params().N, big.NewInt(2))
+
+	if ecdsaSig.S.Cmp(halfOrder) == 1 {
+		t.Error("Expected signature with Low S")
+	}
+
+	// ensure signature is valid by using standard verify function
+	ok := ecdsa.Verify(&priv.PublicKey, digest, ecdsaSig.R, ecdsaSig.S)
+	assert.True(t, ok, "Expected valid signature")
 }
 
 func checkForFile(file string) bool {

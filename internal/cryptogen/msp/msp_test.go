@@ -107,14 +107,6 @@ func TestGenerateLocalMSP(t *testing.T) {
 			"Expected to find file "+file)
 	}
 
-	// finally check to see if we can load this as a local MSP config
-	testMSPConfig, err := fabricmsp.GetLocalMspConfig(mspDir, nil, testName)
-	assert.NoError(t, err, "Error parsing local MSP config")
-	testMSP, err := fabricmsp.New(&fabricmsp.BCCSPNewOpts{NewBaseOpts: fabricmsp.NewBaseOpts{Version: fabricmsp.MSPv1_0}})
-	assert.NoError(t, err, "Error creating new BCCSP MSP")
-	err = testMSP.Setup(testMSPConfig)
-	assert.NoError(t, err, "Error setting up local MSP")
-
 	tlsCA.Name = "test/fail"
 	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.CLIENT, true)
 	assert.Error(t, err, "Should have failed with CA name 'test/fail'")
@@ -153,13 +145,6 @@ func TestGenerateVerifyingMSP(t *testing.T) {
 		assert.Equal(t, true, checkForFile(file),
 			"Expected to find file "+file)
 	}
-	// finally check to see if we can load this as a verifying MSP config
-	testMSPConfig, err := fabricmsp.GetVerifyingMspConfig(mspDir, testName, fabricmsp.ProviderTypeToString(fabricmsp.FABRIC))
-	assert.NoError(t, err, "Error parsing verifying MSP config")
-	testMSP, err := fabricmsp.New(&fabricmsp.BCCSPNewOpts{NewBaseOpts: fabricmsp.NewBaseOpts{Version: fabricmsp.MSPv1_0}})
-	assert.NoError(t, err, "Error creating new BCCSP MSP")
-	err = testMSP.Setup(testMSPConfig)
-	assert.NoError(t, err, "Error setting up verifying MSP")
 
 	tlsCA.Name = "test/fail"
 	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA, true)
