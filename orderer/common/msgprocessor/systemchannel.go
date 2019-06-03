@@ -46,14 +46,10 @@ func NewSystemChannel(support StandardChannelSupport, templator ChannelConfigTem
 // In maintenance mode, require the signature of /Channel/Orderer/Writers. This will filter out configuration
 // changes that are not related to consensus-type migration (e.g on /Channel/Application).
 func CreateSystemChannelFilters(chainCreator ChainCreator, ledgerResources channelconfig.Resources) *RuleSet {
-	ordererConfig, ok := ledgerResources.OrdererConfig()
-	if !ok {
-		logger.Panicf("Cannot create system channel filters without orderer config")
-	}
 	return NewRuleSet([]Rule{
 		EmptyRejectRule,
 		NewExpirationRejectRule(ledgerResources),
-		NewSizeFilter(ordererConfig),
+		NewSizeFilter(ledgerResources),
 		NewSigFilter(policies.ChannelWriters, policies.ChannelOrdererWriters, ledgerResources),
 		NewSystemChannelFilter(ledgerResources, chainCreator),
 	})
@@ -267,7 +263,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 	applicationGroup := protoutil.NewConfigGroup()
 	consortiumsConfig, ok := dt.support.ConsortiumsConfig()
 	if !ok {
-		return nil, fmt.Errorf("The ordering system channel does not appear to support creating channels")
+		return nil, fmt.Errorf("The ordering system channel does not appear to resources creating channels")
 	}
 
 	consortiumConf, ok := consortiumsConfig.Consortiums()[consortium.Name]
@@ -277,7 +273,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 
 	policyKey := channelconfig.ChannelCreationPolicyKey
 	if oc, ok := dt.support.OrdererConfig(); ok && oc.Capabilities().UseChannelCreationPolicyAsAdmins() {
-		// To support the channel creation process, we use a copy of the Consortium's ChannelCreationPolicy
+		// To resources the channel creation process, we use a copy of the Consortium's ChannelCreationPolicy
 		// to govern modification of the application group.  We do this by creating a new policy in the
 		// Application group (with a copy of the policy info from the consortium) and set the mod policy
 		// of the Application group to the name of this policy.  Historically, the name chosen was
