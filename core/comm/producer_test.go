@@ -132,3 +132,57 @@ func TestDisableEndpoint(t *testing.T) {
 	assert.Equal(t, "b", a)
 
 }
+
+func TestEndpointCriteria(t *testing.T) {
+	endpointCriteria := EndpointCriteria{
+		Endpoint:      "a",
+		Organizations: []string{"o1", "o2"},
+	}
+
+	for _, testCase := range []struct {
+		description           string
+		expectedEqual         bool
+		otherEndpointCriteria EndpointCriteria
+	}{
+		{
+			description: "different endpoint",
+			otherEndpointCriteria: EndpointCriteria{
+				Endpoint:      "b",
+				Organizations: []string{"o1", "o2"},
+			},
+		},
+		{
+			description: "more organizations",
+			otherEndpointCriteria: EndpointCriteria{
+				Endpoint:      "a",
+				Organizations: []string{"o1", "o2", "o3"},
+			},
+		},
+		{
+			description: "less organizations",
+			otherEndpointCriteria: EndpointCriteria{
+				Endpoint:      "a",
+				Organizations: []string{"o1"},
+			},
+		},
+		{
+			description: "different organizations",
+			otherEndpointCriteria: EndpointCriteria{
+				Endpoint:      "a",
+				Organizations: []string{"o1", "o3"},
+			},
+		},
+		{
+			description:   "permuted organizations",
+			expectedEqual: true,
+			otherEndpointCriteria: EndpointCriteria{
+				Endpoint:      "a",
+				Organizations: []string{"o2", "o1"},
+			},
+		},
+	} {
+		t.Run(testCase.description, func(t *testing.T) {
+			assert.Equal(t, testCase.expectedEqual, endpointCriteria.Equals(testCase.otherEndpointCriteria))
+		})
+	}
+}
