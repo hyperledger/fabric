@@ -36,7 +36,7 @@ dockerFabricPull() {
         echo "==> FABRIC IMAGE: $IMAGES"
         echo
         docker pull "hyperledger/fabric-$IMAGES:$FABRIC_TAG"
-        docker tag "hyperledger/fabric-$IMAGES:$FABRIC_TAG hyperledger/fabric-$IMAGES"
+        docker tag "hyperledger/fabric-$IMAGES:$FABRIC_TAG" "hyperledger/fabric-$IMAGES"
     done
 }
 
@@ -46,7 +46,7 @@ dockerThirdPartyImagesPull() {
         echo "==> THIRDPARTY DOCKER IMAGE: $IMAGES"
         echo
         docker pull "hyperledger/fabric-$IMAGES:$THIRDPARTY_TAG"
-        docker tag "hyperledger/fabric-$IMAGES:$THIRDPARTY_TAG hyperledger/fabric-$IMAGES"
+        docker tag "hyperledger/fabric-$IMAGES:$THIRDPARTY_TAG" "hyperledger/fabric-$IMAGES"
     done
 }
 
@@ -55,7 +55,7 @@ dockerCaPull() {
     echo "==> FABRIC CA IMAGE"
     echo
     docker pull "hyperledger/fabric-ca:$CA_TAG"
-    docker tag "hyperledger/fabric-ca:$CA_TAG hyperledger/fabric-ca"
+    docker tag "hyperledger/fabric-ca:$CA_TAG" "hyperledger/fabric-ca"
 }
 
 samplesInstall() {
