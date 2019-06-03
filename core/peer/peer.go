@@ -211,35 +211,35 @@ func updateTrustedRoots(cm channelconfig.Resources) {
 
 	// only run is TLS is enabled
 	serverConfig, err := GetServerConfig()
-	if err == nil && serverConfig.SecOpts.UseTLS {
-		buildTrustedRootsForChain(cm)
+	if err != nil || !serverConfig.SecOpts.UseTLS {
+		// TODO: stop making calls to get the server configuratino
+		return
+	}
 
-		// now iterate over all roots for all app and orderer chains
-		trustedRoots := [][]byte{}
-		credSupport.RLock()
-		defer credSupport.RUnlock()
-		for _, roots := range credSupport.AppRootCAsByChain {
-			trustedRoots = append(trustedRoots, roots...)
-		}
-		// also need to append statically configured root certs
-		if len(serverConfig.SecOpts.ClientRootCAs) > 0 {
-			trustedRoots = append(trustedRoots, serverConfig.SecOpts.ClientRootCAs...)
-		}
-		if len(serverConfig.SecOpts.ServerRootCAs) > 0 {
-			trustedRoots = append(trustedRoots, serverConfig.SecOpts.ServerRootCAs...)
-		}
+	buildTrustedRootsForChain(cm)
 
-		server := peerServer
-		// now update the client roots for the peerServer
-		if server != nil {
-			err := server.SetClientRootCAs(trustedRoots)
-			if err != nil {
-				msg := "Failed to update trusted roots for peer from latest config " +
-					"block.  This peer may not be able to communicate " +
-					"with members of channel %s (%s)"
-				peerLogger.Warningf(msg, cm.ConfigtxValidator().ChainID(), err)
-			}
-		}
+	// now iterate over all roots for all app and orderer chains
+	credSupport.RLock()
+	defer credSupport.RUnlock()
+
+	var trustedRoots [][]byte
+	for _, roots := range credSupport.AppRootCAsByChain {
+		trustedRoots = append(trustedRoots, roots...)
+	}
+	trustedRoots = append(trustedRoots, serverConfig.SecOpts.ClientRootCAs...)
+	trustedRoots = append(trustedRoots, serverConfig.SecOpts.ServerRootCAs...)
+
+	server := peerServer
+	if server == nil {
+		return
+	}
+
+	// now update the client roots for the peerServer
+	err = server.SetClientRootCAs(trustedRoots)
+	if err != nil {
+		msg := "Failed to update trusted roots from latest config block. " +
+			"This peer may not be able to communicate with members of channel %s (%s)"
+		peerLogger.Warningf(msg, cm.ConfigtxValidator().ChainID(), err)
 	}
 }
 
@@ -249,20 +249,15 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 	credSupport.Lock()
 	defer credSupport.Unlock()
 
-	appRootCAs := [][]byte{}
-	ordererRootCAs := [][]byte{}
 	appOrgMSPs := make(map[string]struct{})
-	ordOrgMSPs := make(map[string]struct{})
-
 	if ac, ok := cm.ApplicationConfig(); ok {
-		//loop through app orgs and build map of MSPIDs
 		for _, appOrg := range ac.Organizations() {
 			appOrgMSPs[appOrg.MSPID()] = struct{}{}
 		}
 	}
 
+	ordOrgMSPs := make(map[string]struct{})
 	if ac, ok := cm.OrdererConfig(); ok {
-		//loop through orderer orgs and build map of MSPIDs
 		for _, ordOrg := range ac.Organizations() {
 			ordOrgMSPs[ordOrg.MSPID()] = struct{}{}
 		}
@@ -273,40 +268,44 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 	msps, err := cm.MSPManager().GetMSPs()
 	if err != nil {
 		peerLogger.Errorf("Error getting root CAs for channel %s (%s)", cid, err)
+		return
 	}
-	if err == nil {
-		for k, v := range msps {
-			// check to see if this is a FABRIC MSP
-			if v.GetType() == msp.FABRIC {
-				for _, root := range v.GetTLSRootCerts() {
-					// check to see of this is an app org MSP
-					if _, ok := appOrgMSPs[k]; ok {
-						peerLogger.Debugf("adding app root CAs for MSP [%s]", k)
-						appRootCAs = append(appRootCAs, root)
-					}
-					// check to see of this is an orderer org MSP
-					if _, ok := ordOrgMSPs[k]; ok {
-						peerLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
-						ordererRootCAs = append(ordererRootCAs, root)
-					}
-				}
-				for _, intermediate := range v.GetTLSIntermediateCerts() {
-					// check to see of this is an app org MSP
-					if _, ok := appOrgMSPs[k]; ok {
-						peerLogger.Debugf("adding app root CAs for MSP [%s]", k)
-						appRootCAs = append(appRootCAs, intermediate)
-					}
-					// check to see of this is an orderer org MSP
-					if _, ok := ordOrgMSPs[k]; ok {
-						peerLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
-						ordererRootCAs = append(ordererRootCAs, intermediate)
-					}
-				}
+
+	var appRootCAs [][]byte
+	var ordererRootCAs [][]byte
+	for k, v := range msps {
+		// we only support the fabric MSP
+		if v.GetType() != msp.FABRIC {
+			continue
+		}
+
+		for _, root := range v.GetTLSRootCerts() {
+			// check to see of this is an app org MSP
+			if _, ok := appOrgMSPs[k]; ok {
+				peerLogger.Debugf("adding app root CAs for MSP [%s]", k)
+				appRootCAs = append(appRootCAs, root)
+			}
+			// check to see of this is an orderer org MSP
+			if _, ok := ordOrgMSPs[k]; ok {
+				peerLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
+				ordererRootCAs = append(ordererRootCAs, root)
 			}
 		}
-		credSupport.AppRootCAsByChain[cid] = appRootCAs
-		credSupport.OrdererRootCAsByChain[cid] = ordererRootCAs
+		for _, intermediate := range v.GetTLSIntermediateCerts() {
+			// check to see of this is an app org MSP
+			if _, ok := appOrgMSPs[k]; ok {
+				peerLogger.Debugf("adding app root CAs for MSP [%s]", k)
+				appRootCAs = append(appRootCAs, intermediate)
+			}
+			// check to see of this is an orderer org MSP
+			if _, ok := ordOrgMSPs[k]; ok {
+				peerLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
+				ordererRootCAs = append(ordererRootCAs, intermediate)
+			}
+		}
 	}
+	credSupport.AppRootCAsByChain[cid] = appRootCAs
+	credSupport.OrdererRootCAsByChain[cid] = ordererRootCAs
 }
 
 // setCurrConfigBlock sets the current config block of the specified channel
