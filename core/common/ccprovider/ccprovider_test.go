@@ -128,6 +128,15 @@ func TestChaincodeData(t *testing.T) {
 	assert.Equal(t, po, []byte("Policy"))
 }
 
+func TestGetChaincodeInstallPath(t *testing.T) {
+	c := &ccprovider.CCInfoFSImpl{}
+	installPath := c.GetChaincodeInstallPath()
+	defer ccprovider.SetChaincodesPath(installPath)
+
+	ccprovider.SetChaincodesPath("blahblah")
+	assert.Equal(t, "blahblah", c.GetChaincodeInstallPath())
+}
+
 func setupDirectoryStructure(t *testing.T) (string, map[string][]byte) {
 	files := []string{
 		"example02.1.0", // Version contains the delimiter '.' is a valid case

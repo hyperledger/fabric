@@ -23,6 +23,16 @@ type LegacyPackageProvider struct {
 		result1 []byte
 		result2 error
 	}
+	GetChaincodeInstallPathStub        func() string
+	getChaincodeInstallPathMutex       sync.RWMutex
+	getChaincodeInstallPathArgsForCall []struct {
+	}
+	getChaincodeInstallPathReturns struct {
+		result1 string
+	}
+	getChaincodeInstallPathReturnsOnCall map[int]struct {
+		result1 string
+	}
 	ListInstalledChaincodesStub        func(string, ccprovider.DirEnumerator, ccprovider.ChaincodeExtractor) ([]chaincode.InstalledChaincode, error)
 	listInstalledChaincodesMutex       sync.RWMutex
 	listInstalledChaincodesArgsForCall []struct {
@@ -106,6 +116,58 @@ func (fake *LegacyPackageProvider) GetChaincodeCodePackageReturnsOnCall(i int, r
 	}{result1, result2}
 }
 
+func (fake *LegacyPackageProvider) GetChaincodeInstallPath() string {
+	fake.getChaincodeInstallPathMutex.Lock()
+	ret, specificReturn := fake.getChaincodeInstallPathReturnsOnCall[len(fake.getChaincodeInstallPathArgsForCall)]
+	fake.getChaincodeInstallPathArgsForCall = append(fake.getChaincodeInstallPathArgsForCall, struct {
+	}{})
+	fake.recordInvocation("GetChaincodeInstallPath", []interface{}{})
+	fake.getChaincodeInstallPathMutex.Unlock()
+	if fake.GetChaincodeInstallPathStub != nil {
+		return fake.GetChaincodeInstallPathStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.getChaincodeInstallPathReturns
+	return fakeReturns.result1
+}
+
+func (fake *LegacyPackageProvider) GetChaincodeInstallPathCallCount() int {
+	fake.getChaincodeInstallPathMutex.RLock()
+	defer fake.getChaincodeInstallPathMutex.RUnlock()
+	return len(fake.getChaincodeInstallPathArgsForCall)
+}
+
+func (fake *LegacyPackageProvider) GetChaincodeInstallPathCalls(stub func() string) {
+	fake.getChaincodeInstallPathMutex.Lock()
+	defer fake.getChaincodeInstallPathMutex.Unlock()
+	fake.GetChaincodeInstallPathStub = stub
+}
+
+func (fake *LegacyPackageProvider) GetChaincodeInstallPathReturns(result1 string) {
+	fake.getChaincodeInstallPathMutex.Lock()
+	defer fake.getChaincodeInstallPathMutex.Unlock()
+	fake.GetChaincodeInstallPathStub = nil
+	fake.getChaincodeInstallPathReturns = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *LegacyPackageProvider) GetChaincodeInstallPathReturnsOnCall(i int, result1 string) {
+	fake.getChaincodeInstallPathMutex.Lock()
+	defer fake.getChaincodeInstallPathMutex.Unlock()
+	fake.GetChaincodeInstallPathStub = nil
+	if fake.getChaincodeInstallPathReturnsOnCall == nil {
+		fake.getChaincodeInstallPathReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.getChaincodeInstallPathReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
+}
+
 func (fake *LegacyPackageProvider) ListInstalledChaincodes(arg1 string, arg2 ccprovider.DirEnumerator, arg3 ccprovider.ChaincodeExtractor) ([]chaincode.InstalledChaincode, error) {
 	fake.listInstalledChaincodesMutex.Lock()
 	ret, specificReturn := fake.listInstalledChaincodesReturnsOnCall[len(fake.listInstalledChaincodesArgsForCall)]
@@ -176,6 +238,8 @@ func (fake *LegacyPackageProvider) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.getChaincodeCodePackageMutex.RLock()
 	defer fake.getChaincodeCodePackageMutex.RUnlock()
+	fake.getChaincodeInstallPathMutex.RLock()
+	defer fake.getChaincodeInstallPathMutex.RUnlock()
 	fake.listInstalledChaincodesMutex.RLock()
 	defer fake.listInstalledChaincodesMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

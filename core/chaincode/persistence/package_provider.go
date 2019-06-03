@@ -26,6 +26,7 @@ type StorePackageProvider interface {
 // LegacyPackageProvider is the interface needed to retrieve
 // the code package from a ChaincodeDeploymentSpec
 type LegacyPackageProvider interface {
+	GetChaincodeInstallPath() string
 	GetChaincodeCodePackage(name, version string) (codePackage []byte, err error)
 	ListInstalledChaincodes(dir string, de ccprovider.DirEnumerator, ce ccprovider.ChaincodeExtractor) ([]chaincode.InstalledChaincode, error)
 }
@@ -99,7 +100,7 @@ func (p *PackageProvider) getCodePackageFromLegacyPP(name, version string) ([]by
 // ListInstalledChaincodesLegacy returns metadata (name, version, and ID) for
 // each chaincode installed on a peer with the legacy lifecycle
 func (p *PackageProvider) ListInstalledChaincodesLegacy() ([]chaincode.InstalledChaincode, error) {
-	installedChaincodesLegacy, err := p.LegacyPP.ListInstalledChaincodes(p.Store.GetChaincodeInstallPath(), ioutil.ReadDir, ccprovider.LoadPackage)
+	installedChaincodesLegacy, err := p.LegacyPP.ListInstalledChaincodes(p.LegacyPP.GetChaincodeInstallPath(), ioutil.ReadDir, ccprovider.LoadPackage)
 	if err != nil {
 		return nil, err
 	}
