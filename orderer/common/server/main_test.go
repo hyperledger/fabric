@@ -278,25 +278,25 @@ func TestSelectClusterBootBlock(t *testing.T) {
 
 	clusterBoot := selectClusterBootBlock(bootstrapBlock, nil)
 	assert.NotNil(t, clusterBoot)
-	assert.Equal(t, bootstrapBlock.Header.Number, clusterBoot.Header.Number)
-	assert.Equal(t, bootstrapBlock, clusterBoot)
+	assert.Equal(t, uint64(100), clusterBoot.Header.Number)
+	assert.True(t, bootstrapBlock == clusterBoot)
 
 	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
 	assert.NotNil(t, clusterBoot)
-	assert.Equal(t, bootstrapBlock.Header.Number, clusterBoot.Header.Number)
-	assert.Equal(t, bootstrapBlock, clusterBoot)
+	assert.Equal(t, uint64(100), clusterBoot.Header.Number)
+	assert.True(t, bootstrapBlock == clusterBoot)
 
 	lastConfBlock.Header.Number = 200
 	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
 	assert.NotNil(t, clusterBoot)
-	assert.Equal(t, lastConfBlock.Header.Number, clusterBoot.Header.Number)
-	assert.Equal(t, lastConfBlock, clusterBoot)
+	assert.Equal(t, uint64(200), clusterBoot.Header.Number)
+	assert.True(t, lastConfBlock == clusterBoot)
 
 	bootstrapBlock.Header.Number = 300
 	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
 	assert.NotNil(t, clusterBoot)
-	assert.Equal(t, bootstrapBlock.Header.Number, clusterBoot.Header.Number)
-	assert.Equal(t, bootstrapBlock, clusterBoot)
+	assert.Equal(t, uint64(300), clusterBoot.Header.Number)
+	assert.True(t, bootstrapBlock == clusterBoot)
 }
 
 func mockCrypto() *crypto.LocalSigner {
