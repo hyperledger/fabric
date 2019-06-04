@@ -29,6 +29,10 @@ type TestVDBEnv struct {
 
 // NewTestVDBEnv instantiates and new couch db backed TestVDB
 func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
+	return newTestVDBEnvWithCache(t, &statedb.Cache{})
+}
+
+func newTestVDBEnvWithCache(t testing.TB, cache *statedb.Cache) *TestVDBEnv {
 	t.Logf("Creating new TestVDBEnv")
 	redoPath, err := ioutil.TempDir("", "cvdbenv")
 	if err != nil {
@@ -45,7 +49,7 @@ func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
 		RequestTimeout:      35 * time.Second,
 		RedoLogPath:         redoPath,
 	}
-	dbProvider, err := NewVersionedDBProvider(config, &disabled.Provider{})
+	dbProvider, err := NewVersionedDBProvider(config, &disabled.Provider{}, cache)
 	if err != nil {
 		t.Fatalf("Error creating CouchDB Provider: %s", err)
 	}
@@ -60,7 +64,7 @@ func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
 
 func (env *TestVDBEnv) CloseAndReopen() {
 	env.DBProvider.Close()
-	dbProvider, _ := NewVersionedDBProvider(env.config, &disabled.Provider{})
+	dbProvider, _ := NewVersionedDBProvider(env.config, &disabled.Provider{}, &statedb.Cache{})
 	env.DBProvider = dbProvider
 }
 

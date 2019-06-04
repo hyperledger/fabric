@@ -26,7 +26,8 @@ const (
 )
 
 type keyValue struct {
-	key string
+	key      string
+	revision string
 	*statedb.VersionedValue
 }
 
@@ -86,6 +87,11 @@ func couchDocToKeyValue(doc *couchdb.CouchDoc) (*keyValue, error) {
 	if err != nil {
 		return nil, err
 	}
+	var revision string
+	if jsonResult[revField] != nil {
+		revision = jsonResult[revField].(string)
+	}
+
 	// remove the _id, _rev and version fields
 	delete(jsonResult, idField)
 	delete(jsonResult, revField)
@@ -105,14 +111,16 @@ func couchDocToKeyValue(doc *couchdb.CouchDoc) (*keyValue, error) {
 			return nil, err
 		}
 	}
-	return &keyValue{key, &statedb.VersionedValue{
-		Value:    returnValue,
-		Metadata: returnMetadata,
-		Version:  returnVersion},
+	return &keyValue{
+		key, revision,
+		&statedb.VersionedValue{
+			Value:    returnValue,
+			Metadata: returnMetadata,
+			Version:  returnVersion},
 	}, nil
 }
 
-func keyValToCouchDoc(kv *keyValue, revision string) (*couchdb.CouchDoc, error) {
+func keyValToCouchDoc(kv *keyValue) (*couchdb.CouchDoc, error) {
 	type kvType int32
 	const (
 		kvTypeDelete = iota
@@ -148,8 +156,8 @@ func keyValToCouchDoc(kv *keyValue, revision string) (*couchdb.CouchDoc, error) 
 	// add the (version + metadata), id, revision, and delete marker (if needed)
 	jsonMap[versionField] = verAndMetadata
 	jsonMap[idField] = key
-	if revision != "" {
-		jsonMap[revField] = revision
+	if kv.revision != "" {
+		jsonMap[revField] = kv.revision
 	}
 	if kvtype == kvTypeDelete {
 		jsonMap[deletedField] = true

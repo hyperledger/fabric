@@ -42,10 +42,11 @@ type VersionedDBProvider struct {
 	mux                sync.Mutex
 	openCounts         uint64
 	redoLoggerProvider *redoLoggerProvider
+	cache              *statedb.Cache
 }
 
 // NewVersionedDBProvider instantiates VersionedDBProvider
-func NewVersionedDBProvider(config *couchdb.Config, metricsProvider metrics.Provider) (*VersionedDBProvider, error) {
+func NewVersionedDBProvider(config *couchdb.Config, metricsProvider metrics.Provider, cache *statedb.Cache) (*VersionedDBProvider, error) {
 	logger.Debugf("constructing CouchDB VersionedDBProvider")
 	couchInstance, err := couchdb.CreateCouchInstance(config, metricsProvider)
 	if err != nil {
@@ -64,6 +65,7 @@ func NewVersionedDBProvider(config *couchdb.Config, metricsProvider metrics.Prov
 			mux:                sync.Mutex{},
 			openCounts:         0,
 			redoLoggerProvider: p,
+			cache:              cache,
 		},
 		nil
 }
@@ -140,6 +142,7 @@ func (provider *VersionedDBProvider) GetDBHandle(dbName string) (statedb.Version
 			provider.couchInstance,
 			provider.redoLoggerProvider.newRedoLogger(dbName),
 			dbName,
+			provider.cache,
 		)
 		if err != nil {
 			return nil, err
@@ -170,10 +173,11 @@ type VersionedDB struct {
 	verCacheLock       sync.RWMutex
 	mux                sync.RWMutex
 	redoLogger         *redoLogger
+	cache              *statedb.Cache
 }
 
 // newVersionedDB constructs an instance of VersionedDB
-func newVersionedDB(couchInstance *couchdb.CouchInstance, redoLogger *redoLogger, dbName string) (*VersionedDB, error) {
+func newVersionedDB(couchInstance *couchdb.CouchInstance, redoLogger *redoLogger, dbName string, cache *statedb.Cache) (*VersionedDB, error) {
 	// CreateCouchDatabase creates a CouchDB database object, as well as the underlying database if it does not exist
 	chainName := dbName
 	dbName = couchdb.ConstructMetadataDBName(dbName)
@@ -190,6 +194,7 @@ func newVersionedDB(couchInstance *couchdb.CouchInstance, redoLogger *redoLogger
 		namespaceDBs:       namespaceDBMap,
 		committedDataCache: newVersionCache(),
 		redoLogger:         redoLogger,
+		cache:              cache,
 	}
 	logger.Debugf("chain [%s]: checking for redolog record", chainName)
 	redologRecord, err := redoLogger.load()
@@ -305,7 +310,7 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) erro
 
 // GetVersion implements method in VersionedDB interface
 func (vdb *VersionedDB) GetVersion(namespace string, key string) (*version.Height, error) {
-	returnVersion, keyFound := vdb.GetCachedVersion(namespace, key)
+	version, keyFound := vdb.GetCachedVersion(namespace, key)
 	if !keyFound {
 		// This if block get executed only during simulation because during commit
 		// we always call `LoadCommittedVersions` before calling `GetVersion`
@@ -313,9 +318,9 @@ func (vdb *VersionedDB) GetVersion(namespace string, key string) (*version.Heigh
 		if err != nil || vv == nil {
 			return nil, err
 		}
-		returnVersion = vv.Version
+		version = vv.Version
 	}
-	return returnVersion, nil
+	return version, nil
 }
 
 // GetCachedVersion returns version from cache. `LoadCommittedVersions` function populates the cache
@@ -344,6 +349,43 @@ func (vdb *VersionedDB) BytesKeySupported() bool {
 func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.VersionedValue, error) {
 	logger.Debugf("GetState(). ns=%s, key=%s", namespace, key)
 
+	// (1) read the KV from the cache if available
+	cacheEnabled := vdb.cache.Enabled(namespace)
+	if cacheEnabled {
+		cv, err := vdb.cache.GetState(vdb.chainName, namespace, key)
+		if err != nil {
+			return nil, err
+		}
+		if cv != nil {
+			vv, err := constructVersionedValue(cv)
+			if err != nil {
+				return nil, err
+			}
+			return vv, nil
+		}
+	}
+
+	// (2) read from the database if cache miss occurs
+	kv, err := vdb.readFromDB(namespace, key)
+	if err != nil {
+		return nil, err
+	}
+	if kv == nil {
+		return nil, nil
+	}
+
+	// (3) if the value is not nil, store in the cache
+	if cacheEnabled {
+		cacheValue := constructCacheValue(kv.VersionedValue, kv.revision)
+		if err := vdb.cache.PutState(vdb.chainName, namespace, key, cacheValue); err != nil {
+			return nil, err
+		}
+	}
+
+	return kv.VersionedValue, nil
+}
+
+func (vdb *VersionedDB) readFromDB(namespace, key string) (*keyValue, error) {
 	db, err := vdb.getNamespaceDBHandle(namespace)
 	if err != nil {
 		return nil, err
@@ -359,8 +401,7 @@ func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.Version
 	if err != nil {
 		return nil, err
 	}
-
-	return kv.VersionedValue, nil
+	return kv, nil
 }
 
 // GetStateMultipleKeys implements method in VersionedDB interface
@@ -581,7 +622,6 @@ func (vdb *VersionedDB) ApplyUpdates(updates *statedb.UpdateBatch, height *versi
 
 func (vdb *VersionedDB) applyUpdates(updates *statedb.UpdateBatch, height *version.Height) error {
 	// TODO a note about https://jira.hyperledger.org/browse/FAB-8622
-	// the function `Apply update can be split into three functions. Each carrying out one of the following three stages`.
 	// The write lock is needed only for the stage 2.
 
 	// stage 1 - buildCommitters builds committers per namespace (per DB). Each committer transforms the
@@ -596,15 +636,57 @@ func (vdb *VersionedDB) applyUpdates(updates *statedb.UpdateBatch, height *versi
 		return err
 	}
 
-	// Stgae 3 - PostUpdateProcessing - flush and record savepoint.
+	// Stgae 3 - postCommitProcessing - flush and record savepoint.
 	namespaces := updates.GetUpdatedNamespaces()
-	// Record a savepoint at a given height
-	if err = vdb.ensureFullCommitAndRecordSavepoint(height, namespaces); err != nil {
-		logger.Errorf("Error during recordSavepoint: %s", err.Error())
+	if err := vdb.postCommitProcessing(committers, namespaces, height); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (vdb *VersionedDB) postCommitProcessing(committers []*committer, namespaces []string, height *version.Height) error {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	errChan := make(chan error, 1)
+	defer close(errChan)
+	go func() {
+		defer wg.Done()
+
+		cacheUpdates := make(statedb.CacheUpdates)
+		for _, c := range committers {
+			if !c.cacheEnabled {
+				continue
+			}
+			cacheUpdates.Add(c.namespace, c.cacheKVs)
+		}
+
+		if len(cacheUpdates) == 0 {
+			return
+		}
+
+		// update the cache
+		if err := vdb.cache.UpdateStates(vdb.chainName, cacheUpdates); err != nil {
+			vdb.cache.Reset()
+			errChan <- err
+		}
+
+	}()
+
+	// Record a savepoint at a given height
+	if err := vdb.ensureFullCommitAndRecordSavepoint(height, namespaces); err != nil {
+		logger.Errorf("Error during recordSavepoint: %s", err.Error())
+		return err
+	}
+
+	wg.Wait()
+	select {
+	case err := <-errChan:
+		return err
+	default:
+		return nil
+	}
 }
 
 // ClearCachedVersions clears committedVersions and revisionNumbers
@@ -639,6 +721,7 @@ func (vdb *VersionedDB) ensureFullCommitAndRecordSavepoint(height *version.Heigh
 	defer close(errsChan)
 	var commitWg sync.WaitGroup
 	commitWg.Add(len(namespaces))
+
 	for _, ns := range namespaces {
 		go func(ns string) {
 			defer commitWg.Done()
@@ -843,4 +926,26 @@ func (scanner *queryScanner) GetBookmarkAndClose() string {
 	}
 	scanner.Close()
 	return retval
+}
+
+func constructCacheValue(v *statedb.VersionedValue, rev string) *statedb.CacheValue {
+	return &statedb.CacheValue{
+		VersionBytes:   v.Version.ToBytes(),
+		Value:          v.Value,
+		Metadata:       v.Metadata,
+		AdditionalInfo: []byte(rev),
+	}
+}
+
+func constructVersionedValue(cv *statedb.CacheValue) (*statedb.VersionedValue, error) {
+	height, _, err := version.NewHeightFromBytes(cv.VersionBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &statedb.VersionedValue{
+		Value:    cv.Value,
+		Version:  height,
+		Metadata: cv.Metadata,
+	}, nil
 }

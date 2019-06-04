@@ -60,6 +60,7 @@ func (env *LevelDBCommonStorageTestEnv) Init(t testing.TB) {
 		&StateDBConfig{
 			&ledger.StateDBConfig{},
 			dbPath,
+			0,
 		},
 	)
 	assert.NoError(t, err)
