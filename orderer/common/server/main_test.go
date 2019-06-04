@@ -340,40 +340,45 @@ func makeConfigTx(t *testing.T, chainID string, i int) *common.Envelope {
 	return configTx
 }
 
-func TestInitializeLocalMsp(t *testing.T) {
+func TestLoadLocalMSP(t *testing.T) {
 	t.Run("Happy", func(t *testing.T) {
-		assert.NotPanics(t, func() {
-			localMSPDir, _ := configtest.GetDevMspDir()
-			initializeLocalMsp(
-				&localconfig.TopLevel{
-					General: localconfig.General{
-						LocalMSPDir: localMSPDir,
-						LocalMSPID:  "SampleOrg",
-						BCCSP: &factory.FactoryOpts{
-							ProviderName: "SW",
-							SwOpts: &factory.SwOpts{
-								HashFamily: "SHA2",
-								SecLevel:   256,
-								Ephemeral:  true,
-							},
+		localMSPDir, _ := configtest.GetDevMspDir()
+		localMSP := loadLocalMSP(
+			&localconfig.TopLevel{
+				General: localconfig.General{
+					LocalMSPDir: localMSPDir,
+					LocalMSPID:  "SampleOrg",
+					BCCSP: &factory.FactoryOpts{
+						ProviderName: "SW",
+						SwOpts: &factory.SwOpts{
+							HashFamily: "SHA2",
+							SecLevel:   256,
+							Ephemeral:  true,
 						},
 					},
-				})
-		})
+				},
+			},
+		)
+		require.NotNil(t, localMSP)
+		id, err := localMSP.GetIdentifier()
+		require.NoError(t, err)
+		require.Equal(t, id, "SampleOrg")
 	})
+
 	t.Run("Error", func(t *testing.T) {
 		oldLogger := logger
 		defer func() { logger = oldLogger }()
 		logger, _ = floggingtest.NewTestLogger(t)
 
 		assert.Panics(t, func() {
-			initializeLocalMsp(
+			loadLocalMSP(
 				&localconfig.TopLevel{
 					General: localconfig.General{
 						LocalMSPDir: "",
 						LocalMSPID:  "",
 					},
-				})
+				},
+			)
 		})
 	})
 }
@@ -383,11 +388,21 @@ func TestInitializeMultiChainManager(t *testing.T) {
 	defer cleanup()
 	conf := genesisConfig(t)
 	assert.NotPanics(t, func() {
-		initializeLocalMsp(conf)
 		signer := &server_mocks.SignerSerializer{}
 		lf, _ := createLedgerFactory(conf)
 		bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
-		initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, conf, signer, &disabled.Provider{}, &server_mocks.HealthChecker{}, lf)
+		initializeMultichannelRegistrar(
+			bootBlock,
+			&replicationInitiator{},
+			&cluster.PredicateDialer{},
+			comm.ServerConfig{},
+			nil,
+			conf,
+			signer,
+			&disabled.Provider{},
+			&server_mocks.HealthChecker{},
+			lf,
+		)
 	})
 }
 
@@ -419,7 +434,6 @@ func TestInitializeGrpcServer(t *testing.T) {
 func TestUpdateTrustedRoots(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
-	initializeLocalMsp(genesisConfig(t))
 	// get a free random port
 	listenAddr := func() string {
 		l, _ := net.Listen("tcp", "localhost:0")

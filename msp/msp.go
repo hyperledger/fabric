@@ -211,6 +211,11 @@ var mspTypeStrings = map[ProviderType]string{
 	IDEMIX: "idemix",
 }
 
+var Options = map[string]NewOpts{
+	ProviderTypeToString(FABRIC): &BCCSPNewOpts{NewBaseOpts: NewBaseOpts{Version: MSPv1_0}},
+	ProviderTypeToString(IDEMIX): &IdemixNewOpts{NewBaseOpts: NewBaseOpts{Version: MSPv1_1}},
+}
+
 // ProviderTypeToString returns a string that represents the ProviderType integer
 func ProviderTypeToString(id ProviderType) string {
 	if res, found := mspTypeStrings[id]; found {

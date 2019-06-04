@@ -37,7 +37,6 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -52,7 +51,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var logger = flogging.MustGetLogger("orderer.common.server")
@@ -84,14 +83,9 @@ func Main() {
 		os.Exit(1)
 	}
 	initializeLogging()
-	initializeLocalMsp(conf)
 
 	prettyPrintStruct(conf)
-	Start(fullCmd, conf)
-}
 
-// Start provides a layer of abstraction for benchmark test
-func Start(cmd string, conf *localconfig.TopLevel) {
 	bootstrapBlock := extractBootstrapBlock(conf)
 	if err := ValidateBootstrapBlock(bootstrapBlock); err != nil {
 		logger.Panicf("Failed validating bootstrap block: %v", err)
@@ -103,7 +97,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 
 	clusterType := isClusterType(clusterBootBlock)
 
-	signer, signErr := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	signer, signErr := loadLocalMSP(conf).GetDefaultSigningIdentity()
 	if signErr != nil {
 		logger.Panicf("Failed to get local MSP identity: %s", signErr)
 	}
@@ -120,8 +114,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	}
 
 	opsSystem := newOperationsSystem(conf.Operations, conf.Metrics)
-	err := opsSystem.Start()
-	if err != nil {
+	if err = opsSystem.Start(); err != nil {
 		logger.Panicf("failed to initialize operations subsystem: %s", err)
 	}
 	defer opsSystem.Stop()
@@ -164,7 +157,20 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		}
 	}
 
-	manager := initializeMultichannelRegistrar(clusterBootBlock, r, clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, opsSystem, lf, tlsCallback)
+	manager := initializeMultichannelRegistrar(
+		clusterBootBlock,
+		r,
+		clusterDialer,
+		clusterServerConfig,
+		clusterGRPCServer,
+		conf,
+		signer,
+		metricsProvider,
+		opsSystem,
+		lf,
+		tlsCallback,
+	)
+
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	server := NewServer(manager, metricsProvider, &conf.Debug, conf.General.Authentication.TimeWindow, mutualTLS)
 
@@ -592,12 +598,30 @@ func initializeGrpcServer(conf *localconfig.TopLevel, serverConfig comm.ServerCo
 	return grpcServer
 }
 
-func initializeLocalMsp(conf *localconfig.TopLevel) {
-	// Load local MSP
-	err := mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
-	if err != nil { // Handle errors reading the config file
-		logger.Fatal("Failed to initialize local MSP:", err)
+func loadLocalMSP(conf *localconfig.TopLevel) msp.MSP {
+	// MUST call GetLocalMspConfig first, so that default BCCSP is properly
+	// initialized prior to LoadByType.
+	mspConfig, err := msp.GetLocalMspConfig(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
+	if err != nil {
+		logger.Panicf("Failed to get local msp config: %v", err)
 	}
+
+	typ := msp.ProviderTypeToString(msp.FABRIC)
+	opts, found := msp.Options[typ]
+	if !found {
+		logger.Panicf("MSP option for type %s is not found", typ)
+	}
+
+	localmsp, err := msp.New(opts)
+	if err != nil {
+		logger.Panicf("Failed to load local MSP: %v", err)
+	}
+
+	if err = localmsp.Setup(mspConfig); err != nil {
+		logger.Panicf("Failed to setup local msp with config: %v", err)
+	}
+
+	return localmsp
 }
 
 //go:generate counterfeiter -o mocks/health_checker.go -fake-name HealthChecker . healthChecker
