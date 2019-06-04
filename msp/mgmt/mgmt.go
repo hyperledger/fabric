@@ -150,11 +150,7 @@ func loadLocaMSP() msp.MSP {
 		mspType = msp.ProviderTypeToString(msp.FABRIC)
 	}
 
-	var mspOpts = map[string]msp.NewOpts{
-		msp.ProviderTypeToString(msp.FABRIC): &msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_0}},
-		msp.ProviderTypeToString(msp.IDEMIX): &msp.IdemixNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_1}},
-	}
-	newOpts, found := mspOpts[mspType]
+	newOpts, found := msp.Options[mspType]
 	if !found {
 		mspLogger.Panicf("msp type " + mspType + " unknown")
 	}
