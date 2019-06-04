@@ -228,7 +228,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		return dialOpts
 	}
 
-	gossipService, err := service.InitGossipService(
+	gossipService, err := service.New(
 		signer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
 		peerEndpoint,

@@ -122,8 +122,8 @@ func (jcm *joinChannelMessage) AnchorPeersOf(org api.OrgIdentityType) []api.Anch
 
 var logger = util.GetLogger(util.ServiceLogger, "")
 
-// InitGossipService initialize gossip service
-func InitGossipService(
+// New creates the gossip service.
+func New(
 	peerIdentity identity.SignerSerializer,
 	gossipMetrics *gossipmetrics.GossipMetrics,
 	endpoint string,

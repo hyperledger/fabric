@@ -54,7 +54,7 @@ func TestMain(m *testing.M) {
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 	defaultSecureDialOpts := func() []grpc.DialOption { return []grpc.DialOption{grpc.WithInsecure()} }
 
-	gossipService, err := gossipservice.InitGossipService(
+	gossipService, err := gossipservice.New(
 		signer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
 		"localhost:0",

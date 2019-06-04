@@ -87,7 +87,7 @@ func TestInitGossipService(t *testing.T) {
 
 	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager())
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	gossipService, err := InitGossipService(
+	gossipService, err := New(
 		signer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
 		endpoint,
@@ -863,7 +863,7 @@ func TestInvalidInitialization(t *testing.T) {
 	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 
-	gossipService, err := InitGossipService(
+	gossipService, err := New(
 		mockSignerSerializer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
 		endpoint,
@@ -901,7 +901,7 @@ func TestChannelConfig(t *testing.T) {
 	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 
-	gossipService, err := InitGossipService(
+	gossipService, err := New(
 		mockSignerSerializer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
 		endpoint,

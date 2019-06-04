@@ -971,7 +971,7 @@ func initGossipService(
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
 
-	return gossipservice.InitGossipService(
+	return gossipservice.New(
 		signer,
 		gossipmetrics.NewGossipMetrics(metricsProvider),
 		peerAddr,
