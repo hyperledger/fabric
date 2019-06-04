@@ -198,7 +198,7 @@ func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 func doPrintOrg(t *genesisconfig.TopLevel, printOrg string) error {
 	for _, org := range t.Organizations {
 		if org.Name == printOrg {
-			og, err := encoder.NewOrdererOrgGroup(org)
+			og, err := encoder.NewConsortiumOrgGroup(org)
 			if err != nil {
 				return errors.Wrapf(err, "bad org definition for org %s", org.Name)
 			}

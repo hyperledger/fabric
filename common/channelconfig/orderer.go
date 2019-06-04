@@ -39,6 +39,9 @@ const (
 
 	// KafkaBrokersKey is the cb.ConfigItem type key name for the KafkaBrokers message.
 	KafkaBrokersKey = "KafkaBrokers"
+
+	// EndpointsKey is the cb.COnfigValue key name for the Endpoints message in the OrdererOrgGroup.
+	EndpointsKey = "Endpoints"
 )
 
 // OrdererProtos is used as the source of the OrdererConfig.
@@ -59,26 +62,65 @@ type OrdererConfig struct {
 	batchTimeout time.Duration
 }
 
+// OrdererOrgProtos are deserialized from the Orderer org config values
+type OrdererOrgProtos struct {
+	Endpoints *cb.OrdererAddresses
+}
+
 // OrdererOrgConfig defines the configuration for an orderer org
 type OrdererOrgConfig struct {
 	*OrganizationConfig
+	protos *OrdererOrgProtos
+	name   string
 }
 
-func (*OrdererOrgConfig) Endpoints() []string {
-	panic("implement me")
+// Endpoints returns the set of addresses this ordering org exposes as orderers
+func (oc *OrdererOrgConfig) Endpoints() []string {
+	return oc.protos.Endpoints.Addresses
 }
 
 // NewOrdererOrgConfig returns an orderer org config built from the given ConfigGroup.
-func NewOrdererOrgConfig(orgName string, orgGroup *cb.ConfigGroup, mspConfigHandler *MSPConfigHandler) (*OrdererOrgConfig, error) {
-	orgConf, err := NewOrganizationConfig(orgName, orgGroup, mspConfigHandler)
-	if err != nil {
+func NewOrdererOrgConfig(orgName string, orgGroup *cb.ConfigGroup, mspConfigHandler *MSPConfigHandler, channelCapabilities ChannelCapabilities) (*OrdererOrgConfig, error) {
+	if len(orgGroup.Groups) > 0 {
+		return nil, fmt.Errorf("OrdererOrg config does not allow sub-groups")
+	}
+
+	if !channelCapabilities.OrgSpecificOrdererEndpoints() {
+		if _, ok := orgGroup.Values[EndpointsKey]; ok {
+			return nil, errors.Errorf("Orderer Org %s cannot contain endpoints value until V2_0+ capabilities have been enabled", orgName)
+		}
+	}
+
+	protos := &OrdererOrgProtos{}
+	orgProtos := &OrganizationProtos{}
+
+	if err := DeserializeProtoValuesFromGroup(orgGroup, protos, orgProtos); err != nil {
+		return nil, errors.Wrap(err, "failed to deserialize values")
+	}
+
+	ooc := &OrdererOrgConfig{
+		name:   orgName,
+		protos: protos,
+		OrganizationConfig: &OrganizationConfig{
+			name:             orgName,
+			protos:           orgProtos,
+			mspConfigHandler: mspConfigHandler,
+		},
+	}
+
+	if err := ooc.Validate(); err != nil {
 		return nil, err
 	}
-	return &OrdererOrgConfig{OrganizationConfig: orgConf}, nil
+
+	return ooc, nil
+}
+
+func (ooc *OrdererOrgConfig) Validate() error {
+	return ooc.OrganizationConfig.Validate()
 }
 
 // NewOrdererConfig creates a new instance of the orderer config.
-func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*OrdererConfig, error) {
+func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler, channelCapabilities ChannelCapabilities) (*OrdererConfig, error) {
 	oc := &OrdererConfig{
 		protos: &OrdererProtos{},
 		orgs:   make(map[string]OrdererOrg),
@@ -94,7 +136,7 @@ func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler)
 
 	for orgName, orgGroup := range ordererGroup.Groups {
 		var err error
-		if oc.orgs[orgName], err = NewOrdererOrgConfig(orgName, orgGroup, mspConfig); err != nil {
+		if oc.orgs[orgName], err = NewOrdererOrgConfig(orgName, orgGroup, mspConfig, channelCapabilities); err != nil {
 			return nil, err
 		}
 	}

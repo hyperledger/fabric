@@ -141,11 +141,9 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 
 	addValue(channelGroup, channelconfig.HashingAlgorithmValue(), channelconfig.AdminsPolicyKey)
 	addValue(channelGroup, channelconfig.BlockDataHashingStructureValue(), channelconfig.AdminsPolicyKey)
-	ordererAddresses := []string{}
-	if conf.Orderer != nil {
-		ordererAddresses = conf.Orderer.Addresses
+	if conf.Orderer != nil && len(conf.Orderer.Addresses) > 0 {
+		addValue(channelGroup, channelconfig.OrdererAddressesValue(conf.Orderer.Addresses), ordererAdminsPolicyName)
 	}
-	addValue(channelGroup, channelconfig.OrdererAddressesValue(ordererAddresses), ordererAdminsPolicyName)
 
 	if conf.Consortium != "" {
 		addValue(channelGroup, channelconfig.ConsortiumValue(conf.Consortium), channelconfig.AdminsPolicyKey)
@@ -239,6 +237,31 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 	return ordererGroup, nil
 }
 
+// NewConsortiumsGroup returns an org component of the channel configuration.  It defines the crypto material for the
+// organization (its MSP).  It sets the mod_policy of all elements to "Admins".
+func NewConsortiumOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, error) {
+	mspConfig, err := msp.GetVerifyingMspConfig(conf.MSPDir, conf.ID, conf.MSPType)
+	if err != nil {
+		return nil, errors.Wrapf(err, "1 - Error loading MSP configuration for org: %s", conf.Name)
+	}
+
+	consortiumOrgGroup := cb.NewConfigGroup()
+	if len(conf.Policies) == 0 {
+		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the orderer org group %s in configtx.yaml", conf.Name)
+		addSignaturePolicyDefaults(consortiumOrgGroup, conf.ID, conf.AdminPrincipal != genesisconfig.AdminRoleAdminPrincipal)
+	} else {
+		if err := addPolicies(consortiumOrgGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
+			return nil, errors.Wrapf(err, "error adding policies to orderer org group '%s'", conf.Name)
+		}
+	}
+
+	addValue(consortiumOrgGroup, channelconfig.MSPValue(mspConfig), channelconfig.AdminsPolicyKey)
+
+	consortiumOrgGroup.ModPolicy = channelconfig.AdminsPolicyKey
+
+	return consortiumOrgGroup, nil
+}
+
 // NewOrdererOrgGroup returns an orderer org component of the channel configuration.  It defines the crypto material for the
 // organization (its MSP).  It sets the mod_policy of all elements to "Admins".
 func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, error) {
@@ -260,6 +283,11 @@ func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, erro
 	addValue(ordererOrgGroup, channelconfig.MSPValue(mspConfig), channelconfig.AdminsPolicyKey)
 
 	ordererOrgGroup.ModPolicy = channelconfig.AdminsPolicyKey
+
+	if len(conf.OrdererEndpoints) > 0 {
+		addValue(ordererOrgGroup, channelconfig.EndpointsValue(conf.OrdererEndpoints), channelconfig.AdminsPolicyKey)
+	}
+
 	return ordererOrgGroup, nil
 }
 
@@ -362,8 +390,7 @@ func NewConsortiumGroup(conf *genesisconfig.Consortium) (*cb.ConfigGroup, error)
 
 	for _, org := range conf.Organizations {
 		var err error
-		// Note, NewOrdererOrgGroup is correct here, as the structure is identical
-		consortiumGroup.Groups[org.Name], err = NewOrdererOrgGroup(org)
+		consortiumGroup.Groups[org.Name], err = NewConsortiumOrgGroup(org)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create consortium org")
 		}

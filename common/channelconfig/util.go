@@ -188,6 +188,17 @@ func CapabilitiesValue(capabilities map[string]bool) *StandardConfigValue {
 	}
 }
 
+// EndpointsValue returns the config definition for the orderer addresses at an org scoped level.
+// It is a value for the /Channel/Orderer/<OrgName> group.
+func EndpointsValue(addresses []string) *StandardConfigValue {
+	return &StandardConfigValue{
+		key: EndpointsKey,
+		value: &cb.OrdererAddresses{
+			Addresses: addresses,
+		},
+	}
+}
+
 // AnchorPeersValue returns the config definition for an org's anchor peers.
 // It is a value for the /Channel/Application/*.
 func AnchorPeersValue(anchorPeers []*pb.AnchorPeer) *StandardConfigValue {
