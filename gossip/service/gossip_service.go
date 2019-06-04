@@ -131,39 +131,12 @@ func (jcm *joinChannelMessage) AnchorPeersOf(org api.OrgIdentityType) []api.Anch
 var logger = util.GetLogger(util.ServiceLogger, "")
 
 // InitGossipService initialize gossip service
-func InitGossipService(peerIdentity identity.SignerSerializer, metricsProvider metrics.Provider, endpoint string, s *grpc.Server,
-	certs *gossipcommon.TLSCertificates, mcs api.MessageCryptoService, secAdv api.SecurityAdvisor,
-	secureDialOpts api.PeerSecureDialOpts, bootPeers ...string) error {
-	// TODO: Remove this.
-	// TODO: This is a temporary work-around to make the gossip leader election module load its logger at startup
-	// TODO: in order for the flogging package to register this logger in time so it can set the log levels as requested in the config
-	util.GetLogger(util.ElectionLogger, "")
-
-	return InitGossipServiceCustomDeliveryFactory(
-		peerIdentity,
-		metricsProvider,
-		endpoint,
-		s,
-		certs,
-		&deliveryFactoryImpl{
-			signer: peerIdentity,
-		},
-		mcs,
-		secAdv,
-		secureDialOpts,
-		bootPeers...,
-	)
-}
-
-// InitGossipServiceCustomDeliveryFactory initialize gossip service with customize delivery factory
-// implementation, might be useful for testing and mocking purposes
-func InitGossipServiceCustomDeliveryFactory(
+func InitGossipService(
 	peerIdentity identity.SignerSerializer,
 	metricsProvider metrics.Provider,
 	endpoint string,
 	s *grpc.Server,
 	certs *gossipcommon.TLSCertificates,
-	factory DeliveryServiceFactory,
 	mcs api.MessageCryptoService,
 	secAdv api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts,
@@ -175,21 +148,28 @@ func InitGossipServiceCustomDeliveryFactory(
 	if err != nil {
 		return err
 	}
-	once.Do(func() {
-		var gossipConfig *gossip.Config
 
+	once.Do(func() {
 		serviceConfig := GlobalConfig()
 		if serviceConfig.Endpoint != "" {
 			endpoint = serviceConfig.Endpoint
 		}
-		gossipConfig, err = gossip.GlobalConfig(endpoint, certs, bootPeers...)
 
 		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
 
+		var gossipConfig *gossip.Config
+		gossipConfig, err = gossip.GlobalConfig(endpoint, certs, bootPeers...)
+
 		gossipMetrics := gossipmetrics.NewGossipMetrics(metricsProvider)
-
-		gossipComponent = gossip.NewGossipService(gossipConfig, s, secAdv, mcs, serializedIdentity, secureDialOpts, gossipMetrics)
-
+		gossipComponent = gossip.NewGossipService(
+			gossipConfig,
+			s,
+			secAdv,
+			mcs,
+			serializedIdentity,
+			secureDialOpts,
+			gossipMetrics,
+		)
 		gossipServiceInstance = &gossipServiceImpl{
 			mcs:             mcs,
 			gossipSvc:       gossipComponent,
@@ -197,7 +177,7 @@ func InitGossipServiceCustomDeliveryFactory(
 			chains:          make(map[string]state.GossipStateProvider),
 			leaderElection:  make(map[string]election.LeaderElectionService),
 			deliveryService: make(map[string]deliverservice.DeliverService),
-			deliveryFactory: factory,
+			deliveryFactory: &deliveryFactoryImpl{signer: peerIdentity},
 			peerIdentity:    serializedIdentity,
 			secAdv:          secAdv,
 			metrics:         gossipMetrics,

@@ -37,7 +37,9 @@ func TestConfigTxCreateLedger(t *testing.T) {
 	chainid := "testchain1"
 	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(
 		&ledgermgmt.Initializer{
-			CustomTxProcessors: ConfigTxProcessors,
+			CustomTxProcessors: customtx.Processors{
+				common.HeaderType_CONFIG: &ConfigTxProcessor{},
+			},
 		},
 	)
 	if err != nil {
@@ -62,7 +64,9 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 	chainid := "testchain1"
 	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(
 		&ledgermgmt.Initializer{
-			CustomTxProcessors: ConfigTxProcessors,
+			CustomTxProcessors: customtx.Processors{
+				common.HeaderType_CONFIG: &ConfigTxProcessor{},
+			},
 		},
 	)
 	if err != nil {
@@ -84,7 +88,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 	helper.mockCreateChain(t, chainid, lgr)
 	defer helper.clearMockChains()
 
-	bs := chains.list[chainid].cs.bundleSource
+	bs := Default.chains[chainid].bundleSource
 	inMemoryChanConf := bs.ConfigtxValidator().ConfigProto()
 	assert.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(inMemoryChanConf))
 
@@ -104,7 +108,9 @@ func TestGenesisBlockCreateLedger(t *testing.T) {
 
 	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(
 		&ledgermgmt.Initializer{
-			CustomTxProcessors: ConfigTxProcessors,
+			CustomTxProcessors: customtx.Processors{
+				common.HeaderType_CONFIG: &ConfigTxProcessor{},
+			},
 		},
 	)
 	if err != nil {
@@ -119,22 +125,6 @@ func TestGenesisBlockCreateLedger(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, chanConf)
 	t.Logf("chanConf = %s", chanConf)
-}
-
-func TestCustomTxProcessors(t *testing.T) {
-	cleanup, err := ledgermgmt.InitializeExistingTestEnvWithInitializer(&ledgermgmt.Initializer{
-		CustomTxProcessors: ConfigTxProcessors,
-	})
-	if err != nil {
-		t.Fatalf("Failed to create test environment: %s", err)
-	}
-
-	defer cleanup()
-
-	processor := customtx.GetProcessor(common.HeaderType_CONFIG)
-	assert.Equal(t, processor, configTxProcessor)
-	processor = customtx.GetProcessor(common.HeaderType_TOKEN_TRANSACTION)
-	assert.Equal(t, processor, tokenTxProcessor)
 }
 
 type testHelper struct {
@@ -187,15 +177,17 @@ func (h *testHelper) constructLastUpdateField(chainid string) *common.Envelope {
 func (h *testHelper) mockCreateChain(t *testing.T, chainid string, ledger ledger.PeerLedger) {
 	chanBundle, err := h.constructChannelBundle(chainid, ledger)
 	assert.NoError(t, err)
-	chains.list[chainid] = &chain{
-		cs: &chainSupport{
-			bundleSource: channelconfig.NewBundleSource(chanBundle),
-			ledger:       ledger},
+	if Default.chains == nil {
+		Default.chains = map[string]*chain{}
+	}
+	Default.chains[chainid] = &chain{
+		bundleSource: channelconfig.NewBundleSource(chanBundle),
+		ledger:       ledger,
 	}
 }
 
 func (h *testHelper) clearMockChains() {
-	chains.list = make(map[string]*chain)
+	Default.chains = make(map[string]*chain)
 }
 
 func (h *testHelper) constructChannelBundle(chainid string, ledger ledger.PeerLedger) (*channelconfig.Bundle, error) {

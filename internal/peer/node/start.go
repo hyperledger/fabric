@@ -58,6 +58,7 @@ import (
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/core/peer"
@@ -65,6 +66,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/core/scc/qscc"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/discovery"
 	"github.com/hyperledger/fabric/discovery/endorsement"
 	discsupport "github.com/hyperledger/fabric/discovery/support"
@@ -78,14 +80,16 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/protos/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	discprotos "github.com/hyperledger/fabric/protos/discovery"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/token"
-	"github.com/hyperledger/fabric/protos/transientstore"
+	pt "github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/token/server"
 	"github.com/hyperledger/fabric/token/tms/manager"
+	"github.com/hyperledger/fabric/token/transaction"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -103,9 +107,7 @@ var chaincodeDevMode bool
 func startCmd() *cobra.Command {
 	// Set the flags on the node start command.
 	flags := nodeStartCmd.Flags()
-	flags.BoolVarP(&chaincodeDevMode, "peer-chaincodedev", "", false,
-		"Whether peer in chaincode development mode")
-
+	flags.BoolVarP(&chaincodeDevMode, "peer-chaincodedev", "", false, "start peer in chaincode development mode")
 	return nodeStartCmd
 }
 
@@ -181,6 +183,11 @@ func serve(args []string) error {
 		MetadataProvider: &ccmetadata.PersistenceMetadataProvider{},
 	}
 
+	peerInstance := &peer.Peer{
+		StoreProvider: transientstore.NewStoreProvider(),
+	}
+	peer.Default = peerInstance
+
 	// TODO, unfortunately, the lifecycle initialization is very unclean at the
 	// moment. This is because ccprovider.SetChaincodePath only works after
 	// ledgermgmt.Initialize, but ledgermgmt.Initialize requires a reference to
@@ -191,7 +198,7 @@ func serve(args []string) error {
 	// to this point.
 	lifecycleResources := &lifecycle.Resources{
 		Serializer:          &lifecycle.Serializer{},
-		ChannelConfigSource: peer.Default,
+		ChannelConfigSource: peerInstance,
 		ChaincodeStore:      ccStore,
 		PackageParser:       ccPackageParser,
 	}
@@ -242,10 +249,19 @@ func serve(args []string) error {
 
 	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID, metadataManager)
 
+	txProcessors := customtx.Processors{
+		common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
+		common.HeaderType_TOKEN_TRANSACTION: &transaction.Processor{
+			TMSManager: &manager.Manager{
+				IdentityDeserializerManager: &manager.FabricIdentityDeserializerManager{},
+			},
+		},
+	}
+
 	// initialize resource management exit
 	ledgermgmt.Initialize(
 		&ledgermgmt.Initializer{
-			CustomTxProcessors:              peer.ConfigTxProcessors,
+			CustomTxProcessors:              txProcessors,
 			PlatformRegistry:                platformRegistry,
 			DeployedChaincodeInfoProvider:   lifecycleValidatorCommitter,
 			MembershipInfoProvider:          membershipInfoProvider,
@@ -350,10 +366,9 @@ func serve(args []string) error {
 	ipRegistry := inproccontroller.NewRegistry()
 
 	sccp := &scc.Provider{
-		Peer:        peer.Default,
-		PeerSupport: peer.DefaultSupport,
-		Registrar:   ipRegistry,
-		Whitelist:   scc.GlobalWhitelist(),
+		Peer:      peerInstance,
+		Registrar: ipRegistry,
+		Whitelist: scc.GlobalWhitelist(),
 	}
 	lsccInst := lscc.New(sccp, aclProvider, platformRegistry)
 
@@ -381,7 +396,7 @@ func serve(args []string) error {
 		QueryExecutorProvider:  lifecycleTxQueryExecutorGetter,
 		Functions:              lifecycleFunctions,
 		OrgMSPID:               mspID,
-		ChannelConfigSource:    peer.Default,
+		ChannelConfigSource:    peerInstance,
 		ACLProvider:            aclProvider,
 	}
 
@@ -450,7 +465,7 @@ func serve(args []string) error {
 
 	chaincodeSupport := &chaincode.ChaincodeSupport{
 		ACLProvider:            aclProvider,
-		AppConfig:              peer.DefaultSupport,
+		AppConfig:              peerInstance,
 		DeployedCCInfoProvider: lifecycleValidatorCommitter,
 		ExecuteTimeout:         globalConfig.ExecuteTimeout,
 		HandlerRegistry:        chaincodeHandlerRegistry,
@@ -489,7 +504,7 @@ func serve(args []string) error {
 
 	logger.Debugf("Running peer")
 
-	privDataDist := func(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
+	privDataDist := func(channel string, txID string, privateData *pt.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData, blkHt)
 	}
 
@@ -504,8 +519,7 @@ func serve(args []string) error {
 	authFilters := reg.Lookup(library.Auth).([]authHandler.Filter)
 	endorserSupport := &endorser.SupportImpl{
 		SignerSerializer: signingIdentity,
-		Peer:             peer.Default,
-		PeerSupport:      peer.DefaultSupport,
+		Peer:             peerInstance,
 		ChaincodeSupport: chaincodeSupport,
 		SysCCProvider:    sccp,
 		ACLProvider:      aclProvider,
@@ -517,7 +531,7 @@ func serve(args []string) error {
 	pluginMapper := endorser.MapBasedPluginMapper(endorsementPluginsByName)
 	pluginEndorser := endorser.NewPluginEndorser(&endorser.PluginSupport{
 		ChannelStateRetriever:   channelStateRetriever,
-		TransientStoreRetriever: peer.TransientStoreFactory,
+		TransientStoreRetriever: peerInstance,
 		PluginMapper:            pluginMapper,
 		SigningIdentityFetcher:  signingIdentityFetcher,
 	})
@@ -537,7 +551,7 @@ func serve(args []string) error {
 	defer service.GetGossipService().Stop()
 
 	// register prover grpc service
-	err = registerProverService(peerServer, aclProvider, signingIdentity)
+	err = registerProverService(peerInstance, peerServer, aclProvider, signingIdentity)
 	if err != nil {
 		return err
 	}
@@ -559,7 +573,7 @@ func serve(args []string) error {
 	}))
 
 	// this brings up all the channels
-	peer.Initialize(
+	peerInstance.Initialize(
 		func(cid string) {
 			logger.Debugf("Deploying system CC, for channel <%s>", cid)
 			sccp.DeploySysCCs(cid, ccp)
@@ -596,6 +610,7 @@ func serve(args []string) error {
 		lifecycleValidatorCommitter,
 		ledgerConfig(),
 		coreConfig.ValidatorPoolSize,
+		txProcessors,
 	)
 
 	if coreConfig.DiscoveryEnabled {
@@ -606,7 +621,7 @@ func serve(args []string) error {
 			lifecycle.NewMetadataProvider(
 				lifecycleCache,
 				legacyMetadataManager,
-				peer.Default,
+				peerInstance,
 			),
 		)
 	}
@@ -978,7 +993,7 @@ func newOperationsSystem(coreConfig *peer.Config) *operations.System {
 	})
 }
 
-func registerProverService(peerServer *comm.GRPCServer, aclProvider aclmgmt.ACLProvider, signingIdentity msp.SigningIdentity) error {
+func registerProverService(peerInstance *peer.Peer, peerServer *comm.GRPCServer, aclProvider aclmgmt.ACLProvider, signingIdentity msp.SigningIdentity) error {
 	policyChecker := &server.PolicyBasedAccessControl{
 		ACLProvider: aclProvider,
 		ACLResources: &server.ACLResources{
@@ -996,7 +1011,7 @@ func registerProverService(peerServer *comm.GRPCServer, aclProvider aclmgmt.ACLP
 
 	prover := &server.Prover{
 		CapabilityChecker: &server.TokenCapabilityChecker{
-			PeerOps: peer.Default,
+			PeerOps: peerInstance,
 		},
 		Marshaler:     responseMarshaler,
 		PolicyChecker: policyChecker,

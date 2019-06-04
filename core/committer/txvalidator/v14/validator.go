@@ -54,7 +54,7 @@ type ChannelResources interface {
 
 	// GetMSPIDs returns the IDs for the application MSPs
 	// that have been defined in the channel
-	GetMSPIDs(cid string) []string
+	GetMSPIDs() []string
 
 	// Capabilities defines the capabilities for the application portion of this channel
 	Capabilities() channelconfig.ApplicationCapabilities

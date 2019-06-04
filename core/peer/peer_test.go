@@ -24,13 +24,11 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
-	"github.com/hyperledger/fabric/core/deliverservice"
-	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	ledgermocks "github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/hyperledger/fabric/gossip/api"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
@@ -41,34 +39,22 @@ import (
 	"google.golang.org/grpc"
 )
 
-type mockDeliveryClient struct {
-}
+func TestMain(m *testing.M) {
+	// TODO: remove the transient store and peer setup once we've completed the
+	// transition to instances
+	tempdir, err := ioutil.TempDir("", "scc-configure")
+	if err != nil {
+		panic(err)
+	}
+	viper.Set("peer.fileSystemPath", filepath.Join(tempdir, "transientstore"))
+	Default = &Peer{
+		StoreProvider: transientstore.NewStoreProvider(),
+	}
 
-func (ds *mockDeliveryClient) UpdateEndpoints(chainID string, endpoints []string) error {
-	return nil
-}
+	rc := m.Run()
 
-// StartDeliverForChannel dynamically starts delivery of new blocks from ordering service
-// to channel peers.
-func (ds *mockDeliveryClient) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, f func()) error {
-	return nil
-}
-
-// StopDeliverForChannel dynamically stops delivery of new blocks from ordering service
-// to channel peers.
-func (ds *mockDeliveryClient) StopDeliverForChannel(chainID string) error {
-	return nil
-}
-
-// Stop terminates delivery service and closes the connection
-func (*mockDeliveryClient) Stop() {
-}
-
-type mockDeliveryClientFactory struct {
-}
-
-func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
-	return &mockDeliveryClient{}, nil
+	os.RemoveAll(tempdir)
+	os.Exit(rc)
 }
 
 func TestNewPeerServer(t *testing.T) {
@@ -83,10 +69,10 @@ func TestNewPeerServer(t *testing.T) {
 
 func TestInitChain(t *testing.T) {
 	chainId := "testChain"
-	chainInitializer = func(cid string) {
+	Default.chainInitializer = func(cid string) {
 		assert.Equal(t, chainId, cid, "chainInitializer received unexpected cid")
 	}
-	InitChain(chainId)
+	Default.InitChain(chainId)
 }
 
 func TestInitialize(t *testing.T) {
@@ -96,7 +82,7 @@ func TestInitialize(t *testing.T) {
 	}
 	defer os.RemoveAll(rootFSPath)
 
-	Initialize(
+	Default.Initialize(
 		nil,
 		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
@@ -122,6 +108,7 @@ func TestInitialize(t *testing.T) {
 			},
 		},
 		runtime.NumCPU(),
+		nil,
 	)
 }
 
@@ -133,7 +120,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	defer os.RemoveAll(peerFSPath)
 	viper.Set("peer.fileSystemPath", peerFSPath)
 
-	Initialize(
+	Default.Initialize(
 		nil,
 		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
@@ -159,6 +146,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 			},
 		},
 		runtime.NumCPU(),
+		nil,
 	)
 	testChainID := fmt.Sprintf("mytestchainid-%d", rand.Int())
 	block, err := configtxtest.MakeGenesisBlock(testChainID)
@@ -182,18 +170,17 @@ func TestCreateChainFromBlock(t *testing.T) {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 		return dialOpts
 	}
-	err = service.InitGossipServiceCustomDeliveryFactory(
+
+	err = service.InitGossipService(
 		signer,
 		&disabled.Provider{},
 		socket.Addr().String(),
 		grpcServer,
 		nil,
-		&mockDeliveryClientFactory{},
 		messageCryptoService,
 		secAdv,
 		defaultSecureDialOpts,
 	)
-
 	assert.NoError(t, err)
 
 	go grpcServer.Serve(socket)
@@ -258,7 +245,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	assert.NotNil(t, pmgr, "PolicyManager should not be nil")
 	assert.Equal(t, true, ok, "expected Manage() to return true")
 
-	SetCurrConfigBlock(block, testChainID)
+	Default.setCurrConfigBlock(block, testChainID)
 
 	channels := GetChannelsInfo()
 	if len(channels) != 1 {
@@ -266,15 +253,9 @@ func TestCreateChainFromBlock(t *testing.T) {
 	}
 
 	// cleanup the chain referenes to enable execution with -count n
-	chains.Lock()
-	chains.list = map[string]*chain{}
-	chains.Unlock()
-}
-
-func TestGetLocalIP(t *testing.T) {
-	ip, err := GetLocalIP()
-	assert.NoError(t, err)
-	t.Log(ip)
+	Default.mutex.Lock()
+	Default.chains = map[string]*chain{}
+	Default.mutex.Unlock()
 }
 
 func TestDeliverSupportManager(t *testing.T) {

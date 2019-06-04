@@ -41,7 +41,6 @@ import (
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
-	cmp "github.com/hyperledger/fabric/core/mocks/peer"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc"
@@ -152,33 +151,17 @@ func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.Chainc
 
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
-	fakeApplicationConfig := &mock.ApplicationConfig{}
-	capabilities := &mock.ApplicationCapabilities{}
-	capabilities.LifecycleV20Returns(false)
-	fakeApplicationConfig.CapabilitiesReturns(capabilities)
-	msi := &cmp.MockSupportImpl{
-		GetApplicationConfigRv:     fakeApplicationConfig,
-		GetApplicationConfigBoolRv: true,
-	}
-
 	ipRegistry := inproccontroller.NewRegistry()
 	sccp := &scc.Provider{
-		Peer:        peer.Default,
-		PeerSupport: msi,
-		Registrar:   ipRegistry,
-		Whitelist:   scc.GlobalWhitelist(),
+		Peer:      peer.Default,
+		Registrar: ipRegistry,
+		Whitelist: scc.GlobalWhitelist(),
 	}
 
 	ledgerCleanup, err := peer.MockInitialize()
 	if err != nil {
 		return nil, nil, err
 	}
-
-	mspGetter := func(cid string) []string {
-		return []string{"SampleOrg"}
-	}
-
-	peer.MockSetMSPIDGetter(mspGetter)
 
 	tempdir, err := ioutil.TempDir("", "cc-support-test")
 	if err != nil {
@@ -257,7 +240,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 	}
 	chaincodeSupport := &ChaincodeSupport{
 		ACLProvider:            mockAclProvider,
-		AppConfig:              peer.DefaultSupport,
+		AppConfig:              peer.Default,
 		DeployedCCInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
 		ExecuteTimeout:         globalConfig.ExecuteTimeout,
 		HandlerMetrics:         NewHandlerMetrics(metricsProviders),
@@ -1113,7 +1096,13 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 }
 
 func TestGetTxContextFromHandler(t *testing.T) {
-	h := Handler{TXContexts: NewTransactionContexts(), SystemCCProvider: &scc.Provider{Peer: peer.Default, PeerSupport: peer.DefaultSupport, Registrar: inproccontroller.NewRegistry()}}
+	h := Handler{
+		TXContexts: NewTransactionContexts(),
+		SystemCCProvider: &scc.Provider{
+			Peer:      peer.Default,
+			Registrar: inproccontroller.NewRegistry(),
+		},
+	}
 
 	chnl := "test"
 	txid := "1"

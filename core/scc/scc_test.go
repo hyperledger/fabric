@@ -24,9 +24,8 @@ func init() {
 
 func newTestProvider() *Provider {
 	p := &Provider{
-		Peer:        peer.Default,
-		PeerSupport: peer.DefaultSupport,
-		Registrar:   inproccontroller.NewRegistry(),
+		Peer:      peer.Default,
+		Registrar: inproccontroller.NewRegistry(),
 		Whitelist: map[string]bool{
 			"invokableExternalButNotCC2CC": true,
 			"invokableCC2CCButNotExternal": true,
@@ -112,9 +111,8 @@ func TestIsSysCCAndNotInvokableExternal(t *testing.T) {
 
 func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
 	p := &Provider{
-		Peer:        peer.Default,
-		PeerSupport: peer.DefaultSupport,
-		Registrar:   inproccontroller.NewRegistry(),
+		Peer:      peer.Default,
+		Registrar: inproccontroller.NewRegistry(),
 	}
 	qe, err := p.GetQueryExecutorForLedger("")
 	assert.Nil(t, qe)

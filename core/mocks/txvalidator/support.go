@@ -67,7 +67,7 @@ func (ms *Support) PolicyManager() policies.Manager {
 	return &mockpolicies.Manager{}
 }
 
-func (ms *Support) GetMSPIDs(cid string) []string {
+func (ms *Support) GetMSPIDs() []string {
 	return []string{"SampleOrg"}
 }
 

@@ -36,9 +36,13 @@ import (
 
 // New creates a new instance of the CSCC.
 // Typically, only one will be created per peer instance.
-func New(sccp sysccprovider.SystemChaincodeProvider,
-	aclProvider aclmgmt.ACLProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-	lr plugindispatcher.LifecycleResources, nr plugindispatcher.CollectionAndLifecycleResources) *PeerConfiger {
+func New(
+	sccp sysccprovider.SystemChaincodeProvider,
+	aclProvider aclmgmt.ACLProvider,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	lr plugindispatcher.LifecycleResources,
+	nr plugindispatcher.CollectionAndLifecycleResources,
+) *PeerConfiger {
 	return &PeerConfiger{
 		policyChecker: policy.NewPolicyChecker(
 			peer.NewChannelPolicyManagerGetter(),
@@ -51,6 +55,7 @@ func New(sccp sysccprovider.SystemChaincodeProvider,
 		deployedCCInfoProvider: deployedCCInfoProvider,
 		legacyLifecycle:        lr,
 		newLifecycle:           nr,
+		peer:                   peer.Default,
 	}
 }
 
@@ -73,6 +78,7 @@ type PeerConfiger struct {
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
 	legacyLifecycle        plugindispatcher.LifecycleResources
 	newLifecycle           plugindispatcher.CollectionAndLifecycleResources
+	peer                   *peer.Peer
 }
 
 var cnflogger = flogging.MustGetLogger("cscc")
@@ -166,21 +172,21 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 		}
 
-		return joinChain(cid, block, e.sccp, e.deployedCCInfoProvider, e.legacyLifecycle, e.newLifecycle)
+		return e.joinChain(cid, block, e.sccp, e.deployedCCInfoProvider, e.legacyLifecycle, e.newLifecycle)
 	case GetConfigBlock:
 		// 2. check policy
 		if err = e.aclProvider.CheckACL(resources.Cscc_GetConfigBlock, string(args[1]), sp); err != nil {
 			return shim.Error(fmt.Sprintf("access denied for [%s][%s]: %s", fname, args[1], err))
 		}
 
-		return getConfigBlock(args[1])
+		return e.getConfigBlock(args[1])
 	case GetChannels:
 		// 2. check get channels policy
 		if err = e.aclProvider.CheckACL(resources.Cscc_GetChannels, "", sp); err != nil {
 			return shim.Error(fmt.Sprintf("access denied for [%s]: %s", fname, err))
 		}
 
-		return getChannels()
+		return e.getChannels()
 
 	}
 	return shim.Error(fmt.Sprintf("Requested function %s not found.", fname))
@@ -228,23 +234,30 @@ func validateConfigBlock(block *common.Block) error {
 // joinChain will join the specified chain in the configuration block.
 // Since it is the first block, it is the genesis block containing configuration
 // for this chain, so we want to update the Chain object with this info
-func joinChain(chainID string, block *common.Block, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources, nr plugindispatcher.CollectionAndLifecycleResources) pb.Response {
-	if err := peer.CreateChainFromBlock(block, sccp, deployedCCInfoProvider, lr, nr); err != nil {
+func (e *PeerConfiger) joinChain(
+	chainID string,
+	block *common.Block,
+	sccp sysccprovider.SystemChaincodeProvider,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	lr plugindispatcher.LifecycleResources,
+	nr plugindispatcher.CollectionAndLifecycleResources,
+) pb.Response {
+	if err := e.peer.CreateChainFromBlock(block, sccp, deployedCCInfoProvider, lr, nr); err != nil {
 		return shim.Error(err.Error())
 	}
 
-	peer.InitChain(chainID)
+	e.peer.InitChain(chainID)
 
 	return shim.Success(nil)
 }
 
 // Return the current configuration block for the specified chainID. If the
 // peer doesn't belong to the chain, return error
-func getConfigBlock(chainID []byte) pb.Response {
+func (e *PeerConfiger) getConfigBlock(chainID []byte) pb.Response {
 	if chainID == nil {
 		return shim.Error("ChainID must not be nil.")
 	}
-	block := peer.GetCurrConfigBlock(string(chainID))
+	block := e.peer.GetCurrConfigBlock(string(chainID))
 	if block == nil {
 		return shim.Error(fmt.Sprintf("Unknown chain ID, %s", string(chainID)))
 	}
@@ -256,7 +269,7 @@ func getConfigBlock(chainID []byte) pb.Response {
 	return shim.Success(blockBytes)
 }
 
-func supportByType(pc *PeerConfiger, chainID []byte, env *common.Envelope) (config.Config, error) {
+func (e *PeerConfiger) supportByType(chainID []byte, env *common.Envelope) (config.Config, error) {
 	payload := &common.Payload{}
 
 	if err := proto.Unmarshal(env.Payload, payload); err != nil {
@@ -270,14 +283,14 @@ func supportByType(pc *PeerConfiger, chainID []byte, env *common.Envelope) (conf
 
 	switch common.HeaderType(channelHdr.Type) {
 	case common.HeaderType_CONFIG_UPDATE:
-		return pc.configMgr.GetChannelConfig(string(chainID)), nil
+		return e.configMgr.GetChannelConfig(string(chainID)), nil
 	}
 	return nil, errors.Errorf("invalid payload header type: %d", channelHdr.Type)
 }
 
 // getChannels returns information about all channels for this peer
-func getChannels() pb.Response {
-	channelInfoArray := peer.GetChannelsInfo()
+func (e *PeerConfiger) getChannels() pb.Response {
+	channelInfoArray := e.peer.GetChannelsInfo()
 
 	// add array with info about all channels for this peer
 	cqr := &pb.ChannelQueryResponse{Channels: channelInfoArray}

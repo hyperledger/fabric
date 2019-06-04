@@ -146,6 +146,12 @@ func TestBindingInspector(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestGetLocalIP(t *testing.T) {
+	ip, err := comm.GetLocalIP()
+	assert.NoError(t, err)
+	t.Log(ip)
+}
+
 type inspectingServer struct {
 	addr string
 	*comm.GRPCServer
