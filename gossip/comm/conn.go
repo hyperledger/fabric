@@ -290,7 +290,6 @@ func (conn *connection) serviceConnection() error {
 	// readFromStream() method
 	go conn.readFromStream(errChan, msgChan)
 
-	conn.stopWG.Add(1) // wait for write to finish before closing it
 	go conn.writeToStream()
 
 	for !conn.toDie() {
@@ -308,7 +307,13 @@ func (conn *connection) serviceConnection() error {
 }
 
 func (conn *connection) writeToStream() {
-	defer conn.stopWG.Done()
+	conn.Lock()
+	if !conn.toDie() {
+		conn.stopWG.Add(1) // wait for write to finish before calling conn.close()
+		defer conn.stopWG.Done()
+	}
+	conn.Unlock()
+
 	for !conn.toDie() {
 		stream := conn.getStream()
 		if stream == nil {
