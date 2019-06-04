@@ -62,7 +62,7 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 	cs.RUnlock()
 
 	if isClosing {
-		return nil, fmt.Errorf("Shutting down")
+		return nil, errors.Errorf("conn store is closing")
 	}
 
 	pkiID := peer.PKIID
@@ -95,7 +95,7 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 	isClosing = cs.isClosing
 	cs.RUnlock()
 	if isClosing {
-		return nil, fmt.Errorf("ConnStore is closing")
+		return nil, errors.Errorf("conn store is closing")
 	}
 
 	cs.Lock()
@@ -136,23 +136,13 @@ func (cs *connectionStore) shutdown() {
 	cs.shutdownOnce.Do(func() {
 		cs.Lock()
 		cs.isClosing = true
-		pkiIds2conn := cs.pki2Conn
 
-		var connections2Close []*connection
-		for _, conn := range pkiIds2conn {
-			connections2Close = append(connections2Close, conn)
+		for _, conn := range cs.pki2Conn {
+			conn.close()
 		}
+		cs.pki2Conn = make(map[string]*connection)
+
 		cs.Unlock()
-
-		wg := sync.WaitGroup{}
-		for _, conn := range connections2Close {
-			wg.Add(1)
-			go func(conn *connection) {
-				cs.closeConnByPKIid(conn.pkiID)
-				wg.Done()
-			}(conn)
-		}
-		wg.Wait()
 	})
 }
 
@@ -228,7 +218,6 @@ func (conn *connection) close() {
 	conn.stopOnce.Do(func() {
 		close(conn.stopChan)
 
-		conn.drainOutputBuffer()
 		conn.Lock()
 		defer conn.Unlock()
 
@@ -259,7 +248,10 @@ func (conn *connection) send(msg *protoext.SignedGossipMessage, onErr func(error
 		conn.logger.Debugf("Aborting send() to %s because connection is closing", conn.info.Endpoint)
 	default: // did not send
 		if shouldBlock {
-			conn.outBuff <- m // try again, and wait to send
+			select {
+			case conn.outBuff <- m: // try again, and wait to send
+			case <-conn.stopChan: //stop blocking if the connection is closing
+			}
 		} else {
 			conn.metrics.BufferOverflow.Add(1)
 			conn.logger.Debugf("Buffer to %s overflowed, dropping message %s", conn.info.Endpoint, msg)
@@ -328,18 +320,6 @@ func (conn *connection) writeToStream() {
 	}
 }
 
-func (conn *connection) drainOutputBuffer() {
-	// Read from the buffer until it is empty.
-	// There may be multiple concurrent readers.
-	for {
-		select {
-		case <-conn.outBuff:
-		default:
-			return
-		}
-	}
-}
-
 func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoext.SignedGossipMessage) {
 	for {
 		select {
@@ -374,8 +354,7 @@ func (conn *connection) getStream() stream {
 	defer conn.Unlock()
 
 	if conn.clientStream != nil && conn.serverStream != nil {
-		e := errors.New("Both client and server stream are not nil, something went wrong")
-		conn.logger.Errorf("%+v", e)
+		conn.logger.Error("Both client and server stream are not nil, something went wrong")
 	}
 
 	if conn.clientStream != nil {
