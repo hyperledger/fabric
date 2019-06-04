@@ -3913,6 +3913,10 @@ func (n *network) join(id uint64, expectLeaderChange bool) {
 // elect deterministically elects a node as leader
 func (n *network) elect(id uint64) {
 	n.RLock()
+	// skip observing leader change on followers if the same leader is elected as the previous one,
+	// because this may happen too quickly from a slow follower's point of view, and 0 -> X transition
+	// may not be omitted at all.
+	observeFollowers := id != n.leader
 	candidate := n.chains[id]
 	var followers []*chain
 	for _, c := range n.chains {
@@ -3926,6 +3930,14 @@ func (n *network) elect(id uint64) {
 	fmt.Fprintf(GinkgoWriter, "Send artificial MsgTimeoutNow to elect node %d\n", id)
 	candidate.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow})}, 0)
 	Eventually(candidate.observe, LongEventualTimeout).Should(Receive(StateEqual(id, raft.StateLeader)))
+
+	n.Lock()
+	n.leader = id
+	n.Unlock()
+
+	if !observeFollowers {
+		return
+	}
 
 	// now observe leader change on other nodes
 	for _, c := range followers {
@@ -3943,9 +3955,6 @@ func (n *network) elect(id uint64) {
 		}
 	}
 
-	n.Lock()
-	n.leader = id
-	n.Unlock()
 }
 
 // sets the configEnv var declared above
