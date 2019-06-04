@@ -34,6 +34,14 @@ type ApplicationOrg interface {
 	AnchorPeers() []*pb.AnchorPeer
 }
 
+// OrdererOrg stores the per org orderer config.
+type OrdererOrg interface {
+	Org
+
+	// Endpoints returns the endpoints of orderer nodes.
+	Endpoints() []string
+}
+
 // Application stores the common shared application config
 type Application interface {
 	// Organizations returns a map of org ID to ApplicationOrg
@@ -107,7 +115,7 @@ type Orderer interface {
 	KafkaBrokers() []string
 
 	// Organizations returns the organizations for the ordering service
-	Organizations() map[string]Org
+	Organizations() map[string]OrdererOrg
 
 	// Capabilities defines the capabilities for the orderer portion of a channel
 	Capabilities() OrdererCapabilities
@@ -121,6 +129,12 @@ type ChannelCapabilities interface {
 	// MSPVersion specifies the version of the MSP this channel must understand, including the MSP types
 	// and MSP principal types.
 	MSPVersion() msp.MSPVersion
+
+	// ConsensusTypeMigration return true if consensus-type migration is permitted in both orderer and peer.
+	ConsensusTypeMigration() bool
+
+	// OrgSpecificOrdererEndpoints return true if the channel config processing allows orderer orgs to specify their own endpoints
+	OrgSpecificOrdererEndpoints() bool
 }
 
 // ApplicationCapabilities defines the capabilities for the application portion of a channel
