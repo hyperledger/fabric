@@ -20,6 +20,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -100,8 +101,6 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
 			peer = network.Peer("Org1", "peer1")
-			blockFile1 := filepath.Join(testDir, "newest_orderer1_block.pb")
-			blockFile2 := filepath.Join(testDir, "newest_orderer2_block.pb")
 
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -112,38 +111,50 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 				{Name: o3.ID(), Runner: network.OrdererRunner(o3)},
 			}
 			ordererGroup := grouper.NewParallel(syscall.SIGTERM, orderers)
-			peerGroup := network.PeerGroupRunner()
 
 			o1Proc = ifrit.Invoke(o1Runner)
 			ordererProc = ifrit.Invoke(ordererGroup)
 			Eventually(o1Proc.Ready()).Should(BeClosed())
 			Eventually(ordererProc.Ready()).Should(BeClosed())
-			peerProc = ifrit.Invoke(peerGroup)
-			Eventually(peerProc.Ready()).Should(BeClosed())
+
+			findLeader([]*ginkgomon.Runner{o1Runner})
 
 			By("performing operation with orderer1")
-			network.CreateAndJoinChannel(o1, "testchannel")
+			env := CreateBroadcastEnvelope(network, o1, network.SystemChannel.Name, []byte("foo"))
+			resp, err := Broadcast(network, o1, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+
+			block := FetchBlock(network, o1, 1, network.SystemChannel.Name)
+			Expect(block).NotTo(BeNil())
 
 			By("killing orderer1")
 			o1Proc.Signal(syscall.SIGKILL)
 			Eventually(o1Proc.Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
 
-			By("performing operations with running orderer")
-			nwo.DeployChaincode(network, "testchannel", o2, chaincode)
+			By("broadcasting envelope to running orderer")
+			resp, err = Broadcast(network, o2, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+
+			block = FetchBlock(network, o2, 2, network.SystemChannel.Name)
+			Expect(block).NotTo(BeNil())
 
 			By("restarting orderer1")
 			o1Runner = network.OrdererRunner(o1)
 			o1Proc = ifrit.Invoke(o1Runner)
 			Eventually(o1Proc.Ready()).Should(BeClosed())
+			findLeader([]*ginkgomon.Runner{o1Runner})
 
-			By("executing transaction with restarted orderer")
-			RunQueryInvokeQuery(network, o1, peer, "testchannel")
+			By("broadcasting envelope to restarted orderer")
+			resp, err = Broadcast(network, o1, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
-			fetchLatestBlock(o1, blockFile1)
-			fetchLatestBlock(o2, blockFile2)
-			b1 := nwo.UnmarshalBlockFromFile(blockFile1)
-			b2 := nwo.UnmarshalBlockFromFile(blockFile2)
-			Expect(protoutil.BlockHeaderBytes(b1.Header)).To(Equal(protoutil.BlockHeaderBytes(b2.Header)))
+			blko1 := FetchBlock(network, o1, 3, network.SystemChannel.Name)
+			blko2 := FetchBlock(network, o2, 3, network.SystemChannel.Name)
+
+			Expect(blko1.Header.DataHash).To(Equal(blko2.Header.DataHash))
 		})
 	})
 
