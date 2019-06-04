@@ -115,7 +115,7 @@ var _ = Describe("Network", func() {
 			network.UpdateChannelAnchors(orderer, "testchannel")
 			network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 
-			nwo.EnableV2_0Capabilities(network, "testchannel", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
 			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
 
 			RunQueryInvokeQuery(network, orderer, peer, 100)
@@ -286,7 +286,7 @@ var _ = Describe("Network", func() {
 			network.UpdateChannelAnchors(orderer, "testchannel")
 			network.VerifyMembership(testPeers, "testchannel")
 
-			nwo.EnableV2_0Capabilities(network, "testchannel", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
 
 			chaincode := nwo.Chaincode{
 				Name:              "mycc",

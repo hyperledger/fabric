@@ -288,7 +288,7 @@ var _ = Describe("EndToEndACL", func() {
 		nwo.InstallChaincodeNewLifecycle(network, chaincode, org1Peer0, org2Peer0)
 
 		//
-		// when the V2_0 capabilities flag has not yet been enabled
+		// when the V2_0 application capabilities flag has not yet been enabled
 		//
 		By("approving a chaincode definition on a channel without V2_0 capabilities enabled")
 		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeApproveForMyOrgLifecycle{
@@ -326,9 +326,9 @@ var _ = Describe("EndToEndACL", func() {
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
 		Expect(sess.Err).To(gbytes.Say("Error: proposal failed with status: 500 - cannot use new lifecycle for channel 'testchannel' as it does not have the required capabilities enabled"))
 
-		// enable V2_0 Capabilities on the channel
-		By("enabling V2_0 capabilities")
-		nwo.EnableV2_0Capabilities(network, "testchannel", orderer, org1Peer0, org2Peer0)
+		// enable V2_0 application capabilities on the channel
+		By("enabling V2_0 application capabilities on the channel")
+		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, org1Peer0, org2Peer0)
 
 		//
 		// when the ACL policy for _lifecycle/ApproveChaincodeDefinitionForOrg is not satisfied

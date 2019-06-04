@@ -654,8 +654,8 @@ var _ bool = Describe("PrivateData", func() {
 			//
 			// collection test using _lifecycle
 			//
-			By("enabling V2_0 capabilities on the channel")
-			nwo.EnableV2_0Capabilities(network, "testchannel", orderer, peerAllThreeOrgs...)
+			By("enabling V2_0 application capabilities on the channel")
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, peerAllThreeOrgs...)
 
 			By("deploying chaincode on all peers using _lifecycle. All three orgs are members of 'collectionMarbles'")
 			chaincode = nwo.Chaincode{

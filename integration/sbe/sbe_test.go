@@ -121,10 +121,10 @@ var _ = Describe("SBE_E2E", func() {
 
 			By("updating the anchor peers")
 			network.UpdateChannelAnchors(orderer, "testchannel")
-
-			By("enabling 2.0 capabilities")
 			network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
-			nwo.EnableV2_0Capabilities(network, "testchannel", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+
+			By("enabling 2.0 application capabilities")
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			By("deploying the chaincode")
 			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)

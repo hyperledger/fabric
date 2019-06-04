@@ -206,8 +206,8 @@ var _ = Describe("DiscoveryService", func() {
 		// using _lifecycle
 		//
 
-		By("enabling V2_0 capabilities on the channel")
-		nwo.EnableV2_0Capabilities(network, "testchannel", orderer, org1Peer0, org2Peer0, org3Peer0)
+		By("enabling V2_0 application capabilities on the channel")
+		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, org1Peer0, org2Peer0, org3Peer0)
 
 		By("discovering endorsers when missing chaincode")
 		endorsers = commands.Endorsers{
@@ -420,7 +420,8 @@ var _ = Describe("DiscoveryService", func() {
 		//
 		// using _lifecycle
 		//
-		nwo.EnableV2_0Capabilities(network, "testchannel", orderer, org1Peer0, org2Peer0, org3Peer0)
+		By("enabling V2_0 application capabilities on the channel")
+		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, org1Peer0, org2Peer0, org3Peer0)
 
 		By("deploying chaincode using _lifecycle")
 		chaincode = nwo.Chaincode{
