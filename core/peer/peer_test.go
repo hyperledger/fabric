@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,13 +28,13 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	ledgermocks "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/transientstore"
-	"github.com/hyperledger/fabric/gossip/service"
+	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
+	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -46,10 +45,34 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
+
+	msptesttools.LoadMSPSetupForTesting()
+
+	// Initialize gossip service
+	signer := mgmt.GetLocalSigningIdentityOrPanic()
+	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager())
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	defaultSecureDialOpts := func() []grpc.DialOption { return []grpc.DialOption{grpc.WithInsecure()} }
+
+	gossipService, err := gossipservice.InitGossipService(
+		signer,
+		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
+		"localhost:0",
+		grpc.NewServer(),
+		nil,
+		messageCryptoService,
+		secAdv,
+		defaultSecureDialOpts,
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	Default = &Peer{
 		StoreProvider: transientstore.NewStoreProvider(
 			filepath.Join(tempdir, "transientstore"),
 		),
+		GossipService: gossipService,
 	}
 
 	rc := m.Run()
@@ -143,43 +166,13 @@ func TestCreateChainFromBlock(t *testing.T) {
 		runtime.NumCPU(),
 		nil,
 	)
+
 	testChainID := fmt.Sprintf("mytestchainid-%d", rand.Int())
 	block, err := configtxtest.MakeGenesisBlock(testChainID)
 	if err != nil {
 		fmt.Printf("Failed to create a config block, err %s\n", err)
 		t.FailNow()
 	}
-
-	// Initialize gossip service
-	grpcServer := grpc.NewServer()
-	socket, err := net.Listen("tcp", "localhost:0")
-	require.NoError(t, err)
-
-	msptesttools.LoadMSPSetupForTesting()
-
-	signer := mgmt.GetLocalSigningIdentityOrPanic()
-	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager())
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	var defaultSecureDialOpts = func() []grpc.DialOption {
-		var dialOpts []grpc.DialOption
-		dialOpts = append(dialOpts, grpc.WithInsecure())
-		return dialOpts
-	}
-
-	err = service.InitGossipService(
-		signer,
-		&disabled.Provider{},
-		socket.Addr().String(),
-		grpcServer,
-		nil,
-		messageCryptoService,
-		secAdv,
-		defaultSecureDialOpts,
-	)
-	assert.NoError(t, err)
-
-	go grpcServer.Serve(socket)
-	defer grpcServer.Stop()
 
 	err = CreateChainFromBlock(block, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 	if err != nil {

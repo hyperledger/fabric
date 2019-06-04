@@ -79,40 +79,30 @@ func (*mockTransientStore) PurgeByTxids(txids []string) error {
 }
 
 func TestInitGossipService(t *testing.T) {
-	// Test whenever gossip service is indeed singleton
 	grpcServer := grpc.NewServer()
 	endpoint, socket := getAvailablePort(t)
 
 	msptesttools.LoadMSPSetupForTesting()
 	signer := mgmt.GetLocalSigningIdentityOrPanic()
 
-	wg := sync.WaitGroup{}
-	wg.Add(10)
-	for i := 0; i < 10; i++ {
-		go func() {
-			defer wg.Done()
-			messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager())
-			secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-			err := InitGossipService(signer, &disabled.Provider{}, endpoint, grpcServer, nil,
-				messageCryptoService, secAdv, nil)
-			assert.NoError(t, err)
-		}()
-	}
-	wg.Wait()
+	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager())
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	gossipService, err := InitGossipService(
+		signer,
+		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
+		endpoint,
+		grpcServer,
+		nil,
+		messageCryptoService,
+		secAdv,
+		nil,
+	)
+	assert.NoError(t, err)
 
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	defer GetGossipService().Stop()
-	gossip := GetGossipService()
-
-	for i := 0; i < 10; i++ {
-		go func(gossipInstance GossipService) {
-			assert.Equal(t, gossip, GetGossipService())
-		}(gossip)
-	}
-
-	time.Sleep(time.Second * 2)
+	defer gossipService.Stop()
 }
 
 // Make sure *joinChannelMessage implements the api.JoinChannelMessage
@@ -751,11 +741,16 @@ func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServe
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	cryptoService := &naiveCryptoService{}
 	metrics := gossipmetrics.NewGossipMetrics(&disabled.Provider{})
-	gossip := gossip.NewGossipService(conf, gRPCServer.Server(), &orgCryptoService{}, cryptoService, selfID,
-		secureDialOpts, metrics)
-	go func() {
-		gRPCServer.Start()
-	}()
+	gossip := gossip.NewGossipService(
+		conf,
+		gRPCServer.Server(),
+		&orgCryptoService{},
+		cryptoService,
+		selfID,
+		secureDialOpts,
+		metrics,
+	)
+	go gRPCServer.Start()
 
 	gossipService := &gossipServiceImpl{
 		mcs:             cryptoService,
@@ -861,19 +856,25 @@ func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, 
 var orgInChannelA = api.OrgIdentityType("ORG1")
 
 func TestInvalidInitialization(t *testing.T) {
-	// Test whenever gossip service is indeed singleton
 	grpcServer := grpc.NewServer()
 	endpoint, socket := getAvailablePort(t)
 
+	mockSignerSerializer := &mocks.SignerSerializer{}
+	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 
-	serializer := &mocks.SignerSerializer{}
-	serializer.SerializeReturns([]byte{}, nil)
-
-	err := InitGossipService(serializer, &disabled.Provider{}, endpoint, grpcServer, nil,
-		&naiveCryptoService{}, secAdv, nil)
+	gossipService, err := InitGossipService(
+		mockSignerSerializer,
+		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
+		endpoint,
+		grpcServer,
+		nil,
+		&naiveCryptoService{},
+		secAdv,
+		nil,
+	)
 	assert.NoError(t, err)
-	gService := GetGossipService().(*gossipServiceImpl)
+	gService := gossipService.(*gossipServiceImpl)
 	defer gService.Stop()
 
 	go grpcServer.Serve(socket)
@@ -896,14 +897,22 @@ func TestChannelConfig(t *testing.T) {
 	grpcServer := grpc.NewServer()
 	endpoint, socket := getAvailablePort(t)
 
+	mockSignerSerializer := &mocks.SignerSerializer{}
+	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	serializer := &mocks.SignerSerializer{}
-	serializer.SerializeReturns([]byte{}, nil)
 
-	error := InitGossipService(serializer, &disabled.Provider{}, endpoint, grpcServer, nil,
-		&naiveCryptoService{}, secAdv, nil)
-	assert.NoError(t, error)
-	gService := GetGossipService().(*gossipServiceImpl)
+	gossipService, err := InitGossipService(
+		mockSignerSerializer,
+		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
+		endpoint,
+		grpcServer,
+		nil,
+		&naiveCryptoService{},
+		secAdv,
+		nil,
+	)
+	assert.NoError(t, err)
+	gService := gossipService.(*gossipServiceImpl)
 	defer gService.Stop()
 
 	go grpcServer.Serve(socket)

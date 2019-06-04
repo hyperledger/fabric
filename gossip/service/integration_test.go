@@ -140,7 +140,6 @@ func TestLeaderYield(t *testing.T) {
 	newGossipService := func(i int) *gossipServiceImpl {
 		gs := gossips[i].(*gossipGRPC).gossipServiceImpl
 		gs.deliveryFactory = &embeddingDeliveryServiceFactory{&deliveryFactoryImpl{}}
-		gossipServiceInstance = gs
 		gs.InitializeChannel(channelName, []string{endpoint}, Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &transientStoreMock{},

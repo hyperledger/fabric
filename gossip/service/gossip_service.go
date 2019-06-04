@@ -9,7 +9,6 @@ package service
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -29,11 +28,6 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-)
-
-var (
-	gossipServiceInstance *gossipServiceImpl
-	once                  sync.Once
 )
 
 type gossipSvc gossip.Gossip
@@ -131,7 +125,7 @@ var logger = util.GetLogger(util.ServiceLogger, "")
 // InitGossipService initialize gossip service
 func InitGossipService(
 	peerIdentity identity.SignerSerializer,
-	metricsProvider metrics.Provider,
+	gossipMetrics *gossipmetrics.GossipMetrics,
 	endpoint string,
 	s *grpc.Server,
 	certs *gossipcommon.TLSCertificates,
@@ -139,55 +133,47 @@ func InitGossipService(
 	secAdv api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts,
 	bootPeers ...string,
-) error {
-	var err error
-	var gossipComponent gossip.Gossip
+) (GossipService, error) {
 	serializedIdentity, err := peerIdentity.Serialize()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	once.Do(func() {
-		serviceConfig := GlobalConfig()
-		if serviceConfig.Endpoint != "" {
-			endpoint = serviceConfig.Endpoint
-		}
+	serviceConfig := GlobalConfig()
+	if serviceConfig.Endpoint != "" {
+		endpoint = serviceConfig.Endpoint
+	}
 
-		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
+	gossipConfig, err := gossip.GlobalConfig(endpoint, certs, bootPeers...)
+	if err != nil {
+		return nil, err
+	}
 
-		var gossipConfig *gossip.Config
-		gossipConfig, err = gossip.GlobalConfig(endpoint, certs, bootPeers...)
+	logger.Infof("Initialize gossip with endpoint %s and bootstrap set %v", endpoint, bootPeers)
 
-		gossipMetrics := gossipmetrics.NewGossipMetrics(metricsProvider)
-		gossipComponent = gossip.NewGossipService(
-			gossipConfig,
-			s,
-			secAdv,
-			mcs,
-			serializedIdentity,
-			secureDialOpts,
-			gossipMetrics,
-		)
-		gossipServiceInstance = &gossipServiceImpl{
-			mcs:             mcs,
-			gossipSvc:       gossipComponent,
-			privateHandlers: make(map[string]privateHandler),
-			chains:          make(map[string]state.GossipStateProvider),
-			leaderElection:  make(map[string]election.LeaderElectionService),
-			deliveryService: make(map[string]deliverservice.DeliverService),
-			deliveryFactory: &deliveryFactoryImpl{signer: peerIdentity},
-			peerIdentity:    serializedIdentity,
-			secAdv:          secAdv,
-			metrics:         gossipMetrics,
-			serviceConfig:   serviceConfig,
-		}
-	})
-	return errors.WithStack(err)
-}
+	gossipComponent := gossip.NewGossipService(
+		gossipConfig,
+		s,
+		secAdv,
+		mcs,
+		serializedIdentity,
+		secureDialOpts,
+		gossipMetrics,
+	)
 
-// GetGossipService returns an instance of gossip service
-func GetGossipService() GossipService {
-	return gossipServiceInstance
+	return &gossipServiceImpl{
+		mcs:             mcs,
+		gossipSvc:       gossipComponent,
+		privateHandlers: make(map[string]privateHandler),
+		chains:          make(map[string]state.GossipStateProvider),
+		leaderElection:  make(map[string]election.LeaderElectionService),
+		deliveryService: make(map[string]deliverservice.DeliverService),
+		deliveryFactory: &deliveryFactoryImpl{signer: peerIdentity},
+		peerIdentity:    serializedIdentity,
+		secAdv:          secAdv,
+		metrics:         gossipMetrics,
+		serviceConfig:   serviceConfig,
+	}, nil
 }
 
 // DistributePrivateData distribute private read write set inside the channel based on the collections policies
