@@ -1652,20 +1652,29 @@ func TestStateRequestValidator(t *testing.T) {
 
 func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Duration) {
 	ch := make(chan struct{})
+	t.Log("Started to spin off, until predicate will be satisfied.")
+
 	go func() {
-		t.Log("Started to spin off, until predicate will be satisfied.")
+		t := time.NewTicker(time.Second)
 		for !predicate() {
-			time.Sleep(1 * time.Second)
+			select {
+			case <-ch:
+				t.Stop()
+				return
+			case <-t.C:
+			}
 		}
-		ch <- struct{}{}
-		t.Log("Done.")
+		t.Stop()
+		close(ch)
 	}()
 
 	select {
 	case <-ch:
+		t.Log("Done.")
 		break
 	case <-time.After(timeout):
 		t.Fatal("Timeout has expired")
+		close(ch)
 		break
 	}
 	t.Log("Stop waiting until timeout or true")
