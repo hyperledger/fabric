@@ -574,11 +574,9 @@ var _ = Describe("SCC", func() {
 
 			Context("when collection member-org-policy signature policy contains unmarshable MSPRole", func() {
 				BeforeEach(func() {
-					collConfigs[0].Identities = []*mspprotos.MSPPrincipal{
-						{
-							PrincipalClassification: mspprotos.MSPPrincipal_ROLE,
-							Principal:               []byte("unmarshable bytes"),
-						},
+					collConfigs[0].Identities[0] = &mspprotos.MSPPrincipal{
+						PrincipalClassification: mspprotos.MSPPrincipal_ROLE,
+						Principal:               []byte("unmarshable bytes"),
 					}
 				})
 
@@ -586,6 +584,18 @@ var _ = Describe("SCC", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
 					Expect(res.Message).Should(ContainSubstring("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': collection-name: test-collection -- cannot unmarshal identity bytes into MSPRole"))
+				})
+			})
+
+			Context("when collection member-org-policy signature policy contains too few principals", func() {
+				BeforeEach(func() {
+					collConfigs[0].Identities = collConfigs[0].Identities[0:1]
+				})
+
+				It("wraps and returns error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).Should(ContainSubstring("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': invalid member org policy for collection 'test-collection': identity index out of range, requested 1, but identities length is 1"))
 				})
 			})
 
@@ -609,11 +619,9 @@ var _ = Describe("SCC", func() {
 
 			Context("when collection member-org-policy signature policy contains unmarshable ORGANIZATION_UNIT", func() {
 				BeforeEach(func() {
-					collConfigs[0].Identities = []*mspprotos.MSPPrincipal{
-						{
-							PrincipalClassification: mspprotos.MSPPrincipal_ORGANIZATION_UNIT,
-							Principal:               []byte("unmarshable bytes"),
-						},
+					collConfigs[0].Identities[0] = &mspprotos.MSPPrincipal{
+						PrincipalClassification: mspprotos.MSPPrincipal_ORGANIZATION_UNIT,
+						Principal:               []byte("unmarshable bytes"),
 					}
 				})
 
@@ -656,10 +664,8 @@ var _ = Describe("SCC", func() {
 
 			Context("when collection member-org-policy signature policy contains unsupported principal type", func() {
 				BeforeEach(func() {
-					collConfigs[0].Identities = []*mspprotos.MSPPrincipal{
-						{
-							PrincipalClassification: mspprotos.MSPPrincipal_ANONYMITY,
-						},
+					collConfigs[0].Identities[0] = &mspprotos.MSPPrincipal{
+						PrincipalClassification: mspprotos.MSPPrincipal_ANONYMITY,
 					}
 				})
 
@@ -884,7 +890,7 @@ var _ = Describe("SCC", func() {
 										Name: "test_collection",
 										MemberOrgsPolicy: &cb.CollectionPolicyConfig{
 											Payload: &cb.CollectionPolicyConfig_SignaturePolicy{
-												SignaturePolicy: &cb.SignaturePolicyEnvelope{},
+												SignaturePolicy: cauthdsl.SignedByMspMember("org0"),
 											},
 										},
 									},
@@ -910,6 +916,15 @@ var _ = Describe("SCC", func() {
 				})
 
 				fakeSCCFuncs.CommitChaincodeDefinitionReturns([]bool{true, true}, nil)
+
+				fakeMsp := &mock.MSP{}
+				fakeMSPManager.GetMSPsReturns(
+					map[string]msp.MSP{
+						"org0": fakeMsp,
+						"org1": fakeMsp,
+					},
+					nil,
+				)
 			})
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
@@ -943,7 +958,7 @@ var _ = Describe("SCC", func() {
 										Name: "test_collection",
 										MemberOrgsPolicy: &cb.CollectionPolicyConfig{
 											Payload: &cb.CollectionPolicyConfig_SignaturePolicy{
-												SignaturePolicy: &cb.SignaturePolicyEnvelope{},
+												SignaturePolicy: cauthdsl.SignedByMspMember("org0"),
 											},
 										},
 									},

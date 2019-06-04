@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
@@ -588,13 +589,19 @@ func (i *Invocation) validateInput(name, version string, collections *cb.Collect
 	if err != nil {
 		return err
 	}
+	// we extract the channel config to check whether the supplied collection configuration
+	// complies to the given msp configuration and performs semantic validation.
+	// Channel config may change afterwards (i.e., after endorsement or commit of this transaction).
+	// Fabric will deal with the situation where some collection configs are no longer meaningful.
+	// Therefore, the use of channel config for verifying during endorsement is more
+	// towards catching manual errors in the config as oppose to any attempt of serializability.
 	channelConfig := i.SCC.ChannelConfigSource.GetStableChannelConfig(i.ChannelID)
 	if channelConfig == nil {
 		return errors.Errorf("could not get channelconfig for channel '%s'", i.ChannelID)
 	}
 	mspMgr := channelConfig.MSPManager()
 	if mspMgr == nil {
-		return errors.Errorf(fmt.Sprintf("could not get MSP manager for channel '%s'", i.ChannelID))
+		return errors.Errorf("could not get MSP manager for channel '%s'", i.ChannelID)
 	}
 
 	if err := validateCollectionConfigs(collConfigs, mspMgr); err != nil {
@@ -651,17 +658,17 @@ func validateCollectionConfigs(collConfigs []*common.StaticCollectionConfig, msp
 		}
 		// Ensure that there are no duplicate collection names
 		if _, ok := collNamesMap[c.Name]; ok {
-			return fmt.Errorf("collection-name: %s -- found duplicate in collection configuration",
+			return errors.Errorf("collection-name: %s -- found duplicate in collection configuration",
 				c.Name)
 		}
 		collNamesMap[c.Name] = struct{}{}
 		// Validate gossip related parameters present in the collection config
 		if c.MaximumPeerCount < c.RequiredPeerCount {
-			return fmt.Errorf("collection-name: %s -- maximum peer count (%d) cannot be greater than the required peer count (%d)",
+			return errors.Errorf("collection-name: %s -- maximum peer count (%d) cannot be greater than the required peer count (%d)",
 				c.Name, c.MaximumPeerCount, c.RequiredPeerCount)
 		}
 		if c.RequiredPeerCount < 0 {
-			return fmt.Errorf("collection-name: %s -- requiredPeerCount (%d) cannot be less than zero",
+			return errors.Errorf("collection-name: %s -- requiredPeerCount (%d) cannot be less than zero",
 				c.Name, c.RequiredPeerCount)
 		}
 		if err := validateCollectionConfigMemberOrgsPolicy(c, mspMgr); err != nil {
@@ -675,10 +682,16 @@ func validateCollectionConfigs(collConfigs []*common.StaticCollectionConfig, msp
 // complies to the given msp configuration
 func validateCollectionConfigMemberOrgsPolicy(coll *common.StaticCollectionConfig, mspMgr msp.MSPManager) error {
 	if coll.MemberOrgsPolicy == nil {
-		return fmt.Errorf("collection member policy is not set for collection '%s'", coll.Name)
+		return errors.Errorf("collection member policy is not set for collection '%s'", coll.Name)
 	}
 	if coll.MemberOrgsPolicy.GetSignaturePolicy() == nil {
-		return fmt.Errorf("collection member org policy is empty for collection '%s'", coll.Name)
+		return errors.Errorf("collection member org policy is empty for collection '%s'", coll.Name)
+	}
+
+	// calling this constructor ensures extra semantic validation for the policy
+	pp := &cauthdsl.EnvelopeBasedPolicyProvider{Deserializer: mspMgr}
+	if _, err := pp.NewPolicy(coll.MemberOrgsPolicy.GetSignaturePolicy()); err != nil {
+		return errors.WithMessagef(err, "invalid member org policy for collection '%s'", coll.Name)
 	}
 
 	// make sure that the signature policy is meaningful (only consists of ORs)
@@ -743,7 +756,7 @@ func validateSpOrConcat(sp *common.SignaturePolicy) error {
 	}
 	// check if N == 1 (OR concatenation)
 	if sp.GetNOutOf().N != 1 {
-		return errors.New(fmt.Sprintf("signature policy is not an OR concatenation, NOutOf %d", sp.GetNOutOf().N))
+		return errors.Errorf("signature policy is not an OR concatenation, NOutOf %d", sp.GetNOutOf().N)
 	}
 	// recurse into all sub-rules
 	for _, rule := range sp.GetNOutOf().Rules {
