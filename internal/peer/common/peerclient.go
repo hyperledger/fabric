@@ -18,7 +18,7 @@ import (
 
 // PeerClient represents a client for communicating with a peer
 type PeerClient struct {
-	commonClient
+	CommonClient
 }
 
 // NewPeerClientFromEnv creates an instance of a PeerClient from the global
@@ -59,27 +59,27 @@ func newPeerClientForClientConfig(address, override string, clientConfig comm.Cl
 		return nil, errors.WithMessage(err, "failed to create PeerClient from config")
 	}
 	pClient := &PeerClient{
-		commonClient: commonClient{
+		CommonClient: CommonClient{
 			GRPCClient: gClient,
-			address:    address,
+			Address:    address,
 			sn:         override}}
 	return pClient, nil
 }
 
 // Endorser returns a client for the Endorser service
 func (pc *PeerClient) Endorser() (pb.EndorserClient, error) {
-	conn, err := pc.commonClient.NewConnection(pc.address, pc.sn)
+	conn, err := pc.CommonClient.NewConnection(pc.Address, pc.sn)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "endorser client failed to connect to %s", pc.address)
+		return nil, errors.WithMessagef(err, "endorser client failed to connect to %s", pc.Address)
 	}
 	return pb.NewEndorserClient(conn), nil
 }
 
 // Deliver returns a client for the Deliver service
 func (pc *PeerClient) Deliver() (pb.Deliver_DeliverClient, error) {
-	conn, err := pc.commonClient.NewConnection(pc.address, pc.sn)
+	conn, err := pc.CommonClient.NewConnection(pc.Address, pc.sn)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.address)
+		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.Address)
 	}
 	return pb.NewDeliverClient(conn).Deliver(context.TODO())
 }
@@ -87,16 +87,16 @@ func (pc *PeerClient) Deliver() (pb.Deliver_DeliverClient, error) {
 // PeerDeliver returns a client for the Deliver service for peer-specific use
 // cases (i.e. DeliverFiltered)
 func (pc *PeerClient) PeerDeliver() (pb.DeliverClient, error) {
-	conn, err := pc.commonClient.NewConnection(pc.address, pc.sn)
+	conn, err := pc.CommonClient.NewConnection(pc.Address, pc.sn)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.address)
+		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.Address)
 	}
 	return pb.NewDeliverClient(conn), nil
 }
 
 // Certificate returns the TLS client certificate (if available)
 func (pc *PeerClient) Certificate() tls.Certificate {
-	return pc.commonClient.Certificate()
+	return pc.CommonClient.Certificate()
 }
 
 // GetEndorserClient returns a new endorser client. If the both the address and

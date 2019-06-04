@@ -17,7 +17,7 @@ import (
 // OrdererClient represents a client for communicating with an ordering
 // service
 type OrdererClient struct {
-	commonClient
+	CommonClient
 }
 
 // NewOrdererClientFromEnv creates an instance of an OrdererClient from the
@@ -32,18 +32,18 @@ func NewOrdererClientFromEnv() (*OrdererClient, error) {
 		return nil, errors.WithMessage(err, "failed to create OrdererClient from config")
 	}
 	oClient := &OrdererClient{
-		commonClient: commonClient{
+		CommonClient: CommonClient{
 			GRPCClient: gClient,
-			address:    address,
+			Address:    address,
 			sn:         override}}
 	return oClient, nil
 }
 
 // Broadcast returns a broadcast client for the AtomicBroadcast service
 func (oc *OrdererClient) Broadcast() (ab.AtomicBroadcast_BroadcastClient, error) {
-	conn, err := oc.commonClient.NewConnection(oc.address, oc.sn)
+	conn, err := oc.CommonClient.NewConnection(oc.Address, oc.sn)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.address)
+		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.Address)
 	}
 	// TODO: check to see if we should actually handle error before returning
 	return ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
@@ -51,9 +51,9 @@ func (oc *OrdererClient) Broadcast() (ab.AtomicBroadcast_BroadcastClient, error)
 
 // Deliver returns a deliver client for the AtomicBroadcast service
 func (oc *OrdererClient) Deliver() (ab.AtomicBroadcast_DeliverClient, error) {
-	conn, err := oc.commonClient.NewConnection(oc.address, oc.sn)
+	conn, err := oc.CommonClient.NewConnection(oc.Address, oc.sn)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.address)
+		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.Address)
 	}
 	// TODO: check to see if we should actually handle error before returning
 	return ab.NewAtomicBroadcastClient(conn).Deliver(context.TODO())
@@ -62,5 +62,5 @@ func (oc *OrdererClient) Deliver() (ab.AtomicBroadcast_DeliverClient, error) {
 
 // Certificate returns the TLS client certificate (if available)
 func (oc *OrdererClient) Certificate() tls.Certificate {
-	return oc.commonClient.Certificate()
+	return oc.CommonClient.Certificate()
 }

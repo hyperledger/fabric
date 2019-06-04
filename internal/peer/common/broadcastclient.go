@@ -18,8 +18,8 @@ type BroadcastClient interface {
 	Close() error
 }
 
-type broadcastClient struct {
-	client ab.AtomicBroadcast_BroadcastClient
+type BroadcastGRPCClient struct {
+	Client ab.AtomicBroadcast_BroadcastClient
 }
 
 // GetBroadcastClient creates a simple instance of the BroadcastClient interface
@@ -33,11 +33,11 @@ func GetBroadcastClient() (BroadcastClient, error) {
 		return nil, err
 	}
 
-	return &broadcastClient{client: bc}, nil
+	return &BroadcastGRPCClient{Client: bc}, nil
 }
 
-func (s *broadcastClient) getAck() error {
-	msg, err := s.client.Recv()
+func (s *BroadcastGRPCClient) getAck() error {
+	msg, err := s.Client.Recv()
 	if err != nil {
 		return err
 	}
@@ -48,8 +48,8 @@ func (s *broadcastClient) getAck() error {
 }
 
 //Send data to orderer
-func (s *broadcastClient) Send(env *cb.Envelope) error {
-	if err := s.client.Send(env); err != nil {
+func (s *BroadcastGRPCClient) Send(env *cb.Envelope) error {
+	if err := s.Client.Send(env); err != nil {
 		return errors.WithMessage(err, "could not send")
 	}
 
@@ -58,6 +58,6 @@ func (s *broadcastClient) Send(env *cb.Envelope) error {
 	return err
 }
 
-func (s *broadcastClient) Close() error {
-	return s.client.CloseSend()
+func (s *BroadcastGRPCClient) Close() error {
+	return s.Client.CloseSend()
 }
