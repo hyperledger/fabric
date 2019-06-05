@@ -10,19 +10,14 @@ package shim
 
 import (
 	"container/list"
-	"fmt"
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
-
-// Logger for the shim package.
-var mockLogger = logging.MustGetLogger("mock")
 
 // MockStub is an implementation of ChaincodeStubInterface for unit testing chaincode.
 // Use this instead of ChaincodeStub in your chaincode's unit test calls to Init or Invoke.
@@ -210,7 +205,6 @@ func (stub *MockStub) GetPrivateDataQueryResult(collection, query string) (State
 // GetState retrieves the value for a given key from the ledger
 func (stub *MockStub) GetState(key string) ([]byte, error) {
 	value := stub.State[key]
-	mockLogger.Debug("MockStub", stub.Name, "Getting", key, value)
 	return value, nil
 }
 
@@ -218,38 +212,30 @@ func (stub *MockStub) GetState(key string) ([]byte, error) {
 func (stub *MockStub) PutState(key string, value []byte) error {
 	if stub.TxID == "" {
 		err := errors.New("cannot PutState without a transactions - call stub.MockTransactionStart()?")
-		mockLogger.Errorf("%+v", err)
 		return err
 	}
 
 	// If the value is nil or empty, delete the key
 	if len(value) == 0 {
-		mockLogger.Debug("MockStub", stub.Name, "PutState called, but value is nil or empty. Delete ", key)
 		return stub.DelState(key)
 	}
-
-	mockLogger.Debug("MockStub", stub.Name, "Putting", key, value)
 	stub.State[key] = value
 
 	// insert key into ordered list of keys
 	for elem := stub.Keys.Front(); elem != nil; elem = elem.Next() {
 		elemValue := elem.Value.(string)
 		comp := strings.Compare(key, elemValue)
-		mockLogger.Debug("MockStub", stub.Name, "Compared", key, elemValue, " and got ", comp)
 		if comp < 0 {
 			// key < elem, insert it before elem
 			stub.Keys.InsertBefore(key, elem)
-			mockLogger.Debug("MockStub", stub.Name, "Key", key, " inserted before", elem.Value)
 			break
 		} else if comp == 0 {
 			// keys exists, no need to change
-			mockLogger.Debug("MockStub", stub.Name, "Key", key, "already in State")
 			break
 		} else { // comp > 0
 			// key > elem, keep looking unless this is the end of the list
 			if elem.Next() == nil {
 				stub.Keys.PushBack(key)
-				mockLogger.Debug("MockStub", stub.Name, "Key", key, "appended")
 				break
 			}
 		}
@@ -258,7 +244,6 @@ func (stub *MockStub) PutState(key string, value []byte) error {
 	// special case for empty Keys list
 	if stub.Keys.Len() == 0 {
 		stub.Keys.PushFront(key)
-		mockLogger.Debug("MockStub", stub.Name, "Key", key, "is first element in list")
 	}
 
 	return nil
@@ -266,7 +251,6 @@ func (stub *MockStub) PutState(key string, value []byte) error {
 
 // DelState removes the specified `key` and its value from the ledger.
 func (stub *MockStub) DelState(key string) error {
-	mockLogger.Debug("MockStub", stub.Name, "Deleting", key, stub.State[key])
 	delete(stub.State, key)
 
 	for elem := stub.Keys.Front(); elem != nil; elem = elem.Next() {
@@ -355,10 +339,8 @@ func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte, chann
 	}
 	// TODO "args" here should possibly be a serialized pb.ChaincodeInput
 	otherStub := stub.Invokables[chaincodeName]
-	mockLogger.Debug("MockStub", stub.Name, "Invoking peer chaincode", otherStub.Name, args)
 	//	function, strings := getFuncArgs(args)
 	res := otherStub.MockInvoke(stub.TxID, args)
-	mockLogger.Debug("MockStub", stub.Name, "Invoked peer chaincode", otherStub.Name, "got", fmt.Sprintf("%+v", res))
 	return res
 }
 
@@ -437,7 +419,6 @@ func (stub *MockStub) GetPrivateDataValidationParameter(collection, key string) 
 
 // Constructor to initialise the internal State map
 func NewMockStub(name string, cc Chaincode) *MockStub {
-	mockLogger.Debug("MockStub(", name, cc, ")")
 	s := new(MockStub)
 	s.Name = name
 	s.cc = cc
@@ -469,12 +450,10 @@ type MockStateRangeQueryIterator struct {
 func (iter *MockStateRangeQueryIterator) HasNext() bool {
 	if iter.Closed {
 		// previously called Close()
-		mockLogger.Debug("HasNext() but already closed")
 		return false
 	}
 
 	if iter.Current == nil {
-		mockLogger.Error("HasNext() couldn't get Current")
 		return false
 	}
 
@@ -488,19 +467,14 @@ func (iter *MockStateRangeQueryIterator) HasNext() bool {
 		comp2 := strings.Compare(current.Value.(string), iter.EndKey)
 		if comp1 >= 0 {
 			if comp2 < 0 {
-				mockLogger.Debug("HasNext() got next")
 				return true
 			} else {
-				mockLogger.Debug("HasNext() but no next")
 				return false
 
 			}
 		}
 		current = current.Next()
 	}
-
-	// we've reached the end of the underlying values
-	mockLogger.Debug("HasNext() but no next")
 	return false
 }
 
@@ -508,13 +482,11 @@ func (iter *MockStateRangeQueryIterator) HasNext() bool {
 func (iter *MockStateRangeQueryIterator) Next() (*queryresult.KV, error) {
 	if iter.Closed == true {
 		err := errors.New("MockStateRangeQueryIterator.Next() called after Close()")
-		mockLogger.Errorf("%+v", err)
 		return nil, err
 	}
 
 	if iter.HasNext() == false {
 		err := errors.New("MockStateRangeQueryIterator.Next() called when it does not HaveNext()")
-		mockLogger.Errorf("%+v", err)
 		return nil, err
 	}
 
@@ -532,7 +504,6 @@ func (iter *MockStateRangeQueryIterator) Next() (*queryresult.KV, error) {
 		iter.Current = iter.Current.Next()
 	}
 	err := errors.New("MockStateRangeQueryIterator.Next() went past end of range")
-	mockLogger.Errorf("%+v", err)
 	return nil, err
 }
 
@@ -541,7 +512,6 @@ func (iter *MockStateRangeQueryIterator) Next() (*queryresult.KV, error) {
 func (iter *MockStateRangeQueryIterator) Close() error {
 	if iter.Closed == true {
 		err := errors.New("MockStateRangeQueryIterator.Close() called after Close()")
-		mockLogger.Errorf("%+v", err)
 		return err
 	}
 
@@ -549,28 +519,13 @@ func (iter *MockStateRangeQueryIterator) Close() error {
 	return nil
 }
 
-func (iter *MockStateRangeQueryIterator) Print() {
-	mockLogger.Debug("MockStateRangeQueryIterator {")
-	mockLogger.Debug("Closed?", iter.Closed)
-	mockLogger.Debug("Stub", iter.Stub)
-	mockLogger.Debug("StartKey", iter.StartKey)
-	mockLogger.Debug("EndKey", iter.EndKey)
-	mockLogger.Debug("Current", iter.Current)
-	mockLogger.Debug("HasNext?", iter.HasNext())
-	mockLogger.Debug("}")
-}
-
 func NewMockStateRangeQueryIterator(stub *MockStub, startKey string, endKey string) *MockStateRangeQueryIterator {
-	mockLogger.Debug("NewMockStateRangeQueryIterator(", stub, startKey, endKey, ")")
 	iter := new(MockStateRangeQueryIterator)
 	iter.Closed = false
 	iter.Stub = stub
 	iter.StartKey = startKey
 	iter.EndKey = endKey
 	iter.Current = stub.Keys.Front()
-
-	iter.Print()
-
 	return iter
 }
 
@@ -584,11 +539,9 @@ func getBytes(function string, args []string) [][]byte {
 }
 
 func getFuncArgs(bytes [][]byte) (string, []string) {
-	mockLogger.Debugf("getFuncArgs(%x)", bytes)
 	function := string(bytes[0])
 	args := make([]string, len(bytes)-1)
 	for i := 1; i < len(bytes); i++ {
-		mockLogger.Debugf("getFuncArgs - i:%x, len(bytes):%x", i, len(bytes))
 		args[i-1] = string(bytes[i])
 	}
 	return function, args
