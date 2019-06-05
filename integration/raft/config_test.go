@@ -1067,6 +1067,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				}, []*nwo.Orderer{orderers[i]}, peer, network)
 			}
 
+			Expect(findLeader(ordererRunners[4:])).To(Equal(leader))
+
 			// Later on, when we start [1, 4, 5, 6, 7], we want to make sure that leader
 			// is elected from [5, 6, 7], who are unknown to [4]. So we can assert that
 			// [4] suspects its own eviction, pulls block from [1], and join the cluster.
