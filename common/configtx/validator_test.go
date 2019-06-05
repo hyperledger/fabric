@@ -8,6 +8,7 @@ package configtx
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	mockpolicies "github.com/hyperledger/fabric/common/configtx/mock"
@@ -408,5 +409,22 @@ func TestConstructionErrors(t *testing.T) {
 		assert.Nil(t, v)
 		assert.Error(t, err)
 		assert.Regexp(t, "bad channel ID", err.Error())
+		assert.EqualError(t, err, "bad channel ID: '*&$#@*&@$#*&' contains illegal characters")
+	})
+
+	t.Run("EmptyChannelID", func(t *testing.T) {
+		v, err := NewValidatorImpl("", &cb.Config{ChannelGroup: &cb.ConfigGroup{}}, "foonamespace", &mockpolicies.PolicyManager{})
+		assert.Nil(t, v)
+		assert.Error(t, err)
+		assert.Regexp(t, "bad channel ID", err.Error())
+		assert.EqualError(t, err, "bad channel ID: channel ID illegal, cannot be empty")
+	})
+
+	t.Run("MaxLengthChannelID", func(t *testing.T) {
+		maxChannelID := strings.Repeat("a", 250)
+		v, err := NewValidatorImpl(maxChannelID, &cb.Config{ChannelGroup: &cb.ConfigGroup{}}, "foonamespace", &mockpolicies.PolicyManager{})
+		assert.Nil(t, v)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "bad channel ID: channel ID illegal, cannot be longer than 249")
 	})
 }
