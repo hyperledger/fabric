@@ -156,8 +156,6 @@ type GossipStateProviderImpl struct {
 
 	stopCh chan struct{}
 
-	done sync.WaitGroup
-
 	once sync.Once
 
 	stateTransferActive int32
@@ -309,7 +307,7 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 
 		stateRequestCh: make(chan protoext.ReceivedMessage, config.ChannelBufferSize),
 
-		stopCh: make(chan struct{}, 1),
+		stopCh: make(chan struct{}),
 
 		stateTransferActive: 0,
 
@@ -329,8 +327,6 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 	logger.Debug("Updating gossip ledger height to", height)
 	services.UpdateLedgerHeight(height, common2.ChainID(s.chainID))
 
-	s.done.Add(4)
-
 	// Listen for incoming communication
 	go s.listen()
 	// Deliver in order messages into the incoming channel
@@ -346,8 +342,6 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 }
 
 func (s *GossipStateProviderImpl) listen() {
-	defer s.done.Done()
-
 	for {
 		select {
 		case msg := <-s.gossipChan:
@@ -357,7 +351,6 @@ func (s *GossipStateProviderImpl) listen() {
 			logger.Debug("Dispatching a message", msg)
 			go s.dispatch(msg)
 		case <-s.stopCh:
-			s.stopCh <- struct{}{}
 			logger.Debug("Stop listening for new messages")
 			return
 		}
@@ -461,16 +454,12 @@ func (s *GossipStateProviderImpl) directMessage(msg protoext.ReceivedMessage) {
 }
 
 func (s *GossipStateProviderImpl) processStateRequests() {
-	defer s.done.Done()
-
 	for {
-		select {
-		case msg := <-s.stateRequestCh:
-			s.handleStateRequest(msg)
-		case <-s.stopCh:
-			s.stopCh <- struct{}{}
+		msg, stillOpen := <-s.stateRequestCh
+		if !stillOpen {
 			return
 		}
+		s.handleStateRequest(msg)
 	}
 }
 
@@ -586,14 +575,11 @@ func (s *GossipStateProviderImpl) Stop() {
 	// Make sure stop won't be executed twice
 	// and stop channel won't be used again
 	s.once.Do(func() {
-		s.stopCh <- struct{}{}
-		// Make sure all go-routines has finished
-		s.done.Wait()
+		close(s.stopCh)
 		// Close all resources
 		s.ledger.Close()
 		close(s.stateRequestCh)
 		close(s.stateResponseCh)
-		close(s.stopCh)
 	})
 }
 
@@ -618,8 +604,6 @@ func (s *GossipStateProviderImpl) queueNewMessage(msg *proto.GossipMessage) {
 }
 
 func (s *GossipStateProviderImpl) deliverPayloads() {
-	defer s.done.Done()
-
 	for {
 		select {
 		// Wait for notification that next seq has arrived
@@ -657,7 +641,6 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 				}
 			}
 		case <-s.stopCh:
-			s.stopCh <- struct{}{}
 			logger.Debug("State provider has been stopped, finishing to push new blocks.")
 			return
 		}
@@ -665,13 +648,11 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 }
 
 func (s *GossipStateProviderImpl) antiEntropy() {
-	defer s.done.Done()
 	defer logger.Debug("State Provider stopped, stopping anti entropy procedure.")
 
 	for {
 		select {
 		case <-s.stopCh:
-			s.stopCh <- struct{}{}
 			return
 		case <-time.After(s.config.AntiEntropyInterval):
 			ourHeight, err := s.ledger.LedgerHeight()
@@ -747,8 +728,12 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 
 			// Wait until timeout or response arrival
 			select {
-			case msg := <-s.stateResponseCh:
-				if msg.GetGossipMessage().Nonce != gossipMsg.Nonce {
+			case msg, stillOpen := <-s.stateResponseCh:
+				if !stillOpen {
+					return
+				}
+				if msg.GetGossipMessage().Nonce !=
+					gossipMsg.Nonce {
 					continue
 				}
 				// Got corresponding response for state request, can continue
@@ -761,9 +746,6 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 				prev = index + 1
 				responseReceived = true
 			case <-time.After(s.config.AntiEntropyStateResponseTimeout):
-			case <-s.stopCh:
-				s.stopCh <- struct{}{}
-				return
 			}
 		}
 	}
