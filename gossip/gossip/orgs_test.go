@@ -143,7 +143,6 @@ func newGossipInstanceWithGRPCWithExternalEndpoint(id int, port int, gRPCServer 
 
 func TestMultipleOrgEndpointLeakage(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 	// Scenario: create 2 organizations, each with 5 peers.
 	// Both organizations will have an anchor peer each
 	// The first 2 peers of each org would have an external endpoint, the rest won't.
@@ -272,7 +271,6 @@ func TestMultipleOrgEndpointLeakage(t *testing.T) {
 
 func TestConfidentiality(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 	// Scenario: create 4 organizations: {A, B, C, D}, each with 3 peers.
 	// Make only the first 2 peers have an external endpoint.
 	// Also, add the peers to the following channels:

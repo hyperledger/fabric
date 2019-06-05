@@ -11,10 +11,8 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"reflect"
-	"runtime"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -39,35 +37,12 @@ import (
 
 var timeout = time.Second * time.Duration(180)
 
-var testWG = sync.WaitGroup{}
-
-var tests = []func(t *testing.T){
-	TestPull,
-	TestConnectToAnchorPeers,
-	TestMembership,
-	TestDissemination,
-	TestMembershipConvergence,
-	TestMembershipRequestSpoofing,
-	TestDataLeakage,
-	TestLeaveChannel,
-	// TestDisseminateAll2All: {},
-	TestIdentityExpiration,
-	TestSendByCriteria,
-	TestMultipleOrgEndpointLeakage,
-	TestConfidentiality,
-	TestAnchorPeer,
-	TestBootstrapPeerMisConfiguration,
-	TestNoMessagesSelfLoop,
-}
-
-func init() {
+func TestMain(m *testing.M) {
 	util.SetupTestLogging()
 	rand.Seed(int64(time.Now().Second()))
 	discovery.SetMaxConnAttempts(5)
-	for range tests {
-		testWG.Add(1)
-	}
 	factory.InitFactories(nil)
+	os.Exit(m.Run())
 }
 
 var aliveTimeInterval = 1000 * time.Millisecond
@@ -366,7 +341,6 @@ func (g *gossipGRPC) Stop() {
 
 func TestLeaveChannel(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 	// Scenario: Have 3 peers in a channel and make one of them leave it.
 	// Ensure the peers don't recognize the other peer when it left the channel
 
@@ -413,7 +387,6 @@ func TestLeaveChannel(t *testing.T) {
 
 func TestPull(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 	t1 := time.Now()
 	// Scenario: Turn off forwarding and use only pull-based gossip.
 	// First phase: Ensure full membership view for all nodes
@@ -505,7 +478,6 @@ func TestPull(t *testing.T) {
 
 func TestConnectToAnchorPeers(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 	// Scenario: spawn 10 peers, and have them join a channel
 	// of 3 anchor peers that don't exist yet.
 	// Wait 5 seconds, and then spawn a random anchor peer out of the 3.
@@ -583,7 +555,6 @@ func TestConnectToAnchorPeers(t *testing.T) {
 
 func TestMembership(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 	t1 := time.Now()
 	// Scenario: spawn 20 nodes and a single bootstrap node and then:
 	// 1) Check full membership views for all nodes but the bootstrap node.
@@ -672,7 +643,6 @@ func TestMembership(t *testing.T) {
 
 func TestNoMessagesSelfLoop(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 
 	port0, grpc0, certs0, secDialOpts0, _ := util.CreateGRPCLayer()
 	boot := newGossipInstanceWithGRPC(0, port0, grpc0, certs0, secDialOpts0, 100)
@@ -734,7 +704,6 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 
 func TestDissemination(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 	t1 := time.Now()
 	// Scenario: 20 nodes and a bootstrap node.
 	// The bootstrap node sends 10 messages and we count
@@ -867,7 +836,6 @@ func TestDissemination(t *testing.T) {
 
 func TestMembershipConvergence(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 	// Scenario: Spawn 12 nodes and 3 bootstrap peers
 	// but assign each node to its bootstrap peer group modulo 3.
 	// Then:
@@ -973,7 +941,6 @@ func TestMembershipConvergence(t *testing.T) {
 
 func TestMembershipRequestSpoofing(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 	// Scenario: g1, g2, g3 are peers, and g2 is malicious, and wants
 	// to impersonate g3 when sending a membership request to g1.
 	// Expected output: g1 should *NOT* respond to g2,
@@ -1049,7 +1016,6 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 
 func TestDataLeakage(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 	// Scenario: spawn some nodes and let them all
 	// establish full membership.
 	// Then, have half be in channel A and half be in channel B.
@@ -1266,12 +1232,10 @@ func TestDisseminateAll2All(t *testing.T) {
 	waitUntilOrFailBlocking(t, stop, "waiting for all instance to stop")
 	atomic.StoreInt32(&stopped, int32(1))
 	fmt.Println("<<<TestDisseminateAll2All>>>")
-	testWG.Done()
 }
 
 func TestSendByCriteria(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 
 	port0, grpc0, certs0, secDialOpts0, _ := util.CreateGRPCLayer()
 	g1 := newGossipInstanceWithGRPC(0, port0, grpc0, certs0, secDialOpts0, 100)
@@ -1430,7 +1394,6 @@ func TestSendByCriteria(t *testing.T) {
 
 func TestIdentityExpiration(t *testing.T) {
 	t.Parallel()
-	defer testWG.Done()
 	// Scenario: spawn 5 peers and make the MessageCryptoService revoke one of the first 4.
 	// The last peer's certificate expires after a few seconds.
 	// Eventually, the rest of the peers should not be able to communicate with
@@ -1516,13 +1479,6 @@ func TestIdentityExpiration(t *testing.T) {
 	g5.Stop()
 }
 
-func TestEndedGoroutines(t *testing.T) {
-	t.Skip("flaky test which need to be fixed with FAB-12067")
-	t.Parallel()
-	testWG.Wait()
-	ensureGoroutineExit(t)
-}
-
 func createDataMsg(seqnum uint64, data []byte, channel common.ChainID) *proto.GossipMessage {
 	return &proto.GossipMessage{
 		Channel: []byte(channel),
@@ -1557,108 +1513,6 @@ func createLeadershipMsg(isDeclaration bool, channel common.ChainID, incTime uin
 		Channel: channel,
 	}
 	return msg
-}
-
-type goroutinePredicate func(g goroutine) bool
-
-var connectionLeak = func(g goroutine) bool {
-	return searchInStackTrace("comm.(*connection).writeToStream", g.stack)
-}
-
-var connectionLeak2 = func(g goroutine) bool {
-	return searchInStackTrace("comm.(*connection).readFromStream", g.stack)
-}
-
-var runTests = func(g goroutine) bool {
-	return searchInStackTrace("testing.RunTests", g.stack)
-}
-
-var tRunner = func(g goroutine) bool {
-	return searchInStackTrace("testing.tRunner", g.stack)
-}
-
-var waitForTestCompl = func(g goroutine) bool {
-	return searchInStackTrace("waitForTestCompletion", g.stack)
-}
-
-var gossipTest = func(g goroutine) bool {
-	return searchInStackTrace("gossip_test.go", g.stack)
-}
-
-var goExit = func(g goroutine) bool {
-	return searchInStackTrace("runtime.goexit", g.stack)
-}
-
-var clientConn = func(g goroutine) bool {
-	return searchInStackTrace("resetTransport", g.stack)
-}
-
-var resolver = func(g goroutine) bool {
-	return searchInStackTrace("ccResolverWrapper", g.stack)
-}
-
-var balancer = func(g goroutine) bool {
-	return searchInStackTrace("ccBalancerWrapper", g.stack)
-}
-
-var clientStream = func(g goroutine) bool {
-	return searchInStackTrace("ClientStream", g.stack)
-}
-
-var testingg = func(g goroutine) bool {
-	if len(g.stack) == 0 {
-		return false
-	}
-	return strings.Index(g.stack[len(g.stack)-1], "testing.go") != -1
-}
-
-func anyOfPredicates(predicates ...goroutinePredicate) goroutinePredicate {
-	return func(g goroutine) bool {
-		for _, pred := range predicates {
-			if pred(g) {
-				return true
-			}
-		}
-		return false
-	}
-}
-
-func shouldNotBeRunningAtEnd(gr goroutine) bool {
-	return !anyOfPredicates(
-		runTests,
-		goExit,
-		testingg,
-		waitForTestCompl,
-		gossipTest,
-		clientConn,
-		connectionLeak,
-		connectionLeak2,
-		tRunner,
-		resolver,
-		balancer,
-		clientStream)(gr)
-}
-
-func ensureGoroutineExit(t *testing.T) {
-	for i := 0; i <= 20; i++ {
-		time.Sleep(time.Second)
-		allEnded := true
-		for _, gr := range getGoRoutines() {
-			if shouldNotBeRunningAtEnd(gr) {
-				allEnded = false
-			}
-
-			if shouldNotBeRunningAtEnd(gr) && i == 20 {
-				assert.Fail(t, "Goroutine(s) haven't ended:", fmt.Sprintf("%v", gr.stack))
-				util.PrintStackTrace()
-				break
-			}
-		}
-
-		if allEnded {
-			return
-		}
-	}
 }
 
 func metadataOfPeer(members []discovery.NetworkMember, endpoint string) []byte {
@@ -1700,40 +1554,6 @@ func stopPeers(peers []Gossip) {
 	stoppingWg.Wait()
 }
 
-func getGoroutineRawText() string {
-	buf := make([]byte, 1<<16)
-	runtime.Stack(buf, true)
-	return string(buf)
-}
-
-func getGoRoutines() []goroutine {
-	goroutines := []goroutine{}
-	s := getGoroutineRawText()
-	a := strings.Split(s, "goroutine ")
-	for _, s := range a {
-		gr := strings.Split(s, "\n")
-		idStr := bytes.TrimPrefix([]byte(gr[0]), []byte("goroutine "))
-		i := strings.Index(string(idStr), " ")
-		if i == -1 {
-			continue
-		}
-		id, _ := strconv.ParseUint(string(string(idStr[:i])), 10, 64)
-		stack := []string{}
-		for i := 1; i < len(gr); i++ {
-			if len([]byte(gr[i])) != 0 {
-				stack = append(stack, gr[i])
-			}
-		}
-		goroutines = append(goroutines, goroutine{id: id, stack: stack})
-	}
-	return goroutines
-}
-
-type goroutine struct {
-	id    uint64
-	stack []string
-}
-
 func waitUntilOrFail(t *testing.T, pred func() bool, context string) {
 	start := time.Now()
 	limit := start.UnixNano() + timeout.Nanoseconds()
@@ -1761,15 +1581,6 @@ func waitUntilOrFailBlocking(t *testing.T, f func(), context string) {
 	}
 	util.PrintStackTrace()
 	assert.Failf(t, "Timeout expired, while %s", context)
-}
-
-func searchInStackTrace(searchTerm string, stack []string) bool {
-	for _, ste := range stack {
-		if strings.Index(ste, searchTerm) != -1 {
-			return true
-		}
-	}
-	return false
 }
 
 func checkPeersMembership(t *testing.T, peers []Gossip, n int) func() bool {
