@@ -83,7 +83,7 @@ func (c *cachedMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity
 }
 
 func (c *cachedMSP) Setup(config *pmsp.MSPConfig) error {
-	c.cleanCash()
+	c.cleanCache()
 
 	return c.MSP.Setup(config)
 }
@@ -127,7 +127,7 @@ func (c *cachedMSP) SatisfiesPrincipal(id msp.Identity, principal *pmsp.MSPPrinc
 	return err
 }
 
-func (c *cachedMSP) cleanCash() error {
+func (c *cachedMSP) cleanCache() error {
 	c.deserializeIdentityCache = newSecondChanceCache(deserializeIdentityCacheSize)
 	c.satisfiesPrincipalCache = newSecondChanceCache(satisfiesPrincipalCacheSize)
 	c.validateIdentityCache = newSecondChanceCache(validateIdentityCacheSize)
