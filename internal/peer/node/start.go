@@ -184,7 +184,9 @@ func serve(args []string) error {
 	}
 
 	peerInstance := &peer.Peer{
-		StoreProvider: transientstore.NewStoreProvider(),
+		StoreProvider: transientstore.NewStoreProvider(
+			filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore"),
+		),
 	}
 	peer.Default = peerInstance
 

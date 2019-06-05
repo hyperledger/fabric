@@ -46,9 +46,10 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	viper.Set("peer.fileSystemPath", filepath.Join(tempdir, "transientstore"))
 	Default = &Peer{
-		StoreProvider: transientstore.NewStoreProvider(),
+		StoreProvider: transientstore.NewStoreProvider(
+			filepath.Join(tempdir, "transientstore"),
+		),
 	}
 
 	rc := m.Run()

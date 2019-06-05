@@ -81,9 +81,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	viper.Set("peer.fileSystemPath", filepath.Join(tempdir, "transientstore"))
 	peer.Default = &peer.Peer{
-		StoreProvider: transientstore.NewStoreProvider(),
+		StoreProvider: transientstore.NewStoreProvider(filepath.Join(tempdir, "transientstore")),
 	}
 
 	msptesttools.LoadMSPSetupForTesting()
