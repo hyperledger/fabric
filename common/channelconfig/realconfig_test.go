@@ -29,7 +29,7 @@ func TestWithRealConfigtx(t *testing.T) {
 func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 	t.Run("Without_Capability", func(t *testing.T) {
 		conf := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
-		conf.Capabilities = map[string]bool{"V1_4_2": true}
+		conf.Capabilities = map[string]bool{"V1_3": true}
 
 		cg, err := encoder.NewChannelGroup(conf)
 		assert.NoError(t, err)
@@ -40,7 +40,7 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 
 	t.Run("Without_Capability_NoOSNs", func(t *testing.T) {
 		conf := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
-		conf.Capabilities = map[string]bool{"V1_4_2": true}
+		conf.Capabilities = map[string]bool{"V1_3": true}
 		conf.Orderer.Organizations[0].OrdererEndpoints = nil
 		conf.Orderer.Addresses = []string{}
 

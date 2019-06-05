@@ -59,7 +59,7 @@ func TestChannelV142(t *testing.T) {
 	assert.NoError(t, cp.Supported())
 	assert.True(t, cp.MSPVersion() == msp.MSPv1_3)
 	assert.True(t, cp.ConsensusTypeMigration())
-	assert.False(t, cp.OrgSpecificOrdererEndpoints())
+	assert.True(t, cp.OrgSpecificOrdererEndpoints())
 
 	cp = NewChannelProvider(map[string]*cb.Capability{
 		ChannelV1_4_2: {},
@@ -67,7 +67,7 @@ func TestChannelV142(t *testing.T) {
 	assert.NoError(t, cp.Supported())
 	assert.True(t, cp.MSPVersion() == msp.MSPv1_3)
 	assert.True(t, cp.ConsensusTypeMigration())
-	assert.False(t, cp.OrgSpecificOrdererEndpoints())
+	assert.True(t, cp.OrgSpecificOrdererEndpoints())
 }
 
 func TestChannelV20(t *testing.T) {

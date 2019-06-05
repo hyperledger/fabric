@@ -88,5 +88,5 @@ func (cp *ChannelProvider) ConsensusTypeMigration() bool {
 
 // OrgSpecificOrdererEndpoints allows for individual orderer orgs to specify their external addresses for their OSNs.
 func (cp *ChannelProvider) OrgSpecificOrdererEndpoints() bool {
-	return cp.v20
+	return cp.v142 || cp.v20
 }
