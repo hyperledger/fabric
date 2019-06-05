@@ -9,18 +9,18 @@ package gossip
 import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	gossip2 "github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/protos/gossip"
 )
 
 // DiscoverySupport implements support that is used for service discovery
 // that is obtained from gossip
 type DiscoverySupport struct {
-	gossip2.Gossip
+	service.Gossip
 }
 
 // NewDiscoverySupport creates a new DiscoverySupport
-func NewDiscoverySupport(g gossip2.Gossip) *DiscoverySupport {
+func NewDiscoverySupport(g service.Gossip) *DiscoverySupport {
 	return &DiscoverySupport{g}
 }
 

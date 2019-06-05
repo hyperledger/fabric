@@ -101,7 +101,7 @@ func (*configurableCryptoService) Verify(peerIdentity api.PeerIdentityType, sign
 
 func newGossipInstanceWithGRPCWithExternalEndpoint(id int, port int, gRPCServer *comm.GRPCServer,
 	certs *common.TLSCertificates, secureDialOpts api.PeerSecureDialOpts, mcs *configurableCryptoService,
-	externalEndpoint string, boot ...int) Gossip {
+	externalEndpoint string, boot ...int) *gossipGRPC {
 	conf := &Config{
 		BootstrapPeers:               bootPeersWithPorts(boot...),
 		ID:                           fmt.Sprintf("p%d", id),
@@ -158,7 +158,7 @@ func TestMultipleOrgEndpointLeakage(t *testing.T) {
 	orgB := "orgB"
 	channel := common.ChannelID("TEST")
 	orgs := []string{orgA, orgB}
-	peers := []Gossip{}
+	peers := []*gossipGRPC{}
 
 	expectedMembershipSize := map[string]int{}
 	peersWithExternalEndpoints := make(map[string]struct{})
@@ -232,7 +232,7 @@ func TestMultipleOrgEndpointLeakage(t *testing.T) {
 
 	membershipCheck := func() bool {
 		for _, p := range peers {
-			peerNetMember := p.(*gossipGRPC).GossipImpl.selfNetworkMember()
+			peerNetMember := p.GossipImpl.selfNetworkMember()
 			pkiID := peerNetMember.PKIid
 			peersKnown := p.Peers()
 			peersToKnow := expectedMembershipSize[string(pkiID)]
@@ -340,8 +340,8 @@ func TestConfidentiality(t *testing.T) {
 		}
 	}
 
-	var peers []Gossip
-	orgs2Peers := map[string][]Gossip{
+	var peers []*gossipGRPC
+	orgs2Peers := map[string][]*gossipGRPC{
 		"A": {},
 		"B": {},
 		"C": {},
@@ -390,7 +390,7 @@ func TestConfidentiality(t *testing.T) {
 	for _, p := range peers {
 		wg.Add(1)
 		_, msgs := p.Accept(msgSelector, true)
-		peerNetMember := p.(*gossipGRPC).GossipImpl.selfNetworkMember()
+		peerNetMember := p.GossipImpl.selfNetworkMember()
 		targetORg := string(cs.OrgByPeerIdentity(api.PeerIdentityType(peerNetMember.InternalEndpoint)))
 		go func(targetOrg string, msgs <-chan protoext.ReceivedMessage) {
 			defer wg.Done()
@@ -427,7 +427,7 @@ func TestConfidentiality(t *testing.T) {
 				for _, p := range peers {
 					p.JoinChan(joinChanMsgsByChan[ch], common.ChannelID(ch))
 					p.UpdateLedgerHeight(1, common.ChannelID(ch))
-					go func(p Gossip, ch string) {
+					go func(p *gossipGRPC, ch string) {
 						for i := 0; i < 5; i++ {
 							time.Sleep(time.Second)
 							p.UpdateLedgerHeight(1, common.ChannelID(ch))
@@ -446,7 +446,7 @@ func TestConfidentiality(t *testing.T) {
 			for i, p := range orgs2Peers[org] {
 				members := p.Peers()
 				expMemberSize := expectedMembershipSize(peersInOrg, externalEndpointsInOrg, org, i < externalEndpointsInOrg)
-				peerNetMember := p.(*gossipGRPC).GossipImpl.selfNetworkMember()
+				peerNetMember := p.GossipImpl.selfNetworkMember()
 				membersCount := len(members)
 				if membersCount < expMemberSize {
 					return false

@@ -161,11 +161,17 @@ func bootPeersWithPorts(ports ...int) []string {
 	return peers
 }
 
+type peerNodeGossipSupport interface {
+	GossipAdapter
+	Stop()
+	JoinChan(joinMsg api.JoinChannelMessage, channelID common.ChannelID)
+}
+
 // Simple presentation of peer which includes only
 // communication module, gossip and state transfer
 type peerNode struct {
 	port   int
-	g      gossip.Gossip
+	g      peerNodeGossipSupport
 	s      *GossipStateProviderImpl
 	cs     *cryptoServiceMock
 	commit committer.Committer
@@ -342,19 +348,18 @@ func newCommitter() committer.Committer {
 }
 
 func newPeerNodeWithGossip(id int, committer committer.Committer,
-	acceptor peerIdentityAcceptor, g gossip.Gossip, bootPorts ...int) *peerNode {
+	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, bootPorts ...int) *peerNode {
 	return newPeerNodeWithGossipWithValidator(id, committer, acceptor, g, &validator.MockValidator{}, bootPorts...)
 }
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part
 func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.Committer,
-	acceptor peerIdentityAcceptor, g gossip.Gossip, v txvalidator.Validator,
+	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, v txvalidator.Validator,
 	gossipMetrics *metrics.GossipMetrics, bootPorts ...int) (node *peerNode, port int) {
 	cs := &cryptoServiceMock{acceptor: acceptor}
 	port, gRPCServer, certs, secureDialOpts, _ := gossiputil.CreateGRPCLayer()
 
 	if g == nil {
-
 		config := &gossip.Config{
 			BindPort:                     port,
 			BootstrapPeers:               bootPeersWithPorts(bootPorts...),
@@ -389,7 +394,6 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 		selfID := api.PeerIdentityType(config.InternalEndpoint)
 		mcs := &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor}
 		g = gossip.NewGossipService(config, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID, secureDialOpts, gossipMetrics)
-
 	}
 
 	g.JoinChan(&joinChanMsg{}, common.ChannelID(util.GetTestChainID()))
@@ -430,7 +434,7 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 
 // add metrics provider for metrics testing
 func newPeerNodeWithGossipWithMetrics(id int, committer committer.Committer,
-	acceptor peerIdentityAcceptor, g gossip.Gossip, gossipMetrics *metrics.GossipMetrics) *peerNode {
+	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, gossipMetrics *metrics.GossipMetrics) *peerNode {
 	node, _ := newPeerNodeWithGossipWithValidatorWithMetrics(id, committer, acceptor, g,
 		&validator.MockValidator{}, gossipMetrics)
 	return node
@@ -438,7 +442,7 @@ func newPeerNodeWithGossipWithMetrics(id int, committer committer.Committer,
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part
 func newPeerNodeWithGossipWithValidator(id int, committer committer.Committer,
-	acceptor peerIdentityAcceptor, g gossip.Gossip, v txvalidator.Validator, bootPorts ...int) *peerNode {
+	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, v txvalidator.Validator, bootPorts ...int) *peerNode {
 	gossipMetrics := metrics.NewGossipMetrics(&disabled.Provider{})
 	node, _ := newPeerNodeWithGossipWithValidatorWithMetrics(id, committer, acceptor, g, v, gossipMetrics, bootPorts...)
 	return node

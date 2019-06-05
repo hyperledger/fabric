@@ -11,6 +11,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/filter"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/protoext"
+	"github.com/hyperledger/fabric/gossip/service"
 	gossipa "github.com/hyperledger/fabric/protos/gossip"
 )
 
@@ -1038,4 +1039,4 @@ func (fake *Gossip) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ gossip.Gossip = new(Gossip)
+var _ service.Gossip = new(Gossip)

@@ -874,7 +874,7 @@ func TestInvalidInitialization(t *testing.T) {
 		nil,
 	)
 	assert.NoError(t, err)
-	gService := gossipService.(*gossipServiceImpl)
+	gService := gossipService
 	defer gService.Stop()
 
 	go grpcServer.Serve(socket)
@@ -912,7 +912,7 @@ func TestChannelConfig(t *testing.T) {
 		nil,
 	)
 	assert.NoError(t, err)
-	gService := gossipService.(*gossipServiceImpl)
+	gService := gossipService
 	defer gService.Stop()
 
 	go grpcServer.Serve(socket)
