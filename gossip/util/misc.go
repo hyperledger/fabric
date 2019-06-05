@@ -7,10 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
-	cryptorand "crypto/rand"
 	"fmt"
-	"io"
-	"math/big"
 	"math/rand"
 	"reflect"
 	"runtime"
@@ -19,6 +16,10 @@ import (
 
 	"github.com/spf13/viper"
 )
+
+func init() { // do we really need this?
+	rand.Seed(time.Now().UnixNano())
+}
 
 // Equals returns whether a and b are the same
 type Equals func(a interface{}, b interface{}) bool
@@ -191,26 +192,15 @@ func SetVal(key string, val interface{}) {
 // RandomInt returns, as an int, a non-negative pseudo-random integer in [0,n)
 // It panics if n <= 0
 func RandomInt(n int) int {
-	if n <= 0 {
-		panic(fmt.Sprintf("Got invalid (non positive) value: %d", n))
-	}
-	m := int(RandomUInt64()) % n
-	if m < 0 {
-		return n + m
-	}
-	return m
+	return rand.Intn(n)
 }
 
 // RandomUInt64 returns a random uint64
+//
+// If we want a rand that's non-global and specific to gossip, we can
+// establish one. Otherwise this uses the process-global locking RNG.
 func RandomUInt64() uint64 {
-	b := make([]byte, 8)
-	_, err := io.ReadFull(cryptorand.Reader, b)
-	if err == nil {
-		n := new(big.Int)
-		return n.SetBytes(b).Uint64()
-	}
-	rand.Seed(rand.Int63())
-	return uint64(rand.Int63())
+	return rand.Uint64()
 }
 
 func BytesToStrings(bytes [][]byte) []string {
