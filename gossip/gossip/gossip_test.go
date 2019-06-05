@@ -251,7 +251,7 @@ func newGossipInstanceWithGrpcMcsMetrics(id int, port int, gRPCServer *corecomm.
 	go func() {
 		gRPCServer.Start()
 	}()
-	return &gossipGRPC{gossipServiceImpl: g.(*gossipServiceImpl), grpc: gRPCServer}
+	return &gossipGRPC{GossipImpl: g, grpc: gRPCServer}
 }
 
 func newGossipInstanceWithGRPC(id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
@@ -308,7 +308,7 @@ func newGossipInstanceWithGRPCWithOnlyPull(id int, port int, gRPCServer *corecom
 	go func() {
 		gRPCServer.Start()
 	}()
-	return &gossipGRPC{gossipServiceImpl: g.(*gossipServiceImpl), grpc: gRPCServer}
+	return &gossipGRPC{GossipImpl: g, grpc: gRPCServer}
 }
 
 func newGossipInstanceCreateGRPCWithMCSWithMetrics(id int, maxMsgCount int, mcs api.MessageCryptoService,
@@ -330,12 +330,12 @@ func newGossipInstanceCreateGRPCWithOnlyPull(id int, maxMsgCount int, mcs api.Me
 }
 
 type gossipGRPC struct {
-	*gossipServiceImpl
+	*GossipImpl
 	grpc *corecomm.GRPCServer
 }
 
 func (g *gossipGRPC) Stop() {
-	g.gossipServiceImpl.Stop()
+	g.GossipImpl.Stop()
 	g.grpc.Stop()
 }
 
@@ -810,7 +810,7 @@ func TestDissemination(t *testing.T) {
 	incTime := uint64(time.Now().UnixNano())
 	t3 := time.Now()
 
-	leadershipMsg := createLeadershipMsg(true, common.ChannelID("A"), incTime, uint64(seqNum), boot.(*gossipGRPC).gossipServiceImpl.comm.GetPKIid())
+	leadershipMsg := createLeadershipMsg(true, common.ChannelID("A"), incTime, uint64(seqNum), boot.(*gossipGRPC).GossipImpl.comm.GetPKIid())
 	boot.Gossip(leadershipMsg)
 
 	waitUntilOrFailBlocking(t, wgLeadership.Wait, "waiting to get all leadership messages")
@@ -1423,7 +1423,7 @@ func TestIdentityExpiration(t *testing.T) {
 	// Make the last peer be revoked in 5 seconds from now
 	time.AfterFunc(time.Second*5, func() {
 		for _, p := range peers {
-			p.(*gossipGRPC).gossipServiceImpl.mcs.(*naiveCryptoService).revoke(common.PKIidType(endpointLast))
+			p.(*gossipGRPC).GossipImpl.mcs.(*naiveCryptoService).revoke(common.PKIidType(endpointLast))
 		}
 	})
 
@@ -1446,7 +1446,7 @@ func TestIdentityExpiration(t *testing.T) {
 		if i == revokedPeerIndex {
 			continue
 		}
-		p.(*gossipGRPC).gossipServiceImpl.mcs.(*naiveCryptoService).revoke(revokedPkiID)
+		p.(*gossipGRPC).GossipImpl.mcs.(*naiveCryptoService).revoke(revokedPkiID)
 	}
 	// Trigger a config update to the rest of the peers
 	for i := 0; i < 4; i++ {
