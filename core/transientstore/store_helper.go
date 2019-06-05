@@ -9,10 +9,8 @@ package transientstore
 import (
 	"bytes"
 	"errors"
-	"path/filepath"
 
 	"github.com/hyperledger/fabric/common/ledger/util"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
@@ -176,12 +174,6 @@ func createPurgeIndexByTxidRangeEndKey(txid string) []byte {
 	// Otherwise a super-string of a given txid would also fall under the end key of range query.
 	endKey = append(endKey, byte(0xff))
 	return endKey
-}
-
-// GetTransientStorePath returns the filesystem path for temporarily storing the private rwset
-func GetTransientStorePath() string {
-	sysPath := config.GetPath("peer.fileSystemPath")
-	return filepath.Join(sysPath, "transientStore")
 }
 
 // trimPvtWSet returns a `TxPvtReadWriteSet` that retains only list of 'ns/collections' supplied in the filter

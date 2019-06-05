@@ -8,6 +8,7 @@ package transientstore
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"sort"
 	"testing"
@@ -19,13 +20,38 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/transientstore"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/core/transientdata")
-	os.Exit(m.Run())
+	tempdir, err := ioutil.TempDir("", "ts")
+	if err != nil {
+		panic(err)
+	}
+
+	rc := m.Run()
+
+	os.RemoveAll(tempdir)
+	os.Exit(rc)
+}
+
+func testStore(t *testing.T) (s Store, cleanup func()) {
+	tempdir, err := ioutil.TempDir("", "ts")
+	if err != nil {
+		t.Fatalf("Failed to create test directory: %s", err)
+	}
+
+	cleanup = func() {
+		os.RemoveAll(tempdir)
+	}
+
+	s, err = NewStoreProvider(tempdir).OpenStore("TestStore")
+	if err != nil {
+		t.Fatalf("Failed to open test store: %s", err)
+	}
+
+	return s, cleanup
+
 }
 
 func TestPurgeIndexKeyCodingEncoding(t *testing.T) {
@@ -72,7 +98,8 @@ func TestRWSetKeyCodingEncoding(t *testing.T) {
 }
 
 func TestTransientStorePersistAndRetrieve(t *testing.T) {
-	env := NewTestStoreEnv(t)
+	testStore, cleanup := testStore(t)
+	defer cleanup()
 	assert := assert.New(t)
 	txid := "txid-1"
 	samplePvtRWSetWithConfig := samplePvtDataWithConfigInfo(t)
@@ -97,13 +124,13 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	// Persist simulation results into  store
 	var err error
 	for i := 0; i < len(endorsersResults); i++ {
-		err = env.TestStore.PersistWithConfig(txid, endorsersResults[i].ReceivedAtBlockHeight,
+		err = testStore.PersistWithConfig(txid, endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResultsWithConfig)
 		assert.NoError(err)
 	}
 
 	// Retrieve simulation results of txid-1 from  store
-	iter, err := env.TestStore.GetTxPvtRWSetByTxid(txid, nil)
+	iter, err := testStore.GetTxPvtRWSetByTxid(txid, nil)
 	assert.NoError(err)
 
 	var actualEndorsersResults []*EndorserPvtSimulationResultsWithConfig
@@ -122,7 +149,8 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 }
 
 func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
-	env := NewTestStoreEnv(t)
+	testStore, cleanup := testStore(t)
+	defer cleanup()
 	assert := assert.New(t)
 	txid := "txid-1"
 	var receivedAtBlockHeight uint64 = 10
@@ -130,12 +158,12 @@ func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 
 	// Create and persist private simulation results with old proto for txid-1
 	samplePvtRWSet := samplePvtData(t)
-	err = env.TestStore.Persist(txid, receivedAtBlockHeight, samplePvtRWSet)
+	err = testStore.Persist(txid, receivedAtBlockHeight, samplePvtRWSet)
 	assert.NoError(err)
 
 	// Create and persist private simulation results with new proto for txid-1
 	samplePvtRWSetWithConfig := samplePvtDataWithConfigInfo(t)
-	err = env.TestStore.PersistWithConfig(txid, receivedAtBlockHeight, samplePvtRWSetWithConfig)
+	err = testStore.PersistWithConfig(txid, receivedAtBlockHeight, samplePvtRWSetWithConfig)
 	assert.NoError(err)
 
 	// Construct the expected results
@@ -158,7 +186,7 @@ func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 	expectedEndorsersResults = append(expectedEndorsersResults, endorser1SimulationResults)
 
 	// Retrieve simulation results of txid-1 from  store
-	iter, err := env.TestStore.GetTxPvtRWSetByTxid(txid, nil)
+	iter, err := testStore.GetTxPvtRWSetByTxid(txid, nil)
 	assert.NoError(err)
 
 	var actualEndorsersResults []*EndorserPvtSimulationResultsWithConfig
@@ -177,7 +205,8 @@ func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 }
 
 func TestTransientStorePurgeByTxids(t *testing.T) {
-	env := NewTestStoreEnv(t)
+	testStore, cleanup := testStore(t)
+	defer cleanup()
 	assert := assert.New(t)
 
 	var txids []string
@@ -232,13 +261,13 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 
 	var err error
 	for i := 0; i < len(txids); i++ {
-		err = env.TestStore.PersistWithConfig(txids[i], endorsersResults[i].ReceivedAtBlockHeight,
+		err = testStore.PersistWithConfig(txids[i], endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResultsWithConfig)
 		assert.NoError(err)
 	}
 
 	// Retrieve simulation results of txid-2 from  store
-	iter, err := env.TestStore.GetTxPvtRWSetByTxid("txid-2", nil)
+	iter, err := testStore.GetTxPvtRWSetByTxid("txid-2", nil)
 	assert.NoError(err)
 
 	// Expected results for txid-2
@@ -270,7 +299,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 
 	// Remove all private write set of txid-2 and txid-3
 	toRemoveTxids := []string{"txid-2", "txid-3"}
-	err = env.TestStore.PurgeByTxids(toRemoveTxids)
+	err = testStore.PurgeByTxids(toRemoveTxids)
 	assert.NoError(err)
 
 	for _, txid := range toRemoveTxids {
@@ -278,7 +307,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 		// Check whether private write sets of txid-2 are removed
 		var expectedEndorsersResults *EndorserPvtSimulationResultsWithConfig
 		expectedEndorsersResults = nil
-		iter, err = env.TestStore.GetTxPvtRWSetByTxid(txid, nil)
+		iter, err = testStore.GetTxPvtRWSetByTxid(txid, nil)
 		assert.NoError(err)
 		// Should return nil, nil
 		result, err := iter.NextWithConfig()
@@ -287,7 +316,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	}
 
 	// Retrieve simulation results of txid-1 from store
-	iter, err = env.TestStore.GetTxPvtRWSetByTxid("txid-1", nil)
+	iter, err = testStore.GetTxPvtRWSetByTxid("txid-1", nil)
 	assert.NoError(err)
 
 	// Expected results for txid-1
@@ -319,7 +348,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	}
 
 	toRemoveTxids = []string{"txid-1"}
-	err = env.TestStore.PurgeByTxids(toRemoveTxids)
+	err = testStore.PurgeByTxids(toRemoveTxids)
 	assert.NoError(err)
 
 	for _, txid := range toRemoveTxids {
@@ -327,7 +356,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 		// Check whether private write sets of txid-1 are removed
 		var expectedEndorsersResults *EndorserPvtSimulationResultsWithConfig
 		expectedEndorsersResults = nil
-		iter, err = env.TestStore.GetTxPvtRWSetByTxid(txid, nil)
+		iter, err = testStore.GetTxPvtRWSetByTxid(txid, nil)
 		assert.NoError(err)
 		// Should return nil, nil
 		result, err := iter.NextWithConfig()
@@ -336,12 +365,13 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	}
 
 	// There should be no entries in the  store
-	_, err = env.TestStore.GetMinTransientBlkHt()
+	_, err = testStore.GetMinTransientBlkHt()
 	assert.Equal(err, ErrStoreEmpty)
 }
 
 func TestTransientStorePurgeByHeight(t *testing.T) {
-	env := NewTestStoreEnv(t)
+	testStore, cleanup := testStore(t)
+	defer cleanup()
 	assert := assert.New(t)
 
 	txid := "txid-1"
@@ -388,18 +418,18 @@ func TestTransientStorePurgeByHeight(t *testing.T) {
 	// Persist simulation results into  store
 	var err error
 	for i := 0; i < 5; i++ {
-		err = env.TestStore.PersistWithConfig(txid, endorsersResults[i].ReceivedAtBlockHeight,
+		err = testStore.PersistWithConfig(txid, endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResultsWithConfig)
 		assert.NoError(err)
 	}
 
 	// Retain results generate at block height greater than or equal to 12
 	minTransientBlkHtToRetain := uint64(12)
-	err = env.TestStore.PurgeByHeight(minTransientBlkHtToRetain)
+	err = testStore.PurgeByHeight(minTransientBlkHtToRetain)
 	assert.NoError(err)
 
 	// Retrieve simulation results of txid-1 from  store
-	iter, err := env.TestStore.GetTxPvtRWSetByTxid(txid, nil)
+	iter, err := testStore.GetTxPvtRWSetByTxid(txid, nil)
 	assert.NoError(err)
 
 	// Expected results for txid-1
@@ -433,45 +463,43 @@ func TestTransientStorePurgeByHeight(t *testing.T) {
 
 	// Get the minimum block height remaining in transient store
 	var actualMinTransientBlkHt uint64
-	actualMinTransientBlkHt, err = env.TestStore.GetMinTransientBlkHt()
+	actualMinTransientBlkHt, err = testStore.GetMinTransientBlkHt()
 	assert.NoError(err)
 	assert.Equal(minTransientBlkHtToRetain, actualMinTransientBlkHt)
 
 	// Retain results at block height greater than or equal to 15
 	minTransientBlkHtToRetain = uint64(15)
-	err = env.TestStore.PurgeByHeight(minTransientBlkHtToRetain)
+	err = testStore.PurgeByHeight(minTransientBlkHtToRetain)
 	assert.NoError(err)
 
 	// There should be no entries in the  store
-	actualMinTransientBlkHt, err = env.TestStore.GetMinTransientBlkHt()
+	actualMinTransientBlkHt, err = testStore.GetMinTransientBlkHt()
 	assert.Equal(err, ErrStoreEmpty)
 
 	// Retain results at block height greater than or equal to 15
 	minTransientBlkHtToRetain = uint64(15)
-	err = env.TestStore.PurgeByHeight(minTransientBlkHtToRetain)
+	err = testStore.PurgeByHeight(minTransientBlkHtToRetain)
 	// Should not return any error
 	assert.NoError(err)
-
-	env.Cleanup()
 }
 
 func TestTransientStoreRetrievalWithFilter(t *testing.T) {
-	env := NewTestStoreEnv(t)
-	store := env.TestStore
+	testStore, cleanup := testStore(t)
+	defer cleanup()
 
 	samplePvtSimResWithConfig := samplePvtDataWithConfigInfo(t)
 
 	testTxid := "testTxid"
 	numEntries := 5
 	for i := 0; i < numEntries; i++ {
-		store.PersistWithConfig(testTxid, uint64(i), samplePvtSimResWithConfig)
+		testStore.PersistWithConfig(testTxid, uint64(i), samplePvtSimResWithConfig)
 	}
 
 	filter := ledger.NewPvtNsCollFilter()
 	filter.Add("ns-1", "coll-1")
 	filter.Add("ns-2", "coll-2")
 
-	itr, err := store.GetTxPvtRWSetByTxid(testTxid, filter)
+	itr, err := testStore.GetTxPvtRWSetByTxid(testTxid, filter)
 	assert.NoError(t, err)
 
 	var actualRes []*EndorserPvtSimulationResultsWithConfig

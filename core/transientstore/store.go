@@ -120,8 +120,8 @@ type RwsetScanner struct {
 }
 
 // NewStoreProvider instantiates TransientStoreProvider
-func NewStoreProvider() StoreProvider {
-	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: GetTransientStorePath()})
+func NewStoreProvider(path string) StoreProvider {
+	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: path})
 	return &storeProvider{dbProvider: dbProvider}
 }
 
