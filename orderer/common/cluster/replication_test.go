@@ -947,7 +947,7 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 
 	// And inject into it a 127.0.0.1 orderer endpoint endpoint and a new TLS CA certificate.
 	injectTLSCACert(t, validBlock, caCert)
-	injectOrdererEndpoint(t, validBlock, osn.srv.Address())
+	injectGlobalOrdererEndpoint(t, validBlock, osn.srv.Address())
 	validBlock.Header.DataHash = validBlock.Data.Hash()
 
 	for attempt := 0; attempt < iterations; attempt++ {
@@ -1081,7 +1081,7 @@ func TestNoopBlockVerifier(t *testing.T) {
 	assert.Nil(t, v.VerifyBlockSignature(nil, nil))
 }
 
-func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
+func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
 	ordererAddresses := channelconfig.OrdererAddressesValue([]string{endpoint})
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := utils.ExtractEnvelope(block, 0)
@@ -1092,6 +1092,14 @@ func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
 	assert.NoError(t, err)
 	// Replace the orderer addresses
 	confEnv.Config.ChannelGroup.Values[ordererAddresses.Key()].Value = utils.MarshalOrPanic(ordererAddresses.Value())
+	// Remove the per org addresses, if applicable
+	ordererGrps := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
+	for _, grp := range ordererGrps {
+		if grp.Values[channelconfig.EndpointsKey] == nil {
+			continue
+		}
+		grp.Values[channelconfig.EndpointsKey].Value = nil
+	}
 	// And put it back into the block
 	payload.Data = utils.MarshalOrPanic(confEnv)
 	env.Payload = utils.MarshalOrPanic(payload)
