@@ -11,7 +11,7 @@ import "github.com/hyperledger/fabric/common/metrics"
 var (
 	proposalDurationHistogramOpts = metrics.HistogramOpts{
 		Namespace:    "endorser",
-		Name:         "propsal_duration",
+		Name:         "proposal_duration",
 		Help:         "The time to complete a proposal.",
 		LabelNames:   []string{"channel", "chaincode", "success"},
 		StatsdFormat: "%{#fqname}.%{channel}.%{chaincode}.%{success}",

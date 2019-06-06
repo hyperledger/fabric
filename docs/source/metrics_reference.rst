@@ -150,14 +150,14 @@ The following metrics are currently exported for consumption by Prometheus.
 | endorser_proposal_acl_failures                      | counter   | The number of proposals that failed ACL checks.            | channel            |
 |                                                     |           |                                                            | chaincode          |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| endorser_proposal_duration                          | histogram | The time to complete a proposal.                           | channel            |
+|                                                     |           |                                                            | chaincode          |
+|                                                     |           |                                                            | success            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | endorser_proposal_validation_failures               | counter   | The number of proposals that have failed initial           |                    |
 |                                                     |           | validation.                                                |                    |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | endorser_proposals_received                         | counter   | The number of proposals received.                          |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| endorser_propsal_duration                           | histogram | The time to complete a proposal.                           | channel            |
-|                                                     |           |                                                            | chaincode          |
-|                                                     |           |                                                            | success            |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | endorser_successful_proposals                       | counter   | The number of successful proposals.                        |                    |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
@@ -383,12 +383,12 @@ associated with the metric.
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | endorser.proposal_acl_failures.%{channel}.%{chaincode}                                  | counter   | The number of proposals that failed ACL checks.            |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| endorser.proposal_duration.%{channel}.%{chaincode}.%{success}                           | histogram | The time to complete a proposal.                           |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | endorser.proposal_validation_failures                                                   | counter   | The number of proposals that have failed initial           |
 |                                                                                         |           | validation.                                                |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | endorser.proposals_received                                                             | counter   | The number of proposals received.                          |
-+-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| endorser.propsal_duration.%{channel}.%{chaincode}.%{success}                            | histogram | The time to complete a proposal.                           |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | endorser.successful_proposals                                                           | counter   | The number of successful proposals.                        |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
