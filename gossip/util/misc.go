@@ -35,7 +35,7 @@ func Contains(s string, a []string) bool {
 	return false
 }
 
-// IndexInSlice returns the index of given object o in array
+// IndexInSlice returns the index of given object o in array, and -1 if it is not in array.
 func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
 	arr := reflect.ValueOf(array)
 	for i := 0; i < arr.Len(); i++ {
@@ -46,33 +46,15 @@ func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
 	return -1
 }
 
-func numbericEqual(a interface{}, b interface{}) bool {
-	return a.(int) == b.(int)
-}
-
-// GetRandomIndices returns a slice of random indices
-// from 0 to given highestIndex
+// GetRandomIndices returns indiceCount random indices
+// from 0 to highestIndex.
 func GetRandomIndices(indiceCount, highestIndex int) []int {
+	// More choices needed than possible to choose.
 	if highestIndex+1 < indiceCount {
 		return nil
 	}
 
-	indices := make([]int, 0)
-	if highestIndex+1 == indiceCount {
-		for i := 0; i < indiceCount; i++ {
-			indices = append(indices, i)
-		}
-		return indices
-	}
-
-	for len(indices) < indiceCount {
-		n := RandomInt(highestIndex + 1)
-		if IndexInSlice(indices, n, numbericEqual) != -1 {
-			continue
-		}
-		indices = append(indices, n)
-	}
-	return indices
+	return rand.Perm(highestIndex + 1)[:indiceCount]
 }
 
 // Set is a generic and thread-safe
