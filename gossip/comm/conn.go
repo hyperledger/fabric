@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"sync/atomic"
 
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/metrics"
@@ -38,6 +37,7 @@ type connectionStore struct {
 	config           ConnConfig
 	logger           util.Logger            // logger
 	isClosing        bool                   // whether this connection store is shutting down
+	shutdownOnce     sync.Once              // ensure shutdown is only called once per connectionStore
 	connFactory      connFactory            // creates a connection to remote peer
 	sync.RWMutex                            // synchronize access to shared variables
 	pki2Conn         map[string]*connection // mapping between pkiID to connections
@@ -133,25 +133,27 @@ func (cs *connectionStore) connNum() int {
 }
 
 func (cs *connectionStore) shutdown() {
-	cs.Lock()
-	cs.isClosing = true
-	pkiIds2conn := cs.pki2Conn
+	cs.shutdownOnce.Do(func() {
+		cs.Lock()
+		cs.isClosing = true
+		pkiIds2conn := cs.pki2Conn
 
-	var connections2Close []*connection
-	for _, conn := range pkiIds2conn {
-		connections2Close = append(connections2Close, conn)
-	}
-	cs.Unlock()
+		var connections2Close []*connection
+		for _, conn := range pkiIds2conn {
+			connections2Close = append(connections2Close, conn)
+		}
+		cs.Unlock()
 
-	wg := sync.WaitGroup{}
-	for _, conn := range connections2Close {
-		wg.Add(1)
-		go func(conn *connection) {
-			cs.closeConnByPKIid(conn.pkiID)
-			wg.Done()
-		}(conn)
-	}
-	wg.Wait()
+		wg := sync.WaitGroup{}
+		for _, conn := range connections2Close {
+			wg.Add(1)
+			go func(conn *connection) {
+				cs.closeConnByPKIid(conn.pkiID)
+				wg.Done()
+			}(conn)
+		}
+		wg.Wait()
+	})
 }
 
 // onConnected closes any connection to the remote peer and creates a new connection object to it in order to have only
@@ -191,7 +193,6 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_Go
 		conn:         c,
 		clientStream: cs,
 		serverStream: ss,
-		stopFlag:     int32(0),
 		stopChan:     make(chan struct{}, 1),
 		recvBuffSize: config.RecvBuffSize,
 	}
@@ -217,51 +218,35 @@ type connection struct {
 	cl           proto.GossipClient              // gRPC stub of remote endpoint
 	clientStream proto.Gossip_GossipStreamClient // client-side stream to remote endpoint
 	serverStream proto.Gossip_GossipStreamServer // server-side stream to remote endpoint
-	stopFlag     int32                           // indicates whether this connection is in process of stopping
 	stopChan     chan struct{}                   // a method to stop the server-side gRPC call from a different go-routine
+	stopOnce     sync.Once                       // once to ensure close is called only once
 	sync.RWMutex                                 // synchronizes access to shared variables
 	stopWG       sync.WaitGroup                  // a method to wait for stream activity to stop before closing it
 }
 
 func (conn *connection) close() {
-	if conn.toDie() {
-		return
-	}
+	conn.stopOnce.Do(func() {
+		close(conn.stopChan)
 
-	amIFirst := atomic.CompareAndSwapInt32(&conn.stopFlag, int32(0), int32(1))
-	if !amIFirst {
-		return
-	}
+		conn.drainOutputBuffer()
+		conn.Lock()
+		defer conn.Unlock()
 
-	close(conn.stopChan)
+		if conn.clientStream != nil {
+			conn.stopWG.Wait()
+			conn.clientStream.CloseSend()
+		}
+		if conn.conn != nil {
+			conn.conn.Close()
+		}
 
-	conn.drainOutputBuffer()
-	conn.Lock()
-	defer conn.Unlock()
-
-	if conn.clientStream != nil {
-		conn.stopWG.Wait()
-		conn.clientStream.CloseSend()
-	}
-	if conn.conn != nil {
-		conn.conn.Close()
-	}
-
-	if conn.cancel != nil {
-		conn.cancel()
-	}
-}
-
-func (conn *connection) toDie() bool {
-	return atomic.LoadInt32(&(conn.stopFlag)) == int32(1)
+		if conn.cancel != nil {
+			conn.cancel()
+		}
+	})
 }
 
 func (conn *connection) send(msg *protoext.SignedGossipMessage, onErr func(error), shouldBlock blockingBehavior) {
-	if conn.toDie() {
-		conn.logger.Debugf("Aborting send() to %s because connection is closing", conn.info.Endpoint)
-		return
-	}
-
 	m := &msgSending{
 		envelope: msg.Envelope,
 		onErr:    onErr,
@@ -270,6 +255,8 @@ func (conn *connection) send(msg *protoext.SignedGossipMessage, onErr func(error
 	select {
 	case conn.outBuff <- m:
 		// room in channel, successfully sent message, nothing to do
+	case <-conn.stopChan:
+		conn.logger.Debugf("Aborting send() to %s because connection is closing", conn.info.Endpoint)
 	default: // did not send
 		if shouldBlock {
 			conn.outBuff <- m // try again, and wait to send
@@ -292,7 +279,7 @@ func (conn *connection) serviceConnection() error {
 
 	go conn.writeToStream()
 
-	for !conn.toDie() {
+	for {
 		select {
 		case <-conn.stopChan:
 			conn.logger.Debug("Closing reading from stream")
@@ -303,34 +290,40 @@ func (conn *connection) serviceConnection() error {
 			conn.handler(msg)
 		}
 	}
-	return nil
 }
 
 func (conn *connection) writeToStream() {
 	conn.Lock()
-	if !conn.toDie() {
+	select {
+	case <-conn.stopChan:
+	default:
 		conn.stopWG.Add(1) // wait for write to finish before calling conn.close()
 		defer conn.stopWG.Done()
 	}
 	conn.Unlock()
 
-	for !conn.toDie() {
-		stream := conn.getStream()
-		if stream == nil {
-			conn.logger.Error(conn.pkiID, "Stream is nil, aborting!")
-			return
-		}
+	for {
 		select {
-		case m := <-conn.outBuff:
-			err := stream.Send(m.envelope)
-			if err != nil {
-				go m.onErr(err)
+		case <-conn.stopChan:
+			return
+		default:
+			stream := conn.getStream()
+			if stream == nil {
+				conn.logger.Error(conn.pkiID, "Stream is nil, aborting!")
 				return
 			}
-			conn.metrics.SentMessages.Add(1)
-		case <-conn.stopChan:
-			conn.logger.Debug("Closing writing to stream")
-			return
+			select {
+			case m := <-conn.outBuff:
+				err := stream.Send(m.envelope)
+				if err != nil {
+					go m.onErr(err)
+					return
+				}
+				conn.metrics.SentMessages.Add(1)
+			case <-conn.stopChan:
+				conn.logger.Debug("Closing writing to stream")
+				return
+			}
 		}
 	}
 }
@@ -348,26 +341,31 @@ func (conn *connection) drainOutputBuffer() {
 }
 
 func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoext.SignedGossipMessage) {
-	for !conn.toDie() {
-		stream := conn.getStream()
-		if stream == nil {
-			conn.logger.Error(conn.pkiID, "Stream is nil, aborting!")
-			errChan <- fmt.Errorf("Stream is nil")
+	for {
+		select {
+		case <-conn.stopChan:
 			return
+		default:
+			stream := conn.getStream()
+			if stream == nil {
+				conn.logger.Error(conn.pkiID, "Stream is nil, aborting!")
+				errChan <- fmt.Errorf("Stream is nil")
+				return
+			}
+			envelope, err := stream.Recv()
+			if err != nil {
+				errChan <- err
+				conn.logger.Debugf("Got error, aborting: %v", err)
+				return
+			}
+			conn.metrics.ReceivedMessages.Add(1)
+			msg, err := protoext.EnvelopeToGossipMessage(envelope)
+			if err != nil {
+				errChan <- err
+				conn.logger.Warningf("Got error, aborting: %v", err)
+			}
+			msgChan <- msg
 		}
-		envelope, err := stream.Recv()
-		if err != nil {
-			errChan <- err
-			conn.logger.Debugf("Got error, aborting: %v", err)
-			return
-		}
-		conn.metrics.ReceivedMessages.Add(1)
-		msg, err := protoext.EnvelopeToGossipMessage(envelope)
-		if err != nil {
-			errChan <- err
-			conn.logger.Warningf("Got error, aborting: %v", err)
-		}
-		msgChan <- msg
 	}
 }
 
