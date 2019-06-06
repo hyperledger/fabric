@@ -84,9 +84,8 @@ This is useful for cases where you want TLS certificates issued by the
 organizational CAs, but used only by the cluster nodes to communicate among each
 other, and TLS certificates issued by a public TLS CA for the client facing API.
 
-  * `ClientCertificate`, `ClientPrivateKey`: If you wish to use a different
-  TLS client certificate key pair (otherwise, the certificate key pair is taken
-  from the general TLS section, i.e., `general.tls.{privateKey, certificate}`)
+  * `ClientCertificate`, `ClientPrivateKey`: The file path of the client TLS certificate
+  and corresponding private key.
   * `ListenPort`: The port the cluster listens on. If blank, the port is the same
   port as the orderer general port (`general.listenPort`)
   * `ListenAddress`: The address the cluster service is listening on.
@@ -97,6 +96,8 @@ other, and TLS certificates issued by a public TLS CA for the client facing API.
 
 Note: `ListenPort`, `ListenAddress`, `ServerCertificate`, `ServerPrivateKey` must
 be either set together or unset together.
+If they are unset, they are inherited from the general TLS section,
+for example `general.tls.{privateKey, certificate}`.
 
 There are also hidden configuration parameters for `general.cluster` which can be
 used to further fine tune the cluster communication or replication mechanisms:
