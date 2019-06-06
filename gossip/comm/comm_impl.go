@@ -588,30 +588,17 @@ func (c *commImpl) disconnect(pkiID common.PKIidType) {
 	c.connStore.closeConnByPKIid(pkiID)
 }
 
-func readWithTimeout(stream interface{}, timeout time.Duration, address string) (*protoext.SignedGossipMessage, error) {
+func readWithTimeout(stream stream, timeout time.Duration, address string) (*protoext.SignedGossipMessage, error) {
 	incChan := make(chan *protoext.SignedGossipMessage, 1)
 	errChan := make(chan error, 1)
 	go func() {
-		if srvStr, isServerStr := stream.(proto.Gossip_GossipStreamServer); isServerStr {
-			if m, err := srvStr.Recv(); err == nil {
-				msg, err := protoext.EnvelopeToGossipMessage(m)
-				if err != nil {
-					errChan <- err
-					return
-				}
-				incChan <- msg
+		if m, err := stream.Recv(); err == nil {
+			msg, err := protoext.EnvelopeToGossipMessage(m)
+			if err != nil {
+				errChan <- err
+				return
 			}
-		} else if clStr, isClientStr := stream.(proto.Gossip_GossipStreamClient); isClientStr {
-			if m, err := clStr.Recv(); err == nil {
-				msg, err := protoext.EnvelopeToGossipMessage(m)
-				if err != nil {
-					errChan <- err
-					return
-				}
-				incChan <- msg
-			}
-		} else {
-			panic(errors.Errorf("Stream isn't a GossipStreamServer or a GossipStreamClient, but %v. Aborting", reflect.TypeOf(stream)))
+			incChan <- msg
 		}
 	}()
 	select {
