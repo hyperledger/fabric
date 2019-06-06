@@ -121,11 +121,12 @@ func (p *Peer) Anchor() bool {
 
 // A profile encapsulates basic information for a configtxgen profile.
 type Profile struct {
-	Name            string   `yaml:"name,omitempty"`
-	Orderers        []string `yaml:"orderers,omitempty"`
-	Consortium      string   `yaml:"consortium,omitempty"`
-	Organizations   []string `yaml:"organizations,omitempty"`
-	AppCapabilities []string `yaml:"appcapabilities,omitempty"`
+	Name                string   `yaml:"name,omitempty"`
+	Orderers            []string `yaml:"orderers,omitempty"`
+	Consortium          string   `yaml:"consortium,omitempty"`
+	Organizations       []string `yaml:"organizations,omitempty"`
+	AppCapabilities     []string `yaml:"app_capabilities,omitempty"`
+	ChannelCapabilities []string `yaml:"channel_capabilities,omitempty"`
 }
 
 // Network holds information about a fabric network.
