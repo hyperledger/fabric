@@ -9,20 +9,17 @@ package msgprocessor
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/hyperledger/fabric/common/capabilities"
-	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
-
-	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
-
 	"github.com/hyperledger/fabric/common/channelconfig"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -181,7 +178,7 @@ func TestMaintenanceInspectEntry(t *testing.T) {
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		assert.EqualError(t, err,
-			"config transaction inspection failed: attempted to change consensus type from kafka to etcdraft, but current config ConsensusType.State is not in maintenance mode")
+			"config transaction inspection failed: attempted to change ConsensusType.Type from kafka to etcdraft, but ConsensusType.State is changing from STATE_NORMAL to STATE_MAINTENANCE")
 	})
 
 	t.Run("Bad: change consensus type not in maintenance", func(t *testing.T) {
@@ -234,7 +231,7 @@ func TestMaintenanceInspectChange(t *testing.T) {
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		assert.EqualError(t, err,
-			"config transaction inspection failed: attempted to change consensus type from kafka to etcdraft, but next config ConsensusType.State is not in maintenance mode")
+			"config transaction inspection failed: attempted to change ConsensusType.Type from kafka to etcdraft, but ConsensusType.State is changing from STATE_MAINTENANCE to STATE_NORMAL")
 	})
 
 	t.Run("Bad: etcdraft metadata", func(t *testing.T) {
@@ -273,45 +270,32 @@ func TestMaintenanceInspectExit(t *testing.T) {
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		assert.EqualError(t, err,
-			"config transaction inspection failed: attempted to change consensus type from etcdraft to kafka, but next config ConsensusType.State is not in maintenance mode")
+			"config transaction inspection failed: attempted to change ConsensusType.Type from etcdraft to kafka, but ConsensusType.State is changing from STATE_MAINTENANCE to STATE_NORMAL")
 	})
-}
 
-func TestMaintenanceEnsureSingleExtra(t *testing.T) {
-	msActive := &mockSystemChannelFilterSupport{
-		OrdererConfigVal: &mockconfig.Orderer{
-			CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-			ConsensusTypeVal:      "kafka",
-			ConsensusTypeStateVal: orderer.ConsensusType_STATE_MAINTENANCE,
-		},
-	}
-	mf := NewMaintenanceFilter(msActive)
-	require.NotNil(t, mf)
-	current := consensusTypeInfo{ordererType: "kafka", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
-
-	t.Run("Bad: with extra group", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "kafka", metadata: []byte{}, state: orderer.ConsensusType_STATE_MAINTENANCE}
+	t.Run("Bad: exit with extra group", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 1)
 		err := mf.Apply(configTx)
 		assert.EqualError(t, err, "config transaction inspection failed: config update contains changes to more than one group")
 	})
 
-	t.Run("Bad: with extra value", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "kafka", metadata: []byte{}, state: orderer.ConsensusType_STATE_MAINTENANCE}
+	t.Run("Bad: exit with extra value", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 2)
 		err := mf.Apply(configTx)
 		assert.EqualError(t, err, "config transaction inspection failed: config update contains changes to values in group Channel")
 	})
 
-	t.Run("Bad: with extra orderer value", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "kafka", metadata: []byte{}, state: orderer.ConsensusType_STATE_MAINTENANCE}
+	t.Run("Bad: exit with extra orderer value", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 3)
 		err := mf.Apply(configTx)
 		assert.EqualError(t, err, "config transaction inspection failed: config update contain more then just the ConsensusType value in the Orderer group")
 	})
 }
 
-func TestMaintenanceEnsureSingleMissing(t *testing.T) {
+func TestMaintenanceExtra(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
 		OrdererConfigVal: &mockconfig.Orderer{
 			CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
@@ -321,10 +305,47 @@ func TestMaintenanceEnsureSingleMissing(t *testing.T) {
 	}
 	mf := NewMaintenanceFilter(msActive)
 	require.NotNil(t, mf)
-	current := consensusTypeInfo{ordererType: "kafka", metadata: []byte{}, state: orderer.ConsensusType_STATE_MAINTENANCE}
-	configTx := makeConfigEnvelopeWithExtraStuff(t, current, current, 1)
-	err := mf.Apply(configTx)
-	assert.EqualError(t, err, "config transaction inspection failed: update does not contain the Orderer group")
+	current := consensusTypeInfo{ordererType: "kafka", metadata: nil, state: orderer.ConsensusType_STATE_MAINTENANCE}
+	validMetadata := utils.MarshalOrPanic(&etcdraft.ConfigMetadata{})
+
+	t.Run("Good: with extra group", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 1)
+		err := mf.Apply(configTx)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Good: with extra value", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 2)
+		err := mf.Apply(configTx)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Good: with extra orderer value", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 3)
+		err := mf.Apply(configTx)
+		assert.NoError(t, err)
+	})
+}
+
+func TestMaintenanceMissingConsensusType(t *testing.T) {
+	msActive := &mockSystemChannelFilterSupport{
+		OrdererConfigVal: &mockconfig.Orderer{
+			CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
+			ConsensusTypeVal:      "kafka",
+			ConsensusTypeStateVal: orderer.ConsensusType_STATE_MAINTENANCE,
+		},
+	}
+	mf := NewMaintenanceFilter(msActive)
+	require.NotNil(t, mf)
+	current := consensusTypeInfo{ordererType: "kafka", metadata: nil, state: orderer.ConsensusType_STATE_MAINTENANCE}
+	for i := 1; i < 4; i++ {
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, current, i)
+		err := mf.Apply(configTx)
+		assert.NoError(t, err)
+	}
 }
 
 type consensusTypeInfo struct {

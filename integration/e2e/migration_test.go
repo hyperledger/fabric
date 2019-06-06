@@ -422,71 +422,38 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			//=== Step 7: ===
-			By("7) Config update on system channel, changing both ConsensusType.Type and other value is forbidden")
-			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
-				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
-			updateConfigWithBatchTimeout(updatedConfig)
-			updateOrdererConfigFailed(network, orderer, syschannel, config, updatedConfig, peer, orderer)
-
-			//=== Step 8: ===
-			By("8) Config update on standard channel, changing both ConsensusType.Type and other value is forbidden")
-			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
-				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
-			updateConfigWithBatchTimeout(updatedConfig)
-			updateOrdererConfigFailed(network, orderer, channel1, config, updatedConfig, peer, orderer)
-
-			//=== Step 9: ===
-			By("9) Config update on system channel, changing value other than ConsensusType.Type is forbidden")
-			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
-			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
-			updateConfigWithBatchTimeout(updatedConfig)
-			updateOrdererConfigFailed(network, orderer, syschannel, config, updatedConfig, peer, orderer)
-
-			//=== Step 10: ===
-			By("10) Config update on standard channel, changing value other than ConsensusType.Type is forbidden")
-			config = nwo.GetConfig(network, peer, orderer, channel1)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
-			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
-			updateConfigWithBatchTimeout(updatedConfig)
-			updateOrdererConfigFailed(network, orderer, channel1, config, updatedConfig, peer, orderer)
-
-			//=== Step 11: ===
-			By("11) Config update on system channel, change ConsensusType.Type to unsupported type, forbidden")
+			By("7) Config update on system channel, change ConsensusType.Type to unsupported type, forbidden")
 			assertTransitionFailed(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"solo", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 12: ===
-			By("12) Config update on standard channel, change ConsensusType.Type to unsupported type, forbidden")
+			//=== Step 8: ===
+			By("8) Config update on standard channel, change ConsensusType.Type to unsupported type, forbidden")
 			assertTransitionFailed(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"hesse", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 13: ===
-			By("13) Config update on system channel, change ConsensusType.Type and State, forbidden")
+			//=== Step 9: ===
+			By("9) Config update on system channel, change ConsensusType.Type and State, forbidden")
 			assertTransitionFailed(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
 
-			//=== Step 14: ===
-			By("14) Config update on standard channel, change ConsensusType.Type and State, forbidden")
+			//=== Step 10: ===
+			By("10) Config update on standard channel, change ConsensusType.Type and State, forbidden")
 			assertTransitionFailed(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
 
-			//=== Step 15: ===
-			By("15) Config update on system channel, change ConsensusType.Type")
+			//=== Step 11: ===
+			By("11) Config update on system channel, changing both ConsensusType.Type and other value is permitted")
 			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updateConfigWithBatchTimeout(updatedConfig)
 			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			By("15) Verify: system channel config changed")
+			By("11) Verify: system channel config changed")
 			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
 			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
@@ -494,14 +461,15 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(err).NotTo(HaveOccurred())
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 16: ===
-			By("16) Config update on standard channel, changing ConsensusType.Type")
+			//=== Step 12: ===
+			By("12) Config update on standard channel, changing both ConsensusType.Type and other value is permitted")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updateConfigWithBatchTimeout(updatedConfig)
 			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			By("16) Verify: standard channel config changed")
+			By("12) Verify: standard channel config changed")
 			std1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(std1BlockNum).To(Equal(std1StartBlockNum + 1))
 			config = nwo.GetConfig(network, peer, orderer, channel1)
@@ -509,28 +477,54 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(err).NotTo(HaveOccurred())
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 17: ===
-			By("17) Config update on system channel, change ConsensusType.Type back to kafka, forbidden")
+			//=== Step 13: ===
+			By("13) Config update on system channel, changing value other than ConsensusType.Type is permitted")
+			config = nwo.GetConfig(network, peer, orderer, syschannel)
+			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
+			Expect(err).NotTo(HaveOccurred())
+			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updateConfigWithBatchTimeout(updatedConfig)
+			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
+
+			By("13) Verify: system channel config changed")
+			sysBlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 2))
+
+			//=== Step 14: ===
+			By("14) Config update on standard channel, changing value other than ConsensusType.Type is permitted")
+			config = nwo.GetConfig(network, peer, orderer, channel1)
+			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
+			Expect(err).NotTo(HaveOccurred())
+			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updateConfigWithBatchTimeout(updatedConfig)
+			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
+
+			By("14) Verify: standard channel config changed")
+			std1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
+			Expect(std1BlockNum).To(Equal(std1StartBlockNum + 2))
+
+			//=== Step 15: ===
+			By("15) Config update on system channel, change ConsensusType.Type back to kafka, forbidden")
 			assertTransitionFailed(network, peer, orderer, syschannel,
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 18: ===
-			By("18) Config update on standard channel, changing ConsensusType.Type back to kafka, forbidden")
+			//=== Step 16: ===
+			By("16) Config update on standard channel, changing ConsensusType.Type back to kafka, forbidden")
 			assertTransitionFailed(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 19: ===
-			By("19) Config update on system channel, changing both ConsensusType State & some other value is forbidden")
+			//=== Step 17: ===
+			By("17) Config update on system channel, changing both ConsensusType State & some other value is forbidden")
 			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
 			updateConfigWithBatchTimeout(updatedConfig)
 			updateOrdererConfigFailed(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			//=== Step 20: ===
-			By("20) Config update on standard channel, both ConsensusType State & some other value is forbidden")
+			//=== Step 18: ===
+			By("18) Config update on standard channel, both ConsensusType State & some other value is forbidden")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
@@ -812,9 +806,9 @@ func updateConfigWithBatchTimeout(updatedConfig *common.Config) {
 	Expect(err).NotTo(HaveOccurred())
 	toDur, err := time.ParseDuration(batchTimeoutValue.Timeout)
 	Expect(err).NotTo(HaveOccurred())
-	toDur = toDur + time.Duration(1000000)
+	toDur = toDur + time.Duration(100000000)
 	batchTimeoutValue.Timeout = toDur.String()
-
+	By(fmt.Sprintf("Increasing BatchTimeout to %s", batchTimeoutValue.Timeout))
 	updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchTimeout"] = &common.ConfigValue{
 		ModPolicy: "Admins",
 		Value:     utils.MarshalOrPanic(batchTimeoutValue),
