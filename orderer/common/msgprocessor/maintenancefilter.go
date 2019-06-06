@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
+	"bytes"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -90,13 +92,22 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 		return nil
 	}
 
-	if nextOrdererConfig.ConsensusState() != ordererConfig.ConsensusState() ||
-		ordererConfig.ConsensusState() == orderer.ConsensusType_STATE_MAINTENANCE {
+	// Entry to- and exit from- maintenance-mode should not be accompanied by any other change.
+	if ordererConfig.ConsensusState() != nextOrdererConfig.ConsensusState() {
 		if err1Change := mf.ensureConsensusTypeChangeOnly(configEnvelope); err1Change != nil {
 			return err1Change
 		}
+		if ordererConfig.ConsensusType() != nextOrdererConfig.ConsensusType() {
+			return errors.Errorf("attempted to change ConsensusType.Type from %s to %s, but ConsensusType.State is changing from %s to %s",
+				ordererConfig.ConsensusType(), nextOrdererConfig.ConsensusType(), ordererConfig.ConsensusState(), nextOrdererConfig.ConsensusState())
+		}
+		if !bytes.Equal(nextOrdererConfig.ConsensusMetadata(), ordererConfig.ConsensusMetadata()) {
+			return errors.Errorf("attempted to change ConsensusType.Metadata, but ConsensusType.State is changing from %s to %s",
+				ordererConfig.ConsensusState(), nextOrdererConfig.ConsensusState())
+		}
 	}
 
+	// ConsensusType.Type can only change in maintenance-mode, and only from kafka to raft (for now).
 	if ordererConfig.ConsensusType() != nextOrdererConfig.ConsensusType() {
 		if ordererConfig.ConsensusState() == orderer.ConsensusType_STATE_NORMAL {
 			return errors.Errorf("attempted to change consensus type from %s to %s, but current config ConsensusType.State is not in maintenance mode",
