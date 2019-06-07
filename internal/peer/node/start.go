@@ -725,7 +725,7 @@ func registerDiscoveryService(
 	peerServer *comm.GRPCServer,
 	polMgr policies.ChannelPolicyManagerGetter,
 	metadataProvider *lifecycle.MetadataProvider,
-	gossipService gossipservice.GossipService,
+	gossipService *gossipservice.GossipService,
 ) {
 	mspID := coreConfig.LocalMSPID
 	localAccessPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
@@ -949,7 +949,7 @@ func initGossipService(
 	peerServer *comm.GRPCServer,
 	signer msp.SigningIdentity,
 	peerAddr string,
-) (gossipservice.GossipService, error) {
+) (*gossipservice.GossipService, error) {
 
 	var certs *gossipcommon.TLSCertificates
 	if peerServer.TLSEnabled() {

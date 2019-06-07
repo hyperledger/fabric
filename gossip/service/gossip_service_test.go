@@ -646,10 +646,10 @@ func stopPeers(peers []*gossipGRPC) {
 	stoppingWg := sync.WaitGroup{}
 	stoppingWg.Add(len(peers))
 	for i, pI := range peers {
-		go func(i int, p_i *GossipServiceImpl) {
+		go func(i int, p_i *GossipService) {
 			defer stoppingWg.Done()
 			p_i.Stop()
-		}(i, pI.GossipServiceImpl)
+		}(i, pI.GossipService)
 	}
 	stoppingWg.Wait()
 	time.Sleep(time.Second * time.Duration(2))
@@ -750,7 +750,7 @@ func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServe
 	)
 	go gRPCServer.Start()
 
-	gossipService := &GossipServiceImpl{
+	gossipService := &GossipService{
 		mcs:             cryptoService,
 		gossipSvc:       gossip,
 		chains:          make(map[string]state.GossipStateProvider),
@@ -763,16 +763,16 @@ func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServe
 		serviceConfig:   serviceConfig,
 	}
 
-	return &gossipGRPC{GossipServiceImpl: gossipService, grpc: gRPCServer}
+	return &gossipGRPC{GossipService: gossipService, grpc: gRPCServer}
 }
 
 type gossipGRPC struct {
-	*GossipServiceImpl
+	*GossipService
 	grpc *comm.GRPCServer
 }
 
 func (g *gossipGRPC) Stop() {
-	g.GossipServiceImpl.Stop()
+	g.GossipService.Stop()
 	g.grpc.Stop()
 }
 

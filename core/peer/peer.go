@@ -416,7 +416,7 @@ type Peer struct {
 	storesMutex   sync.RWMutex
 	stores        map[string]transientstore.Store
 
-	GossipService gossipservice.GossipService
+	GossipService *gossipservice.GossipService
 
 	// validationWorkersSemaphore is used to limit the number of concurrent validation
 	// go routines.
