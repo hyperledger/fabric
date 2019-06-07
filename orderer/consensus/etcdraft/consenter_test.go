@@ -244,10 +244,8 @@ var _ = Describe("Consenter", func() {
 		metadata := utils.MarshalOrPanic(m)
 		support.SharedConfigReturns(&mockconfig.Orderer{
 			ConsensusMetadataVal: metadata,
-			CapabilitiesVal: &mockconfig.OrdererCapabilities{
-				Kafka2RaftMigVal: false,
-			},
-			BatchSizeVal: &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
+			CapabilitiesVal:      &mockconfig.OrdererCapabilities{},
+			BatchSizeVal:         &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
 		})
 
 		consenter := newConsenter(chainGetter)

@@ -34,25 +34,15 @@ message ConsensusType {
     // Opaque metadata, dependent on the consensus type.
     bytes metadata = 2;
 
-    // MigrationState defines the possible states of a consensus-type migration.
-    // NONE represents that migration is not taking place.
-    enum MigrationState {
-        MIG_STATE_NONE = 0;
-        MIG_STATE_START = 1;
-        MIG_STATE_COMMIT = 2;
-        MIG_STATE_ABORT = 3;
-        MIG_STATE_CONTEXT = 4;
+    // State defines the orderer mode of operation, typically for consensus-type migration.
+    // NORMAL is during normal operation, when consensus-type migration is not, and can not, take place.
+    // MAINTENANCE is when the consensus-type can be changed.
+    enum State {
+        STATE_NORMAL = 0;
+        STATE_MAINTENANCE = 1;
     }
-    // The state of a consensus-type migration.
-    // On the system channel this could be NONE | START | COMMIT | ABORT.
-    // On a standard channel this could be NONE | CONTEXT.
-    // When migration is not taking place it is set to NONE.
-    MigrationState migration_state = 3;
-    // The context of a consensus-type migration.
-    // The migration context is the system channel block height of the config-update-tx that START migration.
-    // The context must be present in COMMIT, CONTEXT, and ABORT config-updates, and match the START block height.
-    // On NONE and START it is set =0.
-    uint64 migration_context = 4;
+    // The state signals the ordering service to go into maintenance mode, typically for consensus-type migration.
+    State state = 3;
 }
 
 message BatchSize {

@@ -25,6 +25,7 @@ type blockWriterSupport interface {
 	configtx.Validator
 	Update(*newchannelconfig.Bundle)
 	CreateBundle(channelID string, config *cb.Config) (*newchannelconfig.Bundle, error)
+	SharedConfig() newchannelconfig.Orderer
 }
 
 // BlockWriter efficiently writes the blockchain to disk.
@@ -115,6 +116,7 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 			logger.Panicf("Told to write a config block with new channel, but did not have config update embedded: %s", err)
 		}
 		bw.registrar.newChain(newChannelConfig)
+
 	case int32(cb.HeaderType_CONFIG):
 		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 		if err != nil {
@@ -129,6 +131,19 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 		bundle, err := bw.support.CreateBundle(chdr.ChannelId, configEnvelope.Config)
 		if err != nil {
 			logger.Panicf("Told to write a config block with a new config, but could not convert it to a bundle: %s", err)
+		}
+
+		oc, ok := bundle.OrdererConfig()
+		if !ok {
+			logger.Panicf("[channel: %s] OrdererConfig missing from bundle", bw.support.ChainID())
+		}
+
+		currentType := bw.support.SharedConfig().ConsensusType()
+		nextType := oc.ConsensusType()
+		if currentType != nextType {
+			encodedMetadataValue = nil
+			logger.Debugf("[channel: %s] Consensus-type migration: maintenance mode, change from %s to %s, setting metadata to nil",
+				bw.support.ChainID(), currentType, nextType)
 		}
 
 		// Avoid Bundle update before the go-routine in WriteBlock() finished writing the previous block.

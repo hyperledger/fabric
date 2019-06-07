@@ -246,94 +246,57 @@ func TestValidateNew(t *testing.T) {
 }
 
 func TestValidateNewWithConsensusMigration(t *testing.T) {
-	t.Run("ConsensusTypeMigration Green Path on System Channel", func(t *testing.T) {
-		b0 := generateMigrationBundle(true, "kafka", ab.ConsensusType_MIG_STATE_NONE, 0)
-		b1 := generateMigrationBundle(true, "kafka", ab.ConsensusType_MIG_STATE_NONE, 0)
-		err := b0.ValidateNew(b1)
-		assert.NoError(t, err)
+	t.Run("ConsensusTypeMigration Green Path", func(t *testing.T) {
+		for _, sysChan := range []bool{false, true} {
+			b0 := generateMigrationBundle(sysChan, "kafka", ab.ConsensusType_STATE_NORMAL)
+			b1 := generateMigrationBundle(sysChan, "kafka", ab.ConsensusType_STATE_NORMAL)
+			err := b0.ValidateNew(b1)
+			assert.NoError(t, err)
 
-		b2 := generateMigrationBundle(true, "kafka", ab.ConsensusType_MIG_STATE_START, 0)
-		err = b1.ValidateNew(b2)
-		assert.NoError(t, err)
+			b2 := generateMigrationBundle(sysChan, "kafka", ab.ConsensusType_STATE_MAINTENANCE)
+			err = b1.ValidateNew(b2)
+			assert.NoError(t, err)
 
-		b3 := generateMigrationBundle(true, "etcdraft", ab.ConsensusType_MIG_STATE_COMMIT, 4)
-		err = b2.ValidateNew(b3)
-		assert.NoError(t, err)
+			b3 := generateMigrationBundle(sysChan, "etcdraft", ab.ConsensusType_STATE_MAINTENANCE)
+			err = b2.ValidateNew(b3)
+			assert.NoError(t, err)
 
-		b4 := generateMigrationBundle(true, "etcdraft", ab.ConsensusType_MIG_STATE_NONE, 0)
-		err = b3.ValidateNew(b4)
-		assert.NoError(t, err)
+			b4 := generateMigrationBundle(sysChan, "etcdraft", ab.ConsensusType_STATE_NORMAL)
+			err = b3.ValidateNew(b4)
+			assert.NoError(t, err)
 
-		b5 := generateMigrationBundle(true, "etcdraft", ab.ConsensusType_MIG_STATE_NONE, 0)
-		err = b4.ValidateNew(b5)
-		assert.NoError(t, err)
+			b5 := generateMigrationBundle(sysChan, "etcdraft", ab.ConsensusType_STATE_NORMAL)
+			err = b4.ValidateNew(b5)
+			assert.NoError(t, err)
+		}
 	})
 
-	t.Run("ConsensusTypeMigration Green Path on Standard Channel", func(t *testing.T) {
-		b0 := generateMigrationBundle(false, "kafka", ab.ConsensusType_MIG_STATE_NONE, 0)
-		b1 := generateMigrationBundle(false, "kafka", ab.ConsensusType_MIG_STATE_NONE, 0)
-		err := b0.ValidateNew(b1)
-		assert.NoError(t, err)
+	t.Run("ConsensusTypeMigration Abort Path", func(t *testing.T) {
+		for _, sysChan := range []bool{false, true} {
+			b1 := generateMigrationBundle(sysChan, "kafka", ab.ConsensusType_STATE_NORMAL)
+			b2 := generateMigrationBundle(sysChan, "kafka", ab.ConsensusType_STATE_MAINTENANCE)
+			err := b1.ValidateNew(b2)
+			assert.NoError(t, err)
 
-		b2 := generateMigrationBundle(false, "etcdraft", ab.ConsensusType_MIG_STATE_CONTEXT, 7)
-		err = b1.ValidateNew(b2)
-		assert.NoError(t, err, "provide context")
-
-		b3 := generateMigrationBundle(false, "etcdraft", ab.ConsensusType_MIG_STATE_NONE, 0)
-		err = b2.ValidateNew(b3)
-		assert.NoError(t, err, "config after success")
-
-		b4 := generateMigrationBundle(false, "etcdraft", ab.ConsensusType_MIG_STATE_NONE, 0)
-		err = b3.ValidateNew(b4)
-		assert.NoError(t, err, "not a migration")
-	})
-
-	t.Run("ConsensusTypeMigration Abort Path on System Channel", func(t *testing.T) {
-		b1 := generateMigrationBundle(true, "kafka", ab.ConsensusType_MIG_STATE_NONE, 0)
-		b2 := generateMigrationBundle(true, "kafka", ab.ConsensusType_MIG_STATE_START, 0)
-		err := b1.ValidateNew(b2)
-		assert.NoError(t, err)
-
-		b3 := generateMigrationBundle(true, "kafka", ab.ConsensusType_MIG_STATE_ABORT, 7)
-		err = b2.ValidateNew(b3)
-		assert.NoError(t, err)
-
-		b4none := generateMigrationBundle(true, "kafka", ab.ConsensusType_MIG_STATE_NONE, 0)
-		err = b3.ValidateNew(b4none)
-		assert.NoError(t, err)
-
-		b4retry := generateMigrationBundle(true, "kafka", ab.ConsensusType_MIG_STATE_START, 0)
-		err = b3.ValidateNew(b4retry)
-		assert.NoError(t, err)
-	})
-
-	t.Run("ConsensusTypeMigration Abort Path on Standard Channel", func(t *testing.T) {
-		b1 := generateMigrationBundle(false, "kafka", ab.ConsensusType_MIG_STATE_NONE, 0)
-		b2 := generateMigrationBundle(false, "etcdraft", ab.ConsensusType_MIG_STATE_CONTEXT, 7)
-		err := b1.ValidateNew(b2)
-		assert.NoError(t, err)
-		b3 := generateMigrationBundle(false, "kafka", ab.ConsensusType_MIG_STATE_ABORT, 7)
-		err = b2.ValidateNew(b3)
-		assert.NoError(t, err)
-		b4 := generateMigrationBundle(false, "kafka", ab.ConsensusType_MIG_STATE_NONE, 0)
-		err = b3.ValidateNew(b4)
-		assert.NoError(t, err)
+			b3 := generateMigrationBundle(sysChan, "kafka", ab.ConsensusType_STATE_NORMAL)
+			err = b2.ValidateNew(b3)
+			assert.NoError(t, err)
+		}
 	})
 }
 
-func generateMigrationBundle(sysChan bool, cType string, cState ab.ConsensusType_MigrationState, cContext uint64) *Bundle {
+func generateMigrationBundle(sysChan bool, cType string, cState ab.ConsensusType_State) *Bundle {
 	b := &Bundle{
 		channelConfig: &ChannelConfig{
 			ordererConfig: &OrdererConfig{
 				protos: &OrdererProtos{
 					ConsensusType: &ab.ConsensusType{
-						Type:             cType,
-						MigrationState:   cState,
-						MigrationContext: cContext,
+						Type:  cType,
+						State: cState,
 					},
 					Capabilities: &cb.Capabilities{
 						Capabilities: map[string]*cb.Capability{
-							cc.OrdererV2_0: {},
+							cc.OrdererV1_4_2: {},
 						},
 					},
 				},
