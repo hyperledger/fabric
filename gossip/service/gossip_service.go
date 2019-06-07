@@ -114,11 +114,9 @@ func (jcm *joinChannelMessage) SequenceNumber() uint64 {
 
 // Members returns the organizations of the channel
 func (jcm *joinChannelMessage) Members() []api.OrgIdentityType {
-	members := make([]api.OrgIdentityType, len(jcm.members2AnchorPeers))
-	i := 0
+	members := make([]api.OrgIdentityType, 0, len(jcm.members2AnchorPeers))
 	for org := range jcm.members2AnchorPeers {
-		members[i] = api.OrgIdentityType(org)
-		i++
+		members = append(members, api.OrgIdentityType(org))
 	}
 	return members
 }
