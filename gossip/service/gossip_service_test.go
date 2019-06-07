@@ -866,7 +866,11 @@ func TestInvalidInitialization(t *testing.T) {
 	endpoint, socket := getAvailablePort(t)
 
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	err := InitGossipService(&mocks.SignerSerializer{}, &disabled.Provider{}, endpoint, grpcServer, nil,
+
+	serializer := &mocks.SignerSerializer{}
+	serializer.SerializeReturns([]byte{}, nil)
+
+	err := InitGossipService(serializer, &disabled.Provider{}, endpoint, grpcServer, nil,
 		&naiveCryptoService{}, secAdv, nil)
 	assert.NoError(t, err)
 	gService := GetGossipService().(*gossipServiceImpl)
