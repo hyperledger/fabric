@@ -51,3 +51,30 @@ PeerOrgs:{{ range .PeerOrgs }}
 {{- end }}
 {{- end }}
 `
+const OrgUpdateCryptoTemplate = `---
+{{ with $w := . -}}
+PeerOrgs:{{ range .PeerOrgs }}
+- Name: {{ .Name }}
+  Domain: {{ .Domain }}
+  EnableNodeOUs: {{ .EnableNodeOUs }}
+  {{- if .CA }}
+  CA:{{ if .CA.Hostname }}
+    hostname: {{ .CA.Hostname }}
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  {{- end }}
+  {{- end }}
+  Users:
+    Count: {{ .Users }}
+  Specs:{{ range $w.PeersInOrg .Name }}
+  - Hostname: {{ .Name }}
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  {{- end }}
+{{- end }}
+{{ end }}
+`

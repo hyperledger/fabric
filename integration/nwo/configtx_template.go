@@ -164,3 +164,31 @@ Profiles:{{ range .Profiles }}
 {{- end }}
 {{ end }}
 `
+
+const OrgUpdateConfigTxTemplate = `---
+{{ with $w := . -}}
+Organizations:{{ range .PeerOrgs }}
+- &{{ .MSPID }}
+  Name: {{ .Name }}
+  ID: {{ .MSPID }}
+  MSPDir: {{ $w.PeerOrgMSPDir . }}
+  Policies:
+    Readers:
+      Type: Signature
+      Rule: OR('{{.MSPID}}.admin', '{{.MSPID}}.peer', '{{.MSPID}}.client')
+    Writers:
+      Type: Signature
+      Rule: OR('{{.MSPID}}.admin', '{{.MSPID}}.client')
+    Endorsement:
+      Type: Signature
+      Rule: OR('{{.MSPID}}.peer')
+    Admins:
+      Type: Signature
+      Rule: OR('{{.MSPID}}.admin')
+  AnchorPeers:{{ range $w.AnchorsInOrg .Name }}
+  - Host: 127.0.0.1
+    Port: {{ $w.PeerPort . "Listen" }}
+  {{- end }}
+{{- end }}
+{{ end }}
+`

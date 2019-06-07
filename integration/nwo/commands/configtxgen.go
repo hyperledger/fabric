@@ -69,3 +69,21 @@ func (o OutputAnchorPeersUpdate) Args() []string {
 		"-outputAnchorPeersUpdate", o.OutputAnchorPeersUpdate,
 	}
 }
+
+type PrintOrg struct {
+	ConfigPath string
+	ChannelID  string
+	PrintOrg   string
+}
+
+func (p PrintOrg) SessionName() string {
+	return "configtxgen-print-org"
+}
+
+func (p PrintOrg) Args() []string {
+	return []string{
+		"-configPath", p.ConfigPath,
+		"-channelID", p.ChannelID,
+		"-printOrg", p.PrintOrg,
+	}
+}

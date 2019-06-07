@@ -7,14 +7,21 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
+	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/gogo/protobuf/proto"
+	"github.com/hyperledger/fabric/common/tools/protolator"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/ordererext"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/protos/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -25,10 +32,10 @@ import (
 
 var _ = Describe("Lifecycle", func() {
 	var (
-		client  *docker.Client
-		tempDir string
-		network *nwo.Network
-		process ifrit.Process
+		client    *docker.Client
+		tempDir   string
+		network   *nwo.Network
+		processes = map[string]ifrit.Process{}
 	)
 
 	BeforeEach(func() {
@@ -52,22 +59,33 @@ var _ = Describe("Lifecycle", func() {
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
-		// Start all of the fabric processes
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		for _, o := range network.Orderers {
+			or := network.OrdererRunner(o)
+			p := ifrit.Invoke(or)
+			processes[o.ID()] = p
+			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		}
+
+		for _, peer := range network.Peers {
+			pr := network.PeerRunner(peer)
+			p := ifrit.Invoke(pr)
+			processes[peer.ID()] = p
+			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		}
 	})
 
 	AfterEach(func() {
 		// Shutdown processes and cleanup
-		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		for _, p := range processes {
+			p.Signal(syscall.SIGTERM)
+			Eventually(p.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
 		network.Cleanup()
 
 		os.RemoveAll(tempDir)
 	})
 
-	It("deploys and executes chaincode (simple) using _lifecycle and upgrades it", func() {
+	It("deploys and executes chaincode using _lifecycle and upgrades it", func() {
 		orderer := network.Orderer("orderer0")
 		testPeers := network.PeersWithChannel("testchannel")
 		org1peer2 := network.Peer("org1", "peer2")
@@ -79,21 +97,36 @@ var _ = Describe("Lifecycle", func() {
 			Lang:                "golang",
 			PackageFile:         filepath.Join(tempDir, "simplecc.tar.gz"),
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
-			Policy:              `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
 			ChannelConfigPolicy: "/Channel/Application/Endorsement",
 			Sequence:            "1",
 			InitRequired:        true,
 			Label:               "my_simple_chaincode",
 		}
 
+		By("setting up the channel")
 		network.CreateAndJoinChannels(orderer)
-
 		network.UpdateChannelAnchors(orderer, "testchannel")
 		network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
-
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
-		nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
 
+		By("deploying the chaincode")
+		nwo.PackageChaincodeNewLifecycle(network, chaincode, testPeers[0])
+
+		// we set the PackageID so that we can pass it to the approve step
+		filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
+		Expect(err).NotTo(HaveOccurred())
+		hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
+		chaincode.PackageID = chaincode.Label + ":" + hashStr
+
+		nwo.InstallChaincodeNewLifecycle(network, chaincode, testPeers...)
+
+		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, testPeers...)
+		nwo.EnsureApproved(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
+
+		nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
+		nwo.InitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers...)
+
+		By("ensuring the chaincode can be invoked and queried")
 		RunQueryInvokeQuery(network, orderer, org1peer2, 100)
 
 		By("setting a bad package ID to temporarily disable endorsements on org1")
@@ -138,6 +171,81 @@ var _ = Describe("Lifecycle", func() {
 
 		nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
 
+		By("ensuring the chaincode can still be invoked and queried")
 		RunQueryInvokeQuery(network, orderer, testPeers[0], 90)
+
+		By("adding a new org")
+		org3 := &nwo.Organization{
+			MSPID:         "Org3ExampleCom",
+			Name:          "org3",
+			Domain:        "org3.example.com",
+			EnableNodeOUs: true,
+			Users:         2,
+			CA: &nwo.CA{
+				Hostname: "ca",
+			},
+		}
+
+		org3peer1 := &nwo.Peer{
+			Name:         "peer1",
+			Organization: "org3",
+			Channels:     testPeers[0].Channels,
+		}
+		org3peer2 := &nwo.Peer{
+			Name:         "peer2",
+			Organization: "org3",
+			Channels:     testPeers[0].Channels,
+		}
+		org3Peers := []*nwo.Peer{org3peer1, org3peer2}
+
+		network.AddOrg(org3, org3peer1, org3peer2)
+		network.GenerateOrgUpdateMaterials(org3peer1, org3peer2)
+
+		By("starting the org3 peers")
+		for _, peer := range org3Peers {
+			pr := network.PeerRunner(peer)
+			p := ifrit.Invoke(pr)
+			processes[peer.ID()] = p
+			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		}
+
+		By("updating the channel config to include org3")
+		// get the current channel config
+		currentConfig := nwo.GetConfig(network, testPeers[0], orderer, "testchannel")
+		updatedConfig := proto.Clone(currentConfig).(*common.Config)
+
+		// get the configtx info for org3
+		sess, err = network.ConfigTxGen(commands.PrintOrg{
+			ConfigPath: network.RootDir,
+			PrintOrg:   "org3",
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+		org3Group := &ordererext.DynamicOrdererOrgGroup{ConfigGroup: &common.ConfigGroup{}}
+		err = protolator.DeepUnmarshalJSON(bytes.NewBuffer(sess.Out.Contents()), org3Group)
+		Expect(err).NotTo(HaveOccurred())
+
+		// update the channel config to include org3
+		updatedConfig.ChannelGroup.Groups["Application"].Groups["org3"] = org3Group.ConfigGroup
+		nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, testPeers[0], testPeers...)
+
+		By("joining the org3 peers to the channel")
+		network.JoinChannel("testchannel", orderer, org3peer1, org3peer2)
+
+		// update testPeers now that org3 has joined
+		testPeers = network.PeersWithChannel("testchannel")
+
+		// wait until all peers, particularly those in org3, have received the block
+		// containing the updated config
+		maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", testPeers...)
+		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight, testPeers...)
+
+		By("deploying the chaincode to the org3 peers")
+		nwo.InstallChaincodeNewLifecycle(network, chaincode, org3peer1, org3peer2)
+		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersInOrg("org3")...)
+		nwo.EnsureCommitted(network, "testchannel", chaincode.Name, chaincode.Version, chaincode.Sequence, org3peer1)
+
+		By("ensuring chaincode can be invoked and queried by org3")
+		RunQueryInvokeQueryWithAddresses(network, orderer, org3peer1, 80, network.PeerAddress(org3peer1, nwo.ListenPort), network.PeerAddress(org1peer2, nwo.ListenPort))
 	})
 })

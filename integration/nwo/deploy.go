@@ -444,7 +444,12 @@ func GetLedgerHeight(n *Network, peer *Peer, channel string) int {
 		ChannelID: channel,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
+
+	if sess.ExitCode() == 1 {
+		// if org is not yet member of channel, peer will return error
+		return -1
+	}
 
 	channelInfoStr := strings.TrimPrefix(string(sess.Buffer().Contents()[:]), "Blockchain info:")
 	var channelInfo = common.BlockchainInfo{}
