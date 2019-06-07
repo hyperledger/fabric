@@ -181,7 +181,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 		}
 
 		// test 'retrieveTransactionByID'
-		txid, err := extractTxID(blocks[0].Data.Data[0])
+		txid, err := protoutil.GetOrComputeTxIDFromEnvelope(blocks[0].Data.Data[0])
 		assert.NoError(t, err)
 		txEnvelope, err := blockfileMgr.retrieveTransactionByID(txid)
 		if containsAttr(indexItems, blkstorage.IndexableAttrTxID) {
@@ -207,7 +207,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 		}
 
 		// test 'retrieveBlockByTxID'
-		txid, err = extractTxID(blocks[0].Data.Data[0])
+		txid, err = protoutil.GetOrComputeTxIDFromEnvelope(blocks[0].Data.Data[0])
 		assert.NoError(t, err)
 		block, err = blockfileMgr.retrieveBlockByTxID(txid)
 		if containsAttr(indexItems, blkstorage.IndexableAttrBlockTxID) {
@@ -221,7 +221,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 			flags := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 			for idx, d := range block.Data.Data {
-				txid, err = extractTxID(d)
+				txid, err = protoutil.GetOrComputeTxIDFromEnvelope(d)
 				assert.NoError(t, err)
 
 				reason, err := blockfileMgr.retrieveTxValidationCodeByTxID(txid)

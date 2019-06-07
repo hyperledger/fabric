@@ -68,7 +68,7 @@ func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store blkstorage.
 		for txNum := 0; txNum < len(block.Data.Data); txNum++ {
 			txEnvBytes := block.Data.Data[txNum]
 			txEnv, _ := protoutil.GetEnvelopeFromBlock(txEnvBytes)
-			txid, err := extractTxID(txEnvBytes)
+			txid, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnvBytes)
 			assert.NoError(t, err)
 
 			retrievedBlock, _ := store.RetrieveBlockByTxID(txid)

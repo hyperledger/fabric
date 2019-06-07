@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,16 +25,29 @@ func TestBlockSerialization(t *testing.T) {
 	assert.Equal(t, block, deserializedBlock)
 }
 
-func TestExtractTxid(t *testing.T) {
-	txEnv, txid, _ := testutil.ConstructTransaction(t, testutil.ConstructRandomBytes(t, 50), "", false)
-	txEnvBytes, _ := protoutil.GetBytesEnvelope(txEnv)
-	extractedTxid, err := extractTxID(txEnvBytes)
-	assert.NoError(t, err)
-	assert.Equal(t, txid, extractedTxid)
+func TestSerializedBlockInfo(t *testing.T) {
+	t.Run("txID is present in all transaction", func(t *testing.T) {
+		block := testutil.ConstructTestBlock(t, 1, 10, 100)
+		testSerializedBlockInfo(t, block)
+	})
+
+	t.Run("txID is not present in the 2nd transaction", func(t *testing.T) {
+		block := testutil.ConstructTestBlock(t, 1, 10, 100)
+		// unmarshal tx-2
+		envelope := protoutil.UnmarshalEnvelopeOrPanic(block.Data.Data[2])
+		payload := protoutil.UnmarshalPayloadOrPanic(envelope.Payload)
+		chdr := protoutil.UnmarshalChannelHeaderOrPanic(payload.Header.ChannelHeader)
+		// unset txid
+		chdr.TxId = ""
+		// marshal tx-2
+		payload.Header.ChannelHeader = protoutil.MarshalOrPanic(chdr)
+		envelope.Payload = protoutil.MarshalOrPanic(payload)
+		block.Data.Data[2] = protoutil.MarshalOrPanic(envelope)
+		testSerializedBlockInfo(t, block)
+	})
 }
 
-func TestSerializedBlockInfo(t *testing.T) {
-	block := testutil.ConstructTestBlock(t, 1, 10, 100)
+func testSerializedBlockInfo(t *testing.T, block *common.Block) {
 	bb, info, err := serializeBlock(block)
 	assert.NoError(t, err)
 	infoFromBB, err := extractSerializedBlockInfo(bb)
@@ -41,7 +55,7 @@ func TestSerializedBlockInfo(t *testing.T) {
 	assert.Equal(t, info, infoFromBB)
 	assert.Equal(t, len(block.Data.Data), len(info.txOffsets))
 	for txIndex, txEnvBytes := range block.Data.Data {
-		txid, err := extractTxID(txEnvBytes)
+		txid, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnvBytes)
 		assert.NoError(t, err)
 
 		indexInfo := info.txOffsets[txIndex]

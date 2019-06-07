@@ -164,7 +164,7 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 	for _, blk := range blocks {
 		for j, txEnvelopeBytes := range blk.Data.Data {
 			// blockNum starts with 0
-			txID, err := extractTxID(blk.Data.Data[j])
+			txID, err := protoutil.GetOrComputeTxIDFromEnvelope(blk.Data.Data[j])
 			assert.NoError(t, err)
 			txEnvelopeFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByID(txID)
 			assert.NoError(t, err, "Error while retrieving tx from blkfileMgr")
@@ -318,7 +318,7 @@ func TestBlockfileMgrGetBlockByTxID(t *testing.T) {
 	for _, blk := range blocks {
 		for j := range blk.Data.Data {
 			// blockNum starts with 1
-			txID, err := extractTxID(blk.Data.Data[j])
+			txID, err := protoutil.GetOrComputeTxIDFromEnvelope(blk.Data.Data[j])
 			assert.NoError(t, err)
 
 			blockFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveBlockByTxID(txID)

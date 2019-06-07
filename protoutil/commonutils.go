@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/protos/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -243,6 +244,7 @@ func NewSignatureHeaderOrPanic(id identity.Serializer) *cb.SignatureHeader {
 	if err != nil {
 		panic(fmt.Errorf("failed generating a new SignatureHeader: %s", err))
 	}
+
 	return signatureHeader
 }
 
@@ -285,6 +287,24 @@ func UnmarshalChaincodeID(bytes []byte) (*pb.ChaincodeID, error) {
 	}
 
 	return ccid, nil
+}
+
+// UnmarshalSignatureHeader unmarshals bytes to a SignatureHeader.
+func UnmarshalSignatureHeader(bytes []byte) (*cb.SignatureHeader, error) {
+	sh := &common.SignatureHeader{}
+	if err := proto.Unmarshal(bytes, sh); err != nil {
+		return nil, errors.Wrap(err, "error unmarshaling SignatureHeader")
+	}
+	return sh, nil
+}
+
+// UnmarshalSignatureHeaderOrPanic unmarshals bytes to a SignatureHeader.
+func UnmarshalSignatureHeaderOrPanic(bytes []byte) *cb.SignatureHeader {
+	sighdr, err := UnmarshalSignatureHeader(bytes)
+	if err != nil {
+		panic(err)
+	}
+	return sighdr
 }
 
 // IsConfigBlock validates whenever given block contains configuration

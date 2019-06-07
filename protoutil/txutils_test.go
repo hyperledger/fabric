@@ -496,3 +496,51 @@ func TestCreateProposalResponseFailure(t *testing.T) {
 	assert.Equal(t, int32(502), ca.Response.Status)
 	assert.Equal(t, "Invalid function name", string(ca.Response.Payload))
 }
+
+func TestGetorComputeTxIDFromEnvelope(t *testing.T) {
+	t.Run("txID is present in the envelope", func(t *testing.T) {
+		txID := "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492"
+		envelopeBytes := createSampleTxEnvelopeBytes(txID)
+		actualTxID, err := protoutil.GetOrComputeTxIDFromEnvelope(envelopeBytes)
+		assert.Nil(t, err)
+		assert.Equal(t, "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492", actualTxID)
+	})
+
+	t.Run("txID is not present in the envelope", func(t *testing.T) {
+		txID := ""
+		envelopeBytes := createSampleTxEnvelopeBytes(txID)
+		actualTxID, err := protoutil.GetOrComputeTxIDFromEnvelope(envelopeBytes)
+		assert.Nil(t, err)
+		assert.Equal(t, "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492", actualTxID)
+
+	})
+}
+
+func createSampleTxEnvelopeBytes(txID string) []byte {
+	chdr := &cb.ChannelHeader{
+		TxId: "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492",
+	}
+	chdrBytes := protoutil.MarshalOrPanic(chdr)
+
+	shdr := &cb.SignatureHeader{
+		Nonce:   []byte("nonce"),
+		Creator: []byte("creator"),
+	}
+	shdrBytes := protoutil.MarshalOrPanic(shdr)
+
+	hdr := &cb.Header{
+		ChannelHeader:   chdrBytes,
+		SignatureHeader: shdrBytes,
+	}
+
+	payload := &cb.Payload{
+		Header: hdr,
+	}
+	payloadBytes := protoutil.MarshalOrPanic(payload)
+
+	envelope := &cb.Envelope{
+		Payload: payloadBytes,
+	}
+	return protoutil.MarshalOrPanic(envelope)
+
+}
