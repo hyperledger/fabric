@@ -54,7 +54,7 @@ Organizations:{{ range .PeerOrgs }}
 Channel: &ChannelDefaults
   Capabilities:
     V2_0: true
-  Policies:
+  Policies: &DefaultPolicies
     Readers:
       Type: ImplicitMeta
       Rule: ANY Readers
@@ -67,7 +67,15 @@ Channel: &ChannelDefaults
 
 Profiles:{{ range .Profiles }}
   {{ .Name }}:
+    {{- if .ChannelCapabilities}}
+    Capabilities:{{ range .ChannelCapabilities}}
+      {{ . }}: true
+    {{- end}}
+    Policies:
+      <<: *DefaultPolicies
+    {{- else }}
     <<: *ChannelDefaults
+    {{- end}}
     {{- if .Orderers }}
     Orderer:
       OrdererType: {{ $w.Consensus.Type }}
