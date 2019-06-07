@@ -137,8 +137,8 @@ func TestLeaderYield(t *testing.T) {
 	socket.Close()
 
 	// Helper function that creates a gossipService instance
-	newGossipService := func(i int) *gossipServiceImpl {
-		gs := gossips[i].gossipServiceImpl
+	newGossipService := func(i int) *GossipServiceImpl {
+		gs := gossips[i].GossipServiceImpl
 		gs.deliveryFactory = &embeddingDeliveryServiceFactory{&deliveryFactoryImpl{}}
 		gs.InitializeChannel(channelName, []string{endpoint}, Support{
 			Committer: &mockLedgerInfo{1},
