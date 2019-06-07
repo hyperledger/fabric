@@ -289,7 +289,7 @@ func (opts *RSAKeyGenOpts) Ephemeral() bool {
 	return opts.Temporary
 }
 
-// ECDSAGoPublicKeyImportOpts contains options for RSA key importation from rsa.PublicKey
+// RSAGoPublicKeyImportOpts contains options for RSA key importation from rsa.PublicKey
 type RSAGoPublicKeyImportOpts struct {
 	Temporary bool
 }
