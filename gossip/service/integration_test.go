@@ -95,7 +95,7 @@ type embeddingDeliveryServiceFactory struct {
 	DeliveryServiceFactory
 }
 
-func (edsf *embeddingDeliveryServiceFactory) Service(g GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
+func (edsf *embeddingDeliveryServiceFactory) Service(g GossipServiceAdapter, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
 	ds, _ := edsf.DeliveryServiceFactory.Service(g, endpoints, mcs)
 	return newEmbeddingDeliveryService(ds), nil
 }
@@ -138,7 +138,7 @@ func TestLeaderYield(t *testing.T) {
 
 	// Helper function that creates a gossipService instance
 	newGossipService := func(i int) *gossipServiceImpl {
-		gs := gossips[i].(*gossipGRPC).gossipServiceImpl
+		gs := gossips[i].gossipServiceImpl
 		gs.deliveryFactory = &embeddingDeliveryServiceFactory{&deliveryFactoryImpl{}}
 		gs.InitializeChannel(channelName, []string{endpoint}, Support{
 			Committer: &mockLedgerInfo{1},
@@ -149,8 +149,8 @@ func TestLeaderYield(t *testing.T) {
 
 	// The first leader is determined by the peer with the lower PKIid (lower TCP port in this case).
 	// We set p0 to be the peer with the lower PKIid to ensure it'll be elected as leader before p1 and spare time.
-	pkiID0 := gossips[0].(*gossipGRPC).gossipServiceImpl.peerIdentity
-	pkiID1 := gossips[1].(*gossipGRPC).gossipServiceImpl.peerIdentity
+	pkiID0 := gossips[0].peerIdentity
+	pkiID1 := gossips[1].peerIdentity
 	var firstLeaderIdx, secondLeaderIdx int
 	if bytes.Compare(pkiID0, pkiID1) < 0 {
 		firstLeaderIdx = 0

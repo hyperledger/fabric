@@ -124,7 +124,20 @@ type GossipService interface {
 // DeliveryServiceFactory factory to create and initialize delivery service instance
 type DeliveryServiceFactory interface {
 	// Returns an instance of delivery client
-	Service(g GossipService, endpoints []string, msc api.MessageCryptoService) (deliverservice.DeliverService, error)
+	Service(g GossipServiceAdapter, endpoints []string, msc api.MessageCryptoService) (deliverservice.DeliverService, error)
+}
+
+// GossipServiceAdapter serves to provide basic functionality
+// required from gossip service by delivery service
+type GossipServiceAdapter interface {
+	// PeersOfChannel returns slice with members of specified channel
+	PeersOfChannel(gossipcommon.ChainID) []discovery.NetworkMember
+
+	// AddPayload adds payload to the local state sync buffer
+	AddPayload(chainID string, payload *gproto.Payload) error
+
+	// Gossip the message across the peers
+	Gossip(msg *gproto.GossipMessage)
 }
 
 type deliveryFactoryImpl struct {
@@ -132,7 +145,7 @@ type deliveryFactoryImpl struct {
 }
 
 // Returns an instance of delivery client
-func (df *deliveryFactoryImpl) Service(g GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
+func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
 	return deliverservice.NewDeliverService(&deliverservice.Config{
 		CryptoSvc:   mcs,
 		Gossip:      g,
