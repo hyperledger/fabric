@@ -240,12 +240,32 @@ var _ = Describe("Lifecycle", func() {
 		maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", testPeers...)
 		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight, testPeers...)
 
-		By("deploying the chaincode to the org3 peers")
+		By("installing the chaincode to the org3 peers")
 		nwo.InstallChaincodeNewLifecycle(network, chaincode, org3peer1, org3peer2)
+
+		By("ensuring org3 peers do not execute the chaincode before approving the definition")
+		org3AndOrg1PeerAddresses := []string{
+			network.PeerAddress(org3peer1, nwo.ListenPort),
+			network.PeerAddress(org1peer2, nwo.ListenPort),
+		}
+
+		sess, err = network.PeerUserSession(org3peer1, "User1", commands.ChaincodeInvoke{
+			ChannelID:     "testchannel",
+			Orderer:       network.OrdererAddress(orderer, nwo.ListenPort),
+			Name:          "mycc",
+			Ctor:          `{"Args":["invoke","a","b","10"]}`,
+			PeerAddresses: org3AndOrg1PeerAddresses,
+			WaitForEvent:  true,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+		Expect(sess.Err).To(gbytes.Say("chaincode definition for 'mycc' at sequence 2 on channel 'testchannel' has not yet been approved by this org"))
+
+		By("org3 approving the chaincode definition")
 		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersInOrg("org3")...)
 		nwo.EnsureCommitted(network, "testchannel", chaincode.Name, chaincode.Version, chaincode.Sequence, org3peer1)
 
 		By("ensuring chaincode can be invoked and queried by org3")
-		RunQueryInvokeQueryWithAddresses(network, orderer, org3peer1, 80, network.PeerAddress(org3peer1, nwo.ListenPort), network.PeerAddress(org1peer2, nwo.ListenPort))
+		RunQueryInvokeQueryWithAddresses(network, orderer, org3peer1, 80, org3AndOrg1PeerAddresses...)
 	})
 })
