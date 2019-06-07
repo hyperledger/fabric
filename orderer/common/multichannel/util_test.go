@@ -30,7 +30,7 @@ func (mc *mockConsenter) HandleChain(support consensus.ConsenterSupport, metadat
 		support:         support,
 		metadata:        metadata,
 		done:            make(chan struct{}),
-		migrationStatus: migration.NewStatusStepper(support.IsSystemChannel(), support.ChainID()),
+		migrationStatus: migration.NewManager(support.IsSystemChannel(), support.ChainID()),
 	}, nil
 }
 

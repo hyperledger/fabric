@@ -17,14 +17,14 @@ func TestStateContextSystem(t *testing.T) {
 	sysChan := true
 
 	t.Run("Get", func(t *testing.T) {
-		status := migration.NewStatusStepper(sysChan, "test")
+		status := migration.NewManager(sysChan, "test")
 		state, context := status.StateContext()
 		assert.Equal(t, orderer.ConsensusType_MIG_STATE_NONE, state, "Must be initialized to %s", orderer.ConsensusType_MIG_STATE_NONE)
 		assert.Equal(t, uint64(0), context, "Must be initialized to 0")
 	})
 
 	t.Run("Green", func(t *testing.T) {
-		status := migration.NewStatusStepper(sysChan, "test")
+		status := migration.NewManager(sysChan, "test")
 		t.Logf("status: %s", status.String())
 		status.SetStateContext(orderer.ConsensusType_MIG_STATE_START, 2)
 		assert.True(t, status.IsPending())
@@ -38,7 +38,7 @@ func TestStateContextSystem(t *testing.T) {
 	})
 
 	t.Run("Abort", func(t *testing.T) {
-		status := migration.NewStatusStepper(sysChan, "test")
+		status := migration.NewManager(sysChan, "test")
 		t.Logf("status: %s", status.String())
 		status.SetStateContext(orderer.ConsensusType_MIG_STATE_START, 2)
 		assert.True(t, status.IsPending())
@@ -56,14 +56,14 @@ func TestStateContextStandard(t *testing.T) {
 	sysChan := false
 
 	t.Run("Get", func(t *testing.T) {
-		status := migration.NewStatusStepper(sysChan, "test")
+		status := migration.NewManager(sysChan, "test")
 		state, context := status.StateContext()
 		assert.Equal(t, orderer.ConsensusType_MIG_STATE_NONE, state, "Must be initialized to %s", orderer.ConsensusType_MIG_STATE_NONE)
 		assert.Equal(t, uint64(0), context, "Must be initialized to 0")
 	})
 
 	t.Run("Green", func(t *testing.T) {
-		status := migration.NewStatusStepper(sysChan, "test")
+		status := migration.NewManager(sysChan, "test")
 		t.Logf("status: %s", status.String())
 		status.SetStateContext(orderer.ConsensusType_MIG_STATE_START, 2)
 		assert.True(t, status.IsPending())
@@ -77,7 +77,7 @@ func TestStateContextStandard(t *testing.T) {
 	})
 
 	t.Run("Abort", func(t *testing.T) {
-		status := migration.NewStatusStepper(sysChan, "test")
+		status := migration.NewManager(sysChan, "test")
 		t.Logf("status: %s", status.String())
 		status.SetStateContext(orderer.ConsensusType_MIG_STATE_START, 2)
 		assert.True(t, status.IsPending())
@@ -91,7 +91,7 @@ func TestStateContextStandard(t *testing.T) {
 func TestStepSysFromNone(t *testing.T) {
 	sysChan := true
 	migController := mocks.FakeMigrationController{}
-	status := migration.NewStatusStepper(sysChan, "test")
+	status := migration.NewManager(sysChan, "test")
 
 	t.Run("None-None", func(t *testing.T) {
 		t.Logf("status before: %s", status.String())
@@ -145,7 +145,7 @@ func TestStepSysFromNone(t *testing.T) {
 func TestStepSysFromStart(t *testing.T) {
 	sysChan := true
 	migController := mocks.FakeMigrationController{}
-	status := migration.NewStatusStepper(sysChan, "test")
+	status := migration.NewManager(sysChan, "test")
 	lastBlockCut := uint64(6)
 	context := lastBlockCut + 1
 	status.SetStateContext(orderer.ConsensusType_MIG_STATE_START, context)
@@ -206,7 +206,7 @@ func TestStepSysFromStart(t *testing.T) {
 func TestStepSysFromCommit(t *testing.T) {
 	sysChan := true
 	migController := mocks.FakeMigrationController{}
-	status := migration.NewStatusStepper(sysChan, "test")
+	status := migration.NewManager(sysChan, "test")
 	lastBlockCut := uint64(6)
 	context := lastBlockCut + 1
 	status.SetStateContext(orderer.ConsensusType_MIG_STATE_COMMIT, context)
@@ -266,7 +266,7 @@ func TestStepSysFromAbort(t *testing.T) {
 func TestStepSysFromContext(t *testing.T) {
 	sysChan := true
 	migController := mocks.FakeMigrationController{}
-	status := migration.NewStatusStepper(sysChan, "test")
+	status := migration.NewManager(sysChan, "test")
 	lastBlockCut := uint64(6)
 	context := lastBlockCut + 1
 	status.SetStateContext(orderer.ConsensusType_MIG_STATE_CONTEXT, context)
@@ -301,7 +301,7 @@ func TestStepSysFromContext(t *testing.T) {
 func TestStepStdFromNone(t *testing.T) {
 	sysChan := false
 	migController := mocks.FakeMigrationController{}
-	status := migration.NewStatusStepper(sysChan, "test")
+	status := migration.NewManager(sysChan, "test")
 
 	t.Run("None-None", func(t *testing.T) {
 		t.Logf("status before: %s", status.String())
@@ -343,7 +343,7 @@ func TestStepStdFromNone(t *testing.T) {
 func TestStepStdFromStart(t *testing.T) {
 	sysChan := false
 	migController := mocks.FakeMigrationController{}
-	status := migration.NewStatusStepper(sysChan, "test")
+	status := migration.NewManager(sysChan, "test")
 	lastBlockCut := uint64(6)
 	context := lastBlockCut + 1
 	status.SetStateContext(orderer.ConsensusType_MIG_STATE_START, context)
@@ -392,7 +392,7 @@ func TestStepStdFromStart(t *testing.T) {
 func TestStepStdFromContext(t *testing.T) {
 	sysChan := false
 	migController := mocks.FakeMigrationController{}
-	status := migration.NewStatusStepper(sysChan, "test")
+	status := migration.NewManager(sysChan, "test")
 	lastBlockCut := uint64(6)
 	context := lastBlockCut + 1
 	status.SetStateContext(orderer.ConsensusType_MIG_STATE_CONTEXT, context)
@@ -434,7 +434,7 @@ func TestStepStdFromContext(t *testing.T) {
 func TestStepStdFromCommit(t *testing.T) {
 	sysChan := false
 	migController := mocks.FakeMigrationController{}
-	status := migration.NewStatusStepper(sysChan, "test")
+	status := migration.NewManager(sysChan, "test")
 	lastBlockCut := uint64(6)
 	context := lastBlockCut + 1
 

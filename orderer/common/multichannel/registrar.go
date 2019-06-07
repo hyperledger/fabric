@@ -304,7 +304,7 @@ func (r *Registrar) ConsensusMigrationCommit() error {
 }
 
 // ConsensusMigrationAbort checks pre-conditions and aborts the consensus-type migration.
-func (r *Registrar) ConsensusMigrationAbort() (err error) {
+func (r *Registrar) ConsensusMigrationAbort() error {
 	//TODO implement the consensus-type migration abort path
 	return fmt.Errorf("Not implemented yet")
 }
