@@ -26,6 +26,7 @@ function filterExcludedAndGeneratedFiles {
         '\.txt$'
         '(^|/)testdata\/'
         '(^|/)vendor\/'
+        '\.json$'
     )
 
     local filter
