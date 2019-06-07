@@ -3500,12 +3500,7 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 
 	support := &consensusmocks.FakeConsenterSupport{}
 	support.ChainIDReturns(channel)
-	support.SharedConfigReturns(&mockconfig.Orderer{
-		BatchTimeoutVal: timeout,
-		CapabilitiesVal: &mockconfig.OrdererCapabilities{
-			Kafka2RaftMigVal: false,
-		},
-	})
+	support.SharedConfigReturns(&mockconfig.Orderer{BatchTimeoutVal: timeout})
 
 	cutter := mockblockcutter.NewReceiver()
 	close(cutter.Block)

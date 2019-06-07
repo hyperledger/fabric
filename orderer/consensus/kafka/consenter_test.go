@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/kafka/mock"
-	mockconsensus "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	mockmultichannel "github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -26,7 +25,6 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var mockRetryOptions = localconfig.Retry{
@@ -73,12 +71,12 @@ func init() {
 }
 
 func TestNew(t *testing.T) {
-	c, _ := New(mockLocalConfig, &mock.MetricsProvider{}, &mock.HealthChecker{}, &mockconsensus.FakeMigrationController{})
+	c, _ := New(mockLocalConfig.Kafka, &mock.MetricsProvider{}, &mock.HealthChecker{})
 	_ = consensus.Consenter(c)
 }
 
 func TestHandleChain(t *testing.T) {
-	consenter, _ := New(mockLocalConfig, &mock.MetricsProvider{}, &mock.HealthChecker{}, &mockconsensus.FakeMigrationController{})
+	consenter, _ := New(mockLocalConfig.Kafka, &mock.MetricsProvider{}, &mock.HealthChecker{})
 
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
@@ -110,21 +108,6 @@ func TestHandleChain(t *testing.T) {
 	mockMetadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: newestOffset - 1})}
 	_, err := consenter.HandleChain(mockSupport, mockMetadata)
 	assert.NoError(t, err, "Expected the HandleChain call to return without errors")
-}
-
-func TestMigration(t *testing.T) {
-	consenter, _ := New(mockLocalConfig, &mock.MetricsProvider{}, &mock.HealthChecker{}, &mockconsensus.FakeMigrationController{})
-	consenterimpl := consenter.(*consenterImpl)
-	require.NotNil(t, consenterimpl.migrationController())
-	assert.NoError(t, consenterimpl.migrationController().ConsensusMigrationStart(111))
-	assert.NoError(t, consenterimpl.migrationController().ConsensusMigrationCommit())
-	assert.Equal(t, "", consenterimpl.bootstrapFile())
-
-	mockLocalConfig.General.GenesisFile = "abc.genesis.block"
-	mockLocalConfig.General.GenesisMethod = "file"
-	consenter, _ = New(mockLocalConfig, &mock.MetricsProvider{}, &mock.HealthChecker{}, &mockconsensus.FakeMigrationController{})
-	consenterimpl = consenter.(*consenterImpl)
-	assert.Equal(t, mockLocalConfig.General.GenesisFile, consenterimpl.bootstrapFile())
 }
 
 // Test helper functions and mock objects defined here

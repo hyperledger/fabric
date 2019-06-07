@@ -22,6 +22,9 @@ type ConsenterSupport struct {
 	// SharedConfigVal is the value returned by SharedConfig()
 	SharedConfigVal *mockconfig.Orderer
 
+	// SharedConfigVal is the value returned by ChannelConfig()
+	ChannelConfigVal *mockconfig.Channel
+
 	// BlockCutterVal is the value returned by BlockCutter()
 	BlockCutterVal *mockblockcutter.Receiver
 
@@ -66,8 +69,6 @@ type ConsenterSupport struct {
 
 	// BlockVerificationErr is returned by VerifyBlockSignature
 	BlockVerificationErr error
-
-	SystemChannelVal bool
 }
 
 // Block returns the block with the given number or nil if not found
@@ -83,6 +84,11 @@ func (mcs *ConsenterSupport) BlockCutter() blockcutter.Receiver {
 // SharedConfig returns SharedConfigVal
 func (mcs *ConsenterSupport) SharedConfig() channelconfig.Orderer {
 	return mcs.SharedConfigVal
+}
+
+// ChannelConfig returns ChannelConfigVal
+func (mcs *ConsenterSupport) ChannelConfig() channelconfig.Channel {
+	return mcs.ChannelConfigVal
 }
 
 // CreateNextBlock creates a simple block structure with the given data
@@ -158,11 +164,6 @@ func (mcs *ConsenterSupport) Sequence() uint64 {
 // VerifyBlockSignature verifies a signature of a block
 func (mcs *ConsenterSupport) VerifyBlockSignature(_ []*cb.SignedData, _ *cb.ConfigEnvelope) error {
 	return mcs.BlockVerificationErr
-}
-
-// IsSystemChannel returns true if this is the system channel
-func (mcs *ConsenterSupport) IsSystemChannel() bool {
-	return mcs.SystemChannelVal
 }
 
 // Append appends a new block to the ledger in its raw form,
