@@ -133,3 +133,18 @@ func TestCheck(t *testing.T) {
 	l.Check(zapcore.Entry{}, nil)
 	assert.Equal(t, 1, observer.CheckCallCount())
 }
+
+func TestLoggerCoreCheck(t *testing.T) {
+	logging, err := flogging.New(flogging.Config{})
+	assert.NoError(t, err)
+
+	logger := logging.ZapLogger("foo")
+
+	err = logging.ActivateSpec("info")
+	assert.NoError(t, err)
+	assert.False(t, logger.Core().Enabled(zapcore.DebugLevel), "debug should not be enabled at info level")
+
+	err = logging.ActivateSpec("debug")
+	assert.NoError(t, err)
+	assert.True(t, logger.Core().Enabled(zapcore.DebugLevel), "debug should now be enabled at debug level")
+}

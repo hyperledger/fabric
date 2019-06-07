@@ -8,6 +8,7 @@ package flogging_test
 
 import (
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -153,5 +154,39 @@ func TestSpec(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, tc.output, ll.Spec())
+	}
+}
+
+func TestEnabled(t *testing.T) {
+	var tests = []struct {
+		spec      string
+		enabledAt zapcore.Level
+	}{
+		{spec: "payload", enabledAt: flogging.PayloadLevel},
+		{spec: "debug", enabledAt: zapcore.DebugLevel},
+		{spec: "info", enabledAt: zapcore.InfoLevel},
+		{spec: "warn", enabledAt: zapcore.WarnLevel},
+		{spec: "panic", enabledAt: zapcore.PanicLevel},
+		{spec: "fatal", enabledAt: zapcore.FatalLevel},
+		{spec: "fatal:a=debug", enabledAt: zapcore.DebugLevel},
+		{spec: "a=fatal:b=warn", enabledAt: zapcore.InfoLevel},
+		{spec: "a=warn", enabledAt: zapcore.InfoLevel},
+		{spec: "a=debug", enabledAt: zapcore.DebugLevel},
+	}
+
+	for i, tc := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			ll := &flogging.LoggerLevels{}
+			err := ll.ActivateSpec(tc.spec)
+			assert.NoError(t, err)
+
+			for i := flogging.PayloadLevel; i <= zapcore.FatalLevel; i++ {
+				if tc.enabledAt <= i {
+					assert.Truef(t, ll.Enabled(i), "expected level %s and spec %s to be enabled", zapcore.Level(i), tc.spec)
+				} else {
+					assert.False(t, ll.Enabled(i), "expected level %s and spec %s to be disabled", zapcore.Level(i), tc.spec)
+				}
+			}
+		})
 	}
 }
