@@ -7,20 +7,37 @@ SPDX-License-Identifier: Apache-2.0
 package gossip
 
 import (
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/service"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/protos/gossip"
 )
+
+//go:generate counterfeiter -o mocks/gossip.go -fake-name Gossip . Gossip
+
+type Gossip interface {
+	// IdentityInfo returns identity information about peers
+	IdentityInfo() api.PeerIdentitySet
+	// GetPeers returns the NetworkMembers considered alive
+	Peers() []discovery.NetworkMember
+	// PeersOfChannel returns the NetworkMembers considered alive
+	// and also subscribed to the channel given
+	PeersOfChannel(common.ChannelID) []discovery.NetworkMember
+	// SelfChannelInfo returns the peer's latest StateInfo message of a given channel
+	SelfChannelInfo(common.ChannelID) *protoext.SignedGossipMessage
+	// SelfMembershipInfo returns the peer's membership information
+	SelfMembershipInfo() discovery.NetworkMember
+}
 
 // DiscoverySupport implements support that is used for service discovery
 // that is obtained from gossip
 type DiscoverySupport struct {
-	service.Gossip
+	Gossip
 }
 
 // NewDiscoverySupport creates a new DiscoverySupport
-func NewDiscoverySupport(g service.Gossip) *DiscoverySupport {
+func NewDiscoverySupport(g Gossip) *DiscoverySupport {
 	return &DiscoverySupport{g}
 }
 

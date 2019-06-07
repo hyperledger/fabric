@@ -35,8 +35,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Gossip is the interface of the gossip component
-type Gossip interface {
+// gossipSvc is the interface of the gossip component.
+type gossipSvc interface {
 	// SelfMembershipInfo returns the peer's membership information
 	SelfMembershipInfo() discovery.NetworkMember
 
@@ -150,8 +150,6 @@ func (p privateHandler) close() {
 	p.coordinator.Close()
 	p.reconciler.Stop()
 }
-
-type gossipSvc Gossip
 
 type GossipService struct {
 	gossipSvc
