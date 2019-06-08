@@ -63,6 +63,8 @@ peers:
   channels:
   - name: testchannel
     anchor: true
+- name: peer1
+  organization: org1
 - name: peer0
   organization: org2
   channels:
