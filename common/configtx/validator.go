@@ -90,7 +90,7 @@ func validateChannelID(channelID string) error {
 	// Illegal characters
 	matched := re.FindString(channelID)
 	if len(matched) != len(channelID) {
-		return errors.Errorf("channel ID '%s' contains illegal characters", channelID)
+		return errors.Errorf("'%s' contains illegal characters", channelID)
 	}
 
 	return nil
