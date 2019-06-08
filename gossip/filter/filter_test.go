@@ -59,23 +59,23 @@ func TestAnyMatch(t *testing.T) {
 }
 
 func TestFirst(t *testing.T) {
+	var peers []discovery.NetworkMember
+	// nil slice
+	assert.Nil(t, First(nil, SelectAllPolicy))
+
+	// empty slice
+	peers = []discovery.NetworkMember{}
+	assert.Nil(t, First(peers, SelectAllPolicy))
+
+	// first in slice with any marcher
 	peerA := discovery.NetworkMember{Endpoint: "a"}
 	peerB := discovery.NetworkMember{Endpoint: "b"}
-	peers := []discovery.NetworkMember{peerA, peerB}
-	assert.Equal(t, &comm.RemotePeer{Endpoint: "a"}, First(peers, func(discovery.NetworkMember) bool {
-		return true
-	}))
+	peers = []discovery.NetworkMember{peerA, peerB}
+	assert.Equal(t, &comm.RemotePeer{Endpoint: "a"}, First(peers, SelectAllPolicy))
 
+	// second in slice with matcher that checks for a specific peer
 	assert.Equal(t, &comm.RemotePeer{Endpoint: "b"}, First(peers, func(nm discovery.NetworkMember) bool {
 		return nm.PreferredEndpoint() == "b"
-	}))
-
-	peerAA := discovery.NetworkMember{Endpoint: "aa"}
-	peerAB := discovery.NetworkMember{Endpoint: "ab"}
-	peers = append(peers, peerAA)
-	peers = append(peers, peerAB)
-	assert.Equal(t, &comm.RemotePeer{Endpoint: "aa"}, First(peers, func(nm discovery.NetworkMember) bool {
-		return len(nm.PreferredEndpoint()) > 1
 	}))
 }
 
@@ -101,7 +101,55 @@ func TestSelectPeers(t *testing.T) {
 		InternalEndpoint: "b",
 		PKIid:            common.PKIidType("c"),
 	}
-	assert.Len(t, SelectPeers(3, []discovery.NetworkMember{nm1, nm2, nm3}, CombineRoutingFilters(a, b)), 2)
-	assert.Len(t, SelectPeers(5, []discovery.NetworkMember{nm1, nm2, nm3}, CombineRoutingFilters(a, b)), 2)
-	assert.Len(t, SelectPeers(1, []discovery.NetworkMember{nm1, nm2, nm3}, CombineRoutingFilters(a, b)), 1)
+
+	// individual filters
+	assert.Len(t, SelectPeers(3, []discovery.NetworkMember{nm1, nm2, nm3}, a), 2)
+	assert.Len(t, SelectPeers(3, []discovery.NetworkMember{nm1, nm2, nm3}, b), 3)
+	// combined filters
+	crf := CombineRoutingFilters(a, b)
+	assert.Len(t, SelectPeers(3, []discovery.NetworkMember{nm1, nm2, nm3}, crf), 2)
+	assert.Len(t, SelectPeers(1, []discovery.NetworkMember{nm1, nm2, nm3}, crf), 1)
+}
+
+func BenchmarkSelectPeers(t *testing.B) {
+	a := func(nm discovery.NetworkMember) bool {
+		return nm.Endpoint == "a"
+	}
+	b := func(nm discovery.NetworkMember) bool {
+		return nm.InternalEndpoint == "b"
+	}
+	nm1 := discovery.NetworkMember{
+		Endpoint:         "a",
+		InternalEndpoint: "b",
+		PKIid:            common.PKIidType("a"),
+	}
+	nm2 := discovery.NetworkMember{
+		Endpoint:         "a",
+		InternalEndpoint: "b",
+		PKIid:            common.PKIidType("b"),
+	}
+	nm3 := discovery.NetworkMember{
+		Endpoint:         "d",
+		InternalEndpoint: "b",
+		PKIid:            common.PKIidType("c"),
+	}
+	crf := CombineRoutingFilters(a, b)
+
+	var l1, l2, l3, l4 int
+
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		// individual filters
+		l1 = len(SelectPeers(3, []discovery.NetworkMember{nm1, nm2, nm3}, a))
+		l2 = len(SelectPeers(3, []discovery.NetworkMember{nm1, nm2, nm3}, b))
+		// combined filters
+		l3 = len(SelectPeers(3, []discovery.NetworkMember{nm1, nm2, nm3}, crf))
+		l4 = len(SelectPeers(1, []discovery.NetworkMember{nm1, nm2, nm3}, crf))
+	}
+	t.StopTimer()
+
+	assert.Equal(t, l1, 2)
+	assert.Equal(t, l2, 3)
+	assert.Equal(t, l3, 2)
+	assert.Equal(t, l4, 1)
 }
