@@ -539,7 +539,7 @@ func TestEndpointconfigFromConfigBlockGreenPath(t *testing.T) {
 		// Make a second config.
 		gConf := configtxgentest.Load(localconfig.SampleSingleMSPSoloProfile)
 		gConf.Orderer.Capabilities = map[string]bool{
-			capabilities.OrdererV2_0: true,
+			capabilities.OrdererV1_4_2: true,
 		}
 		channelGroup, err := encoder.NewChannelGroup(gConf)
 		assert.NoError(t, err)

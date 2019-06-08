@@ -126,7 +126,7 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 func makeConfigTxFull(chainID string, i int) *cb.Envelope {
 	gConf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	gConf.Orderer.Capabilities = map[string]bool{
-		capabilities.OrdererV2_0: true,
+		capabilities.OrdererV1_4_2: true,
 	}
 	gConf.Orderer.MaxChannels = 10
 	channelGroup, err := encoder.NewChannelGroup(gConf)
@@ -144,7 +144,7 @@ func makeConfigTxFull(chainID string, i int) *cb.Envelope {
 func makeConfigTxMig(chainID string, i int) *cb.Envelope {
 	gConf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	gConf.Orderer.Capabilities = map[string]bool{
-		capabilities.OrdererV2_0: true,
+		capabilities.OrdererV1_4_2: true,
 	}
 	gConf.Orderer.OrdererType = "kafka"
 	channelGroup, err := encoder.NewChannelGroup(gConf)

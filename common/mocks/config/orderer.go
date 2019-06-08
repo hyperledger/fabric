@@ -96,8 +96,6 @@ type OrdererCapabilities struct {
 	ExpirationVal bool
 
 	ConsensusTypeMigrationVal bool
-
-	UseChannelCreationPolicyAsAdminsVal bool
 }
 
 // Supported returns SupportedErr
@@ -124,8 +122,4 @@ func (oc *OrdererCapabilities) ExpirationCheck() bool {
 // ConsensusTypeMigration checks whether the orderer permits a consensus-type migration.
 func (oc *OrdererCapabilities) ConsensusTypeMigration() bool {
 	return oc.ConsensusTypeMigrationVal
-}
-
-func (oc *OrdererCapabilities) UseChannelCreationPolicyAsAdmins() bool {
-	return oc.UseChannelCreationPolicyAsAdminsVal
 }
