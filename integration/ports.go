@@ -16,4 +16,5 @@ const (
 	E2EBasePort
 	GossipBasePort
 	RaftBasePort
+	LifecyclePort
 )

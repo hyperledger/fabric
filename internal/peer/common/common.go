@@ -77,9 +77,9 @@ var (
 	GetCertificateFnc func() (tls.Certificate, error)
 )
 
-type commonClient struct {
+type CommonClient struct {
 	*comm.GRPCClient
-	address string
+	Address string
 	sn      string
 }
 

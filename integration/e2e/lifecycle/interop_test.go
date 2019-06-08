@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,6 +16,10 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/internal/peer/common"
+	"github.com/hyperledger/fabric/msp"
+	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -139,6 +144,155 @@ var _ = Describe("Release interoperability", func() {
 
 			By("querying/invoking/querying the chaincode with the new definition again")
 			RunQueryInvokeQueryWithAddresses(network, orderer, peer, 60, network.PeerAddress(network.Peer("org1", "peer2"), nwo.ListenPort))
+		})
+
+		Describe("Interoperability scenarios", func() {
+			var (
+				orderer              *nwo.Orderer
+				peer                 *nwo.Peer
+				userSigner           msp.SigningIdentity
+				serialisedUserSigner []byte
+				endorserClient       pb.EndorserClient
+				deliveryClient       pb.DeliverClient
+				ordererClient        common.BroadcastClient
+			)
+
+			BeforeEach(func() {
+				orderer = network.Orderer("orderer0")
+				peer = network.Peer("org1", "peer2")
+				userSigner, serialisedUserSigner = Signer(network.PeerUserMSPDir(peer, "User1"))
+				endorserClient = EndorserClient(
+					network.PeerAddress(peer, nwo.ListenPort),
+					filepath.Join(network.PeerLocalTLSDir(peer), "ca.crt"),
+				)
+				deliveryClient = DeliverClient(
+					network.PeerAddress(peer, nwo.ListenPort),
+					filepath.Join(network.PeerLocalTLSDir(peer), "ca.crt"),
+				)
+				ordererClient = OrdererClient(
+					network.OrdererAddress(orderer, nwo.ListenPort),
+					filepath.Join(network.OrdererLocalTLSDir(orderer), "ca.crt"),
+				)
+			})
+
+			It("deploys a chaincode with the legacy lifecycle, invokes it and the tx is committed only after the chaincode is upgraded via _lifecycle", func() {
+				By("deploying the chaincode using the legacy lifecycle")
+				chaincode := nwo.Chaincode{
+					Name:    "mycc",
+					Version: "0.0",
+					Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+					Ctor:    `{"Args":["init","a","100","b","200"]}`,
+					Policy:  `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+				}
+
+				network.CreateAndJoinChannels(orderer)
+				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+				RunQueryInvokeQuery(network, orderer, peer, 100)
+
+				By("invoking the chaincode with the legacy definition and keeping the transaction")
+				signedProp, prop, txid := SignedProposal(
+					"testchannel",
+					"mycc",
+					userSigner,
+					serialisedUserSigner,
+					"invoke",
+					"a",
+					"b",
+					"10",
+				)
+				presp, err := endorserClient.ProcessProposal(
+					context.Background(),
+					signedProp,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(presp).NotTo(BeNil())
+				env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(env).NotTo(BeNil())
+
+				By("enabling V2_0 application capabilities")
+				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+
+				By("upgrading the chaincode definition using _lifecycle")
+				chaincode = nwo.Chaincode{
+					Name:            "mycc",
+					Version:         "0.0",
+					Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+					Lang:            "golang",
+					PackageFile:     filepath.Join(tempDir, "simplecc.tar.gz"),
+					SignaturePolicy: `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+					Sequence:        "1",
+					InitRequired:    false,
+					Label:           "my_simple_chaincode",
+				}
+				nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
+
+				By("committing the old transaction, expecting to hit an MVCC conflict")
+				err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
+			})
+
+			It("deploys a chaincode with the new lifecycle, invokes it and the tx is committed only after the chaincode is upgraded via _lifecycle", func() {
+				By("enabling V2_0 application capabilities")
+				network.CreateAndJoinChannels(orderer)
+				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+
+				By("deploying the chaincode definition using _lifecycle")
+				chaincode := nwo.Chaincode{
+					Name:            "mycc",
+					Version:         "0.0",
+					Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+					Lang:            "golang",
+					PackageFile:     filepath.Join(tempDir, "simplecc.tar.gz"),
+					SignaturePolicy: `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+					Sequence:        "1",
+					InitRequired:    true,
+					Label:           "my_simple_chaincode",
+					Ctor:            `{"Args":["init","a","100","b","200"]}`,
+				}
+				nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
+
+				By("Invoking the chaincode with the first definition and keeping the transaction")
+				signedProp, prop, txid := SignedProposal(
+					"testchannel",
+					"mycc",
+					userSigner,
+					serialisedUserSigner,
+					"invoke",
+					"a",
+					"b",
+					"10",
+				)
+				presp, err := endorserClient.ProcessProposal(
+					context.Background(),
+					signedProp,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(presp).NotTo(BeNil())
+				env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(env).NotTo(BeNil())
+
+				By("upgrading the chaincode definition using _lifecycle")
+				chaincode = nwo.Chaincode{
+					Name:            "mycc",
+					Version:         "0.0",
+					Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+					Lang:            "golang",
+					PackageFile:     filepath.Join(tempDir, "simplecc.tar.gz"),
+					SignaturePolicy: `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+					Sequence:        "2",
+					InitRequired:    false,
+					Label:           "my_simple_chaincode",
+				}
+				nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
+
+				By("committing the old transaction, expecting to hit an MVCC conflict")
+				err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
+			})
 		})
 	})
 })
