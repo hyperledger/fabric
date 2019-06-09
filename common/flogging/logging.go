@@ -61,7 +61,7 @@ func New(c Config) (*Logging, error) {
 	encoderConfig := zap.NewProductionEncoderConfig()
 	encoderConfig.NameKey = "name"
 
-	s := &Logging{
+	l := &Logging{
 		LoggerLevels: &LoggerLevels{
 			defaultLevel: defaultLevel,
 		},
@@ -69,16 +69,16 @@ func New(c Config) (*Logging, error) {
 		multiFormatter: fabenc.NewMultiFormatter(),
 	}
 
-	err := s.Apply(c)
+	err := l.Apply(c)
 	if err != nil {
 		return nil, err
 	}
-	return s, nil
+	return l, nil
 }
 
 // Apply applies the provided configuration to the logging system.
-func (s *Logging) Apply(c Config) error {
-	err := s.SetFormat(c.Format)
+func (l *Logging) Apply(c Config) error {
+	err := l.SetFormat(c.Format)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (s *Logging) Apply(c Config) error {
 		c.LogSpec = defaultLevel.String()
 	}
 
-	err = s.LoggerLevels.ActivateSpec(c.LogSpec)
+	err = l.LoggerLevels.ActivateSpec(c.LogSpec)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (s *Logging) Apply(c Config) error {
 	if c.Writer == nil {
 		c.Writer = os.Stderr
 	}
-	s.SetWriter(c.Writer)
+	l.SetWriter(c.Writer)
 
 	return nil
 }
@@ -107,20 +107,20 @@ func (s *Logging) Apply(c Config) error {
 // created after this method has completed will use the new format.
 //
 // An error is returned if the log format specification cannot be parsed.
-func (s *Logging) SetFormat(format string) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (l *Logging) SetFormat(format string) error {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
 	if format == "" {
 		format = defaultFormat
 	}
 
 	if format == "json" {
-		s.encoding = JSON
+		l.encoding = JSON
 		return nil
 	}
 
 	if format == "logfmt" {
-		s.encoding = LOGFMT
+		l.encoding = LOGFMT
 		return nil
 	}
 
@@ -128,8 +128,8 @@ func (s *Logging) SetFormat(format string) error {
 	if err != nil {
 		return err
 	}
-	s.multiFormatter.SetFormatters(formatters)
-	s.encoding = CONSOLE
+	l.multiFormatter.SetFormatters(formatters)
+	l.encoding = CONSOLE
 
 	return nil
 }
@@ -137,7 +137,7 @@ func (s *Logging) SetFormat(format string) error {
 // SetWriter controls which writer formatted log records are written to.
 // Writers, with the exception of an *os.File, need to be safe for concurrent
 // use by multiple go routines.
-func (s *Logging) SetWriter(w io.Writer) {
+func (l *Logging) SetWriter(w io.Writer) {
 	var sw zapcore.WriteSyncer
 	switch t := w.(type) {
 	case *os.File:
@@ -148,88 +148,88 @@ func (s *Logging) SetWriter(w io.Writer) {
 		sw = zapcore.AddSync(w)
 	}
 
-	s.mutex.Lock()
-	s.writer = sw
-	s.mutex.Unlock()
+	l.mutex.Lock()
+	l.writer = sw
+	l.mutex.Unlock()
 }
 
 // SetObserver is used to provide a log observer that will be called as log
 // levels are checked or written.. Only a single observer is supported.
-func (s *Logging) SetObserver(observer Observer) {
-	s.mutex.Lock()
-	s.observer = observer
-	s.mutex.Unlock()
+func (l *Logging) SetObserver(observer Observer) {
+	l.mutex.Lock()
+	l.observer = observer
+	l.mutex.Unlock()
 }
 
 // Write satisfies the io.Write contract. It delegates to the writer argument
 // of SetWriter or the Writer field of Config. The Core uses this when encoding
 // log records.
-func (s *Logging) Write(b []byte) (int, error) {
-	s.mutex.RLock()
-	w := s.writer
-	s.mutex.RUnlock()
+func (l *Logging) Write(b []byte) (int, error) {
+	l.mutex.RLock()
+	w := l.writer
+	l.mutex.RUnlock()
 
 	return w.Write(b)
 }
 
 // Sync satisfies the zapcore.WriteSyncer interface. It is used by the Core to
 // flush log records before terminating the process.
-func (s *Logging) Sync() error {
-	s.mutex.RLock()
-	w := s.writer
-	s.mutex.RUnlock()
+func (l *Logging) Sync() error {
+	l.mutex.RLock()
+	w := l.writer
+	l.mutex.RUnlock()
 
 	return w.Sync()
 }
 
 // Encoding satisfies the Encoding interface. It determines whether the JSON or
 // CONSOLE encoder should be used by the Core when log records are written.
-func (s *Logging) Encoding() Encoding {
-	s.mutex.RLock()
-	e := s.encoding
-	s.mutex.RUnlock()
+func (l *Logging) Encoding() Encoding {
+	l.mutex.RLock()
+	e := l.encoding
+	l.mutex.RUnlock()
 	return e
 }
 
 // ZapLogger instantiates a new zap.Logger with the specified name. The name is
 // used to determine which log levels are enabled.
-func (s *Logging) ZapLogger(name string) *zap.Logger {
+func (l *Logging) ZapLogger(name string) *zap.Logger {
 	if !isValidLoggerName(name) {
 		panic(fmt.Sprintf("invalid logger name: %s", name))
 	}
 
-	s.mutex.RLock()
+	l.mutex.RLock()
 	core := &Core{
-		LevelEnabler: s.LoggerLevels,
-		Levels:       s.LoggerLevels,
+		LevelEnabler: l.LoggerLevels,
+		Levels:       l.LoggerLevels,
 		Encoders: map[Encoding]zapcore.Encoder{
-			JSON:    zapcore.NewJSONEncoder(s.encoderConfig),
-			CONSOLE: fabenc.NewFormatEncoder(s.multiFormatter),
-			LOGFMT:  zaplogfmt.NewEncoder(s.encoderConfig),
+			JSON:    zapcore.NewJSONEncoder(l.encoderConfig),
+			CONSOLE: fabenc.NewFormatEncoder(l.multiFormatter),
+			LOGFMT:  zaplogfmt.NewEncoder(l.encoderConfig),
 		},
-		Selector: s,
-		Output:   s,
-		Observer: s,
+		Selector: l,
+		Output:   l,
+		Observer: l,
 	}
-	s.mutex.RUnlock()
+	l.mutex.RUnlock()
 
 	return NewZapLogger(core).Named(name)
 }
 
-func (s *Logging) Check(e zapcore.Entry, ce *zapcore.CheckedEntry) {
-	s.mutex.RLock()
-	observer := s.observer
-	s.mutex.RUnlock()
+func (l *Logging) Check(e zapcore.Entry, ce *zapcore.CheckedEntry) {
+	l.mutex.RLock()
+	observer := l.observer
+	l.mutex.RUnlock()
 
 	if observer != nil {
 		observer.Check(e, ce)
 	}
 }
 
-func (s *Logging) WriteEntry(e zapcore.Entry, fields []zapcore.Field) {
-	s.mutex.RLock()
-	observer := s.observer
-	s.mutex.RUnlock()
+func (l *Logging) WriteEntry(e zapcore.Entry, fields []zapcore.Field) {
+	l.mutex.RLock()
+	observer := l.observer
+	l.mutex.RUnlock()
 
 	if observer != nil {
 		observer.WriteEntry(e, fields)
@@ -238,7 +238,7 @@ func (s *Logging) WriteEntry(e zapcore.Entry, fields []zapcore.Field) {
 
 // Logger instantiates a new FabricLogger with the specified name. The name is
 // used to determine which log levels are enabled.
-func (s *Logging) Logger(name string) *FabricLogger {
-	zl := s.ZapLogger(name)
+func (l *Logging) Logger(name string) *FabricLogger {
+	zl := l.ZapLogger(name)
 	return NewFabricLogger(zl)
 }
