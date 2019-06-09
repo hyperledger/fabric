@@ -52,7 +52,7 @@ func processChannelConfigTx(txEnv *common.Envelope, simulator ledger.TxSimulator
 	}
 	channelConfig := configEnvelope.Config
 	if channelConfig == nil {
-		return fmt.Errorf("Channel config found nil")
+		return fmt.Errorf("channel config found nil")
 	}
 
 	if err := persistConf(simulator, channelConfigKey, channelConfig); err != nil {

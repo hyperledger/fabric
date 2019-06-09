@@ -7,25 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
-	"fmt"
-	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	ordererconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
@@ -98,7 +92,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 
 	lgr.Close()
 	helper.clearMockChains()
-	lgr, err = ledgermgmt.OpenLedger(chainid)
+	_, err = ledgermgmt.OpenLedger(chainid)
 	assert.NoError(t, err)
 }
 
@@ -146,12 +140,6 @@ func (h *testHelper) sampleChannelConfig(sequence uint64, enableV11Capability bo
 	}
 }
 
-func (h *testHelper) constructConfigTx(t *testing.T, txType common.HeaderType, chainid string, config *common.Config) *common.Envelope {
-	env, err := protoutil.CreateSignedEnvelope(txType, chainid, nil, &common.ConfigEnvelope{Config: config}, 0, 0)
-	assert.NoError(t, err)
-	return env
-}
-
 func (h *testHelper) constructGenesisTx(t *testing.T, chainid string, chanConf *common.Config) *common.Envelope {
 	configEnvelop := &common.ConfigEnvelope{
 		Config:     chanConf,
@@ -197,25 +185,4 @@ func (h *testHelper) constructChannelBundle(chainid string, ledger ledger.PeerLe
 	}
 
 	return channelconfig.NewBundle(chainid, chanConf)
-}
-
-func (h *testHelper) initLocalMSP() {
-	rand.Seed(time.Now().UnixNano())
-	cleanup := configtest.SetDevFabricConfigPath(h.t)
-	defer cleanup()
-	conf, err := ordererconfig.Load()
-	if err != nil {
-		panic(fmt.Errorf("failed to load config: %s", err))
-	}
-
-	// Load local MSP
-	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
-	if err != nil {
-		panic(fmt.Errorf("Failed to initialize local MSP: %s", err))
-	}
-	msp := mspmgmt.GetLocalMSP()
-	_, err = msp.GetDefaultSigningIdentity()
-	if err != nil {
-		panic(fmt.Errorf("Failed to get default signer: %s", err))
-	}
 }

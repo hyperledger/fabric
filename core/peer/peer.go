@@ -411,15 +411,6 @@ type Operations interface {
 	GetPolicyManager(cid string) policies.Manager
 }
 
-// extendedOperations is use to track functions that have
-// been added to the peer implementation. These need to be
-// reviewed and documented.
-//
-// TODO: remove when done with restructure
-type extendedOperations interface {
-	StoreForChannel(cid string) transientstore.Store
-}
-
 type Peer struct {
 	StoreProvider transientstore.StoreProvider
 	storesMutex   sync.RWMutex
@@ -780,7 +771,7 @@ func (p *Peer) Initialize(
 	})
 	ledgerIds, err := ledgermgmt.GetLedgerIDs()
 	if err != nil {
-		panic(fmt.Errorf("Error in initializing ledgermgmt: %s", err))
+		panic(fmt.Errorf("error in initializing ledgermgmt: %s", err))
 	}
 	for _, cid := range ledgerIds {
 		peerLogger.Infof("Loading chain %s", cid)
