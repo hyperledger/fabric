@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/scc/cscc"
@@ -28,6 +27,7 @@ import (
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -119,7 +119,6 @@ func InitConfig(cmdRoot string) error {
 
 // InitCrypto initializes crypto for this peer
 func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
-	var err error
 	// Check whether msp folder exists
 	fi, err := os.Stat(mspMgrConfigDir)
 	if os.IsNotExist(err) || !fi.IsDir() {
@@ -133,10 +132,12 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 
 	// Init the BCCSP
 	SetBCCSPKeystorePath()
-	var bccspConfig *factory.FactoryOpts
-	err = viperutil.EnhancedExactUnmarshalKey("peer.BCCSP", &bccspConfig)
-	if err != nil {
-		return errors.WithMessage(err, "could not parse YAML config")
+	bccspConfig := factory.GetDefaultOpts()
+	if config := viper.Get("peer.BCCSP"); config != nil {
+		err = mapstructure.Decode(config, bccspConfig)
+		if err != nil {
+			return errors.WithMessage(err, "could not decode peer BCCSP configuration")
+		}
 	}
 
 	err = mspmgmt.LoadLocalMspWithType(mspMgrConfigDir, bccspConfig, localMSPID, localMSPType)
