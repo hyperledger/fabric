@@ -60,8 +60,8 @@ type DeliverService interface {
 	// to channel peers.
 	StopDeliverForChannel(chainID string) error
 
-	// UpdateEndpoints
-	UpdateEndpoints(chainID string, endpoints []string) error
+	// UpdateEndpoints updates the ordering endpoints for the given chain.
+	UpdateEndpoints(chainID string, connCriteria ConnectionCriteria) error
 
 	// Stop terminates delivery service and closes the connection
 	Stop()
@@ -71,10 +71,16 @@ type DeliverService interface {
 // maintains connection to the ordering service and maps of
 // blocks providers
 type deliverServiceImpl struct {
+	connConfig     ConnectionCriteria
 	conf           *Config
-	blockProviders map[string]blocksprovider.BlocksProvider
+	deliverClients map[string]*deliverClient
 	lock           sync.RWMutex
 	stopping       bool
+}
+
+type deliverClient struct {
+	bp      blocksprovider.BlocksProvider
+	bclient *broadcastClient
 }
 
 // Config dictates the DeliveryService's properties,
@@ -83,7 +89,7 @@ type deliverServiceImpl struct {
 // and how it disseminates the messages to other peers
 type Config struct {
 	// ConnFactory returns a function that creates a connection to an endpoint
-	ConnFactory func(channelID string) func(endpoint string) (*grpc.ClientConn, error)
+	ConnFactory func(channelID string) func(endpointCriteria comm.EndpointCriteria) (*grpc.ClientConn, error)
 	// ABCFactory creates an AtomicBroadcastClient out of a connection
 	ABCFactory func(*grpc.ClientConn) orderer.AtomicBroadcastClient
 	// CryptoSvc performs cryptographic actions like message verification and signing
@@ -92,8 +98,6 @@ type Config struct {
 	// Gossip enables to enumerate peers in the channel, send a message to peers,
 	// and add a block to the gossip state transfer layer
 	Gossip blocksprovider.GossipServiceAdapter
-	// Endpoints specifies the endpoints of the ordering service
-	Endpoints []string
 }
 
 // ConnectionCriteria defines how to connect to ordering service nodes.
@@ -144,10 +148,11 @@ func (cc ConnectionCriteria) toEndpointCriteria() []comm.EndpointCriteria {
 // delivery service instance. It tries to establish connection to
 // the specified in the configuration ordering service, in case it
 // fails to dial to it, return nil
-func NewDeliverService(conf *Config) (DeliverService, error) {
+func NewDeliverService(conf *Config, connConfig ConnectionCriteria) (*deliverServiceImpl, error) {
 	ds := &deliverServiceImpl{
+		connConfig:     connConfig,
 		conf:           conf,
-		blockProviders: make(map[string]blocksprovider.BlocksProvider),
+		deliverClients: make(map[string]*deliverClient),
 	}
 	if err := ds.validateConfiguration(); err != nil {
 		return nil, err
@@ -155,33 +160,32 @@ func NewDeliverService(conf *Config) (DeliverService, error) {
 	return ds, nil
 }
 
-func (d *deliverServiceImpl) UpdateEndpoints(chainID string, endpoints []string) error {
+func (d *deliverServiceImpl) UpdateEndpoints(chainID string, connCriteria ConnectionCriteria) error {
 	// Use chainID to obtain blocks provider and pass endpoints
 	// for update
-	if bp, ok := d.blockProviders[chainID]; ok {
+	if dc, ok := d.deliverClients[chainID]; ok {
 		// We have found specified channel so we can safely update it
-		bp.UpdateOrderingEndpoints(endpoints)
+		dc.bclient.UpdateEndpoints(connCriteria.toEndpointCriteria())
 		return nil
 	}
 	return errors.New(fmt.Sprintf("Channel with %s id was not found", chainID))
 }
 
 func (d *deliverServiceImpl) validateConfiguration() error {
-	conf := d.conf
-	if len(conf.Endpoints) == 0 {
-		return errors.New("no endpoints specified")
-	}
-	if conf.Gossip == nil {
+	if d.conf.Gossip == nil {
 		return errors.New("no gossip provider specified")
 	}
-	if conf.ABCFactory == nil {
+	if d.conf.ABCFactory == nil {
 		return errors.New("no AtomicBroadcast factory specified")
 	}
-	if conf.ConnFactory == nil {
+	if d.conf.ConnFactory == nil {
 		return errors.New("no connection factory specified")
 	}
-	if conf.CryptoSvc == nil {
+	if d.conf.CryptoSvc == nil {
 		return errors.New("no crypto service specified")
+	}
+	if len(d.connConfig.OrdererEndpoints) == 0 && len(d.connConfig.OrdererEndpointsByOrg) == 0 {
+		return errors.New("no endpoints specified")
 	}
 	return nil
 }
@@ -198,14 +202,17 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		logger.Errorf(errMsg)
 		return errors.New(errMsg)
 	}
-	if _, exist := d.blockProviders[chainID]; exist {
+	if _, exist := d.deliverClients[chainID]; exist {
 		errMsg := fmt.Sprintf("Delivery service - block provider already exists for %s found, can't start delivery", chainID)
 		logger.Errorf(errMsg)
 		return errors.New(errMsg)
 	} else {
 		client := d.newClient(chainID, ledgerInfo)
 		logger.Debug("This peer will pass blocks from orderer service to other peers for channel", chainID)
-		d.blockProviders[chainID] = blocksprovider.NewBlocksProvider(chainID, client, d.conf.Gossip, d.conf.CryptoSvc)
+		d.deliverClients[chainID] = &deliverClient{
+			bp:      blocksprovider.NewBlocksProvider(chainID, client, d.conf.Gossip, d.conf.CryptoSvc),
+			bclient: client,
+		}
 		go d.launchBlockProvider(chainID, finalizer)
 	}
 	return nil
@@ -213,13 +220,13 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 
 func (d *deliverServiceImpl) launchBlockProvider(chainID string, finalizer func()) {
 	d.lock.RLock()
-	pb := d.blockProviders[chainID]
+	dc := d.deliverClients[chainID]
 	d.lock.RUnlock()
-	if pb == nil {
+	if dc == nil {
 		logger.Info("Block delivery for channel", chainID, "was stopped before block provider started")
 		return
 	}
-	pb.DeliverBlocks()
+	dc.bp.DeliverBlocks()
 	finalizer()
 }
 
@@ -232,9 +239,9 @@ func (d *deliverServiceImpl) StopDeliverForChannel(chainID string) error {
 		logger.Errorf(errMsg)
 		return errors.New(errMsg)
 	}
-	if client, exist := d.blockProviders[chainID]; exist {
-		client.Stop()
-		delete(d.blockProviders, chainID)
+	if dc, exist := d.deliverClients[chainID]; exist {
+		dc.bp.Stop()
+		delete(d.deliverClients, chainID)
 		logger.Debug("This peer will stop pass blocks from orderer service to other peers")
 	} else {
 		errMsg := fmt.Sprintf("Delivery service - no block provider for %s found, can't stop delivery", chainID)
@@ -251,8 +258,8 @@ func (d *deliverServiceImpl) Stop() {
 	// Marking flag to indicate the shutdown of the delivery service
 	d.stopping = true
 
-	for _, client := range d.blockProviders {
-		client.Stop()
+	for _, dc := range d.deliverClients {
+		dc.bp.Stop()
 	}
 }
 
@@ -274,14 +281,14 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 		attempt := float64(attemptNum)
 		return time.Duration(math.Min(math.Pow(2, attempt)*sleepIncrement, reconnectBackoffThreshold)), true
 	}
-	connProd := comm.NewConnectionProducer(d.conf.ConnFactory(chainID), d.conf.Endpoints)
+	connProd := comm.NewConnectionProducer(d.conf.ConnFactory(chainID), d.connConfig.toEndpointCriteria())
 	bClient := NewBroadcastClient(connProd, d.conf.ABCFactory, broadcastSetup, backoffPolicy)
 	requester.client = bClient
 	return bClient
 }
 
-func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.ClientConn, error) {
-	return func(endpoint string) (*grpc.ClientConn, error) {
+func DefaultConnectionFactory(channelID string) func(endpointCriteria comm.EndpointCriteria) (*grpc.ClientConn, error) {
+	return func(criteria comm.EndpointCriteria) (*grpc.ClientConn, error) {
 		dialOpts := []grpc.DialOption{grpc.WithBlock()}
 		// set max send/recv msg sizes
 		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
@@ -299,7 +306,7 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
 
 		if viper.GetBool("peer.tls.enabled") {
-			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID, staticRootsEnabled())
+			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID, staticRootsEnabled(), criteria.Organizations)
 			if err != nil {
 				return nil, fmt.Errorf("failed obtaining credentials for channel %s: %v", channelID, err)
 			}
@@ -309,7 +316,7 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), getConnectionTimeout())
 		defer cancel()
-		return grpc.DialContext(ctx, endpoint, dialOpts...)
+		return grpc.DialContext(ctx, criteria.Endpoint, dialOpts...)
 	}
 }
 

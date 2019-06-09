@@ -143,7 +143,7 @@ func (bc *broadcastClient) doAction(action func() (interface{}, error), actionOn
 	}
 	resp, err := action()
 	if err != nil {
-		bc.Disconnect(false)
+		bc.Disconnect()
 		return nil, err
 	}
 	return resp, nil
@@ -182,7 +182,7 @@ func (bc *broadcastClient) connect() error {
 	logger.Warning("Failed running post-connection procedures:", err)
 	// If we reached here, lets make sure connection is closed
 	// and nullified before we return
-	bc.Disconnect(false)
+	bc.Disconnect()
 	return err
 }
 
@@ -244,14 +244,11 @@ func (bc *broadcastClient) Close() {
 }
 
 // Disconnect makes the client close the existing connection and makes current endpoint unavailable for time interval, if disableEndpoint set to true
-func (bc *broadcastClient) Disconnect(disableEndpoint bool) {
+func (bc *broadcastClient) Disconnect() {
 	logger.Debug("Entering")
 	defer logger.Debug("Exiting")
 	bc.mutex.Lock()
 	defer bc.mutex.Unlock()
-	if disableEndpoint && bc.endpoint != "" {
-		bc.prod.DisableEndpoint(bc.endpoint)
-	}
 	bc.endpoint = ""
 	if bc.conn == nil {
 		return
@@ -262,13 +259,45 @@ func (bc *broadcastClient) Disconnect(disableEndpoint bool) {
 }
 
 // UpdateEndpoints update endpoints to new values
-func (bc *broadcastClient) UpdateEndpoints(endpoints []string) {
+func (bc *broadcastClient) UpdateEndpoints(endpoints []comm.EndpointCriteria) {
+	bc.mutex.Lock()
+	endpointsUpdated := bc.areEndpointsUpdated(endpoints)
+	bc.mutex.Unlock()
+
+	if !endpointsUpdated {
+		return
+	}
+
 	bc.prod.UpdateEndpoints(endpoints)
+	bc.Disconnect()
 }
 
-// GetEndpoints returns ordering service endpoints
-func (bc *broadcastClient) GetEndpoints() []string {
-	return bc.prod.GetEndpoints()
+func (bc *broadcastClient) areEndpointsUpdated(newEndpoints []comm.EndpointCriteria) bool {
+	existingEndpoints := bc.prod.GetEndpoints()
+
+	if len(newEndpoints) != len(existingEndpoints) {
+		return true
+	}
+
+	// Check that endpoints were actually updated
+	for _, endpoint := range newEndpoints {
+		if !contains(endpoint, existingEndpoints) {
+			// Found new endpoint
+			return true
+		}
+	}
+	// Endpoints are of the same length and the existing endpoints contain all the new endpoints,
+	// so there are no new changes.
+	return false
+}
+
+func contains(s comm.EndpointCriteria, a []comm.EndpointCriteria) bool {
+	for _, e := range a {
+		if e.Equals(s) {
+			return true
+		}
+	}
+	return false
 }
 
 type connection struct {

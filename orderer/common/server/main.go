@@ -128,10 +128,10 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 
 	serverConfig := initializeServerConfig(conf, metricsProvider)
 	grpcServer := initializeGrpcServer(conf, serverConfig)
-	caSupport := &comm.CASupport{
-		AppRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
-		ClientRootCAs:         serverConfig.SecOpts.ClientRootCAs,
+	caSupport := &comm.CredentialSupport{
+		AppRootCAsByChain:           make(map[string]comm.CertificateBundle),
+		OrdererRootCAsByChainAndOrg: make(comm.OrgRootCAs),
+		ClientRootCAs:               serverConfig.SecOpts.ClientRootCAs,
 	}
 
 	clusterServerConfig := serverConfig
@@ -716,12 +716,10 @@ func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics
 	})
 }
 
-func updateTrustedRoots(rootCASupport *comm.CASupport, cm channelconfig.Resources, servers ...*comm.GRPCServer) {
+func updateTrustedRoots(rootCASupport *comm.CredentialSupport, cm channelconfig.Resources, servers ...*comm.GRPCServer) {
 	rootCASupport.Lock()
 	defer rootCASupport.Unlock()
 
-	appRootCAs := [][]byte{}
-	ordererRootCAs := [][]byte{}
 	appOrgMSPs := make(map[string]struct{})
 	ordOrgMSPs := make(map[string]struct{})
 
@@ -755,7 +753,10 @@ func updateTrustedRoots(rootCASupport *comm.CASupport, cm channelconfig.Resource
 		logger.Errorf("Error getting root CAs for channel %s (%s)", cid, err)
 		return
 	}
+	var appRootCAs comm.CertificateBundle
+	ordererRootCAsPerOrg := make(map[string]comm.CertificateBundle)
 	for k, v := range msps {
+		var ordererRootCAs comm.CertificateBundle
 		// check to see if this is a FABRIC MSP
 		if v.GetType() == msp.FABRIC {
 			for _, root := range v.GetTLSRootCerts() {
@@ -782,24 +783,27 @@ func updateTrustedRoots(rootCASupport *comm.CASupport, cm channelconfig.Resource
 					ordererRootCAs = append(ordererRootCAs, intermediate)
 				}
 			}
+			ordererRootCAsPerOrg[k] = ordererRootCAs
 		}
 	}
 	rootCASupport.AppRootCAsByChain[cid] = appRootCAs
-	rootCASupport.OrdererRootCAsByChain[cid] = ordererRootCAs
+	rootCASupport.OrdererRootCAsByChainAndOrg[cid] = ordererRootCAsPerOrg
 
 	// now iterate over all roots for all app and orderer chains
 	trustedRoots := [][]byte{}
 	for _, roots := range rootCASupport.AppRootCAsByChain {
 		trustedRoots = append(trustedRoots, roots...)
 	}
-	for _, roots := range rootCASupport.OrdererRootCAsByChain {
-		trustedRoots = append(trustedRoots, roots...)
+	// add all root CAs from all channels to the trusted roots
+	for _, orgRootCAs := range rootCASupport.OrdererRootCAsByChainAndOrg {
+		for _, roots := range orgRootCAs {
+			trustedRoots = append(trustedRoots, roots...)
+		}
 	}
 	// also need to append statically configured root certs
 	if len(rootCASupport.ClientRootCAs) > 0 {
 		trustedRoots = append(trustedRoots, rootCASupport.ClientRootCAs...)
 	}
-
 	// now update the client roots for the gRPC server
 	for _, srv := range servers {
 		err = srv.SetClientRootCAs(trustedRoots)
@@ -812,17 +816,18 @@ func updateTrustedRoots(rootCASupport *comm.CASupport, cm channelconfig.Resource
 	}
 }
 
-func updateClusterDialer(rootCASupport *comm.CASupport, clusterDialer *cluster.PredicateDialer, localClusterRootCAs [][]byte) {
+func updateClusterDialer(rootCASupport *comm.CredentialSupport, clusterDialer *cluster.PredicateDialer, localClusterRootCAs [][]byte) {
 	rootCASupport.Lock()
 	defer rootCASupport.Unlock()
 
 	// Iterate over all orderer root CAs for all chains and add them
 	// to the root CAs
 	var clusterRootCAs [][]byte
-	for _, roots := range rootCASupport.OrdererRootCAsByChain {
-		clusterRootCAs = append(clusterRootCAs, roots...)
+	for _, orgRootCAs := range rootCASupport.OrdererRootCAsByChainAndOrg {
+		for _, roots := range orgRootCAs {
+			clusterRootCAs = append(clusterRootCAs, roots...)
+		}
 	}
-
 	// Add the local root CAs too
 	clusterRootCAs = append(clusterRootCAs, localClusterRootCAs...)
 	// Update the cluster config with the new root CAs

@@ -49,6 +49,10 @@ func init() {
 	util.SetupTestLogging()
 }
 
+var endpointConfig = OrdererAddressConfig{
+	Addresses: []string{"endpoint"},
+}
+
 type mockTransientStore struct {
 }
 
@@ -147,7 +151,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 		gossips[i].(*gossipGRPC).gossipServiceImpl.deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
 
-		gossips[i].InitializeChannel(channelName, []string{"endpoint"}, Support{
+		gossips[i].InitializeChannel(channelName, endpointConfig, Support{
 			Store:     &mockTransientStore{},
 			Committer: &mockLedgerInfo{1},
 		})
@@ -205,7 +209,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].(*gossipGRPC).gossipServiceImpl.deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, []string{"endpoint"}, Support{
+		gossips[i].InitializeChannel(channelName, endpointConfig, Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &mockTransientStore{},
 		})
@@ -219,7 +223,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	channelName = "chanB"
 	for i := 0; i < n; i++ {
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, []string{"endpoint"}, Support{
+		gossips[i].InitializeChannel(channelName, endpointConfig, Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &mockTransientStore{},
 		})
@@ -259,7 +263,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].(*gossipGRPC).gossipServiceImpl.deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, []string{"endpoint"}, Support{
+		gossips[i].InitializeChannel(channelName, endpointConfig, Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &mockTransientStore{},
 		})
@@ -299,7 +303,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].(*gossipGRPC).gossipServiceImpl.deliveryFactory = deliverServiceFactory
 		assert.Panics(t, func() {
-			gossips[i].InitializeChannel(channelName, []string{"endpoint"}, Support{
+			gossips[i].InitializeChannel(channelName, endpointConfig, Support{
 				Committer: &mockLedgerInfo{1},
 				Store:     &mockTransientStore{},
 			})
@@ -313,7 +317,7 @@ type mockDeliverServiceFactory struct {
 	service *mockDeliverService
 }
 
-func (mf *mockDeliverServiceFactory) Service(g GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
+func (mf *mockDeliverServiceFactory) Service(_ GossipService, _ OrdererAddressConfig, _ api.MessageCryptoService) (deliverclient.DeliverService, error) {
 	return mf.service, nil
 }
 
@@ -321,7 +325,7 @@ type mockDeliverService struct {
 	running map[string]bool
 }
 
-func (ds *mockDeliverService) UpdateEndpoints(chainID string, endpoints []string) error {
+func (ds *mockDeliverService) UpdateEndpoints(_ string, _ deliverclient.ConnectionCriteria) error {
 	panic("implement me")
 }
 
@@ -832,14 +836,14 @@ func TestInvalidInitialization(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	dc, err := gService.deliveryFactory.Service(gService, []string{}, &naiveCryptoService{})
+	dc, err := gService.deliveryFactory.Service(gService, OrdererAddressConfig{}, &naiveCryptoService{})
 	assert.Nil(t, dc)
 	assert.Error(t, err)
 
 	endpoint2, socket2 := getAvailablePort(t)
 	defer socket2.Close()
 
-	dc, err = gService.deliveryFactory.Service(gService, []string{endpoint2}, &naiveCryptoService{})
+	dc, err = gService.deliveryFactory.Service(gService, OrdererAddressConfig{Addresses: []string{endpoint2}}, &naiveCryptoService{})
 	assert.NotNil(t, dc)
 	assert.NoError(t, err)
 }

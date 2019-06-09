@@ -41,7 +41,7 @@ import (
 type mockDeliveryClient struct {
 }
 
-func (ds *mockDeliveryClient) UpdateEndpoints(chainID string, endpoints []string) error {
+func (ds *mockDeliveryClient) UpdateEndpoints(chainID string, _ deliverclient.ConnectionCriteria) error {
 	return nil
 }
 
@@ -64,7 +64,7 @@ func (*mockDeliveryClient) Stop() {
 type mockDeliveryClientFactory struct {
 }
 
-func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
+func (*mockDeliveryClientFactory) Service(g service.GossipService, _ service.OrdererAddressConfig, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
 	return &mockDeliveryClient{}, nil
 }
 

@@ -435,8 +435,23 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 		return SetCurrConfigBlock(block, chainID)
 	})
 
+	oc, ok := bundle.OrdererConfig()
+	if !ok {
+		return errors.New("no orderer config in bundle")
+	}
+
+	ordererAddressesByOrg := make(map[string][]string)
+	var ordererOrganizations []string
+	for _, ordererOrg := range oc.Organizations() {
+		ordererOrganizations = append(ordererOrganizations, ordererOrg.MSPID())
+		if len(ordererOrg.Endpoints()) == 0 {
+			continue
+		}
+		ordererAddressesByOrg[ordererOrg.MSPID()] = ordererOrg.Endpoints()
+	}
+
 	ordererAddresses := bundle.ChannelConfig().OrdererAddresses()
-	if len(ordererAddresses) == 0 {
+	if len(ordererAddresses) == 0 && len(ordererAddressesByOrg) == 0 {
 		return errors.New("no ordering service endpoint provided in configuration block")
 	}
 
@@ -450,7 +465,12 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 	}
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(csStoreSupport)
 
-	service.GetGossipService().InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, service.Support{
+	oac := service.OrdererAddressConfig{
+		Addresses:      ordererAddresses,
+		AddressesByOrg: ordererAddressesByOrg,
+		Organizations:  ordererOrganizations,
+	}
+	service.GetGossipService().InitializeChannel(bundle.ConfigtxValidator().ChainID(), oac, service.Support{
 		Validator:            validator,
 		Committer:            c,
 		Store:                store,
@@ -585,8 +605,6 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 	credSupport.Lock()
 	defer credSupport.Unlock()
 
-	appRootCAs := [][]byte{}
-	ordererRootCAs := [][]byte{}
 	appOrgMSPs := make(map[string]struct{})
 	ordOrgMSPs := make(map[string]struct{})
 
@@ -604,14 +622,17 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 		}
 	}
 
+	var appRootCAs comm.CertificateBundle
 	cid := cm.ConfigtxValidator().ChainID()
 	peerLogger.Debugf("updating root CAs for channel [%s]", cid)
 	msps, err := cm.MSPManager().GetMSPs()
 	if err != nil {
 		peerLogger.Errorf("Error getting root CAs for channel %s (%s)", cid, err)
 	}
+	ordererRootCAsPerOrg := make(map[string]comm.CertificateBundle)
 	if err == nil {
 		for k, v := range msps {
+			var ordererRootCAs comm.CertificateBundle
 			// check to see if this is a FABRIC MSP
 			if v.GetType() == msp.FABRIC {
 				for _, root := range v.GetTLSRootCerts() {
@@ -638,10 +659,11 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 						ordererRootCAs = append(ordererRootCAs, intermediate)
 					}
 				}
+				ordererRootCAsPerOrg[k] = ordererRootCAs
 			}
 		}
 		credSupport.AppRootCAsByChain[cid] = appRootCAs
-		credSupport.OrdererRootCAsByChain[cid] = ordererRootCAs
+		credSupport.OrdererRootCAsByChainAndOrg[cid] = ordererRootCAsPerOrg
 	}
 }
 

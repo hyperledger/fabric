@@ -64,10 +64,9 @@ func (mock *MockGossipServiceAdapter) Gossip(msg *gossip_proto.GossipMessage) {
 // MockBlocksDeliverer mocking structure of BlocksDeliverer interface to initialize
 // the blocks provider implementation
 type MockBlocksDeliverer struct {
-	DisconnectCalled           chan struct{}
-	DisconnectAndDisableCalled chan struct{}
-	CloseCalled                chan struct{}
-	Pos                        uint64
+	DisconnectCalled chan struct{}
+	CloseCalled      chan struct{}
+	Pos              uint64
 	grpc.ClientStream
 	recvCnt  int32
 	MockRecv func(mock *MockBlocksDeliverer) (*orderer.DeliverResponse, error)
@@ -124,12 +123,8 @@ func (mock *MockBlocksDeliverer) Send(env *common.Envelope) error {
 	return nil
 }
 
-func (mock *MockBlocksDeliverer) Disconnect(disableEndpoint bool) {
-	if disableEndpoint {
-		mock.DisconnectAndDisableCalled <- struct{}{}
-	} else {
-		mock.DisconnectCalled <- struct{}{}
-	}
+func (mock *MockBlocksDeliverer) Disconnect() {
+	mock.DisconnectCalled <- struct{}{}
 }
 
 func (mock *MockBlocksDeliverer) Close() {

@@ -49,7 +49,7 @@ type GossipService interface {
 	// NewConfigEventer creates a ConfigProcessor which the channelconfig.BundleSource can ultimately route config updates to
 	NewConfigEventer() ConfigProcessor
 	// InitializeChannel allocates the state provider and should be invoked once per channel per execution
-	InitializeChannel(chainID string, endpoints []string, support Support)
+	InitializeChannel(chainID string, oac OrdererAddressConfig, support Support)
 	// AddPayload appends message payload to for given chain
 	AddPayload(chainID string, payload *gproto.Payload) error
 }
@@ -57,21 +57,31 @@ type GossipService interface {
 // DeliveryServiceFactory factory to create and initialize delivery service instance
 type DeliveryServiceFactory interface {
 	// Returns an instance of delivery client
-	Service(g GossipService, endpoints []string, msc api.MessageCryptoService) (deliverclient.DeliverService, error)
+	Service(g GossipService, oac OrdererAddressConfig, msc api.MessageCryptoService) (deliverclient.DeliverService, error)
 }
 
 type deliveryFactoryImpl struct {
 }
 
 // Returns an instance of delivery client
-func (*deliveryFactoryImpl) Service(g GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
+func (*deliveryFactoryImpl) Service(g GossipService, ec OrdererAddressConfig, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
 	return deliverclient.NewDeliverService(&deliverclient.Config{
 		CryptoSvc:   mcs,
 		Gossip:      g,
-		Endpoints:   endpoints,
 		ConnFactory: deliverclient.DefaultConnectionFactory,
 		ABCFactory:  deliverclient.DefaultABCFactory,
+	}, deliverclient.ConnectionCriteria{
+		OrdererEndpointsByOrg: ec.AddressesByOrg,
+		Organizations:         ec.Organizations,
+		OrdererEndpoints:      ec.Addresses,
 	})
+}
+
+// OrdererAddressConfig defines the addresses of the ordering service nodes
+type OrdererAddressConfig struct {
+	Addresses      []string
+	AddressesByOrg map[string][]string
+	Organizations  []string
 }
 
 type privateHandler struct {
@@ -224,7 +234,7 @@ type DataStoreSupport struct {
 }
 
 // InitializeChannel allocates the state provider and should be invoked once per channel per execution
-func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string, support Support) {
+func (g *gossipServiceImpl) InitializeChannel(chainID string, oac OrdererAddressConfig, support Support) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	// Initialize new state provider for given committer
@@ -280,7 +290,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		g.metrics.StateMetrics, getStateConfiguration())
 	if g.deliveryService[chainID] == nil {
 		var err error
-		g.deliveryService[chainID], err = g.deliveryFactory.Service(g, endpoints, g.mcs)
+		g.deliveryService[chainID], err = g.deliveryFactory.Service(g, oac, g.mcs)
 		if err != nil {
 			logger.Warningf("Cannot create delivery client, due to %+v", errors.WithStack(err))
 		}
@@ -359,7 +369,7 @@ func (g *gossipServiceImpl) updateAnchors(config Config) {
 func (g *gossipServiceImpl) updateEndpoints(chainID string, criteria deliverclient.ConnectionCriteria) {
 	if ds, ok := g.deliveryService[chainID]; ok {
 		logger.Debugf("Updating endpoints for chainID", chainID)
-		if err := ds.UpdateEndpoints(chainID, criteria.OrdererEndpoints); err != nil {
+		if err := ds.UpdateEndpoints(chainID, criteria); err != nil {
 			// The only reason to fail is because of absence of block provider
 			// for given channel id, hence printing a warning will be enough
 			logger.Warningf("Failed to update ordering service endpoints, due to %s", err)

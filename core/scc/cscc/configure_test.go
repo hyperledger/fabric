@@ -37,7 +37,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
-	"github.com/hyperledger/fabric/core/deliverservice"
+	deliverclient "github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ccprovidermocks "github.com/hyperledger/fabric/core/mocks/ccprovider"
@@ -48,7 +48,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	"github.com/hyperledger/fabric/peer/gossip/mocks"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -79,7 +79,7 @@ type configtxValidator interface {
 type mockDeliveryClient struct {
 }
 
-func (ds *mockDeliveryClient) UpdateEndpoints(chainID string, endpoints []string) error {
+func (ds *mockDeliveryClient) UpdateEndpoints(chainID string, _ deliverclient.ConnectionCriteria) error {
 	return nil
 }
 
@@ -103,7 +103,7 @@ func (*mockDeliveryClient) Stop() {
 type mockDeliveryClientFactory struct {
 }
 
-func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
+func (*mockDeliveryClientFactory) Service(g service.GossipService, _ service.OrdererAddressConfig, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
 	return &mockDeliveryClient{}, nil
 }
 

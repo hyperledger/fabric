@@ -433,9 +433,9 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		},
 	}
 	grpcServer := initializeGrpcServer(conf, initializeServerConfig(conf, nil))
-	caSupport := &comm.CASupport{
-		AppRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
+	caSupport := &comm.CredentialSupport{
+		AppRootCAsByChain:           make(map[string]comm.CertificateBundle),
+		OrdererRootCAsByChainAndOrg: make(comm.OrgRootCAs),
 	}
 	callback := func(bundle *channelconfig.Bundle) {
 		if grpcServer.MutualTLSRequired() {
@@ -447,10 +447,10 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
 	initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, genesisConfig(t), localmsp.NewSigner(), &disabled.Provider{}, &mocks.HealthChecker{}, lf, callback)
 	t.Logf("# app CAs: %d", len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
-	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
+	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChainAndOrg[genesisconfig.TestChainID]["SampleOrg"]))
 	// mutual TLS not required so no updates should have occurred
 	assert.Equal(t, 0, len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
-	assert.Equal(t, 0, len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
+	assert.Equal(t, 0, len(caSupport.OrdererRootCAsByChainAndOrg[genesisconfig.TestChainID]["SampleOrg"]))
 	grpcServer.Listener().Close()
 
 	conf = &localconfig.TopLevel{
@@ -466,9 +466,9 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		},
 	}
 	grpcServer = initializeGrpcServer(conf, initializeServerConfig(conf, nil))
-	caSupport = &comm.CASupport{
-		AppRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
+	caSupport = &comm.CredentialSupport{
+		AppRootCAsByChain:           make(map[string]comm.CertificateBundle),
+		OrdererRootCAsByChainAndOrg: make(comm.OrgRootCAs),
 	}
 
 	clusterConf := initializeClusterClientConfig(conf, true, nil)
@@ -497,11 +497,11 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		callback,
 	)
 	t.Logf("# app CAs: %d", len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
-	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
+	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChainAndOrg[genesisconfig.TestChainID]["SampleOrg"]))
 	// mutual TLS is required so updates should have occurred
 	// we expect an intermediate and root CA for apps and orderers
 	assert.Equal(t, 2, len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
-	assert.Equal(t, 2, len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
+	assert.Equal(t, 2, len(caSupport.OrdererRootCAsByChainAndOrg[genesisconfig.TestChainID]["SampleOrg"]))
 	assert.Len(t, predDialer.ClientConfig.SecOpts.ServerRootCAs, 2)
 	grpcServer.Listener().Close()
 }
