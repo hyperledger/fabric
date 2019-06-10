@@ -513,14 +513,6 @@
   version = "v1.5.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:7302bcf5914fc7c62b2eb65291547ba8522cd03fc3fda1d468c3438c80302db3"
-  name = "github.com/op/go-logging"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "970db520ece77730c7e4724c61121037378659d9"
-
-[[projects]]
   digest = "1:e0cc8395ea893c898ff5eb0850f4d9851c1f57c78c232304a026379a47a552d0"
   name = "github.com/opencontainers/go-digest"
   packages = ["."]
@@ -1030,7 +1022,6 @@
     "github.com/onsi/gomega/gexec",
     "github.com/onsi/gomega/gstruct",
     "github.com/onsi/gomega/types",
-    "github.com/op/go-logging",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
