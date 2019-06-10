@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging/fabenc"
-	logging "github.com/op/go-logging"
 	zaplogfmt "github.com/sykesm/zap-logfmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -100,16 +99,6 @@ func (s *Logging) Apply(c Config) error {
 		c.Writer = os.Stderr
 	}
 	s.SetWriter(c.Writer)
-
-	var formatter logging.Formatter
-	switch s.Encoding() {
-	case JSON, LOGFMT:
-		formatter = SetFormat(defaultFormat)
-	default:
-		formatter = SetFormat(c.Format)
-	}
-
-	InitBackend(formatter, c.Writer)
 
 	return nil
 }

@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package flogging
 
 import (
-	"strings"
-
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/grpclog"
 )
@@ -51,7 +49,7 @@ func Reset() {
 // GetLoggerLevel gets the current logging level for the logger with the
 // provided name.
 func GetLoggerLevel(loggerName string) string {
-	return strings.ToUpper(Global.Level(loggerName).String())
+	return Global.Level(loggerName).String()
 }
 
 // MustGetLogger creates a logger with the specified name. If an invalid name
@@ -66,4 +64,9 @@ func ActivateSpec(spec string) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// DefaultLevel returns the default log level.
+func DefaultLevel() string {
+	return defaultLevel.String()
 }

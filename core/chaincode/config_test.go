@@ -33,8 +33,8 @@ var _ = Describe("Config", func() {
 			viper.Set("chaincode.executetimeout", "20h")
 			viper.Set("chaincode.startuptimeout", "30h")
 			viper.Set("chaincode.logging.format", "test-chaincode-logging-format")
-			viper.Set("chaincode.logging.level", "WARNING")
-			viper.Set("chaincode.logging.shim", "WARNING")
+			viper.Set("chaincode.logging.level", "warning")
+			viper.Set("chaincode.logging.shim", "warning")
 
 			config := chaincode.GlobalConfig()
 			Expect(config.TLSEnabled).To(BeTrue())
@@ -42,8 +42,8 @@ var _ = Describe("Config", func() {
 			Expect(config.ExecuteTimeout).To(Equal(20 * time.Hour))
 			Expect(config.StartupTimeout).To(Equal(30 * time.Hour))
 			Expect(config.LogFormat).To(Equal("test-chaincode-logging-format"))
-			Expect(config.LogLevel).To(Equal("WARNING"))
-			Expect(config.ShimLogLevel).To(Equal("WARNING"))
+			Expect(config.LogLevel).To(Equal("warn"))
+			Expect(config.ShimLogLevel).To(Equal("warn"))
 		})
 
 		Context("when an invalid keepalive is configured", func() {
@@ -85,10 +85,10 @@ var _ = Describe("Config", func() {
 				viper.Set("chaincode.logging.shim", "bar")
 			})
 
-			It("falls back to INFO", func() {
+			It("falls back to info", func() {
 				config := chaincode.GlobalConfig()
-				Expect(config.LogLevel).To(Equal("INFO"))
-				Expect(config.ShimLogLevel).To(Equal("INFO"))
+				Expect(config.LogLevel).To(Equal("info"))
+				Expect(config.ShimLogLevel).To(Equal("info"))
 			})
 		})
 	})

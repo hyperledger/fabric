@@ -72,5 +72,5 @@ func GetLogger(name string, peerID string) Logger {
 // SetupTestLogging sets the default log levels for gossip unit tests
 func SetupTestLogging() {
 	testMode = true
-	flogging.InitFromSpec(defaultTestSpec)
+	flogging.ActivateSpec(defaultTestSpec)
 }

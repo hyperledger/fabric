@@ -9,11 +9,11 @@ package kafka
 import (
 	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric-lib-go/healthz"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/op/go-logging"
 )
 
 //go:generate counterfeiter -o mock/health_checker.go -fake-name HealthChecker . healthChecker
@@ -26,7 +26,7 @@ type healthChecker interface {
 // New creates a Kafka-based consenter. Called by orderer's main.go.
 func New(config localconfig.Kafka, metricsProvider metrics.Provider, healthChecker healthChecker) (consensus.Consenter, *Metrics) {
 	if config.Verbose {
-		logging.SetLevel(logging.DEBUG, "orderer.consensus.kafka.sarama")
+		flogging.ActivateSpec(flogging.Global.Spec() + ":orderer.consensus.kafka.sarama=debug")
 	}
 
 	brokerConfig := newBrokerConfig(

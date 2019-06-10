@@ -6,10 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 package common
 
 import (
-	"os"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -38,10 +36,6 @@ func SetOrdererEnv(cmd *cobra.Command, args []string) {
 	if loggingLevel != "" {
 		mainLogger.Warning("CORE_LOGGING_LEVEL is no longer supported, please use the FABRIC_LOGGING_SPEC environment variable")
 	}
-	// need to init logging here as cobra does not currently support
-	// chaining PersistentPreRun functions
-	loggingSpec := os.Getenv("FABRIC_LOGGING_SPEC")
-	flogging.InitFromSpec(loggingSpec)
 	// set the orderer environment from flags
 	viper.Set("orderer.tls.rootcert.file", caFile)
 	viper.Set("orderer.tls.clientKey.file", keyFile)

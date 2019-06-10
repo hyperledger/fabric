@@ -954,7 +954,7 @@ func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 8 elements for Envs, but got %v", envs)
 	}
 	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_LEVEL=info"))
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_SHIM=warning"))
+	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_SHIM=warn"))
 	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_ID_NAME=mycc:v0"))
 	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ENABLED=true"))
 	gt.Expect(envs).To(ContainElement("CORE_TLS_CLIENT_KEY_PATH=/etc/hyperledger/fabric/client.key"))
@@ -986,7 +986,7 @@ func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 		t.Fatalf("calling getLaunchConfigs() with TLS disabled should have returned an array of 4 elements for Envs, but got %v", envs)
 	}
 	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_LEVEL=info"))
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_SHIM=warning"))
+	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_SHIM=warn"))
 	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_ID_NAME=mycc:v0"))
 	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ENABLED=false"))
 }

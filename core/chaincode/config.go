@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
@@ -78,13 +77,12 @@ func toSeconds(s string, def int) time.Duration {
 // getLogLevelFromViper gets the chaincode container log levels from viper
 func getLogLevelFromViper(key string) string {
 	levelString := viper.GetString(key)
-	_, err := logging.LogLevel(levelString)
-	if err != nil {
+	if !flogging.IsValidLevel(levelString) {
 		chaincodeLogger.Warningf("%s has invalid log level %s. defaulting to %s", key, levelString, flogging.DefaultLevel())
 		levelString = flogging.DefaultLevel()
 	}
 
-	return levelString
+	return flogging.NameToLevel(levelString).String()
 }
 
 // DevModeUserRunsChaincode enables chaincode execution in a development

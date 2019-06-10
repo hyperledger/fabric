@@ -95,12 +95,12 @@ func TestGlobalInitPanic(t *testing.T) {
 func TestGlobalDefaultLevel(t *testing.T) {
 	flogging.Reset()
 
-	assert.Equal(t, "INFO", flogging.DefaultLevel())
+	assert.Equal(t, "info", flogging.DefaultLevel())
 }
 
 func TestGlobalGetLoggerLevel(t *testing.T) {
 	flogging.Reset()
-	assert.Equal(t, "INFO", flogging.GetLoggerLevel("some.logger"))
+	assert.Equal(t, "info", flogging.GetLoggerLevel("some.logger"))
 }
 
 func TestGlobalMustGetLogger(t *testing.T) {
