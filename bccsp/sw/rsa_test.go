@@ -59,9 +59,9 @@ func TestRSAPrivateKey(t *testing.T) {
 	pk, err := k.PublicKey()
 	assert.NoError(t, err)
 	assert.NotNil(t, pk)
-	ecdsaPK, ok := pk.(*rsaPublicKey)
+	rsaPK, ok := pk.(*rsaPublicKey)
 	assert.True(t, ok)
-	assert.Equal(t, &lowLevelKey.PublicKey, ecdsaPK.pubKey)
+	assert.Equal(t, &lowLevelKey.PublicKey, rsaPK.pubKey)
 }
 
 func TestRSAPublicKey(t *testing.T) {
