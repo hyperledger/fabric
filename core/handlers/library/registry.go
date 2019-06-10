@@ -58,23 +58,6 @@ type registry struct {
 var once sync.Once
 var reg registry
 
-// Config configures the factory methods
-// and plugins for the registry
-type Config struct {
-	AuthFilters []*HandlerConfig `mapstructure:"authFilters" yaml:"authFilters"`
-	Decorators  []*HandlerConfig `mapstructure:"decorators" yaml:"decorators"`
-	Endorsers   PluginMapping    `mapstructure:"endorsers" yaml:"endorsers"`
-	Validators  PluginMapping    `mapstructure:"validators" yaml:"validators"`
-}
-
-type PluginMapping map[string]*HandlerConfig
-
-// HandlerConfig defines configuration for a plugin or compiled handler
-type HandlerConfig struct {
-	Name    string `mapstructure:"name" yaml:"name"`
-	Library string `mapstructure:"library" yaml:"library"`
-}
-
 // InitRegistry creates the (only) instance
 // of the registry
 func InitRegistry(c Config) Registry {

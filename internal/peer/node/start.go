@@ -30,7 +30,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/cclifecycle"
@@ -540,10 +539,11 @@ func serve(args []string) error {
 		return gossipService.DistributePrivateData(channel, txID, privateData, blkHt)
 	}
 
-	libConf := library.Config{}
-	if err = viperutil.EnhancedExactUnmarshalKey("peer.handlers", &libConf); err != nil {
-		return errors.WithMessage(err, "could not load YAML config")
+	libConf, err := library.LoadConfig()
+	if err != nil {
+		return errors.WithMessage(err, "could not decode peer handlers configuration")
 	}
+
 	reg := library.InitRegistry(libConf)
 
 	authFilters := reg.Lookup(library.Auth).([]authHandler.Filter)

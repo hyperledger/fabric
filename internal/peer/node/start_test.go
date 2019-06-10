@@ -13,10 +13,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/handlers/library"
 	"github.com/hyperledger/fabric/core/testutil"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/mitchellh/mapstructure"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -78,18 +78,16 @@ func TestHandlerMap(t *testing.T) {
   peer:
     handlers:
       authFilters:
-        -
-          name: filter1
+        - name: filter1
           library: /opt/lib/filter1.so
-        -
-          name: filter2
+        - name: filter2
   `
 	viper.SetConfigType("yaml")
 	err := viper.ReadConfig(bytes.NewBuffer([]byte(config1)))
 	assert.NoError(t, err)
 
-	libConf := library.Config{}
-	err = viperutil.EnhancedExactUnmarshalKey("peer.handlers", &libConf)
+	var libConf library.Config
+	err = mapstructure.Decode(viper.Get("peer.handlers"), &libConf)
 	assert.NoError(t, err)
 	assert.Len(t, libConf.AuthFilters, 2, "expected two filters")
 	assert.Equal(t, "/opt/lib/filter1.so", libConf.AuthFilters[0].Library)
