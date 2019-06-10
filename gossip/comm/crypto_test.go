@@ -8,8 +8,14 @@ package comm
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"net"
 	"sync"
 	"testing"
@@ -107,4 +113,37 @@ func TestCertificateExtraction(t *testing.T) {
 
 	assert.Equal(t, clientSideCertHash, srv.selfCertHash, "Server self hash isn't equal to client side hash")
 	assert.Equal(t, clientCertHash, srv.remoteCertHash, "Server side and client hash aren't equal")
+}
+
+// GenerateCertificatesOrPanic generates a a random pair of public and private keys
+// and return TLS certificate.
+func GenerateCertificatesOrPanic() tls.Certificate {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	sn, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		panic(err)
+	}
+	template := x509.Certificate{
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		SerialNumber: sn,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	rawBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		panic(err)
+	}
+	privBytes, err := x509.MarshalECPrivateKey(privateKey)
+	if err != nil {
+		panic(err)
+	}
+	encodedCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rawBytes})
+	encodedKey := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: privBytes})
+	cert, err := tls.X509KeyPair(encodedCert, encodedKey)
+	if err != nil {
+		panic(err)
+	}
+	return cert
 }
