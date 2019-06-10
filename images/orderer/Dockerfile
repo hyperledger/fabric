@@ -5,14 +5,13 @@
 ARG GO_VER
 ARG ALPINE_VER
 FROM alpine:${ALPINE_VER} as base
-RUN apk add --no-cache tzdata libltdl
+RUN apk add --no-cache tzdata
 
 FROM golang:${GO_VER}-alpine${ALPINE_VER} as golang
 RUN apk add --no-cache \
 	gcc \
 	musl-dev \
 	git \
-	libtool \
 	bash \
 	make;
 ADD . $GOPATH/src/github.com/hyperledger/fabric

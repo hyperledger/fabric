@@ -24,7 +24,6 @@ RUN apk add --no-cache \
 	git \
 	bash \
 	protobuf-dev \
-	libtool \
 	make;
 COPY --from=golang /go/bin /usr/local/bin
 ENV GOCACHE "/tmp"

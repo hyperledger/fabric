@@ -25,7 +25,6 @@ RUN apk add --no-cache \
 	g++ \
 	gcc \
 	musl-dev \
-	libtool \
 	git;
 RUN mkdir -p /chaincode/output \
 	&& mkdir -p /chaincode/input;
