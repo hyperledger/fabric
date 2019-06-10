@@ -66,8 +66,8 @@ noverify = [
   name = "github.com/kr/pretty"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/miekg/pkcs11"
+  version = "v1.0.2"
 
 [[constraint]]
   name = "github.com/mitchellh/mapstructure"
