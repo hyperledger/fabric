@@ -444,12 +444,12 @@
   version = "v1.0.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:e6a5a57405f5326de0413d79725f57524ce7241c71976dc02f4828eaa2c70e7b"
+  digest = "1:8173712f82b2da5dd36cdcbaa658f57fa8509634e5ecccbcfb948ecee051b0de"
   name = "github.com/miekg/pkcs11"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "a667d056470f6e0da7facaff2466f0d2645e35d7"
+  revision = "cb39313ec884f2cd77f4762875fe96aecf68f8e3"
+  version = "v1.0.2"
 
 [[projects]]
   digest = "1:a45ae66dea4c899d79fceb116accfa1892105c251f0dcd9a217ddc276b42ec68"
