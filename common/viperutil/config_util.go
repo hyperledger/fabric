@@ -313,25 +313,3 @@ func EnhancedExactUnmarshal(v *viper.Viper, output interface{}) error {
 	}
 	return decoder.Decode(leafKeys)
 }
-
-// EnhancedExactUnmarshalKey is intended to unmarshal a config file subtreee into a structure
-func EnhancedExactUnmarshalKey(baseKey string, output interface{}) error {
-	m := make(map[string]interface{})
-	m[baseKey] = nil
-	leafKeys := getKeysRecursively("", viper.Get, m)
-
-	logger.Debugf("%+v", leafKeys)
-
-	config := &mapstructure.DecoderConfig{
-		Metadata:         nil,
-		Result:           output,
-		WeaklyTypedInput: true,
-	}
-
-	decoder, err := mapstructure.NewDecoder(config)
-	if err != nil {
-		return err
-	}
-
-	return decoder.Decode(leafKeys[baseKey])
-}
