@@ -178,6 +178,9 @@ func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, bccsp.Key, e
 
 	// get the public key in the right format
 	certPubK, err := msp.bccsp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
+	if err != nil {
+		return nil, nil, err
+	}
 
 	mspId, err := newIdentity(cert, certPubK, msp)
 	if err != nil {
