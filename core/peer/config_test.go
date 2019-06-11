@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -314,4 +315,21 @@ func TestGlobalConfig(t *testing.T) {
 	}
 
 	assert.Equal(t, coreConfig, expectedConfig)
+}
+
+func TestGlobalConfigDefault(t *testing.T) {
+	defer viper.Reset()
+	viper.Set("peer.address", "localhost:8080")
+
+	coreConfig, err := GlobalConfig()
+	assert.NoError(t, err)
+
+	expectedConfig := &Config{
+		AuthenticationTimeWindow: 15 * time.Minute,
+		PeerAddress:              "localhost:8080",
+		ValidatorPoolSize:        runtime.NumCPU(),
+		VMNetworkMode:            "host",
+	}
+
+	assert.Equal(t, expectedConfig, coreConfig)
 }
