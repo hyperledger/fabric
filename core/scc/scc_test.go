@@ -7,15 +7,24 @@ SPDX-License-Identifier: Apache-2.0
 package scc
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	ccprovider2 "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -70,9 +79,18 @@ func TestDeploy(t *testing.T) {
 	}
 	assert.Panics(t, f)
 
-	cleanup := ledgermgmt.InitializeTestEnv(t)
-	defer cleanup()
-	err := peer.CreateMockChannel(p.Peer, "a")
+	tempdir, err := ioutil.TempDir("", "scc-test")
+	require.NoError(t, err, "failed to create temporary directory")
+	ledgerMgr, err := constructLedgerMgrWithTestDefaults(tempdir)
+	require.NoError(t, err, "failed to create ledger manager")
+	p.Peer.LedgerMgr = ledgerMgr
+
+	defer func() {
+		p.Peer.LedgerMgr.Close()
+		os.RemoveAll(tempdir)
+	}()
+
+	err = peer.CreateMockChannel(p.Peer, "a")
 	if err != nil {
 		t.Fatalf("failed to create mock chain: %v", err)
 	}
@@ -150,4 +168,28 @@ func TestRegisterSysCC(t *testing.T) {
 	})
 	assert.Error(t, err)
 	assert.Contains(t, "invokableExternalButNotCC2CC:latest already registered", err)
+}
+
+func constructLedgerMgrWithTestDefaults(testDir string) (*ledgermgmt.LedgerMgr, error) {
+	testDefaults := &ledgermgmt.Initializer{
+		CustomTxProcessors: customtx.Processors{
+			common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
+		},
+		Config: &ledger.Config{
+			RootFSPath:    testDir,
+			StateDBConfig: &ledger.StateDBConfig{},
+			PrivateDataConfig: &ledger.PrivateDataConfig{
+				MaxBatchSize:    5000,
+				BatchesInterval: 1000,
+				PurgeInterval:   100,
+			},
+			HistoryDBConfig: &ledger.HistoryDBConfig{
+				Enabled: true,
+			},
+		},
+		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
+		MetricsProvider:               &disabled.Provider{},
+		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
+	}
+	return ledgermgmt.NewLedgerMgr(testDefaults), nil
 }

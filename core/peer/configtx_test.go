@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -15,37 +17,35 @@ import (
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigTxCreateLedger(t *testing.T) {
 	helper := newTestHelper(t)
-
 	channelID := "testchain1"
-	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(
-		&ledgermgmt.Initializer{
-			CustomTxProcessors: customtx.Processors{
-				common.HeaderType_CONFIG: &ConfigTxProcessor{},
-			},
-		},
-	)
+	tempdir, err := ioutil.TempDir("", "peer-test")
+	require.NoError(t, err, "failed to create temporary directory")
+
+	ledgerMgr, err := constructLedgerMgrWithTestDefaults(tempdir)
 	if err != nil {
 		t.Fatalf("Failed to create test environment: %s", err)
 	}
 
-	defer cleanup()
+	defer func() {
+		ledgerMgr.Close()
+		os.RemoveAll(tempdir)
+	}()
 
 	chanConf := helper.sampleChannelConfig(1, true)
 	genesisTx := helper.constructGenesisTx(t, channelID, chanConf)
 	genesisBlock := helper.constructBlock(genesisTx, 0, nil)
-	ledger, err := ledgermgmt.CreateLedger(genesisBlock)
+	ledger, err := ledgerMgr.CreateLedger(genesisBlock)
 	assert.NoError(t, err)
 
 	retrievedchanConf, err := retrievePersistedChannelConfig(ledger)
@@ -56,22 +56,23 @@ func TestConfigTxCreateLedger(t *testing.T) {
 func TestConfigTxUpdateChanConfig(t *testing.T) {
 	helper := newTestHelper(t)
 	channelID := "testchain1"
-	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(
-		&ledgermgmt.Initializer{
-			CustomTxProcessors: customtx.Processors{
-				common.HeaderType_CONFIG: &ConfigTxProcessor{},
-			},
-		},
-	)
+	tempdir, err := ioutil.TempDir("", "peer-test")
+	require.NoError(t, err, "failed to create temporary directory")
+
+	ledgerMgr, err := constructLedgerMgrWithTestDefaults(tempdir)
 	if err != nil {
 		t.Fatalf("Failed to create test environment: %s", err)
 	}
-	defer cleanup()
+
+	defer func() {
+		ledgerMgr.Close()
+		os.RemoveAll(tempdir)
+	}()
 
 	chanConf := helper.sampleChannelConfig(1, true)
 	genesisTx := helper.constructGenesisTx(t, channelID, chanConf)
 	genesisBlock := helper.constructBlock(genesisTx, 0, nil)
-	lgr, err := ledgermgmt.CreateLedger(genesisBlock)
+	lgr, err := ledgerMgr.CreateLedger(genesisBlock)
 	assert.NoError(t, err)
 
 	retrievedchanConf, err := retrievePersistedChannelConfig(lgr)
@@ -91,28 +92,27 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 
 	lgr.Close()
 	helper.clearMockChains()
-	_, err = ledgermgmt.OpenLedger(channelID)
+	_, err = ledgerMgr.OpenLedger(channelID)
 	assert.NoError(t, err)
 }
 
 func TestGenesisBlockCreateLedger(t *testing.T) {
 	b, err := configtxtest.MakeGenesisBlock("testchain")
 	assert.NoError(t, err)
+	tempdir, err := ioutil.TempDir("", "peer-test")
+	require.NoError(t, err, "failed to create temporary directory")
 
-	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(
-		&ledgermgmt.Initializer{
-			CustomTxProcessors: customtx.Processors{
-				common.HeaderType_CONFIG: &ConfigTxProcessor{},
-			},
-		},
-	)
+	ledgerMgr, err := constructLedgerMgrWithTestDefaults(tempdir)
 	if err != nil {
 		t.Fatalf("Failed to create test environment: %s", err)
 	}
 
-	defer cleanup()
+	defer func() {
+		ledgerMgr.Close()
+		os.RemoveAll(tempdir)
+	}()
 
-	lgr, err := ledgermgmt.CreateLedger(b)
+	lgr, err := ledgerMgr.CreateLedger(b)
 	assert.NoError(t, err)
 	chanConf, err := retrievePersistedChannelConfig(lgr)
 	assert.NoError(t, err)

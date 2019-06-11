@@ -8,6 +8,7 @@ package cscc
 
 import (
 	"errors"
+	"io/ioutil"
 	"net"
 	"os"
 	"testing"
@@ -20,11 +21,16 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/deliverservice"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc/cscc/mocks"
@@ -38,6 +44,7 @@ import (
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/protos/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -193,11 +200,15 @@ func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.Chainc
 func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	viper.Set("chaincode.executetimeout", "3s")
 
-	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(nil)
+	testDir, err := ioutil.TempDir("", "cscc_test")
+	require.NoError(t, err, "error in creating test dir")
+	defer os.Remove(testDir)
+
+	ledgerMgr, err := constructLedgerMgrWithTestDefaults(testDir)
 	if err != nil {
 		t.Fatalf("Failed to initialize peer: %s", err)
 	}
-	defer cleanup()
+	defer ledgerMgr.Close()
 
 	peerEndpoint := "127.0.0.1:13611"
 
@@ -259,6 +270,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		peer: &peer.Peer{
 			StoreProvider: &mocks.StoreProvider{},
 			GossipService: gossipService,
+			LedgerMgr:     ledgerMgr,
 		},
 	}
 	mockStub := &mocks.ChaincodeStub{}
@@ -387,4 +399,29 @@ func mockConfigBlock() []byte {
 		blockBytes = protoutil.MarshalOrPanic(block)
 	}
 	return blockBytes
+}
+
+func constructLedgerMgrWithTestDefaults(testDir string) (*ledgermgmt.LedgerMgr, error) {
+	testDefaults := &ledgermgmt.Initializer{
+		CustomTxProcessors: customtx.Processors{
+			common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
+		},
+		Config: &ledger.Config{
+			RootFSPath:    testDir,
+			StateDBConfig: &ledger.StateDBConfig{},
+			PrivateDataConfig: &ledger.PrivateDataConfig{
+				MaxBatchSize:    5000,
+				BatchesInterval: 1000,
+				PurgeInterval:   100,
+			},
+			HistoryDBConfig: &ledger.HistoryDBConfig{
+				Enabled: true,
+			},
+		},
+		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
+		MetricsProvider:               &disabled.Provider{},
+		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
+	}
+
+	return ledgermgmt.NewLedgerMgr(testDefaults), nil
 }

@@ -40,7 +40,6 @@ import (
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
@@ -159,18 +158,16 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		Whitelist: scc.GlobalWhitelist(),
 	}
 
-	ledgerCleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(nil)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
 	tempdir, err := ioutil.TempDir("", "cc-support-test")
 	if err != nil {
 		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
 	}
+
+	peerInstance.LedgerMgr = constructLedgerMgrWithTestDefaults(filepath.Join(tempdir, "ledgersData"))
+
 	cleanup := func() {
+		peerInstance.LedgerMgr.Close()
 		os.RemoveAll(tempdir)
-		ledgerCleanup()
 	}
 
 	mockAclProvider := &mock.ACLProvider{}

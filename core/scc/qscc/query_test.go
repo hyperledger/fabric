@@ -13,13 +13,19 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/chaincode/shim/shimtest"
+	"github.com/hyperledger/fabric/core/ledger"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos/common"
 	peer2 "github.com/hyperledger/fabric/protos/peer"
@@ -34,12 +40,23 @@ func setupTestLedger(chainid string, path string) (*shimtest.MockStub, *peer.Pee
 	mockAclProvider.Reset()
 
 	viper.Set("peer.fileSystemPath", path)
-	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(nil)
+	testDir, err := ioutil.TempDir("", "qscc_test")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	peerInstance := &peer.Peer{}
+	ledgerMgr, err := constructLedgerMgrWithTestDefaults(testDir)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	cleanup := func() {
+		ledgerMgr.Close()
+		os.RemoveAll(testDir)
+	}
+	peerInstance := &peer.Peer{
+		LedgerMgr: ledgerMgr,
+	}
 	peer.CreateMockChannel(peerInstance, chainid)
 
 	lq := &LedgerQuerier{
@@ -372,4 +389,29 @@ func TestMain(m *testing.M) {
 	mockAclProvider.Reset()
 
 	os.Exit(m.Run())
+}
+
+func constructLedgerMgrWithTestDefaults(testDir string) (*ledgermgmt.LedgerMgr, error) {
+	testDefaults := &ledgermgmt.Initializer{
+		CustomTxProcessors: customtx.Processors{
+			common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
+		},
+		Config: &ledger.Config{
+			RootFSPath:    testDir,
+			StateDBConfig: &ledger.StateDBConfig{},
+			PrivateDataConfig: &ledger.PrivateDataConfig{
+				MaxBatchSize:    5000,
+				BatchesInterval: 1000,
+				PurgeInterval:   100,
+			},
+			HistoryDBConfig: &ledger.HistoryDBConfig{
+				Enabled: true,
+			},
+		},
+		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
+		MetricsProvider:               &disabled.Provider{},
+		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
+	}
+
+	return ledgermgmt.NewLedgerMgr(testDefaults), nil
 }

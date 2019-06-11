@@ -15,7 +15,7 @@ func TestRebuildComponents(t *testing.T) {
 	defer env.cleanup()
 	env.initLedgerMgmt()
 
-	h1, h2 := newTestHelperCreateLgr("ledger1", t), newTestHelperCreateLgr("ledger2", t)
+	h1, h2 := env.newTestHelperCreateLgr("ledger1", t), env.newTestHelperCreateLgr("ledger2", t)
 	dataHelper := newSampleDataHelper(t)
 
 	dataHelper.populateLedger(h1)
@@ -27,7 +27,7 @@ func TestRebuildComponents(t *testing.T) {
 	t.Run("rebuild only statedb",
 		func(t *testing.T) {
 			env.closeAllLedgersAndDrop(rebuildableStatedb)
-			h1, h2 := newTestHelperOpenLgr("ledger1", t), newTestHelperOpenLgr("ledger2", t)
+			h1, h2 := env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
 			dataHelper.verifyLedgerContent(h1)
 			dataHelper.verifyLedgerContent(h2)
 		},
@@ -36,7 +36,7 @@ func TestRebuildComponents(t *testing.T) {
 	t.Run("rebuild statedb and config history",
 		func(t *testing.T) {
 			env.closeAllLedgersAndDrop(rebuildableStatedb + rebuildableConfigHistory)
-			h1, h2 := newTestHelperOpenLgr("ledger1", t), newTestHelperOpenLgr("ledger2", t)
+			h1, h2 := env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
 			dataHelper.verifyLedgerContent(h1)
 			dataHelper.verifyLedgerContent(h2)
 		},
@@ -45,7 +45,7 @@ func TestRebuildComponents(t *testing.T) {
 	t.Run("rebuild statedb and block index",
 		func(t *testing.T) {
 			env.closeAllLedgersAndDrop(rebuildableStatedb + rebuildableBlockIndex)
-			h1, h2 := newTestHelperOpenLgr("ledger1", t), newTestHelperOpenLgr("ledger2", t)
+			h1, h2 := env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
 			dataHelper.verifyLedgerContent(h1)
 			dataHelper.verifyLedgerContent(h2)
 		},

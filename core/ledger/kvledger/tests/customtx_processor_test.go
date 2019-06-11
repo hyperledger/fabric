@@ -27,7 +27,7 @@ func TestReadWriteCustomTxProcessor(t *testing.T) {
 			100: fakeTxProcessor,
 		},
 	)
-	h := newTestHelperCreateLgr("ledger1", t)
+	h := env.newTestHelperCreateLgr("ledger1", t)
 	h.simulateDataTx("tx0", func(s *simulator) {
 		s.setState("ns", "key1", "value1")
 		s.setState("ns", "key2", "value2")
@@ -72,7 +72,7 @@ func TestRangeReadAndWriteCustomTxProcessor(t *testing.T) {
 			103: fakeTxProcessor3,
 		},
 	)
-	h := newTestHelperCreateLgr("ledger1", t)
+	h := env.newTestHelperCreateLgr("ledger1", t)
 	h.simulateDataTx("tx0", func(s *simulator) {
 		s.setState("ns", "key1", "value1")
 		s.setState("ns", "key2", "value2")

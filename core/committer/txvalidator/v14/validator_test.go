@@ -9,6 +9,7 @@ package txvalidator_test
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"testing"
@@ -20,10 +21,13 @@ import (
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	vp "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	txvalidatorv14 "github.com/hyperledger/fabric/core/committer/txvalidator/v14"
@@ -35,6 +39,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	mocks2 "github.com/hyperledger/fabric/discovery/support/mocks"
@@ -103,10 +108,10 @@ func setupLedgerAndValidatorWithCapabilities(t *testing.T, c *mockconfig.MockApp
 }
 
 func setupLedgerAndValidatorExplicitWithMSP(t *testing.T, cpb *mockconfig.MockApplicationCapabilities, plugin validation.Plugin, mspMgr msp.MSPManager) (ledger.PeerLedger, txvalidator.Validator, func()) {
-	cleanup := ledgermgmt.InitializeTestEnv(t)
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
 	gb, err := ctxt.MakeGenesisBlock("TestLedger")
 	assert.NoError(t, err)
-	theLedger, err := ledgermgmt.CreateLedger(gb)
+	theLedger, err := ledgerMgr.CreateLedger(gb)
 	assert.NoError(t, err)
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 	pm := &mocks.Mapper{}
@@ -1642,10 +1647,10 @@ func (exec *mockQueryExecutor) GetPrivateDataMetadata(namespace, collection, key
 }
 
 func createCustomSupportAndLedger(t *testing.T) (*mocktxvalidator.Support, ledger.PeerLedger, func()) {
-	cleanup := ledgermgmt.InitializeTestEnv(t)
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
 	gb, err := ctxt.MakeGenesisBlock("TestLedger")
 	assert.NoError(t, err)
-	l, err := ledgermgmt.CreateLedger(gb)
+	l, err := ledgerMgr.CreateLedger(gb)
 	assert.NoError(t, err)
 
 	identity := &mocks2.Identity{}
@@ -1950,4 +1955,34 @@ func TestMain(m *testing.M) {
 
 func ToHex(q uint64) string {
 	return "0x" + strconv.FormatUint(q, 16)
+}
+
+func constructLedgerMgrWithTestDefaults(t *testing.T, testDir string) (*ledgermgmt.LedgerMgr, func()) {
+	testDir, err := ioutil.TempDir("", testDir)
+	if err != nil {
+		t.Fatalf("Failed to create ledger directory: %s", err)
+	}
+
+	testDefaults := &ledgermgmt.Initializer{
+		Config: &ledger.Config{
+			RootFSPath:    testDir,
+			StateDBConfig: &ledger.StateDBConfig{},
+			PrivateDataConfig: &ledger.PrivateDataConfig{
+				MaxBatchSize:    5000,
+				BatchesInterval: 1000,
+				PurgeInterval:   100,
+			},
+			HistoryDBConfig: &ledger.HistoryDBConfig{},
+		},
+		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
+		MetricsProvider:               &disabled.Provider{},
+		DeployedChaincodeInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
+	}
+
+	ledgerMgr := ledgermgmt.NewLedgerMgr(testDefaults)
+	cleanup := func() {
+		ledgerMgr.Close()
+		os.RemoveAll(testDir)
+	}
+	return ledgerMgr, cleanup
 }

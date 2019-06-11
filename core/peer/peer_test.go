@@ -1,6 +1,5 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
-
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -18,14 +17,10 @@ import (
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mscc "github.com/hyperledger/fabric/common/mocks/scc"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	ledgermocks "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/transientstore"
@@ -37,7 +32,6 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -52,7 +46,6 @@ func TestMain(m *testing.M) {
 func NewTestPeer(t *testing.T) (*Peer, func()) {
 	tempdir, err := ioutil.TempDir("", "peer-test")
 	require.NoError(t, err, "failed to create temporary directory")
-	cleanup := func() { os.RemoveAll(tempdir) }
 
 	// Initialize gossip service
 	signer := mgmt.GetLocalSigningIdentityOrPanic()
@@ -90,45 +83,25 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 	)
 	require.NoError(t, err, "failed to create gossip service")
 
-	ledgermgmt.Initialize(&ledgermgmt.Initializer{
-		CustomTxProcessors: customtx.Processors{
-			common.HeaderType_CONFIG: &ConfigTxProcessor{},
-		},
-		PlatformRegistry:              &platforms.Registry{},
-		DeployedChaincodeInfoProvider: &ledgermocks.DeployedChaincodeInfoProvider{},
-		MembershipInfoProvider:        nil,
-		MetricsProvider:               &disabled.Provider{},
-		Config: &ledger.Config{
-			RootFSPath:    filepath.Join(tempdir, "ledgersData"),
-			StateDBConfig: &ledger.StateDBConfig{},
-			PrivateDataConfig: &ledger.PrivateDataConfig{
-				MaxBatchSize:    5000,
-				BatchesInterval: 1000,
-				PurgeInterval:   100,
-			},
-			HistoryDBConfig: &ledger.HistoryDBConfig{
-				Enabled: true,
-			},
-		},
-	})
+	ledgerMgr, err := constructLedgerMgrWithTestDefaults(filepath.Join(tempdir, "ledgersData"))
+	require.NoError(t, err, "failed to create ledger manager")
 
 	peerInstance := &Peer{
 		GossipService: gossipService,
 		StoreProvider: transientstore.NewStoreProvider(
 			filepath.Join(tempdir, "transientstore"),
 		),
+		LedgerMgr: ledgerMgr,
 	}
 
+	cleanup := func() {
+		ledgerMgr.Close()
+		os.RemoveAll(tempdir)
+	}
 	return peerInstance, cleanup
 }
 
 func TestInitialize(t *testing.T) {
-	rootFSPath, err := ioutil.TempDir("", "ledgersData")
-	if err != nil {
-		t.Fatalf("Failed to create ledger directory: %s", err)
-	}
-	defer os.RemoveAll(rootFSPath)
-
 	peerInstance, cleanup := NewTestPeer(t)
 	defer cleanup()
 
@@ -137,7 +110,6 @@ func TestInitialize(t *testing.T) {
 		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
 		&ledgermocks.DeployedChaincodeInfoProvider{},
-		nil,
 		nil,
 		nil,
 		runtime.NumCPU(),
@@ -154,7 +126,6 @@ func TestCreateChannel(t *testing.T) {
 		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
 		&ledgermocks.DeployedChaincodeInfoProvider{},
-		nil,
 		nil,
 		nil,
 		runtime.NumCPU(),

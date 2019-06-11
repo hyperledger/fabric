@@ -13,21 +13,15 @@ import (
 	"errors"
 	"io/ioutil"
 	"net"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/comm/testpb"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	ledgermocks "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp"
@@ -176,30 +170,6 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 	peerInstance, cleanup := peer.NewTestPeer(t)
 	defer cleanup()
 	peerInstance.CredentialSupport = comm.NewCredentialSupport()
-
-	testDir, err := ioutil.TempDir("", "peer-pkg")
-	require.NoError(t, err)
-	defer os.RemoveAll(testDir)
-
-	ledgermgmt.Initialize(&ledgermgmt.Initializer{
-		CustomTxProcessors:            nil,
-		PlatformRegistry:              &platforms.Registry{},
-		DeployedChaincodeInfoProvider: &ledgermocks.DeployedChaincodeInfoProvider{},
-		MembershipInfoProvider:        nil,
-		MetricsProvider:               &disabled.Provider{},
-		Config: &ledger.Config{
-			RootFSPath:    filepath.Join(testDir, "ledgersData"),
-			StateDBConfig: &ledger.StateDBConfig{},
-			PrivateDataConfig: &ledger.PrivateDataConfig{
-				MaxBatchSize:    5000,
-				BatchesInterval: 1000,
-				PurgeInterval:   100,
-			},
-			HistoryDBConfig: &ledger.HistoryDBConfig{
-				Enabled: true,
-			},
-		},
-	})
 
 	createChannel := func(t *testing.T, cid string, block *cb.Block) {
 		err = peerInstance.CreateChannel(block, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)

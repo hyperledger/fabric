@@ -11,12 +11,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/mocks/config"
 	mscc "github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/policies"
@@ -30,7 +32,9 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim/shimtest"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	cutil "github.com/hyperledger/fabric/core/container/util"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/mocks/scc/lscc"
 	"github.com/hyperledger/fabric/core/policy"
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
@@ -104,7 +108,7 @@ func getMSPIDs(cid string) []string {
 // TestInstall tests the install function with various inputs
 func TestInstall(t *testing.T) {
 	// Initialize ledgermgmt that inturn initializes internal components (such as cceventmgmt on which this test depends)
-	cleanup := ledgermgmt.InitializeTestEnv(t)
+	_, cleanup := constructLedgerMgrWithTestDefaults(t, "lscc")
 	defer cleanup()
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
 	scc.Support = &lscc.MockSupport{}
@@ -1187,4 +1191,30 @@ func TestMain(m *testing.M) {
 	mockAclProvider.Reset()
 
 	os.Exit(m.Run())
+}
+
+func constructLedgerMgrWithTestDefaults(t *testing.T, testDir string) (*ledgermgmt.LedgerMgr, func()) {
+	testDir, err := ioutil.TempDir("", testDir)
+	if err != nil {
+		t.Fatalf("Failed to create ledger directory: %s", err)
+	}
+
+	testDefaults := &ledgermgmt.Initializer{
+		Config: &ledger.Config{
+			RootFSPath:        testDir,
+			StateDBConfig:     &ledger.StateDBConfig{},
+			PrivateDataConfig: &ledger.PrivateDataConfig{},
+			HistoryDBConfig:   &ledger.HistoryDBConfig{},
+		},
+		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
+		MetricsProvider:               &disabled.Provider{},
+		DeployedChaincodeInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
+	}
+
+	ledgerMgr := ledgermgmt.NewLedgerMgr(testDefaults)
+	cleanup := func() {
+		ledgerMgr.Close()
+		os.RemoveAll(testDir)
+	}
+	return ledgerMgr, cleanup
 }
