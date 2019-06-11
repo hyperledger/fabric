@@ -118,7 +118,7 @@ func (*cryptoServiceMock) GetPKIidOfCert(peerIdentity api.PeerIdentityType) comm
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*cryptoServiceMock) VerifyBlock(chainID common.ChainID, seqNum uint64, signedBlock []byte) error {
+func (*cryptoServiceMock) VerifyBlock(channelID common.ChannelID, seqNum uint64, signedBlock []byte) error {
 	return nil
 }
 
@@ -145,7 +145,7 @@ func (*cryptoServiceMock) Verify(peerIdentity api.PeerIdentityType, signature, m
 // under a peer's verification key, but also in the context of a specific channel.
 // If the verification succeeded, Verify returns nil meaning no error occurred.
 // If peerIdentity is nil, then the signature is verified against this peer's verification key.
-func (cs *cryptoServiceMock) VerifyByChannel(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error {
+func (cs *cryptoServiceMock) VerifyByChannel(channelID common.ChannelID, peerIdentity api.PeerIdentityType, signature, message []byte) error {
 	return cs.acceptor(peerIdentity)
 }
 
@@ -392,7 +392,7 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 
 	}
 
-	g.JoinChan(&joinChanMsg{}, common.ChainID(util.GetTestChainID()))
+	g.JoinChan(&joinChanMsg{}, common.ChannelID(util.GetTestChainID()))
 
 	go func() {
 		gRPCServer.Start()
@@ -1037,7 +1037,7 @@ func TestAccessControl(t *testing.T) {
 
 	waitUntilTrueOrTimeout(t, func() bool {
 		for _, p := range peersSet {
-			if len(p.g.PeersOfChannel(common.ChainID(util.GetTestChainID()))) != bootstrapSetSize+standardPeerSetSize-1 {
+			if len(p.g.PeersOfChannel(common.ChannelID(util.GetTestChainID()))) != bootstrapSetSize+standardPeerSetSize-1 {
 				t.Log("Peer discovery has not finished yet")
 				return false
 			}
@@ -1118,7 +1118,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	waitUntilTrueOrTimeout(t, func() bool {
 		for _, p := range peersSet {
-			if len(p.g.PeersOfChannel(common.ChainID(util.GetTestChainID()))) != bootstrapSetSize+standartPeersSize-1 {
+			if len(p.g.PeersOfChannel(common.ChannelID(util.GetTestChainID()))) != bootstrapSetSize+standartPeersSize-1 {
 				t.Log("Peer discovery has not finished yet")
 				return false
 			}
@@ -1191,7 +1191,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 	// Once we got message which indicate of two batches being received,
 	// making sure messages indeed committed.
 	waitUntilTrueOrTimeout(t, func() bool {
-		if len(peer.g.PeersOfChannel(common.ChainID(util.GetTestChainID()))) != 1 {
+		if len(peer.g.PeersOfChannel(common.ChannelID(util.GetTestChainID()))) != 1 {
 			t.Log("Peer discovery has not finished yet")
 			return false
 		}

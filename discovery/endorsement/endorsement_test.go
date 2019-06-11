@@ -63,7 +63,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	g := &gossipMock{}
 	pf := &policyFetcherMock{}
 	ccWithMissingPolicy := "chaincodeWithMissingPolicy"
-	channel := common.ChainID("test")
+	channel := common.ChannelID("test")
 	alivePeers := peerSet{
 		newPeer(0),
 		newPeer(2),
@@ -561,7 +561,7 @@ func TestPeersAuthorizedByCriteria(t *testing.T) {
 			}
 
 			analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
-			actualMembers, err := analyzer.PeersAuthorizedByCriteria(common.ChainID("mychannel"), tst.arguments)
+			actualMembers, err := analyzer.PeersAuthorizedByCriteria(common.ChannelID("mychannel"), tst.arguments)
 			assert.NoError(t, err)
 			assert.Equal(t, tst.expected, actualMembers)
 		})
@@ -594,7 +594,7 @@ func TestComputePrincipalSetsNoPolicies(t *testing.T) {
 		Chaincodes: []*discoveryprotos.ChaincodeCall{},
 	}
 	ea := &endorsementAnalyzer{}
-	_, err := ea.computePrincipalSets(common.ChainID("mychannel"), interest)
+	_, err := ea.computePrincipalSets(common.ChannelID("mychannel"), interest)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no principal sets remained after filtering")
 }
@@ -628,7 +628,7 @@ func TestLoadMetadataAndFiltersCollectionNotPresentInConfig(t *testing.T) {
 	_, err := loadMetadataAndFilters(metadataAndFilterContext{
 		identityInfoByID: nil,
 		evaluator:        nil,
-		chainID:          common.ChainID("mychannel"),
+		chainID:          common.ChannelID("mychannel"),
 		fetch:            mdf,
 		interest:         interest,
 	})
@@ -655,7 +655,7 @@ func TestLoadMetadataAndFiltersInvalidCollectionData(t *testing.T) {
 	_, err := loadMetadataAndFilters(metadataAndFilterContext{
 		identityInfoByID: nil,
 		evaluator:        nil,
-		chainID:          common.ChainID("mychannel"),
+		chainID:          common.ChannelID("mychannel"),
 		fetch:            mdf,
 		interest:         interest,
 	})
@@ -751,7 +751,7 @@ func (g *gossipMock) IdentityInfo() api.PeerIdentitySet {
 	return g.Called().Get(0).(api.PeerIdentitySet)
 }
 
-func (g *gossipMock) PeersOfChannel(_ common.ChainID) discovery.Members {
+func (g *gossipMock) PeersOfChannel(_ common.ChannelID) discovery.Members {
 	members := g.Called().Get(0)
 	return members.(discovery.Members)
 }

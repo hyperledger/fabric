@@ -196,7 +196,7 @@ type peerMockGossip struct {
 	pki2org      map[string]string
 }
 
-func (g *peerMockGossip) PeersOfChannel(channel common.ChainID) []discovery.NetworkMember {
+func (g *peerMockGossip) PeersOfChannel(channel common.ChannelID) []discovery.NetworkMember {
 	g.clusterLock.RLock()
 	if g.cluster == nil {
 		g.clusterLock.RUnlock()

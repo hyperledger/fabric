@@ -61,7 +61,7 @@ func (c *configurableCryptoService) OrgByPeerIdentity(identity api.PeerIdentityT
 
 // VerifyByChannel verifies a peer's signature on a message in the context
 // of a specific channel
-func (c *configurableCryptoService) VerifyByChannel(_ common.ChainID, identity api.PeerIdentityType, _, _ []byte) error {
+func (c *configurableCryptoService) VerifyByChannel(_ common.ChannelID, identity api.PeerIdentityType, _, _ []byte) error {
 	return nil
 }
 
@@ -76,7 +76,7 @@ func (*configurableCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*configurableCryptoService) VerifyBlock(chainID common.ChainID, seqNum uint64, signedBlock []byte) error {
+func (*configurableCryptoService) VerifyBlock(channelID common.ChannelID, seqNum uint64, signedBlock []byte) error {
 	return nil
 }
 
@@ -156,7 +156,7 @@ func TestMultipleOrgEndpointLeakage(t *testing.T) {
 	peersInOrg := 5
 	orgA := "orgA"
 	orgB := "orgB"
-	channel := common.ChainID("TEST")
+	channel := common.ChannelID("TEST")
 	orgs := []string{orgA, orgB}
 	peers := []Gossip{}
 
@@ -425,12 +425,12 @@ func TestConfidentiality(t *testing.T) {
 		for _, ch := range channels {
 			if isOrgInChan(org, ch) {
 				for _, p := range peers {
-					p.JoinChan(joinChanMsgsByChan[ch], common.ChainID(ch))
-					p.UpdateLedgerHeight(1, common.ChainID(ch))
+					p.JoinChan(joinChanMsgsByChan[ch], common.ChannelID(ch))
+					p.UpdateLedgerHeight(1, common.ChannelID(ch))
 					go func(p Gossip, ch string) {
 						for i := 0; i < 5; i++ {
 							time.Sleep(time.Second)
-							p.UpdateLedgerHeight(1, common.ChainID(ch))
+							p.UpdateLedgerHeight(1, common.ChannelID(ch))
 						}
 					}(p, ch)
 				}

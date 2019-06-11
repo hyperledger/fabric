@@ -89,7 +89,7 @@ func (*naiveSecProvider) GetPKIidOfCert(peerIdentity api.PeerIdentityType) commo
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*naiveSecProvider) VerifyBlock(chainID common.ChainID, seqNum uint64, signedBlock []byte) error {
+func (*naiveSecProvider) VerifyBlock(channelID common.ChannelID, seqNum uint64, signedBlock []byte) error {
 	return nil
 }
 
@@ -116,7 +116,7 @@ func (*naiveSecProvider) Verify(peerIdentity api.PeerIdentityType, signature, me
 
 // VerifyByChannel verifies a peer's signature on a message in the context
 // of a specific channel
-func (*naiveSecProvider) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityType, _, _ []byte) error {
+func (*naiveSecProvider) VerifyByChannel(_ common.ChannelID, _ api.PeerIdentityType, _, _ []byte) error {
 	return nil
 }
 

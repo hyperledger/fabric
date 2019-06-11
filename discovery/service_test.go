@@ -212,8 +212,8 @@ func TestService(t *testing.T) {
 	}
 	// EligibleForService for an "empty" channel
 	mockSup.On("EligibleForService", "", mock.Anything).Return(nil).Once()
-	mockSup.On("PeersAuthorizedByCriteria", gcommon.ChainID("channelWithAccessGranted")).Return(peersInChannelView, nil).Once()
-	mockSup.On("PeersAuthorizedByCriteria", gcommon.ChainID("channelWithSomeProblem")).Return(nil, errors.New("an error occurred")).Once()
+	mockSup.On("PeersAuthorizedByCriteria", gcommon.ChannelID("channelWithAccessGranted")).Return(peersInChannelView, nil).Once()
+	mockSup.On("PeersAuthorizedByCriteria", gcommon.ChannelID("channelWithSomeProblem")).Return(nil, errors.New("an error occurred")).Once()
 	mockSup.On("Peers").Return(peersInMembershipView).Twice()
 	mockSup.On("IdentityInfo").Return(api.PeerIdentitySet{
 		idInfo(0, "O2"), idInfo(1, "O2"), idInfo(2, "O3"),
@@ -491,7 +491,7 @@ func (ms *mockSupport) ChannelExists(channel string) bool {
 	return ms.Called(channel).Get(0).(bool)
 }
 
-func (ms *mockSupport) PeersOfChannel(channel gcommon.ChainID) gdisc.Members {
+func (ms *mockSupport) PeersOfChannel(channel gcommon.ChannelID) gdisc.Members {
 	panic("not implemented")
 }
 
@@ -499,7 +499,7 @@ func (ms *mockSupport) Peers() gdisc.Members {
 	return ms.Called().Get(0).(gdisc.Members)
 }
 
-func (ms *mockSupport) PeersForEndorsement(channel gcommon.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+func (ms *mockSupport) PeersForEndorsement(channel gcommon.ChannelID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
 	cc := interest.Chaincodes[0].Name
 	args := ms.Called(cc)
 	if args.Get(0) == nil {
@@ -508,7 +508,7 @@ func (ms *mockSupport) PeersForEndorsement(channel gcommon.ChainID, interest *di
 	return args.Get(0).(*discovery.EndorsementDescriptor), args.Error(1)
 }
 
-func (ms *mockSupport) PeersAuthorizedByCriteria(chainID gcommon.ChainID, interest *discovery.ChaincodeInterest) (gdisc.Members, error) {
+func (ms *mockSupport) PeersAuthorizedByCriteria(chainID gcommon.ChannelID, interest *discovery.ChaincodeInterest) (gdisc.Members, error) {
 	args := ms.Called(chainID)
 	if args.Error(1) != nil {
 		return nil, args.Error(1)
@@ -516,7 +516,7 @@ func (ms *mockSupport) PeersAuthorizedByCriteria(chainID gcommon.ChainID, intere
 	return args.Get(0).(gdisc.Members), args.Error(1)
 }
 
-func (*mockSupport) Chaincodes(id gcommon.ChainID) []*gossip.Chaincode {
+func (*mockSupport) Chaincodes(id gcommon.ChannelID) []*gossip.Chaincode {
 	panic("implement me")
 }
 

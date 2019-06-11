@@ -26,7 +26,7 @@ type SecurityAdvisor interface {
 // ChannelNotifier is implemented by the gossip component and is used for the peer
 // layer to notify the gossip component of a JoinChannel event
 type ChannelNotifier interface {
-	JoinChannel(joinMsg JoinChannelMessage, chainID common.ChainID)
+	JoinChannel(joinMsg JoinChannelMessage, channelID common.ChannelID)
 }
 
 // JoinChannelMessage is the message that asserts a creation or mutation

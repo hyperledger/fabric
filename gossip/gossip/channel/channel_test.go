@@ -64,7 +64,7 @@ func init() {
 var (
 	// Organizations: {ORG1, ORG2}
 	// Channel A: {ORG1}
-	channelA                  = common.ChainID("A")
+	channelA                  = common.ChannelID("A")
 	orgInChannelA             = api.OrgIdentityType("ORG1")
 	orgNotInChannelA          = api.OrgIdentityType("ORG2")
 	pkiIDInOrg1               = common.PKIidType("pkiIDInOrg1")
@@ -123,7 +123,7 @@ func (cs *cryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) commo
 	panic("Should not be called in this test")
 }
 
-func (cs *cryptoService) VerifyByChannel(channel common.ChainID, identity api.PeerIdentityType, _, _ []byte) error {
+func (cs *cryptoService) VerifyByChannel(channel common.ChannelID, identity api.PeerIdentityType, _, _ []byte) error {
 	if !cs.mocked {
 		return nil
 	}
@@ -134,7 +134,7 @@ func (cs *cryptoService) VerifyByChannel(channel common.ChainID, identity api.Pe
 	return args.Get(0).(error)
 }
 
-func (cs *cryptoService) VerifyBlock(chainID common.ChainID, seqNum uint64, signedBlock []byte) error {
+func (cs *cryptoService) VerifyBlock(channelID common.ChannelID, seqNum uint64, signedBlock []byte) error {
 	args := cs.Called(signedBlock)
 	if args.Get(0) == nil {
 		return nil
@@ -862,7 +862,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 
 	// Ensure we don't respond to a StateInfoRequest in the wrong channel from a peer in the right org
 	req2, _ := gc.(*gossipChannel).createStateInfoRequest()
-	req2.GetStateInfoPullReq().Channel_MAC = GenerateMAC(pkiIDInOrg1, common.ChainID("B"))
+	req2.GetStateInfoPullReq().Channel_MAC = GenerateMAC(pkiIDInOrg1, common.ChannelID("B"))
 	invalidReceivedMsg2 := &receivedMsg{
 		msg:   req2,
 		PKIID: pkiIDInOrg1,
@@ -1078,7 +1078,7 @@ func TestChannelBadBlocks(t *testing.T) {
 	<-receivedMessages // drain
 
 	// Send a block with wrong channel
-	gc.HandleMessage(&receivedMsg{msg: createDataMsg(2, common.ChainID("B")), PKIID: pkiIDInOrg1})
+	gc.HandleMessage(&receivedMsg{msg: createDataMsg(2, common.ChannelID("B")), PKIID: pkiIDInOrg1})
 	assert.Len(t, receivedMessages, 0)
 
 	// Send a block with empty payload
@@ -1212,10 +1212,10 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	adapter.On("ValidateStateInfoMessage", mock.Anything).Return(nil)
 
 	// Ensure we ignore stateInfo snapshots from peers not in the channel
-	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(common.ChainID("B"), createStateInfoMsg(4, pkiIDInOrg1, channelA))})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(common.ChannelID("B"), createStateInfoMsg(4, pkiIDInOrg1, channelA))})
 	assert.Empty(t, gc.GetPeers())
 	// Ensure we ignore invalid stateInfo snapshots
-	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, pkiIDInOrg1, common.ChainID("B")))})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, pkiIDInOrg1, common.ChannelID("B")))})
 	assert.Empty(t, gc.GetPeers())
 
 	// Ensure we ignore stateInfo messages from peers not in the channel
@@ -1893,7 +1893,7 @@ func TestFilterForeignOrgLeadershipMessages(t *testing.T) {
 		return &receivedMsg{PKIID: sender,
 			msg: &protoext.SignedGossipMessage{
 				GossipMessage: &proto.GossipMessage{
-					Channel: common.ChainID("A"),
+					Channel: common.ChannelID("A"),
 					Tag:     proto.GossipMessage_CHAN_AND_ORG,
 					Content: &proto.GossipMessage_LeadershipMsg{
 						LeadershipMsg: &proto.LeadershipMessage{
@@ -1953,7 +1953,7 @@ func createHelloMsg(PKIID common.PKIidType) *receivedMsg {
 	return &receivedMsg{msg: sMsg, PKIID: PKIID}
 }
 
-func dataMsgOfChannel(seqnum uint64, channel common.ChainID) *protoext.SignedGossipMessage {
+func dataMsgOfChannel(seqnum uint64, channel common.ChannelID) *protoext.SignedGossipMessage {
 	sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
 		Channel: []byte(channel),
 		Nonce:   0,
@@ -1970,7 +1970,7 @@ func dataMsgOfChannel(seqnum uint64, channel common.ChainID) *protoext.SignedGos
 	return sMsg
 }
 
-func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common.ChainID) *protoext.SignedGossipMessage {
+func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common.ChannelID) *protoext.SignedGossipMessage {
 	sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
 		Tag: proto.GossipMessage_CHAN_OR_ORG,
 		Content: &proto.GossipMessage_StateInfo{
@@ -1987,13 +1987,13 @@ func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common
 	return sMsg
 }
 
-func stateInfoSnapshotForChannel(chainID common.ChainID, stateInfoMsgs ...*protoext.SignedGossipMessage) *protoext.SignedGossipMessage {
+func stateInfoSnapshotForChannel(channelID common.ChannelID, stateInfoMsgs ...*protoext.SignedGossipMessage) *protoext.SignedGossipMessage {
 	envelopes := make([]*proto.Envelope, len(stateInfoMsgs))
 	for i, sim := range stateInfoMsgs {
 		envelopes[i] = sim.Envelope
 	}
 	sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
-		Channel: chainID,
+		Channel: channelID,
 		Tag:     proto.GossipMessage_CHAN_OR_ORG,
 		Nonce:   0,
 		Content: &proto.GossipMessage_StateSnapshot{
@@ -2005,7 +2005,7 @@ func stateInfoSnapshotForChannel(chainID common.ChainID, stateInfoMsgs ...*proto
 	return sMsg
 }
 
-func createDataMsg(seqnum uint64, channel common.ChainID) *protoext.SignedGossipMessage {
+func createDataMsg(seqnum uint64, channel common.ChannelID) *protoext.SignedGossipMessage {
 	sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
 		Nonce:   0,
 		Tag:     proto.GossipMessage_CHAN_AND_ORG,
@@ -2229,7 +2229,7 @@ func TestChangesInPeers(t *testing.T) {
 				stopChan:        stopChan,
 				tickerChannel:   tickChan,
 				metrics:         metrics,
-				chainID:         common.ChainID("test"),
+				chainID:         common.ChannelID("test"),
 			}
 
 			wgMT := sync.WaitGroup{}

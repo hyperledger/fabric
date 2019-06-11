@@ -180,20 +180,20 @@ func (g *gossipServiceImpl) toDie() bool {
 	return atomic.LoadInt32(&g.stopFlag) == int32(1)
 }
 
-func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID) {
+func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, channelID common.ChannelID) {
 	// joinMsg is supposed to have been already verified
-	g.chanState.joinChannel(joinMsg, chainID, g.gossipMetrics.MembershipMetrics)
+	g.chanState.joinChannel(joinMsg, channelID, g.gossipMetrics.MembershipMetrics)
 
-	g.logger.Info("Joining gossip network of channel", string(chainID), "with", len(joinMsg.Members()), "organizations")
+	g.logger.Info("Joining gossip network of channel", string(channelID), "with", len(joinMsg.Members()), "organizations")
 	for _, org := range joinMsg.Members() {
-		g.learnAnchorPeers(string(chainID), org, joinMsg.AnchorPeersOf(org))
+		g.learnAnchorPeers(string(channelID), org, joinMsg.AnchorPeersOf(org))
 	}
 }
 
-func (g *gossipServiceImpl) LeaveChan(chainID common.ChainID) {
-	gc := g.chanState.getGossipChannelByChainID(chainID)
+func (g *gossipServiceImpl) LeaveChan(channelID common.ChannelID) {
+	gc := g.chanState.getGossipChannelByChainID(channelID)
 	if gc == nil {
-		g.logger.Debug("No such channel", chainID)
+		g.logger.Debug("No such channel", channelID)
 		return
 	}
 	gc.LeaveChannel()
@@ -543,7 +543,7 @@ func (g *gossipServiceImpl) gossipInChan(messages []*emittedGossipMessage, chanR
 		return
 	}
 	totalChannels := extractChannels(messages)
-	var channel common.ChainID
+	var channel common.ChannelID
 	var messagesOfChannel []*emittedGossipMessage
 	for len(totalChannels) > 0 {
 		// Take first channel
@@ -704,7 +704,7 @@ func (g *gossipServiceImpl) Peers() []discovery.NetworkMember {
 
 // PeersOfChannel returns the NetworkMembers considered alive
 // and also subscribed to the channel given
-func (g *gossipServiceImpl) PeersOfChannel(channel common.ChainID) []discovery.NetworkMember {
+func (g *gossipServiceImpl) PeersOfChannel(channel common.ChannelID) []discovery.NetworkMember {
 	gc := g.chanState.getGossipChannelByChainID(channel)
 	if gc == nil {
 		g.logger.Debug("No such channel", channel)
@@ -720,8 +720,8 @@ func (g *gossipServiceImpl) SelfMembershipInfo() discovery.NetworkMember {
 }
 
 // SelfChannelInfo returns the peer's latest StateInfo message of a given channel
-func (g *gossipServiceImpl) SelfChannelInfo(chain common.ChainID) *protoext.SignedGossipMessage {
-	ch := g.chanState.getGossipChannelByChainID(chain)
+func (g *gossipServiceImpl) SelfChannelInfo(channelID common.ChannelID) *protoext.SignedGossipMessage {
+	ch := g.chanState.getGossipChannelByChainID(channelID)
 	if ch == nil {
 		return nil
 	}
@@ -730,7 +730,7 @@ func (g *gossipServiceImpl) SelfChannelInfo(chain common.ChainID) *protoext.Sign
 
 // PeerFilter receives a SubChannelSelectionCriteria and returns a RoutingFilter that selects
 // only peer identities that match the given criteria, and that they published their channel participation
-func (g *gossipServiceImpl) PeerFilter(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
+func (g *gossipServiceImpl) PeerFilter(channel common.ChannelID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
 	gc := g.chanState.getGossipChannelByChainID(channel)
 	if gc == nil {
 		return nil, errors.Errorf("Channel %s doesn't exist", string(channel))
@@ -763,10 +763,10 @@ func (g *gossipServiceImpl) UpdateMetadata(md []byte) {
 
 // UpdateLedgerHeight updates the ledger height the peer
 // publishes to other peers in the channel
-func (g *gossipServiceImpl) UpdateLedgerHeight(height uint64, chainID common.ChainID) {
-	gc := g.chanState.getGossipChannelByChainID(chainID)
+func (g *gossipServiceImpl) UpdateLedgerHeight(height uint64, channelID common.ChannelID) {
+	gc := g.chanState.getGossipChannelByChainID(channelID)
 	if gc == nil {
-		g.logger.Warning("No such channel", chainID)
+		g.logger.Warning("No such channel", channelID)
 		return
 	}
 	gc.UpdateLedgerHeight(height)
@@ -774,10 +774,10 @@ func (g *gossipServiceImpl) UpdateLedgerHeight(height uint64, chainID common.Cha
 
 // UpdateChaincodes updates the chaincodes the peer publishes
 // to other peers in the channel
-func (g *gossipServiceImpl) UpdateChaincodes(chaincodes []*proto.Chaincode, chainID common.ChainID) {
-	gc := g.chanState.getGossipChannelByChainID(chainID)
+func (g *gossipServiceImpl) UpdateChaincodes(chaincodes []*proto.Chaincode, channelID common.ChannelID) {
+	gc := g.chanState.getGossipChannelByChainID(channelID)
 	if gc == nil {
-		g.logger.Warning("No such channel", chainID)
+		g.logger.Warning("No such channel", channelID)
 		return
 	}
 	gc.UpdateChaincodes(chaincodes)
@@ -1311,17 +1311,17 @@ func partitionMessages(pred common.MessageAcceptor, a []*emittedGossipMessage) (
 
 // extractChannels returns a slice with all channels
 // of all given GossipMessages
-func extractChannels(a []*emittedGossipMessage) []common.ChainID {
-	channels := []common.ChainID{}
+func extractChannels(a []*emittedGossipMessage) []common.ChannelID {
+	channels := []common.ChannelID{}
 	for _, m := range a {
 		if len(m.Channel) == 0 {
 			continue
 		}
 		sameChan := func(a interface{}, b interface{}) bool {
-			return bytes.Equal(a.(common.ChainID), b.(common.ChainID))
+			return bytes.Equal(a.(common.ChannelID), b.(common.ChannelID))
 		}
-		if util.IndexInSlice(channels, common.ChainID(m.Channel), sameChan) == -1 {
-			channels = append(channels, common.ChainID(m.Channel))
+		if util.IndexInSlice(channels, common.ChannelID(m.Channel), sameChan) == -1 {
+			channels = append(channels, common.ChannelID(m.Channel))
 		}
 	}
 	return channels

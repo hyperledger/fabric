@@ -26,12 +26,12 @@ func NewDiscoverySupport(g gossip2.Gossip) *DiscoverySupport {
 
 // ChannelExists returns whether a given channel exists or not
 func (s *DiscoverySupport) ChannelExists(channel string) bool {
-	return s.SelfChannelInfo(common.ChainID(channel)) != nil
+	return s.SelfChannelInfo(common.ChannelID(channel)) != nil
 }
 
 // PeersOfChannel returns the NetworkMembers considered alive
 // and also subscribed to the channel given
-func (s *DiscoverySupport) PeersOfChannel(chain common.ChainID) discovery.Members {
+func (s *DiscoverySupport) PeersOfChannel(chain common.ChannelID) discovery.Members {
 	msg := s.SelfChannelInfo(chain)
 	if msg == nil {
 		return nil

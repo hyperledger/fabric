@@ -33,7 +33,7 @@ type LedgerInfo interface {
 // required from gossip service by delivery service
 type GossipServiceAdapter interface {
 	// PeersOfChannel returns slice with members of specified channel
-	PeersOfChannel(gossipcommon.ChainID) []discovery.NetworkMember
+	PeersOfChannel(gossipcommon.ChannelID) []discovery.NetworkMember
 
 	// AddPayload adds payload to the local state sync buffer
 	AddPayload(chainID string, payload *gossip_proto.Payload) error
@@ -162,12 +162,12 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 				logger.Errorf("[%s] Error serializing block with sequence number %d, due to %s", b.chainID, blockNum, err)
 				continue
 			}
-			if err := b.mcs.VerifyBlock(gossipcommon.ChainID(b.chainID), blockNum, marshaledBlock); err != nil {
+			if err := b.mcs.VerifyBlock(gossipcommon.ChannelID(b.chainID), blockNum, marshaledBlock); err != nil {
 				logger.Errorf("[%s] Error verifying block with sequnce number %d, due to %s", b.chainID, blockNum, err)
 				continue
 			}
 
-			numberOfPeers := len(b.gossip.PeersOfChannel(gossipcommon.ChainID(b.chainID)))
+			numberOfPeers := len(b.gossip.PeersOfChannel(gossipcommon.ChannelID(b.chainID)))
 			// Create payload with a block received
 			payload := createPayload(blockNum, marshaledBlock)
 			// Use payload to create gossip message

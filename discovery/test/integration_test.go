@@ -418,7 +418,7 @@ func createSupport(t *testing.T, dir string, lsccMetadataManager *lsccMetadataMa
 
 	gSup := &mocks.GossipSupport{}
 	gSup.On("ChannelExists", "mychannel").Return(true)
-	gSup.On("PeersOfChannel", gcommon.ChainID("mychannel")).Return(testPeers.toStateInfoSet())
+	gSup.On("PeersOfChannel", gcommon.ChannelID("mychannel")).Return(testPeers.toStateInfoSet())
 	gSup.On("Peers").Return(testPeers.toMembershipSet())
 	gSup.On("IdentityInfo").Return(testPeers.toIdentitySet())
 

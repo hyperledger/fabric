@@ -824,9 +824,9 @@ func (pf *policyFetcher) PolicyByChaincode(channel string, cc string) policies.I
 }
 
 type endorsementAnalyzer interface {
-	PeersForEndorsement(chainID gossipcommon.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error)
+	PeersForEndorsement(chainID gossipcommon.ChannelID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error)
 
-	PeersAuthorizedByCriteria(chainID gossipcommon.ChainID, interest *discovery.ChaincodeInterest) (gdisc.Members, error)
+	PeersAuthorizedByCriteria(chainID gossipcommon.ChannelID, interest *discovery.ChaincodeInterest) (gdisc.Members, error)
 }
 
 type inquireablePolicy struct {
@@ -948,7 +948,7 @@ func (*mockSupport) ChannelExists(channel string) bool {
 	return true
 }
 
-func (ms *mockSupport) PeersOfChannel(gossipcommon.ChainID) gdisc.Members {
+func (ms *mockSupport) PeersOfChannel(gossipcommon.ChannelID) gdisc.Members {
 	return ms.Called().Get(0).(gdisc.Members)
 }
 
@@ -956,11 +956,11 @@ func (ms *mockSupport) Peers() gdisc.Members {
 	return ms.Called().Get(0).(gdisc.Members)
 }
 
-func (ms *mockSupport) PeersForEndorsement(channel gossipcommon.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+func (ms *mockSupport) PeersForEndorsement(channel gossipcommon.ChannelID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
 	return ms.endorsementAnalyzer.PeersForEndorsement(channel, interest)
 }
 
-func (ms *mockSupport) PeersAuthorizedByCriteria(channel gossipcommon.ChainID, interest *discovery.ChaincodeInterest) (gdisc.Members, error) {
+func (ms *mockSupport) PeersAuthorizedByCriteria(channel gossipcommon.ChannelID, interest *discovery.ChaincodeInterest) (gdisc.Members, error) {
 	return ms.endorsementAnalyzer.PeersAuthorizedByCriteria(channel, interest)
 }
 
