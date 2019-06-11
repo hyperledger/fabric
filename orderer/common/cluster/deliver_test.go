@@ -252,6 +252,7 @@ func (ds *deliverServer) enqueueResponse(seq uint64) {
 func (ds *deliverServer) addExpectProbeAssert() {
 	ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
 		assert.NotNil(ds.t, info.GetStart().GetNewest())
+		assert.Equal(ds.t, info.ErrorResponse, orderer.SeekInfo_BEST_EFFORT)
 	}
 }
 
@@ -259,6 +260,7 @@ func (ds *deliverServer) addExpectPullAssert(seq uint64) {
 	ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
 		assert.NotNil(ds.t, info.GetStart().GetSpecified())
 		assert.Equal(ds.t, seq, info.GetStart().GetSpecified().Number)
+		assert.Equal(ds.t, info.ErrorResponse, orderer.SeekInfo_BEST_EFFORT)
 	}
 }
 
