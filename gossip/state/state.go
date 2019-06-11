@@ -80,11 +80,11 @@ type GossipAdapter interface {
 
 	// UpdateLedgerHeight updates the ledger height the peer
 	// publishes to other peers in the channel
-	UpdateLedgerHeight(height uint64, chainID common2.ChainID)
+	UpdateLedgerHeight(height uint64, channelID common2.ChannelID)
 
 	// PeersOfChannel returns the NetworkMembers considered alive
 	// and also subscribed to the channel given
-	PeersOfChannel(common2.ChainID) []discovery.NetworkMember
+	PeersOfChannel(common2.ChannelID) []discovery.NetworkMember
 }
 
 // MCSAdapter adapter of message crypto service interface to bound
@@ -93,13 +93,13 @@ type MCSAdapter interface {
 	// VerifyBlock returns nil if the block is properly signed, and the claimed seqNum is the
 	// sequence number that the block's header contains.
 	// else returns error
-	VerifyBlock(chainID common2.ChainID, seqNum uint64, signedBlock []byte) error
+	VerifyBlock(channelID common2.ChannelID, seqNum uint64, signedBlock []byte) error
 
 	// VerifyByChannel checks that signature is a valid signature of message
 	// under a peer's verification key, but also in the context of a specific channel.
 	// If the verification succeeded, Verify returns nil meaning no error occurred.
 	// If peerIdentity is nil, then the verification fails.
-	VerifyByChannel(chainID common2.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error
+	VerifyByChannel(channelID common2.ChannelID, peerIdentity api.PeerIdentityType, signature, message []byte) error
 }
 
 // ledgerResources defines abilities that the ledger provides
@@ -325,7 +325,7 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 	logger.Infof("Updating metadata information, "+
 		"current ledger sequence is at = %d, next expected block is = %d", height-1, s.payloads.Next())
 	logger.Debug("Updating gossip ledger height to", height)
-	services.UpdateLedgerHeight(height, common2.ChainID(s.chainID))
+	services.UpdateLedgerHeight(height, common2.ChannelID(s.chainID))
 
 	// Listen for incoming communication
 	go s.listen()
@@ -553,7 +553,7 @@ func (s *GossipStateProviderImpl) handleStateResponse(msg protoext.ReceivedMessa
 	}
 	for _, payload := range response.GetPayloads() {
 		logger.Debugf("Received payload with sequence number %d.", payload.SeqNum)
-		if err := s.mediator.VerifyBlock(common2.ChainID(s.chainID), payload.SeqNum, payload.Data); err != nil {
+		if err := s.mediator.VerifyBlock(common2.ChannelID(s.chainID), payload.SeqNum, payload.Data); err != nil {
 			err = errors.WithStack(err)
 			logger.Warningf("Error verifying block with sequence number %d, due to %+v", payload.SeqNum, err)
 			return uint64(0), err
@@ -679,7 +679,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 // find maximum available ledger height across peers
 func (s *GossipStateProviderImpl) maxAvailableLedgerHeight() uint64 {
 	max := uint64(0)
-	for _, p := range s.mediator.PeersOfChannel(common2.ChainID(s.chainID)) {
+	for _, p := range s.mediator.PeersOfChannel(common2.ChannelID(s.chainID)) {
 		if p.Properties == nil {
 			logger.Debug("Peer", p.PreferredEndpoint(), "doesn't have properties, skipping it")
 			continue
@@ -784,7 +784,7 @@ func (s *GossipStateProviderImpl) selectPeerToRequestFrom(height uint64) (*comm.
 func (s *GossipStateProviderImpl) filterPeers(predicate func(peer discovery.NetworkMember) bool) []*comm.RemotePeer {
 	var peers []*comm.RemotePeer
 
-	for _, member := range s.mediator.PeersOfChannel(common2.ChainID(s.chainID)) {
+	for _, member := range s.mediator.PeersOfChannel(common2.ChannelID(s.chainID)) {
 		if predicate(member) {
 			peers = append(peers, &comm.RemotePeer{Endpoint: member.PreferredEndpoint(), PKIID: member.PKIid})
 		}
@@ -851,7 +851,7 @@ func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData util.
 	s.stateMetrics.CommitDuration.With("channel", s.chainID).Observe(sinceT1.Seconds())
 
 	// Update ledger height
-	s.mediator.UpdateLedgerHeight(block.Header.Number+1, common2.ChainID(s.chainID))
+	s.mediator.UpdateLedgerHeight(block.Header.Number+1, common2.ChannelID(s.chainID))
 	logger.Debugf("[%s] Committed block [%d] with %d transaction(s)",
 		s.chainID, block.Header.Number, len(block.Data.Data))
 

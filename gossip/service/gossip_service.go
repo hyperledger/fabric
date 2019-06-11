@@ -365,7 +365,7 @@ func (g *gossipServiceImpl) updateAnchors(config Config) {
 
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for chainID", config.ChainID())
-	g.JoinChan(jcm, gossipcommon.ChainID(config.ChainID()))
+	g.JoinChan(jcm, gossipcommon.ChannelID(config.ChainID()))
 }
 
 func (g *gossipServiceImpl) updateEndpoints(chainID string, endpoints []string) {
@@ -410,7 +410,7 @@ func (g *gossipServiceImpl) Stop() {
 func (g *gossipServiceImpl) newLeaderElectionComponent(chainID string, callback func(bool),
 	electionMetrics *gossipmetrics.ElectionMetrics) election.LeaderElectionService {
 	PKIid := g.mcs.GetPKIidOfCert(g.peerIdentity)
-	adapter := election.NewAdapter(g, PKIid, gossipcommon.ChainID(chainID), electionMetrics)
+	adapter := election.NewAdapter(g, PKIid, gossipcommon.ChannelID(chainID), electionMetrics)
 	config := election.ElectionConfig{
 		StartupGracePeriod:       g.serviceConfig.ElectionStartupGracePeriod,
 		MembershipSampleInterval: g.serviceConfig.ElectionMembershipSampleInterval,

@@ -61,7 +61,7 @@ func TestPeersOfChannel(t *testing.T) {
 	g.SelfChannelInfoReturnsOnCall(1, sMsg)
 	g.PeersOfChannelReturnsOnCall(0, []discovery.NetworkMember{{PKIid: common.PKIidType("p1")}, {PKIid: common.PKIidType("p2")}})
 	sup := gossipSupport.NewDiscoverySupport(g)
-	assert.Empty(t, sup.PeersOfChannel(common.ChainID("")))
+	assert.Empty(t, sup.PeersOfChannel(common.ChannelID("")))
 	expected := discovery.Members{{PKIid: common.PKIidType("p1")}, {PKIid: common.PKIidType("p2")}, {PKIid: common.PKIidType("px"), Envelope: sMsg.Envelope}}
-	assert.Equal(t, expected, sup.PeersOfChannel(common.ChainID("")))
+	assert.Equal(t, expected, sup.PeersOfChannel(common.ChannelID("")))
 }

@@ -26,11 +26,11 @@ func (g *GossipMock) SelfMembershipInfo() discovery.NetworkMember {
 	panic("implement me")
 }
 
-func (g *GossipMock) SelfChannelInfo(common.ChainID) *protoext.SignedGossipMessage {
+func (g *GossipMock) SelfChannelInfo(common.ChannelID) *protoext.SignedGossipMessage {
 	panic("implement me")
 }
 
-func (*GossipMock) PeerFilter(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
+func (*GossipMock) PeerFilter(channel common.ChannelID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
 	panic("implement me")
 }
 
@@ -40,17 +40,17 @@ func (g *GossipMock) SuspectPeers(s api.PeerSuspector) {
 
 // UpdateLedgerHeight updates the ledger height the peer
 // publishes to other peers in the channel
-func (g *GossipMock) UpdateLedgerHeight(height uint64, chainID common.ChainID) {
+func (g *GossipMock) UpdateLedgerHeight(height uint64, channelID common.ChannelID) {
 
 }
 
 // UpdateChaincodes updates the chaincodes the peer publishes
 // to other peers in the channel
-func (g *GossipMock) UpdateChaincodes(chaincode []*proto.Chaincode, chainID common.ChainID) {
+func (g *GossipMock) UpdateChaincodes(chaincode []*proto.Chaincode, channelID common.ChannelID) {
 
 }
 
-func (g *GossipMock) LeaveChan(_ common.ChainID) {
+func (g *GossipMock) LeaveChan(_ common.ChannelID) {
 	panic("implement me")
 }
 
@@ -62,8 +62,8 @@ func (g *GossipMock) Peers() []discovery.NetworkMember {
 	return g.Called().Get(0).([]discovery.NetworkMember)
 }
 
-func (g *GossipMock) PeersOfChannel(chainID common.ChainID) []discovery.NetworkMember {
-	args := g.Called(chainID)
+func (g *GossipMock) PeersOfChannel(channelID common.ChannelID) []discovery.NetworkMember {
+	args := g.Called(channelID)
 	return args.Get(0).([]discovery.NetworkMember)
 }
 
@@ -83,7 +83,7 @@ func (g *GossipMock) Accept(acceptor common.MessageAcceptor, passThrough bool) (
 	return args.Get(0).(<-chan *proto.GossipMessage), nil
 }
 
-func (g *GossipMock) JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID) {
+func (g *GossipMock) JoinChan(joinMsg api.JoinChannelMessage, channelID common.ChannelID) {
 }
 
 // IdentityInfo returns information known peer identities

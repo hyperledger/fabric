@@ -78,7 +78,7 @@ func (cs *channelState) getGossipChannelByMAC(receivedMAC []byte, pkiID common.P
 	cs.RLock()
 	defer cs.RUnlock()
 	for chanName, gc := range cs.channels {
-		mac := channel.GenerateMAC(pkiID, common.ChainID(chanName))
+		mac := channel.GenerateMAC(pkiID, common.ChannelID(chanName))
 		if bytes.Equal(mac, receivedMAC) {
 			return gc
 		}
@@ -86,27 +86,27 @@ func (cs *channelState) getGossipChannelByMAC(receivedMAC []byte, pkiID common.P
 	return nil
 }
 
-func (cs *channelState) getGossipChannelByChainID(chainID common.ChainID) channel.GossipChannel {
+func (cs *channelState) getGossipChannelByChainID(channelID common.ChannelID) channel.GossipChannel {
 	if cs.isStopping() {
 		return nil
 	}
 	cs.RLock()
 	defer cs.RUnlock()
-	return cs.channels[string(chainID)]
+	return cs.channels[string(channelID)]
 }
 
-func (cs *channelState) joinChannel(joinMsg api.JoinChannelMessage, chainID common.ChainID,
+func (cs *channelState) joinChannel(joinMsg api.JoinChannelMessage, channelID common.ChannelID,
 	metrics *metrics.MembershipMetrics) {
 	if cs.isStopping() {
 		return
 	}
 	cs.Lock()
 	defer cs.Unlock()
-	if gc, exists := cs.channels[string(chainID)]; !exists {
+	if gc, exists := cs.channels[string(channelID)]; !exists {
 		pkiID := cs.g.comm.GetPKIid()
 		ga := &gossipAdapterImpl{gossipServiceImpl: cs.g, Discovery: cs.g.disc}
-		gc := channel.NewGossipChannel(pkiID, cs.g.selfOrg, cs.g.mcs, chainID, ga, joinMsg, metrics, nil)
-		cs.channels[string(chainID)] = gc
+		gc := channel.NewGossipChannel(pkiID, cs.g.selfOrg, cs.g.mcs, channelID, ga, joinMsg, metrics, nil)
+		cs.channels[string(channelID)] = gc
 	} else {
 		gc.ConfigureChannel(joinMsg)
 	}

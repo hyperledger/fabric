@@ -59,11 +59,11 @@ func (_m *GossipSupport) Peers() discovery.Members {
 }
 
 // PeersOfChannel provides a mock function with given fields: _a0
-func (_m *GossipSupport) PeersOfChannel(_a0 common.ChainID) discovery.Members {
+func (_m *GossipSupport) PeersOfChannel(_a0 common.ChannelID) discovery.Members {
 	ret := _m.Called(_a0)
 
 	var r0 discovery.Members
-	if rf, ok := ret.Get(0).(func(common.ChainID) discovery.Members); ok {
+	if rf, ok := ret.Get(0).(func(common.ChannelID) discovery.Members); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {

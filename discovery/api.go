@@ -35,7 +35,7 @@ type GossipSupport interface {
 
 	// PeersOfChannel returns the NetworkMembers considered alive
 	// and also subscribed to the channel given
-	PeersOfChannel(common.ChainID) discovery.Members
+	PeersOfChannel(common.ChannelID) discovery.Members
 
 	// Peers returns the NetworkMembers considered alive
 	Peers() discovery.Members
@@ -48,13 +48,13 @@ type GossipSupport interface {
 // for chaincodes
 type EndorsementSupport interface {
 	// PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
-	PeersForEndorsement(channel common.ChainID, interest *discprotos.ChaincodeInterest) (*discprotos.EndorsementDescriptor, error)
+	PeersForEndorsement(channel common.ChannelID, interest *discprotos.ChaincodeInterest) (*discprotos.EndorsementDescriptor, error)
 
 	// PeersAuthorizedByCriteria returns the peers of the channel that are authorized by the given chaincode interest
 	// That is - taking in account if the chaincode(s) in the interest are installed on the peers, and also
 	// taking in account whether the peers are part of the collections of the chaincodes.
 	// If a nil interest, or an empty interest is passed - no filtering is done.
-	PeersAuthorizedByCriteria(chainID common.ChainID, interest *discprotos.ChaincodeInterest) (discovery.Members, error)
+	PeersAuthorizedByCriteria(chainID common.ChannelID, interest *discprotos.ChaincodeInterest) (discovery.Members, error)
 }
 
 // ConfigSupport provides access to channel configuration

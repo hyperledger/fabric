@@ -580,7 +580,7 @@ func waitForFullMembershipOrFailNow(t *testing.T, channel string, gossips []Goss
 	for time.Now().Before(end) {
 		correctPeers = 0
 		for _, g := range gossips {
-			if len(g.PeersOfChannel(gossipcommon.ChainID(channel))) == (peersNum - 1) {
+			if len(g.PeersOfChannel(gossipcommon.ChannelID(channel))) == (peersNum - 1) {
 				correctPeers++
 			}
 		}
@@ -674,8 +674,8 @@ func addPeersToChannel(t *testing.T, n int, channel string, peers []GossipServic
 	for _, i := range peerIndexes {
 		wg.Add(1)
 		go func(i int) {
-			peers[i].JoinChan(jcm, gossipcommon.ChainID(channel))
-			peers[i].UpdateLedgerHeight(0, gossipcommon.ChainID(channel))
+			peers[i].JoinChan(jcm, gossipcommon.ChannelID(channel))
+			peers[i].UpdateLedgerHeight(0, gossipcommon.ChannelID(channel))
 			wg.Done()
 		}(i)
 	}
@@ -822,7 +822,7 @@ func (naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Ti
 
 // VerifyByChannel verifies a peer's signature on a message in the context
 // of a specific channel
-func (*naiveCryptoService) VerifyByChannel(_ gossipcommon.ChainID, _ api.PeerIdentityType, _, _ []byte) error {
+func (*naiveCryptoService) VerifyByChannel(_ gossipcommon.ChannelID, _ api.PeerIdentityType, _, _ []byte) error {
 	return nil
 }
 
@@ -837,7 +837,7 @@ func (*naiveCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) gos
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*naiveCryptoService) VerifyBlock(chainID gossipcommon.ChainID, seqNum uint64, signedBlock []byte) error {
+func (*naiveCryptoService) VerifyBlock(chainID gossipcommon.ChannelID, seqNum uint64, signedBlock []byte) error {
 	return nil
 }
 
@@ -921,7 +921,7 @@ func TestChannelConfig(t *testing.T) {
 			},
 		},
 	}
-	gService.JoinChan(jcm, gossipcommon.ChainID("A"))
+	gService.JoinChan(jcm, gossipcommon.ChannelID("A"))
 	gService.updateAnchors(mc)
 	assert.True(t, gService.amIinChannel(string(orgInChannelA), mc))
 }

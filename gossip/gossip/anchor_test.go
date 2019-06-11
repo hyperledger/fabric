@@ -243,7 +243,7 @@ func TestAnchorPeer(t *testing.T) {
 			},
 		},
 	}
-	channel := common.ChainID("TEST")
+	channel := common.ChannelID("TEST")
 	endpoint := fmt.Sprintf("127.0.0.1:%d", port)
 	// Create the gossip instance (the peer that connects to anchor peers)
 	p := newGossipInstanceWithGRPCWithExternalEndpoint(0, port, grpc, cert, secDialOpt, cs, endpoint)

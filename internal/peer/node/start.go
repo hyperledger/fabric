@@ -571,7 +571,7 @@ func serve(args []string) error {
 
 	// register gossip as a listener for updates from lifecycleMetadataManager
 	metadataManager.AddListener(lifecycle.HandleMetadataUpdateFunc(func(channel string, chaincodes ccdef.MetadataSet) {
-		service.GetGossipService().UpdateChaincodes(chaincodes.AsChaincodes(), gossipcommon.ChainID(channel))
+		service.GetGossipService().UpdateChaincodes(chaincodes.AsChaincodes(), gossipcommon.ChannelID(channel))
 	}))
 
 	// this brings up all the channels

@@ -150,7 +150,7 @@ type gossipChannel struct {
 	blockMsgStore             msgstore.MessageStore
 	stateInfoMsgStore         *stateInfoCache
 	leaderMsgStore            msgstore.MessageStore
-	chainID                   common.ChainID
+	chainID                   common.ChannelID
 	blocksPuller              pull.Mediator
 	logger                    util.Logger
 	stateInfoPublishScheduler *time.Ticker
@@ -184,7 +184,7 @@ func (mf *membershipFilter) GetMembership() []discovery.NetworkMember {
 
 // NewGossipChannel creates a new GossipChannel
 func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.MessageCryptoService,
-	chainID common.ChainID, adapter Adapter, joinMsg api.JoinChannelMessage,
+	channelID common.ChannelID, adapter Adapter, joinMsg api.JoinChannelMessage,
 	metrics *metrics.MembershipMetrics, logger util.Logger) GossipChannel {
 	gc := &gossipChannel{
 		incTime:                   uint64(time.Now().UnixNano()),
@@ -197,7 +197,7 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 		stateInfoPublishScheduler: time.NewTicker(adapter.GetConf().PublishStateInfoInterval),
 		stateInfoRequestScheduler: time.NewTicker(adapter.GetConf().RequestStateInfoInterval),
 		orgs:                      []api.OrgIdentityType{},
-		chainID:                   chainID,
+		chainID:                   channelID,
 	}
 
 	if logger == nil {
@@ -260,11 +260,11 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 
 		org := gc.GetOrgOfPeer(si.PkiId)
 		if !isOrgInChan(org) {
-			gc.logger.Warning("peer", peerIdentity, "'s organization(", string(org), ") isn't in the channel", string(chainID))
+			gc.logger.Warning("peer", peerIdentity, "'s organization(", string(org), ") isn't in the channel", string(channelID))
 			return false
 		}
-		if err := gc.mcs.VerifyByChannel(chainID, peerIdentity, msg.Signature, msg.Payload); err != nil {
-			gc.logger.Warningf("Peer %v isn't eligible for channel %s : %+v", peerIdentity, string(chainID), err)
+		if err := gc.mcs.VerifyByChannel(channelID, peerIdentity, msg.Signature, msg.Payload); err != nil {
+			gc.logger.Warningf("Peer %v isn't eligible for channel %s : %+v", peerIdentity, string(channelID), err)
 			return false
 		}
 		return true
@@ -290,7 +290,7 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 		stopChan:        make(chan struct{}, 1),
 		tickerChannel:   ticker.C,
 		metrics:         metrics,
-		chainID:         chainID,
+		chainID:         channelID,
 	}
 
 	go gc.membershipTracker.trackMembershipChanges()
@@ -1024,7 +1024,7 @@ func (cache *stateInfoCache) Stop() {
 
 // GenerateMAC returns a byte slice that is derived from the peer's PKI-ID
 // and a channel name
-func GenerateMAC(pkiID common.PKIidType, channelID common.ChainID) []byte {
+func GenerateMAC(pkiID common.PKIidType, channelID common.ChannelID) []byte {
 	// Hash is computed on (PKI-ID || channel ID)
 	var preImage []byte
 	preImage = append(preImage, []byte(pkiID)...)
@@ -1039,7 +1039,7 @@ type membershipTracker struct {
 	stopChan        chan struct{}
 	tickerChannel   <-chan time.Time
 	metrics         *metrics.MembershipMetrics
-	chainID         common.ChainID
+	chainID         common.ChannelID
 }
 
 //endpoints return all peers by their endpoints

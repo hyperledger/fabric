@@ -37,7 +37,7 @@ func (*mockMCS) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common2.PKIidT
 	return common2.PKIidType("pkiID")
 }
 
-func (m *mockMCS) VerifyBlock(chainID common2.ChainID, seqNum uint64, signedBlock []byte) error {
+func (m *mockMCS) VerifyBlock(chainID common2.ChannelID, seqNum uint64, signedBlock []byte) error {
 	args := m.Called()
 	if args.Get(0) != nil {
 		return args.Get(0).(error)
@@ -53,7 +53,7 @@ func (*mockMCS) Verify(peerIdentity api.PeerIdentityType, signature, message []b
 	return nil
 }
 
-func (*mockMCS) VerifyByChannel(chainID common2.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error {
+func (*mockMCS) VerifyByChannel(chainID common2.ChannelID, peerIdentity api.PeerIdentityType, signature, message []byte) error {
 	return nil
 }
 

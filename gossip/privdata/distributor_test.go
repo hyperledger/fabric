@@ -90,8 +90,8 @@ func (g *gossipMock) IdentityInfo() api.PeerIdentitySet {
 	return g.Called().Get(0).(api.PeerIdentitySet)
 }
 
-func (g *gossipMock) PeersOfChannel(chainID gcommon.ChainID) []discovery.NetworkMember {
-	return g.Called(chainID).Get(0).([]discovery.NetworkMember)
+func (g *gossipMock) PeersOfChannel(channelID gcommon.ChannelID) []discovery.NetworkMember {
+	return g.Called(channelID).Get(0).([]discovery.NetworkMember)
 }
 
 func (g *gossipMock) SendByCriteria(message *protoext.SignedGossipMessage, criteria gossip2.SendCriteria) error {
@@ -102,7 +102,7 @@ func (g *gossipMock) SendByCriteria(message *protoext.SignedGossipMessage, crite
 	return nil
 }
 
-func (g *gossipMock) PeerFilter(channel gcommon.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
+func (g *gossipMock) PeerFilter(channel gcommon.ChannelID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
 	if g.err != nil {
 		return nil, g.err
 	}
@@ -127,7 +127,7 @@ func TestDistributor(t *testing.T) {
 		gossip2.SendCriteria
 	}, 8)
 
-	g.On("PeersOfChannel", gcommon.ChainID(channelID)).Return([]discovery.NetworkMember{
+	g.On("PeersOfChannel", gcommon.ChannelID(channelID)).Return([]discovery.NetworkMember{
 		{PKIid: gcommon.PKIidType{1}},
 		{PKIid: gcommon.PKIidType{2}},
 	})
@@ -249,7 +249,7 @@ func TestDistributor(t *testing.T) {
 
 	g.Mock = mock.Mock{}
 	g.On("SendByCriteria", mock.Anything, mock.Anything).Return(errors.New("failed sending"))
-	g.On("PeersOfChannel", gcommon.ChainID(channelID)).Return([]discovery.NetworkMember{
+	g.On("PeersOfChannel", gcommon.ChannelID(channelID)).Return([]discovery.NetworkMember{
 		{PKIid: gcommon.PKIidType{1}},
 	})
 

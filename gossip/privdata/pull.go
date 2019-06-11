@@ -56,11 +56,11 @@ type gossip interface {
 
 	// PeersOfChannel returns the NetworkMembers considered alive
 	// and also subscribed to the channel given
-	PeersOfChannel(common.ChainID) []discovery.NetworkMember
+	PeersOfChannel(common.ChannelID) []discovery.NetworkMember
 
 	// PeerFilter receives a SubChannelSelectionCriteria and returns a RoutingFilter that selects
 	// only peer identities that match the given criteria, and that they published their channel participation
-	PeerFilter(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error)
+	PeerFilter(channel common.ChannelID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error)
 
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 	// If passThrough is false, the messages are processed by the gossip layer beforehand.
@@ -210,7 +210,7 @@ func hashDigest(dig *protosgossip.PvtDataDigest) (string, error) {
 func (p *puller) waitForMembership() []discovery.NetworkMember {
 	polIteration := 0
 	for {
-		members := p.PeersOfChannel(common.ChainID(p.channel))
+		members := p.PeersOfChannel(common.ChannelID(p.channel))
 		if len(members) != 0 {
 			return members
 		}
@@ -465,7 +465,7 @@ func (p *puller) computeFilters(dig2src dig2sources) (digestToFilterMapping, err
 		}
 
 		sources := sources
-		endorserPeer, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature) bool {
+		endorserPeer, err := p.PeerFilter(common.ChannelID(p.channel), func(peerSignature api.PeerSignature) bool {
 			for _, endorsement := range sources {
 				if bytes.Equal(endorsement.Endorser, []byte(peerSignature.PeerIdentity)) {
 					return true
@@ -547,7 +547,7 @@ func (p *puller) getLatestCollectionConfigRoutingFilter(chaincode string, collec
 }
 
 func (p *puller) getMatchAllRoutingFilter(filt privdata.Filter) (filter.RoutingFilter, error) {
-	routingFilter, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature) bool {
+	routingFilter, err := p.PeerFilter(common.ChannelID(p.channel), func(peerSignature api.PeerSignature) bool {
 		return filt(protoutil.SignedData{
 			Signature: peerSignature.Signature,
 			Identity:  peerSignature.PeerIdentity,

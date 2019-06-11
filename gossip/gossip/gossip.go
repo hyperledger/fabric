@@ -26,7 +26,7 @@ type Gossip interface {
 	SelfMembershipInfo() discovery.NetworkMember
 
 	// SelfChannelInfo returns the peer's latest StateInfo message of a given channel
-	SelfChannelInfo(common.ChainID) *protoext.SignedGossipMessage
+	SelfChannelInfo(common.ChannelID) *protoext.SignedGossipMessage
 
 	// Send sends a message to remote peers
 	Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer)
@@ -39,7 +39,7 @@ type Gossip interface {
 
 	// PeersOfChannel returns the NetworkMembers considered alive
 	// and also subscribed to the channel given
-	PeersOfChannel(common.ChainID) []discovery.NetworkMember
+	PeersOfChannel(common.ChannelID) []discovery.NetworkMember
 
 	// UpdateMetadata updates the self metadata of the discovery layer
 	// the peer publishes to other peers
@@ -47,18 +47,18 @@ type Gossip interface {
 
 	// UpdateLedgerHeight updates the ledger height the peer
 	// publishes to other peers in the channel
-	UpdateLedgerHeight(height uint64, chainID common.ChainID)
+	UpdateLedgerHeight(height uint64, channelID common.ChannelID)
 
 	// UpdateChaincodes updates the chaincodes the peer publishes
 	// to other peers in the channel
-	UpdateChaincodes(chaincode []*proto.Chaincode, chainID common.ChainID)
+	UpdateChaincodes(chaincode []*proto.Chaincode, channelID common.ChannelID)
 
 	// Gossip sends a message to other peers to the network
 	Gossip(msg *proto.GossipMessage)
 
 	// PeerFilter receives a SubChannelSelectionCriteria and returns a RoutingFilter that selects
 	// only peer identities that match the given criteria, and that they published their channel participation
-	PeerFilter(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error)
+	PeerFilter(channel common.ChannelID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error)
 
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 	// If passThrough is false, the messages are processed by the gossip layer beforehand.
@@ -67,13 +67,13 @@ type Gossip interface {
 	Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan protoext.ReceivedMessage)
 
 	// JoinChan makes the Gossip instance join a channel
-	JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID)
+	JoinChan(joinMsg api.JoinChannelMessage, channelID common.ChannelID)
 
 	// LeaveChan makes the Gossip instance leave a channel.
 	// It still disseminates stateInfo message, but doesn't participate
 	// in block pulling anymore, and can't return anymore a list of peers
 	// in the channel.
-	LeaveChan(chainID common.ChainID)
+	LeaveChan(channelID common.ChannelID)
 
 	// SuspectPeers makes the gossip instance validate identities of suspected peers, and close
 	// any connections to peers with identities that are found invalid
@@ -102,7 +102,7 @@ type SendCriteria struct {
 	MinAck     int                  // MinAck defines the amount of peers to collect acknowledgements from
 	MaxPeers   int                  // MaxPeers defines the maximum number of peers to send the message to
 	IsEligible filter.RoutingFilter // IsEligible defines whether a specific peer is eligible of receiving the message
-	Channel    common.ChainID       // Channel specifies a channel to send this message on. \
+	Channel    common.ChannelID     // Channel specifies a channel to send this message on. \
 	// Only peers that joined the channel would receive this message
 }
 
