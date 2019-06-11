@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -21,7 +22,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	errors2 "github.com/hyperledger/fabric/common/errors"
-	"github.com/hyperledger/fabric/common/flogging/floggingtest"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
 	corecomm "github.com/hyperledger/fabric/core/comm"
@@ -48,6 +49,7 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -751,7 +753,15 @@ func TestHaltChainProcessing(t *testing.T) {
 		}
 	}
 
-	l, recorder := floggingtest.NewTestLogger(t)
+	buf := gbytes.NewBuffer()
+	logging, err := flogging.New(flogging.Config{
+		LogSpec: "debug",
+		Writer:  buf,
+	})
+	assert.NoError(t, err, "failed to create logging")
+
+	defer func(l gossiputil.Logger) { logger = l }(logger)
+	l := logging.Logger("state_test")
 	logger = l
 
 	mc := &mockCommitter{Mock: &mock.Mock{}}
@@ -771,9 +781,10 @@ func TestHaltChainProcessing(t *testing.T) {
 	peerNode := newPeerNodeWithGossipWithValidator(0, mc, noopPeerIdentityAcceptor, g, v)
 	defer peerNode.shutdown()
 	gossipMsgs <- newBlockMsg(1)
-	assertLogged(t, recorder, "Got error while committing")
-	assertLogged(t, recorder, "Aborting chain processing")
-	assertLogged(t, recorder, "foobar")
+
+	assertLogged(t, buf, "Got error while committing")
+	assertLogged(t, buf, "Aborting chain processing")
+	assertLogged(t, buf, "foobar")
 }
 
 func TestFailures(t *testing.T) {
@@ -1680,7 +1691,7 @@ func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Du
 	t.Log("Stop waiting until timeout or true")
 }
 
-func assertLogged(t *testing.T, r *floggingtest.Recorder, msg string) {
-	observed := func() bool { return len(r.MessagesContaining(msg)) > 0 }
+func assertLogged(t *testing.T, buf *gbytes.Buffer, msg string) {
+	observed := func() bool { return strings.Contains(string(buf.Contents()), msg) }
 	waitUntilTrueOrTimeout(t, observed, 30*time.Second)
 }
