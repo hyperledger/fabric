@@ -320,6 +320,10 @@ func (c *Chain) Start() {
 	}
 
 	isJoin := c.support.Height() > 1
+	if isJoin && c.support.DetectConsensusMigration() {
+		isJoin = false
+		c.logger.Infof("Consensus-type migration detected, starting new raft node on an existing channel; height=%d", c.support.Height())
+	}
 	c.Node.start(c.fresh, isJoin)
 
 	close(c.startC)
