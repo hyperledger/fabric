@@ -16,17 +16,21 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	deliver_mocks "github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/ram"
+	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
 	"github.com/hyperledger/fabric/common/mocks/crypto"
+	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
@@ -39,9 +43,11 @@ import (
 	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -230,6 +236,104 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExtractSysChanLastConfig(t *testing.T) {
+	rlf := ramledger.New(10)
+	conf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	genesisBlock := encoder.New(conf).GenesisBlock()
+
+	lastConf := extractSysChanLastConfig(rlf, genesisBlock)
+	assert.Nil(t, lastConf)
+
+	rl, err := rlf.GetOrCreate(genesisconfig.TestChainID)
+	require.NoError(t, err)
+
+	err = rl.Append(genesisBlock)
+	require.NoError(t, err)
+
+	lastConf = extractSysChanLastConfig(rlf, genesisBlock)
+	assert.NotNil(t, lastConf)
+	assert.Equal(t, uint64(0), lastConf.Header.Number)
+
+	assert.Panics(t, func() {
+		_ = extractSysChanLastConfig(rlf, nil)
+	})
+
+	nextBlock := blockledger.CreateNextBlock(rl, []*common.Envelope{makeConfigTx(t, genesisconfig.TestChainID, 1)})
+	nextBlock.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&common.Metadata{
+		Value: utils.MarshalOrPanic(&common.LastConfig{Index: rl.Height()}),
+	})
+	err = rl.Append(nextBlock)
+	require.NoError(t, err)
+
+	lastConf = extractSysChanLastConfig(rlf, genesisBlock)
+	assert.NotNil(t, lastConf)
+	assert.Equal(t, uint64(1), lastConf.Header.Number)
+}
+
+func TestSelectClusterBootBlock(t *testing.T) {
+	bootstrapBlock := &common.Block{Header: &common.BlockHeader{Number: 100}}
+	lastConfBlock := &common.Block{Header: &common.BlockHeader{Number: 100}}
+
+	clusterBoot := selectClusterBootBlock(bootstrapBlock, nil)
+	assert.NotNil(t, clusterBoot)
+	assert.Equal(t, bootstrapBlock.Header.Number, clusterBoot.Header.Number)
+	assert.Equal(t, bootstrapBlock, clusterBoot)
+
+	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
+	assert.NotNil(t, clusterBoot)
+	assert.Equal(t, bootstrapBlock.Header.Number, clusterBoot.Header.Number)
+	assert.Equal(t, bootstrapBlock, clusterBoot)
+
+	lastConfBlock.Header.Number = 200
+	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
+	assert.NotNil(t, clusterBoot)
+	assert.Equal(t, lastConfBlock.Header.Number, clusterBoot.Header.Number)
+	assert.Equal(t, lastConfBlock, clusterBoot)
+
+	bootstrapBlock.Header.Number = 300
+	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
+	assert.NotNil(t, clusterBoot)
+	assert.Equal(t, bootstrapBlock.Header.Number, clusterBoot.Header.Number)
+	assert.Equal(t, bootstrapBlock, clusterBoot)
+}
+
+func mockCrypto() *crypto.LocalSigner {
+	return mockcrypto.FakeLocalSigner
+}
+
+func makeConfigTx(t *testing.T, chainID string, i int) *common.Envelope {
+	gConf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	gConf.Orderer.Capabilities = map[string]bool{
+		capabilities.OrdererV1_4_2: true,
+	}
+	gConf.Orderer.OrdererType = "kafka"
+	channelGroup, err := encoder.NewChannelGroup(gConf)
+	if err != nil {
+		return nil
+	}
+
+	configUpdateEnv := &common.ConfigUpdateEnvelope{
+		ConfigUpdate: utils.MarshalOrPanic(&common.ConfigUpdate{
+			WriteSet: channelGroup,
+		}),
+	}
+
+	configUpdateTx, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, chainID, mockCrypto(), configUpdateEnv, 0, 0)
+	if err != nil {
+		panic(err)
+	}
+
+	configTx, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG, chainID, mockCrypto(), &common.ConfigEnvelope{
+		Config: &common.Config{
+			Sequence:     1,
+			ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
+		LastUpdate: configUpdateTx},
+		0, 0)
+	require.NoError(t, err)
+
+	return configTx
 }
 
 func TestInitializeLocalMsp(t *testing.T) {
