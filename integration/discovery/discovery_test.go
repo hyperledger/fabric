@@ -35,11 +35,17 @@ import (
 
 var _ = Describe("DiscoveryService", func() {
 	var (
-		testDir string
-		client  *docker.Client
-		network *nwo.Network
-		process ifrit.Process
-		orderer *nwo.Orderer
+		testDir   string
+		client    *docker.Client
+		network   *nwo.Network
+		process   ifrit.Process
+		orderer   *nwo.Orderer
+		org1Peer0 *nwo.Peer
+		org1Peer1 *nwo.Peer
+		org2Peer0 *nwo.Peer
+		org2Peer1 *nwo.Peer
+		org3Peer0 *nwo.Peer
+		org3Peer1 *nwo.Peer
 	)
 
 	BeforeEach(func() {
@@ -68,6 +74,13 @@ var _ = Describe("DiscoveryService", func() {
 		orderer = network.Orderer("orderer")
 		network.CreateAndJoinChannel(orderer, "testchannel")
 		network.UpdateChannelAnchors(orderer, "testchannel")
+
+		org1Peer0 = network.Peer("org1", "peer0")
+		org1Peer1 = network.Peer("org1", "peer1")
+		org2Peer0 = network.Peer("org2", "peer0")
+		org2Peer1 = network.Peer("org2", "peer1")
+		org3Peer0 = network.Peer("org3", "peer0")
+		org3Peer1 = network.Peer("org3", "peer1")
 	})
 
 	AfterEach(func() {
@@ -82,10 +95,6 @@ var _ = Describe("DiscoveryService", func() {
 	})
 
 	It("discovers channel information", func() {
-		org1Peer0 := network.Peer("org1", "peer0")
-		org2Peer0 := network.Peer("org2", "peer0")
-		org3Peer0 := network.Peer("org3", "peer0")
-
 		By("discovering endorsers when missing chaincode")
 		endorsers := commands.Endorsers{
 			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
@@ -139,11 +148,17 @@ var _ = Describe("DiscoveryService", func() {
 			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
 			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
 		))
+		discovered = de()
+		Expect(discovered).To(HaveLen(1))
+		Expect(discovered[0].Layouts).To(HaveLen(3))
+		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[1].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[2].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
 
 		By("upgrading chaincode and adding a collections config")
 		chaincode.Name = "mycc"
 		chaincode.Version = "2.0"
-		chaincode.CollectionsConfig = filepath.Join("testdata", "collections_config1.json")
+		chaincode.CollectionsConfig = filepath.Join("testdata", "collections_config_org1_org2.json")
 		nwo.UpgradeChaincode(network, "testchannel", orderer, chaincode, org1Peer0, org2Peer0, org3Peer0)
 
 		By("discovering endorsers for chaincode with a private collection")
@@ -153,6 +168,9 @@ var _ = Describe("DiscoveryService", func() {
 			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
 			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
 		))
+		discovered = de()
+		Expect(discovered).To(HaveLen(1))
+		Expect(discovered[0].Layouts).To(HaveLen(1))
 		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
 
 		By("installing chaincode to all peers")
@@ -165,10 +183,6 @@ var _ = Describe("DiscoveryService", func() {
 		})
 
 		By("discovering endorsers for chaincode that has been installed to all peers")
-		org1Peer1 := network.Peer("org1", "peer1")
-		org2Peer1 := network.Peer("org2", "peer1")
-		org3Peer1 := network.Peer("org3", "peer1")
-
 		endorsers.Collection = ""
 		endorsers.Chaincode = "mycc2"
 		de = discoverEndorsers(network, endorsers)
@@ -209,6 +223,40 @@ var _ = Describe("DiscoveryService", func() {
 		By("enabling V2_0 application capabilities on the channel")
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, org1Peer0, org2Peer0, org3Peer0)
 
+		By("ensuring mycc is still discoverable after upgrading to V2_0 application capabilities")
+		endorsers = commands.Endorsers{
+			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
+			UserKey:   network.PeerUserKey(org1Peer0, "User1"),
+			MSPID:     network.Organization(org1Peer0.Organization).MSPID,
+			Server:    network.PeerAddress(org1Peer0, nwo.ListenPort),
+			Channel:   "testchannel",
+			Chaincode: "mycc",
+		}
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
+		))
+
+		By("ensuring mycc's collection is still discoverable after upgrading to V2_0 application capabilities")
+		endorsers.Collection = "mycc:collectionMarbles"
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+		))
+
+		By("ensuring mycc2 is still discoverable after upgrading to V2_0 application capabilities")
+		endorsers.Collection = ""
+		endorsers.Chaincode = "mycc2"
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			ConsistOf(network.DiscoveredPeer(org1Peer0), network.DiscoveredPeer(org1Peer1)),
+			ConsistOf(network.DiscoveredPeer(org2Peer0), network.DiscoveredPeer(org2Peer1)),
+			ConsistOf(network.DiscoveredPeer(org3Peer0), network.DiscoveredPeer(org3Peer1)),
+		))
+
 		By("discovering endorsers when missing chaincode")
 		endorsers = commands.Endorsers{
 			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
@@ -228,14 +276,15 @@ var _ = Describe("DiscoveryService", func() {
 			Name:                "mycc-lifecycle",
 			Version:             "1.0",
 			Lang:                "golang",
-			PackageFile:         filepath.Join(testDir, "simplecc.tar.gz"),
+			PackageFile:         filepath.Join(testDir, "simplecc-lifecycle.tar.gz"),
 			Path:                "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
 			ChannelConfigPolicy: "/Channel/Application/Endorsement",
 			Sequence:            "1",
 			InitRequired:        true,
-			Label:               "simplecc",
+			Label:               "simplecc-lifecycle",
 		}
+
 		By("packaging chaincode")
 		nwo.PackageChaincodeNewLifecycle(network, chaincode, org1Peer0)
 
@@ -289,7 +338,7 @@ var _ = Describe("DiscoveryService", func() {
 
 		By("updating the chaincode definition to sequence 2 to add a collections config")
 		chaincode.Sequence = "2"
-		chaincode.CollectionsConfig = filepath.Join("testdata", "collections_config1.json")
+		chaincode.CollectionsConfig = filepath.Join("testdata", "collections_config_org1_org2.json")
 		for _, org := range []string{"org1", "org2"} {
 			nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersInOrg(org)...)
 		}
@@ -325,25 +374,27 @@ var _ = Describe("DiscoveryService", func() {
 			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
 			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
 		))
+		discovered = de()
+		Expect(discovered).To(HaveLen(1))
+		Expect(discovered[0].Layouts).To(HaveLen(1))
 		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
 
-		By("deploying a different chaincode to all peers")
+		By("upgrading a legacy chaincode for all peers")
 		nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, nwo.Chaincode{
-			Name:            "mycc-lifecycle2",
-			Version:         "1.0",
-			Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:            `{"Args":["init","a","100","b","200"]}`,
-			SignaturePolicy: `AND ('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member')`,
-			Lang:            "golang",
-			PackageFile:     filepath.Join(testDir, "simplecc2.tar.gz"),
-			Sequence:        "1",
-			InitRequired:    true,
-			Label:           "simplecc2",
+			Name:              "mycc",
+			Version:           "2.0",
+			Path:              "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			SignaturePolicy:   `AND ('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member')`,
+			Lang:              "golang",
+			PackageFile:       filepath.Join(testDir, "simplecc.tar.gz"),
+			Sequence:          "1",
+			CollectionsConfig: filepath.Join("testdata", "collections_config_org1_org2_org3.json"),
+			Label:             "simplecc",
 		})
 
 		By("discovering endorsers for chaincode that has been installed to all peers")
+		endorsers.Chaincode = "mycc"
 		endorsers.Collection = ""
-		endorsers.Chaincode = "mycc-lifecycle2"
 		de = discoverEndorsers(network, endorsers)
 		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
 			ConsistOf(network.DiscoveredPeer(org1Peer0), network.DiscoveredPeer(org1Peer1)),
@@ -355,6 +406,15 @@ var _ = Describe("DiscoveryService", func() {
 		Expect(discovered[0].Layouts).To(HaveLen(1))
 		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1), uint32(1)))
 
+		By("discovering endorsers for collection available on all peers")
+		endorsers.Collection = "mycc:collectionMarbles"
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			ConsistOf(network.DiscoveredPeer(org1Peer0), network.DiscoveredPeer(org1Peer1)),
+			ConsistOf(network.DiscoveredPeer(org2Peer0), network.DiscoveredPeer(org2Peer1)),
+			ConsistOf(network.DiscoveredPeer(org3Peer0), network.DiscoveredPeer(org3Peer1)),
+		))
+
 		By("trying to discover endorsers as an org3 admin")
 		endorsers = commands.Endorsers{
 			UserCert:  network.PeerUserCert(org3Peer0, "Admin"),
@@ -362,7 +422,7 @@ var _ = Describe("DiscoveryService", func() {
 			MSPID:     network.Organization(org3Peer0.Organization).MSPID,
 			Server:    network.PeerAddress(org3Peer0, nwo.ListenPort),
 			Channel:   "testchannel",
-			Chaincode: "mycc-lifecycle2",
+			Chaincode: "mycc",
 		}
 		de = discoverEndorsers(network, endorsers)
 		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
@@ -387,18 +447,14 @@ var _ = Describe("DiscoveryService", func() {
 	})
 
 	It("discovers peer membership", func() {
-		org1Peer0 := network.Peer("org1", "peer0")
-		org2Peer0 := network.Peer("org2", "peer0")
-		org3Peer0 := network.Peer("org3", "peer0")
-
 		By("discovering peers")
 		Eventually(nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
-			network.DiscoveredPeer(network.Peer("org1", "peer0")),
-			network.DiscoveredPeer(network.Peer("org1", "peer1")),
-			network.DiscoveredPeer(network.Peer("org2", "peer0")),
-			network.DiscoveredPeer(network.Peer("org2", "peer1")),
-			network.DiscoveredPeer(network.Peer("org3", "peer0")),
-			network.DiscoveredPeer(network.Peer("org3", "peer1")),
+			network.DiscoveredPeer(org1Peer0),
+			network.DiscoveredPeer(org1Peer1),
+			network.DiscoveredPeer(org2Peer0),
+			network.DiscoveredPeer(org2Peer1),
+			network.DiscoveredPeer(org3Peer0),
+			network.DiscoveredPeer(org3Peer1),
 		))
 
 		By("installing and instantiating chaincode on a peer")
@@ -420,10 +476,17 @@ var _ = Describe("DiscoveryService", func() {
 		//
 		// using _lifecycle
 		//
+
 		By("enabling V2_0 application capabilities on the channel")
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, org1Peer0, org2Peer0, org3Peer0)
 
-		By("deploying chaincode using _lifecycle")
+		By("ensuring peer is still discoverable after enabling V2_0 application capabilities")
+		dp = nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel")
+		Eventually(peersWithChaincode(dp, "mycc"), network.EventuallyTimeout).Should(HaveLen(1))
+		peersWithCC = peersWithChaincode(dp, "mycc")()
+		Expect(peersWithCC).To(ConsistOf(network.DiscoveredPeer(org1Peer0, "mycc")))
+
+		By("deploying chaincode using _lifecycle to one peer per org")
 		chaincode = nwo.Chaincode{
 			Name:                "mycc-lifecycle",
 			Version:             "1.0",
@@ -436,22 +499,43 @@ var _ = Describe("DiscoveryService", func() {
 			InitRequired:        true,
 			Label:               "simplecc",
 		}
-		nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersWithChannel("testchannel")...)
+
+		nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, org1Peer1, org2Peer1, org3Peer1)
+
+		By("ensuring only the peers that have installed the chaincode are discovered")
+		Eventually(peersWithChaincode(dp, "mycc-lifecycle"), network.EventuallyTimeout).Should(HaveLen(3))
+		peersWithCC = peersWithChaincode(dp, "mycc-lifecycle")()
+		Expect(peersWithCC).To(ConsistOf(
+			network.DiscoveredPeer(org1Peer1, "mycc-lifecycle"),
+			network.DiscoveredPeer(org2Peer1, "mycc-lifecycle"),
+			network.DiscoveredPeer(org3Peer1, "mycc-lifecycle"),
+		))
+
+		By("installing the chaincode to the remaining peers")
+		nwo.PackageChaincodeNewLifecycle(network, chaincode, org1Peer0)
+
+		// set the PackageID in order to verify the install step
+		filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
+		Expect(err).NotTo(HaveOccurred())
+		hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
+		chaincode.PackageID = chaincode.Label + ":" + hashStr
+
+		nwo.InstallChaincodeNewLifecycle(network, chaincode, org1Peer0, org2Peer0, org3Peer0)
+
+		By("ensuring all peers are discovered")
 		Eventually(peersWithChaincode(dp, "mycc-lifecycle"), network.EventuallyTimeout).Should(HaveLen(6))
 		peersWithCC = peersWithChaincode(dp, "mycc-lifecycle")()
 		Expect(peersWithCC).To(ConsistOf(
-			network.DiscoveredPeer(network.Peer("org1", "peer0"), "mycc-lifecycle", "mycc"),
-			network.DiscoveredPeer(network.Peer("org1", "peer1"), "mycc-lifecycle"),
-			network.DiscoveredPeer(network.Peer("org2", "peer0"), "mycc-lifecycle"),
-			network.DiscoveredPeer(network.Peer("org2", "peer1"), "mycc-lifecycle"),
-			network.DiscoveredPeer(network.Peer("org3", "peer0"), "mycc-lifecycle"),
-			network.DiscoveredPeer(network.Peer("org3", "peer1"), "mycc-lifecycle"),
+			network.DiscoveredPeer(org1Peer0, "mycc-lifecycle", "mycc"),
+			network.DiscoveredPeer(org1Peer1, "mycc-lifecycle"),
+			network.DiscoveredPeer(org2Peer0, "mycc-lifecycle"),
+			network.DiscoveredPeer(org2Peer1, "mycc-lifecycle"),
+			network.DiscoveredPeer(org3Peer0, "mycc-lifecycle"),
+			network.DiscoveredPeer(org3Peer1, "mycc-lifecycle"),
 		))
 	})
 
 	It("discovers network configuration information", func() {
-		org1Peer0 := network.Peer("org1", "peer0")
-
 		By("retrieving the configuration")
 		config := commands.Config{
 			UserCert: network.PeerUserCert(org1Peer0, "User1"),
