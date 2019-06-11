@@ -439,6 +439,7 @@ func serve(args []string) error {
 		AttachStdOut:  coreConfig.VMDockerAttachStdout,
 		HostConfig:    getDockerHostConfig(),
 		ChaincodePull: coreConfig.ChaincodePull,
+		NetworkMode:   coreConfig.VMNetworkMode,
 	}
 	dockerVM := dockerProvider.NewVM()
 

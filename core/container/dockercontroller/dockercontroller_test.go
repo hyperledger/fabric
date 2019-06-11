@@ -335,6 +335,62 @@ func TestGetVMName(t *testing.T) {
 
 }
 
+func TestCreateNewVM(t *testing.T) {
+	networkID := util.GenerateUUID()
+	client := &mock.DockerClient{}
+
+	provider := Provider{
+		PeerID:       "peerID",
+		NetworkID:    networkID,
+		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
+		Client:       client,
+		NetworkMode:  "bridge",
+	}
+	dvm := provider.NewVM()
+
+	expectedClient := &DockerVM{
+		PeerID:       "peerID",
+		NetworkID:    networkID,
+		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
+		Client:       client,
+		NetworkMode:  "bridge",
+	}
+	assert.Equal(t, expectedClient, dvm)
+}
+
+func Test_deployImage(t *testing.T) {
+	client := &mock.DockerClient{}
+	dvm := DockerVM{
+		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
+		Client:       client,
+		NetworkMode:  "network-mode",
+	}
+
+	err := dvm.deployImage(ccintf.CCID("simple"), &bytes.Buffer{})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, client.BuildImageCallCount())
+
+	opts := client.BuildImageArgsForCall(0)
+	assert.Equal(t, "simple-a7a39b72f29718e653e73503210fbb597057b7a1c77d1fe321a1afcff041d4e1", opts.Name)
+	assert.False(t, opts.Pull)
+	assert.Equal(t, "network-mode", opts.NetworkMode)
+	assert.Equal(t, &bytes.Buffer{}, opts.InputStream)
+	assert.NotNil(t, opts.OutputStream)
+}
+
+func Test_deployImageFailure(t *testing.T) {
+	client := &mock.DockerClient{}
+	client.BuildImageReturns(errors.New("oh-bother-we-failed-badly"))
+	dvm := DockerVM{
+		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
+		Client:       client,
+		NetworkMode:  "network-mode",
+	}
+
+	err := dvm.deployImage(ccintf.CCID("simple"), &bytes.Buffer{})
+	assert.EqualError(t, err, "oh-bother-we-failed-badly")
+}
+
 type InMemBuilder struct{}
 
 func (imb InMemBuilder) Build() (io.Reader, error) {
