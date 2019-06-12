@@ -646,9 +646,6 @@ func (p *Peer) GetChannelsInfo() []*pb.ChannelInfo {
 
 // GetStableChannelConfig returns the stable channel configuration of the channel with channel ID.
 // Note that this call returns nil if channel cid has not been created.
-func GetStableChannelConfig(cid string) channelconfig.Resources {
-	return Default.GetStableChannelConfig(cid)
-}
 func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
