@@ -1028,7 +1028,7 @@ func registerProverService(peerInstance *peer.Peer, peerServer *comm.GRPCServer,
 
 	prover := &server.Prover{
 		CapabilityChecker: &server.TokenCapabilityChecker{
-			PeerOps: peerInstance,
+			ChannelConfigGetter: peerInstance,
 		},
 		Marshaler:     responseMarshaler,
 		PolicyChecker: policyChecker,

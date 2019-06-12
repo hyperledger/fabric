@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package server
 
 import (
-	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/pkg/errors"
 )
 
@@ -17,13 +17,20 @@ type CapabilityChecker interface {
 	FabToken(channelId string) (bool, error)
 }
 
-// TokenCapabilityChecker implements CapabilityChecker interface
+//go:generate counterfeiter -o mock/channel_config_getter.go -fake-name ChannelConfigGetter . ChannelConfigGetter
+
+// ChannelConfigGetter is used to get a channel configuration.
+type ChannelConfigGetter interface {
+	GetChannelConfig(cid string) channelconfig.Resources
+}
+
+// TokenCapabilityChecker implements CapabilityChecker interface.
 type TokenCapabilityChecker struct {
-	PeerOps peer.Operations
+	ChannelConfigGetter ChannelConfigGetter
 }
 
 func (c *TokenCapabilityChecker) FabToken(channelId string) (bool, error) {
-	channelConfig := c.PeerOps.GetChannelConfig(channelId)
+	channelConfig := c.ChannelConfigGetter.GetChannelConfig(channelId)
 	if channelConfig == nil {
 		// no channelConfig is found, most likely the channel does not exist
 		return false, errors.Errorf("no channel config found for channel %s", channelId)
