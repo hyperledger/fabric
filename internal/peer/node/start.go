@@ -216,6 +216,8 @@ func serve(args []string) error {
 	policyMgr := peer.NewChannelPolicyManagerGetter()
 	signingIdentity := mgmt.GetLocalSigningIdentityOrPanic()
 
+	// FIXME: Creating the gossip service has the side effect of starting a bunch
+	// of go routines and registration with the grpc server.
 	gossipService, err := initGossipService(
 		policyMgr,
 		metricsProvider,

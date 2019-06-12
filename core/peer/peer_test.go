@@ -174,7 +174,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 		t.FailNow()
 	}
 
-	err = CreateChainFromBlock(block, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
+	err = Default.CreateChainFromBlock(block, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to create chain %s", err)
 	}
