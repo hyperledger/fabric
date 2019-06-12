@@ -28,7 +28,7 @@ import (
 func TestConfigTxCreateLedger(t *testing.T) {
 	helper := &testHelper{t: t}
 
-	chainid := "testchain1"
+	channelID := "testchain1"
 	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(
 		&ledgermgmt.Initializer{
 			CustomTxProcessors: customtx.Processors{
@@ -43,7 +43,7 @@ func TestConfigTxCreateLedger(t *testing.T) {
 	defer cleanup()
 
 	chanConf := helper.sampleChannelConfig(1, true)
-	genesisTx := helper.constructGenesisTx(t, chainid, chanConf)
+	genesisTx := helper.constructGenesisTx(t, channelID, chanConf)
 	genesisBlock := helper.constructBlock(genesisTx, 0, nil)
 	ledger, err := ledgermgmt.CreateLedger(genesisBlock)
 	assert.NoError(t, err)
@@ -55,7 +55,7 @@ func TestConfigTxCreateLedger(t *testing.T) {
 
 func TestConfigTxUpdateChanConfig(t *testing.T) {
 	helper := &testHelper{t: t}
-	chainid := "testchain1"
+	channelID := "testchain1"
 	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(
 		&ledgermgmt.Initializer{
 			CustomTxProcessors: customtx.Processors{
@@ -70,7 +70,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 	defer cleanup()
 
 	chanConf := helper.sampleChannelConfig(1, true)
-	genesisTx := helper.constructGenesisTx(t, chainid, chanConf)
+	genesisTx := helper.constructGenesisTx(t, channelID, chanConf)
 	genesisBlock := helper.constructBlock(genesisTx, 0, nil)
 	lgr, err := ledgermgmt.CreateLedger(genesisBlock)
 	assert.NoError(t, err)
@@ -79,10 +79,10 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(retrievedchanConf))
 
-	helper.mockCreateChain(t, chainid, lgr)
+	helper.mockCreateChain(t, channelID, lgr)
 	defer helper.clearMockChains()
 
-	bs := Default.chains[chainid].bundleSource
+	bs := Default.channels[channelID].bundleSource
 	inMemoryChanConf := bs.ConfigtxValidator().ConfigProto()
 	assert.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(inMemoryChanConf))
 
@@ -92,7 +92,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 
 	lgr.Close()
 	helper.clearMockChains()
-	_, err = ledgermgmt.OpenLedger(chainid)
+	_, err = ledgermgmt.OpenLedger(channelID)
 	assert.NoError(t, err)
 }
 
@@ -140,12 +140,12 @@ func (h *testHelper) sampleChannelConfig(sequence uint64, enableV11Capability bo
 	}
 }
 
-func (h *testHelper) constructGenesisTx(t *testing.T, chainid string, chanConf *common.Config) *common.Envelope {
+func (h *testHelper) constructGenesisTx(t *testing.T, channelID string, chanConf *common.Config) *common.Envelope {
 	configEnvelop := &common.ConfigEnvelope{
 		Config:     chanConf,
-		LastUpdate: h.constructLastUpdateField(chainid),
+		LastUpdate: h.constructLastUpdateField(channelID),
 	}
-	txEnvelope, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG, chainid, nil, configEnvelop, 0, 0)
+	txEnvelope, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG, channelID, nil, configEnvelop, 0, 0)
 	assert.NoError(t, err)
 	return txEnvelope
 }
@@ -154,35 +154,35 @@ func (h *testHelper) constructBlock(txEnvelope *common.Envelope, blockNum uint64
 	return testutil.NewBlock([]*common.Envelope{txEnvelope}, blockNum, previousHash)
 }
 
-func (h *testHelper) constructLastUpdateField(chainid string) *common.Envelope {
+func (h *testHelper) constructLastUpdateField(channelID string) *common.Envelope {
 	configUpdate := protoutil.MarshalOrPanic(&common.ConfigUpdate{
-		ChannelId: chainid,
+		ChannelId: channelID,
 	})
-	envelopeForLastUpdateField, _ := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, chainid, nil, &common.ConfigUpdateEnvelope{ConfigUpdate: configUpdate}, 0, 0)
+	envelopeForLastUpdateField, _ := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, channelID, nil, &common.ConfigUpdateEnvelope{ConfigUpdate: configUpdate}, 0, 0)
 	return envelopeForLastUpdateField
 }
 
-func (h *testHelper) mockCreateChain(t *testing.T, chainid string, ledger ledger.PeerLedger) {
-	chanBundle, err := h.constructChannelBundle(chainid, ledger)
+func (h *testHelper) mockCreateChain(t *testing.T, channelID string, ledger ledger.PeerLedger) {
+	chanBundle, err := h.constructChannelBundle(channelID, ledger)
 	assert.NoError(t, err)
-	if Default.chains == nil {
-		Default.chains = map[string]*chain{}
+	if Default.channels == nil {
+		Default.channels = map[string]*Channel{}
 	}
-	Default.chains[chainid] = &chain{
+	Default.channels[channelID] = &Channel{
 		bundleSource: channelconfig.NewBundleSource(chanBundle),
 		ledger:       ledger,
 	}
 }
 
 func (h *testHelper) clearMockChains() {
-	Default.chains = make(map[string]*chain)
+	Default.channels = make(map[string]*Channel)
 }
 
-func (h *testHelper) constructChannelBundle(chainid string, ledger ledger.PeerLedger) (*channelconfig.Bundle, error) {
+func (h *testHelper) constructChannelBundle(channelID string, ledger ledger.PeerLedger) (*channelconfig.Bundle, error) {
 	chanConf, err := retrievePersistedChannelConfig(ledger)
 	if err != nil {
 		return nil, err
 	}
 
-	return channelconfig.NewBundle(chainid, chanConf)
+	return channelconfig.NewBundle(channelID, chanConf)
 }

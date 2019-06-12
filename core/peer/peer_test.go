@@ -237,7 +237,7 @@ func TestCreateChannel(t *testing.T) {
 
 	// cleanup the chain referenes to enable execution with -count n
 	Default.mutex.Lock()
-	Default.chains = map[string]*chain{}
+	Default.channels = map[string]*Channel{}
 	Default.mutex.Unlock()
 }
 

@@ -83,8 +83,8 @@ func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 	}
 }
 
-// chain is a local struct to manage objects in a chain
-type chain struct {
+// Channel is a local struct to manage objects in a Channel
+type Channel struct {
 	cb           *common.Block
 	committer    committer.Committer
 	ledger       ledger.PeerLedger
@@ -94,15 +94,15 @@ type chain struct {
 
 // bundleUpdate is called by the bundleSource when the channel configuration
 // changes.
-func (c *chain) bundleUpdate(b *channelconfig.Bundle) {
+func (c *Channel) bundleUpdate(b *channelconfig.Bundle) {
 	c.resources = b
 }
 
-func (c *chain) Ledger() ledger.PeerLedger {
+func (c *Channel) Ledger() ledger.PeerLedger {
 	return c.ledger
 }
 
-func (c *chain) Reader() blockledger.Reader {
+func (c *Channel) Reader() blockledger.Reader {
 	return fileledger.NewFileLedger(fileLedgerBlockStore{c.ledger})
 }
 
@@ -110,22 +110,22 @@ func (c *chain) Reader() blockledger.Reader {
 // if a backing resource has errored. At this point in time,
 // the peer does not have any error conditions that lead to
 // this function signaling that an error has occurred.
-func (c *chain) Errored() <-chan struct{} {
+func (c *Channel) Errored() <-chan struct{} {
 	// If this is ever updated to return a real channel, the error message
 	// in deliver.go around this channel closing should be updated.
 	return nil
 }
 
-func (c *chain) PolicyManager() policies.Manager {
+func (c *Channel) PolicyManager() policies.Manager {
 	return c.resources.PolicyManager()
 }
 
 // Sequence passes through to the underlying configtx.Validator
-func (c *chain) Sequence() uint64 {
+func (c *Channel) Sequence() uint64 {
 	return c.resources.ConfigtxValidator().Sequence()
 }
 
-func (c *chain) Apply(configtx *common.ConfigEnvelope) error {
+func (c *Channel) Apply(configtx *common.ConfigEnvelope) error {
 	configTxValidator := c.resources.ConfigtxValidator()
 	err := configTxValidator.Validate(configtx)
 	if err != nil {
@@ -149,7 +149,7 @@ func (c *chain) Apply(configtx *common.ConfigEnvelope) error {
 	return nil
 }
 
-func (c *chain) Capabilities() channelconfig.ApplicationCapabilities {
+func (c *Channel) Capabilities() channelconfig.ApplicationCapabilities {
 	ac, ok := c.resources.ApplicationConfig()
 	if !ok {
 		return nil
@@ -157,7 +157,7 @@ func (c *chain) Capabilities() channelconfig.ApplicationCapabilities {
 	return ac.Capabilities()
 }
 
-func (c *chain) GetMSPIDs() []string {
+func (c *Channel) GetMSPIDs() []string {
 	ac, ok := c.resources.ApplicationConfig()
 	if !ok || ac.Organizations() == nil {
 		return nil
@@ -171,7 +171,7 @@ func (c *chain) GetMSPIDs() []string {
 	return mspIDs
 }
 
-func (c *chain) MSPManager() msp.MSPManager {
+func (c *Channel) MSPManager() msp.MSPManager {
 	return c.resources.MSPManager()
 }
 
@@ -218,7 +218,7 @@ func updateTrustedRoots(cm channelconfig.Resources) {
 
 	buildTrustedRootsForChain(cm)
 
-	// now iterate over all roots for all app and orderer chains
+	// now iterate over all roots for all app and orderer channels
 	credSupport.RLock()
 	defer credSupport.RUnlock()
 
@@ -312,7 +312,7 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 func (p *Peer) setCurrConfigBlock(block *common.Block, cid string) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	if c, ok := p.chains[cid]; ok {
+	if c, ok := p.channels[cid]; ok {
 		c.cb = block
 		return nil
 	}
@@ -353,7 +353,7 @@ type DeliverChainManager struct{}
 func (DeliverChainManager) GetChain(chainID string) deliver.Chain {
 	Default.mutex.RLock()
 	defer Default.mutex.RUnlock()
-	channel, ok := Default.chains[chainID]
+	channel, ok := Default.channels[chainID]
 	if !ok {
 		return nil
 	}
@@ -385,15 +385,15 @@ type configSupport struct{}
 // current channel configuration tree of the specified channel. The
 // ConfigProto method of the returned object can be used to get the
 // proto representing the channel configuration.
-func (*configSupport) GetChannelConfig(channel string) cc.Config {
+func (*configSupport) GetChannelConfig(cid string) cc.Config {
 	Default.mutex.RLock()
 	defer Default.mutex.RUnlock()
-	chain := Default.chains[channel]
-	if chain == nil {
-		peerLogger.Errorf("[channel %s] channel not associated with this peer", channel)
+	channel := Default.channels[cid]
+	if channel == nil {
+		peerLogger.Errorf("[channel %s] channel not associated with this peer", cid)
 		return nil
 	}
-	return chain.bundleSource.ConfigtxValidator()
+	return channel.bundleSource.ConfigtxValidator()
 }
 
 // Operations exposes an interface to the package level functions that operated
@@ -420,12 +420,12 @@ type Peer struct {
 	// go routines.
 	validationWorkersSemaphore semaphore.Semaphore
 
-	pluginMapper     plugin.Mapper
-	chainInitializer func(cid string)
+	pluginMapper       plugin.Mapper
+	channelInitializer func(cid string)
 
-	// chains is a map of chainID to chain
-	mutex  sync.RWMutex
-	chains map[string]*chain
+	// channels is a map of channelID to channel
+	mutex    sync.RWMutex
+	channels map[string]*Channel
 }
 
 // Default provides in implementation of the Peer that provides
@@ -476,11 +476,11 @@ func (p *Peer) CreateChannel(
 		return err
 	}
 
-	p.initChain(cid)
+	p.initChannel(cid)
 	return nil
 }
 
-// createChannel creates a new chain object and insert it into the chains
+// createChannel creates a new channel object and insert it into the channels slice.
 func (p *Peer) createChannel(
 	cid string,
 	l ledger.PeerLedger,
@@ -559,7 +559,7 @@ func (p *Peer) createChannel(
 		return p.setCurrConfigBlock(block, chainID)
 	})
 
-	c := &chain{
+	c := &Channel{
 		cb:        cb,
 		committer: committer,
 		ledger:    l,
@@ -615,21 +615,21 @@ func (p *Peer) createChannel(
 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	if p.chains == nil {
-		p.chains = map[string]*chain{}
+	if p.channels == nil {
+		p.channels = map[string]*Channel{}
 	}
-	p.chains[cid] = c
+	p.channels[cid] = c
 
 	return nil
 }
 
-// GetChannelConfig returns the channel configuration of the chain with channel ID. Note that this
-// call returns nil if chain cid has not been created.
+// GetChannelConfig returns the channel configuration of the channel with channel ID. Note that this
+// call returns nil if channel cid has not been created.
 func GetChannelConfig(cid string) channelconfig.Resources { return Default.GetChannelConfig(cid) }
 func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
-	if c, ok := p.chains[cid]; ok {
+	if c, ok := p.channels[cid]; ok {
 		return c.resources
 	}
 	return nil
@@ -642,58 +642,58 @@ func (p *Peer) GetChannelsInfo() []*pb.ChannelInfo {
 	defer p.mutex.RUnlock()
 
 	var channelInfos []*pb.ChannelInfo
-	for key := range p.chains {
+	for key := range p.channels {
 		ci := &pb.ChannelInfo{ChannelId: key}
 		channelInfos = append(channelInfos, ci)
 	}
 	return channelInfos
 }
 
-// GetStableChannelConfig returns the stable channel configuration of the chain with channel ID.
-// Note that this call returns nil if chain cid has not been created.
+// GetStableChannelConfig returns the stable channel configuration of the channel with channel ID.
+// Note that this call returns nil if channel cid has not been created.
 func GetStableChannelConfig(cid string) channelconfig.Resources {
 	return Default.GetStableChannelConfig(cid)
 }
 func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
-	if c, ok := p.chains[cid]; ok {
+	if c, ok := p.channels[cid]; ok {
 		return c.bundleSource.StableBundle()
 	}
 	return nil
 }
 
-// GetCurrConfigBlock returns the cached config block of the specified chain.
-// Note that this call returns nil if chain cid has not been created.
+// GetCurrConfigBlock returns the cached config block of the specified channel.
+// Note that this call returns nil if channel cid has not been created.
 func GetCurrConfigBlock(cid string) *common.Block { return Default.GetCurrConfigBlock(cid) }
 func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
-	if c, ok := p.chains[cid]; ok {
+	if c, ok := p.channels[cid]; ok {
 		return c.cb
 	}
 	return nil
 }
 
-// GetLedger returns the ledger of the chain with chain ID. Note that this
-// call returns nil if chain cid has not been created.
+// GetLedger returns the ledger of the channel with channel ID. Note that this
+// call returns nil if channel cid has not been created.
 func GetLedger(cid string) ledger.PeerLedger { return Default.GetLedger(cid) }
 func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
-	if c, ok := p.chains[cid]; ok {
+	if c, ok := p.channels[cid]; ok {
 		return c.ledger
 	}
 	return nil
 }
 
-// GetMSPIDs returns the ID of each application MSP defined on this chain
+// GetMSPIDs returns the ID of each application MSP defined on this channel
 func GetMSPIDs(cid string) []string { return Default.GetMSPIDs(cid) }
 func (p *Peer) GetMSPIDs(cid string) []string {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
 
-	c, ok := p.chains[cid]
+	c, ok := p.channels[cid]
 	if !ok {
 		return nil
 	}
@@ -701,24 +701,24 @@ func (p *Peer) GetMSPIDs(cid string) []string {
 	return c.GetMSPIDs()
 }
 
-// GetPolicyManager returns the policy manager of the chain with chain ID. Note that this
-// call returns nil if chain cid has not been created.
+// GetPolicyManager returns the policy manager of the channel with channel ID. Note that this
+// call returns nil if channel cid has not been created.
 func GetPolicyManager(cid string) policies.Manager { return Default.GetPolicyManager(cid) }
 func (p *Peer) GetPolicyManager(cid string) policies.Manager {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
-	if c, ok := p.chains[cid]; ok {
+	if c, ok := p.channels[cid]; ok {
 		return c.resources.PolicyManager()
 	}
 	return nil
 }
 
-// initChain takes care to initialize chain after peer joined, for example deploys system CCs
-func (p *Peer) initChain(cid string) {
-	if p.chainInitializer != nil {
+// initChannel takes care to initialize channel after peer joined, for example deploys system CCs
+func (p *Peer) initChannel(cid string) {
+	if p.channelInitializer != nil {
 		// Initialize chaincode, namely deploy system CC
 		peerLogger.Debugf("Initializing channel %s", cid)
-		p.chainInitializer(cid)
+		p.channelInitializer(cid)
 	}
 }
 
@@ -731,7 +731,7 @@ func (p *Peer) GetApplicationConfig(cid string) (channelconfig.Application, bool
 	return cc.ApplicationConfig()
 }
 
-// Initialize sets up any chains that the peer has from the persistence. This
+// Initialize sets up any channels that the peer has from the persistence. This
 // function should be called at the start up when the ledger and gossip
 // ready
 func (p *Peer) Initialize(
@@ -751,7 +751,7 @@ func (p *Peer) Initialize(
 	// TODO: exported dep fields or constructor
 	p.validationWorkersSemaphore = semaphore.New(nWorkers)
 	p.pluginMapper = pm
-	p.chainInitializer = init
+	p.channelInitializer = init
 
 	var cb *common.Block
 	var ledger ledger.PeerLedger
@@ -786,6 +786,6 @@ func (p *Peer) Initialize(
 			continue
 		}
 
-		p.initChain(cid)
+		p.initChannel(cid)
 	}
 }
