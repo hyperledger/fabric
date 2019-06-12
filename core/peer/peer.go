@@ -402,7 +402,6 @@ func (*configSupport) GetChannelConfig(channel string) cc.Config {
 type Operations interface {
 	GetChannelConfig(cid string) channelconfig.Resources
 	GetApplicationConfig(cid string) (channelconfig.Application, bool)
-	GetChannelsInfo() []*pb.ChannelInfo
 	GetStableChannelConfig(cid string) channelconfig.Resources
 	GetCurrConfigBlock(cid string) *common.Block
 	GetLedger(cid string) ledger.PeerLedger
@@ -633,7 +632,6 @@ func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
 
 // GetChannelsInfo returns an array with information about all channels for
 // this peer.
-func GetChannelsInfo() []*pb.ChannelInfo { return Default.GetChannelsInfo() }
 func (p *Peer) GetChannelsInfo() []*pb.ChannelInfo {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
