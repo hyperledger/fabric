@@ -393,7 +393,7 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 
 		selfID := api.PeerIdentityType(config.InternalEndpoint)
 		mcs := &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor}
-		g = gossip.NewGossipService(config, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID, secureDialOpts, gossipMetrics)
+		g = gossip.New(config, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID, secureDialOpts, gossipMetrics)
 	}
 
 	g.JoinChan(&joinChanMsg{}, common.ChannelID(util.GetTestChainID()))

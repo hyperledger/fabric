@@ -246,7 +246,7 @@ func newGossipInstanceWithGrpcMcsMetrics(id int, port int, gRPCServer *corecomm.
 		ReconnectInterval:            discoveryConfig.ReconnectInterval,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
-	g := NewGossipService(conf, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID,
+	g := New(conf, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID,
 		secureDialOpts, metrics)
 	go func() {
 		gRPCServer.Start()
@@ -303,7 +303,7 @@ func newGossipInstanceWithGRPCWithOnlyPull(id int, port int, gRPCServer *corecom
 		ReconnectInterval:            discoveryConfig.ReconnectInterval,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
-	g := NewGossipService(conf, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID,
+	g := New(conf, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID,
 		secureDialOpts, metrics)
 	go func() {
 		gRPCServer.Start()

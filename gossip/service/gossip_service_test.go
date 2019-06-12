@@ -739,7 +739,7 @@ func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServe
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	cryptoService := &naiveCryptoService{}
 	metrics := gossipmetrics.NewGossipMetrics(&disabled.Provider{})
-	gossip := gossip.NewGossipService(
+	gossip := gossip.New(
 		conf,
 		gRPCServer.Server(),
 		&orgCryptoService{},

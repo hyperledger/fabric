@@ -221,7 +221,7 @@ func New(
 
 	logger.Infof("Initialize gossip with endpoint %s and bootstrap set %v", endpoint, bootPeers)
 
-	gossipComponent := gossip.NewGossipService(
+	gossipComponent := gossip.New(
 		gossipConfig,
 		s,
 		secAdv,
