@@ -199,12 +199,12 @@ func Main() {
 // Extract system channel last config block
 func extractSysChanLastConfig(lf blockledger.Factory, bootstrapBlock *cb.Block) *cb.Block {
 	// Are we bootstrapping?
-	num := len(lf.ChainIDs())
-	if num == 0 {
-		logger.Info("Bootstrapping because no existing chains")
+	chainCount := len(lf.ChainIDs())
+	if chainCount == 0 {
+		logger.Info("Bootstrapping because no existing channels")
 		return nil
 	}
-	logger.Infof("Not bootstrapping because of %d existing chains", num)
+	logger.Infof("Not bootstrapping because of %d existing channels", chainCount)
 
 	systemChannelName, err := protoutil.GetChainIDFromBlock(bootstrapBlock)
 	if err != nil {
@@ -548,11 +548,11 @@ func extractBootstrapBlock(conf *localconfig.TopLevel) *cb.Block {
 func initializeBootstrapChannel(genesisBlock *cb.Block, lf blockledger.Factory) {
 	chainID, err := protoutil.GetChainIDFromBlock(genesisBlock)
 	if err != nil {
-		logger.Fatal("Failed to parse chain ID from genesis block:", err)
+		logger.Fatal("Failed to parse channel ID from genesis block:", err)
 	}
 	gl, err := lf.GetOrCreate(chainID)
 	if err != nil {
-		logger.Fatal("Failed to create the system chain:", err)
+		logger.Fatal("Failed to create the system channel:", err)
 	}
 
 	if err := gl.Append(genesisBlock); err != nil {
@@ -650,7 +650,7 @@ func initializeMultichannelRegistrar(
 	if len(lf.ChainIDs()) == 0 {
 		initializeBootstrapChannel(genesisBlock, lf)
 	} else {
-		logger.Info("Not bootstrapping because of existing chains")
+		logger.Info("Not bootstrapping because of existing channels")
 	}
 
 	consenters := make(map[string]consensus.Consenter)
