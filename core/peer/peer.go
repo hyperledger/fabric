@@ -327,7 +327,7 @@ func NewChannelPolicyManagerGetter() policies.ChannelPolicyManagerGetter {
 type channelPolicyManagerGetter struct{}
 
 func (c *channelPolicyManagerGetter) Manager(channelID string) (policies.Manager, bool) {
-	policyManager := GetPolicyManager(channelID)
+	policyManager := Default.GetPolicyManager(channelID)
 	return policyManager, policyManager != nil
 }
 
@@ -692,7 +692,6 @@ func (p *Peer) GetMSPIDs(cid string) []string {
 
 // GetPolicyManager returns the policy manager of the channel with channel ID. Note that this
 // call returns nil if channel cid has not been created.
-func GetPolicyManager(cid string) policies.Manager { return Default.GetPolicyManager(cid) }
 func (p *Peer) GetPolicyManager(cid string) policies.Manager {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()

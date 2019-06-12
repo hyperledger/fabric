@@ -209,13 +209,13 @@ func TestCreateChannel(t *testing.T) {
 	}
 
 	// Correct PolicyManager
-	pmgr := GetPolicyManager(testChainID)
+	pmgr := Default.GetPolicyManager(testChainID)
 	if pmgr == nil {
 		t.Fatal("failed to get PolicyManager")
 	}
 
 	// Bad PolicyManager
-	pmgr = GetPolicyManager("BogusChain")
+	pmgr = Default.GetPolicyManager("BogusChain")
 	if pmgr != nil {
 		t.Fatal("got a bogus PolicyManager")
 	}

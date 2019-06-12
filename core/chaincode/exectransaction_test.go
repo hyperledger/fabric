@@ -696,12 +696,12 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 	// 1. Alice has reader access to both the channels.
 	// 2. Bob has access only to chainID2.
 	// Therefore the chaincode invocation should fail.
-	pm := peer.GetPolicyManager(channel)
+	pm := peer.Default.GetPolicyManager(channel)
 	pm.(*mockpolicies.Manager).PolicyMap = map[string]policies.Policy{
 		policies.ChannelApplicationWriters: &CreatorPolicy{Creators: [][]byte{[]byte("Alice")}},
 	}
 
-	pm = peer.GetPolicyManager(channel2)
+	pm = peer.Default.GetPolicyManager(channel2)
 	pm.(*mockpolicies.Manager).PolicyMap = map[string]policies.Policy{
 		policies.ChannelApplicationWriters: &CreatorPolicy{Creators: [][]byte{[]byte("Alice"), []byte("Bob")}},
 	}
