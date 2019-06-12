@@ -133,7 +133,7 @@ func TestInitialize(t *testing.T) {
 	)
 }
 
-func TestCreateChainFromBlock(t *testing.T) {
+func TestCreateChannel(t *testing.T) {
 	peerFSPath, err := ioutil.TempDir("", "ledgersData")
 	if err != nil {
 		t.Fatalf("Failed to create peer directory: %s", err)
@@ -174,7 +174,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 		t.FailNow()
 	}
 
-	err = Default.CreateChainFromBlock(block, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
+	err = Default.CreateChannel(block, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to create chain %s", err)
 	}

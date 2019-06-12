@@ -242,7 +242,7 @@ func (e *PeerConfiger) joinChain(
 	lr plugindispatcher.LifecycleResources,
 	nr plugindispatcher.CollectionAndLifecycleResources,
 ) pb.Response {
-	if err := e.peer.CreateChainFromBlock(block, sccp, deployedCCInfoProvider, lr, nr); err != nil {
+	if err := e.peer.CreateChannel(block, sccp, deployedCCInfoProvider, lr, nr); err != nil {
 		return shim.Error(err.Error())
 	}
 

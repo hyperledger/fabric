@@ -400,7 +400,6 @@ func (*configSupport) GetChannelConfig(channel string) cc.Config {
 // on singletons in the package. This is a step towards moving from package
 // level data for the peer to instance level data.
 type Operations interface {
-	CreateChainFromBlock(cb *common.Block, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources, nr plugindispatcher.CollectionAndLifecycleResources) error
 	GetChannelConfig(cid string) channelconfig.Resources
 	GetApplicationConfig(cid string) (channelconfig.Application, bool)
 	GetChannelsInfo() []*pb.ChannelInfo
@@ -457,7 +456,7 @@ func (p *Peer) OpenStore(cid string) (transientstore.Store, error) {
 	return store, nil
 }
 
-func (p *Peer) CreateChainFromBlock(
+func (p *Peer) CreateChannel(
 	cb *common.Block,
 	sccp sysccprovider.SystemChaincodeProvider,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
@@ -474,11 +473,11 @@ func (p *Peer) CreateChainFromBlock(
 		return errors.WithMessage(err, "cannot create ledger from genesis block")
 	}
 
-	return p.createChain(cid, l, cb, sccp, p.pluginMapper, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
+	return p.createChannel(cid, l, cb, sccp, p.pluginMapper, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
 }
 
-// createChain creates a new chain object and insert it into the chains
-func (p *Peer) createChain(
+// createChannel creates a new chain object and insert it into the chains
+func (p *Peer) createChannel(
 	cid string,
 	l ledger.PeerLedger,
 	cb *common.Block,
@@ -778,7 +777,7 @@ func (p *Peer) Initialize(
 			continue
 		}
 		// Create a chain if we get a valid ledger with config block
-		if err = p.createChain(cid, ledger, cb, sccp, pm, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation); err != nil {
+		if err = p.createChannel(cid, ledger, cb, sccp, pm, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation); err != nil {
 			peerLogger.Errorf("Failed to load chain %s(%s)", cid, err)
 			peerLogger.Debugf("Error reloading chain %s with message %s. We continue to the next chain rather than abort.", cid, err)
 			continue
