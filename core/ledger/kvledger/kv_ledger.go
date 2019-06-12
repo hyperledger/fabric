@@ -83,12 +83,6 @@ func newKVLedger(
 	}
 	l.configHistoryRetriever = configHistoryMgr.GetRetriever(ledgerID, l)
 
-	info, err := l.GetBlockchainInfo()
-	if err != nil {
-		return nil, err
-	}
-	// initialize stat with the current height
-	stats.updateBlockchainHeight(info.Height)
 	l.stats = stats
 	return l, nil
 }
@@ -326,14 +320,14 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 	}
 	elapsedBlockProcessing := time.Since(startBlockProcessing)
 
-	startCommitBlockStorage := time.Now()
+	startBlockstorageAndPvtdataCommit := time.Now()
 	logger.Debugf("[%s] Committing block [%d] to storage", l.ledgerID, blockNo)
 	l.blockAPIsRWLock.Lock()
 	defer l.blockAPIsRWLock.Unlock()
 	if err = l.blockStore.CommitWithPvtData(pvtdataAndBlock); err != nil {
 		return err
 	}
-	elapsedCommitBlockStorage := time.Since(startCommitBlockStorage)
+	elapsedBlockstorageAndPvtdataCommit := time.Since(startBlockstorageAndPvtdataCommit)
 
 	startCommitState := time.Now()
 	logger.Debugf("[%s] Committing block [%d] transactions to state database", l.ledgerID, blockNo)
@@ -351,18 +345,16 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 		}
 	}
 
-	elapsedCommitWithPvtData := time.Since(startBlockProcessing)
-
-	logger.Infof("[%s] Committed block [%d] with %d transaction(s) in %dms (state_validation=%dms block_commit=%dms state_commit=%dms)",
+	logger.Infof("[%s] Committed block [%d] with %d transaction(s) in %dms (state_validation=%dms block_and_pvtdata_commit=%dms state_commit=%dms)",
 		l.ledgerID, block.Header.Number, len(block.Data.Data),
-		elapsedCommitWithPvtData/time.Millisecond,
+		time.Since(startBlockProcessing)/time.Millisecond,
 		elapsedBlockProcessing/time.Millisecond,
-		elapsedCommitBlockStorage/time.Millisecond,
+		elapsedBlockstorageAndPvtdataCommit/time.Millisecond,
 		elapsedCommitState/time.Millisecond,
 	)
-	l.updateBlockStats(blockNo,
+	l.updateBlockStats(
 		elapsedBlockProcessing,
-		elapsedCommitBlockStorage,
+		elapsedBlockstorageAndPvtdataCommit,
 		elapsedCommitState,
 		txstatsInfo,
 	)
@@ -370,15 +362,13 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 }
 
 func (l *kvLedger) updateBlockStats(
-	blockNum uint64,
 	blockProcessingTime time.Duration,
-	blockstorageCommitTime time.Duration,
+	blockstorageAndPvtdataCommitTime time.Duration,
 	statedbCommitTime time.Duration,
 	txstatsInfo []*txmgr.TxStatInfo,
 ) {
-	l.stats.updateBlockchainHeight(blockNum + 1)
 	l.stats.updateBlockProcessingTime(blockProcessingTime)
-	l.stats.updateBlockstorageCommitTime(blockstorageCommitTime)
+	l.stats.updateBlockstorageAndPvtdataCommitTime(blockstorageAndPvtdataCommitTime)
 	l.stats.updateStatedbCommitTime(statedbCommitTime)
 	l.stats.updateTransactionsStats(txstatsInfo)
 }

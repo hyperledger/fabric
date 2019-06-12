@@ -216,6 +216,7 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 						Location: fileLedgerLocation,
 					},
 				},
+				&disabled.Provider{},
 			)
 
 			bootstrapConfig := &localconfig.TopLevel{
@@ -389,7 +390,7 @@ func TestInitializeMultiChainManager(t *testing.T) {
 	conf := genesisConfig(t)
 	assert.NotPanics(t, func() {
 		signer := &server_mocks.SignerSerializer{}
-		lf, _ := createLedgerFactory(conf)
+		lf, _ := createLedgerFactory(conf, &disabled.Provider{})
 		bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
 		initializeMultichannelRegistrar(
 			bootBlock,
@@ -462,7 +463,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			caMgr.updateTrustedRoots(bundle, grpcServer)
 		}
 	}
-	lf, _ := createLedgerFactory(conf)
+	lf, _ := createLedgerFactory(conf, &disabled.Provider{})
 	bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
 	signer := &server_mocks.SignerSerializer{}
 	initializeMultichannelRegistrar(

@@ -69,6 +69,7 @@ func NewProvider(initializer *ledger.Initializer) (*Provider, error) {
 	ledgerStoreProvider := ledgerstorage.NewProvider(
 		p.initializer.Config.RootFSPath,
 		privateData,
+		p.initializer.MetricsProvider,
 	)
 	p.ledgerStoreProvider = ledgerStoreProvider
 	if initializer.Config.HistoryDBConfig.Enabled {

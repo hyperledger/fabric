@@ -244,8 +244,10 @@ The following metrics are currently exported for consumption by Prometheus.
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | ledger_blockchain_height                            | gauge     | Height of the chain in blocks.                             | channel            |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| ledger_blockstorage_commit_time                     | histogram | Time taken in seconds for committing the block and private | channel            |
+| ledger_blockstorage_and_pvtdata_commit_time         | histogram | Time taken in seconds for committing the block and private | channel            |
 |                                                     |           | data to storage.                                           |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| ledger_blockstorage_commit_time                     | histogram | Time taken in seconds for committing the block to storage. | channel            |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | ledger_statedb_commit_time                          | histogram | Time taken in seconds for committing block changes to      | channel            |
 |                                                     |           | state db.                                                  |                    |
@@ -466,8 +468,10 @@ associated with the metric.
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | ledger.blockchain_height.%{channel}                                                     | gauge     | Height of the chain in blocks.                             |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| ledger.blockstorage_commit_time.%{channel}                                              | histogram | Time taken in seconds for committing the block and private |
+| ledger.blockstorage_and_pvtdata_commit_time.%{channel}                                  | histogram | Time taken in seconds for committing the block and private |
 |                                                                                         |           | data to storage.                                           |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| ledger.blockstorage_commit_time.%{channel}                                              | histogram | Time taken in seconds for committing the block to storage. |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | ledger.statedb_commit_time.%{channel}                                                   | histogram | Time taken in seconds for committing block changes to      |
 |                                                                                         |           | state db.                                                  |

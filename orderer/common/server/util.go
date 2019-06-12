@@ -15,10 +15,11 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	fileledger "github.com/hyperledger/fabric/common/ledger/blockledger/file"
 	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
+	"github.com/hyperledger/fabric/common/metrics"
 	config "github.com/hyperledger/fabric/orderer/common/localconfig"
 )
 
-func createLedgerFactory(conf *config.TopLevel) (blockledger.Factory, string) {
+func createLedgerFactory(conf *config.TopLevel, metricsProvider metrics.Provider) (blockledger.Factory, string) {
 	var lf blockledger.Factory
 	var ld string
 	switch conf.General.LedgerType {
@@ -28,7 +29,7 @@ func createLedgerFactory(conf *config.TopLevel) (blockledger.Factory, string) {
 			ld = createTempDir(conf.FileLedger.Prefix)
 		}
 		logger.Debug("Ledger dir:", ld)
-		lf = fileledger.New(ld)
+		lf = fileledger.New(ld, metricsProvider)
 		// The file-based ledger stores the blocks for each channel
 		// in a fsblkstorage.ChainsDir sub-directory that we have
 		// to create separately. Otherwise the call to the ledger
