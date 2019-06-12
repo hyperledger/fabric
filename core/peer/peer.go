@@ -678,7 +678,6 @@ func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
 }
 
 // GetMSPIDs returns the ID of each application MSP defined on this channel
-func GetMSPIDs(cid string) []string { return Default.GetMSPIDs(cid) }
 func (p *Peer) GetMSPIDs(cid string) []string {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
