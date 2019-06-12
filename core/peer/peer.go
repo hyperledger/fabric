@@ -657,7 +657,6 @@ func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
 
 // GetCurrConfigBlock returns the cached config block of the specified channel.
 // Note that this call returns nil if channel cid has not been created.
-func GetCurrConfigBlock(cid string) *common.Block { return Default.GetCurrConfigBlock(cid) }
 func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
