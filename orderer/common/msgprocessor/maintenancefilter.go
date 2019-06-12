@@ -31,14 +31,21 @@ type MaintenanceFilterSupport interface {
 // validates that the transaction is signed by the orderer org admin.
 type MaintenanceFilter struct {
 	support MaintenanceFilterSupport
+	// A set of permitted target consensus types
+	permittedTargetConsensusTypes map[string]bool
 }
 
 // NewMaintenanceFilter creates a new maintenance filter, at every evaluation, the policy manager and orderer config
 // are called to retrieve the latest version of the policy and config.
 func NewMaintenanceFilter(support MaintenanceFilterSupport) *MaintenanceFilter {
-	return &MaintenanceFilter{
-		support: support,
+	mf := &MaintenanceFilter{
+		support:                       support,
+		permittedTargetConsensusTypes: make(map[string]bool),
 	}
+	mf.permittedTargetConsensusTypes["etcdraft"] = true
+	mf.permittedTargetConsensusTypes["solo"] = true
+	mf.permittedTargetConsensusTypes["kafka"] = true
+	return mf
 }
 
 // Apply applies the maintenance filter on a CONFIG tx.
@@ -117,7 +124,8 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 			return errors.Errorf("attempted to change consensus type from %s to %s, but next config ConsensusType.State is not in maintenance mode",
 				ordererConfig.ConsensusType(), nextOrdererConfig.ConsensusType())
 		}
-		if !(ordererConfig.ConsensusType() == "kafka" && nextOrdererConfig.ConsensusType() == "etcdraft") {
+
+		if !mf.permittedTargetConsensusTypes[nextOrdererConfig.ConsensusType()] {
 			return errors.Errorf("attempted to change consensus type from %s to %s, transition not supported",
 				ordererConfig.ConsensusType(), nextOrdererConfig.ConsensusType())
 		}
