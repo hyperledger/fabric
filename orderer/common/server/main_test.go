@@ -16,9 +16,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	deliver_mocks "github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -30,7 +28,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
 	"github.com/hyperledger/fabric/common/mocks/crypto"
-	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
@@ -261,7 +258,10 @@ func TestExtractSysChanLastConfig(t *testing.T) {
 		_ = extractSysChanLastConfig(rlf, nil)
 	})
 
-	nextBlock := blockledger.CreateNextBlock(rl, []*common.Envelope{makeConfigTx(t, genesisconfig.TestChainID, 1)})
+	configTx, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG, genesisconfig.TestChainID, nil, &common.ConfigEnvelope{}, 0, 0)
+	require.NoError(t, err)
+
+	nextBlock := blockledger.CreateNextBlock(rl, []*common.Envelope{configTx})
 	nextBlock.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&common.Metadata{
 		Value: utils.MarshalOrPanic(&common.LastConfig{Index: rl.Height()}),
 	})
@@ -300,44 +300,7 @@ func TestSelectClusterBootBlock(t *testing.T) {
 	assert.True(t, bootstrapBlock == clusterBoot)
 }
 
-func mockCrypto() *crypto.LocalSigner {
-	return mockcrypto.FakeLocalSigner
-}
-
-func makeConfigTx(t *testing.T, chainID string, i int) *common.Envelope {
-	gConf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
-	gConf.Orderer.Capabilities = map[string]bool{
-		capabilities.OrdererV1_4_2: true,
-	}
-	gConf.Orderer.OrdererType = "kafka"
-	channelGroup, err := encoder.NewChannelGroup(gConf)
-	if err != nil {
-		return nil
-	}
-
-	configUpdateEnv := &common.ConfigUpdateEnvelope{
-		ConfigUpdate: utils.MarshalOrPanic(&common.ConfigUpdate{
-			WriteSet: channelGroup,
-		}),
-	}
-
-	configUpdateTx, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, chainID, mockCrypto(), configUpdateEnv, 0, 0)
-	if err != nil {
-		panic(err)
-	}
-
-	configTx, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG, chainID, mockCrypto(), &common.ConfigEnvelope{
-		Config: &common.Config{
-			Sequence:     1,
-			ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
-		LastUpdate: configUpdateTx},
-		0, 0)
-	require.NoError(t, err)
-
-	return configTx
-}
-
-func TestInitializeLocalMsp(t *testing.T) {
+func TestLoadLocalMSP(t *testing.T) {
 	t.Run("Happy", func(t *testing.T) {
 		assert.NotPanics(t, func() {
 			localMSPDir, _ := configtest.GetDevMspDir()
