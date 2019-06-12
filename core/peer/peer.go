@@ -472,7 +472,12 @@ func (p *Peer) CreateChannel(
 		return errors.WithMessage(err, "cannot create ledger from genesis block")
 	}
 
-	return p.createChannel(cid, l, cb, sccp, p.pluginMapper, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
+	if err := p.createChannel(cid, l, cb, sccp, p.pluginMapper, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation); err != nil {
+		return err
+	}
+
+	p.initChain(cid)
+	return nil
 }
 
 // createChannel creates a new chain object and insert it into the chains
@@ -708,8 +713,8 @@ func (p *Peer) GetPolicyManager(cid string) policies.Manager {
 	return nil
 }
 
-// InitChain takes care to initialize chain after peer joined, for example deploys system CCs
-func (p *Peer) InitChain(cid string) {
+// initChain takes care to initialize chain after peer joined, for example deploys system CCs
+func (p *Peer) initChain(cid string) {
 	if p.chainInitializer != nil {
 		// Initialize chaincode, namely deploy system CC
 		peerLogger.Debugf("Initializing channel %s", cid)
@@ -781,6 +786,6 @@ func (p *Peer) Initialize(
 			continue
 		}
 
-		p.InitChain(cid)
+		p.initChain(cid)
 	}
 }
