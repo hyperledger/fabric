@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	protoG "github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -29,7 +29,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	proto "github.com/hyperledger/fabric/protos/gossip"
+	pg "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -385,7 +385,7 @@ func (g *GossipImpl) handleMessage(m protoext.ReceivedMessage) {
 		g.forwardDiscoveryMsg(m)
 	}
 
-	if protoext.IsPullMsg(msg.GossipMessage) && protoext.GetPullMsgType(msg.GossipMessage) == proto.PullMsgType_IDENTITY_MSG {
+	if protoext.IsPullMsg(msg.GossipMessage) && protoext.GetPullMsgType(msg.GossipMessage) == pg.PullMsgType_IDENTITY_MSG {
 		g.certStore.handleMessage(m)
 	}
 }
@@ -530,7 +530,7 @@ func (g *GossipImpl) sendAndFilterSecrets(msg *protoext.SignedGossipMessage, pee
 
 		// Don't gossip secrets
 		if !g.IsInMyOrg(discovery.NetworkMember{PKIid: peer.PKIID}) {
-			clonedMsg.Envelope = protoG.Clone(msg.Envelope).(*proto.Envelope) // clone the envelope
+			clonedMsg.Envelope = proto.Clone(msg.Envelope).(*pg.Envelope) // clone the envelope
 			clonedMsg.Envelope.SecretEnvelope = nil
 		}
 		g.comm.Send(clonedMsg, peer)
@@ -640,7 +640,7 @@ func (g *GossipImpl) SendByCriteria(msg *protoext.SignedGossipMessage, criteria 
 }
 
 // Gossip sends a message to other peers to the network
-func (g *GossipImpl) Gossip(msg *proto.GossipMessage) {
+func (g *GossipImpl) Gossip(msg *pg.GossipMessage) {
 	// Educate developers to Gossip messages with the right tags.
 	// See IsTagLegal() for wanted behavior.
 	if err := protoext.IsTagLegal(msg); err != nil {
@@ -688,7 +688,7 @@ func (g *GossipImpl) Gossip(msg *proto.GossipMessage) {
 }
 
 // Send sends a message to remote peers
-func (g *GossipImpl) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
+func (g *GossipImpl) Send(msg *pg.GossipMessage, peers ...*comm.RemotePeer) {
 	m, err := protoext.NoopSign(msg)
 	if err != nil {
 		g.logger.Warningf("Failed creating SignedGossipMessage: %+v", errors.WithStack(err))
@@ -774,7 +774,7 @@ func (g *GossipImpl) UpdateLedgerHeight(height uint64, channelID common.ChannelI
 
 // UpdateChaincodes updates the chaincodes the peer publishes
 // to other peers in the channel
-func (g *GossipImpl) UpdateChaincodes(chaincodes []*proto.Chaincode, channelID common.ChannelID) {
+func (g *GossipImpl) UpdateChaincodes(chaincodes []*pg.Chaincode, channelID common.ChannelID) {
 	gc := g.chanState.getGossipChannelByChainID(channelID)
 	if gc == nil {
 		g.logger.Warning("No such channel", channelID)
@@ -787,12 +787,12 @@ func (g *GossipImpl) UpdateChaincodes(chaincodes []*proto.Chaincode, channelID c
 // If passThrough is false, the messages are processed by the gossip layer beforehand.
 // If passThrough is true, the gossip layer doesn't intervene and the messages
 // can be used to send a reply back to the sender
-func (g *GossipImpl) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan protoext.ReceivedMessage) {
+func (g *GossipImpl) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *pg.GossipMessage, <-chan protoext.ReceivedMessage) {
 	if passThrough {
 		return nil, g.comm.Accept(acceptor)
 	}
 	acceptByType := func(o interface{}) bool {
-		if o, isGossipMsg := o.(*proto.GossipMessage); isGossipMsg {
+		if o, isGossipMsg := o.(*pg.GossipMessage); isGossipMsg {
 			return acceptor(o)
 		}
 		if o, isSignedMsg := o.(*protoext.SignedGossipMessage); isSignedMsg {
@@ -803,7 +803,7 @@ func (g *GossipImpl) Accept(acceptor common.MessageAcceptor, passThrough bool) (
 		return false
 	}
 	inCh := g.AddChannel(acceptByType)
-	outCh := make(chan *proto.GossipMessage, acceptChanSize)
+	outCh := make(chan *pg.GossipMessage, acceptChanSize)
 	go func() {
 		for {
 			select {
@@ -924,14 +924,14 @@ func (da *discoveryAdapter) SendToPeer(peer *discovery.NetworkMember, msg *proto
 		// Backup old known field
 		oldKnown := memReq.Known
 		// Override new SelfInfo message with updated envelope
-		memReq = &proto.MembershipRequest{
+		memReq = &pg.MembershipRequest{
 			SelfInformation: selfMsg.Envelope,
 			Known:           oldKnown,
 		}
-		msgCopy := protoG.Clone(msg.GossipMessage).(*proto.GossipMessage)
+		msgCopy := proto.Clone(msg.GossipMessage).(*pg.GossipMessage)
 
 		// Update original message
-		msgCopy.Content = &proto.GossipMessage_MemReq{
+		msgCopy.Content = &pg.GossipMessage_MemReq{
 			MemReq: memReq,
 		}
 		// Update the envelope of the outer message, no need to sign (point2point)
@@ -1019,7 +1019,7 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *protoext.SignedGossipMes
 }
 
 // SignMessage signs an AliveMessage and updates its signature field
-func (sa *discoverySecurityAdapter) SignMessage(m *proto.GossipMessage, internalEndpoint string) *proto.Envelope {
+func (sa *discoverySecurityAdapter) SignMessage(m *pg.GossipMessage, internalEndpoint string) *pg.Envelope {
 	signer := func(msg []byte) ([]byte, error) {
 		return sa.mcs.Sign(msg)
 	}
@@ -1038,8 +1038,8 @@ func (sa *discoverySecurityAdapter) SignMessage(m *proto.GossipMessage, internal
 	if internalEndpoint == "" {
 		return e
 	}
-	protoext.SignSecret(e, signer, &proto.Secret{
-		Content: &proto.Secret_InternalEndpoint{
+	protoext.SignSecret(e, signer, &pg.Secret{
+		Content: &pg.Secret_InternalEndpoint{
 			InternalEndpoint: internalEndpoint,
 		},
 	})
@@ -1065,12 +1065,12 @@ func (sa *discoverySecurityAdapter) validateAliveMsgSignature(m *protoext.Signed
 
 func (g *GossipImpl) createCertStorePuller() pull.Mediator {
 	conf := pull.Config{
-		MsgType:           proto.PullMsgType_IDENTITY_MSG,
+		MsgType:           pg.PullMsgType_IDENTITY_MSG,
 		Channel:           []byte(""),
 		ID:                g.conf.InternalEndpoint,
 		PeerCountToSelect: g.conf.PullPeerNum,
 		PullInterval:      g.conf.PullInterval,
-		Tag:               proto.GossipMessage_EMPTY,
+		Tag:               pg.GossipMessage_EMPTY,
 		PullEngineConfig: algo.PullEngineConfig{
 			DigestWaitTime:   g.conf.DigestWaitTime,
 			RequestWaitTime:  g.conf.RequestWaitTime,
@@ -1228,7 +1228,7 @@ func (g *GossipImpl) disclosurePolicy(remotePeer *discovery.NetworkMember) (disc
 		g.logger.Warning("Cannot determine organization of", remotePeer)
 		return func(msg *protoext.SignedGossipMessage) bool {
 				return false
-			}, func(msg *protoext.SignedGossipMessage) *proto.Envelope {
+			}, func(msg *protoext.SignedGossipMessage) *pg.Envelope {
 				return msg.Envelope
 			}
 	}
@@ -1256,8 +1256,8 @@ func (g *GossipImpl) disclosurePolicy(remotePeer *discovery.NetworkMember) (disc
 			// Pass the alive message only if the alive message is in the same org as the remote peer
 			// or the message has an external endpoint, and the remote peer also has one
 			return bytes.Equal(org, remotePeerOrg) || msg.GetAliveMsg().Membership.Endpoint != "" && remotePeer.Endpoint != ""
-		}, func(msg *protoext.SignedGossipMessage) *proto.Envelope {
-			envelope := protoG.Clone(msg.Envelope).(*proto.Envelope)
+		}, func(msg *protoext.SignedGossipMessage) *pg.Envelope {
+			envelope := proto.Clone(msg.Envelope).(*pg.Envelope)
 			if !bytes.Equal(g.selfOrg, remotePeerOrg) {
 				envelope.SecretEnvelope = nil
 			}
