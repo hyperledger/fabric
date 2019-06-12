@@ -401,10 +401,7 @@ func (*configSupport) GetChannelConfig(cid string) cc.Config {
 // level data for the peer to instance level data.
 type Operations interface {
 	GetApplicationConfig(cid string) (channelconfig.Application, bool)
-	GetStableChannelConfig(cid string) channelconfig.Resources
-	GetCurrConfigBlock(cid string) *common.Block
 	GetLedger(cid string) ledger.PeerLedger
-	GetMSPIDs(cid string) []string
 	GetPolicyManager(cid string) policies.Manager
 }
 
