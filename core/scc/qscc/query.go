@@ -21,9 +21,10 @@ import (
 
 // New returns an instance of QSCC.
 // Typically this is called once per peer.
-func New(aclProvider aclmgmt.ACLProvider) *LedgerQuerier {
+func New(aclProvider aclmgmt.ACLProvider, peer peer.Operations) *LedgerQuerier {
 	return &LedgerQuerier{
 		aclProvider: aclProvider,
+		peer:        peer,
 	}
 }
 
@@ -42,6 +43,7 @@ func (e *LedgerQuerier) Enabled() bool             { return true }
 // - GetTransactionByID returns a transaction
 type LedgerQuerier struct {
 	aclProvider aclmgmt.ACLProvider
+	peer        peer.Operations
 }
 
 var qscclogger = flogging.MustGetLogger("qscc")
@@ -84,7 +86,7 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return shim.Error(fmt.Sprintf("missing 3rd argument for %s", fname))
 	}
 
-	targetLedger := peer.GetLedger(cid)
+	targetLedger := e.peer.GetLedger(cid)
 	if targetLedger == nil {
 		return shim.Error(fmt.Sprintf("Invalid chain ID, %s", cid))
 	}

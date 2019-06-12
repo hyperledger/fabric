@@ -32,7 +32,7 @@ func MockCreateChain(cid string) error {
 	var ledger ledger.PeerLedger
 	var err error
 
-	if ledger = GetLedger(cid); ledger == nil {
+	if ledger = Default.GetLedger(cid); ledger == nil {
 		gb, _ := configtxtest.MakeGenesisBlock(cid)
 		if ledger, err = ledgermgmt.CreateLedger(gb); err != nil {
 			return err

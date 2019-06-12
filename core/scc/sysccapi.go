@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
-	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -144,7 +143,7 @@ func (p *Provider) deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvid
 	}
 
 	if chainID != "" {
-		lgr := peer.GetLedger(chainID)
+		lgr := p.Peer.GetLedger(chainID)
 		if lgr == nil {
 			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name(), chainID))
 		}

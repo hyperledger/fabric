@@ -668,7 +668,6 @@ func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
 
 // GetLedger returns the ledger of the channel with channel ID. Note that this
 // call returns nil if channel cid has not been created.
-func GetLedger(cid string) ledger.PeerLedger { return Default.GetLedger(cid) }
 func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()

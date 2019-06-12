@@ -281,7 +281,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 
 func finitMockPeer(chainIDs ...string) {
 	for _, c := range chainIDs {
-		if lgr := peer.GetLedger(c); lgr != nil {
+		if lgr := peer.Default.GetLedger(c); lgr != nil {
 			lgr.Close()
 		}
 	}
@@ -1124,7 +1124,7 @@ func TestGetTxContextFromHandler(t *testing.T) {
 		t.Fatalf("failed to create Peer Ledger %s", err)
 	}
 
-	pldgr := peer.GetLedger(chnl)
+	pldgr := peer.Default.GetLedger(chnl)
 
 	// prepare a payload and generate a TxContext in the handler to be used in the following getTxContextFroMessage with a normal UCC
 	txCtxGenerated, payload := genNewPldAndCtxFromLdgr(t, "shimTestCC", chnl, txid, pldgr, &h)

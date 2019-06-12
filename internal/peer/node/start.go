@@ -508,7 +508,7 @@ func serve(args []string) error {
 	}
 
 	csccInst := cscc.New(sccp, aclProvider, lifecycleValidatorCommitter, lsccInst, lifecycleValidatorCommitter)
-	qsccInst := scc.SelfDescribingSysCC(qscc.New(aclProvider))
+	qsccInst := scc.SelfDescribingSysCC(qscc.New(aclProvider, peerInstance))
 	if maxConcurrency := coreConfig.LimitsConcurrencyQSCC; maxConcurrency != 0 {
 		qsccInst = scc.Throttle(maxConcurrency, qsccInst)
 	}
@@ -600,7 +600,7 @@ func serve(args []string) error {
 			// and eventually to gossip to pre-populate data structures.
 			// this is expected to disappear with FAB-15061
 			sub, err := legacyMetadataManager.NewChannelSubscription(cid, cclifecycle.QueryCreatorFunc(func() (cclifecycle.Query, error) {
-				return peer.GetLedger(cid).NewQueryExecutor()
+				return peerInstance.GetLedger(cid).NewQueryExecutor()
 			}))
 			if err != nil {
 				logger.Panicf("Failed subscribing to chaincode lifecycle updates")
