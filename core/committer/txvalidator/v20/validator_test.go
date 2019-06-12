@@ -238,7 +238,7 @@ func setupValidatorWithMspMgr(mspmgr msp.MSPManager, mockID *supportmocks.Identi
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
 	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
-	mockCpmg.On("Manager", mock.Anything).Return(nil, true)
+	mockCpmg.On("Manager", mock.Anything).Return(&txvalidatormocks.PolicyManager{})
 
 	mockCR := &txvalidatormocks.CollectionResources{}
 
@@ -1148,7 +1148,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
 	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
-	mockCpmg.On("Manager", mock.Anything).Return(nil, true)
+	mockCpmg.On("Manager", mock.Anything).Return(&txvalidatormocks.PolicyManager{})
 
 	v := txvalidatorv20.NewTxValidator(
 		"",
@@ -1219,7 +1219,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
 	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
-	mockCpmg.On("Manager", mock.Anything).Return(nil, true)
+	mockCpmg.On("Manager", mock.Anything).Return(&txvalidatormocks.PolicyManager{})
 
 	v := txvalidatorv20.NewTxValidator(
 		"",
@@ -1269,7 +1269,7 @@ func TestValidationPluginNotFound(t *testing.T) {
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
 	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
-	mockCpmg.On("Manager", mock.Anything).Return(nil, true)
+	mockCpmg.On("Manager", mock.Anything).Return(&txvalidatormocks.PolicyManager{})
 
 	v := txvalidatorv20.NewTxValidator(
 		"",

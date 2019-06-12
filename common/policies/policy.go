@@ -157,10 +157,14 @@ type Provider interface {
 // ChannelPolicyManagerGetter is a support interface
 // to get access to the policy manager of a given channel
 type ChannelPolicyManagerGetter interface {
-	// Returns the policy manager associated to the passed channel
-	// and true if it was the manager requested, or false if it is the default manager
-	Manager(channelID string) (Manager, bool)
+	// Returns the policy manager associated with the specified channel.
+	Manager(channelID string) Manager
 }
+
+// PolicyManagerGetterFunc is a function adapater for ChannelPolicyManagerGetter.
+type PolicyManagerGetterFunc func(channelID string) Manager
+
+func (p PolicyManagerGetterFunc) Manager(channelID string) Manager { return p(channelID) }
 
 // ManagerImpl is an implementation of Manager and configtx.ConfigHandler
 // In general, it should only be referenced as an Impl for the configtx.ConfigManager

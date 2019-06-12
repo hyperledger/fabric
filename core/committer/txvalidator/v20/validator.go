@@ -93,6 +93,12 @@ type ChannelPolicyManagerGetter interface {
 	policies.ChannelPolicyManagerGetter
 }
 
+//go:generate mockery -dir . -name PolicyManager -case underscore -output mocks/
+
+type PolicyManager interface {
+	policies.Manager
+}
+
 //go:generate mockery -dir plugindispatcher/ -name CollectionResources -case underscore -output mocks/
 
 // TxValidator is the implementation of Validator interface, keeps

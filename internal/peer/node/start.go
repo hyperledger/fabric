@@ -62,6 +62,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/policyprovider"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
@@ -207,8 +208,14 @@ func serve(args []string) error {
 		logger.Fatalf("Failed to create peer server (%s)", err)
 	}
 
-	policyMgr := peer.NewChannelPolicyManagerGetter()
 	signingIdentity := mgmt.GetLocalSigningIdentityOrPanic()
+
+	peerInstance := &peer.Peer{
+		StoreProvider: transientstore.NewStoreProvider(
+			filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore"),
+		),
+	}
+	policyMgr := policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager)
 
 	// FIXME: Creating the gossip service has the side effect of starting a bunch
 	// of go routines and registration with the grpc server.
@@ -224,12 +231,7 @@ func serve(args []string) error {
 	}
 	defer gossipService.Stop()
 
-	peerInstance := &peer.Peer{
-		StoreProvider: transientstore.NewStoreProvider(
-			filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore"),
-		),
-		GossipService: gossipService,
-	}
+	peerInstance.GossipService = gossipService
 	peer.Default = peerInstance
 
 	//startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
@@ -507,7 +509,13 @@ func serve(args []string) error {
 		ccSupSrv = authenticator.Wrap(ccSupSrv)
 	}
 
-	csccInst := cscc.New(sccp, aclProvider, lifecycleValidatorCommitter, lsccInst, lifecycleValidatorCommitter)
+	csccInst := cscc.New(
+		sccp, aclProvider,
+		lifecycleValidatorCommitter,
+		lsccInst,
+		lifecycleValidatorCommitter,
+		policyprovider.GetPolicyChecker(),
+	)
 	qsccInst := scc.SelfDescribingSysCC(qscc.New(aclProvider, peerInstance))
 	if maxConcurrency := coreConfig.LimitsConcurrencyQSCC; maxConcurrency != 0 {
 		qsccInst = scc.Throttle(maxConcurrency, qsccInst)

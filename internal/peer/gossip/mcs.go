@@ -160,12 +160,11 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 	// - Get Policy for block validation
 
 	// Get the policy manager for channelID
-	cpm, ok := s.channelPolicyManagerGetter.Manager(channelID)
+	cpm := s.channelPolicyManagerGetter.Manager(channelID)
 	if cpm == nil {
 		return fmt.Errorf("Could not acquire policy manager for channel %s", channelID)
 	}
-	// ok is true if it was the manager requested, or false if it is the default manager
-	mcsLogger.Debugf("Got policy manager for channel [%s] with flag [%t]", channelID, ok)
+	mcsLogger.Debugf("Got policy manager for channel [%s]", channelID)
 
 	// Get block validation policy
 	policy, ok := cpm.GetPolicy(policies.BlockValidation)
@@ -235,11 +234,11 @@ func (s *MSPMessageCryptoService) VerifyByChannel(chainID common.ChannelID, peer
 	}
 
 	// Get the policy manager for channel chainID
-	cpm, flag := s.channelPolicyManagerGetter.Manager(string(chainID))
+	cpm := s.channelPolicyManagerGetter.Manager(string(chainID))
 	if cpm == nil {
 		return fmt.Errorf("Could not acquire policy manager for channel %s", string(chainID))
 	}
-	mcsLogger.Debugf("Got policy manager for channel [%s] with flag [%t]", string(chainID), flag)
+	mcsLogger.Debugf("Got policy manager for channel [%s]", string(chainID))
 
 	// Get channel reader policy
 	policy, flag := cpm.GetPolicy(policies.ChannelApplicationReaders)

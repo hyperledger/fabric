@@ -8,24 +8,22 @@ import (
 )
 
 type ChannelPolicyManagerGetter struct {
-	ManagerStub        func(string) (policies.Manager, bool)
+	ManagerStub        func(string) policies.Manager
 	managerMutex       sync.RWMutex
 	managerArgsForCall []struct {
 		arg1 string
 	}
 	managerReturns struct {
 		result1 policies.Manager
-		result2 bool
 	}
 	managerReturnsOnCall map[int]struct {
 		result1 policies.Manager
-		result2 bool
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ChannelPolicyManagerGetter) Manager(arg1 string) (policies.Manager, bool) {
+func (fake *ChannelPolicyManagerGetter) Manager(arg1 string) policies.Manager {
 	fake.managerMutex.Lock()
 	ret, specificReturn := fake.managerReturnsOnCall[len(fake.managerArgsForCall)]
 	fake.managerArgsForCall = append(fake.managerArgsForCall, struct {
@@ -37,10 +35,10 @@ func (fake *ChannelPolicyManagerGetter) Manager(arg1 string) (policies.Manager, 
 		return fake.ManagerStub(arg1)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1
 	}
 	fakeReturns := fake.managerReturns
-	return fakeReturns.result1, fakeReturns.result2
+	return fakeReturns.result1
 }
 
 func (fake *ChannelPolicyManagerGetter) ManagerCallCount() int {
@@ -49,7 +47,7 @@ func (fake *ChannelPolicyManagerGetter) ManagerCallCount() int {
 	return len(fake.managerArgsForCall)
 }
 
-func (fake *ChannelPolicyManagerGetter) ManagerCalls(stub func(string) (policies.Manager, bool)) {
+func (fake *ChannelPolicyManagerGetter) ManagerCalls(stub func(string) policies.Manager) {
 	fake.managerMutex.Lock()
 	defer fake.managerMutex.Unlock()
 	fake.ManagerStub = stub
@@ -62,30 +60,27 @@ func (fake *ChannelPolicyManagerGetter) ManagerArgsForCall(i int) string {
 	return argsForCall.arg1
 }
 
-func (fake *ChannelPolicyManagerGetter) ManagerReturns(result1 policies.Manager, result2 bool) {
+func (fake *ChannelPolicyManagerGetter) ManagerReturns(result1 policies.Manager) {
 	fake.managerMutex.Lock()
 	defer fake.managerMutex.Unlock()
 	fake.ManagerStub = nil
 	fake.managerReturns = struct {
 		result1 policies.Manager
-		result2 bool
-	}{result1, result2}
+	}{result1}
 }
 
-func (fake *ChannelPolicyManagerGetter) ManagerReturnsOnCall(i int, result1 policies.Manager, result2 bool) {
+func (fake *ChannelPolicyManagerGetter) ManagerReturnsOnCall(i int, result1 policies.Manager) {
 	fake.managerMutex.Lock()
 	defer fake.managerMutex.Unlock()
 	fake.ManagerStub = nil
 	if fake.managerReturnsOnCall == nil {
 		fake.managerReturnsOnCall = make(map[int]struct {
 			result1 policies.Manager
-			result2 bool
 		})
 	}
 	fake.managerReturnsOnCall[i] = struct {
 		result1 policies.Manager
-		result2 bool
-	}{result1, result2}
+	}{result1}
 }
 
 func (fake *ChannelPolicyManagerGetter) Invocations() map[string][][]interface{} {

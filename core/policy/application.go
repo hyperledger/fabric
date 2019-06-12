@@ -99,8 +99,8 @@ type dynamicPolicyManager struct {
 }
 
 func (d *dynamicPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
-	mgr, ok := d.channelPolicyManagerGetter.Manager(d.channelID)
-	if !ok {
+	mgr := d.channelPolicyManagerGetter.Manager(d.channelID)
+	if mgr == nil {
 		// this will never happen - if we are here we
 		// managed to retrieve the policy manager for
 		// this channel once, and so by the way the
@@ -113,8 +113,8 @@ func (d *dynamicPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
 
 // New returns an evaluator for application policies
 func New(deserializer msp.IdentityDeserializer, channel string, channelPolicyManagerGetter policies.ChannelPolicyManagerGetter) (*ApplicationPolicyEvaluator, error) {
-	_, ok := channelPolicyManagerGetter.Manager(channel)
-	if !ok {
+	mgr := channelPolicyManagerGetter.Manager(channel)
+	if mgr == nil {
 		return nil, errors.Errorf("failed to retrieve policy manager for channel %s", channel)
 	}
 

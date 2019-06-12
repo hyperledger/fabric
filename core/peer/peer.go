@@ -319,18 +319,6 @@ func (p *Peer) setCurrConfigBlock(block *common.Block, cid string) error {
 	return errors.Errorf("[channel %s] channel not associated with this peer", cid)
 }
 
-// NewChannelPolicyManagerGetter returns a new instance of ChannelPolicyManagerGetter
-func NewChannelPolicyManagerGetter() policies.ChannelPolicyManagerGetter {
-	return &channelPolicyManagerGetter{}
-}
-
-type channelPolicyManagerGetter struct{}
-
-func (c *channelPolicyManagerGetter) Manager(channelID string) (policies.Manager, bool) {
-	policyManager := Default.GetPolicyManager(channelID)
-	return policyManager, policyManager != nil
-}
-
 // NewPeerServer creates an instance of comm.GRPCServer
 // This server is used for peer communications
 func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (*comm.GRPCServer, error) {
@@ -584,7 +572,7 @@ func (p *Peer) createChannel(
 		},
 		sccp,
 		p.pluginMapper,
-		NewChannelPolicyManagerGetter(),
+		policies.PolicyManagerGetterFunc(p.GetPolicyManager),
 	)
 
 	ordererAddresses := bundle.ChannelConfig().OrdererAddresses()

@@ -220,14 +220,6 @@ func TestCreateChannel(t *testing.T) {
 		t.Fatal("got a bogus PolicyManager")
 	}
 
-	// PolicyManagerGetter
-	pmg := NewChannelPolicyManagerGetter()
-	assert.NotNil(t, pmg, "PolicyManagerGetter should not be nil")
-
-	pmgr, ok := pmg.Manager(testChainID)
-	assert.NotNil(t, pmgr, "PolicyManager should not be nil")
-	assert.Equal(t, true, ok, "expected Manage() to return true")
-
 	Default.setCurrConfigBlock(block, testChainID)
 
 	channels := Default.GetChannelsInfo()

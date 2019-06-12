@@ -105,6 +105,12 @@ type ChannelPolicyManagerGetter interface {
 	policies.ChannelPolicyManagerGetter
 }
 
+//go:generate mockery -dir . -name PolicyManager -case underscore -output mocks/
+
+type PolicyManager interface {
+	policies.Manager
+}
+
 // NewPluginValidator creates a new PluginValidator.
 func NewPluginValidator(pm txvalidatorplugin.Mapper, qec QueryExecutorCreator, deserializer msp.IdentityDeserializer, capabilities vc.Capabilities, cpmg policies.ChannelPolicyManagerGetter, cor CollectionResources) *PluginValidator {
 	return &PluginValidator{

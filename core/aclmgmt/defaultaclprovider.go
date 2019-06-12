@@ -50,7 +50,7 @@ func newDefaultACLProvider() defaultACLProvider {
 
 func (d *defaultACLProviderImpl) initialize() {
 	d.policyChecker = policy.NewPolicyChecker(
-		peer.NewChannelPolicyManagerGetter(),
+		policies.PolicyManagerGetterFunc(peer.Default.GetPolicyManager),
 		mgmt.GetLocalMSP(),
 		mgmt.NewLocalMSPPrincipalGetter(),
 	)

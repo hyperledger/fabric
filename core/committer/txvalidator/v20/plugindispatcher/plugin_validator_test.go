@@ -33,7 +33,7 @@ func TestValidateWithPlugin(t *testing.T) {
 	capabilites := &mocks.Capabilities{}
 
 	mcpmg := &mocks.ChannelPolicyManagerGetter{}
-	mcpmg.On("Manager", "").Return(nil, true)
+	mcpmg.On("Manager", "").Return(&mocks.PolicyManager{})
 
 	v := plugindispatcher.NewPluginValidator(pm, qec, deserializer, capabilites, mcpmg, nil)
 	ctx := &plugindispatcher.Context{
@@ -97,7 +97,7 @@ func TestSamplePlugin(t *testing.T) {
 	pm["vscc"] = factory
 
 	mcpmg := &mocks.ChannelPolicyManagerGetter{}
-	mcpmg.On("Manager", "mychannel").Return(nil, true)
+	mcpmg.On("Manager", "mychannel").Return(&mocks.PolicyManager{})
 
 	transaction := testdata.MarshaledSignedData{
 		Data:      []byte{1, 2, 3},

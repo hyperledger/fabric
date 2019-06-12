@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
-	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -42,13 +41,10 @@ func New(
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	lr plugindispatcher.LifecycleResources,
 	nr plugindispatcher.CollectionAndLifecycleResources,
+	policyChecker policy.PolicyChecker,
 ) *PeerConfiger {
 	return &PeerConfiger{
-		policyChecker: policy.NewPolicyChecker(
-			peer.NewChannelPolicyManagerGetter(),
-			mgmt.GetLocalMSP(),
-			mgmt.NewLocalMSPPrincipalGetter(),
-		),
+		policyChecker:          policyChecker,
 		configMgr:              peer.NewConfigSupport(),
 		sccp:                   sccp,
 		aclProvider:            aclProvider,

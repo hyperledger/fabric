@@ -1267,7 +1267,7 @@ type mockPolicyCheckerFactory struct{}
 
 func (f *mockPolicyCheckerFactory) NewPolicyChecker() policy.PolicyChecker {
 	return policy.NewPolicyChecker(
-		peer.NewChannelPolicyManagerGetter(),
+		policies.PolicyManagerGetterFunc(peer.Default.GetPolicyManager),
 		&mocks.MockIdentityDeserializer{
 			Identity: []byte("Admin"),
 			Msg:      []byte("msg1"),

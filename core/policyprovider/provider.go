@@ -17,6 +17,7 @@ limitations under the License.
 package policyprovider
 
 import (
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -31,7 +32,7 @@ type defaultFactory struct{}
 
 func (f *defaultFactory) NewPolicyChecker() policy.PolicyChecker {
 	return policy.NewPolicyChecker(
-		peer.NewChannelPolicyManagerGetter(),
+		policies.PolicyManagerGetterFunc(peer.Default.GetPolicyManager),
 		mgmt.GetLocalMSP(),
 		mgmt.NewLocalMSPPrincipalGetter(),
 	)

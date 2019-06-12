@@ -62,7 +62,7 @@ func (p *policyChecker) CheckPolicy(channelID, policyName string, signedProp *pb
 	}
 
 	// Get Policy
-	policyManager, _ := p.channelPolicyManagerGetter.Manager(channelID)
+	policyManager := p.channelPolicyManagerGetter.Manager(channelID)
 	if policyManager == nil {
 		return fmt.Errorf("Failed to get policy manager for channel [%s]", channelID)
 	}
@@ -156,7 +156,7 @@ func (p *policyChecker) CheckPolicyBySignedData(channelID, policyName string, sd
 	}
 
 	// Get Policy
-	policyManager, _ := p.channelPolicyManagerGetter.Manager(channelID)
+	policyManager := p.channelPolicyManagerGetter.Manager(channelID)
 	if policyManager == nil {
 		return fmt.Errorf("Failed to get policy manager for channel [%s]", channelID)
 	}

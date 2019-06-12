@@ -22,16 +22,16 @@ import (
 
 type ChannelPolicyManagerGetter struct{}
 
-func (c *ChannelPolicyManagerGetter) Manager(channelID string) (policies.Manager, bool) {
-	return &mockpolicies.Manager{Policy: &mockpolicies.Policy{Err: nil}}, false
+func (c *ChannelPolicyManagerGetter) Manager(channelID string) policies.Manager {
+	return &mockpolicies.Manager{Policy: &mockpolicies.Policy{Err: nil}}
 }
 
 type ChannelPolicyManagerGetterWithManager struct {
 	Managers map[string]policies.Manager
 }
 
-func (c *ChannelPolicyManagerGetterWithManager) Manager(channelID string) (policies.Manager, bool) {
-	return c.Managers[channelID], true
+func (c *ChannelPolicyManagerGetterWithManager) Manager(channelID string) policies.Manager {
+	return c.Managers[channelID]
 }
 
 type ChannelPolicyManager struct {

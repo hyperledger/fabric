@@ -109,7 +109,7 @@ func (s *DiscoverySupport) SatisfiesPrincipal(channel string, rawIdentity []byte
 type ChannelPolicyManagerGetter interface {
 	// Returns the policy manager associated to the passed channel
 	// and true if it was the manager requested, or false if it is the default manager
-	Manager(channelID string) (policies.Manager, bool)
+	Manager(channelID string) policies.Manager
 }
 
 // NewChannelVerifier returns a new channel verifier from the given policy and policy manager getter
@@ -131,7 +131,7 @@ type ChannelVerifier struct {
 // If the verification succeeded, Verify returns nil meaning no error occurred.
 // If peerIdentity is nil, then the verification fails.
 func (cv *ChannelVerifier) VerifyByChannel(channel string, sd *protoutil.SignedData) error {
-	mgr, _ := cv.Manager(channel)
+	mgr := cv.Manager(channel)
 	if mgr == nil {
 		return errors.Errorf("policy manager for channel %s doesn't exist", channel)
 	}

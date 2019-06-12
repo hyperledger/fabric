@@ -11,7 +11,7 @@ type ChannelPolicyManagerGetter struct {
 }
 
 // Manager provides a mock function with given fields: channelID
-func (_m *ChannelPolicyManagerGetter) Manager(channelID string) (policies.Manager, bool) {
+func (_m *ChannelPolicyManagerGetter) Manager(channelID string) policies.Manager {
 	ret := _m.Called(channelID)
 
 	var r0 policies.Manager
@@ -23,12 +23,5 @@ func (_m *ChannelPolicyManagerGetter) Manager(channelID string) (policies.Manage
 		}
 	}
 
-	var r1 bool
-	if rf, ok := ret.Get(1).(func(string) bool); ok {
-		r1 = rf(channelID)
-	} else {
-		r1 = ret.Get(1).(bool)
-	}
-
-	return r0, r1
+	return r0
 }
