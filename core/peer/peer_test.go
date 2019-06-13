@@ -211,8 +211,6 @@ func TestCreateChannel(t *testing.T) {
 		t.Fatal("got a bogus PolicyManager")
 	}
 
-	Default.setCurrConfigBlock(block, testChainID)
-
 	channels := Default.GetChannelsInfo()
 	if len(channels) != 1 {
 		t.Fatalf("incorrect number of channels")

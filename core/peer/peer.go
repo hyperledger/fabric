@@ -326,15 +326,6 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 	credSupport.OrdererRootCAsByChain[cid] = ordererRootCAs
 }
 
-// setCurrConfigBlock sets the current config block of the specified channel
-func (p *Peer) setCurrConfigBlock(block *common.Block, cid string) error {
-	if c := p.Channel(cid); c != nil {
-		c.setConfigBlock(block)
-		return nil
-	}
-	return errors.Errorf("[channel %s] channel not associated with this peer", cid)
-}
-
 // NewPeerServer creates an instance of comm.GRPCServer
 // This server is used for peer communications
 func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (*comm.GRPCServer, error) {
@@ -544,7 +535,14 @@ func (p *Peer) createChannel(
 		if err != nil {
 			return err
 		}
-		return p.setCurrConfigBlock(block, chainID)
+
+		channel := p.Channel(chainID)
+		if channel == nil {
+			return errors.Errorf("[channel %s] channel not associated with this peer", cid)
+		}
+
+		channel.setConfigBlock(block)
+		return nil
 	})
 
 	c := &Channel{
