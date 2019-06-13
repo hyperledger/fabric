@@ -14,7 +14,7 @@ case "$1" in
     # check if the metrics documentation is up to date with the metrics
     # options in the tree
     "check")
-        if [ -n "$(diff -u <(cd ${fabric_dir} && ${gendoc_command}) ${metrics_doc})" ]; then
+        if [ -n "$(diff -u <(cd "${fabric_dir}" && ${gendoc_command}) "${metrics_doc}")" ]; then
             echo "The Fabric metrics reference documentation is out of date."
             echo "Please run '$0 generate' to update the documentation."
             exit 1
@@ -23,7 +23,7 @@ case "$1" in
 
     # generate the metrics documentation
     "generate")
-         (cd "${fabric_dir}" && ${gendoc_command} > ${metrics_doc})
+         (cd "${fabric_dir}" && ${gendoc_command} > "${metrics_doc}")
         ;;
 
     *)

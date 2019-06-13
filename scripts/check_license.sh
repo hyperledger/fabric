@@ -5,7 +5,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-source "$(cd $(dirname "$0") && pwd)/functions.sh"
+# shellcheck source=/dev/null
+source "$(cd "$(dirname "$0")" && pwd)/functions.sh"
 
 CHECK=$(git diff --name-only --diff-filter=ACMRTUXB HEAD | tr '\n' ' ')
 if [[ -z "$CHECK" ]]; then
