@@ -897,7 +897,10 @@ func TestChannelConfig(t *testing.T) {
 	endpoint, socket := getAvailablePort(t)
 
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	error := InitGossipService(&mocks.SignerSerializer{}, &disabled.Provider{}, endpoint, grpcServer, nil,
+	serializer := &mocks.SignerSerializer{}
+	serializer.SerializeReturns([]byte{}, nil)
+
+	error := InitGossipService(serializer, &disabled.Provider{}, endpoint, grpcServer, nil,
 		&naiveCryptoService{}, secAdv, nil)
 	assert.NoError(t, error)
 	gService := GetGossipService().(*gossipServiceImpl)
