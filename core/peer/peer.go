@@ -90,6 +90,7 @@ type Channel struct {
 	ledger       ledger.PeerLedger
 	bundleSource *channelconfig.BundleSource
 	resources    channelconfig.Resources
+	store        transientstore.Store
 }
 
 // bundleUpdate is called by the bundleSource when the channel configuration
@@ -173,6 +174,10 @@ func (c *Channel) GetMSPIDs() []string {
 
 func (c *Channel) MSPManager() msp.MSPManager {
 	return c.resources.MSPManager()
+}
+
+func (c *Channel) Store() transientstore.Store {
+	return c.store
 }
 
 func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
@@ -395,9 +400,6 @@ type Operations interface {
 
 type Peer struct {
 	StoreProvider transientstore.StoreProvider
-	storesMutex   sync.RWMutex
-	stores        map[string]transientstore.Store
-
 	GossipService *gossipservice.GossipService
 
 	// validationWorkersSemaphore is used to limit the number of concurrent validation
@@ -416,26 +418,12 @@ type Peer struct {
 // access to the package level state.
 var Default *Peer = &Peer{}
 
-func (p *Peer) StoreForChannel(cid string) transientstore.Store {
-	p.storesMutex.RLock()
-	defer p.storesMutex.RUnlock()
-	return p.stores[cid]
-}
-
 func (p *Peer) openStore(cid string) (transientstore.Store, error) {
-	p.storesMutex.Lock()
-	defer p.storesMutex.Unlock()
-
 	store, err := p.StoreProvider.OpenStore(cid)
 	if err != nil {
 		return nil, err
 	}
 
-	if p.stores == nil {
-		p.stores = map[string]transientstore.Store{}
-	}
-
-	p.stores[cid] = store
 	return store, nil
 }
 
@@ -585,6 +573,7 @@ func (p *Peer) createChannel(
 	if err != nil {
 		return errors.Wrapf(err, "[channel %s] failed opening transient store", bundle.ConfigtxValidator().ChainID())
 	}
+	c.store = store
 
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider)
 	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, gossipservice.Support{
@@ -604,6 +593,15 @@ func (p *Peer) createChannel(
 	}
 	p.channels[cid] = c
 
+	return nil
+}
+
+func (p *Peer) StoreForChannel(cid string) transientstore.Store {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+	if c, ok := p.channels[cid]; ok {
+		return c.store
+	}
 	return nil
 }
 
