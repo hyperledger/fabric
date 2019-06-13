@@ -103,6 +103,26 @@ func (c *Channel) Ledger() ledger.PeerLedger {
 	return c.ledger
 }
 
+func (c *Channel) Resources() channelconfig.Resources {
+	return c.resources
+}
+
+func (c *Channel) ConfigBlock() *common.Block {
+	return c.cb
+}
+
+func (c *Channel) setConfigBlock(cb *common.Block) {
+	c.cb = cb
+}
+
+func (c *Channel) BundleSource() *channelconfig.BundleSource {
+	return c.bundleSource
+}
+
+func (c *Channel) Store() transientstore.Store {
+	return c.store
+}
+
 func (c *Channel) Reader() blockledger.Reader {
 	return fileledger.NewFileLedger(fileLedgerBlockStore{c.ledger})
 }
@@ -174,10 +194,6 @@ func (c *Channel) GetMSPIDs() []string {
 
 func (c *Channel) MSPManager() msp.MSPManager {
 	return c.resources.MSPManager()
-}
-
-func (c *Channel) Store() transientstore.Store {
-	return c.store
 }
 
 func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
@@ -316,7 +332,7 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 // setCurrConfigBlock sets the current config block of the specified channel
 func (p *Peer) setCurrConfigBlock(block *common.Block, cid string) error {
 	if c := p.Channel(cid); c != nil {
-		c.cb = block // TODO: serialization?
+		c.setConfigBlock(block)
 		return nil
 	}
 	return errors.Errorf("[channel %s] channel not associated with this peer", cid)
@@ -379,7 +395,7 @@ func (*configSupport) GetChannelConfig(cid string) cc.Config {
 		peerLogger.Errorf("[channel %s] channel not associated with this peer", cid)
 		return nil
 	}
-	return channel.bundleSource.ConfigtxValidator()
+	return channel.BundleSource().ConfigtxValidator()
 }
 
 // Operations exposes an interface to the package level functions that operated
@@ -600,7 +616,7 @@ func (p *Peer) Channel(cid string) *Channel {
 
 func (p *Peer) StoreForChannel(cid string) transientstore.Store {
 	if c := p.Channel(cid); c != nil {
-		return c.store
+		return c.Store()
 	}
 	return nil
 }
@@ -609,7 +625,7 @@ func (p *Peer) StoreForChannel(cid string) transientstore.Store {
 // call returns nil if channel cid has not been created.
 func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
 	if c := p.Channel(cid); c != nil {
-		return c.resources
+		return c.Resources()
 	}
 	return nil
 }
@@ -632,7 +648,7 @@ func (p *Peer) GetChannelsInfo() []*pb.ChannelInfo {
 // Note that this call returns nil if channel cid has not been created.
 func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
 	if c := p.Channel(cid); c != nil {
-		return c.bundleSource.StableBundle()
+		return c.BundleSource().StableBundle()
 	}
 	return nil
 }
@@ -641,7 +657,7 @@ func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
 // Note that this call returns nil if channel cid has not been created.
 func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
 	if c := p.Channel(cid); c != nil {
-		return c.cb
+		return c.ConfigBlock()
 	}
 	return nil
 }
@@ -650,7 +666,7 @@ func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
 // call returns nil if channel cid has not been created.
 func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
 	if c := p.Channel(cid); c != nil {
-		return c.ledger
+		return c.Ledger()
 	}
 	return nil
 }
@@ -667,7 +683,7 @@ func (p *Peer) GetMSPIDs(cid string) []string {
 // call returns nil if channel cid has not been created.
 func (p *Peer) GetPolicyManager(cid string) policies.Manager {
 	if c := p.Channel(cid); c != nil {
-		return c.resources.PolicyManager()
+		return c.Resources().PolicyManager()
 	}
 	return nil
 }
