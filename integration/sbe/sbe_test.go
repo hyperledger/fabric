@@ -88,11 +88,11 @@ var _ = Describe("SBE_E2E", func() {
 			network.UpdateChannelAnchors(orderer, "testchannel")
 
 			By("deploying the chaincode")
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 
 			By("deploying a second instance of the chaincode")
 			chaincode.Name = "mycc2"
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 
 			RunSBE(network, orderer, "pub")
 			RunSBE(network, orderer, "priv")
@@ -127,12 +127,12 @@ var _ = Describe("SBE_E2E", func() {
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			By("deploying the chaincode")
-			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 			By("deploying a second instance of the chaincode")
 			chaincode.Name = "mycc2"
 			chaincode.Label = "my_other_simple_chaincode"
-			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 			RunSBE(network, orderer, "pub")
 			RunSBE(network, orderer, "priv")

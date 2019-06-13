@@ -110,7 +110,7 @@ var _ = Describe("Lifecycle", func() {
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
 
 		By("deploying the chaincode")
-		nwo.PackageChaincodeNewLifecycle(network, chaincode, testPeers[0])
+		nwo.PackageChaincode(network, chaincode, testPeers[0])
 
 		// we set the PackageID so that we can pass it to the approve step
 		filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
@@ -118,13 +118,13 @@ var _ = Describe("Lifecycle", func() {
 		hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
 		chaincode.PackageID = chaincode.Label + ":" + hashStr
 
-		nwo.InstallChaincodeNewLifecycle(network, chaincode, testPeers...)
+		nwo.InstallChaincode(network, chaincode, testPeers...)
 
-		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, testPeers...)
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, testPeers...)
 		nwo.EnsureApproved(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
 
-		nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
-		nwo.InitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers...)
+		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
+		nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
 
 		By("ensuring the chaincode can be invoked and queried")
 		RunQueryInvokeQuery(network, orderer, org1peer2, 100)
@@ -132,10 +132,10 @@ var _ = Describe("Lifecycle", func() {
 		By("setting a bad package ID to temporarily disable endorsements on org1")
 		savedPackageID := chaincode.PackageID
 		// note that in theory it should be sufficient to set it to an
-		// empty string, but the ApproveChaincodeForMyOrgNewLifecycle
+		// empty string, but the ApproveChaincodeForMyOrg
 		// function fills the packageID field if empty
 		chaincode.PackageID = "bad"
-		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, org1peer2)
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, org1peer2)
 
 		By("querying the chaincode and expecting the invocation to fail")
 		sess, err := network.PeerUserSession(org1peer2, "User1", commands.ChaincodeQuery{
@@ -151,7 +151,7 @@ var _ = Describe("Lifecycle", func() {
 
 		By("setting the correct package ID to restore the chaincode")
 		chaincode.PackageID = savedPackageID
-		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, org1peer2)
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, org1peer2)
 
 		By("querying the chaincode and expecting the invocation to succeed")
 		sess, err = network.PeerUserSession(org1peer2, "User1", commands.ChaincodeQuery{
@@ -166,10 +166,10 @@ var _ = Describe("Lifecycle", func() {
 		By("upgrading the chaincode to sequence 2")
 		chaincode.Sequence = "2"
 
-		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, testPeers...)
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, testPeers...)
 		nwo.EnsureApproved(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
 
-		nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
+		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
 
 		By("ensuring the chaincode can still be invoked and queried")
 		RunQueryInvokeQuery(network, orderer, testPeers[0], 90)
@@ -241,7 +241,7 @@ var _ = Describe("Lifecycle", func() {
 		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight, testPeers...)
 
 		By("installing the chaincode to the org3 peers")
-		nwo.InstallChaincodeNewLifecycle(network, chaincode, org3peer1, org3peer2)
+		nwo.InstallChaincode(network, chaincode, org3peer1, org3peer2)
 
 		By("ensuring org3 peers do not execute the chaincode before approving the definition")
 		org3AndOrg1PeerAddresses := []string{
@@ -262,7 +262,7 @@ var _ = Describe("Lifecycle", func() {
 		Expect(sess.Err).To(gbytes.Say("chaincode definition for 'mycc' at sequence 2 on channel 'testchannel' has not yet been approved by this org"))
 
 		By("org3 approving the chaincode definition")
-		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, network.PeersInOrg("org3")...)
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, network.PeersInOrg("org3")...)
 		nwo.EnsureCommitted(network, "testchannel", chaincode.Name, chaincode.Version, chaincode.Sequence, org3peer1)
 
 		By("ensuring chaincode can be invoked and queried by org3")

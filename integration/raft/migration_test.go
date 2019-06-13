@@ -125,7 +125,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("Create & join first channel, deploy and invoke chaincode")
 			network.CreateAndJoinChannel(orderer, channel1)
-			nwo.DeployChaincode(network, channel1, orderer, chaincode)
+			nwo.DeployChaincodeLegacy(network, channel1, orderer, chaincode)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 90)
 		})
@@ -195,7 +195,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("3) Verify: create new channel, executing transaction")
 			network.CreateAndJoinChannel(orderer, channel2)
-			nwo.InstantiateChaincode(network, channel2, orderer, chaincode, peer, network.PeersWithChannel(channel2)...)
+			nwo.InstantiateChaincodeLegacy(network, channel2, orderer, chaincode, peer, network.PeersWithChannel(channel2)...)
 			RunExpectQueryRetry(network, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 90)
@@ -577,7 +577,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("Create & join first channel, deploy and invoke chaincode")
 			network.CreateAndJoinChannel(o1, channel1)
-			nwo.DeployChaincode(network, channel1, o1, chaincode)
+			nwo.DeployChaincodeLegacy(network, channel1, o1, chaincode)
 			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 100)
 			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 90)
 		})
@@ -715,7 +715,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("12) Create new channel, executing transaction with restarted orderer")
 			network.CreateAndJoinChannel(o1, channel2)
-			nwo.InstantiateChaincode(network, channel2, o1, chaincode, peer, network.PeersWithChannel(channel2)...)
+			nwo.InstantiateChaincodeLegacy(network, channel2, o1, chaincode, peer, network.PeersWithChannel(channel2)...)
 			RunExpectQueryRetry(network, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, o1, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, o1, peer, channel2, 90)

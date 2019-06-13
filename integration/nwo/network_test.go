@@ -76,7 +76,7 @@ var _ = Describe("Network", func() {
 			network.Cleanup()
 		})
 
-		It("deploys and executes chaincode (simple)", func() {
+		It("deploys and executes chaincode (simple) using the legacy lifecycle", func() {
 			orderer := network.Orderer("orderer0")
 			peer := network.Peer("org1", "peer2")
 
@@ -89,7 +89,7 @@ var _ = Describe("Network", func() {
 			}
 
 			network.CreateAndJoinChannels(orderer)
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, peer, 100)
 		})
 
@@ -117,7 +117,7 @@ var _ = Describe("Network", func() {
 			network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
-			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 			RunQueryInvokeQuery(network, orderer, peer, 100)
 		})
@@ -156,7 +156,7 @@ var _ = Describe("Network", func() {
 			network.Cleanup()
 		})
 
-		It("deploys and executes chaincode (the hard way)", func() {
+		It("deploys and executes chaincode (the hard way) using the legacy lifecycle", func() {
 			// This demonstrates how to control the processes that make up a network.
 			// If you don't care about a collection of processes (like the brokers or
 			// the orderers) use the group runner to manage those processes.
@@ -203,9 +203,9 @@ var _ = Describe("Network", func() {
 				Ctor:    `{"Args":["init","a","100","b","200"]}`,
 				Policy:  `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
 			}
-			nwo.InstallChaincode(network, chaincode, testPeers...)
-			nwo.InstantiateChaincode(network, "testchannel", orderer, chaincode, testPeers[0])
-			nwo.EnsureInstantiated(network, "testchannel", "mycc", "0.0", testPeers...)
+			nwo.InstallChaincodeLegacy(network, chaincode, testPeers...)
+			nwo.InstantiateChaincodeLegacy(network, "testchannel", orderer, chaincode, testPeers[0])
+			nwo.EnsureInstantiatedLegacy(network, "testchannel", "mycc", "0.0", testPeers...)
 
 			RunQueryInvokeQuery(network, orderer, testPeers[0], 100)
 		})
@@ -269,7 +269,7 @@ var _ = Describe("Network", func() {
 				InitRequired:      true,
 				Label:             "my_simple_chaincode",
 			}
-			nwo.PackageChaincodeNewLifecycle(network, chaincode, testPeers[0])
+			nwo.PackageChaincode(network, chaincode, testPeers[0])
 
 			// we set the PackageID so that we can pass it to the approve step
 			filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
@@ -277,13 +277,13 @@ var _ = Describe("Network", func() {
 			hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
 			chaincode.PackageID = chaincode.Label + ":" + hashStr
 
-			nwo.InstallChaincodeNewLifecycle(network, chaincode, testPeers...)
+			nwo.InstallChaincode(network, chaincode, testPeers...)
 
-			nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, testPeers...)
+			nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, testPeers...)
 			nwo.EnsureApproved(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
 
-			nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
-			nwo.InitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, testPeers...)
+			nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
+			nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
 
 			RunQueryInvokeQuery(network, orderer, testPeers[0], 100)
 		})

@@ -79,7 +79,7 @@ var _ = Describe("EndToEndACL", func() {
 			Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
 		}
 		network.CreateAndJoinChannel(orderer, "testchannel")
-		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+		nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 	})
 
 	AfterEach(func() {
@@ -163,7 +163,7 @@ var _ = Describe("EndToEndACL", func() {
 		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
 		By("listing the instantiated chaincodes as a permitted Org1 Admin identity")
-		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeListInstantiated{
+		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeListInstantiatedLegacy{
 			ChannelID: "testchannel",
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -174,7 +174,7 @@ var _ = Describe("EndToEndACL", func() {
 		// when the ACL policy for lscc/GetInstantiatedChaincodes is not satisfied
 		//
 		By("listing the instantiated chaincodes as a forbidden org2 Admin identity")
-		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeListInstantiated{
+		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeListInstantiatedLegacy{
 			ChannelID: "testchannel",
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -254,7 +254,7 @@ var _ = Describe("EndToEndACL", func() {
 			Label:               "my_simple_chaincode",
 		}
 
-		nwo.PackageChaincodeNewLifecycle(network, chaincode, org1Peer0)
+		nwo.PackageChaincode(network, chaincode, org1Peer0)
 
 		// we set the PackageID so that we can pass it to the approve step
 		filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
@@ -266,7 +266,7 @@ var _ = Describe("EndToEndACL", func() {
 		// when the ACL policy for _lifecycle/InstallChaincode is not satisfied
 		//
 		By("installing the chaincode to an org1 peer as an org2 admin")
-		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeInstallLifecycle{
+		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeInstall{
 			PackageFile:   chaincode.PackageFile,
 			PeerAddresses: []string{network.PeerAddress(org1Peer0, nwo.ListenPort)},
 		})
@@ -275,7 +275,7 @@ var _ = Describe("EndToEndACL", func() {
 		Expect(sess.Err).To(gbytes.Say(`access denied: channel \[\] creator org \[Org2MSP\]`))
 
 		By("installing the chaincode to an org1 peer as a non-admin org1 identity")
-		sess, err = network.PeerUserSession(org1Peer0, "User1", commands.ChaincodeInstallLifecycle{
+		sess, err = network.PeerUserSession(org1Peer0, "User1", commands.ChaincodeInstall{
 			PackageFile: chaincode.PackageFile,
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -285,13 +285,13 @@ var _ = Describe("EndToEndACL", func() {
 		//
 		// when the ACL policy for _lifecycle/InstallChaincode is satisfied
 		//
-		nwo.InstallChaincodeNewLifecycle(network, chaincode, org1Peer0, org2Peer0)
+		nwo.InstallChaincode(network, chaincode, org1Peer0, org2Peer0)
 
 		//
 		// when the V2_0 application capabilities flag has not yet been enabled
 		//
 		By("approving a chaincode definition on a channel without V2_0 capabilities enabled")
-		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeApproveForMyOrgLifecycle{
+		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeApproveForMyOrg{
 			ChannelID:           "testchannel",
 			Orderer:             network.OrdererAddress(orderer, nwo.ListenPort),
 			Name:                chaincode.Name,
@@ -309,7 +309,7 @@ var _ = Describe("EndToEndACL", func() {
 		Expect(sess.Err).To(gbytes.Say("Error: proposal failed with status: 500 - cannot use new lifecycle for channel 'testchannel' as it does not have the required capabilities enabled"))
 
 		By("committing a chaincode definition on a channel without V2_0 capabilities enabled")
-		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeCommitLifecycle{
+		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeCommit{
 			ChannelID:           "testchannel",
 			Orderer:             network.OrdererAddress(orderer, nwo.ListenPort),
 			Name:                chaincode.Name,
@@ -334,7 +334,7 @@ var _ = Describe("EndToEndACL", func() {
 		// when the ACL policy for _lifecycle/ApproveChaincodeDefinitionForOrg is not satisfied
 		//
 		By("approving a chaincode definition for org1 as an org2 admin")
-		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeApproveForMyOrgLifecycle{
+		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeApproveForMyOrg{
 			ChannelID:           "testchannel",
 			Orderer:             network.OrdererAddress(orderer, nwo.ListenPort),
 			Name:                chaincode.Name,
@@ -356,7 +356,7 @@ var _ = Describe("EndToEndACL", func() {
 		// when the ACL policy for _lifecycle/ApproveChaincodeDefinitionForOrg is satisfied
 		//
 		By("approving a chaincode definition for org1 and org2")
-		nwo.ApproveChaincodeForMyOrgNewLifecycle(network, "testchannel", orderer, chaincode, org1Peer0, org2Peer0)
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, org1Peer0, org2Peer0)
 
 		//
 		// when the ACL policy for QueryApprovalStatus is not satisified
@@ -367,7 +367,7 @@ var _ = Describe("EndToEndACL", func() {
 		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
 		By("querying the approval status as a forbidden Org2 Admin identity")
-		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeQueryApprovalStatusLifecycle{
+		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeQueryApprovalStatus{
 			ChannelID:           "testchannel",
 			Name:                chaincode.Name,
 			Version:             chaincode.Version,
@@ -401,7 +401,7 @@ var _ = Describe("EndToEndACL", func() {
 			network.PeerAddress(org1Peer0, nwo.ListenPort),
 			network.PeerAddress(org2Peer0, nwo.ListenPort),
 		}
-		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeCommitLifecycle{
+		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeCommit{
 			ChannelID:           "testchannel",
 			Orderer:             network.OrdererAddress(orderer, nwo.ListenPort),
 			Name:                chaincode.Name,
@@ -422,7 +422,7 @@ var _ = Describe("EndToEndACL", func() {
 		//
 		// when the ACL policy for CommitChaincodeDefinition is satisified
 		//
-		nwo.CommitChaincodeNewLifecycle(network, "testchannel", orderer, chaincode, org1Peer0, org1Peer0, org2Peer0)
+		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, org1Peer0, org1Peer0, org2Peer0)
 
 		//
 		// when the ACL policy for QueryChaincodeDefinition is satisified
@@ -433,7 +433,7 @@ var _ = Describe("EndToEndACL", func() {
 		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
 		By("querying the chaincode definition as a permitted Org1 Admin identity")
-		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeListCommittedLifecycle{
+		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeListCommitted{
 			ChannelID: "testchannel",
 			Name:      "mycc",
 		})
@@ -442,7 +442,7 @@ var _ = Describe("EndToEndACL", func() {
 		Expect(sess.Out).To(gbytes.Say(fmt.Sprint("Committed chaincode definition for chaincode 'mycc' on channel 'testchannel':\nVersion: 0.0, Sequence: 1")))
 
 		By("querying the chaincode definition as a forbidden Org2 Admin identity")
-		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeListCommittedLifecycle{
+		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeListCommitted{
 			ChannelID: "testchannel",
 			Name:      "mycc",
 		})
