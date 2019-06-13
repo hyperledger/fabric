@@ -118,6 +118,21 @@ func TestNewPolicyErrorCase(t *testing.T) {
 	assert.EqualError(t, err4, "No such policy")
 }
 
+func TestEnvelopeBasedPolicyProvider(t *testing.T) {
+	pp := &EnvelopeBasedPolicyProvider{Deserializer: &mockDeserializer{}}
+	p, err := pp.NewPolicy(nil)
+	assert.Nil(t, p)
+	assert.Error(t, err, "invalid arguments")
+
+	p, err = pp.NewPolicy(&cb.SignaturePolicyEnvelope{})
+	assert.Nil(t, p)
+	assert.Error(t, err, "Empty policy element")
+
+	p, err = pp.NewPolicy(SignedByMspPeer("primus inter pares"))
+	assert.NotNil(t, p)
+	assert.NoError(t, err)
+}
+
 func TestVerifyFirstPanics(t *testing.T) {
 	d := &deserializeAndVerify{}
 	assert.Panics(t, func() { d.Verify() })
