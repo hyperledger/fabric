@@ -18,10 +18,8 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	fileledger "github.com/hyperledger/fabric/common/ledger/blockledger/file"
-	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/semaphore"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -32,7 +30,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -461,6 +458,16 @@ func (p *Peer) CreateChannel(
 	return nil
 }
 
+// retrievePersistedChannelConfig retrieves the persisted channel config from statedb
+func retrievePersistedChannelConfig(ledger ledger.PeerLedger) (*common.Config, error) {
+	qe, err := ledger.NewQueryExecutor()
+	if err != nil {
+		return nil, err
+	}
+	defer qe.Done()
+	return retrievePersistedConf(qe, channelConfigKey)
+}
+
 // createChannel creates a new channel object and insert it into the channels slice.
 func (p *Peer) createChannel(
 	cid string,
@@ -713,49 +720,39 @@ func (p *Peer) Initialize(
 	init func(string),
 	sccp sysccprovider.SystemChaincodeProvider,
 	pm plugin.Mapper,
-	pr *platforms.Registry,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	membershipProvider ledger.MembershipInfoProvider,
-	metricsProvider metrics.Provider,
 	legacyLifecycleValidation plugindispatcher.LifecycleResources,
 	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
-	ledgerConfig *ledger.Config,
 	nWorkers int,
-	txProcessors customtx.Processors,
 ) {
 	// TODO: exported dep fields or constructor
 	p.validationWorkersSemaphore = semaphore.New(nWorkers)
 	p.pluginMapper = pm
 	p.channelInitializer = init
 
-	var cb *common.Block
-	var ledger ledger.PeerLedger
-	ledgermgmt.Initialize(&ledgermgmt.Initializer{
-		CustomTxProcessors:            txProcessors,
-		PlatformRegistry:              pr,
-		DeployedChaincodeInfoProvider: deployedCCInfoProvider,
-		MembershipInfoProvider:        membershipProvider,
-		MetricsProvider:               metricsProvider,
-		Config:                        ledgerConfig,
-	})
 	ledgerIds, err := ledgermgmt.GetLedgerIDs()
 	if err != nil {
 		panic(fmt.Errorf("error in initializing ledgermgmt: %s", err))
 	}
+
 	for _, cid := range ledgerIds {
 		peerLogger.Infof("Loading chain %s", cid)
-		if ledger, err = ledgermgmt.OpenLedger(cid); err != nil {
+		ledger, err := ledgermgmt.OpenLedger(cid)
+		if err != nil {
 			peerLogger.Errorf("Failed to load ledger %s(%s)", cid, err)
 			peerLogger.Debugf("Error while loading ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
 			continue
 		}
-		if cb, err = getCurrConfigBlockFromLedger(ledger); err != nil {
+		cb, err := getCurrConfigBlockFromLedger(ledger)
+		if err != nil {
 			peerLogger.Errorf("Failed to find config block on ledger %s(%s)", cid, err)
 			peerLogger.Debugf("Error while looking for config block on ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
 			continue
 		}
 		// Create a chain if we get a valid ledger with config block
-		if err = p.createChannel(cid, ledger, cb, sccp, pm, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation); err != nil {
+		err = p.createChannel(cid, ledger, cb, sccp, pm, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
+		if err != nil {
 			peerLogger.Errorf("Failed to load chain %s(%s)", cid, err)
 			peerLogger.Debugf("Error reloading chain %s with message %s. We continue to the next chain rather than abort.", cid, err)
 			continue

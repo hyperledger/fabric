@@ -9,6 +9,7 @@ package peer
 import (
 	"fmt"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
@@ -65,7 +66,7 @@ func processChannelConfigTx(txEnv *common.Envelope, simulator ledger.TxSimulator
 }
 
 func persistConf(simulator ledger.TxSimulator, key string, config *common.Config) error {
-	serializedConfig, err := serialize(config)
+	serializedConfig, err := proto.Marshal(config)
 	if err != nil {
 		return err
 	}
@@ -81,4 +82,12 @@ func retrievePersistedConf(queryExecuter ledger.QueryExecutor, key string) (*com
 		return nil, nil
 	}
 	return deserialize(serializedConfig)
+}
+
+func deserialize(serializedConf []byte) (*common.Config, error) {
+	conf := &common.Config{}
+	if err := proto.Unmarshal(serializedConf, conf); err != nil {
+		return nil, err
+	}
+	return conf, nil
 }

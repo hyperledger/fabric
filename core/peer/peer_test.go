@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	ledgermocks "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/transientstore"
@@ -102,26 +103,11 @@ func TestInitialize(t *testing.T) {
 		nil,
 		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
-		nil,
 		&ledgermocks.DeployedChaincodeInfoProvider{},
 		nil,
-		&disabled.Provider{},
 		nil,
 		nil,
-		&ledger.Config{
-			RootFSPath:    rootFSPath,
-			StateDBConfig: &ledger.StateDBConfig{},
-			PrivateDataConfig: &ledger.PrivateDataConfig{
-				MaxBatchSize:    5000,
-				BatchesInterval: 1000,
-				PurgeInterval:   100,
-			},
-			HistoryDBConfig: &ledger.HistoryDBConfig{
-				Enabled: true,
-			},
-		},
 		runtime.NumCPU(),
-		nil,
 	)
 }
 
@@ -133,18 +119,13 @@ func TestCreateChannel(t *testing.T) {
 	defer os.RemoveAll(peerFSPath)
 	viper.Set("peer.fileSystemPath", peerFSPath)
 
-	var initArg string
-	Default.Initialize(
-		func(cid string) { initArg = cid },
-		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
-		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
-		&platforms.Registry{},
-		&ledgermocks.DeployedChaincodeInfoProvider{},
-		nil,
-		&disabled.Provider{},
-		nil,
-		nil,
-		&ledger.Config{
+	ledgermgmt.Initialize(&ledgermgmt.Initializer{
+		CustomTxProcessors:            nil,
+		PlatformRegistry:              &platforms.Registry{},
+		DeployedChaincodeInfoProvider: &ledgermocks.DeployedChaincodeInfoProvider{},
+		MembershipInfoProvider:        nil,
+		MetricsProvider:               &disabled.Provider{},
+		Config: &ledger.Config{
 			RootFSPath:    filepath.Join(peerFSPath, "ledgersData"),
 			StateDBConfig: &ledger.StateDBConfig{},
 			PrivateDataConfig: &ledger.PrivateDataConfig{
@@ -156,8 +137,18 @@ func TestCreateChannel(t *testing.T) {
 				Enabled: true,
 			},
 		},
-		runtime.NumCPU(),
+	})
+
+	var initArg string
+	Default.Initialize(
+		func(cid string) { initArg = cid },
+		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
+		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
+		&ledgermocks.DeployedChaincodeInfoProvider{},
 		nil,
+		nil,
+		nil,
+		runtime.NumCPU(),
 	)
 
 	testChainID := fmt.Sprintf("mytestchainid-%d", rand.Int())

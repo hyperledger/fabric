@@ -590,6 +590,15 @@ func serve(args []string) error {
 		gossipService.UpdateChaincodes(chaincodes.AsChaincodes(), gossipcommon.ChannelID(channel))
 	}))
 
+	ledgermgmt.Initialize(&ledgermgmt.Initializer{
+		CustomTxProcessors:            txProcessors,
+		PlatformRegistry:              platformRegistry,
+		DeployedChaincodeInfoProvider: lifecycleValidatorCommitter,
+		MembershipInfoProvider:        membershipInfoProvider,
+		MetricsProvider:               metricsProvider,
+		Config:                        ledgerConfig(),
+	})
+
 	// this brings up all the channels
 	peerInstance.Initialize(
 		func(cid string) {
@@ -620,15 +629,11 @@ func serve(args []string) error {
 		},
 		sccp,
 		plugin.MapBasedMapper(validationPluginsByName),
-		platformRegistry,
 		lifecycleValidatorCommitter,
 		membershipInfoProvider,
-		metricsProvider,
 		lsccInst,
 		lifecycleValidatorCommitter,
-		ledgerConfig(),
 		coreConfig.ValidatorPoolSize,
-		txProcessors,
 	)
 
 	if coreConfig.DiscoveryEnabled {
