@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
-	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
+	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
 	"github.com/hyperledger/fabric/core/comm"

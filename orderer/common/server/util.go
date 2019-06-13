@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
-	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
+	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
 	"github.com/hyperledger/fabric/common/metrics"
 	config "github.com/hyperledger/fabric/orderer/common/localconfig"
 )

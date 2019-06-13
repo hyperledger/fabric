@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
+	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"

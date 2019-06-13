@@ -22,7 +22,7 @@ import (
 	deliver_mocks "github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/flogging"
 	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
-	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
+	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
