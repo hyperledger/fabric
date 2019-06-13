@@ -119,7 +119,7 @@ func New(deserializer msp.IdentityDeserializer, channel string, channelPolicyMan
 	}
 
 	return &ApplicationPolicyEvaluator{
-		signaturePolicyProvider: &cauthdsl.ProviderFromStruct{Deserializer: deserializer},
+		signaturePolicyProvider: &cauthdsl.EnvelopeBasedPolicyProvider{Deserializer: deserializer},
 		channelPolicyReferenceProvider: &ChannelPolicyReferenceProviderImpl{Manager: &dynamicPolicyManager{
 			channelID:                  channel,
 			channelPolicyManagerGetter: channelPolicyManagerGetter,

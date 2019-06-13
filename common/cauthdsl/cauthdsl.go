@@ -82,7 +82,7 @@ func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal, deserial
 		}, nil
 	case *cb.SignaturePolicy_SignedBy:
 		if t.SignedBy < 0 || t.SignedBy >= int32(len(identities)) {
-			return nil, fmt.Errorf("identity index out of range, requested %v, but identies length is %d", t.SignedBy, len(identities))
+			return nil, fmt.Errorf("identity index out of range, requested %v, but identities length is %d", t.SignedBy, len(identities))
 		}
 		signedByID := identities[t.SignedBy]
 		return func(signedData []IdentityAndSignature, used []bool) bool {

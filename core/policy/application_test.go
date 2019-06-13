@@ -24,7 +24,7 @@ func TestComponentIntegrationSignaturePolicyEnv(t *testing.T) {
 	idds := &mocks.IdentityDeserializer{}
 	id := &mocks.Identity{}
 
-	spp := &cauthdsl.ProviderFromStruct{
+	spp := &cauthdsl.EnvelopeBasedPolicyProvider{
 		Deserializer: idds,
 	}
 	ev := &ApplicationPolicyEvaluator{
