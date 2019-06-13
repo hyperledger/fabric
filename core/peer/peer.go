@@ -315,10 +315,8 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 
 // setCurrConfigBlock sets the current config block of the specified channel
 func (p *Peer) setCurrConfigBlock(block *common.Block, cid string) error {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	if c, ok := p.channels[cid]; ok {
-		c.cb = block
+	if c := p.Channel(cid); c != nil {
+		c.cb = block // TODO: serialization?
 		return nil
 	}
 	return errors.Errorf("[channel %s] channel not associated with this peer", cid)
@@ -344,13 +342,10 @@ func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (*comm.
 type DeliverChainManager struct{}
 
 func (DeliverChainManager) GetChain(chainID string) deliver.Chain {
-	Default.mutex.RLock()
-	defer Default.mutex.RUnlock()
-	channel, ok := Default.channels[chainID]
-	if !ok {
-		return nil
+	if channel := Default.Channel(chainID); channel != nil {
+		return channel
 	}
-	return channel
+	return nil
 }
 
 // fileLedgerBlockStore implements the interface expected by
@@ -379,9 +374,7 @@ type configSupport struct{}
 // ConfigProto method of the returned object can be used to get the
 // proto representing the channel configuration.
 func (*configSupport) GetChannelConfig(cid string) cc.Config {
-	Default.mutex.RLock()
-	defer Default.mutex.RUnlock()
-	channel := Default.channels[cid]
+	channel := Default.Channel(cid)
 	if channel == nil {
 		peerLogger.Errorf("[channel %s] channel not associated with this peer", cid)
 		return nil
@@ -596,10 +589,17 @@ func (p *Peer) createChannel(
 	return nil
 }
 
-func (p *Peer) StoreForChannel(cid string) transientstore.Store {
+func (p *Peer) Channel(cid string) *Channel {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
 	if c, ok := p.channels[cid]; ok {
+		return c
+	}
+	return nil
+}
+
+func (p *Peer) StoreForChannel(cid string) transientstore.Store {
+	if c := p.Channel(cid); c != nil {
 		return c.store
 	}
 	return nil
@@ -608,9 +608,7 @@ func (p *Peer) StoreForChannel(cid string) transientstore.Store {
 // GetChannelConfig returns the channel configuration of the channel with channel ID. Note that this
 // call returns nil if channel cid has not been created.
 func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-	if c, ok := p.channels[cid]; ok {
+	if c := p.Channel(cid); c != nil {
 		return c.resources
 	}
 	return nil
@@ -633,9 +631,7 @@ func (p *Peer) GetChannelsInfo() []*pb.ChannelInfo {
 // GetStableChannelConfig returns the stable channel configuration of the channel with channel ID.
 // Note that this call returns nil if channel cid has not been created.
 func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-	if c, ok := p.channels[cid]; ok {
+	if c := p.Channel(cid); c != nil {
 		return c.bundleSource.StableBundle()
 	}
 	return nil
@@ -644,9 +640,7 @@ func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
 // GetCurrConfigBlock returns the cached config block of the specified channel.
 // Note that this call returns nil if channel cid has not been created.
 func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-	if c, ok := p.channels[cid]; ok {
+	if c := p.Channel(cid); c != nil {
 		return c.cb
 	}
 	return nil
@@ -655,9 +649,7 @@ func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
 // GetLedger returns the ledger of the channel with channel ID. Note that this
 // call returns nil if channel cid has not been created.
 func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-	if c, ok := p.channels[cid]; ok {
+	if c := p.Channel(cid); c != nil {
 		return c.ledger
 	}
 	return nil
@@ -665,23 +657,16 @@ func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
 
 // GetMSPIDs returns the ID of each application MSP defined on this channel
 func (p *Peer) GetMSPIDs(cid string) []string {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-
-	c, ok := p.channels[cid]
-	if !ok {
-		return nil
+	if c := p.Channel(cid); c != nil {
+		return c.GetMSPIDs()
 	}
-
-	return c.GetMSPIDs()
+	return nil
 }
 
 // GetPolicyManager returns the policy manager of the channel with channel ID. Note that this
 // call returns nil if channel cid has not been created.
 func (p *Peer) GetPolicyManager(cid string) policies.Manager {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-	if c, ok := p.channels[cid]; ok {
+	if c := p.Channel(cid); c != nil {
 		return c.resources.PolicyManager()
 	}
 	return nil
