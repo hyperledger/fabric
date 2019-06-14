@@ -591,10 +591,10 @@ func (p *Peer) createChannel(
 
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider)
 	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, gossipservice.Support{
-		Validator: validator,
-		Committer: committer,
-		Store:     store,
-		Cs:        simpleCollectionStore,
+		Validator:       validator,
+		Committer:       committer,
+		Store:           store,
+		CollectionStore: simpleCollectionStore,
 		IdDeserializeFactory: gossipprivdata.IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
 			return mspmgmt.GetManagerForChain(chainID)
 		}),

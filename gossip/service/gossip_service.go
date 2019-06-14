@@ -278,7 +278,7 @@ type Support struct {
 	Validator            txvalidator.Validator
 	Committer            committer.Committer
 	Store                gossipprivdata.TransientStore
-	Cs                   privdata.CollectionStore
+	CollectionStore      privdata.CollectionStore
 	IdDeserializeFactory gossipprivdata.IdentityDeserializerFactory
 }
 
@@ -307,7 +307,7 @@ func (g *GossipService) InitializeChannel(channelID string, endpoints []string, 
 	// Initialize private data fetcher
 	dataRetriever := gossipprivdata.NewDataRetriever(storeSupport)
 	collectionAccessFactory := gossipprivdata.NewCollectionAccessFactory(support.IdDeserializeFactory)
-	fetcher := gossipprivdata.NewPuller(g.metrics.PrivdataMetrics, support.Cs, g.gossipSvc, dataRetriever,
+	fetcher := gossipprivdata.NewPuller(g.metrics.PrivdataMetrics, support.CollectionStore, g.gossipSvc, dataRetriever,
 		collectionAccessFactory, channelID, g.serviceConfig.BtlPullMargin)
 
 	coordinatorConfig := gossipprivdata.CoordinatorConfig{
@@ -316,7 +316,7 @@ func (g *GossipService) InitializeChannel(channelID string, endpoints []string, 
 	}
 	coordinator := gossipprivdata.NewCoordinator(gossipprivdata.Support{
 		ChainID:         channelID,
-		CollectionStore: support.Cs,
+		CollectionStore: support.CollectionStore,
 		Validator:       support.Validator,
 		TransientStore:  support.Store,
 		Committer:       support.Committer,
