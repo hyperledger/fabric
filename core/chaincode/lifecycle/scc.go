@@ -95,8 +95,10 @@ type SCCFunctions interface {
 	// were supplied and whether or not they have approved the definition.
 	CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error)
 
-	// QueryChaincodeDefinition reads a chaincode definition from the public state.
-	QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error)
+	// QueryChaincodeDefinition returns a chaincode definition from the public
+	// state and a map containing the orgs whose orgStates were supplied and
+	// whether or not they have approved the definition.
+	QueryChaincodeDefinition(name string, publicState ReadableState, orgStates []OpaqueState) (*ChaincodeDefinition, map[string]bool, error)
 
 	// QueryNamespaceDefinitions returns all defined namespaces
 	QueryNamespaceDefinitions(publicState RangeableState) (map[string]string, error)
@@ -392,15 +394,9 @@ func (i *Invocation) SimulateCommitChaincodeDefinition(input *lb.SimulateCommitC
 		return nil, errors.Errorf("no application config for channel '%s'", i.Stub.GetChannelID())
 	}
 
-	orgs := i.ApplicationConfig.Organizations()
-	opaqueStates := make([]OpaqueState, 0, len(orgs))
-	orgNames := make([]string, 0, len(orgs))
-	for _, org := range orgs {
-		orgNames = append(orgNames, org.MSPID())
-		opaqueStates = append(opaqueStates, &ChaincodePrivateLedgerShim{
-			Collection: ImplicitCollectionNameForOrg(org.MSPID()),
-			Stub:       i.Stub,
-		})
+	opaqueStates, err := i.createOpaqueStates()
+	if err != nil {
+		return nil, err
 	}
 
 	cd := &ChaincodeDefinition{
@@ -511,7 +507,12 @@ func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinition
 		input.Name,
 	)
 
-	definedChaincode, err := i.SCC.Functions.QueryChaincodeDefinition(input.Name, i.Stub)
+	opaqueStates, err := i.createOpaqueStates()
+	if err != nil {
+		return nil, err
+	}
+
+	definedChaincode, approvals, err := i.SCC.Functions.QueryChaincodeDefinition(input.Name, i.Stub, opaqueStates)
 	if err != nil {
 		return nil, err
 	}
@@ -524,6 +525,7 @@ func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinition
 		ValidationParameter: definedChaincode.ValidationInfo.ValidationParameter,
 		InitRequired:        definedChaincode.EndorsementInfo.InitRequired,
 		Collections:         definedChaincode.Collections,
+		Approved:            approvals,
 	}, nil
 }
 
@@ -800,4 +802,19 @@ func validateCollConfigsAgainstCommittedDef(
 		}
 	}
 	return nil
+}
+
+func (i *Invocation) createOpaqueStates() ([]OpaqueState, error) {
+	if i.ApplicationConfig == nil {
+		return nil, errors.Errorf("no application config for channel '%s'", i.Stub.GetChannelID())
+	}
+	orgs := i.ApplicationConfig.Organizations()
+	opaqueStates := make([]OpaqueState, 0, len(orgs))
+	for _, org := range orgs {
+		opaqueStates = append(opaqueStates, &ChaincodePrivateLedgerShim{
+			Collection: ImplicitCollectionNameForOrg(org.MSPID()),
+			Stub:       i.Stub,
+		})
+	}
+	return opaqueStates, nil
 }

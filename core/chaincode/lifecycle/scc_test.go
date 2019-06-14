@@ -1227,7 +1227,7 @@ var _ = Describe("SCC", func() {
 					Collections: arg.Collections,
 				}))
 				Expect(pubState).To(Equal(fakeStub))
-				Expect(len(orgStates)).To(Equal(2))
+				Expect(orgStates).To(HaveLen(2))
 				Expect(orgStates[0]).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
 				Expect(orgStates[1]).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
 				collection0 := orgStates[0].(*lifecycle.ChaincodePrivateLedgerShim).Collection
@@ -1274,8 +1274,9 @@ var _ = Describe("SCC", func() {
 
 		Describe("QueryChaincodeDefinition", func() {
 			var (
-				arg          *lb.QueryChaincodeDefinitionArgs
-				marshaledArg []byte
+				arg            *lb.QueryChaincodeDefinitionArgs
+				marshaledArg   []byte
+				fakeOrgConfigs []*mock.ApplicationOrgConfig
 			)
 
 			BeforeEach(func() {
@@ -1287,19 +1288,34 @@ var _ = Describe("SCC", func() {
 				marshaledArg, err = proto.Marshal(arg)
 				Expect(err).NotTo(HaveOccurred())
 
+				fakeOrgConfigs = []*mock.ApplicationOrgConfig{{}, {}}
+				fakeOrgConfigs[0].MSPIDReturns("fake-mspid")
+				fakeOrgConfigs[1].MSPIDReturns("other-mspid")
+
+				fakeApplicationConfig.OrganizationsReturns(map[string]channelconfig.ApplicationOrg{
+					"org0": fakeOrgConfigs[0],
+					"org1": fakeOrgConfigs[1],
+				})
+
 				fakeStub.GetArgsReturns([][]byte{[]byte("QueryChaincodeDefinition"), marshaledArg})
-				fakeSCCFuncs.QueryChaincodeDefinitionReturns(&lifecycle.ChaincodeDefinition{
-					Sequence: 2,
-					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-						Version:           "version",
-						EndorsementPlugin: "endorsement-plugin",
+				fakeSCCFuncs.QueryChaincodeDefinitionReturns(
+					&lifecycle.ChaincodeDefinition{
+						Sequence: 2,
+						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+							Version:           "version",
+							EndorsementPlugin: "endorsement-plugin",
+						},
+						ValidationInfo: &lb.ChaincodeValidationInfo{
+							ValidationPlugin:    "validation-plugin",
+							ValidationParameter: []byte("validation-parameter"),
+						},
+						Collections: &cb.CollectionConfigPackage{},
+					}, map[string]bool{
+						"fake-mspid":  true,
+						"other-mspid": true,
 					},
-					ValidationInfo: &lb.ChaincodeValidationInfo{
-						ValidationPlugin:    "validation-plugin",
-						ValidationParameter: []byte("validation-parameter"),
-					},
-					Collections: &cb.CollectionConfigPackage{},
-				}, nil)
+					nil,
+				)
 			})
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
@@ -1315,17 +1331,27 @@ var _ = Describe("SCC", func() {
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
 					Collections:         &cb.CollectionConfigPackage{},
+					Approved: map[string]bool{
+						"fake-mspid":  true,
+						"other-mspid": true,
+					},
 				})).To(BeTrue())
 
 				Expect(fakeSCCFuncs.QueryChaincodeDefinitionCallCount()).To(Equal(1))
-				name, pubState := fakeSCCFuncs.QueryChaincodeDefinitionArgsForCall(0)
+				name, pubState, orgStates := fakeSCCFuncs.QueryChaincodeDefinitionArgsForCall(0)
 				Expect(name).To(Equal("cc-name"))
 				Expect(pubState).To(Equal(fakeStub))
+				Expect(orgStates).To(HaveLen(2))
+				Expect(orgStates[0]).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
+				Expect(orgStates[1]).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
+				collection0 := orgStates[0].(*lifecycle.ChaincodePrivateLedgerShim).Collection
+				collection1 := orgStates[1].(*lifecycle.ChaincodePrivateLedgerShim).Collection
+				Expect([]string{collection0, collection1}).To(ConsistOf("_implicit_org_fake-mspid", "_implicit_org_other-mspid"))
 			})
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, nil, fmt.Errorf("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1337,7 +1363,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the namespace cannot be found", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, lifecycle.ErrNamespaceNotDefined{Namespace: "nicetry"})
+					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, nil, lifecycle.ErrNamespaceNotDefined{Namespace: "nicetry"})
 				})
 
 				It("returns 404 Not Found", func() {

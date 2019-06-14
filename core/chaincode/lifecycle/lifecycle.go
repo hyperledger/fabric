@@ -440,23 +440,28 @@ func (e ErrNamespaceNotDefined) Error() string {
 
 // QueryChaincodeDefinition returns the defined chaincode by the given name (if it is committed, and a chaincode)
 // or otherwise returns an error.
-func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error) {
+func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState ReadableState, orgStates []OpaqueState) (*ChaincodeDefinition, map[string]bool, error) {
 	metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, name, publicState)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "could not fetch metadata for namespace %s", name)
+		return nil, nil, errors.WithMessagef(err, "could not fetch metadata for namespace %s", name)
 	}
 	if !ok {
-		return nil, ErrNamespaceNotDefined{Namespace: name}
+		return nil, nil, ErrNamespaceNotDefined{Namespace: name}
 	}
 
 	definedChaincode := &ChaincodeDefinition{}
 	if err := ef.Resources.Serializer.Deserialize(NamespacesName, name, metadata, definedChaincode, publicState); err != nil {
-		return nil, errors.WithMessagef(err, "could not deserialize namespace %s as chaincode", name)
+		return nil, nil, errors.WithMessagef(err, "could not deserialize namespace %s as chaincode", name)
+	}
+
+	var approvals map[string]bool
+	if approvals, err = ef.Resources.retrieveOrgApprovals(name, definedChaincode, orgStates); err != nil {
+		return nil, nil, err
 	}
 
 	logger.Infof("successfully queried definition %s, name '%s'", definedChaincode, name)
 
-	return definedChaincode, nil
+	return definedChaincode, approvals, nil
 }
 
 // InstallChaincode installs a given chaincode to the peer's chaincode store.

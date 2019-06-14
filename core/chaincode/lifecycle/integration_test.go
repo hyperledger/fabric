@@ -209,6 +209,9 @@ var _ = Describe("Integration", func() {
 				ValidationPlugin:    "builtin",
 				ValidationParameter: []byte("validation-parameter"),
 				Collections:         &cb.CollectionConfigPackage{},
+				Approved: map[string]bool{
+					"fake-mspid": true,
+				},
 			})).To(BeTrue())
 		})
 	})

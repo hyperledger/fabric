@@ -144,6 +144,7 @@ message QueryChaincodeDefinitionResult {
     bytes validation_parameter = 5;
     common.CollectionConfigPackage collections = 6;
     bool init_required = 7;
+    map<string,bool> approved = 8;
 }
 
 // QueryNamespaceDefinitions is the message used as arguments to
