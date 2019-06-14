@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package flogging
 
 import (
+	"io"
+
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/grpclog"
 )
@@ -69,4 +71,16 @@ func ActivateSpec(spec string) {
 // DefaultLevel returns the default log level.
 func DefaultLevel() string {
 	return defaultLevel.String()
+}
+
+// SetWriter calls SetWriter returning the previous value
+// of the writer.
+func SetWriter(w io.Writer) io.Writer {
+	return Global.SetWriter(w)
+}
+
+// SetObserver calls SetObserver returning the previous value
+// of the observer.
+func SetObserver(observer Observer) Observer {
+	return Global.SetObserver(observer)
 }

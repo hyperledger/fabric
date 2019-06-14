@@ -576,8 +576,8 @@ func TestEndorserChaincodeCallLogging(t *testing.T) {
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	buf := gbytes.NewBuffer()
-	flogging.Global.SetWriter(buf)
-	defer flogging.Global.SetWriter(os.Stderr)
+	old := flogging.SetWriter(buf)
+	defer flogging.SetWriter(old)
 
 	es.ProcessProposal(context.Background(), getSignedProp("chaincode-name", "chaincode-version", t))
 

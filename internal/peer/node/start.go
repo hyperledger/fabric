@@ -166,7 +166,7 @@ func serve(args []string) error {
 
 	metricsProvider := opsSystem.Provider
 	logObserver := floggingmetrics.NewObserver(metricsProvider)
-	flogging.Global.SetObserver(logObserver)
+	flogging.SetObserver(logObserver)
 
 	membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(), identityDeserializerFactory)
 
