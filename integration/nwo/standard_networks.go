@@ -40,9 +40,6 @@ func BasicSolo() *Config {
 		Consensus: &Consensus{
 			Type: "solo",
 		},
-		OrdererCap: &OrdererCapabilities{
-			V2_0: false,
-		},
 		SystemChannel: &SystemChannel{
 			Name:    "systemchannel",
 			Profile: "TwoOrgsOrdererGenesis",

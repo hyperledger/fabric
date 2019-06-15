@@ -178,7 +178,6 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 
 		Organizations: c.Organizations,
 		Consensus:     c.Consensus,
-		OrdererCap:    c.OrdererCap,
 		Orderers:      c.Orderers,
 		Peers:         c.Peers,
 		SystemChannel: c.SystemChannel,
