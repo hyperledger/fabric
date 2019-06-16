@@ -434,7 +434,7 @@ func (p *Peer) StoreForChannel(cid string) transientstore.Store {
 	return p.stores[cid]
 }
 
-func (p *Peer) OpenStore(cid string) (transientstore.Store, error) {
+func (p *Peer) openStore(cid string) (transientstore.Store, error) {
 	p.storesMutex.Lock()
 	defer p.storesMutex.Unlock()
 
@@ -593,7 +593,7 @@ func (p *Peer) createChannel(
 	}
 
 	// TODO: does someone need to call Close() on the transientStoreFactory at shutdown of the peer?
-	store, err := p.OpenStore(bundle.ConfigtxValidator().ChainID())
+	store, err := p.openStore(bundle.ConfigtxValidator().ChainID())
 	if err != nil {
 		return errors.Wrapf(err, "[channel %s] failed opening transient store", bundle.ConfigtxValidator().ChainID())
 	}
