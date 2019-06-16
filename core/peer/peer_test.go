@@ -91,14 +91,6 @@ func TestNewPeerServer(t *testing.T) {
 	assert.Error(t, err, "expected NewPeerServer to return error with missing address")
 }
 
-func TestInitChain(t *testing.T) {
-	chainId := "testChain"
-	Default.chainInitializer = func(cid string) {
-		assert.Equal(t, chainId, cid, "chainInitializer received unexpected cid")
-	}
-	Default.InitChain(chainId)
-}
-
 func TestInitialize(t *testing.T) {
 	rootFSPath, err := ioutil.TempDir("", "ledgersData")
 	if err != nil {
@@ -141,8 +133,9 @@ func TestCreateChannel(t *testing.T) {
 	defer os.RemoveAll(peerFSPath)
 	viper.Set("peer.fileSystemPath", peerFSPath)
 
+	var initArg string
 	Default.Initialize(
-		nil,
+		func(cid string) { initArg = cid },
 		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
 		&platforms.Registry{},
@@ -178,6 +171,8 @@ func TestCreateChannel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create chain %s", err)
 	}
+
+	assert.Equal(t, testChainID, initArg)
 
 	// Correct ledger
 	ledger := GetLedger(testChainID)

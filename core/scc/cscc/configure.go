@@ -246,8 +246,6 @@ func (e *PeerConfiger) joinChain(
 		return shim.Error(err.Error())
 	}
 
-	e.peer.InitChain(chainID)
-
 	return shim.Success(nil)
 }
 
