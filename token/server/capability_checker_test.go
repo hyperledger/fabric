@@ -8,24 +8,15 @@ package server_test
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/token/server"
 	"github.com/hyperledger/fabric/token/server/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-//go:generate counterfeiter -o mock/peer_operations.go -fake-name PeerOperations . peerOperations
-
 //go:generate counterfeiter -o mock/channel_config.go -fake-name ChannelConfig . channelConfig
-
 //go:generate counterfeiter -o mock/application_config.go -fake-name ApplicationConfig . applicationConfig
-
 //go:generate counterfeiter -o mock/application_capabilities.go -fake-name ApplicationCapabilities . applicationCapabilities
-
-type peerOperations interface {
-	peer.Operations
-}
 
 type channelConfig interface {
 	channelconfig.Resources
@@ -43,10 +34,10 @@ var _ = Describe("CapabilityChecker", func() {
 	var (
 		channelId = "mychannel"
 
-		fakeAppCapabilities *mock.ApplicationCapabilities
-		fakeAppConfig       *mock.ApplicationConfig
-		fakeChannelConfig   *mock.ChannelConfig
-		fakePeerOperations  *mock.PeerOperations
+		fakeAppCapabilities     *mock.ApplicationCapabilities
+		fakeAppConfig           *mock.ApplicationConfig
+		fakeChannelConfig       *mock.ChannelConfig
+		fakeChannelConfigGetter *mock.ChannelConfigGetter
 
 		capabilityChecker *server.TokenCapabilityChecker
 	)
@@ -61,10 +52,10 @@ var _ = Describe("CapabilityChecker", func() {
 		fakeChannelConfig = &mock.ChannelConfig{}
 		fakeChannelConfig.ApplicationConfigReturns(fakeAppConfig, true)
 
-		fakePeerOperations = &mock.PeerOperations{}
-		fakePeerOperations.GetChannelConfigReturns(fakeChannelConfig)
+		fakeChannelConfigGetter = &mock.ChannelConfigGetter{}
+		fakeChannelConfigGetter.GetChannelConfigReturns(fakeChannelConfig)
 
-		capabilityChecker = &server.TokenCapabilityChecker{PeerOps: fakePeerOperations}
+		capabilityChecker = &server.TokenCapabilityChecker{ChannelConfigGetter: fakeChannelConfigGetter}
 	})
 
 	It("returns FabToken true when application capabilities returns true", func() {
@@ -83,7 +74,7 @@ var _ = Describe("CapabilityChecker", func() {
 
 	Context("when channel config is not found", func() {
 		BeforeEach(func() {
-			fakePeerOperations.GetChannelConfigReturns(nil)
+			fakeChannelConfigGetter.GetChannelConfigReturns(nil)
 		})
 
 		It("returns the error", func() {

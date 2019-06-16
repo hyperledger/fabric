@@ -400,7 +400,6 @@ func (*configSupport) GetChannelConfig(cid string) cc.Config {
 // on singletons in the package. This is a step towards moving from package
 // level data for the peer to instance level data.
 type Operations interface {
-	GetChannelConfig(cid string) channelconfig.Resources
 	GetApplicationConfig(cid string) (channelconfig.Application, bool)
 	GetStableChannelConfig(cid string) channelconfig.Resources
 	GetCurrConfigBlock(cid string) *common.Block
@@ -625,7 +624,6 @@ func (p *Peer) createChannel(
 
 // GetChannelConfig returns the channel configuration of the channel with channel ID. Note that this
 // call returns nil if channel cid has not been created.
-func GetChannelConfig(cid string) channelconfig.Resources { return Default.GetChannelConfig(cid) }
 func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
