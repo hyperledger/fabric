@@ -741,7 +741,7 @@ func registerDiscoveryService(
 	gSup := gossip.NewDiscoverySupport(gossipService)
 	ccSup := ccsupport.NewDiscoverySupport(metadataProvider)
 	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, metadataProvider)
-	confSup := config.NewDiscoverySupport(config.CurrentConfigBlockGetterFunc(peer.GetCurrConfigBlock))
+	confSup := config.NewDiscoverySupport(config.CurrentConfigBlockGetterFunc(peerInstance.GetCurrConfigBlock))
 	support := discsupport.NewDiscoverySupport(acl, gSup, ea, confSup, acl)
 	svc := discovery.NewService(discovery.Config{
 		TLS:                          peerServer.TLSEnabled(),

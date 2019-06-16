@@ -193,7 +193,7 @@ func TestCreateChannel(t *testing.T) {
 	}
 
 	// Correct block
-	block = GetCurrConfigBlock(testChainID)
+	block = Default.GetCurrConfigBlock(testChainID)
 	if block == nil {
 		t.Fatalf("failed to get correct block")
 	}
@@ -203,7 +203,7 @@ func TestCreateChannel(t *testing.T) {
 	assert.NotNil(t, chCfg, "failed to get channel config")
 
 	// Bad block
-	block = GetCurrConfigBlock("BogusBlock")
+	block = Default.GetCurrConfigBlock("BogusBlock")
 	if block != nil {
 		t.Fatalf("got a bogus block")
 	}
