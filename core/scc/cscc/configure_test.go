@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc/cscc/mocks"
 	"github.com/hyperledger/fabric/core/transientstore"
+	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -227,9 +228,9 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		return dialOpts
 	}
 
-	err = service.InitGossipService(
+	gossipService, err := service.New(
 		signer,
-		&disabled.Provider{},
+		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
 		peerEndpoint,
 		grpcServer,
 		nil,
@@ -238,6 +239,8 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		defaultSecureDialOpts,
 	)
 	assert.NoError(t, err)
+	peer.Default.GossipService = gossipService
+	defer func() { peer.Default.GossipService = nil }()
 
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
@@ -249,6 +252,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		aclProvider:   mockACLProvider,
 		peer: &peer.Peer{
 			StoreProvider: &mocks.StoreProvider{},
+			GossipService: gossipService,
 		},
 	}
 	mockStub := &mocks.ChaincodeStub{}

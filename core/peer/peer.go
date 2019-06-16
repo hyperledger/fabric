@@ -37,7 +37,7 @@ import (
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
-	"github.com/hyperledger/fabric/gossip/service"
+	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
@@ -416,6 +416,8 @@ type Peer struct {
 	storesMutex   sync.RWMutex
 	stores        map[string]transientstore.Store
 
+	GossipService *gossipservice.GossipService
+
 	// validationWorkersSemaphore is used to limit the number of concurrent validation
 	// go routines.
 	validationWorkersSemaphore semaphore.Semaphore
@@ -525,7 +527,7 @@ func (p *Peer) createChain(
 
 	channelconfig.LogSanityChecks(bundle)
 
-	gossipEventer := service.GetGossipService().NewConfigEventer()
+	gossipEventer := p.GossipService.NewConfigEventer()
 
 	gossipCallbackWrapper := func(bundle *channelconfig.Bundle) {
 		ac, ok := bundle.ApplicationConfig()
@@ -538,7 +540,7 @@ func (p *Peer) createChain(
 			Application: ac,
 			Channel:     bundle.ChannelConfig(),
 		})
-		service.GetGossipService().SuspectPeers(func(identity api.PeerIdentityType) bool {
+		p.GossipService.SuspectPeers(func(identity api.PeerIdentityType) bool {
 			// TODO: this is a place-holder that would somehow make the MSP layer suspect
 			// that a given certificate is revoked, or its intermediate CA is revoked.
 			// In the meantime, before we have such an ability, we return true in order
@@ -608,7 +610,7 @@ func (p *Peer) createChain(
 	}
 
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider)
-	service.GetGossipService().InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, service.Support{
+	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, gossipservice.Support{
 		Validator: validator,
 		Committer: committer,
 		Store:     store,

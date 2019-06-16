@@ -213,7 +213,7 @@ func bootPeersWithPorts(ports ...int) []string {
 
 func newGossipInstanceWithGrpcMcsMetrics(id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, mcs api.MessageCryptoService,
-	metrics *metrics.GossipMetrics, bootPorts ...int) Gossip {
+	metrics *metrics.GossipMetrics, bootPorts ...int) *gossipGRPC {
 
 	conf := &Config{
 		BootstrapPeers:               bootPeersWithPorts(bootPorts...),
@@ -251,18 +251,18 @@ func newGossipInstanceWithGrpcMcsMetrics(id int, port int, gRPCServer *corecomm.
 	go func() {
 		gRPCServer.Start()
 	}()
-	return &gossipGRPC{gossipServiceImpl: g.(*gossipServiceImpl), grpc: gRPCServer}
+	return &gossipGRPC{GossipImpl: g, grpc: gRPCServer}
 }
 
 func newGossipInstanceWithGRPC(id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
-	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int) Gossip {
+	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int) *gossipGRPC {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{})
 	mcs := &naiveCryptoService{}
 	return newGossipInstanceWithGrpcMcsMetrics(id, port, gRPCServer, certs, secureDialOpts, maxMsgCount, mcs, metrics, bootPorts...)
 }
 
 func newGossipInstanceWithGRPCWithLock(lock *sync.RWMutex, id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
-	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int) Gossip {
+	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int) *gossipGRPC {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{})
 	mcs := &naiveCryptoService{expirationTimesLock: lock}
 	return newGossipInstanceWithGrpcMcsMetrics(id, port, gRPCServer, certs, secureDialOpts, maxMsgCount, mcs, metrics, bootPorts...)
@@ -270,7 +270,7 @@ func newGossipInstanceWithGRPCWithLock(lock *sync.RWMutex, id int, port int, gRP
 
 func newGossipInstanceWithGRPCWithOnlyPull(id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, mcs api.MessageCryptoService,
-	metrics *metrics.GossipMetrics, bootPorts ...int) Gossip {
+	metrics *metrics.GossipMetrics, bootPorts ...int) *gossipGRPC {
 	shortenedWaitTime := time.Duration(200) * time.Millisecond
 	conf := &Config{
 		BootstrapPeers:               bootPeersWithPorts(bootPorts...),
@@ -308,34 +308,34 @@ func newGossipInstanceWithGRPCWithOnlyPull(id int, port int, gRPCServer *corecom
 	go func() {
 		gRPCServer.Start()
 	}()
-	return &gossipGRPC{gossipServiceImpl: g.(*gossipServiceImpl), grpc: gRPCServer}
+	return &gossipGRPC{GossipImpl: g, grpc: gRPCServer}
 }
 
 func newGossipInstanceCreateGRPCWithMCSWithMetrics(id int, maxMsgCount int, mcs api.MessageCryptoService,
-	metrics *metrics.GossipMetrics, bootPorts ...int) Gossip {
+	metrics *metrics.GossipMetrics, bootPorts ...int) *gossipGRPC {
 	p, g, c, s, _ := util.CreateGRPCLayer()
 	return newGossipInstanceWithGrpcMcsMetrics(id, p, g, c, s, maxMsgCount, mcs, metrics, bootPorts...)
 }
 
-func newGossipInstanceCreateGRPC(id int, maxMsgCount int, bootPorts ...int) Gossip {
+func newGossipInstanceCreateGRPC(id int, maxMsgCount int, bootPorts ...int) *gossipGRPC {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{})
 	mcs := &naiveCryptoService{}
 	return newGossipInstanceCreateGRPCWithMCSWithMetrics(id, maxMsgCount, mcs, metrics, bootPorts...)
 }
 
 func newGossipInstanceCreateGRPCWithOnlyPull(id int, maxMsgCount int, mcs api.MessageCryptoService,
-	metrics *metrics.GossipMetrics, bootPorts ...int) Gossip {
+	metrics *metrics.GossipMetrics, bootPorts ...int) *gossipGRPC {
 	p, g, c, s, _ := util.CreateGRPCLayer()
 	return newGossipInstanceWithGRPCWithOnlyPull(id, p, g, c, s, maxMsgCount, mcs, metrics, bootPorts...)
 }
 
 type gossipGRPC struct {
-	*gossipServiceImpl
+	*GossipImpl
 	grpc *corecomm.GRPCServer
 }
 
 func (g *gossipGRPC) Stop() {
-	g.gossipServiceImpl.Stop()
+	g.GossipImpl.Stop()
 	g.grpc.Stop()
 }
 
@@ -363,7 +363,7 @@ func TestLeaveChannel(t *testing.T) {
 	p2.UpdateLedgerHeight(1, common.ChannelID("A"))
 	defer p2.Stop()
 
-	countMembership := func(g Gossip, expected int) func() bool {
+	countMembership := func(g *gossipGRPC, expected int) func() bool {
 		return func() bool {
 			peers := g.PeersOfChannel(common.ChannelID("A"))
 			return len(peers) == expected
@@ -402,7 +402,7 @@ func TestPull(t *testing.T) {
 	mcs := &naiveCryptoService{}
 	port0, grpc0, certs0, secDialOpts0, _ := util.CreateGRPCLayer()
 
-	peers := make([]Gossip, n)
+	peers := make([]*gossipGRPC, n)
 	wg := sync.WaitGroup{}
 	wg.Add(n)
 	for i := 1; i <= n; i++ {
@@ -510,7 +510,7 @@ func TestConnectToAnchorPeers(t *testing.T) {
 	}
 
 	// Start peers
-	peers := make([]Gossip, n)
+	peers := make([]*gossipGRPC, n)
 	wg := sync.WaitGroup{}
 	wg.Add(n)
 	for i := 0; i < n; i++ {
@@ -570,7 +570,7 @@ func TestMembership(t *testing.T) {
 	boot.JoinChan(&joinChanMsg{}, common.ChannelID("A"))
 	boot.UpdateLedgerHeight(1, common.ChannelID("A"))
 
-	peers := make([]Gossip, n)
+	peers := make([]*gossipGRPC, n)
 	wg := sync.WaitGroup{}
 	wg.Add(n - 1)
 	for i := 1; i < n; i++ {
@@ -654,7 +654,7 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 	peer.UpdateLedgerHeight(1, common.ChannelID("A"))
 
 	// Wait until both peers get connected
-	waitUntilOrFail(t, checkPeersMembership(t, []Gossip{peer}, 1), "waiting for peers to form membership view")
+	waitUntilOrFail(t, checkPeersMembership(t, []*gossipGRPC{peer}, 1), "waiting for peers to form membership view")
 	_, commCh := boot.Accept(func(msg interface{}) bool {
 		return protoext.IsDataMsg(msg.(protoext.ReceivedMessage).GetGossipMessage().GossipMessage)
 	}, true)
@@ -696,7 +696,7 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 	waitUntilOrFailBlocking(t, wg.Wait, "waiting for everyone to get the message")
 
 	stop := func() {
-		stopPeers([]Gossip{peer, boot})
+		stopPeers([]*gossipGRPC{peer, boot})
 	}
 
 	waitUntilOrFailBlocking(t, stop, "waiting for all instances to stop")
@@ -721,13 +721,13 @@ func TestDissemination(t *testing.T) {
 	boot.UpdateLedgerHeight(1, common.ChannelID("A"))
 	boot.UpdateChaincodes([]*proto.Chaincode{{Name: "exampleCC", Version: "1.2"}}, common.ChannelID("A"))
 
-	peers := make([]Gossip, n)
+	peers := make([]*gossipGRPC, n)
 	receivedMessages := make([]int, n)
 	wg := sync.WaitGroup{}
 	wg.Add(n)
 	portn, grpcn, certsn, secDialOptsn, _ := util.CreateGRPCLayer()
 	for i := 1; i <= n; i++ {
-		var pI Gossip
+		var pI *gossipGRPC
 		if i == n {
 			pI = newGossipInstanceWithGRPC(i, portn, grpcn, certsn, secDialOptsn, 100, port0)
 		} else {
@@ -810,7 +810,7 @@ func TestDissemination(t *testing.T) {
 	incTime := uint64(time.Now().UnixNano())
 	t3 := time.Now()
 
-	leadershipMsg := createLeadershipMsg(true, common.ChannelID("A"), incTime, uint64(seqNum), boot.(*gossipGRPC).gossipServiceImpl.comm.GetPKIid())
+	leadershipMsg := createLeadershipMsg(true, common.ChannelID("A"), incTime, uint64(seqNum), boot.GossipImpl.comm.GetPKIid())
 	boot.Gossip(leadershipMsg)
 
 	waitUntilOrFailBlocking(t, wgLeadership.Wait, "waiting to get all leadership messages")
@@ -859,7 +859,7 @@ func TestMembershipConvergence(t *testing.T) {
 	boot2 := newGossipInstanceWithGRPC(2, port2, grpc2, certs2, secDialOpts2, 100)
 	ports := []int{port0, port1, port2}
 
-	peers := []Gossip{boot0, boot1, boot2}
+	peers := []*gossipGRPC{boot0, boot1, boot2}
 	// 0: {3, 6, 9, 12}
 	// 1: {4, 7, 10, 13}
 	// 2: {5, 8, 11, 14}
@@ -960,7 +960,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 	endpoint2 := fmt.Sprintf("127.0.0.1:%d", port2)
 
 	// Wait for g2 and g3 to know about each other
-	waitUntilOrFail(t, checkPeersMembership(t, []Gossip{g2, g3}, 1), "wait for g2 and g3 to know about each other")
+	waitUntilOrFail(t, checkPeersMembership(t, []*gossipGRPC{g2, g3}, 1), "wait for g2 and g3 to know about each other")
 	// Obtain an alive message from p3
 	_, aliveMsgChan := g2.Accept(func(o interface{}) bool {
 		msg := o.(protoext.ReceivedMessage).GetGossipMessage()
@@ -1061,7 +1061,7 @@ func TestDataLeakage(t *testing.T) {
 	stopped := int32(0)
 	go waitForTestCompletion(&stopped, t)
 
-	peers := make([]Gossip, n)
+	peers := make([]*gossipGRPC, n)
 	wg := sync.WaitGroup{}
 	for i := 0; i < n; i++ {
 		wg.Add(1)
@@ -1164,7 +1164,7 @@ func TestDisseminateAll2All(t *testing.T) {
 
 	totalPeers := []int{0, 1, 2, 3, 4, 5, 6}
 	n := len(totalPeers)
-	peers := make([]Gossip, n)
+	peers := make([]*gossipGRPC, n)
 	wg := sync.WaitGroup{}
 
 	var ports []int
@@ -1246,7 +1246,7 @@ func TestSendByCriteria(t *testing.T) {
 	port3, grpc3, certs3, secDialOpts3, _ := util.CreateGRPCLayer()
 	g4 := newGossipInstanceWithGRPC(3, port3, grpc3, certs3, secDialOpts3, 100, port0)
 
-	peers := []Gossip{g1, g2, g3, g4}
+	peers := []*gossipGRPC{g1, g2, g3, g4}
 	for _, p := range peers {
 		p.JoinChan(&joinChanMsg{}, common.ChannelID("A"))
 		p.UpdateLedgerHeight(1, common.ChannelID("A"))
@@ -1418,12 +1418,12 @@ func TestIdentityExpiration(t *testing.T) {
 	expirationTimes[endpointLast] = time.Now().Add(time.Second * 5)
 	expirationTimesLock.Unlock()
 
-	peers := []Gossip{g1, g2, g3, g4}
+	peers := []*gossipGRPC{g1, g2, g3, g4}
 
 	// Make the last peer be revoked in 5 seconds from now
 	time.AfterFunc(time.Second*5, func() {
 		for _, p := range peers {
-			p.(*gossipGRPC).gossipServiceImpl.mcs.(*naiveCryptoService).revoke(common.PKIidType(endpointLast))
+			p.GossipImpl.mcs.(*naiveCryptoService).revoke(common.PKIidType(endpointLast))
 		}
 	})
 
@@ -1446,7 +1446,7 @@ func TestIdentityExpiration(t *testing.T) {
 		if i == revokedPeerIndex {
 			continue
 		}
-		p.(*gossipGRPC).gossipServiceImpl.mcs.(*naiveCryptoService).revoke(revokedPkiID)
+		p.GossipImpl.mcs.(*naiveCryptoService).revoke(revokedPkiID)
 	}
 	// Trigger a config update to the rest of the peers
 	for i := 0; i < 4; i++ {
@@ -1542,11 +1542,11 @@ func waitForTestCompletion(stopFlag *int32, t *testing.T) {
 	assert.Fail(t, "Didn't stop within a timely manner")
 }
 
-func stopPeers(peers []Gossip) {
+func stopPeers(peers []*gossipGRPC) {
 	stoppingWg := sync.WaitGroup{}
 	stoppingWg.Add(len(peers))
 	for i, pI := range peers {
-		go func(i int, p_i Gossip) {
+		go func(i int, p_i *gossipGRPC) {
 			defer stoppingWg.Done()
 			p_i.Stop()
 		}(i, pI)
@@ -1583,7 +1583,7 @@ func waitUntilOrFailBlocking(t *testing.T, f func(), context string) {
 	assert.Failf(t, "Timeout expired, while %s", context)
 }
 
-func checkPeersMembership(t *testing.T, peers []Gossip, n int) func() bool {
+func checkPeersMembership(t *testing.T, peers []*gossipGRPC, n int) func() bool {
 	return func() bool {
 		for _, peer := range peers {
 			if len(peer.Peers()) != n {

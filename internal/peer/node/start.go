@@ -75,7 +75,8 @@ import (
 	"github.com/hyperledger/fabric/discovery/support/config"
 	"github.com/hyperledger/fabric/discovery/support/gossip"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/service"
+	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
+	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/hyperledger/fabric/msp"
@@ -183,10 +184,55 @@ func serve(args []string) error {
 		MetadataProvider: &ccmetadata.PersistenceMetadataProvider{},
 	}
 
+	peerHost, _, err := net.SplitHostPort(coreConfig.PeerAddress)
+	if err != nil {
+		return fmt.Errorf("peer address is not in the format of host:port: %v", err)
+	}
+
+	listenAddr := coreConfig.ListenAddress
+	serverConfig, err := peer.GetServerConfig()
+	if err != nil {
+		logger.Fatalf("Error loading secure config for peer (%s)", err)
+	}
+
+	serverConfig.Logger = flogging.MustGetLogger("core.comm").With("server", "PeerServer")
+	serverConfig.MetricsProvider = metricsProvider
+	serverConfig.UnaryInterceptors = append(
+		serverConfig.UnaryInterceptors,
+		grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
+		grpclogging.UnaryServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+	)
+	serverConfig.StreamInterceptors = append(
+		serverConfig.StreamInterceptors,
+		grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
+		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+	)
+
+	peerServer, err := peer.NewPeerServer(listenAddr, serverConfig)
+	if err != nil {
+		logger.Fatalf("Failed to create peer server (%s)", err)
+	}
+
+	policyMgr := peer.NewChannelPolicyManagerGetter()
+	signingIdentity := mgmt.GetLocalSigningIdentityOrPanic()
+
+	gossipService, err := initGossipService(
+		policyMgr,
+		metricsProvider,
+		peerServer,
+		signingIdentity,
+		coreConfig.PeerAddress,
+	)
+	if err != nil {
+		return errors.WithMessage(err, "failed to initialize gossip service")
+	}
+	defer gossipService.Stop()
+
 	peerInstance := &peer.Peer{
 		StoreProvider: transientstore.NewStoreProvider(
 			filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore"),
 		),
+		GossipService: gossipService,
 	}
 	peer.Default = peerInstance
 
@@ -290,35 +336,6 @@ func serve(args []string) error {
 		logger.Info("Disable loading validity system chaincode")
 
 		viper.Set("chaincode.mode", chaincode.DevModeUserRunsChaincode)
-	}
-
-	peerHost, _, err := net.SplitHostPort(coreConfig.PeerAddress)
-	if err != nil {
-		return fmt.Errorf("peer address is not in the format of host:port: %v", err)
-	}
-
-	listenAddr := coreConfig.ListenAddress
-	serverConfig, err := peer.GetServerConfig()
-	if err != nil {
-		logger.Fatalf("Error loading secure config for peer (%s)", err)
-	}
-
-	serverConfig.Logger = flogging.MustGetLogger("core.comm").With("server", "PeerServer")
-	serverConfig.MetricsProvider = metricsProvider
-	serverConfig.UnaryInterceptors = append(
-		serverConfig.UnaryInterceptors,
-		grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
-		grpclogging.UnaryServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
-	)
-	serverConfig.StreamInterceptors = append(
-		serverConfig.StreamInterceptors,
-		grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
-		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
-	)
-
-	peerServer, err := peer.NewPeerServer(listenAddr, serverConfig)
-	if err != nil {
-		logger.Fatalf("Failed to create peer server (%s)", err)
 	}
 
 	if serverConfig.SecOpts.UseTLS {
@@ -507,10 +524,8 @@ func serve(args []string) error {
 	logger.Debugf("Running peer")
 
 	privDataDist := func(channel string, txID string, privateData *pt.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
-		return service.GetGossipService().DistributePrivateData(channel, txID, privateData, blkHt)
+		return gossipService.DistributePrivateData(channel, txID, privateData, blkHt)
 	}
-
-	signingIdentity := mgmt.GetLocalSigningIdentityOrPanic()
 
 	libConf := library.Config{}
 	if err = viperutil.EnhancedExactUnmarshalKey("peer.handlers", &libConf); err != nil {
@@ -543,15 +558,6 @@ func serve(args []string) error {
 	// Register the Endorser server
 	pb.RegisterEndorserServer(peerServer.Server(), auth)
 
-	policyMgr := peer.NewChannelPolicyManagerGetter()
-
-	// Initialize gossip component
-	err = initGossipService(policyMgr, metricsProvider, peerServer, signingIdentity, coreConfig.PeerAddress)
-	if err != nil {
-		return err
-	}
-	defer service.GetGossipService().Stop()
-
 	// register prover grpc service
 	err = registerProverService(peerInstance, peerServer, aclProvider, signingIdentity)
 	if err != nil {
@@ -571,7 +577,7 @@ func serve(args []string) error {
 
 	// register gossip as a listener for updates from lifecycleMetadataManager
 	metadataManager.AddListener(lifecycle.HandleMetadataUpdateFunc(func(channel string, chaincodes ccdef.MetadataSet) {
-		service.GetGossipService().UpdateChaincodes(chaincodes.AsChaincodes(), gossipcommon.ChannelID(channel))
+		gossipService.UpdateChaincodes(chaincodes.AsChaincodes(), gossipcommon.ChannelID(channel))
 	}))
 
 	// this brings up all the channels
@@ -625,6 +631,7 @@ func serve(args []string) error {
 				legacyMetadataManager,
 				peerInstance,
 			),
+			gossipService,
 		)
 	}
 
@@ -713,7 +720,13 @@ func createSelfSignedData() protoutil.SignedData {
 	}
 }
 
-func registerDiscoveryService(coreConfig *peer.Config, peerServer *comm.GRPCServer, polMgr policies.ChannelPolicyManagerGetter, metadataProvider *lifecycle.MetadataProvider) {
+func registerDiscoveryService(
+	coreConfig *peer.Config,
+	peerServer *comm.GRPCServer,
+	polMgr policies.ChannelPolicyManagerGetter,
+	metadataProvider *lifecycle.MetadataProvider,
+	gossipService *gossipservice.GossipService,
+) {
 	mspID := coreConfig.LocalMSPID
 	localAccessPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
 	if coreConfig.DiscoveryOrgMembersAllowed {
@@ -721,7 +734,7 @@ func registerDiscoveryService(coreConfig *peer.Config, peerServer *comm.GRPCServ
 	}
 	channelVerifier := discacl.NewChannelVerifier(policies.ChannelApplicationWriters, polMgr)
 	acl := discacl.NewDiscoverySupport(channelVerifier, localAccessPolicy, discacl.ChannelConfigGetterFunc(peer.GetStableChannelConfig))
-	gSup := gossip.NewDiscoverySupport(service.GetGossipService())
+	gSup := gossip.NewDiscoverySupport(gossipService)
 	ccSup := ccsupport.NewDiscoverySupport(metadataProvider)
 	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, metadataProvider)
 	confSup := config.NewDiscoverySupport(config.CurrentConfigBlockGetterFunc(peer.GetCurrConfigBlock))
@@ -936,14 +949,14 @@ func initGossipService(
 	peerServer *comm.GRPCServer,
 	signer msp.SigningIdentity,
 	peerAddr string,
-) error {
+) (*gossipservice.GossipService, error) {
 
 	var certs *gossipcommon.TLSCertificates
 	if peerServer.TLSEnabled() {
 		serverCert := peerServer.ServerCertificate()
 		clientCert, err := peer.GetClientCertificate()
 		if err != nil {
-			return errors.Wrap(err, "failed obtaining client certificates")
+			return nil, errors.Wrap(err, "failed obtaining client certificates")
 		}
 		certs = &gossipcommon.TLSCertificates{}
 		certs.TLSServerCert.Store(&serverCert)
@@ -958,9 +971,9 @@ func initGossipService(
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
 
-	return service.InitGossipService(
+	return gossipservice.New(
 		signer,
-		metricsProvider,
+		gossipmetrics.NewGossipMetrics(metricsProvider),
 		peerAddr,
 		peerServer.Server(),
 		certs,

@@ -163,7 +163,7 @@ func TestJoinChannelConfig(t *testing.T) {
 	g1SvcMock.On("JoinChan", mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		failChan <- struct{}{}
 	})
-	g1 := &gossipServiceImpl{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("OrgMSP0"), gossipSvc: g1SvcMock}
+	g1 := &GossipService{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("OrgMSP0"), gossipSvc: g1SvcMock}
 	g1.updateAnchors(&configMock{
 		orgs2AppOrgs: map[string]channelconfig.ApplicationOrg{
 			"Org0": &appOrgMock{id: "Org0"},
@@ -180,7 +180,7 @@ func TestJoinChannelConfig(t *testing.T) {
 	g2SvcMock.On("JoinChan", mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		succChan <- struct{}{}
 	})
-	g2 := &gossipServiceImpl{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("Org0"), gossipSvc: g2SvcMock}
+	g2 := &GossipService{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("Org0"), gossipSvc: g2SvcMock}
 	g2.updateAnchors(&configMock{
 		orgs2AppOrgs: map[string]channelconfig.ApplicationOrg{
 			"Org0": &appOrgMock{id: "Org0"},
@@ -212,7 +212,7 @@ func TestJoinChannelNoAnchorPeers(t *testing.T) {
 		assert.Equal(t, "A", string(channel))
 	})
 
-	g := &gossipServiceImpl{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("Org0"), gossipSvc: gMock}
+	g := &GossipService{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("Org0"), gossipSvc: gMock}
 
 	appOrg0 := &appOrgMock{id: "Org0"}
 	appOrg1 := &appOrgMock{id: "Org1"}
