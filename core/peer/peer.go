@@ -457,16 +457,6 @@ func (p *Peer) OpenStore(cid string) (transientstore.Store, error) {
 	return store, nil
 }
 
-func CreateChainFromBlock(
-	cb *common.Block,
-	sccp sysccprovider.SystemChaincodeProvider,
-	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-	legacyLifecycleValidation plugindispatcher.LifecycleResources,
-	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
-) error {
-	return Default.CreateChainFromBlock(cb, sccp, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
-}
-
 func (p *Peer) CreateChainFromBlock(
 	cb *common.Block,
 	sccp sysccprovider.SystemChaincodeProvider,
