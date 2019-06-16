@@ -23,7 +23,6 @@ import (
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v20/mocks"
 	"github.com/hyperledger/fabric/core/policy"
-	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -261,10 +260,6 @@ func TestMain(m *testing.M) {
 	ccprovider.SetChaincodesPath(testDir)
 
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
-
-	lscc.MockMSPIDGetter = func(cid string) []string {
-		return []string{"SampleOrg"}
-	}
 
 	// setup the MSP manager so that we can sign/verify
 	msptesttools.LoadMSPSetupForTesting()

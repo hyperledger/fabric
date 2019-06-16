@@ -16,6 +16,7 @@ import (
 )
 
 type supportImpl struct {
+	GetMSPIDs MSPIDsGetter
 }
 
 // PutChaincodeToLocalStorage stores the supplied chaincode
@@ -55,7 +56,7 @@ func (s *supportImpl) GetInstantiationPolicy(channel string, ccpack ccprovider.C
 	} else {
 		// the default instantiation policy allows any of the channel MSP admins
 		// to be able to instantiate
-		mspids := channelMSPIDs(channel)
+		mspids := s.GetMSPIDs(channel)
 
 		p := cauthdsl.SignedByAnyAdmin(mspids)
 		ip, err = protoutil.Marshal(p)

@@ -180,7 +180,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 	globalConfig.StartupTimeout = 10 * time.Second
 	globalConfig.ExecuteTimeout = 1 * time.Second
 	pr := platforms.NewRegistry(&golang.Platform{})
-	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
+	lsccImpl := lscc.New(sccp, mockAclProvider, pr, peer.Default.GetMSPIDs)
 	ml := &mock.Lifecycle{}
 	ml.ChaincodeContainerInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 		switch name {

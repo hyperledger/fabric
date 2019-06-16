@@ -391,7 +391,7 @@ func serve(args []string) error {
 		Registrar: ipRegistry,
 		Whitelist: scc.GlobalWhitelist(),
 	}
-	lsccInst := lscc.New(sccp, aclProvider, platformRegistry)
+	lsccInst := lscc.New(sccp, aclProvider, platformRegistry, peerInstance.GetMSPIDs)
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{

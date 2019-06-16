@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/policyprovider"
 	"github.com/hyperledger/fabric/msp"
@@ -122,6 +121,9 @@ type FilesystemSupport interface {
 	CheckInstantiationPolicy(signedProposal *pb.SignedProposal, chainName string, instantiationPolicy []byte) error
 }
 
+// MSPsIDGetter is used to get the MSP IDs for a channel.
+type MSPIDsGetter func(string) []string
+
 //---------- the LSCC -----------------
 
 // LifeCycleSysCC implements chaincode lifecycle and policies around it
@@ -142,17 +144,25 @@ type LifeCycleSysCC struct {
 	Support FilesystemSupport
 
 	PlatformRegistry *platforms.Registry
+
+	GetMSPIDs MSPIDsGetter
 }
 
 // New creates a new instance of the LSCC
 // Typically there is only one of these per peer
-func New(sccp sysccprovider.SystemChaincodeProvider, ACLProvider aclmgmt.ACLProvider, platformRegistry *platforms.Registry) *LifeCycleSysCC {
+func New(
+	sccp sysccprovider.SystemChaincodeProvider,
+	ACLProvider aclmgmt.ACLProvider,
+	platformRegistry *platforms.Registry,
+	getMSPIDs MSPIDsGetter,
+) *LifeCycleSysCC {
 	return &LifeCycleSysCC{
-		Support:          &supportImpl{},
+		Support:          &supportImpl{GetMSPIDs: getMSPIDs},
 		PolicyChecker:    policyprovider.GetPolicyChecker(),
 		SCCProvider:      sccp,
 		ACLProvider:      ACLProvider,
 		PlatformRegistry: platformRegistry,
+		GetMSPIDs:        getMSPIDs,
 	}
 }
 
@@ -904,7 +914,8 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		if len(args) > 3 && len(args[3]) > 0 {
 			EP = args[3]
 		} else {
-			p := cauthdsl.SignedByAnyMember(channelMSPIDs(channel))
+			mspIDs := lscc.GetMSPIDs(channel)
+			p := cauthdsl.SignedByAnyMember(mspIDs)
 			EP, err = protoutil.Marshal(p)
 			if err != nil {
 				return shim.Error(err.Error())
@@ -1025,16 +1036,4 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 	}
 
 	return shim.Error(InvalidFunctionErr(function).Error())
-}
-
-// MockMSPIDGetter was moved here from the peer package in support of
-// validation tests. When set, this function is used to obtain MSPIDs for a
-// channel.
-var MockMSPIDGetter func(string) []string
-
-func channelMSPIDs(channel string) []string {
-	if MockMSPIDGetter != nil {
-		return MockMSPIDGetter(channel)
-	}
-	return peer.GetMSPIDs(channel)
 }

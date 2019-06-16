@@ -445,7 +445,7 @@ func TestRWSetTooBig(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -505,7 +505,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	v := newValidationInstance(state)
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -772,7 +772,7 @@ func TestAlreadyDeployed(t *testing.T) {
 
 	v := newValidationInstance(state)
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -867,7 +867,7 @@ func TestValidateDeployOK(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -917,7 +917,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	})
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1010,7 +1010,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 
 	v = newValidationInstance(state)
 
-	lccc = lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc = lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc = shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1035,7 +1035,7 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1108,7 +1108,7 @@ func TestInvalidUpgrade(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1150,7 +1150,7 @@ func TestValidateUpgradeOK(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1213,7 +1213,7 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1282,7 +1282,7 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 	})
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1469,7 +1469,7 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1555,7 +1555,7 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, ccver string, v11capability, 
 	v := newCustomValidationInstance(qec, capabilities)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1633,7 +1633,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), mockMSPIDGetter)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1941,6 +1941,10 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 	assert.EqualError(t, err, "the BlockToLive in the following existing collections must not be modified: [mycollection2]")
 }
 
+var mockMSPIDGetter = func(cid string) []string {
+	return []string{"SampleOrg"}
+}
+
 func TestMain(m *testing.M) {
 	testDir, err := ioutil.TempDir("", "v1.3-validation")
 	if err != nil {
@@ -1951,10 +1955,6 @@ func TestMain(m *testing.M) {
 	ccprovider.SetChaincodesPath(testDir)
 
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
-
-	lscc.MockMSPIDGetter = func(cid string) []string {
-		return []string{"SampleOrg"}
-	}
 
 	// setup the MSP manager so that we can sign/verify
 	msptesttools.LoadMSPSetupForTesting()
