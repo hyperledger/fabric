@@ -145,12 +145,6 @@ func serve(args []string) error {
 
 	logger.Infof("Starting %s", version.GetInfo())
 
-	//startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
-	//Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
-	aclProvider := aclmgmt.NewACLProvider(
-		aclmgmt.ResourceGetter(peer.GetStableChannelConfig),
-	)
-
 	//obtain coreConfiguration
 	coreConfig, err := peer.GlobalConfig()
 	if err != nil {
@@ -237,6 +231,12 @@ func serve(args []string) error {
 		GossipService: gossipService,
 	}
 	peer.Default = peerInstance
+
+	//startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
+	//Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
+	aclProvider := aclmgmt.NewACLProvider(
+		aclmgmt.ResourceGetter(peerInstance.GetStableChannelConfig),
+	)
 
 	// TODO, unfortunately, the lifecycle initialization is very unclean at the
 	// moment. This is because ccprovider.SetChaincodePath only works after
@@ -626,6 +626,7 @@ func serve(args []string) error {
 	if coreConfig.DiscoveryEnabled {
 		registerDiscoveryService(
 			coreConfig,
+			peerInstance,
 			peerServer,
 			policyMgr,
 			lifecycle.NewMetadataProvider(
@@ -724,6 +725,7 @@ func createSelfSignedData() protoutil.SignedData {
 
 func registerDiscoveryService(
 	coreConfig *peer.Config,
+	peerInstance *peer.Peer,
 	peerServer *comm.GRPCServer,
 	polMgr policies.ChannelPolicyManagerGetter,
 	metadataProvider *lifecycle.MetadataProvider,
@@ -735,7 +737,7 @@ func registerDiscoveryService(
 		localAccessPolicy = localPolicy(cauthdsl.SignedByAnyMember([]string{mspID}))
 	}
 	channelVerifier := discacl.NewChannelVerifier(policies.ChannelApplicationWriters, polMgr)
-	acl := discacl.NewDiscoverySupport(channelVerifier, localAccessPolicy, discacl.ChannelConfigGetterFunc(peer.GetStableChannelConfig))
+	acl := discacl.NewDiscoverySupport(channelVerifier, localAccessPolicy, discacl.ChannelConfigGetterFunc(peerInstance.GetStableChannelConfig))
 	gSup := gossip.NewDiscoverySupport(gossipService)
 	ccSup := ccsupport.NewDiscoverySupport(metadataProvider)
 	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, metadataProvider)
