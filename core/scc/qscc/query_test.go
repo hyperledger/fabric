@@ -40,6 +40,7 @@ func setupTestLedger(chainid string, path string) (*shim.MockStub, func(), error
 
 	lq := &LedgerQuerier{
 		aclProvider: mockAclProvider,
+		peer:        peer.Default,
 	}
 	stub := shim.NewMockStub("LedgerQuerier", lq)
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -190,6 +191,7 @@ func TestFailingAccessControl(t *testing.T) {
 	defer cleanup()
 	e := &LedgerQuerier{
 		aclProvider: mockAclProvider,
+		peer:        peer.Default,
 	}
 	stub := shim.NewMockStub("LedgerQuerier", e)
 
@@ -331,7 +333,7 @@ func TestQueryGeneratedBlock(t *testing.T) {
 }
 
 func addBlockForTesting(t *testing.T, chainid string) *common.Block {
-	ledger := peer.GetLedger(chainid)
+	ledger := peer.Default.GetLedger(chainid)
 	defer ledger.Close()
 
 	txid1 := util.GenerateUUID()

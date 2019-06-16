@@ -175,7 +175,7 @@ func TestCreateChannel(t *testing.T) {
 	assert.Equal(t, testChainID, initArg)
 
 	// Correct ledger
-	ledger := GetLedger(testChainID)
+	ledger := Default.GetLedger(testChainID)
 	if ledger == nil {
 		t.Fatalf("failed to get correct ledger")
 	}
@@ -187,7 +187,7 @@ func TestCreateChannel(t *testing.T) {
 	assert.Equal(t, uint64(0), block.Header.Number, "config block should have been block 0")
 
 	// Bad ledger
-	ledger = GetLedger("BogusChain")
+	ledger = Default.GetLedger("BogusChain")
 	if ledger != nil {
 		t.Fatalf("got a bogus ledger")
 	}

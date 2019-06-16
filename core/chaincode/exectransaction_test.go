@@ -223,7 +223,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 func finitPeer(lis net.Listener, chainIDs ...string) {
 	if lis != nil {
 		for _, c := range chainIDs {
-			if lgr := peer.GetLedger(c); lgr != nil {
+			if lgr := peer.Default.GetLedger(c); lgr != nil {
 				lgr.Close()
 			}
 		}
@@ -235,7 +235,7 @@ func finitPeer(lis net.Listener, chainIDs ...string) {
 }
 
 func startTxSimulation(chainID string, txid string) (ledger.TxSimulator, ledger.HistoryQueryExecutor, error) {
-	lgr := peer.GetLedger(chainID)
+	lgr := peer.Default.GetLedger(chainID)
 	txsim, err := lgr.NewTxSimulator(txid)
 	if err != nil {
 		return nil, nil, err
@@ -301,7 +301,7 @@ var _commitLock_ sync.Mutex
 
 func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, _ []byte, commit bool, prop *pb.Proposal, blockNumber uint64) error {
 	txsim.Done()
-	if lgr := peer.GetLedger(chainID); lgr != nil {
+	if lgr := peer.Default.GetLedger(chainID); lgr != nil {
 		if commit {
 			var txSimulationResults *ledger.TxSimulationResults
 			var txSimulationBytes []byte
