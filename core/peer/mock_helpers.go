@@ -21,7 +21,7 @@ func MockInitialize() (cleanup func(), err error) {
 		&ledgermgmt.Initializer{},
 	)
 	Default.mutex.Lock()
-	Default.chains = make(map[string]*chain)
+	Default.channels = make(map[string]*Channel)
 	Default.mutex.Unlock()
 	return cleanup, err
 }
@@ -42,11 +42,11 @@ func MockCreateChain(cid string) error {
 	Default.mutex.Lock()
 	defer Default.mutex.Unlock()
 
-	if Default.chains == nil {
-		Default.chains = map[string]*chain{}
+	if Default.channels == nil {
+		Default.channels = map[string]*Channel{}
 	}
 
-	Default.chains[cid] = &chain{
+	Default.channels[cid] = &Channel{
 		ledger: ledger,
 		resources: &mockchannelconfig.Resources{
 			PolicyManagerVal: &mockpolicies.Manager{
