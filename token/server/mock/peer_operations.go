@@ -8,7 +8,6 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/peer"
 )
 
 type PeerOperations struct {
@@ -35,16 +34,6 @@ type PeerOperations struct {
 	}
 	getChannelConfigReturnsOnCall map[int]struct {
 		result1 channelconfig.Resources
-	}
-	GetChannelsInfoStub        func() []*peer.ChannelInfo
-	getChannelsInfoMutex       sync.RWMutex
-	getChannelsInfoArgsForCall []struct {
-	}
-	getChannelsInfoReturns struct {
-		result1 []*peer.ChannelInfo
-	}
-	getChannelsInfoReturnsOnCall map[int]struct {
-		result1 []*peer.ChannelInfo
 	}
 	GetCurrConfigBlockStub        func(string) *common.Block
 	getCurrConfigBlockMutex       sync.RWMutex
@@ -225,58 +214,6 @@ func (fake *PeerOperations) GetChannelConfigReturnsOnCall(i int, result1 channel
 	}
 	fake.getChannelConfigReturnsOnCall[i] = struct {
 		result1 channelconfig.Resources
-	}{result1}
-}
-
-func (fake *PeerOperations) GetChannelsInfo() []*peer.ChannelInfo {
-	fake.getChannelsInfoMutex.Lock()
-	ret, specificReturn := fake.getChannelsInfoReturnsOnCall[len(fake.getChannelsInfoArgsForCall)]
-	fake.getChannelsInfoArgsForCall = append(fake.getChannelsInfoArgsForCall, struct {
-	}{})
-	fake.recordInvocation("GetChannelsInfo", []interface{}{})
-	fake.getChannelsInfoMutex.Unlock()
-	if fake.GetChannelsInfoStub != nil {
-		return fake.GetChannelsInfoStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.getChannelsInfoReturns
-	return fakeReturns.result1
-}
-
-func (fake *PeerOperations) GetChannelsInfoCallCount() int {
-	fake.getChannelsInfoMutex.RLock()
-	defer fake.getChannelsInfoMutex.RUnlock()
-	return len(fake.getChannelsInfoArgsForCall)
-}
-
-func (fake *PeerOperations) GetChannelsInfoCalls(stub func() []*peer.ChannelInfo) {
-	fake.getChannelsInfoMutex.Lock()
-	defer fake.getChannelsInfoMutex.Unlock()
-	fake.GetChannelsInfoStub = stub
-}
-
-func (fake *PeerOperations) GetChannelsInfoReturns(result1 []*peer.ChannelInfo) {
-	fake.getChannelsInfoMutex.Lock()
-	defer fake.getChannelsInfoMutex.Unlock()
-	fake.GetChannelsInfoStub = nil
-	fake.getChannelsInfoReturns = struct {
-		result1 []*peer.ChannelInfo
-	}{result1}
-}
-
-func (fake *PeerOperations) GetChannelsInfoReturnsOnCall(i int, result1 []*peer.ChannelInfo) {
-	fake.getChannelsInfoMutex.Lock()
-	defer fake.getChannelsInfoMutex.Unlock()
-	fake.GetChannelsInfoStub = nil
-	if fake.getChannelsInfoReturnsOnCall == nil {
-		fake.getChannelsInfoReturnsOnCall = make(map[int]struct {
-			result1 []*peer.ChannelInfo
-		})
-	}
-	fake.getChannelsInfoReturnsOnCall[i] = struct {
-		result1 []*peer.ChannelInfo
 	}{result1}
 }
 
@@ -587,8 +524,6 @@ func (fake *PeerOperations) Invocations() map[string][][]interface{} {
 	defer fake.getApplicationConfigMutex.RUnlock()
 	fake.getChannelConfigMutex.RLock()
 	defer fake.getChannelConfigMutex.RUnlock()
-	fake.getChannelsInfoMutex.RLock()
-	defer fake.getChannelsInfoMutex.RUnlock()
 	fake.getCurrConfigBlockMutex.RLock()
 	defer fake.getCurrConfigBlockMutex.RUnlock()
 	fake.getLedgerMutex.RLock()

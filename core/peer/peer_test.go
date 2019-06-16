@@ -235,7 +235,7 @@ func TestCreateChannel(t *testing.T) {
 
 	Default.setCurrConfigBlock(block, testChainID)
 
-	channels := GetChannelsInfo()
+	channels := Default.GetChannelsInfo()
 	if len(channels) != 1 {
 		t.Fatalf("incorrect number of channels")
 	}
