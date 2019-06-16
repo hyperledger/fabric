@@ -67,8 +67,8 @@ type GossipImpl struct {
 	gossipMetrics     *metrics.GossipMetrics
 }
 
-// NewGossipService creates a gossip instance attached to a gRPC server
-func NewGossipService(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
+// New creates a gossip instance attached to a gRPC server
+func New(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 	mcs api.MessageCryptoService, selfIdentity api.PeerIdentityType,
 	secureDialOpts api.PeerSecureDialOpts, gossipMetrics *metrics.GossipMetrics) *GossipImpl {
 	var err error

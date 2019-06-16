@@ -133,7 +133,7 @@ func newGossipInstanceWithGRPCWithExternalEndpoint(id int, port int, gRPCServer 
 		ReconnectInterval:            discoveryConfig.ReconnectInterval,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
-	g := NewGossipService(conf, gRPCServer.Server(), mcs, mcs, selfID,
+	g := New(conf, gRPCServer.Server(), mcs, mcs, selfID,
 		secureDialOpts, metrics.NewGossipMetrics(&disabled.Provider{}))
 	go func() {
 		gRPCServer.Start()
