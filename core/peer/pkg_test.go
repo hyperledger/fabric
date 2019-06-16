@@ -169,7 +169,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		viper.Set("peer.tls.key.file", filepath.Join("testdata", "Org1-server1-key.pem"))
 		viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org1-cert.pem"))
 		viper.Set("peer.fileSystemPath", testDir)
-		err = peer.Default.CreateChainFromBlock(block, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
+		err = peer.Default.CreateChannel(block, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 		if err != nil {
 			t.Fatalf("Failed to create config block (%s)", err)
 		}
