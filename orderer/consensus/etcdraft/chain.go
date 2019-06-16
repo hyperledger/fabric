@@ -116,6 +116,9 @@ type Options struct {
 	BlockMetadata *etcdraft.BlockMetadata
 	Consenters    map[uint64]*etcdraft.Consenter
 
+	// MigrationInit is set when the node starts right after consensus-type migration
+	MigrationInit bool
+
 	Metrics *Metrics
 	Cert    []byte
 
@@ -320,7 +323,7 @@ func (c *Chain) Start() {
 	}
 
 	isJoin := c.support.Height() > 1
-	if isJoin && c.support.DetectConsensusMigration() {
+	if isJoin && c.opts.MigrationInit {
 		isJoin = false
 		c.logger.Infof("Consensus-type migration detected, starting new raft node on an existing channel; height=%d", c.support.Height())
 	}

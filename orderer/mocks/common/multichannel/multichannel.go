@@ -173,7 +173,3 @@ func (mcs *ConsenterSupport) Append(block *cb.Block) error {
 	mcs.Blocks <- block
 	return nil
 }
-
-func (mcs *ConsenterSupport) DetectConsensusMigration() bool {
-	return false
-}

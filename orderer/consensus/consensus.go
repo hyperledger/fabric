@@ -20,8 +20,8 @@ type Consenter interface {
 	// It will only be invoked for a given chain once per process.  In general, errors will be treated
 	// as irrecoverable and cause system shutdown.  See the description of Chain for more details
 	// The second argument to HandleChain is a pointer to the metadata stored on the `ORDERER` slot of
-	// the last block committed to the ledger of this Chain.  For a new chain, this metadata will be
-	// nil, as this field is not set on the genesis block
+	// the last block committed to the ledger of this Chain. For a new chain, or one which is migrated,
+	// this metadata will be nil (or contain a zero-length Value), as there is no prior metadata to report.
 	HandleChain(support ConsenterSupport, metadata *cb.Metadata) (Chain, error)
 }
 
@@ -113,7 +113,4 @@ type ConsenterSupport interface {
 	// Append appends a new block to the ledger in its raw form,
 	// unlike WriteBlock that also mutates its metadata.
 	Append(block *cb.Block) error
-
-	// DetectConsensusMigration identifies restart after consensus-type migration.
-	DetectConsensusMigration() bool
 }

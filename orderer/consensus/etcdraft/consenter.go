@@ -128,6 +128,11 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		return nil, errors.New("etcdraft options have not been provided")
 	}
 
+	isMigration := (metadata == nil || len(metadata.Value) == 0) && (support.Height() > 1)
+	if isMigration {
+		c.Logger.Debugf("Block metadata is nil at block height=%d, it is consensus-type migration", support.Height())
+	}
+
 	// determine raft replica set mapping for each node to its id
 	// for newly started chain we need to read and initialize raft
 	// metadata by creating mapping between conseter and its id.
@@ -183,6 +188,8 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 
 		BlockMetadata: blockMetadata,
 		Consenters:    consenters,
+
+		MigrationInit: isMigration,
 
 		WALDir:            path.Join(c.EtcdRaftConfig.WALDir, support.ChainID()),
 		SnapDir:           path.Join(c.EtcdRaftConfig.SnapDir, support.ChainID()),

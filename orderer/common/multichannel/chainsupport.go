@@ -8,7 +8,6 @@ package multichannel
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
@@ -16,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
@@ -79,137 +77,6 @@ func newChainSupport(
 	logger.Debugf("[channel: %s] Done creating channel support resources", cs.ChainID())
 
 	return cs
-}
-
-// DetectConsensusMigration identifies restart after consensus-type migration.
-// Restart after migration is detected by:
-// 1. The last block and the block before it carry a config-tx
-// 2. In both blocks we have ConsensusType.State == MAINTENANCE
-// 3. The ConsensusType.Type is different in these two blocks
-// 4. The last block metadata is empty
-func (cs *ChainSupport) DetectConsensusMigration() bool {
-	if !cs.ledgerResources.SharedConfig().Capabilities().ConsensusTypeMigration() {
-		logger.Debugf("[channel: %s] Orderer capability ConsensusTypeMigration is disabled", cs.ChainID())
-		return false
-	}
-
-	if cs.Height() <= 1 {
-		return false
-	}
-
-	lastConfigIndex, err := utils.GetLastConfigIndexFromBlock(cs.lastBlock)
-	if err != nil {
-		logger.Panicf("[channel: %s] Channel did not have appropriately encoded last config in its latest block: %s",
-			cs.ChainID(), err)
-	}
-	logger.Debugf("[channel: %s] lastBlockNumber=%d, lastConfigIndex=%d",
-		cs.support.ChainID(), cs.lastBlock.Header.Number, lastConfigIndex)
-	if lastConfigIndex != cs.lastBlock.Header.Number {
-		return false
-	}
-
-	currentState := cs.support.SharedConfig().ConsensusState()
-	logger.Debugf("[channel: %s] last block ConsensusState=%s", cs.ChainID(), currentState)
-	if currentState != orderer.ConsensusType_STATE_MAINTENANCE {
-		return false
-	}
-
-	metadata, err := utils.GetMetadataFromBlock(cs.lastBlock, cb.BlockMetadataIndex_ORDERER)
-	if err != nil {
-		logger.Panicf("[channel: %s] Error extracting orderer metadata: %s", cs.ChainID(), err)
-	}
-
-	metaLen := len(metadata.Value)
-	logger.Debugf("[channel: %s] metadata.Value length=%d", cs.ChainID(), metaLen)
-	if metaLen > 0 {
-		return false
-	}
-
-	prevBlock := blockledger.GetBlock(cs.Reader(), cs.lastBlock.Header.Number-1)
-	prevConfigIndex, err := utils.GetLastConfigIndexFromBlock(prevBlock)
-	if err != nil {
-		logger.Panicf("Channel did not have appropriately encoded last config in block %d: %s",
-			prevBlock.Header.Number, err)
-	}
-	if prevConfigIndex != prevBlock.Header.Number {
-		return false
-	}
-
-	prevPayload, prevChanHdr := cs.extractPayloadHeaderOrPanic(prevBlock)
-
-	switch cb.HeaderType(prevChanHdr.Type) {
-	case cb.HeaderType_ORDERER_TRANSACTION:
-		return false
-
-	case cb.HeaderType_CONFIG:
-		return cs.isConsensusTypeChange(prevPayload, prevChanHdr.ChannelId, prevBlock.Header.Number)
-
-	default:
-		logger.Panicf("[channel: %s] config block with unknown header type in block %d: %v",
-			cs.ChainID(), prevBlock.Header.Number, prevChanHdr.Type)
-		return false
-	}
-}
-
-func (cs *ChainSupport) extractPayloadHeaderOrPanic(prevBlock *cb.Block) (*cb.Payload, *cb.ChannelHeader) {
-	configTx, err := utils.ExtractEnvelope(prevBlock, 0)
-	if err != nil {
-		logger.Panicf("[channel: %s] Error extracting configtx from block %d: %s",
-			cs.ChainID(), prevBlock.Header.Number, err)
-	}
-	payload, err := utils.UnmarshalPayload(configTx.Payload)
-	if err != nil {
-		logger.Panicf("[channel: %s] configtx payload is invalid in block %d: %s",
-			cs.ChainID(), prevBlock.Header.Number, err)
-	}
-	if payload.Header == nil {
-		logger.Panicf("[channel: %s] configtx payload header is missing in block %d",
-			cs.ChainID(), prevBlock.Header.Number)
-	}
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
-	if err != nil {
-		logger.Panicf("[channel: %s] invalid channel header in block %d: %s",
-			cs.ChainID(), prevBlock.Header.Number, err)
-	}
-	return payload, chdr
-}
-
-func (cs *ChainSupport) isConsensusTypeChange(payload *cb.Payload, channelId string, headerNumber uint64) bool {
-	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-	if err != nil {
-		logger.Panicf("[channel: %s] Error extracting config envelope in block %d: %s",
-			cs.ChainID(), headerNumber, err)
-	}
-
-	bundle, err := cs.CreateBundle(channelId, configEnvelope.Config)
-	if err != nil {
-		logger.Panicf("[channel: %s] Error converting config to a bundle in block %d: %s",
-			cs.ChainID(), headerNumber, err)
-	}
-
-	oc, ok := bundle.OrdererConfig()
-	if !ok {
-		logger.Panicf("[channel: %s] OrdererConfig missing from bundle in block %d",
-			cs.ChainID(), headerNumber)
-	}
-
-	prevState := oc.ConsensusState()
-	logger.Debugf("[channel: %s] previous block ConsensusState=%s", cs.ChainID(), prevState)
-	if prevState != orderer.ConsensusType_STATE_MAINTENANCE {
-		return false
-	}
-
-	currentType := cs.SharedConfig().ConsensusType()
-	prevType := oc.ConsensusType()
-	logger.Debugf("[channel: %s] block ConsensusType: previous=%s, current=%s", cs.ChainID(), prevType, currentType)
-	if currentType == prevType {
-		return false
-	}
-
-	logger.Infof("[channel: %s] Consensus-type migration detected, ConsensusState=%s, ConsensusType changed from %s to %s",
-		cs.ChainID(), cs.support.SharedConfig().ConsensusState(), prevType, currentType)
-
-	return true
 }
 
 // Block returns a block with the following number,
