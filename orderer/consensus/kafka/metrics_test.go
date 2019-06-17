@@ -37,7 +37,7 @@ var _ = Describe("Metrics", func() {
 		It("initializes a new set of metrics", func() {
 			m := kafka.NewMetrics(fakeMetricsProvider, fakeMetricsRegistry)
 			Expect(m).NotTo(BeNil())
-			Expect(fakeMetricsProvider.NewGaugeCallCount()).To(Equal(11))
+			Expect(fakeMetricsProvider.NewGaugeCallCount()).To(Equal(12))
 			Expect(m.GoMetricsRegistry).To(Equal(fakeMetricsRegistry))
 		})
 	})

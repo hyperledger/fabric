@@ -36,6 +36,8 @@ func New(config localconfig.Kafka, metricsProvider metrics.Provider, healthCheck
 		config.Version,
 		defaultPartition)
 
+	metrics := NewMetrics(metricsProvider, brokerConfig.MetricRegistry)
+
 	return &consenterImpl{
 		brokerConfigVal: brokerConfig,
 		tlsConfigVal:    config.TLS,
@@ -46,7 +48,8 @@ func New(config localconfig.Kafka, metricsProvider metrics.Provider, healthCheck
 			ReplicationFactor: config.Topic.ReplicationFactor,
 		},
 		healthChecker: healthChecker,
-	}, NewMetrics(metricsProvider, brokerConfig.MetricRegistry)
+		metrics:       metrics,
+	}, metrics
 }
 
 // consenterImpl holds the implementation of type that satisfies the
@@ -60,6 +63,7 @@ type consenterImpl struct {
 	topicDetailVal  *sarama.TopicDetail
 	metricsProvider metrics.Provider
 	healthChecker   healthChecker
+	metrics         *Metrics
 }
 
 // HandleChain creates/returns a reference to a consensus.Chain object for the
@@ -85,6 +89,11 @@ type commonConsenter interface {
 	brokerConfig() *sarama.Config
 	retryOptions() localconfig.Retry
 	topicDetail() *sarama.TopicDetail
+	Metrics() *Metrics
+}
+
+func (consenter *consenterImpl) Metrics() *Metrics {
+	return consenter.metrics
 }
 
 func (consenter *consenterImpl) brokerConfig() *sarama.Config {

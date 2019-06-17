@@ -98,6 +98,9 @@ The following metrics are currently exported for consumption by Prometheus.
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | consensus_kafka_incoming_byte_rate                  | gauge     | Bytes/second read off brokers.                             | broker_id          |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| consensus_kafka_last_offset_persisted               | gauge     | The offset specified in the block metadata of the most     | channel            |
+|                                                     |           | recently committed block.                                  |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | consensus_kafka_outgoing_byte_rate                  | gauge     | Bytes/second written to brokers.                           | broker_id          |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | consensus_kafka_record_send_rate                    | gauge     | The number of records per second sent to topics.           | topic              |
@@ -341,6 +344,9 @@ associated with the metric.
 | consensus.kafka.compression_ratio.%{topic}                                              | gauge     | The mean compression ratio (as percentage) for topics.     |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.kafka.incoming_byte_rate.%{broker_id}                                         | gauge     | Bytes/second read off brokers.                             |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.kafka.last_offset_persisted.%{channel}                                        | gauge     | The offset specified in the block metadata of the most     |
+|                                                                                         |           | recently committed block.                                  |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.kafka.outgoing_byte_rate.%{broker_id}                                         | gauge     | Bytes/second written to brokers.                           |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+

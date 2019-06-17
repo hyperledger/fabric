@@ -63,6 +63,8 @@ func newChain(
 		close(doneReprocessingMsgInFlight)
 	}
 
+	consenter.Metrics().LastOffsetPersisted.With("channel", support.ChainID()).Set(float64(lastOffsetPersisted))
+
 	return &chainImpl{
 		consenter:                   consenter,
 		ConsenterSupport:            support,
@@ -653,11 +655,11 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 
 		// Commit the first block
 		block := chain.CreateNextBlock(batches[0])
-		metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+		metadata := &ab.KafkaMetadata{
 			LastOffsetPersisted:         offset,
 			LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
 			LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
-		})
+		}
 		chain.WriteBlock(block, metadata)
 		chain.lastCutBlockNumber++
 		logger.Debugf("[channel: %s] Batch filled, just cut block [%d] - last persisted offset is now %d", chain.ChainID(), chain.lastCutBlockNumber, offset)
@@ -668,11 +670,11 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			offset++
 
 			block := chain.CreateNextBlock(batches[1])
-			metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+			metadata := &ab.KafkaMetadata{
 				LastOffsetPersisted:         offset,
 				LastOriginalOffsetProcessed: newOffset,
 				LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
-			})
+			}
 			chain.WriteBlock(block, metadata)
 			chain.lastCutBlockNumber++
 			logger.Debugf("[channel: %s] Batch filled, just cut block [%d] - last persisted offset is now %d", chain.ChainID(), chain.lastCutBlockNumber, offset)
@@ -693,11 +695,11 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		if batch != nil {
 			logger.Debugf("[channel: %s] Cut pending messages into block", chain.ChainID())
 			block := chain.CreateNextBlock(batch)
-			metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+			metadata := &ab.KafkaMetadata{
 				LastOffsetPersisted:         receivedOffset - 1,
 				LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
 				LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
-			})
+			}
 			chain.WriteBlock(block, metadata)
 			chain.lastCutBlockNumber++
 		}
@@ -705,11 +707,11 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		logger.Debugf("[channel: %s] Creating isolated block for config message", chain.ChainID())
 		chain.lastOriginalOffsetProcessed = newOffset
 		block := chain.CreateNextBlock([]*cb.Envelope{message})
-		metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+		metadata := &ab.KafkaMetadata{
 			LastOffsetPersisted:         receivedOffset,
 			LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
 			LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
-		})
+		}
 		chain.WriteConfigBlock(block, metadata)
 		chain.lastCutBlockNumber++
 		chain.timer = nil
@@ -908,10 +910,10 @@ func (chain *chainImpl) processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, r
 				" no pending requests though; this might indicate a bug", chain.lastCutBlockNumber+1)
 		}
 		block := chain.CreateNextBlock(batch)
-		metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+		metadata := &ab.KafkaMetadata{
 			LastOffsetPersisted:         receivedOffset,
 			LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
-		})
+		}
 		chain.WriteBlock(block, metadata)
 		chain.lastCutBlockNumber++
 		logger.Debugf("[channel: %s] Proper time-to-cut received, just cut block [%d]", chain.ChainID(), chain.lastCutBlockNumber)
@@ -922,6 +924,20 @@ func (chain *chainImpl) processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, r
 	}
 	logger.Debugf("[channel: %s] Ignoring stale time-to-cut-message for block [%d]", chain.ChainID(), ttcNumber)
 	return nil
+}
+
+// WriteBlock acts as a wrapper around the consenter support WriteBlock, encoding the metadata,
+// and updating the metrics.
+func (chain *chainImpl) WriteBlock(block *cb.Block, metadata *ab.KafkaMetadata) {
+	chain.ConsenterSupport.WriteBlock(block, utils.MarshalOrPanic(metadata))
+	chain.consenter.Metrics().LastOffsetPersisted.With("channel", chain.ChainID()).Set(float64(metadata.LastOffsetPersisted))
+}
+
+// WriteBlock acts as a wrapper around the consenter support WriteConfigBlock, encoding the metadata,
+// and updating the metrics.
+func (chain *chainImpl) WriteConfigBlock(block *cb.Block, metadata *ab.KafkaMetadata) {
+	chain.ConsenterSupport.WriteConfigBlock(block, utils.MarshalOrPanic(metadata))
+	chain.consenter.Metrics().LastOffsetPersisted.With("channel", chain.ChainID()).Set(float64(metadata.LastOffsetPersisted))
 }
 
 // Post a CONNECT message to the channel using the given retry options. This
