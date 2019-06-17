@@ -963,7 +963,7 @@ func TestMutualAuth(t *testing.T) {
 	}
 }
 
-func TestAppendRemoveWithInvalidBytes(t *testing.T) {
+func TestAppendWithInvalidBytes(t *testing.T) {
 	// TODO: revisit when msp serialization without PEM type is resolved
 	t.Skip()
 	t.Parallel()
@@ -980,25 +980,16 @@ func TestAppendRemoveWithInvalidBytes(t *testing.T) {
 	srv, err := comm.NewGRPCServerFromListener(lis, serverConfig)
 	assert.NoError(t, err, "failed to create server from listener")
 
-	// append/remove nonPEMData
+	// append nonPEMData
 	err = srv.AppendClientRootCAs(noPEMData)
 	assert.Error(t, err, "expected error - no pem data")
 
-	err = srv.RemoveClientRootCAs(noPEMData)
-	assert.Error(t, err, "expected error - no pem data")
-
-	// apend/remove PEM without CERTIFICATE header
+	// apend PEM without CERTIFICATE header
 	err = srv.AppendClientRootCAs([][]byte{[]byte(pemNoCertificateHeader)})
 	assert.Error(t, err, "expected error - missing CERTIFCATE header")
 
-	err = srv.RemoveClientRootCAs([][]byte{[]byte(pemNoCertificateHeader)})
-	assert.Error(t, err, "expected error - missing CERTIFCATE header")
-
-	// append/remove bad PEM data
+	// append bad PEM data
 	err = srv.AppendClientRootCAs([][]byte{[]byte(badPEM)})
-	assert.Error(t, err, "expected error - parsing bad PEM data")
-
-	err = srv.RemoveClientRootCAs([][]byte{[]byte(badPEM)})
 	assert.Error(t, err, "expected error - parsing bad PEM data")
 }
 
@@ -1048,58 +1039,8 @@ func TestAppendClientRootCAs(t *testing.T) {
 	}
 }
 
-func TestRemoveClientRootCAs(t *testing.T) {
-	t.Parallel()
-
-	// get the config for one of our Org1 test servers and include client CAs from
-	// Org2 child orgs
-	testServers := testOrgs[0].testServers(
-		[][]byte{testOrgs[1].childOrgs[0].rootCA, testOrgs[1].childOrgs[1].rootCA},
-	)
-	serverConfig := testServers[0].config
-	lis, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err, "failed to create listener")
-	defer lis.Close()
-	address := lis.Addr().String()
-
-	// create a GRPCServer
-	srv, err := comm.NewGRPCServerFromListener(lis, serverConfig)
-	assert.NoError(t, err, "failed to create GRPCServer")
-
-	// register the GRPC test server and start the GRPCServer
-	testpb.RegisterEmptyServiceServer(srv.Server(), &emptyServiceServer{})
-
-	go srv.Start()
-	defer srv.Stop()
-
-	// should not be needed but just in case
-	time.Sleep(10 * time.Millisecond)
-
-	//try to connect with trusted clients from Org2 children
-	clientConfig1 := testOrgs[1].childOrgs[0].trustedClients([][]byte{testOrgs[0].rootCA})[0]
-	clientConfig2 := testOrgs[1].childOrgs[1].trustedClients([][]byte{testOrgs[0].rootCA})[0]
-	clientConfigs := []*tls.Config{clientConfig1, clientConfig2}
-
-	for _, clientConfig := range clientConfigs {
-		// we expect success as these are trusted clients
-		_, err = invokeEmptyCall(address, grpc.WithTransportCredentials(credentials.NewTLS(clientConfig)))
-		assert.NoError(t, err, "expected client connection to be accepted")
-	}
-
-	// now remove the root CAs for the untrusted clients
-	err = srv.RemoveClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA, testOrgs[1].childOrgs[1].rootCA})
-	assert.NoError(t, err, "failed to remove client root CAs")
-
-	// now try to connect again
-	for _, clientConfig := range clientConfigs {
-		// we expect failure as these are now untrusted clients
-		_, err = invokeEmptyCall(address, grpc.WithTransportCredentials(credentials.NewTLS(clientConfig)))
-		assert.Error(t, err, "expected untrusted client to be rejected")
-	}
-}
-
 // test for race conditions - test locally using "go test -race -run TestConcurrentAppendRemoveSet"
-func TestConcurrentAppendRemoveSet(t *testing.T) {
+func TestConcurrentAppendSet(t *testing.T) {
 	t.Parallel()
 
 	// get the config for one of our Org1 test servers and include client CAs from
@@ -1119,13 +1060,7 @@ func TestConcurrentAppendRemoveSet(t *testing.T) {
 	go srv.Start()
 	defer srv.Stop()
 
-	errCh := make(chan error, 4)
-	go func() {
-		// remove the root CAs for the untrusted clients
-		err := srv.RemoveClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA, testOrgs[1].childOrgs[1].rootCA})
-		errCh <- errors.WithMessage(err, "failed to remove client root CAs")
-	}()
-
+	errCh := make(chan error, 3)
 	go func() {
 		// set client root CAs
 		err := srv.SetClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA, testOrgs[1].childOrgs[1].rootCA})
@@ -1144,7 +1079,7 @@ func TestConcurrentAppendRemoveSet(t *testing.T) {
 		errCh <- errors.WithMessage(err, "failed to set client root CAs")
 	}()
 
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 3; i++ {
 		timer := time.NewTimer(5 * time.Second)
 		select {
 		case <-timer.C:

@@ -261,52 +261,6 @@ func (gServer *GRPCServer) appendClientRootCA(clientRoot []byte) error {
 	return nil
 }
 
-// RemoveClientRootCAs removes PEM-encoded X509 certificate authorities from
-// the list of authorities used to verify client certificates
-func (gServer *GRPCServer) RemoveClientRootCAs(clientRoots [][]byte) error {
-	gServer.lock.Lock()
-	defer gServer.lock.Unlock()
-	//remove from internal map
-	for _, clientRoot := range clientRoots {
-		err := gServer.removeClientRootCA(clientRoot)
-		if err != nil {
-			return err
-		}
-	}
-
-	//create a new CertPool and populate with current clientRootCAs
-	certPool := x509.NewCertPool()
-	for _, clientRoot := range gServer.clientRootCAs {
-		certPool.AddCert(clientRoot)
-	}
-
-	//replace the current ClientCAs pool
-	gServer.tlsConfig.ClientCAs = certPool
-	return nil
-}
-
-// internal function to remove a PEM-encoded clientRootCA
-func (gServer *GRPCServer) removeClientRootCA(clientRoot []byte) error {
-
-	certs, subjects, err := pemToX509Certs(clientRoot)
-	if err != nil {
-		return errors.WithMessage(err, "failed to remove client root certificate(s)")
-	}
-
-	if len(certs) < 1 {
-		return errors.New("No client root certificates found")
-	}
-
-	for i, subject := range subjects {
-		//remove it from our clientRootCAs map using subject as key
-		//check to see if we have match
-		if certs[i].Equal(gServer.clientRootCAs[subject]) {
-			delete(gServer.clientRootCAs, subject)
-		}
-	}
-	return nil
-}
-
 // SetClientRootCAs sets the list of authorities used to verify client
 // certificates based on a list of PEM-encoded X509 certificate authorities
 func (gServer *GRPCServer) SetClientRootCAs(clientRoots [][]byte) error {
