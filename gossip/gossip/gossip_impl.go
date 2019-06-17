@@ -681,7 +681,7 @@ func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
 	if msg.IsChannelRestricted() {
 		gc := g.chanState.getGossipChannelByChainID(msg.Channel)
 		if gc == nil {
-			g.logger.Warning("Failed obtaining gossipChannel of", msg.Channel, "aborting")
+			g.logger.Warningf("Failed obtaining gossipChannel of %s aborting", msg.Channel)
 			return
 		}
 		if msg.IsDataMsg() {
