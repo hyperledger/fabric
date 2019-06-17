@@ -55,14 +55,10 @@ func NewStandardChannel(support StandardChannelSupport, filters *RuleSet) *Stand
 // In maintenance mode, require the signature of /Channel/Orderer/Writer. This will filter out configuration
 // changes that are not related to consensus-type migration (e.g on /Channel/Application).
 func CreateStandardChannelFilters(filterSupport channelconfig.Resources) *RuleSet {
-	ordererConfig, ok := filterSupport.OrdererConfig()
-	if !ok {
-		logger.Panicf("Missing orderer config")
-	}
 	return NewRuleSet([]Rule{
 		EmptyRejectRule,
 		NewExpirationRejectRule(filterSupport),
-		NewSizeFilter(ordererConfig),
+		NewSizeFilter(filterSupport),
 		NewSigFilter(policies.ChannelWriters, policies.ChannelOrdererWriters, filterSupport),
 	})
 }
