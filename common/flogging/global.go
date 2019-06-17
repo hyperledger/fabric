@@ -48,9 +48,9 @@ func Reset() {
 	Global.Apply(Config{})
 }
 
-// GetLoggerLevel gets the current logging level for the logger with the
+// LoggerLevel gets the current logging level for the logger with the
 // provided name.
-func GetLoggerLevel(loggerName string) string {
+func LoggerLevel(loggerName string) string {
 	return Global.Level(loggerName).String()
 }
 

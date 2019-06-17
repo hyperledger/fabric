@@ -99,9 +99,9 @@ func TestGlobalDefaultLevel(t *testing.T) {
 	assert.Equal(t, "info", flogging.DefaultLevel())
 }
 
-func TestGlobalGetLoggerLevel(t *testing.T) {
+func TestGlobalLoggerLevel(t *testing.T) {
 	flogging.Reset()
-	assert.Equal(t, "info", flogging.GetLoggerLevel("some.logger"))
+	assert.Equal(t, "info", flogging.LoggerLevel("some.logger"))
 }
 
 func TestGlobalMustGetLogger(t *testing.T) {
