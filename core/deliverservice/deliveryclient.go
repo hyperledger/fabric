@@ -282,19 +282,18 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 
 func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.ClientConn, error) {
 	return func(endpoint string) (*grpc.ClientConn, error) {
-		dialOpts := []grpc.DialOption{grpc.WithBlock()}
-		// set max send/recv msg sizes
-		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
-			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
+		dialOpts := []grpc.DialOption{
+			grpc.WithBlock(),
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)),
+		}
+
 		// set the keepalive options
 		kaOpts := comm.DefaultKeepaliveOptions
 		if viper.IsSet("peer.keepalive.deliveryClient.interval") {
-			kaOpts.ClientInterval = viper.GetDuration(
-				"peer.keepalive.deliveryClient.interval")
+			kaOpts.ClientInterval = viper.GetDuration("peer.keepalive.deliveryClient.interval")
 		}
 		if viper.IsSet("peer.keepalive.deliveryClient.timeout") {
-			kaOpts.ClientTimeout = viper.GetDuration(
-				"peer.keepalive.deliveryClient.timeout")
+			kaOpts.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
 		}
 		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
 
@@ -307,6 +306,7 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		} else {
 			dialOpts = append(dialOpts, grpc.WithInsecure())
 		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), getConnectionTimeout())
 		defer cancel()
 		return grpc.DialContext(ctx, endpoint, dialOpts...)
