@@ -34,7 +34,7 @@ func TestPrintQueryApprovalStatusResponse(t *testing.T) {
 
 	proposalResponse = &peer.ProposalResponse{
 		Response: &peer.Response{
-			Payload: protoutil.MarshalOrPanic(&lifecycle.QueryApprovalStatusResults{
+			Payload: protoutil.MarshalOrPanic(&lifecycle.SimulateCommitChaincodeDefinitionResult{
 				Approved: map[string]bool{
 					"org2": false,
 					"org1": true,

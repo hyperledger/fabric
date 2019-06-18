@@ -243,9 +243,10 @@ type ExternalFunctions struct {
 	InstallListener InstallListener
 }
 
-// QueryApprovalStatus takes a chaincode definition, checks that its sequence number is the next allowable sequence number
-// and checks which organizations agree with the definition
-func (ef *ExternalFunctions) QueryApprovalStatus(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
+// SimulateCommitChaincodeDefinition takes a chaincode definition, checks that
+// its sequence number is the next allowable sequence number and checks which
+// organizations agree with the definition.
+func (ef *ExternalFunctions) SimulateCommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
 	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, ccname, "Sequence", publicState)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get current sequence")
@@ -270,7 +271,7 @@ func (ef *ExternalFunctions) QueryApprovalStatus(chname, ccname string, cd *Chai
 		agreement[i] = match
 	}
 
-	logger.Infof("successfully queried approval status for definition %s, name '%s' on channel '%s'", cd, ccname, chname)
+	logger.Infof("successfully simulated committing chaincode definition %s, name '%s' on channel '%s'", cd, ccname, chname)
 
 	return agreement, nil
 }
@@ -280,7 +281,7 @@ func (ef *ExternalFunctions) QueryApprovalStatus(chname, ccname string, cd *Chai
 // It is the responsibility of the caller to check the agreement to determine if the result is valid (typically
 // this means checking that the peer's own org is in agreement.)
 func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
-	agreement, err := ef.QueryApprovalStatus(chname, ccname, cd, publicState, orgStates)
+	agreement, err := ef.SimulateCommitChaincodeDefinition(chname, ccname, cd, publicState, orgStates)
 	if err != nil {
 		return nil, err
 	}

@@ -179,7 +179,7 @@ type ApprovalStatusOutput struct {
 // printQueryApprovalStatusResponse prints the information included in the response
 // from the peer.
 func printQueryApprovalStatusResponse(proposalResponse *pb.ProposalResponse, out io.Writer) error {
-	qasr := &lb.QueryApprovalStatusResults{}
+	qasr := &lb.SimulateCommitChaincodeDefinitionResult{}
 	err := proto.Unmarshal(proposalResponse.Response.Payload, qasr)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal QueryApprovalStatusResults")
@@ -231,7 +231,7 @@ func (a *QueryApprovalStatus) createProposal(inputTxID string) (*pb.SignedPropos
 		return nil, errors.New("nil signer provided")
 	}
 
-	args := &lb.QueryApprovalStatusArgs{
+	args := &lb.SimulateCommitChaincodeDefinitionArgs{
 		Name:                a.Input.Name,
 		Version:             a.Input.Version,
 		Sequence:            a.Input.Sequence,
@@ -246,7 +246,7 @@ func (a *QueryApprovalStatus) createProposal(inputTxID string) (*pb.SignedPropos
 	if err != nil {
 		return nil, err
 	}
-	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte("QueryApprovalStatus"), argsBytes}}
+	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte("SimulateCommitChaincodeDefinition"), argsBytes}}
 
 	cis := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{

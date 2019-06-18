@@ -359,14 +359,14 @@ var _ = Describe("EndToEndACL", func() {
 		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, org1Peer0, org2Peer0)
 
 		//
-		// when the ACL policy for QueryApprovalStatus is not satisified
+		// when the ACL policy for SimulateCommitChaincodeDefinition is not satisified
 		//
-		By("setting the query approval status ACL policy to Org1/Admins")
-		policyName = resources.Lifecycle_QueryApprovalStatus
+		By("setting the simulate commit chaincode definition ACL policy to Org1/Admins")
+		policyName = resources.Lifecycle_SimulateCommitChaincodeDefinition
 		policy = "/Channel/Application/Org1/Admins"
 		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
-		By("querying the approval status as a forbidden Org2 Admin identity")
+		By("simulating the commit of a chaincode definition as a forbidden Org2 Admin identity")
 		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeQueryApprovalStatus{
 			ChannelID:           "testchannel",
 			Name:                chaincode.Name,
@@ -384,7 +384,7 @@ var _ = Describe("EndToEndACL", func() {
 		Expect(sess.Err).To(gbytes.Say(`\QError: query failed with status: 500 - Failed to authorize invocation due to failed ACL check: failed evaluating policy on signed data during check policy [/Channel/Application/Org1/Admins]: [signature set did not satisfy policy]\E`))
 
 		//
-		// when the ACL policy for QueryApprovalStatus is satisified
+		// when the ACL policy for SimulateCommitChaincodeDefinition is satisified
 		//
 		nwo.EnsureApproved(network, "testchannel", chaincode, network.PeerOrgs(), org1Peer0)
 

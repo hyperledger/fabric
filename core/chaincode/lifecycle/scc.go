@@ -84,9 +84,10 @@ type SCCFunctions interface {
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
 	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID persistenceintf.PackageID, publicState ReadableState, orgState ReadWritableState) error
 
-	// QueryApprovalStatus returns an array of boolean to signal whether the orgs
-	// whose orgStates was supplied as argument have approveed the specified definition
-	QueryApprovalStatus(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
+	// SimulateCommitChaincodeDefinition returns an array of boolean to signal
+	// whether the orgs whose orgStates was supplied as argument have approved
+	// the specified definition.
+	SimulateCommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
 
 	// CommitChaincodeDefinition records a new chaincode definition into the public state and returns the orgs which agreed with that definition.
 	CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
@@ -381,9 +382,9 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 	return &lb.ApproveChaincodeDefinitionForMyOrgResult{}, nil
 }
 
-// QueryApprovalStatus is a SCC function that may be dispatched to the underlying
-// lifecycle implementation
-func (i *Invocation) QueryApprovalStatus(input *lb.QueryApprovalStatusArgs) (proto.Message, error) {
+// SimulateCommitChaincodeDefinition is a SCC function that may be dispatched
+// to the underlying lifecycle implementation.
+func (i *Invocation) SimulateCommitChaincodeDefinition(input *lb.SimulateCommitChaincodeDefinitionArgs) (proto.Message, error) {
 	if i.ApplicationConfig == nil {
 		return nil, errors.Errorf("no application config for channel '%s'", i.Stub.GetChannelID())
 	}
@@ -413,12 +414,12 @@ func (i *Invocation) QueryApprovalStatus(input *lb.QueryApprovalStatusArgs) (pro
 		Collections: input.Collections,
 	}
 
-	logger.Debugf("received invocation of QueryApprovalStatus on channel '%s' for definition '%s'",
+	logger.Debugf("received invocation of SimulateCommitChaincodeDefinition on channel '%s' for definition '%s'",
 		i.Stub.GetChannelID(),
 		cd,
 	)
 
-	approved, err := i.SCC.Functions.QueryApprovalStatus(
+	approved, err := i.SCC.Functions.SimulateCommitChaincodeDefinition(
 		i.Stub.GetChannelID(),
 		input.Name,
 		cd,
@@ -434,7 +435,7 @@ func (i *Invocation) QueryApprovalStatus(input *lb.QueryApprovalStatusArgs) (pro
 		orgApproval[org] = approved[i]
 	}
 
-	return &lb.QueryApprovalStatusResults{
+	return &lb.SimulateCommitChaincodeDefinitionResult{
 		Approved: orgApproval,
 	}, nil
 }

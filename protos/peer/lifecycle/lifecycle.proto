@@ -108,9 +108,9 @@ message CommitChaincodeDefinitionArgs {
 message CommitChaincodeDefinitionResult {
 }
 
-// QueryApprovalStatusArgs is the message used as arguments to
-// `_lifecycle.QueryApprovalStatus`
-message QueryApprovalStatusArgs {
+// SimulateCommitChaincodeDefinitionArgs is the message used as arguments to
+// `_lifecycle.SimulateCommitChaincodeDefinition`.
+message SimulateCommitChaincodeDefinitionArgs {
     int64 sequence = 1;
     string name = 2;
     string version = 3;
@@ -121,11 +121,10 @@ message QueryApprovalStatusArgs {
     bool init_required = 8;
 }
 
-// QueryApprovalStatusResults is the message returned by
-// `_lifecycle.QueryApprovalStatus`. It returns a map of
-// orgs to their approval (true/false) for the definition
-// supplied as args
-message QueryApprovalStatusResults {
+// SimulateCommitChaincodeDefinitionResult is the message returned by
+// `_lifecycle.SimulateCommitChaincodeDefinition`. It returns a map of
+// orgs to their approval (true/false) for the definition supplied as args.
+message SimulateCommitChaincodeDefinitionResult{
     map<string, bool> approved = 1;
 }
 

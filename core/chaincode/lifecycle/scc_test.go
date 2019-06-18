@@ -1134,16 +1134,16 @@ var _ = Describe("SCC", func() {
 			})
 		})
 
-		Describe("QueryApprovalStatus", func() {
+		Describe("SimulateCommitChaincodeDefinition", func() {
 			var (
 				err            error
-				arg            *lb.QueryApprovalStatusArgs
+				arg            *lb.SimulateCommitChaincodeDefinitionArgs
 				marshaledArg   []byte
 				fakeOrgConfigs []*mock.ApplicationOrgConfig
 			)
 
 			BeforeEach(func() {
-				arg = &lb.QueryApprovalStatusArgs{
+				arg = &lb.SimulateCommitChaincodeDefinitionArgs{
 					Sequence:            7,
 					Name:                "name",
 					Version:             "version",
@@ -1157,7 +1157,7 @@ var _ = Describe("SCC", func() {
 				marshaledArg, err = proto.Marshal(arg)
 				Expect(err).NotTo(HaveOccurred())
 
-				fakeStub.GetArgsReturns([][]byte{[]byte("QueryApprovalStatus"), marshaledArg})
+				fakeStub.GetArgsReturns([][]byte{[]byte("SimulateCommitChaincodeDefinition"), marshaledArg})
 
 				fakeOrgConfigs = []*mock.ApplicationOrgConfig{{}, {}}
 				fakeOrgConfigs[0].MSPIDReturns("fake-mspid")
@@ -1168,14 +1168,14 @@ var _ = Describe("SCC", func() {
 					"org1": fakeOrgConfigs[1],
 				})
 
-				fakeSCCFuncs.QueryApprovalStatusReturns([]bool{true, true}, nil)
+				fakeSCCFuncs.SimulateCommitChaincodeDefinitionReturns([]bool{true, true}, nil)
 			})
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
 				Expect(res.Message).To(Equal(""))
 				Expect(res.Status).To(Equal(int32(200)))
-				payload := &lb.QueryApprovalStatusResults{}
+				payload := &lb.SimulateCommitChaincodeDefinitionResult{}
 				err = proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1185,8 +1185,8 @@ var _ = Describe("SCC", func() {
 				Expect(orgApprovals["fake-mspid"]).To(BeTrue())
 				Expect(orgApprovals["other-mspid"]).To(BeTrue())
 
-				Expect(fakeSCCFuncs.QueryApprovalStatusCallCount()).To(Equal(1))
-				chname, ccname, cd, pubState, orgStates := fakeSCCFuncs.QueryApprovalStatusArgsForCall(0)
+				Expect(fakeSCCFuncs.SimulateCommitChaincodeDefinitionCallCount()).To(Equal(1))
+				chname, ccname, cd, pubState, orgStates := fakeSCCFuncs.SimulateCommitChaincodeDefinitionArgsForCall(0)
 				Expect(chname).To(Equal("test-channel"))
 				Expect(ccname).To(Equal("name"))
 				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
@@ -1230,20 +1230,20 @@ var _ = Describe("SCC", func() {
 					It("returns an error", func() {
 						res := scc.Invoke(fakeStub)
 						Expect(res.Status).To(Equal(int32(500)))
-						Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovalStatus': no application config for channel ''"))
+						Expect(res.Message).To(Equal("failed to invoke backing implementation of 'SimulateCommitChaincodeDefinition': no application config for channel ''"))
 					})
 				})
 			})
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryApprovalStatusReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.SimulateCommitChaincodeDefinitionReturns(nil, fmt.Errorf("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovalStatus': underlying-error"))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'SimulateCommitChaincodeDefinition': underlying-error"))
 				})
 			})
 		})

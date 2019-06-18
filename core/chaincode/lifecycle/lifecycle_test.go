@@ -676,7 +676,7 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 	})
 
-	Describe("QueryApprovalStatus", func() {
+	Describe("SimulateCommitChaincodeDefinition", func() {
 		var (
 			fakePublicState *mock.ReadWritableState
 			fakeOrgStates   []*mock.ReadWritableState
@@ -730,8 +730,8 @@ var _ = Describe("ExternalFunctions", func() {
 			resources.Serializer.Serialize("namespaces", "cc-name#5", &lifecycle.ChaincodeParameters{}, fakeOrgStates[1])
 		})
 
-		It("applies the chaincode definition and returns the agreements", func() {
-			agreements, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+		It("simulates committing the chaincode definition and returns the agreements", func() {
+			agreements, err := ef.SimulateCommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(agreements).To(Equal([]bool{true, false}))
 		})
@@ -742,7 +742,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("wraps and returns an error", func() {
-				_, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				_, err := ef.SimulateCommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("serialization check failed for key cc-name#5: could not get value for key namespaces/metadata/cc-name#5: bad bad failure"))
 			})
@@ -777,7 +777,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("applies the chaincode definition and returns the agreements", func() {
-				agreements, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				agreements, err := ef.SimulateCommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(agreements).To(Equal([]bool{true, false}))
 			})
@@ -788,7 +788,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					_, err := ef.SimulateCommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("could not set defaults for chaincode definition in " +
 						"channel my-channel: Policy '/Channel/Application/Endorsement' must be defined " +
@@ -802,7 +802,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					_, err := ef.SimulateCommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("could not get channel config for channel 'my-channel'"))
 
@@ -815,7 +815,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("wraps and returns the error", func() {
-					_, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					_, err := ef.SimulateCommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 					Expect(err).To(MatchError("could not get current sequence: could not get state for key namespaces/fields/cc-name/Sequence: getstate-error"))
 				})
 			})
@@ -836,7 +836,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := ef.QueryApprovalStatus("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					_, err := ef.SimulateCommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 					Expect(err).To(MatchError("requested sequence is 5, but new definition must be sequence 4"))
 				})
 			})
