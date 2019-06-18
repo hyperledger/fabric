@@ -39,6 +39,10 @@ var _ = Describe("QueryCommitted", func() {
 				Version:           "a-version",
 				EndorsementPlugin: "e-plugin",
 				ValidationPlugin:  "v-plugin",
+				Approved: map[string]bool{
+					"whatkindoforgisthis": true,
+					"nowaydoiapprove":     false,
+				},
 			}
 
 			mockResultBytes, err := proto.Marshal(mockResult)
@@ -89,6 +93,10 @@ var _ = Describe("QueryCommitted", func() {
 					Version:           "a-version",
 					EndorsementPlugin: "e-plugin",
 					ValidationPlugin:  "v-plugin",
+					Approved: map[string]bool{
+						"whatkindoforgisthis": true,
+						"nowaydoiapprove":     false,
+					},
 				}
 				json, err := json.MarshalIndent(expectedOutput, "", "\t")
 				Eventually(committedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf("%s", string(json))))

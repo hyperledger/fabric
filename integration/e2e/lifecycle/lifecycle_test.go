@@ -263,7 +263,7 @@ var _ = Describe("Lifecycle", func() {
 
 		By("org3 approving the chaincode definition")
 		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, network.PeersInOrg("org3")...)
-		nwo.EnsureChaincodeCommitted(network, "testchannel", chaincode.Name, chaincode.Version, chaincode.Sequence, org3peer1)
+		nwo.EnsureChaincodeCommitted(network, "testchannel", chaincode.Name, chaincode.Version, chaincode.Sequence, []*nwo.Organization{network.Organization("org1"), network.Organization("org2"), network.Organization("org3")}, org3peer1)
 
 		By("ensuring chaincode can be invoked and queried by org3")
 		RunQueryInvokeQueryWithAddresses(network, orderer, org3peer1, 80, org3AndOrg1PeerAddresses...)

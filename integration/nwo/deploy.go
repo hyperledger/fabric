@@ -265,19 +265,28 @@ func CommitChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 	for i := 0; i < len(peerAddresses); i++ {
 		Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
 	}
-	EnsureChaincodeCommitted(n, channel, chaincode.Name, chaincode.Version, chaincode.Sequence, checkPeers...)
+	checkOrgs := []*Organization{}
+	for org := range commitOrgs {
+		checkOrgs = append(checkOrgs, n.Organization(org))
+	}
+	EnsureChaincodeCommitted(n, channel, chaincode.Name, chaincode.Version, chaincode.Sequence, checkOrgs, checkPeers...)
 }
 
 // EnsureChaincodeCommitted polls each supplied peer until the chaincode definition
 // has been committed to the peer's ledger.
-func EnsureChaincodeCommitted(n *Network, channel, name, version, sequence string, peers ...*Peer) {
+func EnsureChaincodeCommitted(n *Network, channel, name, version, sequence string, checkOrgs []*Organization, peers ...*Peer) {
 	for _, p := range peers {
 		sequenceInt, err := strconv.ParseInt(sequence, 10, 64)
 		Expect(err).NotTo(HaveOccurred())
+		approvedKeys := Keys{}
+		for _, org := range checkOrgs {
+			approvedKeys[org.MSPID] = BeTrue()
+		}
 		Eventually(listCommitted(n, p, channel, name), n.EventuallyTimeout).Should(
 			MatchFields(IgnoreExtras, Fields{
 				"Version":  Equal(version),
 				"Sequence": Equal(sequenceInt),
+				"Approved": MatchKeys(IgnoreExtras, approvedKeys),
 			}),
 		)
 	}
