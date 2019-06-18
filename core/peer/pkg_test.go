@@ -173,6 +173,8 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		},
 	}
 
+	peer.Default.CredentialSupport = comm.GetCredentialSupport()
+
 	testDir, err := ioutil.TempDir("", "peer-pkg")
 	require.NoError(t, err)
 	defer os.RemoveAll(testDir)
