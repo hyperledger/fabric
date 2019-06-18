@@ -26,7 +26,6 @@ type CredentialSupport struct {
 	sync.RWMutex
 	AppRootCAsByChain     map[string][][]byte
 	OrdererRootCAsByChain map[string][][]byte
-	ClientRootCAs         [][]byte
 	ServerRootCAs         [][]byte
 	clientCert            tls.Certificate
 }
