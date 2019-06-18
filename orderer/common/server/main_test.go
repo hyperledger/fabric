@@ -61,7 +61,7 @@ func TestInitializeLogging(t *testing.T) {
 	origEnvValue := os.Getenv("FABRIC_LOGGING_SPEC")
 	os.Setenv("FABRIC_LOGGING_SPEC", "foo=debug")
 	initializeLogging()
-	assert.Equal(t, "debug", flogging.Global.Level("foo").String())
+	assert.Equal(t, "debug", flogging.LoggerLevel("foo"))
 	os.Setenv("FABRIC_LOGGING_SPEC", origEnvValue)
 }
 

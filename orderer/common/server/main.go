@@ -121,7 +121,7 @@ func Main() {
 	}
 
 	logObserver := floggingmetrics.NewObserver(metricsProvider)
-	flogging.Global.SetObserver(logObserver)
+	flogging.SetObserver(logObserver)
 
 	serverConfig := initializeServerConfig(conf, metricsProvider)
 	grpcServer := initializeGrpcServer(conf, serverConfig)

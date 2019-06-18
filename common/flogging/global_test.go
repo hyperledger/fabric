@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/flogging/mock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -98,9 +99,9 @@ func TestGlobalDefaultLevel(t *testing.T) {
 	assert.Equal(t, "info", flogging.DefaultLevel())
 }
 
-func TestGlobalGetLoggerLevel(t *testing.T) {
+func TestGlobalLoggerLevel(t *testing.T) {
 	flogging.Reset()
-	assert.Equal(t, "info", flogging.GetLoggerLevel("some.logger"))
+	assert.Equal(t, "info", flogging.LoggerLevel("some.logger"))
 }
 
 func TestGlobalMustGetLogger(t *testing.T) {
@@ -133,4 +134,28 @@ func TestActivateSpecPanic(t *testing.T) {
 	assert.Panics(t, func() {
 		flogging.ActivateSpec("busted")
 	})
+}
+
+func TestGlobalSetObserver(t *testing.T) {
+	flogging.Reset()
+	defer flogging.Reset()
+
+	observer := &mock.Observer{}
+
+	flogging.Global.SetObserver(observer)
+	o := flogging.Global.SetObserver(nil)
+	assert.Exactly(t, observer, o)
+}
+
+func TestGlobalSetWriter(t *testing.T) {
+	flogging.Reset()
+	defer flogging.Reset()
+
+	w := &bytes.Buffer{}
+
+	old := flogging.Global.SetWriter(w)
+	flogging.Global.SetWriter(old)
+	original := flogging.Global.SetWriter(nil)
+
+	assert.Exactly(t, old, original)
 }

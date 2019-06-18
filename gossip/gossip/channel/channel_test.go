@@ -2332,7 +2332,7 @@ func TestMembershiptrackerStopWhenGCStops(t *testing.T) {
 		gc.(*gossipChannel).Stop()
 	}).Once()
 
-	flogging.Global.ActivateSpec("info")
+	flogging.ActivateSpec("info")
 	atomic.StoreUint32(&check, 1)
 	<-membershipReported
 

@@ -137,7 +137,7 @@ func (l *Logging) SetFormat(format string) error {
 // SetWriter controls which writer formatted log records are written to.
 // Writers, with the exception of an *os.File, need to be safe for concurrent
 // use by multiple go routines.
-func (l *Logging) SetWriter(w io.Writer) {
+func (l *Logging) SetWriter(w io.Writer) io.Writer {
 	var sw zapcore.WriteSyncer
 	switch t := w.(type) {
 	case *os.File:
@@ -149,16 +149,22 @@ func (l *Logging) SetWriter(w io.Writer) {
 	}
 
 	l.mutex.Lock()
+	ow := l.writer
 	l.writer = sw
 	l.mutex.Unlock()
+
+	return ow
 }
 
 // SetObserver is used to provide a log observer that will be called as log
 // levels are checked or written.. Only a single observer is supported.
-func (l *Logging) SetObserver(observer Observer) {
+func (l *Logging) SetObserver(observer Observer) Observer {
 	l.mutex.Lock()
+	so := l.observer
 	l.observer = observer
 	l.mutex.Unlock()
+
+	return so
 }
 
 // Write satisfies the io.Write contract. It delegates to the writer argument
