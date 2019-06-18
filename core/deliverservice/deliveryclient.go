@@ -280,24 +280,32 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 	return bClient
 }
 
-func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.ClientConn, error) {
+func KeepaliveOptions() *comm.KeepaliveOptions {
+	keepaliveOptions := comm.DefaultKeepaliveOptions
+	if viper.IsSet("peer.keepalive.deliveryClient.interval") {
+		keepaliveOptions.ClientInterval = viper.GetDuration("peer.keepalive.deliveryClient.interval")
+	}
+	if viper.IsSet("peer.keepalive.deliveryClient.timeout") {
+		keepaliveOptions.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
+	}
+
+	return keepaliveOptions
+}
+
+type CredSupportDialerFactory struct {
+	CredentialSupport *comm.CredentialSupport
+	KeepaliveOptions  *comm.KeepaliveOptions
+}
+
+func (c *CredSupportDialerFactory) Dialer(channelID string) func(endpoint string) (*grpc.ClientConn, error) {
 	return func(endpoint string) (*grpc.ClientConn, error) {
 		dialOpts := []grpc.DialOption{
 			grpc.WithBlock(),
 			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)),
 		}
+		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(c.KeepaliveOptions)...)
 
-		// set the keepalive options
-		kaOpts := comm.DefaultKeepaliveOptions
-		if viper.IsSet("peer.keepalive.deliveryClient.interval") {
-			kaOpts.ClientInterval = viper.GetDuration("peer.keepalive.deliveryClient.interval")
-		}
-		if viper.IsSet("peer.keepalive.deliveryClient.timeout") {
-			kaOpts.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
-		}
-		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
-
-		if viper.GetBool("peer.tls.enabled") {
+		if c.CredentialSupport != nil {
 			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID)
 			if err != nil {
 				return nil, fmt.Errorf("failed obtaining credentials for channel %s: %v", channelID, err)

@@ -9,6 +9,7 @@ package service
 import (
 	"sync"
 
+	corecomm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -130,12 +131,15 @@ type deliveryFactoryImpl struct {
 // Returns an instance of delivery client
 func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
 	return deliverservice.NewDeliverService(&deliverservice.Config{
-		CryptoSvc:   mcs,
-		Gossip:      g,
-		Endpoints:   endpoints,
-		ConnFactory: deliverservice.DefaultConnectionFactory,
-		ABCFactory:  deliverservice.DefaultABCFactory,
-		Signer:      df.signer,
+		CryptoSvc: mcs,
+		Gossip:    g,
+		Endpoints: endpoints,
+		ConnFactory: (&deliverservice.CredSupportDialerFactory{
+			CredentialSupport: corecomm.GetCredentialSupport(),
+			KeepaliveOptions:  deliverservice.KeepaliveOptions(),
+		}).Dialer,
+		ABCFactory: deliverservice.DefaultABCFactory,
+		Signer:     df.signer,
 	})
 }
 

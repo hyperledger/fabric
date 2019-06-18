@@ -145,7 +145,7 @@ func TestDeliverServiceRestart(t *testing.T) {
 		Gossip:      gossipServiceAdapter,
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
-		ConnFactory: DefaultConnectionFactory,
+		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
 		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
@@ -192,7 +192,7 @@ func TestDeliverServiceFailover(t *testing.T) {
 		Gossip:      gossipServiceAdapter,
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
-		ConnFactory: DefaultConnectionFactory,
+		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
 		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
@@ -265,7 +265,7 @@ func TestDeliverServiceUpdateEndpoints(t *testing.T) {
 		Gossip:      gossipServiceAdapter,
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
-		ConnFactory: DefaultConnectionFactory,
+		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
 		Signer:      &mocks.SignerSerializer{},
 	})
 	defer service.Stop()
@@ -315,7 +315,7 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 		Gossip:      gossipServiceAdapter,
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
-		ConnFactory: DefaultConnectionFactory,
+		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
 		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
@@ -446,7 +446,7 @@ func TestDeliverServiceAbruptStop(t *testing.T) {
 		Gossip:      gossipServiceAdapter,
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
-		ConnFactory: DefaultConnectionFactory,
+		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
 		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
@@ -470,7 +470,7 @@ func TestDeliverServiceShutdown(t *testing.T) {
 		Gossip:      gossipServiceAdapter,
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
-		ConnFactory: DefaultConnectionFactory,
+		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
 		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
@@ -517,7 +517,7 @@ func TestDeliverServiceShutdownRespawn(t *testing.T) {
 		Gossip:      gossipServiceAdapter,
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
-		ConnFactory: DefaultConnectionFactory,
+		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
 		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
@@ -571,7 +571,7 @@ func TestDeliverServiceDisconnectReconnect(t *testing.T) {
 		Gossip:      gossipServiceAdapter,
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
-		ConnFactory: DefaultConnectionFactory,
+		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
 		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.NoError(t, err)
@@ -615,7 +615,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		Gossip:      &mocks.MockGossipServiceAdapter{},
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
-		ConnFactory: DefaultConnectionFactory,
+		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
 		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.Error(t, err)
@@ -627,7 +627,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		Gossip:      nil,
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  DefaultABCFactory,
-		ConnFactory: DefaultConnectionFactory,
+		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
 		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.Error(t, err)
@@ -639,7 +639,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		Gossip:      &mocks.MockGossipServiceAdapter{},
 		CryptoSvc:   nil,
 		ABCFactory:  DefaultABCFactory,
-		ConnFactory: DefaultConnectionFactory,
+		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
 		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.Error(t, err)
@@ -651,7 +651,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 		Gossip:      &mocks.MockGossipServiceAdapter{},
 		CryptoSvc:   &mockMCS{},
 		ABCFactory:  nil,
-		ConnFactory: DefaultConnectionFactory,
+		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
 		Signer:      &mocks.SignerSerializer{},
 	})
 	assert.Error(t, err)
