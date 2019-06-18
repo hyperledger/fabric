@@ -13,7 +13,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/msp"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -24,7 +26,7 @@ var once sync.Once
 // CredentialSupport type manages credentials used for gRPC client connections
 type CredentialSupport struct {
 	sync.RWMutex
-	AppRootCAsByChain     map[string][][]byte
+	appRootCAsByChain     map[string][][]byte
 	OrdererRootCAsByChain map[string][][]byte
 	ServerRootCAs         [][]byte
 	clientCert            tls.Certificate
@@ -32,10 +34,9 @@ type CredentialSupport struct {
 
 // GetCredentialSupport returns the singleton CredentialSupport instance
 func GetCredentialSupport() *CredentialSupport {
-
 	once.Do(func() {
 		credSupport = &CredentialSupport{
-			AppRootCAsByChain:     make(map[string][][]byte),
+			appRootCAsByChain:     make(map[string][][]byte),
 			OrdererRootCAsByChain: make(map[string][][]byte),
 		}
 	})
@@ -99,7 +100,7 @@ func (cs *CredentialSupport) GetPeerCredentials() credentials.TransportCredentia
 	}
 	certPool := x509.NewCertPool()
 	appRootCAs := [][]byte{}
-	for _, appRootCA := range cs.AppRootCAsByChain {
+	for _, appRootCA := range cs.appRootCAsByChain {
 		appRootCAs = append(appRootCAs, appRootCA...)
 	}
 	// also need to append statically configured root certs
@@ -114,4 +115,76 @@ func (cs *CredentialSupport) GetPeerCredentials() credentials.TransportCredentia
 
 	tlsConfig.RootCAs = certPool
 	return credentials.NewTLS(tlsConfig)
+}
+
+func (cs *CredentialSupport) AppRootCAsByChain() map[string][][]byte {
+	cs.RLock()
+	defer cs.RUnlock()
+	return cs.appRootCAsByChain
+}
+
+// BuildTrustedRootsForChain populates the appRootCAs and orderRootCAs maps by
+// getting the root and intermediate certs for all msps associated with the
+// MSPManager.
+func (cs *CredentialSupport) BuildTrustedRootsForChain(cm channelconfig.Resources) {
+	cs.Lock()
+	defer cs.Unlock()
+
+	appOrgMSPs := make(map[string]struct{})
+	if ac, ok := cm.ApplicationConfig(); ok {
+		for _, appOrg := range ac.Organizations() {
+			appOrgMSPs[appOrg.MSPID()] = struct{}{}
+		}
+	}
+
+	ordOrgMSPs := make(map[string]struct{})
+	if ac, ok := cm.OrdererConfig(); ok {
+		for _, ordOrg := range ac.Organizations() {
+			ordOrgMSPs[ordOrg.MSPID()] = struct{}{}
+		}
+	}
+
+	cid := cm.ConfigtxValidator().ChainID()
+	commLogger.Debugf("updating root CAs for channel [%s]", cid)
+	msps, err := cm.MSPManager().GetMSPs()
+	if err != nil {
+		commLogger.Errorf("Error getting root CAs for channel %s (%s)", cid, err)
+		return
+	}
+
+	var appRootCAs [][]byte
+	var ordererRootCAs [][]byte
+	for k, v := range msps {
+		// we only support the fabric MSP
+		if v.GetType() != msp.FABRIC {
+			continue
+		}
+
+		for _, root := range v.GetTLSRootCerts() {
+			// check to see of this is an app org MSP
+			if _, ok := appOrgMSPs[k]; ok {
+				commLogger.Debugf("adding app root CAs for MSP [%s]", k)
+				appRootCAs = append(appRootCAs, root)
+			}
+			// check to see of this is an orderer org MSP
+			if _, ok := ordOrgMSPs[k]; ok {
+				commLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
+				ordererRootCAs = append(ordererRootCAs, root)
+			}
+		}
+		for _, intermediate := range v.GetTLSIntermediateCerts() {
+			// check to see of this is an app org MSP
+			if _, ok := appOrgMSPs[k]; ok {
+				commLogger.Debugf("adding app root CAs for MSP [%s]", k)
+				appRootCAs = append(appRootCAs, intermediate)
+			}
+			// check to see of this is an orderer org MSP
+			if _, ok := ordOrgMSPs[k]; ok {
+				commLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
+				ordererRootCAs = append(ordererRootCAs, intermediate)
+			}
+		}
+	}
+	cs.appRootCAsByChain[cid] = appRootCAs
+	cs.OrdererRootCAsByChain[cid] = ordererRootCAs
 }

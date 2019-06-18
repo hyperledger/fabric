@@ -73,7 +73,7 @@ func TestCredentialSupport(t *testing.T) {
 	}
 
 	cs := &CredentialSupport{
-		AppRootCAsByChain:     make(map[string][][]byte),
+		appRootCAsByChain:     make(map[string][][]byte),
 		OrdererRootCAsByChain: make(map[string][][]byte),
 	}
 	cert := tls.Certificate{Certificate: [][]byte{}}
@@ -81,9 +81,9 @@ func TestCredentialSupport(t *testing.T) {
 	assert.Equal(t, cert, cs.clientCert)
 	assert.Equal(t, cert, cs.GetClientCertificate())
 
-	cs.AppRootCAsByChain["channel1"] = [][]byte{rootCAs[0]}
-	cs.AppRootCAsByChain["channel2"] = [][]byte{rootCAs[1]}
-	cs.AppRootCAsByChain["channel3"] = [][]byte{rootCAs[2]}
+	cs.appRootCAsByChain["channel1"] = [][]byte{rootCAs[0]}
+	cs.appRootCAsByChain["channel2"] = [][]byte{rootCAs[1]}
+	cs.appRootCAsByChain["channel3"] = [][]byte{rootCAs[2]}
 	cs.OrdererRootCAsByChain["channel1"] = [][]byte{rootCAs[3]}
 	cs.OrdererRootCAsByChain["channel2"] = [][]byte{rootCAs[4]}
 	cs.ServerRootCAs = [][]byte{rootCAs[5]}
@@ -188,7 +188,7 @@ func TestImpersonation(t *testing.T) {
 	time.Sleep(time.Second)
 
 	cs := &CredentialSupport{
-		AppRootCAsByChain:     make(map[string][][]byte),
+		appRootCAsByChain:     make(map[string][][]byte),
 		OrdererRootCAsByChain: make(map[string][][]byte),
 	}
 	_, err := cs.GetDeliverServiceCredentials("C")

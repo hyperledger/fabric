@@ -274,11 +274,9 @@ func (gServer *GRPCServer) SetClientRootCAs(clientRoots [][]byte) error {
 		if err != nil {
 			return errors.WithMessage(err, "failed to set client root certificate(s)")
 		}
-		if len(certs) >= 1 {
-			for i, cert := range certs {
-				//add it to our clientRootCAs map using subject as key
-				clientRootCAs[subjects[i]] = cert
-			}
+
+		for i, cert := range certs {
+			clientRootCAs[subjects[i]] = cert
 		}
 	}
 
@@ -287,9 +285,8 @@ func (gServer *GRPCServer) SetClientRootCAs(clientRoots [][]byte) error {
 	for _, clientRoot := range clientRootCAs {
 		certPool.AddCert(clientRoot)
 	}
-	//replace the internal map
+
 	gServer.clientRootCAs = clientRootCAs
-	//replace the current ClientCAs pool
 	gServer.tlsConfig.ClientCAs = certPool
 	return nil
 }

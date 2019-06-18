@@ -234,14 +234,14 @@ func updateTrustedRoots(cm channelconfig.Resources) {
 		return
 	}
 
-	buildTrustedRootsForChain(cm)
+	credSupport.BuildTrustedRootsForChain(cm)
 
 	// now iterate over all roots for all app and orderer channels
 	credSupport.RLock()
 	defer credSupport.RUnlock()
 
 	var trustedRoots [][]byte
-	for _, roots := range credSupport.AppRootCAsByChain {
+	for _, roots := range credSupport.AppRootCAsByChain() {
 		trustedRoots = append(trustedRoots, roots...)
 	}
 	trustedRoots = append(trustedRoots, serverConfig.SecOpts.ClientRootCAs...)
@@ -259,71 +259,6 @@ func updateTrustedRoots(cm channelconfig.Resources) {
 			"This peer may not be able to communicate with members of channel %s (%s)"
 		peerLogger.Warningf(msg, cm.ConfigtxValidator().ChainID(), err)
 	}
-}
-
-// populates the appRootCAs and orderRootCAs maps by getting the
-// root and intermediate certs for all msps associated with the MSPManager
-func buildTrustedRootsForChain(cm channelconfig.Resources) {
-	credSupport.Lock()
-	defer credSupport.Unlock()
-
-	appOrgMSPs := make(map[string]struct{})
-	if ac, ok := cm.ApplicationConfig(); ok {
-		for _, appOrg := range ac.Organizations() {
-			appOrgMSPs[appOrg.MSPID()] = struct{}{}
-		}
-	}
-
-	ordOrgMSPs := make(map[string]struct{})
-	if ac, ok := cm.OrdererConfig(); ok {
-		for _, ordOrg := range ac.Organizations() {
-			ordOrgMSPs[ordOrg.MSPID()] = struct{}{}
-		}
-	}
-
-	cid := cm.ConfigtxValidator().ChainID()
-	peerLogger.Debugf("updating root CAs for channel [%s]", cid)
-	msps, err := cm.MSPManager().GetMSPs()
-	if err != nil {
-		peerLogger.Errorf("Error getting root CAs for channel %s (%s)", cid, err)
-		return
-	}
-
-	var appRootCAs [][]byte
-	var ordererRootCAs [][]byte
-	for k, v := range msps {
-		// we only support the fabric MSP
-		if v.GetType() != msp.FABRIC {
-			continue
-		}
-
-		for _, root := range v.GetTLSRootCerts() {
-			// check to see of this is an app org MSP
-			if _, ok := appOrgMSPs[k]; ok {
-				peerLogger.Debugf("adding app root CAs for MSP [%s]", k)
-				appRootCAs = append(appRootCAs, root)
-			}
-			// check to see of this is an orderer org MSP
-			if _, ok := ordOrgMSPs[k]; ok {
-				peerLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
-				ordererRootCAs = append(ordererRootCAs, root)
-			}
-		}
-		for _, intermediate := range v.GetTLSIntermediateCerts() {
-			// check to see of this is an app org MSP
-			if _, ok := appOrgMSPs[k]; ok {
-				peerLogger.Debugf("adding app root CAs for MSP [%s]", k)
-				appRootCAs = append(appRootCAs, intermediate)
-			}
-			// check to see of this is an orderer org MSP
-			if _, ok := ordOrgMSPs[k]; ok {
-				peerLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
-				ordererRootCAs = append(ordererRootCAs, intermediate)
-			}
-		}
-	}
-	credSupport.AppRootCAsByChain[cid] = appRootCAs
-	credSupport.OrdererRootCAsByChain[cid] = ordererRootCAs
 }
 
 // NewPeerServer creates an instance of comm.GRPCServer
