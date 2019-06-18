@@ -98,12 +98,30 @@ func constructTransaction(txid string, simulationResults []byte) (*common.Envelo
 		Name:    "dummyCC",
 		Version: "dummyVer",
 	}
-	txenv, _, err := constructUnsignedTxEnv(channelid, ccid, &protopeer.Response{Status: 200}, simulationResults, txid, nil, nil)
+	txenv, _, err := constructUnsignedTxEnv(
+		channelid,
+		ccid,
+		&protopeer.Response{Status: 200},
+		simulationResults,
+		txid,
+		nil,
+		nil,
+		common.HeaderType_ENDORSER_TRANSACTION,
+	)
 	return txenv, err
 }
 
 // constructUnsignedTxEnv creates a Transaction envelope from given inputs
-func constructUnsignedTxEnv(chainID string, ccid *protopeer.ChaincodeID, response *protopeer.Response, simulationResults []byte, txid string, events []byte, visibility []byte) (*common.Envelope, string, error) {
+func constructUnsignedTxEnv(
+	chainID string,
+	ccid *protopeer.ChaincodeID,
+	response *protopeer.Response,
+	simulationResults []byte,
+	txid string,
+	events []byte,
+	visibility []byte,
+	headerType common.HeaderType,
+) (*common.Envelope, string, error) {
 	mspLcl := mmsp.NewNoopMsp()
 	sigId, _ := mspLcl.GetDefaultSigningIdentity()
 
@@ -115,7 +133,16 @@ func constructUnsignedTxEnv(chainID string, ccid *protopeer.ChaincodeID, respons
 	var prop *protopeer.Proposal
 	if txid == "" {
 		// if txid is not set, then we need to generate one while creating the proposal message
-		prop, txid, err = protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chainID, &protopeer.ChaincodeInvocationSpec{ChaincodeSpec: &protopeer.ChaincodeSpec{ChaincodeId: ccid}}, ss)
+		prop, txid, err = protoutil.CreateChaincodeProposal(
+			headerType,
+			chainID,
+			&protopeer.ChaincodeInvocationSpec{
+				ChaincodeSpec: &protopeer.ChaincodeSpec{
+					ChaincodeId: ccid,
+				},
+			},
+			ss,
+		)
 
 	} else {
 		// if txid is set, we should not generate a txid instead reuse the given txid
@@ -123,13 +150,34 @@ func constructUnsignedTxEnv(chainID string, ccid *protopeer.ChaincodeID, respons
 		if err != nil {
 			return nil, "", err
 		}
-		prop, txid, err = protoutil.CreateChaincodeProposalWithTxIDNonceAndTransient(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, &protopeer.ChaincodeInvocationSpec{ChaincodeSpec: &protopeer.ChaincodeSpec{ChaincodeId: ccid}}, nonce, ss, nil)
+		prop, txid, err = protoutil.CreateChaincodeProposalWithTxIDNonceAndTransient(
+			txid,
+			headerType,
+			chainID,
+			&protopeer.ChaincodeInvocationSpec{
+				ChaincodeSpec: &protopeer.ChaincodeSpec{
+					ChaincodeId: ccid,
+				},
+			},
+			nonce,
+			ss,
+			nil,
+		)
 	}
 	if err != nil {
 		return nil, "", err
 	}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simulationResults, nil, ccid, nil, sigId)
+	presp, err := protoutil.CreateProposalResponse(
+		prop.Header,
+		prop.Payload,
+		response,
+		simulationResults,
+		nil,
+		ccid,
+		nil,
+		sigId,
+	)
 	if err != nil {
 		return nil, "", err
 	}
