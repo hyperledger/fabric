@@ -207,6 +207,7 @@ func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 		p.initializer.DeployedChaincodeInfoProvider,
 		p.initializer.ChaincodeLifecycleEventProvider,
 		p.stats.ledgerStats(ledgerID),
+		p.initializer.CustomTxProcessors,
 	)
 	if err != nil {
 		return nil, err

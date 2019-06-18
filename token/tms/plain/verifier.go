@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
+	coreledger "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/token/identity"
@@ -68,7 +68,7 @@ func (v *Verifier) ProcessTx(txID string, creator identity.PublicInfo, ttx *toke
 func (v *Verifier) checkProcess(txID string, creator identity.PublicInfo, tokenOwner *token.TokenOwner, ttx *token.TokenTransaction, simulator ledger.LedgerReader) error {
 	action := ttx.GetTokenAction()
 	if action == nil {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("check process failed for transaction '%s': missing token action", txID)}
+		return &coreledger.InvalidTxError{Msg: fmt.Sprintf("check process failed for transaction '%s': missing token action", txID)}
 	}
 
 	err := v.checkAction(creator, tokenOwner, action, txID, simulator)
@@ -88,7 +88,7 @@ func (v *Verifier) checkAction(creator identity.PublicInfo, tokenOwner *token.To
 	case *token.TokenAction_Redeem:
 		return v.checkRedeemAction(tokenOwner, action.Redeem, txID, simulator)
 	default:
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("unknown plain token action: %T", action)}
+		return &coreledger.InvalidTxError{Msg: fmt.Sprintf("unknown plain token action: %T", action)}
 	}
 }
 
@@ -102,7 +102,7 @@ func (v *Verifier) checkIssueAction(creator identity.PublicInfo, issueAction *to
 
 func (v *Verifier) checkIssueOutputs(outputs []*token.Token, txID string, simulator ledger.LedgerReader) error {
 	if len(outputs) == 0 {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("no outputs in transaction: %s", txID)}
+		return &coreledger.InvalidTxError{Msg: fmt.Sprintf("no outputs in transaction: %s", txID)}
 	}
 	for i, output := range outputs {
 		err := v.checkTokenDoesNotExist(output, i, txID, simulator)
@@ -112,12 +112,12 @@ func (v *Verifier) checkIssueOutputs(outputs []*token.Token, txID string, simula
 
 		_, err = ToQuantity(output.Quantity, Precision)
 		if err != nil {
-			return &customtx.InvalidTxError{Msg: fmt.Sprintf("output %d quantity is invalid in transaction: %s", i, txID)}
+			return &coreledger.InvalidTxError{Msg: fmt.Sprintf("output %d quantity is invalid in transaction: %s", i, txID)}
 		}
 
 		err = v.TokenOwnerValidator.Validate(output.Owner)
 		if err != nil {
-			return &customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err '%s'", txID, err)}
+			return &coreledger.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err '%s'", txID, err)}
 		}
 	}
 	return nil
@@ -137,17 +137,17 @@ func (v *Verifier) checkRedeemAction(tokenOwner *token.TokenOwner, redeemAction 
 	// redeem transaction should not have more than 2 outputs.
 	outputs := redeemAction.GetOutputs()
 	if len(outputs) > 2 {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("too many outputs in a redeem transaction")}
+		return &coreledger.InvalidTxError{Msg: fmt.Sprintf("too many outputs in a redeem transaction")}
 	}
 
 	// output[0] should always be a redeem output - i.e., owner should be nil
 	if outputs[0].Owner != nil {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("owner should be nil in a redeem output")}
+		return &coreledger.InvalidTxError{Msg: fmt.Sprintf("owner should be nil in a redeem output")}
 	}
 
 	// if output[1] presents, its owner must be same as the tokenOwner (creator)
 	if len(outputs) == 2 && !proto.Equal(tokenOwner, outputs[1].Owner) {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("wrong owner for remaining tokens, should be original owner %s, but got %s", tokenOwner.Raw, outputs[1].Owner.Raw)}
+		return &coreledger.InvalidTxError{Msg: fmt.Sprintf("wrong owner for remaining tokens, should be original owner %s, but got %s", tokenOwner.Raw, outputs[1].Owner.Raw)}
 	}
 
 	return nil
@@ -171,14 +171,14 @@ func (v *Verifier) checkInputsAndOutputs(
 		return err
 	}
 	if outputType != inputType {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("token type mismatch in inputs and outputs for transaction ID %s (%s vs %s)", txID, outputType, inputType)}
+		return &coreledger.InvalidTxError{Msg: fmt.Sprintf("token type mismatch in inputs and outputs for transaction ID %s (%s vs %s)", txID, outputType, inputType)}
 	}
 	cmp, err := outputSum.Cmp(inputSum)
 	if err != nil {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("cannot compare quantities '%s'", err)}
+		return &coreledger.InvalidTxError{Msg: fmt.Sprintf("cannot compare quantities '%s'", err)}
 	}
 	if cmp != 0 {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("token sum mismatch in inputs and outputs for transaction ID %s (%d vs %d)", txID, outputSum, inputSum)}
+		return &coreledger.InvalidTxError{Msg: fmt.Sprintf("token sum mismatch in inputs and outputs for transaction ID %s (%d vs %d)", txID, outputSum, inputSum)}
 	}
 	return nil
 }
@@ -197,7 +197,7 @@ func (v *Verifier) checkTokenDoesNotExist(token *token.Token, index int, txID st
 
 	tokenKey, err := createTokenKey(ownerString, txID, index)
 	if err != nil {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating output ID: %s", err)}
+		return &coreledger.InvalidTxError{Msg: fmt.Sprintf("error creating output ID: %s", err)}
 	}
 
 	outputBytes, err := simulator.GetState(tokenNameSpace, tokenKey)
@@ -205,7 +205,7 @@ func (v *Verifier) checkTokenDoesNotExist(token *token.Token, index int, txID st
 		return err
 	}
 	if len(outputBytes) != 0 {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("token already exists: %s", tokenKey)}
+		return &coreledger.InvalidTxError{Msg: fmt.Sprintf("token already exists: %s", tokenKey)}
 	}
 	return nil
 }
@@ -221,22 +221,22 @@ func (v *Verifier) checkOutputs(outputs []*token.Token, txID string, simulator l
 		if tokenType == "" {
 			tokenType = output.GetType()
 		} else if tokenType != output.GetType() {
-			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types ('%s', '%s') in output for txID '%s'", tokenType, output.GetType(), txID)}
+			return "", nil, &coreledger.InvalidTxError{Msg: fmt.Sprintf("multiple token types ('%s', '%s') in output for txID '%s'", tokenType, output.GetType(), txID)}
 		}
 		if ownerRequired {
 			err = v.TokenOwnerValidator.Validate(output.GetOwner())
 			if err != nil {
-				return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err '%s'", txID, err)}
+				return "", nil, &coreledger.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err '%s'", txID, err)}
 			}
 		}
 		quantity, err := ToQuantity(output.GetQuantity(), Precision)
 		if err != nil {
-			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("quantity in output [%s] is invalid, err '%s'", output.GetQuantity(), err)}
+			return "", nil, &coreledger.InvalidTxError{Msg: fmt.Sprintf("quantity in output [%s] is invalid, err '%s'", output.GetQuantity(), err)}
 		}
 
 		tokenSum, err = tokenSum.Add(quantity)
 		if err != nil {
-			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("failed adding up output quantities, err '%s'", err)}
+			return "", nil, &coreledger.InvalidTxError{Msg: fmt.Sprintf("failed adding up output quantities, err '%s'", err)}
 		}
 
 	}
@@ -245,7 +245,7 @@ func (v *Verifier) checkOutputs(outputs []*token.Token, txID string, simulator l
 
 func (v *Verifier) checkInputs(tokenOwner *token.TokenOwner, tokenIds []*token.TokenId, txID string, simulator ledger.LedgerReader) (string, Quantity, error) {
 	if len(tokenIds) == 0 {
-		return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("no tokenIds in transaction: %s", txID)}
+		return "", nil, &coreledger.InvalidTxError{Msg: fmt.Sprintf("no tokenIds in transaction: %s", txID)}
 	}
 
 	tokenType := ""
@@ -269,16 +269,16 @@ func (v *Verifier) checkInputs(tokenOwner *token.TokenOwner, tokenIds []*token.T
 		if tokenType == "" {
 			tokenType = input.GetType()
 		} else if tokenType != input.GetType() {
-			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types in input for txID: %s (%s, %s)", txID, tokenType, input.GetType())}
+			return "", nil, &coreledger.InvalidTxError{Msg: fmt.Sprintf("multiple token types in input for txID: %s (%s, %s)", txID, tokenType, input.GetType())}
 		}
 
 		inputQuantity, err := ToQuantity(input.GetQuantity(), Precision)
 		if err != nil {
-			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("quantity in output [%s] is invalid, err '%s'", input.GetQuantity(), err)}
+			return "", nil, &coreledger.InvalidTxError{Msg: fmt.Sprintf("quantity in output [%s] is invalid, err '%s'", input.GetQuantity(), err)}
 		}
 		inputSum, err = inputSum.Add(inputQuantity)
 		if err != nil {
-			return "", nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("failed adding up input quantities, err '%s'", err)}
+			return "", nil, &coreledger.InvalidTxError{Msg: fmt.Sprintf("failed adding up input quantities, err '%s'", err)}
 		}
 	}
 	return tokenType, inputSum, nil
@@ -286,7 +286,7 @@ func (v *Verifier) checkInputs(tokenOwner *token.TokenOwner, tokenIds []*token.T
 
 func (v *Verifier) checkInputOwner(tokenOwner *token.TokenOwner, input *token.Token, tokenId string) error {
 	if !proto.Equal(tokenOwner, input.Owner) {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("transfer input with ID %s not owned by creator", tokenId)}
+		return &coreledger.InvalidTxError{Msg: fmt.Sprintf("transfer input with ID %s not owned by creator", tokenId)}
 	}
 	return nil
 }
@@ -295,7 +295,7 @@ func (v *Verifier) checkIssuePolicy(creator identity.PublicInfo, txID string, is
 	for _, output := range issueData.Outputs {
 		err := v.IssuingValidator.Validate(creator, output.Type)
 		if err != nil {
-			return &customtx.InvalidTxError{Msg: fmt.Sprintf("issue policy check failed: %s", err)}
+			return &coreledger.InvalidTxError{Msg: fmt.Sprintf("issue policy check failed: %s", err)}
 		}
 	}
 	return nil
@@ -335,7 +335,7 @@ func (v *Verifier) commitIssueAction(issueAction *token.Issue, txID string, simu
 
 		outputID, err := createTokenKey(ownerString, txID, i)
 		if err != nil {
-			return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating output ID: %s", err)}
+			return &coreledger.InvalidTxError{Msg: fmt.Sprintf("error creating output ID: %s", err)}
 		}
 
 		err = simulator.SetState(tokenNameSpace, outputID, protoutil.MarshalOrPanic(output))
@@ -363,7 +363,7 @@ func (v *Verifier) commitTransferAction(tokenOwner *token.TokenOwner, transferAc
 
 		outputID, err := createTokenKey(ownerString, txID, i)
 		if err != nil {
-			return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating output ID: %s", err)}
+			return &coreledger.InvalidTxError{Msg: fmt.Sprintf("error creating output ID: %s", err)}
 		}
 
 		err = simulator.SetState(tokenNameSpace, outputID, protoutil.MarshalOrPanic(output))
@@ -384,7 +384,7 @@ func (v *Verifier) spendTokens(tokenOwner *token.TokenOwner, tokenIds []*token.T
 	for _, id := range tokenIds {
 		tokenKey, err := createTokenKey(ownerString, id.TxId, int(id.Index))
 		if err != nil {
-			return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating spent key: %s", err)}
+			return &coreledger.InvalidTxError{Msg: fmt.Sprintf("error creating spent key: %s", err)}
 		}
 
 		verifierLogger.Debugf("Delete %s\n", tokenKey)
@@ -402,13 +402,13 @@ func (v *Verifier) getToken(tokenKey string, simulator ledger.LedgerReader) (*to
 		return nil, err
 	}
 	if len(outputBytes) == 0 {
-		return nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("token with ID %s does not exist", tokenKey)}
+		return nil, &coreledger.InvalidTxError{Msg: fmt.Sprintf("token with ID %s does not exist", tokenKey)}
 	}
 
 	output := &token.Token{}
 	err = proto.Unmarshal(outputBytes, output)
 	if err != nil {
-		return nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("unmarshaling error: %s", err)}
+		return nil, &coreledger.InvalidTxError{Msg: fmt.Sprintf("unmarshaling error: %s", err)}
 	}
 	return output, nil
 }
@@ -461,11 +461,11 @@ func createTokenKeys(tokenOwner *token.TokenOwner, tokenIds []*token.TokenId) ([
 	for i, id := range tokenIds {
 		key, err := createTokenKey(ownerString, id.TxId, int(id.Index))
 		if err != nil {
-			return nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating output ID for transfer input: %s", err)}
+			return nil, &coreledger.InvalidTxError{Msg: fmt.Sprintf("error creating output ID for transfer input: %s", err)}
 		}
 
 		if inputKeys[key] {
-			return nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("Input duplicates found")}
+			return nil, &coreledger.InvalidTxError{Msg: fmt.Sprintf("Input duplicates found")}
 		} else {
 			inputKeys[key] = true
 			tokenKeys[i] = key

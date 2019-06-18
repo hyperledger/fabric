@@ -59,7 +59,6 @@ import (
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/core/peer"
@@ -332,7 +331,7 @@ func serve(args []string) error {
 
 	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID, metadataManager)
 
-	txProcessors := customtx.Processors{
+	txProcessors := map[common.HeaderType]ledger.CustomTxProcessor{
 		common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
 		common.HeaderType_TOKEN_TRANSACTION: &transaction.Processor{
 			TMSManager: &manager.Manager{

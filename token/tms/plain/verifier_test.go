@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/identity"
 	mockid "github.com/hyperledger/fabric/token/identity/mock"
@@ -118,7 +118,7 @@ var _ = Describe("Verifier", func() {
 			It("returns an error and does not write to the ledger", func() {
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "issue policy check failed: no-way-man"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "issue policy check failed: no-way-man"}))
 				Expect(fakeLedger.SetStateCallCount()).To(Equal(0))
 			})
 		})
@@ -154,7 +154,7 @@ var _ = Describe("Verifier", func() {
 			It("returns an error", func() {
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "no outputs in transaction: 0"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "no outputs in transaction: 0"}))
 			})
 		})
 
@@ -177,7 +177,7 @@ var _ = Describe("Verifier", func() {
 			It("returns an error", func() {
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "output 0 quantity is invalid in transaction: 0"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "output 0 quantity is invalid in transaction: 0"}))
 			})
 		})
 
@@ -192,7 +192,7 @@ var _ = Describe("Verifier", func() {
 				Expect(err).To(HaveOccurred())
 				ownerString := buildTokenOwnerString([]byte("owner-1"))
 				existingOutputId := strings.Join([]string{"", tokenKeyPrefix, ownerString, "0", "0", ""}, "\x00")
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("token already exists: %s", existingOutputId)}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: fmt.Sprintf("token already exists: %s", existingOutputId)}))
 			})
 		})
 
@@ -204,7 +204,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'owner is nil'", issueTxID)}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'owner is nil'", issueTxID)}))
 			})
 		})
 
@@ -216,7 +216,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'raw is empty'", issueTxID)}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'raw is empty'", issueTxID)}))
 			})
 		})
 
@@ -292,7 +292,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an error", func() {
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "unknown plain token action: <nil>"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "unknown plain token action: <nil>"}))
 			})
 		})
 
@@ -304,7 +304,7 @@ var _ = Describe("Verifier", func() {
 			It("fails when creating the ledger key for the output", func() {
 				By("returning an error")
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error creating output ID: input contain unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "error creating output ID: input contain unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
 			})
 		})
 
@@ -316,7 +316,7 @@ var _ = Describe("Verifier", func() {
 			It("fails when creating the ledger key for the first output", func() {
 				By("returning an error")
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error creating output ID: input contain unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "error creating output ID: input contain unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
 			})
 		})
 
@@ -328,7 +328,7 @@ var _ = Describe("Verifier", func() {
 			It("fails when creating the ledger key for the output", func() {
 				By("returning an error")
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error creating output ID: not a valid utf8 string: [e08080]"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "error creating output ID: not a valid utf8 string: [e08080]"}))
 			})
 		})
 
@@ -445,7 +445,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("no tokenIds in transaction: %s", transferTxID)}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: fmt.Sprintf("no tokenIds in transaction: %s", transferTxID)}))
 			})
 		})
 
@@ -473,7 +473,7 @@ var _ = Describe("Verifier", func() {
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
 				ownerString := buildTokenOwnerString(fakePublicInfo.Public())
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token with ID \x00" + tokenKeyPrefix + "\x00" + ownerString + "\x00wild_pineapple\x000\x00 does not exist"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "token with ID \x00" + tokenKeyPrefix + "\x00" + ownerString + "\x00wild_pineapple\x000\x00 does not exist"}))
 			})
 		})
 
@@ -485,7 +485,7 @@ var _ = Describe("Verifier", func() {
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
 				ownerString := buildTokenOwnerString(fakePublicInfo.Public())
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token with ID \x00token\x00" + ownerString + "\x000\x000\x00 does not exist"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "token with ID \x00token\x00" + ownerString + "\x000\x000\x00 does not exist"}))
 			})
 		})
 
@@ -513,7 +513,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "Input duplicates found"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "Input duplicates found"}))
 			})
 		})
 
@@ -540,7 +540,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token type mismatch in inputs and outputs for transaction ID 1 (wild_pineapple vs TOK1)"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "token type mismatch in inputs and outputs for transaction ID 1 (wild_pineapple vs TOK1)"}))
 			})
 		})
 
@@ -567,7 +567,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token sum mismatch in inputs and outputs for transaction ID 1 (124 vs 111)"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "token sum mismatch in inputs and outputs for transaction ID 1 (124 vs 111)"}))
 			})
 		})
 
@@ -614,7 +614,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "multiple token types in input for txID: 1 (TOK1, TOK2)"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "multiple token types in input for txID: 1 (TOK1, TOK2)"}))
 			})
 		})
 
@@ -641,7 +641,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "multiple token types ('TOK1', 'TOK2') in output for txID '1'"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "multiple token types ('TOK1', 'TOK2') in output for txID '1'"}))
 			})
 		})
 
@@ -654,7 +654,7 @@ var _ = Describe("Verifier", func() {
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx("2", fakePublicInfo, transferTransaction, memoryLedger)
 				ownerString := buildTokenOwnerString(fakePublicInfo.Public())
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token with ID \x00" + tokenKeyPrefix + "\x00" + ownerString + "\x000\x000\x00 does not exist"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "token with ID \x00" + tokenKeyPrefix + "\x00" + ownerString + "\x000\x000\x00 does not exist"}))
 			})
 		})
 
@@ -686,7 +686,7 @@ var _ = Describe("Verifier", func() {
 				Expect(err).To(HaveOccurred())
 				ownerString := buildTokenOwnerString([]byte("owner-1"))
 				existingOutputId := "\x00" + tokenKeyPrefix + "\x00" + ownerString + "\x00" + issueTxID + "\x00" + "0" + "\x00"
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("token already exists: %s", existingOutputId)}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: fmt.Sprintf("token already exists: %s", existingOutputId)}))
 			})
 		})
 
@@ -697,7 +697,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'owner is nil'", transferTxID)}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: fmt.Sprintf("invalid owner in output for txID '%s', err 'owner is nil'", transferTxID)}))
 			})
 		})
 
@@ -851,7 +851,7 @@ var _ = Describe("Verifier", func() {
 		Context("when ledger returns invalid token bytes on get token", func() {
 			It("returns an error", func() {
 
-				expectedErr := &customtx.InvalidTxError{Msg: "unmarshaling error: unexpected EOF"}
+				expectedErr := &ledger.InvalidTxError{Msg: "unmarshaling error: unexpected EOF"}
 
 				// first call checks the output does not exists. The redeem output without owner will be skipped for checking.
 				fakeLedger.GetStateReturnsOnCall(0, nil, nil)
@@ -1016,7 +1016,7 @@ var _ = Describe("Verifier", func() {
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx("r2", fakePublicInfo, redeemTransaction, memoryLedger)
 				ownerString := buildTokenOwnerString(fakePublicInfo.Public())
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token with ID \x00" + tokenKeyPrefix + "\x00" + ownerString + "\x000\x000\x00 does not exist"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "token with ID \x00" + tokenKeyPrefix + "\x00" + ownerString + "\x000\x000\x00 does not exist"}))
 			})
 		})
 
@@ -1040,7 +1040,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an error", func() {
 				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{
+				Expect(err).To(Equal(&ledger.InvalidTxError{
 					Msg: fmt.Sprintf("token sum mismatch in inputs and outputs for transaction ID %s (%d vs %d)", redeemTxID, 100, 111)}))
 			})
 		})
@@ -1067,7 +1067,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an error", func() {
 				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{
+				Expect(err).To(Equal(&ledger.InvalidTxError{
 					Msg: fmt.Sprintf("too many outputs in a redeem transaction")}))
 			})
 		})
@@ -1116,7 +1116,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an error", func() {
 				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{
+				Expect(err).To(Equal(&ledger.InvalidTxError{
 					Msg: fmt.Sprintf("multiple token types in input for txID: %s (TOK1, TOK2)", redeemTxID)}))
 			})
 		})

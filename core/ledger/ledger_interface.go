@@ -29,6 +29,7 @@ type Initializer struct {
 	MetricsProvider                 metrics.Provider
 	HealthCheckRegistry             HealthCheckRegistry
 	Config                          *Config
+	CustomTxProcessors              map[common.HeaderType]CustomTxProcessor
 }
 
 // Config is a structure used to configure a ledger provider.
@@ -604,6 +605,29 @@ type ChaincodeLifecycleEventProvider interface {
 	RegisterListener(channelID string, listener ChaincodeLifecycleEventListener)
 }
 
+// CustomTxProcessor allows to generate simulation results during commit time for custom transactions.
+// A custom processor may represent the information in a propriety fashion and can use this process to translate
+// the information into the form of `TxSimulationResults`. Because, the original information is signed in a
+// custom representation, an implementation of a `Processor` should be cautious that the custom representation
+// is used for simulation in an deterministic fashion and should take care of compatibility cross fabric versions.
+// 'initializingLedger' true indicates that either the transaction being processed is from the genesis block or the ledger is
+// synching the state (which could happen during peer startup if the statedb is found to be lagging behind the blockchain).
+// In the former case, the transactions processed are expected to be valid and in the latter case, only valid transactions
+// are reprocessed and hence any validation can be skipped.
+type CustomTxProcessor interface {
+	GenerateSimulationResults(txEnvelop *common.Envelope, simulator TxSimulator, initializingLedger bool) error
+}
+
+// InvalidTxError is expected to be thrown by a custom transaction processor
+// if it wants the ledger to record a particular transaction as invalid
+type InvalidTxError struct {
+	Msg string
+}
+
+func (e *InvalidTxError) Error() string {
+	return e.Msg
+}
+
 //go:generate counterfeiter -o mock/state_listener.go -fake-name StateListener . StateListener
 //go:generate counterfeiter -o mock/query_executor.go -fake-name QueryExecutor . QueryExecutor
 //go:generate counterfeiter -o mock/tx_simulator.go -fake-name TxSimulator . TxSimulator
@@ -611,3 +635,4 @@ type ChaincodeLifecycleEventProvider interface {
 //go:generate counterfeiter -o mock/membership_info_provider.go -fake-name MembershipInfoProvider . MembershipInfoProvider
 //go:generate counterfeiter -o mock/health_check_registry.go -fake-name HealthCheckRegistry . HealthCheckRegistry
 //go:generate counterfeiter -o mock/cc_event_listener.go -fake-name ChaincodeLifecycleEventListener . ChaincodeLifecycleEventListener
+//go:generate counterfeiter -o mock/custom_tx_processor.go -fake-name CustomTxProcessor . CustomTxProcessor

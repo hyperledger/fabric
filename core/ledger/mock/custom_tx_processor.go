@@ -5,11 +5,10 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/common"
 )
 
-type Processor struct {
+type CustomTxProcessor struct {
 	GenerateSimulationResultsStub        func(*common.Envelope, ledger.TxSimulator, bool) error
 	generateSimulationResultsMutex       sync.RWMutex
 	generateSimulationResultsArgsForCall []struct {
@@ -27,7 +26,7 @@ type Processor struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Processor) GenerateSimulationResults(arg1 *common.Envelope, arg2 ledger.TxSimulator, arg3 bool) error {
+func (fake *CustomTxProcessor) GenerateSimulationResults(arg1 *common.Envelope, arg2 ledger.TxSimulator, arg3 bool) error {
 	fake.generateSimulationResultsMutex.Lock()
 	ret, specificReturn := fake.generateSimulationResultsReturnsOnCall[len(fake.generateSimulationResultsArgsForCall)]
 	fake.generateSimulationResultsArgsForCall = append(fake.generateSimulationResultsArgsForCall, struct {
@@ -47,26 +46,26 @@ func (fake *Processor) GenerateSimulationResults(arg1 *common.Envelope, arg2 led
 	return fakeReturns.result1
 }
 
-func (fake *Processor) GenerateSimulationResultsCallCount() int {
+func (fake *CustomTxProcessor) GenerateSimulationResultsCallCount() int {
 	fake.generateSimulationResultsMutex.RLock()
 	defer fake.generateSimulationResultsMutex.RUnlock()
 	return len(fake.generateSimulationResultsArgsForCall)
 }
 
-func (fake *Processor) GenerateSimulationResultsCalls(stub func(*common.Envelope, ledger.TxSimulator, bool) error) {
+func (fake *CustomTxProcessor) GenerateSimulationResultsCalls(stub func(*common.Envelope, ledger.TxSimulator, bool) error) {
 	fake.generateSimulationResultsMutex.Lock()
 	defer fake.generateSimulationResultsMutex.Unlock()
 	fake.GenerateSimulationResultsStub = stub
 }
 
-func (fake *Processor) GenerateSimulationResultsArgsForCall(i int) (*common.Envelope, ledger.TxSimulator, bool) {
+func (fake *CustomTxProcessor) GenerateSimulationResultsArgsForCall(i int) (*common.Envelope, ledger.TxSimulator, bool) {
 	fake.generateSimulationResultsMutex.RLock()
 	defer fake.generateSimulationResultsMutex.RUnlock()
 	argsForCall := fake.generateSimulationResultsArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *Processor) GenerateSimulationResultsReturns(result1 error) {
+func (fake *CustomTxProcessor) GenerateSimulationResultsReturns(result1 error) {
 	fake.generateSimulationResultsMutex.Lock()
 	defer fake.generateSimulationResultsMutex.Unlock()
 	fake.GenerateSimulationResultsStub = nil
@@ -75,7 +74,7 @@ func (fake *Processor) GenerateSimulationResultsReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *Processor) GenerateSimulationResultsReturnsOnCall(i int, result1 error) {
+func (fake *CustomTxProcessor) GenerateSimulationResultsReturnsOnCall(i int, result1 error) {
 	fake.generateSimulationResultsMutex.Lock()
 	defer fake.generateSimulationResultsMutex.Unlock()
 	fake.GenerateSimulationResultsStub = nil
@@ -89,7 +88,7 @@ func (fake *Processor) GenerateSimulationResultsReturnsOnCall(i int, result1 err
 	}{result1}
 }
 
-func (fake *Processor) Invocations() map[string][][]interface{} {
+func (fake *CustomTxProcessor) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.generateSimulationResultsMutex.RLock()
@@ -101,7 +100,7 @@ func (fake *Processor) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *Processor) recordInvocation(key string, args []interface{}) {
+func (fake *CustomTxProcessor) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -113,4 +112,4 @@ func (fake *Processor) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ customtx.Processor = new(Processor)
+var _ ledger.CustomTxProcessor = new(CustomTxProcessor)

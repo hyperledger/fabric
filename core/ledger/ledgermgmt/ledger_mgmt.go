@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
@@ -39,7 +38,7 @@ type LedgerMgr struct {
 
 // Initializer encapsulates all the external dependencies for the ledger module
 type Initializer struct {
-	CustomTxProcessors              customtx.Processors
+	CustomTxProcessors              map[common.HeaderType]ledger.CustomTxProcessor
 	StateListeners                  []ledger.StateListener
 	PlatformRegistry                *platforms.Registry
 	DeployedChaincodeInfoProvider   ledger.DeployedChaincodeInfoProvider
@@ -66,6 +65,7 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 			MetricsProvider:                 initializer.MetricsProvider,
 			HealthCheckRegistry:             initializer.HealthCheckRegistry,
 			Config:                          initializer.Config,
+			CustomTxProcessors:              initializer.CustomTxProcessors,
 		},
 	)
 	if err != nil {
@@ -75,8 +75,7 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 		openedLedgers:  make(map[string]ledger.PeerLedger),
 		ledgerProvider: provider,
 	}
-	// TODO remove the following two package level inits
-	customtx.Initialize(initializer.CustomTxProcessors)
+	// TODO remove the following package level init
 	cceventmgmt.Initialize(&chaincodeInfoProviderImpl{
 		ledgerMgr,
 		initializer.PlatformRegistry,

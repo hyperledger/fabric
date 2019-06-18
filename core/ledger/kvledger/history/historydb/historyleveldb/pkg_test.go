@@ -61,7 +61,16 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 		t.Fatalf("Failed to create history database directory: %s", err)
 	}
 
-	txMgr, err := lockbasedtxmgr.NewLockBasedTxMgr(testLedgerID, testDB, nil, nil, testBookkeepingEnv.TestProvider, &mock.DeployedChaincodeInfoProvider{})
+	txMgr, err := lockbasedtxmgr.NewLockBasedTxMgr(
+		testLedgerID,
+		testDB,
+		nil,
+		nil,
+		testBookkeepingEnv.TestProvider,
+		&mock.DeployedChaincodeInfoProvider{},
+		nil,
+	)
+
 	assert.NoError(t, err)
 	testHistoryDBProvider := NewHistoryDBProvider(testHistoryDBPath)
 	testHistoryDB, err := testHistoryDBProvider.GetDBHandle("TestHistoryDB")

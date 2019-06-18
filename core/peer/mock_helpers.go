@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protos/common"
@@ -55,7 +54,7 @@ func CreateMockChannel(p *Peer, cid string) error {
 
 func constructLedgerMgrWithTestDefaults(ledgersDataDir string) (*ledgermgmt.LedgerMgr, error) {
 	testDefaults := &ledgermgmt.Initializer{
-		CustomTxProcessors: customtx.Processors{
+		CustomTxProcessors: map[common.HeaderType]ledger.CustomTxProcessor{
 			common.HeaderType_CONFIG: &ConfigTxProcessor{},
 		},
 		Config: &ledger.Config{
