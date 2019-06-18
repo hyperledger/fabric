@@ -433,13 +433,7 @@ var _ = Describe("EndToEndACL", func() {
 		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
 		By("querying the chaincode definition as a permitted Org1 Admin identity")
-		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeListCommitted{
-			ChannelID: "testchannel",
-			Name:      "mycc",
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-		Expect(sess.Out).To(gbytes.Say(fmt.Sprint("Committed chaincode definition for chaincode 'mycc' on channel 'testchannel':\nVersion: 0.0, Sequence: 1")))
+		nwo.EnsureCommitted(network, "testchannel", "mycc", "0.0", "1", org1Peer0)
 
 		By("querying the chaincode definition as a forbidden Org2 Admin identity")
 		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeListCommitted{
@@ -448,7 +442,6 @@ var _ = Describe("EndToEndACL", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
-		Expect(sess.Out).NotTo(gbytes.Say(fmt.Sprint("Committed chaincode definition for chaincode 'mycc' on channel 'testchannel':\nVersion: 0.0, Sequence: 1")))
 		Expect(sess.Err).To(gbytes.Say(`\QError: query failed with status: 500 - Failed to authorize invocation due to failed ACL check: failed evaluating policy on signed data during check policy [/Channel/Application/Org1/Admins]: [signature set did not satisfy policy]\E`))
 	})
 })

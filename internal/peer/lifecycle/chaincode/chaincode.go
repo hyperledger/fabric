@@ -72,6 +72,7 @@ var (
 	packageID             string
 	sequence              int
 	initRequired          bool
+	output                string
 )
 
 var chaincodeCmd = &cobra.Command{
@@ -121,6 +122,7 @@ func ResetFlags() {
 	flags.StringVarP(&packageID, "package-id", "", "", "The identifier of the chaincode install package")
 	flags.IntVarP(&sequence, "sequence", "", 1, "The sequence number of the chaincode definition for the channel")
 	flags.BoolVarP(&initRequired, "init-required", "", false, "Whether the chaincode requires invoking 'init'")
+	flags.StringVarP(&output, "output", "O", "", "The output format for query results. Default is human-readable plain-text.")
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {

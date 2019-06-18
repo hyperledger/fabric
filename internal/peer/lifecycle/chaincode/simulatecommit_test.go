@@ -72,18 +72,32 @@ var _ = Describe("SimulateCommit", func() {
 			}
 		})
 
-		It("simulates committing a chaincode definition and writes the output as JSON", func() {
+		It("simulates committing a chaincode definition and writes the output as human readable plain-text", func() {
 			err := commitSimulator.Simulate()
 			Expect(err).NotTo(HaveOccurred())
-			expectedOutput := &lb.SimulateCommitChaincodeDefinitionResult{
-				Approved: map[string]bool{
-					"seemsfinetome":  true,
-					"well...ok":      true,
-					"absolutely-not": false,
-				},
-			}
-			json, err := json.MarshalIndent(expectedOutput, "", "\t")
-			Eventually(commitSimulator.Writer).Should(gbytes.Say(fmt.Sprintf("%s", string(json))))
+			Eventually(commitSimulator.Writer).Should(gbytes.Say("Chaincode definition for chaincode 'testcc', version '1.0', sequence '1' on channel 'testchannel' approval status by org"))
+			Eventually(commitSimulator.Writer).Should(gbytes.Say("absolutely-not: false"))
+			Eventually(commitSimulator.Writer).Should(gbytes.Say("seemsfinetome: true"))
+			Eventually(commitSimulator.Writer).Should(gbytes.Say("well...ok: true"))
+		})
+
+		Context("when JSON-formatted output is requested", func() {
+			BeforeEach(func() {
+				commitSimulator.Input.OutputFormat = "json"
+			})
+			It("simulates committing a chaincode definition and writes the output as JSON", func() {
+				err := commitSimulator.Simulate()
+				Expect(err).NotTo(HaveOccurred())
+				expectedOutput := &lb.SimulateCommitChaincodeDefinitionResult{
+					Approved: map[string]bool{
+						"absolutely-not": false,
+						"well...ok":      true,
+						"seemsfinetome":  true,
+					},
+				}
+				json, err := json.MarshalIndent(expectedOutput, "", "\t")
+				Eventually(commitSimulator.Writer).Should(gbytes.Say(fmt.Sprintf("%s", string(json))))
+			})
 		})
 
 		Context("when the channel name is not provided", func() {
@@ -224,7 +238,7 @@ var _ = Describe("SimulateCommit", func() {
 			It("returns an error", func() {
 				err := commitSimulator.Simulate()
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to unmarshal SimulateCommitChaincodeDefinitionResult"))
+				Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload"))
 			})
 		})
 	})

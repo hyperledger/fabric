@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -269,8 +270,13 @@ func CommitChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 
 func EnsureCommitted(n *Network, channel, name, version, sequence string, peers ...*Peer) {
 	for _, p := range peers {
+		sequenceInt, err := strconv.ParseInt(sequence, 10, 64)
+		Expect(err).NotTo(HaveOccurred())
 		Eventually(listCommitted(n, p, channel, name), n.EventuallyTimeout).Should(
-			gbytes.Say(fmt.Sprintf("Committed chaincode definition for chaincode '%s' on channel '%s':\nVersion: %s, Sequence: %s", name, channel, version, sequence)),
+			MatchFields(IgnoreExtras, Fields{
+				"Version":  Equal(version),
+				"Sequence": Equal(sequenceInt),
+			}),
 		)
 	}
 }
@@ -382,15 +388,24 @@ func simulateCommit(n *Network, peer *Peer, channel string, chaincode Chaincode)
 	}
 }
 
-func listCommitted(n *Network, peer *Peer, channel, name string) func() *gbytes.Buffer {
-	return func() *gbytes.Buffer {
+type queryCommittedOutput struct {
+	Sequence int64           `json:"sequence"`
+	Version  string          `json:"version"`
+	Approved map[string]bool `json:"approved"`
+}
+
+func listCommitted(n *Network, peer *Peer, channel, name string) func() queryCommittedOutput {
+	return func() queryCommittedOutput {
 		sess, err := n.PeerAdminSession(peer, commands.ChaincodeListCommitted{
 			ChannelID: channel,
 			Name:      name,
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
-		return sess.Buffer()
+		output := &queryCommittedOutput{}
+		err = json.Unmarshal(sess.Out.Contents(), output)
+		Expect(err).NotTo(HaveOccurred())
+		return *output
 	}
 }
 

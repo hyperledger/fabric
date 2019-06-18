@@ -8,10 +8,11 @@ package chaincode
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -53,6 +54,7 @@ type CommitSimulationInput struct {
 	InitRequired             bool
 	PeerAddresses            []string
 	TxID                     string
+	OutputFormat             string
 }
 
 // Validate the input for a SimulateCommitChaincodeDefinition proposal
@@ -132,6 +134,7 @@ func SimulateCommitCmd(c *CommitSimulator) *cobra.Command {
 		"peerAddresses",
 		"tlsRootCertFiles",
 		"connectionProfile",
+		"output",
 	}
 	attachFlags(chaincodeSimulateCommitCmd, flagList)
 
@@ -179,24 +182,31 @@ func (c *CommitSimulator) Simulate() error {
 		return errors.Errorf("query failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
 	}
 
+	if strings.ToLower(c.Input.OutputFormat) == "json" {
+		return printResponseAsJSON(proposalResponse, &lb.SimulateCommitChaincodeDefinitionResult{}, c.Writer)
+	}
 	return c.printResponse(proposalResponse)
 }
 
 // printResponse prints the information included in the response
-// from the server.
+// from the server as human readable plain-text.
 func (c *CommitSimulator) printResponse(proposalResponse *pb.ProposalResponse) error {
 	result := &lb.SimulateCommitChaincodeDefinitionResult{}
 	err := proto.Unmarshal(proposalResponse.Response.Payload, result)
 	if err != nil {
-		return errors.Wrap(err, "failed to unmarshal SimulateCommitChaincodeDefinitionResult")
+		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
 
-	bytes, err := json.MarshalIndent(result, "", "\t")
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal output")
+	orgs := []string{}
+	for org := range result.Approved {
+		orgs = append(orgs, org)
 	}
+	sort.Strings(orgs)
 
-	fmt.Fprintf(c.Writer, "%s\n", string(bytes))
+	fmt.Fprintf(c.Writer, "Chaincode definition for chaincode '%s', version '%s', sequence '%d' on channel '%s' approval status by org:\n", c.Input.Name, c.Input.Version, c.Input.Sequence, c.Input.ChannelID)
+	for _, org := range orgs {
+		fmt.Fprintf(c.Writer, "%s: %t\n", org, result.Approved[org])
+	}
 
 	return nil
 }
@@ -225,6 +235,7 @@ func (c *CommitSimulator) createInput() (*CommitSimulationInput, error) {
 		InitRequired:             initRequired,
 		CollectionConfigPackage:  ccp,
 		PeerAddresses:            peerAddresses,
+		OutputFormat:             output,
 	}
 
 	return input, nil
