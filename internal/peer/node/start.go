@@ -211,6 +211,8 @@ func serve(args []string) error {
 	signingIdentity := mgmt.GetLocalSigningIdentityOrPanic()
 
 	peerInstance := &peer.Peer{
+		Server:       peerServer,
+		ServerConfig: serverConfig,
 		StoreProvider: transientstore.NewStoreProvider(
 			filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore"),
 		),
