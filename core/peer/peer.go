@@ -245,17 +245,6 @@ func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
 	}
 }
 
-// NewPeerServer creates an instance of comm.GRPCServer
-// This server is used for peer communications
-func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (*comm.GRPCServer, error) {
-	peerServer, err := comm.NewGRPCServer(listenAddress, serverConfig)
-	if err != nil {
-		peerLogger.Errorf("Failed to create peer server (%s)", err)
-		return nil, err
-	}
-	return peerServer, nil
-}
-
 //
 //  Deliver service support structs for the peer
 //

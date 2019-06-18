@@ -216,7 +216,7 @@ func serve(args []string) error {
 		cs.SetClientCertificate(clientCert)
 	}
 
-	peerServer, err := peer.NewPeerServer(listenAddr, serverConfig)
+	peerServer, err := comm.NewGRPCServer(listenAddr, serverConfig)
 	if err != nil {
 		logger.Fatalf("Failed to create peer server (%s)", err)
 	}

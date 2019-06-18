@@ -292,17 +292,17 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Logf("Running test %s ...", test.name)
-			server, err := peer.NewPeerServer("localhost:0", test.serverConfig)
+			server, err := comm.NewGRPCServer("localhost:0", test.serverConfig)
 			if err != nil {
-				t.Fatalf("NewPeerServer failed with error [%s]", err)
+				t.Fatalf("NewGRPCServer failed with error [%s]", err)
 				return
 			}
 
 			peer.Default.Server = server
 			peer.Default.ServerConfig = test.serverConfig
 
-			assert.NoError(t, err, "NewPeerServer should not have returned an error")
-			assert.NotNil(t, server, "NewPeerServer should have created a server")
+			assert.NoError(t, err, "NewGRPCServer should not have returned an error")
+			assert.NotNil(t, server, "NewGRPCServer should have created a server")
 			// register a GRPC test service
 			testpb.RegisterTestServiceServer(server.Server(), &testServiceServer{})
 			go server.Start()

@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mscc "github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -80,16 +79,6 @@ func TestMain(m *testing.M) {
 
 	os.RemoveAll(tempdir)
 	os.Exit(rc)
-}
-
-func TestNewPeerServer(t *testing.T) {
-	server, err := NewPeerServer(":4050", comm.ServerConfig{})
-	assert.NoError(t, err, "NewPeerServer returned unexpected error")
-	assert.Equal(t, "[::]:4050", server.Address(), "NewPeerServer returned the wrong address")
-	server.Stop()
-
-	_, err = NewPeerServer("", comm.ServerConfig{})
-	assert.Error(t, err, "expected NewPeerServer to return error with missing address")
 }
 
 func TestInitialize(t *testing.T) {
