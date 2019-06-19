@@ -333,7 +333,7 @@ func (c *Chain) Start() {
 	close(c.errorC)
 
 	go c.gc()
-	go c.serveRequest()
+	go c.run()
 
 	es := c.newEvictionSuspector()
 
@@ -521,7 +521,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 }
 
 // Submit forwards the incoming request to:
-// - the local serveRequest goroutine if this is leader
+// - the local run goroutine if this is leader
 // - the actual leader via the transport mechanism
 // The call fails if there's no leader elected yet.
 func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
@@ -563,7 +563,7 @@ func isCandidate(state raft.StateType) bool {
 	return state == raft.StatePreCandidate || state == raft.StateCandidate
 }
 
-func (c *Chain) serveRequest() {
+func (c *Chain) run() {
 	ticking := false
 	timer := c.clock.NewTimer(time.Second)
 	// we need a stopped timer rather than nil,
@@ -1050,40 +1050,41 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 
 			// This ConfChange was introduced by a previously committed config block,
 			// we can now unblock submitC to accept envelopes.
+			var configureComm bool
 			if c.confChangeInProgress != nil &&
 				c.confChangeInProgress.NodeID == cc.NodeID &&
 				c.confChangeInProgress.Type == cc.Type {
 
-				if err := c.configureComm(); err != nil {
-					c.logger.Panicf("Failed to configure communication: %s", err)
-				}
-
+				configureComm = true
 				c.confChangeInProgress = nil
 				c.configInflight = false
 				// report the new cluster size
 				c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.ConsenterIds)))
 			}
 
-			if cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == c.raftID {
-				c.logger.Infof("Current node removed from replica set for channel %s", c.channelID)
-				// calling goroutine, since otherwise it will be blocked
-				// trying to write into haltC
-				lead := atomic.LoadUint64(&c.lastKnownLeader)
-				if lead == c.raftID {
-					c.logger.Info("This node is being removed as current leader, halt with delay")
-					c.configInflight = true // toggle the flag so this node does not accept further tx
-					go func() {
-						select {
-						case <-c.clock.After(time.Duration(c.opts.ElectionTick) * c.opts.TickInterval):
-						case <-c.doneC:
-						}
+			lead := atomic.LoadUint64(&c.lastKnownLeader)
+			removeLeader := cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == lead
+			shouldHalt := cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == c.raftID
 
-						c.Halt()
-					}()
-				} else {
-					go c.Halt()
+			// unblock `run` go routine so it can still consume Raft messages
+			go func() {
+				if removeLeader {
+					c.logger.Infof("Current leader is being removed from channel, attempt leadership transfer")
+					c.Node.abdicateLeader(lead)
 				}
-			}
+
+				if configureComm && !shouldHalt { // no need to configure comm if this node is going to halt
+					if err := c.configureComm(); err != nil {
+						c.logger.Panicf("Failed to configure communication: %s", err)
+					}
+				}
+
+				if shouldHalt {
+					c.logger.Infof("This node is being removed from replica set")
+					c.Halt()
+					return
+				}
+			}()
 		}
 
 		if ents[i].Index > c.appliedIndex {
@@ -1218,7 +1219,7 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 		// update membership
 		if configMembership.ConfChange != nil {
 			// We need to propose conf change in a go routine, because it may be blocked if raft node
-			// becomes leaderless, and we should not block `serveRequest` so it can keep consuming applyC,
+			// becomes leaderless, and we should not block `run` so it can keep consuming applyC,
 			// otherwise we have a deadlock.
 			go func() {
 				// ProposeConfChange returns error only if node being stopped.

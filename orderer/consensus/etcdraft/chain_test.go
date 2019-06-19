@@ -1411,18 +1411,52 @@ var _ = Describe("Chain", func() {
 		It("can remove leader by reconfiguring cluster", func() {
 			network.elect(1)
 
-			Expect(c1.Configure(configEnv, 0)).To(Succeed())
-			network.exec(func(c *chain) {
-				Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-				Eventually(c.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
-			})
+			n := c1.clock.WatcherCount()
 
-			Consistently(c1.Chain.Errored).ShouldNot(BeClosed())
-			c1.clock.WaitForNWatchersAndIncrement(ELECTION_TICK*interval, 2)
+			By("Configuring cluster to remove node")
+			Expect(c1.Configure(configEnv, 0)).To(Succeed())
+			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+			Eventually(c2.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
+
+			c1.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, n+1)
 			Eventually(c1.Chain.Errored, LongEventualTimeout).Should(BeClosed())
 			close(c1.stopped) // mark c1 stopped in network
 
-			By("Electing 2 as new leader")
+			By("Asserting leader can still serve requests as single-node cluster")
+			c2.cutter.CutNext = true
+			Expect(c2.Order(env, 0)).To(Succeed())
+			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+		})
+
+		It("can remove leader by reconfiguring cluster even if leadership transfer fails", func() {
+			network.elect(1)
+
+			step1 := c1.getStepFunc()
+			c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
+				stepMsg := &raftpb.Message{}
+				if err := proto.Unmarshal(msg.Payload, stepMsg); err != nil {
+					return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
+				}
+
+				if stepMsg.Type == raftpb.MsgTimeoutNow {
+					return nil
+				}
+
+				return step1(dest, msg)
+			})
+
+			n := c1.clock.WatcherCount()
+
+			By("Configuring cluster to remove node")
+			Expect(c1.Configure(configEnv, 0)).To(Succeed())
+			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+			c2.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, n+1)
+			Eventually(c2.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
+
+			c1.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, n+1)
+			Eventually(c1.Chain.Errored, LongEventualTimeout).Should(BeClosed())
+			close(c1.stopped) // mark c1 stopped in network
+
 			network.elect(2)
 
 			By("Asserting leader can still serve requests as single-node cluster")
@@ -1437,8 +1471,9 @@ var _ = Describe("Chain", func() {
 			Expect(c1.Configure(configEnv, 0)).To(Succeed())
 			network.exec(func(c *chain) {
 				Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-				Eventually(c.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
 			})
+
+			Eventually(c2.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
 			Eventually(c1.Chain.Errored, LongEventualTimeout).Should(BeClosed())
 
 			By("Asserting leader can still serve requests as single-node cluster")
@@ -2527,18 +2562,32 @@ var _ = Describe("Chain", func() {
 					Eventually(c1.Errored, LongEventualTimeout).Should(BeClosed())
 					close(c1.stopped)
 
-					By("making sure remaining two nodes will elect new leader")
+					var newLeader, remainingFollower *chain
+					for newLeader == nil || remainingFollower == nil {
+						var state raft.SoftState
+						select {
+						case state = <-c2.observe:
+						case state = <-c3.observe:
+						case <-time.After(LongEventualTimeout):
+							Fail("Expected a new leader to present")
+						}
 
-					// deterministically select nodeID == 2 to be a leader
-					network.elect(2)
+						if state.RaftState == raft.StateLeader && state.Lead != raft.None {
+							newLeader = network.chains[state.Lead]
+						}
+
+						if state.RaftState == raft.StateFollower && state.Lead != raft.None {
+							remainingFollower = network.chains[state.Lead]
+						}
+					}
 
 					By("submitting transaction to new leader")
-					c2.cutter.CutNext = true
-					err = c2.Order(env, 0)
+					newLeader.cutter.CutNext = true
+					err = newLeader.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 
-					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-					Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+					Eventually(newLeader.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+					Eventually(remainingFollower.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					// node 1 has been stopped should not write any block
 					Consistently(c1.support.WriteBlockCallCount).Should(Equal(1))
 
@@ -2548,8 +2597,8 @@ var _ = Describe("Chain", func() {
 					Expect(err).To(HaveOccurred())
 
 					// number of block writes should remain the same
-					Consistently(c2.support.WriteBlockCallCount).Should(Equal(2))
-					Consistently(c3.support.WriteBlockCallCount).Should(Equal(2))
+					Consistently(newLeader.support.WriteBlockCallCount).Should(Equal(2))
+					Consistently(remainingFollower.support.WriteBlockCallCount).Should(Equal(2))
 					Consistently(c1.support.WriteBlockCallCount).Should(Equal(1))
 				})
 
