@@ -1971,11 +1971,17 @@ var _ = Describe("Chain", func() {
 							return step1(dest, msg)
 						})
 
+						network.exec(func(c *chain) {
+							Consistently(c.clock.WatcherCount).Should(Equal(1))
+						})
+
 						By("sending config transaction")
 						Expect(c1.Configure(configEnv, 0)).To(Succeed())
 
 						Consistently(c1.observe).ShouldNot(Receive())
 						network.exec(func(c *chain) {
+							// wait for timeout timer to start
+							c.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, 2)
 							Eventually(c.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
 						})
 					})
