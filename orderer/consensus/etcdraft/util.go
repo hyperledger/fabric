@@ -601,7 +601,7 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 	es.logger.Infof("Suspecting our own eviction from the channel for %v", cumulativeSuspicion)
 	puller, err := es.createPuller()
 	if err != nil {
-		es.logger.Panicf("Failed creating a block puller")
+		es.logger.Panicf("Failed creating a block puller: %v", err)
 	}
 
 	lastConfigBlock, err := cluster.PullLastConfigBlock(puller)

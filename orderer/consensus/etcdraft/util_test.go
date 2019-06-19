@@ -385,7 +385,7 @@ func TestEvictionSuspector(t *testing.T) {
 			description:                "puller creation fails",
 			evictionSuspicionThreshold: 10*time.Minute - time.Second,
 			blockPullerErr:             errors.New("oops"),
-			expectedPanic:              "Failed creating a block puller",
+			expectedPanic:              "Failed creating a block puller: oops",
 			halt:                       t.Fail,
 		},
 		{
