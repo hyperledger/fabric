@@ -78,7 +78,6 @@ func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 // Channel is a local struct to manage objects in a Channel
 type Channel struct {
 	cb           *common.Block
-	committer    committer.Committer
 	ledger       ledger.PeerLedger
 	bundleSource *channelconfig.BundleSource
 	resources    channelconfig.Resources
@@ -103,8 +102,9 @@ func (c *Channel) ConfigBlock() *common.Block {
 	return c.cb
 }
 
-func (c *Channel) setConfigBlock(cb *common.Block) {
+func (c *Channel) setConfigBlock(cb *common.Block) error {
 	c.cb = cb
+	return nil
 }
 
 func (c *Channel) BundleSource() *channelconfig.BundleSource {
@@ -440,24 +440,8 @@ func (p *Peer) createChannel(
 		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
 	}
 
-	committer := committer.NewLedgerCommitterReactive(l, func(block *common.Block) error {
-		chainID, err := protoutil.GetChainIDFromBlock(block)
-		if err != nil {
-			return err
-		}
-
-		channel := p.Channel(chainID)
-		if channel == nil {
-			return errors.Errorf("[channel %s] channel not associated with this peer", cid)
-		}
-
-		channel.setConfigBlock(block)
-		return nil
-	})
-
 	c := &Channel{
 		cb:        cb,
-		committer: committer,
 		ledger:    l,
 		resources: bundle,
 	}
@@ -470,6 +454,7 @@ func (p *Peer) createChannel(
 		c.bundleUpdate,
 	)
 
+	committer := committer.NewLedgerCommitterReactive(l, c.setConfigBlock)
 	validator := txvalidator.NewTxValidator(
 		cid,
 		p.validationWorkersSemaphore,
