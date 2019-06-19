@@ -70,6 +70,13 @@ func TestNewCredentialSupport(t *testing.T) {
 		ordererRootCAsByChain: make(map[string][][]byte),
 	}
 	assert.Equal(t, expected, NewCredentialSupport())
+
+	rootCAs := [][]byte{
+		[]byte("certificate-one"),
+		[]byte("certificate-two"),
+	}
+	expected.serverRootCAs = rootCAs[:]
+	assert.Equal(t, expected, NewCredentialSupport(rootCAs...))
 }
 
 func TestCredentialSupport(t *testing.T) {
@@ -94,7 +101,7 @@ func TestCredentialSupport(t *testing.T) {
 	cs.appRootCAsByChain["channel3"] = [][]byte{rootCAs[2]}
 	cs.ordererRootCAsByChain["channel1"] = [][]byte{rootCAs[3]}
 	cs.ordererRootCAsByChain["channel2"] = [][]byte{rootCAs[4]}
-	cs.ServerRootCAs = [][]byte{rootCAs[5]}
+	cs.serverRootCAs = [][]byte{rootCAs[5]}
 
 	creds, _ := cs.GetDeliverServiceCredentials("channel1")
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
@@ -107,8 +114,8 @@ func TestCredentialSupport(t *testing.T) {
 	assert.EqualError(t, err, "didn't find any root CA certs for channel channel99")
 
 	// append some bad certs and make sure things still work
-	cs.ServerRootCAs = append(cs.ServerRootCAs, []byte("badcert"))
-	cs.ServerRootCAs = append(cs.ServerRootCAs, []byte(badPEM))
+	cs.serverRootCAs = append(cs.serverRootCAs, []byte("badcert"))
+	cs.serverRootCAs = append(cs.serverRootCAs, []byte(badPEM))
 	creds, _ = cs.GetDeliverServiceCredentials("channel1")
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")

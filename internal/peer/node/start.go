@@ -206,7 +206,7 @@ func serve(args []string) error {
 	cs := comm.NewCredentialSupport()
 	if serverConfig.SecOpts.UseTLS {
 		logger.Info("Starting peer with TLS enabled")
-		cs.ServerRootCAs = serverConfig.SecOpts.ServerRootCAs
+		cs = comm.NewCredentialSupport(serverConfig.SecOpts.ServerRootCAs...)
 
 		// set the cert to use if client auth is requested by remote endpoints
 		clientCert, err := peer.GetClientCertificate()

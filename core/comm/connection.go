@@ -25,15 +25,16 @@ type CredentialSupport struct {
 	mutex                 sync.RWMutex
 	appRootCAsByChain     map[string][][]byte
 	ordererRootCAsByChain map[string][][]byte
-	ServerRootCAs         [][]byte
+	serverRootCAs         [][]byte
 	clientCert            tls.Certificate
 }
 
 // NewCredentialSupport creates a CredentialSupport instance.
-func NewCredentialSupport() *CredentialSupport {
+func NewCredentialSupport(rootCAs ...[]byte) *CredentialSupport {
 	return &CredentialSupport{
 		appRootCAsByChain:     make(map[string][][]byte),
 		ordererRootCAsByChain: make(map[string][][]byte),
+		serverRootCAs:         rootCAs,
 	}
 }
 
@@ -87,7 +88,7 @@ func (cs *CredentialSupport) GetPeerCredentials() credentials.TransportCredentia
 	defer cs.mutex.RUnlock()
 
 	var appRootCAs [][]byte
-	appRootCAs = append(appRootCAs, cs.ServerRootCAs...)
+	appRootCAs = append(appRootCAs, cs.serverRootCAs...)
 	for _, appRootCA := range cs.appRootCAsByChain {
 		appRootCAs = append(appRootCAs, appRootCA...)
 	}
