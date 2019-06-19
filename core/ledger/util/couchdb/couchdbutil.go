@@ -189,8 +189,11 @@ func ConstructMetadataDBName(dbName string) string {
 	return dbName + "_"
 }
 
-// ConstructNamespaceDBName truncates db name to couchdb allowed length to
-// construct the namespaceDBName
+// ConstructNamespaceDBName truncates db name to couchdb allowed length to construct the final namespaceDBName
+// The passed namespace will be in one of the following formats:
+// <chaincode>                 - for namespaces containing regular public data
+// <chaincode>$$p<collection>  - for namespaces containing private data collections
+// <chaincode>$$h<collection>  - for namespaces containing hashes of private data collections
 func ConstructNamespaceDBName(chainName, namespace string) string {
 	// replace upper-case in namespace with a escape sequence '$' and the respective lower-case letter
 	escapedNamespace := escapeUpperCase(namespace)
@@ -201,10 +204,10 @@ func ConstructNamespaceDBName(chainName, namespace string) string {
 	// <first 50 chars (i.e., namespaceNameAllowedLength) chars of namespace> +
 	// (<SHA256 hash of [chainName_namespace]>)
 	//
-	// For namespaceDBName of form 'chainName_namespace$$collection', on length limit violation, the truncated
+	// For namespaceDBName of form 'chainName_namespace$$[hp]collection', on length limit violation, the truncated
 	// namespaceDBName would contain <first 50 chars (i.e., chainNameAllowedLength) of chainName> + "_" +
 	// <first 50 chars (i.e., namespaceNameAllowedLength) of namespace> + "$$" + <first 50 chars
-	// (i.e., collectionNameAllowedLength) of collection> + (<SHA256 hash of [chainName_namespace$$pcollection]>)
+	// (i.e., collectionNameAllowedLength) of [hp]collection> + (<SHA256 hash of [chainName_namespace$$[hp]collection]>)
 
 	if len(namespaceDBName) > maxLength {
 		// Compute the hash of untruncated namespaceDBName that needs to be appended to
