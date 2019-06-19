@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -96,7 +97,10 @@ type embeddingDeliveryServiceFactory struct {
 }
 
 func (edsf *embeddingDeliveryServiceFactory) Service(g GossipServiceAdapter, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
-	ds, _ := edsf.DeliveryServiceFactory.Service(g, endpoints, mcs)
+	ds, err := edsf.DeliveryServiceFactory.Service(g, endpoints, mcs)
+	if err != nil {
+		panic(err)
+	}
 	return newEmbeddingDeliveryService(ds), nil
 }
 
@@ -139,7 +143,9 @@ func TestLeaderYield(t *testing.T) {
 	// Helper function that creates a gossipService instance
 	newGossipService := func(i int) *GossipService {
 		gs := gossips[i].GossipService
-		gs.deliveryFactory = &embeddingDeliveryServiceFactory{&deliveryFactoryImpl{}}
+		gs.deliveryFactory = &embeddingDeliveryServiceFactory{&deliveryFactoryImpl{
+			credentialSupport: comm.NewCredentialSupport(),
+		}}
 		gs.InitializeChannel(channelName, []string{endpoint}, Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &transientStoreMock{},

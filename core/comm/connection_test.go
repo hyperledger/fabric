@@ -64,6 +64,14 @@ func loadRootCAs() [][]byte {
 	return rootCAs
 }
 
+func TestNewCredentialSupport(t *testing.T) {
+	expected := &CredentialSupport{
+		appRootCAsByChain:     make(map[string][][]byte),
+		OrdererRootCAsByChain: make(map[string][][]byte),
+	}
+	assert.Equal(t, expected, NewCredentialSupport())
+}
+
 func TestCredentialSupport(t *testing.T) {
 	t.Parallel()
 	rootCAs := loadRootCAs()
@@ -107,11 +115,6 @@ func TestCredentialSupport(t *testing.T) {
 	creds = cs.GetPeerCredentials()
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
-
-	// test singleton
-	singleton := GetCredentialSupport()
-	clone := GetCredentialSupport()
-	assert.Exactly(t, clone, singleton, "Expected GetCredentialSupport to be a singleton")
 }
 
 type srv struct {

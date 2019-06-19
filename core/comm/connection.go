@@ -19,8 +19,6 @@ import (
 )
 
 var commLogger = flogging.MustGetLogger("comm")
-var credSupport *CredentialSupport
-var once sync.Once
 
 // CredentialSupport type manages credentials used for gRPC client connections
 type CredentialSupport struct {
@@ -31,15 +29,12 @@ type CredentialSupport struct {
 	clientCert            tls.Certificate
 }
 
-// GetCredentialSupport returns the singleton CredentialSupport instance
-func GetCredentialSupport() *CredentialSupport {
-	once.Do(func() {
-		credSupport = &CredentialSupport{
-			appRootCAsByChain:     make(map[string][][]byte),
-			OrdererRootCAsByChain: make(map[string][][]byte),
-		}
-	})
-	return credSupport
+// NewCredentialSupport creates a CredentialSupport instance.
+func NewCredentialSupport() *CredentialSupport {
+	return &CredentialSupport{
+		appRootCAsByChain:     make(map[string][][]byte),
+		OrdererRootCAsByChain: make(map[string][][]byte),
+	}
 }
 
 // SetClientCertificate sets the tls.Certificate to use for gRPC client

@@ -99,12 +99,13 @@ func TestNewDeliverService(t *testing.T) {
 		}
 	}
 	service, err := NewDeliverService(&Config{
-		Endpoints:   []string{"a"},
-		Gossip:      gossipServiceAdapter,
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  abcf,
-		ConnFactory: connFactory,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{"a"},
+		Gossip:            gossipServiceAdapter,
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        abcf,
+		ConnFactory:       connFactory,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.NoError(t, err)
 	assert.NoError(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{Height: 0}, func() {}))
@@ -141,12 +142,13 @@ func TestDeliverServiceRestart(t *testing.T) {
 	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
 
 	service, err := NewDeliverService(&Config{
-		Endpoints:   []string{"localhost:5611"},
-		Gossip:      gossipServiceAdapter,
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  DefaultABCFactory,
-		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{"localhost:5611"},
+		Gossip:            gossipServiceAdapter,
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        DefaultABCFactory,
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.NoError(t, err)
 
@@ -188,12 +190,13 @@ func TestDeliverServiceFailover(t *testing.T) {
 	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
 
 	service, err := NewDeliverService(&Config{
-		Endpoints:   []string{"localhost:5612", "localhost:5613"},
-		Gossip:      gossipServiceAdapter,
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  DefaultABCFactory,
-		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{"localhost:5612", "localhost:5613"},
+		Gossip:            gossipServiceAdapter,
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        DefaultABCFactory,
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.NoError(t, err)
 	li := &mocks.MockLedgerInfo{Height: uint64(100)}
@@ -261,12 +264,13 @@ func TestDeliverServiceUpdateEndpoints(t *testing.T) {
 	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
 
 	service, err := NewDeliverService(&Config{
-		Endpoints:   []string{"localhost:5612"},
-		Gossip:      gossipServiceAdapter,
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  DefaultABCFactory,
-		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{"localhost:5612"},
+		Gossip:            gossipServiceAdapter,
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        DefaultABCFactory,
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	defer service.Stop()
 
@@ -311,12 +315,13 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
 
 	service, err := NewDeliverService(&Config{
-		Endpoints:   []string{"localhost:5615", "localhost:5616"},
-		Gossip:      gossipServiceAdapter,
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  DefaultABCFactory,
-		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{"localhost:5615", "localhost:5616"},
+		Gossip:            gossipServiceAdapter,
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        DefaultABCFactory,
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.NoError(t, err)
 	li := &mocks.MockLedgerInfo{Height: 100}
@@ -442,12 +447,13 @@ func TestDeliverServiceAbruptStop(t *testing.T) {
 	// it might be scheduled after the deliver client is stopped.
 	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
 	service, err := NewDeliverService(&Config{
-		Endpoints:   []string{"a"},
-		Gossip:      gossipServiceAdapter,
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  DefaultABCFactory,
-		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{"a"},
+		Gossip:            gossipServiceAdapter,
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        DefaultABCFactory,
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.NoError(t, err)
 
@@ -466,12 +472,13 @@ func TestDeliverServiceShutdown(t *testing.T) {
 	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
 
 	service, err := NewDeliverService(&Config{
-		Endpoints:   []string{"localhost:5614"},
-		Gossip:      gossipServiceAdapter,
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  DefaultABCFactory,
-		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{"localhost:5614"},
+		Gossip:            gossipServiceAdapter,
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        DefaultABCFactory,
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.NoError(t, err)
 
@@ -513,12 +520,13 @@ func TestDeliverServiceShutdownRespawn(t *testing.T) {
 	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
 
 	service, err := NewDeliverService(&Config{
-		Endpoints:   []string{"localhost:5614", "localhost:5615"},
-		Gossip:      gossipServiceAdapter,
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  DefaultABCFactory,
-		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{"localhost:5614", "localhost:5615"},
+		Gossip:            gossipServiceAdapter,
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        DefaultABCFactory,
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.NoError(t, err)
 
@@ -567,12 +575,13 @@ func TestDeliverServiceDisconnectReconnect(t *testing.T) {
 	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
 
 	service, err := NewDeliverService(&Config{
-		Endpoints:   []string{"localhost:5614"},
-		Gossip:      gossipServiceAdapter,
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  DefaultABCFactory,
-		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{"localhost:5614"},
+		Gossip:            gossipServiceAdapter,
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        DefaultABCFactory,
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.NoError(t, err)
 
@@ -611,61 +620,79 @@ func TestDeliverServiceDisconnectReconnect(t *testing.T) {
 func TestDeliverServiceBadConfig(t *testing.T) {
 	// Empty endpoints
 	service, err := NewDeliverService(&Config{
-		Endpoints:   []string{},
-		Gossip:      &mocks.MockGossipServiceAdapter{},
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  DefaultABCFactory,
-		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{},
+		Gossip:            &mocks.MockGossipServiceAdapter{},
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        DefaultABCFactory,
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
 
 	// Nil gossip adapter
 	service, err = NewDeliverService(&Config{
-		Endpoints:   []string{"a"},
-		Gossip:      nil,
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  DefaultABCFactory,
-		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{"a"},
+		Gossip:            nil,
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        DefaultABCFactory,
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
 
 	// Nil crypto service
 	service, err = NewDeliverService(&Config{
-		Endpoints:   []string{"a"},
-		Gossip:      &mocks.MockGossipServiceAdapter{},
-		CryptoSvc:   nil,
-		ABCFactory:  DefaultABCFactory,
-		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{"a"},
+		Gossip:            &mocks.MockGossipServiceAdapter{},
+		CryptoSvc:         nil,
+		ABCFactory:        DefaultABCFactory,
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
 
 	// Nil ABCFactory
 	service, err = NewDeliverService(&Config{
-		Endpoints:   []string{"a"},
-		Gossip:      &mocks.MockGossipServiceAdapter{},
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  nil,
-		ConnFactory: (&CredSupportDialerFactory{}).Dialer,
-		Signer:      &mocks.SignerSerializer{},
+		Endpoints:         []string{"a"},
+		Gossip:            &mocks.MockGossipServiceAdapter{},
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        nil,
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
 
 	// Nil connFactory
 	service, err = NewDeliverService(&Config{
-		Endpoints:  []string{"a"},
-		Gossip:     &mocks.MockGossipServiceAdapter{},
-		CryptoSvc:  &mockMCS{},
-		ABCFactory: DefaultABCFactory,
-		Signer:     &mocks.SignerSerializer{},
+		Endpoints:         []string{"a"},
+		Gossip:            &mocks.MockGossipServiceAdapter{},
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        DefaultABCFactory,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: comm.NewCredentialSupport(),
 	})
 	assert.Error(t, err)
+	assert.Nil(t, service)
+
+	// Nil CredentialSupport
+	service, err = NewDeliverService(&Config{
+		ConnFactory:       (&CredSupportDialerFactory{}).Dialer,
+		Endpoints:         []string{"a"},
+		Gossip:            &mocks.MockGossipServiceAdapter{},
+		CryptoSvc:         &mockMCS{},
+		ABCFactory:        DefaultABCFactory,
+		Signer:            &mocks.SignerSerializer{},
+		CredentialSupport: nil,
+	})
+	assert.EqualError(t, err, "no credential support specified")
 	assert.Nil(t, service)
 }
 

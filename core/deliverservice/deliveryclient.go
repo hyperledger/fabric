@@ -93,6 +93,8 @@ type Config struct {
 	Endpoints []string
 	// Signer is the identity used to sign requests.
 	Signer identity.SignerSerializer
+	// CredentialSupport is used to get credentials for block requests.
+	CredentialSupport *comm.CredentialSupport
 }
 
 // ConnectionCriteria defines how to connect to ordering service nodes.
@@ -182,6 +184,9 @@ func (d *deliverServiceImpl) validateConfiguration() error {
 	if conf.CryptoSvc == nil {
 		return errors.New("no crypto service specified")
 	}
+	if conf.CredentialSupport == nil {
+		return errors.New("no credential support specified")
+	}
 	return nil
 }
 
@@ -259,9 +264,10 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 	reconnectBackoffThreshold := getReConnectBackoffThreshold()
 	reconnectTotalTimeThreshold := getReConnectTotalTimeThreshold()
 	requester := &blocksRequester{
-		tls:     viper.GetBool("peer.tls.enabled"),
-		chainID: chainID,
-		signer:  d.conf.Signer,
+		tls:         viper.GetBool("peer.tls.enabled"),
+		chainID:     chainID,
+		signer:      d.conf.Signer,
+		credSupport: d.conf.CredentialSupport,
 	}
 	broadcastSetup := func(bd blocksprovider.BlocksDeliverer) error {
 		return requester.RequestBlocks(ledgerInfoProvider)
@@ -306,7 +312,7 @@ func (c *CredSupportDialerFactory) Dialer(channelID string) func(endpoint string
 		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(c.KeepaliveOptions)...)
 
 		if c.CredentialSupport != nil {
-			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID)
+			creds, err := c.CredentialSupport.GetDeliverServiceCredentials(channelID)
 			if err != nil {
 				return nil, fmt.Errorf("failed obtaining credentials for channel %s: %v", channelID, err)
 			}

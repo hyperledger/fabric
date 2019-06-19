@@ -132,15 +132,16 @@ type deliveryFactoryImpl struct {
 // Returns an instance of delivery client
 func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
 	return deliverservice.NewDeliverService(&deliverservice.Config{
-		CryptoSvc: mcs,
-		Gossip:    g,
-		Endpoints: endpoints,
+		ABCFactory:        deliverservice.DefaultABCFactory,
+		CryptoSvc:         mcs,
+		CredentialSupport: df.credentialSupport,
+		Endpoints:         endpoints,
 		ConnFactory: (&deliverservice.CredSupportDialerFactory{
 			CredentialSupport: df.credentialSupport,
 			KeepaliveOptions:  deliverservice.KeepaliveOptions(),
 		}).Dialer,
-		ABCFactory: deliverservice.DefaultABCFactory,
-		Signer:     df.signer,
+		Gossip: g,
+		Signer: df.signer,
 	})
 }
 
