@@ -280,8 +280,8 @@ var _ = Describe("Network", func() {
 			nwo.InstallChaincode(network, chaincode, testPeers...)
 
 			nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, testPeers...)
-			nwo.EnsureApproved(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
 
+			nwo.SimulateCommitUntilSuccess(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
 			nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
 			nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
 

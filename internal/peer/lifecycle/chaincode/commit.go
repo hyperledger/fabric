@@ -160,7 +160,7 @@ func (c *Committer) Commit() error {
 		c.Command.SilenceUsage = true
 	}
 
-	proposal, txID, err := c.createProposals(c.Input.TxID)
+	proposal, txID, err := c.createProposal(c.Input.TxID)
 	if err != nil {
 		return errors.WithMessage(err, "failed to create proposal")
 	}
@@ -271,7 +271,7 @@ func (c *Committer) createInput() (*CommitInput, error) {
 	return input, nil
 }
 
-func (c *Committer) createProposals(inputTxID string) (proposal *pb.Proposal, txID string, err error) {
+func (c *Committer) createProposal(inputTxID string) (proposal *pb.Proposal, txID string, err error) {
 	args := &lb.CommitChaincodeDefinitionArgs{
 		Name:                c.Input.Name,
 		Version:             c.Input.Version,

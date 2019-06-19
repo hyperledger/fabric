@@ -366,8 +366,8 @@ var _ = Describe("EndToEndACL", func() {
 		policy = "/Channel/Application/Org1/Admins"
 		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
-		By("simulating the commit of a chaincode definition as a forbidden Org2 Admin identity")
-		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeQueryApprovalStatus{
+		By("simulating the commit of a chaincode dwefinition as a forbidden Org2 Admin identity")
+		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeSimulateCommit{
 			ChannelID:           "testchannel",
 			Name:                chaincode.Name,
 			Version:             chaincode.Version,
@@ -386,7 +386,7 @@ var _ = Describe("EndToEndACL", func() {
 		//
 		// when the ACL policy for SimulateCommitChaincodeDefinition is satisified
 		//
-		nwo.EnsureApproved(network, "testchannel", chaincode, network.PeerOrgs(), org1Peer0)
+		nwo.SimulateCommitUntilSuccess(network, "testchannel", chaincode, network.PeerOrgs(), org1Peer0)
 
 		//
 		// when the ACL policy for CommitChaincodeDefinition is not satisified

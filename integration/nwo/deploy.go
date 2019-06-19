@@ -62,9 +62,9 @@ func DeployChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 
 	// approve for each org
 	ApproveChaincodeForMyOrg(n, channel, orderer, chaincode, peers...)
-	EnsureApproved(n, channel, chaincode, n.PeerOrgs(), peers...)
 
 	// commit definition
+	SimulateCommitUntilSuccess(n, channel, chaincode, n.PeerOrgs(), peers...)
 	CommitChaincode(n, channel, orderer, chaincode, peers[0], peers...)
 
 	// init the chaincode, if required
@@ -222,13 +222,13 @@ func ApproveChaincodeForMyOrg(n *Network, channel string, orderer *Orderer, chai
 	}
 }
 
-func EnsureApproved(n *Network, channel string, chaincode Chaincode, checkOrgs []*Organization, peers ...*Peer) {
+func SimulateCommitUntilSuccess(n *Network, channel string, chaincode Chaincode, checkOrgs []*Organization, peers ...*Peer) {
 	for _, p := range peers {
 		keys := Keys{}
 		for _, org := range checkOrgs {
 			keys[org.MSPID] = BeTrue()
 		}
-		Eventually(queryApprovalStatus(n, p, channel, chaincode), n.EventuallyTimeout).Should(
+		Eventually(simulateCommit(n, p, channel, chaincode), n.EventuallyTimeout).Should(
 			MatchKeys(IgnoreExtras, keys),
 		)
 	}
@@ -355,13 +355,13 @@ func UpgradeChaincodeLegacy(n *Network, channel string, orderer *Orderer, chainc
 	EnsureInstantiatedLegacy(n, channel, chaincode.Name, chaincode.Version, peers...)
 }
 
-type queryApprovalOutput struct {
+type simulateCommitOutput struct {
 	Approved map[string]bool
 }
 
-func queryApprovalStatus(n *Network, peer *Peer, channel string, chaincode Chaincode) func() map[string]bool {
+func simulateCommit(n *Network, peer *Peer, channel string, chaincode Chaincode) func() map[string]bool {
 	return func() map[string]bool {
-		sess, err := n.PeerAdminSession(peer, commands.ChaincodeQueryApprovalStatus{
+		sess, err := n.PeerAdminSession(peer, commands.ChaincodeSimulateCommit{
 			ChannelID:           channel,
 			Name:                chaincode.Name,
 			Version:             chaincode.Version,
@@ -375,7 +375,7 @@ func queryApprovalStatus(n *Network, peer *Peer, channel string, chaincode Chain
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-		output := &queryApprovalOutput{}
+		output := &simulateCommitOutput{}
 		err = json.Unmarshal(sess.Out.Contents(), output)
 		Expect(err).NotTo(HaveOccurred())
 		return output.Approved
