@@ -125,7 +125,8 @@ type DeliveryServiceFactory interface {
 }
 
 type deliveryFactoryImpl struct {
-	signer identity.SignerSerializer
+	signer            identity.SignerSerializer
+	credentialSupport *corecomm.CredentialSupport
 }
 
 // Returns an instance of delivery client
@@ -135,7 +136,7 @@ func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, endpoints []strin
 		Gossip:    g,
 		Endpoints: endpoints,
 		ConnFactory: (&deliverservice.CredSupportDialerFactory{
-			CredentialSupport: corecomm.GetCredentialSupport(),
+			CredentialSupport: df.credentialSupport,
 			KeepaliveOptions:  deliverservice.KeepaliveOptions(),
 		}).Dialer,
 		ABCFactory: deliverservice.DefaultABCFactory,
@@ -206,6 +207,7 @@ func New(
 	mcs api.MessageCryptoService,
 	secAdv api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts,
+	credSupport *corecomm.CredentialSupport,
 	bootPeers ...string,
 ) (*GossipService, error) {
 	serializedIdentity, err := peerIdentity.Serialize()
@@ -241,7 +243,7 @@ func New(
 		chains:          make(map[string]state.GossipStateProvider),
 		leaderElection:  make(map[string]election.LeaderElectionService),
 		deliveryService: make(map[string]deliverservice.DeliverService),
-		deliveryFactory: &deliveryFactoryImpl{signer: peerIdentity},
+		deliveryFactory: &deliveryFactoryImpl{signer: peerIdentity, credentialSupport: credSupport},
 		peerIdentity:    serializedIdentity,
 		secAdv:          secAdv,
 		metrics:         gossipMetrics,

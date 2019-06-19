@@ -63,6 +63,7 @@ func TestMain(m *testing.M) {
 		messageCryptoService,
 		secAdv,
 		defaultSecureDialOpts,
+		nil,
 	)
 	if err != nil {
 		panic(err)

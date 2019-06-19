@@ -96,6 +96,7 @@ func TestInitGossipService(t *testing.T) {
 		messageCryptoService,
 		secAdv,
 		nil,
+		nil,
 	)
 	assert.NoError(t, err)
 
@@ -870,6 +871,7 @@ func TestInvalidInitialization(t *testing.T) {
 		&naiveCryptoService{},
 		secAdv,
 		nil,
+		nil,
 	)
 	assert.NoError(t, err)
 	gService := gossipService
@@ -907,6 +909,7 @@ func TestChannelConfig(t *testing.T) {
 		nil,
 		&naiveCryptoService{},
 		secAdv,
+		nil,
 		nil,
 	)
 	assert.NoError(t, err)

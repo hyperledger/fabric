@@ -240,6 +240,7 @@ func serve(args []string) error {
 		metricsProvider,
 		peerServer,
 		signingIdentity,
+		cs,
 		coreConfig.PeerAddress,
 	)
 	if err != nil {
@@ -967,6 +968,7 @@ func initGossipService(
 	metricsProvider metrics.Provider,
 	peerServer *comm.GRPCServer,
 	signer msp.SigningIdentity,
+	credSupport *comm.CredentialSupport,
 	peerAddr string,
 ) (*gossipservice.GossipService, error) {
 
@@ -999,6 +1001,7 @@ func initGossipService(
 		messageCryptoService,
 		secAdv,
 		secureDialOpts,
+		credSupport,
 		bootstrap...,
 	)
 }
