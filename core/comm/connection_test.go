@@ -67,7 +67,7 @@ func loadRootCAs() [][]byte {
 func TestNewCredentialSupport(t *testing.T) {
 	expected := &CredentialSupport{
 		appRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
+		ordererRootCAsByChain: make(map[string][][]byte),
 	}
 	assert.Equal(t, expected, NewCredentialSupport())
 }
@@ -82,7 +82,7 @@ func TestCredentialSupport(t *testing.T) {
 
 	cs := &CredentialSupport{
 		appRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
+		ordererRootCAsByChain: make(map[string][][]byte),
 	}
 	cert := tls.Certificate{Certificate: [][]byte{}}
 	cs.SetClientCertificate(cert)
@@ -92,8 +92,8 @@ func TestCredentialSupport(t *testing.T) {
 	cs.appRootCAsByChain["channel1"] = [][]byte{rootCAs[0]}
 	cs.appRootCAsByChain["channel2"] = [][]byte{rootCAs[1]}
 	cs.appRootCAsByChain["channel3"] = [][]byte{rootCAs[2]}
-	cs.OrdererRootCAsByChain["channel1"] = [][]byte{rootCAs[3]}
-	cs.OrdererRootCAsByChain["channel2"] = [][]byte{rootCAs[4]}
+	cs.ordererRootCAsByChain["channel1"] = [][]byte{rootCAs[3]}
+	cs.ordererRootCAsByChain["channel2"] = [][]byte{rootCAs[4]}
 	cs.ServerRootCAs = [][]byte{rootCAs[5]}
 
 	creds, _ := cs.GetDeliverServiceCredentials("channel1")
@@ -192,13 +192,13 @@ func TestImpersonation(t *testing.T) {
 
 	cs := &CredentialSupport{
 		appRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
+		ordererRootCAsByChain: make(map[string][][]byte),
 	}
 	_, err := cs.GetDeliverServiceCredentials("C")
 	assert.Error(t, err)
 
-	cs.OrdererRootCAsByChain["A"] = [][]byte{osA.caCert}
-	cs.OrdererRootCAsByChain["B"] = [][]byte{osB.caCert}
+	cs.ordererRootCAsByChain["A"] = [][]byte{osA.caCert}
+	cs.ordererRootCAsByChain["B"] = [][]byte{osB.caCert}
 
 	var tests = []struct {
 		channel string

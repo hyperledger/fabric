@@ -24,7 +24,7 @@ var commLogger = flogging.MustGetLogger("comm")
 type CredentialSupport struct {
 	mutex                 sync.RWMutex
 	appRootCAsByChain     map[string][][]byte
-	OrdererRootCAsByChain map[string][][]byte
+	ordererRootCAsByChain map[string][][]byte
 	ServerRootCAs         [][]byte
 	clientCert            tls.Certificate
 }
@@ -33,7 +33,7 @@ type CredentialSupport struct {
 func NewCredentialSupport() *CredentialSupport {
 	return &CredentialSupport{
 		appRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
+		ordererRootCAsByChain: make(map[string][][]byte),
 	}
 }
 
@@ -59,7 +59,7 @@ func (cs *CredentialSupport) GetDeliverServiceCredentials(channelID string) (cre
 	cs.mutex.RLock()
 	defer cs.mutex.RUnlock()
 
-	rootCACerts, exists := cs.OrdererRootCAsByChain[channelID]
+	rootCACerts, exists := cs.ordererRootCAsByChain[channelID]
 	if !exists {
 		commLogger.Errorf("Attempted to obtain root CA certs of an unknown channel: %s", channelID)
 		return nil, fmt.Errorf("didn't find any root CA certs for channel %s", channelID)
@@ -172,6 +172,6 @@ func (cs *CredentialSupport) BuildTrustedRootsForChain(cm channelconfig.Resource
 
 	cs.mutex.Lock()
 	cs.appRootCAsByChain[cid] = appRootCAs
-	cs.OrdererRootCAsByChain[cid] = ordererRootCAs
+	cs.ordererRootCAsByChain[cid] = ordererRootCAs
 	cs.mutex.Unlock()
 }
