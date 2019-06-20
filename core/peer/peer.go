@@ -45,8 +45,6 @@ import (
 
 var peerLogger = flogging.MustGetLogger("peer")
 
-var peerServer *comm.GRPCServer
-
 // singleton instance to manage credentials for the peer across channel config changes
 var credSupport = comm.GetCredentialSupport()
 
@@ -223,37 +221,26 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 }
 
 // updates the trusted roots for the peer based on updates to channels
-func updateTrustedRoots(cm channelconfig.Resources) {
-	// this is triggered on per channel basis so first update the roots for the channel
-	peerLogger.Debugf("Updating trusted root authorities for channel %s", cm.ConfigtxValidator().ChainID())
-
-	// only run is TLS is enabled
-	serverConfig, err := GetServerConfig()
-	if err != nil || !serverConfig.SecOpts.UseTLS {
-		// TODO: stop making calls to get the server configuratino
+func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
+	if p.ServerConfig.SecOpts == nil || !p.ServerConfig.SecOpts.UseTLS {
 		return
 	}
+
+	// this is triggered on per channel basis so first update the roots for the channel
+	peerLogger.Debugf("Updating trusted root authorities for channel %s", cm.ConfigtxValidator().ChainID())
 
 	credSupport.BuildTrustedRootsForChain(cm)
 
 	// now iterate over all roots for all app and orderer channels
-	credSupport.RLock()
-	defer credSupport.RUnlock()
-
 	var trustedRoots [][]byte
 	for _, roots := range credSupport.AppRootCAsByChain() {
 		trustedRoots = append(trustedRoots, roots...)
 	}
-	trustedRoots = append(trustedRoots, serverConfig.SecOpts.ClientRootCAs...)
-	trustedRoots = append(trustedRoots, serverConfig.SecOpts.ServerRootCAs...)
-
-	server := peerServer
-	if server == nil {
-		return
-	}
+	trustedRoots = append(trustedRoots, p.ServerConfig.SecOpts.ClientRootCAs...)
+	trustedRoots = append(trustedRoots, p.ServerConfig.SecOpts.ServerRootCAs...)
 
 	// now update the client roots for the peerServer
-	err = server.SetClientRootCAs(trustedRoots)
+	err := p.Server.SetClientRootCAs(trustedRoots)
 	if err != nil {
 		msg := "Failed to update trusted roots from latest config block. " +
 			"This peer may not be able to communicate with members of channel %s (%s)"
@@ -264,8 +251,7 @@ func updateTrustedRoots(cm channelconfig.Resources) {
 // NewPeerServer creates an instance of comm.GRPCServer
 // This server is used for peer communications
 func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (*comm.GRPCServer, error) {
-	var err error
-	peerServer, err = comm.NewGRPCServer(listenAddress, serverConfig)
+	peerServer, err := comm.NewGRPCServer(listenAddress, serverConfig)
 	if err != nil {
 		peerLogger.Errorf("Failed to create peer server (%s)", err)
 		return nil, err
@@ -331,6 +317,8 @@ type Operations interface {
 }
 
 type Peer struct {
+	Server        *comm.GRPCServer
+	ServerConfig  comm.ServerConfig
 	StoreProvider transientstore.StoreProvider
 	GossipService *gossipservice.GossipService
 
@@ -457,7 +445,7 @@ func (p *Peer) createChannel(
 	}
 
 	trustedRootsCallbackWrapper := func(bundle *channelconfig.Bundle) {
-		updateTrustedRoots(bundle)
+		p.updateTrustedRoots(bundle)
 	}
 
 	mspCallback := func(bundle *channelconfig.Bundle) {
