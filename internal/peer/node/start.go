@@ -203,20 +203,34 @@ func serve(args []string) error {
 		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
 	)
 
-	peerServer, err := peer.NewPeerServer(listenAddr, serverConfig)
+	cs := comm.GetCredentialSupport()
+	if serverConfig.SecOpts.UseTLS {
+		logger.Info("Starting peer with TLS enabled")
+		cs.ServerRootCAs = serverConfig.SecOpts.ServerRootCAs
+
+		// set the cert to use if client auth is requested by remote endpoints
+		clientCert, err := peer.GetClientCertificate()
+		if err != nil {
+			logger.Fatalf("Failed to set TLS client certificate (%s)", err)
+		}
+		cs.SetClientCertificate(clientCert)
+	}
+
+	peerServer, err := comm.NewGRPCServer(listenAddr, serverConfig)
 	if err != nil {
 		logger.Fatalf("Failed to create peer server (%s)", err)
 	}
 
-	signingIdentity := mgmt.GetLocalSigningIdentityOrPanic()
-
 	peerInstance := &peer.Peer{
-		Server:       peerServer,
-		ServerConfig: serverConfig,
+		Server:            peerServer,
+		ServerConfig:      serverConfig,
+		CredentialSupport: cs,
 		StoreProvider: transientstore.NewStoreProvider(
 			filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore"),
 		),
 	}
+
+	signingIdentity := mgmt.GetLocalSigningIdentityOrPanic()
 	policyMgr := policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager)
 
 	// FIXME: Creating the gossip service has the side effect of starting a bunch
@@ -342,20 +356,6 @@ func serve(args []string) error {
 		logger.Info("Disable loading validity system chaincode")
 
 		viper.Set("chaincode.mode", chaincode.DevModeUserRunsChaincode)
-	}
-
-	if serverConfig.SecOpts.UseTLS {
-		logger.Info("Starting peer with TLS enabled")
-		// set up credential support
-		cs := comm.GetCredentialSupport()
-		cs.ServerRootCAs = serverConfig.SecOpts.ServerRootCAs
-
-		// set the cert to use if client auth is requested by remote endpoints
-		clientCert, err := peer.GetClientCertificate()
-		if err != nil {
-			logger.Fatalf("Failed to set TLS client certificate (%s)", err)
-		}
-		comm.GetCredentialSupport().SetClientCertificate(clientCert)
 	}
 
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert

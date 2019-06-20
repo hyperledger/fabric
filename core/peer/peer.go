@@ -45,9 +45,6 @@ import (
 
 var peerLogger = flogging.MustGetLogger("peer")
 
-// singleton instance to manage credentials for the peer across channel config changes
-var credSupport = comm.GetCredentialSupport()
-
 type CollectionInfoShim struct {
 	plugindispatcher.CollectionAndLifecycleResources
 	ChannelID string
@@ -229,11 +226,11 @@ func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
 	// this is triggered on per channel basis so first update the roots for the channel
 	peerLogger.Debugf("Updating trusted root authorities for channel %s", cm.ConfigtxValidator().ChainID())
 
-	credSupport.BuildTrustedRootsForChain(cm)
+	p.CredentialSupport.BuildTrustedRootsForChain(cm)
 
 	// now iterate over all roots for all app and orderer channels
 	var trustedRoots [][]byte
-	for _, roots := range credSupport.AppRootCAsByChain() {
+	for _, roots := range p.CredentialSupport.AppRootCAsByChain() {
 		trustedRoots = append(trustedRoots, roots...)
 	}
 	trustedRoots = append(trustedRoots, p.ServerConfig.SecOpts.ClientRootCAs...)
@@ -246,17 +243,6 @@ func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
 			"This peer may not be able to communicate with members of channel %s (%s)"
 		peerLogger.Warningf(msg, cm.ConfigtxValidator().ChainID(), err)
 	}
-}
-
-// NewPeerServer creates an instance of comm.GRPCServer
-// This server is used for peer communications
-func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (*comm.GRPCServer, error) {
-	peerServer, err := comm.NewGRPCServer(listenAddress, serverConfig)
-	if err != nil {
-		peerLogger.Errorf("Failed to create peer server (%s)", err)
-		return nil, err
-	}
-	return peerServer, nil
 }
 
 //
@@ -317,10 +303,11 @@ type Operations interface {
 }
 
 type Peer struct {
-	Server        *comm.GRPCServer
-	ServerConfig  comm.ServerConfig
-	StoreProvider transientstore.StoreProvider
-	GossipService *gossipservice.GossipService
+	Server            *comm.GRPCServer
+	ServerConfig      comm.ServerConfig
+	CredentialSupport *comm.CredentialSupport
+	StoreProvider     transientstore.StoreProvider
+	GossipService     *gossipservice.GossipService
 
 	// validationWorkersSemaphore is used to limit the number of concurrent validation
 	// go routines.
