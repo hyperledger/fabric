@@ -208,6 +208,9 @@ func TestNewPeerClientForAddress(t *testing.T) {
 	// TLS enabled
 	viper.Set("peer.tls.enabled", true)
 
+	// Enable clientAuthRequired
+	viper.Set("peer.tls.clientAuthRequired", true)
+
 	// success case
 	pClient, err = common.NewPeerClientForAddress("tlsPeer", "./testdata/certs/ca.crt")
 	assert.NoError(t, err)
@@ -222,6 +225,20 @@ func TestNewPeerClientForAddress(t *testing.T) {
 	pClient, err = common.NewPeerClientForAddress("badPeer", "")
 	assert.Contains(t, err.Error(), "tls root cert file must be set")
 	assert.Nil(t, pClient)
+
+	// failure - empty tls root cert file
+	viper.Set("peer.tls.clientCert.file", "./nocert.crt")
+	pClient, err = common.NewPeerClientForAddress("badPeer", "")
+	assert.Contains(t, err.Error(), "unable to load peer.tls.clientCert.file")
+	assert.Nil(t, pClient)
+
+	// bad key file
+	viper.Set("peer.tls.clientKey.file", "./nokey.key")
+	viper.Set("peer.client.connTimeout", time.Duration(0))
+	pClient, err = common.NewPeerClientForAddress("badPeer", "")
+	assert.Contains(t, err.Error(), "unable to load peer.tls.clientKey.file")
+	assert.Nil(t, pClient)
+
 }
 
 func TestGetClients_AddressError(t *testing.T) {
