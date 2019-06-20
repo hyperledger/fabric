@@ -8,15 +8,12 @@ package peer
 
 import (
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	"github.com/hyperledger/fabric/protos/common"
 )
 
@@ -53,25 +50,12 @@ func CreateMockChannel(p *Peer, cid string) error {
 }
 
 func constructLedgerMgrWithTestDefaults(ledgersDataDir string) (*ledgermgmt.LedgerMgr, error) {
-	testDefaults := &ledgermgmt.Initializer{
-		CustomTxProcessors: map[common.HeaderType]ledger.CustomTxProcessor{
-			common.HeaderType_CONFIG: &ConfigTxProcessor{},
-		},
-		Config: &ledger.Config{
-			RootFSPath:    ledgersDataDir,
-			StateDBConfig: &ledger.StateDBConfig{},
-			PrivateDataConfig: &ledger.PrivateDataConfig{
-				MaxBatchSize:    5000,
-				BatchesInterval: 1000,
-				PurgeInterval:   100,
-			},
-			HistoryDBConfig: &ledger.HistoryDBConfig{
-				Enabled: true,
-			},
-		},
-		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
-		MetricsProvider:               &disabled.Provider{},
-		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
+	ledgerInitializer := ledgermgmttest.NewInitializer(ledgersDataDir)
+	ledgerInitializer.CustomTxProcessors = map[common.HeaderType]ledger.CustomTxProcessor{
+		common.HeaderType_CONFIG: &ConfigTxProcessor{},
 	}
-	return ledgermgmt.NewLedgerMgr(testDefaults), nil
+	ledgerInitializer.Config.HistoryDBConfig = &ledger.HistoryDBConfig{
+		Enabled: true,
+	}
+	return ledgermgmt.NewLedgerMgr(ledgerInitializer), nil
 }

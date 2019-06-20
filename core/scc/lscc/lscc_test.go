@@ -18,7 +18,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/mocks/config"
 	mscc "github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/policies"
@@ -32,9 +31,8 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim/shimtest"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	cutil "github.com/hyperledger/fabric/core/container/util"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	"github.com/hyperledger/fabric/core/mocks/scc/lscc"
 	"github.com/hyperledger/fabric/core/policy"
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
@@ -50,6 +48,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func constructDeploymentSpec(name string, path string, version string, initArgs [][]byte, createInvalidIndex bool, createFS bool, scc *LifeCycleSysCC) (*pb.ChaincodeDeploymentSpec, error) {
@@ -108,8 +107,12 @@ func getMSPIDs(cid string) []string {
 // TestInstall tests the install function with various inputs
 func TestInstall(t *testing.T) {
 	// Initialize ledgermgmt that inturn initializes internal components (such as cceventmgmt on which this test depends)
-	_, cleanup := constructLedgerMgrWithTestDefaults(t, "lscc")
-	defer cleanup()
+	tempdir, err := ioutil.TempDir("", "lscc-test")
+	require.NoError(t, err, "failed to create temporary directory")
+	defer os.RemoveAll(tempdir)
+	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgermgmttest.NewInitializer(tempdir))
+	defer ledgerMgr.Close()
+
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
 	scc.Support = &lscc.MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
@@ -1191,30 +1194,4 @@ func TestMain(m *testing.M) {
 	mockAclProvider.Reset()
 
 	os.Exit(m.Run())
-}
-
-func constructLedgerMgrWithTestDefaults(t *testing.T, testDir string) (*ledgermgmt.LedgerMgr, func()) {
-	testDir, err := ioutil.TempDir("", testDir)
-	if err != nil {
-		t.Fatalf("Failed to create ledger directory: %s", err)
-	}
-
-	testDefaults := &ledgermgmt.Initializer{
-		Config: &ledger.Config{
-			RootFSPath:        testDir,
-			StateDBConfig:     &ledger.StateDBConfig{},
-			PrivateDataConfig: &ledger.PrivateDataConfig{},
-			HistoryDBConfig:   &ledger.HistoryDBConfig{},
-		},
-		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
-		MetricsProvider:               &disabled.Provider{},
-		DeployedChaincodeInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
-	}
-
-	ledgerMgr := ledgermgmt.NewLedgerMgr(testDefaults)
-	cleanup := func() {
-		ledgerMgr.Close()
-		os.RemoveAll(testDir)
-	}
-	return ledgerMgr, cleanup
 }
