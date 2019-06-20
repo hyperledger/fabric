@@ -19,10 +19,11 @@ import (
 )
 
 type blocksRequester struct {
-	tls     bool
-	chainID string
-	client  blocksprovider.BlocksDeliverer
-	signer  identity.SignerSerializer
+	tls         bool
+	chainID     string
+	client      blocksprovider.BlocksDeliverer
+	signer      identity.SignerSerializer
+	credSupport *comm.CredentialSupport
 }
 
 func (b *blocksRequester) RequestBlocks(ledgerInfoProvider blocksprovider.LedgerInfo) error {
@@ -49,7 +50,7 @@ func (b *blocksRequester) RequestBlocks(ledgerInfoProvider blocksprovider.Ledger
 
 func (b *blocksRequester) getTLSCertHash() []byte {
 	if b.tls {
-		return util.ComputeSHA256(comm.GetCredentialSupport().GetClientCertificate().Certificate[0])
+		return util.ComputeSHA256(b.credSupport.GetClientCertificate().Certificate[0])
 	}
 	return nil
 }

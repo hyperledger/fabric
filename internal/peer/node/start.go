@@ -203,10 +203,10 @@ func serve(args []string) error {
 		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
 	)
 
-	cs := comm.GetCredentialSupport()
+	cs := comm.NewCredentialSupport()
 	if serverConfig.SecOpts.UseTLS {
 		logger.Info("Starting peer with TLS enabled")
-		cs.ServerRootCAs = serverConfig.SecOpts.ServerRootCAs
+		cs = comm.NewCredentialSupport(serverConfig.SecOpts.ServerRootCAs...)
 
 		// set the cert to use if client auth is requested by remote endpoints
 		clientCert, err := peer.GetClientCertificate()
@@ -240,6 +240,7 @@ func serve(args []string) error {
 		metricsProvider,
 		peerServer,
 		signingIdentity,
+		cs,
 		coreConfig.PeerAddress,
 	)
 	if err != nil {
@@ -931,30 +932,31 @@ func adminHasSeparateListener(peerListenAddr string, adminListenAddress string) 
 }
 
 // secureDialOpts is the callback function for secure dial options for gossip service
-func secureDialOpts() []grpc.DialOption {
-	var dialOpts []grpc.DialOption
-	// set max send/recv msg sizes
-	dialOpts = append(
-		dialOpts,
-		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
-			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
-	// set the keepalive options
-	kaOpts := comm.DefaultKeepaliveOptions
-	if viper.IsSet("peer.keepalive.client.interval") {
-		kaOpts.ClientInterval = viper.GetDuration("peer.keepalive.client.interval")
-	}
-	if viper.IsSet("peer.keepalive.client.timeout") {
-		kaOpts.ClientTimeout = viper.GetDuration("peer.keepalive.client.timeout")
-	}
-	dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
+func secureDialOpts(credSupport *comm.CredentialSupport) func() []grpc.DialOption {
+	return func() []grpc.DialOption {
+		var dialOpts []grpc.DialOption
+		// set max send/recv msg sizes
+		dialOpts = append(
+			dialOpts,
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)),
+		)
+		// set the keepalive options
+		kaOpts := comm.DefaultKeepaliveOptions
+		if viper.IsSet("peer.keepalive.client.interval") {
+			kaOpts.ClientInterval = viper.GetDuration("peer.keepalive.client.interval")
+		}
+		if viper.IsSet("peer.keepalive.client.timeout") {
+			kaOpts.ClientTimeout = viper.GetDuration("peer.keepalive.client.timeout")
+		}
+		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
 
-	if viper.GetBool("peer.tls.enabled") {
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.GetCredentialSupport().GetPeerCredentials()))
-	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		if viper.GetBool("peer.tls.enabled") {
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(credSupport.GetPeerCredentials()))
+		} else {
+			dialOpts = append(dialOpts, grpc.WithInsecure())
+		}
+		return dialOpts
 	}
-	return dialOpts
 }
 
 // initGossipService will initialize the gossip service by:
@@ -967,6 +969,7 @@ func initGossipService(
 	metricsProvider metrics.Provider,
 	peerServer *comm.GRPCServer,
 	signer msp.SigningIdentity,
+	credSupport *comm.CredentialSupport,
 	peerAddr string,
 ) (*gossipservice.GossipService, error) {
 
@@ -998,7 +1001,8 @@ func initGossipService(
 		certs,
 		messageCryptoService,
 		secAdv,
-		secureDialOpts,
+		secureDialOpts(credSupport),
+		credSupport,
 		bootstrap...,
 	)
 }

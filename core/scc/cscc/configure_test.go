@@ -237,6 +237,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		messageCryptoService,
 		secAdv,
 		defaultSecureDialOpts,
+		nil,
 	)
 	assert.NoError(t, err)
 	peer.Default.GossipService = gossipService

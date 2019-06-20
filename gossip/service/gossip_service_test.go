@@ -96,6 +96,7 @@ func TestInitGossipService(t *testing.T) {
 		messageCryptoService,
 		secAdv,
 		nil,
+		comm.NewCredentialSupport(),
 	)
 	assert.NoError(t, err)
 
@@ -757,10 +758,12 @@ func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServe
 		leaderElection:  make(map[string]election.LeaderElectionService),
 		privateHandlers: make(map[string]privateHandler),
 		deliveryService: make(map[string]deliverservice.DeliverService),
-		deliveryFactory: &deliveryFactoryImpl{},
-		peerIdentity:    api.PeerIdentityType(conf.InternalEndpoint),
-		metrics:         metrics,
-		serviceConfig:   serviceConfig,
+		deliveryFactory: &deliveryFactoryImpl{
+			credentialSupport: comm.NewCredentialSupport(),
+		},
+		peerIdentity:  api.PeerIdentityType(conf.InternalEndpoint),
+		metrics:       metrics,
+		serviceConfig: serviceConfig,
 	}
 
 	return &gossipGRPC{GossipService: gossipService, grpc: gRPCServer}
@@ -870,6 +873,7 @@ func TestInvalidInitialization(t *testing.T) {
 		&naiveCryptoService{},
 		secAdv,
 		nil,
+		comm.NewCredentialSupport(),
 	)
 	assert.NoError(t, err)
 	gService := gossipService
@@ -879,8 +883,8 @@ func TestInvalidInitialization(t *testing.T) {
 	defer grpcServer.Stop()
 
 	dc, err := gService.deliveryFactory.Service(gService, []string{}, &naiveCryptoService{})
+	assert.EqualError(t, err, "no endpoints specified")
 	assert.Nil(t, dc)
-	assert.Error(t, err)
 
 	endpoint2, socket2 := getAvailablePort(t)
 	defer socket2.Close()
@@ -907,6 +911,7 @@ func TestChannelConfig(t *testing.T) {
 		nil,
 		&naiveCryptoService{},
 		secAdv,
+		nil,
 		nil,
 	)
 	assert.NoError(t, err)

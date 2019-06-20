@@ -9,6 +9,7 @@ package service
 import (
 	"sync"
 
+	corecomm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -124,18 +125,23 @@ type DeliveryServiceFactory interface {
 }
 
 type deliveryFactoryImpl struct {
-	signer identity.SignerSerializer
+	signer            identity.SignerSerializer
+	credentialSupport *corecomm.CredentialSupport
 }
 
 // Returns an instance of delivery client
 func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
 	return deliverservice.NewDeliverService(&deliverservice.Config{
-		CryptoSvc:   mcs,
-		Gossip:      g,
-		Endpoints:   endpoints,
-		ConnFactory: deliverservice.DefaultConnectionFactory,
-		ABCFactory:  deliverservice.DefaultABCFactory,
-		Signer:      df.signer,
+		ABCFactory:        deliverservice.DefaultABCFactory,
+		CryptoSvc:         mcs,
+		CredentialSupport: df.credentialSupport,
+		Endpoints:         endpoints,
+		ConnFactory: (&deliverservice.CredSupportDialerFactory{
+			CredentialSupport: df.credentialSupport,
+			KeepaliveOptions:  deliverservice.KeepaliveOptions(),
+		}).Dialer,
+		Gossip: g,
+		Signer: df.signer,
 	})
 }
 
@@ -202,6 +208,7 @@ func New(
 	mcs api.MessageCryptoService,
 	secAdv api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts,
+	credSupport *corecomm.CredentialSupport,
 	bootPeers ...string,
 ) (*GossipService, error) {
 	serializedIdentity, err := peerIdentity.Serialize()
@@ -237,7 +244,7 @@ func New(
 		chains:          make(map[string]state.GossipStateProvider),
 		leaderElection:  make(map[string]election.LeaderElectionService),
 		deliveryService: make(map[string]deliverservice.DeliverService),
-		deliveryFactory: &deliveryFactoryImpl{signer: peerIdentity},
+		deliveryFactory: &deliveryFactoryImpl{signer: peerIdentity, credentialSupport: credSupport},
 		peerIdentity:    serializedIdentity,
 		secAdv:          secAdv,
 		metrics:         gossipMetrics,
