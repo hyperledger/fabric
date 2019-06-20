@@ -112,9 +112,9 @@ var _ bool = Describe("Creation of indexes in CouchDB for a peer that uses Couch
 
 	When("chaincode is installed and instantiated via legacy lifecycle", func() {
 		It("creates indexes", func() {
-			nwo.PackageChaincode(network, legacyChaincode, network.Peer("Org1", "peer0"))
-			nwo.InstallChaincode(network, legacyChaincode, network.Peer("Org1", "peer0"))
-			nwo.InstantiateChaincode(network, "testchannel", orderer, legacyChaincode, network.Peer("Org1", "peer0"), network.Peers...)
+			nwo.PackageChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
+			nwo.InstallChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
+			nwo.InstantiateChaincodeLegacy(network, "testchannel", orderer, legacyChaincode, network.Peer("Org1", "peer0"), network.Peers...)
 			verifyIndexExists(network, "Org1", "peer0", "marbles", "testchannel", orderer)
 		})
 	})
@@ -122,7 +122,7 @@ var _ bool = Describe("Creation of indexes in CouchDB for a peer that uses Couch
 	When("chaincode is defined and installed via new lifecycle", func() {
 		It("creates indexes", func() {
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, newlifecycleChaincode, network.Peers...)
+			nwo.DeployChaincode(network, "testchannel", orderer, newlifecycleChaincode, network.Peers...)
 			verifyIndexExists(network, "Org1", "peer0", "marbles", "testchannel", orderer)
 		})
 	})
@@ -135,14 +135,14 @@ var _ bool = Describe("Creation of indexes in CouchDB for a peer that uses Couch
 
 		It("create indexes from the new lifecycle package", func() {
 			By("instantiating and installing legacy chaincode")
-			nwo.PackageChaincode(network, legacyChaincode, network.Peer("Org1", "peer0"))
-			nwo.InstallChaincode(network, legacyChaincode, network.Peer("Org1", "peer0"))
-			nwo.InstantiateChaincode(network, "testchannel", orderer, legacyChaincode, network.Peer("Org1", "peer0"), network.Peers...)
+			nwo.PackageChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
+			nwo.InstallChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
+			nwo.InstantiateChaincodeLegacy(network, "testchannel", orderer, legacyChaincode, network.Peer("Org1", "peer0"), network.Peers...)
 			verifyIndexDoesNotExist(network, "Org1", "peer0", "marbles", "testchannel", orderer)
 
 			By("installing and defining chaincode using new lifecycle")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, newlifecycleChaincode)
+			nwo.DeployChaincode(network, "testchannel", orderer, newlifecycleChaincode)
 			verifyIndexExists(network, "Org1", "peer0", "marbles", "testchannel", orderer)
 		})
 	})
@@ -158,16 +158,16 @@ var _ bool = Describe("Creation of indexes in CouchDB for a peer that uses Couch
 			// lscc requires the chaincode to be installed before a instantiate transaction can be simulated
 			// doing so in Org1.peer1 so that chaincode is not installed on "Org1.peer0" i.e., only instantiated
 			// via legacy lifecycle
-			nwo.PackageChaincode(network, legacyChaincode, network.Peer("Org1", "peer1"))
-			nwo.InstallChaincode(network, legacyChaincode, network.Peer("Org1", "peer1"))
-			nwo.InstantiateChaincode(network, "testchannel", orderer, legacyChaincode, network.Peer("Org1", "peer1"), network.Peers...)
+			nwo.PackageChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer1"))
+			nwo.InstallChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer1"))
+			nwo.InstantiateChaincodeLegacy(network, "testchannel", orderer, legacyChaincode, network.Peer("Org1", "peer1"), network.Peers...)
 
 			By("installing and defining chaincode using new lifecycle")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, newlifecycleChaincode)
+			nwo.DeployChaincode(network, "testchannel", orderer, newlifecycleChaincode)
 
 			By("installing legacy chaincode on Org1.peer0")
-			nwo.InstallChaincode(network, legacyChaincode, network.Peer("Org1", "peer0"))
+			nwo.InstallChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
 
 			By("verifying that the index should not have been created on (Org1, peer0) - though the legacy package contains indexes")
 			verifyIndexDoesNotExist(network, "Org1", "peer0", "marbles", "testchannel", orderer)
@@ -182,12 +182,12 @@ var _ bool = Describe("Creation of indexes in CouchDB for a peer that uses Couch
 
 		It("does not use legacy package to create indexes", func() {
 			By("installing legacy chaincode (with an index included)")
-			nwo.PackageChaincode(network, legacyChaincode, network.Peer("Org1", "peer0"))
-			nwo.InstallChaincode(network, legacyChaincode, network.Peer("Org1", "peer0"))
+			nwo.PackageChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
+			nwo.InstallChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
 
 			By("installing and defining chaincode (without an index included) using new lifecycle")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, newlifecycleChaincode)
+			nwo.DeployChaincode(network, "testchannel", orderer, newlifecycleChaincode)
 
 			By("verifying that the index should not have been created - though the legacy package contains indexes")
 			verifyIndexDoesNotExist(network, "Org1", "peer0", "marbles", "testchannel", orderer)

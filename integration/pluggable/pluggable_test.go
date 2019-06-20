@@ -90,7 +90,7 @@ var _ = Describe("EndToEnd", func() {
 		}
 		orderer := network.Orderer("orderer")
 		network.CreateAndJoinChannel(orderer, "testchannel")
-		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+		nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 	})
 
 	AfterEach(func() {

@@ -105,7 +105,7 @@ var _ = Describe("Gossip Test", func() {
 			network.CreateChannel(channelName, orderer, peer0Org1)
 			network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
 
-			nwo.DeployChaincode(network, channelName, orderer, chaincode, peer0Org1)
+			nwo.DeployChaincodeLegacy(network, channelName, orderer, chaincode, peer0Org1)
 			network.UpdateChannelAnchors(orderer, channelName)
 
 			for _, peer := range []*nwo.Peer{peer0Org1, peer1Org1, peer0Org2, peer1Org2} {

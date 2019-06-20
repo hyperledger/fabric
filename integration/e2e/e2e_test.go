@@ -114,7 +114,7 @@ var _ = Describe("EndToEnd", func() {
 			network.CreateAndJoinChannel(orderer, "testchannel")
 
 			By("deploying the chaincode")
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 
 			By("getting the client peer by name")
 			peer := network.Peer("Org1", "peer1")
@@ -154,7 +154,7 @@ var _ = Describe("EndToEnd", func() {
 			peer := network.Peer("Org1", "peer1")
 
 			network.CreateAndJoinChannel(orderer, "testchannel")
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 
 			CheckPeerOperationEndpoints(network, network.Peer("Org2", "peer1"))
@@ -179,12 +179,12 @@ var _ = Describe("EndToEnd", func() {
 
 			By("Create first channel and deploy the chaincode")
 			network.CreateAndJoinChannel(orderer, "testchannel1")
-			nwo.DeployChaincode(network, "testchannel1", orderer, chaincode)
+			nwo.DeployChaincodeLegacy(network, "testchannel1", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel1")
 
 			By("Create second channel and deploy chaincode")
 			network.CreateAndJoinChannel(orderer, "testchannel2")
-			nwo.InstantiateChaincode(network, "testchannel2", orderer, chaincode, peer, network.PeersWithChannel("testchannel2")...)
+			nwo.InstantiateChaincodeLegacy(network, "testchannel2", orderer, chaincode, peer, network.PeersWithChannel("testchannel2")...)
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel2")
 
 			By("Update consensus metadata to increase snapshot interval")

@@ -92,7 +92,7 @@ var _ = Describe("Release interoperability", func() {
 			}
 
 			network.CreateAndJoinChannels(orderer)
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, peer, 100)
 
 			By("enabling V2_0 application capabilities")
@@ -134,7 +134,7 @@ var _ = Describe("Release interoperability", func() {
 				InitRequired:    false,
 				Label:           "my_simple_chaincode",
 			}
-			nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 			By("querying/invoking/querying the chaincode with the new definition")
 			RunQueryInvokeQueryWithAddresses(network, orderer, peer, 70, network.PeerAddress(network.Peer("org1", "peer2"), nwo.ListenPort))
@@ -186,7 +186,7 @@ var _ = Describe("Release interoperability", func() {
 				}
 
 				network.CreateAndJoinChannels(orderer)
-				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+				nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 				RunQueryInvokeQuery(network, orderer, peer, 100)
 
 				By("invoking the chaincode with the legacy definition and keeping the transaction")
@@ -225,7 +225,7 @@ var _ = Describe("Release interoperability", func() {
 					InitRequired:    false,
 					Label:           "my_simple_chaincode",
 				}
-				nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
+				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 				By("committing the old transaction, expecting to hit an MVCC conflict")
 				err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
@@ -251,7 +251,7 @@ var _ = Describe("Release interoperability", func() {
 					Label:           "my_simple_chaincode",
 					Ctor:            `{"Args":["init","a","100","b","200"]}`,
 				}
-				nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
+				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 				By("Invoking the chaincode with the first definition and keeping the transaction")
 				signedProp, prop, txid := SignedProposal(
@@ -286,7 +286,7 @@ var _ = Describe("Release interoperability", func() {
 					InitRequired:    false,
 					Label:           "my_simple_chaincode",
 				}
-				nwo.DeployChaincodeNewLifecycle(network, "testchannel", orderer, chaincode)
+				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 				By("committing the old transaction, expecting to hit an MVCC conflict")
 				err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)

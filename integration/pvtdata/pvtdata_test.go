@@ -328,7 +328,7 @@ var _ bool = Describe("PrivateData", func() {
 			})
 
 			It("performs check against collection config from legacy lifecycle", func() {
-				helper.approveChaincodeForMyOrgNewLifecycleExpectErr(
+				helper.approveChaincodeForMyOrgExpectErr(
 					newLifecycleChaincode,
 					`the BlockToLive in an existing collection \[collectionMarblePrivateDetails\] modified. Existing value \[1000000\]`,
 					network.Peer("org2", "peer0"))
@@ -427,25 +427,25 @@ func (nh *networkHelper) addPeer(peer *nwo.Peer) {
 
 func (nh *networkHelper) deployChaincode(chaincode chaincode) {
 	if chaincode.isLegacy {
-		nwo.DeployChaincode(nh.Network, nh.channelID, nh.orderer, chaincode.Chaincode)
+		nwo.DeployChaincodeLegacy(nh.Network, nh.channelID, nh.orderer, chaincode.Chaincode)
 	} else {
-		nwo.DeployChaincodeNewLifecycle(nh.Network, nh.channelID, nh.orderer, chaincode.Chaincode)
+		nwo.DeployChaincode(nh.Network, nh.channelID, nh.orderer, chaincode.Chaincode)
 	}
 }
 
 func (nh *networkHelper) upgradeChaincode(chaincode chaincode) {
 	if chaincode.isLegacy {
-		nwo.UpgradeChaincode(nh.Network, nh.channelID, nh.orderer, chaincode.Chaincode)
+		nwo.UpgradeChaincodeLegacy(nh.Network, nh.channelID, nh.orderer, chaincode.Chaincode)
 	} else {
-		nwo.DeployChaincodeNewLifecycle(nh.Network, nh.channelID, nh.orderer, chaincode.Chaincode)
+		nwo.DeployChaincode(nh.Network, nh.channelID, nh.orderer, chaincode.Chaincode)
 	}
 }
 
 func (nh *networkHelper) installChaincode(chaincode chaincode, peer *nwo.Peer) {
 	if chaincode.isLegacy {
-		nwo.InstallChaincode(nh.Network, chaincode.Chaincode, peer)
+		nwo.InstallChaincodeLegacy(nh.Network, chaincode.Chaincode, peer)
 	} else {
-		nwo.PackageAndInstallChaincodeNewLifecycle(nh.Network, chaincode.Chaincode, peer)
+		nwo.PackageAndInstallChaincode(nh.Network, chaincode.Chaincode, peer)
 	}
 }
 
@@ -468,12 +468,12 @@ func (nh *networkHelper) invokeChaincode(peer *nwo.Peer, command commands.Chainc
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
 }
 
-func (nh *networkHelper) approveChaincodeForMyOrgNewLifecycleExpectErr(chaincode nwo.Chaincode, expectedErrMsg string, peers ...*nwo.Peer) {
+func (nh *networkHelper) approveChaincodeForMyOrgExpectErr(chaincode nwo.Chaincode, expectedErrMsg string, peers ...*nwo.Peer) {
 	// used to ensure we only approve once per org
 	approvedOrgs := map[string]bool{}
 	for _, p := range peers {
 		if _, ok := approvedOrgs[p.Organization]; !ok {
-			sess, err := nh.PeerAdminSession(p, commands.ChaincodeApproveForMyOrgLifecycle{
+			sess, err := nh.PeerAdminSession(p, commands.ChaincodeApproveForMyOrg{
 				ChannelID:           nh.channelID,
 				Orderer:             nh.OrdererAddress(nh.orderer, nwo.ListenPort),
 				Name:                chaincode.Name,
