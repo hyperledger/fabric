@@ -38,15 +38,17 @@ type StandardChannelSupport interface {
 
 // StandardChannel implements the Processor interface for standard extant channels
 type StandardChannel struct {
-	support StandardChannelSupport
-	filters *RuleSet
+	support           StandardChannelSupport
+	filters           *RuleSet // Rules applicable to both normal and config messages
+	maintenanceFilter Rule     // Rule applicable only to config messages
 }
 
 // NewStandardChannel creates a new standard message processor
 func NewStandardChannel(support StandardChannelSupport, filters *RuleSet) *StandardChannel {
 	return &StandardChannel{
-		filters: filters,
-		support: support,
+		filters:           filters,
+		support:           support,
+		maintenanceFilter: NewMaintenanceFilter(support),
 	}
 }
 
@@ -128,6 +130,11 @@ func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.E
 	// has not been configured with the right cert material.  The additional overhead of the signature
 	// check is negligible, as this is the reconfig path and not the normal path.
 	err = s.filters.Apply(config)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	err = s.maintenanceFilter.Apply(config)
 	if err != nil {
 		return nil, 0, err
 	}

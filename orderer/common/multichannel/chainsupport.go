@@ -99,7 +99,7 @@ func (cs *ChainSupport) DetectConsensusMigration() bool {
 
 	lastConfigIndex, err := utils.GetLastConfigIndexFromBlock(cs.lastBlock)
 	if err != nil {
-		logger.Panicf("[channel: %s] Chain did not have appropriately encoded last config in its latest block: %s",
+		logger.Panicf("[channel: %s] Channel did not have appropriately encoded last config in its latest block: %s",
 			cs.ChainID(), err)
 	}
 	logger.Debugf("[channel: %s] lastBlockNumber=%d, lastConfigIndex=%d",
@@ -128,7 +128,7 @@ func (cs *ChainSupport) DetectConsensusMigration() bool {
 	prevBlock := blockledger.GetBlock(cs.Reader(), cs.lastBlock.Header.Number-1)
 	prevConfigIndex, err := utils.GetLastConfigIndexFromBlock(prevBlock)
 	if err != nil {
-		logger.Panicf("Chain did not have appropriately encoded last config in block %d: %s",
+		logger.Panicf("Channel did not have appropriately encoded last config in block %d: %s",
 			prevBlock.Header.Number, err)
 	}
 	if prevConfigIndex != prevBlock.Header.Number {
