@@ -286,12 +286,26 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 		return nil, fmt.Errorf("Error obtaining imports: %s", err)
 	}
 
+	// --------------------------------------------------------------------------------------
+	// Remove any imports that are provided by the ccenv or system
+	// --------------------------------------------------------------------------------------
+	var provided = map[string]bool{
+		"github.com/hyperledger/fabric/core/chaincode/shim": true,
+		"github.com/hyperledger/fabric/protos/peer":         true,
+	}
+
 	// Golang "pseudo-packages" - packages which don't actually exist
 	var pseudo = map[string]bool{
 		"C": true,
 	}
 
 	imports = filter(imports, func(pkg string) bool {
+		// Drop if provided by CCENV
+		if _, ok := provided[pkg]; ok == true {
+			logger.Debugf("Discarding provided package %s", pkg)
+			return false
+		}
+
 		// Drop pseudo-packages
 		if _, ok := pseudo[pkg]; ok == true {
 			logger.Debugf("Discarding pseudo-package %s", pkg)

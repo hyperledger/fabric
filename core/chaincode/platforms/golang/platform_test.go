@@ -249,7 +249,7 @@ func updateGopath(t *testing.T, path string) func() {
 		err := os.Unsetenv("GOPATH")
 		require.NoError(t, err)
 	} else {
-		err := os.Setenv("GOPATH", fmt.Sprintf("%s:%s", path, initialGopath))
+		err := os.Setenv("GOPATH", path)
 		require.NoError(t, err)
 	}
 
