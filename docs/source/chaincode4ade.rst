@@ -442,31 +442,33 @@ one for the chaincode environment and a CLI to interact with the chaincode.  The
 commands for create and join channel are embedded in the CLI container, so we
 can jump immediately to the chaincode calls.
 
+- Note: the peer is not using TLS because the dev mode does not work with TLS.
+
 Terminal 2 - Build & start the chaincode
 ----------------------------------------
 
 .. code:: bash
 
-  docker exec -it chaincode bash
+  docker exec -it chaincode sh
 
 You should see the following:
 
-.. code:: bash
+.. code:: sh
 
-  root@d2629980e76b:/opt/gopath/src/chaincode#
+  /opt/gopath/src/chaincode $
 
 Now, compile your chaincode:
 
-.. code:: bash
+.. code:: sh
 
   cd sacc
   go build
 
 Now run the chaincode:
 
-.. code:: bash
+.. code:: sh
 
-  CORE_PEER_ADDRESS=peer:7052 CORE_CHAINCODE_ID_NAME=mycc:0 ./sacc
+  CORE_CHAINCODE_ID_NAME=mycc:0 CORE_PEER_TLS_ENABLED=false ./sacc -peer.address peer:7052
 
 The chaincode is started with peer and chaincode logs indicating successful registration with the peer.
 Note that at this stage the chaincode is not associated with any channel. This is done in subsequent steps
