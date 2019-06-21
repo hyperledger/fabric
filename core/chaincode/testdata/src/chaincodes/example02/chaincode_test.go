@@ -11,9 +11,10 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/chaincode/shim/shimtest"
 )
 
-func checkInit(t *testing.T, stub *shim.MockStub, args [][]byte) {
+func checkInit(t *testing.T, stub *shimtest.MockStub, args [][]byte) {
 	res := stub.MockInit("1", args)
 	if res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -21,7 +22,7 @@ func checkInit(t *testing.T, stub *shim.MockStub, args [][]byte) {
 	}
 }
 
-func checkState(t *testing.T, stub *shim.MockStub, name string, value string) {
+func checkState(t *testing.T, stub *shimtest.MockStub, name string, value string) {
 	bytes := stub.State[name]
 	if bytes == nil {
 		fmt.Println("State", name, "failed to get value")
@@ -33,7 +34,7 @@ func checkState(t *testing.T, stub *shim.MockStub, name string, value string) {
 	}
 }
 
-func checkQuery(t *testing.T, stub *shim.MockStub, name string, value string) {
+func checkQuery(t *testing.T, stub *shimtest.MockStub, name string, value string) {
 	res := stub.MockInvoke("1", [][]byte{[]byte("query"), []byte(name)})
 	if res.Status != shim.OK {
 		fmt.Println("Query", name, "failed", string(res.Message))
@@ -49,7 +50,7 @@ func checkQuery(t *testing.T, stub *shim.MockStub, name string, value string) {
 	}
 }
 
-func checkInvoke(t *testing.T, stub *shim.MockStub, args [][]byte) {
+func checkInvoke(t *testing.T, stub *shimtest.MockStub, args [][]byte) {
 	res := stub.MockInvoke("1", args)
 	if res.Status != shim.OK {
 		fmt.Println("Invoke", args, "failed", string(res.Message))
@@ -59,7 +60,7 @@ func checkInvoke(t *testing.T, stub *shim.MockStub, args [][]byte) {
 
 func TestExample02_Init(t *testing.T) {
 	scc := new(SimpleChaincode)
-	stub := shim.NewMockStub("ex02", scc)
+	stub := shimtest.NewMockStub("ex02", scc)
 
 	// Init A=123 B=234
 	checkInit(t, stub, [][]byte{[]byte("init"), []byte("A"), []byte("123"), []byte("B"), []byte("234")})
@@ -70,7 +71,7 @@ func TestExample02_Init(t *testing.T) {
 
 func TestExample02_Query(t *testing.T) {
 	scc := new(SimpleChaincode)
-	stub := shim.NewMockStub("ex02", scc)
+	stub := shimtest.NewMockStub("ex02", scc)
 
 	// Init A=345 B=456
 	checkInit(t, stub, [][]byte{[]byte("init"), []byte("A"), []byte("345"), []byte("B"), []byte("456")})
@@ -84,7 +85,7 @@ func TestExample02_Query(t *testing.T) {
 
 func TestExample02_Invoke(t *testing.T) {
 	scc := new(SimpleChaincode)
-	stub := shim.NewMockStub("ex02", scc)
+	stub := shimtest.NewMockStub("ex02", scc)
 
 	// Init A=567 B=678
 	checkInit(t, stub, [][]byte{[]byte("init"), []byte("A"), []byte("567"), []byte("B"), []byte("678")})

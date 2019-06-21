@@ -20,9 +20,10 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/chaincode/shim/shimtest"
 )
 
-func checkInit(t *testing.T, stub *shim.MockStub, args [][]byte, retval []byte) {
+func checkInit(t *testing.T, stub *shimtest.MockStub, args [][]byte, retval []byte) {
 	res := stub.MockInit("1", args)
 	if res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -40,7 +41,7 @@ func checkInit(t *testing.T, stub *shim.MockStub, args [][]byte, retval []byte) 
 	}
 }
 
-func checkState(t *testing.T, stub *shim.MockStub, name string, value string) {
+func checkState(t *testing.T, stub *shimtest.MockStub, name string, value string) {
 	bytes := stub.State[name]
 	if bytes == nil {
 		fmt.Println("State", name, "failed to get value")
@@ -52,7 +53,7 @@ func checkState(t *testing.T, stub *shim.MockStub, name string, value string) {
 	}
 }
 
-func checkInvoke(t *testing.T, stub *shim.MockStub, args [][]byte, retval []byte) {
+func checkInvoke(t *testing.T, stub *shimtest.MockStub, args [][]byte, retval []byte) {
 	res := stub.MockInvoke("1", args)
 	if res.Status != shim.OK {
 		fmt.Println("Invoke", args, "failed", string(res.Message))
@@ -73,7 +74,7 @@ func checkInvoke(t *testing.T, stub *shim.MockStub, args [][]byte, retval []byte
 
 func Test_Init(t *testing.T) {
 	scc := new(SimpleChaincode)
-	stub := shim.NewMockStub("ex02", scc)
+	stub := shimtest.NewMockStub("ex02", scc)
 
 	// Init A=123 B=234
 	checkInit(t, stub, [][]byte{[]byte("init"), []byte("A"), []byte("123"), []byte("B"), []byte("234")}, []byte("OK"))
@@ -84,7 +85,7 @@ func Test_Init(t *testing.T) {
 
 func Test_Invoke(t *testing.T) {
 	scc := new(SimpleChaincode)
-	stub := shim.NewMockStub("ex02", scc)
+	stub := shimtest.NewMockStub("ex02", scc)
 
 	// Init A=567 B=678
 	checkInit(t, stub, [][]byte{[]byte("init"), []byte("A"), []byte("567"), []byte("B"), []byte("678")}, []byte("OK"))

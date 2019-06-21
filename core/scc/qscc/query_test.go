@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/chaincode/shim/shimtest"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos/common"
@@ -28,7 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupTestLedger(chainid string, path string) (*shim.MockStub, func(), error) {
+func setupTestLedger(chainid string, path string) (*shimtest.MockStub, func(), error) {
 	mockAclProvider.Reset()
 
 	viper.Set("peer.fileSystemPath", path)
@@ -42,7 +43,7 @@ func setupTestLedger(chainid string, path string) (*shim.MockStub, func(), error
 		aclProvider: mockAclProvider,
 		peer:        peer.Default,
 	}
-	stub := shim.NewMockStub("LedgerQuerier", lq)
+	stub := shimtest.NewMockStub("LedgerQuerier", lq)
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		return nil, cleanup, fmt.Errorf("Init failed for test ledger [%s] with message: %s", chainid, string(res.Message))
 	}
@@ -193,7 +194,7 @@ func TestFailingAccessControl(t *testing.T) {
 		aclProvider: mockAclProvider,
 		peer:        peer.Default,
 	}
-	stub := shim.NewMockStub("LedgerQuerier", e)
+	stub := shimtest.NewMockStub("LedgerQuerier", e)
 
 	// GetChainInfo
 	args := [][]byte{[]byte(GetChainInfo), []byte(chainid)}

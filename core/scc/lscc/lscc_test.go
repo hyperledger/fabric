@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/chaincode/shim/shimtest"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -104,7 +105,7 @@ func TestInstall(t *testing.T) {
 	defer cleanup()
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub := shim.NewMockStub("lscc", scc)
+	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
@@ -138,7 +139,7 @@ func TestInstall(t *testing.T) {
 	testInstall(t, "lscc", "0", path, false, "cannot install: lscc is the name of a system chaincode", "Alice", scc, stub, nil)
 }
 
-func testInstall(t *testing.T, ccname string, version string, path string, createInvalidIndex bool, expectedErrorMsg string, caller string, scc *LifeCycleSysCC, stub *shim.MockStub, aclErr error) {
+func testInstall(t *testing.T, ccname string, version string, path string, createInvalidIndex bool, expectedErrorMsg string, caller string, scc *LifeCycleSysCC, stub *shimtest.MockStub, aclErr error) {
 	t.Run(ccname+":"+version, func(t *testing.T) {
 		identityDeserializer := &policymocks.MockIdentityDeserializer{
 			Identity: []byte("Alice"),
@@ -191,7 +192,7 @@ func TestNewLifecycleEnabled(t *testing.T) {
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
 
 	scc := New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
-	stub := shim.NewMockStub("lscc", scc)
+	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("deploy"), []byte("test"), nil}, nil)
 	assert.NotEqual(t, int32(shim.OK), res.Status)
 	assert.Equal(t, "Channel 'test' has been migrated to the new lifecycle, LSCC is now read-only", res.Message)
@@ -212,7 +213,7 @@ func TestDeploy(t *testing.T) {
 
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub := shim.NewMockStub("lscc", scc)
+	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
@@ -233,7 +234,7 @@ func TestDeploy(t *testing.T) {
 
 	scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
+	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyErr = errors.New("barf")
@@ -242,7 +243,7 @@ func TestDeploy(t *testing.T) {
 
 	scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
+	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 	scc.Support.(*lscc.MockSupport).CheckInstantiationPolicyErr = errors.New("barf")
@@ -251,7 +252,7 @@ func TestDeploy(t *testing.T) {
 
 	scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
+	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
@@ -272,7 +273,7 @@ func TestDeploy(t *testing.T) {
 
 	scc = New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
+	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
@@ -299,7 +300,7 @@ func TestDeploy(t *testing.T) {
 
 	scc = New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
+	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
@@ -315,7 +316,7 @@ func TestDeploy(t *testing.T) {
 
 	scc = New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
+	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
@@ -350,11 +351,11 @@ func createCollectionConfig(collectionName string, signaturePolicyEnvelope *comm
 	}
 }
 
-func testDeploy(t *testing.T, ccname string, version string, path string, forceBlankCCName bool, forceBlankVersion bool, install bool, expectedErrorMsg string, scc *LifeCycleSysCC, stub *shim.MockStub, collectionConfigBytes []byte) {
+func testDeploy(t *testing.T, ccname string, version string, path string, forceBlankCCName bool, forceBlankVersion bool, install bool, expectedErrorMsg string, scc *LifeCycleSysCC, stub *shimtest.MockStub, collectionConfigBytes []byte) {
 	if scc == nil {
 		scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 		scc.Support = &lscc.MockSupport{}
-		stub = shim.NewMockStub("lscc", scc)
+		stub = shimtest.NewMockStub("lscc", scc)
 		res := stub.MockInit("1", nil)
 		assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 	}
@@ -469,7 +470,7 @@ func TestUpgrade(t *testing.T) {
 
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub := shim.NewMockStub("lscc", scc)
+	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
@@ -479,7 +480,7 @@ func TestUpgrade(t *testing.T) {
 
 	scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
+	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
@@ -487,7 +488,7 @@ func TestUpgrade(t *testing.T) {
 
 	scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
+	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
@@ -498,7 +499,7 @@ func TestUpgrade(t *testing.T) {
 
 	scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
+	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
@@ -519,7 +520,7 @@ func TestUpgrade(t *testing.T) {
 
 	scc = New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
+	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
@@ -553,7 +554,7 @@ func TestUpgrade(t *testing.T) {
 
 	scc = New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
+	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
@@ -567,7 +568,7 @@ func TestUpgrade(t *testing.T) {
 
 	scc = New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
+	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
@@ -585,12 +586,12 @@ func TestUpgrade(t *testing.T) {
 	assert.Equal(t, ccpBytes, actualccpBytes)
 }
 
-func testUpgrade(t *testing.T, ccname string, version string, newccname string, newversion string, path string, expectedErrorMsg string, scc *LifeCycleSysCC, stub *shim.MockStub, collectionConfigBytes []byte) {
+func testUpgrade(t *testing.T, ccname string, version string, newccname string, newversion string, path string, expectedErrorMsg string, scc *LifeCycleSysCC, stub *shimtest.MockStub, collectionConfigBytes []byte) {
 	t.Run(ccname+":"+version+"->"+newccname+":"+newversion, func(t *testing.T) {
 		if scc == nil {
 			scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 			scc.Support = &lscc.MockSupport{}
-			stub = shim.NewMockStub("lscc", scc)
+			stub = shimtest.NewMockStub("lscc", scc)
 			res := stub.MockInit("1", nil)
 			assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 			scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
@@ -653,7 +654,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 func TestFunctionsWithAliases(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub := shim.NewMockStub("lscc", scc)
+	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
@@ -703,7 +704,7 @@ func TestFunctionsWithAliases(t *testing.T) {
 func TestGetChaincodes(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub := shim.NewMockStub("lscc", scc)
+	stub := shimtest.NewMockStub("lscc", scc)
 	stub.ChannelID = "test"
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
@@ -765,7 +766,7 @@ func TestGetChaincodesFilter(t *testing.T) {
 func TestGetInstalledChaincodes(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	scc.Support = &lscc.MockSupport{}
-	stub := shim.NewMockStub("lscc", scc)
+	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
@@ -827,7 +828,7 @@ func TestGetInstalledChaincodes(t *testing.T) {
 func TestNewLifeCycleSysCC(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	assert.NotNil(t, scc)
-	stub := shim.NewMockStub("lscc", scc)
+	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
@@ -839,7 +840,7 @@ func TestNewLifeCycleSysCC(t *testing.T) {
 func TestGetChaincodeData(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	assert.NotNil(t, scc)
-	stub := shim.NewMockStub("lscc", scc)
+	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
@@ -854,7 +855,7 @@ func TestGetChaincodeData(t *testing.T) {
 func TestExecuteInstall(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
 	assert.NotNil(t, scc)
-	stub := shim.NewMockStub("lscc", scc)
+	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
@@ -876,7 +877,7 @@ func TestErrors(t *testing.T) {
 
 func TestPutChaincodeCollectionData(t *testing.T) {
 	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lscc", scc)
+	stub := shimtest.NewMockStub("lscc", scc)
 	scc.Support = &lscc.MockSupport{}
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -913,7 +914,7 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 
 func TestGetChaincodeCollectionData(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), peer.Default.GetMSPIDs)
-	stub := shim.NewMockStub("lscc", scc)
+	stub := shimtest.NewMockStub("lscc", scc)
 	stub.ChannelID = "test"
 	scc.Support = &lscc.MockSupport{}
 

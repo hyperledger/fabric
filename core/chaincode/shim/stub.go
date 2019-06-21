@@ -373,7 +373,7 @@ func (s *ChaincodeStub) GetHistoryForKey(key string) (HistoryQueryIteratorInterf
 
 //CreateCompositeKey documentation can be found in interfaces.go
 func (s *ChaincodeStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
-	return createCompositeKey(objectType, attributes)
+	return CreateCompositeKey(objectType, attributes)
 }
 
 //SplitCompositeKey documentation can be found in interfaces.go
@@ -381,7 +381,7 @@ func (s *ChaincodeStub) SplitCompositeKey(compositeKey string) (string, []string
 	return splitCompositeKey(compositeKey)
 }
 
-func createCompositeKey(objectType string, attributes []string) (string, error) {
+func CreateCompositeKey(objectType string, attributes []string) (string, error) {
 	if err := validateCompositeKeyAttribute(objectType); err != nil {
 		return "", err
 	}

@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package shim
+package shimtest
 
 import (
 	"encoding/json"
@@ -12,8 +12,15 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/chaincode/shim/shimtest/mock"
 	"github.com/stretchr/testify/assert"
 )
+
+//go:generate counterfeiter -o mock/chaincode.go --fake-name Chaincode . chaincode
+type chaincode interface {
+	shim.Chaincode
+}
 
 func TestMockStateRangeQueryIterator(t *testing.T) {
 	stub := NewMockStub("rangeTest", nil)
@@ -246,14 +253,14 @@ func TestPutEmptyState(t *testing.T) {
 
 }
 
-//TestMockMock clearly cheating for coverage... but not. Mock should
-//be tucked away under common/mocks package which is not
-//included for coverage. Moving mockstub to another package
-//will cause upheaval in other code best dealt with separately
-//For now, call all the methods to get mock covered in this
-//package
+// TestMockMock clearly cheating for coverage... but not. Mock should
+// be tucked away under common/mocks package which is not
+// included for coverage. Moving mockstub to another package
+// will cause upheaval in other code best dealt with separately
+// For now, call all the methods to get mock covered in this
+// package
 func TestMockMock(t *testing.T) {
-	stub := NewMockStub("MOCKMOCK", &shimTestCC{})
+	stub := NewMockStub("MOCKMOCK", &mock.Chaincode{})
 	stub.args = [][]byte{[]byte("a"), []byte("b")}
 	stub.MockInit("id", nil)
 	stub.GetArgs()
@@ -266,16 +273,17 @@ func TestMockMock(t *testing.T) {
 	stub.DelState("dummy")
 	stub.GetStateByRange("start", "end")
 	stub.GetQueryResult("q")
-	stub2 := NewMockStub("othercc", &shimTestCC{})
-	stub.MockPeerChaincode("othercc", stub2, "mychan")
-	stub.InvokeChaincode("othercc", nil, "mychan")
-	stub.GetCreator()
-	stub.GetTransient()
-	stub.GetBinding()
-	stub.GetSignedProposal()
-	stub.GetArgsSlice()
-	stub.SetEvent("e", nil)
-	stub.GetHistoryForKey("k")
+
+	stub2 := NewMockStub("othercc", &mock.Chaincode{})
+	stub2.MockPeerChaincode("othercc", stub2, "mychan")
+	stub2.InvokeChaincode("othercc", nil, "mychan")
+	stub2.GetCreator()
+	stub2.GetTransient()
+	stub2.GetBinding()
+	stub2.GetSignedProposal()
+	stub2.GetArgsSlice()
+	stub2.SetEvent("e", nil)
+	stub2.GetHistoryForKey("k")
 	iter := &MockStateRangeQueryIterator{}
 	iter.HasNext()
 	iter.Close()
