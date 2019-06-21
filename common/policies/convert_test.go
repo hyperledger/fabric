@@ -23,7 +23,7 @@ func TestImplicitMetaPolicy_Convert(t *testing.T) {
 	// Scenario: we attempt the conversion of a simple metapolicy requiring
 	// ALL of 2 sub-policies, each of which are plain signedby
 
-	pfs := &cauthdsl.ProviderFromStruct{}
+	pfs := &cauthdsl.EnvelopeBasedPolicyProvider{}
 
 	p1, err := pfs.NewPolicy(&cb.SignaturePolicyEnvelope{
 		Version: 0,
@@ -108,7 +108,7 @@ func TestImplicitMetaPolicy_Convert1(t *testing.T) {
 	// the second one is an OR of 1, with a principal that is already
 	// referenced by the first
 
-	pfs := &cauthdsl.ProviderFromStruct{}
+	pfs := &cauthdsl.EnvelopeBasedPolicyProvider{}
 
 	p1, err := pfs.NewPolicy(cauthdsl.SignedByAnyMember([]string{"A", "B"}))
 	assert.NotNil(t, p1)
@@ -168,7 +168,7 @@ func TestImplicitMetaPolicy_Convert2(t *testing.T) {
 	// of 2 and an OR of 1 and the second one is an AND of 2, with
 	// principal deduplication required
 
-	pfs := &cauthdsl.ProviderFromStruct{}
+	pfs := &cauthdsl.EnvelopeBasedPolicyProvider{}
 
 	p1, err := pfs.NewPolicy(&cb.SignaturePolicyEnvelope{
 		Version: 0,
@@ -334,7 +334,7 @@ func TestImplicitMetaPolicy_Convert3(t *testing.T) {
 	// requiring ALL of 2 simple subpolicies to be satisfied and the
 	// second is a simple subpolicy, with no principal deduplication
 
-	pfs := &cauthdsl.ProviderFromStruct{}
+	pfs := &cauthdsl.EnvelopeBasedPolicyProvider{}
 
 	p1, err := pfs.NewPolicy(&cb.SignaturePolicyEnvelope{
 		Version: 0,
@@ -453,7 +453,7 @@ func TestImplicitMetaPolicy_Convert4(t *testing.T) {
 	// requiring ALL of 2 simple subpolicies to be satisfied and the
 	// second is a simple subpolicy, with principal deduplication
 
-	pfs := &cauthdsl.ProviderFromStruct{}
+	pfs := &cauthdsl.EnvelopeBasedPolicyProvider{}
 
 	p1, err := pfs.NewPolicy(&cb.SignaturePolicyEnvelope{
 		Version: 0,
@@ -555,7 +555,7 @@ func TestImplicitMetaPolicy_Convert5(t *testing.T) {
 	// principal deduplication required both across the two subpolicies
 	// and within the first
 
-	pfs := &cauthdsl.ProviderFromStruct{}
+	pfs := &cauthdsl.EnvelopeBasedPolicyProvider{}
 
 	p1, err := pfs.NewPolicy(&cb.SignaturePolicyEnvelope{
 		Version: 0,
@@ -713,7 +713,7 @@ func TestImplicitMetaPolicy_Convert6(t *testing.T) {
 	// principal deduplication required both across the two subpolicies
 	// and within the first and the second
 
-	pfs := &cauthdsl.ProviderFromStruct{}
+	pfs := &cauthdsl.EnvelopeBasedPolicyProvider{}
 
 	p1, err := pfs.NewPolicy(&cb.SignaturePolicyEnvelope{
 		Version: 0,
