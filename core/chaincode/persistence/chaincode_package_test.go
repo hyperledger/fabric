@@ -97,7 +97,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
-				Expect(err.Error()).To(ContainSubstring("invalid label ''. Label must be non-empty, can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics"))
+				Expect(err.Error()).To(ContainSubstring("invalid label ''. Label must be non-empty, can only consist of alphanumerics, symbols from '.+-_', and can only begin with alphanumerics"))
 			})
 		})
 
@@ -107,7 +107,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
-				Expect(err.Error()).To(ContainSubstring("invalid label 'Bad-Label!'. Label must be non-empty, can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics"))
+				Expect(err.Error()).To(ContainSubstring("invalid label 'Bad-Label!'. Label must be non-empty, can only consist of alphanumerics, symbols from '.+-_', and can only begin with alphanumerics"))
 			})
 		})
 

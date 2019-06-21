@@ -61,12 +61,12 @@ type ChaincodePackageParser struct {
 var (
 	// LabelRegexp is the regular expression controlling
 	// the allowed characters for the package label
-	LabelRegexp = regexp.MustCompile("^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$")
+	LabelRegexp = regexp.MustCompile("^[a-zA-Z0-9]+([.+-_][a-zA-Z0-9]+)*$")
 )
 
 func validateLabel(label string) error {
 	if !LabelRegexp.MatchString(label) {
-		return errors.Errorf("invalid label '%s'. Label must be non-empty, can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics", label)
+		return errors.Errorf("invalid label '%s'. Label must be non-empty, can only consist of alphanumerics, symbols from '.+-_', and can only begin with alphanumerics", label)
 	}
 
 	return nil
