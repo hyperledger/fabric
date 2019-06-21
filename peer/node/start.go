@@ -7,11 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package node
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -55,7 +57,9 @@ import (
 	endorsement3 "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/core/handlers/library"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/core/peer"
@@ -309,9 +313,6 @@ func serve(args []string) error {
 	})
 	endorserSupport.PluginEndorser = pluginEndorser
 	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport, pr, metricsProvider)
-	auth := authHandler.ChainFilters(serverEndorser, authFilters...)
-	// Register the Endorser server
-	pb.RegisterEndorserServer(peerServer.Server(), auth)
 
 	policyMgr := peer.NewChannelPolicyManagerGetter()
 
@@ -378,16 +379,6 @@ func serve(args []string) error {
 	// genesis block if needed.
 	serve := make(chan error)
 
-	go func() {
-		var grpcErr error
-		if grpcErr = peerServer.Start(); grpcErr != nil {
-			grpcErr = fmt.Errorf("grpc server exited with error: %s", grpcErr)
-		} else {
-			logger.Info("peer server exited")
-		}
-		serve <- grpcErr
-	}()
-
 	// Start profiling http endpoint if enabled
 	if profileEnabled {
 		go func() {
@@ -404,6 +395,36 @@ func serve(args []string) error {
 	}))
 
 	logger.Infof("Started peer with ID=[%s], network ID=[%s], address=[%s]", peerEndpoint.Id, networkID, peerEndpoint.Address)
+
+	// check to see if the peer ledgers have been reset
+	preResetHeights, err := kvledger.LoadPreResetHeight()
+	if err != nil {
+		return fmt.Errorf("error loading prereset height: %s", err)
+	}
+	for cid, height := range preResetHeights {
+		logger.Infof("Ledger rebuild: channel [%s]: preresetHeight: [%d]", cid, height)
+	}
+	if len(preResetHeights) > 0 {
+		logger.Info("Ledger rebuild: Entering loop to check if current ledger heights surpass prereset ledger heights. Endorsement request processing will be disabled.")
+		resetFilter := &reset{
+			reject: true,
+		}
+		authFilters = append(authFilters, resetFilter)
+		go resetLoop(resetFilter, preResetHeights, peer.GetLedger, 10*time.Second)
+	}
+
+	// start the peer server
+	auth := authHandler.ChainFilters(serverEndorser, authFilters...)
+	// Register the Endorser server
+	pb.RegisterEndorserServer(peerServer.Server(), auth)
+
+	go func() {
+		var grpcErr error
+		if grpcErr = peerServer.Start(); grpcErr != nil {
+			grpcErr = fmt.Errorf("grpc server exited with error: %s", grpcErr)
+		}
+		serve <- grpcErr
+	}()
 
 	// Block until grpc server exits
 	return <-serve
@@ -936,4 +957,80 @@ func registerProverService(peerServer *comm.GRPCServer, aclProvider aclmgmt.ACLP
 	}
 	token.RegisterProverServer(peerServer.Server(), prover)
 	return nil
+}
+
+//go:generate counterfeiter -o mock/get_ledger.go -fake-name GetLedger getLedger
+//go:generate counterfeiter -o mock/peer_ledger.go -fake-name PeerLedger ../../core/ledger PeerLedger
+
+type getLedger func(string) ledger.PeerLedger
+
+func resetLoop(
+	resetFilter *reset,
+	preResetHeights map[string]uint64,
+	peerLedger getLedger,
+	interval time.Duration,
+) {
+	// periodically check to see if current ledger height(s) surpass prereset height(s)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			logger.Info("Ledger rebuild: Checking if current ledger heights surpass prereset ledger heights")
+			logger.Debugf("Ledger rebuild: Number of ledgers still rebuilding before check: %d", len(preResetHeights))
+
+			for cid, height := range preResetHeights {
+				ledger := peerLedger(cid)
+				if ledger != nil {
+					bcInfo, err := ledger.GetBlockchainInfo()
+					if bcInfo != nil {
+						logger.Debugf("Ledger rebuild: channel [%s]: currentHeight [%d] : preresetHeight [%d]", cid, bcInfo.GetHeight(), height)
+						if bcInfo.GetHeight() >= height {
+							delete(preResetHeights, cid)
+						} else {
+							break
+						}
+					} else {
+						if err != nil {
+							logger.Warningf("Ledger rebuild: could not retrieve info for channel [%s]: %s", cid, err.Error())
+						}
+					}
+				}
+			}
+			logger.Debugf("Ledger rebuild: Number of ledgers still rebuilding after check: %d", len(preResetHeights))
+			if len(preResetHeights) == 0 {
+				logger.Infof("Ledger rebuild: Complete, all ledgers surpass prereset heights. Endorsement request processing will be enabled.")
+				resetFilter.setReject(false)
+				return
+			}
+		}
+	}
+}
+
+//implements the auth.Filter interface
+type reset struct {
+	sync.RWMutex
+	next   pb.EndorserServer
+	reject bool
+}
+
+func (r *reset) setReject(reject bool) {
+	r.Lock()
+	defer r.Unlock()
+	r.reject = reject
+}
+
+// Init initializes Reset with the next EndorserServer
+func (r *reset) Init(next pb.EndorserServer) {
+	r.next = next
+}
+
+// ProcessProposal processes a signed proposal
+func (r *reset) ProcessProposal(ctx context.Context, signedProp *pb.SignedProposal) (*pb.ProposalResponse, error) {
+	r.RLock()
+	defer r.RUnlock()
+	if r.reject {
+		return nil, errors.New("endorse requests are blocked while ledgers are being rebuilt")
+	}
+	return r.next.ProcessProposal(ctx, signedProp)
 }
