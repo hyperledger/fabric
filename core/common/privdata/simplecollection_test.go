@@ -104,7 +104,7 @@ func TestSetupWithBadConfig(t *testing.T) {
 	}
 	err = sc.Setup(collectionConfig, &mockDeserializer{})
 	assert.Error(t, err)
-	assert.Error(t, err, "failed constructing policy object out of collection policy config: identity index out of range, requested 3, but identities length is 2")
+	assert.EqualError(t, err, "failed constructing policy object out of collection policy config: identity index out of range, requested 3, but identities length is 2")
 }
 
 func TestSetupGoodConfigCollection(t *testing.T) {
