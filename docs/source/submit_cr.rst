@@ -19,8 +19,8 @@ Setting up your SSH key
 
 Before you can submit a change set for review, you will need to register your
 public SSH key. Login to
-`Gerrit <https://gerrit.hyperledger.org>`__ with your
-:doc:`LFID <Gerrit/lf-account>`, and click on your name in the upper
+`Gerrit <https://gerrit.hyperledger.org>`__ with your Linux Foundation ID,
+and click on your name in the upper
 right-hand corner of your browser window and then click 'Settings'.
 
 .. image:: images/Settings.png

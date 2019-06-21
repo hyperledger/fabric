@@ -172,7 +172,7 @@ For brevity, the command is as follows:
     git clone ssh://LFID@gerrit.hyperledger.org:29418/fabric && scp -p -P 29418 LFID@gerrit.hyperledger.org:hooks/commit-msg fabric/.git/hooks/
 
 **Note:** Of course, you would want to replace ``LFID`` with your own
-:doc:`Linux Foundation ID <../Gerrit/lf-account>`.
+Linux Foundation ID.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

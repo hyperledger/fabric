@@ -412,7 +412,6 @@ Related Topics
    jira_navigation
    dev-setup/devenv
    dev-setup/build
-   Gerrit/lf-account
    Gerrit/gerrit
    Gerrit/changes
    Gerrit/reviewing
