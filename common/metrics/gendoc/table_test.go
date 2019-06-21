@@ -76,6 +76,7 @@ const goldenPromTable = `
 +==========================+===========+============================================================+====================+
 | fixtures_counter         | counter   | This is some help text that is more than a few words long. | | label_one        |
 |                          |           | It really can be quite long. Really long.                  | | label_two        |
+|                          |           |                                                            | | label_three      |
 +--------------------------+-----------+------------------------------------------------------------+--------------------+
 | fixtures_gauge           | gauge     | This is some help text                                     | | label_one        |
 |                          |           |                                                            | | label_two        |
