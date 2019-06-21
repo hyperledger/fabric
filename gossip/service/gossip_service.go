@@ -350,8 +350,14 @@ func (g *GossipService) InitializeChannel(channelID string, endpoints []string, 
 	g.privateHandlers[channelID].reconciler.Start()
 
 	blockingMode := !g.serviceConfig.NonBlockingCommitMode
-	g.chains[channelID] = state.NewGossipStateProvider(channelID, servicesAdapter, coordinator,
-		g.metrics.StateMetrics, blockingMode)
+	stateConfig := state.GlobalConfig()
+	g.chains[channelID] = state.NewGossipStateProvider(
+		channelID,
+		servicesAdapter,
+		coordinator,
+		g.metrics.StateMetrics,
+		blockingMode,
+		stateConfig)
 	if g.deliveryService[channelID] == nil {
 		var err error
 		g.deliveryService[channelID], err = g.deliveryFactory.Service(g, endpoints, g.mcs)
