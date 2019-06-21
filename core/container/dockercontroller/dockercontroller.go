@@ -81,6 +81,7 @@ type Provider struct {
 	Client        dockerClient
 	AttachStdOut  bool
 	ChaincodePull bool
+	NetworkMode   string
 }
 
 // DockerVM is a vm. It is identified by an image id
@@ -92,6 +93,7 @@ type DockerVM struct {
 	Client        dockerClient
 	AttachStdOut  bool
 	ChaincodePull bool
+	NetworkMode   string
 }
 
 // NewVM creates a new DockerVM instance
@@ -104,6 +106,7 @@ func (p *Provider) NewVM() container.VM {
 		AttachStdOut:  p.AttachStdOut,
 		HostConfig:    p.HostConfig,
 		ChaincodePull: p.ChaincodePull,
+		NetworkMode:   p.NetworkMode,
 	}
 }
 
@@ -138,6 +141,7 @@ func (vm *DockerVM) deployImage(ccid ccintf.CCID, reader io.Reader) error {
 	opts := docker.BuildImageOptions{
 		Name:         id,
 		Pull:         vm.ChaincodePull,
+		NetworkMode:  vm.NetworkMode,
 		InputStream:  reader,
 		OutputStream: outputbuf,
 	}

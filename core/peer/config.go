@@ -130,6 +130,8 @@ type Config struct {
 	// VMDockerTLSEnabled enables/disables TLS for dockers.
 	VMDockerTLSEnabled   bool
 	VMDockerAttachStdout bool
+	// VMNetworkMode sets the networking mode for the container.
+	VMNetworkMode string
 
 	// ChaincodePull enables/disables force pulling of the base docker image.
 	ChaincodePull bool
@@ -229,6 +231,11 @@ func (c *Config) load() error {
 	c.VMEndpoint = viper.GetString("vm.endpoint")
 	c.VMDockerTLSEnabled = viper.GetBool("vm.docker.tls.enabled")
 	c.VMDockerAttachStdout = viper.GetBool("vm.docker.attachStdout")
+
+	c.VMNetworkMode = viper.GetString("vm.docker.hostConfig.NetworkMode")
+	if c.VMNetworkMode == "" {
+		c.VMNetworkMode = "host"
+	}
 
 	c.ChaincodePull = viper.GetBool("chaincode.pull")
 

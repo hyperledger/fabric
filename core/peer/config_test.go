@@ -227,6 +227,7 @@ func TestGetClientCertificate(t *testing.T) {
 }
 
 func TestGlobalConfig(t *testing.T) {
+	defer viper.Reset()
 	//Capture the configuration from viper
 	viper.Set("peer.addressAutoDetect", false)
 	viper.Set("peer.address", "localhost:8080")
@@ -251,6 +252,7 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 	viper.Set("vm.docker.tls.enabled", false)
 	viper.Set("vm.docker.attachStdout", false)
+	viper.Set("vm.docker.hostConfig.NetworkMode", "TestingHost")
 
 	viper.Set("operations.listenAddress", "127.0.0.1:9443")
 	viper.Set("operations.tls.enabled", false)
@@ -293,6 +295,7 @@ func TestGlobalConfig(t *testing.T) {
 		VMEndpoint:           "unix:///var/run/docker.sock",
 		VMDockerTLSEnabled:   false,
 		VMDockerAttachStdout: false,
+		VMNetworkMode:        "TestingHost",
 
 		ChaincodePull: false,
 
