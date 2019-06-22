@@ -75,7 +75,7 @@ Fabric provides flexibility in this regard. The world state can change
 frequently, as states can be created, updated and deleted.
 
 Secondly, there's a **blockchain** -- a transaction log that records all the
-changes that have resulted in the current the world state. Transactions are
+changes that have resulted in the current world state. Transactions are
 collected inside blocks that are appended to the blockchain -- enabling you to
 understand the history of changes that have resulted in the current world state.
 The blockchain data structure is very different to the world state because once
@@ -134,8 +134,8 @@ not result in a change of world state. You can read more about how applications
 use [smart contracts](../smartcontract/smartcontract.html), and how to [develop
 applications](../developapps/developing_applications.html).
 
-You'll also notice that a state has an version number, and in the diagram above,
-states CAR1 and CAR2 are at their starting versions, 0. The version number for
+You'll also notice that a state has a version number, and in the diagram above,
+states CAR1 and CAR2 are at their starting versions, 0. The version number is for
 internal use by Hyperledger Fabric, and is incremented every time the state
 changes. The version is checked whenever the state is updated to make sure the
 current states matches the version at the time of endorsement. This ensures that
