@@ -380,7 +380,12 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData, co
 
 	startBlockstorageAndPvtdataCommit := time.Now()
 	logger.Debugf("[%s] Adding CommitHash to the block [%d]", l.ledgerID, blockNo)
-	l.addBlockCommitHashIfApplicable(pvtdataAndBlock.Block, updateBatchBytes)
+	// we need to ensure that only after a gensis block, commitHash is computed
+	// and added to the block. In other words, only after joining a new channel
+	// or peer reset, the commitHash would be added to the block
+	if block.Header.Number == 1 || l.commitHash != nil {
+		l.addBlockCommitHash(pvtdataAndBlock.Block, updateBatchBytes)
+	}
 
 	logger.Debugf("[%s] Committing block [%d] to storage", l.ledgerID, blockNo)
 	l.blockAPIsRWLock.Lock()
@@ -457,13 +462,7 @@ func (l *kvLedger) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledge
 	return l.blockStore.GetMissingPvtDataInfoForMostRecentBlocks(maxBlock)
 }
 
-func (l *kvLedger) addBlockCommitHashIfApplicable(block *common.Block, updateBatchBytes []byte) {
-	// to ensure that only after a gensis block, commitHash is computed.
-	// in other words, only after joining a new channel or peer reset,
-	// the commitHash would be added to the block
-	if block.Header.Number != 1 && l.commitHash == nil {
-		return
-	}
+func (l *kvLedger) addBlockCommitHash(block *common.Block, updateBatchBytes []byte) {
 	var valueBytes []byte
 
 	txValidationCode := block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER]
