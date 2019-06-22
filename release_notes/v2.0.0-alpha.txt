@@ -70,6 +70,19 @@ installing chaincode by using different SDKs. To workaround the problem,
 package the chaincode prior to installation and instantiation, by using
 the "peer chaincode package" command.
 
+FAB-15366 Logger removed from chaincode shim
+Chaincodes that used the shim's NewLogger() will need to shift to a new
+logging mechanism. Chaincode logging is intended to be the responsibility
+of the application developer. As such it should be handled using tools and
+libraries that make the most sense to the chaincode developer and the
+application in general. Chaincode developers can forward STDOUT and STDERR
+from the chaincode container to the peer container by setting
+`CORE_VM_DOCKER_ATTACHSTDOUT=true`. While not recommended for production,
+once enabled, each chaincode will receive its own logging channel and
+STDOUT and STDERR will be integrated in the peers log on a per-line basis.
+A production grade approach would be to run a log aggregation service and
+forward your logs to the aggregation service.
+
 Known Vulnerabilities
 ---------------------
 FAB-8664 - Peer should detect and react when its org has been removed
