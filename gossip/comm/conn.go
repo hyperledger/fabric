@@ -8,7 +8,6 @@ package comm
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/hyperledger/fabric/gossip/common"
@@ -157,7 +156,7 @@ func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamSer
 		c.close()
 	}
 
-	conn := newConnection(nil, nil, nil, serverStream, metrics, cs.config)
+	conn := newConnection(nil, nil, serverStream, metrics, cs.config)
 	conn.pkiID = connInfo.ID
 	conn.info = connInfo
 	conn.logger = cs.logger
@@ -174,15 +173,13 @@ func (cs *connectionStore) closeConnByPKIid(pkiID common.PKIidType) {
 	}
 }
 
-func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_GossipStreamClient,
-	ss proto.Gossip_GossipStreamServer, metrics *metrics.CommMetrics, config ConnConfig) *connection {
+func newConnection(cl proto.GossipClient, c *grpc.ClientConn, s stream, metrics *metrics.CommMetrics, config ConnConfig) *connection {
 	connection := &connection{
 		metrics:      metrics,
 		outBuff:      make(chan *msgSending, config.SendBuffSize),
 		cl:           cl,
 		conn:         c,
-		clientStream: cs,
-		serverStream: ss,
+		gossipStream: s,
 		stopChan:     make(chan struct{}, 1),
 		recvBuffSize: config.RecvBuffSize,
 	}
@@ -201,17 +198,16 @@ type connection struct {
 	cancel       context.CancelFunc
 	info         *protoext.ConnectionInfo
 	outBuff      chan *msgSending
-	logger       util.Logger                     // logger
-	pkiID        common.PKIidType                // pkiID of the remote endpoint
-	handler      handler                         // function to invoke upon a message reception
-	conn         *grpc.ClientConn                // gRPC connection to remote endpoint
-	cl           proto.GossipClient              // gRPC stub of remote endpoint
-	clientStream proto.Gossip_GossipStreamClient // client-side stream to remote endpoint
-	serverStream proto.Gossip_GossipStreamServer // server-side stream to remote endpoint
-	stopChan     chan struct{}                   // a method to stop the server-side gRPC call from a different go-routine
-	stopOnce     sync.Once                       // once to ensure close is called only once
-	sync.RWMutex                                 // synchronizes access to shared variables
-	stopWG       sync.WaitGroup                  // a method to wait for stream activity to stop before closing it
+	logger       util.Logger        // logger
+	pkiID        common.PKIidType   // pkiID of the remote endpoint
+	handler      handler            // function to invoke upon a message reception
+	conn         *grpc.ClientConn   // gRPC connection to remote endpoint
+	cl           proto.GossipClient // gRPC stub of remote endpoint
+	gossipStream stream             // there can only be one
+	stopChan     chan struct{}      // a method to stop the server-side gRPC call from a different go-routine
+	stopOnce     sync.Once          // once to ensure close is called only once
+	sync.RWMutex                    // synchronizes access to shared variables
+	stopWG       sync.WaitGroup     // a method to wait for stream activity to stop before closing it
 }
 
 func (conn *connection) close() {
@@ -221,10 +217,8 @@ func (conn *connection) close() {
 		conn.Lock()
 		defer conn.Unlock()
 
-		if conn.clientStream != nil {
-			conn.stopWG.Wait()
-			conn.clientStream.CloseSend()
-		}
+		conn.stopWG.Wait()
+
 		if conn.conn != nil {
 			conn.conn.Close()
 		}
@@ -294,44 +288,30 @@ func (conn *connection) writeToStream() {
 	}
 	conn.Unlock()
 
+	stream := conn.gossipStream
 	for {
 		select {
+		case m := <-conn.outBuff:
+			err := stream.Send(m.envelope)
+			if err != nil {
+				go m.onErr(err)
+				return
+			}
+			conn.metrics.SentMessages.Add(1)
 		case <-conn.stopChan:
+			conn.logger.Debug("Closing writing to stream")
 			return
-		default:
-			stream := conn.getStream()
-			if stream == nil {
-				conn.logger.Error(conn.pkiID, "Stream is nil, aborting!")
-				return
-			}
-			select {
-			case m := <-conn.outBuff:
-				err := stream.Send(m.envelope)
-				if err != nil {
-					go m.onErr(err)
-					return
-				}
-				conn.metrics.SentMessages.Add(1)
-			case <-conn.stopChan:
-				conn.logger.Debug("Closing writing to stream")
-				return
-			}
 		}
 	}
 }
 
 func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoext.SignedGossipMessage) {
+	stream := conn.gossipStream
 	for {
 		select {
 		case <-conn.stopChan:
 			return
 		default:
-			stream := conn.getStream()
-			if stream == nil {
-				conn.logger.Error(conn.pkiID, "Stream is nil, aborting!")
-				errChan <- fmt.Errorf("Stream is nil")
-				return
-			}
 			envelope, err := stream.Recv()
 			if err != nil {
 				errChan <- err
@@ -347,25 +327,6 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 			msgChan <- msg
 		}
 	}
-}
-
-func (conn *connection) getStream() stream {
-	conn.Lock()
-	defer conn.Unlock()
-
-	if conn.clientStream != nil && conn.serverStream != nil {
-		conn.logger.Error("Both client and server stream are not nil, something went wrong")
-	}
-
-	if conn.clientStream != nil {
-		return conn.clientStream
-	}
-
-	if conn.serverStream != nil {
-		return conn.serverStream
-	}
-
-	return nil
 }
 
 type msgSending struct {
