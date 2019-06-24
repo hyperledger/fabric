@@ -383,7 +383,7 @@ func (li *mockLedgerInfo) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCo
 	panic("implement me")
 }
 
-func (li *mockLedgerInfo) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
+func (li *mockLedgerInfo) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
 	panic("implement me")
 }
 
@@ -398,6 +398,10 @@ func (li *mockLedgerInfo) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockA
 // LedgerHeight returns mocked value to the ledger height
 func (li *mockLedgerInfo) LedgerHeight() (uint64, error) {
 	return li.Height, nil
+}
+
+func (li *mockLedgerInfo) DoesPvtDataInfoExistInLedger(blkNum uint64) (bool, error) {
+	return false, nil
 }
 
 // Commit block to the ledger

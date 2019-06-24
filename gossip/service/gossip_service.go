@@ -399,6 +399,7 @@ func (g *GossipService) InitializeChannel(channelID string, endpoints []string, 
 	} else {
 		logger.Warning("Delivery client is down won't be able to pull blocks for chain", channelID)
 	}
+
 }
 
 func (g *GossipService) createSelfSignedData() protoutil.SignedData {

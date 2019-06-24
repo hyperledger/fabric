@@ -39,18 +39,39 @@ func (_m *Committer) CommitPvtDataOfOldBlocks(blockPvtData []*ledger.BlockPvtDat
 	return r0, r1
 }
 
-// CommitWithPvtData provides a mock function with given fields: blockAndPvtData
-func (_m *Committer) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
-	ret := _m.Called(blockAndPvtData)
+// CommitWithPvtData provides a mock function with given fields: blockAndPvtData, commitOpts
+func (_m *Committer) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
+	ret := _m.Called(blockAndPvtData, commitOpts)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*ledger.BlockAndPvtData) error); ok {
-		r0 = rf(blockAndPvtData)
+	if rf, ok := ret.Get(0).(func(*ledger.BlockAndPvtData, *ledger.CommitOptions) error); ok {
+		r0 = rf(blockAndPvtData, commitOpts)
 	} else {
 		r0 = ret.Error(0)
 	}
 
 	return r0
+}
+
+// DoesPvtDataInfoExistInLedger provides a mock function with given fields: blockNum
+func (_m *Committer) DoesPvtDataInfoExistInLedger(blockNum uint64) (bool, error) {
+	ret := _m.Called(blockNum)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(uint64) bool); ok {
+		r0 = rf(blockNum)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(uint64) error); ok {
+		r1 = rf(blockNum)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetBlocks provides a mock function with given fields: blockSeqs
