@@ -158,7 +158,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 				},
 			}),
 		})
-		assert.EqualError(t, err, "error validating channel creation transaction for new channel 'foodifferent', could not succesfully apply update to template configuration: An error")
+		assert.EqualError(t, err, "error validating channel creation transaction for new channel 'foodifferent', could not successfully apply update to template configuration: An error")
 	})
 	t.Run("BadSignEnvelope", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
