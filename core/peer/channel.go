@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
+	"sync"
+
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
@@ -22,16 +24,24 @@ type Channel struct {
 	ledger ledger.PeerLedger
 	store  transientstore.Store
 
+	// applyLock is used to serialize calls to Apply and bundle update processing.
+	applyLock sync.Mutex
 	// bundleSource is used to validate and apply channel configuration updates.
 	// This should not be used for retrieving resources.
 	bundleSource *channelconfig.BundleSource
+
+	// lock is used to serialize access to resources
+	lock sync.RWMutex
 	// resources is used to acquire configuration bundle resources. The reference
 	// is maintained by callbacks from the bundleSource.
 	resources channelconfig.Resources
 }
 
 func (c *Channel) Apply(configtx *common.ConfigEnvelope) error {
-	configTxValidator := c.resources.ConfigtxValidator()
+	c.applyLock.Lock()
+	defer c.applyLock.Unlock()
+
+	configTxValidator := c.Resources().ConfigtxValidator()
 	err := configTxValidator.Validate(configtx)
 	if err != nil {
 		return err
@@ -57,15 +67,55 @@ func (c *Channel) Apply(configtx *common.ConfigEnvelope) error {
 // bundleUpdate is called by the bundleSource when the channel configuration
 // changes.
 func (c *Channel) bundleUpdate(b *channelconfig.Bundle) {
+	c.lock.Lock()
 	c.resources = b
+	c.lock.Unlock()
+}
+
+func (c *Channel) Resources() channelconfig.Resources {
+	c.lock.RLock()
+	res := c.resources
+	c.lock.RUnlock()
+	return res
+}
+
+// Sequence passes through to the underlying configtx.Validator
+func (c *Channel) Sequence() uint64 {
+	return c.Resources().ConfigtxValidator().Sequence()
+}
+
+func (c *Channel) PolicyManager() policies.Manager {
+	return c.Resources().PolicyManager()
+}
+
+func (c *Channel) Capabilities() channelconfig.ApplicationCapabilities {
+	ac, ok := c.Resources().ApplicationConfig()
+	if !ok {
+		return nil
+	}
+	return ac.Capabilities()
+}
+
+func (c *Channel) GetMSPIDs() []string {
+	ac, ok := c.Resources().ApplicationConfig()
+	if !ok || ac.Organizations() == nil {
+		return nil
+	}
+
+	var mspIDs []string
+	for _, org := range ac.Organizations() {
+		mspIDs = append(mspIDs, org.MSPID())
+	}
+
+	return mspIDs
+}
+
+func (c *Channel) MSPManager() msp.MSPManager {
+	return c.Resources().MSPManager()
 }
 
 func (c *Channel) Ledger() ledger.PeerLedger {
 	return c.ledger
-}
-
-func (c *Channel) Resources() channelconfig.Resources {
-	return c.resources
 }
 
 func (c *Channel) Store() transientstore.Store {
@@ -84,41 +134,6 @@ func (c *Channel) Errored() <-chan struct{} {
 	// If this is ever updated to return a real channel, the error message
 	// in deliver.go around this channel closing should be updated.
 	return nil
-}
-
-// Sequence passes through to the underlying configtx.Validator
-func (c *Channel) Sequence() uint64 {
-	return c.resources.ConfigtxValidator().Sequence()
-}
-
-func (c *Channel) PolicyManager() policies.Manager {
-	return c.resources.PolicyManager()
-}
-
-func (c *Channel) Capabilities() channelconfig.ApplicationCapabilities {
-	ac, ok := c.resources.ApplicationConfig()
-	if !ok {
-		return nil
-	}
-	return ac.Capabilities()
-}
-
-func (c *Channel) GetMSPIDs() []string {
-	ac, ok := c.resources.ApplicationConfig()
-	if !ok || ac.Organizations() == nil {
-		return nil
-	}
-
-	var mspIDs []string
-	for _, org := range ac.Organizations() {
-		mspIDs = append(mspIDs, org.MSPID())
-	}
-
-	return mspIDs
-}
-
-func (c *Channel) MSPManager() msp.MSPManager {
-	return c.resources.MSPManager()
 }
 
 func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
