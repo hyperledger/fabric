@@ -174,6 +174,15 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 		MissingPvtData: make(ledger.TxMissingPvtDataMap),
 	}
 
+	exist, err := c.DoesPvtDataInfoExistInLedger(block.Header.Number)
+	if err != nil {
+		return err
+	}
+	if exist {
+		commitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: true}
+		return c.CommitWithPvtData(blockAndPvtData, commitOpts)
+	}
+
 	listMissingStart := time.Now()
 	ownedRWsets, err := computeOwnedRWsets(block, privateDataSets)
 	if err != nil {
@@ -260,7 +269,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 
 	// commit block and private data
 	commitStart := time.Now()
-	err = c.CommitWithPvtData(blockAndPvtData)
+	err = c.CommitWithPvtData(blockAndPvtData, &ledger.CommitOptions{})
 	c.reportCommitDuration(time.Since(commitStart))
 	if err != nil {
 		return errors.Wrap(err, "commit failed")

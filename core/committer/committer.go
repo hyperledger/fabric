@@ -31,7 +31,7 @@ import (
 type Committer interface {
 
 	// CommitWithPvtData block and private data into the ledger
-	CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error
+	CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error
 
 	// GetPvtDataAndBlockByNum retrieves block with private data with given
 	// sequence number
@@ -44,6 +44,10 @@ type Committer interface {
 
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)
+
+	// DoesPvtDataInfoExistInLedger returns true if the ledger has pvtdata info
+	// about a given block number.
+	DoesPvtDataInfoExistInLedger(blockNum uint64) (bool, error)
 
 	// Gets blocks with sequence numbers provided in the slice
 	GetBlocks(blockSeqs []uint64) []*common.Block

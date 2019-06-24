@@ -224,7 +224,7 @@ func (mc *mockCommitter) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCol
 	return args.Get(0).([]*ledger.TxPvtData), args.Error(1)
 }
 
-func (mc *mockCommitter) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
+func (mc *mockCommitter) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
 	mc.Lock()
 	m := mc.Mock
 	mc.Unlock()
@@ -246,6 +246,11 @@ func (mc *mockCommitter) LedgerHeight() (uint64, error) {
 		return args.Get(0).(uint64), nil
 	}
 	return args.Get(0).(uint64), args.Get(1).(error)
+}
+
+func (mc *mockCommitter) DoesPvtDataInfoExistInLedger(blkNum uint64) (bool, error) {
+	args := mc.Called(blkNum)
+	return args.Get(0).(bool), args.Error(1)
 }
 
 func (mc *mockCommitter) GetBlocks(blockSeqs []uint64) []*pcomm.Block {
@@ -298,7 +303,7 @@ func (mock *ramLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollF
 	panic("implement me")
 }
 
-func (mock *ramLedger) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error {
+func (mock *ramLedger) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
 	mock.Lock()
 	defer mock.Unlock()
 
@@ -319,6 +324,10 @@ func (mock *ramLedger) GetBlockchainInfo() (*pcomm.BlockchainInfo, error) {
 		CurrentBlockHash:  currentBlock.Header.Hash(),
 		PreviousBlockHash: currentBlock.Header.PreviousHash,
 	}, nil
+}
+
+func (mock *ramLedger) DoesPvtDataInfoExist(blkNum uint64) (bool, error) {
+	return false, nil
 }
 
 func (mock *ramLedger) GetBlockByNumber(blockNumber uint64) (*pcomm.Block, error) {
@@ -342,9 +351,7 @@ func newCommitter() committer.Committer {
 	ldgr := &ramLedger{
 		ledger: make(map[uint64]*ledger.BlockAndPvtData),
 	}
-	ldgr.CommitWithPvtData(&ledger.BlockAndPvtData{
-		Block: cb,
-	})
+	ldgr.CommitWithPvtData(&ledger.BlockAndPvtData{Block: cb}, &ledger.CommitOptions{})
 	return committer.NewLedgerCommitter(ldgr)
 }
 
@@ -536,6 +543,7 @@ func TestLargeBlockGap(t *testing.T) {
 	})
 	msgsFromPeer := make(chan proto.ReceivedMessage)
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
+	mc.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	g := &mocks.GossipMock{}
 	membership := []discovery.NetworkMember{
 		{
@@ -606,6 +614,7 @@ func TestOverPopulation(t *testing.T) {
 		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
 	})
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
+	mc.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	g := &mocks.GossipMock{}
 	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
 	g.On("Accept", mock.Anything, true).Return(nil, make(chan proto.ReceivedMessage))
@@ -669,6 +678,7 @@ func TestBlockingEnqueue(t *testing.T) {
 		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
 	})
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
+	mc.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	g := &mocks.GossipMock{}
 	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
 	g.On("Accept", mock.Anything, true).Return(nil, make(chan proto.ReceivedMessage))
@@ -712,6 +722,7 @@ func TestBlockingEnqueue(t *testing.T) {
 		receivedBlockCount++
 		m := &mock.Mock{}
 		m.On("LedgerHeight", mock.Anything).Return(receivedBlock, nil)
+		m.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 		m.On("CommitWithPvtData", mock.Anything).Run(func(arg mock.Arguments) {
 			blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
 		})
@@ -866,6 +877,7 @@ func TestGossipReception(t *testing.T) {
 		receivedChan <- struct{}{}
 	})
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
+	mc.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	p := newPeerNodeWithGossip(0, mc, noopPeerIdentityAcceptor, g)
 	defer p.shutdown()
 	select {
@@ -1618,6 +1630,9 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 
 	// Second peer has a gap of one block, hence it will have to replicate it from previous
 	peers["peer2"].coord.On("LedgerHeight", mock.Anything).Return(uint64(2), nil)
+
+	peers["peer1"].coord.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
+	peers["peer2"].coord.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
 	peers["peer1"].coord.On("GetPvtDataAndBlockByNum", uint64(2)).Return(&pcomm.Block{
 		Header: &pcomm.BlockHeader{

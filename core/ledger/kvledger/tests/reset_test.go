@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
@@ -60,7 +61,7 @@ func TestResetAllLedgers(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, genesisBlocks[i], gb)
 		for _, b := range dataHelper.submittedData[ledgerID].Blocks {
-			assert.NoError(t, h.lgr.CommitWithPvtData(b))
+			assert.NoError(t, h.lgr.CommitWithPvtData(b, &ledger.CommitOptions{}))
 		}
 		bcInfo, err := h.lgr.GetBlockchainInfo()
 		assert.NoError(t, err)
@@ -135,13 +136,13 @@ func TestResetAllLedgersWithBTL(t *testing.T) {
 	h.verifyLedgerHeight(1)
 
 	// recommit blocks
-	assert.NoError(t, h.lgr.CommitWithPvtData(blk1))
-	assert.NoError(t, h.lgr.CommitWithPvtData(blk2))
+	assert.NoError(t, h.lgr.CommitWithPvtData(blk1, &ledger.CommitOptions{}))
+	assert.NoError(t, h.lgr.CommitWithPvtData(blk2, &ledger.CommitOptions{}))
 	// After the recommit of block 2
 	h.verifyPvtState("cc1", "coll1", "key1", "value1") // key1 should still exist in the state
 	h.verifyPvtState("cc1", "coll2", "key2", "value2") // key2 should still exist in the state
-	assert.NoError(t, h.lgr.CommitWithPvtData(blk3))
-	assert.NoError(t, h.lgr.CommitWithPvtData(blk4))
+	assert.NoError(t, h.lgr.CommitWithPvtData(blk3, &ledger.CommitOptions{}))
+	assert.NoError(t, h.lgr.CommitWithPvtData(blk4, &ledger.CommitOptions{}))
 
 	// after the recommit of block 4
 	h.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state

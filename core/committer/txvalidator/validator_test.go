@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/testdata"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -37,7 +37,7 @@ import (
 	mocks2 "github.com/hyperledger/fabric/discovery/support/mocks"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	mb "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -291,9 +291,7 @@ func putCCInfoWithVSCCAndVer(theLedger ledger.PeerLedger, ccname, vscc, ver stri
 	bcInfo, err := theLedger.GetBlockchainInfo()
 	assert.NoError(t, err)
 	block0 := testutil.ConstructBlock(t, 1, bcInfo.CurrentBlockHash, [][]byte{pubSimulationBytes}, true)
-	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{
-		Block: block0,
-	})
+	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{Block: block0}, &ledger.CommitOptions{})
 	assert.NoError(t, err)
 }
 
@@ -313,9 +311,7 @@ func putSBEP(theLedger ledger.PeerLedger, cc, key string, policy []byte, t *test
 	bcInfo, err := theLedger.GetBlockchainInfo()
 	assert.NoError(t, err)
 	block0 := testutil.ConstructBlock(t, 2, bcInfo.CurrentBlockHash, [][]byte{pubSimulationBytes}, true)
-	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{
-		Block: block0,
-	})
+	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{Block: block0}, &ledger.CommitOptions{})
 	assert.NoError(t, err)
 }
 
@@ -1579,7 +1575,7 @@ func (m *mockLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFil
 }
 
 // CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation
-func (m *mockLedger) CommitWithPvtData(pvtDataAndBlock *ledger.BlockAndPvtData) error {
+func (m *mockLedger) CommitWithPvtData(pvtDataAndBlock *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
 	return nil
 }
 
@@ -1601,6 +1597,11 @@ func (m *mockLedger) Prune(policy ledger2.PrunePolicy) error {
 func (m *mockLedger) GetBlockchainInfo() (*common.BlockchainInfo, error) {
 	args := m.Called()
 	return args.Get(0).(*common.BlockchainInfo), nil
+}
+
+func (m *mockLedger) DoesPvtDataInfoExist(blkNum uint64) (bool, error) {
+	args := m.Called()
+	return args.Get(0).(bool), args.Error(1)
 }
 
 func (m *mockLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {

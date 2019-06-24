@@ -326,6 +326,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, oac OrdererAddress
 	} else {
 		logger.Warning("Delivery client is down won't be able to pull blocks for chain", chainID)
 	}
+
 }
 
 func (g *gossipServiceImpl) createSelfSignedData() common.SignedData {

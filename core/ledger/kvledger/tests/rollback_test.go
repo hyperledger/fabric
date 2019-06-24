@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +55,9 @@ func TestRollbackKVLedger(t *testing.T) {
 	h.verifyLedgerHeight(targetBlockNum + 1)
 	targetBlockNumIndex := targetBlockNum - 1
 	for _, b := range dataHelper.submittedData["testLedger"].Blocks[targetBlockNumIndex+1:] {
-		assert.NoError(t, h.lgr.CommitWithPvtData(b))
+		// if the pvtData is already present in the pvtdata store, the ledger (during commit) should be
+		// able to fetch them if not passed along with the block.
+		assert.NoError(t, h.lgr.CommitWithPvtData(b, &ledger.CommitOptions{FetchPvtDataFromLedger: true}))
 	}
 	actualBcInfo, err := h.lgr.GetBlockchainInfo()
 	assert.Equal(t, bcInfo, actualBcInfo)

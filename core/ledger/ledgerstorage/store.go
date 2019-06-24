@@ -230,6 +230,19 @@ func (s *Store) getPvtDataByNumWithoutLock(blockNum uint64, filter ledger.PvtNsC
 	return pvtdata, nil
 }
 
+// DoesPvtDataInfoExist returns true when
+// (1) the ledger has pvtdata associated with the given block number (or)
+// (2) a few or all pvtdata associated with the given block number is missing but the
+//     missing info is recorded in the ledger (or)
+// (3) the block is committed does not contain any pvtData.
+func (s *Store) DoesPvtDataInfoExist(blockNum uint64) (bool, error) {
+	pvtStoreHt, err := s.pvtdataStore.LastCommittedBlockHeight()
+	if err != nil {
+		return false, err
+	}
+	return blockNum+1 <= pvtStoreHt, nil
+}
+
 // GetMissingPvtDataInfoForMostRecentBlocks invokes the function on underlying pvtdata store
 func (s *Store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
 	// it is safe to not acquire a read lock on s.rwlock. Without a lock, the value of

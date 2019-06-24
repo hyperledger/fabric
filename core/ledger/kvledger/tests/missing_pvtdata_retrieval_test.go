@@ -82,13 +82,13 @@ func TestGetMissingPvtDataAfterRollback(t *testing.T) {
 	h.verifyMissingPvtDataSameAs(5, nil)
 
 	// recommit block 3
-	assert.NoError(t, h.lgr.CommitWithPvtData(blk3))
+	assert.NoError(t, h.lgr.CommitWithPvtData(blk3, &ledger.CommitOptions{}))
 	// when the pvtdata store is ahead of blockstore,
 	// missing pvtdata info for block 2 would not be returned.
 	h.verifyMissingPvtDataSameAs(5, nil)
 
 	// recommit block 4
-	assert.NoError(t, h.lgr.CommitWithPvtData(blk4))
+	assert.NoError(t, h.lgr.CommitWithPvtData(blk4, &ledger.CommitOptions{}))
 	// once the pvtdata store and blockstore becomes equal,
 	// missing pvtdata info for block 2 would be returned.
 	expectedMissingPvtDataInfo = make(ledger.MissingPvtDataInfo)
