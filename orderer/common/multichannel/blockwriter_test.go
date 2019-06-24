@@ -110,7 +110,7 @@ func TestBlockLastConfig(t *testing.T) {
 	}
 
 	block := protoutil.NewBlock(newBlockNum, []byte("foo"))
-	bw.addLastConfigSignature(block)
+	bw.addLastConfig(block)
 
 	assert.Equal(t, newBlockNum, bw.lastConfigBlockNum)
 	assert.Equal(t, newConfigSeq, bw.lastConfigSeq)
