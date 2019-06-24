@@ -19,7 +19,6 @@ import (
 
 // Channel is a local struct to manage objects in a Channel.
 type Channel struct {
-	cb           *common.Block
 	ledger       ledger.PeerLedger
 	bundleSource *channelconfig.BundleSource
 	resources    channelconfig.Resources
@@ -38,15 +37,6 @@ func (c *Channel) Ledger() ledger.PeerLedger {
 
 func (c *Channel) Resources() channelconfig.Resources {
 	return c.resources
-}
-
-func (c *Channel) ConfigBlock() *common.Block {
-	return c.cb
-}
-
-func (c *Channel) setConfigBlock(cb *common.Block) error {
-	c.cb = cb
-	return nil
 }
 
 func (c *Channel) BundleSource() *channelconfig.BundleSource {

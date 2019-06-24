@@ -162,7 +162,7 @@ func TestCreateChannel(t *testing.T) {
 	}
 
 	// Get config block from ledger
-	block, err = getCurrConfigBlockFromLedger(ledger)
+	block, err = ConfigBlockFromLedger(ledger)
 	assert.NoError(t, err, "Failed to get config block from ledger")
 	assert.NotNil(t, block, "Config block should not be nil")
 	assert.Equal(t, uint64(0), block.Header.Number, "config block should have been block 0")
@@ -171,22 +171,6 @@ func TestCreateChannel(t *testing.T) {
 	ledger = Default.GetLedger("BogusChain")
 	if ledger != nil {
 		t.Fatalf("got a bogus ledger")
-	}
-
-	// Correct block
-	block = Default.GetCurrConfigBlock(testChainID)
-	if block == nil {
-		t.Fatalf("failed to get correct block")
-	}
-
-	cfgSupport := configSupport{}
-	chCfg := cfgSupport.GetChannelConfig(testChainID)
-	assert.NotNil(t, chCfg, "failed to get channel config")
-
-	// Bad block
-	block = Default.GetCurrConfigBlock("BogusBlock")
-	if block != nil {
-		t.Fatalf("got a bogus block")
 	}
 
 	// Correct PolicyManager

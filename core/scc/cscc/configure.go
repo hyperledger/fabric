@@ -251,10 +251,16 @@ func (e *PeerConfiger) getConfigBlock(chainID []byte) pb.Response {
 	if chainID == nil {
 		return shim.Error("ChainID must not be nil.")
 	}
-	block := e.peer.GetCurrConfigBlock(string(chainID))
-	if block == nil {
+
+	channel := e.peer.Channel(string(chainID))
+	if channel == nil {
 		return shim.Error(fmt.Sprintf("Unknown chain ID, %s", string(chainID)))
 	}
+	block, err := peer.ConfigBlockFromLedger(channel.Ledger())
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
 	blockBytes, err := protoutil.Marshal(block)
 	if err != nil {
 		return shim.Error(err.Error())

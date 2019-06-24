@@ -73,7 +73,7 @@ func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 	}
 }
 
-func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
+func ConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
 	peerLogger.Debugf("Getting config block")
 
 	// get last block.  Last block number is Height-1
@@ -326,7 +326,6 @@ func (p *Peer) createChannel(
 	}
 
 	channel := &Channel{
-		cb:        cb,
 		ledger:    l,
 		resources: bundle,
 	}
@@ -339,7 +338,7 @@ func (p *Peer) createChannel(
 		channel.bundleUpdate,
 	)
 
-	committer := committer.NewLedgerCommitterReactive(l, channel.setConfigBlock)
+	committer := committer.NewLedgerCommitterReactive(l, func(block *common.Block) error { return nil })
 	validator := txvalidator.NewTxValidator(
 		cid,
 		p.validationWorkersSemaphore,
@@ -438,15 +437,6 @@ func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
 	return nil
 }
 
-// GetCurrConfigBlock returns the cached config block of the specified channel.
-// Note that this call returns nil if channel cid has not been created.
-func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
-	if c := p.Channel(cid); c != nil {
-		return c.ConfigBlock()
-	}
-	return nil
-}
-
 // GetLedger returns the ledger of the channel with channel ID. Note that this
 // call returns nil if channel cid has not been created.
 func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
@@ -522,7 +512,7 @@ func (p *Peer) Initialize(
 			peerLogger.Debugf("Error while loading ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
 			continue
 		}
-		cb, err := getCurrConfigBlockFromLedger(ledger)
+		cb, err := ConfigBlockFromLedger(ledger)
 		if err != nil {
 			peerLogger.Errorf("Failed to find config block on ledger %s(%s)", cid, err)
 			peerLogger.Debugf("Error while looking for config block on ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
