@@ -178,13 +178,8 @@ func (bw *BlockWriter) WriteBlock(block *cb.Block, encodedMetadataValue []byte) 
 // commitBlock should only ever be invoked with the bw.committingBlock held
 // this ensures that the encoded config sequence numbers stay in sync
 func (bw *BlockWriter) commitBlock(encodedMetadataValue []byte) {
-	// Set the orderer-related metadata field
-	if encodedMetadataValue != nil {
-		bw.lastBlock.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = protoutil.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
-	}
-
 	bw.addLastConfig(bw.lastBlock)
-	bw.addBlockSignature(bw.lastBlock)
+	bw.addBlockSignature(bw.lastBlock, encodedMetadataValue)
 
 	err := bw.support.Append(bw.lastBlock)
 	if err != nil {
@@ -193,14 +188,14 @@ func (bw *BlockWriter) commitBlock(encodedMetadataValue []byte) {
 	logger.Debugf("[channel: %s] Wrote block [%d]", bw.support.ChainID(), bw.lastBlock.GetHeader().Number)
 }
 
-func (bw *BlockWriter) addBlockSignature(block *cb.Block) {
+func (bw *BlockWriter) addBlockSignature(block *cb.Block, consenterMetadata []byte) {
 	blockSignature := &cb.MetadataSignature{
 		SignatureHeader: protoutil.MarshalOrPanic(protoutil.NewSignatureHeaderOrPanic(bw.support)),
 	}
 
 	blockSignatureValue := protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
 		LastConfig:        &cb.LastConfig{Index: bw.lastConfigBlockNum},
-		ConsenterMetadata: bw.lastBlock.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER],
+		ConsenterMetadata: protoutil.MarshalOrPanic(&cb.Metadata{Value: consenterMetadata}),
 	})
 
 	blockSignature.Signature = protoutil.SignOrPanic(
