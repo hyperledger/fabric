@@ -7,18 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package committer
 
 import (
-	"errors"
-	"sync/atomic"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
-	cut "github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
@@ -162,56 +156,4 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	blocks := committer.GetBlocks([]uint64{0})
 	assert.Equal(t, 1, len(blocks))
 	assert.NoError(t, err)
-}
-
-func TestNewLedgerCommitterReactive(t *testing.T) {
-	t.Parallel()
-	chainID := "TestLedger"
-	_, ledger := createLedger(chainID)
-	ledger.On("CommitWithPvtData", mock.Anything).Return(nil)
-	var configArrived int32
-	committer := NewLedgerCommitterReactive(ledger, func(_ *common.Block) error {
-		atomic.AddInt32(&configArrived, 1)
-		return nil
-	})
-
-	height, err := committer.LedgerHeight()
-	assert.Equal(t, uint64(1), height)
-	assert.NoError(t, err)
-
-	profile := configtxgentest.Load(localconfig.SampleSingleMSPSoloProfile)
-	block := encoder.New(profile).GenesisBlockForChannel(chainID)
-	txsFilter := cut.NewTxValidationFlagsSetValue(len(block.Data.Data), peer.TxValidationCode_VALID)
-	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
-
-	err = committer.CommitWithPvtData(&ledger2.BlockAndPvtData{
-		Block: block,
-	})
-	assert.NoError(t, err)
-	assert.Equal(t, int32(1), atomic.LoadInt32(&configArrived))
-}
-
-func TestNewLedgerCommitterReactiveFailedConfigUpdate(t *testing.T) {
-	t.Parallel()
-	chainID := "TestLedger"
-	_, ledger := createLedger(chainID)
-	ledger.On("CommitWithPvtData", mock.Anything).Return(nil)
-	var configArrived int32
-	committer := NewLedgerCommitterReactive(ledger, func(_ *common.Block) error {
-		return errors.New("failed update config")
-	})
-
-	height, err := committer.LedgerHeight()
-	assert.Equal(t, uint64(1), height)
-	assert.NoError(t, err)
-
-	profile := configtxgentest.Load(localconfig.SampleSingleMSPSoloProfile)
-	block := encoder.New(profile).GenesisBlockForChannel(chainID)
-
-	err = committer.CommitWithPvtData(&ledger2.BlockAndPvtData{
-		Block: block,
-	})
-
-	assert.Error(t, err)
-	assert.Equal(t, int32(0), atomic.LoadInt32(&configArrived))
 }

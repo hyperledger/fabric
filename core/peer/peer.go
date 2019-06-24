@@ -338,7 +338,7 @@ func (p *Peer) createChannel(
 		channel.bundleUpdate,
 	)
 
-	committer := committer.NewLedgerCommitterReactive(l, func(block *common.Block) error { return nil })
+	committer := committer.NewLedgerCommitter(l)
 	validator := txvalidator.NewTxValidator(
 		cid,
 		p.validationWorkersSemaphore,
