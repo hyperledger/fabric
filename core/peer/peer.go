@@ -58,21 +58,6 @@ type gossipSupport struct {
 	channelconfig.Channel
 }
 
-func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
-	ac, ok := res.ApplicationConfig()
-	if !ok {
-		peerLogger.Panicf("[channel %s] does not have application config so is incompatible", res.ConfigtxValidator().ChainID())
-	}
-
-	if err := ac.Capabilities().Supported(); err != nil {
-		peerLogger.Panicf("[channel %s] incompatible: %s", res.ConfigtxValidator().ChainID(), err)
-	}
-
-	if err := res.ChannelConfig().Capabilities().Supported(); err != nil {
-		peerLogger.Panicf("[channel %s] incompatible: %s", res.ConfigtxValidator().ChainID(), err)
-	}
-}
-
 func ConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
 	peerLogger.Debugf("Getting config block")
 
@@ -175,7 +160,7 @@ func (*configSupport) GetChannelConfig(cid string) cc.Config {
 		peerLogger.Errorf("[channel %s] channel not associated with this peer", cid)
 		return nil
 	}
-	return channel.BundleSource().ConfigtxValidator()
+	return channel.Resources().ConfigtxValidator()
 }
 
 // Operations exposes an interface to the package level functions that operated
@@ -405,15 +390,6 @@ func (p *Peer) StoreForChannel(cid string) transientstore.Store {
 	return nil
 }
 
-// GetChannelConfig returns the channel configuration of the channel with channel ID. Note that this
-// call returns nil if channel cid has not been created.
-func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
-	if c := p.Channel(cid); c != nil {
-		return c.Resources()
-	}
-	return nil
-}
-
 // GetChannelsInfo returns an array with information about all channels for
 // this peer.
 func (p *Peer) GetChannelsInfo() []*pb.ChannelInfo {
@@ -428,11 +404,20 @@ func (p *Peer) GetChannelsInfo() []*pb.ChannelInfo {
 	return channelInfos
 }
 
+// GetChannelConfig returns the channel configuration of the channel with channel ID. Note that this
+// call returns nil if channel cid has not been created.
+func (p *Peer) GetChannelConfig(cid string) channelconfig.Resources {
+	if c := p.Channel(cid); c != nil {
+		return c.Resources()
+	}
+	return nil
+}
+
 // GetStableChannelConfig returns the stable channel configuration of the channel with channel ID.
 // Note that this call returns nil if channel cid has not been created.
 func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
 	if c := p.Channel(cid); c != nil {
-		return c.BundleSource().StableBundle()
+		return c.Resources()
 	}
 	return nil
 }
