@@ -116,6 +116,19 @@ var _ = Describe("Cache", func() {
 						"chaincode-name": channelCache.Chaincodes["chaincode-name"],
 					},
 				},
+				Info: &lifecycle.ChaincodeInstallInfo{
+					Label:     "chaincode-label",
+					PackageID: "packageID",
+				},
+			},
+			string(util.ComputeSHA256(protoutil.MarshalOrPanic(&lb.StateData{
+				Type: &lb.StateData_String_{String_: "another-packageID"},
+			}))): {
+				References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{
+					"channel-id": {
+						"chaincode-name": channelCache.Chaincodes["chaincode-name"],
+					},
+				},
 			},
 		}
 
@@ -181,7 +194,7 @@ var _ = Describe("Cache", func() {
 			}))
 		})
 
-		Context("when the chaincode has no cache", func() {
+		Context("when the chaincode name is not in the cache", func() {
 			It("returns an error", func() {
 				_, err := c.ChaincodeInfo("channel-id", "missing-name")
 				Expect(err).To(MatchError("unknown chaincode 'missing-name' for channel 'channel-id'"))
@@ -190,9 +203,21 @@ var _ = Describe("Cache", func() {
 
 		Context("when the channel does not exist", func() {
 			It("returns an error", func() {
-				_, err := c.ChaincodeInfo("missing-channel-id", "missing-name")
+				_, err := c.ChaincodeInfo("missing-channel-id", "chaincode-name")
 				Expect(err).To(MatchError("unknown channel 'missing-channel-id'"))
 			})
+		})
+	})
+
+	Describe("InstalledChaincodes", func() {
+		It("returns the installed chaincodes", func() {
+			installedChaincodes := c.ListInstalledChaincodes()
+			Expect(installedChaincodes).To(Equal([]*chaincode.InstalledChaincode{
+				{
+					Label:     "chaincode-label",
+					PackageID: "packageID",
+				},
+			}))
 		})
 	})
 

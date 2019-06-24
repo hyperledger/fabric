@@ -86,17 +86,15 @@ type SCCFunctions struct {
 		result1 *chaincode.InstalledChaincode
 		result2 error
 	}
-	QueryInstalledChaincodesStub        func() ([]chaincode.InstalledChaincode, error)
+	QueryInstalledChaincodesStub        func() []*chaincode.InstalledChaincode
 	queryInstalledChaincodesMutex       sync.RWMutex
 	queryInstalledChaincodesArgsForCall []struct {
 	}
 	queryInstalledChaincodesReturns struct {
-		result1 []chaincode.InstalledChaincode
-		result2 error
+		result1 []*chaincode.InstalledChaincode
 	}
 	queryInstalledChaincodesReturnsOnCall map[int]struct {
-		result1 []chaincode.InstalledChaincode
-		result2 error
+		result1 []*chaincode.InstalledChaincode
 	}
 	QueryNamespaceDefinitionsStub        func(lifecycle.RangeableState) (map[string]string, error)
 	queryNamespaceDefinitionsMutex       sync.RWMutex
@@ -473,7 +471,7 @@ func (fake *SCCFunctions) QueryInstalledChaincodeReturnsOnCall(i int, result1 *c
 	}{result1, result2}
 }
 
-func (fake *SCCFunctions) QueryInstalledChaincodes() ([]chaincode.InstalledChaincode, error) {
+func (fake *SCCFunctions) QueryInstalledChaincodes() []*chaincode.InstalledChaincode {
 	fake.queryInstalledChaincodesMutex.Lock()
 	ret, specificReturn := fake.queryInstalledChaincodesReturnsOnCall[len(fake.queryInstalledChaincodesArgsForCall)]
 	fake.queryInstalledChaincodesArgsForCall = append(fake.queryInstalledChaincodesArgsForCall, struct {
@@ -484,10 +482,10 @@ func (fake *SCCFunctions) QueryInstalledChaincodes() ([]chaincode.InstalledChain
 		return fake.QueryInstalledChaincodesStub()
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1
 	}
 	fakeReturns := fake.queryInstalledChaincodesReturns
-	return fakeReturns.result1, fakeReturns.result2
+	return fakeReturns.result1
 }
 
 func (fake *SCCFunctions) QueryInstalledChaincodesCallCount() int {
@@ -496,36 +494,33 @@ func (fake *SCCFunctions) QueryInstalledChaincodesCallCount() int {
 	return len(fake.queryInstalledChaincodesArgsForCall)
 }
 
-func (fake *SCCFunctions) QueryInstalledChaincodesCalls(stub func() ([]chaincode.InstalledChaincode, error)) {
+func (fake *SCCFunctions) QueryInstalledChaincodesCalls(stub func() []*chaincode.InstalledChaincode) {
 	fake.queryInstalledChaincodesMutex.Lock()
 	defer fake.queryInstalledChaincodesMutex.Unlock()
 	fake.QueryInstalledChaincodesStub = stub
 }
 
-func (fake *SCCFunctions) QueryInstalledChaincodesReturns(result1 []chaincode.InstalledChaincode, result2 error) {
+func (fake *SCCFunctions) QueryInstalledChaincodesReturns(result1 []*chaincode.InstalledChaincode) {
 	fake.queryInstalledChaincodesMutex.Lock()
 	defer fake.queryInstalledChaincodesMutex.Unlock()
 	fake.QueryInstalledChaincodesStub = nil
 	fake.queryInstalledChaincodesReturns = struct {
-		result1 []chaincode.InstalledChaincode
-		result2 error
-	}{result1, result2}
+		result1 []*chaincode.InstalledChaincode
+	}{result1}
 }
 
-func (fake *SCCFunctions) QueryInstalledChaincodesReturnsOnCall(i int, result1 []chaincode.InstalledChaincode, result2 error) {
+func (fake *SCCFunctions) QueryInstalledChaincodesReturnsOnCall(i int, result1 []*chaincode.InstalledChaincode) {
 	fake.queryInstalledChaincodesMutex.Lock()
 	defer fake.queryInstalledChaincodesMutex.Unlock()
 	fake.QueryInstalledChaincodesStub = nil
 	if fake.queryInstalledChaincodesReturnsOnCall == nil {
 		fake.queryInstalledChaincodesReturnsOnCall = make(map[int]struct {
-			result1 []chaincode.InstalledChaincode
-			result2 error
+			result1 []*chaincode.InstalledChaincode
 		})
 	}
 	fake.queryInstalledChaincodesReturnsOnCall[i] = struct {
-		result1 []chaincode.InstalledChaincode
-		result2 error
-	}{result1, result2}
+		result1 []*chaincode.InstalledChaincode
+	}{result1}
 }
 
 func (fake *SCCFunctions) QueryNamespaceDefinitions(arg1 lifecycle.RangeableState) (map[string]string, error) {

@@ -80,7 +80,7 @@ type SCCFunctions interface {
 	QueryInstalledChaincode(packageID persistenceintf.PackageID) (*chaincode.InstalledChaincode, error)
 
 	// QueryInstalledChaincodes returns the currently installed chaincodes
-	QueryInstalledChaincodes() (chaincodes []chaincode.InstalledChaincode, err error)
+	QueryInstalledChaincodes() []*chaincode.InstalledChaincode
 
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
 	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID persistenceintf.PackageID, publicState ReadableState, orgState ReadWritableState) error
@@ -308,13 +308,9 @@ func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeAr
 // QueryInstalledChaincodes is a SCC function that may be dispatched to which
 // routes to the underlying lifecycle implementation.
 func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodesArgs) (proto.Message, error) {
-
 	logger.Debugf("received invocation of QueryInstalledChaincodes")
 
-	chaincodes, err := i.SCC.Functions.QueryInstalledChaincodes()
-	if err != nil {
-		return nil, err
-	}
+	chaincodes := i.SCC.Functions.QueryInstalledChaincodes()
 
 	result := &lb.QueryInstalledChaincodesResult{}
 	for _, chaincode := range chaincodes {

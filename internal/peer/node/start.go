@@ -428,8 +428,9 @@ func serve(args []string) error {
 	}
 
 	lifecycleFunctions := &lifecycle.ExternalFunctions{
-		Resources:       lifecycleResources,
-		InstallListener: lifecycleCache,
+		Resources:                 lifecycleResources,
+		InstallListener:           lifecycleCache,
+		InstalledChaincodesLister: lifecycleCache,
 	}
 
 	lifecycleSCC := &lifecycle.SCC{

@@ -308,18 +308,16 @@ var _ = Describe("SCC", func() {
 
 				fakeStub.GetArgsReturns([][]byte{[]byte("QueryInstalledChaincodes"), marshaledArg})
 
-				fakeSCCFuncs.QueryInstalledChaincodesReturns([]chaincode.InstalledChaincode{
+				fakeSCCFuncs.QueryInstalledChaincodesReturns([]*chaincode.InstalledChaincode{
 					{
-						Hash:      []byte("cc0-hash"),
 						Label:     "cc0-label",
 						PackageID: persistenceintf.PackageID("cc0-package-id"),
 					},
 					{
-						Hash:      []byte("cc1-hash"),
 						Label:     "cc1-label",
 						PackageID: persistenceintf.PackageID("cc1-package-id"),
 					},
-				}, nil)
+				})
 			})
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
@@ -338,18 +336,6 @@ var _ = Describe("SCC", func() {
 				Expect(payload.InstalledChaincodes[1].PackageId).To(Equal("cc1-package-id"))
 
 				Expect(fakeSCCFuncs.QueryInstalledChaincodesCallCount()).To(Equal(1))
-			})
-
-			Context("when the underlying function implementation fails", func() {
-				BeforeEach(func() {
-					fakeSCCFuncs.QueryInstalledChaincodesReturns(nil, fmt.Errorf("underlying-error"))
-				})
-
-				It("wraps and returns the error", func() {
-					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryInstalledChaincodes': underlying-error"))
-				})
 			})
 		})
 
