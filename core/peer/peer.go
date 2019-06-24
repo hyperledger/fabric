@@ -325,25 +325,25 @@ func (p *Peer) createChannel(
 		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
 	}
 
-	c := &Channel{
+	channel := &Channel{
 		cb:        cb,
 		ledger:    l,
 		resources: bundle,
 	}
 
-	c.bundleSource = channelconfig.NewBundleSource(
+	channel.bundleSource = channelconfig.NewBundleSource(
 		bundle,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
 		mspCallback,
-		c.bundleUpdate,
+		channel.bundleUpdate,
 	)
 
-	committer := committer.NewLedgerCommitterReactive(l, c.setConfigBlock)
+	committer := committer.NewLedgerCommitterReactive(l, channel.setConfigBlock)
 	validator := txvalidator.NewTxValidator(
 		cid,
 		p.validationWorkersSemaphore,
-		c,
+		channel,
 		&vir.ValidationInfoRetrieveShim{
 			New:    newLifecycleValidation,
 			Legacy: legacyLifecycleValidation,
@@ -367,7 +367,7 @@ func (p *Peer) createChannel(
 	if err != nil {
 		return errors.Wrapf(err, "[channel %s] failed opening transient store", bundle.ConfigtxValidator().ChainID())
 	}
-	c.store = store
+	channel.store = store
 
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider)
 	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, gossipservice.Support{
@@ -385,7 +385,7 @@ func (p *Peer) createChannel(
 	if p.channels == nil {
 		p.channels = map[string]*Channel{}
 	}
-	p.channels[cid] = c
+	p.channels[cid] = channel
 
 	return nil
 }
