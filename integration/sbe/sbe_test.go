@@ -98,7 +98,7 @@ var _ = Describe("SBE_E2E", func() {
 			RunSBE(network, orderer, "priv")
 		})
 
-		It("executes a basic solo network with 2 orgs and SBE checks with new lifecycle", func() {
+		It("executes a basic solo network with 2 orgs and SBE checks with _lifecycle", func() {
 			chaincode = nwo.Chaincode{
 				Name:              "mycc",
 				Version:           "0.0",
@@ -131,6 +131,7 @@ var _ = Describe("SBE_E2E", func() {
 
 			By("deploying a second instance of the chaincode")
 			chaincode.Name = "mycc2"
+			chaincode.PackageFile = filepath.Join(tempDir, "simplecc2.tar.gz")
 			chaincode.Label = "my_other_simple_chaincode"
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 

@@ -119,8 +119,11 @@ func PackageAndInstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer)
 		chaincode.PackageFile = tempFile.Name()
 	}
 
-	// package using the first peer
-	PackageChaincode(n, chaincode, peers[0])
+	// only create chaincode package if it doesn't already exist
+	if _, err := os.Stat(chaincode.PackageFile); os.IsNotExist(err) {
+		// package using the first peer
+		PackageChaincode(n, chaincode, peers[0])
+	}
 
 	// we set the PackageID so that we can pass it to the approve step
 	filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
