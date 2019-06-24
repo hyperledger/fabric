@@ -95,6 +95,8 @@ type Config struct {
 	Signer identity.SignerSerializer
 	// CredentialSupport is used to get credentials for block requests.
 	CredentialSupport *comm.CredentialSupport
+	// PeerTLSEnabled enables/disables Peer TLS.
+	PeerTLSEnabled bool
 }
 
 // ConnectionCriteria defines how to connect to ordering service nodes.
@@ -264,7 +266,7 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 	reconnectBackoffThreshold := getReConnectBackoffThreshold()
 	reconnectTotalTimeThreshold := getReConnectTotalTimeThreshold()
 	requester := &blocksRequester{
-		tls:         viper.GetBool("peer.tls.enabled"),
+		tls:         d.conf.PeerTLSEnabled,
 		chainID:     chainID,
 		signer:      d.conf.Signer,
 		credSupport: d.conf.CredentialSupport,

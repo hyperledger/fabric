@@ -481,28 +481,27 @@ func serve(args []string) error {
 		containerRuntime.CertGenerator = nil
 	}
 
-	globalConfig := chaincode.GlobalConfig()
 	chaincodeLauncher := &chaincode.RuntimeLauncher{
 		Metrics:         chaincode.NewLaunchMetrics(opsSystem.Provider),
 		PackageProvider: packageProvider,
 		Registry:        chaincodeHandlerRegistry,
 		Runtime:         containerRuntime,
-		StartupTimeout:  globalConfig.StartupTimeout,
+		StartupTimeout:  chaincodeConfig.StartupTimeout,
 	}
 
 	chaincodeSupport := &chaincode.ChaincodeSupport{
 		ACLProvider:            aclProvider,
 		AppConfig:              peerInstance,
 		DeployedCCInfoProvider: lifecycleValidatorCommitter,
-		ExecuteTimeout:         globalConfig.ExecuteTimeout,
+		ExecuteTimeout:         chaincodeConfig.ExecuteTimeout,
 		HandlerRegistry:        chaincodeHandlerRegistry,
 		HandlerMetrics:         chaincode.NewHandlerMetrics(opsSystem.Provider),
-		Keepalive:              globalConfig.Keepalive,
+		Keepalive:              chaincodeConfig.Keepalive,
 		Launcher:               chaincodeLauncher,
 		Lifecycle:              chaincodeEndorsementInfo,
 		Runtime:                containerRuntime,
 		SystemCCProvider:       sccp,
-		TotalQueryLimit:        globalConfig.TotalQueryLimit,
+		TotalQueryLimit:        chaincodeConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
 
