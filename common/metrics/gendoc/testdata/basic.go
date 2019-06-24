@@ -16,10 +16,14 @@ import (
 
 var (
 	Counter = metrics.CounterOpts{
-		Namespace:    "fixtures",
-		Name:         "counter",
-		Help:         "This is some help text that is more than a few words long. It really can be quite long. Really long.",
-		LabelNames:   []string{"label_one", "label_two"},
+		Namespace:  "fixtures",
+		Name:       "counter",
+		Help:       "This is some help text that is more than a few words long. It really can be quite long. Really long.",
+		LabelNames: []string{"label_one", "label_two", "label_three"},
+		LabelHelp: map[string]string{
+			"label_one": "this is a really cool label that is the first of many",
+			"label_two": "short and sweet",
+		},
 		StatsdFormat: "%{#fqname}.%{label_one}.%{label_two}",
 	}
 
