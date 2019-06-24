@@ -74,23 +74,23 @@ const goldenPromTable = `
 +--------------------------+-----------+------------------------------------------------------------+--------------------+
 | Name                     | Type      | Description                                                | Labels             |
 +==========================+===========+============================================================+====================+
-| fixtures_counter         | counter   | This is some help text that is more than a few words long. | label_one          |
-|                          |           | It really can be quite long. Really long.                  | label_two          |
+| fixtures_counter         | counter   | This is some help text that is more than a few words long. | | label_one        |
+|                          |           | It really can be quite long. Really long.                  | | label_two        |
 +--------------------------+-----------+------------------------------------------------------------+--------------------+
-| fixtures_gauge           | gauge     | This is some help text                                     | label_one          |
-|                          |           |                                                            | label_two          |
+| fixtures_gauge           | gauge     | This is some help text                                     | | label_one        |
+|                          |           |                                                            | | label_two        |
 +--------------------------+-----------+------------------------------------------------------------+--------------------+
-| fixtures_histogram       | histogram | This is some help text                                     | label_one          |
-|                          |           |                                                            | label_two          |
+| fixtures_histogram       | histogram | This is some help text                                     | | label_one        |
+|                          |           |                                                            | | label_two        |
 +--------------------------+-----------+------------------------------------------------------------+--------------------+
-| namespace_counter_name   | counter   | This is some help text                                     | label_one          |
-|                          |           |                                                            | label_two          |
+| namespace_counter_name   | counter   | This is some help text                                     | | label_one        |
+|                          |           |                                                            | | label_two        |
 +--------------------------+-----------+------------------------------------------------------------+--------------------+
-| namespace_gauge_name     | gauge     | This is some help text                                     | label_one          |
-|                          |           |                                                            | label_two          |
+| namespace_gauge_name     | gauge     | This is some help text                                     | | label_one        |
+|                          |           |                                                            | | label_two        |
 +--------------------------+-----------+------------------------------------------------------------+--------------------+
-| namespace_histogram_name | histogram | This is some help text                                     | label_one          |
-|                          |           |                                                            | label_two          |
+| namespace_histogram_name | histogram | This is some help text                                     | | label_one        |
+|                          |           |                                                            | | label_two        |
 +--------------------------+-----------+------------------------------------------------------------+--------------------+
 `
 

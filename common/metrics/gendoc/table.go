@@ -212,7 +212,14 @@ func (c Cell) Field(f Field) string {
 func (c Cell) Name() string        { return strings.Replace(c.namer.FullyQualifiedName(), ".", "_", -1) }
 func (c Cell) Type() string        { return c.meterType }
 func (c Cell) Description() string { return c.description }
-func (c Cell) Labels() string      { return strings.Join(c.labels, "\n") }
+
+func (c Cell) Labels() string {
+	buf := &strings.Builder{}
+	for _, label := range c.labels {
+		fmt.Fprintf(buf, " | %s\n", label)
+	}
+	return strings.TrimRight(buf.String(), "\n")
+}
 
 func (c Cell) BucketFormat() string {
 	var lvs []string
