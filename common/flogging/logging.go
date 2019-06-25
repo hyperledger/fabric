@@ -209,14 +209,9 @@ func (s *Logging) ZapLogger(name string) *zap.Logger {
 		panic(fmt.Sprintf("invalid logger name: %s", name))
 	}
 
-	// always return true here because the core's Check()
-	// method computes the level for the logger name based
-	// on the active logging spec
-	levelEnabler := zap.LevelEnablerFunc(func(l zapcore.Level) bool { return true })
-
 	s.mutex.RLock()
 	core := &Core{
-		LevelEnabler: levelEnabler,
+		LevelEnabler: s.LoggerLevels,
 		Levels:       s.LoggerLevels,
 		Encoders: map[Encoding]zapcore.Encoder{
 			JSON:    zapcore.NewJSONEncoder(s.encoderConfig),

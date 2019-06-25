@@ -19,11 +19,11 @@ import (
 
 // LoggerLevels tracks the logging level of named loggers.
 type LoggerLevels struct {
+	mutex        sync.RWMutex
+	levelCache   map[string]zapcore.Level
+	specs        map[string]zapcore.Level
 	defaultLevel zapcore.Level
-
-	mutex      sync.RWMutex
-	levelCache map[string]zapcore.Level
-	specs      map[string]zapcore.Level
+	minLevel     zapcore.Level
 }
 
 // DefaultLevel returns the default logging level for loggers that do not have
@@ -80,6 +80,14 @@ func (l *LoggerLevels) ActivateSpec(spec string) error {
 		}
 	}
 
+	minLevel := defaultLevel
+	for _, lvl := range specs {
+		if lvl < minLevel {
+			minLevel = lvl
+		}
+	}
+
+	l.minLevel = minLevel
 	l.defaultLevel = defaultLevel
 	l.specs = specs
 	l.levelCache = map[string]zapcore.Level{}
@@ -154,4 +162,13 @@ func (l *LoggerLevels) Spec() string {
 	fields = append(fields, l.defaultLevel.String())
 
 	return strings.Join(fields, ":")
+}
+
+// Enabled function is an enabled check that evaluates the minimum active logging level.
+// It serves as a fast check before the (relatively) expensive Check call in the core.
+func (l *LoggerLevels) Enabled(lvl zapcore.Level) bool {
+	l.mutex.RLock()
+	enabled := l.minLevel.Enabled(lvl)
+	l.mutex.RUnlock()
+	return enabled
 }
