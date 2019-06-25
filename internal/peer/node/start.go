@@ -250,10 +250,17 @@ func serve(args []string) error {
 	peerInstance.GossipService = gossipService
 	peer.Default = peerInstance
 
+	policyChecker := policy.NewPolicyChecker(
+		policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager),
+		mgmt.GetLocalMSP(),
+		mgmt.NewLocalMSPPrincipalGetter(),
+	)
+
 	//startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
 	//Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
 	aclProvider := aclmgmt.NewACLProvider(
 		aclmgmt.ResourceGetter(peerInstance.GetStableChannelConfig),
+		policyChecker,
 	)
 
 	// TODO, unfortunately, the lifecycle initialization is very unclean at the
@@ -395,11 +402,6 @@ func serve(args []string) error {
 		Registrar: ipRegistry,
 		Whitelist: scc.GlobalWhitelist(),
 	}
-	policyChecker := policy.NewPolicyChecker(
-		policies.PolicyManagerGetterFunc(peer.Default.GetPolicyManager),
-		mgmt.GetLocalMSP(),
-		mgmt.NewLocalMSPPrincipalGetter(),
-	)
 
 	lsccInst := lscc.New(sccp, aclProvider, platformRegistry, peerInstance.GetMSPIDs, policyChecker)
 

@@ -11,7 +11,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
@@ -41,22 +40,12 @@ type defaultACLProviderImpl struct {
 	cResourcePolicyMap map[string]string
 }
 
-func newDefaultACLProvider() defaultACLProvider {
-	d := &defaultACLProviderImpl{}
-	d.initialize()
-
-	return d
-}
-
-func (d *defaultACLProviderImpl) initialize() {
-	d.policyChecker = policy.NewPolicyChecker(
-		policies.PolicyManagerGetterFunc(peer.Default.GetPolicyManager),
-		mgmt.GetLocalMSP(),
-		mgmt.NewLocalMSPPrincipalGetter(),
-	)
-
-	d.pResourcePolicyMap = make(map[string]string)
-	d.cResourcePolicyMap = make(map[string]string)
+func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvider {
+	d := &defaultACLProviderImpl{
+		policyChecker:      policyChecker,
+		pResourcePolicyMap: map[string]string{},
+		cResourcePolicyMap: map[string]string{},
+	}
 
 	//-------------- _lifecycle --------------
 	d.pResourcePolicyMap[resources.Lifecycle_InstallChaincode] = mgmt.Admins
@@ -112,6 +101,8 @@ func (d *defaultACLProviderImpl) initialize() {
 	//Event resources
 	d.cResourcePolicyMap[resources.Event_Block] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Event_FilteredBlock] = CHANNELREADERS
+
+	return d
 }
 
 func (d *defaultACLProviderImpl) IsPtypePolicy(resName string) bool {
@@ -119,7 +110,7 @@ func (d *defaultACLProviderImpl) IsPtypePolicy(resName string) bool {
 	return ok
 }
 
-//CheckACL provides default (v 1.0) behavior by mapping resources to their ACL for a channel
+// CheckACL provides default (v 1.0) behavior by mapping resources to their ACL for a channel.
 func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idinfo interface{}) error {
 	//the default behavior is to use p type if defined and use channeless policy checks
 	policy := d.pResourcePolicyMap[resName]

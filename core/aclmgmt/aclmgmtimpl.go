@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 
 package aclmgmt
 
+import "github.com/hyperledger/fabric/core/policy"
+
 //implementation of aclMgmt. CheckACL calls in fabric result in the following flow
 //    if resourceProvider[resourceName]
 //       return resourceProvider[resourceName].CheckACL(...)
@@ -28,8 +30,8 @@ func (am *aclMgmtImpl) CheckACL(resName string, channelID string, idinfo interfa
 //ACLProvider consists of two providers, supplied one and a default one (1.0 ACL management
 //using ChannelReaders and ChannelWriters). If supplied provider is nil, a resource based
 //ACL provider is created.
-func NewACLProvider(rg ResourceGetter) ACLProvider {
+func NewACLProvider(rg ResourceGetter, policyChecker policy.PolicyChecker) ACLProvider {
 	return &aclMgmtImpl{
-		rescfgProvider: newResourceProvider(rg, newDefaultACLProvider()),
+		rescfgProvider: newResourceProvider(rg, newDefaultACLProvider(policyChecker)),
 	}
 }
