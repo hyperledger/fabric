@@ -30,7 +30,6 @@ const RootGroupKey = "Channel"
 // entirety, with new backing memory.
 type Bundle struct {
 	policyManager   policies.Manager
-	mspManager      msp.MSPManager
 	channelConfig   *ChannelConfig
 	configtxManager configtx.Validator
 }
