@@ -24,7 +24,7 @@ func init() {
 
 func newTestProvider() *Provider {
 	p := &Provider{
-		Peer:      peer.Default,
+		Peer:      &peer.Peer{},
 		Registrar: inproccontroller.NewRegistry(),
 		Whitelist: map[string]bool{
 			"invokableExternalButNotCC2CC": true,
@@ -72,7 +72,7 @@ func TestDeploy(t *testing.T) {
 
 	cleanup := ledgermgmt.InitializeTestEnv(t)
 	defer cleanup()
-	err := peer.MockCreateChain("a")
+	err := peer.CreateMockChannel(p.Peer, "a")
 	if err != nil {
 		t.Fatalf("failed to create mock chain: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestIsSysCCAndNotInvokableExternal(t *testing.T) {
 
 func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
 	p := &Provider{
-		Peer:      peer.Default,
+		Peer:      &peer.Peer{},
 		Registrar: inproccontroller.NewRegistry(),
 	}
 	qe, err := p.GetQueryExecutorForLedger("")

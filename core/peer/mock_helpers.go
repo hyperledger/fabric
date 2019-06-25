@@ -29,24 +29,28 @@ func MockInitialize() (cleanup func(), err error) {
 // MockCreateChain used for creating a ledger for a chain for tests
 // without having to join
 func MockCreateChain(cid string) error {
+	return CreateMockChannel(Default, cid)
+}
+
+func CreateMockChannel(p *Peer, cid string) error {
 	var ledger ledger.PeerLedger
 	var err error
 
-	if ledger = Default.GetLedger(cid); ledger == nil {
+	if ledger = p.GetLedger(cid); ledger == nil {
 		gb, _ := configtxtest.MakeGenesisBlock(cid)
 		if ledger, err = ledgermgmt.CreateLedger(gb); err != nil {
 			return err
 		}
 	}
 
-	Default.mutex.Lock()
-	defer Default.mutex.Unlock()
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 
-	if Default.channels == nil {
-		Default.channels = map[string]*Channel{}
+	if p.channels == nil {
+		p.channels = map[string]*Channel{}
 	}
 
-	Default.channels[cid] = &Channel{
+	p.channels[cid] = &Channel{
 		ledger: ledger,
 		resources: &mockchannelconfig.Resources{
 			PolicyManagerVal: &mockpolicies.Manager{
