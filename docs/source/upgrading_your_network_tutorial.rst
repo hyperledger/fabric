@@ -12,14 +12,26 @@ Upgrading Your Network Components
 .. note:: Also, if your network is not yet at Fabric v1.3, follow the instructions for
           `Upgrading Your Network to v1.3 <http://hyperledger-fabric.readthedocs.io/en/release-1.3/upgrading_your_network_tutorial.html>`_.
           The instructions in this documentation only cover moving from v1.3 to
-          v1.4.x, not from any other version to v1.4.x.
+          v1.4.x or from an earlier version of v1.4.x to a later version to v1.4.x.
 
 Overview
 --------
 
+While upgrade to v1.4.0 does not require any capabilities to be enabled,
+v1.4.2 offers new capabilities at the orderer, channel, and application levels.
+Specifically, the new v1.4.2 capabilities enable the following features:
+
+ * Migration from Kafka to Raft consensus (requires v1.4.2 orderer and channel capabilities)
+ * Ability to specify orderer endpoints per organization (requires v1.4.2 channel capability)
+ * Ability to store private data for invalidated transactions (requires v1.4.2 application capability)
+
+Because not all users need these new features, enabling the v1.4.2 capabilities
+is considered optional (though recommended), and will be detailed in a section
+after the main body of this tutorial.
+
 Because the :doc:`build_network` (BYFN) tutorial defaults to the “latest” binaries,
-if you have run it since the release of v1.4.x, your machine will have v1.4.x binaries
-and tools installed on it and you will not be able to upgrade them.
+if you have run it since the latest release of v1.4.x, your machine should have
+the latest binaries and tools installed on it and you will not be able to upgrade them.
 
 As a result, this tutorial will provide a network based on Hyperledger Fabric
 v1.3 binaries as well as the v1.4.x binaries you will be upgrading to.
@@ -27,27 +39,21 @@ v1.3 binaries as well as the v1.4.x binaries you will be upgrading to.
 At a high level, our upgrade tutorial will perform the following steps:
 
 1. Backup the ledger and MSPs.
-2. Upgrade the orderer binaries to Fabric v1.4.x **Because migration from Solo to
-   Raft is not supported, and the 1.4.1 release of Fabric is the first to support
-   Raft, this tutorial will not cover the process for upgrading to a Raft ordering
-   service**.
+2. Upgrade the orderer binaries to Fabric v1.4.x.
 3. Upgrade the peer binaries to Fabric v1.4.x.
-
-.. note:: There are no new :doc:`capability_requirements` in v1.4.x As a result,
-          we do not have to update any channel configurations as part of an
-          upgrade to v1.4.x.
+4. Update channel capabilities to 1.4.2 (optional).
 
 This tutorial will demonstrate how to perform each of these steps individually
-with CLI commands. We will also describe how the CLI ``tools`` image can be
-updated.
+with CLI commands. Instructions for both scripted execution and manual execution
+are included.
 
-.. note:: Because BYFN uses a "Solo" ordering service (one orderer), our script
-          brings down the entire network. However, in production environments,
-          the orderers and peers can be upgraded simultaneously and on a rolling
-          basis. In other words, you can upgrade the binaries in any order without
-          bringing down the network.
+.. note:: Because BYFN uses a "Solo" ordering service (one ordering node) by
+          default, our script brings down the entire network. However, in
+          production environments, the ordering nodes and peers can be upgraded
+          simultaneously and on a rolling basis. In other words, you can upgrade
+          the binaries in any order without bringing down the network.
 
-          Because BYFN is not compatible with the following components, our script for
+          Because BYFN does not utilize the following components by default, our script for
           upgrading BYFN will not cover them:
 
           * **Fabric CA**
@@ -59,22 +65,24 @@ updated.
           be covered in a section following the tutorial. We will also show how
           to upgrade the Node chaincode shim.
 
-From an operational perspective, it's worth noting that the process for gathering
-logs has changed in v1.4, from ``CORE_LOGGING_LEVEL`` (for the peer) and
-``ORDERER_GENERAL_LOGLEVEL`` (for the orderer) to ``FABRIC_LOGGING_SPEC`` (the new
-operations service). For more information, check out the
-`Fabric release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.0>`_.
+From an operational perspective, it's worth noting that the process for specifying
+logging levels has changed in v1.4.x, from ``CORE_LOGGING_LEVEL`` (for the peer) and
+``ORDERER_GENERAL_LOGLEVEL`` (for the ordering nodes) in v1.3.0 to ``FABRIC_LOGGING_SPEC``
+in v1.4.x. For more information, check out the
+`Fabric release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.0>`_
+for v1.4.0, when the operations service was introduced.
 
 Prerequisites
 ~~~~~~~~~~~~~
 
 If you haven’t already done so, ensure you have all of the dependencies on your
-machine as described in :doc:`prereqs`.
+machine as described in :doc:`prereqs`. This will include pulling the latest
+binaries, which you will use when upgrading.
 
 Launch a v1.3 network
 ---------------------
 
-Before we can upgrade to v1.4, we must first provision a network running Fabric
+Before we can upgrade to v1.4.x, we must first provision a network running Fabric
 v1.3 images.
 
 Just as in the BYFN tutorial, we will be operating from the ``first-network``
@@ -124,39 +132,35 @@ Get the newest samples
 
 .. note:: The instructions below pertain to whatever is the most recently
           published version of v1.4.x. Please substitute 1.4.x with the version
-          identifier of the published release that you are testing. In other
-          words, replace '1.4.x' with '1.4.0' if you are testing the first
-          release.
+          identifier of the published release that you are testing, for example,
+          replace '1.4.x' with '1.4.2'.
 
-Before completing the rest of the tutorial, it's important to get the v1.4.x
-(for example, 1.4.1) version of the samples, you can do this by issuing:
+Before completing the rest of the tutorial, it's important to switch to the v1.4.x
+(for example, 1.4.2) version of the samples you are upgrading to. For v1.4.2,
+this would be:
 
 .. code:: bash
 
-  git fetch origin
-
-  git checkout v1.4.x
+  git checkout v1.4.2
 
 Want to upgrade now?
 ~~~~~~~~~~~~~~~~~~~~
 
-We have a script that will upgrade all of the components in BYFN as well as
-enable any capabilities (note, no new capabilities are required for v1.4).
-If you are running a production network, or are an
-administrator of some part of a network, this script can serve as a template
+Our scripts will upgrade all of the components in BYFN as well as enable any
+capabilities that are needed. If you are running a production network, or are
+an administrator of some part of a network, this script can serve as a template
 for performing your own upgrades.
 
 Afterwards, we will walk you through the steps in the script and describe what
 each piece of code is doing in the upgrade process.
 
-To run the script, issue these commands:
+To run the script to upgrade from v1.3 to v1.4.x, issue this command (substituting
+your preferred release number for ``x``). Note that the script to upgrade to v1.4.2
+will also upgrade the channel capabilities.
 
 .. code:: bash
 
-  # Note, replace '1.4.x' with a specific version, for example '1.4.1'.
-  # Don't pass the image flag '-i 1.4.x' if you prefer to default to 'latest' images.
-
-  ./byfn.sh upgrade -i 1.4.x
+  ./byfn.sh upgrade -i 1.4.2
 
 If the upgrade is successful, you should see the following:
 
@@ -165,11 +169,11 @@ If the upgrade is successful, you should see the following:
   ===================== All GOOD, End-2-End UPGRADE Scenario execution completed =====================
 
 If you want to upgrade the network manually, simply run ``./byfn.sh down`` again
-and perform the steps up to --- but not including --- ``./byfn.sh upgrade -i 1.4.x``.
-Then proceed to the next section.
+and perform the steps up to --- but not including --- the ``./byfn.sh upgrade``
+step. Then proceed to the next section.
 
-.. note:: Many of the commands you'll run in this section will not result in any
-          output. In general, assume no output is good output.
+Note that many of the commands you'll run in this section will not result in any
+output. In general, assume no output is good output.
 
 Upgrade the orderer containers
 ------------------------------
@@ -183,8 +187,8 @@ high level, the orderer upgrade process goes as follows:
 4. Verify upgrade completion.
 
 As a consequence of leveraging BYFN, we have a Solo orderer setup, therefore, we
-will only perform this process once. In a Kafka setup, however, this process will
-have to be repeated on each orderer.
+will only perform this process once. In a Kafka or Raft setup, however, this
+process will have to be repeated on each orderer.
 
 .. note:: This tutorial uses a docker deployment. For native deployments,
           replace the file ``orderer`` with the one from the release artifacts.
@@ -201,7 +205,7 @@ Let’s begin the upgrade process by **bringing down the orderer**:
 
   export LEDGERS_BACKUP=./ledgers-backup
 
-  # Note, replace '1.4.x' with a specific version, for example '1.4.1'.
+  # Note, replace '1.4.x' with a specific version, for example '1.4.2'.
   # Set IMAGE_TAG to 'latest' if you prefer to default to the images tagged 'latest' on your system.
 
   export IMAGE_TAG=$(go env GOARCH)-1.4.x
@@ -218,7 +222,7 @@ Once the orderer is down, you'll want to **backup its ledger and MSP**:
   docker cp orderer.example.com:/var/hyperledger/production/orderer/ ./$LEDGERS_BACKUP/orderer.example.com
 
 In a production network this process would be repeated for each of the Kafka-based
-orderers in a rolling fashion.
+or Raft-based orderers in a rolling fashion.
 
 Now **download and restart the orderer** with our new fabric image:
 
@@ -226,9 +230,9 @@ Now **download and restart the orderer** with our new fabric image:
 
   docker-compose -f docker-compose-cli.yaml up -d --no-deps orderer.example.com
 
-Because our sample uses a "Solo" ordering service, there are no other orderers in the
+Because our sample uses a Solo ordering service, there are no other orderers in the
 network that the restarted orderer must sync up to. However, in a production network
-leveraging Kafka, it will be a best practice to issue ``peer channel fetch <blocknumber>``
+leveraging Kafka or Raft, it will be a best practice to issue ``peer channel fetch <blocknumber>``
 after restarting the orderer to verify that it has caught up to the other orderers.
 
 Upgrade the peer containers
@@ -314,11 +318,11 @@ We’ve completed the upgrade for our first peer, but before we move on let’s 
 to ensure the upgrade has been completed properly with a chaincode invoke.
 
 .. note:: Before you attempt this, you may want to upgrade peers from
-          enough organizations to satisfy your endorsement policy.
-          Although, this is only mandatory if you are updating your chaincode
-          as part of the upgrade process. If you are not updating your chaincode
-          as part of the upgrade process, it is possible to get endorsements
-          from peers running at different Fabric versions.
+          enough organizations to satisfy your endorsement policy. However, this
+          is only mandatory if you are updating your chaincode as part of the
+          upgrade process. If you are not updating your chaincode as part of the
+          upgrade process, it is possible to get endorsements from peers running
+          at different Fabric versions.
 
 Before we get into the CLI container and issue the invoke, make sure the CLI is
 updated to the most current version by issuing:
@@ -329,20 +333,14 @@ updated to the most current version by issuing:
 
   docker-compose -f docker-compose-cli.yaml up -d --no-deps cli
 
-If you specifically want the v1.3 version of the CLI, issue:
-
-.. code:: bash
-
-  IMAGE_TAG=$(go env GOARCH)-1.3.x docker-compose -f docker-compose-cli.yaml up -d --no-deps cli
-
-Once you have the version of the CLI you want, get into the CLI container:
+Then, get back into the CLI container:
 
 .. code:: bash
 
   docker exec -it cli bash
 
 Now you'll need to set two environment variables --- the name of the channel and
-the name of the ``ORDERER_CA``:
+the location of the ``ORDERER_CA`` TLS certificate:
 
 .. code:: bash
 
@@ -354,7 +352,7 @@ Now you can issue the invoke:
 
 .. code:: bash
 
-  peer chaincode invoke -o orderer.example.com:7050 --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt --tls --cafile $ORDERER_CA  -C $CH_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}'
+  peer chaincode invoke -o orderer.example.com:7050 --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt --tls --cafile $ORDERER_CA -C $CH_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}'
 
 Our query earlier revealed ``a`` to have a value of ``90`` and we have just removed
 ``10`` with our invoke. Therefore, a query against ``a`` should reveal ``80``.
@@ -371,7 +369,7 @@ We should see the following:
   Query Result: 80
 
 After verifying the peer was upgraded correctly, make sure to issue an ``exit``
-to leave the container before continuing to upgrade your peers. You can
+to leave the CLI container before continuing to upgrade your peers. You can
 do this by repeating the process above with a different peer name exported.
 
 .. code:: bash
@@ -380,11 +378,449 @@ do this by repeating the process above with a different peer name exported.
   export PEER=peer0.org2.example.com
   export PEER=peer1.org2.example.com
 
+Update channel capabilities to v1.4.2 (optional)
+------------------------------------------------
+
+.. note:: A reminder that while we show how to enable v1.4.2 capabilities as part of
+          this tutorial, this is an optional step UNLESS you are leveraging
+          the v1.4.2 features that require the capabilities.
+
+Although Fabric binaries can and should be upgraded in a rolling fashion, it is
+important to finish upgrading binaries before enabling capabilities. Any binaries
+which are not upgraded to v1.4.2 before enabling the new v1.4.2 capabilities may
+intentionally crash to indicate a misconfiguration which could otherwise result
+in a forked blockchain.
+
+Once a capability has been enabled, it becomes part of the permanent record for
+that channel. This means that even after disabling the capability, old binaries
+will not be able to participate in the channel because they cannot process
+beyond the block which enabled the capability to get to the block which disables
+it. As a result, once a capability has been enabled, disabling it is neither
+recommended nor supported.
+
+For this reason, think of enabling channel capabilities as a point of no return.
+Please experiment with the new capabilities in a test setting and be confident
+before proceeding to enable them in production.
+
+Capabilities are enabled through a channel configuration transaction. For more
+information on updating channel configs, check out :doc:`channel_update_tutorial`
+or the doc on :doc:`config_update`.
+
+To learn about what the new capabilities are in v1.4.2 and what they enable, refer
+back to the Overview_.
+
+We will enable these capabilities in the following order:
+
+1. Orderer System Channel
+
+  a. Orderer Group
+  b. Channel Group
+
+2. Individual Channels
+
+  a. Orderer Group
+  b. Channel Group
+  c. Application Group
+
+Updating a channel configuration is a three step process:
+
+1. Get the latest channel config
+2. Create a modified channel config
+3. Create a config update transaction
+
+.. note:: In a real world production network, these channel config updates would
+          be handled by the admins for each channel. Because BYFN all exists on
+          a single machine, it is possible for us to update each of these
+          channels.
+
+For more information on updating channel configs, click on :doc:`channel_update_tutorial`
+or the doc on :doc:`config_update`.
+
+Orderer System Channel Capabilities
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Because only ordering organizations admins can update the ordering system channel,
+we need set environment variables for the system channel that will allow us to
+carry out these tasks. Issue each of these commands:
+
+.. code:: bash
+
+  CORE_PEER_LOCALMSPID="OrdererMSP"
+
+  CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+  CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/users/Admin@example.com/msp
+
+  ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+If we're upgrading from v1.3 to v1.4.2, we need to set the system channel name
+to ``testchainid``:
+
+.. code:: bash
+
+  CH_NAME=testchainid
+
+If we're upgrading from v1.4.1 to v1.4.2, we need to set the system channel name
+to ``byfn-sys-channel``:
+
+.. code:: bash
+
+  CH_NAME=byfn-sys-channel
+
+Orderer Group
+^^^^^^^^^^^^^
+
+The first step in updating a channel configuration is getting the latest config
+block:
+
+  peer channel fetch config config_block.pb -o orderer.example.com:7050 -c $CH_NAME --tls --cafile $ORDERER_CA
+
+  configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json
+
+  jq .data.data[0].payload.data.config config_block.json > config.json
+
+Next, add capabilities to the orderer group. The following command will create a
+copy of the config file and change the capability level:
+
+.. code:: bash
+
+  jq -s '.[0] * {"channel_group":{"groups":{"Orderer": {"values": {"Capabilities": .[1]}}}}}' config.json ./scripts/capabilities.json > modified_config.json
+
+Now we can create the config update:
+
+.. code:: bash
+
+  configtxlator proto_encode --input config.json --type common.Config --output config.pb
+
+  configtxlator proto_encode --input modified_config.json --type common.Config --output modified_config.pb
+
+  configtxlator compute_update --channel_id $CH_NAME --original config.pb --updated modified_config.pb --output config_update.pb
+
+Package the config update into a transaction:
+
+.. code:: bash
+
+  configtxlator proto_decode --input config_update.pb --type common.ConfigUpdate --output config_update.json
+
+  echo '{"payload":{"header":{"channel_header":{"channel_id":"'$CH_NAME'", "type":2}},"data":{"config_update":'$(cat config_update.json)'}}}' | jq . > config_update_in_envelope.json
+
+  configtxlator proto_encode --input config_update_in_envelope.json --type common.Envelope --output config_update_in_envelope.pb
+
+Submit the config update transaction:
+
+.. code:: bash
+
+  peer channel update -f config_update_in_envelope.pb -c $CH_NAME -o orderer.example.com:7050 --tls true --cafile $ORDERER_CA
+
+Our config update transaction represents the difference between the original
+config and the modified one, but the ordering service will translate this into a
+full channel config.
+
+Channel Group
+^^^^^^^^^^^^^
+
+Now let’s move on to updating the capability level for the channel group at the
+orderer system level.
+
+The first step, as before, is to get the latest channel configuration.
+
+.. code:: bash
+
+  peer channel fetch config config_block.pb -o orderer.example.com:7050 -c $CH_NAME --tls --cafile $ORDERER_CA
+
+  configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json
+
+  jq .data.data[0].payload.data.config config_block.json > config.json
+
+Next, create a modified channel config:
+
+.. code:: bash
+
+  jq -s '.[0] * {"channel_group":{"values": {"Capabilities": .[1]}}}' config.json ./scripts/capabilities.json > modified_config.json
+
+Create the config update transaction:
+
+.. code:: bash
+
+  configtxlator proto_encode --input config.json --type common.Config --output config.pb
+
+  configtxlator proto_encode --input modified_config.json --type common.Config --output modified_config.pb
+
+  configtxlator compute_update --channel_id $CH_NAME --original config.pb --updated modified_config.pb --output config_update.pb
+
+Package the config update into a transaction:
+
+.. code:: bash
+
+  configtxlator proto_decode --input config_update.pb --type common.ConfigUpdate --output config_update.json
+
+  echo '{"payload":{"header":{"channel_header":{"channel_id":"'$CH_NAME'", "type":2}},"data":{"config_update":'$(cat config_update.json)'}}}' | jq . > config_update_in_envelope.json
+
+  configtxlator proto_encode --input config_update_in_envelope.json --type common.Envelope --output config_update_in_envelope.pb
+
+Submit the config update transaction:
+
+.. code:: bash
+
+  peer channel update -f config_update_in_envelope.pb -c $CH_NAME -o orderer.example.com:7050 --tls true --cafile $ORDERER_CA
+
+Enabling Capabilities on Existing Channels
+------------------------------------------
+
+Now that we have updating the capabilities on the ordering system channel, we
+need to updating the configuration of any existing application channels. We only
+have one application channel: ``mychannel``. So let's set that name as an
+environment variable.
+
+.. code:: bash
+
+  CH_NAME=mychannel
+
+Orderer Group
+~~~~~~~~~~~~~
+
+Like the ordering system channel, our application channel also has an orderer
+group.
+
+Get the channel config:
+
+.. code:: bash
+
+  peer channel fetch config config_block.pb -o orderer.example.com:7050 -c $CH_NAME  --tls --cafile $ORDERER_CA
+
+  configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json
+
+  jq .data.data[0].payload.data.config config_block.json > config.json
+
+Change the capability level of the orderer group:
+
+.. code:: bash
+
+  jq -s '.[0] * {"channel_group":{"groups":{"Orderer": {"values": {"Capabilities": .[1]}}}}}' config.json ./scripts/capabilities.json > modified_config.json
+
+Create the config update:
+
+.. code:: bash
+
+  configtxlator proto_encode --input config.json --type common.Config --output config.pb
+
+  configtxlator proto_encode --input modified_config.json --type common.Config --output modified_config.pb
+
+  configtxlator compute_update --channel_id $CH_NAME --original config.pb --updated modified_config.pb --output config_update.pb
+
+Package the config update into a transaction:
+
+.. code:: bash
+
+  configtxlator proto_decode --input config_update.pb --type common.ConfigUpdate --output config_update.json
+
+  echo '{"payload":{"header":{"channel_header":{"channel_id":"'$CH_NAME'", "type":2}},"data":{"config_update":'$(cat config_update.json)'}}}' | jq . > config_update_in_envelope.json
+
+  configtxlator proto_encode --input config_update_in_envelope.json --type common.Envelope --output config_update_in_envelope.pb
+
+Submit the config update transaction:
+
+.. code:: bash
+
+  peer channel update -f config_update_in_envelope.pb -c $CH_NAME -o orderer.example.com:7050 --tls true --cafile $ORDERER_CA
+
+Channel Group
+~~~~~~~~~~~~~
+
+Now we need to change the capability of the ``channel`` group of our application
+channel.
+
+As before, fetch, decode, and scope the config:
+
+.. code:: bash
+
+  peer channel fetch config config_block.pb -o orderer.example.com:7050 -c $CH_NAME --tls --cafile $ORDERER_CA
+
+  configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json
+
+  jq .data.data[0].payload.data.config config_block.json > config.json
+
+Create a modified config:
+
+.. code:: bash
+
+  jq -s '.[0] * {"channel_group":{"values": {"Capabilities": .[1]}}}' config.json ./scripts/capabilities.json > modified_config.json
+
+Create the config update:
+
+.. code:: bash
+
+  configtxlator proto_encode --input config.json --type common.Config --output config.pb
+
+  configtxlator proto_encode --input modified_config.json --type common.Config --output modified_config.pb
+
+  configtxlator compute_update --channel_id $CH_NAME --original config.pb --updated modified_config.pb --output config_update.pb
+
+Package the config update into a transaction:
+
+.. code:: bash
+
+  configtxlator proto_decode --input config_update.pb --type common.ConfigUpdate --output config_update.json
+
+  echo '{"payload":{"header":{"channel_header":{"channel_id":"'$CH_NAME'", "type":2}},"data":{"config_update":'$(cat config_update.json)'}}}' | jq . > config_update_in_envelope.json
+
+  configtxlator proto_encode --input config_update_in_envelope.json --type common.Envelope --output config_update_in_envelope.pb
+
+Because we're updating the config of the ``channel`` group, the relevant orgs ---
+Org1, Org2, and the OrdererOrg --- need to sign it. This task would usually
+be performed by the individual org admins, but in BYFN, as we've said, this task
+falls to us.
+
+First, switch into Org1 and sign the update:
+
+.. code:: bash
+
+  CORE_PEER_LOCALMSPID="Org1MSP"
+
+  CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+
+  CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+
+  CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+
+  peer channel signconfigtx -f config_update_in_envelope.pb
+
+And do the same as Org2:
+
+.. code:: bash
+
+  CORE_PEER_LOCALMSPID="Org2MSP"
+
+  CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+
+  CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+
+  CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+
+  peer channel signconfigtx -f config_update_in_envelope.pb
+
+And as the OrdererOrg:
+
+.. code:: bash
+
+  CORE_PEER_LOCALMSPID="OrdererMSP"
+
+  CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+  CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/users/Admin@example.com/msp
+
+  peer channel update -f config_update_in_envelope.pb -c $CH_NAME -o orderer.example.com:7050 --tls true --cafile $ORDERER_CA
+
+Application Group
+~~~~~~~~~~~~~~~~~
+
+For the application group, we will need to reset the environment variables as
+one organization:
+
+.. code:: bash
+
+  CORE_PEER_LOCALMSPID="Org1MSP"
+
+  CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+
+  CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+
+  CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+
+Now, get the latest channel config (this process should be very familiar by now):
+
+.. code:: bash
+
+  peer channel fetch config config_block.pb -o orderer.example.com:7050 -c $CH_NAME --tls --cafile $ORDERER_CA
+
+  configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json
+
+  jq .data.data[0].payload.data.config config_block.json > config.json
+
+Create a modified channel config:
+
+.. code:: bash
+
+  jq -s '.[0] * {"channel_group":{"groups":{"Application": {"values": {"Capabilities": .[1]}}}}}' config.json ./scripts/capabilities.json > modified_config.json
+
+Note what we’re changing here: ``Capabilities`` are being added as a ``value``
+of the ``Application`` group under ``channel_group`` (in ``mychannel``).
+
+Create a config update transaction:
+
+.. code:: bash
+
+  configtxlator proto_encode --input config.json --type common.Config --output config.pb
+
+  configtxlator proto_encode --input modified_config.json --type common.Config --output modified_config.pb
+
+  configtxlator compute_update --channel_id $CH_NAME --original config.pb --updated modified_config.pb --output config_update.pb
+
+Package the config update into a transaction:
+
+.. code:: bash
+
+  configtxlator proto_decode --input config_update.pb --type common.ConfigUpdate --output config_update.json
+
+  echo '{"payload":{"header":{"channel_header":{"channel_id":"'$CH_NAME'", "type":2}},"data":{"config_update":'$(cat config_update.json)'}}}' | jq . > config_update_in_envelope.json
+
+  configtxlator proto_encode --input config_update_in_envelope.json --type common.Envelope --output config_update_in_envelope.pb
+
+Org1 signs the transaction:
+
+.. code:: bash
+
+  peer channel signconfigtx -f config_update_in_envelope.pb
+
+Set the environment variables as Org2:
+
+.. code:: bash
+
+  export CORE_PEER_LOCALMSPID="Org2MSP"
+
+  export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+
+  export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+
+  export CORE_PEER_ADDRESS=peer0.org2.example.com:7051
+
+Org2 submits the config update transaction with its signature:
+
+.. code:: bash
+
+  peer channel update -f config_update_in_envelope.pb -c $CH_NAME -o orderer.example.com:7050 --tls true --cafile $ORDERER_CA
+
+Congratulations! You have now enabled capabilities on all of your channels.
+
+Verify a transaction after Capabilities have been Enabled
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+But let's test just to make sure by moving ``10`` from ``a`` to ``b``, as before:
+
+.. code:: bash
+
+  peer chaincode invoke -o orderer.example.com:7050  --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem  -C mychannel -n mycc -c '{"Args":["invoke","a","b","10"]}'
+
+And then querying the value of ``a``, which should reveal a value of ``70``.
+Let’s see:
+
+.. code:: bash
+
+  peer chaincode query -C mychannel -n mycc -c '{"Args":["query","a"]}'
+
+We should see the following:
+
+.. code:: bash
+
+  Query Result: 70
+
+In which case we have successfully added capabilities to all of our channels.
+
 Upgrading components BYFN does not support
 ------------------------------------------
 
 Although this is the end of our update tutorial, there are other components that
-exist in production networks that are not compatible with the BYFN sample. In this
+exist in production networks that are not covered in this tutorial. In this
 section, we’ll talk through the process of updating them.
 
 Fabric CA container
@@ -418,6 +854,9 @@ client and write the new versions ``package.json``.
 Upgrading the Kafka cluster
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. note:: If you intend to migrate from a Kafka-based ordering service to a Raft-based
+          ordering service, check out :doc:`kafka_raft_migration`.
+
 It is not required, but it is recommended that the Kafka cluster be upgraded and
 kept up to date along with the rest of Fabric. Newer versions of Kafka support
 older protocol versions, so you may upgrade Kafka before or after the rest of
@@ -432,6 +871,7 @@ Kafka cluster brokers.
 
 Upgrading Zookeeper
 ^^^^^^^^^^^^^^^^^^^
+
 An Apache Kafka cluster requires an Apache Zookeeper cluster. The Zookeeper API
 has been stable for a long time and, as such, almost any version of Zookeeper is
 tolerated by Kafka. Refer to the `Apache Kafka upgrade`_ documentation in case
