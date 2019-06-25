@@ -149,6 +149,9 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 	}
 
 	if pvtBlkStoreHt == blockNum+1 {
+		// we reach here only when the pvtdataStore was ahead
+		// of blockStore during the store opening time (would
+		// occur after a peer rollback/reset).
 		s.isPvtstoreAheadOfBlockstore.Store(false)
 	}
 

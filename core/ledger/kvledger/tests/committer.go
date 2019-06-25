@@ -40,8 +40,8 @@ func (c *committer) cutBlockAndCommitWithPvtdata(trans []*txAndPvtdata, missingP
 	return blkCopy
 }
 
-func (c *committer) cutBlockAndCommitExpectError(trans []*txAndPvtdata) (*ledger.BlockAndPvtData, error) {
-	blk := c.blkgen.nextBlockAndPvtdata(trans, nil)
+func (c *committer) cutBlockAndCommitExpectError(trans []*txAndPvtdata, missingPvtData ledger.TxMissingPvtDataMap) (*ledger.BlockAndPvtData, error) {
+	blk := c.blkgen.nextBlockAndPvtdata(trans, missingPvtData)
 	blkCopy := c.copyOfBlockAndPvtdata(blk)
 	err := c.lgr.CommitWithPvtData(blk, &ledger.CommitOptions{})
 	c.assert.Error(err)

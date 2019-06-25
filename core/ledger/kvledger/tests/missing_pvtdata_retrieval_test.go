@@ -23,7 +23,7 @@ func TestGetMissingPvtDataAfterRollback(t *testing.T) {
 
 	// deploy cc1 with 'collConf'
 	h.simulateDeployTx("cc1", collConf)
-	h.cutBlockAndCommitWithPvtdata(nil)
+	h.cutBlockAndCommitWithPvtdata()
 
 	// pvtdata simulation
 	h.simulateDataTx("", func(s *simulator) {
@@ -34,10 +34,8 @@ func TestGetMissingPvtDataAfterRollback(t *testing.T) {
 		s.setPvtdata("cc1", "coll1", "key2", "value2")
 	})
 
-	h.simulatedTrans[0].Pvtws = nil // drop pvt writeset from first simulation
-	missingPvtData := make(ledger.TxMissingPvtDataMap)
-	missingPvtData.Add(0, "cc1", "coll1", true)
-	blk2 := h.cutBlockAndCommitWithPvtdata(missingPvtData)
+	h.causeMissingPvtData(0)
+	blk2 := h.cutBlockAndCommitWithPvtdata()
 
 	h.verifyPvtState("cc1", "coll1", "key2", "value2") // key2 should have been committed
 	h.simulateDataTx("", func(s *simulator) {
@@ -54,13 +52,13 @@ func TestGetMissingPvtDataAfterRollback(t *testing.T) {
 	h.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "key3", "value2")
 	})
-	blk3 := h.cutBlockAndCommitWithPvtdata(nil)
+	blk3 := h.cutBlockAndCommitWithPvtdata()
 
 	// commit block 4
 	h.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "key3", "value2")
 	})
-	blk4 := h.cutBlockAndCommitWithPvtdata(nil)
+	blk4 := h.cutBlockAndCommitWithPvtdata()
 
 	// verify missing pvtdata info
 	h.verifyMissingPvtDataSameAs(5, expectedMissingPvtDataInfo)
@@ -91,7 +89,5 @@ func TestGetMissingPvtDataAfterRollback(t *testing.T) {
 	assert.NoError(t, h.lgr.CommitWithPvtData(blk4, &ledger.CommitOptions{}))
 	// once the pvtdata store and blockstore becomes equal,
 	// missing pvtdata info for block 2 would be returned.
-	expectedMissingPvtDataInfo = make(ledger.MissingPvtDataInfo)
-	expectedMissingPvtDataInfo.Add(2, 0, "cc1", "coll1")
 	h.verifyMissingPvtDataSameAs(5, expectedMissingPvtDataInfo)
 }

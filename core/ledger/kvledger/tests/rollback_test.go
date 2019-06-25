@@ -73,14 +73,14 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 
 	// deploy cc1 with 'collConf'
 	h.simulateDeployTx("cc1", collConf)
-	h.cutBlockAndCommitWithPvtdata(nil)
+	h.cutBlockAndCommitWithPvtdata()
 
 	// commit pvtdata writes in block 2.
 	h.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "key1", "value1") // (key1 would never expire)
 		s.setPvtdata("cc1", "coll2", "key2", "value2") // (key2 would expire at block 4)
 	})
-	blk2 := h.cutBlockAndCommitWithPvtdata(nil)
+	blk2 := h.cutBlockAndCommitWithPvtdata()
 
 	// After commit of block 2
 	h.verifyPvtState("cc1", "coll1", "key1", "value1") // key1 should still exist in the state
@@ -93,7 +93,7 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 			s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 			s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
 		})
-		h.cutBlockAndCommitWithPvtdata(nil)
+		h.cutBlockAndCommitWithPvtdata()
 	}
 
 	// After commit of block 4
@@ -109,7 +109,7 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 		s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 		s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
 	})
-	h.cutBlockAndCommitWithPvtdata(nil)
+	h.cutBlockAndCommitWithPvtdata()
 	closeLedgerMgmt()
 
 	// rebuild statedb and bookkeeper
@@ -132,14 +132,14 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 		s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 		s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
 	})
-	h.cutBlockAndCommitWithPvtdata(nil)
+	h.cutBlockAndCommitWithPvtdata()
 
 	// commit pvtdata writes in block 6.
 	h.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "key3", "value1") // (key3 would never expire)
 		s.setPvtdata("cc1", "coll2", "key4", "value2") // (key4 would expire at block 8)
 	})
-	h.cutBlockAndCommitWithPvtdata(nil)
+	h.cutBlockAndCommitWithPvtdata()
 
 	// commit 2 more blocks with some random key/vals
 	for i := 0; i < 2; i++ {
@@ -147,7 +147,7 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 			s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 			s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
 		})
-		h.cutBlockAndCommitWithPvtdata(nil)
+		h.cutBlockAndCommitWithPvtdata()
 	}
 
 	// After commit of block 8
