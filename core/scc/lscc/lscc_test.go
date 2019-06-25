@@ -32,7 +32,7 @@ import (
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	mspmocks "github.com/hyperledger/fabric/msp/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	mb "github.com/hyperledger/fabric/protos/msp"
@@ -42,6 +42,18 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
+
+// create a valid SignaturePolicyEnvelope to be used in tests
+var testPolicyEnvelope = &common.SignaturePolicyEnvelope{
+	Version: 0,
+	Rule:    cauthdsl.NOutOf(1, []*common.SignaturePolicy{cauthdsl.SignedBy(0)}),
+	Identities: []*mb.MSPPrincipal{
+		{
+			PrincipalClassification: mb.MSPPrincipal_ORGANIZATION_UNIT,
+			Principal:               utils.MarshalOrPanic(&mb.OrganizationUnit{MspIdentifier: "Org1"}),
+		},
+	},
+}
 
 func constructDeploymentSpec(name string, path string, version string, initArgs [][]byte, createInvalidIndex bool, createFS bool, scc *lifeCycleSysCC) (*pb.ChaincodeDeploymentSpec, error) {
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: name, Path: path, Version: version}, Input: &pb.ChaincodeInput{Args: initArgs}}
@@ -494,11 +506,10 @@ func TestUpgrade(t *testing.T) {
 	scc.support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 
 	collName1 := "mycollection1"
-	policyEnvelope := &common.SignaturePolicyEnvelope{}
 	var requiredPeerCount, maximumPeerCount int32
 	requiredPeerCount = 1
 	maximumPeerCount = 2
-	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount)
+	coll1 := createCollectionConfig(collName1, testPolicyEnvelope, requiredPeerCount, maximumPeerCount)
 
 	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
@@ -825,9 +836,8 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 	assert.NoError(t, err)
 
 	collName1 := "mycollection1"
-	policyEnvelope := &common.SignaturePolicyEnvelope{}
-	coll1 := createCollectionConfig(collName1, policyEnvelope, 1, 2)
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1}}
+	coll1 := createCollectionConfig(collName1, testPolicyEnvelope, 1, 2)
+	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
@@ -857,25 +867,25 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	mgr := mspmgmt.GetManagerForChain("foochannel")
 
 	// error case: msp manager not set up, no collection config set
-	err = checkCollectionMemberPolicy(nil, mgr)
-	assert.Error(t, err)
+	err = checkCollectionMemberPolicy(nil, nil)
+	assert.EqualError(t, err, "msp manager not set")
 
 	// set up msp manager
 	mgr.Setup([]msp.MSP{mockmsp})
 
 	// error case: no collection config set
 	err = checkCollectionMemberPolicy(nil, mgr)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "collection configuration is not set")
 
 	// error case: empty collection config
 	cc := &common.CollectionConfig{}
 	err = checkCollectionMemberPolicy(cc, mgr)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "collection configuration is empty")
 
 	// error case: no static collection config
 	cc = &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{}}
 	err = checkCollectionMemberPolicy(cc, mgr)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "collection configuration is empty")
 
 	// error case: member org policy not set
 	cc = &common.CollectionConfig{
@@ -884,7 +894,7 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 		},
 	}
 	err = checkCollectionMemberPolicy(cc, mgr)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "collection member policy is not set")
 
 	// error case: member org policy config empty
 	cc = &common.CollectionConfig{
@@ -898,16 +908,28 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 		},
 	}
 	err = checkCollectionMemberPolicy(cc, mgr)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "collection member org policy is empty")
 
-	// valid case: member org policy empty
+	// error case: signd-by index is out of range of signers
+	cc = &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
+				Name:             "mycollection",
+				MemberOrgsPolicy: getBadAccessPolicy([]string{"signer0"}, 1),
+			},
+		},
+	}
+	err = checkCollectionMemberPolicy(cc, mgr)
+	assert.EqualError(t, err, "invalid member org policy for collection 'mycollection': identity index out of range, requested 1, but identities length is 1")
+
+	// valid case: well-formed collection policy config
 	cc = &common.CollectionConfig{
 		Payload: &common.CollectionConfig_StaticCollectionConfig{
 			StaticCollectionConfig: &common.StaticCollectionConfig{
 				Name: "mycollection",
 				MemberOrgsPolicy: &common.CollectionPolicyConfig{
 					Payload: &common.CollectionPolicyConfig_SignaturePolicy{
-						SignaturePolicy: &common.SignaturePolicyEnvelope{},
+						SignaturePolicy: testPolicyEnvelope,
 					},
 				},
 			},
@@ -935,7 +957,7 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	}
 	err = checkCollectionMemberPolicy(cc, mgr)
 	assert.NoError(t, err)
-	mockmsp.AssertNumberOfCalls(t, "DeserializeIdentity", 2)
+	mockmsp.AssertNumberOfCalls(t, "DeserializeIdentity", 3)
 
 	// check MSPPrincipal_ROLE type
 	signaturePolicyEnvelope = cauthdsl.SignedByAnyMember([]string{"Org1"})
@@ -1018,4 +1040,19 @@ func TestMain(m *testing.M) {
 	mockAclProvider.Reset()
 
 	os.Exit(m.Run())
+}
+
+// getBadAccessPolicy creates a bad CollectionPolicyConfig with signedby index out of range of signers
+func getBadAccessPolicy(signers []string, badIndex int32) *common.CollectionPolicyConfig {
+	var data [][]byte
+	for _, signer := range signers {
+		data = append(data, []byte(signer))
+	}
+	// use a out of range index to trigger error
+	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(badIndex)), data)
+	return &common.CollectionPolicyConfig{
+		Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+			SignaturePolicy: policyEnvelope,
+		},
+	}
 }
