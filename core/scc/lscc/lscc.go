@@ -218,7 +218,11 @@ func (lscc *LifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, c
 }
 
 // checkCollectionMemberPolicy checks whether the supplied collection configuration
-// complies to the given msp configuration
+// complies to the given msp configuration and performs semantic validation.
+// Channel config may change afterwards (i.e., after endorsement or commit of this transaction).
+// Fabric will deal with the situation where some collection configs are no longer meaningful.
+// Therefore, the use of channel config for verifying during endorsement is more
+// towards catching manual errors in the config as oppose to any attempt of serializability.
 func checkCollectionMemberPolicy(collectionConfig *common.CollectionConfig, mspmgr msp.MSPManager) error {
 	if mspmgr == nil {
 		return fmt.Errorf("msp manager not set")
@@ -293,6 +297,14 @@ func checkCollectionMemberPolicy(collectionConfig *common.CollectionConfig, mspm
 		if !found {
 			logger.Warningf("collection-name: %s collection member %s is not part of the channel", coll.GetName(), orgID)
 		}
+	}
+
+	// Call the constructor for SignaturePolicyEnvelope evaluators to perform extra semantic validation.
+	// Among other things, this validation catches any out-of-range references to the identities array.
+	policyProvider := &cauthdsl.EnvelopeBasedPolicyProvider{Deserializer: mspmgr}
+	if _, err := policyProvider.NewPolicy(coll.MemberOrgsPolicy.GetSignaturePolicy()); err != nil {
+		logger.Errorf("Invalid member org policy for collection '%s', error: %s", coll.Name, err)
+		return errors.WithMessage(err, fmt.Sprintf("invalid member org policy for collection '%s'", coll.Name))
 	}
 
 	return nil
