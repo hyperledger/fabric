@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 )
 
-// Channel is a local struct to manage objects in a Channel.
+// Channel is a local struct to manage objects associated with a Channel.
 type Channel struct {
 	ledger ledger.PeerLedger
 	store  transientstore.Store
@@ -37,6 +37,7 @@ type Channel struct {
 	resources channelconfig.Resources
 }
 
+// Apply is used to validate and apply configuration transactions for a channel.
 func (c *Channel) Apply(configtx *common.ConfigEnvelope) error {
 	c.applyLock.Lock()
 	defer c.applyLock.Unlock()
@@ -72,6 +73,7 @@ func (c *Channel) bundleUpdate(b *channelconfig.Bundle) {
 	c.lock.Unlock()
 }
 
+// Resources returns the channel configuration bundle.
 func (c *Channel) Resources() channelconfig.Resources {
 	c.lock.RLock()
 	res := c.resources
@@ -79,15 +81,19 @@ func (c *Channel) Resources() channelconfig.Resources {
 	return res
 }
 
-// Sequence passes through to the underlying configtx.Validator
+// Sequence returns the current config sequence number of the channel.
 func (c *Channel) Sequence() uint64 {
 	return c.Resources().ConfigtxValidator().Sequence()
 }
 
+// PolicyManager returns the policies.Manager for the channel that reflects the
+// current channel configuration. Users should not memoize references to this object.
 func (c *Channel) PolicyManager() policies.Manager {
 	return c.Resources().PolicyManager()
 }
 
+// Capabilities gets the application capabilities for the current channel
+// configuration.
 func (c *Channel) Capabilities() channelconfig.ApplicationCapabilities {
 	ac, ok := c.Resources().ApplicationConfig()
 	if !ok {
@@ -96,6 +102,8 @@ func (c *Channel) Capabilities() channelconfig.ApplicationCapabilities {
 	return ac.Capabilities()
 }
 
+// GetMSPIDs retrieves the MSP IDs of the organziations in the current channel
+// configuration.
 func (c *Channel) GetMSPIDs() []string {
 	ac, ok := c.Resources().ApplicationConfig()
 	if !ok || ac.Organizations() == nil {
@@ -110,26 +118,32 @@ func (c *Channel) GetMSPIDs() []string {
 	return mspIDs
 }
 
+// MSPManager returns the msp.MSPManager the channel that reflects the current
+// channel configuration. Users should not memoize references to this object.
 func (c *Channel) MSPManager() msp.MSPManager {
 	return c.Resources().MSPManager()
 }
 
+// Ledger returns the ledger associated with this channel.
 func (c *Channel) Ledger() ledger.PeerLedger {
 	return c.ledger
 }
 
+// Store returns the transient store associated with this channel.
 func (c *Channel) Store() transientstore.Store {
 	return c.store
 }
 
+// Reader returns a blockledger.Reader backed by ledger associated with this
+// channel.
 func (c *Channel) Reader() blockledger.Reader {
 	return fileledger.NewFileLedger(fileLedgerBlockStore{c.ledger})
 }
 
-// Errored returns a channel that can be used to determine
-// if a backing resource has errored. At this point in time,
-// the peer does not have any error conditions that lead to
-// this function signaling that an error has occurred.
+// Errored returns a channel that can be used to determine if a backing
+// resource has errored. At this point in time, the peer does not have any
+// error conditions that lead to this function signaling that an error has
+// occurred.
 func (c *Channel) Errored() <-chan struct{} {
 	// If this is ever updated to return a real channel, the error message
 	// in deliver.go around this channel closing should be updated.
