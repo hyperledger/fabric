@@ -118,3 +118,18 @@ func TestNewPolicyErrorCase(t *testing.T) {
 	err4 := pol4.Evaluate([]*cb.SignedData{})
 	assert.EqualError(t, err4, "No such policy")
 }
+
+func TestEnvelopeBasedPolicyProvider(t *testing.T) {
+	pp := &EnvelopeBasedPolicyProvider{Deserializer: &mockDeserializer{}}
+	p, err := pp.NewPolicy(nil)
+	assert.Nil(t, p)
+	assert.Error(t, err, "invalid arguments")
+
+	p, err = pp.NewPolicy(&cb.SignaturePolicyEnvelope{})
+	assert.Nil(t, p)
+	assert.Error(t, err, "Empty policy element")
+
+	p, err = pp.NewPolicy(SignedByMspPeer("primus inter pares"))
+	assert.NotNil(t, p)
+	assert.NoError(t, err)
+}
