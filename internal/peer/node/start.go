@@ -498,6 +498,7 @@ func serve(args []string) error {
 		Keepalive:              chaincodeConfig.Keepalive,
 		Launcher:               chaincodeLauncher,
 		Lifecycle:              chaincodeEndorsementInfo,
+		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
 		SystemCCProvider:       sccp,
 		TotalQueryLimit:        chaincodeConfig.TotalQueryLimit,

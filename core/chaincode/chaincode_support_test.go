@@ -248,6 +248,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 		Keepalive:              globalConfig.Keepalive,
 		Launcher:               chaincodeLauncher,
 		Lifecycle:              ml,
+		Peer:                   peer.Default,
 		Runtime:                containerRuntime,
 		SystemCCProvider:       sccp,
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,

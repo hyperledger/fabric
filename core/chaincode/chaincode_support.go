@@ -64,6 +64,7 @@ type ChaincodeSupport struct {
 	Keepalive              time.Duration
 	Launcher               Launcher
 	Lifecycle              Lifecycle
+	Peer                   *peer.Peer
 	Runtime                Runtime
 	SystemCCProvider       sysccprovider.SystemChaincodeProvider
 	TotalQueryLimit        int
@@ -123,7 +124,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream)
 		InstantiationPolicyChecker: CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
 		QueryResponseBuilder:       &QueryResponseGenerator{MaxResultLimit: 100},
 		UUIDGenerator:              UUIDGeneratorFunc(util.GenerateUUID),
-		LedgerGetter:               peer.Default,
+		LedgerGetter:               cs.Peer,
 		DeployedCCInfoProvider:     cs.DeployedCCInfoProvider,
 		AppConfig:                  cs.AppConfig,
 		Metrics:                    cs.HandlerMetrics,

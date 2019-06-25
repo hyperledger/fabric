@@ -183,6 +183,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		Keepalive:              globalConfig.Keepalive,
 		Launcher:               chaincodeLauncher,
 		Lifecycle:              ml,
+		Peer:                   peer.Default,
 		Runtime:                containerRuntime,
 		SystemCCProvider:       sccp,
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,
