@@ -1065,7 +1065,9 @@ func registerProverService(peerInstance *peer.Peer, peerServer *comm.GRPCServer,
 		Marshaler:     responseMarshaler,
 		PolicyChecker: policyChecker,
 		TMSManager: &server.Manager{
-			LedgerManager: &server.PeerLedgerManager{},
+			LedgerManager: &server.PeerLedgerManager{
+				Peer: peerInstance,
+			},
 			TokenOwnerValidatorManager: &server.PeerTokenOwnerValidatorManager{
 				IdentityDeserializerManager: &manager.FabricIdentityDeserializerManager{},
 			},

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package server_test
 
 import (
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/token/server"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,7 +19,9 @@ var _ = Describe("LedgerManager", func() {
 	)
 
 	BeforeEach(func() {
-		ledgerManager = &server.PeerLedgerManager{}
+		ledgerManager = &server.PeerLedgerManager{
+			Peer: &peer.Peer{},
+		}
 	})
 
 	Context("when asking a LedgerReader for a channel that does not exists", func() {

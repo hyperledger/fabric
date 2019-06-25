@@ -15,10 +15,11 @@ import (
 // PeerLedgerManager implements the LedgerManager interface
 // by using the peer infrastructure
 type PeerLedgerManager struct {
+	Peer *peer.Peer
 }
 
-func (*PeerLedgerManager) GetLedgerReader(channel string) (ledger.LedgerReader, error) {
-	l := peer.Default.GetLedger(channel)
+func (p *PeerLedgerManager) GetLedgerReader(channel string) (ledger.LedgerReader, error) {
+	l := p.Peer.GetLedger(channel)
 	if l == nil {
 		return nil, errors.Errorf("ledger not found for channel %s", channel)
 	}
