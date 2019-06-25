@@ -757,7 +757,18 @@ func registerDiscoveryService(
 	gSup := gossip.NewDiscoverySupport(gossipService)
 	ccSup := ccsupport.NewDiscoverySupport(metadataProvider)
 	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, metadataProvider)
-	confSup := config.NewDiscoverySupport(config.CurrentConfigBlockGetterFunc(peerInstance.GetCurrConfigBlock))
+	confSup := config.NewDiscoverySupport(config.CurrentConfigBlockGetterFunc(func(channelID string) *common.Block {
+		channel := peerInstance.Channel(channelID)
+		if channel == nil {
+			return nil
+		}
+		block, err := peer.ConfigBlockFromLedger(channel.Ledger())
+		if err != nil {
+			logger.Error("failed to get config block", err)
+			return nil
+		}
+		return block
+	}))
 	support := discsupport.NewDiscoverySupport(acl, gSup, ea, confSup, acl)
 	svc := discovery.NewService(discovery.Config{
 		TLS:                          peerServer.TLSEnabled(),

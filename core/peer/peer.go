@@ -16,8 +16,6 @@ import (
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/comm"
@@ -75,120 +73,7 @@ func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 	}
 }
 
-// Channel is a local struct to manage objects in a Channel
-type Channel struct {
-	cb           *common.Block
-	ledger       ledger.PeerLedger
-	bundleSource *channelconfig.BundleSource
-	resources    channelconfig.Resources
-	store        transientstore.Store
-}
-
-// bundleUpdate is called by the bundleSource when the channel configuration
-// changes.
-func (c *Channel) bundleUpdate(b *channelconfig.Bundle) {
-	c.resources = b
-}
-
-func (c *Channel) Ledger() ledger.PeerLedger {
-	return c.ledger
-}
-
-func (c *Channel) Resources() channelconfig.Resources {
-	return c.resources
-}
-
-func (c *Channel) ConfigBlock() *common.Block {
-	return c.cb
-}
-
-func (c *Channel) setConfigBlock(cb *common.Block) error {
-	c.cb = cb
-	return nil
-}
-
-func (c *Channel) BundleSource() *channelconfig.BundleSource {
-	return c.bundleSource
-}
-
-func (c *Channel) Store() transientstore.Store {
-	return c.store
-}
-
-func (c *Channel) Reader() blockledger.Reader {
-	return fileledger.NewFileLedger(fileLedgerBlockStore{c.ledger})
-}
-
-// Errored returns a channel that can be used to determine
-// if a backing resource has errored. At this point in time,
-// the peer does not have any error conditions that lead to
-// this function signaling that an error has occurred.
-func (c *Channel) Errored() <-chan struct{} {
-	// If this is ever updated to return a real channel, the error message
-	// in deliver.go around this channel closing should be updated.
-	return nil
-}
-
-func (c *Channel) PolicyManager() policies.Manager {
-	return c.resources.PolicyManager()
-}
-
-// Sequence passes through to the underlying configtx.Validator
-func (c *Channel) Sequence() uint64 {
-	return c.resources.ConfigtxValidator().Sequence()
-}
-
-func (c *Channel) Apply(configtx *common.ConfigEnvelope) error {
-	configTxValidator := c.resources.ConfigtxValidator()
-	err := configTxValidator.Validate(configtx)
-	if err != nil {
-		return err
-	}
-
-	bundle, err := channelconfig.NewBundle(configTxValidator.ChainID(), configtx.Config)
-	if err != nil {
-		return err
-	}
-
-	channelconfig.LogSanityChecks(bundle)
-	err = c.bundleSource.ValidateNew(bundle)
-	if err != nil {
-		return err
-	}
-
-	capabilitiesSupportedOrPanic(bundle)
-
-	c.bundleSource.Update(bundle)
-	return nil
-}
-
-func (c *Channel) Capabilities() channelconfig.ApplicationCapabilities {
-	ac, ok := c.resources.ApplicationConfig()
-	if !ok {
-		return nil
-	}
-	return ac.Capabilities()
-}
-
-func (c *Channel) GetMSPIDs() []string {
-	ac, ok := c.resources.ApplicationConfig()
-	if !ok || ac.Organizations() == nil {
-		return nil
-	}
-
-	var mspIDs []string
-	for _, org := range ac.Organizations() {
-		mspIDs = append(mspIDs, org.MSPID())
-	}
-
-	return mspIDs
-}
-
-func (c *Channel) MSPManager() msp.MSPManager {
-	return c.resources.MSPManager()
-}
-
-func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
+func ConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
 	peerLogger.Debugf("Getting config block")
 
 	// get last block.  Last block number is Height-1
@@ -440,25 +325,24 @@ func (p *Peer) createChannel(
 		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
 	}
 
-	c := &Channel{
-		cb:        cb,
+	channel := &Channel{
 		ledger:    l,
 		resources: bundle,
 	}
 
-	c.bundleSource = channelconfig.NewBundleSource(
+	channel.bundleSource = channelconfig.NewBundleSource(
 		bundle,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
 		mspCallback,
-		c.bundleUpdate,
+		channel.bundleUpdate,
 	)
 
-	committer := committer.NewLedgerCommitterReactive(l, c.setConfigBlock)
+	committer := committer.NewLedgerCommitter(l)
 	validator := txvalidator.NewTxValidator(
 		cid,
 		p.validationWorkersSemaphore,
-		c,
+		channel,
 		&vir.ValidationInfoRetrieveShim{
 			New:    newLifecycleValidation,
 			Legacy: legacyLifecycleValidation,
@@ -482,7 +366,7 @@ func (p *Peer) createChannel(
 	if err != nil {
 		return errors.Wrapf(err, "[channel %s] failed opening transient store", bundle.ConfigtxValidator().ChainID())
 	}
-	c.store = store
+	channel.store = store
 
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider)
 	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, gossipservice.Support{
@@ -500,7 +384,7 @@ func (p *Peer) createChannel(
 	if p.channels == nil {
 		p.channels = map[string]*Channel{}
 	}
-	p.channels[cid] = c
+	p.channels[cid] = channel
 
 	return nil
 }
@@ -549,15 +433,6 @@ func (p *Peer) GetChannelsInfo() []*pb.ChannelInfo {
 func (p *Peer) GetStableChannelConfig(cid string) channelconfig.Resources {
 	if c := p.Channel(cid); c != nil {
 		return c.BundleSource().StableBundle()
-	}
-	return nil
-}
-
-// GetCurrConfigBlock returns the cached config block of the specified channel.
-// Note that this call returns nil if channel cid has not been created.
-func (p *Peer) GetCurrConfigBlock(cid string) *common.Block {
-	if c := p.Channel(cid); c != nil {
-		return c.ConfigBlock()
 	}
 	return nil
 }
@@ -637,7 +512,7 @@ func (p *Peer) Initialize(
 			peerLogger.Debugf("Error while loading ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
 			continue
 		}
-		cb, err := getCurrConfigBlockFromLedger(ledger)
+		cb, err := ConfigBlockFromLedger(ledger)
 		if err != nil {
 			peerLogger.Errorf("Failed to find config block on ledger %s(%s)", cid, err)
 			peerLogger.Debugf("Error while looking for config block on ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
