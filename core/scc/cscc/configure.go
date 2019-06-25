@@ -42,6 +42,7 @@ func New(
 	lr plugindispatcher.LifecycleResources,
 	nr plugindispatcher.CollectionAndLifecycleResources,
 	policyChecker policy.PolicyChecker,
+	p *peer.Peer,
 ) *PeerConfiger {
 	return &PeerConfiger{
 		policyChecker:          policyChecker,
@@ -51,7 +52,7 @@ func New(
 		deployedCCInfoProvider: deployedCCInfoProvider,
 		legacyLifecycle:        lr,
 		newLifecycle:           nr,
-		peer:                   peer.Default,
+		peer:                   p,
 	}
 }
 

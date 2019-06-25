@@ -517,6 +517,7 @@ func serve(args []string) error {
 		lsccInst,
 		lifecycleValidatorCommitter,
 		policyprovider.GetPolicyChecker(),
+		peerInstance,
 	)
 	qsccInst := scc.SelfDescribingSysCC(qscc.New(aclProvider, peerInstance))
 	if maxConcurrency := coreConfig.LimitsConcurrencyQSCC; maxConcurrency != 0 {
