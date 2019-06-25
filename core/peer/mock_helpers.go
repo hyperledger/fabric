@@ -15,23 +15,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 )
 
-//MockInitialize resets chains for test env
-func MockInitialize() (cleanup func(), err error) {
-	cleanup, err = ledgermgmt.InitializeTestEnvWithInitializer(
-		&ledgermgmt.Initializer{},
-	)
-	Default.mutex.Lock()
-	Default.channels = make(map[string]*Channel)
-	Default.mutex.Unlock()
-	return cleanup, err
-}
-
-// MockCreateChain used for creating a ledger for a chain for tests
-// without having to join
-func MockCreateChain(cid string) error {
-	return CreateMockChannel(Default, cid)
-}
-
 func CreateMockChannel(p *Peer, cid string) error {
 	var ledger ledger.PeerLedger
 	var err error
