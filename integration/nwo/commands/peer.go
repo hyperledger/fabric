@@ -386,6 +386,7 @@ func (c ChaincodeQueryInstalled) SessionName() string {
 func (c ChaincodeQueryInstalled) Args() []string {
 	return []string{
 		"lifecycle", "chaincode", "queryinstalled",
+		"--output", "json",
 	}
 }
 

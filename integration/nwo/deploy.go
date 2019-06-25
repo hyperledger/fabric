@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -166,10 +167,7 @@ func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
-		sess, err = n.PeerAdminSession(p, commands.ChaincodeQueryInstalled{})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-		Expect(sess).To(gbytes.Say(fmt.Sprintf("Package ID: %s, Label: %s", chaincode.PackageID, chaincode.Label)))
+		EnsureInstalled(n, chaincode.Label, chaincode.PackageID, p)
 	}
 }
 
@@ -373,6 +371,32 @@ func UpgradeChaincodeLegacy(n *Network, channel string, orderer *Orderer, chainc
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	EnsureInstantiatedLegacy(n, channel, chaincode.Name, chaincode.Version, peers...)
+}
+
+func EnsureInstalled(n *Network, label, packageID string, peers ...*Peer) {
+	for _, p := range peers {
+		Eventually(queryInstalled(n, p), n.EventuallyTimeout).Should(
+			ContainElement(&lifecycle.QueryInstalledChaincodesResult_InstalledChaincode{
+				Label:     label,
+				PackageId: packageID,
+			}))
+	}
+}
+
+type queryInstalledOutput struct {
+	InstalledChaincodes []*lifecycle.QueryInstalledChaincodesResult_InstalledChaincode `json:"installed_chaincodes"`
+}
+
+func queryInstalled(n *Network, peer *Peer) func() []*lifecycle.QueryInstalledChaincodesResult_InstalledChaincode {
+	return func() []*lifecycle.QueryInstalledChaincodesResult_InstalledChaincode {
+		sess, err := n.PeerAdminSession(peer, commands.ChaincodeQueryInstalled{})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		output := &queryInstalledOutput{}
+		err = json.Unmarshal(sess.Out.Contents(), output)
+		Expect(err).NotTo(HaveOccurred())
+		return output.InstalledChaincodes
+	}
 }
 
 type simulateCommitOutput struct {

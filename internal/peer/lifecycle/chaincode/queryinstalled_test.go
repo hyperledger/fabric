@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
@@ -17,6 +20,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("QueryInstalled", func() {
@@ -25,6 +29,7 @@ var _ = Describe("QueryInstalled", func() {
 			mockProposalResponse *pb.ProposalResponse
 			mockEndorserClient   *mock.EndorserClient
 			mockSigner           *mock.Signer
+			input                *chaincode.InstalledQueryInput
 			installedQuerier     *chaincode.InstalledQuerier
 		)
 
@@ -49,16 +54,43 @@ var _ = Describe("QueryInstalled", func() {
 			mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
 
 			mockSigner = &mock.Signer{}
+			buffer := gbytes.NewBuffer()
+			input = &chaincode.InstalledQueryInput{}
 
 			installedQuerier = &chaincode.InstalledQuerier{
+				Input:          input,
 				EndorserClient: mockEndorserClient,
 				Signer:         mockSigner,
+				Writer:         buffer,
 			}
 		})
 
-		It("queries installed chaincodes", func() {
+		It("queries installed chaincodes and writes the output as human readable plain-text", func() {
 			err := installedQuerier.Query()
 			Expect(err).NotTo(HaveOccurred())
+			Eventually(installedQuerier.Writer).Should(gbytes.Say("Installed chaincodes on peer:"))
+			Eventually(installedQuerier.Writer).Should(gbytes.Say("Package ID: packageid1, Label: label1"))
+		})
+
+		Context("when JSON-formatted output is requested", func() {
+			BeforeEach(func() {
+				installedQuerier.Input.OutputFormat = "json"
+			})
+
+			It("queries installed chaincodes and writes the output as JSON", func() {
+				err := installedQuerier.Query()
+				Expect(err).NotTo(HaveOccurred())
+				expectedOutput := &lb.QueryInstalledChaincodesResult{
+					InstalledChaincodes: []*lb.QueryInstalledChaincodesResult_InstalledChaincode{
+						{
+							PackageId: "packageid1",
+							Label:     "label1",
+						},
+					},
+				}
+				json, err := json.MarshalIndent(expectedOutput, "", "\t")
+				Eventually(installedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
+			})
 		})
 
 		Context("when the signer cannot be serialized", func() {

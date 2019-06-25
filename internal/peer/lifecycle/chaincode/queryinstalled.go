@@ -9,6 +9,9 @@ package chaincode
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -24,8 +27,14 @@ import (
 // the installed chaincodes
 type InstalledQuerier struct {
 	Command        *cobra.Command
+	Input          *InstalledQueryInput
 	EndorserClient EndorserClient
 	Signer         Signer
+	Writer         io.Writer
+}
+
+type InstalledQueryInput struct {
+	OutputFormat string
 }
 
 // QueryInstalledCmd returns the cobra command for listing
@@ -52,13 +61,19 @@ func QueryInstalledCmd(i *InstalledQuerier) *cobra.Command {
 					return err
 				}
 
+				iqInput := &InstalledQueryInput{
+					OutputFormat: output,
+				}
+
 				// queryinstalled only supports one peer connection,
 				// which is why we only wire in the first endorser
 				// client
 				i = &InstalledQuerier{
 					Command:        cmd,
 					EndorserClient: cc.EndorserClients[0],
+					Input:          iqInput,
 					Signer:         cc.Signer,
+					Writer:         os.Stdout,
 				}
 			}
 			return i.Query()
@@ -69,6 +84,7 @@ func QueryInstalledCmd(i *InstalledQuerier) *cobra.Command {
 		"peerAddresses",
 		"tlsRootCertFiles",
 		"connectionProfile",
+		"output",
 	}
 	attachFlags(chaincodeQueryInstalledCmd, flagList)
 
@@ -109,6 +125,9 @@ func (i *InstalledQuerier) Query() error {
 		return errors.Errorf("query failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
 	}
 
+	if strings.ToLower(i.Input.OutputFormat) == "json" {
+		return printResponseAsJSON(proposalResponse, &lb.QueryInstalledChaincodesResult{}, i.Writer)
+	}
 	return i.printResponse(proposalResponse)
 }
 
@@ -120,12 +139,11 @@ func (i *InstalledQuerier) printResponse(proposalResponse *pb.ProposalResponse) 
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
-	fmt.Println("Installed chaincodes on peer:")
+	fmt.Fprintln(i.Writer, "Installed chaincodes on peer:")
 	for _, chaincode := range qicr.InstalledChaincodes {
-		fmt.Printf("Package ID: %s, Label: %s\n", chaincode.PackageId, chaincode.Label)
+		fmt.Fprintf(i.Writer, "Package ID: %s, Label: %s\n", chaincode.PackageId, chaincode.Label)
 	}
 	return nil
-
 }
 
 func (i *InstalledQuerier) createProposal() (*pb.Proposal, error) {

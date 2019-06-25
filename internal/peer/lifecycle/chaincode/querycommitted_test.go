@@ -85,6 +85,7 @@ var _ = Describe("QueryCommitted", func() {
 			BeforeEach(func() {
 				committedQuerier.Input.OutputFormat = "json"
 			})
+
 			It("queries committed chaincodes and writes the output as JSON", func() {
 				err := committedQuerier.Query()
 				Expect(err).NotTo(HaveOccurred())
