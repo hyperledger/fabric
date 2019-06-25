@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/policy"
-	"github.com/hyperledger/fabric/core/policyprovider"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
@@ -155,10 +154,11 @@ func New(
 	ACLProvider aclmgmt.ACLProvider,
 	platformRegistry *platforms.Registry,
 	getMSPIDs MSPIDsGetter,
+	policyChecker policy.PolicyChecker,
 ) *LifeCycleSysCC {
 	return &LifeCycleSysCC{
 		Support:          &supportImpl{GetMSPIDs: getMSPIDs},
-		PolicyChecker:    policyprovider.GetPolicyChecker(),
+		PolicyChecker:    policyChecker,
 		SCCProvider:      sccp,
 		ACLProvider:      ACLProvider,
 		PlatformRegistry: platformRegistry,

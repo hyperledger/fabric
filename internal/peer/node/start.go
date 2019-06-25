@@ -61,7 +61,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/core/policyprovider"
+	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
@@ -395,7 +395,13 @@ func serve(args []string) error {
 		Registrar: ipRegistry,
 		Whitelist: scc.GlobalWhitelist(),
 	}
-	lsccInst := lscc.New(sccp, aclProvider, platformRegistry, peerInstance.GetMSPIDs)
+	policyChecker := policy.NewPolicyChecker(
+		policies.PolicyManagerGetterFunc(peer.Default.GetPolicyManager),
+		mgmt.GetLocalMSP(),
+		mgmt.NewLocalMSPPrincipalGetter(),
+	)
+
+	lsccInst := lscc.New(sccp, aclProvider, platformRegistry, peerInstance.GetMSPIDs, policyChecker)
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
@@ -517,7 +523,7 @@ func serve(args []string) error {
 		lifecycleValidatorCommitter,
 		lsccInst,
 		lifecycleValidatorCommitter,
-		policyprovider.GetPolicyChecker(),
+		policyChecker,
 		peerInstance,
 	)
 	qsccInst := scc.SelfDescribingSysCC(qscc.New(aclProvider, peerInstance))
