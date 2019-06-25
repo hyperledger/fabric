@@ -173,7 +173,9 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		},
 	}
 
-	peer.Default.CredentialSupport = comm.NewCredentialSupport()
+	peerInstance, cleanup := peer.NewTestPeer(t)
+	defer cleanup()
+	peerInstance.CredentialSupport = comm.NewCredentialSupport()
 
 	testDir, err := ioutil.TempDir("", "peer-pkg")
 	require.NoError(t, err)
@@ -200,11 +202,11 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 	})
 
 	createChannel := func(t *testing.T, cid string, block *cb.Block) {
-		err = peer.Default.CreateChannel(block, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
+		err = peerInstance.CreateChannel(block, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 		if err != nil {
 			t.Fatalf("Failed to create config block (%s)", err)
 		}
-		t.Logf("Channel %s MSPIDs: (%s)", cid, peer.Default.GetMSPIDs(cid))
+		t.Logf("Channel %s MSPIDs: (%s)", cid, peerInstance.GetMSPIDs(cid))
 	}
 
 	org1CertPool, err := createCertPool([][]byte{org1CA})
@@ -298,8 +300,8 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 				return
 			}
 
-			peer.Default.Server = server
-			peer.Default.ServerConfig = test.serverConfig
+			peerInstance.Server = server
+			peerInstance.ServerConfig = test.serverConfig
 
 			assert.NoError(t, err, "NewGRPCServer should not have returned an error")
 			assert.NotNil(t, server, "NewGRPCServer should have created a server")

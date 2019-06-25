@@ -46,7 +46,7 @@ func New(
 ) *PeerConfiger {
 	return &PeerConfiger{
 		policyChecker:          policyChecker,
-		configMgr:              peer.NewConfigSupport(),
+		configMgr:              peer.NewConfigSupport(p),
 		sccp:                   sccp,
 		aclProvider:            aclProvider,
 		deployedCCInfoProvider: deployedCCInfoProvider,
