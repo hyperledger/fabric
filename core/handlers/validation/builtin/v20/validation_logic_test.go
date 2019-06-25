@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v20/mocks"
-	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -228,15 +227,7 @@ var sid []byte
 var mspid string
 var chainId string = util.GetTestChainID()
 
-type mockPolicyCheckerFactory struct {
-}
-
-func (c *mockPolicyCheckerFactory) NewPolicyChecker() policy.PolicyChecker {
-	return &mockPolicyChecker{}
-}
-
-type mockPolicyChecker struct {
-}
+type mockPolicyChecker struct{}
 
 func (c *mockPolicyChecker) CheckPolicy(channelID, policyName string, signedProp *peer.SignedProposal) error {
 	return nil
@@ -258,8 +249,6 @@ func TestMain(m *testing.M) {
 	}
 	defer os.RemoveAll(testDir)
 	ccprovider.SetChaincodesPath(testDir)
-
-	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
 	// setup the MSP manager so that we can sign/verify
 	msptesttools.LoadMSPSetupForTesting()
