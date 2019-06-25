@@ -8,10 +8,8 @@ package cscc
 
 import (
 	"errors"
-	"io/ioutil"
 	"net"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -76,21 +74,8 @@ type storeProvider interface {
 }
 
 func TestMain(m *testing.M) {
-	// TODO: remove the transient store and peer setup once we've completed the
-	// transition to instances
-	tempdir, err := ioutil.TempDir("", "scc-configure")
-	if err != nil {
-		panic(err)
-	}
-	peer.Default = &peer.Peer{
-		StoreProvider: transientstore.NewStoreProvider(filepath.Join(tempdir, "transientstore")),
-	}
-
 	msptesttools.LoadMSPSetupForTesting()
-
 	rc := m.Run()
-
-	os.RemoveAll(tempdir)
 	os.Exit(rc)
 
 }
@@ -240,8 +225,6 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		nil,
 	)
 	assert.NoError(t, err)
-	peer.Default.GossipService = gossipService
-	defer func() { peer.Default.GossipService = nil }()
 
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
