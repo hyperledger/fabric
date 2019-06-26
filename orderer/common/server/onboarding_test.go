@@ -84,6 +84,9 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 	}
 	if seekInfo.GetStart().GetNewest() != nil {
 		resp := <-ds.blockResponses
+		if resp == nil {
+			return nil
+		}
 		return stream.Send(resp)
 	}
 	panic(fmt.Sprintf("expected either specified or newest seek but got %v", seekInfo.GetStart()))
@@ -419,6 +422,14 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 func TestReplicate(t *testing.T) {
 	t.Parallel()
 
+	clusterConfig := localconfig.Cluster{
+		ReplicationPullTimeout:  time.Hour,
+		DialTimeout:             time.Hour,
+		RPCTimeout:              time.Hour,
+		ReplicationRetryTimeout: time.Hour,
+		ReplicationBufferSize:   1,
+	}
+
 	var bootBlock common.Block
 	var bootBlockWithCorruptedPayload common.Block
 
@@ -579,13 +590,7 @@ func TestReplicate(t *testing.T) {
 			conf: &localconfig.TopLevel{
 				General: localconfig.General{
 					SystemChannel: "system",
-					Cluster: localconfig.Cluster{
-						ReplicationPullTimeout:  time.Millisecond * 100,
-						DialTimeout:             time.Millisecond * 100,
-						RPCTimeout:              time.Millisecond * 100,
-						ReplicationRetryTimeout: time.Millisecond * 100,
-						ReplicationBufferSize:   1,
-					},
+					Cluster:       clusterConfig,
 				},
 			},
 			secOpts: &comm.SecureOptions{
@@ -607,13 +612,7 @@ func TestReplicate(t *testing.T) {
 			conf: &localconfig.TopLevel{
 				General: localconfig.General{
 					SystemChannel: "system",
-					Cluster: localconfig.Cluster{
-						ReplicationPullTimeout:  time.Millisecond * 100,
-						DialTimeout:             time.Millisecond * 100,
-						RPCTimeout:              time.Millisecond * 100,
-						ReplicationRetryTimeout: time.Millisecond * 100,
-						ReplicationBufferSize:   1,
-					},
+					Cluster:       clusterConfig,
 				},
 			},
 			secOpts: &comm.SecureOptions{
@@ -650,13 +649,7 @@ func TestReplicate(t *testing.T) {
 			conf: &localconfig.TopLevel{
 				General: localconfig.General{
 					SystemChannel: "system",
-					Cluster: localconfig.Cluster{
-						ReplicationPullTimeout:  time.Millisecond * 100,
-						DialTimeout:             time.Millisecond * 100,
-						RPCTimeout:              time.Millisecond * 100,
-						ReplicationRetryTimeout: time.Millisecond * 100,
-						ReplicationBufferSize:   1,
-					},
+					Cluster:       clusterConfig,
 				},
 			},
 			secOpts: &comm.SecureOptions{
