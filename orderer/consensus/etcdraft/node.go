@@ -43,6 +43,8 @@ type node struct {
 
 	metadata *etcdraft.BlockMetadata
 
+	subscriberC chan chan uint64
+
 	raft.Node
 }
 
@@ -71,6 +73,8 @@ func (n *node) start(fresh, join bool) {
 		n.logger.Info("Restarting raft node")
 		n.Node = raft.RestartNode(n.config)
 	}
+
+	n.subscriberC = make(chan chan uint64)
 
 	go n.run(campaign)
 }
@@ -110,6 +114,8 @@ func (n *node) run(campaign bool) {
 		}()
 	}
 
+	var notifyLeaderChangeC chan uint64
+
 	for {
 		select {
 		case <-raftTicker.C():
@@ -125,6 +131,17 @@ func (n *node) run(campaign bool) {
 
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				n.chain.snapC <- &rd.Snapshot
+			}
+
+			if notifyLeaderChangeC != nil && rd.SoftState != nil {
+				if l := atomic.LoadUint64(&rd.SoftState.Lead); l != raft.None {
+					select {
+					case notifyLeaderChangeC <- l:
+					default:
+					}
+
+					notifyLeaderChangeC = nil
+				}
 			}
 
 			// skip empty apply
@@ -146,6 +163,8 @@ func (n *node) run(campaign bool) {
 			// TODO(jay_guo) leader can write to disk in parallel with replicating
 			// to the followers and them writing to their disks. Check 10.2.1 in thesis
 			n.send(rd.Messages)
+
+		case notifyLeaderChangeC = <-n.subscriberC:
 
 		case <-n.chain.haltC:
 			raftTicker.Stop()
@@ -199,8 +218,13 @@ func (n *node) abdicateLeader(currentLead uint64) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(n.config.ElectionTick)*n.tickInterval)
-	defer cancel()
+	// register a leader subscriberC
+	notifyc := make(chan uint64, 1)
+	select {
+	case n.subscriberC <- notifyc:
+	case <-n.chain.doneC:
+		return
+	}
 
 	// Leader initiates leader transfer
 	if status.RaftState == raft.StateLeader {
@@ -224,23 +248,16 @@ func (n *node) abdicateLeader(currentLead uint64) {
 		}
 
 		n.logger.Infof("Transferring leadership to %d", transferee)
-		n.TransferLeadership(ctx, status.ID, transferee)
+		n.TransferLeadership(context.TODO(), status.ID, transferee)
 	}
 
-	// Periodically check leader has changed till ElectionTimeout elapsed
-	var newLeader uint64
-	for newLeader = n.Status().Lead; newLeader == status.Lead || newLeader == raft.None; newLeader = n.Status().Lead {
-		select {
-		case <-ctx.Done():
-			n.logger.Warn("Leader transfer timeout")
-			return
-		case <-time.After(n.tickInterval):
-		case <-n.chain.doneC:
-			return
-		}
+	select {
+	case <-n.clock.After(time.Duration(n.config.ElectionTick) * n.tickInterval):
+		n.logger.Warn("Leader transfer timeout")
+	case l := <-notifyc:
+		n.logger.Infof("Leader has been transferred from %d to %d", currentLead, l)
+	case <-n.chain.doneC:
 	}
-
-	n.logger.Infof("Leader has been transferred from %d to %d", currentLead, newLeader)
 }
 
 func (n *node) logSendFailure(dest uint64, err error) {
