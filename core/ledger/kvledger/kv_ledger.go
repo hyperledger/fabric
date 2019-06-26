@@ -205,10 +205,11 @@ func (l *kvLedger) syncStateDBWithPvtdatastore() error {
 		return err
 	}
 
-	if l.blockStore.IsPvtStoreAheadOfBlockStore() {
-		if err := l.filterYetToCommitBlocks(blocksPvtData); err != nil {
-			return err
-		}
+	// as the pvtdataStore can contain pvtData of yet to be committed blocks,
+	// we need to filter them before passing it to the transaction manager for
+	// stateDB updates.
+	if err := l.filterYetToCommitBlocks(blocksPvtData); err != nil {
+		return err
 	}
 
 	if err = l.applyValidTxPvtDataOfOldBlocks(blocksPvtData); err != nil {
