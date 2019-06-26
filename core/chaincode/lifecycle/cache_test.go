@@ -216,6 +216,14 @@ var _ = Describe("Cache", func() {
 				{
 					Label:     "chaincode-label",
 					PackageID: "packageID",
+					References: map[string][]*chaincode.Metadata{
+						"channel-id": {
+							&chaincode.Metadata{
+								Name:    "chaincode-name",
+								Version: "chaincode-version",
+							},
+						},
+					},
 				},
 			}))
 		})

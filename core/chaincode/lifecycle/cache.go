@@ -327,9 +327,21 @@ func (c *Cache) ListInstalledChaincodes() []*chaincode.InstalledChaincode {
 			// even if it isn't yet installed
 			continue
 		}
+		references := map[string][]*chaincode.Metadata{}
+		for channel, chaincodeMap := range lc.References {
+			metadata := []*chaincode.Metadata{}
+			for cc, cachedDefinition := range chaincodeMap {
+				metadata = append(metadata, &chaincode.Metadata{
+					Name:    cc,
+					Version: cachedDefinition.Definition.EndorsementInfo.Version,
+				})
+			}
+			references[channel] = metadata
+		}
 		installedChaincodes = append(installedChaincodes, &chaincode.InstalledChaincode{
-			PackageID: lc.Info.PackageID,
-			Label:     lc.Info.Label,
+			PackageID:  lc.Info.PackageID,
+			Label:      lc.Info.Label,
+			References: references,
 		})
 	}
 

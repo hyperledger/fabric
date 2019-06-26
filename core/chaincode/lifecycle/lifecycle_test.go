@@ -9,6 +9,7 @@ package lifecycle_test
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
@@ -20,8 +21,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 
 	. "github.com/onsi/ginkgo"
@@ -389,13 +388,31 @@ var _ = Describe("ExternalFunctions", func() {
 				{
 					Label:     "installed-cc2",
 					PackageID: "installed-package-id2",
+					References: map[string][]*chaincode.Metadata{
+						"test-channel": {
+							&chaincode.Metadata{
+								Name:    "test-chaincode",
+								Version: "test-version",
+							},
+							&chaincode.Metadata{
+								Name:    "hello-chaincode",
+								Version: "hello-version",
+							},
+						},
+						"another-channel": {
+							&chaincode.Metadata{
+								Name:    "another-chaincode",
+								Version: "another-version",
+							},
+						},
+					},
 				},
 			}
 
 			fakeLister.ListInstalledChaincodesReturns(chaincodes)
 		})
 
-		It("passes through to the backing chaincode store", func() {
+		It("passes through to the cache", func() {
 			result := ef.QueryInstalledChaincodes()
 			Expect(result).To(ConsistOf(
 				&chaincode.InstalledChaincode{
@@ -405,6 +422,24 @@ var _ = Describe("ExternalFunctions", func() {
 				&chaincode.InstalledChaincode{
 					Label:     "installed-cc2",
 					PackageID: "installed-package-id2",
+					References: map[string][]*chaincode.Metadata{
+						"test-channel": {
+							&chaincode.Metadata{
+								Name:    "test-chaincode",
+								Version: "test-version",
+							},
+							&chaincode.Metadata{
+								Name:    "hello-chaincode",
+								Version: "hello-version",
+							},
+						},
+						"another-channel": {
+							&chaincode.Metadata{
+								Name:    "another-chaincode",
+								Version: "another-version",
+							},
+						},
+					},
 				},
 			))
 		})

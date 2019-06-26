@@ -46,13 +46,25 @@ message QueryInstalledChaincodesArgs {
 }
 
 // QueryInstalledChaincodesResult is the message returned by
-// '_lifecycle.QueryInstalledChaincodes'.  It returns a list of
-// installed chaincodes.
+// '_lifecycle.QueryInstalledChaincodes'.  It returns a list of installed
+// chaincodes, including a map of channel name to chaincode name and version
+// pairs of chaincode definitions that reference this chaincode package.
 message QueryInstalledChaincodesResult {
     message InstalledChaincode {
         string package_id = 1;
         string label = 2;
+        map<string, References> references = 3;
     }
+
+    message References {
+        repeated Chaincode chaincodes = 1;
+    }
+
+    message Chaincode {
+        string name = 1;
+        string version = 2;
+    }
+
     repeated InstalledChaincode installed_chaincodes = 1;
 }
 

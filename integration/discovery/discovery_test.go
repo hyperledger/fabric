@@ -95,6 +95,10 @@ var _ = Describe("DiscoveryService", func() {
 	})
 
 	It("discovers channel information", func() {
+		org1Peer0 := network.Peer("org1", "peer0")
+		org2Peer0 := network.Peer("org2", "peer0")
+		org3Peer0 := network.Peer("org3", "peer0")
+
 		By("discovering endorsers when missing chaincode")
 		endorsers := commands.Endorsers{
 			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
@@ -276,13 +280,13 @@ var _ = Describe("DiscoveryService", func() {
 			Name:                "mycc-lifecycle",
 			Version:             "1.0",
 			Lang:                "golang",
-			PackageFile:         filepath.Join(testDir, "simplecc-lifecycle.tar.gz"),
+			PackageFile:         filepath.Join(testDir, "simplecc.tar.gz"),
 			Path:                "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
 			ChannelConfigPolicy: "/Channel/Application/Endorsement",
 			Sequence:            "1",
 			InitRequired:        true,
-			Label:               "simplecc-lifecycle",
+			Label:               "simplecc",
 		}
 
 		By("packaging chaincode")

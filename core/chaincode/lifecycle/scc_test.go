@@ -312,6 +312,14 @@ var _ = Describe("SCC", func() {
 					{
 						Label:     "cc0-label",
 						PackageID: persistenceintf.PackageID("cc0-package-id"),
+						References: map[string][]*chaincode.Metadata{
+							"test-channel": {
+								&chaincode.Metadata{
+									Name:    "cc0",
+									Version: "cc0-version",
+								},
+							},
+						},
 					},
 					{
 						Label:     "cc1-label",
@@ -331,6 +339,16 @@ var _ = Describe("SCC", func() {
 
 				Expect(payload.InstalledChaincodes[0].Label).To(Equal("cc0-label"))
 				Expect(payload.InstalledChaincodes[0].PackageId).To(Equal("cc0-package-id"))
+				Expect(payload.InstalledChaincodes[0].References).To(Equal(map[string]*lb.QueryInstalledChaincodesResult_References{
+					"test-channel": {
+						Chaincodes: []*lb.QueryInstalledChaincodesResult_Chaincode{
+							{
+								Name:    "cc0",
+								Version: "cc0-version",
+							},
+						},
+					},
+				}))
 
 				Expect(payload.InstalledChaincodes[1].Label).To(Equal("cc1-label"))
 				Expect(payload.InstalledChaincodes[1].PackageId).To(Equal("cc1-package-id"))

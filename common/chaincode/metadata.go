@@ -19,6 +19,10 @@ type InstalledChaincode struct {
 	PackageID persistence.PackageID
 	Hash      []byte
 	Label     string
+	// References is a map of channel name to chaincode
+	// metadata. This represents the channels and chaincode
+	// definitions that use this installed chaincode package.
+	References map[string][]*Metadata
 
 	// FIXME: we should remove these two
 	// fields since they are not properties

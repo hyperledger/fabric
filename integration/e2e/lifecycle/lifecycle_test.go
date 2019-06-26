@@ -174,6 +174,22 @@ var _ = Describe("Lifecycle", func() {
 		By("ensuring the chaincode can still be invoked and queried")
 		RunQueryInvokeQuery(network, orderer, testPeers[0], 90)
 
+		By("deploying another chaincode using the same chaincode package")
+		nwo.DeployChaincode(network, "testchannel", orderer, nwo.Chaincode{
+			Name:                "yourcc",
+			Version:             "0.0",
+			Path:                "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Lang:                "golang",
+			PackageFile:         filepath.Join(tempDir, "simplecc.tar.gz"),
+			Ctor:                `{"Args":["init","a","100","b","200"]}`,
+			ChannelConfigPolicy: "/Channel/Application/Endorsement",
+			Sequence:            "1",
+			InitRequired:        true,
+			Label:               "my_simple_chaincode",
+		})
+
+		By("listing the installed chaincodes and verifying the channel/chaincode definitions that are using the chaincode package")
+		nwo.QueryInstalledReferences(network, "testchannel", chaincode.Label, chaincode.PackageID, network.Peer("org2", "peer1"), []string{"mycc", "0.0"}, []string{"yourcc", "0.0"})
 		By("adding a new org")
 		org3 := &nwo.Organization{
 			MSPID:         "Org3ExampleCom",

@@ -258,7 +258,6 @@ type Invocation struct {
 // InstallChaincode is a SCC function that may be dispatched to which routes
 // to the underlying lifecycle implementation.
 func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Message, error) {
-
 	if logger.IsEnabledFor(zapcore.DebugLevel) {
 		end := 35
 		if len(input.ChaincodeInstallPackage) < end {
@@ -289,7 +288,6 @@ func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Mes
 // QueryInstalledChaincode is a SCC function that may be dispatched to which
 // routes to the underlying lifecycle implementation.
 func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeArgs) (proto.Message, error) {
-
 	logger.Debugf("received invocation of QueryInstalledChaincode for install package ID '%s'",
 		input.PackageId,
 	)
@@ -314,13 +312,29 @@ func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodes
 
 	result := &lb.QueryInstalledChaincodesResult{}
 	for _, chaincode := range chaincodes {
-		result.InstalledChaincodes = append(
-			result.InstalledChaincodes,
+		references := map[string]*lb.QueryInstalledChaincodesResult_References{}
+		for channel, chaincodeMetadata := range chaincode.References {
+			chaincodes := make([]*lb.QueryInstalledChaincodesResult_Chaincode, len(chaincodeMetadata))
+			for i, metadata := range chaincodeMetadata {
+				chaincodes[i] = &lb.QueryInstalledChaincodesResult_Chaincode{
+					Name:    metadata.Name,
+					Version: metadata.Version,
+				}
+			}
+
+			references[channel] = &lb.QueryInstalledChaincodesResult_References{
+				Chaincodes: chaincodes,
+			}
+		}
+
+		result.InstalledChaincodes = append(result.InstalledChaincodes,
 			&lb.QueryInstalledChaincodesResult_InstalledChaincode{
-				Label:     chaincode.Label,
-				PackageId: chaincode.PackageID.String(),
+				Label:      chaincode.Label,
+				PackageId:  chaincode.PackageID.String(),
+				References: references,
 			})
 	}
+
 	return result, nil
 }
 

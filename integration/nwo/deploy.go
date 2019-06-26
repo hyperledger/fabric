@@ -376,19 +376,46 @@ func UpgradeChaincodeLegacy(n *Network, channel string, orderer *Orderer, chainc
 func EnsureInstalled(n *Network, label, packageID string, peers ...*Peer) {
 	for _, p := range peers {
 		Eventually(queryInstalled(n, p), n.EventuallyTimeout).Should(
-			ContainElement(&lifecycle.QueryInstalledChaincodesResult_InstalledChaincode{
-				Label:     label,
-				PackageId: packageID,
-			}))
+			ContainElement(MatchFields(IgnoreExtras,
+				Fields{
+					"Label":     Equal(label),
+					"PackageId": Equal(packageID),
+				},
+			)),
+		)
 	}
 }
 
-type queryInstalledOutput struct {
-	InstalledChaincodes []*lifecycle.QueryInstalledChaincodesResult_InstalledChaincode `json:"installed_chaincodes"`
+func QueryInstalledReferences(n *Network, channel, label, packageID string, checkPeer *Peer, nameVersions ...[]string) {
+	chaincodes := make([]*lifecycle.QueryInstalledChaincodesResult_Chaincode, len(nameVersions))
+	for i, nameVersion := range nameVersions {
+		chaincodes[i] = &lifecycle.QueryInstalledChaincodesResult_Chaincode{
+			Name:    nameVersion[0],
+			Version: nameVersion[1],
+		}
+	}
+
+	Expect(queryInstalled(n, checkPeer)()).To(
+		ContainElement(MatchFields(IgnoreExtras,
+			Fields{
+				"Label":     Equal(label),
+				"PackageId": Equal(packageID),
+				"References": HaveKeyWithValue(channel, PointTo(MatchFields(IgnoreExtras,
+					Fields{
+						"Chaincodes": ConsistOf(chaincodes),
+					},
+				))),
+			},
+		)),
+	)
 }
 
-func queryInstalled(n *Network, peer *Peer) func() []*lifecycle.QueryInstalledChaincodesResult_InstalledChaincode {
-	return func() []*lifecycle.QueryInstalledChaincodesResult_InstalledChaincode {
+type queryInstalledOutput struct {
+	InstalledChaincodes []lifecycle.QueryInstalledChaincodesResult_InstalledChaincode `json:"installed_chaincodes"`
+}
+
+func queryInstalled(n *Network, peer *Peer) func() []lifecycle.QueryInstalledChaincodesResult_InstalledChaincode {
+	return func() []lifecycle.QueryInstalledChaincodesResult_InstalledChaincode {
 		sess, err := n.PeerAdminSession(peer, commands.ChaincodeQueryInstalled{})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
