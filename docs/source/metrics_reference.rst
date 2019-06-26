@@ -6,262 +6,312 @@ Prometheus Metrics
 
 The following metrics are currently exported for consumption by Prometheus.
 
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| Name                                                | Type      | Description                                                | Labels             |
-+=====================================================+===========+============================================================+====================+
-| blockcutter_block_fill_duration                     | histogram | The time from first transaction enqueing to the block      | | channel          |
-|                                                     |           | being cut in seconds.                                      |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| broadcast_enqueue_duration                          | histogram | The time to enqueue a transaction in seconds.              | | channel          |
-|                                                     |           |                                                            | | type             |
-|                                                     |           |                                                            | | status           |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| broadcast_processed_count                           | counter   | The number of transactions processed.                      | | channel          |
-|                                                     |           |                                                            | | type             |
-|                                                     |           |                                                            | | status           |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| broadcast_validate_duration                         | histogram | The time to validate a transaction in seconds.             | | channel          |
-|                                                     |           |                                                            | | type             |
-|                                                     |           |                                                            | | status           |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| chaincode_execute_timeouts                          | counter   | The number of chaincode executions (Init or Invoke) that   | | chaincode        |
-|                                                     |           | have timed out.                                            |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| chaincode_launch_duration                           | histogram | The time to launch a chaincode.                            | | chaincode        |
-|                                                     |           |                                                            | | success          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| chaincode_launch_failures                           | counter   | The number of chaincode launches that have failed.         | | chaincode        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| chaincode_launch_timeouts                           | counter   | The number of chaincode launches that have timed out.      | | chaincode        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| chaincode_shim_request_duration                     | histogram | The time to complete chaincode shim requests.              | | type             |
-|                                                     |           |                                                            | | channel          |
-|                                                     |           |                                                            | | chaincode        |
-|                                                     |           |                                                            | | success          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| chaincode_shim_requests_completed                   | counter   | The number of chaincode shim requests completed.           | | type             |
-|                                                     |           |                                                            | | channel          |
-|                                                     |           |                                                            | | chaincode        |
-|                                                     |           |                                                            | | success          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| chaincode_shim_requests_received                    | counter   | The number of chaincode shim requests received.            | | type             |
-|                                                     |           |                                                            | | channel          |
-|                                                     |           |                                                            | | chaincode        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| cluster_comm_egress_queue_capacity                  | gauge     | Capacity of the egress queue.                              | | host             |
-|                                                     |           |                                                            | | msg_type         |
-|                                                     |           |                                                            | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| cluster_comm_egress_queue_length                    | gauge     | Length of the egress queue.                                | | host             |
-|                                                     |           |                                                            | | msg_type         |
-|                                                     |           |                                                            | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| cluster_comm_egress_queue_workers                   | gauge     | Count of egress queue workers.                             | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| cluster_comm_egress_stream_count                    | gauge     | Count of streams to other nodes.                           | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| cluster_comm_egress_tls_connection_count            | gauge     | Count of TLS connections to other nodes.                   |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| cluster_comm_ingress_stream_count                   | gauge     | Count of streams from other nodes.                         |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| cluster_comm_msg_dropped_count                      | counter   | Count of messages dropped.                                 | | host             |
-|                                                     |           |                                                            | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| cluster_comm_msg_send_time                          | histogram | The time it takes to send a message in seconds.            | | host             |
-|                                                     |           |                                                            | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_etcdraft_cluster_size                     | gauge     | Number of nodes in this channel.                           | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_etcdraft_committed_block_number           | gauge     | The block number of the latest block committed.            | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_etcdraft_config_proposals_received        | counter   | The total number of proposals received for config type     | | channel          |
-|                                                     |           | transactions.                                              |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_etcdraft_data_persist_duration            | histogram | The time taken for etcd/raft data to be persisted in       | | channel          |
-|                                                     |           | storage (in seconds).                                      |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_etcdraft_is_leader                        | gauge     | The leadership status of the current node: 1 if it is the  | | channel          |
-|                                                     |           | leader else 0.                                             |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_etcdraft_leader_changes                   | counter   | The number of leader changes since process start.          | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_etcdraft_normal_proposals_received        | counter   | The total number of proposals received for normal type     | | channel          |
-|                                                     |           | transactions.                                              |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_etcdraft_proposal_failures                | counter   | The number of proposal failures.                           | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_etcdraft_snapshot_block_number            | gauge     | The block number of the latest snapshot.                   | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_batch_size                          | gauge     | The mean batch size in bytes sent to topics.               | | topic            |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_compression_ratio                   | gauge     | The mean compression ratio (as percentage) for topics.     | | topic            |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_incoming_byte_rate                  | gauge     | Bytes/second read off brokers.                             | | broker_id        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_last_offset_persisted               | gauge     | The offset specified in the block metadata of the most     | | channel          |
-|                                                     |           | recently committed block.                                  |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_outgoing_byte_rate                  | gauge     | Bytes/second written to brokers.                           | | broker_id        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_record_send_rate                    | gauge     | The number of records per second sent to topics.           | | topic            |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_records_per_request                 | gauge     | The mean number of records sent per request to topics.     | | topic            |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_request_latency                     | gauge     | The mean request latency in ms to brokers.                 | | broker_id        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_request_rate                        | gauge     | Requests/second sent to brokers.                           | | broker_id        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_request_size                        | gauge     | The mean request size in bytes to brokers.                 | | broker_id        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_response_rate                       | gauge     | Requests/second sent to brokers.                           | | broker_id        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_response_size                       | gauge     | The mean response size in bytes from brokers.              | | broker_id        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| couchdb_processing_time                             | histogram | Time taken in seconds for the function to complete request | | database         |
-|                                                     |           | to CouchDB                                                 | | function_name    |
-|                                                     |           |                                                            | | result           |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| deliver_blocks_sent                                 | counter   | The number of blocks sent by the deliver service.          | | channel          |
-|                                                     |           |                                                            | | filtered         |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| deliver_requests_completed                          | counter   | The number of deliver requests that have been completed.   | | channel          |
-|                                                     |           |                                                            | | filtered         |
-|                                                     |           |                                                            | | success          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| deliver_requests_received                           | counter   | The number of deliver requests that have been received.    | | channel          |
-|                                                     |           |                                                            | | filtered         |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| deliver_streams_closed                              | counter   | The number of GRPC streams that have been closed for the   |                    |
-|                                                     |           | deliver service.                                           |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| deliver_streams_opened                              | counter   | The number of GRPC streams that have been opened for the   |                    |
-|                                                     |           | deliver service.                                           |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| dockercontroller_chaincode_container_build_duration | histogram | The time to build a chaincode image in seconds.            | | chaincode        |
-|                                                     |           |                                                            | | success          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| endorser_chaincode_instantiation_failures           | counter   | The number of chaincode instantiations or upgrade that     | | channel          |
-|                                                     |           | have failed.                                               | | chaincode        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| endorser_duplicate_transaction_failures             | counter   | The number of failed proposals due to duplicate            | | channel          |
-|                                                     |           | transaction ID.                                            | | chaincode        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| endorser_endorsement_failures                       | counter   | The number of failed endorsements.                         | | channel          |
-|                                                     |           |                                                            | | chaincode        |
-|                                                     |           |                                                            | | chaincodeerror   |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| endorser_proposal_acl_failures                      | counter   | The number of proposals that failed ACL checks.            | | channel          |
-|                                                     |           |                                                            | | chaincode        |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| endorser_proposal_duration                          | histogram | The time to complete a proposal.                           | | channel          |
-|                                                     |           |                                                            | | chaincode        |
-|                                                     |           |                                                            | | success          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| endorser_proposal_validation_failures               | counter   | The number of proposals that have failed initial           |                    |
-|                                                     |           | validation.                                                |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| endorser_proposals_received                         | counter   | The number of proposals received.                          |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| endorser_successful_proposals                       | counter   | The number of successful proposals.                        |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| fabric_version                                      | gauge     | The active version of Fabric.                              | | version          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_comm_messages_received                       | counter   | Number of messages received                                |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_comm_messages_sent                           | counter   | Number of messages sent                                    |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_comm_overflow_count                          | counter   | Number of outgoing queue buffer overflows                  |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_leader_election_leader                       | gauge     | Peer is leader (1) or follower (0)                         | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_membership_total_peers_known                 | gauge     | Total known peers                                          | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_payload_buffer_size                          | gauge     | Size of the payload buffer                                 | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_privdata_commit_block_duration               | histogram | Time it takes to commit private data and the corresponding | | channel          |
-|                                                     |           | block (in seconds)                                         |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_privdata_fetch_duration                      | histogram | Time it takes to fetch missing private data from peers (in | | channel          |
-|                                                     |           | seconds)                                                   |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_privdata_list_missing_duration               | histogram | Time it takes to list the missing private data (in         | | channel          |
-|                                                     |           | seconds)                                                   |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_privdata_pull_duration                       | histogram | Time it takes to pull a missing private data element (in   | | channel          |
-|                                                     |           | seconds)                                                   |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_privdata_purge_duration                      | histogram | Time it takes to purge private data (in seconds)           | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_privdata_reconciliation_duration             | histogram | Time it takes for reconciliation to complete (in seconds)  | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_privdata_retrieve_duration                   | histogram | Time it takes to retrieve missing private data elements    | | channel          |
-|                                                     |           | from the ledger (in seconds)                               |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_privdata_send_duration                       | histogram | Time it takes to send a missing private data element (in   | | channel          |
-|                                                     |           | seconds)                                                   |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_privdata_validation_duration                 | histogram | Time it takes to validate a block (in seconds)             | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_state_commit_duration                        | histogram | Time it takes to commit a block in seconds                 | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| gossip_state_height                                 | gauge     | Current ledger height                                      | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| grpc_comm_conn_closed                               | counter   | gRPC connections closed. Open minus closed is the active   |                    |
-|                                                     |           | number of connections.                                     |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| grpc_comm_conn_opened                               | counter   | gRPC connections opened. Open minus closed is the active   |                    |
-|                                                     |           | number of connections.                                     |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| grpc_server_stream_messages_received                | counter   | The number of stream messages received.                    | | service          |
-|                                                     |           |                                                            | | method           |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| grpc_server_stream_messages_sent                    | counter   | The number of stream messages sent.                        | | service          |
-|                                                     |           |                                                            | | method           |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| grpc_server_stream_request_duration                 | histogram | The time to complete a stream request.                     | | service          |
-|                                                     |           |                                                            | | method           |
-|                                                     |           |                                                            | | code             |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| grpc_server_stream_requests_completed               | counter   | The number of stream requests completed.                   | | service          |
-|                                                     |           |                                                            | | method           |
-|                                                     |           |                                                            | | code             |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| grpc_server_stream_requests_received                | counter   | The number of stream requests received.                    | | service          |
-|                                                     |           |                                                            | | method           |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| grpc_server_unary_request_duration                  | histogram | The time to complete a unary request.                      | | service          |
-|                                                     |           |                                                            | | method           |
-|                                                     |           |                                                            | | code             |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| grpc_server_unary_requests_completed                | counter   | The number of unary requests completed.                    | | service          |
-|                                                     |           |                                                            | | method           |
-|                                                     |           |                                                            | | code             |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| grpc_server_unary_requests_received                 | counter   | The number of unary requests received.                     | | service          |
-|                                                     |           |                                                            | | method           |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| ledger_block_processing_time                        | histogram | Time taken in seconds for ledger block processing.         | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| ledger_blockchain_height                            | gauge     | Height of the chain in blocks.                             | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| ledger_blockstorage_and_pvtdata_commit_time         | histogram | Time taken in seconds for committing the block and private | | channel          |
-|                                                     |           | data to storage.                                           |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| ledger_blockstorage_commit_time                     | histogram | Time taken in seconds for committing the block to storage. | | channel          |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| ledger_statedb_commit_time                          | histogram | Time taken in seconds for committing block changes to      | | channel          |
-|                                                     |           | state db.                                                  |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| ledger_transaction_count                            | counter   | Number of transactions processed.                          | | channel          |
-|                                                     |           |                                                            | | transaction_type |
-|                                                     |           |                                                            | | chaincode        |
-|                                                     |           |                                                            | | validation_code  |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| logging_entries_checked                             | counter   | Number of log entries checked against the active logging   | | level            |
-|                                                     |           | level                                                      |                    |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| logging_entries_written                             | counter   | Number of log entries that are written                     | | level            |
-+-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------------------------------------------------------------------+
+| Name                                                | Type      | Description                                                | Labels                                                                         |
++=====================================================+===========+============================================================+==================+=============================================================+
+| blockcutter_block_fill_duration                     | histogram | The time from first transaction enqueing to the block      | channel          |                                                             |
+|                                                     |           | being cut in seconds.                                      |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| broadcast_enqueue_duration                          | histogram | The time to enqueue a transaction in seconds.              | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | type             |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | status           |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| broadcast_processed_count                           | counter   | The number of transactions processed.                      | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | type             |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | status           |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| broadcast_validate_duration                         | histogram | The time to validate a transaction in seconds.             | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | type             |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | status           |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| chaincode_execute_timeouts                          | counter   | The number of chaincode executions (Init or Invoke) that   | chaincode        |                                                             |
+|                                                     |           | have timed out.                                            |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| chaincode_launch_duration                           | histogram | The time to launch a chaincode.                            | chaincode        |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | success          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| chaincode_launch_failures                           | counter   | The number of chaincode launches that have failed.         | chaincode        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| chaincode_launch_timeouts                           | counter   | The number of chaincode launches that have timed out.      | chaincode        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| chaincode_shim_request_duration                     | histogram | The time to complete chaincode shim requests.              | type             |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | chaincode        |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | success          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| chaincode_shim_requests_completed                   | counter   | The number of chaincode shim requests completed.           | type             |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | chaincode        |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | success          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| chaincode_shim_requests_received                    | counter   | The number of chaincode shim requests received.            | type             |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | chaincode        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| cluster_comm_egress_queue_capacity                  | gauge     | Capacity of the egress queue.                              | host             |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | msg_type         |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| cluster_comm_egress_queue_length                    | gauge     | Length of the egress queue.                                | host             |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | msg_type         |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| cluster_comm_egress_queue_workers                   | gauge     | Count of egress queue workers.                             | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| cluster_comm_egress_stream_count                    | gauge     | Count of streams to other nodes.                           | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| cluster_comm_egress_tls_connection_count            | gauge     | Count of TLS connections to other nodes.                   |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| cluster_comm_ingress_stream_count                   | gauge     | Count of streams from other nodes.                         |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| cluster_comm_msg_dropped_count                      | counter   | Count of messages dropped.                                 | host             |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| cluster_comm_msg_send_time                          | histogram | The time it takes to send a message in seconds.            | host             |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_etcdraft_cluster_size                     | gauge     | Number of nodes in this channel.                           | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_etcdraft_committed_block_number           | gauge     | The block number of the latest block committed.            | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_etcdraft_config_proposals_received        | counter   | The total number of proposals received for config type     | channel          |                                                             |
+|                                                     |           | transactions.                                              |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_etcdraft_data_persist_duration            | histogram | The time taken for etcd/raft data to be persisted in       | channel          |                                                             |
+|                                                     |           | storage (in seconds).                                      |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_etcdraft_is_leader                        | gauge     | The leadership status of the current node: 1 if it is the  | channel          |                                                             |
+|                                                     |           | leader else 0.                                             |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_etcdraft_leader_changes                   | counter   | The number of leader changes since process start.          | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_etcdraft_normal_proposals_received        | counter   | The total number of proposals received for normal type     | channel          |                                                             |
+|                                                     |           | transactions.                                              |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_etcdraft_proposal_failures                | counter   | The number of proposal failures.                           | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_etcdraft_snapshot_block_number            | gauge     | The block number of the latest snapshot.                   | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_kafka_batch_size                          | gauge     | The mean batch size in bytes sent to topics.               | topic            |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_kafka_compression_ratio                   | gauge     | The mean compression ratio (as percentage) for topics.     | topic            |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_kafka_incoming_byte_rate                  | gauge     | Bytes/second read off brokers.                             | broker_id        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_kafka_last_offset_persisted               | gauge     | The offset specified in the block metadata of the most     | channel          |                                                             |
+|                                                     |           | recently committed block.                                  |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_kafka_outgoing_byte_rate                  | gauge     | Bytes/second written to brokers.                           | broker_id        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_kafka_record_send_rate                    | gauge     | The number of records per second sent to topics.           | topic            |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_kafka_records_per_request                 | gauge     | The mean number of records sent per request to topics.     | topic            |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_kafka_request_latency                     | gauge     | The mean request latency in ms to brokers.                 | broker_id        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_kafka_request_rate                        | gauge     | Requests/second sent to brokers.                           | broker_id        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_kafka_request_size                        | gauge     | The mean request size in bytes to brokers.                 | broker_id        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_kafka_response_rate                       | gauge     | Requests/second sent to brokers.                           | broker_id        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| consensus_kafka_response_size                       | gauge     | The mean response size in bytes from brokers.              | broker_id        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| couchdb_processing_time                             | histogram | Time taken in seconds for the function to complete request | database         |                                                             |
+|                                                     |           | to CouchDB                                                 +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | function_name    |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | result           |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| deliver_blocks_sent                                 | counter   | The number of blocks sent by the deliver service.          | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | filtered         |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| deliver_requests_completed                          | counter   | The number of deliver requests that have been completed.   | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | filtered         |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | success          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| deliver_requests_received                           | counter   | The number of deliver requests that have been received.    | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | filtered         |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| deliver_streams_closed                              | counter   | The number of GRPC streams that have been closed for the   |                  |                                                             |
+|                                                     |           | deliver service.                                           |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| deliver_streams_opened                              | counter   | The number of GRPC streams that have been opened for the   |                  |                                                             |
+|                                                     |           | deliver service.                                           |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| dockercontroller_chaincode_container_build_duration | histogram | The time to build a chaincode image in seconds.            | chaincode        |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | success          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| endorser_chaincode_instantiation_failures           | counter   | The number of chaincode instantiations or upgrade that     | channel          |                                                             |
+|                                                     |           | have failed.                                               +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | chaincode        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| endorser_duplicate_transaction_failures             | counter   | The number of failed proposals due to duplicate            | channel          |                                                             |
+|                                                     |           | transaction ID.                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | chaincode        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| endorser_endorsement_failures                       | counter   | The number of failed endorsements.                         | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | chaincode        |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | chaincodeerror   |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| endorser_proposal_acl_failures                      | counter   | The number of proposals that failed ACL checks.            | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | chaincode        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| endorser_proposal_duration                          | histogram | The time to complete a proposal.                           | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | chaincode        |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | success          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| endorser_proposal_validation_failures               | counter   | The number of proposals that have failed initial           |                  |                                                             |
+|                                                     |           | validation.                                                |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| endorser_proposals_received                         | counter   | The number of proposals received.                          |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| endorser_successful_proposals                       | counter   | The number of successful proposals.                        |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| fabric_version                                      | gauge     | The active version of Fabric.                              | version          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_comm_messages_received                       | counter   | Number of messages received                                |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_comm_messages_sent                           | counter   | Number of messages sent                                    |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_comm_overflow_count                          | counter   | Number of outgoing queue buffer overflows                  |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_leader_election_leader                       | gauge     | Peer is leader (1) or follower (0)                         | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_membership_total_peers_known                 | gauge     | Total known peers                                          | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_payload_buffer_size                          | gauge     | Size of the payload buffer                                 | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_privdata_commit_block_duration               | histogram | Time it takes to commit private data and the corresponding | channel          |                                                             |
+|                                                     |           | block (in seconds)                                         |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_privdata_fetch_duration                      | histogram | Time it takes to fetch missing private data from peers (in | channel          |                                                             |
+|                                                     |           | seconds)                                                   |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_privdata_list_missing_duration               | histogram | Time it takes to list the missing private data (in         | channel          |                                                             |
+|                                                     |           | seconds)                                                   |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_privdata_pull_duration                       | histogram | Time it takes to pull a missing private data element (in   | channel          |                                                             |
+|                                                     |           | seconds)                                                   |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_privdata_purge_duration                      | histogram | Time it takes to purge private data (in seconds)           | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_privdata_reconciliation_duration             | histogram | Time it takes for reconciliation to complete (in seconds)  | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_privdata_retrieve_duration                   | histogram | Time it takes to retrieve missing private data elements    | channel          |                                                             |
+|                                                     |           | from the ledger (in seconds)                               |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_privdata_send_duration                       | histogram | Time it takes to send a missing private data element (in   | channel          |                                                             |
+|                                                     |           | seconds)                                                   |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_privdata_validation_duration                 | histogram | Time it takes to validate a block (in seconds)             | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_state_commit_duration                        | histogram | Time it takes to commit a block in seconds                 | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_state_height                                 | gauge     | Current ledger height                                      | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| grpc_comm_conn_closed                               | counter   | gRPC connections closed. Open minus closed is the active   |                  |                                                             |
+|                                                     |           | number of connections.                                     |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| grpc_comm_conn_opened                               | counter   | gRPC connections opened. Open minus closed is the active   |                  |                                                             |
+|                                                     |           | number of connections.                                     |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| grpc_server_stream_messages_received                | counter   | The number of stream messages received.                    | service          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | method           |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| grpc_server_stream_messages_sent                    | counter   | The number of stream messages sent.                        | service          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | method           |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| grpc_server_stream_request_duration                 | histogram | The time to complete a stream request.                     | service          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | method           |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | code             |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| grpc_server_stream_requests_completed               | counter   | The number of stream requests completed.                   | service          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | method           |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | code             |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| grpc_server_stream_requests_received                | counter   | The number of stream requests received.                    | service          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | method           |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| grpc_server_unary_request_duration                  | histogram | The time to complete a unary request.                      | service          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | method           |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | code             |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| grpc_server_unary_requests_completed                | counter   | The number of unary requests completed.                    | service          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | method           |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | code             |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| grpc_server_unary_requests_received                 | counter   | The number of unary requests received.                     | service          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | method           |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| ledger_block_processing_time                        | histogram | Time taken in seconds for ledger block processing.         | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| ledger_blockchain_height                            | gauge     | Height of the chain in blocks.                             | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| ledger_blockstorage_and_pvtdata_commit_time         | histogram | Time taken in seconds for committing the block and private | channel          |                                                             |
+|                                                     |           | data to storage.                                           |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| ledger_blockstorage_commit_time                     | histogram | Time taken in seconds for committing the block to storage. | channel          |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| ledger_statedb_commit_time                          | histogram | Time taken in seconds for committing block changes to      | channel          |                                                             |
+|                                                     |           | state db.                                                  |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| ledger_transaction_count                            | counter   | Number of transactions processed.                          | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | transaction_type |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | chaincode        |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | validation_code  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| logging_entries_checked                             | counter   | Number of log entries checked against the active logging   | level            |                                                             |
+|                                                     |           | level                                                      |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| logging_entries_written                             | counter   | Number of log entries that are written                     | level            |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
 
 
 StatsD Metrics
