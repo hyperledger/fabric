@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 )
 
-// Channel is a local struct to manage objects associated with a Channel.
+// Channel manages objects and configuration associated with a Channel.
 type Channel struct {
 	ledger ledger.PeerLedger
 	store  transientstore.Store
@@ -73,7 +73,7 @@ func (c *Channel) bundleUpdate(b *channelconfig.Bundle) {
 	c.lock.Unlock()
 }
 
-// Resources returns the channel configuration bundle.
+// Resources returns the active channel configuration bundle.
 func (c *Channel) Resources() channelconfig.Resources {
 	c.lock.RLock()
 	res := c.resources
@@ -118,8 +118,8 @@ func (c *Channel) GetMSPIDs() []string {
 	return mspIDs
 }
 
-// MSPManager returns the msp.MSPManager the channel that reflects the current
-// channel configuration. Users should not memoize references to this object.
+// MSPManager returns the msp.MSPManager that reflects the current channel
+// configuration. Users should not memoize references to this object.
 func (c *Channel) MSPManager() msp.MSPManager {
 	return c.Resources().MSPManager()
 }
@@ -134,8 +134,8 @@ func (c *Channel) Store() transientstore.Store {
 	return c.store
 }
 
-// Reader returns a blockledger.Reader backed by ledger associated with this
-// channel.
+// Reader returns a blockledger.Reader backed by the ledger associated with
+// this channel.
 func (c *Channel) Reader() blockledger.Reader {
 	return fileledger.NewFileLedger(fileLedgerBlockStore{c.ledger})
 }

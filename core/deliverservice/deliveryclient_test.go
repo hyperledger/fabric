@@ -810,7 +810,7 @@ func TestCredSupportDialerFactory(t *testing.T) {
 	}
 
 	_, err := dialerFactory.Dialer("no-such-channel")(":0")
-	assert.Error(t, err, "expected error when cnofigured to use tls an no certs")
+	assert.Error(t, err, "expected error when cnofigured to use tls and no certs")
 	assert.Contains(t, err.Error(), "failed obtaining credentials for channel no-such-channel")
 
 	dialerFactory.TLSEnabled = false

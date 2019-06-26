@@ -314,7 +314,7 @@ func (c *CredSupportDialerFactory) Dialer(channelID string) func(endpoint string
 		}
 		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(c.KeepaliveOptions)...)
 
-		if c.TLSEnabled && c.CredentialSupport != nil {
+		if c.TLSEnabled {
 			creds, err := c.CredentialSupport.GetDeliverServiceCredentials(channelID)
 			if err != nil {
 				return nil, fmt.Errorf("failed obtaining credentials for channel %s: %v", channelID, err)
