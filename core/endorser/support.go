@@ -18,7 +18,6 @@ import (
 	. "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/core/handlers/library"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
@@ -26,12 +25,19 @@ import (
 	"github.com/pkg/errors"
 )
 
+// PeerOperations contains the peer operatiosn required to support the
+// endorser.
+type PeerOperations interface {
+	GetApplicationConfig(cid string) (channelconfig.Application, bool)
+	GetLedger(cid string) ledger.PeerLedger
+}
+
 // SupportImpl provides an implementation of the endorser.Support interface
 // issuing calls to various static methods of the peer
 type SupportImpl struct {
 	*PluginEndorser
 	identity.SignerSerializer
-	Peer             peer.Operations
+	Peer             PeerOperations
 	ChaincodeSupport *chaincode.ChaincodeSupport
 	SysCCProvider    *scc.Provider
 	ACLProvider      aclmgmt.ACLProvider
