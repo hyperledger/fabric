@@ -303,6 +303,7 @@ func KeepaliveOptions() *comm.KeepaliveOptions {
 type CredSupportDialerFactory struct {
 	CredentialSupport *comm.CredentialSupport
 	KeepaliveOptions  *comm.KeepaliveOptions
+	TLSEnabled        bool
 }
 
 func (c *CredSupportDialerFactory) Dialer(channelID string) func(endpoint string) (*grpc.ClientConn, error) {
@@ -313,7 +314,7 @@ func (c *CredSupportDialerFactory) Dialer(channelID string) func(endpoint string
 		}
 		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(c.KeepaliveOptions)...)
 
-		if c.CredentialSupport != nil {
+		if c.TLSEnabled && c.CredentialSupport != nil {
 			creds, err := c.CredentialSupport.GetDeliverServiceCredentials(channelID)
 			if err != nil {
 				return nil, fmt.Errorf("failed obtaining credentials for channel %s: %v", channelID, err)
