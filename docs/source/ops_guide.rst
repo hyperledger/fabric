@@ -21,4 +21,5 @@ Operations Guides
    logging-control
    enable_tls
    raft_configuration.md
+   kafka_raft_migration.md
    kafka
