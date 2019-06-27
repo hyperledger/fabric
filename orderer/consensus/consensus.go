@@ -26,6 +26,17 @@ type Consenter interface {
 	HandleChain(support ConsenterSupport, metadata *cb.Metadata) (Chain, error)
 }
 
+// MetadataValidator performs the validation of updates to ConsensusMetadata during config updates to the channel.
+// NOTE: We expect the MetadataValidator interface to be optionally implemented by the Consenter implementation.
+//       If a Consenter does not implement MetadataValidator, we default to using a no-op MetadataValidator.
+type MetadataValidator interface {
+	// ValidateConsensusMetadata determines the validity of a ConsensusMetadata update during config
+	// updates on the channel.
+	// Since the ConsensusMetadata is specific to the consensus implementation (independent of the particular
+	// chain) this validation also needs to be implemented by the specific consensus implementation.
+	ValidateConsensusMetadata(oldMetadata, newMetadata []byte, newChannel bool) error
+}
+
 // Chain defines a way to inject messages for ordering.
 // Note, that in order to allow flexibility in the implementation, it is the responsibility of the implementer
 // to take the ordered messages, send them through the blockcutter.Receiver supplied via HandleChain to cut blocks,
@@ -114,4 +125,14 @@ type ConsenterSupport interface {
 	// Append appends a new block to the ledger in its raw form,
 	// unlike WriteBlock that also mutates its metadata.
 	Append(block *cb.Block) error
+}
+
+// NoOpMetadataValidator implements a MetadataValidator that always returns nil error irrespecttive of the inputs.
+type NoOpMetadataValidator struct {
+}
+
+// ValidateConsensusMetadata determines the validity of a ConsensusMetadata update during config updates
+// on the channel, and it always returns nil error for the NoOpMetadataValidator implementation.
+func (n NoOpMetadataValidator) ValidateConsensusMetadata(oldMetadataBytes, newMetadataBytes []byte, newChannel bool) error {
+	return nil
 }

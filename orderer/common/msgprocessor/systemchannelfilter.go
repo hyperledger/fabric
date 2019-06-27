@@ -34,15 +34,17 @@ type LimitedSupport interface {
 
 // SystemChainFilter implements the filter.Rule interface.
 type SystemChainFilter struct {
-	cc      ChainCreator
-	support LimitedSupport
+	cc        ChainCreator
+	support   LimitedSupport
+	validator MetadataValidator
 }
 
 // NewSystemChannelFilter returns a new instance of a *SystemChainFilter.
-func NewSystemChannelFilter(ls LimitedSupport, cc ChainCreator) *SystemChainFilter {
+func NewSystemChannelFilter(ls LimitedSupport, cc ChainCreator, validator MetadataValidator) *SystemChainFilter {
 	return &SystemChainFilter{
-		support: ls,
-		cc:      cc,
+		support:   ls,
+		cc:        cc,
+		validator: validator,
 	}
 }
 
@@ -152,6 +154,17 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 	oc, ok := bundle.OrdererConfig()
 	if !ok {
 		return errors.New("config is missing orderer group")
+	}
+	newMetadata := oc.ConsensusMetadata()
+
+	oldOrdererConfig, ok := scf.support.OrdererConfig()
+	if !ok {
+		logger.Panic("old config is missing orderer group")
+	}
+	oldMetadata := oldOrdererConfig.ConsensusMetadata()
+
+	if err = scf.validator.ValidateConsensusMetadata(oldMetadata, newMetadata, true); err != nil {
+		return errors.Wrap(err, "consensus metadata update for channel creation is invalid")
 	}
 
 	if err = oc.Capabilities().Supported(); err != nil {
