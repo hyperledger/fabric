@@ -204,7 +204,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			exitCode := network.CreateChannelExitCode(channel, orderer, peer1org1, peer1org1, peer1org2, orderer)
 			Expect(exitCode).NotTo(Equal(0))
 			Consistently(process.Wait).ShouldNot(Receive()) // malformed tx should not crash orderer
-			Expect(runner.Err()).To(gbytes.Say(`rejected by Configure: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
+			Expect(runner.Err()).To(gbytes.Say(`invalid new config metdadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 
 			By("Submitting channel config update with illegal value")
 			channel = network.SystemChannel.Name
@@ -232,7 +232,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			sess := nwo.UpdateOrdererConfigSession(network, orderer, channel, config, updatedConfig, peer1org1, orderer)
 			Expect(sess.ExitCode()).NotTo(Equal(0))
-			Expect(sess.Err).NotTo(gbytes.Say("Successfully submitted channel update"))
+			Expect(sess.Err).To(gbytes.Say(`invalid new config metdadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 		})
 	})
 

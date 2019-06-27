@@ -144,10 +144,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		return nil, errors.Wrapf(err, "failed to read Raft metadata")
 	}
 
-	consenters := map[uint64]*etcdraft.Consenter{}
-	for i, consenter := range m.Consenters {
-		consenters[blockMetadata.ConsenterIds[i]] = consenter
-	}
+	consenters := CreateConsentersMap(blockMetadata, m)
 
 	id, err := c.detectSelfID(consenters)
 	if err != nil {
@@ -213,6 +210,52 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		func() (BlockPuller, error) { return newBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster) },
 		nil,
 	)
+}
+
+// ValidateConsensusMetadata determines the validity of a
+// ConsensusMetadata update during config updates on the channel.
+// Since the ConsensusMetadata is specific to the consensus implementation (independent of the particular
+// chain) this validation also needs to be implemented by the specific consensus implementation.
+func (c *Consenter) ValidateConsensusMetadata(oldMetadataBytes, newMetadataBytes []byte, newChannel bool) error {
+	// metadata was not updated
+	if newMetadataBytes == nil {
+		return nil
+	}
+	if oldMetadataBytes == nil {
+		c.Logger.Panic("Programming Error: ValidateConsensusMetadata called with nil old metadata")
+	}
+
+	oldMetadata := &etcdraft.ConfigMetadata{}
+	if err := proto.Unmarshal(oldMetadataBytes, oldMetadata); err != nil {
+		c.Logger.Panicf("Programming Error: Failed to unmarshal old etcdraft consensus metadata: %v", err)
+	}
+	newMetadata := &etcdraft.ConfigMetadata{}
+	if err := proto.Unmarshal(newMetadataBytes, newMetadata); err != nil {
+		return errors.Wrap(err, "failed to unmarshal new etcdraft metadata configuration")
+	}
+
+	err := CheckConfigMetadata(newMetadata)
+	if err != nil {
+		return errors.Wrap(err, "invalid new config metdadata")
+	}
+
+	if newChannel {
+		// check if the consenters are a subset of the existing consenters (system channel consenters)
+		set := ConsentersToMap(oldMetadata.Consenters)
+		for _, c := range newMetadata.Consenters {
+			if _, exits := set[string(c.ClientTlsCert)]; !exits {
+				return errors.New("new channel has consenter that is not part of system consenter set")
+			}
+		}
+		return nil
+	}
+
+	// create the dummy parameters for ComputeMembershipChanges
+	dummyOldBlockMetadata, _ := ReadBlockMetadata(nil, oldMetadata)
+	dummyOldConsentersMap := CreateConsentersMap(dummyOldBlockMetadata, oldMetadata)
+	_, err = ComputeMembershipChanges(dummyOldBlockMetadata, dummyOldConsentersMap, newMetadata.Consenters)
+
+	return err
 }
 
 // ReadBlockMetadata attempts to read raft metadata from block metadata, if available.
