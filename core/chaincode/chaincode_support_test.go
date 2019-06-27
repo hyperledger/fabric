@@ -42,7 +42,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -255,9 +254,6 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, func(), error) {
 		UserRunsCC:             userRunsCC,
 	}
 	ipRegistry.ChaincodeSupport = chaincodeSupport
-
-	// Mock policy checker
-	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
 	ccp := &CCProviderImpl{cs: chaincodeSupport}
 

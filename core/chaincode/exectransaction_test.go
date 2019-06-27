@@ -192,9 +192,6 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	ipRegistry.ChaincodeSupport = chaincodeSupport
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
-	// Mock policy checker
-	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
-
 	ccp := &CCProviderImpl{cs: chaincodeSupport}
 	sccp.RegisterSysCC(lsccImpl)
 

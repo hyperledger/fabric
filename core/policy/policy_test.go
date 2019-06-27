@@ -38,38 +38,6 @@ func TestCheckPolicyInvalidArgs(t *testing.T) {
 	assert.Contains(t, err.Error(), "Failed to get policy manager for channel [B]")
 }
 
-func TestRegisterPolicyCheckerFactoryInvalidArgs(t *testing.T) {
-	RegisterPolicyCheckerFactory(nil)
-	assert.Panics(t, func() {
-		GetPolicyChecker()
-	})
-
-	RegisterPolicyCheckerFactory(nil)
-}
-
-func TestRegisterPolicyCheckerFactory(t *testing.T) {
-	policyManagerGetter := &mocks.MockChannelPolicyManagerGetter{
-		Managers: map[string]policies.Manager{
-			"A": &mocks.MockChannelPolicyManager{
-				MockPolicy: &mocks.MockPolicy{
-					Deserializer: &mocks.MockIdentityDeserializer{
-						Identity: []byte("Alice"),
-						Msg:      []byte("msg1"),
-					},
-				},
-			},
-		},
-	}
-	pc := &policyChecker{channelPolicyManagerGetter: policyManagerGetter}
-
-	factory := &MockPolicyCheckerFactory{}
-	factory.On("NewPolicyChecker").Return(pc)
-
-	RegisterPolicyCheckerFactory(factory)
-	pc2 := GetPolicyChecker()
-	assert.Equal(t, pc, pc2)
-}
-
 func TestCheckPolicyBySignedDataInvalidArgs(t *testing.T) {
 	policyManagerGetter := &mocks.MockChannelPolicyManagerGetter{
 		Managers: map[string]policies.Manager{
