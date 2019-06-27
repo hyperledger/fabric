@@ -17,7 +17,7 @@ import (
 
 // Provider implements sysccprovider.SystemChaincodeProvider
 type Provider struct {
-	Peer      peer.Operations
+	Peer      *peer.Peer
 	Registrar Registrar
 	SysCCs    []SelfDescribingSysCC
 	Whitelist Whitelist
