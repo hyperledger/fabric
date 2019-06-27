@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc/cscc/mocks"
 	"github.com/hyperledger/fabric/core/transientstore"
+	"github.com/hyperledger/fabric/gossip/gossip"
 	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
@@ -224,18 +225,21 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		defaultDeliverClientDialOpts,
 		comm.ClientKeepaliveOptions(comm.DefaultKeepaliveOptions)...,
 	)
+	gossipConfig, err := gossip.GlobalConfig(peerEndpoint, nil)
+	assert.NoError(t, err)
 
 	gossipService, err := service.New(
 		signer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
 		peerEndpoint,
 		grpcServer,
-		nil,
 		messageCryptoService,
 		secAdv,
 		defaultSecureDialOpts,
 		nil,
 		defaultDeliverClientDialOpts,
+		gossipConfig,
+		&service.ServiceConfig{},
 	)
 	assert.NoError(t, err)
 
