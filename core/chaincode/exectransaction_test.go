@@ -174,7 +174,10 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		StartupTimeout:  globalConfig.StartupTimeout,
 	}
 	chaincodeSupport := &ChaincodeSupport{
-		ACLProvider:            aclmgmt.NewACLProvider(func(string) channelconfig.Resources { return nil }),
+		ACLProvider: aclmgmt.NewACLProvider(
+			func(string) channelconfig.Resources { return nil },
+			(&mockPolicyCheckerFactory{}).NewPolicyChecker(),
+		),
 		AppConfig:              peer.Default,
 		DeployedCCInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
 		ExecuteTimeout:         globalConfig.ExecuteTimeout,
