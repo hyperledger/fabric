@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc/cscc/mocks"
@@ -189,7 +190,7 @@ func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.Chainc
 func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	viper.Set("chaincode.executetimeout", "3s")
 
-	cleanup, err := peer.MockInitialize()
+	cleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(nil)
 	if err != nil {
 		t.Fatalf("Failed to initialize peer: %s", err)
 	}

@@ -197,14 +197,16 @@ func TestCreateChannel(t *testing.T) {
 }
 
 func TestDeliverSupportManager(t *testing.T) {
-	// reset chains for testing
-	MockInitialize()
+	Default.mutex.Lock()
+	Default.channels = make(map[string]*Channel)
+	Default.mutex.Unlock()
 
 	manager := &DeliverChainManager{}
 	chainSupport := manager.GetChain("fake")
 	assert.Nil(t, chainSupport, "chain support should be nil")
 
-	MockCreateChain("testchain")
+	Default.channels["testchain"] = &Channel{}
+
 	chainSupport = manager.GetChain("testchain")
 	assert.NotNil(t, chainSupport, "chain support should not be nil")
 }
