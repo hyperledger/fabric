@@ -14,17 +14,21 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
+// LedgerGetter gets the PeerLedger associated with a channel.
+type LedgerGetter interface {
+	GetLedger(cid string) ledger.PeerLedger
+}
+
 // New returns an instance of QSCC.
 // Typically this is called once per peer.
-func New(aclProvider aclmgmt.ACLProvider, peer peer.Operations) *LedgerQuerier {
+func New(aclProvider aclmgmt.ACLProvider, ledgers LedgerGetter) *LedgerQuerier {
 	return &LedgerQuerier{
 		aclProvider: aclProvider,
-		peer:        peer,
+		ledgers:     ledgers,
 	}
 }
 
@@ -43,7 +47,7 @@ func (e *LedgerQuerier) Enabled() bool             { return true }
 // - GetTransactionByID returns a transaction
 type LedgerQuerier struct {
 	aclProvider aclmgmt.ACLProvider
-	peer        peer.Operations
+	ledgers     LedgerGetter
 }
 
 var qscclogger = flogging.MustGetLogger("qscc")
@@ -86,7 +90,7 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return shim.Error(fmt.Sprintf("missing 3rd argument for %s", fname))
 	}
 
-	targetLedger := e.peer.GetLedger(cid)
+	targetLedger := e.ledgers.GetLedger(cid)
 	if targetLedger == nil {
 		return shim.Error(fmt.Sprintf("Invalid chain ID, %s", cid))
 	}

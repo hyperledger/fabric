@@ -798,3 +798,23 @@ func TestToEndpointCriteria(t *testing.T) {
 		})
 	}
 }
+
+func TestCredSupportDialerFactory(t *testing.T) {
+	viper.Set("peer.deliveryclient.connTimeout", "500ms")
+	defer viper.Set("peer.deliveryclient.connTimeout", defaultConnectionTimeout.String())
+
+	dialerFactory := &CredSupportDialerFactory{
+		CredentialSupport: comm.NewCredentialSupport(),
+		KeepaliveOptions:  comm.DefaultKeepaliveOptions,
+		TLSEnabled:        true,
+	}
+
+	_, err := dialerFactory.Dialer("no-such-channel")(":0")
+	assert.Error(t, err, "expected error when cnofigured to use tls and no certs")
+	assert.Contains(t, err.Error(), "failed obtaining credentials for channel no-such-channel")
+
+	dialerFactory.TLSEnabled = false
+	_, err = dialerFactory.Dialer("no-such-channel")(":0")
+	assert.Error(t, err, "expected error when dialing an invalid address")
+	assert.Equal(t, context.DeadlineExceeded, err, "expected a DeadlineExceeded error")
+}

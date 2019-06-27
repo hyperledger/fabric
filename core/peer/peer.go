@@ -169,15 +169,7 @@ func (c *configSupport) GetChannelConfig(cid string) cc.Config {
 	return channel.Resources().ConfigtxValidator()
 }
 
-// Operations exposes an interface to the package level functions that operated
-// on singletons in the package. This is a step towards moving from package
-// level data for the peer to instance level data.
-type Operations interface {
-	GetApplicationConfig(cid string) (channelconfig.Application, bool)
-	GetLedger(cid string) ledger.PeerLedger
-	GetPolicyManager(cid string) policies.Manager
-}
-
+// A Peer holds references to subsystems and channels associated with a Fabric peer.
 type Peer struct {
 	Server            *comm.GRPCServer
 	ServerConfig      comm.ServerConfig

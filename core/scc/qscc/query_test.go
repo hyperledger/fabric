@@ -39,18 +39,18 @@ func setupTestLedger(chainid string, path string) (*shimtest.MockStub, *peer.Pee
 		return nil, nil, nil, err
 	}
 
-	p := &peer.Peer{}
-	peer.CreateMockChannel(p, chainid)
+	peerInstance := &peer.Peer{}
+	peer.CreateMockChannel(peerInstance, chainid)
 
 	lq := &LedgerQuerier{
 		aclProvider: mockAclProvider,
-		peer:        p,
+		ledgers:     peerInstance,
 	}
 	stub := shimtest.NewMockStub("LedgerQuerier", lq)
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
-		return nil, p, cleanup, fmt.Errorf("Init failed for test ledger [%s] with message: %s", chainid, string(res.Message))
+		return nil, peerInstance, cleanup, fmt.Errorf("Init failed for test ledger [%s] with message: %s", chainid, string(res.Message))
 	}
-	return stub, p, cleanup, nil
+	return stub, peerInstance, cleanup, nil
 }
 
 //pass the prop so we can conveniently inline it in the call and get it back
@@ -195,7 +195,7 @@ func TestFailingAccessControl(t *testing.T) {
 	defer cleanup()
 	e := &LedgerQuerier{
 		aclProvider: mockAclProvider,
-		peer:        p,
+		ledgers:     p,
 	}
 	stub := shimtest.NewMockStub("LedgerQuerier", e)
 
