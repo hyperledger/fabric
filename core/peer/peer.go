@@ -120,10 +120,12 @@ func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
 //
 
 // DeliverChainManager provides access to a channel for performing deliver
-type DeliverChainManager struct{}
+type DeliverChainManager struct {
+	Peer *Peer
+}
 
-func (DeliverChainManager) GetChain(chainID string) deliver.Chain {
-	if channel := Default.Channel(chainID); channel != nil {
+func (d DeliverChainManager) GetChain(chainID string) deliver.Chain {
+	if channel := d.Peer.Channel(chainID); channel != nil {
 		return channel
 	}
 	return nil
@@ -144,18 +146,22 @@ func (flbs fileLedgerBlockStore) RetrieveBlocks(startBlockNumber uint64) (common
 }
 
 // NewConfigSupport returns
-func NewConfigSupport() cc.Manager {
-	return &configSupport{}
+func NewConfigSupport(peer *Peer) cc.Manager {
+	return &configSupport{
+		peer: peer,
+	}
 }
 
-type configSupport struct{}
+type configSupport struct {
+	peer *Peer
+}
 
 // GetChannelConfig returns an instance of a object that represents
 // current channel configuration tree of the specified channel. The
 // ConfigProto method of the returned object can be used to get the
 // proto representing the channel configuration.
-func (*configSupport) GetChannelConfig(cid string) cc.Config {
-	channel := Default.Channel(cid)
+func (c *configSupport) GetChannelConfig(cid string) cc.Config {
+	channel := c.peer.Channel(cid)
 	if channel == nil {
 		peerLogger.Errorf("[channel %s] channel not associated with this peer", cid)
 		return nil
@@ -190,10 +196,6 @@ type Peer struct {
 	mutex    sync.RWMutex
 	channels map[string]*Channel
 }
-
-// Default provides in implementation of the Peer that provides
-// access to the package level state.
-var Default *Peer = &Peer{}
 
 func (p *Peer) openStore(cid string) (transientstore.Store, error) {
 	store, err := p.StoreProvider.OpenStore(cid)

@@ -248,7 +248,6 @@ func serve(args []string) error {
 	defer gossipService.Stop()
 
 	peerInstance.GossipService = gossipService
-	peer.Default = peerInstance
 
 	policyChecker := policy.NewPolicyChecker(
 		policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager),
@@ -374,7 +373,12 @@ func serve(args []string) error {
 
 	metrics := deliver.NewMetrics(metricsProvider)
 	abServer := &peer.DeliverServer{
-		DeliverHandler:        deliver.NewHandler(&peer.DeliverChainManager{}, coreConfig.AuthenticationTimeWindow, mutualTLS, metrics),
+		DeliverHandler: deliver.NewHandler(
+			&peer.DeliverChainManager{Peer: peerInstance},
+			coreConfig.AuthenticationTimeWindow,
+			mutualTLS,
+			metrics,
+		),
 		PolicyCheckerProvider: policyCheckerProvider,
 	}
 	pb.RegisterDeliverServer(peerServer.Server(), abServer)
