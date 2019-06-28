@@ -195,7 +195,7 @@ token: $(BUILD_DIR)/bin/token
 integration-test: gotool.ginkgo ccenv baseos docker-thirdparty
 	./scripts/run-integration-tests.sh
 
-unit-test: unit-test-clean peer-docker docker-thirdparty ccenv baseos
+unit-test: unit-test-clean docker-thirdparty ccenv baseos
 	./scripts/run-unit-tests.sh
 
 unit-tests: unit-test
