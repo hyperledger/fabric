@@ -60,7 +60,7 @@ cat docs/wrappers/peer_logging_postscript.md >> $DOC
 DOC=docs/source/commands/peernode.md
 cat docs/wrappers/peer_node_preamble.md > $DOC
 
-for x in "peer node start" "peer node status"; do
+for x in "peer node start" "peer node status" "peer node reset" "peer node rollback"; do
   echo "" >> $DOC
   echo "##" $x >> $DOC
   echo "\`\`\`" >> $DOC

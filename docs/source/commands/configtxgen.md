@@ -14,6 +14,8 @@ to accomplish a number of tasks.
 Usage of configtxgen:
   -asOrg string
     	Performs the config generation as a particular organization (by name), only including values in the write set that org (likely) has privilege to set
+  -channelCreateTxBaseProfile string
+    	Specifies a profile to consider as the orderer system channel current state to allow modification of non-application parameters during channel create tx generation. Only valid in conjuction with 'outputCreateChannelTx'.
   -channelID string
     	The channel ID to use in the configtx
   -configPath string

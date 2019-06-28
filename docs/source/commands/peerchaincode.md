@@ -78,9 +78,9 @@ Flags:
       --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
   -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
   -h, --help                           help for install
-  -l, --lang string                    Language of chaincode, either "golang" (default), "node", or "java"
+  -l, --lang string                    Language the chaincode is written in (default "golang")
   -n, --name string                    Name of the chaincode
-  -p, --path string                    Path to chaincode, for "golang" use relative path from $GOPATH/src, for "node" or "java" use absolute path
+  -p, --path string                    Path to chaincode
       --peerAddresses stringArray      The addresses of the peers to connect to
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
   -v, --version string                 Version of the chaincode specified in install/instantiate/upgrade commands
@@ -205,9 +205,9 @@ Flags:
   -c, --ctor string                 Constructor message for the chaincode in JSON format (default "{}")
   -h, --help                        help for package
   -i, --instantiate-policy string   instantiation policy for the chaincode
-  -l, --lang string                 Language of chaincode, either "golang" (default), "node", or "java"
+  -l, --lang string                 Language the chaincode is written in (default "golang")
   -n, --name string                 Name of the chaincode
-  -p, --path string                 Path to chaincode, for "golang" use relative path from $GOPATH/src, for "node" or "java" use absolute path
+  -p, --path string                 Path to chaincode
   -S, --sign                        if creating CC deployment spec package for owner endorsements, also sign it with local MSP
   -v, --version string              Version of the chaincode specified in install/instantiate/upgrade commands
 
@@ -292,9 +292,9 @@ Flags:
   -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
   -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
   -h, --help                           help for upgrade
-  -l, --lang string                    Language of chaincode, either "golang" (default), "node", or "java"
+  -l, --lang string                    Language the chaincode is written in (default "golang")
   -n, --name string                    Name of the chaincode
-  -p, --path string                    Path to chaincode, for "golang" use relative path from $GOPATH/src, for "node" or "java" use absolute path
+  -p, --path string                    Path to chaincode
       --peerAddresses stringArray      The addresses of the peers to connect to
   -P, --policy string                  The endorsement policy associated to this chaincode
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
