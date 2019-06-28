@@ -26,15 +26,15 @@ func rollbackCmd() *cobra.Command {
 	nodeRollbackCmd.ResetFlags()
 	flags := nodeRollbackCmd.Flags()
 	flags.StringVarP(&channelID, "channelID", "c", common.UndefinedParamValue, "Channel to rollback.")
-	flags.Uint64VarP(&blockNumber, "blockNumber", "b", 0, "Block number to which the channel needs to be rollbacked to.")
+	flags.Uint64VarP(&blockNumber, "blockNumber", "b", 0, "Block number to which the channel needs to be rolled back to.")
 
 	return nodeRollbackCmd
 }
 
 var nodeRollbackCmd = &cobra.Command{
 	Use:   "rollback",
-	Short: "Rollbacks a channel.",
-	Long:  `Rollbacks a channel to a specified block number. When the command is executed, the peer must be offline. When the peer starts after the rollback, it will receive blocks, which got removed during the rollback, from an orderer or another peer to rebuild the block store and state database.`,
+	Short: "Rolls back a channel.",
+	Long:  `Rolls back a channel to a specified block number. When the command is executed, the peer must be offline. When the peer starts after the rollback, it will receive blocks, which got removed during the rollback, from an orderer or another peer to rebuild the block store and state database.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if channelID == common.UndefinedParamValue {
 			return errors.New("Must supply channel ID")
