@@ -118,7 +118,7 @@ var _ bool = Describe("Rollback & Reset Ledger", func() {
 
 	}
 
-	It("rollbacks the ledger to a past block", func() {
+	It("rolls back the ledger to a past block", func() {
 		org2peer0 := setup.network.Peer("org2", "peer0")
 		// block 0: genesis, block 1: org1Anchor, block 2: org2Anchor, block 3: org3Anchor
 		// block 4: chaincode instantiation, block 5 to 9: chaincode invoke to add marbles.

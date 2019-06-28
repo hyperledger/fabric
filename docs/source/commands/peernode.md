@@ -49,13 +49,13 @@ Flags:
 
 ## peer node rollback
 ```
-Rollbacks a channel to a specified block number. When the command is executed, the peer must be offline. When the peer starts after the rollback, it will receive blocks, which got removed during the rollback, from an orderer or another peer to rebuild the block store and state database.
+Rolls back a channel to a specified block number. When the command is executed, the peer must be offline. When the peer starts after the rollback, it will receive blocks, which got removed during the rollback, from an orderer or another peer to rebuild the block store and state database.
 
 Usage:
   peer node rollback [flags]
 
 Flags:
-  -b, --blockNumber uint   Block number to which the channel needs to be rollbacked to.
+  -b, --blockNumber uint   Block number to which the channel needs to be rolled back to.
   -c, --channelID string   Channel to rollback.
   -h, --help               help for rollback
 ```

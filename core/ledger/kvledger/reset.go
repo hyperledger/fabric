@@ -12,7 +12,7 @@ import (
 
 // ResetAllKVLedgers resets all ledger to the genesis block.
 func ResetAllKVLedgers() error {
-	logger.Info("Resetting all ledgers to genesis block")
+	logger.Info("Resetting all channel ledgers to genesis block")
 	ledgerDataFolder := ledgerconfig.GetRootPath()
 	logger.Infof("Ledger data folder from config = [%s]", ledgerDataFolder)
 
@@ -23,7 +23,7 @@ func ResetAllKVLedgers() error {
 	if err := resetBlockStorage(); err != nil {
 		return err
 	}
-	logger.Info("Done!")
+	logger.Info("All channel ledgers have been successfully reset to the genesis block")
 	return nil
 }
 

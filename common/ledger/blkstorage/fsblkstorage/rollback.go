@@ -35,12 +35,12 @@ func Rollback(blockStorageDir, ledgerID string, targetBlockNum uint64, indexConf
 		return err
 	}
 
-	logger.Infof("Rollbacking block index to block number [%d]", targetBlockNum)
+	logger.Infof("Rolling back block index to block number [%d]", targetBlockNum)
 	if err := r.rollbackBlockIndex(); err != nil {
 		return err
 	}
 
-	logger.Infof("Rollbacking block files to block number [%d]", targetBlockNum)
+	logger.Infof("Rolling back block files to block number [%d]", targetBlockNum)
 	if err := r.rollbackBlockFiles(); err != nil {
 		return err
 	}

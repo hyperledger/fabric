@@ -23,6 +23,10 @@ func RollbackKVLedger(ledgerID string, blockNum uint64) error {
 		return err
 	}
 
-	logger.Info("Rollbacking ledger store")
-	return ledgerstorage.Rollback(blockstorePath, ledgerID, blockNum)
+	logger.Info("Rolling back ledger store")
+	if err := ledgerstorage.Rollback(blockstorePath, ledgerID, blockNum); err != nil {
+		return err
+	}
+	logger.Infof("The channel [%s] has been successfully rolled back to the block number [%d]", ledgerID, blockNum)
+	return nil
 }
