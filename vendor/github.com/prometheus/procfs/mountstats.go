@@ -181,11 +181,11 @@ type NFSOperationStats struct {
 	// Number of bytes received for this operation, including RPC headers and payload.
 	BytesReceived uint64
 	// Duration all requests spent queued for transmission before they were sent.
-	CumulativeQueueTime time.Duration
+	CumulativeQueueMilliseconds uint64
 	// Duration it took to get a reply back after the request was transmitted.
-	CumulativeTotalResponseTime time.Duration
+	CumulativeTotalResponseMilliseconds uint64
 	// Duration from when a request was enqueued to when it was completely handled.
-	CumulativeTotalRequestTime time.Duration
+	CumulativeTotalRequestMilliseconds uint64
 }
 
 // A NFSTransportStats contains statistics for the NFS mount RPC requests and
@@ -204,7 +204,7 @@ type NFSTransportStats struct {
 	// spent waiting for connections to the server to be established.
 	ConnectIdleTime uint64
 	// Duration since the NFS mount last saw any RPC traffic.
-	IdleTime time.Duration
+	IdleTimeSeconds uint64
 	// Number of RPC requests for this mount sent to the NFS server.
 	Sends uint64
 	// Number of RPC responses for this mount received from the NFS server.
@@ -524,15 +524,15 @@ func parseNFSOperationStats(s *bufio.Scanner) ([]NFSOperationStats, error) {
 		}
 
 		ops = append(ops, NFSOperationStats{
-			Operation:                   strings.TrimSuffix(ss[0], ":"),
-			Requests:                    ns[0],
-			Transmissions:               ns[1],
-			MajorTimeouts:               ns[2],
-			BytesSent:                   ns[3],
-			BytesReceived:               ns[4],
-			CumulativeQueueTime:         time.Duration(ns[5]) * time.Millisecond,
-			CumulativeTotalResponseTime: time.Duration(ns[6]) * time.Millisecond,
-			CumulativeTotalRequestTime:  time.Duration(ns[7]) * time.Millisecond,
+			Operation:                           strings.TrimSuffix(ss[0], ":"),
+			Requests:                            ns[0],
+			Transmissions:                       ns[1],
+			MajorTimeouts:                       ns[2],
+			BytesSent:                           ns[3],
+			BytesReceived:                       ns[4],
+			CumulativeQueueMilliseconds:         ns[5],
+			CumulativeTotalResponseMilliseconds: ns[6],
+			CumulativeTotalRequestMilliseconds:  ns[7],
 		})
 	}
 
@@ -608,7 +608,7 @@ func parseNFSTransportStats(ss []string, statVersion string) (*NFSTransportStats
 		Bind:                     ns[1],
 		Connect:                  ns[2],
 		ConnectIdleTime:          ns[3],
-		IdleTime:                 time.Duration(ns[4]) * time.Second,
+		IdleTimeSeconds:          ns[4],
 		Sends:                    ns[5],
 		Receives:                 ns[6],
 		BadTransactionIDs:        ns[7],
