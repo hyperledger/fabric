@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package gendoc
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"sort"
@@ -31,19 +32,26 @@ const (
 type Column struct {
 	Field Field
 	Name  string
+	Split int
 	Width int
 }
 
 // NewPrometheusTable creates a table that can be used to document Prometheus
 // metrics maintained by Fabric.
 func NewPrometheusTable(cells Cells) Table {
+	labelSplit := 0
+	for _, cell := range cells {
+		for _, label := range cell.labels {
+			labelSplit = max(labelSplit, len(label)+2)
+		}
+	}
 	return Table{
 		Cells: cells,
 		Columns: []Column{
 			{Field: Name, Name: "Name", Width: max(cells.MaxLen(Name)+2, 20)},
 			{Field: Type, Name: "Type", Width: 11},
 			{Field: Description, Name: "Description", Width: 60},
-			{Field: Labels, Name: "Labels", Width: 20},
+			{Field: Labels, Name: "Labels", Width: 80, Split: labelSplit},
 		},
 	}
 }
@@ -78,22 +86,30 @@ func (t Table) Generate(w io.Writer) {
 	}
 }
 
-func (t Table) rowSeparator() string    { return t.separator("-") }
-func (t Table) headerSeparator() string { return t.separator("=") }
+func (t Table) rowSeparator() string    { return t.separator("-", false) }
+func (t Table) headerSeparator() string { return t.separator("=", false) }
 
-func (t Table) separator(delim string) string {
-	var s string
+func (t Table) separator(delim string, firstLine bool) string {
+	var buf bytes.Buffer
 	for _, c := range t.Columns {
-		s += "+" + strings.Repeat(delim, c.Width)
+		buf.WriteString("+")
+		if !firstLine && c.Split != 0 {
+			buf.WriteString(strings.Repeat(delim, c.Split))
+			buf.WriteString("+")
+			buf.WriteString(strings.Repeat(delim, c.Width-c.Split-1))
+		} else {
+			buf.WriteString(strings.Repeat(delim, c.Width))
+		}
 	}
-	return s + "+\n"
+	buf.WriteString("+\n")
+	return buf.String()
 }
 
 func (t Table) header() string {
 	var h string
-	h += t.rowSeparator()
+	h += t.separator("-", true)
 	for _, c := range t.Columns {
-		h += "| " + printWidth(c.Name, c.Width-2) + " "
+		h += "| " + printWidth(c.Name, c.Width-2, 0) + " "
 	}
 	h += "|\n"
 	h += t.headerSeparator()
@@ -103,31 +119,71 @@ func (t Table) header() string {
 func (t Table) formatCell(cell Cell) string {
 	contents := map[Field][]string{}
 	lineCount := 0
-
 	// wrap lines
 	for _, c := range t.Columns {
-		lines := wrapWidths(cell.Field(c.Field), c.Width-2)
-		if l := len(lines); l > lineCount {
-			lineCount = l
+		if c.Split != 0 {
+			lines := formSubtableCell(cell.labels, cell.labelHelp, c.Split, c.Width)
+			if l := len(lines); l > lineCount {
+				lineCount = l
+			}
+			contents[c.Field] = lines
+		} else {
+			lines := wrapWidths(cell.Field(c.Field), c.Width-2)
+			if l := len(lines); l > lineCount {
+				lineCount = l
+			}
+			contents[c.Field] = lines
 		}
-		contents[c.Field] = lines
 	}
 
 	// add extra lines
 	for _, col := range t.Columns {
 		lines := contents[col.Field]
-		contents[col.Field] = padLines(lines, col.Width-2, lineCount)
+		contents[col.Field] = padLines(lines, col.Width-2, lineCount, col.Split-1)
 	}
 
 	var c string
 	for i := 0; i < lineCount; i++ {
+		endSplit := "|"
+		endPadding := " "
 		for _, col := range t.Columns {
-			c += "| " + contents[col.Field][i] + " "
+			frontSplit := "| "
+			if contents[col.Field][i][0] == '+' {
+				frontSplit = ""
+				endSplit = ""
+				endPadding = ""
+			}
+			c += frontSplit + contents[col.Field][i] + endPadding
 		}
-		c += "|\n"
+		c += endSplit + "\n"
 	}
 
 	return c
+}
+
+func formSubtableCell(keys []string, m map[string]string, leftWidth, cellWidth int) []string {
+	var result []string
+	for i, key := range keys {
+		// build subtable separator
+		if i != 0 {
+			var buf bytes.Buffer
+			buf.WriteString("+")
+			buf.WriteString(strings.Repeat("-", leftWidth))
+			buf.WriteString("+")
+			buf.WriteString(strings.Repeat("-", cellWidth-leftWidth-1))
+			buf.WriteString("+")
+			result = append(result, buf.String())
+		}
+
+		// populate subtable
+		rightLines := wrapWidths(m[key], cellWidth-leftWidth-1)
+		leftLines := padLines([]string{key}, leftWidth-2, max(1, len(rightLines)), 0)
+		for i := 0; i < len(leftLines); i++ {
+			text := fmt.Sprintf("%s | %s", leftLines[i], rightLines[i])
+			result = append(result, text)
+		}
+	}
+	return result
 }
 
 func wrapWidths(s string, width int) []string {
@@ -159,21 +215,29 @@ func wrapWidth(s string, width int) []string {
 	return strings.Split(result, "\n")
 }
 
-func padLines(lines []string, w, h int) []string {
+func padLines(lines []string, w, h, split int) []string {
 	for len(lines) < h {
 		lines = append(lines, "")
 	}
 	for idx, line := range lines {
-		lines[idx] = printWidth(line, w)
+		lines[idx] = printWidth(line, w, split)
 	}
 
 	return lines
 }
 
-func printWidth(s string, w int) string {
-	s = strings.TrimSpace(s)
+func printWidth(s string, w, split int) string {
 	if len(s) < w {
-		return s + strings.Repeat(" ", w-len(s))
+		var buf bytes.Buffer
+		buf.WriteString(s)
+		if split <= len(s) {
+			buf.WriteString(strings.Repeat(" ", w-len(s)))
+		} else {
+			buf.WriteString(strings.Repeat(" ", split-len(s)))
+			buf.WriteString("|")
+			buf.WriteString(strings.Repeat(" ", w-split-1))
+		}
+		s = buf.String()
 	}
 	return s
 }
@@ -190,6 +254,7 @@ type Cell struct {
 	namer       *namer.Namer
 	description string
 	labels      []string
+	labelHelp   map[string]string
 }
 
 func (c Cell) Field(f Field) string {
@@ -276,6 +341,7 @@ func counterCell(c metrics.CounterOpts) Cell {
 		meterType:   "counter",
 		description: c.Help,
 		labels:      c.LabelNames,
+		labelHelp:   c.LabelHelp,
 	}
 }
 
@@ -288,6 +354,7 @@ func gaugeCell(g metrics.GaugeOpts) Cell {
 		meterType:   "gauge",
 		description: g.Help,
 		labels:      g.LabelNames,
+		labelHelp:   g.LabelHelp,
 	}
 }
 
@@ -300,5 +367,6 @@ func histogramCell(h metrics.HistogramOpts) Cell {
 		meterType:   "histogram",
 		description: h.Help,
 		labels:      h.LabelNames,
+		labelHelp:   h.LabelHelp,
 	}
 }

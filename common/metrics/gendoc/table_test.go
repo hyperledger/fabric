@@ -71,28 +71,37 @@ var _ = Describe("Table", func() {
 })
 
 const goldenPromTable = `
-+--------------------------+-----------+------------------------------------------------------------+--------------------+
-| Name                     | Type      | Description                                                | Labels             |
-+==========================+===========+============================================================+====================+
-| fixtures_counter         | counter   | This is some help text that is more than a few words long. | | label_one        |
-|                          |           | It really can be quite long. Really long.                  | | label_two        |
-|                          |           |                                                            | | label_three      |
-+--------------------------+-----------+------------------------------------------------------------+--------------------+
-| fixtures_gauge           | gauge     | This is some help text                                     | | label_one        |
-|                          |           |                                                            | | label_two        |
-+--------------------------+-----------+------------------------------------------------------------+--------------------+
-| fixtures_histogram       | histogram | This is some help text                                     | | label_one        |
-|                          |           |                                                            | | label_two        |
-+--------------------------+-----------+------------------------------------------------------------+--------------------+
-| namespace_counter_name   | counter   | This is some help text                                     | | label_one        |
-|                          |           |                                                            | | label_two        |
-+--------------------------+-----------+------------------------------------------------------------+--------------------+
-| namespace_gauge_name     | gauge     | This is some help text                                     | | label_one        |
-|                          |           |                                                            | | label_two        |
-+--------------------------+-----------+------------------------------------------------------------+--------------------+
-| namespace_histogram_name | histogram | This is some help text                                     | | label_one        |
-|                          |           |                                                            | | label_two        |
-+--------------------------+-----------+------------------------------------------------------------+--------------------+
++--------------------------+-----------+------------------------------------------------------------+--------------------------------------------------------------------------------+
+| Name                     | Type      | Description                                                | Labels                                                                         |
++==========================+===========+============================================================+==============+=================================================================+
+| fixtures_counter         | counter   | This is some help text that is more than a few words long. | label_one    | this is a really cool label that is the first of many           |
+|                          |           | It really can be quite long. Really long.                  +--------------+-----------------------------------------------------------------+
+|                          |           |                                                            | label_two    | short and sweet                                                 |
+|                          |           |                                                            +--------------+-----------------------------------------------------------------+
+|                          |           |                                                            | missing_help |                                                                 |
++--------------------------+-----------+------------------------------------------------------------+--------------+-----------------------------------------------------------------+
+| fixtures_gauge           | gauge     | This is some help text that is more than a few words long. | label_one    |                                                                 |
+|                          |           | It really can be quite long. Really long. This is some     +--------------+-----------------------------------------------------------------+
+|                          |           | help text that is more than a few words long. It really    | label_two    |                                                                 |
+|                          |           | can be quite long. Really long.                            |              |                                                                 |
++--------------------------+-----------+------------------------------------------------------------+--------------+-----------------------------------------------------------------+
+| fixtures_histogram       | histogram | This is some help text                                     | label_one    | This is a very long help message for label_one, which could be  |
+|                          |           |                                                            |              | really, really long, and it may never end...                    |
+|                          |           |                                                            +--------------+-----------------------------------------------------------------+
+|                          |           |                                                            | label_two    |                                                                 |
++--------------------------+-----------+------------------------------------------------------------+--------------+-----------------------------------------------------------------+
+| namespace_counter_name   | counter   | This is some help text                                     | label_one    |                                                                 |
+|                          |           |                                                            +--------------+-----------------------------------------------------------------+
+|                          |           |                                                            | label_two    |                                                                 |
++--------------------------+-----------+------------------------------------------------------------+--------------+-----------------------------------------------------------------+
+| namespace_gauge_name     | gauge     | This is some help text                                     | label_one    |                                                                 |
+|                          |           |                                                            +--------------+-----------------------------------------------------------------+
+|                          |           |                                                            | label_two    |                                                                 |
++--------------------------+-----------+------------------------------------------------------------+--------------+-----------------------------------------------------------------+
+| namespace_histogram_name | histogram | This is some help text                                     | label_one    |                                                                 |
+|                          |           |                                                            +--------------+-----------------------------------------------------------------+
+|                          |           |                                                            | label_two    |                                                                 |
++--------------------------+-----------+------------------------------------------------------------+--------------+-----------------------------------------------------------------+
 `
 
 const goldenStatsdTable = `
@@ -102,7 +111,10 @@ const goldenStatsdTable = `
 | fixtures.counter.%{label_one}.%{label_two}         | counter   | This is some help text that is more than a few words long. |
 |                                                    |           | It really can be quite long. Really long.                  |
 +----------------------------------------------------+-----------+------------------------------------------------------------+
-| fixtures.gauge.%{label_one}.%{label_two}           | gauge     | This is some help text                                     |
+| fixtures.gauge.%{label_one}.%{label_two}           | gauge     | This is some help text that is more than a few words long. |
+|                                                    |           | It really can be quite long. Really long. This is some     |
+|                                                    |           | help text that is more than a few words long. It really    |
+|                                                    |           | can be quite long. Really long.                            |
 +----------------------------------------------------+-----------+------------------------------------------------------------+
 | fixtures.histogram.%{label_one}.%{label_two}       | histogram | This is some help text                                     |
 +----------------------------------------------------+-----------+------------------------------------------------------------+
