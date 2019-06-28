@@ -58,7 +58,6 @@ generateHelpText \
         docs/wrappers/peer_lifecycle_chaincode_postscript.md \
         "${commands[@]}"
 
-
 commands=("peer channel" "peer channel create" "peer channel fetch" "peer channel getinfo" "peer channel join" "peer channel list" "peer channel signconfigtx" "peer channel update")
 generateHelpText \
         docs/source/commands/peerchannel.md \
@@ -73,7 +72,7 @@ generateHelpText \
         docs/wrappers/peer_logging_postscript.md \
         "${commands[@]}"
 
-commands=("peer node start" "peer node status")
+commands=("peer node start" "peer node reset" "peer node rollback")
 generateHelpText \
         docs/source/commands/peernode.md \
         docs/wrappers/peer_node_preamble.md \
