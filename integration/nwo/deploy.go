@@ -389,7 +389,7 @@ func listCommitted(n *Network, peer *Peer, channel, name string) func() *gbytes.
 			Name:      name,
 		})
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
 		return sess.Buffer()
 	}
 }
