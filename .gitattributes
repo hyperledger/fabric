@@ -1,11 +1,17 @@
-*.sh text eol=lf
+# SPDX-License-Identifier: Apache-2.0
+
+*.block binary
 *.go text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.proto text eol=lf
+*.png binary
+*.pptx binary
+*.py text eol=lf
+*.rst text eol=lf
+*.sh text eol=lf
+*.txt text eol=lf
 *.yaml text eol=lf
 *.yml text eol=lf
-*.md text eol=lf
-*.json text eol=lf
-*.proto text eol=lf
-*.py text eol=lf
-*.js text eol=lf
-*.txt text eol=lf
 LICENSE text eol=lf
