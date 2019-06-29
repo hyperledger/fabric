@@ -27,7 +27,7 @@ func TestNewEtcdRaftConsenter(t *testing.T) {
 	consenter := etcdraft.New(dialer,
 		&localconfig.TopLevel{},
 		comm.ServerConfig{
-			SecOpts: &comm.SecureOptions{
+			SecOpts: comm.SecureOptions{
 				Certificate: []byte{1, 2, 3},
 			},
 		}, srv, &multichannel.Registrar{},

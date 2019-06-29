@@ -714,7 +714,7 @@ func TestInitializeEtcdraftConsenter(t *testing.T) {
 		&cluster.PredicateDialer{},
 		genesisBlock, &replicationInitiator{},
 		comm.ServerConfig{
-			SecOpts: &comm.SecureOptions{
+			SecOpts: comm.SecureOptions{
 				Certificate: crt.Cert,
 				Key:         crt.Key,
 				UseTLS:      true,
@@ -780,7 +780,7 @@ func TestCreateReplicator(t *testing.T) {
 	ledgerFactory.On("ChainIDs").Return([]string{"mychannel"})
 
 	signer := &server_mocks.SignerSerializer{}
-	r := createReplicator(ledgerFactory, bootBlock, &localconfig.TopLevel{}, &comm.SecureOptions{}, signer)
+	r := createReplicator(ledgerFactory, bootBlock, &localconfig.TopLevel{}, comm.SecureOptions{}, signer)
 
 	err := r.verifierRetriever.RetrieveVerifier("mychannel").VerifyBlockSignature(nil, nil)
 	assert.EqualError(t, err, "implicit policy evaluation failed - 0 sub-policies were satisfied, but this policy requires 1 of the 'Writers' sub-policies to be satisfied")

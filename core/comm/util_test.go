@@ -171,7 +171,7 @@ func (is *inspectingServer) inspect(envelope *common.Envelope) error {
 func newInspectingServer(listener net.Listener, inspector comm.BindingInspector) *inspectingServer {
 	srv, err := comm.NewGRPCServerFromListener(listener, comm.ServerConfig{
 		ConnectionTimeout: 250 * time.Millisecond,
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			UseTLS:      true,
 			Certificate: []byte(selfSignedCertPEM),
 			Key:         []byte(selfSignedKeyPEM),

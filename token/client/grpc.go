@@ -35,7 +35,7 @@ func CreateGRPCClient(config *ConnectionConfig) (*comm.GRPCClient, error) {
 		if err != nil {
 			return nil, errors.WithMessagef(err, "unable to load TLS cert from %s", config.TLSRootCertFile)
 		}
-		secOpts := &comm.SecureOptions{
+		secOpts := comm.SecureOptions{
 			UseTLS:            true,
 			ServerRootCAs:     [][]byte{caPEM},
 			RequireClientCert: false,

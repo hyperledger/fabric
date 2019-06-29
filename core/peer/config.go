@@ -67,7 +67,7 @@ type Config struct {
 
 	// ----- Peer Delivery Client Keepalive -----
 	// DeliveryClient Keepalive settings for communication with ordering nodes.
-	DeliverClientKeepaliveOptions *comm.KeepaliveOptions
+	DeliverClientKeepaliveOptions comm.KeepaliveOptions
 
 	// ----- Profile -----
 	// TODO: create separate sub-struct for Profile config.
@@ -307,11 +307,12 @@ func getLocalAddress() (string, error) {
 
 // GetServerConfig returns the gRPC server configuration for the peer
 func GetServerConfig() (comm.ServerConfig, error) {
-	secureOptions := &comm.SecureOptions{
-		UseTLS: viper.GetBool("peer.tls.enabled"),
+	serverConfig := comm.ServerConfig{
+		SecOpts: comm.SecureOptions{
+			UseTLS: viper.GetBool("peer.tls.enabled"),
+		},
 	}
-	serverConfig := comm.ServerConfig{SecOpts: secureOptions}
-	if secureOptions.UseTLS {
+	if serverConfig.SecOpts.UseTLS {
 		// get the certs from the file system
 		serverKey, err := ioutil.ReadFile(config.GetPath("peer.tls.key.file"))
 		if err != nil {
@@ -321,10 +322,10 @@ func GetServerConfig() (comm.ServerConfig, error) {
 		if err != nil {
 			return serverConfig, fmt.Errorf("error loading TLS certificate (%s)", err)
 		}
-		secureOptions.Certificate = serverCert
-		secureOptions.Key = serverKey
-		secureOptions.RequireClientCert = viper.GetBool("peer.tls.clientAuthRequired")
-		if secureOptions.RequireClientCert {
+		serverConfig.SecOpts.Certificate = serverCert
+		serverConfig.SecOpts.Key = serverKey
+		serverConfig.SecOpts.RequireClientCert = viper.GetBool("peer.tls.clientAuthRequired")
+		if serverConfig.SecOpts.RequireClientCert {
 			var clientRoots [][]byte
 			for _, file := range viper.GetStringSlice("peer.tls.clientRootCAs.files") {
 				clientRoot, err := ioutil.ReadFile(
@@ -335,7 +336,7 @@ func GetServerConfig() (comm.ServerConfig, error) {
 				}
 				clientRoots = append(clientRoots, clientRoot)
 			}
-			secureOptions.ClientRootCAs = clientRoots
+			serverConfig.SecOpts.ClientRootCAs = clientRoots
 		}
 		// check for root cert
 		if config.GetPath("peer.tls.rootcert.file") != "" {
@@ -343,7 +344,7 @@ func GetServerConfig() (comm.ServerConfig, error) {
 			if err != nil {
 				return serverConfig, fmt.Errorf("error loading TLS root certificate (%s)", err)
 			}
-			secureOptions.ServerRootCAs = [][]byte{rootCert}
+			serverConfig.SecOpts.ServerRootCAs = [][]byte{rootCert}
 		}
 	}
 	// get the default keepalive options

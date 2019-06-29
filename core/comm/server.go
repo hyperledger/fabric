@@ -68,11 +68,7 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 	//set up our server options
 	var serverOpts []grpc.ServerOption
 
-	//check SecOpts
-	var secureConfig SecureOptions
-	if serverConfig.SecOpts != nil {
-		secureConfig = *serverConfig.SecOpts
-	}
+	secureConfig := serverConfig.SecOpts
 	if secureConfig.UseTLS {
 		//both key and cert are required
 		if secureConfig.Key != nil && secureConfig.Certificate != nil {

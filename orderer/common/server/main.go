@@ -243,7 +243,7 @@ func createReplicator(
 	lf blockledger.Factory,
 	bootstrapBlock *cb.Block,
 	conf *localconfig.TopLevel,
-	secOpts *comm.SecureOptions,
+	secOpts comm.SecureOptions,
 	signer identity.SignerSerializer,
 ) *replicationInitiator {
 	logger := flogging.MustGetLogger("orderer.common.cluster")
@@ -375,7 +375,7 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 		MetricsProvider:    generalConf.MetricsProvider,
 		Logger:             generalConf.Logger,
 		KaOpts:             generalConf.KaOpts,
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			CipherSuites:      comm.DefaultTLSCipherSuites,
 			ClientRootCAs:     clientRootCAs,
 			RequireClientCert: true,
@@ -401,7 +401,7 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel, clusterType bool,
 		AsyncConnect: true,
 		KaOpts:       comm.DefaultKeepaliveOptions,
 		Timeout:      conf.General.Cluster.DialTimeout,
-		SecOpts:      &comm.SecureOptions{},
+		SecOpts:      comm.SecureOptions{},
 	}
 
 	if (!conf.General.TLS.Enabled) || conf.General.Cluster.ClientCertificate == "" {
@@ -430,7 +430,7 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel, clusterType bool,
 		serverRootCAs = append(serverRootCAs, rootCACert)
 	}
 
-	cc.SecOpts = &comm.SecureOptions{
+	cc.SecOpts = comm.SecureOptions{
 		RequireClientCert: true,
 		CipherSuites:      comm.DefaultTLSCipherSuites,
 		ServerRootCAs:     serverRootCAs,
@@ -444,7 +444,7 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel, clusterType bool,
 
 func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.Provider) comm.ServerConfig {
 	// secure server config
-	secureOpts := &comm.SecureOptions{
+	secureOpts := comm.SecureOptions{
 		UseTLS:            conf.General.TLS.Enabled,
 		RequireClientCert: conf.General.TLS.ClientAuthRequired,
 	}

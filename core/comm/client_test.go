@@ -47,7 +47,7 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	assert.False(t, client.TLSEnabled())
 	assert.False(t, client.MutualTLSRequired())
 
-	secOpts := &comm.SecureOptions{
+	secOpts := comm.SecureOptions{
 		UseTLS: false,
 	}
 	config.SecOpts = secOpts
@@ -57,7 +57,7 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	assert.False(t, client.TLSEnabled())
 	assert.False(t, client.MutualTLSRequired())
 
-	secOpts = &comm.SecureOptions{
+	secOpts = comm.SecureOptions{
 		UseTLS:            true,
 		ServerRootCAs:     [][]byte{testCerts.caPEM},
 		RequireClientCert: false,
@@ -68,7 +68,7 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	assert.True(t, client.TLSEnabled())
 	assert.False(t, client.MutualTLSRequired())
 
-	secOpts = &comm.SecureOptions{
+	secOpts = comm.SecureOptions{
 		Certificate:       testCerts.certPEM,
 		Key:               testCerts.keyPEM,
 		UseTLS:            true,
@@ -89,7 +89,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 
 	// bad root cert
 	config := comm.ClientConfig{
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			UseTLS:        true,
 			ServerRootCAs: [][]byte{[]byte(badPEM)},
 		},
@@ -99,7 +99,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 
 	// missing key
 	missing := "both Key and Certificate are required when using mutual TLS"
-	config.SecOpts = &comm.SecureOptions{
+	config.SecOpts = comm.SecureOptions{
 		Certificate:       []byte("cert"),
 		UseTLS:            true,
 		RequireClientCert: true,
@@ -108,7 +108,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 	assert.Equal(t, missing, err.Error())
 
 	// missing cert
-	config.SecOpts = &comm.SecureOptions{
+	config.SecOpts = comm.SecureOptions{
 		Key:               []byte("key"),
 		UseTLS:            true,
 		RequireClientCert: true,
@@ -118,7 +118,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 
 	// bad key
 	failed := "failed to load client certificate"
-	config.SecOpts = &comm.SecureOptions{
+	config.SecOpts = comm.SecureOptions{
 		Certificate:       testCerts.certPEM,
 		Key:               []byte(badPEM),
 		UseTLS:            true,
@@ -128,7 +128,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 	assert.Contains(t, err.Error(), failed)
 
 	// bad cert
-	config.SecOpts = &comm.SecureOptions{
+	config.SecOpts = comm.SecureOptions{
 		Certificate:       []byte(badPEM),
 		Key:               testCerts.keyPEM,
 		UseTLS:            true,
@@ -189,7 +189,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "client TLS / server no TLS",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					Certificate:       testCerts.certPEM,
 					Key:               testCerts.keyPEM,
 					UseTLS:            true,
@@ -204,7 +204,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "client TLS / server TLS match",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					Certificate:   testCerts.certPEM,
 					Key:           testCerts.keyPEM,
 					UseTLS:        true,
@@ -220,7 +220,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "client TLS / server TLS no server roots",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					Certificate:   testCerts.certPEM,
 					Key:           testCerts.keyPEM,
 					UseTLS:        true,
@@ -237,7 +237,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "client TLS / server TLS missing client cert",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					Certificate:   testCerts.certPEM,
 					Key:           testCerts.keyPEM,
 					UseTLS:        true,
@@ -255,7 +255,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "client TLS / server TLS client cert",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					Certificate:       testCerts.certPEM,
 					Key:               testCerts.keyPEM,
 					UseTLS:            true,
@@ -274,7 +274,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "server TLS pinning success",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					VerifyCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 						if bytes.Equal(rawCerts[0], testCerts.serverCert.Certificate[0]) {
 							return nil
@@ -299,7 +299,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "server TLS pinning failure",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					VerifyCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 						return errors.New("TLS certificate mismatch")
 					},
@@ -362,7 +362,7 @@ func TestSetServerRootCAs(t *testing.T) {
 	testCerts := loadCerts(t)
 
 	config := comm.ClientConfig{
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			UseTLS:        true,
 			ServerRootCAs: [][]byte{testCerts.caPEM},
 		},

@@ -89,7 +89,7 @@ func ConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
 
 // updates the trusted roots for the peer based on updates to channels
 func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
-	if p.ServerConfig.SecOpts == nil || !p.ServerConfig.SecOpts.UseTLS {
+	if !p.ServerConfig.SecOpts.UseTLS {
 		return
 	}
 

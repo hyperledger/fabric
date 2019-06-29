@@ -291,7 +291,7 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 	return bClient
 }
 
-func KeepaliveOptions() *comm.KeepaliveOptions {
+func KeepaliveOptions() comm.KeepaliveOptions {
 	keepaliveOptions := comm.DefaultKeepaliveOptions
 	if viper.IsSet("peer.keepalive.deliveryClient.interval") {
 		keepaliveOptions.ClientInterval = viper.GetDuration("peer.keepalive.deliveryClient.interval")
@@ -305,7 +305,7 @@ func KeepaliveOptions() *comm.KeepaliveOptions {
 
 type CredSupportDialerFactory struct {
 	CredentialSupport *comm.CredentialSupport
-	KeepaliveOptions  *comm.KeepaliveOptions
+	KeepaliveOptions  comm.KeepaliveOptions
 	TLSEnabled        bool
 }
 

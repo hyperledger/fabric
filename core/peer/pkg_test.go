@@ -164,7 +164,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 	require.NoError(t, err)
 
 	serverConfig := comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			UseTLS:            true,
 			Certificate:       org1Server1Cert,
 			Key:               org1Server1Key,

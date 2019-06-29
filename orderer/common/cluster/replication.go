@@ -361,7 +361,7 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 
 	clientConf := comm.ClientConfig{
 		Timeout: conf.Timeout,
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			Certificate:       conf.TLSCert,
 			Key:               conf.TLSKey,
 			RequireClientCert: true,

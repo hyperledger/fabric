@@ -44,7 +44,7 @@ func TestTLSBinding(t *testing.T) {
 	cs := comm.NewCredentialSupport()
 	cs.SetClientCertificate(serverTLScert)
 	s, err := comm.NewGRPCServer("localhost:9435", comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			RequireClientCert: true,
 			Key:               serverKey,
 			Certificate:       serverCert,

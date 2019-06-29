@@ -34,7 +34,7 @@ type replicationInitiator struct {
 	verifierRetriever cluster.VerifierRetriever
 	channelLister     cluster.ChannelLister
 	logger            *flogging.FabricLogger
-	secOpts           *comm.SecureOptions
+	secOpts           comm.SecureOptions
 	conf              *localconfig.TopLevel
 	lf                cluster.LedgerFactory
 	signer            identity.SignerSerializer

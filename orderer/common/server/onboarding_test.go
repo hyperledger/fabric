@@ -43,7 +43,7 @@ import (
 
 func newServerNode(t *testing.T, key, cert []byte) *deliverServer {
 	srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			Key:         key,
 			Certificate: cert,
 			UseTLS:      true,
@@ -251,7 +251,7 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 		},
 	}
 
-	secConfig := &comm.SecureOptions{
+	secConfig := comm.SecureOptions{
 		Certificate:   cert,
 		Key:           key,
 		UseTLS:        true,
@@ -499,7 +499,7 @@ func TestReplicate(t *testing.T) {
 		panicValue         string
 		systemLedgerHeight uint64
 		bootBlock          *common.Block
-		secOpts            *comm.SecureOptions
+		secOpts            comm.SecureOptions
 		conf               *localconfig.TopLevel
 		ledgerFactoryErr   error
 		signer             identity.SignerSerializer
@@ -529,7 +529,7 @@ func TestReplicate(t *testing.T) {
 			panicValue:         "Failed creating puller config from bootstrap block: unable to decode TLS certificate PEM: ",
 			bootBlock:          &bootBlockWithCorruptedPayload,
 			conf:               &localconfig.TopLevel{},
-			secOpts:            &comm.SecureOptions{},
+			secOpts:            comm.SecureOptions{},
 			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
 				ri.replicateIfNeeded(bootstrapBlock)
 			},
@@ -540,7 +540,7 @@ func TestReplicate(t *testing.T) {
 			panicValue:         "Failed extracting system channel name from bootstrap block: failed to retrieve channel id - block is empty",
 			bootBlock:          &common.Block{Header: &common.BlockHeader{Number: 100}},
 			conf:               &localconfig.TopLevel{},
-			secOpts:            &comm.SecureOptions{},
+			secOpts:            comm.SecureOptions{},
 			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
 				ri.replicateIfNeeded(bootstrapBlock)
 			},
@@ -552,7 +552,7 @@ func TestReplicate(t *testing.T) {
 			panicValue:         "Failed determining whether replication is needed: I/O error",
 			bootBlock:          &bootBlock,
 			conf:               &localconfig.TopLevel{},
-			secOpts: &comm.SecureOptions{
+			secOpts: comm.SecureOptions{
 				Certificate: cert,
 				Key:         key,
 			},
@@ -565,7 +565,7 @@ func TestReplicate(t *testing.T) {
 			systemLedgerHeight: 11,
 			bootBlock:          &bootBlock,
 			conf:               &localconfig.TopLevel{},
-			secOpts: &comm.SecureOptions{
+			secOpts: comm.SecureOptions{
 				Certificate: cert,
 				Key:         key,
 			},
@@ -593,7 +593,7 @@ func TestReplicate(t *testing.T) {
 					Cluster:       clusterConfig,
 				},
 			},
-			secOpts: &comm.SecureOptions{
+			secOpts: comm.SecureOptions{
 				Certificate:   cert,
 				Key:           key,
 				UseTLS:        true,
@@ -615,7 +615,7 @@ func TestReplicate(t *testing.T) {
 					Cluster:       clusterConfig,
 				},
 			},
-			secOpts: &comm.SecureOptions{
+			secOpts: comm.SecureOptions{
 				Certificate:   cert,
 				Key:           key,
 				UseTLS:        true,
@@ -652,7 +652,7 @@ func TestReplicate(t *testing.T) {
 					Cluster:       clusterConfig,
 				},
 			},
-			secOpts: &comm.SecureOptions{
+			secOpts: comm.SecureOptions{
 				Certificate:   cert,
 				Key:           key,
 				UseTLS:        true,

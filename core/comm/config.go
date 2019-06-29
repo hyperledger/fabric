@@ -23,7 +23,7 @@ var (
 	MaxRecvMsgSize = 100 * 1024 * 1024
 	MaxSendMsgSize = 100 * 1024 * 1024
 	// Default peer keepalive options
-	DefaultKeepaliveOptions = &KeepaliveOptions{
+	DefaultKeepaliveOptions = KeepaliveOptions{
 		ClientInterval:    time.Duration(1) * time.Minute,  // 1 min
 		ClientTimeout:     time.Duration(20) * time.Second, // 20 sec - gRPC default
 		ServerInterval:    time.Duration(2) * time.Hour,    // 2 hours - gRPC default
@@ -49,9 +49,9 @@ type ServerConfig struct {
 	// for all new connections
 	ConnectionTimeout time.Duration
 	// SecOpts defines the security parameters
-	SecOpts *SecureOptions
+	SecOpts SecureOptions
 	// KaOpts defines the keepalive parameters
-	KaOpts *KeepaliveOptions
+	KaOpts KeepaliveOptions
 	// StreamInterceptors specifies a list of interceptors to apply to
 	// streaming RPCs.  They are executed in order.
 	StreamInterceptors []grpc.StreamServerInterceptor
@@ -69,9 +69,9 @@ type ServerConfig struct {
 // ClientConfig defines the parameters for configuring a GRPCClient instance
 type ClientConfig struct {
 	// SecOpts defines the security parameters
-	SecOpts *SecureOptions
+	SecOpts SecureOptions
 	// KaOpts defines the keepalive parameters
-	KaOpts *KeepaliveOptions
+	KaOpts KeepaliveOptions
 	// Timeout specifies how long the client will block when attempting to
 	// establish a connection
 	Timeout time.Duration
@@ -82,14 +82,6 @@ type ClientConfig struct {
 // Clone clones this ClientConfig
 func (cc ClientConfig) Clone() ClientConfig {
 	shallowClone := cc
-	if shallowClone.SecOpts != nil {
-		secOptsClone := *cc.SecOpts
-		shallowClone.SecOpts = &secOptsClone
-	}
-	if shallowClone.KaOpts != nil {
-		kaOptsClone := *cc.KaOpts
-		shallowClone.KaOpts = &kaOptsClone
-	}
 	return shallowClone
 }
 
@@ -145,13 +137,8 @@ type Metrics struct {
 	ClosedConnCounter metrics.Counter
 }
 
-// ServerKeepaliveOptions returns gRPC keepalive options for server.  If
-// opts is nil, the default keepalive options are returned
-func ServerKeepaliveOptions(ka *KeepaliveOptions) []grpc.ServerOption {
-	// use default keepalive options if nil
-	if ka == nil {
-		ka = DefaultKeepaliveOptions
-	}
+// ServerKeepaliveOptions returns gRPC keepalive options for server.
+func ServerKeepaliveOptions(ka KeepaliveOptions) []grpc.ServerOption {
 	var serverOpts []grpc.ServerOption
 	kap := keepalive.ServerParameters{
 		Time:    ka.ServerInterval,
@@ -167,14 +154,8 @@ func ServerKeepaliveOptions(ka *KeepaliveOptions) []grpc.ServerOption {
 	return serverOpts
 }
 
-// ClientKeepaliveOptions returns gRPC keepalive options for clients.  If
-// opts is nil, the default keepalive options are returned
-func ClientKeepaliveOptions(ka *KeepaliveOptions) []grpc.DialOption {
-	// use default keepalive options if nil
-	if ka == nil {
-		ka = DefaultKeepaliveOptions
-	}
-
+// ClientKeepaliveOptions returns gRPC keepalive options for clients.
+func ClientKeepaliveOptions(ka KeepaliveOptions) []grpc.DialOption {
 	var dialOpts []grpc.DialOption
 	kap := keepalive.ClientParameters{
 		Time:                ka.ClientInterval,

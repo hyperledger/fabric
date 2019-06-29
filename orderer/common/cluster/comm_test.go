@@ -225,7 +225,7 @@ func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsCo
 	clientConfig := comm_utils.ClientConfig{
 		AsyncConnect: true,
 		Timeout:      time.Hour,
-		SecOpts: &comm_utils.SecureOptions{
+		SecOpts: comm_utils.SecureOptions{
 			RequireClientCert: true,
 			Key:               clientKeyPair.Key,
 			Certificate:       clientKeyPair.Cert,
@@ -240,7 +240,7 @@ func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsCo
 	}
 
 	srvConfig := comm_utils.ServerConfig{
-		SecOpts: &comm_utils.SecureOptions{
+		SecOpts: comm_utils.SecureOptions{
 			Key:         serverKeyPair.Key,
 			Certificate: serverKeyPair.Cert,
 			UseTLS:      true,
@@ -782,7 +782,7 @@ func TestNoTLSCertificate(t *testing.T) {
 	clientConfig := comm_utils.ClientConfig{
 		AsyncConnect: true,
 		Timeout:      time.Millisecond * 100,
-		SecOpts: &comm_utils.SecureOptions{
+		SecOpts: comm_utils.SecureOptions{
 			ServerRootCAs: [][]byte{ca.CertBytes()},
 			UseTLS:        true,
 		},

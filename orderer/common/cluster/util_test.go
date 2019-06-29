@@ -78,11 +78,11 @@ func TestDialerCustomKeepAliveOptions(t *testing.T) {
 
 	clientKeyPair, err := ca.NewClientCertKeyPair()
 	clientConfig := comm.ClientConfig{
-		KaOpts: &comm.KeepaliveOptions{
+		KaOpts: comm.KeepaliveOptions{
 			ClientTimeout: time.Second * 12345,
 		},
 		Timeout: time.Millisecond * 100,
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			RequireClientCert: true,
 			Key:               clientKeyPair.Key,
 			Certificate:       clientKeyPair.Cert,
@@ -138,7 +138,7 @@ func TestDialerBadConfig(t *testing.T) {
 	emptyCertificate := []byte("-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----")
 	dialer := &cluster.PredicateDialer{
 		Config: comm.ClientConfig{
-			SecOpts: &comm.SecureOptions{
+			SecOpts: comm.SecureOptions{
 				UseTLS:        true,
 				ServerRootCAs: [][]byte{emptyCertificate},
 			},
@@ -163,7 +163,7 @@ func TestStandardDialer(t *testing.T) {
 	t.Parallel()
 	emptyCertificate := []byte("-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----")
 	certPool := [][]byte{emptyCertificate}
-	config := comm.ClientConfig{SecOpts: &comm.SecureOptions{UseTLS: true, ServerRootCAs: certPool}}
+	config := comm.ClientConfig{SecOpts: comm.SecureOptions{UseTLS: true, ServerRootCAs: certPool}}
 	standardDialer := &cluster.StandardDialer{
 		Config: config,
 	}

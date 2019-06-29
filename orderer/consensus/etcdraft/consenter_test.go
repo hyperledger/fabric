@@ -470,7 +470,7 @@ func newConsenter(chainGetter *mocks.ChainGetter) *consenter {
 		},
 		Dialer: &cluster.PredicateDialer{
 			Config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					Certificate: ca.CertBytes(),
 				},
 			},

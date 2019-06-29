@@ -114,7 +114,7 @@ func StartInProc(env []string, args []string, cc Chaincode, recv <-chan *pb.Chai
 func newPeerClientConnection(address string) (*grpc.ClientConn, error) {
 
 	// set the keepalive options to match static settings for chaincode server
-	kaOpts := &comm.KeepaliveOptions{
+	kaOpts := comm.KeepaliveOptions{
 		ClientInterval: time.Duration(1) * time.Minute,
 		ClientTimeout:  time.Duration(20) * time.Second,
 	}
@@ -135,11 +135,11 @@ func newPeerClientConnection(address string) (*grpc.ClientConn, error) {
 	return client.NewConnection(address, "")
 }
 
-func secureOptions() (*comm.SecureOptions, error) {
+func secureOptions() (comm.SecureOptions, error) {
 
 	tlsEnabled, err := strconv.ParseBool(os.Getenv("CORE_PEER_TLS_ENABLED"))
 	if err != nil {
-		return nil, errors.WithMessage(
+		return comm.SecureOptions{}, errors.WithMessage(
 			err,
 			"'CORE_PEER_TLS_ENABLED' must be set to 'true' or 'false'",
 		)
@@ -147,25 +147,25 @@ func secureOptions() (*comm.SecureOptions, error) {
 	if tlsEnabled {
 		data, err := ioutil.ReadFile(os.Getenv("CORE_TLS_CLIENT_KEY_PATH"))
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed to read private key file")
+			return comm.SecureOptions{}, errors.WithMessage(err, "failed to read private key file")
 		}
 		key, err := base64.StdEncoding.DecodeString(string(data))
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed to decode private key file")
+			return comm.SecureOptions{}, errors.WithMessage(err, "failed to decode private key file")
 		}
 		data, err = ioutil.ReadFile(os.Getenv("CORE_TLS_CLIENT_CERT_PATH"))
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed to read public key file")
+			return comm.SecureOptions{}, errors.WithMessage(err, "failed to read public key file")
 		}
 		cert, err := base64.StdEncoding.DecodeString(string(data))
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed to decode public key file")
+			return comm.SecureOptions{}, errors.WithMessage(err, "failed to decode public key file")
 		}
 		root, err := ioutil.ReadFile(os.Getenv("CORE_PEER_TLS_ROOTCERT_FILE"))
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed to read root cert file")
+			return comm.SecureOptions{}, errors.WithMessage(err, "failed to read root cert file")
 		}
-		return &comm.SecureOptions{
+		return comm.SecureOptions{
 				UseTLS:            true,
 				Certificate:       []byte(cert),
 				Key:               []byte(key),
@@ -174,7 +174,7 @@ func secureOptions() (*comm.SecureOptions, error) {
 			},
 			nil
 	}
-	return &comm.SecureOptions{}, nil
+	return comm.SecureOptions{}, nil
 }
 
 func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {

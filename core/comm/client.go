@@ -43,18 +43,12 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 	}
 
 	// keepalive options
-	var kap keepalive.ClientParameters
-	if config.KaOpts != nil {
-		kap = keepalive.ClientParameters{
-			Time:    config.KaOpts.ClientInterval,
-			Timeout: config.KaOpts.ClientTimeout}
-	} else {
-		// use defaults
-		kap = keepalive.ClientParameters{
-			Time:    DefaultKeepaliveOptions.ClientInterval,
-			Timeout: DefaultKeepaliveOptions.ClientTimeout}
+
+	kap := keepalive.ClientParameters{
+		Time:                config.KaOpts.ClientInterval,
+		Timeout:             config.KaOpts.ClientTimeout,
+		PermitWithoutStream: true,
 	}
-	kap.PermitWithoutStream = true
 	// set keepalive
 	client.dialOpts = append(client.dialOpts, grpc.WithKeepaliveParams(kap))
 	// Unless asynchronous connect is set, make connection establishment blocking.
@@ -70,11 +64,12 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 	return client, nil
 }
 
-func (client *GRPCClient) parseSecureOptions(opts *SecureOptions) error {
-
-	if opts == nil || !opts.UseTLS {
+func (client *GRPCClient) parseSecureOptions(opts SecureOptions) error {
+	// if TLS is not enabled, return
+	if !opts.UseTLS {
 		return nil
 	}
+
 	client.tlsConfig = &tls.Config{
 		VerifyPeerCertificate: opts.VerifyCertificate,
 		MinVersion:            tls.VersionTLS12} // TLS 1.2 only

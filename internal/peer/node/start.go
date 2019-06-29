@@ -842,7 +842,7 @@ func createChaincodeServer(coreConfig *peer.Config, ca tlsgen.CA, peerHostname s
 		if err != nil {
 			logger.Panicf("Failed generating TLS certificate for chaincode service: +%v", err)
 		}
-		config.SecOpts = &comm.SecureOptions{
+		config.SecOpts = comm.SecureOptions{
 			UseTLS: true,
 			// Require chaincode shim to authenticate itself
 			RequireClientCert: true,
@@ -858,7 +858,7 @@ func createChaincodeServer(coreConfig *peer.Config, ca tlsgen.CA, peerHostname s
 	}
 
 	// Chaincode keepalive options - static for now
-	chaincodeKeepaliveOptions := &comm.KeepaliveOptions{
+	chaincodeKeepaliveOptions := comm.KeepaliveOptions{
 		ServerInterval:    time.Duration(2) * time.Hour,    // 2 hours - gRPC default
 		ServerTimeout:     time.Duration(20) * time.Second, // 20 sec - gRPC default
 		ServerMinInterval: time.Duration(1) * time.Minute,  // match ClientInterval

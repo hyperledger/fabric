@@ -161,7 +161,7 @@ func newServer(org string) *srv {
 	}
 	gSrv, err := NewGRPCServerFromListener(l, ServerConfig{
 		ConnectionTimeout: 250 * time.Millisecond,
-		SecOpts: &SecureOptions{
+		SecOpts: SecureOptions{
 			Certificate: certs["server.crt"],
 			Key:         certs["server.key"],
 			UseTLS:      true,

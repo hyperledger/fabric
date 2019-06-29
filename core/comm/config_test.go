@@ -11,24 +11,50 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
-func TestConfig(t *testing.T) {
+func TestServerKeepaliveOptions(t *testing.T) {
 	t.Parallel()
 
-	serverOptions := ServerKeepaliveOptions(nil)
-	assert.NotNil(t, serverOptions)
+	kap := keepalive.ServerParameters{
+		Time:    DefaultKeepaliveOptions.ServerInterval,
+		Timeout: DefaultKeepaliveOptions.ServerTimeout,
+	}
+	kep := keepalive.EnforcementPolicy{
+		MinTime:             DefaultKeepaliveOptions.ServerMinInterval,
+		PermitWithoutStream: true,
+	}
+	expectedOpts := []grpc.ServerOption{
+		grpc.KeepaliveParams(kap),
+		grpc.KeepaliveEnforcementPolicy(kep),
+	}
+	opts := ServerKeepaliveOptions(DefaultKeepaliveOptions)
+	assert.ObjectsAreEqual(expectedOpts, opts)
 
-	clientOptions := ClientKeepaliveOptions(nil)
-	assert.NotNil(t, clientOptions)
+}
+
+func TestClientKeepaliveOptions(t *testing.T) {
+	t.Parallel()
+
+	kap := keepalive.ClientParameters{
+		Time:                DefaultKeepaliveOptions.ClientInterval,
+		Timeout:             DefaultKeepaliveOptions.ClientTimeout,
+		PermitWithoutStream: true,
+	}
+	expectedOpts := []grpc.DialOption{grpc.WithKeepaliveParams(kap)}
+	opts := ClientKeepaliveOptions(DefaultKeepaliveOptions)
+	assert.ObjectsAreEqual(expectedOpts, opts)
+
 }
 
 func TestClientConfigClone(t *testing.T) {
-	origin := &ClientConfig{
-		KaOpts: &KeepaliveOptions{
+	origin := ClientConfig{
+		KaOpts: KeepaliveOptions{
 			ClientInterval: time.Second,
 		},
-		SecOpts: &SecureOptions{
+		SecOpts: SecureOptions{
 			Key: []byte{1, 2, 3},
 		},
 		Timeout:      time.Second,
@@ -38,9 +64,7 @@ func TestClientConfigClone(t *testing.T) {
 	clone := origin.Clone()
 
 	// Same content, different inner fields references.
-	assert.Equal(t, *origin, clone)
-	assert.False(t, origin.SecOpts == clone.SecOpts)
-	assert.False(t, origin.KaOpts == clone.KaOpts)
+	assert.Equal(t, origin, clone)
 
 	// We change the contents of the fields and ensure it doesn't
 	// propagate across instances.
@@ -54,12 +78,12 @@ func TestClientConfigClone(t *testing.T) {
 	clone.SecOpts.UseTLS = true
 	clone.KaOpts.ServerMinInterval = time.Hour
 
-	expectedOriginState := &ClientConfig{
-		KaOpts: &KeepaliveOptions{
+	expectedOriginState := ClientConfig{
+		KaOpts: KeepaliveOptions{
 			ClientInterval: time.Hour,
 			ServerInterval: time.Second,
 		},
-		SecOpts: &SecureOptions{
+		SecOpts: SecureOptions{
 			Key:         []byte{5, 4, 6},
 			Certificate: []byte{1, 2, 3},
 		},
@@ -67,11 +91,11 @@ func TestClientConfigClone(t *testing.T) {
 	}
 
 	expectedCloneState := ClientConfig{
-		KaOpts: &KeepaliveOptions{
+		KaOpts: KeepaliveOptions{
 			ClientInterval:    time.Second,
 			ServerMinInterval: time.Hour,
 		},
-		SecOpts: &SecureOptions{
+		SecOpts: SecureOptions{
 			Key:    []byte{1, 2, 3},
 			UseTLS: true,
 		},

@@ -22,7 +22,7 @@ import (
 
 func TestTLSClient(t *testing.T) {
 	srv, err := comm.NewGRPCServer("127.0.0.1:", comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			UseTLS:      true,
 			Key:         loadFileOrDie(filepath.Join("testdata", "server", "key.pem")),
 			Certificate: loadFileOrDie(filepath.Join("testdata", "server", "cert.pem")),
@@ -57,7 +57,7 @@ func TestDialBadEndpoint(t *testing.T) {
 
 func TestNonTLSClient(t *testing.T) {
 	srv, err := comm.NewGRPCServer("127.0.0.1:", comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{},
+		SecOpts: comm.SecureOptions{},
 	})
 	assert.NoError(t, err)
 	go srv.Start()

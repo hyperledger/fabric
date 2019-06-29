@@ -109,7 +109,7 @@ func CreateGRPCClient(n *nwo.Network, o *nwo.Orderer) (*comm.GRPCClient, error) 
 	config := comm.ClientConfig{}
 	config.Timeout = 5 * time.Second
 
-	secOpts := &comm.SecureOptions{
+	secOpts := comm.SecureOptions{
 		UseTLS:            true,
 		RequireClientCert: false,
 	}

@@ -166,7 +166,7 @@ func grpcClient(tlsRootCertFile string) *comm.GRPCClient {
 
 	gClient, err := comm.NewGRPCClient(comm.ClientConfig{
 		Timeout: 3 * time.Second,
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			UseTLS:        true,
 			ServerRootCAs: [][]byte{caPEM},
 		},

@@ -278,7 +278,7 @@ func TestExpirationWarningIngress(t *testing.T) {
 	}))
 
 	srvConf := comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			Certificate:       serverCert.Cert,
 			Key:               serverCert.Key,
 			UseTLS:            true,
@@ -295,7 +295,7 @@ func TestExpirationWarningIngress(t *testing.T) {
 
 	clientConf := comm.ClientConfig{
 		Timeout: time.Second * 3,
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			ServerRootCAs:     [][]byte{ca.CertBytes()},
 			UseTLS:            true,
 			Key:               clientCert.Key,

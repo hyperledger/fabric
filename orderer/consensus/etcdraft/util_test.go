@@ -220,7 +220,7 @@ func TestNewBlockPuller(t *testing.T) {
 
 	dialer := &cluster.PredicateDialer{
 		Config: comm.ClientConfig{
-			SecOpts: &comm.SecureOptions{
+			SecOpts: comm.SecureOptions{
 				Certificate: ca.CertBytes(),
 			},
 		},
@@ -256,8 +256,7 @@ func TestNewBlockPuller(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			cc := testCase.dialer.Config
-			cc.SecOpts.Certificate = testCase.certificate
+			testCase.dialer.Config.SecOpts.Certificate = testCase.certificate
 			bp, err := newBlockPuller(testCase.cs, testCase.dialer, localconfig.Cluster{})
 			assert.Nil(t, bp)
 			assert.EqualError(t, err, testCase.expectedError)

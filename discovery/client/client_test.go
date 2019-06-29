@@ -281,7 +281,7 @@ func createGRPCServer(t *testing.T) *comm.GRPCServer {
 	serverCert := loadFileOrPanic(filepath.Join("testdata", "server", "cert.pem"))
 	serverKey := loadFileOrPanic(filepath.Join("testdata", "server", "key.pem"))
 	s, err := comm.NewGRPCServer("localhost:0", comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			UseTLS:      true,
 			Certificate: serverCert,
 			Key:         serverKey,
