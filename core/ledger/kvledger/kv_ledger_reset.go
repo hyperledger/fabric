@@ -35,6 +35,12 @@ func LoadPreResetHeight() (map[string]uint64, error) {
 	return fsblkstorage.LoadPreResetHeight(blockstorePath)
 }
 
+func ClearPreResetHeight() error {
+	blockstorePath := ledgerconfig.GetBlockStorePath()
+	logger.Infof("Clearing off prereset height files from path [%s]", blockstorePath)
+	return fsblkstorage.ClearPreResetHeight(blockstorePath)
+}
+
 func dropHistoryDB() error {
 	histroryDBPath := ledgerconfig.GetHistoryLevelDBPath()
 	logger.Infof("Dropping HistoryDB at location [%s] ...if present", histroryDBPath)

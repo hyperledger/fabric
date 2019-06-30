@@ -65,4 +65,9 @@ func TestResetAllLedgers(t *testing.T) {
 		assert.Equal(t, blockchainsInfo[i], bcInfo)
 		dataHelper.verifyLedgerContent(h)
 	}
+
+	assert.NoError(t, kvledger.ClearPreResetHeight())
+	preResetHt, err = kvledger.LoadPreResetHeight()
+	assert.NoError(t, err)
+	assert.Len(t, preResetHt, 0)
 }

@@ -171,6 +171,43 @@ func recordHeightIfGreaterThanPreviousRecording(ledgerDir string) error {
 }
 
 func LoadPreResetHeight(blockStorageDir string) (map[string]uint64, error) {
+	logger.Info("Loading Pre-reset heights")
+	preResetFilesMap, err := preRestHtFiles(blockStorageDir)
+	if err != nil {
+		return nil, err
+	}
+	m := map[string]uint64{}
+	for ledgerID, filePath := range preResetFilesMap {
+		bytes, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			return nil, err
+		}
+		previuoslyRecordedHt, err := strconv.ParseUint(string(bytes), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		m[ledgerID] = previuoslyRecordedHt
+	}
+	logger.Info("Pre-reset heights loaded")
+	return m, nil
+}
+
+func ClearPreResetHeight(blockStorageDir string) error {
+	logger.Info("Clearing Pre-reset heights")
+	preResetFilesMap, err := preRestHtFiles(blockStorageDir)
+	if err != nil {
+		return err
+	}
+	for _, filePath := range preResetFilesMap {
+		if err := os.Remove(filePath); err != nil {
+			return err
+		}
+	}
+	logger.Info("Cleared off Pre-reset heights")
+	return nil
+}
+
+func preRestHtFiles(blockStorageDir string) (map[string]string, error) {
 	conf := &Conf{blockStorageDir: blockStorageDir}
 	chainsDir := conf.getChainsDir()
 	chainsDirExists, err := pathExists(chainsDir)
@@ -190,7 +227,7 @@ func LoadPreResetHeight(blockStorageDir string) (map[string]uint64, error) {
 		return nil, nil
 	}
 	logger.Infof("Found ledgers - %s", ledgerIDs)
-	m := map[string]uint64{}
+	m := map[string]string{}
 	for _, ledgerID := range ledgerIDs {
 		ledgerDir := conf.getLedgerBlockDir(ledgerID)
 		file := path.Join(ledgerDir, fileNamePreRestHt)
@@ -201,15 +238,7 @@ func LoadPreResetHeight(blockStorageDir string) (map[string]uint64, error) {
 		if !exists {
 			continue
 		}
-		bytes, err := ioutil.ReadFile(file)
-		if err != nil {
-			return nil, err
-		}
-		previuoslyRecordedHt, err := strconv.ParseUint(string(bytes), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		m[ledgerID] = previuoslyRecordedHt
+		m[ledgerID] = file
 	}
 	return m, nil
 }
