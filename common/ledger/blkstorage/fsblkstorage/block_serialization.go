@@ -1,6 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
-
+Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -102,11 +101,12 @@ func addDataBytesAndConstructTxIndexInfo(blockData *common.BlockData, buf *proto
 	}
 	for _, txEnvelopeBytes := range blockData.Data {
 		offset := len(buf.Bytes())
-		if err := buf.EncodeRawBytes(txEnvelopeBytes); err != nil {
-			return nil, err
-		}
 		txid, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnvelopeBytes)
 		if err != nil {
+			logger.Warningf("error while extracting txid from tx envelope bytes during serialization of block. Ignoring this error as this is caused by a malformed transaction. Error:%s",
+				err)
+		}
+		if err := buf.EncodeRawBytes(txEnvelopeBytes); err != nil {
 			return nil, err
 		}
 		idxInfo := &txindexInfo{txID: txid, loc: &locPointer{offset, len(buf.Bytes()) - offset}}
@@ -166,7 +166,9 @@ func extractData(buf *ledgerutil.Buffer) (*common.BlockData, []*txindexInfo, err
 			return nil, nil, err
 		}
 		if txid, err = protoutil.GetOrComputeTxIDFromEnvelope(txEnvBytes); err != nil {
-			return nil, nil, err
+			logger.Warningf("error while extracting txid from tx envelope bytes during deserialization of block. Ignoring this error as this is caused by a malformed transaction. Error:%s",
+				err)
+
 		}
 		data.Data = append(data.Data, txEnvBytes)
 		idxInfo := &txindexInfo{txID: txid, loc: &locPointer{txOffset, buf.GetBytesConsumed() - txOffset}}
