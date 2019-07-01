@@ -39,6 +39,8 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	mb "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -419,6 +421,66 @@ func testInvokeOK(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	err := v.Validate(b)
 	assert.NoError(t, err)
 	assertValid(b, t)
+}
+
+func TestInvokeNOKDuplicateNs(t *testing.T) {
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKDuplicateNs(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKDuplicateNs(t, l, v)
+	})
+}
+
+func testInvokeNOKDuplicateNs(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
+	ccID := "mycc"
+
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+	// note that this read-write set has two read-write sets for the same namespace and key
+	txrws := &rwset.TxReadWriteSet{
+		DataModel: rwset.TxReadWriteSet_KV,
+		NsRwset: []*rwset.NsReadWriteSet{
+			{
+				Namespace: "mycc",
+				Rwset: utils.MarshalOrPanic(&kvrwset.KVRWSet{
+					Writes: []*kvrwset.KVWrite{
+						{
+							Key:   "foo",
+							Value: []byte("bar1"),
+						},
+					},
+				}),
+			},
+			{
+				Namespace: "mycc",
+				Rwset: utils.MarshalOrPanic(&kvrwset.KVRWSet{
+					Writes: []*kvrwset.KVWrite{
+						{
+							Key:   "foo",
+							Value: []byte("bar2"),
+						},
+					},
+				}),
+			},
+		},
+	}
+
+	tx := getEnv(ccID, nil, utils.MarshalOrPanic(txrws), t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+
+	err := v.Validate(b)
+	assert.NoError(t, err)
+	assertInvalid(b, t, peer.TxValidationCode_ILLEGAL_WRITESET)
 }
 
 func TestInvokeNoRWSet(t *testing.T) {

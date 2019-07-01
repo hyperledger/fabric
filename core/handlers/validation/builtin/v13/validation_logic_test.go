@@ -33,7 +33,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	cutils "github.com/hyperledger/fabric/core/container/util"
-	"github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v13/mocks"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	corepeer "github.com/hyperledger/fabric/core/peer"
@@ -41,7 +41,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -857,6 +857,66 @@ func TestValidateDeployNoLedger(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
+	state := make(map[string]map[string][]byte)
+	mp := (&scc.MocksccProviderFactory{
+		Qe:                    lm.NewMockQueryExecutor(state),
+		ApplicationConfigBool: true,
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+
+	v := newValidationInstance(state)
+
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	stublccc := shim.NewMockStub("lscc", lccc)
+	state["lscc"] = stublccc.State
+
+	ccname := "mycc"
+	ccver := "1"
+
+	defaultPolicy, err := getSignedByMSPAdminPolicy(mspid)
+	assert.NoError(t, err)
+	res, err := createCCDataRWset(ccname, ccname, ccver, defaultPolicy)
+	assert.NoError(t, err)
+
+	// Create a ChaincodeDeploymentSpec with nil ChaincodeSpec for negative test
+	cdsBytes, err := proto.Marshal(&peer.ChaincodeDeploymentSpec{})
+	assert.NoError(t, err)
+
+	// ChaincodeDeploymentSpec/ChaincodeSpec are derived from cdsBytes (i.e., cis.ChaincodeSpec.Input.Args[2])
+	cis := &peer.ChaincodeInvocationSpec{
+		ChaincodeSpec: &peer.ChaincodeSpec{
+			ChaincodeId: &peer.ChaincodeID{Name: "lscc"},
+			Input: &peer.ChaincodeInput{
+				Args: [][]byte{[]byte(lscc.DEPLOY), []byte("barf"), cdsBytes},
+			},
+			Type: peer.ChaincodeSpec_GOLANG,
+		},
+	}
+
+	prop, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
+	assert.NoError(t, err)
+
+	ccid := &peer.ChaincodeID{Name: ccname, Version: ccver}
+
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, res, nil, ccid, nil, id)
+	assert.NoError(t, err)
+
+	env, err := utils.CreateSignedTx(prop, id, presp)
+	assert.NoError(t, err)
+
+	// good path: signed by the right MSP
+	policy, err := getSignedByMSPMemberPolicy(mspid)
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+	}
+
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(env)}}, Header: &common.BlockHeader{}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
+	assert.EqualError(t, err, "GetChaincodeDeploymentSpec error Unknown chaincodeType: ")
+}
+
 func TestValidateDeployOK(t *testing.T) {
 	state := make(map[string]map[string][]byte)
 	mp := (&scc.MocksccProviderFactory{
@@ -899,6 +959,65 @@ func TestValidateDeployOK(t *testing.T) {
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, policy)
 	assert.NoError(t, err)
+}
+
+func TestValidateDeployNOK(t *testing.T) {
+	var testCases = []struct {
+		description string
+		ccName      string
+		ccVersion   string
+		errMsg      string
+	}{
+		{description: "empty cc name", ccName: "", ccVersion: "1", errMsg: "invalid chaincode name ''"},
+		{description: "bad first character in cc name", ccName: "_badname", ccVersion: "1.2", errMsg: "invalid chaincode name '_badname'"},
+		{description: "bad character in cc name", ccName: "bad.name", ccVersion: "1-5", errMsg: "invalid chaincode name 'bad.name'"},
+		{description: "empty cc version", ccName: "1good_name", ccVersion: "", errMsg: "invalid chaincode version ''"},
+		{description: "bad cc version", ccName: "good-name", ccVersion: "$badversion", errMsg: "invalid chaincode version '$badversion'"},
+		{description: "use system cc name", ccName: "qscc", ccVersion: "2.1", errMsg: "chaincode name 'qscc' is reserved for system chaincodes"},
+	}
+
+	// create validator and policy
+	state := make(map[string]map[string][]byte)
+	mp := (&scc.MocksccProviderFactory{
+		Qe:                    lm.NewMockQueryExecutor(state),
+		ApplicationConfigBool: true,
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+
+	v := newValidationInstance(state)
+
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	lccc := lscc.New(mp, mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	stublccc := shim.NewMockStub("lscc", lccc)
+	state["lscc"] = stublccc.State
+
+	policy, err := getSignedByMSPAdminPolicy(mspid)
+	assert.NoError(t, err)
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			testChaincodeDeployNOK(t, tc.ccName, tc.ccVersion, tc.errMsg, v, policy)
+		})
+	}
+}
+
+func testChaincodeDeployNOK(t *testing.T, ccName, ccVersion, errMsg string, v *Validator, policy []byte) {
+	res, err := createCCDataRWset(ccName, ccName, ccVersion, policy)
+	assert.NoError(t, err)
+
+	tx, err := createLSCCTx(ccName, ccVersion, lscc.DEPLOY, res)
+	if err != nil {
+		t.Fatalf("createTx returned err %s", err)
+	}
+
+	envBytes, err := utils.GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("GetBytesEnvelope returned err %s", err)
+	}
+
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
+	assert.EqualError(t, err, errMsg)
 }
 
 func TestValidateDeployWithCollection(t *testing.T) {

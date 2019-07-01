@@ -31,6 +31,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+// currently defined system chaincode names that shouldn't
+// be allowed as user-defined chaincode names
+var systemChaincodeNames = map[string]struct{}{
+	"cscc": {},
+	"escc": {},
+	"lscc": {},
+	"qscc": {},
+	"vscc": {},
+}
+
 // checkInstantiationPolicy evaluates an instantiation policy against a signed proposal
 func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.Envelope, instantiationPolicy []byte, payl *common.Payload) commonerrors.TxValidationError {
 	// get the signature header
@@ -397,6 +407,24 @@ func (vscc *Validator) ValidateLSCCInvocation(
 		if cdsArgs == nil || cdsArgs.ChaincodeSpec == nil || cdsArgs.ChaincodeSpec.ChaincodeId == nil ||
 			cap.Action == nil || cap.Action.ProposalResponsePayload == nil {
 			return policyErr(fmt.Errorf("VSCC error: invocation of lscc(%s) does not have appropriate arguments", lsccFunc))
+		}
+
+		// validate chaincode name
+		ccName := cdsArgs.ChaincodeSpec.ChaincodeId.Name
+		// it must comply with the lscc.ChaincodeNameRegExp
+		if !lscc.ChaincodeNameRegExp.MatchString(ccName) {
+			return policyErr(errors.Errorf("invalid chaincode name '%s'", ccName))
+		}
+		// it can't match the name of one of the system chaincodes
+		if _, in := systemChaincodeNames[ccName]; in {
+			return policyErr(errors.Errorf("chaincode name '%s' is reserved for system chaincodes", ccName))
+		}
+
+		// validate chaincode version
+		ccVersion := cdsArgs.ChaincodeSpec.ChaincodeId.Version
+		// it must comply with the lscc.ChaincodeVersionRegExp
+		if !lscc.ChaincodeVersionRegExp.MatchString(ccVersion) {
+			return policyErr(errors.Errorf("invalid chaincode version '%s'", ccVersion))
 		}
 
 		// get the rwset

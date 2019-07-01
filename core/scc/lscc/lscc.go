@@ -42,7 +42,11 @@ import (
 //     "Args":["stop",<ChaincodeInvocationSpec>]
 //     "Args":["start",<ChaincodeInvocationSpec>]
 
-var logger = flogging.MustGetLogger("lscc")
+var (
+	logger                 = flogging.MustGetLogger("lscc")
+	ChaincodeNameRegExp    = regexp.MustCompile("^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$")
+	ChaincodeVersionRegExp = regexp.MustCompile("^[A-Za-z0-9_.+-]+$")
+)
 
 const (
 	// chaincode lifecycle commands
@@ -91,9 +95,6 @@ const (
 
 	// GETCOLLECTIONSCONFIGALIAS gets the collections config for a chaincode
 	GETCOLLECTIONSCONFIGALIAS = "getcollectionsconfig"
-
-	allowedChaincodeName = "^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$"
-	allowedCharsVersion  = "[A-Za-z0-9_.+-]+"
 )
 
 // FilesystemSupport contains functions that LSCC requires to execute its tasks
@@ -501,11 +502,7 @@ func (lscc *LifeCycleSysCC) isValidChannelName(channel string) bool {
 // isValidChaincodeName checks the validity of chaincode name. Chaincode names
 // should never be blank and should only consist of alphanumerics, '_', and '-'
 func (lscc *LifeCycleSysCC) isValidChaincodeName(chaincodeName string) error {
-	if chaincodeName == "" {
-		return EmptyChaincodeNameErr("")
-	}
-
-	if !isValidCCNameOrVersion(chaincodeName, allowedChaincodeName) {
+	if !ChaincodeNameRegExp.MatchString(chaincodeName) {
 		return InvalidChaincodeNameErr(chaincodeName)
 	}
 
@@ -516,26 +513,11 @@ func (lscc *LifeCycleSysCC) isValidChaincodeName(chaincodeName string) error {
 // should never be blank and should only consist of alphanumerics, '_',  '-',
 // '+', and '.'
 func (lscc *LifeCycleSysCC) isValidChaincodeVersion(chaincodeName string, version string) error {
-	if version == "" {
-		return EmptyVersionErr(chaincodeName)
-	}
-
-	if !isValidCCNameOrVersion(version, allowedCharsVersion) {
+	if !ChaincodeVersionRegExp.MatchString(version) {
 		return InvalidVersionErr(version)
 	}
 
 	return nil
-}
-
-func isValidCCNameOrVersion(ccNameOrVersion string, regExp string) bool {
-	re, _ := regexp.Compile(regExp)
-
-	matched := re.FindString(ccNameOrVersion)
-	if len(matched) != len(ccNameOrVersion) {
-		return false
-	}
-
-	return true
 }
 
 func isValidStatedbArtifactsTar(statedbArtifactsTar []byte) error {
