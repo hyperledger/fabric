@@ -35,7 +35,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-var logger = flogging.MustGetLogger("vscc")
+var (
+	logger = flogging.MustGetLogger("vscc")
+
+	// currently defined system chaincode names that shouldn't
+	// be allowed as user-defined chaincode names
+	systemChaincodeNames = map[string]struct{}{
+		"cscc": {},
+		"escc": {},
+		"lscc": {},
+		"qscc": {},
+		"vscc": {},
+	}
+)
 
 const (
 	DUPLICATED_IDENTITY_ERROR = "Endorsement policy evaluation failure might be caused by duplicated identities"
@@ -524,6 +536,11 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			return policyErr(fmt.Errorf("GetChaincodeDeploymentSpec error %s", err))
 		}
 
+		if cdsArgs == nil || cdsArgs.ChaincodeSpec == nil || cdsArgs.ChaincodeSpec.ChaincodeId == nil ||
+			cap.Action == nil || cap.Action.ProposalResponsePayload == nil {
+			return policyErr(fmt.Errorf("VSCC error: invocation of lscc(%s) does not have appropriate arguments", lsccFunc))
+		}
+
 		err = packaging.NewRegistry(
 			// XXX We should definitely _not_ have this external dependency in VSCC
 			// as adding a platform could cause non-determinism.  This is yet another
@@ -538,9 +555,22 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			return policyErr(fmt.Errorf("failed to validate deployment spec: %s", err))
 		}
 
-		if cdsArgs == nil || cdsArgs.ChaincodeSpec == nil || cdsArgs.ChaincodeSpec.ChaincodeId == nil ||
-			cap.Action == nil || cap.Action.ProposalResponsePayload == nil {
-			return policyErr(fmt.Errorf("VSCC error: invocation of lscc(%s) does not have appropriate arguments", lsccFunc))
+		// validate chaincode name
+		ccName := cdsArgs.ChaincodeSpec.ChaincodeId.Name
+		// it must comply with the lscc.ChaincodeNameRegExp
+		if !lscc.ChaincodeNameRegExp.MatchString(ccName) {
+			return policyErr(errors.Errorf("invalid chaincode name '%s'", ccName))
+		}
+		// it can't match the name of one of the system chaincodes
+		if _, in := systemChaincodeNames[ccName]; in {
+			return policyErr(errors.Errorf("chaincode name '%s' is reserved for system chaincodes", ccName))
+		}
+
+		// validate chaincode version
+		ccVersion := cdsArgs.ChaincodeSpec.ChaincodeId.Version
+		// it must comply with the lscc.ChaincodeVersionRegExp
+		if !lscc.ChaincodeVersionRegExp.MatchString(ccVersion) {
+			return policyErr(errors.Errorf("invalid chaincode version '%s'", ccVersion))
 		}
 
 		// get the rwset

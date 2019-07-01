@@ -165,7 +165,7 @@ func TestInstall(t *testing.T) {
 	testInstall(t, "example02", "0", path, false, "", "Alice", scc, stub, nil)
 	testInstall(t, "example02-2", "1.0", path, false, "", "Alice", scc, stub, nil)
 	testInstall(t, "example02.go", "0", path, false, InvalidChaincodeNameErr("example02.go").Error(), "Alice", scc, stub, nil)
-	testInstall(t, "", "0", path, false, EmptyChaincodeNameErr("").Error(), "Alice", scc, stub, nil)
+	testInstall(t, "", "0", path, false, InvalidChaincodeNameErr("").Error(), "Alice", scc, stub, nil)
 	testInstall(t, "example02", "1{}0", path, false, InvalidVersionErr("1{}0").Error(), "Alice", scc, stub, nil)
 	testInstall(t, "example02", "0", path, true, InvalidStatedbArtifactsErr("").Error(), "Alice", scc, stub, nil)
 	testInstall(t, "example02", "0", path, false, "access denied for [install]", "Bob", scc, stub, errors.New("authorization error"))
@@ -244,11 +244,11 @@ func TestDeploy(t *testing.T) {
 	testDeploy(t, "example02", "0", path, false, false, true, "", nil, nil, nil)
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", nil, nil, nil)
 	testDeploy(t, "example02", "1.0", path, false, false, false, "cannot get package for chaincode (example02:1.0)", nil, nil, nil)
-	testDeploy(t, "example02", "0", path, true, false, true, EmptyChaincodeNameErr("").Error(), nil, nil, nil)
-	testDeploy(t, "example02", "0", path, false, true, true, EmptyVersionErr("example02").Error(), nil, nil, nil)
+	testDeploy(t, "example02", "0", path, true, false, true, InvalidChaincodeNameErr("").Error(), nil, nil, nil)
+	testDeploy(t, "example02", "0", path, false, true, true, InvalidVersionErr("").Error(), nil, nil, nil)
 	testDeploy(t, "example02.go", "0", path, false, false, true, InvalidChaincodeNameErr("example02.go").Error(), nil, nil, nil)
 	testDeploy(t, "example02", "1{}0", path, false, false, true, InvalidVersionErr("1{}0").Error(), nil, nil, nil)
-	testDeploy(t, "example02", "0", path, true, true, true, EmptyChaincodeNameErr("").Error(), nil, nil, nil)
+	testDeploy(t, "example02", "0", path, true, true, true, InvalidChaincodeNameErr("").Error(), nil, nil, nil)
 
 	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil)
 	scc.Support = &MockSupport{}
@@ -500,12 +500,12 @@ func TestUpgrade(t *testing.T) {
 	path := "mychaincode"
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "", nil, nil, nil)
-	testUpgrade(t, "example02", "0", "example02", "", path, EmptyVersionErr("example02").Error(), nil, nil, nil)
+	testUpgrade(t, "example02", "0", "example02", "", path, InvalidVersionErr("").Error(), nil, nil, nil)
 	testUpgrade(t, "example02", "0", "example02", "0", path, IdenticalVersionErr("example02").Error(), nil, nil, nil)
 	testUpgrade(t, "example02", "0", "example03", "1", path, NotFoundErr("example03").Error(), nil, nil, nil)
 	testUpgrade(t, "example02", "0", "example02", "1{}0", path, InvalidVersionErr("1{}0").Error(), nil, nil, nil)
 	testUpgrade(t, "example02", "0", "example*02", "1{}0", path, InvalidChaincodeNameErr("example*02").Error(), nil, nil, nil)
-	testUpgrade(t, "example02", "0", "", "1", path, EmptyChaincodeNameErr("").Error(), nil, nil, nil)
+	testUpgrade(t, "example02", "0", "", "1", path, InvalidChaincodeNameErr("").Error(), nil, nil, nil)
 
 	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil)
 	scc.Support = &MockSupport{}
@@ -1178,32 +1178,56 @@ func TestCheckChaincodeName(t *testing.T) {
 	assert.NoError(t, err)
 
 	/*invalid naming*/
+	err = lscc.isValidChaincodeName("")
+	assert.EqualError(t, err, "invalid chaincode name ''. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
 	err = lscc.isValidChaincodeName("-ab")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid chaincode name '-ab'")
+	assert.EqualError(t, err, "invalid chaincode name '-ab'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
 	err = lscc.isValidChaincodeName("_ab")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid chaincode name '_ab'")
+	assert.EqualError(t, err, "invalid chaincode name '_ab'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
 	err = lscc.isValidChaincodeName("ab-")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid chaincode name 'ab-'")
+	assert.EqualError(t, err, "invalid chaincode name 'ab-'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
 	err = lscc.isValidChaincodeName("ab_")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid chaincode name 'ab_'")
+	assert.EqualError(t, err, "invalid chaincode name 'ab_'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
 	err = lscc.isValidChaincodeName("a__b")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid chaincode name 'a__b'")
+	assert.EqualError(t, err, "invalid chaincode name 'a__b'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
 	err = lscc.isValidChaincodeName("a--b")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid chaincode name 'a--b'")
+	assert.EqualError(t, err, "invalid chaincode name 'a--b'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
 	err = lscc.isValidChaincodeName("a-_b")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid chaincode name 'a-_b'")
+	assert.EqualError(t, err, "invalid chaincode name 'a-_b'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
+}
+
+func TestCheckChaincodeVersion(t *testing.T) {
+	lscc := &LifeCycleSysCC{}
+
+	validCCName := "ccname"
+	/*allowed versions*/
+	err := lscc.isValidChaincodeVersion(validCCName, "a_b")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "a.b")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "a+b")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "a-b")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "-ab")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "a.0")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "a_b.c+d-e")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "0")
+	assert.NoError(t, err)
+
+	/*invalid versions*/
+	err = lscc.isValidChaincodeVersion(validCCName, "")
+	assert.EqualError(t, err, fmt.Sprintf("invalid chaincode version ''. Versions must not be empty and can only consist of alphanumerics, '_',  '-', '+', and '.'"))
+	err = lscc.isValidChaincodeVersion(validCCName, "$badversion")
+	assert.EqualError(t, err, "invalid chaincode version '$badversion'. Versions must not be empty and can only consist of alphanumerics, '_',  '-', '+', and '.'")
 }
 
 func TestLifecycleChaincodeRegularExpressionsMatch(t *testing.T) {
-	assert.Equal(t, chaincodeNameRegExp.String(), lifecycle.ChaincodeNameRegExp.String())
-	assert.Equal(t, chaincodeVersionRegExp.String(), lifecycle.ChaincodeVersionRegExp.String())
+	assert.Equal(t, ChaincodeNameRegExp.String(), lifecycle.ChaincodeNameRegExp.String())
+	assert.Equal(t, ChaincodeVersionRegExp.String(), lifecycle.ChaincodeVersionRegExp.String())
 }
 
 var id msp.SigningIdentity

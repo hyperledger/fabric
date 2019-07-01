@@ -47,8 +47,8 @@ var (
 	logger = flogging.MustGetLogger("lscc")
 	// NOTE these regular expressions should stay in sync with those defined in
 	// core/chaincode/lifecycle/scc.go until LSCC has been removed.
-	chaincodeNameRegExp    = regexp.MustCompile("^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$")
-	chaincodeVersionRegExp = regexp.MustCompile("^[A-Za-z0-9_.+-]+$")
+	ChaincodeNameRegExp    = regexp.MustCompile("^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$")
+	ChaincodeVersionRegExp = regexp.MustCompile("^[A-Za-z0-9_.+-]+$")
 )
 
 const (
@@ -579,11 +579,7 @@ func (lscc *LifeCycleSysCC) isValidChannelName(channel string) bool {
 // isValidChaincodeName checks the validity of chaincode name. Chaincode names
 // should never be blank and should only consist of alphanumerics, '_', and '-'
 func (lscc *LifeCycleSysCC) isValidChaincodeName(chaincodeName string) error {
-	if chaincodeName == "" {
-		return EmptyChaincodeNameErr("")
-	}
-
-	if !chaincodeNameRegExp.MatchString(chaincodeName) {
+	if !ChaincodeNameRegExp.MatchString(chaincodeName) {
 		return InvalidChaincodeNameErr(chaincodeName)
 	}
 
@@ -594,11 +590,7 @@ func (lscc *LifeCycleSysCC) isValidChaincodeName(chaincodeName string) error {
 // should never be blank and should only consist of alphanumerics, '_',  '-',
 // '+', and '.'
 func (lscc *LifeCycleSysCC) isValidChaincodeVersion(chaincodeName string, version string) error {
-	if version == "" {
-		return EmptyVersionErr(chaincodeName)
-	}
-
-	if !chaincodeVersionRegExp.MatchString(version) {
+	if !ChaincodeVersionRegExp.MatchString(version) {
 		return InvalidVersionErr(version)
 	}
 

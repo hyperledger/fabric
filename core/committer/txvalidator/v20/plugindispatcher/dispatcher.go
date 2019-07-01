@@ -168,7 +168,16 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 		}
 	}
 
+	namespaces := make(map[string]struct{})
 	for _, ns := range txRWSet.NsRwSets {
+		// check to make sure there is no duplicate namespace in txRWSet
+		if _, ok := namespaces[ns.NameSpace]; ok {
+			logger.Errorf("duplicate namespace '%s' in txRWSet", ns.NameSpace)
+			return errors.Errorf("duplicate namespace '%s' in txRWSet", ns.NameSpace),
+				peer.TxValidationCode_ILLEGAL_WRITESET
+		}
+		namespaces[ns.NameSpace] = struct{}{}
+
 		if v.txWritesToNamespace(ns) {
 			wrNamespace[ns.NameSpace] = true
 		}

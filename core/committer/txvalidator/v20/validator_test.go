@@ -39,6 +39,8 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	protosmsp "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	protospeer "github.com/hyperledger/fabric/protos/peer"
@@ -308,6 +310,56 @@ func TestInvokeOK(t *testing.T) {
 	err := v.Validate(b)
 	assert.NoError(t, err)
 	assertValid(b, t)
+}
+
+func TestInvokeNOKDuplicateNs(t *testing.T) {
+	ccID := "mycc"
+
+	v, mockQE, _, _ := setupValidator()
+
+	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
+		Name:    ccID,
+		Version: ccVersion,
+		Vscc:    "vscc",
+		Policy:  signedByAnyMember([]string{"SampleOrg"}),
+	}), nil)
+	mockQE.On("GetStateMetadata", ccID, "key").Return(nil, nil)
+
+	// note that this read-write set has two read-write sets for the same namespace and key
+	txrws := &rwset.TxReadWriteSet{
+		DataModel: rwset.TxReadWriteSet_KV,
+		NsRwset: []*rwset.NsReadWriteSet{
+			{
+				Namespace: "mycc",
+				Rwset: protoutil.MarshalOrPanic(&kvrwset.KVRWSet{
+					Writes: []*kvrwset.KVWrite{
+						{
+							Key:   "foo",
+							Value: []byte("bar1"),
+						},
+					},
+				}),
+			},
+			{
+				Namespace: "mycc",
+				Rwset: protoutil.MarshalOrPanic(&kvrwset.KVRWSet{
+					Writes: []*kvrwset.KVWrite{
+						{
+							Key:   "foo",
+							Value: []byte("bar2"),
+						},
+					},
+				}),
+			},
+		},
+	}
+
+	tx := getEnv(ccID, nil, protoutil.MarshalOrPanic(txrws), t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+
+	err := v.Validate(b)
+	assert.NoError(t, err)
+	assertInvalid(b, t, peer.TxValidationCode_ILLEGAL_WRITESET)
 }
 
 func TestInvokeNoRWSet(t *testing.T) {
