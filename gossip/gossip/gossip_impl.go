@@ -125,6 +125,7 @@ func NewGossipService(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 		AliveExpirationTimeout:       conf.AliveExpirationTimeout,
 		AliveExpirationCheckInterval: conf.AliveExpirationCheckInterval,
 		ReconnectInterval:            conf.ReconnectInterval,
+		BootstrapPeers:               conf.BootstrapPeers,
 	}
 	g.disc = discovery.NewDiscoveryService(g.selfNetworkMember(), g.discAdapter, g.disSecAdap, g.disclosurePolicy,
 		discoveryConfig)
