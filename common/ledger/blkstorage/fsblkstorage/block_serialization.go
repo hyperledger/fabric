@@ -1,17 +1,6 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright IBM Corp. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package fsblkstorage
@@ -114,7 +103,8 @@ func addDataBytesAndConstructTxIndexInfo(blockData *common.BlockData, buf *proto
 		offset := len(buf.Bytes())
 		txid, err := utils.GetOrComputeTxIDFromEnvelope(txEnvelopeBytes)
 		if err != nil {
-			return nil, err
+			logger.Warningf("error while extracting txid from tx envelope bytes during serialization of block. Ignoring this error as this is caused by a malformed transaction. Error:%s",
+				err)
 		}
 		if err := buf.EncodeRawBytes(txEnvelopeBytes); err != nil {
 			return nil, errors.Wrap(err, "error encoding the transaction envelope")
@@ -176,7 +166,9 @@ func extractData(buf *ledgerutil.Buffer) (*common.BlockData, []*txindexInfo, err
 			return nil, nil, errors.Wrap(err, "error decoding the transaction enevelope")
 		}
 		if txid, err = utils.GetOrComputeTxIDFromEnvelope(txEnvBytes); err != nil {
-			return nil, nil, err
+			logger.Warningf("error while extracting txid from tx envelope bytes during deserialization of block. Ignoring this error as this is caused by a malformed transaction. Error:%s",
+				err)
+
 		}
 		data.Data = append(data.Data, txEnvBytes)
 		idxInfo := &txindexInfo{txID: txid, loc: &locPointer{txOffset, buf.GetBytesConsumed() - txOffset}}
