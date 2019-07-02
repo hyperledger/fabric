@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/spf13/viper"
@@ -26,24 +25,6 @@ import (
 )
 
 var logger = flogging.MustGetLogger("deliveryClient")
-
-const (
-	defaultReConnectTotalTimeThreshold = time.Second * 60 * 60
-	defaultConnectionTimeout           = time.Second * 3
-	defaultReConnectBackoffThreshold   = float64(time.Hour)
-)
-
-func getReConnectTotalTimeThreshold() time.Duration {
-	return util.GetDurationOrDefault("peer.deliveryclient.reconnectTotalTimeThreshold", defaultReConnectTotalTimeThreshold)
-}
-
-func getConnectionTimeout() time.Duration {
-	return util.GetDurationOrDefault("peer.deliveryclient.connTimeout", defaultConnectionTimeout)
-}
-
-func getReConnectBackoffThreshold() float64 {
-	return util.GetFloat64OrDefault("peer.deliveryclient.reConnectBackoffThreshold", defaultReConnectBackoffThreshold)
-}
 
 // DeliverService used to communicate with orderers to obtain
 // new blocks and send them to the committer service
@@ -80,7 +61,7 @@ type deliverServiceImpl struct {
 // and how it disseminates the messages to other peers
 type Config struct {
 	// ConnFactory returns a function that creates a connection to an endpoint.
-	ConnFactory func(channelID string) func(endpoint string) (*grpc.ClientConn, error)
+	ConnFactory func(channelID string) func(endpoint string, connectionTimeout time.Duration) (*grpc.ClientConn, error)
 	// ABCFactory creates an AtomicBroadcastClient out of a connection.
 	ABCFactory func(*grpc.ClientConn) orderer.AtomicBroadcastClient
 	// CryptoSvc performs cryptographic actions like message verification and signing
@@ -95,10 +76,11 @@ type Config struct {
 	Signer identity.SignerSerializer
 	// CredentialSupport is used to get credentials for block requests.
 	CredentialSupport *comm.CredentialSupport
-	// PeerTLSEnabled enables/disables Peer TLS.
-	PeerTLSEnabled bool
 	// GRPC Dial Options
 	DeliverClientDialOpts []grpc.DialOption
+	// Configuration values for deliver service.
+	// TODO: merge 2 Config struct
+	DeliverServiceConfig *DeliverServiceConfig
 }
 
 // ConnectionCriteria defines how to connect to ordering service nodes.
@@ -210,12 +192,11 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		errMsg := fmt.Sprintf("Delivery service - block provider already exists for %s found, can't start delivery", chainID)
 		logger.Errorf(errMsg)
 		return errors.New(errMsg)
-	} else {
-		client := d.newClient(chainID, ledgerInfo)
-		logger.Debug("This peer will pass blocks from orderer service to other peers for channel", chainID)
-		d.blockProviders[chainID] = blocksprovider.NewBlocksProvider(chainID, client, d.conf.Gossip, d.conf.CryptoSvc)
-		go d.launchBlockProvider(chainID, finalizer)
 	}
+	client := d.newClient(chainID, ledgerInfo)
+	logger.Debug("This peer will pass blocks from orderer service to other peers for channel", chainID)
+	d.blockProviders[chainID] = blocksprovider.NewBlocksProvider(chainID, client, d.conf.Gossip, d.conf.CryptoSvc)
+	go d.launchBlockProvider(chainID, finalizer)
 	return nil
 }
 
@@ -240,15 +221,15 @@ func (d *deliverServiceImpl) StopDeliverForChannel(chainID string) error {
 		logger.Errorf(errMsg)
 		return errors.New(errMsg)
 	}
-	if client, exist := d.blockProviders[chainID]; exist {
-		client.Stop()
-		delete(d.blockProviders, chainID)
-		logger.Debug("This peer will stop pass blocks from orderer service to other peers")
-	} else {
+	client, exist := d.blockProviders[chainID]
+	if !exist {
 		errMsg := fmt.Sprintf("Delivery service - no block provider for %s found, can't stop delivery", chainID)
 		logger.Errorf(errMsg)
 		return errors.New(errMsg)
 	}
+	client.Stop()
+	delete(d.blockProviders, chainID)
+	logger.Debug("This peer will stop pass blocks from orderer service to other peers")
 	return nil
 }
 
@@ -265,10 +246,11 @@ func (d *deliverServiceImpl) Stop() {
 }
 
 func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocksprovider.LedgerInfo) *broadcastClient {
-	reconnectBackoffThreshold := getReConnectBackoffThreshold()
-	reconnectTotalTimeThreshold := getReConnectTotalTimeThreshold()
+	reconnectBackoffThreshold := d.conf.DeliverServiceConfig.ReConnectBackoffThreshold
+	reconnectTotalTimeThreshold := d.conf.DeliverServiceConfig.ReconnectTotalTimeThreshold
+
 	requester := &blocksRequester{
-		tls:         d.conf.PeerTLSEnabled,
+		tls:         d.conf.DeliverServiceConfig.PeerTLSEnabled,
 		chainID:     chainID,
 		signer:      d.conf.Signer,
 		credSupport: d.conf.CredentialSupport,
@@ -285,7 +267,13 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 		return time.Duration(math.Min(math.Pow(2, attempt)*sleepIncrement, reconnectBackoffThreshold)), true
 	}
 	connectionFactory := d.conf.ConnFactory(chainID)
-	connProd := comm.NewConnectionProducer(connectionFactory, d.conf.Endpoints, d.conf.DeliverClientDialOpts, d.conf.PeerTLSEnabled)
+	connProd := comm.NewConnectionProducer(
+		connectionFactory,
+		d.conf.Endpoints,
+		d.conf.DeliverClientDialOpts,
+		d.conf.DeliverServiceConfig.PeerTLSEnabled,
+		d.conf.DeliverServiceConfig.ConnectionTimeout,
+	)
 	bClient := NewBroadcastClient(connProd, d.conf.ABCFactory, broadcastSetup, backoffPolicy)
 	requester.client = bClient
 	return bClient
@@ -309,8 +297,8 @@ type CredSupportDialerFactory struct {
 	TLSEnabled        bool
 }
 
-func (c *CredSupportDialerFactory) Dialer(channelID string) func(endpoint string) (*grpc.ClientConn, error) {
-	return func(endpoint string) (*grpc.ClientConn, error) {
+func (c *CredSupportDialerFactory) Dialer(channelID string) func(endpoint string, connectionTimeout time.Duration) (*grpc.ClientConn, error) {
+	return func(endpoint string, connectionTimeout time.Duration) (*grpc.ClientConn, error) {
 		dialOpts := []grpc.DialOption{
 			grpc.WithBlock(),
 			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)),
@@ -326,8 +314,7 @@ func (c *CredSupportDialerFactory) Dialer(channelID string) func(endpoint string
 		} else {
 			dialOpts = append(dialOpts, grpc.WithInsecure())
 		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), getConnectionTimeout())
+		ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
 		defer cancel()
 		return grpc.DialContext(ctx, endpoint, dialOpts...)
 	}

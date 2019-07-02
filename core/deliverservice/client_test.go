@@ -571,10 +571,10 @@ func TestProductionUsage(t *testing.T) {
 	os := mocks.NewOrderer(5612, t)
 	os.SetNextExpectedSeek(5)
 
-	connFact := func(endpoint string) (*grpc.ClientConn, error) {
+	connFact := func(endpoint string, connectionTimeout time.Duration) (*grpc.ClientConn, error) {
 		return grpc.Dial(endpoint, grpc.WithInsecure(), grpc.WithBlock())
 	}
-	prod := comm.NewConnectionProducer(connFact, []string{"localhost:5612"}, defDeliverClientDialOpts(), peerTLSEnabled)
+	prod := comm.NewConnectionProducer(connFact, []string{"localhost:5612"}, defDeliverClientDialOpts(), peerTLSEnabled, DefaultConnectionTimeout)
 	clFact := func(cc *grpc.ClientConn) orderer.AtomicBroadcastClient {
 		return orderer.NewAtomicBroadcastClient(cc)
 	}
@@ -623,10 +623,10 @@ func TestDisconnect(t *testing.T) {
 		}
 	}
 
-	connFact := func(endpoint string) (*grpc.ClientConn, error) {
+	connFact := func(endpoint string, connectionTimeout time.Duration) (*grpc.ClientConn, error) {
 		return grpc.Dial(endpoint, grpc.WithInsecure(), grpc.WithBlock())
 	}
-	prod := comm.NewConnectionProducer(connFact, []string{"localhost:5613", "localhost:5614"}, defDeliverClientDialOpts(), peerTLSEnabled)
+	prod := comm.NewConnectionProducer(connFact, []string{"localhost:5613", "localhost:5614"}, defDeliverClientDialOpts(), peerTLSEnabled, DefaultConnectionTimeout)
 	clFact := func(cc *grpc.ClientConn) orderer.AtomicBroadcastClient {
 		return orderer.NewAtomicBroadcastClient(cc)
 	}

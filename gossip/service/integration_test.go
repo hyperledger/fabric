@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -111,10 +110,8 @@ func TestLeaderYield(t *testing.T) {
 	// Make sure the other peer declares itself as the leader soon after.
 	takeOverMaxTimeout := time.Minute
 	// It's enough to make single re-try
-	viper.Set("peer.deliveryclient.reconnectTotalTimeThreshold", time.Second*1)
 	// There is no ordering service available anyway, hence connection timeout
 	// could be shorter
-	viper.Set("peer.deliveryclient.connTimeout", time.Millisecond*100)
 	serviceConfig := &ServiceConfig{
 		UseLeaderElection:          true,
 		OrgLeader:                  false,
@@ -145,6 +142,12 @@ func TestLeaderYield(t *testing.T) {
 		gs := gossips[i].GossipService
 		gs.deliveryFactory = &embeddingDeliveryServiceFactory{&deliveryFactoryImpl{
 			credentialSupport: comm.NewCredentialSupport(),
+			deliverServiceConfig: &deliverservice.DeliverServiceConfig{
+				PeerTLSEnabled:              false,
+				ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
+				ReconnectTotalTimeThreshold: time.Second,
+				ConnectionTimeout:           time.Millisecond * 100,
+			},
 		}}
 		gs.InitializeChannel(channelName, []string{endpoint}, Support{
 			Committer: &mockLedgerInfo{1},
