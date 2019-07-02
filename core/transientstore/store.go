@@ -271,13 +271,16 @@ func (s *store) PurgeByTxids(txids []string) error {
 		// Get all txid and uuid from above result and remove it from transient store (both
 		// write set and the corresponding indexes.
 		for iter.Next() {
-			// For each entry, remove the private read-write set and correponding indexes
+			// For each entry, remove the private read-write set and corresponding indexes
 
 			// Remove private write set
 			compositeKeyPurgeIndexByTxid := iter.Key()
 			// Note: We can create compositeKeyPvtRWSet by just replacing the prefix of compositeKeyPurgeIndexByTxid
 			// with  prwsetPrefix. For code readability and to be expressive, we split and create again.
-			uuid, blockHeight := splitCompositeKeyOfPurgeIndexByTxid(compositeKeyPurgeIndexByTxid)
+			uuid, blockHeight, err := splitCompositeKeyOfPurgeIndexByTxid(compositeKeyPurgeIndexByTxid)
+			if err != nil {
+				return err
+			}
 			compositeKeyPvtRWSet := createCompositeKeyForPvtRWSet(txid, uuid, blockHeight)
 			dbBatch.Delete(compositeKeyPvtRWSet)
 
@@ -315,11 +318,14 @@ func (s *store) PurgeByHeight(maxBlockNumToRetain uint64) error {
 	// Get all txid and uuid from above result and remove it from transient store (both
 	// write set and the corresponding index.
 	for iter.Next() {
-		// For each entry, remove the private read-write set and correponding indexes
+		// For each entry, remove the private read-write set and corresponding indexes
 
 		// Remove private write set
 		compositeKeyPurgeIndexByHeight := iter.Key()
-		txid, uuid, blockHeight := splitCompositeKeyOfPurgeIndexByHeight(compositeKeyPurgeIndexByHeight)
+		txid, uuid, blockHeight, err := splitCompositeKeyOfPurgeIndexByHeight(compositeKeyPurgeIndexByHeight)
+		if err != nil {
+			return err
+		}
 		logger.Debugf("Purging from transient store private data simulated at block [%d]: txid [%s] uuid [%s]", blockHeight, txid, uuid)
 
 		compositeKeyPvtRWSet := createCompositeKeyForPvtRWSet(txid, uuid, blockHeight)
@@ -349,8 +355,8 @@ func (s *store) GetMinTransientBlkHt() (uint64, error) {
 	// Fetch the minimum transient block height
 	if iter.Next() {
 		dbKey := iter.Key()
-		_, _, blockHeight := splitCompositeKeyOfPurgeIndexByHeight(dbKey)
-		return blockHeight, nil
+		_, _, blockHeight, err := splitCompositeKeyOfPurgeIndexByHeight(dbKey)
+		return blockHeight, err
 	}
 	// Returning an error may not be the right thing to do here. May be
 	// return a bool. -1 is not possible due to unsigned int as first
@@ -371,7 +377,10 @@ func (scanner *RwsetScanner) Next() (*EndorserPvtSimulationResults, error) {
 	}
 	dbKey := scanner.dbItr.Key()
 	dbVal := scanner.dbItr.Value()
-	_, blockHeight := splitCompositeKeyOfPvtRWSet(dbKey)
+	_, blockHeight, err := splitCompositeKeyOfPvtRWSet(dbKey)
+	if err != nil {
+		return nil, err
+	}
 
 	txPvtRWSet := &rwset.TxPvtReadWriteSet{}
 	if err := proto.Unmarshal(dbVal, txPvtRWSet); err != nil {
@@ -394,7 +403,10 @@ func (scanner *RwsetScanner) NextWithConfig() (*EndorserPvtSimulationResultsWith
 	}
 	dbKey := scanner.dbItr.Key()
 	dbVal := scanner.dbItr.Value()
-	_, blockHeight := splitCompositeKeyOfPvtRWSet(dbKey)
+	_, blockHeight, err := splitCompositeKeyOfPvtRWSet(dbKey)
+	if err != nil {
+		return nil, err
+	}
 
 	txPvtRWSet := &rwset.TxPvtReadWriteSet{}
 	filteredTxPvtRWSet := &rwset.TxPvtReadWriteSet{}
