@@ -140,7 +140,7 @@ func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, endpoints []strin
 		Endpoints:         endpoints,
 		ConnFactory: (&deliverservice.CredSupportDialerFactory{
 			CredentialSupport: df.credentialSupport,
-			KeepaliveOptions:  deliverservice.KeepaliveOptions(),
+			KeepaliveOptions:  df.deliverServiceConfig.KeepaliveOptions,
 			TLSEnabled:        df.deliverServiceConfig.PeerTLSEnabled,
 		}).Dialer,
 		Gossip:                g,
