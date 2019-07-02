@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/protos/orderer"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -875,8 +874,6 @@ func TestToEndpointCriteria(t *testing.T) {
 }
 
 func TestCredSupportDialerFactory(t *testing.T) {
-	viper.Set("peer.deliveryclient.connTimeout", "500ms")
-	defer viper.Set("peer.deliveryclient.connTimeout", defaultConnectionTimeout.String())
 
 	dialerFactory := &CredSupportDialerFactory{
 		CredentialSupport: comm.NewCredentialSupport(),
@@ -884,12 +881,12 @@ func TestCredSupportDialerFactory(t *testing.T) {
 		TLSEnabled:        true,
 	}
 
-	_, err := dialerFactory.Dialer("no-such-channel")(":0")
+	_, err := dialerFactory.Dialer("no-such-channel")(":0", 500*time.Millisecond)
 	assert.Error(t, err, "expected error when cnofigured to use tls and no certs")
 	assert.Contains(t, err.Error(), "failed obtaining credentials for channel no-such-channel")
 
 	dialerFactory.TLSEnabled = false
-	_, err = dialerFactory.Dialer("no-such-channel")(":0")
+	_, err = dialerFactory.Dialer("no-such-channel")(":0", 500*time.Millisecond)
 	assert.Error(t, err, "expected error when dialing an invalid address")
 	assert.Equal(t, context.DeadlineExceeded, err, "expected a DeadlineExceeded error")
 }
