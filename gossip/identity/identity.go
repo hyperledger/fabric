@@ -168,7 +168,7 @@ func (is *identityMapperImpl) Sign(msg []byte) ([]byte, error) {
 
 func (is *identityMapperImpl) Stop() {
 	is.once.Do(func() {
-		is.stopChan <- struct{}{}
+		close(is.stopChan)
 	})
 }
 

@@ -139,11 +139,6 @@ type GossipStateProviderImpl struct {
 
 	mediator *ServicesMediator
 
-	// Channel to read gossip messages from
-	gossipChan <-chan *proto.GossipMessage
-
-	commChan <-chan protoext.ReceivedMessage
-
 	// Queue of payloads which wasn't acquired yet
 	payloads PayloadsBuffer
 
@@ -245,10 +240,6 @@ func NewGossipStateProvider(
 		mediator: services,
 		// Chain ID
 		chainID: chainID,
-		// Channel to read new messages from
-		gossipChan: gossipChan,
-		// Channel to read direct messages from other peers
-		commChan: commChan,
 		// Create a queue for payloads, wrapped in a metrics buffer
 		payloads: &metricsBuffer{
 			PayloadsBuffer: NewPayloadsBuffer(height),
@@ -273,7 +264,8 @@ func NewGossipStateProvider(
 	services.UpdateLedgerHeight(height, common2.ChannelID(s.chainID))
 
 	// Listen for incoming communication
-	go s.listen()
+	go s.receiveAndQueueGossipMessages(gossipChan)
+	go s.receiveAndDispatchDirectMessages(commChan)
 	// Deliver in order messages into the incoming channel
 	go s.deliverPayloads()
 	if s.config.StateEnabled {
@@ -286,34 +278,49 @@ func NewGossipStateProvider(
 	return s
 }
 
-func (s *GossipStateProviderImpl) listen() {
-	for {
-		select {
-		case msg := <-s.gossipChan:
-			logger.Debug("Received new message via gossip channel")
-			go s.queueNewMessage(msg)
-		case msg := <-s.commChan:
-			logger.Debug("Dispatching a message", msg)
-			go s.dispatch(msg)
-		case <-s.stopCh:
-			logger.Debug("Stop listening for new messages")
-			return
-		}
-	}
-}
-func (s *GossipStateProviderImpl) dispatch(msg protoext.ReceivedMessage) {
-	// Check type of the message
-	if protoext.IsRemoteStateMessage(msg.GetGossipMessage().GossipMessage) {
-		logger.Debug("Handling direct state transfer message")
-		// Got state transfer request response
-		s.directMessage(msg)
-	} else if msg.GetGossipMessage().GetPrivateData() != nil {
-		logger.Debug("Handling private data collection message")
-		// Handling private data replication message
-		s.privateDataMessage(msg)
-	}
+func (s *GossipStateProviderImpl) receiveAndQueueGossipMessages(ch <-chan *proto.GossipMessage) {
+	for msg := range ch {
+		logger.Debug("Received new message via gossip channel")
+		go func(msg *proto.GossipMessage) {
+			if !bytes.Equal(msg.Channel, []byte(s.chainID)) {
+				logger.Warning("Received enqueue for channel",
+					string(msg.Channel), "while expecting channel", s.chainID, "ignoring enqueue")
+				return
+			}
 
+			dataMsg := msg.GetDataMsg()
+			if dataMsg != nil {
+				if err := s.addPayload(dataMsg.GetPayload(), nonBlocking); err != nil {
+					logger.Warningf("Block [%d] received from gossip wasn't added to payload buffer: %v", dataMsg.Payload.SeqNum, err)
+					return
+				}
+
+			} else {
+				logger.Debug("Gossip message received is not of data message type, usually this should not happen.")
+			}
+		}(msg)
+	}
 }
+
+func (s *GossipStateProviderImpl) receiveAndDispatchDirectMessages(ch <-chan protoext.ReceivedMessage) {
+	for msg := range ch {
+		logger.Debug("Dispatching a message", msg)
+		go func(msg protoext.ReceivedMessage) {
+			gm := msg.GetGossipMessage()
+			// Check type of the message
+			if protoext.IsRemoteStateMessage(gm.GossipMessage) {
+				logger.Debug("Handling direct state transfer message")
+				// Got state transfer request response
+				s.directMessage(msg)
+			} else if gm.GetPrivateData() != nil {
+				logger.Debug("Handling private data collection message")
+				// Handling private data replication message
+				s.privateDataMessage(msg)
+			}
+		}(msg)
+	}
+}
+
 func (s *GossipStateProviderImpl) privateDataMessage(msg protoext.ReceivedMessage) {
 	if !bytes.Equal(msg.GetGossipMessage().Channel, []byte(s.chainID)) {
 		logger.Warning("Received state transfer request for channel",
@@ -526,26 +533,6 @@ func (s *GossipStateProviderImpl) Stop() {
 		close(s.stateRequestCh)
 		close(s.stateResponseCh)
 	})
-}
-
-// queueNewMessage makes new message notification/handler
-func (s *GossipStateProviderImpl) queueNewMessage(msg *proto.GossipMessage) {
-	if !bytes.Equal(msg.Channel, []byte(s.chainID)) {
-		logger.Warning("Received enqueue for channel",
-			string(msg.Channel), "while expecting channel", s.chainID, "ignoring enqueue")
-		return
-	}
-
-	dataMsg := msg.GetDataMsg()
-	if dataMsg != nil {
-		if err := s.addPayload(dataMsg.GetPayload(), nonBlocking); err != nil {
-			logger.Warningf("Block [%d] received from gossip wasn't added to payload buffer: %v", dataMsg.Payload.SeqNum, err)
-			return
-		}
-
-	} else {
-		logger.Debug("Gossip message received is not of data message type, usually this should not happen.")
-	}
 }
 
 func (s *GossipStateProviderImpl) deliverPayloads() {

@@ -187,11 +187,11 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 }
 
 func TestWithStaticDeliverClientLeader(t *testing.T) {
-	//Tests check if static leader flag works ok.
-	//Leader election flag set to false, and static leader flag set to true
-	//Two gossip service instances (peers) created.
-	//Each peer is added to channel and should run mock delivery client
-	//After that each peer added to another client and it should run deliver client for this channel as well.
+	// Tests check if static leader flag works ok.
+	// Leader election flag set to false, and static leader flag set to true
+	// Two gossip service instances (peers) created.
+	// Each peer is added to channel and should run mock delivery client
+	// After that each peer added to another client and it should run deliver client for this channel as well.
 
 	serviceConfig := &ServiceConfig{
 		UseLeaderElection:                false,

@@ -805,6 +805,7 @@ func (g *GossipImpl) Accept(acceptor common.MessageAcceptor, passThrough bool) (
 	inCh := g.AddChannel(acceptByType)
 	outCh := make(chan *pg.GossipMessage, acceptChanSize)
 	go func() {
+		defer close(outCh)
 		for {
 			select {
 			case <-g.toDieChan:
