@@ -330,6 +330,8 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		coreconfig.TranslatePathInPlace(configDir, &c.General.TLS.Certificate)
 		coreconfig.TranslatePathInPlace(configDir, &c.General.GenesisFile)
 		coreconfig.TranslatePathInPlace(configDir, &c.General.LocalMSPDir)
+		// Translate file ledger location
+		coreconfig.TranslatePathInPlace(configDir, &c.FileLedger.Location)
 	}()
 
 	for {
