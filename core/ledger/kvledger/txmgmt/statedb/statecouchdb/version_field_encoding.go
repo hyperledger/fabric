@@ -42,13 +42,16 @@ func decodeVersionAndMetadata(encodedstr string) (*version.Height, []byte, error
 	if err = proto.Unmarshal(versionFieldBytes, versionFieldMsg); err != nil {
 		return nil, nil, err
 	}
-	ver, _ := version.NewHeightFromBytes(versionFieldMsg.VersionBytes)
+	ver, _, err := version.NewHeightFromBytes(versionFieldMsg.VersionBytes)
+	if err != nil {
+		return nil, nil, err
+	}
 	return ver, versionFieldMsg.Metadata, nil
 }
 
 // encodeVersionOldFormat return string representation of version
-// With the intorduction of metadata feature, we change the encoding (see function below). However, we retain
-// this funtion for test so as to make sure that we can decode old format and support mixed formats present
+// With the introduction of metadata feature, we change the encoding (see function below). However, we retain
+// this function for test so as to make sure that we can decode old format and support mixed formats present
 // in a statedb. This function should be used only in tests to generate the encoding in old format
 func encodeVersionOldFormat(version *version.Height) string {
 	return fmt.Sprintf("%v:%v", version.BlockNum, version.TxNum)

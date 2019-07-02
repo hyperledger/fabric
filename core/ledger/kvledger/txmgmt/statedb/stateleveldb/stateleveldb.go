@@ -208,7 +208,10 @@ func (vdb *versionedDB) GetLatestSavePoint() (*version.Height, error) {
 	if versionBytes == nil {
 		return nil, nil
 	}
-	version, _ := version.NewHeightFromBytes(versionBytes)
+	version, _, err := version.NewHeightFromBytes(versionBytes)
+	if err != nil {
+		return nil, err
+	}
 	return version, nil
 }
 

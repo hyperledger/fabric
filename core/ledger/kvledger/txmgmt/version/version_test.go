@@ -25,7 +25,8 @@ import (
 func TestVersionSerialization(t *testing.T) {
 	h1 := NewHeight(10, 100)
 	b := h1.ToBytes()
-	h2, n := NewHeightFromBytes(b)
+	h2, n, err := NewHeightFromBytes(b)
+	assert.NoError(t, err)
 	assert.Equal(t, h1, h2)
 	assert.Len(t, b, n)
 }
@@ -46,7 +47,8 @@ func TestVersionExtraBytes(t *testing.T) {
 	h1 := NewHeight(10, 100)
 	b := h1.ToBytes()
 	b1 := append(b, extraBytes...)
-	h2, n := NewHeightFromBytes(b1)
+	h2, n, err := NewHeightFromBytes(b1)
+	assert.NoError(t, err)
 	assert.Equal(t, h1, h2)
 	assert.Len(t, b, n)
 	assert.Equal(t, extraBytes, b1[n:])

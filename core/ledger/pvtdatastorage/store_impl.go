@@ -169,7 +169,7 @@ func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvt
 	}
 	expectedBlockNum := s.nextBlockNum()
 	if expectedBlockNum != blockNum {
-		return &ErrIllegalArgs{fmt.Sprintf("Expected block number=%d, recived block number=%d", expectedBlockNum, blockNum)}
+		return &ErrIllegalArgs{fmt.Sprintf("Expected block number=%d, received block number=%d", expectedBlockNum, blockNum)}
 	}
 
 	batch := leveldbhelper.NewUpdateBatch()
@@ -241,7 +241,7 @@ func (s *store) Commit() error {
 // would have exact same entries and will overwrite those. This also leaves the
 // existing expiry entires as is because, most likely they will also get overwritten
 // per new data entries. Even if some of the expiry entries does not get overwritten,
-// (beacuse of some data may be missing next time), the additional expiry entries are just
+// (because of some data may be missing next time), the additional expiry entries are just
 // a Noop
 func (s *store) Rollback() error {
 	if !s.batchPending {
@@ -626,11 +626,18 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 
 	for itr.Next() {
 		dataKeyBytes := itr.Key()
-		if v11Format(dataKeyBytes) {
+		v11Fmt, err := v11Format(dataKeyBytes)
+		if err != nil {
+			return nil, err
+		}
+		if v11Fmt {
 			return v11RetrievePvtdata(itr, filter)
 		}
 		dataValueBytes := itr.Value()
-		dataKey := decodeDatakey(dataKeyBytes)
+		dataKey, err := decodeDatakey(dataKeyBytes)
+		if err != nil {
+			return nil, err
+		}
 		expired, err := isExpired(dataKey.nsCollBlk, s.btlPolicy, lastCommittedBlock)
 		if err != nil {
 			return nil, err
@@ -821,7 +828,10 @@ func (s *store) retrieveExpiryEntries(minBlkNum, maxBlkNum uint64) ([]*expiryEnt
 	for itr.Next() {
 		expiryKeyBytes := itr.Key()
 		expiryValueBytes := itr.Value()
-		expiryKey := decodeExpiryKey(expiryKeyBytes)
+		expiryKey, err := decodeExpiryKey(expiryKeyBytes)
+		if err != nil {
+			return nil, err
+		}
 		expiryValue, err := decodeExpiryValue(expiryValueBytes)
 		if err != nil {
 			return nil, err
