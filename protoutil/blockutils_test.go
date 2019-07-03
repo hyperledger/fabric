@@ -18,6 +18,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var testChainID = "myuniquetestchainid"
@@ -187,6 +188,73 @@ func TestGetMetadataFromNewBlock(t *testing.T) {
 	assert.Panics(t, func() {
 		_ = protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
 	}, "Expected panic with malformed metadata")
+}
+
+func TestGetConsenterkMetadataFromBlock(t *testing.T) {
+	var cases = []struct {
+		name       string
+		value      []byte
+		signatures []byte
+		orderer    []byte
+		pass       bool
+	}{
+		{
+			name:       "empty",
+			value:      nil,
+			signatures: nil,
+			orderer:    nil,
+			pass:       true,
+		},
+		{
+			name:  "signature only",
+			value: []byte("hello"),
+			signatures: protoutil.MarshalOrPanic(&cb.Metadata{
+				Value: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
+					ConsenterMetadata: protoutil.MarshalOrPanic(&cb.Metadata{Value: []byte("hello")}),
+				}),
+			}),
+			orderer: nil,
+			pass:    true,
+		},
+		{
+			name:       "orderer only",
+			value:      []byte("hello"),
+			signatures: nil,
+			orderer:    protoutil.MarshalOrPanic(&cb.Metadata{Value: []byte("hello")}),
+			pass:       true,
+		},
+		{
+			name:  "both signatures and orderer",
+			value: []byte("hello"),
+			signatures: protoutil.MarshalOrPanic(&cb.Metadata{
+				Value: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
+					ConsenterMetadata: protoutil.MarshalOrPanic(&cb.Metadata{Value: []byte("hello")}),
+				}),
+			}),
+			orderer: protoutil.MarshalOrPanic(&cb.Metadata{Value: []byte("hello")}),
+			pass:    true,
+		},
+		{
+			name:       "malformed OrdererBlockMetadata",
+			signatures: protoutil.MarshalOrPanic(&cb.Metadata{Value: []byte("malformed")}),
+			orderer:    nil,
+			pass:       false,
+		},
+	}
+
+	for _, test := range cases {
+		block := protoutil.NewBlock(0, nil)
+		block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = test.signatures
+		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = test.orderer
+		result, err := protoutil.GetConsenterMetadataFromBlock(block)
+
+		if test.pass {
+			require.NoError(t, err)
+			require.Equal(t, result.Value, test.value)
+		} else {
+			require.Error(t, err)
+		}
+	}
 }
 
 func TestInitBlockMeta(t *testing.T) {
