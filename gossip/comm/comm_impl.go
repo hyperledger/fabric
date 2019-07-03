@@ -182,7 +182,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 				RecvBuffSize: c.recvBuffSize,
 				SendBuffSize: c.sendBuffSize,
 			}
-			conn := newConnection(cl, cc, stream, nil, c.metrics, connConfig)
+			conn := newConnection(cl, cc, stream, c.metrics, connConfig)
 			conn.pkiID = pkiID
 			conn.info = connInfo
 			conn.logger = c.logger
@@ -570,7 +570,6 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	defer func() {
 		c.logger.Debug("Client", extractRemoteAddress(stream), " disconnected")
 		c.connStore.closeConnByPKIid(connInfo.ID)
-		conn.close()
 	}()
 
 	return conn.serviceConnection()
@@ -633,7 +632,7 @@ func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, certHash []byte, 
 type stream interface {
 	Send(envelope *proto.Envelope) error
 	Recv() (*proto.Envelope, error)
-	grpc.Stream
+	Context() context.Context
 }
 
 func topicForAck(nonce uint64, pkiID common.PKIidType) string {
