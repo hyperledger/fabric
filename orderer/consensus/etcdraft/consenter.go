@@ -105,10 +105,21 @@ func (c *Consenter) ReceiverByChain(channelID string) MessageReceiver {
 }
 
 func (c *Consenter) detectSelfID(consenters map[uint64]*etcdraft.Consenter) (uint64, error) {
+	thisNodeCertAsDER, err := pemToDER(c.Cert, 0, "server", c.Logger)
+	if err != nil {
+		return 0, err
+	}
+
 	var serverCertificates []string
 	for nodeID, cst := range consenters {
 		serverCertificates = append(serverCertificates, string(cst.ServerTlsCert))
-		if bytes.Equal(c.Cert, cst.ServerTlsCert) {
+
+		certAsDER, err := pemToDER(cst.ServerTlsCert, nodeID, "server", c.Logger)
+		if err != nil {
+			return 0, err
+		}
+
+		if bytes.Equal(thisNodeCertAsDER, certAsDER) {
 			return nodeID, nil
 		}
 	}

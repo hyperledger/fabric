@@ -1156,11 +1156,11 @@ func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 		if raftID == c.raftID {
 			continue
 		}
-		serverCertAsDER, err := c.pemToDER(consenter.ServerTlsCert, raftID, "server")
+		serverCertAsDER, err := pemToDER(consenter.ServerTlsCert, raftID, "server", c.logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		clientCertAsDER, err := c.pemToDER(consenter.ClientTlsCert, raftID, "client")
+		clientCertAsDER, err := pemToDER(consenter.ClientTlsCert, raftID, "client", c.logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -1174,10 +1174,10 @@ func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 	return nodes, nil
 }
 
-func (c *Chain) pemToDER(pemBytes []byte, id uint64, certType string) ([]byte, error) {
+func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.FabricLogger) ([]byte, error) {
 	bl, _ := pem.Decode(pemBytes)
 	if bl == nil {
-		c.logger.Errorf("Rejecting PEM block of %s TLS cert for node %d, offending PEM is: %s", certType, id, string(pemBytes))
+		logger.Errorf("Rejecting PEM block of %s TLS cert for node %d, offending PEM is: %s", certType, id, string(pemBytes))
 		return nil, errors.Errorf("invalid PEM block")
 	}
 	return bl.Bytes, nil
