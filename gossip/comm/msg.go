@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
-	"sync"
-
 	"github.com/hyperledger/fabric/gossip/protoext"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
@@ -17,7 +15,6 @@ import (
 // ReceivedMessageImpl is an implementation of ReceivedMessage
 type ReceivedMessageImpl struct {
 	*protoext.SignedGossipMessage
-	lock     sync.Locker
 	conn     *connection
 	connInfo *protoext.ConnectionInfo
 }

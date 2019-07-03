@@ -192,7 +192,6 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 				c.logger.Debug("Got message:", m)
 				c.msgPublisher.DeMultiplex(&ReceivedMessageImpl{
 					conn:                conn,
-					lock:                conn,
 					SignedGossipMessage: m,
 					connInfo:            connInfo,
 				})
@@ -559,7 +558,6 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	h := func(m *protoext.SignedGossipMessage) {
 		c.msgPublisher.DeMultiplex(&ReceivedMessageImpl{
 			conn:                conn,
-			lock:                conn,
 			SignedGossipMessage: m,
 			connInfo:            connInfo,
 		})

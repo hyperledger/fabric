@@ -206,18 +206,11 @@ type connection struct {
 	gossipStream stream             // there can only be one
 	stopChan     chan struct{}      // a method to stop the server-side gRPC call from a different go-routine
 	stopOnce     sync.Once          // once to ensure close is called only once
-	sync.RWMutex                    // synchronizes access to shared variables
-	stopWG       sync.WaitGroup     // a method to wait for stream activity to stop before closing it
 }
 
 func (conn *connection) close() {
 	conn.stopOnce.Do(func() {
 		close(conn.stopChan)
-
-		conn.Lock()
-		defer conn.Unlock()
-
-		conn.stopWG.Wait()
 
 		if conn.conn != nil {
 			conn.conn.Close()
@@ -279,15 +272,6 @@ func (conn *connection) serviceConnection() error {
 }
 
 func (conn *connection) writeToStream() {
-	conn.Lock()
-	select {
-	case <-conn.stopChan:
-	default:
-		conn.stopWG.Add(1) // wait for write to finish before calling conn.close()
-		defer conn.stopWG.Done()
-	}
-	conn.Unlock()
-
 	stream := conn.gossipStream
 	for {
 		select {
@@ -324,7 +308,10 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 				errChan <- err
 				conn.logger.Warningf("Got error, aborting: %v", err)
 			}
-			msgChan <- msg
+			select {
+			case <-conn.stopChan:
+			case msgChan <- msg:
+			}
 		}
 	}
 }
