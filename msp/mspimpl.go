@@ -97,9 +97,9 @@ type bccspmsp struct {
 
 	// NodeOUs configuration
 	ouEnforcement bool
-	// These are the OUIdentifiers of the clients, peers and orderers.
+	// These are the OUIdentifiers of the clients, peers, admins and orderers.
 	// They are used to tell apart these entities
-	clientOU, peerOU, adminOU *OUIdentifier
+	clientOU, peerOU, adminOU, ordererOU *OUIdentifier
 }
 
 // newBccspMsp returns an MSP instance backed up by a BCCSP
@@ -334,8 +334,13 @@ func (msp *bccspmsp) hasOURoleInternal(id *identity, mspRole m.MSPRole_MSPRoleTy
 		nodeOUValue = msp.peerOU.OrganizationalUnitIdentifier
 	case m.MSPRole_ADMIN:
 		nodeOUValue = msp.adminOU.OrganizationalUnitIdentifier
+	case m.MSPRole_ORDERER:
+		if msp.ordererOU == nil {
+			return errors.New("cannot test for orderer ou classification, node ou for orderers not defined")
+		}
+		nodeOUValue = msp.ordererOU.OrganizationalUnitIdentifier
 	default:
-		return errors.New("Invalid MSPRoleType. It must be CLIENT, PEER or ADMIN")
+		return errors.New("Invalid MSPRoleType. It must be CLIENT, PEER, ADMIN or ORDERER")
 	}
 
 	for _, OU := range id.GetOrganizationalUnits() {
@@ -621,6 +626,16 @@ func (msp *bccspmsp) satisfiesPrincipalInternalV143(id Identity, principal *m.MS
 				return errors.Wrapf(err, "The identity is not an admin under this MSP [%s]", msp.name)
 			}
 
+			return nil
+		case m.MSPRole_ORDERER:
+			mspLogger.Debugf("Checking if identity satisfies role [%s] for %s", m.MSPRole_MSPRoleType_name[int32(mspRole.Role)], msp.name)
+			if err := msp.Validate(id); err != nil {
+				return errors.Wrapf(err, "The identity is not valid under this MSP [%s]", msp.name)
+			}
+
+			if err := msp.hasOURole(id, mspRole.Role); err != nil {
+				return errors.Wrapf(err, "The identity is not a [%s] under this MSP [%s]", m.MSPRole_MSPRoleType_name[int32(mspRole.Role)], msp.name)
+			}
 			return nil
 		}
 	}

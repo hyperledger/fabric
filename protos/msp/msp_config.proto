@@ -207,4 +207,7 @@ message FabricNodeOUs {
 
     // OU Identifier of the admins
     FabricOUIdentifier admin_ou_identifier = 4;
+
+    // OU Identifier of the orderers
+    FabricOUIdentifier orderer_ou_identifier = 5;
 }

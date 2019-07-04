@@ -219,17 +219,18 @@ func (msp *bccspmsp) validateIdentityOUsV143(id *identity) error {
 	// Make sure that the identity has only one of the special OUs
 	// used to tell apart clients, peers and admins.
 	counter := 0
+	validOUs := make(map[string]*OUIdentifier)
+	validOUs[msp.clientOU.OrganizationalUnitIdentifier] = msp.clientOU
+	validOUs[msp.peerOU.OrganizationalUnitIdentifier] = msp.peerOU
+	validOUs[msp.adminOU.OrganizationalUnitIdentifier] = msp.adminOU
+	if msp.ordererOU != nil {
+		validOUs[msp.ordererOU.OrganizationalUnitIdentifier] = msp.ordererOU
+	}
+
 	for _, OU := range id.GetOrganizationalUnits() {
 		// Is OU.OrganizationalUnitIdentifier one of the special OUs?
-		var nodeOU *OUIdentifier
-		switch OU.OrganizationalUnitIdentifier {
-		case msp.clientOU.OrganizationalUnitIdentifier:
-			nodeOU = msp.clientOU
-		case msp.peerOU.OrganizationalUnitIdentifier:
-			nodeOU = msp.peerOU
-		case msp.adminOU.OrganizationalUnitIdentifier:
-			nodeOU = msp.adminOU
-		default:
+		nodeOU := validOUs[OU.OrganizationalUnitIdentifier]
+		if nodeOU == nil {
 			continue
 		}
 
@@ -244,7 +245,7 @@ func (msp *bccspmsp) validateIdentityOUsV143(id *identity) error {
 		}
 	}
 	if counter != 1 {
-		return errors.Errorf("the identity must be a client, a peer or an admin identity to be valid, not a combination of them. OUs: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
+		return errors.Errorf("the identity must be a client, a peer, an orderer or an admin identity to be valid, not a combination of them. OUs: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
 	}
 
 	return nil

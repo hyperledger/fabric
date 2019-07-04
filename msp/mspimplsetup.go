@@ -302,6 +302,20 @@ func (msp *bccspmsp) setupNodeOUsV143(config *m.FabricMSPConfig) error {
 		msp.adminOU.CertifiersIdentifier = certifiersIdentifier
 	}
 
+	// OrdererOU
+	if config.FabricNodeOus.OrdererOuIdentifier != nil {
+		msp.ordererOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOus.OrdererOuIdentifier.OrganizationalUnitIdentifier}
+		if len(config.FabricNodeOus.OrdererOuIdentifier.Certificate) != 0 {
+			certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOus.OrdererOuIdentifier.Certificate)
+			if err != nil {
+				return err
+			}
+			msp.ordererOU.CertifiersIdentifier = certifiersIdentifier
+		}
+	} else {
+		msp.ordererOU = nil
+	}
+
 	return nil
 }
 

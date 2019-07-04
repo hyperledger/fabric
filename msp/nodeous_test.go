@@ -268,3 +268,59 @@ func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
 	// the configuration enables NodeOUs (with adminOU) but no valid identifier for the AdminOU
 	getLocalMSPWithVersionErr(t, "testdata/nodeouadmin3", MSPv1_4_3, "invalid admin ou configuration, nil.")
 }
+
+func TestSatisfiesPrincipalOrderer(t *testing.T) {
+	// testdata/nodeouorderer:
+	// the configuration enables NodeOUs (with orderOU)
+	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeouorderer", MSPv1_4_3)
+	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
+
+	id, err := thisMSP.(*bccspmsp).GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+	err = id.SatisfiesPrincipal(principal)
+	assert.NoError(t, err)
+}
+
+func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
+	// testdata/nodeouorderer2:
+	// the configuration enables NodeOUs (with orderOU) but no valid identifier for the OrdererOU
+	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeouorderer2", MSPv1_4_3)
+	conf, err := GetLocalMspConfig("testdata/nodeouorderer2", nil, "SampleOrg")
+	assert.NoError(t, err)
+
+	id, err := thisMSP.(*bccspmsp).GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+	assert.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for orderer ou classification, node ou for orderers not defined", err.Error())
+
+	// testdata/nodeouorderer3:
+	// the configuration enables NodeOUs (with orderOU) but no valid identifier for the OrdererOU
+	thisMSP = getLocalMSPWithVersion(t, "testdata/nodeouorderer3", MSPv1_4_3)
+
+	err = thisMSP.Setup(conf)
+	assert.NoError(t, err)
+	id, err = thisMSP.(*bccspmsp).GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+	principal = &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+	assert.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for orderer ou classification, node ou for orderers not defined", err.Error())
+}
