@@ -290,3 +290,71 @@ func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, "invalid admin ou configuration, nil.", err.Error())
 }
+
+func TestSatisfiesPrincipalOrderer(t *testing.T) {
+	// testdata/nodeouorderer:
+	// the configuration enables NodeOUs (with orderOU)
+	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeouorderer", MSPv1_4_2)
+	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
+
+	id, err := thisMSP.(*bccspmsp).GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+	err = id.SatisfiesPrincipal(principal)
+	assert.NoError(t, err)
+}
+
+func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
+	// testdata/nodeouorderer2:
+	// the configuration enables NodeOUs (with orderOU) but no valid identifier for the OrdererOU
+	conf, err := GetLocalMspConfig("testdata/nodeouorderer2", nil, "SampleOrg")
+	assert.NoError(t, err)
+
+	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/nodeouorderer2", "keystore"), true)
+	assert.NoError(t, err)
+	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_4_2, ks)
+	assert.NoError(t, err)
+
+	err = thisMSP.Setup(conf)
+	assert.NoError(t, err)
+	id, err := thisMSP.(*bccspmsp).GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+	assert.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for orderer ou classification, node ou for orderers not defined", err.Error())
+
+	// testdata/nodeouorderer3:
+	// the configuration enables NodeOUs (with orderOU) but no valid identifier for the OrdererOU
+	conf, err = GetLocalMspConfig("testdata/nodeouorderer3", nil, "SampleOrg")
+	assert.NoError(t, err)
+
+	ks, err = sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/nodeouorderer3", "keystore"), true)
+	assert.NoError(t, err)
+	thisMSP, err = NewBccspMspWithKeyStore(MSPv1_4_2, ks)
+	assert.NoError(t, err)
+
+	err = thisMSP.Setup(conf)
+	assert.NoError(t, err)
+	id, err = thisMSP.(*bccspmsp).GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+	principal = &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+	assert.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for orderer ou classification, node ou for orderers not defined", err.Error())
+}

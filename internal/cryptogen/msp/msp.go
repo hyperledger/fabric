@@ -26,15 +26,17 @@ const (
 )
 
 const (
-	CLIENTOU = "client"
-	PEEROU   = "peer"
-	ADMINOU  = "admin"
+	CLIENTOU  = "client"
+	PEEROU    = "peer"
+	ADMINOU   = "admin"
+	ORDEREROU = "orderer"
 )
 
 var nodeOUMap = map[int]string{
-	CLIENT: CLIENTOU,
-	PEER:   PEEROU,
-	ADMIN:  ADMINOU,
+	CLIENT:  CLIENTOU,
+	PEER:    PEEROU,
+	ADMIN:   ADMINOU,
+	ORDERER: ORDEREROU,
 }
 
 func GenerateLocalMSP(
@@ -111,7 +113,7 @@ func GenerateLocalMSP(
 	}
 
 	// generate config.yaml if required
-	if nodeOUs && nodeType == PEER {
+	if nodeOUs && (nodeType == PEER || nodeType == ORDERER) {
 
 		exportConfig(mspDir, filepath.Join("cacerts", x509Filename(signCA.Name)), true)
 	}
@@ -303,6 +305,10 @@ func exportConfig(mspDir, caFile string, enable bool) error {
 			AdminOUIdentifier: &fabricmsp.OrganizationalUnitIdentifiersConfiguration{
 				Certificate:                  caFile,
 				OrganizationalUnitIdentifier: ADMINOU,
+			},
+			OrdererOUIdentifier: &fabricmsp.OrganizationalUnitIdentifiersConfiguration{
+				Certificate:                  caFile,
+				OrganizationalUnitIdentifier: ORDEREROU,
 			},
 		},
 	}

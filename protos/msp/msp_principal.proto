@@ -116,6 +116,7 @@ message MSPRole {
         ADMIN  = 1; // Represents an MSP Admin
         CLIENT = 2; // Represents an MSP Client
         PEER = 3; // Represents an MSP Peer
+        ORDERER = 4; // Represents an MSP Orderer
     }
 
     // MSPRoleType defines which of the available, pre-defined MSP-roles
