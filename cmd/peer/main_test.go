@@ -9,6 +9,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +34,19 @@ func TestPluginLoadingFailure(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
+	peerListener, err := net.Listen("tcp", "localhost:0")
+	gt.Expect(err).NotTo(HaveOccurred())
+	peerListenAddress := peerListener.Addr()
+
+	operationsListener, err := net.Listen("tcp", "localhost:0")
+	gt.Expect(err).NotTo(HaveOccurred())
+	operationsListenAddress := operationsListener.Addr()
+
+	err = peerListener.Close()
+	gt.Expect(err).NotTo(HaveOccurred())
+	err = operationsListener.Close()
+	gt.Expect(err).NotTo(HaveOccurred())
+
 	for _, plugin := range []string{
 		"ENDORSERS_ESCC",
 		"VALIDATORS_VSCC",
@@ -43,9 +57,11 @@ func TestPluginLoadingFailure(t *testing.T) {
 			cmd.Env = []string{
 				fmt.Sprintf("CORE_PEER_FILESYSTEMPATH=%s", tempDir),
 				fmt.Sprintf("CORE_PEER_HANDLERS_%s_LIBRARY=%s", plugin, filepath.Join(parentDir, "internal/peer/testdata/invalid_plugins/invalidplugin.so")),
+				fmt.Sprintf("CORE_PEER_LISTENADDRESS=%s", peerListenAddress),
 				fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", "msp"),
-				fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(parentDir, "sampleconfig")),
+				fmt.Sprintf("CORE_OPERATIONS_LISTENADDRESS=%s", operationsListenAddress),
 				"CORE_OPERATIONS_TLS_ENABLED=false",
+				fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(parentDir, "sampleconfig")),
 			}
 			sess, err := gexec.Start(cmd, nil, nil)
 			gt.Expect(err).NotTo(HaveOccurred())
