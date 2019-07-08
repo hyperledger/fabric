@@ -73,7 +73,7 @@ func (c *client) addPostOrderTx(txid string, customTxType common.HeaderType) *tx
 }
 
 // simulateDeployTx mimics a transction that deploys a chaincode. This in turn calls the function 'simulateDataTx'
-// with supplying the simulation logic that mimics the inoke funciton of 'lscc' for the ledger tests
+// with supplying the simulation logic that mimics the invoke function of 'lscc' for the ledger tests
 func (c *client) simulateDeployTx(ccName string, collConfs []*collConf) *txAndPvtdata {
 	ccData := &ccprovider.ChaincodeData{Name: ccName}
 	ccDataBytes, err := proto.Marshal(ccData)
@@ -103,6 +103,22 @@ func (c *client) causeMissingPvtData(txIndex uint64) {
 		}
 	}
 	c.simulatedTrans[txIndex].Pvtws = nil
+}
+
+func (c *client) retrieveCommittedBlocksAndPvtdata(startNum, endNum uint64) []*ledger.BlockAndPvtData {
+	data := []*ledger.BlockAndPvtData{}
+	for i := startNum; i <= endNum; i++ {
+		d, err := c.lgr.GetPvtDataAndBlockByNum(i, nil)
+		c.assert.NoError(err)
+		data = append(data, d)
+	}
+	return data
+}
+
+func (c *client) currentHeight() uint64 {
+	bcInfo, err := c.lgr.GetBlockchainInfo()
+	c.assert.NoError(err)
+	return bcInfo.Height
 }
 
 ///////////////////////   simulator wrapper functions  ///////////////////////
