@@ -7,7 +7,7 @@ Hyperledger Fabric's First long term support release
 Hyperledger Fabric has matured since the initial v1.0 release, and so has the
 community of Fabric operators. The Fabric developers have been working with
 network operators to deliver v1.4 with a focus on stability and production
-operations. As such, v1.4 will be our first long term support release.
+operations. As such, v1.4.x will be our first long term support release.
 
 Our policy to date has been to provide bug fix (patch) releases for our most
 recent major or minor release until the next major or minor release has been
@@ -17,7 +17,7 @@ bug fixes for a period of one year from the date of release. This will likely
 result in a series of patch releases (v1.4.1, v1.4.2, and so on), where multiple
 fixes are bundled into a patch release.
 
-If you are running with Hyperledger Fabric v1.4, you can be assured that
+If you are running with Hyperledger Fabric v1.4.x, you can be assured that
 you will be able to safely upgrade to any of the subsequent patch releases.
 In the advent that there is need of some upgrade process to remedy a defect,
 we will provide that process with the patch release.
@@ -41,6 +41,10 @@ across the world to contribute nodes to a decentralized ordering service.
 * :doc:`raft_configuration`:
   Shows the configuration parameters and considerations when deploying a Raft
   ordering service.
+
+* :doc:`kafka_raft_migration`:
+  If you're a user with a Kafka ordering service, this doc shows the process for
+  migrating to a Raft ordering service.
 
 * :doc:`orderer_deploy`:
   Describes the process for deploying an ordering node, independent of what the
@@ -157,8 +161,10 @@ with a link to the full release change log.
 
 * `Fabric v1.4.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.0>`_.
 * `Fabric v1.4.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.1>`_.
+* `Fabric v1.4.2 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.2>`_.
 * `Fabric CA v1.4.0 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.0>`_.
 * `Fabric CA v1.4.1 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.1>`_.
+* `Fabric CA v1.4.2 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.2>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
