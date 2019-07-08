@@ -125,6 +125,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 				logger.Debugf("txid [%s] is a duplicate of a previous tx. Not indexing in txid-index", txoffset.txID)
 				continue
 			}
+
 			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
 			logger.Debugf("Adding txLoc [%s] for tx ID: [%s] to txid-index", txFlp, txoffset.txID)
 			txFlpBytes, marshalErr := txFlp.marshal()

@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -132,7 +133,7 @@ func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block, s
 func (w *testBlockfileMgrWrapper) testGetBlockByTxID(blocks []*common.Block, expectedErr error) {
 	for i, block := range blocks {
 		for _, txEnv := range block.Data.Data {
-			txID, err := extractTxID(txEnv)
+			txID, err := utils.GetOrComputeTxIDFromEnvelope(txEnv)
 			assert.NoError(w.t, err)
 			b, err := w.blockfileMgr.retrieveBlockByTxID(txID)
 			if expectedErr != nil {

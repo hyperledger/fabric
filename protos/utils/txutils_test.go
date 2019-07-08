@@ -520,3 +520,50 @@ func (m *mockLocalSigner) Sign(message []byte) ([]byte, error) {
 	}
 	return message, nil
 }
+
+func TestGetorComputeTxIDFromEnvelope(t *testing.T) {
+	t.Run("txID is present in the envelope", func(t *testing.T) {
+		txID := "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492"
+		envelopeBytes := createSampleTxEnvelopeBytes(txID)
+		actualTxID, err := utils.GetOrComputeTxIDFromEnvelope(envelopeBytes)
+		assert.Nil(t, err)
+		assert.Equal(t, "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492", actualTxID)
+	})
+
+	t.Run("txID is not present in the envelope", func(t *testing.T) {
+		txID := ""
+		envelopeBytes := createSampleTxEnvelopeBytes(txID)
+		actualTxID, err := utils.GetOrComputeTxIDFromEnvelope(envelopeBytes)
+		assert.Nil(t, err)
+		assert.Equal(t, "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492", actualTxID)
+
+	})
+}
+
+func createSampleTxEnvelopeBytes(txID string) []byte {
+	chdr := &cb.ChannelHeader{
+		TxId: "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492",
+	}
+	chdrBytes := utils.MarshalOrPanic(chdr)
+
+	shdr := &cb.SignatureHeader{
+		Nonce:   []byte("nonce"),
+		Creator: []byte("creator"),
+	}
+	shdrBytes := utils.MarshalOrPanic(shdr)
+
+	hdr := &cb.Header{
+		ChannelHeader:   chdrBytes,
+		SignatureHeader: shdrBytes,
+	}
+
+	payload := &cb.Payload{
+		Header: hdr,
+	}
+	payloadBytes := utils.MarshalOrPanic(payload)
+
+	envelope := &cb.Envelope{
+		Payload: payloadBytes,
+	}
+	return utils.MarshalOrPanic(envelope)
+}

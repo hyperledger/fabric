@@ -21,6 +21,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -140,7 +141,8 @@ func TestReinitialization(t *testing.T) {
 	defer tev.tearDown()
 
 	// create a block to add to the ledger
-	b1 := blockledger.CreateNextBlock(ledger1, []*cb.Envelope{{Payload: []byte("My Data")}})
+	envelope := getSampleEnvelopeWithSignatureHeader()
+	b1 := blockledger.CreateNextBlock(ledger1, []*cb.Envelope{envelope})
 
 	// add the block to the ledger
 	ledger1.Append(b1)
@@ -178,7 +180,9 @@ func TestAddition(t *testing.T) {
 	defer tev.tearDown()
 	info, _ := fl.blockStore.GetBlockchainInfo()
 	prevHash := info.CurrentBlockHash
-	fl.Append(blockledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}}))
+	envelope := getSampleEnvelopeWithSignatureHeader()
+	b1 := blockledger.CreateNextBlock(fl, []*cb.Envelope{envelope})
+	fl.Append(b1)
 	assert.Equal(t, uint64(2), fl.Height(), "Block height should be 2")
 
 	block := blockledger.GetBlock(fl, 1)
@@ -189,7 +193,9 @@ func TestAddition(t *testing.T) {
 func TestRetrieval(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
-	fl.Append(blockledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}}))
+	envelope := getSampleEnvelopeWithSignatureHeader()
+	b1 := blockledger.CreateNextBlock(fl, []*cb.Envelope{envelope})
+	fl.Append(b1)
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
 	defer it.Close()
 	assert.Zero(t, num, "Expected genesis block iterator, but got %d", num)
@@ -217,7 +223,9 @@ func TestBlockedRetrieval(t *testing.T) {
 	}
 	assert.Equal(t, uint64(1), num, "Expected block iterator at 1, but got %d", num)
 
-	fl.Append(blockledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}}))
+	envelope := getSampleEnvelopeWithSignatureHeader()
+	b1 := blockledger.CreateNextBlock(fl, []*cb.Envelope{envelope})
+	fl.Append(b1)
 
 	block, status := it.Next()
 	assert.Equal(t, cb.Status_SUCCESS, status, "Expected to successfully read the second block")
@@ -227,7 +235,8 @@ func TestBlockedRetrieval(t *testing.T) {
 		block.Header.Number,
 		"Expected to successfully retrieve the second block but got block number %d", block.Header.Number)
 
-	fl.Append(blockledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}}))
+	b2 := blockledger.CreateNextBlock(fl, []*cb.Envelope{envelope})
+	fl.Append(b2)
 
 	block, status = it.Next()
 	assert.Equal(t, cb.Status_SUCCESS, status, "Expected to successfully read the third block")
@@ -295,4 +304,15 @@ func TestBlockstoreError(t *testing.T) {
 		_, status := it.Next()
 		assert.Equal(t, cb.Status_SERVICE_UNAVAILABLE, status, "Expected service unavailable error")
 	}
+}
+
+func getSampleEnvelopeWithSignatureHeader() *cb.Envelope {
+	nonce := utils.CreateNonceOrPanic()
+	sighdr := &cb.SignatureHeader{Nonce: nonce}
+	sighdrBytes := utils.MarshalOrPanic(sighdr)
+
+	header := &cb.Header{SignatureHeader: sighdrBytes}
+	payload := &cb.Payload{Header: header}
+	payloadBytes := utils.MarshalOrPanic(payload)
+	return &cb.Envelope{Payload: payloadBytes}
 }

@@ -63,6 +63,54 @@ func TestUnmarshalPayload(t *testing.T) {
 
 }
 
+func TestUnmarshalSignatureHeader(t *testing.T) {
+	t.Run("invalid header", func(t *testing.T) {
+		sighdrBytes := []byte("invalid signature header")
+		sighdr, err := UnmarshalSignatureHeader(sighdrBytes)
+		assert.Error(t, err, "Expected unmarshaling error")
+		assert.Nil(t, sighdr)
+	})
+
+	t.Run("valid empty header", func(t *testing.T) {
+		sighdr := &cb.SignatureHeader{}
+		sighdrBytes := MarshalOrPanic(sighdr)
+		sighdr, err := UnmarshalSignatureHeader(sighdrBytes)
+		assert.NoError(t, err, "Unexpected error unmarshaling signature header")
+		assert.Nil(t, sighdr.Creator)
+		assert.Nil(t, sighdr.Nonce)
+	})
+
+	t.Run("valid header", func(t *testing.T) {
+		sighdr := &cb.SignatureHeader{
+			Creator: []byte("creator"),
+			Nonce:   []byte("nonce"),
+		}
+		sighdrBytes := MarshalOrPanic(sighdr)
+		sighdr, err := UnmarshalSignatureHeader(sighdrBytes)
+		assert.NoError(t, err, "Unexpected error unmarshaling signature header")
+		assert.Equal(t, []byte("creator"), sighdr.Creator)
+		assert.Equal(t, []byte("nonce"), sighdr.Nonce)
+	})
+}
+
+func TestUnmarshalSignatureHeaderOrPanic(t *testing.T) {
+
+	t.Run("panic due to invalid header", func(t *testing.T) {
+		sighdrBytes := []byte("invalid signature header")
+		assert.Panics(t, func() {
+			UnmarshalSignatureHeaderOrPanic(sighdrBytes)
+		}, "Expected panic with invalid header")
+	})
+
+	t.Run("no panic as the header is valid", func(t *testing.T) {
+		sighdr := &cb.SignatureHeader{}
+		sighdrBytes := MarshalOrPanic(sighdr)
+		sighdr = UnmarshalSignatureHeaderOrPanic(sighdrBytes)
+		assert.Nil(t, sighdr.Creator)
+		assert.Nil(t, sighdr.Nonce)
+	})
+}
+
 func TestUnmarshalEnvelope(t *testing.T) {
 	var env *cb.Envelope
 	good, _ := proto.Marshal(&cb.Envelope{})
@@ -251,7 +299,6 @@ func TestNewSignatureHeaderOrPanic(t *testing.T) {
 	assert.Panics(t, func() {
 		_ = NewSignatureHeaderOrPanic(badSigner)
 	}, "Expected panic with signature header error")
-
 }
 
 func TestSignOrPanic(t *testing.T) {
