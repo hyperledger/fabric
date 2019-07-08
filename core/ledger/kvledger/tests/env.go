@@ -36,8 +36,9 @@ const (
 )
 
 type env struct {
-	assert   *assert.Assertions
-	rootPath string
+	assert    *assert.Assertions
+	rootPath  string
+	ledgerMgr *ledgermgmt.LedgerMgr
 }
 
 func newEnv(t *testing.T) *env {
@@ -53,12 +54,16 @@ func newEnv(t *testing.T) *env {
 }
 
 func (e *env) cleanup() {
-	closeLedgerMgmt()
+	if e.ledgerMgr != nil {
+		e.ledgerMgr.Close()
+	}
 	e.assert.NoError(os.RemoveAll(e.rootPath))
 }
 
 func (e *env) closeAllLedgersAndDrop(flags rebuildable) {
-	closeLedgerMgmt()
+	if e.ledgerMgr != nil {
+		e.ledgerMgr.Close()
+	}
 	defer e.initLedgerMgmt()
 
 	if flags&rebuildableBlockIndex == rebuildableBlockIndex {
@@ -89,11 +94,6 @@ func (e *env) verifyNonEmptyDirExists(path string) {
 	e.assert.False(empty)
 }
 
-// ########################### ledgermgmt and ledgerconfig related functions wrappers #############################
-// In the current code, ledgermgmt is a packaged scoped APIs and hence so are the following
-// wrapper APIs. As a TODO, both the ledgermgmt can be refactored as separate objects withn
-// instances wrapped inside the `env` struct above.
-// #################################################################################################################
 func (e *env) initLedgerMgmt() {
 	identityDeserializerFactory := func(chainID string) msp.IdentityDeserializer {
 		return mgmt.GetManagerForChain(chainID)
@@ -101,7 +101,7 @@ func (e *env) initLedgerMgmt() {
 	membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(), identityDeserializerFactory)
 
 	ledgerPath := filepath.Join(e.rootPath, "ledgersData")
-	ledgermgmt.InitializeExistingTestEnvWithInitializer(
+	e.ledgerMgr = ledgermgmt.NewLedgerMgr(
 		&ledgermgmt.Initializer{
 			CustomTxProcessors:            customtx.Processors{},
 			DeployedChaincodeInfoProvider: &lscc.DeployedCCInfoProvider{},
@@ -111,6 +111,9 @@ func (e *env) initLedgerMgmt() {
 				RootFSPath: ledgerPath,
 				StateDBConfig: &ledger.StateDBConfig{
 					StateDatabase: "goleveldb",
+				},
+				HistoryDBConfig: &ledger.HistoryDBConfig{
+					Enabled: true,
 				},
 				PrivateDataConfig: &ledger.PrivateDataConfig{
 					MaxBatchSize:    5000,
@@ -138,8 +141,4 @@ func createSelfSignedData() protoutil.SignedData {
 		Signature: sig,
 		Identity:  peerIdentity,
 	}
-}
-
-func closeLedgerMgmt() {
-	ledgermgmt.Close()
 }

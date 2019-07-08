@@ -22,19 +22,19 @@ func TestV11(t *testing.T) {
 	testutil.CopyDir("testdata/v11/sample_ledgers/ledgersData", env.rootPath)
 	env.initLedgerMgmt()
 
-	h1, h2 := newTestHelperOpenLgr("ledger1", t), newTestHelperOpenLgr("ledger2", t)
+	h1, h2 := env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
 	dataHelper := &v11SampleDataHelper{}
 
 	dataHelper.verifyBeforeStateRebuild(h1)
 	dataHelper.verifyBeforeStateRebuild(h2)
 
 	env.closeAllLedgersAndDrop(rebuildableStatedb)
-	h1, h2 = newTestHelperOpenLgr("ledger1", t), newTestHelperOpenLgr("ledger2", t)
+	h1, h2 = env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
 	dataHelper.verifyAfterStateRebuild(h1)
 	dataHelper.verifyAfterStateRebuild(h2)
 
 	env.closeAllLedgersAndDrop(rebuildableStatedb + rebuildableBlockIndex + rebuildableConfigHistory)
-	h1, h2 = newTestHelperOpenLgr("ledger1", t), newTestHelperOpenLgr("ledger2", t)
+	h1, h2 = env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
 	dataHelper.verifyAfterStateRebuild(h1)
 	dataHelper.verifyAfterStateRebuild(h2)
 }

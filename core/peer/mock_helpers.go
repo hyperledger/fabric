@@ -8,11 +8,17 @@ package peer
 
 import (
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 func CreateMockChannel(p *Peer, cid string) error {
@@ -21,7 +27,7 @@ func CreateMockChannel(p *Peer, cid string) error {
 
 	if ledger = p.GetLedger(cid); ledger == nil {
 		gb, _ := configtxtest.MakeGenesisBlock(cid)
-		if ledger, err = ledgermgmt.CreateLedger(gb); err != nil {
+		if ledger, err = p.LedgerMgr.CreateLedger(gb); err != nil {
 			return err
 		}
 	}
@@ -45,4 +51,28 @@ func CreateMockChannel(p *Peer, cid string) error {
 	}
 
 	return nil
+}
+
+func constructLedgerMgrWithTestDefaults(ledgersDataDir string) (*ledgermgmt.LedgerMgr, error) {
+	testDefaults := &ledgermgmt.Initializer{
+		CustomTxProcessors: customtx.Processors{
+			common.HeaderType_CONFIG: &ConfigTxProcessor{},
+		},
+		Config: &ledger.Config{
+			RootFSPath:    ledgersDataDir,
+			StateDBConfig: &ledger.StateDBConfig{},
+			PrivateDataConfig: &ledger.PrivateDataConfig{
+				MaxBatchSize:    5000,
+				BatchesInterval: 1000,
+				PurgeInterval:   100,
+			},
+			HistoryDBConfig: &ledger.HistoryDBConfig{
+				Enabled: true,
+			},
+		},
+		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
+		MetricsProvider:               &disabled.Provider{},
+		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
+	}
+	return ledgermgmt.NewLedgerMgr(testDefaults), nil
 }

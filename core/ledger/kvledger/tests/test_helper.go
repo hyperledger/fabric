@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,18 +29,18 @@ type testhelper struct {
 }
 
 // newTestHelperCreateLgr creates a new ledger and retruns a 'testhelper' for the ledger
-func newTestHelperCreateLgr(id string, t *testing.T) *testhelper {
+func (env *env) newTestHelperCreateLgr(id string, t *testing.T) *testhelper {
 	genesisBlk, err := constructTestGenesisBlock(id)
 	assert.NoError(t, err)
-	lgr, err := ledgermgmt.CreateLedger(genesisBlk)
+	lgr, err := env.ledgerMgr.CreateLedger(genesisBlk)
 	assert.NoError(t, err)
 	client, committer, verifier := newClient(lgr, id, t), newCommitter(lgr, t), newVerifier(lgr, t)
 	return &testhelper{client, committer, verifier, lgr, id, assert.New(t)}
 }
 
 // newTestHelperOpenLgr opens an existing ledger and retruns a 'testhelper' for the ledger
-func newTestHelperOpenLgr(id string, t *testing.T) *testhelper {
-	lgr, err := ledgermgmt.OpenLedger(id)
+func (env *env) newTestHelperOpenLgr(id string, t *testing.T) *testhelper {
+	lgr, err := env.ledgerMgr.OpenLedger(id)
 	assert.NoError(t, err)
 	client, committer, verifier := newClient(lgr, id, t), newCommitter(lgr, t), newVerifier(lgr, t)
 	return &testhelper{client, committer, verifier, lgr, id, assert.New(t)}

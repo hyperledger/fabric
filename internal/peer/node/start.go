@@ -341,8 +341,7 @@ func serve(args []string) error {
 		},
 	}
 
-	// initialize resource management exit
-	ledgermgmt.Initialize(
+	peerInstance.LedgerMgr = ledgermgmt.NewLedgerMgr(
 		&ledgermgmt.Initializer{
 			CustomTxProcessors:              txProcessors,
 			PlatformRegistry:                platformRegistry,
@@ -616,15 +615,6 @@ func serve(args []string) error {
 		gossipService.UpdateChaincodes(chaincodes.AsChaincodes(), gossipcommon.ChannelID(channel))
 	}))
 
-	ledgermgmt.Initialize(&ledgermgmt.Initializer{
-		CustomTxProcessors:            txProcessors,
-		PlatformRegistry:              platformRegistry,
-		DeployedChaincodeInfoProvider: lifecycleValidatorCommitter,
-		MembershipInfoProvider:        membershipInfoProvider,
-		MetricsProvider:               metricsProvider,
-		Config:                        ledgerConfig(),
-	})
-
 	// this brings up all the channels
 	peerInstance.Initialize(
 		func(cid string) {
@@ -656,7 +646,6 @@ func serve(args []string) error {
 		sccp,
 		plugin.MapBasedMapper(validationPluginsByName),
 		lifecycleValidatorCommitter,
-		membershipInfoProvider,
 		lsccInst,
 		lifecycleValidatorCommitter,
 		coreConfig.ValidatorPoolSize,

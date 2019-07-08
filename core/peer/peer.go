@@ -176,6 +176,7 @@ type Peer struct {
 	CredentialSupport *comm.CredentialSupport
 	StoreProvider     transientstore.StoreProvider
 	GossipService     *gossipservice.GossipService
+	LedgerMgr         *ledgermgmt.LedgerMgr
 
 	// validationWorkersSemaphore is used to limit the number of concurrent validation
 	// go routines.
@@ -209,8 +210,7 @@ func (p *Peer) CreateChannel(
 	if err != nil {
 		return err
 	}
-
-	l, err := ledgermgmt.CreateLedger(cb)
+	l, err := p.LedgerMgr.CreateLedger(cb)
 	if err != nil {
 		return errors.WithMessage(err, "cannot create ledger from genesis block")
 	}
@@ -468,7 +468,6 @@ func (p *Peer) Initialize(
 	sccp sysccprovider.SystemChaincodeProvider,
 	pm plugin.Mapper,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-	membershipProvider ledger.MembershipInfoProvider,
 	legacyLifecycleValidation plugindispatcher.LifecycleResources,
 	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
 	nWorkers int,
@@ -478,14 +477,14 @@ func (p *Peer) Initialize(
 	p.pluginMapper = pm
 	p.channelInitializer = init
 
-	ledgerIds, err := ledgermgmt.GetLedgerIDs()
+	ledgerIds, err := p.LedgerMgr.GetLedgerIDs()
 	if err != nil {
 		panic(fmt.Errorf("error in initializing ledgermgmt: %s", err))
 	}
 
 	for _, cid := range ledgerIds {
 		peerLogger.Infof("Loading chain %s", cid)
-		ledger, err := ledgermgmt.OpenLedger(cid)
+		ledger, err := p.LedgerMgr.OpenLedger(cid)
 		if err != nil {
 			peerLogger.Errorf("Failed to load ledger %s(%s)", cid, err)
 			peerLogger.Debugf("Error while loading ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)

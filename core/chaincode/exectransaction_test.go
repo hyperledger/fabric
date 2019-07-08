@@ -77,11 +77,6 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		Whitelist: scc.GlobalWhitelist(),
 	}
 
-	ledgerCleanup, err := ledgermgmt.InitializeTestEnvWithInitializer(nil)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-
 	grpcServer := grpc.NewServer()
 
 	lis, err := net.Listen("tcp", ":0")
@@ -104,6 +99,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
 	}
 
+	peerInstance.LedgerMgr = constructLedgerMgrWithTestDefaults(filepath.Join(tempdir, "ledgersData"))
 	ccprovider.SetChaincodesPath(tempdir)
 	ca, _ := tlsgen.NewCA()
 	pr := platforms.NewRegistry(&golang.Platform{})
@@ -215,7 +211,6 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	cleanup := func() {
 		finitPeer(peerInstance, lis, chainIDs...)
 		os.RemoveAll(tempdir)
-		ledgerCleanup()
 	}
 
 	return ml, lis, chaincodeSupport, cleanup, nil
@@ -230,6 +225,7 @@ func finitPeer(peerInstance *peer.Peer, lis net.Listener, chainIDs ...string) {
 			lgr.Close()
 		}
 	}
+	peerInstance.LedgerMgr.Close()
 	ledgerPath := config.GetPath("peer.fileSystemPath")
 	os.RemoveAll(ledgerPath)
 	os.RemoveAll(filepath.Join(os.TempDir(), "hyperledger"))
@@ -1275,4 +1271,26 @@ func newPolicyChecker(peerInstance *peer.Peer) policy.PolicyChecker {
 		},
 		&mocks.MockMSPPrincipalGetter{Principal: []byte("Admin")},
 	)
+}
+
+func constructLedgerMgrWithTestDefaults(testDir string) *ledgermgmt.LedgerMgr {
+	testDefaults := &ledgermgmt.Initializer{
+		Config: &ledger.Config{
+			RootFSPath:    testDir,
+			StateDBConfig: &ledger.StateDBConfig{},
+			PrivateDataConfig: &ledger.PrivateDataConfig{
+				MaxBatchSize:    5000,
+				BatchesInterval: 1000,
+				PurgeInterval:   100,
+			},
+			HistoryDBConfig: &ledger.HistoryDBConfig{
+				Enabled: true,
+			},
+		},
+		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
+		MetricsProvider:               &disabled.Provider{},
+		DeployedChaincodeInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
+	}
+
+	return ledgermgmt.NewLedgerMgr(testDefaults)
 }
