@@ -19,6 +19,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
@@ -163,7 +166,9 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
 	}
 
-	peerInstance.LedgerMgr = constructLedgerMgrWithTestDefaults(filepath.Join(tempdir, "ledgersData"))
+	peerInstance.LedgerMgr = ledgermgmt.NewLedgerMgr(
+		ledgermgmttest.NewInitializer(filepath.Join(tempdir, "ledgersData")),
+	)
 
 	cleanup := func() {
 		peerInstance.LedgerMgr.Close()

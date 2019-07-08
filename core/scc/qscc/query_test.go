@@ -13,18 +13,14 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/chaincode/shim/shimtest"
-	"github.com/hyperledger/fabric/core/ledger"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos/common"
 	peer2 "github.com/hyperledger/fabric/protos/peer"
@@ -43,11 +39,7 @@ func setupTestLedger(chainid string, path string) (*shimtest.MockStub, *peer.Pee
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	ledgerMgr, err := constructLedgerMgrWithTestDefaults(testDir)
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgermgmttest.NewInitializer(testDir))
 
 	cleanup := func() {
 		ledgerMgr.Close()
@@ -388,26 +380,4 @@ func TestMain(m *testing.M) {
 	mockAclProvider.Reset()
 
 	os.Exit(m.Run())
-}
-
-func constructLedgerMgrWithTestDefaults(testDir string) (*ledgermgmt.LedgerMgr, error) {
-	testDefaults := &ledgermgmt.Initializer{
-		Config: &ledger.Config{
-			RootFSPath:    testDir,
-			StateDBConfig: &ledger.StateDBConfig{},
-			PrivateDataConfig: &ledger.PrivateDataConfig{
-				MaxBatchSize:    5000,
-				BatchesInterval: 1000,
-				PurgeInterval:   100,
-			},
-			HistoryDBConfig: &ledger.HistoryDBConfig{
-				Enabled: true,
-			},
-		},
-		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
-		MetricsProvider:               &disabled.Provider{},
-		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
-	}
-
-	return ledgermgmt.NewLedgerMgr(testDefaults), nil
 }

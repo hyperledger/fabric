@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -99,7 +101,11 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
 	}
 
-	peerInstance.LedgerMgr = constructLedgerMgrWithTestDefaults(filepath.Join(tempdir, "ledgersData"))
+	lgrInitializer := ledgermgmttest.NewInitializer(filepath.Join(tempdir, "ledgersData"))
+	lgrInitializer.Config.HistoryDBConfig = &ledger.HistoryDBConfig{
+		Enabled: true,
+	}
+	peerInstance.LedgerMgr = ledgermgmt.NewLedgerMgr(lgrInitializer)
 	ccprovider.SetChaincodesPath(tempdir)
 	ca, _ := tlsgen.NewCA()
 	pr := platforms.NewRegistry(&golang.Platform{})
@@ -1271,26 +1277,4 @@ func newPolicyChecker(peerInstance *peer.Peer) policy.PolicyChecker {
 		},
 		&mocks.MockMSPPrincipalGetter{Principal: []byte("Admin")},
 	)
-}
-
-func constructLedgerMgrWithTestDefaults(testDir string) *ledgermgmt.LedgerMgr {
-	testDefaults := &ledgermgmt.Initializer{
-		Config: &ledger.Config{
-			RootFSPath:    testDir,
-			StateDBConfig: &ledger.StateDBConfig{},
-			PrivateDataConfig: &ledger.PrivateDataConfig{
-				MaxBatchSize:    5000,
-				BatchesInterval: 1000,
-				PurgeInterval:   100,
-			},
-			HistoryDBConfig: &ledger.HistoryDBConfig{
-				Enabled: true,
-			},
-		},
-		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
-		MetricsProvider:               &disabled.Provider{},
-		DeployedChaincodeInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
-	}
-
-	return ledgermgmt.NewLedgerMgr(testDefaults)
 }

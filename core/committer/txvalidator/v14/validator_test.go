@@ -21,13 +21,10 @@ import (
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	vp "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	txvalidatorv14 "github.com/hyperledger/fabric/core/committer/txvalidator/v14"
@@ -39,7 +36,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	mocks2 "github.com/hyperledger/fabric/discovery/support/mocks"
@@ -1962,24 +1959,7 @@ func constructLedgerMgrWithTestDefaults(t *testing.T, testDir string) (*ledgermg
 	if err != nil {
 		t.Fatalf("Failed to create ledger directory: %s", err)
 	}
-
-	testDefaults := &ledgermgmt.Initializer{
-		Config: &ledger.Config{
-			RootFSPath:    testDir,
-			StateDBConfig: &ledger.StateDBConfig{},
-			PrivateDataConfig: &ledger.PrivateDataConfig{
-				MaxBatchSize:    5000,
-				BatchesInterval: 1000,
-				PurgeInterval:   100,
-			},
-			HistoryDBConfig: &ledger.HistoryDBConfig{},
-		},
-		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
-		MetricsProvider:               &disabled.Provider{},
-		DeployedChaincodeInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
-	}
-
-	ledgerMgr := ledgermgmt.NewLedgerMgr(testDefaults)
+	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgermgmttest.NewInitializer(testDir))
 	cleanup := func() {
 		ledgerMgr.Close()
 		os.RemoveAll(testDir)

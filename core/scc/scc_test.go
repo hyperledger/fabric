@@ -11,13 +11,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	ccprovider2 "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/spf13/viper"
@@ -79,14 +75,10 @@ func TestDeploy(t *testing.T) {
 
 	tempdir, err := ioutil.TempDir("", "scc-test")
 	require.NoError(t, err, "failed to create temporary directory")
-	ledgerMgr, err := constructLedgerMgrWithTestDefaults(tempdir)
-	require.NoError(t, err, "failed to create ledger manager")
+	defer os.RemoveAll(tempdir)
+	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgermgmttest.NewInitializer(tempdir))
+	defer ledgerMgr.Close()
 	p.Peer.LedgerMgr = ledgerMgr
-
-	defer func() {
-		p.Peer.LedgerMgr.Close()
-		os.RemoveAll(tempdir)
-	}()
 
 	err = peer.CreateMockChannel(p.Peer, "a")
 	if err != nil {
@@ -166,25 +158,4 @@ func TestRegisterSysCC(t *testing.T) {
 	})
 	assert.Error(t, err)
 	assert.Contains(t, "invokableExternalButNotCC2CC:latest already registered", err)
-}
-
-func constructLedgerMgrWithTestDefaults(testDir string) (*ledgermgmt.LedgerMgr, error) {
-	testDefaults := &ledgermgmt.Initializer{
-		Config: &ledger.Config{
-			RootFSPath:    testDir,
-			StateDBConfig: &ledger.StateDBConfig{},
-			PrivateDataConfig: &ledger.PrivateDataConfig{
-				MaxBatchSize:    5000,
-				BatchesInterval: 1000,
-				PurgeInterval:   100,
-			},
-			HistoryDBConfig: &ledger.HistoryDBConfig{
-				Enabled: true,
-			},
-		},
-		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
-		MetricsProvider:               &disabled.Provider{},
-		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
-	}
-	return ledgermgmt.NewLedgerMgr(testDefaults), nil
 }
