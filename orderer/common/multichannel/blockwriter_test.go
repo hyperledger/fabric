@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockBlockWriterSupport struct {
@@ -218,7 +219,8 @@ func TestGoodWriteConfig(t *testing.T) {
 	assert.Equal(t, block.Header, cBlock.Header)
 	assert.Equal(t, block.Data, cBlock.Data)
 
-	omd := protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
+	omd, err := protoutil.GetConsenterMetadataFromBlock(block)
+	require.NoError(t, err)
 	assert.Equal(t, consenterMetadata, omd.Value)
 }
 
@@ -303,6 +305,7 @@ func TestRaceWriteConfig(t *testing.T) {
 	expectedLastConfigBlockNumber = block2.Header.Number
 	testLastConfigBlockNumber(t, block2, expectedLastConfigBlockNumber)
 
-	omd := protoutil.GetMetadataFromBlockOrPanic(block1, cb.BlockMetadataIndex_ORDERER)
+	omd, err := protoutil.GetConsenterMetadataFromBlock(block1)
+	require.NoError(t, err)
 	assert.Equal(t, consenterMetadata1, omd.Value)
 }
