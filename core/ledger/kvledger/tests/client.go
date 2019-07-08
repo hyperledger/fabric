@@ -81,6 +81,22 @@ func (c *client) causeMissingPvtData(txIndex uint64) {
 	c.simulatedTrans[txIndex].Pvtws = nil
 }
 
+func (c *client) retrieveCommittedBlocksAndPvtdata(startNum, endNum uint64) []*ledger.BlockAndPvtData {
+	data := []*ledger.BlockAndPvtData{}
+	for i := startNum; i <= endNum; i++ {
+		d, err := c.lgr.GetPvtDataAndBlockByNum(i, nil)
+		c.assert.NoError(err)
+		data = append(data, d)
+	}
+	return data
+}
+
+func (c *client) currentHeight() uint64 {
+	bcInfo, err := c.lgr.GetBlockchainInfo()
+	c.assert.NoError(err)
+	return bcInfo.Height
+}
+
 ///////////////////////   simulator wrapper functions  ///////////////////////
 type simulator struct {
 	ledger.TxSimulator

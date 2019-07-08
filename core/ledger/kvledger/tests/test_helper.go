@@ -47,6 +47,13 @@ func newTestHelperOpenLgr(id string, t *testing.T) *testhelper {
 	return &testhelper{client, committer, verifier, lgr, id, assert.New(t)}
 }
 
+func (h *testhelper) closeAndReopenLgr() {
+	h.lgr.Close()
+	lgr, err := ledgermgmt.OpenLedger(h.lgrid)
+	h.assert.NoError(err)
+	h.client, h.committer, h.verifier = newClient(lgr, h.t), newCommitter(lgr, h.t), newVerifier(lgr, h.t)
+}
+
 // cutBlockAndCommitWithPvtdata gathers all the transactions simulated by the test code (by calling
 // the functions available in the 'client') and cuts the next block and commits to the ledger
 func (h *testhelper) cutBlockAndCommitWithPvtdata() *ledger.BlockAndPvtData {
