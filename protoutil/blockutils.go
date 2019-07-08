@@ -123,6 +123,35 @@ func GetMetadataFromBlockOrPanic(block *cb.Block, index cb.BlockMetadataIndex) *
 	return md
 }
 
+// GetConsenterMetadataFromBlock attempts to retrieve consenter metadata from the value
+// stored in block metadata at index SIGNATURES (first field). If no consenter metadata
+// is found there, it falls back to index ORDERER (third field).
+func GetConsenterMetadataFromBlock(block *cb.Block) (*cb.Metadata, error) {
+	m, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_SIGNATURES)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to retrieve metadata at index: %d", cb.BlockMetadataIndex_SIGNATURES)
+	}
+
+	// TODO FAB-15864 Remove this fallback when we can stop supporting upgrade from pre-1.4.1 orderer
+	if len(m.Value) == 0 {
+		return GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
+	}
+
+	obm := &cb.OrdererBlockMetadata{}
+	err = proto.Unmarshal(m.Value, obm)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal orderer block metadata")
+	}
+
+	res := &cb.Metadata{}
+	err = proto.Unmarshal(obm.ConsenterMetadata, res)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal consenter metadata")
+	}
+
+	return res, nil
+}
+
 // GetLastConfigIndexFromBlock retrieves the index of the last config block as
 // encoded in the block metadata
 func GetLastConfigIndexFromBlock(block *cb.Block) (uint64, error) {
