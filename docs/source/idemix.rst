@@ -79,7 +79,7 @@ are required:
    required in step 2.
 
    For a development environment and if you are not using Fabric CA, you may use
-   ``idemixgen``to create these files.
+   ``idemixgen`` to create these files.
 
 2. Consider the verifier.
 
