@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -29,8 +28,14 @@ import (
 // validateAndPreparePvtBatch pulls out the private write-set for the transactions that are marked as valid
 // by the internal public data validator. Finally, it validates (if not already self-endorsed) the pvt rwset against the
 // corresponding hash present in the public rwset
-func validateAndPreparePvtBatch(block *internal.Block, db privacyenabledstate.DB,
-	pubAndHashUpdates *internal.PubAndHashUpdates, pvtdata map[uint64]*ledger.TxPvtData) (*privacyenabledstate.PvtUpdateBatch, error) {
+func validateAndPreparePvtBatch(
+	block *internal.Block,
+	db privacyenabledstate.DB,
+	pubAndHashUpdates *internal.PubAndHashUpdates,
+	pvtdata map[uint64]*ledger.TxPvtData,
+	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
+) (*privacyenabledstate.PvtUpdateBatch, error) {
+
 	pvtUpdates := privacyenabledstate.NewPvtUpdateBatch()
 	metadataUpdates := metadataUpdates{}
 	for _, tx := range block.Txs {
@@ -98,6 +103,7 @@ func validatePvtdata(tx *internal.Transaction, pvtdata *ledger.TxPvtData) error 
 func preprocessProtoBlock(txMgr txmgr.TxMgr,
 	validateKVFunc func(key string, value []byte) error,
 	block *common.Block, doMVCCValidation bool,
+	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 ) (*internal.Block, []*txmgr.TxStatInfo, error) {
 	b := &internal.Block{Num: block.Header.Number}
 	txsStatInfo := []*txmgr.TxStatInfo{}
@@ -146,8 +152,8 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 				continue
 			}
 		} else {
-			rwsetProto, err := processNonEndorserTx(env, chdr.TxId, txType, txMgr, !doMVCCValidation)
-			if _, ok := err.(*customtx.InvalidTxError); ok {
+			rwsetProto, err := processNonEndorserTx(env, chdr.TxId, txType, txMgr, !doMVCCValidation, customTxProcessors)
+			if _, ok := err.(*ledger.InvalidTxError); ok {
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 				continue
 			}
@@ -181,9 +187,16 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 	return b, txsStatInfo, nil
 }
 
-func processNonEndorserTx(txEnv *common.Envelope, txid string, txType common.HeaderType, txmgr txmgr.TxMgr, synchingState bool) (*rwset.TxReadWriteSet, error) {
+func processNonEndorserTx(
+	txEnv *common.Envelope,
+	txid string,
+	txType common.HeaderType,
+	txmgr txmgr.TxMgr,
+	synchingState bool,
+	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
+) (*rwset.TxReadWriteSet, error) {
 	logger.Debugf("Performing custom processing for transaction [txid=%s], [txType=%s]", txid, txType)
-	processor := customtx.GetProcessor(txType)
+	processor := customTxProcessors[txType]
 	logger.Debugf("Processor for custom tx processing:%#v", processor)
 	if processor == nil {
 		return nil, nil

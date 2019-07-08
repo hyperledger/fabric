@@ -25,15 +25,20 @@ var logger = flogging.MustGetLogger("valimpl")
 // and for actual validation of the public rwset, it encloses an internal validator (that implements interface
 // internal.InternalValidator) such as statebased validator
 type DefaultImpl struct {
-	txmgr             txmgr.TxMgr
-	db                privacyenabledstate.DB
-	internalValidator internal.Validator
+	txmgr              txmgr.TxMgr
+	db                 privacyenabledstate.DB
+	internalValidator  internal.Validator
+	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor
 }
 
 // NewStatebasedValidator constructs a validator that internally manages statebased validator and in addition
 // handles the tasks that are agnostic to a particular validation scheme such as parsing the block and handling the pvt data
-func NewStatebasedValidator(txmgr txmgr.TxMgr, db privacyenabledstate.DB) validator.Validator {
-	return &DefaultImpl{txmgr, db, statebasedval.NewValidator(db)}
+func NewStatebasedValidator(
+	txmgr txmgr.TxMgr,
+	db privacyenabledstate.DB,
+	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
+) validator.Validator {
+	return &DefaultImpl{txmgr, db, statebasedval.NewValidator(db), customTxProcessors}
 }
 
 // ValidateAndPrepareBatch implements the function in interface validator.Validator
@@ -48,7 +53,13 @@ func (impl *DefaultImpl) ValidateAndPrepareBatch(blockAndPvtdata *ledger.BlockAn
 	var err error
 
 	logger.Debug("preprocessing ProtoBlock...")
-	if internalBlock, txsStatInfo, err = preprocessProtoBlock(impl.txmgr, impl.db.ValidateKeyValue, block, doMVCCValidation); err != nil {
+	if internalBlock, txsStatInfo, err = preprocessProtoBlock(
+		impl.txmgr,
+		impl.db.ValidateKeyValue,
+		block,
+		doMVCCValidation,
+		impl.customTxProcessors,
+	); err != nil {
 		return nil, nil, err
 	}
 
@@ -56,7 +67,13 @@ func (impl *DefaultImpl) ValidateAndPrepareBatch(blockAndPvtdata *ledger.BlockAn
 		return nil, nil, err
 	}
 	logger.Debug("validating rwset...")
-	if pvtUpdates, err = validateAndPreparePvtBatch(internalBlock, impl.db, pubAndHashUpdates, blockAndPvtdata.PvtData); err != nil {
+	if pvtUpdates, err = validateAndPreparePvtBatch(
+		internalBlock,
+		impl.db,
+		pubAndHashUpdates,
+		blockAndPvtdata.PvtData,
+		impl.customTxProcessors,
+	); err != nil {
 		return nil, nil, err
 	}
 	logger.Debug("postprocessing ProtoBlock...")

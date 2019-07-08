@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim/shimtest"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/peer"
@@ -393,9 +392,6 @@ func TestMain(m *testing.M) {
 
 func constructLedgerMgrWithTestDefaults(testDir string) (*ledgermgmt.LedgerMgr, error) {
 	testDefaults := &ledgermgmt.Initializer{
-		CustomTxProcessors: customtx.Processors{
-			common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
-		},
 		Config: &ledger.Config{
 			RootFSPath:    testDir,
 			StateDBConfig: &ledger.StateDBConfig{},

@@ -58,8 +58,15 @@ func (c *current) maxTxNumber() uint64 {
 }
 
 // NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
-func NewLockBasedTxMgr(ledgerid string, db privacyenabledstate.DB, stateListeners []ledger.StateListener,
-	btlPolicy pvtdatapolicy.BTLPolicy, bookkeepingProvider bookkeeping.Provider, ccInfoProvider ledger.DeployedChaincodeInfoProvider) (*LockBasedTxMgr, error) {
+func NewLockBasedTxMgr(
+	ledgerid string,
+	db privacyenabledstate.DB,
+	stateListeners []ledger.StateListener,
+	btlPolicy pvtdatapolicy.BTLPolicy,
+	bookkeepingProvider bookkeeping.Provider,
+	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
+	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
+) (*LockBasedTxMgr, error) {
 	db.Open()
 	txmgr := &LockBasedTxMgr{
 		ledgerid:       ledgerid,
@@ -72,7 +79,7 @@ func NewLockBasedTxMgr(ledgerid string, db privacyenabledstate.DB, stateListener
 		return nil, err
 	}
 	txmgr.pvtdataPurgeMgr = &pvtdataPurgeMgr{pvtstatePurgeMgr, false}
-	txmgr.validator = valimpl.NewStatebasedValidator(txmgr, db)
+	txmgr.validator = valimpl.NewStatebasedValidator(txmgr, db, customTxProcessors)
 	return txmgr, nil
 }
 

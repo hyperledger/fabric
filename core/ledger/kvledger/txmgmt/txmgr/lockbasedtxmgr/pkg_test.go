@@ -98,7 +98,9 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtda
 	env.txmgr, err = NewLockBasedTxMgr(
 		testLedgerID, env.testDB, nil,
 		btlPolicy, env.testBookkeepingEnv.TestProvider,
-		&mock.DeployedChaincodeInfoProvider{})
+		&mock.DeployedChaincodeInfoProvider{},
+		nil,
+	)
 	assert.NoError(t, err)
 
 }

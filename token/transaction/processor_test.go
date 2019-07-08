@@ -7,7 +7,7 @@ package transaction_test
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/transaction"
@@ -112,12 +112,12 @@ var _ = Describe("Processor", func() {
 			)
 			BeforeEach(func() {
 				verifier = &mock.TMSTxProcessor{}
-				verifier.ProcessTxReturns(&customtx.InvalidTxError{Msg: "invalid transaction"})
+				verifier.ProcessTxReturns(&ledger.InvalidTxError{Msg: "invalid transaction"})
 				fakeManager.GetTxProcessorReturns(verifier, nil)
 			})
 			It("InvalidTxError must be propagated", func() {
 				err := txProcessor.GenerateSimulationResults(validEnvelope, nil, false)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "invalid transaction"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "invalid transaction"}))
 				Expect(fakeManager.GetTxProcessorCallCount()).To(Equal(1))
 				Expect(fakeManager.GetTxProcessorArgsForCall(0)).To(Equal("wild_channel"))
 				Expect(verifier.ProcessTxCallCount()).To(Equal(1))

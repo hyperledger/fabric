@@ -8,7 +8,6 @@ package transaction
 
 import (
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
@@ -39,7 +38,7 @@ func (p *Processor) GenerateSimulationResults(txEnv *common.Envelope, simulator 
 		// the transaction should be marked as invalid, therefore this error
 		// should be propagated.
 		// Otherwise, the error can be wrapped with additional information
-		if _, ok := err.(*customtx.InvalidTxError); ok {
+		if _, ok := err.(*ledger.InvalidTxError); ok {
 			return err
 		}
 		return errors.WithMessagef(err, "failed committing transaction for channel %s", ch.ChannelId)

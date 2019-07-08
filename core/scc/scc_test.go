@@ -16,12 +16,10 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	ccprovider2 "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -172,9 +170,6 @@ func TestRegisterSysCC(t *testing.T) {
 
 func constructLedgerMgrWithTestDefaults(testDir string) (*ledgermgmt.LedgerMgr, error) {
 	testDefaults := &ledgermgmt.Initializer{
-		CustomTxProcessors: customtx.Processors{
-			common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
-		},
 		Config: &ledger.Config{
 			RootFSPath:    testDir,
 			StateDBConfig: &ledger.StateDBConfig{},

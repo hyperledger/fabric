@@ -54,6 +54,7 @@ func newKVLedger(
 	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
 	ccLifecycleEventProvider ledger.ChaincodeLifecycleEventProvider,
 	stats *ledgerStats,
+	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 ) (*kvLedger, error) {
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying
@@ -61,7 +62,15 @@ func newKVLedger(
 	l := &kvLedger{ledgerID: ledgerID, blockStore: blockStore, historyDB: historyDB, blockAPIsRWLock: &sync.RWMutex{}}
 
 	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{ledgerID, l, ccInfoProvider})
-	if err := l.initTxMgr(versionedDB, stateListeners, btlPolicy, bookkeeperProvider, ccInfoProvider); err != nil {
+
+	if err := l.initTxMgr(
+		versionedDB,
+		stateListeners,
+		btlPolicy,
+		bookkeeperProvider,
+		ccInfoProvider,
+		customTxProcessors,
+	); err != nil {
 		return nil, err
 	}
 
@@ -87,10 +96,24 @@ func newKVLedger(
 	return l, nil
 }
 
-func (l *kvLedger) initTxMgr(versionedDB privacyenabledstate.DB, stateListeners []ledger.StateListener,
-	btlPolicy pvtdatapolicy.BTLPolicy, bookkeeperProvider bookkeeping.Provider, ccInfoProvider ledger.DeployedChaincodeInfoProvider) error {
+func (l *kvLedger) initTxMgr(
+	versionedDB privacyenabledstate.DB,
+	stateListeners []ledger.StateListener,
+	btlPolicy pvtdatapolicy.BTLPolicy,
+	bookkeeperProvider bookkeeping.Provider,
+	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
+	customtxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
+) error {
 	var err error
-	txmgr, err := lockbasedtxmgr.NewLockBasedTxMgr(l.ledgerID, versionedDB, stateListeners, btlPolicy, bookkeeperProvider, ccInfoProvider)
+	txmgr, err := lockbasedtxmgr.NewLockBasedTxMgr(
+		l.ledgerID,
+		versionedDB,
+		stateListeners,
+		btlPolicy,
+		bookkeeperProvider,
+		ccInfoProvider,
+		customtxProcessors,
+	)
 	if err != nil {
 		return err
 	}

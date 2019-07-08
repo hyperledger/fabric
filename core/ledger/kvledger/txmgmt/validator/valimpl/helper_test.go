@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -114,7 +113,7 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	alwaysValidKVFunc := func(key string, value []byte) error {
 		return nil
 	}
-	actualPreProcessedBlock, _, err := preprocessProtoBlock(nil, alwaysValidKVFunc, block, false)
+	actualPreProcessedBlock, _, err := preprocessProtoBlock(nil, alwaysValidKVFunc, block, false, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedPerProcessedBlock, actualPreProcessedBlock)
 
@@ -134,7 +133,7 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	assert.NoError(t, err)
 	addPvtRWSetToPvtUpdateBatch(tx1TxPvtRWSet, expectedPvtUpdates, version.NewHeight(uint64(10), uint64(0)))
 
-	actualPvtUpdates, err := validateAndPreparePvtBatch(mvccValidatedBlock, testDB, nil, pvtDataMap)
+	actualPvtUpdates, err := validateAndPreparePvtBatch(mvccValidatedBlock, testDB, nil, pvtDataMap, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedPvtUpdates, actualPvtUpdates)
 
@@ -151,21 +150,21 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	// good block
 	//_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	gb := testutil.ConstructTestBlock(t, 10, 1, 1)
-	_, _, err := preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
+	_, _, err := preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
 	assert.NoError(t, err)
 	// bad envelope
 	gb = testutil.ConstructTestBlock(t, 11, 1, 1)
 	gb.Data = &common.BlockData{Data: [][]byte{{123}}}
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
 		lutils.NewTxValidationFlagsSetValue(len(gb.Data.Data), peer.TxValidationCode_VALID)
-	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
+	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
 	assert.Error(t, err)
 	t.Log(err)
 	// bad payload
 	gb = testutil.ConstructTestBlock(t, 12, 1, 1)
 	envBytes, _ := protoutil.GetBytesEnvelope(&common.Envelope{Payload: []byte{123}})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
-	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
+	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
 	assert.Error(t, err)
 	t.Log(err)
 	// bad channel header
@@ -175,7 +174,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	})
 	envBytes, _ = protoutil.GetBytesEnvelope(&common.Envelope{Payload: payloadBytes})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
-	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
+	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
 	assert.Error(t, err)
 	t.Log(err)
 
@@ -189,7 +188,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	flags := lutils.NewTxValidationFlags(len(gb.Data.Data))
 	flags.SetFlag(0, peer.TxValidationCode_BAD_CHANNEL_HEADER)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = flags
-	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
+	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
 	assert.NoError(t, err) // invalid filter should take precedence
 
 	// new block
@@ -207,7 +206,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	l, recorder := floggingtest.NewTestLogger(t)
 	logger = l
 
-	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
+	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
 	assert.NoError(t, err)
 	expected := fmt.Sprintf(
 		"Channel [%s]: Block [%d] Transaction index [%d] TxId [%s] marked as invalid by committer. Reason code [%s]",
@@ -244,7 +243,7 @@ func TestPreprocessProtoBlockInvalidWriteset(t *testing.T) {
 	assert.True(t, txfilter.IsValid(0))
 	assert.True(t, txfilter.IsValid(1)) // both txs are valid initially at the time of block cutting
 
-	internalBlock, _, err := preprocessProtoBlock(nil, kvValidationFunc, block, false)
+	internalBlock, _, err := preprocessProtoBlock(nil, kvValidationFunc, block, false, nil)
 	assert.NoError(t, err)
 	assert.False(t, txfilter.IsValid(0)) // tx at index 0 should be marked as invalid
 	assert.True(t, txfilter.IsValid(1))  // tx at index 1 should be marked as valid
@@ -307,7 +306,7 @@ func TestTxStatsInfoWithConfigTx(t *testing.T) {
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("emptydb")
-	v := NewStatebasedValidator(nil, testDB)
+	v := NewStatebasedValidator(nil, testDB, nil)
 
 	gb := testutil.ConstructTestBlocks(t, 1)[0]
 	_, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: gb}, true)
@@ -332,13 +331,11 @@ func TestContainsPostOrderWrites(t *testing.T) {
 	mockTxmgr.NewTxSimulatorReturns(mockSimulator, nil)
 
 	fakeTxProcessor := &mock.Processor{}
-	customtx.InitializeTestEnv(
-		customtx.Processors{
-			common.HeaderType_CONFIG: fakeTxProcessor,
-		},
-	)
+	customTxProcessors := map[common.HeaderType]ledger.CustomTxProcessor{
+		common.HeaderType_CONFIG: fakeTxProcessor,
+	}
 
-	v := NewStatebasedValidator(mockTxmgr, testDB)
+	v := NewStatebasedValidator(mockTxmgr, testDB, customTxProcessors)
 	blocks := testutil.ConstructTestBlocks(t, 2)
 
 	// block with config tx that produces post order writes
@@ -364,7 +361,7 @@ func TestContainsPostOrderWrites(t *testing.T) {
 	fakeTxProcessor.GenerateSimulationResultsStub =
 		func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
 			s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(nil, nil)
-			return &customtx.InvalidTxError{Msg: "fake-message"}
+			return &ledger.InvalidTxError{Msg: "fake-message"}
 		}
 	batch, _, err = v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
 	assert.NoError(t, err)
@@ -376,7 +373,7 @@ func TestTxStatsInfo(t *testing.T) {
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("emptydb")
-	v := NewStatebasedValidator(nil, testDB)
+	v := NewStatebasedValidator(nil, testDB, nil)
 
 	// create a block with 4 endorser transactions
 	tx1SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(t,
@@ -563,7 +560,7 @@ type txSimulator interface {
 
 //go:generate counterfeiter -o mock/processor.go --fake-name Processor . processor
 type processor interface {
-	customtx.Processor
+	ledger.CustomTxProcessor
 }
 
 //go:generate counterfeiter -o mock/txmgr.go --fake-name TxMgr . txMgr
@@ -576,9 +573,9 @@ func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
 	// Register customtx processor
 	mockTxProcessor := new(mock.Processor)
 	mockTxProcessor.GenerateSimulationResultsReturns(nil)
-	customtx.InitializeTestEnv(customtx.Processors{
+	customTxProcessors := map[common.HeaderType]ledger.CustomTxProcessor{
 		100: mockTxProcessor,
-	})
+	}
 
 	// Prepare param1: txmgr.TxMgr
 	kvw := &kvrwset.KVWrite{Key: "key1", IsDelete: false, Value: []byte{0xde, 0xad, 0xbe, 0xef}}
@@ -629,7 +626,7 @@ func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
 	)
 
 	// Call
-	internalBlock, txsStatInfo, err2 := preprocessProtoBlock(txmgr_, alwaysValidKVFunc, block, false)
+	internalBlock, txsStatInfo, err2 := preprocessProtoBlock(txmgr_, alwaysValidKVFunc, block, false, customTxProcessors)
 
 	// Prepare expected value
 	expectedPreprocessedBlock := &internal.Block{

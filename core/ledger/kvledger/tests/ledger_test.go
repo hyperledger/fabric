@@ -7,14 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package tests
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 )
 
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("lockbasedtxmgr,statevalidator,statebasedval,statecouchdb,valimpl,pvtstatepurgemgmt,confighistory,kvledger=debug")
+	if err := msptesttools.LoadMSPSetupForTesting(); err != nil {
+		panic(fmt.Errorf("Could not load msp config, err %s", err))
+	}
 	os.Exit(m.Run())
 }
 

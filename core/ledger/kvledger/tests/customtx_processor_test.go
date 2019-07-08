@@ -10,23 +10,26 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
-	"github.com/hyperledger/fabric/core/ledger/customtx/mock"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protos/common"
 	protopeer "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestReadWriteCustomTxProcessor(t *testing.T) {
-	fakeTxProcessor := &mock.Processor{}
-	env := newEnv(t)
-	defer env.cleanup()
-	env.initLedgerMgmt()
-	customtx.InitializeTestEnv(
-		customtx.Processors{
-			100: fakeTxProcessor,
+	fakeTxProcessor := &mock.CustomTxProcessor{}
+	env := newEnvWithInitializer(
+		t,
+		&ledgermgmt.Initializer{
+			CustomTxProcessors: map[common.HeaderType]ledger.CustomTxProcessor{
+				100: fakeTxProcessor,
+			},
 		},
 	)
+	defer env.cleanup()
+	env.initLedgerMgmt()
+
 	h := env.newTestHelperCreateLgr("ledger1", t)
 	h.simulateDataTx("tx0", func(s *simulator) {
 		s.setState("ns", "key1", "value1")
@@ -59,19 +62,22 @@ func TestReadWriteCustomTxProcessor(t *testing.T) {
 }
 
 func TestRangeReadAndWriteCustomTxProcessor(t *testing.T) {
-	fakeTxProcessor1 := &mock.Processor{}
-	fakeTxProcessor2 := &mock.Processor{}
-	fakeTxProcessor3 := &mock.Processor{}
-	env := newEnv(t)
-	defer env.cleanup()
-	env.initLedgerMgmt()
-	customtx.InitializeTestEnv(
-		customtx.Processors{
-			101: fakeTxProcessor1,
-			102: fakeTxProcessor2,
-			103: fakeTxProcessor3,
+	fakeTxProcessor1 := &mock.CustomTxProcessor{}
+	fakeTxProcessor2 := &mock.CustomTxProcessor{}
+	fakeTxProcessor3 := &mock.CustomTxProcessor{}
+	env := newEnvWithInitializer(
+		t,
+		&ledgermgmt.Initializer{
+			CustomTxProcessors: map[common.HeaderType]ledger.CustomTxProcessor{
+				101: fakeTxProcessor1,
+				102: fakeTxProcessor2,
+				103: fakeTxProcessor3,
+			},
 		},
 	)
+	defer env.cleanup()
+	env.initLedgerMgmt()
+
 	h := env.newTestHelperCreateLgr("ledger1", t)
 	h.simulateDataTx("tx0", func(s *simulator) {
 		s.setState("ns", "key1", "value1")
