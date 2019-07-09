@@ -31,7 +31,7 @@ func TestV11v12(t *testing.T) {
 		t.Fatalf("Failed to create private data storage directory: %s", err)
 	}
 	defer os.RemoveAll(testWorkingDir)
-	testutil.CopyDir("testdata/v11_v12/ledgersData/pvtdataStore", testWorkingDir)
+	testutil.CopyDir("testdata/v11_v12/ledgersData/pvtdataStore", testWorkingDir, false)
 
 	ledgerid := "ch1"
 	btlPolicy := btltestutil.SampleBTLPolicy(
