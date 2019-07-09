@@ -718,7 +718,14 @@ var _ = Describe("ExternalFunctions", func() {
 
 			org0KVS = MapLedgerShim(map[string][]byte{})
 			org1KVS = MapLedgerShim(map[string][]byte{})
-			fakeOrgStates = []*mock.ReadWritableState{{}, {}}
+			fakeOrg0State := &mock.ReadWritableState{}
+			fakeOrg0State.CollectionNameReturns("_implicit_org_org0")
+			fakeOrg1State := &mock.ReadWritableState{}
+			fakeOrg1State.CollectionNameReturns("_implicit_org_org1")
+			fakeOrgStates = []*mock.ReadWritableState{
+				fakeOrg0State,
+				fakeOrg1State,
+			}
 			for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
 				kvs := kvs
 				fakeOrgStates[i].GetStateStub = kvs.GetState
@@ -730,10 +737,13 @@ var _ = Describe("ExternalFunctions", func() {
 			resources.Serializer.Serialize("namespaces", "cc-name#5", &lifecycle.ChaincodeParameters{}, fakeOrgStates[1])
 		})
 
-		It("simulates committing the chaincode definition and returns the agreements", func() {
-			agreements, err := ef.SimulateCommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+		It("simulates committing the chaincode definition and returns the approvals", func() {
+			approvals, err := ef.SimulateCommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(agreements).To(Equal([]bool{true, false}))
+			Expect(approvals).To(Equal(map[string]bool{
+				"org0": true,
+				"org1": false,
+			}))
 		})
 
 		Context("when IsSerialized fails", func() {
@@ -759,14 +769,6 @@ var _ = Describe("ExternalFunctions", func() {
 						},
 					})
 
-				fakeOrgStates = []*mock.ReadWritableState{{}, {}}
-				for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
-					kvs := kvs
-					fakeOrgStates[i].GetStateStub = kvs.GetState
-					fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
-					fakeOrgStates[i].PutStateStub = kvs.PutState
-				}
-
 				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[0])
 
 				testDefinition.EndorsementInfo.EndorsementPlugin = ""
@@ -776,10 +778,13 @@ var _ = Describe("ExternalFunctions", func() {
 				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[1])
 			})
 
-			It("applies the chaincode definition and returns the agreements", func() {
-				agreements, err := ef.SimulateCommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+			It("applies the chaincode definition and returns the approvals", func() {
+				approvals, err := ef.SimulateCommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(agreements).To(Equal([]bool{true, false}))
+				Expect(approvals).To(Equal(map[string]bool{
+					"org0": true,
+					"org1": false,
+				}))
 			})
 
 			Context("when no default endorsement policy is defined on thc channel", func() {
@@ -885,7 +890,14 @@ var _ = Describe("ExternalFunctions", func() {
 
 			org0KVS = MapLedgerShim(map[string][]byte{})
 			org1KVS = MapLedgerShim(map[string][]byte{})
-			fakeOrgStates = []*mock.ReadWritableState{{}, {}}
+			fakeOrg0State := &mock.ReadWritableState{}
+			fakeOrg0State.CollectionNameReturns("_implicit_org_org0")
+			fakeOrg1State := &mock.ReadWritableState{}
+			fakeOrg1State.CollectionNameReturns("_implicit_org_org1")
+			fakeOrgStates = []*mock.ReadWritableState{
+				fakeOrg0State,
+				fakeOrg1State,
+			}
 			for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
 				kvs := kvs
 				fakeOrgStates[i].GetStateStub = kvs.GetState
@@ -897,10 +909,13 @@ var _ = Describe("ExternalFunctions", func() {
 			resources.Serializer.Serialize("namespaces", "cc-name#5", &lifecycle.ChaincodeParameters{}, fakeOrgStates[1])
 		})
 
-		It("applies the chaincode definition and returns the agreements", func() {
-			agreements, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+		It("applies the chaincode definition and returns the approvals", func() {
+			approvals, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(agreements).To(Equal([]bool{true, false}))
+			Expect(approvals).To(Equal(map[string]bool{
+				"org0": true,
+				"org1": false,
+			}))
 		})
 
 		Context("when IsSerialized fails", func() {
@@ -926,14 +941,6 @@ var _ = Describe("ExternalFunctions", func() {
 						},
 					})
 
-				fakeOrgStates = []*mock.ReadWritableState{{}, {}}
-				for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
-					kvs := kvs
-					fakeOrgStates[i].GetStateStub = kvs.GetState
-					fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
-					fakeOrgStates[i].PutStateStub = kvs.PutState
-				}
-
 				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[0])
 
 				testDefinition.EndorsementInfo.EndorsementPlugin = ""
@@ -943,10 +950,13 @@ var _ = Describe("ExternalFunctions", func() {
 				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[1])
 			})
 
-			It("applies the chaincode definition and returns the agreements", func() {
-				agreements, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+			It("applies the chaincode definition and returns the approvals", func() {
+				approvals, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(agreements).To(Equal([]bool{true, false}))
+				Expect(approvals).To(Equal(map[string]bool{
+					"org0": true,
+					"org1": false,
+				}))
 			})
 
 			Context("when no default endorsement policy is defined on thc channel", func() {

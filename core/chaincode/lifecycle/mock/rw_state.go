@@ -6,6 +6,16 @@ import (
 )
 
 type ReadWritableState struct {
+	CollectionNameStub        func() string
+	collectionNameMutex       sync.RWMutex
+	collectionNameArgsForCall []struct {
+	}
+	collectionNameReturns struct {
+		result1 string
+	}
+	collectionNameReturnsOnCall map[int]struct {
+		result1 string
+	}
 	DelStateStub        func(string) error
 	delStateMutex       sync.RWMutex
 	delStateArgsForCall []struct {
@@ -70,6 +80,58 @@ type ReadWritableState struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *ReadWritableState) CollectionName() string {
+	fake.collectionNameMutex.Lock()
+	ret, specificReturn := fake.collectionNameReturnsOnCall[len(fake.collectionNameArgsForCall)]
+	fake.collectionNameArgsForCall = append(fake.collectionNameArgsForCall, struct {
+	}{})
+	fake.recordInvocation("CollectionName", []interface{}{})
+	fake.collectionNameMutex.Unlock()
+	if fake.CollectionNameStub != nil {
+		return fake.CollectionNameStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.collectionNameReturns
+	return fakeReturns.result1
+}
+
+func (fake *ReadWritableState) CollectionNameCallCount() int {
+	fake.collectionNameMutex.RLock()
+	defer fake.collectionNameMutex.RUnlock()
+	return len(fake.collectionNameArgsForCall)
+}
+
+func (fake *ReadWritableState) CollectionNameCalls(stub func() string) {
+	fake.collectionNameMutex.Lock()
+	defer fake.collectionNameMutex.Unlock()
+	fake.CollectionNameStub = stub
+}
+
+func (fake *ReadWritableState) CollectionNameReturns(result1 string) {
+	fake.collectionNameMutex.Lock()
+	defer fake.collectionNameMutex.Unlock()
+	fake.CollectionNameStub = nil
+	fake.collectionNameReturns = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *ReadWritableState) CollectionNameReturnsOnCall(i int, result1 string) {
+	fake.collectionNameMutex.Lock()
+	defer fake.collectionNameMutex.Unlock()
+	fake.CollectionNameStub = nil
+	if fake.collectionNameReturnsOnCall == nil {
+		fake.collectionNameReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.collectionNameReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
 }
 
 func (fake *ReadWritableState) DelState(arg1 string) error {
@@ -390,6 +452,8 @@ func (fake *ReadWritableState) PutStateReturnsOnCall(i int, result1 error) {
 func (fake *ReadWritableState) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.collectionNameMutex.RLock()
+	defer fake.collectionNameMutex.RUnlock()
 	fake.delStateMutex.RLock()
 	defer fake.delStateMutex.RUnlock()
 	fake.getStateMutex.RLock()

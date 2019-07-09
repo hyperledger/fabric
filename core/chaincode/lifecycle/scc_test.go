@@ -915,7 +915,10 @@ var _ = Describe("SCC", func() {
 					"org1": fakeOrgConfigs[1],
 				})
 
-				fakeSCCFuncs.CommitChaincodeDefinitionReturns([]bool{true, true}, nil)
+				fakeSCCFuncs.CommitChaincodeDefinitionReturns(map[string]bool{
+					"fake-mspid":  true,
+					"other-mspid": true,
+				}, nil)
 
 				fakeMsp := &mock.MSP{}
 				fakeMSPManager.GetMSPsReturns(
@@ -1078,7 +1081,10 @@ var _ = Describe("SCC", func() {
 
 			Context("when there is no agreement from this peer's org", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.CommitChaincodeDefinitionReturns([]bool{false, false}, nil)
+					fakeSCCFuncs.CommitChaincodeDefinitionReturns(map[string]bool{
+						"fake-mspid":  false,
+						"other-mspid": false,
+					}, nil)
 				})
 
 				It("returns an error indicating the lack of agreement", func() {
@@ -1183,7 +1189,10 @@ var _ = Describe("SCC", func() {
 					"org1": fakeOrgConfigs[1],
 				})
 
-				fakeSCCFuncs.SimulateCommitChaincodeDefinitionReturns([]bool{true, true}, nil)
+				fakeSCCFuncs.SimulateCommitChaincodeDefinitionReturns(map[string]bool{
+					"fake-mspid":  true,
+					"other-mspid": true,
+				}, nil)
 			})
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {

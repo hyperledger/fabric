@@ -35,6 +35,7 @@ type ReadableState interface {
 
 type OpaqueState interface {
 	GetStateHash(key string) (value []byte, err error)
+	CollectionName() string
 }
 
 type RangeableState interface {

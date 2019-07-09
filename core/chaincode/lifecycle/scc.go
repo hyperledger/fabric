@@ -85,13 +85,15 @@ type SCCFunctions interface {
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
 	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID persistenceintf.PackageID, publicState ReadableState, orgState ReadWritableState) error
 
-	// SimulateCommitChaincodeDefinition returns an array of boolean to signal
-	// whether the orgs whose orgStates was supplied as argument have approved
+	// SimulateCommitChaincodeDefinition returns a map containing the orgs
+	// whose orgStates were supplied and whether or not they have approved
 	// the specified definition.
-	SimulateCommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
+	SimulateCommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error)
 
-	// CommitChaincodeDefinition records a new chaincode definition into the public state and returns the orgs which agreed with that definition.
-	CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
+	// CommitChaincodeDefinition records a new chaincode definition into the
+	// public state and returns a map containing the orgs whose orgStates
+	// were supplied and whether or not they have approved the definition.
+	CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error)
 
 	// QueryChaincodeDefinition reads a chaincode definition from the public state.
 	QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error)
@@ -420,7 +422,7 @@ func (i *Invocation) SimulateCommitChaincodeDefinition(input *lb.SimulateCommitC
 		cd,
 	)
 
-	approved, err := i.SCC.Functions.SimulateCommitChaincodeDefinition(
+	approvals, err := i.SCC.Functions.SimulateCommitChaincodeDefinition(
 		i.Stub.GetChannelID(),
 		input.Name,
 		cd,
@@ -431,13 +433,8 @@ func (i *Invocation) SimulateCommitChaincodeDefinition(input *lb.SimulateCommitC
 		return nil, err
 	}
 
-	orgApproval := make(map[string]bool)
-	for i, org := range orgNames {
-		orgApproval[org] = approved[i]
-	}
-
 	return &lb.SimulateCommitChaincodeDefinitionResult{
-		Approved: orgApproval,
+		Approved: approvals,
 	}, nil
 }
 
@@ -454,18 +451,18 @@ func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefiniti
 
 	orgs := i.ApplicationConfig.Organizations()
 	opaqueStates := make([]OpaqueState, 0, len(orgs))
-	myOrgIndex := -1
+	var myOrg string
 	for _, org := range orgs {
 		opaqueStates = append(opaqueStates, &ChaincodePrivateLedgerShim{
 			Collection: ImplicitCollectionNameForOrg(org.MSPID()),
 			Stub:       i.Stub,
 		})
 		if org.MSPID() == i.SCC.OrgMSPID {
-			myOrgIndex = len(opaqueStates) - 1
+			myOrg = i.SCC.OrgMSPID
 		}
 	}
 
-	if myOrgIndex == -1 {
+	if myOrg == "" {
 		return nil, errors.Errorf("impossibly, this peer's org is processing requests for a channel it is not a member of")
 	}
 
@@ -488,19 +485,18 @@ func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefiniti
 		cd,
 	)
 
-	agreement, err := i.SCC.Functions.CommitChaincodeDefinition(
+	approvals, err := i.SCC.Functions.CommitChaincodeDefinition(
 		i.Stub.GetChannelID(),
 		input.Name,
 		cd,
 		i.Stub,
 		opaqueStates,
 	)
-
 	if err != nil {
 		return nil, err
 	}
 
-	if !agreement[myOrgIndex] {
+	if !approvals[myOrg] {
 		return nil, errors.Errorf("chaincode definition not agreed to by this org (%s)", i.SCC.OrgMSPID)
 	}
 

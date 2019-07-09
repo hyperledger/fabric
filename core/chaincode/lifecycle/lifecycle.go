@@ -55,11 +55,12 @@ var (
 	})
 )
 
-// Sequences are the underpinning of the definition framework for lifecycle.  All definitions
-// must have a Sequence field in the public state.  This sequence is incremented by exactly 1 with
-// each redefinition of the namespace.  The private state org approvals also have a Sequence number
-// embedded into the key which matches them either to the vote for the commit, or registers agreement
-// with an already committed definition.
+// Sequences are the underpinning of the definition framework for lifecycle.
+// All definitions must have a Sequence field in the public state.  This
+// sequence is incremented by exactly 1 with each redefinition of the
+// namespace. The private state org approvals also have a Sequence number
+// embedded into the key which matches them either to the vote for the commit,
+// or registers approval for an already committed definition.
 //
 // Public/World DB layout looks like the following:
 // namespaces/metadata/<namespace> -> namespace metadata, including namespace type
@@ -90,10 +91,10 @@ var (
 // chaincode-source/metadata/mycc#1              "LocalPackage"
 // chaincode-source/fields/mycc#1/Hash           "hash1"
 
-// ChaincodePackage is a type of chaincode-source which may be serialized into the
-// org's private data collection.
-// WARNING: This structure is serialized/deserialized from the DB, re-ordering or adding fields
-// will cause opaque checks to fail.
+// ChaincodeLocalPackage is a type of chaincode-source which may be serialized
+// into the org's private data collection.
+// WARNING: This structure is serialized/deserialized from the DB, re-ordering
+// or adding fields will cause opaque checks to fail.
 type ChaincodeLocalPackage struct {
 	PackageID string
 }
@@ -233,10 +234,27 @@ func (r *Resources) ChaincodeDefinitionIfDefined(chaincodeName string, state Rea
 	return true, definedChaincode, nil
 }
 
-// ExternalFunctions is intended primarily to support the SCC functions.  In general,
-// its methods signatures produce writes (which must be commmitted as part of an endorsement
-// flow), or return human readable errors (for instance indicating a chaincode is not found)
-// rather than sentinals.  Instead, use the utility functions attached to the lifecycle Resources
+func (r *Resources) retrieveOrgApprovals(name string, cd *ChaincodeDefinition, orgStates []OpaqueState) (map[string]bool, error) {
+	approvals := map[string]bool{}
+	privateName := fmt.Sprintf("%s#%d", name, cd.Sequence)
+	for _, orgState := range orgStates {
+		match, err := r.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters(), orgState)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "serialization check failed for key %s", privateName)
+		}
+
+		org := OrgFromImplicitCollectionName(orgState.CollectionName())
+		approvals[org] = match
+	}
+
+	return approvals, nil
+}
+
+// ExternalFunctions is intended primarily to support the SCC functions.
+// In general, its methods signatures produce writes (which must be commmitted
+// as part of an endorsement flow), or return human readable errors (for
+// instance indicating a chaincode is not found) rather than sentinals.
+// Instead, use the utility functions attached to the lifecycle Resources
 // when needed.
 type ExternalFunctions struct {
 	Resources       *Resources
@@ -245,8 +263,8 @@ type ExternalFunctions struct {
 
 // SimulateCommitChaincodeDefinition takes a chaincode definition, checks that
 // its sequence number is the next allowable sequence number and checks which
-// organizations agree with the definition.
-func (ef *ExternalFunctions) SimulateCommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
+// organizations have approved the definition.
+func (ef *ExternalFunctions) SimulateCommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error) {
 	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, ccname, "Sequence", publicState)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get current sequence")
@@ -260,28 +278,24 @@ func (ef *ExternalFunctions) SimulateCommitChaincodeDefinition(chname, ccname st
 		return nil, errors.WithMessagef(err, "could not set defaults for chaincode definition in channel %s", chname)
 	}
 
-	agreement := make([]bool, len(orgStates))
-	privateName := fmt.Sprintf("%s#%d", ccname, cd.Sequence)
-	for i, orgState := range orgStates {
-		match, err := ef.Resources.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters(), orgState)
-		if err != nil {
-			return nil, errors.WithMessagef(err, "serialization check failed for key %s", privateName)
-		}
-
-		agreement[i] = match
+	var approvals map[string]bool
+	if approvals, err = ef.Resources.retrieveOrgApprovals(ccname, cd, orgStates); err != nil {
+		return nil, err
 	}
 
 	logger.Infof("successfully simulated committing chaincode definition %s, name '%s' on channel '%s'", cd, ccname, chname)
 
-	return agreement, nil
+	return approvals, nil
 }
 
-// CommitChaincodeDefinition takes a chaincode definition, checks that its sequence number is the next allowable sequence number,
-// checks which organizations agree with the definition, and applies the definition to the public world state.
-// It is the responsibility of the caller to check the agreement to determine if the result is valid (typically
-// this means checking that the peer's own org is in agreement.)
-func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
-	agreement, err := ef.SimulateCommitChaincodeDefinition(chname, ccname, cd, publicState, orgStates)
+// CommitChaincodeDefinition takes a chaincode definition, checks that its
+// sequence number is the next allowable sequence number, checks which
+// organizations have approved the definition, and applies the definition to
+// the public world state. It is the responsibility of the caller to check
+// the approvals to determine if the result is valid (typically, this means
+// checking that the peer's own org has approved the definition).
+func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error) {
+	approvals, err := ef.SimulateCommitChaincodeDefinition(chname, ccname, cd, publicState, orgStates)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +306,7 @@ func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd
 
 	logger.Infof("successfully committed definition %s, name '%s' on channel '%s'", cd, ccname, chname)
 
-	return agreement, nil
+	return approvals, nil
 }
 
 // DefaultEndorsementPolicyAsBytes returns a marshalled version

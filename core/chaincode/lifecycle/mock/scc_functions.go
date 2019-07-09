@@ -26,7 +26,7 @@ type SCCFunctions struct {
 	approveChaincodeDefinitionForOrgReturnsOnCall map[int]struct {
 		result1 error
 	}
-	CommitChaincodeDefinitionStub        func(string, string, *lifecycle.ChaincodeDefinition, lifecycle.ReadWritableState, []lifecycle.OpaqueState) ([]bool, error)
+	CommitChaincodeDefinitionStub        func(string, string, *lifecycle.ChaincodeDefinition, lifecycle.ReadWritableState, []lifecycle.OpaqueState) (map[string]bool, error)
 	commitChaincodeDefinitionMutex       sync.RWMutex
 	commitChaincodeDefinitionArgsForCall []struct {
 		arg1 string
@@ -36,11 +36,11 @@ type SCCFunctions struct {
 		arg5 []lifecycle.OpaqueState
 	}
 	commitChaincodeDefinitionReturns struct {
-		result1 []bool
+		result1 map[string]bool
 		result2 error
 	}
 	commitChaincodeDefinitionReturnsOnCall map[int]struct {
-		result1 []bool
+		result1 map[string]bool
 		result2 error
 	}
 	InstallChaincodeStub        func([]byte) (*chaincode.InstalledChaincode, error)
@@ -108,7 +108,7 @@ type SCCFunctions struct {
 		result1 map[string]string
 		result2 error
 	}
-	SimulateCommitChaincodeDefinitionStub        func(string, string, *lifecycle.ChaincodeDefinition, lifecycle.ReadWritableState, []lifecycle.OpaqueState) ([]bool, error)
+	SimulateCommitChaincodeDefinitionStub        func(string, string, *lifecycle.ChaincodeDefinition, lifecycle.ReadWritableState, []lifecycle.OpaqueState) (map[string]bool, error)
 	simulateCommitChaincodeDefinitionMutex       sync.RWMutex
 	simulateCommitChaincodeDefinitionArgsForCall []struct {
 		arg1 string
@@ -118,11 +118,11 @@ type SCCFunctions struct {
 		arg5 []lifecycle.OpaqueState
 	}
 	simulateCommitChaincodeDefinitionReturns struct {
-		result1 []bool
+		result1 map[string]bool
 		result2 error
 	}
 	simulateCommitChaincodeDefinitionReturnsOnCall map[int]struct {
-		result1 []bool
+		result1 map[string]bool
 		result2 error
 	}
 	invocations      map[string][][]interface{}
@@ -194,7 +194,7 @@ func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrgReturnsOnCall(i int, r
 	}{result1}
 }
 
-func (fake *SCCFunctions) CommitChaincodeDefinition(arg1 string, arg2 string, arg3 *lifecycle.ChaincodeDefinition, arg4 lifecycle.ReadWritableState, arg5 []lifecycle.OpaqueState) ([]bool, error) {
+func (fake *SCCFunctions) CommitChaincodeDefinition(arg1 string, arg2 string, arg3 *lifecycle.ChaincodeDefinition, arg4 lifecycle.ReadWritableState, arg5 []lifecycle.OpaqueState) (map[string]bool, error) {
 	var arg5Copy []lifecycle.OpaqueState
 	if arg5 != nil {
 		arg5Copy = make([]lifecycle.OpaqueState, len(arg5))
@@ -227,7 +227,7 @@ func (fake *SCCFunctions) CommitChaincodeDefinitionCallCount() int {
 	return len(fake.commitChaincodeDefinitionArgsForCall)
 }
 
-func (fake *SCCFunctions) CommitChaincodeDefinitionCalls(stub func(string, string, *lifecycle.ChaincodeDefinition, lifecycle.ReadWritableState, []lifecycle.OpaqueState) ([]bool, error)) {
+func (fake *SCCFunctions) CommitChaincodeDefinitionCalls(stub func(string, string, *lifecycle.ChaincodeDefinition, lifecycle.ReadWritableState, []lifecycle.OpaqueState) (map[string]bool, error)) {
 	fake.commitChaincodeDefinitionMutex.Lock()
 	defer fake.commitChaincodeDefinitionMutex.Unlock()
 	fake.CommitChaincodeDefinitionStub = stub
@@ -240,28 +240,28 @@ func (fake *SCCFunctions) CommitChaincodeDefinitionArgsForCall(i int) (string, s
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
 }
 
-func (fake *SCCFunctions) CommitChaincodeDefinitionReturns(result1 []bool, result2 error) {
+func (fake *SCCFunctions) CommitChaincodeDefinitionReturns(result1 map[string]bool, result2 error) {
 	fake.commitChaincodeDefinitionMutex.Lock()
 	defer fake.commitChaincodeDefinitionMutex.Unlock()
 	fake.CommitChaincodeDefinitionStub = nil
 	fake.commitChaincodeDefinitionReturns = struct {
-		result1 []bool
+		result1 map[string]bool
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *SCCFunctions) CommitChaincodeDefinitionReturnsOnCall(i int, result1 []bool, result2 error) {
+func (fake *SCCFunctions) CommitChaincodeDefinitionReturnsOnCall(i int, result1 map[string]bool, result2 error) {
 	fake.commitChaincodeDefinitionMutex.Lock()
 	defer fake.commitChaincodeDefinitionMutex.Unlock()
 	fake.CommitChaincodeDefinitionStub = nil
 	if fake.commitChaincodeDefinitionReturnsOnCall == nil {
 		fake.commitChaincodeDefinitionReturnsOnCall = make(map[int]struct {
-			result1 []bool
+			result1 map[string]bool
 			result2 error
 		})
 	}
 	fake.commitChaincodeDefinitionReturnsOnCall[i] = struct {
-		result1 []bool
+		result1 map[string]bool
 		result2 error
 	}{result1, result2}
 }
@@ -579,7 +579,7 @@ func (fake *SCCFunctions) QueryNamespaceDefinitionsReturnsOnCall(i int, result1 
 	}{result1, result2}
 }
 
-func (fake *SCCFunctions) SimulateCommitChaincodeDefinition(arg1 string, arg2 string, arg3 *lifecycle.ChaincodeDefinition, arg4 lifecycle.ReadWritableState, arg5 []lifecycle.OpaqueState) ([]bool, error) {
+func (fake *SCCFunctions) SimulateCommitChaincodeDefinition(arg1 string, arg2 string, arg3 *lifecycle.ChaincodeDefinition, arg4 lifecycle.ReadWritableState, arg5 []lifecycle.OpaqueState) (map[string]bool, error) {
 	var arg5Copy []lifecycle.OpaqueState
 	if arg5 != nil {
 		arg5Copy = make([]lifecycle.OpaqueState, len(arg5))
@@ -612,7 +612,7 @@ func (fake *SCCFunctions) SimulateCommitChaincodeDefinitionCallCount() int {
 	return len(fake.simulateCommitChaincodeDefinitionArgsForCall)
 }
 
-func (fake *SCCFunctions) SimulateCommitChaincodeDefinitionCalls(stub func(string, string, *lifecycle.ChaincodeDefinition, lifecycle.ReadWritableState, []lifecycle.OpaqueState) ([]bool, error)) {
+func (fake *SCCFunctions) SimulateCommitChaincodeDefinitionCalls(stub func(string, string, *lifecycle.ChaincodeDefinition, lifecycle.ReadWritableState, []lifecycle.OpaqueState) (map[string]bool, error)) {
 	fake.simulateCommitChaincodeDefinitionMutex.Lock()
 	defer fake.simulateCommitChaincodeDefinitionMutex.Unlock()
 	fake.SimulateCommitChaincodeDefinitionStub = stub
@@ -625,28 +625,28 @@ func (fake *SCCFunctions) SimulateCommitChaincodeDefinitionArgsForCall(i int) (s
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
 }
 
-func (fake *SCCFunctions) SimulateCommitChaincodeDefinitionReturns(result1 []bool, result2 error) {
+func (fake *SCCFunctions) SimulateCommitChaincodeDefinitionReturns(result1 map[string]bool, result2 error) {
 	fake.simulateCommitChaincodeDefinitionMutex.Lock()
 	defer fake.simulateCommitChaincodeDefinitionMutex.Unlock()
 	fake.SimulateCommitChaincodeDefinitionStub = nil
 	fake.simulateCommitChaincodeDefinitionReturns = struct {
-		result1 []bool
+		result1 map[string]bool
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *SCCFunctions) SimulateCommitChaincodeDefinitionReturnsOnCall(i int, result1 []bool, result2 error) {
+func (fake *SCCFunctions) SimulateCommitChaincodeDefinitionReturnsOnCall(i int, result1 map[string]bool, result2 error) {
 	fake.simulateCommitChaincodeDefinitionMutex.Lock()
 	defer fake.simulateCommitChaincodeDefinitionMutex.Unlock()
 	fake.SimulateCommitChaincodeDefinitionStub = nil
 	if fake.simulateCommitChaincodeDefinitionReturnsOnCall == nil {
 		fake.simulateCommitChaincodeDefinitionReturnsOnCall = make(map[int]struct {
-			result1 []bool
+			result1 map[string]bool
 			result2 error
 		})
 	}
 	fake.simulateCommitChaincodeDefinitionReturnsOnCall[i] = struct {
-		result1 []bool
+		result1 map[string]bool
 		result2 error
 	}{result1, result2}
 }
