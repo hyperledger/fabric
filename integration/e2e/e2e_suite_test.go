@@ -25,12 +25,16 @@ func TestEndToEnd(t *testing.T) {
 	RunSpecs(t, "EndToEnd Suite")
 }
 
-var components *nwo.Components
-var suiteBase = integration.E2EBasePort
+var (
+	buildServer *nwo.BuildServer
+	components  *nwo.Components
+)
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	components = &nwo.Components{}
+	buildServer = nwo.NewBuildServer()
+	buildServer.Serve()
 
+	components = buildServer.Components()
 	payload, err := json.Marshal(components)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -42,8 +46,12 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 var _ = SynchronizedAfterSuite(func() {
 }, func() {
-	components.Cleanup()
+	buildServer.Shutdown()
 })
+
+func StartPort() int {
+	return integration.E2EBasePort + (GinkgoParallelNode()-1)*100
+}
 
 type DatagramReader struct {
 	buffer    *gbytes.Buffer
@@ -115,8 +123,4 @@ func (dr *DatagramReader) Close() error {
 		}
 	})
 	return dr.err
-}
-
-func StartPort() int {
-	return suiteBase + (GinkgoParallelNode()-1)*100
 }
