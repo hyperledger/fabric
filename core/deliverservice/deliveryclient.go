@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/orderer"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
 
@@ -277,18 +276,6 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 	bClient := NewBroadcastClient(connProd, d.conf.ABCFactory, broadcastSetup, backoffPolicy)
 	requester.client = bClient
 	return bClient
-}
-
-func KeepaliveOptions() comm.KeepaliveOptions {
-	keepaliveOptions := comm.DefaultKeepaliveOptions
-	if viper.IsSet("peer.keepalive.deliveryClient.interval") {
-		keepaliveOptions.ClientInterval = viper.GetDuration("peer.keepalive.deliveryClient.interval")
-	}
-	if viper.IsSet("peer.keepalive.deliveryClient.timeout") {
-		keepaliveOptions.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
-	}
-
-	return keepaliveOptions
 }
 
 type CredSupportDialerFactory struct {

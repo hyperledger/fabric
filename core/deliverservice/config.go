@@ -9,6 +9,7 @@ package deliverservice
 import (
 	"time"
 
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/spf13/viper"
 )
 
@@ -29,6 +30,8 @@ type DeliverServiceConfig struct {
 	ReconnectTotalTimeThreshold time.Duration
 	// ConnectionTimeout sets the delivery service <-> ordering service node connection timeout
 	ConnectionTimeout time.Duration
+	// Keepalive option for deliveryservice
+	KeepaliveOptions comm.KeepaliveOptions
 }
 
 // GlobalConfig obtains a set of configuration from viper, build and returns the config struct.
@@ -55,4 +58,13 @@ func (c *DeliverServiceConfig) loadDeliverServiceConfig() {
 	if c.ConnectionTimeout == 0 {
 		c.ConnectionTimeout = DefaultConnectionTimeout
 	}
+
+	c.KeepaliveOptions = comm.DefaultKeepaliveOptions
+	if viper.IsSet("peer.keepalive.deliveryClient.interval") {
+		c.KeepaliveOptions.ClientInterval = viper.GetDuration("peer.keepalive.deliveryClient.interval")
+	}
+	if viper.IsSet("peer.keepalive.deliveryClient.timeout") {
+		c.KeepaliveOptions.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
+	}
+
 }
