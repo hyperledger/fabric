@@ -433,7 +433,7 @@ var _ = Describe("EndToEndACL", func() {
 		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
 		By("querying the chaincode definition as a permitted Org1 Admin identity")
-		nwo.EnsureCommitted(network, "testchannel", "mycc", "0.0", "1", org1Peer0)
+		nwo.EnsureChaincodeCommitted(network, "testchannel", "mycc", "0.0", "1", org1Peer0)
 
 		By("querying the chaincode definition as a forbidden Org2 Admin identity")
 		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeListCommitted{

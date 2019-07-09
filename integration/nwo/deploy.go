@@ -265,10 +265,12 @@ func CommitChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 	for i := 0; i < len(peerAddresses); i++ {
 		Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
 	}
-	EnsureCommitted(n, channel, chaincode.Name, chaincode.Version, chaincode.Sequence, checkPeers...)
+	EnsureChaincodeCommitted(n, channel, chaincode.Name, chaincode.Version, chaincode.Sequence, checkPeers...)
 }
 
-func EnsureCommitted(n *Network, channel, name, version, sequence string, peers ...*Peer) {
+// EnsureChaincodeCommitted polls each supplied peer until the chaincode definition
+// has been committed to the peer's ledger.
+func EnsureChaincodeCommitted(n *Network, channel, name, version, sequence string, peers ...*Peer) {
 	for _, p := range peers {
 		sequenceInt, err := strconv.ParseInt(sequence, 10, 64)
 		Expect(err).NotTo(HaveOccurred())
