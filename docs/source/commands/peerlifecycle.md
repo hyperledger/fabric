@@ -47,7 +47,7 @@ Use "peer lifecycle [command] --help" for more information about a command.
 
 ## peer lifecycle chaincode
 ```
-Perform _lifecycle operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|checkcommitreadiness|commit|querycommitted
+Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|checkcommitreadiness|commit|querycommitted
 
 Usage:
   peer lifecycle chaincode [command]
