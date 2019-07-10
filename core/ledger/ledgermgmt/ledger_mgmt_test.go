@@ -54,6 +54,9 @@ func TestLedgerMgmt(t *testing.T) {
 
 	l := ledgers[2]
 	l.Close()
+	// attempt to close the same ledger twice and ensure it doesn't panic
+	assert.NotPanics(t, l.Close)
+
 	l, err = ledgerMgr.OpenLedger(ledgerID)
 	assert.NoError(t, err)
 
