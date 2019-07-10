@@ -12,9 +12,6 @@ import (
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
-	"github.com/hyperledger/fabric/protos/common"
 )
 
 func CreateMockChannel(p *Peer, cid string) error {
@@ -47,15 +44,4 @@ func CreateMockChannel(p *Peer, cid string) error {
 	}
 
 	return nil
-}
-
-func constructLedgerMgrWithTestDefaults(ledgersDataDir string) (*ledgermgmt.LedgerMgr, error) {
-	ledgerInitializer := ledgermgmttest.NewInitializer(ledgersDataDir)
-	ledgerInitializer.CustomTxProcessors = map[common.HeaderType]ledger.CustomTxProcessor{
-		common.HeaderType_CONFIG: &ConfigTxProcessor{},
-	}
-	ledgerInitializer.Config.HistoryDBConfig = &ledger.HistoryDBConfig{
-		Enabled: true,
-	}
-	return ledgermgmt.NewLedgerMgr(ledgerInitializer), nil
 }

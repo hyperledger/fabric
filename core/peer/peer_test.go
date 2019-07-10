@@ -21,6 +21,9 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	ledgermocks "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/transientstore"
@@ -32,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -193,4 +197,15 @@ func TestDeliverSupportManager(t *testing.T) {
 	peerInstance.channels = map[string]*Channel{"testchain": {}}
 	chainSupport = manager.GetChain("testchain")
 	assert.NotNil(t, chainSupport, "chain support should not be nil")
+}
+
+func constructLedgerMgrWithTestDefaults(ledgersDataDir string) (*ledgermgmt.LedgerMgr, error) {
+	ledgerInitializer := ledgermgmttest.NewInitializer(ledgersDataDir)
+	ledgerInitializer.CustomTxProcessors = map[common.HeaderType]ledger.CustomTxProcessor{
+		common.HeaderType_CONFIG: &ConfigTxProcessor{},
+	}
+	ledgerInitializer.Config.HistoryDBConfig = &ledger.HistoryDBConfig{
+		Enabled: true,
+	}
+	return ledgermgmt.NewLedgerMgr(ledgerInitializer), nil
 }
