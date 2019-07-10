@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdata
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -17,6 +18,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/onsi/gomega/gbytes"
@@ -165,6 +167,71 @@ var _ bool = Describe("PrivateData", func() {
 				helper.upgradeChaincode(testChaincode)
 			})
 			assertReconcileBehavior()
+		})
+	})
+
+	// This section verifies that chaincode can return private data hash.
+	// Unlike private data that can only be accessed from authorized peers as defined in the collection config,
+	// private data hash can be queried on any peer in the channel that has the chaincode instantiated.
+	// When calling QueryChaincode with "getMarbleHash", the cc will return the private data hash in collectionMarbles.
+	// When calling QueryChaincode with "getMarblePrivateDetailsHash", the cc will return the private data hash in collectionMarblePrivateDetails.
+	Describe("GetPrivateDataHash", func() {
+		assertGetPrivateDataBehavior := func() {
+			It("gets private data hash by querying chaincode", func() {
+				eligiblePeer := network.Peer("org2", "peer0")
+				ccName := testChaincode.Name
+
+				By("deploying chaincode and adding marble3")
+				helper.deployChaincode(testChaincode)
+				helper.addMarble(ccName, `"marble3","yellow","53","jerry","33"`, eligiblePeer)
+
+				By("verifying getMarbleHash is accessible from all peers that has the chaincode instantiated")
+				peerList := []*nwo.Peer{
+					network.Peer("org1", "peer0"),
+					network.Peer("org2", "peer0"),
+					network.Peer("org3", "peer0")}
+				expectedBytes := util.ComputeStringHash(`{"docType":"marble","name":"marble3","color":"yellow","size":53,"owner":"jerry"}`)
+				verifyPvtdataHash(
+					network,
+					commands.ChaincodeQuery{
+						ChannelID: "testchannel",
+						Name:      "marblesp",
+						Ctor:      `{"Args":["getMarbleHash","marble3"]}`},
+					peerList,
+					expectedBytes)
+
+				By("verifying getMarblePrivateDetailsHash is accessible from all peers that has the chaincode instantiated")
+				expectedBytes = util.ComputeStringHash(`{"docType":"marblePrivateDetails","name":"marble3","price":33}`)
+				verifyPvtdataHash(
+					network,
+					commands.ChaincodeQuery{
+						ChannelID: "testchannel",
+						Name:      "marblesp",
+						Ctor:      `{"Args":["getMarblePrivateDetailsHash","marble3"]}`},
+					peerList,
+					expectedBytes)
+			})
+		}
+
+		Context("chaincode in legacy lifecycle", func() {
+			BeforeEach(func() {
+				testChaincode = chaincode{
+					Chaincode: legacyChaincode,
+					isLegacy:  true,
+				}
+			})
+			assertGetPrivateDataBehavior()
+		})
+
+		Context("chaincode in new lifecycle", func() {
+			BeforeEach(func() {
+				testChaincode = chaincode{
+					Chaincode: newLifecycleChaincode,
+					isLegacy:  false,
+				}
+				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, allPeers...)
+			})
+			assertGetPrivateDataBehavior()
 		})
 	})
 
@@ -649,5 +716,18 @@ func (th *testHelper) assertNoReadAccessToCollectionMPD(chaincodeName, marbleNam
 	expectedMsg := "tx creator does not have read access permission"
 	for _, peer := range peerList {
 		th.queryChaincode(peer, command, expectedMsg, false)
+	}
+}
+
+// verifyPvtdataHash verifies the private data hash matches the expected bytes.
+// Cannot reuse verifyAccess because the hash bytes are not valid utf8 causing gbytes.Say to fail.
+func verifyPvtdataHash(n *nwo.Network, chaincodeQueryCmd commands.ChaincodeQuery, peers []*nwo.Peer, expected []byte) {
+	for _, peer := range peers {
+		sess, err := n.PeerUserSession(peer, "User1", chaincodeQueryCmd)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		actual := sess.Buffer().Contents()
+		// verify actual bytes contain expected bytes - cannot use equal because session may contain extra bytes
+		Expect(bytes.Contains(actual, expected)).To(Equal(true))
 	}
 }

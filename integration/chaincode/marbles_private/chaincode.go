@@ -57,6 +57,12 @@ func (t *MarblesPrivateChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Re
 	case "readMarblePrivateDetails":
 		//read a marble private details
 		return t.readMarblePrivateDetails(stub, args)
+	case "getMarbleHash":
+		// get private data hash for collectionMarbles
+		return t.getMarbleHash(stub, args)
+	case "getMarblePrivateDetailsHash":
+		// get private data hash for collectionMarblePrivateDetails
+		return t.getMarblePrivateDetailsHash(stub, args)
 	case "delete":
 		//delete a marble
 		return t.delete(stub, args)
@@ -193,6 +199,54 @@ func (t *MarblesPrivateChaincode) readMarblePrivateDetails(stub shim.ChaincodeSt
 		return shim.Error(jsonResp)
 	} else if valAsbytes == nil {
 		jsonResp = "{\"Error\":\"Marble private details does not exist: " + name + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	return shim.Success(valAsbytes)
+}
+
+// ===============================================
+// getMarbleHash - get marble private data hash for collectionMarbles from chaincode state
+// ===============================================
+func (t *MarblesPrivateChaincode) getMarbleHash(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	var name, jsonResp string
+	var err error
+
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting name of the marble to query")
+	}
+
+	name = args[0]
+	valAsbytes, err := stub.GetPrivateDataHash("collectionMarbles", name)
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to get marble private data hash for " + name + "\"}"
+		return shim.Error(jsonResp)
+	} else if valAsbytes == nil {
+		jsonResp = "{\"Error\":\"Marble private marble data hash does not exist: " + name + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	return shim.Success(valAsbytes)
+}
+
+// ===============================================
+// getMarblePrivateDetailsHash - get marble private data hash for collectionMarblePrivateDetails from chaincode state
+// ===============================================
+func (t *MarblesPrivateChaincode) getMarblePrivateDetailsHash(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	var name, jsonResp string
+	var err error
+
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting name of the marble to query")
+	}
+
+	name = args[0]
+	valAsbytes, err := stub.GetPrivateDataHash("collectionMarblePrivateDetails", name)
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to get marble private details hash for " + name + ": " + err.Error() + "\"}"
+		return shim.Error(jsonResp)
+	} else if valAsbytes == nil {
+		jsonResp = "{\"Error\":\"Marble private details hash does not exist: " + name + "\"}"
 		return shim.Error(jsonResp)
 	}
 
