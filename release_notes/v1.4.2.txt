@@ -1,0 +1,158 @@
+v1.4.2 Release Notes - July 17, 2019
+------------------------------------
+
+What's New in Hyperledger Fabric v1.4.2
+---------------------------------------
+
+The following features are included in this release:
+
+FAB-15041 - Kafka to Raft Consensus Migration
+A Kafka-based ordering service can now be migrated to utilize Raft consensus.
+For details see the documentation at
+https://hyperledger-fabric.readthedocs.io/en/latest/kafka_raft_migration.html.
+This feature requires v1.4.2 'orderer' and 'channel' capabilities to be
+enabled.
+
+FAB-14307 Channel rollback on a peer
+The new 'peer node rollback' command provides
+administrative ability to rollback a channel's ledger on a peer to a prior
+block height in the case a peer's channel data gets into a corrupt state at a
+later block height. The peer will re-retrieve the rolled back blocks from
+ordering service or another peer upon the next peer start. Note that during
+the rollback, the ledger's private data will be preserved, since it cannot
+be obtained from ordering service at a later time, and may not be available
+from other peers.
+Similarly, the command 'peer node reset' command can be used to rollback
+all of a peer's channel ledgers to the genesis block of each channel.
+Both commands must be issued from the peer's CLI while the peer process
+is down.
+It is recommended to enable v1.4.2 'application' capability to ensure that all
+private data is stored on the local peer (including for invalidated transactions),
+in case rollback and reprocessing is required on a peer.
+
+FAB-7559 - Ability to specify orderer endpoints at the organization level
+Starting from version v1.4.2, it is possible and highly recommended to define
+orderer endpoints at the organization level (new 'OrdererEndpoints' stanza
+within the channel configuration of an organization) and not at the global
+'Orderer.Addresses' section of channel configuration. If at least one
+organization has an ordering service endpoint defined at an organizational
+level, all orderers and peers will ignore the channel level endpoints when
+connecting to ordering nodes.
+Utilizing organization level orderer endpoints is required when using
+service discovery with orderer nodes provided by multiple organizations,
+so that clients can provide the correct organization TLS certificates.
+This feature requires v1.4.2 'channel' capability to be
+enabled.
+
+
+Important Fixes
+---------------
+FAB-15450 - History database queries do not return all results
+Prior to the fix, history database queries excluded transactions from
+blocks that were multiples of 256 (block 256, 512, 768, etc).
+
+FAB-15411 - GetTransactionByID does not return configuration transactions
+Prior to the fix, GetTransactionByID and GetBlockByTxID did not return
+configuration transactions, since these transactions were not indexed
+correctly. To fix indexes for pre-existing configuration transactions
+on a peer's channel ledgers, stop the peer and delete the index directory,
+e.g. /var/hyperledger/production/ledgersData/chains/index directory.
+The peer will rebuild the indexes correctly upon the next restart.
+
+FAB-15404 - Orderer Kafka TLS Issue
+Prior to the fix, orderer nodes could not communicate to kafka if
+TLS is enabled.
+
+FAB-15144 - Assorted orderer serviceability fixes
+
+
+Changes, Known Issues, and Workarounds
+--------------------------------------
+FAB-15031 - ledger.blockstorage_commit_time metric is available on orderer nodes
+ledger.blockstorage_commit_time is now available on both peer and orderer nodes,
+but only includes block storage commit time. A new metric,
+ledger_blockstorage_and_pvtdata_commit_time, is available on peer nodes and
+includes the total commit time for blockstorage and pvtdata.
+
+FAB-15549 - Restrict service discovery endorsement computation
+If the endorsement policy contains an NoutOf that yields too many combinations
+(such as - 13 out of 25), service discovery will not return all possible
+combinations to the application (as that number can be huge), but instead will
+return a random subset of endorsement combinations.
+
+FAB-12088 - Java chaincode support on s390x architecture
+Java chaincode support is not available on s390x architecture.
+
+FAB-12134 - Same chaincode source receiving fingerprint mismatch error
+Chaincode installed in different ways may result in "chaincode fingerprint
+mismatch data mismatch" error upon instantiation. This may happen when
+installing chaincode by using different SDKs. To workaround the problem,
+package the chaincode prior to installation and instantiation, by using
+the "peer chaincode package" command.
+
+
+Known Vulnerabilities
+---------------------
+FAB-8664 - Peer should detect and react when its org has been removed
+This is a relatively low severity problem, because it requires a significant
+conspiracy of network admins, but it will be addressed in a future release.
+
+
+Resolved Vulnerabilities
+------------------------
+None.
+
+
+Deprecations
+------------
+The following functions are deprecated and are targeted for removal in a future release.
+
+Support for automatically vendoring the chaincode shim into user chaincodes.
+The fabric-ccenv image which is used to build chaincode, currently includes
+the github.com/hyperledger/fabric/core/chaincode/shim ("shim") package.
+This is convenient, as it provides the ability to package chaincode
+without the need to include the "shim". However, this may cause issues in future
+releases (and/or when trying to use packages which are included by the "shim").
+In order to avoid any issues, users are advised to manually vendor the "shim"
+package with their chaincode prior to using the peer CLI for packaging and/or
+for installing chaincode.
+For more details see FAB-5177.
+
+Support for CAR chaincode package format
+Support for packaging chaincode using the CAR format will be removed in
+a future release.
+For more details see FAB-14720.
+
+Support for specifying orderer endpoints at the global level in channel configuration.
+Utilize the new 'OrdererEndpoints' stanza within the channel configuration of
+an organization instead.
+For more details see FAB-7559.
+
+Support for invoking system chaincodes from user chaincodes.
+System chaincodes, for example QSCC, are intended to be invoked by
+a client rather than by a user chaincode. Invoking from a user chaincode
+may cause deadlocks.
+For more details see FAB-15285.
+
+Support for user chaincodes to utilize the chaincode shim's logger via NewLogger().
+Chaincodes that used the shim's NewLogger() will need to shift to their own preferred
+logging mechanism.
+For more details see FAB-15366.
+
+Support for peer's Admin service.
+The peer's Admin service exposes APIs such as GetLogSpec() and SetLogSpec().
+Instead of using these services, utilize the HTTP operations service that was
+introduced in v1.4.0.
+For more details see FAB-15390.
+
+Support for Solo ordering service.
+With the introduction of Raft-based ordering service in v1.4.1, it is possible
+to deploy a single-node (non-production) or multi-node
+Raft-based ordering service with no external dependencies.
+For single-node (non-production) ordering services, utilize Raft-based ordering
+service with a single node instead of Solo ordering service.
+For more details see FAB-15754.
+
+
+For the full list of improvements and fixes, refer to the release change log:
+https://github.com/hyperledger/fabric/blob/release-1.4/CHANGELOG.md#v142
