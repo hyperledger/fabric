@@ -164,9 +164,11 @@ func (m *LedgerMgr) getOpenedLedger(ledgerID string) (ledger.PeerLedger, error) 
 func (m *LedgerMgr) closeLedger(ledgerID string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	l := m.openedLedgers[ledgerID]
-	l.Close()
-	delete(m.openedLedgers, ledgerID)
+	l, ok := m.openedLedgers[ledgerID]
+	if ok {
+		l.Close()
+		delete(m.openedLedgers, ledgerID)
+	}
 }
 
 // closableLedger extends from actual validated ledger and overwrites the Close method
