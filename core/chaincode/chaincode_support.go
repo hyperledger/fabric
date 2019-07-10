@@ -159,7 +159,7 @@ func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid stri
 // It does not attempt to start the chaincode based on the information from lifecycle, but instead
 // accepts the container information directly in the form of a ChaincodeDeploymentSpec.
 func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(spec)
+	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(spec, cccid.SystemCC)
 	ccci.Version = cccid.Version
 	// FIXME: this is a hack, we shouldn't construct the
 	// packageID manually but rather let lifecycle construct it

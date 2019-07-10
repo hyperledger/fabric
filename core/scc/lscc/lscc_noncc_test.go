@@ -19,7 +19,6 @@ import (
 )
 
 var _ = Describe("LSCC", func() {
-
 	var (
 		l                 *lscc.LifeCycleSysCC
 		fakeSupport       *mock.FileSystemSupport
@@ -84,7 +83,7 @@ var _ = Describe("LSCC", func() {
 		It("returns the chaincode deployment spec for a valid chaincode", func() {
 			ccci, err := l.ChaincodeContainerInfo("", "chaincode-data-name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ccci).To(Equal(ccprovider.DeploymentSpecToChaincodeContainerInfo(deploymentSpec)))
+			Expect(ccci).To(Equal(ccprovider.DeploymentSpecToChaincodeContainerInfo(deploymentSpec, false)))
 
 			Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(1))
 			getStateNamespace, getStateCCName := fakeQueryExecutor.GetStateArgsForCall(0)

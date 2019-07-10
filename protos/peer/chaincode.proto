@@ -76,17 +76,11 @@ message ChaincodeSpec {
 // TODO: Define `codePackage`.
 message ChaincodeDeploymentSpec {
     // Prevent removed tag re-use
-    reserved 2;
-    reserved "effective_date";
-
-    enum ExecutionEnvironment {
-        DOCKER = 0;
-        SYSTEM = 1;
-    }
+    reserved 2, 4;
+    reserved "effective_date", "exec_env";
 
     ChaincodeSpec chaincode_spec = 1;
     bytes code_package = 3;
-    ExecutionEnvironment exec_env=  4;
 
 }
 

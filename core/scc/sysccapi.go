@@ -160,14 +160,15 @@ func (p *Provider) deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvid
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path(), Name: syscc.Name()}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs()}}
 
-	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ExecEnv: pb.ChaincodeDeploymentSpec_SYSTEM, ChaincodeSpec: spec}
+	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec}
 
 	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
 	version := util.GetSysCCVersion()
 
 	cccid := &ccprovider.CCContext{
-		Name:    chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name,
-		Version: version,
+		Name:     chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name,
+		Version:  version,
+		SystemCC: true,
 	}
 
 	resp, _, err := ccprov.ExecuteLegacyInit(txParams, cccid, chaincodeDeploymentSpec)
