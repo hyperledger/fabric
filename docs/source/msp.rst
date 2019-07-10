@@ -152,7 +152,8 @@ Organizational Units
 
 In order to configure the list of Organizational Units that valid members of this MSP should
 include in their X.509 certificate, the ``config.yaml`` file
-needs to specify the organizational unit identifiers. Here is an example:
+needs to specify the organizational unit (OU, for short) identifiers. You can find an example
+below:
 
 ::
 
@@ -171,12 +172,18 @@ The path is relative to the MSP root folder and cannot be empty.
 Identity Classification
 -----------------------
 
-The default MSP implementation allows to further classify identities into clients and peers, based on the OUs
-of their x509 certificates.
-An identity should be classified as a **client** if it submits transactions, queries peers, etc.
-An identity should be classified as a **peer** if it endorses or commits transactions.
-In order to define clients and peers of a given MSP, the ``config.yaml`` file
-needs to be set appropriately. Here is an example:
+The default MSP implementation allows organizations to further classify identities into clients,
+admins, peers, and orderers based on the OUs of their x509 certificates.
+
+* An identity should be classified as a **client** if it transacts on the network.
+* An identity should be classified as an **admin** if it handles administrative tasks such as
+  joining a peer to a channel or signing a channel configuration update transaction.
+* An identity should be classified as a **peer** if it endorses or commits transactions.
+* An identity should be classified as an **orderer** if belongs to an ordering node.
+
+In order to define the clients, admins, peers, and orderers of a given MSP, the ``config.yaml`` file
+needs to be set appropriately. You can find an example NodeOU section of the ``config.yaml`` file
+below:
 
 ::
 
@@ -185,29 +192,45 @@ needs to be set appropriately. Here is an example:
      ClientOUIdentifier:
        Certificate: "cacerts/cacert.pem"
        OrganizationalUnitIdentifier: "client"
+     AdminOUIdentifier:
+       Certificate: "cacerts/cacert.pem"
+       OrganizationalUnitIdentifier: "admin"
      PeerOUIdentifier:
        Certificate: "cacerts/cacert.pem"
        OrganizationalUnitIdentifier: "peer"
+     OrdererOUIdentifier:
+       Certificate: "cacerts/cacert.pem"
+       OrganizationalUnitIdentifier: "orderer"
 
-As shown above, the ``NodeOUs.Enable`` is set to ``true``, this enables the identify classification.
-Then, client (peer) identifiers are defined by setting the following properties
-for the ``NodeOUs.ClientOUIdentifier`` (``NodeOUs.PeerOUIdentifier``) key:
+Identity classification is enabled when ``NodeOUs.Enable`` is set to ``true``. Then the client
+(admin, peer, orderer) organizational unit identifier is defined by setting the properties of
+the ``NodeOUs.ClientOUIdentifier`` (``NodeOUs.AdminOUIdentifier``, ``NodeOUs.PeerOUIdentifier``,
+``NodeOUs.OrdererOUIdentifier``) key:
 
-a. ``OrganizationalUnitIdentifier``: Set this to the value that matches the OU that
-   the x509 certificate of a client (peer) should contain.
-b. ``Certificate``: Set this to the CA or intermediate CA under which client (peer) identities
-   should be validated. The field is relative to the MSP root folder. It can be empty, meaning
-   that the identity's x509 certificate can be validated under any CA defined in the MSP configuration.
+a. ``OrganizationalUnitIdentifier``: Is the OU value that the x509 certificate needs to contain
+   to be considered a client (admin, peer, orderer respectively). If this field is empty, then the classification
+   is not applied.
+b. ``Certificate``: Set this to the path of the CA or intermediate CA certificate under which client
+   (peer, admin or orderer) identities should be validated. The field is relative to the MSP root
+   folder. This field is optional. You can leave this field blank and allow the certificate to be
+   validated under any CA defined in the MSP configuration.
 
-When the classification is enabled, MSP administrators need
-to be clients of that MSP, meaning that their x509 certificates need to carry
-the OU that identifies the clients.
-Notice also that, an identity can be either a client or a peer.
-The two classifications are mutually exclusive. If an identity is neither a client nor a peer,
-the validation will fail.
+Notice that if the ``NodeOUs.ClientOUIdentifier`` section (``NodeOUs.AdminOUIdentifier``,
+``NodeOUs.PeerOUIdentifier``, ``NodeOUs.OrdererOUIdentifier``) is missing, then the classification
+is not applied. If ``NodeOUs.Enable`` is set to ``true`` and no classification keys are defined,
+then identity classification is assumed to be disabled.
 
-Finally, notice that for upgraded environments the 1.1 channel capability
-needs to be enabled before identify classification can be used.
+Identities can use organizational units to be classified as either a client, an admin, a peer, or an
+orderer. The four classifications are mutually exclusive.
+The 1.1 channel capability needs to be enabled before identities can be classified as clients
+or peers. The 1.4.3 channel capability needs to be enabled for identities to be classified as an
+admin or orderer.
+
+Classification allows identities to be classified as admins (and conduct administrator actions)
+without the certificate being stored in the ``admincerts`` folder of the MSP. Instead, the
+``admincerts`` folder can remain empty and administrators can be created by enrolling identities
+with the admin OU. Certificates in the ``admincerts`` folder will still grant the role of
+administrator to their bearer, provided that they possess the client or admin OU.
 
 Channel MSP setup
 -----------------
