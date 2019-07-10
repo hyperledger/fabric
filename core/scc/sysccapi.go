@@ -174,10 +174,12 @@ func (p *Provider) deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvid
 	if err == nil && resp.Status != shim.OK {
 		err = errors.New(resp.Message)
 	}
+	if err != nil {
+		return err
+	}
 
 	sysccLogger.Infof("system chaincode %s/%s(%s) deployed", syscc.Name(), chainID, syscc.Path())
-
-	return err
+	return nil
 }
 
 // deDeploySysCC stops the system chaincode and deregisters it from inproccontroller

@@ -8,6 +8,7 @@ package ccprovider
 
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -32,6 +33,8 @@ func (c *MockCcProviderFactory) NewChaincodeProvider() ccprovider.ChaincodeProvi
 type MockCcProviderImpl struct {
 	ExecuteResultProvider    ExecuteChaincodeResultProvider
 	ExecuteChaincodeResponse *peer.Response
+	InitResponse             *peer.Response
+	InitError                error
 }
 
 type MockTxSim struct {
@@ -147,7 +150,10 @@ func (m *MockTxSim) DeletePrivateDataMetadata(namespace, collection, key string)
 
 // ExecuteInit executes the chaincode given context and spec deploy
 func (c *MockCcProviderImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *peer.ChaincodeDeploymentSpec) (*peer.Response, *peer.ChaincodeEvent, error) {
-	return &peer.Response{}, nil, nil
+	if c.InitResponse != nil || c.InitError != nil {
+		return c.InitResponse, nil, c.InitError
+	}
+	return &peer.Response{Status: shim.OK}, nil, nil
 }
 
 // Execute executes the chaincode given context and spec invocation

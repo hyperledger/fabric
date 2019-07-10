@@ -7,15 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package scc
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	ccprovider2 "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -88,6 +91,25 @@ func TestDeploy(t *testing.T) {
 		Enabled: true,
 		Name:    "invokableCC2CCButNotExternal",
 	}})
+}
+
+func TestDeployInitFailed(t *testing.T) {
+	t.Run("shim error status response", func(t *testing.T) {
+		ccp := &ccprovider2.MockCcProviderImpl{
+			InitResponse: &pb.Response{Status: shim.ERROR, Message: "i-am-a-failure"},
+		}
+		p := newTestProvider()
+
+		assert.PanicsWithValue(t, "chaincode deployment failed: i-am-a-failure", func() { p.DeploySysCCs("", ccp) })
+	})
+	t.Run("shim init error", func(t *testing.T) {
+		ccp := &ccprovider2.MockCcProviderImpl{
+			InitError: errors.New("i-am-more-than-a-disappointment"),
+		}
+		p := newTestProvider()
+
+		assert.PanicsWithValue(t, "chaincode deployment failed: i-am-more-than-a-disappointment", func() { p.DeploySysCCs("", ccp) })
+	})
 }
 
 func TestDeDeploySysCC(t *testing.T) {
