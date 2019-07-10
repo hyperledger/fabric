@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package inproccontroller
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
@@ -251,12 +250,6 @@ func (vm *InprocVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremo
 	vm.registry.removeInstance(instName)
 
 	//TODO stop
-	return nil
-}
-
-// HealthCheck is provided in order to implement the VMProvider interface.
-// It always returns nil..
-func (vm *InprocVM) HealthCheck(ctx context.Context) error {
 	return nil
 }
 

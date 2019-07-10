@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/core/deliverservice"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -466,9 +467,11 @@ func serve(args []string) error {
 	}
 	dockerVM := dockerProvider.NewVM()
 
-	err = opsSystem.RegisterChecker("docker", dockerVM)
-	if err != nil {
-		logger.Panicf("failed to register docker health check: %s", err)
+	if dockerHealthChecker, ok := dockerVM.(healthz.HealthChecker); ok {
+		err := opsSystem.RegisterChecker("docker", dockerHealthChecker)
+		if err != nil {
+			logger.Panicf("failed to register docker health check: %s", err)
+		}
 	}
 
 	chaincodeConfig := chaincode.GlobalConfig()
