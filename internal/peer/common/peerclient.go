@@ -48,7 +48,7 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 		clientConfig.Timeout = defaultConnTimeout
 	}
 
-	secOpts := &comm.SecureOptions{
+	secOpts := comm.SecureOptions{
 		UseTLS:            viper.GetBool("peer.tls.enabled"),
 		RequireClientCert: viper.GetBool("peer.tls.clientAuthRequired"),
 	}
