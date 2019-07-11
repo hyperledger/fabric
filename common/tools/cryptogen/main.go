@@ -49,6 +49,7 @@ type NodeTemplate struct {
 }
 
 type NodeSpec struct {
+	isAdmin            bool
 	Hostname           string   `yaml:"Hostname"`
 	CommonName         string   `yaml:"CommonName"`
 	Country            string   `yaml:"Country"`
@@ -546,6 +547,7 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 	}
 	// add an admin user
 	adminUser := NodeSpec{
+		isAdmin:    true,
 		CommonName: fmt.Sprintf("%s@%s", adminBaseName, orgName),
 	}
 
@@ -602,9 +604,13 @@ func generateNodes(baseDir string, nodes []NodeSpec, signCA *ca.CA, tlsCA *ca.CA
 	for _, node := range nodes {
 		nodeDir := filepath.Join(baseDir, node.CommonName)
 		if _, err := os.Stat(nodeDir); os.IsNotExist(err) {
-			err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA, nodeType, nodeOUs)
+			currentNodeType := nodeType
+			if node.isAdmin && nodeOUs {
+				currentNodeType = msp.ADMIN
+			}
+			err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA, currentNodeType, nodeOUs)
 			if err != nil {
-				fmt.Printf("Error generating local MSP for %s:\n%v\n", node, err)
+				fmt.Printf("Error generating local MSP for %v:\n%v\n", node, err)
 				os.Exit(1)
 			}
 		}
