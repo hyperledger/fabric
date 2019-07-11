@@ -198,7 +198,7 @@ func (ipc *inprocContainer) launchInProc(id string, args []string, env []string)
 func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
 	ipctemplate := vm.registry.getType(ccid)
 	if ipctemplate == nil {
-		return fmt.Errorf(fmt.Sprintf("%s not registered", ccid))
+		return fmt.Errorf("%s not registered", ccid)
 	}
 
 	instName := vm.GetVMName(ccid)
@@ -206,11 +206,11 @@ func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesTo
 	ipc, err := vm.getInstance(ipctemplate, instName, args, env)
 
 	if err != nil {
-		return fmt.Errorf(fmt.Sprintf("could not create instance for %s", instName))
+		return fmt.Errorf("could not create instance for %s", instName)
 	}
 
 	if ipc.running {
-		return fmt.Errorf(fmt.Sprintf("chaincode running %s", ccid))
+		return fmt.Errorf("chaincode running %s", ccid)
 	}
 
 	ipc.running = true
