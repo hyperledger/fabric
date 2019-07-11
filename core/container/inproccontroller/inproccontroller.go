@@ -52,7 +52,7 @@ func (s SysCCRegisteredErr) Error() string {
 // It implements container.VMProvider and scc.Registrar
 type Registry struct {
 	mutex        sync.Mutex
-	typeRegistry map[ccintf.CCID]*inprocContainer
+	chaincodes   map[ccintf.CCID]shim.Chaincode
 	instRegistry map[string]*inprocContainer
 
 	ChaincodeSupport ccintf.CCSupport
@@ -65,7 +65,7 @@ type Registry struct {
 // it is being made an explicit part of the startup.
 func NewRegistry() *Registry {
 	return &Registry{
-		typeRegistry: make(map[ccintf.CCID]*inprocContainer),
+		chaincodes:   make(map[ccintf.CCID]shim.Chaincode),
 		instRegistry: make(map[string]*inprocContainer),
 	}
 }
@@ -81,19 +81,18 @@ func (r *Registry) Register(ccid ccintf.CCID, cc shim.Chaincode) error {
 	defer r.mutex.Unlock()
 
 	inprocLogger.Debugf("Registering chaincode instance: %s", ccid)
-	tmp := r.typeRegistry[ccid]
-	if tmp != nil {
+	if _, exists := r.chaincodes[ccid]; exists {
 		return SysCCRegisteredErr(ccid.String())
 	}
 
-	r.typeRegistry[ccid] = &inprocContainer{chaincode: cc}
+	r.chaincodes[ccid] = cc
 	return nil
 }
 
-func (r *Registry) getType(ccid ccintf.CCID) *inprocContainer {
+func (r *Registry) getChaincode(ccid ccintf.CCID) shim.Chaincode {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	return r.typeRegistry[ccid]
+	return r.chaincodes[ccid]
 }
 
 func (r *Registry) getInstance(name string) *inprocContainer {
@@ -119,7 +118,7 @@ type InprocVM struct {
 	registry *Registry
 }
 
-func (vm *InprocVM) getInstance(ipctemplate *inprocContainer, instName string, args []string, env []string) (*inprocContainer, error) {
+func (vm *InprocVM) getInstance(chaincode shim.Chaincode, instName string, args, env []string) (*inprocContainer, error) {
 	ipc := vm.registry.getInstance(instName)
 	if ipc != nil {
 		inprocLogger.Warningf("chaincode instance exists for %s", instName)
@@ -129,7 +128,7 @@ func (vm *InprocVM) getInstance(ipctemplate *inprocContainer, instName string, a
 		ChaincodeSupport: vm.registry.ChaincodeSupport,
 		args:             args,
 		env:              env,
-		chaincode:        ipctemplate.chaincode,
+		chaincode:        chaincode,
 		stopChan:         make(chan struct{}),
 	}
 	vm.registry.setInstance(instName, ipc)
@@ -137,11 +136,7 @@ func (vm *InprocVM) getInstance(ipctemplate *inprocContainer, instName string, a
 	return ipc, nil
 }
 
-func (ipc *inprocContainer) launchInProc(id string, args []string, env []string) error {
-	if ipc.ChaincodeSupport == nil {
-		inprocLogger.Panicf("Chaincode support is nil, most likely you forgot to set it immediately after calling inproccontroller.NewRegsitry()")
-	}
-
+func (ipc *inprocContainer) launchInProc(id string, args, env []string) error {
 	peerRcvCCSend := make(chan *pb.ChaincodeMessage)
 	ccRcvPeerSend := make(chan *pb.ChaincodeMessage)
 	var err error
@@ -195,16 +190,15 @@ func (ipc *inprocContainer) launchInProc(id string, args []string, env []string)
 }
 
 //Start starts a previously registered system codechain
-func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
-	ipctemplate := vm.registry.getType(ccid)
-	if ipctemplate == nil {
+func (vm *InprocVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
+	chaincode := vm.registry.getChaincode(ccid)
+	if chaincode == nil {
 		return fmt.Errorf("%s not registered", ccid)
 	}
 
 	instName := vm.GetVMName(ccid)
 
-	ipc, err := vm.getInstance(ipctemplate, instName, args, env)
-
+	ipc, err := vm.getInstance(chaincode, instName, args, env)
 	if err != nil {
 		return fmt.Errorf("could not create instance for %s", instName)
 	}
@@ -229,8 +223,8 @@ func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesTo
 
 //Stop stops a system codechain
 func (vm *InprocVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
-	ipctemplate := vm.registry.getType(ccid)
-	if ipctemplate == nil {
+	chaincode := vm.registry.getChaincode(ccid)
+	if chaincode == nil {
 		return fmt.Errorf("%s not registered", ccid)
 	}
 
