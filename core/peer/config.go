@@ -308,6 +308,7 @@ func getLocalAddress() (string, error) {
 // GetServerConfig returns the gRPC server configuration for the peer
 func GetServerConfig() (comm.ServerConfig, error) {
 	serverConfig := comm.ServerConfig{
+		ConnectionTimeout: viper.GetDuration("peer.connectiontimeout"),
 		SecOpts: comm.SecureOptions{
 			UseTLS: viper.GetBool("peer.tls.enabled"),
 		},
