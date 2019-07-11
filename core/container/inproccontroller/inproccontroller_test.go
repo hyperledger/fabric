@@ -100,7 +100,7 @@ func TestLaunchInprocCCSupportChan(t *testing.T) {
 
 	mockInprocContainer := &inprocContainer{
 		chaincode:        MockShim{},
-		ChaincodeSupport: MockCCSupport{},
+		chaincodeSupport: MockCCSupport{},
 	}
 
 	args := []string{"a", "b"}
@@ -135,7 +135,7 @@ func TestLaunchprocNoArgs(t *testing.T) {
 	mockInprocContainer := &inprocContainer{
 		chaincode:        MockShim{},
 		args:             ipcArgs,
-		ChaincodeSupport: MockCCSupport{},
+		chaincodeSupport: MockCCSupport{},
 	}
 
 	r.chaincodes["path"] = MockShim{}
@@ -165,7 +165,7 @@ func TestLaunchprocNoEnv(t *testing.T) {
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
 	mockInprocContainer := &inprocContainer{
-		ChaincodeSupport: MockCCSupport{},
+		chaincodeSupport: MockCCSupport{},
 		chaincode:        MockShim{},
 		env:              ipcEnv,
 	}
@@ -205,7 +205,7 @@ func TestLaunchprocShimStartInProcErr(t *testing.T) {
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
 	mockInprocContainer := &inprocContainer{
-		ChaincodeSupport: MockCCSupport{},
+		chaincodeSupport: MockCCSupport{},
 		chaincode:        MockShim{},
 	}
 
@@ -243,7 +243,7 @@ func TestLaunchprocCCSupportHandleChaincodeStreamError(t *testing.T) {
 	r := NewRegistry()
 	r.ChaincodeSupport = MockCCSupport{}
 	mockInprocContainer := &inprocContainer{
-		ChaincodeSupport: MockCCSupportErr{},
+		chaincodeSupport: MockCCSupportErr{},
 		chaincode:        MockShim{},
 	}
 

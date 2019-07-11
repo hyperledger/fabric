@@ -22,7 +22,7 @@ import (
 const ContainerType = "SYSTEM"
 
 type inprocContainer struct {
-	ChaincodeSupport ccintf.CCSupport
+	chaincodeSupport ccintf.CCSupport
 	chaincode        shim.Chaincode
 	running          bool
 	args             []string
@@ -125,7 +125,7 @@ func (vm *InprocVM) getInstance(chaincode shim.Chaincode, ccid ccintf.CCID, args
 		return ipc, nil
 	}
 	ipc = &inprocContainer{
-		ChaincodeSupport: vm.registry.ChaincodeSupport,
+		chaincodeSupport: vm.registry.ChaincodeSupport,
 		args:             args,
 		env:              env,
 		chaincode:        chaincode,
@@ -166,7 +166,7 @@ func (ipc *inprocContainer) launchInProc(id ccintf.CCID, args, env []string) err
 		defer close(ccsupportchan)
 		inprocStream := newInProcStream(peerRcvCCSend, ccRcvPeerSend)
 		inprocLogger.Debugf("chaincode-support started for  %s", id)
-		err := ipc.ChaincodeSupport.HandleChaincodeStream(inprocStream)
+		err := ipc.chaincodeSupport.HandleChaincodeStream(inprocStream)
 		if err != nil {
 			err = fmt.Errorf("chaincode ended with err: %s", err)
 			inprocLoggerErrorf("%s", err)
