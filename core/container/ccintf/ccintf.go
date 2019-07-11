@@ -21,12 +21,6 @@ type ChaincodeStream interface {
 	Recv() (*pb.ChaincodeMessage, error)
 }
 
-// CCSupport must be implemented by the chaincode support side in peer
-// (such as chaincode_support)
-type CCSupport interface {
-	HandleChaincodeStream(ChaincodeStream) error
-}
-
 // CCID encapsulates chaincode ID
 type CCID string
 

@@ -21,8 +21,14 @@ import (
 // is registered with the container.VMController
 const ContainerType = "SYSTEM"
 
+// A ChaincodeStreamHandler is responsible for handling the ChaincodeStream
+// communication between a per and chaincode.
+type ChaincodeStreamHandler interface {
+	HandleChaincodeStream(ccintf.ChaincodeStream) error
+}
+
 type inprocContainer struct {
-	chaincodeSupport ccintf.CCSupport
+	chaincodeSupport ChaincodeStreamHandler
 	chaincode        shim.Chaincode
 	running          bool
 	args             []string
@@ -39,9 +45,7 @@ var (
 	_inprocLoggerErrorf = inprocLogger.Errorf
 )
 
-// errors
-
-//SysCCRegisteredErr registered error
+// SysCCRegisteredErr registered error
 type SysCCRegisteredErr string
 
 func (s SysCCRegisteredErr) Error() string {
@@ -55,7 +59,7 @@ type Registry struct {
 	chaincodes map[ccintf.CCID]shim.Chaincode
 	containers map[ccintf.CCID]*inprocContainer
 
-	ChaincodeSupport ccintf.CCSupport
+	ChaincodeSupport ChaincodeStreamHandler
 }
 
 // NewRegistry creates an initialized registry, ready to register system chaincodes.
