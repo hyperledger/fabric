@@ -85,7 +85,7 @@ func (cs *ChaincodeSupport) LaunchInit(ccci *ccprovider.ChaincodeContainerInfo) 
 // Launch starts executing chaincode if it is not already running. This method
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
-func (cs *ChaincodeSupport) Launch(chainID string, ccci *ccprovider.ChaincodeContainerInfo) (*Handler, error) {
+func (cs *ChaincodeSupport) Launch(channelID string, ccci *ccprovider.ChaincodeContainerInfo) (*Handler, error) {
 	ccid := ccintf.New(ccci.PackageID)
 
 	if h := cs.HandlerRegistry.Handler(ccid); h != nil {
@@ -93,12 +93,12 @@ func (cs *ChaincodeSupport) Launch(chainID string, ccci *ccprovider.ChaincodeCon
 	}
 
 	if err := cs.Launcher.Launch(ccci); err != nil {
-		return nil, errors.Wrapf(err, "[channel %s] could not launch chaincode %s", chainID, ccci.PackageID)
+		return nil, errors.Wrapf(err, "[channel %s] could not launch chaincode %s", channelID, ccci.PackageID)
 	}
 
 	h := cs.HandlerRegistry.Handler(ccid)
 	if h == nil {
-		return nil, errors.Errorf("[channel %s] claimed to start chaincode container for %s but could not find handler", chainID, ccci.PackageID)
+		return nil, errors.Errorf("[channel %s] claimed to start chaincode container for %s but could not find handler", channelID, ccci.PackageID)
 	}
 
 	return h, nil
