@@ -153,6 +153,11 @@ type QueryExecutor interface {
 	ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (QueryResultsIterator, error)
 	// GetPrivateData gets the value of a private data item identified by a tuple <namespace, collection, key>
 	GetPrivateData(namespace, collection, key string) ([]byte, error)
+	// GetPrivateDataHash gets the hash of the value of a private data item identified by a tuple <namespace, collection, key>
+	// Function `GetPrivateData` is only meaningful when it is invoked on a peer that is authorized to have the private data
+	// for the collection <namespace, collection>. However, the function `GetPrivateDataHash` can be invoked on any peer
+	// to get the hash of the current value
+	GetPrivateDataHash(namespace, collection, key string) ([]byte, error)
 	// GetPrivateDataMetadata gets the metadata of a private data item identified by a tuple <namespace, collection, key>
 	GetPrivateDataMetadata(namespace, collection, key string) (map[string][]byte, error)
 	// GetPrivateDataMetadataByHash gets the metadata of a private data item identified by a tuple <namespace, collection, keyhash>

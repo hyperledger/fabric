@@ -182,6 +182,20 @@ type ChaincodeStub struct {
 		result1 shim.StateQueryIteratorInterface
 		result2 error
 	}
+	GetPrivateDataHashStub        func(string, string) ([]byte, error)
+	getPrivateDataHashMutex       sync.RWMutex
+	getPrivateDataHashArgsForCall []struct {
+		arg1 string
+		arg2 string
+	}
+	getPrivateDataHashReturns struct {
+		result1 []byte
+		result2 error
+	}
+	getPrivateDataHashReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
 	GetPrivateDataQueryResultStub        func(string, string) (shim.StateQueryIteratorInterface, error)
 	getPrivateDataQueryResultMutex       sync.RWMutex
 	getPrivateDataQueryResultArgsForCall []struct {
@@ -1304,6 +1318,70 @@ func (fake *ChaincodeStub) GetPrivateDataByRangeReturnsOnCall(i int, result1 shi
 	}
 	fake.getPrivateDataByRangeReturnsOnCall[i] = struct {
 		result1 shim.StateQueryIteratorInterface
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStub) GetPrivateDataHash(arg1 string, arg2 string) ([]byte, error) {
+	fake.getPrivateDataHashMutex.Lock()
+	ret, specificReturn := fake.getPrivateDataHashReturnsOnCall[len(fake.getPrivateDataHashArgsForCall)]
+	fake.getPrivateDataHashArgsForCall = append(fake.getPrivateDataHashArgsForCall, struct {
+		arg1 string
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("GetPrivateDataHash", []interface{}{arg1, arg2})
+	fake.getPrivateDataHashMutex.Unlock()
+	if fake.GetPrivateDataHashStub != nil {
+		return fake.GetPrivateDataHashStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.getPrivateDataHashReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *ChaincodeStub) GetPrivateDataHashCallCount() int {
+	fake.getPrivateDataHashMutex.RLock()
+	defer fake.getPrivateDataHashMutex.RUnlock()
+	return len(fake.getPrivateDataHashArgsForCall)
+}
+
+func (fake *ChaincodeStub) GetPrivateDataHashCalls(stub func(string, string) ([]byte, error)) {
+	fake.getPrivateDataHashMutex.Lock()
+	defer fake.getPrivateDataHashMutex.Unlock()
+	fake.GetPrivateDataHashStub = stub
+}
+
+func (fake *ChaincodeStub) GetPrivateDataHashArgsForCall(i int) (string, string) {
+	fake.getPrivateDataHashMutex.RLock()
+	defer fake.getPrivateDataHashMutex.RUnlock()
+	argsForCall := fake.getPrivateDataHashArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *ChaincodeStub) GetPrivateDataHashReturns(result1 []byte, result2 error) {
+	fake.getPrivateDataHashMutex.Lock()
+	defer fake.getPrivateDataHashMutex.Unlock()
+	fake.GetPrivateDataHashStub = nil
+	fake.getPrivateDataHashReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStub) GetPrivateDataHashReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.getPrivateDataHashMutex.Lock()
+	defer fake.getPrivateDataHashMutex.Unlock()
+	fake.GetPrivateDataHashStub = nil
+	if fake.getPrivateDataHashReturnsOnCall == nil {
+		fake.getPrivateDataHashReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.getPrivateDataHashReturnsOnCall[i] = struct {
+		result1 []byte
 		result2 error
 	}{result1, result2}
 }
@@ -2734,6 +2812,8 @@ func (fake *ChaincodeStub) Invocations() map[string][][]interface{} {
 	defer fake.getPrivateDataByPartialCompositeKeyMutex.RUnlock()
 	fake.getPrivateDataByRangeMutex.RLock()
 	defer fake.getPrivateDataByRangeMutex.RUnlock()
+	fake.getPrivateDataHashMutex.RLock()
+	defer fake.getPrivateDataHashMutex.RUnlock()
 	fake.getPrivateDataQueryResultMutex.RLock()
 	defer fake.getPrivateDataQueryResultMutex.RUnlock()
 	fake.getPrivateDataValidationParameterMutex.RLock()

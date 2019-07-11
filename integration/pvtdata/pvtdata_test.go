@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -18,7 +19,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protos/common"
@@ -202,6 +204,73 @@ var _ bool = Describe("PrivateData", func() {
 					Ctor:      `{"Args":["readMarblePrivateDetails","marble1"]}`},
 				[]*nwo.Peer{org2peer1},
 				`{"docType":"marblePrivateDetails","name":"marble1","price":99}`)
+		})
+	})
+
+	// This section verifies that chaincode can return private data hash.
+	// Unlike private data that can only be accessed from authorized peers as defined in the collection config,
+	// private data hash can be queried on any peer in the channel that has the chaincode instantiated.
+	// When calling QueryChaincode with "getMarbleHash", the cc will return the private data hash in collectionMarbles.
+	// When calling QueryChaincode with "getMarblePrivateDetailsHash", the cc will return the private data hash in collectionMarblePrivateDetails.
+	Describe("private data hash", func() {
+		var (
+			testDir       string
+			network       *nwo.Network
+			process       ifrit.Process
+			orderer       *nwo.Orderer
+			expectedPeers []*nwo.Peer
+		)
+
+		BeforeEach(func() {
+			testDir, network, process, orderer, expectedPeers = initThreeOrgsSetup()
+
+			By("installing and instantiating chaincode on all peers")
+			chaincode := nwo.Chaincode{
+				Name:              "marblesp",
+				Version:           "1.0",
+				Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+				Ctor:              `{"Args":["init"]}`,
+				Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config1.json")}
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+		})
+
+		AfterEach(func() {
+			testCleanup(testDir, network, process)
+		})
+
+		It("gets private data hash by querying chaincode", func() {
+			By("invoking initMarble function of the chaincode")
+			invokeChaincode(network, "org2", "peer0", "marblesp", `{"Args":["initMarble","marble3","yellow","53","jerry","33"]}`, "testchannel", orderer)
+
+			By("waiting for block to propagate")
+			waitUntilAllPeersSameLedgerHeight(network, expectedPeers, "testchannel", getLedgerHeight(network, network.Peer("org2", "peer0"), "testchannel"))
+
+			By("verifying getMarbleHash is accessible from all peers that has the chaincode instantiated")
+			peerList := []*nwo.Peer{
+				network.Peer("org1", "peer0"),
+				network.Peer("org2", "peer0"),
+				network.Peer("org3", "peer0")}
+			expectedBytes := util.ComputeStringHash(`{"docType":"marble","name":"marble3","color":"yellow","size":53,"owner":"jerry"}`)
+			verifyPvtdataHash(
+				network,
+				commands.ChaincodeQuery{
+					ChannelID: "testchannel",
+					Name:      "marblesp",
+					Ctor:      `{"Args":["getMarbleHash","marble3"]}`},
+				peerList,
+				expectedBytes)
+
+			By("verifying getMarblePrivateDetailsHash is accessible from all peers that has the chaincode instantiated")
+			expectedBytes = util.ComputeStringHash(`{"docType":"marblePrivateDetails","name":"marble3","price":33}`)
+			verifyPvtdataHash(
+				network,
+				commands.ChaincodeQuery{
+					ChannelID: "testchannel",
+					Name:      "marblesp",
+					Ctor:      `{"Args":["getMarblePrivateDetailsHash","marble3"]}`},
+				peerList,
+				expectedBytes)
 		})
 	})
 
@@ -715,4 +784,17 @@ func verifyAccessFailed(n *nwo.Network, chaincodeQueryCmd commands.ChaincodeQuer
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
 	Expect(sess.Err).To(gbytes.Say(expectedFailureMessage))
+}
+
+// verifyPvtdataHash verifies the private data hash matches the expected bytes.
+// Cannot reuse verifyAccess because the hash bytes are not valid utf8 causing gbytes.Say to fail.
+func verifyPvtdataHash(n *nwo.Network, chaincodeQueryCmd commands.ChaincodeQuery, peers []*nwo.Peer, expected []byte) {
+	for _, peer := range peers {
+		sess, err := n.PeerUserSession(peer, "User1", chaincodeQueryCmd)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		actual := sess.Buffer().Contents()
+		// verify actual bytes contain expected bytes - cannot use equal because session may contain extra bytes
+		Expect(bytes.Contains(actual, expected)).To(Equal(true))
+	}
 }
