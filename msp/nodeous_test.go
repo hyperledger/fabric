@@ -274,7 +274,7 @@ func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
 
 	err = thisMSP.Setup(conf)
 	assert.Error(t, err)
-	assert.Equal(t, "invalid admin ou configuration, nil.", err.Error())
+	assert.Equal(t, "administrators must be declared when no admin ou classification is set", err.Error())
 
 	// testdata/nodeouadmin3:
 	// the configuration enables NodeOUs (with adminOU) but no valid identifier for the AdminOU
@@ -288,7 +288,7 @@ func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
 
 	err = thisMSP.Setup(conf)
 	assert.Error(t, err)
-	assert.Equal(t, "invalid admin ou configuration, nil.", err.Error())
+	assert.Equal(t, "administrators must be declared when no admin ou classification is set", err.Error())
 }
 
 func TestSatisfiesPrincipalOrderer(t *testing.T) {
@@ -332,7 +332,7 @@ func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
 		Principal:               principalBytes}
 	err = id.SatisfiesPrincipal(principal)
 	assert.Error(t, err)
-	assert.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for orderer ou classification, node ou for orderers not defined", err.Error())
+	assert.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for classification, node ou for type [ORDERER], not defined, msp: [SampleOrg]", err.Error())
 
 	// testdata/nodeouorderer3:
 	// the configuration enables NodeOUs (with orderOU) but no valid identifier for the OrdererOU
@@ -356,5 +356,26 @@ func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
 		Principal:               principalBytes}
 	err = id.SatisfiesPrincipal(principal)
 	assert.Error(t, err)
-	assert.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for orderer ou classification, node ou for orderers not defined", err.Error())
+	assert.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for classification, node ou for type [ORDERER], not defined, msp: [SampleOrg]", err.Error())
+}
+
+func TestValidMSPWithNodeOUMissingClassification(t *testing.T) {
+	// testdata/nodeousbadconf1:
+	// the configuration enables NodeOUs but client ou identifier is missing
+	_, err := getLocalMSPWithVersionAndError(t, "testdata/nodeousbadconf1", MSPv1_3)
+	assert.Error(t, err)
+	assert.Equal(t, "Failed setting up NodeOUs. ClientOU must be different from nil.", err.Error())
+
+	_, err = getLocalMSPWithVersionAndError(t, "testdata/nodeousbadconf1", MSPv1_4_2)
+	assert.Error(t, err)
+	assert.Equal(t, "admin 0 is invalid [cannot test for classification, node ou for type [CLIENT], not defined, msp: [SampleOrg],The identity does not contain OU [ADMIN], MSP: [SampleOrg]]", err.Error())
+
+	// testdata/nodeousbadconf2:
+	// the configuration enables NodeOUs but peer ou identifier is missing
+	_, err = getLocalMSPWithVersionAndError(t, "testdata/nodeousbadconf2", MSPv1_3)
+	assert.Error(t, err)
+	assert.Equal(t, "Failed setting up NodeOUs. PeerOU must be different from nil.", err.Error())
+
+	_, err = getLocalMSPWithVersionAndError(t, "testdata/nodeousbadconf2", MSPv1_4_2)
+	assert.NoError(t, err)
 }

@@ -352,25 +352,26 @@ func (msp *bccspmsp) hasOURole(id Identity, mspRole m.MSPRole_MSPRoleType) error
 }
 
 func (msp *bccspmsp) hasOURoleInternal(id *identity, mspRole m.MSPRole_MSPRoleType) error {
-	var nodeOUValue string
+	var nodeOU *OUIdentifier
 	switch mspRole {
 	case m.MSPRole_CLIENT:
-		nodeOUValue = msp.clientOU.OrganizationalUnitIdentifier
+		nodeOU = msp.clientOU
 	case m.MSPRole_PEER:
-		nodeOUValue = msp.peerOU.OrganizationalUnitIdentifier
+		nodeOU = msp.peerOU
 	case m.MSPRole_ADMIN:
-		nodeOUValue = msp.adminOU.OrganizationalUnitIdentifier
+		nodeOU = msp.adminOU
 	case m.MSPRole_ORDERER:
-		if msp.ordererOU == nil {
-			return errors.New("cannot test for orderer ou classification, node ou for orderers not defined")
-		}
-		nodeOUValue = msp.ordererOU.OrganizationalUnitIdentifier
+		nodeOU = msp.ordererOU
 	default:
 		return errors.New("Invalid MSPRoleType. It must be CLIENT, PEER, ADMIN or ORDERER")
 	}
 
+	if nodeOU == nil {
+		return errors.Errorf("cannot test for classification, node ou for type [%s], not defined, msp: [%s]", mspRole, msp.name)
+	}
+
 	for _, OU := range id.GetOrganizationalUnits() {
-		if OU.OrganizationalUnitIdentifier == nodeOUValue {
+		if OU.OrganizationalUnitIdentifier == nodeOU.OrganizationalUnitIdentifier {
 			return nil
 		}
 	}
