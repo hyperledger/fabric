@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -178,6 +179,22 @@ func TestNumChainsExceeded(t *testing.T) {
 
 	assert.NotNil(t, err, "Transaction had created too many channels")
 	assert.Regexp(t, "exceed maximimum number", err)
+}
+
+func TestMaintenanceMode(t *testing.T) {
+	newChainID := "NewChainID"
+
+	mcc := newMockChainCreator()
+	mcc.ms.msc.ConsensusTypeStateVal = orderer.ConsensusType_STATE_MAINTENANCE
+
+	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, nil, configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile))
+	assert.Nil(t, err, "Error constructing configtx")
+	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
+
+	wrapped := wrapConfigTx(ingressTx)
+
+	err = NewSystemChannelFilter(mcc.ms, mcc).Apply(wrapped)
+	assert.EqualError(t, err, "channel creation is not permitted: maintenance mode")
 }
 
 func TestBadProposal(t *testing.T) {

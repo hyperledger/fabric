@@ -26,7 +26,6 @@ import (
 	fcommon "github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -34,7 +33,6 @@ const (
 	membershipPollingBackoff    = time.Second
 	responseWaitTime            = time.Second * 5
 	maxMembershipPollIterations = 5
-	btlPullMarginDefault        = 10
 )
 
 // Dig2PvtRWSetWithConfig
@@ -82,14 +80,14 @@ type puller struct {
 
 // NewPuller creates new private data puller
 func NewPuller(metrics *metrics.PrivdataMetrics, cs privdata.CollectionStore, g gossip,
-	dataRetriever PrivateDataRetriever, factory CollectionAccessFactory, channel string) *puller {
+	dataRetriever PrivateDataRetriever, factory CollectionAccessFactory, channel string, btlPullMargin uint64) *puller {
 	p := &puller{
 		metrics:                 metrics,
 		pubSub:                  util.NewPubSub(),
 		stopChan:                make(chan struct{}),
 		channel:                 channel,
 		cs:                      cs,
-		btlPullMargin:           getBtlPullMargin(),
+		btlPullMargin:           btlPullMargin,
 		gossip:                  g,
 		PrivateDataRetriever:    dataRetriever,
 		CollectionAccessFactory: factory,
@@ -697,21 +695,6 @@ func (rp remotePeer) AsRemotePeer() *comm.RemotePeer {
 		PKIID:    common.PKIidType(rp.pkiID),
 		Endpoint: rp.endpoint,
 	}
-}
-
-func getBtlPullMargin() uint64 {
-	var result uint64
-	if viper.IsSet("peer.gossip.pvtData.btlPullMargin") {
-		btlMarginVal := viper.GetInt("peer.gossip.pvtData.btlPullMargin")
-		if btlMarginVal < 0 {
-			result = btlPullMarginDefault
-		} else {
-			result = uint64(btlMarginVal)
-		}
-	} else {
-		result = btlPullMarginDefault
-	}
-	return result
 }
 
 func addWithOverflow(a uint64, b uint64) uint64 {

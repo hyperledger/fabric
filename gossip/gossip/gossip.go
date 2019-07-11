@@ -134,4 +134,21 @@ type Config struct {
 	InternalEndpoint         string        // Endpoint we publish to peers in our organization
 	ExternalEndpoint         string        // Peer publishes this endpoint instead of SelfEndpoint to foreign organizations
 	TimeForMembershipTracker time.Duration // Determines time for polling with membershipTracker
+
+	DigestWaitTime   time.Duration // Time to wait before pull engine processes incoming digests
+	RequestWaitTime  time.Duration // Time to wait before pull engine removes incoming nonce
+	ResponseWaitTime time.Duration // Time to wait before pull engine ends pull
+
+	DialTimeout  time.Duration // Dial timeout
+	ConnTimeout  time.Duration // Connection timeout
+	RecvBuffSize int           // Buffer size of received messages
+	SendBuffSize int           // Buffer size of sending messages
+
+	MsgExpirationTimeout time.Duration // Leadership message expiration timeout
+
+	AliveTimeInterval            time.Duration // Alive check interval
+	AliveExpirationTimeout       time.Duration // Alive expiration timeout
+	AliveExpirationCheckInterval time.Duration // Alive expiration check interval
+	ReconnectInterval            time.Duration // Reconnect interval
+
 }

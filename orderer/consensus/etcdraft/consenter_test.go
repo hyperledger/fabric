@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft_test
 
 import (
+	"encoding/pem"
 	"io/ioutil"
 	"os"
 	"path"
@@ -36,6 +37,7 @@ import (
 
 var _ = Describe("Consenter", func() {
 	var (
+		certAsPEM   []byte
 		chainGetter *mocks.ChainGetter
 		support     *consensusmocks.FakeConsenterSupport
 		dataDir     string
@@ -45,6 +47,7 @@ var _ = Describe("Consenter", func() {
 	)
 
 	BeforeEach(func() {
+		certAsPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("cert bytes")})
 		chainGetter = &mocks.ChainGetter{}
 		support = &consensusmocks.FakeConsenterSupport{}
 		dataDir, err = ioutil.TempDir("", "snap-")
@@ -141,10 +144,12 @@ var _ = Describe("Consenter", func() {
 	})
 
 	It("successfully constructs a Chain", func() {
-		certBytes := []byte("cert.orderer0.org0")
+		// We append a line feed to our cert, just to ensure that we can still consume it and ignore.
+		certAsPEMWithLineFeed := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("cert bytes")})
+		certAsPEMWithLineFeed = append(certAsPEMWithLineFeed, []byte("\n")...)
 		m := &etcdraftproto.ConfigMetadata{
 			Consenters: []*etcdraftproto.Consenter{
-				{ServerTlsCert: certBytes},
+				{ServerTlsCert: certAsPEMWithLineFeed},
 			},
 			Options: &etcdraftproto.Options{
 				TickInterval:      "500ms",
@@ -156,10 +161,7 @@ var _ = Describe("Consenter", func() {
 		metadata := utils.MarshalOrPanic(m)
 		support.SharedConfigReturns(&mockconfig.Orderer{
 			ConsensusMetadataVal: metadata,
-			CapabilitiesVal: &mockconfig.OrdererCapabilities{
-				Kafka2RaftMigVal: false,
-			},
-			BatchSizeVal: &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
+			BatchSizeVal:         &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
 		})
 
 		consenter := newConsenter(chainGetter)
@@ -186,7 +188,7 @@ var _ = Describe("Consenter", func() {
 	It("fails to handle chain if no matching cert found", func() {
 		m := &etcdraftproto.ConfigMetadata{
 			Consenters: []*etcdraftproto.Consenter{
-				{ServerTlsCert: []byte("cert.orderer1.org1")},
+				{ServerTlsCert: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("foo")})},
 			},
 			Options: &etcdraftproto.Options{
 				TickInterval:      "500ms",
@@ -199,10 +201,7 @@ var _ = Describe("Consenter", func() {
 		support := &consensusmocks.FakeConsenterSupport{}
 		support.SharedConfigReturns(&mockconfig.Orderer{
 			ConsensusMetadataVal: metadata,
-			CapabilitiesVal: &mockconfig.OrdererCapabilities{
-				Kafka2RaftMigVal: false,
-			},
-			BatchSizeVal: &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
+			BatchSizeVal:         &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
 		})
 		support.ChainIDReturns("foo")
 
@@ -224,10 +223,7 @@ var _ = Describe("Consenter", func() {
 		metadata := utils.MarshalOrPanic(m)
 		support.SharedConfigReturns(&mockconfig.Orderer{
 			ConsensusMetadataVal: metadata,
-			CapabilitiesVal: &mockconfig.OrdererCapabilities{
-				Kafka2RaftMigVal: false,
-			},
-			BatchSizeVal: &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
+			BatchSizeVal:         &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
 		})
 
 		consenter := newConsenter(chainGetter)
@@ -238,10 +234,9 @@ var _ = Describe("Consenter", func() {
 	})
 
 	It("fails to handle chain if tick interval is invalid", func() {
-		certBytes := []byte("cert.orderer0.org0")
 		m := &etcdraftproto.ConfigMetadata{
 			Consenters: []*etcdraftproto.Consenter{
-				{ServerTlsCert: certBytes},
+				{ServerTlsCert: certAsPEM},
 			},
 			Options: &etcdraftproto.Options{
 				TickInterval:      "500",
@@ -253,10 +248,8 @@ var _ = Describe("Consenter", func() {
 		metadata := utils.MarshalOrPanic(m)
 		support.SharedConfigReturns(&mockconfig.Orderer{
 			ConsensusMetadataVal: metadata,
-			CapabilitiesVal: &mockconfig.OrdererCapabilities{
-				Kafka2RaftMigVal: false,
-			},
-			BatchSizeVal: &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
+			CapabilitiesVal:      &mockconfig.OrdererCapabilities{},
+			BatchSizeVal:         &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
 		})
 
 		consenter := newConsenter(chainGetter)
@@ -279,21 +272,24 @@ func newConsenter(chainGetter *mocks.ChainGetter) *consenter {
 	communicator.On("Configure", mock.Anything, mock.Anything)
 	icr := &mocks.InactiveChainRegistry{}
 	icr.On("TrackChain", "foo", mock.Anything, mock.Anything)
+	certAsPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("cert bytes")})
 	c := &etcdraft.Consenter{
 		InactiveChainRegistry: icr,
 		Communication:         communicator,
-		Cert:                  []byte("cert.orderer0.org0"),
+		Cert:                  certAsPEM,
 		Logger:                flogging.MustGetLogger("test"),
 		Chains:                chainGetter,
 		Dispatcher: &etcdraft.Dispatcher{
 			Logger:        flogging.MustGetLogger("test"),
 			ChainSelector: &mocks.ReceiverGetter{},
 		},
-		Dialer: cluster.NewTLSPinningDialer(comm.ClientConfig{
-			SecOpts: &comm.SecureOptions{
-				Certificate: ca.CertBytes(),
+		Dialer: &cluster.PredicateDialer{
+			ClientConfig: comm.ClientConfig{
+				SecOpts: &comm.SecureOptions{
+					Certificate: ca.CertBytes(),
+				},
 			},
-		}),
+		},
 	}
 	return &consenter{
 		Consenter: c,

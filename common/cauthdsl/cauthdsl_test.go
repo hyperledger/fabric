@@ -342,7 +342,7 @@ func TestReturnNil(t *testing.T) {
 
 	spe, err := compile(policy.Rule, policy.Identities, &mockDeserializer{})
 	assert.Nil(t, spe)
-	assert.EqualError(t, err, "identity index out of range, requested -1, but identies length is 2")
+	assert.EqualError(t, err, "identity index out of range, requested -1, but identities length is 2")
 }
 
 func TestDeserializeIdentityError(t *testing.T) {

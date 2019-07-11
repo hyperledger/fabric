@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/ledger"
 	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/mock"
@@ -105,7 +106,7 @@ func TestRecovery(t *testing.T) {
 	// now create the genesis block
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
 	ledger, err := provider.(*Provider).openInternal(constructTestLedgerID(1))
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: genesisBlock})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: genesisBlock}, &lgr.CommitOptions{})
 	ledger.Close()
 
 	// Case 1: assume a crash happens, force underconstruction flag to be set to simulate
@@ -157,7 +158,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 		assert.NoError(t, err)
 		pubSimBytes, _ := res.GetPubSimulationBytes()
 		b := bg.NextBlock([][]byte{pubSimBytes})
-		err = l.CommitWithPvtData(&lgr.BlockAndPvtData{Block: b})
+		err = l.CommitWithPvtData(&lgr.BlockAndPvtData{Block: b}, &ledger.CommitOptions{})
 		l.Close()
 		assert.NoError(t, err)
 	}
@@ -205,7 +206,7 @@ func TestLedgerBackup(t *testing.T) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
 
 	txid = util.GenerateUUID()
 	simulator, _ = ledger.NewTxSimulator(txid)
@@ -216,7 +217,7 @@ func TestLedgerBackup(t *testing.T) {
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
 
 	ledger.Close()
 	provider.Close()

@@ -98,6 +98,9 @@ The following metrics are currently exported for consumption by Prometheus.
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | consensus_kafka_incoming_byte_rate                  | gauge     | Bytes/second read off brokers.                             | broker_id          |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| consensus_kafka_last_offset_persisted               | gauge     | The offset specified in the block metadata of the most     | channel            |
+|                                                     |           | recently committed block.                                  |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | consensus_kafka_outgoing_byte_rate                  | gauge     | Bytes/second written to brokers.                           | broker_id          |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | consensus_kafka_record_send_rate                    | gauge     | The number of records per second sent to topics.           | topic              |
@@ -241,8 +244,10 @@ The following metrics are currently exported for consumption by Prometheus.
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | ledger_blockchain_height                            | gauge     | Height of the chain in blocks.                             | channel            |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| ledger_blockstorage_commit_time                     | histogram | Time taken in seconds for committing the block and private | channel            |
+| ledger_blockstorage_and_pvtdata_commit_time         | histogram | Time taken in seconds for committing the block and private | channel            |
 |                                                     |           | data to storage.                                           |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| ledger_blockstorage_commit_time                     | histogram | Time taken in seconds for committing the block to storage. | channel            |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | ledger_statedb_commit_time                          | histogram | Time taken in seconds for committing block changes to      | channel            |
 |                                                     |           | state db.                                                  |                    |
@@ -339,6 +344,9 @@ associated with the metric.
 | consensus.kafka.compression_ratio.%{topic}                                              | gauge     | The mean compression ratio (as percentage) for topics.     |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.kafka.incoming_byte_rate.%{broker_id}                                         | gauge     | Bytes/second read off brokers.                             |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.kafka.last_offset_persisted.%{channel}                                        | gauge     | The offset specified in the block metadata of the most     |
+|                                                                                         |           | recently committed block.                                  |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.kafka.outgoing_byte_rate.%{broker_id}                                         | gauge     | Bytes/second written to brokers.                           |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
@@ -460,8 +468,10 @@ associated with the metric.
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | ledger.blockchain_height.%{channel}                                                     | gauge     | Height of the chain in blocks.                             |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| ledger.blockstorage_commit_time.%{channel}                                              | histogram | Time taken in seconds for committing the block and private |
+| ledger.blockstorage_and_pvtdata_commit_time.%{channel}                                  | histogram | Time taken in seconds for committing the block and private |
 |                                                                                         |           | data to storage.                                           |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| ledger.blockstorage_commit_time.%{channel}                                              | histogram | Time taken in seconds for committing the block to storage. |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | ledger.statedb_commit_time.%{channel}                                                   | histogram | Time taken in seconds for committing block changes to      |
 |                                                                                         |           | state db.                                                  |

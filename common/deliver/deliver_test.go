@@ -667,6 +667,22 @@ var _ = Describe("Deliver", func() {
 				resp := fakeResponseSender.SendStatusResponseArgsForCall(0)
 				Expect(resp).To(Equal(cb.Status_SERVICE_UNAVAILABLE))
 			})
+
+			Context("when the seek info requests a best effort error response", func() {
+				BeforeEach(func() {
+					seekInfo.ErrorResponse = ab.SeekInfo_BEST_EFFORT
+				})
+
+				It("replies with the desired blocks", func() {
+					err := handler.Handle(context.Background(), server)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(1))
+					Expect(fakeResponseSender.SendStatusResponseCallCount()).To(Equal(1))
+					resp := fakeResponseSender.SendStatusResponseArgsForCall(0)
+					Expect(resp).To(Equal(cb.Status_SUCCESS))
+				})
+			})
 		})
 
 		Context("when the chain errors while reading from the chain", func() {

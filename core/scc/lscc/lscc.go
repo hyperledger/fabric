@@ -42,7 +42,11 @@ import (
 //     "Args":["stop",<ChaincodeInvocationSpec>]
 //     "Args":["start",<ChaincodeInvocationSpec>]
 
-var logger = flogging.MustGetLogger("lscc")
+var (
+	logger                 = flogging.MustGetLogger("lscc")
+	ChaincodeNameRegExp    = regexp.MustCompile("^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$")
+	ChaincodeVersionRegExp = regexp.MustCompile("^[A-Za-z0-9_.+-]+$")
+)
 
 const (
 	// chaincode lifecycle commands
@@ -91,9 +95,6 @@ const (
 
 	// GETCOLLECTIONSCONFIGALIAS gets the collections config for a chaincode
 	GETCOLLECTIONSCONFIGALIAS = "getcollectionsconfig"
-
-	allowedChaincodeName = "^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$"
-	allowedCharsVersion  = "[A-Za-z0-9_.+-]+"
 )
 
 // FilesystemSupport contains functions that LSCC requires to execute its tasks
@@ -218,7 +219,11 @@ func (lscc *LifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, c
 }
 
 // checkCollectionMemberPolicy checks whether the supplied collection configuration
-// complies to the given msp configuration
+// complies to the given msp configuration and performs semantic validation.
+// Channel config may change afterwards (i.e., after endorsement or commit of this transaction).
+// Fabric will deal with the situation where some collection configs are no longer meaningful.
+// Therefore, the use of channel config for verifying during endorsement is more
+// towards catching manual errors in the config as oppose to any attempt of serializability.
 func checkCollectionMemberPolicy(collectionConfig *common.CollectionConfig, mspmgr msp.MSPManager) error {
 	if mspmgr == nil {
 		return fmt.Errorf("msp manager not set")
@@ -293,6 +298,14 @@ func checkCollectionMemberPolicy(collectionConfig *common.CollectionConfig, mspm
 		if !found {
 			logger.Warningf("collection-name: %s collection member %s is not part of the channel", coll.GetName(), orgID)
 		}
+	}
+
+	// Call the constructor for SignaturePolicyEnvelope evaluators to perform extra semantic validation.
+	// Among other things, this validation catches any out-of-range references to the identities array.
+	policyProvider := &cauthdsl.EnvelopeBasedPolicyProvider{Deserializer: mspmgr}
+	if _, err := policyProvider.NewPolicy(coll.MemberOrgsPolicy.GetSignaturePolicy()); err != nil {
+		logger.Errorf("Invalid member org policy for collection '%s', error: %s", coll.Name, err)
+		return errors.WithMessage(err, fmt.Sprintf("invalid member org policy for collection '%s'", coll.Name))
 	}
 
 	return nil
@@ -489,11 +502,7 @@ func (lscc *LifeCycleSysCC) isValidChannelName(channel string) bool {
 // isValidChaincodeName checks the validity of chaincode name. Chaincode names
 // should never be blank and should only consist of alphanumerics, '_', and '-'
 func (lscc *LifeCycleSysCC) isValidChaincodeName(chaincodeName string) error {
-	if chaincodeName == "" {
-		return EmptyChaincodeNameErr("")
-	}
-
-	if !isValidCCNameOrVersion(chaincodeName, allowedChaincodeName) {
+	if !ChaincodeNameRegExp.MatchString(chaincodeName) {
 		return InvalidChaincodeNameErr(chaincodeName)
 	}
 
@@ -504,26 +513,11 @@ func (lscc *LifeCycleSysCC) isValidChaincodeName(chaincodeName string) error {
 // should never be blank and should only consist of alphanumerics, '_',  '-',
 // '+', and '.'
 func (lscc *LifeCycleSysCC) isValidChaincodeVersion(chaincodeName string, version string) error {
-	if version == "" {
-		return EmptyVersionErr(chaincodeName)
-	}
-
-	if !isValidCCNameOrVersion(version, allowedCharsVersion) {
+	if !ChaincodeVersionRegExp.MatchString(version) {
 		return InvalidVersionErr(version)
 	}
 
 	return nil
-}
-
-func isValidCCNameOrVersion(ccNameOrVersion string, regExp string) bool {
-	re, _ := regexp.Compile(regExp)
-
-	matched := re.FindString(ccNameOrVersion)
-	if len(matched) != len(ccNameOrVersion) {
-		return false
-	}
-
-	return true
 }
 
 func isValidStatedbArtifactsTar(statedbArtifactsTar []byte) error {

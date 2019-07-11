@@ -22,6 +22,7 @@ import (
 
 	. "github.com/hyperledger/fabric/common/ledger/blockledger"
 	fileledger "github.com/hyperledger/fabric/common/ledger/blockledger/file"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 )
 
@@ -63,7 +64,7 @@ func (env *fileLedgerTestFactory) Persistent() bool {
 }
 
 func (env *fileLedgerTestFactory) New() (Factory, ReadWriter) {
-	flf := fileledger.New(env.location)
+	flf := fileledger.New(env.location, &disabled.Provider{})
 	fl, err := flf.GetOrCreate(genesisconfig.TestChainID)
 	if err != nil {
 		panic(err)

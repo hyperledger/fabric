@@ -12,7 +12,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
 )
@@ -25,36 +24,32 @@ type healthChecker interface {
 }
 
 // New creates a Kafka-based consenter. Called by orderer's main.go.
-func New(config *localconfig.TopLevel, metricsProvider metrics.Provider, healthChecker healthChecker, migCtrl migration.Controller) (consensus.Consenter, *Metrics) {
-	if config.Kafka.Verbose {
+func New(config localconfig.Kafka, metricsProvider metrics.Provider, healthChecker healthChecker) (consensus.Consenter, *Metrics) {
+	if config.Verbose {
 		logging.SetLevel(logging.DEBUG, "orderer.consensus.kafka.sarama")
 	}
 
 	brokerConfig := newBrokerConfig(
-		config.Kafka.TLS,
-		config.Kafka.SASLPlain,
-		config.Kafka.Retry,
-		config.Kafka.Version,
+		config.TLS,
+		config.SASLPlain,
+		config.Retry,
+		config.Version,
 		defaultPartition)
 
-	bootFile := ""
-	if config.General.GenesisMethod == "file" {
-		bootFile = config.General.GenesisFile
-	}
+	metrics := NewMetrics(metricsProvider, brokerConfig.MetricRegistry)
 
 	return &consenterImpl{
 		brokerConfigVal: brokerConfig,
-		tlsConfigVal:    config.Kafka.TLS,
-		retryOptionsVal: config.Kafka.Retry,
-		kafkaVersionVal: config.Kafka.Version,
+		tlsConfigVal:    config.TLS,
+		retryOptionsVal: config.Retry,
+		kafkaVersionVal: config.Version,
 		topicDetailVal: &sarama.TopicDetail{
 			NumPartitions:     1,
-			ReplicationFactor: config.Kafka.Topic.ReplicationFactor,
+			ReplicationFactor: config.Topic.ReplicationFactor,
 		},
-		healthChecker:     healthChecker,
-		migController:     migCtrl,
-		bootstrapFileName: bootFile,
-	}, NewMetrics(metricsProvider, brokerConfig.MetricRegistry)
+		healthChecker: healthChecker,
+		metrics:       metrics,
+	}, metrics
 }
 
 // consenterImpl holds the implementation of type that satisfies the
@@ -68,10 +63,7 @@ type consenterImpl struct {
 	topicDetailVal  *sarama.TopicDetail
 	metricsProvider metrics.Provider
 	healthChecker   healthChecker
-	// The migController is needed in order to coordinate consensus-type migration.
-	migController migration.Controller
-	// The bootstrap filename is needed in order to replace the bootstrap block in case of consensus-type migration.
-	bootstrapFileName string
+	metrics         *Metrics
 }
 
 // HandleChain creates/returns a reference to a consensus.Chain object for the
@@ -97,8 +89,11 @@ type commonConsenter interface {
 	brokerConfig() *sarama.Config
 	retryOptions() localconfig.Retry
 	topicDetail() *sarama.TopicDetail
-	bootstrapFile() string
-	migrationController() migration.Controller
+	Metrics() *Metrics
+}
+
+func (consenter *consenterImpl) Metrics() *Metrics {
+	return consenter.metrics
 }
 
 func (consenter *consenterImpl) brokerConfig() *sarama.Config {
@@ -111,16 +106,4 @@ func (consenter *consenterImpl) retryOptions() localconfig.Retry {
 
 func (consenter *consenterImpl) topicDetail() *sarama.TopicDetail {
 	return consenter.topicDetailVal
-}
-
-// bootstrapFile returns the  bootstrap (genesis) filename, if defined, or an empty string.
-// Used during consensus-type migration commit.
-func (consenter *consenterImpl) bootstrapFile() string {
-	return consenter.bootstrapFileName
-}
-
-// migrationController returns the passed-in migration.Controller implementation, which coordinates
-// consensus-type migration. This is implemented the multichannel.Registrar.
-func (consenter *consenterImpl) migrationController() migration.Controller {
-	return consenter.migController
 }

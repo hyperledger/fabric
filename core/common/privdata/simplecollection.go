@@ -121,7 +121,7 @@ func (sc *SimpleCollection) Setup(collectionConfig *common.StaticCollectionConfi
 	return nil
 }
 
-// Setup configures a simple collection object based on a given
+// setupAccessPolicy configures a simple collection object based on a given
 // StaticCollectionConfig proto that has all the necessary information
 func (sc *SimpleCollection) setupAccessPolicy(collectionPolicyConfig *common.CollectionPolicyConfig, deserializer msp.IdentityDeserializer) error {
 	var err error

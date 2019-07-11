@@ -196,6 +196,10 @@ peer:
             reconcileSleepInterval: 1m
             # reconciliationEnabled is a flag that indicates whether private data reconciliation is enable or not.
             reconciliationEnabled: true
+            # skipPullingInvalidTransactionsDuringCommit is a flag that indicates whether pulling of invalid
+            # transaction's private data from other peers need to be skipped during the commit time and pulled
+            # only through reconciler.
+            skipPullingInvalidTransactionsDuringCommit: false
 
         # Gossip state transfer related configuration
         state:

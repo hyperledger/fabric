@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
@@ -31,7 +30,6 @@ const RootGroupKey = "Channel"
 // entirety, with new backing memory.
 type Bundle struct {
 	policyManager   policies.Manager
-	mspManager      msp.MSPManager
 	channelConfig   *ChannelConfig
 	configtxManager configtx.Validator
 }
@@ -86,19 +84,11 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 			return errors.New("current config has orderer section, but new config does not")
 		}
 
-		// Prevent consensus-type migration when capabilities Kafka2RaftMigration is disabled
-		if !oc.Capabilities().Kafka2RaftMigration() {
+		// Prevent consensus-type migration when channel capabilities ConsensusTypeMigration is disabled
+		if !b.channelConfig.Capabilities().ConsensusTypeMigration() {
 			if oc.ConsensusType() != noc.ConsensusType() {
 				return errors.Errorf("attempted to change consensus type from %s to %s",
 					oc.ConsensusType(), noc.ConsensusType())
-			}
-			if noc.ConsensusMigrationState() != ab.ConsensusType_MIG_STATE_NONE || noc.ConsensusMigrationContext() != 0 {
-				return errors.Errorf("new config has unexpected consensus-migration state or context: (%s/%d) should be (MIG_STATE_NONE/0)",
-					noc.ConsensusMigrationState().String(), noc.ConsensusMigrationContext())
-			}
-		} else {
-			if err := b.validateMigrationStep(oc, noc); err != nil {
-				return err
 			}
 		}
 
@@ -249,204 +239,6 @@ func preValidate(config *cb.Config) error {
 				}
 			}
 		}
-	}
-
-	return nil
-}
-
-// validateMigrationStep checks the validity of the state transitions of a possible migration step.
-// The system channel is identified in order to more accurately evaluate the state transitions of
-// system vs. standard channels. The migration state machine (for both types of channels) is enforced
-// in the chain implementation, after ordering.
-//
-// Consensus-type changes from Kafka to Raft in the "green" path:
-// - The system channel starts the migration
-// - A standard channel prepares the context, type change Kafka to Raft
-// - The system channel commits the migration, type change Kafka to Raft
-// Consensus-type changes from Raft to Kafka in the "abort" path:
-// - The system channel starts the migration
-// - A standard channel prepares the context, type change Kafka to Raft
-// - The system channel aborts the migration
-// - The standard channel reverts the type back, type change Raft to Kafka
-//
-func (b *Bundle) validateMigrationStep(oc Orderer, noc Orderer) error {
-	oldType := oc.ConsensusType()
-	oldState := oc.ConsensusMigrationState()
-	oldContext := oc.ConsensusMigrationContext()
-	newType := noc.ConsensusType()
-	newState := noc.ConsensusMigrationState()
-	newContext := noc.ConsensusMigrationContext()
-	_, isSys := b.ConsortiumsConfig()
-
-	logger.Debugf("Validating potential consensus-type migration, system=%t; Old: %s / %s / %d;"+
-		" New: %s / %s / %d; (Type/State/Context)", isSys, oldType, oldState, oldContext, newType, newState, newContext)
-
-	if isSys {
-		return validateMigrationStepSystem(oldType, newType, oldState, newState, newContext)
-	} else {
-		return validateMigrationStepStandard(oldType, newType, oldState, newState, oldContext, newContext)
-	}
-}
-
-// validateMigrationStepSystem checks the validity of the state transitions of a possible migration step
-// on the system channel.
-func validateMigrationStepSystem(oldType, newType string, oldState, newState ab.ConsensusType_MigrationState, newContext uint64) error {
-	// Check validity of new state, type, and context
-	unExpCtx := "Consensus-type migration, state=%s, unexpected context, actual=%d (expected=%s)"
-	unExpType := "Consensus-type migration, state=%s, unexpected type, actual=%s (expected=%s)"
-	switch newState {
-	case ab.ConsensusType_MIG_STATE_NONE:
-		if newContext != 0 {
-			return errors.Errorf(unExpCtx, newState, newContext, "0")
-		}
-	case ab.ConsensusType_MIG_STATE_START:
-		if newType != "kafka" {
-			return errors.Errorf(unExpType, newState, newType, "kafka")
-		}
-		if newContext != 0 {
-			return errors.Errorf(unExpCtx, newState, newContext, "0")
-		}
-	case ab.ConsensusType_MIG_STATE_COMMIT:
-		if newType != "etcdraft" {
-			return errors.Errorf(unExpType, newState, newType, "etcdraft")
-		}
-		if newContext <= 0 {
-			return errors.Errorf(unExpCtx, newState, newContext, ">0")
-		}
-	case ab.ConsensusType_MIG_STATE_ABORT:
-		if newType != "kafka" {
-			return errors.Errorf(unExpType, newState, newType, "kafka")
-		}
-		if newContext <= 0 {
-			return errors.Errorf(unExpCtx, newState, newContext, ">0")
-		}
-
-	default:
-		return errors.Errorf("Consensus-type migration, state=%s, not permitted on system channel", newState)
-	}
-
-	// The following code explicitly checks for permitted transitions; all other transitions return an error.
-	if oldType != newType {
-
-		if oldType == "kafka" && newType == "etcdraft" {
-			// On the system channels, this is permitted, green path commit
-			isSysCommit := (oldState == ab.ConsensusType_MIG_STATE_START) && (newState == ab.ConsensusType_MIG_STATE_COMMIT)
-			if !isSysCommit {
-				return errors.Errorf("Attempted to change consensus type from %s to %s, unexpected state transition: %s to %s",
-					oldType, newType, oldState, newState)
-			}
-		} else if oldType == "etcdraft" && newType == "kafka" {
-			return errors.Errorf("Attempted to change consensus type from %s to %s, not permitted on system channel", oldType, newType)
-		} else {
-			return errors.Errorf("Attempted to change consensus type from %s to %s, not supported", oldType, newType)
-		}
-
-		logger.Debugf("Consensus-type migration, from %s to %s, state transition: %s to %s", oldType, newType, oldState, newState)
-	} else {
-		// This is always permitted, not a migration
-		isNotMig := (oldState == ab.ConsensusType_MIG_STATE_NONE) && (newState == oldState)
-		if isNotMig {
-			logger.Debugf("Not Consensus-type migration, type %s, old-state = new-state = %s", oldType, oldState)
-			return nil
-		}
-
-		// Migration state may change when the type stays the same
-		if oldType == "kafka" {
-			// In the "green" path: the system channel starts migration
-			isStart := (oldState == ab.ConsensusType_MIG_STATE_NONE) && (newState == ab.ConsensusType_MIG_STATE_START)
-			// In the "abort" path: the system channel aborts a migration
-			isAbort := (oldState == ab.ConsensusType_MIG_STATE_START) && (newState == ab.ConsensusType_MIG_STATE_ABORT)
-			// In the "abort" path: the system channel reconfigures after an abort, not a migration
-			isNotMigAfterAbort := (oldState == ab.ConsensusType_MIG_STATE_ABORT) && (newState == ab.ConsensusType_MIG_STATE_NONE)
-			// In the "abort" path: the system channel starts a new migration attempt after an abort
-			isStartAfterAbort := (oldState == ab.ConsensusType_MIG_STATE_ABORT) && (newState == ab.ConsensusType_MIG_STATE_START)
-			if !(isNotMig || isStart || isAbort || isNotMigAfterAbort || isStartAfterAbort) {
-				return errors.Errorf("Consensus type %s, unexpected migration state transition: %s to %s",
-					oldType, oldState, newState)
-			}
-		} else if oldType == "etcdraft" {
-			// In the "green" path: the system channel reconfigures after a successful migration
-			isConfAfterSuccess := (oldState == ab.ConsensusType_MIG_STATE_COMMIT) && (newState == ab.ConsensusType_MIG_STATE_NONE)
-			if !(isNotMig || isConfAfterSuccess) {
-				return errors.Errorf("Consensus type %s, unexpected migration state transition: %s to %s",
-					oldType, oldState.String(), newState)
-			}
-		}
-
-		logger.Debugf("Consensus-type migration, type %s, state transition: %s to %s", oldType, oldState, newState)
-	}
-
-	return nil
-}
-
-// validateMigrationStepStandard checks the validity of the state transitions of a possible migration step
-// on the standard channel.
-func validateMigrationStepStandard(oldType, newType string, oldState, newState ab.ConsensusType_MigrationState, oldContext, newContext uint64) error {
-	// Check validity of new state, type, and context
-	unExpCtx := "Consensus-type migration, state=%s, unexpected context, actual=%d (expected=%s)"
-	switch newState {
-	case ab.ConsensusType_MIG_STATE_NONE:
-		if newContext != 0 {
-			return errors.Errorf(unExpCtx, newState, newContext, "0")
-		}
-	case ab.ConsensusType_MIG_STATE_CONTEXT:
-		if newType != "etcdraft" {
-			unExpType := "Consensus-type migration, state=%s, unexpected type, actual=%s (expected=%s)"
-			return errors.Errorf(unExpType, newState, newType, "etcdraft")
-		}
-		if newContext <= 0 {
-			return errors.Errorf(unExpCtx, newState, newContext, ">0")
-		}
-	default:
-		return errors.Errorf("Consensus-type migration, state=%s, not permitted on standard channel", newState)
-	}
-
-	// The following code explicitly checks for permitted transitions; all other transitions return an error.
-	if oldType != newType {
-		badAttemptStr := "Attempted to change consensus type from %s to %s, unexpected state transition: %s to %s"
-		if oldType == "kafka" && newType == "etcdraft" {
-			// On the standard channels, this is permitted, green path context
-			isCtx := (oldState == ab.ConsensusType_MIG_STATE_NONE) && (newState == ab.ConsensusType_MIG_STATE_CONTEXT)
-			if !isCtx {
-				return errors.Errorf(badAttemptStr, oldType, newType, oldState, newState)
-			}
-		} else if oldType == "etcdraft" && newType == "kafka" {
-			// On the standard channels, this is permitted, abort path
-			isAbort := (oldState == ab.ConsensusType_MIG_STATE_CONTEXT) && (newState == ab.ConsensusType_MIG_STATE_NONE)
-			if !isAbort {
-				return errors.Errorf(badAttemptStr, oldType, newType, oldState, newState)
-			}
-		} else {
-			return errors.Errorf("Attempted to change consensus type from %s to %s, not supported", oldType, newType)
-		}
-
-		logger.Debugf("Consensus-type migration, from %s to %s, state transition: %s to %s", oldType, newType, oldState, newState)
-	} else {
-		// This is always permitted, not a migration
-		isNotMig := (oldState == ab.ConsensusType_MIG_STATE_NONE) && (newState == oldState)
-		if isNotMig {
-			logger.Debugf("Not Consensus-type migration, type %s, old-state = new-state = %s", oldType, oldState)
-			return nil
-		}
-
-		// Migration state may change when the type stays the same
-		if oldType == "etcdraft" {
-			// In the "green" path: a channel reconfigures after a successful migration
-			isConfigAfterSuccess := (oldState == ab.ConsensusType_MIG_STATE_CONTEXT) && (newState == ab.ConsensusType_MIG_STATE_NONE)
-			// In the "green" path: a channel may amend its CONTEXT (Metadata) as long as migration is pending, i.e.
-			// system channel started, not yet committed. The context must be the same.
-			isCtxAmend := (oldState == ab.ConsensusType_MIG_STATE_CONTEXT) && (oldState == newState) && (oldContext == newContext)
-			if !(isNotMig || isConfigAfterSuccess || isCtxAmend) {
-				return errors.Errorf("Consensus type %s, unexpected migration state transition: %s to %s", oldType, oldState, newState)
-			}
-		} else if oldType == "kafka" {
-			// Not a migration
-			if !isNotMig {
-				return errors.Errorf("Consensus type %s, unexpected migration state transition: %s to %s", oldType, oldState, newState)
-			}
-		}
-
-		logger.Debugf("Consensus-type migration, type %s, state transition: %s to %s", oldType, oldState, newState)
 	}
 
 	return nil

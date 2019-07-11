@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
@@ -117,6 +116,9 @@ type Options struct {
 	BlockMetadata *etcdraft.BlockMetadata
 	Consenters    map[uint64]*etcdraft.Consenter
 
+	// MigrationInit is set when the node starts right after consensus-type migration
+	MigrationInit bool
+
 	Metrics *Metrics
 	Cert    []byte
 
@@ -187,8 +189,6 @@ type Chain struct {
 
 	Metrics *Metrics
 	logger  *flogging.FabricLogger
-
-	migrationStatus migration.Status // The consensus-type migration status
 
 	periodicChecker *PeriodicCheck
 }
@@ -269,9 +269,8 @@ func NewChain(
 			NormalProposalsReceived: opts.Metrics.NormalProposalsReceived.With("channel", support.ChainID()),
 			ConfigProposalsReceived: opts.Metrics.ConfigProposalsReceived.With("channel", support.ChainID()),
 		},
-		logger:          lg,
-		opts:            opts,
-		migrationStatus: migration.NewStatusStepper(support.IsSystemChannel(), support.ChainID()), // Needed by consensus-type migration
+		logger: lg,
+		opts:   opts,
 	}
 
 	// Sets initial values for metrics
@@ -313,12 +312,6 @@ func NewChain(
 	return c, nil
 }
 
-// MigrationStatus provides access to the consensus-type migration status of the chain.
-// (Added to the Chain interface mainly for the Kafka chains)
-func (c *Chain) MigrationStatus() migration.Status {
-	return c.migrationStatus
-}
-
 // Start instructs the orderer to begin serving the chain and keep it current.
 func (c *Chain) Start() {
 	c.logger.Infof("Starting Raft node")
@@ -330,11 +323,11 @@ func (c *Chain) Start() {
 	}
 
 	isJoin := c.support.Height() > 1
-	isMigration := false
-	if isJoin {
-		isMigration = c.detectMigration()
+	if isJoin && c.opts.MigrationInit {
+		isJoin = false
+		c.logger.Infof("Consensus-type migration detected, starting new raft node on an existing channel; height=%d", c.support.Height())
 	}
-	c.Node.start(c.fresh, isJoin, isMigration)
+	c.Node.start(c.fresh, isJoin)
 
 	close(c.startC)
 	close(c.errorC)
@@ -356,42 +349,6 @@ func (c *Chain) Start() {
 		Condition:     c.suspectEviction,
 	}
 	c.periodicChecker.Run()
-}
-
-// detectMigration detects if the orderer restarts right after consensus-type migration,
-// in which the Height>1 but previous blocks were created by Kafka.
-// If this is the case, Raft should be started like it is joining a new channel.
-func (c *Chain) detectMigration() bool {
-	startOfChain := false
-	if c.support.SharedConfig().Capabilities().Kafka2RaftMigration() {
-		lastConfigIndex, err := utils.GetLastConfigIndexFromBlock(c.lastBlock)
-		if err != nil {
-			c.logger.Panicf("Chain did not have appropriately encoded last config in its latest block: %s", err)
-		}
-
-		c.logger.Debugf("Detecting if consensus-type migration, sysChan=%v, lastConfigIndex=%d, Height=%d, mig-state: %s",
-			c.support.IsSystemChannel(), lastConfigIndex, c.lastBlock.Header.Number+1, c.support.SharedConfig().ConsensusMigrationState().String())
-
-		if lastConfigIndex != c.lastBlock.Header.Number { // The last block is not a config-tx
-			return startOfChain
-		}
-
-		// The last block was a config-tx
-		if c.support.IsSystemChannel() {
-			if c.support.SharedConfig().ConsensusMigrationState() == orderer.ConsensusType_MIG_STATE_COMMIT {
-				startOfChain = true
-			}
-		} else {
-			if c.support.SharedConfig().ConsensusMigrationState() == orderer.ConsensusType_MIG_STATE_CONTEXT {
-				startOfChain = true
-			}
-		}
-
-		if startOfChain {
-			c.logger.Infof("Restarting after consensus-type migration. Type: %s, just starting the channel.", c.support.SharedConfig().ConsensusType())
-		}
-	}
-	return startOfChain
 }
 
 // Order submits normal type transactions for ordering.
@@ -616,14 +573,14 @@ func (c *Chain) serveRequest() {
 	}
 
 	// if timer is already started, this is a no-op
-	start := func() {
+	startTimer := func() {
 		if !ticking {
 			ticking = true
 			timer.Reset(c.support.SharedConfig().BatchTimeout())
 		}
 	}
 
-	stop := func() {
+	stopTimer := func() {
 		if !timer.Stop() && ticking {
 			// we only need to drain the channel if the timer expired (not explicitly stopped)
 			<-timer.C()
@@ -690,7 +647,7 @@ func (c *Chain) serveRequest() {
 		cancelProp()
 		c.blockInflight = 0
 		_ = c.support.BlockCutter().Cut()
-		stop()
+		stopTimer()
 		submitC = c.submitC
 		bc = nil
 		c.Metrics.IsLeader.Set(0)
@@ -720,9 +677,9 @@ func (c *Chain) serveRequest() {
 				continue
 			}
 			if pending {
-				start() // no-op if timer is already started
+				startTimer() // no-op if timer is already started
 			} else {
-				stop()
+				stopTimer()
 			}
 
 			c.propose(propC, bc, batches...)
@@ -1199,11 +1156,11 @@ func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 		if raftID == c.raftID {
 			continue
 		}
-		serverCertAsDER, err := c.pemToDER(consenter.ServerTlsCert, raftID, "server")
+		serverCertAsDER, err := pemToDER(consenter.ServerTlsCert, raftID, "server", c.logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		clientCertAsDER, err := c.pemToDER(consenter.ClientTlsCert, raftID, "client")
+		clientCertAsDER, err := pemToDER(consenter.ClientTlsCert, raftID, "client", c.logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -1217,10 +1174,10 @@ func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 	return nodes, nil
 }
 
-func (c *Chain) pemToDER(pemBytes []byte, id uint64, certType string) ([]byte, error) {
+func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.FabricLogger) ([]byte, error) {
 	bl, _ := pem.Decode(pemBytes)
 	if bl == nil {
-		c.logger.Errorf("Rejecting PEM block of %s TLS cert for node %d, offending PEM is: %s", certType, id, string(pemBytes))
+		logger.Errorf("Rejecting PEM block of %s TLS cert for node %d, offending PEM is: %s", certType, id, string(pemBytes))
 		return nil, errors.Errorf("invalid PEM block")
 	}
 	return bl.Bytes, nil
@@ -1241,8 +1198,8 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 	case common.HeaderType_CONFIG:
 		configMembership := c.detectConfChange(block)
 
-		c.opts.BlockMetadata.RaftIndex = index
 		c.raftMetadataLock.Lock()
+		c.opts.BlockMetadata.RaftIndex = index
 		if configMembership != nil {
 			c.opts.BlockMetadata = configMembership.NewBlockMetadata
 			c.opts.Consenters = configMembership.NewConsenters
@@ -1314,8 +1271,8 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 }
 
 // getInFlightConfChange returns ConfChange in-flight if any.
-// It either returns confChangeInProgress if it is not nil, or
-// attempts to read ConfChange from last committed block.
+// It returns confChangeInProgress if it is not nil. Otherwise
+// it returns ConfChange from the last committed block (might be nil).
 func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 	if c.confChangeInProgress != nil {
 		return c.confChangeInProgress
@@ -1329,23 +1286,15 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 		return nil
 	}
 
-	// Detect if it is a restart right after consensus-type migration. If yes, return early in order to avoid using
-	// the block metadata as etcdraft.BlockMetadata (see below). Right after migration the block metadata will carry
-	// Kafka metadata. The etcdraft.BlockMetadata should be extracted from the ConsensusType.Metadata, instead.
-	if c.detectMigration() {
-		c.logger.Infof("Restarting after consensus-type migration. Type: %s, just starting the chain.", c.support.SharedConfig().ConsensusType())
-		return nil
-	}
-
 	// extracting current Raft configuration state
 	confState := c.Node.ApplyConfChange(raftpb.ConfChange{})
 
 	if len(confState.Nodes) == len(c.opts.BlockMetadata.ConsenterIds) {
-		// since configuration change could only add one node or
-		// remove one node at a time, if raft nodes state size
+		// Raft configuration change could only add one node or
+		// remove one node at a time, if raft conf state size is
 		// equal to membership stored in block metadata field,
 		// that means everything is in sync and no need to propose
-		// update
+		// config update.
 		return nil
 	}
 

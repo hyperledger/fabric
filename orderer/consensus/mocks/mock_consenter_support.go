@@ -54,6 +54,16 @@ type FakeConsenterSupport struct {
 	chainIDReturnsOnCall map[int]struct {
 		result1 string
 	}
+	ChannelConfigStub        func() channelconfig.Channel
+	channelConfigMutex       sync.RWMutex
+	channelConfigArgsForCall []struct {
+	}
+	channelConfigReturns struct {
+		result1 channelconfig.Channel
+	}
+	channelConfigReturnsOnCall map[int]struct {
+		result1 channelconfig.Channel
+	}
 	ClassifyMsgStub        func(*common.ChannelHeader) msgprocessor.Classification
 	classifyMsgMutex       sync.RWMutex
 	classifyMsgArgsForCall []struct {
@@ -85,16 +95,6 @@ type FakeConsenterSupport struct {
 	}
 	heightReturnsOnCall map[int]struct {
 		result1 uint64
-	}
-	IsSystemChannelStub        func() bool
-	isSystemChannelMutex       sync.RWMutex
-	isSystemChannelArgsForCall []struct {
-	}
-	isSystemChannelReturns struct {
-		result1 bool
-	}
-	isSystemChannelReturnsOnCall map[int]struct {
-		result1 bool
 	}
 	NewSignatureHeaderStub        func() (*common.SignatureHeader, error)
 	newSignatureHeaderMutex       sync.RWMutex
@@ -436,6 +436,58 @@ func (fake *FakeConsenterSupport) ChainIDReturnsOnCall(i int, result1 string) {
 	}{result1}
 }
 
+func (fake *FakeConsenterSupport) ChannelConfig() channelconfig.Channel {
+	fake.channelConfigMutex.Lock()
+	ret, specificReturn := fake.channelConfigReturnsOnCall[len(fake.channelConfigArgsForCall)]
+	fake.channelConfigArgsForCall = append(fake.channelConfigArgsForCall, struct {
+	}{})
+	fake.recordInvocation("ChannelConfig", []interface{}{})
+	fake.channelConfigMutex.Unlock()
+	if fake.ChannelConfigStub != nil {
+		return fake.ChannelConfigStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.channelConfigReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeConsenterSupport) ChannelConfigCallCount() int {
+	fake.channelConfigMutex.RLock()
+	defer fake.channelConfigMutex.RUnlock()
+	return len(fake.channelConfigArgsForCall)
+}
+
+func (fake *FakeConsenterSupport) ChannelConfigCalls(stub func() channelconfig.Channel) {
+	fake.channelConfigMutex.Lock()
+	defer fake.channelConfigMutex.Unlock()
+	fake.ChannelConfigStub = stub
+}
+
+func (fake *FakeConsenterSupport) ChannelConfigReturns(result1 channelconfig.Channel) {
+	fake.channelConfigMutex.Lock()
+	defer fake.channelConfigMutex.Unlock()
+	fake.ChannelConfigStub = nil
+	fake.channelConfigReturns = struct {
+		result1 channelconfig.Channel
+	}{result1}
+}
+
+func (fake *FakeConsenterSupport) ChannelConfigReturnsOnCall(i int, result1 channelconfig.Channel) {
+	fake.channelConfigMutex.Lock()
+	defer fake.channelConfigMutex.Unlock()
+	fake.ChannelConfigStub = nil
+	if fake.channelConfigReturnsOnCall == nil {
+		fake.channelConfigReturnsOnCall = make(map[int]struct {
+			result1 channelconfig.Channel
+		})
+	}
+	fake.channelConfigReturnsOnCall[i] = struct {
+		result1 channelconfig.Channel
+	}{result1}
+}
+
 func (fake *FakeConsenterSupport) ClassifyMsg(arg1 *common.ChannelHeader) msgprocessor.Classification {
 	fake.classifyMsgMutex.Lock()
 	ret, specificReturn := fake.classifyMsgReturnsOnCall[len(fake.classifyMsgArgsForCall)]
@@ -610,58 +662,6 @@ func (fake *FakeConsenterSupport) HeightReturnsOnCall(i int, result1 uint64) {
 	}
 	fake.heightReturnsOnCall[i] = struct {
 		result1 uint64
-	}{result1}
-}
-
-func (fake *FakeConsenterSupport) IsSystemChannel() bool {
-	fake.isSystemChannelMutex.Lock()
-	ret, specificReturn := fake.isSystemChannelReturnsOnCall[len(fake.isSystemChannelArgsForCall)]
-	fake.isSystemChannelArgsForCall = append(fake.isSystemChannelArgsForCall, struct {
-	}{})
-	fake.recordInvocation("IsSystemChannel", []interface{}{})
-	fake.isSystemChannelMutex.Unlock()
-	if fake.IsSystemChannelStub != nil {
-		return fake.IsSystemChannelStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.isSystemChannelReturns
-	return fakeReturns.result1
-}
-
-func (fake *FakeConsenterSupport) IsSystemChannelCallCount() int {
-	fake.isSystemChannelMutex.RLock()
-	defer fake.isSystemChannelMutex.RUnlock()
-	return len(fake.isSystemChannelArgsForCall)
-}
-
-func (fake *FakeConsenterSupport) IsSystemChannelCalls(stub func() bool) {
-	fake.isSystemChannelMutex.Lock()
-	defer fake.isSystemChannelMutex.Unlock()
-	fake.IsSystemChannelStub = stub
-}
-
-func (fake *FakeConsenterSupport) IsSystemChannelReturns(result1 bool) {
-	fake.isSystemChannelMutex.Lock()
-	defer fake.isSystemChannelMutex.Unlock()
-	fake.IsSystemChannelStub = nil
-	fake.isSystemChannelReturns = struct {
-		result1 bool
-	}{result1}
-}
-
-func (fake *FakeConsenterSupport) IsSystemChannelReturnsOnCall(i int, result1 bool) {
-	fake.isSystemChannelMutex.Lock()
-	defer fake.isSystemChannelMutex.Unlock()
-	fake.IsSystemChannelStub = nil
-	if fake.isSystemChannelReturnsOnCall == nil {
-		fake.isSystemChannelReturnsOnCall = make(map[int]struct {
-			result1 bool
-		})
-	}
-	fake.isSystemChannelReturnsOnCall[i] = struct {
-		result1 bool
 	}{result1}
 }
 
@@ -1238,14 +1238,14 @@ func (fake *FakeConsenterSupport) Invocations() map[string][][]interface{} {
 	defer fake.blockCutterMutex.RUnlock()
 	fake.chainIDMutex.RLock()
 	defer fake.chainIDMutex.RUnlock()
+	fake.channelConfigMutex.RLock()
+	defer fake.channelConfigMutex.RUnlock()
 	fake.classifyMsgMutex.RLock()
 	defer fake.classifyMsgMutex.RUnlock()
 	fake.createNextBlockMutex.RLock()
 	defer fake.createNextBlockMutex.RUnlock()
 	fake.heightMutex.RLock()
 	defer fake.heightMutex.RUnlock()
-	fake.isSystemChannelMutex.RLock()
-	defer fake.isSystemChannelMutex.RUnlock()
 	fake.newSignatureHeaderMutex.RLock()
 	defer fake.newSignatureHeaderMutex.RUnlock()
 	fake.processConfigMsgMutex.RLock()

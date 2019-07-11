@@ -11,7 +11,10 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -154,4 +157,63 @@ func listInstantiated(n *Network, peer *Peer, channel string) func() *gbytes.Buf
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 		return sess.Buffer()
 	}
+}
+
+// EnableCapabilities enables a specific capabilities flag for a running network.
+// It generates the config update using the first peer, signs the configuration
+// with the subsequent peers, and then submits the config update using the
+// first peer.
+func EnableCapabilities(network *Network, channel, capabilitiesGroup, capabilitiesVersion string, orderer *Orderer, peers ...*Peer) {
+	if len(peers) == 0 {
+		return
+	}
+
+	config := GetConfig(network, peers[0], orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	updatedConfig.ChannelGroup.Groups[capabilitiesGroup].Values["Capabilities"] = &common.ConfigValue{
+		ModPolicy: "Admins",
+		Value: utils.MarshalOrPanic(
+			&common.Capabilities{
+				Capabilities: map[string]*common.Capability{
+					capabilitiesVersion: {},
+				},
+			},
+		),
+	}
+
+	UpdateConfig(network, orderer, channel, config, updatedConfig, peers[0], peers...)
+}
+
+// EnableCapabilitiesOrdererAdmin enables a specific capabilities flag for a running network,
+// using an Orderer Admin Session. This is required to make changes on the system channel, for example.
+func EnableCapabilitiesOrdererAdmin(network *Network, channel, capabilitiesGroup, capabilitiesVersion string, orderer *Orderer, peer *Peer, additionalSigners ...*Orderer) {
+	config := GetConfig(network, peer, orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	if capabilitiesGroup == "Channel" {
+		updatedConfig.ChannelGroup.Values["Capabilities"] = &common.ConfigValue{
+			ModPolicy: "Admins",
+			Value: utils.MarshalOrPanic(
+				&common.Capabilities{
+					Capabilities: map[string]*common.Capability{
+						capabilitiesVersion: {},
+					},
+				},
+			),
+		}
+	} else {
+		updatedConfig.ChannelGroup.Groups[capabilitiesGroup].Values["Capabilities"] = &common.ConfigValue{
+			ModPolicy: "Admins",
+			Value: utils.MarshalOrPanic(
+				&common.Capabilities{
+					Capabilities: map[string]*common.Capability{
+						capabilitiesVersion: {},
+					},
+				},
+			),
+		}
+	}
+
+	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, additionalSigners...)
 }

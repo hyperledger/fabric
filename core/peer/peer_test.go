@@ -12,22 +12,25 @@ import (
 	"net"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/common/mocks/config"
 	mscc "github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
-	"github.com/hyperledger/fabric/core/deliverservice"
+	deliverclient "github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
-	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	ledgermocks "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/mocks/ccprovider"
+	fakeconfig "github.com/hyperledger/fabric/core/peer/mocks"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	"github.com/hyperledger/fabric/peer/gossip/mocks"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +41,7 @@ import (
 type mockDeliveryClient struct {
 }
 
-func (ds *mockDeliveryClient) UpdateEndpoints(chainID string, endpoints []string) error {
+func (ds *mockDeliveryClient) UpdateEndpoints(chainID string, _ deliverclient.ConnectionCriteria) error {
 	return nil
 }
 
@@ -61,7 +64,7 @@ func (*mockDeliveryClient) Stop() {
 type mockDeliveryClientFactory struct {
 }
 
-func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
+func (*mockDeliveryClientFactory) Service(g service.GossipService, _ service.OrdererAddressConfig, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
 	return &mockDeliveryClient{}, nil
 }
 
@@ -214,4 +217,28 @@ func TestDeliverSupportManager(t *testing.T) {
 	MockCreateChain("testchain")
 	chainSupport = manager.GetChain("testchain")
 	assert.NotNil(t, chainSupport, "chain support should not be nil")
+}
+
+func TestGossipChannelConfigOrdererAddressesByOrgs(t *testing.T) {
+	ordererOrg1 := &fakeconfig.OrdererOrg{}
+	ordererOrg2 := &fakeconfig.OrdererOrg{}
+
+	ordererOrg1.On("MSPID").Return("Org1")
+	ordererOrg2.On("MSPID").Return("Org2")
+	ordererOrg1.On("Endpoints").Return([]string{"o1"})
+	ordererOrg2.On("Endpoints").Return([]string{"o2"})
+
+	gcp := &gossipChannelConfig{
+		oc: &config.Orderer{
+			OrganizationsVal: map[string]channelconfig.OrdererOrg{
+				"Org1": ordererOrg1,
+				"Org2": ordererOrg2,
+			},
+		},
+	}
+
+	assert.Equal(t, map[string][]string{
+		"Org1": {"o1"},
+		"Org2": {"o2"},
+	}, gcp.OrdererAddressesByOrgs())
 }

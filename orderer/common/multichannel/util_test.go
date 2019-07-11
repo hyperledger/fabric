@@ -9,13 +9,15 @@ package multichannel
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -25,26 +27,20 @@ type mockConsenter struct {
 
 func (mc *mockConsenter) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
 	return &mockChain{
-		queue:           make(chan *cb.Envelope),
-		cutter:          support.BlockCutter(),
-		support:         support,
-		metadata:        metadata,
-		done:            make(chan struct{}),
-		migrationStatus: migration.NewStatusStepper(support.IsSystemChannel(), support.ChainID()),
+		queue:    make(chan *cb.Envelope),
+		cutter:   support.BlockCutter(),
+		support:  support,
+		metadata: metadata,
+		done:     make(chan struct{}),
 	}, nil
 }
 
 type mockChain struct {
-	queue           chan *cb.Envelope
-	cutter          blockcutter.Receiver
-	support         consensus.ConsenterSupport
-	metadata        *cb.Metadata
-	done            chan struct{}
-	migrationStatus migration.Status
-}
-
-func (mch *mockChain) MigrationStatus() migration.Status {
-	return mch.migrationStatus
+	queue    chan *cb.Envelope
+	cutter   blockcutter.Receiver
+	support  consensus.ConsenterSupport
+	metadata *cb.Metadata
+	done     chan struct{}
 }
 
 func (mch *mockChain) Errored() <-chan struct{} {
@@ -123,6 +119,42 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 	return makeConfigTxFromConfigUpdateEnvelope(chainID, &cb.ConfigUpdateEnvelope{
 		ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
 			WriteSet: group,
+		}),
+	})
+}
+
+func makeConfigTxFull(chainID string, i int) *cb.Envelope {
+	gConf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	gConf.Orderer.Capabilities = map[string]bool{
+		capabilities.OrdererV1_4_2: true,
+	}
+	gConf.Orderer.MaxChannels = 10
+	channelGroup, err := encoder.NewChannelGroup(gConf)
+	if err != nil {
+		return nil
+	}
+
+	return makeConfigTxFromConfigUpdateEnvelope(chainID, &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
+			WriteSet: channelGroup,
+		}),
+	})
+}
+
+func makeConfigTxMig(chainID string, i int) *cb.Envelope {
+	gConf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	gConf.Orderer.Capabilities = map[string]bool{
+		capabilities.OrdererV1_4_2: true,
+	}
+	gConf.Orderer.OrdererType = "kafka"
+	channelGroup, err := encoder.NewChannelGroup(gConf)
+	if err != nil {
+		return nil
+	}
+
+	return makeConfigTxFromConfigUpdateEnvelope(chainID, &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
+			WriteSet: channelGroup,
 		}),
 	})
 }

@@ -153,33 +153,6 @@ func loadRootCAs() [][]byte {
 	return rootCAs
 }
 
-func TestCASupport(t *testing.T) {
-	t.Parallel()
-	rootCAs := loadRootCAs()
-	t.Logf("loaded %d root certificates", len(rootCAs))
-	if len(rootCAs) != 6 {
-		t.Fatalf("failed to load root certificates")
-	}
-
-	cas := &CASupport{
-		AppRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
-	}
-	cas.AppRootCAsByChain["channel1"] = [][]byte{rootCAs[0]}
-	cas.AppRootCAsByChain["channel2"] = [][]byte{rootCAs[1]}
-	cas.AppRootCAsByChain["channel3"] = [][]byte{rootCAs[2]}
-	cas.OrdererRootCAsByChain["channel1"] = [][]byte{rootCAs[3]}
-	cas.OrdererRootCAsByChain["channel2"] = [][]byte{rootCAs[4]}
-	cas.ServerRootCAs = [][]byte{rootCAs[5]}
-	cas.ClientRootCAs = [][]byte{rootCAs[5]}
-
-	appClientRoots, ordererClientRoots := cas.GetClientRootCAs()
-	t.Logf("%d appClientRoots | %d ordererClientRoots", len(appClientRoots),
-		len(ordererClientRoots))
-	assert.Equal(t, 4, len(appClientRoots), "Expected 4 app client root CAs")
-	assert.Equal(t, 2, len(ordererClientRoots), "Expected 4 orderer client root CAs")
-}
-
 func TestCredentialSupport(t *testing.T) {
 	t.Parallel()
 	rootCAs := loadRootCAs()
@@ -189,10 +162,8 @@ func TestCredentialSupport(t *testing.T) {
 	}
 
 	cs := &CredentialSupport{
-		CASupport: &CASupport{
-			AppRootCAsByChain:     make(map[string][][]byte),
-			OrdererRootCAsByChain: make(map[string][][]byte),
-		},
+		AppRootCAsByChain:           make(map[string]CertificateBundle),
+		OrdererRootCAsByChainAndOrg: make(OrgRootCAs),
 	}
 	cert := tls.Certificate{Certificate: [][]byte{}}
 	cs.SetClientCertificate(cert)
@@ -202,28 +173,25 @@ func TestCredentialSupport(t *testing.T) {
 	cs.AppRootCAsByChain["channel1"] = [][]byte{rootCAs[0]}
 	cs.AppRootCAsByChain["channel2"] = [][]byte{rootCAs[1]}
 	cs.AppRootCAsByChain["channel3"] = [][]byte{rootCAs[2]}
-	cs.OrdererRootCAsByChain["channel1"] = [][]byte{rootCAs[3]}
-	cs.OrdererRootCAsByChain["channel2"] = [][]byte{rootCAs[4]}
+	cs.OrdererRootCAsByChainAndOrg.AppendCertificates("channel1", "SampleOrg", [][]byte{rootCAs[3]})
+	cs.OrdererRootCAsByChainAndOrg.AppendCertificates("channel2", "SampleOrg", [][]byte{rootCAs[4]})
 	cs.ServerRootCAs = [][]byte{rootCAs[5]}
 	cs.ClientRootCAs = [][]byte{rootCAs[5]}
 
-	appClientRoots, ordererClientRoots := cs.GetClientRootCAs()
-	t.Logf("%d appClientRoots | %d ordererClientRoots", len(appClientRoots),
-		len(ordererClientRoots))
-	assert.Equal(t, 4, len(appClientRoots), "Expected 4 app client root CAs")
-	assert.Equal(t, 2, len(ordererClientRoots), "Expected 4 orderer client root CAs")
-
-	creds, _ := cs.GetDeliverServiceCredentials("channel1", false)
+	creds, _ := cs.GetDeliverServiceCredentials("channel1", false, []string{"SampleOrg"})
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 	creds = cs.GetPeerCredentials()
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 
+	_, err := cs.GetDeliverServiceCredentials("channel99", false, nil)
+	assert.EqualError(t, err, "didn't find any root CA certs for channel channel99")
+
 	// append some bad certs and make sure things still work
 	cs.ServerRootCAs = append(cs.ServerRootCAs, []byte("badcert"))
 	cs.ServerRootCAs = append(cs.ServerRootCAs, []byte(badPEM))
-	creds, _ = cs.GetDeliverServiceCredentials("channel1", false)
+	creds, _ = cs.GetDeliverServiceCredentials("channel1", false, []string{"SampleOrg"})
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 	creds = cs.GetPeerCredentials()
@@ -313,16 +281,14 @@ func TestImpersonation(t *testing.T) {
 	time.Sleep(time.Second)
 
 	cs := &CredentialSupport{
-		CASupport: &CASupport{
-			AppRootCAsByChain:     make(map[string][][]byte),
-			OrdererRootCAsByChain: make(map[string][][]byte),
-		},
+		AppRootCAsByChain:           make(map[string]CertificateBundle),
+		OrdererRootCAsByChainAndOrg: make(OrgRootCAs),
 	}
-	_, err := cs.GetDeliverServiceCredentials("C", false)
+	_, err := cs.GetDeliverServiceCredentials("C", false, []string{"SampleOrg"})
 	assert.Error(t, err)
 
-	cs.OrdererRootCAsByChain["A"] = [][]byte{osA.caCert}
-	cs.OrdererRootCAsByChain["B"] = [][]byte{osB.caCert}
+	cs.OrdererRootCAsByChainAndOrg.AppendCertificates("A", "SampleOrg", [][]byte{osA.caCert})
+	cs.OrdererRootCAsByChainAndOrg.AppendCertificates("B", "SampleOrg", [][]byte{osB.caCert})
 	cs.ServerRootCAs = append(cs.ServerRootCAs, osB.caCert)
 
 	testInvoke(t, "A", osA, cs, false, true)
@@ -341,7 +307,7 @@ func testInvoke(
 	staticRoots bool,
 	shouldSucceed bool) {
 
-	creds, err := cs.GetDeliverServiceCredentials(channelID, staticRoots)
+	creds, err := cs.GetDeliverServiceCredentials(channelID, staticRoots, []string{"SampleOrg"})
 	assert.NoError(t, err)
 
 	endpoint := s.address

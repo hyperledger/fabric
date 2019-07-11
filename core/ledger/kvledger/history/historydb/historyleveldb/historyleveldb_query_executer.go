@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package historyleveldb
 
 import (
-	"bytes"
-
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
@@ -59,6 +57,16 @@ func newHistoryScanner(compositePartialKey []byte, namespace string, key string,
 	return &historyScanner{compositePartialKey, namespace, key, dbItr, blockStore}
 }
 
+// Next iterates to the next key from history scanner, decodes blockNumTranNumBytes to get blockNum and tranNum,
+// loads the block:tran from block storage, finds the key and returns the result.
+// The history keys are in the format of <namespace, key, blockNum, tranNum>, separated by nil byte "\x00".
+// There could be clashes in keys if some keys were to contain nil bytes. For example, the historydb keys for
+// both <ns, key, 16777473, 1> and <ns, key\x00\x04\x01, 1, 1> are same.
+// When two keys have clashes, the previous historydb entry will be overwritten and hence missing.
+// However, in practice, we do not expect this to be a common scenario.
+// In a rare scenario, the decoded blockNum:tranNum may have a key in the write-set while the entry in the historydb
+// was actually added for some other <ns, key, blockNum, tranNum>. It would cause this iterator to
+// return a history query result out of the order.
 func (scanner *historyScanner) Next() (commonledger.QueryResult, error) {
 	for {
 		if !scanner.dbItr.Next() {
@@ -69,31 +77,40 @@ func (scanner *historyScanner) Next() (commonledger.QueryResult, error) {
 		// SplitCompositeKey(namespace~key~blocknum~trannum, namespace~key~) will return the blocknum~trannum in second position
 		_, blockNumTranNumBytes := historydb.SplitCompositeHistoryKey(historyKey, scanner.compositePartialKey)
 
-		// check that blockNumTranNumBytes does not contain a nil byte (FAB-11244) - except the last byte.
-		// if this contains a nil byte that indicate that its a different key other than the one we are
-		// scanning the history for. However, the last byte can be nil even for the valid key (indicating the transaction numer being zero)
-		// This is because, if 'blockNumTranNumBytes' really is the suffix of the desired key - only possibility of this containing a nil byte
-		// is the last byte when the transaction number in blockNumTranNumBytes is zero).
-		// On the other hand, if 'blockNumTranNumBytes' really is NOT the suffix of the desired key, then this has to be a prefix
-		// of some other key (other than the desired key) and in this case, there has to be at least one nil byte (other than the last byte),
-		// for the 'last' CompositeKeySep in the composite key
+		//
+		// FAB-15450
+		// There may be false keys because a key may have nil byte(s).
 		// Take an example of two keys "key" and "key\x00" in a namespace ns. The entries for these keys will be
-		// of type "ns-\x00-key-\x00-blkNumTranNumBytes" and ns-\x00-key-\x00-\x00-blkNumTranNumBytes respectively.
+		// of type "ns-\x00-key-\x00-blockNumTranNumBytes" and ns-\x00-key-\x00-\x00-blockNumTranNumBytes respectively.
 		// "-" in above examples are just for readability. Further, when scanning the range
-		// {ns-\x00-key-\x00 - ns-\x00-key-xff} for getting the history for <ns, key>, the entry for the other key
-		// falls in the range and needs to be ignored
-		if bytes.Contains(blockNumTranNumBytes[:len(blockNumTranNumBytes)-1], historydb.CompositeKeySep) {
-			logger.Debugf("Some other key [%#v] found in the range while scanning history for key [%#v]. Skipping...",
-				historyKey, scanner.key)
+		// {ns-\x00-key-\x00 - ns-\x00-key-xff} for getting the history for <ns, key>, the entries for "key\x00" also
+		// fall in the range and will be returned in range query.
+		//
+		// Meanwhile a valid blockNumTranNumBytes may also contain nil bytes. Therefore, we use the following approach
+		// to verify and skip false keys.
+		// If blockNumTranNumBytes cannot be decoded, it means that it is a false key and will be skipped.
+		// If blockNumTranNumBytes can be decoded, we further verify that the block:tran can be found and
+		// the key is present in the write set. If not, it is a false key.
+		//
+		// Note: in some scenarios, this can map to a block:tran in the block storage that contains the key
+		// but is out of order of iteration and hence the results are not guaranteed to be in order.
+		blockNum, tranNum, err := decodeBlockNumTranNum(blockNumTranNumBytes)
+		if err != nil {
+			logger.Warnf("Some other key [%#v] found in the range while scanning history for key [%#v]. Skipping (decoding error: %s)",
+				historyKey, scanner.key, err)
 			continue
 		}
-		blockNum, bytesConsumed := util.DecodeOrderPreservingVarUint64(blockNumTranNumBytes[0:])
-		tranNum, _ := util.DecodeOrderPreservingVarUint64(blockNumTranNumBytes[bytesConsumed:])
+
 		logger.Debugf("Found history record for namespace:%s key:%s at blockNumTranNum %v:%v\n",
 			scanner.namespace, scanner.key, blockNum, tranNum)
 
 		// Get the transaction from block storage that is associated with this history record
 		tranEnvelope, err := scanner.blockStore.RetrieveTxByBlockNumTranNum(blockNum, tranNum)
+		if err == blkstorage.ErrNotFoundInIndex {
+			logger.Warnf("Some other clashing key [%#v] found in the range while scanning history for key [%#v]. Skipping (cannot find block:tx)",
+				historyKey, scanner.key)
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +120,16 @@ func (scanner *historyScanner) Next() (commonledger.QueryResult, error) {
 		if err != nil {
 			return nil, err
 		}
-		logger.Debugf("Found historic key value for namespace:%s key:%s from transaction %s\n",
+		if queryResult == nil {
+			// no namespace or key is found, so it is a false key.
+			// This may happen if a false key "ns, key\x00..., <otherBlockNum>, <otherTranNum>" is returned
+			// in range query for "key" and its '...\x00<otherBlockNum><otherTranNum>' portion can be decoded to
+			// valid blockNum:tranNum; however, the decoded blockNum:tranNum does not have the desired namespace/key.
+			logger.Warnf("Some other key [%#v] found in the range while scanning history for key [%#v]. Skipping (namespace or key not found)",
+				historyKey, scanner.key)
+			continue
+		}
+		logger.Debugf("Found historic key value for namespace:%s key:%s from transaction %s",
 			scanner.namespace, scanner.key, queryResult.(*queryresult.KeyModification).TxId)
 		return queryResult, nil
 	}
@@ -159,9 +185,31 @@ func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string,
 						Timestamp: timestamp, IsDelete: kvWrite.IsDelete}, nil
 				}
 			} // end keys loop
-			return nil, errors.New("key not found in namespace's writeset")
+			logger.Debugf("key [%s] not found in namespace [%s]'s writeset", key, namespace)
+			return nil, nil
 		} // end if
 	} //end namespaces loop
-	return nil, errors.New("namespace not found in transaction's ReadWriteSets")
+	logger.Debugf("namespace [%s] not found in transaction's ReadWriteSets", namespace)
+	return nil, nil
+}
 
+// decodeBlockNumTranNum decodes blockNumTranNumBytes to get blockNum and tranNum.
+func decodeBlockNumTranNum(blockNumTranNumBytes []byte) (uint64, uint64, error) {
+	blockNum, blockBytesConsumed, err := util.DecodeOrderPreservingVarUint64(blockNumTranNumBytes)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	tranNum, tranBytesConsumed, err := util.DecodeOrderPreservingVarUint64(blockNumTranNumBytes[blockBytesConsumed:])
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// blockBytesConsumed + tranBytesConsumed should be equal to blockNumTranNumBytes for a real key match
+	if blockBytesConsumed+tranBytesConsumed != len(blockNumTranNumBytes) {
+		return 0, 0, errors.Errorf("number of decoded bytes (%d) is not equal to the length of blockNumTranNumBytes (%d)",
+			blockBytesConsumed+tranBytesConsumed, len(blockNumTranNumBytes))
+	}
+
+	return blockNum, tranNum, nil
 }

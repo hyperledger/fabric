@@ -18,8 +18,8 @@ other elements in a Fabric network.
 
 *A blockchain network is comprised of peer nodes, each of which can hold copies
 of ledgers and copies of smart contracts. In this example, the network N
-consists of peers P1, P2 and P3, each of which maintain their own instance
-of the distributed ledger L1. P1, P2 and P3 use the same chaincode, S1, to access
+consists of peers P1, P2 and P3, each of which maintain their own instance of
+the distributed ledger L1. P1, P2 and P3 use the same chaincode, S1, to access
 their copy of that distributed ledger*.
 
 Peers can be created, started, stopped, reconfigured, and even deleted. They
@@ -30,11 +30,12 @@ this section.
 ### A word on terminology
 
 Fabric implements **smart contracts** with a technology concept it calls
-**chaincode** --- simply a piece of code that accesses the ledger, written in one
-of the supported programming languages. In this topic, we'll usually use the
+**chaincode** --- simply a piece of code that accesses the ledger, written in
+one of the supported programming languages. In this topic, we'll usually use the
 term **chaincode**, but feel free to read it as **smart contract** if you're
 more used to that term. It's the same thing! If you want to learn more about
-chaincode and smart contracts, check out our [documentation on smart contracts and chaincode](smartcontract/smartcontract.html).
+chaincode and smart contracts, check out our [documentation on smart contracts
+and chaincode](../smartcontract/smartcontract.html).
 
 ## Ledgers and Chaincode
 
@@ -201,6 +202,7 @@ than a single organization. Peers are central to how this kind of distributed
 network is built because they are owned by --- and are the connection points to
 the network for --- these organizations.
 
+<a name="Peer8"></a>
 ![Peer8](./peers.diagram.8.png)
 
 *Peers in a blockchain network with multiple organizations. The blockchain

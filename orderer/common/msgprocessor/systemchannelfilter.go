@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
@@ -78,6 +79,10 @@ func (scf *SystemChainFilter) Apply(env *cb.Envelope) error {
 		if uint64(scf.cc.ChannelsCount()) > maxChannels {
 			return errors.Errorf("channel creation would exceed maximimum number of channels: %d", maxChannels)
 		}
+	}
+
+	if ordererConfig.ConsensusState() != orderer.ConsensusType_STATE_NORMAL {
+		return errors.WithMessage(ErrMaintenanceMode, "channel creation is not permitted")
 	}
 
 	configTx := &cb.Envelope{}

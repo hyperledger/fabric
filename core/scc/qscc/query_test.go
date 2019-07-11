@@ -353,7 +353,7 @@ func addBlockForTesting(t *testing.T, chainid string) *common.Block {
 	bcInfo, err := ledger.GetBlockchainInfo()
 	assert.NoError(t, err)
 	block1 := testutil.ConstructBlock(t, 1, bcInfo.CurrentBlockHash, [][]byte{pubSimResBytes1, pubSimResBytes2}, false)
-	ledger.CommitWithPvtData(&ledger2.BlockAndPvtData{Block: block1})
+	ledger.CommitWithPvtData(&ledger2.BlockAndPvtData{Block: block1}, &ledger2.CommitOptions{})
 	return block1
 }
 

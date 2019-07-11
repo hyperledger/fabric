@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
 	"github.com/hyperledger/fabric/common/mocks/config"
-	"github.com/hyperledger/fabric/common/mocks/configtx"
+	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
@@ -55,7 +55,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 	}
 	ms := &mutableResourcesMock{
 		Resources: config.Resources{
-			ConfigtxValidatorVal: &configtx.Validator{ChainIDVal: "mychannel"},
+			ConfigtxValidatorVal: &mockconfigtx.Validator{ChainIDVal: "mychannel"},
 			PolicyManagerVal:     policyMgr,
 		},
 	}

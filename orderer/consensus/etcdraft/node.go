@@ -46,20 +46,15 @@ type node struct {
 	raft.Node
 }
 
-func (n *node) start(fresh, join, migration bool) {
+func (n *node) start(fresh, join bool) {
 	raftPeers := RaftPeers(n.metadata.ConsenterIds)
 	n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
 
 	var campaign bool
 	if fresh {
 		if join {
-			if !migration {
-				raftPeers = nil
-				n.logger.Info("Starting raft node to join an existing channel")
-
-			} else {
-				n.logger.Info("Starting raft node to join an existing channel, after consensus-type migration")
-			}
+			raftPeers = nil
+			n.logger.Info("Starting raft node to join an existing channel")
 		} else {
 			n.logger.Info("Starting raft node as part of a new channel")
 
@@ -91,7 +86,15 @@ func (n *node) run(campaign bool) {
 	if campaign {
 		n.logger.Infof("This node is picked to start campaign")
 		go func() {
-			campaignTicker := n.clock.NewTicker(n.tickInterval)
+			// Attempt campaign every two HeartbeatTimeout elapses, until leader is present - either this
+			// node successfully claims leadership, or another leader already existed when this node starts.
+			// We could do this more lazily and exit proactive campaign once transitioned to Candidate state
+			// (not PreCandidate because other nodes might not have started yet, in which case PreVote
+			// messages are dropped at recipients). But there is no obvious reason (for now) to be lazy.
+			//
+			// 2*HeartbeatTick is used to avoid excessive campaign when network latency is significant and
+			// Raft term keeps advancing in this extreme case.
+			campaignTicker := n.clock.NewTicker(n.tickInterval * time.Duration(n.config.HeartbeatTick) * 2)
 			defer campaignTicker.Stop()
 
 			for {

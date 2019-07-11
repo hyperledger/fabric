@@ -15,24 +15,66 @@ import (
 )
 
 func TestChannelV10(t *testing.T) {
-	op := NewChannelProvider(map[string]*cb.Capability{})
-	assert.NoError(t, op.Supported())
-	assert.True(t, op.MSPVersion() == msp.MSPv1_0)
+	cp := NewChannelProvider(map[string]*cb.Capability{})
+	assert.NoError(t, cp.Supported())
+	assert.True(t, cp.MSPVersion() == msp.MSPv1_0)
+	assert.False(t, cp.ConsensusTypeMigration())
+	assert.False(t, cp.OrgSpecificOrdererEndpoints())
 }
 
 func TestChannelV11(t *testing.T) {
-	op := NewChannelProvider(map[string]*cb.Capability{
+	cp := NewChannelProvider(map[string]*cb.Capability{
 		ChannelV1_1: {},
 	})
-	assert.NoError(t, op.Supported())
-	assert.True(t, op.MSPVersion() == msp.MSPv1_1)
+	assert.NoError(t, cp.Supported())
+	assert.True(t, cp.MSPVersion() == msp.MSPv1_1)
+	assert.False(t, cp.ConsensusTypeMigration())
+	assert.False(t, cp.OrgSpecificOrdererEndpoints())
 }
 
 func TestChannelV13(t *testing.T) {
-	op := NewChannelProvider(map[string]*cb.Capability{
+	cp := NewChannelProvider(map[string]*cb.Capability{
 		ChannelV1_1: {},
 		ChannelV1_3: {},
 	})
-	assert.NoError(t, op.Supported())
-	assert.True(t, op.MSPVersion() == msp.MSPv1_3)
+	assert.NoError(t, cp.Supported())
+	assert.True(t, cp.MSPVersion() == msp.MSPv1_3)
+	assert.False(t, cp.ConsensusTypeMigration())
+	assert.False(t, cp.OrgSpecificOrdererEndpoints())
+
+	cp = NewChannelProvider(map[string]*cb.Capability{
+		ChannelV1_3: {},
+	})
+	assert.NoError(t, cp.Supported())
+	assert.True(t, cp.MSPVersion() == msp.MSPv1_3)
+	assert.False(t, cp.ConsensusTypeMigration())
+	assert.False(t, cp.OrgSpecificOrdererEndpoints())
+}
+
+func TestChannelV142(t *testing.T) {
+	cp := NewChannelProvider(map[string]*cb.Capability{
+		ChannelV1_3:   {},
+		ChannelV1_4_2: {},
+	})
+	assert.NoError(t, cp.Supported())
+	assert.True(t, cp.MSPVersion() == msp.MSPv1_3)
+	assert.True(t, cp.ConsensusTypeMigration())
+	assert.True(t, cp.OrgSpecificOrdererEndpoints())
+
+	cp = NewChannelProvider(map[string]*cb.Capability{
+		ChannelV1_4_2: {},
+	})
+	assert.NoError(t, cp.Supported())
+	assert.True(t, cp.MSPVersion() == msp.MSPv1_3)
+	assert.True(t, cp.ConsensusTypeMigration())
+	assert.True(t, cp.OrgSpecificOrdererEndpoints())
+}
+
+func TestChannelNotSuported(t *testing.T) {
+	cp := NewChannelProvider(map[string]*cb.Capability{
+		ChannelV1_1:          {},
+		ChannelV1_3:          {},
+		"Bogus_Not_suported": {},
+	})
+	assert.EqualError(t, cp.Supported(), "Channel capability Bogus_Not_suported is required but not supported")
 }

@@ -29,9 +29,6 @@ var timeoutInterval = 20 * time.Second
 func init() {
 	util.SetupTestLogging()
 	pullInterval = 500 * time.Millisecond
-	algo.SetDigestWaitTime(100 * time.Millisecond)
-	algo.SetRequestWaitTime(200 * time.Millisecond)
-	algo.SetResponseWaitTime(300 * time.Millisecond)
 }
 
 type pullMsg struct {
@@ -147,6 +144,11 @@ func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pu
 		PeerCountToSelect: 3,
 		PullInterval:      pullInterval,
 		Tag:               proto.GossipMessage_EMPTY,
+		PullEngineConfig: algo.PullEngineConfig{
+			DigestWaitTime:   time.Duration(100) * time.Millisecond,
+			RequestWaitTime:  time.Duration(200) * time.Millisecond,
+			ResponseWaitTime: time.Duration(300) * time.Millisecond,
+		},
 	}
 	seqNumFromMsg := func(msg *proto.SignedGossipMessage) string {
 		dataMsg := msg.GetDataMsg()

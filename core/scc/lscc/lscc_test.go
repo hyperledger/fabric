@@ -35,7 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc/lscc/mock"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	mspmocks "github.com/hyperledger/fabric/msp/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
@@ -46,6 +46,18 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
+
+// create a valid SignaturePolicyEnvelope to be used in tests
+var testPolicyEnvelope = &common.SignaturePolicyEnvelope{
+	Version: 0,
+	Rule:    cauthdsl.NOutOf(1, []*common.SignaturePolicy{cauthdsl.SignedBy(0)}),
+	Identities: []*mb.MSPPrincipal{
+		{
+			PrincipalClassification: mb.MSPPrincipal_ORGANIZATION_UNIT,
+			Principal:               putils.MarshalOrPanic(&mb.OrganizationUnit{MspIdentifier: "Org1"}),
+		},
+	},
+}
 
 func constructDeploymentSpec(name string, path string, version string, initArgs [][]byte, createInvalidIndex bool, createFS bool, scc *LifeCycleSysCC) (*pb.ChaincodeDeploymentSpec, error) {
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: name, Path: path, Version: version}, Input: &pb.ChaincodeInput{Args: initArgs}}
@@ -124,7 +136,7 @@ func TestInstall(t *testing.T) {
 	testInstall(t, "example02", "0", path, false, "", "Alice", scc, stub)
 	testInstall(t, "example02-2", "1.0", path, false, "", "Alice", scc, stub)
 	testInstall(t, "example02.go", "0", path, false, InvalidChaincodeNameErr("example02.go").Error(), "Alice", scc, stub)
-	testInstall(t, "", "0", path, false, EmptyChaincodeNameErr("").Error(), "Alice", scc, stub)
+	testInstall(t, "", "0", path, false, InvalidChaincodeNameErr("").Error(), "Alice", scc, stub)
 	testInstall(t, "example02", "1{}0", path, false, InvalidVersionErr("1{}0").Error(), "Alice", scc, stub)
 	testInstall(t, "example02", "0", path, true, InvalidStatedbArtifactsErr("").Error(), "Alice", scc, stub)
 	testInstall(t, "example02", "0", path, false, "access denied for [install]", "Bob", scc, stub)
@@ -179,11 +191,11 @@ func TestDeploy(t *testing.T) {
 	testDeploy(t, "example02", "0", path, false, false, true, "", nil, nil, nil)
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", nil, nil, nil)
 	testDeploy(t, "example02", "1.0", path, false, false, false, "cannot get package for chaincode (example02:1.0)", nil, nil, nil)
-	testDeploy(t, "example02", "0", path, true, false, true, EmptyChaincodeNameErr("").Error(), nil, nil, nil)
-	testDeploy(t, "example02", "0", path, false, true, true, EmptyVersionErr("example02").Error(), nil, nil, nil)
+	testDeploy(t, "example02", "0", path, true, false, true, InvalidChaincodeNameErr("").Error(), nil, nil, nil)
+	testDeploy(t, "example02", "0", path, false, true, true, InvalidVersionErr("").Error(), nil, nil, nil)
 	testDeploy(t, "example02.go", "0", path, false, false, true, InvalidChaincodeNameErr("example02.go").Error(), nil, nil, nil)
 	testDeploy(t, "example02", "1{}0", path, false, false, true, InvalidVersionErr("1{}0").Error(), nil, nil, nil)
-	testDeploy(t, "example02", "0", path, true, true, true, EmptyChaincodeNameErr("").Error(), nil, nil, nil)
+	testDeploy(t, "example02", "0", path, true, true, true, InvalidChaincodeNameErr("").Error(), nil, nil, nil)
 
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
 	scc.Support = &lscc.MockSupport{}
@@ -435,12 +447,12 @@ func TestUpgrade(t *testing.T) {
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "", nil, nil, nil)
-	testUpgrade(t, "example02", "0", "example02", "", path, EmptyVersionErr("example02").Error(), nil, nil, nil)
+	testUpgrade(t, "example02", "0", "example02", "", path, InvalidVersionErr("").Error(), nil, nil, nil)
 	testUpgrade(t, "example02", "0", "example02", "0", path, IdenticalVersionErr("example02").Error(), nil, nil, nil)
 	testUpgrade(t, "example02", "0", "example03", "1", path, NotFoundErr("example03").Error(), nil, nil, nil)
 	testUpgrade(t, "example02", "0", "example02", "1{}0", path, InvalidVersionErr("1{}0").Error(), nil, nil, nil)
 	testUpgrade(t, "example02", "0", "example*02", "1{}0", path, InvalidChaincodeNameErr("example*02").Error(), nil, nil, nil)
-	testUpgrade(t, "example02", "0", "", "1", path, EmptyChaincodeNameErr("").Error(), nil, nil, nil)
+	testUpgrade(t, "example02", "0", "", "1", path, InvalidChaincodeNameErr("").Error(), nil, nil, nil)
 
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
 	scc.Support = &lscc.MockSupport{}
@@ -500,11 +512,10 @@ func TestUpgrade(t *testing.T) {
 	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 
 	collName1 := "mycollection1"
-	policyEnvelope := &common.SignaturePolicyEnvelope{}
 	var requiredPeerCount, maximumPeerCount int32
 	requiredPeerCount = 1
 	maximumPeerCount = 2
-	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount)
+	coll1 := createCollectionConfig(collName1, testPolicyEnvelope, requiredPeerCount, maximumPeerCount)
 
 	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
@@ -862,8 +873,7 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 	assert.NoError(t, err)
 
 	collName1 := "mycollection1"
-	policyEnvelope := &common.SignaturePolicyEnvelope{}
-	coll1 := createCollectionConfig(collName1, policyEnvelope, 1, 2)
+	coll1 := createCollectionConfig(collName1, testPolicyEnvelope, 1, 2)
 	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
@@ -889,8 +899,7 @@ func TestGetChaincodeCollectionData(t *testing.T) {
 	cd := &ccprovider.ChaincodeData{Name: "foo"}
 
 	collName1 := "mycollection1"
-	policyEnvelope := &common.SignaturePolicyEnvelope{}
-	coll1 := createCollectionConfig(collName1, policyEnvelope, 1, 2)
+	coll1 := createCollectionConfig(collName1, testPolicyEnvelope, 1, 2)
 	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
@@ -949,25 +958,25 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	mgr := mspmgmt.GetManagerForChain("foochannel")
 
 	// error case: msp manager not set up, no collection config set
-	err = checkCollectionMemberPolicy(nil, mgr)
-	assert.Error(t, err)
+	err = checkCollectionMemberPolicy(nil, nil)
+	assert.EqualError(t, err, "msp manager not set")
 
 	// set up msp manager
 	mgr.Setup([]msp.MSP{mockmsp})
 
 	// error case: no collection config set
 	err = checkCollectionMemberPolicy(nil, mgr)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "collection configuration is not set")
 
 	// error case: empty collection config
 	cc := &common.CollectionConfig{}
 	err = checkCollectionMemberPolicy(cc, mgr)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "collection configuration is empty")
 
 	// error case: no static collection config
 	cc = &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{}}
 	err = checkCollectionMemberPolicy(cc, mgr)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "collection configuration is empty")
 
 	// error case: member org policy not set
 	cc = &common.CollectionConfig{
@@ -976,7 +985,7 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 		},
 	}
 	err = checkCollectionMemberPolicy(cc, mgr)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "collection member policy is not set")
 
 	// error case: member org policy config empty
 	cc = &common.CollectionConfig{
@@ -990,16 +999,28 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 		},
 	}
 	err = checkCollectionMemberPolicy(cc, mgr)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "collection member org policy is empty")
 
-	// valid case: member org policy empty
+	// error case: signd-by index is out of range of signers
+	cc = &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
+				Name:             "mycollection",
+				MemberOrgsPolicy: getBadAccessPolicy([]string{"signer0"}, 1),
+			},
+		},
+	}
+	err = checkCollectionMemberPolicy(cc, mgr)
+	assert.EqualError(t, err, "invalid member org policy for collection 'mycollection': identity index out of range, requested 1, but identities length is 1")
+
+	// valid case: well-formed collection policy config
 	cc = &common.CollectionConfig{
 		Payload: &common.CollectionConfig_StaticCollectionConfig{
 			StaticCollectionConfig: &common.StaticCollectionConfig{
 				Name: "mycollection",
 				MemberOrgsPolicy: &common.CollectionPolicyConfig{
 					Payload: &common.CollectionPolicyConfig_SignaturePolicy{
-						SignaturePolicy: &common.SignaturePolicyEnvelope{},
+						SignaturePolicy: testPolicyEnvelope,
 					},
 				},
 			},
@@ -1027,7 +1048,7 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	}
 	err = checkCollectionMemberPolicy(cc, mgr)
 	assert.NoError(t, err)
-	mockmsp.AssertNumberOfCalls(t, "DeserializeIdentity", 2)
+	mockmsp.AssertNumberOfCalls(t, "DeserializeIdentity", 3)
 
 	// check MSPPrincipal_ROLE type
 	signaturePolicyEnvelope = cauthdsl.SignedByAnyMember([]string{"Org1"})
@@ -1085,31 +1106,64 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 }
 
 func TestCheckChaincodeName(t *testing.T) {
+	lscc := &LifeCycleSysCC{}
+
 	/*allowed naming*/
-	result := isValidCCNameOrVersion("a-b", allowedChaincodeName)
-	assert.True(t, result)
-	result = isValidCCNameOrVersion("a_b", allowedChaincodeName)
-	assert.True(t, result)
-	result = isValidCCNameOrVersion("a_b-c", allowedChaincodeName)
-	assert.True(t, result)
-	result = isValidCCNameOrVersion("a-b_c", allowedChaincodeName)
-	assert.True(t, result)
+	err := lscc.isValidChaincodeName("a-b")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeName("a_b")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeName("a_b-c")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeName("a-b_c")
+	assert.NoError(t, err)
 
 	/*invalid naming*/
-	result = isValidCCNameOrVersion("-ab", allowedChaincodeName)
-	assert.False(t, result)
-	result = isValidCCNameOrVersion("_ab", allowedChaincodeName)
-	assert.False(t, result)
-	result = isValidCCNameOrVersion("ab-", allowedChaincodeName)
-	assert.False(t, result)
-	result = isValidCCNameOrVersion("ab_", allowedChaincodeName)
-	assert.False(t, result)
-	result = isValidCCNameOrVersion("a__b", allowedChaincodeName)
-	assert.False(t, result)
-	result = isValidCCNameOrVersion("a--b", allowedChaincodeName)
-	assert.False(t, result)
-	result = isValidCCNameOrVersion("a-_b", allowedChaincodeName)
-	assert.False(t, result)
+	err = lscc.isValidChaincodeName("")
+	assert.EqualError(t, err, "invalid chaincode name ''. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
+	err = lscc.isValidChaincodeName("-ab")
+	assert.EqualError(t, err, "invalid chaincode name '-ab'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
+	err = lscc.isValidChaincodeName("_ab")
+	assert.EqualError(t, err, "invalid chaincode name '_ab'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
+	err = lscc.isValidChaincodeName("ab-")
+	assert.EqualError(t, err, "invalid chaincode name 'ab-'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
+	err = lscc.isValidChaincodeName("ab_")
+	assert.EqualError(t, err, "invalid chaincode name 'ab_'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
+	err = lscc.isValidChaincodeName("a__b")
+	assert.EqualError(t, err, "invalid chaincode name 'a__b'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
+	err = lscc.isValidChaincodeName("a--b")
+	assert.EqualError(t, err, "invalid chaincode name 'a--b'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
+	err = lscc.isValidChaincodeName("a-_b")
+	assert.EqualError(t, err, "invalid chaincode name 'a-_b'. Names must start with an alphanumeric character and can only consist of alphanumerics, '_', and '-'")
+}
+
+func TestCheckChaincodeVersion(t *testing.T) {
+	lscc := &LifeCycleSysCC{}
+
+	validCCName := "ccname"
+	/*allowed versions*/
+	err := lscc.isValidChaincodeVersion(validCCName, "a_b")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "a.b")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "a+b")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "a-b")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "-ab")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "a.0")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "a_b.c+d-e")
+	assert.NoError(t, err)
+	err = lscc.isValidChaincodeVersion(validCCName, "0")
+	assert.NoError(t, err)
+
+	/*invalid versions*/
+	err = lscc.isValidChaincodeVersion(validCCName, "")
+	assert.EqualError(t, err, fmt.Sprintf("invalid chaincode version ''. Versions must not be empty and can only consist of alphanumerics, '_',  '-', '+', and '.'"))
+	err = lscc.isValidChaincodeVersion(validCCName, "$badversion")
+	assert.EqualError(t, err, "invalid chaincode version '$badversion'. Versions must not be empty and can only consist of alphanumerics, '_',  '-', '+', and '.'")
 }
 
 var id msp.SigningIdentity
@@ -1138,4 +1192,19 @@ func TestMain(m *testing.M) {
 	mockAclProvider.Reset()
 
 	os.Exit(m.Run())
+}
+
+// getBadAccessPolicy creates a bad CollectionPolicyConfig with signedby index out of range of signers
+func getBadAccessPolicy(signers []string, badIndex int32) *common.CollectionPolicyConfig {
+	var data [][]byte
+	for _, signer := range signers {
+		data = append(data, []byte(signer))
+	}
+	// use a out of range index to trigger error
+	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(badIndex)), data)
+	return &common.CollectionPolicyConfig{
+		Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+			SignaturePolicy: policyEnvelope,
+		},
+	}
 }

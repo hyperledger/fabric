@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 )
 
 // gossipAdapter an adapter for API's required from gossip module
@@ -107,12 +106,12 @@ func NewCollectionAccessFactory(factory IdentityDeserializerFactory) CollectionA
 // NewDistributor a constructor for private data distributor capable to send
 // private read write sets for underlying collection
 func NewDistributor(chainID string, gossip gossipAdapter, factory CollectionAccessFactory,
-	metrics *metrics.PrivdataMetrics) PvtDataDistributor {
+	metrics *metrics.PrivdataMetrics, pushAckTimeout time.Duration) PvtDataDistributor {
 	return &distributorImpl{
 		chainID:                 chainID,
 		gossipAdapter:           gossip,
 		CollectionAccessFactory: factory,
-		pushAckTimeout:          viper.GetDuration("peer.gossip.pvtData.pushAckTimeout"),
+		pushAckTimeout:          pushAckTimeout,
 		metrics:                 metrics,
 	}
 }
@@ -206,8 +205,6 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 		return nil, err
 	}
 
-	pushAckTimeout := viper.GetDuration("peer.gossip.pvtData.pushAckTimeout")
-
 	eligiblePeers := d.eligiblePeersOfChannel(routingFilter)
 	identitySets := d.identitiesOfEligiblePeers(eligiblePeers, colAP)
 
@@ -223,7 +220,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 			}
 			peer2SendPerOrg := selectionPeers[rand.Intn(len(selectionPeers))]
 			sc := gossip2.SendCriteria{
-				Timeout:  pushAckTimeout,
+				Timeout:  d.pushAckTimeout,
 				Channel:  gossipCommon.ChainID(d.chainID),
 				MaxPeers: 1,
 				MinAck:   required,
@@ -253,7 +250,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 	// criteria to select remaining peers to satisfy colAP.MaximumPeerCount()
 	// collection policy parameters
 	sc := gossip2.SendCriteria{
-		Timeout:  pushAckTimeout,
+		Timeout:  d.pushAckTimeout,
 		Channel:  gossipCommon.ChainID(d.chainID),
 		MaxPeers: maximumPeerCount,
 		MinAck:   requiredPeerCount,

@@ -127,7 +127,7 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 	block := testutil.ConstructBlock(t, 1, nil, [][]byte{simResBytes}, false)
 
 	// invoke ValidateAndPrepare function
-	_, err = txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block}, false)
+	_, _, err = txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block}, false)
 	assert.NoError(t, err)
 
 	// validate that the query executors passed to the state listener

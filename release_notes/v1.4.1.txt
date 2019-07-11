@@ -1,5 +1,5 @@
-v1.4.1-rc1 Release Notes - March 29, 2019
------------------------------------------
+v1.4.1 Release Notes - April 11, 2019
+-------------------------------------
 
 What's New in Hyperledger Fabric v1.4.1
 ---------------------------------------
@@ -26,8 +26,8 @@ FAB-14723 - Deprecate CAR package format
 Support for packaging chaincode using the CAR format will be removed in
 v2.0.0.
 
-FAB-12088 - Java chaincode support on s390 architecture
-Java chaincode support is not yet available on s390 architecture.
+FAB-12088 - Java chaincode support on s390x architecture
+Java chaincode support is not yet available on s390x architecture.
 
 FAB-12134 - Same chaincode source receiving fingerprint mismatch error
 Chaincode installed in different ways may result in "chaincode fingerprint
@@ -56,4 +56,4 @@ Updated to Go version 1.11.5
 Updated baseimage version to 0.4.15
 
 For the full list of improvements and fixes, refer to the release change log:
-https://github.com/hyperledger/fabric/blob/release-1.4/CHANGELOG.md#v141-rc1
+https://github.com/hyperledger/fabric/blob/release-1.4/CHANGELOG.md#v141

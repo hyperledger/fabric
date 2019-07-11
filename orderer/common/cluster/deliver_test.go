@@ -97,14 +97,14 @@ func (d *countingDialer) assertAllConnectionsClosed(t *testing.T) {
 	assert.Equal(t, uint32(0), atomic.LoadUint32(&d.connectionCount))
 }
 
-func (d *countingDialer) Dial(address string) (*grpc.ClientConn, error) {
+func (d *countingDialer) Dial(address cluster.EndpointCriteria) (*grpc.ClientConn, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 	defer cancel()
 
 	gRPCBalancerLock.Lock()
 	balancer := grpc.WithBalancerName(d.name)
 	gRPCBalancerLock.Unlock()
-	return grpc.DialContext(ctx, address, grpc.WithBlock(), grpc.WithInsecure(), balancer)
+	return grpc.DialContext(ctx, address.Endpoint, grpc.WithBlock(), grpc.WithInsecure(), balancer)
 }
 
 func noopBlockVerifierf(_ []*common.Block, _ string) error {
@@ -138,6 +138,10 @@ type deliverServer struct {
 	srv            *comm.GRPCServer
 	seekAssertions chan func(*orderer.SeekInfo, string)
 	blockResponses chan *orderer.DeliverResponse
+}
+
+func (ds *deliverServer) endpointCriteria() cluster.EndpointCriteria {
+	return cluster.EndpointCriteria{Endpoint: ds.srv.Address()}
 }
 
 func (ds *deliverServer) isFaulty() bool {
@@ -248,6 +252,7 @@ func (ds *deliverServer) enqueueResponse(seq uint64) {
 func (ds *deliverServer) addExpectProbeAssert() {
 	ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
 		assert.NotNil(ds.t, info.GetStart().GetNewest())
+		assert.Equal(ds.t, info.ErrorResponse, orderer.SeekInfo_BEST_EFFORT)
 	}
 }
 
@@ -255,6 +260,7 @@ func (ds *deliverServer) addExpectPullAssert(seq uint64) {
 	ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
 		assert.NotNil(ds.t, info.GetStart().GetSpecified())
 		assert.Equal(ds.t, seq, info.GetStart().GetSpecified().Number)
+		assert.Equal(ds.t, info.ErrorResponse, orderer.SeekInfo_BEST_EFFORT)
 	}
 }
 
@@ -279,13 +285,21 @@ func newBlockPuller(dialer *countingDialer, orderers ...string) *cluster.BlockPu
 		Dialer:              dialer,
 		Channel:             "mychannel",
 		Signer:              &false_crypto.LocalSigner{},
-		Endpoints:           orderers,
+		Endpoints:           endpointCriteriaFromEndpoints(orderers...),
 		FetchTimeout:        time.Second,
 		MaxTotalBufferBytes: 1024 * 1024, // 1MB
 		RetryTimeout:        time.Millisecond * 10,
 		VerifyBlockSequence: noopBlockVerifierf,
 		Logger:              flogging.MustGetLogger("test"),
 	}
+}
+
+func endpointCriteriaFromEndpoints(orderers ...string) []cluster.EndpointCriteria {
+	var res []cluster.EndpointCriteria
+	for _, orderer := range orderers {
+		res = append(res, cluster.EndpointCriteria{Endpoint: orderer})
+	}
+	return res
 }
 
 func TestBlockPullerBasicHappyPath(t *testing.T) {
@@ -1009,7 +1023,7 @@ func TestImpatientStreamFailure(t *testing.T) {
 
 	gt := gomega.NewGomegaWithT(t)
 	gt.Eventually(func() (bool, error) {
-		conn, err = dialer.Dial(osn.srv.Address())
+		conn, err = dialer.Dial(osn.endpointCriteria())
 		return true, err
 	}).Should(gomega.BeTrue())
 	newStream := cluster.NewImpatientStream(conn, time.Millisecond*100)

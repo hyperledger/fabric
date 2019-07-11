@@ -23,6 +23,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/stretchr/testify/assert"
 )
@@ -69,22 +70,24 @@ func TestBlockstoreProviderError(t *testing.T) {
 }
 
 func TestMultiReinitialization(t *testing.T) {
+	metricsProvider := &disabled.Provider{}
+
 	dir, err := ioutil.TempDir("", "hyperledger_fabric")
 	assert.NoError(t, err, "Error creating temp dir: %s", err)
 
-	flf := New(dir)
+	flf := New(dir, metricsProvider)
 	_, err = flf.GetOrCreate(genesisconfig.TestChainID)
 	assert.NoError(t, err, "Error GetOrCreate chain")
 	assert.Equal(t, 1, len(flf.ChainIDs()), "Expected 1 chain")
 	flf.Close()
 
-	flf = New(dir)
+	flf = New(dir, metricsProvider)
 	_, err = flf.GetOrCreate("foo")
 	assert.NoError(t, err, "Error creating chain")
 	assert.Equal(t, 2, len(flf.ChainIDs()), "Expected chain to be recovered")
 	flf.Close()
 
-	flf = New(dir)
+	flf = New(dir, metricsProvider)
 	_, err = flf.GetOrCreate("bar")
 	assert.NoError(t, err, "Error creating chain")
 	assert.Equal(t, 3, len(flf.ChainIDs()), "Expected chain to be recovered")

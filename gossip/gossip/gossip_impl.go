@@ -9,6 +9,7 @@ package gossip
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -20,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/filter"
+	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
@@ -96,13 +98,14 @@ func NewGossipService(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 		g.certPuller.Remove(string(pkiID))
 	}, sa)
 
-	if s == nil {
-		g.comm, err = createCommWithServer(conf.BindPort, g.idMapper, selfIdentity,
-			secureDialOpts, sa, gossipMetrics.CommMetrics)
-	} else {
-		g.comm, err = createCommWithoutServer(s, conf.TLSCerts, g.idMapper, selfIdentity,
-			secureDialOpts, sa, gossipMetrics.CommMetrics)
+	commConfig := comm.CommConfig{
+		DialTimeout:  conf.DialTimeout,
+		ConnTimeout:  conf.ConnTimeout,
+		RecvBuffSize: conf.RecvBuffSize,
+		SendBuffSize: conf.SendBuffSize,
 	}
+	g.comm, err = comm.NewCommInstance(s, conf.TLSCerts, g.idMapper, selfIdentity, secureDialOpts, sa,
+		gossipMetrics.CommMetrics, commConfig)
 
 	if err != nil {
 		lgr.Error("Failed instntiating communication layer:", err)
@@ -116,7 +119,15 @@ func NewGossipService(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 
 	g.discAdapter = g.newDiscoveryAdapter()
 	g.disSecAdap = g.newDiscoverySecurityAdapter()
-	g.disc = discovery.NewDiscoveryService(g.selfNetworkMember(), g.discAdapter, g.disSecAdap, g.disclosurePolicy)
+
+	discoveryConfig := discovery.DiscoveryConfig{
+		AliveTimeInterval:            conf.AliveTimeInterval,
+		AliveExpirationTimeout:       conf.AliveExpirationTimeout,
+		AliveExpirationCheckInterval: conf.AliveExpirationCheckInterval,
+		ReconnectInterval:            conf.ReconnectInterval,
+	}
+	g.disc = discovery.NewDiscoveryService(g.selfNetworkMember(), g.discAdapter, g.disSecAdap, g.disclosurePolicy,
+		discoveryConfig)
 	g.logger.Infof("Creating gossip service with self membership of %s", g.selfNetworkMember())
 
 	g.certPuller = g.createCertStorePuller()
@@ -163,24 +174,6 @@ func newChannelState(g *gossipServiceImpl) *channelState {
 		channels: make(map[string]channel.GossipChannel),
 		g:        g,
 	}
-}
-
-func createCommWithoutServer(s *grpc.Server, certs *common.TLSCertificates, idStore identity.Mapper,
-	identity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor,
-	commMetrics *metrics.CommMetrics) (comm.Comm, error) {
-	return comm.NewCommInstance(s, certs, idStore, identity, secureDialOpts, sa, commMetrics)
-}
-
-// NewGossipServiceWithServer creates a new gossip instance with a gRPC server
-func NewGossipServiceWithServer(conf *Config, secAdvisor api.SecurityAdvisor, mcs api.MessageCryptoService,
-	identity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts, gossipMetrics *metrics.GossipMetrics) Gossip {
-	return NewGossipService(conf, nil, secAdvisor, mcs, identity, secureDialOpts, gossipMetrics)
-}
-
-func createCommWithServer(port int, idStore identity.Mapper, identity api.PeerIdentityType,
-	secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor,
-	commMetrics *metrics.CommMetrics) (comm.Comm, error) {
-	return comm.NewCommInstanceWithServer(port, idStore, identity, secureDialOpts, sa, commMetrics)
 }
 
 func (g *gossipServiceImpl) toDie() bool {
@@ -239,7 +232,7 @@ func (g *gossipServiceImpl) learnAnchorPeers(channel string, orgOfAnchorPeers ap
 			g.logger.Warning("Got invalid port (0), skipping connecting to anchor peer", ap)
 			continue
 		}
-		endpoint := fmt.Sprintf("%s:%d", ap.Host, ap.Port)
+		endpoint := net.JoinHostPort(ap.Host, fmt.Sprintf("%d", ap.Port))
 		// Skip connecting to self
 		if g.selfNetworkMember().Endpoint == endpoint || g.selfNetworkMember().InternalEndpoint == endpoint {
 			g.logger.Info("Anchor peer with same endpoint, skipping connecting to myself")
@@ -1091,6 +1084,11 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 		PeerCountToSelect: g.conf.PullPeerNum,
 		PullInterval:      g.conf.PullInterval,
 		Tag:               proto.GossipMessage_EMPTY,
+		PullEngineConfig: algo.PullEngineConfig{
+			DigestWaitTime:   g.conf.DigestWaitTime,
+			RequestWaitTime:  g.conf.RequestWaitTime,
+			ResponseWaitTime: g.conf.ResponseWaitTime,
+		},
 	}
 	pkiIDFromMsg := func(msg *proto.SignedGossipMessage) string {
 		identityMsg := msg.GetPeerIdentity()

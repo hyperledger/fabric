@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/testdata"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -37,8 +37,10 @@ import (
 	mocks2 "github.com/hyperledger/fabric/discovery/support/mocks"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	mb "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -291,9 +293,7 @@ func putCCInfoWithVSCCAndVer(theLedger ledger.PeerLedger, ccname, vscc, ver stri
 	bcInfo, err := theLedger.GetBlockchainInfo()
 	assert.NoError(t, err)
 	block0 := testutil.ConstructBlock(t, 1, bcInfo.CurrentBlockHash, [][]byte{pubSimulationBytes}, true)
-	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{
-		Block: block0,
-	})
+	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{Block: block0}, &ledger.CommitOptions{})
 	assert.NoError(t, err)
 }
 
@@ -313,9 +313,7 @@ func putSBEP(theLedger ledger.PeerLedger, cc, key string, policy []byte, t *test
 	bcInfo, err := theLedger.GetBlockchainInfo()
 	assert.NoError(t, err)
 	block0 := testutil.ConstructBlock(t, 2, bcInfo.CurrentBlockHash, [][]byte{pubSimulationBytes}, true)
-	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{
-		Block: block0,
-	})
+	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{Block: block0}, &ledger.CommitOptions{})
 	assert.NoError(t, err)
 }
 
@@ -423,6 +421,66 @@ func testInvokeOK(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	err := v.Validate(b)
 	assert.NoError(t, err)
 	assertValid(b, t)
+}
+
+func TestInvokeNOKDuplicateNs(t *testing.T) {
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKDuplicateNs(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKDuplicateNs(t, l, v)
+	})
+}
+
+func testInvokeNOKDuplicateNs(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
+	ccID := "mycc"
+
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+	// note that this read-write set has two read-write sets for the same namespace and key
+	txrws := &rwset.TxReadWriteSet{
+		DataModel: rwset.TxReadWriteSet_KV,
+		NsRwset: []*rwset.NsReadWriteSet{
+			{
+				Namespace: "mycc",
+				Rwset: utils.MarshalOrPanic(&kvrwset.KVRWSet{
+					Writes: []*kvrwset.KVWrite{
+						{
+							Key:   "foo",
+							Value: []byte("bar1"),
+						},
+					},
+				}),
+			},
+			{
+				Namespace: "mycc",
+				Rwset: utils.MarshalOrPanic(&kvrwset.KVRWSet{
+					Writes: []*kvrwset.KVWrite{
+						{
+							Key:   "foo",
+							Value: []byte("bar2"),
+						},
+					},
+				}),
+			},
+		},
+	}
+
+	tx := getEnv(ccID, nil, utils.MarshalOrPanic(txrws), t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+
+	err := v.Validate(b)
+	assert.NoError(t, err)
+	assertInvalid(b, t, peer.TxValidationCode_ILLEGAL_WRITESET)
 }
 
 func TestInvokeNoRWSet(t *testing.T) {
@@ -1579,7 +1637,7 @@ func (m *mockLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFil
 }
 
 // CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation
-func (m *mockLedger) CommitWithPvtData(pvtDataAndBlock *ledger.BlockAndPvtData) error {
+func (m *mockLedger) CommitWithPvtData(pvtDataAndBlock *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
 	return nil
 }
 
@@ -1601,6 +1659,11 @@ func (m *mockLedger) Prune(policy ledger2.PrunePolicy) error {
 func (m *mockLedger) GetBlockchainInfo() (*common.BlockchainInfo, error) {
 	args := m.Called()
 	return args.Get(0).(*common.BlockchainInfo), nil
+}
+
+func (m *mockLedger) DoesPvtDataInfoExist(blkNum uint64) (bool, error) {
+	args := m.Called()
+	return args.Get(0).(bool), args.Error(1)
 }
 
 func (m *mockLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {

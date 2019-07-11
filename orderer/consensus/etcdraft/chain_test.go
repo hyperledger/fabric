@@ -1919,7 +1919,7 @@ var _ = Describe("Chain", func() {
 					By("sending config transaction")
 					Expect(c1.Configure(configEnv, 0)).To(Succeed())
 
-					Eventually(c1.observe, LongEventualTimeout).Should(Receive(StateEqual(0, raft.StateFollower)))
+					Eventually(c1.observe, LongEventualTimeout).Should(Receive(BeFollower()))
 					network.exec(func(c *chain) {
 						Eventually(c.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
 					})
@@ -2053,7 +2053,7 @@ var _ = Describe("Chain", func() {
 				})
 
 				When("two type B config are sent back-to-back", func() {
-					It("discards the second", func() {
+					It("discards or rejects the second", func() {
 						// initial state: <1, 2, 3>
 						// first config: <1, 2, 3, 4>
 						// second config: <1, 2>
@@ -2071,7 +2071,15 @@ var _ = Describe("Chain", func() {
 						c1.support.ProcessConfigMsgReturns(configEnvRm, 1, nil)
 
 						Expect(c1.Configure(configEnvAdd, 0)).To(Succeed())
-						Expect(c1.Configure(configEnvRm, 0)).To(Succeed())
+						// If the first config tx is processed too quickly, consenter set is already altered and
+						// the second config tx would be rejected with error. Otherwise, the second config tx is
+						// going to be discarded during revalidation, instead of being explicitly rejected by
+						// `Configure`. Either way, there is only one config block being committed, which is the
+						// whole point of this test.
+						Expect(c1.Configure(configEnvRm, 0)).To(Or(
+							Succeed(),
+							MatchError("update of more than one consenter at a time is not supported, requested changes: add 0 node(s), remove 2 node(s)"),
+						))
 						network.exec(func(c *chain) {
 							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 							Consistently(c.support.WriteConfigBlockCallCount).Should(Equal(1))
@@ -2302,7 +2310,16 @@ var _ = Describe("Chain", func() {
 							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 						})
 					c1.setStepFunc(step1)
-					network.elect(2)
+
+					// elect node with higher index
+					i2, _ := c2.storage.LastIndex() // err is always nil
+					i3, _ := c3.storage.LastIndex()
+					candidate := uint64(2)
+					if i3 > i2 {
+						candidate = 3
+					}
+					network.chains[candidate].cutter.CutNext = true
+					network.elect(candidate)
 
 					_, raftmetabytes := c1.support.WriteConfigBlockArgsForCall(0)
 					meta := &common.Metadata{Value: raftmetabytes}
@@ -2325,7 +2342,6 @@ var _ = Describe("Chain", func() {
 					Eventually(c4.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
 					By("submitting new transaction to follower")
-					c2.cutter.CutNext = true
 					err = c4.Order(env, 0)
 					Expect(err).ToNot(HaveOccurred())
 
@@ -2337,12 +2353,7 @@ var _ = Describe("Chain", func() {
 					// node 1 has been stopped should not write any block
 					Consistently(c1.support.WriteBlockCallCount).Should(Equal(1))
 
-					network.connect(1)
-
-					c2.clock.Increment(interval)
-					// check that former leader didn't get stuck and actually got resign signal,
-					// and once connected capable of communicating with rest of the replicas set
-					Eventually(c1.observe, LongEventualTimeout).Should(Receive(Equal(raft.SoftState{Lead: 2, RaftState: raft.StateFollower})))
+					network.join(1, true)
 					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 				})
 
@@ -2400,8 +2411,15 @@ var _ = Describe("Chain", func() {
 						network.connect(i)
 					}
 
-					By("re-elect node 2 to be a leader")
-					network.elect(2)
+					// elect node with higher index
+					i2, _ := c2.storage.LastIndex() // err is always nil
+					i3, _ := c3.storage.LastIndex()
+					candidate := uint64(2)
+					if i3 > i2 {
+						candidate = 3
+					}
+					network.chains[candidate].cutter.CutNext = true
+					network.elect(candidate)
 
 					c4.start()
 					Expect(c4.WaitReady()).To(Succeed())
@@ -2411,11 +2429,8 @@ var _ = Describe("Chain", func() {
 					Eventually(c4.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
 					By("submitting new transaction to follower")
-					c2.cutter.CutNext = true
 					err = c4.Order(env, 0)
 					Expect(err).ToNot(HaveOccurred())
-
-					c2.clock.Increment(interval)
 
 					// rest nodes are alive include a newly added, hence should write 2 blocks
 					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
@@ -2456,11 +2471,17 @@ var _ = Describe("Chain", func() {
 						Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 					})
 
-					// electing new leader
-					network.elect(2)
+					// elect node with higher index
+					i2, _ := c2.storage.LastIndex() // err is always nil
+					i3, _ := c3.storage.LastIndex()
+					candidate := uint64(2)
+					if i3 > i2 {
+						candidate = 3
+					}
+					network.chains[candidate].cutter.CutNext = true
+					network.elect(candidate)
 
 					By("submitting new transaction to follower")
-					c2.cutter.CutNext = true
 					err = c3.Order(env, 0)
 					Expect(err).ToNot(HaveOccurred())
 
@@ -3460,30 +3481,26 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 	fakeFields := newFakeMetricsFields()
 
 	opts := etcdraft.Options{
-		RaftID:            uint64(id),
-		Clock:             clock,
-		TickInterval:      interval,
-		ElectionTick:      ELECTION_TICK,
-		HeartbeatTick:     HEARTBEAT_TICK,
-		MaxSizePerMsg:     1024 * 1024,
-		MaxInflightBlocks: 256,
-		BlockMetadata:     raftMetadata,
-		Consenters:        consenters,
-		Logger:            flogging.NewFabricLogger(zap.NewExample()),
-		MemoryStorage:     storage,
-		WALDir:            path.Join(dataDir, "wal"),
-		SnapDir:           path.Join(dataDir, "snapshot"),
-		Metrics:           newFakeMetrics(fakeFields),
+		RaftID:              uint64(id),
+		Clock:               clock,
+		TickInterval:        interval,
+		ElectionTick:        ELECTION_TICK,
+		HeartbeatTick:       HEARTBEAT_TICK,
+		MaxSizePerMsg:       1024 * 1024,
+		MaxInflightBlocks:   256,
+		BlockMetadata:       raftMetadata,
+		LeaderCheckInterval: 500 * time.Millisecond,
+		Consenters:          consenters,
+		Logger:              flogging.NewFabricLogger(zap.NewExample()),
+		MemoryStorage:       storage,
+		WALDir:              path.Join(dataDir, "wal"),
+		SnapDir:             path.Join(dataDir, "snapshot"),
+		Metrics:             newFakeMetrics(fakeFields),
 	}
 
 	support := &consensusmocks.FakeConsenterSupport{}
 	support.ChainIDReturns(channel)
-	support.SharedConfigReturns(&mockconfig.Orderer{
-		BatchTimeoutVal: timeout,
-		CapabilitiesVal: &mockconfig.OrdererCapabilities{
-			Kafka2RaftMigVal: false,
-		},
-	})
+	support.SharedConfigReturns(&mockconfig.Orderer{BatchTimeoutVal: timeout})
 
 	cutter := mockblockcutter.NewReceiver()
 	close(cutter.Block)
@@ -3622,32 +3639,31 @@ type network struct {
 	leader uint64
 	chains map[uint64]*chain
 
-	// links simulates the configuration of comm layer. if links[left][right] == true,
-	// the link between left and right is open on *left* side. A link must be open on
-	// both sides to allow message pass through.
+	// links simulates the configuration of comm layer (link is bi-directional).
+	// if links[left][right] == true, right can send msg to left.
 	links map[uint64]map[uint64]bool
 	// connectivity determines if a node is connected to network. This is used for tests
 	// to simulate network partition.
 	connectivity map[uint64]bool
 }
 
-func (n *network) link(from uint64, to []uint64) {
+func (n *network) link(from []uint64, to uint64) {
 	links := make(map[uint64]bool)
-	for _, id := range to {
+	for _, id := range from {
 		links[id] = true
 	}
 
 	n.Lock()
 	defer n.Unlock()
 
-	n.links[from] = links
+	n.links[to] = links
 }
 
 func (n *network) linked(from, to uint64) bool {
 	n.RLock()
 	defer n.RUnlock()
 
-	return n.links[from][to] && n.links[to][from]
+	return n.links[to][from]
 }
 
 func (n *network) connect(id uint64) {
@@ -3748,7 +3764,7 @@ func (n *network) addChain(c *chain) {
 		for _, node := range nodes {
 			ids = append(ids, node.ID)
 		}
-		n.link(c.id, ids)
+		n.link(ids, c.id)
 	})
 
 	n.Lock()
@@ -3897,14 +3913,23 @@ func (n *network) join(id uint64, expectLeaderChange bool) {
 
 // elect deterministically elects a node as leader
 func (n *network) elect(id uint64) {
-	c := n.chains[id]
+	n.RLock()
+	candidate := n.chains[id]
+	var followers []*chain
+	for _, c := range n.chains {
+		if c.id != id {
+			followers = append(followers, c)
+		}
+	}
+	n.RUnlock()
 
 	// Send node an artificial MsgTimeoutNow to emulate leadership transfer.
-	c.Consensus(&orderer.ConsensusRequest{Payload: utils.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow})}, 0)
-	Eventually(c.observe, LongEventualTimeout).Should(Receive(StateEqual(id, raft.StateLeader)))
+	fmt.Fprintf(GinkgoWriter, "Send artificial MsgTimeoutNow to elect node %d\n", id)
+	candidate.Consensus(&orderer.ConsensusRequest{Payload: utils.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow})}, 0)
+	Eventually(candidate.observe, LongEventualTimeout).Should(Receive(StateEqual(id, raft.StateLeader)))
 
 	// now observe leader change on other nodes
-	for _, c := range n.chains {
+	for _, c := range followers {
 		if c.id == id {
 			continue
 		}
@@ -3919,7 +3944,9 @@ func (n *network) elect(id uint64) {
 		}
 	}
 
+	n.Lock()
 	n.leader = id
+	n.Unlock()
 }
 
 // sets the configEnv var declared above
@@ -3981,6 +4008,45 @@ func getSeedBlock() *common.Block {
 
 func StateEqual(lead uint64, state raft.StateType) types.GomegaMatcher {
 	return Equal(raft.SoftState{Lead: lead, RaftState: state})
+}
+
+func BeLeader() types.GomegaMatcher {
+	return &StateMatcher{expect: raft.StateLeader}
+}
+
+func BeFollower() types.GomegaMatcher {
+	return &StateMatcher{expect: raft.StateFollower}
+}
+
+type StateMatcher struct {
+	expect raft.StateType
+}
+
+func (stmatcher *StateMatcher) Match(actual interface{}) (success bool, err error) {
+	state, ok := actual.(raft.SoftState)
+	if !ok {
+		return false, errors.Errorf("StateMatcher expects a raft SoftState")
+	}
+
+	return state.RaftState == stmatcher.expect, nil
+}
+
+func (stmatcher *StateMatcher) FailureMessage(actual interface{}) (message string) {
+	state, ok := actual.(raft.SoftState)
+	if !ok {
+		return "StateMatcher expects a raft SoftState"
+	}
+
+	return fmt.Sprintf("Expected %s to be %s", state.RaftState, stmatcher.expect)
+}
+
+func (stmatcher *StateMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+	state, ok := actual.(raft.SoftState)
+	if !ok {
+		return "StateMatcher expects a raft SoftState"
+	}
+
+	return fmt.Sprintf("Expected %s not to be %s", state.RaftState, stmatcher.expect)
 }
 
 func noOpBlockPuller() (etcdraft.BlockPuller, error) {

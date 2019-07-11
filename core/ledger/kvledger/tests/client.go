@@ -23,11 +23,12 @@ import (
 type client struct {
 	lgr            ledger.PeerLedger
 	simulatedTrans []*txAndPvtdata // accumulates the results of transactions simulations
+	missingPvtData ledger.TxMissingPvtDataMap
 	assert         *assert.Assertions
 }
 
 func newClient(lgr ledger.PeerLedger, t *testing.T) *client {
-	return &client{lgr, nil, assert.New(t)}
+	return &client{lgr, nil, make(ledger.TxMissingPvtDataMap), assert.New(t)}
 }
 
 // simulateDataTx takes a simulation logic and wraps it between
@@ -68,6 +69,16 @@ func (c *client) simulateDeployTx(ccName string, collConfs []*collConf) *txAndPv
 // simulateUpgradeTx see comments on function 'simulateDeployTx'
 func (c *client) simulateUpgradeTx(ccName string, collConfs []*collConf) *txAndPvtdata {
 	return c.simulateDeployTx(ccName, collConfs)
+}
+
+func (c *client) causeMissingPvtData(txIndex uint64) {
+	pvtws := c.simulatedTrans[txIndex].Pvtws
+	for _, nsPvtRwset := range pvtws.NsPvtRwset {
+		for _, collPvtRwset := range nsPvtRwset.CollectionPvtRwset {
+			c.missingPvtData.Add(txIndex, nsPvtRwset.Namespace, collPvtRwset.CollectionName, true)
+		}
+	}
+	c.simulatedTrans[txIndex].Pvtws = nil
 }
 
 ///////////////////////   simulator wrapper functions  ///////////////////////

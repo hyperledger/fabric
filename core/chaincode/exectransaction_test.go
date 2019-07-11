@@ -59,7 +59,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -344,7 +344,7 @@ func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimula
 				}
 			}
 
-			if err := lgr.CommitWithPvtData(blockAndPvtData); err != nil {
+			if err := lgr.CommitWithPvtData(blockAndPvtData, &ledger.CommitOptions{}); err != nil {
 				return err
 			}
 		}

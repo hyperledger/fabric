@@ -8,6 +8,8 @@ package tests
 
 import (
 	"testing"
+
+	"github.com/hyperledger/fabric/core/ledger"
 )
 
 func TestMissingCollConfig(t *testing.T) {
@@ -63,13 +65,20 @@ func TestTxWithMissingPvtdata(t *testing.T) {
 	h.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "key2", "value2")
 	})
-	h.simulatedTrans[0].Pvtws = nil // drop pvt writeset from first simulation
+
+	h.causeMissingPvtData(0)
 	blk2 := h.cutBlockAndCommitWithPvtdata()
 
 	h.verifyPvtState("cc1", "coll1", "key2", "value2") // key2 should have been committed
 	h.simulateDataTx("", func(s *simulator) {
 		h.assertError(s.GetPrivateData("cc1", "coll1", "key1")) // key1 would be stale with respect to hashed version
 	})
+
+	// verify missing pvtdata info
+	h.verifyBlockAndPvtDataSameAs(2, blk2)
+	expectedMissingPvtDataInfo := make(ledger.MissingPvtDataInfo)
+	expectedMissingPvtDataInfo.Add(2, 0, "cc1", "coll1")
+	h.verifyMissingPvtDataSameAs(2, expectedMissingPvtDataInfo)
 
 	// another data tx overwritting key1
 	h.simulateDataTx("", func(s *simulator) {

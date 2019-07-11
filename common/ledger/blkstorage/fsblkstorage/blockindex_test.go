@@ -22,6 +22,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -57,6 +58,10 @@ func (i *noopIndex) getBlockLocByTxID(txID string) (*fileLocPointer, error) {
 
 func (i *noopIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
 	return peer.TxValidationCode(-1), nil
+}
+
+func (i *noopIndex) isAttributeIndexed(attribute blkstorage.IndexableAttr) bool {
+	return true
 }
 
 func TestBlockIndexSync(t *testing.T) {
@@ -133,7 +138,7 @@ func testBlockIndexSelectiveIndexingWrongConfig(t *testing.T, indexItems []blkst
 		testName = testName + string(s)
 	}
 	t.Run(testName, func(t *testing.T) {
-		env := newTestEnvSelectiveIndexing(t, NewConf(testPath(), 0), indexItems)
+		env := newTestEnvSelectiveIndexing(t, NewConf(testPath(), 0), indexItems, &disabled.Provider{})
 		defer env.Cleanup()
 
 		assert.Panics(t, func() {
@@ -160,7 +165,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 		testName = testName + string(s)
 	}
 	t.Run(testName, func(t *testing.T) {
-		env := newTestEnvSelectiveIndexing(t, NewConf(testPath(), 0), indexItems)
+		env := newTestEnvSelectiveIndexing(t, NewConf(testPath(), 0), indexItems, &disabled.Provider{})
 		defer env.Cleanup()
 		blkfileMgrWrapper := newTestBlockfileWrapper(env, "testledger")
 		defer blkfileMgrWrapper.close()
@@ -190,7 +195,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 		}
 
 		// test 'retrieveTransactionByID'
-		txid, err := extractTxID(blocks[0].Data.Data[0])
+		txid, err := putil.GetOrComputeTxIDFromEnvelope(blocks[0].Data.Data[0])
 		assert.NoError(t, err)
 		txEnvelope, err := blockfileMgr.retrieveTransactionByID(txid)
 		if containsAttr(indexItems, blkstorage.IndexableAttrTxID) {
@@ -216,7 +221,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 		}
 
 		// test 'retrieveBlockByTxID'
-		txid, err = extractTxID(blocks[0].Data.Data[0])
+		txid, err = putil.GetOrComputeTxIDFromEnvelope(blocks[0].Data.Data[0])
 		assert.NoError(t, err)
 		block, err = blockfileMgr.retrieveBlockByTxID(txid)
 		if containsAttr(indexItems, blkstorage.IndexableAttrBlockTxID) {
@@ -230,7 +235,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 			flags := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 			for idx, d := range block.Data.Data {
-				txid, err = extractTxID(d)
+				txid, err = putil.GetOrComputeTxIDFromEnvelope(d)
 				assert.NoError(t, err)
 
 				reason, err := blockfileMgr.retrieveTxValidationCodeByTxID(txid)

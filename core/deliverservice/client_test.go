@@ -139,15 +139,11 @@ func (cp *connProducer) NewConnection() (*grpc.ClientConn, string, error) {
 
 // UpdateEndpoints updates the endpoints of the ConnectionProducer
 // to be the given endpoints
-func (cp *connProducer) UpdateEndpoints(endpoints []string) {
+func (cp *connProducer) UpdateEndpoints(endpoints []comm.EndpointCriteria) {
 	panic("Not implemented")
 }
 
-func (cp *connProducer) GetEndpoints() []string {
-	panic("Not implemented")
-}
-
-func (cp *connProducer) DisableEndpoint(endpoint string) {
+func (cp *connProducer) GetEndpoints() []comm.EndpointCriteria {
 	panic("Not implemented")
 }
 
@@ -569,10 +565,10 @@ func TestProductionUsage(t *testing.T) {
 	os := mocks.NewOrderer(5612, t)
 	os.SetNextExpectedSeek(5)
 
-	connFact := func(endpoint string) (*grpc.ClientConn, error) {
-		return grpc.Dial(endpoint, grpc.WithInsecure(), grpc.WithBlock())
+	connFact := func(endpoint comm.EndpointCriteria) (*grpc.ClientConn, error) {
+		return grpc.Dial(endpoint.Endpoint, grpc.WithInsecure(), grpc.WithBlock())
 	}
-	prod := comm.NewConnectionProducer(connFact, []string{"localhost:5612"})
+	prod := comm.NewConnectionProducer(connFact, []comm.EndpointCriteria{{Endpoint: "localhost:5612", Organizations: []string{"myorg"}}})
 	clFact := func(cc *grpc.ClientConn) orderer.AtomicBroadcastClient {
 		return orderer.NewAtomicBroadcastClient(cc)
 	}
@@ -621,10 +617,13 @@ func TestDisconnect(t *testing.T) {
 		}
 	}
 
-	connFact := func(endpoint string) (*grpc.ClientConn, error) {
-		return grpc.Dial(endpoint, grpc.WithInsecure(), grpc.WithBlock())
+	connFact := func(endpoint comm.EndpointCriteria) (*grpc.ClientConn, error) {
+		return grpc.Dial(endpoint.Endpoint, grpc.WithInsecure(), grpc.WithBlock())
 	}
-	prod := comm.NewConnectionProducer(connFact, []string{"localhost:5613", "localhost:5614"})
+	prod := comm.NewConnectionProducer(connFact, []comm.EndpointCriteria{
+		{Endpoint: "localhost:5613", Organizations: []string{"myorg"}},
+		{Endpoint: "localhost:5614", Organizations: []string{"myorg"}},
+	})
 	clFact := func(cc *grpc.ClientConn) orderer.AtomicBroadcastClient {
 		return orderer.NewAtomicBroadcastClient(cc)
 	}
@@ -642,7 +641,7 @@ func TestDisconnect(t *testing.T) {
 		stopChan <- struct{}{}
 	}()
 	waitForConnectionToSomeOSN()
-	cl.Disconnect(false)
+	cl.Disconnect()
 
 	i := 0
 	os1Connected := false
@@ -662,7 +661,7 @@ func TestDisconnect(t *testing.T) {
 		if i == 100 {
 			assert.Fail(t, "Didn't switch to other instance after many attempts")
 		}
-		cl.Disconnect(false)
+		cl.Disconnect()
 		time.Sleep(time.Millisecond * 500)
 	}
 	cl.Close()
@@ -670,94 +669,6 @@ func TestDisconnect(t *testing.T) {
 	case <-stopChan:
 	case <-time.After(time.Second * 20):
 		assert.Fail(t, "Didn't stop within a timely manner")
-	}
-}
-
-func TestDisconnectAndDisableEndpoint(t *testing.T) {
-	// Scenario:
-	// 1)  Start two ordering service nodes and one client
-	// 2) Have the client connect to some ordering service node
-	// 3) Disconnect and disable the endpoint of the current connection,
-	//    and ensure the client connects to the other node.
-	// 4) Black-list the second connection and ensure it still connects
-	//    to the ordering service node because it's the last one remaining.
-
-	defer ensureNoGoroutineLeak(t)()
-	os1 := mocks.NewOrderer(5613, t)
-	os1.SetNextExpectedSeek(5)
-	os2 := mocks.NewOrderer(5614, t)
-	os2.SetNextExpectedSeek(5)
-
-	defer os1.Shutdown()
-	defer os2.Shutdown()
-
-	orgEndpointDisableInterval := comm.EndpointDisableInterval
-	comm.EndpointDisableInterval = time.Millisecond * 1500
-	defer func() { comm.EndpointDisableInterval = orgEndpointDisableInterval }()
-
-	connFact := func(endpoint string) (*grpc.ClientConn, error) {
-		return grpc.Dial(endpoint, grpc.WithInsecure(), grpc.WithBlock())
-	}
-	prod := comm.NewConnectionProducer(connFact, []string{"localhost:5613", "localhost:5614"})
-	clFact := func(cc *grpc.ClientConn) orderer.AtomicBroadcastClient {
-		return orderer.NewAtomicBroadcastClient(cc)
-	}
-	onConnect := func(bd blocksprovider.BlocksDeliverer) error {
-		return nil
-	}
-
-	retryPol := func(attemptNum int, elapsedTime time.Duration) (time.Duration, bool) {
-		return time.Millisecond * 10, attemptNum < 10
-	}
-
-	cl := NewBroadcastClient(prod, clFact, onConnect, retryPol)
-	defer cl.Close()
-
-	// First connect to orderer
-	go func() {
-		cl.Recv()
-	}()
-
-	assert.True(t, waitForWithTimeout(time.Millisecond*100, func() bool {
-		return os1.ConnCount() == 1 || os2.ConnCount() == 1
-	}), "Didn't get connection to orderer")
-
-	connectedToOS1 := os1.ConnCount() == 1
-
-	// Disconnect and disable endpoint
-	cl.Disconnect(true)
-
-	// Ensure we reconnected to the other node
-	assert.True(t, waitForWithTimeout(time.Millisecond*100, func() bool {
-		if connectedToOS1 {
-			return os1.ConnCount() == 0 && os2.ConnCount() == 1
-		}
-		return os2.ConnCount() == 0 && os1.ConnCount() == 1
-	}), "Didn't disconnect from orderer, or reconnected to a black-listed node")
-
-	// Disconnect from the node we are currently connected to, and attempt to black-list it
-	cl.Disconnect(true)
-
-	// Ensure we are still connected to some orderer, even though both endpoints are now black-listed
-	assert.True(t, waitForWithTimeout(time.Millisecond*100, func() bool {
-		return os1.ConnCount() == 1 || os2.ConnCount() == 1
-	}), "Didn't got connection to orderer")
-}
-
-func waitForWithTimeout(timeout time.Duration, f func() bool) bool {
-
-	ctx, cancelation := context.WithTimeout(context.Background(), timeout)
-	defer cancelation()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return false
-		case <-time.After(timeout / 10):
-			if f() {
-				return true
-			}
-		}
 	}
 }
 

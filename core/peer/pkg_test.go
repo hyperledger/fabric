@@ -209,6 +209,22 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		RootCAs:      org1CertPool,
 	})
 
+	countTotalCertsInBundle := func(perOrgBundle comm.PerOrgCertificateBundle) int {
+		var count int
+		for _, bundle := range perOrgBundle {
+			count = count + len(bundle)
+		}
+		return count
+	}
+
+	countTotalCertsAcrossChannels := func(orgRootCAs comm.OrgRootCAs) int {
+		var count = 0
+		for _, perOrgBundle := range orgRootCAs {
+			count = count + countTotalCertsInBundle(perOrgBundle)
+		}
+		return count
+	}
+
 	// basic function tests
 	var tests = []struct {
 		name          string
@@ -312,10 +328,8 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 				// creating channel should update the trusted client roots
 				test.createChannel()
 
-				// make sure we have the expected number of CAs
-				appCAs, ordererCAs := comm.GetCredentialSupport().GetClientRootCAs()
-				assert.Equal(t, test.numAppCAs, len(appCAs), "Did not find expected number of app CAs for channel")
-				assert.Equal(t, test.numOrdererCAs, len(ordererCAs), "Did not find expected number of orderer CAs for channel")
+				assert.Equal(t, test.numAppCAs, countTotalCertsInBundle(comm.GetCredentialSupport().AppRootCAsByChain), "Did not find expected number of app CAs for channel")
+				assert.Equal(t, test.numOrdererCAs, countTotalCertsAcrossChannels(comm.GetCredentialSupport().OrdererRootCAsByChainAndOrg), "Did not find expected number of orderer CAs for channel")
 
 				// invoke the EmptyCall service with good options
 				_, err = invokeEmptyCall(testAddress, test.goodOptions)

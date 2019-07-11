@@ -59,7 +59,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
@@ -76,7 +76,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := block2.Header.Hash()
@@ -119,6 +119,58 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	assert.Equal(t, peer.TxValidationCode_VALID, validCode)
 }
 
+func TestAddCommitHash(t *testing.T) {
+	env := newTestEnv(t)
+	defer env.cleanup()
+	provider := testutilNewProvider(t)
+	defer provider.Close()
+
+	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	gbHash := gb.Header.Hash()
+	ledger, _ := provider.Create(gb)
+	defer ledger.Close()
+
+	// metadata associated with the above created geneis block is
+	// empty. Hence, no commitHash would be empty.
+	commitHash, err := ledger.(*kvLedger).lastPersistedCommitHash()
+	assert.NoError(t, err)
+	assert.Equal(t, commitHash, ledger.(*kvLedger).commitHash)
+	assert.Equal(t, len(commitHash), 0)
+
+	bcInfo, _ := ledger.GetBlockchainInfo()
+	assert.Equal(t, &common.BlockchainInfo{
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
+	}, bcInfo)
+
+	txid := util.GenerateUUID()
+	simulator, _ := ledger.NewTxSimulator(txid)
+	simulator.SetState("ns1", "key1", []byte("value1"))
+	simulator.SetState("ns1", "key2", []byte("value2"))
+	simulator.SetState("ns1", "key3", []byte("value3"))
+	simulator.Done()
+	simRes, _ := simulator.GetTxSimulationResults()
+	pubSimBytes, _ := simRes.GetPubSimulationBytes()
+	block1 := bg.NextBlock([][]byte{pubSimBytes})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
+
+	commitHash, err = ledger.(*kvLedger).lastPersistedCommitHash()
+	assert.NoError(t, err)
+	assert.Equal(t, commitHash, ledger.(*kvLedger).commitHash)
+	assert.Equal(t, len(commitHash), 32)
+
+	// if the kvledger.commitHash is nil and the block number is > 1, the
+	// commitHash should not be added to the block
+	block2 := bg.NextBlock([][]byte{pubSimBytes})
+	ledger.(*kvLedger).commitHash = nil
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
+
+	commitHash, err = ledger.(*kvLedger).lastPersistedCommitHash()
+	assert.NoError(t, err)
+	assert.Equal(t, commitHash, ledger.(*kvLedger).commitHash)
+	assert.Equal(t, len(commitHash), 0)
+
+}
+
 func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	t.Skip()
 	env := newTestEnv(t)
@@ -145,7 +197,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlockWithTxid([][]byte{pubSimBytes}, []string{txid})
-	assert.NoError(t, ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1}))
+	assert.NoError(t, ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{}))
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
@@ -162,7 +214,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := block2.Header.Hash()
@@ -212,7 +264,7 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 	blockAndPvtdata1 := prepareNextBlockForTest(t, ledger, bg, "SimulateForBlk1",
 		map[string]string{"key1": "value1.1", "key2": "value2.1", "key3": "value3.1"},
 		map[string]string{"key1": "pvtValue1.1", "key2": "pvtValue2.1", "key3": "pvtValue3.1"})
-	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata1))
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata1, &lgr.CommitOptions{}))
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{Height: 2,
@@ -229,7 +281,7 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 		map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
 		map[string]string{"key1": "pvtValue1.2", "key2": "pvtValue2.2", "key3": "pvtValue3.2"})
 
-	_, err := ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata2, true)
+	_, _, err := ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata2, true)
 	assert.NoError(t, err)
 	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata2))
 
@@ -279,7 +331,7 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 		map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"},
 	)
-	_, err = ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata3, true)
+	_, _, err = ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata3, true)
 	assert.NoError(t, err)
 	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata3))
 	// committing the transaction to state DB
@@ -332,7 +384,8 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 		map[string]string{"key1": "value1.4", "key2": "value2.4", "key3": "value3.4"},
 		map[string]string{"key1": "pvtValue1.4", "key2": "pvtValue2.4", "key3": "pvtValue3.4"},
 	)
-	_, err = ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata4, true)
+
+	_, _, err = ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata4, true)
 	assert.NoError(t, err)
 	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata4))
 	assert.NoError(t, ledger.(*kvLedger).historyDB.Commit(blockAndPvtdata4.Block))
@@ -380,29 +433,58 @@ func testSyncStateDBWithPvtdatastore(t *testing.T) {
 	provider := testutilNewProviderWithCollectionConfig(t,
 		"ns", map[string]uint64{"coll": 0},
 	)
-	defer provider.Close()
 	testLedgerid := "testLedger"
 	bg, gb := testutil.NewBlockGenerator(t, testLedgerid, false)
 	ledger, _ := provider.Create(gb)
-	defer ledger.Close()
 
 	// create and commit two data block (both with missing pvtdata)
 	blockAndPvtdata1, pvtdata1 := prepareNextBlockWithMissingPvtDataForTest(t, ledger, bg, "SimulateForBlk1",
 		map[string]string{"key1": "value1.1", "key2": "value2.1", "key3": "value3.1"},
 		map[string]string{"key1": "pvtValue1.1", "key2": "pvtValue2.1", "key3": "pvtValue3.1"})
 
-	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata1))
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata1, &lgr.CommitOptions{}))
 
 	blockAndPvtdata2, pvtdata2 := prepareNextBlockWithMissingPvtDataForTest(t, ledger, bg, "SimulateForBlk2",
 		map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
 		map[string]string{"key1": "pvtValue1.2", "key2": "pvtValue2.2", "key3": "pvtValue3.2"})
 
-	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata2))
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata2, &lgr.CommitOptions{}))
+
+	blockAndPvtdata3, pvtdata3 := prepareNextBlockWithMissingPvtDataForTest(t, ledger, bg, "SimulateForBlk3",
+		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
+		map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"})
+
+	// make a transaction as invalid though it is valid -- to test whether the pvtdata of invalid
+	// transactions are being stored.
+	blockAndPvtdata3.Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER][0] = byte(peer.TxValidationCode_MVCC_READ_CONFLICT)
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata3, &lgr.CommitOptions{}))
+
+	blockAndPvtdata4, pvtdata4 := prepareNextBlockWithMissingPvtDataForTest(t, ledger, bg, "SimulateForBlk4",
+		map[string]string{"key4": "value4"},
+		map[string]string{"key4": "pvtValue4"})
+
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata4, &lgr.CommitOptions{}))
+
+	blockAndPvtdata5, pvtdata5 := prepareNextBlockWithMissingPvtDataForTest(t, ledger, bg, "SimulateForBlk5",
+		map[string]string{"key5": "value5"},
+		map[string]string{"key5": "pvtValue5"})
+
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata5, &lgr.CommitOptions{}))
 
 	txSim, err := ledger.NewTxSimulator("test")
 	assert.NoError(t, err)
 	value, err := txSim.GetPrivateData("ns", "coll", "key1")
 	_, ok := err.(*txmgr.ErrPvtdataNotAvailable)
+	assert.True(t, ok)
+	assert.Nil(t, value)
+
+	value, err = txSim.GetPrivateData("ns", "coll", "key4")
+	_, ok = err.(*txmgr.ErrPvtdataNotAvailable)
+	assert.True(t, ok)
+	assert.Nil(t, value)
+
+	value, err = txSim.GetPrivateData("ns", "coll", "key5")
+	_, ok = err.(*txmgr.ErrPvtdataNotAvailable)
 	assert.True(t, ok)
 	assert.Nil(t, value)
 
@@ -413,26 +495,75 @@ func testSyncStateDBWithPvtdatastore(t *testing.T) {
 		2: {
 			pvtdata2,
 		},
+		3: {
+			pvtdata3,
+		},
+		4: {
+			pvtdata4,
+		},
+		5: {
+			pvtdata5,
+		},
 	}
 
 	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitPvtDataOfOldBlocks(blocksPvtData))
+	// ensure that the pvtdata of the invalid transaction in block 3 got stored in the
+	// pvtdataStore
+	pvtdata, _ := ledger.GetPvtDataByNum(3, nil)
+	assert.NotNil(t, pvtdata)
+	assert.Equal(t, 1, len(pvtdata))
+	assert.True(t, pvtdata[0].Has("ns", "coll"))
 
 	// Now, assume that peer fails here before committing the pvtData to stateDB
 	ledger.Close()
 	provider.Close()
+
+	// Rollback to block 3
+	RollbackKVLedger(testLedgerid, 3)
 
 	// Here the peer comes online and calls NewKVLedger to get a handler for the ledger
 	// StateDB and HistoryDB should be recovered before returning from NewKVLedger call
 	provider = testutilNewProviderWithCollectionConfig(t,
 		"ns", map[string]uint64{"coll": 0},
 	)
-	ledger, _ = provider.Open(testLedgerid)
+	defer provider.Close()
+
+	ledger, err = provider.Open(testLedgerid)
+	assert.NoError(t, err)
+	defer ledger.Close()
 
 	txSim, err = ledger.NewTxSimulator("test")
 	assert.NoError(t, err)
 	value, err = txSim.GetPrivateData("ns", "coll", "key1")
 	assert.NoError(t, err)
+	// the value should match the string provided in the block 2 (i.e., pvtValue1.2)
+	// rather than block 3 (i.e., pvtValue1.3)
 	assert.Equal(t, value, []byte("pvtValue1.2"))
+
+	// block 4 is not committed yet
+	value, err = txSim.GetPrivateData("ns", "coll", "key4")
+	assert.Nil(t, err)
+	assert.Nil(t, value)
+
+	// block 5 is not committed yet
+	value, err = txSim.GetPrivateData("ns", "coll", "key5")
+	assert.Nil(t, err)
+	assert.Nil(t, value)
+	txSim.Done()
+
+	// recommit block 4 & 5
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata4, &lgr.CommitOptions{FetchPvtDataFromLedger: true}))
+	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata5, &lgr.CommitOptions{FetchPvtDataFromLedger: true}))
+
+	txSim, err = ledger.NewTxSimulator("test")
+	assert.NoError(t, err)
+	value, err = txSim.GetPrivateData("ns", "coll", "key4")
+	assert.NoError(t, err)
+	assert.Equal(t, value, []byte("pvtValue4"))
+
+	value, err = txSim.GetPrivateData("ns", "coll", "key5")
+	assert.NoError(t, err)
+	assert.Equal(t, value, []byte("pvtValue5"))
 }
 
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
@@ -467,7 +598,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
 
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
@@ -498,7 +629,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	simulationResults = append(simulationResults, pubSimBytes2)
 
 	block2 := bg.NextBlock(simulationResults)
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := block2.Header.Hash()
@@ -579,7 +710,7 @@ func prepareNextBlockForTest(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockG
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
-	block := bg.NextBlock([][]byte{pubSimBytes})
+	block := bg.NextBlockWithTxid([][]byte{pubSimBytes}, []string{txid})
 	return &lgr.BlockAndPvtData{Block: block,
 		PvtData: lgr.TxPvtDataMap{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
 	}

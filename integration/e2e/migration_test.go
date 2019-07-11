@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,7 +16,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/common/capabilities"
+
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -28,22 +31,26 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
-var _ bool = Describe("Kafka2RaftMigration", func() {
+var _ = Describe("Kafka2RaftMigration", func() {
 	var (
 		testDir   string
 		client    *docker.Client
 		network   *nwo.Network
 		chaincode nwo.Chaincode
 
-		process                           ifrit.Process
-		peerProc, ordererProc, brokerProc ifrit.Process
+		process                ifrit.Process
+		peerProc, brokerProc   ifrit.Process
+		o1Proc, o2Proc, o3Proc ifrit.Process
+
+		o1Runner, o2Runner, o3Runner *ginkgomon.Runner
 	)
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "e2e")
+		testDir, err = ioutil.TempDir("", "kafka2raft-migration")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()
@@ -69,9 +76,11 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			Eventually(peerProc.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
 
-		if ordererProc != nil {
-			ordererProc.Signal(syscall.SIGTERM)
-			Eventually(ordererProc.Wait(), network.EventuallyTimeout).Should(Receive())
+		for _, oProc := range []ifrit.Process{o1Proc, o2Proc, o3Proc} {
+			if oProc != nil {
+				oProc.Signal(syscall.SIGTERM)
+				Eventually(oProc.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
 		}
 
 		if brokerProc != nil {
@@ -83,305 +92,791 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 			network.Cleanup()
 		}
 
-		os.RemoveAll(testDir)
+		_ = os.RemoveAll(testDir)
 	})
 
-	// These tests execute the migration config updates on Kafka based system,
-	// and verify that these config update have the desired effect.
-	Describe("kafka2raft migration kafka side", func() {
+	// These tests execute the migration config updates on Kafka based system, and verify that these config update
+	// have the desired effect. They focus on testing that filtering and the blocking of transitions into, in, and
+	// out-of maintenance mode are enforced. These tests use a single node.
+	Describe("Kafka to Raft migration kafka side", func() {
+		var (
+			orderer                                  *nwo.Orderer
+			peer                                     *nwo.Peer
+			syschannel, channel1, channel2, channel3 string
+			raftMetadata                             []byte
+		)
+
 		BeforeEach(func() {
-			conf := nwo.BasicKafka()
-			conf.OrdererCap.V2_0 = true
-			network = nwo.New(conf, testDir, client, BasePort(), components)
+			network = nwo.New(kafka2RaftMultiChannel(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			orderer = network.Orderer("orderer")
+			peer = network.Peer("Org1", "peer1")
+
+			syschannel = network.SystemChannel.Name
+			channel1 = "testchannel1"
+			channel2 = "testchannel2"
+			channel3 = "testchannel3"
+
+			raftMetadata = prepareRaftMetadata(network)
+
+			By("Update Orderer capabilities on system channel, V1_4_2")
+			nwo.EnableCapabilitiesOrdererAdmin(network, syschannel, "Orderer", capabilities.OrdererV1_4_2, orderer, peer)
+
+			By("Create & join first channel, deploy and invoke chaincode")
+			network.CreateAndJoinChannel(orderer, channel1)
+			nwo.DeployChaincode(network, channel1, orderer, chaincode)
+			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 100)
+			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 90)
 		})
 
-		// This test executes the "green path" migration config updates on Kafka based system
-		// with system channel only, and verifies that these config update have the desired effect.
-		It("executes kafka2raft system channel green path", func() {
-			orderer := network.Orderer("orderer")
-			peer := network.Peer("Org1", "peer1")
+		// This test executes the "green path" migration config updates on Kafka based system with a system channel
+		// and a standard channel, and verifies that these config updates have the desired effect.
+		//
+		// The green path is entering maintenance mode, and then changing the consensus type.
+		// In maintenance mode we check that channel creation is blocked and that normal transactions are blocked.
+		//
+		// We also check that after entering maintenance mode, we can exit it without making any
+		// changes - the "abort path".
+		It("executes kafka2raft green path", func() {
+			//=== The abort path ======================================================================================
+			//=== Step 1: Config update on system channel, MAINTENANCE ===
+			By("1) Config update on system channel, State=MAINTENANCE, enter maintenance-mode")
+			config, updatedConfig := prepareTransition(network, peer, orderer, syschannel,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			syschannel := network.SystemChannel.Name
-
-			//=== No standard channels ===
-
-			//=== Step 1: Config update on system channel, MigrationState=START ===
-			By("Step 1: Config update on system channel, MigrationState=START")
-			config := nwo.GetConfig(network, peer, orderer, syschannel)
+			By("1) Verify: system channel1 config changed")
+			sysStartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysStartBlockNum).ToNot(Equal(0))
+			config = nwo.GetConfig(network, peer, orderer, syschannel)
 			updatedConfig, consensusTypeValue, err := extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
-			//Verify initial ConsensusType value
-			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_MIG_STATE_NONE, 0)
-			//Change ConsensusType value
-			updateConfigWithConsensusType("kafka", []byte{}, protosorderer.ConsensusType_MIG_STATE_START, 0,
-				updatedConfig, consensusTypeValue)
+			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
+
+			By("1) Verify: new channels cannot be created")
+			network.CreateChannelFail(channel2, orderer, peer)
+
+			//=== Step 2: Config update on standard channel, MAINTENANCE ===
+			By("2) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
+
+			By("2) Verify: standard channel config changed")
+			std1EntryBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
+			Expect(std1EntryBlockNum).ToNot(Equal(0))
+			config = nwo.GetConfig(network, peer, orderer, channel1)
+			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
+			Expect(err).NotTo(HaveOccurred())
+			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
+
+			By("2) Verify: Normal TX's on standard channel are blocked")
+			RunExpectQueryInvokeFail(network, orderer, peer, channel1, 80)
+
+			//In maintenance mode deliver requests are open to those entities that satisfy the /Channel/Orderer/Readers policy
+			By("2) Verify: delivery request from peer is blocked")
+			err = checkPeerDeliverRequest(orderer, peer, network, channel1)
+			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
+
+			//=== Step 3: config update on system channel, State=NORMAL, abort ===
+			By("3) Config update on system channel, State=NORMAL, exit maintenance-mode - abort path")
+			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"kafka", nil, protosorderer.ConsensusType_STATE_NORMAL)
 			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			By("Step 1, Verify: system channel config changed, get migration context")
-			migrationContext := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(migrationContext).To(BeNumerically(">", 0))
+			By("3) Verify: system channel config changed")
+			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
 
-			By("Step 1, Verify: new channels cannot be created")
-			channel := "testchannel"
-			network.CreateChannelFail(channel, orderer, peer)
+			By("3) Verify: create new channel, executing transaction")
+			network.CreateAndJoinChannel(orderer, channel2)
+			nwo.InstantiateChaincode(network, channel2, orderer, chaincode, peer, network.PeersWithChannel(channel2)...)
+			RunExpectQueryRetry(network, peer, channel2, 100)
+			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 100)
+			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 90)
 
-			//=== Step 2: Config update on system channel, MigrationState=COMMIT, type=etcdraft ===
-			By("Step 2: Config update on system channel, MigrationState=COMMIT, type=etcdraft")
+			By("3) Verify: delivery request from peer is not blocked on new channel")
+			err = checkPeerDeliverRequest(orderer, peer, network, channel2)
+			Expect(err).NotTo(HaveOccurred())
+
+			//=== Step 4: config update on standard channel, State=NORMAL, abort ===
+			By("4) Config update on standard channel, State=NORMAL, exit maintenance-mode - abort path")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"kafka", nil, protosorderer.ConsensusType_STATE_NORMAL)
+			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
+
+			By("4) Verify: standard channel config changed")
+			std1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
+			Expect(std1BlockNum).To(Equal(std1EntryBlockNum + 1))
+
+			By("4) Verify: standard channel delivery requests from peer unblocked")
+			err = checkPeerDeliverRequest(orderer, peer, network, channel1)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("4) Verify: Normal TX's on standard channel are permitted again")
+			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 80)
+
+			//=== The green path ======================================================================================
+			//=== Step 5: Config update on system channel, MAINTENANCE, again ===
+			By("5) Config update on system channel, State=MAINTENANCE, enter maintenance-mode again")
+			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
+
+			By("5) Verify: system channel config changed")
+			sysStartBlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysStartBlockNum).ToNot(Equal(0))
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
+			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//Verify previous state
-			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_MIG_STATE_START, 0)
+			//=== Step 6: Config update on standard channel1, MAINTENANCE, again ===
+			By("6) Config update on standard channel1, State=MAINTENANCE, enter maintenance-mode again")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", []byte{}, protosorderer.ConsensusType_MIG_STATE_COMMIT, migrationContext,
-				updatedConfig, consensusTypeValue)
-			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
-			num := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(num).To(Equal(migrationContext + 1))
+			By("6) Verify: standard channel config changed")
+			std1EntryBlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
+			Expect(std1EntryBlockNum).ToNot(Equal(0))
 
-			By("Step 2, Verify: system channel config change, OSN ready to restart")
-			config = nwo.GetConfig(network, peer, orderer, syschannel)
+			config = nwo.GetConfig(network, peer, orderer, channel1)
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
-			//Verify OSN ready to restart
-			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_MIG_STATE_COMMIT, migrationContext)
+			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			By("Step 2, Verify: new channels cannot be created")
-			network.CreateChannelFail(channel, orderer, peer, peer)
+			By("6) Verify: delivery request from peer is blocked")
+			err = checkPeerDeliverRequest(orderer, peer, network, channel1)
+			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
-			By("Step 2, Verify: new config updates are not accepted")
-			updateConfigWithConsensusType("kafka", []byte{}, protosorderer.ConsensusType_MIG_STATE_START, 0,
-				updatedConfig, consensusTypeValue)
-			nwo.UpdateOrdererConfigFail(network, orderer, syschannel, config, updatedConfig, peer, orderer)
+			By("6) Verify: Normal TX's on standard channel are blocked")
+			RunExpectQueryInvokeFail(network, orderer, peer, channel1, 70)
+
+			By("6) Verify: peers should not receive the config update on entry to maintenance, because deliver is blocked")
+			std1BlockNumFromPeer1 := nwo.CurrentConfigBlockNumber(network, peer, nil, channel1)
+			Expect(std1BlockNumFromPeer1).To(BeNumerically("<", std1EntryBlockNum))
+
+			//=== Step 7: Config update on standard channel2, MAINTENANCE ===
+			By("7) Config update on standard channel2, State=MAINTENANCE, enter maintenance-mode again")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel2,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, channel2, config, updatedConfig, peer, orderer)
+
+			By("7) Verify: standard channel config changed")
+			std2EntryBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel2)
+			Expect(std2EntryBlockNum).ToNot(Equal(0))
+
+			config = nwo.GetConfig(network, peer, orderer, channel2)
+			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
+			Expect(err).NotTo(HaveOccurred())
+			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
+
+			By("7) Verify: delivery request from peer is blocked")
+			err = checkPeerDeliverRequest(orderer, peer, network, channel2)
+			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
+
+			By("7) Verify: Normal TX's on standard channel are blocked")
+			RunExpectQueryInvokeFail(network, orderer, peer, channel2, 80)
+
+			By("7) Verify: peers should not receive the config update on entry to maintenance, because deliver is blocked")
+			std2BlockNumFromPeer1 := nwo.CurrentConfigBlockNumber(network, peer, nil, channel2)
+			Expect(std2BlockNumFromPeer1).To(BeNumerically("<", std2EntryBlockNum))
+
+			//=== Step 8: config update on system channel, State=MAINTENANCE, type=etcdraft ===
+			By("8) Config update on system channel, State=MAINTENANCE, type=etcdraft")
+			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
+
+			By("8) Verify: system channel config changed")
+			sysBlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
+
+			By("8) Verify: new channels cannot be created")
+			network.CreateChannelFail(channel3, orderer, peer)
+
+			//=== Step 9: config update on standard channel1, State=MAINTENANCE, type=etcdraft ===
+			By("9) Config update on standard channel1, State=MAINTENANCE, type=etcdraft")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
+
+			By("9) Verify: standard channel config changed")
+			std1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
+			Expect(std1BlockNum).To(Equal(std1EntryBlockNum + 1))
+
+			By("9) Verify: delivery request from peer is blocked")
+			err = checkPeerDeliverRequest(orderer, peer, network, channel1)
+			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
+
+			By("9) Verify: Normal TX's on standard channel are blocked")
+			RunExpectQueryInvokeFail(network, orderer, peer, channel1, 70)
+
+			By("9) Verify: peers should not receive the config update on maintenance, because deliver is blocked")
+			std1BlockNumFromPeer2 := nwo.CurrentConfigBlockNumber(network, peer, nil, channel1)
+			Expect(std1BlockNumFromPeer2).To(BeNumerically("<", std1EntryBlockNum))
+			Expect(std1BlockNumFromPeer2).To(BeNumerically(">=", std1BlockNumFromPeer1))
+
+			//=== Step 10: config update on standard channel2, State=MAINTENANCE, type=etcdraft ===
+			By("10) Config update on standard channel2, State=MAINTENANCE, type=etcdraft")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel2,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, channel2, config, updatedConfig, peer, orderer)
+
+			By("10) Verify: standard channel config changed")
+			std2BlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel2)
+			Expect(std2BlockNum).To(Equal(std2EntryBlockNum + 1))
+
+			By("10) Verify: delivery request from peer is blocked")
+			err = checkPeerDeliverRequest(orderer, peer, network, channel2)
+			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
+
+			By("10) Verify: Normal TX's on standard channel are blocked")
+			RunExpectQueryInvokeFail(network, orderer, peer, channel2, 80)
+
+			By("10) Verify: peers should not receive the config update on maintenance, because deliver is blocked")
+			std2BlockNumFromPeer2 := nwo.CurrentConfigBlockNumber(network, peer, nil, channel2)
+			Expect(std2BlockNumFromPeer2).To(BeNumerically("<", std2EntryBlockNum))
+			Expect(std2BlockNumFromPeer2).To(BeNumerically(">=", std2BlockNumFromPeer1))
 		})
 
-		// This test executes the "green path" migration config updates on Kafka based system
-		// with a system channel and a standard channel, and verifies that these config
-		// updates have the desired effect.
-		It("executes kafka2raft standard channel green path", func() {
-			orderer := network.Orderer("orderer")
-			peer := network.Peer("Org1", "peer1")
+		// This test executes the migration flow and checks that forbidden transitions are rejected.
+		// These transitions are enforced by the maintenance filter:
+		// - Entry to & exit from maintenance mode can only change ConsensusType.State.
+		// - In maintenance mode one can only change ConsensusType.Type & ConsensusType.Metadata.
+		// - ConsensusType.Type can only change from "kafka" to "etcdraft", and only in maintenance mode.
+		It("executes kafka2raft forbidden transitions", func() {
+			//=== Step 1: ===
+			By("1) Config update on system channel, changing both ConsensusType State & Type is forbidden")
+			assertTransitionFailed(network, peer, orderer, syschannel,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			syschannel := network.SystemChannel.Name
+			//=== Step 2: ===
+			By("2) Config update on standard channel, changing both ConsensusType State & Type is forbidden")
+			assertTransitionFailed(network, peer, orderer, channel1,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			channel := "testchannel"
-			network.CreateAndJoinChannel(orderer, channel)
-			nwo.DeployChaincode(network, channel, orderer, chaincode)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel, 100)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel, 90)
+			//=== Step 3: ===
+			By("3) Config update on system channel, changing both ConsensusType State & some other value is forbidden")
+			config, updatedConfig := prepareTransition(network, peer, orderer, syschannel,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updateConfigWithBatchTimeout(updatedConfig)
+			updateOrdererConfigFailed(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			//=== Step 1: Config update on system channel, START ===
-			By("Step 1: Config update on system channel, MigrationState=START")
-			config := nwo.GetConfig(network, peer, orderer, syschannel)
+			//=== Step 4: ===
+			By("4) Config update on standard channel, both ConsensusType State & some other value is forbidden")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updateConfigWithBatchTimeout(updatedConfig)
+			updateOrdererConfigFailed(network, orderer, channel1, config, updatedConfig, peer, orderer)
+
+			//=== Step 5: ===
+			By("5) Config update on system channel, State=MAINTENANCE, enter maintenance-mode")
+			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
+
+			By("5) Verify: system channel config changed")
+			sysStartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysStartBlockNum).ToNot(Equal(0))
+			config = nwo.GetConfig(network, peer, orderer, syschannel)
 			updatedConfig, consensusTypeValue, err := extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
-			//Verify initial status
-			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_MIG_STATE_NONE, 0)
-			//Change ConsensusType value
-			updateConfigWithConsensusType("kafka", []byte{}, protosorderer.ConsensusType_MIG_STATE_START, 0,
-				updatedConfig, consensusTypeValue)
+			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
+
+			//=== Step 6: ===
+			By("6) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
+
+			By("6) Verify: standard channel config changed")
+			std1StartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
+			Expect(std1StartBlockNum).ToNot(Equal(0))
+			config = nwo.GetConfig(network, peer, orderer, channel1)
+			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
+			Expect(err).NotTo(HaveOccurred())
+			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
+
+			//=== Step 7: ===
+			By("7) Config update on system channel, change ConsensusType.Type to unsupported type, forbidden")
+			assertTransitionFailed(network, peer, orderer, syschannel,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"melville", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+
+			//=== Step 8: ===
+			By("8) Config update on standard channel, change ConsensusType.Type to unsupported type, forbidden")
+			assertTransitionFailed(network, peer, orderer, channel1,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"hesse", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+
+			//=== Step 9: ===
+			By("9) Config update on system channel, change ConsensusType.Type and State, forbidden")
+			assertTransitionFailed(network, peer, orderer, syschannel,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
+
+			//=== Step 10: ===
+			By("10) Config update on standard channel, change ConsensusType.Type and State, forbidden")
+			assertTransitionFailed(network, peer, orderer, channel1,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
+
+			//=== Step 11: ===
+			By("11) Config update on system channel, changing both ConsensusType.Type and other value is permitted")
+			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updateConfigWithBatchTimeout(updatedConfig)
 			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			By("Step 1, Verify: system channel config changed, get migration context")
-			migrationContext := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(migrationContext).ToNot(Equal(0))
-
+			By("11) Verify: system channel config changed")
+			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
-			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_MIG_STATE_START, 0)
+			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			By("Step 1, Verify: TX's on standard channel are blocked")
-			RunExpectQueryInvokeFail(network, orderer, peer, channel, 80)
+			//=== Step 12: ===
+			By("12) Config update on standard channel, changing both ConsensusType.Type and other value is permitted")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updateConfigWithBatchTimeout(updatedConfig)
+			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			//=== Step 2: Config update on standard channel, CONTEXT ===
-			By("Step 2: Config update on standard channel, MigrationState=CONTEXT")
-			config = nwo.GetConfig(network, peer, orderer, channel)
+			By("12) Verify: standard channel config changed")
+			std1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
+			Expect(std1BlockNum).To(Equal(std1StartBlockNum + 1))
+			config = nwo.GetConfig(network, peer, orderer, channel1)
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
-			//Verify initial status
-			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_MIG_STATE_NONE, 0)
-			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", []byte{}, protosorderer.ConsensusType_MIG_STATE_CONTEXT, migrationContext,
-				updatedConfig, consensusTypeValue)
-			nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
-			//Verify standard channel changed
-			By("Step 2, Verify: standard channel config changed")
-			config = nwo.GetConfig(network, peer, orderer, channel)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
-			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_MIG_STATE_CONTEXT, migrationContext)
+			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 3: config update on system channel, COMMIT ===
-			By("Step 3: Config update on system channel, MigrationState=COMMIT")
+			//=== Step 13: ===
+			By("13) Config update on system channel, changing value other than ConsensusType.Type is permitted")
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
-			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", []byte{}, protosorderer.ConsensusType_MIG_STATE_COMMIT, migrationContext,
-				updatedConfig, consensusTypeValue)
+			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updateConfigWithBatchTimeout(updatedConfig)
 			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			By("Step 3, Verify: system channel config changed")
-			num := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(num).To(Equal(migrationContext + 1))
+			By("13) Verify: system channel config changed")
+			sysBlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 2))
+
+			//=== Step 14: ===
+			By("14) Config update on standard channel, changing value other than ConsensusType.Type is permitted")
+			config = nwo.GetConfig(network, peer, orderer, channel1)
+			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
+			Expect(err).NotTo(HaveOccurred())
+			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updateConfigWithBatchTimeout(updatedConfig)
+			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
+
+			By("14) Verify: standard channel config changed")
+			std1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
+			Expect(std1BlockNum).To(Equal(std1StartBlockNum + 2))
+
+			//=== Step 15: ===
+			By("15) Config update on system channel, changing both ConsensusType State & some other value is forbidden")
+			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
+			updateConfigWithBatchTimeout(updatedConfig)
+			updateOrdererConfigFailed(network, orderer, syschannel, config, updatedConfig, peer, orderer)
+
+			//=== Step 16: ===
+			By("16) Config update on standard channel, both ConsensusType State & some other value is forbidden")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
+			updateConfigWithBatchTimeout(updatedConfig)
+			updateOrdererConfigFailed(network, orderer, channel1, config, updatedConfig, peer, orderer)
 		})
 	})
 
-	// These tests execute the migration config updates on Kafka based system
-	// restart the orderer onto a Raft-based system, and verifies that the newly
-	// restarted orderer performs as expected.
-	Describe("kafka2raft migration raft side", func() {
+	// These tests execute the migration config updates on Kafka based system, restart the orderer onto a Raft-based
+	// system, and verifies that the newly restarted orderer cluster performs as expected.
+	Describe("Kafka to Raft migration raft side", func() {
+		var (
+			o1, o2, o3                     *nwo.Orderer
+			peer                           *nwo.Peer
+			syschannel, channel1, channel2 string
+			raftMetadata                   []byte
+		)
 
-		// This test executes the "green path" migration config updates on Kafka based system
-		// with a single orderer, and a system channel and a standard channel.
-		// It then restarts the orderer onto a Raft-based system, and verifies that the
-		// newly restarted orderer performs as expected.
-		It("executes bootstrap to raft", func() {
-			network = nwo.New(kafka2RaftMultiChannel(), testDir, client, BasePort(), components)
-
-			orderer := network.Orderer("orderer")
-			peer := network.Peer("Org1", "peer1")
-
+		BeforeEach(func() {
+			network = nwo.New(kafka2RaftMultiNode(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
-			tlsPath := "crypto/ordererOrganizations/example.com/orderers/orderer.example.com/tls/"
-			Expect(filepath.Join(network.RootDir, tlsPath)).To(Equal(network.OrdererLocalTLSDir(orderer)))
-			certBytes, err := ioutil.ReadFile(filepath.Join(network.RootDir, tlsPath, "server.crt"))
-			Expect(err).NotTo(HaveOccurred())
-			raft_metadata := &protosraft.ConfigMetadata{
-				Consenters: []*protosraft.Consenter{
-					{
-						ClientTlsCert: certBytes,
-						ServerTlsCert: certBytes,
-						Host:          "127.0.0.1",
-						Port:          uint32(31001),
-					},
-				},
-				Options: &protosraft.Options{
-					TickInterval:         "500ms",
-					ElectionTick:         10,
-					HeartbeatTick:        1,
-					MaxInflightBlocks:    5,
-					SnapshotIntervalSize: 20 * 1024 * 1024,
-				}}
-
-			raft_metadata_bytes := utils.MarshalOrPanic(raft_metadata)
-			raft_metadata2 := &protosraft.ConfigMetadata{}
-			errUnma := proto.Unmarshal(raft_metadata_bytes, raft_metadata2)
-			Expect(errUnma).NotTo(HaveOccurred())
+			o1, o2, o3 = network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+			peer = network.Peer("Org1", "peer1")
 
 			brokerGroup := network.BrokerGroupRunner()
 			brokerProc = ifrit.Invoke(brokerGroup)
 			Eventually(brokerProc.Ready()).Should(BeClosed())
 
-			ordererRunner := network.OrdererRunner(orderer)
-			ordererProc = ifrit.Invoke(ordererRunner)
-			Eventually(ordererProc.Ready()).Should(BeClosed())
+			o1Runner = network.OrdererRunner(o1)
+			o2Runner = network.OrdererRunner(o2)
+			o3Runner = network.OrdererRunner(o3)
 
 			peerGroup := network.PeerGroupRunner()
+
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
+
+			Eventually(o1Proc.Ready()).Should(BeClosed())
+			Eventually(o2Proc.Ready()).Should(BeClosed())
+			Eventually(o3Proc.Ready()).Should(BeClosed())
+
 			peerProc = ifrit.Invoke(peerGroup)
 			Eventually(peerProc.Ready()).Should(BeClosed())
 
-			syschannel := network.SystemChannel.Name
+			raftMetadata = prepareRaftMetadata(network)
 
-			//=== Step 0: create & join first channel, deploy and invoke chaincode ===
-			By("Step 0: create & join first channel, deploy and invoke chaincode")
-			channel := "testchannel1"
-			network.CreateAndJoinChannel(orderer, channel)
-			nwo.DeployChaincode(network, channel, orderer, chaincode)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel, 100)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel, 90)
+			syschannel = network.SystemChannel.Name
+			channel1 = "testchannel1"
+			channel2 = "testchannel2"
 
-			//=== Step 1: Config update on system channel, START ===
-			By("Step 1: Config update on system channel, MigrationState=START")
-			config := nwo.GetConfig(network, peer, orderer, syschannel)
+			By("Update Orderer capabilities on system channel, V1_4_2")
+			nwo.EnableCapabilitiesOrdererAdmin(network, syschannel, "Orderer", capabilities.OrdererV1_4_2, o1, peer)
+
+			By("Create & join first channel, deploy and invoke chaincode")
+			network.CreateAndJoinChannel(o1, channel1)
+			nwo.DeployChaincode(network, channel1, o1, chaincode)
+			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 100)
+			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 90)
+		})
+
+		// This test executes the "green path" migration config updates on Kafka based system
+		// with a three orderers, a system channel and two standard channels.
+		// It then restarts the orderers onto a Raft-based system, and verifies that the
+		// newly restarted orderers perform as expected.
+		It("executes bootstrap to raft - multi node", func() {
+			//=== Step 1: Config update on system channel, MAINTENANCE ===
+			By("1) Config update on system channel, State=MAINTENANCE")
+			config, updatedConfig := prepareTransition(network, peer, o1, syschannel,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, o1, syschannel, config, updatedConfig, peer, o1)
+
+			By("1) Verify: system channel config changed")
+			sysStartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, o1, syschannel)
+			Expect(sysStartBlockNum).ToNot(Equal(0))
+
+			config = nwo.GetConfig(network, peer, o1, syschannel)
 			updatedConfig, consensusTypeValue, err := extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
-			//Change ConsensusType value
-			updateConfigWithConsensusType("kafka", []byte{}, protosorderer.ConsensusType_MIG_STATE_START, 0,
-				updatedConfig, consensusTypeValue)
-			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
+			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			By("Step 1, Verify: system channel config changed, get context")
-			migrationContext := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(migrationContext).ToNot(Equal(0))
+			//=== Step 2: Config update on standard channel, MAINTENANCE ===
+			By("2) Config update on standard channel, State=MAINTENANCE")
+			config, updatedConfig = prepareTransition(network, peer, o1, channel1,
+				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
+				"kafka", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, o1, channel1, config, updatedConfig, peer, o1)
 
-			//=== Step 2: Config update on standard channel, CONTEXT ===
-			By("Step 2: Config update on standard channel, MigrationState=CONTEXT")
-			config = nwo.GetConfig(network, peer, orderer, channel)
+			By("2) Verify: standard channel config changed")
+			chan1StartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, o1, channel1)
+			Expect(chan1StartBlockNum).ToNot(Equal(0))
+
+			config = nwo.GetConfig(network, peer, o1, channel1)
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
-			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", raft_metadata_bytes, protosorderer.ConsensusType_MIG_STATE_CONTEXT, migrationContext,
-				updatedConfig, consensusTypeValue)
-			nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 3: config update on system channel, COMMIT ===
-			By("Step 3: config update on system channel, MigrationState=COMMIT")
-			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
-			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", raft_metadata_bytes, protosorderer.ConsensusType_MIG_STATE_COMMIT, migrationContext,
-				updatedConfig, consensusTypeValue)
-			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
+			//=== Step 3: config update on system channel, State=MAINTENANCE, type=etcdraft ===
+			By("3) Config update on system channel, State=MAINTENANCE, type=etcdraft")
+			config, updatedConfig = prepareTransition(network, peer, o1, syschannel,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, o1, syschannel, config, updatedConfig, peer, o1)
 
-			By("Step 3, Verify: system channel config changed")
-			num := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(num).To(Equal(migrationContext + 1))
-			num1 := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel)
+			By("3) Verify: system channel config changed")
+			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, o1, syschannel)
+			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
 
-			//=== Step 4: kill ===
-			By("Step 4: killing orderer1")
-			ordererProc.Signal(syscall.SIGKILL)
-			Eventually(ordererProc.Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
+			//=== Step 4: config update on standard channel, State=MAINTENANCE, type=etcdraft ===
+			By("4) Config update on standard channel, State=MAINTENANCE, type=etcdraft")
+			config, updatedConfig = prepareTransition(network, peer, o1, channel1,
+				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, o1, channel1, config, updatedConfig, peer, o1)
 
-			//=== Step 5: restart ===
-			By("Step 5: restarting orderer1")
+			By("4) Verify: standard channel config changed")
+			chan1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, o1, channel1)
+			Expect(chan1BlockNum).To(Equal(chan1StartBlockNum + 1))
+
+			//=== Step 5: kill ===
+			By("5) killing orderer1,2,3")
+			for _, oProc := range []ifrit.Process{o1Proc, o2Proc, o3Proc} {
+				if oProc != nil {
+					oProc.Signal(syscall.SIGKILL)
+					Eventually(oProc.Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
+				}
+			}
+
+			//=== Step 6: restart ===
+			By("6) restarting orderer1,2,3")
 			network.Consensus.Type = "etcdraft"
-			ordererRunner = network.OrdererRunner(orderer)
-			ordererProc = ifrit.Invoke(ordererRunner)
-			Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			o1Runner = network.OrdererRunner(o1)
+			o2Runner = network.OrdererRunner(o2)
+			o3Runner = network.OrdererRunner(o3)
 
-			waitForBlockReception(orderer, peer, network, syschannel, int(num))
-			waitForBlockReception(orderer, peer, network, channel, int(num1))
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
 
-			By("Step 5, Verify: executing config transaction on system channel with restarted orderer")
-			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
-			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", raft_metadata_bytes, protosorderer.ConsensusType_MIG_STATE_NONE, 0,
-				updatedConfig, consensusTypeValue)
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			assertBlockReception(
+				map[string]int{
+					syschannel: int(sysBlockNum),
+					channel1:   int(chan1BlockNum),
+				},
+				[]*nwo.Orderer{o1, o2, o3},
+				peer,
+				network,
+			)
+
+			Eventually(o1Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+			Eventually(o2Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+			Eventually(o3Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+
+			By("7) System channel still in maintenance, State=MAINTENANCE, cannot create new channels")
+			network.CreateChannelFail(channel2, o1, peer)
+
+			By("8) Standard channel still in maintenance, State=MAINTENANCE, normal TX's blocked, delivery to peers blocked")
+			RunExpectQueryInvokeFail(network, o1, peer, channel1, 80)
+			err = checkPeerDeliverRequest(o1, peer, network, channel1)
+			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
+
+			By("9) Release - executing config transaction on system channel with restarted orderer")
+			config, updatedConfig = prepareTransition(network, peer, o1, syschannel,
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
+			nwo.UpdateOrdererConfig(network, o1, syschannel, config, updatedConfig, peer, o1)
+
+			By("9) Verify: system channel config changed")
+			sysBlockNum = nwo.CurrentConfigBlockNumber(network, peer, o1, syschannel)
+			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 2))
+
+			By("10) Release - executing config transaction on standard channel with restarted orderer")
+			config, updatedConfig = prepareTransition(network, peer, o1, channel1,
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
+			nwo.UpdateOrdererConfig(network, o1, channel1, config, updatedConfig, peer, o1)
+
+			By("10) Verify: standard channel config changed")
+			chan1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, o1, channel1)
+			Expect(chan1BlockNum).To(Equal(chan1StartBlockNum + 2))
+			waitForBlockReceptionByPeer(peer, network, channel1, chan1BlockNum)
+
+			By("11) Executing transaction on standard channel with restarted orderer")
+			RunExpectQueryRetry(network, peer, channel1, 80)
+			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 80)
+
+			By("12) Create new channel, executing transaction with restarted orderer")
+			network.CreateAndJoinChannel(o1, channel2)
+			nwo.InstantiateChaincode(network, channel2, o1, chaincode, peer, network.PeersWithChannel(channel2)...)
+			RunExpectQueryRetry(network, peer, channel2, 100)
+			RunExpectQueryInvokeQuery(network, o1, peer, channel2, 100)
+			RunExpectQueryInvokeQuery(network, o1, peer, channel2, 90)
+		})
+	})
+
+	// These tests execute the migration config updates on a solo based system, restart the orderer onto a Raft-based
+	// system, and verifies that the newly restarted orderer (single node) cluster performs as expected.
+	Describe("Solo to Raft migration", func() {
+		var (
+			orderer                        *nwo.Orderer
+			peer                           *nwo.Peer
+			syschannel, channel1, channel2 string
+			raftMetadata                   []byte
+		)
+
+		BeforeEach(func() {
+			network = nwo.New(solo2RaftMultiChannel(), testDir, client, BasePort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			orderer = network.Orderer("orderer")
+			peer = network.Peer("Org1", "peer1")
+
+			brokerGroup := network.BrokerGroupRunner()
+			brokerProc = ifrit.Invoke(brokerGroup)
+			Eventually(brokerProc.Ready()).Should(BeClosed())
+
+			o1Runner = network.OrdererRunner(orderer)
+			peerGroup := network.PeerGroupRunner()
+			o1Proc = ifrit.Invoke(o1Runner)
+			Eventually(o1Proc.Ready()).Should(BeClosed())
+			peerProc = ifrit.Invoke(peerGroup)
+			Eventually(peerProc.Ready()).Should(BeClosed())
+
+			raftMetadata = prepareRaftMetadata(network)
+
+			syschannel = network.SystemChannel.Name
+			channel1 = "testchannel1"
+			channel2 = "testchannel2"
+
+			By("Update Orderer capabilities on system channel, V1_4_2")
+			nwo.EnableCapabilitiesOrdererAdmin(network, syschannel, "Orderer", capabilities.OrdererV1_4_2, orderer, peer)
+
+			By("Create & join first channel, deploy and invoke chaincode")
+			network.CreateAndJoinChannel(orderer, channel1)
+			nwo.DeployChaincode(network, channel1, orderer, chaincode)
+			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 100)
+			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 90)
+		})
+
+		It("executes bootstrap to raft - single node", func() {
+			//=== Step 1: Config update on system channel, MAINTENANCE ===
+			By("1) Config update on system channel, State=MAINTENANCE")
+			config, updatedConfig := prepareTransition(network, peer, orderer, syschannel,
+				"solo", protosorderer.ConsensusType_STATE_NORMAL,
+				"solo", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			By("Step 5, Verify: executing config transaction on standard channel with restarted orderer")
-			config = nwo.GetConfig(network, peer, orderer, channel)
+			By("1) Verify: system channel config changed")
+			sysStartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysStartBlockNum).ToNot(Equal(0))
+
+			config = nwo.GetConfig(network, peer, orderer, syschannel)
+			updatedConfig, consensusTypeValue, err := extractOrdererConsensusType(config)
+			Expect(err).NotTo(HaveOccurred())
+			validateConsensusTypeValue(consensusTypeValue, "solo", protosorderer.ConsensusType_STATE_MAINTENANCE)
+
+			//=== Step 2: Config update on standard channel, MAINTENANCE ===
+			By("2) Config update on standard channel, State=MAINTENANCE")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+				"solo", protosorderer.ConsensusType_STATE_NORMAL,
+				"solo", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
+
+			By("2) Verify: standard channel config changed")
+			chan1StartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
+			Expect(chan1StartBlockNum).ToNot(Equal(0))
+
+			config = nwo.GetConfig(network, peer, orderer, channel1)
 			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
 			Expect(err).NotTo(HaveOccurred())
-			//Change ConsensusType value
-			updateConfigWithConsensusType("etcdraft", raft_metadata_bytes, protosorderer.ConsensusType_MIG_STATE_NONE, 0,
-				updatedConfig, consensusTypeValue)
-			nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+			validateConsensusTypeValue(consensusTypeValue, "solo", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			By("Step 5, Verify: executing transaction on standard channel with restarted orderer")
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel, 80)
+			//=== Step 3: config update on system channel, State=MAINTENANCE, type=etcdraft ===
+			By("3) Config update on system channel, State=MAINTENANCE, type=etcdraft")
+			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
+				"solo", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			By("Step 5, Verify: create new channel, executing transaction with restarted orderer")
-			channel2 := "testchannel2"
+			By("3) Verify: system channel config changed")
+			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
+
+			//=== Step 4: config update on standard channel, State=MAINTENANCE, type=etcdraft ===
+			By("4) Config update on standard channel, State=MAINTENANCE, type=etcdraft")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+				"solo", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
+
+			By("4) Verify: standard channel config changed")
+			chan1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
+			Expect(chan1BlockNum).To(Equal(chan1StartBlockNum + 1))
+
+			//=== Step 5: kill ===
+			By("5) killing orderer1")
+			o1Proc.Signal(syscall.SIGKILL)
+			Eventually(o1Proc.Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
+
+			//=== Step 6: restart ===
+			By("6) restarting orderer1")
+			network.Consensus.Type = "etcdraft"
+			o1Runner = network.OrdererRunner(orderer)
+			o1Proc = ifrit.Invoke(o1Runner)
+
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			assertBlockReception(
+				map[string]int{
+					syschannel: int(sysBlockNum),
+					channel1:   int(chan1BlockNum),
+				},
+				[]*nwo.Orderer{orderer},
+				peer,
+				network,
+			)
+
+			Eventually(o1Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+
+			By("7) System channel still in maintenance, State=MAINTENANCE, cannot create new channels")
+			network.CreateChannelFail(channel2, orderer, peer)
+
+			By("8) Standard channel still in maintenance, State=MAINTENANCE, normal TX's blocked, delivery to peers blocked")
+			RunExpectQueryInvokeFail(network, orderer, peer, channel1, 80)
+			err = checkPeerDeliverRequest(orderer, peer, network, channel1)
+			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
+
+			By("9) Release - executing config transaction on system channel with restarted orderer")
+			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
+			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
+
+			By("9) Verify: system channel config changed")
+			sysBlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
+			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 2))
+
+			By("10) Release - executing config transaction on standard channel with restarted orderer")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
+			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
+
+			By("10) Verify: standard channel config changed")
+			chan1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
+			Expect(chan1BlockNum).To(Equal(chan1StartBlockNum + 2))
+			waitForBlockReceptionByPeer(peer, network, channel1, chan1BlockNum)
+
+			By("11) Executing transaction on standard channel with restarted orderer")
+			RunExpectQueryRetry(network, peer, channel1, 80)
+			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 80)
+
+			By("12) Create new channel, executing transaction with restarted orderer")
 			network.CreateAndJoinChannel(orderer, channel2)
 			nwo.InstantiateChaincode(network, channel2, orderer, chaincode, peer, network.PeersWithChannel(channel2)...)
-			RunExpectQueryRetry(network, orderer, peer, channel2, 100)
+			RunExpectQueryRetry(network, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 90)
 		})
@@ -389,81 +884,26 @@ var _ bool = Describe("Kafka2RaftMigration", func() {
 })
 
 func RunExpectQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string, expect int) {
-	By("querying the chaincode")
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
-		ChannelID: channel,
-		Name:      "mycc",
-		Ctor:      `{"Args":["query","a"]}`,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess).To(gbytes.Say(fmt.Sprint(expect)))
+	res := RunQuery(n, orderer, peer, channel)
+	Expect(res).To(Equal(expect))
 
-	By("invoking the chaincode")
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
-		ChannelID: channel,
-		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
-		Name:      "mycc",
-		Ctor:      `{"Args":["invoke","a","b","10"]}`,
-		PeerAddresses: []string{
-			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
-			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
-		},
-		WaitForEvent: true,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
+	RunInvoke(n, orderer, peer, channel)
 
-	By("querying the chaincode again")
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
-		ChannelID: channel,
-		Name:      "mycc",
-		Ctor:      `{"Args":["query","a"]}`,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess).To(gbytes.Say(fmt.Sprint(expect - 10)))
+	res = RunQuery(n, orderer, peer, channel)
+	Expect(res).To(Equal(expect - 10))
 }
 
-func RunExpectQueryRetry(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string, expect int) {
-	By("querying the chaincode with retry")
+func RunExpectQueryRetry(n *nwo.Network, peer *nwo.Peer, channel string, expect int) {
+	By("Querying the chaincode with retry")
 
-	Eventually(func() string {
-		sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
-			ChannelID: channel,
-			Name:      "mycc",
-			Ctor:      `{"Args":["query","a"]}`,
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
-		if sess.ExitCode() != 0 {
-			sessEC := fmt.Sprintf("exit code is %d: %s", sess.ExitCode(), string(sess.Out.Contents()))
-			return sessEC
-		}
-		sessOut := string(sess.Out.Contents())
-		expectStr := fmt.Sprintf("%d", expect)
-
-		if strings.Contains(sessOut, expectStr) {
-			return ""
-		} else {
-			return "waiting..."
-		}
-	}, n.EventuallyTimeout, time.Second).Should(BeEmpty())
+	Eventually(func() bool {
+		res := RunQuery(n, nil, peer, channel)
+		return res == expect
+	}, n.EventuallyTimeout, time.Second).Should(BeTrue())
 }
 
-func RunExpectQueryInvokeFail(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string, expect int) {
-	By("querying the chaincode")
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
-		ChannelID: channel,
-		Name:      "mycc",
-		Ctor:      `{"Args":["query","a"]}`,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess).To(gbytes.Say(fmt.Sprint(expect)))
-
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+func RunInvokeFail(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
+	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: channel,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
@@ -479,39 +919,81 @@ func RunExpectQueryInvokeFail(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Pe
 	Expect(sess.Err).NotTo(gbytes.Say("Chaincode invoke successful. result: status:200"))
 }
 
-func validateConsensusTypeValue(value *protosorderer.ConsensusType, cType string, state protosorderer.ConsensusType_MigrationState, context uint64) {
+func RunExpectQueryInvokeFail(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string, expect int) {
+	res := RunQuery(n, orderer, peer, channel)
+	Expect(res).To(Equal(expect))
+	RunInvokeFail(n, orderer, peer, channel)
+}
+
+func validateConsensusTypeValue(value *protosorderer.ConsensusType, cType string, state protosorderer.ConsensusType_State) {
 	Expect(value.Type).To(Equal(cType))
-	Expect(value.MigrationState).To(Equal(state))
-	Expect(value.MigrationContext).To(Equal(context))
+	Expect(value.State).To(Equal(state))
 }
 
-func extractOrdererConsensusType(config *common.Config) (updatedConfig *common.Config, consensusTypeValue *protosorderer.ConsensusType, err error) {
-	updatedConfig = proto.Clone(config).(*common.Config)
+func extractOrdererConsensusType(config *common.Config) (*common.Config, *protosorderer.ConsensusType, error) {
+	updatedConfig := proto.Clone(config).(*common.Config)
 	consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
-	consensusTypeValue = new(protosorderer.ConsensusType)
-	err = proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
-	return
+	consensusTypeValue := new(protosorderer.ConsensusType)
+	err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
+	return updatedConfig, consensusTypeValue, err
 }
 
-func updateConfigWithConsensusType(consensusType string, consensusMetadata []byte, migState protosorderer.ConsensusType_MigrationState, migContext uint64,
-	updatedConfig *common.Config, consensusTypeValue *protosorderer.ConsensusType) {
+func updateConfigWithConsensusType(
+	consensusType string,
+	consensusMetadata []byte,
+	migState protosorderer.ConsensusType_State,
+	updatedConfig *common.Config,
+	consensusTypeValue *protosorderer.ConsensusType,
+) {
 	consensusTypeValue.Type = consensusType
 	consensusTypeValue.Metadata = consensusMetadata
-	consensusTypeValue.MigrationState = migState
-	consensusTypeValue.MigrationContext = migContext
+	consensusTypeValue.State = migState
 	updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
 		ModPolicy: "Admins",
 		Value:     utils.MarshalOrPanic(consensusTypeValue),
 	}
 }
 
+func updateConfigWithBatchTimeout(updatedConfig *common.Config) {
+	batchTimeoutConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchTimeout"]
+	batchTimeoutValue := new(protosorderer.BatchTimeout)
+	err := proto.Unmarshal(batchTimeoutConfigValue.Value, batchTimeoutValue)
+	Expect(err).NotTo(HaveOccurred())
+	toDur, err := time.ParseDuration(batchTimeoutValue.Timeout)
+	Expect(err).NotTo(HaveOccurred())
+	toDur = toDur + time.Duration(100000000)
+	batchTimeoutValue.Timeout = toDur.String()
+	By(fmt.Sprintf("Increasing BatchTimeout to %s", batchTimeoutValue.Timeout))
+	updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchTimeout"] = &common.ConfigValue{
+		ModPolicy: "Admins",
+		Value:     utils.MarshalOrPanic(batchTimeoutValue),
+	}
+}
+
 func kafka2RaftMultiChannel() *nwo.Config {
 	config := nwo.BasicKafka()
-	config.OrdererCap.V2_0 = true
-
 	config.Channels = []*nwo.Channel{
 		{Name: "testchannel1", Profile: "TwoOrgsChannel"},
-		{Name: "testchannel2", Profile: "TwoOrgsChannel"}}
+		{Name: "testchannel2", Profile: "TwoOrgsChannel"},
+		{Name: "testchannel3", Profile: "TwoOrgsChannel"},
+	}
+
+	for _, peer := range config.Peers {
+		peer.Channels = []*nwo.PeerChannel{
+			{Name: "testchannel1", Anchor: true},
+			{Name: "testchannel2", Anchor: true},
+			{Name: "testchannel3", Anchor: true},
+		}
+	}
+	return config
+}
+
+func solo2RaftMultiChannel() *nwo.Config {
+	config := nwo.BasicSolo()
+	config.Channels = []*nwo.Channel{
+		{Name: "testchannel1", Profile: "TwoOrgsChannel"},
+		{Name: "testchannel2", Profile: "TwoOrgsChannel"},
+	}
 
 	for _, peer := range config.Peers {
 		peer.Channels = []*nwo.PeerChannel{
@@ -520,4 +1002,129 @@ func kafka2RaftMultiChannel() *nwo.Config {
 		}
 	}
 	return config
+}
+
+func kafka2RaftMultiNode() *nwo.Config {
+	config := nwo.BasicKafka()
+	config.Orderers = []*nwo.Orderer{
+		{Name: "orderer1", Organization: "OrdererOrg"},
+		{Name: "orderer2", Organization: "OrdererOrg"},
+		{Name: "orderer3", Organization: "OrdererOrg"},
+	}
+
+	config.Profiles = []*nwo.Profile{{
+		Name:     "TwoOrgsOrdererGenesis",
+		Orderers: []string{"orderer1", "orderer2", "orderer3"},
+	}, {
+		Name:          "TwoOrgsChannel",
+		Consortium:    "SampleConsortium",
+		Organizations: []string{"Org1", "Org2"},
+	}}
+
+	config.Channels = []*nwo.Channel{
+		{Name: "testchannel1", Profile: "TwoOrgsChannel"},
+		{Name: "testchannel2", Profile: "TwoOrgsChannel"},
+		{Name: "testchannel3", Profile: "TwoOrgsChannel"},
+	}
+
+	for _, peer := range config.Peers {
+		peer.Channels = []*nwo.PeerChannel{
+			{Name: "testchannel1", Anchor: true},
+			{Name: "testchannel2", Anchor: true},
+			{Name: "testchannel3", Anchor: true},
+		}
+	}
+	return config
+}
+
+func prepareRaftMetadata(network *nwo.Network) []byte {
+	var consenters []*protosraft.Consenter
+	for _, o := range network.Orderers {
+		fullTlsPath := network.OrdererLocalTLSDir(o)
+		certBytes, err := ioutil.ReadFile(filepath.Join(fullTlsPath, "server.crt"))
+		Expect(err).NotTo(HaveOccurred())
+		port := network.OrdererPort(o, nwo.ListenPort)
+
+		consenter := &protosraft.Consenter{
+			ClientTlsCert: certBytes,
+			ServerTlsCert: certBytes,
+			Host:          "127.0.0.1",
+			Port:          uint32(port),
+		}
+		consenters = append(consenters, consenter)
+	}
+
+	raftMetadata := &protosraft.ConfigMetadata{
+		Consenters: consenters,
+		Options: &protosraft.Options{
+			TickInterval:         "500ms",
+			ElectionTick:         10,
+			HeartbeatTick:        1,
+			MaxInflightBlocks:    5,
+			SnapshotIntervalSize: 10 * 1024 * 1024,
+		},
+	}
+
+	raftMetadataBytes := utils.MarshalOrPanic(raftMetadata)
+
+	return raftMetadataBytes
+}
+
+func waitForBlockReceptionByPeer(peer *nwo.Peer, network *nwo.Network, channelName string, blockSeq uint64) {
+	Eventually(func() bool {
+		blockNumFromPeer := nwo.CurrentConfigBlockNumber(network, peer, nil, channelName)
+		return blockNumFromPeer == blockSeq
+	}, network.EventuallyTimeout, time.Second).Should(BeTrue())
+}
+
+func checkPeerDeliverRequest(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channelName string) error {
+	c := commands.ChannelFetch{
+		ChannelID:  channelName,
+		Block:      "newest",
+		OutputFile: "/dev/null",
+		Orderer:    network.OrdererAddress(o, nwo.ListenPort),
+	}
+
+	sess, err := network.PeerUserSession(submitter, "User1", c)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+	sessErr := string(sess.Err.Contents())
+	sessExitCode := sess.ExitCode()
+	if sessExitCode != 0 && strings.Contains(sessErr, "FORBIDDEN") {
+		return errors.New("FORBIDDEN")
+	}
+	if sessExitCode == 0 && strings.Contains(sessErr, "Received block: ") {
+		return nil
+	}
+
+	return fmt.Errorf("Unexpected result: ExitCode=%d, Err=%s", sessExitCode, sessErr)
+}
+
+func updateOrdererConfigFailed(n *nwo.Network, orderer *nwo.Orderer, channel string, current, updated *common.Config, peer *nwo.Peer, additionalSigners ...*nwo.Orderer) {
+	nwo.UpdateOrdererConfigFail(n, orderer, channel, current, updated, peer, additionalSigners...)
+}
+
+func prepareTransition(
+	network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, // Auxiliary
+	fromConsensusType string, fromMigState protosorderer.ConsensusType_State, // From
+	toConsensusType string, toConsensusMetadata []byte, toMigState protosorderer.ConsensusType_State, // To
+) (current, updated *common.Config) {
+	current = nwo.GetConfig(network, peer, orderer, channel)
+	updated, consensusTypeValue, err := extractOrdererConsensusType(current)
+	Expect(err).NotTo(HaveOccurred())
+	validateConsensusTypeValue(consensusTypeValue, fromConsensusType, fromMigState)
+	updateConfigWithConsensusType(toConsensusType, toConsensusMetadata, toMigState, updated, consensusTypeValue)
+	return current, updated
+}
+
+func assertTransitionFailed(
+	network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, // Auxiliary
+	fromConsensusType string, fromMigState protosorderer.ConsensusType_State, // From
+	toConsensusType string, toConsensusMetadata []byte, toMigState protosorderer.ConsensusType_State, // To
+) {
+	current, updated := prepareTransition(
+		network, peer, orderer, channel,
+		fromConsensusType, fromMigState,
+		toConsensusType, toConsensusMetadata, toMigState)
+	updateOrdererConfigFailed(network, orderer, channel, current, updated, peer, orderer)
 }

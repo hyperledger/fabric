@@ -19,10 +19,8 @@ type Orderer struct {
 	ConsensusTypeVal string
 	// ConsensusMetadataVal is returned as the result of ConsensusMetadata()
 	ConsensusMetadataVal []byte
-
-	ConsensusTypeMigrationStateVal ab.ConsensusType_MigrationState
-
-	ConsensusTypeMigrationContextVal uint64
+	// ConsensusTypeStateVal is returned as the result of ConsensusState()
+	ConsensusTypeStateVal ab.ConsensusType_State
 
 	// BatchSizeVal is returned as the result of BatchSize()
 	BatchSizeVal *ab.BatchSize
@@ -33,7 +31,7 @@ type Orderer struct {
 	// MaxChannelsCountVal is returns as the result of MaxChannelsCount()
 	MaxChannelsCountVal uint64
 	// OrganizationsVal is returned as the result of Organizations()
-	OrganizationsVal map[string]channelconfig.Org
+	OrganizationsVal map[string]channelconfig.OrdererOrg
 	// CapabilitiesVal is returned as the result of Capabilities()
 	CapabilitiesVal channelconfig.OrdererCapabilities
 }
@@ -48,14 +46,9 @@ func (o *Orderer) ConsensusMetadata() []byte {
 	return o.ConsensusMetadataVal
 }
 
-// ConsensusMigrationState returns the ConsensusTypeMigrationStateVal
-func (o *Orderer) ConsensusMigrationState() ab.ConsensusType_MigrationState {
-	return o.ConsensusTypeMigrationStateVal
-}
-
-// ConsensusMigrationContext returns the ConsensusTypeMigrationContextVal
-func (o *Orderer) ConsensusMigrationContext() uint64 {
-	return o.ConsensusTypeMigrationContextVal
+// ConsensusState returns the ConsensusTypeStateVal
+func (o *Orderer) ConsensusState() ab.ConsensusType_State {
+	return o.ConsensusTypeStateVal
 }
 
 // BatchSize returns the BatchSizeVal
@@ -79,7 +72,7 @@ func (o *Orderer) MaxChannelsCount() uint64 {
 }
 
 // Organizations returns OrganizationsVal
-func (o *Orderer) Organizations() map[string]channelconfig.Org {
+func (o *Orderer) Organizations() map[string]channelconfig.OrdererOrg {
 	return o.OrganizationsVal
 }
 
@@ -102,7 +95,7 @@ type OrdererCapabilities struct {
 	// ExpirationVal is returned by ExpirationCheck()
 	ExpirationVal bool
 
-	Kafka2RaftMigVal bool
+	ConsensusTypeMigrationVal bool
 }
 
 // Supported returns SupportedErr
@@ -126,7 +119,7 @@ func (oc *OrdererCapabilities) ExpirationCheck() bool {
 	return oc.ExpirationVal
 }
 
-// Kafka2RaftMigration checks whether the orderer permits a kafka to raft migration.
-func (oc *OrdererCapabilities) Kafka2RaftMigration() bool {
-	return oc.Kafka2RaftMigVal
+// ConsensusTypeMigration checks whether the orderer permits a consensus-type migration.
+func (oc *OrdererCapabilities) ConsensusTypeMigration() bool {
+	return oc.ConsensusTypeMigrationVal
 }

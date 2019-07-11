@@ -21,8 +21,9 @@ import (
 	deliver_mocks "github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/ram"
+	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
@@ -39,9 +40,11 @@ import (
 	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -170,7 +173,7 @@ func TestInitializeServerConfig(t *testing.T) {
 				if tc.clusterCert == "" {
 					initializeServerConfig(conf, nil)
 				} else {
-					initializeClusterClientConfig(conf)
+					initializeClusterClientConfig(conf, false, nil)
 				}
 			},
 			)
@@ -206,6 +209,7 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 						Location: fileLedgerLocation,
 					},
 				},
+				&disabled.Provider{},
 			)
 
 			bootstrapConfig := &localconfig.TopLevel{
@@ -232,7 +236,71 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 	}
 }
 
-func TestInitializeLocalMsp(t *testing.T) {
+func TestExtractSysChanLastConfig(t *testing.T) {
+	rlf := ramledger.New(10)
+	conf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	genesisBlock := encoder.New(conf).GenesisBlock()
+
+	lastConf := extractSysChanLastConfig(rlf, genesisBlock)
+	assert.Nil(t, lastConf)
+
+	rl, err := rlf.GetOrCreate(genesisconfig.TestChainID)
+	require.NoError(t, err)
+
+	err = rl.Append(genesisBlock)
+	require.NoError(t, err)
+
+	lastConf = extractSysChanLastConfig(rlf, genesisBlock)
+	assert.NotNil(t, lastConf)
+	assert.Equal(t, uint64(0), lastConf.Header.Number)
+
+	assert.Panics(t, func() {
+		_ = extractSysChanLastConfig(rlf, nil)
+	})
+
+	configTx, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG, genesisconfig.TestChainID, nil, &common.ConfigEnvelope{}, 0, 0)
+	require.NoError(t, err)
+
+	nextBlock := blockledger.CreateNextBlock(rl, []*common.Envelope{configTx})
+	nextBlock.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&common.Metadata{
+		Value: utils.MarshalOrPanic(&common.LastConfig{Index: rl.Height()}),
+	})
+	err = rl.Append(nextBlock)
+	require.NoError(t, err)
+
+	lastConf = extractSysChanLastConfig(rlf, genesisBlock)
+	assert.NotNil(t, lastConf)
+	assert.Equal(t, uint64(1), lastConf.Header.Number)
+}
+
+func TestSelectClusterBootBlock(t *testing.T) {
+	bootstrapBlock := &common.Block{Header: &common.BlockHeader{Number: 100}}
+	lastConfBlock := &common.Block{Header: &common.BlockHeader{Number: 100}}
+
+	clusterBoot := selectClusterBootBlock(bootstrapBlock, nil)
+	assert.NotNil(t, clusterBoot)
+	assert.Equal(t, uint64(100), clusterBoot.Header.Number)
+	assert.True(t, bootstrapBlock == clusterBoot)
+
+	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
+	assert.NotNil(t, clusterBoot)
+	assert.Equal(t, uint64(100), clusterBoot.Header.Number)
+	assert.True(t, bootstrapBlock == clusterBoot)
+
+	lastConfBlock.Header.Number = 200
+	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
+	assert.NotNil(t, clusterBoot)
+	assert.Equal(t, uint64(200), clusterBoot.Header.Number)
+	assert.True(t, lastConfBlock == clusterBoot)
+
+	bootstrapBlock.Header.Number = 300
+	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
+	assert.NotNil(t, clusterBoot)
+	assert.Equal(t, uint64(300), clusterBoot.Header.Number)
+	assert.True(t, bootstrapBlock == clusterBoot)
+}
+
+func TestLoadLocalMSP(t *testing.T) {
 	t.Run("Happy", func(t *testing.T) {
 		assert.NotPanics(t, func() {
 			localMSPDir, _ := configtest.GetDevMspDir()
@@ -276,7 +344,7 @@ func TestInitializeMultiChainManager(t *testing.T) {
 	conf := genesisConfig(t)
 	assert.NotPanics(t, func() {
 		initializeLocalMsp(conf)
-		lf, _ := createLedgerFactory(conf)
+		lf, _ := createLedgerFactory(conf, &disabled.Provider{})
 		bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
 		initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, conf, localmsp.NewSigner(), &disabled.Provider{}, &mocks.HealthChecker{}, lf)
 	})
@@ -329,9 +397,9 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		},
 	}
 	grpcServer := initializeGrpcServer(conf, initializeServerConfig(conf, nil))
-	caSupport := &comm.CASupport{
-		AppRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
+	caSupport := &comm.CredentialSupport{
+		AppRootCAsByChain:           make(map[string]comm.CertificateBundle),
+		OrdererRootCAsByChainAndOrg: make(comm.OrgRootCAs),
 	}
 	callback := func(bundle *channelconfig.Bundle) {
 		if grpcServer.MutualTLSRequired() {
@@ -339,14 +407,14 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			updateTrustedRoots(caSupport, bundle, grpcServer)
 		}
 	}
-	lf, _ := createLedgerFactory(conf)
+	lf, _ := createLedgerFactory(conf, &disabled.Provider{})
 	bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
 	initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, genesisConfig(t), localmsp.NewSigner(), &disabled.Provider{}, &mocks.HealthChecker{}, lf, callback)
 	t.Logf("# app CAs: %d", len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
-	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
+	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChainAndOrg[genesisconfig.TestChainID]["SampleOrg"]))
 	// mutual TLS not required so no updates should have occurred
 	assert.Equal(t, 0, len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
-	assert.Equal(t, 0, len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
+	assert.Equal(t, 0, len(caSupport.OrdererRootCAsByChainAndOrg[genesisconfig.TestChainID]["SampleOrg"]))
 	grpcServer.Listener().Close()
 
 	conf = &localconfig.TopLevel{
@@ -362,14 +430,15 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		},
 	}
 	grpcServer = initializeGrpcServer(conf, initializeServerConfig(conf, nil))
-	caSupport = &comm.CASupport{
-		AppRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
+	caSupport = &comm.CredentialSupport{
+		AppRootCAsByChain:           make(map[string]comm.CertificateBundle),
+		OrdererRootCAsByChainAndOrg: make(comm.OrgRootCAs),
 	}
 
-	predDialer := &cluster.PredicateDialer{}
-	clusterConf := initializeClusterClientConfig(conf)
-	predDialer.SetConfig(clusterConf)
+	clusterConf := initializeClusterClientConfig(conf, true, nil)
+	predDialer := &cluster.PredicateDialer{
+		ClientConfig: clusterConf,
+	}
 
 	callback = func(bundle *channelconfig.Bundle) {
 		if grpcServer.MutualTLSRequired() {
@@ -378,14 +447,26 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			updateClusterDialer(caSupport, predDialer, clusterConf.SecOpts.ServerRootCAs)
 		}
 	}
-	initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, genesisConfig(t), localmsp.NewSigner(), &disabled.Provider{}, &mocks.HealthChecker{}, lf, callback)
+	initializeMultichannelRegistrar(
+		bootBlock,
+		&replicationInitiator{},
+		predDialer,
+		comm.ServerConfig{},
+		nil,
+		genesisConfig(t),
+		localmsp.NewSigner(),
+		&disabled.Provider{},
+		&server_mocks.HealthChecker{},
+		lf,
+		callback,
+	)
 	t.Logf("# app CAs: %d", len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
-	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
+	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChainAndOrg[genesisconfig.TestChainID]["SampleOrg"]))
 	// mutual TLS is required so updates should have occurred
 	// we expect an intermediate and root CA for apps and orderers
 	assert.Equal(t, 2, len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
-	assert.Equal(t, 2, len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
-	assert.Len(t, predDialer.Config.Load().(comm.ClientConfig).SecOpts.ServerRootCAs, 2)
+	assert.Equal(t, 2, len(caSupport.OrdererRootCAsByChainAndOrg[genesisconfig.TestChainID]["SampleOrg"]))
+	assert.Len(t, predDialer.ClientConfig.SecOpts.ServerRootCAs, 2)
 	grpcServer.Listener().Close()
 }
 

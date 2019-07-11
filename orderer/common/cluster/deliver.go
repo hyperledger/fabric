@@ -39,7 +39,7 @@ type BlockPuller struct {
 	Logger              *flogging.FabricLogger
 	Dialer              Dialer
 	VerifyBlockSequence BlockSequenceVerifier
-	Endpoints           []string
+	Endpoints           []EndpointCriteria
 	// Internal state
 	stream       *ImpatientStream
 	blockBuff    []*common.Block
@@ -277,7 +277,7 @@ func (p *BlockPuller) probeEndpoints(minRequestedSequence uint64) *endpointInfoB
 	var unavailableErr uint32
 
 	for _, endpoint := range p.Endpoints {
-		go func(endpoint string) {
+		go func(endpoint EndpointCriteria) {
 			defer wg.Done()
 			ei, err := p.probeEndpoint(endpoint, minRequestedSequence)
 			if err != nil {
@@ -312,20 +312,20 @@ func (p *BlockPuller) probeEndpoints(minRequestedSequence uint64) *endpointInfoB
 
 // probeEndpoint returns a gRPC connection and the latest block sequence of an endpoint with the given
 // requires minimum sequence, or error if something goes wrong.
-func (p *BlockPuller) probeEndpoint(endpoint string, minRequestedSequence uint64) (*endpointInfo, error) {
+func (p *BlockPuller) probeEndpoint(endpoint EndpointCriteria, minRequestedSequence uint64) (*endpointInfo, error) {
 	conn, err := p.Dialer.Dial(endpoint)
 	if err != nil {
 		p.Logger.Warningf("Failed connecting to %s: %v", endpoint, err)
 		return nil, err
 	}
 
-	lastBlockSeq, err := p.fetchLastBlockSeq(minRequestedSequence, endpoint, conn)
+	lastBlockSeq, err := p.fetchLastBlockSeq(minRequestedSequence, endpoint.Endpoint, conn)
 	if err != nil {
 		conn.Close()
 		return nil, err
 	}
 
-	return &endpointInfo{conn: conn, lastBlockSeq: lastBlockSeq, endpoint: endpoint}, nil
+	return &endpointInfo{conn: conn, lastBlockSeq: lastBlockSeq, endpoint: endpoint.Endpoint}, nil
 }
 
 // randomEndpoint returns a random endpoint of the given endpointInfo
@@ -451,17 +451,19 @@ func (p *BlockPuller) seekNextEnvelope(startSeq uint64) (*common.Envelope, error
 
 func last() *orderer.SeekInfo {
 	return &orderer.SeekInfo{
-		Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Newest{Newest: &orderer.SeekNewest{}}},
-		Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+		Start:         &orderer.SeekPosition{Type: &orderer.SeekPosition_Newest{Newest: &orderer.SeekNewest{}}},
+		Stop:          &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior:      orderer.SeekInfo_BLOCK_UNTIL_READY,
+		ErrorResponse: orderer.SeekInfo_BEST_EFFORT,
 	}
 }
 
 func nextSeekInfo(startSeq uint64) *orderer.SeekInfo {
 	return &orderer.SeekInfo{
-		Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: startSeq}}},
-		Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+		Start:         &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: startSeq}}},
+		Stop:          &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior:      orderer.SeekInfo_BLOCK_UNTIL_READY,
+		ErrorResponse: orderer.SeekInfo_BEST_EFFORT,
 	}
 }
 

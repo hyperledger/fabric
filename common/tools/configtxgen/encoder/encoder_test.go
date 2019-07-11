@@ -36,6 +36,7 @@ var _ = Describe("Encoder", func() {
 				Application: &genesisconfig.Application{},
 				Orderer: &genesisconfig.Orderer{
 					OrdererType: "solo",
+					Addresses:   []string{"foo.com:7050", "bar.com:8050"},
 				},
 				Consortiums: map[string]*genesisconfig.Consortium{
 					"SampleConsortium": {},
@@ -55,7 +56,12 @@ var _ = Describe("Encoder", func() {
 		It("translates the config into a config group", func() {
 			cg, err := encoder.NewChannelGroup(conf)
 			Expect(err).NotTo(HaveOccurred())
-			_ = cg
+			Expect(len(cg.Values)).To(Equal(5))
+			Expect(cg.Values["BlockDataHashingStructure"]).NotTo(BeNil())
+			Expect(cg.Values["Consortium"]).NotTo(BeNil())
+			Expect(cg.Values["Capabilities"]).NotTo(BeNil())
+			Expect(cg.Values["HashingAlgorithm"]).NotTo(BeNil())
+			Expect(cg.Values["OrdererAddresses"]).NotTo(BeNil())
 		})
 
 		Context("when the policies are ommitted", func() {
@@ -81,6 +87,18 @@ var _ = Describe("Encoder", func() {
 			It("wraps and returns the error", func() {
 				_, err := encoder.NewChannelGroup(conf)
 				Expect(err).To(MatchError("error adding policies to channel group: invalid implicit meta policy rule 'garbage': expected two space separated tokens, but got 1"))
+			})
+		})
+
+		Context("when the orderer addresses are omitted", func() {
+			BeforeEach(func() {
+				conf.Orderer.Addresses = []string{}
+			})
+
+			It("does not create the config value", func() {
+				cg, err := encoder.NewChannelGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cg.Values["OrdererAddresses"]).To(BeNil())
 			})
 		})
 
@@ -367,6 +385,59 @@ var _ = Describe("Encoder", func() {
 		})
 	})
 
+	Describe("NewConsortiumOrgGroup", func() {
+		var (
+			conf *genesisconfig.Organization
+		)
+
+		BeforeEach(func() {
+			conf = &genesisconfig.Organization{
+				MSPDir:  "../../../../sampleconfig/msp",
+				ID:      "SampleMSP",
+				MSPType: "bccsp",
+				Name:    "SampleOrg",
+			}
+		})
+
+		It("translates the config into a config group", func() {
+			cg, err := encoder.NewConsortiumOrgGroup(conf)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(cg.Values)).To(Equal(1))
+			Expect(cg.Values["MSP"]).NotTo(BeNil())
+			Expect(len(cg.Policies)).To(Equal(3))
+			Expect(cg.Policies["Admins"]).NotTo(BeNil())
+			Expect(cg.Policies["Readers"]).NotTo(BeNil())
+			Expect(cg.Policies["Writers"]).NotTo(BeNil())
+		})
+
+		Context("when dev mode is enabled", func() {
+			BeforeEach(func() {
+				conf.AdminPrincipal = "Member"
+			})
+
+			It("does not produce an error", func() {
+				_, err := encoder.NewConsortiumOrgGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when the policy definition is bad", func() {
+			BeforeEach(func() {
+				conf.Policies = map[string]*genesisconfig.Policy{
+					"Admins": {
+						Type: "ImplicitMeta",
+						Rule: "garbage",
+					},
+				}
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewConsortiumOrgGroup(conf)
+				Expect(err).To(MatchError("error adding policies to orderer org group 'SampleOrg': invalid implicit meta policy rule 'garbage': expected two space separated tokens, but got 1"))
+			})
+		})
+	})
+
 	Describe("NewOrdererOrgGroup", func() {
 		var (
 			conf *genesisconfig.Organization
@@ -384,6 +455,10 @@ var _ = Describe("Encoder", func() {
 						Rule: "OR('SampleMSP.member')",
 					},
 				},
+				OrdererEndpoints: []string{
+					"foo:7050",
+					"bar:8050",
+				},
 				AdminPrincipal: "Role.ADMIN",
 			}
 		})
@@ -391,10 +466,11 @@ var _ = Describe("Encoder", func() {
 		It("translates the config into a config group", func() {
 			cg, err := encoder.NewOrdererOrgGroup(conf)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Values)).To(Equal(1))
+			Expect(len(cg.Values)).To(Equal(2))
 			Expect(cg.Values["MSP"]).NotTo(BeNil())
 			Expect(len(cg.Policies)).To(Equal(1))
 			Expect(cg.Policies["SamplePolicy"]).NotTo(BeNil())
+			Expect(cg.Values["Endpoints"]).NotTo(BeNil())
 		})
 
 		Context("when the policies are ommitted", func() {

@@ -103,7 +103,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 		},
 	}
 
-	blocksValidPvtData, hashMismatched, err := ConstructValidAndInvalidPvtData(blocksPvtData, lg.(*kvLedger).blockStore)
+	blocksValidPvtData, hashMismatched, err := constructValidAndInvalidPvtData(blocksPvtData, lg.(*kvLedger).blockStore)
 	assert.NoError(t, err)
 	assert.Equal(t, len(expectedValidBlocksPvtData), len(blocksValidPvtData))
 	assert.ElementsMatch(t, expectedValidBlocksPvtData[1], blocksValidPvtData[1])
@@ -132,7 +132,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 		},
 	}
 
-	blocksValidPvtData, hashMismatches, err := ConstructValidAndInvalidPvtData(blocksPvtData, lg.(*kvLedger).blockStore)
+	blocksValidPvtData, hashMismatches, err := constructValidAndInvalidPvtData(blocksPvtData, lg.(*kvLedger).blockStore)
 	assert.NoError(t, err)
 	assert.Len(t, blocksValidPvtData, 0)
 

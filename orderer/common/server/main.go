@@ -98,21 +98,6 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		logger.Panicf("Failed validating bootstrap block: %v", err)
 	}
 
-	clusterType := isClusterType(bootstrapBlock)
-	signer := localmsp.NewSigner()
-
-	lf, _ := createLedgerFactory(conf)
-
-	clusterDialer := &cluster.PredicateDialer{}
-	clusterClientConfig := initializeClusterClientConfig(conf)
-	clusterDialer.SetConfig(clusterClientConfig)
-
-	r := createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer)
-	// Only clusters that are equipped with a recent config block can replicate.
-	if clusterType && conf.General.GenesisMethod == "file" {
-		r.replicateIfNeeded(bootstrapBlock)
-	}
-
 	opsSystem := newOperationsSystem(conf.Operations, conf.Metrics)
 	err := opsSystem.Start()
 	if err != nil {
@@ -120,15 +105,34 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	}
 	defer opsSystem.Stop()
 	metricsProvider := opsSystem.Provider
+
+	lf, _ := createLedgerFactory(conf, metricsProvider)
+	sysChanLastConfigBlock := extractSysChanLastConfig(lf, bootstrapBlock)
+	clusterBootBlock := selectClusterBootBlock(bootstrapBlock, sysChanLastConfigBlock)
+
+	clusterType := isClusterType(clusterBootBlock)
+	signer := localmsp.NewSigner()
+
+	clusterClientConfig := initializeClusterClientConfig(conf, clusterType, bootstrapBlock)
+	clusterDialer := &cluster.PredicateDialer{
+		ClientConfig: clusterClientConfig,
+	}
+
+	r := createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer)
+	// Only clusters that are equipped with a recent config block can replicate.
+	if clusterType && conf.General.GenesisMethod == "file" {
+		r.replicateIfNeeded(bootstrapBlock)
+	}
+
 	logObserver := floggingmetrics.NewObserver(metricsProvider)
 	flogging.Global.SetObserver(logObserver)
 
 	serverConfig := initializeServerConfig(conf, metricsProvider)
 	grpcServer := initializeGrpcServer(conf, serverConfig)
-	caSupport := &comm.CASupport{
-		AppRootCAsByChain:     make(map[string][][]byte),
-		OrdererRootCAsByChain: make(map[string][][]byte),
-		ClientRootCAs:         serverConfig.SecOpts.ClientRootCAs,
+	caSupport := &comm.CredentialSupport{
+		AppRootCAsByChain:           make(map[string]comm.CertificateBundle),
+		OrdererRootCAsByChainAndOrg: make(comm.OrgRootCAs),
+		ClientRootCAs:               serverConfig.SecOpts.ClientRootCAs,
 	}
 
 	clusterServerConfig := serverConfig
@@ -155,7 +159,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		}
 	}
 
-	manager := initializeMultichannelRegistrar(bootstrapBlock, r, clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, opsSystem, lf, tlsCallback)
+	manager := initializeMultichannelRegistrar(clusterBootBlock, r, clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, opsSystem, lf, tlsCallback)
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	server := NewServer(manager, metricsProvider, &conf.Debug, conf.General.Authentication.TimeWindow, mutualTLS)
 
@@ -178,6 +182,49 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
 	logger.Info("Beginning to serve requests")
 	grpcServer.Start()
+}
+
+// Extract system channel last config block
+func extractSysChanLastConfig(lf blockledger.Factory, bootstrapBlock *cb.Block) *cb.Block {
+	// Are we bootstrapping?
+	chainCount := len(lf.ChainIDs())
+	if chainCount == 0 {
+		logger.Info("Bootstrapping because no existing channels")
+		return nil
+	}
+	logger.Infof("Not bootstrapping because of %d existing channels", chainCount)
+
+	systemChannelName, err := utils.GetChainIDFromBlock(bootstrapBlock)
+	if err != nil {
+		logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
+	}
+	systemChannelLedger, err := lf.GetOrCreate(systemChannelName)
+	if err != nil {
+		logger.Panicf("Failed getting system channel ledger: %v", err)
+	}
+	height := systemChannelLedger.Height()
+	lastConfigBlock := multichannel.ConfigBlock(systemChannelLedger)
+	logger.Infof("System channel: name=%s, height=%d, last config block number=%d",
+		systemChannelName, height, lastConfigBlock.Header.Number)
+	return lastConfigBlock
+}
+
+// Select cluster boot block
+func selectClusterBootBlock(bootstrapBlock, sysChanLastConfig *cb.Block) *cb.Block {
+	if sysChanLastConfig == nil {
+		logger.Debug("Selected bootstrap block, because system channel last config block is nil")
+		return bootstrapBlock
+	}
+
+	if sysChanLastConfig.Header.Number > bootstrapBlock.Header.Number {
+		logger.Infof("Cluster boot block is system channel last config block; Blocks Header.Number system-channel=%d, bootstrap=%d",
+			sysChanLastConfig.Header.Number, bootstrapBlock.Header.Number)
+		return sysChanLastConfig
+	}
+
+	logger.Infof("Cluster boot block is bootstrap (genesis) block; Blocks Header.Number system-channel=%d, bootstrap=%d",
+		sysChanLastConfig.Header.Number, bootstrapBlock.Header.Number)
+	return bootstrapBlock
 }
 
 func createReplicator(
@@ -334,7 +381,10 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 	return serverConf, srv
 }
 
-func initializeClusterClientConfig(conf *localconfig.TopLevel) comm.ClientConfig {
+func initializeClusterClientConfig(conf *localconfig.TopLevel, clusterType bool, bootstrapBlock *cb.Block) comm.ClientConfig {
+	if clusterType && !conf.General.TLS.Enabled {
+		logger.Panicf("TLS is required for running ordering nodes of type %s.", consensusType(bootstrapBlock))
+	}
 	cc := comm.ClientConfig{
 		AsyncConnect: true,
 		KaOpts:       comm.DefaultKeepaliveOptions,
@@ -486,11 +536,11 @@ func extractBootstrapBlock(conf *localconfig.TopLevel) *cb.Block {
 func initializeBootstrapChannel(genesisBlock *cb.Block, lf blockledger.Factory) {
 	chainID, err := utils.GetChainIDFromBlock(genesisBlock)
 	if err != nil {
-		logger.Fatal("Failed to parse chain ID from genesis block:", err)
+		logger.Fatal("Failed to parse channel ID from genesis block:", err)
 	}
 	gl, err := lf.GetOrCreate(chainID)
 	if err != nil {
-		logger.Fatal("Failed to create the system chain:", err)
+		logger.Fatal("Failed to create the system channel:", err)
 	}
 
 	if err := gl.Append(genesisBlock); err != nil {
@@ -499,6 +549,11 @@ func initializeBootstrapChannel(genesisBlock *cb.Block, lf blockledger.Factory) 
 }
 
 func isClusterType(genesisBlock *cb.Block) bool {
+	_, exists := clusterTypes[consensusType(genesisBlock)]
+	return exists
+}
+
+func consensusType(genesisBlock *cb.Block) string {
 	if genesisBlock.Data == nil || len(genesisBlock.Data.Data) == 0 {
 		logger.Fatalf("Empty genesis block")
 	}
@@ -514,8 +569,7 @@ func isClusterType(genesisBlock *cb.Block) bool {
 	if !exists {
 		logger.Fatalf("Orderer config doesn't exist in bundle derived from genesis block")
 	}
-	_, exists = clusterTypes[ordConf.ConsensusType()]
-	return exists
+	return ordConf.ConsensusType()
 }
 
 func initializeGrpcServer(conf *localconfig.TopLevel, serverConfig comm.ServerConfig) *comm.GRPCServer {
@@ -566,7 +620,7 @@ func initializeMultichannelRegistrar(
 	if len(lf.ChainIDs()) == 0 {
 		initializeBootstrapChannel(genesisBlock, lf)
 	} else {
-		logger.Info("Not bootstrapping because of existing chains")
+		logger.Info("Not bootstrapping because of existing channels")
 	}
 
 	consenters := make(map[string]consensus.Consenter)
@@ -575,7 +629,7 @@ func initializeMultichannelRegistrar(
 
 	consenters["solo"] = solo.New()
 	var kafkaMetrics *kafka.Metrics
-	consenters["kafka"], kafkaMetrics = kafka.New(conf, metricsProvider, healthChecker, registrar)
+	consenters["kafka"], kafkaMetrics = kafka.New(conf.Kafka, metricsProvider, healthChecker)
 	// Note, we pass a 'nil' channel here, we could pass a channel that
 	// closes if we wished to cleanup this routine on exit.
 	go kafkaMetrics.PollGoMetricsUntilStop(time.Minute, nil)
@@ -663,12 +717,10 @@ func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics
 	})
 }
 
-func updateTrustedRoots(rootCASupport *comm.CASupport, cm channelconfig.Resources, servers ...*comm.GRPCServer) {
+func updateTrustedRoots(rootCASupport *comm.CredentialSupport, cm channelconfig.Resources, servers ...*comm.GRPCServer) {
 	rootCASupport.Lock()
 	defer rootCASupport.Unlock()
 
-	appRootCAs := [][]byte{}
-	ordererRootCAs := [][]byte{}
 	appOrgMSPs := make(map[string]struct{})
 	ordOrgMSPs := make(map[string]struct{})
 
@@ -702,7 +754,10 @@ func updateTrustedRoots(rootCASupport *comm.CASupport, cm channelconfig.Resource
 		logger.Errorf("Error getting root CAs for channel %s (%s)", cid, err)
 		return
 	}
+	var appRootCAs comm.CertificateBundle
+	ordererRootCAsPerOrg := make(map[string]comm.CertificateBundle)
 	for k, v := range msps {
+		var ordererRootCAs comm.CertificateBundle
 		// check to see if this is a FABRIC MSP
 		if v.GetType() == msp.FABRIC {
 			for _, root := range v.GetTLSRootCerts() {
@@ -729,24 +784,27 @@ func updateTrustedRoots(rootCASupport *comm.CASupport, cm channelconfig.Resource
 					ordererRootCAs = append(ordererRootCAs, intermediate)
 				}
 			}
+			ordererRootCAsPerOrg[k] = ordererRootCAs
 		}
 	}
 	rootCASupport.AppRootCAsByChain[cid] = appRootCAs
-	rootCASupport.OrdererRootCAsByChain[cid] = ordererRootCAs
+	rootCASupport.OrdererRootCAsByChainAndOrg[cid] = ordererRootCAsPerOrg
 
 	// now iterate over all roots for all app and orderer chains
 	trustedRoots := [][]byte{}
 	for _, roots := range rootCASupport.AppRootCAsByChain {
 		trustedRoots = append(trustedRoots, roots...)
 	}
-	for _, roots := range rootCASupport.OrdererRootCAsByChain {
-		trustedRoots = append(trustedRoots, roots...)
+	// add all root CAs from all channels to the trusted roots
+	for _, orgRootCAs := range rootCASupport.OrdererRootCAsByChainAndOrg {
+		for _, roots := range orgRootCAs {
+			trustedRoots = append(trustedRoots, roots...)
+		}
 	}
 	// also need to append statically configured root certs
 	if len(rootCASupport.ClientRootCAs) > 0 {
 		trustedRoots = append(trustedRoots, rootCASupport.ClientRootCAs...)
 	}
-
 	// now update the client roots for the gRPC server
 	for _, srv := range servers {
 		err = srv.SetClientRootCAs(trustedRoots)
@@ -759,23 +817,22 @@ func updateTrustedRoots(rootCASupport *comm.CASupport, cm channelconfig.Resource
 	}
 }
 
-func updateClusterDialer(rootCASupport *comm.CASupport, clusterDialer *cluster.PredicateDialer, localClusterRootCAs [][]byte) {
+func updateClusterDialer(rootCASupport *comm.CredentialSupport, clusterDialer *cluster.PredicateDialer, localClusterRootCAs [][]byte) {
 	rootCASupport.Lock()
 	defer rootCASupport.Unlock()
 
 	// Iterate over all orderer root CAs for all chains and add them
 	// to the root CAs
 	var clusterRootCAs [][]byte
-	for _, roots := range rootCASupport.OrdererRootCAsByChain {
-		clusterRootCAs = append(clusterRootCAs, roots...)
+	for _, orgRootCAs := range rootCASupport.OrdererRootCAsByChainAndOrg {
+		for _, roots := range orgRootCAs {
+			clusterRootCAs = append(clusterRootCAs, roots...)
+		}
 	}
-
 	// Add the local root CAs too
 	clusterRootCAs = append(clusterRootCAs, localClusterRootCAs...)
 	// Update the cluster config with the new root CAs
-	clusterConfig := clusterDialer.Config.Load().(comm.ClientConfig)
-	clusterConfig.SecOpts.ServerRootCAs = clusterRootCAs
-	clusterDialer.SetConfig(clusterConfig)
+	clusterDialer.UpdateRootCAs(clusterRootCAs)
 }
 
 func prettyPrintStruct(i interface{}) {

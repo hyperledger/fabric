@@ -26,6 +26,7 @@ func TestMetrics(t *testing.T) {
 	mc := &mockCommitter{Mock: &mock.Mock{}}
 	mc.On("CommitWithPvtData", mock.Anything).Return(nil)
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(100), nil).Twice()
+	mc.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	g := &mocks.GossipMock{}
 	g.On("PeersOfChannel", mock.Anything).Return([]discovery.NetworkMember{})
 	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
@@ -48,8 +49,7 @@ func TestMetrics(t *testing.T) {
 	gossipMetrics := metrics.NewGossipMetrics(testMetricProvider.FakeProvider)
 
 	// create peer with fake metrics provider for gossip state
-	p := newPeerNodeWithGossipWithMetrics(newGossipConfig(0, 0),
-		mc, noopPeerIdentityAcceptor, g, gossipMetrics)
+	p := newPeerNodeWithGossipWithMetrics(0, mc, noopPeerIdentityAcceptor, g, gossipMetrics)
 	defer p.shutdown()
 
 	// add a payload to the payload buffer

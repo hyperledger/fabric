@@ -117,7 +117,7 @@ func (d *sampleDataHelper) populateLedger(h *testhelper) {
 		s.getState("cc1", "key1")
 		s.setState("cc1", "key1", d.sampleVal("value15", lgrid))
 	})
-	blk7 := h.committer.cutBlockAndCommitWithPvtdata(txdata7)
+	blk7 := h.committer.cutBlockAndCommitWithPvtdata([]*txAndPvtdata{txdata7}, nil)
 	blk8 := h.cutBlockAndCommitWithPvtdata()
 
 	d.submittedData.recordSubmittedBlks(lgrid,
@@ -152,6 +152,7 @@ func (d *sampleDataHelper) verifyLedgerContent(h *testhelper) {
 	d.verifyConfigHistory(h)
 	d.verifyBlockAndPvtdata(h)
 	d.verifyGetTransactionByID(h)
+	// TODO: add verifyHistory() -- FAB-15733
 
 	// the submitted data could not be available if the test ledger is loaded from disk in a fresh run
 	// (e.g., a backup of a test lesger from a previous fabric version)

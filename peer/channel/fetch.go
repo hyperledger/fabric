@@ -30,6 +30,7 @@ func fetchCmd(cf *ChannelCmdFactory) *cobra.Command {
 	}
 	flagList := []string{
 		"channelID",
+		"bestEffort",
 	}
 	attachFlags(fetchCmd, flagList)
 

@@ -93,6 +93,28 @@ func (pr *provider) NewPolicy(data []byte) (policies.Policy, proto.Message, erro
 
 }
 
+// EnvelopeBasedPolicyProvider allows to create a new policy from SignaturePolicyEnvelope struct instead of []byte
+type EnvelopeBasedPolicyProvider struct {
+	Deserializer msp.IdentityDeserializer
+}
+
+// NewPolicy creates a new policy from the policy envelope
+func (pp *EnvelopeBasedPolicyProvider) NewPolicy(sigPolicy *cb.SignaturePolicyEnvelope) (policies.Policy, error) {
+	if sigPolicy == nil {
+		return nil, errors.New("invalid arguments")
+	}
+
+	compiled, err := compile(sigPolicy.Rule, sigPolicy.Identities, pp.Deserializer)
+	if err != nil {
+		return nil, err
+	}
+
+	return &policy{
+		evaluator:    compiled,
+		deserializer: pp.Deserializer,
+	}, nil
+}
+
 type policy struct {
 	evaluator    func([]IdentityAndSignature, []bool) bool
 	deserializer msp.IdentityDeserializer

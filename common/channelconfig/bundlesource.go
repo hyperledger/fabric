@@ -61,12 +61,12 @@ func (bs *BundleSource) StableBundle() *Bundle {
 
 // PolicyManager returns the policy manager constructed for this config
 func (bs *BundleSource) PolicyManager() policies.Manager {
-	return bs.StableBundle().policyManager
+	return bs.StableBundle().PolicyManager()
 }
 
 // MSPManager returns the MSP manager constructed for this config
 func (bs *BundleSource) MSPManager() msp.MSPManager {
-	return bs.StableBundle().mspManager
+	return bs.StableBundle().MSPManager()
 }
 
 // ChannelConfig returns the config.Channel for the chain

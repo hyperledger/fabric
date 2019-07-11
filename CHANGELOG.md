@@ -1,3 +1,41 @@
+## v1.4.1
+Thu Apr 11 08:07:20 EDT 2019
+
+* [ac983d2](https://github.com/hyperledger/fabric/commit/ac983d2) [FAB-14966](https://jira.hyperledger.org/browse/FAB-14966) Release fabric v1.4.1
+* [8379983](https://github.com/hyperledger/fabric/commit/8379983) [FAB-14944](https://jira.hyperledger.org/browse/FAB-14944) Fix Data race in TestSend
+* [e02ba4c](https://github.com/hyperledger/fabric/commit/e02ba4c) [FAB-14328](https://jira.hyperledger.org/browse/FAB-14328) de-vipererize gossip discovery
+* [eeed6bc](https://github.com/hyperledger/fabric/commit/eeed6bc) [FAB-14322](https://jira.hyperledger.org/browse/FAB-14322) de-vipererize gossip state
+* [1ebb469](https://github.com/hyperledger/fabric/commit/1ebb469) [FAB-14824](https://jira.hyperledger.org/browse/FAB-14824) add integration test
+* [2cf64e0](https://github.com/hyperledger/fabric/commit/2cf64e0) [FAB-13725](https://jira.hyperledger.org/browse/FAB-13725) address some review comments
+* [772b511](https://github.com/hyperledger/fabric/commit/772b511) [FAB-14295](https://jira.hyperledger.org/browse/FAB-14295) de-vipererize gossip privdata
+* [3ef87cb](https://github.com/hyperledger/fabric/commit/3ef87cb) [FAB-13534](https://jira.hyperledger.org/browse/FAB-13534) cache pushAckTimeout in pvt data
+* [504fcbd](https://github.com/hyperledger/fabric/commit/504fcbd) [FAB-14909](https://jira.hyperledger.org/browse/FAB-14909) more lenient timeout for integration test
+* [f08a782](https://github.com/hyperledger/fabric/commit/f08a782) [FAB-14950](https://jira.hyperledger.org/browse/FAB-14950) Fix Raft UT flake
+* [cbbf9c2](https://github.com/hyperledger/fabric/commit/cbbf9c2) [FAB-14855](https://jira.hyperledger.org/browse/FAB-14855) Consolidate single node Raft IT
+* [21a1880](https://github.com/hyperledger/fabric/commit/21a1880) [FAB-14291](https://jira.hyperledger.org/browse/FAB-14291) de-vipererize gossip election
+* [1314cf0](https://github.com/hyperledger/fabric/commit/1314cf0) [FAB-14265](https://jira.hyperledger.org/browse/FAB-14265) de-vipererize gossip comm
+* [09afe2a](https://github.com/hyperledger/fabric/commit/09afe2a) [FAB-14264](https://jira.hyperledger.org/browse/FAB-14264) de-vipererize gossip pull engine
+* [5900e5d](https://github.com/hyperledger/fabric/commit/5900e5d) Revert "[FAB-14908](https://jira.hyperledger.org/browse/FAB-14908) Support latest chaincode images
+* [c356a2b](https://github.com/hyperledger/fabric/commit/c356a2b) [FAB-14239](https://jira.hyperledger.org/browse/FAB-14239) get rid of  NewCommInstanceWithServer
+* [d99d350](https://github.com/hyperledger/fabric/commit/d99d350) [FAB-14238](https://jira.hyperledger.org/browse/FAB-14238) use ephemeral ports in gossip state tests
+* [77db586](https://github.com/hyperledger/fabric/commit/77db586) [FAB-14218](https://jira.hyperledger.org/browse/FAB-14218) use ephemeral ports in gossip service tests
+* [a6bd7c8](https://github.com/hyperledger/fabric/commit/a6bd7c8) [FAB-14184](https://jira.hyperledger.org/browse/FAB-14184) use ephemeral ports in gossip gossip tests
+* [76096f2](https://github.com/hyperledger/fabric/commit/76096f2) [FAB-14143](https://jira.hyperledger.org/browse/FAB-14143) use ephemeral ports in gossip comm tests
+* [fc10fab](https://github.com/hyperledger/fabric/commit/fc10fab) [FAB-13653](https://jira.hyperledger.org/browse/FAB-13653) Fix TestTicker flake
+* [b05a1b7](https://github.com/hyperledger/fabric/commit/b05a1b7) [FAB-14818](https://jira.hyperledger.org/browse/FAB-14818) Flake in TestStreamAbort
+* [9ffe47d](https://github.com/hyperledger/fabric/commit/9ffe47d) [FAB-14070](https://jira.hyperledger.org/browse/FAB-14070) use net.JoinHostPort in gossip
+* [5329c8d](https://github.com/hyperledger/fabric/commit/5329c8d) [FAB-13929](https://jira.hyperledger.org/browse/FAB-13929) disable flaky TestEndedGoroutines test
+* [a104620](https://github.com/hyperledger/fabric/commit/a104620) [FAB-14103](https://jira.hyperledger.org/browse/FAB-14103) fix unit test in gossip state metrics
+* [d859cec](https://github.com/hyperledger/fabric/commit/d859cec) [FAB-13917](https://jira.hyperledger.org/browse/FAB-13917) fix unit test in gossip election metrics
+* [f18a0ba](https://github.com/hyperledger/fabric/commit/f18a0ba) [FAB-12914](https://jira.hyperledger.org/browse/FAB-12914) gossip private data metrics
+* [86d7515](https://github.com/hyperledger/fabric/commit/86d7515) [FAB-12982](https://jira.hyperledger.org/browse/FAB-12982) spray pvt across maximum eligible orgs
+* [1ef9672](https://github.com/hyperledger/fabric/commit/1ef9672) [FAB-12918](https://jira.hyperledger.org/browse/FAB-12918) gossip channel membership metrics
+* [0c294b3](https://github.com/hyperledger/fabric/commit/0c294b3) [FAB-12917](https://jira.hyperledger.org/browse/FAB-12917) gossip comm metrics
+* [ad90393](https://github.com/hyperledger/fabric/commit/ad90393) [FAB-12915](https://jira.hyperledger.org/browse/FAB-12915) gossip leader election metrics
+* [72534a5](https://github.com/hyperledger/fabric/commit/72534a5) [FAB-12916](https://jira.hyperledger.org/browse/FAB-12916) gossip state metrics
+* [754b945](https://github.com/hyperledger/fabric/commit/754b945) [FAB-14424](https://jira.hyperledger.org/browse/FAB-14424) Fix test flake TestMetrics
+* [2240d5f](https://github.com/hyperledger/fabric/commit/2240d5f) [FAB-14884](https://jira.hyperledger.org/browse/FAB-14884) Prepare for next fabric release (v1.4.1)
+
 ## v1.4.1-rc1
 Fri Mar 29 14:54:42 EDT 2019
 

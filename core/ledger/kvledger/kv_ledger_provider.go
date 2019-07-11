@@ -58,11 +58,10 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	logger.Info("Initializing ledger provider")
 	// Initialize the ID store (inventory of chainIds/ledgerIds)
 	idStore := openIDStore(ledgerconfig.GetLedgerProviderPath())
-	ledgerStoreProvider := ledgerstorage.NewProvider()
 	// Initialize the history database (index for history of values by key)
 	historydbProvider := historyleveldb.NewHistoryDBProvider()
 	logger.Info("ledger provider Initialized")
-	provider := &Provider{idStore, ledgerStoreProvider,
+	provider := &Provider{idStore, nil,
 		nil, historydbProvider, nil, nil, nil, nil, nil, nil}
 	return provider, nil
 }
@@ -81,6 +80,7 @@ func (provider *Provider) Initialize(initializer *ledger.Initializer) error {
 	stateListeners = append(stateListeners, configHistoryMgr)
 
 	provider.initializer = initializer
+	provider.ledgerStoreProvider = ledgerstorage.NewProvider(initializer.MetricsProvider)
 	provider.configHistoryMgr = configHistoryMgr
 	provider.stateListeners = stateListeners
 	provider.collElgNotifier = collElgNotifier
@@ -121,9 +121,7 @@ func (provider *Provider) Create(genesisBlock *common.Block) (ledger.PeerLedger,
 		panicOnErr(provider.idStore.unsetUnderConstructionFlag(), "Error while unsetting under construction flag")
 		return nil, err
 	}
-	if err := lgr.CommitWithPvtData(&ledger.BlockAndPvtData{
-		Block: genesisBlock,
-	}); err != nil {
+	if err := lgr.CommitWithPvtData(&ledger.BlockAndPvtData{Block: genesisBlock}, &ledger.CommitOptions{}); err != nil {
 		lgr.Close()
 		return nil, err
 	}

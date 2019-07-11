@@ -95,6 +95,14 @@ func (v *verifier) verifyBlockAndPvtDataSameAs(blockNum uint64, expectedOut *led
 	})
 }
 
+func (v *verifier) verifyMissingPvtDataSameAs(recentNBlocks int, expectedMissingData ledger.MissingPvtDataInfo) {
+	missingDataTracker, err := v.lgr.GetMissingPvtDataTracker()
+	v.assert.NoError(err)
+	missingPvtData, err := missingDataTracker.GetMissingPvtDataInfoForMostRecentBlocks(recentNBlocks)
+	v.assert.NoError(err)
+	v.assert.Equal(expectedMissingData, missingPvtData)
+}
+
 func (v *verifier) verifyGetTransactionByID(txid string, expectedOut *protopeer.ProcessedTransaction) {
 	tran, err := v.lgr.GetTransactionByID(txid)
 	v.assert.NoError(err)
@@ -173,9 +181,19 @@ func (r *retrievedBlockAndPvtdata) sameMetadata(expectedBlock *common.Block) {
 	retrievedMetadata := r.Block.Metadata.Metadata
 	expectedMetadata := expectedBlock.Metadata.Metadata
 	r.assert.Equal(len(expectedMetadata), len(retrievedMetadata))
-	for i := 0; i < len(retrievedMetadata); i++ {
+	for i := 0; i < len(expectedMetadata); i++ {
 		if len(expectedMetadata[i])+len(retrievedMetadata[i]) != 0 {
-			r.assert.Equal(expectedMetadata[i], retrievedMetadata[i])
+			if i != int(common.BlockMetadataIndex_COMMIT_HASH) {
+				r.assert.Equal(expectedMetadata[i], retrievedMetadata[i])
+			} else {
+				// in order to compare the exact hash value, we need to duplicate the
+				// production code in this test too (which is not recommended).
+				commitHash := &common.Metadata{}
+				err := proto.Unmarshal(retrievedMetadata[common.BlockMetadataIndex_COMMIT_HASH],
+					commitHash)
+				r.assert.NoError(err)
+				r.assert.Equal(len(commitHash.Value), 32)
+			}
 		}
 	}
 }

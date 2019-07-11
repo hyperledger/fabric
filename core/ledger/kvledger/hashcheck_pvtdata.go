@@ -16,9 +16,9 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-// ConstructValidAndInvalidPvtData computes the valid pvt data and hash mismatch list
+// constructValidAndInvalidPvtData computes the valid pvt data and hash mismatch list
 // from a received pvt data list of old blocks.
-func ConstructValidAndInvalidPvtData(blocksPvtData []*ledger.BlockPvtData, blockStore *ledgerstorage.Store) (
+func constructValidAndInvalidPvtData(blocksPvtData []*ledger.BlockPvtData, blockStore *ledgerstorage.Store) (
 	map[uint64][]*ledger.TxPvtData, []*ledger.PvtdataHashMismatch, error,
 ) {
 	// for each block, for each transaction, retrieve the txEnvelope to

@@ -12,7 +12,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -21,10 +20,9 @@ var logger = flogging.MustGetLogger("orderer.consensus.solo")
 type consenter struct{}
 
 type chain struct {
-	support         consensus.ConsenterSupport
-	sendChan        chan *message
-	exitChan        chan struct{}
-	migrationStatus migration.Status
+	support  consensus.ConsenterSupport
+	sendChan chan *message
+	exitChan chan struct{}
 }
 
 type message struct {
@@ -47,10 +45,9 @@ func (solo *consenter) HandleChain(support consensus.ConsenterSupport, metadata 
 
 func newChain(support consensus.ConsenterSupport) *chain {
 	return &chain{
-		support:         support,
-		sendChan:        make(chan *message),
-		exitChan:        make(chan struct{}),
-		migrationStatus: migration.NewStatusStepper(support.IsSystemChannel(), support.ChainID()),
+		support:  support,
+		sendChan: make(chan *message),
+		exitChan: make(chan struct{}),
 	}
 }
 
@@ -100,10 +97,6 @@ func (ch *chain) Configure(config *cb.Envelope, configSeq uint64) error {
 // Errored only closes on exit
 func (ch *chain) Errored() <-chan struct{} {
 	return ch.exitChan
-}
-
-func (ch *chain) MigrationStatus() migration.Status {
-	return ch.migrationStatus
 }
 
 func (ch *chain) main() {

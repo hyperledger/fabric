@@ -711,5 +711,123 @@ modification policy.
 The ``configtxlator`` and ``jq`` tools, along with the ever-growing ``peer channel``
 commands, provide us with the functionality to accomplish this task.
 
+Updating the Channel Config to include an Org3 Anchor Peer (Optional)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Org3 peers were able to establish gossip connection to the Org1 and Org2
+peers since Org1 and Org2 had anchor peers defined in the channel configuration.
+Likewise newly added organizations like Org3 should also define their anchor peers
+in the channel configuration so that any new peers from other organizations can
+directly discover an Org3 peer.
+
+Continuing from the Org3 CLI, we will make a channel configuration update to
+define an Org3 anchor peer. The process will be similar to the previous
+configuration update, therefore we'll go faster this time.
+
+As before, we will fetch the latest channel configuration to get started.
+Inside the CLI container for Org3 fetch the most recent config block for the channel,
+using the ``peer channel fetch`` command.
+
+.. code:: bash
+
+  peer channel fetch config config_block.pb -o orderer.example.com:7050 -c $CHANNEL_NAME --tls --cafile $ORDERER_CA
+
+After fetching the config block we will want to convert it into JSON format. To do
+this we will use the configtxlator tool, as done previously when adding Org3 to the
+channel. When converting it we need to remove all the headers, metadata, and signatures
+that are not required to update Org3 to include an anchor peer by using the jq
+tool. This information will be reincorporated later before we proceed to update the
+channel configuration.
+
+.. code:: bash
+
+    configtxlator proto_decode --input config_block.pb --type common.Block | jq .data.data[0].payload.data.config > config.json
+
+The ``config.json`` is the now trimmed JSON representing the latest channel configuration
+that we will update.
+
+Using the jq tool again, we will update the configuration JSON with the Org3 anchor peer we
+want to add.
+
+.. code:: bash
+
+    jq '.channel_group.groups.Application.groups.Org3MSP.values += {"AnchorPeers":{"mod_policy": "Admins","value":{"anchor_peers": [{"host": "peer0.org3.example.com","port": 11051}]},"version": "0"}}' config.json > modified_anchor_config.json
+
+We now have two JSON files, one for the current channel configuration,
+``config.json``, and one for the desired channel configuration ``modified_anchor_config.json``.
+Next we convert each of these back into protobuf format and calculate the delta between the two.
+
+Translate ``config.json`` back into protobuf format as ``config.pb``
+
+.. code:: bash
+
+    configtxlator proto_encode --input config.json --type common.Config --output config.pb
+
+Translate the ``modified_anchor_config.json`` into protobuf format as ``modified_anchor_config.pb``
+
+.. code:: bash
+
+    configtxlator proto_encode --input modified_anchor_config.json --type common.Config --output modified_anchor_config.pb
+
+Calculate the delta between the two protobuf formatted configurations.
+
+.. code:: bash
+
+    configtxlator compute_update --channel_id $CHANNEL_NAME --original config.pb --updated modified_anchor_config.pb --output anchor_update.pb
+
+Now that we have the desired update to the channel we must wrap it in an envelope
+message so that it can be properly read. To do this we must first convert the protobuf
+back into a JSON that can be wrapped.
+
+We will use the configtxlator command again to convert ``anchor_update.pb`` into ``anchor_update.json``
+
+.. code:: bash
+
+    configtxlator proto_decode --input anchor_update.pb --type common.ConfigUpdate | jq . > anchor_update.json
+
+Next we will wrap the update in an envelope message, restoring the previously
+stripped away header, outputting it to ``anchor_update_in_envelope.json``
+
+.. code:: bash
+
+    echo '{"payload":{"header":{"channel_header":{"channel_id":"mychannel", "type":2}},"data":{"config_update":'$(cat anchor_update.json)'}}}' | jq . > anchor_update_in_envelope.json
+
+Now that we have reincorporated the envelope we need to convert it
+to a protobuf so it can be properly signed and submitted to the orderer for the update.
+
+.. code:: bash
+
+    configtxlator proto_encode --input anchor_update_in_envelope.json --type common.Envelope --output anchor_update_in_envelope.pb
+
+Now that the update has been properly formatted it is time to sign off and submit it. Since this
+is only an update to Org3 we only need to have Org3 sign off on the update. As we are
+in the Org3 CLI container there is no need to switch the CLI containers identity, as it is
+already using the Org3 identity. Therefore we can just use the ``peer channel update`` command
+as it will also sign off on the update as the Org3 admin before submitting it to the orderer.
+
+.. code:: bash
+
+    peer channel update -f anchor_update_in_envelope.pb -c $CHANNEL_NAME -o orderer.example.com:7050 --tls --cafile $ORDERER_CA
+
+The orderer receives the config update request and cuts a block with the updated configuration.
+As peers receive the block, they will process the configuration updates.
+
+Inspect the logs for one of the peers. While processing the configuration transaction from the new block,
+you will see gossip re-establish connections using the new anchor peer for Org3. This is proof
+that the configuration update has been successfully applied!
+
+.. code:: bash
+
+    docker logs -f peer0.org1.example.com
+
+.. code:: bash
+
+    2019-06-12 17:08:57.924 UTC [gossip.gossip] learnAnchorPeers -> INFO 89a Learning about the configured anchor peers of Org1MSP for channel mychannel : [{peer0.org1.example.com 7051}]
+    2019-06-12 17:08:57.926 UTC [gossip.gossip] learnAnchorPeers -> INFO 89b Learning about the configured anchor peers of Org2MSP for channel mychannel : [{peer0.org2.example.com 9051}]
+    2019-06-12 17:08:57.926 UTC [gossip.gossip] learnAnchorPeers -> INFO 89c Learning about the configured anchor peers of Org3MSP for channel mychannel : [{peer0.org3.example.com 11051}]
+
+Congratulations, you have now made two configuration updates --- one to add Org3 to the channel,
+and a second to define an anchor peer for Org3.
+
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

@@ -11,11 +11,14 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"time"
 
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/peer/common/api"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
 // PeerClient represents a client for communicating with a peer
@@ -40,15 +43,39 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 		return nil, errors.New("peer address must be set")
 	}
 
-	_, override, clientConfig, err := configFromEnv("peer")
+	override := viper.GetString("peer.tls.serverhostoverride")
+	clientConfig := comm.ClientConfig{}
+	clientConfig.Timeout = viper.GetDuration("peer.client.connTimeout")
+	if clientConfig.Timeout == time.Duration(0) {
+		clientConfig.Timeout = defaultConnTimeout
+	}
+
+	secOpts := &comm.SecureOptions{
+		UseTLS:            viper.GetBool("peer.tls.enabled"),
+		RequireClientCert: viper.GetBool("peer.tls.clientAuthRequired"),
+	}
+
+	if secOpts.RequireClientCert {
+		keyPEM, err := ioutil.ReadFile(config.GetPath("peer.tls.clientKey.file"))
+		if err != nil {
+			return nil, errors.WithMessage(err, "unable to load peer.tls.clientKey.file")
+		}
+		secOpts.Key = keyPEM
+		certPEM, err := ioutil.ReadFile(config.GetPath("peer.tls.clientCert.file"))
+		if err != nil {
+			return nil, errors.WithMessage(err, "unable to load peer.tls.clientCert.file")
+		}
+		secOpts.Certificate = certPEM
+	}
+	clientConfig.SecOpts = secOpts
+
 	if clientConfig.SecOpts.UseTLS {
 		if tlsRootCertFile == "" {
 			return nil, errors.New("tls root cert file must be set")
 		}
 		caPEM, res := ioutil.ReadFile(tlsRootCertFile)
 		if res != nil {
-			err = errors.WithMessage(res, fmt.Sprintf("unable to load TLS root cert file from %s", tlsRootCertFile))
-			return nil, err
+			return nil, errors.WithMessage(res, fmt.Sprintf("unable to load TLS root cert file from %s", tlsRootCertFile))
 		}
 		clientConfig.SecOpts.ServerRootCAs = [][]byte{caPEM}
 	}

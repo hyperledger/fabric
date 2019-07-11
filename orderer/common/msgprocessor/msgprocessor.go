@@ -31,6 +31,10 @@ var ErrChannelDoesNotExist = errors.New("channel does not exist")
 // which are not permitted due to an authorization failure.
 var ErrPermissionDenied = errors.New("permission denied")
 
+// ErrMaintenanceMode is returned when transactions are rejected because the orderer is in "maintenance mode",
+// as defined by ConsensusType.State != NORMAL. This typically happens during consensus-type migration.
+var ErrMaintenanceMode = errors.New("maintenance mode")
+
 // Classification represents the possible message types for the system.
 type Classification int
 

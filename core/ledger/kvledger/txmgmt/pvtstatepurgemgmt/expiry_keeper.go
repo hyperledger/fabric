@@ -122,8 +122,14 @@ func encodeExpiryInfoValue(pvtdataKeys *PvtdataKeys) ([]byte, error) {
 }
 
 func decodeExpiryInfo(key []byte, value []byte) (*expiryInfo, error) {
-	expiryBlk, n := util.DecodeOrderPreservingVarUint64(key[1:])
-	committingBlk, _ := util.DecodeOrderPreservingVarUint64(key[n+1:])
+	expiryBlk, n, err := util.DecodeOrderPreservingVarUint64(key[1:])
+	if err != nil {
+		return nil, err
+	}
+	committingBlk, _, err := util.DecodeOrderPreservingVarUint64(key[n+1:])
+	if err != nil {
+		return nil, err
+	}
 	pvtdataKeys := &PvtdataKeys{}
 	if err := proto.Unmarshal(value, pvtdataKeys); err != nil {
 		return nil, err

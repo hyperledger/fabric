@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func mockCrypto() crypto.LocalSigner {
@@ -46,37 +45,6 @@ func newRAMLedgerAndFactory(maxSize int,
 		panic(err)
 	}
 	return rlf, rl
-}
-
-func newRAMLedgerAndFactory3Chan(maxSize int,
-	chainID string, genesisBlockSys *cb.Block,
-	chainID1 string, genesisBlockStd1 *cb.Block,
-	chainID2 string, genesisBlockStd2 *cb.Block) (blockledger.Factory, []blockledger.ReadWriter) {
-	var rls []blockledger.ReadWriter
-	rlf, rl := newRAMLedgerAndFactory(maxSize, chainID, genesisBlockSys)
-	rls = append(rls, rl)
-
-	rl, err := rlf.GetOrCreate(chainID1)
-	if err != nil {
-		panic(err)
-	}
-	err = rl.Append(genesisBlockStd1)
-	if err != nil {
-		panic(err)
-	}
-	rls = append(rls, rl)
-
-	rl, err = rlf.GetOrCreate(chainID2)
-	if err != nil {
-		panic(err)
-	}
-	err = rl.Append(genesisBlockStd2)
-	if err != nil {
-		panic(err)
-	}
-	rls = append(rls, rl)
-
-	return rlf, rls
 }
 
 func testMessageOrderAndRetrieval(maxMessageCount uint32, chainID string, chainSupport *ChainSupport, lr blockledger.ReadWriter, t *testing.T) {
@@ -193,159 +161,6 @@ func TestNewRegistrar(t *testing.T) {
 		assert.NotNilf(t, chainSupport, "Should have gotten chain which was initialized by ramledger")
 
 		testMessageOrderAndRetrieval(confSys.Orderer.BatchSize.MaxMessageCount, genesisconfig.TestChainID, chainSupport, rl, t)
-	})
-}
-
-// This test essentially brings the entire system up and is ultimately what main.go will replicate,
-// doing it on the system and two standard channels.
-// Then, it is testing the methods that implement the MigrationController interface,
-// used in consensus-type migration.
-func Test3ChanConsensusMigrationController(t *testing.T) {
-	const (
-		testChainID1 = genesisconfig.TestChainID + "1"
-		testChainID2 = genesisconfig.TestChainID + "2"
-	)
-
-	var genesisBlockSys *cb.Block
-	var genesisBlockStd1 *cb.Block
-	var genesisBlockStd2 *cb.Block
-
-	// system channel
-	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
-	genesisBlockSys = encoder.New(confSys).GenesisBlock()
-	// standard channel, no Consortiums
-	confStd := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
-	confStd.Consortiums = nil
-	genesisBlockStd1 = encoder.New(confStd).GenesisBlockForChannel(testChainID1)
-	genesisBlockStd2 = encoder.New(confStd).GenesisBlockForChannel(testChainID2)
-
-	t.Run("Green path", func(t *testing.T) {
-		lf, rls := newRAMLedgerAndFactory3Chan(10,
-			genesisconfig.TestChainID, genesisBlockSys,
-			testChainID1, genesisBlockStd1,
-			testChainID2, genesisBlockStd2)
-
-		consenters := make(map[string]consensus.Consenter)
-		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
-
-		manager := NewRegistrar(lf, mockCrypto(), &disabled.Provider{})
-		manager.Initialize(consenters)
-
-		chainSupport := manager.GetChain("Fake")
-		assert.Nilf(t, chainSupport, "Should not have found a chain that was not created")
-
-		chainSupport = manager.GetChain(genesisconfig.TestChainID)
-		assert.NotNilf(t, chainSupport, "Should have gotten chain which was initialized by ramledger")
-		assert.True(t, chainSupport.IsSystemChannel())
-		assert.True(t, !chainSupport.MigrationStatus().IsPending())
-
-		testMessageOrderAndRetrieval(confSys.Orderer.BatchSize.MaxMessageCount, genesisconfig.TestChainID, chainSupport, rls[0], t)
-
-		// standard channel 1
-		chainSupport1 := manager.GetChain(testChainID1)
-		assert.NotNilf(t, chainSupport1, "Should have gotten chain which was initialized by ramledger")
-		assert.True(t, !chainSupport1.IsSystemChannel())
-		assert.True(t, !chainSupport1.MigrationStatus().IsPending())
-
-		testMessageOrderAndRetrieval(confSys.Orderer.BatchSize.MaxMessageCount, testChainID1, chainSupport1, rls[1], t)
-
-		// standard channel 2
-		chainSupport2 := manager.GetChain(testChainID2)
-		assert.NotNilf(t, chainSupport2, "Should have gotten chain which was initialized by ramledger")
-		assert.True(t, !chainSupport2.IsSystemChannel())
-		assert.True(t, !chainSupport2.MigrationStatus().IsPending())
-
-		testMessageOrderAndRetrieval(confSys.Orderer.BatchSize.MaxMessageCount, testChainID2, chainSupport2, rls[2], t)
-
-		assert.Equal(t, 3, manager.ChannelsCount(), "Three channels")
-
-		// Test MigrationController methods
-		assert.True(t, !manager.ConsensusMigrationPending())
-		err := manager.ConsensusMigrationCommit()
-		assert.EqualError(t, err,
-			"cannot commit consensus-type migration because system channel (testchainid): state=MIG_STATE_NONE, context=0 (expect: state=MIG_STATE_START, context>0)")
-
-		ctx := uint64(5)
-		err = manager.ConsensusMigrationStart(ctx)
-		assert.NoError(t, err, "Migration start")
-		assert.True(t, manager.ConsensusMigrationPending())
-		assert.True(t, chainSupport.MigrationStatus().IsPending())
-		assert.True(t, chainSupport1.MigrationStatus().IsPending())
-		assert.True(t, chainSupport2.MigrationStatus().IsPending())
-		err = manager.ConsensusMigrationStart(ctx)
-		// Iteration order is unpredictable... can be 1 or 2
-		assert.Regexp(t, "cannot start new consensus-type migration because standard channel testchainid[12], still pending", err.Error())
-
-		configTx := makeConfigTx(genesisconfig.TestChainID+"Fake", 6)
-		_, _, _, err = manager.BroadcastChannelSupport(configTx)
-		assert.Equal(t, "cannot create channel because consensus-type migration is pending", err.Error())
-
-		err = manager.ConsensusMigrationCommit()
-		// Iteration order is unpredictable... can be 1 or 2
-		assert.Regexp(t, "cannot commit consensus-type migration because standard channel testchainid[12], still pending, state=MIG_STATE_START", err.Error())
-
-		chainSupport1.MigrationStatus().SetStateContext(ab.ConsensusType_MIG_STATE_CONTEXT, ctx)
-		assert.True(t, chainSupport1.MigrationStatus().IsPending())
-		err = manager.ConsensusMigrationCommit()
-		assert.EqualError(t, err, "cannot commit consensus-type migration because standard channel testchainid2, still pending, state=MIG_STATE_START")
-
-		chainSupport2.MigrationStatus().SetStateContext(ab.ConsensusType_MIG_STATE_CONTEXT, ctx+1)
-		assert.True(t, chainSupport2.MigrationStatus().IsPending())
-
-		err = manager.ConsensusMigrationCommit()
-		assert.EqualError(t, err, "cannot commit consensus-type migration because standard channel testchainid2, bad context=6, expected=5")
-
-		chainSupport2.MigrationStatus().SetStateContext(ab.ConsensusType_MIG_STATE_CONTEXT, ctx)
-		assert.True(t, chainSupport2.MigrationStatus().IsPending())
-
-		err = manager.ConsensusMigrationCommit()
-		assert.NoError(t, err, "Migration can commit")
-	})
-
-	t.Run("Abort path", func(t *testing.T) {
-		lf, rls := newRAMLedgerAndFactory3Chan(10,
-			genesisconfig.TestChainID, genesisBlockSys,
-			testChainID1, genesisBlockStd1,
-			testChainID2, genesisBlockStd2)
-
-		consenters := make(map[string]consensus.Consenter)
-		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
-
-		manager := NewRegistrar(lf, mockCrypto(), &disabled.Provider{})
-		manager.Initialize(consenters)
-
-		chainSupport := manager.GetChain("Fake")
-		assert.Nilf(t, chainSupport, "Should not have found a chain that was not created")
-
-		chainSupport = manager.GetChain(genesisconfig.TestChainID)
-		require.NotNilf(t, chainSupport, "Should have gotten chain which was initialized by ramledger")
-		testMessageOrderAndRetrieval(confSys.Orderer.BatchSize.MaxMessageCount, genesisconfig.TestChainID, chainSupport, rls[0], t)
-
-		// standard channel 1
-		chainSupport1 := manager.GetChain(testChainID1)
-		require.NotNilf(t, chainSupport1, "Should have gotten chain which was initialized by ramledger")
-		testMessageOrderAndRetrieval(confSys.Orderer.BatchSize.MaxMessageCount, testChainID1, chainSupport1, rls[1], t)
-
-		// standard channel 2
-		chainSupport2 := manager.GetChain(testChainID2)
-		require.NotNilf(t, chainSupport2, "Should have gotten chain which was initialized by ramledger")
-		testMessageOrderAndRetrieval(confSys.Orderer.BatchSize.MaxMessageCount, testChainID2, chainSupport2, rls[2], t)
-
-		assert.Equal(t, 3, manager.ChannelsCount(), "Three channels")
-
-		// Test MigrationController methods
-		ctx := uint64(5)
-		err := manager.ConsensusMigrationStart(ctx)
-		assert.NoError(t, err, "Migration start")
-		assert.True(t, manager.ConsensusMigrationPending())
-		assert.True(t, chainSupport.MigrationStatus().IsPending())
-		chainSupport1.MigrationStatus().SetStateContext(ab.ConsensusType_MIG_STATE_CONTEXT, ctx)
-		assert.True(t, chainSupport1.MigrationStatus().IsPending())
-
-		err = manager.ConsensusMigrationAbort()
-		assert.EqualError(t, err, "Not implemented yet")
-
-		// TODO test abort path here, when implemented
 	})
 }
 

@@ -182,7 +182,7 @@ reported, then you might add a comment that you also are interested in seeing
 the defect fixed.
 
 .. note:: If the defect is security-related, please follow the Hyperledger
-          `security bug reporting process <https://wiki.hyperledger.org/security>`__.
+          `security bug reporting process <https://wiki.hyperledger.org/display/HYP/Defect+Response>`__.
 
 If it has not been previously reported, create a new JIRA. Please try to provide
 sufficient information for someone else to reproduce the
