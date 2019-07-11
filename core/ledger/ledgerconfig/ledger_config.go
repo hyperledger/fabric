@@ -31,6 +31,7 @@ const confBookkeeper = "bookkeeper"
 const confConfigHistory = "configHistory"
 const confChains = "chains"
 const confPvtdataStore = "pvtdataStore"
+const fileLockPath = "fileLock"
 const confTotalQueryLimit = "ledger.state.totalQueryLimit"
 const confInternalQueryLimit = "ledger.state.couchDBConfig.internalQueryLimit"
 const confEnableHistoryDatabase = "ledger.history.enableHistoryDatabase"
@@ -76,6 +77,11 @@ func GetPvtdataStorePath() string {
 // GetInternalBookkeeperPath returns the filesystem path that is used for bookkeeping the internal stuff by by KVledger (such as expiration time for pvt)
 func GetInternalBookkeeperPath() string {
 	return filepath.Join(GetRootPath(), confBookkeeper)
+}
+
+// GetFileLockPath returns the filesystem path that is used to create a file lock
+func GetFileLockPath() string {
+	return filepath.Join(GetRootPath(), fileLockPath)
 }
 
 // GetConfigHistoryPath returns the filesystem path that is used for maintaining history of chaincodes collection configurations

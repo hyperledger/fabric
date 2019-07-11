@@ -17,6 +17,7 @@ limitations under the License.
 package leveldbhelper
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -107,6 +108,52 @@ func TestLevelDBHelper(t *testing.T) {
 		keys = append(keys, string(itr.Key()))
 	}
 	assert.Equal(t, []string{"key1", "key2"}, keys)
+}
+
+func TestFileLock(t *testing.T) {
+	// create 1st fileLock manager
+	fileLockPath := testDBPath + "/fileLock"
+	fileLock1 := NewFileLock(fileLockPath)
+	assert.Nil(t, fileLock1.db)
+	assert.Equal(t, fileLock1.filePath, fileLockPath)
+
+	// acquire the file lock using the fileLock manager 1
+	err := fileLock1.Lock()
+	assert.NoError(t, err)
+	assert.NotNil(t, fileLock1.db)
+
+	// create 2nd fileLock manager
+	fileLock2 := NewFileLock(fileLockPath)
+	assert.Nil(t, fileLock2.db)
+	assert.Equal(t, fileLock2.filePath, fileLockPath)
+
+	// try to acquire the file lock again using the fileLock2
+	// would result in an error
+	err = fileLock2.Lock()
+	expectedErr := fmt.Sprintf("lock is already acquired on file %s", fileLockPath)
+	assert.EqualError(t, err, expectedErr)
+	assert.Nil(t, fileLock2.db)
+
+	// release the file lock acquired using fileLock1
+	fileLock1.Unlock()
+	assert.Nil(t, fileLock1.db)
+
+	// As the fileLock1 has released the lock,
+	// the fileLock2 can acquire the lock.
+	err = fileLock2.Lock()
+	assert.NoError(t, err)
+	assert.NotNil(t, fileLock2.db)
+
+	// release the file lock acquired using fileLock 2
+	fileLock2.Unlock()
+	assert.Nil(t, fileLock1.db)
+
+	// unlock can be called multiple times and it is safe
+	fileLock2.Unlock()
+	assert.Nil(t, fileLock1.db)
+
+	// cleanup
+	assert.NoError(t, os.RemoveAll(fileLockPath))
 }
 
 func TestCreateDBInEmptyDir(t *testing.T) {

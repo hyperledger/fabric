@@ -122,20 +122,32 @@ var _ bool = Describe("Rollback & Reset Ledger", func() {
 		org2peer0 := setup.network.Peer("org2", "peer0")
 		// block 0: genesis, block 1: org1Anchor, block 2: org2Anchor, block 3: org3Anchor
 		// block 4: chaincode instantiation, block 5 to 9: chaincode invoke to add marbles.
-		By("Rolling back peer0.org2 to block 3 from block 9")
 		Expect(helper.getLedgerHeight(org2peer0)).Should(Equal(10))
+
+		By("Rolling back peer0.org2 to block 3 from block 9 while the peer node is online")
+		expectedErrMessage := "as another peer node command is executing," +
+			" wait for that command to complete its execution or terminate it before retrying"
+		helper.rollback(org2peer0, 3, expectedErrMessage, false)
+
+		By("Rolling back peer0.org2 to block 3 from block 9 while the peer node is offline")
 		setup.terminateAllProcess()
-		helper.rollback(org2peer0, 3)
+		helper.rollback(org2peer0, 3, "", true)
 
 		assertPostRollbackOrReset()
 	})
 
 	It("resets the ledger to the genesis block", func() {
 		org2peer0 := setup.network.Peer("org2", "peer0")
-		By("Resetting peer0.org2 to the genesis block")
 		Expect(helper.getLedgerHeight(org2peer0)).Should(Equal(10))
+
+		By("Resetting peer0.org2 to the genesis block while the peer node is online")
+		expectedErrMessage := "as another peer node command is executing," +
+			" wait for that command to complete its execution or terminate it before retrying"
+		helper.reset(org2peer0, expectedErrMessage, false)
+
+		By("Resetting peer0.org2 to the genesis block while the peer node is offline")
 		setup.terminateAllProcess()
-		helper.reset(org2peer0)
+		helper.reset(org2peer0, "", true)
 
 		assertPostRollbackOrReset()
 	})
@@ -307,18 +319,28 @@ func (nh *networkHelper) invokeChaincode(peer *nwo.Peer, command commands.Chainc
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
 }
 
-func (nh *networkHelper) rollback(peer *nwo.Peer, blockNumber int) {
+func (nh *networkHelper) rollback(peer *nwo.Peer, blockNumber int, expectedErrMessage string, expectSuccess bool) {
 	rollbackCmd := commands.NodeRollback{ChannelID: nh.channelID, BlockNumber: blockNumber}
 	sess, err := nh.PeerUserSession(peer, "User1", rollbackCmd)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
+	if expectSuccess {
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
+	} else {
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit())
+		Expect(sess.Err).To(gbytes.Say(expectedErrMessage))
+	}
 }
 
-func (nh *networkHelper) reset(peer *nwo.Peer) {
+func (nh *networkHelper) reset(peer *nwo.Peer, expectedErrMessage string, expectSuccess bool) {
 	resetCmd := commands.NodeReset{}
 	sess, err := nh.PeerUserSession(peer, "User1", resetCmd)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
+	if expectSuccess {
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
+	} else {
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit())
+		Expect(sess.Err).To(gbytes.Say(expectedErrMessage))
+	}
 }
 
 func (nh *networkHelper) waitUntilEndorserEnabled(peer *nwo.Peer) {
