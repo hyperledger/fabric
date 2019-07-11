@@ -139,21 +139,6 @@ func (cs *ChaincodeSupport) Register(stream pb.ChaincodeSupport_RegisterServer) 
 	return cs.HandleChaincodeStream(stream)
 }
 
-// createCCMessage creates a transaction message.
-func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid string, cMsg *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
-	payload, err := proto.Marshal(cMsg)
-	if err != nil {
-		return nil, err
-	}
-	ccmsg := &pb.ChaincodeMessage{
-		Type:      messageType,
-		Payload:   payload,
-		Txid:      txid,
-		ChannelId: cid,
-	}
-	return ccmsg, nil
-}
-
 // ExecuteLegacyInit is a temporary method which should be removed once the old style lifecycle
 // is entirely deprecated.  Ideally one release after the introduction of the new lifecycle.
 // It does not attempt to start the chaincode based on the information from lifecycle, but instead
@@ -317,9 +302,17 @@ func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cc
 // execute executes a transaction and waits for it to complete until a timeout value.
 func (cs *ChaincodeSupport) execute(cctyp pb.ChaincodeMessage_Type, txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput, h *Handler) (*pb.ChaincodeMessage, error) {
 	input.Decorations = txParams.ProposalDecorations
-	ccMsg, err := createCCMessage(cctyp, txParams.ChannelID, txParams.TxID, input)
+
+	payload, err := proto.Marshal(input)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create chaincode message")
+	}
+
+	ccMsg := &pb.ChaincodeMessage{
+		Type:      cctyp,
+		Payload:   payload,
+		Txid:      txParams.TxID,
+		ChannelId: txParams.ChannelID,
 	}
 
 	ccresp, err := h.Execute(txParams, cccid, ccMsg, cs.ExecuteTimeout)
