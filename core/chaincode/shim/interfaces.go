@@ -85,10 +85,11 @@ type ChaincodeStubInterface interface {
 	// PutState puts the specified `key` and `value` into the transaction's
 	// writeset as a data-write proposal. PutState doesn't effect the ledger
 	// until the transaction is validated and successfully committed.
-	// Simple keys must not be an empty string and must not start with null
-	// character (0x00), in order to avoid range query collisions with
+	// Simple keys must not be an empty string and must not start with a
+	// null character (0x00) in order to avoid range query collisions with
 	// composite keys, which internally get prefixed with 0x00 as composite
-	// key namespace.
+	// key namespace. In addition, if using CouchDB, keys can only contain
+	// valid UTF-8 strings and cannot begin with an underscore ("_").
 	PutState(key string, value []byte) error
 
 	// DelState records the specified `key` to be deleted in the writeset of
@@ -244,10 +245,12 @@ type ChaincodeStubInterface interface {
 	// transaction proposal response (which is sent to the client who issued the
 	// transaction) and the actual private writeset gets temporarily stored in a
 	// transient store. PutPrivateData doesn't effect the `collection` until the
-	// transaction is validated and successfully committed. Simple keys must not be
-	// an empty string and must not start with null character (0x00), in order to
-	// avoid range query collisions with composite keys, which internally get
-	// prefixed with 0x00 as composite key namespace.
+	// transaction is validated and successfully committed. Simple keys must not
+	// be an empty string and must not start with a null character (0x00) in order
+	// to avoid range query collisions with composite keys, which internally get
+	// prefixed with 0x00 as composite key namespace. In addition, if using
+	// CouchDB, keys can only contain valid UTF-8 strings and cannot begin with an
+	// an underscore ("_").
 	PutPrivateData(collection string, key string, value []byte) error
 
 	// DelState records the specified `key` to be deleted in the private writeset of
