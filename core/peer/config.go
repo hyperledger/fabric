@@ -129,7 +129,10 @@ func GetServerConfig() (comm.ServerConfig, error) {
 	secureOptions := &comm.SecureOptions{
 		UseTLS: viper.GetBool("peer.tls.enabled"),
 	}
-	serverConfig := comm.ServerConfig{SecOpts: secureOptions}
+	serverConfig := comm.ServerConfig{
+		ConnectionTimeout: viper.GetDuration("peer.connectiontimeout"),
+		SecOpts:           secureOptions,
+	}
 	if secureOptions.UseTLS {
 		// get the certs from the file system
 		serverKey, err := ioutil.ReadFile(config.GetPath("peer.tls.key.file"))
