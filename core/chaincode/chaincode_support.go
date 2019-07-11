@@ -205,33 +205,19 @@ func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMess
 // Invoke will invoke chaincode and return the message containing the response.
 // The chaincode will be launched if it is not already running.
 func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
-	// at first we go to _lifecycle to retrieve information about the chaincode
-	var ccci *ccprovider.ChaincodeContainerInfo
-	var err error
-
-	if !cs.SystemCCProvider.IsSysCC(cccid.Name) {
-		ccci, err = cs.Lifecycle.ChaincodeContainerInfo(txParams.ChannelID, cccid.Name, txParams.TXSimulator)
-		if err != nil {
-			// TODO: There has to be a better way to do this...
-			if cs.UserRunsCC {
-				chaincodeLogger.Error(
-					"You are attempting to perform an action other than Deploy on Chaincode that is not ready and you are in developer mode. Did you forget to Deploy your chaincode?",
-				)
-			}
-
-			return nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", txParams.ChannelID, cccid.Name)
-		}
-	} else {
-		// FIXME: remove this once _lifecycle has definitions for all system chaincodes (FAB-14628)
-		ccci = &ccprovider.ChaincodeContainerInfo{
-			Version:   util.GetSysCCVersion(),
-			Name:      cccid.Name,
-			PackageID: persistence.PackageID(cccid.Name + ":" + util.GetSysCCVersion()),
-		}
+	if cs.SystemCCProvider.IsSysCC(cccid.Name) {
+		return cs.invokeSystem(txParams, cccid, input)
 	}
 
-	// fill the chaincode version field from the chaincode
-	// container info that we got from _lifecycle
+	// go to _lifecycle to retrieve information about the chaincode
+	ccci, err := cs.Lifecycle.ChaincodeContainerInfo(txParams.ChannelID, cccid.Name, txParams.TXSimulator)
+	if err != nil {
+		logDevModeError(cs.UserRunsCC)
+		return nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", txParams.ChannelID, cccid.Name)
+	}
+
+	// fill the chaincode version field from the chaincode container info that we
+	// got from _lifecycle
 	cccid.Version = ccci.Version
 
 	h, err := cs.Launch(txParams.ChannelID, ccci)
@@ -250,6 +236,22 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 	}
 
 	return cs.execute(cctype, txParams, cccid, input, h)
+}
+
+func (cs *ChaincodeSupport) invokeSystem(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
+	// FIXME: remove this once _lifecycle has definitions for all system chaincodes (FAB-14628)
+	ccci := &ccprovider.ChaincodeContainerInfo{
+		Version:   util.GetSysCCVersion(),
+		Name:      cccid.Name,
+		PackageID: persistence.PackageID(cccid.Name + ":" + util.GetSysCCVersion()),
+	}
+
+	h, err := cs.Launch(txParams.ChannelID, ccci)
+	if err != nil {
+		return nil, err
+	}
+
+	return cs.execute(pb.ChaincodeMessage_TRANSACTION, txParams, cccid, input, h)
 }
 
 func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (bool, error) {
@@ -321,4 +323,10 @@ func (cs *ChaincodeSupport) execute(cctyp pb.ChaincodeMessage_Type, txParams *cc
 	}
 
 	return ccresp, nil
+}
+
+func logDevModeError(userRunsCC bool) {
+	if userRunsCC {
+		chaincodeLogger.Error("You are attempting to perform an action other than Deploy on Chaincode that is not ready and you are in developer mode. Did you forget to Deploy your chaincode?")
+	}
 }
