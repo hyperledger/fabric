@@ -16,7 +16,7 @@ fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
 integration_dirs() {
     local packages="$1"
 
-    go list -f {{.Dir}} "$packages" | grep -E '/integration($|/)' | sed "s,${fabric_dir},.,g"
+    go list -f '{{.Dir}}' "$packages" | grep -E '/integration($|/)' | sed "s,${fabric_dir},.,g"
 }
 
 main() {
@@ -24,7 +24,7 @@ main() {
 
     local -a dirs=("$@")
     if [ "${#dirs[@]}" -eq 0 ]; then
-        dirs=($(integration_dirs "./..."))
+        while IFS=$'\n' read -r pkg; do dirs+=("$pkg"); done < <(integration_dirs "./...")
     fi
 
     echo "Running integration tests..."
