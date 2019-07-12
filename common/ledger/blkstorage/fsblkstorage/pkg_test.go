@@ -111,7 +111,7 @@ func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block, s
 	for i := 0; i < len(blocks); i++ {
 		b, err := w.blockfileMgr.retrieveBlockByNumber(startingNum + uint64(i))
 		assert.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
-		assert.Equal(w.t, blocks[i].Header, b.Header)
+		assert.Equal(w.t, blocks[i], b)
 	}
 	// test getting the last block
 	b, err := w.blockfileMgr.retrieveBlockByNumber(math.MaxUint64)
