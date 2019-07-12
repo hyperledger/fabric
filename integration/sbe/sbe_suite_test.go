@@ -21,15 +21,18 @@ func TestEndToEnd(t *testing.T) {
 	RunSpecs(t, "State-Based Endorsement EndToEnd Suite")
 }
 
-var components *nwo.Components
-var suiteBase = integration.SBEBasePort
+var (
+	buildServer *nwo.BuildServer
+	components  *nwo.Components
+)
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	nwo.RequiredImages = []string{
-		nwo.CCEnvDefaultImage,
-	}
-	components = &nwo.Components{}
+	nwo.RequiredImages = []string{nwo.CCEnvDefaultImage}
 
+	buildServer = nwo.NewBuildServer()
+	buildServer.Serve()
+
+	components = buildServer.Components()
 	payload, err := json.Marshal(components)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -41,9 +44,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 var _ = SynchronizedAfterSuite(func() {
 }, func() {
-	components.Cleanup()
+	buildServer.Shutdown()
 })
 
 func StartPort() int {
-	return suiteBase + (GinkgoParallelNode()-1)*100
+	return integration.SBEBasePort + (GinkgoParallelNode()-1)*100
 }

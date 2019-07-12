@@ -22,12 +22,16 @@ func TestEndToEnd(t *testing.T) {
 	RunSpecs(t, "Token EndToEnd Suite")
 }
 
-var components *nwo.Components
-var suiteBase = integration.TokenBasePort
+var (
+	buildServer *nwo.BuildServer
+	components  *nwo.Components
+)
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	components = &nwo.Components{}
+	buildServer = nwo.NewBuildServer()
+	buildServer.Serve()
 
+	components = buildServer.Components()
 	payload, err := json.Marshal(components)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -39,11 +43,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 var _ = SynchronizedAfterSuite(func() {
 }, func() {
-	components.Cleanup()
+	buildServer.Shutdown()
 })
 
 func StartPort() int {
-	return suiteBase + (GinkgoParallelNode()-1)*100
+	return integration.TokenBasePort + (GinkgoParallelNode()-1)*100
 }
 
 func ToHex(q uint64) string {

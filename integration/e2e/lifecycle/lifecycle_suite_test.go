@@ -36,6 +36,39 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
+func TestLifecycle(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Lifecycle Suite")
+}
+
+var (
+	buildServer *nwo.BuildServer
+	components  *nwo.Components
+)
+
+var _ = SynchronizedBeforeSuite(func() []byte {
+	buildServer = nwo.NewBuildServer()
+	buildServer.Serve()
+
+	components = buildServer.Components()
+	payload, err := json.Marshal(components)
+	Expect(err).NotTo(HaveOccurred())
+
+	return payload
+}, func(payload []byte) {
+	err := json.Unmarshal(payload, &components)
+	Expect(err).NotTo(HaveOccurred())
+})
+
+var _ = SynchronizedAfterSuite(func() {
+}, func() {
+	buildServer.Shutdown()
+})
+
+func StartPort() int {
+	return integration.LifecyclePort + (GinkgoParallelNode()-1)*100
+}
+
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, initialQueryResult int) {
 	RunQueryInvokeQueryWithAddresses(
 		n,
@@ -236,33 +269,4 @@ func CommitTx(network *nwo.Network, env *pcommon.Envelope, peer *nwo.Peer, dc pb
 	Expect(err).NotTo(HaveOccurred())
 
 	return dg.Wait(ctx)
-}
-
-var components *nwo.Components
-var suiteBase = integration.LifecyclePort
-
-var _ = SynchronizedBeforeSuite(func() []byte {
-	components = &nwo.Components{}
-
-	payload, err := json.Marshal(components)
-	Expect(err).NotTo(HaveOccurred())
-
-	return payload
-}, func(payload []byte) {
-	err := json.Unmarshal(payload, &components)
-	Expect(err).NotTo(HaveOccurred())
-})
-
-var _ = SynchronizedAfterSuite(func() {
-}, func() {
-	components.Cleanup()
-})
-
-func StartPort() int {
-	return suiteBase + (GinkgoParallelNode()-1)*100
-}
-
-func TestEndToEnd(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "EndToEnd Suite")
 }

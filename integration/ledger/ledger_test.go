@@ -4,7 +4,7 @@ Copyright IBM Corp All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package e2e
+package ledger
 
 import (
 	"encoding/json"
@@ -24,12 +24,12 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-var _ bool = Describe("Creation of indexes in CouchDB for a peer that uses CouchDB state database", func() {
-	const (
-		chaincodePathWithNoIndex = "github.com/hyperledger/fabric/integration/chaincode/marbles/cmd"
-		chaincodePathWithIndex   = "github.com/hyperledger/fabric/integration/chaincode/marbles/cmdwithindexspec"
-	)
+const (
+	chaincodePathWithNoIndex = "github.com/hyperledger/fabric/integration/chaincode/marbles/cmd"
+	chaincodePathWithIndex   = "github.com/hyperledger/fabric/integration/chaincode/marbles/cmdwithindexspec"
+)
 
+var _ = Describe("CouchDB indexes", func() {
 	var (
 		testDir string
 		client  *docker.Client

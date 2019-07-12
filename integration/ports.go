@@ -17,4 +17,5 @@ const (
 	GossipBasePort
 	RaftBasePort
 	LifecyclePort
+	LedgerPort
 )
