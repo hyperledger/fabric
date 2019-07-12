@@ -28,7 +28,7 @@ type Builder interface {
 
 //VM is an abstract virtual image for supporting arbitrary virual machines
 type VM interface {
-	Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder Builder) error
+	Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte) error
 	Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
 	Wait(ccid ccintf.CCID) (int, error)
 }
@@ -113,7 +113,6 @@ type VMCReq interface {
 //StartContainerReq - properties for starting a container.
 type StartContainerReq struct {
 	ccintf.CCID
-	Builder       Builder
 	Args          []string
 	Env           []string
 	FilesToUpload map[string][]byte
@@ -149,7 +148,7 @@ func (b *PlatformBuilder) Build() (io.Reader, error) {
 }
 
 func (si StartContainerReq) Do(v VM) error {
-	return v.Start(si.CCID, si.Args, si.Env, si.FilesToUpload, si.Builder)
+	return v.Start(si.CCID, si.Args, si.Env, si.FilesToUpload)
 }
 
 func (si StartContainerReq) GetCCID() ccintf.CCID {
@@ -196,6 +195,33 @@ func (w WaitContainerReq) Do(v VM) error {
 }
 
 func (w WaitContainerReq) GetCCID() ccintf.CCID {
+	return w.CCID
+}
+
+// A BuildReq encapsulates the data needed to build an image.
+type BuildReq struct {
+	CCID    ccintf.CCID
+	Builder Builder
+}
+
+// A ChaincodeBuilder is resonsible for building chaincode.
+type ChaincodeBuilder interface {
+	Build(ccid ccintf.CCID, dockerfileReader io.Reader) error
+}
+
+func (b BuildReq) Do(v VM) error {
+	if chaincodeBuilder, ok := v.(ChaincodeBuilder); ok {
+		dockerfileReader, err := b.Builder.Build()
+		if err != nil {
+			return err
+		}
+
+		return chaincodeBuilder.Build(b.CCID, dockerfileReader)
+	}
+	return nil
+}
+
+func (w BuildReq) GetCCID() ccintf.CCID {
 	return w.CCID
 }
 

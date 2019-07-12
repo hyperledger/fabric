@@ -165,7 +165,7 @@ func TestContainerRuntimeStart(t *testing.T) {
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:          pb.ChaincodeSpec_GOLANG.String(),
+		Type:          "GOLANG",
 		Name:          "chaincode-name",
 		Version:       "chaincode-version",
 		ContainerType: "container-type",
@@ -175,13 +175,26 @@ func TestContainerRuntimeStart(t *testing.T) {
 	err := cr.Start(ccci, nil)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, fakeProcessor.ProcessCallCount())
+	assert.Equal(t, 2, fakeProcessor.ProcessCallCount())
 	vmType, req := fakeProcessor.ProcessArgsForCall(0)
+	assert.Equal(t, vmType, "container-type")
+	buildReq, ok := req.(container.BuildReq)
+	assert.True(t, ok)
+	expectedBuildReq := container.BuildReq{
+		Builder: &container.PlatformBuilder{
+			Type:    "GOLANG",
+			Name:    "chaincode-name",
+			Version: "chaincode-version",
+		},
+		CCID: ccintf.New(ccci.PackageID),
+	}
+	assert.Equal(t, expectedBuildReq, buildReq)
+
+	vmType, req = fakeProcessor.ProcessArgsForCall(1)
 	assert.Equal(t, vmType, "container-type")
 	startReq, ok := req.(container.StartContainerReq)
 	assert.True(t, ok)
 
-	assert.NotNil(t, startReq.Builder)
 	assert.Equal(t, startReq.Args, []string{"chaincode", "-peer.address=peer.example.com"})
 	assert.Equal(t, startReq.Env, []string{"CORE_CHAINCODE_ID_NAME=chaincode-name:chaincode-version", "CORE_PEER_TLS_ENABLED=false"})
 	assert.Nil(t, startReq.FilesToUpload)
@@ -191,16 +204,19 @@ func TestContainerRuntimeStart(t *testing.T) {
 func TestContainerRuntimeStartErrors(t *testing.T) {
 	tests := []struct {
 		chaincodeType string
-		processErr    error
+		buildErr      error
+		startErr      error
 		errValue      string
 	}{
-		{"bad-type", nil, "unknown chaincodeType: bad-type"},
-		{pb.ChaincodeSpec_GOLANG.String(), errors.New("process-failed"), "error starting container: process-failed"},
+		{"bad-type", nil, nil, "unknown chaincodeType: bad-type"},
+		{pb.ChaincodeSpec_GOLANG.String(), nil, errors.New("process-failed"), "error starting container: process-failed"},
+		{pb.ChaincodeSpec_GOLANG.String(), errors.New("build-failed"), nil, "error building image: build-failed"},
 	}
 
 	for _, tc := range tests {
 		fakeProcessor := &mock.Processor{}
-		fakeProcessor.ProcessReturns(tc.processErr)
+		fakeProcessor.ProcessReturnsOnCall(0, tc.buildErr)
+		fakeProcessor.ProcessReturnsOnCall(1, tc.startErr)
 
 		cr := &chaincode.ContainerRuntime{
 			Processor:   fakeProcessor,

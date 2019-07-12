@@ -193,8 +193,8 @@ func (ipc *inprocContainer) launchInProc(id ccintf.CCID, args, env []string) err
 	return err
 }
 
-//Start starts a previously registered system codechain
-func (vm *InprocVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
+// Start starts a previously registered system chaincode.
+func (vm *InprocVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload map[string][]byte) error {
 	chaincode := vm.registry.getChaincode(ccid)
 	if chaincode == nil {
 		return fmt.Errorf("%s not registered", ccid)

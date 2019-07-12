@@ -44,6 +44,19 @@ type DockerClient struct {
 		result1 *docker.Container
 		result2 error
 	}
+	InspectImageStub        func(string) (*docker.Image, error)
+	inspectImageMutex       sync.RWMutex
+	inspectImageArgsForCall []struct {
+		arg1 string
+	}
+	inspectImageReturns struct {
+		result1 *docker.Image
+		result2 error
+	}
+	inspectImageReturnsOnCall map[int]struct {
+		result1 *docker.Image
+		result2 error
+	}
 	KillContainerStub        func(docker.KillContainerOptions) error
 	killContainerMutex       sync.RWMutex
 	killContainerArgsForCall []struct {
@@ -309,6 +322,69 @@ func (fake *DockerClient) CreateContainerReturnsOnCall(i int, result1 *docker.Co
 	}
 	fake.createContainerReturnsOnCall[i] = struct {
 		result1 *docker.Container
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) InspectImage(arg1 string) (*docker.Image, error) {
+	fake.inspectImageMutex.Lock()
+	ret, specificReturn := fake.inspectImageReturnsOnCall[len(fake.inspectImageArgsForCall)]
+	fake.inspectImageArgsForCall = append(fake.inspectImageArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("InspectImage", []interface{}{arg1})
+	fake.inspectImageMutex.Unlock()
+	if fake.InspectImageStub != nil {
+		return fake.InspectImageStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.inspectImageReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) InspectImageCallCount() int {
+	fake.inspectImageMutex.RLock()
+	defer fake.inspectImageMutex.RUnlock()
+	return len(fake.inspectImageArgsForCall)
+}
+
+func (fake *DockerClient) InspectImageCalls(stub func(string) (*docker.Image, error)) {
+	fake.inspectImageMutex.Lock()
+	defer fake.inspectImageMutex.Unlock()
+	fake.InspectImageStub = stub
+}
+
+func (fake *DockerClient) InspectImageArgsForCall(i int) string {
+	fake.inspectImageMutex.RLock()
+	defer fake.inspectImageMutex.RUnlock()
+	argsForCall := fake.inspectImageArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *DockerClient) InspectImageReturns(result1 *docker.Image, result2 error) {
+	fake.inspectImageMutex.Lock()
+	defer fake.inspectImageMutex.Unlock()
+	fake.InspectImageStub = nil
+	fake.inspectImageReturns = struct {
+		result1 *docker.Image
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) InspectImageReturnsOnCall(i int, result1 *docker.Image, result2 error) {
+	fake.inspectImageMutex.Lock()
+	defer fake.inspectImageMutex.Unlock()
+	fake.InspectImageStub = nil
+	if fake.inspectImageReturnsOnCall == nil {
+		fake.inspectImageReturnsOnCall = make(map[int]struct {
+			result1 *docker.Image
+			result2 error
+		})
+	}
+	fake.inspectImageReturnsOnCall[i] = struct {
+		result1 *docker.Image
 		result2 error
 	}{result1, result2}
 }
@@ -748,6 +824,8 @@ func (fake *DockerClient) Invocations() map[string][][]interface{} {
 	defer fake.buildImageMutex.RUnlock()
 	fake.createContainerMutex.RLock()
 	defer fake.createContainerMutex.RUnlock()
+	fake.inspectImageMutex.RLock()
+	defer fake.inspectImageMutex.RUnlock()
 	fake.killContainerMutex.RLock()
 	defer fake.killContainerMutex.RUnlock()
 	fake.pingWithContextMutex.RLock()

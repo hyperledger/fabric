@@ -268,7 +268,7 @@ func TestStart(t *testing.T) {
 
 	r.chaincodes["name"] = MockShim{}
 
-	err := vm.Start(ccid, args, env, files, nil)
+	err := vm.Start(ccid, args, env, files)
 	assert.Nil(t, err, "err should be nil")
 }
 
