@@ -490,10 +490,11 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 	}
 
 	return comm.ServerConfig{
-		SecOpts:         secureOpts,
-		KaOpts:          kaOpts,
-		Logger:          commLogger,
-		MetricsProvider: metricsProvider,
+		SecOpts:           secureOpts,
+		KaOpts:            kaOpts,
+		Logger:            commLogger,
+		MetricsProvider:   metricsProvider,
+		ConnectionTimeout: conf.General.ConnectionTimeout,
 		StreamInterceptors: []grpc.StreamServerInterceptor{
 			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
 			grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),

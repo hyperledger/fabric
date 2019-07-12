@@ -40,21 +40,22 @@ type TopLevel struct {
 
 // General contains config which should be common among all orderer types.
 type General struct {
-	LedgerType     string
-	ListenAddress  string
-	ListenPort     uint16
-	TLS            TLS
-	Cluster        Cluster
-	Keepalive      Keepalive
-	GenesisMethod  string
-	GenesisProfile string
-	SystemChannel  string
-	GenesisFile    string
-	Profile        Profile
-	LocalMSPDir    string
-	LocalMSPID     string
-	BCCSP          *bccsp.FactoryOpts
-	Authentication Authentication
+	LedgerType        string
+	ListenAddress     string
+	ListenPort        uint16
+	TLS               TLS
+	Cluster           Cluster
+	Keepalive         Keepalive
+	ConnectionTimeout time.Duration
+	GenesisMethod     string
+	GenesisProfile    string
+	SystemChannel     string
+	GenesisFile       string
+	Profile           Profile
+	LocalMSPDir       string
+	LocalMSPID        string
+	BCCSP             *bccsp.FactoryOpts
+	Authentication    Authentication
 }
 
 type Cluster struct {

@@ -90,6 +90,7 @@ func TestInitializeProfilingService(t *testing.T) {
 func TestInitializeServerConfig(t *testing.T) {
 	conf := &localconfig.TopLevel{
 		General: localconfig.General{
+			ConnectionTimeout: 7 * time.Second,
 			TLS: localconfig.TLS{
 				Enabled:            true,
 				ClientAuthRequired: true,
@@ -105,6 +106,7 @@ func TestInitializeServerConfig(t *testing.T) {
 	assert.Equal(t, defaultOpts.ServerMinInterval, sc.KaOpts.ServerMinInterval)
 	assert.Equal(t, time.Duration(0), sc.KaOpts.ServerInterval)
 	assert.Equal(t, time.Duration(0), sc.KaOpts.ServerTimeout)
+	assert.Equal(t, 7*time.Second, sc.ConnectionTimeout)
 	testDuration := 10 * time.Second
 	conf.General.Keepalive = localconfig.Keepalive{
 		ServerMinInterval: testDuration,
