@@ -184,7 +184,10 @@ func (historyDB *historyDB) GetLastSavepoint() (*version.Height, error) {
 	if err != nil || versionBytes == nil {
 		return nil, err
 	}
-	height, _ := version.NewHeightFromBytes(versionBytes)
+	height, _, err := version.NewHeightFromBytes(versionBytes)
+	if err != nil {
+		return nil, err
+	}
 	return height, nil
 }
 
