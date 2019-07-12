@@ -1,0 +1,32 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/protos/orderer/etcdraft";
+option java_package = "org.hyperledger.fabric.protos.orderer.etcdraft";
+
+package etcdraft;
+
+// BlockMetadata stores data used by the Raft OSNs when
+// coordinating with each other, to be serialized into
+// block meta dta field and used after failres and restarts.
+message BlockMetadata {
+    // Maintains a mapping between the cluster's OSNs
+    // and their Raft IDs.
+    repeated uint64 consenter_ids = 1;
+    // Carries the Raft ID value that will be assigned
+    // to the next OSN that will join this cluster.
+    uint64 next_consenter_id = 2;
+    // Index of etcd/raft entry for current block.
+    uint64 raft_index = 3;
+}
+
+// ClusterMetadata encapsulates metadata that is exchanged among cluster nodes
+message ClusterMetadata {
+    // Indicates active nodes in cluster that are reacheable by Raft leader
+    repeated uint64 active_nodes = 1;
+}

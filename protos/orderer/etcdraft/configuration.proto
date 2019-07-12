@@ -36,17 +36,3 @@ message Options {
 	// Take snapshot when cumulative data exceeds certain size in bytes.
 	uint32 snapshot_interval_size = 5;
 }
-
-// BlockMetadata stores data used by the Raft OSNs when
-// coordinating with each other, to be serialized into
-// block meta dta field and used after failres and restarts.
-message BlockMetadata {
-    // Maintains a mapping between the cluster's OSNs
-    // and their Raft IDs.
-    repeated uint64 consenter_ids = 1;
-    // Carries the Raft ID value that will be assigned
-    // to the next OSN that will join this cluster.
-    uint64 next_consenter_id = 2;
-    // Index of etcd/raft entry for current block.
-    uint64 raft_index = 3;
-}
