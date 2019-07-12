@@ -74,7 +74,7 @@ You **will** find it helpful to install the following technologies:
 
     Many excellent code editors are available including
     [Atom](https://atom.io/), [Sublime Text](http://www.sublimetext.com/) and
-    [Brackets](http://www.sublimetext.com/).
+    [Brackets](http://www.brackets.io/).
 
 You **may** find it helpful to install the following technologies as you become
 more experienced with application and smart contract development. There's no
