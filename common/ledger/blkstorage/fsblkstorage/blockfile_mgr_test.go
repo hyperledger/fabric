@@ -17,6 +17,9 @@ limitations under the License.
 package fsblkstorage
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -55,15 +58,22 @@ func TestAddBlockWithWrongHash(t *testing.T) {
 }
 
 func TestBlockfileMgrCrashDuringWriting(t *testing.T) {
-	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 10)
-	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 1)
-	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 0)
-	testBlockfileMgrCrashDuringWriting(t, 0, 0, 1000, 10)
-	testBlockfileMgrCrashDuringWriting(t, 0, 5, 1000, 10)
+	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 10, false)
+	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 1, false)
+	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 0, false)
+	testBlockfileMgrCrashDuringWriting(t, 0, 0, 1000, 10, false)
+	testBlockfileMgrCrashDuringWriting(t, 0, 5, 1000, 10, false)
+
+	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 10, true)
+	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 1, true)
+	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 0, true)
+	testBlockfileMgrCrashDuringWriting(t, 0, 0, 1000, 10, true)
+	testBlockfileMgrCrashDuringWriting(t, 0, 5, 1000, 10, true)
 }
 
 func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint int,
-	numBlocksAfterCheckpoint int, numLastBlockBytes int, numPartialBytesToWrite int) {
+	numBlocksAfterCheckpoint int, numLastBlockBytes int, numPartialBytesToWrite int,
+	deleteCPInfo bool) {
 	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
@@ -107,7 +117,12 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	lastBlockBytes = append(lastBlockBytes, randomBytes...)
 	partialBytes := lastBlockBytes[:numPartialBytesToWrite]
 	blkfileMgrWrapper.blockfileMgr.currentFileWriter.append(partialBytes, true)
-	blkfileMgrWrapper.blockfileMgr.saveCurrentInfo(cpInfo1, true)
+	if deleteCPInfo {
+		err := blkfileMgrWrapper.blockfileMgr.db.Delete(blkMgrInfoKey, true)
+		assert.NoError(t, err)
+	} else {
+		blkfileMgrWrapper.blockfileMgr.saveCurrentInfo(cpInfo1, true)
+	}
 	blkfileMgrWrapper.close()
 
 	// simulate a start after a crash
@@ -336,4 +351,78 @@ func TestBlockfileMgrGetBlockByTxID(t *testing.T) {
 			assert.Equal(t, blk, blockFromFileMgr)
 		}
 	}
+}
+
+func TestBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T) {
+	t.Run("CPInfo persisted", func(t *testing.T) {
+		testBlockfileMgrSimulateCrashAtFirstBlockInFile(t, false)
+	})
+
+	t.Run("CPInfo to be computed from block files", func(t *testing.T) {
+		testBlockfileMgrSimulateCrashAtFirstBlockInFile(t, true)
+	})
+}
+
+func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteCPInfo bool) {
+	// open blockfileMgr and add 5 blocks
+	env := newTestEnv(t, NewConf(testPath(), 0))
+	defer env.Cleanup()
+
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
+	blockfileMgr := blkfileMgrWrapper.blockfileMgr
+	blocks := testutil.ConstructTestBlocks(t, 10)
+	for i := 0; i < 10; i++ {
+		fmt.Printf("blocks[i].Header.Number = %d\n", blocks[i].Header.Number)
+	}
+	blkfileMgrWrapper.addBlocks(blocks[:5])
+	firstFilePath := blockfileMgr.currentFileWriter.filePath
+	firstBlkFileSize := testutilGetFileSize(t, firstFilePath)
+
+	// move to next file and simulate crash scenario while writing the first block
+	blockfileMgr.moveToNextFile()
+	partialBytesForNextBlock := append(
+		proto.EncodeVarint(uint64(10000)),
+		[]byte("partialBytesForNextBlock depicting a crash during first block in file")...,
+	)
+	blockfileMgr.currentFileWriter.append(partialBytesForNextBlock, true)
+	if deleteCPInfo {
+		err := blockfileMgr.db.Delete(blkMgrInfoKey, true)
+		assert.NoError(t, err)
+	}
+	blkfileMgrWrapper.close()
+
+	// verify that the block file number 1 has been created with partial bytes as a side-effect of crash
+	lastFilePath := blockfileMgr.currentFileWriter.filePath
+	lastFileContent, err := ioutil.ReadFile(lastFilePath)
+	assert.NoError(t, err)
+	assert.Equal(t, lastFileContent, partialBytesForNextBlock)
+
+	// simulate reopen after crash
+	blkfileMgrWrapper = newTestBlockfileWrapper(env, "testLedger")
+	defer blkfileMgrWrapper.close()
+
+	// last block file (block file number 1) should have been truncated to zero length and concluded as the next file to append to
+	assert.Equal(t, 0, testutilGetFileSize(t, lastFilePath))
+	assert.Equal(t,
+		&checkpointInfo{
+			latestFileChunkSuffixNum: 1,
+			latestFileChunksize:      0,
+			lastBlockNumber:          4,
+			isChainEmpty:             false,
+		},
+		blkfileMgrWrapper.blockfileMgr.cpInfo,
+	)
+
+	// Add 5 more blocks and assert that they are added to last file (block file number 1) and full scanning across two files works as expected
+	blkfileMgrWrapper.addBlocks(blocks[5:])
+	assert.True(t, testutilGetFileSize(t, lastFilePath) > 0)
+	assert.Equal(t, firstBlkFileSize, testutilGetFileSize(t, firstFilePath))
+	blkfileMgrWrapper.testGetBlockByNumber(blocks, 0, nil)
+	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 0, len(blocks)-1, blocks)
+}
+
+func testutilGetFileSize(t *testing.T, path string) int {
+	fi, err := os.Stat(path)
+	assert.NoError(t, err)
+	return int(fi.Size())
 }
