@@ -1,11 +1,11 @@
 #!/bin/bash
-#
+
 # Copyright IBM Corp. All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
-#
 
 set -e
+set -o pipefail
 
 # regexes for packages to exclude from unit test
 excluded_packages=(
@@ -27,69 +27,108 @@ pkcs11_packages=(
     "github.com/hyperledger/fabric/bccsp/..."
 )
 
+# packages that are only tested when they (or their deps) change
+conditional_packages=(
+    "github.com/hyperledger/fabric/gossip/..."
+)
+
 # obtain packages changed since some git refspec
 packages_diff() {
     git -C "${GOPATH}/src/github.com/hyperledger/fabric" diff --no-commit-id --name-only -r "${1:-HEAD}" |
-        grep '.go$' | grep -Ev '^vendor/|^build/' | \
-        sed 's%/[^/]*$%/%' | sort -u | \
-        awk '{print "github.com/hyperledger/fabric/"$1"..."}'
+        grep '.go$' | \
+        sed 's%/[^/]*$%%' | sort -u | \
+        awk '{print "github.com/hyperledger/fabric/"$1}'
+}
+
+join_by() {
+    local IFS="$1"; shift; echo "$*"
 }
 
 # "go list" packages and filter out excluded packages
 list_and_filter() {
-    local filter=$(local IFS='|' ; echo "${excluded_packages[*]}")
-    if [ -n "$filter" ]; then
-        go list $@ 2>/dev/null | grep -Ev "${filter}" || true
-    else
-        go list $@ 2>/dev/null
+    local excluded filter
+
+    excluded=("${excluded_packages[@]}")
+    if [ "${#conditional_packages[@]}" -ne 0 ]; then
+        while IFS=$'\n' read -r pkg; do excluded+=("$pkg"); done < <(go list -f '{{ .ImportPath }}$' "${conditional_packages[@]}")
     fi
+
+    filter=$(join_by '|' "${excluded[@]}")
+    if [ -n "$filter" ]; then
+        go list "$@" 2>/dev/null | grep -Ev "${filter}" || true
+    else
+        go list "$@" 2>/dev/null
+    fi
+}
+
+# list conditional packages that have been changed
+list_and_filter_conditional() {
+    local -a additional_packages=()
+
+    if [ "${#conditional_packages[@]}" -ne 0 ]; then
+        local changed_packages
+        changed_packages=$(packages_diff)
+        for pkg in $(go list "${conditional_packages[@]}"); do
+            local dep_regexp
+            dep_regexp="$(go list -f '{{ join .Deps "$|" }}' "$pkg")"
+            echo "${changed_packages}" | grep -qE "$dep_regexp" && additional_packages+=("$pkg")
+            echo "${changed_packages}" | grep -qE "$pkg\$" && additional_packages+=("$pkg")
+        done
+    fi
+
+    join_by $'\n' "${additional_packages[@]}"
 }
 
 # remove packages that must be tested serially
 parallel_test_packages() {
-    local filter=$(local IFS='|' ; echo "${serial_packages[*]}")
+    local filter
+    filter=$(join_by '|' "${serial_packages[@]}")
     if [ -n "$filter" ]; then
-        echo "$@" | grep -Ev $(local IFS='|' ; echo "${serial_packages[*]}") || true
+        join_by $'\n' "$@" | grep -Ev "$filter" || true
     else
-        echo "$@"
+        join_by $'\n' "$@"
     fi
 }
 
 # get packages that must be tested serially
 serial_test_packages() {
-    local filter=$(local IFS='|' ; echo "${serial_packages[*]}")
+    local filter
+    filter=$(join_by '|' "${serial_packages[@]}")
     if [ -n "$filter" ]; then
-        echo "$@" | grep -E "${filter}" || true
+        join_by $'\n' "$@" | grep -E "$filter" || true
     else
-        echo "$@"
+        join_by $'\n' "$@"
     fi
 }
 
 # "go test" the provided packages. Packages that are not present in the serial package list
 # will be tested in parallel
 run_tests() {
-    local flags="-cover"
+    local -a flags=("-cover")
     if [ -n "${VERBOSE}" ]; then
-        flags="${flags} -v"
+        flags+=("-v")
     fi
 
-    local race_flags=""
+    local -a race_flags=()
     if [[ "$(uname -m)" == "x86_64" ]]; then
         export GORACE=atexit_sleep_ms=0 # reduce overhead of race
-        race_flags="-race"
+        race_flags+=("-race")
     fi
 
-    echo ${GO_TAGS}
+    GO_TAGS=${GO_TAGS## }
+    [ -n "$GO_TAGS" ] && echo "Testing with $GO_TAGS..."
 
     time {
-        local serial=$(serial_test_packages "$@") # race is disabled as well
-        if [ -n "${serial}" ]; then
-            go test ${flags} -tags "$GO_TAGS" ${serial[@]} -short -p 1 -timeout=20m
+        local -a serial
+        while IFS=$'\n' read -r pkg; do serial+=("$pkg"); done < <(serial_test_packages "$@")
+        if [ "${#serial[@]}" -ne 0 ]; then
+            go test "${flags[@]}" -tags "$GO_TAGS" "${serial[@]}" -short -p 1 -timeout=20m
         fi
 
-        local parallel=$(parallel_test_packages "$@")
-        if [ -n "${parallel}" ]; then
-            go test ${flags} ${race_flags} -tags "$GO_TAGS" ${parallel[@]} -short -timeout=20m
+        local -a parallel
+        while IFS=$'\n' read -r pkg; do parallel+=("$pkg"); done < <(parallel_test_packages "$@")
+        if [ "${#parallel[@]}" -ne 0 ]; then
+            go test "${flags[@]}" "${race_flags[@]}" -tags "$GO_TAGS" "${parallel[@]}" -short -timeout=20m
         fi
     }
 }
@@ -97,7 +136,7 @@ run_tests() {
 # "go test" the provided packages and generate code coverage reports.
 run_tests_with_coverage() {
     # run the tests serially
-    time go test -p 1 -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" $@ -timeout=20m
+    time go test -p 1 -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" "$@" -timeout=20m
     tail -n +2 profile_tmp.cov >> profile.cov && rm profile_tmp.cov
 }
 
@@ -111,27 +150,31 @@ main() {
     local package_spec=${TEST_PKGS:-github.com/hyperledger/fabric/...}
 
     # extra exclusions for ppc and s390x
-    local arch=`uname -m`
-    if [ x${arch} == xppc64le -o x${arch} == xs390x ]; then
+    if [ "$(uname -m)" == "ppc64le" ] || [ "$(uname -m)" == "s390x" ]; then
         excluded_packages+=("github.com/hyperledger/fabric/core/chaincode/platforms/java")
     fi
 
     # when running a "verify" job, only test packages that have changed
     if [ "${JOB_TYPE}" = "VERIFY" ]; then
         # first check for uncommitted changes
-        package_spec=$(packages_diff HEAD)
+        package_spec=$(packages_diff HEAD | grep -Ev '/vendor(/|$)')
         if [ -z "${package_spec}" ]; then
-            # next check for changes in the latest commit - typically this will
-            # be for CI only, but could also handle a committed change before
-            # pushing to Gerrit
-            package_spec=$(packages_diff HEAD^)
+            # next check for changes in the latest commit
+            package_spec=$(packages_diff HEAD^ | grep -Ev '/vendor(/|$)')
         fi
     fi
 
-    # expand the package spec into an array of packages
-    local -a packages=$(list_and_filter ${package_spec})
+    # run everything when profiling
+    if [ "${JOB_TYPE}" = "PROFILE" ]; then
+        conditional_packages=()
+    fi
 
-    if [ -z "${packages}" ]; then
+    # expand the package spec into an array of packages
+    local -a packages
+    while IFS=$'\n'; read -r pkg; do packages+=("$pkg"); done < <(list_and_filter "${package_spec}")
+    while IFS=$'\n'; read -r pkg; do packages+=("$pkg"); done < <(list_and_filter_conditional)
+
+    if [ "${#packages[@]}" -eq 0 ]; then
         echo "Nothing to test!!!"
     elif [ "${JOB_TYPE}" = "PROFILE" ]; then
         echo "mode: set" > profile.cov
