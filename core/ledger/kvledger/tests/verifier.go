@@ -117,6 +117,24 @@ func (v *verifier) verifyTxValidationCode(txid string, expectedCode protopeer.Tx
 	v.assert.Equal(int32(expectedCode), tran.ValidationCode)
 }
 
+func (v *verifier) verifyCommitHashExists() {
+	bcInfo, err := v.lgr.GetBlockchainInfo()
+	v.assert.NoError(err)
+	b, err := v.lgr.GetPvtDataAndBlockByNum(bcInfo.Height-1, nil)
+	v.assert.NoError(err)
+	r := &retrievedBlockAndPvtdata{BlockAndPvtData: b, assert: v.assert}
+	r.containsCommitHash()
+}
+
+func (v *verifier) verifyCommitHashNotExists() {
+	bcInfo, err := v.lgr.GetBlockchainInfo()
+	v.assert.NoError(err)
+	b, err := v.lgr.GetPvtDataAndBlockByNum(bcInfo.Height-1, nil)
+	v.assert.NoError(err)
+	r := &retrievedBlockAndPvtdata{BlockAndPvtData: b, assert: v.assert}
+	r.notContainCommitHash()
+}
+
 ////////////  structs used by verifier  //////////////////////////////////////////////////////////////
 type expectedCollConfInfo struct {
 	committingBlockNum uint64
@@ -182,18 +200,13 @@ func (r *retrievedBlockAndPvtdata) sameMetadata(expectedBlock *common.Block) {
 	expectedMetadata := expectedBlock.Metadata.Metadata
 	r.assert.Equal(len(expectedMetadata), len(retrievedMetadata))
 	for i := 0; i < len(expectedMetadata); i++ {
+		if i == int(common.BlockMetadataIndex_COMMIT_HASH) {
+			// in order to compare the exact hash value, we need to duplicate the
+			// production code in this test too, so skipping this match
+			continue
+		}
 		if len(expectedMetadata[i])+len(retrievedMetadata[i]) != 0 {
-			if i != int(common.BlockMetadataIndex_COMMIT_HASH) {
-				r.assert.Equal(expectedMetadata[i], retrievedMetadata[i])
-			} else {
-				// in order to compare the exact hash value, we need to duplicate the
-				// production code in this test too (which is not recommended).
-				commitHash := &common.Metadata{}
-				err := proto.Unmarshal(retrievedMetadata[common.BlockMetadataIndex_COMMIT_HASH],
-					commitHash)
-				r.assert.NoError(err)
-				r.assert.Equal(len(commitHash.Value), 32)
-			}
+			r.assert.Equal(expectedMetadata[i], retrievedMetadata[i])
 		}
 	}
 }
@@ -211,4 +224,20 @@ func (r *retrievedBlockAndPvtdata) samePvtdata(expectedPvtdata map[uint64]*ledge
 		r.assert.Equal(pvtData.SeqInBlock, actualPvtData.SeqInBlock)
 		r.assert.True(proto.Equal(pvtData.WriteSet, actualPvtData.WriteSet))
 	}
+}
+
+func (r *retrievedBlockAndPvtdata) containsCommitHash() {
+	commitHash := &common.Metadata{}
+	err := proto.Unmarshal(
+		r.Block.Metadata.Metadata[common.BlockMetadataIndex_COMMIT_HASH],
+		commitHash,
+	)
+	r.assert.NoError(err)
+	r.assert.Equal(len(commitHash.Value), 32)
+}
+
+func (r *retrievedBlockAndPvtdata) notContainCommitHash() {
+	exists := len(r.Block.Metadata.Metadata) >= int(common.BlockMetadataIndex_COMMIT_HASH)+1 &&
+		len(r.Block.Metadata.Metadata[common.BlockMetadataIndex_COMMIT_HASH]) > 0
+	r.assert.False(exists)
 }

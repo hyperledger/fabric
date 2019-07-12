@@ -227,9 +227,11 @@ func (d *sampleDataHelper) verifyBlockAndPvtdataUsingSubmittedData(h *testhelper
 			h.verifyBlockAndPvtData(uint64(8), nil, func(r *retrievedBlockAndPvtdata) {
 				r.sameBlockHeaderAndData(submittedBlk.Block)
 				r.containsValidationCode(0, protopeer.TxValidationCode_MVCC_READ_CONFLICT)
+				r.containsCommitHash()
 			})
 		}
 	}
+	h.verifyCommitHashExists()
 }
 
 func (d *sampleDataHelper) verifyGetTransactionByIDUsingSubmittedData(h *testhelper) {
