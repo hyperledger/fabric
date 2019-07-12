@@ -222,6 +222,7 @@ var _ = Describe("Chain", func() {
 				metricsList := []withImplementers{
 					fakeFields.fakeClusterSize,
 					fakeFields.fakeIsLeader,
+					fakeFields.fakeActiveNodes,
 					fakeFields.fakeCommittedBlockNumber,
 					fakeFields.fakeSnapshotBlockNumber,
 					fakeFields.fakeLeaderChanges,
@@ -241,6 +242,8 @@ var _ = Describe("Chain", func() {
 				Expect(fakeFields.fakeClusterSize.SetArgsForCall(0)).To(Equal(float64(1)))
 				Expect(fakeFields.fakeIsLeader.SetCallCount()).To(Equal(1))
 				Expect(fakeFields.fakeIsLeader.SetArgsForCall(0)).To(Equal(float64(0)))
+				Expect(fakeFields.fakeActiveNodes.SetCallCount()).To(Equal(1))
+				Expect(fakeFields.fakeActiveNodes.SetArgsForCall(0)).To(Equal(float64(0)))
 			})
 		})
 
@@ -271,7 +274,7 @@ var _ = Describe("Chain", func() {
 				campaign(chain, observeC)
 			})
 
-			It("updates metrics upon leader election)", func() {
+			It("updates metrics upon leader election", func() {
 				Expect(fakeFields.fakeIsLeader.SetCallCount()).To(Equal(2))
 				Expect(fakeFields.fakeIsLeader.SetArgsForCall(1)).To(Equal(float64(1)))
 				Expect(fakeFields.fakeLeaderChanges.AddCallCount()).To(Equal(1))
