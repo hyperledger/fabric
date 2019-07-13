@@ -78,10 +78,9 @@ func newChainSupport(
 	if err != nil {
 		logger.Panicf("[channel: %s] Error creating consenter: %s", cs.ChainID(), err)
 	}
-	mv, ok := consenter.(consensus.MetadataValidator)
-	if ok {
-		cs.MetadataValidator = mv
-	} else {
+
+	cs.MetadataValidator, ok = cs.Chain.(consensus.MetadataValidator)
+	if !ok {
 		cs.MetadataValidator = consensus.NoOpMetadataValidator{}
 	}
 
