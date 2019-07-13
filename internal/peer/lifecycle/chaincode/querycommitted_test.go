@@ -7,14 +7,20 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("QueryCommitted", func() {
@@ -28,31 +34,65 @@ var _ = Describe("QueryCommitted", func() {
 		)
 
 		BeforeEach(func() {
-			mockEndorserClient = &mock.EndorserClient{}
+			mockResult := &lb.QueryChaincodeDefinitionResult{
+				Sequence:          93,
+				Version:           "a-version",
+				EndorsementPlugin: "e-plugin",
+				ValidationPlugin:  "v-plugin",
+			}
+
+			mockResultBytes, err := proto.Marshal(mockResult)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(mockResultBytes).NotTo(BeNil())
 			mockProposalResponse = &pb.ProposalResponse{
 				Response: &pb.Response{
-					Status: 200,
+					Status:  200,
+					Payload: mockResultBytes,
 				},
 			}
+
+			mockEndorserClient = &mock.EndorserClient{}
 			mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+
+			mockSigner = &mock.Signer{}
+			buffer := gbytes.NewBuffer()
 
 			input = &chaincode.CommittedQueryInput{
 				ChannelID: "test-channel",
 				Name:      "test-cc",
 			}
 
-			mockSigner = &mock.Signer{}
-
 			committedQuerier = &chaincode.CommittedQuerier{
 				Input:          input,
 				EndorserClient: mockEndorserClient,
 				Signer:         mockSigner,
+				Writer:         buffer,
 			}
 		})
 
-		It("queries installed chaincodes", func() {
+		It("queries committed chaincodes and writes the output as human readable plain-text", func() {
 			err := committedQuerier.Query()
 			Expect(err).NotTo(HaveOccurred())
+			Eventually(committedQuerier.Writer).Should(gbytes.Say("Committed chaincode definition for chaincode 'test-cc' on channel 'test-channel'"))
+			Eventually(committedQuerier.Writer).Should(gbytes.Say("Version: a-version, Sequence: 93, Endorsement Plugin: e-plugin, Validation Plugin: v-plugin"))
+		})
+
+		Context("when JSON-formatted output is requested", func() {
+			BeforeEach(func() {
+				committedQuerier.Input.OutputFormat = "json"
+			})
+			It("queries committed chaincodes and writes the output as JSON", func() {
+				err := committedQuerier.Query()
+				Expect(err).NotTo(HaveOccurred())
+				expectedOutput := &lb.QueryChaincodeDefinitionResult{
+					Sequence:          93,
+					Version:           "a-version",
+					EndorsementPlugin: "e-plugin",
+					ValidationPlugin:  "v-plugin",
+				}
+				json, err := json.MarshalIndent(expectedOutput, "", "\t")
+				Eventually(committedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf("%s", string(json))))
+			})
 		})
 
 		Context("when the chaincode name is not provided", func() {
@@ -170,6 +210,23 @@ var _ = Describe("QueryCommitted", func() {
 				err := committedQuerier.Query()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload"))
+			})
+		})
+
+		Context("when the payload contains bytes that aren't a QueryChaincodeDefinitionResult and JSON-output is requested", func() {
+			BeforeEach(func() {
+				mockProposalResponse.Response = &pb.Response{
+					Payload: []byte("badpayloadbadpayload"),
+					Status:  200,
+				}
+				mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+				committedQuerier.Input.OutputFormat = "json"
+			})
+
+			It("returns an error", func() {
+				err := committedQuerier.Query()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload as type *lifecycle.QueryChaincodeDefinitionResult"))
 			})
 		})
 	})

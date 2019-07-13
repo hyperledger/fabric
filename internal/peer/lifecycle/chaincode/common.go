@@ -8,6 +8,9 @@ package chaincode
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -110,4 +113,20 @@ func createCollectionConfigPackage(collectionsConfigFile string) (*cb.Collection
 		}
 	}
 	return ccp, nil
+}
+
+func printResponseAsJSON(proposalResponse *pb.ProposalResponse, msg proto.Message, out io.Writer) error {
+	err := proto.Unmarshal(proposalResponse.Response.Payload, msg)
+	if err != nil {
+		return errors.Wrapf(err, "failed to unmarshal proposal response's response payload as type %T", msg)
+	}
+
+	bytes, err := json.MarshalIndent(msg, "", "\t")
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal output")
+	}
+
+	fmt.Fprintf(out, "%s\n", string(bytes))
+
+	return nil
 }

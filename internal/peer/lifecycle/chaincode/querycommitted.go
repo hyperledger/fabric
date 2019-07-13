@@ -9,6 +9,9 @@ package chaincode
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -27,11 +30,13 @@ type CommittedQuerier struct {
 	Input          *CommittedQueryInput
 	EndorserClient EndorserClient
 	Signer         Signer
+	Writer         io.Writer
 }
 
 type CommittedQueryInput struct {
-	ChannelID string
-	Name      string
+	ChannelID    string
+	Name         string
+	OutputFormat string
 }
 
 // QueryCommittedCmd returns the cobra command for
@@ -60,8 +65,9 @@ func QueryCommittedCmd(c *CommittedQuerier) *cobra.Command {
 				}
 
 				cqInput := &CommittedQueryInput{
-					ChannelID: channelID,
-					Name:      chaincodeName,
+					ChannelID:    channelID,
+					Name:         chaincodeName,
+					OutputFormat: output,
 				}
 
 				c = &CommittedQuerier{
@@ -69,6 +75,7 @@ func QueryCommittedCmd(c *CommittedQuerier) *cobra.Command {
 					EndorserClient: cc.EndorserClients[0],
 					Input:          cqInput,
 					Signer:         cc.Signer,
+					Writer:         os.Stdout,
 				}
 			}
 			return c.Query()
@@ -81,6 +88,7 @@ func QueryCommittedCmd(c *CommittedQuerier) *cobra.Command {
 		"peerAddresses",
 		"tlsRootCertFiles",
 		"connectionProfile",
+		"output",
 	}
 	attachFlags(chaincodeQueryCommittedCmd, flagList)
 
@@ -127,22 +135,24 @@ func (c *CommittedQuerier) Query() error {
 		return errors.Errorf("query failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
 	}
 
+	if strings.ToLower(c.Input.OutputFormat) == "json" {
+		return printResponseAsJSON(proposalResponse, &lb.QueryChaincodeDefinitionResult{}, c.Writer)
+	}
 	return c.printResponse(proposalResponse)
 }
 
 // printResponse prints the information included in the response
-// from the server.
+// from the server as human readable plain-text.
 func (c *CommittedQuerier) printResponse(proposalResponse *pb.ProposalResponse) error {
-	qdcr := &lb.QueryChaincodeDefinitionResult{}
-	err := proto.Unmarshal(proposalResponse.Response.Payload, qdcr)
+	result := &lb.QueryChaincodeDefinitionResult{}
+	err := proto.Unmarshal(proposalResponse.Response.Payload, result)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
-	fmt.Printf("Committed chaincode definition for chaincode '%s' on channel '%s':\n", chaincodeName, channelID)
-	fmt.Printf("Version: %s, Sequence: %d, Endorsement Plugin: %s, Validation Plugin: %s\n", qdcr.Version, qdcr.Sequence, qdcr.EndorsementPlugin, qdcr.ValidationPlugin)
+	fmt.Fprintf(c.Writer, "Committed chaincode definition for chaincode '%s' on channel '%s':\n", c.Input.Name, c.Input.ChannelID)
+	fmt.Fprintf(c.Writer, "Version: %s, Sequence: %d, Endorsement Plugin: %s, Validation Plugin: %s\n", result.Version, result.Sequence, result.EndorsementPlugin, result.ValidationPlugin)
 
 	return nil
-
 }
 
 func (c *CommittedQuerier) validateInput() error {

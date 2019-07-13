@@ -278,6 +278,7 @@ func (c ChaincodeSimulateCommit) Args() []string {
 		"--validation-plugin", c.ValidationPlugin,
 		"--signature-policy", c.SignaturePolicy,
 		"--channel-config-policy", c.ChannelConfigPolicy,
+		"--output", "json",
 	}
 
 	if c.InitRequired {
@@ -414,6 +415,7 @@ func (c ChaincodeListCommitted) Args() []string {
 		"lifecycle", "chaincode", "querycommitted",
 		"--channelID", c.ChannelID,
 		"--name", c.Name,
+		"--output", "json",
 	}
 }
 
