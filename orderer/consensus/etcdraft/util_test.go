@@ -30,6 +30,7 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/raft/raftpb"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -685,5 +686,114 @@ func TestCheckConfigMetadata(t *testing.T) {
 		err := CheckConfigMetadata(testCase.metadata)
 		assert.NotNil(t, err, testCase.description)
 		assert.Regexp(t, testCase.errRegex, err)
+	}
+}
+
+func TestQuorumCheck(t *testing.T) {
+	tests := []struct {
+		Name          string
+		NewConsenters map[uint64]*etcdraftproto.Consenter
+		ConfChange    *raftpb.ConfChange
+		RotateNode    uint64
+		ActiveNodes   []uint64
+		QuorumLoss    bool
+	}{
+		// Notations:
+		//  1     - node 1 is slive
+		// (1)    - node 1 is dead
+		//  1'    - node 1's cert is being rotated. Node is considered to be dead in new set
+
+		// Add
+		{
+			Name:          "[1]->[1,(2)]",
+			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil},
+			ConfChange:    &raftpb.ConfChange{NodeID: 2, Type: raftpb.ConfChangeAddNode},
+			ActiveNodes:   []uint64{1},
+			QuorumLoss:    false,
+		},
+		{
+			Name:          "[1,2]->[1,2,(3)]",
+			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil, 3: nil},
+			ConfChange:    &raftpb.ConfChange{NodeID: 3, Type: raftpb.ConfChangeAddNode},
+			ActiveNodes:   []uint64{1, 2},
+			QuorumLoss:    false,
+		},
+		{
+			Name:          "[1,2,(3)]->[1,2,(3),(4)]",
+			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil, 3: nil, 4: nil},
+			ConfChange:    &raftpb.ConfChange{NodeID: 4, Type: raftpb.ConfChangeAddNode},
+			ActiveNodes:   []uint64{1, 2},
+			QuorumLoss:    true,
+		},
+		{
+			Name:          "[1,2,3,(4)]->[1,2,3,(4),(5)]",
+			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil, 3: nil, 4: nil, 5: nil},
+			ConfChange:    &raftpb.ConfChange{NodeID: 5, Type: raftpb.ConfChangeAddNode},
+			ActiveNodes:   []uint64{1, 2, 3},
+			QuorumLoss:    false,
+		},
+		// Rotate
+		{
+			Name:          "[1]->[1']",
+			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil},
+			RotateNode:    1,
+			ActiveNodes:   []uint64{1},
+			QuorumLoss:    false,
+		},
+		{
+			Name:          "[1,2]->[1,2']",
+			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil},
+			RotateNode:    2,
+			ActiveNodes:   []uint64{1, 2},
+			QuorumLoss:    false,
+		},
+		{
+			Name:          "[1,2,(3)]->[1,2',(3)]",
+			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil, 3: nil},
+			RotateNode:    2,
+			ActiveNodes:   []uint64{1, 2},
+			QuorumLoss:    true,
+		},
+		{
+			Name:          "[1,2,(3)]->[1,2,(3')]",
+			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil, 3: nil},
+			RotateNode:    3,
+			ActiveNodes:   []uint64{1, 2},
+			QuorumLoss:    false,
+		},
+		// Remove
+		{
+			Name:          "[1,2,(3)]->[1,2]",
+			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil},
+			ConfChange:    &raftpb.ConfChange{NodeID: 3, Type: raftpb.ConfChangeRemoveNode},
+			ActiveNodes:   []uint64{1, 2},
+			QuorumLoss:    false,
+		},
+		{
+			Name:          "[1,2,(3)]->[1,(3)]",
+			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 3: nil},
+			ConfChange:    &raftpb.ConfChange{NodeID: 2, Type: raftpb.ConfChangeRemoveNode},
+			ActiveNodes:   []uint64{1, 2},
+			QuorumLoss:    true,
+		},
+		{
+			Name:          "[1,2]->[1]",
+			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil},
+			ConfChange:    &raftpb.ConfChange{NodeID: 2, Type: raftpb.ConfChangeRemoveNode},
+			ActiveNodes:   []uint64{1, 2},
+			QuorumLoss:    false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			changes := &MembershipChanges{
+				NewConsenters: test.NewConsenters,
+				ConfChange:    test.ConfChange,
+				RotatedNode:   test.RotateNode,
+			}
+
+			require.Equal(t, test.QuorumLoss, changes.UnacceptableQuorumLoss(test.ActiveNodes))
+		})
 	}
 }

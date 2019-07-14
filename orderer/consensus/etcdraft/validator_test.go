@@ -22,6 +22,7 @@ var _ = Describe("Metadata Validation", func() {
 
 	BeforeEach(func() {
 		chain = &etcdraft.Chain{}
+		chain.ActiveNodes.Store([]uint64{})
 	})
 
 	When("determining parameter well-formedness", func() {
@@ -134,6 +135,7 @@ var _ = Describe("Metadata Validation", func() {
 
 			BeforeEach(func() {
 				newChannel = false
+				chain.ActiveNodes.Store([]uint64{1, 2, 3})
 			})
 
 			It("fails when the new consenters are an empty set", func() {
@@ -201,6 +203,20 @@ var _ = Describe("Metadata Validation", func() {
 				Expect(chain.ValidateConsensusMetadata(oldBytes, newBytes, newChannel)).To(Succeed())
 			})
 
+			It("succeeds on removal of inactive node in 2/3 cluster", func() {
+				chain.ActiveNodes.Store([]uint64{1, 2})
+				newMetadata.Consenters = newMetadata.Consenters[:2]
+				newBytes, _ := proto.Marshal(newMetadata)
+				Expect(chain.ValidateConsensusMetadata(oldBytes, newBytes, newChannel)).To(Succeed())
+			})
+
+			It("fails on removal of active node in 2/3 cluster", func() {
+				chain.ActiveNodes.Store([]uint64{1, 2})
+				newMetadata.Consenters = newMetadata.Consenters[1:]
+				newBytes, _ := proto.Marshal(newMetadata)
+				Expect(chain.ValidateConsensusMetadata(oldBytes, newBytes, newChannel)).To(
+					MatchError("2 out of 3 nodes are alive, configuration will result in quorum loss"))
+			})
 		})
 	})
 })
