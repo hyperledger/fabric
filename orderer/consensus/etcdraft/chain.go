@@ -723,6 +723,7 @@ func (c *Chain) run() {
 			}
 
 		case <-c.doneC:
+			stopTimer()
 			cancelProp()
 
 			select {
