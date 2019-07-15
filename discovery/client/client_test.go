@@ -140,7 +140,7 @@ var (
 		newPeer(4, stateInfoMessageWithHeight(101, cc3), propertiesWithChaincodes).NetworkMember,
 		newPeer(5, stateInfoMessageWithHeight(108, cc3), propertiesWithChaincodes).NetworkMember,
 		newPeer(6, stateInfoMessageWithHeight(110, cc3), propertiesWithChaincodes).NetworkMember,
-		newPeer(7, stateInfoMessageWithHeight(111, cc3), propertiesWithChaincodes).NetworkMember,
+		newPeer(7, stateInfoMessageWithHeight(110, cc3), propertiesWithChaincodes).NetworkMember,
 		newPeer(8, stateInfoMessageWithHeight(100, cc3), propertiesWithChaincodes).NetworkMember,
 		newPeer(9, stateInfoMessageWithHeight(107, cc3), propertiesWithChaincodes).NetworkMember,
 		newPeer(10, stateInfoMessageWithHeight(110, cc3), propertiesWithChaincodes).NetworkMember,
@@ -506,16 +506,14 @@ func TestClient(t *testing.T) {
 		mychannel := r.ForChannel("mychannel")
 
 		// acceptablePeers are the ones at the highest ledger height for each org
-		acceptablePeers := []string{"p5", "p7", "p9", "p11", "p15"}
+		acceptablePeers := []string{"p5", "p9", "p11", "p15"}
 		used := make(map[string]struct{})
-		for i := 0; i < 10; i++ {
-			endorsers, err := mychannel.Endorsers(ccCall("mycc3"), NewFilter(PrioritiesByHeight, NoExclusion))
-			assert.NoError(t, err)
-			names := getNames(endorsers)
-			assert.Subset(t, acceptablePeers, names)
-			for _, name := range names {
-				used[name] = struct{}{}
-			}
+		endorsers, err := mychannel.Endorsers(ccCall("mycc3"), NewFilter(PrioritiesByHeight, NoExclusion))
+		assert.NoError(t, err)
+		names := getNames(endorsers)
+		assert.Subset(t, acceptablePeers, names)
+		for _, name := range names {
+			used[name] = struct{}{}
 		}
 		assert.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
 	})
@@ -532,7 +530,7 @@ func TestClient(t *testing.T) {
 		acceptablePeers := []string{"p1", "p9", "p3", "p5", "p6", "p7", "p10", "p11", "p12", "p14", "p15"}
 		used := make(map[string]struct{})
 
-		for i := 0; i < 30; i++ {
+		for i := 0; i < 90; i++ {
 			endorsers, err := mychannel.Endorsers(ccCall("mycc3"), &ledgerHeightFilter{threshold: threshold})
 			assert.NoError(t, err)
 			names := getNames(endorsers)
@@ -544,16 +542,14 @@ func TestClient(t *testing.T) {
 		assert.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
 
 		threshold = 0 // only use the peers at the highest ledger height (same as using the PrioritiesByHeight selector)
-		acceptablePeers = []string{"p5", "p7", "p9", "p11", "p15"}
+		acceptablePeers = []string{"p5", "p9", "p11", "p15"}
 		used = make(map[string]struct{})
-		for i := 0; i < 10; i++ {
-			endorsers, err := mychannel.Endorsers(ccCall("mycc3"), &ledgerHeightFilter{threshold: threshold})
-			assert.NoError(t, err)
-			names := getNames(endorsers)
-			assert.Subset(t, acceptablePeers, names)
-			for _, name := range names {
-				used[name] = struct{}{}
-			}
+		endorsers, err := mychannel.Endorsers(ccCall("mycc3"), &ledgerHeightFilter{threshold: threshold})
+		assert.NoError(t, err)
+		names := getNames(endorsers)
+		assert.Subset(t, acceptablePeers, names)
+		for _, name := range names {
+			used[name] = struct{}{}
 		}
 		t.Logf("Used peers: %#v\n", used)
 		assert.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
