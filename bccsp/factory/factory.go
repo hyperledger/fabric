@@ -72,15 +72,6 @@ func GetDefault() bccsp.BCCSP {
 	return defaultBCCSP
 }
 
-// GetBCCSP returns a BCCSP created according to the options passed in input.
-func GetBCCSP(name string) (bccsp.BCCSP, error) {
-	csp, ok := bccspMap[name]
-	if !ok {
-		return nil, errors.Errorf("Could not find BCCSP, no '%s' provider", name)
-	}
-	return csp, nil
-}
-
 func initBCCSP(f BCCSPFactory, config *FactoryOpts) error {
 	csp, err := f.Get(config)
 	if err != nil {
