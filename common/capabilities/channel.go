@@ -23,6 +23,9 @@ const (
 	// ChannelV1_4_2 is the capabilities string for standard new non-backwards compatible fabric v1.4.2 channel capabilities.
 	ChannelV1_4_2 = "V1_4_2"
 
+	// ChannelV1_4_3 is the capabilities string for standard new non-backwards compatible fabric v1.4.3 channel capabilities.
+	ChannelV1_4_3 = "V1_4_3"
+
 	// ChannelV2_0 is the capabilities string for standard new non-backwards compatible fabric v2.0 channel capabilities.
 	ChannelV2_0 = "V2_0"
 )
@@ -33,6 +36,7 @@ type ChannelProvider struct {
 	v11  bool
 	v13  bool
 	v142 bool
+	v143 bool
 	v20  bool
 }
 
@@ -43,6 +47,7 @@ func NewChannelProvider(capabilities map[string]*cb.Capability) *ChannelProvider
 	_, cp.v11 = capabilities[ChannelV1_1]
 	_, cp.v13 = capabilities[ChannelV1_3]
 	_, cp.v142 = capabilities[ChannelV1_4_2]
+	_, cp.v143 = capabilities[ChannelV1_4_3]
 	_, cp.v20 = capabilities[ChannelV2_0]
 	return cp
 }
@@ -58,6 +63,8 @@ func (cp *ChannelProvider) HasCapability(capability string) bool {
 	// Add new capability names here
 	case ChannelV2_0:
 		return true
+	case ChannelV1_4_3:
+		return true
 	case ChannelV1_4_2:
 		return true
 	case ChannelV1_3:
@@ -72,7 +79,9 @@ func (cp *ChannelProvider) HasCapability(capability string) bool {
 // MSPVersion returns the level of MSP support required by this channel.
 func (cp *ChannelProvider) MSPVersion() msp.MSPVersion {
 	switch {
-	case cp.v13 || cp.v142 || cp.v20:
+	case cp.v143 || cp.v20:
+		return msp.MSPv1_4_3
+	case cp.v13 || cp.v142:
 		return msp.MSPv1_3
 	case cp.v11:
 		return msp.MSPv1_1
@@ -83,10 +92,10 @@ func (cp *ChannelProvider) MSPVersion() msp.MSPVersion {
 
 // ConsensusTypeMigration return true if consensus-type migration is supported and permitted in both orderer and peer.
 func (cp *ChannelProvider) ConsensusTypeMigration() bool {
-	return cp.v142 || cp.v20
+	return cp.v142 || cp.v143 || cp.v20
 }
 
 // OrgSpecificOrdererEndpoints allows for individual orderer orgs to specify their external addresses for their OSNs.
 func (cp *ChannelProvider) OrgSpecificOrdererEndpoints() bool {
-	return cp.v142 || cp.v20
+	return cp.v142 || cp.v143 || cp.v20
 }

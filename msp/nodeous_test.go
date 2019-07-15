@@ -243,7 +243,7 @@ func TestSatisfiesPrincipalClient(t *testing.T) {
 func TestSatisfiesPrincipalAdmin(t *testing.T) {
 	// testdata/nodeouadmin:
 	// the configuration enables NodeOUs (with adminOU) and admin and signing identity are valid
-	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeouadmin", MSPv1_4_2)
+	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeouadmin", MSPv1_4_3)
 	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
 
 	cert, err := readFile("testdata/nodeouadmin/adm/testadmincert.pem")
@@ -271,7 +271,7 @@ func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
 	assert.NoError(t, err)
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_4_2, ks, cryptoProvider)
+	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_4_3, ks, cryptoProvider)
 	assert.NoError(t, err)
 
 	err = thisMSP.Setup(conf)
@@ -285,7 +285,7 @@ func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
 
 	ks, err = sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/nodeouadmin3", "keystore"), true)
 	assert.NoError(t, err)
-	thisMSP, err = NewBccspMspWithKeyStore(MSPv1_4_2, ks, cryptoProvider)
+	thisMSP, err = NewBccspMspWithKeyStore(MSPv1_4_3, ks, cryptoProvider)
 	assert.NoError(t, err)
 
 	err = thisMSP.Setup(conf)
@@ -296,7 +296,7 @@ func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
 func TestSatisfiesPrincipalOrderer(t *testing.T) {
 	// testdata/nodeouorderer:
 	// the configuration enables NodeOUs (with orderOU)
-	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeouorderer", MSPv1_4_2)
+	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeouorderer", MSPv1_4_3)
 	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
 
 	id, err := thisMSP.(*bccspmsp).GetDefaultSigningIdentity()
@@ -321,7 +321,7 @@ func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
 	assert.NoError(t, err)
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_4_2, ks, cryptoProvider)
+	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_4_3, ks, cryptoProvider)
 	assert.NoError(t, err)
 
 	err = thisMSP.Setup(conf)
@@ -345,7 +345,7 @@ func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
 
 	ks, err = sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/nodeouorderer3", "keystore"), true)
 	assert.NoError(t, err)
-	thisMSP, err = NewBccspMspWithKeyStore(MSPv1_4_2, ks, cryptoProvider)
+	thisMSP, err = NewBccspMspWithKeyStore(MSPv1_4_3, ks, cryptoProvider)
 	assert.NoError(t, err)
 
 	err = thisMSP.Setup(conf)
@@ -370,7 +370,7 @@ func TestValidMSPWithNodeOUMissingClassification(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, "Failed setting up NodeOUs. ClientOU must be different from nil.", err.Error())
 
-	_, err = getLocalMSPWithVersionAndError(t, "testdata/nodeousbadconf1", MSPv1_4_2)
+	_, err = getLocalMSPWithVersionAndError(t, "testdata/nodeousbadconf1", MSPv1_4_3)
 	assert.Error(t, err)
 	assert.Equal(t, "admin 0 is invalid [cannot test for classification, node ou for type [CLIENT], not defined, msp: [SampleOrg],The identity does not contain OU [ADMIN], MSP: [SampleOrg]]", err.Error())
 
@@ -380,6 +380,6 @@ func TestValidMSPWithNodeOUMissingClassification(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, "Failed setting up NodeOUs. PeerOU must be different from nil.", err.Error())
 
-	_, err = getLocalMSPWithVersionAndError(t, "testdata/nodeousbadconf2", MSPv1_4_2)
+	_, err = getLocalMSPWithVersionAndError(t, "testdata/nodeousbadconf2", MSPv1_4_3)
 	assert.NoError(t, err)
 }
