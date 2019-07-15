@@ -7,10 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package node
 
 import (
-	"bufio"
-	"fmt"
-	"os"
-
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/pkg/errors"
@@ -40,10 +36,6 @@ var nodeRollbackCmd = &cobra.Command{
 			return errors.New("Must supply channel ID")
 		}
 
-		fmt.Printf("This will rollback channel [%s] to the block number [%d]. Press enter to continue...",
-			channelID, blockNumber)
-		reader := bufio.NewReader(os.Stdin)
-		reader.ReadBytes('\n')
 		config := ledgerConfig()
 		return kvledger.RollbackKVLedger(config.RootFSPath, channelID, blockNumber)
 	},
