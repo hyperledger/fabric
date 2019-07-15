@@ -251,8 +251,11 @@ func (n *node) abdicateLeader(currentLead uint64) {
 		n.TransferLeadership(context.TODO(), status.ID, transferee)
 	}
 
+	timer := n.clock.NewTimer(time.Duration(n.config.ElectionTick) * n.tickInterval)
+	defer timer.Stop() // prevent timer leak
+
 	select {
-	case <-n.clock.After(time.Duration(n.config.ElectionTick) * n.tickInterval):
+	case <-timer.C():
 		n.logger.Warn("Leader transfer timeout")
 	case l := <-notifyc:
 		n.logger.Infof("Leader has been transferred from %d to %d", currentLead, l)

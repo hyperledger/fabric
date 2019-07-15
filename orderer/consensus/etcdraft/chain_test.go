@@ -201,6 +201,8 @@ var _ = Describe("Chain", func() {
 		AfterEach(func() {
 			chain.Halt()
 			Eventually(chain.Errored, LongEventualTimeout).Should(BeClosed())
+			// Make sure no timer leak
+			Eventually(clock.WatcherCount, LongEventualTimeout).Should(BeZero())
 			os.RemoveAll(dataDir)
 		})
 
@@ -1341,6 +1343,10 @@ var _ = Describe("Chain", func() {
 
 		AfterEach(func() {
 			network.stop()
+			network.exec(func(c *chain) {
+				Eventually(c.clock.WatcherCount, LongEventualTimeout).Should(BeZero())
+			})
+
 			os.RemoveAll(dataDir)
 		})
 
@@ -1471,6 +1477,11 @@ var _ = Describe("Chain", func() {
 		})
 
 		AfterEach(func() {
+			network.stop()
+			network.exec(func(c *chain) {
+				Eventually(c.clock.WatcherCount, LongEventualTimeout).Should(BeZero())
+			})
+
 			os.RemoveAll(dataDir)
 		})
 
