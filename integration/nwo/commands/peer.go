@@ -569,18 +569,3 @@ func (c ChannelInfo) Args() []string {
 		"-c", c.ChannelID,
 	}
 }
-
-type LoggingSetLevel struct {
-	Logger string
-	Level  string
-}
-
-func (l LoggingSetLevel) SessionName() string {
-	return "peer-logging-setlevel"
-}
-
-func (l LoggingSetLevel) Args() []string {
-	return []string{
-		"logging", "setlevel", l.Logger, l.Level,
-	}
-}
