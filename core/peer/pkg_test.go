@@ -90,6 +90,18 @@ func createMSPConfig(rootCerts, tlsRootCerts, tlsIntermediateCerts [][]byte,
 		TlsRootCerts:         tlsRootCerts,
 		TlsIntermediateCerts: tlsIntermediateCerts,
 		Name:                 mspID,
+		FabricNodeOus: &mspproto.FabricNodeOUs{
+			Enable: true,
+			ClientOuIdentifier: &mspproto.FabricOUIdentifier{
+				OrganizationalUnitIdentifier: "client",
+			},
+			PeerOuIdentifier: &mspproto.FabricOUIdentifier{
+				OrganizationalUnitIdentifier: "peer",
+			},
+			AdminOuIdentifier: &mspproto.FabricOUIdentifier{
+				OrganizationalUnitIdentifier: "admin",
+			},
+		},
 	}
 
 	fmpsjs, err := proto.Marshal(fmspconf)
