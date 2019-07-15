@@ -1347,16 +1347,15 @@ var _ = Describe("Chain", func() {
 		It("can remove leader by reconfiguring cluster", func() {
 			network.elect(1)
 
-			n := c1.clock.WatcherCount()
-
 			By("Configuring cluster to remove node")
 			Expect(c1.Configure(configEnv, 0)).To(Succeed())
 			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-			Eventually(c2.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
+			c1.clock.WaitForNWatchersAndIncrement(ELECTION_TICK*interval, 2)
 
-			c1.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, n+1)
-			Eventually(c1.Chain.Errored, LongEventualTimeout).Should(BeClosed())
-			close(c1.stopped) // mark c1 stopped in network
+			Eventually(func() <-chan raft.SoftState {
+				c2.clock.Increment(interval)
+				return c2.observe
+			}, LongEventualTimeout).Should(Receive(StateEqual(2, raft.StateLeader)))
 
 			By("Asserting leader can still serve requests as single-node cluster")
 			c2.cutter.CutNext = true
