@@ -50,7 +50,7 @@ list_and_filter() {
 
     excluded=("${excluded_packages[@]}")
     if [ "${#conditional_packages[@]}" -ne 0 ]; then
-        while IFS=$'\n' read -r pkg; do excluded+=("$pkg"); done < <(go list -f '{{ .ImportPath }}$' "${conditional_packages[@]}")
+        while IFS=$'\n' read -r pkg; do [ -n "$pkg" ] && excluded+=("$pkg"); done < <(go list -f '{{ .ImportPath }}$' "${conditional_packages[@]}")
     fi
 
     filter=$(join_by '|' "${excluded[@]}")
@@ -120,13 +120,13 @@ run_tests() {
 
     time {
         local -a serial
-        while IFS=$'\n' read -r pkg; do serial+=("$pkg"); done < <(serial_test_packages "$@")
+        while IFS=$'\n' read -r pkg; do [ -n "$pkg" ] && serial+=("$pkg"); done < <(serial_test_packages "$@")
         if [ "${#serial[@]}" -ne 0 ]; then
             go test "${flags[@]}" -tags "$GO_TAGS" "${serial[@]}" -short -p 1 -timeout=20m
         fi
 
         local -a parallel
-        while IFS=$'\n' read -r pkg; do parallel+=("$pkg"); done < <(parallel_test_packages "$@")
+        while IFS=$'\n' read -r pkg; do [ -n "$pkg" ] && parallel+=("$pkg"); done < <(parallel_test_packages "$@")
         if [ "${#parallel[@]}" -ne 0 ]; then
             go test "${flags[@]}" "${race_flags[@]}" -tags "$GO_TAGS" "${parallel[@]}" -short -timeout=20m
         fi
@@ -171,8 +171,8 @@ main() {
 
     # expand the package spec into an array of packages
     local -a packages
-    while IFS=$'\n'; read -r pkg; do packages+=("$pkg"); done < <(list_and_filter "${package_spec}")
-    while IFS=$'\n'; read -r pkg; do packages+=("$pkg"); done < <(list_and_filter_conditional)
+    while IFS=$'\n'; read -r pkg; do [ -n "$pkg" ] && packages+=("$pkg"); done < <(list_and_filter "${package_spec}")
+    while IFS=$'\n'; read -r pkg; do [ -n "$pkg" ] && packages+=("$pkg"); done < <(list_and_filter_conditional)
 
     if [ "${#packages[@]}" -eq 0 ]; then
         echo "Nothing to test!!!"
