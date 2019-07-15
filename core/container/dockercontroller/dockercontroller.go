@@ -110,6 +110,15 @@ func (p *Provider) NewVM() container.VM {
 	}
 }
 
+// HealthCheck checks if the DockerVM is able to communicate with the Docker
+// daemon.
+func (p *Provider) HealthCheck(ctx context.Context) error {
+	if err := p.Client.PingWithContext(ctx); err != nil {
+		return errors.Wrap(err, "failed to ping to Docker daemon")
+	}
+	return nil
+}
+
 func (vm *DockerVM) createContainer(imageID, containerID string, args, env []string) error {
 	logger := dockerLogger.With("imageID", imageID, "containerID", containerID)
 	logger.Debugw("create container")
@@ -319,15 +328,6 @@ func (vm *DockerVM) Wait(ccid ccintf.CCID) (int, error) {
 
 func (vm *DockerVM) ccidToContainerID(ccid ccintf.CCID) string {
 	return strings.Replace(vm.GetVMName(ccid), ":", "_", -1)
-}
-
-// HealthCheck checks if the DockerVM is able to communicate with the Docker
-// daemon.
-func (vm *DockerVM) HealthCheck(ctx context.Context) error {
-	if err := vm.Client.PingWithContext(ctx); err != nil {
-		return errors.Wrap(err, "failed to ping to Docker daemon")
-	}
-	return nil
 }
 
 func (vm *DockerVM) stopInternal(id string, timeout uint, dontkill, dontremove bool) error {

@@ -250,15 +250,15 @@ func Test_Wait(t *testing.T) {
 	assert.EqualError(t, err, "no-wait-for-you")
 }
 
-func Test_HealthCheck(t *testing.T) {
-	dvm := DockerVM{}
-	client := mock.DockerClient{}
-	dvm.Client = &client
-	err := dvm.HealthCheck(context.Background())
+func TestHealthCheck(t *testing.T) {
+	client := &mock.DockerClient{}
+	provider := &Provider{Client: client}
+
+	err := provider.HealthCheck(context.Background())
 	assert.NoError(t, err)
 
 	client.PingWithContextReturns(errors.New("Error pinging daemon"))
-	err = dvm.HealthCheck(context.Background())
+	err = provider.HealthCheck(context.Background())
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Error pinging daemon")
 }
