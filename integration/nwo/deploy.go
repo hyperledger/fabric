@@ -396,6 +396,9 @@ type queryCommittedOutput struct {
 	Approved map[string]bool `json:"approved"`
 }
 
+// listCommitted returns the result of the queryCommitted command.
+// If the command fails for any reason (e.g. namespace not defined
+// or a database access issue), it will return an empty output object.
 func listCommitted(n *Network, peer *Peer, channel, name string) func() queryCommittedOutput {
 	return func() queryCommittedOutput {
 		sess, err := n.PeerAdminSession(peer, commands.ChaincodeListCommitted{
@@ -405,6 +408,10 @@ func listCommitted(n *Network, peer *Peer, channel, name string) func() queryCom
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
 		output := &queryCommittedOutput{}
+		if sess.ExitCode() == 1 {
+			// don't try to unmarshal the output as JSON if the query failed
+			return *output
+		}
 		err = json.Unmarshal(sess.Out.Contents(), output)
 		Expect(err).NotTo(HaveOccurred())
 		return *output
