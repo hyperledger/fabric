@@ -523,7 +523,7 @@ First let's start our network:
 
 .. code:: bash
 
-    docker-compose -f docker-compose-cli.yaml up -d
+    export IMAGE_TAG=latest && docker-compose -f docker-compose-cli.yaml up -d
 
 If you want to see the realtime logs for your network, then do not supply the ``-d`` flag.
 If you let the logs stream, then you will need to open a second terminal to execute the CLI calls.
