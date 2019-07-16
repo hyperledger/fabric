@@ -55,6 +55,7 @@ func TestLedgerConfigPathDefault(t *testing.T) {
 	assert.Equal(t, "/var/hyperledger/production/ledgersData/chains", GetBlockStorePath())
 	assert.Equal(t, "/var/hyperledger/production/ledgersData/pvtdataStore", GetPvtdataStorePath())
 	assert.Equal(t, "/var/hyperledger/production/ledgersData/bookkeeper", GetInternalBookkeeperPath())
+	assert.Equal(t, "/var/hyperledger/production/ledgersData/fileLock", GetFileLockPath())
 }
 
 func TestLedgerConfigPath(t *testing.T) {
@@ -68,6 +69,7 @@ func TestLedgerConfigPath(t *testing.T) {
 	assert.Equal(t, "/tmp/hyperledger/production/ledgersData/chains", GetBlockStorePath())
 	assert.Equal(t, "/tmp/hyperledger/production/ledgersData/pvtdataStore", GetPvtdataStorePath())
 	assert.Equal(t, "/tmp/hyperledger/production/ledgersData/bookkeeper", GetInternalBookkeeperPath())
+	assert.Equal(t, "/tmp/hyperledger/production/ledgersData/fileLock", GetFileLockPath())
 }
 
 func TestGetTotalLimitDefault(t *testing.T) {

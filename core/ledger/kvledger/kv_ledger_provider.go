@@ -50,6 +50,7 @@ type Provider struct {
 	initializer         *ledger.Initializer
 	collElgNotifier     *collElgNotifier
 	stats               *stats
+	fileLock            *leveldbhelper.FileLock
 }
 
 // NewProvider instantiates a new Provider.
@@ -60,9 +61,16 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	idStore := openIDStore(ledgerconfig.GetLedgerProviderPath())
 	// Initialize the history database (index for history of values by key)
 	historydbProvider := historyleveldb.NewHistoryDBProvider()
+
+	fileLock := leveldbhelper.NewFileLock(ledgerconfig.GetFileLockPath())
+	if err := fileLock.Lock(); err != nil {
+		return nil, errors.Wrap(err, "as another peer node command is executing,"+
+			" wait for that command to complete its execution or terminate it before retrying")
+	}
+
 	logger.Info("ledger provider Initialized")
 	provider := &Provider{idStore, nil,
-		nil, historydbProvider, nil, nil, nil, nil, nil, nil}
+		nil, historydbProvider, nil, nil, nil, nil, nil, nil, fileLock}
 	return provider, nil
 }
 
@@ -195,6 +203,7 @@ func (provider *Provider) Close() {
 	provider.historydbProvider.Close()
 	provider.bookkeepingProvider.Close()
 	provider.configHistoryMgr.Close()
+	provider.fileLock.Unlock()
 }
 
 // recoverUnderConstructionLedger checks whether the under construction flag is set - this would be the case
