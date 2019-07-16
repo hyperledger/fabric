@@ -12,7 +12,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -25,6 +24,7 @@ const ContainerType = "SYSTEM"
 // communication between a per and chaincode.
 type ChaincodeStreamHandler interface {
 	HandleChaincodeStream(ccintf.ChaincodeStream) error
+	LaunchInProc(packageID ccintf.CCID) <-chan struct{}
 }
 
 type inprocContainer struct {
@@ -57,9 +57,6 @@ func (s SysCCRegisteredErr) Error() string {
 type Registry struct {
 	mutex      sync.Mutex
 	chaincodes map[ccintf.CCID]shim.Chaincode
-	containers map[ccintf.CCID]*inprocContainer
-
-	ChaincodeSupport ChaincodeStreamHandler
 }
 
 // NewRegistry creates an initialized registry, ready to register system chaincodes.
@@ -70,13 +67,7 @@ type Registry struct {
 func NewRegistry() *Registry {
 	return &Registry{
 		chaincodes: make(map[ccintf.CCID]shim.Chaincode),
-		containers: make(map[ccintf.CCID]*inprocContainer),
 	}
-}
-
-// NewVM creates an inproc VM instance
-func (r *Registry) NewVM() container.VM {
-	return &InprocVM{registry: r}
 }
 
 // Register registers system chaincode with given path. The deploy should be called to initialize
@@ -93,51 +84,31 @@ func (r *Registry) Register(ccid ccintf.CCID, cc shim.Chaincode) error {
 	return nil
 }
 
-func (r *Registry) getChaincode(ccid ccintf.CCID) shim.Chaincode {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	return r.chaincodes[ccid]
-}
+func (r *Registry) LaunchAll(chaincodeSupport ChaincodeStreamHandler) {
+	for ccid, chaincode := range r.chaincodes {
+		ipc := &inprocContainer{
+			chaincodeSupport: chaincodeSupport,
+			chaincode:        chaincode,
+			env:              []string{"CORE_CHAINCODE_ID_NAME=" + ccid.String()},
+			stopChan:         make(chan struct{}),
+		}
 
-func (r *Registry) getInstance(ccid ccintf.CCID) *inprocContainer {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	return r.containers[ccid]
-}
-
-func (r *Registry) setInstance(ccid ccintf.CCID, inst *inprocContainer) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	r.containers[ccid] = inst
-}
-
-func (r *Registry) removeInstance(ccid ccintf.CCID) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	delete(r.containers, ccid)
+		done := chaincodeSupport.LaunchInProc(ccid)
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					inprocLogger.Criticalf("caught panic from chaincode  %s", ccid)
+				}
+			}()
+			ipc.launchInProc(ccid, nil, nil)
+		}()
+		<-done
+	}
 }
 
 // InprocVM is a vm. It is identified by a executable name
 type InprocVM struct {
 	registry *Registry
-}
-
-func (vm *InprocVM) getInstance(chaincode shim.Chaincode, ccid ccintf.CCID, args, env []string) (*inprocContainer, error) {
-	ipc := vm.registry.getInstance(ccid)
-	if ipc != nil {
-		inprocLogger.Warningf("chaincode instance exists for %s", ccid)
-		return ipc, nil
-	}
-	ipc = &inprocContainer{
-		chaincodeSupport: vm.registry.ChaincodeSupport,
-		args:             args,
-		env:              env,
-		chaincode:        chaincode,
-		stopChan:         make(chan struct{}),
-	}
-	vm.registry.setInstance(ccid, ipc)
-	inprocLogger.Debugf("chaincode instance created for %s", ccid)
-	return ipc, nil
 }
 
 func (ipc *inprocContainer) launchInProc(id ccintf.CCID, args, env []string) error {
@@ -191,69 +162,4 @@ func (ipc *inprocContainer) launchInProc(id ccintf.CCID, args, env []string) err
 		inprocLogger.Debugf("chaincode %s stopped", id)
 	}
 	return err
-}
-
-// Start starts a previously registered system chaincode.
-func (vm *InprocVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload map[string][]byte) error {
-	chaincode := vm.registry.getChaincode(ccid)
-	if chaincode == nil {
-		return fmt.Errorf("%s not registered", ccid)
-	}
-
-	ipc, err := vm.getInstance(chaincode, ccid, args, env)
-	if err != nil {
-		return fmt.Errorf("could not create instance for %s", ccid)
-	}
-
-	if ipc.running {
-		return fmt.Errorf("chaincode running %s", ccid)
-	}
-
-	ipc.running = true
-
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				inprocLogger.Criticalf("caught panic from chaincode  %s", ccid)
-			}
-		}()
-		ipc.launchInProc(ccid, args, env)
-	}()
-
-	return nil
-}
-
-//Stop stops a system codechain
-func (vm *InprocVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
-	chaincode := vm.registry.getChaincode(ccid)
-	if chaincode == nil {
-		return fmt.Errorf("%s not registered", ccid)
-	}
-
-	ipc := vm.registry.getInstance(ccid)
-	if ipc == nil {
-		return fmt.Errorf("%s not found", ccid)
-	}
-
-	if !ipc.running {
-		return fmt.Errorf("%s not running", ccid)
-	}
-
-	ipc.running = false
-	close(ipc.stopChan)
-	vm.registry.removeInstance(ccid)
-
-	return nil
-}
-
-// Wait will block until the chaincode is stopped.
-func (vm *InprocVM) Wait(ccid ccintf.CCID) (int, error) {
-	ipc := vm.registry.getInstance(ccid)
-	if ipc == nil {
-		return 0, fmt.Errorf("%s not found", ccid)
-	}
-
-	<-ipc.stopChan
-
-	return 0, nil
 }

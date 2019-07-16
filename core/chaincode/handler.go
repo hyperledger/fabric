@@ -478,7 +478,7 @@ func (h *Handler) notifyRegistry(err error) {
 
 	if err != nil {
 		h.Registry.Failed(ccintf.CCID(h.chaincodeID.Name), err)
-		chaincodeLogger.Errorf("failed to start %s", h.chaincodeID)
+		chaincodeLogger.Errorf("failed to start %s -- %s", h.chaincodeID, err)
 		return
 	}
 

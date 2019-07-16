@@ -155,7 +155,6 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 					BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
 					Client:       client,
 				},
-				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
 		CommonEnv: []string{
@@ -193,14 +192,13 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
-	ipRegistry.ChaincodeSupport = chaincodeSupport
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
 	ccp := &CCProviderImpl{cs: chaincodeSupport}
 	sccp.RegisterSysCC(lsccImpl)
+	ipRegistry.LaunchAll(chaincodeSupport)
 
 	for _, id := range chainIDs {
-		sccp.DeDeploySysCCs(id, ccp)
 		if err = peer.CreateMockChannel(peerInstance, id); err != nil {
 			closeListenerAndSleep(lis)
 			return nil, nil, nil, nil, err

@@ -12,7 +12,6 @@ import (
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/pkg/errors"
 )
 
@@ -98,10 +97,6 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 }
 
 func (r *RuntimeLauncher) getCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
-	if ccci.ContainerType == inproccontroller.ContainerType {
-		return nil, nil
-	}
-
 	codePackage, err := r.PackageProvider.GetChaincodeCodePackage(ccci)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get chaincode package")

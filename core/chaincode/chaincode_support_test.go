@@ -218,7 +218,6 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		Processor: container.NewVMController(
 			map[string]container.VMProvider{
 				dockercontroller.ContainerType: &dockercontroller.Provider{},
-				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
 		CommonEnv: []string{
@@ -257,11 +256,10 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
-	ipRegistry.ChaincodeSupport = chaincodeSupport
-
 	ccp := &CCProviderImpl{cs: chaincodeSupport}
 
 	sccp.RegisterSysCC(lsccImpl)
+	ipRegistry.LaunchAll(chaincodeSupport)
 
 	globalBlockNum = make(map[string]uint64, len(chainIDs))
 	for _, id := range chainIDs {
@@ -270,6 +268,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 			return nil, nil, func() {}, err
 		}
 		sccp.DeploySysCCs(id, ccp)
+
 		// any chain other than the default testchainid does not have a MSP set up -> create one
 		if id != util.GetTestChainID() {
 			mspmgmt.XXXSetMSPManager(id, mspmgmt.GetManagerForChain(util.GetTestChainID()))

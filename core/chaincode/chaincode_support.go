@@ -109,6 +109,16 @@ func (cs *ChaincodeSupport) Stop(ccci *ccprovider.ChaincodeContainerInfo) error 
 	return cs.Runtime.Stop(ccci)
 }
 
+// LaunchInProc is a stopgap solution to be called by the inproccontroller to allow system chaincodes to register
+func (cs *ChaincodeSupport) LaunchInProc(ccid ccintf.CCID) <-chan struct{} {
+	launchStatus, ok := cs.HandlerRegistry.Launching(ccid)
+	if ok {
+		chaincodeLogger.Panicf("attempted to launch a system chaincode which has already been launched")
+	}
+
+	return launchStatus.Done()
+}
+
 // HandleChaincodeStream implements ccintf.HandleChaincodeStream for all vms to call with appropriate stream
 func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream) error {
 	handler := &Handler{

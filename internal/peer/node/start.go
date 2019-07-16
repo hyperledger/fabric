@@ -475,7 +475,6 @@ func serve(args []string) error {
 	chaincodeVMController := container.NewVMController(
 		map[string]container.VMProvider{
 			dockercontroller.ContainerType: dockerProvider,
-			inproccontroller.ContainerType: ipRegistry,
 		},
 	)
 
@@ -523,8 +522,6 @@ func serve(args []string) error {
 		UserRunsCC:             userRunsCC,
 	}
 
-	ipRegistry.ChaincodeSupport = chaincodeSupport
-
 	ccSupSrv := pb.ChaincodeSupportServer(chaincodeSupport)
 	if tlsEnabled {
 		ccSupSrv = authenticator.Wrap(ccSupSrv)
@@ -548,6 +545,7 @@ func serve(args []string) error {
 	for _, cc := range append([]scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst, lifecycleSCC}, sccs...) {
 		sccp.RegisterSysCC(cc)
 	}
+	ipRegistry.LaunchAll(chaincodeSupport)
 	pb.RegisterChaincodeSupportServer(ccSrv.Server(), ccSupSrv)
 
 	// start the chaincode specific gRPC listening service
