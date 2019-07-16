@@ -56,14 +56,6 @@ func NewVMController(vmProviders map[string]VMProvider) *VMController {
 	}
 }
 
-func (vmc *VMController) newVM(typ string) VM {
-	v, ok := vmc.vmProviders[typ]
-	if !ok {
-		vmLogger.Panicf("Programming error: unsupported VM type: %s", typ)
-	}
-	return v.NewVM()
-}
-
 func (vmc *VMController) lockContainer(id ccintf.CCID) {
 	//get the container lock under global lock
 	vmc.Lock()
@@ -224,10 +216,14 @@ func (w BuildReq) GetCCID() ccintf.CCID {
 }
 
 func (vmc *VMController) Process(vmtype string, req VMCReq) error {
-	v := vmc.newVM(vmtype)
 	ccid := req.GetCCID()
+
+	v, ok := vmc.vmProviders[vmtype]
+	if !ok {
+		vmLogger.Panicf("Programming error: unsupported VM type: %s for ccid='%s'", vmtype, ccid.String())
+	}
 
 	vmc.lockContainer(ccid)
 	defer vmc.unlockContainer(ccid)
-	return req.Do(v)
+	return req.Do(v.NewVM())
 }
