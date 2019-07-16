@@ -192,7 +192,7 @@ func (lscc *LifeCycleSysCC) ChaincodeContainerInfo(channelID, chaincodeName stri
 		return nil, errors.Wrapf(err, "could not get chaincode code")
 	}
 
-	return ccprovider.DeploymentSpecToChaincodeContainerInfo(cds), nil
+	return ccprovider.DeploymentSpecToChaincodeContainerInfo(cds, false), nil
 }
 
 func (lscc *LifeCycleSysCC) ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {

@@ -14,7 +14,10 @@ import (
 //note the chaincode must still be deployed and launched like a user chaincode will be
 func (p *Provider) DeploySysCCs(chainID string, ccp ccprovider.ChaincodeProvider) {
 	for _, sysCC := range p.SysCCs {
-		p.deploySysCC(chainID, ccp, sysCC)
+		err := p.deploySysCC(chainID, ccp, sysCC)
+		if err != nil {
+			sysccLogger.Panicf("chaincode deployment failed: %s", err)
+		}
 	}
 }
 

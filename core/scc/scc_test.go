@@ -7,15 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package scc
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
-	ccprovider2 "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,7 +69,7 @@ func newTestProvider() *Provider {
 
 func TestDeploy(t *testing.T) {
 	p := newTestProvider()
-	ccp := &ccprovider2.MockCcProviderImpl{}
+	ccp := &MockCcProviderImpl{}
 	p.DeploySysCCs("", ccp)
 	f := func() {
 		p.DeploySysCCs("a", ccp)
@@ -90,9 +93,28 @@ func TestDeploy(t *testing.T) {
 	}})
 }
 
+func TestDeployInitFailed(t *testing.T) {
+	t.Run("shim error status response", func(t *testing.T) {
+		ccp := &MockCcProviderImpl{
+			InitResponse: &pb.Response{Status: shim.ERROR, Message: "i-am-a-failure"},
+		}
+		p := newTestProvider()
+
+		assert.PanicsWithValue(t, "chaincode deployment failed: i-am-a-failure", func() { p.DeploySysCCs("", ccp) })
+	})
+	t.Run("shim init error", func(t *testing.T) {
+		ccp := &MockCcProviderImpl{
+			InitError: errors.New("i-am-more-than-a-disappointment"),
+		}
+		p := newTestProvider()
+
+		assert.PanicsWithValue(t, "chaincode deployment failed: i-am-more-than-a-disappointment", func() { p.DeploySysCCs("", ccp) })
+	})
+}
+
 func TestDeDeploySysCC(t *testing.T) {
 	p := newTestProvider()
-	ccp := &ccprovider2.MockCcProviderImpl{}
+	ccp := &MockCcProviderImpl{}
 	p.DeDeploySysCCs("", ccp)
 	f := func() {
 		p.DeDeploySysCCs("a", ccp)
@@ -158,4 +180,28 @@ func TestRegisterSysCC(t *testing.T) {
 	})
 	assert.Error(t, err)
 	assert.Contains(t, "invokableExternalButNotCC2CC:latest already registered", err)
+}
+
+// MockCcProviderImpl is a mock implementation of the chaincode provider
+type MockCcProviderImpl struct {
+	InitResponse *pb.Response
+	InitError    error
+}
+
+// ExecuteInit executes the chaincode given context and spec deploy
+func (c *MockCcProviderImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+	if c.InitResponse != nil || c.InitError != nil {
+		return c.InitResponse, nil, c.InitError
+	}
+	return &pb.Response{Status: shim.OK}, nil, nil
+}
+
+// Execute executes the chaincode given context and spec invocation
+func (c *MockCcProviderImpl) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+	return &pb.Response{}, nil, nil
+}
+
+// Stop stops the chaincode given context and deployment spec
+func (c *MockCcProviderImpl) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
+	return nil
 }

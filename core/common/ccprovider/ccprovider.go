@@ -391,6 +391,9 @@ type CCContext struct {
 	// InitRequired indicates whether the chaincode must have 'Init' invoked
 	// before other transactions can proceed.
 	InitRequired bool
+
+	// SystemCC indictes whether or not this is system chaincode.
+	SystemCC bool
 }
 
 //-------- ChaincodeDefinition - interface for ChaincodeData ------
@@ -544,13 +547,17 @@ type ChaincodeProvider interface {
 	Stop(ccci *ChaincodeContainerInfo) error
 }
 
-func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec) *ChaincodeContainerInfo {
-	return &ChaincodeContainerInfo{
+func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec, systemCC bool) *ChaincodeContainerInfo {
+	cci := &ChaincodeContainerInfo{
 		Name:          cds.ChaincodeSpec.ChaincodeId.Name,
 		Version:       cds.ChaincodeSpec.ChaincodeId.Version,
 		Path:          cds.ChaincodeSpec.ChaincodeId.Path,
 		Type:          cds.ChaincodeSpec.Type.String(),
-		ContainerType: cds.ExecEnv.String(),
+		ContainerType: "DOCKER",
 		PackageID:     persistence.PackageID(cds.ChaincodeSpec.ChaincodeId.Name + ":" + cds.ChaincodeSpec.ChaincodeId.Version),
 	}
+	if systemCC {
+		cci.ContainerType = "SYSTEM"
+	}
+	return cci
 }

@@ -8,31 +8,8 @@ package ccprovider
 
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/peer"
 )
-
-type ExecuteChaincodeResultProvider interface {
-	ExecuteChaincodeResult() (*peer.Response, *peer.ChaincodeEvent, error)
-}
-
-// MockCcProviderFactory is a factory that returns
-// mock implementations of the ccprovider.ChaincodeProvider interface
-type MockCcProviderFactory struct {
-	ExecuteResultProvider ExecuteChaincodeResultProvider
-}
-
-// NewChaincodeProvider returns a mock implementation of the ccprovider.ChaincodeProvider interface
-func (c *MockCcProviderFactory) NewChaincodeProvider() ccprovider.ChaincodeProvider {
-	return &MockCcProviderImpl{ExecuteResultProvider: c.ExecuteResultProvider}
-}
-
-// mockCcProviderImpl is a mock implementation of the chaincode provider
-type MockCcProviderImpl struct {
-	ExecuteResultProvider    ExecuteChaincodeResultProvider
-	ExecuteChaincodeResponse *peer.Response
-}
 
 type MockTxSim struct {
 	GetTxSimulationResultsRv *ledger.TxSimulationResults
@@ -142,21 +119,6 @@ func (m *MockTxSim) SetPrivateDataMetadata(namespace, collection, key string, me
 }
 
 func (m *MockTxSim) DeletePrivateDataMetadata(namespace, collection, key string) error {
-	return nil
-}
-
-// ExecuteInit executes the chaincode given context and spec deploy
-func (c *MockCcProviderImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *peer.ChaincodeDeploymentSpec) (*peer.Response, *peer.ChaincodeEvent, error) {
-	return &peer.Response{}, nil, nil
-}
-
-// Execute executes the chaincode given context and spec invocation
-func (c *MockCcProviderImpl) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *peer.ChaincodeInput) (*peer.Response, *peer.ChaincodeEvent, error) {
-	return &peer.Response{}, nil, nil
-}
-
-// Stop stops the chaincode given context and deployment spec
-func (c *MockCcProviderImpl) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 	return nil
 }
 
