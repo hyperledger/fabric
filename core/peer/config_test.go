@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -229,6 +230,10 @@ func TestGetClientCertificate(t *testing.T) {
 
 func TestGlobalConfig(t *testing.T) {
 	defer viper.Reset()
+	cwd, err := os.Getwd()
+	assert.NoError(t, err, "failed to get current working directory")
+	viper.SetConfigFile(filepath.Join(cwd, "core.yaml"))
+
 	//Capture the configuration from viper
 	viper.Set("peer.addressAutoDetect", false)
 	viper.Set("peer.address", "localhost:8080")
@@ -269,6 +274,7 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("metrics.statsd.prefix", "testPrefix")
 
 	viper.Set("chaincode.pull", false)
+	viper.Set("chaincode.externalBuilders", []string{"relative/plugin_dir", "/absolute/plugin_dir"})
 
 	coreConfig, err := GlobalConfig()
 	assert.NoError(t, err)
@@ -300,6 +306,10 @@ func TestGlobalConfig(t *testing.T) {
 		VMNetworkMode:        "TestingHost",
 
 		ChaincodePull: false,
+		ExternalBuilders: []string{
+			filepath.Join(cwd, "relative", "plugin_dir"),
+			"/absolute/plugin_dir",
+		},
 
 		OperationsListenAddress:         "127.0.0.1:9443",
 		OperationsTLSEnabled:            false,

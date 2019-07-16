@@ -510,6 +510,11 @@ chaincode:
         # This is an image based on node:$(NODE_VER)-alpine
         runtime: $(DOCKER_NS)/fabric-nodeenv:latest
 
+    # List of directories to treat as external builders and launchers for
+    # chaincode. The external builder detection processing will iterate over the
+    # builders in the order specified below.
+    externalBuilders:
+
     # Timeout duration for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests
     startuptimeout: 300s

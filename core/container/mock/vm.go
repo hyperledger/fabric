@@ -9,14 +9,13 @@ import (
 )
 
 type VM struct {
-	StartStub        func(ccintf.CCID, []string, []string, map[string][]byte, container.Builder) error
+	StartStub        func(ccintf.CCID, []string, []string, map[string][]byte) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
 		arg1 ccintf.CCID
 		arg2 []string
 		arg3 []string
 		arg4 map[string][]byte
-		arg5 container.Builder
 	}
 	startReturns struct {
 		result1 error
@@ -55,7 +54,7 @@ type VM struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *VM) Start(arg1 ccintf.CCID, arg2 []string, arg3 []string, arg4 map[string][]byte, arg5 container.Builder) error {
+func (fake *VM) Start(arg1 ccintf.CCID, arg2 []string, arg3 []string, arg4 map[string][]byte) error {
 	var arg2Copy []string
 	if arg2 != nil {
 		arg2Copy = make([]string, len(arg2))
@@ -73,12 +72,11 @@ func (fake *VM) Start(arg1 ccintf.CCID, arg2 []string, arg3 []string, arg4 map[s
 		arg2 []string
 		arg3 []string
 		arg4 map[string][]byte
-		arg5 container.Builder
-	}{arg1, arg2Copy, arg3Copy, arg4, arg5})
-	fake.recordInvocation("Start", []interface{}{arg1, arg2Copy, arg3Copy, arg4, arg5})
+	}{arg1, arg2Copy, arg3Copy, arg4})
+	fake.recordInvocation("Start", []interface{}{arg1, arg2Copy, arg3Copy, arg4})
 	fake.startMutex.Unlock()
 	if fake.StartStub != nil {
-		return fake.StartStub(arg1, arg2, arg3, arg4, arg5)
+		return fake.StartStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1
@@ -93,17 +91,17 @@ func (fake *VM) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *VM) StartCalls(stub func(ccintf.CCID, []string, []string, map[string][]byte, container.Builder) error) {
+func (fake *VM) StartCalls(stub func(ccintf.CCID, []string, []string, map[string][]byte) error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = stub
 }
 
-func (fake *VM) StartArgsForCall(i int) (ccintf.CCID, []string, []string, map[string][]byte, container.Builder) {
+func (fake *VM) StartArgsForCall(i int) (ccintf.CCID, []string, []string, map[string][]byte) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	argsForCall := fake.startArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *VM) StartReturns(result1 error) {

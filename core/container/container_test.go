@@ -7,28 +7,25 @@ SPDX-License-Identifier: Apache-2.0
 package container_test
 
 import (
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/mock"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 )
 
 var _ = Describe("Container", func() {
 	Describe("VMCReqs", func() {
-		var (
-			fakeVM *mock.VM
-		)
+		var fakeVM *mock.VM
 
 		BeforeEach(func() {
 			fakeVM = &mock.VM{}
 		})
 
 		Describe("StartContainerReq", func() {
-			var (
-				startReq *container.StartContainerReq
-			)
+			var startReq *container.StartContainerReq
 
 			BeforeEach(func() {
 				startReq = &container.StartContainerReq{
@@ -38,7 +35,6 @@ var _ = Describe("Container", func() {
 					FilesToUpload: map[string][]byte{
 						"Foo": []byte("bar"),
 					},
-					Builder: &mock.Builder{},
 				}
 			})
 
@@ -47,14 +43,13 @@ var _ = Describe("Container", func() {
 					err := startReq.Do(fakeVM)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(fakeVM.StartCallCount()).To(Equal(1))
-					ccid, args, env, filesToUpload, builder := fakeVM.StartArgsForCall(0)
+					ccid, args, env, filesToUpload := fakeVM.StartArgsForCall(0)
 					Expect(ccid).To(Equal(ccintf.CCID("start:name")))
 					Expect(args).To(Equal([]string{"foo", "bar"}))
 					Expect(env).To(Equal([]string{"Bar", "Foo"}))
 					Expect(filesToUpload).To(Equal(map[string][]byte{
 						"Foo": []byte("bar"),
 					}))
-					Expect(builder).To(Equal(&mock.Builder{}))
 				})
 
 				Context("when the vm provider fails", func() {
@@ -74,9 +69,7 @@ var _ = Describe("Container", func() {
 		})
 
 		Describe("StopContainerReq", func() {
-			var (
-				stopReq *container.StopContainerReq
-			)
+			var stopReq *container.StopContainerReq
 
 			BeforeEach(func() {
 				stopReq = &container.StopContainerReq{

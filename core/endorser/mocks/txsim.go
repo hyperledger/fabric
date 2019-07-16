@@ -4,7 +4,7 @@ Copyright IBM Corp. 2018 All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package ccprovider
+package mocks
 
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"

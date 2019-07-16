@@ -70,6 +70,8 @@ type dockerClient interface {
 	// WaitContainer blocks until the given container stops, and returns the exit
 	// code of the container status.
 	WaitContainer(containerID string) (int, error)
+	// InspectImage returns an image by its name or ID.
+	InspectImage(imageName string) (*docker.Image, error)
 }
 
 // Provider implements container.VMProvider
@@ -140,7 +142,7 @@ func (vm *DockerVM) createContainer(imageID, containerID string, args, env []str
 	return nil
 }
 
-func (vm *DockerVM) deployImage(ccid ccintf.CCID, reader io.Reader) error {
+func (vm *DockerVM) buildImage(ccid ccintf.CCID, reader io.Reader) error {
 	id, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
@@ -173,8 +175,25 @@ func (vm *DockerVM) deployImage(ccid ccintf.CCID, reader io.Reader) error {
 	return nil
 }
 
+// Build is responsible for building an image if it does not already exist.
+func (vm *DockerVM) Build(ccid ccintf.CCID, dockerfileReader io.Reader) error {
+	imageName, err := vm.GetVMNameForDocker(ccid)
+	if err != nil {
+		return err
+	}
+
+	_, err = vm.Client.InspectImage(imageName)
+	if err == docker.ErrNoSuchImage {
+		err = vm.buildImage(ccid, dockerfileReader)
+		if err != nil {
+			return errors.Wrap(err, "docker image build failed")
+		}
+	}
+	return errors.Wrap(err, "docker image inspection failed")
+}
+
 // Start starts a container using a previously created docker image
-func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
+func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload map[string][]byte) error {
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
@@ -186,23 +205,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 	vm.stopInternal(containerName, 0, false, false)
 
 	err = vm.createContainer(imageName, containerName, args, env)
-	if err == docker.ErrNoSuchImage {
-		reader, err := builder.Build()
-		if err != nil {
-			return errors.Wrapf(err, "failed to generate Dockerfile to build %s", containerName)
-		}
-
-		err = vm.deployImage(ccid, reader)
-		if err != nil {
-			return err
-		}
-
-		err = vm.createContainer(imageName, containerName, args, env)
-		if err != nil {
-			logger.Errorf("failed to create container: %s", err)
-			return err
-		}
-	} else if err != nil {
+	if err != nil {
 		logger.Errorf("create container failed: %s", err)
 		return err
 	}

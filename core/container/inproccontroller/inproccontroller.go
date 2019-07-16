@@ -21,8 +21,14 @@ import (
 // is registered with the container.VMController
 const ContainerType = "SYSTEM"
 
+// A ChaincodeStreamHandler is responsible for handling the ChaincodeStream
+// communication between a per and chaincode.
+type ChaincodeStreamHandler interface {
+	HandleChaincodeStream(ccintf.ChaincodeStream) error
+}
+
 type inprocContainer struct {
-	ChaincodeSupport ccintf.CCSupport
+	chaincodeSupport ChaincodeStreamHandler
 	chaincode        shim.Chaincode
 	running          bool
 	args             []string
@@ -39,9 +45,7 @@ var (
 	_inprocLoggerErrorf = inprocLogger.Errorf
 )
 
-// errors
-
-//SysCCRegisteredErr registered error
+// SysCCRegisteredErr registered error
 type SysCCRegisteredErr string
 
 func (s SysCCRegisteredErr) Error() string {
@@ -51,11 +55,11 @@ func (s SysCCRegisteredErr) Error() string {
 // Registry stores registered system chaincodes.
 // It implements container.VMProvider and scc.Registrar
 type Registry struct {
-	mutex        sync.Mutex
-	typeRegistry map[ccintf.CCID]*inprocContainer
-	instRegistry map[string]*inprocContainer
+	mutex      sync.Mutex
+	chaincodes map[ccintf.CCID]shim.Chaincode
+	containers map[ccintf.CCID]*inprocContainer
 
-	ChaincodeSupport ccintf.CCSupport
+	ChaincodeSupport ChaincodeStreamHandler
 }
 
 // NewRegistry creates an initialized registry, ready to register system chaincodes.
@@ -65,8 +69,8 @@ type Registry struct {
 // it is being made an explicit part of the startup.
 func NewRegistry() *Registry {
 	return &Registry{
-		typeRegistry: make(map[ccintf.CCID]*inprocContainer),
-		instRegistry: make(map[string]*inprocContainer),
+		chaincodes: make(map[ccintf.CCID]shim.Chaincode),
+		containers: make(map[ccintf.CCID]*inprocContainer),
 	}
 }
 
@@ -81,37 +85,36 @@ func (r *Registry) Register(ccid ccintf.CCID, cc shim.Chaincode) error {
 	defer r.mutex.Unlock()
 
 	inprocLogger.Debugf("Registering chaincode instance: %s", ccid)
-	tmp := r.typeRegistry[ccid]
-	if tmp != nil {
+	if _, exists := r.chaincodes[ccid]; exists {
 		return SysCCRegisteredErr(ccid.String())
 	}
 
-	r.typeRegistry[ccid] = &inprocContainer{chaincode: cc}
+	r.chaincodes[ccid] = cc
 	return nil
 }
 
-func (r *Registry) getType(ccid ccintf.CCID) *inprocContainer {
+func (r *Registry) getChaincode(ccid ccintf.CCID) shim.Chaincode {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	return r.typeRegistry[ccid]
+	return r.chaincodes[ccid]
 }
 
-func (r *Registry) getInstance(name string) *inprocContainer {
+func (r *Registry) getInstance(ccid ccintf.CCID) *inprocContainer {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	return r.instRegistry[name]
+	return r.containers[ccid]
 }
 
-func (r *Registry) setInstance(name string, inst *inprocContainer) {
+func (r *Registry) setInstance(ccid ccintf.CCID, inst *inprocContainer) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	r.instRegistry[name] = inst
+	r.containers[ccid] = inst
 }
 
-func (r *Registry) removeInstance(name string) {
+func (r *Registry) removeInstance(ccid ccintf.CCID) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	delete(r.instRegistry, name)
+	delete(r.containers, ccid)
 }
 
 // InprocVM is a vm. It is identified by a executable name
@@ -119,29 +122,25 @@ type InprocVM struct {
 	registry *Registry
 }
 
-func (vm *InprocVM) getInstance(ipctemplate *inprocContainer, instName string, args []string, env []string) (*inprocContainer, error) {
-	ipc := vm.registry.getInstance(instName)
+func (vm *InprocVM) getInstance(chaincode shim.Chaincode, ccid ccintf.CCID, args, env []string) (*inprocContainer, error) {
+	ipc := vm.registry.getInstance(ccid)
 	if ipc != nil {
-		inprocLogger.Warningf("chaincode instance exists for %s", instName)
+		inprocLogger.Warningf("chaincode instance exists for %s", ccid)
 		return ipc, nil
 	}
 	ipc = &inprocContainer{
-		ChaincodeSupport: vm.registry.ChaincodeSupport,
+		chaincodeSupport: vm.registry.ChaincodeSupport,
 		args:             args,
 		env:              env,
-		chaincode:        ipctemplate.chaincode,
+		chaincode:        chaincode,
 		stopChan:         make(chan struct{}),
 	}
-	vm.registry.setInstance(instName, ipc)
-	inprocLogger.Debugf("chaincode instance created for %s", instName)
+	vm.registry.setInstance(ccid, ipc)
+	inprocLogger.Debugf("chaincode instance created for %s", ccid)
 	return ipc, nil
 }
 
-func (ipc *inprocContainer) launchInProc(id string, args []string, env []string) error {
-	if ipc.ChaincodeSupport == nil {
-		inprocLogger.Panicf("Chaincode support is nil, most likely you forgot to set it immediately after calling inproccontroller.NewRegsitry()")
-	}
-
+func (ipc *inprocContainer) launchInProc(id ccintf.CCID, args, env []string) error {
 	peerRcvCCSend := make(chan *pb.ChaincodeMessage)
 	ccRcvPeerSend := make(chan *pb.ChaincodeMessage)
 	var err error
@@ -171,7 +170,7 @@ func (ipc *inprocContainer) launchInProc(id string, args []string, env []string)
 		defer close(ccsupportchan)
 		inprocStream := newInProcStream(peerRcvCCSend, ccRcvPeerSend)
 		inprocLogger.Debugf("chaincode-support started for  %s", id)
-		err := ipc.ChaincodeSupport.HandleChaincodeStream(inprocStream)
+		err := ipc.chaincodeSupport.HandleChaincodeStream(inprocStream)
 		if err != nil {
 			err = fmt.Errorf("chaincode ended with err: %s", err)
 			inprocLoggerErrorf("%s", err)
@@ -194,23 +193,20 @@ func (ipc *inprocContainer) launchInProc(id string, args []string, env []string)
 	return err
 }
 
-//Start starts a previously registered system codechain
-func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
-	ipctemplate := vm.registry.getType(ccid)
-	if ipctemplate == nil {
-		return fmt.Errorf(fmt.Sprintf("%s not registered", ccid))
+// Start starts a previously registered system chaincode.
+func (vm *InprocVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload map[string][]byte) error {
+	chaincode := vm.registry.getChaincode(ccid)
+	if chaincode == nil {
+		return fmt.Errorf("%s not registered", ccid)
 	}
 
-	instName := vm.GetVMName(ccid)
-
-	ipc, err := vm.getInstance(ipctemplate, instName, args, env)
-
+	ipc, err := vm.getInstance(chaincode, ccid, args, env)
 	if err != nil {
-		return fmt.Errorf(fmt.Sprintf("could not create instance for %s", instName))
+		return fmt.Errorf("could not create instance for %s", ccid)
 	}
 
 	if ipc.running {
-		return fmt.Errorf(fmt.Sprintf("chaincode running %s", ccid))
+		return fmt.Errorf("chaincode running %s", ccid)
 	}
 
 	ipc.running = true
@@ -218,10 +214,10 @@ func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesTo
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				inprocLogger.Criticalf("caught panic from chaincode  %s", instName)
+				inprocLogger.Criticalf("caught panic from chaincode  %s", ccid)
 			}
 		}()
-		ipc.launchInProc(instName, args, env)
+		ipc.launchInProc(ccid, args, env)
 	}()
 
 	return nil
@@ -229,46 +225,35 @@ func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesTo
 
 //Stop stops a system codechain
 func (vm *InprocVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
-	ipctemplate := vm.registry.getType(ccid)
-	if ipctemplate == nil {
+	chaincode := vm.registry.getChaincode(ccid)
+	if chaincode == nil {
 		return fmt.Errorf("%s not registered", ccid)
 	}
 
-	instName := vm.GetVMName(ccid)
-
-	ipc := vm.registry.getInstance(instName)
+	ipc := vm.registry.getInstance(ccid)
 	if ipc == nil {
-		return fmt.Errorf("%s not found", instName)
+		return fmt.Errorf("%s not found", ccid)
 	}
 
 	if !ipc.running {
-		return fmt.Errorf("%s not running", instName)
+		return fmt.Errorf("%s not running", ccid)
 	}
 
 	ipc.running = false
 	close(ipc.stopChan)
-	vm.registry.removeInstance(instName)
+	vm.registry.removeInstance(ccid)
 
-	//TODO stop
 	return nil
 }
 
 // Wait will block until the chaincode is stopped.
 func (vm *InprocVM) Wait(ccid ccintf.CCID) (int, error) {
-	instName := vm.GetVMName(ccid)
-	ipc := vm.registry.getInstance(instName)
+	ipc := vm.registry.getInstance(ccid)
 	if ipc == nil {
-		return 0, fmt.Errorf("%s not found", instName)
+		return 0, fmt.Errorf("%s not found", ccid)
 	}
 
 	<-ipc.stopChan
 
 	return 0, nil
-}
-
-// GetVMName ignores the peer and network name as it just needs to be unique in
-// process.  It accepts a format function parameter to allow different
-// formatting based on the desired use of the name.
-func (vm *InprocVM) GetVMName(ccid ccintf.CCID) string {
-	return ccid.String()
 }

@@ -33,7 +33,6 @@ import (
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
-	"github.com/hyperledger/fabric/core/mocks/scc/lscc"
 	"github.com/hyperledger/fabric/core/policy"
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/core/scc/lscc/mock"
@@ -44,6 +43,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	mb "github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protos/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -86,15 +86,15 @@ func constructDeploymentSpec(name string, path string, version string, initArgs 
 			return nil, err
 		}
 
-		scc.Support.(*lscc.MockSupport).GetChaincodeFromLocalStorageRv = cccdspack
-		scc.Support.(*lscc.MockSupport).GetChaincodeFromLocalStorageErr = nil
-		scc.Support.(*lscc.MockSupport).GetChaincodesFromLocalStorageRv = &pb.ChaincodeQueryResponse{Chaincodes: []*pb.ChaincodeInfo{{}}}
-		scc.Support.(*lscc.MockSupport).GetChaincodesFromLocalStorageErr = nil
+		scc.Support.(*MockSupport).GetChaincodeFromLocalStorageRv = cccdspack
+		scc.Support.(*MockSupport).GetChaincodeFromLocalStorageErr = nil
+		scc.Support.(*MockSupport).GetChaincodesFromLocalStorageRv = &pb.ChaincodeQueryResponse{Chaincodes: []*pb.ChaincodeInfo{{}}}
+		scc.Support.(*MockSupport).GetChaincodesFromLocalStorageErr = nil
 	} else {
-		scc.Support.(*lscc.MockSupport).GetChaincodeFromLocalStorageRv = nil
-		scc.Support.(*lscc.MockSupport).GetChaincodeFromLocalStorageErr = errors.New("barf")
-		scc.Support.(*lscc.MockSupport).GetChaincodesFromLocalStorageRv = nil
-		scc.Support.(*lscc.MockSupport).GetChaincodesFromLocalStorageErr = errors.New("barf")
+		scc.Support.(*MockSupport).GetChaincodeFromLocalStorageRv = nil
+		scc.Support.(*MockSupport).GetChaincodeFromLocalStorageErr = errors.New("barf")
+		scc.Support.(*MockSupport).GetChaincodesFromLocalStorageRv = nil
+		scc.Support.(*MockSupport).GetChaincodesFromLocalStorageErr = errors.New("barf")
 	}
 
 	return depSpec, nil
@@ -114,7 +114,7 @@ func TestInstall(t *testing.T) {
 	defer ledgerMgr.Close()
 
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
@@ -143,7 +143,7 @@ func TestInstall(t *testing.T) {
 	testInstall(t, "example02-2", "1.0-alpha+001", path, false, "", "Alice", scc, stub, nil)
 	testInstall(t, "example02-2", "1.0+sha.c0ffee", path, false, "", "Alice", scc, stub, nil)
 
-	scc.Support.(*lscc.MockSupport).PutChaincodeToLocalStorageErr = errors.New("barf")
+	scc.Support.(*MockSupport).PutChaincodeToLocalStorageErr = errors.New("barf")
 
 	testInstall(t, "example02", "0", path, false, "barf", "Alice", scc, stub, nil)
 	testInstall(t, "lscc", "0", path, false, "cannot install: lscc is the name of a system chaincode", "Alice", scc, stub, nil)
@@ -222,7 +222,7 @@ func TestDeploy(t *testing.T) {
 	testDeploy(t, "example02", "0", path, true, true, true, EmptyChaincodeNameErr("").Error(), nil, nil, nil)
 
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
@@ -243,25 +243,25 @@ func TestDeploy(t *testing.T) {
 	testDeploy(t, "example02", "1.0", path, false, false, true, "chaincode with name 'example02' already exists", scc, stub, nil)
 
 	scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
-	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyErr = errors.New("barf")
+	scc.Support.(*MockSupport).GetInstantiationPolicyErr = errors.New("barf")
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub, nil)
 
 	scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
-	scc.Support.(*lscc.MockSupport).CheckInstantiationPolicyErr = errors.New("barf")
+	scc.Support.(*MockSupport).CheckInstantiationPolicyErr = errors.New("barf")
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub, nil)
 
 	scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
@@ -282,7 +282,7 @@ func TestDeploy(t *testing.T) {
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
 
 	scc = New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
@@ -309,7 +309,7 @@ func TestDeploy(t *testing.T) {
 	assert.NotNil(t, ccpBytes)
 
 	scc = New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
@@ -325,7 +325,7 @@ func TestDeploy(t *testing.T) {
 	assert.Equal(t, ccpBytes, actualccpBytes)
 
 	scc = New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
@@ -364,7 +364,7 @@ func createCollectionConfig(collectionName string, signaturePolicyEnvelope *comm
 func testDeploy(t *testing.T, ccname string, version string, path string, forceBlankCCName bool, forceBlankVersion bool, install bool, expectedErrorMsg string, scc *LifeCycleSysCC, stub *shimtest.MockStub, collectionConfigBytes []byte) {
 	if scc == nil {
 		scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-		scc.Support = &lscc.MockSupport{}
+		scc.Support = &MockSupport{}
 		stub = shimtest.NewMockStub("lscc", scc)
 		res := stub.MockInit("1", nil)
 		assert.Equal(t, int32(shim.OK), res.Status, res.Message)
@@ -438,17 +438,17 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 				args = [][]byte{[]byte(function), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 				res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 				assert.Equal(t, int32(shim.OK), res.Status, res.Message)
-				scc.Support.(*lscc.MockSupport).GetChaincodeFromLocalStorageErr = errors.New("barf")
+				scc.Support.(*MockSupport).GetChaincodeFromLocalStorageErr = errors.New("barf")
 				res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 				assert.NotEqual(t, int32(shim.OK), res.Status)
 				assert.Equal(t, "invalid deployment spec: barf", res.Message)
-				scc.Support.(*lscc.MockSupport).GetChaincodeFromLocalStorageErr = nil
-				bkpCCFromLSRv := scc.Support.(*lscc.MockSupport).GetChaincodeFromLocalStorageRv
-				scc.Support.(*lscc.MockSupport).GetChaincodeFromLocalStorageRv = &ccprovider.CDSPackage{}
+				scc.Support.(*MockSupport).GetChaincodeFromLocalStorageErr = nil
+				bkpCCFromLSRv := scc.Support.(*MockSupport).GetChaincodeFromLocalStorageRv
+				scc.Support.(*MockSupport).GetChaincodeFromLocalStorageRv = &ccprovider.CDSPackage{}
 				res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 				assert.NotEqual(t, int32(shim.OK), res.Status)
 				assert.Contains(t, res.Message, "chaincode fingerprint mismatch")
-				scc.Support.(*lscc.MockSupport).GetChaincodeFromLocalStorageRv = bkpCCFromLSRv
+				scc.Support.(*MockSupport).GetChaincodeFromLocalStorageRv = bkpCCFromLSRv
 			})
 		}
 
@@ -479,17 +479,17 @@ func TestUpgrade(t *testing.T) {
 	testUpgrade(t, "example02", "0", "", "1", path, EmptyChaincodeNameErr("").Error(), nil, nil, nil)
 
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
-	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
-	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyErr = errors.New("barf")
+	scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
+	scc.Support.(*MockSupport).GetInstantiationPolicyErr = errors.New("barf")
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub, nil)
 
 	scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
@@ -497,24 +497,24 @@ func TestUpgrade(t *testing.T) {
 	testUpgrade(t, "example02", "0", "example02", "1", path, "instantiation policy missing", scc, stub, nil)
 
 	scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
-	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
-	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyMap = map[string][]byte{}
-	scc.Support.(*lscc.MockSupport).CheckInstantiationPolicyMap = map[string]error{"example020": errors.New("barf")}
+	scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
+	scc.Support.(*MockSupport).GetInstantiationPolicyMap = map[string][]byte{}
+	scc.Support.(*MockSupport).CheckInstantiationPolicyMap = map[string]error{"example020": errors.New("barf")}
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub, nil)
 
 	scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
-	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
-	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyMap = map[string][]byte{}
-	scc.Support.(*lscc.MockSupport).CheckInstantiationPolicyMap = map[string]error{"example021": errors.New("barf")}
+	scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
+	scc.Support.(*MockSupport).GetInstantiationPolicyMap = map[string][]byte{}
+	scc.Support.(*MockSupport).CheckInstantiationPolicyMap = map[string]error{"example021": errors.New("barf")}
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub, nil)
 
@@ -529,11 +529,11 @@ func TestUpgrade(t *testing.T) {
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
 
 	scc = New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
-	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
+	scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 
 	collName1 := "mycollection1"
 	policyEnvelope := &common.SignaturePolicyEnvelope{}
@@ -563,11 +563,11 @@ func TestUpgrade(t *testing.T) {
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
 
 	scc = New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
-	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
+	scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 
 	// As the PrivateChannelData is enabled and collectionConfigBytes is valid, no error is expected
 	testUpgrade(t, "example02", "0", "example02", "1", path, "", scc, stub, []byte("nil"))
@@ -577,11 +577,11 @@ func TestUpgrade(t *testing.T) {
 	assert.Equal(t, true, ok)
 
 	scc = New(mocksccProvider, mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
-	scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
+	scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 
 	// As the PrivateChannelData is enabled and collectionConfigBytes is valid, no error is expected
 	testUpgrade(t, "example02", "0", "example02", "1", path, "", scc, stub, ccpBytes)
@@ -600,11 +600,11 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 	t.Run(ccname+":"+version+"->"+newccname+":"+newversion, func(t *testing.T) {
 		if scc == nil {
 			scc = New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-			scc.Support = &lscc.MockSupport{}
+			scc.Support = &MockSupport{}
 			stub = shimtest.NewMockStub("lscc", scc)
 			res := stub.MockInit("1", nil)
 			assert.Equal(t, int32(shim.OK), res.Status, res.Message)
-			scc.Support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
+			scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 		}
 
 		cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false, true, scc)
@@ -613,14 +613,14 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 
 		sProp, _ := protoutil.MockSignedEndorserProposal2OrPanic(chainid, &pb.ChaincodeSpec{}, id)
 		args := [][]byte{[]byte("deploy"), []byte("test"), cdsBytes}
-		saved1 := scc.Support.(*lscc.MockSupport).GetInstantiationPolicyErr
-		saved2 := scc.Support.(*lscc.MockSupport).CheckInstantiationPolicyMap
-		scc.Support.(*lscc.MockSupport).GetInstantiationPolicyErr = nil
-		scc.Support.(*lscc.MockSupport).CheckInstantiationPolicyMap = nil
+		saved1 := scc.Support.(*MockSupport).GetInstantiationPolicyErr
+		saved2 := scc.Support.(*MockSupport).CheckInstantiationPolicyMap
+		scc.Support.(*MockSupport).GetInstantiationPolicyErr = nil
+		scc.Support.(*MockSupport).CheckInstantiationPolicyMap = nil
 		res := stub.MockInvokeWithSignedProposal("1", args, sProp)
 		assert.Equal(t, int32(shim.OK), res.Status, res.Message)
-		scc.Support.(*lscc.MockSupport).GetInstantiationPolicyErr = saved1
-		scc.Support.(*lscc.MockSupport).CheckInstantiationPolicyMap = saved2
+		scc.Support.(*MockSupport).GetInstantiationPolicyErr = saved1
+		scc.Support.(*MockSupport).CheckInstantiationPolicyMap = saved2
 
 		newCds, err := constructDeploymentSpec(newccname, path, newversion, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false, true, scc)
 		assert.NoError(t, err)
@@ -663,7 +663,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 
 func TestFunctionsWithAliases(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
@@ -713,7 +713,7 @@ func TestFunctionsWithAliases(t *testing.T) {
 
 func TestGetChaincodes(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
 	stub.ChannelID = "test"
 	res := stub.MockInit("1", nil)
@@ -744,7 +744,7 @@ func TestGetChaincodes(t *testing.T) {
 
 func TestGetChaincodesFilter(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{GetChaincodeFromLocalStorageErr: errors.New("banana")}
+	scc.Support = &MockSupport{GetChaincodeFromLocalStorageErr: errors.New("banana")}
 
 	sqi := &mock.StateQueryIterator{}
 	results := []*queryresult.KV{
@@ -775,7 +775,7 @@ func TestGetChaincodesFilter(t *testing.T) {
 
 func TestGetInstalledChaincodes(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
@@ -830,7 +830,7 @@ func TestGetInstalledChaincodes(t *testing.T) {
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function)}, sProp)
 			assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
-			scc.Support = &lscc.MockSupport{}
+			scc.Support = &MockSupport{}
 		})
 	}
 }
@@ -888,7 +888,7 @@ func TestErrors(t *testing.T) {
 func TestPutChaincodeCollectionData(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shimtest.NewMockStub("lscc", scc)
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -926,7 +926,7 @@ func TestGetChaincodeCollectionData(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}), getMSPIDs, nil)
 	stub := shimtest.NewMockStub("lscc", scc)
 	stub.ChannelID = "test"
-	scc.Support = &lscc.MockSupport{}
+	scc.Support = &MockSupport{}
 
 	cd := &ccprovider.ChaincodeData{Name: "foo"}
 
@@ -1194,4 +1194,50 @@ func TestMain(m *testing.M) {
 	mockAclProvider.Reset()
 
 	os.Exit(m.Run())
+}
+
+type MockSupport struct {
+	PutChaincodeToLocalStorageErr    error
+	GetChaincodeFromLocalStorageRv   ccprovider.CCPackage
+	GetChaincodeFromLocalStorageErr  error
+	GetChaincodesFromLocalStorageRv  *peer.ChaincodeQueryResponse
+	GetChaincodesFromLocalStorageErr error
+	GetInstantiationPolicyRv         []byte
+	GetInstantiationPolicyErr        error
+	CheckInstantiationPolicyErr      error
+	GetInstantiationPolicyMap        map[string][]byte
+	CheckInstantiationPolicyMap      map[string]error
+	CheckCollectionConfigErr         error
+}
+
+func (s *MockSupport) PutChaincodeToLocalStorage(ccpack ccprovider.CCPackage) error {
+	return s.PutChaincodeToLocalStorageErr
+}
+
+func (s *MockSupport) GetChaincodeFromLocalStorage(ccname string, ccversion string) (ccprovider.CCPackage, error) {
+	return s.GetChaincodeFromLocalStorageRv, s.GetChaincodeFromLocalStorageErr
+}
+
+func (s *MockSupport) GetChaincodesFromLocalStorage() (*peer.ChaincodeQueryResponse, error) {
+	return s.GetChaincodesFromLocalStorageRv, s.GetChaincodesFromLocalStorageErr
+}
+
+func (s *MockSupport) GetInstantiationPolicy(channel string, ccpack ccprovider.CCPackage) ([]byte, error) {
+	if s.GetInstantiationPolicyMap != nil {
+		str := ccpack.GetChaincodeData().Name + ccpack.GetChaincodeData().Version
+		s.GetInstantiationPolicyMap[str] = []byte(str)
+		return []byte(ccpack.GetChaincodeData().Name + ccpack.GetChaincodeData().Version), nil
+	}
+	return s.GetInstantiationPolicyRv, s.GetInstantiationPolicyErr
+}
+
+func (s *MockSupport) CheckInstantiationPolicy(signedProp *peer.SignedProposal, chainName string, instantiationPolicy []byte) error {
+	if s.CheckInstantiationPolicyMap != nil {
+		return s.CheckInstantiationPolicyMap[string(instantiationPolicy)]
+	}
+	return s.CheckInstantiationPolicyErr
+}
+
+func (s *MockSupport) CheckCollectionConfig(collectionConfig *common.CollectionConfig, channelName string) error {
+	return s.CheckCollectionConfigErr
 }

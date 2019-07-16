@@ -54,11 +54,8 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 		return err
 	}
 
-	chaincodeLogger.Debugf("start container: %s", packageID)
-	chaincodeLogger.Debugf("start container with args: %s", strings.Join(lc.Args, " "))
-	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(lc.Envs, "\n\t"))
-
-	scr := container.StartContainerReq{
+	// Explicitly attempt build before start
+	bcr := container.BuildReq{
 		Builder: &container.PlatformBuilder{
 			Type:             ccci.Type,
 			Name:             ccci.Name,
@@ -68,6 +65,17 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 			PlatformRegistry: c.PlatformRegistry,
 			Client:           c.DockerClient,
 		},
+		CCID: ccintf.New(ccci.PackageID),
+	}
+	if err := c.Processor.Process(ccci.ContainerType, bcr); err != nil {
+		return errors.WithMessage(err, "error building image")
+	}
+
+	chaincodeLogger.Debugf("start container: %s", packageID)
+	chaincodeLogger.Debugf("start container with args: %s", strings.Join(lc.Args, " "))
+	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(lc.Envs, "\n\t"))
+
+	scr := container.StartContainerReq{
 		Args:          lc.Args,
 		Env:           lc.Envs,
 		FilesToUpload: lc.Files,

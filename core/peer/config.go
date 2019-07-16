@@ -139,6 +139,10 @@ type Config struct {
 
 	// ChaincodePull enables/disables force pulling of the base docker image.
 	ChaincodePull bool
+	// List of directories to treat as external builders and launchers for
+	// chaincode. The external builder detection processing will iterate over the
+	// builders in the order specified below.
+	ExternalBuilders []string
 
 	// ----- Operations config -----
 	// TODO: create separate sub-struct for Operations config.
@@ -202,6 +206,9 @@ func (c *Config) load() error {
 	if err != nil {
 		return err
 	}
+
+	configDir := filepath.Dir(viper.ConfigFileUsed())
+
 	c.PeerAddress = preeAddress
 	c.PeerID = viper.GetString("peer.id")
 	c.LocalMSPID = viper.GetString("peer.localMspId")
@@ -250,6 +257,9 @@ func (c *Config) load() error {
 	}
 
 	c.ChaincodePull = viper.GetBool("chaincode.pull")
+	for _, eb := range viper.GetStringSlice("chaincode.externalBuilders") {
+		c.ExternalBuilders = append(c.ExternalBuilders, config.TranslatePath(configDir, eb))
+	}
 
 	c.OperationsListenAddress = viper.GetString("operations.listenAddress")
 	c.OperationsTLSEnabled = viper.GetBool("operations.tls.enabled")
