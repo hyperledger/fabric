@@ -190,7 +190,7 @@ func (f *FileLock) Lock() error {
 	dbOpts.ErrorIfMissing = !dirEmpty
 	f.db, err = leveldb.OpenFile(f.filePath, dbOpts)
 	if err != nil && err == syscall.EAGAIN {
-		return errors.New(fmt.Sprintf("lock is already acquired on file %s", f.filePath))
+		return errors.Errorf("lock is already acquired on file %s", f.filePath)
 	}
 	if err != nil {
 		panic(fmt.Sprintf("Error acquiring lock on file %s: %s", f.filePath, err))
