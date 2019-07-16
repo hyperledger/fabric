@@ -14,7 +14,6 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	"github.com/hyperledger/fabric/core/peer"
@@ -31,7 +30,7 @@ func init() {
 func newTestProvider() *Provider {
 	p := &Provider{
 		Peer:      &peer.Peer{},
-		Registrar: inproccontroller.NewRegistry(),
+		Registrar: NewRegistry(),
 		Whitelist: map[string]bool{
 			"invokableExternalButNotCC2CC": true,
 			"invokableCC2CCButNotExternal": true,
@@ -142,7 +141,7 @@ func TestIsSysCCAndNotInvokableExternal(t *testing.T) {
 func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
 	p := &Provider{
 		Peer:      &peer.Peer{},
-		Registrar: inproccontroller.NewRegistry(),
+		Registrar: NewRegistry(),
 	}
 	qe, err := p.GetQueryExecutorForLedger("")
 	assert.Nil(t, qe)
@@ -155,7 +154,7 @@ func TestCreatePluginSysCCs(t *testing.T) {
 
 func TestRegisterSysCC(t *testing.T) {
 	p := &Provider{
-		Registrar: inproccontroller.NewRegistry(),
+		Registrar: NewRegistry(),
 		Whitelist: map[string]bool{
 			"invokableExternalButNotCC2CC": true,
 			"invokableCC2CCButNotExternal": true,

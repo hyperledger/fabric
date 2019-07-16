@@ -49,7 +49,6 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
-	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/core/endorser"
 	authHandler "github.com/hyperledger/fabric/core/handlers/auth"
@@ -406,7 +405,7 @@ func serve(args []string) error {
 
 	// create chaincode specific tls CA
 	authenticator := accesscontrol.NewAuthenticator(ca)
-	ipRegistry := inproccontroller.NewRegistry()
+	ipRegistry := scc.NewRegistry()
 
 	sccp := &scc.Provider{
 		Peer:      peerInstance,

@@ -47,7 +47,6 @@ import (
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
-	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
@@ -72,7 +71,7 @@ import (
 //initialize peer and start up. If security==enabled, login as vp
 func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupport, func(), error) {
 	peerInstance := &peer.Peer{}
-	ipRegistry := inproccontroller.NewRegistry()
+	ipRegistry := scc.NewRegistry()
 	sccp := &scc.Provider{
 		Peer:      peerInstance,
 		Registrar: ipRegistry,
