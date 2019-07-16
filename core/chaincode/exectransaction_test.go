@@ -386,10 +386,11 @@ func endTxSimulation(peerInstance *peer.Peer, chainID string, ccid *pb.Chaincode
 // Build a chaincode.
 func getDeploymentSpec(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
 	fmt.Printf("getting deployment spec for chaincode spec: %v\n", spec)
-	codePackageBytes, err := container.GetChaincodePackageBytes(platforms.NewRegistry(&golang.Platform{}), spec)
+	codePackageBytes, err := platforms.NewRegistry(&golang.Platform{}).GetDeploymentPayload(spec.Type.String(), spec.ChaincodeId.Path)
 	if err != nil {
 		return nil, err
 	}
+
 	cdDeploymentSpec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes}
 	return cdDeploymentSpec, nil
 }

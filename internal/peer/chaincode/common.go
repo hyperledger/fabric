@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	pcommon "github.com/hyperledger/fabric/protos/common"
@@ -54,7 +53,7 @@ func getChaincodeDeploymentSpec(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.Chainc
 			return nil, err
 		}
 
-		codePackageBytes, err = container.GetChaincodePackageBytes(platformRegistry, spec)
+		codePackageBytes, err = platformRegistry.GetDeploymentPayload(spec.Type.String(), spec.ChaincodeId.Path)
 		if err != nil {
 			err = errors.WithMessage(err, "error getting chaincode package bytes")
 			return nil, err

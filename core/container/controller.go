@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package container
 
 import (
-	"fmt"
 	"io"
 	"sync"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 type VMProvider interface {
@@ -232,13 +230,4 @@ func (vmc *VMController) Process(vmtype string, req VMCReq) error {
 	vmc.lockContainer(ccid)
 	defer vmc.unlockContainer(ccid)
 	return req.Do(v)
-}
-
-// GetChaincodePackageBytes creates bytes for docker container generation using the supplied chaincode specification
-func GetChaincodePackageBytes(pr *platforms.Registry, spec *pb.ChaincodeSpec) ([]byte, error) {
-	if spec == nil || spec.ChaincodeId == nil {
-		return nil, fmt.Errorf("invalid chaincode spec")
-	}
-
-	return pr.GetDeploymentPayload(spec.Type.String(), spec.ChaincodeId.Path)
 }
