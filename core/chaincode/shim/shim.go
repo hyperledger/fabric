@@ -18,7 +18,6 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -90,22 +89,8 @@ func Start(cc Chaincode) error {
 
 // StartInProc is an entry point for system chaincodes bootstrap. It is not an
 // API for chaincodes.
-func StartInProc(env []string, args []string, cc Chaincode, recv <-chan *pb.ChaincodeMessage, send chan<- *pb.ChaincodeMessage) error {
-	var chaincodename string
-	for _, v := range env {
-		if strings.Index(v, "CORE_CHAINCODE_ID_NAME=") == 0 {
-			p := strings.SplitAfter(v, "CORE_CHAINCODE_ID_NAME=")
-			chaincodename = p[1]
-			break
-		}
-	}
-	if chaincodename == "" {
-		return errors.New("'CORE_CHAINCODE_ID_NAME' must be set")
-	}
-
-	stream := newInProcStream(recv, send)
-	err := chatWithPeer(chaincodename, stream, cc)
-	return err
+func StartInProc(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {
+	return chatWithPeer(chaincodename, stream, cc)
 }
 
 func newPeerClientConnection(address string) (*grpc.ClientConn, error) {

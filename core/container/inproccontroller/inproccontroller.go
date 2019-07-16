@@ -8,7 +8,6 @@ package inproccontroller
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -27,22 +26,8 @@ type ChaincodeStreamHandler interface {
 	LaunchInProc(packageID ccintf.CCID) <-chan struct{}
 }
 
-type inprocContainer struct {
-	chaincodeSupport ChaincodeStreamHandler
-	chaincode        shim.Chaincode
-	running          bool
-	args             []string
-	env              []string
-	stopChan         chan struct{}
-}
-
 var (
-	inprocLogger = flogging.MustGetLogger("inproccontroller")
-
-	// TODO this is a very hacky way to do testing, we should find other ways
-	// to test, or not statically inject these depenencies.
-	_shimStartInProc    = shim.StartInProc
-	_inprocLoggerErrorf = inprocLogger.Errorf
+	logger = flogging.MustGetLogger("inproccontroller")
 )
 
 // SysCCRegisteredErr registered error
@@ -55,7 +40,6 @@ func (s SysCCRegisteredErr) Error() string {
 // Registry stores registered system chaincodes.
 // It implements container.VMProvider and scc.Registrar
 type Registry struct {
-	mutex      sync.Mutex
 	chaincodes map[ccintf.CCID]shim.Chaincode
 }
 
@@ -72,10 +56,7 @@ func NewRegistry() *Registry {
 
 // Register registers system chaincode with given path. The deploy should be called to initialize
 func (r *Registry) Register(ccid ccintf.CCID, cc shim.Chaincode) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	inprocLogger.Debugf("Registering chaincode instance: %s", ccid)
+	logger.Debugf("Registering chaincode instance: %s", ccid)
 	if _, exists := r.chaincodes[ccid]; exists {
 		return SysCCRegisteredErr(ccid.String())
 	}
@@ -86,80 +67,23 @@ func (r *Registry) Register(ccid ccintf.CCID, cc shim.Chaincode) error {
 
 func (r *Registry) LaunchAll(chaincodeSupport ChaincodeStreamHandler) {
 	for ccid, chaincode := range r.chaincodes {
-		ipc := &inprocContainer{
-			chaincodeSupport: chaincodeSupport,
-			chaincode:        chaincode,
-			env:              []string{"CORE_CHAINCODE_ID_NAME=" + ccid.String()},
-			stopChan:         make(chan struct{}),
-		}
 
 		done := chaincodeSupport.LaunchInProc(ccid)
+
+		peerRcvCCSend := make(chan *pb.ChaincodeMessage)
+		ccRcvPeerSend := make(chan *pb.ChaincodeMessage)
+
 		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					inprocLogger.Criticalf("caught panic from chaincode  %s", ccid)
-				}
-			}()
-			ipc.launchInProc(ccid, nil, nil)
+			logger.Debugf("starting chaincode-support stream for  %s", ccid)
+			err := chaincodeSupport.HandleChaincodeStream(newInProcStream(peerRcvCCSend, ccRcvPeerSend))
+			logger.Criticalf("shim stream ended with err: %s", err)
+		}()
+
+		go func() {
+			logger.Debugf("chaincode started for %s", ccid)
+			err := shim.StartInProc(ccid.String(), newInProcStream(ccRcvPeerSend, peerRcvCCSend), chaincode)
+			logger.Criticalf("system chaincode ended with err: %s", err)
 		}()
 		<-done
 	}
-}
-
-// InprocVM is a vm. It is identified by a executable name
-type InprocVM struct {
-	registry *Registry
-}
-
-func (ipc *inprocContainer) launchInProc(id ccintf.CCID, args, env []string) error {
-	peerRcvCCSend := make(chan *pb.ChaincodeMessage)
-	ccRcvPeerSend := make(chan *pb.ChaincodeMessage)
-	var err error
-	ccchan := make(chan struct{}, 1)
-	ccsupportchan := make(chan struct{}, 1)
-	shimStartInProc := _shimStartInProc // shadow to avoid race in test
-	go func() {
-		defer close(ccchan)
-		inprocLogger.Debugf("chaincode started for %s", id)
-		if args == nil {
-			args = ipc.args
-		}
-		if env == nil {
-			env = ipc.env
-		}
-		err := shimStartInProc(env, args, ipc.chaincode, ccRcvPeerSend, peerRcvCCSend)
-		if err != nil {
-			err = fmt.Errorf("chaincode-support ended with err: %s", err)
-			_inprocLoggerErrorf("%s", err)
-		}
-		inprocLogger.Debugf("chaincode ended for %s with err: %s", id, err)
-	}()
-
-	// shadow function to avoid data race
-	inprocLoggerErrorf := _inprocLoggerErrorf
-	go func() {
-		defer close(ccsupportchan)
-		inprocStream := newInProcStream(peerRcvCCSend, ccRcvPeerSend)
-		inprocLogger.Debugf("chaincode-support started for  %s", id)
-		err := ipc.chaincodeSupport.HandleChaincodeStream(inprocStream)
-		if err != nil {
-			err = fmt.Errorf("chaincode ended with err: %s", err)
-			inprocLoggerErrorf("%s", err)
-		}
-		inprocLogger.Debugf("chaincode-support ended for %s with err: %s", id, err)
-	}()
-
-	select {
-	case <-ccchan:
-		close(peerRcvCCSend)
-		inprocLogger.Debugf("chaincode %s quit", id)
-	case <-ccsupportchan:
-		close(ccRcvPeerSend)
-		inprocLogger.Debugf("chaincode support %s quit", id)
-	case <-ipc.stopChan:
-		close(ccRcvPeerSend)
-		close(peerRcvCCSend)
-		inprocLogger.Debugf("chaincode %s stopped", id)
-	}
-	return err
 }

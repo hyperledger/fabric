@@ -852,47 +852,6 @@ func TestSetKeyEP(t *testing.T) {
 
 }
 
-func TestStartInProc(t *testing.T) {
-	streamGetter = mockChaincodeStreamGetter
-	cc := &shimTestCC{}
-	ccname := "shimTestCC"
-	peerSide := setupcc(ccname)
-	defer mockPeerCCSupport.RemoveCC(ccname)
-
-	done := setuperror()
-
-	doneFunc := func(ind int, err error) {
-		done <- err
-	}
-
-	peerDone := make(chan struct{})
-	defer close(peerDone)
-
-	//start the mock peer
-	go func() {
-		respSet := &mockpeer.MockResponseSet{
-			DoneFunc:  doneFunc,
-			ErrorFunc: nil,
-			Responses: []*mockpeer.MockResponse{
-				{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}},
-			},
-		}
-		peerSide.SetResponses(respSet)
-		peerSide.SetKeepAlive(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE})
-		err := peerSide.Run(peerDone)
-		assert.NoError(t, err, "peer side run failed")
-	}()
-
-	//start the shim+chaincode
-	go StartInProc([]string{"CORE_CHAINCODE_ID_NAME=shimTestCC"}, nil, cc, peerSide.GetSendStream(), peerSide.GetRecvStream())
-
-	//wait for init
-	processDone(t, done, false)
-
-	channelId := "testchannel"
-	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY, Txid: "1", ChannelId: channelId})
-}
-
 func TestCC2CC(t *testing.T) {
 	streamGetter = mockChaincodeStreamGetter
 	cc := &shimTestCC{}
@@ -993,23 +952,4 @@ func TestRealPeerStream(t *testing.T) {
 	os.Args = []string{"chaincode", "peer.address", "127.0.0.1:12345"}
 	_, err := userChaincodeStreamGetter("fake")
 	assert.Error(t, err)
-}
-
-func TestSend(t *testing.T) {
-	ch := make(chan *pb.ChaincodeMessage)
-
-	stream := newInProcStream(ch, ch)
-
-	//good send (non-blocking send and receive)
-	msg := &pb.ChaincodeMessage{}
-	go stream.Send(msg)
-	msg2, _ := stream.Recv()
-	assert.Equal(t, msg, msg2, "send != recv")
-
-	//close the channel
-	close(ch)
-
-	//bad send, should panic, unblock and return error
-	err := stream.Send(msg)
-	assert.NotNil(t, err, "should have errored on panic")
 }
