@@ -27,6 +27,7 @@ import (
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -633,10 +634,11 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	defer resetFlags()
 
 	signer := &mock.SignerSerializer{}
-	// Error case 1
 	env := &cb.Envelope{}
 	env.Payload = make([]byte, 10)
 	var err error
+
+	// Error case 1
 	env, err = sanityCheckAndSignConfigTx(env, signer)
 	assert.Error(t, err, "Error expected for nil payload")
 	assert.Contains(t, err.Error(), "bad payload")
@@ -677,4 +679,32 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	env, err = sanityCheckAndSignConfigTx(env, signer)
 	assert.Error(t, err, "Error expected for bad payload data")
 	assert.Contains(t, err.Error(), "Bad config update env")
+
+	// Error case 5
+	signer = &mock.SignerSerializer{}
+	signer.SerializeReturns(nil, errors.New("bad signer header"))
+	env, err = protoutil.CreateSignedEnvelope(
+		cb.HeaderType_CONFIG_UPDATE,
+		"mockchannel",
+		nil,
+		&cb.ConfigEnvelope{},
+		0,
+		0)
+	assert.NoError(t, err)
+	env, err = sanityCheckAndSignConfigTx(env, signer)
+	assert.EqualError(t, err, "bad signer header")
+
+	// Error case 6
+	signer = &mock.SignerSerializer{}
+	signer.SignReturns(nil, errors.New("signer failed to sign"))
+	env, err = protoutil.CreateSignedEnvelope(
+		cb.HeaderType_CONFIG_UPDATE,
+		"mockchannel",
+		nil,
+		&cb.ConfigEnvelope{},
+		0,
+		0)
+	assert.NoError(t, err)
+	env, err = sanityCheckAndSignConfigTx(env, signer)
+	assert.EqualError(t, err, "signer failed to sign")
 }
