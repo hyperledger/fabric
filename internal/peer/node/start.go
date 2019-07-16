@@ -405,11 +405,9 @@ func serve(args []string) error {
 
 	// create chaincode specific tls CA
 	authenticator := accesscontrol.NewAuthenticator(ca)
-	ipRegistry := scc.NewRegistry()
 
 	sccp := &scc.Provider{
 		Peer:      peerInstance,
-		Registrar: ipRegistry,
 		Whitelist: scc.GlobalWhitelist(),
 	}
 
@@ -544,7 +542,6 @@ func serve(args []string) error {
 	for _, cc := range append([]scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst, lifecycleSCC}, sccs...) {
 		sccp.RegisterSysCC(cc)
 	}
-	ipRegistry.LaunchAll(chaincodeSupport)
 	pb.RegisterChaincodeSupportServer(ccSrv.Server(), ccSupSrv)
 
 	// start the chaincode specific gRPC listening service
@@ -595,8 +592,7 @@ func serve(args []string) error {
 	}
 
 	// deploy system chaincodes
-	ccp := chaincode.NewProvider(chaincodeSupport)
-	sccp.DeploySysCCs("", ccp)
+	sccp.DeploySysCCs(chaincodeSupport)
 	logger.Infof("Deployed system chaincodes")
 
 	// register the lifecycleMetadataManager to get updates from the legacy
@@ -613,9 +609,6 @@ func serve(args []string) error {
 	// this brings up all the channels
 	peerInstance.Initialize(
 		func(cid string) {
-			logger.Debugf("Deploying system CC, for channel <%s>", cid)
-			sccp.DeploySysCCs(cid, ccp)
-
 			// initialize the metadata for this channel.
 			// This call will pre-populate chaincode information for this
 			// channel but it won't fire any updates to its listeners

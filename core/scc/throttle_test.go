@@ -4,12 +4,13 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package scc
+package scc_test
 
 import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/mock"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/gomega"
@@ -19,7 +20,7 @@ import (
 //go:generate counterfeiter -o mock/selfdescribingsyscc.go --fake-name SelfDescribingSysCC . selfDescribingSysCC
 
 type chaincode interface{ shim.Chaincode }
-type selfDescribingSysCC interface{ SelfDescribingSysCC } // prevent package cycle
+type selfDescribingSysCC interface{ scc.SelfDescribingSysCC } // prevent package cycle
 
 func TestThrottle(t *testing.T) {
 	gt := NewGomegaWithT(t)
@@ -37,7 +38,7 @@ func TestThrottle(t *testing.T) {
 	sysCC.ChaincodeReturns(chaincode)
 
 	// run invokes concurrently
-	throttled := Throttle(5, sysCC).Chaincode()
+	throttled := scc.Throttle(5, sysCC).Chaincode()
 	for i := 0; i < 5; i++ {
 		go throttled.Invoke(nil)
 		gt.Eventually(runningCh).Should(Receive())
@@ -64,7 +65,7 @@ func TestThrottledChaincode(t *testing.T) {
 
 	sysCC := &mock.SelfDescribingSysCC{}
 	sysCC.ChaincodeReturns(chaincode)
-	throttled := Throttle(5, sysCC).Chaincode()
+	throttled := scc.Throttle(5, sysCC).Chaincode()
 
 	initResp := throttled.Init(nil)
 	gt.Expect(initResp.Message).To(Equal("init-returns"))

@@ -7,25 +7,50 @@ SPDX-License-Identifier: Apache-2.0
 package scc
 
 import (
-	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/container/ccintf"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-//DeploySysCCs is the hook for system chaincodes where system chaincodes are registered with the fabric
-//note the chaincode must still be deployed and launched like a user chaincode will be
-func (p *Provider) DeploySysCCs(chainID string, ccp ccprovider.ChaincodeProvider) {
-	for _, sysCC := range p.SysCCs {
-		err := p.deploySysCC(chainID, ccp, sysCC)
-		if err != nil {
-			sysccLogger.Panicf("chaincode deployment failed: %s", err)
-		}
-	}
+// A ChaincodeStreamHandler is responsible for handling the ChaincodeStream
+// communication between a per and chaincode.
+type ChaincodeStreamHandler interface {
+	HandleChaincodeStream(ccintf.ChaincodeStream) error
+	LaunchInProc(packageID ccintf.CCID) <-chan struct{}
 }
 
-//DeDeploySysCCs is used in unit tests to stop and remove the system chaincodes before
-//restarting them in the same process. This allows clean start of the system
-//in the same process
-func (p *Provider) DeDeploySysCCs(chainID string, ccp ccprovider.ChaincodeProvider) {
+// DeploySysCCs is the hook for system chaincodes where system chaincodes are registered with the fabric.
+// This call directly registers the chaincode with the chaincode handler and bypasses the other usercc constructs.
+func (p *Provider) DeploySysCCs(chaincodeStreamHandler ChaincodeStreamHandler) {
 	for _, sysCC := range p.SysCCs {
-		deDeploySysCC(chainID, ccp, sysCC)
+		if !sysCC.Enabled() || !p.isWhitelisted(sysCC) {
+			sysccLogger.Infof("System chaincode '%s' is disabled", sysCC.Name())
+			continue
+		}
+		sysccLogger.Infof("deploying system chaincode '%s'", sysCC.Name())
+
+		// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
+		version := util.GetSysCCVersion()
+		ccid := ccintf.CCID(sysCC.Name() + ":" + version)
+
+		done := chaincodeStreamHandler.LaunchInProc(ccid)
+
+		peerRcvCCSend := make(chan *pb.ChaincodeMessage)
+		ccRcvPeerSend := make(chan *pb.ChaincodeMessage)
+
+		// TODO, these go routines leak in test.
+		go func() {
+			sysccLogger.Debugf("starting chaincode-support stream for  %s", ccid)
+			err := chaincodeStreamHandler.HandleChaincodeStream(newInProcStream(peerRcvCCSend, ccRcvPeerSend))
+			sysccLogger.Criticalf("shim stream ended with err: %v", err)
+		}()
+
+		go func(sysCC SelfDescribingSysCC) {
+			sysccLogger.Debugf("chaincode started for %s", ccid)
+			err := shim.StartInProc(ccid.String(), newInProcStream(ccRcvPeerSend, peerRcvCCSend), sysCC.Chaincode())
+			sysccLogger.Criticalf("system chaincode ended with err: %v", err)
+		}(sysCC)
+		<-done
 	}
 }

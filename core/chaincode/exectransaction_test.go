@@ -71,10 +71,8 @@ import (
 //initialize peer and start up. If security==enabled, login as vp
 func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupport, func(), error) {
 	peerInstance := &peer.Peer{}
-	ipRegistry := scc.NewRegistry()
 	sccp := &scc.Provider{
 		Peer:      peerInstance,
-		Registrar: ipRegistry,
 		Whitelist: scc.GlobalWhitelist(),
 	}
 
@@ -193,16 +191,15 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	}
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
-	ccp := &CCProviderImpl{cs: chaincodeSupport}
 	sccp.RegisterSysCC(lsccImpl)
-	ipRegistry.LaunchAll(chaincodeSupport)
+
+	sccp.DeploySysCCs(chaincodeSupport)
 
 	for _, id := range chainIDs {
 		if err = peer.CreateMockChannel(peerInstance, id); err != nil {
 			closeListenerAndSleep(lis)
 			return nil, nil, nil, nil, err
 		}
-		sccp.DeploySysCCs(id, ccp)
 		// any chain other than the default testchainid does not have a MSP set up -> create one
 		if id != util.GetTestChainID() {
 			mspmgmt.XXXSetMSPManager(id, mspmgmt.GetManagerForChain(util.GetTestChainID()))

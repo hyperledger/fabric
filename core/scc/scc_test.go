@@ -4,58 +4,58 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package scc
+package scc_test
 
 import (
-	"errors"
-	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/peer"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/core/scc/mock"
+	"github.com/onsi/gomega"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
+
+//go:generate counterfeiter -o mock/chaincode_stream_handler.go --fake-name ChaincodeStreamHandler . chaincodeStreamHandler
+type chaincodeStreamHandler interface {
+	scc.ChaincodeStreamHandler
+}
 
 func init() {
 	viper.Set("peer.fileSystemPath", os.TempDir())
 }
 
-func newTestProvider() *Provider {
-	p := &Provider{
-		Peer:      &peer.Peer{},
-		Registrar: NewRegistry(),
+func newTestProvider() *scc.Provider {
+	p := &scc.Provider{
+		Peer: &peer.Peer{},
 		Whitelist: map[string]bool{
 			"invokableExternalButNotCC2CC": true,
 			"invokableCC2CCButNotExternal": true,
 			"disabled":                     true,
 		},
 	}
-	for _, cc := range []SelfDescribingSysCC{
-		&SysCCWrapper{
-			SCC: &SystemChaincode{
+	for _, cc := range []scc.SelfDescribingSysCC{
+		&scc.SysCCWrapper{
+			SCC: &scc.SystemChaincode{
 				Name:              "invokableExternalButNotCC2CC",
 				InvokableExternal: true,
 				InvokableCC2CC:    false,
 				Enabled:           true,
 			},
 		},
-		&SysCCWrapper{
-			SCC: &SystemChaincode{
+		&scc.SysCCWrapper{
+			SCC: &scc.SystemChaincode{
 				Name:              "invokableCC2CCButNotExternal",
 				InvokableExternal: false,
 				InvokableCC2CC:    true,
 				Enabled:           true,
 			},
 		},
-		&SysCCWrapper{
-			SCC: &SystemChaincode{
+		&scc.SysCCWrapper{
+			SCC: &scc.SystemChaincode{
 				Name:    "disabled",
 				Enabled: false,
 			},
@@ -67,58 +67,18 @@ func newTestProvider() *Provider {
 }
 
 func TestDeploy(t *testing.T) {
+	gt := gomega.NewGomegaWithT(t)
+
 	p := newTestProvider()
-	ccp := &MockCcProviderImpl{}
-	p.DeploySysCCs("", ccp)
-	f := func() {
-		p.DeploySysCCs("a", ccp)
-	}
-	assert.Panics(t, f)
-
-	tempdir, err := ioutil.TempDir("", "scc-test")
-	require.NoError(t, err, "failed to create temporary directory")
-	defer os.RemoveAll(tempdir)
-	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgermgmttest.NewInitializer(tempdir))
-	defer ledgerMgr.Close()
-	p.Peer.LedgerMgr = ledgerMgr
-
-	err = peer.CreateMockChannel(p.Peer, "a")
-	if err != nil {
-		t.Fatalf("failed to create mock chain: %v", err)
-	}
-	p.deploySysCC("a", ccp, &SysCCWrapper{SCC: &SystemChaincode{
-		Enabled: true,
-		Name:    "invokableCC2CCButNotExternal",
-	}})
-}
-
-func TestDeployInitFailed(t *testing.T) {
-	t.Run("shim error status response", func(t *testing.T) {
-		ccp := &MockCcProviderImpl{
-			InitResponse: &pb.Response{Status: shim.ERROR, Message: "i-am-a-failure"},
-		}
-		p := newTestProvider()
-
-		assert.PanicsWithValue(t, "chaincode deployment failed: i-am-a-failure", func() { p.DeploySysCCs("", ccp) })
-	})
-	t.Run("shim init error", func(t *testing.T) {
-		ccp := &MockCcProviderImpl{
-			InitError: errors.New("i-am-more-than-a-disappointment"),
-		}
-		p := newTestProvider()
-
-		assert.PanicsWithValue(t, "chaincode deployment failed: i-am-more-than-a-disappointment", func() { p.DeploySysCCs("", ccp) })
-	})
-}
-
-func TestDeDeploySysCC(t *testing.T) {
-	p := newTestProvider()
-	ccp := &MockCcProviderImpl{}
-	p.DeDeploySysCCs("", ccp)
-	f := func() {
-		p.DeDeploySysCCs("a", ccp)
-	}
-	assert.NotPanics(t, f)
+	csh := &mock.ChaincodeStreamHandler{}
+	doneC := make(chan struct{})
+	close(doneC)
+	csh.LaunchInProcReturns(doneC)
+	p.DeploySysCCs(csh)
+	gt.Expect(csh.LaunchInProcCallCount()).To(gomega.Equal(2))
+	gt.Expect(csh.LaunchInProcArgsForCall(0)).To(gomega.Equal(ccintf.CCID("invokableExternalButNotCC2CC:latest")))
+	gt.Expect(csh.LaunchInProcArgsForCall(1)).To(gomega.Equal(ccintf.CCID("invokableCC2CCButNotExternal:latest")))
+	gt.Eventually(csh.HandleChaincodeStreamCallCount).Should(gomega.Equal(2))
 }
 
 func TestIsSysCC(t *testing.T) {
@@ -139,9 +99,8 @@ func TestIsSysCCAndNotInvokableExternal(t *testing.T) {
 }
 
 func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
-	p := &Provider{
-		Peer:      &peer.Peer{},
-		Registrar: NewRegistry(),
+	p := &scc.Provider{
+		Peer: &peer.Peer{},
 	}
 	qe, err := p.GetQueryExecutorForLedger("")
 	assert.Nil(t, qe)
@@ -149,19 +108,18 @@ func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
 }
 
 func TestCreatePluginSysCCs(t *testing.T) {
-	assert.NotPanics(t, func() { CreatePluginSysCCs(nil) }, "expected successful init")
+	assert.NotPanics(t, func() { scc.CreatePluginSysCCs(nil) }, "expected successful init")
 }
 
 func TestRegisterSysCC(t *testing.T) {
-	p := &Provider{
-		Registrar: NewRegistry(),
+	p := &scc.Provider{
 		Whitelist: map[string]bool{
 			"invokableExternalButNotCC2CC": true,
 			"invokableCC2CCButNotExternal": true,
 		},
 	}
-	_, err := p.registerSysCC(&SysCCWrapper{
-		SCC: &SystemChaincode{
+	err := p.RegisterSysCC(&scc.SysCCWrapper{
+		SCC: &scc.SystemChaincode{
 			Name:      "invokableExternalButNotCC2CC",
 			Path:      "path",
 			Enabled:   true,
@@ -169,38 +127,13 @@ func TestRegisterSysCC(t *testing.T) {
 		},
 	})
 	assert.NoError(t, err)
-	_, err = p.registerSysCC(&SysCCWrapper{
-		SCC: &SystemChaincode{
+	err = p.RegisterSysCC(&scc.SysCCWrapper{
+		SCC: &scc.SystemChaincode{
 			Name:      "invokableExternalButNotCC2CC",
 			Path:      "path",
 			Enabled:   true,
 			Chaincode: nil,
 		},
 	})
-	assert.Error(t, err)
-	assert.Contains(t, "invokableExternalButNotCC2CC:latest already registered", err)
-}
-
-// MockCcProviderImpl is a mock implementation of the chaincode provider
-type MockCcProviderImpl struct {
-	InitResponse *pb.Response
-	InitError    error
-}
-
-// ExecuteInit executes the chaincode given context and spec deploy
-func (c *MockCcProviderImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	if c.InitResponse != nil || c.InitError != nil {
-		return c.InitResponse, nil, c.InitError
-	}
-	return &pb.Response{Status: shim.OK}, nil, nil
-}
-
-// Execute executes the chaincode given context and spec invocation
-func (c *MockCcProviderImpl) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
-	return &pb.Response{}, nil, nil
-}
-
-// Stop stops the chaincode given context and deployment spec
-func (c *MockCcProviderImpl) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
-	return nil
+	assert.EqualError(t, err, "chaincode with name 'invokableExternalButNotCC2CC' already registered")
 }

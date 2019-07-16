@@ -13,23 +13,25 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/pkg/errors"
 )
 
 // Provider implements sysccprovider.SystemChaincodeProvider
 type Provider struct {
 	Peer      *peer.Peer
-	Registrar Registrar
 	SysCCs    []SelfDescribingSysCC
 	Whitelist Whitelist
 }
 
 // RegisterSysCC registers a system chaincode with the syscc provider.
-func (p *Provider) RegisterSysCC(scc SelfDescribingSysCC) {
-	p.SysCCs = append(p.SysCCs, scc)
-	_, err := p.registerSysCC(scc)
-	if err != nil {
-		sysccLogger.Panicf("Could not register system chaincode: %s", err)
+func (p *Provider) RegisterSysCC(scc SelfDescribingSysCC) error {
+	for _, registeredSCC := range p.SysCCs {
+		if scc.Name() == registeredSCC.Name() {
+			return errors.Errorf("chaincode with name '%s' already registered", scc.Name())
+		}
 	}
+	p.SysCCs = append(p.SysCCs, scc)
+	return nil
 }
 
 // IsSysCC returns true if the supplied chaincode is a system chaincode
@@ -104,4 +106,9 @@ func (p *Provider) PolicyManager(channelID string) (policies.Manager, bool) {
 
 func isDeprecatedSysCC(name string) bool {
 	return name == "vscc" || name == "escc"
+}
+
+func (p *Provider) isWhitelisted(syscc SelfDescribingSysCC) bool {
+	enabled, ok := p.Whitelist[syscc.Name()]
+	return ok && enabled
 }

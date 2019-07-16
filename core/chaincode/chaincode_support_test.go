@@ -153,10 +153,8 @@ func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.Chainc
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), error) {
 	peerInstance := &peer.Peer{}
-	ipRegistry := scc.NewRegistry()
 	sccp := &scc.Provider{
 		Peer:      peerInstance,
-		Registrar: ipRegistry,
 		Whitelist: scc.GlobalWhitelist(),
 	}
 
@@ -255,10 +253,10 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
-	ccp := &CCProviderImpl{cs: chaincodeSupport}
 
 	sccp.RegisterSysCC(lsccImpl)
-	ipRegistry.LaunchAll(chaincodeSupport)
+
+	sccp.DeploySysCCs(chaincodeSupport)
 
 	globalBlockNum = make(map[string]uint64, len(chainIDs))
 	for _, id := range chainIDs {
@@ -266,7 +264,6 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 			cleanup()
 			return nil, nil, func() {}, err
 		}
-		sccp.DeploySysCCs(id, ccp)
 
 		// any chain other than the default testchainid does not have a MSP set up -> create one
 		if id != util.GetTestChainID() {
@@ -1103,8 +1100,7 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	h := Handler{
 		TXContexts: NewTransactionContexts(),
 		SystemCCProvider: &scc.Provider{
-			Peer:      peerInstance,
-			Registrar: scc.NewRegistry(),
+			Peer: peerInstance,
 		},
 	}
 

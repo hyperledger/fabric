@@ -7,24 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package scc
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/container/ccintf"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var sysccLogger = flogging.MustGetLogger("sccapi")
-
-// Registrar provides a way for system chaincodes to be registered
-type Registrar interface {
-	// Register registers a system chaincode
-	Register(ccid ccintf.CCID, cc shim.Chaincode) error
-}
 
 // SystemChaincode defines the metadata needed to initialize system chaincode
 // when the fabric comes up. SystemChaincodes are installed by adding an
@@ -97,110 +84,4 @@ type SelfDescribingSysCC interface {
 	// Enabled a convenient switch to enable/disable system chaincode without
 	// having to remove entry from importsysccs.go
 	Enabled() bool
-}
-
-// registerSysCC registers the given system chaincode with the peer
-func (p *Provider) registerSysCC(syscc SelfDescribingSysCC) (bool, error) {
-	if !syscc.Enabled() || !p.isWhitelisted(syscc) {
-		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s,%t) disabled", syscc.Name(), syscc.Path(), syscc.Enabled()))
-		return false, nil
-	}
-
-	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
-	version := util.GetSysCCVersion()
-
-	ccid := ccintf.CCID(syscc.Name() + ":" + version)
-	err := p.Registrar.Register(ccid, syscc.Chaincode())
-	if err != nil {
-		//if the type is registered, the instance may not be... keep going
-		if _, ok := err.(SysCCRegisteredErr); !ok {
-			errStr := fmt.Sprintf("could not register (%s,%v): %s", syscc.Path(), syscc, err)
-			sysccLogger.Error(errStr)
-			return false, fmt.Errorf(errStr)
-		}
-	}
-
-	sysccLogger.Infof("system chaincode %s(%s) registered", syscc.Name(), syscc.Path())
-	return true, err
-}
-
-// deploySysCC deploys the given system chaincode on a chain
-func (p *Provider) deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc SelfDescribingSysCC) error {
-	if !syscc.Enabled() || !p.isWhitelisted(syscc) {
-		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s) disabled", syscc.Name(), syscc.Path()))
-		return nil
-	}
-
-	txid := util.GenerateUUID()
-
-	// Note, this structure is barely initialized,
-	// we omit the history query executor, the proposal
-	// and the signed proposal
-	txParams := &ccprovider.TransactionParams{
-		TxID:      txid,
-		ChannelID: chainID,
-	}
-
-	if chainID != "" {
-		lgr := p.Peer.GetLedger(chainID)
-		if lgr == nil {
-			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name(), chainID))
-		}
-
-		txsim, err := lgr.NewTxSimulator(txid)
-		if err != nil {
-			return err
-		}
-
-		txParams.TXSimulator = txsim
-		defer txsim.Done()
-	}
-
-	chaincodeID := &pb.ChaincodeID{Path: syscc.Path(), Name: syscc.Name()}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs()}}
-
-	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec}
-
-	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
-	version := util.GetSysCCVersion()
-
-	cccid := &ccprovider.CCContext{
-		Name:     chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name,
-		Version:  version,
-		SystemCC: true,
-	}
-
-	resp, _, err := ccprov.ExecuteLegacyInit(txParams, cccid, chaincodeDeploymentSpec)
-	if err == nil && resp.Status != shim.OK {
-		err = errors.New(resp.Message)
-	}
-	if err != nil {
-		return err
-	}
-
-	sysccLogger.Infof("system chaincode %s/%s(%s) deployed", syscc.Name(), chainID, syscc.Path())
-	return nil
-}
-
-// deDeploySysCC stops the system chaincode and deregisters it from inproccontroller
-func deDeploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc SelfDescribingSysCC) error {
-	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
-	version := util.GetSysCCVersion()
-
-	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:          "GOLANG",
-		Name:          syscc.Name(),
-		Path:          syscc.Path(),
-		Version:       version,
-		ContainerType: ContainerType,
-	}
-
-	err := ccprov.Stop(ccci)
-
-	return err
-}
-
-func (p *Provider) isWhitelisted(syscc SelfDescribingSysCC) bool {
-	enabled, ok := p.Whitelist[syscc.Name()]
-	return ok && enabled
 }
