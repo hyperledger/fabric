@@ -23,7 +23,6 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/pkg/errors"
@@ -104,25 +103,10 @@ type DockerVM struct {
 	PlatformBuilder PlatformBuilder
 }
 
-// NewVM creates a new DockerVM instance
-func (p *Provider) NewVM() container.VM {
-	return &DockerVM{
-		PeerID:          p.PeerID,
-		NetworkID:       p.NetworkID,
-		Client:          p.Client,
-		BuildMetrics:    p.BuildMetrics,
-		AttachStdOut:    p.AttachStdOut,
-		HostConfig:      p.HostConfig,
-		ChaincodePull:   p.ChaincodePull,
-		NetworkMode:     p.NetworkMode,
-		PlatformBuilder: p.PlatformBuilder,
-	}
-}
-
 // HealthCheck checks if the DockerVM is able to communicate with the Docker
 // daemon.
-func (p *Provider) HealthCheck(ctx context.Context) error {
-	if err := p.Client.PingWithContext(ctx); err != nil {
+func (vm *DockerVM) HealthCheck(ctx context.Context) error {
+	if err := vm.Client.PingWithContext(ctx); err != nil {
 		return errors.Wrap(err, "failed to ping to Docker daemon")
 	}
 	return nil

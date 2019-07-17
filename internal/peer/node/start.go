@@ -455,7 +455,7 @@ func serve(args []string) error {
 		logger.Panicf("cannot create docker client: %s", err)
 	}
 
-	dockerProvider := &dockercontroller.Provider{
+	dockerVM := &dockercontroller.DockerVM{
 		PeerID:        coreConfig.PeerID,
 		NetworkID:     coreConfig.NetworkID,
 		BuildMetrics:  dockercontroller.NewBuildMetrics(opsSystem.Provider),
@@ -469,7 +469,7 @@ func serve(args []string) error {
 			Client:   client,
 		},
 	}
-	if err := opsSystem.RegisterChecker("docker", dockerProvider); err != nil {
+	if err := opsSystem.RegisterChecker("docker", dockerVM); err != nil {
 		if err != nil {
 			logger.Panicf("failed to register docker health check: %s", err)
 		}
@@ -477,8 +477,8 @@ func serve(args []string) error {
 
 	chaincodeConfig := chaincode.GlobalConfig()
 	chaincodeVMController := container.NewVMController(
-		map[string]container.VMProvider{
-			dockercontroller.ContainerType: dockerProvider,
+		map[string]container.VM{
+			dockercontroller.ContainerType: dockerVM,
 		},
 	)
 
@@ -490,8 +490,8 @@ func serve(args []string) error {
 			"CORE_CHAINCODE_LOGGING_SHIM=" + chaincodeConfig.ShimLogLevel,
 			"CORE_CHAINCODE_LOGGING_FORMAT=" + chaincodeConfig.LogFormat,
 		},
-		PeerAddress: ccEndpoint,
-		Processor:   chaincodeVMController,
+		PeerAddress:    ccEndpoint,
+		VMSynchronizer: chaincodeVMController,
 	}
 
 	// Keep TestQueries working

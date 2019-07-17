@@ -39,14 +39,13 @@ func TestIntegrationPath(t *testing.T) {
 	fakePlatformBuilder := &mock.PlatformBuilder{}
 	fakePlatformBuilder.GenerateDockerBuildReturns(InMemBuilder{}.Build())
 
-	provider := Provider{
+	dc := DockerVM{
 		PeerID:          "",
 		NetworkID:       util.GenerateUUID(),
 		BuildMetrics:    NewBuildMetrics(&disabled.Provider{}),
 		Client:          client,
 		PlatformBuilder: fakePlatformBuilder,
 	}
-	dc := provider.NewVM().(*DockerVM)
 	ccid := ccintf.CCID("simple")
 
 	err = dc.Build(ccid, "type", "path", "name", "version", []byte("code-package"))
@@ -222,13 +221,13 @@ func Test_Wait(t *testing.T) {
 
 func TestHealthCheck(t *testing.T) {
 	client := &mock.DockerClient{}
-	provider := &Provider{Client: client}
+	vm := &DockerVM{Client: client}
 
-	err := provider.HealthCheck(context.Background())
+	err := vm.HealthCheck(context.Background())
 	assert.NoError(t, err)
 
 	client.PingWithContextReturns(errors.New("Error pinging daemon"))
-	err = provider.HealthCheck(context.Background())
+	err = vm.HealthCheck(context.Background())
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Error pinging daemon")
 }
@@ -303,29 +302,6 @@ func TestGetVMName(t *testing.T) {
 		assert.Equal(t, test.expectedOutput, name, "Unexpected output for test case name: %s", test.name)
 	}
 
-}
-
-func TestCreateNewVM(t *testing.T) {
-	networkID := util.GenerateUUID()
-	client := &mock.DockerClient{}
-
-	provider := Provider{
-		PeerID:       "peerID",
-		NetworkID:    networkID,
-		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
-		Client:       client,
-		NetworkMode:  "bridge",
-	}
-	dvm := provider.NewVM()
-
-	expectedClient := &DockerVM{
-		PeerID:       "peerID",
-		NetworkID:    networkID,
-		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
-		Client:       client,
-		NetworkMode:  "bridge",
-	}
-	assert.Equal(t, expectedClient, dvm)
 }
 
 func Test_buildImage(t *testing.T) {

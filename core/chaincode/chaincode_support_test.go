@@ -212,9 +212,9 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		CACert:        ca.CertBytes(),
 		CertGenerator: certGenerator,
 		PeerAddress:   "0.0.0.0:7052",
-		Processor: container.NewVMController(
-			map[string]container.VMProvider{
-				dockercontroller.ContainerType: &dockercontroller.Provider{
+		VMSynchronizer: container.NewVMController(
+			map[string]container.VM{
+				dockercontroller.ContainerType: &dockercontroller.DockerVM{
 					PlatformBuilder: &platforms.Builder{
 						Registry: pr,
 						Client:   client,

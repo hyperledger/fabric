@@ -7,26 +7,99 @@ SPDX-License-Identifier: Apache-2.0
 package container
 
 import (
-	"io"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
-type VMProvider interface {
-	NewVM() VM
-}
-
-type Builder interface {
-	Build() (io.Reader, error)
-}
+var vmLogger = flogging.MustGetLogger("container")
 
 //VM is an abstract virtual image for supporting arbitrary virual machines
 type VM interface {
+	Build(ccid ccintf.CCID, ccType, path, name, version string, codePackage []byte) error
 	Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte) error
 	Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
 	Wait(ccid ccintf.CCID) (int, error)
+}
+
+type LockingVM struct {
+	Underlying     VM
+	ContainerLocks *ContainerLocks
+}
+
+func (lvm *LockingVM) Build(ccid ccintf.CCID, ccType, path, name, version string, codePackage []byte) error {
+	lvm.ContainerLocks.Lock(ccid)
+	defer lvm.ContainerLocks.Unlock(ccid)
+	return lvm.Underlying.Build(ccid, ccType, path, name, version, codePackage)
+}
+
+func (lvm *LockingVM) Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte) error {
+	lvm.ContainerLocks.Lock(ccid)
+	defer lvm.ContainerLocks.Unlock(ccid)
+	return lvm.Underlying.Start(ccid, args, env, filesToUpload)
+}
+
+func (lvm *LockingVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
+	lvm.ContainerLocks.Lock(ccid)
+	defer lvm.ContainerLocks.Unlock(ccid)
+	return lvm.Underlying.Stop(ccid, timeout, dontkill, dontremove)
+}
+
+func (lvm *LockingVM) Wait(ccid ccintf.CCID) (int, error) {
+	// There is a race here, that was previously masked by the fact that
+	// the callback was called after the lock had been released, so
+	// unlocking before blocking
+	lvm.ContainerLocks.Lock(ccid)
+	waitFunc := lvm.Underlying.Wait
+	lvm.ContainerLocks.Unlock(ccid)
+	return waitFunc(ccid)
+}
+
+type ContainerLocks struct {
+	mutex          sync.RWMutex
+	containerLocks map[ccintf.CCID]*refCountedLock
+}
+
+func NewContainerLocks() *ContainerLocks {
+	return &ContainerLocks{
+		containerLocks: make(map[ccintf.CCID]*refCountedLock),
+	}
+}
+
+func (cl *ContainerLocks) Lock(id ccintf.CCID) {
+	//get the container lock under global lock
+	cl.mutex.Lock()
+	var refLck *refCountedLock
+	var ok bool
+	if refLck, ok = cl.containerLocks[id]; !ok {
+		refLck = &refCountedLock{refCount: 1, lock: &sync.RWMutex{}}
+		cl.containerLocks[id] = refLck
+	} else {
+		refLck.refCount++
+		vmLogger.Debugf("refcount %d (%s)", refLck.refCount, id)
+	}
+	cl.mutex.Unlock()
+	vmLogger.Debugf("waiting for container(%s) lock", id)
+	refLck.lock.Lock()
+	vmLogger.Debugf("got container (%s) lock", id)
+}
+
+func (cl *ContainerLocks) Unlock(id ccintf.CCID) {
+	cl.mutex.Lock()
+	if refLck, ok := cl.containerLocks[id]; ok {
+		if refLck.refCount <= 0 {
+			panic("refcnt <= 0")
+		}
+		refLck.lock.Unlock()
+		if refLck.refCount--; refLck.refCount == 0 {
+			vmLogger.Debugf("container lock deleted(%s)", id)
+			delete(cl.containerLocks, id)
+		}
+	} else {
+		vmLogger.Debugf("no lock to unlock(%s)!!", id)
+	}
+	cl.mutex.Unlock()
 }
 
 type refCountedLock struct {
@@ -39,159 +112,27 @@ type refCountedLock struct {
 //   . manage lifecycle of VM (start with build, start, stop ...
 //     eventually probably need fine grained management)
 type VMController struct {
-	sync.RWMutex
-	containerLocks map[ccintf.CCID]*refCountedLock
-	vmProviders    map[string]VMProvider
+	vms map[string]*LockingVM
 }
-
-var vmLogger = flogging.MustGetLogger("container")
 
 // NewVMController creates a new instance of VMController
-func NewVMController(vmProviders map[string]VMProvider) *VMController {
+func NewVMController(vms map[string]VM) *VMController {
+	locks := NewContainerLocks()
+
+	lockingVMs := map[string]*LockingVM{}
+	for vmType, vm := range vms {
+		lockingVMs[vmType] = &LockingVM{
+			ContainerLocks: locks,
+			Underlying:     vm,
+		}
+	}
+
 	return &VMController{
-		containerLocks: make(map[ccintf.CCID]*refCountedLock),
-		vmProviders:    vmProviders,
+		vms: lockingVMs,
 	}
 }
 
-func (vmc *VMController) lockContainer(id ccintf.CCID) {
-	//get the container lock under global lock
-	vmc.Lock()
-	var refLck *refCountedLock
-	var ok bool
-	if refLck, ok = vmc.containerLocks[id]; !ok {
-		refLck = &refCountedLock{refCount: 1, lock: &sync.RWMutex{}}
-		vmc.containerLocks[id] = refLck
-	} else {
-		refLck.refCount++
-		vmLogger.Debugf("refcount %d (%s)", refLck.refCount, id)
-	}
-	vmc.Unlock()
-	vmLogger.Debugf("waiting for container(%s) lock", id)
-	refLck.lock.Lock()
-	vmLogger.Debugf("got container (%s) lock", id)
-}
-
-func (vmc *VMController) unlockContainer(id ccintf.CCID) {
-	vmc.Lock()
-	if refLck, ok := vmc.containerLocks[id]; ok {
-		if refLck.refCount <= 0 {
-			panic("refcnt <= 0")
-		}
-		refLck.lock.Unlock()
-		if refLck.refCount--; refLck.refCount == 0 {
-			vmLogger.Debugf("container lock deleted(%s)", id)
-			delete(vmc.containerLocks, id)
-		}
-	} else {
-		vmLogger.Debugf("no lock to unlock(%s)!!", id)
-	}
-	vmc.Unlock()
-}
-
-//VMCReq - all requests should implement this interface.
-//The context should be passed and tested at each layer till we stop
-//note that we'd stop on the first method on the stack that does not
-//take context
-type VMCReq interface {
-	Do(v VM) error
-	GetCCID() ccintf.CCID
-}
-
-//StartContainerReq - properties for starting a container.
-type StartContainerReq struct {
-	ccintf.CCID
-	Args          []string
-	Env           []string
-	FilesToUpload map[string][]byte
-}
-
-func (si StartContainerReq) Do(v VM) error {
-	return v.Start(si.CCID, si.Args, si.Env, si.FilesToUpload)
-}
-
-func (si StartContainerReq) GetCCID() ccintf.CCID {
-	return si.CCID
-}
-
-//StopContainerReq - properties for stopping a container.
-type StopContainerReq struct {
-	ccintf.CCID
-	Timeout uint
-	//by default we will kill the container after stopping
-	Dontkill bool
-	//by default we will remove the container after killing
-	Dontremove bool
-}
-
-func (si StopContainerReq) Do(v VM) error {
-	return v.Stop(si.CCID, si.Timeout, si.Dontkill, si.Dontremove)
-}
-
-func (si StopContainerReq) GetCCID() ccintf.CCID {
-	return si.CCID
-}
-
-//go:generate counterfeiter -o mock/exitedfunc.go --fake-name ExitedFunc ExitedFunc
-
-// ExitedFunc is the prototype for the function called when a container exits.
-type ExitedFunc func(exitCode int, err error)
-
-// WaitContainerReq provides the chaincode ID of the container to wait on and a
-// callback to call upon chaincode termination.
-type WaitContainerReq struct {
-	CCID   ccintf.CCID
-	Exited ExitedFunc
-}
-
-func (w WaitContainerReq) Do(v VM) error {
-	exited := w.Exited
-	go func() {
-		exitCode, err := v.Wait(w.CCID)
-		exited(exitCode, err)
-	}()
-	return nil
-}
-
-func (w WaitContainerReq) GetCCID() ccintf.CCID {
-	return w.CCID
-}
-
-// A BuildReq encapsulates the data needed to build an image.
-type BuildReq struct {
-	CCID        ccintf.CCID
-	Type        string
-	Path        string
-	Name        string
-	Version     string
-	CodePackage []byte
-}
-
-// A ChaincodeBuilder is resonsible for building chaincode.
-type ChaincodeBuilder interface {
-	Build(ccid ccintf.CCID, ccType, path, name, version string, codePackage []byte) error
-}
-
-func (b BuildReq) Do(v VM) error {
-	if chaincodeBuilder, ok := v.(ChaincodeBuilder); ok {
-		return chaincodeBuilder.Build(b.CCID, b.Type, b.Path, b.Name, b.Version, b.CodePackage)
-	}
-	return nil
-}
-
-func (w BuildReq) GetCCID() ccintf.CCID {
-	return w.CCID
-}
-
-func (vmc *VMController) Process(vmtype string, req VMCReq) error {
-	ccid := req.GetCCID()
-
-	v, ok := vmc.vmProviders[vmtype]
-	if !ok {
-		vmLogger.Panicf("Programming error: unsupported VM type: %s for ccid='%s'", vmtype, ccid.String())
-	}
-
-	vmc.lockContainer(ccid)
-	defer vmc.unlockContainer(ccid)
-	return req.Do(v.NewVM())
+func (vmc *VMController) GetLockingVM(vmType string) (*LockingVM, bool) {
+	vm, ok := vmc.vms[vmType]
+	return vm, ok
 }

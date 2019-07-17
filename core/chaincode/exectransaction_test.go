@@ -142,9 +142,9 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	containerRuntime := &ContainerRuntime{
 		CACert:      ca.CertBytes(),
 		PeerAddress: peerAddress,
-		Processor: container.NewVMController(
-			map[string]container.VMProvider{
-				dockercontroller.ContainerType: &dockercontroller.Provider{
+		VMSynchronizer: container.NewVMController(
+			map[string]container.VM{
+				dockercontroller.ContainerType: &dockercontroller.DockerVM{
 					PeerID:       "",
 					NetworkID:    "",
 					BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
