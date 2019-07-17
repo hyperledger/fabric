@@ -12,7 +12,7 @@ import (
 )
 
 // Package version
-const Version = "1.4.2"
+const Version = "1.4.3"
 
 var CommitSHA string
 
