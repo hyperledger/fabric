@@ -259,13 +259,16 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("vm.docker.tls.enabled", false)
 	viper.Set("vm.docker.attachStdout", false)
 	viper.Set("vm.docker.hostConfig.NetworkMode", "TestingHost")
+	viper.Set("vm.docker.tls.cert.file", "test/vm/tls/cert/file")
+	viper.Set("vm.docker.tls.key.file", "test/vm/tls/key/file")
+	viper.Set("vm.docker.tls.ca.file", "test/vm/tls/ca/file")
 
 	viper.Set("operations.listenAddress", "127.0.0.1:9443")
 	viper.Set("operations.tls.enabled", false)
 	viper.Set("operations.tls.cert.file", "test/tls/cert/file")
 	viper.Set("operations.tls.key.file", "test/tls/key/file")
 	viper.Set("operations.tls.clientAuthRequired", false)
-	viper.Set("operations.tls.clientRootCAs.files", []string{"file1, file2"})
+	viper.Set("operations.tls.clientRootCAs.files", []string{"relative/file1", "/absolute/file2"})
 
 	viper.Set("metrics.provider", "disabled")
 	viper.Set("metrics.statsd.network", "udp")
@@ -313,16 +316,23 @@ func TestGlobalConfig(t *testing.T) {
 
 		OperationsListenAddress:         "127.0.0.1:9443",
 		OperationsTLSEnabled:            false,
-		OperationsTLSCertFile:           "test/tls/cert/file",
-		OperationsTLSKeyFile:            "test/tls/key/file",
+		OperationsTLSCertFile:           filepath.Join(cwd, "test/tls/cert/file"),
+		OperationsTLSKeyFile:            filepath.Join(cwd, "test/tls/key/file"),
 		OperationsTLSClientAuthRequired: false,
-		OperationsTLSClientRootCAs:      []string{"file1, file2"},
+		OperationsTLSClientRootCAs: []string{
+			filepath.Join(cwd, "relative", "file1"),
+			"/absolute/file2",
+		},
 
 		MetricsProvider:     "disabled",
 		StatsdNetwork:       "udp",
 		StatsdAaddress:      "127.0.0.1:8125",
 		StatsdWriteInterval: 10 * time.Second,
 		StatsdPrefix:        "testPrefix",
+
+		DockerCert: filepath.Join(cwd, "test/vm/tls/cert/file"),
+		DockerKey:  filepath.Join(cwd, "test/vm/tls/key/file"),
+		DockerCA:   filepath.Join(cwd, "test/vm/tls/ca/file"),
 	}
 
 	assert.Equal(t, coreConfig, expectedConfig)

@@ -263,10 +263,13 @@ func (c *Config) load() error {
 
 	c.OperationsListenAddress = viper.GetString("operations.listenAddress")
 	c.OperationsTLSEnabled = viper.GetBool("operations.tls.enabled")
-	c.OperationsTLSCertFile = viper.GetString("operations.tls.cert.file")
-	c.OperationsTLSKeyFile = viper.GetString("operations.tls.key.file")
+	c.OperationsTLSCertFile = config.GetPath("operations.tls.cert.file")
+	c.OperationsTLSKeyFile = config.GetPath("operations.tls.key.file")
 	c.OperationsTLSClientAuthRequired = viper.GetBool("operations.tls.clientAuthRequired")
-	c.OperationsTLSClientRootCAs = viper.GetStringSlice("operations.tls.clientRootCAs.files")
+
+	for _, rca := range viper.GetStringSlice("operations.tls.clientRootCAs.files") {
+		c.OperationsTLSClientRootCAs = append(c.OperationsTLSClientRootCAs, config.TranslatePath(configDir, rca))
+	}
 
 	c.MetricsProvider = viper.GetString("metrics.provider")
 	c.StatsdNetwork = viper.GetString("metrics.statsd.network")
