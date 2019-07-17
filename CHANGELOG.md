@@ -1,3 +1,132 @@
+## v1.4.2
+Wed Jul 17 14:16:28 EDT 2019
+
+* [5674921](https://github.com/hyperledger/fabric/commit/5674921) [FAB-15994](https://jira.hyperledger.org/browse/FAB-15994) What's New v1.4.2 edits
+* [54c1cad](https://github.com/hyperledger/fabric/commit/54c1cad) [FAB-15908](https://jira.hyperledger.org/browse/FAB-15908) Add release notes for v1.4.2
+* [7803126](https://github.com/hyperledger/fabric/commit/7803126) [FAB-15815](https://jira.hyperledger.org/browse/FAB-15815) Upgrade to v1.4.2 doc
+* [950442a](https://github.com/hyperledger/fabric/commit/950442a) [FAB-15450](https://jira.hyperledger.org/browse/FAB-15450) Doc: add expectation for state keys
+* [dffb08c](https://github.com/hyperledger/fabric/commit/dffb08c) replace fmt.Sprintf to error.Errorf
+* [af4a0ae](https://github.com/hyperledger/fabric/commit/af4a0ae) [FAB-15840](https://jira.hyperledger.org/browse/FAB-15840) Fix peer isolation after a long disconnect
+* [964200d](https://github.com/hyperledger/fabric/commit/964200d) rm wait for usr input on reset/rollback
+* [61199ed](https://github.com/hyperledger/fabric/commit/61199ed) Fix rollback bug
+* [b137f5b](https://github.com/hyperledger/fabric/commit/b137f5b) filelock to allow one of peer start, reset, rollback
+* [fda1f0b](https://github.com/hyperledger/fabric/commit/fda1f0b) code hygiene: use rolled, rolling, rolls (back)
+* [4680494](https://github.com/hyperledger/fabric/commit/4680494) [FAB-12126](https://jira.hyperledger.org/browse/FAB-12126) Fix discovery client test flake
+* [2828622](https://github.com/hyperledger/fabric/commit/2828622) Add shim/ext deps to ccenv
+* [cc53765](https://github.com/hyperledger/fabric/commit/cc53765) Add a test for a corner case crash scenario
+* [92f16c0](https://github.com/hyperledger/fabric/commit/92f16c0) [FAB-15935](https://jira.hyperledger.org/browse/FAB-15935) Make ConnectionTimeout configurable
+* [6b5cb19](https://github.com/hyperledger/fabric/commit/6b5cb19) Fix typos in BYON tutorial
+* [9aa045a](https://github.com/hyperledger/fabric/commit/9aa045a) e2e test for rollback/reset
+* [fd92279](https://github.com/hyperledger/fabric/commit/fd92279) [FAB-15922](https://jira.hyperledger.org/browse/FAB-15922) Add integration test for GetPrivateDataHash
+* [f878072](https://github.com/hyperledger/fabric/commit/f878072) Change NewPeerClientForAddress to not use configFromEnv
+* [7e65b51](https://github.com/hyperledger/fabric/commit/7e65b51) Add tests for commit hashes with rollback and reset
+* [ab8399e](https://github.com/hyperledger/fabric/commit/ab8399e) [FAB-13876](https://jira.hyperledger.org/browse/FAB-13876) Wire private data hash hash to cchandler
+* [be6101e](https://github.com/hyperledger/fabric/commit/be6101e) Add API GetPrivateDataHash in chaincode shim
+* [b1fa299](https://github.com/hyperledger/fabric/commit/b1fa299) [FAB-13527](https://jira.hyperledger.org/browse/FAB-13527) Add API GetPrivateDataByHash in ledger
+* [7efe977](https://github.com/hyperledger/fabric/commit/7efe977) [FAB-15602](https://jira.hyperledger.org/browse/FAB-15602) Fix port in v1.4 BYFN
+* [6982106](https://github.com/hyperledger/fabric/commit/6982106) [FAB-15845](https://jira.hyperledger.org/browse/FAB-15845) Additional validation checks
+* [59feca2](https://github.com/hyperledger/fabric/commit/59feca2) remove rollback capability from mock
+* [b43773e](https://github.com/hyperledger/fabric/commit/b43773e) [FAB-15826](https://jira.hyperledger.org/browse/FAB-15826) Ignore errors in retrieving txid from env
+* [9fa6c65](https://github.com/hyperledger/fabric/commit/9fa6c65) [FAB-15868](https://jira.hyperledger.org/browse/FAB-15868) Make self cert identification lenient
+* [8150222](https://github.com/hyperledger/fabric/commit/8150222) [FAB-15689](https://jira.hyperledger.org/browse/FAB-15689) Check decoding error
+* [fa0aee1](https://github.com/hyperledger/fabric/commit/fa0aee1) [FAB-15593](https://jira.hyperledger.org/browse/FAB-15593) Extra validation of collection policies
+* [8a12dd6](https://github.com/hyperledger/fabric/commit/8a12dd6) blockstore computes txID if it is empty
+* [dc3d908](https://github.com/hyperledger/fabric/commit/dc3d908) code hygine: rm uneeded if and correct values in test
+* [6f7e7c2](https://github.com/hyperledger/fabric/commit/6f7e7c2) code hygine: introduce func for missingData in test
+* [c253e10](https://github.com/hyperledger/fabric/commit/c253e10) code hygine: rename addBlockCommitHashIfApplicable()
+* [9ddf0be](https://github.com/hyperledger/fabric/commit/9ddf0be) rollback: v142 capability
+* [0ae0a26](https://github.com/hyperledger/fabric/commit/0ae0a26) rollback/reset: doc for peer cli command
+* [df3616a](https://github.com/hyperledger/fabric/commit/df3616a) rollback: skip uncommittedPvtData of oldBlocks
+* [b9cdb46](https://github.com/hyperledger/fabric/commit/b9cdb46) rollback: fetch pvtdat from localstore if exist
+* [80d14bd](https://github.com/hyperledger/fabric/commit/80d14bd) rollback: store pvtdata of both valid/invalid tx
+* [a16f931](https://github.com/hyperledger/fabric/commit/a16f931) rollback: disable reconciler during block reprocessing
+* [d3a7fa8](https://github.com/hyperledger/fabric/commit/d3a7fa8) rollback: fetch pvtdata of invalid tx (gossip)
+* [48a0df3](https://github.com/hyperledger/fabric/commit/48a0df3) rollback: peer node rollback command
+* [34f3ee8](https://github.com/hyperledger/fabric/commit/34f3ee8) rollback: dropDBs except pvtStore and ldrProvider
+* [74ac863](https://github.com/hyperledger/fabric/commit/74ac863) rollback: blockstore and block indices
+* [695b00e](https://github.com/hyperledger/fabric/commit/695b00e) reset: Clear off pre-reset height files
+* [05c43e3](https://github.com/hyperledger/fabric/commit/05c43e3) [FAB-13469](https://jira.hyperledger.org/browse/FAB-13469) consistently use 127.0.0.1
+* [fee3978](https://github.com/hyperledger/fabric/commit/fee3978) fork-det: BlockCommitHash
+* [ab1080b](https://github.com/hyperledger/fabric/commit/ab1080b) fork-det: Skip Channel config from commit hash
+* [8a7a431](https://github.com/hyperledger/fabric/commit/8a7a431) fork-det: Add function for serializing update batch
+* [a311489](https://github.com/hyperledger/fabric/commit/a311489) [FAB-15829](https://jira.hyperledger.org/browse/FAB-15829) Backport .gitattributes lineendings
+* [d8fdd1d](https://github.com/hyperledger/fabric/commit/d8fdd1d) [FAB-12992](https://jira.hyperledger.org/browse/FAB-12992) Kafka to Raft migration doc
+* [849774c](https://github.com/hyperledger/fabric/commit/849774c) [FAB-15725](https://jira.hyperledger.org/browse/FAB-15725) Consensus migration: Raft start revised
+* [902dfe5](https://github.com/hyperledger/fabric/commit/902dfe5) [FAB-15703](https://jira.hyperledger.org/browse/FAB-15703) Consensus migration: solo to raft
+* [ec8728c](https://github.com/hyperledger/fabric/commit/ec8728c) [FAB-15697](https://jira.hyperledger.org/browse/FAB-15697) streamline main_test.go
+* [feca8cd](https://github.com/hyperledger/fabric/commit/feca8cd) [FAB-15811](https://jira.hyperledger.org/browse/FAB-15811) remove unreferenced mspManager field
+* [a980196](https://github.com/hyperledger/fabric/commit/a980196) Minor update: use assert.EqualError
+* [d78d749](https://github.com/hyperledger/fabric/commit/d78d749) [FAB-15774](https://jira.hyperledger.org/browse/FAB-15774) Add migration to What's New
+* [baeb0be](https://github.com/hyperledger/fabric/commit/baeb0be) [FAB-15594](https://jira.hyperledger.org/browse/FAB-15594) Treat getPolicy error as reject all
+* [d226b0b](https://github.com/hyperledger/fabric/commit/d226b0b) [FAB-15432](https://jira.hyperledger.org/browse/FAB-15432) improve level enabled checks
+* [5de1ecd](https://github.com/hyperledger/fabric/commit/5de1ecd) [FAB-15032](https://jira.hyperledger.org/browse/FAB-15032) avoid race between len() and channel read
+* [a770fc1](https://github.com/hyperledger/fabric/commit/a770fc1) Added anchor peer setup for Adding Org to Channel doc
+* [96604dd](https://github.com/hyperledger/fabric/commit/96604dd) reset: delay starting the endorser server
+* [b83ae45](https://github.com/hyperledger/fabric/commit/b83ae45) reset: Allow all ledgers to reset to genesis block
+* [fa6a594](https://github.com/hyperledger/fabric/commit/fa6a594) [FAB-15686](https://jira.hyperledger.org/browse/FAB-15686) Rename Chain to Channel
+* [4a54c98](https://github.com/hyperledger/fabric/commit/4a54c98) [FAB-15642](https://jira.hyperledger.org/browse/FAB-15642) Consensus mig.: permissive maintenance filter
+* [fff9a6c](https://github.com/hyperledger/fabric/commit/fff9a6c) [FAB-15300](https://jira.hyperledger.org/browse/FAB-15300) Consensus migration: integ. test extended
+* [c93f2d0](https://github.com/hyperledger/fabric/commit/c93f2d0) [FAB-15173](https://jira.hyperledger.org/browse/FAB-15173) Consensus migration: maintenance filter
+* [7fcceeb](https://github.com/hyperledger/fabric/commit/7fcceeb) [FAB-10108](https://jira.hyperledger.org/browse/FAB-10108) Add a markdown anchor in peers.md
+* [428b740](https://github.com/hyperledger/fabric/commit/428b740) [FAB-15031](https://jira.hyperledger.org/browse/FAB-15031) Collect common ledger stats in blockstorage
+* [867da47](https://github.com/hyperledger/fabric/commit/867da47) [FAB-15643](https://jira.hyperledger.org/browse/FAB-15643) Fix broken link on Use Cases page
+* [948400f](https://github.com/hyperledger/fabric/commit/948400f) [FAB-14159](https://jira.hyperledger.org/browse/FAB-14159) Peer uses per org endpoints
+* [bbd0324](https://github.com/hyperledger/fabric/commit/bbd0324) [FAB-15450](https://jira.hyperledger.org/browse/FAB-15450) validate historydb key if it contains nils
+* [3587aee](https://github.com/hyperledger/fabric/commit/3587aee) [FAB-15376](https://jira.hyperledger.org/browse/FAB-15376) fix sizefilter: take dynamic resources
+* [8eb0a49](https://github.com/hyperledger/fabric/commit/8eb0a49) [FAB-15313](https://jira.hyperledger.org/browse/FAB-15313) Consensus migration: polish main_test
+* [058e390](https://github.com/hyperledger/fabric/commit/058e390) [FAB-15175](https://jira.hyperledger.org/browse/FAB-15175) Consensus migration: integration test
+* [ca395c4](https://github.com/hyperledger/fabric/commit/ca395c4) [FAB-15172](https://jira.hyperledger.org/browse/FAB-15172) Consensus migration: msgprocessor
+* [40b87df](https://github.com/hyperledger/fabric/commit/40b87df) [FAB-15299](https://jira.hyperledger.org/browse/FAB-15299) Consensus migration: Raft start sequence
+* [c05e6aa](https://github.com/hyperledger/fabric/commit/c05e6aa) [FAB-15174](https://jira.hyperledger.org/browse/FAB-15174) Consensus migration: server boot sequence
+* [cdb86c2](https://github.com/hyperledger/fabric/commit/cdb86c2) Update miekg/pkcs11 to v1.0.2
+* [ddbb2be](https://github.com/hyperledger/fabric/commit/ddbb2be) [FAB-15153](https://jira.hyperledger.org/browse/FAB-15153) Replication best effort Deliver
+* [eb3b715](https://github.com/hyperledger/fabric/commit/eb3b715) [FAB-15152](https://jira.hyperledger.org/browse/FAB-15152) --bestEffort flag to peer channel fetch
+* [282983f](https://github.com/hyperledger/fabric/commit/282983f) [FAB-15147](https://jira.hyperledger.org/browse/FAB-15147) Best effort Deliver in face of errors
+* [54d4ddf](https://github.com/hyperledger/fabric/commit/54d4ddf) [FAB-15146](https://jira.hyperledger.org/browse/FAB-15146) Expose last offset in Kafka metrics
+* [d799710](https://github.com/hyperledger/fabric/commit/d799710) [FAB-15654](https://jira.hyperledger.org/browse/FAB-15654) Undo v2.0 capability backport
+* [0f7133f](https://github.com/hyperledger/fabric/commit/0f7133f) [FAB-15446](https://jira.hyperledger.org/browse/FAB-15446) Per org orderer endpoints in discovery
+* [62ba0b9](https://github.com/hyperledger/fabric/commit/62ba0b9) Generalize EnableCapabilities function for int. tests
+* [36cf5e9](https://github.com/hyperledger/fabric/commit/36cf5e9) [FAB-14160](https://jira.hyperledger.org/browse/FAB-14160) Per Org endpoint support for orderer
+* [889b178](https://github.com/hyperledger/fabric/commit/889b178) [FAB-15049](https://jira.hyperledger.org/browse/FAB-15049) Ripple per org endpoints to deliverClient
+* [100d19e](https://github.com/hyperledger/fabric/commit/100d19e) [FAB-15176](https://jira.hyperledger.org/browse/FAB-15176) Consensus migration: blockwriter nil metadata
+* [07baa3f](https://github.com/hyperledger/fabric/commit/07baa3f) [FAB-15102](https://jira.hyperledger.org/browse/FAB-15102) Consensus migration: protos
+* [5e93f03](https://github.com/hyperledger/fabric/commit/5e93f03) [FAB-15101](https://jira.hyperledger.org/browse/FAB-15101) Consensus migration: capabilities
+* [3fd414c](https://github.com/hyperledger/fabric/commit/3fd414c) [FAB-15511](https://jira.hyperledger.org/browse/FAB-15511) Kafka2Raft-V1 cleanup #5
+* [4b249b7](https://github.com/hyperledger/fabric/commit/4b249b7) [FAB-15045](https://jira.hyperledger.org/browse/FAB-15045) Mig-v1 cleanup #4
+* [a563b48](https://github.com/hyperledger/fabric/commit/a563b48) [FAB-15044](https://jira.hyperledger.org/browse/FAB-15044) Mig-v1 cleanup #3
+* [eb88d26](https://github.com/hyperledger/fabric/commit/eb88d26) [FAB-15043](https://jira.hyperledger.org/browse/FAB-15043) Mig-v1 cleanup #2
+* [01a7c89](https://github.com/hyperledger/fabric/commit/01a7c89) [FAB-14700](https://jira.hyperledger.org/browse/FAB-14700)  Kafka2Raft validate broadcast
+* [b7bc5ca](https://github.com/hyperledger/fabric/commit/b7bc5ca) [FAB-14699](https://jira.hyperledger.org/browse/FAB-14699) Kafka2Raft renames & skeletons
+* [fb00173](https://github.com/hyperledger/fabric/commit/fb00173) [FAB-14248](https://jira.hyperledger.org/browse/FAB-14248) gate migration with Channel V1_4_2
+* [01ba85d](https://github.com/hyperledger/fabric/commit/01ba85d) [FAB-15042](https://jira.hyperledger.org/browse/FAB-15042) Mig-v1 cleanup #1
+* [e2359b5](https://github.com/hyperledger/fabric/commit/e2359b5) [FAB-15620](https://jira.hyperledger.org/browse/FAB-15620) Fix doc link in Peer topic
+* [98f12bb](https://github.com/hyperledger/fabric/commit/98f12bb) [FAB-14180](https://jira.hyperledger.org/browse/FAB-14180) Chan. Cap. V1_4_2 Consensus type migration
+* [e7e317e](https://github.com/hyperledger/fabric/commit/e7e317e) [FAB-14158](https://jira.hyperledger.org/browse/FAB-14158) Add OSN endpoints to orderer org config
+* [de39627](https://github.com/hyperledger/fabric/commit/de39627) [FAB-14680](https://jira.hyperledger.org/browse/FAB-14680) Fix a broken link of README
+* [53d82f3](https://github.com/hyperledger/fabric/commit/53d82f3) [FAB-14158](https://jira.hyperledger.org/browse/FAB-14158) Add V1_4_2 Channel capability
+* [d7eb53a](https://github.com/hyperledger/fabric/commit/d7eb53a) [FAB-15583](https://jira.hyperledger.org/browse/FAB-15583) Fix Raft TLS client cert statement
+* [70abbab](https://github.com/hyperledger/fabric/commit/70abbab) [FAB-15559](https://jira.hyperledger.org/browse/FAB-15559) Fix dead link in documentation
+* [4e5143a](https://github.com/hyperledger/fabric/commit/4e5143a) [FAB-14416](https://jira.hyperledger.org/browse/FAB-14416) Per org orderer endpoints API
+* [2426d64](https://github.com/hyperledger/fabric/commit/2426d64) [FAB-15251](https://jira.hyperledger.org/browse/FAB-15251) Idiomatic string slice comparison
+* [ae7ddeb](https://github.com/hyperledger/fabric/commit/ae7ddeb) [FAB-15227](https://jira.hyperledger.org/browse/FAB-15227) ConnectionCriteria for deliver client
+* [cb398d2](https://github.com/hyperledger/fabric/commit/cb398d2) [FAB-15224](https://jira.hyperledger.org/browse/FAB-15224) EndpointCriteria for peer comm
+* [1142a45](https://github.com/hyperledger/fabric/commit/1142a45) [FAB-15549](https://jira.hyperledger.org/browse/FAB-15549) Restrict discovery max combinations
+* [98f61f7](https://github.com/hyperledger/fabric/commit/98f61f7) [FAB-15474](https://jira.hyperledger.org/browse/FAB-15474) Drop leadership messages from foreign orgs
+* [95b4969](https://github.com/hyperledger/fabric/commit/95b4969) [FAB-15465](https://jira.hyperledger.org/browse/FAB-15465): Update Jinja2
+* [d34754c](https://github.com/hyperledger/fabric/commit/d34754c) [FAB-15404](https://jira.hyperledger.org/browse/FAB-15404) Add TLS config to kafka healthcheck
+* [220d7fb](https://github.com/hyperledger/fabric/commit/220d7fb) [FAB-15318](https://jira.hyperledger.org/browse/FAB-15318) Fix Raft UT flake.
+* [49f4969](https://github.com/hyperledger/fabric/commit/49f4969) [FAB-15311](https://jira.hyperledger.org/browse/FAB-15311) add missing newline to format verbatim block
+* [98ae0ad](https://github.com/hyperledger/fabric/commit/98ae0ad) [FAB-14946](https://jira.hyperledger.org/browse/FAB-14946) increase interval of proactive campaign
+* [542bb52](https://github.com/hyperledger/fabric/commit/542bb52) [FAB-15210](https://jira.hyperledger.org/browse/FAB-15210) fix Raft UT flake
+* [4aa2bcd](https://github.com/hyperledger/fabric/commit/4aa2bcd) [FAB-15088](https://jira.hyperledger.org/browse/FAB-15088) mention raft consensus algorithm
+* [715c6ec](https://github.com/hyperledger/fabric/commit/715c6ec) [FAB-15261](https://jira.hyperledger.org/browse/FAB-15261) Fix cc2cc discovery query bug
+* [d12c613](https://github.com/hyperledger/fabric/commit/d12c613) [FAB-15134](https://jira.hyperledger.org/browse/FAB-15134) Update mutiarch publish script
+* [36be359](https://github.com/hyperledger/fabric/commit/36be359) [FAB-15151](https://jira.hyperledger.org/browse/FAB-15151) fix data race in Raft chain UT
+* [e78616a](https://github.com/hyperledger/fabric/commit/e78616a) [FAB-15160](https://jira.hyperledger.org/browse/FAB-15160) fix data race in Raft chain
+* [3065738](https://github.com/hyperledger/fabric/commit/3065738) [FAB-15157](https://jira.hyperledger.org/browse/FAB-15157) Gracefully handle TLS absense in config
+* [6c005dd](https://github.com/hyperledger/fabric/commit/6c005dd) [FAB-14967](https://jira.hyperledger.org/browse/FAB-14967) Prepare for next fabric rel (1.4.2)
+* [f34f22b](https://github.com/hyperledger/fabric/commit/f34f22b) [FAB-15052](https://jira.hyperledger.org/browse/FAB-15052)Readme: confluence link update
+
 ## v1.4.1
 Thu Apr 11 08:07:20 EDT 2019
 
