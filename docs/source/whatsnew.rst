@@ -42,10 +42,6 @@ across the world to contribute nodes to a decentralized ordering service.
   Shows the configuration parameters and considerations when deploying a Raft
   ordering service.
 
-* :doc:`kafka_raft_migration`:
-  If you're a user with a Kafka ordering service, this doc shows the process for
-  migrating to a Raft ordering service.
-
 * :doc:`orderer_deploy`:
   Describes the process for deploying an ordering node, independent of what the
   ordering service implementation will be.
@@ -53,6 +49,10 @@ across the world to contribute nodes to a decentralized ordering service.
 * :doc:`build_network`:
   The ability to stand up a sample network using a Raft ordering service has been
   added to this tutorial.
+
+* :doc:`kafka_raft_migration`:
+  If you're a user with a Kafka ordering service, this doc shows the process for
+  migrating to a Raft ordering service. Available since v1.4.2.
 
 Serviceability and operations improvements
 ------------------------------------------
