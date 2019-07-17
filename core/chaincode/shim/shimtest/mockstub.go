@@ -14,6 +14,8 @@ package shimtest
 
 import (
 	"container/list"
+	"errors"
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -22,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -287,7 +288,7 @@ func (stub *MockStub) GetStateByRange(startKey, endKey string) (shim.StateQueryI
 func validateSimpleKeys(simpleKeys ...string) error {
 	for _, key := range simpleKeys {
 		if len(key) > 0 && key[0] == compositeKeyNamespace[0] {
-			return errors.Errorf(`first character of the key [%s] contains a null character which is not allowed`, key)
+			return fmt.Errorf(`first character of the key [%s] contains a null character which is not allowed`, key)
 		}
 	}
 	return nil

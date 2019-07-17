@@ -11,7 +11,9 @@ package shim
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -23,7 +25,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/comm"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
@@ -52,7 +53,7 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 	// Establish connection with validating peer
 	clientConn, err := newPeerClientConnection(*peerAddress)
 	if err != nil {
-		err = errors.Wrap(err, "error trying to connect to local peer")
+		err = fmt.Errorf("error trying to connect to local peer: %s", err)
 		return nil, err
 	}
 
@@ -60,11 +61,7 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 	chaincodeSupportClient := pb.NewChaincodeSupportClient(clientConn)
 	stream, err := chaincodeSupportClient.Register(context.Background())
 	if err != nil {
-		return nil, errors.WithMessagef(
-			err,
-			"error connecting to peer address %s",
-			*peerAddress,
-		)
+		return nil, fmt.Errorf("error connecting to peer address %s: %s", *peerAddress, err)
 	}
 	return stream, nil
 }
@@ -139,40 +136,36 @@ func secureOptions() (comm.SecureOptions, error) {
 
 	tlsEnabled, err := strconv.ParseBool(os.Getenv("CORE_PEER_TLS_ENABLED"))
 	if err != nil {
-		return comm.SecureOptions{}, errors.WithMessage(
-			err,
-			"'CORE_PEER_TLS_ENABLED' must be set to 'true' or 'false'",
-		)
+		return comm.SecureOptions{}, fmt.Errorf("'CORE_PEER_TLS_ENABLED' must be set to 'true' or 'false': %s", err)
 	}
 	if tlsEnabled {
 		data, err := ioutil.ReadFile(os.Getenv("CORE_TLS_CLIENT_KEY_PATH"))
 		if err != nil {
-			return comm.SecureOptions{}, errors.WithMessage(err, "failed to read private key file")
+			return comm.SecureOptions{}, fmt.Errorf("failed to read private key file: %s", err)
 		}
 		key, err := base64.StdEncoding.DecodeString(string(data))
 		if err != nil {
-			return comm.SecureOptions{}, errors.WithMessage(err, "failed to decode private key file")
+			return comm.SecureOptions{}, fmt.Errorf("failed to decode private key file: %s", err)
 		}
 		data, err = ioutil.ReadFile(os.Getenv("CORE_TLS_CLIENT_CERT_PATH"))
 		if err != nil {
-			return comm.SecureOptions{}, errors.WithMessage(err, "failed to read public key file")
+			return comm.SecureOptions{}, fmt.Errorf("failed to read public key file: %s", err)
 		}
 		cert, err := base64.StdEncoding.DecodeString(string(data))
 		if err != nil {
-			return comm.SecureOptions{}, errors.WithMessage(err, "failed to decode public key file")
+			return comm.SecureOptions{}, fmt.Errorf("failed to decode public key file: %s", err)
 		}
 		root, err := ioutil.ReadFile(os.Getenv("CORE_PEER_TLS_ROOTCERT_FILE"))
 		if err != nil {
-			return comm.SecureOptions{}, errors.WithMessage(err, "failed to read root cert file")
+			return comm.SecureOptions{}, fmt.Errorf("failed to read root cert file: %s", err)
 		}
 		return comm.SecureOptions{
-				UseTLS:            true,
-				Certificate:       []byte(cert),
-				Key:               []byte(key),
-				ServerRootCAs:     [][]byte{root},
-				RequireClientCert: true,
-			},
-			nil
+			UseTLS:            true,
+			Certificate:       []byte(cert),
+			Key:               []byte(key),
+			ServerRootCAs:     [][]byte{root},
+			RequireClientCert: true,
+		}, nil
 	}
 	return comm.SecureOptions{}, nil
 }
@@ -186,12 +179,12 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 	chaincodeID := &pb.ChaincodeID{Name: chaincodename}
 	payload, err := proto.Marshal(chaincodeID)
 	if err != nil {
-		return errors.Wrap(err, "error marshalling chaincodeID during chaincode registration")
+		return fmt.Errorf("error marshalling chaincodeID during chaincode registration: %s", err)
 	}
 
 	// Register on the stream
 	if err = handler.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER, Payload: payload}); err != nil {
-		return errors.WithMessage(err, "error sending chaincode REGISTER")
+		return fmt.Errorf("error sending chaincode REGISTER: %s", err)
 	}
 
 	// holds return values from gRPC Recv below
@@ -213,10 +206,10 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 		case rmsg := <-msgAvail:
 			switch {
 			case rmsg.err == io.EOF:
-				err = errors.Wrapf(rmsg.err, "received EOF, ending chaincode stream")
+				err = fmt.Errorf("received EOF, ending chaincode stream: %s", rmsg.err)
 				return err
 			case rmsg.err != nil:
-				err := errors.Wrap(rmsg.err, "receive failed")
+				err := fmt.Errorf("receive failed: %s", rmsg.err)
 				return err
 			case rmsg.msg == nil:
 				err := errors.New("received nil message, ending chaincode stream")
@@ -224,7 +217,7 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 			default:
 				err := handler.handleMessage(rmsg.msg, errc)
 				if err != nil {
-					err = errors.WithMessage(err, "error handling message")
+					err = fmt.Errorf("error handling message: %s", err)
 					return err
 				}
 
@@ -233,7 +226,7 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 
 		case sendErr := <-errc:
 			if sendErr != nil {
-				err := errors.Wrap(sendErr, "error sending")
+				err := fmt.Errorf("error sending: %s", sendErr)
 				return err
 			}
 		}

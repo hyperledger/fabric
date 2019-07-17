@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package shim
 
 import (
+	"errors"
 	"fmt"
 	"unicode/utf8"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/pkg/errors"
 )
 
 // ChaincodeStub is an object passed to chaincode for shim side handling of
@@ -59,18 +59,18 @@ func newChaincodeStub(handler *Handler, channelId, txid string, input *pb.Chainc
 
 		stub.proposal, err = protoutil.GetProposal(signedProposal.ProposalBytes)
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed extracting signedProposal from signed signedProposal")
+			return nil, fmt.Errorf("failed extracting signedProposal from signed signedProposal: %s", err)
 		}
 
 		// Extract creator, transient, binding...
 		stub.creator, stub.transient, err = protoutil.GetChaincodeProposalContext(stub.proposal)
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed extracting signedProposal fields")
+			return nil, fmt.Errorf("failed extracting signedProposal fields: %s", err)
 		}
 
 		stub.binding, err = protoutil.ComputeProposalBinding(stub.proposal)
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed computing binding from signedProposal")
+			return nil, fmt.Errorf("failed computing binding from signedProposal: %s", err)
 		}
 	}
 
@@ -409,11 +409,11 @@ func splitCompositeKey(compositeKey string) (string, []string, error) {
 
 func validateCompositeKeyAttribute(str string) error {
 	if !utf8.ValidString(str) {
-		return errors.Errorf("not a valid utf8 string: [%x]", str)
+		return fmt.Errorf("not a valid utf8 string: [%x]", str)
 	}
 	for index, runeValue := range str {
 		if runeValue == minUnicodeRuneValue || runeValue == maxUnicodeRuneValue {
-			return errors.Errorf(`input contain unicode %#U starting at position [%d]. %#U and %#U are not allowed in the input attribute of a composite key`,
+			return fmt.Errorf(`input contains unicode %#U starting at position [%d]. %#U and %#U are not allowed in the input attribute of a composite key`,
 				runeValue, index, minUnicodeRuneValue, maxUnicodeRuneValue)
 		}
 	}
@@ -427,7 +427,7 @@ func validateCompositeKeyAttribute(str string) error {
 func validateSimpleKeys(simpleKeys ...string) error {
 	for _, key := range simpleKeys {
 		if len(key) > 0 && key[0] == compositeKeyNamespace[0] {
-			return errors.Errorf(`first character of the key [%s] contains a null character which is not allowed`, key)
+			return fmt.Errorf(`first character of the key [%s] contains a null character which is not allowed`, key)
 		}
 	}
 	return nil
@@ -544,7 +544,7 @@ func (iter *CommonIterator) getResultFromBytes(queryResultBytes *pb.QueryResultB
 	if rType == STATE_QUERY_RESULT {
 		stateQueryResult := &queryresult.KV{}
 		if err := proto.Unmarshal(queryResultBytes.ResultBytes, stateQueryResult); err != nil {
-			return nil, errors.Wrap(err, "error unmarshaling result from bytes")
+			return nil, fmt.Errorf("error unmarshaling result from bytes: %s", err)
 		}
 		return stateQueryResult, nil
 

@@ -17,10 +17,10 @@ limitations under the License.
 package shim
 
 import (
+	"errors"
 	"fmt"
 
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/pkg/errors"
 )
 
 //SendPanicFailure

@@ -440,7 +440,7 @@ func validateCompositeKeyAttribute(str string) error {
 	}
 	for index, runeValue := range str {
 		if runeValue == minUnicodeRuneValue || runeValue == maxUnicodeRuneValue {
-			return errors.Errorf(`input contain unicode %#U starting at position [%d]. %#U and %#U are not allowed in the input attribute of a composite key`,
+			return errors.Errorf(`input contains unicode %#U starting at position [%d]. %#U and %#U are not allowed in the input attribute of a composite key`,
 				runeValue, index, minUnicodeRuneValue, maxUnicodeRuneValue)
 		}
 	}

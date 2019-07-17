@@ -7,12 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package shim
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/pkg/errors"
 )
 
 type state string
@@ -87,12 +87,12 @@ func (h *Handler) createResponseChannel(channelID, txid string) (<-chan pb.Chain
 	defer h.responseChannelsMutex.Unlock()
 
 	if h.responseChannels == nil {
-		return nil, errors.Errorf("[%s] cannot create response channel", shorttxid(txid))
+		return nil, fmt.Errorf("[%s] cannot create response channel", shorttxid(txid))
 	}
 
 	txCtxID := transactionContextID(channelID, txid)
 	if h.responseChannels[txCtxID] != nil {
-		return nil, errors.Errorf("[%s] channel exists", shorttxid(txCtxID))
+		return nil, fmt.Errorf("[%s] channel exists", shorttxid(txCtxID))
 	}
 
 	responseChan := make(chan pb.ChaincodeMessage)
@@ -114,13 +114,13 @@ func (h *Handler) handleResponse(msg *pb.ChaincodeMessage) error {
 	defer h.responseChannelsMutex.Unlock()
 
 	if h.responseChannels == nil {
-		return errors.Errorf("[%s] Cannot send message response channel", shorttxid(msg.Txid))
+		return fmt.Errorf("[%s] Cannot send message response channel", shorttxid(msg.Txid))
 	}
 
 	txCtxID := transactionContextID(msg.ChannelId, msg.Txid)
 	responseCh := h.responseChannels[txCtxID]
 	if responseCh == nil {
-		return errors.Errorf("[%s] responseChannel does not exist", shorttxid(msg.Txid))
+		return fmt.Errorf("[%s] responseChannel does not exist", shorttxid(msg.Txid))
 	}
 	responseCh <- *msg
 	return nil
@@ -166,13 +166,13 @@ func (h *Handler) handleInit(msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, er
 	input := &pb.ChaincodeInput{}
 	err := proto.Unmarshal(msg.Payload, input)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal input")
+		return nil, fmt.Errorf("failed to unmarshal input: %s", err)
 	}
 
 	// Create the ChaincodeStub which the chaincode can use to callback
 	stub, err := newChaincodeStub(h, msg.ChannelId, msg.Txid, input, msg.Proposal)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create new ChaincodeStub")
+		return nil, fmt.Errorf("failed to create new ChaincodeStub: %s", err)
 	}
 
 	res := h.cc.Init(stub)
@@ -182,7 +182,7 @@ func (h *Handler) handleInit(msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, er
 
 	resBytes, err := proto.Marshal(&res)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal response")
+		return nil, fmt.Errorf("failed to marshal response: %s", err)
 	}
 
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: resBytes, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent, ChannelId: stub.ChannelId}, nil
@@ -194,13 +194,13 @@ func (h *Handler) handleTransaction(msg *pb.ChaincodeMessage) (*pb.ChaincodeMess
 	input := &pb.ChaincodeInput{}
 	err := proto.Unmarshal(msg.Payload, input)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal input")
+		return nil, fmt.Errorf("failed to unmarshal input: %s", err)
 	}
 
 	// Create the ChaincodeStub which the chaincode can use to callback
 	stub, err := newChaincodeStub(h, msg.ChannelId, msg.Txid, input, msg.Proposal)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create new ChaincodeStub")
+		return nil, fmt.Errorf("failed to create new ChaincodeStub: %s", err)
 	}
 
 	res := h.cc.Invoke(stub)
@@ -208,7 +208,7 @@ func (h *Handler) handleTransaction(msg *pb.ChaincodeMessage) (*pb.ChaincodeMess
 	// Endorser will handle error contained in Response.
 	resBytes, err := proto.Marshal(&res)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal response")
+		return nil, fmt.Errorf("failed to marshal response: %s", err)
 	}
 
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: resBytes, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent, ChannelId: stub.ChannelId}, nil
@@ -235,7 +235,7 @@ func (h *Handler) handleGetState(collection string, key string, channelId string
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "[%s] error sending %s", shorttxid(txid), pb.ChaincodeMessage_GET_STATE)
+		return nil, fmt.Errorf("[%s] error sending %s: %s", shorttxid(txid), pb.ChaincodeMessage_GET_STATE, err)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
@@ -244,11 +244,11 @@ func (h *Handler) handleGetState(collection string, key string, channelId string
 	}
 	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
-		return nil, errors.New(string(responseMsg.Payload[:]))
+		return nil, fmt.Errorf("%s", responseMsg.Payload[:])
 	}
 
 	// Incorrect chaincode message received
-	return nil, errors.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return nil, fmt.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
 func (h *Handler) handleGetPrivateDataHash(collection string, key string, channelId string, txid string) ([]byte, error) {
@@ -258,7 +258,7 @@ func (h *Handler) handleGetPrivateDataHash(collection string, key string, channe
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_PRIVATE_DATA_HASH, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "[%s] error sending %s", shorttxid(txid), pb.ChaincodeMessage_GET_PRIVATE_DATA_HASH)
+		return nil, fmt.Errorf("[%s] error sending %s: %s", shorttxid(txid), pb.ChaincodeMessage_GET_PRIVATE_DATA_HASH, err)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
@@ -267,11 +267,11 @@ func (h *Handler) handleGetPrivateDataHash(collection string, key string, channe
 	}
 	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
-		return nil, errors.New(string(responseMsg.Payload[:]))
+		return nil, fmt.Errorf("%s", responseMsg.Payload[:])
 	}
 
 	// Incorrect chaincode message received
-	return nil, errors.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return nil, fmt.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
 func (h *Handler) handleGetStateMetadata(collection string, key string, channelID string, txID string) (map[string][]byte, error) {
@@ -281,7 +281,7 @@ func (h *Handler) handleGetStateMetadata(collection string, key string, channelI
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_METADATA, Payload: payloadBytes, Txid: txID, ChannelId: channelID}
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelID, txID)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "[%s] error sending %s", shorttxid(txID), pb.ChaincodeMessage_GET_STATE_METADATA)
+		return nil, fmt.Errorf("[%s] error sending %s: %s", shorttxid(txID), pb.ChaincodeMessage_GET_STATE_METADATA, err)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
@@ -300,11 +300,11 @@ func (h *Handler) handleGetStateMetadata(collection string, key string, channelI
 	}
 	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
-		return nil, errors.New(string(responseMsg.Payload[:]))
+		return nil, fmt.Errorf("%s", responseMsg.Payload[:])
 	}
 
 	// Incorrect chaincode message received
-	return nil, errors.Errorf("[%s]incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return nil, fmt.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
 // handlePutState communicates with the peer to put state information into the ledger.
@@ -317,7 +317,7 @@ func (h *Handler) handlePutState(collection string, key string, value []byte, ch
 	// Execute the request and get response
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
-		return errors.WithMessagef(err, "[%s] error sending %s", msg.Txid, pb.ChaincodeMessage_PUT_STATE)
+		return fmt.Errorf("[%s] error sending %s: %s", msg.Txid, pb.ChaincodeMessage_PUT_STATE, err)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
@@ -327,11 +327,11 @@ func (h *Handler) handlePutState(collection string, key string, value []byte, ch
 
 	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
-		return errors.New(string(responseMsg.Payload[:]))
+		return fmt.Errorf("%s", responseMsg.Payload[:])
 	}
 
 	// Incorrect chaincode message received
-	return errors.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return fmt.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
 func (h *Handler) handlePutStateMetadataEntry(collection string, key string, metakey string, metadata []byte, channelID string, txID string) error {
@@ -343,7 +343,7 @@ func (h *Handler) handlePutStateMetadataEntry(collection string, key string, met
 	// Execute the request and get response
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelID, txID)
 	if err != nil {
-		return errors.WithMessagef(err, "[%s] error sending %s", msg.Txid, pb.ChaincodeMessage_PUT_STATE_METADATA)
+		return fmt.Errorf("[%s] error sending %s: %s", msg.Txid, pb.ChaincodeMessage_PUT_STATE_METADATA, err)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
@@ -353,11 +353,11 @@ func (h *Handler) handlePutStateMetadataEntry(collection string, key string, met
 
 	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
-		return errors.New(string(responseMsg.Payload[:]))
+		return fmt.Errorf("%s", responseMsg.Payload[:])
 	}
 
 	// Incorrect chaincode message received
-	return errors.Errorf("[%s]incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return fmt.Errorf("[%s]incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
 // handleDelState communicates with the peer to delete a key from the state in the ledger.
@@ -367,7 +367,7 @@ func (h *Handler) handleDelState(collection string, key string, channelId string
 	// Execute the request and get response
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
-		return errors.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_DEL_STATE)
+		return fmt.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_DEL_STATE)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
@@ -376,11 +376,11 @@ func (h *Handler) handleDelState(collection string, key string, channelId string
 	}
 	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
-		return errors.New(string(responseMsg.Payload[:]))
+		return fmt.Errorf("%s", responseMsg.Payload[:])
 	}
 
 	// Incorrect chaincode message received
-	return errors.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return fmt.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
 func (h *Handler) handleGetStateByRange(collection, startKey, endKey string, metadata []byte,
@@ -390,7 +390,7 @@ func (h *Handler) handleGetStateByRange(collection, startKey, endKey string, met
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
-		return nil, errors.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE_BY_RANGE)
+		return nil, fmt.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE_BY_RANGE)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
@@ -398,18 +398,18 @@ func (h *Handler) handleGetStateByRange(collection, startKey, endKey string, met
 		rangeQueryResponse := &pb.QueryResponse{}
 		err = proto.Unmarshal(responseMsg.Payload, rangeQueryResponse)
 		if err != nil {
-			return nil, errors.Errorf("[%s] GetStateByRangeResponse unmarshall error", shorttxid(responseMsg.Txid))
+			return nil, fmt.Errorf("[%s] GetStateByRangeResponse unmarshall error", shorttxid(responseMsg.Txid))
 		}
 
 		return rangeQueryResponse, nil
 	}
 	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
-		return nil, errors.New(string(responseMsg.Payload[:]))
+		return nil, fmt.Errorf("%s", responseMsg.Payload[:])
 	}
 
 	// Incorrect chaincode message received
-	return nil, errors.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return nil, fmt.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
 func (h *Handler) handleQueryStateNext(id, channelId, txid string) (*pb.QueryResponse, error) {
@@ -428,25 +428,25 @@ func (h *Handler) handleQueryStateNext(id, channelId, txid string) (*pb.QueryRes
 	var responseMsg pb.ChaincodeMessage
 
 	if responseMsg, err = h.sendReceive(msg, respChan); err != nil {
-		return nil, errors.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_NEXT)
+		return nil, fmt.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_NEXT)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		queryResponse := &pb.QueryResponse{}
 		if err = proto.Unmarshal(responseMsg.Payload, queryResponse); err != nil {
-			return nil, errors.Errorf("[%s] unmarshal error", shorttxid(responseMsg.Txid))
+			return nil, fmt.Errorf("[%s] unmarshal error", shorttxid(responseMsg.Txid))
 		}
 
 		return queryResponse, nil
 	}
 	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
-		return nil, errors.New(string(responseMsg.Payload[:]))
+		return nil, fmt.Errorf("%s", responseMsg.Payload[:])
 	}
 
 	// Incorrect chaincode message received
-	return nil, errors.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return nil, fmt.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
 func (h *Handler) handleQueryStateClose(id, channelId, txid string) (*pb.QueryResponse, error) {
@@ -465,25 +465,25 @@ func (h *Handler) handleQueryStateClose(id, channelId, txid string) (*pb.QueryRe
 	var responseMsg pb.ChaincodeMessage
 
 	if responseMsg, err = h.sendReceive(msg, respChan); err != nil {
-		return nil, errors.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_CLOSE)
+		return nil, fmt.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_CLOSE)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		queryResponse := &pb.QueryResponse{}
 		if err = proto.Unmarshal(responseMsg.Payload, queryResponse); err != nil {
-			return nil, errors.Errorf("[%s] unmarshal error", shorttxid(responseMsg.Txid))
+			return nil, fmt.Errorf("[%s] unmarshal error", shorttxid(responseMsg.Txid))
 		}
 
 		return queryResponse, nil
 	}
 	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
-		return nil, errors.New(string(responseMsg.Payload[:]))
+		return nil, fmt.Errorf("%s", responseMsg.Payload[:])
 	}
 
 	// Incorrect chaincode message received
-	return nil, errors.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return nil, fmt.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
 func (h *Handler) handleGetQueryResult(collection string, query string, metadata []byte,
@@ -493,25 +493,25 @@ func (h *Handler) handleGetQueryResult(collection string, query string, metadata
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
-		return nil, errors.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_QUERY_RESULT)
+		return nil, fmt.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_QUERY_RESULT)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		executeQueryResponse := &pb.QueryResponse{}
 		if err = proto.Unmarshal(responseMsg.Payload, executeQueryResponse); err != nil {
-			return nil, errors.Errorf("[%s] unmarshal error", shorttxid(responseMsg.Txid))
+			return nil, fmt.Errorf("[%s] unmarshal error", shorttxid(responseMsg.Txid))
 		}
 
 		return executeQueryResponse, nil
 	}
 	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
-		return nil, errors.New(string(responseMsg.Payload[:]))
+		return nil, fmt.Errorf("%s", responseMsg.Payload[:])
 	}
 
 	// Incorrect chaincode message received
-	return nil, errors.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return nil, fmt.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
 func (h *Handler) handleGetHistoryForKey(key string, channelId string, txid string) (*pb.QueryResponse, error) {
@@ -529,25 +529,25 @@ func (h *Handler) handleGetHistoryForKey(key string, channelId string, txid stri
 	var responseMsg pb.ChaincodeMessage
 
 	if responseMsg, err = h.sendReceive(msg, respChan); err != nil {
-		return nil, errors.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_HISTORY_FOR_KEY)
+		return nil, fmt.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_HISTORY_FOR_KEY)
 	}
 
 	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
 		// Success response
 		getHistoryForKeyResponse := &pb.QueryResponse{}
 		if err = proto.Unmarshal(responseMsg.Payload, getHistoryForKeyResponse); err != nil {
-			return nil, errors.Errorf("[%s] unmarshal error", shorttxid(responseMsg.Txid))
+			return nil, fmt.Errorf("[%s] unmarshal error", shorttxid(responseMsg.Txid))
 		}
 
 		return getHistoryForKeyResponse, nil
 	}
 	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
 		// Error response
-		return nil, errors.New(string(responseMsg.Payload[:]))
+		return nil, fmt.Errorf("%s", responseMsg.Payload[:])
 	}
 
 	// Incorrect chaincode message received
-	return nil, errors.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return nil, fmt.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
 func (h *Handler) createResponse(status int32, payload []byte) pb.Response {
@@ -618,14 +618,14 @@ func (h *Handler) handleReady(msg *pb.ChaincodeMessage, errc chan error) error {
 		return nil
 
 	default:
-		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) while in state: %s", msg.Txid, msg.Type, h.state)
+		return fmt.Errorf("[%s] Chaincode h cannot handle message (%s) while in state: %s", msg.Txid, msg.Type, h.state)
 	}
 }
 
 // handleEstablished handles messages received from the peer when the handler is in the "established" state.
 func (h *Handler) handleEstablished(msg *pb.ChaincodeMessage, errc chan error) error {
 	if msg.Type != pb.ChaincodeMessage_READY {
-		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) while in state: %s", msg.Txid, msg.Type, h.state)
+		return fmt.Errorf("[%s] Chaincode h cannot handle message (%s) while in state: %s", msg.Txid, msg.Type, h.state)
 	}
 
 	h.state = ready
@@ -635,7 +635,7 @@ func (h *Handler) handleEstablished(msg *pb.ChaincodeMessage, errc chan error) e
 // hanndleCreated handles messages received from the peer when the handler is in the "created" state.
 func (h *Handler) handleCreated(msg *pb.ChaincodeMessage, errc chan error) error {
 	if msg.Type != pb.ChaincodeMessage_REGISTERED {
-		return errors.Errorf("[%s] Chaincode h cannot handle message (%s) while in state: %s", msg.Txid, msg.Type, h.state)
+		return fmt.Errorf("[%s] Chaincode h cannot handle message (%s) while in state: %s", msg.Txid, msg.Type, h.state)
 	}
 
 	h.state = established

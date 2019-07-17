@@ -304,7 +304,7 @@ var _ = Describe("Verifier", func() {
 			It("fails when creating the ledger key for the output", func() {
 				By("returning an error")
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
-				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "error creating output ID: input contain unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "error creating output ID: input contains unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
 			})
 		})
 
@@ -316,7 +316,7 @@ var _ = Describe("Verifier", func() {
 			It("fails when creating the ledger key for the first output", func() {
 				By("returning an error")
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, fakeLedger)
-				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "error creating output ID: input contain unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
+				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "error creating output ID: input contains unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
 			})
 		})
 
