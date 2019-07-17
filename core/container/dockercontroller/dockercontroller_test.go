@@ -54,15 +54,8 @@ func TestIntegrationPath(t *testing.T) {
 	err = dc.Start(ccid, nil, nil, nil)
 	require.NoError(t, err)
 
-	// Stop, killing, and deleting
-	err = dc.Stop(ccid, 0, true, true)
+	err = dc.Stop(ccid)
 	require.NoError(t, err)
-
-	err = dc.Start(ccid, nil, nil, nil)
-	require.NoError(t, err)
-
-	// Stop, killing, but not deleting
-	_ = dc.Stop(ccid, 0, false, true)
 }
 
 func Test_Start(t *testing.T) {
@@ -196,7 +189,7 @@ func Test_Stop(t *testing.T) {
 	ccid := ccintf.CCID("simple")
 
 	// Success case
-	err := dvm.Stop(ccid, 10, true, true)
+	err := dvm.Stop(ccid)
 	assert.NoError(t, err)
 }
 

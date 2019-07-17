@@ -84,12 +84,7 @@ func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 		return errors.Errorf("unknown container type: %s", ccci.ContainerType)
 	}
 
-	if err := vm.Stop(
-		ccintf.New(ccci.PackageID),
-		0,
-		false,
-		false,
-	); err != nil {
+	if err := vm.Stop(ccintf.New(ccci.PackageID)); err != nil {
 		return errors.WithMessage(err, "error stopping container")
 	}
 

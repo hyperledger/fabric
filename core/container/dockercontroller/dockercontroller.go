@@ -77,19 +77,6 @@ type PlatformBuilder interface {
 	GenerateDockerBuild(ccType, path, name, version string, codePackage []byte) (io.Reader, error)
 }
 
-// Provider implements container.VMProvider
-type Provider struct {
-	PeerID          string
-	NetworkID       string
-	BuildMetrics    *BuildMetrics
-	HostConfig      *docker.HostConfig
-	Client          dockerClient
-	AttachStdOut    bool
-	ChaincodePull   bool
-	NetworkMode     string
-	PlatformBuilder PlatformBuilder
-}
-
 // DockerVM is a vm. It is identified by an image id
 type DockerVM struct {
 	PeerID          string
@@ -200,7 +187,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 	containerName := vm.GetVMName(ccid)
 	logger := dockerLogger.With("imageName", imageName, "containerName", containerName)
 
-	vm.stopInternal(containerName, 0, false, false)
+	vm.stopInternal(containerName)
 
 	err = vm.createContainer(imageName, containerName, args, env)
 	if err != nil {
@@ -316,9 +303,9 @@ func streamOutput(logger *flogging.FabricLogger, client dockerClient, containerN
 }
 
 // Stop stops a running chaincode
-func (vm *DockerVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
+func (vm *DockerVM) Stop(ccid ccintf.CCID) error {
 	id := vm.ccidToContainerID(ccid)
-	return vm.stopInternal(id, timeout, dontkill, dontremove)
+	return vm.stopInternal(id)
 }
 
 // Wait blocks until the container stops and returns the exit code of the container.
@@ -331,24 +318,20 @@ func (vm *DockerVM) ccidToContainerID(ccid ccintf.CCID) string {
 	return strings.Replace(vm.GetVMName(ccid), ":", "_", -1)
 }
 
-func (vm *DockerVM) stopInternal(id string, timeout uint, dontkill, dontremove bool) error {
+func (vm *DockerVM) stopInternal(id string) error {
 	logger := dockerLogger.With("id", id)
 
 	logger.Debugw("stopping container")
-	err := vm.Client.StopContainer(id, timeout)
+	err := vm.Client.StopContainer(id, 0)
 	dockerLogger.Debugw("stop container result", "error", err)
 
-	if !dontkill {
-		logger.Debugw("killing container")
-		err = vm.Client.KillContainer(docker.KillContainerOptions{ID: id})
-		logger.Debugw("kill container result", "error", err)
-	}
+	logger.Debugw("killing container")
+	err = vm.Client.KillContainer(docker.KillContainerOptions{ID: id})
+	logger.Debugw("kill container result", "error", err)
 
-	if !dontremove {
-		logger.Debugw("removing container")
-		err = vm.Client.RemoveContainer(docker.RemoveContainerOptions{ID: id, Force: true})
-		logger.Debugw("remove container result", "error", err)
-	}
+	logger.Debugw("removing container")
+	err = vm.Client.RemoveContainer(docker.RemoveContainerOptions{ID: id, Force: true})
+	logger.Debugw("remove container result", "error", err)
 
 	return err
 }

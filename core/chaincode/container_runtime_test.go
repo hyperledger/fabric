@@ -255,11 +255,8 @@ func TestContainerRuntimeStop(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, fakeVM.StopCallCount())
-	ccid, timeout, dontKill, dontRemove := fakeVM.StopArgsForCall(0)
+	ccid := fakeVM.StopArgsForCall(0)
 	assert.Equal(t, ccintf.CCID("chaincode-id-name:chaincode-version"), ccid)
-	assert.Equal(t, uint(0), timeout)
-	assert.Equal(t, false, dontRemove)
-	assert.Equal(t, false, dontKill)
 }
 
 func TestContainerRuntimeStopErrors(t *testing.T) {

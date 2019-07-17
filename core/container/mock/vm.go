@@ -39,13 +39,10 @@ type VM struct {
 	startReturnsOnCall map[int]struct {
 		result1 error
 	}
-	StopStub        func(ccintf.CCID, uint, bool, bool) error
+	StopStub        func(ccintf.CCID) error
 	stopMutex       sync.RWMutex
 	stopArgsForCall []struct {
 		arg1 ccintf.CCID
-		arg2 uint
-		arg3 bool
-		arg4 bool
 	}
 	stopReturns struct {
 		result1 error
@@ -213,19 +210,16 @@ func (fake *VM) StartReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *VM) Stop(arg1 ccintf.CCID, arg2 uint, arg3 bool, arg4 bool) error {
+func (fake *VM) Stop(arg1 ccintf.CCID) error {
 	fake.stopMutex.Lock()
 	ret, specificReturn := fake.stopReturnsOnCall[len(fake.stopArgsForCall)]
 	fake.stopArgsForCall = append(fake.stopArgsForCall, struct {
 		arg1 ccintf.CCID
-		arg2 uint
-		arg3 bool
-		arg4 bool
-	}{arg1, arg2, arg3, arg4})
-	fake.recordInvocation("Stop", []interface{}{arg1, arg2, arg3, arg4})
+	}{arg1})
+	fake.recordInvocation("Stop", []interface{}{arg1})
 	fake.stopMutex.Unlock()
 	if fake.StopStub != nil {
-		return fake.StopStub(arg1, arg2, arg3, arg4)
+		return fake.StopStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
@@ -240,17 +234,17 @@ func (fake *VM) StopCallCount() int {
 	return len(fake.stopArgsForCall)
 }
 
-func (fake *VM) StopCalls(stub func(ccintf.CCID, uint, bool, bool) error) {
+func (fake *VM) StopCalls(stub func(ccintf.CCID) error) {
 	fake.stopMutex.Lock()
 	defer fake.stopMutex.Unlock()
 	fake.StopStub = stub
 }
 
-func (fake *VM) StopArgsForCall(i int) (ccintf.CCID, uint, bool, bool) {
+func (fake *VM) StopArgsForCall(i int) ccintf.CCID {
 	fake.stopMutex.RLock()
 	defer fake.stopMutex.RUnlock()
 	argsForCall := fake.stopArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+	return argsForCall.arg1
 }
 
 func (fake *VM) StopReturns(result1 error) {

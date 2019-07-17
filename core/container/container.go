@@ -19,7 +19,7 @@ var vmLogger = flogging.MustGetLogger("container")
 type VM interface {
 	Build(ccid ccintf.CCID, ccType, path, name, version string, codePackage []byte) error
 	Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte) error
-	Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
+	Stop(ccid ccintf.CCID) error
 	Wait(ccid ccintf.CCID) (int, error)
 }
 
@@ -40,10 +40,10 @@ func (lvm *LockingVM) Start(ccid ccintf.CCID, args []string, env []string, files
 	return lvm.Underlying.Start(ccid, args, env, filesToUpload)
 }
 
-func (lvm *LockingVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
+func (lvm *LockingVM) Stop(ccid ccintf.CCID) error {
 	lvm.ContainerLocks.Lock(ccid)
 	defer lvm.ContainerLocks.Unlock(ccid)
-	return lvm.Underlying.Stop(ccid, timeout, dontkill, dontremove)
+	return lvm.Underlying.Stop(ccid)
 }
 
 func (lvm *LockingVM) Wait(ccid ccintf.CCID) (int, error) {

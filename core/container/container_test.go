@@ -66,19 +66,10 @@ var _ = Describe("Container", func() {
 			})
 
 			It("passes through to the underlying impl", func() {
-				err := lockingVM.Stop(
-					ccintf.CCID("stop:name"),
-					283,
-					true,
-					false,
-				)
+				err := lockingVM.Stop(ccintf.CCID("stop:name"))
 				Expect(err).To(MatchError("Boo"))
 				Expect(fakeVM.StopCallCount()).To(Equal(1))
-				ccid, timeout, dontKill, dontRemove := fakeVM.StopArgsForCall(0)
-				Expect(ccid).To(Equal(ccintf.CCID("stop:name")))
-				Expect(timeout).To(Equal(uint(283)))
-				Expect(dontKill).To(Equal(true))
-				Expect(dontRemove).To(Equal(false))
+				Expect(fakeVM.StopArgsForCall(0)).To(Equal(ccintf.CCID("stop:name")))
 			})
 		})
 
