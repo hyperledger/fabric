@@ -116,8 +116,10 @@ func TestConfiguration(t *testing.T) {
 func TestGetServerConfig(t *testing.T) {
 	// good config without TLS
 	viper.Set("peer.tls.enabled", false)
+	viper.Set("peer.connectiontimeout", "7s")
 	sc, _ := GetServerConfig()
 	assert.Equal(t, false, sc.SecOpts.UseTLS, "ServerConfig.SecOpts.UseTLS should be false")
+	assert.Equal(t, sc.ConnectionTimeout, 7*time.Second, "ServerConfig.ConnectionTimeout should be 7 seconds")
 
 	// keepalive options
 	assert.Equal(t, comm.DefaultKeepaliveOptions, sc.KaOpts, "ServerConfig.KaOpts should be set to default values")
