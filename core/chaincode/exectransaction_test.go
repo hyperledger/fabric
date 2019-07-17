@@ -140,10 +140,8 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		TotalQueryLimit: 10000,
 	}
 	containerRuntime := &ContainerRuntime{
-		CACert:           ca.CertBytes(),
-		DockerClient:     client,
-		PeerAddress:      peerAddress,
-		PlatformRegistry: pr,
+		CACert:      ca.CertBytes(),
+		PeerAddress: peerAddress,
 		Processor: container.NewVMController(
 			map[string]container.VMProvider{
 				dockercontroller.ContainerType: &dockercontroller.Provider{
@@ -151,6 +149,10 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 					NetworkID:    "",
 					BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
 					Client:       client,
+					PlatformBuilder: &platforms.Builder{
+						Registry: pr,
+						Client:   client,
+					},
 				},
 			},
 		),

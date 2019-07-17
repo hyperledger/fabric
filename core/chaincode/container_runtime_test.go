@@ -181,12 +181,10 @@ func TestContainerRuntimeStart(t *testing.T) {
 	buildReq, ok := req.(container.BuildReq)
 	assert.True(t, ok)
 	expectedBuildReq := container.BuildReq{
-		Builder: &container.PlatformBuilder{
-			Type:    "GOLANG",
-			Name:    "chaincode-name",
-			Version: "chaincode-version",
-		},
-		CCID: ccintf.New(ccci.PackageID),
+		CCID:    ccintf.New(ccci.PackageID),
+		Type:    "GOLANG",
+		Name:    "chaincode-name",
+		Version: "chaincode-version",
 	}
 	assert.Equal(t, expectedBuildReq, buildReq)
 

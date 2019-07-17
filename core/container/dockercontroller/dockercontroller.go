@@ -74,41 +74,48 @@ type dockerClient interface {
 	InspectImage(imageName string) (*docker.Image, error)
 }
 
+type PlatformBuilder interface {
+	GenerateDockerBuild(ccType, path, name, version string, codePackage []byte) (io.Reader, error)
+}
+
 // Provider implements container.VMProvider
 type Provider struct {
-	PeerID        string
-	NetworkID     string
-	BuildMetrics  *BuildMetrics
-	HostConfig    *docker.HostConfig
-	Client        dockerClient
-	AttachStdOut  bool
-	ChaincodePull bool
-	NetworkMode   string
+	PeerID          string
+	NetworkID       string
+	BuildMetrics    *BuildMetrics
+	HostConfig      *docker.HostConfig
+	Client          dockerClient
+	AttachStdOut    bool
+	ChaincodePull   bool
+	NetworkMode     string
+	PlatformBuilder PlatformBuilder
 }
 
 // DockerVM is a vm. It is identified by an image id
 type DockerVM struct {
-	PeerID        string
-	NetworkID     string
-	BuildMetrics  *BuildMetrics
-	HostConfig    *docker.HostConfig
-	Client        dockerClient
-	AttachStdOut  bool
-	ChaincodePull bool
-	NetworkMode   string
+	PeerID          string
+	NetworkID       string
+	BuildMetrics    *BuildMetrics
+	HostConfig      *docker.HostConfig
+	Client          dockerClient
+	AttachStdOut    bool
+	ChaincodePull   bool
+	NetworkMode     string
+	PlatformBuilder PlatformBuilder
 }
 
 // NewVM creates a new DockerVM instance
 func (p *Provider) NewVM() container.VM {
 	return &DockerVM{
-		PeerID:        p.PeerID,
-		NetworkID:     p.NetworkID,
-		Client:        p.Client,
-		BuildMetrics:  p.BuildMetrics,
-		AttachStdOut:  p.AttachStdOut,
-		HostConfig:    p.HostConfig,
-		ChaincodePull: p.ChaincodePull,
-		NetworkMode:   p.NetworkMode,
+		PeerID:          p.PeerID,
+		NetworkID:       p.NetworkID,
+		Client:          p.Client,
+		BuildMetrics:    p.BuildMetrics,
+		AttachStdOut:    p.AttachStdOut,
+		HostConfig:      p.HostConfig,
+		ChaincodePull:   p.ChaincodePull,
+		NetworkMode:     p.NetworkMode,
+		PlatformBuilder: p.PlatformBuilder,
 	}
 }
 
@@ -176,20 +183,27 @@ func (vm *DockerVM) buildImage(ccid ccintf.CCID, reader io.Reader) error {
 }
 
 // Build is responsible for building an image if it does not already exist.
-func (vm *DockerVM) Build(ccid ccintf.CCID, dockerfileReader io.Reader) error {
+func (vm *DockerVM) Build(ccid ccintf.CCID, ccType, path, name, version string, codePackage []byte) error {
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
 	}
 
 	_, err = vm.Client.InspectImage(imageName)
-	if err == docker.ErrNoSuchImage {
-		err = vm.buildImage(ccid, dockerfileReader)
-		if err != nil {
-			return errors.Wrap(err, "docker image build failed")
-		}
+	if err != docker.ErrNoSuchImage {
+		return errors.Wrap(err, "docker image inspection failed")
 	}
-	return errors.Wrap(err, "docker image inspection failed")
+
+	dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(ccType, path, name, version, codePackage)
+	if err != nil {
+		return errors.Wrap(err, "platform builder failed")
+	}
+	err = vm.buildImage(ccid, dockerfileReader)
+	if err != nil {
+		return errors.Wrap(err, "docker image build failed")
+	}
+
+	return nil
 }
 
 // Start starts a container using a previously created docker image

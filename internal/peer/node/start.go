@@ -461,6 +461,10 @@ func serve(args []string) error {
 		HostConfig:    getDockerHostConfig(),
 		ChaincodePull: coreConfig.ChaincodePull,
 		NetworkMode:   coreConfig.VMNetworkMode,
+		PlatformBuilder: &platforms.Builder{
+			Registry: platformRegistry,
+			Client:   client,
+		},
 	}
 	if err := opsSystem.RegisterChecker("docker", dockerProvider); err != nil {
 		if err != nil {
@@ -483,10 +487,8 @@ func serve(args []string) error {
 			"CORE_CHAINCODE_LOGGING_SHIM=" + chaincodeConfig.ShimLogLevel,
 			"CORE_CHAINCODE_LOGGING_FORMAT=" + chaincodeConfig.LogFormat,
 		},
-		DockerClient:     client,
-		PeerAddress:      ccEndpoint,
-		Processor:        chaincodeVMController,
-		PlatformRegistry: platformRegistry,
+		PeerAddress: ccEndpoint,
+		Processor:   chaincodeVMController,
 	}
 
 	// Keep TestQueries working

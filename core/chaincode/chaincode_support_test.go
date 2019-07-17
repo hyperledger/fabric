@@ -201,20 +201,25 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		}
 	}
 
-	fakeCCDefinition := &mock.ChaincodeDefinition{}
-	ml.ChaincodeDefinitionReturns(fakeCCDefinition, nil)
 	client, err := docker.NewClientFromEnv()
 	if err != nil {
 		panic(err)
 	}
+
+	fakeCCDefinition := &mock.ChaincodeDefinition{}
+	ml.ChaincodeDefinitionReturns(fakeCCDefinition, nil)
 	containerRuntime := &ContainerRuntime{
 		CACert:        ca.CertBytes(),
 		CertGenerator: certGenerator,
 		PeerAddress:   "0.0.0.0:7052",
-		DockerClient:  client,
 		Processor: container.NewVMController(
 			map[string]container.VMProvider{
-				dockercontroller.ContainerType: &dockercontroller.Provider{},
+				dockercontroller.ContainerType: &dockercontroller.Provider{
+					PlatformBuilder: &platforms.Builder{
+						Registry: pr,
+						Client:   client,
+					},
+				},
 			},
 		),
 		CommonEnv: []string{
@@ -222,7 +227,6 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 			"CORE_CHAINCODE_LOGGING_SHIM=" + globalConfig.ShimLogLevel,
 			"CORE_CHAINCODE_LOGGING_FORMAT=" + globalConfig.LogFormat,
 		},
-		PlatformRegistry: pr,
 	}
 	if !globalConfig.TLSEnabled {
 		containerRuntime.CertGenerator = nil

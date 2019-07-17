@@ -12,9 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -36,13 +34,11 @@ type CertGenerator interface {
 
 // ContainerRuntime is responsible for managing containerized chaincode.
 type ContainerRuntime struct {
-	CertGenerator    CertGenerator
-	Processor        Processor
-	CACert           []byte
-	CommonEnv        []string
-	PeerAddress      string
-	PlatformRegistry *platforms.Registry
-	DockerClient     *docker.Client
+	CertGenerator CertGenerator
+	Processor     Processor
+	CACert        []byte
+	CommonEnv     []string
+	PeerAddress   string
 }
 
 // Start launches chaincode in a runtime environment.
@@ -56,16 +52,12 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 
 	// Explicitly attempt build before start
 	bcr := container.BuildReq{
-		Builder: &container.PlatformBuilder{
-			Type:             ccci.Type,
-			Name:             ccci.Name,
-			Version:          ccci.Version,
-			Path:             ccci.Path,
-			CodePackage:      codePackage,
-			PlatformRegistry: c.PlatformRegistry,
-			Client:           c.DockerClient,
-		},
-		CCID: ccintf.New(ccci.PackageID),
+		CCID:        ccintf.New(ccci.PackageID),
+		Type:        ccci.Type,
+		Name:        ccci.Name,
+		Version:     ccci.Version,
+		Path:        ccci.Path,
+		CodePackage: codePackage,
 	}
 	if err := c.Processor.Process(ccci.ContainerType, bcr); err != nil {
 		return errors.WithMessage(err, "error building image")

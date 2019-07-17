@@ -10,9 +10,7 @@ import (
 	"io"
 	"sync"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
@@ -108,35 +106,6 @@ type StartContainerReq struct {
 	FilesToUpload map[string][]byte
 }
 
-// PlatformBuilder implements the Build interface using
-// the platforms package GenerateDockerBuild function.
-// XXX This is a pretty awkward spot for the builder, it should
-// really probably be pushed into the dockercontroller, as it only
-// builds docker images, but, doing so would require contaminating
-// the dockercontroller package with the CDS, which is also
-// undesirable.
-type PlatformBuilder struct {
-	Type             string
-	Path             string
-	Name             string
-	Version          string
-	CodePackage      []byte
-	PlatformRegistry *platforms.Registry
-	Client           *docker.Client
-}
-
-// Build a tar stream based on the CDS
-func (b *PlatformBuilder) Build() (io.Reader, error) {
-	return b.PlatformRegistry.GenerateDockerBuild(
-		b.Type,
-		b.Path,
-		b.Name,
-		b.Version,
-		b.CodePackage,
-		b.Client,
-	)
-}
-
 func (si StartContainerReq) Do(v VM) error {
 	return v.Start(si.CCID, si.Args, si.Env, si.FilesToUpload)
 }
@@ -190,23 +159,22 @@ func (w WaitContainerReq) GetCCID() ccintf.CCID {
 
 // A BuildReq encapsulates the data needed to build an image.
 type BuildReq struct {
-	CCID    ccintf.CCID
-	Builder Builder
+	CCID        ccintf.CCID
+	Type        string
+	Path        string
+	Name        string
+	Version     string
+	CodePackage []byte
 }
 
 // A ChaincodeBuilder is resonsible for building chaincode.
 type ChaincodeBuilder interface {
-	Build(ccid ccintf.CCID, dockerfileReader io.Reader) error
+	Build(ccid ccintf.CCID, ccType, path, name, version string, codePackage []byte) error
 }
 
 func (b BuildReq) Do(v VM) error {
 	if chaincodeBuilder, ok := v.(ChaincodeBuilder); ok {
-		dockerfileReader, err := b.Builder.Build()
-		if err != nil {
-			return err
-		}
-
-		return chaincodeBuilder.Build(b.CCID, dockerfileReader)
+		return chaincodeBuilder.Build(b.CCID, b.Type, b.Path, b.Name, b.Version, b.CodePackage)
 	}
 	return nil
 }

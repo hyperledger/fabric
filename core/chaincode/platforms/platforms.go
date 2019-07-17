@@ -227,3 +227,12 @@ func (r *Registry) GenerateDockerBuild(ccType, path, name, version string, codeP
 
 	return input, nil
 }
+
+type Builder struct {
+	Registry *Registry
+	Client   *docker.Client
+}
+
+func (b *Builder) GenerateDockerBuild(ccType, path, name, version string, codePackage []byte) (io.Reader, error) {
+	return b.Registry.GenerateDockerBuild(ccType, path, name, version, codePackage, b.Client)
+}
