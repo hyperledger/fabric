@@ -535,18 +535,6 @@ type TransactionParams struct {
 	ProposalDecorations map[string][]byte
 }
 
-// ChaincodeProvider provides an abstraction layer that is
-// used for different packages to interact with code in the
-// chaincode package without importing it; more methods
-// should be added below if necessary
-type ChaincodeProvider interface {
-	// ExecuteLegacyInit is a special case for executing chaincode deployment specs,
-	// which are not already in the LSCC, needed for old lifecycle
-	ExecuteLegacyInit(txParams *TransactionParams, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
-	// Stop stops the chaincode give
-	Stop(ccci *ChaincodeContainerInfo) error
-}
-
 func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec, systemCC bool) *ChaincodeContainerInfo {
 	cci := &ChaincodeContainerInfo{
 		Name:          cds.ChaincodeSpec.ChaincodeId.Name,
