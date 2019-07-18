@@ -1019,6 +1019,27 @@ var _ = Describe("ExternalFunctions", func() {
 				Expect(err).To(MatchError("requested sequence is 5, but new definition must be sequence 4"))
 			})
 		})
+
+		Context("when the current sequence is the new sequence", func() {
+			BeforeEach(func() {
+				resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
+					Sequence: 5,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Version:           "version",
+						EndorsementPlugin: "endorsement-plugin",
+					},
+					ValidationInfo: &lb.ChaincodeValidationInfo{
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+					},
+				}, fakePublicState)
+			})
+
+			It("returns an error", func() {
+				_, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				Expect(err).To(MatchError("requested sequence is 5, but new definition must be sequence 6"))
+			})
+		})
 	})
 
 	Describe("QueryChaincodeDefinition", func() {
