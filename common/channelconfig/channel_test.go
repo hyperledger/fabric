@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
@@ -22,11 +23,13 @@ func TestInterface(t *testing.T) {
 }
 
 func TestChannelConfig(t *testing.T) {
-	cc, err := NewChannelConfig(&cb.ConfigGroup{
-		Groups: map[string]*cb.ConfigGroup{
-			"UnknownGroupKey": {},
-		},
-	})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	cc, err := NewChannelConfig(
+		&cb.ConfigGroup{Groups: map[string]*cb.ConfigGroup{"UnknownGroupKey": {}}},
+		cryptoProvider,
+	)
 	assert.Error(t, err)
 	assert.Nil(t, cc)
 }

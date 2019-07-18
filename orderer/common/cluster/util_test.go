@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -544,7 +545,10 @@ func TestEndpointconfigFromConfigBlockGreenPath(t *testing.T) {
 		}
 		channelGroup, err := encoder.NewChannelGroup(gConf)
 		assert.NoError(t, err)
-		bundle, err := channelconfig.NewBundle("mychannel", &common.Config{ChannelGroup: channelGroup})
+
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		bundle, err := channelconfig.NewBundle("mychannel", &common.Config{ChannelGroup: channelGroup}, cryptoProvider)
 		assert.NoError(t, err)
 
 		msps, err := bundle.MSPManager().GetMSPs()

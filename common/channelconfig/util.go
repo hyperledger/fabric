@@ -240,7 +240,7 @@ func ACLValues(acls map[string]string) *StandardConfigValue {
 }
 
 // ValidateCapabilities validates whether the peer can meet the capabilities requirement in the given config block
-func ValidateCapabilities(block *cb.Block) error {
+func ValidateCapabilities(block *cb.Block, bccsp bccsp.BCCSP) error {
 	envelopeConfig, err := protoutil.ExtractEnvelope(block, 0)
 	if err != nil {
 		return errors.Errorf("failed to %s", err)
@@ -270,7 +270,7 @@ func ValidateCapabilities(block *cb.Block) error {
 			"configuration group", ApplicationGroupKey)
 	}
 
-	cc, err := NewChannelConfig(configEnv.Config.ChannelGroup)
+	cc, err := NewChannelConfig(configEnv.Config.ChannelGroup, bccsp)
 	if err != nil {
 		return errors.Errorf("no valid channel configuration found due to %s", err)
 	}

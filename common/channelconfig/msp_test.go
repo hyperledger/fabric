@@ -9,6 +9,8 @@ package channelconfig
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
@@ -26,7 +28,7 @@ func TestMSPConfigManager(t *testing.T) {
 	mspVers := []msp.MSPVersion{msp.MSPv1_0, msp.MSPv1_1}
 
 	for _, ver := range mspVers {
-		mspCH := NewMSPConfigHandler(ver)
+		mspCH := NewMSPConfigHandler(ver, factory.DefaultBCCSP)
 
 		_, err = mspCH.ProposeMSP(conf)
 		assert.NoError(t, err)
@@ -49,7 +51,9 @@ func TestMSPConfigManager(t *testing.T) {
 }
 
 func TestMSPConfigFailure(t *testing.T) {
-	mspCH := NewMSPConfigHandler(msp.MSPv1_0)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	mspCH := NewMSPConfigHandler(msp.MSPv1_0, cryptoProvider)
 
 	// begin/propose/commit
 	t.Run("Bad proto", func(t *testing.T) {

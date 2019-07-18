@@ -9,6 +9,7 @@ package peer
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
@@ -48,7 +49,7 @@ func (c *Channel) Apply(configtx *common.ConfigEnvelope) error {
 		return err
 	}
 
-	bundle, err := channelconfig.NewBundle(configTxValidator.ChainID(), configtx.Config)
+	bundle, err := channelconfig.NewBundle(configTxValidator.ChainID(), configtx.Config, factory.GetDefault())
 	if err != nil {
 		return err
 	}

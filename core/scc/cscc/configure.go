@@ -15,6 +15,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -251,7 +252,7 @@ func validateConfigBlock(block *common.Block) error {
 	}
 
 	// Check the capabilities requirement
-	if err = channelconfig.ValidateCapabilities(block); err != nil {
+	if err = channelconfig.ValidateCapabilities(block, factory.GetDefault()); err != nil {
 		return errors.Errorf("Failed capabilities check: [%s]", err)
 	}
 

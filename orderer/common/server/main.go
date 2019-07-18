@@ -601,7 +601,7 @@ func consensusType(genesisBlock *cb.Block) string {
 	if err := proto.Unmarshal(genesisBlock.Data.Data[0], env); err != nil {
 		logger.Fatalf("Failed to unmarshal the genesis block's envelope: %v", err)
 	}
-	bundle, err := channelconfig.NewBundleFromEnvelope(env)
+	bundle, err := channelconfig.NewBundleFromEnvelope(env, factory.GetDefault())
 	if err != nil {
 		logger.Fatalf("Failed creating bundle from the genesis block: %v", err)
 	}

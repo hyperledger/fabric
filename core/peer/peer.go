@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	cc "github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -250,7 +251,7 @@ func (p *Peer) createChannel(
 
 	var bundle *channelconfig.Bundle
 	if chanConf != nil {
-		bundle, err = channelconfig.NewBundle(cid, chanConf)
+		bundle, err = channelconfig.NewBundle(cid, chanConf, factory.GetDefault())
 		if err != nil {
 			return err
 		}
@@ -262,7 +263,7 @@ func (p *Peer) createChannel(
 			return err
 		}
 
-		bundle, err = channelconfig.NewBundleFromEnvelope(envelopeConfig)
+		bundle, err = channelconfig.NewBundleFromEnvelope(envelopeConfig, factory.GetDefault())
 		if err != nil {
 			return err
 		}

@@ -9,6 +9,7 @@ package channelconfig_test
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -22,7 +23,10 @@ func TestWithRealConfigtx(t *testing.T) {
 
 	gb := encoder.New(conf).GenesisBlockForChannel("foo")
 	env := protoutil.ExtractEnvelopeOrPanic(gb, 0)
-	_, err := channelconfig.NewBundleFromEnvelope(env)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	_, err = channelconfig.NewBundleFromEnvelope(env, cryptoProvider)
 	assert.NoError(t, err)
 }
 
@@ -34,7 +38,9 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 		cg, err := encoder.NewChannelGroup(conf)
 		assert.NoError(t, err)
 
-		_, err = channelconfig.NewChannelConfig(cg)
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		_, err = channelconfig.NewChannelConfig(cg, cryptoProvider)
 		assert.EqualError(t, err, "could not create channel Orderer sub-group config: Orderer Org SampleOrg cannot contain endpoints value until V2_0+ capabilities have been enabled")
 	})
 
@@ -47,7 +53,9 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 		cg, err := encoder.NewChannelGroup(conf)
 		assert.NoError(t, err)
 
-		_, err = channelconfig.NewChannelConfig(cg)
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		_, err = channelconfig.NewChannelConfig(cg, cryptoProvider)
 		assert.EqualError(t, err, "Must set some OrdererAddresses")
 	})
 
@@ -59,7 +67,9 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 		cg, err := encoder.NewChannelGroup(conf)
 		assert.NoError(t, err)
 
-		cc, err := channelconfig.NewChannelConfig(cg)
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		cc, err := channelconfig.NewChannelConfig(cg, cryptoProvider)
 		assert.NoError(t, err)
 
 		err = cc.Validate(cc.Capabilities())

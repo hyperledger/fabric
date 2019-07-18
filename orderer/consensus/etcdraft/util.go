@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -353,7 +354,7 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 	if err != nil {
 		return err
 	}
-	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig)
+	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig, factory.GetDefault())
 	if err != nil {
 		return err
 	}

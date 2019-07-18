@@ -9,6 +9,7 @@ package multichannel
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
@@ -38,7 +39,7 @@ func (mbws mockBlockWriterSupport) Update(bundle *newchannelconfig.Bundle) {
 }
 
 func (mbws mockBlockWriterSupport) CreateBundle(channelID string, config *cb.Config) (*newchannelconfig.Bundle, error) {
-	return channelconfig.NewBundle(channelID, config)
+	return channelconfig.NewBundle(channelID, config, factory.GetDefault())
 }
 
 func (mbws mockBlockWriterSupport) SharedConfig() newchannelconfig.Orderer {

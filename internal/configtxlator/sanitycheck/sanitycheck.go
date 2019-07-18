@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
@@ -29,7 +30,7 @@ type ElementMessage struct {
 func Check(config *cb.Config) (*Messages, error) {
 	result := &Messages{}
 
-	bundle, err := newchannelconfig.NewBundle("sanitycheck", config)
+	bundle, err := newchannelconfig.NewBundle("sanitycheck", config, factory.GetDefault())
 	if err != nil {
 		result.GeneralErrors = []string{err.Error()}
 		return result, nil

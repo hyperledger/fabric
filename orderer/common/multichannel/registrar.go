@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -69,7 +70,7 @@ type configResources struct {
 }
 
 func (cr *configResources) CreateBundle(channelID string, config *cb.Config) (*channelconfig.Bundle, error) {
-	return channelconfig.NewBundle(channelID, config)
+	return channelconfig.NewBundle(channelID, config, factory.GetDefault())
 }
 
 func (cr *configResources) Update(bndl *channelconfig.Bundle) {
@@ -279,7 +280,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 		logger.Panicf("Error umarshaling config envelope from payload data: %s", err)
 	}
 
-	bundle, err := channelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config)
+	bundle, err := channelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config, factory.GetDefault())
 	if err != nil {
 		logger.Panicf("Error creating channelconfig bundle: %s", err)
 	}
@@ -356,5 +357,5 @@ func (r *Registrar) NewChannelConfig(envConfigUpdate *cb.Envelope) (channelconfi
 
 // CreateBundle calls channelconfig.NewBundle
 func (r *Registrar) CreateBundle(channelID string, config *cb.Config) (channelconfig.Resources, error) {
-	return channelconfig.NewBundle(channelID, config)
+	return channelconfig.NewBundle(channelID, config, factory.GetDefault())
 }

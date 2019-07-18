@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/cache"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
@@ -26,12 +26,14 @@ type pendingMSPConfig struct {
 type MSPConfigHandler struct {
 	version msp.MSPVersion
 	idMap   map[string]*pendingMSPConfig
+	bccsp   bccsp.BCCSP
 }
 
-func NewMSPConfigHandler(mspVersion msp.MSPVersion) *MSPConfigHandler {
+func NewMSPConfigHandler(mspVersion msp.MSPVersion, bccsp bccsp.BCCSP) *MSPConfigHandler {
 	return &MSPConfigHandler{
 		version: mspVersion,
 		idMap:   make(map[string]*pendingMSPConfig),
+		bccsp:   bccsp,
 	}
 }
 
@@ -45,7 +47,7 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 		// create the bccsp msp instance
 		mspInst, err := msp.New(
 			&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: bh.version}},
-			factory.GetDefault(),
+			bh.bccsp,
 		)
 		if err != nil {
 			return nil, errors.WithMessage(err, "creating the MSP manager failed")
@@ -60,7 +62,7 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 		// create the idemix msp instance
 		theMsp, err = msp.New(
 			&msp.IdemixNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: bh.version}},
-			factory.GetDefault(),
+			bh.bccsp,
 		)
 		if err != nil {
 			return nil, errors.WithMessage(err, "creating the MSP manager failed")

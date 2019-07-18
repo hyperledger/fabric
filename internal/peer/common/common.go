@@ -220,7 +220,7 @@ func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.
 	if err != nil {
 		return nil, errors.WithMessage(err, "error extracting config block envelope")
 	}
-	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig)
+	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig, factory.GetDefault())
 	if err != nil {
 		return nil, errors.WithMessage(err, "error loading config block")
 	}

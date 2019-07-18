@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
@@ -193,10 +194,15 @@ func (h *testHelper) clearMockChains() {
 }
 
 func (h *testHelper) constructChannelBundle(channelID string, ledger ledger.PeerLedger) (*channelconfig.Bundle, error) {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return nil, err
+	}
+
 	chanConf, err := retrievePersistedChannelConfig(ledger)
 	if err != nil {
 		return nil, err
 	}
 
-	return channelconfig.NewBundle(channelID, chanConf)
+	return channelconfig.NewBundle(channelID, chanConf, cryptoProvider)
 }

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
@@ -281,15 +282,18 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 }
 
 func TestValidateCapabilities(t *testing.T) {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 
 	// Test config block with valid capabilities requirement
 	cfgBlock := createCfgBlockWithSupportedCapabilities(t)
-	assert.Nil(t, ValidateCapabilities(cfgBlock), "Should return Nil with matched capabilities checking")
+	err = ValidateCapabilities(cfgBlock, cryptoProvider)
+	assert.NoError(t, err)
 
 	// Test config block with invalid capabilities requirement
 	cfgBlock = createCfgBlockWithUnsupportedCapabilities(t)
-	assert.NotNil(t, ValidateCapabilities(cfgBlock), "Should return Error with mismatched capabilities checking")
-
+	err = ValidateCapabilities(cfgBlock, cryptoProvider)
+	assert.EqualError(t, err, "Channel capability INCOMPATIBLE_CAPABILITIES is required but not supported")
 }
 
 func TestMarshalEtcdRaftMetadata(t *testing.T) {

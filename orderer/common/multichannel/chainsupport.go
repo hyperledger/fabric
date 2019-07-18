@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
@@ -192,7 +193,7 @@ func (cs *ChainSupport) VerifyBlockSignature(sd []*protoutil.SignedData, envelop
 	policyMgr := cs.PolicyManager()
 	// If the envelope passed isn't nil, we should use a different policy manager.
 	if envelope != nil {
-		bundle, err := channelconfig.NewBundle(cs.ChainID(), envelope.Config)
+		bundle, err := channelconfig.NewBundle(cs.ChainID(), envelope.Config, factory.GetDefault())
 		if err != nil {
 			return err
 		}
