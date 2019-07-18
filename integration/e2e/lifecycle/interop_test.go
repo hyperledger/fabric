@@ -293,6 +293,480 @@ var _ = Describe("Release interoperability", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
 			})
+
+			Describe("Chaincode-to-chaincode interoperability", func() {
+				var (
+					callerDefOld nwo.Chaincode
+					callerDefNew nwo.Chaincode
+					calleeDefOld nwo.Chaincode
+					calleeDefNew nwo.Chaincode
+				)
+
+				BeforeEach(func() {
+					ccEP := `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`
+					callerDefOld = nwo.Chaincode{
+						Name:    "caller",
+						Version: "0.0",
+						Path:    "github.com/hyperledger/fabric/integration/e2e/lifecycle/chaincode/caller/cmd",
+						Ctor:    `{"Args":[""]}`,
+						Policy:  ccEP,
+					}
+					calleeDefOld = nwo.Chaincode{
+						Name:    "callee",
+						Version: "0.0",
+						Path:    "github.com/hyperledger/fabric/integration/e2e/lifecycle/chaincode/callee/cmd",
+						Ctor:    `{"Args":[""]}`,
+						Policy:  ccEP,
+					}
+					callerDefNew = nwo.Chaincode{
+						Name:            "caller",
+						Version:         "0.0",
+						Path:            "github.com/hyperledger/fabric/integration/e2e/lifecycle/chaincode/caller/cmd",
+						Lang:            "golang",
+						PackageFile:     filepath.Join(tempDir, "caller.tar.gz"),
+						SignaturePolicy: ccEP,
+						Sequence:        "1",
+						Label:           "my_caller_chaincode",
+						InitRequired:    true,
+						Ctor:            `{"Args":[""]}`,
+					}
+					calleeDefNew = nwo.Chaincode{
+						Name:            "callee",
+						Version:         "0.0",
+						Path:            "github.com/hyperledger/fabric/integration/e2e/lifecycle/chaincode/callee/cmd",
+						Lang:            "golang",
+						PackageFile:     filepath.Join(tempDir, "callee.tar.gz"),
+						SignaturePolicy: ccEP,
+						Sequence:        "1",
+						Label:           "my_callee_chaincode",
+						InitRequired:    true,
+						Ctor:            `{"Args":[""]}`,
+					}
+					By("Creating and joining the channel")
+					network.CreateAndJoinChannels(orderer)
+				})
+
+				It("Deploys two chaincodes with the new lifecycle and performs a successful cc2cc invocation", func() {
+					By("enabling the 2.0 capability on the channel")
+					nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+
+					By("deploying the caller chaincode using _lifecycle")
+					nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
+
+					By("deploying the callee chaincode using _lifecycle")
+					nwo.DeployChaincode(network, "testchannel", orderer, calleeDefNew)
+
+					By("invoking the chaincode and generating a transaction")
+					signedProp, prop, txid := SignedProposal(
+						"testchannel",
+						"caller",
+						userSigner,
+						serialisedUserSigner,
+						"INVOKE",
+						"callee",
+					)
+					presp, err := endorserClient.ProcessProposal(
+						context.Background(),
+						signedProp,
+					)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(presp).NotTo(BeNil())
+					env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(env).NotTo(BeNil())
+
+					By("committing the transaction")
+					err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+					Expect(err).NotTo(HaveOccurred())
+
+					By("querying the caller chaincode")
+					sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						ChannelID: "testchannel",
+						Name:      "caller",
+						Ctor:      `{"Args":["QUERY"]}`,
+					})
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+					Expect(sess).To(gbytes.Say("bar"))
+
+					By("querying the callee chaincode")
+					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						ChannelID: "testchannel",
+						Name:      "callee",
+						Ctor:      `{"Args":["QUERY"]}`,
+					})
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+					Expect(sess).To(gbytes.Say("bar"))
+				})
+
+				When("the network starts with new definitions", func() {
+					BeforeEach(func() {
+						By("enabling the 2.0 capability on the channel")
+						nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+
+						By("upgrading the caller with the new definition")
+						nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
+
+						By("upgrading the callee with the new definition")
+						nwo.DeployChaincode(network, "testchannel", orderer, calleeDefNew)
+					})
+
+					It("performs a successful cc2cc invocation", func() {
+						By("invoking the chaincode and generating a transaction")
+						signedProp, prop, txid := SignedProposal(
+							"testchannel",
+							"caller",
+							userSigner,
+							serialisedUserSigner,
+							"INVOKE",
+							"callee",
+						)
+						presp, err := endorserClient.ProcessProposal(
+							context.Background(),
+							signedProp,
+						)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(presp).NotTo(BeNil())
+						env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(env).NotTo(BeNil())
+
+						By("committing the transaction")
+						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						Expect(err).NotTo(HaveOccurred())
+
+						By("querying the caller chaincode")
+						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "caller",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("bar"))
+
+						By("querying the callee chaincode")
+						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "callee",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("bar"))
+					})
+
+					It("performs a successful cc2cc invocation which doesn't commit because the caller is further upgraded", func() {
+						By("invoking the chaincode and generating a transaction")
+						signedProp, prop, txid := SignedProposal(
+							"testchannel",
+							"caller",
+							userSigner,
+							serialisedUserSigner,
+							"INVOKE",
+							"callee",
+						)
+						presp, err := endorserClient.ProcessProposal(
+							context.Background(),
+							signedProp,
+						)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(presp).NotTo(BeNil())
+						env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(env).NotTo(BeNil())
+
+						By("further upgrading the caller with the new definition")
+						callerDefNew.Sequence = "2"
+						callerDefNew.InitRequired = false
+						nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
+
+						By("committing the transaction")
+						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						Expect(err).To(HaveOccurred())
+						Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
+
+						By("querying the caller chaincode")
+						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "caller",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("foo"))
+
+						By("querying the callee chaincode")
+						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "callee",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("foo"))
+					})
+
+					It("performs a successful cc2cc invocation which doesn't commit because the callee is further upgraded", func() {
+						By("invoking the chaincode and generating a transaction")
+						signedProp, prop, txid := SignedProposal(
+							"testchannel",
+							"caller",
+							userSigner,
+							serialisedUserSigner,
+							"INVOKE",
+							"callee",
+						)
+						presp, err := endorserClient.ProcessProposal(
+							context.Background(),
+							signedProp,
+						)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(presp).NotTo(BeNil())
+						env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(env).NotTo(BeNil())
+
+						By("further upgrading the callee with the new definition")
+						calleeDefNew.Sequence = "2"
+						calleeDefNew.InitRequired = false
+						nwo.DeployChaincode(network, "testchannel", orderer, calleeDefNew)
+
+						By("committing the transaction")
+						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						Expect(err).To(HaveOccurred())
+						Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
+
+						By("querying the caller chaincode")
+						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "caller",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("foo"))
+
+						By("querying the callee chaincode")
+						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "callee",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("foo"))
+					})
+				})
+
+				When("the network starts with legacy definitions and then upgrades to 2.0", func() {
+					BeforeEach(func() {
+						By("deploying the caller chaincode using the legacy lifecycle")
+						nwo.DeployChaincodeLegacy(network, "testchannel", orderer, callerDefOld)
+
+						By("deploying the callee chaincode using the legacy lifecycle")
+						nwo.DeployChaincodeLegacy(network, "testchannel", orderer, calleeDefOld)
+
+						By("enabling the 2.0 capability on the channel")
+						nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+					})
+
+					It("upgrades the caller with the new and performs a successful cc2cc invocation", func() {
+						By("upgrading the caller with the new definition")
+						nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
+
+						By("invoking the chaincode and generating a transaction")
+						signedProp, prop, txid := SignedProposal(
+							"testchannel",
+							"caller",
+							userSigner,
+							serialisedUserSigner,
+							"INVOKE",
+							"callee",
+						)
+						presp, err := endorserClient.ProcessProposal(
+							context.Background(),
+							signedProp,
+						)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(presp).NotTo(BeNil())
+						env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(env).NotTo(BeNil())
+
+						By("committing the transaction")
+						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						Expect(err).NotTo(HaveOccurred())
+
+						By("querying the caller chaincode")
+						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "caller",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("bar"))
+
+						By("querying the callee chaincode")
+						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "callee",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("bar"))
+					})
+
+					It("upgrades the callee with the new and performs a successful cc2cc invocation", func() {
+						By("upgrading the callee with the new definition")
+						nwo.DeployChaincode(network, "testchannel", orderer, calleeDefNew)
+
+						By("invoking the chaincode and generating a transaction")
+						signedProp, prop, txid := SignedProposal(
+							"testchannel",
+							"caller",
+							userSigner,
+							serialisedUserSigner,
+							"INVOKE",
+							"callee",
+						)
+						presp, err := endorserClient.ProcessProposal(
+							context.Background(),
+							signedProp,
+						)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(presp).NotTo(BeNil())
+						env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(env).NotTo(BeNil())
+
+						By("committing the transaction")
+						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						Expect(err).NotTo(HaveOccurred())
+
+						By("querying the caller chaincode")
+						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "caller",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("bar"))
+
+						By("querying the callee chaincode")
+						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "callee",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("bar"))
+					})
+
+					It("performs a cc2cc invocation which fails because in the meantime, the callee is upgraded with the new lifecycle", func() {
+						By("invoking the chaincode and generating a transaction")
+						signedProp, prop, txid := SignedProposal(
+							"testchannel",
+							"caller",
+							userSigner,
+							serialisedUserSigner,
+							"INVOKE",
+							"callee",
+						)
+						presp, err := endorserClient.ProcessProposal(
+							context.Background(),
+							signedProp,
+						)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(presp).NotTo(BeNil())
+						env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(env).NotTo(BeNil())
+
+						By("upgrading the callee with the new definition")
+						nwo.DeployChaincode(network, "testchannel", orderer, calleeDefNew)
+
+						By("committing the transaction")
+						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						Expect(err).To(HaveOccurred())
+						Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
+
+						By("querying the caller chaincode")
+						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "caller",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("foo"))
+
+						By("querying the callee chaincode")
+						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "callee",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("foo"))
+					})
+
+					It("performs a cc2cc invocation which fails because in the meantime, the caller is upgraded with the new lifecycle", func() {
+						By("invoking the chaincode and generating a transaction")
+						signedProp, prop, txid := SignedProposal(
+							"testchannel",
+							"caller",
+							userSigner,
+							serialisedUserSigner,
+							"INVOKE",
+							"callee",
+						)
+						presp, err := endorserClient.ProcessProposal(
+							context.Background(),
+							signedProp,
+						)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(presp).NotTo(BeNil())
+						env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(env).NotTo(BeNil())
+
+						By("upgrading the caller with the new definition")
+						nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
+
+						By("committing the transaction")
+						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						Expect(err).To(HaveOccurred())
+						Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
+
+						By("querying the caller chaincode")
+						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "caller",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("foo"))
+
+						By("querying the callee chaincode")
+						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+							ChannelID: "testchannel",
+							Name:      "callee",
+							Ctor:      `{"Args":["QUERY"]}`,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+						Expect(sess).To(gbytes.Say("foo"))
+					})
+				})
+			})
 		})
 	})
 })
