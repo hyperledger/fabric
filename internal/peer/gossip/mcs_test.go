@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package gossip
 
 import (
+	"crypto/sha256"
 	"errors"
 	"reflect"
 	"strings"
@@ -14,8 +15,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -43,10 +43,13 @@ func TestPKIidOfCert(t *testing.T) {
 	}
 	signer := &mocks.SignerSerializer{}
 	signer.SerializeReturns([]byte("Alice"), nil)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetterWithManager{},
 		signer,
 		deserializersManager,
+		cryptoProvider,
 	)
 
 	peerIdentity := []byte("Alice")
@@ -59,8 +62,9 @@ func TestPKIidOfCert(t *testing.T) {
 	assert.NoError(t, err, "Failed getting validated identity from [% x]", []byte(peerIdentity))
 	idRaw := append([]byte(id.Mspid), id.IdBytes...)
 	assert.NoError(t, err, "Failed marshalling identity identifier [% x]: [%s]", peerIdentity, err)
-	digest, err := factory.GetDefault().Hash(idRaw, &bccsp.SHA256Opts{})
-	assert.NoError(t, err, "Failed computing digest of serialized identity [% x]", []byte(peerIdentity))
+	h := sha256.New()
+	h.Write(idRaw)
+	digest := h.Sum(nil)
 	assert.Equal(t, digest, []byte(pkid), "PKID must be the SHA2-256 of peerIdentity")
 
 	//  The PKI-ID is calculated by concatenating the MspId with IdBytes.
@@ -77,7 +81,9 @@ func TestPKIidOfCert(t *testing.T) {
 
 func TestPKIidOfNil(t *testing.T) {
 	signer := &mocks.SignerSerializer{}
-	msgCryptoService := NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager())
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	msgCryptoService := NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(), cryptoProvider)
 
 	pkid := msgCryptoService.GetPKIidOfCert(nil)
 	// Check pkid is not nil
@@ -93,13 +99,16 @@ func TestValidateIdentity(t *testing.T) {
 	}
 	signer := &mocks.SignerSerializer{}
 	signer.SerializeReturns([]byte("Charlie"), nil)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetterWithManager{},
 		signer,
 		deserializersManager,
+		cryptoProvider,
 	)
 
-	err := msgCryptoService.ValidateIdentity([]byte("Alice"))
+	err = msgCryptoService.ValidateIdentity([]byte("Alice"))
 	assert.NoError(t, err)
 
 	err = msgCryptoService.ValidateIdentity([]byte("Bob"))
@@ -126,10 +135,13 @@ func TestValidateIdentity(t *testing.T) {
 func TestSign(t *testing.T) {
 	signer := &mocks.SignerSerializer{}
 	signer.SignReturns([]byte("signature"), nil)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},
 		signer,
 		mgmt.NewDeserializersManager(),
+		cryptoProvider,
 	)
 
 	msg := []byte("Hello World!!!")
@@ -142,6 +154,8 @@ func TestVerify(t *testing.T) {
 	signer := &mocks.SignerSerializer{}
 	signer.SerializeReturns([]byte("Alice"), nil)
 	signer.SignReturns([]byte("msg1"), nil)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetterWithManager{
 			Managers: map[string]policies.Manager{
@@ -163,6 +177,7 @@ func TestVerify(t *testing.T) {
 				"C": &mocks.IdentityDeserializer{Identity: []byte("Dave"), Msg: []byte("msg4"), Mock: mock.Mock{}},
 			},
 		},
+		cryptoProvider,
 	)
 
 	msg := []byte("msg1")
@@ -208,6 +223,8 @@ func TestVerifyBlock(t *testing.T) {
 		},
 	}
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	msgCryptoService := NewMCS(
 		policyManagerGetter,
 		aliceSigner,
@@ -218,6 +235,7 @@ func TestVerifyBlock(t *testing.T) {
 				"B": &mocks.IdentityDeserializer{Identity: []byte("Charlie"), Msg: []byte("msg3"), Mock: mock.Mock{}},
 			},
 		},
+		cryptoProvider,
 	)
 
 	// - Prepare testing valid block, Alice signs it.
@@ -229,7 +247,7 @@ func TestVerifyBlock(t *testing.T) {
 	// - Verify block
 	assert.NoError(t, msgCryptoService.VerifyBlock([]byte("C"), 42, blockRaw))
 	// Wrong sequence number claimed
-	err := msgCryptoService.VerifyBlock([]byte("C"), 43, blockRaw)
+	err = msgCryptoService.VerifyBlock([]byte("C"), 43, blockRaw)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "but actual seqNum inside block is")
 	delete(policyManagerGetter.Managers, "D")
@@ -332,10 +350,13 @@ func TestExpiration(t *testing.T) {
 			},
 		},
 	}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetterWithManager{},
 		&mocks.SignerSerializer{},
 		deserializersManager,
+		cryptoProvider,
 	)
 
 	// Green path I check the expiration date is as expected

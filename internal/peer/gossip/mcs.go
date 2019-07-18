@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -28,6 +27,11 @@ import (
 
 var mcsLogger = flogging.MustGetLogger("peer.gossip.mcs")
 
+// Hasher is the interface provides the hash function should be used for all gossip components.
+type Hasher interface {
+	Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error)
+}
+
 // MSPMessageCryptoService implements the MessageCryptoService interface
 // using the peer MSPs (local and channel-related)
 //
@@ -41,6 +45,7 @@ type MSPMessageCryptoService struct {
 	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter
 	localSigner                identity.SignerSerializer
 	deserializer               mgmt.DeserializersManager
+	hasher                     Hasher
 }
 
 // NewMCS creates a new instance of MSPMessageCryptoService
@@ -53,11 +58,13 @@ func NewMCS(
 	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter,
 	localSigner identity.SignerSerializer,
 	deserializer mgmt.DeserializersManager,
+	hasher Hasher,
 ) *MSPMessageCryptoService {
 	return &MSPMessageCryptoService{
 		channelPolicyManagerGetter: channelPolicyManagerGetter,
 		localSigner:                localSigner,
 		deserializer:               deserializer,
+		hasher:                     hasher,
 	}
 }
 
@@ -98,14 +105,13 @@ func (s *MSPMessageCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 	// idbytes is the low-level representation of an identity.
 	// it is supposed to be already in its minimal representation
 
-	mspIdRaw := []byte(sid.Mspid)
-	raw := append(mspIdRaw, sid.IdBytes...)
+	mspIDRaw := []byte(sid.Mspid)
+	raw := append(mspIDRaw, sid.IdBytes...)
 
 	// Hash
-	digest, err := factory.GetDefault().Hash(raw, &bccsp.SHA256Opts{})
+	digest, err := s.hasher.Hash(raw, &bccsp.SHA256Opts{})
 	if err != nil {
 		mcsLogger.Errorf("Failed computing digest of serialized identity [% x]: [%s]", peerIdentity, err)
-
 		return nil
 	}
 
