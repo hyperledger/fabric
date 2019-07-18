@@ -267,5 +267,46 @@ var _ = Describe("Lifecycle", func() {
 
 		By("ensuring chaincode can be invoked and queried by org3")
 		RunQueryInvokeQueryWithAddresses(network, orderer, org3peer1, 80, org3AndOrg1PeerAddresses...)
+
+		By("deploying a chaincode without an endorsement policy specified")
+		chaincode = nwo.Chaincode{
+			Name:         "defaultpolicycc",
+			Version:      "0.0",
+			Path:         "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Lang:         "golang",
+			PackageFile:  filepath.Join(tempDir, "simplecc.tar.gz"),
+			Ctor:         `{"Args":["init","a","100","b","200"]}`,
+			Sequence:     "1",
+			InitRequired: true,
+			Label:        "my_simple_chaincode",
+		}
+
+		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+
+		By("attempting to invoke the chaincode without a majority")
+		sess, err = network.PeerUserSession(org3peer1, "User1", commands.ChaincodeInvoke{
+			ChannelID:    "testchannel",
+			Orderer:      network.OrdererAddress(orderer, nwo.ListenPort),
+			Name:         "defaultpolicycc",
+			Ctor:         `{"Args":["invoke","a","b","10"]}`,
+			WaitForEvent: true,
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+		Expect(sess.Err).To(gbytes.Say(`\QError: transaction invalidated with status (ENDORSEMENT_POLICY_FAILURE)\E`))
+
+		By("attempting to invoke the chaincode with a majority")
+		sess, err = network.PeerUserSession(org3peer1, "User1", commands.ChaincodeInvoke{
+			ChannelID:     "testchannel",
+			Orderer:       network.OrdererAddress(orderer, nwo.ListenPort),
+			Name:          "defaultpolicycc",
+			Ctor:          `{"Args":["invoke","a","b","10"]}`,
+			PeerAddresses: org3AndOrg1PeerAddresses,
+			WaitForEvent:  true,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+		Expect(sess.Err).To(gbytes.Say(`\Qcommitted with status (VALID)\E`))
+		Expect(sess.Err).To(gbytes.Say(`Chaincode invoke successful. result: status:200`))
 	})
 })
