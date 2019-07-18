@@ -200,7 +200,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 	if exist {
 		commitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: true}
-		return c.CommitWithPvtData(blockAndPvtData, commitOpts)
+		return c.CommitLegacy(blockAndPvtData, commitOpts)
 	}
 
 	listMissingStart := time.Now()
@@ -289,7 +289,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 
 	// commit block and private data
 	commitStart := time.Now()
-	err = c.CommitWithPvtData(blockAndPvtData, &ledger.CommitOptions{})
+	err = c.CommitLegacy(blockAndPvtData, &ledger.CommitOptions{})
 	c.reportCommitDuration(time.Since(commitStart))
 	if err != nil {
 		return errors.Wrap(err, "commit failed")

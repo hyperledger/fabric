@@ -276,7 +276,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
 	// Commit block to the ledger
-	ledger.CommitWithPvtData(&ledger2.BlockAndPvtData{Block: block}, &ledger2.CommitOptions{})
+	ledger.CommitLegacy(&ledger2.BlockAndPvtData{Block: block}, &ledger2.CommitOptions{})
 
 	// Validation should invalidate transaction,
 	// because it's already committed

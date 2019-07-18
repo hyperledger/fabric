@@ -224,7 +224,7 @@ func (mc *mockCommitter) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCol
 	return args.Get(0).([]*ledger.TxPvtData), args.Error(1)
 }
 
-func (mc *mockCommitter) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
+func (mc *mockCommitter) CommitLegacy(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
 	mc.Lock()
 	m := mc.Mock
 	mc.Unlock()
@@ -303,7 +303,7 @@ func (mock *ramLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollF
 	panic("implement me")
 }
 
-func (mock *ramLedger) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
+func (mock *ramLedger) CommitLegacy(blockAndPvtdata *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
 	mock.Lock()
 	defer mock.Unlock()
 
@@ -351,7 +351,7 @@ func newCommitter() committer.Committer {
 	ldgr := &ramLedger{
 		ledger: make(map[uint64]*ledger.BlockAndPvtData),
 	}
-	ldgr.CommitWithPvtData(&ledger.BlockAndPvtData{Block: cb}, &ledger.CommitOptions{})
+	ldgr.CommitLegacy(&ledger.BlockAndPvtData{Block: cb}, &ledger.CommitOptions{})
 	return committer.NewLedgerCommitter(ldgr)
 }
 
@@ -548,7 +548,7 @@ func TestLargeBlockGap(t *testing.T) {
 	t.Parallel()
 	mc := &mockCommitter{Mock: &mock.Mock{}}
 	blocksPassedToLedger := make(chan uint64, 200)
-	mc.On("CommitWithPvtData", mock.Anything).Run(func(arg mock.Arguments) {
+	mc.On("CommitLegacy", mock.Anything).Run(func(arg mock.Arguments) {
 		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
 	})
 	msgsFromPeer := make(chan protoext.ReceivedMessage)
@@ -620,7 +620,7 @@ func TestOverPopulation(t *testing.T) {
 	t.Parallel()
 	mc := &mockCommitter{Mock: &mock.Mock{}}
 	blocksPassedToLedger := make(chan uint64, 10)
-	mc.On("CommitWithPvtData", mock.Anything).Run(func(arg mock.Arguments) {
+	mc.On("CommitLegacy", mock.Anything).Run(func(arg mock.Arguments) {
 		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
 	})
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
@@ -684,7 +684,7 @@ func TestBlockingEnqueue(t *testing.T) {
 	t.Parallel()
 	mc := &mockCommitter{Mock: &mock.Mock{}}
 	blocksPassedToLedger := make(chan uint64, 10)
-	mc.On("CommitWithPvtData", mock.Anything).Run(func(arg mock.Arguments) {
+	mc.On("CommitLegacy", mock.Anything).Run(func(arg mock.Arguments) {
 		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
 	})
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
@@ -733,7 +733,7 @@ func TestBlockingEnqueue(t *testing.T) {
 		m := &mock.Mock{}
 		m.On("LedgerHeight", mock.Anything).Return(receivedBlock, nil)
 		m.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
-		m.On("CommitWithPvtData", mock.Anything).Run(func(arg mock.Arguments) {
+		m.On("CommitLegacy", mock.Anything).Run(func(arg mock.Arguments) {
 			blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
 		})
 		mc.Lock()
@@ -794,7 +794,7 @@ func TestHaltChainProcessing(t *testing.T) {
 	logger = l
 
 	mc := &mockCommitter{Mock: &mock.Mock{}}
-	mc.On("CommitWithPvtData", mock.Anything)
+	mc.On("CommitLegacy", mock.Anything)
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
 	g := &mocks.GossipMock{}
 	gossipMsgs := make(chan *proto.GossipMessage)
@@ -890,7 +890,7 @@ func TestGossipReception(t *testing.T) {
 	g.On("PeersOfChannel", mock.Anything).Return([]discovery.NetworkMember{})
 	mc := &mockCommitter{Mock: &mock.Mock{}}
 	receivedChan := make(chan struct{})
-	mc.On("CommitWithPvtData", mock.Anything).Run(func(arguments mock.Arguments) {
+	mc.On("CommitLegacy", mock.Anything).Run(func(arguments mock.Arguments) {
 		block := arguments.Get(0).(*pcomm.Block)
 		assert.Equal(t, uint64(1), block.Header.Number)
 		receivedChan <- struct{}{}

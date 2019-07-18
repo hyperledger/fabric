@@ -157,7 +157,7 @@ func TestRecovery(t *testing.T) {
 	// now create the genesis block
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
 	ledger, err := provider.openInternal(constructTestLedgerID(1))
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: genesisBlock}, &lgr.CommitOptions{})
+	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: genesisBlock}, &lgr.CommitOptions{})
 	ledger.Close()
 
 	// Case 1: assume a crash happens, force underconstruction flag to be set to simulate
@@ -198,7 +198,7 @@ func TestRecoveryHistoryDBDisabled(t *testing.T) {
 	// now create the genesis block
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
 	ledger, err := provider.openInternal(constructTestLedgerID(1))
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: genesisBlock}, &lgr.CommitOptions{})
+	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: genesisBlock}, &lgr.CommitOptions{})
 	ledger.Close()
 
 	// Case 1: assume a crash happens, force underconstruction flag to be set to simulate
@@ -250,7 +250,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 		assert.NoError(t, err)
 		pubSimBytes, _ := res.GetPubSimulationBytes()
 		b := bg.NextBlock([][]byte{pubSimBytes})
-		err = l.CommitWithPvtData(&lgr.BlockAndPvtData{Block: b}, &ledger.CommitOptions{})
+		err = l.CommitLegacy(&lgr.BlockAndPvtData{Block: b}, &ledger.CommitOptions{})
 		l.Close()
 		assert.NoError(t, err)
 	}
@@ -313,7 +313,7 @@ func TestLedgerBackup(t *testing.T) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
+	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
 
 	txid = util.GenerateUUID()
 	simulator, _ = ledger.NewTxSimulator(txid)
@@ -324,7 +324,7 @@ func TestLedgerBackup(t *testing.T) {
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
+	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
 
 	ledger.Close()
 	provider.Close()

@@ -389,8 +389,8 @@ func (l *kvLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error
 	return nil, nil
 }
 
-// CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation
-func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
+// CommitLegacy commits the block and the corresponding pvt data in an atomic operation
+func (l *kvLedger) CommitLegacy(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
 	var err error
 	block := pvtdataAndBlock.Block
 	blockNo := pvtdataAndBlock.Block.Header.Number

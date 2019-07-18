@@ -820,11 +820,11 @@ in the list. In the example below, the highest block height is ``4``.
 
     [pvtdatastorage] func1 -> INFO 023 Purger started: Purging expired private data till block number [0]
     [pvtdatastorage] func1 -> INFO 024 Purger finished
-    [kvledger] CommitWithPvtData -> INFO 022 Channel [mychannel]: Committed block [0] with 1 transaction(s)
-    [kvledger] CommitWithPvtData -> INFO 02e Channel [mychannel]: Committed block [1] with 1 transaction(s)
-    [kvledger] CommitWithPvtData -> INFO 030 Channel [mychannel]: Committed block [2] with 1 transaction(s)
-    [kvledger] CommitWithPvtData -> INFO 036 Channel [mychannel]: Committed block [3] with 1 transaction(s)
-    [kvledger] CommitWithPvtData -> INFO 03e Channel [mychannel]: Committed block [4] with 1 transaction(s)
+    [kvledger] CommitLegacy -> INFO 022 Channel [mychannel]: Committed block [0] with 1 transaction(s)
+    [kvledger] CommitLegacy -> INFO 02e Channel [mychannel]: Committed block [1] with 1 transaction(s)
+    [kvledger] CommitLegacy -> INFO 030 Channel [mychannel]: Committed block [2] with 1 transaction(s)
+    [kvledger] CommitLegacy -> INFO 036 Channel [mychannel]: Committed block [3] with 1 transaction(s)
+    [kvledger] CommitLegacy -> INFO 03e Channel [mychannel]: Committed block [4] with 1 transaction(s)
 
 Back in the peer container, query for the **marble1** price data by running the
 following command. (A Query does not create a new transaction on the ledger

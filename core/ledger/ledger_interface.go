@@ -120,8 +120,9 @@ type PeerLedger interface {
 	// The pvt data is filtered by the list of 'ns/collections' supplied in the filter
 	// A nil filter does not filter any results and causes retrieving all the pvt data for the given blockNum
 	GetPvtDataByNum(blockNum uint64, filter PvtNsCollFilter) ([]*TxPvtData, error)
-	// CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation
-	CommitWithPvtData(blockAndPvtdata *BlockAndPvtData, commitOpts *CommitOptions) error
+	// CommitLegacy commits the block and the corresponding pvt data in an atomic operation following the v14 validation/commit path
+	// TODO: add a new Commit() path that replaces CommitLegacy() for the validation refactor described in FAB-12221
+	CommitLegacy(blockAndPvtdata *BlockAndPvtData, commitOpts *CommitOptions) error
 	// GetConfigHistoryRetriever returns the ConfigHistoryRetriever
 	GetConfigHistoryRetriever() (ConfigHistoryRetriever, error)
 	// CommitPvtDataOfOldBlocks commits the private data corresponding to already committed block
