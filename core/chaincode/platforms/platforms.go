@@ -36,9 +36,6 @@ var SupportedPlatforms = []Platform{
 // the given platform
 type Platform interface {
 	Name() string
-	ValidatePath(path string) error
-	ValidateCodePackage(code []byte) error
-	GetDeploymentPayload(path string) ([]byte, error)
 	GenerateDockerfile() (string, error)
 	DockerBuildOptions(path string) (util.DockerBuildOptions, error)
 	GetMetadataAsTarEntries(code []byte) ([]byte, error)
@@ -75,43 +72,12 @@ func NewRegistry(platformTypes ...Platform) *Registry {
 	}
 }
 
-func (r *Registry) ValidateSpec(ccType, path string) error {
-	platform, ok := r.Platforms[ccType]
-	if !ok {
-		return fmt.Errorf("Unknown chaincodeType: %s", ccType)
-	}
-	return platform.ValidatePath(path)
-}
-
-func (r *Registry) ValidateDeploymentSpec(ccType string, codePackage []byte) error {
-	platform, ok := r.Platforms[ccType]
-	if !ok {
-		return fmt.Errorf("Unknown chaincodeType: %s", ccType)
-	}
-
-	// ignore empty packages
-	if len(codePackage) == 0 {
-		return nil
-	}
-
-	return platform.ValidateCodePackage(codePackage)
-}
-
 func (r *Registry) GetMetadataProvider(ccType string, codePackage []byte) ([]byte, error) {
 	platform, ok := r.Platforms[ccType]
 	if !ok {
 		return nil, fmt.Errorf("Unknown chaincodeType: %s", ccType)
 	}
 	return platform.GetMetadataAsTarEntries(codePackage)
-}
-
-func (r *Registry) GetDeploymentPayload(ccType, path string) ([]byte, error) {
-	platform, ok := r.Platforms[ccType]
-	if !ok {
-		return nil, fmt.Errorf("Unknown chaincodeType: %s", ccType)
-	}
-
-	return platform.GetDeploymentPayload(path)
 }
 
 func (r *Registry) GenerateDockerfile(ccType, name, version string) (string, error) {

@@ -83,6 +83,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/service"
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
+	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -157,6 +158,7 @@ func serve(args []string) error {
 	}
 
 	platformRegistry := platforms.NewRegistry(platforms.SupportedPlatforms...)
+	packagingRegistry := packaging.NewRegistry(packaging.SupportedPlatforms...)
 
 	identityDeserializerFactory := func(chainID string) msp.IdentityDeserializer {
 		return mgmt.GetManagerForChain(chainID)
@@ -585,7 +587,7 @@ func serve(args []string) error {
 		SigningIdentityFetcher:  signingIdentityFetcher,
 	})
 	endorserSupport.PluginEndorser = pluginEndorser
-	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport, platformRegistry, metricsProvider)
+	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport, packagingRegistry, metricsProvider)
 
 	// register prover grpc service
 	err = registerProverService(peerInstance, peerServer, aclProvider, signingIdentity)

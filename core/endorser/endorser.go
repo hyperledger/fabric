@@ -17,11 +17,11 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -106,7 +106,7 @@ type Support interface {
 type Endorser struct {
 	distributePrivateData privateDataDistributor
 	s                     Support
-	PlatformRegistry      *platforms.Registry
+	PlatformRegistry      *packaging.Registry
 	PvtRWSetAssembler
 	Metrics *EndorserMetrics
 }
@@ -121,7 +121,7 @@ type validateResult struct {
 }
 
 // NewEndorserServer creates and returns a new Endorser server instance.
-func NewEndorserServer(privDist privateDataDistributor, s Support, pr *platforms.Registry, metricsProv metrics.Provider) *Endorser {
+func NewEndorserServer(privDist privateDataDistributor, s Support, pr *packaging.Registry, metricsProv metrics.Provider) *Endorser {
 	e := &Endorser{
 		distributePrivateData: privDist,
 		s:                     s,

@@ -56,6 +56,7 @@ import (
 	"github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
+	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -382,7 +383,7 @@ func endTxSimulation(peerInstance *peer.Peer, chainID string, ccid *pb.Chaincode
 // Build a chaincode.
 func getDeploymentSpec(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
 	fmt.Printf("getting deployment spec for chaincode spec: %v\n", spec)
-	codePackageBytes, err := platforms.NewRegistry(&golang.Platform{}).GetDeploymentPayload(spec.Type.String(), spec.ChaincodeId.Path)
+	codePackageBytes, err := packaging.NewRegistry(&golang.Platform{}).GetDeploymentPayload(spec.Type.String(), spec.ChaincodeId.Path)
 	if err != nil {
 		return nil, err
 	}

@@ -41,52 +41,6 @@ var _ = Describe("Platforms", func() {
 	})
 
 	Describe("pass through functions", func() {
-		Describe("ValidateSpec", func() {
-			It("returns the result of the underlying platform", func() {
-				fakePlatform.ValidatePathReturns(errors.New("fake-error"))
-				err := registry.ValidateSpec("fakeType", "cc-path")
-				Expect(err).To(MatchError(errors.New("fake-error")))
-				Expect(fakePlatform.ValidatePathCallCount()).To(Equal(1))
-				Expect(fakePlatform.ValidatePathArgsForCall(0)).To(Equal("cc-path"))
-			})
-
-			Context("when the platform is unknown", func() {
-				It("returns an error", func() {
-					err := registry.ValidateSpec("badType", "")
-					Expect(err).To(MatchError("Unknown chaincodeType: badType"))
-				})
-			})
-		})
-
-		Describe("ValidateDeploymentSpec", func() {
-			It("returns the result of the underlying platform", func() {
-				fakePlatform.ValidateCodePackageReturns(errors.New("fake-error"))
-				err := registry.ValidateDeploymentSpec("fakeType", []byte("code-package"))
-				Expect(err).To(MatchError(errors.New("fake-error")))
-				Expect(fakePlatform.ValidateCodePackageCallCount()).To(Equal(1))
-				Expect(fakePlatform.ValidateCodePackageArgsForCall(0)).To(Equal([]byte("code-package")))
-			})
-
-			Context("when the code package is empty", func() {
-				It("does nothing", func() {
-					err := registry.ValidateDeploymentSpec("fakeType", []byte{})
-					Expect(err).NotTo(HaveOccurred())
-					Expect(fakePlatform.ValidateCodePackageCallCount()).To(Equal(0))
-
-					err = registry.ValidateDeploymentSpec("fakeType", nil)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(fakePlatform.ValidateCodePackageCallCount()).To(Equal(0))
-				})
-			})
-
-			Context("when the platform is unknown", func() {
-				It("returns an error", func() {
-					err := registry.ValidateDeploymentSpec("badType", nil)
-					Expect(err).To(MatchError("Unknown chaincodeType: badType"))
-				})
-			})
-		})
-
 		Describe("GetMetadataProvider", func() {
 			It("returns the result of the underlying platform", func() {
 				md, err := registry.GetMetadataProvider("fakeType", []byte("code-package"))
@@ -100,25 +54,6 @@ var _ = Describe("Platforms", func() {
 				It("returns an error", func() {
 					md, err := registry.GetMetadataProvider("badType", nil)
 					Expect(md).To(BeNil())
-					Expect(err).To(MatchError("Unknown chaincodeType: badType"))
-				})
-			})
-		})
-
-		Describe("GetDeploymentPayload", func() {
-			It("returns the result of the underlying platform", func() {
-				fakePlatform.GetDeploymentPayloadReturns([]byte("payload"), errors.New("fake-error"))
-				payload, err := registry.GetDeploymentPayload("fakeType", "cc-path")
-				Expect(payload).To(Equal([]byte("payload")))
-				Expect(err).To(MatchError(errors.New("fake-error")))
-				Expect(fakePlatform.GetDeploymentPayloadCallCount()).To(Equal(1))
-				Expect(fakePlatform.GetDeploymentPayloadArgsForCall(0)).To(Equal("cc-path"))
-			})
-
-			Context("when the platform is unknown", func() {
-				It("returns an error", func() {
-					payload, err := registry.GetDeploymentPayload("badType", "")
-					Expect(payload).To(BeNil())
 					Expect(err).To(MatchError("Unknown chaincodeType: badType"))
 				})
 			})
