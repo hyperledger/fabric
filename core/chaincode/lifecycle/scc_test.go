@@ -1376,6 +1376,126 @@ var _ = Describe("SCC", func() {
 					Expect(res.Message).To(Equal("namespace nicetry is not defined"))
 				})
 			})
+
+			Context("when there is no application config", func() {
+				BeforeEach(func() {
+					fakeChannelConfig.ApplicationConfigReturns(nil, false)
+				})
+
+				It("returns an error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("could not get application config for channel 'test-channel'"))
+				})
+
+				Context("when there is no application config because there is no channel", func() {
+					BeforeEach(func() {
+						fakeStub.GetChannelIDReturns("")
+					})
+
+					It("returns an error", func() {
+						res := scc.Invoke(fakeStub)
+						Expect(res.Status).To(Equal(int32(500)))
+						Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinition': no application config for channel ''"))
+					})
+				})
+			})
+		})
+
+		Describe("QueryChaincodeDefinitions", func() {
+			var (
+				arg          *lb.QueryChaincodeDefinitionsArgs
+				marshaledArg []byte
+			)
+
+			BeforeEach(func() {
+				arg = &lb.QueryChaincodeDefinitionsArgs{}
+
+				var err error
+				marshaledArg, err = proto.Marshal(arg)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeStub.GetArgsReturns([][]byte{[]byte("QueryChaincodeDefinitions"), marshaledArg})
+				fakeSCCFuncs.QueryNamespaceDefinitionsReturns(map[string]string{
+					"foo": "Chaincode",
+					"bar": "Token",
+					"woo": "Chaincode",
+				}, nil)
+				fakeSCCFuncs.QueryChaincodeDefinitionStub = func(name string, rs lifecycle.ReadableState, os []lifecycle.OpaqueState) (*lifecycle.ChaincodeDefinition, map[string]bool, error) {
+					cd := &lifecycle.ChaincodeDefinition{
+						Sequence: 2,
+						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+							Version:           "version",
+							EndorsementPlugin: "endorsement-plugin",
+						},
+						ValidationInfo: &lb.ChaincodeValidationInfo{
+							ValidationPlugin:    "validation-plugin",
+							ValidationParameter: []byte("validation-parameter"),
+						},
+						Collections: &cb.CollectionConfigPackage{},
+					}
+
+					if name == "woo" {
+						cd.Sequence = 5
+					}
+
+					return cd, nil, nil
+				}
+			})
+
+			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
+				res := scc.Invoke(fakeStub)
+				Expect(res.Status).To(Equal(int32(200)))
+				payload := &lb.QueryChaincodeDefinitionsResult{}
+				err := proto.Unmarshal(res.Payload, payload)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(payload.GetChaincodeDefinitions()).To(ConsistOf(
+					&lb.QueryChaincodeDefinitionsResult_ChaincodeDefinition{
+						Name:                "foo",
+						Sequence:            2,
+						Version:             "version",
+						EndorsementPlugin:   "endorsement-plugin",
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+						Collections:         &cb.CollectionConfigPackage{},
+					},
+					&lb.QueryChaincodeDefinitionsResult_ChaincodeDefinition{
+						Name:                "woo",
+						Sequence:            5,
+						Version:             "version",
+						EndorsementPlugin:   "endorsement-plugin",
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+						Collections:         &cb.CollectionConfigPackage{},
+					},
+				))
+				Expect(fakeSCCFuncs.QueryNamespaceDefinitionsCallCount()).To(Equal(1))
+				Expect(fakeSCCFuncs.QueryChaincodeDefinitionCallCount()).To(Equal(2))
+			})
+
+			Context("when the underlying QueryChaincodeDefinition function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinitions': underlying-error"))
+				})
+			})
+
+			Context("when the underlying QueryNamespaceDefinitions function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryNamespaceDefinitionsReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinitions': underlying-error"))
+				})
+			})
 		})
 
 		Describe("QueryNamespaceDefinitions", func() {

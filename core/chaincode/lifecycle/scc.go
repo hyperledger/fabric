@@ -61,8 +61,12 @@ const (
 	CommitChaincodeDefinitionFuncName = "CommitChaincodeDefinition"
 
 	// QueryChaincodeDefinitionFuncName is the chaincode function name used to
-	// query the committed chaincode definitions in a channel.
+	// query a committed chaincode definition in a channel.
 	QueryChaincodeDefinitionFuncName = "QueryChaincodeDefinition"
+
+	// QueryChaincodeDefinitionsFuncName is the chaincode function name used to
+	// query the committed chaincode definitions in a channel.
+	QueryChaincodeDefinitionsFuncName = "QueryChaincodeDefinitions"
 
 	// QueryNamespaceDefinitionsFuncName is the chaincode function name used
 	// to query which namespaces are currently defined and what type those
@@ -400,10 +404,6 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 // SimulateCommitChaincodeDefinition is a SCC function that may be dispatched
 // to the underlying lifecycle implementation.
 func (i *Invocation) SimulateCommitChaincodeDefinition(input *lb.SimulateCommitChaincodeDefinitionArgs) (proto.Message, error) {
-	if i.ApplicationConfig == nil {
-		return nil, errors.Errorf("no application config for channel '%s'", i.Stub.GetChannelID())
-	}
-
 	opaqueStates, err := i.createOpaqueStates()
 	if err != nil {
 		return nil, err
@@ -539,10 +539,47 @@ func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinition
 	}, nil
 }
 
+// QueryChaincodeDefinitions is a SCC function that may be dispatched
+// to which routes to the underlying lifecycle implementation.
+func (i *Invocation) QueryChaincodeDefinitions(input *lb.QueryChaincodeDefinitionsArgs) (proto.Message, error) {
+	logger.Debugf("received invocation of QueryChaincodeDefinitions on channel '%s'",
+		i.Stub.GetChannelID(),
+	)
+
+	namespaces, err := i.SCC.Functions.QueryNamespaceDefinitions(&ChaincodePublicLedgerShim{ChaincodeStubInterface: i.Stub})
+	if err != nil {
+		return nil, err
+	}
+
+	chaincodeDefinitions := []*lb.QueryChaincodeDefinitionsResult_ChaincodeDefinition{}
+	for namespace, nType := range namespaces {
+		if nType == FriendlyChaincodeDefinitionType {
+			definedChaincode, _, err := i.SCC.Functions.QueryChaincodeDefinition(namespace, i.Stub, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			chaincodeDefinitions = append(chaincodeDefinitions, &lb.QueryChaincodeDefinitionsResult_ChaincodeDefinition{
+				Name:                namespace,
+				Sequence:            definedChaincode.Sequence,
+				Version:             definedChaincode.EndorsementInfo.Version,
+				EndorsementPlugin:   definedChaincode.EndorsementInfo.EndorsementPlugin,
+				ValidationPlugin:    definedChaincode.ValidationInfo.ValidationPlugin,
+				ValidationParameter: definedChaincode.ValidationInfo.ValidationParameter,
+				InitRequired:        definedChaincode.EndorsementInfo.InitRequired,
+				Collections:         definedChaincode.Collections,
+			})
+		}
+	}
+
+	return &lb.QueryChaincodeDefinitionsResult{
+		ChaincodeDefinitions: chaincodeDefinitions,
+	}, nil
+}
+
 // QueryNamespaceDefinitions is a SCC function that may be dispatched
 // to which routes to the underlying lifecycle implementation.
 func (i *Invocation) QueryNamespaceDefinitions(input *lb.QueryNamespaceDefinitionsArgs) (proto.Message, error) {
-
 	logger.Debugf("received invocation of QueryNamespaceDefinitions on channel '%s'",
 		i.Stub.GetChannelID(),
 	)

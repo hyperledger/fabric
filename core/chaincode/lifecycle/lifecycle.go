@@ -240,6 +240,9 @@ func (r *Resources) ChaincodeDefinitionIfDefined(chaincodeName string, state Rea
 }
 
 func (r *Resources) retrieveOrgApprovals(name string, cd *ChaincodeDefinition, orgStates []OpaqueState) (map[string]bool, error) {
+	if len(orgStates) == 0 {
+		return nil, nil
+	}
 	approvals := map[string]bool{}
 	privateName := fmt.Sprintf("%s#%d", name, cd.Sequence)
 	for _, orgState := range orgStates {

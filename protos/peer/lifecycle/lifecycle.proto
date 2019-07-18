@@ -140,13 +140,13 @@ message SimulateCommitChaincodeDefinitionResult{
     map<string, bool> approved = 1;
 }
 
-// QueryChaincodeDefinition is the message used as arguments to
+// QueryChaincodeDefinitionArgs is the message used as arguments to
 // `_lifecycle.QueryChaincodeDefinition`.
 message QueryChaincodeDefinitionArgs {
     string name = 1;
 }
 
-// CommitChaincodeDefinitionResult is the message returned by
+// QueryChaincodeDefinitionResult is the message returned by
 // `_lifecycle.QueryChaincodeDefinition`.
 message QueryChaincodeDefinitionResult {
     int64 sequence = 1;
@@ -157,6 +157,27 @@ message QueryChaincodeDefinitionResult {
     common.CollectionConfigPackage collections = 6;
     bool init_required = 7;
     map<string,bool> approved = 8;
+}
+
+// QueryChaincodeDefinitionsArgs is the message used as arguments to
+// `_lifecycle.QueryChaincodeDefinitions`.
+message QueryChaincodeDefinitionsArgs {
+}
+
+// QueryChaincodeDefinitionsResult is the message returned by
+// `_lifecycle.QueryChaincodeDefinitions`.
+message QueryChaincodeDefinitionsResult {
+    message ChaincodeDefinition {
+        string name = 1;
+        int64 sequence = 2;
+        string version = 3;
+        string endorsement_plugin = 4;
+        string validation_plugin = 5;
+        bytes validation_parameter = 6;
+        common.CollectionConfigPackage collections = 7;
+        bool init_required = 8;
+    }
+    repeated ChaincodeDefinition chaincode_definitions = 1;
 }
 
 // QueryNamespaceDefinitions is the message used as arguments to
