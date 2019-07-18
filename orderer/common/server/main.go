@@ -22,6 +22,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	floggingmetrics "github.com/hyperledger/fabric/common/flogging/metrics"
@@ -640,7 +641,7 @@ func loadLocalMSP(conf *localconfig.TopLevel) msp.MSP {
 		logger.Panicf("MSP option for type %s is not found", typ)
 	}
 
-	localmsp, err := msp.New(opts)
+	localmsp, err := msp.New(opts, factory.GetDefault())
 	if err != nil {
 		logger.Panicf("Failed to load local MSP: %v", err)
 	}

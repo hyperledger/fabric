@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/identity"
@@ -179,7 +180,7 @@ func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTr
 func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId, upperBound Quantity) (string, Quantity, int, error) {
 	// create token owner based on t.PublicCredential
 	tokenOwner := &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}
-	ownerString, err := GetTokenOwnerString(tokenOwner)
+	ownerString, err := GetTokenOwnerString(tokenOwner, factory.GetDefault())
 	if err != nil {
 		return "", nil, 0, err
 	}
@@ -255,7 +256,7 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds []*token.TokenId, upperBound
 func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 	// The type is always MSP_IDENTIFIER in current use cases
 	tokenOwner := &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: t.PublicCredential}
-	ownerString, err := GetTokenOwnerString(tokenOwner)
+	ownerString, err := GetTokenOwnerString(tokenOwner, factory.GetDefault())
 	if err != nil {
 		return nil, err
 	}

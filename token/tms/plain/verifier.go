@@ -19,6 +19,7 @@ import (
 	coreledger "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/token/client"
 	"github.com/hyperledger/fabric/token/identity"
 	"github.com/hyperledger/fabric/token/ledger"
 	"github.com/pkg/errors"
@@ -190,7 +191,7 @@ func (v *Verifier) checkTokenDoesNotExist(token *token.Token, index int, txID st
 		return nil
 	}
 
-	ownerString, err := GetTokenOwnerString(token.Owner)
+	ownerString, err := GetTokenOwnerString(token.Owner, factory.GetDefault())
 	if err != nil {
 		return err
 	}
@@ -328,7 +329,7 @@ func (v *Verifier) commitAction(tokenOwner *token.TokenOwner, tokenAction *token
 
 func (v *Verifier) commitIssueAction(issueAction *token.Issue, txID string, simulator ledger.LedgerWriter) error {
 	for i, output := range issueAction.GetOutputs() {
-		ownerString, err := GetTokenOwnerString(output.Owner)
+		ownerString, err := GetTokenOwnerString(output.Owner, factory.GetDefault())
 		if err != nil {
 			return err
 		}
@@ -356,7 +357,7 @@ func (v *Verifier) commitTransferAction(tokenOwner *token.TokenOwner, transferAc
 			continue
 		}
 
-		ownerString, err := GetTokenOwnerString(output.Owner)
+		ownerString, err := GetTokenOwnerString(output.Owner, factory.GetDefault())
 		if err != nil {
 			return err
 		}
@@ -376,7 +377,7 @@ func (v *Verifier) commitTransferAction(tokenOwner *token.TokenOwner, transferAc
 
 func (v *Verifier) spendTokens(tokenOwner *token.TokenOwner, tokenIds []*token.TokenId, simulator ledger.LedgerWriter) error {
 	// get tokenOwner string to reuse in the loop below
-	ownerString, err := GetTokenOwnerString(tokenOwner)
+	ownerString, err := GetTokenOwnerString(tokenOwner, factory.GetDefault())
 	if err != nil {
 		return err
 	}
@@ -450,7 +451,7 @@ func validateCompositeKeyAttribute(str string) error {
 // this method creates valid tokenKeys from list of input tokenIds and checks for duplicates
 func createTokenKeys(tokenOwner *token.TokenOwner, tokenIds []*token.TokenId) ([]string, error) {
 	// get the owner string to reuse in the loop below
-	ownerString, err := GetTokenOwnerString(tokenOwner)
+	ownerString, err := GetTokenOwnerString(tokenOwner, factory.GetDefault())
 	if err != nil {
 		return nil, err
 	}
@@ -477,16 +478,11 @@ func createTokenKeys(tokenOwner *token.TokenOwner, tokenIds []*token.TokenId) ([
 
 // GetTokenOwnerString returns a hex encoded string of the token owner.
 // The owner is hashed to reduce the length.
-func GetTokenOwnerString(owner *token.TokenOwner) (string, error) {
-	if owner == nil {
-		verifierLogger.Debug("GetTokenOwnerString: owner is nil")
-		return "", nil
-	}
-
+func GetTokenOwnerString(owner *token.TokenOwner, hasher client.Hasher) (string, error) {
 	// Hash owner.Type/owner.Raw.
 	// Get []byte for owner.Type/, owner.Raw is already []byte.
 	typeBytes := []byte(strconv.Itoa(int(owner.Type)) + ownerSeparator)
-	hashedOwner, err := factory.GetDefault().Hash(append(typeBytes, owner.Raw...), &bccsp.SHA256Opts{})
+	hashedOwner, err := hasher.Hash(append(typeBytes, owner.Raw...), &bccsp.SHA256Opts{})
 	if err != nil {
 		return "", err
 	}

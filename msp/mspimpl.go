@@ -106,13 +106,12 @@ type bccspmsp struct {
 // crypto provider. It handles x.509 certificates and can
 // generate identities and signing identities backed by
 // certificates and keypairs
-func newBccspMsp(version MSPVersion) (MSP, error) {
+func newBccspMsp(version MSPVersion, defaultBCCSP bccsp.BCCSP) (MSP, error) {
 	mspLogger.Debugf("Creating BCCSP-based MSP instance")
 
-	bccsp := factory.GetDefault()
 	theMsp := &bccspmsp{}
 	theMsp.version = version
-	theMsp.bccsp = bccsp
+	theMsp.bccsp = defaultBCCSP
 	switch version {
 	case MSPv1_0:
 		theMsp.internalSetupFunc = theMsp.setupV1
@@ -144,7 +143,7 @@ func newBccspMsp(version MSPVersion) (MSP, error) {
 // NewBccspMspWithKeyStore allows to create a BCCSP-based MSP whose underlying
 // crypto material is available through the passed keystore
 func NewBccspMspWithKeyStore(version MSPVersion, keyStore bccsp.KeyStore) (MSP, error) {
-	thisMSP, err := newBccspMsp(version)
+	thisMSP, err := newBccspMsp(version, factory.GetDefault())
 	if err != nil {
 		return nil, err
 	}

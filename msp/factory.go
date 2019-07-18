@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package msp
 
 import (
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/pkg/errors"
 )
 
@@ -45,18 +46,18 @@ type IdemixNewOpts struct {
 }
 
 // New create a new MSP instance depending on the passed Opts
-func New(opts NewOpts) (MSP, error) {
+func New(opts NewOpts, cryptoProvider bccsp.BCCSP) (MSP, error) {
 	switch opts.(type) {
 	case *BCCSPNewOpts:
 		switch opts.GetVersion() {
 		case MSPv1_0:
-			return newBccspMsp(MSPv1_0)
+			return newBccspMsp(MSPv1_0, cryptoProvider)
 		case MSPv1_1:
-			return newBccspMsp(MSPv1_1)
+			return newBccspMsp(MSPv1_1, cryptoProvider)
 		case MSPv1_3:
-			return newBccspMsp(MSPv1_3)
+			return newBccspMsp(MSPv1_3, cryptoProvider)
 		case MSPv1_4_2:
-			return newBccspMsp(MSPv1_4_2)
+			return newBccspMsp(MSPv1_4_2, cryptoProvider)
 		default:
 			return nil, errors.Errorf("Invalid *BCCSPNewOpts. Version not recognized [%v]", opts.GetVersion())
 		}

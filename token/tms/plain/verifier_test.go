@@ -95,7 +95,8 @@ var _ = Describe("Verifier", func() {
 			Expect(err).NotTo(HaveOccurred())
 			ns, k, td := fakeLedger.SetStateArgsForCall(0)
 			Expect(ns).To(Equal(tokenNamespace))
-			ownerString := buildTokenOwnerString([]byte("owner-1"))
+			ownerString, err := buildTokenOwnerString([]byte("owner-1"))
+			Expect(err).NotTo(HaveOccurred())
 			expectedOutput := strings.Join([]string{"", tokenKeyPrefix, ownerString, "0", "0", ""}, "\x00")
 			Expect(k).To(Equal(expectedOutput))
 			Expect(td).To(Equal(outputBytes))
@@ -104,7 +105,8 @@ var _ = Describe("Verifier", func() {
 			Expect(err).NotTo(HaveOccurred())
 			ns, k, td = fakeLedger.SetStateArgsForCall(1)
 			Expect(ns).To(Equal(tokenNamespace))
-			ownerString = buildTokenOwnerString([]byte("owner-2"))
+			ownerString, err = buildTokenOwnerString([]byte("owner-2"))
+			Expect(err).NotTo(HaveOccurred())
 			expectedOutput = strings.Join([]string{"", tokenKeyPrefix, ownerString, "0", "1", ""}, "\x00")
 			Expect(k).To(Equal(expectedOutput))
 			Expect(td).To(Equal(outputBytes))
@@ -190,7 +192,8 @@ var _ = Describe("Verifier", func() {
 			It("returns an error", func() {
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, issueTransaction, memoryLedger)
 				Expect(err).To(HaveOccurred())
-				ownerString := buildTokenOwnerString([]byte("owner-1"))
+				ownerString, ownerErr := buildTokenOwnerString([]byte("owner-1"))
+				Expect(ownerErr).NotTo(HaveOccurred())
 				existingOutputId := strings.Join([]string{"", tokenKeyPrefix, ownerString, "0", "0", ""}, "\x00")
 				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: fmt.Sprintf("token already exists: %s", existingOutputId)}))
 			})
@@ -230,7 +233,8 @@ var _ = Describe("Verifier", func() {
 		})
 
 		It("retrieves the Token associated with the entry ID", func() {
-			ownerString := buildTokenOwnerString([]byte("owner-1"))
+			ownerString, err := buildTokenOwnerString([]byte("owner-1"))
+			Expect(err).NotTo(HaveOccurred())
 			po, err := memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", tokenKeyPrefix, ownerString, "0", "0", ""}, "\x00"))
 			Expect(err).NotTo(HaveOccurred())
 
@@ -244,7 +248,8 @@ var _ = Describe("Verifier", func() {
 				Quantity: ToHex(111),
 			}))
 
-			ownerString = buildTokenOwnerString([]byte("owner-2"))
+			ownerString, err = buildTokenOwnerString([]byte("owner-2"))
+			Expect(err).NotTo(HaveOccurred())
 			po, err = memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", tokenKeyPrefix, ownerString, "0", "1", ""}, "\x00"))
 			Expect(err).NotTo(HaveOccurred())
 
@@ -345,7 +350,8 @@ var _ = Describe("Verifier", func() {
 				Expect(fakeLedger.GetStateCallCount()).To(Equal(1))
 				Expect(fakeLedger.SetStateCallCount()).To(Equal(0))
 				ns, k := fakeLedger.GetStateArgsForCall(0)
-				ownerString := buildTokenOwnerString([]byte("owner-1"))
+				ownerString, err := buildTokenOwnerString([]byte("owner-1"))
+				Expect(err).NotTo(HaveOccurred())
 				expectedOutput := strings.Join([]string{"", tokenKeyPrefix, ownerString, "0", "0", ""}, "\x00")
 				Expect(k).To(Equal(expectedOutput))
 				Expect(ns).To(Equal(tokenNamespace))
@@ -391,7 +397,8 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("is processed successfully", func() {
-				ownerString := buildTokenOwnerString([]byte("owner-1"))
+				ownerString, err := buildTokenOwnerString([]byte("owner-1"))
+				Expect(err).NotTo(HaveOccurred())
 				po, err := memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", tokenKeyPrefix, ownerString, transferTxID, "0", ""}, "\x00"))
 				Expect(err).NotTo(HaveOccurred())
 
@@ -405,7 +412,8 @@ var _ = Describe("Verifier", func() {
 					Quantity: ToHex(99),
 				}))
 
-				ownerString = buildTokenOwnerString([]byte("owner-2"))
+				ownerString, err = buildTokenOwnerString([]byte("owner-2"))
+				Expect(err).NotTo(HaveOccurred())
 				po, err = memoryLedger.GetState(tokenNamespace, strings.Join([]string{"", tokenKeyPrefix, ownerString, transferTxID, "1", ""}, "\x00"))
 				Expect(err).NotTo(HaveOccurred())
 
@@ -472,7 +480,8 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				ownerString := buildTokenOwnerString(fakePublicInfo.Public())
+				ownerString, ownerErr := buildTokenOwnerString(fakePublicInfo.Public())
+				Expect(ownerErr).NotTo(HaveOccurred())
 				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "token with ID \x00" + tokenKeyPrefix + "\x00" + ownerString + "\x00wild_pineapple\x000\x00 does not exist"}))
 			})
 		})
@@ -484,7 +493,8 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				ownerString := buildTokenOwnerString(fakePublicInfo.Public())
+				ownerString, ownerErr := buildTokenOwnerString(fakePublicInfo.Public())
+				Expect(ownerErr).NotTo(HaveOccurred())
 				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "token with ID \x00token\x00" + ownerString + "\x000\x000\x00 does not exist"}))
 			})
 		})
@@ -653,7 +663,8 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx("2", fakePublicInfo, transferTransaction, memoryLedger)
-				ownerString := buildTokenOwnerString(fakePublicInfo.Public())
+				ownerString, ownerErr := buildTokenOwnerString(fakePublicInfo.Public())
+				Expect(ownerErr).NotTo(HaveOccurred())
 				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "token with ID \x00" + tokenKeyPrefix + "\x00" + ownerString + "\x000\x000\x00 does not exist"}))
 			})
 		})
@@ -684,7 +695,8 @@ var _ = Describe("Verifier", func() {
 			It("returns an error", func() {
 				err := verifier.ProcessTx(issueTxID, fakePublicInfo, transferTransaction, memoryLedger)
 				Expect(err).To(HaveOccurred())
-				ownerString := buildTokenOwnerString([]byte("owner-1"))
+				ownerString, ownerErr := buildTokenOwnerString([]byte("owner-1"))
+				Expect(ownerErr).NotTo(HaveOccurred())
 				existingOutputId := "\x00" + tokenKeyPrefix + "\x00" + ownerString + "\x00" + issueTxID + "\x00" + "0" + "\x00"
 				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: fmt.Sprintf("token already exists: %s", existingOutputId)}))
 			})
@@ -937,7 +949,8 @@ var _ = Describe("Verifier", func() {
 		})
 
 		It("processes a redeem transaction with all tokens redeemed", func() {
-			ownerString := buildTokenOwnerString([]byte("owner-1"))
+			ownerString, err := buildTokenOwnerString([]byte("owner-1"))
+			Expect(err).NotTo(HaveOccurred())
 			tokenId := strings.Join([]string{"", tokenKeyPrefix, ownerString, "0", "0", ""}, "\x00")
 
 			// verify that token does exist
@@ -977,7 +990,8 @@ var _ = Describe("Verifier", func() {
 			}
 
 			// check that token (TOK1 111) does exist
-			ownerString := buildTokenOwnerString([]byte("owner-1"))
+			ownerString, err := buildTokenOwnerString([]byte("owner-1"))
+			Expect(err).NotTo(HaveOccurred())
 			tokenId := strings.Join([]string{"", tokenKeyPrefix, ownerString, "0", "0", ""}, "\x00")
 			po, err := memoryLedger.GetState(tokenNamespace, tokenId)
 			Expect(err).NotTo(HaveOccurred())
@@ -996,7 +1010,8 @@ var _ = Describe("Verifier", func() {
 			Expect(po).To(Equal([]byte{}))
 
 			// check that token (TOK1 12) does exist
-			ownerString = buildTokenOwnerString(fakePublicInfo.Public())
+			ownerString, err = buildTokenOwnerString(fakePublicInfo.Public())
+			Expect(err).NotTo(HaveOccurred())
 			newTokenId := strings.Join([]string{"", tokenKeyPrefix, ownerString, redeemTxID, "1", ""}, "\x00")
 			po, err = memoryLedger.GetState(tokenNamespace, newTokenId)
 			Expect(err).NotTo(HaveOccurred())
@@ -1015,7 +1030,8 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx("r2", fakePublicInfo, redeemTransaction, memoryLedger)
-				ownerString := buildTokenOwnerString(fakePublicInfo.Public())
+				ownerString, ownerErr := buildTokenOwnerString(fakePublicInfo.Public())
+				Expect(ownerErr).NotTo(HaveOccurred())
 				Expect(err).To(Equal(&ledger.InvalidTxError{Msg: "token with ID \x00" + tokenKeyPrefix + "\x00" + ownerString + "\x000\x000\x00 does not exist"}))
 			})
 		})

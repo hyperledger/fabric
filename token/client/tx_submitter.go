@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
@@ -131,7 +132,7 @@ func (s *TxSubmitter) Submit(txEnvelope *common.Envelope, waitTimeout time.Durat
 // It returns the transaction envelope, transaction id, and error.
 func (s *TxSubmitter) CreateTxEnvelope(txBytes []byte) (*common.Envelope, string, error) {
 	// check for client certificate and compute SHA2-256 on certificate if present
-	tlsCertHash, err := GetTLSCertHash(s.OrdererClient.Certificate())
+	tlsCertHash, err := GetTLSCertHash(s.OrdererClient.Certificate(), factory.GetDefault())
 	if err != nil {
 		return nil, "", err
 	}

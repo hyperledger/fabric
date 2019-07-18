@@ -11,6 +11,7 @@ import (
 	"math"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -99,7 +100,7 @@ func (d *deliverClient) Certificate() *tls.Certificate {
 // create a signed envelope with SeekPosition_Newest for block
 func CreateDeliverEnvelope(channelId string, creator []byte, signingIdentity tk.SigningIdentity, cert *tls.Certificate) (*common.Envelope, error) {
 	// check for client certificate and compute SHA2-256 on certificate if present
-	tlsCertHash, err := GetTLSCertHash(cert)
+	tlsCertHash, err := GetTLSCertHash(cert, factory.GetDefault())
 	if err != nil {
 		return nil, err
 	}

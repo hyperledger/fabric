@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/idemix"
 	m "github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
@@ -108,8 +109,15 @@ func writeSignerToFile(signerBytes []byte) error {
 // setupMSP tests whether we can successfully setup an idemix msp
 // with the generated config bytes
 func setupMSP() error {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return err
+	}
 	// setup an idemix msp from the test directory
-	msp, err := m.New(&m.IdemixNewOpts{NewBaseOpts: m.NewBaseOpts{Version: m.MSPv1_1}})
+	msp, err := m.New(
+		&m.IdemixNewOpts{NewBaseOpts: m.NewBaseOpts{Version: m.MSPv1_1}},
+		cryptoProvider,
+	)
 	if err != nil {
 		return errors.Wrap(err, "Getting MSP failed")
 	}

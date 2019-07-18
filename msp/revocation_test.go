@@ -82,7 +82,9 @@ func TestRevokedIntermediateCA(t *testing.T) {
 	conf, err := GetLocalMspConfig(dir, nil, "SampleOrg")
 	assert.NoError(t, err)
 
-	thisMSP, err := newBccspMsp(MSPv1_0)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	thisMSP, err := newBccspMsp(MSPv1_0, cryptoProvider)
 	assert.NoError(t, err)
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
 	assert.NoError(t, err)
