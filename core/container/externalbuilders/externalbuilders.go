@@ -10,15 +10,20 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 
 	"github.com/pkg/errors"
 )
 
+var logger = flogging.MustGetLogger("chaincode.externalbuilders")
+
 type BuildContext struct {
+	CCCI       *ccprovider.ChaincodeContainerInfo
 	ScratchDir string
 	SourceDir  string
 }
@@ -46,9 +51,50 @@ func NewBuildContext(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Rea
 	return &BuildContext{
 		ScratchDir: scratchDir,
 		SourceDir:  sourceDir,
+		CCCI:       ccci,
 	}, nil
 }
 
 func (bc *BuildContext) Cleanup() {
 	os.RemoveAll(bc.ScratchDir)
+}
+
+type Builder struct {
+	Location string
+}
+
+func (b *Builder) Detect(buildContext *BuildContext) bool {
+	detect := filepath.Join(b.Location, "bin", "detect")
+	cmd := exec.Cmd{
+		Path: detect,
+		Args: []string{
+			"detect", // the first arg is the binary name we are invoking as
+			"--package-id", string(buildContext.CCCI.PackageID),
+			// XXX long term, do we want to include path and type?
+			// the whole idea of detect was to determine these things, I thought
+			"--path", buildContext.CCCI.Path,
+			"--type", buildContext.CCCI.Type,
+			"--source", buildContext.SourceDir,
+		},
+		// TODO wire the stderr of the process back to the peer logs
+		// same goes for other builder functions like Build
+	}
+
+	// XXX we should probably consider some sort of timeout mechanism here, instead
+	// of just waiting forever, but, good enough for a first pass
+	err := cmd.Run()
+	if err != nil {
+		logger.Debugf("Detection for builder '%s' failed: %s", b.Name(), err)
+		// XXX, we probably also want to differentiate between a 'not detected'
+		// and a 'I failed nastily', but, again, good enough for now
+		return false
+	}
+
+	return true
+}
+
+// Name is a convenience method and uses the base name of the builder
+// for identification purposes.
+func (b *Builder) Name() string {
+	return filepath.Base(b.Location)
 }
