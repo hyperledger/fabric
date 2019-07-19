@@ -34,14 +34,22 @@ var _ = Describe("QueryCommitted", func() {
 		)
 
 		BeforeEach(func() {
-			mockResult := &lb.QueryChaincodeDefinitionResult{
-				Sequence:          93,
-				Version:           "a-version",
-				EndorsementPlugin: "e-plugin",
-				ValidationPlugin:  "v-plugin",
-				Approved: map[string]bool{
-					"whatkindoforgisthis": true,
-					"nowaydoiapprove":     false,
+			mockResult := &lb.QueryChaincodeDefinitionsResult{
+				ChaincodeDefinitions: []*lb.QueryChaincodeDefinitionsResult_ChaincodeDefinition{
+					{
+						Name:              "woohoo",
+						Sequence:          93,
+						Version:           "a-version",
+						EndorsementPlugin: "e-plugin",
+						ValidationPlugin:  "v-plugin",
+					},
+					{
+						Name:              "yahoo",
+						Sequence:          20,
+						Version:           "another-version",
+						EndorsementPlugin: "e-plugin",
+						ValidationPlugin:  "v-plugin",
+					},
 				},
 			}
 
@@ -63,7 +71,6 @@ var _ = Describe("QueryCommitted", func() {
 
 			input = &chaincode.CommittedQueryInput{
 				ChannelID: "test-channel",
-				Name:      "test-cc",
 			}
 
 			committedQuerier = &chaincode.CommittedQuerier{
@@ -77,8 +84,9 @@ var _ = Describe("QueryCommitted", func() {
 		It("queries committed chaincodes and writes the output as human readable plain-text", func() {
 			err := committedQuerier.Query()
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(committedQuerier.Writer).Should(gbytes.Say("Committed chaincode definition for chaincode 'test-cc' on channel 'test-channel'"))
-			Eventually(committedQuerier.Writer).Should(gbytes.Say("Version: a-version, Sequence: 93, Endorsement Plugin: e-plugin, Validation Plugin: v-plugin"))
+			Eventually(committedQuerier.Writer).Should(gbytes.Say("Committed chaincode definitions on channel 'test-channel'"))
+			Eventually(committedQuerier.Writer).Should(gbytes.Say("Name: woohoo, Version: a-version, Sequence: 93, Endorsement Plugin: e-plugin, Validation Plugin: v-plugin"))
+			Eventually(committedQuerier.Writer).Should(gbytes.Say("Name: yahoo, Version: another-version, Sequence: 20, Endorsement Plugin: e-plugin, Validation Plugin: v-plugin"))
 		})
 
 		Context("when JSON-formatted output is requested", func() {
@@ -89,7 +97,34 @@ var _ = Describe("QueryCommitted", func() {
 			It("queries committed chaincodes and writes the output as JSON", func() {
 				err := committedQuerier.Query()
 				Expect(err).NotTo(HaveOccurred())
-				expectedOutput := &lb.QueryChaincodeDefinitionResult{
+				expectedOutput := &lb.QueryChaincodeDefinitionsResult{
+					ChaincodeDefinitions: []*lb.QueryChaincodeDefinitionsResult_ChaincodeDefinition{
+						{
+							Name:              "woohoo",
+							Sequence:          93,
+							Version:           "a-version",
+							EndorsementPlugin: "e-plugin",
+							ValidationPlugin:  "v-plugin",
+						},
+						{
+							Name:              "yahoo",
+							Sequence:          20,
+							Version:           "another-version",
+							EndorsementPlugin: "e-plugin",
+							ValidationPlugin:  "v-plugin",
+						},
+					},
+				}
+				json, err := json.MarshalIndent(expectedOutput, "", "\t")
+				Eventually(committedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
+			})
+		})
+
+		Context("when a single chaincode definition is requested", func() {
+			BeforeEach(func() {
+				input.Name = "test-cc"
+
+				mockResult := &lb.QueryChaincodeDefinitionResult{
 					Sequence:          93,
 					Version:           "a-version",
 					EndorsementPlugin: "e-plugin",
@@ -99,12 +134,68 @@ var _ = Describe("QueryCommitted", func() {
 						"nowaydoiapprove":     false,
 					},
 				}
-				json, err := json.MarshalIndent(expectedOutput, "", "\t")
-				Eventually(committedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf("%s", string(json))))
+
+				mockResultBytes, err := proto.Marshal(mockResult)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(mockResultBytes).NotTo(BeNil())
+				mockProposalResponse = &pb.ProposalResponse{
+					Response: &pb.Response{
+						Status:  200,
+						Payload: mockResultBytes,
+					},
+				}
+
+				mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+			})
+
+			It("queries the committed chaincode and writes the output as human readable plain-text", func() {
+				err := committedQuerier.Query()
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(committedQuerier.Writer).Should(gbytes.Say("Committed chaincode definition for chaincode 'test-cc' on channel 'test-channel'"))
+				Eventually(committedQuerier.Writer).Should(gbytes.Say(`\QVersion: a-version, Sequence: 93, Endorsement Plugin: e-plugin, Validation Plugin: v-plugin, Approvals: [nowaydoiapprove: false, whatkindoforgisthis: true]\E`))
+			})
+
+			Context("when the payload contains bytes that aren't a QueryChaincodeDefinitionResult", func() {
+				BeforeEach(func() {
+					mockProposalResponse.Response = &pb.Response{
+						Payload: []byte("badpayloadbadpayload"),
+						Status:  200,
+					}
+					mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+				})
+
+				It("returns an error", func() {
+					err := committedQuerier.Query()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload"))
+				})
+			})
+
+			Context("when JSON-formatted output is requested", func() {
+				BeforeEach(func() {
+					committedQuerier.Input.OutputFormat = "json"
+				})
+
+				It("queries the committed chaincodes and writes the output as JSON", func() {
+					err := committedQuerier.Query()
+					Expect(err).NotTo(HaveOccurred())
+					expectedOutput := &lb.QueryChaincodeDefinitionResult{
+						Sequence:          93,
+						Version:           "a-version",
+						EndorsementPlugin: "e-plugin",
+						ValidationPlugin:  "v-plugin",
+						Approved: map[string]bool{
+							"whatkindoforgisthis": true,
+							"nowaydoiapprove":     false,
+						},
+					}
+					json, err := json.MarshalIndent(expectedOutput, "", "\t")
+					Eventually(committedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
+				})
 			})
 		})
 
-		Context("when the chaincode name is not provided", func() {
+		Context("when the channel is not provided", func() {
 			BeforeEach(func() {
 				committedQuerier.Input.ChannelID = ""
 			})
@@ -113,18 +204,6 @@ var _ = Describe("QueryCommitted", func() {
 				err := committedQuerier.Query()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("channel name must be specified"))
-			})
-		})
-
-		Context("when the chaincode name is not provided", func() {
-			BeforeEach(func() {
-				committedQuerier.Input.Name = ""
-			})
-
-			It("returns an error", func() {
-				err := committedQuerier.Query()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("chaincode name must be specified"))
 			})
 		})
 
@@ -206,7 +285,7 @@ var _ = Describe("QueryCommitted", func() {
 			})
 		})
 
-		Context("when the payload contains bytes that aren't a QueryChaincodeDefinitionResult", func() {
+		Context("when the payload contains bytes that aren't a QueryChaincodeDefinitionsResult", func() {
 			BeforeEach(func() {
 				mockProposalResponse.Response = &pb.Response{
 					Payload: []byte("badpayloadbadpayload"),
@@ -222,7 +301,7 @@ var _ = Describe("QueryCommitted", func() {
 			})
 		})
 
-		Context("when the payload contains bytes that aren't a QueryChaincodeDefinitionResult and JSON-output is requested", func() {
+		Context("when the payload contains bytes that aren't a QueryChaincodeDefinitionsResult and JSON-output is requested", func() {
 			BeforeEach(func() {
 				mockProposalResponse.Response = &pb.Response{
 					Payload: []byte("badpayloadbadpayload"),
@@ -235,7 +314,7 @@ var _ = Describe("QueryCommitted", func() {
 			It("returns an error", func() {
 				err := committedQuerier.Query()
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload as type *lifecycle.QueryChaincodeDefinitionResult"))
+				Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload as type *lifecycle.QueryChaincodeDefinitionsResult"))
 			})
 		})
 	})

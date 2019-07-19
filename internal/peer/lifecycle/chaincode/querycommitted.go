@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -45,8 +46,8 @@ type CommittedQueryInput struct {
 func QueryCommittedCmd(c *CommittedQuerier) *cobra.Command {
 	chaincodeQueryCommittedCmd := &cobra.Command{
 		Use:   "querycommitted",
-		Short: "Query a committed chaincode definition by channel and name on a peer.",
-		Long:  "Query a committed chaincode definition by channel and name on a peer.",
+		Short: "Query the committed chaincode definitions by channel on a peer.",
+		Long:  "Query the committed chaincode definitions by channel on a peer. Optional: provide a chaincode name to query a specific definition.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if c == nil {
 				ccInput := &ClientConnectionsInput{
@@ -136,23 +137,73 @@ func (c *CommittedQuerier) Query() error {
 	}
 
 	if strings.ToLower(c.Input.OutputFormat) == "json" {
-		return printResponseAsJSON(proposalResponse, &lb.QueryChaincodeDefinitionResult{}, c.Writer)
+		return c.printResponseAsJSON(proposalResponse)
 	}
 	return c.printResponse(proposalResponse)
+}
+
+func (c *CommittedQuerier) printResponseAsJSON(proposalResponse *pb.ProposalResponse) error {
+	if c.Input.Name != "" {
+		return printResponseAsJSON(proposalResponse, &lb.QueryChaincodeDefinitionResult{}, c.Writer)
+	}
+	return printResponseAsJSON(proposalResponse, &lb.QueryChaincodeDefinitionsResult{}, c.Writer)
 }
 
 // printResponse prints the information included in the response
 // from the server as human readable plain-text.
 func (c *CommittedQuerier) printResponse(proposalResponse *pb.ProposalResponse) error {
-	result := &lb.QueryChaincodeDefinitionResult{}
+	if c.Input.Name != "" {
+		result := &lb.QueryChaincodeDefinitionResult{}
+		err := proto.Unmarshal(proposalResponse.Response.Payload, result)
+		if err != nil {
+			return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
+		}
+		fmt.Fprintf(c.Writer, "Committed chaincode definition for chaincode '%s' on channel '%s':\n", c.Input.Name, c.Input.ChannelID)
+		c.printSingleChaincodeDefinition(result)
+		c.printApprovals(result)
+
+		return nil
+	}
+
+	result := &lb.QueryChaincodeDefinitionsResult{}
 	err := proto.Unmarshal(proposalResponse.Response.Payload, result)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
-	fmt.Fprintf(c.Writer, "Committed chaincode definition for chaincode '%s' on channel '%s':\n", c.Input.Name, c.Input.ChannelID)
-	fmt.Fprintf(c.Writer, "Version: %s, Sequence: %d, Endorsement Plugin: %s, Validation Plugin: %s\n", result.Version, result.Sequence, result.EndorsementPlugin, result.ValidationPlugin)
-
+	fmt.Fprintf(c.Writer, "Committed chaincode definitions on channel '%s':\n", c.Input.ChannelID)
+	for _, cd := range result.ChaincodeDefinitions {
+		fmt.Fprintf(c.Writer, "Name: %s, ", cd.Name)
+		c.printSingleChaincodeDefinition(cd)
+	}
 	return nil
+}
+
+type ChaincodeDefinition interface {
+	GetVersion() string
+	GetSequence() int64
+	GetEndorsementPlugin() string
+	GetValidationPlugin() string
+}
+
+func (c *CommittedQuerier) printSingleChaincodeDefinition(cd ChaincodeDefinition) {
+	fmt.Fprintf(c.Writer, "Version: %s, Sequence: %d, Endorsement Plugin: %s, Validation Plugin: %s", cd.GetVersion(), cd.GetSequence(), cd.GetEndorsementPlugin(), cd.GetValidationPlugin())
+}
+
+func (c *CommittedQuerier) printApprovals(qcdr *lb.QueryChaincodeDefinitionResult) {
+	orgs := []string{}
+	approved := qcdr.GetApproved()
+	for org := range approved {
+		orgs = append(orgs, org)
+	}
+	sort.Strings(orgs)
+
+	approvals := ""
+	for _, org := range orgs {
+		approvals += fmt.Sprintf("%s: %t, ", org, approved[org])
+	}
+	approvals = strings.TrimSuffix(approvals, ", ")
+
+	fmt.Fprintf(c.Writer, ", Approvals: [%s]\n", approvals)
 }
 
 func (c *CommittedQuerier) validateInput() error {
@@ -160,23 +211,28 @@ func (c *CommittedQuerier) validateInput() error {
 		return errors.New("channel name must be specified")
 	}
 
-	if c.Input.Name == "" {
-		return errors.New("chaincode name must be specified")
-	}
-
 	return nil
 }
 
 func (c *CommittedQuerier) createProposal() (*pb.Proposal, error) {
-	args := &lb.QueryChaincodeDefinitionArgs{
-		Name: c.Input.Name,
+	var function string
+	var args proto.Message
+
+	if c.Input.Name != "" {
+		function = "QueryChaincodeDefinition"
+		args = &lb.QueryChaincodeDefinitionArgs{
+			Name: c.Input.Name,
+		}
+	} else {
+		function = "QueryChaincodeDefinitions"
+		args = &lb.QueryChaincodeDefinitionsArgs{}
 	}
 
 	argsBytes, err := proto.Marshal(args)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal args")
 	}
-	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte("QueryChaincodeDefinition"), argsBytes}}
+	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte(function), argsBytes}}
 
 	cis := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{

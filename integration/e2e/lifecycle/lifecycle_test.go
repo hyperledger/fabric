@@ -256,6 +256,13 @@ var _ = Describe("Lifecycle", func() {
 		maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", testPeers...)
 		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight, testPeers...)
 
+		By("querying definitions by org3 before performing any chaincode actions")
+		sess, err = network.PeerAdminSession(network.Peer("org2", "peer1"), commands.ChaincodeListCommitted{
+			ChannelID: "testchannel",
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+
 		By("installing the chaincode to the org3 peers")
 		nwo.InstallChaincode(network, chaincode, org3peer1, org3peer2)
 
