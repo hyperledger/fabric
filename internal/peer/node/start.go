@@ -347,7 +347,6 @@ func serve(args []string) error {
 	peerInstance.LedgerMgr = ledgermgmt.NewLedgerMgr(
 		&ledgermgmt.Initializer{
 			CustomTxProcessors:              txProcessors,
-			PlatformRegistry:                platformRegistry,
 			DeployedChaincodeInfoProvider:   lifecycleValidatorCommitter,
 			MembershipInfoProvider:          membershipInfoProvider,
 			ChaincodeLifecycleEventProvider: lifecycleCache,
@@ -416,7 +415,7 @@ func serve(args []string) error {
 		Whitelist: scc.GlobalWhitelist(),
 	}
 
-	lsccInst := lscc.New(sccp, aclProvider, platformRegistry, peerInstance.GetMSPIDs, policyChecker)
+	lsccInst := lscc.New(sccp, aclProvider, peerInstance.GetMSPIDs, policyChecker)
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{

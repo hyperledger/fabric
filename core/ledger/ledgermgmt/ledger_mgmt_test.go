@@ -13,8 +13,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/mock"
@@ -94,7 +92,6 @@ func TestChaincodeInfoProvider(t *testing.T) {
 
 	ccInfoProvider := &chaincodeInfoProviderImpl{
 		ledgerMgr,
-		platforms.NewRegistry(&golang.Platform{}),
 		mockDeployedCCInfoProvider,
 	}
 	_, err = ccInfoProvider.GetDeployedChaincodeInfo("ledger2", constructTestCCDef("cc2", "1.0", "cc2Hash"))
@@ -129,7 +126,6 @@ func constructDefaultInitializer(testDir string) *Initializer {
 			},
 		},
 
-		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
 		MetricsProvider:               &disabled.Provider{},
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 	}

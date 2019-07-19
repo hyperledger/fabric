@@ -17,7 +17,6 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metadata"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
@@ -70,11 +69,6 @@ func NewRegistry(platformTypes ...Platform) *Registry {
 		Platforms:     platforms,
 		PackageWriter: PackageWriterWrapper(cutil.WriteBytesToPackage),
 	}
-}
-
-func (r *Registry) GetMetadataProvider(ccType string, codePackage []byte) ([]byte, error) {
-	metadataProvider := ccmetadata.TargzMetadataProvider{Code: codePackage}
-	return metadataProvider.GetMetadataAsTarEntries()
 }
 
 func (r *Registry) GenerateDockerfile(ccType, name, version string) (string, error) {

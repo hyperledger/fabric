@@ -179,8 +179,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	globalConfig := GlobalConfig()
 	globalConfig.StartupTimeout = 10 * time.Second
 	globalConfig.ExecuteTimeout = 1 * time.Second
-	pr := platforms.NewRegistry(&golang.Platform{})
-	lsccImpl := lscc.New(sccp, mockAclProvider, pr, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
+	lsccImpl := lscc.New(sccp, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
 	ml := &mock.Lifecycle{}
 	ml.ChaincodeContainerInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 		switch name {
@@ -216,7 +215,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 			map[string]container.VM{
 				dockercontroller.ContainerType: &dockercontroller.DockerVM{
 					PlatformBuilder: &platforms.Builder{
-						Registry: pr,
+						Registry: platforms.NewRegistry(&golang.Platform{}),
 						Client:   client,
 					},
 				},

@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -142,8 +141,6 @@ type LifeCycleSysCC struct {
 	// static functions
 	Support FilesystemSupport
 
-	PlatformRegistry *platforms.Registry
-
 	GetMSPIDs MSPIDsGetter
 }
 
@@ -152,17 +149,15 @@ type LifeCycleSysCC struct {
 func New(
 	sccp sysccprovider.SystemChaincodeProvider,
 	ACLProvider aclmgmt.ACLProvider,
-	platformRegistry *platforms.Registry,
 	getMSPIDs MSPIDsGetter,
 	policyChecker policy.PolicyChecker,
 ) *LifeCycleSysCC {
 	return &LifeCycleSysCC{
-		Support:          &supportImpl{GetMSPIDs: getMSPIDs},
-		PolicyChecker:    policyChecker,
-		SCCProvider:      sccp,
-		ACLProvider:      ACLProvider,
-		PlatformRegistry: platformRegistry,
-		GetMSPIDs:        getMSPIDs,
+		Support:       &supportImpl{GetMSPIDs: getMSPIDs},
+		PolicyChecker: policyChecker,
+		SCCProvider:   sccp,
+		ACLProvider:   ACLProvider,
+		GetMSPIDs:     getMSPIDs,
 	}
 }
 
@@ -625,7 +620,7 @@ func (lscc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 	}
 
 	// Get any statedb artifacts from the chaincode package, e.g. couchdb index definitions
-	statedbArtifactsTar, err := ccprovider.ExtractStatedbArtifactsFromCCPackage(ccpack, lscc.PlatformRegistry)
+	statedbArtifactsTar, err := ccprovider.ExtractStatedbArtifactsFromCCPackage(ccpack)
 	if err != nil {
 		return err
 	}
