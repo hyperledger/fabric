@@ -297,17 +297,26 @@ func NewChain(
 		DisableProposalForwarding: true, // This prevents blocks from being accidentally proposed by followers
 	}
 
+	disseminator := &Disseminator{RPC: c.rpc}
+	disseminator.UpdateMetadata(nil) // initialize
+
 	c.Node = &node{
 		chainID:      c.channelID,
 		chain:        c,
 		logger:       c.logger,
 		metrics:      c.Metrics,
 		storage:      storage,
-		rpc:          c.rpc,
+		rpc:          disseminator,
 		config:       config,
 		tickInterval: c.opts.TickInterval,
 		clock:        c.clock,
 		metadata:     c.opts.BlockMetadata,
+		tracker: &Tracker{
+			id:     c.raftID,
+			sender: disseminator,
+			gauge:  c.Metrics.ActiveNodes,
+			logger: c.logger,
+		},
 	}
 
 	return c, nil
@@ -436,6 +445,17 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	if err := c.Node.Step(context.TODO(), *stepMsg); err != nil {
 		return fmt.Errorf("failed to process Raft Step message: %s", err)
 	}
+
+	if len(req.Metadata) == 0 || atomic.LoadUint64(&c.lastKnownLeader) != sender { // ignore metadata from non-leader
+		return nil
+	}
+
+	clusterMetadata := &etcdraft.ClusterMetadata{}
+	if err := proto.Unmarshal(req.Metadata, clusterMetadata); err != nil {
+		return errors.Errorf("failed to unmarshal ClusterMetadata: %s", err)
+	}
+
+	c.Metrics.ActiveNodes.Set(float64(len(clusterMetadata.ActiveNodes)))
 
 	return nil
 }

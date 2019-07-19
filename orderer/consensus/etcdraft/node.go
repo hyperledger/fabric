@@ -31,6 +31,8 @@ type node struct {
 	unreachableLock sync.RWMutex
 	unreachable     map[uint64]struct{}
 
+	tracker *Tracker
+
 	storage *RaftStorage
 	config  *raft.Config
 
@@ -119,7 +121,12 @@ func (n *node) run(campaign bool) {
 	for {
 		select {
 		case <-raftTicker.C():
+			// grab raft Status before ticking it, so `RecentActive` attributes
+			// are not reset yet.
+			status := n.Status()
+
 			n.Tick()
+			n.tracker.Check(&status)
 
 		case rd := <-n.Ready():
 			startStoring := n.clock.Now()
