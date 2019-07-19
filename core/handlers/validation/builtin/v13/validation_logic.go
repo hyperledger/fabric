@@ -12,7 +12,6 @@ import (
 
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/common/validation/statebased"
 	vc "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	vi "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
@@ -25,7 +24,10 @@ import (
 
 var logger = flogging.MustGetLogger("vscc")
 
-var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollectionName)
+// previously imported from ccmetadata.AllowedCharsCollectionName but could not change to avoid non-determinism
+const AllowedCharsCollectionName = "[A-Za-z0-9_-]+"
+
+var validCollectionNameRegex = regexp.MustCompile(AllowedCharsCollectionName)
 
 //go:generate mockery -dir . -name Capabilities -case underscore -output mocks/
 

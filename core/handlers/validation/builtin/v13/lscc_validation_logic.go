@@ -12,7 +12,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
@@ -206,7 +205,7 @@ func validateCollectionName(collectionName string) error {
 	match := validCollectionNameRegex.FindString(collectionName)
 	if len(match) != len(collectionName) {
 		return fmt.Errorf("collection-name: %s not allowed. A valid collection name follows the pattern: %s",
-			collectionName, ccmetadata.AllowedCharsCollectionName)
+			collectionName, AllowedCharsCollectionName)
 	}
 	return nil
 }

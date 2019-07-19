@@ -14,7 +14,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
@@ -42,7 +41,9 @@ const (
 	DUPLICATED_IDENTITY_ERROR = "Endorsement policy evaluation failure might be caused by duplicated identities"
 )
 
-var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollectionName)
+const AllowedCharsCollectionName = "[A-Za-z0-9_-]+"
+
+var validCollectionNameRegex = regexp.MustCompile(AllowedCharsCollectionName)
 
 //go:generate mockery -dir . -name Capabilities -case underscore -output mocks/
 
@@ -345,7 +346,7 @@ func validateCollectionName(collectionName string) error {
 	match := validCollectionNameRegex.FindString(collectionName)
 	if len(match) != len(collectionName) {
 		return fmt.Errorf("collection-name: %s not allowed. A valid collection name follows the pattern: %s",
-			collectionName, ccmetadata.AllowedCharsCollectionName)
+			collectionName, AllowedCharsCollectionName)
 	}
 	return nil
 }
