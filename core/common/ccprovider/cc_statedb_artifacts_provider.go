@@ -14,8 +14,6 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 )
 
 // tarFileEntry encapsulates a file entry and it's contents inside a tar
@@ -47,7 +45,7 @@ func ExtractStatedbArtifactsForChaincode(ccname, ccversion string) (installed bo
 func ExtractStatedbArtifactsFromCCPackage(ccpackage CCPackage) (statedbArtifactsTar []byte, err error) {
 	cds := ccpackage.GetDepSpec()
 
-	metadataProvider := ccmetadata.TargzMetadataProvider{Code: cds.CodePackage}
+	metadataProvider := TargzMetadataProvider{Code: cds.CodePackage}
 	metaprov, err := metadataProvider.GetMetadataAsTarEntries()
 	if err != nil {
 		ccproviderLogger.Infof("invalid deployment spec: %s", err)

@@ -43,7 +43,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -182,7 +181,7 @@ func serve(args []string) error {
 	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "lifecycle", "chaincodes")
 	ccStore := persistence.NewStore(chaincodeInstallPath)
 	ccPackageParser := &persistence.ChaincodePackageParser{
-		MetadataProvider: &ccmetadata.PersistenceMetadataProvider{},
+		MetadataProvider: &ccprovider.PersistenceMetadataProvider{},
 	}
 
 	peerHost, _, err := net.SplitHostPort(coreConfig.PeerAddress)
