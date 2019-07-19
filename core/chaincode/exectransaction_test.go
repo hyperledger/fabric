@@ -143,20 +143,19 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	containerRuntime := &ContainerRuntime{
 		CACert:      ca.CertBytes(),
 		PeerAddress: peerAddress,
-		VMSynchronizer: container.NewVMController(
-			map[string]container.VM{
-				dockercontroller.ContainerType: &dockercontroller.DockerVM{
-					PeerID:       "",
-					NetworkID:    "",
-					BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
-					Client:       client,
-					PlatformBuilder: &platforms.Builder{
-						Registry: pr,
-						Client:   client,
-					},
+		LockingVM: &container.LockingVM{
+			Underlying: &dockercontroller.DockerVM{
+				PeerID:       "",
+				NetworkID:    "",
+				BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
+				Client:       client,
+				PlatformBuilder: &platforms.Builder{
+					Registry: pr,
+					Client:   client,
 				},
 			},
-		),
+			ContainerLocks: container.NewContainerLocks(),
+		},
 		CommonEnv: []string{
 			"CORE_CHAINCODE_LOGGING_LEVEL=" + globalConfig.LogLevel,
 			"CORE_CHAINCODE_LOGGING_SHIM=" + globalConfig.ShimLogLevel,

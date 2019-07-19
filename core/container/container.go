@@ -106,33 +106,3 @@ type refCountedLock struct {
 	refCount int
 	lock     *sync.RWMutex
 }
-
-//VMController - manages VMs
-//   . abstract construction of different types of VMs (we only care about Docker for now)
-//   . manage lifecycle of VM (start with build, start, stop ...
-//     eventually probably need fine grained management)
-type VMController struct {
-	vms map[string]*LockingVM
-}
-
-// NewVMController creates a new instance of VMController
-func NewVMController(vms map[string]VM) *VMController {
-	locks := NewContainerLocks()
-
-	lockingVMs := map[string]*LockingVM{}
-	for vmType, vm := range vms {
-		lockingVMs[vmType] = &LockingVM{
-			ContainerLocks: locks,
-			Underlying:     vm,
-		}
-	}
-
-	return &VMController{
-		vms: lockingVMs,
-	}
-}
-
-func (vmc *VMController) GetLockingVM(vmType string) (*LockingVM, bool) {
-	vm, ok := vmc.vms[vmType]
-	return vm, ok
-}

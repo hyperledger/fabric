@@ -116,32 +116,4 @@ var _ = Describe("Container", func() {
 			})
 		})
 	})
-
-	Describe("VMController", func() {
-		var (
-			vmController *container.VMController
-		)
-
-		BeforeEach(func() {
-			fakeVM := &mock.VM{}
-			vmController = container.NewVMController(map[string]container.VM{
-				"FakeVM": fakeVM,
-			})
-		})
-
-		Describe("GetLockingVM", func() {
-			It("fetches the vm instance if it exists", func() {
-				lvm, ok := vmController.GetLockingVM("FakeVM")
-				Expect(lvm).NotTo(BeNil())
-				Expect(ok).To(BeTrue())
-			})
-
-			Context("the request is for an unknown VM type", func() {
-				It("indicates that the vm type could not be found", func() {
-					_, ok := vmController.GetLockingVM("BadVM")
-					Expect(ok).To(BeFalse())
-				})
-			})
-		})
-	})
 })

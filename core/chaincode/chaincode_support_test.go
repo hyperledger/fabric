@@ -211,16 +211,16 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		CACert:        ca.CertBytes(),
 		CertGenerator: certGenerator,
 		PeerAddress:   "0.0.0.0:7052",
-		VMSynchronizer: container.NewVMController(
-			map[string]container.VM{
-				dockercontroller.ContainerType: &dockercontroller.DockerVM{
-					PlatformBuilder: &platforms.Builder{
-						Registry: platforms.NewRegistry(&golang.Platform{}),
-						Client:   client,
-					},
+		LockingVM: &container.LockingVM{
+			Underlying: &dockercontroller.DockerVM{
+				PlatformBuilder: &platforms.Builder{
+					Registry: platforms.NewRegistry(&golang.Platform{}),
+					Client:   client,
 				},
 			},
-		),
+			ContainerLocks: container.NewContainerLocks(),
+		},
+
 		CommonEnv: []string{
 			"CORE_CHAINCODE_LOGGING_LEVEL=" + globalConfig.LogLevel,
 			"CORE_CHAINCODE_LOGGING_SHIM=" + globalConfig.ShimLogLevel,

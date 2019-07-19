@@ -161,9 +161,10 @@ func TestContainerRuntimeStart(t *testing.T) {
 	fakeVM := &mock.ContainerVM{}
 
 	cr := &chaincode.ContainerRuntime{
-		VMSynchronizer: container.NewVMController(map[string]container.VM{
-			"DOCKER": fakeVM,
-		}),
+		LockingVM: &container.LockingVM{
+			Underlying:     fakeVM,
+			ContainerLocks: container.NewContainerLocks(),
+		},
 		PeerAddress: "peer.example.com",
 	}
 
@@ -204,8 +205,6 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 		containerType string
 		errValue      string
 	}{
-		{"bad-type", nil, nil, "DOCKER", "unknown chaincodeType: bad-type"},
-		{pb.ChaincodeSpec_GOLANG.String(), nil, nil, "BADVM", "unknown container type: BADVM"},
 		{pb.ChaincodeSpec_GOLANG.String(), nil, errors.New("process-failed"), "DOCKER", "error starting container: process-failed"},
 		{pb.ChaincodeSpec_GOLANG.String(), errors.New("build-failed"), nil, "DOCKER", "error building image: build-failed"},
 		{pb.ChaincodeSpec_GOLANG.String(), errors.New("build-failed"), nil, "DOCKER", "error building image: build-failed"},
@@ -217,9 +216,10 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 		fakeVM.StartReturns(tc.startErr)
 
 		cr := &chaincode.ContainerRuntime{
-			VMSynchronizer: container.NewVMController(map[string]container.VM{
-				"DOCKER": fakeVM,
-			}),
+			LockingVM: &container.LockingVM{
+				Underlying:     fakeVM,
+				ContainerLocks: container.NewContainerLocks(),
+			},
 			PeerAddress: "peer.example.com",
 		}
 
@@ -239,9 +239,10 @@ func TestContainerRuntimeStop(t *testing.T) {
 	fakeVM := &mock.ContainerVM{}
 
 	cr := &chaincode.ContainerRuntime{
-		VMSynchronizer: container.NewVMController(map[string]container.VM{
-			"DOCKER": fakeVM,
-		}),
+		LockingVM: &container.LockingVM{
+			Underlying:     fakeVM,
+			ContainerLocks: container.NewContainerLocks(),
+		},
 		PeerAddress: "peer.example.com",
 	}
 
@@ -266,7 +267,6 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 		errValue      string
 	}{
 		{errors.New("process-failed"), "DOCKER", "error stopping container: process-failed"},
-		{nil, "BADVM", "unknown container type: BADVM"},
 	}
 
 	for _, tc := range tests {
@@ -274,9 +274,10 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 		fakeVM.StopReturns(tc.processErr)
 
 		cr := &chaincode.ContainerRuntime{
-			VMSynchronizer: container.NewVMController(map[string]container.VM{
-				"DOCKER": fakeVM,
-			}),
+			LockingVM: &container.LockingVM{
+				Underlying:     fakeVM,
+				ContainerLocks: container.NewContainerLocks(),
+			},
 			PeerAddress: "peer.example.com",
 		}
 
@@ -295,9 +296,10 @@ func TestContainerRuntimeWait(t *testing.T) {
 	fakeVM := &mock.ContainerVM{}
 
 	cr := &chaincode.ContainerRuntime{
-		VMSynchronizer: container.NewVMController(map[string]container.VM{
-			"DOCKER": fakeVM,
-		}),
+		LockingVM: &container.LockingVM{
+			Underlying:     fakeVM,
+			ContainerLocks: container.NewContainerLocks(),
+		},
 		PeerAddress: "peer.example.com",
 	}
 

@@ -476,11 +476,6 @@ func serve(args []string) error {
 	}
 
 	chaincodeConfig := chaincode.GlobalConfig()
-	chaincodeVMController := container.NewVMController(
-		map[string]container.VM{
-			dockercontroller.ContainerType: dockerVM,
-		},
-	)
 
 	containerRuntime := &chaincode.ContainerRuntime{
 		CACert:        ca.CertBytes(),
@@ -490,8 +485,11 @@ func serve(args []string) error {
 			"CORE_CHAINCODE_LOGGING_SHIM=" + chaincodeConfig.ShimLogLevel,
 			"CORE_CHAINCODE_LOGGING_FORMAT=" + chaincodeConfig.LogFormat,
 		},
-		PeerAddress:    ccEndpoint,
-		VMSynchronizer: chaincodeVMController,
+		PeerAddress: ccEndpoint,
+		LockingVM: &container.LockingVM{
+			Underlying:     dockerVM,
+			ContainerLocks: container.NewContainerLocks(),
+		},
 	}
 
 	// Keep TestQueries working

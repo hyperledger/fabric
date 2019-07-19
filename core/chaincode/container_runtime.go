@@ -29,20 +29,15 @@ type CertGenerator interface {
 
 // ContainerRuntime is responsible for managing containerized chaincode.
 type ContainerRuntime struct {
-	CertGenerator  CertGenerator
-	VMSynchronizer *container.VMController
-	CACert         []byte
-	CommonEnv      []string
-	PeerAddress    string
+	CertGenerator CertGenerator
+	LockingVM     *container.LockingVM
+	CACert        []byte
+	CommonEnv     []string
+	PeerAddress   string
 }
 
 // Start launches chaincode in a runtime environment.
 func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
-	vm, ok := c.VMSynchronizer.GetLockingVM(ccci.ContainerType)
-	if !ok {
-		return errors.Errorf("unknown container type: %s", ccci.ContainerType)
-	}
-
 	packageID := ccci.PackageID.String()
 
 	lc, err := c.LaunchConfig(packageID, ccci.Type)
@@ -50,7 +45,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 		return err
 	}
 
-	if err := vm.Build(
+	if err := c.LockingVM.Build(
 		ccintf.New(ccci.PackageID),
 		ccci.Type,
 		ccci.Path,
@@ -65,7 +60,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 	chaincodeLogger.Debugf("start container with args: %s", strings.Join(lc.Args, " "))
 	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(lc.Envs, "\n\t"))
 
-	if err := vm.Start(
+	if err := c.LockingVM.Start(
 		ccintf.New(ccci.PackageID),
 		lc.Args,
 		lc.Envs,
@@ -79,12 +74,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 
 // Stop terminates chaincode and its container runtime environment.
 func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
-	vm, ok := c.VMSynchronizer.GetLockingVM(ccci.ContainerType)
-	if !ok {
-		return errors.Errorf("unknown container type: %s", ccci.ContainerType)
-	}
-
-	if err := vm.Stop(ccintf.New(ccci.PackageID)); err != nil {
+	if err := c.LockingVM.Stop(ccintf.New(ccci.PackageID)); err != nil {
 		return errors.WithMessage(err, "error stopping container")
 	}
 
@@ -93,12 +83,7 @@ func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 
 // Wait waits for the container runtime to terminate.
 func (c *ContainerRuntime) Wait(ccci *ccprovider.ChaincodeContainerInfo) (int, error) {
-	vm, ok := c.VMSynchronizer.GetLockingVM(ccci.ContainerType)
-	if !ok {
-		return 0, errors.Errorf("unknown container type: %s", ccci.ContainerType)
-	}
-
-	return vm.Wait(ccintf.New(ccci.PackageID))
+	return c.LockingVM.Wait(ccintf.New(ccci.PackageID))
 }
 
 const (
