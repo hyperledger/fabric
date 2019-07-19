@@ -40,26 +40,6 @@ var _ = Describe("Platforms", func() {
 		viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 	})
 
-	Describe("pass through functions", func() {
-		Describe("GetMetadataProvider", func() {
-			It("returns the result of the underlying platform", func() {
-				md, err := registry.GetMetadataProvider("fakeType", []byte("code-package"))
-				Expect(md).To(BeNil())
-				Expect(err).NotTo(HaveOccurred())
-				Expect(fakePlatform.GetMetadataAsTarEntriesCallCount()).To(Equal(1))
-				Expect(fakePlatform.GetMetadataAsTarEntriesArgsForCall(0)).To(Equal([]byte("code-package")))
-			})
-
-			Context("when the platform is unknown", func() {
-				It("returns an error", func() {
-					md, err := registry.GetMetadataProvider("badType", nil)
-					Expect(md).To(BeNil())
-					Expect(err).To(MatchError("Unknown chaincodeType: badType"))
-				})
-			})
-		})
-	})
-
 	Describe("GenerateDockerfile", func() {
 		It("calls the underlying platform, then appends some boilerplate", func() {
 			fakePlatform.GenerateDockerfileReturns("docker-header", nil)

@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -182,10 +181,4 @@ func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, err
 		Image: util.GetDockerfileFromConfig("chaincode.node.runtime"),
 		Cmd:   fmt.Sprint("cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production"),
 	}, nil
-}
-
-// GetMetadataProvider fetches metadata provider given deployment spec
-func (p *Platform) GetMetadataAsTarEntries(code []byte) ([]byte, error) {
-	metadataProvider := &ccmetadata.TargzMetadataProvider{Code: code}
-	return metadataProvider.GetMetadataAsTarEntries()
 }

@@ -505,9 +505,3 @@ func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, err
 		Cmd: fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build  %s -o /chaincode/output/chaincode %s", ldflagsOpt, pkgname),
 	}, nil
 }
-
-// GetMetadataProvider fetches metadata provider given deployment spec
-func (p *Platform) GetMetadataAsTarEntries(code []byte) ([]byte, error) {
-	metadataProvider := ccmetadata.TargzMetadataProvider{Code: code}
-	return metadataProvider.GetMetadataAsTarEntries()
-}
