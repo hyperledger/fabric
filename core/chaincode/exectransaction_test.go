@@ -748,10 +748,9 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 
 func stopChaincode(chaincodeCtx *ccprovider.CCContext, chaincodeSupport *ChaincodeSupport) {
 	chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:          chaincodeCtx.Name,
-		Version:       chaincodeCtx.Version,
-		ContainerType: "DOCKER",
-		Type:          "GOLANG",
+		Name:    chaincodeCtx.Name,
+		Version: chaincodeCtx.Version,
+		Type:    "GOLANG",
 	})
 }
 
@@ -783,11 +782,10 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 
 	var nextBlockNumber uint64 = 1
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:          cID1.Name,
-		Version:       cID1.Version,
-		Path:          cID1.Path,
-		ContainerType: "DOCKER",
-		Type:          "GOLANG",
+		Name:    cID1.Name,
+		Version: cID1.Version,
+		Path:    cID1.Path,
+		Type:    "GOLANG",
 	})
 
 	_, err = deploy(chainID, cccid1, spec1, nextBlockNumber, chaincodeSupport)
@@ -814,11 +812,10 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	}
 
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:          cID2.Name,
-		Version:       cID2.Version,
-		Path:          cID2.Path,
-		ContainerType: "DOCKER",
-		Type:          "GOLANG",
+		Name:    cID2.Name,
+		Version: cID2.Version,
+		Path:    cID2.Path,
+		Type:    "GOLANG",
 	})
 	_, err = deploy(chainID, cccid2, spec2, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
@@ -877,11 +874,10 @@ func TestChaincodeInit(t *testing.T) {
 	}
 
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:          cID.Name,
-		Version:       cID.Version,
-		Path:          cID.Path,
-		Type:          "GOLANG",
-		ContainerType: "DOCKER",
+		Name:    cID.Name,
+		Version: cID.Version,
+		Path:    cID.Path,
+		Type:    "GOLANG",
 	})
 
 	var nextBlockNumber uint64 = 1
@@ -902,11 +898,10 @@ func TestChaincodeInit(t *testing.T) {
 	}
 
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:          cID.Name,
-		Version:       cID.Version,
-		Path:          cID.Path,
-		Type:          "GOLANG",
-		ContainerType: "DOCKER",
+		Name:    cID.Name,
+		Version: cID.Version,
+		Path:    cID.Path,
+		Type:    "GOLANG",
 	})
 
 	resp, err := deploy(chainID, cccid, spec, nextBlockNumber, chaincodeSupport)
@@ -945,11 +940,10 @@ func TestQueries(t *testing.T) {
 	}
 
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:          cID.Name,
-		Version:       cID.Version,
-		Path:          cID.Path,
-		Type:          "GOLANG",
-		ContainerType: "DOCKER",
+		Name:    cID.Name,
+		Version: cID.Version,
+		Path:    cID.Path,
+		Type:    "GOLANG",
 	})
 
 	var nextBlockNumber uint64 = 1

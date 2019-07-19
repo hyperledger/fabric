@@ -169,12 +169,11 @@ func TestContainerRuntimeStart(t *testing.T) {
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:          "GOLANG",
-		Path:          "chaincode-path",
-		Name:          "chaincode-name",
-		Version:       "chaincode-version",
-		ContainerType: "DOCKER",
-		PackageID:     "chaincode-name:chaincode-version",
+		Type:      "GOLANG",
+		Path:      "chaincode-path",
+		Name:      "chaincode-name",
+		Version:   "chaincode-version",
+		PackageID: "chaincode-name:chaincode-version",
 	}
 
 	err := cr.Start(ccci, []byte("code-package"))
@@ -202,12 +201,11 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 		chaincodeType string
 		buildErr      error
 		startErr      error
-		containerType string
 		errValue      string
 	}{
-		{pb.ChaincodeSpec_GOLANG.String(), nil, errors.New("process-failed"), "DOCKER", "error starting container: process-failed"},
-		{pb.ChaincodeSpec_GOLANG.String(), errors.New("build-failed"), nil, "DOCKER", "error building image: build-failed"},
-		{pb.ChaincodeSpec_GOLANG.String(), errors.New("build-failed"), nil, "DOCKER", "error building image: build-failed"},
+		{pb.ChaincodeSpec_GOLANG.String(), nil, errors.New("process-failed"), "error starting container: process-failed"},
+		{pb.ChaincodeSpec_GOLANG.String(), errors.New("build-failed"), nil, "error building image: build-failed"},
+		{pb.ChaincodeSpec_GOLANG.String(), errors.New("build-failed"), nil, "error building image: build-failed"},
 	}
 
 	for _, tc := range tests {
@@ -224,10 +222,9 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 		}
 
 		ccci := &ccprovider.ChaincodeContainerInfo{
-			Type:          tc.chaincodeType,
-			Name:          "chaincode-id-name",
-			Version:       "chaincode-version",
-			ContainerType: tc.containerType,
+			Type:    tc.chaincodeType,
+			Name:    "chaincode-id-name",
+			Version: "chaincode-version",
 		}
 
 		err := cr.Start(ccci, nil)
@@ -247,9 +244,8 @@ func TestContainerRuntimeStop(t *testing.T) {
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:          pb.ChaincodeSpec_GOLANG.String(),
-		ContainerType: "DOCKER",
-		PackageID:     "chaincode-id-name:chaincode-version",
+		Type:      pb.ChaincodeSpec_GOLANG.String(),
+		PackageID: "chaincode-id-name:chaincode-version",
 	}
 
 	err := cr.Stop(ccci)
@@ -262,11 +258,10 @@ func TestContainerRuntimeStop(t *testing.T) {
 
 func TestContainerRuntimeStopErrors(t *testing.T) {
 	tests := []struct {
-		processErr    error
-		containerType string
-		errValue      string
+		processErr error
+		errValue   string
 	}{
-		{errors.New("process-failed"), "DOCKER", "error stopping container: process-failed"},
+		{errors.New("process-failed"), "error stopping container: process-failed"},
 	}
 
 	for _, tc := range tests {
@@ -282,10 +277,9 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 		}
 
 		ccci := &ccprovider.ChaincodeContainerInfo{
-			Type:          pb.ChaincodeSpec_GOLANG.String(),
-			Name:          "chaincode-id-name",
-			Version:       "chaincode-version",
-			ContainerType: tc.containerType,
+			Type:    pb.ChaincodeSpec_GOLANG.String(),
+			Name:    "chaincode-id-name",
+			Version: "chaincode-version",
 		}
 
 		assert.EqualError(t, cr.Stop(ccci), tc.errValue)
@@ -304,11 +298,10 @@ func TestContainerRuntimeWait(t *testing.T) {
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:          pb.ChaincodeSpec_GOLANG.String(),
-		Name:          "chaincode-id-name",
-		Version:       "chaincode-version",
-		ContainerType: "DOCKER",
-		PackageID:     persistence.PackageID("chaincode-id-name:chaincode-version"),
+		Type:      pb.ChaincodeSpec_GOLANG.String(),
+		Name:      "chaincode-id-name",
+		Version:   "chaincode-version",
+		PackageID: persistence.PackageID("chaincode-id-name:chaincode-version"),
 	}
 
 	exitCode, err := cr.Wait(ccci)

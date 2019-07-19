@@ -28,10 +28,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ContainerType is the string which the docker container type
-// is registered with the container.VMController
-const ContainerType = "DOCKER"
-
 var (
 	dockerLogger = flogging.MustGetLogger("dockercontroller")
 	vmRegExp     = regexp.MustCompile("[^a-zA-Z0-9-_.]")

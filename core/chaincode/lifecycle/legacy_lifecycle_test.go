@@ -234,12 +234,11 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			res, err := cei.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(Equal(&ccprovider.ChaincodeContainerInfo{
-				Name:          "name",
-				Version:       "version",
-				Path:          "fake-path",
-				Type:          "FAKE-TYPE",
-				ContainerType: "DOCKER",
-				PackageID:     "hash",
+				Name:      "name",
+				Version:   "version",
+				Path:      "fake-path",
+				Type:      "FAKE-TYPE",
+				PackageID: "hash",
 			}))
 		})
 

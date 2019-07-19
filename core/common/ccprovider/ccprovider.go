@@ -509,9 +509,6 @@ type ChaincodeContainerInfo struct {
 	Path      string
 	Type      string
 
-	// ContainerType is not a great name, but 'DOCKER' and 'SYSTEM' are the valid types
-	ContainerType string
-
 	// FIXME: Name and Version fields must disappear from this struct
 	// because they are *NOT* a property of the chaincode container (FAB-14561)
 	Name    string
@@ -537,15 +534,11 @@ type TransactionParams struct {
 
 func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec, systemCC bool) *ChaincodeContainerInfo {
 	cci := &ChaincodeContainerInfo{
-		Name:          cds.ChaincodeSpec.ChaincodeId.Name,
-		Version:       cds.ChaincodeSpec.ChaincodeId.Version,
-		Path:          cds.ChaincodeSpec.ChaincodeId.Path,
-		Type:          cds.ChaincodeSpec.Type.String(),
-		ContainerType: "DOCKER",
-		PackageID:     persistence.PackageID(cds.ChaincodeSpec.ChaincodeId.Name + ":" + cds.ChaincodeSpec.ChaincodeId.Version),
-	}
-	if systemCC {
-		cci.ContainerType = "SYSTEM"
+		Name:      cds.ChaincodeSpec.ChaincodeId.Name,
+		Version:   cds.ChaincodeSpec.ChaincodeId.Version,
+		Path:      cds.ChaincodeSpec.ChaincodeId.Path,
+		Type:      cds.ChaincodeSpec.Type.String(),
+		PackageID: persistence.PackageID(cds.ChaincodeSpec.ChaincodeId.Name + ":" + cds.ChaincodeSpec.ChaincodeId.Version),
 	}
 	return cci
 }

@@ -68,12 +68,11 @@ var _ = Describe("RuntimeLauncher", func() {
 			LaunchTimeouts: fakeLaunchTimeouts,
 		}
 		ccci = &ccprovider.ChaincodeContainerInfo{
-			Name:          "chaincode-name",
-			Path:          "chaincode-path",
-			Version:       "chaincode-version",
-			ContainerType: "chaincode-container-type",
-			Type:          "chaincode-type",
-			PackageID:     "chaincode-name:chaincode-version",
+			Name:      "chaincode-name",
+			Path:      "chaincode-path",
+			Version:   "chaincode-version",
+			Type:      "chaincode-type",
+			PackageID: "chaincode-name:chaincode-version",
 		}
 
 		runtimeLauncher = &chaincode.RuntimeLauncher{

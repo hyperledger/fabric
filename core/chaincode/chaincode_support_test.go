@@ -1012,11 +1012,10 @@ func TestStartAndWaitSuccess(t *testing.T) {
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:          "GOLANG",
-		Name:          "testcc",
-		Version:       "0",
-		ContainerType: "DOCKER",
-		PackageID:     persistence.PackageID("testcc:0"),
+		Type:      "GOLANG",
+		Name:      "testcc",
+		Version:   "0",
+		PackageID: persistence.PackageID("testcc:0"),
 	}
 
 	//actual test - everythings good
@@ -1047,10 +1046,9 @@ func TestStartAndWaitTimeout(t *testing.T) {
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:          "GOLANG",
-		Name:          "testcc",
-		Version:       "0",
-		ContainerType: "DOCKER",
+		Type:    "GOLANG",
+		Name:    "testcc",
+		Version: "0",
 	}
 
 	//the actual test - timeout 1000 > 500
@@ -1080,10 +1078,9 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:          "GOLANG",
-		Name:          "testcc",
-		Version:       "0",
-		ContainerType: "DOCKER",
+		Type:    "GOLANG",
+		Name:    "testcc",
+		Version: "0",
 	}
 
 	//actual test - container launch gives error

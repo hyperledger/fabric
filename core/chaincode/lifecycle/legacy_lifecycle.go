@@ -165,11 +165,10 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeContainerInfo(channelID, chaincode
 	}
 
 	return &ccprovider.ChaincodeContainerInfo{
-		Name:          chaincodeName,
-		Version:       chaincodeInfo.Definition.EndorsementInfo.Version,
-		Path:          chaincodeInfo.InstallInfo.Path,
-		Type:          strings.ToUpper(chaincodeInfo.InstallInfo.Type),
-		ContainerType: "DOCKER",
-		PackageID:     chaincodeInfo.InstallInfo.PackageID,
+		Name:      chaincodeName,
+		Version:   chaincodeInfo.Definition.EndorsementInfo.Version,
+		Path:      chaincodeInfo.InstallInfo.Path,
+		Type:      strings.ToUpper(chaincodeInfo.InstallInfo.Type),
+		PackageID: chaincodeInfo.InstallInfo.PackageID,
 	}, nil
 }
