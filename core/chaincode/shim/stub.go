@@ -13,7 +13,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -296,6 +295,10 @@ type HistoryQueryIterator struct {
 	*CommonIterator
 }
 
+// General interface for supporting different types of query results.
+// Actual types differ for different queries
+type queryResult interface{}
+
 type resultType uint8
 
 const (
@@ -537,10 +540,10 @@ func (iter *CommonIterator) HasNext() bool {
 
 // getResultsFromBytes deserializes QueryResult and return either a KV struct
 // or KeyModification depending on the result type (i.e., state (range/execute)
-// query, history query). Note that commonledger.QueryResult is an empty golang
+// query, history query). Note that queryResult is an empty golang
 // interface that can hold values of any type.
 func (iter *CommonIterator) getResultFromBytes(queryResultBytes *pb.QueryResultBytes,
-	rType resultType) (commonledger.QueryResult, error) {
+	rType resultType) (queryResult, error) {
 
 	if rType == STATE_QUERY_RESULT {
 		stateQueryResult := &queryresult.KV{}
@@ -570,9 +573,9 @@ func (iter *CommonIterator) fetchNextQueryResult() error {
 }
 
 // nextResult returns the next QueryResult (i.e., either a KV struct or KeyModification)
-// from the state or history query iterator. Note that commonledger.QueryResult is an
+// from the state or history query iterator. Note that queryResult is an
 // empty golang interface that can hold values of any type.
-func (iter *CommonIterator) nextResult(rType resultType) (commonledger.QueryResult, error) {
+func (iter *CommonIterator) nextResult(rType resultType) (queryResult, error) {
 	if iter.currentLoc < len(iter.response.Results) {
 		// On valid access of an element from cached results
 		queryResult, err := iter.getResultFromBytes(iter.response.Results[iter.currentLoc], rType)
