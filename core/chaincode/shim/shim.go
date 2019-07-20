@@ -9,22 +9,17 @@ SPDX-License-Identifier: Apache-2.0
 package shim
 
 import (
-	"context"
-	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
-	"strconv"
 	"time"
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/comm"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	"google.golang.org/grpc"
+	"github.com/hyperledger/fabric/core/chaincode/shim/internal"
+	peerpb "github.com/hyperledger/fabric/protos/peer"
 )
 
 const (
@@ -32,6 +27,7 @@ const (
 	maxUnicodeRuneValue   = utf8.MaxRune //U+10FFFF - maximum (and unallocated) code point
 	compositeKeyNamespace = "\x00"
 	emptyKeySubstitute    = "\x01"
+	connectTimeout        = 3 * time.Second
 )
 
 //this separates the chaincode stream interface establishment
@@ -49,20 +45,17 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 		return nil, errors.New("flag 'peer.address' must be set")
 	}
 
-	// Establish connection with validating peer
-	clientConn, err := newPeerClientConnection(*peerAddress)
+	conf, err := internal.LoadConfig()
 	if err != nil {
-		err = fmt.Errorf("error trying to connect to local peer: %s", err)
 		return nil, err
 	}
 
-	// establish stream with peer
-	chaincodeSupportClient := pb.NewChaincodeSupportClient(clientConn)
-	stream, err := chaincodeSupportClient.Register(context.Background())
+	conn, err := internal.NewClientConn(*peerAddress, conf.TLS, conf.KaOpts, connectTimeout)
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to peer address %s: %s", *peerAddress, err)
+		return nil, err
 	}
-	return stream, nil
+
+	return internal.NewRegisterClient(conn)
 }
 
 // chaincodes.
@@ -93,88 +86,27 @@ func StartInProc(chaincodename string, stream PeerChaincodeStream, cc Chaincode)
 	return chatWithPeer(chaincodename, stream, cc)
 }
 
-func newPeerClientConnection(address string) (*grpc.ClientConn, error) {
-
-	// set the keepalive options to match static settings for chaincode server
-	kaOpts := comm.KeepaliveOptions{
-		ClientInterval: time.Duration(1) * time.Minute,
-		ClientTimeout:  time.Duration(20) * time.Second,
-	}
-	secOpts, err := secureOptions()
-	if err != nil {
-		return nil, err
-	}
-	config := comm.ClientConfig{
-		KaOpts:  kaOpts,
-		SecOpts: secOpts,
-		Timeout: 3 * time.Second,
-	}
-
-	client, err := comm.NewGRPCClient(config)
-	if err != nil {
-		return nil, err
-	}
-	return client.NewConnection(address, "")
-}
-
-func secureOptions() (comm.SecureOptions, error) {
-
-	tlsEnabled, err := strconv.ParseBool(os.Getenv("CORE_PEER_TLS_ENABLED"))
-	if err != nil {
-		return comm.SecureOptions{}, fmt.Errorf("'CORE_PEER_TLS_ENABLED' must be set to 'true' or 'false': %s", err)
-	}
-	if tlsEnabled {
-		data, err := ioutil.ReadFile(os.Getenv("CORE_TLS_CLIENT_KEY_PATH"))
-		if err != nil {
-			return comm.SecureOptions{}, fmt.Errorf("failed to read private key file: %s", err)
-		}
-		key, err := base64.StdEncoding.DecodeString(string(data))
-		if err != nil {
-			return comm.SecureOptions{}, fmt.Errorf("failed to decode private key file: %s", err)
-		}
-		data, err = ioutil.ReadFile(os.Getenv("CORE_TLS_CLIENT_CERT_PATH"))
-		if err != nil {
-			return comm.SecureOptions{}, fmt.Errorf("failed to read public key file: %s", err)
-		}
-		cert, err := base64.StdEncoding.DecodeString(string(data))
-		if err != nil {
-			return comm.SecureOptions{}, fmt.Errorf("failed to decode public key file: %s", err)
-		}
-		root, err := ioutil.ReadFile(os.Getenv("CORE_PEER_TLS_ROOTCERT_FILE"))
-		if err != nil {
-			return comm.SecureOptions{}, fmt.Errorf("failed to read root cert file: %s", err)
-		}
-		return comm.SecureOptions{
-			UseTLS:            true,
-			Certificate:       []byte(cert),
-			Key:               []byte(key),
-			ServerRootCAs:     [][]byte{root},
-			RequireClientCert: true,
-		}, nil
-	}
-	return comm.SecureOptions{}, nil
-}
-
 func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {
 	// Create the shim handler responsible for all control logic
 	handler := newChaincodeHandler(stream, cc)
 	defer stream.CloseSend()
 
 	// Send the ChaincodeID during register.
-	chaincodeID := &pb.ChaincodeID{Name: chaincodename}
+	chaincodeID := &peerpb.ChaincodeID{Name: chaincodename}
 	payload, err := proto.Marshal(chaincodeID)
 	if err != nil {
 		return fmt.Errorf("error marshalling chaincodeID during chaincode registration: %s", err)
 	}
 
 	// Register on the stream
-	if err = handler.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER, Payload: payload}); err != nil {
+	if err = handler.serialSend(&peerpb.ChaincodeMessage{Type: peerpb.ChaincodeMessage_REGISTER, Payload: payload}); err != nil {
 		return fmt.Errorf("error sending chaincode REGISTER: %s", err)
+
 	}
 
 	// holds return values from gRPC Recv below
 	type recvMsg struct {
-		msg *pb.ChaincodeMessage
+		msg *peerpb.ChaincodeMessage
 		err error
 	}
 	msgAvail := make(chan *recvMsg, 1)
