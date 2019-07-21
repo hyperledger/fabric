@@ -321,7 +321,7 @@ the development of smart contracts, and is not normally necessary. Changes to
 system chaincodes must be handled with extreme care as they are fundamental to
 the correct functioning of a Hyperledger Fabric network. For example, if a
 system chaincode is not developed correctly, one peer node may update its copy
-of the world state or blockchain differently to another peer node. This lack of
+of the world state or blockchain differently to another peer node. This lack 
 of consensus is one form of a **ledger fork**, a very undesirable situation.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
