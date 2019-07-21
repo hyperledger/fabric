@@ -293,7 +293,7 @@ abbreviations:
 
 * Lifecycle system chaincode (LSCC) runs in all peers to handle package signing,
   install, instantiate, and upgrade chaincode requests. You can read more about
-  the LSCC implements this
+  how the LSCC implements this
   [process](../chaincode4noah.html#chaincode-lifecycle).
 
 * Configuration system chaincode (CSCC) runs in all peers to handle changes to a
@@ -311,7 +311,7 @@ abbreviations:
   the ESCC implements this [process](../peers/peers.html#phase-1-proposal).
 
 * Validation system chaincode (VSCC) validates a transaction, including checking
-  endorsement policy and read-write set versioning. You can read more about the
+  endorsement policy and read-write set versioning. You can read more about how the
   LSCC implements this [process](../peers/peers.html#phase-3-validation).
 
 It is possible for low level Fabric developers and administrators to modify
@@ -321,7 +321,7 @@ the development of smart contracts, and is not normally necessary. Changes to
 system chaincodes must be handled with extreme care as they are fundamental to
 the correct functioning of a Hyperledger Fabric network. For example, if a
 system chaincode is not developed correctly, one peer node may update its copy
-of the world state or blockchain differently to another peer node. This lack of
+of the world state or blockchain differently to another peer node. This lack 
 of consensus is one form of a **ledger fork**, a very undesirable situation.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
