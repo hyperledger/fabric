@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package shim
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
@@ -15,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 )
 
@@ -24,19 +25,20 @@ func TestNewChaincodeStub(t *testing.T) {
 	expectedDecorations := map[string][]byte{"decoration-key": []byte("decoration-value")}
 	expectedCreator := []byte("signature-header-creator")
 	expectedTransient := map[string][]byte{"key": []byte("value")}
+	expectedEpoch := uint64(999)
 
 	validSignedProposal := &pb.SignedProposal{
-		ProposalBytes: protoutil.MarshalOrPanic(&pb.Proposal{
-			Header: protoutil.MarshalOrPanic(&common.Header{
-				ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
+		ProposalBytes: marshalOrPanic(&pb.Proposal{
+			Header: marshalOrPanic(&common.Header{
+				ChannelHeader: marshalOrPanic(&common.ChannelHeader{
 					Type:  int32(common.HeaderType_ENDORSER_TRANSACTION),
-					Epoch: 999,
+					Epoch: expectedEpoch,
 				}),
-				SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{
+				SignatureHeader: marshalOrPanic(&common.SignatureHeader{
 					Creator: expectedCreator,
 				}),
 			}),
-			Payload: protoutil.MarshalOrPanic(&pb.ChaincodeProposalPayload{
+			Payload: marshalOrPanic(&pb.ChaincodeProposalPayload{
 				Input:        []byte("chaincode-proposal-input"),
 				TransientMap: expectedTransient,
 			}),
@@ -51,11 +53,28 @@ func TestNewChaincodeStub(t *testing.T) {
 		{signedProposal: proto.Clone(validSignedProposal).(*pb.SignedProposal)},
 		{
 			signedProposal: &pb.SignedProposal{ProposalBytes: []byte("garbage")},
-			expectedErr:    "failed extracting signedProposal from signed signedProposal: error unmarshaling Proposal: proto: can't skip unknown wire type 7",
+			expectedErr:    "failed to extract Proposal from SignedProposal: proto: can't skip unknown wire type 7",
 		},
 		{
 			signedProposal: &pb.SignedProposal{},
-			expectedErr:    "failed extracting signedProposal fields: proposal's header is nil",
+			expectedErr:    "failed to extract Proposal fields: proposal header is nil",
+		},
+		{
+			signedProposal: &pb.SignedProposal{},
+			expectedErr:    "failed to extract Proposal fields: proposal header is nil",
+		},
+		{
+			signedProposal: &pb.SignedProposal{
+				ProposalBytes: marshalOrPanic(&pb.Proposal{
+					Header: marshalOrPanic(&common.Header{
+						ChannelHeader: marshalOrPanic(&common.ChannelHeader{
+							Type:  int32(common.HeaderType_CONFIG_UPDATE),
+							Epoch: expectedEpoch,
+						}),
+					}),
+				}),
+			},
+			expectedErr: "invalid channel header type. Expected ENDORSER_TRANSACTION or CONFIG, received CONFIG_UPDATE",
 		},
 	}
 
@@ -91,16 +110,19 @@ func TestNewChaincodeStub(t *testing.T) {
 			continue
 		}
 
-		prop, err := protoutil.GetProposal(tt.signedProposal.ProposalBytes)
+		prop := &pb.Proposal{}
+		err = proto.Unmarshal(tt.signedProposal.ProposalBytes, prop)
 		gt.Expect(err).NotTo(HaveOccurred())
 		gt.Expect(stub.proposal).To(Equal(prop))
 
 		gt.Expect(stub.creator).To(Equal(expectedCreator))
 		gt.Expect(stub.transient).To(Equal(expectedTransient))
 
-		calculatedBinding, err := protoutil.ComputeProposalBinding(prop)
-		gt.Expect(err).NotTo(HaveOccurred())
-		gt.Expect(stub.binding).To(Equal(calculatedBinding))
+		epoch := make([]byte, 8)
+		binary.LittleEndian.PutUint64(epoch, expectedEpoch)
+		shdr := &common.SignatureHeader{}
+		digest := sha256.Sum256(append(append(shdr.GetNonce(), expectedCreator...), epoch...))
+		gt.Expect(stub.binding).To(Equal(digest[:]))
 	}
 }
 
@@ -183,8 +205,8 @@ func TestChaincodeStubGetTxTimestamp(t *testing.T) {
 		{
 			ts: now,
 			proposal: &pb.Proposal{
-				Header: protoutil.MarshalOrPanic(&common.Header{
-					ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
+				Header: marshalOrPanic(&common.Header{
+					ChannelHeader: marshalOrPanic(&common.ChannelHeader{
 						Timestamp: now,
 					}),
 				}),
@@ -192,7 +214,7 @@ func TestChaincodeStubGetTxTimestamp(t *testing.T) {
 		},
 		{
 			proposal: &pb.Proposal{
-				Header: protoutil.MarshalOrPanic(&common.Header{
+				Header: marshalOrPanic(&common.Header{
 					ChannelHeader: []byte("garbage-channel-header"),
 				}),
 			},

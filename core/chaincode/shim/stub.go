@@ -7,15 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package shim
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protoutil"
 )
 
 // ChaincodeStub is an object passed to chaincode for shim side handling of
@@ -57,21 +59,62 @@ func newChaincodeStub(handler *Handler, channelId, txid string, input *pb.Chainc
 	if signedProposal != nil {
 		var err error
 
-		stub.proposal, err = protoutil.GetProposal(signedProposal.ProposalBytes)
+		stub.proposal = &pb.Proposal{}
+		err = proto.Unmarshal(signedProposal.ProposalBytes, stub.proposal)
 		if err != nil {
-			return nil, fmt.Errorf("failed extracting signedProposal from signed signedProposal: %s", err)
+
+			return nil, fmt.Errorf("failed to extract Proposal from SignedProposal: %s", err)
+		}
+
+		// check for header
+		if len(stub.proposal.GetHeader()) == 0 {
+			return nil, errors.New("failed to extract Proposal fields: proposal header is nil")
 		}
 
 		// Extract creator, transient, binding...
-		stub.creator, stub.transient, err = protoutil.GetChaincodeProposalContext(stub.proposal)
-		if err != nil {
-			return nil, fmt.Errorf("failed extracting signedProposal fields: %s", err)
+		hdr := &common.Header{}
+		if err := proto.Unmarshal(stub.proposal.GetHeader(), hdr); err != nil {
+			return nil, fmt.Errorf("failed to extract proposal header: %s", err)
 		}
 
-		stub.binding, err = protoutil.ComputeProposalBinding(stub.proposal)
-		if err != nil {
-			return nil, fmt.Errorf("failed computing binding from signedProposal: %s", err)
+		// extract and validate channel header
+		chdr := &common.ChannelHeader{}
+		if err := proto.Unmarshal(hdr.ChannelHeader, chdr); err != nil {
+			return nil, fmt.Errorf("failed to extract channel header: %s", err)
 		}
+		validTypes := map[common.HeaderType]bool{
+			common.HeaderType_ENDORSER_TRANSACTION: true,
+			common.HeaderType_CONFIG:               true,
+		}
+		if !validTypes[common.HeaderType(chdr.GetType())] {
+			return nil, fmt.Errorf(
+				"invalid channel header type. Expected %s or %s, received %s",
+				common.HeaderType_ENDORSER_TRANSACTION,
+				common.HeaderType_CONFIG,
+				common.HeaderType(chdr.GetType()),
+			)
+		}
+
+		// extract creator from signature header
+		shdr := &common.SignatureHeader{}
+		if err := proto.Unmarshal(hdr.GetSignatureHeader(), shdr); err != nil {
+			return nil, fmt.Errorf("failed to extract signature header: %s", err)
+		}
+		stub.creator = shdr.GetCreator()
+
+		// extract trasient data from proposal payload
+		payload := &pb.ChaincodeProposalPayload{}
+		if err := proto.Unmarshal(stub.proposal.GetPayload(), payload); err != nil {
+			return nil, fmt.Errorf("failed to extract proposal payload: %s", err)
+		}
+		stub.transient = payload.GetTransientMap()
+
+		// compute the proposal binding from the nonce, creator and epoch
+		epoch := make([]byte, 8)
+		binary.LittleEndian.PutUint64(epoch, chdr.GetEpoch())
+		digest := sha256.Sum256(append(append(shdr.GetNonce(), stub.creator...), epoch...))
+		stub.binding = digest[:]
+
 	}
 
 	return stub, nil
@@ -667,13 +710,14 @@ func (s *ChaincodeStub) GetArgsSlice() ([]byte, error) {
 
 // GetTxTimestamp documentation can be found in interfaces.go
 func (s *ChaincodeStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
-	hdr, err := protoutil.GetHeader(s.proposal.Header)
-	if err != nil {
-		return nil, err
+	hdr := &common.Header{}
+	if err := proto.Unmarshal(s.proposal.Header, hdr); err != nil {
+		return nil, fmt.Errorf("error unmarshaling Header: %s", err)
 	}
-	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
-	if err != nil {
-		return nil, err
+
+	chdr := &common.ChannelHeader{}
+	if err := proto.Unmarshal(hdr.ChannelHeader, chdr); err != nil {
+		return nil, fmt.Errorf("error unmarshaling ChannelHeader: %s", err)
 	}
 
 	return chdr.GetTimestamp(), nil
