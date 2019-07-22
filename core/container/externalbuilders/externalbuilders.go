@@ -26,6 +26,7 @@ type BuildContext struct {
 	CCCI       *ccprovider.ChaincodeContainerInfo
 	ScratchDir string
 	SourceDir  string
+	OutputDir  string
 }
 
 func NewBuildContext(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Reader) (*BuildContext, error) {
@@ -42,6 +43,13 @@ func NewBuildContext(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Rea
 		return nil, errors.WithMessage(err, "could not create source dir")
 	}
 
+	outputDir := filepath.Join(scratchDir, "bld")
+	err = os.Mkdir(outputDir, 0700)
+	if err != nil {
+		os.RemoveAll(scratchDir)
+		return nil, errors.WithMessage(err, "could not create source dir")
+	}
+
 	err = Untar(codePackage, sourceDir)
 	if err != nil {
 		os.RemoveAll(scratchDir)
@@ -51,6 +59,7 @@ func NewBuildContext(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Rea
 	return &BuildContext{
 		ScratchDir: scratchDir,
 		SourceDir:  sourceDir,
+		OutputDir:  outputDir,
 		CCCI:       ccci,
 	}, nil
 }
@@ -72,16 +81,16 @@ func (b *Builder) Detect(buildContext *BuildContext) bool {
 			"--package-id", string(buildContext.CCCI.PackageID),
 			// XXX long term, do we want to include path and type?
 			// the whole idea of detect was to determine these things, I thought
+			// same goes for other builder functions like Build
 			"--path", buildContext.CCCI.Path,
 			"--type", buildContext.CCCI.Type,
 			"--source", buildContext.SourceDir,
 		},
+
 		// TODO wire the stderr of the process back to the peer logs
 		// same goes for other builder functions like Build
 	}
 
-	// XXX we should probably consider some sort of timeout mechanism here, instead
-	// of just waiting forever, but, good enough for a first pass
 	err := cmd.Run()
 	if err != nil {
 		logger.Debugf("Detection for builder '%s' failed: %s", b.Name(), err)
@@ -91,6 +100,28 @@ func (b *Builder) Detect(buildContext *BuildContext) bool {
 	}
 
 	return true
+}
+
+func (b *Builder) Build(buildContext *BuildContext) error {
+	build := filepath.Join(b.Location, "bin", "build")
+	cmd := exec.Cmd{
+		Path: build,
+		Args: []string{
+			"build", // the first arg is the binary name we are invoking as
+			"--package-id", string(buildContext.CCCI.PackageID),
+			"--path", buildContext.CCCI.Path,
+			"--type", buildContext.CCCI.Type,
+			"--source", buildContext.SourceDir,
+			"--output", buildContext.OutputDir,
+		},
+	}
+
+	err := cmd.Run()
+	if err != nil {
+		return errors.Errorf("builder '%s' failed: %s", b.Name(), err)
+	}
+
+	return nil
 }
 
 // Name is a convenience method and uses the base name of the builder

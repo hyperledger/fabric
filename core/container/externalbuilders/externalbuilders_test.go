@@ -121,5 +121,23 @@ var _ = Describe("Externalbuilders", func() {
 				})
 			})
 		})
+
+		Describe("Build", func() {
+			It("builds the package by invoking external builder", func() {
+				err := builder.Build(buildContext)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			Context("when the builder does not support the package", func() {
+				BeforeEach(func() {
+					buildContext.CCCI.PackageID = "unsupported-package-id"
+				})
+
+				It("returns an error", func() {
+					err := builder.Build(buildContext)
+					Expect(err).To(MatchError("builder 'testdata' failed: exit status 3"))
+				})
+			})
+		})
 	})
 })
