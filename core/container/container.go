@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
@@ -17,7 +18,7 @@ var vmLogger = flogging.MustGetLogger("container")
 
 //VM is an abstract virtual image for supporting arbitrary virual machines
 type VM interface {
-	Build(ccid ccintf.CCID, ccType, path, name, version string, codePackage []byte) error
+	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error
 	Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte) error
 	Stop(ccid ccintf.CCID) error
 	Wait(ccid ccintf.CCID) (int, error)
@@ -28,10 +29,11 @@ type LockingVM struct {
 	ContainerLocks *ContainerLocks
 }
 
-func (lvm *LockingVM) Build(ccid ccintf.CCID, ccType, path, name, version string, codePackage []byte) error {
+func (lvm *LockingVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
+	ccid := ccintf.CCID(ccci.PackageID)
 	lvm.ContainerLocks.Lock(ccid)
 	defer lvm.ContainerLocks.Unlock(ccid)
-	return lvm.Underlying.Build(ccid, ccType, path, name, version, codePackage)
+	return lvm.Underlying.Build(ccci, codePackage)
 }
 
 func (lvm *LockingVM) Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte) error {

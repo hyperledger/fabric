@@ -23,6 +23,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/pkg/errors"
@@ -70,7 +71,7 @@ type dockerClient interface {
 }
 
 type PlatformBuilder interface {
-	GenerateDockerBuild(ccType, path, name, version string, codePackage []byte) (io.Reader, error)
+	GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (io.Reader, error)
 }
 
 // DockerVM is a vm. It is identified by an image id
@@ -150,7 +151,8 @@ func (vm *DockerVM) buildImage(ccid ccintf.CCID, reader io.Reader) error {
 }
 
 // Build is responsible for building an image if it does not already exist.
-func (vm *DockerVM) Build(ccid ccintf.CCID, ccType, path, name, version string, codePackage []byte) error {
+func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
+	ccid := ccintf.New(ccci.PackageID)
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
@@ -161,7 +163,7 @@ func (vm *DockerVM) Build(ccid ccintf.CCID, ccType, path, name, version string, 
 		return errors.Wrap(err, "docker image inspection failed")
 	}
 
-	dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(ccType, path, name, version, codePackage)
+	dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(ccci, codePackage)
 	if err != nil {
 		return errors.Wrap(err, "platform builder failed")
 	}

@@ -4,20 +4,17 @@ package mock
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 type VM struct {
-	BuildStub        func(ccintf.CCID, string, string, string, string, []byte) error
+	BuildStub        func(*ccprovider.ChaincodeContainerInfo, []byte) error
 	buildMutex       sync.RWMutex
 	buildArgsForCall []struct {
-		arg1 ccintf.CCID
-		arg2 string
-		arg3 string
-		arg4 string
-		arg5 string
-		arg6 []byte
+		arg1 *ccprovider.ChaincodeContainerInfo
+		arg2 []byte
 	}
 	buildReturns struct {
 		result1 error
@@ -67,26 +64,22 @@ type VM struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *VM) Build(arg1 ccintf.CCID, arg2 string, arg3 string, arg4 string, arg5 string, arg6 []byte) error {
-	var arg6Copy []byte
-	if arg6 != nil {
-		arg6Copy = make([]byte, len(arg6))
-		copy(arg6Copy, arg6)
+func (fake *VM) Build(arg1 *ccprovider.ChaincodeContainerInfo, arg2 []byte) error {
+	var arg2Copy []byte
+	if arg2 != nil {
+		arg2Copy = make([]byte, len(arg2))
+		copy(arg2Copy, arg2)
 	}
 	fake.buildMutex.Lock()
 	ret, specificReturn := fake.buildReturnsOnCall[len(fake.buildArgsForCall)]
 	fake.buildArgsForCall = append(fake.buildArgsForCall, struct {
-		arg1 ccintf.CCID
-		arg2 string
-		arg3 string
-		arg4 string
-		arg5 string
-		arg6 []byte
-	}{arg1, arg2, arg3, arg4, arg5, arg6Copy})
-	fake.recordInvocation("Build", []interface{}{arg1, arg2, arg3, arg4, arg5, arg6Copy})
+		arg1 *ccprovider.ChaincodeContainerInfo
+		arg2 []byte
+	}{arg1, arg2Copy})
+	fake.recordInvocation("Build", []interface{}{arg1, arg2Copy})
 	fake.buildMutex.Unlock()
 	if fake.BuildStub != nil {
-		return fake.BuildStub(arg1, arg2, arg3, arg4, arg5, arg6)
+		return fake.BuildStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -101,17 +94,17 @@ func (fake *VM) BuildCallCount() int {
 	return len(fake.buildArgsForCall)
 }
 
-func (fake *VM) BuildCalls(stub func(ccintf.CCID, string, string, string, string, []byte) error) {
+func (fake *VM) BuildCalls(stub func(*ccprovider.ChaincodeContainerInfo, []byte) error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = stub
 }
 
-func (fake *VM) BuildArgsForCall(i int) (ccintf.CCID, string, string, string, string, []byte) {
+func (fake *VM) BuildArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, []byte) {
 	fake.buildMutex.RLock()
 	defer fake.buildMutex.RUnlock()
 	argsForCall := fake.buildArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5, argsForCall.arg6
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *VM) BuildReturns(result1 error) {

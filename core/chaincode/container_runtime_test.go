@@ -180,12 +180,14 @@ func TestContainerRuntimeStart(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, fakeVM.BuildCallCount())
-	ccid, ccType, path, name, version, codePackage := fakeVM.BuildArgsForCall(0)
-	assert.Equal(t, ccintf.New("chaincode-name:chaincode-version"), ccid)
-	assert.Equal(t, "GOLANG", ccType)
-	assert.Equal(t, "chaincode-path", path)
-	assert.Equal(t, "chaincode-name", name)
-	assert.Equal(t, "chaincode-version", version)
+	ccci, codePackage := fakeVM.BuildArgsForCall(0)
+	assert.Equal(t, ccci, &ccprovider.ChaincodeContainerInfo{
+		PackageID: "chaincode-name:chaincode-version",
+		Type:      "GOLANG",
+		Path:      "chaincode-path",
+		Name:      "chaincode-name",
+		Version:   "chaincode-version",
+	})
 	assert.Equal(t, []byte("code-package"), codePackage)
 
 	assert.Equal(t, 1, fakeVM.StartCallCount())

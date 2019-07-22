@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/pkg/errors"
 )
@@ -190,6 +191,6 @@ type Builder struct {
 	Client   *docker.Client
 }
 
-func (b *Builder) GenerateDockerBuild(ccType, path, name, version string, codePackage []byte) (io.Reader, error) {
-	return b.Registry.GenerateDockerBuild(ccType, path, name, version, codePackage, b.Client)
+func (b *Builder) GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (io.Reader, error) {
+	return b.Registry.GenerateDockerBuild(ccci.Type, ccci.Path, ccci.Name, ccci.Version, codePackage, b.Client)
 }

@@ -45,14 +45,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 		return err
 	}
 
-	if err := c.LockingVM.Build(
-		ccintf.New(ccci.PackageID),
-		ccci.Type,
-		ccci.Path,
-		ccci.Name,
-		ccci.Version,
-		codePackage,
-	); err != nil {
+	if err := c.LockingVM.Build(ccci, codePackage); err != nil {
 		return errors.WithMessage(err, "error building image")
 	}
 

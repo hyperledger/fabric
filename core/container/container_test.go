@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/mock"
@@ -80,21 +81,25 @@ var _ = Describe("Container", func() {
 
 			It("passes through to the underlying impl", func() {
 				err := lockingVM.Build(
-					ccintf.CCID("stop:name"),
-					"type",
-					"path",
-					"name",
-					"version",
+					&ccprovider.ChaincodeContainerInfo{
+						PackageID: "stop:name",
+						Type:      "type",
+						Path:      "path",
+						Name:      "name",
+						Version:   "version",
+					},
 					[]byte("code-bytes"),
 				)
 				Expect(err).To(MatchError("fake-build-error"))
 				Expect(fakeVM.BuildCallCount()).To(Equal(1))
-				ccid, ccType, path, name, version, codePackage := fakeVM.BuildArgsForCall(0)
-				Expect(ccid).To(Equal(ccintf.CCID("stop:name")))
-				Expect(ccType).To(Equal("type"))
-				Expect(path).To(Equal("path"))
-				Expect(name).To(Equal("name"))
-				Expect(version).To(Equal("version"))
+				ccci, codePackage := fakeVM.BuildArgsForCall(0)
+				Expect(ccci).To(Equal(&ccprovider.ChaincodeContainerInfo{
+					PackageID: "stop:name",
+					Type:      "type",
+					Path:      "path",
+					Name:      "name",
+					Version:   "version",
+				}))
 				Expect(codePackage).To(Equal([]byte("code-bytes")))
 			})
 		})
