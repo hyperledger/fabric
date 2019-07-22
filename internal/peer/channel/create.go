@@ -128,6 +128,9 @@ func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope, signer identity.Si
 	}
 
 	configSig.Signature, err = signer.Sign(util.ConcatenateBytes(configSig.SignatureHeader, configUpdateEnv.ConfigUpdate))
+	if err != nil {
+		return nil, err
+	}
 
 	configUpdateEnv.Signatures = append(configUpdateEnv.Signatures, configSig)
 
