@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
 
@@ -33,7 +32,6 @@ type ContainerRuntime struct {
 	LockingVM     *container.LockingVM
 	CACert        []byte
 	CommonEnv     []string
-	PeerAddress   string
 }
 
 // Start launches chaincode in a runtime environment.
@@ -50,12 +48,11 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 	}
 
 	chaincodeLogger.Debugf("start container: %s", packageID)
-	chaincodeLogger.Debugf("start container with args: %s", strings.Join(lc.Args, " "))
 	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(lc.Envs, "\n\t"))
 
 	if err := c.LockingVM.Start(
 		ccintf.New(ccci.PackageID),
-		lc.Args,
+		ccci.Type,
 		lc.Envs,
 		lc.Files,
 	); err != nil {
@@ -100,7 +97,6 @@ func (c *ContainerRuntime) getTLSFiles(keyPair *accesscontrol.CertAndPrivKeyPair
 
 // LaunchConfig holds chaincode launch arguments, environment variables, and files.
 type LaunchConfig struct {
-	Args  []string
 	Envs  []string
 	Files map[string][]byte
 }
@@ -116,18 +112,6 @@ func (c *ContainerRuntime) LaunchConfig(packageID string, ccType string) (*Launc
 	// variable. However chaincodes built by older versions of the
 	// peer still adopt this broken convention. (FAB-14630)
 	lc.Envs = append(c.CommonEnv, "CORE_CHAINCODE_ID_NAME="+packageID)
-
-	// language specific arguments
-	switch ccType {
-	case pb.ChaincodeSpec_GOLANG.String(), pb.ChaincodeSpec_CAR.String():
-		lc.Args = []string{"chaincode", fmt.Sprintf("-peer.address=%s", c.PeerAddress)}
-	case pb.ChaincodeSpec_JAVA.String():
-		lc.Args = []string{"/root/chaincode-java/start", "--peerAddress", c.PeerAddress}
-	case pb.ChaincodeSpec_NODE.String():
-		lc.Args = []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; npm start -- --peer.address %s", c.PeerAddress)}
-	default:
-		return nil, errors.Errorf("unknown chaincodeType: %s", ccType)
-	}
 
 	// Pass TLS options to chaincode
 	if c.CertGenerator != nil {
@@ -155,9 +139,6 @@ func (c *ContainerRuntime) LaunchConfig(packageID string, ccType string) (*Launc
 
 func (lc *LaunchConfig) String() string {
 	buf := &bytes.Buffer{}
-	if len(lc.Args) > 0 {
-		fmt.Fprintf(buf, "executable:%q,", lc.Args[0])
-	}
 
 	fileNames := []string{}
 	for k := range lc.Files {
@@ -165,7 +146,6 @@ func (lc *LaunchConfig) String() string {
 	}
 	sort.Strings(fileNames)
 
-	fmt.Fprintf(buf, "Args:[%s],", strings.Join(lc.Args, ","))
 	fmt.Fprintf(buf, "Envs:[%s],", strings.Join(lc.Envs, ","))
 	fmt.Fprintf(buf, "Files:%v", fileNames)
 	return buf.String()

@@ -21,11 +21,11 @@ type ContainerVM struct {
 	buildReturnsOnCall map[int]struct {
 		result1 error
 	}
-	StartStub        func(ccintf.CCID, []string, []string, map[string][]byte) error
+	StartStub        func(ccintf.CCID, string, []string, map[string][]byte) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
 		arg1 ccintf.CCID
-		arg2 []string
+		arg2 string
 		arg3 []string
 		arg4 map[string][]byte
 	}
@@ -129,12 +129,7 @@ func (fake *ContainerVM) BuildReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *ContainerVM) Start(arg1 ccintf.CCID, arg2 []string, arg3 []string, arg4 map[string][]byte) error {
-	var arg2Copy []string
-	if arg2 != nil {
-		arg2Copy = make([]string, len(arg2))
-		copy(arg2Copy, arg2)
-	}
+func (fake *ContainerVM) Start(arg1 ccintf.CCID, arg2 string, arg3 []string, arg4 map[string][]byte) error {
 	var arg3Copy []string
 	if arg3 != nil {
 		arg3Copy = make([]string, len(arg3))
@@ -144,11 +139,11 @@ func (fake *ContainerVM) Start(arg1 ccintf.CCID, arg2 []string, arg3 []string, a
 	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
 		arg1 ccintf.CCID
-		arg2 []string
+		arg2 string
 		arg3 []string
 		arg4 map[string][]byte
-	}{arg1, arg2Copy, arg3Copy, arg4})
-	fake.recordInvocation("Start", []interface{}{arg1, arg2Copy, arg3Copy, arg4})
+	}{arg1, arg2, arg3Copy, arg4})
+	fake.recordInvocation("Start", []interface{}{arg1, arg2, arg3Copy, arg4})
 	fake.startMutex.Unlock()
 	if fake.StartStub != nil {
 		return fake.StartStub(arg1, arg2, arg3, arg4)
@@ -166,13 +161,13 @@ func (fake *ContainerVM) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *ContainerVM) StartCalls(stub func(ccintf.CCID, []string, []string, map[string][]byte) error) {
+func (fake *ContainerVM) StartCalls(stub func(ccintf.CCID, string, []string, map[string][]byte) error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = stub
 }
 
-func (fake *ContainerVM) StartArgsForCall(i int) (ccintf.CCID, []string, []string, map[string][]byte) {
+func (fake *ContainerVM) StartArgsForCall(i int) (ccintf.CCID, string, []string, map[string][]byte) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	argsForCall := fake.startArgsForCall[i]

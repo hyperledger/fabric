@@ -26,50 +26,13 @@ func TestLaunchConfigString(t *testing.T) {
 		lc  *chaincode.LaunchConfig
 		str string
 	}{
-		{&chaincode.LaunchConfig{}, `Args:[],Envs:[],Files:[]`},
-		{&chaincode.LaunchConfig{Args: []string{"command", "arg1", "arg2"}}, `executable:"command",Args:[command,arg1,arg2],Envs:[],Files:[]`},
-		{&chaincode.LaunchConfig{Envs: []string{"ENV1=VALUE1", "ENV2=VALUE2"}}, `Args:[],Envs:[ENV1=VALUE1,ENV2=VALUE2],Files:[]`},
-		{&chaincode.LaunchConfig{Files: map[string][]byte{"key1": []byte("value1"), "key2": []byte("value2")}}, `Args:[],Envs:[],Files:[key1 key2]`},
-		{
-			&chaincode.LaunchConfig{
-				Args:  []string{"command", "arg1", "arg2"},
-				Envs:  []string{"ENV1=VALUE1", "ENV2=VALUE2"},
-				Files: map[string][]byte{"key1": []byte("value1"), "key2": []byte("value2")},
-			},
-			`executable:"command",Args:[command,arg1,arg2],Envs:[ENV1=VALUE1,ENV2=VALUE2],Files:[key1 key2]`,
-		},
+		{&chaincode.LaunchConfig{}, `Envs:[],Files:[]`},
+		{&chaincode.LaunchConfig{Envs: []string{"ENV1=VALUE1", "ENV2=VALUE2"}}, `Envs:[ENV1=VALUE1,ENV2=VALUE2],Files:[]`},
+		{&chaincode.LaunchConfig{Files: map[string][]byte{"key1": []byte("value1"), "key2": []byte("value2")}}, `Envs:[],Files:[key1 key2]`},
+		{&chaincode.LaunchConfig{Envs: []string{"ENV1=VALUE1", "ENV2=VALUE2"}, Files: map[string][]byte{"key1": []byte("value1"), "key2": []byte("value2")}}, `Envs:[ENV1=VALUE1,ENV2=VALUE2],Files:[key1 key2]`},
 	}
 	for _, tc := range tests {
 		assert.Equal(t, tc.str, tc.lc.String())
-	}
-}
-
-func TestContainerRuntimeLaunchConfigArgs(t *testing.T) {
-	tests := []struct {
-		name         string
-		ccType       pb.ChaincodeSpec_Type
-		expectedArgs []string
-		expectedErr  string
-	}{
-		{"car-chaincode", pb.ChaincodeSpec_CAR, []string{"chaincode", "-peer.address=peer-address"}, ""},
-		{"golang-chaincode", pb.ChaincodeSpec_GOLANG, []string{"chaincode", "-peer.address=peer-address"}, ""},
-		{"java-chaincode", pb.ChaincodeSpec_JAVA, []string{"/root/chaincode-java/start", "--peerAddress", "peer-address"}, ""},
-		{"node-chaincode", pb.ChaincodeSpec_NODE, []string{"/bin/sh", "-c", "cd /usr/local/src; npm start -- --peer.address peer-address"}, ""},
-		{"unknown-chaincode", pb.ChaincodeSpec_Type(999), []string{}, "unknown chaincodeType: 999"},
-	}
-	for _, tc := range tests {
-		cr := &chaincode.ContainerRuntime{
-			CommonEnv:   []string{},
-			PeerAddress: "peer-address",
-		}
-
-		lc, err := cr.LaunchConfig(tc.name, tc.ccType.String())
-		if tc.expectedErr != "" {
-			assert.EqualError(t, err, tc.expectedErr)
-			continue
-		}
-		assert.NoError(t, err)
-		assert.Equal(t, tc.expectedArgs, lc.Args)
 	}
 }
 
@@ -102,8 +65,7 @@ func TestContainerRuntimeLaunchConfigEnv(t *testing.T) {
 
 	for _, tc := range tests {
 		cr := &chaincode.ContainerRuntime{
-			CommonEnv:   commonEnv,
-			PeerAddress: "peer-address",
+			CommonEnv: commonEnv,
 		}
 		if tc.certGenerator != nil {
 			cr.CertGenerator = tc.certGenerator
@@ -165,7 +127,6 @@ func TestContainerRuntimeStart(t *testing.T) {
 			Underlying:     fakeVM,
 			ContainerLocks: container.NewContainerLocks(),
 		},
-		PeerAddress: "peer.example.com",
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
@@ -191,9 +152,9 @@ func TestContainerRuntimeStart(t *testing.T) {
 	assert.Equal(t, []byte("code-package"), codePackage)
 
 	assert.Equal(t, 1, fakeVM.StartCallCount())
-	ccid, args, env, filesToUpload := fakeVM.StartArgsForCall(0)
+	ccid, ccType, env, filesToUpload := fakeVM.StartArgsForCall(0)
 	assert.Equal(t, ccintf.CCID("chaincode-name:chaincode-version"), ccid)
-	assert.Equal(t, []string{"chaincode", "-peer.address=peer.example.com"}, args)
+	assert.Equal(t, "GOLANG", ccType)
 	assert.Equal(t, []string{"CORE_CHAINCODE_ID_NAME=chaincode-name:chaincode-version", "CORE_PEER_TLS_ENABLED=false"}, env)
 	assert.Nil(t, filesToUpload)
 }
@@ -220,7 +181,6 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 				Underlying:     fakeVM,
 				ContainerLocks: container.NewContainerLocks(),
 			},
-			PeerAddress: "peer.example.com",
 		}
 
 		ccci := &ccprovider.ChaincodeContainerInfo{
@@ -242,7 +202,6 @@ func TestContainerRuntimeStop(t *testing.T) {
 			Underlying:     fakeVM,
 			ContainerLocks: container.NewContainerLocks(),
 		},
-		PeerAddress: "peer.example.com",
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
@@ -275,7 +234,6 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 				Underlying:     fakeVM,
 				ContainerLocks: container.NewContainerLocks(),
 			},
-			PeerAddress: "peer.example.com",
 		}
 
 		ccci := &ccprovider.ChaincodeContainerInfo{
@@ -296,7 +254,6 @@ func TestContainerRuntimeWait(t *testing.T) {
 			Underlying:     fakeVM,
 			ContainerLocks: container.NewContainerLocks(),
 		},
-		PeerAddress: "peer.example.com",
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{

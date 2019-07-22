@@ -15,7 +15,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -210,7 +209,6 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	containerRuntime := &ContainerRuntime{
 		CACert:        ca.CertBytes(),
 		CertGenerator: certGenerator,
-		PeerAddress:   "0.0.0.0:7052",
 		LockingVM: &container.LockingVM{
 			Underlying: &dockercontroller.DockerVM{
 				PlatformBuilder: &platforms.Builder{
@@ -938,16 +936,8 @@ func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 	if err != nil {
 		t.Fatalf("calling getLaunchConfigs() failed with error %s", err)
 	}
-	args := lc.Args
 	envs := lc.Envs
 	filesToUpload := lc.Files
-
-	if len(args) != 2 {
-		t.Fatalf("calling getLaunchConfigs() for golang chaincode should have returned an array of 2 elements for Args, but got %v", args)
-	}
-	if args[0] != "chaincode" || !strings.HasPrefix(args[1], "-peer.address") {
-		t.Fatalf("calling getLaunchConfigs() should have returned the start command for golang chaincode, but got %v", args)
-	}
 
 	if len(envs) != 8 {
 		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 8 elements for Envs, but got %v", envs)
@@ -967,15 +957,6 @@ func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 	cr.CertGenerator = nil // disable TLS
 	lc, err = cr.LaunchConfig(packageID, pb.ChaincodeSpec_NODE.String())
 	assert.NoError(t, err)
-	args = lc.Args
-
-	if len(args) != 3 {
-		t.Fatalf("calling getLaunchConfigs() for node chaincode should have returned an array of 3 elements for Args, but got %v", args)
-	}
-
-	if args[0] != "/bin/sh" || args[1] != "-c" || !strings.HasPrefix(args[2], "cd /usr/local/src; npm start -- --peer.address") {
-		t.Fatalf("calling getLaunchConfigs() should have returned the start command for node.js chaincode, but got %v", args)
-	}
 
 	lc, err = cr.LaunchConfig(packageID, pb.ChaincodeSpec_GOLANG.String())
 	assert.NoError(t, err)

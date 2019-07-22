@@ -42,7 +42,7 @@ var _ = Describe("Container", func() {
 			It("passes through to the underlying impl", func() {
 				err := lockingVM.Start(
 					ccintf.CCID("start:name"),
-					[]string{"foo", "bar"},
+					"fake-ccType",
 					[]string{"Bar", "Foo"},
 					map[string][]byte{
 						"Foo": []byte("bar"),
@@ -53,7 +53,7 @@ var _ = Describe("Container", func() {
 				Expect(fakeVM.StartCallCount()).To(Equal(1))
 				ccid, args, env, filesToUpload := fakeVM.StartArgsForCall(0)
 				Expect(ccid).To(Equal(ccintf.CCID("start:name")))
-				Expect(args).To(Equal([]string{"foo", "bar"}))
+				Expect(args).To(Equal("fake-ccType"))
 				Expect(env).To(Equal([]string{"Bar", "Foo"}))
 				Expect(filesToUpload).To(Equal(map[string][]byte{
 					"Foo": []byte("bar"),

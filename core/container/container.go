@@ -19,7 +19,7 @@ var vmLogger = flogging.MustGetLogger("container")
 //VM is an abstract virtual image for supporting arbitrary virual machines
 type VM interface {
 	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error
-	Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte) error
+	Start(ccid ccintf.CCID, ccType string, env []string, filesToUpload map[string][]byte) error
 	Stop(ccid ccintf.CCID) error
 	Wait(ccid ccintf.CCID) (int, error)
 }
@@ -36,10 +36,10 @@ func (lvm *LockingVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage
 	return lvm.Underlying.Build(ccci, codePackage)
 }
 
-func (lvm *LockingVM) Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte) error {
+func (lvm *LockingVM) Start(ccid ccintf.CCID, ccType string, env []string, filesToUpload map[string][]byte) error {
 	lvm.ContainerLocks.Lock(ccid)
 	defer lvm.ContainerLocks.Unlock(ccid)
-	return lvm.Underlying.Start(ccid, args, env, filesToUpload)
+	return lvm.Underlying.Start(ccid, ccType, env, filesToUpload)
 }
 
 func (lvm *LockingVM) Stop(ccid ccintf.CCID) error {

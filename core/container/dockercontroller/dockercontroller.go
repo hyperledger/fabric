@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
 
@@ -85,6 +86,7 @@ type DockerVM struct {
 	ChaincodePull   bool
 	NetworkMode     string
 	PlatformBuilder PlatformBuilder
+	PeerAddress     string
 }
 
 // HealthCheck checks if the DockerVM is able to communicate with the Docker
@@ -175,8 +177,23 @@ func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage [
 	return nil
 }
 
+func (vm *DockerVM) GetArgs(ccType string) ([]string, error) {
+	// language specific arguments, possibly should be pushed back into platforms, but were simply
+	// ported from the container_runtime chaincode component
+	switch ccType {
+	case pb.ChaincodeSpec_GOLANG.String(), pb.ChaincodeSpec_CAR.String():
+		return []string{"chaincode", fmt.Sprintf("-peer.address=%s", vm.PeerAddress)}, nil
+	case pb.ChaincodeSpec_JAVA.String():
+		return []string{"/root/chaincode-java/start", "--peerAddress", vm.PeerAddress}, nil
+	case pb.ChaincodeSpec_NODE.String():
+		return []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; npm start -- --peer.address %s", vm.PeerAddress)}, nil
+	default:
+		return nil, errors.Errorf("unknown chaincodeType: %s", ccType)
+	}
+}
+
 // Start starts a container using a previously created docker image
-func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload map[string][]byte) error {
+func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, env []string, filesToUpload map[string][]byte) error {
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
@@ -186,6 +203,12 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 	logger := dockerLogger.With("imageName", imageName, "containerName", containerName)
 
 	vm.stopInternal(containerName)
+
+	args, err := vm.GetArgs(ccType)
+	if err != nil {
+		return errors.WithMessage(err, "could not get args")
+	}
+	dockerLogger.Debugf("start container with args: %s", strings.Join(args, " "))
 
 	err = vm.createContainer(imageName, containerName, args, env)
 	if err != nil {

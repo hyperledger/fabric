@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller/mock"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/stretchr/testify/assert"
@@ -58,11 +59,38 @@ func TestIntegrationPath(t *testing.T) {
 	}, []byte("code-package"))
 	require.NoError(t, err)
 
-	err = dc.Start(ccid, nil, nil, nil)
+	err = dc.Start(ccid, "NODE", nil, nil)
 	require.NoError(t, err)
 
 	err = dc.Stop(ccid)
 	require.NoError(t, err)
+}
+
+func TestGetArgs(t *testing.T) {
+	tests := []struct {
+		name         string
+		ccType       pb.ChaincodeSpec_Type
+		expectedArgs []string
+		expectedErr  string
+	}{
+		{"golang-chaincode", pb.ChaincodeSpec_GOLANG, []string{"chaincode", "-peer.address=peer-address"}, ""},
+		{"java-chaincode", pb.ChaincodeSpec_JAVA, []string{"/root/chaincode-java/start", "--peerAddress", "peer-address"}, ""},
+		{"node-chaincode", pb.ChaincodeSpec_NODE, []string{"/bin/sh", "-c", "cd /usr/local/src; npm start -- --peer.address peer-address"}, ""},
+		{"unknown-chaincode", pb.ChaincodeSpec_Type(999), []string{}, "unknown chaincodeType: 999"},
+	}
+	for _, tc := range tests {
+		vm := &DockerVM{
+			PeerAddress: "peer-address",
+		}
+
+		args, err := vm.GetArgs(tc.ccType.String())
+		if tc.expectedErr != "" {
+			assert.EqualError(t, err, tc.expectedErr)
+			continue
+		}
+		assert.NoError(t, err)
+		assert.Equal(t, tc.expectedArgs, args)
+	}
 }
 
 func Test_Start(t *testing.T) {
@@ -73,7 +101,6 @@ func Test_Start(t *testing.T) {
 		Client:       dockerClient,
 	}
 	ccid := ccintf.CCID("simple:1.0")
-	args := make([]string, 1)
 	env := make([]string, 1)
 	files := map[string][]byte{
 		"hello": []byte("world"),
@@ -82,14 +109,14 @@ func Test_Start(t *testing.T) {
 	// case 1: dockerClient.CreateContainer returns error
 	testError1 := errors.New("junk1")
 	dockerClient.CreateContainerReturns(nil, testError1)
-	err := dvm.Start(ccid, args, env, files)
+	err := dvm.Start(ccid, "GOLANG", env, files)
 	gt.Expect(err).To(MatchError(testError1))
 	dockerClient.CreateContainerReturns(&docker.Container{}, nil)
 
 	// case 2: dockerClient.UploadToContainer returns error
 	testError2 := errors.New("junk2")
 	dockerClient.UploadToContainerReturns(testError2)
-	err = dvm.Start(ccid, args, env, files)
+	err = dvm.Start(ccid, "GOLANG", env, files)
 	gt.Expect(err.Error()).To(ContainSubstring("junk2"))
 	dockerClient.UploadToContainerReturns(nil)
 
@@ -98,27 +125,31 @@ func Test_Start(t *testing.T) {
 	testError3 := errors.New("junk3")
 	dvm.AttachStdOut = true
 	dockerClient.CreateContainerReturns(nil, testError3)
-	err = dvm.Start(ccid, args, env, files)
+	err = dvm.Start(ccid, "GOLANG", env, files)
 	gt.Expect(err).To(MatchError(testError3))
 	dockerClient.CreateContainerReturns(&docker.Container{}, nil)
 
+	// case 4: GetArgs returns error
+	err = dvm.Start(ccid, "FAKE_TYPE", env, files)
+	gt.Expect(err).To(MatchError("could not get args: unknown chaincodeType: FAKE_TYPE"))
+
 	// Success cases
-	err = dvm.Start(ccid, args, env, files)
+	err = dvm.Start(ccid, "GOLANG", env, files)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// dockerClient.StopContainer returns error
-	err = dvm.Start(ccid, args, env, files)
+	err = dvm.Start(ccid, "GOLANG", env, files)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// dockerClient.KillContainer returns error
-	err = dvm.Start(ccid, args, env, files)
+	err = dvm.Start(ccid, "GOLANG", env, files)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// dockerClient.RemoveContainer returns error
-	err = dvm.Start(ccid, args, env, files)
+	err = dvm.Start(ccid, "GOLANG", env, files)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	err = dvm.Start(ccid, args, env, files)
+	err = dvm.Start(ccid, "GOLANG", env, files)
 	gt.Expect(err).NotTo(HaveOccurred())
 }
 

@@ -468,6 +468,7 @@ func serve(args []string) error {
 			Registry: platformRegistry,
 			Client:   client,
 		},
+		PeerAddress: ccEndpoint,
 	}
 	if err := opsSystem.RegisterChecker("docker", dockerVM); err != nil {
 		if err != nil {
@@ -485,7 +486,6 @@ func serve(args []string) error {
 			"CORE_CHAINCODE_LOGGING_SHIM=" + chaincodeConfig.ShimLogLevel,
 			"CORE_CHAINCODE_LOGGING_FORMAT=" + chaincodeConfig.LogFormat,
 		},
-		PeerAddress: ccEndpoint,
 		LockingVM: &container.LockingVM{
 			Underlying:     dockerVM,
 			ContainerLocks: container.NewContainerLocks(),
