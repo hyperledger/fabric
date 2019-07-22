@@ -267,7 +267,7 @@ var _ = Describe("ApproverForMyOrg", func() {
 		Context("when the wait for event flag is enabled and the client can't connect", func() {
 			BeforeEach(func() {
 				input.WaitForEvent = true
-				input.WaitForEventTimeout = 10 * time.Millisecond
+				input.WaitForEventTimeout = 3 * time.Second
 				input.TxID = "testtx"
 				input.PeerAddresses = []string{"approvepeer0"}
 				mockDeliverClient.DeliverFilteredReturns(nil, errors.New("robusta"))
