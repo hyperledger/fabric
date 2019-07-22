@@ -37,7 +37,7 @@ var _ = Describe("Metrics", func() {
 			metrics := etcdraft.NewMetrics(fakeProvider)
 
 			Expect(metrics).NotTo(BeNil())
-			Expect(fakeProvider.NewGaugeCallCount()).To(Equal(4))
+			Expect(fakeProvider.NewGaugeCallCount()).To(Equal(5))
 			Expect(fakeProvider.NewCounterCallCount()).To(Equal(4))
 			Expect(fakeProvider.NewHistogramCallCount()).To(Equal(1))
 
@@ -58,6 +58,7 @@ func newFakeMetrics(fakeFields *fakeMetricsFields) *etcdraft.Metrics {
 	return &etcdraft.Metrics{
 		ClusterSize:             fakeFields.fakeClusterSize,
 		IsLeader:                fakeFields.fakeIsLeader,
+		ActiveNodes:             fakeFields.fakeActiveNodes,
 		CommittedBlockNumber:    fakeFields.fakeCommittedBlockNumber,
 		SnapshotBlockNumber:     fakeFields.fakeSnapshotBlockNumber,
 		LeaderChanges:           fakeFields.fakeLeaderChanges,
@@ -71,6 +72,7 @@ func newFakeMetrics(fakeFields *fakeMetricsFields) *etcdraft.Metrics {
 type fakeMetricsFields struct {
 	fakeClusterSize             *metricsfakes.Gauge
 	fakeIsLeader                *metricsfakes.Gauge
+	fakeActiveNodes             *metricsfakes.Gauge
 	fakeCommittedBlockNumber    *metricsfakes.Gauge
 	fakeSnapshotBlockNumber     *metricsfakes.Gauge
 	fakeLeaderChanges           *metricsfakes.Counter
@@ -84,6 +86,7 @@ func newFakeMetricsFields() *fakeMetricsFields {
 	return &fakeMetricsFields{
 		fakeClusterSize:             newFakeGauge(),
 		fakeIsLeader:                newFakeGauge(),
+		fakeActiveNodes:             newFakeGauge(),
 		fakeCommittedBlockNumber:    newFakeGauge(),
 		fakeSnapshotBlockNumber:     newFakeGauge(),
 		fakeLeaderChanges:           newFakeCounter(),

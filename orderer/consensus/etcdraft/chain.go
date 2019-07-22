@@ -260,6 +260,7 @@ func NewChain(
 		Metrics: &Metrics{
 			ClusterSize:             opts.Metrics.ClusterSize.With("channel", support.ChainID()),
 			IsLeader:                opts.Metrics.IsLeader.With("channel", support.ChainID()),
+			ActiveNodes:             opts.Metrics.ActiveNodes.With("channel", support.ChainID()),
 			CommittedBlockNumber:    opts.Metrics.CommittedBlockNumber.With("channel", support.ChainID()),
 			SnapshotBlockNumber:     opts.Metrics.SnapshotBlockNumber.With("channel", support.ChainID()),
 			LeaderChanges:           opts.Metrics.LeaderChanges.With("channel", support.ChainID()),
@@ -275,6 +276,7 @@ func NewChain(
 	// Sets initial values for metrics
 	c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.ConsenterIds)))
 	c.Metrics.IsLeader.Set(float64(0)) // all nodes start out as followers
+	c.Metrics.ActiveNodes.Set(float64(0))
 	c.Metrics.CommittedBlockNumber.Set(float64(c.lastBlock.Header.Number))
 	c.Metrics.SnapshotBlockNumber.Set(float64(c.lastSnapBlockNum))
 

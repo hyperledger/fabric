@@ -25,6 +25,14 @@ var (
 		LabelNames:   []string{"channel"},
 		StatsdFormat: "%{#fqname}.%{channel}",
 	}
+	ActiveNodesOpts = metrics.GaugeOpts{
+		Namespace:    "consensus",
+		Subsystem:    "etcdraft",
+		Name:         "active_nodes",
+		Help:         "Number of active nodes in this channel.",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
 	committedBlockNumberOpts = metrics.GaugeOpts{
 		Namespace:    "consensus",
 		Subsystem:    "etcdraft",
@@ -86,6 +94,7 @@ var (
 type Metrics struct {
 	ClusterSize             metrics.Gauge
 	IsLeader                metrics.Gauge
+	ActiveNodes             metrics.Gauge
 	CommittedBlockNumber    metrics.Gauge
 	SnapshotBlockNumber     metrics.Gauge
 	LeaderChanges           metrics.Counter
@@ -99,6 +108,7 @@ func NewMetrics(p metrics.Provider) *Metrics {
 	return &Metrics{
 		ClusterSize:             p.NewGauge(clusterSizeOpts),
 		IsLeader:                p.NewGauge(isLeaderOpts),
+		ActiveNodes:             p.NewGauge(ActiveNodesOpts),
 		CommittedBlockNumber:    p.NewGauge(committedBlockNumberOpts),
 		SnapshotBlockNumber:     p.NewGauge(snapshotBlockNumberOpts),
 		LeaderChanges:           p.NewCounter(leaderChangesOpts),
