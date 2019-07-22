@@ -2086,6 +2086,8 @@ var _ = Describe("Chain", func() {
 						func(c *chain) {
 							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 						})
+
+					Eventually(c1.rpc.SendConsensusCallCount, LongEventualTimeout).Should(Equal(count + 6))
 					c1.setStepFunc(step1)
 
 					// elect node with higher index
@@ -2169,6 +2171,10 @@ var _ = Describe("Chain", func() {
 							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 						})
 
+					// assert conf change proposals have been dropped, before proceed to reconnect network
+					Eventually(c1.rpc.SendConsensusCallCount, LongEventualTimeout).Should(Equal(count + 6))
+					c1.setStepFunc(step1)
+
 					_, raftmetabytes := c1.support.WriteConfigBlockArgsForCall(0)
 					meta := &common.Metadata{Value: raftmetabytes}
 					raftmeta, err := etcdraft.ReadBlockMetadata(meta, nil)
@@ -2247,6 +2253,9 @@ var _ = Describe("Chain", func() {
 					network.exec(func(c *chain) {
 						Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 					})
+
+					Eventually(c1.rpc.SendConsensusCallCount, LongEventualTimeout).Should(Equal(count + 6))
+					c1.setStepFunc(step1)
 
 					// elect node with higher index
 					i2, _ := c2.storage.LastIndex() // err is always nil
@@ -3241,7 +3250,7 @@ type stepFunc func(dest uint64, msg *orderer.ConsensusRequest) error
 type chain struct {
 	id uint64
 
-	stepLock sync.RWMutex
+	stepLock sync.Mutex
 	step     stepFunc
 
 	support      *consensusmocks.FakeConsenterSupport
@@ -3423,8 +3432,8 @@ func (c *chain) setStepFunc(f stepFunc) {
 }
 
 func (c *chain) getStepFunc() stepFunc {
-	c.stepLock.RLock()
-	defer c.stepLock.RUnlock()
+	c.stepLock.Lock()
+	defer c.stepLock.Unlock()
 	return c.step
 }
 
@@ -3505,8 +3514,8 @@ func (n *network) addChain(c *chain) {
 	}
 
 	c.rpc.SendConsensusStub = func(dest uint64, msg *orderer.ConsensusRequest) error {
-		c.stepLock.RLock()
-		defer c.stepLock.RUnlock()
+		c.stepLock.Lock()
+		defer c.stepLock.Unlock()
 		return c.step(dest, msg)
 	}
 
