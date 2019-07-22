@@ -33,3 +33,10 @@ func (c CCID) String() string {
 func New(packageID persistence.PackageID) CCID {
 	return CCID(packageID.String())
 }
+
+// TLSConfig is used to pass the TLS context into the chaincode launch
+type TLSConfig struct {
+	ClientCert []byte
+	ClientKey  []byte
+	RootCert   []byte
+}

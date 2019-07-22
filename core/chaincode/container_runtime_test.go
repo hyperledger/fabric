@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/chaincode"
-	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -20,98 +19,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestLaunchConfigString(t *testing.T) {
-	tests := []struct {
-		lc  *chaincode.LaunchConfig
-		str string
-	}{
-		{&chaincode.LaunchConfig{}, `Envs:[],Files:[]`},
-		{&chaincode.LaunchConfig{Envs: []string{"ENV1=VALUE1", "ENV2=VALUE2"}}, `Envs:[ENV1=VALUE1,ENV2=VALUE2],Files:[]`},
-		{&chaincode.LaunchConfig{Files: map[string][]byte{"key1": []byte("value1"), "key2": []byte("value2")}}, `Envs:[],Files:[key1 key2]`},
-		{&chaincode.LaunchConfig{Envs: []string{"ENV1=VALUE1", "ENV2=VALUE2"}, Files: map[string][]byte{"key1": []byte("value1"), "key2": []byte("value2")}}, `Envs:[ENV1=VALUE1,ENV2=VALUE2],Files:[key1 key2]`},
-	}
-	for _, tc := range tests {
-		assert.Equal(t, tc.str, tc.lc.String())
-	}
-}
-
-func TestContainerRuntimeLaunchConfigEnv(t *testing.T) {
-	disabledTLSEnv := []string{
-		"CORE_PEER_TLS_ENABLED=false",
-	}
-	enabledTLSEnv := []string{
-		"CORE_PEER_TLS_ENABLED=true",
-		"CORE_TLS_CLIENT_KEY_PATH=/etc/hyperledger/fabric/client.key",
-		"CORE_TLS_CLIENT_CERT_PATH=/etc/hyperledger/fabric/client.crt",
-		"CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/peer.crt",
-	}
-
-	certGenerator := &mock.CertGenerator{}
-	certGenerator.GenerateReturns(&accesscontrol.CertAndPrivKeyPair{Cert: "certificate", Key: "key"}, nil)
-
-	tests := []struct {
-		name          string
-		certGenerator *mock.CertGenerator
-		expectedEnv   []string
-	}{
-		{"tls-disabled", nil, append([]string{"CORE_CHAINCODE_ID_NAME=tls-disabled"}, disabledTLSEnv...)},
-		{"tls-enabled", certGenerator, append([]string{"CORE_CHAINCODE_ID_NAME=tls-enabled"}, enabledTLSEnv...)},
-	}
-
-	for _, tc := range tests {
-		cr := &chaincode.ContainerRuntime{}
-		if tc.certGenerator != nil {
-			cr.CertGenerator = tc.certGenerator
-		}
-
-		lc, err := cr.LaunchConfig(tc.name, pb.ChaincodeSpec_GOLANG.String())
-		assert.NoError(t, err)
-		assert.Equal(t, tc.expectedEnv, lc.Envs)
-		if tc.certGenerator != nil {
-			assert.Equal(t, 1, certGenerator.GenerateCallCount())
-			assert.Equal(t, tc.name, certGenerator.GenerateArgsForCall(0))
-		}
-	}
-}
-
-func TestContainerRuntimeLaunchConfigFiles(t *testing.T) {
-	keyPair := &accesscontrol.CertAndPrivKeyPair{Cert: "certificate", Key: "key"}
-	certGenerator := &mock.CertGenerator{}
-	certGenerator.GenerateReturns(keyPair, nil)
-	cr := &chaincode.ContainerRuntime{
-		CACert:        []byte("peer-ca-cert"),
-		CertGenerator: certGenerator,
-	}
-
-	lc, err := cr.LaunchConfig("chaincode-name", pb.ChaincodeSpec_GOLANG.String())
-	assert.NoError(t, err)
-	assert.Equal(t, map[string][]byte{
-		"/etc/hyperledger/fabric/client.crt": []byte("certificate"),
-		"/etc/hyperledger/fabric/client.key": []byte("key"),
-		"/etc/hyperledger/fabric/peer.crt":   []byte("peer-ca-cert"),
-	}, lc.Files)
-}
-
-func TestContainerRuntimeLaunchConfigGenerateFail(t *testing.T) {
-	tests := []struct {
-		keyPair     *accesscontrol.CertAndPrivKeyPair
-		generateErr error
-		errValue    string
-	}{
-		{nil, nil, "failed to acquire TLS certificates for chaincode-id"},
-		{nil, errors.New("no-cert-for-you"), "failed to generate TLS certificates for chaincode-id: no-cert-for-you"},
-	}
-
-	for _, tc := range tests {
-		certGenerator := &mock.CertGenerator{}
-		certGenerator.GenerateReturns(tc.keyPair, tc.generateErr)
-		cr := &chaincode.ContainerRuntime{CertGenerator: certGenerator}
-
-		_, err := cr.LaunchConfig("chaincode-id", pb.ChaincodeSpec_GOLANG.String())
-		assert.EqualError(t, err, tc.errValue)
-	}
-}
 
 func TestContainerRuntimeStart(t *testing.T) {
 	fakeVM := &mock.ContainerVM{}
@@ -146,11 +53,10 @@ func TestContainerRuntimeStart(t *testing.T) {
 	assert.Equal(t, []byte("code-package"), codePackage)
 
 	assert.Equal(t, 1, fakeVM.StartCallCount())
-	ccid, ccType, env, filesToUpload := fakeVM.StartArgsForCall(0)
+	ccid, ccType, tlsConfig := fakeVM.StartArgsForCall(0)
 	assert.Equal(t, ccintf.CCID("chaincode-name:chaincode-version"), ccid)
 	assert.Equal(t, "GOLANG", ccType)
-	assert.Equal(t, []string{"CORE_CHAINCODE_ID_NAME=chaincode-name:chaincode-version", "CORE_PEER_TLS_ENABLED=false"}, env)
-	assert.Nil(t, filesToUpload)
+	assert.Nil(t, tlsConfig)
 }
 
 func TestContainerRuntimeStartErrors(t *testing.T) {

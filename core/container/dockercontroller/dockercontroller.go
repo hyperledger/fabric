@@ -192,8 +192,38 @@ func (vm *DockerVM) GetArgs(ccType string) ([]string, error) {
 	}
 }
 
+const (
+	// Mutual TLS auth client key and cert paths in the chaincode container
+	TLSClientKeyPath      string = "/etc/hyperledger/fabric/client.key"
+	TLSClientCertPath     string = "/etc/hyperledger/fabric/client.crt"
+	TLSClientRootCertPath string = "/etc/hyperledger/fabric/peer.crt"
+)
+
+func GetEnv(ccid ccintf.CCID, tlsConfig *ccintf.TLSConfig) []string {
+	// common environment variables
+	// FIXME: we are using the env variable CHAINCODE_ID to store
+	// the package ID; in the legacy lifecycle they used to be the
+	// same but now they are not, so we should use a different env
+	// variable. However chaincodes built by older versions of the
+	// peer still adopt this broken convention. (FAB-14630)
+	envs := []string{"CORE_CHAINCODE_ID_NAME=" + string(ccid)}
+
+	// Pass TLS options to chaincode
+	if tlsConfig != nil {
+		envs = append(envs, "CORE_PEER_TLS_ENABLED=true")
+		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_KEY_PATH=%s", TLSClientKeyPath))
+		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_CERT_PATH=%s", TLSClientCertPath))
+		envs = append(envs, fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=%s", TLSClientRootCertPath))
+	} else {
+		envs = append(envs, "CORE_PEER_TLS_ENABLED=false")
+	}
+
+	return envs
+
+}
+
 // Start starts a container using a previously created docker image
-func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, env []string, filesToUpload map[string][]byte) error {
+func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, tlsConfig *ccintf.TLSConfig) error {
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
@@ -210,6 +240,9 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, env []string, filesTo
 	}
 	dockerLogger.Debugf("start container with args: %s", strings.Join(args, " "))
 
+	env := GetEnv(ccid, tlsConfig)
+	dockerLogger.Debugf("start container with env:\n\t%s", strings.Join(env, "\n\t"))
+
 	err = vm.createContainer(imageName, containerName, args, env)
 	if err != nil {
 		logger.Errorf("create container failed: %s", err)
@@ -222,18 +255,17 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, env []string, filesTo
 		streamOutput(dockerLogger, vm.Client, containerName, containerLogger)
 	}
 
-	// upload specified files to the container before starting it
-	// this can be used for configurations such as TLS key and certs
-	if len(filesToUpload) != 0 {
+	// upload TLS files to the container before starting it if needed
+	if tlsConfig != nil {
 		// the docker upload API takes a tar file, so we need to first
 		// consolidate the file entries to a tar
 		payload := bytes.NewBuffer(nil)
 		gw := gzip.NewWriter(payload)
 		tw := tar.NewWriter(gw)
 
-		for path, fileToUpload := range filesToUpload {
-			cutil.WriteBytesToPackage(path, fileToUpload, tw)
-		}
+		cutil.WriteBytesToPackage(TLSClientKeyPath, tlsConfig.ClientKey, tw)
+		cutil.WriteBytesToPackage(TLSClientCertPath, tlsConfig.ClientCert, tw)
+		cutil.WriteBytesToPackage(TLSClientRootCertPath, tlsConfig.RootCert, tw)
 
 		// Write the tar file out
 		if err := tw.Close(); err != nil {

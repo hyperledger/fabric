@@ -49,7 +49,6 @@ import (
 	plgr "github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
-	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -923,42 +922,6 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 	return nil
 }
 
-func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
-	gt := NewGomegaWithT(t)
-	packageID := "mycc:v0"
-	lc, err := cr.LaunchConfig(packageID, pb.ChaincodeSpec_GOLANG.String())
-	if err != nil {
-		t.Fatalf("calling getLaunchConfigs() failed with error %s", err)
-	}
-	envs := lc.Envs
-	filesToUpload := lc.Files
-
-	if len(envs) != 5 {
-		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 5 elements for Envs, but got %v", envs)
-	}
-	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ENABLED=true"))
-	gt.Expect(envs).To(ContainElement("CORE_TLS_CLIENT_KEY_PATH=/etc/hyperledger/fabric/client.key"))
-	gt.Expect(envs).To(ContainElement("CORE_TLS_CLIENT_CERT_PATH=/etc/hyperledger/fabric/client.crt"))
-	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/peer.crt"))
-
-	if len(filesToUpload) != 3 {
-		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 3 elements for filesToUpload, but got %v", len(filesToUpload))
-	}
-
-	cr.CertGenerator = nil // disable TLS
-	lc, err = cr.LaunchConfig(packageID, pb.ChaincodeSpec_NODE.String())
-	assert.NoError(t, err)
-
-	lc, err = cr.LaunchConfig(packageID, pb.ChaincodeSpec_GOLANG.String())
-	assert.NoError(t, err)
-
-	envs = lc.Envs
-	if len(envs) != 2 {
-		t.Fatalf("calling getLaunchConfigs() with TLS disabled should have returned an array of 2 elements for Envs, but got %v", envs)
-	}
-	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ENABLED=false"))
-}
-
 //success case
 func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
@@ -1291,10 +1254,6 @@ func TestCCFramework(t *testing.T) {
 
 	//call's history result
 	getHistory(t, chainID, ccname, ccSide, chaincodeSupport)
-
-	//just use the previous certGenerator for generating TLS key/pair
-	cr := chaincodeSupport.Runtime.(*ContainerRuntime)
-	getLaunchConfigs(t, cr)
 
 	ccSide.Quit()
 }

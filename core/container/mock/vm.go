@@ -22,13 +22,12 @@ type VM struct {
 	buildReturnsOnCall map[int]struct {
 		result1 error
 	}
-	StartStub        func(ccintf.CCID, string, []string, map[string][]byte) error
+	StartStub        func(ccintf.CCID, string, *ccintf.TLSConfig) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
 		arg1 ccintf.CCID
 		arg2 string
-		arg3 []string
-		arg4 map[string][]byte
+		arg3 *ccintf.TLSConfig
 	}
 	startReturns struct {
 		result1 error
@@ -130,24 +129,18 @@ func (fake *VM) BuildReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *VM) Start(arg1 ccintf.CCID, arg2 string, arg3 []string, arg4 map[string][]byte) error {
-	var arg3Copy []string
-	if arg3 != nil {
-		arg3Copy = make([]string, len(arg3))
-		copy(arg3Copy, arg3)
-	}
+func (fake *VM) Start(arg1 ccintf.CCID, arg2 string, arg3 *ccintf.TLSConfig) error {
 	fake.startMutex.Lock()
 	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
 		arg1 ccintf.CCID
 		arg2 string
-		arg3 []string
-		arg4 map[string][]byte
-	}{arg1, arg2, arg3Copy, arg4})
-	fake.recordInvocation("Start", []interface{}{arg1, arg2, arg3Copy, arg4})
+		arg3 *ccintf.TLSConfig
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("Start", []interface{}{arg1, arg2, arg3})
 	fake.startMutex.Unlock()
 	if fake.StartStub != nil {
-		return fake.StartStub(arg1, arg2, arg3, arg4)
+		return fake.StartStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
@@ -162,17 +155,17 @@ func (fake *VM) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *VM) StartCalls(stub func(ccintf.CCID, string, []string, map[string][]byte) error) {
+func (fake *VM) StartCalls(stub func(ccintf.CCID, string, *ccintf.TLSConfig) error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = stub
 }
 
-func (fake *VM) StartArgsForCall(i int) (ccintf.CCID, string, []string, map[string][]byte) {
+func (fake *VM) StartArgsForCall(i int) (ccintf.CCID, string, *ccintf.TLSConfig) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	argsForCall := fake.startArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *VM) StartReturns(result1 error) {

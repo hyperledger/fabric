@@ -43,20 +43,22 @@ var _ = Describe("Container", func() {
 				err := lockingVM.Start(
 					ccintf.CCID("start:name"),
 					"fake-ccType",
-					[]string{"Bar", "Foo"},
-					map[string][]byte{
-						"Foo": []byte("bar"),
+					&ccintf.TLSConfig{
+						ClientKey:  []byte("key"),
+						ClientCert: []byte("cert"),
+						RootCert:   []byte("root"),
 					},
 				)
 
 				Expect(err).To(MatchError("fake-start-error"))
 				Expect(fakeVM.StartCallCount()).To(Equal(1))
-				ccid, args, env, filesToUpload := fakeVM.StartArgsForCall(0)
+				ccid, args, tlsConfig := fakeVM.StartArgsForCall(0)
 				Expect(ccid).To(Equal(ccintf.CCID("start:name")))
 				Expect(args).To(Equal("fake-ccType"))
-				Expect(env).To(Equal([]string{"Bar", "Foo"}))
-				Expect(filesToUpload).To(Equal(map[string][]byte{
-					"Foo": []byte("bar"),
+				Expect(tlsConfig).To(Equal(&ccintf.TLSConfig{
+					ClientKey:  []byte("key"),
+					ClientCert: []byte("cert"),
+					RootCert:   []byte("root"),
 				}))
 			})
 		})

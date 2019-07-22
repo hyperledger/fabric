@@ -59,7 +59,7 @@ func TestIntegrationPath(t *testing.T) {
 	}, []byte("code-package"))
 	require.NoError(t, err)
 
-	err = dc.Start(ccid, "NODE", nil, nil)
+	err = dc.Start(ccid, "NODE", nil)
 	require.NoError(t, err)
 
 	err = dc.Stop(ccid)
@@ -93,6 +93,28 @@ func TestGetArgs(t *testing.T) {
 	}
 }
 
+func TestGetEnv(t *testing.T) {
+	t.Run("nil TLS config", func(t *testing.T) {
+		env := GetEnv(ccintf.CCID("test"), nil)
+		assert.Equal(t, []string{"CORE_CHAINCODE_ID_NAME=test", "CORE_PEER_TLS_ENABLED=false"}, env)
+	})
+
+	t.Run("real TLS config", func(t *testing.T) {
+		env := GetEnv(ccintf.CCID("test"), &ccintf.TLSConfig{
+			ClientKey:  []byte("key"),
+			ClientCert: []byte("cert"),
+			RootCert:   []byte("root"),
+		})
+		assert.Equal(t, []string{
+			"CORE_CHAINCODE_ID_NAME=test",
+			"CORE_PEER_TLS_ENABLED=true",
+			"CORE_TLS_CLIENT_KEY_PATH=/etc/hyperledger/fabric/client.key",
+			"CORE_TLS_CLIENT_CERT_PATH=/etc/hyperledger/fabric/client.crt",
+			"CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/peer.crt",
+		}, env)
+	})
+}
+
 func Test_Start(t *testing.T) {
 	gt := NewGomegaWithT(t)
 	dockerClient := &mock.DockerClient{}
@@ -100,23 +122,25 @@ func Test_Start(t *testing.T) {
 		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
 		Client:       dockerClient,
 	}
+
 	ccid := ccintf.CCID("simple:1.0")
-	env := make([]string, 1)
-	files := map[string][]byte{
-		"hello": []byte("world"),
+	tlsConfig := &ccintf.TLSConfig{
+		ClientKey:  []byte("key"),
+		ClientCert: []byte("cert"),
+		RootCert:   []byte("root"),
 	}
 
 	// case 1: dockerClient.CreateContainer returns error
 	testError1 := errors.New("junk1")
 	dockerClient.CreateContainerReturns(nil, testError1)
-	err := dvm.Start(ccid, "GOLANG", env, files)
+	err := dvm.Start(ccid, "GOLANG", tlsConfig)
 	gt.Expect(err).To(MatchError(testError1))
 	dockerClient.CreateContainerReturns(&docker.Container{}, nil)
 
 	// case 2: dockerClient.UploadToContainer returns error
 	testError2 := errors.New("junk2")
 	dockerClient.UploadToContainerReturns(testError2)
-	err = dvm.Start(ccid, "GOLANG", env, files)
+	err = dvm.Start(ccid, "GOLANG", tlsConfig)
 	gt.Expect(err.Error()).To(ContainSubstring("junk2"))
 	dockerClient.UploadToContainerReturns(nil)
 
@@ -125,31 +149,31 @@ func Test_Start(t *testing.T) {
 	testError3 := errors.New("junk3")
 	dvm.AttachStdOut = true
 	dockerClient.CreateContainerReturns(nil, testError3)
-	err = dvm.Start(ccid, "GOLANG", env, files)
+	err = dvm.Start(ccid, "GOLANG", tlsConfig)
 	gt.Expect(err).To(MatchError(testError3))
 	dockerClient.CreateContainerReturns(&docker.Container{}, nil)
 
 	// case 4: GetArgs returns error
-	err = dvm.Start(ccid, "FAKE_TYPE", env, files)
+	err = dvm.Start(ccid, "FAKE_TYPE", tlsConfig)
 	gt.Expect(err).To(MatchError("could not get args: unknown chaincodeType: FAKE_TYPE"))
 
 	// Success cases
-	err = dvm.Start(ccid, "GOLANG", env, files)
+	err = dvm.Start(ccid, "GOLANG", tlsConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// dockerClient.StopContainer returns error
-	err = dvm.Start(ccid, "GOLANG", env, files)
+	err = dvm.Start(ccid, "GOLANG", tlsConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// dockerClient.KillContainer returns error
-	err = dvm.Start(ccid, "GOLANG", env, files)
+	err = dvm.Start(ccid, "GOLANG", tlsConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// dockerClient.RemoveContainer returns error
-	err = dvm.Start(ccid, "GOLANG", env, files)
+	err = dvm.Start(ccid, "GOLANG", tlsConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	err = dvm.Start(ccid, "GOLANG", env, files)
+	err = dvm.Start(ccid, "GOLANG", tlsConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 }
 
