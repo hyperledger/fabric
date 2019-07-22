@@ -37,10 +37,6 @@ func TestLaunchConfigString(t *testing.T) {
 }
 
 func TestContainerRuntimeLaunchConfigEnv(t *testing.T) {
-	commonEnv := []string{
-		"COMMON_1=VALUE1",
-		"COMMON_2=VALUE2",
-	}
 	disabledTLSEnv := []string{
 		"CORE_PEER_TLS_ENABLED=false",
 	}
@@ -64,16 +60,14 @@ func TestContainerRuntimeLaunchConfigEnv(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		cr := &chaincode.ContainerRuntime{
-			CommonEnv: commonEnv,
-		}
+		cr := &chaincode.ContainerRuntime{}
 		if tc.certGenerator != nil {
 			cr.CertGenerator = tc.certGenerator
 		}
 
 		lc, err := cr.LaunchConfig(tc.name, pb.ChaincodeSpec_GOLANG.String())
 		assert.NoError(t, err)
-		assert.Equal(t, append(commonEnv, tc.expectedEnv...), lc.Envs)
+		assert.Equal(t, tc.expectedEnv, lc.Envs)
 		if tc.certGenerator != nil {
 			assert.Equal(t, 1, certGenerator.GenerateCallCount())
 			assert.Equal(t, tc.name, certGenerator.GenerateArgsForCall(0))

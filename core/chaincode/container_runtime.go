@@ -31,7 +31,6 @@ type ContainerRuntime struct {
 	CertGenerator CertGenerator
 	LockingVM     *container.LockingVM
 	CACert        []byte
-	CommonEnv     []string
 }
 
 // Start launches chaincode in a runtime environment.
@@ -111,7 +110,7 @@ func (c *ContainerRuntime) LaunchConfig(packageID string, ccType string) (*Launc
 	// same but now they are not, so we should use a different env
 	// variable. However chaincodes built by older versions of the
 	// peer still adopt this broken convention. (FAB-14630)
-	lc.Envs = append(c.CommonEnv, "CORE_CHAINCODE_ID_NAME="+packageID)
+	lc.Envs = []string{"CORE_CHAINCODE_ID_NAME=" + packageID}
 
 	// Pass TLS options to chaincode
 	if c.CertGenerator != nil {

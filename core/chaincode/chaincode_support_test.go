@@ -218,12 +218,6 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 			},
 			ContainerLocks: container.NewContainerLocks(),
 		},
-
-		CommonEnv: []string{
-			"CORE_CHAINCODE_LOGGING_LEVEL=" + globalConfig.LogLevel,
-			"CORE_CHAINCODE_LOGGING_SHIM=" + globalConfig.ShimLogLevel,
-			"CORE_CHAINCODE_LOGGING_FORMAT=" + globalConfig.LogFormat,
-		},
 	}
 	if !globalConfig.TLSEnabled {
 		containerRuntime.CertGenerator = nil
@@ -939,12 +933,9 @@ func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 	envs := lc.Envs
 	filesToUpload := lc.Files
 
-	if len(envs) != 8 {
-		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 8 elements for Envs, but got %v", envs)
+	if len(envs) != 5 {
+		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 5 elements for Envs, but got %v", envs)
 	}
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_LEVEL=info"))
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_SHIM=warn"))
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_ID_NAME=mycc:v0"))
 	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ENABLED=true"))
 	gt.Expect(envs).To(ContainElement("CORE_TLS_CLIENT_KEY_PATH=/etc/hyperledger/fabric/client.key"))
 	gt.Expect(envs).To(ContainElement("CORE_TLS_CLIENT_CERT_PATH=/etc/hyperledger/fabric/client.crt"))
@@ -962,12 +953,9 @@ func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 	assert.NoError(t, err)
 
 	envs = lc.Envs
-	if len(envs) != 5 {
-		t.Fatalf("calling getLaunchConfigs() with TLS disabled should have returned an array of 4 elements for Envs, but got %v", envs)
+	if len(envs) != 2 {
+		t.Fatalf("calling getLaunchConfigs() with TLS disabled should have returned an array of 2 elements for Envs, but got %v", envs)
 	}
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_LEVEL=info"))
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_SHIM=warn"))
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_ID_NAME=mycc:v0"))
 	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ENABLED=false"))
 }
 

@@ -156,11 +156,6 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 			},
 			ContainerLocks: container.NewContainerLocks(),
 		},
-		CommonEnv: []string{
-			"CORE_CHAINCODE_LOGGING_LEVEL=" + globalConfig.LogLevel,
-			"CORE_CHAINCODE_LOGGING_SHIM=" + globalConfig.ShimLogLevel,
-			"CORE_CHAINCODE_LOGGING_FORMAT=" + globalConfig.LogFormat,
-		},
 	}
 	userRunsCC := false
 	metricsProviders := &disabled.Provider{}
