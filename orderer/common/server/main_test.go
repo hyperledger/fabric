@@ -180,7 +180,7 @@ func TestInitializeServerConfig(t *testing.T) {
 				if tc.clusterCert == "" {
 					initializeServerConfig(conf, nil)
 				} else {
-					initializeClusterClientConfig(conf, false, nil)
+					initializeClusterClientConfig(conf)
 				}
 			},
 			)
@@ -469,7 +469,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		ordererRootCAsByChain: make(map[string][][]byte),
 	}
 
-	clusterConf := initializeClusterClientConfig(conf, true, nil)
+	clusterConf := initializeClusterClientConfig(conf)
 	predDialer := &cluster.PredicateDialer{
 		Config: clusterConf,
 	}
@@ -558,30 +558,6 @@ func TestConfigureClusterListener(t *testing.T) {
 		expectedPanic      string
 		expectedLogEntries []string
 	}{
-		{
-			name:          "no separate listener",
-			shouldBeEqual: true,
-			generalConf:   comm.ServerConfig{},
-			conf:          &localconfig.TopLevel{},
-			generalSrv:    &comm.GRPCServer{},
-		},
-		{
-			name:        "partial configuration",
-			generalConf: comm.ServerConfig{},
-			conf: &localconfig.TopLevel{
-				General: localconfig.General{
-					Cluster: localconfig.Cluster{
-						ListenPort: 5000,
-					},
-				},
-			},
-			expectedPanic: "Options: General.Cluster.ListenPort, General.Cluster.ListenAddress, " +
-				"General.Cluster.ServerCertificate, General.Cluster.ServerPrivateKey, should be defined altogether.",
-			generalSrv: &comm.GRPCServer{},
-			expectedLogEntries: []string{"Options: General.Cluster.ListenPort, General.Cluster.ListenAddress, " +
-				"General.Cluster.ServerCertificate," +
-				" General.Cluster.ServerPrivateKey, should be defined altogether."},
-		},
 		{
 			name:        "invalid certificate",
 			generalConf: comm.ServerConfig{},
@@ -673,18 +649,18 @@ func TestConfigureClusterListener(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			if testCase.shouldBeEqual {
-				conf, srv := configureClusterListener(testCase.conf, testCase.generalConf, testCase.generalSrv, loadPEM)
+				conf, srv := configureClusterListener(testCase.conf, testCase.generalConf, loadPEM)
 				assert.Equal(t, conf, testCase.generalConf)
 				assert.Equal(t, srv, testCase.generalSrv)
 			}
 
 			if testCase.expectedPanic != "" {
 				f := func() {
-					configureClusterListener(testCase.conf, testCase.generalConf, testCase.generalSrv, loadPEM)
+					configureClusterListener(testCase.conf, testCase.generalConf, loadPEM)
 				}
 				assert.Contains(t, panicMsg(f), testCase.expectedPanic)
 			} else {
-				configureClusterListener(testCase.conf, testCase.generalConf, testCase.generalSrv, loadPEM)
+				configureClusterListener(testCase.conf, testCase.generalConf, loadPEM)
 			}
 			// Ensure logged messages that are expected were all logged
 			var loggedMessages []string
@@ -695,6 +671,54 @@ func TestConfigureClusterListener(t *testing.T) {
 			assert.Subset(t, testCase.expectedLogEntries, loggedMessages)
 		})
 	}
+}
+
+func TestReuseListener(t *testing.T) {
+	t.Run("good to reuse", func(t *testing.T) {
+		top := &localconfig.TopLevel{General: localconfig.General{TLS: localconfig.TLS{Enabled: true}}}
+		require.True(t, reuseListener(top, "foo"))
+	})
+
+	t.Run("reuse tls disabled", func(t *testing.T) {
+		top := &localconfig.TopLevel{}
+		require.PanicsWithValue(
+			t,
+			"TLS is required for running ordering nodes of type foo.",
+			func() { reuseListener(top, "foo") },
+		)
+	})
+
+	t.Run("good not to reuse", func(t *testing.T) {
+		top := &localconfig.TopLevel{
+			General: localconfig.General{
+				Cluster: localconfig.Cluster{
+					ListenAddress:     "127.0.0.1",
+					ListenPort:        5000,
+					ServerPrivateKey:  "key",
+					ServerCertificate: "bad",
+				},
+			},
+		}
+		require.False(t, reuseListener(top, "foo"))
+	})
+
+	t.Run("partial config", func(t *testing.T) {
+		top := &localconfig.TopLevel{
+			General: localconfig.General{
+				Cluster: localconfig.Cluster{
+					ListenAddress:     "127.0.0.1",
+					ListenPort:        5000,
+					ServerCertificate: "bad",
+				},
+			},
+		}
+		require.PanicsWithValue(
+			t,
+			"Options: General.Cluster.ListenPort, General.Cluster.ListenAddress,"+
+				" General.Cluster.ServerCertificate, General.Cluster.ServerPrivateKey, should be defined altogether.",
+			func() { reuseListener(top, "foo") },
+		)
+	})
 }
 
 func TestInitializeEtcdraftConsenter(t *testing.T) {
