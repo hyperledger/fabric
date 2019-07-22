@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilders_test
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -14,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/externalbuilders"
 )
 
@@ -128,7 +130,36 @@ var _ = Describe("Externalbuilders", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			Context("when the builder does not support the package", func() {
+			Context("when the builder exits with a non-zero status", func() {
+				BeforeEach(func() {
+					buildContext.CCCI.PackageID = "unsupported-package-id"
+				})
+
+				It("returns an error", func() {
+					err := builder.Build(buildContext)
+					Expect(err).To(MatchError("builder 'testdata' failed: exit status 3"))
+				})
+			})
+		})
+
+		Describe("Launch", func() {
+			It("launches the package by invoking external builder", func() {
+				err := builder.Launch(buildContext, &ccintf.PeerConnection{
+					Address: "fake-peer-address",
+					TLSConfig: &ccintf.TLSConfig{
+						ClientCert: []byte("fake-client-cert"),
+						ClientKey:  []byte("fake-client-key"),
+						RootCert:   []byte("fake-root-cert"),
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				data1, err := ioutil.ReadFile(filepath.Join(buildContext.LaunchDir, "chaincode.json"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(data1).To(Equal([]byte(`{"PeerAddress":"fake-peer-address","ClientCert":"ZmFrZS1jbGllbnQtY2VydA==","ClientKey":"ZmFrZS1jbGllbnQta2V5","RootCert":"ZmFrZS1yb290LWNlcnQ="}`)))
+			})
+
+			Context("when the builder exits with a non-zero status", func() {
 				BeforeEach(func() {
 					buildContext.CCCI.PackageID = "unsupported-package-id"
 				})

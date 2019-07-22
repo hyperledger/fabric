@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilders
 
 import (
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 
 	"github.com/pkg/errors"
 )
@@ -27,6 +29,7 @@ type BuildContext struct {
 	ScratchDir string
 	SourceDir  string
 	OutputDir  string
+	LaunchDir  string
 }
 
 func NewBuildContext(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Reader) (*BuildContext, error) {
@@ -50,6 +53,13 @@ func NewBuildContext(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Rea
 		return nil, errors.WithMessage(err, "could not create source dir")
 	}
 
+	launchDir := filepath.Join(scratchDir, "run")
+	err = os.MkdirAll(launchDir, 0700)
+	if err != nil {
+		os.RemoveAll(scratchDir)
+		return nil, errors.WithMessage(err, "could not create source dir")
+	}
+
 	err = Untar(codePackage, sourceDir)
 	if err != nil {
 		os.RemoveAll(scratchDir)
@@ -60,6 +70,7 @@ func NewBuildContext(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Rea
 		ScratchDir: scratchDir,
 		SourceDir:  sourceDir,
 		OutputDir:  outputDir,
+		LaunchDir:  launchDir,
 		CCCI:       ccci,
 	}, nil
 }
@@ -117,6 +128,56 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 	}
 
 	err := cmd.Run()
+	if err != nil {
+		return errors.Errorf("builder '%s' failed: %s", b.Name(), err)
+	}
+
+	return nil
+}
+
+// LaunchConfig is serialized to disk when launching
+type LaunchConfig struct {
+	PeerAddress string `json:"PeerAddress"`
+	ClientCert  []byte `json:"ClientCert"`
+	ClientKey   []byte `json:"ClientKey"`
+	RootCert    []byte `json:"RootCert"`
+}
+
+func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.PeerConnection) error {
+	lc := &LaunchConfig{
+		PeerAddress: peerConnection.Address,
+	}
+
+	if peerConnection.TLSConfig != nil {
+		lc.ClientCert = peerConnection.TLSConfig.ClientCert
+		lc.ClientKey = peerConnection.TLSConfig.ClientKey
+		lc.RootCert = peerConnection.TLSConfig.RootCert
+	}
+
+	marshaledLC, err := json.Marshal(lc)
+	if err != nil {
+		return errors.WithMessage(err, "could not marshal launch config")
+	}
+
+	if err := ioutil.WriteFile(filepath.Join(buildContext.LaunchDir, "chaincode.json"), marshaledLC, 0600); err != nil {
+		return errors.WithMessage(err, "could not write root cert")
+	}
+
+	launch := filepath.Join(b.Location, "bin", "launch")
+	cmd := exec.Cmd{
+		Path: launch,
+		Args: []string{
+			"launch", // the first arg is the binary name we are invoking as
+			"--package-id", string(buildContext.CCCI.PackageID),
+			"--path", buildContext.CCCI.Path,
+			"--type", buildContext.CCCI.Type,
+			"--source", buildContext.SourceDir,
+			"--output", buildContext.OutputDir,
+			"--artifacts", buildContext.LaunchDir,
+		},
+	}
+
+	err = cmd.Run()
 	if err != nil {
 		return errors.Errorf("builder '%s' failed: %s", b.Name(), err)
 	}
