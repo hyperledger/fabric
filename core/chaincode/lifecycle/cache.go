@@ -314,6 +314,28 @@ func (c *Cache) ChaincodeInfo(channelID, name string) (*LocalChaincodeInfo, erro
 	}, nil
 }
 
+// ListInstalledChaincodes returns a slice containing all of the information
+// about the installed chaincodes.
+func (c *Cache) ListInstalledChaincodes() []*chaincode.InstalledChaincode {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	installedChaincodes := []*chaincode.InstalledChaincode{}
+	for _, lc := range c.localChaincodes {
+		if lc.Info == nil {
+			// the update function adds an entry to localChaincodes
+			// even if it isn't yet installed
+			continue
+		}
+		installedChaincodes = append(installedChaincodes, &chaincode.InstalledChaincode{
+			PackageID: lc.Info.PackageID,
+			Label:     lc.Info.Label,
+		})
+	}
+
+	return installedChaincodes
+}
+
 // update should only be called with the write lock already held
 func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[string]struct{}, qe ledger.SimpleQueryExecutor) error {
 	channelCache, ok := c.definedChaincodes[channelID]

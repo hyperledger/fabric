@@ -187,6 +187,7 @@ var _ = Describe("ExternalFunctions", func() {
 		fakeCCStore             *mock.ChaincodeStore
 		fakeParser              *mock.PackageParser
 		fakeListener            *mock.InstallListener
+		fakeLister              *mock.InstalledChaincodesLister
 		fakeChannelConfigSource *mock.ChannelConfigSource
 		fakeChannelConfig       *mock.ChannelConfig
 		fakeApplicationConfig   *mock.ApplicationConfig
@@ -198,6 +199,7 @@ var _ = Describe("ExternalFunctions", func() {
 		fakeCCStore = &mock.ChaincodeStore{}
 		fakeParser = &mock.PackageParser{}
 		fakeListener = &mock.InstallListener{}
+		fakeLister = &mock.InstalledChaincodesLister{}
 		fakeChannelConfigSource = &mock.ChannelConfigSource{}
 		fakeChannelConfig = &mock.ChannelConfig{}
 		fakeChannelConfigSource.GetStableChannelConfigReturns(fakeChannelConfig)
@@ -223,8 +225,9 @@ var _ = Describe("ExternalFunctions", func() {
 		}
 
 		ef = &lifecycle.ExternalFunctions{
-			Resources:       resources,
-			InstallListener: fakeListener,
+			Resources:                 resources,
+			InstallListener:           fakeListener,
+			InstalledChaincodesLister: fakeLister,
 		}
 	})
 
@@ -375,29 +378,35 @@ var _ = Describe("ExternalFunctions", func() {
 	})
 
 	Describe("QueryInstalledChaincodes", func() {
-		var chaincodes []chaincode.InstalledChaincode
+		var chaincodes []*chaincode.InstalledChaincode
 
 		BeforeEach(func() {
-			chaincodes = []chaincode.InstalledChaincode{
+			chaincodes = []*chaincode.InstalledChaincode{
 				{
-					Name:    "cc1-name",
-					Version: "cc1-version",
-					Hash:    []byte("cc1-hash"),
+					Label:     "installed-cc1",
+					PackageID: "installed-package-id1",
 				},
 				{
-					Name:    "cc2-name",
-					Version: "cc2-version",
-					Hash:    []byte("cc2-hash"),
+					Label:     "installed-cc2",
+					PackageID: "installed-package-id2",
 				},
 			}
 
-			fakeCCStore.ListInstalledChaincodesReturns(chaincodes, fmt.Errorf("fake-error"))
+			fakeLister.ListInstalledChaincodesReturns(chaincodes)
 		})
 
 		It("passes through to the backing chaincode store", func() {
-			result, err := ef.QueryInstalledChaincodes()
-			Expect(result).To(Equal(chaincodes))
-			Expect(err).To(MatchError(fmt.Errorf("fake-error")))
+			result := ef.QueryInstalledChaincodes()
+			Expect(result).To(ConsistOf(
+				&chaincode.InstalledChaincode{
+					Label:     "installed-cc1",
+					PackageID: "installed-package-id1",
+				},
+				&chaincode.InstalledChaincode{
+					Label:     "installed-cc2",
+					PackageID: "installed-package-id2",
+				},
+			))
 		})
 	})
 

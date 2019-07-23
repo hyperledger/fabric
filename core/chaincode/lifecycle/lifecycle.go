@@ -189,6 +189,11 @@ type InstallListener interface {
 	HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID p.PackageID)
 }
 
+//go:generate counterfeiter -o mock/installed_chaincodes_lister.go --fake-name InstalledChaincodesLister . InstalledChaincodesLister
+type InstalledChaincodesLister interface {
+	ListInstalledChaincodes() []*chaincode.InstalledChaincode
+}
+
 // Resources stores the common functions needed by all components of the lifecycle
 // by the SCC as well as internally.  It also has some utility methods attached to it
 // for querying the lifecycle definitions.
@@ -257,8 +262,9 @@ func (r *Resources) retrieveOrgApprovals(name string, cd *ChaincodeDefinition, o
 // Instead, use the utility functions attached to the lifecycle Resources
 // when needed.
 type ExternalFunctions struct {
-	Resources       *Resources
-	InstallListener InstallListener
+	Resources                 *Resources
+	InstallListener           InstallListener
+	InstalledChaincodesLister InstalledChaincodesLister
 }
 
 // SimulateCommitChaincodeDefinition takes a chaincode definition, checks that
@@ -540,6 +546,6 @@ func (ef *ExternalFunctions) QueryInstalledChaincode(packageID p.PackageID) (*ch
 }
 
 // QueryInstalledChaincodes returns a list of installed chaincodes
-func (ef *ExternalFunctions) QueryInstalledChaincodes() ([]chaincode.InstalledChaincode, error) {
-	return ef.Resources.ChaincodeStore.ListInstalledChaincodes()
+func (ef *ExternalFunctions) QueryInstalledChaincodes() []*chaincode.InstalledChaincode {
+	return ef.InstalledChaincodesLister.ListInstalledChaincodes()
 }
