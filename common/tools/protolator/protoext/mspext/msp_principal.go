@@ -33,7 +33,7 @@ func (mp *MSPPrincipal) VariablyOpaqueFieldProto(name string) (proto.Message, er
 	case msp.MSPPrincipal_ORGANIZATION_UNIT:
 		return &msp.OrganizationUnit{}, nil
 	case msp.MSPPrincipal_IDENTITY:
-		return nil, fmt.Errorf("unable to decode MSP type IDENTITY until the protos are fixed to include the IDENTITY proto in protos/msp")
+		return &msp.SerializedIdentity{}, nil
 	default:
 		return nil, fmt.Errorf("unable to decode MSP type: %v", mp.PrincipalClassification)
 	}
