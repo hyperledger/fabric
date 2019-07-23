@@ -7,12 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator
 
 import (
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
-	validatorv14 "github.com/hyperledger/fabric/core/committer/txvalidator/v14"
-	validatorv20 "github.com/hyperledger/fabric/core/committer/txvalidator/v20"
-	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/protos/common"
 )
 
@@ -24,34 +19,28 @@ type Validator interface {
 	Validate(block *common.Block) error
 }
 
-type routingValidator struct {
-	validatorv14.ChannelResources
-	validator_v20 Validator
-	validator_v14 Validator
+// CapabilityProvider contains functions to retrieve capability information for a channel
+type CapabilityProvider interface {
+	// Capabilities defines the capabilities for the application portion of this channel
+	Capabilities() channelconfig.ApplicationCapabilities
 }
 
-func (v *routingValidator) Validate(block *common.Block) error {
+// ValidationRouter dynamically invokes the appropriate validator depending on the
+// capabilities that are currently enabled in the channel.
+type ValidationRouter struct {
+	CapabilityProvider
+	V20Validator Validator
+	V14Validator Validator
+}
+
+// Validate returns an error if validation could not be performed successfully
+// In case of successful validation, the block is modified to reflect the validity
+// of the transactions it contains
+func (v *ValidationRouter) Validate(block *common.Block) error {
 	switch {
 	case v.Capabilities().V2_0Validation():
-		return v.validator_v20.Validate(block)
+		return v.V20Validator.Validate(block)
 	default:
-		return v.validator_v14.Validate(block)
-	}
-}
-
-func NewTxValidator(
-	chainID string,
-	sem validatorv14.Semaphore,
-	cr validatorv14.ChannelResources,
-	lr plugindispatcher.LifecycleResources,
-	cor plugindispatcher.CollectionResources,
-	sccp sysccprovider.SystemChaincodeProvider,
-	pm plugin.Mapper,
-	cpmg policies.ChannelPolicyManagerGetter,
-) *routingValidator {
-	return &routingValidator{
-		ChannelResources: cr,
-		validator_v14:    validatorv14.NewTxValidator(chainID, sem, cr, sccp, pm),
-		validator_v20:    validatorv20.NewTxValidator(chainID, sem, cr, cr.Ledger(), lr, cor, pm, cpmg),
+		return v.V14Validator.Validate(block)
 	}
 }

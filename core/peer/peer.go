@@ -22,6 +22,8 @@ import (
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
+	validatorv14 "github.com/hyperledger/fabric/core/committer/txvalidator/v14"
+	validatorv20 "github.com/hyperledger/fabric/core/committer/txvalidator/v20"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
 	vir "github.com/hyperledger/fabric/core/committer/txvalidator/v20/valinforetriever"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -318,22 +320,32 @@ func (p *Peer) createChannel(
 	)
 
 	committer := committer.NewLedgerCommitter(l)
-	validator := txvalidator.NewTxValidator(
-		cid,
-		p.validationWorkersSemaphore,
-		channel,
-		&vir.ValidationInfoRetrieveShim{
-			New:    newLifecycleValidation,
-			Legacy: legacyLifecycleValidation,
-		},
-		&CollectionInfoShim{
-			CollectionAndLifecycleResources: newLifecycleValidation,
-			ChannelID:                       bundle.ConfigtxValidator().ChainID(),
-		},
-		sccp,
-		p.pluginMapper,
-		policies.PolicyManagerGetterFunc(p.GetPolicyManager),
-	)
+	validator := &txvalidator.ValidationRouter{
+		CapabilityProvider: channel,
+		V14Validator: validatorv14.NewTxValidator(
+			cid,
+			p.validationWorkersSemaphore,
+			channel,
+			sccp,
+			p.pluginMapper,
+		),
+		V20Validator: validatorv20.NewTxValidator(
+			cid,
+			p.validationWorkersSemaphore,
+			channel,
+			channel.Ledger(),
+			&vir.ValidationInfoRetrieveShim{
+				New:    newLifecycleValidation,
+				Legacy: legacyLifecycleValidation,
+			},
+			&CollectionInfoShim{
+				CollectionAndLifecycleResources: newLifecycleValidation,
+				ChannelID:                       bundle.ConfigtxValidator().ChainID(),
+			},
+			p.pluginMapper,
+			policies.PolicyManagerGetterFunc(p.GetPolicyManager),
+		),
+	}
 
 	ordererAddresses := bundle.ChannelConfig().OrdererAddresses()
 	if len(ordererAddresses) == 0 {
