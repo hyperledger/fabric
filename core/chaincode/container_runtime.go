@@ -23,9 +23,9 @@ type CertGenerator interface {
 
 // ContainerRuntime is responsible for managing containerized chaincode.
 type ContainerRuntime struct {
-	CertGenerator CertGenerator
-	LockingVM     *container.LockingVM
-	CACert        []byte
+	CertGenerator   CertGenerator
+	ContainerRouter *container.Router
+	CACert          []byte
 }
 
 // Start launches chaincode in a runtime environment.
@@ -46,13 +46,13 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 		}
 	}
 
-	if err := c.LockingVM.Build(ccci, codePackage); err != nil {
+	if err := c.ContainerRouter.Build(ccci, codePackage); err != nil {
 		return errors.WithMessage(err, "error building image")
 	}
 
 	chaincodeLogger.Debugf("start container: %s", packageID)
 
-	if err := c.LockingVM.Start(
+	if err := c.ContainerRouter.Start(
 		ccintf.New(ccci.PackageID),
 		ccci.Type,
 		tlsConfig,
@@ -65,7 +65,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 
 // Stop terminates chaincode and its container runtime environment.
 func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
-	if err := c.LockingVM.Stop(ccintf.New(ccci.PackageID)); err != nil {
+	if err := c.ContainerRouter.Stop(ccintf.New(ccci.PackageID)); err != nil {
 		return errors.WithMessage(err, "error stopping container")
 	}
 
@@ -74,5 +74,5 @@ func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 
 // Wait waits for the container runtime to terminate.
 func (c *ContainerRuntime) Wait(ccci *ccprovider.ChaincodeContainerInfo) (int, error) {
-	return c.LockingVM.Wait(ccintf.New(ccci.PackageID))
+	return c.ContainerRouter.Wait(ccintf.New(ccci.PackageID))
 }

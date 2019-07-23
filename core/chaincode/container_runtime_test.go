@@ -24,9 +24,8 @@ func TestContainerRuntimeStart(t *testing.T) {
 	fakeVM := &mock.ContainerVM{}
 
 	cr := &chaincode.ContainerRuntime{
-		LockingVM: &container.LockingVM{
-			Underlying:     fakeVM,
-			ContainerLocks: container.NewContainerLocks(),
+		ContainerRouter: &container.Router{
+			DockerVM: fakeVM,
 		},
 	}
 
@@ -77,9 +76,8 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 		fakeVM.StartReturns(tc.startErr)
 
 		cr := &chaincode.ContainerRuntime{
-			LockingVM: &container.LockingVM{
-				Underlying:     fakeVM,
-				ContainerLocks: container.NewContainerLocks(),
+			ContainerRouter: &container.Router{
+				DockerVM: fakeVM,
 			},
 		}
 
@@ -98,9 +96,8 @@ func TestContainerRuntimeStop(t *testing.T) {
 	fakeVM := &mock.ContainerVM{}
 
 	cr := &chaincode.ContainerRuntime{
-		LockingVM: &container.LockingVM{
-			Underlying:     fakeVM,
-			ContainerLocks: container.NewContainerLocks(),
+		ContainerRouter: &container.Router{
+			DockerVM: fakeVM,
 		},
 	}
 
@@ -130,9 +127,8 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 		fakeVM.StopReturns(tc.processErr)
 
 		cr := &chaincode.ContainerRuntime{
-			LockingVM: &container.LockingVM{
-				Underlying:     fakeVM,
-				ContainerLocks: container.NewContainerLocks(),
+			ContainerRouter: &container.Router{
+				DockerVM: fakeVM,
 			},
 		}
 
@@ -150,9 +146,8 @@ func TestContainerRuntimeWait(t *testing.T) {
 	fakeVM := &mock.ContainerVM{}
 
 	cr := &chaincode.ContainerRuntime{
-		LockingVM: &container.LockingVM{
-			Underlying:     fakeVM,
-			ContainerLocks: container.NewContainerLocks(),
+		ContainerRouter: &container.Router{
+			DockerVM: fakeVM,
 		},
 	}
 

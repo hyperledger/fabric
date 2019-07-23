@@ -24,87 +24,45 @@ type VM interface {
 	Wait(ccid ccintf.CCID) (int, error)
 }
 
-type LockingVM struct {
-	Underlying     VM
-	ContainerLocks *ContainerLocks
+type Router struct {
+	DockerVM   VM
+	containers map[ccintf.CCID]VM
+	mutex      sync.Mutex
 }
 
-func (lvm *LockingVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
-	ccid := ccintf.CCID(ccci.PackageID)
-	lvm.ContainerLocks.Lock(ccid)
-	defer lvm.ContainerLocks.Unlock(ccid)
-	return lvm.Underlying.Build(ccci, codePackage)
-}
+func (r *Router) getVM(ccid ccintf.CCID) VM {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	// Note, to resolve the locking problem which existed in the previous code, we never delete
+	// references from the map.  In this way, it is safe to release the lock and operate
+	// on the returned reference
 
-func (lvm *LockingVM) Start(ccid ccintf.CCID, ccType string, tlsConfig *ccintf.TLSConfig) error {
-	lvm.ContainerLocks.Lock(ccid)
-	defer lvm.ContainerLocks.Unlock(ccid)
-	return lvm.Underlying.Start(ccid, ccType, tlsConfig)
-}
-
-func (lvm *LockingVM) Stop(ccid ccintf.CCID) error {
-	lvm.ContainerLocks.Lock(ccid)
-	defer lvm.ContainerLocks.Unlock(ccid)
-	return lvm.Underlying.Stop(ccid)
-}
-
-func (lvm *LockingVM) Wait(ccid ccintf.CCID) (int, error) {
-	// There is a race here, that was previously masked by the fact that
-	// the callback was called after the lock had been released, so
-	// unlocking before blocking
-	lvm.ContainerLocks.Lock(ccid)
-	waitFunc := lvm.Underlying.Wait
-	lvm.ContainerLocks.Unlock(ccid)
-	return waitFunc(ccid)
-}
-
-type ContainerLocks struct {
-	mutex          sync.RWMutex
-	containerLocks map[ccintf.CCID]*refCountedLock
-}
-
-func NewContainerLocks() *ContainerLocks {
-	return &ContainerLocks{
-		containerLocks: make(map[ccintf.CCID]*refCountedLock),
+	if r.containers == nil {
+		r.containers = map[ccintf.CCID]VM{}
 	}
-}
 
-func (cl *ContainerLocks) Lock(id ccintf.CCID) {
-	//get the container lock under global lock
-	cl.mutex.Lock()
-	var refLck *refCountedLock
-	var ok bool
-	if refLck, ok = cl.containerLocks[id]; !ok {
-		refLck = &refCountedLock{refCount: 1, lock: &sync.RWMutex{}}
-		cl.containerLocks[id] = refLck
-	} else {
-		refLck.refCount++
-		vmLogger.Debugf("refcount %d (%s)", refLck.refCount, id)
+	vm, ok := r.containers[ccid]
+	if !ok {
+		// TODO the detect logic for the chaincode launcher injects here
+		vm = r.DockerVM
+		r.containers[ccid] = vm
 	}
-	cl.mutex.Unlock()
-	vmLogger.Debugf("waiting for container(%s) lock", id)
-	refLck.lock.Lock()
-	vmLogger.Debugf("got container (%s) lock", id)
+
+	return vm
 }
 
-func (cl *ContainerLocks) Unlock(id ccintf.CCID) {
-	cl.mutex.Lock()
-	if refLck, ok := cl.containerLocks[id]; ok {
-		if refLck.refCount <= 0 {
-			panic("refcnt <= 0")
-		}
-		refLck.lock.Unlock()
-		if refLck.refCount--; refLck.refCount == 0 {
-			vmLogger.Debugf("container lock deleted(%s)", id)
-			delete(cl.containerLocks, id)
-		}
-	} else {
-		vmLogger.Debugf("no lock to unlock(%s)!!", id)
-	}
-	cl.mutex.Unlock()
+func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
+	return r.getVM(ccintf.New(ccci.PackageID)).Build(ccci, codePackage)
 }
 
-type refCountedLock struct {
-	refCount int
-	lock     *sync.RWMutex
+func (r *Router) Start(ccid ccintf.CCID, ccType string, tlsConfig *ccintf.TLSConfig) error {
+	return r.getVM(ccid).Start(ccid, ccType, tlsConfig)
+}
+
+func (r *Router) Stop(ccid ccintf.CCID) error {
+	return r.getVM(ccid).Stop(ccid)
+}
+
+func (r *Router) Wait(ccid ccintf.CCID) (int, error) {
+	return r.getVM(ccid).Wait(ccid)
 }

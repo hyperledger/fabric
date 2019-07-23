@@ -208,14 +208,13 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	containerRuntime := &ContainerRuntime{
 		CACert:        ca.CertBytes(),
 		CertGenerator: certGenerator,
-		LockingVM: &container.LockingVM{
-			Underlying: &dockercontroller.DockerVM{
+		ContainerRouter: &container.Router{
+			DockerVM: &dockercontroller.DockerVM{
 				PlatformBuilder: &platforms.Builder{
 					Registry: platforms.NewRegistry(&golang.Platform{}),
 					Client:   client,
 				},
 			},
-			ContainerLocks: container.NewContainerLocks(),
 		},
 	}
 	if !globalConfig.TLSEnabled {

@@ -142,8 +142,8 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	}
 	containerRuntime := &ContainerRuntime{
 		CACert: ca.CertBytes(),
-		LockingVM: &container.LockingVM{
-			Underlying: &dockercontroller.DockerVM{
+		ContainerRouter: &container.Router{
+			DockerVM: &dockercontroller.DockerVM{
 				PeerID:       "",
 				NetworkID:    "",
 				BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
@@ -154,7 +154,6 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 				},
 				PeerAddress: peerAddress,
 			},
-			ContainerLocks: container.NewContainerLocks(),
 		},
 	}
 	userRunsCC := false

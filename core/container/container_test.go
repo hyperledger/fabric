@@ -18,19 +18,16 @@ import (
 )
 
 var _ = Describe("Container", func() {
-	Describe("LockingVM", func() {
+	Describe("Router", func() {
 		var (
-			fakeVM         *mock.VM
-			lockingVM      *container.LockingVM
-			containerLocks *container.ContainerLocks
+			fakeVM *mock.VM
+			router *container.Router
 		)
 
 		BeforeEach(func() {
 			fakeVM = &mock.VM{}
-			containerLocks = container.NewContainerLocks()
-			lockingVM = &container.LockingVM{
-				Underlying:     fakeVM,
-				ContainerLocks: containerLocks,
+			router = &container.Router{
+				DockerVM: fakeVM,
 			}
 		})
 
@@ -39,8 +36,8 @@ var _ = Describe("Container", func() {
 				fakeVM.StartReturns(errors.New("fake-start-error"))
 			})
 
-			It("passes through to the underlying impl", func() {
-				err := lockingVM.Start(
+			It("passes through to the docker impl", func() {
+				err := router.Start(
 					ccintf.CCID("start:name"),
 					"fake-ccType",
 					&ccintf.TLSConfig{
@@ -68,8 +65,8 @@ var _ = Describe("Container", func() {
 				fakeVM.StopReturns(errors.New("Boo"))
 			})
 
-			It("passes through to the underlying impl", func() {
-				err := lockingVM.Stop(ccintf.CCID("stop:name"))
+			It("passes through to the docker impl", func() {
+				err := router.Stop(ccintf.CCID("stop:name"))
 				Expect(err).To(MatchError("Boo"))
 				Expect(fakeVM.StopCallCount()).To(Equal(1))
 				Expect(fakeVM.StopArgsForCall(0)).To(Equal(ccintf.CCID("stop:name")))
@@ -81,8 +78,8 @@ var _ = Describe("Container", func() {
 				fakeVM.BuildReturns(errors.New("fake-build-error"))
 			})
 
-			It("passes through to the underlying impl", func() {
-				err := lockingVM.Build(
+			It("passes through to the docker impl", func() {
+				err := router.Build(
 					&ccprovider.ChaincodeContainerInfo{
 						PackageID: "stop:name",
 						Type:      "type",
@@ -111,8 +108,8 @@ var _ = Describe("Container", func() {
 				fakeVM.WaitReturns(7, errors.New("fake-build-error"))
 			})
 
-			It("passes through to the underlying impl", func() {
-				res, err := lockingVM.Wait(
+			It("passes through to the docker impl", func() {
+				res, err := router.Wait(
 					ccintf.CCID("stop:name"),
 				)
 				Expect(res).To(Equal(7))

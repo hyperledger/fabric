@@ -481,9 +481,8 @@ func serve(args []string) error {
 	containerRuntime := &chaincode.ContainerRuntime{
 		CACert:        ca.CertBytes(),
 		CertGenerator: authenticator,
-		LockingVM: &container.LockingVM{
-			Underlying:     dockerVM,
-			ContainerLocks: container.NewContainerLocks(),
+		ContainerRouter: &container.Router{
+			DockerVM: dockerVM,
 		},
 	}
 
