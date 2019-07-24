@@ -51,6 +51,7 @@ func (UninitializedInstance) Wait() (int, error) {
 }
 
 type Router struct {
+	ExternalVM VM
 	DockerVM   VM
 	containers map[ccintf.CCID]Instance
 	mutex      sync.Mutex
@@ -76,10 +77,16 @@ func (r *Router) getInstance(ccid ccintf.CCID) Instance {
 }
 
 func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
-	// external launcher logic goes here
-	instance, err := r.DockerVM.Build(ccci, codePackage)
+	instance, err := r.ExternalVM.Build(ccci, codePackage)
+
+	externalErr := err
 	if err != nil {
-		return errors.WithMessage(err, "failed docker build")
+		vmLogger.Debug("falling back to docker VM")
+		instance, err = r.DockerVM.Build(ccci, codePackage)
+	}
+
+	if err != nil {
+		return errors.WithMessagef(err, "failed external (%s) and docker build", externalErr)
 	}
 
 	r.mutex.Lock()

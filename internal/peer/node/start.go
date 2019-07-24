@@ -51,6 +51,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
+	"github.com/hyperledger/fabric/core/container/externalbuilders"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/core/endorser"
 	authHandler "github.com/hyperledger/fabric/core/handlers/auth"
@@ -475,6 +476,10 @@ func serve(args []string) error {
 		}
 	}
 
+	externalVM := &externalbuilders.Detector{
+		Builders: coreConfig.ExternalBuilders,
+	}
+
 	chaincodeConfig := chaincode.GlobalConfig()
 
 	containerRuntime := &chaincode.ContainerRuntime{
@@ -482,7 +487,8 @@ func serve(args []string) error {
 		CertGenerator: authenticator,
 		PeerAddress:   ccEndpoint,
 		ContainerRouter: &container.Router{
-			DockerVM: dockerVM,
+			DockerVM:   dockerVM,
+			ExternalVM: externalVM,
 		},
 	}
 
