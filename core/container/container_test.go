@@ -20,68 +20,22 @@ import (
 var _ = Describe("Container", func() {
 	Describe("Router", func() {
 		var (
-			fakeVM *mock.VM
-			router *container.Router
+			fakeVM       *mock.VM
+			fakeInstance *mock.Instance
+			router       *container.Router
 		)
 
 		BeforeEach(func() {
 			fakeVM = &mock.VM{}
+			fakeInstance = &mock.Instance{}
 			router = &container.Router{
 				DockerVM: fakeVM,
 			}
 		})
 
-		Describe("Start", func() {
-			BeforeEach(func() {
-				fakeVM.StartReturns(errors.New("fake-start-error"))
-			})
-
-			It("passes through to the docker impl", func() {
-				err := router.Start(
-					ccintf.CCID("start:name"),
-					"fake-ccType",
-					&ccintf.PeerConnection{
-						Address: "peer-address",
-						TLSConfig: &ccintf.TLSConfig{
-							ClientKey:  []byte("key"),
-							ClientCert: []byte("cert"),
-							RootCert:   []byte("root"),
-						},
-					},
-				)
-
-				Expect(err).To(MatchError("fake-start-error"))
-				Expect(fakeVM.StartCallCount()).To(Equal(1))
-				ccid, args, peerConnection := fakeVM.StartArgsForCall(0)
-				Expect(ccid).To(Equal(ccintf.CCID("start:name")))
-				Expect(args).To(Equal("fake-ccType"))
-				Expect(peerConnection).To(Equal(&ccintf.PeerConnection{
-					Address: "peer-address",
-					TLSConfig: &ccintf.TLSConfig{
-						ClientKey:  []byte("key"),
-						ClientCert: []byte("cert"),
-						RootCert:   []byte("root"),
-					},
-				}))
-			})
-		})
-
-		Describe("Stop", func() {
-			BeforeEach(func() {
-				fakeVM.StopReturns(errors.New("Boo"))
-			})
-
-			It("passes through to the docker impl", func() {
-				err := router.Stop(ccintf.CCID("stop:name"))
-				Expect(err).To(MatchError("Boo"))
-				Expect(fakeVM.StopCallCount()).To(Equal(1))
-				Expect(fakeVM.StopArgsForCall(0)).To(Equal(ccintf.CCID("stop:name")))
-			})
-		})
-
 		Describe("Build", func() {
 			BeforeEach(func() {
-				fakeVM.BuildReturns(errors.New("fake-build-error"))
+				fakeVM.BuildReturns(fakeInstance, errors.New("fake-build-error"))
 			})
 
 			It("passes through to the docker impl", func() {
@@ -95,7 +49,7 @@ var _ = Describe("Container", func() {
 					},
 					[]byte("code-bytes"),
 				)
-				Expect(err).To(MatchError("fake-build-error"))
+				Expect(err).To(MatchError("failed docker build: fake-build-error"))
 				Expect(fakeVM.BuildCallCount()).To(Equal(1))
 				ccci, codePackage := fakeVM.BuildArgsForCall(0)
 				Expect(ccci).To(Equal(&ccprovider.ChaincodeContainerInfo{
@@ -109,20 +63,103 @@ var _ = Describe("Container", func() {
 			})
 		})
 
-		Describe("Wait", func() {
+		Describe("Post-build operations", func() {
 			BeforeEach(func() {
-				fakeVM.WaitReturns(7, errors.New("fake-build-error"))
+				fakeVM.BuildReturns(fakeInstance, nil)
+				err := router.Build(&ccprovider.ChaincodeContainerInfo{
+					PackageID: "fake-id",
+					Type:      "type",
+					Path:      "path",
+					Name:      "name",
+					Version:   "version",
+				},
+					[]byte("code-bytes"),
+				)
+				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("passes through to the docker impl", func() {
-				res, err := router.Wait(
-					ccintf.CCID("stop:name"),
-				)
-				Expect(res).To(Equal(7))
-				Expect(err).To(MatchError("fake-build-error"))
-				Expect(fakeVM.WaitCallCount()).To(Equal(1))
-				ccid := fakeVM.WaitArgsForCall(0)
-				Expect(ccid).To(Equal(ccintf.CCID("stop:name")))
+			Describe("Start", func() {
+				BeforeEach(func() {
+					fakeInstance.StartReturns(errors.New("fake-start-error"))
+				})
+
+				It("passes through to the docker impl", func() {
+					err := router.Start(
+						ccintf.CCID("fake-id"),
+						&ccintf.PeerConnection{
+							Address: "peer-address",
+							TLSConfig: &ccintf.TLSConfig{
+								ClientKey:  []byte("key"),
+								ClientCert: []byte("cert"),
+								RootCert:   []byte("root"),
+							},
+						},
+					)
+
+					Expect(err).To(MatchError("fake-start-error"))
+					Expect(fakeInstance.StartCallCount()).To(Equal(1))
+					Expect(fakeInstance.StartArgsForCall(0)).To(Equal(&ccintf.PeerConnection{
+						Address: "peer-address",
+						TLSConfig: &ccintf.TLSConfig{
+							ClientKey:  []byte("key"),
+							ClientCert: []byte("cert"),
+							RootCert:   []byte("root"),
+						},
+					}))
+				})
+
+				Context("when the chaincode has not yet been built", func() {
+					It("returns an error", func() {
+						err := router.Start(
+							ccintf.CCID("missing-name"),
+							&ccintf.PeerConnection{
+								Address: "peer-address",
+							},
+						)
+						Expect(err).To(MatchError("instance has not yet been built, cannot be started"))
+					})
+				})
+			})
+
+			Describe("Stop", func() {
+				BeforeEach(func() {
+					fakeInstance.StopReturns(errors.New("Boo"))
+				})
+
+				It("passes through to the docker impl", func() {
+					err := router.Stop(ccintf.CCID("fake-id"))
+					Expect(err).To(MatchError("Boo"))
+					Expect(fakeInstance.StopCallCount()).To(Equal(1))
+				})
+
+				Context("when the chaincode has not yet been built", func() {
+					It("returns an error", func() {
+						err := router.Stop(ccintf.CCID("missing-name"))
+						Expect(err).To(MatchError("instance has not yet been built, cannot be stopped"))
+					})
+				})
+			})
+
+			Describe("Wait", func() {
+				BeforeEach(func() {
+					fakeInstance.WaitReturns(7, errors.New("fake-wait-error"))
+				})
+
+				It("passes through to the docker impl", func() {
+					res, err := router.Wait(
+						ccintf.CCID("fake-id"),
+					)
+					Expect(res).To(Equal(7))
+					Expect(err).To(MatchError("fake-wait-error"))
+					Expect(fakeInstance.WaitCallCount()).To(Equal(1))
+				})
+
+				Context("when the chaincode has not yet been built", func() {
+					It("returns an error", func() {
+						_, err := router.Wait(ccintf.CCID("missing-name"))
+						Expect(err).To(MatchError("instance has not yet been built, cannot wait"))
+					})
+				})
 			})
 		})
 	})

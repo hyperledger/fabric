@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -21,13 +20,11 @@ import (
 )
 
 func TestContainerRuntimeStart(t *testing.T) {
-	fakeVM := &mock.ContainerVM{}
+	fakeRouter := &mock.ContainerRouter{}
 
 	cr := &chaincode.ContainerRuntime{
-		ContainerRouter: &container.Router{
-			DockerVM: fakeVM,
-		},
-		PeerAddress: "peer-address",
+		ContainerRouter: fakeRouter,
+		PeerAddress:     "peer-address",
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
@@ -41,8 +38,8 @@ func TestContainerRuntimeStart(t *testing.T) {
 	err := cr.Start(ccci, []byte("code-package"))
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, fakeVM.BuildCallCount())
-	ccci, codePackage := fakeVM.BuildArgsForCall(0)
+	assert.Equal(t, 1, fakeRouter.BuildCallCount())
+	ccci, codePackage := fakeRouter.BuildArgsForCall(0)
 	assert.Equal(t, ccci, &ccprovider.ChaincodeContainerInfo{
 		PackageID: "chaincode-name:chaincode-version",
 		Type:      "GOLANG",
@@ -52,10 +49,9 @@ func TestContainerRuntimeStart(t *testing.T) {
 	})
 	assert.Equal(t, []byte("code-package"), codePackage)
 
-	assert.Equal(t, 1, fakeVM.StartCallCount())
-	ccid, ccType, peerConnection := fakeVM.StartArgsForCall(0)
+	assert.Equal(t, 1, fakeRouter.StartCallCount())
+	ccid, peerConnection := fakeRouter.StartArgsForCall(0)
 	assert.Equal(t, ccintf.CCID("chaincode-name:chaincode-version"), ccid)
-	assert.Equal(t, "GOLANG", ccType)
 	assert.Equal(t, "peer-address", peerConnection.Address)
 	assert.Nil(t, peerConnection.TLSConfig)
 }
@@ -73,14 +69,12 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		fakeVM := &mock.ContainerVM{}
-		fakeVM.BuildReturns(tc.buildErr)
-		fakeVM.StartReturns(tc.startErr)
+		fakeRouter := &mock.ContainerRouter{}
+		fakeRouter.BuildReturns(tc.buildErr)
+		fakeRouter.StartReturns(tc.startErr)
 
 		cr := &chaincode.ContainerRuntime{
-			ContainerRouter: &container.Router{
-				DockerVM: fakeVM,
-			},
+			ContainerRouter: fakeRouter,
 		}
 
 		ccci := &ccprovider.ChaincodeContainerInfo{
@@ -95,12 +89,10 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 }
 
 func TestContainerRuntimeStop(t *testing.T) {
-	fakeVM := &mock.ContainerVM{}
+	fakeRouter := &mock.ContainerRouter{}
 
 	cr := &chaincode.ContainerRuntime{
-		ContainerRouter: &container.Router{
-			DockerVM: fakeVM,
-		},
+		ContainerRouter: fakeRouter,
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
@@ -111,8 +103,8 @@ func TestContainerRuntimeStop(t *testing.T) {
 	err := cr.Stop(ccci)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, fakeVM.StopCallCount())
-	ccid := fakeVM.StopArgsForCall(0)
+	assert.Equal(t, 1, fakeRouter.StopCallCount())
+	ccid := fakeRouter.StopArgsForCall(0)
 	assert.Equal(t, ccintf.CCID("chaincode-id-name:chaincode-version"), ccid)
 }
 
@@ -125,13 +117,11 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		fakeVM := &mock.ContainerVM{}
-		fakeVM.StopReturns(tc.processErr)
+		fakeRouter := &mock.ContainerRouter{}
+		fakeRouter.StopReturns(tc.processErr)
 
 		cr := &chaincode.ContainerRuntime{
-			ContainerRouter: &container.Router{
-				DockerVM: fakeVM,
-			},
+			ContainerRouter: fakeRouter,
 		}
 
 		ccci := &ccprovider.ChaincodeContainerInfo{
@@ -145,12 +135,10 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 }
 
 func TestContainerRuntimeWait(t *testing.T) {
-	fakeVM := &mock.ContainerVM{}
+	fakeRouter := &mock.ContainerRouter{}
 
 	cr := &chaincode.ContainerRuntime{
-		ContainerRouter: &container.Router{
-			DockerVM: fakeVM,
-		},
+		ContainerRouter: fakeRouter,
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
@@ -163,10 +151,10 @@ func TestContainerRuntimeWait(t *testing.T) {
 	exitCode, err := cr.Wait(ccci)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, exitCode)
-	assert.Equal(t, 1, fakeVM.WaitCallCount())
-	assert.Equal(t, ccintf.CCID("chaincode-id-name:chaincode-version"), fakeVM.WaitArgsForCall(0))
+	assert.Equal(t, 1, fakeRouter.WaitCallCount())
+	assert.Equal(t, ccintf.CCID("chaincode-id-name:chaincode-version"), fakeRouter.WaitArgsForCall(0))
 
-	fakeVM.WaitReturns(3, errors.New("moles-and-trolls"))
+	fakeRouter.WaitReturns(3, errors.New("moles-and-trolls"))
 	code, err := cr.Wait(ccci)
 	assert.EqualError(t, err, "moles-and-trolls")
 	assert.Equal(t, code, 3)

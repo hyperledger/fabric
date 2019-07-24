@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -73,6 +74,24 @@ type dockerClient interface {
 
 type PlatformBuilder interface {
 	GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (io.Reader, error)
+}
+
+type ContainerInstance struct {
+	CCID     ccintf.CCID
+	Type     string
+	DockerVM *DockerVM
+}
+
+func (ci *ContainerInstance) Start(peerConnection *ccintf.PeerConnection) error {
+	return ci.DockerVM.Start(ci.CCID, ci.Type, peerConnection)
+}
+
+func (ci *ContainerInstance) Stop() error {
+	return ci.DockerVM.Stop(ci.CCID)
+}
+
+func (ci *ContainerInstance) Wait() (int, error) {
+	return ci.DockerVM.Wait(ci.CCID)
 }
 
 // DockerVM is a vm. It is identified by an image id
@@ -152,28 +171,34 @@ func (vm *DockerVM) buildImage(ccid ccintf.CCID, reader io.Reader) error {
 }
 
 // Build is responsible for building an image if it does not already exist.
-func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
+func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (container.Instance, error) {
 	ccid := ccintf.New(ccci.PackageID)
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = vm.Client.InspectImage(imageName)
-	if err != docker.ErrNoSuchImage {
-		return errors.Wrap(err, "docker image inspection failed")
+	switch err {
+	case docker.ErrNoSuchImage:
+		dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(ccci, codePackage)
+		if err != nil {
+			return nil, errors.Wrap(err, "platform builder failed")
+		}
+		err = vm.buildImage(ccid, dockerfileReader)
+		if err != nil {
+			return nil, errors.Wrap(err, "docker image build failed")
+		}
+	case nil:
+	default:
+		return nil, errors.Wrap(err, "docker image inspection failed")
 	}
 
-	dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(ccci, codePackage)
-	if err != nil {
-		return errors.Wrap(err, "platform builder failed")
-	}
-	err = vm.buildImage(ccid, dockerfileReader)
-	if err != nil {
-		return errors.Wrap(err, "docker image build failed")
-	}
-
-	return nil
+	return &ContainerInstance{
+		DockerVM: vm,
+		CCID:     ccid,
+		Type:     ccci.Type,
+	}, nil
 }
 
 func (vm *DockerVM) GetArgs(ccType string, peerAddress string) ([]string, error) {

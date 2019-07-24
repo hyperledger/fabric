@@ -12,25 +12,51 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
+
+	"github.com/pkg/errors"
 )
 
 var vmLogger = flogging.MustGetLogger("container")
 
+//go:generate counterfeiter -o mock/vm.go --fake-name VM . VM
+
 //VM is an abstract virtual image for supporting arbitrary virual machines
 type VM interface {
-	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error
-	Start(ccid ccintf.CCID, ccType string, peerConnection *ccintf.PeerConnection) error
-	Stop(ccid ccintf.CCID) error
-	Wait(ccid ccintf.CCID) (int, error)
+	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (Instance, error)
+}
+
+//go:generate counterfeiter -o mock/instance.go --fake-name Instance . Instance
+
+// Instance represents a built chaincode instance, because of the docker legacy, calling this a
+// built 'container' would be very misleading, and going forward with the external launcher
+// 'image' also seemed inappropriate.  So, the vague 'Instance' is used here.
+type Instance interface {
+	Start(peerConnection *ccintf.PeerConnection) error
+	Stop() error
+	Wait() (int, error)
+}
+
+type UninitializedInstance struct{}
+
+func (UninitializedInstance) Start(peerConnection *ccintf.PeerConnection) error {
+	return errors.Errorf("instance has not yet been built, cannot be started")
+}
+
+func (UninitializedInstance) Stop() error {
+	return errors.Errorf("instance has not yet been built, cannot be stopped")
+}
+
+func (UninitializedInstance) Wait() (int, error) {
+	return 0, errors.Errorf("instance has not yet been built, cannot wait")
 }
 
 type Router struct {
 	DockerVM   VM
-	containers map[ccintf.CCID]VM
+	containers map[ccintf.CCID]Instance
 	mutex      sync.Mutex
 }
 
-func (r *Router) getVM(ccid ccintf.CCID) VM {
+func (r *Router) getInstance(ccid ccintf.CCID) Instance {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	// Note, to resolve the locking problem which existed in the previous code, we never delete
@@ -38,31 +64,44 @@ func (r *Router) getVM(ccid ccintf.CCID) VM {
 	// on the returned reference
 
 	if r.containers == nil {
-		r.containers = map[ccintf.CCID]VM{}
+		r.containers = map[ccintf.CCID]Instance{}
 	}
 
 	vm, ok := r.containers[ccid]
 	if !ok {
-		// TODO the detect logic for the chaincode launcher injects here
-		vm = r.DockerVM
-		r.containers[ccid] = vm
+		return UninitializedInstance{}
 	}
 
 	return vm
 }
 
 func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
-	return r.getVM(ccintf.New(ccci.PackageID)).Build(ccci, codePackage)
+	// external launcher logic goes here
+	instance, err := r.DockerVM.Build(ccci, codePackage)
+	if err != nil {
+		return errors.WithMessage(err, "failed docker build")
+	}
+
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if r.containers == nil {
+		r.containers = map[ccintf.CCID]Instance{}
+	}
+
+	r.containers[ccintf.CCID(ccci.PackageID)] = instance
+
+	return nil
 }
 
-func (r *Router) Start(ccid ccintf.CCID, ccType string, peerConnection *ccintf.PeerConnection) error {
-	return r.getVM(ccid).Start(ccid, ccType, peerConnection)
+func (r *Router) Start(ccid ccintf.CCID, peerConnection *ccintf.PeerConnection) error {
+	return r.getInstance(ccid).Start(peerConnection)
 }
 
 func (r *Router) Stop(ccid ccintf.CCID) error {
-	return r.getVM(ccid).Stop(ccid)
+	return r.getInstance(ccid).Stop()
 }
 
 func (r *Router) Wait(ccid ccintf.CCID) (int, error) {
-	return r.getVM(ccid).Wait(ccid)
+	return r.getInstance(ccid).Wait()
 }

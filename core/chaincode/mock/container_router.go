@@ -8,7 +8,7 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
-type ContainerVM struct {
+type ContainerRouter struct {
 	BuildStub        func(*ccprovider.ChaincodeContainerInfo, []byte) error
 	buildMutex       sync.RWMutex
 	buildArgsForCall []struct {
@@ -21,12 +21,11 @@ type ContainerVM struct {
 	buildReturnsOnCall map[int]struct {
 		result1 error
 	}
-	StartStub        func(ccintf.CCID, string, *ccintf.PeerConnection) error
+	StartStub        func(ccintf.CCID, *ccintf.PeerConnection) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
 		arg1 ccintf.CCID
-		arg2 string
-		arg3 *ccintf.PeerConnection
+		arg2 *ccintf.PeerConnection
 	}
 	startReturns struct {
 		result1 error
@@ -62,7 +61,7 @@ type ContainerVM struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ContainerVM) Build(arg1 *ccprovider.ChaincodeContainerInfo, arg2 []byte) error {
+func (fake *ContainerRouter) Build(arg1 *ccprovider.ChaincodeContainerInfo, arg2 []byte) error {
 	var arg2Copy []byte
 	if arg2 != nil {
 		arg2Copy = make([]byte, len(arg2))
@@ -86,26 +85,26 @@ func (fake *ContainerVM) Build(arg1 *ccprovider.ChaincodeContainerInfo, arg2 []b
 	return fakeReturns.result1
 }
 
-func (fake *ContainerVM) BuildCallCount() int {
+func (fake *ContainerRouter) BuildCallCount() int {
 	fake.buildMutex.RLock()
 	defer fake.buildMutex.RUnlock()
 	return len(fake.buildArgsForCall)
 }
 
-func (fake *ContainerVM) BuildCalls(stub func(*ccprovider.ChaincodeContainerInfo, []byte) error) {
+func (fake *ContainerRouter) BuildCalls(stub func(*ccprovider.ChaincodeContainerInfo, []byte) error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = stub
 }
 
-func (fake *ContainerVM) BuildArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, []byte) {
+func (fake *ContainerRouter) BuildArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, []byte) {
 	fake.buildMutex.RLock()
 	defer fake.buildMutex.RUnlock()
 	argsForCall := fake.buildArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *ContainerVM) BuildReturns(result1 error) {
+func (fake *ContainerRouter) BuildReturns(result1 error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = nil
@@ -114,7 +113,7 @@ func (fake *ContainerVM) BuildReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *ContainerVM) BuildReturnsOnCall(i int, result1 error) {
+func (fake *ContainerRouter) BuildReturnsOnCall(i int, result1 error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = nil
@@ -128,18 +127,17 @@ func (fake *ContainerVM) BuildReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *ContainerVM) Start(arg1 ccintf.CCID, arg2 string, arg3 *ccintf.PeerConnection) error {
+func (fake *ContainerRouter) Start(arg1 ccintf.CCID, arg2 *ccintf.PeerConnection) error {
 	fake.startMutex.Lock()
 	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
 		arg1 ccintf.CCID
-		arg2 string
-		arg3 *ccintf.PeerConnection
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("Start", []interface{}{arg1, arg2, arg3})
+		arg2 *ccintf.PeerConnection
+	}{arg1, arg2})
+	fake.recordInvocation("Start", []interface{}{arg1, arg2})
 	fake.startMutex.Unlock()
 	if fake.StartStub != nil {
-		return fake.StartStub(arg1, arg2, arg3)
+		return fake.StartStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -148,26 +146,26 @@ func (fake *ContainerVM) Start(arg1 ccintf.CCID, arg2 string, arg3 *ccintf.PeerC
 	return fakeReturns.result1
 }
 
-func (fake *ContainerVM) StartCallCount() int {
+func (fake *ContainerRouter) StartCallCount() int {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	return len(fake.startArgsForCall)
 }
 
-func (fake *ContainerVM) StartCalls(stub func(ccintf.CCID, string, *ccintf.PeerConnection) error) {
+func (fake *ContainerRouter) StartCalls(stub func(ccintf.CCID, *ccintf.PeerConnection) error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = stub
 }
 
-func (fake *ContainerVM) StartArgsForCall(i int) (ccintf.CCID, string, *ccintf.PeerConnection) {
+func (fake *ContainerRouter) StartArgsForCall(i int) (ccintf.CCID, *ccintf.PeerConnection) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	argsForCall := fake.startArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *ContainerVM) StartReturns(result1 error) {
+func (fake *ContainerRouter) StartReturns(result1 error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = nil
@@ -176,7 +174,7 @@ func (fake *ContainerVM) StartReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *ContainerVM) StartReturnsOnCall(i int, result1 error) {
+func (fake *ContainerRouter) StartReturnsOnCall(i int, result1 error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = nil
@@ -190,7 +188,7 @@ func (fake *ContainerVM) StartReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *ContainerVM) Stop(arg1 ccintf.CCID) error {
+func (fake *ContainerRouter) Stop(arg1 ccintf.CCID) error {
 	fake.stopMutex.Lock()
 	ret, specificReturn := fake.stopReturnsOnCall[len(fake.stopArgsForCall)]
 	fake.stopArgsForCall = append(fake.stopArgsForCall, struct {
@@ -208,26 +206,26 @@ func (fake *ContainerVM) Stop(arg1 ccintf.CCID) error {
 	return fakeReturns.result1
 }
 
-func (fake *ContainerVM) StopCallCount() int {
+func (fake *ContainerRouter) StopCallCount() int {
 	fake.stopMutex.RLock()
 	defer fake.stopMutex.RUnlock()
 	return len(fake.stopArgsForCall)
 }
 
-func (fake *ContainerVM) StopCalls(stub func(ccintf.CCID) error) {
+func (fake *ContainerRouter) StopCalls(stub func(ccintf.CCID) error) {
 	fake.stopMutex.Lock()
 	defer fake.stopMutex.Unlock()
 	fake.StopStub = stub
 }
 
-func (fake *ContainerVM) StopArgsForCall(i int) ccintf.CCID {
+func (fake *ContainerRouter) StopArgsForCall(i int) ccintf.CCID {
 	fake.stopMutex.RLock()
 	defer fake.stopMutex.RUnlock()
 	argsForCall := fake.stopArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *ContainerVM) StopReturns(result1 error) {
+func (fake *ContainerRouter) StopReturns(result1 error) {
 	fake.stopMutex.Lock()
 	defer fake.stopMutex.Unlock()
 	fake.StopStub = nil
@@ -236,7 +234,7 @@ func (fake *ContainerVM) StopReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *ContainerVM) StopReturnsOnCall(i int, result1 error) {
+func (fake *ContainerRouter) StopReturnsOnCall(i int, result1 error) {
 	fake.stopMutex.Lock()
 	defer fake.stopMutex.Unlock()
 	fake.StopStub = nil
@@ -250,7 +248,7 @@ func (fake *ContainerVM) StopReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *ContainerVM) Wait(arg1 ccintf.CCID) (int, error) {
+func (fake *ContainerRouter) Wait(arg1 ccintf.CCID) (int, error) {
 	fake.waitMutex.Lock()
 	ret, specificReturn := fake.waitReturnsOnCall[len(fake.waitArgsForCall)]
 	fake.waitArgsForCall = append(fake.waitArgsForCall, struct {
@@ -268,26 +266,26 @@ func (fake *ContainerVM) Wait(arg1 ccintf.CCID) (int, error) {
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *ContainerVM) WaitCallCount() int {
+func (fake *ContainerRouter) WaitCallCount() int {
 	fake.waitMutex.RLock()
 	defer fake.waitMutex.RUnlock()
 	return len(fake.waitArgsForCall)
 }
 
-func (fake *ContainerVM) WaitCalls(stub func(ccintf.CCID) (int, error)) {
+func (fake *ContainerRouter) WaitCalls(stub func(ccintf.CCID) (int, error)) {
 	fake.waitMutex.Lock()
 	defer fake.waitMutex.Unlock()
 	fake.WaitStub = stub
 }
 
-func (fake *ContainerVM) WaitArgsForCall(i int) ccintf.CCID {
+func (fake *ContainerRouter) WaitArgsForCall(i int) ccintf.CCID {
 	fake.waitMutex.RLock()
 	defer fake.waitMutex.RUnlock()
 	argsForCall := fake.waitArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *ContainerVM) WaitReturns(result1 int, result2 error) {
+func (fake *ContainerRouter) WaitReturns(result1 int, result2 error) {
 	fake.waitMutex.Lock()
 	defer fake.waitMutex.Unlock()
 	fake.WaitStub = nil
@@ -297,7 +295,7 @@ func (fake *ContainerVM) WaitReturns(result1 int, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *ContainerVM) WaitReturnsOnCall(i int, result1 int, result2 error) {
+func (fake *ContainerRouter) WaitReturnsOnCall(i int, result1 int, result2 error) {
 	fake.waitMutex.Lock()
 	defer fake.waitMutex.Unlock()
 	fake.WaitStub = nil
@@ -313,7 +311,7 @@ func (fake *ContainerVM) WaitReturnsOnCall(i int, result1 int, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *ContainerVM) Invocations() map[string][][]interface{} {
+func (fake *ContainerRouter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.buildMutex.RLock()
@@ -331,7 +329,7 @@ func (fake *ContainerVM) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *ContainerVM) recordInvocation(key string, args []interface{}) {
+func (fake *ContainerRouter) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {

@@ -9,7 +9,6 @@ package chaincode
 import (
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
@@ -21,10 +20,22 @@ type CertGenerator interface {
 	Generate(ccName string) (*accesscontrol.CertAndPrivKeyPair, error)
 }
 
+// ContainerRouter is a poor abstraction used for building, and running chaincode processes.
+// This management probably does not belong in this package, chaincode process lifecycle should
+// be driven by what chaincodes are defined, what chaincodes are instantiated, and not driven by
+// invocations.  But, the legacy lifecycle makes this very challenging.  Once the legacy lifecycle
+// is removed (or perhaps before), this interface should probably go away entirely.
+type ContainerRouter interface {
+	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error
+	Start(ccid ccintf.CCID, peerConnection *ccintf.PeerConnection) error
+	Stop(ccid ccintf.CCID) error
+	Wait(ccid ccintf.CCID) (int, error)
+}
+
 // ContainerRuntime is responsible for managing containerized chaincode.
 type ContainerRuntime struct {
 	CertGenerator   CertGenerator
-	ContainerRouter *container.Router
+	ContainerRouter ContainerRouter
 	CACert          []byte
 	PeerAddress     string
 }
@@ -55,7 +66,6 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 
 	if err := c.ContainerRouter.Start(
 		ccintf.New(ccci.PackageID),
-		ccci.Type,
 		&ccintf.PeerConnection{
 			Address:   c.PeerAddress,
 			TLSConfig: tlsConfig,
