@@ -152,9 +152,9 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 					Registry: pr,
 					Client:   client,
 				},
-				PeerAddress: peerAddress,
 			},
 		},
+		PeerAddress: peerAddress,
 	}
 	userRunsCC := false
 	metricsProviders := &disabled.Provider{}

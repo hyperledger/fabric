@@ -468,7 +468,6 @@ func serve(args []string) error {
 			Registry: platformRegistry,
 			Client:   client,
 		},
-		PeerAddress: ccEndpoint,
 	}
 	if err := opsSystem.RegisterChecker("docker", dockerVM); err != nil {
 		if err != nil {
@@ -481,6 +480,7 @@ func serve(args []string) error {
 	containerRuntime := &chaincode.ContainerRuntime{
 		CACert:        ca.CertBytes(),
 		CertGenerator: authenticator,
+		PeerAddress:   ccEndpoint,
 		ContainerRouter: &container.Router{
 			DockerVM: dockerVM,
 		},

@@ -22,12 +22,12 @@ type VM struct {
 	buildReturnsOnCall map[int]struct {
 		result1 error
 	}
-	StartStub        func(ccintf.CCID, string, *ccintf.TLSConfig) error
+	StartStub        func(ccintf.CCID, string, *ccintf.PeerConnection) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
 		arg1 ccintf.CCID
 		arg2 string
-		arg3 *ccintf.TLSConfig
+		arg3 *ccintf.PeerConnection
 	}
 	startReturns struct {
 		result1 error
@@ -129,13 +129,13 @@ func (fake *VM) BuildReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *VM) Start(arg1 ccintf.CCID, arg2 string, arg3 *ccintf.TLSConfig) error {
+func (fake *VM) Start(arg1 ccintf.CCID, arg2 string, arg3 *ccintf.PeerConnection) error {
 	fake.startMutex.Lock()
 	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
 		arg1 ccintf.CCID
 		arg2 string
-		arg3 *ccintf.TLSConfig
+		arg3 *ccintf.PeerConnection
 	}{arg1, arg2, arg3})
 	fake.recordInvocation("Start", []interface{}{arg1, arg2, arg3})
 	fake.startMutex.Unlock()
@@ -155,13 +155,13 @@ func (fake *VM) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *VM) StartCalls(stub func(ccintf.CCID, string, *ccintf.TLSConfig) error) {
+func (fake *VM) StartCalls(stub func(ccintf.CCID, string, *ccintf.PeerConnection) error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = stub
 }
 
-func (fake *VM) StartArgsForCall(i int) (ccintf.CCID, string, *ccintf.TLSConfig) {
+func (fake *VM) StartArgsForCall(i int) (ccintf.CCID, string, *ccintf.PeerConnection) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	argsForCall := fake.startArgsForCall[i]

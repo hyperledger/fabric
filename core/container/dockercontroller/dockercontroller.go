@@ -86,7 +86,6 @@ type DockerVM struct {
 	ChaincodePull   bool
 	NetworkMode     string
 	PlatformBuilder PlatformBuilder
-	PeerAddress     string
 }
 
 // HealthCheck checks if the DockerVM is able to communicate with the Docker
@@ -177,16 +176,16 @@ func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage [
 	return nil
 }
 
-func (vm *DockerVM) GetArgs(ccType string) ([]string, error) {
+func (vm *DockerVM) GetArgs(ccType string, peerAddress string) ([]string, error) {
 	// language specific arguments, possibly should be pushed back into platforms, but were simply
 	// ported from the container_runtime chaincode component
 	switch ccType {
 	case pb.ChaincodeSpec_GOLANG.String(), pb.ChaincodeSpec_CAR.String():
-		return []string{"chaincode", fmt.Sprintf("-peer.address=%s", vm.PeerAddress)}, nil
+		return []string{"chaincode", fmt.Sprintf("-peer.address=%s", peerAddress)}, nil
 	case pb.ChaincodeSpec_JAVA.String():
-		return []string{"/root/chaincode-java/start", "--peerAddress", vm.PeerAddress}, nil
+		return []string{"/root/chaincode-java/start", "--peerAddress", peerAddress}, nil
 	case pb.ChaincodeSpec_NODE.String():
-		return []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; npm start -- --peer.address %s", vm.PeerAddress)}, nil
+		return []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; npm start -- --peer.address %s", peerAddress)}, nil
 	default:
 		return nil, errors.Errorf("unknown chaincodeType: %s", ccType)
 	}
@@ -223,7 +222,7 @@ func GetEnv(ccid ccintf.CCID, tlsConfig *ccintf.TLSConfig) []string {
 }
 
 // Start starts a container using a previously created docker image
-func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, tlsConfig *ccintf.TLSConfig) error {
+func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, peerConnection *ccintf.PeerConnection) error {
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
@@ -234,13 +233,13 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, tlsConfig *ccintf.TLS
 
 	vm.stopInternal(containerName)
 
-	args, err := vm.GetArgs(ccType)
+	args, err := vm.GetArgs(ccType, peerConnection.Address)
 	if err != nil {
 		return errors.WithMessage(err, "could not get args")
 	}
 	dockerLogger.Debugf("start container with args: %s", strings.Join(args, " "))
 
-	env := GetEnv(ccid, tlsConfig)
+	env := GetEnv(ccid, peerConnection.TLSConfig)
 	dockerLogger.Debugf("start container with env:\n\t%s", strings.Join(env, "\n\t"))
 
 	err = vm.createContainer(imageName, containerName, args, env)
@@ -256,16 +255,16 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, tlsConfig *ccintf.TLS
 	}
 
 	// upload TLS files to the container before starting it if needed
-	if tlsConfig != nil {
+	if peerConnection.TLSConfig != nil {
 		// the docker upload API takes a tar file, so we need to first
 		// consolidate the file entries to a tar
 		payload := bytes.NewBuffer(nil)
 		gw := gzip.NewWriter(payload)
 		tw := tar.NewWriter(gw)
 
-		cutil.WriteBytesToPackage(TLSClientKeyPath, tlsConfig.ClientKey, tw)
-		cutil.WriteBytesToPackage(TLSClientCertPath, tlsConfig.ClientCert, tw)
-		cutil.WriteBytesToPackage(TLSClientRootCertPath, tlsConfig.RootCert, tw)
+		cutil.WriteBytesToPackage(TLSClientKeyPath, peerConnection.TLSConfig.ClientKey, tw)
+		cutil.WriteBytesToPackage(TLSClientCertPath, peerConnection.TLSConfig.ClientCert, tw)
+		cutil.WriteBytesToPackage(TLSClientRootCertPath, peerConnection.TLSConfig.RootCert, tw)
 
 		// Write the tar file out
 		if err := tw.Close(); err != nil {

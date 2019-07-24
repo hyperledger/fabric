@@ -34,6 +34,12 @@ func New(packageID persistence.PackageID) CCID {
 	return CCID(packageID.String())
 }
 
+// PeerConnection instructs the chaincode how to connect back to the peer
+type PeerConnection struct {
+	Address   string
+	TLSConfig *TLSConfig
+}
+
 // TLSConfig is used to pass the TLS context into the chaincode launch
 type TLSConfig struct {
 	ClientCert []byte

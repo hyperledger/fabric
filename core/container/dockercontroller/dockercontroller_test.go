@@ -59,7 +59,9 @@ func TestIntegrationPath(t *testing.T) {
 	}, []byte("code-package"))
 	require.NoError(t, err)
 
-	err = dc.Start(ccid, "NODE", nil)
+	err = dc.Start(ccid, "NODE", &ccintf.PeerConnection{
+		Address: "peer-address",
+	})
 	require.NoError(t, err)
 
 	err = dc.Stop(ccid)
@@ -79,11 +81,9 @@ func TestGetArgs(t *testing.T) {
 		{"unknown-chaincode", pb.ChaincodeSpec_Type(999), []string{}, "unknown chaincodeType: 999"},
 	}
 	for _, tc := range tests {
-		vm := &DockerVM{
-			PeerAddress: "peer-address",
-		}
+		vm := &DockerVM{}
 
-		args, err := vm.GetArgs(tc.ccType.String())
+		args, err := vm.GetArgs(tc.ccType.String(), "peer-address")
 		if tc.expectedErr != "" {
 			assert.EqualError(t, err, tc.expectedErr)
 			continue
@@ -124,23 +124,26 @@ func Test_Start(t *testing.T) {
 	}
 
 	ccid := ccintf.CCID("simple:1.0")
-	tlsConfig := &ccintf.TLSConfig{
-		ClientKey:  []byte("key"),
-		ClientCert: []byte("cert"),
-		RootCert:   []byte("root"),
+	peerConnection := &ccintf.PeerConnection{
+		Address: "peer-address",
+		TLSConfig: &ccintf.TLSConfig{
+			ClientKey:  []byte("key"),
+			ClientCert: []byte("cert"),
+			RootCert:   []byte("root"),
+		},
 	}
 
 	// case 1: dockerClient.CreateContainer returns error
 	testError1 := errors.New("junk1")
 	dockerClient.CreateContainerReturns(nil, testError1)
-	err := dvm.Start(ccid, "GOLANG", tlsConfig)
+	err := dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err).To(MatchError(testError1))
 	dockerClient.CreateContainerReturns(&docker.Container{}, nil)
 
 	// case 2: dockerClient.UploadToContainer returns error
 	testError2 := errors.New("junk2")
 	dockerClient.UploadToContainerReturns(testError2)
-	err = dvm.Start(ccid, "GOLANG", tlsConfig)
+	err = dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err.Error()).To(ContainSubstring("junk2"))
 	dockerClient.UploadToContainerReturns(nil)
 
@@ -149,31 +152,31 @@ func Test_Start(t *testing.T) {
 	testError3 := errors.New("junk3")
 	dvm.AttachStdOut = true
 	dockerClient.CreateContainerReturns(nil, testError3)
-	err = dvm.Start(ccid, "GOLANG", tlsConfig)
+	err = dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err).To(MatchError(testError3))
 	dockerClient.CreateContainerReturns(&docker.Container{}, nil)
 
 	// case 4: GetArgs returns error
-	err = dvm.Start(ccid, "FAKE_TYPE", tlsConfig)
+	err = dvm.Start(ccid, "FAKE_TYPE", peerConnection)
 	gt.Expect(err).To(MatchError("could not get args: unknown chaincodeType: FAKE_TYPE"))
 
 	// Success cases
-	err = dvm.Start(ccid, "GOLANG", tlsConfig)
+	err = dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// dockerClient.StopContainer returns error
-	err = dvm.Start(ccid, "GOLANG", tlsConfig)
+	err = dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// dockerClient.KillContainer returns error
-	err = dvm.Start(ccid, "GOLANG", tlsConfig)
+	err = dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// dockerClient.RemoveContainer returns error
-	err = dvm.Start(ccid, "GOLANG", tlsConfig)
+	err = dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	err = dvm.Start(ccid, "GOLANG", tlsConfig)
+	err = dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err).NotTo(HaveOccurred())
 }
 

@@ -27,6 +27,7 @@ func TestContainerRuntimeStart(t *testing.T) {
 		ContainerRouter: &container.Router{
 			DockerVM: fakeVM,
 		},
+		PeerAddress: "peer-address",
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
@@ -52,10 +53,11 @@ func TestContainerRuntimeStart(t *testing.T) {
 	assert.Equal(t, []byte("code-package"), codePackage)
 
 	assert.Equal(t, 1, fakeVM.StartCallCount())
-	ccid, ccType, tlsConfig := fakeVM.StartArgsForCall(0)
+	ccid, ccType, peerConnection := fakeVM.StartArgsForCall(0)
 	assert.Equal(t, ccintf.CCID("chaincode-name:chaincode-version"), ccid)
 	assert.Equal(t, "GOLANG", ccType)
-	assert.Nil(t, tlsConfig)
+	assert.Equal(t, "peer-address", peerConnection.Address)
+	assert.Nil(t, peerConnection.TLSConfig)
 }
 
 func TestContainerRuntimeStartErrors(t *testing.T) {

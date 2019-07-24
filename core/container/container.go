@@ -19,7 +19,7 @@ var vmLogger = flogging.MustGetLogger("container")
 //VM is an abstract virtual image for supporting arbitrary virual machines
 type VM interface {
 	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error
-	Start(ccid ccintf.CCID, ccType string, tlsConfig *ccintf.TLSConfig) error
+	Start(ccid ccintf.CCID, ccType string, peerConnection *ccintf.PeerConnection) error
 	Stop(ccid ccintf.CCID) error
 	Wait(ccid ccintf.CCID) (int, error)
 }
@@ -55,8 +55,8 @@ func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []by
 	return r.getVM(ccintf.New(ccci.PackageID)).Build(ccci, codePackage)
 }
 
-func (r *Router) Start(ccid ccintf.CCID, ccType string, tlsConfig *ccintf.TLSConfig) error {
-	return r.getVM(ccid).Start(ccid, ccType, tlsConfig)
+func (r *Router) Start(ccid ccintf.CCID, ccType string, peerConnection *ccintf.PeerConnection) error {
+	return r.getVM(ccid).Start(ccid, ccType, peerConnection)
 }
 
 func (r *Router) Stop(ccid ccintf.CCID) error {

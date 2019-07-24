@@ -40,22 +40,28 @@ var _ = Describe("Container", func() {
 				err := router.Start(
 					ccintf.CCID("start:name"),
 					"fake-ccType",
-					&ccintf.TLSConfig{
-						ClientKey:  []byte("key"),
-						ClientCert: []byte("cert"),
-						RootCert:   []byte("root"),
+					&ccintf.PeerConnection{
+						Address: "peer-address",
+						TLSConfig: &ccintf.TLSConfig{
+							ClientKey:  []byte("key"),
+							ClientCert: []byte("cert"),
+							RootCert:   []byte("root"),
+						},
 					},
 				)
 
 				Expect(err).To(MatchError("fake-start-error"))
 				Expect(fakeVM.StartCallCount()).To(Equal(1))
-				ccid, args, tlsConfig := fakeVM.StartArgsForCall(0)
+				ccid, args, peerConnection := fakeVM.StartArgsForCall(0)
 				Expect(ccid).To(Equal(ccintf.CCID("start:name")))
 				Expect(args).To(Equal("fake-ccType"))
-				Expect(tlsConfig).To(Equal(&ccintf.TLSConfig{
-					ClientKey:  []byte("key"),
-					ClientCert: []byte("cert"),
-					RootCert:   []byte("root"),
+				Expect(peerConnection).To(Equal(&ccintf.PeerConnection{
+					Address: "peer-address",
+					TLSConfig: &ccintf.TLSConfig{
+						ClientKey:  []byte("key"),
+						ClientCert: []byte("cert"),
+						RootCert:   []byte("root"),
+					},
 				}))
 			})
 		})

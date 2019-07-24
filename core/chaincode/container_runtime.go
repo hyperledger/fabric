@@ -26,6 +26,7 @@ type ContainerRuntime struct {
 	CertGenerator   CertGenerator
 	ContainerRouter *container.Router
 	CACert          []byte
+	PeerAddress     string
 }
 
 // Start launches chaincode in a runtime environment.
@@ -55,7 +56,10 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 	if err := c.ContainerRouter.Start(
 		ccintf.New(ccci.PackageID),
 		ccci.Type,
-		tlsConfig,
+		&ccintf.PeerConnection{
+			Address:   c.PeerAddress,
+			TLSConfig: tlsConfig,
+		},
 	); err != nil {
 		return errors.WithMessage(err, "error starting container")
 	}
