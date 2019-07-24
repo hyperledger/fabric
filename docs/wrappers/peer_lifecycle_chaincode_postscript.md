@@ -1,3 +1,4 @@
+
 ## Example Usage
 
 ### peer lifecycle chaincode package example
@@ -38,16 +39,19 @@ You need to use the chaincode package identifier to approve a chaincode
 definition for your organization. You can find the package ID for the
 chaincodes you have installed by using the
 `peer lifecycle chaincode queryinstalled` command:
+    
+```
+peer lifecycle chaincode queryinstalled --peerAddresses peer0.org1.example.com:7051
+```
 
-    ```
-    peer lifecycle chaincode queryinstalled --peerAddresses peer0.org1.example.com:7051
-    ```
-    A successful command will return the package ID associated with the
-    package label.
-    ```
-    Get installed chaincodes on peer:
-    Package ID: myccv1:a7ca45a7cc85f1d89c905b775920361ed089a364e12a9b6d55ba75c965ddd6a9, Label: myccv1
-    ```
+A successful command will return the package ID associated with the
+package label.
+
+```
+Get installed chaincodes on peer:
+Package ID: myccv1:a7ca45a7cc85f1d89c905b775920361ed089a364e12a9b6d55ba75c965ddd6a9, Label: myccv1
+```
+
 ### peer lifecycle chaincode approveformyorg example
 
 Once the chaincode package has been installed on your peers, you can approve
@@ -97,22 +101,23 @@ channel members have approved a chaincode definition to meet the
 ``Application/Channel/Endorsement`` policy (a majority by default) before the
 definition can be committed to a channel.
 
-    ```
-    export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-    .
-    peer lifecycle chaincode queryapprovalstatus -o orderer.example.com:7050 --channelID mychannel --tls --cafile $ORDERER_CA --name mycc --version 1.0 --init-required --sequence 1
-    ```
+```
+export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+.
+peer lifecycle chaincode queryapprovalstatus -o orderer.example.com:7050 --channelID mychannel --tls --cafile $ORDERER_CA --name mycc --version 1.0 --init-required --sequence 1
+```
 
-  * If successful, the command will return a JSON map that shows if an
-    organization has approved the chaincode definition.
-    ```
-      {
-            "Approved": {
-                    "Org1MSP": true,
-                    "Org2MSP": true
-            }
-      }
-    ```
+If successful, the command will return a JSON map that shows if an organization
+has approved the chaincode definition.
+    
+```
+{
+   "Approved": {
+      "Org1MSP": true,
+      "Org2MSP": true
+    }
+}
+```
 
 ### peer lifecycle chaincode commit example
 
