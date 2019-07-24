@@ -29,6 +29,7 @@ lifecycle to perform the following tasks:
 
 - [Install and define a chaincode](#install-and-define-a-chaincode)
 - [Upgrade a chaincode](#upgrade-a-chaincode)
+- [Deployment Scenarios](#deployment-scenarios)
 - [Migrate to the new Fabric lifecycle](#migrate-to-the-new-fabric-lifecycle)
 
 *Note: The new Fabric chaincode lifecycle in the v2.0 Alpha release is not yet
@@ -96,6 +97,13 @@ automatically create a file in this format.
   {"Path":"github.com/chaincode/fabcar/go","Type":"golang","Label":"fabcarv1"}
   ```
 
+![Packaging the chaincode](lifecycle/Lifecycle-package.png)
+
+*The chaincode is packaged separately by Org1 and Org2. Both organizations use
+MYCC_1 as their package label in order to identify the package using the name
+and version. It is not necessary for organizations to use the same package
+label.*
+
 ### Step Two: Install the chaincode on your peers
 
 You need to install the chaincode package on every peer that will execute and
@@ -113,6 +121,12 @@ identifier is used to associate a chaincode package installed on your peers with
 a chaincode definition approved by your organization. **Save the identifier**
 for next step. You can also find the package identifier by querying the packages
 installed on your peer using the Peer CLI.
+
+  ![Installing the chaincode](lifecycle/Lifecycle-install.png)
+
+*A peer administrator from Org1 and Org2 installs the chaincode package MYCC_1
+on the peers joined to the channel. Installing the chaincode package creates a
+package identifier of MYCC_1:hash.*
 
 ### Step Three: Approve a chaincode definition for your organization
 
@@ -165,6 +179,14 @@ the approved definition is stored in a collection that is available to all
 the peers of your organization. As a result you only need to approve a
 chaincode for your organization once, even if you have multiple peers.
 
+  ![Approving the chaincode definition](lifecycle/Lifecycle-approve.png)
+
+*An organization administrator from Org1 and Org2 approve the chaincode definition
+of MYCC for their organization. The chaincode definition includes the chaincode
+name, version, and the endorsement policy, among other fields. Since both
+organizations will use the chaincode to endorse transactions, the approved
+definitions for both organizations need to include the packageID.*
+
 ### Step Four: Commit the chaincode definition to the channel
 
 Once a sufficient number of channel members have approved a chaincode definition,
@@ -190,6 +212,11 @@ need to approve the chaincode definition according to the default policy. When
 committing a channel definition, you need to target enough peer organizations in
 the channel to satisfy your LifecycleEndorsement policy.
 
+  ![Committing the chaincode definition to the channel](lifecycle/Lifecycle-commit.png)
+
+*One organization administrator from Org1 or Org2 commits the chaincode definition
+to the channel. The definition on the channel does not include the packageID.*
+
 An organization can approve a chaincode definition without installing the
 chaincode package. If an organization does not need to use the chaincode, they
 can approve a chaincode definition without a package identifier to ensure that
@@ -205,6 +232,12 @@ invoking any transaction in the chaincode. The first invoke, whether of an
 ``Init`` function or other transaction, is subject to the chaincode endorsement
 policy. It may take a few minutes for the chaincode container to start.
 
+  ![Starting the chaincode on the channel](lifecycle/Lifecycle-start.png)
+
+*Once MYCC is defined on the channel, Org1 and Org2 can start using the
+chaincode. The first invoke of the chaincode on each peer starts the chaincode
+container on that peer.*
+
 ## Upgrade a chaincode
 
 You can upgrade a chaincode using the same Fabric lifecycle process as you used
@@ -213,21 +246,48 @@ only update the chaincode policies. Follow these steps to upgrade a chaincode:
 
 1. **Repackage the chaincode:** You only need to complete this step if you are
   upgrading the chaincode binaries.
+
+    ![Re-package the chaincode package](lifecycle/Lifecycle-upgrade-package.png)
+
+  *Org1 and Org2 upgrade the chaincode binaries and repackage the chaincode.
+  Both organizations use a different package label.*
+
 2. **Install the new chaincode package on your peers:** Once again, you only
   need to complete this step if you are upgrading the chaincode binaries.
   Installing the new chaincode package will generate a package ID, which you will
   need to pass to the new chaincode definition. You also need to change the
   chaincode version.
+
+    ![Re-install the chaincode package](lifecycle/Lifecycle-upgrade-install.png)
+
+  *Org1 and Org2 install the new package on their peers. The installation
+  creates a new packageID.*
+
 3. **Approve a new chaincode definition:** If you are upgrading the chaincode
   binaries, you need to update the chaincode version and the package ID in the
   chaincode definition. You can also update your chaincode endorsement policy
   without having to repackage your chaincode binaries. Channel members simply
   need to approve a definition with the new policy. The new definition needs to
   increment the **sequence** variable in the definition by one.
+
+    ![Approve a new chaincode definition](lifecycle/Lifecycle-upgrade-approve.png)
+
+  *Organization administrators from Org1 and Org2 approve the new chaincode
+  definition for their respective organizations. The new definition references
+  the new packageID and changes the chaincode version. Since this is the first
+  update of the chaincode, the sequence is incremented from one to two.*
+
 4. **Commit the definition to the channel:** When a sufficient number of channel
   members have approved the new chaincode definition, one organization can
   commit the new definition to upgrade the chaincode definition to the channel.
   There is no separate upgrade command as part of the lifecycle process.
+
+    ![Commit the new definition to the channel](lifecycle/Lifecycle-upgrade-commit.png)
+
+  *An organization administrator from Org1 or Org2 commits the new chaincode
+   definition to the channel. The chaincode containers are still running the old
+   chaincode.*
+
 5. **Upgrade the chaincode container:** If you updated the chaincode definition
   without upgrading the chaincode package, you do not need to upgrade the
   chaincode container. If you did upgrade the chaincode binaries, a new invoke
@@ -236,11 +296,162 @@ only update the chaincode policies. Follow these steps to upgrade a chaincode:
   chaincode container by invoking the ``Init`` function again after the new
   definition is successfully committed.
 
+    ![Upgrade the chaincode](lifecycle/Lifecycle-upgrade-start.png)
+
+  *Once the new definition has been committed to the channel, the next invoke on
+  each peer will automatically start the new chaincode container.*
+
 The Fabric chaincode lifecycle uses the **sequence** in the chaincode definition
 to keep track of upgrades. All channel members need to increment the sequence
 number by one and approve a new definition to upgrade the chaincode. The version
 parameter is used to track the chaincode binaries, and needs to be changed only
 when you upgrade the chaincode binaries.
+
+## Deployment scenarios
+
+The following examples illustrate how you can use the Fabric chaincode lifecycle
+to manage channels and chaincode.
+
+### Joining a channel
+
+A new organization can join a channel with a chaincode already defined, and start
+using the chaincode after installing the chaincode package and approving the
+chaincode definition that has already been committed to the channel.
+
+  ![Approve a chaincode definition](lifecycle/Lifecycle-join-approve.png)
+
+*Org3 joins the channel and approves the same chaincode definition that was
+previously committed to the channel by Org1 and Org2.*
+
+After approving the chaincode definition, the new organization can start using
+the chaincode after the package has been installed on their peers. The definition
+does not need to be committed again. If the endorsement policy is set the default
+policy that requires endorsements from a majority of channel members, then the
+endorsement policy will be updated automatically to include the new organization.
+
+  ![Start the chaincode](lifecycle/Lifecycle-join-start.png)
+
+*The chaincode container will start after the first invoke of the chaincode on
+the Org3 peer.*
+
+### Updating an endorsement policy
+
+You can use the chaincode definition to update an endorsement policy without
+having to repackage or re-install the chaincode. Channel members can approve
+a chaincode definition with a new endorsement policy and commit it to the
+channel.
+
+  ![Approve new chaincode definition](lifecycle/Lifecycle-endorsement-approve.png)
+
+*Org1, Org2, and Org3 approve a new endorsement policy requiring that all three
+organizations endorse a transaction. They increment the definition sequence from
+one to two, but do not need to update the chaincode version.*
+
+The new endorsement policy will take effect after the new definition is
+committed to the channel. Channel members do not have to restart the chaincode
+container by invoking the chaincode or executing the `Init` function in order to
+update the endorsement policy.
+
+  ![Commit new chaincode definition](lifecycle/Lifecycle-endorsement-commit.png)
+
+*One organization commits the new chaincode definition to the channel to
+update the endorsement policy.*
+
+### Approving a definition without installing the chaincode
+
+You can approve a chaincode definition without installing the chaincode package.
+This allows you to endorse a chaincode definition before it is committed to the
+channel, even if you do not want to use the chaincode to endorse transactions or
+query the ledger. You need to approve the same parameters as other members of the
+channel, but not need to include the packageID as part of the chaincode
+definition.
+
+  ![Org3 does not install the chaincode](lifecycle/Lifecycle-no-package.png)
+
+*Org3 does not install the chaincode package. As a result, they do not need to
+provide a packageID as part of chaincode definition. However, Org3 can still
+endorse the definition of MYCC that has been committed to the channel.*
+
+### One organization disagrees on the chaincode definition
+
+An organization that does not approve a chaincode definition that has been
+committed to the channel cannot use the chaincode. Organizations that have
+either not approved a chaincode definition, or approved a different chaincode
+definition will not be able to execute the chaincode on their peers.
+
+  ![Org3 disagrees on the chaincode](lifecycle/Lifecycle-one-disagrees.png)
+
+*Org3 approves a chaincode definition with a different endorsement policy than
+Org1 and Org2. As a result, Org3 cannot use the MYCC chaincode on the channel.
+However, Org1 or Org2 can still get enough endorsements to commit the definition
+to the channel and use the chaincode. Transactions from the chaincode will still
+be added to the ledger and stored on the Org3 peer. However, the Org3 will not
+be able to endorse transactions.*
+
+An organization can approve a new chaincode definition with any sequence number
+or version. This allows you to approve the definition that has been committed
+to the channel and start using the chaincode. You can also approve a new
+chaincode definition in order to correct any mistakes made in the process of
+approving or packaging a chaincode.
+
+### The channel does not agree on a chaincode definition
+
+If the organizations on a channel do not agree on a chaincode definition, the
+definition cannot be committed to the channel. None of the channel members will
+be able to use the chaincode.
+
+  ![Majority disagree on the chaincode](lifecycle/Lifecycle-majority-disagree.png)
+
+*Org1, Org2, and Org3 all approve different chaincode definitions. As a result,
+no member of the channel can get enough endorsements to commit a chaincode
+definition to the channel. No channel member will be able to use the chaincode.*
+
+### Organizations install different chaincode packages
+
+Each organization can use a different packageID when they approve a chaincode
+definition. This allows channel members to install different chaincode binaries
+that use the same endorsement policy and read and write to data in the same
+chaincode namespace.
+
+Channel members can use this capability to install chaincode written in
+different languages and work with the language they are most comfortable. As
+long as the chaincode generates the same read-write sets, channel members using
+chaincode in different languages will be able to endorse transactions and commit
+them to the ledger. However, organizations should test that their chaincode
+is consistent and that they are able to generate valid endorsements before
+defining it on a channel in production.
+
+  ![Using different chaincode languages](lifecycle/Lifecycle-languages.png)
+
+*Org1 installs a package of the MYCC chaincode written in Golang, while Org2
+installs MYCC written in Java.*
+
+Organizations can also use this capability to install smart contracts that
+contain business logic that is specific to their organization. Each
+organization's smart contract could contain additional validation that the
+organization requires before their peers endorse a transaction. Each organization
+can also write code that helps integrate the smart contract with data from their
+existing systems.
+
+  ![Using different chaincode binaries](lifecycle/Lifecycle-binaries.png)
+
+*Org1 and Org2 each install versions of the MYCC chaincode containing business
+logic that is specific to their organization.*
+
+### Creating multiple chaincodes using one package
+
+You can use one chaincode package to create multiple chaincode instances on a
+channel by approving and committing multiple chaincode definitions. Each
+definition needs to specify a different chaincode name. This allows you to run
+multiple instances of a smart contract on a channel, but have the contract be
+subject to different endorsement policies.
+
+  ![Starting multiple chaincodes](lifecycle/Lifecycle-multiple.png)
+
+*Org1 and Org2 use the MYCC_1 chaincode package to approve and commit two
+different chaincode definitions. As a result, both peers have two chaincode
+containers running on their peers. MYCC1 has an endorsement policy of 1 out of 2,
+while MYCC2 has an endorsement policy of 2 out of 2.*
 
 ## Migrate to the new Fabric lifecycle
 
