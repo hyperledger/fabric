@@ -348,7 +348,7 @@ var _ = Describe("DiscoveryService", func() {
 		}
 
 		By("committing the new chaincode definition using org1 and org2")
-		nwo.SimulateCommitUntilSuccess(network, "testchannel", chaincode, []*nwo.Organization{network.Organization("org1"), network.Organization("org2")}, org1Peer0, org2Peer0, org3Peer0)
+		nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, []*nwo.Organization{network.Organization("org1"), network.Organization("org2")}, org1Peer0, org2Peer0, org3Peer0)
 		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, org1Peer0, org1Peer0, org2Peer0)
 
 		By("discovering endorsers for sequence 2 that has only been approved by org1 and org2")

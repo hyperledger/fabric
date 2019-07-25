@@ -18,10 +18,10 @@ import (
 )
 
 const (
-	lifecycleName          = "_lifecycle"
-	approveFuncName        = "ApproveChaincodeDefinitionForMyOrg"
-	commitFuncName         = "CommitChaincodeDefinition"
-	simulateCommitFuncName = "SimulateCommitChaincodeDefinition"
+	lifecycleName                = "_lifecycle"
+	approveFuncName              = "ApproveChaincodeDefinitionForMyOrg"
+	commitFuncName               = "CommitChaincodeDefinition"
+	checkCommitReadinessFuncName = "CheckCommitReadiness"
 )
 
 var logger = flogging.MustGetLogger("cli.lifecycle.chaincode")
@@ -44,7 +44,7 @@ func Cmd() *cobra.Command {
 	chaincodeCmd.AddCommand(InstallCmd(nil))
 	chaincodeCmd.AddCommand(QueryInstalledCmd(nil))
 	chaincodeCmd.AddCommand(ApproveForMyOrgCmd(nil))
-	chaincodeCmd.AddCommand(SimulateCommitCmd(nil))
+	chaincodeCmd.AddCommand(CheckCommitReadinessCmd(nil))
 	chaincodeCmd.AddCommand(CommitCmd(nil))
 	chaincodeCmd.AddCommand(QueryCommittedCmd(nil))
 
@@ -77,8 +77,8 @@ var (
 
 var chaincodeCmd = &cobra.Command{
 	Use:   "chaincode",
-	Short: "Perform chaincode operations: package|install|queryinstalled|approveformyorg|queryapprovalstatus|commit|querycommitted",
-	Long:  "Perform _lifecycle operations: package|install|queryinstalled|approveformyorg|queryapprovalstatus|commit|querycommitted",
+	Short: "Perform chaincode operations: package|install|queryinstalled|approveformyorg|checkcommitreadiness|commit|querycommitted",
+	Long:  "Perform _lifecycle operations: package|install|queryinstalled|approveformyorg|checkcommitreadiness|commit|querycommitted",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		common.InitCmd(cmd, args)
 		common.SetOrdererEnv(cmd, args)

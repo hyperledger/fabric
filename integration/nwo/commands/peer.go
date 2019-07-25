@@ -249,7 +249,7 @@ func (c ChaincodeApproveForMyOrg) Args() []string {
 	return args
 }
 
-type ChaincodeSimulateCommit struct {
+type ChaincodeCheckCommitReadiness struct {
 	ChannelID           string
 	Name                string
 	Version             string
@@ -263,13 +263,13 @@ type ChaincodeSimulateCommit struct {
 	PeerAddresses       []string
 }
 
-func (c ChaincodeSimulateCommit) SessionName() string {
-	return "peer-lifecycle-chaincode-simulatecommit"
+func (c ChaincodeCheckCommitReadiness) SessionName() string {
+	return "peer-lifecycle-chaincode-checkcommitreadiness"
 }
 
-func (c ChaincodeSimulateCommit) Args() []string {
+func (c ChaincodeCheckCommitReadiness) Args() []string {
 	args := []string{
-		"lifecycle", "chaincode", "simulatecommit",
+		"lifecycle", "chaincode", "checkcommitreadiness",
 		"--channelID", c.ChannelID,
 		"--name", c.Name,
 		"--version", c.Version,

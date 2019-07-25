@@ -52,9 +52,10 @@ const (
 	// used to approve a chaincode definition for execution by the user's own org
 	ApproveChaincodeDefinitionForMyOrgFuncName = "ApproveChaincodeDefinitionForMyOrg"
 
-	// QueryApprovalStatusFuncName is the chaincode function name used to query
-	// the approval status for a given definition over a given set of orgs
-	QueryApprovalStatusFuncName = "QueryApprovalStatus"
+	// CheckCommitReadinessFuncName is the chaincode function name used to check
+	// a specified chaincode definition is ready to be committed. It returns the
+	// approval status for a given definition over a given set of orgs
+	CheckCommitReadinessFuncName = "CheckCommitReadiness"
 
 	// CommitChaincodeDefinitionFuncName is the chaincode function name used to
 	// 'commit' (previously 'instantiate') a chaincode in a channel.
@@ -84,10 +85,10 @@ type SCCFunctions interface {
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
 	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID persistenceintf.PackageID, publicState ReadableState, orgState ReadWritableState) error
 
-	// SimulateCommitChaincodeDefinition returns a map containing the orgs
+	// CheckCommitReadiness returns a map containing the orgs
 	// whose orgStates were supplied and whether or not they have approved
 	// the specified definition.
-	SimulateCommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error)
+	CheckCommitReadiness(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error)
 
 	// CommitChaincodeDefinition records a new chaincode definition into the
 	// public state and returns a map containing the orgs whose orgStates
@@ -400,9 +401,9 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 	return &lb.ApproveChaincodeDefinitionForMyOrgResult{}, nil
 }
 
-// SimulateCommitChaincodeDefinition is a SCC function that may be dispatched
+// CheckCommitReadiness is a SCC function that may be dispatched
 // to the underlying lifecycle implementation.
-func (i *Invocation) SimulateCommitChaincodeDefinition(input *lb.SimulateCommitChaincodeDefinitionArgs) (proto.Message, error) {
+func (i *Invocation) CheckCommitReadiness(input *lb.CheckCommitReadinessArgs) (proto.Message, error) {
 	opaqueStates, err := i.createOpaqueStates()
 	if err != nil {
 		return nil, err
@@ -422,12 +423,12 @@ func (i *Invocation) SimulateCommitChaincodeDefinition(input *lb.SimulateCommitC
 		Collections: input.Collections,
 	}
 
-	logger.Debugf("received invocation of SimulateCommitChaincodeDefinition on channel '%s' for definition '%s'",
+	logger.Debugf("received invocation of CheckCommitReadiness on channel '%s' for definition '%s'",
 		i.Stub.GetChannelID(),
 		cd,
 	)
 
-	approvals, err := i.SCC.Functions.SimulateCommitChaincodeDefinition(
+	approvals, err := i.SCC.Functions.CheckCommitReadiness(
 		i.Stub.GetChannelID(),
 		input.Name,
 		cd,
@@ -438,7 +439,7 @@ func (i *Invocation) SimulateCommitChaincodeDefinition(input *lb.SimulateCommitC
 		return nil, err
 	}
 
-	return &lb.SimulateCommitChaincodeDefinitionResult{
+	return &lb.CheckCommitReadinessResult{
 		Approvals: approvals,
 	}, nil
 }

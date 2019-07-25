@@ -25,23 +25,24 @@ import (
 	"github.com/spf13/viper"
 )
 
-// CommitSimulator holds the dependencies needed to
-// simulate committing a chaincode definition and
-// receive the list of orgs that approve of the
-// definition.
-type CommitSimulator struct {
+// CommitReadinessChecker holds the dependencies needed to
+// check whether a chaincode definition is ready to be committed
+// on a channel (i.e. has approvals from enough organizations to satisfy
+// the lifecycle endorsement policy) and receive the list of orgs that
+// have approved the definition.
+type CommitReadinessChecker struct {
 	Command        *cobra.Command
 	EndorserClient pb.EndorserClient
-	Input          *CommitSimulationInput
+	Input          *CommitReadinessCheckInput
 	Signer         identity.SignerSerializer
 	Writer         io.Writer
 }
 
-// CommitSimulationInput holds all of the input parameters for simulating
-// the commit of a chaincode definition. ValidationParameter bytes is the
-// (marshalled) endorsement policy when using the default endorsement and
-// validation plugins.
-type CommitSimulationInput struct {
+// CommitReadinessCheckInput holds all of the input parameters for checking
+// whether a chaincode definition is ready to be committed ValidationParameter
+// bytes is the (marshalled) endorsement policy when using the default
+// endorsement and validation plugins.
+type CommitReadinessCheckInput struct {
 	ChannelID                string
 	Name                     string
 	Version                  string
@@ -57,8 +58,8 @@ type CommitSimulationInput struct {
 	OutputFormat             string
 }
 
-// Validate the input for a SimulateCommitChaincodeDefinition proposal
-func (c *CommitSimulationInput) Validate() error {
+// Validate the input for a CheckCommitReadiness proposal
+func (c *CommitReadinessCheckInput) Validate() error {
 	if c.ChannelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
@@ -78,13 +79,13 @@ func (c *CommitSimulationInput) Validate() error {
 	return nil
 }
 
-// SimulateCommitCmd returns the cobra command for the
-// SimulateCommitChaincodeDefinition lifecycle operation
-func SimulateCommitCmd(c *CommitSimulator) *cobra.Command {
-	chaincodeSimulateCommitCmd := &cobra.Command{
-		Use:   "simulatecommit",
-		Short: fmt.Sprintf("Simulate committing a chaincode definition."),
-		Long:  fmt.Sprintf("Simulate committing a chaincode definition."),
+// CheckCommitReadinessCmd returns the cobra command for the
+// CheckCommitReadiness lifecycle operation
+func CheckCommitReadinessCmd(c *CommitReadinessChecker) *cobra.Command {
+	chaincodeCheckCommitReadinessCmd := &cobra.Command{
+		Use:   "checkcommitreadiness",
+		Short: fmt.Sprintf("Check whether a chaincode definition is ready to be committed on a channel."),
+		Long:  fmt.Sprintf("Check whether a chaincode definition is ready to be committed on a channel."),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if c == nil {
 				// set input from CLI flags
@@ -108,7 +109,7 @@ func SimulateCommitCmd(c *CommitSimulator) *cobra.Command {
 					return err
 				}
 
-				c = &CommitSimulator{
+				c = &CommitReadinessChecker{
 					Command:        cmd,
 					Input:          input,
 					EndorserClient: cc.EndorserClients[0],
@@ -117,7 +118,7 @@ func SimulateCommitCmd(c *CommitSimulator) *cobra.Command {
 				}
 			}
 
-			return c.Simulate()
+			return c.ReadinessCheck()
 		},
 	}
 	flagList := []string{
@@ -136,14 +137,14 @@ func SimulateCommitCmd(c *CommitSimulator) *cobra.Command {
 		"connectionProfile",
 		"output",
 	}
-	attachFlags(chaincodeSimulateCommitCmd, flagList)
+	attachFlags(chaincodeCheckCommitReadinessCmd, flagList)
 
-	return chaincodeSimulateCommitCmd
+	return chaincodeCheckCommitReadinessCmd
 }
 
-// Simulate submits a SimulateCommitChaincodeDefinition proposal
+// ReadinessCheck submits a CheckCommitReadiness proposal
 // and prints the result.
-func (c *CommitSimulator) Simulate() error {
+func (c *CommitReadinessChecker) ReadinessCheck() error {
 	err := c.Input.Validate()
 	if err != nil {
 		return err
@@ -164,7 +165,7 @@ func (c *CommitSimulator) Simulate() error {
 		return errors.WithMessage(err, "failed to create signed proposal")
 	}
 
-	// simulatecommit currently only supports a single peer
+	// checkcommitreadiness currently only supports a single peer
 	proposalResponse, err := c.EndorserClient.ProcessProposal(context.Background(), signedProposal)
 	if err != nil {
 		return errors.WithMessage(err, "failed to endorse proposal")
@@ -183,15 +184,15 @@ func (c *CommitSimulator) Simulate() error {
 	}
 
 	if strings.ToLower(c.Input.OutputFormat) == "json" {
-		return printResponseAsJSON(proposalResponse, &lb.SimulateCommitChaincodeDefinitionResult{}, c.Writer)
+		return printResponseAsJSON(proposalResponse, &lb.CheckCommitReadinessResult{}, c.Writer)
 	}
 	return c.printResponse(proposalResponse)
 }
 
 // printResponse prints the information included in the response
 // from the server as human readable plain-text.
-func (c *CommitSimulator) printResponse(proposalResponse *pb.ProposalResponse) error {
-	result := &lb.SimulateCommitChaincodeDefinitionResult{}
+func (c *CommitReadinessChecker) printResponse(proposalResponse *pb.ProposalResponse) error {
+	result := &lb.CheckCommitReadinessResult{}
 	err := proto.Unmarshal(proposalResponse.Response.Payload, result)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
@@ -212,7 +213,7 @@ func (c *CommitSimulator) printResponse(proposalResponse *pb.ProposalResponse) e
 }
 
 // setInput creates the input struct based on the CLI flags
-func (c *CommitSimulator) createInput() (*CommitSimulationInput, error) {
+func (c *CommitReadinessChecker) createInput() (*CommitReadinessCheckInput, error) {
 	policyBytes, err := createPolicyBytes(signaturePolicy, channelConfigPolicy)
 	if err != nil {
 		return nil, err
@@ -223,7 +224,7 @@ func (c *CommitSimulator) createInput() (*CommitSimulationInput, error) {
 		return nil, err
 	}
 
-	input := &CommitSimulationInput{
+	input := &CommitReadinessCheckInput{
 		ChannelID:                channelID,
 		Name:                     chaincodeName,
 		Version:                  chaincodeVersion,
@@ -241,8 +242,8 @@ func (c *CommitSimulator) createInput() (*CommitSimulationInput, error) {
 	return input, nil
 }
 
-func (c *CommitSimulator) createProposal(inputTxID string) (*pb.Proposal, error) {
-	args := &lb.SimulateCommitChaincodeDefinitionArgs{
+func (c *CommitReadinessChecker) createProposal(inputTxID string) (*pb.Proposal, error) {
+	args := &lb.CheckCommitReadinessArgs{
 		Name:                c.Input.Name,
 		Version:             c.Input.Version,
 		Sequence:            c.Input.Sequence,
@@ -257,7 +258,7 @@ func (c *CommitSimulator) createProposal(inputTxID string) (*pb.Proposal, error)
 	if err != nil {
 		return nil, err
 	}
-	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte(simulateCommitFuncName), argsBytes}}
+	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte(checkCommitReadinessFuncName), argsBytes}}
 
 	cis := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{

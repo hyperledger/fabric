@@ -23,19 +23,19 @@ import (
 	"github.com/onsi/gomega/gbytes"
 )
 
-var _ = Describe("SimulateCommit", func() {
-	Describe("CommitSimulator", func() {
+var _ = Describe("CheckCommitReadiness", func() {
+	Describe("CommitReadinessChecker", func() {
 		var (
-			mockProposalResponse *pb.ProposalResponse
-			mockEndorserClient   *mock.EndorserClient
-			mockSigner           *mock.Signer
-			input                *chaincode.CommitSimulationInput
-			commitSimulator      *chaincode.CommitSimulator
+			mockProposalResponse   *pb.ProposalResponse
+			mockEndorserClient     *mock.EndorserClient
+			mockSigner             *mock.Signer
+			input                  *chaincode.CommitReadinessCheckInput
+			commitReadinessChecker *chaincode.CommitReadinessChecker
 		)
 
 		BeforeEach(func() {
 			mockEndorserClient = &mock.EndorserClient{}
-			mockResult := &lb.SimulateCommitChaincodeDefinitionResult{
+			mockResult := &lb.CheckCommitReadinessResult{
 				Approvals: map[string]bool{
 					"seemsfinetome":  true,
 					"well...ok":      true,
@@ -54,7 +54,7 @@ var _ = Describe("SimulateCommit", func() {
 			}
 			mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
 
-			input = &chaincode.CommitSimulationInput{
+			input = &chaincode.CommitReadinessCheckInput{
 				ChannelID: "testchannel",
 				Name:      "testcc",
 				Version:   "1.0",
@@ -64,7 +64,7 @@ var _ = Describe("SimulateCommit", func() {
 			mockSigner = &mock.Signer{}
 			buffer := gbytes.NewBuffer()
 
-			commitSimulator = &chaincode.CommitSimulator{
+			commitReadinessChecker = &chaincode.CommitReadinessChecker{
 				Input:          input,
 				EndorserClient: mockEndorserClient,
 				Signer:         mockSigner,
@@ -72,23 +72,24 @@ var _ = Describe("SimulateCommit", func() {
 			}
 		})
 
-		It("simulates committing a chaincode definition and writes the output as human readable plain-text", func() {
-			err := commitSimulator.Simulate()
+		It("checks whether a chaincode definition is ready to commit and writes the output as human readable plain-text", func() {
+			err := commitReadinessChecker.ReadinessCheck()
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(commitSimulator.Writer).Should(gbytes.Say("Chaincode definition for chaincode 'testcc', version '1.0', sequence '1' on channel 'testchannel' approval status by org"))
-			Eventually(commitSimulator.Writer).Should(gbytes.Say("absolutely-not: false"))
-			Eventually(commitSimulator.Writer).Should(gbytes.Say("seemsfinetome: true"))
-			Eventually(commitSimulator.Writer).Should(gbytes.Say("well...ok: true"))
+			Eventually(commitReadinessChecker.Writer).Should(gbytes.Say("Chaincode definition for chaincode 'testcc', version '1.0', sequence '1' on channel 'testchannel' approval status by org"))
+			Eventually(commitReadinessChecker.Writer).Should(gbytes.Say("absolutely-not: false"))
+			Eventually(commitReadinessChecker.Writer).Should(gbytes.Say("seemsfinetome: true"))
+			Eventually(commitReadinessChecker.Writer).Should(gbytes.Say("well...ok: true"))
 		})
 
 		Context("when JSON-formatted output is requested", func() {
 			BeforeEach(func() {
-				commitSimulator.Input.OutputFormat = "json"
+				commitReadinessChecker.Input.OutputFormat = "json"
 			})
-			It("simulates committing a chaincode definition and writes the output as JSON", func() {
-				err := commitSimulator.Simulate()
+
+			It("checks whether a chaincode definition is ready to commit and writes the output as JSON", func() {
+				err := commitReadinessChecker.ReadinessCheck()
 				Expect(err).NotTo(HaveOccurred())
-				expectedOutput := &lb.SimulateCommitChaincodeDefinitionResult{
+				expectedOutput := &lb.CheckCommitReadinessResult{
 					Approvals: map[string]bool{
 						"absolutely-not": false,
 						"well...ok":      true,
@@ -96,17 +97,17 @@ var _ = Describe("SimulateCommit", func() {
 					},
 				}
 				json, err := json.MarshalIndent(expectedOutput, "", "\t")
-				Eventually(commitSimulator.Writer).Should(gbytes.Say(fmt.Sprintf("%s", string(json))))
+				Eventually(commitReadinessChecker.Writer).Should(gbytes.Say(fmt.Sprintf("%s", string(json))))
 			})
 		})
 
 		Context("when the channel name is not provided", func() {
 			BeforeEach(func() {
-				commitSimulator.Input.ChannelID = ""
+				commitReadinessChecker.Input.ChannelID = ""
 			})
 
 			It("returns an error", func() {
-				err := commitSimulator.Simulate()
+				err := commitReadinessChecker.ReadinessCheck()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("The required parameter 'channelID' is empty. Rerun the command with -C flag"))
 			})
@@ -114,11 +115,11 @@ var _ = Describe("SimulateCommit", func() {
 
 		Context("when the chaincode name is not provided", func() {
 			BeforeEach(func() {
-				commitSimulator.Input.Name = ""
+				commitReadinessChecker.Input.Name = ""
 			})
 
 			It("returns an error", func() {
-				err := commitSimulator.Simulate()
+				err := commitReadinessChecker.ReadinessCheck()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("The required parameter 'name' is empty. Rerun the command with -n flag"))
 			})
@@ -126,11 +127,11 @@ var _ = Describe("SimulateCommit", func() {
 
 		Context("when the chaincode version is not provided", func() {
 			BeforeEach(func() {
-				commitSimulator.Input.Version = ""
+				commitReadinessChecker.Input.Version = ""
 			})
 
 			It("returns an error", func() {
-				err := commitSimulator.Simulate()
+				err := commitReadinessChecker.ReadinessCheck()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("The required parameter 'version' is empty. Rerun the command with -v flag"))
 			})
@@ -138,11 +139,11 @@ var _ = Describe("SimulateCommit", func() {
 
 		Context("when the sequence is not provided", func() {
 			BeforeEach(func() {
-				commitSimulator.Input.Sequence = 0
+				commitReadinessChecker.Input.Sequence = 0
 			})
 
 			It("returns an error", func() {
-				err := commitSimulator.Simulate()
+				err := commitReadinessChecker.ReadinessCheck()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("The required parameter 'sequence' is empty. Rerun the command with --sequence flag"))
 			})
@@ -154,7 +155,7 @@ var _ = Describe("SimulateCommit", func() {
 			})
 
 			It("returns an error", func() {
-				err := commitSimulator.Simulate()
+				err := commitReadinessChecker.ReadinessCheck()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("failed to create proposal: failed to serialize identity: cafe"))
 			})
@@ -166,7 +167,7 @@ var _ = Describe("SimulateCommit", func() {
 			})
 
 			It("returns an error", func() {
-				err := commitSimulator.Simulate()
+				err := commitReadinessChecker.ReadinessCheck()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("failed to create signed proposal: tea"))
 			})
@@ -178,7 +179,7 @@ var _ = Describe("SimulateCommit", func() {
 			})
 
 			It("returns an error", func() {
-				err := commitSimulator.Simulate()
+				err := commitReadinessChecker.ReadinessCheck()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("failed to endorse proposal: latte"))
 			})
@@ -191,7 +192,7 @@ var _ = Describe("SimulateCommit", func() {
 			})
 
 			It("returns an error", func() {
-				err := commitSimulator.Simulate()
+				err := commitReadinessChecker.ReadinessCheck()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("received nil proposal response"))
 			})
@@ -204,7 +205,7 @@ var _ = Describe("SimulateCommit", func() {
 			})
 
 			It("returns an error", func() {
-				err := commitSimulator.Simulate()
+				err := commitReadinessChecker.ReadinessCheck()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("received proposal response with nil response"))
 			})
@@ -220,7 +221,7 @@ var _ = Describe("SimulateCommit", func() {
 			})
 
 			It("returns an error", func() {
-				err := commitSimulator.Simulate()
+				err := commitReadinessChecker.ReadinessCheck()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("query failed with status: 500 - capuccino"))
 			})
@@ -236,21 +237,21 @@ var _ = Describe("SimulateCommit", func() {
 			})
 
 			It("returns an error", func() {
-				err := commitSimulator.Simulate()
+				err := commitReadinessChecker.ReadinessCheck()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload"))
 			})
 		})
 	})
 
-	Describe("SimulateCommitCmd", func() {
+	Describe("CheckCommitReadinessCmd", func() {
 		var (
-			simulateCommitCmd *cobra.Command
+			checkCommitReadinessCmd *cobra.Command
 		)
 
 		BeforeEach(func() {
-			simulateCommitCmd = chaincode.SimulateCommitCmd(nil)
-			simulateCommitCmd.SetArgs([]string{
+			checkCommitReadinessCmd = chaincode.CheckCommitReadinessCmd(nil)
+			checkCommitReadinessCmd.SetArgs([]string{
 				"--channelID=testchannel",
 				"--name=testcc",
 				"--version=testversion",
@@ -265,15 +266,15 @@ var _ = Describe("SimulateCommit", func() {
 			chaincode.ResetFlags()
 		})
 
-		It("sets up the commit simulator and attempts to simulate committing the chaincode definition", func() {
-			err := simulateCommitCmd.Execute()
+		It("sets up the commit readiness checker and checks whether the chaincode definition is ready to commit", func() {
+			err := checkCommitReadinessCmd.Execute()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve endorser client"))
 		})
 
 		Context("when the policy is invalid", func() {
 			BeforeEach(func() {
-				simulateCommitCmd.SetArgs([]string{
+				checkCommitReadinessCmd.SetArgs([]string{
 					"--signature-policy=notapolicy",
 					"--channelID=testchannel",
 					"--name=testcc",
@@ -285,7 +286,7 @@ var _ = Describe("SimulateCommit", func() {
 			})
 
 			It("returns an error", func() {
-				err := simulateCommitCmd.Execute()
+				err := checkCommitReadinessCmd.Execute()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("invalid signature policy: notapolicy"))
 			})
@@ -293,7 +294,7 @@ var _ = Describe("SimulateCommit", func() {
 
 		Context("when the collections config is invalid", func() {
 			BeforeEach(func() {
-				simulateCommitCmd.SetArgs([]string{
+				checkCommitReadinessCmd.SetArgs([]string{
 					"--collections-config=idontexist.json",
 					"--channelID=testchannel",
 					"--name=testcc",
@@ -305,7 +306,7 @@ var _ = Describe("SimulateCommit", func() {
 			})
 
 			It("returns an error", func() {
-				err := simulateCommitCmd.Execute()
+				err := checkCommitReadinessCmd.Execute()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("invalid collection configuration in file idontexist.json: could not read file 'idontexist.json': open idontexist.json: no such file or directory"))
 			})

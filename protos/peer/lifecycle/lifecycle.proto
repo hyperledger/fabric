@@ -120,9 +120,9 @@ message CommitChaincodeDefinitionArgs {
 message CommitChaincodeDefinitionResult {
 }
 
-// SimulateCommitChaincodeDefinitionArgs is the message used as arguments to
-// `_lifecycle.SimulateCommitChaincodeDefinition`.
-message SimulateCommitChaincodeDefinitionArgs {
+// CheckCommitReadinessArgs is the message used as arguments to
+// `_lifecycle.CheckCommitReadiness`.
+message CheckCommitReadinessArgs {
     int64 sequence = 1;
     string name = 2;
     string version = 3;
@@ -133,10 +133,11 @@ message SimulateCommitChaincodeDefinitionArgs {
     bool init_required = 8;
 }
 
-// SimulateCommitChaincodeDefinitionResult is the message returned by
-// `_lifecycle.SimulateCommitChaincodeDefinition`. It returns a map of
-// orgs to their approval (true/false) for the definition supplied as args.
-message SimulateCommitChaincodeDefinitionResult{
+// CheckCommitReadinessResult is the message returned by
+// `_lifecycle.CheckCommitReadiness`. It returns a map of
+// orgs to their approval (true/false) for the definition 
+// supplied as args.
+message CheckCommitReadinessResult{
     map<string, bool> approvals = 1;
 }
 
