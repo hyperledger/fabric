@@ -269,7 +269,9 @@ func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
 
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/nodeouadmin2", "keystore"), true)
 	assert.NoError(t, err)
-	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_4_2, ks)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_4_2, ks, cryptoProvider)
 	assert.NoError(t, err)
 
 	err = thisMSP.Setup(conf)
@@ -283,7 +285,7 @@ func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
 
 	ks, err = sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/nodeouadmin3", "keystore"), true)
 	assert.NoError(t, err)
-	thisMSP, err = NewBccspMspWithKeyStore(MSPv1_4_2, ks)
+	thisMSP, err = NewBccspMspWithKeyStore(MSPv1_4_2, ks, cryptoProvider)
 	assert.NoError(t, err)
 
 	err = thisMSP.Setup(conf)
@@ -317,7 +319,9 @@ func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
 
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/nodeouorderer2", "keystore"), true)
 	assert.NoError(t, err)
-	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_4_2, ks)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_4_2, ks, cryptoProvider)
 	assert.NoError(t, err)
 
 	err = thisMSP.Setup(conf)
@@ -341,7 +345,7 @@ func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
 
 	ks, err = sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/nodeouorderer3", "keystore"), true)
 	assert.NoError(t, err)
-	thisMSP, err = NewBccspMspWithKeyStore(MSPv1_4_2, ks)
+	thisMSP, err = NewBccspMspWithKeyStore(MSPv1_4_2, ks, cryptoProvider)
 	assert.NoError(t, err)
 
 	err = thisMSP.Setup(conf)

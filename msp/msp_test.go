@@ -1117,25 +1117,25 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 
-	localMsp, err = newBccspMsp(MSPv1_0, factory.GetDefault())
+	localMsp, err = newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
 	if err != nil {
 		fmt.Printf("Constructor for msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 
-	localMspBad, err = newBccspMsp(MSPv1_0, factory.GetDefault())
+	localMspBad, err = newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
 	if err != nil {
 		fmt.Printf("Constructor for msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 
-	localMspV13, err = newBccspMsp(MSPv1_3, factory.GetDefault())
+	localMspV13, err = newBccspMsp(MSPv1_3, factory.DefaultBCCSP)
 	if err != nil {
 		fmt.Printf("Constructor for V1.3 msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 
-	localMspV11, err = newBccspMsp(MSPv1_1, factory.GetDefault())
+	localMspV11, err = newBccspMsp(MSPv1_1, factory.DefaultBCCSP)
 	if err != nil {
 		fmt.Printf("Constructor for V1.1 msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
@@ -1212,7 +1212,9 @@ func getLocalMSPWithVersionAndError(t *testing.T, dir string, version MSPVersion
 
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
 	assert.NoError(t, err)
-	thisMSP, err := NewBccspMspWithKeyStore(version, ks)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	thisMSP, err := NewBccspMspWithKeyStore(version, ks, cryptoProvider)
 	assert.NoError(t, err)
 
 	return thisMSP, thisMSP.Setup(conf)
@@ -1225,7 +1227,9 @@ func getLocalMSP(t *testing.T, dir string) MSP {
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
 	assert.NoError(t, err)
 
-	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_0, ks)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_0, ks, cryptoProvider)
 	err = thisMSP.Setup(conf)
 	assert.NoError(t, err)
 
@@ -1238,7 +1242,9 @@ func getLocalMSPWithVersion(t *testing.T, dir string, version MSPVersion) MSP {
 
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
 	assert.NoError(t, err)
-	thisMSP, err := NewBccspMspWithKeyStore(version, ks)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	thisMSP, err := NewBccspMspWithKeyStore(version, ks, cryptoProvider)
 	assert.NoError(t, err)
 
 	err = thisMSP.Setup(conf)

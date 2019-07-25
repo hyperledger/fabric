@@ -133,7 +133,11 @@ func LoadLocalMSPAt(dir, id, mspType string) (msp.MSP, error) {
 	if err != nil {
 		return nil, err
 	}
-	thisMSP, err := msp.NewBccspMspWithKeyStore(msp.MSPv1_0, ks)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return nil, err
+	}
+	thisMSP, err := msp.NewBccspMspWithKeyStore(msp.MSPv1_0, ks, cryptoProvider)
 	if err != nil {
 		return nil, err
 	}

@@ -142,8 +142,8 @@ func newBccspMsp(version MSPVersion, defaultBCCSP bccsp.BCCSP) (MSP, error) {
 
 // NewBccspMspWithKeyStore allows to create a BCCSP-based MSP whose underlying
 // crypto material is available through the passed keystore
-func NewBccspMspWithKeyStore(version MSPVersion, keyStore bccsp.KeyStore) (MSP, error) {
-	thisMSP, err := newBccspMsp(version, factory.GetDefault())
+func NewBccspMspWithKeyStore(version MSPVersion, keyStore bccsp.KeyStore, bccsp bccsp.BCCSP) (MSP, error) {
+	thisMSP, err := newBccspMsp(version, bccsp)
 	if err != nil {
 		return nil, err
 	}
