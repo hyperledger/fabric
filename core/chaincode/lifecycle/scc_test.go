@@ -1314,7 +1314,12 @@ var _ = Describe("SCC", func() {
 							ValidationParameter: []byte("validation-parameter"),
 						},
 						Collections: &cb.CollectionConfigPackage{},
-					}, map[string]bool{
+					},
+					nil,
+				)
+
+				fakeSCCFuncs.QueryOrgApprovalsReturns(
+					map[string]bool{
 						"fake-mspid":  true,
 						"other-mspid": true,
 					},
@@ -1342,9 +1347,11 @@ var _ = Describe("SCC", func() {
 				})).To(BeTrue())
 
 				Expect(fakeSCCFuncs.QueryChaincodeDefinitionCallCount()).To(Equal(1))
-				name, pubState, orgStates := fakeSCCFuncs.QueryChaincodeDefinitionArgsForCall(0)
+				name, pubState := fakeSCCFuncs.QueryChaincodeDefinitionArgsForCall(0)
 				Expect(name).To(Equal("cc-name"))
 				Expect(pubState).To(Equal(fakeStub))
+				name, _, orgStates := fakeSCCFuncs.QueryOrgApprovalsArgsForCall(0)
+				Expect(name).To(Equal("cc-name"))
 				Expect(orgStates).To(HaveLen(2))
 				Expect(orgStates[0]).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
 				Expect(orgStates[1]).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
@@ -1353,9 +1360,21 @@ var _ = Describe("SCC", func() {
 				Expect([]string{collection0, collection1}).To(ConsistOf("_implicit_org_fake-mspid", "_implicit_org_other-mspid"))
 			})
 
-			Context("when the underlying function implementation fails", func() {
+			Context("when the underlying QueryChaincodeDefinition function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinition': underlying-error"))
+				})
+			})
+
+			Context("when the underlying QueryOrgApprovals function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryOrgApprovalsReturns(nil, fmt.Errorf("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1367,7 +1386,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the namespace cannot be found", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, nil, lifecycle.ErrNamespaceNotDefined{Namespace: "nicetry"})
+					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, lifecycle.ErrNamespaceNotDefined{Namespace: "nicetry"})
 				})
 
 				It("returns 404 Not Found", func() {
@@ -1421,7 +1440,7 @@ var _ = Describe("SCC", func() {
 					"bar": "Token",
 					"woo": "Chaincode",
 				}, nil)
-				fakeSCCFuncs.QueryChaincodeDefinitionStub = func(name string, rs lifecycle.ReadableState, os []lifecycle.OpaqueState) (*lifecycle.ChaincodeDefinition, map[string]bool, error) {
+				fakeSCCFuncs.QueryChaincodeDefinitionStub = func(name string, rs lifecycle.ReadableState) (*lifecycle.ChaincodeDefinition, error) {
 					cd := &lifecycle.ChaincodeDefinition{
 						Sequence: 2,
 						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
@@ -1439,7 +1458,7 @@ var _ = Describe("SCC", func() {
 						cd.Sequence = 5
 					}
 
-					return cd, nil, nil
+					return cd, nil
 				}
 			})
 
@@ -1475,7 +1494,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying QueryChaincodeDefinition function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, fmt.Errorf("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {

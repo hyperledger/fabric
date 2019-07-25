@@ -239,25 +239,6 @@ func (r *Resources) ChaincodeDefinitionIfDefined(chaincodeName string, state Rea
 	return true, definedChaincode, nil
 }
 
-func (r *Resources) retrieveOrgApprovals(name string, cd *ChaincodeDefinition, orgStates []OpaqueState) (map[string]bool, error) {
-	if len(orgStates) == 0 {
-		return nil, nil
-	}
-	approvals := map[string]bool{}
-	privateName := fmt.Sprintf("%s#%d", name, cd.Sequence)
-	for _, orgState := range orgStates {
-		match, err := r.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters(), orgState)
-		if err != nil {
-			return nil, errors.WithMessagef(err, "serialization check failed for key %s", privateName)
-		}
-
-		org := OrgFromImplicitCollectionName(orgState.CollectionName())
-		approvals[org] = match
-	}
-
-	return approvals, nil
-}
-
 // ExternalFunctions is intended primarily to support the SCC functions.
 // In general, its methods signatures produce writes (which must be commmitted
 // as part of an endorsement flow), or return human readable errors (for
@@ -288,7 +269,7 @@ func (ef *ExternalFunctions) SimulateCommitChaincodeDefinition(chname, ccname st
 	}
 
 	var approvals map[string]bool
-	if approvals, err = ef.Resources.retrieveOrgApprovals(ccname, cd, orgStates); err != nil {
+	if approvals, err = ef.QueryOrgApprovals(ccname, cd, orgStates); err != nil {
 		return nil, err
 	}
 
@@ -449,28 +430,42 @@ func (e ErrNamespaceNotDefined) Error() string {
 
 // QueryChaincodeDefinition returns the defined chaincode by the given name (if it is committed, and a chaincode)
 // or otherwise returns an error.
-func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState ReadableState, orgStates []OpaqueState) (*ChaincodeDefinition, map[string]bool, error) {
+func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error) {
 	metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, name, publicState)
 	if err != nil {
-		return nil, nil, errors.WithMessagef(err, "could not fetch metadata for namespace %s", name)
+		return nil, errors.WithMessagef(err, "could not fetch metadata for namespace %s", name)
 	}
 	if !ok {
-		return nil, nil, ErrNamespaceNotDefined{Namespace: name}
+		return nil, ErrNamespaceNotDefined{Namespace: name}
 	}
 
 	definedChaincode := &ChaincodeDefinition{}
 	if err := ef.Resources.Serializer.Deserialize(NamespacesName, name, metadata, definedChaincode, publicState); err != nil {
-		return nil, nil, errors.WithMessagef(err, "could not deserialize namespace %s as chaincode", name)
-	}
-
-	var approvals map[string]bool
-	if approvals, err = ef.Resources.retrieveOrgApprovals(name, definedChaincode, orgStates); err != nil {
-		return nil, nil, err
+		return nil, errors.WithMessagef(err, "could not deserialize namespace %s as chaincode", name)
 	}
 
 	logger.Infof("successfully queried definition %s, name '%s'", definedChaincode, name)
 
-	return definedChaincode, approvals, nil
+	return definedChaincode, nil
+}
+
+// QueryOrgApprovals returns a map containing the orgs whose orgStates were
+// provided and whether or not they have approved a chaincode definition with
+// the specified parameters.
+func (ef *ExternalFunctions) QueryOrgApprovals(name string, cd *ChaincodeDefinition, orgStates []OpaqueState) (map[string]bool, error) {
+	approvals := map[string]bool{}
+	privateName := fmt.Sprintf("%s#%d", name, cd.Sequence)
+	for _, orgState := range orgStates {
+		match, err := ef.Resources.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters(), orgState)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "serialization check failed for key %s", privateName)
+		}
+
+		org := OrgFromImplicitCollectionName(orgState.CollectionName())
+		approvals[org] = match
+	}
+
+	return approvals, nil
 }
 
 // InstallChaincode installs a given chaincode to the peer's chaincode store.

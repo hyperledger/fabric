@@ -100,9 +100,13 @@ type SCCFunctions interface {
 	CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error)
 
 	// QueryChaincodeDefinition returns a chaincode definition from the public
-	// state and a map containing the orgs whose orgStates were supplied and
-	// whether or not they have approved the definition.
-	QueryChaincodeDefinition(name string, publicState ReadableState, orgStates []OpaqueState) (*ChaincodeDefinition, map[string]bool, error)
+	// state.
+	QueryChaincodeDefinition(name string, publicState ReadableState) (*ChaincodeDefinition, error)
+
+	// QueryOrgApprovals returns a map containing the orgs whose orgStates were
+	// supplied and whether or not they have approved a chaincode definition with
+	// the specified parameters.
+	QueryOrgApprovals(name string, cd *ChaincodeDefinition, orgStates []OpaqueState) (map[string]bool, error)
 
 	// QueryNamespaceDefinitions returns all defined namespaces
 	QueryNamespaceDefinitions(publicState RangeableState) (map[string]string, error)
@@ -517,13 +521,18 @@ func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinition
 		input.Name,
 	)
 
+	definedChaincode, err := i.SCC.Functions.QueryChaincodeDefinition(input.Name, i.Stub)
+	if err != nil {
+		return nil, err
+	}
+
 	opaqueStates, err := i.createOpaqueStates()
 	if err != nil {
 		return nil, err
 	}
 
-	definedChaincode, approvals, err := i.SCC.Functions.QueryChaincodeDefinition(input.Name, i.Stub, opaqueStates)
-	if err != nil {
+	var approvals map[string]bool
+	if approvals, err = i.SCC.Functions.QueryOrgApprovals(input.Name, definedChaincode, opaqueStates); err != nil {
 		return nil, err
 	}
 
@@ -554,7 +563,7 @@ func (i *Invocation) QueryChaincodeDefinitions(input *lb.QueryChaincodeDefinitio
 	chaincodeDefinitions := []*lb.QueryChaincodeDefinitionsResult_ChaincodeDefinition{}
 	for namespace, nType := range namespaces {
 		if nType == FriendlyChaincodeDefinitionType {
-			definedChaincode, _, err := i.SCC.Functions.QueryChaincodeDefinition(namespace, i.Stub, nil)
+			definedChaincode, err := i.SCC.Functions.QueryChaincodeDefinition(namespace, i.Stub)
 			if err != nil {
 				return nil, err
 			}
