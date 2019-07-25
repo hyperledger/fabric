@@ -1207,7 +1207,7 @@ var _ = Describe("SCC", func() {
 				err = proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
 
-				orgApprovals := payload.GetApproved()
+				orgApprovals := payload.GetApprovals()
 				Expect(orgApprovals).NotTo(BeNil())
 				Expect(len(orgApprovals)).To(Equal(2))
 				Expect(orgApprovals["fake-mspid"]).To(BeTrue())
@@ -1340,7 +1340,7 @@ var _ = Describe("SCC", func() {
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
 					Collections:         &cb.CollectionConfigPackage{},
-					Approved: map[string]bool{
+					Approvals: map[string]bool{
 						"fake-mspid":  true,
 						"other-mspid": true,
 					},

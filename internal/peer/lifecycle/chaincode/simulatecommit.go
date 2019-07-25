@@ -198,14 +198,14 @@ func (c *CommitSimulator) printResponse(proposalResponse *pb.ProposalResponse) e
 	}
 
 	orgs := []string{}
-	for org := range result.Approved {
+	for org := range result.Approvals {
 		orgs = append(orgs, org)
 	}
 	sort.Strings(orgs)
 
 	fmt.Fprintf(c.Writer, "Chaincode definition for chaincode '%s', version '%s', sequence '%d' on channel '%s' approval status by org:\n", c.Input.Name, c.Input.Version, c.Input.Sequence, c.Input.ChannelID)
 	for _, org := range orgs {
-		fmt.Fprintf(c.Writer, "%s: %t\n", org, result.Approved[org])
+		fmt.Fprintf(c.Writer, "%s: %t\n", org, result.Approvals[org])
 	}
 
 	return nil

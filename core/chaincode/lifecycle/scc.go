@@ -439,7 +439,7 @@ func (i *Invocation) SimulateCommitChaincodeDefinition(input *lb.SimulateCommitC
 	}
 
 	return &lb.SimulateCommitChaincodeDefinitionResult{
-		Approved: approvals,
+		Approvals: approvals,
 	}, nil
 }
 
@@ -539,7 +539,7 @@ func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinition
 		ValidationParameter: definedChaincode.ValidationInfo.ValidationParameter,
 		InitRequired:        definedChaincode.EndorsementInfo.InitRequired,
 		Collections:         definedChaincode.Collections,
-		Approved:            approvals,
+		Approvals:           approvals,
 	}, nil
 }
 

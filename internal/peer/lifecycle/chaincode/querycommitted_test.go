@@ -129,7 +129,7 @@ var _ = Describe("QueryCommitted", func() {
 					Version:           "a-version",
 					EndorsementPlugin: "e-plugin",
 					ValidationPlugin:  "v-plugin",
-					Approved: map[string]bool{
+					Approvals: map[string]bool{
 						"whatkindoforgisthis": true,
 						"nowaydoiapprove":     false,
 					},
@@ -184,7 +184,7 @@ var _ = Describe("QueryCommitted", func() {
 						Version:           "a-version",
 						EndorsementPlugin: "e-plugin",
 						ValidationPlugin:  "v-plugin",
-						Approved: map[string]bool{
+						Approvals: map[string]bool{
 							"whatkindoforgisthis": true,
 							"nowaydoiapprove":     false,
 						},

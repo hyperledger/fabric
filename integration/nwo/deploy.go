@@ -285,9 +285,9 @@ func EnsureChaincodeCommitted(n *Network, channel, name, version, sequence strin
 		}
 		Eventually(listCommitted(n, p, channel, name), n.EventuallyTimeout).Should(
 			MatchFields(IgnoreExtras, Fields{
-				"Version":  Equal(version),
-				"Sequence": Equal(sequenceInt),
-				"Approved": MatchKeys(IgnoreExtras, approvedKeys),
+				"Version":   Equal(version),
+				"Sequence":  Equal(sequenceInt),
+				"Approvals": MatchKeys(IgnoreExtras, approvedKeys),
 			}),
 		)
 	}
@@ -427,7 +427,7 @@ func queryInstalled(n *Network, peer *Peer) func() []lifecycle.QueryInstalledCha
 }
 
 type simulateCommitOutput struct {
-	Approved map[string]bool
+	Approvals map[string]bool `json:"approvals"`
 }
 
 func simulateCommit(n *Network, peer *Peer, channel string, chaincode Chaincode) func() map[string]bool {
@@ -449,14 +449,14 @@ func simulateCommit(n *Network, peer *Peer, channel string, chaincode Chaincode)
 		output := &simulateCommitOutput{}
 		err = json.Unmarshal(sess.Out.Contents(), output)
 		Expect(err).NotTo(HaveOccurred())
-		return output.Approved
+		return output.Approvals
 	}
 }
 
 type queryCommittedOutput struct {
-	Sequence int64           `json:"sequence"`
-	Version  string          `json:"version"`
-	Approved map[string]bool `json:"approved"`
+	Sequence  int64           `json:"sequence"`
+	Version   string          `json:"version"`
+	Approvals map[string]bool `json:"approvals"`
 }
 
 // listCommitted returns the result of the queryCommitted command.
