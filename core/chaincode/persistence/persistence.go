@@ -165,9 +165,8 @@ func (s *Store) Save(label string, ccInstallPkg []byte) (persistence.PackageID, 
 	return packageID, nil
 }
 
-// Load loads a persisted chaincode install package bytes with the given hash
-// and also returns the chaincode metadata (names and versions) of any chaincode
-// installed with a matching hash
+// Load loads a persisted chaincode install package bytes with
+// the given packageID.
 func (s *Store) Load(packageID persistence.PackageID) ([]byte, error) {
 	ccInstallPkgPath := filepath.Join(s.Path, packageID.String()+".bin")
 

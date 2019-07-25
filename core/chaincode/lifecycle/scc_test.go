@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	persistenceintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
@@ -188,8 +189,6 @@ var _ = Describe("SCC", func() {
 			)
 
 			BeforeEach(func() {
-				fakeStub.GetChannelIDReturns("")
-
 				arg = &lb.InstallChaincodeArgs{
 					ChaincodeInstallPackage: []byte("chaincode-package"),
 				}
@@ -289,6 +288,52 @@ var _ = Describe("SCC", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
 					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryInstalledChaincode': underlying-error"))
+				})
+			})
+		})
+
+		Describe("GetInstalledChaincodePackage", func() {
+			var (
+				arg          *lb.GetInstalledChaincodePackageArgs
+				marshaledArg []byte
+			)
+
+			BeforeEach(func() {
+				arg = &lb.GetInstalledChaincodePackageArgs{
+					PackageId: "package-id",
+				}
+
+				var err error
+				marshaledArg, err = proto.Marshal(arg)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeStub.GetArgsReturns([][]byte{[]byte("GetInstalledChaincodePackage"), marshaledArg})
+
+				fakeSCCFuncs.GetInstalledChaincodePackageReturns([]byte("chaincode-package"), nil)
+			})
+
+			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
+				res := scc.Invoke(fakeStub)
+				Expect(res.Status).To(Equal(int32(200)))
+				payload := &lb.GetInstalledChaincodePackageResult{}
+				err := proto.Unmarshal(res.Payload, payload)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(payload.ChaincodeInstallPackage).To(Equal([]byte("chaincode-package")))
+
+				Expect(fakeSCCFuncs.GetInstalledChaincodePackageCallCount()).To(Equal(1))
+				packageID := fakeSCCFuncs.GetInstalledChaincodePackageArgsForCall(0)
+				Expect(packageID).To(Equal(p.PackageID("package-id")))
+			})
+
+			Context("when the underlying function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.GetInstalledChaincodePackageReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'GetInstalledChaincodePackage': underlying-error"))
 				})
 			})
 		})

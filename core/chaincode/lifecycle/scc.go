@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	persistenceintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
@@ -78,6 +79,10 @@ type SCCFunctions interface {
 
 	// QueryInstalledChaincode returns the hash for a given name and version of an installed chaincode
 	QueryInstalledChaincode(packageID persistenceintf.PackageID) (*chaincode.InstalledChaincode, error)
+
+	// GetInstalledChaincodePackage returns the chaincode package
+	// installed on the peer as bytes.
+	GetInstalledChaincodePackage(packageID p.PackageID) ([]byte, error)
 
 	// QueryInstalledChaincodes returns the currently installed chaincodes
 	QueryInstalledChaincodes() []*chaincode.InstalledChaincode
@@ -300,10 +305,24 @@ func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeAr
 	if err != nil {
 		return nil, err
 	}
-
 	return &lb.QueryInstalledChaincodeResult{
 		Label:     chaincode.Label,
 		PackageId: chaincode.PackageID.String(),
+	}, nil
+}
+
+// GetInstalledChaincodePackage is a SCC function that may be dispatched to
+// which routes to the underlying lifecycle implementation.
+func (i *Invocation) GetInstalledChaincodePackage(input *lb.GetInstalledChaincodePackageArgs) (proto.Message, error) {
+	logger.Debugf("received invocation of GetInstalledChaincodePackage")
+
+	pkgBytes, err := i.SCC.Functions.GetInstalledChaincodePackage(p.PackageID(input.PackageId))
+	if err != nil {
+		return nil, err
+	}
+
+	return &lb.GetInstalledChaincodePackageResult{
+		ChaincodeInstallPackage: pkgBytes,
 	}, nil
 }
 

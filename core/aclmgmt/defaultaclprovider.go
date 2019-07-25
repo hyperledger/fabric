@@ -50,6 +50,7 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 	//-------------- _lifecycle --------------
 	d.pResourcePolicyMap[resources.Lifecycle_InstallChaincode] = mgmt.Admins
 	d.pResourcePolicyMap[resources.Lifecycle_QueryInstalledChaincode] = mgmt.Admins
+	d.pResourcePolicyMap[resources.Lifecycle_GetInstalledChaincodePackage] = mgmt.Admins
 	d.pResourcePolicyMap[resources.Lifecycle_QueryInstalledChaincodes] = mgmt.Admins
 	d.pResourcePolicyMap[resources.Lifecycle_ApproveChaincodeDefinitionForMyOrg] = mgmt.Admins
 
