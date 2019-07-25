@@ -1516,50 +1516,6 @@ var _ = Describe("SCC", func() {
 				})
 			})
 		})
-
-		Describe("QueryNamespaceDefinitions", func() {
-			var (
-				arg          *lb.QueryNamespaceDefinitionsArgs
-				marshaledArg []byte
-			)
-
-			BeforeEach(func() {
-				arg = &lb.QueryNamespaceDefinitionsArgs{}
-
-				var err error
-				marshaledArg, err = proto.Marshal(arg)
-				Expect(err).NotTo(HaveOccurred())
-
-				fakeStub.GetArgsReturns([][]byte{[]byte("QueryNamespaceDefinitions"), marshaledArg})
-				fakeSCCFuncs.QueryNamespaceDefinitionsReturns(map[string]string{
-					"foo": "Chaincode",
-					"bar": "Token",
-				}, nil)
-			})
-
-			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
-				res := scc.Invoke(fakeStub)
-				Expect(res.Status).To(Equal(int32(200)))
-				payload := &lb.QueryNamespaceDefinitionsResult{}
-				err := proto.Unmarshal(res.Payload, payload)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(fakeSCCFuncs.QueryNamespaceDefinitionsCallCount()).To(Equal(1))
-				Expect(fakeSCCFuncs.QueryNamespaceDefinitionsArgsForCall(0)).To(Equal(&lifecycle.ChaincodePublicLedgerShim{ChaincodeStubInterface: fakeStub}))
-			})
-
-			Context("when the underlying function implementation fails", func() {
-				BeforeEach(func() {
-					fakeSCCFuncs.QueryNamespaceDefinitionsReturns(nil, fmt.Errorf("underlying-error"))
-				})
-
-				It("wraps and returns the error", func() {
-					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryNamespaceDefinitions': underlying-error"))
-				})
-			})
-		})
 	})
 })
 

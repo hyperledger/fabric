@@ -179,18 +179,3 @@ message QueryChaincodeDefinitionsResult {
     }
     repeated ChaincodeDefinition chaincode_definitions = 1;
 }
-
-// QueryNamespaceDefinitions is the message used as arguments to
-// `_lifecycle.QueryNamespaceDefinitions`.
-message QueryNamespaceDefinitionsArgs {
-}
-
-// QueryNamespaceDefinitions is the message returned by
-// `_lifecycle.QueryNamespaceDefinitions`.
-message QueryNamespaceDefinitionsResult {
-    message Namespace{
-        string type = 1;
-    }
-
-    map<string,Namespace> namespaces = 1; // A map from namespace name to namespace
-}
