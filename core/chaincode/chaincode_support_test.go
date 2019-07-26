@@ -41,7 +41,6 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
-	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/peer"
@@ -154,7 +153,7 @@ func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.Chainc
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), error) {
 	peerInstance := &peer.Peer{}
-	ipRegistry := inproccontroller.NewRegistry()
+	ipRegistry := scc.NewRegistry()
 	sccp := &scc.Provider{
 		Peer:      peerInstance,
 		Registrar: ipRegistry,
@@ -1105,7 +1104,7 @@ func TestGetTxContextFromHandler(t *testing.T) {
 		TXContexts: NewTransactionContexts(),
 		SystemCCProvider: &scc.Provider{
 			Peer:      peerInstance,
-			Registrar: inproccontroller.NewRegistry(),
+			Registrar: scc.NewRegistry(),
 		},
 	}
 

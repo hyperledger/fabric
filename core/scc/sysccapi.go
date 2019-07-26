@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -114,7 +113,7 @@ func (p *Provider) registerSysCC(syscc SelfDescribingSysCC) (bool, error) {
 	err := p.Registrar.Register(ccid, syscc.Chaincode())
 	if err != nil {
 		//if the type is registered, the instance may not be... keep going
-		if _, ok := err.(inproccontroller.SysCCRegisteredErr); !ok {
+		if _, ok := err.(SysCCRegisteredErr); !ok {
 			errStr := fmt.Sprintf("could not register (%s,%v): %s", syscc.Path(), syscc, err)
 			sysccLogger.Error(errStr)
 			return false, fmt.Errorf(errStr)
@@ -193,7 +192,7 @@ func deDeploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Se
 		Name:          syscc.Name(),
 		Path:          syscc.Path(),
 		Version:       version,
-		ContainerType: inproccontroller.ContainerType,
+		ContainerType: ContainerType,
 	}
 
 	err := ccprov.Stop(ccci)
