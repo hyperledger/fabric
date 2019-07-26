@@ -43,6 +43,7 @@ func Cmd() *cobra.Command {
 	chaincodeCmd.AddCommand(PackageCmd(nil))
 	chaincodeCmd.AddCommand(InstallCmd(nil))
 	chaincodeCmd.AddCommand(QueryInstalledCmd(nil))
+	chaincodeCmd.AddCommand(GetInstalledPackageCmd(nil))
 	chaincodeCmd.AddCommand(ApproveForMyOrgCmd(nil))
 	chaincodeCmd.AddCommand(CheckCommitReadinessCmd(nil))
 	chaincodeCmd.AddCommand(CommitCmd(nil))
@@ -73,12 +74,13 @@ var (
 	sequence              int
 	initRequired          bool
 	output                string
+	outputDirectory       string
 )
 
 var chaincodeCmd = &cobra.Command{
 	Use:   "chaincode",
-	Short: "Perform chaincode operations: package|install|queryinstalled|approveformyorg|checkcommitreadiness|commit|querycommitted",
-	Long:  "Perform _lifecycle operations: package|install|queryinstalled|approveformyorg|checkcommitreadiness|commit|querycommitted",
+	Short: "Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|checkcommitreadiness|commit|querycommitted",
+	Long:  "Perform _lifecycle operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|checkcommitreadiness|commit|querycommitted",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		common.InitCmd(cmd, args)
 		common.SetOrdererEnv(cmd, args)
@@ -123,6 +125,7 @@ func ResetFlags() {
 	flags.IntVarP(&sequence, "sequence", "", 1, "The sequence number of the chaincode definition for the channel")
 	flags.BoolVarP(&initRequired, "init-required", "", false, "Whether the chaincode requires invoking 'init'")
 	flags.StringVarP(&output, "output", "O", "", "The output format for query results. Default is human-readable plain-text.")
+	flags.StringVarP(&outputDirectory, "output-directory", "", "", "The output directory to use when writing a chaincode install package to disk. Default is the current working directory.")
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {

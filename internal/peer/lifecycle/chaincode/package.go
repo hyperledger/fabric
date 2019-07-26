@@ -27,11 +27,6 @@ type PlatformRegistry interface {
 	GetDeploymentPayload(ccType, path string) ([]byte, error)
 }
 
-// Writer defines the interface needed for writing a file
-type Writer interface {
-	WriteFile(string, string, []byte) error
-}
-
 // Packager holds the dependencies needed to package
 // a chaincode and write it
 type Packager struct {

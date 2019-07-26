@@ -40,6 +40,11 @@ type Signer interface {
 	Serialize() ([]byte, error)
 }
 
+// Writer defines the interface needed for writing a file
+type Writer interface {
+	WriteFile(string, string, []byte) error
+}
+
 func signProposal(proposal *pb.Proposal, signer Signer) (*pb.SignedProposal, error) {
 	// check for nil argument
 	if proposal == nil {
