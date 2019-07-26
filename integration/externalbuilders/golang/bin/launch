@@ -16,8 +16,10 @@ export CORE_TLS_CLIENT_CERT_PATH="$ARTIFACTS/client.crt"
 export CORE_TLS_CLIENT_KEY_PATH="$ARTIFACTS/client.key"
 export CORE_PEER_TLS_ROOTCERT_FILE="$ARTIFACTS/root.crt"
 
-jq -r .ClientCert $ARTIFACTS/chaincode.json | base64 --decode > "$CORE_TLS_CLIENT_CERT_PATH"
-jq -r .ClientKey $ARTIFACTS/chaincode.json | base64 --decode > "$CORE_TLS_CLIENT_KEY_PATH"
+# Note, for strange historical reasons, the chaincode expects the cert and key to be base64 encoded,
+# but not the root cert.
+jq -r .ClientCert $ARTIFACTS/chaincode.json > "$CORE_TLS_CLIENT_CERT_PATH"
+jq -r .ClientKey $ARTIFACTS/chaincode.json > "$CORE_TLS_CLIENT_KEY_PATH"
 jq -r .RootCert $ARTIFACTS/chaincode.json | base64 --decode > "$CORE_PEER_TLS_ROOTCERT_FILE"
 
 if [ -z "$(cat $CORE_TLS_CLIENT_CERT_PATH)" ]  ; then

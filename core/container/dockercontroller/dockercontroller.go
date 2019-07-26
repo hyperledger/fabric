@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -287,8 +288,9 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, peerConnection *ccint
 		gw := gzip.NewWriter(payload)
 		tw := tar.NewWriter(gw)
 
-		cutil.WriteBytesToPackage(TLSClientKeyPath, peerConnection.TLSConfig.ClientKey, tw)
-		cutil.WriteBytesToPackage(TLSClientCertPath, peerConnection.TLSConfig.ClientCert, tw)
+		// Note, we goofily base64 encode 2 of the TLS artifacts but not the other for strange historical reasons
+		cutil.WriteBytesToPackage(TLSClientKeyPath, []byte(base64.StdEncoding.EncodeToString(peerConnection.TLSConfig.ClientKey)), tw)
+		cutil.WriteBytesToPackage(TLSClientCertPath, []byte(base64.StdEncoding.EncodeToString(peerConnection.TLSConfig.ClientCert)), tw)
 		cutil.WriteBytesToPackage(TLSClientRootCertPath, peerConnection.TLSConfig.RootCert, tw)
 
 		// Write the tar file out
