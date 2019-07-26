@@ -104,11 +104,6 @@ func (cs *ChaincodeSupport) Launch(channelID string, ccci *ccprovider.ChaincodeC
 	return h, nil
 }
 
-// Stop stops a chaincode if running.
-func (cs *ChaincodeSupport) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
-	return cs.Runtime.Stop(ccci)
-}
-
 // LaunchInProc is a stopgap solution to be called by the inproccontroller to allow system chaincodes to register
 func (cs *ChaincodeSupport) LaunchInProc(ccid ccintf.CCID) <-chan struct{} {
 	launchStatus, ok := cs.HandlerRegistry.Launching(ccid)

@@ -100,19 +100,24 @@ func TestGetArgs(t *testing.T) {
 }
 
 func TestGetEnv(t *testing.T) {
+	vm := &DockerVM{
+		LoggingEnv: []string{"LOG_ENV=foo"},
+	}
+
 	t.Run("nil TLS config", func(t *testing.T) {
-		env := GetEnv(ccintf.CCID("test"), nil)
-		assert.Equal(t, []string{"CORE_CHAINCODE_ID_NAME=test", "CORE_PEER_TLS_ENABLED=false"}, env)
+		env := vm.GetEnv(ccintf.CCID("test"), nil)
+		assert.Equal(t, []string{"CORE_CHAINCODE_ID_NAME=test", "LOG_ENV=foo", "CORE_PEER_TLS_ENABLED=false"}, env)
 	})
 
 	t.Run("real TLS config", func(t *testing.T) {
-		env := GetEnv(ccintf.CCID("test"), &ccintf.TLSConfig{
+		env := vm.GetEnv(ccintf.CCID("test"), &ccintf.TLSConfig{
 			ClientKey:  []byte("key"),
 			ClientCert: []byte("cert"),
 			RootCert:   []byte("root"),
 		})
 		assert.Equal(t, []string{
 			"CORE_CHAINCODE_ID_NAME=test",
+			"LOG_ENV=foo",
 			"CORE_PEER_TLS_ENABLED=true",
 			"CORE_TLS_CLIENT_KEY_PATH=/etc/hyperledger/fabric/client.key",
 			"CORE_TLS_CLIENT_CERT_PATH=/etc/hyperledger/fabric/client.crt",

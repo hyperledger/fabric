@@ -456,6 +456,8 @@ func serve(args []string) error {
 		logger.Panicf("cannot create docker client: %s", err)
 	}
 
+	chaincodeConfig := chaincode.GlobalConfig()
+
 	dockerVM := &dockercontroller.DockerVM{
 		PeerID:        coreConfig.PeerID,
 		NetworkID:     coreConfig.NetworkID,
@@ -469,18 +471,22 @@ func serve(args []string) error {
 			Registry: platformRegistry,
 			Client:   client,
 		},
+		// This field is superfluous for chaincodes built with v2.0+ binaries
+		// however, to prevent users from being forced to rebuild leaving for now
+		// but it should be removed in the future.
+		LoggingEnv: []string{
+			"CORE_CHAINCODE_LOGGING_LEVEL=" + chaincodeConfig.LogLevel,
+			"CORE_CHAINCODE_LOGGING_SHIM=" + chaincodeConfig.ShimLogLevel,
+			"CORE_CHAINCODE_LOGGING_FORMAT=" + chaincodeConfig.LogFormat,
+		},
 	}
 	if err := opsSystem.RegisterChecker("docker", dockerVM); err != nil {
-		if err != nil {
-			logger.Panicf("failed to register docker health check: %s", err)
-		}
+		logger.Panicf("failed to register docker health check: %s", err)
 	}
 
 	externalVM := &externalbuilders.Detector{
 		Builders: coreConfig.ExternalBuilders,
 	}
-
-	chaincodeConfig := chaincode.GlobalConfig()
 
 	containerRuntime := &chaincode.ContainerRuntime{
 		CACert:        ca.CertBytes(),
