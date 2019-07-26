@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	cc "github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -179,6 +179,7 @@ type Peer struct {
 	StoreProvider     transientstore.StoreProvider
 	GossipService     *gossipservice.GossipService
 	LedgerMgr         *ledgermgmt.LedgerMgr
+	CryptoProvider    bccsp.BCCSP
 
 	// validationWorkersSemaphore is used to limit the number of concurrent validation
 	// go routines.
@@ -251,7 +252,7 @@ func (p *Peer) createChannel(
 
 	var bundle *channelconfig.Bundle
 	if chanConf != nil {
-		bundle, err = channelconfig.NewBundle(cid, chanConf, factory.GetDefault())
+		bundle, err = channelconfig.NewBundle(cid, chanConf, p.CryptoProvider)
 		if err != nil {
 			return err
 		}
@@ -263,7 +264,7 @@ func (p *Peer) createChannel(
 			return err
 		}
 
-		bundle, err = channelconfig.NewBundleFromEnvelope(envelopeConfig, factory.GetDefault())
+		bundle, err = channelconfig.NewBundleFromEnvelope(envelopeConfig, p.CryptoProvider)
 		if err != nil {
 			return err
 		}
@@ -305,8 +306,9 @@ func (p *Peer) createChannel(
 	}
 
 	channel := &Channel{
-		ledger:    l,
-		resources: bundle,
+		ledger:         l,
+		resources:      bundle,
+		cryptoProvider: p.CryptoProvider,
 	}
 
 	channel.bundleSource = channelconfig.NewBundleSource(

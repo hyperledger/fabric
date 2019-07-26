@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 
@@ -150,7 +151,13 @@ func (meqe *mockExecQuerySimulator) GetTxSimulationResults() ([]byte, error) {
 
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), error) {
-	peerInstance := &peer.Peer{}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		panic(fmt.Sprintf("failed to create cryptoProvider: %s", err))
+	}
+
+	peerInstance := &peer.Peer{CryptoProvider: cryptoProvider}
+
 	tempdir, err := ioutil.TempDir("", "cc-support-test")
 	if err != nil {
 		panic(fmt.Sprintf("failed to create temporary directory: %s", err))

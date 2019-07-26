@@ -349,15 +349,17 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
+	assert.NoError(t, err)
 	// setup cscc instance
 	mockACLProvider := &mocks.ACLProvider{}
 	cscc := &PeerConfiger{
 		policyChecker: &mocks.PolicyChecker{},
 		aclProvider:   mockACLProvider,
 		peer: &peer.Peer{
-			StoreProvider: &mocks.StoreProvider{},
-			GossipService: gossipService,
-			LedgerMgr:     ledgerMgr,
+			StoreProvider:  &mocks.StoreProvider{},
+			GossipService:  gossipService,
+			LedgerMgr:      ledgerMgr,
+			CryptoProvider: cryptoProvider,
 		},
 	}
 	mockStub := &mocks.ChaincodeStub{}
