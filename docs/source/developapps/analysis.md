@@ -55,7 +55,7 @@ paper might be subsequently sold to BrokerHouse or HedgeMatic, and the
 corresponding change to `Owner`. Note how `Current state` allow us to easily
 identify that the paper is now `trading`.
 
-After 6 months, if DigiBank still holds the the commercial paper, it can redeem
+After 6 months, if DigiBank still holds the commercial paper, it can redeem
 it with MagnetoCorp:
 
 ```
