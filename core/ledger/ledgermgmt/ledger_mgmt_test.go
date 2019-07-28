@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -24,7 +25,11 @@ func TestLedgerMgmt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create ledger directory: %s", err)
 	}
-	initializer := constructDefaultInitializer(testDir)
+	initializer, err := constructDefaultInitializer(testDir)
+	if err != nil {
+		t.Fatalf("Failed to create default initializer: %s", err)
+	}
+
 	ledgerMgr := NewLedgerMgr(initializer)
 	defer func() {
 		os.RemoveAll(testDir)
@@ -76,7 +81,11 @@ func TestChaincodeInfoProvider(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create ledger directory: %s", err)
 	}
-	initializer := constructDefaultInitializer(testDir)
+	initializer, err := constructDefaultInitializer(testDir)
+	if err != nil {
+		t.Fatalf("Failed to create default initializer: %s", err)
+	}
+
 	ledgerMgr := NewLedgerMgr(initializer)
 	defer func() {
 		ledgerMgr.Close()
@@ -112,7 +121,11 @@ func TestChaincodeInfoProvider(t *testing.T) {
 	assert.Equal(t, constructTestCCInfo("cc1", "cc1", "cc1"), ccInfo)
 }
 
-func constructDefaultInitializer(testDir string) *Initializer {
+func constructDefaultInitializer(testDir string) (*Initializer, error) {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return nil, err
+	}
 	return &Initializer{
 		Config: &ledger.Config{
 			RootFSPath:    testDir,
@@ -129,7 +142,8 @@ func constructDefaultInitializer(testDir string) *Initializer {
 
 		MetricsProvider:               &disabled.Provider{},
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
-	}
+		Hasher:                        cryptoProvider,
+	}, nil
 }
 
 func constructTestLedgerID(i int) string {

@@ -291,7 +291,9 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	require.NoError(t, err, "error in creating test dir")
 	defer os.Remove(testDir)
 
-	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgermgmttest.NewInitializer(testDir))
+	defaultInitializer := ledgermgmttest.NewInitializer(testDir)
+
+	ledgerMgr := ledgermgmt.NewLedgerMgr(defaultInitializer)
 	defer ledgerMgr.Close()
 
 	peerEndpoint := "127.0.0.1:13611"
@@ -350,6 +352,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	defer grpcServer.Stop()
 
 	assert.NoError(t, err)
+
 	// setup cscc instance
 	mockACLProvider := &mocks.ACLProvider{}
 	cscc := &PeerConfiger{

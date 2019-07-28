@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
@@ -30,6 +31,7 @@ type Initializer struct {
 	HealthCheckRegistry             HealthCheckRegistry
 	Config                          *Config
 	CustomTxProcessors              map[common.HeaderType]CustomTxProcessor
+	Hasher                          Hasher
 }
 
 // Config is a structure used to configure a ledger provider.
@@ -636,6 +638,12 @@ type InvalidTxError struct {
 
 func (e *InvalidTxError) Error() string {
 	return e.Msg
+}
+
+// Hasher implements the hash function that should be used for all ledger components.
+// Currently works at a stepping stone to decrease surface area of bccsp
+type Hasher interface {
+	Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error)
 }
 
 //go:generate counterfeiter -o mock/state_listener.go -fake-name StateListener . StateListener

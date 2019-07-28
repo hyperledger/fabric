@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -26,12 +27,16 @@ func TestStateListener(t *testing.T) {
 	channelid := "testLedger"
 	namespace := "testchaincode"
 	mockListener := &mockStateListener{namespace: namespace}
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	provider, err := NewProvider(
 		&ledger.Initializer{
 			DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 			StateListeners:                []ledger.StateListener{mockListener},
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
+			Hasher:                        cryptoProvider,
 		},
 	)
 	if err != nil {
@@ -95,12 +100,14 @@ func TestStateListener(t *testing.T) {
 	}, mockListener.kvWrites)
 
 	provider.Close()
+
 	provider, err = NewProvider(
 		&ledger.Initializer{
 			DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 			StateListeners:                []ledger.StateListener{mockListener},
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
+			Hasher:                        cryptoProvider,
 		},
 	)
 	if err != nil {

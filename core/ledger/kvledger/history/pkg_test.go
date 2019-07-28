@@ -10,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
@@ -49,6 +50,8 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 		t.Fatalf("Failed to create history database directory: %s", err)
 	}
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	txMgr, err := lockbasedtxmgr.NewLockBasedTxMgr(
 		testLedgerID,
 		testDB,
@@ -57,6 +60,7 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 		testBookkeepingEnv.TestProvider,
 		&mock.DeployedChaincodeInfoProvider{},
 		nil,
+		cryptoProvider,
 	)
 
 	assert.NoError(t, err)

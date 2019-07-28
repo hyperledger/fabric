@@ -9,6 +9,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -21,12 +22,8 @@ var logger = flogging.MustGetLogger("statebasedval")
 // Validator validates a tx against the latest committed state
 // and preceding valid transactions with in the same block
 type Validator struct {
-	db privacyenabledstate.DB
-}
-
-// NewValidator constructs StateValidator
-func NewValidator(db privacyenabledstate.DB) *Validator {
-	return &Validator{db}
+	DB     privacyenabledstate.DB
+	Hasher ledger.Hasher
 }
 
 // preLoadCommittedVersionOfRSet loads committed version of all keys in each
@@ -76,7 +73,7 @@ func (v *Validator) preLoadCommittedVersionOfRSet(block *internal.Block) error {
 
 	// Load committed version of all keys into a cache
 	if len(pubKeys) > 0 || len(hashedKeys) > 0 {
-		err := v.db.LoadCommittedVersionsOfPubAndHashedKeys(pubKeys, hashedKeys)
+		err := v.DB.LoadCommittedVersionsOfPubAndHashedKeys(pubKeys, hashedKeys)
 		if err != nil {
 			return err
 		}
@@ -90,7 +87,7 @@ func (v *Validator) ValidateAndPrepareBatch(block *internal.Block, doMVCCValidat
 	// Check whether statedb implements BulkOptimizable interface. For now,
 	// only CouchDB implements BulkOptimizable to reduce the number of REST
 	// API calls from peer to CouchDB instance.
-	if v.db.IsBulkOptimizable() {
+	if v.DB.IsBulkOptimizable() {
 		err := v.preLoadCommittedVersionOfRSet(block)
 		if err != nil {
 			return nil, err
@@ -109,7 +106,7 @@ func (v *Validator) ValidateAndPrepareBatch(block *internal.Block, doMVCCValidat
 		if validationCode == peer.TxValidationCode_VALID {
 			logger.Debugf("Block [%d] Transaction index [%d] TxId [%s] marked as valid by state validator. ContainsPostOrderWrites [%t]", block.Num, tx.IndexInBlock, tx.ID, tx.ContainsPostOrderWrites)
 			committingTxHeight := version.NewHeight(block.Num, uint64(tx.IndexInBlock))
-			updates.ApplyWriteSet(tx.RWSet, committingTxHeight, v.db, tx.ContainsPostOrderWrites)
+			updates.ApplyWriteSet(tx.RWSet, committingTxHeight, v.DB, tx.ContainsPostOrderWrites)
 		} else {
 			logger.Warningf("Block [%d] Transaction index [%d] TxId [%s] marked as invalid by state validator. Reason code [%s]",
 				block.Num, tx.IndexInBlock, tx.ID, validationCode.String())
@@ -182,7 +179,7 @@ func (v *Validator) validateKVRead(ns string, kvRead *kvrwset.KVRead, updates *p
 	if updates.Exists(ns, kvRead.Key) {
 		return false, nil
 	}
-	committedVersion, err := v.db.GetVersion(ns, kvRead.Key)
+	committedVersion, err := v.DB.GetVersion(ns, kvRead.Key)
 	if err != nil {
 		return false, err
 	}
@@ -221,7 +218,7 @@ func (v *Validator) validateRangeQuery(ns string, rangeQueryInfo *kvrwset.RangeQ
 	// but rather it is the last key seen by the caller and hence the combinedItr should include the endKey in the results.
 	includeEndKey := !rangeQueryInfo.ItrExhausted
 
-	combinedItr, err := newCombinedIterator(v.db, updates.UpdateBatch,
+	combinedItr, err := newCombinedIterator(v.DB, updates.UpdateBatch,
 		ns, rangeQueryInfo.StartKey, rangeQueryInfo.EndKey, includeEndKey)
 	if err != nil {
 		return false, err
@@ -230,7 +227,7 @@ func (v *Validator) validateRangeQuery(ns string, rangeQueryInfo *kvrwset.RangeQ
 	var validator rangeQueryValidator
 	if rangeQueryInfo.GetReadsMerkleHashes() != nil {
 		logger.Debug(`Hashing results are present in the range query info hence, initiating hashing based validation`)
-		validator = &rangeQueryHashValidator{}
+		validator = &rangeQueryHashValidator{hasher: v.Hasher}
 	} else {
 		logger.Debug(`Hashing results are not present in the range query info hence, initiating raw KVReads based validation`)
 		validator = &rangeQueryResultsValidator{}
@@ -270,7 +267,7 @@ func (v *Validator) validateKVReadHash(ns, coll string, kvReadHash *kvrwset.KVRe
 	if updates.Contains(ns, coll, kvReadHash.KeyHash) {
 		return false, nil
 	}
-	committedVersion, err := v.db.GetKeyHashVersion(ns, coll, kvReadHash.KeyHash)
+	committedVersion, err := v.DB.GetKeyHashVersion(ns, coll, kvReadHash.KeyHash)
 	if err != nil {
 		return false, err
 	}

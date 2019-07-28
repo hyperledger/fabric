@@ -206,6 +206,7 @@ func TestDeliverSupportManager(t *testing.T) {
 
 func constructLedgerMgrWithTestDefaults(ledgersDataDir string) (*ledgermgmt.LedgerMgr, error) {
 	ledgerInitializer := ledgermgmttest.NewInitializer(ledgersDataDir)
+
 	ledgerInitializer.CustomTxProcessors = map[common.HeaderType]ledger.CustomTxProcessor{
 		common.HeaderType_CONFIG: &ConfigTxProcessor{},
 	}

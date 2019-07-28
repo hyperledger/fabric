@@ -1908,7 +1908,8 @@ func constructLedgerMgrWithTestDefaults(t *testing.T, testDir string) (*ledgermg
 	if err != nil {
 		t.Fatalf("Failed to create ledger directory: %s", err)
 	}
-	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgermgmttest.NewInitializer(testDir))
+	initializer := ledgermgmttest.NewInitializer(testDir)
+	ledgerMgr := ledgermgmt.NewLedgerMgr(initializer)
 	cleanup := func() {
 		ledgerMgr.Close()
 		os.RemoveAll(testDir)

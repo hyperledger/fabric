@@ -10,6 +10,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
@@ -46,7 +47,9 @@ func TestPvtdataResultsItr(t *testing.T) {
 	putPvtUpdates(t, updates, "ns2", "coll1", "key6", []byte("pvt_value6"), version.NewHeight(1, 6))
 	putPvtUpdates(t, updates, "ns3", "coll1", "key7", []byte("pvt_value7"), version.NewHeight(1, 7))
 	txMgr.db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(2, 7))
-	queryHelper := newQueryHelper(txMgr, nil, true)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	queryHelper := newQueryHelper(txMgr, nil, true, cryptoProvider)
 
 	resItr, err := queryHelper.getPrivateDataRangeScanIterator("ns1", "coll1", "key1", "key3")
 	assert.NoError(t, err)
@@ -103,15 +106,19 @@ func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 	assert.NoError(t, txMgr.Commit())
 
 	t.Run("query-helper-for-queryexecutor", func(t *testing.T) {
-		queryHelper := newQueryHelper(txMgr.(*LockBasedTxMgr), nil, true)
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		queryHelper := newQueryHelper(txMgr.(*LockBasedTxMgr), nil, true, cryptoProvider)
 		metadataRetrieved, err := queryHelper.getPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
 		assert.NoError(t, err)
 		assert.Equal(t, metadata1, metadataRetrieved)
 	})
 
 	t.Run("query-helper-for-txsimulator", func(t *testing.T) {
-		queryHelper := newQueryHelper(txMgr.(*LockBasedTxMgr), rwsetutil.NewRWSetBuilder(), true)
-		_, err := queryHelper.getPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		queryHelper := newQueryHelper(txMgr.(*LockBasedTxMgr), rwsetutil.NewRWSetBuilder(), true, cryptoProvider)
+		_, err = queryHelper.getPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
 		assert.EqualError(t, err, "retrieving private data metadata by keyhash is not supported in simulation. This function is only available for query as yet")
 	})
 }

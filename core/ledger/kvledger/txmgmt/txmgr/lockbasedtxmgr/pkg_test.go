@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -95,11 +96,15 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtda
 		)
 	}
 	env.testBookkeepingEnv = bookkeeping.NewTestEnv(t)
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	env.txmgr, err = NewLockBasedTxMgr(
 		testLedgerID, env.testDB, nil,
 		btlPolicy, env.testBookkeepingEnv.TestProvider,
 		&mock.DeployedChaincodeInfoProvider{},
 		nil,
+		cryptoProvider,
 	)
 	assert.NoError(t, err)
 

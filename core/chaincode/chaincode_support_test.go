@@ -163,9 +163,8 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
 	}
 
-	peerInstance.LedgerMgr = ledgermgmt.NewLedgerMgr(
-		ledgermgmttest.NewInitializer(filepath.Join(tempdir, "ledgersData")),
-	)
+	initializer := ledgermgmttest.NewInitializer(filepath.Join(tempdir, "ledgerData"))
+	peerInstance.LedgerMgr = ledgermgmt.NewLedgerMgr(initializer)
 
 	cleanup := func() {
 		peerInstance.LedgerMgr.Close()

@@ -46,6 +46,7 @@ type Initializer struct {
 	MetricsProvider                 metrics.Provider
 	HealthCheckRegistry             ledger.HealthCheckRegistry
 	Config                          *ledger.Config
+	Hasher                          ledger.Hasher
 }
 
 // NewLedgerMgr creates a new LedgerMgr
@@ -65,6 +66,7 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 			HealthCheckRegistry:             initializer.HealthCheckRegistry,
 			Config:                          initializer.Config,
 			CustomTxProcessors:              initializer.CustomTxProcessors,
+			Hasher:                          initializer.Hasher,
 		},
 	)
 	if err != nil {

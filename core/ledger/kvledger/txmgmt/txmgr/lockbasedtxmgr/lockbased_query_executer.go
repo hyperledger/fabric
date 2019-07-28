@@ -16,8 +16,8 @@ type lockBasedQueryExecutor struct {
 	txid   string
 }
 
-func newQueryExecutor(txmgr *LockBasedTxMgr, txid string, performCollCheck bool) *lockBasedQueryExecutor {
-	helper := newQueryHelper(txmgr, nil, performCollCheck)
+func newQueryExecutor(txmgr *LockBasedTxMgr, txid string, performCollCheck bool, hasher ledger.Hasher) *lockBasedQueryExecutor {
+	helper := newQueryHelper(txmgr, nil, performCollCheck, hasher)
 	logger.Debugf("constructing new query executor txid = [%s]", txid)
 	return &lockBasedQueryExecutor{helper, txid}
 }

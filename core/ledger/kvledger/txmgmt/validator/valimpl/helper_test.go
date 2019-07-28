@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
@@ -306,7 +307,10 @@ func TestTxStatsInfoWithConfigTx(t *testing.T) {
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("emptydb")
-	v := NewStatebasedValidator(nil, testDB, nil)
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	v := NewStatebasedValidator(nil, testDB, nil, cryptoProvider)
 
 	gb := testutil.ConstructTestBlocks(t, 1)[0]
 	_, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: gb}, true)
@@ -335,7 +339,9 @@ func TestContainsPostOrderWrites(t *testing.T) {
 		common.HeaderType_CONFIG: fakeTxProcessor,
 	}
 
-	v := NewStatebasedValidator(mockTxmgr, testDB, customTxProcessors)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	v := NewStatebasedValidator(mockTxmgr, testDB, customTxProcessors, cryptoProvider)
 	blocks := testutil.ConstructTestBlocks(t, 2)
 
 	// block with config tx that produces post order writes
@@ -373,7 +379,10 @@ func TestTxStatsInfo(t *testing.T) {
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("emptydb")
-	v := NewStatebasedValidator(nil, testDB, nil)
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	v := NewStatebasedValidator(nil, testDB, nil, cryptoProvider)
 
 	// create a block with 4 endorser transactions
 	tx1SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(t,

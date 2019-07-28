@@ -145,7 +145,10 @@ func TestInstall(t *testing.T) {
 	tempdir, err := ioutil.TempDir("", "lscc-test")
 	require.NoError(t, err, "failed to create temporary directory")
 	defer os.RemoveAll(tempdir)
-	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgermgmttest.NewInitializer(tempdir))
+
+	initializer := ledgermgmttest.NewInitializer(tempdir)
+
+	ledgerMgr := ledgermgmt.NewLedgerMgr(initializer)
 	defer ledgerMgr.Close()
 
 	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil)

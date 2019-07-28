@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
@@ -24,11 +25,15 @@ func TestStatsBlockCommit(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
 	testMetricProvider := testutilConstructMetricProvider()
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	provider, err := NewProvider(
 		&lgr.Initializer{
 			DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 			MetricsProvider:               testMetricProvider.fakeProvider,
 			Config:                        conf,
+			Hasher:                        cryptoProvider,
 		},
 	)
 	if err != nil {

@@ -40,15 +40,19 @@ func setupTestLedger(chainid string, path string) (*shimtest.MockStub, *peer.Pee
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgermgmttest.NewInitializer(testDir))
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	initializer := ledgermgmttest.NewInitializer(testDir)
+
+	ledgerMgr := ledgermgmt.NewLedgerMgr(initializer)
 
 	cleanup := func() {
 		ledgerMgr.Close()
 		os.RemoveAll(testDir)
-	}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	if err != nil {
-		return nil, nil, nil, err
 	}
 	peerInstance := &peer.Peer{
 		LedgerMgr:      ledgerMgr,

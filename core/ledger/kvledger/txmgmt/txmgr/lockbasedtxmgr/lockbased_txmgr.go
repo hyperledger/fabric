@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("lockbasedtxmgr")
@@ -41,6 +42,7 @@ type LockBasedTxMgr struct {
 	commitRWLock    sync.RWMutex
 	oldBlockCommit  sync.Mutex
 	current         *current
+	hasher          ledger.Hasher
 }
 
 type current struct {
@@ -66,20 +68,27 @@ func NewLockBasedTxMgr(
 	bookkeepingProvider bookkeeping.Provider,
 	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
+	hasher ledger.Hasher,
 ) (*LockBasedTxMgr, error) {
+
+	if hasher == nil {
+		return nil, errors.New("create new lock based TxMgr failed: passed in nil ledger hasher")
+	}
+
 	db.Open()
 	txmgr := &LockBasedTxMgr{
 		ledgerid:       ledgerid,
 		db:             db,
 		stateListeners: stateListeners,
 		ccInfoProvider: ccInfoProvider,
+		hasher:         hasher,
 	}
 	pvtstatePurgeMgr, err := pvtstatepurgemgmt.InstantiatePurgeMgr(ledgerid, db, btlPolicy, bookkeepingProvider)
 	if err != nil {
 		return nil, err
 	}
 	txmgr.pvtdataPurgeMgr = &pvtdataPurgeMgr{pvtstatePurgeMgr, false}
-	txmgr.validator = valimpl.NewStatebasedValidator(txmgr, db, customTxProcessors)
+	txmgr.validator = valimpl.NewStatebasedValidator(txmgr, db, customTxProcessors, hasher)
 	return txmgr, nil
 }
 
@@ -91,7 +100,7 @@ func (txmgr *LockBasedTxMgr) GetLastSavepoint() (*version.Height, error) {
 
 // NewQueryExecutor implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor, error) {
-	qe := newQueryExecutor(txmgr, txid, true)
+	qe := newQueryExecutor(txmgr, txid, true, txmgr.hasher)
 	txmgr.commitRWLock.RLock()
 	return qe, nil
 }
@@ -107,7 +116,7 @@ func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor
 // querying the ledger state so that the sequence of initialization is explicitly controlled.
 // However that needs a bigger refactoring of code.
 func (txmgr *LockBasedTxMgr) NewQueryExecutorNoCollChecks() (ledger.QueryExecutor, error) {
-	qe := newQueryExecutor(txmgr, "", false)
+	qe := newQueryExecutor(txmgr, "", false, txmgr.hasher)
 	txmgr.commitRWLock.RLock()
 	return qe, nil
 }
@@ -115,7 +124,7 @@ func (txmgr *LockBasedTxMgr) NewQueryExecutorNoCollChecks() (ledger.QueryExecuto
 // NewTxSimulator implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, error) {
 	logger.Debugf("constructing new tx simulator")
-	s, err := newLockBasedTxSimulator(txmgr, txid)
+	s, err := newLockBasedTxSimulator(txmgr, txid, txmgr.hasher)
 	if err != nil {
 		return nil, err
 	}

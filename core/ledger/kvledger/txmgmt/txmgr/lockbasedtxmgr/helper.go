@@ -33,10 +33,15 @@ type queryHelper struct {
 	itrs              []*resultsItr
 	err               error
 	doneInvoked       bool
+	hasher            ledger.Hasher
 }
 
-func newQueryHelper(txmgr *LockBasedTxMgr, rwsetBuilder *rwsetutil.RWSetBuilder, performCollCheck bool) *queryHelper {
-	helper := &queryHelper{txmgr: txmgr, rwsetBuilder: rwsetBuilder}
+func newQueryHelper(txmgr *LockBasedTxMgr, rwsetBuilder *rwsetutil.RWSetBuilder, performCollCheck bool, hasher ledger.Hasher) *queryHelper {
+	helper := &queryHelper{
+		txmgr:        txmgr,
+		rwsetBuilder: rwsetBuilder,
+		hasher:       hasher,
+	}
 	validator := newCollNameValidator(txmgr.ledgerid, txmgr.ccInfoProvider, &lockBasedQueryExecutor{helper: helper}, !performCollCheck)
 	helper.collNameValidator = validator
 	return helper
@@ -89,6 +94,7 @@ func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey strin
 		h.rwsetBuilder,
 		queryReadsHashingEnabled,
 		maxDegreeQueryReadsHashing,
+		h.hasher,
 	)
 	if err != nil {
 		return nil, err
@@ -110,6 +116,7 @@ func (h *queryHelper) getStateRangeScanIteratorWithMetadata(namespace string, st
 		h.rwsetBuilder,
 		queryReadsHashingEnabled,
 		maxDegreeQueryReadsHashing,
+		h.hasher,
 	)
 	if err != nil {
 		return nil, err
@@ -355,7 +362,7 @@ type resultsItr struct {
 }
 
 func newResultsItr(ns string, startKey string, endKey string, metadata map[string]interface{},
-	db statedb.VersionedDB, rwsetBuilder *rwsetutil.RWSetBuilder, enableHashing bool, maxDegree uint32) (*resultsItr, error) {
+	db statedb.VersionedDB, rwsetBuilder *rwsetutil.RWSetBuilder, enableHashing bool, maxDegree uint32, hasher ledger.Hasher) (*resultsItr, error) {
 	var err error
 	var dbItr statedb.ResultsIterator
 	if metadata == nil {
@@ -373,7 +380,7 @@ func newResultsItr(ns string, startKey string, endKey string, metadata map[strin
 		itr.endKey = endKey
 		// just set the StartKey... set the EndKey later below in the Next() method.
 		itr.rangeQueryInfo = &kvrwset.RangeQueryInfo{StartKey: startKey}
-		resultsHelper, err := rwsetutil.NewRangeQueryResultsHelper(enableHashing, maxDegree)
+		resultsHelper, err := rwsetutil.NewRangeQueryResultsHelper(enableHashing, maxDegree, hasher)
 		if err != nil {
 			return nil, err
 		}

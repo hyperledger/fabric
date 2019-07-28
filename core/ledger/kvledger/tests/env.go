@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
@@ -44,11 +45,14 @@ type env struct {
 }
 
 func newEnv(t *testing.T) *env {
-	return newEnvWithInitializer(t, &ledgermgmt.Initializer{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	return newEnvWithInitializer(t, &ledgermgmt.Initializer{Hasher: cryptoProvider})
 }
 
 func newEnvWithInitializer(t *testing.T, initializer *ledgermgmt.Initializer) *env {
 	populateMissingsWithTestDefaults(t, initializer)
+
 	return &env{
 		assert:      assert.New(t),
 		initializer: initializer,

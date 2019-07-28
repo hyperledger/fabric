@@ -10,6 +10,7 @@ import (
 	"bytes"
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
@@ -78,13 +79,14 @@ type rangeQueryHashValidator struct {
 	rqInfo        *kvrwset.RangeQueryInfo
 	itr           statedb.ResultsIterator
 	resultsHelper *rwsetutil.RangeQueryResultsHelper
+	hasher        ledger.Hasher
 }
 
 func (v *rangeQueryHashValidator) init(rqInfo *kvrwset.RangeQueryInfo, itr statedb.ResultsIterator) error {
 	v.rqInfo = rqInfo
 	v.itr = itr
 	var err error
-	v.resultsHelper, err = rwsetutil.NewRangeQueryResultsHelper(true, rqInfo.GetReadsMerkleHashes().MaxDegree)
+	v.resultsHelper, err = rwsetutil.NewRangeQueryResultsHelper(true, rqInfo.GetReadsMerkleHashes().MaxDegree, v.hasher)
 	return err
 }
 

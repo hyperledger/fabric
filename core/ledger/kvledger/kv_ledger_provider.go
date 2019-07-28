@@ -65,6 +65,7 @@ type Provider struct {
 	collElgNotifier     *collElgNotifier
 	stats               *stats
 	fileLock            *leveldbhelper.FileLock
+	hasher              ledger.Hasher
 }
 
 // NewProvider instantiates a new Provider.
@@ -72,6 +73,7 @@ type Provider struct {
 func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 	p := &Provider{
 		initializer: initializer,
+		hasher:      initializer.Hasher,
 	}
 
 	defer func() {
@@ -255,6 +257,7 @@ func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 		p.initializer.ChaincodeLifecycleEventProvider,
 		p.stats.ledgerStats(ledgerID),
 		p.initializer.CustomTxProcessors,
+		p.hasher,
 	)
 	if err != nil {
 		return nil, err

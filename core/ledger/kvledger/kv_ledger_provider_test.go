@@ -16,6 +16,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
@@ -520,11 +521,15 @@ func testConfig(t *testing.T) (conf *lgr.Config, cleanup func()) {
 }
 
 func testutilNewProvider(conf *lgr.Config, t *testing.T) *Provider {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	provider, err := NewProvider(
 		&lgr.Initializer{
 			DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
+			Hasher:                        cryptoProvider,
 		},
 	)
 	if err != nil {

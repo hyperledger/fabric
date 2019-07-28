@@ -37,8 +37,17 @@ func NewStatebasedValidator(
 	txmgr txmgr.TxMgr,
 	db privacyenabledstate.DB,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
+	hasher ledger.Hasher,
 ) validator.Validator {
-	return &DefaultImpl{txmgr, db, statebasedval.NewValidator(db), customTxProcessors}
+	return &DefaultImpl{
+		txmgr,
+		db,
+		&statebasedval.Validator{
+			DB:     db,
+			Hasher: hasher,
+		},
+		customTxProcessors,
+	}
 }
 
 // ValidateAndPrepareBatch implements the function in interface validator.Validator
