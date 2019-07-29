@@ -158,22 +158,6 @@ func TestEndorserNilProp(t *testing.T) {
 	assert.EqualValues(t, 1, fakeMetrics.proposalValidationFailed.AddArgsForCall(0))
 }
 
-func TestEndorserUninvokableSysCC(t *testing.T) {
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, &mocks.MockSupport{
-		GetApplicationConfigBoolRv:       true,
-		GetApplicationConfigRv:           &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:            errors.New(""),
-		IsSysCCAndNotInvokableExternalRv: true,
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
-
-	signedProp := getSignedProp("test-chaincode", "test-version", t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
-	assert.Equal(t, "chaincode test-chaincode cannot be invoked through a proposal", pResp.Response.Message)
-}
-
 func TestEndorserCCInvocationFailed(t *testing.T) {
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, &mocks.MockSupport{
 		GetApplicationConfigBoolRv: true,

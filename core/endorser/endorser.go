@@ -40,10 +40,6 @@ type privateDataDistributor func(channel string, txID string, privateData *trans
 // Support contains functions that the endorser requires to execute its tasks
 type Support interface {
 	identity.SignerSerializer
-	// IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is
-	// ia system chaincode and it NOT invokable
-	IsSysCCAndNotInvokableExternal(name string) bool
-
 	// GetTxSimulator returns the transaction simulator for the specified ledger
 	// a client may obtain more than one such simulator; they are made unique
 	// by way of the supplied txid
@@ -366,14 +362,6 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, e
 
 	shdr, err := protoutil.GetSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
-		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
-		return vr, err
-	}
-
-	// block invocations to security-sensitive system chaincodes
-	if e.s.IsSysCCAndNotInvokableExternal(hdrExt.ChaincodeId.Name) {
-		endorserLogger.Errorf("Error: an attempt was made by %#v to invoke system chaincode %s", shdr.Creator, hdrExt.ChaincodeId.Name)
-		err = errors.Errorf("chaincode %s cannot be invoked through a proposal", hdrExt.ChaincodeId.Name)
 		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
 		return vr, err
 	}

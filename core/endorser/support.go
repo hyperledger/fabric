@@ -55,12 +55,6 @@ func (s *SupportImpl) SigningIdentityForRequest(*pb.SignedProposal) (SigningIden
 	return s.SignerSerializer, nil
 }
 
-// IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is
-// ia system chaincode and it NOT invokable
-func (s *SupportImpl) IsSysCCAndNotInvokableExternal(name string) bool {
-	return s.SysCCProvider.IsSysCCAndNotInvokableExternal(name)
-}
-
 // GetTxSimulator returns the transaction simulator for the specified ledger
 // a client may obtain more than one such simulator; they are made unique
 // by way of the supplied txid

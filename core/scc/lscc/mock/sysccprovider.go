@@ -47,17 +47,6 @@ type SystemChaincodeProvider struct {
 	isSysCCReturnsOnCall map[int]struct {
 		result1 bool
 	}
-	IsSysCCAndNotInvokableExternalStub        func(string) bool
-	isSysCCAndNotInvokableExternalMutex       sync.RWMutex
-	isSysCCAndNotInvokableExternalArgsForCall []struct {
-		arg1 string
-	}
-	isSysCCAndNotInvokableExternalReturns struct {
-		result1 bool
-	}
-	isSysCCAndNotInvokableExternalReturnsOnCall map[int]struct {
-		result1 bool
-	}
 	PolicyManagerStub        func(string) (policies.Manager, bool)
 	policyManagerMutex       sync.RWMutex
 	policyManagerArgsForCall []struct {
@@ -261,66 +250,6 @@ func (fake *SystemChaincodeProvider) IsSysCCReturnsOnCall(i int, result1 bool) {
 	}{result1}
 }
 
-func (fake *SystemChaincodeProvider) IsSysCCAndNotInvokableExternal(arg1 string) bool {
-	fake.isSysCCAndNotInvokableExternalMutex.Lock()
-	ret, specificReturn := fake.isSysCCAndNotInvokableExternalReturnsOnCall[len(fake.isSysCCAndNotInvokableExternalArgsForCall)]
-	fake.isSysCCAndNotInvokableExternalArgsForCall = append(fake.isSysCCAndNotInvokableExternalArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("IsSysCCAndNotInvokableExternal", []interface{}{arg1})
-	fake.isSysCCAndNotInvokableExternalMutex.Unlock()
-	if fake.IsSysCCAndNotInvokableExternalStub != nil {
-		return fake.IsSysCCAndNotInvokableExternalStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.isSysCCAndNotInvokableExternalReturns
-	return fakeReturns.result1
-}
-
-func (fake *SystemChaincodeProvider) IsSysCCAndNotInvokableExternalCallCount() int {
-	fake.isSysCCAndNotInvokableExternalMutex.RLock()
-	defer fake.isSysCCAndNotInvokableExternalMutex.RUnlock()
-	return len(fake.isSysCCAndNotInvokableExternalArgsForCall)
-}
-
-func (fake *SystemChaincodeProvider) IsSysCCAndNotInvokableExternalCalls(stub func(string) bool) {
-	fake.isSysCCAndNotInvokableExternalMutex.Lock()
-	defer fake.isSysCCAndNotInvokableExternalMutex.Unlock()
-	fake.IsSysCCAndNotInvokableExternalStub = stub
-}
-
-func (fake *SystemChaincodeProvider) IsSysCCAndNotInvokableExternalArgsForCall(i int) string {
-	fake.isSysCCAndNotInvokableExternalMutex.RLock()
-	defer fake.isSysCCAndNotInvokableExternalMutex.RUnlock()
-	argsForCall := fake.isSysCCAndNotInvokableExternalArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *SystemChaincodeProvider) IsSysCCAndNotInvokableExternalReturns(result1 bool) {
-	fake.isSysCCAndNotInvokableExternalMutex.Lock()
-	defer fake.isSysCCAndNotInvokableExternalMutex.Unlock()
-	fake.IsSysCCAndNotInvokableExternalStub = nil
-	fake.isSysCCAndNotInvokableExternalReturns = struct {
-		result1 bool
-	}{result1}
-}
-
-func (fake *SystemChaincodeProvider) IsSysCCAndNotInvokableExternalReturnsOnCall(i int, result1 bool) {
-	fake.isSysCCAndNotInvokableExternalMutex.Lock()
-	defer fake.isSysCCAndNotInvokableExternalMutex.Unlock()
-	fake.IsSysCCAndNotInvokableExternalStub = nil
-	if fake.isSysCCAndNotInvokableExternalReturnsOnCall == nil {
-		fake.isSysCCAndNotInvokableExternalReturnsOnCall = make(map[int]struct {
-			result1 bool
-		})
-	}
-	fake.isSysCCAndNotInvokableExternalReturnsOnCall[i] = struct {
-		result1 bool
-	}{result1}
-}
-
 func (fake *SystemChaincodeProvider) PolicyManager(arg1 string) (policies.Manager, bool) {
 	fake.policyManagerMutex.Lock()
 	ret, specificReturn := fake.policyManagerReturnsOnCall[len(fake.policyManagerArgsForCall)]
@@ -393,8 +322,6 @@ func (fake *SystemChaincodeProvider) Invocations() map[string][][]interface{} {
 	defer fake.getQueryExecutorForLedgerMutex.RUnlock()
 	fake.isSysCCMutex.RLock()
 	defer fake.isSysCCMutex.RUnlock()
-	fake.isSysCCAndNotInvokableExternalMutex.RLock()
-	defer fake.isSysCCAndNotInvokableExternalMutex.RUnlock()
 	fake.policyManagerMutex.RLock()
 	defer fake.policyManagerMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

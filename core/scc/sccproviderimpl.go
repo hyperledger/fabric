@@ -57,23 +57,6 @@ func (p *Provider) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, 
 	return l.NewQueryExecutor()
 }
 
-// IsSysCCAndNotInvokableExternal returns true if the chaincode
-// is a system chaincode and *CANNOT* be invoked through
-// a proposal to this peer
-func (p *Provider) IsSysCCAndNotInvokableExternal(name string) bool {
-	for _, sysCC := range p.SysCCs {
-		if sysCC.Name() == name {
-			return !sysCC.InvokableExternal()
-		}
-	}
-
-	if isDeprecatedSysCC(name) {
-		return true
-	}
-
-	return false
-}
-
 // GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
 // and whether the Application config exists
 func (p *Provider) GetApplicationConfig(cid string) (channelconfig.Application, bool) {

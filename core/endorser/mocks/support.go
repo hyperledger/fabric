@@ -200,17 +200,6 @@ type Support struct {
 	isSysCCReturnsOnCall map[int]struct {
 		result1 bool
 	}
-	IsSysCCAndNotInvokableExternalStub        func(string) bool
-	isSysCCAndNotInvokableExternalMutex       sync.RWMutex
-	isSysCCAndNotInvokableExternalArgsForCall []struct {
-		arg1 string
-	}
-	isSysCCAndNotInvokableExternalReturns struct {
-		result1 bool
-	}
-	isSysCCAndNotInvokableExternalReturnsOnCall map[int]struct {
-		result1 bool
-	}
 	SerializeStub        func() ([]byte, error)
 	serializeMutex       sync.RWMutex
 	serializeArgsForCall []struct {
@@ -1074,66 +1063,6 @@ func (fake *Support) IsSysCCReturnsOnCall(i int, result1 bool) {
 	}{result1}
 }
 
-func (fake *Support) IsSysCCAndNotInvokableExternal(arg1 string) bool {
-	fake.isSysCCAndNotInvokableExternalMutex.Lock()
-	ret, specificReturn := fake.isSysCCAndNotInvokableExternalReturnsOnCall[len(fake.isSysCCAndNotInvokableExternalArgsForCall)]
-	fake.isSysCCAndNotInvokableExternalArgsForCall = append(fake.isSysCCAndNotInvokableExternalArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("IsSysCCAndNotInvokableExternal", []interface{}{arg1})
-	fake.isSysCCAndNotInvokableExternalMutex.Unlock()
-	if fake.IsSysCCAndNotInvokableExternalStub != nil {
-		return fake.IsSysCCAndNotInvokableExternalStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.isSysCCAndNotInvokableExternalReturns
-	return fakeReturns.result1
-}
-
-func (fake *Support) IsSysCCAndNotInvokableExternalCallCount() int {
-	fake.isSysCCAndNotInvokableExternalMutex.RLock()
-	defer fake.isSysCCAndNotInvokableExternalMutex.RUnlock()
-	return len(fake.isSysCCAndNotInvokableExternalArgsForCall)
-}
-
-func (fake *Support) IsSysCCAndNotInvokableExternalCalls(stub func(string) bool) {
-	fake.isSysCCAndNotInvokableExternalMutex.Lock()
-	defer fake.isSysCCAndNotInvokableExternalMutex.Unlock()
-	fake.IsSysCCAndNotInvokableExternalStub = stub
-}
-
-func (fake *Support) IsSysCCAndNotInvokableExternalArgsForCall(i int) string {
-	fake.isSysCCAndNotInvokableExternalMutex.RLock()
-	defer fake.isSysCCAndNotInvokableExternalMutex.RUnlock()
-	argsForCall := fake.isSysCCAndNotInvokableExternalArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *Support) IsSysCCAndNotInvokableExternalReturns(result1 bool) {
-	fake.isSysCCAndNotInvokableExternalMutex.Lock()
-	defer fake.isSysCCAndNotInvokableExternalMutex.Unlock()
-	fake.IsSysCCAndNotInvokableExternalStub = nil
-	fake.isSysCCAndNotInvokableExternalReturns = struct {
-		result1 bool
-	}{result1}
-}
-
-func (fake *Support) IsSysCCAndNotInvokableExternalReturnsOnCall(i int, result1 bool) {
-	fake.isSysCCAndNotInvokableExternalMutex.Lock()
-	defer fake.isSysCCAndNotInvokableExternalMutex.Unlock()
-	fake.IsSysCCAndNotInvokableExternalStub = nil
-	if fake.isSysCCAndNotInvokableExternalReturnsOnCall == nil {
-		fake.isSysCCAndNotInvokableExternalReturnsOnCall = make(map[int]struct {
-			result1 bool
-		})
-	}
-	fake.isSysCCAndNotInvokableExternalReturnsOnCall[i] = struct {
-		result1 bool
-	}{result1}
-}
-
 func (fake *Support) Serialize() ([]byte, error) {
 	fake.serializeMutex.Lock()
 	ret, specificReturn := fake.serializeReturnsOnCall[len(fake.serializeArgsForCall)]
@@ -1286,8 +1215,6 @@ func (fake *Support) Invocations() map[string][][]interface{} {
 	defer fake.getTxSimulatorMutex.RUnlock()
 	fake.isSysCCMutex.RLock()
 	defer fake.isSysCCMutex.RUnlock()
-	fake.isSysCCAndNotInvokableExternalMutex.RLock()
-	defer fake.isSysCCAndNotInvokableExternalMutex.RUnlock()
 	fake.serializeMutex.RLock()
 	defer fake.serializeMutex.RUnlock()
 	fake.signMutex.RLock()

@@ -30,10 +30,6 @@ type SystemChaincodeProvider interface {
 	// IsSysCC returns true if the supplied chaincode is a system chaincode
 	IsSysCC(name string) bool
 
-	// IsSysCCAndNotInvokable returns true if the supplied chaincode
-	// is a system chaincode and is not invokable through a proposal
-	IsSysCCAndNotInvokableExternal(name string) bool
-
 	// GetQueryExecutorForLedger returns a query executor for the
 	// ledger of the supplied channel.
 	// That's useful for system chaincodes that require unfettered

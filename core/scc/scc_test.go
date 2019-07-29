@@ -88,11 +88,6 @@ func TestIsSysCC(t *testing.T) {
 	assert.True(t, (newTestProvider()).IsSysCC("disabled"))
 }
 
-func TestIsSysCCAndNotInvokableExternal(t *testing.T) {
-	assert.False(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("invokableExternalButNotCC2CC"))
-	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("invokableCC2CCButNotExternal"))
-}
-
 func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
 	p := &scc.Provider{
 		Peer: &peer.Peer{},
