@@ -211,10 +211,6 @@ func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMess
 // Invoke will invoke chaincode and return the message containing the response.
 // The chaincode will be launched if it is not already running.
 func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
-	if cs.BuiltinSCCs.IsSysCC(cccid.Name) {
-		return cs.invokeSystem(txParams, cccid, input)
-	}
-
 	// go to _lifecycle to retrieve information about the chaincode
 	ccci, err := cs.Lifecycle.ChaincodeContainerInfo(txParams.ChannelID, cccid.Name, txParams.TXSimulator)
 	if err != nil {
@@ -242,22 +238,6 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 	}
 
 	return cs.execute(cctype, txParams, cccid, input, h)
-}
-
-func (cs *ChaincodeSupport) invokeSystem(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
-	// FIXME: remove this once _lifecycle has definitions for all system chaincodes (FAB-14628)
-	ccci := &ccprovider.ChaincodeContainerInfo{
-		Version:   cs.SystemCCVersion,
-		Name:      cccid.Name,
-		PackageID: persistence.PackageID(cccid.Name + ":" + cs.SystemCCVersion),
-	}
-
-	h, err := cs.Launch(txParams.ChannelID, ccci)
-	if err != nil {
-		return nil, err
-	}
-
-	return cs.execute(pb.ChaincodeMessage_TRANSACTION, txParams, cccid, input, h)
 }
 
 func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (bool, error) {

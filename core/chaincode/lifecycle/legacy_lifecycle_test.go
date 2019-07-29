@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/scc"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
@@ -29,6 +30,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 		fakeQueryExecutor *mock.SimpleQueryExecutor
 		fakeCache         *mock.ChaincodeInfoCache
 		testInfo          *lifecycle.LocalChaincodeInfo
+		builtinSCCs       scc.BuiltinSCCs
 	)
 
 	BeforeEach(func() {
@@ -43,6 +45,8 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 		fakeQueryExecutor.GetStateStub = func(namespace, key string) ([]byte, error) {
 			return fakePublicState.GetState(key)
 		}
+
+		builtinSCCs = map[string]struct{}{}
 
 		err := resources.Serializer.Serialize(lifecycle.NamespacesName,
 			"name",
@@ -77,9 +81,11 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 		fakeCache.ChaincodeInfoReturns(testInfo, nil)
 
 		cei = &lifecycle.ChaincodeEndorsementInfo{
-			LegacyImpl: fakeLegacyImpl,
-			Resources:  resources,
-			Cache:      fakeCache,
+			LegacyImpl:   fakeLegacyImpl,
+			Resources:    resources,
+			Cache:        fakeCache,
+			BuiltinSCCs:  builtinSCCs,
+			SysCCVersion: "test-syscc-version",
 		}
 
 	})
@@ -238,6 +244,22 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 				Type:      "FAKE-TYPE",
 				PackageID: "hash",
 			}))
+		})
+
+		Context("when the chaincode is a builtin system chaincode", func() {
+			BeforeEach(func() {
+				builtinSCCs["test-syscc-name"] = struct{}{}
+			})
+
+			It("returns a static definition", func() {
+				res, err := cei.ChaincodeContainerInfo("channel-id", "test-syscc-name", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res).To(Equal(&ccprovider.ChaincodeContainerInfo{
+					Name:      "test-syscc-name",
+					Version:   "test-syscc-version",
+					PackageID: "test-syscc-name:test-syscc-version",
+				}))
+			})
 		})
 
 		Context("when the definition does not exist in the new lifecycle", func() {

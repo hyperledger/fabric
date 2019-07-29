@@ -435,9 +435,11 @@ func serve(args []string) error {
 		HandlerRegistry: chaincodeHandlerRegistry,
 	}
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{
-		LegacyImpl: lsccInst,
-		Resources:  lifecycleResources,
-		Cache:      lifecycleCache,
+		LegacyImpl:   lsccInst,
+		Resources:    lifecycleResources,
+		Cache:        lifecycleCache,
+		BuiltinSCCs:  builtinSCCs,
+		SysCCVersion: sysCCVersion,
 	}
 
 	lifecycleFunctions := &lifecycle.ExternalFunctions{

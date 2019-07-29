@@ -11,8 +11,10 @@ import (
 
 	"github.com/hyperledger/fabric/common/util"
 	corechaincode "github.com/hyperledger/fabric/core/chaincode"
+	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/scc"
 
 	"github.com/pkg/errors"
 )
@@ -68,9 +70,11 @@ func (ld *LegacyDefinition) RequiresInit() bool {
 }
 
 type ChaincodeEndorsementInfo struct {
-	Resources  *Resources
-	Cache      ChaincodeInfoCache
-	LegacyImpl LegacyLifecycle
+	Resources    *Resources
+	Cache        ChaincodeInfoCache
+	LegacyImpl   LegacyLifecycle
+	BuiltinSCCs  scc.BuiltinSCCs
+	SysCCVersion string
 }
 
 func (cei *ChaincodeEndorsementInfo) CachedChaincodeInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*LocalChaincodeInfo, bool, error) {
@@ -142,8 +146,17 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeNam
 	}, nil
 }
 
-// ChaincodeContainerInfo returns the information necessary to launch a chaincode
+// ChaincodeContainerInfo returns the information necessary to launch a chaincode, it also returns
+// static definitions for the fabric defined system chaincodes
 func (cei *ChaincodeEndorsementInfo) ChaincodeContainerInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
+	if cei.BuiltinSCCs.IsSysCC(chaincodeName) {
+		return &ccprovider.ChaincodeContainerInfo{
+			PackageID: persistence.PackageID(chaincodeName + ":" + cei.SysCCVersion),
+			Name:      chaincodeName,
+			Version:   cei.SysCCVersion,
+		}, nil
+	}
+
 	chaincodeInfo, ok, err := cei.CachedChaincodeInfo(channelID, chaincodeName, qe)
 	if err != nil {
 		return nil, err
