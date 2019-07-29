@@ -27,9 +27,6 @@ import (
 // system chaincode package without importing it; more methods
 // should be added below if necessary
 type SystemChaincodeProvider interface {
-	// IsSysCC returns true if the supplied chaincode is a system chaincode
-	IsSysCC(name string) bool
-
 	// GetQueryExecutorForLedger returns a query executor for the
 	// ledger of the supplied channel.
 	// That's useful for system chaincodes that require unfettered

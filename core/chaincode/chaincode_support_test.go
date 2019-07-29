@@ -177,7 +177,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	globalConfig := GlobalConfig()
 	globalConfig.StartupTimeout = 10 * time.Second
 	globalConfig.ExecuteTimeout = 1 * time.Second
-	lsccImpl := lscc.New(sccp, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
+	lsccImpl := lscc.New(scc.BuiltinSCCs{}, sccp, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
 	ml := &mock.Lifecycle{}
 	ml.ChaincodeContainerInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 		switch name {
@@ -242,7 +242,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		Lifecycle:              ml,
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
-		SystemCCProvider:       sccp,
+		SystemCCProvider:       scc.BuiltinSCCs{},
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
@@ -1029,10 +1029,8 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	defer cleanup()
 
 	h := Handler{
-		TXContexts: NewTransactionContexts(),
-		SystemCCProvider: &scc.Provider{
-			Peer: peerInstance,
-		},
+		TXContexts:       NewTransactionContexts(),
+		SystemCCProvider: &scc.BuiltinSCCs{},
 	}
 
 	txid := "1"

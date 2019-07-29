@@ -124,10 +124,16 @@ type MSPIDsGetter func(string) []string
 
 //---------- the LSCC -----------------
 
+type IsSysCCChecker interface {
+	IsSysCC(name string) bool
+}
+
 // LifeCycleSysCC implements chaincode lifecycle and policies around it
 type LifeCycleSysCC struct {
 	// aclProvider is responsible for access control evaluation
 	ACLProvider aclmgmt.ACLProvider
+
+	IsSysCCChecker IsSysCCChecker
 
 	// SCCProvider is the interface which is passed into system chaincodes
 	// to access other parts of the system
@@ -147,17 +153,19 @@ type LifeCycleSysCC struct {
 // New creates a new instance of the LSCC
 // Typically there is only one of these per peer
 func New(
+	sccC IsSysCCChecker,
 	sccp sysccprovider.SystemChaincodeProvider,
 	ACLProvider aclmgmt.ACLProvider,
 	getMSPIDs MSPIDsGetter,
 	policyChecker policy.PolicyChecker,
 ) *LifeCycleSysCC {
 	return &LifeCycleSysCC{
-		Support:       &supportImpl{GetMSPIDs: getMSPIDs},
-		PolicyChecker: policyChecker,
-		SCCProvider:   sccp,
-		ACLProvider:   ACLProvider,
-		GetMSPIDs:     getMSPIDs,
+		IsSysCCChecker: sccC,
+		Support:        &supportImpl{GetMSPIDs: getMSPIDs},
+		PolicyChecker:  policyChecker,
+		SCCProvider:    sccp,
+		ACLProvider:    ACLProvider,
+		GetMSPIDs:      getMSPIDs,
 	}
 }
 
@@ -615,7 +623,7 @@ func (lscc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 		return err
 	}
 
-	if lscc.SCCProvider.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
+	if lscc.IsSysCCChecker.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
 		return errors.Errorf("cannot install: %s is the name of a system chaincode", cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 

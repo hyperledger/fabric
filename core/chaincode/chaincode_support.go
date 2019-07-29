@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
@@ -66,7 +65,7 @@ type ChaincodeSupport struct {
 	Lifecycle              Lifecycle
 	Peer                   *peer.Peer
 	Runtime                Runtime
-	SystemCCProvider       sysccprovider.SystemChaincodeProvider
+	SystemCCProvider       SystemCCProvider
 	TotalQueryLimit        int
 	UserRunsCC             bool
 }

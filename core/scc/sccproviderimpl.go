@@ -16,6 +16,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+type BuiltinSCCs struct{}
+
+func (BuiltinSCCs) IsSysCC(name string) bool {
+	return name == "lscc" || name == "cscc" || name == "qscc" || name == "_lifecycle"
+}
+
 // Provider implements sysccprovider.SystemChaincodeProvider
 type Provider struct {
 	Peer      *peer.Peer
@@ -32,19 +38,6 @@ func (p *Provider) RegisterSysCC(scc SelfDescribingSysCC) error {
 	}
 	p.SysCCs = append(p.SysCCs, scc)
 	return nil
-}
-
-// IsSysCC returns true if the supplied chaincode is a system chaincode
-func (p *Provider) IsSysCC(name string) bool {
-	for _, sysCC := range p.SysCCs {
-		if sysCC.Name() == name {
-			return true
-		}
-	}
-	if isDeprecatedSysCC(name) {
-		return true
-	}
-	return false
 }
 
 // GetQueryExecutorForLedger returns a query executor for the specified channel
@@ -68,10 +61,6 @@ func (p *Provider) GetApplicationConfig(cid string) (channelconfig.Application, 
 func (p *Provider) PolicyManager(channelID string) (policies.Manager, bool) {
 	m := p.Peer.GetPolicyManager(channelID)
 	return m, (m != nil)
-}
-
-func isDeprecatedSysCC(name string) bool {
-	return name == "vscc" || name == "escc"
 }
 
 func (p *Provider) isWhitelisted(syscc SelfDescribingSysCC) bool {

@@ -415,7 +415,7 @@ func serve(args []string) error {
 		Whitelist: scc.GlobalWhitelist(),
 	}
 
-	lsccInst := lscc.New(sccp, aclProvider, peerInstance.GetMSPIDs, policyChecker)
+	lsccInst := lscc.New(scc.BuiltinSCCs{}, sccp, aclProvider, peerInstance.GetMSPIDs, policyChecker)
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
@@ -523,7 +523,7 @@ func serve(args []string) error {
 		Lifecycle:              chaincodeEndorsementInfo,
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
-		SystemCCProvider:       sccp,
+		SystemCCProvider:       scc.BuiltinSCCs{},
 		TotalQueryLimit:        chaincodeConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}

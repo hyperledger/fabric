@@ -81,13 +81,6 @@ func TestDeploy(t *testing.T) {
 	gt.Eventually(csh.HandleChaincodeStreamCallCount).Should(gomega.Equal(2))
 }
 
-func TestIsSysCC(t *testing.T) {
-	assert.True(t, (newTestProvider()).IsSysCC("invokableExternalButNotCC2CC"))
-	assert.False(t, (newTestProvider()).IsSysCC("noSCC"))
-	assert.True(t, (newTestProvider()).IsSysCC("invokableCC2CCButNotExternal"))
-	assert.True(t, (newTestProvider()).IsSysCC("disabled"))
-}
-
 func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
 	p := &scc.Provider{
 		Peer: &peer.Peer{},

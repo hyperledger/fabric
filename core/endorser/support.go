@@ -107,7 +107,7 @@ func (s *SupportImpl) GetLedgerHeight(channelID string) (uint64, error) {
 // IsSysCC returns true if the name matches a system chaincode's
 // system chaincode names are system, chain wide
 func (s *SupportImpl) IsSysCC(name string) bool {
-	return s.SysCCProvider.IsSysCC(name)
+	return (scc.BuiltinSCCs{}).IsSysCC(name)
 }
 
 // GetChaincode returns the CCPackage from the fs
