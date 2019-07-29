@@ -203,19 +203,6 @@ type Support struct {
 		result1 ledger.TxSimulator
 		result2 error
 	}
-	IsJavaCCStub        func([]byte) (bool, error)
-	isJavaCCMutex       sync.RWMutex
-	isJavaCCArgsForCall []struct {
-		arg1 []byte
-	}
-	isJavaCCReturns struct {
-		result1 bool
-		result2 error
-	}
-	isJavaCCReturnsOnCall map[int]struct {
-		result1 bool
-		result2 error
-	}
 	IsSysCCStub        func(string) bool
 	isSysCCMutex       sync.RWMutex
 	isSysCCArgsForCall []struct {
@@ -1117,74 +1104,6 @@ func (fake *Support) GetTxSimulatorReturnsOnCall(i int, result1 ledger.TxSimulat
 	}{result1, result2}
 }
 
-func (fake *Support) IsJavaCC(arg1 []byte) (bool, error) {
-	var arg1Copy []byte
-	if arg1 != nil {
-		arg1Copy = make([]byte, len(arg1))
-		copy(arg1Copy, arg1)
-	}
-	fake.isJavaCCMutex.Lock()
-	ret, specificReturn := fake.isJavaCCReturnsOnCall[len(fake.isJavaCCArgsForCall)]
-	fake.isJavaCCArgsForCall = append(fake.isJavaCCArgsForCall, struct {
-		arg1 []byte
-	}{arg1Copy})
-	fake.recordInvocation("IsJavaCC", []interface{}{arg1Copy})
-	fake.isJavaCCMutex.Unlock()
-	if fake.IsJavaCCStub != nil {
-		return fake.IsJavaCCStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.isJavaCCReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *Support) IsJavaCCCallCount() int {
-	fake.isJavaCCMutex.RLock()
-	defer fake.isJavaCCMutex.RUnlock()
-	return len(fake.isJavaCCArgsForCall)
-}
-
-func (fake *Support) IsJavaCCCalls(stub func([]byte) (bool, error)) {
-	fake.isJavaCCMutex.Lock()
-	defer fake.isJavaCCMutex.Unlock()
-	fake.IsJavaCCStub = stub
-}
-
-func (fake *Support) IsJavaCCArgsForCall(i int) []byte {
-	fake.isJavaCCMutex.RLock()
-	defer fake.isJavaCCMutex.RUnlock()
-	argsForCall := fake.isJavaCCArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *Support) IsJavaCCReturns(result1 bool, result2 error) {
-	fake.isJavaCCMutex.Lock()
-	defer fake.isJavaCCMutex.Unlock()
-	fake.IsJavaCCStub = nil
-	fake.isJavaCCReturns = struct {
-		result1 bool
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *Support) IsJavaCCReturnsOnCall(i int, result1 bool, result2 error) {
-	fake.isJavaCCMutex.Lock()
-	defer fake.isJavaCCMutex.Unlock()
-	fake.IsJavaCCStub = nil
-	if fake.isJavaCCReturnsOnCall == nil {
-		fake.isJavaCCReturnsOnCall = make(map[int]struct {
-			result1 bool
-			result2 error
-		})
-	}
-	fake.isJavaCCReturnsOnCall[i] = struct {
-		result1 bool
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *Support) IsSysCC(arg1 string) bool {
 	fake.isSysCCMutex.Lock()
 	ret, specificReturn := fake.isSysCCReturnsOnCall[len(fake.isSysCCArgsForCall)]
@@ -1520,8 +1439,6 @@ func (fake *Support) Invocations() map[string][][]interface{} {
 	defer fake.getTransactionByIDMutex.RUnlock()
 	fake.getTxSimulatorMutex.RLock()
 	defer fake.getTxSimulatorMutex.RUnlock()
-	fake.isJavaCCMutex.RLock()
-	defer fake.isJavaCCMutex.RUnlock()
 	fake.isSysCCMutex.RLock()
 	defer fake.isSysCCMutex.RUnlock()
 	fake.isSysCCAndNotInvokableExternalMutex.RLock()

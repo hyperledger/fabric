@@ -114,10 +114,6 @@ func (s *MockSupport) CheckACL(signedProp *pb.SignedProposal, chdr *common.Chann
 	return s.CheckACLErr
 }
 
-func (s *MockSupport) IsJavaCC(buf []byte) (bool, error) {
-	return s.IsJavaRV, s.IsJavaErr
-}
-
 func (s *MockSupport) CheckInstantiationPolicy(name, version string, cd ccprovider.ChaincodeDefinition) error {
 	return s.CheckInstantiationPolicyError
 }

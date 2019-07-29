@@ -164,18 +164,6 @@ func (s *SupportImpl) CheckACL(signedProp *pb.SignedProposal, chdr *common.Chann
 	return s.ACLProvider.CheckACL(resources.Peer_Propose, chdr.ChannelId, signedProp)
 }
 
-// IsJavaCC returns true if the CDS package bytes describe a chaincode
-// that requires the java runtime environment to execute
-func (s *SupportImpl) IsJavaCC(buf []byte) (bool, error) {
-	//the inner dep spec will contain the type
-	ccpack, err := ccprovider.GetCCPackage(buf)
-	if err != nil {
-		return false, err
-	}
-	cds := ccpack.GetDepSpec()
-	return (cds.ChaincodeSpec.Type == pb.ChaincodeSpec_JAVA), nil
-}
-
 // CheckInstantiationPolicy returns an error if the instantiation in the supplied
 // ChaincodeDefinition differs from the instantiation policy stored on the ledger
 // If the definition is not of the legacy ChaincodeData type, it returns successfully.

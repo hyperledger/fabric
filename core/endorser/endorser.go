@@ -74,10 +74,6 @@ type Support interface {
 	// SignedProposal from which an id can be extracted for testing against a policy
 	CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error
 
-	// IsJavaCC returns true if the CDS package bytes describe a chaincode
-	// that requires the java runtime environment to execute
-	IsJavaCC(buf []byte) (bool, error)
-
 	// CheckInstantiationPolicy returns an error if the instantiation in the supplied
 	// ChaincodeDefinition differs from the instantiation policy stored on the ledger
 	CheckInstantiationPolicy(name, version string, cd ccprovider.ChaincodeDefinition) error
