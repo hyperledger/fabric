@@ -28,16 +28,14 @@ import (
 type VsccValidatorImpl struct {
 	chainID         string
 	cr              ChannelResources
-	sccprovider     sysccprovider.SystemChaincodeProvider
 	pluginValidator *PluginValidator
 }
 
 // newVSCCValidator creates new vscc validator
-func newVSCCValidator(chainID string, cr ChannelResources, sccp sysccprovider.SystemChaincodeProvider, pluginValidator *PluginValidator) *VsccValidatorImpl {
+func newVSCCValidator(chainID string, cr ChannelResources, pluginValidator *PluginValidator) *VsccValidatorImpl {
 	return &VsccValidatorImpl{
 		chainID:         chainID,
 		cr:              cr,
-		sccprovider:     sccp,
 		pluginValidator: pluginValidator,
 	}
 }
@@ -136,11 +134,11 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 			writesToLSCC = true
 		}
 
-		if !writesToNonInvokableSCC && v.sccprovider.IsSysCCAndNotInvokableCC2CC(ns.NameSpace) {
+		if !writesToNonInvokableSCC && IsSysCCAndNotInvokableCC2CC(ns.NameSpace) {
 			writesToNonInvokableSCC = true
 		}
 
-		if !writesToNonInvokableSCC && v.sccprovider.IsSysCCAndNotInvokableExternal(ns.NameSpace) {
+		if !writesToNonInvokableSCC && IsSysCCAndNotInvokableExternal(ns.NameSpace) {
 			writesToNonInvokableSCC = true
 		}
 	}
@@ -149,7 +147,7 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 	// validation will behave differently depending on the type of
 	// chaincode (system vs. application)
 
-	if !v.sccprovider.IsSysCC(ccID) {
+	if !IsSysCC(ccID) {
 		// if we're here, we know this is an invocation of an application chaincode;
 		// first of all, we make sure that:
 		// 1) we don't write to LSCC - an application chaincode is free to invoke LSCC
@@ -216,7 +214,7 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 		// cannot be invoked through a proposal to this peer, we have to drop the
 		// transaction; if we didn't, we wouldn't know how to decide whether it's
 		// valid or not because in v1, system chaincodes have no endorsement policy
-		if v.sccprovider.IsSysCCAndNotInvokableExternal(ccID) {
+		if IsSysCCAndNotInvokableExternal(ccID) {
 			return errors.Errorf("committing an invocation of cc %s is illegal", ccID),
 				peer.TxValidationCode_ILLEGAL_WRITESET
 		}
@@ -324,7 +322,7 @@ func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID 
 	}
 	var policy []byte
 	var err error
-	if !v.sccprovider.IsSysCC(ccID) {
+	if !IsSysCC(ccID) {
 		// when we are validating a chaincode that is not a
 		// system CC, we need to ask the CC to give us the name
 		// of VSCC and of the policy that should be used
@@ -388,4 +386,16 @@ func (v *VsccValidatorImpl) txWritesToNamespace(ns *rwsetutil.NsRwSet) bool {
 	}
 
 	return false
+}
+
+func IsSysCCAndNotInvokableExternal(name string) bool {
+	return name == "vscc" || name == "escc"
+}
+
+func IsSysCC(name string) bool {
+	return name == "vscc" || name == "escc" || name == "lscc" || name == "qscc" || name == "cscc"
+}
+
+func IsSysCCAndNotInvokableCC2CC(name string) bool {
+	return name == "vscc" || name == "escc" || name == "cscc"
 }

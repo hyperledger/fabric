@@ -16,7 +16,6 @@ import (
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	mscc "github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/deliverservice"
@@ -111,7 +110,6 @@ func TestInitialize(t *testing.T) {
 
 	peerInstance.Initialize(
 		nil,
-		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
 		&ledgermocks.DeployedChaincodeInfoProvider{},
 		nil,
@@ -127,7 +125,6 @@ func TestCreateChannel(t *testing.T) {
 	var initArg string
 	peerInstance.Initialize(
 		func(cid string) { initArg = cid },
-		(&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(),
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
 		&ledgermocks.DeployedChaincodeInfoProvider{},
 		nil,
@@ -142,7 +139,7 @@ func TestCreateChannel(t *testing.T) {
 		t.FailNow()
 	}
 
-	err = peerInstance.CreateChannel(block, nil, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
+	err = peerInstance.CreateChannel(block, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to create chain %s", err)
 	}

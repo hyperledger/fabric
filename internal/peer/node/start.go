@@ -534,7 +534,7 @@ func serve(args []string) error {
 	}
 
 	csccInst := cscc.New(
-		sccp, aclProvider,
+		aclProvider,
 		lifecycleValidatorCommitter,
 		lsccInst,
 		lifecycleValidatorCommitter,
@@ -637,7 +637,6 @@ func serve(args []string) error {
 			// this is expected to disappear with FAB-15061
 			cceventmgmt.GetMgr().Register(cid, sub)
 		},
-		sccp,
 		plugin.MapBasedMapper(validationPluginsByName),
 		lifecycleValidatorCommitter,
 		lsccInst,
