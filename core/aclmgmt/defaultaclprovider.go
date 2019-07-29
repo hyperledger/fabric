@@ -56,7 +56,6 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 	d.cResourcePolicyMap[resources.Lifecycle_CommitChaincodeDefinition] = CHANNELWRITERS
 	d.cResourcePolicyMap[resources.Lifecycle_QueryChaincodeDefinition] = CHANNELWRITERS
 	d.cResourcePolicyMap[resources.Lifecycle_QueryChaincodeDefinitions] = CHANNELWRITERS
-	d.cResourcePolicyMap[resources.Lifecycle_QueryNamespaceDefinitions] = CHANNELWRITERS
 	d.cResourcePolicyMap[resources.Lifecycle_SimulateCommitChaincodeDefinition] = CHANNELWRITERS
 
 	//-------------- LSCC --------------

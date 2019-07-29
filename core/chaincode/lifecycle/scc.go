@@ -67,11 +67,6 @@ const (
 	// QueryChaincodeDefinitionsFuncName is the chaincode function name used to
 	// query the committed chaincode definitions in a channel.
 	QueryChaincodeDefinitionsFuncName = "QueryChaincodeDefinitions"
-
-	// QueryNamespaceDefinitionsFuncName is the chaincode function name used
-	// to query which namespaces are currently defined and what type those
-	// namespaces are.
-	QueryNamespaceDefinitionsFuncName = "QueryNamespaceDefinitions"
 )
 
 // SCCFunctions provides a backing implementation with concrete arguments
@@ -583,28 +578,6 @@ func (i *Invocation) QueryChaincodeDefinitions(input *lb.QueryChaincodeDefinitio
 
 	return &lb.QueryChaincodeDefinitionsResult{
 		ChaincodeDefinitions: chaincodeDefinitions,
-	}, nil
-}
-
-// QueryNamespaceDefinitions is a SCC function that may be dispatched
-// to which routes to the underlying lifecycle implementation.
-func (i *Invocation) QueryNamespaceDefinitions(input *lb.QueryNamespaceDefinitionsArgs) (proto.Message, error) {
-	logger.Debugf("received invocation of QueryNamespaceDefinitions on channel '%s'",
-		i.Stub.GetChannelID(),
-	)
-
-	namespaces, err := i.SCC.Functions.QueryNamespaceDefinitions(&ChaincodePublicLedgerShim{ChaincodeStubInterface: i.Stub})
-	if err != nil {
-		return nil, err
-	}
-	result := map[string]*lb.QueryNamespaceDefinitionsResult_Namespace{}
-	for namespace, nType := range namespaces {
-		result[namespace] = &lb.QueryNamespaceDefinitionsResult_Namespace{
-			Type: nType,
-		}
-	}
-	return &lb.QueryNamespaceDefinitionsResult{
-		Namespaces: result,
 	}, nil
 }
 
