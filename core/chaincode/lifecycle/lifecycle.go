@@ -251,10 +251,10 @@ type ExternalFunctions struct {
 	InstalledChaincodesLister InstalledChaincodesLister
 }
 
-// SimulateCommitChaincodeDefinition takes a chaincode definition, checks that
+// CheckCommitReadiness takes a chaincode definition, checks that
 // its sequence number is the next allowable sequence number and checks which
 // organizations have approved the definition.
-func (ef *ExternalFunctions) SimulateCommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error) {
+func (ef *ExternalFunctions) CheckCommitReadiness(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error) {
 	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, ccname, "Sequence", publicState)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get current sequence")
@@ -285,7 +285,7 @@ func (ef *ExternalFunctions) SimulateCommitChaincodeDefinition(chname, ccname st
 // the approvals to determine if the result is valid (typically, this means
 // checking that the peer's own org has approved the definition).
 func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error) {
-	approvals, err := ef.SimulateCommitChaincodeDefinition(chname, ccname, cd, publicState, orgStates)
+	approvals, err := ef.CheckCommitReadiness(chname, ccname, cd, publicState, orgStates)
 	if err != nil {
 		return nil, err
 	}

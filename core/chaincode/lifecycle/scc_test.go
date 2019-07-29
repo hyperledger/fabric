@@ -1159,16 +1159,16 @@ var _ = Describe("SCC", func() {
 			})
 		})
 
-		Describe("SimulateCommitChaincodeDefinition", func() {
+		Describe("CheckCommitReadiness", func() {
 			var (
 				err            error
-				arg            *lb.SimulateCommitChaincodeDefinitionArgs
+				arg            *lb.CheckCommitReadinessArgs
 				marshaledArg   []byte
 				fakeOrgConfigs []*mock.ApplicationOrgConfig
 			)
 
 			BeforeEach(func() {
-				arg = &lb.SimulateCommitChaincodeDefinitionArgs{
+				arg = &lb.CheckCommitReadinessArgs{
 					Sequence:            7,
 					Name:                "name",
 					Version:             "version",
@@ -1182,7 +1182,7 @@ var _ = Describe("SCC", func() {
 				marshaledArg, err = proto.Marshal(arg)
 				Expect(err).NotTo(HaveOccurred())
 
-				fakeStub.GetArgsReturns([][]byte{[]byte("SimulateCommitChaincodeDefinition"), marshaledArg})
+				fakeStub.GetArgsReturns([][]byte{[]byte("CheckCommitReadiness"), marshaledArg})
 
 				fakeOrgConfigs = []*mock.ApplicationOrgConfig{{}, {}}
 				fakeOrgConfigs[0].MSPIDReturns("fake-mspid")
@@ -1193,7 +1193,7 @@ var _ = Describe("SCC", func() {
 					"org1": fakeOrgConfigs[1],
 				})
 
-				fakeSCCFuncs.SimulateCommitChaincodeDefinitionReturns(map[string]bool{
+				fakeSCCFuncs.CheckCommitReadinessReturns(map[string]bool{
 					"fake-mspid":  true,
 					"other-mspid": true,
 				}, nil)
@@ -1203,7 +1203,7 @@ var _ = Describe("SCC", func() {
 				res := scc.Invoke(fakeStub)
 				Expect(res.Message).To(Equal(""))
 				Expect(res.Status).To(Equal(int32(200)))
-				payload := &lb.SimulateCommitChaincodeDefinitionResult{}
+				payload := &lb.CheckCommitReadinessResult{}
 				err = proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1213,8 +1213,8 @@ var _ = Describe("SCC", func() {
 				Expect(orgApprovals["fake-mspid"]).To(BeTrue())
 				Expect(orgApprovals["other-mspid"]).To(BeTrue())
 
-				Expect(fakeSCCFuncs.SimulateCommitChaincodeDefinitionCallCount()).To(Equal(1))
-				chname, ccname, cd, pubState, orgStates := fakeSCCFuncs.SimulateCommitChaincodeDefinitionArgsForCall(0)
+				Expect(fakeSCCFuncs.CheckCommitReadinessCallCount()).To(Equal(1))
+				chname, ccname, cd, pubState, orgStates := fakeSCCFuncs.CheckCommitReadinessArgsForCall(0)
 				Expect(chname).To(Equal("test-channel"))
 				Expect(ccname).To(Equal("name"))
 				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
@@ -1258,20 +1258,20 @@ var _ = Describe("SCC", func() {
 					It("returns an error", func() {
 						res := scc.Invoke(fakeStub)
 						Expect(res.Status).To(Equal(int32(500)))
-						Expect(res.Message).To(Equal("failed to invoke backing implementation of 'SimulateCommitChaincodeDefinition': no application config for channel ''"))
+						Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CheckCommitReadiness': no application config for channel ''"))
 					})
 				})
 			})
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.SimulateCommitChaincodeDefinitionReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.CheckCommitReadinessReturns(nil, fmt.Errorf("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'SimulateCommitChaincodeDefinition': underlying-error"))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CheckCommitReadiness': underlying-error"))
 				})
 			})
 		})

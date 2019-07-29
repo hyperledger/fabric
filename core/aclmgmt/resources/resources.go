@@ -19,7 +19,7 @@ const (
 	Lifecycle_CommitChaincodeDefinition          = "_lifecycle/CommitChaincodeDefinition"
 	Lifecycle_QueryChaincodeDefinition           = "_lifecycle/QueryChaincodeDefinition"
 	Lifecycle_QueryChaincodeDefinitions          = "_lifecycle/QueryChaincodeDefinitions"
-	Lifecycle_SimulateCommitChaincodeDefinition  = "_lifecycle/SimulateCommitChaincodeDefinition"
+	Lifecycle_CheckCommitReadiness               = "_lifecycle/CheckCommitReadiness"
 
 	//Lscc resources
 	Lscc_Install                   = "lscc/Install"

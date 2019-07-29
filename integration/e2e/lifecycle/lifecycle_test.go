@@ -122,7 +122,7 @@ var _ = Describe("Lifecycle", func() {
 
 		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, testPeers...)
 
-		nwo.SimulateCommitUntilSuccess(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
+		nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
 		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
 		nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
 
@@ -168,7 +168,7 @@ var _ = Describe("Lifecycle", func() {
 
 		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, testPeers...)
 
-		nwo.SimulateCommitUntilSuccess(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
+		nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
 		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
 
 		By("ensuring the chaincode can still be invoked and queried")
