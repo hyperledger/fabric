@@ -60,6 +60,19 @@ type SCCFunctions struct {
 		result1 map[string]bool
 		result2 error
 	}
+	GetInstalledChaincodePackageStub        func(persistence.PackageID) ([]byte, error)
+	getInstalledChaincodePackageMutex       sync.RWMutex
+	getInstalledChaincodePackageArgsForCall []struct {
+		arg1 persistence.PackageID
+	}
+	getInstalledChaincodePackageReturns struct {
+		result1 []byte
+		result2 error
+	}
+	getInstalledChaincodePackageReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
 	InstallChaincodeStub        func([]byte) (*chaincode.InstalledChaincode, error)
 	installChaincodeMutex       sync.RWMutex
 	installChaincodeArgsForCall []struct {
@@ -347,6 +360,69 @@ func (fake *SCCFunctions) CommitChaincodeDefinitionReturnsOnCall(i int, result1 
 	}
 	fake.commitChaincodeDefinitionReturnsOnCall[i] = struct {
 		result1 map[string]bool
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *SCCFunctions) GetInstalledChaincodePackage(arg1 persistence.PackageID) ([]byte, error) {
+	fake.getInstalledChaincodePackageMutex.Lock()
+	ret, specificReturn := fake.getInstalledChaincodePackageReturnsOnCall[len(fake.getInstalledChaincodePackageArgsForCall)]
+	fake.getInstalledChaincodePackageArgsForCall = append(fake.getInstalledChaincodePackageArgsForCall, struct {
+		arg1 persistence.PackageID
+	}{arg1})
+	fake.recordInvocation("GetInstalledChaincodePackage", []interface{}{arg1})
+	fake.getInstalledChaincodePackageMutex.Unlock()
+	if fake.GetInstalledChaincodePackageStub != nil {
+		return fake.GetInstalledChaincodePackageStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.getInstalledChaincodePackageReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *SCCFunctions) GetInstalledChaincodePackageCallCount() int {
+	fake.getInstalledChaincodePackageMutex.RLock()
+	defer fake.getInstalledChaincodePackageMutex.RUnlock()
+	return len(fake.getInstalledChaincodePackageArgsForCall)
+}
+
+func (fake *SCCFunctions) GetInstalledChaincodePackageCalls(stub func(persistence.PackageID) ([]byte, error)) {
+	fake.getInstalledChaincodePackageMutex.Lock()
+	defer fake.getInstalledChaincodePackageMutex.Unlock()
+	fake.GetInstalledChaincodePackageStub = stub
+}
+
+func (fake *SCCFunctions) GetInstalledChaincodePackageArgsForCall(i int) persistence.PackageID {
+	fake.getInstalledChaincodePackageMutex.RLock()
+	defer fake.getInstalledChaincodePackageMutex.RUnlock()
+	argsForCall := fake.getInstalledChaincodePackageArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *SCCFunctions) GetInstalledChaincodePackageReturns(result1 []byte, result2 error) {
+	fake.getInstalledChaincodePackageMutex.Lock()
+	defer fake.getInstalledChaincodePackageMutex.Unlock()
+	fake.GetInstalledChaincodePackageStub = nil
+	fake.getInstalledChaincodePackageReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *SCCFunctions) GetInstalledChaincodePackageReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.getInstalledChaincodePackageMutex.Lock()
+	defer fake.getInstalledChaincodePackageMutex.Unlock()
+	fake.GetInstalledChaincodePackageStub = nil
+	if fake.getInstalledChaincodePackageReturnsOnCall == nil {
+		fake.getInstalledChaincodePackageReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.getInstalledChaincodePackageReturnsOnCall[i] = struct {
+		result1 []byte
 		result2 error
 	}{result1, result2}
 }
@@ -740,6 +816,8 @@ func (fake *SCCFunctions) Invocations() map[string][][]interface{} {
 	defer fake.checkCommitReadinessMutex.RUnlock()
 	fake.commitChaincodeDefinitionMutex.RLock()
 	defer fake.commitChaincodeDefinitionMutex.RUnlock()
+	fake.getInstalledChaincodePackageMutex.RLock()
+	defer fake.getInstalledChaincodePackageMutex.RUnlock()
 	fake.installChaincodeMutex.RLock()
 	defer fake.installChaincodeMutex.RUnlock()
 	fake.queryChaincodeDefinitionMutex.RLock()

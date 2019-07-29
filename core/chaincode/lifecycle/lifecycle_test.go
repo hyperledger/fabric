@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
-	persistenceintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
@@ -305,73 +304,30 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 	})
 
-	Describe("QueryInstalledChaincode", func() {
+	Describe("GetInstalledChaincodePackage", func() {
 		BeforeEach(func() {
-			fakeCCStore.LoadReturns([]byte("some stuff"), nil)
-			fakeParser.ParseReturns(&persistence.ChaincodePackage{
-				Metadata: &persistence.ChaincodePackageMetadata{
-					Type:  "type",
-					Label: "label",
-					Path:  "path",
-				},
-			}, nil)
+			fakeCCStore.LoadReturns([]byte("code-package"), nil)
 		})
 
-		It("passes through to the backing chaincode store", func() {
-			chaincodes, err := ef.QueryInstalledChaincode("packageid")
+		It("returns the chaincode install package", func() {
+			pkgBytes, err := ef.GetInstalledChaincodePackage(p.PackageID("some-package-id"))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(chaincodes).To(Equal(
-				&chaincode.InstalledChaincode{
-					PackageID: "packageid",
-					Label:     "label",
-				},
-			))
+			Expect(pkgBytes).To(Equal([]byte("code-package")))
+
+			Expect(fakeCCStore.LoadCallCount()).To(Equal(1))
+			packageID := fakeCCStore.LoadArgsForCall(0)
+			Expect(packageID).To(Equal(p.PackageID("some-package-id")))
 		})
 
-		Context("when loading the package fails", func() {
+		Context("when loading the chaincode fails", func() {
 			BeforeEach(func() {
-				fakeCCStore.LoadReturns(nil, errors.New("take a hike"))
+				fakeCCStore.LoadReturns(nil, fmt.Errorf("fake-error"))
 			})
 
-			It("returns an error", func() {
-				_, err := ef.QueryInstalledChaincode("packageid")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("could not load chaincode with package id 'packageid': take a hike"))
-			})
-		})
-
-		Context("when the code package cannot be found", func() {
-			BeforeEach(func() {
-				fakeCCStore.LoadReturns(nil, persistence.CodePackageNotFoundErr{PackageID: persistenceintf.PackageID("try hitchhiking")})
-			})
-
-			It("returns an error", func() {
-				_, err := ef.QueryInstalledChaincode("packageid")
-				Expect(err).To(MatchError("chaincode install package 'try hitchhiking' not found"))
-			})
-		})
-
-		Context("when parsing the package fails", func() {
-			BeforeEach(func() {
-				fakeParser.ParseReturns(nil, errors.New("take a hike"))
-			})
-
-			It("returns an error", func() {
-				_, err := ef.QueryInstalledChaincode("packageid")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("could not parse chaincode with package id 'packageid': take a hike"))
-			})
-		})
-
-		Context("when the package does not have metadata", func() {
-			BeforeEach(func() {
-				fakeParser.ParseReturns(&persistence.ChaincodePackage{}, nil)
-			})
-
-			It("returns an error", func() {
-				_, err := ef.QueryInstalledChaincode("packageid")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("empty metadata for chaincode with package id 'packageid'"))
+			It("wraps and returns the error", func() {
+				pkgBytes, err := ef.GetInstalledChaincodePackage(p.PackageID("some-package-id"))
+				Expect(pkgBytes).To(BeNil())
+				Expect(err).To(MatchError("could not load cc install package: fake-error"))
 			})
 		})
 	})

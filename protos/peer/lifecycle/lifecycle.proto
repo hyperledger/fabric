@@ -14,13 +14,13 @@ option java_package = "org.hyperledger.fabric.protos.peer.lifecycle";
 option go_package = "github.com/hyperledger/fabric/protos/peer/lifecycle";
 
 // InstallChaincodeArgs is the message used as the argument to
-// '_lifecycle.InstallChaincode'
+// '_lifecycle.InstallChaincode'.
 message InstallChaincodeArgs {
     bytes chaincode_install_package = 1; // This should be a marshaled lifecycle.ChaincodePackage
 }
 
 // InstallChaincodeArgs is the message returned by
-// '_lifecycle.InstallChaincode'
+// '_lifecycle.InstallChaincode'.
 message InstallChaincodeResult {
     string package_id = 1;
     string label = 2;
@@ -37,6 +37,18 @@ message QueryInstalledChaincodeArgs {
 message QueryInstalledChaincodeResult {
     string package_id = 1;
     string label = 2;
+}
+
+// GetInstalledChaincodePackageArgs is the message used as the argument to
+// '_lifecycle.GetInstalledChaincodePackage'.
+message GetInstalledChaincodePackageArgs {
+    string package_id = 1;
+}
+
+// GetInstalledChaincodePackageResult is the message returned by
+// '_lifecycle.GetInstalledChaincodePackage'.
+message GetInstalledChaincodePackageResult {
+    bytes chaincode_install_package = 1;
 }
 
 // QueryInstalledChaincodesArgs currently is an empty argument to

@@ -496,6 +496,17 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 	}, nil
 }
 
+// GetInstalledChaincodePakcage retreives the installed chaincode with the given package ID
+// from the peer's chaincode store.
+func (ef *ExternalFunctions) GetInstalledChaincodePackage(packageID p.PackageID) ([]byte, error) {
+	pkgBytes, err := ef.Resources.ChaincodeStore.Load(packageID)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not load cc install package")
+	}
+
+	return pkgBytes, nil
+}
+
 // QueryNamespaceDefinitions lists the publicly defined namespaces in a channel.  Today it should only ever
 // find Datatype encodings of 'ChaincodeDefinition'.  In the future as we support encodings like 'TokenManagementSystem'
 // or similar, additional statements will be added to the switch.
