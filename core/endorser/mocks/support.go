@@ -4,7 +4,6 @@ package mocks
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -97,19 +96,6 @@ type Support struct {
 		result1 *peer.Response
 		result2 *peer.ChaincodeEvent
 		result3 error
-	}
-	GetApplicationConfigStub        func(string) (channelconfig.Application, bool)
-	getApplicationConfigMutex       sync.RWMutex
-	getApplicationConfigArgsForCall []struct {
-		arg1 string
-	}
-	getApplicationConfigReturns struct {
-		result1 channelconfig.Application
-		result2 bool
-	}
-	getApplicationConfigReturnsOnCall map[int]struct {
-		result1 channelconfig.Application
-		result2 bool
 	}
 	GetChaincodeDefinitionStub        func(string, string, ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
 	getChaincodeDefinitionMutex       sync.RWMutex
@@ -224,19 +210,6 @@ type Support struct {
 	}
 	isSysCCAndNotInvokableExternalReturnsOnCall map[int]struct {
 		result1 bool
-	}
-	NewQueryCreatorStub        func(string) (endorser.QueryCreator, error)
-	newQueryCreatorMutex       sync.RWMutex
-	newQueryCreatorArgsForCall []struct {
-		arg1 string
-	}
-	newQueryCreatorReturns struct {
-		result1 endorser.QueryCreator
-		result2 error
-	}
-	newQueryCreatorReturnsOnCall map[int]struct {
-		result1 endorser.QueryCreator
-		result2 error
 	}
 	SerializeStub        func() ([]byte, error)
 	serializeMutex       sync.RWMutex
@@ -605,69 +578,6 @@ func (fake *Support) ExecuteLegacyInitReturnsOnCall(i int, result1 *peer.Respons
 		result2 *peer.ChaincodeEvent
 		result3 error
 	}{result1, result2, result3}
-}
-
-func (fake *Support) GetApplicationConfig(arg1 string) (channelconfig.Application, bool) {
-	fake.getApplicationConfigMutex.Lock()
-	ret, specificReturn := fake.getApplicationConfigReturnsOnCall[len(fake.getApplicationConfigArgsForCall)]
-	fake.getApplicationConfigArgsForCall = append(fake.getApplicationConfigArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("GetApplicationConfig", []interface{}{arg1})
-	fake.getApplicationConfigMutex.Unlock()
-	if fake.GetApplicationConfigStub != nil {
-		return fake.GetApplicationConfigStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.getApplicationConfigReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *Support) GetApplicationConfigCallCount() int {
-	fake.getApplicationConfigMutex.RLock()
-	defer fake.getApplicationConfigMutex.RUnlock()
-	return len(fake.getApplicationConfigArgsForCall)
-}
-
-func (fake *Support) GetApplicationConfigCalls(stub func(string) (channelconfig.Application, bool)) {
-	fake.getApplicationConfigMutex.Lock()
-	defer fake.getApplicationConfigMutex.Unlock()
-	fake.GetApplicationConfigStub = stub
-}
-
-func (fake *Support) GetApplicationConfigArgsForCall(i int) string {
-	fake.getApplicationConfigMutex.RLock()
-	defer fake.getApplicationConfigMutex.RUnlock()
-	argsForCall := fake.getApplicationConfigArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *Support) GetApplicationConfigReturns(result1 channelconfig.Application, result2 bool) {
-	fake.getApplicationConfigMutex.Lock()
-	defer fake.getApplicationConfigMutex.Unlock()
-	fake.GetApplicationConfigStub = nil
-	fake.getApplicationConfigReturns = struct {
-		result1 channelconfig.Application
-		result2 bool
-	}{result1, result2}
-}
-
-func (fake *Support) GetApplicationConfigReturnsOnCall(i int, result1 channelconfig.Application, result2 bool) {
-	fake.getApplicationConfigMutex.Lock()
-	defer fake.getApplicationConfigMutex.Unlock()
-	fake.GetApplicationConfigStub = nil
-	if fake.getApplicationConfigReturnsOnCall == nil {
-		fake.getApplicationConfigReturnsOnCall = make(map[int]struct {
-			result1 channelconfig.Application
-			result2 bool
-		})
-	}
-	fake.getApplicationConfigReturnsOnCall[i] = struct {
-		result1 channelconfig.Application
-		result2 bool
-	}{result1, result2}
 }
 
 func (fake *Support) GetChaincodeDefinition(arg1 string, arg2 string, arg3 ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
@@ -1224,69 +1134,6 @@ func (fake *Support) IsSysCCAndNotInvokableExternalReturnsOnCall(i int, result1 
 	}{result1}
 }
 
-func (fake *Support) NewQueryCreator(arg1 string) (endorser.QueryCreator, error) {
-	fake.newQueryCreatorMutex.Lock()
-	ret, specificReturn := fake.newQueryCreatorReturnsOnCall[len(fake.newQueryCreatorArgsForCall)]
-	fake.newQueryCreatorArgsForCall = append(fake.newQueryCreatorArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("NewQueryCreator", []interface{}{arg1})
-	fake.newQueryCreatorMutex.Unlock()
-	if fake.NewQueryCreatorStub != nil {
-		return fake.NewQueryCreatorStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.newQueryCreatorReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *Support) NewQueryCreatorCallCount() int {
-	fake.newQueryCreatorMutex.RLock()
-	defer fake.newQueryCreatorMutex.RUnlock()
-	return len(fake.newQueryCreatorArgsForCall)
-}
-
-func (fake *Support) NewQueryCreatorCalls(stub func(string) (endorser.QueryCreator, error)) {
-	fake.newQueryCreatorMutex.Lock()
-	defer fake.newQueryCreatorMutex.Unlock()
-	fake.NewQueryCreatorStub = stub
-}
-
-func (fake *Support) NewQueryCreatorArgsForCall(i int) string {
-	fake.newQueryCreatorMutex.RLock()
-	defer fake.newQueryCreatorMutex.RUnlock()
-	argsForCall := fake.newQueryCreatorArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *Support) NewQueryCreatorReturns(result1 endorser.QueryCreator, result2 error) {
-	fake.newQueryCreatorMutex.Lock()
-	defer fake.newQueryCreatorMutex.Unlock()
-	fake.NewQueryCreatorStub = nil
-	fake.newQueryCreatorReturns = struct {
-		result1 endorser.QueryCreator
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *Support) NewQueryCreatorReturnsOnCall(i int, result1 endorser.QueryCreator, result2 error) {
-	fake.newQueryCreatorMutex.Lock()
-	defer fake.newQueryCreatorMutex.Unlock()
-	fake.NewQueryCreatorStub = nil
-	if fake.newQueryCreatorReturnsOnCall == nil {
-		fake.newQueryCreatorReturnsOnCall = make(map[int]struct {
-			result1 endorser.QueryCreator
-			result2 error
-		})
-	}
-	fake.newQueryCreatorReturnsOnCall[i] = struct {
-		result1 endorser.QueryCreator
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *Support) Serialize() ([]byte, error) {
 	fake.serializeMutex.Lock()
 	ret, specificReturn := fake.serializeReturnsOnCall[len(fake.serializeArgsForCall)]
@@ -1423,8 +1270,6 @@ func (fake *Support) Invocations() map[string][][]interface{} {
 	defer fake.executeMutex.RUnlock()
 	fake.executeLegacyInitMutex.RLock()
 	defer fake.executeLegacyInitMutex.RUnlock()
-	fake.getApplicationConfigMutex.RLock()
-	defer fake.getApplicationConfigMutex.RUnlock()
 	fake.getChaincodeDefinitionMutex.RLock()
 	defer fake.getChaincodeDefinitionMutex.RUnlock()
 	fake.getChaincodeDeploymentSpecFSMutex.RLock()
@@ -1443,8 +1288,6 @@ func (fake *Support) Invocations() map[string][][]interface{} {
 	defer fake.isSysCCMutex.RUnlock()
 	fake.isSysCCAndNotInvokableExternalMutex.RLock()
 	defer fake.isSysCCAndNotInvokableExternalMutex.RUnlock()
-	fake.newQueryCreatorMutex.RLock()
-	defer fake.newQueryCreatorMutex.RUnlock()
 	fake.serializeMutex.RLock()
 	defer fake.serializeMutex.RUnlock()
 	fake.signMutex.RLock()

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
@@ -80,13 +79,6 @@ type Support interface {
 
 	// GetChaincodeDeploymentSpecFS returns the deploymentspec for a chaincode from the fs
 	GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error)
-
-	// GetApplicationConfig returns the configtxapplication.SharedConfig for the Channel
-	// and whether the Application config exists
-	GetApplicationConfig(cid string) (channelconfig.Application, bool)
-
-	// NewQueryCreator creates a new QueryCreator
-	NewQueryCreator(channel string) (QueryCreator, error)
 
 	// EndorseWithPlugin endorses the response with a plugin
 	EndorseWithPlugin(ctx Context) (*pb.ProposalResponse, error)
