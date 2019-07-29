@@ -409,12 +409,6 @@ type ChaincodeDefinition interface {
 	// CCVersion returns the version of the chaincode.
 	CCVersion() string
 
-	// Validation returns how to validate transactions for this chaincode.
-	// The string returned is the name of the validation method (usually 'vscc')
-	// and the bytes returned are the argument to the validation (in the case of
-	// 'vscc', this is a marshaled pb.VSCCArgs message).
-	Validation() (string, []byte)
-
 	// Endorsement returns how to endorse proposals for this chaincode.
 	// The string returns is the name of the endorsement method (usually 'escc').
 	Endorsement() string

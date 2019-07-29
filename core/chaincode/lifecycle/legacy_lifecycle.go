@@ -31,13 +31,11 @@ type ChaincodeInfoCache interface {
 // It is a different data-type to allow differentiation at cast-time from
 // chaincode definitions which require validaiton of instantiation policy.
 type LegacyDefinition struct {
-	Name                string
-	Version             string
-	HashField           []byte
-	EndorsementPlugin   string
-	ValidationPlugin    string
-	ValidationParameter []byte
-	RequiresInitField   bool
+	Name              string
+	Version           string
+	HashField         []byte
+	EndorsementPlugin string
+	RequiresInitField bool
 }
 
 // CCName returns the chaincode name
@@ -56,14 +54,6 @@ func (ld *LegacyDefinition) Hash() []byte {
 // CCVersion returns the version of the chaincode.
 func (ld *LegacyDefinition) CCVersion() string {
 	return ld.Version
-}
-
-// Validation returns how to validate transactions for this chaincode.
-// The string returned is the name of the validation method (usually 'vscc')
-// and the bytes returned are the argument to the validation (in the case of
-// 'vscc', this is a marshaled pb.VSCCArgs message).
-func (ld *LegacyDefinition) Validation() (string, []byte) {
-	return ld.ValidationPlugin, ld.ValidationParameter
 }
 
 // Endorsement returns how to endorse proposals for this chaincode.
@@ -145,12 +135,10 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeNam
 	chaincodeDefinition := chaincodeInfo.Definition
 
 	return &LegacyDefinition{
-		Name:                chaincodeName,
-		Version:             chaincodeDefinition.EndorsementInfo.Version,
-		EndorsementPlugin:   chaincodeDefinition.EndorsementInfo.EndorsementPlugin,
-		RequiresInitField:   chaincodeDefinition.EndorsementInfo.InitRequired,
-		ValidationPlugin:    chaincodeDefinition.ValidationInfo.ValidationPlugin,
-		ValidationParameter: chaincodeDefinition.ValidationInfo.ValidationParameter,
+		Name:              chaincodeName,
+		Version:           chaincodeDefinition.EndorsementInfo.Version,
+		EndorsementPlugin: chaincodeDefinition.EndorsementInfo.EndorsementPlugin,
+		RequiresInitField: chaincodeDefinition.EndorsementInfo.InitRequired,
 	}, nil
 }
 

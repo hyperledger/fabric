@@ -267,7 +267,7 @@ func (v *VsccValidatorImpl) VSCCValidateTxForCC(ctx *Context) error {
 	return &commonerrors.VSCCEndorsementPolicyError{Err: err}
 }
 
-func (v *VsccValidatorImpl) getCDataForCC(chid, ccid string) (ccprovider.ChaincodeDefinition, error) {
+func (v *VsccValidatorImpl) getCDataForCC(chid, ccid string) (*ccprovider.ChaincodeData, error) {
 	l := v.cr.Ledger()
 	if l == nil {
 		return nil, errors.New("nil ledger instance")
@@ -331,9 +331,9 @@ func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID 
 			logger.Errorf(msg)
 			return nil, nil, nil, err
 		}
-		cc.ChaincodeName = cd.CCName()
-		cc.ChaincodeVersion = cd.CCVersion()
-		vscc.ChaincodeName, policy = cd.Validation()
+		cc.ChaincodeName = cd.Name
+		cc.ChaincodeVersion = cd.Version
+		vscc.ChaincodeName, policy = cd.Vscc, cd.Policy
 	} else {
 		// when we are validating a system CC, we use the default
 		// VSCC and a default policy that requires one signature

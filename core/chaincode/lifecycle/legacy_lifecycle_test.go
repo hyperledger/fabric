@@ -182,11 +182,9 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			def, err := cei.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(def).To(Equal(&lifecycle.LegacyDefinition{
-				Name:                "name",
-				Version:             "version",
-				EndorsementPlugin:   "endorsement-plugin",
-				ValidationPlugin:    "validation-plugin",
-				ValidationParameter: []byte("validation-parameter"),
+				Name:              "name",
+				Version:           "version",
+				EndorsementPlugin: "endorsement-plugin",
 			}))
 		})
 
@@ -288,13 +286,11 @@ var _ = Describe("LegacyDefinition", func() {
 
 	BeforeEach(func() {
 		ld = &lifecycle.LegacyDefinition{
-			Name:                "name",
-			Version:             "version",
-			HashField:           []byte("hash"),
-			EndorsementPlugin:   "endorsement-plugin",
-			ValidationPlugin:    "validation-plugin",
-			ValidationParameter: []byte("validation-parameter"),
-			RequiresInitField:   true,
+			Name:              "name",
+			Version:           "version",
+			HashField:         []byte("hash"),
+			EndorsementPlugin: "endorsement-plugin",
+			RequiresInitField: true,
 		}
 	})
 
@@ -325,14 +321,6 @@ var _ = Describe("LegacyDefinition", func() {
 	Describe("RequiresInit", func() {
 		It("returns the endorsment init required field", func() {
 			Expect(ld.RequiresInit()).To(BeTrue())
-		})
-	})
-
-	Describe("Validation", func() {
-		It("returns the validation plugin name and parameter", func() {
-			validationPlugin, validationParameter := ld.Validation()
-			Expect(validationPlugin).To(Equal("validation-plugin"))
-			Expect(validationParameter).To(Equal([]byte("validation-parameter")))
 		})
 	})
 })
