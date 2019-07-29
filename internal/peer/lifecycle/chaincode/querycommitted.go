@@ -191,7 +191,7 @@ func (c *CommittedQuerier) printSingleChaincodeDefinition(cd ChaincodeDefinition
 
 func (c *CommittedQuerier) printApprovals(qcdr *lb.QueryChaincodeDefinitionResult) {
 	orgs := []string{}
-	approved := qcdr.GetApproved()
+	approved := qcdr.GetApprovals()
 	for org := range approved {
 		orgs = append(orgs, org)
 	}

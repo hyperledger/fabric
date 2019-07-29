@@ -137,7 +137,7 @@ message SimulateCommitChaincodeDefinitionArgs {
 // `_lifecycle.SimulateCommitChaincodeDefinition`. It returns a map of
 // orgs to their approval (true/false) for the definition supplied as args.
 message SimulateCommitChaincodeDefinitionResult{
-    map<string, bool> approved = 1;
+    map<string, bool> approvals = 1;
 }
 
 // QueryChaincodeDefinitionArgs is the message used as arguments to
@@ -156,7 +156,7 @@ message QueryChaincodeDefinitionResult {
     bytes validation_parameter = 5;
     common.CollectionConfigPackage collections = 6;
     bool init_required = 7;
-    map<string,bool> approved = 8;
+    map<string,bool> approvals = 8;
 }
 
 // QueryChaincodeDefinitionsArgs is the message used as arguments to

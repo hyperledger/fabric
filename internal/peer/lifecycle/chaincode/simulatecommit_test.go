@@ -36,7 +36,7 @@ var _ = Describe("SimulateCommit", func() {
 		BeforeEach(func() {
 			mockEndorserClient = &mock.EndorserClient{}
 			mockResult := &lb.SimulateCommitChaincodeDefinitionResult{
-				Approved: map[string]bool{
+				Approvals: map[string]bool{
 					"seemsfinetome":  true,
 					"well...ok":      true,
 					"absolutely-not": false,
@@ -89,7 +89,7 @@ var _ = Describe("SimulateCommit", func() {
 				err := commitSimulator.Simulate()
 				Expect(err).NotTo(HaveOccurred())
 				expectedOutput := &lb.SimulateCommitChaincodeDefinitionResult{
-					Approved: map[string]bool{
+					Approvals: map[string]bool{
 						"absolutely-not": false,
 						"well...ok":      true,
 						"seemsfinetome":  true,
