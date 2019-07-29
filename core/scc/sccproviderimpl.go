@@ -47,23 +47,6 @@ func (p *Provider) IsSysCC(name string) bool {
 	return false
 }
 
-// IsSysCCAndNotInvokableCC2CC returns true if the chaincode
-// is a system chaincode and *CANNOT* be invoked through
-// a cc2cc invocation
-func (p *Provider) IsSysCCAndNotInvokableCC2CC(name string) bool {
-	for _, sysCC := range p.SysCCs {
-		if sysCC.Name() == name {
-			return !sysCC.InvokableCC2CC()
-		}
-	}
-
-	if isDeprecatedSysCC(name) {
-		return true
-	}
-
-	return false
-}
-
 // GetQueryExecutorForLedger returns a query executor for the specified channel
 func (p *Provider) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
 	l := p.Peer.GetLedger(cid)

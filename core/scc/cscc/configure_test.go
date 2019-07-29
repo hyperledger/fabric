@@ -86,6 +86,55 @@ func TestMain(m *testing.M) {
 
 }
 
+func TestInvokedChaincodeName(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		name, err := InvokedChaincodeName(validSignedProposal().ProposalBytes)
+		assert.NoError(t, err)
+		assert.Equal(t, "cscc", name)
+	})
+
+	t.Run("BadProposalBytes", func(t *testing.T) {
+		_, err := InvokedChaincodeName([]byte("garbage"))
+		assert.EqualError(t, err, "could not unmarshal proposal: proto: can't skip unknown wire type 7")
+	})
+
+	t.Run("BadChaincodeProposalBytes", func(t *testing.T) {
+		_, err := InvokedChaincodeName(protoutil.MarshalOrPanic(&pb.Proposal{
+			Payload: []byte("garbage"),
+		}))
+		assert.EqualError(t, err, "could not unmarshal chaincode proposal payload: proto: can't skip unknown wire type 7")
+	})
+
+	t.Run("BadChaincodeInvocationSpec", func(t *testing.T) {
+		_, err := InvokedChaincodeName(protoutil.MarshalOrPanic(&pb.Proposal{
+			Payload: protoutil.MarshalOrPanic(&pb.ChaincodeProposalPayload{
+				Input: []byte("garbage"),
+			}),
+		}))
+		assert.EqualError(t, err, "could not unmarshal chaincode invocation spec: proto: can't skip unknown wire type 7")
+	})
+
+	t.Run("NilChaincodeSpec", func(t *testing.T) {
+		_, err := InvokedChaincodeName(protoutil.MarshalOrPanic(&pb.Proposal{
+			Payload: protoutil.MarshalOrPanic(&pb.ChaincodeProposalPayload{
+				Input: protoutil.MarshalOrPanic(&pb.ChaincodeInvocationSpec{}),
+			}),
+		}))
+		assert.EqualError(t, err, "chaincode spec is nil")
+	})
+
+	t.Run("NilChaincodeID", func(t *testing.T) {
+		_, err := InvokedChaincodeName(protoutil.MarshalOrPanic(&pb.Proposal{
+			Payload: protoutil.MarshalOrPanic(&pb.ChaincodeProposalPayload{
+				Input: protoutil.MarshalOrPanic(&pb.ChaincodeInvocationSpec{
+					ChaincodeSpec: &pb.ChaincodeSpec{},
+				}),
+			}),
+		}))
+		assert.EqualError(t, err, "chaincode id is nil")
+	})
+}
+
 func TestConfigerInit(t *testing.T) {
 	mockACLProvider := &mocks.ACLProvider{}
 	mockStub := &mocks.ChaincodeStub{}
@@ -104,6 +153,7 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	mockStub := &mocks.ChaincodeStub{}
 
 	mockStub.GetArgsReturns(nil)
+	mockStub.GetSignedProposalReturns(validSignedProposal(), nil)
 	res := cscc.Invoke(mockStub)
 	assert.NotEqual(
 		t,
@@ -137,7 +187,56 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	)
 	assert.Equal(t, "Requested function fooFunction not found.", res.Message)
 
+	mockACLProvider.CheckACLReturns(nil)
+	args = [][]byte{[]byte("GetConfigBlock"), []byte("testChainID")}
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(&pb.SignedProposal{
+		ProposalBytes: []byte("garbage"),
+	}, nil)
+	res = cscc.Invoke(mockStub)
+	assert.NotEqual(
+		t,
+		int32(shim.OK),
+		res.Status,
+		"invoke expected to fail in ccc2cc context",
+	)
+	assert.Equal(
+		t,
+		"Could not identify the called chaincode: [could not unmarshal proposal: proto: can't skip unknown wire type 7]",
+		res.Message,
+	)
+
+	mockACLProvider.CheckACLReturns(nil)
+	args = [][]byte{[]byte("GetConfigBlock"), []byte("testChainID")}
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(&pb.SignedProposal{
+		ProposalBytes: protoutil.MarshalOrPanic(&pb.Proposal{
+			Payload: protoutil.MarshalOrPanic(&pb.ChaincodeProposalPayload{
+				Input: protoutil.MarshalOrPanic(&pb.ChaincodeInvocationSpec{
+					ChaincodeSpec: &pb.ChaincodeSpec{
+						ChaincodeId: &pb.ChaincodeID{
+							Name: "fake-cc2cc",
+						},
+					},
+				}),
+			}),
+		}),
+	}, nil)
+	res = cscc.Invoke(mockStub)
+	assert.NotEqual(
+		t,
+		int32(shim.OK),
+		res.Status,
+		"invoke expected to fail in ccc2cc context",
+	)
+	assert.Equal(
+		t,
+		"Cannot invoke CSCC from another chaincode, original invocation for 'fake-cc2cc'",
+		res.Message,
+	)
+
 	mockACLProvider.CheckACLReturns(errors.New("Failed authorization"))
+	mockStub.GetSignedProposalReturns(validSignedProposal(), nil)
 	args = [][]byte{[]byte("GetConfigBlock"), []byte("testChainID")}
 	mockStub.GetArgsReturns(args)
 	res = cscc.Invoke(mockStub)
@@ -175,6 +274,7 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 	}
 	mockStub := &mocks.ChaincodeStub{}
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChain"), []byte("action")})
+	mockStub.GetSignedProposalReturns(validSignedProposal(), nil)
 	res := cscc.Invoke(mockStub)
 	assert.NotEqual(
 		t,
@@ -273,11 +373,12 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		t.Fatalf("cscc invoke JoinChain failed because invalid block")
 	}
 	args := [][]byte{[]byte("JoinChain"), blockBytes}
-	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp := validSignedProposal()
 	sProp.Signature = sProp.ProposalBytes
 
 	// Try fail path with nil block
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChain"), nil})
+	mockStub.GetSignedProposalReturns(sProp, nil)
 	res := cscc.Invoke(mockStub)
 	//res := stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), nil}, sProp)
 	assert.Equal(t, int32(shim.ERROR), res.Status)
@@ -373,6 +474,7 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	// Failed path: wrong parameter type
 	args := [][]byte{[]byte("JoinChain"), []byte(blockBytes)}
 	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(validSignedProposal(), nil)
 	res := cscc.Invoke(mockStub)
 
 	assert.NotEqual(
@@ -391,4 +493,20 @@ func mockConfigBlock() []byte {
 		blockBytes = protoutil.MarshalOrPanic(block)
 	}
 	return blockBytes
+}
+
+func validSignedProposal() *pb.SignedProposal {
+	return &pb.SignedProposal{
+		ProposalBytes: protoutil.MarshalOrPanic(&pb.Proposal{
+			Payload: protoutil.MarshalOrPanic(&pb.ChaincodeProposalPayload{
+				Input: protoutil.MarshalOrPanic(&pb.ChaincodeInvocationSpec{
+					ChaincodeSpec: &pb.ChaincodeSpec{
+						ChaincodeId: &pb.ChaincodeID{
+							Name: "cscc",
+						},
+					},
+				}),
+			}),
+		}),
+	}
 }

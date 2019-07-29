@@ -30,10 +30,6 @@ type SystemChaincodeProvider interface {
 	// IsSysCC returns true if the supplied chaincode is a system chaincode
 	IsSysCC(name string) bool
 
-	// IsSysCCAndNotInvokableCC2CC returns true if the supplied chaincode
-	// is a system chaincode and is not invokable through a cc2cc invocation
-	IsSysCCAndNotInvokableCC2CC(name string) bool
-
 	// IsSysCCAndNotInvokable returns true if the supplied chaincode
 	// is a system chaincode and is not invokable through a proposal
 	IsSysCCAndNotInvokableExternal(name string) bool

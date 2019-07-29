@@ -2197,15 +2197,6 @@ var _ = Describe("Handler", func() {
 			fakeInvoker.InvokeReturns(responseMessage, nil)
 		})
 
-		It("checks if the target is not invokable", func() {
-			_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(fakeSystemCCProvider.IsSysCCAndNotInvokableCC2CCCallCount()).To(Equal(1))
-			name := fakeSystemCCProvider.IsSysCCAndNotInvokableCC2CCArgsForCall(0)
-			Expect(name).To(Equal("target-chaincode-name"))
-		})
-
 		It("checks if the target is a system chaincode", func() {
 			_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
 			Expect(err).NotTo(HaveOccurred())
@@ -2435,17 +2426,6 @@ var _ = Describe("Handler", func() {
 					_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
 					Expect(err).To(MatchError("raspberry-pie"))
 				})
-			})
-		})
-
-		Context("when the target is not invokable", func() {
-			BeforeEach(func() {
-				fakeSystemCCProvider.IsSysCCAndNotInvokableCC2CCReturns(true)
-			})
-
-			It("returns an error", func() {
-				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-				Expect(err).To(MatchError("system chaincode target-chaincode-name cannot be invoked with a cc2cc invocation"))
 			})
 		})
 

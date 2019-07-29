@@ -73,22 +73,6 @@ type CCPackage struct {
 		result1 *ccprovider.ChaincodeData
 		result2 error
 	}
-	InitFromFSStub        func(string, string) ([]byte, *peer.ChaincodeDeploymentSpec, error)
-	initFromFSMutex       sync.RWMutex
-	initFromFSArgsForCall []struct {
-		arg1 string
-		arg2 string
-	}
-	initFromFSReturns struct {
-		result1 []byte
-		result2 *peer.ChaincodeDeploymentSpec
-		result3 error
-	}
-	initFromFSReturnsOnCall map[int]struct {
-		result1 []byte
-		result2 *peer.ChaincodeDeploymentSpec
-		result3 error
-	}
 	PutChaincodeToFSStub        func() error
 	putChaincodeToFSMutex       sync.RWMutex
 	putChaincodeToFSArgsForCall []struct {
@@ -442,73 +426,6 @@ func (fake *CCPackage) InitFromBufferReturnsOnCall(i int, result1 *ccprovider.Ch
 	}{result1, result2}
 }
 
-func (fake *CCPackage) InitFromFS(arg1 string, arg2 string) ([]byte, *peer.ChaincodeDeploymentSpec, error) {
-	fake.initFromFSMutex.Lock()
-	ret, specificReturn := fake.initFromFSReturnsOnCall[len(fake.initFromFSArgsForCall)]
-	fake.initFromFSArgsForCall = append(fake.initFromFSArgsForCall, struct {
-		arg1 string
-		arg2 string
-	}{arg1, arg2})
-	fake.recordInvocation("InitFromFS", []interface{}{arg1, arg2})
-	fake.initFromFSMutex.Unlock()
-	if fake.InitFromFSStub != nil {
-		return fake.InitFromFSStub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2, ret.result3
-	}
-	fakeReturns := fake.initFromFSReturns
-	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
-}
-
-func (fake *CCPackage) InitFromFSCallCount() int {
-	fake.initFromFSMutex.RLock()
-	defer fake.initFromFSMutex.RUnlock()
-	return len(fake.initFromFSArgsForCall)
-}
-
-func (fake *CCPackage) InitFromFSCalls(stub func(string, string) ([]byte, *peer.ChaincodeDeploymentSpec, error)) {
-	fake.initFromFSMutex.Lock()
-	defer fake.initFromFSMutex.Unlock()
-	fake.InitFromFSStub = stub
-}
-
-func (fake *CCPackage) InitFromFSArgsForCall(i int) (string, string) {
-	fake.initFromFSMutex.RLock()
-	defer fake.initFromFSMutex.RUnlock()
-	argsForCall := fake.initFromFSArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *CCPackage) InitFromFSReturns(result1 []byte, result2 *peer.ChaincodeDeploymentSpec, result3 error) {
-	fake.initFromFSMutex.Lock()
-	defer fake.initFromFSMutex.Unlock()
-	fake.InitFromFSStub = nil
-	fake.initFromFSReturns = struct {
-		result1 []byte
-		result2 *peer.ChaincodeDeploymentSpec
-		result3 error
-	}{result1, result2, result3}
-}
-
-func (fake *CCPackage) InitFromFSReturnsOnCall(i int, result1 []byte, result2 *peer.ChaincodeDeploymentSpec, result3 error) {
-	fake.initFromFSMutex.Lock()
-	defer fake.initFromFSMutex.Unlock()
-	fake.InitFromFSStub = nil
-	if fake.initFromFSReturnsOnCall == nil {
-		fake.initFromFSReturnsOnCall = make(map[int]struct {
-			result1 []byte
-			result2 *peer.ChaincodeDeploymentSpec
-			result3 error
-		})
-	}
-	fake.initFromFSReturnsOnCall[i] = struct {
-		result1 []byte
-		result2 *peer.ChaincodeDeploymentSpec
-		result3 error
-	}{result1, result2, result3}
-}
-
 func (fake *CCPackage) PutChaincodeToFS() error {
 	fake.putChaincodeToFSMutex.Lock()
 	ret, specificReturn := fake.putChaincodeToFSReturnsOnCall[len(fake.putChaincodeToFSArgsForCall)]
@@ -636,8 +553,6 @@ func (fake *CCPackage) Invocations() map[string][][]interface{} {
 	defer fake.getPackageObjectMutex.RUnlock()
 	fake.initFromBufferMutex.RLock()
 	defer fake.initFromBufferMutex.RUnlock()
-	fake.initFromFSMutex.RLock()
-	defer fake.initFromFSMutex.RUnlock()
 	fake.putChaincodeToFSMutex.RLock()
 	defer fake.putChaincodeToFSMutex.RUnlock()
 	fake.validateCCMutex.RLock()

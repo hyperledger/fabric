@@ -53,7 +53,6 @@ type Invoker interface {
 // SystemCCProvider provides system chaincode metadata.
 type SystemCCProvider interface {
 	IsSysCC(name string) bool
-	IsSysCCAndNotInvokableCC2CC(name string) bool
 }
 
 // TransactionRegistry tracks active transactions for each channel.
@@ -351,12 +350,6 @@ func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage) {
 
 // Check if the transactor is allow to call this chaincode on this channel
 func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal, ccIns *sysccprovider.ChaincodeInstance) error {
-	// ensure that we don't invoke a system chaincode
-	// that is not invokable through a cc2cc invocation
-	if h.SystemCCProvider.IsSysCCAndNotInvokableCC2CC(ccIns.ChaincodeName) {
-		return errors.Errorf("system chaincode %s cannot be invoked with a cc2cc invocation", ccIns.ChaincodeName)
-	}
-
 	// if we are here, all we know is that the invoked chaincode is either
 	// - a system chaincode that *is* invokable through a cc2cc
 	//   (but we may still have to determine whether the invoker can perform this invocation)

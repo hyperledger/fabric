@@ -88,14 +88,9 @@ func TestIsSysCC(t *testing.T) {
 	assert.True(t, (newTestProvider()).IsSysCC("disabled"))
 }
 
-func TestIsSysCCAndNotInvokableCC2CC(t *testing.T) {
+func TestIsSysCCAndNotInvokableExternal(t *testing.T) {
 	assert.False(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("invokableExternalButNotCC2CC"))
 	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("invokableCC2CCButNotExternal"))
-}
-
-func TestIsSysCCAndNotInvokableExternal(t *testing.T) {
-	assert.False(t, (newTestProvider()).IsSysCCAndNotInvokableCC2CC("invokableCC2CCButNotExternal"))
-	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableCC2CC("invokableExternalButNotCC2CC"))
 }
 
 func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
