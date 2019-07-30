@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"testing"
 	"time"
 
@@ -693,5 +694,47 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "timed out")
 		close(delayChan)
+	})
+}
+
+func TestProcessProposals(t *testing.T) {
+	// Build clients that return a range of status codes (for verifying each client is called).
+	mockClients := []pb.EndorserClient{}
+	for i := 2; i <= 5; i++ {
+		response := &pb.ProposalResponse{
+			Response:    &pb.Response{Status: int32(i * 100)},
+			Endorsement: &pb.Endorsement{},
+		}
+		mockClients = append(mockClients, common.GetMockEndorserClient(response, nil))
+	}
+	mockErrorClient := common.GetMockEndorserClient(nil, errors.New("failed to call endorser"))
+	signedProposal := &pb.SignedProposal{}
+	t.Run("should process a proposal for a single peer", func(t *testing.T) {
+		responses, err := processProposals([]pb.EndorserClient{mockClients[0]}, signedProposal)
+		assert.NoError(t, err)
+		assert.Len(t, responses, 1)
+		assert.Equal(t, responses[0].Response.Status, int32(200))
+	})
+	t.Run("should process a proposal for multiple peers", func(t *testing.T) {
+		responses, err := processProposals(mockClients, signedProposal)
+		assert.NoError(t, err)
+		assert.Len(t, responses, 4)
+		// Sort the statuses (as they may turn up in different order) before comparing.
+		statuses := []int32{}
+		for _, response := range responses {
+			statuses = append(statuses, response.Response.Status)
+		}
+		sort.Slice(statuses, func(i, j int) bool { return statuses[i] < statuses[j] })
+		assert.EqualValues(t, []int32{200, 300, 400, 500}, statuses)
+	})
+	t.Run("should return an error from processing a proposal for a single peer", func(t *testing.T) {
+		responses, err := processProposals([]pb.EndorserClient{mockErrorClient}, signedProposal)
+		assert.EqualError(t, err, "failed to call endorser")
+		assert.Nil(t, responses)
+	})
+	t.Run("should return an error from processing a proposal for a single peer within multiple peers", func(t *testing.T) {
+		responses, err := processProposals([]pb.EndorserClient{mockClients[0], mockErrorClient, mockClients[1]}, signedProposal)
+		assert.EqualError(t, err, "failed to call endorser")
+		assert.Nil(t, responses)
 	})
 }
