@@ -53,23 +53,26 @@ func TestResetToGenesisBlkSingleBlkFile(t *testing.T) {
 func TestResetToGenesisBlkMultipleBlkFiles(t *testing.T) {
 	blockStoreRootDir := "/tmp/testBlockStoreReset"
 	assert.NoError(t, os.RemoveAll(blockStoreRootDir))
-	blocks := testutil.ConstructTestBlocks(t, 1000)
-	maxFileSie := int(0.2 * float64(testutilEstimateTotalSizeOnDisk(t, blocks)))
-	env := newTestEnv(t, NewConf(blockStoreRootDir, maxFileSie))
+	blocks := testutil.ConstructTestBlocks(t, 20) // 20 blocks persisted in ~5 block files
+	blocksPerFile := 20 / 5
+	env := newTestEnv(t, NewConf(blockStoreRootDir, 0))
 	defer env.Cleanup()
 	provider := env.provider
 	store, err := provider.CreateBlockStore("ledger1")
 	assert.NoError(t, err)
-	for _, b := range blocks {
+	for i, b := range blocks {
 		assert.NoError(t, store.AddBlock(b))
+		if i != 0 && i%blocksPerFile == 0 {
+			// block ranges in files [(0, 4):file0, (5,8):file1, (9,12):file2, (13, 16):file3, (17,19):file4]
+			store.(*fsBlockStore).fileMgr.moveToNextFile()
+		}
 	}
 	store.Shutdown()
 	provider.Close()
 
 	ledgerDir := (&Conf{blockStorageDir: blockStoreRootDir}).getLedgerBlockDir("ledger1")
 	files, err := ioutil.ReadDir(ledgerDir)
-	assert.Len(t, files, 6)
-
+	assert.Len(t, files, 5)
 	resetToGenesisBlk(ledgerDir)
 	assertBlocksDirOnlyFileWithGenesisBlock(t, ledgerDir, blocks[0])
 }
@@ -77,8 +80,8 @@ func TestResetToGenesisBlkMultipleBlkFiles(t *testing.T) {
 func TestResetBlockStore(t *testing.T) {
 	blockStoreRootDir := "/tmp/testBlockStoreReset"
 	os.RemoveAll(blockStoreRootDir)
-	blocks1 := testutil.ConstructTestBlocks(t, 1000)
-	blocks2 := testutil.ConstructTestBlocks(t, 2000)
+	blocks1 := testutil.ConstructTestBlocks(t, 20) // 20 blocks persisted in ~5 block files
+	blocks2 := testutil.ConstructTestBlocks(t, 40) // 40 blocks persisted in ~5 block files
 	maxFileSie := int(0.2 * float64(testutilEstimateTotalSizeOnDisk(t, blocks1)))
 
 	env := newTestEnv(t, NewConf(blockStoreRootDir, maxFileSie))
@@ -104,8 +107,8 @@ func TestResetBlockStore(t *testing.T) {
 	h, err := LoadPreResetHeight(blockStoreRootDir)
 	assert.Equal(t,
 		map[string]uint64{
-			"ledger1": 1000,
-			"ledger2": 2000,
+			"ledger1": 20,
+			"ledger2": 40,
 		},
 		h,
 	)
