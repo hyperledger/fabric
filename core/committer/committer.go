@@ -30,8 +30,8 @@ import (
 // change
 type Committer interface {
 
-	// CommitWithPvtData block and private data into the ledger
-	CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error
+	// CommitLegacy block and private data into the ledger
+	CommitLegacy(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error
 
 	// GetPvtDataAndBlockByNum retrieves block with private data with given
 	// sequence number

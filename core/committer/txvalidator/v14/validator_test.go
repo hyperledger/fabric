@@ -282,7 +282,7 @@ func putCCInfoWithVSCCAndVer(theLedger ledger.PeerLedger, ccname, vscc, ver stri
 	bcInfo, err := theLedger.GetBlockchainInfo()
 	assert.NoError(t, err)
 	block0 := testutil.ConstructBlock(t, 1, bcInfo.CurrentBlockHash, [][]byte{pubSimulationBytes}, true)
-	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{Block: block0}, &ledger.CommitOptions{})
+	err = theLedger.CommitLegacy(&ledger.BlockAndPvtData{Block: block0}, &ledger.CommitOptions{})
 	assert.NoError(t, err)
 }
 
@@ -302,7 +302,7 @@ func putSBEP(theLedger ledger.PeerLedger, cc, key string, policy []byte, t *test
 	bcInfo, err := theLedger.GetBlockchainInfo()
 	assert.NoError(t, err)
 	block0 := testutil.ConstructBlock(t, 2, bcInfo.CurrentBlockHash, [][]byte{pubSimulationBytes}, true)
-	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{Block: block0}, &ledger.CommitOptions{})
+	err = theLedger.CommitLegacy(&ledger.BlockAndPvtData{Block: block0}, &ledger.CommitOptions{})
 	assert.NoError(t, err)
 }
 
@@ -1514,8 +1514,8 @@ func (m *mockLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFil
 	return args.Get(0).([]*ledger.TxPvtData), nil
 }
 
-// CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation
-func (m *mockLedger) CommitWithPvtData(pvtDataAndBlock *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
+// CommitLegacy commits the block and the corresponding pvt data in an atomic operation
+func (m *mockLedger) CommitLegacy(pvtDataAndBlock *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
 	return nil
 }
 

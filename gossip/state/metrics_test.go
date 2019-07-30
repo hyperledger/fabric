@@ -24,7 +24,7 @@ import (
 func TestMetrics(t *testing.T) {
 	t.Parallel()
 	mc := &mockCommitter{Mock: &mock.Mock{}}
-	mc.On("CommitWithPvtData", mock.Anything).Return(nil)
+	mc.On("CommitLegacy", mock.Anything).Return(nil)
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(100), nil).Twice()
 	mc.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	g := &mocks.GossipMock{}

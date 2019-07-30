@@ -16,6 +16,20 @@ func (_m *Committer) Close() {
 	_m.Called()
 }
 
+// CommitLegacy provides a mock function with given fields: blockAndPvtData, commitOpts
+func (_m *Committer) CommitLegacy(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
+	ret := _m.Called(blockAndPvtData, commitOpts)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*ledger.BlockAndPvtData, *ledger.CommitOptions) error); ok {
+		r0 = rf(blockAndPvtData, commitOpts)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // CommitPvtDataOfOldBlocks provides a mock function with given fields: blockPvtData
 func (_m *Committer) CommitPvtDataOfOldBlocks(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
 	ret := _m.Called(blockPvtData)
@@ -37,20 +51,6 @@ func (_m *Committer) CommitPvtDataOfOldBlocks(blockPvtData []*ledger.BlockPvtDat
 	}
 
 	return r0, r1
-}
-
-// CommitWithPvtData provides a mock function with given fields: blockAndPvtData, commitOpts
-func (_m *Committer) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
-	ret := _m.Called(blockAndPvtData, commitOpts)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*ledger.BlockAndPvtData, *ledger.CommitOptions) error); ok {
-		r0 = rf(blockAndPvtData, commitOpts)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
 }
 
 // DoesPvtDataInfoExistInLedger provides a mock function with given fields: blockNum

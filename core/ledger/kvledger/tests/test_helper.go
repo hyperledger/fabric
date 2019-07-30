@@ -46,14 +46,14 @@ func (env *env) newTestHelperOpenLgr(id string, t *testing.T) *testhelper {
 	return &testhelper{client, committer, verifier, lgr, id, assert.New(t)}
 }
 
-// cutBlockAndCommitWithPvtdata gathers all the transactions simulated by the test code (by calling
+// cutBlockAndCommitLegacy gathers all the transactions simulated by the test code (by calling
 // the functions available in the 'client') and cuts the next block and commits to the ledger
-func (h *testhelper) cutBlockAndCommitWithPvtdata() *ledger.BlockAndPvtData {
+func (h *testhelper) cutBlockAndCommitLegacy() *ledger.BlockAndPvtData {
 	defer func() {
 		h.simulatedTrans = nil
 		h.missingPvtData = make(ledger.TxMissingPvtDataMap)
 	}()
-	return h.committer.cutBlockAndCommitWithPvtdata(h.simulatedTrans, h.missingPvtData)
+	return h.committer.cutBlockAndCommitLegacy(h.simulatedTrans, h.missingPvtData)
 }
 
 func (h *testhelper) cutBlockAndCommitExpectError() (*ledger.BlockAndPvtData, error) {

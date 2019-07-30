@@ -63,7 +63,7 @@ func TestResetAllLedgers(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, genesisBlocks[i], gb)
 		for _, b := range dataHelper.submittedData[ledgerID].Blocks {
-			assert.NoError(t, h.lgr.CommitWithPvtData(b, &ledger.CommitOptions{}))
+			assert.NoError(t, h.lgr.CommitLegacy(b, &ledger.CommitOptions{}))
 		}
 		bcInfo, err := h.lgr.GetBlockchainInfo()
 		assert.NoError(t, err)
@@ -86,14 +86,14 @@ func TestResetAllLedgersWithBTL(t *testing.T) {
 
 	// deploy cc1 with 'collConf'
 	h.simulateDeployTx("cc1", collConf)
-	blk1 := h.cutBlockAndCommitWithPvtdata()
+	blk1 := h.cutBlockAndCommitLegacy()
 
 	// commit pvtdata writes in block 2.
 	h.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "key1", "value1") // (key1 would never expire)
 		s.setPvtdata("cc1", "coll2", "key2", "value2") // (key2 would expire at block 4)
 	})
-	blk2 := h.cutBlockAndCommitWithPvtdata()
+	blk2 := h.cutBlockAndCommitLegacy()
 
 	// After commit of block 2
 	h.verifyPvtState("cc1", "coll1", "key1", "value1") // key1 should still exist in the state
@@ -105,14 +105,14 @@ func TestResetAllLedgersWithBTL(t *testing.T) {
 		s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 		s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
 	})
-	blk3 := h.cutBlockAndCommitWithPvtdata()
+	blk3 := h.cutBlockAndCommitLegacy()
 
 	// After commit of block 4
 	h.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 		s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
 	})
-	blk4 := h.cutBlockAndCommitWithPvtdata()
+	blk4 := h.cutBlockAndCommitLegacy()
 
 	// After commit of block 4
 	h.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state
@@ -139,13 +139,13 @@ func TestResetAllLedgersWithBTL(t *testing.T) {
 	h.verifyLedgerHeight(1)
 
 	// recommit blocks
-	assert.NoError(t, h.lgr.CommitWithPvtData(blk1, &ledger.CommitOptions{}))
-	assert.NoError(t, h.lgr.CommitWithPvtData(blk2, &ledger.CommitOptions{}))
+	assert.NoError(t, h.lgr.CommitLegacy(blk1, &ledger.CommitOptions{}))
+	assert.NoError(t, h.lgr.CommitLegacy(blk2, &ledger.CommitOptions{}))
 	// After the recommit of block 2
 	h.verifyPvtState("cc1", "coll1", "key1", "value1") // key1 should still exist in the state
 	h.verifyPvtState("cc1", "coll2", "key2", "value2") // key2 should still exist in the state
-	assert.NoError(t, h.lgr.CommitWithPvtData(blk3, &ledger.CommitOptions{}))
-	assert.NoError(t, h.lgr.CommitWithPvtData(blk4, &ledger.CommitOptions{}))
+	assert.NoError(t, h.lgr.CommitLegacy(blk3, &ledger.CommitOptions{}))
+	assert.NoError(t, h.lgr.CommitLegacy(blk4, &ledger.CommitOptions{}))
 
 	// after the recommit of block 4
 	h.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state

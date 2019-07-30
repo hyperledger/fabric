@@ -27,16 +27,16 @@ func newCommitter(lgr ledger.PeerLedger, t *testing.T) *committer {
 	return &committer{lgr, newBlockGenerator(lgr, t), assert.New(t)}
 }
 
-// cutBlockAndCommitWithPvtdata cuts the next block from the given 'txAndPvtdata' and commits the block (with pvt data) to the ledger
+// cutBlockAndCommitLegacy cuts the next block from the given 'txAndPvtdata' and commits the block (with pvt data) to the ledger
 // This function return a copy of 'ledger.BlockAndPvtData' that was submitted to the ledger to commit.
 // A copy is returned instead of the actual one because, ledger makes some changes to the submitted block before commit
 // (such as setting the metadata) and the test code would want to have the exact copy of the block that was submitted to
 // the ledger
-func (c *committer) cutBlockAndCommitWithPvtdata(trans []*txAndPvtdata, missingPvtData ledger.TxMissingPvtDataMap) *ledger.BlockAndPvtData {
+func (c *committer) cutBlockAndCommitLegacy(trans []*txAndPvtdata, missingPvtData ledger.TxMissingPvtDataMap) *ledger.BlockAndPvtData {
 	blk := c.blkgen.nextBlockAndPvtdata(trans, missingPvtData)
 	blkCopy := c.copyOfBlockAndPvtdata(blk)
 	c.assert.NoError(
-		c.lgr.CommitWithPvtData(blk, &ledger.CommitOptions{}),
+		c.lgr.CommitLegacy(blk, &ledger.CommitOptions{}),
 	)
 	return blkCopy
 }
@@ -44,7 +44,7 @@ func (c *committer) cutBlockAndCommitWithPvtdata(trans []*txAndPvtdata, missingP
 func (c *committer) cutBlockAndCommitExpectError(trans []*txAndPvtdata, missingPvtData ledger.TxMissingPvtDataMap) (*ledger.BlockAndPvtData, error) {
 	blk := c.blkgen.nextBlockAndPvtdata(trans, missingPvtData)
 	blkCopy := c.copyOfBlockAndPvtdata(blk)
-	err := c.lgr.CommitWithPvtData(blk, &ledger.CommitOptions{})
+	err := c.lgr.CommitLegacy(blk, &ledger.CommitOptions{})
 	c.assert.Error(err)
 	return blkCopy, err
 }
