@@ -81,6 +81,7 @@ func TestQueryCmdEndorsementFailure(t *testing.T) {
 	mockCF, err := getMockChaincodeCmdFactory()
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
 	mockCF.EndorserClients[0] = common.GetMockEndorserClient(nil, nil)
+	mockCF.EndorserClients[1] = common.GetMockEndorserClient(nil, nil)
 
 	cmd := newQueryCmdForTest(mockCF, args)
 	err = cmd.Execute()
