@@ -1,14 +1,14 @@
 # peer node
 
-The `peer node` command allows an administrator to start a peer node or check
-the status of a peer node.
+The `peer node` command allows an administrator to start a peer node.
 
 ## Syntax
 
-The `peer node` command has the following subcommands:
+The `peer node` command has the following subcommand:
 
   * start
-  * status
+  * reset
+  * rollback
 
 ## peer node start
 ```

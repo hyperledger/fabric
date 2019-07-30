@@ -839,24 +839,24 @@ have multiple peers.
 Once a sufficient number of channel members have approved a chaincode definition,
 one member can commit the definition to the channel. By default a majority of
 channel members need to approve a definition before it can be committed. It is
-possible to simulate committing the chaincode definition and view the current
-approvals by organization by issuing the following query:
+possible to check whether the chaincode definition is ready to be committed and
+view the current approvals by organization by issuing the following query:
 
 .. code:: bash
 
     # the flags used for this command are identical to those used for approveformyorg
     # except for --package-id which is not required since it is not stored as part of
     # the definition
-    peer lifecycle chaincode simulatecommit --channelID $CHANNEL_NAME --name mycc --version 1.0 --init-required --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+    peer lifecycle chaincode checkcommitreadiness --channelID $CHANNEL_NAME --name mycc --version 1.0 --init-required --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --output json
 
 The command will produce as output a JSON map showing if the organizations in the
-channel have approved the chaincode definition provided in the simulatecommit
+channel have approved the chaincode definition provided in the checkcommitreadiness
 command. In this case, given that both organizations have approved, we obtain:
 
 .. code:: bash
 
     {
-            "Approved": {
+            "Approvals": {
                     "Org1MSP": true,
                     "Org2MSP": true
             }

@@ -191,7 +191,7 @@ definitions for both organizations need to include the packageID.*
 
 Once a sufficient number of channel members have approved a chaincode definition,
 one organization can commit the definition to the channel. You can use the
-``simulatecommit`` command to simulate whether committing the chaincode
+``checkcommitreadiness`` command to check whether committing the chaincode
 definition should be successful based on which channel members have approved a
 definition before committing it to the channel using the peer CLI. The commit
 transaction proposal is first sent to the peers of channel members, who query the
