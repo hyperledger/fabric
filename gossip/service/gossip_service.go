@@ -224,7 +224,7 @@ type Support struct {
 	Store                privdata2.TransientStore
 	Cs                   privdata.CollectionStore
 	IdDeserializeFactory privdata2.IdentityDeserializerFactory
-	Capabilities         privdata2.AppCapabilities
+	CapabilityProvider   privdata2.CapabilityProvider
 }
 
 // DataStoreSupport aggregates interfaces capable
@@ -260,14 +260,15 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, oac OrdererAddress
 		PullRetryThreshold:             viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold"),
 		SkipPullingInvalidTransactions: viper.GetBool("peer.gossip.pvtData.skipPullingInvalidTransactionsDuringCommit"),
 	}
+
 	coordinator := privdata2.NewCoordinator(privdata2.Support{
-		ChainID:         chainID,
-		CollectionStore: support.Cs,
-		Validator:       support.Validator,
-		TransientStore:  support.Store,
-		Committer:       support.Committer,
-		Fetcher:         fetcher,
-		AppCapabilities: support.Capabilities,
+		ChainID:            chainID,
+		CollectionStore:    support.Cs,
+		Validator:          support.Validator,
+		TransientStore:     support.Store,
+		Committer:          support.Committer,
+		Fetcher:            fetcher,
+		CapabilityProvider: support.CapabilityProvider,
 	}, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig)
 
 	reconcilerConfig := privdata2.GetReconcilerConfig()

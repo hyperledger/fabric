@@ -38,8 +38,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
 	"github.com/hyperledger/fabric/gossip/metrics"
-	commonmocks "github.com/hyperledger/fabric/gossip/mocks"
 	"github.com/hyperledger/fabric/gossip/privdata"
+	capabilitymock "github.com/hyperledger/fabric/gossip/privdata/mocks"
 	"github.com/hyperledger/fabric/gossip/state/mocks"
 	gossiputil "github.com/hyperledger/fabric/gossip/util"
 	gutil "github.com/hyperledger/fabric/gossip/util"
@@ -422,15 +422,19 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 		TransientBlockRetention:        privdata.TransientBlockRetentionDefault,
 		SkipPullingInvalidTransactions: false,
 	}
-	capability := &commonmocks.AppCapabilities{}
-	capability.On("StorePvtDataOfInvalidTx").Return(true)
+
+	capabilityProvider := &capabilitymock.CapabilityProvider{}
+	appCapability := &capabilitymock.AppCapabilities{}
+	capabilityProvider.On("Capabilities").Return(appCapability)
+	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coord := privdata.NewCoordinator(privdata.Support{
-		Validator:       v,
-		TransientStore:  &mockTransientStore{},
-		Committer:       committer,
-		AppCapabilities: capability,
+		Validator:          v,
+		TransientStore:     &mockTransientStore{},
+		Committer:          committer,
+		CapabilityProvider: capabilityProvider,
 	}, pcomm.SignedData{}, gossipMetrics.PrivdataMetrics, coordConfig)
 	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, coord, gossipMetrics.StateMetrics, config)
+
 	if sp == nil {
 		gRPCServer.Stop()
 		return nil, port
