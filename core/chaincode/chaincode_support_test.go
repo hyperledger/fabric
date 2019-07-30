@@ -179,8 +179,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	globalConfig := GlobalConfig()
 	globalConfig.StartupTimeout = 10 * time.Second
 	globalConfig.ExecuteTimeout = 1 * time.Second
-	pr := platforms.NewRegistry(&golang.Platform{})
-	lsccImpl := lscc.New(sccp, mockAclProvider, pr, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
+	lsccImpl := lscc.New(sccp, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
 	ml := &mock.Lifecycle{}
 	ml.ChaincodeContainerInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 		switch name {
@@ -212,16 +211,16 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		CACert:        ca.CertBytes(),
 		CertGenerator: certGenerator,
 		PeerAddress:   "0.0.0.0:7052",
-		Processor: container.NewVMController(
-			map[string]container.VMProvider{
-				dockercontroller.ContainerType: &dockercontroller.Provider{
-					PlatformBuilder: &platforms.Builder{
-						Registry: pr,
-						Client:   client,
-					},
+		LockingVM: &container.LockingVM{
+			Underlying: &dockercontroller.DockerVM{
+				PlatformBuilder: &platforms.Builder{
+					Registry: platforms.NewRegistry(&golang.Platform{}),
+					Client:   client,
 				},
 			},
-		),
+			ContainerLocks: container.NewContainerLocks(),
+		},
+
 		CommonEnv: []string{
 			"CORE_CHAINCODE_LOGGING_LEVEL=" + globalConfig.LogLevel,
 			"CORE_CHAINCODE_LOGGING_SHIM=" + globalConfig.ShimLogLevel,
@@ -1013,11 +1012,10 @@ func TestStartAndWaitSuccess(t *testing.T) {
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:          "GOLANG",
-		Name:          "testcc",
-		Version:       "0",
-		ContainerType: "DOCKER",
-		PackageID:     persistence.PackageID("testcc:0"),
+		Type:      "GOLANG",
+		Name:      "testcc",
+		Version:   "0",
+		PackageID: persistence.PackageID("testcc:0"),
 	}
 
 	//actual test - everythings good
@@ -1048,10 +1046,9 @@ func TestStartAndWaitTimeout(t *testing.T) {
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:          "GOLANG",
-		Name:          "testcc",
-		Version:       "0",
-		ContainerType: "DOCKER",
+		Type:    "GOLANG",
+		Name:    "testcc",
+		Version: "0",
 	}
 
 	//the actual test - timeout 1000 > 500
@@ -1081,10 +1078,9 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:          "GOLANG",
-		Name:          "testcc",
-		Version:       "0",
-		ContainerType: "DOCKER",
+		Type:    "GOLANG",
+		Name:    "testcc",
+		Version: "0",
 	}
 
 	//actual test - container launch gives error

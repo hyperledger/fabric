@@ -15,8 +15,8 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	cutil "github.com/hyperledger/fabric/core/container/util"
+	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -72,7 +72,7 @@ func PackageCmd(p *Packager) *cobra.Command {
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if p == nil {
-				pr := platforms.NewRegistry(platforms.SupportedPlatforms...)
+				pr := packaging.NewRegistry(packaging.SupportedPlatforms...)
 
 				p = &Packager{
 					PlatformRegistry: pr,

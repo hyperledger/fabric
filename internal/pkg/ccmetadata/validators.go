@@ -13,7 +13,11 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+
+	"github.com/hyperledger/fabric/common/flogging"
 )
+
+var logger = flogging.MustGetLogger("chaincode.platform.metadata")
 
 // fileValidators are used as handlers to validate specific metadata directories
 type fileValidator func(fileName string, fileBytes []byte) error

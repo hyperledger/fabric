@@ -54,11 +54,10 @@ func TestQueriesPrivateData(t *testing.T) {
 	collectionConfig := []*common.StaticCollectionConfig{{Name: "c1"}, {Name: "c2"}, {Name: "c3"}, {Name: "c4"}}
 	collectionConfigPkg := constructCollectionConfigPkg(collectionConfig)
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:          cID.Name,
-		Version:       cID.Version,
-		Path:          cID.Path,
-		Type:          "GOLANG",
-		ContainerType: "DOCKER",
+		Name:    cID.Name,
+		Version: cID.Version,
+		Path:    cID.Path,
+		Type:    "GOLANG",
 	})
 	_, err = deployWithCollectionConfigs(chainID, cccid, spec, collectionConfigPkg, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++

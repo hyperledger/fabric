@@ -19,9 +19,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
+	"github.com/hyperledger/fabric/internal/pkg/ccmetadata"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -504,10 +504,4 @@ func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, err
 	return util.DockerBuildOptions{
 		Cmd: fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build  %s -o /chaincode/output/chaincode %s", ldflagsOpt, pkgname),
 	}, nil
-}
-
-// GetMetadataProvider fetches metadata provider given deployment spec
-func (p *Platform) GetMetadataAsTarEntries(code []byte) ([]byte, error) {
-	metadataProvider := ccmetadata.TargzMetadataProvider{Code: code}
-	return metadataProvider.GetMetadataAsTarEntries()
 }

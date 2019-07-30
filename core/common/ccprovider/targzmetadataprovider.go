@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 */
-package ccmetadata
+package ccprovider
 
 import (
 	"archive/tar"
@@ -12,7 +12,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/pkg/errors"
 )
 
@@ -22,9 +21,6 @@ import (
 const (
 	ccPackageStatedbDir = "META-INF/statedb/"
 )
-
-//logger used by this package
-var logger = flogging.MustGetLogger("chaincode.platform.metadata")
 
 // PersistenceMetadataProvider implements persistence.MetadataProvider
 // and internally uses a TargzMetadataProvider to extract DB artefacts
@@ -63,7 +59,7 @@ func (tgzProv *TargzMetadataProvider) GetMetadataAsTarEntries() ([]byte, error) 
 	is := bytes.NewReader(code)
 	gr, err := gzip.NewReader(is)
 	if err != nil {
-		logger.Errorf("Failure opening codepackage gzip stream: %s", err)
+		ccproviderLogger.Errorf("Failure opening codepackage gzip stream: %s", err)
 		return nil, err
 	}
 
@@ -89,21 +85,21 @@ func (tgzProv *TargzMetadataProvider) GetMetadataAsTarEntries() ([]byte, error) 
 		}
 
 		if err = tw.WriteHeader(header); err != nil {
-			logger.Error("Error adding header to statedb tar:", err, header.Name)
+			ccproviderLogger.Error("Error adding header to statedb tar:", err, header.Name)
 			return nil, err
 		}
 		if _, err := io.Copy(tw, tr); err != nil {
-			logger.Error("Error copying file to statedb tar:", err, header.Name)
+			ccproviderLogger.Error("Error copying file to statedb tar:", err, header.Name)
 			return nil, err
 		}
-		logger.Debug("Wrote file to statedb tar:", header.Name)
+		ccproviderLogger.Debug("Wrote file to statedb tar:", header.Name)
 	}
 
 	if err = tw.Close(); err != nil {
 		return nil, err
 	}
 
-	logger.Debug("Created metadata tar")
+	ccproviderLogger.Debug("Created metadata tar")
 
 	return statedbTarBuffer.Bytes(), nil
 }

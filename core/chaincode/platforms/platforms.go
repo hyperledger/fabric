@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/pkg/errors"
 )
@@ -36,12 +37,8 @@ var SupportedPlatforms = []Platform{
 // the given platform
 type Platform interface {
 	Name() string
-	ValidatePath(path string) error
-	ValidateCodePackage(code []byte) error
-	GetDeploymentPayload(path string) ([]byte, error)
 	GenerateDockerfile() (string, error)
 	DockerBuildOptions(path string) (util.DockerBuildOptions, error)
-	GetMetadataAsTarEntries(code []byte) ([]byte, error)
 }
 
 type PackageWriter interface {
@@ -73,45 +70,6 @@ func NewRegistry(platformTypes ...Platform) *Registry {
 		Platforms:     platforms,
 		PackageWriter: PackageWriterWrapper(cutil.WriteBytesToPackage),
 	}
-}
-
-func (r *Registry) ValidateSpec(ccType, path string) error {
-	platform, ok := r.Platforms[ccType]
-	if !ok {
-		return fmt.Errorf("Unknown chaincodeType: %s", ccType)
-	}
-	return platform.ValidatePath(path)
-}
-
-func (r *Registry) ValidateDeploymentSpec(ccType string, codePackage []byte) error {
-	platform, ok := r.Platforms[ccType]
-	if !ok {
-		return fmt.Errorf("Unknown chaincodeType: %s", ccType)
-	}
-
-	// ignore empty packages
-	if len(codePackage) == 0 {
-		return nil
-	}
-
-	return platform.ValidateCodePackage(codePackage)
-}
-
-func (r *Registry) GetMetadataProvider(ccType string, codePackage []byte) ([]byte, error) {
-	platform, ok := r.Platforms[ccType]
-	if !ok {
-		return nil, fmt.Errorf("Unknown chaincodeType: %s", ccType)
-	}
-	return platform.GetMetadataAsTarEntries(codePackage)
-}
-
-func (r *Registry) GetDeploymentPayload(ccType, path string) ([]byte, error) {
-	platform, ok := r.Platforms[ccType]
-	if !ok {
-		return nil, fmt.Errorf("Unknown chaincodeType: %s", ccType)
-	}
-
-	return platform.GetDeploymentPayload(path)
 }
 
 func (r *Registry) GenerateDockerfile(ccType, name, version string) (string, error) {
@@ -233,6 +191,6 @@ type Builder struct {
 	Client   *docker.Client
 }
 
-func (b *Builder) GenerateDockerBuild(ccType, path, name, version string, codePackage []byte) (io.Reader, error) {
-	return b.Registry.GenerateDockerBuild(ccType, path, name, version, codePackage, b.Client)
+func (b *Builder) GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (io.Reader, error) {
+	return b.Registry.GenerateDockerBuild(ccci.Type, ccci.Path, ccci.Name, ccci.Version, codePackage, b.Client)
 }

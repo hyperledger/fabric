@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	. "github.com/onsi/ginkgo"
@@ -50,9 +51,9 @@ type certGenerator interface {
 	chaincode.CertGenerator
 }
 
-//go:generate counterfeiter -o mock/processor.go --fake-name Processor . processor
-type processor interface {
-	chaincode.Processor
+//go:generate counterfeiter -o mock/container_vm.go --fake-name ContainerVM . containerVM
+type containerVM interface {
+	container.VM
 }
 
 //go:generate counterfeiter -o mock/invoker.go --fake-name Invoker . invoker

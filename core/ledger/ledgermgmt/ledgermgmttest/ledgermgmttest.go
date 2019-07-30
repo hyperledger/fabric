@@ -8,8 +8,6 @@ package ledgermgmttest
 
 import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/mock"
@@ -33,7 +31,6 @@ func NewInitializer(testLedgerDir string) *ledgermgmt.Initializer {
 				PurgeInterval:   100,
 			},
 		},
-		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
 		MetricsProvider:               &disabled.Provider{},
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 	}

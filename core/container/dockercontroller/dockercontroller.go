@@ -23,15 +23,11 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/pkg/errors"
 )
-
-// ContainerType is the string which the docker container type
-// is registered with the container.VMController
-const ContainerType = "DOCKER"
 
 var (
 	dockerLogger = flogging.MustGetLogger("dockercontroller")
@@ -75,20 +71,7 @@ type dockerClient interface {
 }
 
 type PlatformBuilder interface {
-	GenerateDockerBuild(ccType, path, name, version string, codePackage []byte) (io.Reader, error)
-}
-
-// Provider implements container.VMProvider
-type Provider struct {
-	PeerID          string
-	NetworkID       string
-	BuildMetrics    *BuildMetrics
-	HostConfig      *docker.HostConfig
-	Client          dockerClient
-	AttachStdOut    bool
-	ChaincodePull   bool
-	NetworkMode     string
-	PlatformBuilder PlatformBuilder
+	GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (io.Reader, error)
 }
 
 // DockerVM is a vm. It is identified by an image id
@@ -104,25 +87,10 @@ type DockerVM struct {
 	PlatformBuilder PlatformBuilder
 }
 
-// NewVM creates a new DockerVM instance
-func (p *Provider) NewVM() container.VM {
-	return &DockerVM{
-		PeerID:          p.PeerID,
-		NetworkID:       p.NetworkID,
-		Client:          p.Client,
-		BuildMetrics:    p.BuildMetrics,
-		AttachStdOut:    p.AttachStdOut,
-		HostConfig:      p.HostConfig,
-		ChaincodePull:   p.ChaincodePull,
-		NetworkMode:     p.NetworkMode,
-		PlatformBuilder: p.PlatformBuilder,
-	}
-}
-
 // HealthCheck checks if the DockerVM is able to communicate with the Docker
 // daemon.
-func (p *Provider) HealthCheck(ctx context.Context) error {
-	if err := p.Client.PingWithContext(ctx); err != nil {
+func (vm *DockerVM) HealthCheck(ctx context.Context) error {
+	if err := vm.Client.PingWithContext(ctx); err != nil {
 		return errors.Wrap(err, "failed to ping to Docker daemon")
 	}
 	return nil
@@ -183,7 +151,8 @@ func (vm *DockerVM) buildImage(ccid ccintf.CCID, reader io.Reader) error {
 }
 
 // Build is responsible for building an image if it does not already exist.
-func (vm *DockerVM) Build(ccid ccintf.CCID, ccType, path, name, version string, codePackage []byte) error {
+func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
+	ccid := ccintf.New(ccci.PackageID)
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
@@ -194,7 +163,7 @@ func (vm *DockerVM) Build(ccid ccintf.CCID, ccType, path, name, version string, 
 		return errors.Wrap(err, "docker image inspection failed")
 	}
 
-	dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(ccType, path, name, version, codePackage)
+	dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(ccci, codePackage)
 	if err != nil {
 		return errors.Wrap(err, "platform builder failed")
 	}
@@ -216,7 +185,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 	containerName := vm.GetVMName(ccid)
 	logger := dockerLogger.With("imageName", imageName, "containerName", containerName)
 
-	vm.stopInternal(containerName, 0, false, false)
+	vm.stopInternal(containerName)
 
 	err = vm.createContainer(imageName, containerName, args, env)
 	if err != nil {
@@ -332,9 +301,9 @@ func streamOutput(logger *flogging.FabricLogger, client dockerClient, containerN
 }
 
 // Stop stops a running chaincode
-func (vm *DockerVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
+func (vm *DockerVM) Stop(ccid ccintf.CCID) error {
 	id := vm.ccidToContainerID(ccid)
-	return vm.stopInternal(id, timeout, dontkill, dontremove)
+	return vm.stopInternal(id)
 }
 
 // Wait blocks until the container stops and returns the exit code of the container.
@@ -347,24 +316,20 @@ func (vm *DockerVM) ccidToContainerID(ccid ccintf.CCID) string {
 	return strings.Replace(vm.GetVMName(ccid), ":", "_", -1)
 }
 
-func (vm *DockerVM) stopInternal(id string, timeout uint, dontkill, dontremove bool) error {
+func (vm *DockerVM) stopInternal(id string) error {
 	logger := dockerLogger.With("id", id)
 
 	logger.Debugw("stopping container")
-	err := vm.Client.StopContainer(id, timeout)
+	err := vm.Client.StopContainer(id, 0)
 	dockerLogger.Debugw("stop container result", "error", err)
 
-	if !dontkill {
-		logger.Debugw("killing container")
-		err = vm.Client.KillContainer(docker.KillContainerOptions{ID: id})
-		logger.Debugw("kill container result", "error", err)
-	}
+	logger.Debugw("killing container")
+	err = vm.Client.KillContainer(docker.KillContainerOptions{ID: id})
+	logger.Debugw("kill container result", "error", err)
 
-	if !dontremove {
-		logger.Debugw("removing container")
-		err = vm.Client.RemoveContainer(docker.RemoveContainerOptions{ID: id, Force: true})
-		logger.Debugw("remove container result", "error", err)
-	}
+	logger.Debugw("removing container")
+	err = vm.Client.RemoveContainer(docker.RemoveContainerOptions{ID: id, Force: true})
+	logger.Debugw("remove container result", "error", err)
 
 	return err
 }

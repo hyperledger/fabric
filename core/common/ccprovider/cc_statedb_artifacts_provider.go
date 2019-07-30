@@ -14,8 +14,6 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 )
 
 // tarFileEntry encapsulates a file entry and it's contents inside a tar
@@ -27,7 +25,7 @@ type TarFileEntry struct {
 // ExtractStatedbArtifactsAsTarbytes extracts the statedb artifacts from the code package tar and create a statedb artifact tar.
 // The state db artifacts are expected to contain state db specific artifacts such as index specification in the case of couchdb.
 // This function is intended to be used during chaincode instantiate/upgrade so that statedb artifacts can be created.
-func ExtractStatedbArtifactsForChaincode(ccname, ccversion string, pr *platforms.Registry) (installed bool, statedbArtifactsTar []byte, err error) {
+func ExtractStatedbArtifactsForChaincode(ccname, ccversion string) (installed bool, statedbArtifactsTar []byte, err error) {
 	ccpackage, err := GetChaincodeFromFS(ccname, ccversion)
 	if err != nil {
 		// TODO for now, we assume that an error indicates that the chaincode is not installed on the peer.
@@ -37,16 +35,18 @@ func ExtractStatedbArtifactsForChaincode(ccname, ccversion string, pr *platforms
 		return false, nil, nil
 	}
 
-	statedbArtifactsTar, err = ExtractStatedbArtifactsFromCCPackage(ccpackage, pr)
+	statedbArtifactsTar, err = ExtractStatedbArtifactsFromCCPackage(ccpackage)
 	return true, statedbArtifactsTar, err
 }
 
 // ExtractStatedbArtifactsFromCCPackage extracts the statedb artifacts from the code package tar and create a statedb artifact tar.
 // The state db artifacts are expected to contain state db specific artifacts such as index specification in the case of couchdb.
 // This function is called during chaincode instantiate/upgrade (from above), and from install, so that statedb artifacts can be created.
-func ExtractStatedbArtifactsFromCCPackage(ccpackage CCPackage, pr *platforms.Registry) (statedbArtifactsTar []byte, err error) {
+func ExtractStatedbArtifactsFromCCPackage(ccpackage CCPackage) (statedbArtifactsTar []byte, err error) {
 	cds := ccpackage.GetDepSpec()
-	metaprov, err := pr.GetMetadataProvider(cds.ChaincodeSpec.Type.String(), cds.CodePackage)
+
+	metadataProvider := TargzMetadataProvider{Code: cds.CodePackage}
+	metaprov, err := metadataProvider.GetMetadataAsTarEntries()
 	if err != nil {
 		ccproviderLogger.Infof("invalid deployment spec: %s", err)
 		return nil, fmt.Errorf("invalid deployment spec")

@@ -20,11 +20,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Processor processes vm and container requests.
-type Processor interface {
-	Process(vmtype string, req container.VMCReq) error
-}
-
 // CertGenerator generates client certificates for chaincode.
 type CertGenerator interface {
 	// Generate returns a certificate and private key and associates
@@ -35,7 +30,7 @@ type CertGenerator interface {
 // ContainerRuntime is responsible for managing containerized chaincode.
 type ContainerRuntime struct {
 	CertGenerator CertGenerator
-	Processor     Processor
+	LockingVM     *container.LockingVM
 	CACert        []byte
 	CommonEnv     []string
 	PeerAddress   string
@@ -50,16 +45,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 		return err
 	}
 
-	// Explicitly attempt build before start
-	bcr := container.BuildReq{
-		CCID:        ccintf.New(ccci.PackageID),
-		Type:        ccci.Type,
-		Name:        ccci.Name,
-		Version:     ccci.Version,
-		Path:        ccci.Path,
-		CodePackage: codePackage,
-	}
-	if err := c.Processor.Process(ccci.ContainerType, bcr); err != nil {
+	if err := c.LockingVM.Build(ccci, codePackage); err != nil {
 		return errors.WithMessage(err, "error building image")
 	}
 
@@ -67,14 +53,12 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 	chaincodeLogger.Debugf("start container with args: %s", strings.Join(lc.Args, " "))
 	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(lc.Envs, "\n\t"))
 
-	scr := container.StartContainerReq{
-		Args:          lc.Args,
-		Env:           lc.Envs,
-		FilesToUpload: lc.Files,
-		CCID:          ccintf.New(ccci.PackageID),
-	}
-
-	if err := c.Processor.Process(ccci.ContainerType, scr); err != nil {
+	if err := c.LockingVM.Start(
+		ccintf.New(ccci.PackageID),
+		lc.Args,
+		lc.Envs,
+		lc.Files,
+	); err != nil {
 		return errors.WithMessage(err, "error starting container")
 	}
 
@@ -83,13 +67,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 
 // Stop terminates chaincode and its container runtime environment.
 func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
-	scr := container.StopContainerReq{
-		CCID:       ccintf.New(ccci.PackageID),
-		Timeout:    0,
-		Dontremove: false,
-	}
-
-	if err := c.Processor.Process(ccci.ContainerType, scr); err != nil {
+	if err := c.LockingVM.Stop(ccintf.New(ccci.PackageID)); err != nil {
 		return errors.WithMessage(err, "error stopping container")
 	}
 
@@ -98,26 +76,7 @@ func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 
 // Wait waits for the container runtime to terminate.
 func (c *ContainerRuntime) Wait(ccci *ccprovider.ChaincodeContainerInfo) (int, error) {
-	type result struct {
-		exitCode int
-		err      error
-	}
-
-	resultCh := make(chan result, 1)
-	wcr := container.WaitContainerReq{
-		CCID: ccintf.New(ccci.PackageID),
-		Exited: func(exitCode int, err error) {
-			resultCh <- result{exitCode: exitCode, err: err}
-			close(resultCh)
-		},
-	}
-
-	if err := c.Processor.Process(ccci.ContainerType, wcr); err != nil {
-		return -1, err
-	}
-	r := <-resultCh
-
-	return r.exitCode, r.err
+	return c.LockingVM.Wait(ccintf.New(ccci.PackageID))
 }
 
 const (

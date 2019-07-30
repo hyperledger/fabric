@@ -4,7 +4,7 @@ Copyright State Street Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package ccmetadata
+package ccprovider
 
 import (
 	"archive/tar"

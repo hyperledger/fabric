@@ -12,8 +12,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
@@ -24,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/internal/car"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/scc/lscc"
+	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -206,7 +205,7 @@ func validateCollectionName(collectionName string) error {
 	match := validCollectionNameRegex.FindString(collectionName)
 	if len(match) != len(collectionName) {
 		return fmt.Errorf("collection-name: %s not allowed. A valid collection name follows the pattern: %s",
-			collectionName, ccmetadata.AllowedCharsCollectionName)
+			collectionName, AllowedCharsCollectionName)
 	}
 	return nil
 }
@@ -384,7 +383,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			return policyErr(fmt.Errorf("GetChaincodeDeploymentSpec error %s", err))
 		}
 
-		err = platforms.NewRegistry(
+		err = packaging.NewRegistry(
 			// XXX We should definitely _not_ have this external dependency in VSCC
 			// as adding a platform could cause non-determinism.  This is yet another
 			// reason why all of this custom LSCC validation at commit time has no

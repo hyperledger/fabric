@@ -43,7 +43,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -83,6 +82,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/service"
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
+	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -157,6 +157,7 @@ func serve(args []string) error {
 	}
 
 	platformRegistry := platforms.NewRegistry(platforms.SupportedPlatforms...)
+	packagingRegistry := packaging.NewRegistry(packaging.SupportedPlatforms...)
 
 	identityDeserializerFactory := func(chainID string) msp.IdentityDeserializer {
 		return mgmt.GetManagerForChain(chainID)
@@ -180,7 +181,7 @@ func serve(args []string) error {
 	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "lifecycle", "chaincodes")
 	ccStore := persistence.NewStore(chaincodeInstallPath)
 	ccPackageParser := &persistence.ChaincodePackageParser{
-		MetadataProvider: &ccmetadata.PersistenceMetadataProvider{},
+		MetadataProvider: &ccprovider.PersistenceMetadataProvider{},
 	}
 
 	peerHost, _, err := net.SplitHostPort(coreConfig.PeerAddress)
@@ -345,7 +346,6 @@ func serve(args []string) error {
 	peerInstance.LedgerMgr = ledgermgmt.NewLedgerMgr(
 		&ledgermgmt.Initializer{
 			CustomTxProcessors:              txProcessors,
-			PlatformRegistry:                platformRegistry,
 			DeployedChaincodeInfoProvider:   lifecycleValidatorCommitter,
 			MembershipInfoProvider:          membershipInfoProvider,
 			ChaincodeLifecycleEventProvider: lifecycleCache,
@@ -414,7 +414,7 @@ func serve(args []string) error {
 		Whitelist: scc.GlobalWhitelist(),
 	}
 
-	lsccInst := lscc.New(sccp, aclProvider, platformRegistry, peerInstance.GetMSPIDs, policyChecker)
+	lsccInst := lscc.New(sccp, aclProvider, peerInstance.GetMSPIDs, policyChecker)
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
@@ -455,7 +455,7 @@ func serve(args []string) error {
 		logger.Panicf("cannot create docker client: %s", err)
 	}
 
-	dockerProvider := &dockercontroller.Provider{
+	dockerVM := &dockercontroller.DockerVM{
 		PeerID:        coreConfig.PeerID,
 		NetworkID:     coreConfig.NetworkID,
 		BuildMetrics:  dockercontroller.NewBuildMetrics(opsSystem.Provider),
@@ -469,18 +469,13 @@ func serve(args []string) error {
 			Client:   client,
 		},
 	}
-	if err := opsSystem.RegisterChecker("docker", dockerProvider); err != nil {
+	if err := opsSystem.RegisterChecker("docker", dockerVM); err != nil {
 		if err != nil {
 			logger.Panicf("failed to register docker health check: %s", err)
 		}
 	}
 
 	chaincodeConfig := chaincode.GlobalConfig()
-	chaincodeVMController := container.NewVMController(
-		map[string]container.VMProvider{
-			dockercontroller.ContainerType: dockerProvider,
-		},
-	)
 
 	containerRuntime := &chaincode.ContainerRuntime{
 		CACert:        ca.CertBytes(),
@@ -491,7 +486,10 @@ func serve(args []string) error {
 			"CORE_CHAINCODE_LOGGING_FORMAT=" + chaincodeConfig.LogFormat,
 		},
 		PeerAddress: ccEndpoint,
-		Processor:   chaincodeVMController,
+		LockingVM: &container.LockingVM{
+			Underlying:     dockerVM,
+			ContainerLocks: container.NewContainerLocks(),
+		},
 	}
 
 	// Keep TestQueries working
@@ -585,7 +583,7 @@ func serve(args []string) error {
 		SigningIdentityFetcher:  signingIdentityFetcher,
 	})
 	endorserSupport.PluginEndorser = pluginEndorser
-	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport, platformRegistry, metricsProvider)
+	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport, packagingRegistry, metricsProvider)
 
 	// register prover grpc service
 	err = registerProverService(peerInstance, peerServer, aclProvider, signingIdentity)

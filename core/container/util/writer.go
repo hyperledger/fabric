@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
+	"github.com/hyperledger/fabric/internal/pkg/ccmetadata"
 	"github.com/pkg/errors"
 )
 

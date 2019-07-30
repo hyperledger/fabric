@@ -5,11 +5,10 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
-type VM struct {
+type ContainerVM struct {
 	BuildStub        func(*ccprovider.ChaincodeContainerInfo, []byte) error
 	buildMutex       sync.RWMutex
 	buildArgsForCall []struct {
@@ -64,7 +63,7 @@ type VM struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *VM) Build(arg1 *ccprovider.ChaincodeContainerInfo, arg2 []byte) error {
+func (fake *ContainerVM) Build(arg1 *ccprovider.ChaincodeContainerInfo, arg2 []byte) error {
 	var arg2Copy []byte
 	if arg2 != nil {
 		arg2Copy = make([]byte, len(arg2))
@@ -88,26 +87,26 @@ func (fake *VM) Build(arg1 *ccprovider.ChaincodeContainerInfo, arg2 []byte) erro
 	return fakeReturns.result1
 }
 
-func (fake *VM) BuildCallCount() int {
+func (fake *ContainerVM) BuildCallCount() int {
 	fake.buildMutex.RLock()
 	defer fake.buildMutex.RUnlock()
 	return len(fake.buildArgsForCall)
 }
 
-func (fake *VM) BuildCalls(stub func(*ccprovider.ChaincodeContainerInfo, []byte) error) {
+func (fake *ContainerVM) BuildCalls(stub func(*ccprovider.ChaincodeContainerInfo, []byte) error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = stub
 }
 
-func (fake *VM) BuildArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, []byte) {
+func (fake *ContainerVM) BuildArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, []byte) {
 	fake.buildMutex.RLock()
 	defer fake.buildMutex.RUnlock()
 	argsForCall := fake.buildArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *VM) BuildReturns(result1 error) {
+func (fake *ContainerVM) BuildReturns(result1 error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = nil
@@ -116,7 +115,7 @@ func (fake *VM) BuildReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *VM) BuildReturnsOnCall(i int, result1 error) {
+func (fake *ContainerVM) BuildReturnsOnCall(i int, result1 error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = nil
@@ -130,7 +129,7 @@ func (fake *VM) BuildReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *VM) Start(arg1 ccintf.CCID, arg2 []string, arg3 []string, arg4 map[string][]byte) error {
+func (fake *ContainerVM) Start(arg1 ccintf.CCID, arg2 []string, arg3 []string, arg4 map[string][]byte) error {
 	var arg2Copy []string
 	if arg2 != nil {
 		arg2Copy = make([]string, len(arg2))
@@ -161,26 +160,26 @@ func (fake *VM) Start(arg1 ccintf.CCID, arg2 []string, arg3 []string, arg4 map[s
 	return fakeReturns.result1
 }
 
-func (fake *VM) StartCallCount() int {
+func (fake *ContainerVM) StartCallCount() int {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	return len(fake.startArgsForCall)
 }
 
-func (fake *VM) StartCalls(stub func(ccintf.CCID, []string, []string, map[string][]byte) error) {
+func (fake *ContainerVM) StartCalls(stub func(ccintf.CCID, []string, []string, map[string][]byte) error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = stub
 }
 
-func (fake *VM) StartArgsForCall(i int) (ccintf.CCID, []string, []string, map[string][]byte) {
+func (fake *ContainerVM) StartArgsForCall(i int) (ccintf.CCID, []string, []string, map[string][]byte) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	argsForCall := fake.startArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *VM) StartReturns(result1 error) {
+func (fake *ContainerVM) StartReturns(result1 error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = nil
@@ -189,7 +188,7 @@ func (fake *VM) StartReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *VM) StartReturnsOnCall(i int, result1 error) {
+func (fake *ContainerVM) StartReturnsOnCall(i int, result1 error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = nil
@@ -203,7 +202,7 @@ func (fake *VM) StartReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *VM) Stop(arg1 ccintf.CCID) error {
+func (fake *ContainerVM) Stop(arg1 ccintf.CCID) error {
 	fake.stopMutex.Lock()
 	ret, specificReturn := fake.stopReturnsOnCall[len(fake.stopArgsForCall)]
 	fake.stopArgsForCall = append(fake.stopArgsForCall, struct {
@@ -221,26 +220,26 @@ func (fake *VM) Stop(arg1 ccintf.CCID) error {
 	return fakeReturns.result1
 }
 
-func (fake *VM) StopCallCount() int {
+func (fake *ContainerVM) StopCallCount() int {
 	fake.stopMutex.RLock()
 	defer fake.stopMutex.RUnlock()
 	return len(fake.stopArgsForCall)
 }
 
-func (fake *VM) StopCalls(stub func(ccintf.CCID) error) {
+func (fake *ContainerVM) StopCalls(stub func(ccintf.CCID) error) {
 	fake.stopMutex.Lock()
 	defer fake.stopMutex.Unlock()
 	fake.StopStub = stub
 }
 
-func (fake *VM) StopArgsForCall(i int) ccintf.CCID {
+func (fake *ContainerVM) StopArgsForCall(i int) ccintf.CCID {
 	fake.stopMutex.RLock()
 	defer fake.stopMutex.RUnlock()
 	argsForCall := fake.stopArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *VM) StopReturns(result1 error) {
+func (fake *ContainerVM) StopReturns(result1 error) {
 	fake.stopMutex.Lock()
 	defer fake.stopMutex.Unlock()
 	fake.StopStub = nil
@@ -249,7 +248,7 @@ func (fake *VM) StopReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *VM) StopReturnsOnCall(i int, result1 error) {
+func (fake *ContainerVM) StopReturnsOnCall(i int, result1 error) {
 	fake.stopMutex.Lock()
 	defer fake.stopMutex.Unlock()
 	fake.StopStub = nil
@@ -263,7 +262,7 @@ func (fake *VM) StopReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *VM) Wait(arg1 ccintf.CCID) (int, error) {
+func (fake *ContainerVM) Wait(arg1 ccintf.CCID) (int, error) {
 	fake.waitMutex.Lock()
 	ret, specificReturn := fake.waitReturnsOnCall[len(fake.waitArgsForCall)]
 	fake.waitArgsForCall = append(fake.waitArgsForCall, struct {
@@ -281,26 +280,26 @@ func (fake *VM) Wait(arg1 ccintf.CCID) (int, error) {
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *VM) WaitCallCount() int {
+func (fake *ContainerVM) WaitCallCount() int {
 	fake.waitMutex.RLock()
 	defer fake.waitMutex.RUnlock()
 	return len(fake.waitArgsForCall)
 }
 
-func (fake *VM) WaitCalls(stub func(ccintf.CCID) (int, error)) {
+func (fake *ContainerVM) WaitCalls(stub func(ccintf.CCID) (int, error)) {
 	fake.waitMutex.Lock()
 	defer fake.waitMutex.Unlock()
 	fake.WaitStub = stub
 }
 
-func (fake *VM) WaitArgsForCall(i int) ccintf.CCID {
+func (fake *ContainerVM) WaitArgsForCall(i int) ccintf.CCID {
 	fake.waitMutex.RLock()
 	defer fake.waitMutex.RUnlock()
 	argsForCall := fake.waitArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *VM) WaitReturns(result1 int, result2 error) {
+func (fake *ContainerVM) WaitReturns(result1 int, result2 error) {
 	fake.waitMutex.Lock()
 	defer fake.waitMutex.Unlock()
 	fake.WaitStub = nil
@@ -310,7 +309,7 @@ func (fake *VM) WaitReturns(result1 int, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *VM) WaitReturnsOnCall(i int, result1 int, result2 error) {
+func (fake *ContainerVM) WaitReturnsOnCall(i int, result1 int, result2 error) {
 	fake.waitMutex.Lock()
 	defer fake.waitMutex.Unlock()
 	fake.WaitStub = nil
@@ -326,7 +325,7 @@ func (fake *VM) WaitReturnsOnCall(i int, result1 int, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *VM) Invocations() map[string][][]interface{} {
+func (fake *ContainerVM) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.buildMutex.RLock()
@@ -344,7 +343,7 @@ func (fake *VM) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *VM) recordInvocation(key string, args []interface{}) {
+func (fake *ContainerVM) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -355,5 +354,3 @@ func (fake *VM) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ container.VM = new(VM)
