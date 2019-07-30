@@ -290,7 +290,7 @@ type Support struct {
 	Store                gossipprivdata.TransientStore
 	CollectionStore      privdata.CollectionStore
 	IdDeserializeFactory gossipprivdata.IdentityDeserializerFactory
-	Capabilities         gossipprivdata.AppCapabilities
+	CapabilityProvider   gossipprivdata.CapabilityProvider
 }
 
 // DataStoreSupport aggregates interfaces capable
@@ -327,13 +327,13 @@ func (g *GossipService) InitializeChannel(channelID string, endpoints []string, 
 		SkipPullingInvalidTransactions: g.serviceConfig.SkipPullingInvalidTransactionsDuringCommit,
 	}
 	coordinator := gossipprivdata.NewCoordinator(gossipprivdata.Support{
-		ChainID:         channelID,
-		CollectionStore: support.CollectionStore,
-		Validator:       support.Validator,
-		TransientStore:  support.Store,
-		Committer:       support.Committer,
-		Fetcher:         fetcher,
-		AppCapabilities: support.Capabilities,
+		ChainID:            channelID,
+		CollectionStore:    support.CollectionStore,
+		Validator:          support.Validator,
+		TransientStore:     support.Store,
+		Committer:          support.Committer,
+		Fetcher:            fetcher,
+		CapabilityProvider: support.CapabilityProvider,
 	}, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig)
 
 	privdataConfig := gossipprivdata.GlobalConfig()
