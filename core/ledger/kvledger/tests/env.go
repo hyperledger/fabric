@@ -32,6 +32,8 @@ const (
 	rebuildableStatedb       rebuildable = 1
 	rebuildableBlockIndex    rebuildable = 2
 	rebuildableConfigHistory rebuildable = 4
+	rebuildableHistoryDB     rebuildable = 8
+	rebuildableBookkeeper    rebuildable = 16
 )
 
 type env struct {
@@ -66,24 +68,76 @@ func (e *env) closeAllLedgersAndDrop(flags rebuildable) {
 	defer e.initLedgerMgmt()
 
 	if flags&rebuildableBlockIndex == rebuildableBlockIndex {
-		indexPath := filepath.Join(e.initializer.Config.RootFSPath, "chains", fsblkstorage.IndexDir)
+		indexPath := e.getBlockIndexDBPath()
 		logger.Infof("Deleting blockstore indexdb path [%s]", indexPath)
 		e.verifyNonEmptyDirExists(indexPath)
 		e.assert.NoError(os.RemoveAll(indexPath))
 	}
 
 	if flags&rebuildableStatedb == rebuildableStatedb {
-		statedbPath := filepath.Join(e.initializer.Config.RootFSPath, "stateLeveldb")
+		statedbPath := e.getLevelstateDBPath()
 		logger.Infof("Deleting statedb path [%s]", statedbPath)
 		e.verifyNonEmptyDirExists(statedbPath)
 		e.assert.NoError(os.RemoveAll(statedbPath))
 	}
 
 	if flags&rebuildableConfigHistory == rebuildableConfigHistory {
-		configHistory := filepath.Join(e.initializer.Config.RootFSPath, "configHistory")
-		logger.Infof("Deleting configHistory db path [%s]", configHistory)
-		e.verifyNonEmptyDirExists(configHistory)
-		e.assert.NoError(os.RemoveAll(configHistory))
+		configHistoryPath := e.getConfigHistoryDBPath()
+		logger.Infof("Deleting configHistory db path [%s]", configHistoryPath)
+		e.verifyNonEmptyDirExists(configHistoryPath)
+		e.assert.NoError(os.RemoveAll(configHistoryPath))
+	}
+
+	if flags&rebuildableBookkeeper == rebuildableBookkeeper {
+		bookkeeperPath := e.getBookkeeperDBPath()
+		logger.Infof("Deleting bookkeeper db path [%s]", bookkeeperPath)
+		e.verifyNonEmptyDirExists(bookkeeperPath)
+		e.assert.NoError(os.RemoveAll(bookkeeperPath))
+	}
+
+	if flags&rebuildableHistoryDB == rebuildableHistoryDB {
+		historyPath := e.getHistoryDBPath()
+		logger.Infof("Deleting history db path [%s]", historyPath)
+		e.verifyNonEmptyDirExists(historyPath)
+		e.assert.NoError(os.RemoveAll(historyPath))
+	}
+
+	e.verifyRebuilableDoesNotExist(flags)
+}
+
+func (e *env) verifyRebuilablesExist(flags rebuildable) {
+	if flags&rebuildableBlockIndex == rebuildableBlockIndex {
+		e.verifyNonEmptyDirExists(e.getBlockIndexDBPath())
+	}
+	if flags&rebuildableStatedb == rebuildableStatedb {
+		e.verifyNonEmptyDirExists(e.getLevelstateDBPath())
+	}
+	if flags&rebuildableConfigHistory == rebuildableConfigHistory {
+		e.verifyNonEmptyDirExists(e.getConfigHistoryDBPath())
+	}
+	if flags&rebuildableBookkeeper == rebuildableBookkeeper {
+		e.verifyNonEmptyDirExists(e.getBookkeeperDBPath())
+	}
+	if flags&rebuildableHistoryDB == rebuildableHistoryDB {
+		e.verifyNonEmptyDirExists(e.getHistoryDBPath())
+	}
+}
+
+func (e *env) verifyRebuilableDoesNotExist(flags rebuildable) {
+	if flags&rebuildableStatedb == rebuildableStatedb {
+		e.verifyDirDoesNotExist(e.getLevelstateDBPath())
+	}
+	if flags&rebuildableBlockIndex == rebuildableBlockIndex {
+		e.verifyDirDoesNotExist(e.getBlockIndexDBPath())
+	}
+	if flags&rebuildableConfigHistory == rebuildableConfigHistory {
+		e.verifyDirDoesNotExist(e.getConfigHistoryDBPath())
+	}
+	if flags&rebuildableBookkeeper == rebuildableBookkeeper {
+		e.verifyDirDoesNotExist(e.getBookkeeperDBPath())
+	}
+	if flags&rebuildableHistoryDB == rebuildableHistoryDB {
+		e.verifyDirDoesNotExist(e.getHistoryDBPath())
 	}
 }
 
@@ -93,8 +147,42 @@ func (e *env) verifyNonEmptyDirExists(path string) {
 	e.assert.False(empty)
 }
 
+func (e *env) verifyDirDoesNotExist(path string) {
+	exists, _, err := util.FileExists(path)
+	e.assert.NoError(err)
+	e.assert.False(exists)
+}
+
 func (e *env) initLedgerMgmt() {
 	e.ledgerMgr = ledgermgmt.NewLedgerMgr(e.initializer)
+}
+
+func (e *env) closeLedgerMgmt() {
+	e.ledgerMgr.Close()
+}
+
+func (e *env) getLedgerRootPath() string {
+	return e.initializer.Config.RootFSPath
+}
+
+func (e *env) getLevelstateDBPath() string {
+	return filepath.Join(e.initializer.Config.RootFSPath, "stateLeveldb")
+}
+
+func (e *env) getBlockIndexDBPath() string {
+	return filepath.Join(e.initializer.Config.RootFSPath, "chains", fsblkstorage.IndexDir)
+}
+
+func (e *env) getConfigHistoryDBPath() string {
+	return filepath.Join(e.initializer.Config.RootFSPath, "configHistory")
+}
+
+func (e *env) getHistoryDBPath() string {
+	return filepath.Join(e.initializer.Config.RootFSPath, "historyLeveldb")
+}
+
+func (e *env) getBookkeeperDBPath() string {
+	return filepath.Join(e.initializer.Config.RootFSPath, "bookkeeper")
 }
 
 func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Initializer) {

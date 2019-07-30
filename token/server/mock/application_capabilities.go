@@ -86,6 +86,16 @@ type ApplicationCapabilities struct {
 	privateChannelDataReturnsOnCall map[int]struct {
 		result1 bool
 	}
+	StorePvtDataOfInvalidTxStub        func() bool
+	storePvtDataOfInvalidTxMutex       sync.RWMutex
+	storePvtDataOfInvalidTxArgsForCall []struct {
+	}
+	storePvtDataOfInvalidTxReturns struct {
+		result1 bool
+	}
+	storePvtDataOfInvalidTxReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	SupportedStub        func() error
 	supportedMutex       sync.RWMutex
 	supportedArgsForCall []struct {
@@ -556,6 +566,58 @@ func (fake *ApplicationCapabilities) PrivateChannelDataReturnsOnCall(i int, resu
 	}{result1}
 }
 
+func (fake *ApplicationCapabilities) StorePvtDataOfInvalidTx() bool {
+	fake.storePvtDataOfInvalidTxMutex.Lock()
+	ret, specificReturn := fake.storePvtDataOfInvalidTxReturnsOnCall[len(fake.storePvtDataOfInvalidTxArgsForCall)]
+	fake.storePvtDataOfInvalidTxArgsForCall = append(fake.storePvtDataOfInvalidTxArgsForCall, struct {
+	}{})
+	fake.recordInvocation("StorePvtDataOfInvalidTx", []interface{}{})
+	fake.storePvtDataOfInvalidTxMutex.Unlock()
+	if fake.StorePvtDataOfInvalidTxStub != nil {
+		return fake.StorePvtDataOfInvalidTxStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.storePvtDataOfInvalidTxReturns
+	return fakeReturns.result1
+}
+
+func (fake *ApplicationCapabilities) StorePvtDataOfInvalidTxCallCount() int {
+	fake.storePvtDataOfInvalidTxMutex.RLock()
+	defer fake.storePvtDataOfInvalidTxMutex.RUnlock()
+	return len(fake.storePvtDataOfInvalidTxArgsForCall)
+}
+
+func (fake *ApplicationCapabilities) StorePvtDataOfInvalidTxCalls(stub func() bool) {
+	fake.storePvtDataOfInvalidTxMutex.Lock()
+	defer fake.storePvtDataOfInvalidTxMutex.Unlock()
+	fake.StorePvtDataOfInvalidTxStub = stub
+}
+
+func (fake *ApplicationCapabilities) StorePvtDataOfInvalidTxReturns(result1 bool) {
+	fake.storePvtDataOfInvalidTxMutex.Lock()
+	defer fake.storePvtDataOfInvalidTxMutex.Unlock()
+	fake.StorePvtDataOfInvalidTxStub = nil
+	fake.storePvtDataOfInvalidTxReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *ApplicationCapabilities) StorePvtDataOfInvalidTxReturnsOnCall(i int, result1 bool) {
+	fake.storePvtDataOfInvalidTxMutex.Lock()
+	defer fake.storePvtDataOfInvalidTxMutex.Unlock()
+	fake.StorePvtDataOfInvalidTxStub = nil
+	if fake.storePvtDataOfInvalidTxReturnsOnCall == nil {
+		fake.storePvtDataOfInvalidTxReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.storePvtDataOfInvalidTxReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
+}
+
 func (fake *ApplicationCapabilities) Supported() error {
 	fake.supportedMutex.Lock()
 	ret, specificReturn := fake.supportedReturnsOnCall[len(fake.supportedArgsForCall)]
@@ -835,6 +897,8 @@ func (fake *ApplicationCapabilities) Invocations() map[string][][]interface{} {
 	defer fake.metadataLifecycleMutex.RUnlock()
 	fake.privateChannelDataMutex.RLock()
 	defer fake.privateChannelDataMutex.RUnlock()
+	fake.storePvtDataOfInvalidTxMutex.RLock()
+	defer fake.storePvtDataOfInvalidTxMutex.RUnlock()
 	fake.supportedMutex.RLock()
 	defer fake.supportedMutex.RUnlock()
 	fake.v1_1ValidationMutex.RLock()

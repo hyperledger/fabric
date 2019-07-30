@@ -19,7 +19,33 @@ Usage:
 
 Flags:
   -h, --help                help for start
-      --peer-chaincodedev   Whether peer in chaincode development mode
+      --peer-chaincodedev   start peer in chaincode development mode
+```
+
+
+## peer node reset
+```
+Resets all channels to the genesis block. When the command is executed, the peer must be offline. When the peer starts after the reset, it will receive blocks starting with block number one from an orderer or another peer to rebuild the block store and state database.
+
+Usage:
+  peer node reset [flags]
+
+Flags:
+  -h, --help   help for reset
+```
+
+
+## peer node rollback
+```
+Rolls back a channel to a specified block number. When the command is executed, the peer must be offline. When the peer starts after the rollback, it will receive blocks, which got removed during the rollback, from an orderer or another peer to rebuild the block store and state database.
+
+Usage:
+  peer node rollback [flags]
+
+Flags:
+  -b, --blockNumber uint   Block number to which the channel needs to be rolled back to.
+  -c, --channelID string   Channel to rollback.
+  -h, --help               help for rollback
 ```
 
 ## Example Usage

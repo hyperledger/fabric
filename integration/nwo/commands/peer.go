@@ -6,22 +6,49 @@ SPDX-License-Identifier: Apache-2.0
 
 package commands
 
+import "strconv"
+
 type NodeStart struct {
 	PeerID string
-	Dir    string
 }
 
 func (n NodeStart) SessionName() string {
 	return n.PeerID
 }
 
-func (n NodeStart) WorkingDir() string {
-	return n.Dir
-}
-
 func (n NodeStart) Args() []string {
 	return []string{
 		"node", "start",
+	}
+}
+
+type NodeReset struct {
+}
+
+func (n NodeReset) SessionName() string {
+	return "peer-node-reset"
+}
+
+func (n NodeReset) Args() []string {
+	return []string{
+		"node", "reset",
+	}
+}
+
+type NodeRollback struct {
+	ChannelID   string
+	BlockNumber int
+}
+
+func (n NodeRollback) SessionName() string {
+	return "peer-node-rollback"
+}
+
+func (n NodeRollback) Args() []string {
+	return []string{
+		"node", "rollback",
+		"--channelID", n.ChannelID,
+		"--blockNumber", strconv.Itoa(n.BlockNumber),
 	}
 }
 

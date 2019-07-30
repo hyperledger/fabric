@@ -51,13 +51,22 @@ type Provider struct {
 	initializer         *ledger.Initializer
 	collElgNotifier     *collElgNotifier
 	stats               *stats
+	fileLock            *leveldbhelper.FileLock
 }
 
 // NewProvider instantiates a new Provider.
 // This is not thread-safe and assumed to be synchronized by the caller
 func NewProvider(initializer *ledger.Initializer) (*Provider, error) {
+	fileLockPath := filepath.Join(initializer.Config.RootFSPath, "fileLock")
+	fileLock := leveldbhelper.NewFileLock(fileLockPath)
+	if err := fileLock.Lock(); err != nil {
+		return nil, errors.Wrap(err, "as another peer node command is executing,"+
+			" wait for that command to complete its execution or terminate it before retrying")
+	}
+
 	p := &Provider{}
 	p.initializer = initializer
+	p.fileLock = fileLock
 	// initialize the ID store (inventory of chainIds/ledgerIds)
 	idStore := openIDStore(filepath.Join(p.initializer.Config.RootFSPath, "ledgerProvider"))
 	p.idStore = idStore
@@ -86,6 +95,7 @@ func NewProvider(initializer *ledger.Initializer) (*Provider, error) {
 	)
 	p.configHistoryMgr = configHistoryMgr
 	// initialize the collection eligibility notifier
+
 	collElgNotifier := &collElgNotifier{
 		initializer.DeployedChaincodeInfoProvider,
 		initializer.MembershipInfoProvider,
@@ -147,9 +157,7 @@ func (p *Provider) Create(genesisBlock *common.Block) (ledger.PeerLedger, error)
 		panicOnErr(p.idStore.unsetUnderConstructionFlag(), "Error while unsetting under construction flag")
 		return nil, err
 	}
-	if err := lgr.CommitWithPvtData(&ledger.BlockAndPvtData{
-		Block: genesisBlock,
-	}); err != nil {
+	if err := lgr.CommitWithPvtData(&ledger.BlockAndPvtData{Block: genesisBlock}, &ledger.CommitOptions{}); err != nil {
 		lgr.Close()
 		return nil, err
 	}
@@ -235,6 +243,7 @@ func (p *Provider) Close() {
 	if p.historydbProvider != nil {
 		p.historydbProvider.Close()
 	}
+	p.fileLock.Unlock()
 }
 
 // recoverUnderConstructionLedger checks whether the under construction flag is set - this would be the case

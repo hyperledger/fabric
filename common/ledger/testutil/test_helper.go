@@ -267,6 +267,7 @@ func ConstructTestBlock(t *testing.T, blockNum uint64, numTx int, txSize int) *c
 
 // ConstructTestBlocks returns a series of blocks starting with blockNum=0.
 // The first block in the returned array is a config tx block that represents a genesis block
+// Except the genesis block, the size of each of the block would be the same.
 func ConstructTestBlocks(t *testing.T, numBlocks int) []*common.Block {
 	bg, gb := NewBlockGenerator(t, util.GetTestChainID(), false)
 	blocks := []*common.Block{}
@@ -446,4 +447,40 @@ func ConstructSignedTxEnv(
 		return nil, "", err
 	}
 	return env, txid, nil
+}
+
+func SetTxID(t *testing.T, block *common.Block, txNum int, txID string) {
+	envelopeBytes := block.Data.Data[txNum]
+	envelope, err := protoutil.UnmarshalEnvelope(envelopeBytes)
+	if err != nil {
+		t.Fatalf("error unmarshaling envelope: %s", err)
+	}
+
+	payload, err := protoutil.GetPayload(envelope)
+	if err != nil {
+		t.Fatalf("error getting payload from envelope: %s", err)
+	}
+
+	channelHeader, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		t.Fatalf("error unmarshaling channel header: %s", err)
+	}
+	channelHeader.TxId = txID
+	channelHeaderBytes, err := proto.Marshal(channelHeader)
+	if err != nil {
+		t.Fatalf("error marshaling channel header: %s", err)
+	}
+	payload.Header.ChannelHeader = channelHeaderBytes
+
+	payloadBytes, err := proto.Marshal(payload)
+	if err != nil {
+		t.Fatalf("error marshaling payload: %s", err)
+	}
+
+	envelope.Payload = payloadBytes
+	envelopeBytes, err = proto.Marshal(envelope)
+	if err != nil {
+		t.Fatalf("error marshaling envelope: %s", err)
+	}
+	block.Data.Data[txNum] = envelopeBytes
 }

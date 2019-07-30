@@ -370,7 +370,7 @@ func endTxSimulation(peerInstance *peer.Peer, chainID string, ccid *pb.Chaincode
 				}
 			}
 
-			if err := lgr.CommitWithPvtData(blockAndPvtData); err != nil {
+			if err := lgr.CommitWithPvtData(blockAndPvtData, &ledger.CommitOptions{}); err != nil {
 				return err
 			}
 		}

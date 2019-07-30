@@ -1,6 +1,5 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
-
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -16,7 +15,7 @@ import (
 
 const (
 	nodeFuncName = "node"
-	nodeCmdDes   = "Operate a peer node: start|status."
+	nodeCmdDes   = "Operate a peer node: start|reset|rollback."
 )
 
 var logger = flogging.MustGetLogger("nodeCmd")
@@ -24,7 +23,8 @@ var logger = flogging.MustGetLogger("nodeCmd")
 // Cmd returns the cobra command for Node
 func Cmd() *cobra.Command {
 	nodeCmd.AddCommand(startCmd())
-
+	nodeCmd.AddCommand(resetCmd())
+	nodeCmd.AddCommand(rollbackCmd())
 	return nodeCmd
 }
 

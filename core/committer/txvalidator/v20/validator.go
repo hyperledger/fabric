@@ -555,6 +555,10 @@ func (ds *dynamicCapabilities) PrivateChannelData() bool {
 	return ds.cr.Capabilities().PrivateChannelData()
 }
 
+func (ds *dynamicCapabilities) StorePvtDataOfInvalidTx() bool {
+	return ds.cr.Capabilities().StorePvtDataOfInvalidTx()
+}
+
 func (ds *dynamicCapabilities) Supported() error {
 	return ds.cr.Capabilities().Supported()
 }
