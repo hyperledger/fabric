@@ -258,7 +258,10 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 		return nil, nil, fmt.Errorf("P11: keypair generate failed [%s]", err)
 	}
 
-	ecpt, _, _ := ecPoint(p11lib, session, pub)
+	ecpt, _, err := ecPoint(p11lib, session, pub)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error querying EC-point: [%s]", err)
+	}
 	hash := sha256.Sum256(ecpt)
 	ski = hash[:]
 
