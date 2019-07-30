@@ -46,9 +46,9 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 		startFailCh = make(chan error, 1)
 		timeoutCh = time.NewTimer(r.StartupTimeout).C
 
-		codePackage, err := r.getCodePackage(ccci)
+		codePackage, err := r.PackageProvider.GetChaincodeCodePackage(ccci)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to get chaincode package")
 		}
 
 		go func() {
@@ -94,13 +94,4 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 
 	chaincodeLogger.Debug("launch complete")
 	return err
-}
-
-func (r *RuntimeLauncher) getCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
-	codePackage, err := r.PackageProvider.GetChaincodeCodePackage(ccci)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get chaincode package")
-	}
-
-	return codePackage, nil
 }

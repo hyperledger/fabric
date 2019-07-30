@@ -480,15 +480,9 @@ func serve(args []string) error {
 	containerRuntime := &chaincode.ContainerRuntime{
 		CACert:        ca.CertBytes(),
 		CertGenerator: authenticator,
-		CommonEnv: []string{
-			"CORE_CHAINCODE_LOGGING_LEVEL=" + chaincodeConfig.LogLevel,
-			"CORE_CHAINCODE_LOGGING_SHIM=" + chaincodeConfig.ShimLogLevel,
-			"CORE_CHAINCODE_LOGGING_FORMAT=" + chaincodeConfig.LogFormat,
-		},
-		PeerAddress: ccEndpoint,
-		LockingVM: &container.LockingVM{
-			Underlying:     dockerVM,
-			ContainerLocks: container.NewContainerLocks(),
+		PeerAddress:   ccEndpoint,
+		ContainerRouter: &container.Router{
+			DockerVM: dockerVM,
 		},
 	}
 

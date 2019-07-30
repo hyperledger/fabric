@@ -141,10 +141,9 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		TotalQueryLimit: 10000,
 	}
 	containerRuntime := &ContainerRuntime{
-		CACert:      ca.CertBytes(),
-		PeerAddress: peerAddress,
-		LockingVM: &container.LockingVM{
-			Underlying: &dockercontroller.DockerVM{
+		CACert: ca.CertBytes(),
+		ContainerRouter: &container.Router{
+			DockerVM: &dockercontroller.DockerVM{
 				PeerID:       "",
 				NetworkID:    "",
 				BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
@@ -154,13 +153,8 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 					Client:   client,
 				},
 			},
-			ContainerLocks: container.NewContainerLocks(),
 		},
-		CommonEnv: []string{
-			"CORE_CHAINCODE_LOGGING_LEVEL=" + globalConfig.LogLevel,
-			"CORE_CHAINCODE_LOGGING_SHIM=" + globalConfig.ShimLogLevel,
-			"CORE_CHAINCODE_LOGGING_FORMAT=" + globalConfig.LogFormat,
-		},
+		PeerAddress: peerAddress,
 	}
 	userRunsCC := false
 	metricsProviders := &disabled.Provider{}
@@ -748,9 +742,10 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 
 func stopChaincode(chaincodeCtx *ccprovider.CCContext, chaincodeSupport *ChaincodeSupport) {
 	chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:    chaincodeCtx.Name,
-		Version: chaincodeCtx.Version,
-		Type:    "GOLANG",
+		PackageID: persistence.PackageID(chaincodeCtx.Name + ":" + chaincodeCtx.Version),
+		Name:      chaincodeCtx.Name,
+		Version:   chaincodeCtx.Version,
+		Type:      "GOLANG",
 	})
 }
 
@@ -782,10 +777,11 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 
 	var nextBlockNumber uint64 = 1
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:    cID1.Name,
-		Version: cID1.Version,
-		Path:    cID1.Path,
-		Type:    "GOLANG",
+		PackageID: persistence.PackageID(cID1.Name + ":" + cID1.Version),
+		Name:      cID1.Name,
+		Version:   cID1.Version,
+		Path:      cID1.Path,
+		Type:      "GOLANG",
 	})
 
 	_, err = deploy(chainID, cccid1, spec1, nextBlockNumber, chaincodeSupport)
@@ -812,10 +808,11 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	}
 
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:    cID2.Name,
-		Version: cID2.Version,
-		Path:    cID2.Path,
-		Type:    "GOLANG",
+		PackageID: persistence.PackageID(cID2.Name + ":" + cID2.Version),
+		Name:      cID2.Name,
+		Version:   cID2.Version,
+		Path:      cID2.Path,
+		Type:      "GOLANG",
 	})
 	_, err = deploy(chainID, cccid2, spec2, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
@@ -874,10 +871,11 @@ func TestChaincodeInit(t *testing.T) {
 	}
 
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:    cID.Name,
-		Version: cID.Version,
-		Path:    cID.Path,
-		Type:    "GOLANG",
+		PackageID: persistence.PackageID(cID.Name + ":" + cID.Version),
+		Name:      cID.Name,
+		Version:   cID.Version,
+		Path:      cID.Path,
+		Type:      "GOLANG",
 	})
 
 	var nextBlockNumber uint64 = 1
@@ -896,13 +894,6 @@ func TestChaincodeInit(t *testing.T) {
 		Name:    "tmap",
 		Version: "0",
 	}
-
-	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:    cID.Name,
-		Version: cID.Version,
-		Path:    cID.Path,
-		Type:    "GOLANG",
-	})
 
 	resp, err := deploy(chainID, cccid, spec, nextBlockNumber, chaincodeSupport)
 	assert.NoError(t, err)
@@ -940,10 +931,11 @@ func TestQueries(t *testing.T) {
 	}
 
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:    cID.Name,
-		Version: cID.Version,
-		Path:    cID.Path,
-		Type:    "GOLANG",
+		PackageID: persistence.PackageID(cID.Name + ":" + cID.Version),
+		Name:      cID.Name,
+		Version:   cID.Version,
+		Path:      cID.Path,
+		Type:      "GOLANG",
 	})
 
 	var nextBlockNumber uint64 = 1

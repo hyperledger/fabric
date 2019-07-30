@@ -12,99 +12,96 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
+
+	"github.com/pkg/errors"
 )
 
 var vmLogger = flogging.MustGetLogger("container")
 
+//go:generate counterfeiter -o mock/vm.go --fake-name VM . VM
+
 //VM is an abstract virtual image for supporting arbitrary virual machines
 type VM interface {
-	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error
-	Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte) error
-	Stop(ccid ccintf.CCID) error
-	Wait(ccid ccintf.CCID) (int, error)
+	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (Instance, error)
 }
 
-type LockingVM struct {
-	Underlying     VM
-	ContainerLocks *ContainerLocks
+//go:generate counterfeiter -o mock/instance.go --fake-name Instance . Instance
+
+// Instance represents a built chaincode instance, because of the docker legacy, calling this a
+// built 'container' would be very misleading, and going forward with the external launcher
+// 'image' also seemed inappropriate.  So, the vague 'Instance' is used here.
+type Instance interface {
+	Start(peerConnection *ccintf.PeerConnection) error
+	Stop() error
+	Wait() (int, error)
 }
 
-func (lvm *LockingVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
-	ccid := ccintf.CCID(ccci.PackageID)
-	lvm.ContainerLocks.Lock(ccid)
-	defer lvm.ContainerLocks.Unlock(ccid)
-	return lvm.Underlying.Build(ccci, codePackage)
+type UninitializedInstance struct{}
+
+func (UninitializedInstance) Start(peerConnection *ccintf.PeerConnection) error {
+	return errors.Errorf("instance has not yet been built, cannot be started")
 }
 
-func (lvm *LockingVM) Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte) error {
-	lvm.ContainerLocks.Lock(ccid)
-	defer lvm.ContainerLocks.Unlock(ccid)
-	return lvm.Underlying.Start(ccid, args, env, filesToUpload)
+func (UninitializedInstance) Stop() error {
+	return errors.Errorf("instance has not yet been built, cannot be stopped")
 }
 
-func (lvm *LockingVM) Stop(ccid ccintf.CCID) error {
-	lvm.ContainerLocks.Lock(ccid)
-	defer lvm.ContainerLocks.Unlock(ccid)
-	return lvm.Underlying.Stop(ccid)
+func (UninitializedInstance) Wait() (int, error) {
+	return 0, errors.Errorf("instance has not yet been built, cannot wait")
 }
 
-func (lvm *LockingVM) Wait(ccid ccintf.CCID) (int, error) {
-	// There is a race here, that was previously masked by the fact that
-	// the callback was called after the lock had been released, so
-	// unlocking before blocking
-	lvm.ContainerLocks.Lock(ccid)
-	waitFunc := lvm.Underlying.Wait
-	lvm.ContainerLocks.Unlock(ccid)
-	return waitFunc(ccid)
+type Router struct {
+	DockerVM   VM
+	containers map[ccintf.CCID]Instance
+	mutex      sync.Mutex
 }
 
-type ContainerLocks struct {
-	mutex          sync.RWMutex
-	containerLocks map[ccintf.CCID]*refCountedLock
-}
+func (r *Router) getInstance(ccid ccintf.CCID) Instance {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	// Note, to resolve the locking problem which existed in the previous code, we never delete
+	// references from the map.  In this way, it is safe to release the lock and operate
+	// on the returned reference
 
-func NewContainerLocks() *ContainerLocks {
-	return &ContainerLocks{
-		containerLocks: make(map[ccintf.CCID]*refCountedLock),
+	if r.containers == nil {
+		r.containers = map[ccintf.CCID]Instance{}
 	}
-}
 
-func (cl *ContainerLocks) Lock(id ccintf.CCID) {
-	//get the container lock under global lock
-	cl.mutex.Lock()
-	var refLck *refCountedLock
-	var ok bool
-	if refLck, ok = cl.containerLocks[id]; !ok {
-		refLck = &refCountedLock{refCount: 1, lock: &sync.RWMutex{}}
-		cl.containerLocks[id] = refLck
-	} else {
-		refLck.refCount++
-		vmLogger.Debugf("refcount %d (%s)", refLck.refCount, id)
+	vm, ok := r.containers[ccid]
+	if !ok {
+		return UninitializedInstance{}
 	}
-	cl.mutex.Unlock()
-	vmLogger.Debugf("waiting for container(%s) lock", id)
-	refLck.lock.Lock()
-	vmLogger.Debugf("got container (%s) lock", id)
+
+	return vm
 }
 
-func (cl *ContainerLocks) Unlock(id ccintf.CCID) {
-	cl.mutex.Lock()
-	if refLck, ok := cl.containerLocks[id]; ok {
-		if refLck.refCount <= 0 {
-			panic("refcnt <= 0")
-		}
-		refLck.lock.Unlock()
-		if refLck.refCount--; refLck.refCount == 0 {
-			vmLogger.Debugf("container lock deleted(%s)", id)
-			delete(cl.containerLocks, id)
-		}
-	} else {
-		vmLogger.Debugf("no lock to unlock(%s)!!", id)
+func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
+	// external launcher logic goes here
+	instance, err := r.DockerVM.Build(ccci, codePackage)
+	if err != nil {
+		return errors.WithMessage(err, "failed docker build")
 	}
-	cl.mutex.Unlock()
+
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if r.containers == nil {
+		r.containers = map[ccintf.CCID]Instance{}
+	}
+
+	r.containers[ccintf.CCID(ccci.PackageID)] = instance
+
+	return nil
 }
 
-type refCountedLock struct {
-	refCount int
-	lock     *sync.RWMutex
+func (r *Router) Start(ccid ccintf.CCID, peerConnection *ccintf.PeerConnection) error {
+	return r.getInstance(ccid).Start(peerConnection)
+}
+
+func (r *Router) Stop(ccid ccintf.CCID) error {
+	return r.getInstance(ccid).Stop()
+}
+
+func (r *Router) Wait(ccid ccintf.CCID) (int, error) {
+	return r.getInstance(ccid).Wait()
 }

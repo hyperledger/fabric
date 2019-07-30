@@ -24,8 +24,10 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
 
@@ -72,6 +74,24 @@ type dockerClient interface {
 
 type PlatformBuilder interface {
 	GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (io.Reader, error)
+}
+
+type ContainerInstance struct {
+	CCID     ccintf.CCID
+	Type     string
+	DockerVM *DockerVM
+}
+
+func (ci *ContainerInstance) Start(peerConnection *ccintf.PeerConnection) error {
+	return ci.DockerVM.Start(ci.CCID, ci.Type, peerConnection)
+}
+
+func (ci *ContainerInstance) Stop() error {
+	return ci.DockerVM.Stop(ci.CCID)
+}
+
+func (ci *ContainerInstance) Wait() (int, error) {
+	return ci.DockerVM.Wait(ci.CCID)
 }
 
 // DockerVM is a vm. It is identified by an image id
@@ -151,32 +171,83 @@ func (vm *DockerVM) buildImage(ccid ccintf.CCID, reader io.Reader) error {
 }
 
 // Build is responsible for building an image if it does not already exist.
-func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
+func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (container.Instance, error) {
 	ccid := ccintf.New(ccci.PackageID)
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = vm.Client.InspectImage(imageName)
-	if err != docker.ErrNoSuchImage {
-		return errors.Wrap(err, "docker image inspection failed")
+	switch err {
+	case docker.ErrNoSuchImage:
+		dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(ccci, codePackage)
+		if err != nil {
+			return nil, errors.Wrap(err, "platform builder failed")
+		}
+		err = vm.buildImage(ccid, dockerfileReader)
+		if err != nil {
+			return nil, errors.Wrap(err, "docker image build failed")
+		}
+	case nil:
+	default:
+		return nil, errors.Wrap(err, "docker image inspection failed")
 	}
 
-	dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(ccci, codePackage)
-	if err != nil {
-		return errors.Wrap(err, "platform builder failed")
+	return &ContainerInstance{
+		DockerVM: vm,
+		CCID:     ccid,
+		Type:     ccci.Type,
+	}, nil
+}
+
+func (vm *DockerVM) GetArgs(ccType string, peerAddress string) ([]string, error) {
+	// language specific arguments, possibly should be pushed back into platforms, but were simply
+	// ported from the container_runtime chaincode component
+	switch ccType {
+	case pb.ChaincodeSpec_GOLANG.String(), pb.ChaincodeSpec_CAR.String():
+		return []string{"chaincode", fmt.Sprintf("-peer.address=%s", peerAddress)}, nil
+	case pb.ChaincodeSpec_JAVA.String():
+		return []string{"/root/chaincode-java/start", "--peerAddress", peerAddress}, nil
+	case pb.ChaincodeSpec_NODE.String():
+		return []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; npm start -- --peer.address %s", peerAddress)}, nil
+	default:
+		return nil, errors.Errorf("unknown chaincodeType: %s", ccType)
 	}
-	err = vm.buildImage(ccid, dockerfileReader)
-	if err != nil {
-		return errors.Wrap(err, "docker image build failed")
+}
+
+const (
+	// Mutual TLS auth client key and cert paths in the chaincode container
+	TLSClientKeyPath      string = "/etc/hyperledger/fabric/client.key"
+	TLSClientCertPath     string = "/etc/hyperledger/fabric/client.crt"
+	TLSClientRootCertPath string = "/etc/hyperledger/fabric/peer.crt"
+)
+
+func GetEnv(ccid ccintf.CCID, tlsConfig *ccintf.TLSConfig) []string {
+	// common environment variables
+	// FIXME: we are using the env variable CHAINCODE_ID to store
+	// the package ID; in the legacy lifecycle they used to be the
+	// same but now they are not, so we should use a different env
+	// variable. However chaincodes built by older versions of the
+	// peer still adopt this broken convention. (FAB-14630)
+	envs := []string{"CORE_CHAINCODE_ID_NAME=" + string(ccid)}
+
+	// Pass TLS options to chaincode
+	if tlsConfig != nil {
+		envs = append(envs, "CORE_PEER_TLS_ENABLED=true")
+		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_KEY_PATH=%s", TLSClientKeyPath))
+		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_CERT_PATH=%s", TLSClientCertPath))
+		envs = append(envs, fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=%s", TLSClientRootCertPath))
+	} else {
+		envs = append(envs, "CORE_PEER_TLS_ENABLED=false")
 	}
 
-	return nil
+	return envs
+
 }
 
 // Start starts a container using a previously created docker image
-func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload map[string][]byte) error {
+func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, peerConnection *ccintf.PeerConnection) error {
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
@@ -186,6 +257,15 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 	logger := dockerLogger.With("imageName", imageName, "containerName", containerName)
 
 	vm.stopInternal(containerName)
+
+	args, err := vm.GetArgs(ccType, peerConnection.Address)
+	if err != nil {
+		return errors.WithMessage(err, "could not get args")
+	}
+	dockerLogger.Debugf("start container with args: %s", strings.Join(args, " "))
+
+	env := GetEnv(ccid, peerConnection.TLSConfig)
+	dockerLogger.Debugf("start container with env:\n\t%s", strings.Join(env, "\n\t"))
 
 	err = vm.createContainer(imageName, containerName, args, env)
 	if err != nil {
@@ -199,18 +279,17 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 		streamOutput(dockerLogger, vm.Client, containerName, containerLogger)
 	}
 
-	// upload specified files to the container before starting it
-	// this can be used for configurations such as TLS key and certs
-	if len(filesToUpload) != 0 {
+	// upload TLS files to the container before starting it if needed
+	if peerConnection.TLSConfig != nil {
 		// the docker upload API takes a tar file, so we need to first
 		// consolidate the file entries to a tar
 		payload := bytes.NewBuffer(nil)
 		gw := gzip.NewWriter(payload)
 		tw := tar.NewWriter(gw)
 
-		for path, fileToUpload := range filesToUpload {
-			cutil.WriteBytesToPackage(path, fileToUpload, tw)
-		}
+		cutil.WriteBytesToPackage(TLSClientKeyPath, peerConnection.TLSConfig.ClientKey, tw)
+		cutil.WriteBytesToPackage(TLSClientCertPath, peerConnection.TLSConfig.ClientCert, tw)
+		cutil.WriteBytesToPackage(TLSClientRootCertPath, peerConnection.TLSConfig.RootCert, tw)
 
 		// Write the tar file out
 		if err := tw.Close(); err != nil {

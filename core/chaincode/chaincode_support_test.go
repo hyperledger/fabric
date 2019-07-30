@@ -15,7 +15,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -50,7 +49,6 @@ import (
 	plgr "github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
-	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -210,21 +208,13 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	containerRuntime := &ContainerRuntime{
 		CACert:        ca.CertBytes(),
 		CertGenerator: certGenerator,
-		PeerAddress:   "0.0.0.0:7052",
-		LockingVM: &container.LockingVM{
-			Underlying: &dockercontroller.DockerVM{
+		ContainerRouter: &container.Router{
+			DockerVM: &dockercontroller.DockerVM{
 				PlatformBuilder: &platforms.Builder{
 					Registry: platforms.NewRegistry(&golang.Platform{}),
 					Client:   client,
 				},
 			},
-			ContainerLocks: container.NewContainerLocks(),
-		},
-
-		CommonEnv: []string{
-			"CORE_CHAINCODE_LOGGING_LEVEL=" + globalConfig.LogLevel,
-			"CORE_CHAINCODE_LOGGING_SHIM=" + globalConfig.ShimLogLevel,
-			"CORE_CHAINCODE_LOGGING_FORMAT=" + globalConfig.LogFormat,
 		},
 	}
 	if !globalConfig.TLSEnabled {
@@ -931,65 +921,6 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 	return nil
 }
 
-func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
-	gt := NewGomegaWithT(t)
-	packageID := "mycc:v0"
-	lc, err := cr.LaunchConfig(packageID, pb.ChaincodeSpec_GOLANG.String())
-	if err != nil {
-		t.Fatalf("calling getLaunchConfigs() failed with error %s", err)
-	}
-	args := lc.Args
-	envs := lc.Envs
-	filesToUpload := lc.Files
-
-	if len(args) != 2 {
-		t.Fatalf("calling getLaunchConfigs() for golang chaincode should have returned an array of 2 elements for Args, but got %v", args)
-	}
-	if args[0] != "chaincode" || !strings.HasPrefix(args[1], "-peer.address") {
-		t.Fatalf("calling getLaunchConfigs() should have returned the start command for golang chaincode, but got %v", args)
-	}
-
-	if len(envs) != 8 {
-		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 8 elements for Envs, but got %v", envs)
-	}
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_LEVEL=info"))
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_SHIM=warn"))
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_ID_NAME=mycc:v0"))
-	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ENABLED=true"))
-	gt.Expect(envs).To(ContainElement("CORE_TLS_CLIENT_KEY_PATH=/etc/hyperledger/fabric/client.key"))
-	gt.Expect(envs).To(ContainElement("CORE_TLS_CLIENT_CERT_PATH=/etc/hyperledger/fabric/client.crt"))
-	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/peer.crt"))
-
-	if len(filesToUpload) != 3 {
-		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 3 elements for filesToUpload, but got %v", len(filesToUpload))
-	}
-
-	cr.CertGenerator = nil // disable TLS
-	lc, err = cr.LaunchConfig(packageID, pb.ChaincodeSpec_NODE.String())
-	assert.NoError(t, err)
-	args = lc.Args
-
-	if len(args) != 3 {
-		t.Fatalf("calling getLaunchConfigs() for node chaincode should have returned an array of 3 elements for Args, but got %v", args)
-	}
-
-	if args[0] != "/bin/sh" || args[1] != "-c" || !strings.HasPrefix(args[2], "cd /usr/local/src; npm start -- --peer.address") {
-		t.Fatalf("calling getLaunchConfigs() should have returned the start command for node.js chaincode, but got %v", args)
-	}
-
-	lc, err = cr.LaunchConfig(packageID, pb.ChaincodeSpec_GOLANG.String())
-	assert.NoError(t, err)
-
-	envs = lc.Envs
-	if len(envs) != 5 {
-		t.Fatalf("calling getLaunchConfigs() with TLS disabled should have returned an array of 4 elements for Envs, but got %v", envs)
-	}
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_LEVEL=info"))
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_SHIM=warn"))
-	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_ID_NAME=mycc:v0"))
-	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ENABLED=false"))
-}
-
 //success case
 func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
@@ -1322,10 +1253,6 @@ func TestCCFramework(t *testing.T) {
 
 	//call's history result
 	getHistory(t, chainID, ccname, ccSide, chaincodeSupport)
-
-	//just use the previous certGenerator for generating TLS key/pair
-	cr := chaincodeSupport.Runtime.(*ContainerRuntime)
-	getLaunchConfigs(t, cr)
 
 	ccSide.Quit()
 }
