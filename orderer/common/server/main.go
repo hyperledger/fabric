@@ -89,7 +89,7 @@ func Main() {
 	prettyPrintStruct(conf)
 
 	bootstrapBlock := extractBootstrapBlock(conf)
-	if err := ValidateBootstrapBlock(bootstrapBlock); err != nil {
+	if err := ValidateBootstrapBlock(bootstrapBlock, factory.GetDefault()); err != nil {
 		logger.Panicf("Failed validating bootstrap block: %v", err)
 	}
 
