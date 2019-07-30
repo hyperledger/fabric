@@ -113,12 +113,23 @@ var _ = Describe("Lifecycle", func() {
 		nwo.PackageChaincode(network, chaincode, testPeers[0])
 
 		// we set the PackageID so that we can pass it to the approve step
-		filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
+		fileBytes, err := ioutil.ReadFile(chaincode.PackageFile)
 		Expect(err).NotTo(HaveOccurred())
-		hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
+		hashStr := fmt.Sprintf("%x", util.ComputeSHA256(fileBytes))
 		chaincode.PackageID = chaincode.Label + ":" + hashStr
 
 		nwo.InstallChaincode(network, chaincode, testPeers...)
+
+		By("verifying the installed chaincode package matches the one that was submitted")
+		sess, err := network.PeerAdminSession(testPeers[0], commands.ChaincodeGetInstalledPackage{
+			PackageID:       chaincode.PackageID,
+			OutputDirectory: tempDir,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+		fileBytesFromPeer, err := ioutil.ReadFile(filepath.Join(network.RootDir, chaincode.PackageID+".tar.gz"))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fileBytesFromPeer).To(Equal(fileBytes))
 
 		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, testPeers...)
 
@@ -138,7 +149,7 @@ var _ = Describe("Lifecycle", func() {
 		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, org1peer2)
 
 		By("querying the chaincode and expecting the invocation to fail")
-		sess, err := network.PeerUserSession(org1peer2, "User1", commands.ChaincodeQuery{
+		sess, err = network.PeerUserSession(org1peer2, "User1", commands.ChaincodeQuery{
 			ChannelID: "testchannel",
 			Name:      "mycc",
 			Ctor:      `{"Args":["query","a"]}`,

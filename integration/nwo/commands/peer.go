@@ -189,6 +189,25 @@ func (c ChaincodeInstall) Args() []string {
 	return args
 }
 
+type ChaincodeGetInstalledPackage struct {
+	PackageID       string
+	OutputDirectory string
+}
+
+func (c ChaincodeGetInstalledPackage) SessionName() string {
+	return "peer-lifecycle-chaincode-getinstalledpackage"
+}
+
+func (c ChaincodeGetInstalledPackage) Args() []string {
+	args := []string{
+		"lifecycle", "chaincode", "getinstalledpackage",
+		"--package-id", c.PackageID,
+		"--output-directory", c.OutputDirectory,
+	}
+
+	return args
+}
+
 type ChaincodeInstallLegacy struct {
 	Name        string
 	Version     string
