@@ -45,8 +45,7 @@ func ExtractStatedbArtifactsForChaincode(ccname, ccversion string) (installed bo
 func ExtractStatedbArtifactsFromCCPackage(ccpackage CCPackage) (statedbArtifactsTar []byte, err error) {
 	cds := ccpackage.GetDepSpec()
 
-	metadataProvider := TargzMetadataProvider{Code: cds.CodePackage}
-	metaprov, err := metadataProvider.GetMetadataAsTarEntries()
+	metaprov, err := MetadataAsTarEntries(cds.CodePackage)
 	if err != nil {
 		ccproviderLogger.Infof("invalid deployment spec: %s", err)
 		return nil, fmt.Errorf("invalid deployment spec")

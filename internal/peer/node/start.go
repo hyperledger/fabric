@@ -182,7 +182,7 @@ func serve(args []string) error {
 	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "lifecycle", "chaincodes")
 	ccStore := persistence.NewStore(chaincodeInstallPath)
 	ccPackageParser := &persistence.ChaincodePackageParser{
-		MetadataProvider: &ccprovider.PersistenceMetadataProvider{},
+		MetadataProvider: ccprovider.PersistenceAdapter(ccprovider.MetadataAsTarEntries),
 	}
 
 	peerHost, _, err := net.SplitHostPort(coreConfig.PeerAddress)

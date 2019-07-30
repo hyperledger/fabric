@@ -11,8 +11,6 @@ import (
 	"compress/gzip"
 	"io"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 //The targz metadata provider is reference for other providers (such as what CAR would
@@ -22,40 +20,14 @@ const (
 	ccPackageStatedbDir = "META-INF/statedb/"
 )
 
-// PersistenceMetadataProvider implements persistence.MetadataProvider
-// and internally uses a TargzMetadataProvider to extract DB artefacts
-// from a code package.
-type PersistenceMetadataProvider struct{}
+type PersistenceAdapter func([]byte) ([]byte, error)
 
-// GetDBArtifacts returns the database artifacts (if any) from the
-// supplied package.
-func (t *PersistenceMetadataProvider) GetDBArtifacts(codePackage []byte) ([]byte, error) {
-	return (&TargzMetadataProvider{
-		Code: codePackage,
-	}).GetMetadataAsTarEntries()
+func (pa PersistenceAdapter) GetDBArtifacts(codePackage []byte) ([]byte, error) {
+	return pa(codePackage)
 }
 
-//TargzMetadataProvider provides Metadata from chaincode packaged in Targz format
-//(go, java and node platforms)
-type TargzMetadataProvider struct {
-	Code []byte
-}
-
-func (tgzProv *TargzMetadataProvider) getCode() ([]byte, error) {
-	if tgzProv.Code == nil {
-		return nil, errors.New("nil code package")
-	}
-
-	return tgzProv.Code, nil
-}
-
-// GetMetadataAsTarEntries extracts metata data from ChaincodeDeploymentSpec
-func (tgzProv *TargzMetadataProvider) GetMetadataAsTarEntries() ([]byte, error) {
-	code, err := tgzProv.getCode()
-	if err != nil {
-		return nil, err
-	}
-
+// MetadataAsTarEntries extracts metadata from a chaincode package
+func MetadataAsTarEntries(code []byte) ([]byte, error) {
 	is := bytes.NewReader(code)
 	gr, err := gzip.NewReader(is)
 	if err != nil {

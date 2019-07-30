@@ -66,18 +66,10 @@ func getNumEntries(tarbytes []byte) (int, error) {
 	return count, nil
 }
 
-func TestBadDepSpec(t *testing.T) {
-	tp := TargzMetadataProvider{}
-	_, err := tp.GetMetadataAsTarEntries()
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), "nil code package")
-}
-
 func TestNoMetadata(t *testing.T) {
 	entries := []tarEntry{{"path/to/a/file", []byte("somdata")}}
 	cds := getCodePackage([]byte("cc code"), entries)
-	tp := TargzMetadataProvider{cds}
-	metadata, err := tp.GetMetadataAsTarEntries()
+	metadata, err := MetadataAsTarEntries(cds)
 	assert.Nil(t, err)
 	assert.NotNil(t, metadata)
 	count, err := getNumEntries(metadata)
@@ -88,20 +80,7 @@ func TestNoMetadata(t *testing.T) {
 func TestMetadata(t *testing.T) {
 	entries := []tarEntry{{"path/to/a/file", []byte("somdata")}, {ccPackageStatedbDir + "/m1", []byte("m1data")}, {ccPackageStatedbDir + "/m2", []byte("m2data")}}
 	cds := getCodePackage([]byte("cc code"), entries)
-	tp := TargzMetadataProvider{cds}
-	metadata, err := tp.GetMetadataAsTarEntries()
-	assert.Nil(t, err)
-	assert.NotNil(t, metadata)
-	count, err := getNumEntries(metadata)
-	assert.Nil(t, err)
-	assert.Equal(t, count, 2)
-}
-
-func TestPersistenceMetadataProvider(t *testing.T) {
-	entries := []tarEntry{{"path/to/a/file", []byte("somdata")}, {ccPackageStatedbDir + "/m1", []byte("m1data")}, {ccPackageStatedbDir + "/m2", []byte("m2data")}}
-	cds := getCodePackage([]byte("cc code"), entries)
-	pmp := &PersistenceMetadataProvider{}
-	metadata, err := pmp.GetDBArtifacts(cds)
+	metadata, err := MetadataAsTarEntries(cds)
 	assert.Nil(t, err)
 	assert.NotNil(t, metadata)
 	count, err := getNumEntries(metadata)
