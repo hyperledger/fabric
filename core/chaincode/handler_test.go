@@ -125,7 +125,6 @@ var _ = Describe("Handler", func() {
 			QueryResponseBuilder:       fakeQueryResponseBuilder,
 			Registry:                   fakeHandlerRegistry,
 			BuiltinSCCs:                builtinSCCs,
-			SystemCCVersion:            "system-cc-version",
 			TXContexts:                 fakeContextRegistry,
 			UUIDGenerator: chaincode.UUIDGeneratorFunc(func() string {
 				return "generated-query-id"
@@ -2318,15 +2317,6 @@ var _ = Describe("Handler", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeACLProvider.CheckACLCallCount()).To(Equal(0))
-			})
-
-			It("uses the system chaincode version", func() {
-				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(fakeInvoker.InvokeCallCount()).To(Equal(1))
-				_, cccid, _ := fakeInvoker.InvokeArgsForCall(0)
-				Expect(cccid.Version).To(Equal("system-cc-version"))
 			})
 		})
 

@@ -538,7 +538,6 @@ func serve(args []string) error {
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
 		BuiltinSCCs:            builtinSCCs,
-		SystemCCVersion:        sysCCVersion,
 		TotalQueryLimit:        chaincodeConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
@@ -605,7 +604,7 @@ func serve(args []string) error {
 		SigningIdentityFetcher:  signingIdentityFetcher,
 	})
 	endorserSupport.PluginEndorser = pluginEndorser
-	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport, packagingRegistry, metricsProvider, sysCCVersion)
+	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport, packagingRegistry, metricsProvider)
 
 	// register prover grpc service
 	err = registerProverService(peerInstance, peerServer, aclProvider, signingIdentity)

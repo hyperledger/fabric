@@ -194,6 +194,22 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			}))
 		})
 
+		Context("when the chaincode is a builtin system chaincode", func() {
+			BeforeEach(func() {
+				builtinSCCs["test-syscc-name"] = struct{}{}
+			})
+
+			It("returns a static definition", func() {
+				res, err := cei.ChaincodeDefinition("channel-id", "test-syscc-name", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res).To(Equal(&lifecycle.LegacyDefinition{
+					Name:              "test-syscc-name",
+					Version:           "test-syscc-version",
+					EndorsementPlugin: "escc",
+				}))
+			})
+		})
+
 		Context("when the cache returns an error", func() {
 			BeforeEach(func() {
 				fakeCache.ChaincodeInfoReturns(nil, fmt.Errorf("cache-error"))

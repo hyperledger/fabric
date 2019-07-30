@@ -67,7 +67,6 @@ type ChaincodeSupport struct {
 	Lifecycle              Lifecycle
 	Peer                   *peer.Peer
 	Runtime                Runtime
-	SystemCCVersion        string
 	TotalQueryLimit        int
 	UserRunsCC             bool
 }
@@ -126,7 +125,6 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream)
 		TXContexts:                 NewTransactionContexts(),
 		ActiveTransactions:         NewActiveTransactions(),
 		BuiltinSCCs:                cs.BuiltinSCCs,
-		SystemCCVersion:            cs.SystemCCVersion,
 		InstantiationPolicyChecker: CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
 		QueryResponseBuilder:       &QueryResponseGenerator{MaxResultLimit: 100},
 		UUIDGenerator:              UUIDGeneratorFunc(util.GenerateUUID),

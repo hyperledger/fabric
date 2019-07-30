@@ -243,7 +243,6 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
 		BuiltinSCCs:            map[string]struct{}{"lscc": {}},
-		SystemCCVersion:        "latest",
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}

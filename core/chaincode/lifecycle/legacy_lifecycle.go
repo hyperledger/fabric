@@ -128,6 +128,15 @@ func (cei *ChaincodeEndorsementInfo) CachedChaincodeInfo(channelID, chaincodeNam
 
 // ChaincodeDefinition returns the details for a chaincode by name
 func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+	if cei.BuiltinSCCs.IsSysCC(chaincodeName) {
+		return &LegacyDefinition{
+			Name:              chaincodeName,
+			Version:           cei.SysCCVersion,
+			EndorsementPlugin: "escc",
+			RequiresInitField: false,
+		}, nil
+	}
+
 	chaincodeInfo, ok, err := cei.CachedChaincodeInfo(channelID, chaincodeName, qe)
 	if err != nil {
 		return nil, err

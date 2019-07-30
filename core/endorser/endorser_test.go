@@ -142,7 +142,7 @@ func TestEndorserNilProp(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	fakeMetrics := initFakeMetrics(es)
 
@@ -170,7 +170,7 @@ func TestEndorserCCInvocationFailed(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
@@ -192,7 +192,7 @@ func TestEndorserNoCCDef(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
@@ -215,7 +215,7 @@ func TestEndorserBadInstPolicy(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
@@ -239,7 +239,7 @@ func TestEndorserSysCC(t *testing.T) {
 		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
@@ -260,7 +260,7 @@ func TestEndorserCCInvocationError(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
@@ -281,7 +281,7 @@ func TestEndorserLSCCBadType(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	cds := protoutil.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
@@ -310,7 +310,7 @@ func TestEndorserDupTXId(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	fakeMetrics := initFakeMetrics(es)
 
@@ -342,7 +342,7 @@ func TestEndorserBadACL(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	fakeMetrics := initFakeMetrics(es)
 
@@ -372,7 +372,7 @@ func TestEndorserGoodPathEmptyChannel(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	fakeMetrics := initFakeMetrics(es)
 
@@ -399,7 +399,7 @@ func TestEndorserLSCCInitFails(t *testing.T) {
 			},
 		},
 		ExecuteCDSError: errors.New(""),
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	fakeMetrics := initFakeMetrics(es)
 
@@ -444,7 +444,7 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 			},
 		},
 		SysCCMap: SysCCMap,
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	cds := protoutil.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
@@ -477,7 +477,7 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 		ExecuteEvent:               &pb.ChaincodeEvent{},
 	}
 	attachPluginEndorser(support, nil)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -498,7 +498,7 @@ func TestEndorserBadChannel(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedPropWithCHID("ccid", "0", "barfchain", t)
 
@@ -522,7 +522,7 @@ func TestEndorserGoodPath(t *testing.T) {
 		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	fakeMetrics := initFakeMetrics(es)
 
@@ -555,7 +555,7 @@ func TestEndorserChaincodeCallLogging(t *testing.T) {
 		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	buf := gbytes.NewBuffer()
 	old := flogging.SetWriter(buf)
@@ -582,7 +582,7 @@ func TestEndorserLSCC(t *testing.T) {
 		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	cds := protoutil.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
@@ -630,7 +630,7 @@ func TestEndorseWithPlugin(t *testing.T) {
 	}
 	attachPluginEndorser(support, nil)
 
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -658,7 +658,7 @@ func TestEndorseEndorsementFailure(t *testing.T) {
 	// fail endorsement with "sign err"
 	attachPluginEndorser(support, fmt.Errorf("sign err"))
 
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedProp("ccid", "0", t)
@@ -694,7 +694,7 @@ func TestEndorseEndorsementFailureDueToCCError(t *testing.T) {
 
 	attachPluginEndorser(support, nil)
 
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedProp("ccid", "0", t)
@@ -726,7 +726,7 @@ func TestSimulateProposal(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{}, "latest")
+	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	_, _, _, _, err := es.SimulateProposal(&ccprovider.TransactionParams{}, nil)
 	assert.Error(t, err)
@@ -767,7 +767,6 @@ func TestEndorserAcquireTxSimulator(t *testing.T) {
 				support,
 				packaging.NewRegistry(&golang.Platform{}),
 				&disabled.Provider{},
-				"latest",
 			)
 
 			t.Parallel()
@@ -816,7 +815,7 @@ type support interface {
 
 func TestUserCDSSanitization(t *testing.T) {
 	fakeSupport := &mocks.Support{}
-	e := endorser.NewEndorserServer(nil, fakeSupport, nil, &disabled.Provider{}, "latest")
+	e := endorser.NewEndorserServer(nil, fakeSupport, nil, &disabled.Provider{})
 
 	userCDS := &pb.ChaincodeDeploymentSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{

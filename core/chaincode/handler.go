@@ -117,8 +117,6 @@ type Handler struct {
 	// TotalQueryLimit specifies the maximum number of results to return for
 	// chaincode queries.
 	TotalQueryLimit int
-	// SystemCCVersion specifies the current system chaincode version
-	SystemCCVersion string
 	// DefinitionGetter is used to retrieve the chaincode definition from the
 	// Lifecycle System Chaincode.
 	DefinitionGetter ChaincodeDefinitionGetter
@@ -1186,25 +1184,16 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 
 	chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s", shorttxid(msg.Txid), targetInstance.ChaincodeName, targetInstance.ChainID)
 
-	version := h.SystemCCVersion
-	var idBytes []byte
-	requiresInit := false
-	if !h.BuiltinSCCs.IsSysCC(targetInstance.ChaincodeName) {
-		// if its a user chaincode, get the details
-		cd, err := h.DefinitionGetter.ChaincodeDefinition(targetInstance.ChainID, targetInstance.ChaincodeName, txParams.TXSimulator)
+	// if its a user chaincode, get the details
+	cd, err := h.DefinitionGetter.ChaincodeDefinition(targetInstance.ChainID, targetInstance.ChaincodeName, txParams.TXSimulator)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if cData, ok := cd.(*ccprovider.ChaincodeData); ok {
+		err = h.InstantiationPolicyChecker.CheckInstantiationPolicy(targetInstance.ChaincodeName, cd.CCVersion(), cData)
 		if err != nil {
 			return nil, errors.WithStack(err)
-		}
-
-		version = cd.CCVersion()
-		idBytes = cd.Hash()
-		requiresInit = cd.RequiresInit()
-
-		if cData, ok := cd.(*ccprovider.ChaincodeData); ok {
-			err = h.InstantiationPolicyChecker.CheckInstantiationPolicy(targetInstance.ChaincodeName, version, cData)
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
 		}
 	}
 
@@ -1213,9 +1202,9 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 
 	cccid := &ccprovider.CCContext{
 		Name:         targetInstance.ChaincodeName,
-		Version:      version,
-		InitRequired: requiresInit,
-		ID:           idBytes,
+		Version:      cd.CCVersion(),
+		InitRequired: cd.RequiresInit(),
+		ID:           cd.Hash(),
 	}
 
 	// Execute the chaincode... this CANNOT be an init at least for now
