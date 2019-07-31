@@ -22,7 +22,6 @@ import (
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
-	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -110,7 +109,6 @@ func setupLedgerAndValidatorExplicitWithMSP(t *testing.T, cpb *mockconfig.MockAp
 	assert.NoError(t, err)
 	theLedger, err := ledgerMgr.CreateLedger(gb)
 	assert.NoError(t, err)
-	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 	pm := &mocks.Mapper{}
 	factory := &mocks.PluginFactory{}
 	pm.On("FactoryByName", vp.Name("vscc")).Return(factory)
@@ -120,7 +118,6 @@ func setupLedgerAndValidatorExplicitWithMSP(t *testing.T, cpb *mockconfig.MockAp
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: cpb, MSPManagerVal: mspMgr},
-		mp,
 		pm,
 	)
 
@@ -1117,7 +1114,7 @@ func testInvokeNOKWritesToNotExt(t *testing.T, l ledger.PeerLedger, v txvalidato
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
-	tx := getEnv(ccID, nil, createRWset(t, ccID, "notext"), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID, "escc"), t)
 	b := &common.Block{
 		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
 		Header: &common.BlockHeader{},
@@ -1145,7 +1142,7 @@ func TestInvokeNOKInvokesNotExt(t *testing.T) {
 }
 
 func testInvokeNOKInvokesNotExt(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
-	ccID := "notext"
+	ccID := "escc"
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
@@ -1425,13 +1422,11 @@ func TestTokenCapabilityNotEnabled(t *testing.T) {
 
 func TestTokenDuplicateTxId(t *testing.T) {
 	theLedger := new(mockLedger)
-	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 	pm := &mocks.Mapper{}
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: fabTokenCapabilities()},
-		mp,
 		pm,
 	)
 
@@ -1671,9 +1666,7 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 	support, l, cleanup := createCustomSupportAndLedger(t)
 	defer cleanup()
 
-	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
-
-	v := txvalidatorv14.NewTxValidator("", semaphore.New(10), support, mp, pm)
+	v := txvalidatorv14.NewTxValidator("", semaphore.New(10), support, pm)
 
 	ccID := "mycc"
 
@@ -1715,13 +1708,11 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 // returned from the function call.
 func TestLedgerIsNoAvailable(t *testing.T) {
 	theLedger := new(mockLedger)
-	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 	pm := &mocks.Mapper{}
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}},
-		mp,
 		pm,
 	)
 
@@ -1750,13 +1741,11 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 
 func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 	theLedger := new(mockLedger)
-	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 	pm := &mocks.Mapper{}
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}},
-		mp,
 		pm,
 	)
 
@@ -1779,13 +1768,11 @@ func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 
 func TestDuplicateTxId(t *testing.T) {
 	theLedger := new(mockLedger)
-	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 	pm := &mocks.Mapper{}
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}},
-		mp,
 		pm,
 	)
 
@@ -1813,7 +1800,6 @@ func TestDuplicateTxId(t *testing.T) {
 
 func TestValidationInvalidEndorsing(t *testing.T) {
 	theLedger := new(mockLedger)
-	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 	pm := &mocks.Mapper{}
 	factory := &mocks.PluginFactory{}
 	plugin := &mocks.Plugin{}
@@ -1825,7 +1811,6 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}},
-		mp,
 		pm,
 	)
 
@@ -1913,12 +1898,10 @@ func TestValidationPluginNotFound(t *testing.T) {
 
 	pm := &mocks.Mapper{}
 	pm.On("FactoryByName", vp.Name("vscc")).Return(nil)
-	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: l, ACVal: &mockconfig.MockApplicationCapabilities{}},
-		mp,
 		pm,
 	)
 	err := validator.Validate(b)

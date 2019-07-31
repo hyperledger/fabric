@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/peer"
@@ -36,7 +35,6 @@ import (
 // New creates a new instance of the CSCC.
 // Typically, only one will be created per peer instance.
 func New(
-	sccp sysccprovider.SystemChaincodeProvider,
 	aclProvider aclmgmt.ACLProvider,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	lr plugindispatcher.LifecycleResources,
@@ -47,7 +45,6 @@ func New(
 	return &PeerConfiger{
 		policyChecker:          policyChecker,
 		configMgr:              peer.NewConfigSupport(p),
-		sccp:                   sccp,
 		aclProvider:            aclProvider,
 		deployedCCInfoProvider: deployedCCInfoProvider,
 		legacyLifecycle:        lr,
@@ -70,7 +67,6 @@ func (e *PeerConfiger) Enabled() bool             { return true }
 type PeerConfiger struct {
 	policyChecker          policy.PolicyChecker
 	configMgr              config.Manager
-	sccp                   sysccprovider.SystemChaincodeProvider
 	aclProvider            aclmgmt.ACLProvider
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
 	legacyLifecycle        plugindispatcher.LifecycleResources
@@ -169,7 +165,7 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 		}
 
-		return e.joinChain(cid, block, e.sccp, e.deployedCCInfoProvider, e.legacyLifecycle, e.newLifecycle)
+		return e.joinChain(cid, block, e.deployedCCInfoProvider, e.legacyLifecycle, e.newLifecycle)
 	case GetConfigBlock:
 		// 2. check policy
 		if err = e.aclProvider.CheckACL(resources.Cscc_GetConfigBlock, string(args[1]), sp); err != nil {
@@ -234,12 +230,11 @@ func validateConfigBlock(block *common.Block) error {
 func (e *PeerConfiger) joinChain(
 	chainID string,
 	block *common.Block,
-	sccp sysccprovider.SystemChaincodeProvider,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	lr plugindispatcher.LifecycleResources,
 	nr plugindispatcher.CollectionAndLifecycleResources,
 ) pb.Response {
-	if err := e.peer.CreateChannel(block, sccp, deployedCCInfoProvider, lr, nr); err != nil {
+	if err := e.peer.CreateChannel(block, deployedCCInfoProvider, lr, nr); err != nil {
 		return shim.Error(err.Error())
 	}
 
