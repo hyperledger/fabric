@@ -35,11 +35,11 @@ func TestContainerRuntimeStart(t *testing.T) {
 		PackageID: "chaincode-name:chaincode-version",
 	}
 
-	err := cr.Start(ccci, []byte("code-package"))
+	err := cr.Start(ccci)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, fakeRouter.BuildCallCount())
-	ccci, codePackage := fakeRouter.BuildArgsForCall(0)
+	ccci = fakeRouter.BuildArgsForCall(0)
 	assert.Equal(t, &ccprovider.ChaincodeContainerInfo{
 		PackageID: "chaincode-name:chaincode-version",
 		Type:      "GOLANG",
@@ -47,7 +47,6 @@ func TestContainerRuntimeStart(t *testing.T) {
 		Name:      "chaincode-name",
 		Version:   "chaincode-version",
 	}, ccci)
-	assert.Equal(t, []byte("code-package"), codePackage)
 
 	assert.Equal(t, 1, fakeRouter.StartCallCount())
 	ccid, peerConnection := fakeRouter.StartArgsForCall(0)
@@ -83,7 +82,7 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 			Version: "chaincode-version",
 		}
 
-		err := cr.Start(ccci, nil)
+		err := cr.Start(ccci)
 		assert.EqualError(t, err, tc.errValue)
 	}
 }

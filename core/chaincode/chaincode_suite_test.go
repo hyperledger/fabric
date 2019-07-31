@@ -60,11 +60,6 @@ type invoker interface {
 	chaincode.Invoker
 }
 
-//go:generate counterfeiter -o mock/package_provider.go --fake-name PackageProvider . packageProvider
-type packageProvider interface {
-	chaincode.PackageProvider
-}
-
 //go:generate counterfeiter -o mock/lifecycle.go --fake-name Lifecycle . lifecycle
 type lifecycle interface {
 	chaincode.Lifecycle

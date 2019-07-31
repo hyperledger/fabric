@@ -151,6 +151,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 					Client:   client,
 				},
 			},
+			PackageProvider: &PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
 		},
 		PeerAddress: peerAddress,
 	}
@@ -158,11 +159,10 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	metricsProviders := &disabled.Provider{}
 	chaincodeHandlerRegistry := NewHandlerRegistry(userRunsCC)
 	chaincodeLauncher := &RuntimeLauncher{
-		Metrics:         NewLaunchMetrics(metricsProviders),
-		PackageProvider: &PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
-		Registry:        chaincodeHandlerRegistry,
-		Runtime:         containerRuntime,
-		StartupTimeout:  globalConfig.StartupTimeout,
+		Metrics:        NewLaunchMetrics(metricsProviders),
+		Registry:       chaincodeHandlerRegistry,
+		Runtime:        containerRuntime,
+		StartupTimeout: globalConfig.StartupTimeout,
 	}
 	chaincodeSupport := &ChaincodeSupport{
 		ACLProvider: aclmgmt.NewACLProvider(

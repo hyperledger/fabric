@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container"
 )
 
 type PackageProvider struct {
@@ -111,3 +112,5 @@ func (fake *PackageProvider) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
+
+var _ container.PackageProvider = new(PackageProvider)

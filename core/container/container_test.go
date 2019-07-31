@@ -20,19 +20,24 @@ import (
 var _ = Describe("Container", func() {
 	Describe("Router", func() {
 		var (
-			fakeDockerVM   *mock.VM
-			fakeExternalVM *mock.VM
-			fakeInstance   *mock.Instance
-			router         *container.Router
+			fakeDockerVM        *mock.VM
+			fakeExternalVM      *mock.VM
+			fakePackageProvider *mock.PackageProvider
+			fakeInstance        *mock.Instance
+			router              *container.Router
 		)
 
 		BeforeEach(func() {
 			fakeDockerVM = &mock.VM{}
 			fakeExternalVM = &mock.VM{}
 			fakeInstance = &mock.Instance{}
+			fakePackageProvider = &mock.PackageProvider{}
+			fakePackageProvider.GetChaincodeCodePackageReturns([]byte("code-bytes"), nil)
+
 			router = &container.Router{
-				DockerVM:   fakeDockerVM,
-				ExternalVM: fakeExternalVM,
+				DockerVM:        fakeDockerVM,
+				ExternalVM:      fakeExternalVM,
+				PackageProvider: fakePackageProvider,
 			}
 		})
 
@@ -50,7 +55,6 @@ var _ = Describe("Container", func() {
 						Name:      "name",
 						Version:   "version",
 					},
-					[]byte("code-bytes"),
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeDockerVM.BuildCallCount()).To(Equal(0))
@@ -64,6 +68,26 @@ var _ = Describe("Container", func() {
 					Version:   "version",
 				}))
 				Expect(codePackage).To(Equal([]byte("code-bytes")))
+			})
+
+			Context("when the package provider returns an error", func() {
+				BeforeEach(func() {
+					fakePackageProvider.GetChaincodeCodePackageReturns(nil, errors.New("fake-package-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					err := router.Build(
+						&ccprovider.ChaincodeContainerInfo{
+							PackageID: "stop:name",
+							Type:      "type",
+							Path:      "path",
+							Name:      "name",
+							Version:   "version",
+						},
+					)
+
+					Expect(err).To(MatchError("get chaincode package failed: fake-package-error"))
+				})
 			})
 
 			Context("when the external impl returns an error", func() {
@@ -81,7 +105,6 @@ var _ = Describe("Container", func() {
 							Name:      "name",
 							Version:   "version",
 						},
-						[]byte("code-bytes"),
 					)
 					Expect(err).To(MatchError("failed external (fake-external-error) and docker build: fake-docker-error"))
 					Expect(fakeExternalVM.BuildCallCount()).To(Equal(1))
@@ -109,7 +132,6 @@ var _ = Describe("Container", func() {
 					Name:      "name",
 					Version:   "version",
 				},
-					[]byte("code-bytes"),
 				)
 				Expect(err).NotTo(HaveOccurred())
 			})

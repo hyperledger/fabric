@@ -26,7 +26,7 @@ type CertGenerator interface {
 // invocations.  But, the legacy lifecycle makes this very challenging.  Once the legacy lifecycle
 // is removed (or perhaps before), this interface should probably go away entirely.
 type ContainerRouter interface {
-	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error
+	Build(ccci *ccprovider.ChaincodeContainerInfo) error
 	Start(ccid ccintf.CCID, peerConnection *ccintf.PeerConnection) error
 	Stop(ccid ccintf.CCID) error
 	Wait(ccid ccintf.CCID) (int, error)
@@ -41,7 +41,7 @@ type ContainerRuntime struct {
 }
 
 // Start launches chaincode in a runtime environment.
-func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
+func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo) error {
 	packageID := ccci.PackageID.String()
 
 	var tlsConfig *ccintf.TLSConfig
@@ -58,7 +58,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 		}
 	}
 
-	if err := c.ContainerRouter.Build(ccci, codePackage); err != nil {
+	if err := c.ContainerRouter.Build(ccci); err != nil {
 		return errors.WithMessage(err, "error building image")
 	}
 

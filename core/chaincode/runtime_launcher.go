@@ -21,18 +21,12 @@ type LaunchRegistry interface {
 	Deregister(packageID ccintf.CCID) error
 }
 
-// PackageProvider gets chaincode packages from the filesystem.
-type PackageProvider interface {
-	GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error)
-}
-
 // RuntimeLauncher is responsible for launching chaincode runtimes.
 type RuntimeLauncher struct {
-	Runtime         Runtime
-	Registry        LaunchRegistry
-	PackageProvider PackageProvider
-	StartupTimeout  time.Duration
-	Metrics         *LaunchMetrics
+	Runtime        Runtime
+	Registry       LaunchRegistry
+	StartupTimeout time.Duration
+	Metrics        *LaunchMetrics
 }
 
 func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error {
@@ -46,13 +40,8 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 		startFailCh = make(chan error, 1)
 		timeoutCh = time.NewTimer(r.StartupTimeout).C
 
-		codePackage, err := r.PackageProvider.GetChaincodeCodePackage(ccci)
-		if err != nil {
-			return errors.Wrap(err, "failed to get chaincode package")
-		}
-
 		go func() {
-			if err := r.Runtime.Start(ccci, codePackage); err != nil {
+			if err := r.Runtime.Start(ccci); err != nil {
 				startFailCh <- errors.WithMessage(err, "error starting container")
 				return
 			}
