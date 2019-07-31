@@ -73,10 +73,6 @@ import (
 //initialize peer and start up. If security==enabled, login as vp
 func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupport, func(), error) {
 	peerInstance := &peer.Peer{}
-	sccp := &scc.Provider{
-		Whitelist: scc.GlobalWhitelist(),
-	}
-
 	grpcServer := grpc.NewServer()
 
 	lis, err := net.Listen("tcp", ":0")
@@ -189,9 +185,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	}
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
-	sccp.RegisterSysCC(lsccImpl)
-
-	sccp.DeploySysCCs("latest", chaincodeSupport)
+	scc.DeploySysCC(lsccImpl, "latest", chaincodeSupport)
 
 	for _, id := range chainIDs {
 		if err = peer.CreateMockChannel(peerInstance, id); err != nil {

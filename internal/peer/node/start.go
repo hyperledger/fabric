@@ -409,10 +409,6 @@ func serve(args []string) error {
 	// create chaincode specific tls CA
 	authenticator := accesscontrol.NewAuthenticator(ca)
 
-	sccp := &scc.Provider{
-		Whitelist: scc.GlobalWhitelist(),
-	}
-
 	// sysCCVersion is a concept we're probably better off without.
 	// This should probably be set as a constant, that is not build dependent.
 	// As it stands, this forces different versions of peer chaincode _lifecycle
@@ -559,11 +555,6 @@ func serve(args []string) error {
 		qsccInst = scc.Throttle(maxConcurrency, qsccInst)
 	}
 
-	//Now that chaincode is initialized, register all system chaincodes.
-	sccs := scc.CreatePluginSysCCs()
-	for _, cc := range append([]scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst, lifecycleSCC}, sccs...) {
-		sccp.RegisterSysCC(cc)
-	}
 	pb.RegisterChaincodeSupportServer(ccSrv.Server(), ccSupSrv)
 
 	// start the chaincode specific gRPC listening service
@@ -611,7 +602,15 @@ func serve(args []string) error {
 	}
 
 	// deploy system chaincodes
-	sccp.DeploySysCCs(sysCCVersion, chaincodeSupport)
+	sccs := scc.CreatePluginSysCCs()
+	for _, cc := range append([]scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst, lifecycleSCC}, sccs...) {
+		if enabled, ok := chaincodeConfig.SCCWhitelist[cc.Name()]; !ok || !enabled {
+			logger.Infof("not deploying chaincode %s as it is not enabled", cc.Name())
+			continue
+		}
+		scc.DeploySysCC(cc, sysCCVersion, chaincodeSupport)
+	}
+
 	logger.Infof("Deployed system chaincodes")
 
 	// register the lifecycleMetadataManager to get updates from the legacy

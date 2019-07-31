@@ -151,10 +151,6 @@ func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.Chainc
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), error) {
 	peerInstance := &peer.Peer{}
-	sccp := &scc.Provider{
-		Whitelist: scc.GlobalWhitelist(),
-	}
-
 	tempdir, err := ioutil.TempDir("", "cc-support-test")
 	if err != nil {
 		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
@@ -246,9 +242,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		UserRunsCC:             userRunsCC,
 	}
 
-	sccp.RegisterSysCC(lsccImpl)
-
-	sccp.DeploySysCCs("latest", chaincodeSupport)
+	scc.DeploySysCC(lsccImpl, "latest", chaincodeSupport)
 
 	globalBlockNum = make(map[string]uint64, len(chainIDs))
 	for _, id := range chainIDs {

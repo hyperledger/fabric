@@ -29,6 +29,7 @@ type Config struct {
 	LogFormat       string
 	LogLevel        string
 	ShimLogLevel    string
+	SCCWhitelist    map[string]bool
 }
 
 func GlobalConfig() *Config {
@@ -55,6 +56,11 @@ func (c *Config) load() {
 		c.StartupTimeout = minimumStartupTimeout
 	}
 
+	c.SCCWhitelist = map[string]bool{}
+	for k, v := range viper.GetStringMapString("chaincode.system") {
+		c.SCCWhitelist[k] = parseBool(v)
+	}
+
 	c.LogFormat = viper.GetString("chaincode.logging.format")
 	c.LogLevel = getLogLevelFromViper("chaincode.logging.level")
 	c.ShimLogLevel = getLogLevelFromViper("chaincode.logging.shim")
@@ -62,6 +68,15 @@ func (c *Config) load() {
 	c.TotalQueryLimit = 10000 // need a default just in case it's not set
 	if viper.IsSet("ledger.state.totalQueryLimit") {
 		c.TotalQueryLimit = viper.GetInt("ledger.state.totalQueryLimit")
+	}
+}
+
+func parseBool(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "true", "t", "1", "enable", "enabled", "yes":
+		return true
+	default:
+		return false
 	}
 }
 
