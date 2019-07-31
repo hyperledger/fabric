@@ -159,39 +159,21 @@ func TestCreateSignedTx(t *testing.T) {
 	})
 	prop.Header = headerBytes
 
-	nonMatchingTests := []struct {
-		responses     []*pb.ProposalResponse
-		expectedError string
-	}{
-		// good responses, but different payloads
-		{
-			[]*pb.ProposalResponse{
-				{Payload: []byte("payload"), Response: &pb.Response{Status: int32(200)}},
-				{Payload: []byte("payload2"), Response: &pb.Response{Status: int32(200)}},
-			},
-			"ProposalResponsePayloads do not match",
+	// non-matching responses
+	responses = []*pb.ProposalResponse{{
+		Payload: []byte("payload"),
+		Response: &pb.Response{
+			Status: int32(200),
 		},
-		// good response followed by bad response
-		{
-			[]*pb.ProposalResponse{
-				{Payload: []byte("payload"), Response: &pb.Response{Status: int32(200)}},
-				{Payload: []byte{}, Response: &pb.Response{Status: int32(500), Message: "failed to endorse"}},
-			},
-			"proposal response was not successful, error code 500, msg failed to endorse",
+	}}
+	responses = append(responses, &pb.ProposalResponse{
+		Payload: []byte("payload2"),
+		Response: &pb.Response{
+			Status: int32(200),
 		},
-		// bad response followed by good response
-		{
-			[]*pb.ProposalResponse{
-				{Payload: []byte{}, Response: &pb.Response{Status: int32(500), Message: "failed to endorse"}},
-				{Payload: []byte("payload"), Response: &pb.Response{Status: int32(200)}},
-			},
-			"proposal response was not successful, error code 500, msg failed to endorse",
-		},
-	}
-	for i, nonMatchingTest := range nonMatchingTests {
-		_, err = protoutil.CreateSignedTx(prop, signID, nonMatchingTest.responses...)
-		assert.EqualErrorf(t, err, nonMatchingTest.expectedError, "Expected non-matching response error '%v' for test %d", nonMatchingTest.expectedError, i)
-	}
+	})
+	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
+	assert.Error(t, err, "Expected error with non-matching responses")
 
 	// no endorsement
 	responses = []*pb.ProposalResponse{{
