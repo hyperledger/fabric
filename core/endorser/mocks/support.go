@@ -4,7 +4,6 @@ package mocks
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -98,19 +97,6 @@ type Support struct {
 		result2 *peer.ChaincodeEvent
 		result3 error
 	}
-	GetApplicationConfigStub        func(string) (channelconfig.Application, bool)
-	getApplicationConfigMutex       sync.RWMutex
-	getApplicationConfigArgsForCall []struct {
-		arg1 string
-	}
-	getApplicationConfigReturns struct {
-		result1 channelconfig.Application
-		result2 bool
-	}
-	getApplicationConfigReturnsOnCall map[int]struct {
-		result1 channelconfig.Application
-		result2 bool
-	}
 	GetChaincodeDefinitionStub        func(string, string, ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
 	getChaincodeDefinitionMutex       sync.RWMutex
 	getChaincodeDefinitionArgsForCall []struct {
@@ -203,19 +189,6 @@ type Support struct {
 		result1 ledger.TxSimulator
 		result2 error
 	}
-	IsJavaCCStub        func([]byte) (bool, error)
-	isJavaCCMutex       sync.RWMutex
-	isJavaCCArgsForCall []struct {
-		arg1 []byte
-	}
-	isJavaCCReturns struct {
-		result1 bool
-		result2 error
-	}
-	isJavaCCReturnsOnCall map[int]struct {
-		result1 bool
-		result2 error
-	}
 	IsSysCCStub        func(string) bool
 	isSysCCMutex       sync.RWMutex
 	isSysCCArgsForCall []struct {
@@ -237,19 +210,6 @@ type Support struct {
 	}
 	isSysCCAndNotInvokableExternalReturnsOnCall map[int]struct {
 		result1 bool
-	}
-	NewQueryCreatorStub        func(string) (endorser.QueryCreator, error)
-	newQueryCreatorMutex       sync.RWMutex
-	newQueryCreatorArgsForCall []struct {
-		arg1 string
-	}
-	newQueryCreatorReturns struct {
-		result1 endorser.QueryCreator
-		result2 error
-	}
-	newQueryCreatorReturnsOnCall map[int]struct {
-		result1 endorser.QueryCreator
-		result2 error
 	}
 	SerializeStub        func() ([]byte, error)
 	serializeMutex       sync.RWMutex
@@ -618,69 +578,6 @@ func (fake *Support) ExecuteLegacyInitReturnsOnCall(i int, result1 *peer.Respons
 		result2 *peer.ChaincodeEvent
 		result3 error
 	}{result1, result2, result3}
-}
-
-func (fake *Support) GetApplicationConfig(arg1 string) (channelconfig.Application, bool) {
-	fake.getApplicationConfigMutex.Lock()
-	ret, specificReturn := fake.getApplicationConfigReturnsOnCall[len(fake.getApplicationConfigArgsForCall)]
-	fake.getApplicationConfigArgsForCall = append(fake.getApplicationConfigArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("GetApplicationConfig", []interface{}{arg1})
-	fake.getApplicationConfigMutex.Unlock()
-	if fake.GetApplicationConfigStub != nil {
-		return fake.GetApplicationConfigStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.getApplicationConfigReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *Support) GetApplicationConfigCallCount() int {
-	fake.getApplicationConfigMutex.RLock()
-	defer fake.getApplicationConfigMutex.RUnlock()
-	return len(fake.getApplicationConfigArgsForCall)
-}
-
-func (fake *Support) GetApplicationConfigCalls(stub func(string) (channelconfig.Application, bool)) {
-	fake.getApplicationConfigMutex.Lock()
-	defer fake.getApplicationConfigMutex.Unlock()
-	fake.GetApplicationConfigStub = stub
-}
-
-func (fake *Support) GetApplicationConfigArgsForCall(i int) string {
-	fake.getApplicationConfigMutex.RLock()
-	defer fake.getApplicationConfigMutex.RUnlock()
-	argsForCall := fake.getApplicationConfigArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *Support) GetApplicationConfigReturns(result1 channelconfig.Application, result2 bool) {
-	fake.getApplicationConfigMutex.Lock()
-	defer fake.getApplicationConfigMutex.Unlock()
-	fake.GetApplicationConfigStub = nil
-	fake.getApplicationConfigReturns = struct {
-		result1 channelconfig.Application
-		result2 bool
-	}{result1, result2}
-}
-
-func (fake *Support) GetApplicationConfigReturnsOnCall(i int, result1 channelconfig.Application, result2 bool) {
-	fake.getApplicationConfigMutex.Lock()
-	defer fake.getApplicationConfigMutex.Unlock()
-	fake.GetApplicationConfigStub = nil
-	if fake.getApplicationConfigReturnsOnCall == nil {
-		fake.getApplicationConfigReturnsOnCall = make(map[int]struct {
-			result1 channelconfig.Application
-			result2 bool
-		})
-	}
-	fake.getApplicationConfigReturnsOnCall[i] = struct {
-		result1 channelconfig.Application
-		result2 bool
-	}{result1, result2}
 }
 
 func (fake *Support) GetChaincodeDefinition(arg1 string, arg2 string, arg3 ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
@@ -1117,74 +1014,6 @@ func (fake *Support) GetTxSimulatorReturnsOnCall(i int, result1 ledger.TxSimulat
 	}{result1, result2}
 }
 
-func (fake *Support) IsJavaCC(arg1 []byte) (bool, error) {
-	var arg1Copy []byte
-	if arg1 != nil {
-		arg1Copy = make([]byte, len(arg1))
-		copy(arg1Copy, arg1)
-	}
-	fake.isJavaCCMutex.Lock()
-	ret, specificReturn := fake.isJavaCCReturnsOnCall[len(fake.isJavaCCArgsForCall)]
-	fake.isJavaCCArgsForCall = append(fake.isJavaCCArgsForCall, struct {
-		arg1 []byte
-	}{arg1Copy})
-	fake.recordInvocation("IsJavaCC", []interface{}{arg1Copy})
-	fake.isJavaCCMutex.Unlock()
-	if fake.IsJavaCCStub != nil {
-		return fake.IsJavaCCStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.isJavaCCReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *Support) IsJavaCCCallCount() int {
-	fake.isJavaCCMutex.RLock()
-	defer fake.isJavaCCMutex.RUnlock()
-	return len(fake.isJavaCCArgsForCall)
-}
-
-func (fake *Support) IsJavaCCCalls(stub func([]byte) (bool, error)) {
-	fake.isJavaCCMutex.Lock()
-	defer fake.isJavaCCMutex.Unlock()
-	fake.IsJavaCCStub = stub
-}
-
-func (fake *Support) IsJavaCCArgsForCall(i int) []byte {
-	fake.isJavaCCMutex.RLock()
-	defer fake.isJavaCCMutex.RUnlock()
-	argsForCall := fake.isJavaCCArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *Support) IsJavaCCReturns(result1 bool, result2 error) {
-	fake.isJavaCCMutex.Lock()
-	defer fake.isJavaCCMutex.Unlock()
-	fake.IsJavaCCStub = nil
-	fake.isJavaCCReturns = struct {
-		result1 bool
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *Support) IsJavaCCReturnsOnCall(i int, result1 bool, result2 error) {
-	fake.isJavaCCMutex.Lock()
-	defer fake.isJavaCCMutex.Unlock()
-	fake.IsJavaCCStub = nil
-	if fake.isJavaCCReturnsOnCall == nil {
-		fake.isJavaCCReturnsOnCall = make(map[int]struct {
-			result1 bool
-			result2 error
-		})
-	}
-	fake.isJavaCCReturnsOnCall[i] = struct {
-		result1 bool
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *Support) IsSysCC(arg1 string) bool {
 	fake.isSysCCMutex.Lock()
 	ret, specificReturn := fake.isSysCCReturnsOnCall[len(fake.isSysCCArgsForCall)]
@@ -1303,69 +1132,6 @@ func (fake *Support) IsSysCCAndNotInvokableExternalReturnsOnCall(i int, result1 
 	fake.isSysCCAndNotInvokableExternalReturnsOnCall[i] = struct {
 		result1 bool
 	}{result1}
-}
-
-func (fake *Support) NewQueryCreator(arg1 string) (endorser.QueryCreator, error) {
-	fake.newQueryCreatorMutex.Lock()
-	ret, specificReturn := fake.newQueryCreatorReturnsOnCall[len(fake.newQueryCreatorArgsForCall)]
-	fake.newQueryCreatorArgsForCall = append(fake.newQueryCreatorArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("NewQueryCreator", []interface{}{arg1})
-	fake.newQueryCreatorMutex.Unlock()
-	if fake.NewQueryCreatorStub != nil {
-		return fake.NewQueryCreatorStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.newQueryCreatorReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *Support) NewQueryCreatorCallCount() int {
-	fake.newQueryCreatorMutex.RLock()
-	defer fake.newQueryCreatorMutex.RUnlock()
-	return len(fake.newQueryCreatorArgsForCall)
-}
-
-func (fake *Support) NewQueryCreatorCalls(stub func(string) (endorser.QueryCreator, error)) {
-	fake.newQueryCreatorMutex.Lock()
-	defer fake.newQueryCreatorMutex.Unlock()
-	fake.NewQueryCreatorStub = stub
-}
-
-func (fake *Support) NewQueryCreatorArgsForCall(i int) string {
-	fake.newQueryCreatorMutex.RLock()
-	defer fake.newQueryCreatorMutex.RUnlock()
-	argsForCall := fake.newQueryCreatorArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *Support) NewQueryCreatorReturns(result1 endorser.QueryCreator, result2 error) {
-	fake.newQueryCreatorMutex.Lock()
-	defer fake.newQueryCreatorMutex.Unlock()
-	fake.NewQueryCreatorStub = nil
-	fake.newQueryCreatorReturns = struct {
-		result1 endorser.QueryCreator
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *Support) NewQueryCreatorReturnsOnCall(i int, result1 endorser.QueryCreator, result2 error) {
-	fake.newQueryCreatorMutex.Lock()
-	defer fake.newQueryCreatorMutex.Unlock()
-	fake.NewQueryCreatorStub = nil
-	if fake.newQueryCreatorReturnsOnCall == nil {
-		fake.newQueryCreatorReturnsOnCall = make(map[int]struct {
-			result1 endorser.QueryCreator
-			result2 error
-		})
-	}
-	fake.newQueryCreatorReturnsOnCall[i] = struct {
-		result1 endorser.QueryCreator
-		result2 error
-	}{result1, result2}
 }
 
 func (fake *Support) Serialize() ([]byte, error) {
@@ -1504,8 +1270,6 @@ func (fake *Support) Invocations() map[string][][]interface{} {
 	defer fake.executeMutex.RUnlock()
 	fake.executeLegacyInitMutex.RLock()
 	defer fake.executeLegacyInitMutex.RUnlock()
-	fake.getApplicationConfigMutex.RLock()
-	defer fake.getApplicationConfigMutex.RUnlock()
 	fake.getChaincodeDefinitionMutex.RLock()
 	defer fake.getChaincodeDefinitionMutex.RUnlock()
 	fake.getChaincodeDeploymentSpecFSMutex.RLock()
@@ -1520,14 +1284,10 @@ func (fake *Support) Invocations() map[string][][]interface{} {
 	defer fake.getTransactionByIDMutex.RUnlock()
 	fake.getTxSimulatorMutex.RLock()
 	defer fake.getTxSimulatorMutex.RUnlock()
-	fake.isJavaCCMutex.RLock()
-	defer fake.isJavaCCMutex.RUnlock()
 	fake.isSysCCMutex.RLock()
 	defer fake.isSysCCMutex.RUnlock()
 	fake.isSysCCAndNotInvokableExternalMutex.RLock()
 	defer fake.isSysCCAndNotInvokableExternalMutex.RUnlock()
-	fake.newQueryCreatorMutex.RLock()
-	defer fake.newQueryCreatorMutex.RUnlock()
 	fake.serializeMutex.RLock()
 	defer fake.serializeMutex.RUnlock()
 	fake.signMutex.RLock()

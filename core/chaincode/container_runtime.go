@@ -52,8 +52,8 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePa
 		}
 
 		tlsConfig = &ccintf.TLSConfig{
-			ClientCert: []byte(certKeyPair.Cert),
-			ClientKey:  []byte(certKeyPair.Key),
+			ClientCert: certKeyPair.Cert,
+			ClientKey:  certKeyPair.Key,
 			RootCert:   c.CACert,
 		}
 	}

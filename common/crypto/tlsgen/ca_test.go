@@ -10,7 +10,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"fmt"
 	"math/rand"
 	"net"
@@ -55,11 +54,7 @@ func TestTLSCA(t *testing.T) {
 	defer l.Close()
 
 	probeTLS := func(kp *CertKeyPair) error {
-		keyBytes, err := base64.StdEncoding.DecodeString(kp.PrivKeyString())
-		assert.NoError(t, err)
-		certBytes, err := base64.StdEncoding.DecodeString(kp.PubKeyString())
-		assert.NoError(t, err)
-		cert, err := tls.X509KeyPair(certBytes, keyBytes)
+		cert, err := tls.X509KeyPair(kp.Cert, kp.Key)
 		tlsCfg := &tls.Config{
 			RootCAs:      x509.NewCertPool(),
 			Certificates: []tls.Certificate{cert},

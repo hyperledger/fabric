@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+set -euo pipefail
+
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+. "$DIR/parse.sh"
+
+if [ "$TYPE" = "GOLANG" ] ; then
+    exit 0
+fi
+
+echo "Supported types is only golang -- got type '$TYPE'"
+exit 1

@@ -93,6 +93,15 @@ var _ = Describe("EndToEnd", func() {
 			})
 
 			network.GenerateConfigTree()
+
+			// Enable externabuilders for peer0
+			cwd, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			peer := network.Peer("Org1", "peer0")
+			core := network.ReadPeerConfig(peer)
+			core.Chaincode.ExternalBuilders = []string{filepath.Join(cwd, "..", "externalbuilders", "golang")}
+			network.WritePeerConfig(peer, core)
+
 			network.Bootstrap()
 
 			networkRunner := network.NetworkGroupRunner()

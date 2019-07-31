@@ -21,7 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
-	"github.com/hyperledger/fabric/internal/pkg/ccmetadata"
+	"github.com/hyperledger/fabric/internal/ccmetadata"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"

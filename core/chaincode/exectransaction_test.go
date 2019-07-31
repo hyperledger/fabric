@@ -47,6 +47,7 @@ import (
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
+	"github.com/hyperledger/fabric/core/container/externalbuilders"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
@@ -143,6 +144,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	containerRuntime := &ContainerRuntime{
 		CACert: ca.CertBytes(),
 		ContainerRouter: &container.Router{
+			ExternalVM: &externalbuilders.Detector{},
 			DockerVM: &dockercontroller.DockerVM{
 				PeerID:       "",
 				NetworkID:    "",
@@ -741,7 +743,7 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 }
 
 func stopChaincode(chaincodeCtx *ccprovider.CCContext, chaincodeSupport *ChaincodeSupport) {
-	chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+	chaincodeSupport.Runtime.Stop(&ccprovider.ChaincodeContainerInfo{
 		PackageID: persistence.PackageID(chaincodeCtx.Name + ":" + chaincodeCtx.Version),
 		Name:      chaincodeCtx.Name,
 		Version:   chaincodeCtx.Version,
@@ -776,7 +778,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	}
 
 	var nextBlockNumber uint64 = 1
-	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+	defer chaincodeSupport.Runtime.Stop(&ccprovider.ChaincodeContainerInfo{
 		PackageID: persistence.PackageID(cID1.Name + ":" + cID1.Version),
 		Name:      cID1.Name,
 		Version:   cID1.Version,
@@ -807,7 +809,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 		Version: "0",
 	}
 
-	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+	defer chaincodeSupport.Runtime.Stop(&ccprovider.ChaincodeContainerInfo{
 		PackageID: persistence.PackageID(cID2.Name + ":" + cID2.Version),
 		Name:      cID2.Name,
 		Version:   cID2.Version,
@@ -870,7 +872,7 @@ func TestChaincodeInit(t *testing.T) {
 		Version: "0",
 	}
 
-	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+	defer chaincodeSupport.Runtime.Stop(&ccprovider.ChaincodeContainerInfo{
 		PackageID: persistence.PackageID(cID.Name + ":" + cID.Version),
 		Name:      cID.Name,
 		Version:   cID.Version,
@@ -930,7 +932,7 @@ func TestQueries(t *testing.T) {
 		Version: "0",
 	}
 
-	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+	defer chaincodeSupport.Runtime.Stop(&ccprovider.ChaincodeContainerInfo{
 		PackageID: persistence.PackageID(cID.Name + ":" + cID.Version),
 		Name:      cID.Name,
 		Version:   cID.Version,

@@ -51,6 +51,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
+	"github.com/hyperledger/fabric/core/container/externalbuilders"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/core/endorser"
 	authHandler "github.com/hyperledger/fabric/core/handlers/auth"
@@ -181,7 +182,7 @@ func serve(args []string) error {
 	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "lifecycle", "chaincodes")
 	ccStore := persistence.NewStore(chaincodeInstallPath)
 	ccPackageParser := &persistence.ChaincodePackageParser{
-		MetadataProvider: &ccprovider.PersistenceMetadataProvider{},
+		MetadataProvider: ccprovider.PersistenceAdapter(ccprovider.MetadataAsTarEntries),
 	}
 
 	peerHost, _, err := net.SplitHostPort(coreConfig.PeerAddress)
@@ -455,6 +456,8 @@ func serve(args []string) error {
 		logger.Panicf("cannot create docker client: %s", err)
 	}
 
+	chaincodeConfig := chaincode.GlobalConfig()
+
 	dockerVM := &dockercontroller.DockerVM{
 		PeerID:        coreConfig.PeerID,
 		NetworkID:     coreConfig.NetworkID,
@@ -468,21 +471,30 @@ func serve(args []string) error {
 			Registry: platformRegistry,
 			Client:   client,
 		},
+		// This field is superfluous for chaincodes built with v2.0+ binaries
+		// however, to prevent users from being forced to rebuild leaving for now
+		// but it should be removed in the future.
+		LoggingEnv: []string{
+			"CORE_CHAINCODE_LOGGING_LEVEL=" + chaincodeConfig.LogLevel,
+			"CORE_CHAINCODE_LOGGING_SHIM=" + chaincodeConfig.ShimLogLevel,
+			"CORE_CHAINCODE_LOGGING_FORMAT=" + chaincodeConfig.LogFormat,
+		},
 	}
 	if err := opsSystem.RegisterChecker("docker", dockerVM); err != nil {
-		if err != nil {
-			logger.Panicf("failed to register docker health check: %s", err)
-		}
+		logger.Panicf("failed to register docker health check: %s", err)
 	}
 
-	chaincodeConfig := chaincode.GlobalConfig()
+	externalVM := &externalbuilders.Detector{
+		Builders: coreConfig.ExternalBuilders,
+	}
 
 	containerRuntime := &chaincode.ContainerRuntime{
 		CACert:        ca.CertBytes(),
 		CertGenerator: authenticator,
 		PeerAddress:   ccEndpoint,
 		ContainerRouter: &container.Router{
-			DockerVM: dockerVM,
+			DockerVM:   dockerVM,
+			ExternalVM: externalVM,
 		},
 	}
 

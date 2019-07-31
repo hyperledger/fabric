@@ -19,6 +19,7 @@ type Core struct {
 	Chaincode  *Chaincode  `yaml:"chaincode,omitempty"`
 	Ledger     *Ledger     `yaml:"ledger,omitempty"`
 	Operations *Operations `yaml:"operations,omitempty"`
+	Metrics    *Metrics    `yaml:"metrics,omitempty"`
 }
 
 type Logging struct {

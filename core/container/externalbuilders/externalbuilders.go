@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilders
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -17,12 +18,80 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 
 	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("chaincode.externalbuilders")
+
+type Instance struct {
+	BuildContext *BuildContext
+	Builder      *Builder
+}
+
+func (i *Instance) Start(peerConnection *ccintf.PeerConnection) error {
+	return i.Builder.Launch(i.BuildContext, peerConnection)
+}
+
+func (i *Instance) Stop() error {
+	// TODO
+	return errors.Errorf("stop is not implemented for external builders yet")
+}
+
+func (i *Instance) Wait() (int, error) {
+	// TODO
+	// Unimplemented, so, wait forever
+	select {}
+}
+
+type Detector struct {
+	Builders []string
+}
+
+func (d *Detector) Detect(buildContext *BuildContext) *Builder {
+	for _, builderLocation := range d.Builders {
+		builder := &Builder{
+			Location: builderLocation,
+		}
+		if builder.Detect(buildContext) {
+			return builder
+		}
+	}
+
+	return nil
+}
+
+func (d *Detector) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (container.Instance, error) {
+	if len(d.Builders) == 0 {
+		// A small optimization, especially while the launcher feature is under development
+		// let's not explode the build package out into the filesystem unless there are
+		// external builders to run against it.
+		return nil, errors.Errorf("no builders defined")
+	}
+
+	buildContext, err := NewBuildContext(ccci, bytes.NewBuffer(codePackage))
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not create build context")
+	}
+
+	builder := d.Detect(buildContext)
+	if builder == nil {
+		buildContext.Cleanup()
+		return nil, errors.Errorf("no builder found")
+	}
+
+	if err := builder.Build(buildContext); err != nil {
+		buildContext.Cleanup()
+		return nil, errors.WithMessage(err, "external builder failed to build")
+	}
+
+	return &Instance{
+		BuildContext: buildContext,
+		Builder:      builder,
+	}, nil
+}
 
 type BuildContext struct {
 	CCCI       *ccprovider.ChaincodeContainerInfo

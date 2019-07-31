@@ -83,7 +83,8 @@ func ValidPath(uncleanPath string) bool {
 	switch {
 	case filepath.IsAbs(sanitizedPath):
 		return false
-	case strings.HasPrefix(sanitizedPath, ".."):
+	case strings.HasPrefix(sanitizedPath, ".."+string(filepath.Separator)) || sanitizedPath == "..":
+		// Path refers either to the parent, or a directory relative to the parent (but allows ..foo or ... for instance)
 		return false
 	default:
 		// Path appears to be relative without escaping higher

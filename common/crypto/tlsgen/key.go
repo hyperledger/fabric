@@ -13,7 +13,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/base64"
 	"encoding/pem"
 	"math/big"
 	"net"
@@ -21,14 +20,6 @@ import (
 
 	"github.com/pkg/errors"
 )
-
-func (p *CertKeyPair) PrivKeyString() string {
-	return base64.StdEncoding.EncodeToString(p.Key)
-}
-
-func (p *CertKeyPair) PubKeyString() string {
-	return base64.StdEncoding.EncodeToString(p.Cert)
-}
 
 func newPrivKey() (*ecdsa.PrivateKey, []byte, error) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -119,20 +110,4 @@ func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Sig
 
 func encodePEM(keyType string, data []byte) []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: keyType, Bytes: data})
-}
-
-// CertKeyPairFromString converts the given strings in base64 encoding to a CertKeyPair
-func CertKeyPairFromString(privKey string, pubKey string) (*CertKeyPair, error) {
-	priv, err := base64.StdEncoding.DecodeString(privKey)
-	if err != nil {
-		return nil, err
-	}
-	pub, err := base64.StdEncoding.DecodeString(pubKey)
-	if err != nil {
-		return nil, err
-	}
-	return &CertKeyPair{
-		Key:  priv,
-		Cert: pub,
-	}, nil
 }

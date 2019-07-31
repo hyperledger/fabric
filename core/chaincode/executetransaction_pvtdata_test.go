@@ -53,7 +53,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	// this test assumes four collections
 	collectionConfig := []*common.StaticCollectionConfig{{Name: "c1"}, {Name: "c2"}, {Name: "c3"}, {Name: "c4"}}
 	collectionConfigPkg := constructCollectionConfigPkg(collectionConfig)
-	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+	defer chaincodeSupport.Runtime.Stop(&ccprovider.ChaincodeContainerInfo{
 		Name:    cID.Name,
 		Version: cID.Version,
 		Path:    cID.Path,

@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -105,6 +106,7 @@ type DockerVM struct {
 	ChaincodePull   bool
 	NetworkMode     string
 	PlatformBuilder PlatformBuilder
+	LoggingEnv      []string
 }
 
 // HealthCheck checks if the DockerVM is able to communicate with the Docker
@@ -223,7 +225,7 @@ const (
 	TLSClientRootCertPath string = "/etc/hyperledger/fabric/peer.crt"
 )
 
-func GetEnv(ccid ccintf.CCID, tlsConfig *ccintf.TLSConfig) []string {
+func (vm *DockerVM) GetEnv(ccid ccintf.CCID, tlsConfig *ccintf.TLSConfig) []string {
 	// common environment variables
 	// FIXME: we are using the env variable CHAINCODE_ID to store
 	// the package ID; in the legacy lifecycle they used to be the
@@ -231,6 +233,7 @@ func GetEnv(ccid ccintf.CCID, tlsConfig *ccintf.TLSConfig) []string {
 	// variable. However chaincodes built by older versions of the
 	// peer still adopt this broken convention. (FAB-14630)
 	envs := []string{"CORE_CHAINCODE_ID_NAME=" + string(ccid)}
+	envs = append(envs, vm.LoggingEnv...)
 
 	// Pass TLS options to chaincode
 	if tlsConfig != nil {
@@ -264,7 +267,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, peerConnection *ccint
 	}
 	dockerLogger.Debugf("start container with args: %s", strings.Join(args, " "))
 
-	env := GetEnv(ccid, peerConnection.TLSConfig)
+	env := vm.GetEnv(ccid, peerConnection.TLSConfig)
 	dockerLogger.Debugf("start container with env:\n\t%s", strings.Join(env, "\n\t"))
 
 	err = vm.createContainer(imageName, containerName, args, env)
@@ -287,8 +290,9 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, peerConnection *ccint
 		gw := gzip.NewWriter(payload)
 		tw := tar.NewWriter(gw)
 
-		cutil.WriteBytesToPackage(TLSClientKeyPath, peerConnection.TLSConfig.ClientKey, tw)
-		cutil.WriteBytesToPackage(TLSClientCertPath, peerConnection.TLSConfig.ClientCert, tw)
+		// Note, we goofily base64 encode 2 of the TLS artifacts but not the other for strange historical reasons
+		cutil.WriteBytesToPackage(TLSClientKeyPath, []byte(base64.StdEncoding.EncodeToString(peerConnection.TLSConfig.ClientKey)), tw)
+		cutil.WriteBytesToPackage(TLSClientCertPath, []byte(base64.StdEncoding.EncodeToString(peerConnection.TLSConfig.ClientCert)), tw)
 		cutil.WriteBytesToPackage(TLSClientRootCertPath, peerConnection.TLSConfig.RootCert, tw)
 
 		// Write the tar file out

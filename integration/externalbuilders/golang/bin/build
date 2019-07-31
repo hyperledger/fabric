@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+set -euo pipefail
+
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+. "$DIR/parse.sh"
+
+GOPATH=$SOURCE:$GOPATH go build -o "$OUTPUT/chaincode" -ldflags "-linkmode external -extldflags '-static'" "$GO_PACKAGE_PATH"

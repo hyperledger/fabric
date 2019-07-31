@@ -170,9 +170,6 @@ func (p *Packager) getTarGzBytes() ([]byte, error) {
 	}
 
 	codePackageName := "Code-Package.tar.gz"
-	if strings.ToLower(p.Input.Type) == "car" {
-		codePackageName = "Code-Package.car"
-	}
 
 	err = cutil.WriteBytesToPackage(codePackageName, codeBytes, tw)
 	if err != nil {

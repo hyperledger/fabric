@@ -40,13 +40,13 @@ func TestContainerRuntimeStart(t *testing.T) {
 
 	assert.Equal(t, 1, fakeRouter.BuildCallCount())
 	ccci, codePackage := fakeRouter.BuildArgsForCall(0)
-	assert.Equal(t, ccci, &ccprovider.ChaincodeContainerInfo{
+	assert.Equal(t, &ccprovider.ChaincodeContainerInfo{
 		PackageID: "chaincode-name:chaincode-version",
 		Type:      "GOLANG",
 		Path:      "chaincode-path",
 		Name:      "chaincode-name",
 		Version:   "chaincode-version",
-	})
+	}, ccci)
 	assert.Equal(t, []byte("code-package"), codePackage)
 
 	assert.Equal(t, 1, fakeRouter.StartCallCount())
