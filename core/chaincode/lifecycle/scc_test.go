@@ -88,39 +88,9 @@ var _ = Describe("SCC", func() {
 		})
 	})
 
-	Describe("Path", func() {
-		It("returns the path", func() {
-			Expect(scc.Path()).To(Equal("github.com/hyperledger/fabric/core/chaincode/lifecycle"))
-		})
-	})
-
-	Describe("InitArgs", func() {
-		It("returns no args", func() {
-			Expect(scc.InitArgs()).To(BeNil())
-		})
-	})
-
 	Describe("Chaincode", func() {
 		It("returns a reference to itself", func() {
 			Expect(scc.Chaincode()).To(Equal(scc))
-		})
-	})
-
-	Describe("InvokableExternal", func() {
-		It("is invokable externally", func() {
-			Expect(scc.InvokableExternal()).To(BeTrue())
-		})
-	})
-
-	Describe("InvokableCC2CC", func() {
-		It("is invokable chaincode to chaincode", func() {
-			Expect(scc.InvokableCC2CC()).To(BeTrue())
-		})
-	})
-
-	Describe("Enabled", func() {
-		It("is enabled", func() {
-			Expect(scc.Enabled()).To(BeTrue())
 		})
 	})
 

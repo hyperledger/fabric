@@ -201,12 +201,7 @@ func New(
 }
 
 func (lscc *LifeCycleSysCC) Name() string              { return "lscc" }
-func (lscc *LifeCycleSysCC) Path() string              { return "github.com/hyperledger/fabric/core/scc/lscc" }
-func (lscc *LifeCycleSysCC) InitArgs() [][]byte        { return nil }
 func (lscc *LifeCycleSysCC) Chaincode() shim.Chaincode { return lscc }
-func (lscc *LifeCycleSysCC) InvokableExternal() bool   { return true }
-func (lscc *LifeCycleSysCC) InvokableCC2CC() bool      { return true }
-func (lscc *LifeCycleSysCC) Enabled() bool             { return true }
 
 func (lscc *LifeCycleSysCC) ChaincodeContainerInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 	chaincodeDataBytes, err := qe.GetState("lscc", chaincodeName)

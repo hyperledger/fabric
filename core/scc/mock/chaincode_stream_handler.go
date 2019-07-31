@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/scc"
 )
 
 type ChaincodeStreamHandler struct {
@@ -180,5 +179,3 @@ func (fake *ChaincodeStreamHandler) recordInvocation(key string, args []interfac
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ scc.ChaincodeStreamHandler = new(ChaincodeStreamHandler)
