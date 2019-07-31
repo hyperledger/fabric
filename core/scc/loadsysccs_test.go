@@ -49,7 +49,7 @@ func TestLoadSCCPlugin(t *testing.T) {
 	viper.SetConfigType("yaml")
 	viper.ReadConfig(bytes.NewBuffer([]byte(testConfig)))
 
-	sccs := loadSysCCs(&Provider{})
+	sccs := loadSysCCs()
 	assert.Len(t, sccs, 1, "expected one SCC to be loaded")
 	resp := sccs[0].Chaincode.Invoke(nil)
 	assert.Equal(t, int32(shim.OK), resp.Status, "expected success response from scc")

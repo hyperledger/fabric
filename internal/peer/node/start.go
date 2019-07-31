@@ -561,7 +561,7 @@ func serve(args []string) error {
 	}
 
 	//Now that chaincode is initialized, register all system chaincodes.
-	sccs := scc.CreatePluginSysCCs(sccp)
+	sccs := scc.CreatePluginSysCCs()
 	for _, cc := range append([]scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst, lifecycleSCC}, sccs...) {
 		sccp.RegisterSysCC(cc)
 	}

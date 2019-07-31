@@ -35,7 +35,7 @@ var once sync.Once
 var sccPlugins []*SystemChaincode
 
 // loadSysCCs reads system chaincode plugin configuration and loads them
-func loadSysCCs(p *Provider) []*SystemChaincode {
+func loadSysCCs() []*SystemChaincode {
 	once.Do(func() {
 		var config []*PluginConfig
 		err := mapstructure.Decode(viper.Get("chaincode.systemPlugins"), &config)

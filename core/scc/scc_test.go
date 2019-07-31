@@ -91,7 +91,7 @@ func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
 }
 
 func TestCreatePluginSysCCs(t *testing.T) {
-	assert.NotPanics(t, func() { scc.CreatePluginSysCCs(nil) }, "expected successful init")
+	assert.NotPanics(t, func() { scc.CreatePluginSysCCs() }, "expected successful init")
 }
 
 func TestRegisterSysCC(t *testing.T) {
