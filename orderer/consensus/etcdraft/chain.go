@@ -297,17 +297,26 @@ func NewChain(
 		DisableProposalForwarding: true, // This prevents blocks from being accidentally proposed by followers
 	}
 
+	disseminator := &Disseminator{RPC: c.rpc}
+	disseminator.UpdateMetadata(nil) // initialize
+
 	c.Node = &node{
 		chainID:      c.channelID,
 		chain:        c,
 		logger:       c.logger,
 		metrics:      c.Metrics,
 		storage:      storage,
-		rpc:          c.rpc,
+		rpc:          disseminator,
 		config:       config,
 		tickInterval: c.opts.TickInterval,
 		clock:        c.clock,
 		metadata:     c.opts.BlockMetadata,
+		tracker: &Tracker{
+			id:     c.raftID,
+			sender: disseminator,
+			gauge:  c.Metrics.ActiveNodes,
+			logger: c.logger,
+		},
 	}
 
 	return c, nil
@@ -436,6 +445,17 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	if err := c.Node.Step(context.TODO(), *stepMsg); err != nil {
 		return fmt.Errorf("failed to process Raft Step message: %s", err)
 	}
+
+	if len(req.Metadata) == 0 || atomic.LoadUint64(&c.lastKnownLeader) != sender { // ignore metadata from non-leader
+		return nil
+	}
+
+	clusterMetadata := &etcdraft.ClusterMetadata{}
+	if err := proto.Unmarshal(req.Metadata, clusterMetadata); err != nil {
+		return errors.Errorf("failed to unmarshal ClusterMetadata: %s", err)
+	}
+
+	c.Metrics.ActiveNodes.Set(float64(len(clusterMetadata.ActiveNodes)))
 
 	return nil
 }
@@ -1227,6 +1247,50 @@ func (c *Chain) newConfigMetadata(block *common.Block) *etcdraft.ConfigMetadata 
 		c.logger.Panicf("error reading consensus metadata: %s", err)
 	}
 	return metadata
+}
+
+// ValidateConsensusMetadata determines the validity of a
+// ConsensusMetadata update during config updates on the channel.
+func (c *Chain) ValidateConsensusMetadata(oldMetadataBytes, newMetadataBytes []byte, newChannel bool) error {
+	// metadata was not updated
+	if newMetadataBytes == nil {
+		return nil
+	}
+	if oldMetadataBytes == nil {
+		c.logger.Panic("Programming Error: ValidateConsensusMetadata called with nil old metadata")
+	}
+
+	oldMetadata := &etcdraft.ConfigMetadata{}
+	if err := proto.Unmarshal(oldMetadataBytes, oldMetadata); err != nil {
+		c.logger.Panicf("Programming Error: Failed to unmarshal old etcdraft consensus metadata: %v", err)
+	}
+	newMetadata := &etcdraft.ConfigMetadata{}
+	if err := proto.Unmarshal(newMetadataBytes, newMetadata); err != nil {
+		return errors.Wrap(err, "failed to unmarshal new etcdraft metadata configuration")
+	}
+
+	err := CheckConfigMetadata(newMetadata)
+	if err != nil {
+		return errors.Wrap(err, "invalid new config metdadata")
+	}
+
+	if newChannel {
+		// check if the consenters are a subset of the existing consenters (system channel consenters)
+		set := ConsentersToMap(oldMetadata.Consenters)
+		for _, c := range newMetadata.Consenters {
+			if _, exits := set[string(c.ClientTlsCert)]; !exits {
+				return errors.New("new channel has consenter that is not part of system consenter set")
+			}
+		}
+		return nil
+	}
+
+	// create the dummy parameters for ComputeMembershipChanges
+	dummyOldBlockMetadata, _ := ReadBlockMetadata(nil, oldMetadata)
+	dummyOldConsentersMap := CreateConsentersMap(dummyOldBlockMetadata, oldMetadata)
+	_, err = ComputeMembershipChanges(dummyOldBlockMetadata, dummyOldConsentersMap, newMetadata.Consenters)
+
+	return err
 }
 
 func (c *Chain) suspectEviction() bool {

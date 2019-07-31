@@ -522,8 +522,6 @@ var _ = Describe("Chain", func() {
 									Expect(fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 									Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
-									// // clock.WaitForNWatchersAndIncrement(timeout, 2)
-
 									By("adding a config envelope")
 									err = chain.Configure(configEnv, configSeq)
 									Expect(err).NotTo(HaveOccurred())
@@ -1356,6 +1354,13 @@ var _ = Describe("Chain", func() {
 		It("can remove leader by reconfiguring cluster", func() {
 			network.elect(1)
 
+			// trigger status dissemination
+			Eventually(func() int {
+				c1.clock.Increment(interval)
+				return c2.fakeFields.fakeActiveNodes.SetCallCount()
+			}, LongEventualTimeout).Should(Equal(2))
+			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
+
 			By("Configuring cluster to remove node")
 			Expect(c1.Configure(configEnv, 0)).To(Succeed())
 			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
@@ -1389,15 +1394,13 @@ var _ = Describe("Chain", func() {
 				return step1(dest, msg)
 			})
 
-			n := c1.clock.WatcherCount()
-
 			By("Configuring cluster to remove node")
 			Expect(c1.Configure(configEnv, 0)).To(Succeed())
 			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-			c2.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, n+1)
+			c2.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, 2)
 			Eventually(c2.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
 
-			c1.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, n+1)
+			c1.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, 2)
 			Eventually(c1.Chain.Errored, LongEventualTimeout).Should(BeClosed())
 			close(c1.stopped) // mark c1 stopped in network
 
@@ -1493,6 +1496,13 @@ var _ = Describe("Chain", func() {
 				network.init()
 				network.start(1, 2)
 				network.elect(1)
+
+				// trigger status dissemination
+				Eventually(func() int {
+					c1.clock.Increment(interval)
+					return c2.fakeFields.fakeActiveNodes.SetCallCount()
+				}, LongEventualTimeout).Should(Equal(2))
+				Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 
 				c1.cutter.CutNext = true
 				err := c1.Order(env, 0)
