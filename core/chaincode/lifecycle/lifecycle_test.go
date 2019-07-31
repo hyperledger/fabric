@@ -332,6 +332,74 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 	})
 
+	Describe("QueryInstalledChaincode", func() {
+		BeforeEach(func() {
+			fakeLister.GetInstalledChaincodeReturns(&chaincode.InstalledChaincode{
+				Label:     "installed-cc2",
+				PackageID: "installed-package-id2",
+				References: map[string][]*chaincode.Metadata{
+					"test-channel": {
+						&chaincode.Metadata{
+							Name:    "test-chaincode",
+							Version: "test-version",
+						},
+						&chaincode.Metadata{
+							Name:    "hello-chaincode",
+							Version: "hello-version",
+						},
+					},
+					"another-channel": {
+						&chaincode.Metadata{
+							Name:    "another-chaincode",
+							Version: "another-version",
+						},
+					},
+				},
+			}, nil)
+		})
+
+		It("returns installed chaincode information", func() {
+			result, err := ef.QueryInstalledChaincode(p.PackageID("installed-package-id2"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(
+				&chaincode.InstalledChaincode{
+					Label:     "installed-cc2",
+					PackageID: "installed-package-id2",
+					References: map[string][]*chaincode.Metadata{
+						"test-channel": {
+							&chaincode.Metadata{
+								Name:    "test-chaincode",
+								Version: "test-version",
+							},
+							&chaincode.Metadata{
+								Name:    "hello-chaincode",
+								Version: "hello-version",
+							},
+						},
+						"another-channel": {
+							&chaincode.Metadata{
+								Name:    "another-chaincode",
+								Version: "another-version",
+							},
+						},
+					},
+				},
+			))
+		})
+
+		Context("when the chaincode isn't installed", func() {
+			BeforeEach(func() {
+				fakeLister.GetInstalledChaincodeReturns(nil, errors.New("another-fake-error"))
+			})
+
+			It("returns an error", func() {
+				result, err := ef.QueryInstalledChaincode(p.PackageID("not-there"))
+				Expect(err.Error()).To(Equal("another-fake-error"))
+				Expect(result).To(BeNil())
+			})
+		})
+	})
+
 	Describe("QueryInstalledChaincodes", func() {
 		var chaincodes []*chaincode.InstalledChaincode
 

@@ -37,6 +37,16 @@ message QueryInstalledChaincodeArgs {
 message QueryInstalledChaincodeResult {
     string package_id = 1;
     string label = 2;
+    map<string, References> references = 3;
+
+    message References {
+        repeated Chaincode chaincodes = 1;
+    }
+
+    message Chaincode {
+        string name = 1;
+        string version = 2;
+    }
 }
 
 // GetInstalledChaincodePackageArgs is the message used as the argument to

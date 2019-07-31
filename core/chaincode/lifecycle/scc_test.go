@@ -221,6 +221,14 @@ var _ = Describe("SCC", func() {
 				fakeSCCFuncs.QueryInstalledChaincodeReturns(&chaincode.InstalledChaincode{
 					PackageID: persistenceintf.PackageID("awesome_package"),
 					Label:     "awesome_package_label",
+					References: map[string][]*chaincode.Metadata{
+						"test-channel": {
+							&chaincode.Metadata{
+								Name:    "cc0",
+								Version: "cc0-version",
+							},
+						},
+					},
 				}, nil)
 			})
 
@@ -231,6 +239,17 @@ var _ = Describe("SCC", func() {
 				err := proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(payload.Label).To(Equal("awesome_package_label"))
+				Expect(payload.PackageId).To(Equal("awesome_package"))
+				Expect(payload.References).To(Equal(map[string]*lb.QueryInstalledChaincodeResult_References{
+					"test-channel": {
+						Chaincodes: []*lb.QueryInstalledChaincodeResult_Chaincode{
+							{
+								Name:    "cc0",
+								Version: "cc0-version",
+							},
+						},
+					},
+				}))
 
 				Expect(fakeSCCFuncs.QueryInstalledChaincodeCallCount()).To(Equal(1))
 				name := fakeSCCFuncs.QueryInstalledChaincodeArgsForCall(0)

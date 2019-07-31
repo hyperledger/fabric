@@ -77,7 +77,7 @@ type SCCFunctions interface {
 	// InstallChaincode persists a chaincode definition to disk
 	InstallChaincode([]byte) (*chaincode.InstalledChaincode, error)
 
-	// QueryInstalledChaincode returns the hash for a given name and version of an installed chaincode
+	// QueryInstalledChaincode returns metadata for the chaincode with the supplied package ID.
 	QueryInstalledChaincode(packageID persistenceintf.PackageID) (*chaincode.InstalledChaincode, error)
 
 	// GetInstalledChaincodePackage returns the chaincode package
@@ -280,9 +280,26 @@ func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeAr
 	if err != nil {
 		return nil, err
 	}
+
+	references := map[string]*lb.QueryInstalledChaincodeResult_References{}
+	for channel, chaincodeMetadata := range chaincode.References {
+		chaincodes := make([]*lb.QueryInstalledChaincodeResult_Chaincode, len(chaincodeMetadata))
+		for i, metadata := range chaincodeMetadata {
+			chaincodes[i] = &lb.QueryInstalledChaincodeResult_Chaincode{
+				Name:    metadata.Name,
+				Version: metadata.Version,
+			}
+		}
+
+		references[channel] = &lb.QueryInstalledChaincodeResult_References{
+			Chaincodes: chaincodes,
+		}
+	}
+
 	return &lb.QueryInstalledChaincodeResult{
-		Label:     chaincode.Label,
-		PackageId: chaincode.PackageID.String(),
+		Label:      chaincode.Label,
+		PackageId:  chaincode.PackageID.String(),
+		References: references,
 	}, nil
 }
 
