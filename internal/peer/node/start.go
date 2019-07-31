@@ -410,7 +410,6 @@ func serve(args []string) error {
 	authenticator := accesscontrol.NewAuthenticator(ca)
 
 	sccp := &scc.Provider{
-		Peer:      peerInstance,
 		Whitelist: scc.GlobalWhitelist(),
 	}
 
@@ -427,7 +426,7 @@ func serve(args []string) error {
 		"_lifecycle": {},
 	}
 
-	lsccInst := lscc.New(builtinSCCs, sccp, aclProvider, peerInstance.GetMSPIDs, policyChecker)
+	lsccInst := lscc.New(builtinSCCs, &lscc.PeerShim{Peer: peerInstance}, aclProvider, peerInstance.GetMSPIDs, policyChecker)
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
@@ -588,7 +587,6 @@ func serve(args []string) error {
 		SignerSerializer: signingIdentity,
 		Peer:             peerInstance,
 		ChaincodeSupport: chaincodeSupport,
-		SysCCProvider:    sccp,
 		ACLProvider:      aclProvider,
 		BuiltinSCCs:      builtinSCCs,
 	}

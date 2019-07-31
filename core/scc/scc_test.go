@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/mock"
 	"github.com/onsi/gomega"
@@ -30,7 +29,6 @@ func init() {
 
 func newTestProvider() *scc.Provider {
 	p := &scc.Provider{
-		Peer: &peer.Peer{},
 		Whitelist: map[string]bool{
 			"invokableExternalButNotCC2CC": true,
 			"invokableCC2CCButNotExternal": true,
@@ -79,15 +77,6 @@ func TestDeploy(t *testing.T) {
 	gt.Expect(csh.LaunchInProcArgsForCall(0)).To(gomega.Equal(ccintf.CCID("invokableExternalButNotCC2CC:latest")))
 	gt.Expect(csh.LaunchInProcArgsForCall(1)).To(gomega.Equal(ccintf.CCID("invokableCC2CCButNotExternal:latest")))
 	gt.Eventually(csh.HandleChaincodeStreamCallCount).Should(gomega.Equal(2))
-}
-
-func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
-	p := &scc.Provider{
-		Peer: &peer.Peer{},
-	}
-	qe, err := p.GetQueryExecutorForLedger("")
-	assert.Nil(t, qe)
-	assert.Error(t, err)
 }
 
 func TestCreatePluginSysCCs(t *testing.T) {

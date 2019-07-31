@@ -12,7 +12,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -21,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/internal/ccmetadata"
@@ -145,6 +148,37 @@ type LifeCycleSysCC struct {
 	Support FilesystemSupport
 
 	GetMSPIDs MSPIDsGetter
+}
+
+// PeerShim adapts the peer instance for use with LSCC by providing methods
+// previously provided by the scc provider.  If the lscc code weren't all getting
+// deleted soon, it would probably be worth rewriting it to use these APIs directly
+// rather that go through this shim, but it will be gone soon.
+type PeerShim struct {
+	Peer *peer.Peer
+}
+
+// GetQueryExecutorForLedger returns a query executor for the specified channel
+func (p *PeerShim) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
+	l := p.Peer.GetLedger(cid)
+	if l == nil {
+		return nil, fmt.Errorf("Could not retrieve ledger for channel %s", cid)
+	}
+
+	return l.NewQueryExecutor()
+}
+
+// GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
+// and whether the Application config exists
+func (p *PeerShim) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
+	return p.Peer.GetApplicationConfig(cid)
+}
+
+// Returns the policy manager associated to the passed channel
+// and whether the policy manager exists
+func (p *PeerShim) PolicyManager(channelID string) (policies.Manager, bool) {
+	m := p.Peer.GetPolicyManager(channelID)
+	return m, (m != nil)
 }
 
 // New creates a new instance of the LSCC

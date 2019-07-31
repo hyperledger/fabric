@@ -39,7 +39,6 @@ type SupportImpl struct {
 	identity.SignerSerializer
 	Peer             PeerOperations
 	ChaincodeSupport *chaincode.ChaincodeSupport
-	SysCCProvider    *scc.Provider
 	ACLProvider      aclmgmt.ACLProvider
 	BuiltinSCCs      scc.BuiltinSCCs
 }
