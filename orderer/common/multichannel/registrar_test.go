@@ -150,6 +150,9 @@ func TestNewRegistrar(t *testing.T) {
 	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	// This test checks to make sure the orderer refuses to come up if it cannot find a system channel
 	t.Run("No system chain - failure", func(t *testing.T) {
 		lf := ramledger.New(10)
@@ -158,7 +161,7 @@ func TestNewRegistrar(t *testing.T) {
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
 		assert.Panics(t, func() {
-			NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}).Initialize(consenters)
+			NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider).Initialize(consenters)
 		}, "Should have panicked when starting without a system chain")
 	})
 
@@ -178,7 +181,7 @@ func TestNewRegistrar(t *testing.T) {
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
 		assert.Panics(t, func() {
-			NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}).Initialize(consenters)
+			NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider).Initialize(consenters)
 		}, "Two system channels should have caused panic")
 	})
 
@@ -189,7 +192,7 @@ func TestNewRegistrar(t *testing.T) {
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
-		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{})
+		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider)
 		manager.Initialize(consenters)
 
 		chainSupport := manager.GetChain("Fake")
@@ -207,13 +210,16 @@ func TestCreateChain(t *testing.T) {
 	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	t.Run("Create chain", func(t *testing.T) {
 		lf, _ := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
 
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
-		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{})
+		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider)
 		manager.Initialize(consenters)
 
 		ledger, err := lf.GetOrCreate("mychannel")
@@ -252,7 +258,7 @@ func TestCreateChain(t *testing.T) {
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
-		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{})
+		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider)
 		manager.Initialize(consenters)
 		orglessChannelConf := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 		orglessChannelConf.Application.Organizations = nil
@@ -406,11 +412,14 @@ func TestBroadcastChannelSupportRejection(t *testing.T) {
 	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	t.Run("Rejection", func(t *testing.T) {
 
 		ledgerFactory, _ := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
 		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
-		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{})
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
 		registrar.Initialize(mockConsenters)
 		randomValue := 1
 		configTx := makeConfigTx(genesisconfig.TestChannelID, randomValue)

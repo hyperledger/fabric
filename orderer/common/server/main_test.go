@@ -15,17 +15,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/require"
-
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	deliver_mocks "github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
@@ -41,9 +39,11 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -353,6 +353,10 @@ func TestInitializeMultiChainManager(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 	conf := genesisConfig(t)
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	assert.NotPanics(t, func() {
 		signer := &server_mocks.SignerSerializer{}
 		lf, _, err := createLedgerFactory(conf, &disabled.Provider{})
@@ -360,7 +364,7 @@ func TestInitializeMultiChainManager(t *testing.T) {
 		bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
 		initializeMultichannelRegistrar(
 			bootBlock,
-			&replicationInitiator{},
+			&replicationInitiator{bccsp: cryptoProvider},
 			&cluster.PredicateDialer{},
 			comm.ServerConfig{},
 			nil,
@@ -369,6 +373,7 @@ func TestInitializeMultiChainManager(t *testing.T) {
 			&disabled.Provider{},
 			&server_mocks.HealthChecker{},
 			lf,
+			cryptoProvider,
 		)
 	})
 }
@@ -433,9 +438,13 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	assert.NoError(t, err)
 	bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
 	signer := &server_mocks.SignerSerializer{}
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	initializeMultichannelRegistrar(
 		bootBlock,
-		&replicationInitiator{},
+		&replicationInitiator{bccsp: cryptoProvider},
 		&cluster.PredicateDialer{},
 		comm.ServerConfig{},
 		nil,
@@ -444,6 +453,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		&disabled.Provider{},
 		&server_mocks.HealthChecker{},
 		lf,
+		cryptoProvider,
 		callback,
 	)
 	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain[genesisconfig.TestChannelID]))
@@ -485,7 +495,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	}
 	initializeMultichannelRegistrar(
 		bootBlock,
-		&replicationInitiator{},
+		&replicationInitiator{bccsp: cryptoProvider},
 		predDialer,
 		comm.ServerConfig{},
 		nil,
@@ -494,6 +504,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		&disabled.Provider{},
 		&server_mocks.HealthChecker{},
 		lf,
+		cryptoProvider,
 		callback,
 	)
 	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain[genesisconfig.TestChannelID]))
@@ -736,18 +747,26 @@ func TestInitializeEtcdraftConsenter(t *testing.T) {
 	srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
 	assert.NoError(t, err)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	initializeEtcdraftConsenter(consenters,
 		&localconfig.TopLevel{},
 		rlf,
 		&cluster.PredicateDialer{},
-		genesisBlock, &replicationInitiator{},
+		genesisBlock, &replicationInitiator{bccsp: cryptoProvider},
 		comm.ServerConfig{
 			SecOpts: comm.SecureOptions{
 				Certificate: crt.Cert,
 				Key:         crt.Key,
 				UseTLS:      true,
 			},
-		}, srv, &multichannel.Registrar{}, &disabled.Provider{})
+		},
+		srv,
+		&multichannel.Registrar{},
+		&disabled.Provider{},
+		cryptoProvider,
+	)
 	assert.NotNil(t, consenters["etcdraft"])
 }
 
@@ -807,10 +826,13 @@ func TestCreateReplicator(t *testing.T) {
 	ledgerFactory.On("GetOrCreate", "mychannel").Return(ledger, nil)
 	ledgerFactory.On("ChannelIDs").Return([]string{"mychannel"})
 
-	signer := &server_mocks.SignerSerializer{}
-	r := createReplicator(ledgerFactory, bootBlock, &localconfig.TopLevel{}, comm.SecureOptions{}, signer)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 
-	err := r.verifierRetriever.RetrieveVerifier("mychannel").VerifyBlockSignature(nil, nil)
+	signer := &server_mocks.SignerSerializer{}
+	r := createReplicator(ledgerFactory, bootBlock, &localconfig.TopLevel{}, comm.SecureOptions{}, signer, cryptoProvider)
+
+	err = r.verifierRetriever.RetrieveVerifier("mychannel").VerifyBlockSignature(nil, nil)
 	assert.EqualError(t, err, "implicit policy evaluation failed - 0 sub-policies were satisfied, but this policy requires 1 of the 'Writers' sub-policies to be satisfied")
 
 	err = r.verifierRetriever.RetrieveVerifier("system").VerifyBlockSignature(nil, nil)

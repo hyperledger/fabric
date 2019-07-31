@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -89,7 +90,10 @@ func Main() {
 	prettyPrintStruct(conf)
 
 	bootstrapBlock := extractBootstrapBlock(conf)
-	if err := ValidateBootstrapBlock(bootstrapBlock, factory.GetDefault()); err != nil {
+
+	cryptoProvider := factory.GetDefault()
+
+	if err := ValidateBootstrapBlock(bootstrapBlock, cryptoProvider); err != nil {
 		logger.Panicf("Failed validating bootstrap block: %v", err)
 	}
 
@@ -131,10 +135,10 @@ func Main() {
 	var clusterDialer *cluster.PredicateDialer
 
 	var reuseGrpcListener bool
-	typ := consensusType(bootstrapBlock)
+	typ := consensusType(bootstrapBlock, cryptoProvider)
 	var serversToUpdate []*comm.GRPCServer
 
-	clusterType := isClusterType(clusterBootBlock)
+	clusterType := isClusterType(clusterBootBlock, cryptoProvider)
 	if clusterType {
 		logger.Infof("Setting up cluster for orderer type %s", typ)
 		clusterClientConfig = initializeClusterClientConfig(conf)
@@ -142,7 +146,7 @@ func Main() {
 			Config: clusterClientConfig,
 		}
 
-		r = createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer)
+		r = createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer, cryptoProvider)
 		// Only clusters that are equipped with a recent config block can replicate.
 		if conf.General.GenesisMethod == "file" {
 			r.replicateIfNeeded(bootstrapBlock)
@@ -185,6 +189,7 @@ func Main() {
 		metricsProvider,
 		opsSystem,
 		lf,
+		cryptoProvider,
 		tlsCallback,
 	)
 
@@ -291,11 +296,12 @@ func createReplicator(
 	conf *localconfig.TopLevel,
 	secOpts comm.SecureOptions,
 	signer identity.SignerSerializer,
+	bccsp bccsp.BCCSP,
 ) *replicationInitiator {
 	logger := flogging.MustGetLogger("orderer.common.cluster")
 
 	vl := &verifierLoader{
-		verifierFactory: &cluster.BlockVerifierAssembler{Logger: logger, BCCSP: factory.GetDefault()},
+		verifierFactory: &cluster.BlockVerifierAssembler{Logger: logger, BCCSP: bccsp},
 		onFailure: func(block *cb.Block) {
 			protolator.DeepMarshalJSON(os.Stdout, block)
 		},
@@ -317,7 +323,7 @@ func createReplicator(
 		LoadVerifier:       vl.loadVerifier,
 		Logger:             logger,
 		VerifiersByChannel: verifiersByChannel,
-		VerifierFactory:    &cluster.BlockVerifierAssembler{Logger: logger, BCCSP: factory.GetDefault()},
+		VerifierFactory:    &cluster.BlockVerifierAssembler{Logger: logger, BCCSP: bccsp},
 	}
 
 	ledgerFactory := &ledgerFactory{
@@ -332,6 +338,7 @@ func createReplicator(
 		conf:              conf,
 		lf:                ledgerFactory,
 		signer:            signer,
+		bccsp:             bccsp,
 	}
 }
 
@@ -590,12 +597,12 @@ func initializeBootstrapChannel(genesisBlock *cb.Block, lf blockledger.Factory) 
 	}
 }
 
-func isClusterType(genesisBlock *cb.Block) bool {
-	_, exists := clusterTypes[consensusType(genesisBlock)]
+func isClusterType(genesisBlock *cb.Block, bccsp bccsp.BCCSP) bool {
+	_, exists := clusterTypes[consensusType(genesisBlock, bccsp)]
 	return exists
 }
 
-func consensusType(genesisBlock *cb.Block) string {
+func consensusType(genesisBlock *cb.Block, bccsp bccsp.BCCSP) string {
 	if genesisBlock.Data == nil || len(genesisBlock.Data.Data) == 0 {
 		logger.Fatalf("Empty genesis block")
 	}
@@ -603,7 +610,7 @@ func consensusType(genesisBlock *cb.Block) string {
 	if err := proto.Unmarshal(genesisBlock.Data.Data[0], env); err != nil {
 		logger.Fatalf("Failed to unmarshal the genesis block's envelope: %v", err)
 	}
-	bundle, err := channelconfig.NewBundleFromEnvelope(env, factory.GetDefault())
+	bundle, err := channelconfig.NewBundleFromEnvelope(env, bccsp)
 	if err != nil {
 		logger.Fatalf("Failed creating bundle from the genesis block: %v", err)
 	}
@@ -673,6 +680,7 @@ func initializeMultichannelRegistrar(
 	metricsProvider metrics.Provider,
 	healthChecker healthChecker,
 	lf blockledger.Factory,
+	bccsp bccsp.BCCSP,
 	callbacks ...channelconfig.BundleActor,
 ) *multichannel.Registrar {
 	genesisBlock := extractBootstrapBlock(conf)
@@ -685,7 +693,7 @@ func initializeMultichannelRegistrar(
 
 	consenters := make(map[string]consensus.Consenter)
 
-	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, callbacks...)
+	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, bccsp, callbacks...)
 
 	consenters["solo"] = solo.New()
 	var kafkaMetrics *kafka.Metrics
@@ -693,8 +701,8 @@ func initializeMultichannelRegistrar(
 	// Note, we pass a 'nil' channel here, we could pass a channel that
 	// closes if we wished to cleanup this routine on exit.
 	go kafkaMetrics.PollGoMetricsUntilStop(time.Minute, nil)
-	if isClusterType(bootstrapBlock) {
-		initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider)
+	if isClusterType(bootstrapBlock, bccsp) {
+		initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider, bccsp)
 	}
 	registrar.Initialize(consenters)
 	return registrar
@@ -711,6 +719,7 @@ func initializeEtcdraftConsenter(
 	srv *comm.GRPCServer,
 	registrar *multichannel.Registrar,
 	metricsProvider metrics.Provider,
+	bccsp bccsp.BCCSP,
 ) {
 	replicationRefreshInterval := conf.General.Cluster.ReplicationBackgroundRefreshInterval
 	if replicationRefreshInterval == 0 {
@@ -749,7 +758,7 @@ func initializeEtcdraftConsenter(
 	ri.channelLister = icr
 
 	go icr.run()
-	raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, icr, metricsProvider)
+	raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, icr, metricsProvider, bccsp)
 	consenters["etcdraft"] = raftConsenter
 }
 
