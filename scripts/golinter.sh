@@ -6,7 +6,8 @@
 
 set -e
 
-source "$(cd $(dirname "$0") && pwd)/functions.sh"
+# shellcheck source=/dev/null
+source "$(cd "$(dirname "$0")" && pwd)/functions.sh"
 
 # place the Go build cache directory into the default build tree if it exists
 if [ -d "${GOPATH}/src/github.com/hyperledger/fabric/.build" ]; then
@@ -52,6 +53,7 @@ context_whitelist=(
     "^github.com/hyperledger/fabric/common/grpcmetrics/fakes:"
     "^github.com/hyperledger/fabric/common/grpcmetrics/testpb:"
 )
+# shellcheck disable=SC2016
 TEMPLATE='{{with $d := .}}{{range $d.Imports}}{{ printf "%s:%s " $d.ImportPath . }}{{end}}{{end}}'
 OUTPUT="$(go list -f "$TEMPLATE" ./... | grep -Ev "$(IFS='|' ; echo "${context_whitelist[*]}")" | grep 'golang.org/x/net/context' | cut -f1 -d:)"
 if [ -n "$OUTPUT" ]; then
