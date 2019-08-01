@@ -163,7 +163,10 @@ func TestInvokeCmdSimulateESCCPluginResponse(t *testing.T) {
 		Response:    &pb.Response{Status: 504},
 		Endorsement: &pb.Endorsement{},
 	}
-	mockCF.EndorserClients[0] = common.GetMockEndorserClient(mockResponse, nil)
+	mockCF.EndorserClients = []pb.EndorserClient{
+		common.GetMockEndorserClient(mockResponse, nil),
+		common.GetMockEndorserClient(mockResponse, nil),
+	}
 
 	// set logger to logger with a backend that writes to a byte buffer
 	oldLogger := logger
@@ -178,8 +181,6 @@ func TestInvokeCmdSimulateESCCPluginResponse(t *testing.T) {
 
 	err = cmd.Execute()
 	assert.NoError(t, err, "Run chaincode invoke cmd error")
-	err = cmd.Execute()
-	assert.Nil(t, err)
 
 	assert.NotEmpty(t, recorder.MessagesContaining("Chaincode invoke successful"), "missing invoke success log record")
 	assert.NotEmpty(t, recorder.MessagesContaining("result: <nil>"), "missing result log record")
