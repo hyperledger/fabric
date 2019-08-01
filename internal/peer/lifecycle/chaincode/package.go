@@ -168,7 +168,7 @@ func (p *Packager) getTarGzBytes() ([]byte, error) {
 		return nil, errors.WithMessage(err, "error getting chaincode bytes")
 	}
 
-	codePackageName := "Code-Package.tar.gz"
+	codePackageName := "code.tar.gz"
 
 	err = writeBytesToPackage(tw, codePackageName, codeBytes)
 	if err != nil {
