@@ -1299,7 +1299,7 @@ func testPvtValueEqual(t *testing.T, txMgr txmgr.TxMgr, ns, coll, key string, va
 	defer simulator.Done()
 	pvtValue, err := simulator.GetPrivateData(ns, coll, key)
 	assert.NoError(t, err)
-	if bytes.Compare(pvtValue, value) == 0 {
+	if bytes.Equal(pvtValue, value) {
 		return true
 	}
 	return false

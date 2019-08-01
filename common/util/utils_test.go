@@ -23,19 +23,19 @@ import (
 )
 
 func TestComputeSHA256(t *testing.T) {
-	if bytes.Compare(ComputeSHA256([]byte("foobar")), ComputeSHA256([]byte("foobar"))) != 0 {
+	if !bytes.Equal(ComputeSHA256([]byte("foobar")), ComputeSHA256([]byte("foobar"))) {
 		t.Fatalf("Expected hashes to match, but they did not match")
 	}
-	if bytes.Compare(ComputeSHA256([]byte("foobar1")), ComputeSHA256([]byte("foobar2"))) == 0 {
+	if bytes.Equal(ComputeSHA256([]byte("foobar1")), ComputeSHA256([]byte("foobar2"))) {
 		t.Fatalf("Expected hashes to be different, but they match")
 	}
 }
 
 func TestComputeSHA3256(t *testing.T) {
-	if bytes.Compare(ComputeSHA3256([]byte("foobar")), ComputeSHA3256([]byte("foobar"))) != 0 {
+	if !bytes.Equal(ComputeSHA3256([]byte("foobar")), ComputeSHA3256([]byte("foobar"))) {
 		t.Fatalf("Expected hashes to match, but they did not match")
 	}
-	if bytes.Compare(ComputeSHA3256([]byte("foobar1")), ComputeSHA3256([]byte("foobar2"))) == 0 {
+	if bytes.Equal(ComputeSHA3256([]byte("foobar1")), ComputeSHA3256([]byte("foobar2"))) {
 		t.Fatalf("Expected hashed to be different, but they match")
 	}
 }
@@ -65,7 +65,7 @@ func TestToChaincodeArgs(t *testing.T) {
 		t.Fatalf("Got %v, expected %v", actual, expected)
 	}
 	for i := range expected {
-		if bytes.Compare(expected[i], actual[i]) != 0 {
+		if !bytes.Equal(expected[i], actual[i]) {
 			t.Fatalf("Got %v, expected %v", actual, expected)
 		}
 	}
