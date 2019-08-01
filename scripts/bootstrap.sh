@@ -100,7 +100,7 @@ binaryIncrementalDownload() {
             echo "==> Extracting ${BINARY_FILE}..."
             tar xzf ./"${BINARY_FILE}" --overwrite
             echo "==> Done."
-            rm -f $"{BINARY_FILE}" "${BINARY_FILE}".md5
+            rm -f "${BINARY_FILE}" "${BINARY_FILE}".md5
         else
             echo "Download failed: the local md5sum is different from the remote md5sum. Please try again."
             rm -f "${BINARY_FILE}" "${BINARY_FILE}".md5
