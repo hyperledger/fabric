@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 )
@@ -68,7 +69,12 @@ func buildPackage(name string, path string, version string, initArgs [][]byte) (
 	if err != nil {
 		return nil, err
 	}
-	cccdspack := &CDSPackage{}
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return nil, err
+	}
+	cccdspack := &CDSPackage{GetHasher: cryptoProvider}
 	if _, err := cccdspack.InitFromBuffer(buf); err != nil {
 		return nil, err
 	}

@@ -19,6 +19,7 @@ package ccprovider
 import (
 	"bytes"
 	"fmt"
+	"hash"
 	"io/ioutil"
 	"os"
 
@@ -57,20 +58,26 @@ func (data *CDSData) Equals(other *CDSData) bool {
 	return other != nil && bytes.Equal(data.CodeHash, other.CodeHash) && bytes.Equal(data.MetaDataHash, other.MetaDataHash)
 }
 
+// GetHasher interface defines a subset of bccsp which contains GetHash function.
+type GetHasher interface {
+	GetHash(opts bccsp.HashOpts) (h hash.Hash, err error)
+}
+
 //--------- CDSPackage ------------
 
 //CDSPackage encapsulates ChaincodeDeploymentSpec.
 type CDSPackage struct {
-	buf     []byte
-	depSpec *pb.ChaincodeDeploymentSpec
-	data    *CDSData
-	datab   []byte
-	id      []byte
+	buf       []byte
+	depSpec   *pb.ChaincodeDeploymentSpec
+	data      *CDSData
+	datab     []byte
+	id        []byte
+	GetHasher GetHasher
 }
 
 // resets data
 func (ccpack *CDSPackage) reset() {
-	*ccpack = CDSPackage{}
+	*ccpack = CDSPackage{GetHasher: factory.GetDefault()}
 }
 
 // GetId gets the fingerprint of the chaincode based on package computation
@@ -136,7 +143,8 @@ func (ccpack *CDSPackage) getCDSData(cds *pb.ChaincodeDeploymentSpec) ([]byte, [
 	}
 
 	//compute hashes now
-	hash, err := factory.GetDefault().GetHash(&bccsp.SHAOpts{})
+	// hash, err := factory.GetDefault().GetHash(&bccsp.SHAOpts{})
+	hash, err := ccpack.GetHasher.GetHash(&bccsp.SHAOpts{})
 	if err != nil {
 		return nil, nil, nil, err
 	}
